@@ -1,0 +1,22 @@
+{
+  "testCommand": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "testGlobs": [
+    "tests/**"
+  ],
+  "srcGlobs": [
+    "app/Services/**"
+  ],
+  "ignoreGlobs": [
+    "node_modules/**",
+    "vendor/**",
+    ".git/**",
+    "dist/**",
+    "build/**",
+    "coverage/**",
+    ".spec/**",
+    "bootstrap/cache/**",
+    "storage/**",
+    "public/build/**"
+  ]
+}
