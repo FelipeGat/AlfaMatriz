@@ -73,7 +73,7 @@
 - Notas: confere HTTPS na URL pública, `/healthz` = 200, tela de login = 200 e
   cadastro = 404. Sai 0 só com as quatro passando; senão lista qual falhou.
 
-## T-011 — Backup diário com retenção de sete dias [pendente]
+## T-011 — Backup diário com retenção de sete dias [concluida]
 - Refs: US-005, AC-011
 - Arquivos: deploy/backup.sh, tests/Feature/Deploy/ScriptBackupTest.php
 - Notas: dump compactado e datado, agendado por cron no container. A lógica de
@@ -81,7 +81,7 @@
   o script num diretório temporário com arquivos falsos e conferir que sobram
   as sete cópias mais recentes.
 
-## T-012 — Restauração protegida [pendente]
+## T-012 — Restauração protegida [concluida]
 - Refs: US-005, AC-012
 - Arquivos: deploy/restaurar.sh, tests/Feature/Deploy/ScriptRestaurarTest.php
 - Notas: exige `--confirmo` e um arquivo existente. Sem os dois, recusa com
