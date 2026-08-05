@@ -12,34 +12,77 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Inter', ...defaultTheme.fontFamily.sans],
+                // Interface inteira. Números têm família própria (mono) porque
+                // é o que alinha as colunas de valor.
+                sans: ['"IBM Plex Sans"', ...defaultTheme.fontFamily.sans],
                 display: ['"Space Grotesk"', ...defaultTheme.fontFamily.sans],
+                mono: ['"IBM Plex Mono"', ...defaultTheme.fontFamily.mono],
             },
+
+            // Cada cor aponta para uma custom property definida em app.css.
+            // É o que faz a troca de tema acontecer sem duplicar classe:
+            // `bg-panel` vale nos dois temas, mudando só o valor da variável.
             colors: {
-                canvas: '#060b0d',
-                panel: '#0b1316',
-                'panel-raised': '#101a1e',
-                ink: '#e6eef0',
-                'ink-dim': '#8ea0a6',
-                'ink-mute': '#7c8a8e',
+                bg: 'var(--bg)',
+                sidebar: 'var(--sidebar)',
+                panel: 'var(--panel)',
+                raised: 'var(--raised)',
+                line: 'var(--border)',
+                ink: 'var(--ink)',
+                dim: 'var(--dim)',
+                mute: 'var(--mute)',
                 brand: {
-                    DEFAULT: '#029caf',
-                    dim: '#5be3ef',
-                    bright: '#26d4e6',
-                    mute: '#023d44',
+                    DEFAULT: 'var(--brand)',
+                    solid: 'var(--brand-solid)',
+                    soft: 'var(--brand-soft)',
+                    line: 'var(--brand-line)',
+                    // Apelidos temporários (ver bloco de compatibilidade abaixo).
+                    dim: 'var(--brand)',
+                    bright: 'var(--brand)',
+                    mute: 'var(--brand-soft)',
                 },
+                good: 'var(--good)',
+                warn: 'var(--warn)',
+                bad: 'var(--bad)',
+                track: 'var(--track)',
+                track2: 'var(--track2)',
+
+                // --- Compatibilidade temporária -------------------------
+                // 41 telas ainda usam os nomes antigos. Sem estes apelidos,
+                // o painel ficaria sem estilo entre a troca dos tokens e a
+                // migração da última tela — intervalo ruim num sistema em
+                // produção. Cada apelido some quando a última tela que o usa
+                // for migrada; a tarefa T-046 fecha a lista.
+                canvas: 'var(--bg)',
+                'panel-raised': 'var(--raised)',
+                'ink-dim': 'var(--dim)',
+                'ink-mute': 'var(--mute)',
                 amber: {
-                    signal: '#e8a045',
-                    chart: '#c98500',
+                    signal: 'var(--warn)',
+                    chart: 'var(--warn)',
                 },
                 status: {
-                    good: '#0ca30c',
-                    warning: '#fab219',
-                    critical: '#d03b3b',
+                    good: 'var(--good)',
+                    warning: 'var(--warn)',
+                    critical: 'var(--bad)',
                 },
             },
+
+            borderRadius: {
+                card: '13px',
+                summary: '12px',
+                control: '9px',
+                pill: '20px',
+            },
+
+            // Sem sombra na interface: a separação é por borda e por diferença
+            // de superfície. A única exceção é o que flutua sobre o conteúdo.
             boxShadow: {
-                panel: '0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6)',
+                overlay: '0 10px 30px -10px rgba(0,0,0,.5)',
+            },
+
+            transitionDuration: {
+                sidebar: '180ms',
             },
         },
     },

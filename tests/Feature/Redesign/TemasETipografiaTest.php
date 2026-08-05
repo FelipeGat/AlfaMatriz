@@ -1,0 +1,148 @@
+<?php
+
+namespace Tests\Feature\Redesign;
+
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class TemasETipografiaTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private string $css;
+
+    private string $config;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->css = file_get_contents(base_path('resources/css/app.css'));
+        $this->config = file_get_contents(base_path('tailwind.config.js'));
+    }
+
+    /**
+     * @spec:AC-039 Os dois temas existem, cada um com a paleta completa do
+     * handoff, e as cores do Tailwind apontam para as variáveis — é isso que
+     * faz a troca valer para a interface inteira sem duplicar classe.
+     */
+    public function test_os_dois_temas_tem_a_paleta_completa(): void
+    {
+        $this->assertStringContainsString("data-theme='dark'", $this->css);
+        $this->assertStringContainsString("data-theme='light'", $this->css);
+
+        $tokens = [
+            '--bg', '--sidebar', '--panel', '--raised', '--border',
+            '--ink', '--dim', '--mute',
+            '--brand', '--brand-solid', '--brand-soft', '--brand-line',
+            '--good', '--warn', '--bad', '--track', '--track2',
+        ];
+
+        // Cada token precisa existir nos DOIS blocos de tema.
+        [$dark, $light] = $this->blocosDeTema();
+
+        foreach ($tokens as $token) {
+            $this->assertStringContainsString($token.':', $dark, "O tema escuro não define {$token}.");
+            $this->assertStringContainsString($token.':', $light, "O tema claro não define {$token}.");
+        }
+
+        // Alguns valores do handoff, para provar que a paleta é a certa e não
+        // uma aproximação.
+        $this->assertStringContainsString('#0a0f11', $dark, 'Fundo do tema escuro fora do handoff.');
+        $this->assertStringContainsString('#f6f7f7', $light, 'Fundo do tema claro fora do handoff.');
+        $this->assertStringContainsString('#2ec9d9', $dark, 'Cor de marca do escuro fora do handoff.');
+        $this->assertStringContainsString('#017d8c', $light, 'Cor de marca do claro fora do handoff.');
+
+        // E o Tailwind precisa consumir as variáveis, não os hex.
+        foreach (['bg', 'panel', 'raised', 'ink', 'dim', 'mute'] as $cor) {
+            $this->assertMatchesRegularExpression(
+                '/'.$cor.":\s*'var\(--/",
+                $this->config,
+                "A cor \"{$cor}\" precisa apontar para a custom property, senão o tema não troca."
+            );
+        }
+    }
+
+    /**
+     * @spec:AC-040 A tipografia é a do handoff e a antiga saiu: três famílias,
+     * com mono para número, e nenhuma referência ao Inter.
+     */
+    public function test_tipografia_nova_entra_e_a_antiga_sai(): void
+    {
+        $layout = file_get_contents(base_path('resources/views/layouts/app.blade.php'));
+
+        foreach (['space-grotesk', 'ibm-plex-sans', 'ibm-plex-mono'] as $familia) {
+            $this->assertStringContainsString($familia, $layout, "A fonte {$familia} não está sendo carregada.");
+        }
+
+        $this->assertStringNotContainsStringIgnoringCase(
+            'inter:',
+            $layout,
+            'O Inter continua sendo carregado; o handoff o substitui.'
+        );
+        $this->assertStringNotContainsStringIgnoringCase(
+            "'Inter'",
+            $this->config,
+            'O Inter continua na configuração do Tailwind.'
+        );
+
+        $this->assertStringContainsString('IBM Plex Mono', $this->config, 'Número precisa de família mono própria.');
+        $this->assertStringContainsString('Space Grotesk', $this->config);
+    }
+
+    /**
+     * @spec:AC-040 O ícone da marca é servido como favicon e é o do handoff —
+     * duas setas convergindo para um núcleo, na cor da marca.
+     */
+    public function test_favicon_da_marca_esta_publicado_e_referenciado(): void
+    {
+        $caminho = public_path('favicon.svg');
+        $this->assertFileExists($caminho, 'O favicon do pacote precisa estar em public/.');
+
+        $svg = file_get_contents($caminho);
+        $this->assertStringContainsString('#029caf', $svg, 'O ícone precisa usar a cor da marca.');
+        $this->assertStringContainsString('circle', $svg, 'O núcleo do ícone é um círculo.');
+        $this->assertSame(2, substr_count($svg, '<path'), 'O ícone tem duas setas convergindo.');
+
+        $layout = file_get_contents(base_path('resources/views/layouts/app.blade.php'));
+        $this->assertStringContainsString('favicon.svg', $layout, 'O layout precisa referenciar o favicon.');
+    }
+
+    /**
+     * @spec:AC-039 A preferência de tema é aplicada antes da primeira pintura.
+     * Se ficasse depois, quem usa o tema escuro veria um flash branco a cada
+     * navegação.
+     */
+    public function test_tema_e_aplicado_antes_da_primeira_pintura(): void
+    {
+        $usuario = User::factory()->create();
+        $html = $this->actingAs($usuario)->get(route('dashboard'))->getContent();
+
+        $posScript = strpos($html, 'alfamatriz-tema');
+        $posBody = strpos($html, '<body');
+
+        $this->assertNotFalse($posScript, 'A leitura da preferência de tema não está na página.');
+        $this->assertLessThan(
+            $posBody,
+            $posScript,
+            'A preferência precisa ser lida no <head>, antes do <body>, para não piscar.'
+        );
+
+        $this->assertStringContainsString('data-theme=', $html);
+    }
+
+    /** @return array{0: string, 1: string} */
+    private function blocosDeTema(): array
+    {
+        $inicioLight = strpos($this->css, "[data-theme='light']");
+        $this->assertNotFalse($inicioLight);
+
+        $fimLight = strpos($this->css, '}', $inicioLight);
+
+        return [
+            substr($this->css, 0, $inicioLight),
+            substr($this->css, $inicioLight, $fimLight - $inicioLight),
+        ];
+    }
+}

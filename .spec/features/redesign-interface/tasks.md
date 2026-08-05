@@ -12,8 +12,7 @@ sentido antes delas.
   Escrito ANTES do redesign de propósito: é ele que avisa se alguma view
   quebrar no caminho. Sem essa rede, o estrago aparece em produção.
 
-## T-039 — Tokens, temas e tipografia [pendente]
-
+## T-039 — Tokens, temas e tipografia [concluida]
 - Refs: US-020, AC-039, AC-040
 - Arquivos: tailwind.config.js, resources/css/app.css, resources/views/layouts/app.blade.php, public/favicon.svg, tests/Feature/Redesign/TemasETipografiaTest.php
 - Notas: custom properties dos dois temas em `data-theme` no `<html>`, cores do

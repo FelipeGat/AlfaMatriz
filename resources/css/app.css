@@ -2,15 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Tokens dos dois temas.
+ *
+ * Ficam como custom properties e não como classes do Tailwind porque a troca
+ * de tema é em tempo de execução: o atributo `data-theme` no <html> muda os
+ * valores, e toda a interface acompanha sem precisar de variante `dark:` em
+ * cada elemento.
+ */
+:root,
+:root[data-theme='dark'] {
+    --bg: #0a0f11;
+    --sidebar: #0d1417;
+    --panel: #10171a;
+    --raised: #151f23;
+    --border: rgba(255, 255, 255, 0.08);
+    --ink: #e8f0f2;
+    --dim: #93a5aa;
+    --mute: #6e7f84;
+    --brand: #2ec9d9;
+    --brand-solid: #029caf;
+    --brand-soft: rgba(46, 201, 217, 0.13);
+    --brand-line: rgba(46, 201, 217, 0.24);
+    --good: #3fbf6a;
+    --warn: #e8a045;
+    --bad: #d05b4b;
+    --track: rgba(255, 255, 255, 0.07);
+    --track2: #31474d;
+    --hover: rgba(255, 255, 255, 0.04);
+}
+
+:root[data-theme='light'] {
+    --bg: #f6f7f7;
+    --sidebar: #ffffff;
+    --panel: #ffffff;
+    --raised: #f3f6f6;
+    --border: #e4e8e9;
+    --ink: #0d1416;
+    --dim: #5b6b70;
+    --mute: #8c9a9e;
+    --brand: #017d8c;
+    --brand-solid: #029caf;
+    --brand-soft: rgba(2, 156, 175, 0.10);
+    --brand-line: rgba(2, 156, 175, 0.22);
+    --good: #12915a;
+    --warn: #b4671f;
+    --bad: #b03a2e;
+    --track: #eef2f2;
+    --track2: #c8d6d8;
+    --hover: #f3f6f6;
+}
+
 @layer base {
-    html, body {
-        @apply bg-canvas text-ink;
+    html,
+    body {
+        @apply bg-bg text-ink;
         overflow-x: hidden;
         max-width: 100vw;
     }
 
     [x-cloak] {
         display: none !important;
+    }
+
+    /*
+     * Todo número em mono. É essa regra que alinha as colunas de valor —
+     * aplicada por classe utilitária `.num` para não depender de o autor da
+     * tela lembrar da família certa.
+     */
+    .num {
+        @apply font-mono;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /*
+     * Valor monetário nunca quebra em duas linhas. Foi o defeito mais
+     * recorrente do protótipo: em coluna estreita, "R$ 12.345,67" virava duas
+     * linhas e a coluna ficava ilegível.
+     */
+    .valor {
+        @apply font-mono whitespace-nowrap;
+        font-variant-numeric: tabular-nums;
     }
 
     select,
@@ -21,30 +93,55 @@
     input[type='number'],
     input[type='date'],
     input[type='url'] {
-        @apply bg-panel-raised text-ink placeholder-ink-mute border-white/10 focus:border-brand focus:ring-brand-dim;
+        @apply bg-raised text-ink border-line rounded-control;
+        @apply placeholder:text-mute focus:border-brand focus:ring-brand;
     }
 
     input[type='checkbox'],
     input[type='radio'] {
-        @apply bg-panel-raised border-white/20 text-brand;
+        @apply bg-raised border-line text-brand;
     }
+
     input[type='checkbox']:focus,
     input[type='radio']:focus {
-        @apply ring-brand-dim ring-offset-canvas;
+        @apply ring-brand ring-offset-bg;
     }
 
     ::-webkit-scrollbar {
         width: 10px;
         height: 10px;
     }
+
     ::-webkit-scrollbar-track {
-        background: theme('colors.panel.DEFAULT');
+        background: var(--panel);
     }
+
     ::-webkit-scrollbar-thumb {
-        background: theme('colors.panel-raised');
+        background: var(--raised);
         border-radius: 9999px;
     }
+
     ::-webkit-scrollbar-thumb:hover {
-        background: theme('colors.brand.mute');
+        background: var(--brand-line);
     }
 }
+
+/* Animações do handoff. Nada acima de 220ms. */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes popIn {
+    from { opacity: 0; transform: scale(.97) translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translate(-50%, 8px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.anim-fade { animation: fadeIn .15s ease; }
+.anim-pop { animation: popIn .18s ease; }
+.anim-toast { animation: toastIn .22s ease; }

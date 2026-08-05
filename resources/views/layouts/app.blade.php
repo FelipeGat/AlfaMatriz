@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" data-theme="dark">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,12 +7,28 @@
 
         <title>{{ config('app.name', 'AlfaMatriz') }}</title>
 
+        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+
+        {{-- Tema aplicado ANTES da primeira pintura: no <head> e síncrono.
+             Se ficasse no app.js, quem usa o tema escuro veria um flash branco
+             a cada navegação. --}}
+        <script>
+            (function () {
+                try {
+                    var salvo = localStorage.getItem('alfamatriz-tema');
+                    if (salvo === 'light' || salvo === 'dark') {
+                        document.documentElement.setAttribute('data-theme', salvo);
+                    }
+                } catch (e) { /* localStorage bloqueado: fica no tema padrão */ }
+            })();
+        </script>
+
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|space-grotesk:500,600,700" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=space-grotesk:400,500,600,700|ibm-plex-sans:400,500,600|ibm-plex-mono:400,500,600" rel="stylesheet" />
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="h-full font-sans antialiased bg-canvas text-ink">
+    <body class="h-full font-sans antialiased bg-bg text-ink">
         <div x-data="{ sidebarOpen: false }" class="min-h-screen flex">
             @include('layouts.navigation')
 
