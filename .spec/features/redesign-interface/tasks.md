@@ -5,8 +5,7 @@
 Ordem conforme o handoff. As três primeiras são a fundação: nada das telas faz
 sentido antes delas.
 
-## T-038 — Rede de segurança antes de mexer [pendente]
-
+## T-038 — Rede de segurança antes de mexer [concluida]
 - Refs: US-022, AC-042
 - Arquivos: tests/Feature/Redesign/TelasAbremTest.php
 - Notas: teste que percorre TODAS as telas do painel autenticado e exige 200.

@@ -111,5 +111,5 @@ em qualquer tela, para não ter que descobrir qual das duas está certa.
 
 | ID | Pergunta | Status | Resposta |
 |---|---|---|---|
-| Q-009 | O wordmark em PNG entra agora, ou esperamos o SVG do cliente? O PNG não escala nem troca de cor por tema | aberta | — |
-| Q-010 | O redesign deve ir para produção de uma vez, ou tela a tela, conforme cada uma fica pronta? | aberta | — |
+| Q-009 | O wordmark em PNG entra agora, ou esperamos o SVG do cliente? O PNG não escala nem troca de cor por tema | respondida | Usar o PNG por ora (2026-08-05). Fica a dívida de trocar pelo SVG quando o cliente enviar |
+| Q-010 | O redesign deve ir para produção de uma vez, ou tela a tela, conforme cada uma fica pronta? | respondida | De uma vez (2026-08-05): valida no staging e vai a produção por tag, sem fase de visual misturado |
