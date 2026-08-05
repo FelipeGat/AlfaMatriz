@@ -19,24 +19,28 @@ class CentroControleController extends Controller
         // Despesas vencidas
         $despesasVencidas = ContaPagar::where('status', 'em_aberto')->whereDate('data_vencimento', '<', $hoje)->get();
         if ($despesasVencidas->isNotEmpty()) {
+            $diasVencida = abs($hoje->diffInDays($despesasVencidas->min('data_vencimento')));
             $alertas[] = [
                 'nivel' => 'critico',
                 'icone' => 'bell',
                 'mensagem' => $despesasVencidas->count().' despesa(s) vencida(s) — R$ '.number_format($despesasVencidas->sum('valor'), 2, ',', '.'),
                 'acao' => 'Ver despesas',
                 'rota' => route('contas-pagar.index', ['status' => 'em_aberto']),
+                'quando' => 'há '.$diasVencida.' dia'.($diasVencida > 1 ? 's' : ''),
             ];
         }
 
         // Receitas vencidas
         $receitasVencidas = Cobranca::where('status', 'pendente')->whereDate('data_vencimento', '<', $hoje)->get();
         if ($receitasVencidas->isNotEmpty()) {
+            $diasVencida = $hoje->diffInDays($receitasVencidas->min('data_vencimento'));
             $alertas[] = [
                 'nivel' => 'critico',
                 'icone' => 'bell',
                 'mensagem' => $receitasVencidas->count().' cobrança'.($receitasVencidas->count() > 1 ? 's' : '').' vencida'.($receitasVencidas->count() > 1 ? 's' : '').' e não paga — R$ '.number_format($receitasVencidas->sum('valor'), 2, ',', '.'),
                 'acao' => 'Ver cobranças',
                 'rota' => route('cobrancas.index', ['status' => 'pendente']),
+                'quando' => 'há '.$diasVencida.' dia'.($diasVencida > 1 ? 's' : ''),
             ];
         }
 

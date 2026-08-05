@@ -35,10 +35,10 @@
             </div>
 
             {{-- Kanban --}}
-            <div class="flex gap-4 overflow-x-auto pb-4 items-start">
+            <div class="flex gap-4 overflow-x-auto pb-4 items-stretch h-[calc(100vh-17rem)]">
                 @foreach (App\Models\Lead::ESTAGIOS as $key => $label)
                     @php $cards = $colunas[$key]; @endphp
-                    <div class="w-72 shrink-0 bg-white/[0.02] border border-white/5 rounded-xl flex flex-col max-h-[calc(100vh-20rem)]">
+                    <div class="w-72 shrink-0 bg-white/[0.02] border border-white/5 rounded-xl flex flex-col">
                         <div class="flex items-center justify-between px-3 py-3 border-b border-white/5">
                             <div class="flex items-center gap-2 min-w-0">
                                 <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-dim truncate">{{ $label }}</h3>
@@ -51,14 +51,23 @@
 
                         <div class="flex-1 overflow-y-auto p-2 space-y-2">
                             @forelse ($cards as $lead)
-                                @php $temp = $lead->temperatura(); @endphp
-                                <div x-data="{ movendo: false, novoEstagio: '{{ $key }}' }" class="bg-panel-raised border border-white/5 rounded-lg p-3 text-sm shadow-panel hover:border-brand/20 transition">
+                                @php
+                                    $temp = $lead->temperatura();
+                                    $estagnado = in_array($temp, ['esfriando', 'frio']);
+                                    $corBorda = ['frio' => 'border-status-critical/40', 'esfriando' => 'border-status-warning/40'][$temp] ?? 'border-white/5';
+                                @endphp
+                                <div x-data="{ movendo: false, novoEstagio: '{{ $key }}' }" class="bg-panel-raised border {{ $corBorda }} rounded-lg p-3 text-sm shadow-panel hover:border-brand/20 transition">
                                     <div class="flex items-start justify-between gap-2">
                                         <p class="text-ink font-medium truncate">{{ $lead->nome }}</p>
                                         @if ($temp)
-                                            <span class="shrink-0 h-2 w-2 rounded-full mt-1.5 {{ ['quente' => 'bg-status-good', 'esfriando' => 'bg-status-warning', 'frio' => 'bg-status-critical'][$temp] }}" title="{{ ucfirst($temp) }} · {{ $lead->diasNoEstagio() }} dias no estágio"></span>
+                                            <span class="shrink-0 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold {{ ['quente' => 'bg-status-good/10 text-status-good', 'esfriando' => 'bg-status-warning/10 text-status-warning', 'frio' => 'bg-status-critical/10 text-status-critical'][$temp] }}" title="{{ ucfirst($temp) }} · {{ $lead->diasNoEstagio() }} dias no estágio">
+                                                {{ $lead->diasNoEstagio() }}d
+                                            </span>
                                         @endif
                                     </div>
+                                    @if ($estagnado)
+                                        <p class="text-[10px] {{ $temp === 'frio' ? 'text-status-critical' : 'text-status-warning' }} mt-0.5">Parado há {{ $lead->diasNoEstagio() }} dias</p>
+                                    @endif
                                     <p class="text-xs text-ink-mute mt-0.5">{{ \App\Models\Lead::TIPOS_INTERESSE[$lead->tipo_interesse] }} @if($lead->origem) · {{ $lead->origem }} @endif</p>
                                     @if ($lead->valor_estimado)
                                         <p class="text-xs text-brand-dim font-medium mt-1">R$ {{ number_format($lead->valor_estimado, 0, ',', '.') }}</p>
