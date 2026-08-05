@@ -1,0 +1,23 @@
+# Túnel Cloudflare do AlfaMatriz — vai para /etc/cloudflared/config.yml
+# dentro do container alfamatriz (LXC 115).
+#
+# Mesmo padrão do alfahome-prod: um túnel por container, credencial própria.
+# O <UUID-DO-TUNEL> é preenchido pelo provisionamento, a partir do túnel
+# criado com `cloudflared tunnel create alfamatriz` — nunca versione a
+# credencial em si, só este modelo.
+
+tunnel: <UUID-DO-TUNEL>
+credentials-file: /root/.cloudflared/<UUID-DO-TUNEL>.json
+
+originRequest:
+  connectTimeout: 30s
+  noTLSVerify: false
+
+ingress:
+  # O Nginx do container atende em HTTP local; quem termina o TLS é a
+  # Cloudflare, igual ao que o Funnel fazia antes.
+  - hostname: matriz.alfasolucoes.cloud
+    service: http://localhost:80
+
+  # Qualquer outro hostname que chegue neste túnel não é servido.
+  - service: http_status:404

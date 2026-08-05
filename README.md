@@ -38,7 +38,11 @@ acima é pública neste README e nunca pode ser a senha do painel na internet.
 
 ## Deploy no alfa-server
 
-URL pública (Tailscale Funnel): **https://alfamatriz.tail0939dd.ts.net**
+URL pública: **https://matriz.alfasolucoes.cloud** (túnel Cloudflare)
+
+Acesso de emergência, só de dentro do tailnet da empresa:
+`https://alfamatriz.tail0939dd.ts.net` — serve para entrar se a Cloudflare
+ficar indisponível. Não responde para quem está fora do Tailscale.
 
 O sistema roda num container LXC dedicado (`alfamatriz`, VMID 115, Debian 12)
 no alfa-server (Proxmox). Os scripts abaixo cobrem provisionar, publicar,

@@ -147,15 +147,37 @@ no_container "ln -sf /etc/nginx/sites-available/alfamatriz /etc/nginx/sites-enab
     mkdir -p $APP_DIR/public && \
     nginx -t && systemctl reload nginx"
 
-# ------------------------------------------------------------------- funnel
+# ------------------------------------------------------- exposição pública
 
-info "publicando na internet via Tailscale Funnel (porta 443)"
+# Quem publica o painel na internet é o túnel Cloudflare, em
+# matriz.alfasolucoes.cloud. O Tailscale fica só como acesso de emergência
+# DENTRO do tailnet — o Funnel (que expõe o .ts.net na internet) permanece
+# desligado de propósito: duas portas públicas para os mesmos dados
+# financeiros é uma a mais do que o necessário.
+info "mantendo o Tailscale como acesso interno (sem Funnel)"
 no_container "tailscale status >/dev/null 2>&1 || \
     echo 'AVISO: o container ainda não está no tailnet. Rode dentro dele: tailscale up --hostname=$NOME'"
 no_container "if tailscale status >/dev/null 2>&1; then \
-        tailscale serve --bg --https 443 http://127.0.0.1:80 >/dev/null 2>&1 || true; \
-        tailscale funnel --bg 443 >/dev/null 2>&1 || \
-            echo 'AVISO: não consegui ligar o Funnel — confira se o tailnet permite Funnel neste nó.'; \
+        tailscale serve --bg --https=443 http://127.0.0.1:80 >/dev/null 2>&1 || true; \
+        tailscale funnel --https=443 off >/dev/null 2>&1 || true; \
+    fi"
+
+info "instalando o túnel Cloudflare (domínio da empresa)"
+no_container "command -v cloudflared >/dev/null 2>&1 || { \
+    curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg -o /usr/share/keyrings/cloudflare-main.gpg && \
+    echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared bookworm main' > /etc/apt/sources.list.d/cloudflared.list && \
+    DEBIAN_FRONTEND=noninteractive apt-get update -qq && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq cloudflared; }"
+
+# O túnel em si depende de credencial da Cloudflare (passo manual do dono):
+# `cloudflared tunnel login` e `cloudflared tunnel create alfamatriz`.
+# Havendo credencial, o serviço é garantido aqui — sem ela, o script avisa e
+# segue, em vez de falhar um provisionamento que no resto está correto.
+no_container "if [ -f /etc/cloudflared/config.yml ]; then \
+        systemctl enable --now cloudflared >/dev/null 2>&1 || true; \
+        systemctl is-active cloudflared >/dev/null 2>&1 && echo '    túnel ativo' || echo '    AVISO: cloudflared instalado mas não ativo'; \
+    else \
+        echo '    AVISO: /etc/cloudflared/config.yml ainda não existe — crie o túnel antes (cloudflared tunnel login).'; \
     fi"
 
 # ------------------------------------------------------------------- backup

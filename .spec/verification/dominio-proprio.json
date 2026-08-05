@@ -1,0 +1,27 @@
+{
+  "feature": "dominio-proprio",
+  "timestamp": "2026-08-05T19:02:58.676Z",
+  "gitRev": "2e5fc1f",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 1,
+  "testsParsed": 44,
+  "results": {
+    "AC-024": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Dominio\\ConfigTunelTest::test_tunel_mapeia_o_dominio_para_o_nginx_local @spec:AC-024",
+      "method": "tap"
+    },
+    "AC-025": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Dominio\\EnderecoProprioTest::test_ambiente_e_links_usam_o_dominio_da_empresa @spec:AC-025",
+      "method": "tap"
+    },
+    "AC-028": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Dominio\\ExposicaoUnicaTest::test_provisionamento_desliga_o_funnel_e_mantem_o_acesso_interno @spec:AC-028",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

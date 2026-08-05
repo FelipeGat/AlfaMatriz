@@ -6,7 +6,8 @@
 # Uso:
 #   deploy/smoke.sh [--url URL]
 #
-# --url URL   endereço público a conferir (padrão: a URL do Tailscale Funnel).
+# --url URL   endereço público a conferir (padrão: o domínio da empresa,
+#              servido pelo túnel Cloudflare).
 #              Existe para permitir testar o script contra um servidor falso,
 #              sem tocar na URL real.
 #
@@ -16,7 +17,7 @@
 
 set -uo pipefail
 
-URL="${URL:-https://alfamatriz.tail0939dd.ts.net}"
+URL="${URL:-https://matriz.alfasolucoes.cloud}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
