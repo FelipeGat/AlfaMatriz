@@ -7,22 +7,27 @@
 
         <title>{{ config('app.name', 'AlfaMatriz') }}</title>
 
+        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+
+        {{-- Mesma tipografia do painel: sem isto, a tela de entrada usaria
+             outra fonte e destoaria do sistema já no primeiro contato. --}}
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|space-grotesk:500,600,700" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=space-grotesk:400,500,600,700|ibm-plex-sans:400,500,600|ibm-plex-mono:400,500,600" rel="stylesheet" />
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans text-ink antialiased">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-canvas">
-            <a href="/" class="flex items-center gap-2">
-                <span class="h-10 w-10 rounded-lg bg-brand/15 text-brand-dim flex items-center justify-center font-display font-bold text-lg">A</span>
-                <div class="leading-tight">
-                    <p class="font-display font-semibold text-ink tracking-wide">ALFA</p>
-                    <p class="text-[10px] uppercase tracking-widest text-ink-mute">Matriz</p>
-                </div>
+        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-bg">
+            <a href="/" class="flex items-center gap-[11px]">
+                <svg class="h-[34px] w-[35px] text-brand" viewBox="2.8 1.8 42.4 43.8" fill="none">
+                    <path d="M5 4l13 15L5 34" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"/>
+                    <path d="M43 4L30 19l13 15" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"/>
+                    <circle cx="24" cy="39" r="6.6" fill="currentColor"/>
+                </svg>
+                <img src="{{ asset('brand/alfamatriz-wordmark.png') }}" alt="AlfaMatriz" class="h-[19px] w-auto">
             </a>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-panel border border-white/5 shadow-panel overflow-hidden sm:rounded-lg">
+            <div class="w-full sm:max-w-md mt-6 px-6 py-5 bg-panel border border-line overflow-hidden rounded-card">
                 {{ $slot }}
             </div>
         </div>
