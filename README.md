@@ -30,7 +30,11 @@ npm install && npm run build
 php artisan serve
 ```
 
-Login inicial: `admin@alfatecnologia.com.br` / `AlfaTecnologia@2026` (trocar depois do primeiro acesso).
+Login inicial **do ambiente local**: `admin@alfatecnologia.com.br` / `AlfaTecnologia@2026`.
+
+Essa senha vale só fora de produção. No ambiente publicado, a carga inicial
+exige `ADMIN_PASSWORD` no `.env` e falha se ela não estiver definida — a senha
+acima é pública neste README e nunca pode ser a senha do painel na internet.
 
 ## Deploy no alfa-server
 

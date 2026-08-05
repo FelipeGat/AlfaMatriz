@@ -36,7 +36,7 @@
 - Notas: `/healthz` fora do grupo autenticado, responde JSON com estado do app
   e do banco. Não expõe versão, caminho de arquivo nem dado de negócio.
 
-## T-006 — Senha do admin vinda do ambiente [pendente]
+## T-006 — Senha do admin vinda do ambiente [concluida]
 - Refs: US-003, AC-006
 - Arquivos: database/seeders/DadosIniciaisSeeder.php, tests/Feature/Deploy/SeederSenhaAdminTest.php
 - Notas: a senha `AlfaTecnologia@2026` está publicada no README — não pode
