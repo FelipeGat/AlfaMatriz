@@ -18,6 +18,12 @@
 
 set -uo pipefail
 
+# O cron do root roda com PATH=/usr/bin:/bin, onde `pct` (em /usr/sbin) não
+# existe. Sem esta linha o script funciona quando chamado à mão e falha
+# silenciosamente a cada 5 minutos pelo agendador — foi exatamente o que
+# aconteceu, e só apareceu ao ler o log.
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+
 LXC=116
 DIR=/var/www/alfamatriz
 LOCAL=0

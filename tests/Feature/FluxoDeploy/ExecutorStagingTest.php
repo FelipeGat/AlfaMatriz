@@ -102,6 +102,30 @@ class ExecutorStagingTest extends TestCase
         $this->assertStringNotContainsString('php artisan migrate', $this->chamadas());
     }
 
+    /**
+     * @spec:AC-034 O executor não depende do PATH de quem o chama. O cron do
+     * root roda com PATH=/usr/bin:/bin, onde `pct` (em /usr/sbin) não existe —
+     * e o script falhava a cada 5 minutos sem ninguém notar.
+     */
+    public function test_nao_depende_do_path_de_quem_chama(): void
+    {
+        $script = file_get_contents(base_path('deploy/deploy-staging-alfamatriz.sh'));
+
+        $this->assertMatchesRegularExpression(
+            '/export PATH=.*\/usr\/sbin/',
+            $script,
+            'O script precisa garantir /usr/sbin no PATH: é onde mora o pct.'
+        );
+
+        // E a garantia tem de vir antes de qualquer uso de ferramenta externa.
+        $posPath = strpos($script, 'export PATH=');
+        $posUso = strpos($script, 'pct exec');
+
+        $this->assertNotFalse($posPath);
+        $this->assertNotFalse($posUso);
+        $this->assertLessThan($posUso, $posPath, 'O PATH precisa ser definido antes do primeiro uso do pct.');
+    }
+
     /** @spec:AC-034 Com o marcador de pausa, o executor respeita e sai. */
     public function test_respeita_a_pausa(): void
     {
