@@ -1,0 +1,43 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: alfatecnologia-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: alfatecnologia
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: alfatecnologia
+      MYSQL_PASSWORD: ALFATECNOLOGIA_DB_PASS_2026
+    ports:
+      - "3310:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - alfatecnologia-network
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: alfatecnologia-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8083:80"
+    depends_on:
+      - db
+    networks:
+      - alfatecnologia-network
+
+networks:
+  alfatecnologia-network:
+    driver: bridge
+
+volumes:
+  dbdata:
