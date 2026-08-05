@@ -15,8 +15,7 @@
         ],
         'Financeiro' => [
             ['route' => 'cobrancas.index', 'pattern' => 'cobrancas.*', 'label' => 'Receitas', 'icon' => 'trending-up'],
-            ['route' => 'contas-pagar.index', 'pattern' => 'contas-pagar.*', 'label' => 'Despesas', 'icon' => 'trending-down'],
-            ['route' => 'contas-fixas-pagar.index', 'pattern' => 'contas-fixas-pagar.*', 'label' => 'Despesas Fixas', 'icon' => 'repeat'],
+            ['route' => 'contas-pagar.index', 'pattern' => ['contas-pagar.*', 'contas-fixas-pagar.*'], 'label' => 'Despesas', 'icon' => 'trending-down'],
             ['route' => 'contas-financeiras.index', 'pattern' => 'contas-financeiras.*', 'label' => 'Caixa', 'icon' => 'banknotes'],
         ],
         'Sistema' => [
@@ -49,7 +48,7 @@
                 <p class="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-ink-mute">{{ $nomeGrupo }}</p>
                 <div class="space-y-1">
                     @foreach ($links as $link)
-                        @php $active = request()->routeIs($link['pattern']); @endphp
+                        @php $active = request()->routeIs(...(array) $link['pattern']); @endphp
                         <a href="{{ route($link['route']) }}"
                            class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition
                                   {{ $active ? 'bg-brand/10 text-brand-dim' : 'text-ink-dim hover:bg-white/5 hover:text-ink' }}">

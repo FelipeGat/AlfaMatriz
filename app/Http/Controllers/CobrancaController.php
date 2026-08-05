@@ -19,7 +19,14 @@ class CobrancaController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return view('cobrancas.index', compact('cobrancas'));
+        $hoje = now()->startOfDay();
+        $kpis = [
+            'a_receber' => Cobranca::where('status', 'pendente')->sum('valor'),
+            'recebido_mes' => Cobranca::where('status', 'pago')->whereYear('data_pagamento', $hoje->year)->whereMonth('data_pagamento', $hoje->month)->sum('valor_pago'),
+            'atrasado' => Cobranca::where('status', 'pendente')->whereDate('data_vencimento', '<', $hoje)->sum('valor'),
+        ];
+
+        return view('cobrancas.index', compact('cobrancas', 'kpis'));
     }
 
     public function show(Cobranca $cobranca)
@@ -86,6 +93,23 @@ class CobrancaController extends Controller
         $cobranca->baixar($data['valor_pago'] ?? null, $data['data_pagamento'] ?? null);
 
         return redirect()->route('cobrancas.index')->with('status', 'Receita baixada com sucesso.');
+    }
+
+    public function baixarEmMassa(Request $request)
+    {
+        $data = $request->validate(['ids' => 'required|array', 'ids.*' => 'exists:cobrancas,id']);
+
+        $cobrancas = Cobranca::whereIn('id', $data['ids'])->where('status', 'pendente')->get();
+        $semConta = $cobrancas->whereNull('conta_financeira_id');
+
+        $cobrancas->whereNotNull('conta_financeira_id')->each->baixar();
+
+        $status = $cobrancas->count() - $semConta->count().' receita(s) baixada(s).';
+        if ($semConta->isNotEmpty()) {
+            $status .= ' '.$semConta->count().' pulada(s) por não ter conta financeira definida.';
+        }
+
+        return redirect()->route('cobrancas.index')->with('status', $status);
     }
 
     private function validated(Request $request): array

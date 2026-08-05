@@ -23,11 +23,17 @@ class ContaFixaPagarController extends Controller
         return view('contas-fixas-pagar.index', array_merge($this->formData(), compact('contasFixas', 'totalMensal')));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, DespesaFixaService $service)
     {
-        ContaFixaPagar::create($this->validated($request));
+        $fixa = ContaFixaPagar::create([...$this->validated($request), 'ativo' => true]);
 
-        return redirect()->route('contas-fixas-pagar.index')->with('status', 'Despesa fixa cadastrada.');
+        // Já gera a parcela da competência atual pra despesa aparecer na lista
+        // de despesas imediatamente, sem esperar o fechamento do mês.
+        if ($fixa->vigenteEm(now())) {
+            $service->gerarParaCompetencia(now()->format('Y-m'));
+        }
+
+        return redirect()->route('contas-pagar.index')->with('status', 'Despesa recorrente cadastrada.');
     }
 
     public function update(Request $request, ContaFixaPagar $conta_fixa_pagar)
@@ -37,14 +43,21 @@ class ContaFixaPagarController extends Controller
 
         $conta_fixa_pagar->update($data);
 
-        return redirect()->route('contas-fixas-pagar.index')->with('status', 'Despesa fixa atualizada.');
+        return redirect()->route('contas-pagar.index')->with('status', 'Despesa fixa atualizada.');
     }
 
     public function destroy(ContaFixaPagar $conta_fixa_pagar)
     {
         $conta_fixa_pagar->delete();
 
-        return redirect()->route('contas-fixas-pagar.index')->with('status', 'Despesa fixa removida.');
+        return redirect()->route('contas-pagar.index')->with('status', 'Despesa fixa removida.');
+    }
+
+    public function pausar(ContaFixaPagar $conta_fixa_pagar)
+    {
+        $conta_fixa_pagar->update(['ativo' => ! $conta_fixa_pagar->ativo]);
+
+        return back()->with('status', $conta_fixa_pagar->ativo ? 'Despesa fixa reativada.' : 'Despesa fixa pausada — não gera mais parcelas até ser reativada.');
     }
 
     public function gerar(Request $request, DespesaFixaService $service)

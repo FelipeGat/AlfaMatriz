@@ -57,14 +57,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('cobrancas', CobrancaController::class);
     Route::post('cobrancas/{cobranca}/baixar', [CobrancaController::class, 'baixar'])->name('cobrancas.baixar');
+    Route::post('cobrancas/baixar-em-massa', [CobrancaController::class, 'baixarEmMassa'])->name('cobrancas.baixarEmMassa');
 
     Route::resource('contas-pagar', ContaPagarController::class)->except(['show'])
         ->parameters(['contas-pagar' => 'conta_pagar']);
     Route::post('contas-pagar/{conta_pagar}/baixar', [ContaPagarController::class, 'baixar'])->name('contas-pagar.baixar');
+    Route::post('contas-pagar/baixar-em-massa', [ContaPagarController::class, 'baixarEmMassa'])->name('contas-pagar.baixarEmMassa');
 
     Route::resource('contas-fixas-pagar', ContaFixaPagarController::class)->only(['index', 'store', 'update', 'destroy'])
         ->parameters(['contas-fixas-pagar' => 'conta_fixa_pagar']);
     Route::post('contas-fixas-pagar/gerar', [ContaFixaPagarController::class, 'gerar'])->name('contas-fixas-pagar.gerar');
+    Route::post('contas-fixas-pagar/{conta_fixa_pagar}/pausar', [ContaFixaPagarController::class, 'pausar'])->name('contas-fixas-pagar.pausar');
 
     Route::resource('contas-financeiras', ContaFinanceiraController::class)->except(['show'])
         ->parameters(['contas-financeiras' => 'conta_financeira']);
