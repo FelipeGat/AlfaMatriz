@@ -30,7 +30,7 @@
   esquema `https` quando `APP_ENV=production`. Sem isso, links e cookie de
   sessão saem em `http` e o login quebra na URL pública.
 
-## T-005 — Checagem de saúde sem login [pendente]
+## T-005 — Checagem de saúde sem login [concluida]
 - Refs: US-002, AC-005
 - Arquivos: routes/web.php, app/Http/Controllers/SaudeController.php, tests/Feature/Deploy/SaudeTest.php
 - Notas: `/healthz` fora do grupo autenticado, responde JSON com estado do app

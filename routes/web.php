@@ -15,6 +15,7 @@ use App\Http\Controllers\PainelController;
 use App\Http\Controllers\PrecoAtacadoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RevendaController;
+use App\Http\Controllers\SaudeController;
 use App\Http\Controllers\SistemaController;
 use App\Http\Controllers\SubcategoriaController;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return redirect()->route('dashboard');
 });
+
+// Fora do grupo autenticado de propósito: o deploy confere a saúde antes de
+// existir qualquer sessão.
+Route::get('/healthz', SaudeController::class)->name('healthz');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [PainelController::class, 'index'])->name('dashboard');
