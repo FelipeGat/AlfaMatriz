@@ -23,7 +23,7 @@
   ele vale na configuração publicada (6ª tentativa é recusada com aviso de
   espera). Se o teste mostrar que não vale, aí sim ajustar a regra.
 
-## T-004 — HTTPS correto atrás do Funnel [pendente]
+## T-004 — HTTPS correto atrás do Funnel [concluida]
 - Refs: US-002, AC-004
 - Arquivos: bootstrap/app.php, app/Providers/AppServiceProvider.php, tests/Feature/Deploy/HttpsAtrasDoProxyTest.php
 - Notas: confiar no proxy local (o Funnel entrega em 127.0.0.1) e forçar
