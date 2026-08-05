@@ -11,8 +11,7 @@
   `mysql_container`, `user_table`, `email_col`, `pass_col`, `admin_id` e
   `seed_domain` — sem eles a re-anonimização não tem alvo.
 
-## T-032 — Executor do staging com portão de testes [pendente]
-
+## T-032 — Executor do staging com portão de testes [concluida]
 - Refs: US-017, AC-034, AC-035
 - Arquivos: deploy/deploy-staging-alfamatriz.sh, tests/Feature/FluxoDeploy/ExecutorStagingTest.php
 - Notas: função equivalente ao `deploy_alfahome` do `/usr/local/bin/deploy-staging`,

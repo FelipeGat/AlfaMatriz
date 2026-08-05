@@ -1,0 +1,241 @@
+<?php
+
+namespace Tests\Feature\FluxoDeploy;
+
+use Symfony\Component\Process\Process;
+use Tests\TestCase;
+
+/**
+ * Exercita o executor de staging de verdade: monta um repositório git
+ * descartável, com binários falsos no PATH, e confere o que ele faz — em vez
+ * de só ler o texto do script.
+ */
+class ExecutorStagingTest extends TestCase
+{
+    private string $repo;
+
+    private string $bin;
+
+    private string $log;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->repo = $this->tmp('staging-repo-');
+        $this->bin = $this->tmp('staging-bin-');
+        $this->log = $this->repo.'/chamadas.log';
+
+        $this->montarRepositorio();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->apagar($this->repo);
+        $this->apagar($this->bin);
+
+        parent::tearDown();
+    }
+
+    /**
+     * @spec:AC-034 Havendo novidade na main e com a suíte passando, o executor
+     * traz o código, instala dependências, compila o front-end, migra e
+     * recarrega os caches.
+     */
+    public function test_aplica_a_novidade_quando_a_suite_passa(): void
+    {
+        $this->criarFerramentas(testesPassam: true);
+
+        $processo = $this->rodar();
+
+        $this->assertSame(0, $processo->getExitCode(), $processo->getOutput().$processo->getErrorOutput());
+
+        $chamadas = $this->chamadas();
+        foreach (['php artisan test', 'npm ci', 'npm run build', 'php artisan migrate --force'] as $esperada) {
+            $this->assertStringContainsString($esperada, $chamadas, "O executor precisa rodar: {$esperada}");
+        }
+
+        // Chegou na versão nova.
+        $this->assertSame($this->shaDaMain(), $this->shaAtual());
+    }
+
+    /**
+     * @spec:AC-035 Com a suíte falhando, nada é aplicado: o staging volta para
+     * a versão anterior e o executor termina com erro. É o que substitui, aqui,
+     * o portão de CI dos outros sistemas.
+     */
+    public function test_portao_segura_o_deploy_quando_o_teste_falha(): void
+    {
+        $shaAnterior = $this->shaAtual();
+        $this->criarFerramentas(testesPassam: false);
+
+        $processo = $this->rodar();
+
+        $this->assertNotSame(0, $processo->getExitCode(), 'Teste falhando não pode terminar em sucesso.');
+        $this->assertStringContainsString('portão REPROVOU', $processo->getOutput());
+
+        // O staging ficou onde estava.
+        $this->assertSame($shaAnterior, $this->shaAtual(), 'O código novo não pode ter ficado aplicado.');
+
+        // E nada de aplicação chegou a rodar.
+        $chamadas = $this->chamadas();
+        foreach (['npm run build', 'php artisan migrate --force'] as $proibida) {
+            $this->assertStringNotContainsString($proibida, $chamadas, "Não pode rodar \"{$proibida}\" com o portão reprovado.");
+        }
+    }
+
+    /** @spec:AC-034 Sem novidade na main, o executor não faz nada. */
+    public function test_sem_novidade_nao_faz_nada(): void
+    {
+        $this->criarFerramentas(testesPassam: true);
+
+        // Deixa o staging já na ponta da main. O fetch é necessário: a
+        // referência local de origin/main ainda aponta para a versão antiga.
+        $this->git('fetch --quiet origin main');
+        $this->git('merge --ff-only origin/main');
+        $this->assertSame($this->shaDaMain(), $this->shaAtual(), 'O cenário exige o staging já atualizado.');
+
+        $processo = $this->rodar();
+
+        $this->assertSame(0, $processo->getExitCode());
+        $this->assertStringContainsString('UPTODATE', $processo->getOutput());
+        $this->assertStringNotContainsString('php artisan migrate', $this->chamadas());
+    }
+
+    /** @spec:AC-034 Com o marcador de pausa, o executor respeita e sai. */
+    public function test_respeita_a_pausa(): void
+    {
+        $this->criarFerramentas(testesPassam: true);
+        touch($this->repo.'/.deploy-paused');
+
+        $processo = $this->rodar();
+
+        $this->assertSame(0, $processo->getExitCode());
+        $this->assertStringContainsString('PAUSADO', $processo->getOutput());
+        $this->assertStringNotContainsString('php artisan test', $this->chamadas());
+    }
+
+    // ------------------------------------------------------------- apoio
+
+    private function rodar(): Process
+    {
+        $processo = new Process(
+            ['bash', base_path('deploy/deploy-staging-alfamatriz.sh'), '--local', '--dir', $this->repo],
+            $this->repo,
+            [
+                'PATH' => $this->bin.':'.getenv('PATH'),
+                'ALFA_LOG' => $this->log,
+                'LOG' => $this->repo.'/deploy.log',
+                'HOME' => $this->repo,
+            ]
+        );
+        $processo->run();
+
+        return $processo;
+    }
+
+    /**
+     * Repositório com uma "origin/main" adiantada em um commit: é a novidade
+     * que o executor precisa enxergar.
+     */
+    private function montarRepositorio(): void
+    {
+        $origem = $this->tmp('staging-origem-');
+
+        $this->executar(['git', 'init', '--quiet', '--bare', $origem]);
+
+        $trabalho = $this->tmp('staging-trabalho-');
+        $this->executar(['git', 'clone', '--quiet', $origem, $trabalho]);
+        $this->executar(['git', 'config', 'user.email', 'teste@exemplo.com'], $trabalho);
+        $this->executar(['git', 'config', 'user.name', 'Teste'], $trabalho);
+
+        file_put_contents($trabalho.'/versao.txt', 'v1');
+        $this->executar(['git', 'add', '-A'], $trabalho);
+        $this->executar(['git', 'commit', '--quiet', '-m', 'v1'], $trabalho);
+        $this->executar(['git', 'branch', '-M', 'main'], $trabalho);
+        $this->executar(['git', 'push', '--quiet', 'origin', 'main'], $trabalho);
+
+        // `git init --bare` deixa HEAD em master; sem isso o clone abaixo vem
+        // sem commit nenhum e o executor não teria o que comparar.
+        $this->executar(['git', 'symbolic-ref', 'HEAD', 'refs/heads/main'], $origem);
+
+        // O "staging" é um clone parado no v1...
+        $this->executar(['git', 'clone', '--quiet', '--branch', 'main', $origem, $this->repo]);
+
+        // ...enquanto a origem recebe o v2.
+        file_put_contents($trabalho.'/versao.txt', 'v2');
+        $this->executar(['git', 'commit', '--quiet', '-am', 'v2'], $trabalho);
+        $this->executar(['git', 'push', '--quiet', 'origin', 'main'], $trabalho);
+
+        $this->apagar($trabalho);
+    }
+
+    private function criarFerramentas(bool $testesPassam): void
+    {
+        // `php` registra a chamada; falha só no `artisan test` quando pedido.
+        $php = "#!/usr/bin/env bash\n"
+            ."echo \"php \$*\" >> \"\$ALFA_LOG\"\n"
+            .'if [ "$1" = "artisan" ] && [ "$2" = "test" ]; then exit '.($testesPassam ? '0' : '1')."; fi\n"
+            ."exit 0\n";
+
+        $this->binario('php', $php);
+
+        foreach (['composer', 'npm', 'systemctl', 'pct'] as $ferramenta) {
+            $this->binario($ferramenta, "#!/usr/bin/env bash\necho \"{$ferramenta} \$*\" >> \"\$ALFA_LOG\"\nexit 0\n");
+        }
+    }
+
+    private function binario(string $nome, string $conteudo): void
+    {
+        $caminho = $this->bin.'/'.$nome;
+        file_put_contents($caminho, $conteudo);
+        chmod($caminho, 0755);
+    }
+
+    private function chamadas(): string
+    {
+        return is_file($this->log) ? file_get_contents($this->log) : '';
+    }
+
+    private function shaAtual(): string
+    {
+        return trim($this->git('rev-parse HEAD'));
+    }
+
+    private function shaDaMain(): string
+    {
+        return trim($this->git('rev-parse origin/main'));
+    }
+
+    private function git(string $args): string
+    {
+        $processo = Process::fromShellCommandline('git '.$args, $this->repo);
+        $processo->run();
+
+        return $processo->getOutput();
+    }
+
+    /** @param array<int, string> $comando */
+    private function executar(array $comando, ?string $cwd = null): void
+    {
+        $processo = new Process($comando, $cwd);
+        $processo->run();
+
+        $this->assertSame(0, $processo->getExitCode(), implode(' ', $comando).': '.$processo->getErrorOutput());
+    }
+
+    private function tmp(string $prefixo): string
+    {
+        $caminho = sys_get_temp_dir().'/'.$prefixo.bin2hex(random_bytes(6));
+        mkdir($caminho, 0755, true);
+
+        return $caminho;
+    }
+
+    private function apagar(string $caminho): void
+    {
+        if (is_dir($caminho)) {
+            (new Process(['rm', '-rf', $caminho]))->run();
+        }
+    }
+}
