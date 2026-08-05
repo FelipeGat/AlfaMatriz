@@ -16,9 +16,9 @@
   e-mail já existente com mensagem clara e saída != 0, sem sobrescrever senha.
   Marca o e-mail como verificado (o painel usa middleware `verified`).
 
-## T-003 — Bloqueio por tentativas repetidas de login [pendente]
+## T-003 — Bloqueio por tentativas repetidas de login [concluida]
 - Refs: US-001, AC-003
-- Arquivos: tests/Feature/Deploy/LoginThrottleTest.php
+- Arquivos: tests/Feature/Deploy/LoginThrottleTest.php, lang/pt_BR/auth.php
 - Notas: o Breeze já traz o limitador em `LoginRequest`; esta tarefa prova que
   ele vale na configuração publicada (6ª tentativa é recusada com aviso de
   espera). Se o teste mostrar que não vale, aí sim ajustar a regra.
