@@ -1,0 +1,32 @@
+{
+  "feature": "redesign-interface",
+  "timestamp": "2026-08-05T23:33:19.348Z",
+  "gitRev": "85b8097",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 1,
+  "testsParsed": 74,
+  "results": {
+    "AC-039": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\SidebarETemaTest::test_botao_de_tema_alterna_e_persiste @spec:AC-039",
+      "method": "tap"
+    },
+    "AC-040": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\TemasETipografiaTest::test_tipografia_nova_entra_e_a_antiga_sai @spec:AC-040",
+      "method": "tap"
+    },
+    "AC-041": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\SidebarETemaTest::test_menu_recolhe_e_o_estado_e_lembrado @spec:AC-041",
+      "method": "tap"
+    },
+    "AC-042": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\TelasAbremTest::test_todas_as_telas_do_painel_abrem_para_usuario_autenticado @spec:AC-042",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

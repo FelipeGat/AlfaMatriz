@@ -170,6 +170,26 @@ no_container "ln -sf /etc/nginx/sites-available/alfamatriz /etc/nginx/sites-enab
     mkdir -p $APP_DIR/public && \
     nginx -t && systemctl reload nginx"
 
+# --------------------------------------------------------- painel AlfaDeploy
+
+# O painel (LXC 110) descobre o estado de cada sistema por um único SSH como
+# root, com a chave dedicada /root/.ssh/alfadeploy. Sem essa chave autorizada
+# aqui, o probe falha e o painel mostra o sistema como desconectado — mesmo
+# com o container de pé e o site respondendo. Foi exatamente o que aconteceu
+# no primeiro provisionamento do staging, porque este passo não existia.
+#
+# Só no staging: o painel monitora o LXC 116 e nada mais. A produção guarda o
+# financeiro da Alfa e não ganha uma chave de acesso que ninguém usa — mesmo
+# critério que mantém o Funnel desligado logo abaixo.
+if [[ "$AMBIENTE" == "staging" ]]; then
+    CHAVE_PAINEL="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIvf2pPREFM9n1PO8/HLdyZtaSE0trZMnORRhG82xmZm alfadeploy@deploy"
+    info "autorizando a chave do painel AlfaDeploy no root"
+    no_container "mkdir -p /root/.ssh; chmod 700 /root/.ssh; \
+        touch /root/.ssh/authorized_keys; chmod 600 /root/.ssh/authorized_keys; \
+        grep -qF '$CHAVE_PAINEL' /root/.ssh/authorized_keys || \
+            echo '$CHAVE_PAINEL' >> /root/.ssh/authorized_keys"
+fi
+
 # ------------------------------------------------------- exposição pública
 
 # Quem publica o painel na internet é o túnel Cloudflare, em

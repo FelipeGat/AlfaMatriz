@@ -20,16 +20,14 @@ sentido antes delas.
   fontes do Bunny (Space Grotesk, IBM Plex Sans, IBM Plex Mono) e saída do
   Inter. Favicon do pacote copiado para `public/`.
 
-## T-040 — Alternância de tema com persistência [pendente]
-
+## T-040 — Alternância de tema com persistência [concluida]
 - Refs: US-020, AC-039
 - Arquivos: resources/views/layouts/app.blade.php, resources/js/app.js, tests/Feature/Redesign/AlternanciaTemaTest.php
 - Notas: botão sol/lua no header, `data-theme` no `<html>`, preferência em
   `localStorage`, aplicada antes da primeira pintura para não piscar branco no
   tema escuro.
 
-## T-041 — Sidebar colapsável com lockup da marca [pendente]
-
+## T-041 — Sidebar colapsável com lockup da marca [concluida]
 - Refs: US-021, AC-041
 - Arquivos: resources/views/layouts/navigation.blade.php, resources/views/components/nav-icon.blade.php, public/brand/alfamatriz-wordmark.png, tests/Feature/Redesign/SidebarColapsavelTest.php
 - Notas: 236px ↔ 68px, estado em `localStorage`, lockup ícone+wordmark no topo,
