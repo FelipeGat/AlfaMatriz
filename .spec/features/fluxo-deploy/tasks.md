@@ -27,16 +27,14 @@
   `backup.sh`), health-check depois, e marcador de falha para não repetir em
   cima de sistema quebrado. Publica o estado num JSON que o painel lê.
 
-## T-034 — Provisionar o container de staging [pendente]
-
+## T-034 — Provisionar o container de staging [concluida]
 - Refs: US-017, AC-034
 - Arquivos: deploy/provisionar.sh, tests/Feature/FluxoDeploy/ProvisionarStagingTest.php
 - Notas: o `provisionar.sh` ganha `--ambiente staging|producao`, criando o LXC
   116 `alfamatriz-staging` (10.0.3.116) sem túnel Cloudflare e sem Funnel — o
   staging vive só no tailnet. Produção segue exatamente como está hoje.
 
-## T-035 — Verificação automática no GitHub [pendente]
-
+## T-035 — Verificação automática no GitHub [concluida]
 - Refs: US-017, AC-035
 - Arquivos: .github/workflows/testes.yml, tests/Feature/FluxoDeploy/VerificacaoGithubTest.php
 - Notas: roda a suíte a cada push e em cada tag. Não é o portão do staging (esse

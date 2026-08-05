@@ -27,15 +27,31 @@ TEMPLATE="local:vztmpl/debian-12-standard_12.12-1_amd64.tar.zst"
 ARMAZENAMENTO="dados"
 LOCAL=0
 
+AMBIENTE="producao"
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --host) HOST="$2"; shift 2 ;;
         --vmid) VMID="$2"; shift 2 ;;
         --ip) IP="$2"; shift 2 ;;
+        --ambiente) AMBIENTE="$2"; shift 2 ;;
         --local) LOCAL=1; shift ;;
         *) echo "provisionar.sh: argumento desconhecido: $1" >&2; exit 1 ;;
     esac
 done
+
+# O staging é o mesmo sistema com outro endereço e sem porta pública: vive só
+# no tailnet, sem domínio da empresa e sem túnel Cloudflare. É o padrão dos
+# stagings dos outros sistemas da casa.
+case "$AMBIENTE" in
+    producao) ;;
+    staging)
+        [[ "$VMID" == "115" ]] && VMID="116"
+        [[ "$IP" == "10.0.3.115" ]] && IP="10.0.3.116"
+        NOME="alfamatriz-staging"
+        ;;
+    *) echo "provisionar.sh: ambiente inválido \"$AMBIENTE\" (use producao ou staging)" >&2; exit 1 ;;
+esac
 
 info() { echo "==> $*"; }
 falhar() { echo "provisionar.sh: $*" >&2; exit 1; }
@@ -165,6 +181,10 @@ no_container "if tailscale status >/dev/null 2>&1; then \
         tailscale serve --bg --https=443 http://127.0.0.1:80 >/dev/null 2>&1 || true; \
     fi"
 
+if [[ "$AMBIENTE" == "staging" ]]; then
+    info "staging: sem túnel Cloudflare e sem porta pública (vive só no tailnet)"
+else
+
 info "instalando o túnel Cloudflare (domínio da empresa)"
 no_container "command -v cloudflared >/dev/null 2>&1 || { \
     curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg -o /usr/share/keyrings/cloudflare-main.gpg && \
@@ -186,6 +206,8 @@ no_container "if [ -f /etc/cloudflared/config.yml ]; then \
         echo '    AVISO: /etc/cloudflared/config.yml ainda não existe — crie o túnel antes (cloudflared tunnel login).'; \
     fi"
 
+fi  # fim do bloco exclusivo de produção
+
 # ------------------------------------------------------------------- backup
 
 info "agendando o backup diário do banco"
@@ -195,7 +217,7 @@ no_container "test -f /usr/local/bin/alfamatriz-backup.sh && \
      (crontab -l 2>/dev/null; echo '17 3 * * * /usr/local/bin/alfamatriz-backup.sh >> /var/log/alfamatriz-backup.log 2>&1') | crontab -) || \
     echo 'AVISO: /usr/local/bin/alfamatriz-backup.sh ainda não foi enviado — o cron será criado quando ele existir.'"
 
-info "provisionamento concluído"
+info "provisionamento de $AMBIENTE concluído (LXC $VMID em $IP)"
 echo
 echo "próximos passos:"
 echo "  1. se o container ainda não estiver no tailnet:"
