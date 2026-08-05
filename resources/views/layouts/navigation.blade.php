@@ -1,12 +1,15 @@
 @php
     $grupos = [
         'Painéis' => [
+            ['route' => 'centro-controle', 'pattern' => 'centro-controle', 'label' => 'Centro de Controle', 'icon' => 'bolt'],
             ['route' => 'dashboard', 'pattern' => 'dashboard', 'label' => 'Financeiro', 'icon' => 'trending-up'],
             ['route' => 'comercial', 'pattern' => 'comercial', 'label' => 'Comercial', 'icon' => 'clipboard'],
         ],
         'Comercial' => [
+            ['route' => 'leads.index', 'pattern' => 'leads.*', 'label' => 'Funil de Vendas', 'icon' => 'trending-up'],
             ['route' => 'revendas.index', 'pattern' => 'revendas.*', 'label' => 'Revendas', 'icon' => 'building'],
             ['route' => 'clientes.index', 'pattern' => 'clientes.*', 'label' => 'Clientes', 'icon' => 'users'],
+            ['route' => 'produtos.index', 'pattern' => 'produtos.*', 'label' => 'Produtos', 'icon' => 'cube-outline'],
             ['route' => 'sistemas.index', 'pattern' => 'sistemas.*', 'label' => 'Sistemas', 'icon' => 'cube'],
             ['route' => 'faturamento.index', 'pattern' => 'faturamento.*', 'label' => 'Faturamento', 'icon' => 'repeat'],
         ],

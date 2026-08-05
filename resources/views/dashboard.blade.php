@@ -5,12 +5,14 @@
 
     <div class="space-y-6">
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <x-stat-card label="MRR (mês atual)" :value="'R$ ' . number_format($mrr, 2, ',', '.')" icon="trending-up" accent="brand" />
+            <x-stat-card label="ARR (projetado)" :value="'R$ ' . number_format($arr, 2, ',', '.')" icon="trending-up" accent="brand" />
             <x-stat-card label="Saldo em caixa" :value="'R$ ' . number_format($saldoTotal, 2, ',', '.')" icon="banknotes" :accent="$saldoTotal >= 0 ? 'ink' : 'critical'" />
             <x-stat-card label="Entradas do mês" :value="'R$ ' . number_format($entradasMes, 2, ',', '.')" icon="arrow-down-circle" accent="good" />
             <x-stat-card label="Saídas do mês" :value="'R$ ' . number_format($saidasMes, 2, ',', '.')" icon="arrow-up-circle" accent="warning" />
         </div>
+        <p class="text-xs text-ink-mute -mt-2">ARR = MRR × 12 (projeção simples, não considera sazonalidade nem contratos anuais reais).</p>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 min-w-0 bg-panel border border-white/5 shadow-panel rounded-xl p-6">

@@ -11,6 +11,7 @@ class Sistema extends Model
 {
     protected $fillable = [
         'nome', 'slug', 'categoria', 'unidade_cobranca', 'base_url', 'token', 'ativo',
+        'versao', 'responsavel', 'roadmap',
     ];
 
     protected function casts(): array
@@ -24,7 +25,7 @@ class Sistema extends Model
     public function clientes(): BelongsToMany
     {
         return $this->belongsToMany(Cliente::class, 'cliente_sistema')
-            ->withPivot(['ativo', 'ativado_em']);
+            ->withPivot(['ativo', 'ativado_em', 'cancelado_em']);
     }
 
     public function precosAtacado(): HasMany
@@ -71,5 +72,42 @@ class Sistema extends Model
     {
         return $this->tiersVigentes($revendaId)
             ->first(fn (PrecoAtacado $tier) => $tier->comportaUnidades($unidadesAtivas));
+    }
+
+    /**
+     * MRR estimado hoje: soma o tier aplicável de cada revenda (+ diretos) que
+     * usa este sistema, dado o nº de clientes ativos que cada uma tem nele.
+     */
+    public function mrrEstimado(): float
+    {
+        $porRevenda = $this->clientes()
+            ->where('clientes.ativo', true)
+            ->where('cliente_sistema.ativo', true)
+            ->get(['clientes.id', 'clientes.revenda_id'])
+            ->groupBy('revenda_id');
+
+        $total = 0;
+        foreach ($porRevenda as $revendaId => $clientes) {
+            $qtd = $clientes->count();
+            $tier = $this->tierParaVolume($qtd, $revendaId);
+            $total += $tier?->calcularMensalidade($qtd) ?? 0;
+        }
+
+        return $total;
+    }
+
+    public function clientesAtivosCount(): int
+    {
+        return $this->clientes()
+            ->where('clientes.ativo', true)
+            ->where('cliente_sistema.ativo', true)
+            ->count();
+    }
+
+    public function clientesCanceladosCount(): int
+    {
+        return $this->clientes()
+            ->where('cliente_sistema.ativo', false)
+            ->count();
     }
 }

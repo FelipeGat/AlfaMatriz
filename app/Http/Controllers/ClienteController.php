@@ -76,13 +76,27 @@ class ClienteController extends Controller
         return redirect()->route('clientes.index')->with('status', 'Cliente removido.');
     }
 
-    private function sincronizarSistemas(Cliente $cliente, array $sistemaIds): void
+    /**
+     * Não usa sync() puro: desmarcar um sistema deve "cancelar" o vínculo
+     * (ativo=false + cancelado_em), não apagar a linha — senão perde o
+     * histórico usado pra calcular clientes cancelados/churn na tela de Produtos.
+     */
+    private function sincronizarSistemas(Cliente $cliente, array $sistemaIdsSelecionados): void
     {
-        $sync = collect($sistemaIds)->mapWithKeys(fn ($id) => [
-            $id => ['ativo' => true, 'ativado_em' => now()->toDateString()],
-        ])->all();
+        $jaVinculados = $cliente->sistemas()->pluck('sistemas.id')->all();
 
-        $cliente->sistemas()->sync($sync);
+        foreach ($sistemaIdsSelecionados as $id) {
+            if (in_array($id, $jaVinculados)) {
+                $cliente->sistemas()->updateExistingPivot($id, ['ativo' => true, 'cancelado_em' => null]);
+            } else {
+                $cliente->sistemas()->attach($id, ['ativo' => true, 'ativado_em' => now()->toDateString()]);
+            }
+        }
+
+        $desmarcados = array_diff($jaVinculados, $sistemaIdsSelecionados);
+        foreach ($desmarcados as $id) {
+            $cliente->sistemas()->updateExistingPivot($id, ['ativo' => false, 'cancelado_em' => now()->toDateString()]);
+        }
     }
 
     /**

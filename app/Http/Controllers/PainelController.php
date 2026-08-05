@@ -22,6 +22,8 @@ class PainelController extends Controller
             ->where('status', '!=', 'cancelado')
             ->sum('valor');
 
+        $arr = $mrr * 12;
+
         $saldoTotal = ContaFinanceira::where('ativo', true)->sum('saldo');
 
         $entradasMes = Cobranca::where('status', 'pago')
@@ -51,7 +53,7 @@ class PainelController extends Controller
         $historico = $this->historicoSeisMeses();
 
         return view('dashboard', compact(
-            'mrr', 'saldoTotal', 'entradasMes', 'saidasMes',
+            'mrr', 'arr', 'saldoTotal', 'entradasMes', 'saidasMes',
             'receitasPendentes', 'despesasPendentes',
             'totalRevendas', 'totalClientes', 'clientesDiretos', 'historico'
         ));
@@ -62,26 +64,11 @@ class PainelController extends Controller
         $sistemas = Sistema::withCount(['clientes' => fn ($q) => $q->where('clientes.ativo', true)->where('cliente_sistema.ativo', true)])
             ->get();
 
-        $ranking = $sistemas->map(function (Sistema $sistema) {
-            $porRevenda = $sistema->clientes()
-                ->where('clientes.ativo', true)
-                ->where('cliente_sistema.ativo', true)
-                ->get(['clientes.id', 'clientes.revenda_id'])
-                ->groupBy('revenda_id');
-
-            $valorTotal = 0;
-            foreach ($porRevenda as $revendaId => $clientes) {
-                $qtd = $clientes->count();
-                $tier = $sistema->tierParaVolume($qtd, $revendaId);
-                $valorTotal += $tier?->calcularMensalidade($qtd) ?? 0;
-            }
-
-            return [
-                'sistema' => $sistema,
-                'clientes_ativos' => $sistema->clientes_count,
-                'valor_estimado' => $valorTotal,
-            ];
-        });
+        $ranking = $sistemas->map(fn (Sistema $sistema) => [
+            'sistema' => $sistema,
+            'clientes_ativos' => $sistema->clientes_count,
+            'valor_estimado' => $sistema->mrrEstimado(),
+        ]);
 
         $porQuantidade = $ranking->sortByDesc('clientes_ativos')->values();
         $porValor = $ranking->sortByDesc('valor_estimado')->values();

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CadastroAuxiliarController;
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\CentroControleController;
 use App\Http\Controllers\CentroCustoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CobrancaController;
@@ -11,8 +12,10 @@ use App\Http\Controllers\ContaFixaPagarController;
 use App\Http\Controllers\ContaPagarController;
 use App\Http\Controllers\FaturamentoController;
 use App\Http\Controllers\FornecedorController;
+use App\Http\Controllers\LeadController;
 use App\Http\Controllers\PainelController;
 use App\Http\Controllers\PrecoAtacadoController;
+use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RevendaController;
 use App\Http\Controllers\SistemaController;
@@ -20,12 +23,22 @@ use App\Http\Controllers\SubcategoriaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route('dashboard');
+    return redirect()->route('centro-controle');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/centro-controle', [CentroControleController::class, 'index'])->name('centro-controle');
     Route::get('/dashboard', [PainelController::class, 'index'])->name('dashboard');
     Route::get('/comercial', [PainelController::class, 'comercial'])->name('comercial');
+
+    Route::get('produtos', [ProdutoController::class, 'index'])->name('produtos.index');
+    Route::put('produtos/{sistema}', [ProdutoController::class, 'update'])->name('produtos.update');
+
+    Route::get('leads', [LeadController::class, 'index'])->name('leads.index');
+    Route::post('leads', [LeadController::class, 'store'])->name('leads.store');
+    Route::put('leads/{lead}', [LeadController::class, 'update'])->name('leads.update');
+    Route::post('leads/{lead}/mover', [LeadController::class, 'mover'])->name('leads.mover');
+    Route::delete('leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy');
 
     Route::resource('revendas', RevendaController::class);
     Route::resource('clientes', ClienteController::class);
