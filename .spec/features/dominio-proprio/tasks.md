@@ -31,8 +31,7 @@
   abrindo de dentro do tailnet. O provisionamento não pode voltar a ligar o
   Funnel numa próxima execução. Só rodar depois de AC-024 confirmado ao vivo.
 
-## T-027 — Aplicar no servidor e conferir de fora [pendente]
-
+## T-027 — Aplicar no servidor e conferir de fora [concluida]
 - Refs: US-011, US-013, AC-024, AC-025, AC-028
 - Arquivos: README.md
 - Notas: execução real — criar o túnel, publicar o DNS, rodar a conferência e

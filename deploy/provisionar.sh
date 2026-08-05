@@ -157,9 +157,12 @@ no_container "ln -sf /etc/nginx/sites-available/alfamatriz /etc/nginx/sites-enab
 info "mantendo o Tailscale como acesso interno (sem Funnel)"
 no_container "tailscale status >/dev/null 2>&1 || \
     echo 'AVISO: o container ainda não está no tailnet. Rode dentro dele: tailscale up --hostname=$NOME'"
+# ATENÇÃO à ordem: `tailscale funnel off` apaga a configuração INTEIRA, não só
+# a parte pública — inclusive o `serve`. Por isso o serve é (re)criado DEPOIS
+# do funnel off, senão o acesso de emergência pelo tailnet some junto.
 no_container "if tailscale status >/dev/null 2>&1; then \
-        tailscale serve --bg --https=443 http://127.0.0.1:80 >/dev/null 2>&1 || true; \
         tailscale funnel --https=443 off >/dev/null 2>&1 || true; \
+        tailscale serve --bg --https=443 http://127.0.0.1:80 >/dev/null 2>&1 || true; \
     fi"
 
 info "instalando o túnel Cloudflare (domínio da empresa)"
@@ -173,7 +176,10 @@ no_container "command -v cloudflared >/dev/null 2>&1 || { \
 # `cloudflared tunnel login` e `cloudflared tunnel create alfamatriz`.
 # Havendo credencial, o serviço é garantido aqui — sem ela, o script avisa e
 # segue, em vez de falhar um provisionamento que no resto está correto.
+# O pacote do cloudflared NÃO cria a unidade do systemd: quem cria é
+# `cloudflared service install`, a partir do /etc/cloudflared/config.yml.
 no_container "if [ -f /etc/cloudflared/config.yml ]; then \
+        systemctl list-unit-files cloudflared.service >/dev/null 2>&1 || cloudflared service install >/dev/null 2>&1 || true; \
         systemctl enable --now cloudflared >/dev/null 2>&1 || true; \
         systemctl is-active cloudflared >/dev/null 2>&1 && echo '    túnel ativo' || echo '    AVISO: cloudflared instalado mas não ativo'; \
     else \

@@ -1,7 +1,7 @@
 {
   "feature": "dominio-proprio",
-  "timestamp": "2026-08-05T19:02:58.676Z",
-  "gitRev": "2e5fc1f",
+  "timestamp": "2026-08-05T19:41:28.741Z",
+  "gitRev": "a533a29",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 1,
