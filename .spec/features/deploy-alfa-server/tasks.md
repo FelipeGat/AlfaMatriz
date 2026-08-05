@@ -51,7 +51,7 @@
   `SESSION_SECURE_COOKIE=true`, `LOG_LEVEL=warning`, banco apontando para o
   MariaDB local do container. Sem segredo real no arquivo — é modelo.
 
-## T-008 — Script de provisionamento do container [pendente]
+## T-008 — Script de provisionamento do container [concluida]
 - Refs: US-004, AC-008
 - Arquivos: deploy/provisionar.sh, deploy/nginx-alfamatriz.conf, tests/Feature/Deploy/ScriptProvisionarTest.php
 - Notas: roda no host Proxmox. Cria o LXC 115 `alfamatriz` (Debian 12,
