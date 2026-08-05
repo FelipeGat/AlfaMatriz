@@ -9,7 +9,7 @@
   de convidado, se houver. O controller e as views ficam no repositório (não é
   limpeza de código, é fechar a porta). Teste confirma 404 nas duas rotas.
 
-## T-002 — Comando administrativo de criação de usuário [pendente]
+## T-002 — Comando administrativo de criação de usuário [concluida]
 - Refs: US-001, AC-002
 - Arquivos: app/Console/Commands/CriarUsuario.php, tests/Feature/Deploy/CriarUsuarioCommandTest.php
 - Notas: `php artisan alfa:criar-usuario {nome} {email} {--senha=}`. Recusa
