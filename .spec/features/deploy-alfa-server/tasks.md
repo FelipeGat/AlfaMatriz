@@ -44,7 +44,7 @@
   carga falha; fora de produção mantém o padrão atual para não quebrar o setup
   local. Atualizar o README junto.
 
-## T-007 — Modelo de ambiente de produção endurecido [pendente]
+## T-007 — Modelo de ambiente de produção endurecido [concluida]
 - Refs: US-003, AC-007
 - Arquivos: deploy/.env.producao.exemplo, tests/Feature/Deploy/AmbienteProducaoTest.php
 - Notas: `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://...`,
