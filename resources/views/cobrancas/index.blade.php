@@ -93,19 +93,29 @@
                                             {{ ucfirst($cobranca->status) }}
                                         </span>
                                     </td>
-                                    <td class="px-4 py-4 text-right text-sm space-x-3 whitespace-nowrap">
-                                        @if ($cobranca->status === 'pendente')
-                                            <form action="{{ route('cobrancas.baixar', $cobranca) }}" method="POST" class="inline" onsubmit="return confirm('Confirmar recebimento?');">
-                                                @csrf
-                                                <button type="submit" class="text-status-good hover:opacity-80">Baixar</button>
+                                    <td class="px-4 py-4 text-right whitespace-nowrap">
+                                        <div class="flex items-center justify-end gap-1">
+                                            @if ($cobranca->status === 'pendente')
+                                                <form action="{{ route('cobrancas.baixar', $cobranca) }}" method="POST" onsubmit="return confirm('Confirmar recebimento?');">
+                                                    @csrf
+                                                    <button type="submit" title="Dar baixa" class="p-1.5 rounded-md text-status-good/70 hover:text-status-good hover:bg-status-good/10 transition">
+                                                        <span class="block h-4 w-4"><x-nav-icon name="check-circle" /></span>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                            <a href="{{ route('cobrancas.show', $cobranca) }}" title="Ver" class="p-1.5 rounded-md text-ink-mute/70 hover:text-ink hover:bg-white/5 transition">
+                                                <span class="block h-4 w-4"><x-nav-icon name="eye" /></span>
+                                            </a>
+                                            <a href="{{ route('cobrancas.edit', $cobranca) }}" title="Editar" class="p-1.5 rounded-md text-brand-dim/70 hover:text-brand-dim hover:bg-brand/10 transition">
+                                                <span class="block h-4 w-4"><x-nav-icon name="pencil" /></span>
+                                            </a>
+                                            <form action="{{ route('cobrancas.destroy', $cobranca) }}" method="POST" onsubmit="return confirm('Remover esta receita?');">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" title="Remover" class="p-1.5 rounded-md text-status-critical/70 hover:text-status-critical hover:bg-status-critical/10 transition">
+                                                    <span class="block h-4 w-4"><x-nav-icon name="trash" /></span>
+                                                </button>
                                             </form>
-                                        @endif
-                                        <a href="{{ route('cobrancas.show', $cobranca) }}" class="text-brand hover:text-brand-bright">Ver</a>
-                                        <a href="{{ route('cobrancas.edit', $cobranca) }}" class="text-brand hover:text-brand-bright">Editar</a>
-                                        <form action="{{ route('cobrancas.destroy', $cobranca) }}" method="POST" class="inline" onsubmit="return confirm('Remover esta receita?');">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="text-status-critical hover:opacity-80">Remover</button>
-                                        </form>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty

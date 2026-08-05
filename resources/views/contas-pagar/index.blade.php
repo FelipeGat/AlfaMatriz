@@ -103,24 +103,34 @@
                                             {{ ucfirst(str_replace('_', ' ', $contaPagar->status)) }}
                                         </span>
                                     </td>
-                                    <td class="px-4 py-4 text-right text-sm space-x-3 whitespace-nowrap">
-                                        @if ($contaPagar->status === 'em_aberto')
-                                            <form action="{{ route('contas-pagar.baixar', $contaPagar) }}" method="POST" class="inline" onsubmit="return confirm('Confirmar pagamento?');">
-                                                @csrf
-                                                <button type="submit" class="text-status-good hover:opacity-80">Baixar</button>
+                                    <td class="px-4 py-4 text-right whitespace-nowrap">
+                                        <div class="flex items-center justify-end gap-1">
+                                            @if ($contaPagar->status === 'em_aberto')
+                                                <form action="{{ route('contas-pagar.baixar', $contaPagar) }}" method="POST" onsubmit="return confirm('Confirmar pagamento?');">
+                                                    @csrf
+                                                    <button type="submit" title="Dar baixa" class="p-1.5 rounded-md text-status-good/70 hover:text-status-good hover:bg-status-good/10 transition">
+                                                        <span class="block h-4 w-4"><x-nav-icon name="check-circle" /></span>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                            @if ($contaPagar->contaFixaPagar)
+                                                <form action="{{ route('contas-fixas-pagar.pausar', $contaPagar->contaFixaPagar) }}" method="POST" onsubmit="return confirm('{{ $contaPagar->contaFixaPagar->ativo ? 'Pausar esta despesa recorrente? Ela para de gerar novas parcelas.' : 'Reativar esta despesa recorrente?' }}');">
+                                                    @csrf
+                                                    <button type="submit" title="{{ $contaPagar->contaFixaPagar->ativo ? 'Pausar recorrência' : 'Ativar recorrência' }}" class="p-1.5 rounded-md text-ink-mute/70 hover:text-ink hover:bg-white/5 transition">
+                                                        <span class="block h-4 w-4"><x-nav-icon :name="$contaPagar->contaFixaPagar->ativo ? 'pause' : 'play'" /></span>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                            <a href="{{ route('contas-pagar.edit', $contaPagar) }}" title="Editar" class="p-1.5 rounded-md text-brand-dim/70 hover:text-brand-dim hover:bg-brand/10 transition">
+                                                <span class="block h-4 w-4"><x-nav-icon name="pencil" /></span>
+                                            </a>
+                                            <form action="{{ route('contas-pagar.destroy', $contaPagar) }}" method="POST" onsubmit="return confirm('Remover esta despesa?');">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" title="Remover" class="p-1.5 rounded-md text-status-critical/70 hover:text-status-critical hover:bg-status-critical/10 transition">
+                                                    <span class="block h-4 w-4"><x-nav-icon name="trash" /></span>
+                                                </button>
                                             </form>
-                                        @endif
-                                        @if ($contaPagar->contaFixaPagar)
-                                            <form action="{{ route('contas-fixas-pagar.pausar', $contaPagar->contaFixaPagar) }}" method="POST" class="inline" onsubmit="return confirm('{{ $contaPagar->contaFixaPagar->ativo ? 'Pausar esta despesa recorrente? Ela para de gerar novas parcelas.' : 'Reativar esta despesa recorrente?' }}');">
-                                                @csrf
-                                                <button type="submit" class="text-ink-dim hover:text-ink">{{ $contaPagar->contaFixaPagar->ativo ? 'Pausar' : 'Ativar' }}</button>
-                                            </form>
-                                        @endif
-                                        <a href="{{ route('contas-pagar.edit', $contaPagar) }}" class="text-brand hover:text-brand-bright">Editar</a>
-                                        <form action="{{ route('contas-pagar.destroy', $contaPagar) }}" method="POST" class="inline" onsubmit="return confirm('Remover esta despesa?');">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="text-status-critical hover:opacity-80">Remover</button>
-                                        </form>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
