@@ -2,8 +2,7 @@
 
 > feature: fluxo-deploy
 
-## T-031 — Cadastro do AlfaMatriz no inventário do painel [pendente]
-
+## T-031 — Cadastro do AlfaMatriz no inventário do painel [concluida]
 - Refs: US-016, AC-032, AC-033
 - Arquivos: deploy/alfadeploy-systems-alfamatriz.toml, tests/Feature/FluxoDeploy/InventarioPainelTest.php
 - Notas: bloco `[[systems]]` no formato do `config/systems.toml` do AlfaDeploy,
