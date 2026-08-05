@@ -9,6 +9,339 @@
       "primeiraVez": "2026-08-05T15:45:46.862Z",
       "ultimaVez": "2026-08-05T15:45:46.863Z",
       "gitRev": "5268f60"
+    },
+    "ARQUIVO_INEXISTENTE::deploy-alfa-server::T-001": {
+      "codigo": "ARQUIVO_INEXISTENTE",
+      "feature": "deploy-alfa-server",
+      "ref": "T-001",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.865Z",
+      "ultimaVez": "2026-08-05T16:27:54.807Z",
+      "gitRev": "49fff20"
+    },
+    "ARQUIVO_INEXISTENTE::deploy-alfa-server::T-002": {
+      "codigo": "ARQUIVO_INEXISTENTE",
+      "feature": "deploy-alfa-server",
+      "ref": "T-002",
+      "ocorrencias": 4,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "ARQUIVO_INEXISTENTE::deploy-alfa-server::T-003": {
+      "codigo": "ARQUIVO_INEXISTENTE",
+      "feature": "deploy-alfa-server",
+      "ref": "T-003",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "ARQUIVO_INEXISTENTE::deploy-alfa-server::T-004": {
+      "codigo": "ARQUIVO_INEXISTENTE",
+      "feature": "deploy-alfa-server",
+      "ref": "T-004",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "ARQUIVO_INEXISTENTE::deploy-alfa-server::T-005": {
+      "codigo": "ARQUIVO_INEXISTENTE",
+      "feature": "deploy-alfa-server",
+      "ref": "T-005",
+      "ocorrencias": 4,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "ARQUIVO_INEXISTENTE::deploy-alfa-server::T-006": {
+      "codigo": "ARQUIVO_INEXISTENTE",
+      "feature": "deploy-alfa-server",
+      "ref": "T-006",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "ARQUIVO_INEXISTENTE::deploy-alfa-server::T-007": {
+      "codigo": "ARQUIVO_INEXISTENTE",
+      "feature": "deploy-alfa-server",
+      "ref": "T-007",
+      "ocorrencias": 4,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "ARQUIVO_INEXISTENTE::deploy-alfa-server::T-008": {
+      "codigo": "ARQUIVO_INEXISTENTE",
+      "feature": "deploy-alfa-server",
+      "ref": "T-008",
+      "ocorrencias": 6,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "ARQUIVO_INEXISTENTE::deploy-alfa-server::T-009": {
+      "codigo": "ARQUIVO_INEXISTENTE",
+      "feature": "deploy-alfa-server",
+      "ref": "T-009",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:03:50.866Z",
+      "gitRev": "0f72bd9"
+    },
+    "ARQUIVO_INEXISTENTE::deploy-alfa-server::T-010": {
+      "codigo": "ARQUIVO_INEXISTENTE",
+      "feature": "deploy-alfa-server",
+      "ref": "T-010",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:03:50.866Z",
+      "gitRev": "0f72bd9"
+    },
+    "ARQUIVO_INEXISTENTE::deploy-alfa-server::T-011": {
+      "codigo": "ARQUIVO_INEXISTENTE",
+      "feature": "deploy-alfa-server",
+      "ref": "T-011",
+      "ocorrencias": 4,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "ARQUIVO_INEXISTENTE::deploy-alfa-server::T-012": {
+      "codigo": "ARQUIVO_INEXISTENTE",
+      "feature": "deploy-alfa-server",
+      "ref": "T-012",
+      "ocorrencias": 4,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "AC_SEM_TESTE::deploy-alfa-server::AC-001": {
+      "codigo": "AC_SEM_TESTE",
+      "feature": "deploy-alfa-server",
+      "ref": "AC-001",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "AC_SEM_TESTE::deploy-alfa-server::AC-002": {
+      "codigo": "AC_SEM_TESTE",
+      "feature": "deploy-alfa-server",
+      "ref": "AC-002",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "AC_SEM_TESTE::deploy-alfa-server::AC-003": {
+      "codigo": "AC_SEM_TESTE",
+      "feature": "deploy-alfa-server",
+      "ref": "AC-003",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "AC_SEM_TESTE::deploy-alfa-server::AC-004": {
+      "codigo": "AC_SEM_TESTE",
+      "feature": "deploy-alfa-server",
+      "ref": "AC-004",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "AC_SEM_TESTE::deploy-alfa-server::AC-005": {
+      "codigo": "AC_SEM_TESTE",
+      "feature": "deploy-alfa-server",
+      "ref": "AC-005",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "AC_SEM_TESTE::deploy-alfa-server::AC-006": {
+      "codigo": "AC_SEM_TESTE",
+      "feature": "deploy-alfa-server",
+      "ref": "AC-006",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "AC_SEM_TESTE::deploy-alfa-server::AC-007": {
+      "codigo": "AC_SEM_TESTE",
+      "feature": "deploy-alfa-server",
+      "ref": "AC-007",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "AC_SEM_TESTE::deploy-alfa-server::AC-008": {
+      "codigo": "AC_SEM_TESTE",
+      "feature": "deploy-alfa-server",
+      "ref": "AC-008",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "AC_SEM_TESTE::deploy-alfa-server::AC-009": {
+      "codigo": "AC_SEM_TESTE",
+      "feature": "deploy-alfa-server",
+      "ref": "AC-009",
+      "ocorrencias": 1,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:03:50.866Z",
+      "gitRev": "0f72bd9"
+    },
+    "AC_SEM_TESTE::deploy-alfa-server::AC-010": {
+      "codigo": "AC_SEM_TESTE",
+      "feature": "deploy-alfa-server",
+      "ref": "AC-010",
+      "ocorrencias": 1,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:03:50.866Z",
+      "gitRev": "0f72bd9"
+    },
+    "AC_SEM_TESTE::deploy-alfa-server::AC-011": {
+      "codigo": "AC_SEM_TESTE",
+      "feature": "deploy-alfa-server",
+      "ref": "AC-011",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "AC_SEM_TESTE::deploy-alfa-server::AC-012": {
+      "codigo": "AC_SEM_TESTE",
+      "feature": "deploy-alfa-server",
+      "ref": "AC-012",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "ARQUIVO_ORFAO::—::app/Services/DespesaFixaService.php": {
+      "codigo": "ARQUIVO_ORFAO",
+      "feature": "—",
+      "ref": "app/Services/DespesaFixaService.php",
+      "ocorrencias": 5,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T17:15:37.113Z",
+      "gitRev": "301d026"
+    },
+    "ARQUIVO_ORFAO::—::app/Services/FaturamentoService.php": {
+      "codigo": "ARQUIVO_ORFAO",
+      "feature": "—",
+      "ref": "app/Services/FaturamentoService.php",
+      "ocorrencias": 5,
+      "primeiraVez": "2026-08-05T16:03:50.866Z",
+      "ultimaVez": "2026-08-05T17:15:37.114Z",
+      "gitRev": "301d026"
+    },
+    "TASK_CONCLUIDA_SEM_PROVA::deploy-alfa-server::T-001": {
+      "codigo": "TASK_CONCLUIDA_SEM_PROVA",
+      "feature": "deploy-alfa-server",
+      "ref": "T-001",
+      "ocorrencias": 1,
+      "primeiraVez": "2026-08-05T16:27:54.807Z",
+      "ultimaVez": "2026-08-05T16:27:54.807Z",
+      "gitRev": "49fff20"
+    },
+    "TASK_CONCLUIDA_SEM_PROVA::deploy-alfa-server::T-002": {
+      "codigo": "TASK_CONCLUIDA_SEM_PROVA",
+      "feature": "deploy-alfa-server",
+      "ref": "T-002",
+      "ocorrencias": 1,
+      "primeiraVez": "2026-08-05T16:27:54.808Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "TASK_CONCLUIDA_SEM_PROVA::deploy-alfa-server::T-003": {
+      "codigo": "TASK_CONCLUIDA_SEM_PROVA",
+      "feature": "deploy-alfa-server",
+      "ref": "T-003",
+      "ocorrencias": 1,
+      "primeiraVez": "2026-08-05T16:27:54.808Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "TASK_CONCLUIDA_SEM_PROVA::deploy-alfa-server::T-004": {
+      "codigo": "TASK_CONCLUIDA_SEM_PROVA",
+      "feature": "deploy-alfa-server",
+      "ref": "T-004",
+      "ocorrencias": 1,
+      "primeiraVez": "2026-08-05T16:27:54.808Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "TASK_CONCLUIDA_SEM_PROVA::deploy-alfa-server::T-005": {
+      "codigo": "TASK_CONCLUIDA_SEM_PROVA",
+      "feature": "deploy-alfa-server",
+      "ref": "T-005",
+      "ocorrencias": 1,
+      "primeiraVez": "2026-08-05T16:27:54.808Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "TASK_CONCLUIDA_SEM_PROVA::deploy-alfa-server::T-006": {
+      "codigo": "TASK_CONCLUIDA_SEM_PROVA",
+      "feature": "deploy-alfa-server",
+      "ref": "T-006",
+      "ocorrencias": 1,
+      "primeiraVez": "2026-08-05T16:27:54.808Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "TASK_CONCLUIDA_SEM_PROVA::deploy-alfa-server::T-007": {
+      "codigo": "TASK_CONCLUIDA_SEM_PROVA",
+      "feature": "deploy-alfa-server",
+      "ref": "T-007",
+      "ocorrencias": 1,
+      "primeiraVez": "2026-08-05T16:27:54.808Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "TASK_CONCLUIDA_SEM_PROVA::deploy-alfa-server::T-008": {
+      "codigo": "TASK_CONCLUIDA_SEM_PROVA",
+      "feature": "deploy-alfa-server",
+      "ref": "T-008",
+      "ocorrencias": 1,
+      "primeiraVez": "2026-08-05T16:27:54.808Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "TASK_CONCLUIDA_SEM_PROVA::deploy-alfa-server::T-011": {
+      "codigo": "TASK_CONCLUIDA_SEM_PROVA",
+      "feature": "deploy-alfa-server",
+      "ref": "T-011",
+      "ocorrencias": 1,
+      "primeiraVez": "2026-08-05T16:27:54.808Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "TASK_CONCLUIDA_SEM_PROVA::deploy-alfa-server::T-012": {
+      "codigo": "TASK_CONCLUIDA_SEM_PROVA",
+      "feature": "deploy-alfa-server",
+      "ref": "T-012",
+      "ocorrencias": 1,
+      "primeiraVez": "2026-08-05T16:27:54.808Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
+    },
+    "TASK_CONCLUIDA_SEM_PROVA::deploy-alfa-server::T-013": {
+      "codigo": "TASK_CONCLUIDA_SEM_PROVA",
+      "feature": "deploy-alfa-server",
+      "ref": "T-013",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-05T16:27:54.808Z",
+      "ultimaVez": "2026-08-05T16:27:54.808Z",
+      "gitRev": "49fff20"
     }
   }
 }
