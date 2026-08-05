@@ -84,7 +84,14 @@ class TelasAbremTest extends TestCase
         foreach (Route::getRoutes() as $rota) {
             $nome = $rota->getName();
 
-            if (! $nome || ! in_array('GET', $rota->methods(), true)) {
+            // Rota sem nome próprio recebe um `generated::xxx` do Laravel
+            // (visível quando as rotas estão em cache, como no servidor).
+            // Não são telas do menu: não entram na rede.
+            if (! $nome || str_starts_with($nome, 'generated::')) {
+                continue;
+            }
+
+            if (! in_array('GET', $rota->methods(), true)) {
                 continue;
             }
 
