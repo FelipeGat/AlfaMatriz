@@ -2,18 +2,17 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
     /**
-     * A basic test example.
+     * A raiz não é uma tela: ela encaminha para o painel (routes/web.php).
+     * O teste original vinha do esqueleto do Laravel e esperava 200, o que
+     * nunca foi verdade neste sistema.
      */
-    public function test_the_application_returns_a_successful_response(): void
+    public function test_a_raiz_encaminha_para_o_painel(): void
     {
-        $response = $this->get('/');
-
-        $response->assertStatus(200);
+        $this->get('/')->assertRedirect(route('dashboard'));
     }
 }

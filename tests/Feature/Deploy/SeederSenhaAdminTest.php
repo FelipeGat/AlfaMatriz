@@ -31,8 +31,13 @@ class SeederSenhaAdminTest extends TestCase
 
     private function limparSenha(): void
     {
-        putenv('ADMIN_PASSWORD');
-        unset($_ENV['ADMIN_PASSWORD'], $_SERVER['ADMIN_PASSWORD']);
+        // ADMIN_EMAIL também: o seeder passou a lê-lo do ambiente, e onde ele
+        // estiver definido o admin nasce com outro endereço — quebrando a
+        // busca abaixo por um motivo que não é o objeto deste teste.
+        foreach (['ADMIN_PASSWORD', 'ADMIN_EMAIL'] as $variavel) {
+            putenv($variavel);
+            unset($_ENV[$variavel], $_SERVER[$variavel]);
+        }
     }
 
     /**
