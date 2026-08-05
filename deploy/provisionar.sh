@@ -28,6 +28,8 @@ ARMAZENAMENTO="dados"
 LOCAL=0
 
 AMBIENTE="producao"
+MEMORIA=2048
+SWAP=2048
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -49,6 +51,11 @@ case "$AMBIENTE" in
         [[ "$VMID" == "115" ]] && VMID="116"
         [[ "$IP" == "10.0.3.115" ]] && IP="10.0.3.116"
         NOME="alfamatriz-staging"
+        # O host tem 11 GB e já opera com ~8 GB em uso. A produção deste mesmo
+        # software consome 331 MB, então 1 GB de teto é folga real — e evita
+        # repetir o overcommit de 4 GB dos containers Java.
+        MEMORIA=1024
+        SWAP=1024
         ;;
     *) echo "provisionar.sh: ambiente inválido \"$AMBIENTE\" (use producao ou staging)" >&2; exit 1 ;;
 esac
@@ -78,7 +85,7 @@ else
     info "criando container $VMID ($NOME) em $IP"
     no_host "pct create $VMID $TEMPLATE \
         --hostname $NOME \
-        --cores 2 --memory 2048 --swap 2048 \
+        --cores 2 --memory $MEMORIA --swap $SWAP \
         --rootfs $ARMAZENAMENTO:16 \
         --net0 name=eth0,bridge=vmbr0,gw=$GATEWAY,ip=$IP/24,type=veth \
         --nameserver '1.1.1.1 8.8.8.8' \

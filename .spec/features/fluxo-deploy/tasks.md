@@ -50,8 +50,7 @@
   é o volume real que faz o staging valer. O script precisa ser testável contra
   um banco descartável, não só contra produção.
 
-## T-037 — Instalar e conferir no servidor [pendente]
-
+## T-037 — Instalar e conferir no servidor [concluida]
 - Refs: US-016, US-017, US-018, AC-032, AC-034, AC-036
 - Arquivos: README.md
 - Notas: execução real — criar o LXC de staging, popular o banco com a cópia

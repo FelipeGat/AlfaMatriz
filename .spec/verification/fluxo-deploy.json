@@ -1,7 +1,7 @@
 {
   "feature": "fluxo-deploy",
-  "timestamp": "2026-08-05T22:24:46.829Z",
-  "gitRev": "3361792",
+  "timestamp": "2026-08-05T23:10:15.282Z",
+  "gitRev": "3fe4d78",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 1,

@@ -27,6 +27,11 @@ class ProvisionarStagingTest extends TestCase
 
         $this->assertStringContainsString('LXC 116', $saida, 'O staging precisa de container próprio.');
         $this->assertStringContainsString('10.0.3.116', $saida);
+
+        // O host opera perto do limite: o staging não pode repetir o
+        // overcommit de 4 GB dos containers Java.
+        $script = file_get_contents($this->script);
+        $this->assertStringContainsString('MEMORIA=1024', $script);
         $this->assertStringContainsString('sem túnel Cloudflare', $saida);
         $this->assertStringNotContainsString(
             'instalando o túnel Cloudflare',
