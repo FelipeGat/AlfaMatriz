@@ -19,8 +19,7 @@
   o portão — falhou, não aplica nada e sai != 0. Idempotente: sem novidade na
   `main`, não faz nada.
 
-## T-033 — Vigia de tag para produção [pendente]
-
+## T-033 — Vigia de tag para produção [concluida]
 - Refs: US-018, AC-036, AC-037
 - Arquivos: deploy/deploy-tag-watcher-alfamatriz.sh, tests/Feature/FluxoDeploy/VigiaTagTest.php
 - Notas: molde do `infra/prod-alfahome/deploy-tag-watcher.sh`. Só aplica tag
