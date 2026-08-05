@@ -35,19 +35,24 @@
             </div>
 
             {{-- Kanban --}}
-            <div class="flex gap-4 overflow-x-auto pb-4">
+            <div class="flex gap-4 overflow-x-auto pb-4 items-start">
                 @foreach (App\Models\Lead::ESTAGIOS as $key => $label)
                     @php $cards = $colunas[$key]; @endphp
-                    <div class="w-72 shrink-0">
-                        <div class="flex items-center justify-between mb-2 px-1">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-dim">{{ $label }}</h3>
-                            <span class="text-xs text-ink-mute">{{ $cards->count() }} · R$ {{ number_format($cards->sum('valor_estimado'), 0, ',', '.') }}</span>
+                    <div class="w-72 shrink-0 bg-white/[0.02] border border-white/5 rounded-xl flex flex-col max-h-[calc(100vh-20rem)]">
+                        <div class="flex items-center justify-between px-3 py-3 border-b border-white/5">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-dim truncate">{{ $label }}</h3>
+                                <span class="shrink-0 h-5 min-w-5 px-1.5 rounded-full bg-panel-raised text-ink-mute text-[11px] flex items-center justify-center">{{ $cards->count() }}</span>
+                            </div>
+                            @if ($cards->sum('valor_estimado') > 0)
+                                <span class="shrink-0 text-[11px] text-ink-mute">R$ {{ number_format($cards->sum('valor_estimado'), 0, ',', '.') }}</span>
+                            @endif
                         </div>
 
-                        <div class="space-y-2 min-h-[80px]">
-                            @foreach ($cards as $lead)
+                        <div class="flex-1 overflow-y-auto p-2 space-y-2">
+                            @forelse ($cards as $lead)
                                 @php $temp = $lead->temperatura(); @endphp
-                                <div x-data="{ movendo: false, novoEstagio: '{{ $key }}' }" class="bg-panel border border-white/5 rounded-lg p-3 text-sm">
+                                <div x-data="{ movendo: false, novoEstagio: '{{ $key }}' }" class="bg-panel-raised border border-white/5 rounded-lg p-3 text-sm shadow-panel hover:border-brand/20 transition">
                                     <div class="flex items-start justify-between gap-2">
                                         <p class="text-ink font-medium truncate">{{ $lead->nome }}</p>
                                         @if ($temp)
@@ -84,7 +89,14 @@
                                         </form>
                                     </div>
                                 </div>
-                            @endforeach
+                            @empty
+                                <div class="flex flex-col items-center justify-center text-center gap-2 py-8 px-2 border border-dashed border-white/10 rounded-lg">
+                                    <p class="text-xs text-ink-mute">Nenhum lead nesta etapa</p>
+                                    @if ($key === 'lead')
+                                        <button x-data @click="$dispatch('open-modal', 'novo-lead')" class="text-[11px] font-semibold text-brand-dim hover:text-brand-bright">+ Adicionar lead</button>
+                                    @endif
+                                </div>
+                            @endforelse
                         </div>
                     </div>
                 @endforeach

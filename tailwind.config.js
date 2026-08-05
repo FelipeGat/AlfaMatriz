@@ -20,8 +20,8 @@ export default {
                 panel: '#0b1316',
                 'panel-raised': '#101a1e',
                 ink: '#e6eef0',
-                'ink-dim': '#8ea0a6',
-                'ink-mute': '#7c8a8e',
+                'ink-dim': '#9db0b6',
+                'ink-mute': '#8798a0',
                 brand: {
                     DEFAULT: '#029caf',
                     dim: '#5be3ef',
