@@ -158,10 +158,10 @@ o faturamento e o financeiro da empresa.
 |---|---|---|---|
 | ASM-001 | O VMID 115 e o IP 10.0.3.115 estão livres no alfa-server | confirmada | `pct config 115` não existe e o IP não responde a ping (verificado em 2026-08-05) |
 | ASM-002 | O tailnet da empresa permite Funnel (portas 443/8443/10000) e emissão de certificado HTTPS | confirmada | As capacidades do nó incluem `funnel`, `https` e `funnel-ports?ports=443,8443,10000` |
-| ASM-003 | O MariaDB padrão do Debian 12 atende no lugar do MySQL 8.0 usado no docker-compose local | aberta | Confirmar na primeira execução das migrações no container |
+| ASM-003 | O MariaDB padrão do Debian 12 atende no lugar do MySQL 8.0 usado no docker-compose local | confirmada | As 30+ migrações e os três seeders rodaram sem erro no container em 2026-08-05 |
 | ASM-004 | O PHP 8.2 do Debian 12 atende (o composer.json exige `^8.2`) | confirmada | `composer.json` exige `php: ^8.2` |
 | ASM-005 | A equipe aceita subir sem 2FA nesta entrega, com senha forte + bloqueio por tentativas como única barreira | confirmada | Dono do produto confirmou em 2026-08-05: sobe sem 2FA por ora |
-| ASM-006 | O container terá seu próprio nó Tailscale (`alfamatriz`), sem alterar a configuração do gateway atual | aberta | Confirmar na execução: o gateway hoje só publica 8101–8107 em modo tailnet |
+| ASM-006 | O container terá seu próprio nó Tailscale (`alfamatriz`), sem alterar a configuração do gateway atual | confirmada | Nó `alfamatriz` (100.120.97.63) entrou no tailnet e publica o próprio Funnel; o gateway segue intocado em 8101–8107 |
 
 ## Perguntas em aberto
 

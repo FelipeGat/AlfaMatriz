@@ -230,19 +230,19 @@
       "codigo": "ARQUIVO_ORFAO",
       "feature": "—",
       "ref": "app/Services/DespesaFixaService.php",
-      "ocorrencias": 3,
+      "ocorrencias": 5,
       "primeiraVez": "2026-08-05T16:03:50.866Z",
-      "ultimaVez": "2026-08-05T16:41:50.836Z",
-      "gitRev": "f2b62f6"
+      "ultimaVez": "2026-08-05T17:15:37.113Z",
+      "gitRev": "301d026"
     },
     "ARQUIVO_ORFAO::—::app/Services/FaturamentoService.php": {
       "codigo": "ARQUIVO_ORFAO",
       "feature": "—",
       "ref": "app/Services/FaturamentoService.php",
-      "ocorrencias": 3,
+      "ocorrencias": 5,
       "primeiraVez": "2026-08-05T16:03:50.866Z",
-      "ultimaVez": "2026-08-05T16:41:50.837Z",
-      "gitRev": "f2b62f6"
+      "ultimaVez": "2026-08-05T17:15:37.114Z",
+      "gitRev": "301d026"
     },
     "TASK_CONCLUIDA_SEM_PROVA::deploy-alfa-server::T-001": {
       "codigo": "TASK_CONCLUIDA_SEM_PROVA",
