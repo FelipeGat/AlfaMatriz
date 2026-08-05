@@ -1,0 +1,326 @@
+{
+  "runId": "AlfaMatriz-deploy-alfa-server-msga6prm",
+  "feature": "deploy-alfa-server",
+  "agent": "claude",
+  "modo": "paralelo",
+  "paralelizar": [
+    "T-001",
+    "T-002",
+    "T-003",
+    "T-004",
+    "T-005",
+    "T-006",
+    "T-007",
+    "T-008",
+    "T-009",
+    "T-010",
+    "T-011",
+    "T-012"
+  ],
+  "modeloForcado": null,
+  "esforcoForcado": null,
+  "geradoEm": "2026-08-05 16:08",
+  "branchTrabalho": "spec/deploy-alfa-server",
+  "baseDir": ".spec/features/deploy-alfa-server",
+  "specDir": ".spec",
+  "repoName": "AlfaMatriz",
+  "logsDir": "../onp-worktrees/AlfaMatriz-deploy-alfa-server-logs",
+  "ondas": [
+    [
+      "faixa-1",
+      "faixa-2",
+      "faixa-3"
+    ],
+    [
+      "faixa-4",
+      "faixa-5",
+      "faixa-6"
+    ],
+    [
+      "faixa-7",
+      "faixa-8",
+      "faixa-9"
+    ],
+    [
+      "faixa-10",
+      "faixa-11",
+      "faixa-12"
+    ]
+  ],
+  "faixas": [
+    {
+      "id": "faixa-1",
+      "branch": "spec/deploy-alfa-server-faixa-1",
+      "worktree": "../onp-worktrees/AlfaMatriz-deploy-alfa-server-faixa-1",
+      "tarefas": [
+        {
+          "id": "T-001",
+          "titulo": "Desativar o cadastro público",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "routes/auth.php",
+            "tests/Feature/Deploy/RegistroDesativadoTest.php"
+          ],
+          "refs": [
+            "US-001",
+            "AC-001"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-2",
+      "branch": "spec/deploy-alfa-server-faixa-2",
+      "worktree": "../onp-worktrees/AlfaMatriz-deploy-alfa-server-faixa-2",
+      "tarefas": [
+        {
+          "id": "T-002",
+          "titulo": "Comando administrativo de criação de usuário",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "app/Console/Commands/CriarUsuario.php",
+            "tests/Feature/Deploy/CriarUsuarioCommandTest.php"
+          ],
+          "refs": [
+            "US-001",
+            "AC-002"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-3",
+      "branch": "spec/deploy-alfa-server-faixa-3",
+      "worktree": "../onp-worktrees/AlfaMatriz-deploy-alfa-server-faixa-3",
+      "tarefas": [
+        {
+          "id": "T-003",
+          "titulo": "Bloqueio por tentativas repetidas de login",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "tests/Feature/Deploy/LoginThrottleTest.php"
+          ],
+          "refs": [
+            "US-001",
+            "AC-003"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-4",
+      "branch": "spec/deploy-alfa-server-faixa-4",
+      "worktree": "../onp-worktrees/AlfaMatriz-deploy-alfa-server-faixa-4",
+      "tarefas": [
+        {
+          "id": "T-004",
+          "titulo": "HTTPS correto atrás do Funnel",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "bootstrap/app.php",
+            "app/Providers/AppServiceProvider.php",
+            "tests/Feature/Deploy/HttpsAtrasDoProxyTest.php"
+          ],
+          "refs": [
+            "US-002",
+            "AC-004"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-5",
+      "branch": "spec/deploy-alfa-server-faixa-5",
+      "worktree": "../onp-worktrees/AlfaMatriz-deploy-alfa-server-faixa-5",
+      "tarefas": [
+        {
+          "id": "T-005",
+          "titulo": "Checagem de saúde sem login",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "routes/web.php",
+            "app/Http/Controllers/SaudeController.php",
+            "tests/Feature/Deploy/SaudeTest.php"
+          ],
+          "refs": [
+            "US-002",
+            "AC-005"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-6",
+      "branch": "spec/deploy-alfa-server-faixa-6",
+      "worktree": "../onp-worktrees/AlfaMatriz-deploy-alfa-server-faixa-6",
+      "tarefas": [
+        {
+          "id": "T-006",
+          "titulo": "Senha do admin vinda do ambiente",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "database/seeders/DadosIniciaisSeeder.php",
+            "tests/Feature/Deploy/SeederSenhaAdminTest.php"
+          ],
+          "refs": [
+            "US-003",
+            "AC-006"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-7",
+      "branch": "spec/deploy-alfa-server-faixa-7",
+      "worktree": "../onp-worktrees/AlfaMatriz-deploy-alfa-server-faixa-7",
+      "tarefas": [
+        {
+          "id": "T-007",
+          "titulo": "Modelo de ambiente de produção endurecido",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "deploy/.env.producao.exemplo",
+            "tests/Feature/Deploy/AmbienteProducaoTest.php"
+          ],
+          "refs": [
+            "US-003",
+            "AC-007"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-8",
+      "branch": "spec/deploy-alfa-server-faixa-8",
+      "worktree": "../onp-worktrees/AlfaMatriz-deploy-alfa-server-faixa-8",
+      "tarefas": [
+        {
+          "id": "T-008",
+          "titulo": "Script de provisionamento do container",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "deploy/provisionar.sh",
+            "deploy/nginx-alfamatriz.conf",
+            "tests/Feature/Deploy/ScriptProvisionarTest.php"
+          ],
+          "refs": [
+            "US-004",
+            "AC-008"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-9",
+      "branch": "spec/deploy-alfa-server-faixa-9",
+      "worktree": "../onp-worktrees/AlfaMatriz-deploy-alfa-server-faixa-9",
+      "tarefas": [
+        {
+          "id": "T-009",
+          "titulo": "Script de publicação da aplicação",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "deploy/publicar.sh",
+            "tests/Feature/Deploy/ScriptPublicarTest.php"
+          ],
+          "refs": [
+            "US-004",
+            "AC-009"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-10",
+      "branch": "spec/deploy-alfa-server-faixa-10",
+      "worktree": "../onp-worktrees/AlfaMatriz-deploy-alfa-server-faixa-10",
+      "tarefas": [
+        {
+          "id": "T-010",
+          "titulo": "Script de conferência pós-deploy",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "deploy/smoke.sh",
+            "tests/Feature/Deploy/ScriptSmokeTest.php"
+          ],
+          "refs": [
+            "US-004",
+            "AC-010"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-11",
+      "branch": "spec/deploy-alfa-server-faixa-11",
+      "worktree": "../onp-worktrees/AlfaMatriz-deploy-alfa-server-faixa-11",
+      "tarefas": [
+        {
+          "id": "T-011",
+          "titulo": "Backup diário com retenção de sete dias",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "deploy/backup.sh",
+            "tests/Feature/Deploy/ScriptBackupTest.php"
+          ],
+          "refs": [
+            "US-005",
+            "AC-011"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-12",
+      "branch": "spec/deploy-alfa-server-faixa-12",
+      "worktree": "../onp-worktrees/AlfaMatriz-deploy-alfa-server-faixa-12",
+      "tarefas": [
+        {
+          "id": "T-012",
+          "titulo": "Restauração protegida",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "deploy/restaurar.sh",
+            "tests/Feature/Deploy/ScriptRestaurarTest.php"
+          ],
+          "refs": [
+            "US-005",
+            "AC-012"
+          ]
+        }
+      ]
+    }
+  ],
+  "sequenciais": [
+    {
+      "id": "T-013",
+      "titulo": "Provisionar, publicar e conferir no alfa-server",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "README.md"
+      ],
+      "refs": [
+        "US-004",
+        "AC-008",
+        "AC-009",
+        "AC-010",
+        "AC-011"
+      ]
+    }
+  ],
+  "concluidas": [],
+  "avisos": []
+}

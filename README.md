@@ -30,4 +30,76 @@ npm install && npm run build
 php artisan serve
 ```
 
-Login inicial: `admin@alfatecnologia.com.br` / `AlfaTecnologia@2026` (trocar depois do primeiro acesso).
+Login inicial **do ambiente local**: `admin@alfatecnologia.com.br` / `AlfaTecnologia@2026`.
+
+Essa senha vale só fora de produção. No ambiente publicado, a carga inicial
+exige `ADMIN_PASSWORD` no `.env` e falha se ela não estiver definida — a senha
+acima é pública neste README e nunca pode ser a senha do painel na internet.
+
+## Deploy no alfa-server
+
+URL pública: **https://matriz.alfasolucoes.cloud** (túnel Cloudflare)
+
+Acesso de emergência, só de dentro do tailnet da empresa:
+`https://alfamatriz.tail0939dd.ts.net` — serve para entrar se a Cloudflare
+ficar indisponível. Não responde para quem está fora do Tailscale.
+
+O sistema roda num container LXC dedicado (`alfamatriz`, VMID 115, Debian 12)
+no alfa-server (Proxmox). Os scripts abaixo cobrem provisionar, publicar,
+conferir e proteger os dados — cada um pensado pra rodar de novo sem quebrar
+o que já existe.
+
+### Provisionar o container (primeira vez, ou de novo se preciso)
+
+```bash
+deploy/provisionar.sh
+```
+
+Cria o LXC 115, instala PHP 8.2 + Nginx + MariaDB + Tailscale e publica o
+Funnel na porta 443. Rodar de novo sobre um servidor já provisionado não
+recria o container nem apaga o banco — só confere que está tudo no lugar.
+
+### Publicar uma nova versão
+
+```bash
+deploy/publicar.sh
+```
+
+Busca o código, instala as dependências de produção, compila o front-end,
+aplica as migrações e recarrega os caches. Para na primeira etapa que falhar,
+avisando qual foi — não deixa o servidor pela metade.
+
+Antes do primeiro deploy, copiar `deploy/.env.producao.exemplo` para `.env`
+no servidor, preencher os segredos (em especial `ADMIN_PASSWORD`, exigido
+pela carga inicial) e rodar `php artisan migrate --seed` uma vez.
+
+Contas além do admin são criadas depois, no servidor, com:
+
+```bash
+php artisan alfa:criar-usuario "Nome da pessoa" email@alfatecnologia.com.br
+```
+
+### Conferir depois de publicar
+
+```bash
+deploy/smoke.sh
+```
+
+Confere que a URL pública responde em HTTPS, que `/healthz` volta 200, que a
+tela de login abre e que a tela de cadastro está fechada (404). Sai com
+sucesso só se as quatro checagens passarem; senão lista qual falhou.
+
+### Backup e restauração
+
+O cron do servidor roda `deploy/backup.sh` uma vez por dia: grava um dump
+compactado e datado do banco em `/var/backups/alfamatriz` e mantém só as
+sete cópias mais recentes.
+
+Para restaurar um backup (com o servidor já provisionado):
+
+```bash
+deploy/restaurar.sh --arquivo /var/backups/alfamatriz/AAAA-MM-DD.sql.gz --confirmo
+```
+
+O script recusa rodar sem `--confirmo` ou apontando pra um arquivo que não
+existe — não tem como sobrescrever o banco de produção por engano.

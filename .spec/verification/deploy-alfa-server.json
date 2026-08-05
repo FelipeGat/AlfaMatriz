@@ -1,0 +1,72 @@
+{
+  "feature": "deploy-alfa-server",
+  "timestamp": "2026-08-05T17:15:19.213Z",
+  "gitRev": "301d026",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 1,
+  "testsParsed": 40,
+  "results": {
+    "AC-001": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\RegistroDesativadoTest::test_visitante_nao_consegue_abrir_nem_enviar_o_cadastro @spec:AC-001",
+      "method": "tap"
+    },
+    "AC-002": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\CriarUsuarioCommandTest::test_comando_cria_usuario_que_consegue_entrar_e_recusa_email_repetido @spec:AC-002",
+      "method": "tap"
+    },
+    "AC-003": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\LoginThrottleTest::test_sexta_tentativa_seguida_e_recusada_com_aviso_de_espera @spec:AC-003",
+      "method": "tap"
+    },
+    "AC-004": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\HttpsAtrasDoProxyTest::test_enderecos_gerados_saem_em_https_quando_o_proxy_sinaliza_https @spec:AC-004",
+      "method": "tap"
+    },
+    "AC-005": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\SaudeTest::test_healthz_responde_sem_login_e_nao_vaza_dado_de_negocio @spec:AC-005",
+      "method": "tap"
+    },
+    "AC-006": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\SeederSenhaAdminTest::test_carga_inicial_em_producao_exige_senha_do_ambiente @spec:AC-006",
+      "method": "tap"
+    },
+    "AC-007": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\AmbienteProducaoTest::test_modelo_de_producao_nasce_endurecido_e_sem_segredo @spec:AC-007",
+      "method": "tap"
+    },
+    "AC-008": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\ScriptProvisionarTest::test_provisionar_duas_vezes_nao_recria_container_nem_apaga_banco @spec:AC-008",
+      "method": "tap"
+    },
+    "AC-009": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\ScriptPublicarTest::test_publicar_executa_todas_as_etapas_em_ordem_e_sai_com_sucesso @spec:AC-009",
+      "method": "tap"
+    },
+    "AC-010": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\ScriptSmokeTest::test_smoke_confirma_https_saude_login_e_registro_fechado_e_sai_com_sucesso @spec:AC-010",
+      "method": "tap"
+    },
+    "AC-011": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\ScriptBackupTest::test_retencao_mantem_as_sete_copias_mais_recentes @spec:AC-011",
+      "method": "tap"
+    },
+    "AC-012": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\ScriptRestaurarTest::test_restaurar_recusa_sem_confirmacao_ou_com_arquivo_invalido @spec:AC-012",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}
