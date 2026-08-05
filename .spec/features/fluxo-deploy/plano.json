@@ -1,0 +1,125 @@
+{
+  "runId": "AlfaMatriz-fluxo-deploy-msgn8ezw",
+  "feature": "fluxo-deploy",
+  "agent": "claude",
+  "modo": "sequencial",
+  "paralelizar": null,
+  "modeloForcado": null,
+  "esforcoForcado": null,
+  "geradoEm": "2026-08-05 22:13",
+  "branchTrabalho": "spec/fluxo-deploy",
+  "baseDir": ".spec/features/fluxo-deploy",
+  "specDir": ".spec",
+  "repoName": "AlfaMatriz",
+  "logsDir": "../onp-worktrees/AlfaMatriz-fluxo-deploy-logs",
+  "ondas": [],
+  "faixas": [],
+  "sequenciais": [
+    {
+      "id": "T-031",
+      "titulo": "Cadastro do AlfaMatriz no inventário do painel",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "deploy/alfadeploy-systems-alfamatriz.toml",
+        "tests/Feature/FluxoDeploy/InventarioPainelTest.php"
+      ],
+      "refs": [
+        "US-016",
+        "AC-032",
+        "AC-033"
+      ]
+    },
+    {
+      "id": "T-032",
+      "titulo": "Executor do staging com portão de testes",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "deploy/deploy-staging-alfamatriz.sh",
+        "tests/Feature/FluxoDeploy/ExecutorStagingTest.php"
+      ],
+      "refs": [
+        "US-017",
+        "AC-034",
+        "AC-035"
+      ]
+    },
+    {
+      "id": "T-033",
+      "titulo": "Vigia de tag para produção",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "deploy/deploy-tag-watcher-alfamatriz.sh",
+        "tests/Feature/FluxoDeploy/VigiaTagTest.php"
+      ],
+      "refs": [
+        "US-018",
+        "AC-036",
+        "AC-037"
+      ]
+    },
+    {
+      "id": "T-034",
+      "titulo": "Provisionar o container de staging",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "deploy/provisionar.sh",
+        "tests/Feature/FluxoDeploy/ProvisionarStagingTest.php"
+      ],
+      "refs": [
+        "US-017",
+        "AC-034"
+      ]
+    },
+    {
+      "id": "T-035",
+      "titulo": "Verificação automática no GitHub",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        ".github/workflows/testes.yml",
+        "tests/Feature/FluxoDeploy/VerificacaoGithubTest.php"
+      ],
+      "refs": [
+        "US-017",
+        "AC-035"
+      ]
+    },
+    {
+      "id": "T-036",
+      "titulo": "Cópia embaralhada da produção para o staging",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "deploy/preparar-staging.sh",
+        "tests/Feature/FluxoDeploy/CopiaEmbaralhadaTest.php"
+      ],
+      "refs": [
+        "US-019",
+        "AC-038"
+      ]
+    },
+    {
+      "id": "T-037",
+      "titulo": "Instalar e conferir no servidor",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "README.md"
+      ],
+      "refs": [
+        "US-016",
+        "US-017",
+        "US-018",
+        "AC-032",
+        "AC-034",
+        "AC-036"
+      ]
+    }
+  ],
+  "concluidas": [],
+  "avisos": []
+}
