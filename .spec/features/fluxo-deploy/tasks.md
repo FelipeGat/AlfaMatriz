@@ -41,8 +41,7 @@
   é local, T-032), mas dá o mesmo sinal verde/vermelho que os outros sistemas
   têm no GitHub antes de alguém marcar versão.
 
-## T-036 — Cópia embaralhada da produção para o staging [pendente]
-
+## T-036 — Cópia embaralhada da produção para o staging [concluida]
 - Refs: US-019, AC-038
 - Arquivos: deploy/preparar-staging.sh, tests/Feature/FluxoDeploy/CopiaEmbaralhadaTest.php
 - Notas: pega o dump mais recente do `backup.sh`, restaura numa base de staging

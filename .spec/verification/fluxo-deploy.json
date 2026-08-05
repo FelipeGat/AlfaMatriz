@@ -1,0 +1,47 @@
+{
+  "feature": "fluxo-deploy",
+  "timestamp": "2026-08-05T22:24:46.829Z",
+  "gitRev": "3361792",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 1,
+  "testsParsed": 64,
+  "results": {
+    "AC-032": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\InventarioPainelTest::test_inventario_traz_os_dados_de_acompanhamento @spec:AC-032",
+      "method": "tap"
+    },
+    "AC-033": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\InventarioPainelTest::test_inventario_nao_da_alvo_para_acao_destrutiva @spec:AC-033",
+      "method": "tap"
+    },
+    "AC-034": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\ExecutorStagingTest::test_aplica_a_novidade_quando_a_suite_passa @spec:AC-034",
+      "method": "tap"
+    },
+    "AC-035": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\ExecutorStagingTest::test_portao_segura_o_deploy_quando_o_teste_falha @spec:AC-035",
+      "method": "tap"
+    },
+    "AC-036": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\VigiaTagTest::test_aplica_a_tag_nova_e_ignora_alteracao_sem_tag @spec:AC-036",
+      "method": "tap"
+    },
+    "AC-037": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\VigiaTagTest::test_faz_backup_antes_de_migrar @spec:AC-037",
+      "method": "tap"
+    },
+    "AC-038": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\CopiaEmbaralhadaTest::test_troca_dado_pessoal_e_preserva_os_valores @spec:AC-038",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}
