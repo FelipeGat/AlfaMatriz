@@ -22,7 +22,10 @@ set -uo pipefail
 # existe. Sem esta linha o script funciona quando chamado à mão e falha
 # silenciosamente a cada 5 minutos pelo agendador — foi exatamente o que
 # aconteceu, e só apareceu ao ler o log.
-export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+# Acrescentado ao FIM, não ao início: garante os diretórios do sistema sem
+# tirar a prioridade de quem chamou. Prefixar quebraria qualquer ambiente que
+# aponte para binários próprios — inclusive o teste deste script.
+export PATH="$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 LXC=116
 DIR=/var/www/alfamatriz

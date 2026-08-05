@@ -112,12 +112,17 @@ fi
 
 # ------------------------------------------------------------------- pilha
 
+# php8.2-sqlite3 não é opcional: a suíte roda em SQLite em memória
+# (phpunit.xml), e é ela o portão que aprova o deploy do staging. Sem esse
+# pacote, todo deploy é reprovado por "teste falhando" que não tem nada a ver
+# com o código.
 info "instalando a pilha (apt é idempotente: pacote já instalado não reinstala)"
 no_container "export DEBIAN_FRONTEND=noninteractive && apt-get update -qq && \
     apt-get install -y -qq \
         nginx mariadb-server \
         php8.2-fpm php8.2-cli php8.2-mysql php8.2-mbstring php8.2-xml \
         php8.2-curl php8.2-zip php8.2-gd php8.2-bcmath php8.2-intl \
+        php8.2-sqlite3 \
         git unzip curl ca-certificates gnupg cron"
 
 info "instalando Node.js 20 (para compilar o front-end)"

@@ -12,12 +12,27 @@ class SeederSenhaAdminTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // O ambiente publicado define ADMIN_PASSWORD no .env. Sem limpar aqui,
+        // o cenário "sem senha definida" nunca acontece no servidor e o teste
+        // reprova o portão de deploy sem haver defeito no código.
+        $this->limparSenha();
+    }
+
     protected function tearDown(): void
+    {
+        $this->limparSenha();
+
+        parent::tearDown();
+    }
+
+    private function limparSenha(): void
     {
         putenv('ADMIN_PASSWORD');
         unset($_ENV['ADMIN_PASSWORD'], $_SERVER['ADMIN_PASSWORD']);
-
-        parent::tearDown();
     }
 
     /**

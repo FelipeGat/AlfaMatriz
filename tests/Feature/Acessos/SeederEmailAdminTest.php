@@ -11,14 +11,29 @@ class SeederEmailAdminTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // O ambiente publicado define estas variáveis no .env. Sem limpar
+        // aqui, o teste passaria só onde elas não existem — e reprovaria o
+        // portão de deploy sem haver defeito nenhum no código.
+        $this->limparVariaveis();
+    }
+
     protected function tearDown(): void
+    {
+        $this->limparVariaveis();
+
+        parent::tearDown();
+    }
+
+    private function limparVariaveis(): void
     {
         foreach (['ADMIN_EMAIL', 'ADMIN_PASSWORD'] as $variavel) {
             putenv($variavel);
             unset($_ENV[$variavel], $_SERVER[$variavel]);
         }
-
-        parent::tearDown();
     }
 
     /**
