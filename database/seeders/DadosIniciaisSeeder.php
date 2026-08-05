@@ -20,7 +20,7 @@ class DadosIniciaisSeeder extends Seeder
         CentroCusto::updateOrCreate(['nome' => 'Alfa Tecnologia'], ['ativo' => true]);
 
         $admin = User::updateOrCreate(
-            ['email' => 'admin@alfatecnologia.com.br'],
+            ['email' => $this->emailDoAdmin()],
             [
                 'name' => 'Administrador Alfa',
                 'password' => bcrypt($this->senhaDoAdmin()),
@@ -34,6 +34,18 @@ class DadosIniciaisSeeder extends Seeder
         if ($perfilAdmin) {
             $admin->perfis()->syncWithoutDetaching([$perfilAdmin->id]);
         }
+    }
+
+    /**
+     * O e-mail do administrador vem do ambiente. Fixo no código, ele fazia a
+     * conta antiga ressuscitar a cada `db:seed` depois de alguém trocar o
+     * acesso — desfazendo a troca sem ninguém perceber.
+     */
+    private function emailDoAdmin(): string
+    {
+        $email = env('ADMIN_EMAIL');
+
+        return filled($email) ? $email : 'admin@alfatecnologia.com.br';
     }
 
     /**

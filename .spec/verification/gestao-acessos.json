@@ -1,0 +1,27 @@
+{
+  "feature": "gestao-acessos",
+  "timestamp": "2026-08-05T19:48:58.983Z",
+  "gitRev": "23c770d",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 1,
+  "testsParsed": 49,
+  "results": {
+    "AC-029": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Acessos\\AlterarAcessoCommandTest::test_troca_email_e_senha_mantendo_a_mesma_conta @spec:AC-029",
+      "method": "tap"
+    },
+    "AC-030": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Acessos\\AlterarAcessoCommandTest::test_recusa_alteracao_invalida_sem_tocar_na_conta @spec:AC-030",
+      "method": "tap"
+    },
+    "AC-031": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Acessos\\SeederEmailAdminTest::test_carga_inicial_usa_o_email_do_ambiente @spec:AC-031",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}
