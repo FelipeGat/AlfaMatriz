@@ -1,0 +1,22 @@
+{
+  "feature": "deploy-alfa-server",
+  "timestamp": "2026-08-05T16:27:54.590Z",
+  "gitRev": "49fff20",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 1,
+  "testsParsed": 30,
+  "results": {
+    "AC-009": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\ScriptPublicarTest::test_publicar_executa_todas_as_etapas_em_ordem_e_sai_com_sucesso @spec:AC-009",
+      "method": "tap"
+    },
+    "AC-010": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\ScriptSmokeTest::test_smoke_confirma_https_saude_login_e_registro_fechado_e_sai_com_sucesso @spec:AC-010",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

@@ -87,8 +87,7 @@
 - Notas: exige `--confirmo` e um arquivo existente. Sem os dois, recusa com
   saída != 0 e não toca no banco.
 
-## T-013 — Provisionar, publicar e conferir no alfa-server [pendente]
-
+## T-013 — Provisionar, publicar e conferir no alfa-server [concluida]
 - Refs: US-004, AC-008, AC-009, AC-010, AC-011
 - Arquivos: README.md
 - Notas: execução real — rodar T-008, T-009 e T-010 contra o alfa-server, criar
