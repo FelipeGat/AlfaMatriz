@@ -71,9 +71,15 @@
                             @endif>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2.5 min-w-0">
-                                    <span class="h-[34px] w-[34px] shrink-0 rounded-ctl bg-brand/15 text-brand-text
-                                                 flex items-center justify-center">
-                                        <span class="h-4 w-4"><x-nav-icon name="cube-outline" /></span>
+                                    {{-- Só o ÍCONE aqui. Esta lista existe para comparar: o
+                                         olho corre as colunas de MRR, share e churn. Wordmarks
+                                         de larguras e cores diferentes dariam peso visual
+                                         desigual entre as linhas — o mais escuro leria como
+                                         mais importante, que é uma mentira que a tabela
+                                         contaria. O wordmark aparece nos cartões, onde cada
+                                         produto é o assunto. --}}
+                                    <span class="h-[34px] w-[34px] shrink-0 rounded-ctl bg-chip p-1.5 flex items-center justify-center">
+                                        <x-marca-sistema :sistema="$sistema" />
                                     </span>
                                     <span class="min-w-0">
                                         <span class="flex items-center gap-1.5 min-w-0">
@@ -182,13 +188,12 @@
             @foreach ($produtos as $produto)
                 @php $sistema = $produto['sistema']; @endphp
                 <article class="rounded-panel border border-line bg-card-grad p-4 {{ $sistema->ativo ? '' : 'opacity-[0.72]' }}">
-                    <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="h-[34px] w-[34px] shrink-0 rounded-ctl bg-brand/15 text-brand-text flex items-center justify-center">
-                            <span class="h-4 w-4"><x-nav-icon name="cube-outline" /></span>
-                        </span>
-                        <span class="min-w-0">
-                            <span class="block font-display text-[14.5px] font-semibold text-ink truncate">{{ $sistema->nome }}</span>
-                            <span class="block font-mono text-[11px] uppercase tracking-caps text-ink-faint truncate">{{ $sistema->unidade_cobranca }}</span>
+                    {{-- No cartão o produto é o assunto e tem espaço próprio:
+                         aqui o wordmark cabe e vale a pena. --}}
+                    <div class="min-w-0">
+                        <x-marca-sistema :sistema="$sistema" formato="wordmark" tamanho="h-5 max-w-[70%]" />
+                        <span class="mt-2 block font-mono text-[11px] uppercase tracking-caps text-ink-faint truncate">
+                            {{ $sistema->unidade_cobranca }}
                         </span>
                     </div>
 

@@ -17,8 +17,13 @@ class SistemasPrecosSeeder extends Seeder
      * que cobra direto por unidade ativa sem tier fechado.
      *
      * Baseado no levantamento de mercado + preços já praticados internamente
-     * (05/08/2026). AlfaSchool entra só como cadastro — preço ainda não
-     * pesquisado, fica sem tier até revisitarmos.
+     * (05/08/2026).
+     *
+     * O AlfaSchool saiu daqui em 06/08/2026: o produto não existe. Ele estava
+     * cadastrado sem cliente, sem tier e sem cobrança, e aparecia na tela de
+     * Produtos como pendência permanente ("sem tier de atacado"), pedindo uma
+     * configuração que nunca viria. Removê-lo só do banco não bastava — esta
+     * carga o recriaria no próximo `db:seed`.
      */
     public function run(): void
     {
@@ -56,11 +61,6 @@ class SistemasPrecosSeeder extends Seeder
                     ['nome' => 'Growth', 'preco_base' => 900.00, 'unidades_inclusas' => 1000, 'limite_unidades' => 1000, 'ordem' => 2],
                     ['nome' => 'Scale', 'preco_base' => 1800.00, 'unidades_inclusas' => null, 'limite_unidades' => null, 'ordem' => 3],
                 ],
-            ],
-            [
-                'nome' => 'AlfaSchool', 'slug' => 'alfaschool', 'categoria' => 'saas',
-                'unidade_cobranca' => 'escola ativa',
-                'tiers' => [],
             ],
             [
                 'nome' => 'AlfaJornada', 'slug' => 'alfajornada', 'categoria' => 'saas',
