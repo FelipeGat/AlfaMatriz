@@ -4,16 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\Cobranca;
+use App\Models\CobrancaAnexo;
 use App\Models\ContaFinanceira;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class CobrancaController extends Controller
 {
     public function index(Request $request)
     {
         $cobrancas = Cobranca::with(['revenda', 'cliente', 'sistema'])
+            ->withCount('anexos')
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->orderByDesc('data_vencimento')
             ->paginate(20)
@@ -110,6 +113,53 @@ class CobrancaController extends Controller
         }
 
         return redirect()->route('cobrancas.index')->with('status', $status);
+    }
+
+    public function listarAnexos(Cobranca $cobranca)
+    {
+        return response()->json($cobranca->anexos()->latest()->get());
+    }
+
+    public function storeAnexo(Request $request, Cobranca $cobranca)
+    {
+        $data = $request->validate([
+            'tipo' => 'required|in:nf,boleto',
+            'arquivos' => 'required|array|min:1|max:5',
+            'arquivos.*' => 'required|file|mimes:pdf|max:10240',
+        ]);
+
+        foreach ($request->file('arquivos') as $arquivo) {
+            $nomeOriginal = preg_replace('/[^a-zA-Z0-9._-]/', '_', $arquivo->getClientOriginalName());
+            $nomeArquivo = uniqid().'_'.time().'.'.$arquivo->getClientOriginalExtension();
+            $caminho = $arquivo->storeAs('anexos/cobrancas', $nomeArquivo, 'public');
+
+            $cobranca->anexos()->create([
+                'tipo' => $data['tipo'],
+                'nome_original' => $nomeOriginal,
+                'nome_arquivo' => $nomeArquivo,
+                'caminho' => $caminho,
+                'tamanho' => $arquivo->getSize(),
+            ]);
+        }
+
+        return response()->json(['message' => 'Anexo(s) enviado(s) com sucesso.']);
+    }
+
+    public function downloadAnexo(CobrancaAnexo $anexo)
+    {
+        if (! Storage::disk('public')->exists($anexo->caminho)) {
+            abort(404, 'Arquivo não encontrado no servidor.');
+        }
+
+        return Storage::disk('public')->download($anexo->caminho, $anexo->nome_original);
+    }
+
+    public function destroyAnexo(CobrancaAnexo $anexo)
+    {
+        Storage::disk('public')->delete($anexo->caminho);
+        $anexo->delete();
+
+        return response()->json(['message' => 'Anexo removido.']);
     }
 
     private function validated(Request $request): array

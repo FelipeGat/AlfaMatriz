@@ -6,14 +6,17 @@ use App\Models\CentroCusto;
 use App\Models\Conta;
 use App\Models\ContaFinanceira;
 use App\Models\ContaPagar;
+use App\Models\ContaPagarAnexo;
 use App\Models\Fornecedor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ContaPagarController extends Controller
 {
     public function index(Request $request)
     {
         $contasPagar = ContaPagar::with(['centroCusto', 'conta.subcategoria.categoria', 'fornecedor', 'contaFixaPagar'])
+            ->withCount('anexos')
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->when($request->tipo, fn ($q) => $q->where('tipo', $request->tipo))
             ->orderByDesc('data_vencimento')
@@ -92,6 +95,53 @@ class ContaPagarController extends Controller
         }
 
         return redirect()->route('contas-pagar.index')->with('status', $status);
+    }
+
+    public function listarAnexos(ContaPagar $conta_pagar)
+    {
+        return response()->json($conta_pagar->anexos()->latest()->get());
+    }
+
+    public function storeAnexo(Request $request, ContaPagar $conta_pagar)
+    {
+        $data = $request->validate([
+            'tipo' => 'required|in:nf,boleto',
+            'arquivos' => 'required|array|min:1|max:5',
+            'arquivos.*' => 'required|file|mimes:pdf|max:10240',
+        ]);
+
+        foreach ($request->file('arquivos') as $arquivo) {
+            $nomeOriginal = preg_replace('/[^a-zA-Z0-9._-]/', '_', $arquivo->getClientOriginalName());
+            $nomeArquivo = uniqid().'_'.time().'.'.$arquivo->getClientOriginalExtension();
+            $caminho = $arquivo->storeAs('anexos/contas-pagar', $nomeArquivo, 'public');
+
+            $conta_pagar->anexos()->create([
+                'tipo' => $data['tipo'],
+                'nome_original' => $nomeOriginal,
+                'nome_arquivo' => $nomeArquivo,
+                'caminho' => $caminho,
+                'tamanho' => $arquivo->getSize(),
+            ]);
+        }
+
+        return response()->json(['message' => 'Anexo(s) enviado(s) com sucesso.']);
+    }
+
+    public function downloadAnexo(ContaPagarAnexo $anexo)
+    {
+        if (! Storage::disk('public')->exists($anexo->caminho)) {
+            abort(404, 'Arquivo não encontrado no servidor.');
+        }
+
+        return Storage::disk('public')->download($anexo->caminho, $anexo->nome_original);
+    }
+
+    public function destroyAnexo(ContaPagarAnexo $anexo)
+    {
+        Storage::disk('public')->delete($anexo->caminho);
+        $anexo->delete();
+
+        return response()->json(['message' => 'Anexo removido.']);
     }
 
     private function formData(): array

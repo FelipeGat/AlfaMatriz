@@ -95,6 +95,14 @@
                                     </td>
                                     <td class="px-4 py-4 text-right whitespace-nowrap">
                                         <div class="flex items-center justify-end gap-1">
+                                            <button type="button" title="Anexos (NF/Boleto)"
+                                                    @click="$dispatch('open-modal', 'anexos-receita'); $dispatch('anexos-selecionar', { modal: 'anexos-receita', id: {{ $cobranca->id }} })"
+                                                    class="relative p-1.5 rounded-md text-ink-mute/70 hover:text-brand-dim hover:bg-brand/10 transition">
+                                                <span class="block h-4 w-4"><x-nav-icon name="paperclip" /></span>
+                                                @if ($cobranca->anexos_count > 0)
+                                                    <span class="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-brand text-white text-[9px] leading-[14px] font-semibold">{{ $cobranca->anexos_count }}</span>
+                                                @endif
+                                            </button>
                                             @if ($cobranca->status === 'pendente')
                                                 <form action="{{ route('cobrancas.baixar', $cobranca) }}" method="POST" onsubmit="return confirm('Confirmar recebimento?');">
                                                     @csrf
@@ -128,4 +136,6 @@
             </div>
         </div>
     </div>
+
+    <x-anexos-modal name="anexos-receita" resource-url="{{ url('cobrancas') }}" anexo-url="{{ url('cobrancas/anexos') }}" />
 </x-app-layout>
