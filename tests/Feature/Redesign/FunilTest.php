@@ -76,6 +76,44 @@ class FunilTest extends TestCase
     }
 
     /**
+     * @spec:AC-044 A roda do mouse rola o quadro na horizontal — num kanban a
+     * direção que importa é a lateral, e mouse comum não tem eixo X.
+     *
+     * O que este teste protege de verdade é a RESSALVA: a coluna sob o cursor
+     * tem prioridade. Sequestrar a roda sempre tiraria o único jeito de ver o
+     * fim de uma coluna cheia, trocando um incômodo por outro pior.
+     */
+    public function test_a_roda_rola_o_quadro_mas_cede_a_vez_para_a_coluna(): void
+    {
+        $this->lead('lead');
+
+        $html = $this->actingAs($this->operador())->get(route('leads.index'))->getContent();
+
+        // O quadro escuta a roda e sabe se apontar.
+        $this->assertStringContainsString('@wheel="rolarQuadro($event)"', $html);
+        $this->assertStringContainsString('x-ref="quadro"', $html);
+
+        // Cada coluna se identifica, para o comportamento saber onde o cursor
+        // está — sem isso não há como dar a vez a ela.
+        $this->assertStringContainsString('data-coluna-lista', $html);
+
+        // A coluna com o que mostrar fica com a roda: o quadro só assume
+        // quando ela chegou ao fim (ou ao topo, subindo).
+        $this->assertMatchesRegularExpression(
+            '/const folgaAbaixo = coluna\.scrollHeight - coluna\.clientHeight - coluna\.scrollTop;/',
+            $html,
+            'Sem medir a folga da coluna, a roda a atropela.'
+        );
+        $this->assertMatchesRegularExpression('/if \(desce \|\| sobe\) return;/', $html);
+
+        // Gesto horizontal de trackpad passa direto: ali o navegador já acerta.
+        $this->assertStringContainsString(
+            'Math.abs(evento.deltaX) > Math.abs(evento.deltaY)',
+            $html
+        );
+    }
+
+    /**
      * @spec:AC-045 Arrastar move o lead, e o menu faz o mesmo sem mouse — pelos
      * dois caminhos o lead muda de estágio e as colunas se reajustam.
      */

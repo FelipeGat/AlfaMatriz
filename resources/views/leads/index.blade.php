@@ -54,7 +54,11 @@
 
             {{-- `items-stretch` + `min-h-0` é o que faz todas as colunas terem
                  a mesma altura e cada uma rolar por dentro. --}}
-            <div class="flex-1 min-h-0 flex gap-3 items-stretch overflow-x-auto p-3.5">
+            {{-- A roda do mouse rola o quadro na horizontal: num kanban a
+                 direção que importa é a lateral, e mouse comum não tem eixo X.
+                 A coluna sob o cursor tem prioridade — ver rolarQuadro(). --}}
+            <div x-ref="quadro" @wheel="rolarQuadro($event)"
+                 class="flex-1 min-h-0 flex gap-3 items-stretch overflow-x-auto p-3.5">
                 @foreach ($estagios as $estagio)
                     @php $cards = $colunas[$estagio['chave']]; @endphp
 
@@ -80,7 +84,7 @@
                             </p>
                         </header>
 
-                        <div class="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
+                        <div data-coluna-lista class="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
                             @forelse ($cards as $lead)
                                 @php
                                     $temperatura = $lead->temperatura();
@@ -197,6 +201,36 @@
 
                 // Modelo de rota com marcador: o id só é conhecido no solto.
                 rotaMover: @json(route('leads.mover', ['lead' => '__ID__'])),
+
+                /**
+                 * Roda do mouse → rolagem lateral do quadro.
+                 *
+                 * Com uma ressalva que é o ponto todo: se o cursor está sobre
+                 * uma coluna que AINDA tem card para mostrar, quem rola é a
+                 * coluna. Sequestrar a roda ali tiraria o único jeito de ver o
+                 * fim de uma coluna cheia — trocaria um incômodo por outro
+                 * pior.
+                 *
+                 * Gesto horizontal de trackpad também passa direto: ali o
+                 * navegador já faz a coisa certa sozinho.
+                 */
+                rolarQuadro(evento) {
+                    if (Math.abs(evento.deltaX) > Math.abs(evento.deltaY)) return;
+
+                    const coluna = evento.target.closest('[data-coluna-lista]');
+                    if (coluna) {
+                        const folgaAbaixo = coluna.scrollHeight - coluna.clientHeight - coluna.scrollTop;
+                        const desce = evento.deltaY > 0 && folgaAbaixo > 1;
+                        const sobe = evento.deltaY < 0 && coluna.scrollTop > 1;
+                        if (desce || sobe) return;
+                    }
+
+                    const quadro = this.$refs.quadro;
+                    if (! quadro || quadro.scrollWidth <= quadro.clientWidth) return;
+
+                    evento.preventDefault();
+                    quadro.scrollLeft += evento.deltaY;
+                },
 
                 permitir(estagio) {
                     if (this.arrastando !== null) {
