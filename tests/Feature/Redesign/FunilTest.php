@@ -91,8 +91,20 @@ class FunilTest extends TestCase
 
         $html = $this->actingAs($this->operador())->get(route('leads.index'))->getContent();
 
-        // É esta linha que mata o encadeamento.
-        $this->assertStringContainsString('overscroll-contain', $html);
+        // A coluna contém só o eixo VERTICAL. Conter os dois bloqueava o
+        // shift+roda de chegar ao quadro — o jeito padrão de rolar na
+        // horizontal. (O modal desta mesma tela contém os dois, e ali está
+        // certo: dele nada deve vazar.)
+        $this->assertMatchesRegularExpression(
+            '/data-coluna-lista[^>]*overscroll-y-contain/',
+            $html,
+            'A coluna precisa conter só o eixo vertical.'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/data-coluna-lista[^>]*overscroll-contain(?![-a-z])/',
+            $html,
+            'Conter os dois eixos na coluna tira do usuário a rolagem lateral por shift+roda.'
+        );
 
         // E o sequestro da roda, que era a causa, não voltou.
         $this->assertStringNotContainsString('rolarQuadro', $html,

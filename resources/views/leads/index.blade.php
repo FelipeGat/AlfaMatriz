@@ -92,10 +92,12 @@
                             </p>
                         </header>
 
-                        {{-- `overscroll-contain`: a roda PARA quando a coluna acaba, em vez
-                             de continuar no quadro. Sem isto, ler uma coluna até o fim
-                             fazia o quadro inteiro deslizar de lado sem ninguém pedir. --}}
-                        <div data-coluna-lista class="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-2">
+                        {{-- `overscroll-y-contain`, e não `overscroll-contain`: conter os
+                             DOIS eixos bloqueava o shift+roda de chegar ao quadro, que é o
+                             jeito padrão de rolar na horizontal. Aqui só o eixo vertical é
+                             contido — a rolagem da coluna não empurra a página, e o gesto
+                             horizontal continua passando para o quadro. --}}
+                        <div data-coluna-lista class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 space-y-2">
                             @forelse ($cards as $lead)
                                 @php
                                     $temperatura = $lead->temperatura();
