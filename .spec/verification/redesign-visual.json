@@ -1,7 +1,7 @@
 {
   "feature": "redesign-visual",
-  "timestamp": "2026-08-06T18:19:22.112Z",
-  "gitRev": "ea9caaf",
+  "timestamp": "2026-08-06T18:47:28.318Z",
+  "gitRev": "ac32a56",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
@@ -149,7 +149,7 @@
     },
     "AC-060": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Redesign\\LoginTest::test_a_tela_de_entrada_traz_marca_campos_e_estado_do_sistema @spec:AC-060",
+      "testName": "Tests\\Feature\\Redesign\\LoginTest::test_a_tela_de_entrada_traz_marca_centralizada_e_campos @spec:AC-060",
       "method": "tap"
     },
     "AC-061": {

@@ -53,7 +53,10 @@
             <div class="w-full relative flex flex-col gap-6" style="max-width: 396px">
                 <div class="rounded-panel border border-line bg-panel flex flex-col gap-6"
                      style="padding: 30px 28px">
-                    <a href="/" class="flex items-center gap-2.5">
+                    {{-- A marca centraliza no card: sem o texto de apoio ao
+                         lado, encostada à esquerda ela ficava desamarrada do
+                         resto do conteúdo. --}}
+                    <a href="/" class="flex items-center justify-center gap-2.5">
                         <img src="/icon-matriz.svg" alt="" class="h-9 w-9 shrink-0">
                         <img src="/alfamatriz.png" alt="AlfaMatriz" class="h-[17px] w-auto shrink-0">
                     </a>
@@ -61,27 +64,9 @@
                     {{ $slot }}
                 </div>
 
-                {{-- Selo de estado: quem não consegue entrar precisa saber se o
-                     problema é a senha ou o servidor. Vem da checagem de saúde
-                     que o deploy já usa. --}}
-                <div class="flex flex-col items-center gap-2.5"
-                     x-data="{ ok: true }"
-                     x-init="fetch('{{ route('healthz') }}').then(r => ok = r.ok).catch(() => ok = false)">
-                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-full border"
-                         :style="ok
-                             ? 'background: var(--good-tint); border-color: var(--good-line)'
-                             : 'background: var(--crit-tint); border-color: rgb(var(--crit) / 0.25)'">
-                        <span class="h-[7px] w-[7px] rounded-full shrink-0"
-                              :style="ok ? 'background: rgb(var(--good))' : 'background: rgb(var(--crit))'"></span>
-                        <span class="font-mono text-[10.5px] uppercase tracking-caps"
-                              :style="ok ? 'color: rgb(var(--good))' : 'color: rgb(var(--crit))'"
-                              x-text="ok ? 'Sistemas operacionais' : 'Sistema com instabilidade'"></span>
-                    </div>
-
-                    <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint text-center">
-                        Painel interno · acesso somente por convite
-                    </p>
-                </div>
+                <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint text-center">
+                    Painel interno · acesso somente por convite
+                </p>
             </div>
         </div>
     </body>

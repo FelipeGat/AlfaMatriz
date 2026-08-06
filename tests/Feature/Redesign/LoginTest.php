@@ -14,11 +14,11 @@ use Tests\TestCase;
 class LoginTest extends TestCase
 {
     /**
-     * @spec:AC-060 O login traz a marca, os campos e o estado do sistema — card
-     * centrado, e-mail e senha com mostrar/ocultar, lembrar-me, recuperação e
-     * o selo alimentado pela checagem de saúde que já existe.
+     * @spec:AC-060 O login traz a marca e os campos, sem ruído — card centrado,
+     * marca centralizada nele, e-mail e senha com mostrar/ocultar, lembrar-me e
+     * recuperação de senha, e nada além disso.
      */
-    public function test_a_tela_de_entrada_traz_marca_campos_e_estado_do_sistema(): void
+    public function test_a_tela_de_entrada_traz_marca_centralizada_e_campos(): void
     {
         $resposta = $this->get(route('login'));
 
@@ -27,13 +27,17 @@ class LoginTest extends TestCase
 
         $html = $resposta->getContent();
 
-        // ── A marca do handoff, ícone e wordmark.
+        // ── A marca do handoff, ícone e wordmark, CENTRALIZADA no card.
         $resposta->assertSee('/icon-matriz.svg', escape: false);
         $resposta->assertSee('/alfamatriz.png', escape: false);
         $resposta->assertDontSee('logo-tile.svg', escape: false);
+        $this->assertMatchesRegularExpression(
+            '/<a href="\/" class="flex items-center justify-center/',
+            file_get_contents(base_path('resources/views/layouts/guest.blade.php')),
+            'A marca precisa ficar centralizada no card.'
+        );
 
         // ── Os campos, com o olho de mostrar/ocultar senha.
-        $resposta->assertSee('Acesso restrito à equipe AlfaMatriz.', escape: false);
         $this->assertStringContainsString('name="email"', $html);
         $this->assertStringContainsString('name="password"', $html);
         $this->assertStringContainsString("showPw ? 'text' : 'password'", $html);
@@ -41,12 +45,14 @@ class LoginTest extends TestCase
         $resposta->assertSee('Lembrar-me', escape: false);
         $resposta->assertSee(route('password.request'), escape: false);
 
-        // ── O selo de estado, alimentado pela rota de saúde do deploy.
-        $resposta->assertSee(route('healthz'), escape: false);
-        $this->assertStringContainsString("ok ? 'Sistemas operacionais' : 'Sistema com instabilidade'", $html);
+        // ── Sem ruído: o selo de estado e o texto de apoio saíram a pedido do
+        // dono do produto. A tela diz o que é e para de falar.
+        $resposta->assertDontSee('Sistemas operacionais', escape: false);
+        $resposta->assertDontSee('Acesso restrito', escape: false);
         $resposta->assertSee('acesso somente por convite', escape: false);
 
-        // ── E a checagem que alimenta o selo responde de verdade, sem sessão.
+        // A checagem de saúde continua de pé — ela serve ao deploy, que é quem
+        // sempre dependeu dela; o que saiu foi só o selo na tela.
         $this->get(route('healthz'))->assertOk();
 
         // ── A tela fala em token: nenhuma cor cravada, senão ela não troca de

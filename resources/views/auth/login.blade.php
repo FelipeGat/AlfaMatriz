@@ -1,8 +1,5 @@
 <x-guest-layout>
-    <div class="flex flex-col gap-1.5">
-        <h1 class="font-display text-[21px] font-semibold text-ink">Entrar</h1>
-        <p class="text-[13.5px] text-ink-dim">Acesso restrito à equipe AlfaMatriz.</p>
-    </div>
+    <h1 class="font-display text-[21px] font-semibold text-ink">Entrar</h1>
 
     <x-auth-session-status :status="session('status')" />
 

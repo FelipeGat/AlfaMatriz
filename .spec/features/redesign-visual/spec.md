@@ -307,13 +307,13 @@ remover, para não apagar um centro de custo que carrega histórico.
 Como pessoa da equipe, quero uma tela de entrada que já mostre que o sistema
 está no ar, para saber se o problema é a minha senha ou o servidor.
 
-#### AC-060 — O login traz a marca, os campos e o estado do sistema
+#### AC-060 — O login traz a marca e os campos, sem ruído
 
 - **Dado** alguém não autenticado
 - **Quando** abre a tela de entrada
-- **Então** vê o card centrado com a marca, os campos de e-mail e senha (com
-  mostrar/ocultar senha), lembrar-me e recuperação, e um selo declarando que os
-  sistemas estão operacionais — alimentado pela checagem de saúde que já existe
+- **Então** vê o card centrado com a marca centralizada nele, os campos de
+  e-mail e senha (com mostrar/ocultar senha), lembrar-me e recuperação de
+  senha — e nada além disso: a porta de entrada não explica a si mesma
 
 ### US-027 — Mobile funcional
 
