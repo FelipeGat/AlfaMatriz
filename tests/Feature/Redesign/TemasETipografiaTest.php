@@ -47,12 +47,24 @@ class TemasETipografiaTest extends TestCase
             $this->assertStringContainsString($token.':', $light, "O tema claro não define {$token}.");
         }
 
-        // Alguns valores do handoff, para provar que a paleta é a certa e não
-        // uma aproximação.
-        $this->assertStringContainsString('#0a0a0a', $dark, 'Fundo do tema escuro fora do handoff.');
-        $this->assertStringContainsString('#fafafa', $light, 'Fundo do tema claro fora do handoff.');
-        $this->assertStringContainsString('#ededed', $dark, 'Texto do tema escuro fora do handoff.');
-        $this->assertStringContainsString('#171717', $light, 'Texto do tema claro fora do handoff.');
+        // Valores exatos por token — asserção por presença deixava passar um
+        // hex que migrou de um token para outro.
+        $this->assertStringContainsString('--bg: #000000', $dark, 'O fundo escuro é preto puro, como a referência.');
+        $this->assertStringContainsString('--panel: #0a0a0a', $dark, 'O card precisa se destacar do fundo preto.');
+        $this->assertStringContainsString('--ink: #ededed', $dark);
+
+        $this->assertStringContainsString('--bg: #fafafa', $light);
+        $this->assertStringContainsString('--ink: #171717', $light);
+
+        // A borda clara precisa ser lida contra o fundo: com #ebebeb ela
+        // praticamente sumia no #fafafa.
+        preg_match('/--border:\s*#([0-9a-f]{6})/i', $light, $m);
+        $this->assertNotEmpty($m, 'O tema claro precisa definir a borda em hex.');
+        $this->assertLessThan(
+            0xe0e0e0,
+            hexdec($m[1]),
+            'A borda do tema claro está clara demais para separar card de fundo.'
+        );
 
         // E o Tailwind precisa consumir as variáveis, não os hex.
         foreach (['bg', 'panel', 'raised', 'ink', 'dim', 'mute'] as $cor) {

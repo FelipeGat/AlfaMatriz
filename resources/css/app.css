@@ -18,10 +18,10 @@
  */
 :root,
 :root[data-theme='dark'] {
-    --bg: #0a0a0a;
-    --sidebar: #0a0a0a;
-    --panel: #111111;
-    --raised: #1a1a1a;
+    --bg: #000000;
+    --sidebar: #000000;
+    --panel: #0a0a0a;
+    --raised: #161616;
     --border: #262626;
     --ink: #ededed;
     --dim: #a1a1a1;
@@ -31,10 +31,10 @@
     --good: #4ac97e;
     --warn: #e0a13a;
     --bad: #e5484d;
-    --track: #222222;
+    --track: #1f1f1f;
     --track2: #333333;
-    --nav-active: #1c1c1c;
-    --nav-hover: #161616;
+    --nav-active: #1a1a1a;
+    --nav-hover: #121212;
     /* O wordmark é PNG colorido: o filtro o torna monocromático por tema. */
     --logo-filter: brightness(0) invert(1);
 }
@@ -44,7 +44,7 @@
     --sidebar: #fafafa;
     --panel: #ffffff;
     --raised: #f4f4f4;
-    --border: #ebebeb;
+    --border: #d9d9d9;
     --ink: #171717;
     --dim: #666666;
     --mute: #8f8f8f;
@@ -53,8 +53,8 @@
     --good: #0f7c46;
     --warn: #b4671f;
     --bad: #c62f38;
-    --track: #ebebeb;
-    --track2: #d4d4d4;
+    --track: #e8e8e8;
+    --track2: #c4c4c4;
     --nav-active: #ececec;
     --nav-hover: #f2f2f2;
     --logo-filter: brightness(0);
