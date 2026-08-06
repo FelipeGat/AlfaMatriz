@@ -61,10 +61,12 @@
         <div class="flex items-center gap-4">
             <a href="{{ route('cobrancas.index') }}" class="text-sm text-ink-dim hover:text-ink">&larr; Voltar</a>
             @if ($cobranca->status === 'pendente')
-                <form action="{{ route('cobrancas.baixar', $cobranca) }}" method="POST" onsubmit="return confirm('Confirmar recebimento?');">
-                    @csrf
-                    <button class="text-good hover:opacity-80 text-sm">Baixar</button>
-                </form>
+                <x-confirmar :action="route('cobrancas.baixar', $cobranca)" confirmar="Dar baixa"
+                             titulo="Confirmar o recebimento?"
+                             :mensagem="$cobranca->descricao.' — R$ '.number_format($cobranca->valor, 2, ',', '.').'. A entrada vai para o caixa e o título sai de em aberto.'"
+                             class="text-good hover:opacity-80 text-sm">
+                    Dar baixa
+                </x-confirmar>
             @endif
             <a href="{{ route('cobrancas.edit', $cobranca) }}" class="text-brand hover:text-brand-bright text-sm">Editar</a>
         </div>

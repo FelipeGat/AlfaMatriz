@@ -8,6 +8,7 @@
             anexos: [],
             enviando: false,
             erro: null,
+            aRemover: null,
             carregar() {
                 fetch('{{ $resourceUrl }}/' + this.recordId + '/anexos')
                     .then(r => r.json())
@@ -39,8 +40,14 @@
                     .catch(e => this.erro = e.message)
                     .finally(() => this.enviando = false);
             },
-            remover(anexo) {
-                if (! confirm('Remover este anexo?')) return;
+            // A remoção é por fetch, não por formulário: a confirmação vira
+            // estado deste modal (qual anexo espera confirmação), para não
+            // cair no diálogo do navegador — o único que sobrara na tela.
+            pedirRemocao(anexo) { this.aRemover = anexo; },
+            remover() {
+                const anexo = this.aRemover;
+                this.aRemover = null;
+                if (! anexo) return;
                 fetch('{{ $anexoUrl }}/' + anexo.id, {
                     method: 'DELETE',
                     headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
@@ -49,8 +56,43 @@
             },
         }"
         x-on:anexos-selecionar.window="if ($event.detail.modal === '{{ $name }}') { recordId = $event.detail.id; carregar(); }"
-        class="p-6"
+        class="relative p-6"
     >
+        {{-- Confirmação da remoção, com a mesma cara do <x-confirmar>. Aqui ela
+             vive no próprio modal porque a remoção é fetch, não formulário. --}}
+        <div x-show="aRemover" x-cloak class="absolute inset-0 z-10 flex items-center justify-center p-4"
+             @keydown.escape.window="aRemover = null" role="dialog" aria-modal="true">
+            <div class="absolute inset-0 bg-black/60" @click="aRemover = null"></div>
+
+            <div class="relative w-full max-w-[380px] rounded-panel border border-line bg-panel p-5">
+                <div class="flex items-start gap-3">
+                    <span class="h-8 w-8 shrink-0 rounded-tile flex items-center justify-center"
+                          style="background: rgb(var(--crit) / var(--tint-alpha)); color: rgb(var(--crit))">
+                        <span class="h-[17px] w-[17px]"><x-nav-icon name="alert-triangle" /></span>
+                    </span>
+                    <div class="min-w-0">
+                        <h2 class="font-display text-[15.5px] font-semibold text-ink">Remover este anexo?</h2>
+                        <p class="mt-1 text-[13px] text-ink-dim">
+                            <span class="font-medium text-ink" x-text="aRemover?.nome_original ?? aRemover?.nome ?? 'O arquivo'"></span>
+                            sai do lançamento e o arquivo é apagado do servidor.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-5 flex items-center justify-end gap-2">
+                    <button type="button" @click="aRemover = null"
+                            class="h-9 px-3.5 rounded-control border border-btn-line text-[12.5px] font-semibold text-ink-dim hover:text-ink transition">
+                        Cancelar
+                    </button>
+                    <button type="button" @click="remover()"
+                            class="h-9 px-3.5 rounded-control text-[12.5px] font-semibold text-white transition hover:opacity-90"
+                            style="background: rgb(var(--crit))">
+                        Remover
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <h3 class="font-display font-semibold text-ink text-lg mb-4">Anexos (NF / Boleto)</h3>
 
         <form @submit.prevent="enviar($event)" class="flex flex-wrap items-end gap-3 mb-5 pb-5 border-b border-white/5">
@@ -91,7 +133,7 @@
                     <a :href="anexo.url" target="_blank" title="Baixar" class="p-1.5 rounded-md text-status-good/70 hover:text-status-good hover:bg-status-good/10 transition">
                         <span class="block h-4 w-4"><x-nav-icon name="download" /></span>
                     </a>
-                    <button type="button" @click="remover(anexo)" title="Remover" class="p-1.5 rounded-md text-status-critical/70 hover:text-status-critical hover:bg-status-critical/10 transition">
+                    <button type="button" @click="pedirRemocao(anexo)" title="Remover" class="p-1.5 rounded-md text-status-critical/70 hover:text-status-critical hover:bg-status-critical/10 transition">
                         <span class="block h-4 w-4"><x-nav-icon name="trash" /></span>
                     </button>
                 </div>

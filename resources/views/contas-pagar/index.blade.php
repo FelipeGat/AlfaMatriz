@@ -109,11 +109,12 @@
                                      .toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })"></span>
                 </span>
 
-                <button type="submit" form="bulk-baixa-despesas"
-                        onclick="return confirm('Dar baixa nas despesas selecionadas?');"
-                        class="ml-auto h-8 px-3 rounded-control bg-brand text-on-brand text-[12px] font-semibold hover:bg-brand-bright transition">
+                <x-confirmar form="bulk-baixa-despesas" confirmar="Dar baixa"
+                             titulo="Dar baixa nas despesas selecionadas?"
+                             mensagem="Todas as marcadas passam a pagas de uma vez, e as saídas vão para o caixa. Quem não tiver conta financeira definida é pulada."
+                             class="ml-auto h-8 px-3 rounded-control bg-brand text-on-brand text-[12px] font-semibold hover:bg-brand-bright transition">
                     Dar baixa nas despesas
-                </button>
+                </x-confirmar>
                 <button type="button" @click="selecionados = []"
                         class="font-mono text-[10.5px] uppercase tracking-caps text-ink-mute hover:text-ink transition">
                     Limpar
@@ -225,30 +226,28 @@
                                     </button>
 
                                     @if ($emAberto)
-                                        <form action="{{ route('contas-pagar.baixar', $contaPagar) }}" method="POST"
-                                              onsubmit="return confirm('Confirmar pagamento?');">
-                                            @csrf
-                                            <x-acao-tabela icone="check-circle" titulo="Dar baixa" type="submit" />
-                                        </form>
+                                        <x-confirmar :action="route('contas-pagar.baixar', $contaPagar)"
+                                                     icone="check-circle" confirmar="Dar baixa"
+                                                     titulo="Confirmar o pagamento?"
+                                                     :mensagem="$contaPagar->descricao.' — R$ '.number_format($contaPagar->valor, 2, ',', '.').'. A saída entra no caixa e a despesa deixa de constar em aberto.'" />
                                     @endif
 
                                     @if ($contaPagar->contaFixaPagar)
-                                        <form action="{{ route('contas-fixas-pagar.pausar', $contaPagar->contaFixaPagar) }}" method="POST"
-                                              onsubmit="return confirm('{{ $contaPagar->contaFixaPagar->ativo ? 'Pausar esta despesa recorrente? Ela para de gerar novas parcelas.' : 'Reativar esta despesa recorrente?' }}');">
-                                            @csrf
-                                            <x-acao-tabela :icone="$contaPagar->contaFixaPagar->ativo ? 'pause' : 'play'"
-                                                           :titulo="$contaPagar->contaFixaPagar->ativo ? 'Pausar recorrência' : 'Ativar recorrência'"
-                                                           type="submit" />
-                                        </form>
+                                        <x-confirmar :action="route('contas-fixas-pagar.pausar', $contaPagar->contaFixaPagar)"
+                                                     :icone="$contaPagar->contaFixaPagar->ativo ? 'pause' : 'play'"
+                                                     :titulo="$contaPagar->contaFixaPagar->ativo ? 'Pausar esta recorrência?' : 'Reativar esta recorrência?'"
+                                                     :mensagem="$contaPagar->contaFixaPagar->ativo
+                                                         ? 'Ela para de gerar novas parcelas nos próximos meses. As parcelas já geradas continuam como estão.'
+                                                         : 'Ela volta a gerar parcelas a partir da próxima competência.'"
+                                                     :confirmar="$contaPagar->contaFixaPagar->ativo ? 'Pausar' : 'Reativar'" />
                                     @endif
 
                                     <x-acao-tabela icone="pencil" titulo="Editar despesa" :href="route('contas-pagar.edit', $contaPagar)" />
 
-                                    <form action="{{ route('contas-pagar.destroy', $contaPagar) }}" method="POST"
-                                          onsubmit="return confirm('Remover esta despesa?');">
-                                        @csrf @method('DELETE')
-                                        <x-acao-tabela icone="trash" titulo="Remover despesa" type="submit" destrutivo />
-                                    </form>
+                                    <x-confirmar :action="route('contas-pagar.destroy', $contaPagar)" method="DELETE"
+                                                 icone="trash" destrutivo confirmar="Remover"
+                                                 titulo="Remover esta despesa?"
+                                                 :mensagem="$contaPagar->descricao.' — R$ '.number_format($contaPagar->valor, 2, ',', '.').'. Sai da lista e do total a pagar.'" />
                                 </div>
                             </td>
                         </tr>

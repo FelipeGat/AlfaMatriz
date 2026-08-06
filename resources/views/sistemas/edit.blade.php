@@ -92,10 +92,10 @@
                                     <td class="px-3 py-2.5 text-right font-mono text-[13px] text-ink-dim whitespace-nowrap">{{ $tier->limite_unidades ?? 'ilimitado' }}</td>
                                     <td class="px-3 py-2.5">
                                         <div class="flex items-center justify-end">
-                                            <form action="{{ route('precos.destroy', $tier) }}" method="POST" onsubmit="return confirm('Remover este tier?');">
-                                                @csrf @method('DELETE')
-                                                <x-acao-tabela icone="trash" titulo="Remover tier" type="submit" destrutivo />
-                                            </form>
+                                            <x-confirmar :action="route('precos.destroy', $tier)" method="DELETE"
+                                                         icone="trash" destrutivo confirmar="Remover"
+                                                         titulo="Remover este tier de atacado?"
+                                                         mensagem="Sem tier, as unidades deste sistema ficam de fora do faturamento das revendas até alguém configurar outro." />
                                         </div>
                                     </td>
                                 </tr>

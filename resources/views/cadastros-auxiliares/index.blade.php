@@ -25,10 +25,10 @@
                             </span>
                             <span class="flex-1 min-w-0 text-[13.5px] text-ink truncate">{{ $centro->nome }}</span>
                             <span class="shrink-0 font-mono text-[11px] text-ink-mute whitespace-nowrap">{{ $centro->contas_pagar_count }} lançamento(s)</span>
-                            <form action="{{ route('centros-custo.destroy', $centro) }}" method="POST" onsubmit="return confirm('Remover?');">
-                                @csrf @method('DELETE')
-                                <x-acao-tabela icone="trash" titulo="Remover" destrutivo type="submit" />
-                            </form>
+                            <x-confirmar :action="route('centros-custo.destroy', $centro)" method="DELETE"
+                                         icone="trash" destrutivo confirmar="Remover"
+                                         titulo="Remover este centro de custo?"
+                                         :mensagem="$centro->contas_pagar_count.' lançamento(s) usam este centro de custo. Removê-lo deixa esses lançamentos sem centro.'" />
                         </div>
                     @empty
                         <p class="px-4 py-6 text-sm text-ink-mute">Nenhum centro de custo.</p>
@@ -55,10 +55,10 @@
                             </span>
                             <span class="flex-1 min-w-0 text-[13.5px] text-ink truncate">{{ $fornecedor->razao_social }}</span>
                             <span class="shrink-0 font-mono text-[11px] text-ink-mute whitespace-nowrap">{{ $fornecedor->contas_pagar_count }} lançamento(s)</span>
-                            <form action="{{ route('fornecedores.destroy', $fornecedor) }}" method="POST" onsubmit="return confirm('Remover?');">
-                                @csrf @method('DELETE')
-                                <x-acao-tabela icone="trash" titulo="Remover" destrutivo type="submit" />
-                            </form>
+                            <x-confirmar :action="route('fornecedores.destroy', $fornecedor)" method="DELETE"
+                                         icone="trash" destrutivo confirmar="Remover"
+                                         titulo="Remover este fornecedor?"
+                                         :mensagem="$fornecedor->contas_pagar_count.' lançamento(s) usam este fornecedor. Removê-lo deixa esses lançamentos sem fornecedor.'" />
                         </div>
                     @empty
                         <p class="px-4 py-6 text-sm text-ink-mute">Nenhum fornecedor.</p>
@@ -106,10 +106,10 @@
                             <span class="ml-auto font-mono text-[10.5px] text-ink-mute whitespace-nowrap">
                                 {{ $categoria->subcategorias->count() }} sub · {{ $categoria->subcategorias->sum(fn ($s) => $s->contas->count()) }} contas
                             </span>
-                            <form action="{{ route('categorias.destroy', $categoria) }}" method="POST" onsubmit="return confirm('Remover categoria e subcategorias?');">
-                                @csrf @method('DELETE')
-                                <x-acao-tabela icone="trash" titulo="Remover categoria" destrutivo type="submit" />
-                            </form>
+                            <x-confirmar :action="route('categorias.destroy', $categoria)" method="DELETE"
+                                         icone="trash" destrutivo confirmar="Remover"
+                                         titulo="Remover este categoria?"
+                                         :mensagem="'A categoria sai do plano de contas, junto com as subcategorias e contas dentro dela.'" />
                         </div>
 
                         @foreach ($categoria->subcategorias as $subcategoria)
@@ -117,20 +117,22 @@
                                 <div class="flex-none w-[168px] min-w-0 flex items-center gap-2">
                                     <span class="font-mono text-[11px] text-ink-faint">↳</span>
                                     <span class="flex-1 min-w-0 text-[13px] font-medium text-ink truncate">{{ $subcategoria->nome }}</span>
-                                    <form action="{{ route('subcategorias.destroy', $subcategoria) }}" method="POST" onsubmit="return confirm('Remover subcategoria e contas?');">
-                                        @csrf @method('DELETE')
-                                        <x-acao-tabela icone="x-mark" titulo="Remover subcategoria" destrutivo type="submit" />
-                                    </form>
+                                    <x-confirmar :action="route('subcategorias.destroy', $subcategoria)" method="DELETE"
+                                                 icone="x-mark" destrutivo confirmar="Remover"
+                                                 titulo="Remover esta subcategoria?"
+                                                 :mensagem="$subcategoria->nome.' sai do plano de contas, junto com as '.$subcategoria->contas->count().' conta(s) dentro dela.'" />
                                 </div>
                                 <div class="flex-1 min-w-0 flex flex-wrap gap-1.5 items-center">
                                     @foreach ($subcategoria->contas as $conta)
                                         <span class="inline-flex items-center gap-1.5 rounded-tile bg-chip pl-2 pr-1 py-[3px] text-[12px] text-ink-dim whitespace-nowrap"
                                               title="{{ $conta->contas_pagar_count }} lançamento(s)">
                                             {{ $conta->nome }}
-                                            <form action="{{ route('contas.destroy', $conta) }}" method="POST" onsubmit="return confirm('Remover conta?');" class="inline-flex">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" title="Remover conta" class="h-[14px] w-[14px] flex items-center justify-center text-ink-mute hover:text-crit">×</button>
-                                            </form>
+                                            <x-confirmar :action="route('contas.destroy', $conta)" method="DELETE"
+                                                         destrutivo confirmar="Remover"
+                                                         :titulo="'Remover a conta '.$conta->nome.'?'"
+                                                         :mensagem="$conta->contas_pagar_count.' lançamento(s) apontam para esta conta. Removê-la deixa esses lançamentos sem classificação.'"
+                                                         class="h-[14px] w-[14px] items-center justify-center text-ink-mute hover:text-crit"
+                                                         title="Remover conta">×</x-confirmar>
                                         </span>
                                     @endforeach
                                     <form action="{{ route('contas.store') }}" method="POST" class="inline-flex items-center">

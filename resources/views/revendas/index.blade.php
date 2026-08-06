@@ -153,12 +153,10 @@
                                                :href="route('faturamento.index')" />
                                 <x-acao-tabela icone="pencil" titulo="Editar revenda"
                                                :href="route('revendas.edit', $revenda)" />
-                                <form method="POST" action="{{ route('revendas.destroy', $revenda) }}"
-                                      onsubmit="return confirm('Remover {{ $revenda->nome }}?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <x-acao-tabela icone="trash" titulo="Remover revenda" type="submit" destrutivo />
-                                </form>
+                                <x-confirmar :action="route('revendas.destroy', $revenda)" method="DELETE"
+                                             icone="trash" destrutivo confirmar="Remover"
+                                             :titulo="'Remover '.$revenda->nome.'?'"
+                                             mensagem="A revenda sai da lista e deixa de aparecer no faturamento. Os clientes dela continuam cadastrados." />
                             </div>
                         </td>
                     </tr>

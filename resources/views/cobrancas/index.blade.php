@@ -87,10 +87,12 @@
                 <span x-text="selecionados.length"></span> selecionada(s) ·
                 <span x-text="'R$ ' + soma.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })"></span>
             </span>
-            <button type="submit" form="bulk-baixa-receitas" onclick="return confirm('Dar baixa nas receitas selecionadas?');"
-                    class="ml-auto h-[30px] px-3 rounded-control bg-brand text-on-brand font-sans text-[12px] font-semibold hover:bg-brand-bright transition">
+            <x-confirmar form="bulk-baixa-receitas" confirmar="Dar baixa"
+                         titulo="Dar baixa nas receitas selecionadas?"
+                         mensagem="Todas as marcadas passam a recebidas de uma vez, e as entradas vão para o caixa. Não dá para desfazer em lote."
+                         class="ml-auto h-[30px] px-3 rounded-control bg-brand text-on-brand font-sans text-[12px] font-semibold hover:bg-brand-bright transition">
                 Dar baixa nas receitas
-            </button>
+            </x-confirmar>
             <button type="button" @click="selecionados = []" class="text-[12px] text-ink-mute hover:text-ink">Limpar</button>
         </div>
 
@@ -153,17 +155,17 @@
                                 <x-acao-tabela icone="paperclip" titulo="Anexos (NF/Boleto)"
                                                @click="$dispatch('open-modal', 'anexos-receita'); $dispatch('anexos-selecionar', { modal: 'anexos-receita', id: {{ $cobranca->id }} })" />
                                 @if ($pendente)
-                                    <form action="{{ route('cobrancas.baixar', $cobranca) }}" method="POST" onsubmit="return confirm('Confirmar recebimento?');">
-                                        @csrf
-                                        <x-acao-tabela icone="check-circle" titulo="Dar baixa" type="submit" />
-                                    </form>
+                                    <x-confirmar :action="route('cobrancas.baixar', $cobranca)"
+                                                 icone="check-circle" confirmar="Dar baixa"
+                                                 titulo="Confirmar o recebimento?"
+                                                 :mensagem="$cobranca->descricao.' — R$ '.number_format($cobranca->valor, 2, ',', '.').'. A entrada vai para o caixa e o título sai de em aberto.'" />
                                 @endif
                                 <x-acao-tabela icone="eye" titulo="Ver" :href="route('cobrancas.show', $cobranca)" />
                                 <x-acao-tabela icone="pencil" titulo="Editar" :href="route('cobrancas.edit', $cobranca)" />
-                                <form action="{{ route('cobrancas.destroy', $cobranca) }}" method="POST" onsubmit="return confirm('Remover esta receita?');">
-                                    @csrf @method('DELETE')
-                                    <x-acao-tabela icone="trash" titulo="Remover" destrutivo type="submit" />
-                                </form>
+                                <x-confirmar :action="route('cobrancas.destroy', $cobranca)" method="DELETE"
+                                             icone="trash" destrutivo confirmar="Remover"
+                                             titulo="Remover esta receita?"
+                                             :mensagem="$cobranca->descricao.' — R$ '.number_format($cobranca->valor, 2, ',', '.').'. Sai da lista e do total a receber.'" />
                             </div>
                         </td>
                     </tr>

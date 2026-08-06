@@ -169,12 +169,10 @@
                                                :href="route('cobrancas.index', ['cliente' => $cliente->id])" />
                                 <x-acao-tabela icone="pencil" titulo="Editar cliente"
                                                :href="route('clientes.edit', $cliente)" />
-                                <form method="POST" action="{{ route('clientes.destroy', $cliente) }}"
-                                      onsubmit="return confirm('Remover {{ $cliente->nome_exibicao }}?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <x-acao-tabela icone="trash" titulo="Remover cliente" type="submit" destrutivo />
-                                </form>
+                                <x-confirmar :action="route('clientes.destroy', $cliente)" method="DELETE"
+                                             icone="trash" destrutivo confirmar="Remover"
+                                             :titulo="'Remover '.$cliente->nome_exibicao.'?'"
+                                             mensagem="O cliente sai da lista. As cobranças já emitidas para ele continuam no financeiro." />
                             </div>
                         </td>
                     </tr>

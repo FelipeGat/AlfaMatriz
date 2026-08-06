@@ -87,6 +87,13 @@
     /* grade de fundo da tela de entrada */
     --grid-line: rgba(230, 238, 240, 0.025);
 
+
+    /* Seta do <select>. O plugin de formulários crava stroke='%236b7280' —
+       um cinza fixo que não acompanha tema nenhum. A cor aqui é a mesma de
+       --ink-dim; fica ao lado dele de propósito, porque data URI não entende
+       currentColor nem var(), e separar as duas é como elas divergem. */
+    --seta-select: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239db0b6' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+
     /* barra de rolagem */
     --scroll-thumb: rgba(135, 152, 160, 0.34);
     --scroll-thumb-hover: rgba(2, 156, 175, 0.75);
@@ -153,6 +160,10 @@
 
     --grid-line: rgba(11, 26, 30, 0.03);
 
+
+    /* Mesma cor de --ink-dim do tema claro (#4a5c62). */
+    --seta-select: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%234a5c62' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+
     --scroll-thumb: rgba(93, 110, 117, 0.34);
     --scroll-thumb-hover: rgba(2, 156, 175, 0.75);
 }
@@ -185,6 +196,24 @@
     input[type='url'],
     input[type='search'] {
         @apply bg-input text-ink placeholder-ink-faint border-line rounded-control focus:border-brand focus:ring-brand;
+    }
+
+    /* A seta do plugin de formulários é substituída pela nossa, que segue o
+       tema. `background-size` menor que o padrão (1.5em) porque a seta nova é
+       um chevron fino, não uma seta cheia. */
+    select {
+        background-image: var(--seta-select);
+        background-position: right 0.6rem center;
+        background-size: 1.15em 1.15em;
+        padding-right: 2.25rem;
+    }
+
+    /* A lista aberta do select é desenhada pelo sistema operacional e não
+       aceita CSS. `color-scheme` no :root é o único controle que existe: é
+       ele que faz o menu nativo abrir escuro no tema escuro. */
+    select option {
+        background: rgb(var(--panel));
+        color: rgb(var(--ink));
     }
 
     input[type='checkbox'],

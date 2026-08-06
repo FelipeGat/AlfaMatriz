@@ -108,6 +108,51 @@ class VigiaTagTest extends TestCase
         $this->assertStringNotContainsString('php artisan migrate', $this->chamadas());
     }
 
+    /**
+     * @spec:AC-069 O vigia roda pelo cron, que entrega um PATH mínimo
+     * (/usr/bin:/bin). As ferramentas de build vivem em /usr/local/bin — se o
+     * script não completar o PATH sozinho, ele funciona quando alguém o chama
+     * à mão e falha a cada 5 minutos pelo agendador, sempre no mesmo ponto e
+     * antes do health check.
+     *
+     * Este teste existe porque foi exatamente o que aconteceu: a publicação de
+     * v2026.08.06 morreu em "composer: command not found". Os outros testes
+     * não pegaram porque todos põem o diretório de binários falsos no PATH
+     * antes de rodar — o PATH pobre do cron nunca era exercitado.
+     *
+     * A verificação é na fonte, e não no comportamento, por um motivo
+     * concreto: reproduzir o caso exigiria escrever um composer falso em
+     * /usr/local/bin da máquina que roda os testes. O que importa aqui é o
+     * script não depender do PATH que recebe — e disso a fonte dá conta.
+     */
+    public function test_o_vigia_completa_o_path_que_o_cron_nao_entrega(): void
+    {
+        $fonte = file_get_contents(base_path('deploy/deploy-tag-watcher-alfamatriz.sh'));
+
+        $this->assertMatchesRegularExpression(
+            '/^export PATH=.*\/usr\/local\/bin/m',
+            $fonte,
+            'Sem completar o PATH, o vigia não acha o composer quando roda pelo cron.'
+        );
+
+        // Acrescentado ao FIM: prefixar tiraria a prioridade de quem chamou o
+        // script com um PATH próprio — inclusive a suíte, que injeta binários
+        // falsos e precisa que eles ganhem dos reais.
+        $this->assertMatchesRegularExpression(
+            '/^export PATH="\$PATH:/m',
+            $fonte,
+            'O PATH de quem chamou precisa continuar tendo prioridade.'
+        );
+
+        // O irmão do staging já tinha essa correção; este script nasceu depois
+        // e não a herdou. Se um dia ela sair de lá, este teste avisa.
+        $this->assertMatchesRegularExpression(
+            '/^export PATH=.*\/usr\/local\/bin/m',
+            file_get_contents(base_path('deploy/deploy-staging-alfamatriz.sh')),
+            'O executor de staging perdeu a correção de PATH que já tinha.'
+        );
+    }
+
     // ------------------------------------------------------------- apoio
 
     private function rodar(): Process

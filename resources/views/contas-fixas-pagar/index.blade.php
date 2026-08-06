@@ -86,18 +86,17 @@
 
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1">
-                                <form action="{{ route('contas-fixas-pagar.pausar', $fixa) }}" method="POST"
-                                      onsubmit="return confirm('{{ $fixa->ativo ? 'Pausar esta despesa recorrente? Ela para de gerar novas parcelas.' : 'Reativar esta despesa recorrente?' }}');">
-                                    @csrf
-                                    <x-acao-tabela :icone="$fixa->ativo ? 'pause' : 'play'"
-                                                   :titulo="$fixa->ativo ? 'Pausar recorrência' : 'Ativar recorrência'"
-                                                   type="submit" />
-                                </form>
-                                <form action="{{ route('contas-fixas-pagar.destroy', $fixa) }}" method="POST"
-                                      onsubmit="return confirm('Remover esta despesa fixa?');">
-                                    @csrf @method('DELETE')
-                                    <x-acao-tabela icone="trash" titulo="Remover despesa recorrente" type="submit" destrutivo />
-                                </form>
+                                <x-confirmar :action="route('contas-fixas-pagar.pausar', $fixa)"
+                                             :icone="$fixa->ativo ? 'pause' : 'play'"
+                                             :titulo="$fixa->ativo ? 'Pausar esta recorrência?' : 'Reativar esta recorrência?'"
+                                             :mensagem="$fixa->ativo
+                                                 ? 'Ela para de gerar novas parcelas nos próximos meses. As parcelas já geradas continuam como estão.'
+                                                 : 'Ela volta a gerar parcelas a partir da próxima competência.'"
+                                             :confirmar="$fixa->ativo ? 'Pausar' : 'Reativar'" />
+                                <x-confirmar :action="route('contas-fixas-pagar.destroy', $fixa)" method="DELETE"
+                                             icone="trash" destrutivo confirmar="Remover"
+                                             titulo="Remover esta recorrência?"
+                                             :mensagem="$fixa->descricao.' deixa de existir como modelo. As parcelas já geradas continuam em Despesas.'" />
                             </div>
                         </td>
                     </tr>

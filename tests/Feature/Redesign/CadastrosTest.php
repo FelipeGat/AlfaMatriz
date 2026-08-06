@@ -101,14 +101,44 @@ class CadastrosTest extends TestCase
         $blocoDespesa = substr($html, strpos($html, 'Administrativo'), 800);
         $this->assertStringContainsString('Despesa', $blocoDespesa);
 
-        // A subcategoria é uma linha com as contas como etiquetas ao lado —
-        // nome da subcategoria e as duas contas aparecem próximos, na mesma
-        // linha horizontal, não em blocos verticais separados.
-        $trechoSub = substr($html, strpos($html, 'Licenciamento'), 2500);
-        $this->assertStringContainsString('Atacado de revenda', $trechoSub);
-        $this->assertStringContainsString('Venda direta', $trechoSub);
+        // A subcategoria é uma linha com as contas como etiquetas ao lado, e
+        // não um bloco vertical com as contas indentadas embaixo.
+        //
+        // A verificação é ESTRUTURAL: nome e etiquetas dentro do mesmo
+        // elemento de linha. A versão anterior media distância em caracteres
+        // no HTML, o que confundia "está perto na tela" com "está perto na
+        // fonte" — e reprovou no dia em que as caixas de confirmação passaram
+        // a render mais markup no meio, sem nada ter mudado no layout.
+        $linha = $this->linhaDaSubcategoria($html, 'Licenciamento');
+
+        $this->assertStringContainsString('Atacado de revenda', $linha,
+            'As contas precisam viver na mesma linha da subcategoria.');
+        $this->assertStringContainsString('Venda direta', $linha);
 
         $resposta->assertSeeInOrder(['Receitas de software', 'Licenciamento', 'Atacado de revenda', 'Venda direta']);
         $resposta->assertSeeInOrder(['Administrativo', 'Escritório', 'Aluguel']);
     }
+
+    /**
+     * Devolve o HTML do elemento de linha que contém a subcategoria — o mesmo
+     * `<div>` que precisa abrigar o nome e as etiquetas de conta.
+     */
+    private function linhaDaSubcategoria(string $html, string $nome): string
+    {
+        $dom = new \DOMDocument;
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="UTF-8">'.$html);
+        libxml_clear_errors();
+
+        $xpath = new \DOMXPath($dom);
+        $alvo = $xpath->query("//span[normalize-space(text())='{$nome}']")->item(0);
+
+        $this->assertNotNull($alvo, "Não achei a subcategoria {$nome} na tela.");
+
+        // Sobe até a linha: o pai da coluna do nome.
+        $linha = $alvo->parentNode->parentNode;
+
+        return $dom->saveHTML($linha);
+    }
+
 }
