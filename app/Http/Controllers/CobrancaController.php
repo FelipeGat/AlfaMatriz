@@ -18,18 +18,66 @@ class CobrancaController extends Controller
         $cobrancas = Cobranca::with(['revenda', 'cliente', 'sistema'])
             ->withCount('anexos')
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
+            ->when($request->competencia, fn ($q) => $q->where('competencia', $request->competencia))
             ->orderByDesc('data_vencimento')
             ->paginate(20)
             ->withQueryString();
 
         $hoje = now()->startOfDay();
+
+        $pendentes = Cobranca::where('status', 'pendente')->get(['id', 'valor', 'data_vencimento']);
+        $atrasadas = $pendentes->filter(fn ($c) => $c->data_vencimento->lt($hoje));
+
         $kpis = [
-            'a_receber' => Cobranca::where('status', 'pendente')->sum('valor'),
-            'recebido_mes' => Cobranca::where('status', 'pago')->whereYear('data_pagamento', $hoje->year)->whereMonth('data_pagamento', $hoje->month)->sum('valor_pago'),
-            'atrasado' => Cobranca::where('status', 'pendente')->whereDate('data_vencimento', '<', $hoje)->sum('valor'),
+            'em_aberto' => (float) $pendentes->sum('valor'),
+            'em_aberto_titulos' => $pendentes->count(),
+            'vence_em_7_dias' => (float) $pendentes->filter(
+                fn ($c) => $c->data_vencimento->between($hoje, $hoje->copy()->addDays(7))
+            )->sum('valor'),
+            'recebido_mes' => (float) Cobranca::where('status', 'pago')
+                ->whereYear('data_pagamento', $hoje->year)
+                ->whereMonth('data_pagamento', $hoje->month)
+                ->sum('valor_pago'),
+            'atrasado' => (float) $atrasadas->sum('valor'),
+            'atrasado_titulos' => $atrasadas->count(),
         ];
 
-        return view('cobrancas.index', compact('cobrancas', 'kpis'));
+        $faixas = $this->faixasDeAging($pendentes, $hoje);
+
+        return view('cobrancas.index', compact('cobrancas', 'kpis', 'faixas', 'hoje'));
+    }
+
+    /**
+     * Distribui o total em aberto nas quatro faixas de vencimento do
+     * desenho: a vencer, 1 a 15 dias de atraso, 16 a 30, e mais de 30.
+     *
+     * @param  \Illuminate\Support\Collection<int, Cobranca>  $pendentes
+     * @return array<string, array{rotulo: string, valor: float}>
+     */
+    private function faixasDeAging($pendentes, \Carbon\Carbon $hoje): array
+    {
+        $faixas = [
+            'a_vencer' => ['rotulo' => 'A vencer', 'valor' => 0.0],
+            '1_15' => ['rotulo' => '1 a 15 dias', 'valor' => 0.0],
+            '16_30' => ['rotulo' => '16 a 30 dias', 'valor' => 0.0],
+            'mais_30' => ['rotulo' => '+30 dias', 'valor' => 0.0],
+        ];
+
+        foreach ($pendentes as $cobranca) {
+            $diasParaVencer = $hoje->diffInDays($cobranca->data_vencimento, false);
+            $diasDeAtraso = $diasParaVencer < 0 ? abs($diasParaVencer) : 0;
+
+            $chave = match (true) {
+                $diasDeAtraso === 0 => 'a_vencer',
+                $diasDeAtraso <= 15 => '1_15',
+                $diasDeAtraso <= 30 => '16_30',
+                default => 'mais_30',
+            };
+
+            $faixas[$chave]['valor'] += (float) $cobranca->valor;
+        }
+
+        return $faixas;
     }
 
     public function show(Cobranca $cobranca)
