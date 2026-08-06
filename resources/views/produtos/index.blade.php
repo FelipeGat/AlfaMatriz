@@ -191,7 +191,10 @@
                     {{-- No cartão o produto é o assunto e tem espaço próprio:
                          aqui o wordmark cabe e vale a pena. --}}
                     <div class="min-w-0">
-                        <x-marca-sistema :sistema="$sistema" formato="wordmark" tamanho="h-5 max-w-[70%]" />
+                        {{-- 26px de caixa dá ~19px de letra em todas as marcas: os quadros
+                             foram normalizados para a mesma proporção letra/quadro,
+                             então a altura da caixa vale igual para todas. --}}
+                        <x-marca-sistema :sistema="$sistema" formato="wordmark" tamanho="h-[26px] max-w-full" />
                         <span class="mt-2 block font-mono text-[11px] uppercase tracking-caps text-ink-faint truncate">
                             {{ $sistema->unidade_cobranca }}
                         </span>
