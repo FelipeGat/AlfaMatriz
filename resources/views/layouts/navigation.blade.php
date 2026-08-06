@@ -29,7 +29,7 @@
     @keydown.escape.window="sidebarOpen = false"
 >
     <div class="h-16 flex items-center gap-2 px-6 border-b border-white/5">
-        <span class="h-8 w-8 rounded-md bg-brand/15 text-brand-dim flex items-center justify-center font-display font-bold">A</span>
+        <img src="/logo-tile.svg" alt="AlfaMatriz" class="h-8 w-8 shrink-0">
         <div class="leading-tight">
             <p class="font-display font-semibold text-ink tracking-wide">ALFA</p>
             <p class="text-[10px] uppercase tracking-widest text-ink-mute">Matriz</p>

@@ -7,6 +7,11 @@
 
         <title>{{ config('app.name', 'AlfaMatriz') }}</title>
 
+        <link rel="icon" href="/favicon.ico" sizes="32x32">
+        <link rel="icon" href="/favicon-16.png" type="image/png" sizes="16x16">
+        <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|space-grotesk:500,600,700" rel="stylesheet" />
 
@@ -21,7 +26,7 @@
             <div class="w-full max-w-[400px] relative flex flex-col gap-7">
                 <div class="bg-panel border border-white/5 shadow-panel rounded-2xl px-7 py-8 flex flex-col gap-6">
                     <a href="/" class="flex items-center gap-3">
-                        <span class="h-11 w-11 shrink-0 rounded-[10px] bg-brand/15 border border-brand/35 text-brand-dim flex items-center justify-center font-display font-bold text-xl">A</span>
+                        <img src="/logo-tile.svg" alt="AlfaMatriz" class="h-11 w-11 shrink-0">
                         <div class="leading-tight">
                             <p class="font-display font-semibold text-ink tracking-wide">ALFA</p>
                             <p class="text-[11px] uppercase tracking-[0.28em] text-ink-mute">Matriz</p>
