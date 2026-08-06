@@ -68,40 +68,42 @@
                     Tier fechado: preço fixo até o limite de unidades, sem cobrança de excedente. Tier metrado: deixe "unidades inclusas" em 0 e preencha "valor por unidade excedente" — cobra direto por unidade ativa.
                 </p>
 
-                <div class="overflow-x-auto mb-6">
-                    <table class="min-w-full divide-y divide-white/5">
+                <div class="mb-6">
+                    <x-tabela min="820px">
                         <thead>
-                            <tr>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-ink-dim uppercase">Tier</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-ink-dim uppercase">Revenda</th>
-                                <th class="px-3 py-2 text-right text-xs font-medium text-ink-dim uppercase">Preço base</th>
-                                <th class="px-3 py-2 text-right text-xs font-medium text-ink-dim uppercase">Unid. inclusas</th>
-                                <th class="px-3 py-2 text-right text-xs font-medium text-ink-dim uppercase">R$/excedente</th>
-                                <th class="px-3 py-2 text-right text-xs font-medium text-ink-dim uppercase">Limite</th>
-                                <th class="px-3 py-2"></th>
+                            <tr class="bg-head border-b border-line font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                                <th class="px-3 py-2 font-semibold">Tier</th>
+                                <th class="px-3 py-2 font-semibold">Revenda</th>
+                                <th class="px-3 py-2 font-semibold text-right">Preço base</th>
+                                <th class="px-3 py-2 font-semibold text-right">Unid. inclusas</th>
+                                <th class="px-3 py-2 font-semibold text-right">R$/excedente</th>
+                                <th class="px-3 py-2 font-semibold text-right">Limite</th>
+                                <th class="px-3 py-2 font-semibold text-right">Ações</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-white/5">
+                        <tbody>
                             @forelse ($sistema->precosAtacado as $tier)
-                                <tr>
-                                    <td class="px-3 py-2 text-sm text-ink">{{ $tier->nome }}</td>
-                                    <td class="px-3 py-2 text-sm text-ink-dim">{{ $tier->revenda->nome ?? 'Padrão (todas)' }}</td>
-                                    <td class="px-3 py-2 text-sm text-ink text-right">R$ {{ number_format($tier->preco_base, 2, ',', '.') }}</td>
-                                    <td class="px-3 py-2 text-sm text-ink-dim text-right">{{ $tier->unidades_inclusas ?? '—' }}</td>
-                                    <td class="px-3 py-2 text-sm text-ink-dim text-right">{{ $tier->valor_excedente_unidade ? 'R$ '.number_format($tier->valor_excedente_unidade, 2, ',', '.') : '—' }}</td>
-                                    <td class="px-3 py-2 text-sm text-ink-dim text-right">{{ $tier->limite_unidades ?? 'ilimitado' }}</td>
-                                    <td class="px-3 py-2 text-right">
-                                        <form action="{{ route('precos.destroy', $tier) }}" method="POST" onsubmit="return confirm('Remover este tier?');">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="text-status-critical hover:opacity-80 text-sm">Remover</button>
-                                        </form>
+                                <tr class="border-b border-rule last:border-0 hover:bg-chip transition">
+                                    <td class="px-3 py-2.5 text-[13.5px] text-ink">{{ $tier->nome }}</td>
+                                    <td class="px-3 py-2.5 text-[13px] text-ink-dim">{{ $tier->revenda->nome ?? 'Padrão (todas)' }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-[13px] text-ink whitespace-nowrap">R$ {{ number_format($tier->preco_base, 2, ',', '.') }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-[13px] text-ink-dim">{{ $tier->unidades_inclusas ?? '—' }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-[13px] text-ink-dim whitespace-nowrap">{{ $tier->valor_excedente_unidade ? 'R$ '.number_format($tier->valor_excedente_unidade, 2, ',', '.') : '—' }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-[13px] text-ink-dim whitespace-nowrap">{{ $tier->limite_unidades ?? 'ilimitado' }}</td>
+                                    <td class="px-3 py-2.5">
+                                        <div class="flex items-center justify-end">
+                                            <form action="{{ route('precos.destroy', $tier) }}" method="POST" onsubmit="return confirm('Remover este tier?');">
+                                                @csrf @method('DELETE')
+                                                <x-acao-tabela icone="trash" titulo="Remover tier" type="submit" destrutivo />
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="7" class="px-3 py-4 text-center text-sm text-ink-mute">Nenhum tier cadastrado ainda.</td></tr>
+                                <tr><td colspan="7" class="px-3 py-6 text-center text-[13px] text-ink-mute">Nenhum tier cadastrado ainda.</td></tr>
                             @endforelse
                         </tbody>
-                    </table>
+                    </x-tabela>
                 </div>
 
                 <form action="{{ route('precos.store', $sistema) }}" method="POST" class="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">

@@ -195,7 +195,7 @@ reinvente:**
   como bloco marcado pelo tipo, subcategoria como linha e contas como chips
   removíveis, com campos de adição em linha tracejada.
 
-## T-045 — Login e telas de autenticação [pendente]
+## T-045 — Login e telas de autenticação [concluida]
 - Refs: US-026, AC-060
 - Arquivos: resources/views/auth/login.blade.php, resources/views/auth/forgot-password.blade.php, resources/views/auth/reset-password.blade.php, resources/views/auth/confirm-password.blade.php, resources/views/auth/verify-email.blade.php, resources/views/layouts/guest.blade.php, tests/Feature/Redesign/LoginTest.php
 - Esforço: medio
