@@ -1,97 +1,118 @@
+@php
+    // Quem já tem cobrança gerada nesta competência: define a situação de cada
+    // linha e quantas revendas ainda faltam.
+    $geradas = $cobrancasGeradas->pluck('revenda_id')->filter()->all();
+    $pendentes = $preview->reject(fn ($g) => in_array($g['revenda']->id, $geradas, true));
+    $totalPrevia = $preview->sum('total');
+    $clientesConsiderados = $preview->sum(fn ($g) => $g['linhas']->sum('clientes_ativos'));
+    $vencimentoPadrao = \Carbon\Carbon::createFromFormat('Y-m', $competencia)->endOfMonth()->addDays(5);
+@endphp
+
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-ink leading-tight">Faturamento das revendas</h2>
+        <div class="flex items-center gap-2 text-[13px]">
+            <span class="text-mute">Comercial</span>
+            <span class="text-line">/</span>
+            <span class="font-medium text-ink">Faturamento</span>
+        </div>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            @if (session('status'))
-                <div class="p-4 bg-status-good/10 text-status-good rounded-md text-sm">{{ session('status') }}</div>
-            @endif
+    <div class="space-y-[18px]">
+        @if (session('status'))
+            <div class="rounded-control border border-line bg-raised px-4 py-2.5 text-[12.5px] text-ink">{{ session('status') }}</div>
+        @endif
 
-            <div class="bg-panel border border-white/5 shadow-panel rounded-xl p-6">
-                <div class="flex flex-wrap items-end justify-between gap-4">
-                    <form method="GET" class="flex flex-wrap items-end gap-3">
-                        <div>
-                            <x-input-label for="competencia" value="Competência" />
-                            <input type="month" id="competencia" name="competencia" value="{{ $competencia }}" class="mt-1 border-white/10 rounded-md shadow-sm text-sm" onchange="this.form.submit()">
-                        </div>
-                        <p class="text-xs text-ink-mute pb-2">
-                            Relatório calculado em tempo real com os clientes ativos de hoje.
-                        </p>
-                    </form>
-
-                    <form action="{{ route('faturamento.gerar') }}" method="POST">
-                        @csrf
-                        <input type="hidden" name="competencia" value="{{ $competencia }}">
-                        <x-primary-button>Gerar cobranças consolidadas ({{ $competencia }})</x-primary-button>
-                    </form>
-                </div>
-            </div>
-
-            <div class="space-y-4">
-                @forelse ($preview as $grupo)
-                    <div class="bg-panel border border-white/5 shadow-panel rounded-xl p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="font-display font-semibold text-ink">{{ $grupo['revenda']->nome }}</h3>
-                            <p class="text-lg font-semibold text-brand-dim">R$ {{ number_format($grupo['total'], 2, ',', '.') }}/mês</p>
-                        </div>
-
-                        <table class="min-w-full text-sm">
-                            <thead>
-                                <tr class="text-left text-xs text-ink-mute uppercase">
-                                    <th class="py-1 pr-4">Sistema</th>
-                                    <th class="py-1 pr-4">Tier aplicado</th>
-                                    <th class="py-1 pr-4 text-right">Clientes ativos</th>
-                                    <th class="py-1 pr-4 text-right">Valor</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-white/5">
-                                @foreach ($grupo['linhas'] as $linha)
-                                    <tr>
-                                        <td class="py-2 pr-4 text-ink">{{ $linha['sistema'] }}</td>
-                                        <td class="py-2 pr-4 text-ink-dim">
-                                            @if ($linha['tier'])
-                                                {{ $linha['tier'] }}
-                                            @else
-                                                <span class="text-status-critical">sem tier compatível — revisar</span>
-                                            @endif
-                                        </td>
-                                        <td class="py-2 pr-4 text-ink-dim text-right">
-                                            <details class="inline">
-                                                <summary class="cursor-pointer">{{ $linha['clientes_ativos'] }}</summary>
-                                                <div class="text-xs text-ink-mute mt-1 text-left">{{ $linha['clientes']->join(', ') }}</div>
-                                            </details>
-                                        </td>
-                                        <td class="py-2 pr-4 text-ink text-right">{{ $linha['valor'] !== null ? 'R$ '.number_format($linha['valor'], 2, ',', '.') : '—' }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @empty
-                    <div class="bg-panel border border-white/5 shadow-panel rounded-xl p-6 text-sm text-ink-mute">
-                        Nenhuma revenda com clientes ativos em sistemas com tier configurado.
-                    </div>
-                @endforelse
-            </div>
-
-            @if ($cobrancasGeradas->isNotEmpty())
-                <div class="bg-panel border border-white/5 shadow-panel rounded-xl p-6">
-                    <h3 class="font-display font-semibold text-ink mb-4">Cobranças já geradas para {{ $competencia }}</h3>
-                    <ul class="divide-y divide-white/5 text-sm">
-                        @foreach ($cobrancasGeradas as $cobranca)
-                            <li class="py-2 flex items-center justify-between">
-                                <span class="text-ink">{{ $cobranca->revenda->nome }} — {{ $cobranca->descricao }}</span>
-                                <div class="flex items-center gap-3">
-                                    <span class="text-ink font-medium">R$ {{ number_format($cobranca->valor, 2, ',', '.') }}</span>
-                                    <a href="{{ route('cobrancas.show', $cobranca) }}" class="text-brand hover:text-brand-bright">Ver detalhe</a>
-                                </div>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <x-summary-card label="Revendas a faturar" :value="$pendentes->count()" contexto="de {{ $preview->count() }} com clientes ativos" />
+            <x-summary-card label="Clientes considerados" :value="$clientesConsiderados" contexto="ativos hoje" />
+            <x-summary-card label="Prévia total" :value="'R$ ' . number_format($totalPrevia, 2, ',', '.')" contexto="competência {{ $competencia }}" />
+            <x-summary-card label="Vencimento padrão" :value="$vencimentoPadrao->format('d/m/Y')" contexto="fim do mês + 5 dias" />
         </div>
+
+        <x-painel-card>
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="min-w-0" style="flex: 1 1 320px;">
+                    <form method="GET" class="flex items-center gap-2">
+                        <label for="competencia" class="font-mono text-[10px] font-medium uppercase tracking-[.08em] text-mute">Competência</label>
+                        <input type="month" id="competencia" name="competencia" value="{{ $competencia }}"
+                               onchange="this.form.submit()"
+                               class="h-8 rounded-control border-line bg-panel py-0 text-[12.5px] text-ink focus:border-ink focus:ring-0">
+                    </form>
+                    <p class="mt-2 text-[12.5px] text-dim">
+                        A prévia é calculada agora, com os clientes ativos de hoje. Gerar cria uma cobrança
+                        consolidada por revenda — quem já tem cobrança nesta competência é ignorado.
+                    </p>
+                </div>
+
+                <form action="{{ route('faturamento.gerar') }}" method="POST" class="shrink-0">
+                    @csrf
+                    <input type="hidden" name="competencia" value="{{ $competencia }}">
+                    {{-- Sem pendências, o botão fica inerte em vez de sumir: some
+                         a ação e a pessoa fica procurando por ela. --}}
+                    <button type="submit" @disabled($pendentes->isEmpty())
+                            class="inline-flex h-8 items-center rounded-control px-3 text-[12.5px] font-medium transition-opacity
+                                   {{ $pendentes->isEmpty() ? 'cursor-default bg-raised text-mute' : 'bg-ink text-bg hover:opacity-90' }}">
+                        @if ($pendentes->isEmpty())
+                            Nada a gerar
+                        @else
+                            Gerar faturamento ({{ $pendentes->count() }})
+                        @endif
+                    </button>
+                </form>
+            </div>
+        </x-painel-card>
+
+        <x-painel-card titulo="Prévia por revenda" :sem-padding="true">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[720px] border-collapse">
+                    <thead>
+                        <tr class="bg-raised">
+                            @foreach (['Revenda' => '', 'Sistemas' => 'w-[220px]', 'Clientes' => 'w-[88px]', 'Prévia' => 'w-[124px] text-right', 'Situação' => 'w-[104px]'] as $titulo => $largura)
+                                <th class="{{ $largura }} truncate whitespace-nowrap border-b border-line px-5 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[.08em] text-mute">
+                                    {{ $titulo }}
+                                </th>
+                            @endforeach
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($preview as $grupo)
+                            @php $jaGerada = in_array($grupo['revenda']->id, $geradas, true); @endphp
+                            <tr class="border-b border-line transition-colors last:border-0 hover:bg-raised">
+                                <td class="px-5 py-3 text-[13px] text-ink">{{ $grupo['revenda']->nome }}</td>
+                                <td class="max-w-[220px] truncate px-5 py-3 text-[12.5px] text-dim">
+                                    {{ $grupo['linhas']->pluck('sistema')->join(', ') }}
+                                </td>
+                                <td class="valor px-5 py-3 text-[12.5px] text-dim">{{ $grupo['linhas']->sum('clientes_ativos') }}</td>
+                                <td class="valor px-5 py-3 text-right text-[12.5px] font-medium text-ink">
+                                    R$ {{ number_format($grupo['total'], 2, ',', '.') }}
+                                </td>
+                                <td class="px-5 py-3">
+                                    <x-status-pill :tom="$jaGerada ? 'brand' : 'neutro'">
+                                        {{ $jaGerada ? 'Gerada' : 'Pendente' }}
+                                    </x-status-pill>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="5" class="px-5 py-[34px] text-center text-[13px] text-mute">
+                                Nenhuma revenda com clientes ativos nesta competência.
+                            </td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </x-painel-card>
+
+        @if ($cobrancasGeradas->isNotEmpty())
+            <x-painel-card titulo="Cobranças já geradas em {{ $competencia }}">
+                <ul class="divide-y divide-line">
+                    @foreach ($cobrancasGeradas as $cobranca)
+                        <li class="flex items-center justify-between gap-3 py-2.5">
+                            <span class="truncate text-[13px] text-ink">{{ $cobranca->revenda->nome ?? '—' }}</span>
+                            <span class="valor shrink-0 text-[12.5px] font-medium text-ink">R$ {{ number_format($cobranca->valor, 2, ',', '.') }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            </x-painel-card>
+        @endif
     </div>
 </x-app-layout>

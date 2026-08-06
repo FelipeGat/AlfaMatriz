@@ -54,8 +54,7 @@ sentido antes delas.
 - Notas: faixa de cards de resumo, barra de filtros e tabela em card. Filtros
   continuam por query string. Colunas de valor com piso de largura.
 
-## T-045 — Sistemas e Faturamento [pendente]
-
+## T-045 — Sistemas e Faturamento [concluida]
 - Refs: US-022, AC-042
 - Arquivos: resources/views/sistemas/index.blade.php, resources/views/faturamento/index.blade.php
 - Notas: catálogo + detalhe em flex-wrap (com o cuidado do badge que colide com
