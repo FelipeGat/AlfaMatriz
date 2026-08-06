@@ -125,6 +125,15 @@ hoje, para não ter que varrer cinco telas atrás de pendência.
   da régua — a maior origem tem a maior barra, e nenhuma barra some quando o
   painel fica estreito
 
+#### AC-070 — O painel raciocina no fuso de quem opera
+
+- **Dado** que a operação é no Brasil
+- **Quando** o painel decide o que é "hoje" — o que vence, o que atrasou,
+  quanto entrou no mês, qual é a competência — e quando cumprimenta quem chega
+- **Então** ele usa o horário local, e não UTC: às 22h um título que vence hoje
+  ainda não está atrasado, a competência ainda é a do mês corrente, e a
+  saudação diz "boa noite"
+
 ### US-019 — Os painéis Financeiro e Comercial deixam comparar
 
 Como responsável pela operação, quero que os painéis mostrem grandeza relativa

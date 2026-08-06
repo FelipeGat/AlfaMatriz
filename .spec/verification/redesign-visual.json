@@ -1,45 +1,45 @@
 {
   "feature": "redesign-visual",
-  "timestamp": "2026-08-06T20:08:07.411Z",
-  "gitRev": "029c038",
+  "timestamp": "2026-08-06T20:30:07.251Z",
+  "gitRev": "296ccff",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 107,
+  "testsParsed": 110,
   "results": {
     "AC-032": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\InventarioPainelTest::test_inventario_traz_os_dados_de_acompanhamento @spec:AC-032",
+      "testName": "Tests\\Feature\\Redesign\\TokensTest::test_os_dois_temas_declaram_o_mesmo_conjunto_de_tokens @spec:AC-032",
       "method": "tap"
     },
     "AC-033": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\InventarioPainelTest::test_inventario_nao_da_alvo_para_acao_destrutiva @spec:AC-033",
+      "testName": "Tests\\Feature\\Redesign\\TokensTest::test_toda_tinta_de_texto_alcanca_45_de_contraste_nos_dois_temas @spec:AC-033",
       "method": "tap"
     },
     "AC-034": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\ExecutorStagingTest::test_aplica_a_novidade_quando_a_suite_passa @spec:AC-034",
+      "testName": "Tests\\Feature\\Redesign\\TokensTest::test_as_tres_familias_carregam_e_tem_papel_declarado @spec:AC-034",
       "method": "tap"
     },
     "AC-035": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\ExecutorStagingTest::test_portao_segura_o_deploy_quando_o_teste_falha @spec:AC-035",
+      "testName": "Tests\\Feature\\Redesign\\ShellTest::test_toda_tela_do_painel_abre_dentro_da_mesma_moldura @spec:AC-035",
       "method": "tap"
     },
     "AC-036": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\VigiaTagTest::test_aplica_a_tag_nova_e_ignora_alteracao_sem_tag @spec:AC-036",
+      "testName": "Tests\\Feature\\Redesign\\ShellTest::test_o_menu_recolhe_para_o_rail_e_a_escolha_fica_guardada @spec:AC-036",
       "method": "tap"
     },
     "AC-037": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\DeploySemJanelaDeErroTest::test_nenhum_script_apaga_a_configuracao_antes_de_reconstruir @spec:AC-037",
+      "testName": "Tests\\Feature\\Redesign\\ShellTest::test_o_tema_alterna_persiste_e_nao_pisca @spec:AC-037",
       "method": "tap"
     },
     "AC-038": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\CopiaEmbaralhadaTest::test_troca_dado_pessoal_e_preserva_os_valores @spec:AC-038",
+      "testName": "Tests\\Feature\\Redesign\\ShellTest::test_a_tela_filha_mantem_o_item_do_pai_aceso @spec:AC-038",
       "method": "tap"
     },
     "AC-039": {
@@ -55,6 +55,11 @@
     "AC-041": {
       "status": "pass",
       "testName": "Tests\\Feature\\Redesign\\CentroControleTest::test_a_regua_desenha_barra_proporcional_ao_valor @spec:AC-041",
+      "method": "tap"
+    },
+    "AC-070": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\FusoHorarioTest::test_o_painel_raciocina_no_fuso_de_quem_opera @spec:AC-070",
       "method": "tap"
     },
     "AC-042": {

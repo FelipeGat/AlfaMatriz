@@ -92,8 +92,8 @@ reinvente:**
   quando as telas de T-037 a T-043 tiverem migrado.
 
 ## T-034 — Centro de Controle [concluida]
-- Refs: US-018, AC-039, AC-040, AC-041
-- Arquivos: resources/views/centro-controle/index.blade.php, app/Http/Controllers/CentroControleController.php, tests/Feature/Redesign/CentroControleTest.php
+- Refs: US-018, AC-039, AC-040, AC-041, AC-070
+- Arquivos: resources/views/centro-controle/index.blade.php, app/Http/Controllers/CentroControleController.php, config/app.php, tests/Feature/Redesign/CentroControleTest.php, tests/Feature/Redesign/FusoHorarioTest.php
 - Esforço: alto
 - Notas: Depende de T-033. Halo radial, saudação, 4 cards de KPI com
   sparkline, fila de ação com barra de severidade e botão que navega para a

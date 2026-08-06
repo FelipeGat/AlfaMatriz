@@ -59,13 +59,18 @@ return [
     | Application Timezone
     |--------------------------------------------------------------------------
     |
-    | Here you may specify the default timezone for your application, which
-    | will be used by the PHP date and date-time functions. The timezone
-    | is set to "UTC" by default as it is suitable for most use cases.
+    | O painel é operado do Brasil e fala de "hoje" o tempo todo: o que vence
+    | hoje, o que já atrasou, quanto entrou no mês, qual é a competência. Em
+    | UTC essas perguntas passam a ser respondidas com três horas de
+    | adiantamento — depois das 21h um título que vence hoje já conta como
+    | atrasado, e no último dia do mês o "pago no mês" zera antes da hora.
+    |
+    | O padrão fica aqui e não só no .env de propósito: servidor sem a
+    | variável definida precisa cair no fuso certo, não em UTC.
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'America/Sao_Paulo'),
 
     /*
     |--------------------------------------------------------------------------
