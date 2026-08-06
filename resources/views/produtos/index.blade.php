@@ -69,28 +69,26 @@
                             @if ($marcado)
                                 style="border-left: 2px solid rgb(var(--{{ $churnAlto ? 'crit' : 'warn' }})); background: rgb(var(--{{ $churnAlto ? 'crit' : 'warn' }}) / 0.05)"
                             @endif>
+                            {{-- Sem ícone aqui, e não por falta dele.
+                                 Em 34px o desenho de cada marca vira um borrão e não
+                                 identifica nada — quem identifica é o NOME, ao lado, em
+                                 tipografia de destaque. E o tile ficava sendo o elemento
+                                 de maior contraste da linha justamente na coluna menos
+                                 informativa, disputando o olho com os números.
+                                 Pior: a cor da marca briga com a cor que aqui SIGNIFICA
+                                 algo (verde = ativo, vermelho = churn alto). O wordmark
+                                 vive nos cartões, onde o produto é o assunto e tem
+                                 espaço para ser lido. --}}
                             <td class="px-4 py-3">
-                                <div class="flex items-center gap-2.5 min-w-0">
-                                    {{-- Só o ÍCONE aqui. Esta lista existe para comparar: o
-                                         olho corre as colunas de MRR, share e churn. Wordmarks
-                                         de larguras e cores diferentes dariam peso visual
-                                         desigual entre as linhas — o mais escuro leria como
-                                         mais importante, que é uma mentira que a tabela
-                                         contaria. O wordmark aparece nos cartões, onde cada
-                                         produto é o assunto. --}}
-                                    <span class="h-[34px] w-[34px] shrink-0 rounded-ctl bg-chip p-1.5 flex items-center justify-center">
-                                        <x-marca-sistema :sistema="$sistema" />
+                                <div class="min-w-0">
+                                    <span class="flex items-center gap-1.5 min-w-0">
+                                        <span class="font-display text-[14.5px] font-semibold text-ink truncate">{{ $sistema->nome }}</span>
+                                        @if ($sistema->categoria)
+                                            <x-badge>{{ $sistema->categoria }}</x-badge>
+                                        @endif
                                     </span>
-                                    <span class="min-w-0">
-                                        <span class="flex items-center gap-1.5 min-w-0">
-                                            <span class="font-display text-[14.5px] font-semibold text-ink truncate">{{ $sistema->nome }}</span>
-                                            @if ($sistema->categoria)
-                                                <x-badge>{{ $sistema->categoria }}</x-badge>
-                                            @endif
-                                        </span>
-                                        <span class="block font-mono text-[11px] text-ink-faint truncate">
-                                            {{ $sistema->versao ?: 'sem versão' }}@if ($sistema->responsavel) · {{ $sistema->responsavel }}@endif
-                                        </span>
+                                    <span class="block font-mono text-[11px] text-ink-faint truncate">
+                                        {{ $sistema->versao ?: 'sem versão' }}@if ($sistema->responsavel) · {{ $sistema->responsavel }}@endif
                                     </span>
                                 </div>
                             </td>

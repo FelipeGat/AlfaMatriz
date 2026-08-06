@@ -39,12 +39,9 @@
                             style="border-left: 2px solid rgb(var(--warn)); background: rgb(var(--warn) / 0.05)"
                         @endif>
                         <td class="px-4 py-3">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <span class="h-7 w-7 shrink-0 rounded-tile bg-chip p-1 flex items-center justify-center">
-                                    <x-marca-sistema :sistema="$sistema" />
-                                </span>
-                                <span class="min-w-0 text-[13.5px] font-medium text-ink truncate">{{ $sistema->nome }}</span>
-                            </div>
+                            {{-- Mesma decisão da lista de Produtos: o nome identifica,
+                                 o ícone em 28px só disputa contraste com o dado. --}}
+                            <span class="block min-w-0 text-[13.5px] font-medium text-ink truncate">{{ $sistema->nome }}</span>
                         </td>
 
                         <td class="px-4 py-3">
