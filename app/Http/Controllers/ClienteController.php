@@ -12,16 +12,136 @@ class ClienteController extends Controller
 {
     public function index(Request $request)
     {
+        $busca = trim((string) $request->query('busca', ''));
+
         $clientes = Cliente::with(['revenda', 'sistemas'])
-            ->when($request->busca, fn ($q) => $q->where('nome', 'like', "%{$request->busca}%"))
-            ->when($request->revenda_id, fn ($q) => $q->where('revenda_id', $request->revenda_id))
+            ->when($busca !== '', fn ($q) => $q->where(fn ($sub) => $sub
+                ->where('nome', 'like', "%{$busca}%")
+                ->orWhere('razao_social', 'like', "%{$busca}%")
+                ->orWhere('nome_fantasia', 'like', "%{$busca}%")
+                ->orWhere('cpf_cnpj', 'like', "%{$busca}%")
+                ->orWhere('cidade', 'like', "%{$busca}%")))
+            ->when($request->query('revenda'), fn ($q, $revenda) => $revenda === 'direta'
+                ? $q->whereNull('revenda_id')
+                : $q->where('revenda_id', $revenda))
+            ->when($request->query('sistema'), fn ($q, $sistema) => $q->whereHas('sistemas',
+                fn ($s) => $s->where('sistemas.id', $sistema)->where('cliente_sistema.ativo', true)))
+            ->when($request->query('status') === 'ativo', fn ($q) => $q->where('ativo', true))
+            ->when($request->query('status') === 'inativo', fn ($q) => $q->where('ativo', false))
             ->orderBy('nome')
             ->paginate(15)
             ->withQueryString();
 
-        $revendas = Revenda::orderBy('nome')->get();
+        // O estado de pagamento é o que decide a cor da linha, e ele não mora
+        // no cliente: sai das cobranças pendentes dele.
+        $pagamentos = $this->pagamentos($clientes->getCollection());
 
-        return view('clientes.index', compact('clientes', 'revendas'));
+        return view('clientes.index', [
+            'clientes' => $clientes,
+            'pagamentos' => $pagamentos,
+            'revendas' => Revenda::orderBy('nome')->get(),
+            'sistemas' => Sistema::where('ativo', true)->orderBy('nome')->get(),
+            'filtros' => [
+                'busca' => $busca,
+                'revenda' => $request->query('revenda', ''),
+                'sistema' => $request->query('sistema', ''),
+                'status' => $request->query('status', ''),
+            ],
+            'kpis' => $this->kpis(),
+            'totais' => $this->totais($clientes->getCollection(), $pagamentos),
+        ]);
+    }
+
+    /**
+     * Estado de cobrança por cliente da página.
+     *
+     * Uma consulta só para todos os clientes à vista — perguntar cliente a
+     * cliente transformaria a lista em dezenas de consultas.
+     *
+     * @param  \Illuminate\Support\Collection<int, Cliente>  $clientes
+     * @return array<int, array{estado: string, dias: int}>
+     */
+    private function pagamentos(\Illuminate\Support\Collection $clientes): array
+    {
+        $ids = $clientes->pluck('id');
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $pendentes = \App\Models\Cobranca::whereIn('cliente_id', $ids)
+            ->where('status', 'pendente')
+            ->get(['cliente_id', 'data_vencimento'])
+            ->groupBy('cliente_id');
+
+        $comCobranca = \App\Models\Cobranca::whereIn('cliente_id', $ids)
+            ->pluck('cliente_id')
+            ->unique();
+
+        $hoje = now()->startOfDay();
+
+        return $clientes->mapWithKeys(function (Cliente $cliente) use ($pendentes, $comCobranca, $hoje) {
+            if (! $comCobranca->contains($cliente->id)) {
+                return [$cliente->id => ['estado' => 'sem_cobranca', 'dias' => 0]];
+            }
+
+            $vencidas = ($pendentes[$cliente->id] ?? collect())
+                ->filter(fn ($c) => \Illuminate\Support\Carbon::parse($c->data_vencimento)->lt($hoje));
+
+            if ($vencidas->isEmpty()) {
+                return [$cliente->id => ['estado' => 'em_dia', 'dias' => 0]];
+            }
+
+            // `diffInDays` do Carbon 3 vem com sinal: data no passado devolve
+            // negativo. Aqui a pergunta é "há quantos dias venceu", então o
+            // que interessa é a distância, não a direção.
+            $dias = (int) abs($hoje->diffInDays(\Illuminate\Support\Carbon::parse($vencidas->min('data_vencimento'))));
+
+            return [$cliente->id => ['estado' => 'atrasado', 'dias' => $dias]];
+        })->all();
+    }
+
+    /** @return array<string, array<string, mixed>> */
+    private function kpis(): array
+    {
+        $cadastrados = Cliente::count();
+        $ativos = Cliente::where('ativo', true)->count();
+        $emContrato = Cliente::where('ativo', true)->where('tipo_cliente', 'CONTRATO')->count();
+        $avulsos = Cliente::where('ativo', true)->where('tipo_cliente', '!=', 'CONTRATO')->count();
+
+        // O ticket é a média de QUEM ESTÁ EM CONTRATO. Somar o valor mensal
+        // dos avulsos e dividir pelos em contrato infla o número — o avulso
+        // entra no numerador sem entrar no denominador.
+        $mensal = (float) Cliente::where('ativo', true)
+            ->where('tipo_cliente', 'CONTRATO')
+            ->sum('valor_mensal');
+
+        return [
+            'cadastrados' => ['valor' => $cadastrados, 'nota' => $ativos.' ativos · '.($cadastrados - $ativos).' inativos'],
+            'contrato' => [
+                'valor' => $emContrato,
+                'nota' => $ativos > 0 ? round(($emContrato / $ativos) * 100).'% da base' : 'sem base ativa',
+            ],
+            'avulsos' => ['valor' => $avulsos, 'nota' => 'sem contrato mensal'],
+            'ticket' => [
+                'valor' => $emContrato > 0 ? $mensal / $emContrato : 0.0,
+                'nota' => 'por cliente em contrato',
+            ],
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Cliente>  $pagina
+     * @param  array<int, array{estado: string, dias: int}>  $pagamentos
+     */
+    private function totais(\Illuminate\Support\Collection $pagina, array $pagamentos): array
+    {
+        return [
+            'contratos' => $pagina->where('tipo_cliente', 'CONTRATO')->count(),
+            'avulsos' => $pagina->where('tipo_cliente', '!=', 'CONTRATO')->count(),
+            'mensal' => (float) $pagina->sum('valor_mensal'),
+            'atrasados' => collect($pagamentos)->where('estado', 'atrasado')->count(),
+        ];
     }
 
     public function create()

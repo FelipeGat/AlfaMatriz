@@ -1,16 +1,11 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-ink leading-tight">Editar cliente — {{ $cliente->nome }}</h2>
-    </x-slot>
+    <x-slot name="titulo">Editar cliente</x-slot>
+    <x-slot name="contexto">{{ $cliente->nome_exibicao }}</x-slot>
 
-    <div class="py-12">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-panel overflow-hidden shadow-sm sm:rounded-lg p-6">
-                <form method="POST" action="{{ route('clientes.update', $cliente) }}">
-                    @method('PUT')
-                    @include('clientes._form')
-                </form>
-            </div>
-        </div>
-    </div>
+    {{-- Formulário respira melhor com largura limitada; a tabela é que não
+         pode ter, porque desliza inteira ao recolher o menu. --}}
+    <form method="POST" action="{{ route('clientes.update', $cliente) }}" style="max-width: 1000px">
+        @method('PUT')
+        @include('clientes._form')
+    </form>
 </x-app-layout>

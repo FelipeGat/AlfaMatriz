@@ -102,7 +102,7 @@ class CentroControleController extends Controller
                 'delta' => $atrasadas->isEmpty()
                     ? 'nada em atraso'
                     : $atrasadas->count().' título'.($atrasadas->count() > 1 ? 's' : '')
-                        .' · até '.(int) $hoje->diffInDays(Carbon::parse($atrasadas->min('data_vencimento'))).'d',
+                        .' · até '.(int) abs($hoje->diffInDays(Carbon::parse($atrasadas->min('data_vencimento'))))."d",
                 'sinal' => $atrasadas->isEmpty() ? 'bom' : 'ruim',
                 'acento' => 'crit',
                 'icone' => 'alert-triangle',
@@ -201,7 +201,7 @@ class CentroControleController extends Controller
             ->get();
 
         if ($receitasAtrasadas->isNotEmpty()) {
-            $dias = (int) $hoje->diffInDays(Carbon::parse($receitasAtrasadas->min('data_vencimento')));
+            $dias = (int) abs($hoje->diffInDays(Carbon::parse($receitasAtrasadas->min('data_vencimento'))));
             $fila[] = [
                 'nivel' => 'critico',
                 'icone' => 'trending-up',
@@ -218,7 +218,7 @@ class CentroControleController extends Controller
             ->get();
 
         if ($despesasVencidas->isNotEmpty()) {
-            $dias = (int) $hoje->diffInDays(Carbon::parse($despesasVencidas->min('data_vencimento')));
+            $dias = (int) abs($hoje->diffInDays(Carbon::parse($despesasVencidas->min('data_vencimento'))));
             $fila[] = [
                 'nivel' => 'atencao',
                 'icone' => 'trending-down',

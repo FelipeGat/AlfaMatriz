@@ -60,8 +60,8 @@
      }">
 
     {{-- Dados básicos --}}
-    <div class="mb-8">
-        <h3 class="text-sm font-semibold text-ink-dim uppercase tracking-wide mb-4">Dados básicos</h3>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Dados básicos</h3>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
                 <x-input-label for="revenda_id" value="Revenda" />
@@ -130,8 +130,8 @@
     </div>
 
     {{-- Contatos --}}
-    <div class="mb-8">
-        <h3 class="text-sm font-semibold text-ink-dim uppercase tracking-wide mb-4">Contatos</h3>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Contatos</h3>
 
         <div class="mb-4">
             <x-input-label value="E-mails" />
@@ -171,8 +171,8 @@
     </div>
 
     {{-- Endereço --}}
-    <div class="mb-8">
-        <h3 class="text-sm font-semibold text-ink-dim uppercase tracking-wide mb-4">Endereço</h3>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Endereço</h3>
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
                 <x-input-label for="cep" value="CEP" />
@@ -215,8 +215,8 @@
     </div>
 
     {{-- Informações de contrato --}}
-    <div class="mb-8">
-        <h3 class="text-sm font-semibold text-ink-dim uppercase tracking-wide mb-4">Informações de contrato</h3>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Informações de contrato</h3>
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
                 <x-input-label for="tipo_cliente" value="Tipo de cliente" />
@@ -260,8 +260,8 @@
     </div>
 
     {{-- Inscrições --}}
-    <div class="mb-8">
-        <h3 class="text-sm font-semibold text-ink-dim uppercase tracking-wide mb-4">Inscrições</h3>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Inscrições</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <x-input-label for="inscricao_estadual" value="Inscrição estadual" />
@@ -275,8 +275,8 @@
     </div>
 
     {{-- Sistemas --}}
-    <div class="mb-8">
-        <h3 class="text-sm font-semibold text-ink-dim uppercase tracking-wide mb-4">Sistemas utilizados</h3>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Sistemas utilizados</h3>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
             @php
                 $sistemasAtivosIds = old('sistemas', ($cliente->sistemas ?? collect())->pluck('id')->all());
@@ -292,13 +292,21 @@
     </div>
 
     {{-- Observações --}}
-    <div class="mb-8">
-        <x-input-label for="observacoes" value="Observações" />
-        <textarea id="observacoes" name="observacoes" rows="3" class="mt-1 block w-full border-white/10 rounded-md shadow-sm bg-panel-raised text-ink">{{ old('observacoes', $cliente->observacoes ?? '') }}</textarea>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Observações</h3>
+        <textarea id="observacoes" name="observacoes" rows="3" class="block w-full">{{ old('observacoes', $cliente->observacoes ?? '') }}</textarea>
     </div>
 
-    <div class="flex items-center justify-end gap-3">
-        <a href="{{ route('clientes.index') }}" class="text-sm text-ink-dim hover:text-ink">Cancelar</a>
-        <x-primary-button>Salvar</x-primary-button>
+    <div class="flex items-center justify-end gap-2">
+        <a href="{{ route('clientes.index') }}"
+           class="h-9 px-3.5 inline-flex items-center rounded-control border border-btn-line
+                  text-[12.5px] font-semibold text-ink-dim hover:text-brand hover:border-brand transition">
+            Cancelar
+        </a>
+        <button type="submit"
+                class="h-9 px-3.5 inline-flex items-center rounded-control bg-brand text-on-brand
+                       text-[12.5px] font-semibold hover:bg-brand-bright transition">
+            Salvar cliente
+        </button>
     </div>
 </div>

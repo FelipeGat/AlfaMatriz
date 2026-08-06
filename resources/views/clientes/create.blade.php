@@ -1,15 +1,8 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-ink leading-tight">Novo cliente</h2>
-    </x-slot>
+    <x-slot name="titulo">Novo cliente</x-slot>
+    <x-slot name="contexto">cadastro</x-slot>
 
-    <div class="py-12">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-panel overflow-hidden shadow-sm sm:rounded-lg p-6">
-                <form method="POST" action="{{ route('clientes.store') }}">
-                    @include('clientes._form')
-                </form>
-            </div>
-        </div>
-    </div>
+    <form method="POST" action="{{ route('clientes.store') }}" style="max-width: 1000px">
+        @include('clientes._form')
+    </form>
 </x-app-layout>

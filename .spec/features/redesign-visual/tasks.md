@@ -129,7 +129,7 @@ reinvente:**
   de iniciais, base de clientes com barra, chips de sistemas com `+N`, linha
   de pendência marcada em âmbar, linha de totais e rodapé de contagem.
 
-## T-038 — Clientes: lista e formulário [pendente]
+## T-038 — Clientes: lista e formulário [concluida]
 - Refs: US-021, AC-048
 - Arquivos: resources/views/clientes/index.blade.php, resources/views/clientes/_form.blade.php, resources/views/clientes/create.blade.php, resources/views/clientes/edit.blade.php, app/Http/Controllers/ClienteController.php, tests/Feature/Redesign/ClientesTest.php
 - Esforço: alto
