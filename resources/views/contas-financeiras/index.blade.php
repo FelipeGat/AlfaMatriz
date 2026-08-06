@@ -2,11 +2,10 @@
     <x-slot name="titulo">Caixa</x-slot>
     <x-slot name="contexto">{{ $contasFinanceiras->where('ativo', true)->count() }} contas ativas</x-slot>
     <x-slot name="acoes">
-        <a href="{{ route('contas-financeiras.create') }}"
-           class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand
-                  font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
+        <button type="button" x-data @click="$dispatch('open-modal', 'nova-conta')"
+                class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
             + Nova conta
-        </a>
+        </button>
     </x-slot>
 
     <div class="space-y-4">
@@ -127,4 +126,11 @@
             </x-painel>
         </div>
     </div>
+
+    <x-modal name="nova-conta" maxWidth="lg">
+        <form method="POST" action="{{ route('contas-financeiras.store') }}" class="p-5">
+            <h2 class="font-display text-[15.5px] font-semibold text-ink mb-4">Nova conta</h2>
+            @include('contas-financeiras._form')
+        </form>
+    </x-modal>
 </x-app-layout>

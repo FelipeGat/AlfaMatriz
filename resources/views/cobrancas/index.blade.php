@@ -2,10 +2,10 @@
     <x-slot name="titulo">Receitas</x-slot>
     <x-slot name="contexto">CONTAS A RECEBER · {{ $cobrancas->total() }} TÍTULO(S)</x-slot>
     <x-slot name="acoes">
-        <a href="{{ route('cobrancas.create') }}"
-           class="inline-flex items-center h-[34px] px-4 rounded-control bg-brand text-on-brand font-sans text-[12.5px] font-semibold hover:bg-brand-bright transition">
+        <button type="button" x-data @click="$dispatch('open-modal', 'nova-receita')"
+                class="inline-flex items-center h-[34px] px-4 rounded-control bg-brand text-on-brand font-sans text-[12.5px] font-semibold hover:bg-brand-bright transition">
             + Nova receita
-        </a>
+        </button>
     </x-slot>
 
     @if (session('status'))
@@ -183,4 +183,11 @@
     </div>
 
     <x-anexos-modal name="anexos-receita" resource-url="{{ url('cobrancas') }}" anexo-url="{{ url('cobrancas/anexos') }}" />
+
+    <x-modal name="nova-receita" maxWidth="2xl">
+        <form method="POST" action="{{ route('cobrancas.store') }}" class="p-5">
+            <h2 class="font-display text-[15.5px] font-semibold text-ink mb-4">Nova receita</h2>
+            @include('cobrancas._form')
+        </form>
+    </x-modal>
 </x-app-layout>

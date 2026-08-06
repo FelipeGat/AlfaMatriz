@@ -2,11 +2,10 @@
     <x-slot name="titulo">Revendas</x-slot>
     <x-slot name="contexto">{{ $linhas->count() }} de {{ $cadastradas }} cadastradas</x-slot>
     <x-slot name="acoes">
-        <a href="{{ route('revendas.create') }}"
-           class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand
-                  font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
+        <button type="button" x-data @click="$dispatch('open-modal', 'nova-revenda')"
+                class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
             + Nova revenda
-        </a>
+        </button>
     </x-slot>
 
     <div class="space-y-4">
@@ -191,4 +190,11 @@
             </x-slot>
         </x-tabela>
     </div>
+
+    <x-modal name="nova-revenda" maxWidth="lg">
+        <form method="POST" action="{{ route('revendas.store') }}" class="p-5">
+            <h2 class="font-display text-[15.5px] font-semibold text-ink mb-4">Nova revenda</h2>
+            @include('revendas._form')
+        </form>
+    </x-modal>
 </x-app-layout>

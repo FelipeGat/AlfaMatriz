@@ -44,7 +44,13 @@ class CobrancaController extends Controller
 
         $faixas = $this->faixasDeAging($pendentes, $hoje);
 
-        return view('cobrancas.index', compact('cobrancas', 'kpis', 'faixas', 'hoje'));
+        return view('cobrancas.index', array_merge(
+            compact('cobrancas', 'kpis', 'faixas', 'hoje'),
+            // O formulário de nova receita agora vive num modal desta tela, e
+            // não numa página à parte: as listas que ele oferece precisam vir
+            // junto com a lista.
+            $this->listasDoFormulario()
+        ));
     }
 
     /**
@@ -85,6 +91,17 @@ class CobrancaController extends Controller
         $cobranca->load('revenda', 'cliente', 'sistema', 'contaFinanceira');
 
         return view('cobrancas.show', compact('cobranca'));
+    }
+
+    /** @return array<string, \Illuminate\Support\Collection> */
+    private function listasDoFormulario(): array
+    {
+        return [
+            'revendas' => Revenda::orderBy('nome')->get(),
+            'clientes' => Cliente::orderBy('nome')->get(),
+            'sistemas' => Sistema::orderBy('nome')->get(),
+            'contasFinanceiras' => ContaFinanceira::where('ativo', true)->orderBy('nome')->get(),
+        ];
     }
 
     public function create()

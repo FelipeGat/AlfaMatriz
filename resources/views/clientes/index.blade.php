@@ -2,11 +2,10 @@
     <x-slot name="titulo">Clientes</x-slot>
     <x-slot name="contexto">{{ $clientes->total() }} cadastrados</x-slot>
     <x-slot name="acoes">
-        <a href="{{ route('clientes.create') }}"
-           class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand
-                  font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
+        <button type="button" x-data @click="$dispatch('open-modal', 'novo-cliente')"
+                class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
             + Novo cliente
-        </a>
+        </button>
     </x-slot>
 
     <div class="space-y-4">
@@ -209,4 +208,11 @@
             <div>{{ $clientes->links() }}</div>
         @endif
     </div>
+
+    <x-modal name="novo-cliente" maxWidth="2xl">
+        <form method="POST" action="{{ route('clientes.store') }}" class="p-5">
+            <h2 class="font-display text-[15.5px] font-semibold text-ink mb-4">Novo cliente</h2>
+            @include('clientes._form')
+        </form>
+    </x-modal>
 </x-app-layout>
