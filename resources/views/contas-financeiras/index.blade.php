@@ -10,10 +10,7 @@
 
     <div class="space-y-4">
         @if (session('status'))
-            <div class="rounded-panel border px-4 py-2.5 text-[13px]"
-                 style="background: rgb(var(--good) / var(--tint-alpha)); border-color: rgb(var(--good) / 0.25); color: rgb(var(--good))">
-                {{ session('status') }}
-            </div>
+            <x-aviso>{{ session('status') }}</x-aviso>
         @endif
 
         {{-- Saldo consolidado ------------------------------------------------ --}}

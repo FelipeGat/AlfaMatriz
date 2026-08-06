@@ -76,61 +76,51 @@ class FunilTest extends TestCase
     }
 
     /**
-     * @spec:AC-044 O quadro cabe na tela em vez de administrar rolagem, e a
-     * roda não vaza de uma coluna para o quadro.
+     * @spec:AC-044 A roda para no fim da coluna, em vez de continuar no
+     * quadro.
      *
-     * A versão anterior desta tela fazia a roda rolar o quadro na horizontal
-     * quando a coluna chegava ao fim. Na prática isso era encadeamento: você
-     * lia uma coluna, ela acabava, e o quadro inteiro deslizava de lado sem
-     * ninguém pedir. A correção não foi ajustar o gesto — foi fazer o funil
-     * caber, que num funil é o ponto: é vendo todos os estágios juntos que se
-     * enxerga onde a negociação empacou.
+     * A versão anterior fazia a roda rolar o quadro na horizontal quando a
+     * coluna acabava. Na prática era encadeamento: você lia uma coluna, ela
+     * terminava, e o quadro inteiro deslizava de lado sem ninguém pedir. A
+     * coluna agora contém a própria rolagem, e quem move o quadro é a barra,
+     * o shift+roda (nativo do navegador) ou o arrasto.
      */
-    public function test_o_quadro_divide_o_espaco_e_a_roda_nao_vaza_da_coluna(): void
+    public function test_a_rolagem_da_coluna_nao_vaza_para_o_quadro(): void
     {
         $this->lead('lead');
 
         $html = $this->actingAs($this->operador())->get(route('leads.index'))->getContent();
 
-        // Colunas dividem o espaço, com piso de largura: em tela grande tudo
-        // cabe; onde não couber, a rolagem volta em vez de espremer o card.
-        $this->assertStringContainsString('flex: 1 1 0; min-width: 230px', $html);
-        $this->assertStringNotContainsString('width: 276px', $html,
-            'Largura fixa é o que fazia o quadro não caber.');
-
-        // A roda PARA no fim da coluna. É esta linha que mata o encadeamento.
+        // É esta linha que mata o encadeamento.
         $this->assertStringContainsString('overscroll-contain', $html);
+
+        // E o sequestro da roda, que era a causa, não voltou.
         $this->assertStringNotContainsString('rolarQuadro', $html,
-            'O sequestro da roda era a causa do encadeamento e saiu.');
+            'Traduzir roda vertical em rolagem lateral foi o que criou o encadeamento.');
 
-        // Estágio de desfecho cede largura para os de trabalho, e abre no
-        // clique — não some, fica estreito.
-        $this->assertStringContainsString("flex: 0 0 96px", $html);
-        $this->assertStringContainsString("expandido = expandido === 'perdido'", $html);
-        $this->assertStringContainsString("expandido = expandido === 'cliente_ativo'", $html);
+        // A coluna mantém a largura de leitura do card.
+        $this->assertStringContainsString('width: 276px', $html);
 
-        // Sombra na borda quando há coluna fora da vista.
+        // Com o quadro rolando, a sombra na borda avisa que há mais coluna:
+        // barra fina em tema escuro passa despercebida.
         $this->assertStringContainsString('temMaisDireita', $html);
         $this->assertStringContainsString('medirBordas()', $html);
     }
 
     /**
-     * @spec:AC-044 Só os estágios de desfecho encolhem. Os de trabalho — onde
-     * a negociação acontece — mantêm largura de leitura.
+     * @spec:AC-044 Coluna vazia tem a mesma altura em todos os estágios. A de
+     * "Lead" carrega o botão de adicionar e, sem altura própria, nascia mais
+     * alta que as vizinhas — desalinhando a fileira inteira.
      */
-    public function test_apenas_os_estagios_de_desfecho_sao_estreitos(): void
+    public function test_o_bloco_vazio_tem_a_mesma_altura_em_todas_as_colunas(): void
     {
-        $estagios = $this->actingAs($this->operador())
-            ->get(route('leads.index'))
-            ->viewData('estagios');
+        $html = $this->actingAs($this->operador())->get(route('leads.index'))->getContent();
 
-        $terminais = collect($estagios)->where('terminal', true)->pluck('chave')->all();
-        $trabalho = collect($estagios)->where('terminal', false)->pluck('chave')->all();
+        preg_match_all('/border-dashed[^>]*style="height: (\d+)px"/s', $html, $alturas);
 
-        $this->assertSame(['cliente_ativo', 'perdido'], $terminais);
-        $this->assertContains('proposta', $trabalho);
-        $this->assertContains('contrato', $trabalho);
-        $this->assertCount(5, $trabalho, 'Cinco estágios de trabalho dividem o espaço.');
+        $this->assertNotEmpty($alturas[1], 'Os blocos vazios precisam de altura própria.');
+        $this->assertCount(1, array_unique($alturas[1]),
+            'Todos os blocos vazios têm de ter a mesma altura, com ou sem botão dentro.');
     }
 
     /**

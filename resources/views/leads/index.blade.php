@@ -16,10 +16,7 @@
     --}}
     <div class="flex flex-col gap-4" style="height: calc(100vh - 120px); min-height: 520px">
         @if (session('status'))
-            <div class="shrink-0 rounded-panel border px-4 py-2.5 text-[13px]"
-                 style="background: rgb(var(--good) / var(--tint-alpha)); border-color: rgb(var(--good) / 0.25); color: rgb(var(--good))">
-                {{ session('status') }}
-            </div>
+            <x-aviso class="shrink-0">{{ session('status') }}</x-aviso>
         @endif
 
         <div class="shrink-0 grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
@@ -64,55 +61,33 @@
 
             {{-- `items-stretch` + `min-h-0` é o que faz todas as colunas terem
                  a mesma altura e cada uma rolar por dentro. --}}
-            {{-- As colunas dividem o espaço em vez de terem largura fixa: em
-                 tela grande o funil inteiro cabe e a rolagem lateral deixa de
-                 existir, que num funil é o ponto — é vendo todos os estágios
-                 juntos que se enxerga onde a negociação empacou.
-
-                 Onde não couber (janela estreita, ou mais estágios), a
-                 rolagem volta, com `shift`+roda (que o navegador já faz) e a
+            {{-- Colunas de largura fixa: o card precisa de 276px para caber
+                 nome, valor e revenda sem espremer. O quadro rola na
+                 horizontal, com `shift`+roda (que o navegador já faz) e a
                  sombra na borda avisando que há mais coluna adiante. --}}
             <div x-ref="quadro" @scroll="medirBordas()" @resize.window="medirBordas()" x-init="medirBordas()"
                  class="relative flex-1 min-h-0 flex gap-3 items-stretch overflow-x-auto p-3.5">
                 @foreach ($estagios as $estagio)
                     @php $cards = $colunas[$estagio['chave']]; @endphp
 
-                    @php $terminal = $estagio['terminal']; @endphp
-
-                    <section class="flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden transition-[flex-basis,width] duration-200"
-                             @if ($terminal)
-                                 :style="expandido === '{{ $estagio['chave'] }}'
-                                     ? 'flex: 1 1 0; min-width: 230px; border-top: 3px solid rgb(var(--{{ $estagio['cor'] }}))'
-                                     : 'flex: 0 0 96px; border-top: 3px solid rgb(var(--{{ $estagio['cor'] }}))'"
-                             @else
-                                 style="flex: 1 1 0; min-width: 230px; border-top: 3px solid rgb(var(--{{ $estagio['cor'] }}))"
-                             @endif
+                    <section class="shrink-0 flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden"
+                             style="width: 276px; border-top: 3px solid rgb(var(--{{ $estagio['cor'] }}))"
                              data-estagio="{{ $estagio['chave'] }}"
                              @dragover.prevent="permitir('{{ $estagio['chave'] }}')"
                              @dragleave="sobre = null"
                              @drop.prevent="soltar('{{ $estagio['chave'] }}', {{ $estagio['exigeMotivo'] ? 'true' : 'false' }})"
                              :class="sobre === '{{ $estagio['chave'] }}' && 'ring-1 ring-brand'">
-                        <header class="shrink-0 px-3 py-2.5 border-b border-rule"
-                                @if ($terminal)
-                                    role="button" tabindex="0"
-                                    @click="expandido = expandido === '{{ $estagio['chave'] }}' ? null : '{{ $estagio['chave'] }}'"
-                                    @keydown.enter="expandido = expandido === '{{ $estagio['chave'] }}' ? null : '{{ $estagio['chave'] }}'"
-                                    class="shrink-0 px-3 py-2.5 border-b border-rule cursor-pointer hover:bg-chip transition"
-                                    :title="expandido === '{{ $estagio['chave'] }}' ? 'Recolher {{ $estagio['label'] }}' : 'Expandir {{ $estagio['label'] }}'"
-                                @endif>
-                            <div class="flex items-center gap-2"
-                                 @if ($terminal) :class="expandido !== '{{ $estagio['chave'] }}' && 'flex-col items-start gap-1'" @endif>
+                        <header class="shrink-0 px-3 py-2.5 border-b border-rule">
+                            <div class="flex items-center gap-2">
                                 <span class="h-[7px] w-[7px] shrink-0 rounded-full"
                                       style="background: rgb(var(--{{ $estagio['cor'] }}))"></span>
-                                <h3 class="min-w-0 truncate font-display text-[14px] font-semibold text-ink"
-                                    @if ($terminal) :class="expandido !== '{{ $estagio['chave'] }}' && 'text-[11.5px] leading-tight whitespace-normal'" @endif>{{ $estagio['label'] }}</h3>
+                                <h3 class="min-w-0 truncate font-display text-[14px] font-semibold text-ink">{{ $estagio['label'] }}</h3>
                                 <span class="ml-auto shrink-0 h-5 min-w-[20px] px-1.5 rounded-full font-mono text-[10px] font-semibold leading-5 text-center"
                                       style="background: rgb(var(--{{ $estagio['cor'] }}) / var(--tint-alpha)); color: rgb(var(--{{ $estagio['cor'] }}))">
                                     {{ $estagio['quantidade'] }}
                                 </span>
                             </div>
-                            <p class="mt-0.5 pl-[15px] font-mono text-[10.5px] uppercase tracking-caps text-ink-faint"
-                               @if ($terminal) x-show="expandido === '{{ $estagio['chave'] }}'" x-cloak @endif>
+                            <p class="mt-0.5 pl-[15px] font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
                                 R$ {{ number_format($estagio['valor'], 0, ',', '.') }} em jogo
                             </p>
                         </header>
@@ -120,8 +95,7 @@
                         {{-- `overscroll-contain`: a roda PARA quando a coluna acaba, em vez
                              de continuar no quadro. Sem isto, ler uma coluna até o fim
                              fazia o quadro inteiro deslizar de lado sem ninguém pedir. --}}
-                        <div data-coluna-lista class="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-2"
-                             @if ($terminal) x-show="expandido === '{{ $estagio['chave'] }}'" x-cloak @endif>
+                        <div data-coluna-lista class="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-2">
                             @forelse ($cards as $lead)
                                 @php
                                     $temperatura = $lead->temperatura();
@@ -201,11 +175,18 @@
                                     </div>
                                 </article>
                             @empty
-                                <div class="rounded-ctl border border-dashed border-line px-2 py-6 text-center">
+                                {{-- Altura fixa nos vazios: a coluna "Lead" tem o botão de
+                                     adicionar e as outras não, então elas nasciam com
+                                     alturas diferentes e a fileira ficava desalinhada. Com
+                                     altura própria, o conteúdo a mais cabe dentro do mesmo
+                                     bloco em vez de esticá-lo. --}}
+                                <div class="rounded-ctl border border-dashed border-line px-2 text-center
+                                            flex flex-col items-center justify-center gap-1.5"
+                                     style="height: 84px">
                                     <p class="text-[11.5px] text-ink-faint">Nenhum lead aqui</p>
                                     @if ($estagio['chave'] === 'lead')
                                         <button type="button" x-data @click="$dispatch('open-modal', 'novo-lead')"
-                                                class="mt-1.5 font-mono text-[10.5px] uppercase tracking-caps text-brand-text hover:underline">
+                                                class="font-mono text-[10.5px] uppercase tracking-caps text-brand-text hover:underline">
                                             + Adicionar
                                         </button>
                                     @endif
@@ -238,10 +219,6 @@
 
                 // Modelo de rota com marcador: o id só é conhecido no solto.
                 rotaMover: @json(route('leads.mover', ['lead' => '__ID__'])),
-
-                // Qual coluna de desfecho está aberta (só uma por vez: elas
-                // pedem espaço emprestado das colunas de trabalho).
-                expandido: null,
 
 
                 // Há mais coluna fora da vista? A sombra na borda é a única

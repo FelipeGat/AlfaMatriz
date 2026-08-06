@@ -6,7 +6,7 @@
 
     <div class=" space-y-6" style="max-width: 1000px">
             @if (session('status'))
-                <div class="p-4 bg-status-good/10 text-status-good rounded-md text-sm">{{ session('status') }}</div>
+                <x-aviso>{{ session('status') }}</x-aviso>
             @endif
             @if ($errors->any())
                 <div class="p-4 bg-status-critical/10 text-status-critical rounded-md text-sm">
