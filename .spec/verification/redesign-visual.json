@@ -1,0 +1,87 @@
+{
+  "feature": "redesign-visual",
+  "timestamp": "2026-08-06T17:35:44.874Z",
+  "gitRev": "6f126aa",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 1,
+  "testsParsed": 64,
+  "results": {
+    "AC-032": {
+      "status": "fail",
+      "testName": "Tests\\Feature\\Redesign\\TokensTest::test_os_dois_temas_declaram_o_mesmo_conjunto_de_tokens @spec:AC-032",
+      "method": "tap"
+    },
+    "AC-033": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\TokensTest::test_toda_tinta_de_texto_alcanca_45_de_contraste_nos_dois_temas @spec:AC-033",
+      "method": "tap"
+    },
+    "AC-034": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\TokensTest::test_as_tres_familias_carregam_e_tem_papel_declarado @spec:AC-034",
+      "method": "tap"
+    },
+    "AC-035": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ShellTest::test_toda_tela_do_painel_abre_dentro_da_mesma_moldura @spec:AC-035",
+      "method": "tap"
+    },
+    "AC-036": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ShellTest::test_o_menu_recolhe_para_o_rail_e_a_escolha_fica_guardada @spec:AC-036",
+      "method": "tap"
+    },
+    "AC-037": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ShellTest::test_o_tema_alterna_persiste_e_nao_pisca @spec:AC-037",
+      "method": "tap"
+    },
+    "AC-038": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ShellTest::test_a_tela_filha_mantem_o_item_do_pai_aceso @spec:AC-038",
+      "method": "tap"
+    },
+    "AC-046": {
+      "status": "fail",
+      "testName": "Tests\\Feature\\Redesign\\ComponentesTest::test_toda_tabela_rola_por_dentro_e_mantem_as_acoes_alcancaveis @spec:AC-046",
+      "method": "tap"
+    },
+    "AC-047": {
+      "status": "fail",
+      "testName": "Tests\\Feature\\Redesign\\ComponentesTest::test_a_linha_de_total_nunca_quebra_em_duas_alturas @spec:AC-047",
+      "method": "tap"
+    },
+    "AC-053": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ReceitasTest::test_a_faixa_de_atraso_distribui_o_total_em_aberto_por_vencimento @spec:AC-053",
+      "method": "tap"
+    },
+    "AC-054": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ReceitasTest::test_selecionar_titulos_mostra_a_barra_e_a_baixa_em_massa_conclui_todos @spec:AC-054",
+      "method": "tap"
+    },
+    "AC-055": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ReceitasTest::test_atrasado_e_a_vencer_se_distinguem_a_primeira_vista @spec:AC-055",
+      "method": "tap"
+    },
+    "AC-058": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\CadastrosTest::test_cada_centro_de_custo_e_fornecedor_mostra_quantos_lancamentos_usam @spec:AC-058",
+      "method": "tap"
+    },
+    "AC-059": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\CadastrosTest::test_o_plano_de_contas_le_se_na_horizontal_por_bloco_de_categoria @spec:AC-059",
+      "method": "tap"
+    },
+    "AC-061": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ShellTest::test_em_tela_estreita_o_menu_vira_gaveta @spec:AC-061",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}
