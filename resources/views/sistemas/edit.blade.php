@@ -54,7 +54,7 @@
                     </div>
 
                     <div class="flex items-center justify-end gap-3 mt-6">
-                        <a href="{{ route('sistemas.index') }}" class="text-sm text-ink-dim hover:text-ink">Voltar</a>
+                        <a href="{{ route('produtos.index') }}" class="text-sm text-ink-dim hover:text-ink">Voltar</a>
                         <x-primary-button>Salvar</x-primary-button>
                     </div>
                 </form>
