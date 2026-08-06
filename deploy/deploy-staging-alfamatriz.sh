@@ -81,6 +81,15 @@ fi
 
 log "novidade na main: ${LOCAL_SHA:0:7} -> ${REMOTO_SHA:0:7}"
 
+# Registra o veredito do portão DENTRO do container, onde o painel enxerga.
+# Sem isto, "por que o staging não anda?" só se responde lendo este log no
+# host — e o painel fala com o container, não com o Proxmox.
+veredito() { # $1=resultado (ok|reprovado) $2=sha $3=motivo
+    no_container "cat > $DIR/.deploy-gate <<'FIM'
+{\"resultado\":\"$1\",\"sha\":\"$2\",\"motivo\":\"$3\",\"quando\":\"$(date -u +%FT%TZ)\"}
+FIM" 2>/dev/null || true
+}
+
 # --------------------------------------------------------------- o portão
 
 # Traz o código ANTES de testar (é a versão nova que precisa ser aprovada),
@@ -90,17 +99,20 @@ no_container "git merge --ff-only origin/main" || { log "CONFLITO ff-only"; exit
 log "portão: instalando dependências e rodando a suíte"
 no_container "composer install --no-interaction --quiet" || {
     log "portão REPROVOU (composer falhou) — voltando para ${LOCAL_SHA:0:7}"
+    veredito reprovado "$REMOTO_SHA" "instalacao de dependencias falhou"
     no_container "git reset --hard $LOCAL_SHA"
     exit 1
 }
 
 if ! no_container "php artisan test"; then
     log "portão REPROVOU (teste falhando) — staging fica em ${LOCAL_SHA:0:7}"
+    veredito reprovado "$REMOTO_SHA" "suite de testes reprovou"
     no_container "git reset --hard $LOCAL_SHA"
     exit 1
 fi
 
 log "portão aprovou — aplicando ${REMOTO_SHA:0:7}"
+    veredito ok "$REMOTO_SHA" "suite aprovou"
 
 # ------------------------------------------------------------- aplicação
 

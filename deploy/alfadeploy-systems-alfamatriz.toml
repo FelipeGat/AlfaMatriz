@@ -26,5 +26,9 @@ dir = "/var/www/alfamatriz"
 stack = "laravel"
 health_port = 80
 health_host = "alfamatriz-staging.tail0939dd.ts.net"
+# A raiz do painel redireciona para o Centro de Controle (302). Sem apontar um
+# endereço que responda 200 direto, o AlfaDeploy leria o redirecionamento como
+# sistema doente estando saudável.
+health_path = "/healthz"
 prod_repo = "FelipeGat/AlfaMatriz"
 prod_status_url = "https://matriz.alfasolucoes.cloud/deploy-status.json"

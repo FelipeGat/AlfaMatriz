@@ -30,6 +30,16 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# O cron do root roda com PATH=/usr/bin:/bin, e o composer vive em
+# /usr/local/bin. Sem esta linha o script funciona quando chamado à mão e
+# falha a cada 5 minutos pelo agendador, sempre no mesmo ponto: "composer:
+# command not found", antes mesmo de chegar ao health check.
+#
+# É o MESMO defeito que o deploy-staging já tinha e corrigiu; este script
+# nasceu depois e não herdou a correção. Acrescentado ao FIM, não ao início:
+# garante os diretórios do sistema sem tirar a prioridade de quem chamou.
+export PATH="$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 ESTADO="$DIR/.deploy-tag-state"
 FALHOU="$DIR/.deploy-tag-failed"
 PAUSADO="$DIR/.deploy-paused"
