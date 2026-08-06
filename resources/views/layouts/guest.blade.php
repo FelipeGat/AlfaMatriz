@@ -19,12 +19,13 @@
     <body class="font-sans text-ink antialiased">
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-bg">
             <a href="/" class="flex items-center gap-[11px]">
-                <svg class="h-[34px] w-[35px] text-brand" viewBox="2.8 1.8 42.4 43.8" fill="none">
-                    <path d="M5 4l13 15L5 34" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"/>
-                    <path d="M43 4L30 19l13 15" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"/>
+                <svg class="h-[33px] w-[34px] text-ink" viewBox="2 1 44 45.6" fill="none">
+                    <path d="M5 4l13 15L5 34" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".38"/>
+                    <path d="M43 4L30 19l13 15" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".38"/>
                     <circle cx="24" cy="39" r="6.6" fill="currentColor"/>
                 </svg>
-                <img src="{{ asset('brand/alfamatriz-wordmark.png') }}" alt="AlfaMatriz" class="h-[19px] w-auto">
+                <img src="{{ asset('brand/alfamatriz-wordmark.png') }}" alt="AlfaMatriz"
+                     class="h-[19px] w-auto" style="filter: var(--logo-filter);">
             </a>
 
             <div class="w-full sm:max-w-md mt-6 px-6 py-5 bg-panel border border-line overflow-hidden rounded-card">
