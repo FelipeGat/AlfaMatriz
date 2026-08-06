@@ -1,87 +1,44 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-ink leading-tight">Painel Comercial</h2>
-    </x-slot>
+    <x-slot name="titulo">Painel Comercial</x-slot>
+    <x-slot name="contexto">portfólio e base instalada</x-slot>
 
-    <div class="space-y-6">
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <x-stat-card label="Sistemas ativos" :value="$totalSistemasAtivos" icon="cube-outline" accent="brand" />
-            <x-stat-card label="Clientes ativos (todos os sistemas)" :value="$totalClientesAtivos" icon="users" accent="good" />
-            <x-stat-card label="Revendas ativas" :value="$totalRevendasAtivas" icon="building" accent="ink" />
-            <x-stat-card label="MRR estimado (atacado)" :value="'R$ ' . number_format($mrrEstimado, 2, ',', '.')" icon="trending-up" accent="brand" />
+    <div class="space-y-4">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+            <x-kpi-card rotulo="Sistemas ativos" :valor="number_format($totalSistemasAtivos, 0, ',', '.')"
+                        acento="accent" icone="cube-outline" />
+            <x-kpi-card rotulo="Clientes ativos" :valor="number_format($totalClientesAtivos, 0, ',', '.')"
+                        acento="brand" icone="users" />
+            <x-kpi-card rotulo="Revendas ativas" :valor="number_format($totalRevendasAtivas, 0, ',', '.')"
+                        acento="amber" icone="building" />
+            <x-kpi-card rotulo="MRR de atacado" :valor="'R$ '.number_format($mrrEstimado, 2, ',', '.')"
+                        acento="chart-out" icone="repeat" />
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-panel border border-white/5 shadow-panel rounded-xl p-6">
-                <h3 class="font-display font-semibold text-ink mb-1">Ranking por quantidade de clientes</h3>
-                <p class="text-xs text-ink-mute mb-4">Clientes ativos por sistema, hoje.</p>
+        {{-- O destaque da tela: os dois rankings, em três camadas. --}}
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(420px, 1fr))">
+            <x-ranking :ranking="$rankingClientes"
+                       titulo="Produtos por clientes ativos"
+                       nota="quem tem mais base instalada"
+                       rotuloTotal="Clientes ativos" />
 
-                <div class="space-y-3">
-                    @forelse ($porQuantidade as $i => $item)
-                        <div>
-                            <div class="flex items-center justify-between text-sm mb-1">
-                                <span class="text-ink">{{ $i + 1 }}. {{ $item['sistema']->nome }}</span>
-                                <span class="text-ink-dim">{{ $item['clientes_ativos'] }}</span>
-                            </div>
-                            <div class="h-2 rounded-full bg-white/5 overflow-hidden">
-                                <div class="h-full rounded-full bg-brand" style="width: {{ $item['clientes_ativos'] > 0 ? max(($item['clientes_ativos'] / $maxQuantidade) * 100, 3) : 0 }}%"></div>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-sm text-ink-mute">Nenhum sistema com clientes ainda.</p>
-                    @endforelse
-                </div>
-            </div>
-
-            <div class="bg-panel border border-white/5 shadow-panel rounded-xl p-6">
-                <h3 class="font-display font-semibold text-ink mb-1">Ranking por valor gerado</h3>
-                <p class="text-xs text-ink-mute mb-4">Estimativa de atacado mensal por sistema, hoje.</p>
-
-                <div class="space-y-3">
-                    @forelse ($porValor as $i => $item)
-                        <div>
-                            <div class="flex items-center justify-between text-sm mb-1">
-                                <span class="text-ink">{{ $i + 1 }}. {{ $item['sistema']->nome }}</span>
-                                <span class="text-ink-dim">R$ {{ number_format($item['valor_estimado'], 2, ',', '.') }}</span>
-                            </div>
-                            <div class="h-2 rounded-full bg-white/5 overflow-hidden">
-                                <div class="h-full rounded-full bg-amber-signal" style="width: {{ $item['valor_estimado'] > 0 ? max(($item['valor_estimado'] / $maxValor) * 100, 3) : 0 }}%"></div>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-sm text-ink-mute">Nenhum valor gerado ainda.</p>
-                    @endforelse
-                </div>
-            </div>
+            <x-ranking :ranking="$rankingValor"
+                       titulo="Produtos por valor gerado"
+                       nota="quem sustenta o faturamento"
+                       rotuloTotal="MRR estimado"
+                       formato="reais" />
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-panel border border-white/5 shadow-panel rounded-xl p-6">
-                <h3 class="font-display font-semibold text-ink mb-4">Clientes por revenda</h3>
-                <ul class="divide-y divide-white/5 text-sm">
-                    @forelse ($porRevenda as $nome => $qtd)
-                        <li class="py-2 flex items-center justify-between">
-                            <span class="text-ink">{{ $nome }}</span>
-                            <span class="text-ink-dim">{{ $qtd }} {{ Str::plural('cliente', $qtd) }}</span>
-                        </li>
-                    @empty
-                        <li class="py-2 text-ink-mute">Nenhum cliente ativo.</li>
-                    @endforelse
-                </ul>
-            </div>
+        {{-- Mesma gramática, sem o bloco de topo: são recortes de apoio. --}}
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+            <x-ranking :ranking="$rankingRevendas"
+                       titulo="Clientes por revenda"
+                       nota="inclui venda direta"
+                       compacto />
 
-            <div class="bg-panel border border-white/5 shadow-panel rounded-xl p-6">
-                <h3 class="font-display font-semibold text-ink mb-4">Sistemas por categoria</h3>
-                <ul class="divide-y divide-white/5 text-sm">
-                    @foreach ($porCategoria as $categoria => $qtd)
-                        <li class="py-2 flex items-center justify-between">
-                            <span class="text-ink uppercase">{{ $categoria }}</span>
-                            <span class="text-ink-dim">{{ $qtd }} {{ Str::plural('sistema', $qtd) }}</span>
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
+            <x-ranking :ranking="$rankingCategorias"
+                       titulo="Portfólio por categoria"
+                       nota="sistemas por categoria"
+                       compacto />
         </div>
     </div>
 </x-app-layout>

@@ -102,7 +102,7 @@ reinvente:**
   entraram esta semana). O controller passa a calcular a fila de ação e as
   séries a partir do banco.
 
-## T-035 — Painéis Financeiro e Comercial [pendente]
+## T-035 — Painéis Financeiro e Comercial [concluida]
 - Refs: US-019, AC-042, AC-043
 - Arquivos: resources/views/dashboard.blade.php, resources/views/dashboard-comercial.blade.php, app/Http/Controllers/PainelController.php, tests/Feature/Redesign/PaineisTest.php
 - Esforço: alto
