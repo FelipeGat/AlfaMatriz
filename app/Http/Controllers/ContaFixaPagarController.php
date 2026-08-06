@@ -6,6 +6,7 @@ use App\Models\CentroCusto;
 use App\Models\Conta;
 use App\Models\ContaFinanceira;
 use App\Models\ContaFixaPagar;
+use App\Models\ContaPagar;
 use App\Models\Fornecedor;
 use App\Services\DespesaFixaService;
 use Illuminate\Http\Request;
@@ -18,9 +19,19 @@ class ContaFixaPagarController extends Controller
             ->orderBy('descricao')
             ->get();
 
-        $totalMensal = $contasFixas->where('ativo', true)->sum('valor');
+        $ativas = $contasFixas->where('ativo', true);
+        $totalMensal = (float) $ativas->sum('valor');
+        $quantidadeAtivas = $ativas->count();
 
-        return view('contas-fixas-pagar.index', array_merge($this->formData(), compact('contasFixas', 'totalMensal')));
+        // Quantas já viraram conta a pagar nesta competência: é o que diz se o
+        // mês foi fechado ou não, sem precisar abrir a tela de Despesas.
+        $competencia = now()->format('Y-m');
+        $geradasNoMes = ContaPagar::where('tipo', 'fixa')->where('competencia', $competencia)->count();
+        $pendentesDeGeracao = max($quantidadeAtivas - $geradasNoMes, 0);
+
+        return view('contas-fixas-pagar.index', array_merge($this->formData(), compact(
+            'contasFixas', 'totalMensal', 'quantidadeAtivas', 'geradasNoMes', 'pendentesDeGeracao', 'competencia'
+        )));
     }
 
     public function store(Request $request)

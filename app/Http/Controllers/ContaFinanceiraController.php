@@ -10,9 +10,16 @@ class ContaFinanceiraController extends Controller
     public function index()
     {
         $contasFinanceiras = ContaFinanceira::orderBy('nome')->get();
-        $saldoTotal = $contasFinanceiras->sum('saldo');
 
-        return view('contas-financeiras.index', compact('contasFinanceiras', 'saldoTotal'));
+        $ativas = $contasFinanceiras->where('ativo', true);
+        $saldoTotal = (float) $ativas->sum('saldo');
+        $contasAtivas = $ativas->count();
+        $contasNegativas = $ativas->where('saldo', '<', 0)->count();
+        $maiorSaldo = (float) ($ativas->max('saldo') ?? 0);
+
+        return view('contas-financeiras.index', compact(
+            'contasFinanceiras', 'saldoTotal', 'contasAtivas', 'contasNegativas', 'maiorSaldo'
+        ));
     }
 
     public function create()
