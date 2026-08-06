@@ -1,142 +1,177 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-ink leading-tight">Cadastros auxiliares</h2>
-    </x-slot>
+    <x-slot name="titulo">Cadastros auxiliares</x-slot>
+    <x-slot name="contexto">CENTROS DE CUSTO · FORNECEDORES · PLANO DE CONTAS</x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            @if (session('status'))
-                <div class="p-4 bg-status-good/10 text-status-good rounded-md text-sm">{{ session('status') }}</div>
-            @endif
-            @if ($errors->any())
-                <div class="p-4 bg-status-critical/10 text-status-critical rounded-md text-sm">
-                    <ul class="list-disc list-inside">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
+    @if (session('status'))
+        <div class="mb-4 rounded-control border border-good-line bg-good-tint px-4 py-3 text-sm text-good">{{ session('status') }}</div>
+    @endif
+    @if ($errors->any())
+        <div class="mb-4 rounded-control border border-crit-tint bg-crit-tint px-4 py-3 text-sm text-crit">{{ $errors->first() }}</div>
+    @endif
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {{-- Centros de custo --}}
-                <div class="bg-panel shadow-sm sm:rounded-lg p-6">
-                    <h3 class="font-semibold text-ink mb-4">Centros de custo</h3>
-                    <ul class="divide-y divide-white/5 mb-4">
-                        @forelse ($centrosCusto as $centro)
-                            <li class="py-2 flex items-center justify-between text-sm">
-                                <span>{{ $centro->nome }}</span>
-                                <form action="{{ route('centros-custo.destroy', $centro) }}" method="POST" onsubmit="return confirm('Remover?');">
-                                    @csrf @method('DELETE')
-                                    <button class="text-status-critical hover:opacity-80 text-xs">Remover</button>
-                                </form>
-                            </li>
-                        @empty
-                            <li class="py-2 text-sm text-ink-dim">Nenhum centro de custo.</li>
-                        @endforelse
-                    </ul>
-                    <form action="{{ route('centros-custo.store') }}" method="POST" class="flex gap-2">
-                        @csrf
-                        <input type="text" name="nome" placeholder="Nome do centro de custo" class="flex-1 text-sm border-white/20 rounded-md shadow-sm" required>
-                        <button class="px-3 py-2 bg-brand text-white text-xs rounded-md uppercase font-semibold">Adicionar</button>
-                    </form>
-                </div>
-
-                {{-- Fornecedores --}}
-                <div class="bg-panel shadow-sm sm:rounded-lg p-6">
-                    <h3 class="font-semibold text-ink mb-4">Fornecedores</h3>
-                    <ul class="divide-y divide-white/5 mb-4 max-h-56 overflow-y-auto">
-                        @forelse ($fornecedores as $fornecedor)
-                            <li class="py-2 flex items-center justify-between text-sm">
-                                <span>{{ $fornecedor->razao_social }}</span>
-                                <form action="{{ route('fornecedores.destroy', $fornecedor) }}" method="POST" onsubmit="return confirm('Remover?');">
-                                    @csrf @method('DELETE')
-                                    <button class="text-status-critical hover:opacity-80 text-xs">Remover</button>
-                                </form>
-                            </li>
-                        @empty
-                            <li class="py-2 text-sm text-ink-dim">Nenhum fornecedor.</li>
-                        @endforelse
-                    </ul>
-                    <form action="{{ route('fornecedores.store') }}" method="POST" class="flex gap-2">
-                        @csrf
-                        <input type="text" name="razao_social" placeholder="Razão social" class="flex-1 text-sm border-white/20 rounded-md shadow-sm" required>
-                        <button class="px-3 py-2 bg-brand text-white text-xs rounded-md uppercase font-semibold">Adicionar</button>
-                    </form>
-                </div>
-            </div>
-
-            {{-- Árvore de categorias --}}
-            <div class="bg-panel shadow-sm sm:rounded-lg p-6">
-                <h3 class="font-semibold text-ink mb-4">Categorias → Subcategorias → Contas</h3>
-
-                <div class="space-y-4 mb-6">
-                    @forelse ($categorias as $categoria)
-                        <div class="border border-white/5 rounded-md p-4">
-                            <div class="flex items-center justify-between">
-                                <span class="font-medium text-sm">
-                                    {{ $categoria->nome }}
-                                    <span class="ml-2 px-2 py-0.5 text-xs rounded-full {{ $categoria->tipo === 'receita' ? 'bg-status-good/15 text-status-good' : 'bg-status-critical/15 text-status-critical' }}">
-                                        {{ ucfirst($categoria->tipo) }}
-                                    </span>
-                                </span>
-                                <form action="{{ route('categorias.destroy', $categoria) }}" method="POST" onsubmit="return confirm('Remover categoria e subcategorias?');">
-                                    @csrf @method('DELETE')
-                                    <button class="text-status-critical hover:opacity-80 text-xs">Remover</button>
-                                </form>
-                            </div>
-
-                            <div class="mt-3 ml-4 space-y-2">
-                                @foreach ($categoria->subcategorias as $subcategoria)
-                                    <div class="text-sm">
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-ink-dim">↳ {{ $subcategoria->nome }}</span>
-                                            <form action="{{ route('subcategorias.destroy', $subcategoria) }}" method="POST" onsubmit="return confirm('Remover subcategoria e contas?');">
-                                                @csrf @method('DELETE')
-                                                <button class="text-status-critical hover:opacity-80 text-xs">Remover</button>
-                                            </form>
-                                        </div>
-                                        <div class="ml-6 mt-1 flex flex-wrap gap-2">
-                                            @foreach ($subcategoria->contas as $conta)
-                                                <form action="{{ route('contas.destroy', $conta) }}" method="POST" onsubmit="return confirm('Remover conta?');" class="inline-flex items-center gap-1 bg-panel-raised rounded-full px-2 py-1 text-xs">
-                                                    @csrf @method('DELETE')
-                                                    <span>{{ $conta->nome }}</span>
-                                                    <button class="text-status-critical">×</button>
-                                                </form>
-                                            @endforeach
-                                            <form action="{{ route('contas.store') }}" method="POST" class="inline-flex items-center gap-1">
-                                                @csrf
-                                                <input type="hidden" name="subcategoria_id" value="{{ $subcategoria->id }}">
-                                                <input type="text" name="nome" placeholder="+ conta" class="text-xs border-white/20 rounded-md shadow-sm w-28">
-                                                <button class="text-xs text-brand">Add</button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                @endforeach
-
-                                <form action="{{ route('subcategorias.store') }}" method="POST" class="flex gap-2 mt-2">
-                                    @csrf
-                                    <input type="hidden" name="categoria_id" value="{{ $categoria->id }}">
-                                    <input type="text" name="nome" placeholder="+ subcategoria" class="text-xs border-white/20 rounded-md shadow-sm flex-1">
-                                    <button class="text-xs text-brand">Adicionar</button>
-                                </form>
-                            </div>
+    <div class="flex flex-col gap-4">
+        {{--
+            Centros de custo e fornecedores: mesma gramática de lista, cada
+            item mostra quantos lançamentos dependem dele ao lado do botão de
+            remover (AC-058) — é o dado que decide se remover é seguro.
+        --}}
+        <div class="grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+            <x-painel titulo="Centros de custo" :sub="$centrosCusto->count().' cadastrado(s)'" solto>
+                <div class="max-h-[232px] overflow-y-auto">
+                    @forelse ($centrosCusto as $centro)
+                        <div class="flex items-center gap-3 px-4 h-[42px] border-b border-rule">
+                            <span class="h-[26px] w-[26px] shrink-0 rounded-tile bg-chip text-ink-mute flex items-center justify-center">
+                                <span class="h-[14px] w-[14px]"><x-nav-icon name="clipboard" /></span>
+                            </span>
+                            <span class="flex-1 min-w-0 text-[13.5px] text-ink truncate">{{ $centro->nome }}</span>
+                            <span class="shrink-0 font-mono text-[11px] text-ink-mute whitespace-nowrap">{{ $centro->contas_pagar_count }} lançamento(s)</span>
+                            <form action="{{ route('centros-custo.destroy', $centro) }}" method="POST" onsubmit="return confirm('Remover?');">
+                                @csrf @method('DELETE')
+                                <x-acao-tabela icone="trash" titulo="Remover" destrutivo type="submit" />
+                            </form>
                         </div>
                     @empty
-                        <p class="text-sm text-ink-dim">Nenhuma categoria cadastrada.</p>
+                        <p class="px-4 py-6 text-sm text-ink-mute">Nenhum centro de custo.</p>
                     @endforelse
                 </div>
+                <div class="flex gap-2 px-4 py-3 bg-head border-t border-line">
+                    <form action="{{ route('centros-custo.store') }}" method="POST" class="flex flex-1 gap-2">
+                        @csrf
+                        <input type="text" name="nome" placeholder="Nome do centro de custo"
+                               class="flex-1 min-w-0 h-[34px] rounded-control border-line bg-input text-ink placeholder-ink-faint text-sm" required>
+                        <button class="shrink-0 h-[34px] px-3.5 rounded-control bg-brand text-on-brand font-sans text-[12.5px] font-semibold hover:bg-brand-bright transition whitespace-nowrap">
+                            Adicionar
+                        </button>
+                    </form>
+                </div>
+            </x-painel>
 
-                <form action="{{ route('categorias.store') }}" method="POST" class="flex gap-2">
+            <x-painel titulo="Fornecedores" :sub="$fornecedores->count().' cadastrado(s)'" solto>
+                <div class="max-h-[232px] overflow-y-auto">
+                    @forelse ($fornecedores as $fornecedor)
+                        <div class="flex items-center gap-3 px-4 h-[42px] border-b border-rule">
+                            <span class="h-[26px] w-[26px] shrink-0 rounded-tile bg-chip text-ink-mute flex items-center justify-center">
+                                <span class="h-[14px] w-[14px]"><x-nav-icon name="building" /></span>
+                            </span>
+                            <span class="flex-1 min-w-0 text-[13.5px] text-ink truncate">{{ $fornecedor->razao_social }}</span>
+                            <span class="shrink-0 font-mono text-[11px] text-ink-mute whitespace-nowrap">{{ $fornecedor->contas_pagar_count }} lançamento(s)</span>
+                            <form action="{{ route('fornecedores.destroy', $fornecedor) }}" method="POST" onsubmit="return confirm('Remover?');">
+                                @csrf @method('DELETE')
+                                <x-acao-tabela icone="trash" titulo="Remover" destrutivo type="submit" />
+                            </form>
+                        </div>
+                    @empty
+                        <p class="px-4 py-6 text-sm text-ink-mute">Nenhum fornecedor.</p>
+                    @endforelse
+                </div>
+                <div class="flex gap-2 px-4 py-3 bg-head border-t border-line">
+                    <form action="{{ route('fornecedores.store') }}" method="POST" class="flex flex-1 gap-2">
+                        @csrf
+                        <input type="text" name="razao_social" placeholder="Razão social"
+                               class="flex-1 min-w-0 h-[34px] rounded-control border-line bg-input text-ink placeholder-ink-faint text-sm" required>
+                        <button class="shrink-0 h-[34px] px-3.5 rounded-control bg-brand text-on-brand font-sans text-[12.5px] font-semibold hover:bg-brand-bright transition whitespace-nowrap">
+                            Adicionar
+                        </button>
+                    </form>
+                </div>
+            </x-painel>
+        </div>
+
+        {{--
+            Plano de contas na horizontal (AC-059): categoria é um bloco
+            marcado pelo tipo, subcategoria é uma linha e as contas são chips
+            ao lado — em vez de quatro níveis de indentação descendo a tela.
+        --}}
+        @php
+            $totalSubcategorias = $categorias->sum(fn ($c) => $c->subcategorias->count());
+            $totalContas = $categorias->sum(fn ($c) => $c->subcategorias->sum(fn ($s) => $s->contas->count()));
+        @endphp
+        <x-painel titulo="Plano de contas"
+                  :sub="$categorias->count().' categoria(s) · '.$totalSubcategorias.' subcategoria(s) · '.$totalContas.' conta(s)'"
+                  solto>
+            <x-slot name="acoes">
+                <span class="font-mono text-[10.5px] text-ink-mute whitespace-nowrap">categoria › subcategoria › conta</span>
+            </x-slot>
+
+            <div class="p-4 flex flex-col gap-3">
+                @forelse ($categorias as $categoria)
+                    @php
+                        $receita = $categoria->tipo === 'receita';
+                        $accent = $receita ? 'good' : 'crit';
+                    @endphp
+                    <div class="rounded-ctl border border-line overflow-hidden" style="border-left: 2px solid rgb(var(--{{ $accent }}))">
+                        <div class="flex items-center gap-2.5 px-3.5 py-2.5 bg-head">
+                            <span class="font-display text-[14px] font-semibold text-ink">{{ $categoria->nome }}</span>
+                            <x-badge :tom="$receita ? 'bom' : 'critico'">{{ ucfirst($categoria->tipo) }}</x-badge>
+                            <span class="ml-auto font-mono text-[10.5px] text-ink-mute whitespace-nowrap">
+                                {{ $categoria->subcategorias->count() }} sub · {{ $categoria->subcategorias->sum(fn ($s) => $s->contas->count()) }} contas
+                            </span>
+                            <form action="{{ route('categorias.destroy', $categoria) }}" method="POST" onsubmit="return confirm('Remover categoria e subcategorias?');">
+                                @csrf @method('DELETE')
+                                <x-acao-tabela icone="trash" titulo="Remover categoria" destrutivo type="submit" />
+                            </form>
+                        </div>
+
+                        @foreach ($categoria->subcategorias as $subcategoria)
+                            <div class="flex gap-3 px-3.5 py-[11px] border-t border-rule">
+                                <div class="flex-none w-[168px] min-w-0 flex items-center gap-2">
+                                    <span class="font-mono text-[11px] text-ink-faint">↳</span>
+                                    <span class="flex-1 min-w-0 text-[13px] font-medium text-ink truncate">{{ $subcategoria->nome }}</span>
+                                    <form action="{{ route('subcategorias.destroy', $subcategoria) }}" method="POST" onsubmit="return confirm('Remover subcategoria e contas?');">
+                                        @csrf @method('DELETE')
+                                        <x-acao-tabela icone="x-mark" titulo="Remover subcategoria" destrutivo type="submit" />
+                                    </form>
+                                </div>
+                                <div class="flex-1 min-w-0 flex flex-wrap gap-1.5 items-center">
+                                    @foreach ($subcategoria->contas as $conta)
+                                        <span class="inline-flex items-center gap-1.5 rounded-tile bg-chip pl-2 pr-1 py-[3px] text-[12px] text-ink-dim whitespace-nowrap"
+                                              title="{{ $conta->contas_pagar_count }} lançamento(s)">
+                                            {{ $conta->nome }}
+                                            <form action="{{ route('contas.destroy', $conta) }}" method="POST" onsubmit="return confirm('Remover conta?');" class="inline-flex">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" title="Remover conta" class="h-[14px] w-[14px] flex items-center justify-center text-ink-mute hover:text-crit">×</button>
+                                            </form>
+                                        </span>
+                                    @endforeach
+                                    <form action="{{ route('contas.store') }}" method="POST" class="inline-flex items-center">
+                                        @csrf
+                                        <input type="hidden" name="subcategoria_id" value="{{ $subcategoria->id }}">
+                                        <input type="text" name="nome" placeholder="+ conta"
+                                               class="h-[26px] w-28 rounded-tile border border-dashed border-btn-line bg-input text-ink text-[12px] px-2">
+                                    </form>
+                                </div>
+                            </div>
+                        @endforeach
+
+                        <form action="{{ route('subcategorias.store') }}" method="POST" class="flex gap-2 px-3.5 py-2.5 border-t border-rule">
+                            @csrf
+                            <input type="hidden" name="categoria_id" value="{{ $categoria->id }}">
+                            <input type="text" name="nome" placeholder="+ subcategoria em {{ $categoria->nome }}"
+                                   class="flex-1 min-w-0 h-[30px] rounded-ctl border border-dashed border-btn-line bg-input text-ink text-[12.5px] px-2.5">
+                            <button class="shrink-0 h-[30px] px-3 rounded-ctl border border-btn-line text-brand-text font-sans text-[12px] font-semibold whitespace-nowrap">
+                                Adicionar
+                            </button>
+                        </form>
+                    </div>
+                @empty
+                    <p class="text-sm text-ink-mute">Nenhuma categoria cadastrada.</p>
+                @endforelse
+            </div>
+
+            <div class="flex gap-2 px-4 py-3 bg-head border-t border-line">
+                <form action="{{ route('categorias.store') }}" method="POST" class="flex flex-1 gap-2">
                     @csrf
-                    <input type="text" name="nome" placeholder="Nova categoria" class="flex-1 text-sm border-white/20 rounded-md shadow-sm" required>
-                    <select name="tipo" class="text-sm border-white/20 rounded-md shadow-sm">
+                    <input type="text" name="nome" placeholder="Nova categoria"
+                           class="flex-1 min-w-0 h-[34px] rounded-control border-line bg-input text-ink placeholder-ink-faint text-sm" required>
+                    <select name="tipo" class="shrink-0 h-[34px] rounded-control border-line bg-input text-ink-dim text-sm">
                         <option value="despesa">Despesa</option>
                         <option value="receita">Receita</option>
                     </select>
-                    <button class="px-3 py-2 bg-brand text-white text-xs rounded-md uppercase font-semibold">Adicionar</button>
+                    <button class="shrink-0 h-[34px] px-3.5 rounded-control bg-brand text-on-brand font-sans text-[12.5px] font-semibold hover:bg-brand-bright transition whitespace-nowrap">
+                        Adicionar categoria
+                    </button>
                 </form>
             </div>
-        </div>
+        </x-painel>
     </div>
 </x-app-layout>

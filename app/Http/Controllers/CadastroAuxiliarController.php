@@ -10,9 +10,11 @@ class CadastroAuxiliarController extends Controller
 {
     public function index()
     {
-        $centrosCusto = CentroCusto::orderBy('nome')->get();
-        $categorias = Categoria::with('subcategorias.contas')->orderBy('tipo')->orderBy('nome')->get();
-        $fornecedores = Fornecedor::orderBy('razao_social')->get();
+        $centrosCusto = CentroCusto::withCount('contasPagar')->orderBy('nome')->get();
+        $categorias = Categoria::with(['subcategorias.contas' => function ($query) {
+            $query->withCount('contasPagar');
+        }])->orderBy('tipo')->orderBy('nome')->get();
+        $fornecedores = Fornecedor::withCount('contasPagar')->orderBy('razao_social')->get();
 
         return view('cadastros-auxiliares.index', compact('centrosCusto', 'categorias', 'fornecedores'));
     }
