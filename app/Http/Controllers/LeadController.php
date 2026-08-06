@@ -73,6 +73,11 @@ class LeadController extends Controller
                 'quantidade' => $leads->count(),
                 'valor' => (float) $leads->sum('valor_estimado'),
                 'exigeMotivo' => $chave === 'perdido',
+                // Desfecho, não trabalho em andamento: ninguém fica lendo card
+                // em "cliente ativo" ou "perdido" todo dia. Eles cedem largura
+                // para as colunas onde a negociação acontece, e expandem no
+                // clique quando alguém precisa olhar.
+                'terminal' => in_array($chave, Lead::ESTAGIOS_TERMINAIS, true),
             ];
         })->values()->all();
     }

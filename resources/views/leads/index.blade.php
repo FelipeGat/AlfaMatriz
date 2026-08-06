@@ -36,7 +36,17 @@
         </div>
 
         {{-- Quadro ---------------------------------------------------------- --}}
-        <div x-data="funil" class="flex-1 min-h-0 flex flex-col rounded-panel border border-line bg-board overflow-hidden">
+        <div x-data="funil" class="relative flex-1 min-h-0 flex flex-col rounded-panel border border-line bg-board overflow-hidden">
+            {{-- Sombras nas bordas: quando o quadro não cabe, elas são a única
+                 pista de que há mais coluna. Barra de rolagem fina em tema
+                 escuro passa despercebida, e o corte seco de uma coluna na
+                 borda parece fim do conteúdo. --}}
+            <div x-show="temMaisEsquerda" x-cloak aria-hidden="true"
+                 class="pointer-events-none absolute left-0 top-0 bottom-0 w-10 z-10"
+                 style="background: linear-gradient(90deg, rgb(var(--canvas) / 0.55), transparent)"></div>
+            <div x-show="temMaisDireita" x-cloak aria-hidden="true"
+                 class="pointer-events-none absolute right-0 top-0 bottom-0 w-10 z-10"
+                 style="background: linear-gradient(270deg, rgb(var(--canvas) / 0.55), transparent)"></div>
             <div class="shrink-0 flex items-center gap-3 px-4 h-[52px] border-b border-line">
                 <span class="h-7 w-7 shrink-0 rounded-tile flex items-center justify-center bg-brand/15 text-brand-text">
                     <span class="h-[15px] w-[15px]"><x-nav-icon name="view-grid" /></span>
@@ -54,37 +64,64 @@
 
             {{-- `items-stretch` + `min-h-0` é o que faz todas as colunas terem
                  a mesma altura e cada uma rolar por dentro. --}}
-            {{-- A roda do mouse rola o quadro na horizontal: num kanban a
-                 direção que importa é a lateral, e mouse comum não tem eixo X.
-                 A coluna sob o cursor tem prioridade — ver rolarQuadro(). --}}
-            <div x-ref="quadro" @wheel="rolarQuadro($event)"
-                 class="flex-1 min-h-0 flex gap-3 items-stretch overflow-x-auto p-3.5">
+            {{-- As colunas dividem o espaço em vez de terem largura fixa: em
+                 tela grande o funil inteiro cabe e a rolagem lateral deixa de
+                 existir, que num funil é o ponto — é vendo todos os estágios
+                 juntos que se enxerga onde a negociação empacou.
+
+                 Onde não couber (janela estreita, ou mais estágios), a
+                 rolagem volta, com `shift`+roda (que o navegador já faz) e a
+                 sombra na borda avisando que há mais coluna adiante. --}}
+            <div x-ref="quadro" @scroll="medirBordas()" @resize.window="medirBordas()" x-init="medirBordas()"
+                 class="relative flex-1 min-h-0 flex gap-3 items-stretch overflow-x-auto p-3.5">
                 @foreach ($estagios as $estagio)
                     @php $cards = $colunas[$estagio['chave']]; @endphp
 
-                    <section class="shrink-0 flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden"
-                             style="width: 276px; border-top: 3px solid rgb(var(--{{ $estagio['cor'] }}))"
+                    @php $terminal = $estagio['terminal']; @endphp
+
+                    <section class="flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden transition-[flex-basis,width] duration-200"
+                             @if ($terminal)
+                                 :style="expandido === '{{ $estagio['chave'] }}'
+                                     ? 'flex: 1 1 0; min-width: 230px; border-top: 3px solid rgb(var(--{{ $estagio['cor'] }}))'
+                                     : 'flex: 0 0 96px; border-top: 3px solid rgb(var(--{{ $estagio['cor'] }}))'"
+                             @else
+                                 style="flex: 1 1 0; min-width: 230px; border-top: 3px solid rgb(var(--{{ $estagio['cor'] }}))"
+                             @endif
                              data-estagio="{{ $estagio['chave'] }}"
                              @dragover.prevent="permitir('{{ $estagio['chave'] }}')"
                              @dragleave="sobre = null"
                              @drop.prevent="soltar('{{ $estagio['chave'] }}', {{ $estagio['exigeMotivo'] ? 'true' : 'false' }})"
                              :class="sobre === '{{ $estagio['chave'] }}' && 'ring-1 ring-brand'">
-                        <header class="shrink-0 px-3 py-2.5 border-b border-rule">
-                            <div class="flex items-center gap-2">
+                        <header class="shrink-0 px-3 py-2.5 border-b border-rule"
+                                @if ($terminal)
+                                    role="button" tabindex="0"
+                                    @click="expandido = expandido === '{{ $estagio['chave'] }}' ? null : '{{ $estagio['chave'] }}'"
+                                    @keydown.enter="expandido = expandido === '{{ $estagio['chave'] }}' ? null : '{{ $estagio['chave'] }}'"
+                                    class="shrink-0 px-3 py-2.5 border-b border-rule cursor-pointer hover:bg-chip transition"
+                                    :title="expandido === '{{ $estagio['chave'] }}' ? 'Recolher {{ $estagio['label'] }}' : 'Expandir {{ $estagio['label'] }}'"
+                                @endif>
+                            <div class="flex items-center gap-2"
+                                 @if ($terminal) :class="expandido !== '{{ $estagio['chave'] }}' && 'flex-col items-start gap-1'" @endif>
                                 <span class="h-[7px] w-[7px] shrink-0 rounded-full"
                                       style="background: rgb(var(--{{ $estagio['cor'] }}))"></span>
-                                <h3 class="min-w-0 truncate font-display text-[14px] font-semibold text-ink">{{ $estagio['label'] }}</h3>
+                                <h3 class="min-w-0 truncate font-display text-[14px] font-semibold text-ink"
+                                    @if ($terminal) :class="expandido !== '{{ $estagio['chave'] }}' && 'text-[11.5px] leading-tight whitespace-normal'" @endif>{{ $estagio['label'] }}</h3>
                                 <span class="ml-auto shrink-0 h-5 min-w-[20px] px-1.5 rounded-full font-mono text-[10px] font-semibold leading-5 text-center"
                                       style="background: rgb(var(--{{ $estagio['cor'] }}) / var(--tint-alpha)); color: rgb(var(--{{ $estagio['cor'] }}))">
                                     {{ $estagio['quantidade'] }}
                                 </span>
                             </div>
-                            <p class="mt-0.5 pl-[15px] font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                            <p class="mt-0.5 pl-[15px] font-mono text-[10.5px] uppercase tracking-caps text-ink-faint"
+                               @if ($terminal) x-show="expandido === '{{ $estagio['chave'] }}'" x-cloak @endif>
                                 R$ {{ number_format($estagio['valor'], 0, ',', '.') }} em jogo
                             </p>
                         </header>
 
-                        <div data-coluna-lista class="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
+                        {{-- `overscroll-contain`: a roda PARA quando a coluna acaba, em vez
+                             de continuar no quadro. Sem isto, ler uma coluna até o fim
+                             fazia o quadro inteiro deslizar de lado sem ninguém pedir. --}}
+                        <div data-coluna-lista class="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-2"
+                             @if ($terminal) x-show="expandido === '{{ $estagio['chave'] }}'" x-cloak @endif>
                             @forelse ($cards as $lead)
                                 @php
                                     $temperatura = $lead->temperatura();
@@ -202,34 +239,22 @@
                 // Modelo de rota com marcador: o id só é conhecido no solto.
                 rotaMover: @json(route('leads.mover', ['lead' => '__ID__'])),
 
-                /**
-                 * Roda do mouse → rolagem lateral do quadro.
-                 *
-                 * Com uma ressalva que é o ponto todo: se o cursor está sobre
-                 * uma coluna que AINDA tem card para mostrar, quem rola é a
-                 * coluna. Sequestrar a roda ali tiraria o único jeito de ver o
-                 * fim de uma coluna cheia — trocaria um incômodo por outro
-                 * pior.
-                 *
-                 * Gesto horizontal de trackpad também passa direto: ali o
-                 * navegador já faz a coisa certa sozinho.
-                 */
-                rolarQuadro(evento) {
-                    if (Math.abs(evento.deltaX) > Math.abs(evento.deltaY)) return;
+                // Qual coluna de desfecho está aberta (só uma por vez: elas
+                // pedem espaço emprestado das colunas de trabalho).
+                expandido: null,
 
-                    const coluna = evento.target.closest('[data-coluna-lista]');
-                    if (coluna) {
-                        const folgaAbaixo = coluna.scrollHeight - coluna.clientHeight - coluna.scrollTop;
-                        const desce = evento.deltaY > 0 && folgaAbaixo > 1;
-                        const sobe = evento.deltaY < 0 && coluna.scrollTop > 1;
-                        if (desce || sobe) return;
-                    }
 
-                    const quadro = this.$refs.quadro;
-                    if (! quadro || quadro.scrollWidth <= quadro.clientWidth) return;
+                // Há mais coluna fora da vista? A sombra na borda é a única
+                // pista quando o quadro não cabe — barra de rolagem fina em
+                // tema escuro passa despercebida.
+                temMaisEsquerda: false,
+                temMaisDireita: false,
 
-                    evento.preventDefault();
-                    quadro.scrollLeft += evento.deltaY;
+                medirBordas() {
+                    const q = this.$refs.quadro;
+                    if (! q) return;
+                    this.temMaisEsquerda = q.scrollLeft > 1;
+                    this.temMaisDireita = q.scrollLeft + q.clientWidth < q.scrollWidth - 1;
                 },
 
                 permitir(estagio) {

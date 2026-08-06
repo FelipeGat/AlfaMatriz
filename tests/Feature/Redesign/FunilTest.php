@@ -76,41 +76,61 @@ class FunilTest extends TestCase
     }
 
     /**
-     * @spec:AC-044 A roda do mouse rola o quadro na horizontal — num kanban a
-     * direção que importa é a lateral, e mouse comum não tem eixo X.
+     * @spec:AC-044 O quadro cabe na tela em vez de administrar rolagem, e a
+     * roda não vaza de uma coluna para o quadro.
      *
-     * O que este teste protege de verdade é a RESSALVA: a coluna sob o cursor
-     * tem prioridade. Sequestrar a roda sempre tiraria o único jeito de ver o
-     * fim de uma coluna cheia, trocando um incômodo por outro pior.
+     * A versão anterior desta tela fazia a roda rolar o quadro na horizontal
+     * quando a coluna chegava ao fim. Na prática isso era encadeamento: você
+     * lia uma coluna, ela acabava, e o quadro inteiro deslizava de lado sem
+     * ninguém pedir. A correção não foi ajustar o gesto — foi fazer o funil
+     * caber, que num funil é o ponto: é vendo todos os estágios juntos que se
+     * enxerga onde a negociação empacou.
      */
-    public function test_a_roda_rola_o_quadro_mas_cede_a_vez_para_a_coluna(): void
+    public function test_o_quadro_divide_o_espaco_e_a_roda_nao_vaza_da_coluna(): void
     {
         $this->lead('lead');
 
         $html = $this->actingAs($this->operador())->get(route('leads.index'))->getContent();
 
-        // O quadro escuta a roda e sabe se apontar.
-        $this->assertStringContainsString('@wheel="rolarQuadro($event)"', $html);
-        $this->assertStringContainsString('x-ref="quadro"', $html);
+        // Colunas dividem o espaço, com piso de largura: em tela grande tudo
+        // cabe; onde não couber, a rolagem volta em vez de espremer o card.
+        $this->assertStringContainsString('flex: 1 1 0; min-width: 230px', $html);
+        $this->assertStringNotContainsString('width: 276px', $html,
+            'Largura fixa é o que fazia o quadro não caber.');
 
-        // Cada coluna se identifica, para o comportamento saber onde o cursor
-        // está — sem isso não há como dar a vez a ela.
-        $this->assertStringContainsString('data-coluna-lista', $html);
+        // A roda PARA no fim da coluna. É esta linha que mata o encadeamento.
+        $this->assertStringContainsString('overscroll-contain', $html);
+        $this->assertStringNotContainsString('rolarQuadro', $html,
+            'O sequestro da roda era a causa do encadeamento e saiu.');
 
-        // A coluna com o que mostrar fica com a roda: o quadro só assume
-        // quando ela chegou ao fim (ou ao topo, subindo).
-        $this->assertMatchesRegularExpression(
-            '/const folgaAbaixo = coluna\.scrollHeight - coluna\.clientHeight - coluna\.scrollTop;/',
-            $html,
-            'Sem medir a folga da coluna, a roda a atropela.'
-        );
-        $this->assertMatchesRegularExpression('/if \(desce \|\| sobe\) return;/', $html);
+        // Estágio de desfecho cede largura para os de trabalho, e abre no
+        // clique — não some, fica estreito.
+        $this->assertStringContainsString("flex: 0 0 96px", $html);
+        $this->assertStringContainsString("expandido = expandido === 'perdido'", $html);
+        $this->assertStringContainsString("expandido = expandido === 'cliente_ativo'", $html);
 
-        // Gesto horizontal de trackpad passa direto: ali o navegador já acerta.
-        $this->assertStringContainsString(
-            'Math.abs(evento.deltaX) > Math.abs(evento.deltaY)',
-            $html
-        );
+        // Sombra na borda quando há coluna fora da vista.
+        $this->assertStringContainsString('temMaisDireita', $html);
+        $this->assertStringContainsString('medirBordas()', $html);
+    }
+
+    /**
+     * @spec:AC-044 Só os estágios de desfecho encolhem. Os de trabalho — onde
+     * a negociação acontece — mantêm largura de leitura.
+     */
+    public function test_apenas_os_estagios_de_desfecho_sao_estreitos(): void
+    {
+        $estagios = $this->actingAs($this->operador())
+            ->get(route('leads.index'))
+            ->viewData('estagios');
+
+        $terminais = collect($estagios)->where('terminal', true)->pluck('chave')->all();
+        $trabalho = collect($estagios)->where('terminal', false)->pluck('chave')->all();
+
+        $this->assertSame(['cliente_ativo', 'perdido'], $terminais);
+        $this->assertContains('proposta', $trabalho);
+        $this->assertContains('contrato', $trabalho);
+        $this->assertCount(5, $trabalho, 'Cinco estágios de trabalho dividem o espaço.');
     }
 
     /**
