@@ -43,8 +43,12 @@
     --card-grad: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
 
     /* linhas */
-    --line: rgba(255, 255, 255, 0.08);
-    --rule: rgba(255, 255, 255, 0.055);
+    /* A régua entre linhas de tabela subiu de 0,055 para 0,10: no escuro o
+       hairline original quase sumia contra o painel, e uma tabela de dez
+       linhas virava um bloco só. Ela ainda é hairline — o que muda é dar
+       para segui-la com o olho ao correr uma coluna. */
+    --line: rgba(255, 255, 255, 0.12);
+    --rule: rgba(255, 255, 255, 0.10);
     --rule-strong: rgba(230, 238, 240, 0.30);
     --btn-line: rgba(255, 255, 255, 0.12);
     --bar-track: rgba(255, 255, 255, 0.05);
@@ -104,8 +108,12 @@
     --card-grad: linear-gradient(180deg, #ffffff, #f2f7f8);
 
     /* linhas */
-    --line: rgba(11, 26, 30, 0.10);
-    --rule: rgba(11, 26, 30, 0.07);
+    /* No claro a régua precisa de menos alpha que no escuro para o mesmo
+       peso visual: tinta escura sobre fundo branco rende mais que tinta
+       clara sobre fundo escuro. Por isso 0,12 aqui contra 0,10 lá — não é
+       descuido, é o que iguala os dois temas ao olho. */
+    --line: rgba(11, 26, 30, 0.14);
+    --rule: rgba(11, 26, 30, 0.12);
     --rule-strong: rgba(11, 26, 30, 0.22);
     --btn-line: rgba(11, 26, 30, 0.15);
     --bar-track: rgba(11, 26, 30, 0.07);
