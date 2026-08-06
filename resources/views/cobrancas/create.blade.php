@@ -1,5 +1,8 @@
 <x-app-layout>
-    <x-slot name="titulo">Nova receita</x-slot>
+    <x-slot name="caminho">
+        <x-migalhas :caminho="[['rotulo' => 'Receitas', 'rota' => route('cobrancas.index')]]"
+                    :atual="'Nova receita'" />
+    </x-slot>
     <x-slot name="contexto">CONTAS A RECEBER</x-slot>
 
     <div class="max-w-4xl">

@@ -1,5 +1,8 @@
 <x-app-layout>
-    <x-slot name="titulo">Editar cliente</x-slot>
+    <x-slot name="caminho">
+        <x-migalhas :caminho="[['rotulo' => 'Clientes', 'rota' => route('clientes.index')]]"
+                    :atual="$cliente->nome_exibicao" />
+    </x-slot>
     <x-slot name="contexto">{{ $cliente->nome_exibicao }}</x-slot>
 
     {{-- Formulário respira melhor com largura limitada; a tabela é que não

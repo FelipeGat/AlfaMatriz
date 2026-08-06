@@ -1,5 +1,8 @@
 <x-app-layout>
-    <x-slot name="titulo">{{ $cobranca->descricao }}</x-slot>
+    <x-slot name="caminho">
+        <x-migalhas :caminho="[['rotulo' => 'Receitas', 'rota' => route('cobrancas.index')]]"
+                    :atual="$cobranca->descricao" />
+    </x-slot>
     <x-slot name="contexto">RECEITA · {{ ucfirst($cobranca->status) }}</x-slot>
 
     <div class="max-w-4xl space-y-4">

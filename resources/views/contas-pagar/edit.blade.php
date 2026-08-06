@@ -1,10 +1,10 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-ink leading-tight">Editar despesa</h2>
+    <x-slot name="caminho">
+        <x-migalhas :caminho="[['rotulo' => 'Despesas', 'rota' => route('contas-pagar.index')]]"
+                    :atual="'Editar despesa'" />
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+    <div class="" style="max-width: 1000px">
             <div class="bg-panel overflow-hidden sm:rounded-card p-6">
                 <form method="POST" action="{{ route('contas-pagar.update', $contaPagar) }}">
                     @method('PUT')
@@ -12,5 +12,4 @@
                 </form>
             </div>
         </div>
-    </div>
 </x-app-layout>

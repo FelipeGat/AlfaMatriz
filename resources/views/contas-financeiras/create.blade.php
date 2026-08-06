@@ -1,15 +1,14 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-ink leading-tight">Nova conta financeira</h2>
+    <x-slot name="caminho">
+        <x-migalhas :caminho="[['rotulo' => 'Caixa', 'rota' => route('contas-financeiras.index')]]"
+                    :atual="'Nova conta'" />
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
+    <div class="" style="max-width: 1000px">
             <div class="bg-panel overflow-hidden sm:rounded-card p-6">
                 <form method="POST" action="{{ route('contas-financeiras.store') }}">
                     @include('contas-financeiras._form')
                 </form>
             </div>
         </div>
-    </div>
 </x-app-layout>

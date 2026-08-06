@@ -1,5 +1,8 @@
 <x-app-layout>
-    <x-slot name="titulo">Extrato · {{ $contaFinanceira->nome }}</x-slot>
+    <x-slot name="caminho">
+        <x-migalhas :caminho="[['rotulo' => 'Caixa', 'rota' => route('contas-financeiras.index')]]"
+                    :atual="$contaFinanceira->nome" />
+    </x-slot>
     <x-slot name="contexto">saldo atual R$ {{ number_format($contaFinanceira->saldo, 2, ',', '.') }}</x-slot>
     <x-slot name="acoes">
         <a href="{{ route('contas-financeiras.index') }}"

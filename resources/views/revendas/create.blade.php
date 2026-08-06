@@ -1,15 +1,14 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-ink leading-tight">Nova revenda</h2>
+    <x-slot name="caminho">
+        <x-migalhas :caminho="[['rotulo' => 'Revendas', 'rota' => route('revendas.index')]]"
+                    :atual="'Nova revenda'" />
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
+    <div class="" style="max-width: 1000px">
             <div class="bg-panel overflow-hidden sm:rounded-card p-6">
                 <form method="POST" action="{{ route('revendas.store') }}">
                     @include('revendas._form')
                 </form>
             </div>
         </div>
-    </div>
 </x-app-layout>

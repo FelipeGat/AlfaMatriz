@@ -83,11 +83,19 @@
                         mais longo — corta o título ao meio.
                     --}}
                     <div class="flex items-baseline gap-3 min-w-0 flex-1">
-                        @isset($titulo)
+                        {{--
+                            Tela filha manda o caminho inteiro (<x-migalhas>);
+                            tela de topo manda só o título. A migalha ocupa o
+                            lugar do h1 porque o último degrau dela É o título:
+                            os dois juntos diriam a mesma coisa duas vezes.
+                        --}}
+                        @isset($caminho)
+                            <div class="flex-none max-w-full min-w-0">{{ $caminho }}</div>
+                        @elseif (isset($titulo))
                             <h1 class="flex-none max-w-full truncate font-display text-[17px] font-semibold text-ink">{{ $titulo }}</h1>
                         @else
                             <div class="flex-none max-w-full truncate font-display [&_h2]:font-display [&_h2]:text-[17px] [&_h2]:font-semibold">{{ $header ?? '' }}</div>
-                        @endisset
+                        @endif
 
                         @isset($contexto)
                             <p class="flex-1 min-w-0 truncate font-mono text-[11px] uppercase tracking-caps text-ink-faint">{{ $contexto }}</p>

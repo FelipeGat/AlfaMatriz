@@ -1,10 +1,10 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-ink leading-tight">{{ $sistema->nome }}</h2>
+    <x-slot name="caminho">
+        <x-migalhas :caminho="[['rotulo' => 'Produtos', 'rota' => route('produtos.index')]]"
+                    :atual="$sistema->nome" />
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
+    <div class=" space-y-6" style="max-width: 1000px">
             @if (session('status'))
                 <div class="p-4 bg-status-good/10 text-status-good rounded-md text-sm">{{ session('status') }}</div>
             @endif
@@ -147,5 +147,4 @@
                 </form>
             </div>
         </div>
-    </div>
 </x-app-layout>
