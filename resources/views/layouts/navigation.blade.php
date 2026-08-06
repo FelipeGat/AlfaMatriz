@@ -75,7 +75,9 @@
                 <div class="hidden rail:lg:block h-px mx-[9px] my-[11px] bg-rule-strong"></div>
             @endunless
 
-            <p class="px-[14px] py-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-caps-max text-ink-faint
+            {{-- O rótulo do grupo ganha um respiro maior acima que abaixo: ele
+                 pertence ao que vem depois, não ao que veio antes. --}}
+            <p class="px-[14px] pt-3 pb-1 first:pt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-caps-max text-ink-faint
                       rail:lg:hidden">{{ $nomeGrupo }}</p>
 
             @foreach ($links as $link)
@@ -87,6 +89,12 @@
                        // precisa de peso extra — ele já tem fundo, cor de
                        // marca e a barra de 3px o separando dos outros.
                        'group flex items-center gap-3 h-item text-[13.5px] font-medium transition-colors border-l-[3px] px-[13px]',
+                       // Expandido, o item respira: com os rótulos ao lado, a
+                       // fileira colada vira um bloco de texto e a pessoa
+                       // perde a linha ao correr o olho. Recolhido o gap sai —
+                       // no rail o que separa os ícones é a régua de grupo, e
+                       // espaço extra ali só alonga a coluna à toa.
+                       'my-[3px] rail:lg:my-0',
                        // Recolhido, o item centraliza — e cede 3px à direita
                        // para compensar a barra de marca da esquerda, senão o
                        // ícone fica fora do eixo do rail.
