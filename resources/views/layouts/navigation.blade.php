@@ -119,18 +119,64 @@
 
     <div class="shrink-0 flex items-center gap-2.5 border-t border-line px-[14px] py-3
                 rail:lg:flex-col rail:lg:px-2 rail:lg:gap-2">
-        <a href="{{ route('profile.edit') }}"
-           class="flex items-center gap-2.5 min-w-0 flex-1 group rail:lg:flex-none"
-           title="Perfil de {{ Auth::user()->name }}">
-            {{-- O avatar acompanha a altura dos botões ao lado: 28 contra 30
-                 basta para a fileira do rodapé parecer desalinhada. --}}
-            <span class="h-[30px] w-[30px] shrink-0 rounded-full bg-brand/20 text-brand-text flex items-center justify-center font-mono text-[11.5px] font-semibold">
-                {{ Str::of(Auth::user()->name)->substr(0, 1)->upper() }}
-            </span>
-            <span class="min-w-0 truncate text-[12.5px] text-ink-dim group-hover:text-ink transition rail:lg:hidden">
-                {{ Auth::user()->name }}
-            </span>
-        </a>
+        {{--
+            O avatar abre um menu em vez de ir direto ao perfil: dali saem
+            ações de conta que não merecem lugar fixo no rodapé, e é onde a
+            pessoa procura por elas.
+
+            O menu é teletransportado para o <body> porque a sidebar tem
+            `overflow-hidden` (a transição do rail depende disso) e o cortaria
+            — no rail recolhido, de 60px, ele sumiria quase inteiro.
+        --}}
+        <div x-data="{ menuConta: false }" class="min-w-0 flex-1 rail:lg:flex-none">
+            <button type="button" @click="menuConta = ! menuConta"
+                    class="flex items-center gap-2.5 min-w-0 w-full group"
+                    :aria-expanded="menuConta.toString()"
+                    aria-haspopup="menu"
+                    title="Conta de {{ Auth::user()->name }}">
+                <span class="h-[30px] w-[30px] shrink-0 rounded-full bg-brand/20 text-brand-text flex items-center justify-center font-mono text-[11.5px] font-semibold">
+                    {{ Str::of(Auth::user()->name)->substr(0, 1)->upper() }}
+                </span>
+                <span class="min-w-0 truncate text-[12.5px] text-ink-dim group-hover:text-ink transition rail:lg:hidden">
+                    {{ Auth::user()->name }}
+                </span>
+            </button>
+
+            <template x-teleport="body">
+                <div x-show="menuConta" x-cloak
+                     @click.outside="menuConta = false"
+                     @keydown.escape.window="menuConta = false"
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 translate-y-1"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     class="fixed z-50 w-[228px] rounded-panel border border-line bg-panel overflow-hidden"
+                     style="left: 12px; bottom: 62px"
+                     role="menu">
+                    {{-- Quem está logado: no rail recolhido o nome some do
+                         rodapé, e esta é a única resposta na tela. --}}
+                    <div class="px-3 py-2.5 border-b border-rule">
+                        <p class="text-[13px] font-medium text-ink truncate">{{ Auth::user()->name }}</p>
+                        <p class="font-mono text-[11px] text-ink-faint truncate">{{ Auth::user()->email }}</p>
+                    </div>
+
+                    <a href="{{ route('profile.edit') }}" role="menuitem"
+                       class="flex items-center gap-2.5 px-3 py-2.5 text-[13px] text-ink-dim hover:bg-chip hover:text-ink transition">
+                        <span class="h-4 w-4 shrink-0"><x-nav-icon name="settings" :peso="1.7" /></span>
+                        Configurações
+                    </a>
+
+                    <form method="POST" action="{{ route('logout') }}" class="border-t border-rule">
+                        @csrf
+                        <button type="submit" role="menuitem"
+                                class="flex w-full items-center gap-2.5 px-3 py-2.5 text-[13px] text-ink-dim hover:bg-crit-tint hover:text-crit transition"
+                                aria-label="Sair da conta">
+                            <span class="h-4 w-4 shrink-0"><x-nav-icon name="logout" :peso="1.7" /></span>
+                            Sair
+                        </button>
+                    </form>
+                </div>
+            </template>
+        </div>
 
         <button type="button"
                 class="relative h-[30px] w-[30px] shrink-0 rounded-ctl text-ink-mute hover:text-ink hover:bg-chip transition flex items-center justify-center"
@@ -149,18 +195,5 @@
             <span class="h-[18px] w-[18px]" x-show="tema === 'claro'" x-cloak><x-nav-icon name="moon" :peso="1.7" /></span>
         </button>
 
-        {{--
-            Sair fica aqui, visível, e não escondido atrás de um menu: é uma
-            ação que a pessoa procura com pressa, e num painel financeiro
-            interno deixar a sessão aberta é problema de segurança.
-        --}}
-        <form method="POST" action="{{ route('logout') }}" class="shrink-0">
-            @csrf
-            <button type="submit"
-                    class="h-[30px] w-[30px] rounded-ctl text-ink-mute hover:text-crit hover:bg-crit-tint transition flex items-center justify-center"
-                    title="Sair" aria-label="Sair da conta">
-                <span class="h-[18px] w-[18px]"><x-nav-icon name="logout" :peso="1.7" /></span>
-            </button>
-        </form>
     </div>
 </aside>

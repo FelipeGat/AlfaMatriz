@@ -48,7 +48,8 @@ class ShellTest extends TestCase
      */
     public function test_toda_tela_do_painel_abre_dentro_da_mesma_moldura(): void
     {
-        $this->actingAs($this->operador());
+        $operador = $this->operador();
+        $this->actingAs($operador);
 
         foreach (['centro-controle', 'dashboard', 'comercial'] as $rota) {
             $resposta = $this->get(route($rota));
@@ -67,13 +68,19 @@ class ShellTest extends TestCase
             $resposta->assertSee('Notificações', escape: false);
             $resposta->assertSee('menu-principal', escape: false);
 
-            // Sair precisa estar À VISTA em toda tela. O redesign trocou o
-            // menu suspenso do topo por um rodapé de sidebar e o logout se
-            // perdeu no caminho: num painel financeiro interno, deixar a
-            // sessão aberta porque não se acha o botão é problema de
-            // segurança, não de conforto.
+            // O menu da conta, aberto pelo avatar. Ele guarda o que não
+            // merece lugar fixo no rodapé — e o SAIR, que já se perdeu uma vez
+            // num redesenho: num painel financeiro interno, deixar a sessão
+            // aberta porque não se acha o botão é problema de segurança.
+            $resposta->assertSee('aria-haspopup="menu"', escape: false);
+            $resposta->assertSee('Configurações', escape: false);
+            $resposta->assertSee(route('profile.edit'), escape: false);
             $resposta->assertSee('Sair da conta', escape: false);
             $resposta->assertSee(route('logout'), escape: false);
+
+            // A identidade de quem está logado: no rail recolhido o nome some
+            // do rodapé, e o menu passa a ser a única resposta na tela.
+            $resposta->assertSee($operador->email, escape: false);
         }
 
         // A marca do handoff substituiu a anterior em toda tela do painel.
