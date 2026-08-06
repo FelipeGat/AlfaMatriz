@@ -230,12 +230,16 @@
     /**
      * Menu recolhido não reserva largura de barra de rolagem — se reservar,
      * os ícones do rail saem 6px do centro.
+     *
+     * O estado vem da classe no <html>, posta antes da primeira pintura: se
+     * dependesse de um atributo escrito pelo Alpine, a barra apareceria por um
+     * instante e empurraria os ícones.
      */
-    nav[data-rail='closed'] {
+    .rail-fechado nav#menu-principal {
         scrollbar-width: none;
     }
 
-    nav[data-rail='closed']::-webkit-scrollbar {
+    .rail-fechado nav#menu-principal::-webkit-scrollbar {
         width: 0;
         height: 0;
     }

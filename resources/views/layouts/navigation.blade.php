@@ -5,6 +5,10 @@
      *
      * `pattern` aceita lista para que a tela filha mantenha o pai aceso — o
      * formulário de cliente acende Clientes, o extrato acende Caixa.
+     *
+     * O estado recolhido vem da classe `rail-fechado` no <html>, posta antes
+     * da primeira pintura. Nada aqui depende do Alpine para se posicionar:
+     * se dependesse, a marca nasceria num lugar e saltaria para outro.
      */
     $grupos = [
         'Painéis' => [
@@ -30,21 +34,26 @@
     ];
 @endphp
 
+{{--
+    Abaixo de 1024px a sidebar sai do fluxo e vira gaveta — por isso todo o
+    comportamento de rail é `lg:`. A gaveta é sempre larga: recolher só faz
+    sentido quando há conteúdo ao lado disputando espaço.
+--}}
 <aside
     class="fixed inset-y-0 left-0 z-40 shrink-0 flex flex-col bg-panel border-r border-line
+           w-sidebar rail:lg:w-rail
            transform -translate-x-full transition-transform duration-200 ease-in-out
            lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:transition-[width] lg:duration-rail lg:ease-out
            overflow-hidden"
-    :class="gavetaAberta ? 'w-sidebar !translate-x-0' : (railAberto ? 'w-sidebar' : 'lg:w-rail w-sidebar')"
+    :class="gavetaAberta && '!translate-x-0'"
     @keydown.escape.window="gavetaAberta = false"
 >
     {{-- Header: ícone sempre; wordmark só com o menu aberto --}}
-    <div class="h-topbar shrink-0 flex items-center gap-2.5 border-b border-line transition-[padding] duration-rail"
-         :class="(railAberto || gavetaAberta) ? 'px-4' : 'lg:px-0 lg:justify-center px-4'">
+    <div class="h-topbar shrink-0 flex items-center gap-2.5 border-b border-line px-4
+                rail:lg:px-0 rail:lg:justify-center">
         <a href="{{ route('centro-controle') }}" class="flex items-center gap-2.5 min-w-0">
             <img src="/icon-matriz.svg" alt="" class="h-7 w-7 shrink-0">
-            <img src="/alfamatriz.png" alt="AlfaMatriz" class="h-[15px] w-auto shrink-0 transition-opacity duration-150"
-                 x-show="railAberto || gavetaAberta" x-cloak>
+            <img src="/alfamatriz.png" alt="AlfaMatriz" class="h-[15px] w-auto shrink-0 rail:lg:hidden">
         </a>
 
         <button type="button" @click="gavetaAberta = false"
@@ -54,8 +63,7 @@
         </button>
     </div>
 
-    <nav id="menu-principal" class="flex-1 overflow-y-auto py-2"
-         :data-rail="(railAberto || gavetaAberta) ? 'open' : 'closed'">
+    <nav id="menu-principal" class="flex-1 overflow-y-auto py-2">
         @foreach ($grupos as $nomeGrupo => $links)
             {{--
                 Recolhido, o rótulo do grupo some e uma régua toma o lugar
@@ -64,21 +72,24 @@
                 altura zero não pinta.
             --}}
             @unless ($loop->first)
-                <div class="h-px mx-[9px] my-[11px] bg-rule-strong" x-show="! railAberto && ! gavetaAberta" x-cloak></div>
+                <div class="hidden rail:lg:block h-px mx-[9px] my-[11px] bg-rule-strong"></div>
             @endunless
 
-            <p class="px-[14px] py-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-caps-max text-ink-faint"
-               x-show="railAberto || gavetaAberta" x-cloak>{{ $nomeGrupo }}</p>
+            <p class="px-[14px] py-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-caps-max text-ink-faint
+                      rail:lg:hidden">{{ $nomeGrupo }}</p>
 
             @foreach ($links as $link)
                 @php $ativo = request()->routeIs(...(array) $link['pattern']); @endphp
                 <a href="{{ route($link['route']) }}"
                    @class([
-                       'group flex items-center gap-3 h-item text-[13.5px] transition-colors border-l-[3px]',
+                       'group flex items-center gap-3 h-item text-[13.5px] transition-colors border-l-[3px] px-[13px]',
+                       // Recolhido, o item centraliza — e cede 3px à direita
+                       // para compensar a barra de marca da esquerda, senão o
+                       // ícone fica fora do eixo do rail.
+                       'rail:lg:justify-center rail:lg:pl-0 rail:lg:pr-[3px]',
                        'bg-nav-active text-brand-text font-semibold border-brand' => $ativo,
                        'text-ink-dim border-transparent hover:bg-chip hover:text-ink' => ! $ativo,
                    ])
-                   :class="(railAberto || gavetaAberta) ? 'px-[13px]' : 'lg:justify-center lg:pl-0 lg:pr-[3px] px-[13px]'"
                    @if ($ativo) aria-current="page" @endif
                    title="{{ $link['label'] }}">
                     <span @class([
@@ -86,21 +97,23 @@
                         'text-brand-text' => $ativo,
                         'text-ink-mute group-hover:text-ink-dim' => ! $ativo,
                     ])><x-nav-icon :name="$link['icon']" /></span>
-                    <span class="truncate" x-show="railAberto || gavetaAberta" x-cloak>{{ $link['label'] }}</span>
+                    <span class="truncate rail:lg:hidden">{{ $link['label'] }}</span>
                 </a>
             @endforeach
         @endforeach
     </nav>
 
-    <div class="shrink-0 flex items-center gap-2.5 border-t border-line px-[14px] py-3"
-         :class="(railAberto || gavetaAberta) ? '' : 'lg:flex-col lg:px-2 lg:gap-2'">
-        <a href="{{ route('profile.edit') }}" class="flex items-center gap-2.5 min-w-0 flex-1 group"
-           :class="(railAberto || gavetaAberta) ? '' : 'lg:flex-none'">
+    <div class="shrink-0 flex items-center gap-2.5 border-t border-line px-[14px] py-3
+                rail:lg:flex-col rail:lg:px-2 rail:lg:gap-2">
+        <a href="{{ route('profile.edit') }}"
+           class="flex items-center gap-2.5 min-w-0 flex-1 group rail:lg:flex-none"
+           title="Perfil de {{ Auth::user()->name }}">
             <span class="h-7 w-7 shrink-0 rounded-full bg-brand/20 text-brand-text flex items-center justify-center font-mono text-[11px] font-semibold">
                 {{ Str::of(Auth::user()->name)->substr(0, 1)->upper() }}
             </span>
-            <span class="min-w-0 truncate text-[12.5px] text-ink-dim group-hover:text-ink transition"
-                  x-show="railAberto || gavetaAberta" x-cloak>{{ Auth::user()->name }}</span>
+            <span class="min-w-0 truncate text-[12.5px] text-ink-dim group-hover:text-ink transition rail:lg:hidden">
+                {{ Auth::user()->name }}
+            </span>
         </a>
 
         <button type="button"
@@ -119,5 +132,19 @@
             <span class="h-4 w-4" x-show="tema === 'escuro'"><x-nav-icon name="sun" /></span>
             <span class="h-4 w-4" x-show="tema === 'claro'" x-cloak><x-nav-icon name="moon" /></span>
         </button>
+
+        {{--
+            Sair fica aqui, visível, e não escondido atrás de um menu: é uma
+            ação que a pessoa procura com pressa, e num painel financeiro
+            interno deixar a sessão aberta é problema de segurança.
+        --}}
+        <form method="POST" action="{{ route('logout') }}" class="shrink-0">
+            @csrf
+            <button type="submit"
+                    class="h-7 w-7 rounded-ctl text-ink-mute hover:text-crit hover:bg-crit-tint transition flex items-center justify-center"
+                    title="Sair" aria-label="Sair da conta">
+                <span class="h-4 w-4"><x-nav-icon name="logout" /></span>
+            </button>
+        </form>
     </div>
 </aside>

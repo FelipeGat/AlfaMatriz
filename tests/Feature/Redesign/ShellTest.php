@@ -66,6 +66,14 @@ class ShellTest extends TestCase
             // Rodapé da sidebar.
             $resposta->assertSee('Notificações', escape: false);
             $resposta->assertSee('menu-principal', escape: false);
+
+            // Sair precisa estar À VISTA em toda tela. O redesign trocou o
+            // menu suspenso do topo por um rodapé de sidebar e o logout se
+            // perdeu no caminho: num painel financeiro interno, deixar a
+            // sessão aberta porque não se acha o botão é problema de
+            // segurança, não de conforto.
+            $resposta->assertSee('Sair da conta', escape: false);
+            $resposta->assertSee(route('logout'), escape: false);
         }
 
         // A marca do handoff substituiu a anterior em toda tela do painel.
@@ -73,6 +81,10 @@ class ShellTest extends TestCase
         $resposta->assertSee('/icon-matriz.svg', escape: false);
         $resposta->assertSee('/alfamatriz.png', escape: false);
         $resposta->assertDontSee('logo-tile.svg', escape: false);
+
+        // E o botão de sair encerra a sessão de verdade.
+        $this->post(route('logout'))->assertRedirect('/');
+        $this->assertGuest();
     }
 
     /**
@@ -107,12 +119,7 @@ class ShellTest extends TestCase
         // O menu recolhido não reserva largura de barra de rolagem: se
         // reservar, os ícones do rail saem do centro.
         $this->assertStringContainsString(
-            ':data-rail=',
-            $navegacao,
-            'O menu precisa declarar seu estado em data-rail — é por ele que o CSS esconde a barra de rolagem.'
-        );
-        $this->assertStringContainsString(
-            "nav[data-rail='closed']",
+            '.rail-fechado nav#menu-principal',
             file_get_contents(base_path('resources/css/app.css'))
         );
 
@@ -123,6 +130,33 @@ class ShellTest extends TestCase
             '/alternarRail\(\)\s*\{.*localStorage|lembrar\(\s*\'alfamatriz:rail\'/s',
             $alpine,
             'Recolher o menu precisa gravar a escolha, senão ela morre na próxima tela.'
+        );
+
+        // ── E o menu não pode NASCER expandido para só então encolher.
+        //
+        // Foi o defeito relatado: a posição da marca vinha de um `:class` do
+        // Alpine, aplicado depois da primeira pintura — a página desenhava o
+        // menu aberto e, quando o Alpine acordava, a marca deslizava para o
+        // lugar certo. A decisão agora é uma classe no <html>, escrita antes
+        // de qualquer pintura, e a aparência sai do CSS.
+        $moldura = $this->moldura();
+        $posicaoRail = strpos($moldura, "localStorage.getItem('alfamatriz:rail')");
+        $this->assertNotFalse($posicaoRail, 'O <head> precisa decidir o estado do menu.');
+        $this->assertLessThan(
+            strpos($moldura, '@vite'),
+            $posicaoRail,
+            'A decisão do menu precisa vir antes dos assets — depois dela já houve pintura, e a marca salta.'
+        );
+        $this->assertStringContainsString('rail-fechado', $moldura);
+
+        // Nenhuma peça da moldura pode depender do Alpine para se posicionar.
+        foreach (['w-sidebar', 'px-4', 'rail:lg:hidden'] as $classeEstatica) {
+            $this->assertStringContainsString($classeEstatica, $navegacao);
+        }
+        $this->assertDoesNotMatchRegularExpression(
+            '/:class="\(?railAberto/',
+            $navegacao,
+            'Layout do menu preso a `:class` volta a fazer a marca saltar na carga da página.'
         );
     }
 

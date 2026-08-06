@@ -155,6 +155,14 @@ export default {
          */
         plugin(({ addVariant }) => {
             addVariant('light', ['.theme-light &', '.theme-light&']);
+
+            /**
+             * `rail:` descreve o menu recolhido. A classe vive no <html> e é
+             * posta por um script no <head>, antes da primeira pintura — é o
+             * que impede a marca de nascer num lugar e saltar para outro
+             * quando o Alpine finalmente acorda.
+             */
+            addVariant('rail', ['.rail-fechado &', '.rail-fechado&']);
         }),
     ],
 };

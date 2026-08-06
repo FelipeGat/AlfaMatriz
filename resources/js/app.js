@@ -7,13 +7,15 @@ import Alpine from 'alpinejs';
  *
  * As duas escolhas moram no navegador, não na sessão — são preferência de
  * quem está usando aquela máquina, e precisam valer já na PRIMEIRA pintura da
- * página seguinte. Por isso o tema é aplicado por um script no <head>
- * (`layouts/app.blade.php`) e aqui só continuamos a partir do que ele decidiu.
+ * página seguinte. Por isso quem decide é um script no <head>
+ * (`layouts/app.blade.php`), que põe as classes `theme-light` e `rail-fechado`
+ * no <html>. Aqui só continuamos a partir do que ele decidiu: a aparência é
+ * sempre do CSS, nunca de um `:class` que chega tarde.
  */
 Alpine.data('shell', () => ({
-    // O <head> já leu o localStorage; repetir a leitura aqui só criaria a
+    // Lidos do <html>: repetir a leitura do localStorage aqui só criaria a
     // chance de os dois discordarem.
-    railAberto: window.alfaRailAberto ?? true,
+    railAberto: !document.documentElement.classList.contains('rail-fechado'),
 
     // Gaveta é coisa de tela estreita: some junto com a navegação.
     gavetaAberta: false,
@@ -22,6 +24,7 @@ Alpine.data('shell', () => ({
 
     alternarRail() {
         this.railAberto = !this.railAberto;
+        document.documentElement.classList.toggle('rail-fechado', !this.railAberto);
         this.lembrar('alfamatriz:rail', this.railAberto ? 'aberto' : 'fechado');
     },
 

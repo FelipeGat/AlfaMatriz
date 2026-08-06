@@ -24,9 +24,14 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
         {{--
-            Tema ANTES da primeira pintura. Se esta decisão esperasse o Alpine,
-            quem usa o tema claro veria o painel escuro piscar a cada
-            navegação. O padrão é escuro: só vira claro quem pediu.
+            Tema E estado do menu ANTES da primeira pintura.
+
+            Os dois são preferência guardada no navegador, e o servidor não tem
+            como saber qual é. Se a decisão esperasse o Alpine, ela chegaria
+            DEPOIS de a página já ter sido desenhada: quem usa o tema claro
+            veria o escuro piscar, e o menu nasceria expandido para só então
+            encolher — com a marca deslizando do lugar. Por isso as duas viram
+            classe no <html> aqui, e o CSS resolve o resto sem esperar ninguém.
         --}}
         <script>
             (function () {
@@ -34,9 +39,11 @@
                     if (localStorage.getItem('alfamatriz:tema') === 'claro') {
                         document.documentElement.classList.add('theme-light');
                     }
-                    window.alfaRailAberto = localStorage.getItem('alfamatriz:rail') !== 'fechado';
+                    if (localStorage.getItem('alfamatriz:rail') === 'fechado') {
+                        document.documentElement.classList.add('rail-fechado');
+                    }
                 } catch (erro) {
-                    window.alfaRailAberto = true;
+                    // sem preferência guardada: tema escuro e menu expandido
                 }
             })();
         </script>
