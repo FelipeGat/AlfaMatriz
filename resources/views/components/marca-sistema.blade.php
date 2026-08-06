@@ -44,14 +44,21 @@
     @php [$escuro, $claro] = $wordmarks[$slug] ?? [null, null]; @endphp
 
     @if ($escuro && $claro)
-        {{-- Duas versões: a claridade do tema decide qual aparece. Trocar por
-             filtro CSS (invert) sujaria a cor da metade colorida da marca. --}}
-        <img src="{{ $escuro }}" alt="{{ $sistema->nome }}"
+        {{--
+            Duas versões: a claridade do tema decide qual aparece. Trocar por
+            filtro CSS (invert) sujaria a cor da metade colorida da marca.
+
+            `loading="lazy"` na escondida não é otimização de rolagem: imagem
+            com `display:none` continua sendo baixada, e sem isto o navegador
+            puxava as DUAS versões de cada marca — quem tem par pagava o dobro
+            de bytes para mostrar metade.
+        --}}
+        <img src="{{ $escuro }}" alt="{{ $sistema->nome }}" decoding="async"
              {{ $attributes->merge(['class' => 'w-auto object-contain object-left light:hidden '.$tamanho]) }}>
-        <img src="{{ $claro }}" alt="{{ $sistema->nome }}"
+        <img src="{{ $claro }}" alt="{{ $sistema->nome }}" loading="lazy" decoding="async"
              {{ $attributes->merge(['class' => 'hidden w-auto object-contain object-left light:block '.$tamanho]) }}>
     @elseif ($escuro)
-        <img src="{{ $escuro }}" alt="{{ $sistema->nome }}"
+        <img src="{{ $escuro }}" alt="{{ $sistema->nome }}" decoding="async"
              {{ $attributes->merge(['class' => 'w-auto object-contain object-left '.$tamanho]) }}>
     @else
         {{-- Sem arquivo de wordmark: o nome na tipografia de destaque diz a
