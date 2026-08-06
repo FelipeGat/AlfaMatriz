@@ -1,10 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 1 44 45.6" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 1 44 45.6" width="48" height="48" fill="none" color="#8f8f8f">
   <!--
-    Monocromático, acompanhando o tema do navegador.
+    Monocromático e autossuficiente.
 
-    A aba não é uma superfície nossa: um ícone de cor fixa some numa das duas.
-    Com a consulta abaixo, ele fica quase-preto em aba clara e quase-branco em
-    aba escura — a mesma lógica do ícone dentro do painel, que usa --ink.
+    O atributo `color` no elemento raiz é o que faz `currentColor` resolver
+    mesmo onde o <style> abaixo é ignorado — o Firefox desenha favicon SVG em
+    modo restrito, e sem esse padrão o ícone saía sem cor nenhuma.
+
+    O cinza médio foi escolhido por ser legível tanto em aba clara quanto em
+    escura. Onde a consulta de tema funciona, ele é substituído pelo tom certo.
+
+    `width`/`height` explícitos: sem eles alguns navegadores não sabem em que
+    tamanho rasterizar e descartam o ícone.
   -->
   <style>
     :root { color: #171717; }

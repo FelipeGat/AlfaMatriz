@@ -133,7 +133,32 @@ class TemasETipografiaTest extends TestCase
         // e cor fixa sumiria num dos dois temas.
         $this->assertStringNotContainsString('#029caf', $svg, 'O favicon não é mais teal.');
         $this->assertStringContainsString('prefers-color-scheme: dark', $svg, 'O favicon precisa acompanhar o tema da aba.');
-        $this->assertSame(3, substr_count($svg, 'currentColor'), 'As três formas seguem a cor do tema.');
+        // Conta só nos atributos de desenho: o comentário do arquivo também
+        // menciona `currentColor` ao explicar a decisão.
+        $this->assertSame(
+            3,
+            preg_match_all('/(?:stroke|fill)="currentColor"/', $svg),
+            'As três formas seguem a cor do tema.'
+        );
+
+        // O que o Firefox exige, e sem o que ele simplesmente não desenha:
+        // dimensão explícita e uma cor padrão no elemento raiz — ele renderiza
+        // favicon SVG em modo restrito e pode ignorar o <style>.
+        $this->assertMatchesRegularExpression('/<svg[^>]*\bwidth="\d+"/', $svg, 'O favicon precisa de largura explícita.');
+        $this->assertMatchesRegularExpression('/<svg[^>]*\bheight="\d+"/', $svg, 'O favicon precisa de altura explícita.');
+        $this->assertMatchesRegularExpression(
+            '/<svg[^>]*\bcolor="#[0-9a-f]{6}"/i',
+            $svg,
+            'Sem cor padrão no elemento raiz, `currentColor` não resolve onde o <style> é ignorado.'
+        );
+
+        // Um favicon.ico vazio faz o navegador preferir o arquivo em branco ao
+        // ícone declarado — foi o que deixou o Firefox sem ícone nenhum.
+        $ico = public_path('favicon.ico');
+        $this->assertTrue(
+            ! file_exists($ico) || filesize($ico) > 0,
+            'Existe um favicon.ico vazio: o navegador o usa e não mostra ícone.'
+        );
 
         $layout = file_get_contents(base_path('resources/views/layouts/app.blade.php'));
         $this->assertStringContainsString('favicon.svg', $layout, 'O layout precisa referenciar o favicon.');
