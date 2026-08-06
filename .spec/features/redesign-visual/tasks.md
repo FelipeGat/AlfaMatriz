@@ -36,8 +36,7 @@
   substituindo `logo-tile.svg` (Q-009). Abaixo de 1024px a sidebar vira
   gaveta sobreposta.
 
-## T-033 — Componentes compartilhados do sistema visual [pendente]
-
+## T-033 — Componentes compartilhados do sistema visual [em-andamento]
 - Refs: US-016, AC-046, AC-047
 - Arquivos: resources/views/components/kpi-card.blade.php, resources/views/components/sparkline.blade.php, resources/views/components/painel.blade.php, resources/views/components/badge.blade.php, resources/views/components/faixa-segmentada.blade.php, resources/views/components/tabela.blade.php, resources/views/components/linha-total.blade.php, resources/views/components/acao-tabela.blade.php, resources/views/components/stat-card.blade.php, resources/views/components/bar-chart.blade.php, tests/Feature/Redesign/ComponentesTest.php
 - Esforço: alto

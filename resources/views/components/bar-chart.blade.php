@@ -1,75 +1,90 @@
-@props(['data'])
+@props([
+    'data',
+    'legenda' => true,   // fora quando a legenda vive na faixa de cabeçalho
+])
 
 @php
-    $width = 720;
-    $height = 260;
-    $paddingLeft = 8;
-    $paddingRight = 8;
-    $paddingTop = 24;
-    $paddingBottom = 32;
-    $plotWidth = $width - $paddingLeft - $paddingRight;
-    $plotHeight = $height - $paddingTop - $paddingBottom;
+    $largura = 720;
+    $altura = 260;
+    $recuoLateral = 8;
+    $recuoTopo = 24;     // espaço para o rótulo do valor acima da barra mais alta
+    $recuoBase = 32;     // espaço para o nome do mês
 
-    $max = collect($data)->flatMap(fn ($d) => [$d['entradas'], $d['saidas']])->max();
-    $max = $max > 0 ? $max * 1.15 : 100;
+    $areaLargura = $largura - 2 * $recuoLateral;
+    $areaAltura = $altura - $recuoTopo - $recuoBase;
 
-    $groupWidth = $plotWidth / max(count($data), 1);
-    $barWidth = min(28, $groupWidth * 0.32);
-    $gap = 3;
+    $series = collect($data);
 
-    $scaleY = fn ($v) => $v <= 0 ? 0 : ($v / $max) * $plotHeight;
+    // A escala sobe 15% acima do maior valor: encostar o topo da barra no
+    // teto do gráfico faz o maior mês parecer um limite, não um dado.
+    $maior = $series->flatMap(fn ($d) => [$d['entradas'], $d['saidas']])->max();
+    $escala = $maior > 0 ? $maior * 1.15 : 100;
 
-    $fmt = fn ($v) => 'R$ ' . number_format($v, 0, ',', '.');
+    $larguraGrupo = $areaLargura / max($series->count(), 1);
+    $larguraBarra = min(28, $larguraGrupo * 0.32);
+    $vao = 4;
+
+    $paraAltura = fn ($valor) => $valor <= 0 ? 0 : ($valor / $escala) * $areaAltura;
+    $emReais = fn ($valor) => 'R$ '.number_format($valor, 0, ',', '.');
+    $emMilhares = fn ($valor) => number_format($valor / 1000, 1, ',', '.').'k';
 @endphp
 
 <div class="w-full min-w-0 overflow-x-auto">
-    <svg viewBox="0 0 {{ $width }} {{ $height }}" class="w-full h-auto min-w-[560px]" role="img" aria-label="Entradas e saídas dos últimos 6 meses">
-        {{-- grid lines --}}
+    <svg viewBox="0 0 {{ $largura }} {{ $altura }}" class="w-full h-auto min-w-[560px]"
+         role="img" aria-label="Entradas e saídas dos últimos {{ $series->count() }} meses">
+        {{-- Quatro linhas de grade: o suficiente para estimar altura sem virar papel milimetrado. --}}
         @for ($i = 0; $i <= 3; $i++)
-            @php $y = $paddingTop + $plotHeight - ($plotHeight * $i / 3); @endphp
-            <line x1="{{ $paddingLeft }}" y1="{{ $y }}" x2="{{ $width - $paddingRight }}" y2="{{ $y }}" stroke="currentColor" class="text-white/5" stroke-width="1" />
+            @php $y = $recuoTopo + $areaAltura - ($areaAltura * $i / 3); @endphp
+            <line x1="{{ $recuoLateral }}" y1="{{ $y }}" x2="{{ $largura - $recuoLateral }}" y2="{{ $y }}"
+                  stroke="rgb(var(--ink-faint) / 0.18)" stroke-width="1" />
         @endfor
 
-        {{-- baseline --}}
-        <line x1="{{ $paddingLeft }}" y1="{{ $paddingTop + $plotHeight }}" x2="{{ $width - $paddingRight }}" y2="{{ $paddingTop + $plotHeight }}" stroke="currentColor" class="text-white/10" stroke-width="1" />
+        <line x1="{{ $recuoLateral }}" y1="{{ $recuoTopo + $areaAltura }}"
+              x2="{{ $largura - $recuoLateral }}" y2="{{ $recuoTopo + $areaAltura }}"
+              stroke="rgb(var(--ink-faint) / 0.32)" stroke-width="1" />
 
-        @foreach ($data as $i => $d)
+        @foreach ($series as $i => $mes)
             @php
-                $groupX = $paddingLeft + $i * $groupWidth;
-                $centerX = $groupX + $groupWidth / 2;
-                $xEntradas = $centerX - $barWidth - $gap / 2;
-                $xSaidas = $centerX + $gap / 2;
-                $hEntradas = $scaleY($d['entradas']);
-                $hSaidas = $scaleY($d['saidas']);
-                $yEntradas = $paddingTop + $plotHeight - $hEntradas;
-                $ySaidas = $paddingTop + $plotHeight - $hSaidas;
+                $centro = $recuoLateral + $i * $larguraGrupo + $larguraGrupo / 2;
+                $xEntradas = $centro - $larguraBarra - $vao / 2;
+                $xSaidas = $centro + $vao / 2;
+                $hEntradas = $paraAltura($mes['entradas']);
+                $hSaidas = $paraAltura($mes['saidas']);
+                $yEntradas = $recuoTopo + $areaAltura - $hEntradas;
+                $ySaidas = $recuoTopo + $areaAltura - $hSaidas;
             @endphp
 
-            {{-- entradas bar --}}
-            <rect x="{{ $xEntradas }}" y="{{ $yEntradas }}" width="{{ $barWidth }}" height="{{ max($hEntradas, 1) }}"
-                  rx="4" fill="#029caf">
-                <title>{{ $d['label'] }} · Entradas: {{ $fmt($d['entradas']) }}</title>
+            <rect x="{{ $xEntradas }}" y="{{ $yEntradas }}" width="{{ $larguraBarra }}"
+                  height="{{ max($hEntradas, 1) }}" fill="rgb(var(--brand))">
+                <title>{{ $mes['label'] }} · Entradas: {{ $emReais($mes['entradas']) }}</title>
             </rect>
-            @if ($d['entradas'] > 0)
-                <text x="{{ $xEntradas + $barWidth / 2 }}" y="{{ $yEntradas - 6 }}" text-anchor="middle" class="fill-ink-dim" font-size="9">{{ number_format($d['entradas'] / 1000, 1, ',', '.') }}k</text>
+            @if ($mes['entradas'] > 0)
+                <text x="{{ $xEntradas + $larguraBarra / 2 }}" y="{{ $yEntradas - 6 }}" text-anchor="middle"
+                      fill="rgb(var(--ink-dim))" font-size="10" font-family="Geist Mono, monospace">{{ $emMilhares($mes['entradas']) }}</text>
             @endif
 
-            {{-- saidas bar --}}
-            <rect x="{{ $xSaidas }}" y="{{ $ySaidas }}" width="{{ $barWidth }}" height="{{ max($hSaidas, 1) }}"
-                  rx="4" fill="#c98500">
-                <title>{{ $d['label'] }} · Saídas: {{ $fmt($d['saidas']) }}</title>
+            <rect x="{{ $xSaidas }}" y="{{ $ySaidas }}" width="{{ $larguraBarra }}"
+                  height="{{ max($hSaidas, 1) }}" fill="rgb(var(--chart-out))">
+                <title>{{ $mes['label'] }} · Saídas: {{ $emReais($mes['saidas']) }}</title>
             </rect>
-            @if ($d['saidas'] > 0)
-                <text x="{{ $xSaidas + $barWidth / 2 }}" y="{{ $ySaidas - 6 }}" text-anchor="middle" class="fill-ink-dim" font-size="9">{{ number_format($d['saidas'] / 1000, 1, ',', '.') }}k</text>
+            @if ($mes['saidas'] > 0)
+                <text x="{{ $xSaidas + $larguraBarra / 2 }}" y="{{ $ySaidas - 6 }}" text-anchor="middle"
+                      fill="rgb(var(--ink-dim))" font-size="10" font-family="Geist Mono, monospace">{{ $emMilhares($mes['saidas']) }}</text>
             @endif
 
-            {{-- month label --}}
-            <text x="{{ $centerX }}" y="{{ $height - 10 }}" text-anchor="middle" class="fill-ink-mute" font-size="11">{{ $d['label'] }}</text>
+            <text x="{{ $centro }}" y="{{ $altura - 10 }}" text-anchor="middle"
+                  fill="rgb(var(--ink-mute))" font-size="11" font-family="Geist Mono, monospace">{{ $mes['label'] }}</text>
         @endforeach
     </svg>
 
-    <div class="flex items-center gap-4 mt-2 text-xs text-ink-dim">
-        <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm" style="background:#029caf"></span> Entradas</span>
-        <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm" style="background:#c98500"></span> Saídas</span>
-    </div>
+    @if ($legenda)
+        <div class="flex items-center gap-4 mt-2 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+            <span class="inline-flex items-center gap-1.5">
+                <span class="h-2 w-2 rounded-badge" style="background: rgb(var(--brand))"></span> Entradas
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+                <span class="h-2 w-2 rounded-badge" style="background: rgb(var(--chart-out))"></span> Saídas
+            </span>
+        </div>
+    @endif
 </div>
