@@ -169,7 +169,7 @@ reinvente:**
   rota `cobrancas.baixarEmMassa`, tabela com prazo real por baixo da data e
   marcação de atraso/a vencer.
 
-## T-042 — Despesas / contas a pagar [pendente]
+## T-042 — Despesas / contas a pagar [concluida]
 - Refs: US-023, AC-053, AC-054, AC-055
 - Arquivos: resources/views/contas-pagar/index.blade.php, resources/views/contas-pagar/_form.blade.php, resources/views/contas-pagar/create.blade.php, resources/views/contas-pagar/edit.blade.php, resources/views/contas-fixas-pagar/index.blade.php, app/Http/Controllers/ContaPagarController.php, tests/Feature/Redesign/DespesasTest.php
 - Esforço: alto

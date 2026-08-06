@@ -1,79 +1,120 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-ink leading-tight">Despesas fixas (recorrentes)</h2>
-    </x-slot>
+    <x-slot name="titulo">Despesas recorrentes</x-slot>
+    <x-slot name="contexto">modelos que geram as parcelas do mês</x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            @if (session('status'))
-                <div class="p-4 bg-status-good/10 text-status-good rounded-md text-sm">{{ session('status') }}</div>
-            @endif
-            @if ($errors->any())
-                <div class="p-4 bg-status-critical/10 text-status-critical rounded-md text-sm">{{ $errors->first() }}</div>
-            @endif
+    <div class="space-y-4">
+        @if (session('status'))
+            <div class="rounded-panel border px-4 py-2.5 text-[13px]"
+                 style="background: rgb(var(--good) / var(--tint-alpha)); border-color: rgb(var(--good) / 0.25); color: rgb(var(--good))">
+                {{ session('status') }}
+            </div>
+        @endif
+        @if ($errors->any())
+            <div class="rounded-panel border px-4 py-2.5 text-[13px]"
+                 style="background: var(--crit-tint); border-color: rgb(var(--crit) / 0.25); color: rgb(var(--crit))">
+                {{ $errors->first() }}
+            </div>
+        @endif
 
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div class="bg-panel border border-white/5 shadow-panel rounded-xl px-6 py-4">
-                    <p class="text-xs text-ink-mute uppercase tracking-wide">Total mensal (ativas)</p>
-                    <p class="text-2xl font-display font-semibold text-ink">R$ {{ number_format($totalMensal, 2, ',', '.') }}</p>
-                </div>
-
-                <form action="{{ route('contas-fixas-pagar.gerar') }}" method="POST" class="flex items-end gap-2">
-                    @csrf
-                    <div>
-                        <x-input-label for="competencia" value="Gerar despesas da competência" />
-                        <input type="month" id="competencia" name="competencia" value="{{ now()->format('Y-m') }}" class="mt-1 border-white/10 rounded-md shadow-sm text-sm">
-                    </div>
-                    <x-primary-button>Gerar contas a pagar do mês</x-primary-button>
-                </form>
+        <div class="flex flex-wrap items-center gap-3">
+            <div class="flex-1 min-w-[240px] rounded-panel border border-line bg-card-grad px-4 py-3">
+                <p class="text-[11px] uppercase tracking-[0.10em] text-ink-mute">Total mensal · recorrentes ativas</p>
+                <p class="mt-1 font-display text-[24px] font-semibold leading-none text-ink tabular whitespace-nowrap">
+                    R$ {{ number_format($totalMensal, 2, ',', '.') }}
+                </p>
             </div>
 
-            <div class="bg-panel overflow-hidden shadow-sm sm:rounded-lg">
-                <table class="min-w-full divide-y divide-white/5">
-                    <thead class="bg-panel-raised">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-ink-dim uppercase">Descrição</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-ink-dim uppercase">Categoria</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-ink-dim uppercase">Fornecedor</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-ink-dim uppercase">Valor</th>
-                            <th class="px-4 py-3 text-center text-xs font-medium text-ink-dim uppercase">Dia venc.</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-ink-dim uppercase">Vigência</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-ink-dim uppercase">Status</th>
-                            <th class="px-4 py-3"></th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-white/5">
-                        @forelse ($contasFixas as $fixa)
-                            <tr>
-                                <td class="px-4 py-3 text-sm text-ink">{{ $fixa->descricao }}</td>
-                                <td class="px-4 py-3 text-sm text-ink-dim">{{ $fixa->conta?->nome ?? '—' }}</td>
-                                <td class="px-4 py-3 text-sm text-ink-dim">{{ $fixa->fornecedor?->razao_social ?? '—' }}</td>
-                                <td class="px-4 py-3 text-sm text-ink text-right">R$ {{ number_format($fixa->valor, 2, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-sm text-ink-dim text-center">{{ $fixa->dia_vencimento }}</td>
-                                <td class="px-4 py-3 text-sm text-ink-dim">
-                                    {{ $fixa->data_inicio->format('m/Y') }} até {{ $fixa->data_fim?->format('m/Y') ?? 'indeterminado' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm">
-                                    <span class="px-2 py-1 text-xs rounded-full {{ $fixa->ativo ? 'bg-status-good/15 text-status-good' : 'bg-white/5 text-ink-mute' }}">
-                                        {{ $fixa->ativo ? 'Ativa' : 'Inativa' }}
+            <form action="{{ route('contas-fixas-pagar.gerar') }}" method="POST" class="flex items-end gap-2 shrink-0">
+                @csrf
+                <label class="block">
+                    <span class="block font-mono text-[10px] uppercase tracking-caps text-ink-faint mb-1">Gerar a competência</span>
+                    <input type="month" name="competencia" value="{{ now()->format('Y-m') }}"
+                           class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
+                </label>
+                <button type="submit"
+                        class="h-9 px-3 rounded-control bg-brand text-on-brand text-[12.5px] font-semibold
+                               hover:bg-brand-bright transition whitespace-nowrap">
+                    Gerar contas do mês
+                </button>
+            </form>
+        </div>
+
+        <x-tabela min="960px">
+            <thead>
+                <tr class="bg-head border-b border-line font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                    <th class="px-4 py-2.5 font-semibold">Despesa</th>
+                    <th class="px-4 py-2.5 font-semibold">Categoria</th>
+                    <th class="px-4 py-2.5 font-semibold">Fornecedor</th>
+                    <th class="px-4 py-2.5 font-semibold text-right">Valor</th>
+                    <th class="px-4 py-2.5 font-semibold">Vigência</th>
+                    <th class="px-4 py-2.5 font-semibold">Status</th>
+                    <th class="px-4 py-2.5 font-semibold text-right">Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @forelse ($contasFixas as $fixa)
+                    <tr class="border-b border-rule hover:bg-chip transition {{ $fixa->ativo ? '' : 'opacity-[0.62]' }}">
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <span class="h-7 w-7 shrink-0 rounded-tile flex items-center justify-center bg-brand/15 text-brand-text">
+                                    <span class="h-[14px] w-[14px]"><x-nav-icon name="repeat" /></span>
+                                </span>
+                                <span class="min-w-0">
+                                    <span class="block text-[13.5px] text-ink truncate">{{ $fixa->descricao }}</span>
+                                    <span class="block font-mono text-[11px] uppercase tracking-caps text-ink-faint truncate">
+                                        recorrente · todo dia {{ $fixa->dia_vencimento }}
                                     </span>
-                                </td>
-                                <td class="px-4 py-3 text-right">
-                                    <form action="{{ route('contas-fixas-pagar.destroy', $fixa) }}" method="POST" onsubmit="return confirm('Remover esta despesa fixa?');">
-                                        @csrf @method('DELETE')
-                                        <button class="text-status-critical hover:opacity-80 text-sm">Remover</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-ink-mute">Nenhuma despesa fixa cadastrada.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                                </span>
+                            </div>
+                        </td>
 
-            <div class="bg-panel overflow-hidden shadow-sm sm:rounded-lg p-6">
-                <h3 class="font-semibold text-ink mb-4">Nova despesa fixa</h3>
+                        <td class="px-4 py-3 text-[13px] text-ink-dim truncate">{{ $fixa->conta?->nome ?? '—' }}</td>
+                        <td class="px-4 py-3 text-[13px] text-ink-dim truncate">{{ $fixa->fornecedor?->razao_social ?? '—' }}</td>
+
+                        <td class="px-4 py-3 text-right font-mono text-[13.5px] text-ink whitespace-nowrap">
+                            R$ {{ number_format($fixa->valor, 2, ',', '.') }}
+                        </td>
+
+                        <td class="px-4 py-3 font-mono text-[12px] text-ink-dim whitespace-nowrap">
+                            {{ $fixa->data_inicio->format('m/Y') }} → {{ $fixa->data_fim?->format('m/Y') ?? 'indeterminado' }}
+                        </td>
+
+                        <td class="px-4 py-3">
+                            <x-badge :tom="$fixa->ativo ? 'bom' : 'neutro'" ponto>{{ $fixa->ativo ? 'Ativa' : 'Pausada' }}</x-badge>
+                        </td>
+
+                        <td class="px-4 py-3">
+                            <div class="flex items-center justify-end gap-1">
+                                <form action="{{ route('contas-fixas-pagar.pausar', $fixa) }}" method="POST"
+                                      onsubmit="return confirm('{{ $fixa->ativo ? 'Pausar esta despesa recorrente? Ela para de gerar novas parcelas.' : 'Reativar esta despesa recorrente?' }}');">
+                                    @csrf
+                                    <x-acao-tabela :icone="$fixa->ativo ? 'pause' : 'play'"
+                                                   :titulo="$fixa->ativo ? 'Pausar recorrência' : 'Ativar recorrência'"
+                                                   type="submit" />
+                                </form>
+                                <form action="{{ route('contas-fixas-pagar.destroy', $fixa) }}" method="POST"
+                                      onsubmit="return confirm('Remover esta despesa fixa?');">
+                                    @csrf @method('DELETE')
+                                    <x-acao-tabela icone="trash" titulo="Remover despesa recorrente" type="submit" destrutivo />
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7" class="px-4 py-8 text-center text-[13px] text-ink-mute">Nenhuma despesa recorrente cadastrada.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+
+            <x-slot name="rodape">
+                <span>{{ $contasFixas->count() }} {{ $contasFixas->count() === 1 ? 'modelo' : 'modelos' }} de recorrência</span>
+            </x-slot>
+        </x-tabela>
+
+            <div class="rounded-panel border border-line bg-subtle p-4">
+                <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Nova despesa fixa</h3>
                 <form action="{{ route('contas-fixas-pagar.store') }}" method="POST" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     @csrf
                     <div class="sm:col-span-2">
@@ -133,10 +174,13 @@
                         <x-text-input id="data_fim" name="data_fim" type="date" class="mt-1 block w-full" />
                     </div>
                     <div class="sm:col-span-3 flex justify-end">
-                        <x-primary-button>Adicionar despesa fixa</x-primary-button>
+                        <button type="submit"
+                                class="h-9 px-3.5 rounded-control bg-brand text-on-brand text-[12.5px] font-semibold
+                                       hover:bg-brand-bright transition">
+                            Adicionar despesa recorrente
+                        </button>
                     </div>
                 </form>
-            </div>
         </div>
     </div>
 </x-app-layout>

@@ -24,13 +24,64 @@ class ContaPagarController extends Controller
             ->withQueryString();
 
         $hoje = now()->startOfDay();
+
+        $emAberto = ContaPagar::where('status', 'em_aberto')->get(['id', 'valor', 'data_vencimento']);
+        $atrasadas = $emAberto->filter(fn ($c) => \Illuminate\Support\Carbon::parse($c->data_vencimento)->lt($hoje));
+
         $kpis = [
-            'a_pagar' => ContaPagar::where('status', 'em_aberto')->sum('valor'),
-            'pago_mes' => ContaPagar::where('status', 'pago')->whereYear('data_pagamento', $hoje->year)->whereMonth('data_pagamento', $hoje->month)->sum('valor_pago'),
-            'atrasado' => ContaPagar::where('status', 'em_aberto')->whereDate('data_vencimento', '<', $hoje)->sum('valor'),
+            'a_pagar' => (float) $emAberto->sum('valor'),
+            'a_pagar_titulos' => $emAberto->count(),
+            'vence_em_7_dias' => (float) $emAberto->filter(
+                fn ($c) => \Illuminate\Support\Carbon::parse($c->data_vencimento)->between($hoje, $hoje->copy()->addDays(7))
+            )->sum('valor'),
+            'pago_mes' => (float) ContaPagar::where('status', 'pago')
+                ->whereYear('data_pagamento', $hoje->year)
+                ->whereMonth('data_pagamento', $hoje->month)
+                ->sum('valor_pago'),
+            'atrasado' => (float) $atrasadas->sum('valor'),
+            'atrasado_titulos' => $atrasadas->count(),
         ];
 
-        return view('contas-pagar.index', array_merge($this->formData(), compact('contasPagar', 'kpis')));
+        $faixas = $this->faixasDeAging($emAberto, $hoje);
+
+        return view('contas-pagar.index', array_merge(
+            $this->formData(),
+            compact('contasPagar', 'kpis', 'faixas', 'hoje')
+        ));
+    }
+
+    /**
+     * Distribui o total em aberto nas quatro faixas de vencimento — a mesma
+     * gramática das Receitas, porque a pergunta é a mesma: onde o dinheiro
+     * está travado.
+     *
+     * @param  \Illuminate\Support\Collection<int, ContaPagar>  $emAberto
+     * @return array<string, array{rotulo: string, valor: float}>
+     */
+    private function faixasDeAging($emAberto, \Illuminate\Support\Carbon $hoje): array
+    {
+        $faixas = [
+            'a_vencer' => ['rotulo' => 'A vencer', 'valor' => 0.0],
+            '1_15' => ['rotulo' => '1 a 15 dias', 'valor' => 0.0],
+            '16_30' => ['rotulo' => '16 a 30 dias', 'valor' => 0.0],
+            'mais_30' => ['rotulo' => '+30 dias', 'valor' => 0.0],
+        ];
+
+        foreach ($emAberto as $conta) {
+            $paraVencer = $hoje->diffInDays(\Illuminate\Support\Carbon::parse($conta->data_vencimento), false);
+            $atraso = $paraVencer < 0 ? (int) abs($paraVencer) : 0;
+
+            $chave = match (true) {
+                $atraso === 0 => 'a_vencer',
+                $atraso <= 15 => '1_15',
+                $atraso <= 30 => '16_30',
+                default => 'mais_30',
+            };
+
+            $faixas[$chave]['valor'] += (float) $conta->valor;
+        }
+
+        return $faixas;
     }
 
     public function create()
