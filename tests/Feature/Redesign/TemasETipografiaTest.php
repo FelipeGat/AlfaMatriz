@@ -111,9 +111,14 @@ class TemasETipografiaTest extends TestCase
         $this->assertFileExists($caminho, 'O favicon do pacote precisa estar em public/.');
 
         $svg = file_get_contents($caminho);
-        $this->assertStringContainsString('#029caf', $svg, 'O ícone precisa usar a cor da marca.');
         $this->assertStringContainsString('circle', $svg, 'O núcleo do ícone é um círculo.');
         $this->assertSame(2, substr_count($svg, '<path'), 'O ícone tem duas setas convergindo.');
+
+        // Monocromático e adaptável: a aba do navegador não é superfície nossa,
+        // e cor fixa sumiria num dos dois temas.
+        $this->assertStringNotContainsString('#029caf', $svg, 'O favicon não é mais teal.');
+        $this->assertStringContainsString('prefers-color-scheme: dark', $svg, 'O favicon precisa acompanhar o tema da aba.');
+        $this->assertSame(3, substr_count($svg, 'currentColor'), 'As três formas seguem a cor do tema.');
 
         $layout = file_get_contents(base_path('resources/views/layouts/app.blade.php'));
         $this->assertStringContainsString('favicon.svg', $layout, 'O layout precisa referenciar o favicon.');

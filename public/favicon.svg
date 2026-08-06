@@ -1,5 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-  <path d="M5 4l13 15L5 34" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path>
-  <path d="M43 4L30 19l13 15" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path>
-  <circle cx="24" cy="39" r="6.6" fill="#029caf"></circle>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 1 44 45.6" fill="none">
+  <!--
+    Monocromático, acompanhando o tema do navegador.
+
+    A aba não é uma superfície nossa: um ícone de cor fixa some numa das duas.
+    Com a consulta abaixo, ele fica quase-preto em aba clara e quase-branco em
+    aba escura — a mesma lógica do ícone dentro do painel, que usa --ink.
+  -->
+  <style>
+    :root { color: #171717; }
+    @media (prefers-color-scheme: dark) {
+      :root { color: #ededed; }
+    }
+  </style>
+  <path d="M5 4l13 15L5 34" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".38"/>
+  <path d="M43 4L30 19l13 15" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".38"/>
+  <circle cx="24" cy="39" r="6.6" fill="currentColor"/>
 </svg>
