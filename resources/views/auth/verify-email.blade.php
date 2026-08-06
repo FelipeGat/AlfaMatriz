@@ -1,6 +1,7 @@
 <x-guest-layout>
-    <div class="mb-4 text-sm text-ink-dim">
-        {{ __('Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}
+    <div class="flex flex-col gap-1.5 mb-2">
+        <h1 class="font-display font-semibold text-xl text-ink">Confirme seu e-mail</h1>
+        <p class="text-[13.5px] text-ink-dim">{{ __('Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}</p>
     </div>
 
     @if (session('status') == 'verification-link-sent')

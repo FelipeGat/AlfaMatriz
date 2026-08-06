@@ -1,4 +1,9 @@
 <x-guest-layout>
+    <div class="flex flex-col gap-1.5 mb-2">
+        <h1 class="font-display font-semibold text-xl text-ink">Redefinir senha</h1>
+        <p class="text-[13.5px] text-ink-dim">Escolha uma nova senha para sua conta.</p>
+    </div>
+
     <form method="POST" action="{{ route('password.store') }}">
         @csrf
 
