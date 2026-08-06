@@ -114,7 +114,9 @@
         <a href="{{ route('profile.edit') }}"
            class="flex items-center gap-2.5 min-w-0 flex-1 group rail:lg:flex-none"
            title="Perfil de {{ Auth::user()->name }}">
-            <span class="h-7 w-7 shrink-0 rounded-full bg-brand/20 text-brand-text flex items-center justify-center font-mono text-[11px] font-semibold">
+            {{-- O avatar acompanha a altura dos botões ao lado: 28 contra 30
+                 basta para a fileira do rodapé parecer desalinhada. --}}
+            <span class="h-[30px] w-[30px] shrink-0 rounded-full bg-brand/20 text-brand-text flex items-center justify-center font-mono text-[11.5px] font-semibold">
                 {{ Str::of(Auth::user()->name)->substr(0, 1)->upper() }}
             </span>
             <span class="min-w-0 truncate text-[12.5px] text-ink-dim group-hover:text-ink transition rail:lg:hidden">
@@ -123,9 +125,9 @@
         </a>
 
         <button type="button"
-                class="relative h-7 w-7 shrink-0 rounded-ctl text-ink-mute hover:text-ink hover:bg-chip transition flex items-center justify-center"
+                class="relative h-[30px] w-[30px] shrink-0 rounded-ctl text-ink-mute hover:text-ink hover:bg-chip transition flex items-center justify-center"
                 aria-label="Notificações">
-            <span class="h-4 w-4"><x-nav-icon name="bell" /></span>
+            <span class="h-[18px] w-[18px]"><x-nav-icon name="bell" :peso="1.7" /></span>
             @if (($naoLidas ?? 0) > 0)
                 <span class="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-crit text-white
                              font-mono text-[9px] font-semibold leading-[15px] text-center">{{ $naoLidas }}</span>
@@ -133,10 +135,10 @@
         </button>
 
         <button type="button" @click="alternarTema()"
-                class="h-7 w-7 shrink-0 rounded-ctl text-ink-mute hover:text-ink hover:bg-chip transition flex items-center justify-center"
+                class="h-[30px] w-[30px] shrink-0 rounded-ctl text-ink-mute hover:text-ink hover:bg-chip transition flex items-center justify-center"
                 :aria-label="tema === 'claro' ? 'Usar tema escuro' : 'Usar tema claro'">
-            <span class="h-4 w-4" x-show="tema === 'escuro'"><x-nav-icon name="sun" /></span>
-            <span class="h-4 w-4" x-show="tema === 'claro'" x-cloak><x-nav-icon name="moon" /></span>
+            <span class="h-[18px] w-[18px]" x-show="tema === 'escuro'"><x-nav-icon name="sun" :peso="1.7" /></span>
+            <span class="h-[18px] w-[18px]" x-show="tema === 'claro'" x-cloak><x-nav-icon name="moon" :peso="1.7" /></span>
         </button>
 
         {{--
@@ -147,9 +149,9 @@
         <form method="POST" action="{{ route('logout') }}" class="shrink-0">
             @csrf
             <button type="submit"
-                    class="h-7 w-7 rounded-ctl text-ink-mute hover:text-crit hover:bg-crit-tint transition flex items-center justify-center"
+                    class="h-[30px] w-[30px] rounded-ctl text-ink-mute hover:text-crit hover:bg-crit-tint transition flex items-center justify-center"
                     title="Sair" aria-label="Sair da conta">
-                <span class="h-4 w-4"><x-nav-icon name="logout" /></span>
+                <span class="h-[18px] w-[18px]"><x-nav-icon name="logout" :peso="1.7" /></span>
             </button>
         </form>
     </div>
