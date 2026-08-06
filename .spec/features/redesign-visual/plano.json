@@ -1,0 +1,436 @@
+{
+  "runId": "AlfaMatriz-redesign-visual-mshq5ia6",
+  "feature": "redesign-visual",
+  "agent": "claude",
+  "modo": "paralelo",
+  "paralelizar": null,
+  "modeloForcado": null,
+  "esforcoForcado": null,
+  "geradoEm": "2026-08-06 16:22",
+  "branchTrabalho": "spec/redesign-visual",
+  "baseDir": ".spec/features/redesign-visual",
+  "specDir": ".spec",
+  "repoName": "AlfaMatriz",
+  "logsDir": "../onp-worktrees/AlfaMatriz-redesign-visual-logs",
+  "ondas": [
+    [
+      "faixa-1",
+      "faixa-2",
+      "faixa-3"
+    ],
+    [
+      "faixa-4",
+      "faixa-5",
+      "faixa-6"
+    ],
+    [
+      "faixa-7",
+      "faixa-8",
+      "faixa-9"
+    ],
+    [
+      "faixa-10",
+      "faixa-11",
+      "faixa-12"
+    ],
+    [
+      "faixa-13",
+      "faixa-14",
+      "faixa-15"
+    ]
+  ],
+  "faixas": [
+    {
+      "id": "faixa-1",
+      "branch": "spec/redesign-visual-faixa-1",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-1",
+      "tarefas": [
+        {
+          "id": "T-031",
+          "titulo": "Fundação visual: tokens dos dois temas e tipografia",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "tailwind.config.js",
+            "resources/css/app.css",
+            "tests/Feature/Redesign/TokensTest.php"
+          ],
+          "refs": [
+            "US-016",
+            "AC-032",
+            "AC-033",
+            "AC-034"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-2",
+      "branch": "spec/redesign-visual-faixa-2",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-2",
+      "tarefas": [
+        {
+          "id": "T-032",
+          "titulo": "Shell: sidebar com rail, topbar, alternador de tema e marca",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "resources/views/layouts/app.blade.php",
+            "resources/views/layouts/navigation.blade.php",
+            "resources/views/components/nav-icon.blade.php",
+            "resources/views/components/application-logo.blade.php",
+            "resources/js/app.js",
+            "public/icon-matriz.svg",
+            "public/alfamatriz.png",
+            "tests/Feature/Redesign/ShellTest.php"
+          ],
+          "refs": [
+            "US-017",
+            "AC-035",
+            "AC-036",
+            "AC-037",
+            "AC-038",
+            "AC-061"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-3",
+      "branch": "spec/redesign-visual-faixa-3",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-3",
+      "tarefas": [
+        {
+          "id": "T-033",
+          "titulo": "Componentes compartilhados do sistema visual",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "resources/views/components/kpi-card.blade.php",
+            "resources/views/components/sparkline.blade.php",
+            "resources/views/components/painel.blade.php",
+            "resources/views/components/badge.blade.php",
+            "resources/views/components/faixa-segmentada.blade.php",
+            "resources/views/components/tabela.blade.php",
+            "resources/views/components/linha-total.blade.php",
+            "resources/views/components/acao-tabela.blade.php",
+            "resources/views/components/stat-card.blade.php",
+            "resources/views/components/bar-chart.blade.php",
+            "tests/Feature/Redesign/ComponentesTest.php"
+          ],
+          "refs": [
+            "US-016",
+            "AC-046",
+            "AC-047"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-4",
+      "branch": "spec/redesign-visual-faixa-4",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-4",
+      "tarefas": [
+        {
+          "id": "T-034",
+          "titulo": "Centro de Controle",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "resources/views/centro-controle/index.blade.php",
+            "app/Http/Controllers/CentroControleController.php",
+            "tests/Feature/Redesign/CentroControleTest.php"
+          ],
+          "refs": [
+            "US-018",
+            "AC-039",
+            "AC-040",
+            "AC-041"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-5",
+      "branch": "spec/redesign-visual-faixa-5",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-5",
+      "tarefas": [
+        {
+          "id": "T-035",
+          "titulo": "Painéis Financeiro e Comercial",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "resources/views/dashboard.blade.php",
+            "resources/views/dashboard-comercial.blade.php",
+            "app/Http/Controllers/PainelController.php",
+            "tests/Feature/Redesign/PaineisTest.php"
+          ],
+          "refs": [
+            "US-019",
+            "AC-042",
+            "AC-043"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-6",
+      "branch": "spec/redesign-visual-faixa-6",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-6",
+      "tarefas": [
+        {
+          "id": "T-036",
+          "titulo": "Funil de vendas com arrastar e soltar",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "resources/views/leads/index.blade.php",
+            "app/Http/Controllers/LeadController.php",
+            "tests/Feature/Redesign/FunilTest.php"
+          ],
+          "refs": [
+            "US-020",
+            "AC-044",
+            "AC-045"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-7",
+      "branch": "spec/redesign-visual-faixa-7",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-7",
+      "tarefas": [
+        {
+          "id": "T-037",
+          "titulo": "Revendas",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "resources/views/revendas/index.blade.php",
+            "resources/views/revendas/_form.blade.php",
+            "resources/views/revendas/create.blade.php",
+            "resources/views/revendas/edit.blade.php",
+            "app/Http/Controllers/RevendaController.php",
+            "tests/Feature/Redesign/RevendasTest.php"
+          ],
+          "refs": [
+            "US-021",
+            "AC-048"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-8",
+      "branch": "spec/redesign-visual-faixa-8",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-8",
+      "tarefas": [
+        {
+          "id": "T-038",
+          "titulo": "Clientes: lista e formulário",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "resources/views/clientes/index.blade.php",
+            "resources/views/clientes/_form.blade.php",
+            "resources/views/clientes/create.blade.php",
+            "resources/views/clientes/edit.blade.php",
+            "app/Http/Controllers/ClienteController.php",
+            "tests/Feature/Redesign/ClientesTest.php"
+          ],
+          "refs": [
+            "US-021",
+            "AC-048"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-9",
+      "branch": "spec/redesign-visual-faixa-9",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-9",
+      "tarefas": [
+        {
+          "id": "T-039",
+          "titulo": "Produtos: lista comparável e gestão do sistema",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "resources/views/produtos/index.blade.php",
+            "resources/views/sistemas/index.blade.php",
+            "resources/views/sistemas/edit.blade.php",
+            "app/Http/Controllers/ProdutoController.php",
+            "tests/Feature/Redesign/ProdutosTest.php"
+          ],
+          "refs": [
+            "US-021",
+            "AC-048",
+            "AC-049"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-10",
+      "branch": "spec/redesign-visual-faixa-10",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-10",
+      "tarefas": [
+        {
+          "id": "T-040",
+          "titulo": "Faturamento das revendas",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "resources/views/faturamento/index.blade.php",
+            "app/Http/Controllers/FaturamentoController.php",
+            "app/Services/FaturamentoService.php",
+            "tests/Feature/Redesign/FaturamentoTest.php"
+          ],
+          "refs": [
+            "US-022",
+            "AC-050",
+            "AC-051",
+            "AC-052"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-11",
+      "branch": "spec/redesign-visual-faixa-11",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-11",
+      "tarefas": [
+        {
+          "id": "T-041",
+          "titulo": "Receitas / contas a receber",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "resources/views/cobrancas/index.blade.php",
+            "resources/views/cobrancas/_form.blade.php",
+            "resources/views/cobrancas/create.blade.php",
+            "resources/views/cobrancas/edit.blade.php",
+            "resources/views/cobrancas/show.blade.php",
+            "app/Http/Controllers/CobrancaController.php",
+            "tests/Feature/Redesign/ReceitasTest.php"
+          ],
+          "refs": [
+            "US-023",
+            "AC-053",
+            "AC-054",
+            "AC-055"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-12",
+      "branch": "spec/redesign-visual-faixa-12",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-12",
+      "tarefas": [
+        {
+          "id": "T-042",
+          "titulo": "Despesas / contas a pagar",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "resources/views/contas-pagar/index.blade.php",
+            "resources/views/contas-pagar/_form.blade.php",
+            "resources/views/contas-pagar/create.blade.php",
+            "resources/views/contas-pagar/edit.blade.php",
+            "resources/views/contas-fixas-pagar/index.blade.php",
+            "app/Http/Controllers/ContaPagarController.php",
+            "tests/Feature/Redesign/DespesasTest.php"
+          ],
+          "refs": [
+            "US-023",
+            "AC-053",
+            "AC-054",
+            "AC-055"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-13",
+      "branch": "spec/redesign-visual-faixa-13",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-13",
+      "tarefas": [
+        {
+          "id": "T-043",
+          "titulo": "Caixa e extrato",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "resources/views/contas-financeiras/index.blade.php",
+            "resources/views/contas-financeiras/_form.blade.php",
+            "resources/views/contas-financeiras/create.blade.php",
+            "resources/views/contas-financeiras/edit.blade.php",
+            "resources/views/contas-financeiras/extrato.blade.php",
+            "app/Http/Controllers/ContaFinanceiraController.php",
+            "tests/Feature/Redesign/CaixaTest.php"
+          ],
+          "refs": [
+            "US-024",
+            "AC-056",
+            "AC-057"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-14",
+      "branch": "spec/redesign-visual-faixa-14",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-14",
+      "tarefas": [
+        {
+          "id": "T-044",
+          "titulo": "Cadastros auxiliares e plano de contas",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "resources/views/cadastros-auxiliares/index.blade.php",
+            "app/Http/Controllers/CadastroAuxiliarController.php",
+            "tests/Feature/Redesign/CadastrosTest.php"
+          ],
+          "refs": [
+            "US-025",
+            "AC-058",
+            "AC-059"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-15",
+      "branch": "spec/redesign-visual-faixa-15",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-15",
+      "tarefas": [
+        {
+          "id": "T-045",
+          "titulo": "Login e telas de autenticação",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "resources/views/auth/login.blade.php",
+            "resources/views/auth/forgot-password.blade.php",
+            "resources/views/auth/reset-password.blade.php",
+            "resources/views/auth/confirm-password.blade.php",
+            "resources/views/auth/verify-email.blade.php",
+            "resources/views/layouts/guest.blade.php",
+            "tests/Feature/Redesign/LoginTest.php"
+          ],
+          "refs": [
+            "US-026",
+            "AC-060"
+          ]
+        }
+      ]
+    }
+  ],
+  "sequenciais": [],
+  "concluidas": [],
+  "avisos": []
+}
