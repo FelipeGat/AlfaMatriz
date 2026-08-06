@@ -96,7 +96,9 @@ aplicar(){
     npm ci --silent || return 1
     npm run build || return 1
     php artisan migrate --force || return 1
-    php artisan config:clear >/dev/null 2>&1
+    # Sem `config:clear`: ele deixaria a produção sem configuração por alguns
+    # segundos, devolvendo 500 a quem estivesse usando. O `config:cache`
+    # reescreve o arquivo de uma vez só.
     php artisan config:cache >/dev/null 2>&1 || return 1
     php artisan route:cache >/dev/null 2>&1 || return 1
     php artisan view:cache >/dev/null 2>&1 || return 1

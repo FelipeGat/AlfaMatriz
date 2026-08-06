@@ -107,7 +107,11 @@ log "portão aprovou — aplicando ${REMOTO_SHA:0:7}"
 no_container "npm ci --silent" || { log "npm ci FALHOU"; exit 1; }
 no_container "npm run build" || { log "build do front-end FALHOU"; exit 1; }
 no_container "php artisan migrate --force" || { log "migração FALHOU"; exit 1; }
-no_container "php artisan config:clear >/dev/null && php artisan config:cache >/dev/null"
+# Sem `config:clear` antes: ele apaga o cache e deixa uma janela de segundos
+# em que o app não tem configuração nenhuma — o .env é 600/root e o www-data
+# não consegue lê-lo como alternativa, então TODA requisição no intervalo
+# devolve 500. O `config:cache` sozinho reescreve o arquivo de uma vez.
+no_container "php artisan config:cache >/dev/null"
 no_container "php artisan route:cache >/dev/null && php artisan view:cache >/dev/null"
 
 if [[ "$LOCAL" -eq 1 ]]; then
