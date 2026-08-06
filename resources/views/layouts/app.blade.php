@@ -38,7 +38,7 @@
 
             <div class="flex-1 flex flex-col min-w-0">
                 {{-- Header fino: só breadcrumb e tema. A busca vive na sidebar. --}}
-                <header class="sticky top-0 z-10 flex h-12 items-center justify-between gap-4 border-b border-line bg-bg px-5">
+                <header class="sticky top-0 z-10 flex h-12 items-center justify-between gap-4 border-b border-line-soft bg-bg px-5">
                     <div class="flex min-w-0 flex-1 items-center gap-3">
                         <button @click="sidebarOpen = true" class="lg:hidden text-dim hover:text-ink shrink-0">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

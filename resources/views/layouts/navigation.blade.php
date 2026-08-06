@@ -26,7 +26,7 @@
      Vercel/Linear — a navegação fica sempre no mesmo lugar. Abaixo de `lg`
      ele vira sobreposição, comportamento que já existia. --}}
 <aside
-    class="fixed inset-y-0 left-0 z-40 flex w-60 shrink-0 flex-col border-r border-line bg-sidebar
+    class="fixed inset-y-0 left-0 z-40 flex w-60 shrink-0 flex-col border-r border-line-soft bg-sidebar
            -translate-x-full transform transition-transform duration-200 ease-in-out
            lg:translate-x-0 lg:static lg:z-auto"
     :class="sidebarOpen && '!translate-x-0'"
@@ -89,7 +89,7 @@
         @endforeach
     </nav>
 
-    <div class="shrink-0 border-t border-line p-3">
+    <div class="shrink-0 border-t border-line-soft p-3">
         <div class="flex items-center gap-2.5">
             <span class="grid h-7 w-7 shrink-0 place-items-center rounded bg-raised text-[12px] font-medium text-ink">
                 {{ Str::of(Auth::user()->name)->substr(0, 1)->upper() }}

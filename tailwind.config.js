@@ -28,7 +28,10 @@ export default {
                 sidebar: 'var(--sidebar)',
                 panel: 'var(--panel)',
                 raised: 'var(--raised)',
-                line: 'var(--border)',
+                line: {
+                    DEFAULT: 'var(--border)',
+                    soft: 'var(--border-soft)',
+                },
                 ink: 'var(--ink)',
                 dim: 'var(--dim)',
                 mute: 'var(--mute)',

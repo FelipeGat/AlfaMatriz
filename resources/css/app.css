@@ -23,6 +23,9 @@
     --panel: #0a0a0a;
     --raised: #161616;
     --border: #262626;
+    /* Divisões do "chrome" (sidebar, header): mais discretas que a borda dos
+       cards, que precisa marcar a superfície. */
+    --border-soft: #1a1a1a;
     --ink: #ededed;
     --dim: #a1a1a1;
     --mute: #7a7a7a;
@@ -45,6 +48,7 @@
     --panel: #ffffff;
     --raised: #f4f4f4;
     --border: #d9d9d9;
+    --border-soft: #ececec;
     --ink: #171717;
     --dim: #666666;
     --mute: #8f8f8f;
