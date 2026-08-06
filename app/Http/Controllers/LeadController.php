@@ -35,7 +35,46 @@ class LeadController extends Controller
         $revendas = Revenda::where('ativo', true)->orderBy('nome')->get();
         $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
 
-        return view('leads.index', compact('colunas', 'kpis', 'revendas', 'sistemas'));
+        $estagios = $this->estagios($colunas);
+
+        return view('leads.index', compact('colunas', 'kpis', 'revendas', 'sistemas', 'estagios'));
+    }
+
+    /**
+     * Metadados de cada coluna do quadro: a cor que marca o topo, quantos
+     * leads há e quanto está em jogo ali.
+     *
+     * `exigeMotivo` marca a coluna que não aceita arrastar: mover para
+     * "perdido" obriga a informar o motivo, e um card solto no lugar errado
+     * não tem como perguntar. Nessa coluna o caminho é o menu do card.
+     *
+     * @param  \Illuminate\Support\Collection<string, \Illuminate\Support\Collection>  $colunas
+     * @return array<int, array<string, mixed>>
+     */
+    private function estagios(\Illuminate\Support\Collection $colunas): array
+    {
+        $cores = [
+            'lead' => 'accent',
+            'qualificacao' => 'accent',
+            'proposta' => 'brand',
+            'contrato' => 'brand',
+            'implantacao' => 'brand',
+            'cliente_ativo' => 'good',
+            'perdido' => 'crit',
+        ];
+
+        return collect(Lead::ESTAGIOS)->map(function ($label, $chave) use ($colunas, $cores) {
+            $leads = $colunas[$chave];
+
+            return [
+                'chave' => $chave,
+                'label' => $label,
+                'cor' => $cores[$chave] ?? 'accent',
+                'quantidade' => $leads->count(),
+                'valor' => (float) $leads->sum('valor_estimado'),
+                'exigeMotivo' => $chave === 'perdido',
+            ];
+        })->values()->all();
     }
 
     public function store(Request $request)

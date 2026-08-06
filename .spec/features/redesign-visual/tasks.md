@@ -111,7 +111,7 @@ reinvente:**
   Comercial: 4 KPIs e os dois rankings em três camadas (bloco de topo com
   total e líder, faixa segmentada proporcional, linhas com barra e share).
 
-## T-036 — Funil de vendas com arrastar e soltar [pendente]
+## T-036 — Funil de vendas com arrastar e soltar [concluida]
 - Refs: US-020, AC-044, AC-045
 - Arquivos: resources/views/leads/index.blade.php, app/Http/Controllers/LeadController.php, tests/Feature/Redesign/FunilTest.php
 - Esforço: alto

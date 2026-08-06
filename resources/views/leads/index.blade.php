@@ -1,117 +1,232 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-ink leading-tight">Funil de Vendas</h2>
-            <button x-data @click="$dispatch('open-modal', 'novo-lead')" class="inline-flex items-center px-4 py-2 bg-brand border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-brand-bright">
-                + Novo lead
-            </button>
-        </div>
+    <x-slot name="titulo">Funil de Vendas</x-slot>
+    <x-slot name="contexto">{{ $kpis['abertos'] }} abertos · {{ $kpis['total'] }} no total</x-slot>
+    <x-slot name="acoes">
+        <button type="button" x-data @click="$dispatch('open-modal', 'novo-lead')"
+                class="h-[34px] px-3 rounded-control bg-brand text-on-brand font-semibold text-[12.5px]
+                       hover:bg-brand-bright transition whitespace-nowrap">
+            + Novo lead
+        </button>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-[1600px] mx-auto sm:px-6 lg:px-8 space-y-6">
-            @if (session('status'))
-                <div class="p-4 bg-status-good/10 text-status-good rounded-md text-sm">{{ session('status') }}</div>
-            @endif
+    {{--
+        A tela ocupa a altura da janela e o quadro cresce dentro dela. Sem
+        isso o quadro é dimensionado pelo conteúdo: a coluna mais cheia estica
+        a página inteira e as outras ficam curtas, sem alinhamento nenhum.
+    --}}
+    <div class="flex flex-col gap-4" style="height: calc(100vh - 120px); min-height: 520px">
+        @if (session('status'))
+            <div class="shrink-0 rounded-panel border px-4 py-2.5 text-[13px]"
+                 style="background: rgb(var(--good) / var(--tint-alpha)); border-color: rgb(var(--good) / 0.25); color: rgb(var(--good))">
+                {{ session('status') }}
+            </div>
+        @endif
 
-            {{-- KPIs --}}
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div class="bg-panel border border-white/5 shadow-panel rounded-xl p-4">
-                    <p class="text-[10px] text-ink-mute uppercase">Taxa de conversão</p>
-                    <p class="text-xl font-display font-semibold text-ink">{{ number_format($kpis['taxa_conversao'], 1, ',', '.') }}%</p>
+        <div class="shrink-0 grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+            <x-kpi-card rotulo="Taxa de conversão" :valor="number_format($kpis['taxa_conversao'], 1, ',', '.').'%'"
+                        acento="accent" icone="trending-up"
+                        :delta="$kpis['fechados'].' de '.$kpis['total'].' leads'" />
+            <x-kpi-card rotulo="Pipeline aberto" :valor="'R$ '.number_format($kpis['pipeline_valor'], 2, ',', '.')"
+                        acento="brand" icone="clipboard"
+                        :delta="$kpis['abertos'].' em negociação'" />
+            <x-kpi-card rotulo="Ticket médio fechado" :valor="'R$ '.number_format($kpis['ticket_medio'], 2, ',', '.')"
+                        acento="good" icone="check-circle" />
+            <x-kpi-card rotulo="Abertos / Perdidos" :valor="$kpis['abertos'].' / '.$kpis['perdidos']"
+                        acento="amber" icone="view-grid" />
+        </div>
+
+        {{-- Quadro ---------------------------------------------------------- --}}
+        <div x-data="funil" class="flex-1 min-h-0 flex flex-col rounded-panel border border-line bg-board overflow-hidden">
+            <div class="shrink-0 flex items-center gap-3 px-4 h-[52px] border-b border-line">
+                <span class="h-7 w-7 shrink-0 rounded-tile flex items-center justify-center bg-brand/15 text-brand-text">
+                    <span class="h-[15px] w-[15px]"><x-nav-icon name="view-grid" /></span>
+                </span>
+                <div class="min-w-0">
+                    <h2 class="font-display text-[15.5px] font-semibold text-ink leading-tight">Quadro do funil</h2>
+                    <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
+                        {{ count($estagios) }} estágios · {{ $kpis['abertos'] }} leads abertos
+                    </p>
                 </div>
-                <div class="bg-panel border border-white/5 shadow-panel rounded-xl p-4">
-                    <p class="text-[10px] text-ink-mute uppercase">Pipeline (aberto)</p>
-                    <p class="text-xl font-display font-semibold text-ink">R$ {{ number_format($kpis['pipeline_valor'], 0, ',', '.') }}</p>
-                </div>
-                <div class="bg-panel border border-white/5 shadow-panel rounded-xl p-4">
-                    <p class="text-[10px] text-ink-mute uppercase">Ticket médio (fechados)</p>
-                    <p class="text-xl font-display font-semibold text-ink">R$ {{ number_format($kpis['ticket_medio'], 0, ',', '.') }}</p>
-                </div>
-                <div class="bg-panel border border-white/5 shadow-panel rounded-xl p-4">
-                    <p class="text-[10px] text-ink-mute uppercase">Abertos / Perdidos</p>
-                    <p class="text-xl font-display font-semibold text-ink">{{ $kpis['abertos'] }} <span class="text-ink-mute text-sm">/ {{ $kpis['perdidos'] }}</span></p>
-                </div>
+                <p class="ml-auto shrink-0 hidden sm:block font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                    arraste o card para mover de estágio
+                </p>
             </div>
 
-            {{-- Kanban --}}
-            <div class="flex gap-4 overflow-x-auto pb-4 items-stretch h-[calc(100vh-17rem)]">
-                @foreach (App\Models\Lead::ESTAGIOS as $key => $label)
-                    @php $cards = $colunas[$key]; @endphp
-                    <div class="w-72 shrink-0 bg-white/[0.02] border border-white/5 rounded-xl flex flex-col">
-                        <div class="flex items-center justify-between px-3 py-3 border-b border-white/5">
-                            <div class="flex items-center gap-2 min-w-0">
-                                <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-dim truncate">{{ $label }}</h3>
-                                <span class="shrink-0 h-5 min-w-5 px-1.5 rounded-full bg-panel-raised text-ink-mute text-[11px] flex items-center justify-center">{{ $cards->count() }}</span>
-                            </div>
-                            @if ($cards->sum('valor_estimado') > 0)
-                                <span class="shrink-0 text-[11px] text-ink-mute">R$ {{ number_format($cards->sum('valor_estimado'), 0, ',', '.') }}</span>
-                            @endif
-                        </div>
+            {{-- `items-stretch` + `min-h-0` é o que faz todas as colunas terem
+                 a mesma altura e cada uma rolar por dentro. --}}
+            <div class="flex-1 min-h-0 flex gap-3 items-stretch overflow-x-auto p-3.5">
+                @foreach ($estagios as $estagio)
+                    @php $cards = $colunas[$estagio['chave']]; @endphp
 
-                        <div class="flex-1 overflow-y-auto p-2 space-y-2">
+                    <section class="shrink-0 flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden"
+                             style="width: 276px; border-top: 3px solid rgb(var(--{{ $estagio['cor'] }}))"
+                             data-estagio="{{ $estagio['chave'] }}"
+                             @dragover.prevent="permitir('{{ $estagio['chave'] }}')"
+                             @dragleave="sobre = null"
+                             @drop.prevent="soltar('{{ $estagio['chave'] }}', {{ $estagio['exigeMotivo'] ? 'true' : 'false' }})"
+                             :class="sobre === '{{ $estagio['chave'] }}' && 'ring-1 ring-brand'">
+                        <header class="shrink-0 px-3 py-2.5 border-b border-rule">
+                            <div class="flex items-center gap-2">
+                                <span class="h-[7px] w-[7px] shrink-0 rounded-full"
+                                      style="background: rgb(var(--{{ $estagio['cor'] }}))"></span>
+                                <h3 class="min-w-0 truncate font-display text-[14px] font-semibold text-ink">{{ $estagio['label'] }}</h3>
+                                <span class="ml-auto shrink-0 h-5 min-w-[20px] px-1.5 rounded-full font-mono text-[10px] font-semibold leading-5 text-center"
+                                      style="background: rgb(var(--{{ $estagio['cor'] }}) / var(--tint-alpha)); color: rgb(var(--{{ $estagio['cor'] }}))">
+                                    {{ $estagio['quantidade'] }}
+                                </span>
+                            </div>
+                            <p class="mt-0.5 pl-[15px] font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                                R$ {{ number_format($estagio['valor'], 0, ',', '.') }} em jogo
+                            </p>
+                        </header>
+
+                        <div class="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
                             @forelse ($cards as $lead)
                                 @php
-                                    $temp = $lead->temperatura();
-                                    $estagnado = in_array($temp, ['esfriando', 'frio']);
-                                    $corBorda = ['frio' => 'border-status-critical/40', 'esfriando' => 'border-status-warning/40'][$temp] ?? 'border-white/5';
+                                    $temperatura = $lead->temperatura();
+                                    $tomTemp = ['quente' => 'good', 'esfriando' => 'warn', 'frio' => 'crit'][$temperatura] ?? null;
                                 @endphp
-                                <div x-data="{ movendo: false, novoEstagio: '{{ $key }}' }" class="bg-panel-raised border {{ $corBorda }} rounded-lg p-3 text-sm shadow-panel hover:border-brand/20 transition">
-                                    <div class="flex items-start justify-between gap-2">
-                                        <p class="text-ink font-medium truncate">{{ $lead->nome }}</p>
-                                        @if ($temp)
-                                            <span class="shrink-0 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold {{ ['quente' => 'bg-status-good/10 text-status-good', 'esfriando' => 'bg-status-warning/10 text-status-warning', 'frio' => 'bg-status-critical/10 text-status-critical'][$temp] }}" title="{{ ucfirst($temp) }} · {{ $lead->diasNoEstagio() }} dias no estágio">
+
+                                <article draggable="true"
+                                         data-lead="{{ $lead->id }}"
+                                         @dragstart="arrastando = {{ $lead->id }}"
+                                         @dragend="arrastando = null; sobre = null"
+                                         x-data="{ menuAberto: false, destino: '{{ $estagio['chave'] }}' }"
+                                         class="rounded-ctl bg-card-grad border p-2.5 cursor-grab active:cursor-grabbing transition hover:border-brand"
+                                         style="border-color: {{ $tomTemp && $tomTemp !== 'good' ? 'rgb(var(--'.$tomTemp.') / 0.4)' : 'var(--line)' }}"
+                                         :class="arrastando === {{ $lead->id }} && 'opacity-50'">
+                                    <div class="flex items-start gap-2">
+                                        <p class="min-w-0 flex-1 truncate text-[13.5px] font-medium text-ink">{{ $lead->nome }}</p>
+                                        @if ($temperatura)
+                                            <x-badge :tom="['quente' => 'bom', 'esfriando' => 'atencao', 'frio' => 'critico'][$temperatura]"
+                                                     :title="ucfirst($temperatura).' · '.$lead->diasNoEstagio().' dias no estágio'">
                                                 {{ $lead->diasNoEstagio() }}d
-                                            </span>
+                                            </x-badge>
                                         @endif
                                     </div>
-                                    @if ($estagnado)
-                                        <p class="text-[10px] {{ $temp === 'frio' ? 'text-status-critical' : 'text-status-warning' }} mt-0.5">Parado há {{ $lead->diasNoEstagio() }} dias</p>
-                                    @endif
-                                    <p class="text-xs text-ink-mute mt-0.5">{{ \App\Models\Lead::TIPOS_INTERESSE[$lead->tipo_interesse] }} @if($lead->origem) · {{ $lead->origem }} @endif</p>
-                                    @if ($lead->valor_estimado)
-                                        <p class="text-xs text-brand-dim font-medium mt-1">R$ {{ number_format($lead->valor_estimado, 0, ',', '.') }}</p>
-                                    @endif
-                                    @if ($lead->revenda)
-                                        <p class="text-[10px] text-ink-mute mt-0.5">{{ $lead->revenda->nome }}</p>
-                                    @endif
 
-                                    <div class="mt-2 pt-2 border-t border-white/5">
-                                        <button @click="movendo = !movendo" class="text-[11px] text-brand hover:text-brand-bright">Mover ▾</button>
+                                    <p class="mt-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
+                                        {{ \App\Models\Lead::TIPOS_INTERESSE[$lead->tipo_interesse] ?? 'Interesse' }}@if ($lead->origem) · {{ $lead->origem }}@endif
+                                    </p>
 
-                                        <form x-show="movendo" x-cloak action="{{ route('leads.mover', $lead) }}" method="POST" class="mt-2 space-y-2">
+                                    <div class="mt-2 pt-2 border-t border-rule flex items-center gap-2">
+                                        <span class="font-mono text-[12px] text-brand-text whitespace-nowrap">
+                                            R$ {{ number_format($lead->valor_estimado ?? 0, 0, ',', '.') }}
+                                        </span>
+                                        <span class="min-w-0 flex-1 truncate text-right text-[11px] text-ink-faint">
+                                            {{ $lead->revenda?->nome ?? 'Venda direta' }}
+                                        </span>
+                                    </div>
+
+                                    {{--
+                                        Arrastar não serve para todo mundo: quem
+                                        navega por teclado, quem está no celular
+                                        e a coluna "perdido" (que precisa do
+                                        motivo) dependem deste menu. Ele não é
+                                        um resto do desenho antigo — é o caminho
+                                        acessível.
+                                    --}}
+                                    <div class="mt-2 pt-2 border-t border-rule">
+                                        <button type="button" @click="menuAberto = ! menuAberto"
+                                                class="font-mono text-[10.5px] uppercase tracking-caps text-ink-mute hover:text-brand transition">
+                                            Mover ▾
+                                        </button>
+
+                                        <form x-show="menuAberto" x-cloak method="POST"
+                                              action="{{ route('leads.mover', $lead) }}" class="mt-2 space-y-2">
                                             @csrf
-                                            <select name="estagio" x-model="novoEstagio" class="w-full text-xs border-white/10 rounded-md shadow-sm bg-panel-raised text-ink">
-                                                @foreach (App\Models\Lead::ESTAGIOS as $ek => $el)
-                                                    <option value="{{ $ek }}">{{ $el }}</option>
+                                            <select name="estagio" x-model="destino"
+                                                    class="w-full h-8 text-[12px] rounded-control bg-input border-line text-ink">
+                                                @foreach (\App\Models\Lead::ESTAGIOS as $chave => $label)
+                                                    <option value="{{ $chave }}">{{ $label }}</option>
                                                 @endforeach
                                             </select>
-                                            <template x-if="novoEstagio === 'perdido'">
-                                                <select name="motivo_perda" class="w-full text-xs border-white/10 rounded-md shadow-sm bg-panel-raised text-ink" required>
-                                                    <option value="">Motivo da perda...</option>
-                                                    @foreach (App\Models\Lead::MOTIVOS_PERDA as $mk => $ml)
-                                                        <option value="{{ $mk }}">{{ $ml }}</option>
+
+                                            <template x-if="destino === 'perdido'">
+                                                <select name="motivo_perda" required
+                                                        class="w-full h-8 text-[12px] rounded-control bg-input border-line text-ink">
+                                                    <option value="">Motivo da perda…</option>
+                                                    @foreach (\App\Models\Lead::MOTIVOS_PERDA as $chave => $label)
+                                                        <option value="{{ $chave }}">{{ $label }}</option>
                                                     @endforeach
                                                 </select>
                                             </template>
-                                            <button type="submit" class="w-full text-[11px] bg-brand text-white rounded-md py-1 hover:bg-brand-bright">Confirmar</button>
+
+                                            <button type="submit"
+                                                    class="w-full h-8 rounded-control bg-brand text-on-brand font-semibold text-[12px] hover:bg-brand-bright transition">
+                                                Confirmar
+                                            </button>
                                         </form>
                                     </div>
-                                </div>
+                                </article>
                             @empty
-                                <div class="flex flex-col items-center justify-center text-center gap-2 py-8 px-2 border border-dashed border-white/10 rounded-lg">
-                                    <p class="text-xs text-ink-mute">Nenhum lead nesta etapa</p>
-                                    @if ($key === 'lead')
-                                        <button x-data @click="$dispatch('open-modal', 'novo-lead')" class="text-[11px] font-semibold text-brand-dim hover:text-brand-bright">+ Adicionar lead</button>
+                                <div class="rounded-ctl border border-dashed border-line px-2 py-6 text-center">
+                                    <p class="text-[11.5px] text-ink-faint">Nenhum lead aqui</p>
+                                    @if ($estagio['chave'] === 'lead')
+                                        <button type="button" x-data @click="$dispatch('open-modal', 'novo-lead')"
+                                                class="mt-1.5 font-mono text-[10.5px] uppercase tracking-caps text-brand-text hover:underline">
+                                            + Adicionar
+                                        </button>
                                     @endif
                                 </div>
                             @endforelse
                         </div>
-                    </div>
+                    </section>
                 @endforeach
             </div>
+
+            {{-- Um formulário só, apontado para o lead que foi solto. --}}
+            <form x-ref="formMover" method="POST" action="" class="hidden">
+                @csrf
+                <input type="hidden" name="estagio" x-ref="estagioMover">
+            </form>
         </div>
     </div>
+
+    {{--
+        Script clássico e inline de propósito: ele precisa registrar o
+        componente ANTES de o Alpine iniciar, e o bundle do Vite é um módulo
+        (portanto adiado). Como este roda durante a análise do HTML, o
+        `alpine:init` sempre chega a tempo.
+    --}}
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('funil', () => ({
+                arrastando: null,
+                sobre: null,
+
+                // Modelo de rota com marcador: o id só é conhecido no solto.
+                rotaMover: @json(route('leads.mover', ['lead' => '__ID__'])),
+
+                permitir(estagio) {
+                    if (this.arrastando !== null) {
+                        this.sobre = estagio;
+                    }
+                },
+
+                soltar(estagio, exigeMotivo) {
+                    const lead = this.arrastando;
+                    this.sobre = null;
+                    this.arrastando = null;
+
+                    if (lead === null) {
+                        return;
+                    }
+
+                    // Marcar como perdido exige o motivo, e um card solto não
+                    // tem como responder isso. Quem quer perder um lead usa o
+                    // menu do card, onde a pergunta cabe.
+                    if (exigeMotivo) {
+                        return;
+                    }
+
+                    this.$refs.formMover.action = this.rotaMover.replace('__ID__', lead);
+                    this.$refs.estagioMover.value = estagio;
+                    this.$refs.formMover.submit();
+                },
+            }));
+        });
+    </script>
 
     {{-- Modal: novo lead --}}
     <x-modal name="novo-lead" maxWidth="lg">
@@ -134,15 +249,15 @@
                 </div>
                 <div>
                     <x-input-label for="tipo_interesse" value="Interesse" />
-                    <select id="tipo_interesse" name="tipo_interesse" class="mt-1 block w-full border-white/10 rounded-md shadow-sm">
-                        @foreach (\App\Models\Lead::TIPOS_INTERESSE as $tk => $tl)
-                            <option value="{{ $tk }}">{{ $tl }}</option>
+                    <select id="tipo_interesse" name="tipo_interesse" class="mt-1 block w-full">
+                        @foreach (\App\Models\Lead::TIPOS_INTERESSE as $chave => $label)
+                            <option value="{{ $chave }}">{{ $label }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div>
                     <x-input-label for="sistema_id" value="Sistema (se for SaaS)" />
-                    <select id="sistema_id" name="sistema_id" class="mt-1 block w-full border-white/10 rounded-md shadow-sm">
+                    <select id="sistema_id" name="sistema_id" class="mt-1 block w-full">
                         <option value="">—</option>
                         @foreach ($sistemas as $sistema)
                             <option value="{{ $sistema->id }}">{{ $sistema->nome }}</option>
@@ -151,7 +266,7 @@
                 </div>
                 <div>
                     <x-input-label for="origem" value="Origem" />
-                    <select id="origem" name="origem" class="mt-1 block w-full border-white/10 rounded-md shadow-sm">
+                    <select id="origem" name="origem" class="mt-1 block w-full">
                         <option value="">—</option>
                         @foreach (\App\Models\Lead::ORIGENS as $origem)
                             <option value="{{ $origem }}">{{ $origem }}</option>
@@ -164,7 +279,7 @@
                 </div>
                 <div>
                     <x-input-label for="revenda_id" value="Revenda (se aplicável)" />
-                    <select id="revenda_id" name="revenda_id" class="mt-1 block w-full border-white/10 rounded-md shadow-sm">
+                    <select id="revenda_id" name="revenda_id" class="mt-1 block w-full">
                         <option value="">— Venda direta —</option>
                         @foreach ($revendas as $revenda)
                             <option value="{{ $revenda->id }}">{{ $revenda->nome }}</option>
@@ -173,7 +288,7 @@
                 </div>
                 <div class="sm:col-span-2">
                     <x-input-label for="observacoes" value="Observações" />
-                    <textarea id="observacoes" name="observacoes" rows="2" class="mt-1 block w-full border-white/10 rounded-md shadow-sm bg-panel-raised text-ink"></textarea>
+                    <textarea id="observacoes" name="observacoes" rows="2" class="mt-1 block w-full"></textarea>
                 </div>
             </div>
 
