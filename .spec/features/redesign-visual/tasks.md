@@ -139,7 +139,7 @@ reinvente:**
   de busca de CNPJ (BrasilAPI) e CEP (ViaCEP) que já existe** e o bloco de
   e-mails e telefones.
 
-## T-039 — Produtos: lista comparável e gestão do sistema [pendente]
+## T-039 — Produtos: lista comparável e gestão do sistema [concluida]
 - Refs: US-021, AC-048, AC-049
 - Arquivos: resources/views/produtos/index.blade.php, resources/views/sistemas/index.blade.php, resources/views/sistemas/edit.blade.php, app/Http/Controllers/ProdutoController.php, tests/Feature/Redesign/ProdutosTest.php
 - Esforço: alto

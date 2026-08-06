@@ -1,150 +1,254 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-ink leading-tight">Produtos</h2>
+    <x-slot name="titulo">Produtos</x-slot>
+    <x-slot name="contexto">{{ $contagens['sistemas'] }} sistemas · {{ $contagens['ativos'] }} ativos</x-slot>
+
+    {{--
+        Sete cartões numa grade de três deixavam um buraco na última fila, e
+        cada cartão repetia a mesma grade de métricas — muita moldura e nenhuma
+        comparação possível. A lista ordenada por receita responde de cara qual
+        produto sustenta a casa. Cartões continuam disponíveis, mas a lista é o
+        padrão.
+    --}}
+    <div x-data="modoProdutos" class="space-y-4">
+        @if (session('status'))
+            <div class="rounded-panel border px-4 py-2.5 text-[13px]"
+                 style="background: rgb(var(--good) / var(--tint-alpha)); border-color: rgb(var(--good) / 0.25); color: rgb(var(--good))">
+                {{ session('status') }}
+            </div>
+        @endif
+
+        <div class="flex flex-wrap items-center gap-3">
+            <div class="flex-1 min-w-[240px] rounded-panel border border-line bg-card-grad px-4 py-3">
+                <p class="text-[11px] uppercase tracking-[0.10em] text-ink-mute">MRR total · todos os produtos</p>
+                <p class="mt-1 font-display text-[24px] font-semibold leading-none text-ink tabular whitespace-nowrap">
+                    R$ {{ number_format($mrrTotal, 2, ',', '.') }}
+                </p>
+            </div>
+
+            <div class="shrink-0 flex items-center gap-0.5 rounded-control border border-line bg-input" style="padding: 3px">
+                <button type="button" @click="definir('lista')"
+                        class="h-7 px-2.5 rounded-tile inline-flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-caps transition"
+                        :class="modo === 'lista' ? 'text-brand-text' : 'text-ink-mute hover:text-ink'"
+                        :style="modo === 'lista' ? 'background: rgb(var(--brand) / 0.14)' : ''">
+                    <span class="h-3.5 w-3.5"><x-nav-icon name="view-list" /></span> Lista
+                </button>
+                <button type="button" @click="definir('cartoes')"
+                        class="h-7 px-2.5 rounded-tile inline-flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-caps transition"
+                        :class="modo === 'cartoes' ? 'text-brand-text' : 'text-ink-mute hover:text-ink'"
+                        :style="modo === 'cartoes' ? 'background: rgb(var(--brand) / 0.14)' : ''">
+                    <span class="h-3.5 w-3.5"><x-nav-icon name="view-grid" /></span> Cartões
+                </button>
+            </div>
         </div>
-    </x-slot>
 
-    <div class="py-12" x-data="{ modo: localStorage.getItem('produtos-modo') || 'card' }" x-effect="localStorage.setItem('produtos-modo', modo)">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            @if (session('status'))
-                <div class="p-4 bg-status-good/10 text-status-good rounded-md text-sm">{{ session('status') }}</div>
-            @endif
+        {{-- Lista ---------------------------------------------------------- --}}
+        <div x-show="modo === 'lista'">
+            <x-tabela min="1080px">
+                <thead>
+                    <tr class="bg-head border-b border-line font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                        <th class="px-4 py-2.5 font-semibold">Sistema</th>
+                        <th class="px-4 py-2.5 font-semibold">MRR · share</th>
+                        <th class="px-4 py-2.5 font-semibold">ARR</th>
+                        <th class="px-4 py-2.5 font-semibold">Base ativa</th>
+                        <th class="px-4 py-2.5 font-semibold">Ticket médio</th>
+                        <th class="px-4 py-2.5 font-semibold">Churn</th>
+                        <th class="px-4 py-2.5 font-semibold">Status</th>
+                        <th class="px-4 py-2.5 font-semibold text-right">Ações</th>
+                    </tr>
+                </thead>
 
-            <div class="flex items-center justify-between">
-                <div class="bg-panel border border-white/5 shadow-panel rounded-xl px-6 py-4 inline-block">
-                    <p class="text-xs text-ink-mute uppercase tracking-wide">MRR total (todos os produtos)</p>
-                    <p class="text-2xl font-display font-semibold text-ink">R$ {{ number_format($mrrTotal, 2, ',', '.') }}</p>
-                </div>
+                <tbody>
+                    @forelse ($produtos as $produto)
+                        @php
+                            $sistema = $produto['sistema'];
+                            $churnAlto = $produto['taxa_cancelamento'] > 10;
+                            $marcado = $produto['sem_tier'] || $churnAlto;
+                        @endphp
 
-                <div class="flex items-center gap-1 bg-panel border border-white/5 rounded-lg p-1">
-                    <button type="button" @click="modo = 'card'" title="Cartões" class="p-1.5 rounded-md transition" :class="modo === 'card' ? 'bg-brand/15 text-brand-dim' : 'text-ink-mute hover:text-ink'">
-                        <span class="block h-4 w-4"><x-nav-icon name="view-grid" /></span>
-                    </button>
-                    <button type="button" @click="modo = 'lista'" title="Lista" class="p-1.5 rounded-md transition" :class="modo === 'lista' ? 'bg-brand/15 text-brand-dim' : 'text-ink-mute hover:text-ink'">
-                        <span class="block h-4 w-4"><x-nav-icon name="view-list" /></span>
-                    </button>
-                </div>
-            </div>
-
-            {{-- Modo cartões --}}
-            <div x-show="modo === 'card'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                @foreach ($produtos as $p)
-                    @php $sistema = $p['sistema']; @endphp
-                    <div x-data="{ editando: false }" class="bg-panel border border-white/5 shadow-panel rounded-xl p-6">
-                        <div class="flex items-start justify-between mb-4">
-                            <div>
-                                <h3 class="font-display font-semibold text-ink text-lg">{{ $sistema->nome }}</h3>
-                                <span class="px-2 py-0.5 text-xs rounded-full {{ $sistema->categoria === 'crm' ? 'bg-brand/15 text-brand-dim' : 'bg-white/5 text-ink-dim' }}">
-                                    {{ strtoupper($sistema->categoria) }}
-                                </span>
-                            </div>
-                            <span class="px-2 py-1 text-xs rounded-full {{ $sistema->ativo ? 'bg-status-good/15 text-status-good' : 'bg-white/5 text-ink-mute' }}">
-                                {{ $sistema->ativo ? 'Ativo' : 'Inativo' }}
-                            </span>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <p class="text-[10px] text-ink-mute uppercase">MRR</p>
-                                <p class="text-lg font-semibold text-ink">R$ {{ number_format($p['mrr'], 0, ',', '.') }}</p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] text-ink-mute uppercase">ARR</p>
-                                <p class="text-lg font-semibold text-ink">R$ {{ number_format($p['arr'], 0, ',', '.') }}</p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] text-ink-mute uppercase">Clientes ativos</p>
-                                <p class="text-lg font-semibold text-ink">{{ $p['clientes_ativos'] }}</p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] text-ink-mute uppercase">Ticket médio</p>
-                                <p class="text-lg font-semibold text-ink">R$ {{ number_format($p['ticket_medio'], 2, ',', '.') }}</p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] text-ink-mute uppercase">Cancelados (acum.)</p>
-                                <p class="text-lg font-semibold text-ink">{{ $p['clientes_cancelados'] }}</p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] text-ink-mute uppercase">% cancelamento</p>
-                                <p class="text-lg font-semibold {{ $p['taxa_cancelamento'] > 10 ? 'text-status-critical' : 'text-ink' }}">{{ number_format($p['taxa_cancelamento'], 1, ',', '.') }}%</p>
-                            </div>
-                        </div>
-
-                        <div class="text-xs text-ink-mute space-y-1 mb-4">
-                            <p><span class="text-ink-dim">Versão:</span> {{ $sistema->versao ?? '—' }}</p>
-                            <p><span class="text-ink-dim">Responsável:</span> {{ $sistema->responsavel ?? '—' }}</p>
-                            @if ($sistema->roadmap)
-                                <p class="line-clamp-2"><span class="text-ink-dim">Roadmap:</span> {{ $sistema->roadmap }}</p>
-                            @endif
-                        </div>
-
-                        <div class="flex items-center gap-3 text-xs">
-                            <a href="{{ route('sistemas.edit', $sistema) }}" class="text-brand hover:text-brand-bright">Configurar preços</a>
-                            <button @click="editando = !editando" class="text-brand hover:text-brand-bright" x-text="editando ? 'Fechar' : 'Editar gestão'"></button>
-                        </div>
-
-                        <form x-show="editando" x-cloak action="{{ route('produtos.update', $sistema) }}" method="POST" class="mt-4 space-y-3 border-t border-white/5 pt-4">
-                            @csrf @method('PUT')
-                            <div>
-                                <x-input-label value="Versão" />
-                                <x-text-input name="versao" type="text" class="mt-1 block w-full text-sm" value="{{ $sistema->versao }}" />
-                            </div>
-                            <div>
-                                <x-input-label value="Responsável" />
-                                <x-text-input name="responsavel" type="text" class="mt-1 block w-full text-sm" value="{{ $sistema->responsavel }}" />
-                            </div>
-                            <div>
-                                <x-input-label value="Roadmap / próximos passos" />
-                                <textarea name="roadmap" rows="3" class="mt-1 block w-full border-white/10 rounded-md shadow-sm text-sm bg-panel-raised text-ink">{{ $sistema->roadmap }}</textarea>
-                            </div>
-                            <x-primary-button>Salvar</x-primary-button>
-                        </form>
-                    </div>
-                @endforeach
-            </div>
-
-            {{-- Modo lista --}}
-            <div x-show="modo === 'lista'" x-cloak class="bg-panel overflow-hidden shadow-sm sm:rounded-lg">
-                <table class="min-w-full divide-y divide-white/5">
-                    <thead class="bg-panel-raised">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-ink-dim uppercase">Sistema</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-ink-dim uppercase">Status</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-ink-dim uppercase">MRR</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-ink-dim uppercase">ARR</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-ink-dim uppercase">Clientes ativos</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-ink-dim uppercase">Ticket médio</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-ink-dim uppercase">% cancel.</th>
-                            <th class="px-4 py-3"></th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-white/5">
-                        @foreach ($produtos as $p)
-                            @php $sistema = $p['sistema']; @endphp
-                            <tr>
-                                <td class="px-4 py-3 text-sm text-ink font-medium">
-                                    {{ $sistema->nome }}
-                                    <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full {{ $sistema->categoria === 'crm' ? 'bg-brand/10 text-brand-dim' : 'bg-white/5 text-ink-mute' }}">{{ strtoupper($sistema->categoria) }}</span>
-                                </td>
-                                <td class="px-4 py-3 text-sm">
-                                    <span class="px-2 py-1 text-xs rounded-full {{ $sistema->ativo ? 'bg-status-good/15 text-status-good' : 'bg-white/5 text-ink-mute' }}">
-                                        {{ $sistema->ativo ? 'Ativo' : 'Inativo' }}
+                        <tr class="border-b border-rule hover:bg-chip transition {{ $sistema->ativo ? '' : 'opacity-[0.72]' }}"
+                            @if ($marcado)
+                                style="border-left: 2px solid rgb(var(--{{ $churnAlto ? 'crit' : 'warn' }})); background: rgb(var(--{{ $churnAlto ? 'crit' : 'warn' }}) / 0.05)"
+                            @endif>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <span class="h-[34px] w-[34px] shrink-0 rounded-ctl bg-brand/15 text-brand-text
+                                                 flex items-center justify-center">
+                                        <span class="h-4 w-4"><x-nav-icon name="cube-outline" /></span>
                                     </span>
-                                </td>
-                                <td class="px-4 py-3 text-sm text-right text-ink">R$ {{ number_format($p['mrr'], 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-sm text-right text-ink-dim">R$ {{ number_format($p['arr'], 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-sm text-right text-ink-dim">{{ $p['clientes_ativos'] }}</td>
-                                <td class="px-4 py-3 text-sm text-right text-ink-dim">R$ {{ number_format($p['ticket_medio'], 2, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-sm text-right {{ $p['taxa_cancelamento'] > 10 ? 'text-status-critical' : 'text-ink-dim' }}">{{ number_format($p['taxa_cancelamento'], 1, ',', '.') }}%</td>
-                                <td class="px-4 py-3 text-right text-sm">
-                                    <a href="{{ route('sistemas.edit', $sistema) }}" class="text-brand hover:text-brand-bright">Configurar</a>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+                                    <span class="min-w-0">
+                                        <span class="flex items-center gap-1.5 min-w-0">
+                                            <span class="font-display text-[14.5px] font-semibold text-ink truncate">{{ $sistema->nome }}</span>
+                                            @if ($sistema->categoria)
+                                                <x-badge>{{ $sistema->categoria }}</x-badge>
+                                            @endif
+                                        </span>
+                                        <span class="block font-mono text-[11px] text-ink-faint truncate">
+                                            {{ $sistema->versao ?: 'sem versão' }}@if ($sistema->responsavel) · {{ $sistema->responsavel }}@endif
+                                        </span>
+                                    </span>
+                                </div>
+                            </td>
+
+                            <td class="px-4 py-3">
+                                <div class="flex items-baseline gap-2">
+                                    <span class="font-mono text-[13.5px] text-ink whitespace-nowrap">R$ {{ number_format($produto['mrr'], 2, ',', '.') }}</span>
+                                    <span class="font-mono text-[11px] text-ink-faint">{{ number_format($produto['share'] * 100, 0) }}%</span>
+                                </div>
+                                <span class="mt-1.5 block h-1.5 w-full max-w-[140px] rounded-badge bg-bar-track overflow-hidden">
+                                    <span class="block h-full rounded-badge" data-barra="{{ $sistema->nome }}"
+                                          style="width: {{ round($produto['largura'] * 100, 2) }}%; background: rgb(var(--accent))"></span>
+                                </span>
+                            </td>
+
+                            <td class="px-4 py-3 font-mono text-[13px] text-ink-dim whitespace-nowrap">
+                                R$ {{ number_format($produto['arr'], 2, ',', '.') }}
+                            </td>
+
+                            <td class="px-4 py-3">
+                                <span class="block font-mono text-[13.5px] text-ink tabular">{{ number_format($produto['clientes_ativos'], 0, ',', '.') }}</span>
+                                {{-- A unidade real de cobrança: academias, condomínios,
+                                     vidas agregadas. "Clientes" esconde o que se cobra. --}}
+                                <span class="block font-mono text-[11px] uppercase tracking-caps text-ink-faint truncate">
+                                    {{ $sistema->unidade_cobranca }}
+                                </span>
+                            </td>
+
+                            <td class="px-4 py-3 font-mono text-[13px] text-ink-dim whitespace-nowrap">
+                                R$ {{ number_format($produto['ticket_medio'], 2, ',', '.') }}
+                            </td>
+
+                            <td class="px-4 py-3">
+                                <span class="block font-mono text-[13px] whitespace-nowrap {{ $churnAlto ? 'text-crit' : 'text-ink-dim' }}">
+                                    {{ number_format($produto['taxa_cancelamento'], 1, ',', '.') }}%
+                                </span>
+                                <span class="block font-mono text-[11px] text-ink-faint whitespace-nowrap">
+                                    {{ $produto['clientes_cancelados'] }} cancel.
+                                </span>
+                            </td>
+
+                            <td class="px-4 py-3">
+                                <x-badge :tom="$sistema->ativo ? 'bom' : 'neutro'" ponto>
+                                    {{ $sistema->ativo ? 'Ativo' : 'Inativo' }}
+                                </x-badge>
+                                @if ($produto['sem_tier'])
+                                    <span class="mt-1 block font-mono text-[10px] uppercase tracking-caps whitespace-nowrap"
+                                          style="color: rgb(var(--warn))">sem tier de atacado</span>
+                                @endif
+                            </td>
+
+                            <td class="px-4 py-3">
+                                <div class="flex items-center justify-end gap-1">
+                                    <x-acao-tabela icone="tag" titulo="Configurar tiers de atacado"
+                                                   :href="route('sistemas.edit', $sistema)" />
+                                    <x-acao-tabela icone="users" titulo="Ver clientes do sistema"
+                                                   :href="route('clientes.index', ['sistema' => $sistema->id])" />
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="8" class="px-4 py-8 text-center text-[13px] text-ink-mute">Nenhum sistema cadastrado.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+
+                @if ($produtos->isNotEmpty())
+                    <tfoot>
+                        <x-linha-total>
+                            <td>Total</td>
+                            <td>R$ {{ number_format($totais['mrr'], 2, ',', '.') }}</td>
+                            <td>R$ {{ number_format($totais['arr'], 2, ',', '.') }}</td>
+                            <td>{{ number_format($totais['ativos'], 0, ',', '.') }}</td>
+                            <td></td>
+                            <td>{{ $totais['cancelados'] }} cancel.</td>
+                            <td></td>
+                            <td></td>
+                        </x-linha-total>
+                    </tfoot>
+                @endif
+
+                <x-slot name="rodape">
+                    <span>{{ $contagens['sistemas'] }} sistemas · {{ $contagens['ativos'] }} ativos</span>
+                    @if ($contagens['sem_tier'] > 0)
+                        <span style="color: rgb(var(--warn))">· {{ $contagens['sem_tier'] }} sem tier de atacado</span>
+                    @endif
+                </x-slot>
+            </x-tabela>
+        </div>
+
+        {{-- Cartões -------------------------------------------------------- --}}
+        <div x-show="modo === 'cartoes'" x-cloak
+             class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))">
+            @foreach ($produtos as $produto)
+                @php $sistema = $produto['sistema']; @endphp
+                <article class="rounded-panel border border-line bg-card-grad p-4 {{ $sistema->ativo ? '' : 'opacity-[0.72]' }}">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="h-[34px] w-[34px] shrink-0 rounded-ctl bg-brand/15 text-brand-text flex items-center justify-center">
+                            <span class="h-4 w-4"><x-nav-icon name="cube-outline" /></span>
+                        </span>
+                        <span class="min-w-0">
+                            <span class="block font-display text-[14.5px] font-semibold text-ink truncate">{{ $sistema->nome }}</span>
+                            <span class="block font-mono text-[11px] uppercase tracking-caps text-ink-faint truncate">{{ $sistema->unidade_cobranca }}</span>
+                        </span>
+                    </div>
+
+                    <p class="mt-3 font-display text-[22px] font-semibold leading-none text-ink tabular whitespace-nowrap">
+                        R$ {{ number_format($produto['mrr'], 2, ',', '.') }}
+                    </p>
+                    <p class="mt-1 font-mono text-[11px] text-ink-faint">{{ number_format($produto['share'] * 100, 0) }}% do MRR total</p>
+
+                    <dl class="mt-3 pt-3 border-t border-rule space-y-1.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <dt class="text-[12px] text-ink-mute">Base ativa</dt>
+                            <dd class="font-mono text-[12.5px] text-ink-dim">{{ number_format($produto['clientes_ativos'], 0, ',', '.') }}</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <dt class="text-[12px] text-ink-mute">Ticket médio</dt>
+                            <dd class="font-mono text-[12.5px] text-ink-dim">R$ {{ number_format($produto['ticket_medio'], 2, ',', '.') }}</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <dt class="text-[12px] text-ink-mute">Churn</dt>
+                            <dd class="font-mono text-[12.5px] {{ $produto['taxa_cancelamento'] > 10 ? 'text-crit' : 'text-ink-dim' }}">
+                                {{ number_format($produto['taxa_cancelamento'], 1, ',', '.') }}%
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <div class="mt-3 pt-3 border-t border-rule flex items-center gap-2">
+                        <x-badge :tom="$sistema->ativo ? 'bom' : 'neutro'" ponto>{{ $sistema->ativo ? 'Ativo' : 'Inativo' }}</x-badge>
+                        @if ($produto['sem_tier'])
+                            <x-badge tom="atencao">sem tier</x-badge>
+                        @endif
+                        <a href="{{ route('sistemas.edit', $sistema) }}"
+                           class="ml-auto font-mono text-[10.5px] uppercase tracking-caps text-brand-text hover:underline">Configurar</a>
+                    </div>
+                </article>
+            @endforeach
         </div>
     </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('modoProdutos', () => ({
+                // Lista é o padrão: é ela que deixa comparar. Quem prefere
+                // cartões escolhe uma vez e a escolha fica.
+                modo: (() => {
+                    try {
+                        return localStorage.getItem('alfamatriz:produtos-modo') === 'cartoes' ? 'cartoes' : 'lista';
+                    } catch (erro) {
+                        return 'lista';
+                    }
+                })(),
+
+                definir(modo) {
+                    this.modo = modo;
+                    try {
+                        localStorage.setItem('alfamatriz:produtos-modo', modo);
+                    } catch (erro) {
+                        // preferência não persistida; a sessão atual continua valendo
+                    }
+                },
+            }));
+        });
+    </script>
 </x-app-layout>

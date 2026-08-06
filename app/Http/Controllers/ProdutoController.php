@@ -9,7 +9,7 @@ class ProdutoController extends Controller
 {
     public function index()
     {
-        $produtos = Sistema::orderBy('categoria')->orderBy('nome')->get()->map(function (Sistema $sistema) {
+        $produtos = Sistema::orderBy('nome')->get()->map(function (Sistema $sistema) {
             $ativos = $sistema->clientesAtivosCount();
             $cancelados = $sistema->clientesCanceladosCount();
             $mrr = $sistema->mrrEstimado();
@@ -22,12 +22,40 @@ class ProdutoController extends Controller
                 'arr' => $mrr * 12,
                 'ticket_medio' => $ativos > 0 ? $mrr / $ativos : 0,
                 'taxa_cancelamento' => ($ativos + $cancelados) > 0 ? ($cancelados / ($ativos + $cancelados)) * 100 : 0,
+                // Sem tier de atacado o sistema não entra no faturamento das
+                // revendas — é a pendência que a tela precisa gritar.
+                'sem_tier' => $sistema->tiersVigentes()->isEmpty(),
             ];
         });
 
-        $mrrTotal = $produtos->sum('mrr');
+        $mrrTotal = (float) $produtos->sum('mrr');
 
-        return view('produtos.index', compact('produtos', 'mrrTotal'));
+        // Ordenar por receita é o que transforma sete cartões soltos numa
+        // lista comparável: a primeira linha é o produto que sustenta a casa.
+        $produtos = $produtos
+            ->map(fn ($p) => $p + ['share' => $mrrTotal > 0 ? $p['mrr'] / $mrrTotal : 0])
+            ->sortByDesc('mrr')
+            ->values();
+
+        $maiorMrr = (float) ($produtos->max('mrr') ?: 0);
+
+        return view('produtos.index', [
+            'produtos' => $produtos->map(fn ($p) => $p + [
+                'largura' => $maiorMrr > 0 ? $p['mrr'] / $maiorMrr : 0,
+            ]),
+            'mrrTotal' => $mrrTotal,
+            'totais' => [
+                'mrr' => $mrrTotal,
+                'arr' => $mrrTotal * 12,
+                'ativos' => (int) $produtos->sum('clientes_ativos'),
+                'cancelados' => (int) $produtos->sum('clientes_cancelados'),
+            ],
+            'contagens' => [
+                'sistemas' => $produtos->count(),
+                'ativos' => $produtos->filter(fn ($p) => $p['sistema']->ativo)->count(),
+                'sem_tier' => $produtos->where('sem_tier', true)->count(),
+            ],
+        ]);
     }
 
     public function update(Request $request, Sistema $sistema)

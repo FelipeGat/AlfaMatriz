@@ -287,7 +287,7 @@ class CentroControleController extends Controller
                 ->groupBy('revenda_id');
 
             foreach ($porRevenda as $revendaId => $clientes) {
-                if (! $sistema->tierParaVolume($clientes->count(), $revendaId)) {
+                if (! $sistema->tierParaVolume($clientes->count(), $sistema->chaveDeRevenda($revendaId))) {
                     return true;
                 }
             }

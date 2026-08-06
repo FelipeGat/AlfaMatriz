@@ -89,11 +89,23 @@ class Sistema extends Model
         $total = 0;
         foreach ($porRevenda as $revendaId => $clientes) {
             $qtd = $clientes->count();
-            $tier = $this->tierParaVolume($qtd, $revendaId);
+            // `groupBy` devolve a chave como texto, e o cliente de venda
+            // direta (sem revenda) vira a chave vazia — que não é null. Sem
+            // esta normalização, uma única venda direta derruba o cálculo.
+            $tier = $this->tierParaVolume($qtd, $this->chaveDeRevenda($revendaId));
             $total += $tier?->calcularMensalidade($qtd) ?? 0;
         }
 
         return $total;
+    }
+
+    /**
+     * Normaliza a chave de agrupamento por revenda: venda direta chega como
+     * string vazia (ou null) e precisa virar null de verdade.
+     */
+    public function chaveDeRevenda(int|string|null $chave): ?int
+    {
+        return ($chave === null || $chave === '') ? null : (int) $chave;
     }
 
     public function clientesAtivosCount(): int
