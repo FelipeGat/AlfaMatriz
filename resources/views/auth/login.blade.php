@@ -1,5 +1,8 @@
 <x-guest-layout>
-    <h1 class="font-display text-[21px] font-semibold text-ink">Entrar</h1>
+    {{-- Centralizado junto com a marca: os dois formam o eixo do card, e o
+         formulário logo abaixo é que volta ao alinhamento à esquerda, onde os
+         rótulos precisam estar. --}}
+    <h1 class="font-display text-[21px] font-semibold text-ink text-center">Entrar</h1>
 
     <x-auth-session-status :status="session('status')" />
 
