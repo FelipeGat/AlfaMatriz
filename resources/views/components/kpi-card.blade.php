@@ -20,15 +20,20 @@
      ele encolhe em vez de quebrar em duas linhas, que era o defeito mais
      recorrente do protótipo. --}}
 <div class="rounded-card border border-line bg-panel px-6 py-[22px]">
-    <p class="text-[10.5px] font-medium uppercase tracking-[.06em] text-mute">{{ $label }}</p>
+    <p class="font-mono text-[10px] font-medium uppercase tracking-[.08em] text-mute">{{ $label }}</p>
 
     <p class="valor mt-2 font-medium tracking-[-.03em] text-[clamp(19px,2.1vw,26px)] leading-tight {{ $tons[$tom] ?? $tons['ink'] }}">
         {{ $value }}
     </p>
 
     @if (! is_null($proporcao))
-        <div class="mt-3 h-1.5 w-full overflow-hidden rounded-[3px] bg-track">
-            <div class="h-full rounded-[3px] bg-brand" style="width: {{ max(0, min(100, $proporcao)) }}%"></div>
+        {{-- A barra acompanha o significado do card: entradas em positivo,
+             saídas em atenção. Cor aqui informa, não decora. --}}
+        @php
+            $barras = ['ink' => 'bg-ink', 'good' => 'bg-good', 'warn' => 'bg-warn', 'bad' => 'bg-bad'];
+        @endphp
+        <div class="mt-3 h-1 w-full overflow-hidden rounded-[2px] bg-track">
+            <div class="h-full rounded-[2px] {{ $barras[$tom] ?? $barras['ink'] }}" style="width: {{ max(0, min(100, $proporcao)) }}%"></div>
         </div>
         @if ($apoio)
             <p class="mt-2 text-[11.5px] text-mute">{{ $apoio }}</p>

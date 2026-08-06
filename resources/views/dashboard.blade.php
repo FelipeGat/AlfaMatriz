@@ -1,7 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
-        <p class="font-mono text-[9.5px] font-medium uppercase tracking-[.16em] text-mute">Painéis</p>
-        <h2 class="font-display text-[17px] font-semibold tracking-[-.02em] text-ink">Financeiro</h2>
+        <div class="flex items-center gap-2 text-[13px]">
+            <span class="text-mute">Painéis</span>
+            <span class="text-line">/</span>
+            <span class="font-medium text-ink">Financeiro</span>
+        </div>
     </x-slot>
 
     <div class="space-y-[18px]">
@@ -45,11 +48,13 @@
                 <x-summary-card label="Clientes ativos" :value="$totalClientes" contexto="base total" />
                 <x-summary-card label="Clientes diretos" :value="$clientesDiretos" contexto="fora de revenda" />
 
-                <div class="rounded-summary border border-brand-line bg-brand-soft px-[18px] py-4">
-                    <p class="text-[10.5px] font-medium uppercase tracking-[.06em] text-brand">Fechamento do mês</p>
+                {{-- Destaque neutro: na direção nova, chamar atenção é papel
+                     da superfície, não da cor. --}}
+                <div class="rounded-summary border border-line bg-raised px-[18px] py-4">
+                    <p class="font-mono text-[10px] font-medium uppercase tracking-[.08em] text-mute">Fechamento do mês</p>
                     <p class="mt-1.5 text-[12.5px] text-dim">Gere as cobranças das revendas da competência {{ now()->format('m/Y') }}.</p>
                     <a href="{{ route('faturamento.index') }}"
-                       class="mt-3 inline-flex items-center rounded-control bg-brand-solid px-3 py-1.5 text-[12.5px] font-medium text-white transition-colors hover:opacity-90">
+                       class="mt-3 inline-flex items-center rounded-control bg-ink px-3 py-1.5 text-[12.5px] font-medium text-bg transition-opacity hover:opacity-90">
                         Ir para Faturamento
                     </a>
                 </div>
@@ -59,7 +64,7 @@
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <x-painel-card titulo="Receitas pendentes">
                 <x-slot name="acao">
-                    <a href="{{ route('cobrancas.index') }}" class="text-brand hover:opacity-80">Ver todas</a>
+                    <a href="{{ route('cobrancas.index') }}" class="text-dim transition-colors hover:text-ink">Ver todas</a>
                 </x-slot>
 
                 <ul class="divide-y divide-line">
@@ -85,7 +90,7 @@
 
             <x-painel-card titulo="Despesas em aberto">
                 <x-slot name="acao">
-                    <a href="{{ route('contas-pagar.index') }}" class="text-brand hover:opacity-80">Ver todas</a>
+                    <a href="{{ route('contas-pagar.index') }}" class="text-dim transition-colors hover:text-ink">Ver todas</a>
                 </x-slot>
 
                 <ul class="divide-y divide-line">

@@ -40,8 +40,11 @@
 
 <x-app-layout>
     <x-slot name="header">
-        <p class="font-mono text-[9.5px] font-medium uppercase tracking-[.16em] text-mute">Painéis</p>
-        <h2 class="font-display text-[17px] font-semibold tracking-[-.02em] text-ink">Comercial</h2>
+        <div class="flex items-center gap-2 text-[13px]">
+            <span class="text-mute">Painéis</span>
+            <span class="text-line">/</span>
+            <span class="font-medium text-ink">Comercial</span>
+        </div>
     </x-slot>
 
     <div class="space-y-[18px]" x-data="{ metrica: 'clientes' }">
@@ -56,15 +59,15 @@
         <x-painel-card titulo="Ranking de sistemas">
             <x-slot name="acao">
                 {{-- Alternador: puramente visual, os dois conjuntos já vêm do servidor --}}
-                <div class="inline-flex rounded-control bg-raised p-0.5">
+                <div class="inline-flex rounded-control border border-line bg-raised p-0.5">
                     <button type="button" @click="metrica = 'clientes'"
-                            class="rounded-[7px] px-3 py-1 text-[12px] transition-colors"
-                            :class="metrica === 'clientes' ? 'bg-brand-soft text-brand' : 'text-dim hover:text-ink'">
+                            class="rounded px-2.5 py-1 font-mono text-[11.5px] transition-colors"
+                            :class="metrica === 'clientes' ? 'border border-line bg-panel text-ink' : 'text-dim hover:text-ink'">
                         Por clientes
                     </button>
                     <button type="button" @click="metrica = 'valor'"
-                            class="rounded-[7px] px-3 py-1 text-[12px] transition-colors"
-                            :class="metrica === 'valor' ? 'bg-brand-soft text-brand' : 'text-dim hover:text-ink'">
+                            class="rounded px-2.5 py-1 font-mono text-[11.5px] transition-colors"
+                            :class="metrica === 'valor' ? 'border border-line bg-panel text-ink' : 'text-dim hover:text-ink'">
                         Por valor
                     </button>
                 </div>
@@ -95,7 +98,7 @@
                                         {{ (int) $painel['dados']['total'] }}
                                     @endif
                                 </p>
-                                <p class="mt-0.5 text-[9.5px] font-medium uppercase tracking-[.16em] text-mute">{{ $painel['unidade'] }}</p>
+                                <p class="mt-0.5 font-mono text-[10px] font-medium uppercase tracking-[.08em] text-mute">{{ $painel['unidade'] }}</p>
                             </div>
                         </div>
                     </div>

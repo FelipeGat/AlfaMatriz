@@ -21,37 +21,45 @@ class SidebarETemaTest extends TestCase
     }
 
     /**
-     * @spec:AC-041 O menu recolhe para o trilho de ícones e o estado sobrevive
-     * à navegação — sem isso ele voltaria ao tamanho original a cada página,
-     * que é o que torna um menu colapsável inútil.
+     * @spec:AC-041 O menu é fixo: largura única, sem controle de recolher. A
+     * direção anterior tinha um menu colapsável, removido por decisão do
+     * cliente — este teste impede que ele volte por descuido.
      */
-    public function test_menu_recolhe_e_o_estado_e_lembrado(): void
+    public function test_menu_e_fixo_sem_controle_de_recolher(): void
     {
-        // As duas larguras do handoff.
-        $this->assertStringContainsString('w-[236px]', $this->html, 'Largura expandida fora do handoff.');
-        $this->assertStringContainsString('lg:w-[68px]', $this->html, 'Largura recolhida fora do handoff.');
+        $this->assertStringContainsString('w-60', $this->html, 'O menu fixo tem 240px.');
 
-        // O botão que alterna e a função que persiste.
-        $this->assertStringContainsString('alternarSidebar()', $this->html);
-        $this->assertStringContainsString("localStorage.setItem('alfamatriz-sidebar'", $this->html);
-        $this->assertStringContainsString("localStorage.getItem('alfamatriz-sidebar')", $this->html);
-
-        // Recolhida, os rótulos somem por opacidade e largura (não por display,
-        // que mataria a transição).
-        $this->assertStringContainsString('lg:w-0 lg:opacity-0', $this->html);
-
-        // E cada item mantém o rótulo em `title`, que vira tooltip no trilho.
-        $this->assertStringContainsString('title="Faturamento"', $this->html);
+        foreach (['alternarSidebar', 'alfamatriz-sidebar', 'lg:w-[68px]'] as $resto) {
+            $this->assertStringNotContainsString(
+                $resto,
+                $this->html,
+                "Sobrou \"{$resto}\" do menu colapsável, que foi removido da direção."
+            );
+        }
     }
 
     /**
-     * @spec:AC-041 O item da tela atual é destacado com o marcador da borda
-     * esquerda, para a navegação continuar legível mesmo no trilho estreito.
+     * @spec:AC-041 A busca vive no menu, logo abaixo da marca, com o atalho
+     * de teclado indicado.
      */
-    public function test_item_ativo_recebe_marcador_e_cor_de_marca(): void
+    public function test_menu_traz_a_busca_com_atalho(): void
     {
-        $this->assertStringContainsString('bg-brand-soft text-brand', $this->html, 'O item ativo precisa da cor de marca.');
-        $this->assertStringContainsString('-left-3 h-[18px] w-[3px]', $this->html, 'Falta o marcador de 3×18px do item ativo.');
+        $this->assertStringContainsString('id="busca-menu"', $this->html);
+        $this->assertStringContainsString('placeholder="Buscar"', $this->html);
+        $this->assertStringContainsString('<kbd', $this->html, 'O atalho precisa estar indicado.');
+        $this->assertStringContainsString("busca.focus()", $this->html, 'A tecla / precisa focar a busca.');
+    }
+
+    /**
+     * @spec:AC-045 O item ativo do menu é neutro: superfície própria e texto
+     * ink, sem cor de marca. Cor viva ficou reservada para o que significa
+     * algo — gráfico, situação, indicador.
+     */
+    public function test_item_ativo_e_neutro(): void
+    {
+        $this->assertStringContainsString('bg-nav-active', $this->html, 'O item ativo usa superfície neutra.');
+        $this->assertStringNotContainsString('bg-brand-soft text-brand', $this->html, 'O menu não pode usar cor de marca.');
+        $this->assertStringNotContainsString('w-[3px] rounded-r bg-brand', $this->html, 'O marcador colorido saiu da direção.');
     }
 
     /**
@@ -79,12 +87,7 @@ class SidebarETemaTest extends TestCase
         $this->assertStringContainsString('-translate-x-full', $this->html);
         $this->assertStringContainsString('lg:translate-x-0', $this->html);
 
-        // O botão de recolher não aparece abaixo de lg: ali a sidebar já é
-        // sobreposta, e recolher não faria sentido.
-        $this->assertMatchesRegularExpression(
-            '/hidden[^"]*lg:flex/',
-            $this->html,
-            'O botão de recolher precisa ficar oculto abaixo de lg.'
-        );
+        // E o menu volta a ser estático a partir de lg.
+        $this->assertStringContainsString('lg:static', $this->html);
     }
 }

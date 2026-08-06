@@ -38,22 +38,35 @@ escuro, para trabalhar confortavelmente e reconhecer o sistema como da Alfa.
 
 - **Dado** a aplicação compilada
 - **Quando** as fontes e o ícone são carregados
-- **Então** valem as três famílias do handoff (Space Grotesk para títulos, IBM
-  Plex Sans para interface e IBM Plex Mono para números), a fonte antiga (Inter)
-  não é mais referenciada, e o ícone da marca aparece como favicon
+- **Então** valem as duas famílias do handoff (Geist na interface e Geist Mono
+  em todo número), nenhuma das fontes anteriores (Inter, Space Grotesk, IBM
+  Plex) é mais referenciada, e o ícone da marca aparece como favicon
 
-### US-021 — O menu ocupa só o espaço que eu quiser
+#### AC-045 — A interface é monocromática; cor viva só onde significa algo
 
-Como quem usa o painel em telas de tamanhos diferentes, quero recolher o menu
-para um trilho de ícones, para ganhar área de trabalho sem perder a navegação.
+- **Dado** qualquer tela do painel
+- **Quando** ela é exibida
+- **Então** botões, seleção de menu, links e avatares são neutros, e cor viva
+  aparece apenas onde carrega significado: séries de gráfico, indicadores de
+  positivo/negativo/atenção e estados de situação
 
-#### AC-041 — O menu recolhe, expande e lembra do estado
+### US-021 — A navegação fica sempre à vista
 
-- **Dado** o menu expandido
-- **Quando** a pessoa clica em recolher
-- **Então** ele encolhe para o trilho de ícones, os rótulos somem, e ao
-  navegar para outra tela ele continua recolhido — sem voltar ao tamanho
-  original a cada página
+Como quem usa o painel o dia todo, quero o menu sempre visível e a busca junto
+dele, para alcançar qualquer tela sem etapa intermediária.
+
+> **Mudou em 2026-08-05.** A versão anterior desta história pedia um menu
+> colapsável (trilho de ícones ↔ menu expandido), e ele chegou a ser
+> implementado. O cliente decidiu pelo menu **fixo**, na direção
+> Vercel/Linear: menos controle para o usuário administrar, navegação sempre
+> no mesmo lugar. O recolher foi removido.
+
+#### AC-041 — O menu é fixo e traz a busca
+
+- **Dado** o painel aberto em tela larga
+- **Quando** a pessoa navega entre telas
+- **Então** o menu permanece com a mesma largura, sem controle de recolher, e
+  traz o campo de busca logo abaixo da marca, com o atalho de teclado indicado
 
 ### US-022 — Nenhuma tela quebra no caminho
 

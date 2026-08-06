@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><title>AlfaMatriz</title><link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{margin:0;font-family:"Geist",system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}a{color:inherit;text-decoration:none}input,select,button{font-family:inherit}input:focus,select:focus{outline:none}::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:rgba(128,150,155,.22);border-radius:12px}::-webkit-scrollbar-thumb:hover{background:rgba(128,150,155,.4)}::-webkit-scrollbar-track{background:transparent}nav.om-rail{scrollbar-width:none;-ms-overflow-style:none}nav.om-rail::-webkit-scrollbar{width:0;height:0;display:none}@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes popIn{from{opacity:0;transform:scale(.97) translateY(6px)}to{opacity:1;transform:scale(1) translateY(0)}}</style></helmet>
+
+<div style="{{ rootStyle }}">
+<div style="display:flex;height:100vh;overflow:hidden;background:var(--bg);color:var(--ink)">
+
+<aside style="{{ asideStyle }}">
+  <div style="height:48px;display:flex;align-items:center;gap:10px;padding:0 16px;flex-shrink:0">
+    <svg width="24" height="23" viewBox="2 1 44 45.6" fill="none" style="flex-shrink:0;display:block"><path d="M5 4l13 15L5 34" stroke="var(--ink)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M43 4L30 19l13 15" stroke="var(--ink)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><circle cx="24" cy="39" r="6.6" fill="var(--ink)"></circle></svg>
+    <img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:14px;width:auto;display:block;filter:var(--logo-filter)" />
+  </div>
+  <div style="padding:4px 12px 10px">
+    <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 10px;border:1px solid var(--border);border-radius:6px;background:var(--panel)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--mute)" stroke-width="2" style="flex-shrink:0"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5" stroke-linecap="round"></path></svg>
+      <input value="{{ busca }}" onChange="{{ setBusca }}" placeholder="Buscar" style="flex:1;min-width:0;background:transparent;border:none;color:var(--ink);font:400 13px 'Geist',sans-serif" />
+      <span style="flex-shrink:0;font:400 11px 'Geist Mono',monospace;color:var(--mute);border:1px solid var(--border);border-radius:4px;padding:1px 5px;line-height:1.4">/</span>
+    </div>
+  </div>
+
+  <nav class="om-rail" style="flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 12px;display:flex;flex-direction:column;gap:16px">
+    <sc-for list="{{ grupos }}" as="grupo" hint-placeholder-count="3">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <p style="{{ grupo.labelStyle }}">{{ grupo.label }}</p>
+        <sc-for list="{{ grupo.itens }}" as="item" hint-placeholder-count="4">
+          <button onClick="{{ item.go }}" title="{{ item.label }}" style="{{ item.rowStyle }}" style-hover="background:var(--nav-hover);color:var(--ink)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{ item.iconColor }}" stroke-width="1.7" style="flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="{{ item.icon }}"></path></svg>
+            <span style="{{ item.labelStyle }}">{{ item.label }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </sc-for>
+  </nav>
+
+  <div style="padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 8px">
+      <span style="width:28px;height:28px;flex-shrink:0;border-radius:4px;background:var(--raised);color:var(--dim);display:flex;align-items:center;justify-content:center;font:500 12px 'Geist',sans-serif">R</span>
+      <div style="min-width:0">
+        <p style="margin:0;font:500 13px 'Geist',sans-serif;color:var(--ink);white-space:nowrap">Rodrigo Alves</p>
+        <p style="margin:0;font:400 12px 'Geist',sans-serif;color:var(--mute);white-space:nowrap">Administrador</p>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+  <header style="height:48px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 20px;border-bottom:1px solid var(--border);background:var(--bg)">
+    <span style="font:400 13px 'Geist',sans-serif;color:var(--mute);white-space:nowrap">{{ grupoAtual }}</span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.6" style="flex-shrink:0"><path stroke-linecap="round" d="M16 4L8 20"></path></svg>
+    <span style="font:500 13px 'Geist',sans-serif;color:var(--ink);white-space:nowrap">{{ tituloAtual }}</span>
+    <div style="flex:1"></div>
+    <button onClick="{{ toggleTheme }}" title="Alternar tema" style="width:30px;height:30px;border-radius:6px;border:none;background:transparent;color:var(--dim);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .13s, color .13s" style-hover="background:var(--raised);color:var(--ink)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="{{ themeIcon }}"></path></svg>
+    </button>
+  </header>
+
+  <main style="flex:1;overflow-y:auto;padding:24px 26px 40px">
+
+    <sc-if value="{{ isFinanceiro }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px">
+            <p style="margin:0 0 12px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">MRR do mês</p>
+            <p style="margin:0;font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(19px,2.1vw,26px);line-height:1.05;white-space:nowrap;letter-spacing:-.03em;color:var(--ink)">R$ 48.320<span style="color:var(--mute)">,00</span></p>
+            <p style="margin:11px 0 0;font:400 11.5px 'Geist',sans-serif;color:var(--mute)"><span style="font-weight:500;color:var(--good)">↑ 8,4%</span> vs. julho</p>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px">
+            <p style="margin:0 0 12px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">Saldo em caixa</p>
+            <p style="margin:0;font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(19px,2.1vw,26px);line-height:1.05;white-space:nowrap;letter-spacing:-.03em;color:var(--ink)">R$ 132.940<span style="color:var(--mute)">,18</span></p>
+            <p style="margin:11px 0 0;font:400 11.5px 'Geist',sans-serif;color:var(--mute)">4 contas · conciliado hoje</p>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px">
+            <p style="margin:0 0 12px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">Entradas do mês</p>
+            <p style="margin:0;font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(19px,2.1vw,26px);line-height:1.05;white-space:nowrap;letter-spacing:-.03em;color:var(--good)">R$ 61.480,00</p>
+            <div style="height:6px;border-radius:4px;background:var(--track);margin-top:14px;overflow:hidden"><div style="width:72%;height:100%;background:var(--good);border-radius:4px"></div></div>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px">
+            <p style="margin:0 0 12px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">Saídas do mês</p>
+            <p style="margin:0;font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(19px,2.1vw,26px);line-height:1.05;white-space:nowrap;letter-spacing:-.03em;color:var(--warn)">R$ 23.105,40</p>
+            <div style="height:6px;border-radius:4px;background:var(--track);margin-top:14px;overflow:hidden"><div style="width:27%;height:100%;background:var(--warn);border-radius:4px"></div></div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:22px 24px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px">
+              <h3 style="margin:0;font:600 15px 'Geist',sans-serif;color:var(--ink);letter-spacing:-.01em">Entradas × Saídas</h3>
+              <div style="display:flex;gap:14px"><span style="display:flex;align-items:center;gap:6px;font:400 11px 'Geist',sans-serif;color:var(--dim)"><span style="width:8px;height:8px;border-radius:2px;background:var(--chart)"></span>Entradas</span><span style="display:flex;align-items:center;gap:6px;font:400 11px 'Geist',sans-serif;color:var(--dim)"><span style="width:8px;height:8px;border-radius:2px;background:var(--track2)"></span>Saídas</span></div>
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:26px;height:190px;border-bottom:1px solid var(--border)">
+              <sc-for list="{{ historico }}" as="m" hint-placeholder-count="6">
+                <div style="flex:1;display:flex;align-items:flex-end;gap:5px;height:100%">
+                  <div style="{{ m.entradaStyle }}"></div>
+                  <div style="{{ m.saidaStyle }}"></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:26px;margin-top:9px">
+              <sc-for list="{{ historico }}" as="m" hint-placeholder-count="6">
+                <span style="{{ m.labelStyle }}">{{ m.mes }}</span>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between">
+              <div><p style="margin:0 0 5px;font:400 11.5px 'Geist',sans-serif;color:var(--dim)">Revendas ativas</p><p style="margin:0;font:500 23px/1 'Geist Mono',monospace;color:var(--ink)">{{ kpiRevendas }}</p></div>
+            </div>
+            <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between">
+              <div><p style="margin:0 0 5px;font:400 11.5px 'Geist',sans-serif;color:var(--dim)">Clientes ativos</p><p style="margin:0;font:500 23px/1 'Geist Mono',monospace;color:var(--ink)">{{ kpiClientes }}</p></div>
+            </div>
+            <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between">
+              <div><p style="margin:0 0 5px;font:400 11.5px 'Geist',sans-serif;color:var(--dim)">Clientes diretos</p><p style="margin:0;font:500 23px/1 'Geist Mono',monospace;color:var(--ink)">{{ kpiDiretos }}</p></div>
+            </div>
+            <div style="background:var(--raised);border:1px solid var(--border);border-radius:8px;padding:18px 20px">
+              <p style="margin:0 0 6px;font:500 11.5px 'Geist',sans-serif;color:var(--ink)">Fechamento de agosto</p>
+              <p style="margin:0 0 12px;font:400 11.5px/1.5 'Geist',sans-serif;color:var(--dim)">{{ fechamentoTexto }}</p>
+              <button onClick="{{ irFaturamento }}" style="padding:8px 14px;border-radius:6px;border:none;background:var(--ink);font:500 12px 'Geist',sans-serif;color:var(--bg);cursor:pointer">Ir para faturamento</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:22px 24px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+              <h3 style="margin:0;font:600 15px 'Geist',sans-serif;color:var(--ink);letter-spacing:-.01em">Receitas pendentes</h3>
+              <button onClick="{{ irReceitas }}" style="background:none;border:none;padding:0;font:400 11.5px 'Geist',sans-serif;color:var(--dim);cursor:pointer;transition:color .13s" style-hover="color:var(--ink)">Ver todas</button>
+            </div>
+            <sc-for list="{{ receitasPendentes }}" as="r" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border)">
+                <div style="min-width:0"><p style="margin:0 0 3px;font:450 13px 'Geist',sans-serif;color:var(--ink)">{{ r.descricao }}</p><p style="{{ r.subStyle }}">{{ r.sub }}</p></div>
+                <span style="font:500 13px 'Geist Mono',monospace;color:var(--ink);flex-shrink:0;margin-left:12px">{{ r.valor }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:22px 24px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+              <h3 style="margin:0;font:600 15px 'Geist',sans-serif;color:var(--ink);letter-spacing:-.01em">Despesas em aberto</h3>
+              <button onClick="{{ irDespesas }}" style="background:none;border:none;padding:0;font:400 11.5px 'Geist',sans-serif;color:var(--dim);cursor:pointer;transition:color .13s" style-hover="color:var(--ink)">Ver todas</button>
+            </div>
+            <sc-for list="{{ despesasPendentes }}" as="d" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border)">
+                <div style="min-width:0"><p style="margin:0 0 3px;font:450 13px 'Geist',sans-serif;color:var(--ink)">{{ d.descricao }}</p><p style="margin:0;font:400 11.5px 'Geist',sans-serif;color:var(--mute)">{{ d.sub }}</p></div>
+                <span style="font:500 13px 'Geist Mono',monospace;color:var(--ink);flex-shrink:0;margin-left:12px">{{ d.valor }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isComercial }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px"><p style="margin:0 0 12px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">Sistemas ativos</p><p style="margin:0;font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(19px,2.1vw,26px);line-height:1;white-space:nowrap;color:var(--ink)">{{ kpiSistemas }}</p></div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px"><p style="margin:0 0 12px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">Clientes ativos</p><p style="margin:0;font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(19px,2.1vw,26px);line-height:1;white-space:nowrap;color:var(--ink)">{{ kpiClientes }}</p></div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px"><p style="margin:0 0 12px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">Revendas ativas</p><p style="margin:0;font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(19px,2.1vw,26px);line-height:1;white-space:nowrap;color:var(--ink)">{{ kpiRevendas }}</p></div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px"><p style="margin:0 0 12px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">MRR estimado</p><p style="margin:0;font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(19px,2.1vw,26px);line-height:1;white-space:nowrap;color:var(--ink)">{{ kpiMrr }}</p></div>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:22px 24px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px">
+            <div>
+              <h3 style="margin:0 0 3px;font:600 15px 'Geist',sans-serif;color:var(--ink);letter-spacing:-.01em">Ranking de sistemas</h3>
+              <p style="margin:0;font:400 11.5px 'Geist',sans-serif;color:var(--mute)">{{ rankingLegenda }}</p>
+            </div>
+            <div style="display:flex;background:var(--raised);border:1px solid var(--border);border-radius:6px;padding:3px;flex-shrink:0">
+              <sc-for list="{{ metricas }}" as="m" hint-placeholder-count="2">
+                <button onClick="{{ m.go }}" style="{{ m.style }}">{{ m.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:minmax(210px,240px) minmax(0,1fr);gap:34px;align-items:center">
+
+            <div style="position:relative;display:flex;align-items:center;justify-content:center;padding:6px 0">
+              <svg viewBox="0 0 120 120" width="206" height="206" style="transform:rotate(-90deg);display:block">
+                <circle cx="60" cy="60" r="47" fill="none" stroke="var(--track)" stroke-width="11"></circle>
+                <sc-for list="{{ rankingSistemas }}" as="r" hint-placeholder-count="6">
+                  <circle cx="60" cy="60" r="47" fill="none" stroke-width="11" style="{{ r.arcStyle }}"></circle>
+                </sc-for>
+              </svg>
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center">
+                <span style="font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(17px,1.4vw,21px);line-height:1;letter-spacing:-.03em;white-space:nowrap;color:var(--ink)">{{ rankingTotal }}</span>
+                <span style="font:400 10.5px 'Geist',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)">{{ rankingUnidade }}</span>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;min-width:0">
+              <sc-for list="{{ rankingSistemas }}" as="r" hint-placeholder-count="6">
+                <div style="{{ r.rowStyle }}">
+                  <span style="{{ r.barraStyle }}"></span>
+                  <span style="font:500 11px 'Geist Mono',monospace;color:var(--mute);width:18px;flex-shrink:0">{{ r.posicao }}</span>
+                  <div style="min-width:0;flex:1">
+                    <p style="margin:0 0 2px;font:450 13.5px 'Geist',sans-serif;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.nome }}</p>
+                    <p style="margin:0;font:400 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">{{ r.categoria }}</p>
+                  </div>
+                  <div style="text-align:right;flex-shrink:0">
+                    <p style="margin:0 0 2px;font:500 13.5px 'Geist Mono',monospace;white-space:nowrap;color:var(--ink)">{{ r.valor }}</p>
+                    <p style="{{ r.shareStyle }}">{{ r.share }}</p>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isRevendas }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+        <sc-for list="{{ resumoRevendas }}" as="k" hint-placeholder-count="4">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 18px">
+            <p style="margin:0 0 9px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">{{ k.label }}</p>
+            <p style="margin:0;font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(17px,1.6vw,21px);line-height:1;white-space:nowrap;color:var(--ink)">{{ k.valor }}</p>
+            <p style="margin:8px 0 0;font:400 11px 'Geist',sans-serif;color:var(--mute)">{{ k.hint }}</p>
+          </div>
+        </sc-for>
+      </div>
+      <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+          <p style="margin:0;font:400 12.5px 'Geist',sans-serif;color:var(--dim)">{{ totalRevendas }} revendas</p>
+          <button style="padding:8px 14px;border-radius:6px;border:none;background:var(--ink);font:500 12.5px 'Geist',sans-serif;color:var(--bg);cursor:pointer">+ Nova revenda</button>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.1fr) minmax(0,1.7fr) 74px minmax(112px,1fr) 86px;padding:10px 20px;background:var(--raised);border-bottom:1px solid var(--border)">
+          <span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Revenda</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Cidade</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sistemas</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Clientes</span><span style="text-align:right;font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">MRR</span><span style="text-align:right;font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Status</span>
+        </div>
+        <sc-for list="{{ revendasFiltradas }}" as="r" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.1fr) minmax(0,1.7fr) 74px minmax(112px,1fr) 86px;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;transition:background .13s" style-hover="background:var(--raised)">
+            <span style="font:450 13px 'Geist',sans-serif;color:var(--ink)">{{ r.nome }}</span>
+            <span style="font:400 12.5px 'Geist',sans-serif;color:var(--dim)">{{ r.cidade }}</span>
+            <span style="font:400 12.5px 'Geist',sans-serif;color:var(--dim)">{{ r.sistemas }}</span>
+            <span style="font:400 12.5px 'Geist Mono',monospace;color:var(--dim)">{{ r.clientes }}</span>
+            <span style="text-align:right;font:500 12.5px 'Geist Mono',monospace;white-space:nowrap;color:var(--ink)">{{ r.mrr }}</span>
+            <span style="text-align:right"><span style="{{ r.badgeStyle }}">{{ r.status }}</span></span>
+          </div>
+        </sc-for>
+      </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isClientes }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+          <sc-for list="{{ resumoClientes }}" as="k" hint-placeholder-count="4">
+            <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 18px">
+              <p style="margin:0 0 9px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">{{ k.label }}</p>
+              <p style="margin:0;font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(17px,1.6vw,21px);line-height:1;white-space:nowrap;color:var(--ink)">{{ k.valor }}</p>
+              <p style="margin:8px 0 0;font:400 11px 'Geist',sans-serif;color:var(--mute)">{{ k.hint }}</p>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border:1px solid var(--border);border-radius:6px;background:var(--panel);width:280px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--mute)" stroke-width="2" style="flex-shrink:0"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5" stroke-linecap="round"></path></svg>
+            <input value="{{ busca }}" onChange="{{ setBusca }}" placeholder="Buscar por nome…" style="flex:1;min-width:0;background:transparent;border:none;color:var(--ink);font:400 12.5px 'Geist',sans-serif" />
+          </div>
+          <select value="{{ revendaFiltro }}" onChange="{{ setRevendaFiltro }}" style="height:36px;padding:0 12px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--ink);font:400 12.5px 'Geist',sans-serif;cursor:pointer">
+            <sc-for list="{{ opcoesRevenda }}" as="o" hint-placeholder-count="4">
+              <option value="{{ o.valor }}">{{ o.rotulo }}</option>
+            </sc-for>
+          </select>
+          <div style="display:flex;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:3px">
+            <sc-for list="{{ filtrosStatus }}" as="f" hint-placeholder-count="3">
+              <button onClick="{{ f.go }}" style="{{ f.style }}">{{ f.label }}</button>
+            </sc-for>
+          </div>
+          <div style="flex:1"></div>
+          <button onClick="{{ abrirNovoCliente }}" style="padding:9px 14px;border-radius:6px;border:none;background:var(--ink);font:500 12.5px 'Geist',sans-serif;color:var(--bg);cursor:pointer">+ Novo cliente</button>
+        </div>
+
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.2fr) minmax(0,1.5fr) minmax(104px,1fr) 84px;padding:10px 20px;background:var(--raised);border-bottom:1px solid var(--border)">
+            <span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Nome</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Revenda</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sistemas</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Contrato</span><span style="text-align:right;font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Status</span>
+          </div>
+          <sc-for list="{{ clientesFiltrados }}" as="c" hint-placeholder-count="8">
+            <div style="display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.2fr) minmax(0,1.5fr) minmax(104px,1fr) 84px;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;transition:background .13s" style-hover="background:var(--raised)">
+              <span style="font:450 13px 'Geist',sans-serif;color:var(--ink)">{{ c.nome }}</span>
+              <span style="font:400 12.5px 'Geist',sans-serif;color:var(--dim)">{{ c.revenda }}</span>
+              <span style="font:400 12.5px 'Geist',sans-serif;color:var(--dim)">{{ c.sistemas }}</span>
+              <span style="font:400 12.5px 'Geist Mono',monospace;color:var(--dim)">{{ c.contrato }}</span>
+              <span style="text-align:right"><span style="{{ c.badgeStyle }}">{{ c.status }}</span></span>
+            </div>
+          </sc-for>
+          <sc-if value="{{ semClientes }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:0;padding:34px;text-align:center;font:400 13px 'Geist',sans-serif;color:var(--mute)">Nenhum cliente encontrado com esses filtros.</p>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSistemas }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+        <sc-for list="{{ resumoSistemas }}" as="k" hint-placeholder-count="4">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 18px">
+            <p style="margin:0 0 9px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">{{ k.label }}</p>
+            <p style="margin:0;font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(17px,1.6vw,21px);line-height:1;white-space:nowrap;color:var(--ink)">{{ k.valor }}</p>
+            <p style="margin:8px 0 0;font:400 11px 'Geist',sans-serif;color:var(--mute)">{{ k.hint }}</p>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start">
+
+        <div style="flex:1 1 260px;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <p style="margin:0;padding:14px 18px;border-bottom:1px solid var(--border);font:500 10.5px 'Geist',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">Catálogo</p>
+          <sc-for list="{{ listaSistemas }}" as="s" hint-placeholder-count="6">
+            <button onClick="{{ s.go }}" style="{{ s.rowStyle }}" style-hover="background:var(--raised)">
+              <span style="{{ s.markStyle }}"></span>
+              <div style="min-width:0;flex:1;text-align:left">
+                <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">
+                  <p style="margin:0;font:450 13.5px 'Geist',sans-serif;color:var(--ink)">{{ s.nome }}</p>
+                  <span style="margin-left:auto;font:500 12.5px 'Geist Mono',monospace;color:var(--dim);flex-shrink:0">{{ s.clientes }}</span>
+                </div>
+                <div style="height:4px;border-radius:2px;background:var(--track);overflow:hidden;margin-bottom:6px"><div style="{{ s.barStyle }}"></div></div>
+                <p style="margin:0;font:400 10px 'Geist',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">{{ s.categoria }}</p>
+              </div>
+            </button>
+          </sc-for>
+        </div>
+
+        <div style="flex:5 1 420px;display:flex;flex-direction:column;gap:14px;min-width:0">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:24px">
+            <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px;margin-bottom:24px">
+              <span style="{{ detalheAvatarStyle }}">{{ detalheInicial }}</span>
+              <div style="min-width:0;flex:1 1 220px">
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:5px">
+                  <h2 style="margin:0;font:600 20px 'Geist',sans-serif;letter-spacing:-.02em;color:var(--ink)">{{ detalheNome }}</h2>
+                  <span style="{{ detalheBadgeStyle }}">Ativo</span>
+                </div>
+                <p style="margin:0;font:400 12.5px 'Geist',sans-serif;color:var(--mute)">{{ detalheSub }}</p>
+              </div>
+              <button style="padding:8px 14px;border-radius:6px;border:1px solid var(--border);background:transparent;font:450 12.5px 'Geist',sans-serif;color:var(--dim);cursor:pointer;flex-shrink:0">Editar sistema</button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:24px;padding-top:20px;border-top:1px solid var(--border)">
+              <div style="flex:1 1 300px;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:20px;align-content:start">
+                <sc-for list="{{ detalheMetricas }}" as="m" hint-placeholder-count="4">
+                  <div>
+                    <p style="margin:0 0 7px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">{{ m.label }}</p>
+                    <p style="margin:0;font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(17px,1.6vw,21px);line-height:1;white-space:nowrap;color:var(--ink)">{{ m.valor }}</p>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="flex:1 1 240px;min-width:0">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px">
+                  <p style="margin:0;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">Base de clientes · 6 meses</p>
+                  <p style="{{ detalheDeltaStyle }}">{{ detalheDelta }}</p>
+                </div>
+                <svg viewBox="0 0 200 60" preserveAspectRatio="none" style="width:100%;height:72px;display:block;overflow:visible">
+                  <path d="{{ detalheArea }}" fill="var(--track)" opacity=".6"></path>
+                  <path d="{{ detalhePath }}" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>
+                  <circle cx="200" cy="{{ detalheUltimoY }}" r="2.6" fill="var(--ink)" vector-effect="non-scaling-stroke"></circle>
+                </svg>
+                <div style="display:flex;justify-content:space-between;margin-top:8px">
+                  <sc-for list="{{ mesesCurtos }}" as="m" hint-placeholder-count="6">
+                    <span style="font:400 10px 'Geist Mono',monospace;color:var(--mute)">{{ m }}</span>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start">
+            <div style="flex:1 1 300px;min-width:0;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:22px 24px">
+              <h3 style="margin:0 0 3px;font:600 14px 'Geist',sans-serif;color:var(--ink)">Preço de atacado por faixa</h3>
+              <p style="margin:0 0 16px;font:400 11.5px 'Geist',sans-serif;color:var(--mute)">Valor por cliente ativo, cobrado da revenda.</p>
+              <sc-for list="{{ detalheTiers }}" as="t" hint-placeholder-count="4">
+                <div style="{{ t.rowStyle }}">
+                  <div style="display:flex;align-items:center;gap:9px;margin-bottom:7px">
+                    <span style="{{ t.faixaStyle }}">{{ t.faixa }}</span>
+                    <span style="{{ t.tagStyle }}">{{ t.tag }}</span>
+                    <span style="margin-left:auto;font:500 13px 'Geist Mono',monospace;white-space:nowrap;color:var(--ink)">{{ t.preco }}</span>
+                  </div>
+                  <div style="height:5px;border-radius:4px;background:var(--track);overflow:hidden"><div style="{{ t.barStyle }}"></div></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="flex:1 1 240px;min-width:0;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:22px 24px">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:3px">
+                <h3 style="margin:0;font:600 14px 'Geist',sans-serif;color:var(--ink)">Quem revende</h3>
+                <span style="{{ detalheTotalRevendasStyle }}">{{ detalheTotalRevendas }}</span>
+              </div>
+              <p style="margin:0 0 16px;font:400 11.5px 'Geist',sans-serif;color:var(--mute)">{{ detalheRevendasResumo }}</p>
+              <sc-for list="{{ detalheRevendas }}" as="r" hint-placeholder-count="3">
+                <div style="padding:10px 0">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px">
+                    <span style="font:450 12.5px 'Geist',sans-serif;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.nome }}</span>
+                    <span style="font:400 12px 'Geist Mono',monospace;color:var(--dim);flex-shrink:0">{{ r.clientes }}</span>
+                  </div>
+                  <div style="height:5px;border-radius:4px;background:var(--track);overflow:hidden"><div style="{{ r.barStyle }}"></div></div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ temMaisRevendas }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;margin-top:4px;border-top:1px solid var(--border)">
+                  <span style="font:400 12px 'Geist',sans-serif;color:var(--mute)">{{ detalheRestoTexto }}</span>
+                  <button onClick="{{ irRevendas }}" style="background:none;border:none;padding:0;font:450 12px 'Geist',sans-serif;color:var(--dim);cursor:pointer;flex-shrink:0;transition:color .13s" style-hover="color:var(--ink)">Ver todas</button>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isFaturamento }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+          <sc-for list="{{ resumoFaturamento }}" as="k" hint-placeholder-count="4">
+            <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 18px">
+              <p style="margin:0 0 9px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">{{ k.label }}</p>
+              <p style="margin:0;font-family:'Geist Mono',monospace;font-weight:500;font-size:clamp(17px,1.6vw,21px);line-height:1;white-space:nowrap;color:var(--ink)">{{ k.valor }}</p>
+              <p style="margin:8px 0 0;font:400 11px 'Geist',sans-serif;color:var(--mute)">{{ k.hint }}</p>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px">
+          <div>
+            <h3 style="margin:0 0 6px;font:600 15px 'Geist',sans-serif;color:var(--ink)">Competência agosto/2026</h3>
+            <p style="margin:0;font:400 12.5px/1.6 'Geist',sans-serif;color:var(--dim)">Gera uma cobrança consolidada por revenda, somando os clientes ativos de cada sistema no preço de atacado do tier.</p>
+          </div>
+          <button onClick="{{ abrirModal }}" style="{{ botaoGerarStyle }}">{{ botaoGerarTexto }}</button>
+        </div>
+
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.8fr) 74px minmax(112px,1fr) 96px;padding:10px 20px;background:var(--raised);border-bottom:1px solid var(--border)">
+            <span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Revenda</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sistemas</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Clientes</span><span style="text-align:right;font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Prévia</span><span style="text-align:right;font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Situação</span>
+          </div>
+          <sc-for list="{{ previaFaturamento }}" as="p" hint-placeholder-count="7">
+            <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.8fr) 74px minmax(112px,1fr) 96px;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;transition:background .13s" style-hover="background:var(--raised)">
+              <span style="font:450 13px 'Geist',sans-serif;color:var(--ink)">{{ p.nome }}</span>
+              <span style="font:400 12.5px 'Geist',sans-serif;color:var(--dim)">{{ p.sistemas }}</span>
+              <span style="font:400 12.5px 'Geist Mono',monospace;color:var(--dim)">{{ p.clientes }}</span>
+              <span style="text-align:right;font:500 12.5px 'Geist Mono',monospace;white-space:nowrap;color:var(--ink)">{{ p.mrr }}</span>
+              <span style="text-align:right"><span style="{{ p.badgeStyle }}">{{ p.situacao }}</span></span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isReceitas }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+        <sc-for list="{{ resumoReceitasCards }}" as="k" hint-placeholder-count="4">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 18px">
+            <p style="margin:0 0 9px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">{{ k.label }}</p>
+            <p style="{{ k.valorStyle }}">{{ k.valor }}</p>
+            <p style="margin:8px 0 0;font:400 11px 'Geist',sans-serif;color:var(--mute)">{{ k.hint }}</p>
+          </div>
+        </sc-for>
+      </div>
+      <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+          <p style="margin:0;font:400 12.5px 'Geist',sans-serif;color:var(--dim)">{{ resumoReceitas }}</p>
+          <button style="padding:8px 14px;border-radius:6px;border:1px solid var(--border);background:transparent;font:450 12.5px 'Geist',sans-serif;color:var(--dim);cursor:pointer">Exportar</button>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(100px,1.2fr) 88px 96px minmax(112px,.9fr) 104px;padding:10px 20px;background:var(--raised);border-bottom:1px solid var(--border)">
+          <span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Descrição</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Contraparte</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Vencimento</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Status</span><span style="text-align:right;font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Valor</span><span style="text-align:right;font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ação</span>
+        </div>
+        <sc-for list="{{ cobrancas }}" as="c" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(100px,1.2fr) 88px 96px minmax(112px,.9fr) 104px;padding:12px 20px;border-bottom:1px solid var(--border);align-items:center;transition:background .13s" style-hover="background:var(--raised)">
+            <span style="font:450 13px 'Geist',sans-serif;color:var(--ink)">{{ c.descricao }}</span>
+            <span style="font:400 12.5px 'Geist',sans-serif;color:var(--dim)">{{ c.contraparte }}</span>
+            <span style="{{ c.vencStyle }}">{{ c.vencimento }}</span>
+            <span><span style="{{ c.badgeStyle }}">{{ c.status }}</span></span>
+            <span style="text-align:right;font:500 12.5px 'Geist Mono',monospace;white-space:nowrap;color:var(--ink)">{{ c.valor }}</span>
+            <span style="text-align:right"><button onClick="{{ c.baixar }}" style="{{ c.botaoStyle }}">{{ c.botaoTexto }}</button></span>
+          </div>
+        </sc-for>
+      </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isDespesas }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+        <sc-for list="{{ resumoDespesasCards }}" as="k" hint-placeholder-count="4">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 18px">
+            <p style="margin:0 0 9px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">{{ k.label }}</p>
+            <p style="{{ k.valorStyle }}">{{ k.valor }}</p>
+            <p style="margin:8px 0 0;font:400 11px 'Geist',sans-serif;color:var(--mute)">{{ k.hint }}</p>
+          </div>
+        </sc-for>
+      </div>
+      <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+          <p style="margin:0;font:400 12.5px 'Geist',sans-serif;color:var(--dim)">{{ resumoDespesas }}</p>
+          <button style="padding:8px 14px;border-radius:6px;border:none;background:var(--ink);font:500 12.5px 'Geist',sans-serif;color:var(--bg);cursor:pointer">+ Nova despesa</button>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(100px,1.2fr) 88px 96px minmax(112px,.9fr) 104px;padding:10px 20px;background:var(--raised);border-bottom:1px solid var(--border)">
+          <span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Descrição</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Fornecedor</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Vencimento</span><span style="font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Status</span><span style="text-align:right;font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Valor</span><span style="text-align:right;font:500 10px 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ação</span>
+        </div>
+        <sc-for list="{{ despesas }}" as="d" hint-placeholder-count="5">
+          <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(100px,1.2fr) 88px 96px minmax(112px,.9fr) 104px;padding:12px 20px;border-bottom:1px solid var(--border);align-items:center;transition:background .13s" style-hover="background:var(--raised)">
+            <span style="font:450 13px 'Geist',sans-serif;color:var(--ink)">{{ d.descricao }}</span>
+            <span style="font:400 12.5px 'Geist',sans-serif;color:var(--dim)">{{ d.fornecedor }}</span>
+            <span style="{{ d.vencStyle }}">{{ d.vencimento }}</span>
+            <span><span style="{{ d.badgeStyle }}">{{ d.status }}</span></span>
+            <span style="text-align:right;font:500 12.5px 'Geist Mono',monospace;white-space:nowrap;color:var(--ink)">{{ d.valor }}</span>
+            <span style="text-align:right"><button onClick="{{ d.baixar }}" style="{{ d.botaoStyle }}">{{ d.botaoTexto }}</button></span>
+          </div>
+        </sc-for>
+      </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCaixa }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:24px">
+          <p style="margin:0 0 8px;font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)">Saldo consolidado</p>
+          <p style="margin:0;font:500 34px/1 'Geist Mono',monospace;letter-spacing:-.03em;color:var(--ink)">R$ 132.940,18</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+          <sc-for list="{{ contas }}" as="c" hint-placeholder-count="4">
+            <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;display:flex;align-items:center;justify-content:space-between">
+              <div><p style="margin:0 0 4px;font:450 13.5px 'Geist',sans-serif;color:var(--ink)">{{ c.nome }}</p><p style="margin:0;font:400 11.5px 'Geist',sans-serif;color:var(--mute)">{{ c.tipo }}</p></div>
+              <span style="font:500 18px 'Geist Mono',monospace;color:var(--ink)">{{ c.saldo }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCadastros }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+        <sc-for list="{{ cadastros }}" as="c" hint-placeholder-count="4">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:22px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px"><h3 style="margin:0;font:600 14px 'Geist',sans-serif;color:var(--ink)">{{ c.titulo }}</h3><span style="font:400 11.5px 'Geist',sans-serif;color:var(--mute)">{{ c.total }}</span></div>
+            <div style="display:flex;flex-wrap:wrap;gap:7px">
+              <sc-for list="{{ c.itens }}" as="i" hint-placeholder-count="4">
+                <span style="padding:5px 11px;border-radius:6px;background:var(--raised);border:1px solid var(--border);font:450 12px 'Geist',sans-serif;color:var(--dim)">{{ i }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+  </main>
+</div>
+
+<sc-if value="{{ modalAberto }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:60;animation:fadeIn .15s ease">
+    <div style="width:430px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:26px;animation:popIn .18s ease">
+      <h3 style="margin:0 0 10px;font:600 17px 'Geist',sans-serif;color:var(--ink);letter-spacing:-.01em">Gerar faturamento de agosto?</h3>
+      <p style="margin:0 0 22px;font:400 13px/1.65 'Geist',sans-serif;color:var(--dim)">{{ modalTexto }} <strong style="color:var(--ink);font-family:'Geist Mono',monospace;font-weight:500">{{ modalTotal }}</strong>. As cobranças já geradas não são duplicadas.</p>
+      <div style="display:flex;gap:9px;justify-content:flex-end">
+        <button onClick="{{ fecharModal }}" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;font:450 13px 'Geist',sans-serif;color:var(--dim);cursor:pointer">Cancelar</button>
+        <button onClick="{{ confirmarGeracao }}" style="padding:9px 16px;border-radius:6px;border:none;background:var(--ink);font:500 13px 'Geist',sans-serif;color:var(--bg);cursor:pointer">Gerar cobranças</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ modalClienteAberto }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:60;animation:fadeIn .15s ease">
+    <div style="width:460px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:26px;animation:popIn .18s ease">
+      <h3 style="margin:0 0 4px;font:600 17px 'Geist',sans-serif;color:var(--ink);letter-spacing:-.01em">Novo cliente</h3>
+      <p style="margin:0 0 20px;font:400 12.5px 'Geist',sans-serif;color:var(--mute)">O cliente entra na base de faturamento da revenda escolhida.</p>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <label style="display:block;margin-bottom:6px;font:500 10px 'Geist Mono',monospace;letter-spacing:.07em;text-transform:uppercase;color:var(--mute)">Nome do cliente</label>
+          <input value="{{ formNome }}" onChange="{{ setFormNome }}" placeholder="Ex.: Academia Corpo & Movimento" style="{{ inputStyle }}" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="display:block;margin-bottom:6px;font:500 10px 'Geist Mono',monospace;letter-spacing:.07em;text-transform:uppercase;color:var(--mute)">Revenda</label>
+            <select value="{{ formRevenda }}" onChange="{{ setFormRevenda }}" style="{{ inputStyle }}">
+              <sc-for list="{{ opcoesRevendaForm }}" as="o" hint-placeholder-count="4">
+                <option value="{{ o.valor }}">{{ o.rotulo }}</option>
+              </sc-for>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:6px;font:500 10px 'Geist Mono',monospace;letter-spacing:.07em;text-transform:uppercase;color:var(--mute)">Sistema</label>
+            <select value="{{ formSistema }}" onChange="{{ setFormSistema }}" style="{{ inputStyle }}">
+              <sc-for list="{{ opcoesSistema }}" as="o" hint-placeholder-count="6">
+                <option value="{{ o.valor }}">{{ o.rotulo }}</option>
+              </sc-for>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="display:block;margin-bottom:6px;font:500 10px 'Geist Mono',monospace;letter-spacing:.07em;text-transform:uppercase;color:var(--mute)">Mensalidade (R$)</label>
+            <input value="{{ formValor }}" onChange="{{ setFormValor }}" placeholder="289,00" style="{{ inputStyle }}" />
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:6px;font:500 10px 'Geist Mono',monospace;letter-spacing:.07em;text-transform:uppercase;color:var(--mute)">Situação</label>
+            <div style="display:flex;background:var(--raised);border:1px solid var(--border);border-radius:6px;padding:3px;height:38px;align-items:center">
+              <sc-for list="{{ opcoesAtivo }}" as="o" hint-placeholder-count="2">
+                <button onClick="{{ o.go }}" style="{{ o.style }}">{{ o.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:24px">
+        <button onClick="{{ fecharNovoCliente }}" style="padding:9px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;font:450 13px 'Geist',sans-serif;color:var(--dim);cursor:pointer">Cancelar</button>
+        <button onClick="{{ salvarCliente }}" style="{{ salvarClienteStyle }}">Cadastrar cliente</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ temToast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:70;display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:8px;background:var(--panel);border:1px solid var(--brand-line);box-shadow:0 10px 30px -10px rgba(0,0,0,.5);animation:toastIn .22s ease">
+    <span style="width:7px;height:7px;border-radius:2px;background:var(--good)"></span>
+    <span style="font:450 13px 'Geist',sans-serif;color:var(--ink)">{{ toast }}</span>
+  </div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const TEMAS = {
+  dark: {'--bg':'#0a0a0a','--panel':'#111111','--raised':'#1a1a1a','--border':'#262626','--ink':'#ededed','--dim':'#a1a1a1','--mute':'#7a7a7a','--brand':'#2ec9d9','--chart':'#2ec9d9','--brand-solid':'#029caf','--brand-soft':'rgba(46,201,217,.12)','--brand-line':'rgba(46,201,217,.22)','--good':'#4ac97e','--warn':'#e0a13a','--bad':'#e5484d','--up':'#86c9a0','--down':'#d99a9d','--out':'#d4b382','--track':'#222222','--track2':'#333333','--sidebar':'#0a0a0a','--logo-filter':'brightness(0) invert(1)','--nav-active':'#1c1c1c','--nav-hover':'#161616'},
+  light: {'--bg':'#fafafa','--panel':'#ffffff','--raised':'#f4f4f4','--border':'#ebebeb','--ink':'#171717','--dim':'#666666','--mute':'#8f8f8f','--brand':'#017d8c','--chart':'#029caf','--brand-solid':'#029caf','--brand-soft':'rgba(2,156,175,.09)','--brand-line':'rgba(2,156,175,.2)','--good':'#0f7c46','--warn':'#b4671f','--bad':'#c62f38','--up':'#4f9d74','--down':'#bf7c81','--out':'#ab8a58','--track':'#ebebeb','--track2':'#d4d4d4','--sidebar':'#fafafa','--logo-filter':'brightness(0)','--nav-active':'#ececec','--nav-hover':'#f2f2f2'}
+};
+
+const ICONES = {
+  painel: 'M2.25 18L9 11.25l4.306 4.306a11.95 11.95 0 015.814-5.518l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941',
+  comercial: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+  predio: 'M3.75 21h16.5M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M5.25 3h13.5',
+  users: 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm-9.376 12.86A12.318 12.318 0 018.624 21c2.331 0 4.512-.645 6.376-1.766',
+  cubo: 'M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9',
+  repeat: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+  up: 'M2.25 18L9 11.25l4.306 4.306a11.95 11.95 0 015.814-5.518l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941',
+  down: 'M2.25 6L9 12.75l4.306-4.306a11.95 11.95 0 005.814 5.518l2.74 1.22m0 0l-5.94 2.28m5.94-2.28l-2.28-5.941',
+  banco: 'M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z',
+  tag: 'M7 7h.01M7 3h5a2 2 0 011.414.586l7 7a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-7-7A2 2 0 014 12V7a4 4 0 014-4z'
+};
+
+const GRUPOS = [
+  {label:'Painéis', itens:[{id:'financeiro',label:'Financeiro',icon:ICONES.painel},{id:'comercial',label:'Comercial',icon:ICONES.comercial}]},
+  {label:'Comercial', itens:[{id:'revendas',label:'Revendas',icon:ICONES.predio},{id:'clientes',label:'Clientes',icon:ICONES.users},{id:'sistemas',label:'Sistemas',icon:ICONES.cubo},{id:'faturamento',label:'Faturamento',icon:ICONES.repeat}]},
+  {label:'Financeiro', itens:[{id:'receitas',label:'Receitas',icon:ICONES.up},{id:'despesas',label:'Despesas',icon:ICONES.down},{id:'caixa',label:'Caixa',icon:ICONES.banco}]},
+  {label:'Sistema', itens:[{id:'cadastros',label:'Cadastros',icon:ICONES.tag}]}
+];
+
+const TITULOS = {financeiro:['Painéis','Painel Financeiro'],comercial:['Painéis','Painel Comercial'],revendas:['Comercial','Revendas'],clientes:['Comercial','Clientes'],sistemas:['Comercial','Sistemas'],faturamento:['Comercial','Faturamento'],receitas:['Financeiro','Receitas'],despesas:['Financeiro','Despesas'],caixa:['Financeiro','Caixa e contas'],cadastros:['Sistema','Cadastros auxiliares']};
+
+const REVENDAS = [
+  {nome:'Invest Soluções', cidade:'Vila Velha/ES', sistemas:'AlfaGym, AlfaControl', clientes:412, mrr:'R$ 12.480,00', ativo:true},
+  {nome:'Vertex Sistemas', cidade:'Serra/ES', sistemas:'AlfaControl, AlfaHome', clientes:298, mrr:'R$ 8.940,00', ativo:true},
+  {nome:'Norte Tech', cidade:'Fortaleza/CE', sistemas:'AlfaSchool, AlfaGym', clientes:214, mrr:'R$ 5.720,00', ativo:true},
+  {nome:'Sul Digital', cidade:'Curitiba/PR', sistemas:'AlfaHome', clientes:126, mrr:'R$ 3.290,00', ativo:true},
+  {nome:'Meridiano TI', cidade:'Belo Horizonte/MG', sistemas:'AlfaMed, AlfaJornada', clientes:98, mrr:'R$ 2.860,00', ativo:true},
+  {nome:'Atlas Software', cidade:'Salvador/BA', sistemas:'Gestor', clientes:72, mrr:'R$ 1.940,00', ativo:true},
+  {nome:'Prisma Sistemas', cidade:'Goiânia/GO', sistemas:'AlfaGym', clientes:64, mrr:'R$ 1.480,00', ativo:false}
+];
+
+const CLIENTES = [
+  {nome:'Academia Corpo & Movimento', revenda:'Invest Soluções', sistemas:'AlfaGym', contrato:'R$ 289,00', ativo:true},
+  {nome:'Studio Vita Pilates', revenda:'Invest Soluções', sistemas:'AlfaGym', contrato:'R$ 189,00', ativo:true},
+  {nome:'Mercado São Jorge', revenda:'Vertex Sistemas', sistemas:'AlfaControl', contrato:'R$ 340,00', ativo:true},
+  {nome:'Padaria Pão Nosso', revenda:'Vertex Sistemas', sistemas:'AlfaControl', contrato:'R$ 240,00', ativo:false},
+  {nome:'Colégio Horizonte', revenda:'Norte Tech', sistemas:'AlfaSchool', contrato:'R$ 620,00', ativo:true},
+  {nome:'Escola Semear', revenda:'Norte Tech', sistemas:'AlfaSchool', contrato:'R$ 480,00', ativo:true},
+  {nome:'Condomínio Villa Real', revenda:'Sul Digital', sistemas:'AlfaHome', contrato:'R$ 410,00', ativo:true},
+  {nome:'Clínica Bem Viver', revenda:'Venda direta', sistemas:'AlfaMed', contrato:'R$ 1.290,00', ativo:true},
+  {nome:'Consultório Dr. Nunes', revenda:'Meridiano TI', sistemas:'AlfaMed', contrato:'R$ 390,00', ativo:true},
+  {nome:'Transportes Rota Sul', revenda:'Meridiano TI', sistemas:'AlfaJornada', contrato:'R$ 520,00', ativo:false},
+  {nome:'Distribuidora Atlas', revenda:'Atlas Software', sistemas:'Gestor', contrato:'R$ 740,00', ativo:true},
+  {nome:'Smart Fit Centro', revenda:'Venda direta', sistemas:'AlfaGym, AlfaControl', contrato:'R$ 1.640,00', ativo:true}
+];
+
+const SISTEMAS = [
+  {nome:'AlfaGym', categoria:'Academias', clientes:486, valor:18240},
+  {nome:'AlfaControl', categoria:'Varejo / PDV', clientes:341, valor:11900},
+  {nome:'AlfaSchool', categoria:'Educação', clientes:198, valor:7480},
+  {nome:'AlfaMed', categoria:'Saúde', clientes:124, valor:5120},
+  {nome:'AlfaHome', categoria:'Condomínios', clientes:87, valor:3290},
+  {nome:'AlfaJornada', categoria:'Ponto e RH', clientes:48, valor:2290}
+];
+
+const HISTORICO = [
+  {mes:'MAR', e:52, s:29},{mes:'ABR', e:58, s:33},{mes:'MAI', e:49, s:38},
+  {mes:'JUN', e:71, s:31},{mes:'JUL', e:79, s:36},{mes:'AGO', e:92, s:35}
+];
+
+const brl = n => 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+class Component extends DCLogic {
+  state = {
+    rota: 'financeiro', tema: 'dark',
+    busca: '', revendaFiltro: 'todas', statusFiltro: 'todos', metrica: 'clientes',
+    modal: false, toast: '', gerado: false, baixados: [],
+    modalCliente: false, novos: [], sistemaSel: 'AlfaGym',
+    form: {nome:'', revenda:'Invest Soluções', sistema:'AlfaGym', valor:'', ativo:true}
+  };
+
+  setForm = (campo, valor) => this.setState(p => ({form: {...p.form, [campo]: valor}}));
+
+  ir = id => this.setState({rota: id, busca: '', modal: false});
+  mostrarToast = msg => {
+    this.setState({toast: msg});
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({toast: ''}), 2600);
+  };
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  badge(texto, cor) {
+    return {texto, style: {padding:'3px 9px', borderRadius:'6px', background:cor.bg, font:"500 11px 'Geist',sans-serif", color:cor.fg, whiteSpace:'nowrap'}};
+  }
+
+  renderVals() {
+    const s = this.state;
+    const t = TEMAS[s.tema];
+    const escuro = s.tema === 'dark';
+    const largura = 240;
+
+    const cores = {
+      ok:{bg:escuro?'rgba(63,191,106,.14)':'rgba(18,145,90,.11)', fg:t['--good']},
+      neutro:{bg:t['--raised'], fg:t['--dim']},
+      alerta:{bg:escuro?'rgba(208,91,75,.14)':'rgba(176,58,46,.1)', fg:t['--bad']},
+      marca:{bg:t['--raised'], fg:t['--ink']}
+    };
+    const badgeStyle = c => ({padding:'3px 8px', borderRadius:'4px', background:c.bg, font:"500 10px 'Geist Mono',monospace", letterSpacing:'.05em', textTransform:'uppercase', color:c.fg, whiteSpace:'nowrap', display:'inline-block'});
+
+    const grupos = GRUPOS.map(g => ({
+      label: g.label,
+      labelStyle: {margin:'0 0 6px', padding:'0 10px', font:"500 11px 'Geist',sans-serif", letterSpacing:'.02em', color:t['--mute']},
+      itens: g.itens.map(i => {
+        const ativo = s.rota === i.id;
+        return {
+          label: i.label, icon: i.icon, go: () => this.ir(i.id),
+          iconColor: ativo ? t['--ink'] : t['--mute'],
+          rowStyle: {position:'relative', display:'flex', alignItems:'center', gap:'10px', width:'100%', height:'34px', padding:'0 10px', borderRadius:'6px', border:'none', background: ativo ? t['--nav-active'] : 'transparent', color: ativo ? t['--ink'] : t['--dim'], cursor:'pointer', textAlign:'left', transition:'background .12s, color .12s'},
+          labelStyle: {font:(ativo ? '500' : '400') + " 13px 'Geist',sans-serif", whiteSpace:'nowrap'}
+        };
+      })
+    }));
+
+    const maxC = Math.max(...SISTEMAS.map(x => x.clientes));
+    const maxV = Math.max(...SISTEMAS.map(x => x.valor));
+    const sistemas = SISTEMAS.map(x => ({
+      nome:x.nome, categoria:x.categoria, inicial:x.nome.charAt(4), clientes:String(x.clientes), mrr:'R$ ' + x.valor.toLocaleString('pt-BR'),
+      barraClientes: {width:(x.clientes/maxC*100)+'%', height:'100%', borderRadius:'4px', background:t['--chart']},
+      barraValor: {width:(x.valor/maxV*100)+'%', height:'100%', borderRadius:'4px', background:t['--warn']}
+    }));
+
+    const historico = HISTORICO.map((m, i) => ({
+      mes:m.mes,
+      entradaStyle:{flex:1, flexShrink:0, height:m.e+'%', background:t['--chart'], opacity: i===5?1:.75, borderRadius:'4px 4px 0 0'},
+      saidaStyle:{flex:1, flexShrink:0, height:m.s+'%', background:t['--track2'], borderRadius:'4px 4px 0 0'},
+      labelStyle:{flex:1, textAlign:'center', font:(i===5?'500':'400')+" 11px 'Geist Mono',monospace", color: i===5 ? t['--ink'] : t['--mute']}
+    }));
+
+    const PALETA = ['#029caf','#2ec9d9','#0f7c8a','#7fdce6','#e8a045','#8fa4a8'];
+    const porMetrica = [...SISTEMAS].sort((a,b) => s.metrica === 'clientes' ? b.clientes - a.clientes : b.valor - a.valor);
+    const totalMetrica = porMetrica.reduce((a,x) => a + (s.metrica === 'clientes' ? x.clientes : x.valor), 0);
+    const CIRC = 2 * Math.PI * 47;
+    let acumulado = 0;
+    const rankingSistemas = porMetrica.map((x,i) => {
+      const v = s.metrica === 'clientes' ? x.clientes : x.valor;
+      const pct = v / totalMetrica * 100;
+      const arco = CIRC * pct / 100;
+      const offset = acumulado;
+      acumulado += arco;
+      const cor = PALETA[i % PALETA.length];
+      return {
+        posicao: String(i+1).padStart(2,'0'), nome: x.nome, categoria: x.categoria,
+        valor: s.metrica === 'clientes' ? x.clientes.toLocaleString('pt-BR') : 'R$ ' + x.valor.toLocaleString('pt-BR'),
+        share: pct.toFixed(1).replace('.',',') + '%',
+        arcStyle: {stroke: cor, strokeDasharray: Math.max(arco - 2.5, 0) + ' ' + CIRC, strokeDashoffset: -offset},
+        rowStyle: {position:'relative', display:'flex', alignItems:'center', gap:'12px', padding:'11px 0 11px 14px', borderBottom: i === porMetrica.length - 1 ? 'none' : '1px solid ' + t['--border']},
+        barraStyle: {position:'absolute', left:0, top:'12px', bottom:'12px', width:'3px', borderRadius:'2px', background: cor},
+        shareStyle: {margin:0, font:"400 10.5px 'Geist Mono',monospace", color: t['--mute']}
+      };
+    });
+    const metricas = [['clientes','Por clientes'],['valor','Por valor']].map(([id,label]) => ({
+      label, go: () => this.setState({metrica:id}),
+      style: {padding:'5px 13px', borderRadius:'4px', border:'1px solid ' + (s.metrica===id ? t['--border'] : 'transparent'), cursor:'pointer', transition:'background .13s, color .13s', font:(s.metrica===id ? '500' : '450') + " 11.5px 'Geist Mono',monospace", background: s.metrica===id ? t['--panel'] : 'transparent', color: s.metrica===id ? t['--ink'] : t['--dim']}
+    }));
+
+    const sel = SISTEMAS.find(x => x.nome === s.sistemaSel) || SISTEMAS[0];
+    const maxSis = Math.max(...SISTEMAS.map(x => x.clientes));
+    const listaSistemas = SISTEMAS.map(x => {
+      const ativo = x.nome === sel.nome;
+      return {
+        nome: x.nome, categoria: x.categoria, clientes: x.clientes.toLocaleString('pt-BR'),
+        barStyle: {width: (x.clientes / maxSis * 100) + '%', height:'100%', borderRadius:'2px', background: ativo ? t['--chart'] : t['--track2']},
+        go: () => this.setState({sistemaSel: x.nome}),
+        rowStyle: {position:'relative', display:'flex', alignItems:'center', gap:'12px', width:'100%', padding:'13px 18px', border:'none', borderBottom:'1px solid '+t['--border'], background: ativo ? t['--raised'] : 'transparent', cursor:'pointer', transition:'background .13s'},
+        markStyle: {position:'absolute', left:0, top:0, bottom:0, width:'2px', background: ativo ? t['--brand'] : 'transparent'}
+      };
+    });
+    const unit = sel.valor / sel.clientes;
+    const tiersBase = [
+      {faixa:'1 a 50 clientes', mult:1.28, tag:'Entrada'},
+      {faixa:'51 a 200 clientes', mult:1.08, tag:''},
+      {faixa:'201 a 500 clientes', mult:0.95, tag:''},
+      {faixa:'Acima de 500', mult:0.82, tag:'Melhor preço'}
+    ];
+    const revendasDoSistema = REVENDAS.filter(r => r.ativo && r.sistemas.includes(sel.nome));
+    const maiorRevenda = Math.max(...revendasDoSistema.map(r => r.clientes), 0);
+    const faixaAtual = maiorRevenda > 500 ? 3 : maiorRevenda > 200 ? 2 : maiorRevenda > 50 ? 1 : 0;
+    const maxPreco = unit * 1.28;
+    const detalheTiers = tiersBase.map((tier,i,arr) => {
+      const preco = Math.round(unit * tier.mult * 100) / 100;
+      const atual = i === faixaAtual;
+      return {
+        faixa: tier.faixa, tag: atual ? 'Faixa atual' : tier.tag, preco: brl(preco),
+        rowStyle: {padding:'13px 0', borderBottom: i === arr.length-1 ? 'none' : '1px solid '+t['--border']},
+        faixaStyle: {font:(atual ? '500' : '450') + " 12.5px 'Geist',sans-serif", color: atual ? t['--ink'] : t['--dim']},
+        barStyle: {width: (preco / maxPreco * 100) + '%', height:'100%', borderRadius:'4px', background: atual ? t['--ink'] : t['--track2']},
+        tagStyle: (atual || tier.tag) ? {padding:'2px 8px', borderRadius:'6px', background: t['--raised'], border:'1px solid '+t['--border'], font:"500 10px 'Geist',sans-serif", letterSpacing:'.06em', textTransform:'uppercase', color: atual ? t['--ink'] : t['--mute'], whiteSpace:'nowrap'} : {display:'none'}
+      };
+    });
+
+    const fatores = [0.71, 0.77, 0.82, 0.88, 0.94, 1];
+    const serie = fatores.map(f => Math.round(sel.clientes * f));
+    const minS = Math.min(...serie), maxS = Math.max(...serie);
+    const pontos = serie.map((v,i) => [i * 40, 54 - (v - minS) / Math.max(maxS - minS, 1) * 48]);
+    const detalhePath = pontos.map((p,i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    const crescimento = (serie[5] / serie[0] - 1) * 100;
+
+    const q = s.busca.trim().toLowerCase();
+    const baseClientes = [...s.novos, ...CLIENTES];
+    const clientesFiltrados = baseClientes.filter(c =>
+      (!q || c.nome.toLowerCase().includes(q) || c.revenda.toLowerCase().includes(q) || c.sistemas.toLowerCase().includes(q)) &&
+      (s.revendaFiltro === 'todas' || c.revenda === s.revendaFiltro) &&
+      (s.statusFiltro === 'todos' || (s.statusFiltro === 'ativos') === c.ativo)
+    ).map(c => ({...c, status: c.ativo ? 'Ativo' : 'Inativo', badgeStyle: badgeStyle(c.ativo ? cores.ok : cores.neutro)}));
+
+    const revendasFiltradas = REVENDAS.filter(r => !q || r.nome.toLowerCase().includes(q) || r.cidade.toLowerCase().includes(q))
+      .map(r => ({...r, clientes:String(r.clientes), status: r.ativo ? 'Ativa' : 'Pausada', badgeStyle: badgeStyle(r.ativo ? cores.ok : cores.neutro)}));
+
+    const baseCobrancas = [
+      {id:'c1', descricao:'Faturamento AlfaGym · 08/2026', contraparte:'Invest Soluções', vencimento:'10/08', valor:12480, vencida:false},
+      {id:'c2', descricao:'Faturamento AlfaControl · 08/2026', contraparte:'Vertex Sistemas', vencimento:'10/08', valor:8940, vencida:false},
+      {id:'c3', descricao:'Licença AlfaMed · venda direta', contraparte:'Clínica Bem Viver', vencimento:'02/08', valor:1290, vencida:true},
+      {id:'c4', descricao:'Faturamento AlfaSchool · 08/2026', contraparte:'Norte Tech', vencimento:'15/08', valor:5720, vencida:false},
+      {id:'c5', descricao:'Faturamento AlfaHome · 08/2026', contraparte:'Sul Digital', vencimento:'18/08', valor:3290, vencida:false}
+    ];
+    const extras = s.gerado ? [
+      {id:'c6', descricao:'Faturamento AlfaMed · 08/2026', contraparte:'Meridiano TI', vencimento:'20/08', valor:2860, vencida:false},
+      {id:'c7', descricao:'Faturamento Gestor · 08/2026', contraparte:'Atlas Software', vencimento:'20/08', valor:1940, vencida:false}
+    ] : [];
+
+    const mapaLancamento = (l, acao) => {
+      const pago = s.baixados.includes(l.id);
+      const cor = pago ? cores.marca : (l.vencida ? cores.alerta : cores.neutro);
+      return {
+        ...l, valor: brl(l.valor),
+        status: pago ? 'Baixada' : (l.vencida ? 'Vencida' : 'Aberta'),
+        badgeStyle: badgeStyle(cor),
+        vencStyle: {font:"400 12.5px 'Geist Mono',monospace", color: l.vencida && !pago ? t['--bad'] : t['--dim']},
+        botaoTexto: pago ? 'Baixada' : 'Dar baixa',
+        botaoStyle: {padding:'5px 11px', borderRadius:'6px', border:'1px solid '+(pago?'transparent':t['--border']), background: pago ? 'transparent' : t['--raised'], font:"450 11.5px 'Geist',sans-serif", color: pago ? t['--mute'] : t['--dim'], cursor: pago ? 'default' : 'pointer'},
+        baixar: () => { if (pago) return; this.setState(p => ({baixados:[...p.baixados, l.id]})); this.mostrarToast(acao); }
+      };
+    };
+
+    const cobrancas = [...baseCobrancas, ...extras].map(c => mapaLancamento(c, 'Cobrança baixada e lançada no caixa.'));
+    const despesasBase = [
+      {id:'d1', descricao:'Folha · equipe de suporte', fornecedor:'Despesa fixa', vencimento:'05/08', valor:14200, vencida:true},
+      {id:'d2', descricao:'Infraestrutura em nuvem', fornecedor:'Hetzner', vencimento:'08/08', valor:3410, vencida:false},
+      {id:'d3', descricao:'Licenças de terceiros', fornecedor:'Diversos', vencimento:'12/08', valor:1870.4, vencida:false},
+      {id:'d4', descricao:'Contabilidade', fornecedor:'Escritório Prisma', vencimento:'20/08', valor:1980, vencida:false},
+      {id:'d5', descricao:'Marketing e anúncios', fornecedor:'Meta / Google', vencimento:'25/08', valor:1645, vencida:false}
+    ];
+    const despesas = despesasBase.map(d => mapaLancamento(d, 'Despesa baixada do caixa.'));
+
+    const emAberto = cobrancas.filter(c => !s.baixados.includes(c.id));
+    const [grupoAtual, tituloAtual] = TITULOS[s.rota];
+
+    const num = txt => Number(String(txt).replace(/[^\d,]/g,'').replace(',','.'));
+    const valorMono = cor => ({margin:0, fontFamily:"'Geist Mono',monospace", fontWeight:500, fontSize:'clamp(17px,1.6vw,21px)', lineHeight:1, whiteSpace:'nowrap', color:cor});
+    const ativas = REVENDAS.filter(r => r.ativo);
+    const mrrRevendas = ativas.reduce((a,r) => a + num(r.mrr), 0);
+    const clientesRevendas = ativas.reduce((a,r) => a + r.clientes, 0);
+    const geradasNomes = ['Invest Soluções','Vertex Sistemas','Norte Tech','Sul Digital'];
+    const pendentesFat = s.gerado ? [] : ativas.filter(r => !geradasNomes.includes(r.nome));
+    const vencidasAbertas = cobrancas.filter(c => c.status === 'Vencida');
+    const despAbertas = despesasBase.filter(d => !s.baixados.includes(d.id));
+    const despVencidas = despAbertas.filter(d => d.vencida);
+
+    const resumoRevendas = [
+      {label:'Revendas ativas', valor: String(ativas.length), hint: REVENDAS.length - ativas.length + ' pausada'},
+      {label:'Clientes na base', valor: clientesRevendas.toLocaleString('pt-BR'), hint:'somando todas as revendas'},
+      {label:'MRR de revenda', valor:'R$ ' + mrrRevendas.toLocaleString('pt-BR'), hint:'preço de atacado do mês'},
+      {label:'Ticket médio', valor:'R$ ' + Math.round(mrrRevendas/ativas.length).toLocaleString('pt-BR'), hint:'por revenda ativa'}
+    ];
+    const somaContratos = clientesFiltrados.reduce((a,c) => a + num(c.contrato), 0);
+    const resumoClientes = [
+      {label:'Clientes exibidos', valor: String(clientesFiltrados.length), hint:'de ' + baseClientes.length + ' na base'},
+      {label:'Ativos', valor: String(clientesFiltrados.filter(c => c.ativo).length), hint:'com contrato vigente'},
+      {label:'Inativos', valor: String(clientesFiltrados.filter(c => !c.ativo).length), hint:'sem cobrança gerada'},
+      {label:'Contratos somados', valor:'R$ ' + somaContratos.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}), hint:'mensal, na seleção atual'}
+    ];
+    const resumoSistemas = [
+      {label:'Sistemas ativos', valor: String(SISTEMAS.length), hint:'licenciados a revendas'},
+      {label:'Clientes licenciados', valor: SISTEMAS.reduce((a,x) => a + x.clientes, 0).toLocaleString('pt-BR'), hint:'somando todos os sistemas'},
+      {label:'MRR atacado', valor:'R$ ' + SISTEMAS.reduce((a,x) => a + x.valor, 0).toLocaleString('pt-BR'), hint:'estimativa do mês'},
+      {label:'Maior base', valor:'AlfaGym', hint:'486 clientes · 38% do total'}
+    ];
+    const resumoFaturamento = [
+      {label:'Revendas a faturar', valor: String(pendentesFat.length), hint: (ativas.length - pendentesFat.length) + ' já geradas'},
+      {label:'Clientes considerados', valor: clientesRevendas.toLocaleString('pt-BR'), hint:'ativos na virada do mês'},
+      {label:'Prévia total', valor:'R$ ' + mrrRevendas.toLocaleString('pt-BR'), hint:'competência 08/2026'},
+      {label:'Vencimento padrão', valor:'10/09', hint:'10 dias após o fechamento'}
+    ];
+    const resumoReceitasCards = [
+      {label:'Em aberto', valor: brl(emAberto.reduce((a,c) => a + num(c.valor), 0)), hint: emAberto.length + ' cobranças', valorStyle: valorMono(t['--ink'])},
+      {label:'Vencidas', valor: brl(vencidasAbertas.reduce((a,c) => a + num(c.valor), 0)), hint: vencidasAbertas.length + ' cobrança em atraso', valorStyle: valorMono(t['--bad'])},
+      {label:'Baixadas', valor: brl(cobrancas.filter(c => c.status==='Baixada').reduce((a,c) => a + num(c.valor), 0)), hint: s.baixados.length + ' lançamentos no caixa', valorStyle: valorMono(t['--good'])},
+      {label:'Total do mês', valor: brl(cobrancas.reduce((a,c) => a + num(c.valor), 0)), hint:'receita prevista 08/2026', valorStyle: valorMono(t['--ink'])}
+    ];
+    const resumoDespesasCards = [
+      {label:'Em aberto', valor: brl(despAbertas.reduce((a,d) => a + d.valor, 0)), hint: despAbertas.length + ' despesas', valorStyle: valorMono(t['--ink'])},
+      {label:'Vencidas', valor: brl(despVencidas.reduce((a,d) => a + d.valor, 0)), hint: despVencidas.length + ' em atraso', valorStyle: valorMono(t['--bad'])},
+      {label:'Despesas fixas', valor: brl(14200), hint:'recorrentes do mês', valorStyle: valorMono(t['--ink'])},
+      {label:'Total do mês', valor: brl(despesasBase.reduce((a,d) => a + d.valor, 0)), hint:'competência 08/2026', valorStyle: valorMono(t['--warn'])}
+    ];
+
+    return {
+      rootStyle: t,
+      asideStyle: {width:largura+'px', flexShrink:0, background:t['--sidebar'], borderRight:'1px solid '+t['--border'], display:'flex', flexDirection:'column', transition:'width .18s ease', overflow:'hidden'},
+
+      toggleTheme: () => this.setState(p => ({tema: p.tema === 'dark' ? 'light' : 'dark'})),
+      themeIcon: escuro ? 'M12 3v1.5m0 15V21m9-9h-1.5M4.5 12H3m15.364-6.364l-1.06 1.06M6.696 17.304l-1.06 1.06m12.728 0l-1.06-1.06M6.696 6.696l-1.06-1.06M16.5 12a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z' : 'M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z',
+      grupos, grupoAtual, tituloAtual,
+      busca: s.busca,
+      setBusca: e => this.setState({busca: e.target.value}),
+      revendaFiltro: s.revendaFiltro,
+      setRevendaFiltro: e => this.setState({revendaFiltro: e.target.value}),
+      opcoesRevenda: [{valor:'todas', rotulo:'Todas as revendas'}, ...REVENDAS.map(r => ({valor:r.nome, rotulo:r.nome})), {valor:'Venda direta', rotulo:'Venda direta'}],
+      filtrosStatus: [['todos','Todos'],['ativos','Ativos'],['inativos','Inativos']].map(([id, label]) => ({
+        label, go: () => this.setState({statusFiltro:id}),
+        style: {padding:'5px 12px', borderRadius:'4px', border:'1px solid ' + (s.statusFiltro===id ? t['--border'] : 'transparent'), cursor:'pointer', transition:'background .13s, color .13s', font:(s.statusFiltro===id ? '500' : '450') + " 11.5px 'Geist Mono',monospace", background: s.statusFiltro===id ? t['--panel'] : 'transparent', color: s.statusFiltro===id ? t['--ink'] : t['--dim']}
+      })),
+      isFinanceiro: s.rota==='financeiro', isComercial: s.rota==='comercial', isRevendas: s.rota==='revendas',
+      isClientes: s.rota==='clientes', isSistemas: s.rota==='sistemas', isFaturamento: s.rota==='faturamento',
+      isReceitas: s.rota==='receitas', isDespesas: s.rota==='despesas', isCaixa: s.rota==='caixa', isCadastros: s.rota==='cadastros',
+      historico, sistemas, clientesFiltrados, revendasFiltradas, cobrancas, despesas,
+      semClientes: clientesFiltrados.length === 0,
+      listaSistemas, detalheTiers,
+      detalheNome: sel.nome,
+      detalheInicial: sel.nome.replace('Alfa','').charAt(0) || 'A',
+      detalheSub: sel.categoria + ' · ' + revendasDoSistema.length + ' revendas · preço médio ' + brl(unit) + ' por cliente',
+      detalheAvatarStyle: {width:'52px', height:'52px', flexShrink:0, borderRadius:'8px', background:t['--raised'], border:'1px solid '+t['--border'], color:t['--ink'], display:'flex', alignItems:'center', justifyContent:'center', font:"600 20px 'Geist',sans-serif"},
+      detalheBadgeStyle: {padding:'3px 9px', borderRadius:'6px', background: escuro ? 'rgba(63,191,106,.14)' : 'rgba(18,145,90,.11)', font:"500 11px 'Geist',sans-serif", color:t['--good']},
+      detalheMetricas: [
+        {label:'Clientes ativos', valor: sel.clientes.toLocaleString('pt-BR')},
+        {label:'MRR atacado', valor:'R$ ' + sel.valor.toLocaleString('pt-BR')},
+        {label:'Preço médio', valor: brl(unit)},
+        {label:'Participação', valor: (sel.clientes / SISTEMAS.reduce((a,x) => a + x.clientes, 0) * 100).toFixed(1).replace('.',',') + '%'}
+      ],
+      detalheTotalRevendas: revendasDoSistema.length + ' revendas',
+      detalheTotalRevendasStyle: {padding:'3px 9px', borderRadius:'6px', background:t['--raised'], font:"500 11px 'Geist Mono',monospace", color:t['--dim'], whiteSpace:'nowrap'},
+      temMaisRevendas: revendasDoSistema.length > 5,
+      detalheRestoTexto: (revendasDoSistema.length - 5) + ' outras revendas · ' + revendasDoSistema.slice(5).reduce((a,r) => a + r.clientes, 0).toLocaleString('pt-BR') + ' clientes',
+      detalheRevendas: [...revendasDoSistema].sort((a,b) => b.clientes - a.clientes).slice(0,5).map(r => ({
+        nome: r.nome, clientes: r.clientes.toLocaleString('pt-BR') + ' cli.',
+        barStyle: {width: (r.clientes / Math.max(maiorRevenda,1) * 100) + '%', height:'100%', borderRadius:'4px', background: t['--chart']}
+      })),
+      detalhePath,
+      detalheArea: detalhePath + ' L200 60 L0 60 Z',
+      detalheUltimoY: pontos[5][1].toFixed(1),
+      detalheDelta: (crescimento >= 0 ? '+' : '') + crescimento.toFixed(0) + '% em 6 meses',
+      detalheDeltaStyle: {margin:0, font:"500 11.5px 'Geist',sans-serif", color: crescimento >= 0 ? t['--good'] : t['--bad'], whiteSpace:'nowrap'},
+      mesesCurtos: HISTORICO.map(m => m.mes),
+      detalheRevendasResumo: revendasDoSistema.length > 5
+        ? 'Top 5 por base de clientes · as ' + revendasDoSistema.length + ' revendas do ' + sel.nome + ' estão em Revendas.'
+        : 'Ordenado por base de clientes ativos no ' + sel.nome + '.',
+      rankingSistemas, metricas,
+      rankingTotal: s.metrica === 'clientes' ? totalMetrica.toLocaleString('pt-BR') : 'R$ ' + totalMetrica.toLocaleString('pt-BR'),
+      rankingUnidade: s.metrica === 'clientes' ? 'clientes ativos' : 'MRR atacado',
+      kpiSistemas: String(SISTEMAS.length),
+      kpiClientes: SISTEMAS.reduce((a,x) => a + x.clientes, 0).toLocaleString('pt-BR'),
+      kpiRevendas: String(ativas.length),
+      kpiDiretos: String(SISTEMAS.reduce((a,x) => a + x.clientes, 0) - clientesRevendas),
+      kpiMrr: 'R$ ' + SISTEMAS.reduce((a,x) => a + x.valor, 0).toLocaleString('pt-BR'),
+      fechamentoTexto: pendentesFat.length ? pendentesFat.length + ' revendas ainda sem cobrança gerada.' : 'Todas as revendas já foram faturadas neste mês.',
+      modalTexto: 'Serão criadas ' + pendentesFat.length + ' cobranças consolidadas, uma por revenda pendente, totalizando',
+      modalTotal: brl(pendentesFat.reduce((a,r) => a + num(r.mrr), 0)),
+      rankingLegenda: s.metrica === 'clientes' ? 'Participação de cada sistema na base de clientes ativos, hoje.' : 'Participação de cada sistema no atacado mensal estimado.',
+      resumoRevendas, resumoClientes, resumoSistemas, resumoFaturamento, resumoReceitasCards, resumoDespesasCards,
+      totalRevendas: String(revendasFiltradas.length),
+      resumoReceitas: emAberto.length + ' cobranças em aberto · ' + brl(emAberto.reduce((a,c) => a + parseFloat(String(c.valor).replace(/[^\d,]/g,'').replace(',','.')), 0)),
+      resumoDespesas: despesasBase.filter(d => !s.baixados.includes(d.id)).length + ' despesas em aberto · ' + brl(despesasBase.filter(d => !s.baixados.includes(d.id)).reduce((a,d) => a + d.valor, 0)),
+      receitasPendentes: baseCobrancas.slice(0,4).map(c => ({
+        descricao:c.descricao, sub: c.contraparte + (c.vencida ? ' · venceu ' : ' · vence ') + c.vencimento, valor: brl(c.valor),
+        subStyle: {margin:0, font:"400 11.5px 'Geist',sans-serif", color: c.vencida ? t['--bad'] : t['--mute']}
+      })),
+      despesasPendentes: despesasBase.slice(0,4).map(d => ({descricao:d.descricao, sub: d.fornecedor + ' · vence ' + d.vencimento, valor: brl(d.valor)})),
+      previaFaturamento: REVENDAS.filter(r => r.ativo).map(r => {
+        const feito = s.gerado || ['Invest Soluções','Vertex Sistemas','Norte Tech','Sul Digital'].includes(r.nome);
+        return {nome:r.nome, sistemas:r.sistemas, clientes:String(r.clientes), mrr:r.mrr, situacao: feito ? 'Gerada' : 'Pendente', badgeStyle: badgeStyle(feito ? cores.marca : cores.neutro)};
+      }),
+      contas: [
+        {nome:'Banco Inter · PJ', tipo:'Conta corrente', saldo:'R$ 84.210,40'},
+        {nome:'Nubank PJ', tipo:'Conta corrente', saldo:'R$ 31.480,90'},
+        {nome:'Caixa interno', tipo:'Dinheiro', saldo:'R$ 2.148,88'},
+        {nome:'Reserva CDI', tipo:'Aplicação', saldo:'R$ 15.100,00'}
+      ],
+      cadastros: [
+        {titulo:'Centros de custo', total:'4 itens', itens:['Operação','Comercial','Infraestrutura','Administrativo']},
+        {titulo:'Categorias', total:'6 itens', itens:['Licenças','Folha','Servidores','Marketing','Impostos','Serviços']},
+        {titulo:'Contas contábeis', total:'5 itens', itens:['Receita de revenda','Receita direta','Despesa fixa','Despesa variável','Transferência']},
+        {titulo:'Fornecedores', total:'5 itens', itens:['Hetzner','Escritório Prisma','Meta','Google','Vindi']}
+      ],
+      modalClienteAberto: s.modalCliente,
+      abrirNovoCliente: () => this.setState({modalCliente:true}),
+      fecharNovoCliente: () => this.setState({modalCliente:false}),
+      inputStyle: {width:'100%', height:'38px', padding:'0 11px', borderRadius:'6px', border:'1px solid '+t['--border'], background:t['--raised'], color:t['--ink'], font:"400 13px 'Geist',sans-serif"},
+      formNome: s.form.nome, setFormNome: e => this.setForm('nome', e.target.value),
+      formRevenda: s.form.revenda, setFormRevenda: e => this.setForm('revenda', e.target.value),
+      formSistema: s.form.sistema, setFormSistema: e => this.setForm('sistema', e.target.value),
+      formValor: s.form.valor, setFormValor: e => this.setForm('valor', e.target.value),
+      opcoesRevendaForm: [...ativas.map(r => ({valor:r.nome, rotulo:r.nome})), {valor:'Venda direta', rotulo:'Venda direta'}],
+      opcoesSistema: SISTEMAS.map(x => ({valor:x.nome, rotulo:x.nome})),
+      opcoesAtivo: [[true,'Ativo'],[false,'Inativo']].map(([v,label]) => ({
+        label, go: () => this.setForm('ativo', v),
+        style: {flex:1, height:'30px', borderRadius:'6px', border:'none', cursor:'pointer', font:"500 12px 'Geist',sans-serif", background: s.form.ativo===v ? t['--panel'] : 'transparent', border:'1px solid ' + (s.form.ativo===v ? t['--border'] : 'transparent'), color: s.form.ativo===v ? t['--ink'] : t['--dim']}
+      })),
+      salvarClienteStyle: {padding:'9px 16px', borderRadius:'6px', border:'none', background: s.form.nome.trim() ? t['--ink'] : t['--raised'], color: s.form.nome.trim() ? t['--bg'] : t['--mute'], font:"500 13px 'Geist',sans-serif", cursor: s.form.nome.trim() ? 'pointer' : 'default'},
+      salvarCliente: () => {
+        const f = s.form;
+        if (!f.nome.trim()) return;
+        const valorNum = num(f.valor || '0') || 0;
+        this.setState(p => ({
+          novos: [{nome:f.nome.trim(), revenda:f.revenda, sistemas:f.sistema, contrato:'R$ ' + valorNum.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}), ativo:f.ativo}, ...p.novos],
+          modalCliente: false, busca: '', revendaFiltro: 'todas', statusFiltro: 'todos',
+          form: {nome:'', revenda:'Invest Soluções', sistema:'AlfaGym', valor:'', ativo:true}
+        }));
+        this.mostrarToast('Cliente ' + f.nome.trim() + ' cadastrado.');
+      },
+      modalAberto: s.modal,
+      abrirModal: () => { if (!s.gerado && pendentesFat.length) this.setState({modal:true}); },
+      fecharModal: () => this.setState({modal:false}),
+      confirmarGeracao: () => { this.setState({modal:false, gerado:true}); this.mostrarToast(pendentesFat.length + ' cobranças geradas para agosto/2026.'); },
+      botaoGerarTexto: s.gerado ? 'Faturamento gerado' : 'Gerar faturamento',
+      botaoGerarStyle: {padding:'10px 16px', borderRadius:'6px', border:'none', flexShrink:0, background: s.gerado ? t['--raised'] : t['--ink'], color: s.gerado ? t['--mute'] : t['--bg'], font:"500 13px 'Geist',sans-serif", cursor: s.gerado ? 'default' : 'pointer', transition:'background .13s'},
+      irFaturamento: () => this.ir('faturamento'),
+      irReceitas: () => this.ir('receitas'),
+      irDespesas: () => this.ir('despesas'),
+      temToast: !!s.toast, toast: s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

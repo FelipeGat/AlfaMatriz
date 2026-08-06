@@ -10,7 +10,7 @@
     @if ($titulo || $acao)
         <div class="flex flex-wrap items-center justify-between gap-3 px-6 pt-[22px] {{ $semPadding ? 'pb-4' : 'pb-0' }}">
             @if ($titulo)
-                <h3 class="font-display text-[15px] font-semibold text-ink">{{ $titulo }}</h3>
+                <h3 class="text-[15px] font-semibold text-ink">{{ $titulo }}</h3>
             @endif
             @if ($acao)
                 <div class="shrink-0 text-[12px]">{{ $acao }}</div>

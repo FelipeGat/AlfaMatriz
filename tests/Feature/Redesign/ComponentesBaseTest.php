@@ -68,10 +68,12 @@ class ComponentesBaseTest extends TestCase
      */
     public function test_pilulas_de_status_seguem_o_significado_do_handoff(): void
     {
+        // "brand" aqui é o estado de destaque (ex.: Gerada). Na direção nova
+        // ele é NEUTRO: superfície própria e texto ink, sem cor de marca.
         $casos = [
             'good' => 'text-good',
             'bad' => 'text-bad',
-            'brand' => 'text-brand',
+            'brand' => 'bg-raised text-ink',
             'neutro' => 'text-dim',
         ];
 

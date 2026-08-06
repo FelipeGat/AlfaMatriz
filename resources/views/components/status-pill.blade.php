@@ -9,11 +9,11 @@
         'good' => 'bg-good/12 text-good',
         'bad' => 'bg-bad/12 text-bad',
         'warn' => 'bg-warn/12 text-warn',
-        'brand' => 'bg-brand-soft text-brand',
+        'brand' => 'bg-raised text-ink',
         'neutro' => 'bg-raised text-dim',
     ];
 @endphp
 
-<span {{ $attributes->merge(['class' => 'inline-flex items-center whitespace-nowrap rounded-pill px-2.5 py-[3px] text-[11px] font-medium '.($tons[$tom] ?? $tons['neutro'])]) }}>
+<span {{ $attributes->merge(['class' => 'inline-flex items-center whitespace-nowrap rounded-pill px-1.5 py-[2px] font-mono text-[10px] font-medium uppercase tracking-[.04em] '.($tons[$tom] ?? $tons['neutro'])]) }}>
     {{ $slot }}
 </span>

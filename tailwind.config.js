@@ -14,9 +14,10 @@ export default {
             fontFamily: {
                 // Interface inteira. Números têm família própria (mono) porque
                 // é o que alinha as colunas de valor.
-                sans: ['"IBM Plex Sans"', ...defaultTheme.fontFamily.sans],
-                display: ['"Space Grotesk"', ...defaultTheme.fontFamily.sans],
-                mono: ['"IBM Plex Mono"', ...defaultTheme.fontFamily.mono],
+                sans: ['Geist', ...defaultTheme.fontFamily.sans],
+                // A direção nova não usa fonte de display: títulos são Geist.
+                display: ['Geist', ...defaultTheme.fontFamily.sans],
+                mono: ['"Geist Mono"', ...defaultTheme.fontFamily.mono],
             },
 
             // Cada cor aponta para uma custom property definida em app.css.
@@ -31,15 +32,22 @@ export default {
                 ink: 'var(--ink)',
                 dim: 'var(--dim)',
                 mute: 'var(--mute)',
+                // Marca e gráfico são a MESMA cor viva, com usos distintos:
+                // `brand` para detalhes de identidade, `chart` para séries.
                 brand: {
                     DEFAULT: 'var(--brand)',
-                    solid: 'var(--brand-solid)',
-                    soft: 'var(--brand-soft)',
-                    line: 'var(--brand-line)',
                     // Apelidos temporários (ver bloco de compatibilidade abaixo).
+                    solid: 'var(--ink)',
+                    soft: 'var(--raised)',
+                    line: 'var(--border)',
                     dim: 'var(--brand)',
                     bright: 'var(--brand)',
-                    mute: 'var(--brand-soft)',
+                    mute: 'var(--raised)',
+                },
+                chart: 'var(--chart)',
+                nav: {
+                    active: 'var(--nav-active)',
+                    hover: 'var(--nav-hover)',
                 },
                 good: 'var(--good)',
                 warn: 'var(--warn)',
@@ -69,10 +77,11 @@ export default {
             },
 
             borderRadius: {
-                card: '13px',
-                summary: '12px',
-                control: '9px',
-                pill: '20px',
+                card: '8px',
+                summary: '8px',
+                control: '6px',
+                pill: '4px',
+                modal: '12px',
             },
 
             // Sem sombra na interface: a separação é por borda e por diferença

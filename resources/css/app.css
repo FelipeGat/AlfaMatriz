@@ -10,47 +10,54 @@
  * valores, e toda a interface acompanha sem precisar de variante `dark:` em
  * cada elemento.
  */
+/*
+ * Direção "blueprint" (Vercel/Linear): a interface é monocromática. Cor viva
+ * só aparece onde carrega significado — séries de gráfico, indicadores de
+ * positivo/negativo e estados de situação. Botão, seleção de menu, link e
+ * avatar são todos neutros.
+ */
 :root,
 :root[data-theme='dark'] {
-    --bg: #0a0f11;
-    --sidebar: #0d1417;
-    --panel: #10171a;
-    --raised: #151f23;
-    --border: rgba(255, 255, 255, 0.08);
-    --ink: #e8f0f2;
-    --dim: #93a5aa;
-    --mute: #6e7f84;
+    --bg: #0a0a0a;
+    --sidebar: #0a0a0a;
+    --panel: #111111;
+    --raised: #1a1a1a;
+    --border: #262626;
+    --ink: #ededed;
+    --dim: #a1a1a1;
+    --mute: #7a7a7a;
     --brand: #2ec9d9;
-    --brand-solid: #029caf;
-    --brand-soft: rgba(46, 201, 217, 0.13);
-    --brand-line: rgba(46, 201, 217, 0.24);
-    --good: #3fbf6a;
-    --warn: #e8a045;
-    --bad: #d05b4b;
-    --track: rgba(255, 255, 255, 0.07);
-    --track2: #31474d;
-    --hover: rgba(255, 255, 255, 0.04);
+    --chart: #2ec9d9;
+    --good: #4ac97e;
+    --warn: #e0a13a;
+    --bad: #e5484d;
+    --track: #222222;
+    --track2: #333333;
+    --nav-active: #1c1c1c;
+    --nav-hover: #161616;
+    /* O wordmark é PNG colorido: o filtro o torna monocromático por tema. */
+    --logo-filter: brightness(0) invert(1);
 }
 
 :root[data-theme='light'] {
-    --bg: #f6f7f7;
-    --sidebar: #ffffff;
+    --bg: #fafafa;
+    --sidebar: #fafafa;
     --panel: #ffffff;
-    --raised: #f3f6f6;
-    --border: #e4e8e9;
-    --ink: #0d1416;
-    --dim: #5b6b70;
-    --mute: #8c9a9e;
+    --raised: #f4f4f4;
+    --border: #ebebeb;
+    --ink: #171717;
+    --dim: #666666;
+    --mute: #8f8f8f;
     --brand: #017d8c;
-    --brand-solid: #029caf;
-    --brand-soft: rgba(2, 156, 175, 0.10);
-    --brand-line: rgba(2, 156, 175, 0.22);
-    --good: #12915a;
+    --chart: #029caf;
+    --good: #0f7c46;
     --warn: #b4671f;
-    --bad: #b03a2e;
-    --track: #eef2f2;
-    --track2: #c8d6d8;
-    --hover: #f3f6f6;
+    --bad: #c62f38;
+    --track: #ebebeb;
+    --track2: #d4d4d4;
+    --nav-active: #ececec;
+    --nav-hover: #f2f2f2;
+    --logo-filter: brightness(0);
 }
 
 @layer base {
@@ -65,14 +72,23 @@
         display: none !important;
     }
 
-    /*
-     * Todo número em mono. É essa regra que alinha as colunas de valor —
-     * aplicada por classe utilitária `.num` para não depender de o autor da
-     * tela lembrar da família certa.
-     */
+    /* Números tabulares em toda a interface: é o que alinha as colunas. */
+    body {
+        font-variant-numeric: tabular-nums;
+    }
+
     .num {
         @apply font-mono;
         font-variant-numeric: tabular-nums;
+    }
+
+    /* A navegação rola sem mostrar barra. */
+    .sem-scrollbar {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    .sem-scrollbar::-webkit-scrollbar {
+        display: none;
     }
 
     /*
@@ -87,6 +103,7 @@
 
     select,
     textarea,
+    input[type='search'],
     input[type='text'],
     input[type='email'],
     input[type='password'],

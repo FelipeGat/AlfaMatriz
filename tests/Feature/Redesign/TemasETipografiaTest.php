@@ -35,8 +35,8 @@ class TemasETipografiaTest extends TestCase
         $tokens = [
             '--bg', '--sidebar', '--panel', '--raised', '--border',
             '--ink', '--dim', '--mute',
-            '--brand', '--brand-solid', '--brand-soft', '--brand-line',
-            '--good', '--warn', '--bad', '--track', '--track2',
+            '--brand', '--chart', '--good', '--warn', '--bad',
+            '--track', '--track2', '--nav-active', '--nav-hover', '--logo-filter',
         ];
 
         // Cada token precisa existir nos DOIS blocos de tema.
@@ -49,10 +49,10 @@ class TemasETipografiaTest extends TestCase
 
         // Alguns valores do handoff, para provar que a paleta é a certa e não
         // uma aproximação.
-        $this->assertStringContainsString('#0a0f11', $dark, 'Fundo do tema escuro fora do handoff.');
-        $this->assertStringContainsString('#f6f7f7', $light, 'Fundo do tema claro fora do handoff.');
-        $this->assertStringContainsString('#2ec9d9', $dark, 'Cor de marca do escuro fora do handoff.');
-        $this->assertStringContainsString('#017d8c', $light, 'Cor de marca do claro fora do handoff.');
+        $this->assertStringContainsString('#0a0a0a', $dark, 'Fundo do tema escuro fora do handoff.');
+        $this->assertStringContainsString('#fafafa', $light, 'Fundo do tema claro fora do handoff.');
+        $this->assertStringContainsString('#ededed', $dark, 'Texto do tema escuro fora do handoff.');
+        $this->assertStringContainsString('#171717', $light, 'Texto do tema claro fora do handoff.');
 
         // E o Tailwind precisa consumir as variáveis, não os hex.
         foreach (['bg', 'panel', 'raised', 'ink', 'dim', 'mute'] as $cor) {
@@ -72,23 +72,21 @@ class TemasETipografiaTest extends TestCase
     {
         $layout = file_get_contents(base_path('resources/views/layouts/app.blade.php'));
 
-        foreach (['space-grotesk', 'ibm-plex-sans', 'ibm-plex-mono'] as $familia) {
+        foreach (['geist:', 'geist-mono'] as $familia) {
             $this->assertStringContainsString($familia, $layout, "A fonte {$familia} não está sendo carregada.");
         }
 
-        $this->assertStringNotContainsStringIgnoringCase(
-            'inter:',
-            $layout,
-            'O Inter continua sendo carregado; o handoff o substitui.'
-        );
-        $this->assertStringNotContainsStringIgnoringCase(
-            "'Inter'",
-            $this->config,
-            'O Inter continua na configuração do Tailwind.'
-        );
+        // As três famílias das direções anteriores saem por completo.
+        foreach (['inter:', 'space-grotesk', 'ibm-plex'] as $antiga) {
+            $this->assertStringNotContainsStringIgnoringCase(
+                $antiga,
+                $layout,
+                "A fonte {$antiga} é de uma direção anterior e não pode continuar carregada."
+            );
+            $this->assertStringNotContainsStringIgnoringCase($antiga, $this->config);
+        }
 
-        $this->assertStringContainsString('IBM Plex Mono', $this->config, 'Número precisa de família mono própria.');
-        $this->assertStringContainsString('Space Grotesk', $this->config);
+        $this->assertStringContainsString('Geist Mono', $this->config, 'Número precisa de família mono própria.');
     }
 
     /**

@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;450;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>body{margin:0;background:#eceae6;font-family:"IBM Plex Sans",system-ui,sans-serif}a{color:#017d8c}a:hover{color:#029caf}.dv-turn{padding:44px 48px 36px;border-bottom:1px solid rgba(0,0,0,.08)}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 24px}.dv-tid{font:600 10px "IBM Plex Mono",monospace;padding:3px 7px;background:#12191b;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:600 13px/1.2 "IBM Plex Sans",sans-serif;color:#12191b}.dv-opts{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px}.dv-oid{font:600 10.5px "IBM Plex Mono",monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#12191b;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11.5px/1.35 "IBM Plex Sans",sans-serif;color:rgba(0,0,0,.55);max-width:640px}.dv-card{background:#fff;border:1px solid rgba(0,0,0,.09);border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);overflow:hidden}.dv-opt:target .dv-oid{background:#017d8c;color:#fff}.dv-next{margin:26px 0 0;font:12px/1.6 "IBM Plex Sans",sans-serif;color:rgba(0,0,0,.5)}.dv-note{max-width:640px;font:400 11.5px/1.6 "IBM Plex Sans",sans-serif;color:rgba(0,0,0,.45);margin:2px 0 0}</style></helmet>
+
+<section class="dv-turn" id="t13">
+<div class="dv-thd"><a class="dv-tid" href="#t13">13</a><span class="dv-tname">Testes de afastamento e ângulo no <a class="dv-oid" href="#11a">11a</a></span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="13ref">
+<div class="dv-olabel"><a class="dv-oid" href="#13ref">ref</a>Como está hoje (<a class="dv-oid" href="#11a">11a</a>)</div>
+<div class="dv-card" style="width:250px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M7 7l14 12L7 31" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M41 7L27 19l14 12" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><circle cx="24" cy="37" r="6.4" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M7 7l14 12L7 31" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M41 7L27 19l14 12" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><circle cx="24" cy="37" r="6.4" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Base de comparação.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="13a">
+<div class="dv-olabel"><a class="dv-oid" href="#13a">13a</a>Setas afastadas</div>
+<div class="dv-card" style="width:250px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M6 5l12 11L6 27" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M42 5L30 16l12 11" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><circle cx="24" cy="38.5" r="6.4" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M6 5l12 11L6 27" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M42 5L30 16l12 11" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><circle cx="24" cy="38.5" r="6.4" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Setas mais altas e mais abertas na horizontal, bolinha mais baixa: o vão entre elas dobra e a leitura de "olhos + boca" cai bastante.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="13b">
+<div class="dv-olabel"><a class="dv-oid" href="#13b">13b</a>Ângulo mais aberto</div>
+<div class="dv-card" style="width:250px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M7 4l14 15L7 34" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M41 4L27 19l14 15" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><circle cx="24" cy="37" r="6.4" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M7 4l14 15L7 34" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M41 4L27 19l14 15" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><circle cx="24" cy="37" r="6.4" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Só o ângulo: 94° contra 81° do ref. As pontas sobem e descem mais, e a curva deixa de lembrar sobrancelha.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="13c">
+<div class="dv-olabel"><a class="dv-oid" href="#13c">13c</a>Afastadas + ângulo aberto</div>
+<div class="dv-card" style="width:250px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M5 4l13 15L5 34" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M43 4L30 19l13 15" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><circle cx="24" cy="39" r="6.6" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M5 4l13 15L5 34" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M43 4L30 19l13 15" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><circle cx="24" cy="39" r="6.6" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">As duas coisas: vão entre as pontas dobrado (12 contra 6 unidades) e ângulo de 98°. É a que mais se afasta do rosto sem perder a convergência.</p>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Diz qual dos três (ou "fica o ref") que eu aplico na sidebar e no favicon.</p>
+</section>
+
+<section class="dv-turn" id="t12">
+<div class="dv-thd"><a class="dv-tid" href="#t12">12</a><span class="dv-tname">Quebrando a silhueta de cabide do <a class="dv-oid" href="#11e">11e</a></span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="12a">
+<div class="dv-olabel"><a class="dv-oid" href="#12a">12a</a>Triângulo preenchido, sem gancho</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M21 11 34 33H8L21 11Z" fill="#029caf" stroke="#029caf" stroke-width="5" stroke-linejoin="round" opacity=".55"></path><rect x="16" y="39" width="28" height="7" rx="3.5" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M21 11 34 33H8L21 11Z" fill="#029caf" stroke="#029caf" stroke-width="5" stroke-linejoin="round" opacity=".55"></path><rect x="16" y="39" width="28" height="7" rx="3.5" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Triângulo cheio com a base deslocada para a direita — sem gancho e sem simetria, longe também do símbolo de "eject".</p>
+</div>
+</div>
+
+<div class="dv-opt" id="12b">
+<div class="dv-olabel"><a class="dv-oid" href="#12b">12b</a>Traço único — base integrada</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M8 43v-9l16-17 16 17v9" stroke="#029caf" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M8 43v-9l16-17 16 17v9" stroke="#029caf" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Uma linha só: a subida dobra e desce nas duas pernas. Sem gancho e sem barra solta — o cabide não existe.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="12c">
+<div class="dv-olabel"><a class="dv-oid" href="#12c">12c</a>Escada sobre a base</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><rect x="8" y="29" width="9.5" height="10" rx="3.5" fill="#029caf" opacity=".35"></rect><rect x="19.25" y="22" width="9.5" height="17" rx="3.5" fill="#029caf" opacity=".55"></rect><rect x="30.5" y="15" width="9.5" height="24" rx="3.5" fill="#029caf" opacity=".8"></rect><rect x="6" y="41" width="36" height="6.5" rx="3.25" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><rect x="8" y="29" width="9.5" height="10" rx="3.5" fill="#029caf" opacity=".35"></rect><rect x="19.25" y="22" width="9.5" height="17" rx="3.5" fill="#029caf" opacity=".55"></rect><rect x="30.5" y="15" width="9.5" height="24" rx="3.5" fill="#029caf" opacity=".8"></rect><rect x="6" y="41" width="36" height="6.5" rx="3.25" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">A subida vira três degraus apoiados na base sólida. Crescimento e sustentação, com cara de painel.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="12d">
+<div class="dv-olabel"><a class="dv-oid" href="#12d">12d</a>Linha de crescimento com marcador</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M8 34l11-11 8 7L41 13" stroke="#029caf" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" opacity=".5"></path><circle cx="41" cy="13" r="5.4" fill="#029caf"></circle><rect x="6" y="40" width="36" height="6.5" rx="3.25" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M8 34l11-11 8 7L41 13" stroke="#029caf" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" opacity=".5"></path><circle cx="41" cy="13" r="5.4" fill="#029caf"></circle><rect x="6" y="40" width="36" height="6.5" rx="3.25" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Traço em zigue-zague subindo até um nó no canto — assimétrico, sem ápice central e sem leitura de cabide.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="12e">
+<div class="dv-olabel"><a class="dv-oid" href="#12e">12e</a>Sem barra — apoio em pontos</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M24 8 40 33H8L24 8Z" fill="#029caf" stroke="#029caf" stroke-width="5" stroke-linejoin="round"></path><circle cx="10.5" cy="42" r="4.2" fill="#029caf" opacity=".4"></circle><circle cx="24" cy="42" r="4.2" fill="#029caf" opacity=".4"></circle><circle cx="37.5" cy="42" r="4.2" fill="#029caf" opacity=".4"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M24 8 40 33H8L24 8Z" fill="#029caf" stroke="#029caf" stroke-width="5" stroke-linejoin="round"></path><circle cx="10.5" cy="42" r="4.2" fill="#029caf" opacity=".4"></circle><circle cx="24" cy="42" r="4.2" fill="#029caf" opacity=".4"></circle><circle cx="37.5" cy="42" r="4.2" fill="#029caf" opacity=".4"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Triângulo cheio apoiado em três nós — mantém "crescimento sobre base" e recupera a família de pontos do <a class="dv-oid" href="#2a">2a</a>.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="12f">
+<div class="dv-olabel"><a class="dv-oid" href="#12f">12f</a>Dois níveis sobre base curta</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M11 20l13-12 13 12" stroke="#029caf" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round" opacity=".28"></path><path d="M9 34l15-13 15 13" stroke="#029caf" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round" opacity=".6"></path><rect x="16" y="39" width="16" height="7" rx="3.5" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M11 20l13-12 13 12" stroke="#029caf" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round" opacity=".28"></path><path d="M9 34l15-13 15 13" stroke="#029caf" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round" opacity=".6"></path><rect x="16" y="39" width="16" height="7" rx="3.5" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Duas camadas ascendentes em vez de uma: repetição mata a leitura de objeto e reforça a de crescimento.</p>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Diz o número que eu aplico na sidebar e no favicon — ou peço outra rodada em cima do escolhido.</p>
+</section>
+
+<section class="dv-turn" id="t11">
+<div class="dv-thd"><a class="dv-tid" href="#t11">11</a><span class="dv-tname">Variações da convergência (<a class="dv-oid" href="#8f">8f</a>)</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="11a">
+<div class="dv-olabel"><a class="dv-oid" href="#11a">11a</a>Núcleo redondo</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M7 7l14 12L7 31" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M41 7L27 19l14 12" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><circle cx="24" cy="37" r="6.4" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M7 7l14 12L7 31" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M41 7L27 19l14 12" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><circle cx="24" cy="37" r="6.4" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Mesma convergência, destino redondo — conversa melhor com as curvas do wordmark.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="11b">
+<div class="dv-olabel"><a class="dv-oid" href="#11b">11b</a>Horizontal — › ‹</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M8 11l10 13-10 13" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M40 11L30 24l10 13" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><circle cx="24" cy="24" r="6.2" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M8 11l10 13-10 13" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M40 11L30 24l10 13" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><circle cx="24" cy="24" r="6.2" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Convergência lateral com o núcleo centrado. Simétrica nos dois eixos — a mais estável para favicon.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="11c">
+<div class="dv-olabel"><a class="dv-oid" href="#11c">11c</a>Em massa</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M5 6l16 13L5 32V6Z" fill="#029caf" opacity=".38"></path><path d="M43 6L27 19l16 13V6Z" fill="#029caf" opacity=".38"></path><rect x="16" y="34" width="16" height="9.5" rx="4.75" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M5 6l16 13L5 32V6Z" fill="#029caf" opacity=".38"></path><path d="M43 6L27 19l16 13V6Z" fill="#029caf" opacity=".38"></path><rect x="16" y="34" width="16" height="9.5" rx="4.75" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Os lados viram massa sólida. Ganha presença em tamanho pequeno e perde a leveza do traço.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="11d">
+<div class="dv-olabel"><a class="dv-oid" href="#11d">11d</a>Três níveis</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M7 7l17 11L41 7" stroke="#029caf" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" opacity=".22"></path><path d="M11 18l13 9 13-9" stroke="#029caf" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" opacity=".45"></path><path d="M16 28l8 6 8-6" stroke="#029caf" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" opacity=".7"></path><circle cx="24" cy="40" r="4.4" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M7 7l17 11L41 7" stroke="#029caf" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" opacity=".22"></path><path d="M11 18l13 9 13-9" stroke="#029caf" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" opacity=".45"></path><path d="M16 28l8 6 8-6" stroke="#029caf" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" opacity=".7"></path><circle cx="24" cy="40" r="4.4" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Funil em três estágios até o ponto final — clientes, revendas, matriz. O mais narrativo do grupo.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="11e">
+<div class="dv-olabel"><a class="dv-oid" href="#11e">11e</a>Ascendente</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M8 33l16-15 16 15" stroke="#029caf" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" opacity=".4"></path><circle cx="24" cy="11" r="5" fill="#029caf" opacity=".7"></circle><rect x="7" y="38" width="34" height="7.5" rx="3.75" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M8 33l16-15 16 15" stroke="#029caf" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" opacity=".4"></path><circle cx="24" cy="11" r="5" fill="#029caf" opacity=".7"></circle><rect x="7" y="38" width="34" height="7.5" rx="3.75" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Inverte o sentido: base sólida e crescimento subindo até o topo. Mais otimista, menos "funil".</p>
+</div>
+</div>
+
+<div class="dv-opt" id="11f">
+<div class="dv-olabel"><a class="dv-oid" href="#11f">11f</a>A implícito</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M9 40 22.4 10.6a1.8 1.8 0 0 1 3.2 0L39 40" stroke="#029caf" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" opacity=".4"></path><rect x="15" y="28" width="18" height="7.5" rx="3.75" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M9 40 22.4 10.6a1.8 1.8 0 0 1 3.2 0L39 40" stroke="#029caf" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" opacity=".4"></path><rect x="15" y="28" width="18" height="7.5" rx="3.75" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">A convergência desenha um A e a travessa sólida vira a matriz. Une a metáfora com a inicial da marca.</p>
+</div>
+</div>
+
+</div>
+<p class="dv-next">É só dizer o número — aplico na sidebar, gero o favicon e monto os lockups.</p>
+</section>
+
+<section class="dv-turn" id="t10">
+<div class="dv-thd"><a class="dv-tid" href="#t10">10</a><span class="dv-tname">Rodada final — seleção para escolha</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="10a">
+<div class="dv-olabel"><a class="dv-oid" href="#10a">10a</a>Núcleo em órbita — refino de <a class="dv-oid" href="#3a">3a</a></div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="16.5" stroke="#029caf" stroke-width="2.4" opacity=".22"></circle><circle cx="24" cy="7.5" r="3.6" fill="#029caf" opacity=".55"></circle><circle cx="38.3" cy="32.2" r="3.6" fill="#029caf" opacity=".4"></circle><circle cx="9.7" cy="32.2" r="3.6" fill="#029caf" opacity=".4"></circle><circle cx="24" cy="24" r="8.2" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="16.5" stroke="#029caf" stroke-width="2.4" opacity=".22"></circle><circle cx="24" cy="7.5" r="3.6" fill="#029caf" opacity=".55"></circle><circle cx="38.3" cy="32.2" r="3.6" fill="#029caf" opacity=".4"></circle><circle cx="9.7" cy="32.2" r="3.6" fill="#029caf" opacity=".4"></circle><circle cx="24" cy="24" r="8.2" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Três satélites numa órbita, núcleo pesado. Mantém a família de pontos que você gostou, com menos ruído.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="10b">
+<div class="dv-olabel"><a class="dv-oid" href="#10b">10b</a>Colunas sobre base — <a class="dv-oid" href="#8b">8b</a> + <a class="dv-oid" href="#9e">9e</a></div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><rect x="8" y="16" width="8" height="16" rx="4" fill="#029caf" opacity=".42"></rect><rect x="20" y="7" width="8" height="25" rx="4" fill="#029caf" opacity=".7"></rect><rect x="32" y="12" width="8" height="20" rx="4" fill="#029caf" opacity=".42"></rect><rect x="6" y="36" width="36" height="7.5" rx="3.75" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><rect x="8" y="16" width="8" height="16" rx="4" fill="#029caf" opacity=".42"></rect><rect x="20" y="7" width="8" height="25" rx="4" fill="#029caf" opacity=".7"></rect><rect x="32" y="12" width="8" height="20" rx="4" fill="#029caf" opacity=".42"></rect><rect x="6" y="36" width="36" height="7.5" rx="3.75" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Os produtos como colunas, a matriz como base. Gestão e sustentação na mesma forma — e ecoa os gráficos do painel.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="10c">
+<div class="dv-olabel"><a class="dv-oid" href="#10c">10c</a>Σ geométrico — refino de <a class="dv-oid" href="#9c">9c</a></div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M37 8H12l13 16-13 16h25" stroke="#029caf" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M37 8H12l13 16-13 16h25" stroke="#029caf" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Um só gesto, peso igual ao do wordmark. É o mais econômico do conjunto — e o que menos envelhece.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="10d">
+<div class="dv-olabel"><a class="dv-oid" href="#10d">10d</a>Célula com núcleo — refino de <a class="dv-oid" href="#9b">9b</a></div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M24 4.5 41 14.25v19.5L24 43.5 7 33.75v-19.5L24 4.5Z" fill="#029caf" opacity=".16"></path><path d="M24 4.5 41 14.25v19.5L24 43.5 7 33.75v-19.5L24 4.5Z" stroke="#029caf" stroke-width="3" stroke-linejoin="round" opacity=".5"></path><circle cx="24" cy="24" r="7.6" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M24 4.5 41 14.25v19.5L24 43.5 7 33.75v-19.5L24 4.5Z" fill="#029caf" opacity=".16"></path><path d="M24 4.5 41 14.25v19.5L24 43.5 7 33.75v-19.5L24 4.5Z" stroke="#029caf" stroke-width="3" stroke-linejoin="round" opacity=".5"></path><circle cx="24" cy="24" r="7.6" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Casca hexagonal com o núcleo redondo dentro. Contêiner e conteúdo — dá uma marca com "corpo" para avatar.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="10e">
+<div class="dv-olabel"><a class="dv-oid" href="#10e">10e</a>Canto aberto sólido — refino de <a class="dv-oid" href="#8d">8d</a></div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M6 14a8 8 0 0 1 8-8h11v11a8 8 0 0 0 8 8h11v9a8 8 0 0 1-8 8H14a8 8 0 0 1-8-8V14Z" fill="#029caf"></path><rect x="30" y="5" width="13" height="13" rx="4.5" fill="#029caf" opacity=".4"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M6 14a8 8 0 0 1 8-8h11v11a8 8 0 0 0 8 8h11v9a8 8 0 0 1-8 8H14a8 8 0 0 1-8-8V14Z" fill="#029caf"></path><rect x="30" y="5" width="13" height="13" rx="4.5" fill="#029caf" opacity=".4"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Massa cheia com um módulo destacado no canto. É a opção com silhueta mais distinta de todas.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="10f">
+<div class="dv-olabel"><a class="dv-oid" href="#10f">10f</a>Quatro módulos, um redondo</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><rect x="6" y="6" width="17" height="17" rx="5" fill="#029caf" opacity=".38"></rect><rect x="6" y="25" width="17" height="17" rx="5" fill="#029caf" opacity=".38"></rect><rect x="25" y="25" width="17" height="17" rx="5" fill="#029caf" opacity=".38"></rect><circle cx="33.5" cy="14.5" r="8.5" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><rect x="6" y="6" width="17" height="17" rx="5" fill="#029caf" opacity=".38"></rect><rect x="6" y="25" width="17" height="17" rx="5" fill="#029caf" opacity=".38"></rect><rect x="25" y="25" width="17" height="17" rx="5" fill="#029caf" opacity=".38"></rect><circle cx="33.5" cy="14.5" r="8.5" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Matriz 2×2 onde um elemento virou círculo — o "a" do wordmark dentro da grade. Simples e com assinatura.</p>
+</div>
+</div>
+
+</div>
+<p class="dv-next">É só dizer o número — eu aplico no sistema (sidebar), gero o favicon.svg e monto o lockup horizontal e vertical.</p>
+</section>
+
+<section class="dv-turn" id="t9">
+<div class="dv-thd"><a class="dv-tid" href="#t9">9</a><span class="dv-tname">Mais seis ideias</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="9a">
+<div class="dv-olabel"><a class="dv-oid" href="#9a">9a</a>Rede assimétrica</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M18 26 35 13M18 26l20 5M18 26l7 14" stroke="#029caf" stroke-width="2.6" stroke-linecap="round" opacity=".4"></path><circle cx="35" cy="13" r="4.6" fill="#029caf" opacity=".45"></circle><circle cx="38" cy="31" r="4.6" fill="#029caf" opacity=".45"></circle><circle cx="25" cy="40" r="4.6" fill="#029caf" opacity=".45"></circle><circle cx="18" cy="26" r="8.4" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M18 26 35 13M18 26l20 5M18 26l7 14" stroke="#029caf" stroke-width="2.6" stroke-linecap="round" opacity=".4"></path><circle cx="35" cy="13" r="4.6" fill="#029caf" opacity=".45"></circle><circle cx="38" cy="31" r="4.6" fill="#029caf" opacity=".45"></circle><circle cx="25" cy="40" r="4.6" fill="#029caf" opacity=".45"></circle><circle cx="18" cy="26" r="8.4" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">O núcleo fora do centro e os satélites em posições livres — rede de verdade, não grade simétrica.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="9b">
+<div class="dv-olabel"><a class="dv-oid" href="#9b">9b</a>Célula</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M24 5.5 40 14.75v18.5L24 42.5 8 33.25v-18.5L24 5.5Z" stroke="#029caf" stroke-width="3.4" stroke-linejoin="round" opacity=".4"></path><path d="M24 16 31 20v8l-7 4-7-4v-8l7-4Z" fill="#029caf"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M24 5.5 40 14.75v18.5L24 42.5 8 33.25v-18.5L24 5.5Z" stroke="#029caf" stroke-width="3.4" stroke-linejoin="round" opacity=".4"></path><path d="M24 16 31 20v8l-7 4-7-4v-8l7-4Z" fill="#029caf"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Hexágono dentro de hexágono: a matriz como célula-mãe de uma colmeia de revendas. Geometria forte e rara.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="9c">
+<div class="dv-olabel"><a class="dv-oid" href="#9c">9c</a>Σ — a soma de tudo</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M36 9H13l12 15-12 15h23" stroke="#029caf" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="25" cy="24" r="3.2" fill="#029caf" opacity=".45"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M36 9H13l12 15-12 15h23" stroke="#029caf" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="25" cy="24" r="3.2" fill="#029caf" opacity=".45"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">O somatório: a matriz é o lugar onde todo o resultado das revendas se soma. Simples e inconfundível.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="9d">
+<div class="dv-olabel"><a class="dv-oid" href="#9d">9d</a>Ciclo mensal</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M38 18A15.5 15.5 0 0 0 9.5 21" stroke="#029caf" stroke-width="3.8" stroke-linecap="round" opacity=".45"></path><path d="M10 30a15.5 15.5 0 0 0 28.5-3" stroke="#029caf" stroke-width="3.8" stroke-linecap="round" opacity=".45"></path><path d="M31 17.5h7.5V10M17 30.5H9.5V38" stroke="#029caf" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" opacity=".45"></path><circle cx="24" cy="24" r="5.4" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M38 18A15.5 15.5 0 0 0 9.5 21" stroke="#029caf" stroke-width="3.8" stroke-linecap="round" opacity=".45"></path><path d="M10 30a15.5 15.5 0 0 0 28.5-3" stroke="#029caf" stroke-width="3.8" stroke-linecap="round" opacity=".45"></path><path d="M31 17.5h7.5V10M17 30.5H9.5V38" stroke="#029caf" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" opacity=".45"></path><circle cx="24" cy="24" r="5.4" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Recorrência: o fechamento que roda todo mês em volta do núcleo. Fala de MRR sem desenhar dinheiro.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="9e">
+<div class="dv-olabel"><a class="dv-oid" href="#9e">9e</a>Base — a matriz sustenta</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><rect x="10" y="10" width="7.5" height="21" rx="3.75" fill="#029caf" opacity=".4"></rect><rect x="20.5" y="5" width="7.5" height="26" rx="3.75" fill="#029caf" opacity=".55"></rect><rect x="31" y="14" width="7.5" height="17" rx="3.75" fill="#029caf" opacity=".4"></rect><rect x="6" y="35" width="36" height="8" rx="4" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><rect x="10" y="10" width="7.5" height="21" rx="3.75" fill="#029caf" opacity=".4"></rect><rect x="20.5" y="5" width="7.5" height="26" rx="3.75" fill="#029caf" opacity=".55"></rect><rect x="31" y="14" width="7.5" height="17" rx="3.75" fill="#029caf" opacity=".4"></rect><rect x="6" y="35" width="36" height="8" rx="4" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Os produtos em cima, a matriz como base sólida embaixo. Boa metáfora e ótima leitura em tamanho pequeno.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="9f">
+<div class="dv-olabel"><a class="dv-oid" href="#9f">9f</a>Ponto de origem</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><circle cx="21" cy="27" r="17" stroke="#029caf" stroke-width="2.8" opacity=".25"></circle><circle cx="22.5" cy="25.5" r="10" stroke="#029caf" stroke-width="3.2" opacity=".5"></circle><circle cx="24" cy="24" r="5" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><circle cx="21" cy="27" r="17" stroke="#029caf" stroke-width="2.8" opacity=".25"></circle><circle cx="22.5" cy="25.5" r="10" stroke="#029caf" stroke-width="3.2" opacity=".5"></circle><circle cx="24" cy="24" r="5" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Anéis excêntricos saindo de um ponto — alcance a partir da origem. O mais suave e o mais fácil de animar.</p>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Sugestões: "variações do <a class="dv-oid" href="#9b">9b</a>" · "aplicar <a class="dv-oid" href="#9c">9c</a> no sistema" · "junta <a class="dv-oid" href="#9e">9e</a> com <a class="dv-oid" href="#8b">8b</a>"</p>
+</section>
+
+<section class="dv-turn" id="t8">
+<div class="dv-thd"><a class="dv-tid" href="#t8">8</a><span class="dv-tname">Novas direções — linha de colchetes (<a class="dv-oid" href="#7a">7</a>) descartada</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="8a">
+<div class="dv-olabel"><a class="dv-oid" href="#8a">8a</a>Monograma AM</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M5 39 13.5 11 22 39M9 31h9" stroke="#029caf" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"></path><path d="M27 39V13l8 12 8-12v26" stroke="#029caf" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" opacity=".7"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M5 39 13.5 11 22 39M9 31h9" stroke="#029caf" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"></path><path d="M27 39V13l8 12 8-12v26" stroke="#029caf" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" opacity=".7"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">A + M nas mesmas proporções do wordmark. Seguro, direto e fácil de defender internamente.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="8b">
+<div class="dv-olabel"><a class="dv-oid" href="#8b">8b</a>M em barras — dado vira letra</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><rect x="6" y="6" width="7.5" height="36" rx="3.75" fill="#029caf"></rect><rect x="16.5" y="19" width="7.5" height="23" rx="3.75" fill="#029caf" opacity=".42"></rect><rect x="27" y="19" width="7.5" height="23" rx="3.75" fill="#029caf" opacity=".42"></rect><rect x="37.5" y="6" width="7.5" height="36" rx="3.75" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><rect x="6" y="6" width="7.5" height="36" rx="3.75" fill="#029caf"></rect><rect x="16.5" y="19" width="7.5" height="23" rx="3.75" fill="#029caf" opacity=".42"></rect><rect x="27" y="19" width="7.5" height="23" rx="3.75" fill="#029caf" opacity=".42"></rect><rect x="37.5" y="6" width="7.5" height="36" rx="3.75" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Quatro colunas com alturas de dado que desenham um M implícito. É gestão financeira em uma forma só.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="8c">
+<div class="dv-olabel"><a class="dv-oid" href="#8c">8c</a>Radial — tudo converge</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M24 5v9M24 34v9M5.4 14.5l7.8 4.5M34.8 29l7.8 4.5M5.4 33.5l7.8-4.5M34.8 19l7.8-4.5" stroke="#029caf" stroke-width="3.4" stroke-linecap="round" opacity=".38"></path><circle cx="24" cy="24" r="8" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M24 5v9M24 34v9M5.4 14.5l7.8 4.5M34.8 29l7.8 4.5M5.4 33.5l7.8-4.5M34.8 19l7.8-4.5" stroke="#029caf" stroke-width="3.4" stroke-linecap="round" opacity=".38"></path><circle cx="24" cy="24" r="8" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Seis linhas convergindo num núcleo. Mesma ideia do <a class="dv-oid" href="#2a">2a</a>, mas com energia e sem parecer grade.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="8d">
+<div class="dv-olabel"><a class="dv-oid" href="#8d">8d</a>Canto aberto</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M27 7H14a7 7 0 0 0-7 7v20a7 7 0 0 0 7 7h20a7 7 0 0 0 7-7V21" stroke="#029caf" stroke-width="4.6" stroke-linecap="round"></path><rect x="30" y="5" width="13" height="13" rx="4.5" fill="#029caf" opacity=".42"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M27 7H14a7 7 0 0 0-7 7v20a7 7 0 0 0 7 7h20a7 7 0 0 0 7-7V21" stroke="#029caf" stroke-width="4.6" stroke-linecap="round"></path><rect x="30" y="5" width="13" height="13" rx="4.5" fill="#029caf" opacity=".42"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Um módulo que se desprende da matriz — é a revenda saindo da casa. Silhueta simples e original.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="8e">
+<div class="dv-olabel"><a class="dv-oid" href="#8e">8e</a>Quadrantes</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="17.5" stroke="#029caf" stroke-width="3.4" opacity=".35"></circle><path d="M24 6.5a17.5 17.5 0 0 1 17.5 17.5H24V6.5Z" fill="#029caf"></path><path d="M24 6.5v35M6.5 24h35" stroke="#029caf" stroke-width="3.4" opacity=".35" stroke-linecap="round"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="17.5" stroke="#029caf" stroke-width="3.4" opacity=".35"></circle><path d="M24 6.5a17.5 17.5 0 0 1 17.5 17.5H24V6.5Z" fill="#029caf"></path><path d="M24 6.5v35M6.5 24h35" stroke="#029caf" stroke-width="3.4" opacity=".35" stroke-linecap="round"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Círculo em quatro quadrantes com um preenchido — participação, que é o que a matriz mede o dia todo.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="8f">
+<div class="dv-olabel"><a class="dv-oid" href="#8f">8f</a>Convergência</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M6 8l14 12L6 32" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M42 8L28 20l14 12" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><rect x="18" y="34" width="12" height="9" rx="4.5" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M6 8l14 12L6 32" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><path d="M42 8L28 20l14 12" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"></path><rect x="18" y="34" width="12" height="9" rx="4.5" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Dois lados apontando para uma base sólida: o faturamento das revendas caindo na matriz.</p>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Sugestões: "gostei do <a class="dv-oid" href="#8b">8b</a>, faz variações" · "aplicar <a class="dv-oid" href="#8d">8d</a> no sistema" · "nenhuma dessas, tenta outra linha"</p>
+</section>
+
+<section class="dv-turn" id="t7">
+<div class="dv-thd"><a class="dv-tid" href="#t7">7</a><span class="dv-tname">Notação de matriz (colchetes) + α de Alfa</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="7a">
+<div class="dv-olabel"><a class="dv-oid" href="#7a">7a</a>[α] — colchetes e alfa em traço</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M13 7H8.5A2.5 2.5 0 0 0 6 9.5v29A2.5 2.5 0 0 0 8.5 41H13M35 7h4.5A2.5 2.5 0 0 1 42 9.5v29a2.5 2.5 0 0 1-2.5 2.5H35" stroke="#029caf" stroke-width="3.2" stroke-linecap="round" opacity=".45"></path><circle cx="21.5" cy="26" r="6.6" stroke="#029caf" stroke-width="3.4"></circle><path d="M28.5 17c-3.6 5.4-3.6 12.6 2.6 18.4" stroke="#029caf" stroke-width="3.4" stroke-linecap="round"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M13 7H8.5A2.5 2.5 0 0 0 6 9.5v29A2.5 2.5 0 0 0 8.5 41H13M35 7h4.5A2.5 2.5 0 0 1 42 9.5v29a2.5 2.5 0 0 1-2.5 2.5H35" stroke="#029caf" stroke-width="3.2" stroke-linecap="round" opacity=".45"></path><circle cx="21.5" cy="26" r="6.6" stroke="#029caf" stroke-width="3.4"></circle><path d="M28.5 17c-3.6 5.4-3.6 12.6 2.6 18.4" stroke="#029caf" stroke-width="3.4" stroke-linecap="round"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">A leitura mais direta possível: "a matriz do Alfa", escrita em notação matemática.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="7b">
+<div class="dv-olabel"><a class="dv-oid" href="#7b">7b</a>[ ⠿ ] — colchetes e os elementos</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M15 7h-5.5A2.5 2.5 0 0 0 7 9.5v29A2.5 2.5 0 0 0 9.5 41H15M33 7h5.5A2.5 2.5 0 0 1 41 9.5v29a2.5 2.5 0 0 1-2.5 2.5H33" stroke="#029caf" stroke-width="3.2" stroke-linecap="round" opacity=".45"></path><circle cx="20" cy="19" r="4.2" fill="#029caf"></circle><circle cx="28" cy="19" r="4.2" fill="#029caf" opacity=".38"></circle><circle cx="20" cy="29" r="4.2" fill="#029caf" opacity=".38"></circle><circle cx="28" cy="29" r="4.2" fill="#029caf" opacity=".38"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M15 7h-5.5A2.5 2.5 0 0 0 7 9.5v29A2.5 2.5 0 0 0 9.5 41H15M33 7h5.5A2.5 2.5 0 0 1 41 9.5v29a2.5 2.5 0 0 1-2.5 2.5H33" stroke="#029caf" stroke-width="3.2" stroke-linecap="round" opacity=".45"></path><circle cx="20" cy="19" r="4.2" fill="#029caf"></circle><circle cx="28" cy="19" r="4.2" fill="#029caf" opacity=".38"></circle><circle cx="20" cy="29" r="4.2" fill="#029caf" opacity=".38"></circle><circle cx="28" cy="29" r="4.2" fill="#029caf" opacity=".38"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Junta a família de pontos que você gostou (<a class="dv-oid" href="#2a">2a</a>) com a notação: os elementos a₁₁…a₂₂ entre colchetes, o primeiro sólido.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="7c">
+<div class="dv-olabel"><a class="dv-oid" href="#7c">7c</a>[α] em massa</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M13 6H9a3 3 0 0 0-3 3v30a3 3 0 0 0 3 3h4M35 6h4a3 3 0 0 1 3 3v30a3 3 0 0 1-3 3h-4" stroke="#029caf" stroke-width="4.6" stroke-linecap="round" opacity=".3"></path><circle cx="21.5" cy="26" r="6.2" stroke="#029caf" stroke-width="5.4"></circle><path d="M28.5 17.5c-3.4 5.2-3.4 12.2 2.4 17.8" stroke="#029caf" stroke-width="5.4" stroke-linecap="round"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M13 6H9a3 3 0 0 0-3 3v30a3 3 0 0 0 3 3h4M35 6h4a3 3 0 0 1 3 3v30a3 3 0 0 1-3 3h-4" stroke="#029caf" stroke-width="4.6" stroke-linecap="round" opacity=".3"></path><circle cx="21.5" cy="26" r="6.2" stroke="#029caf" stroke-width="5.4"></circle><path d="M28.5 17.5c-3.4 5.2-3.4 12.2 2.4 17.8" stroke="#029caf" stroke-width="5.4" stroke-linecap="round"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Mesmo conceito com traço pesado — acompanha melhor o peso do wordmark e aguenta tamanhos pequenos.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="7d">
+<div class="dv-olabel"><a class="dv-oid" href="#7d">7d</a>|α| — barras de determinante</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M8 8v32M40 8v32" stroke="#029caf" stroke-width="3.4" stroke-linecap="round" opacity=".42"></path><circle cx="21.5" cy="26" r="6.6" stroke="#029caf" stroke-width="3.4"></circle><path d="M28.5 17c-3.6 5.4-3.6 12.6 2.6 18.4" stroke="#029caf" stroke-width="3.4" stroke-linecap="round"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M8 8v32M40 8v32" stroke="#029caf" stroke-width="3.4" stroke-linecap="round" opacity=".42"></path><circle cx="21.5" cy="26" r="6.6" stroke="#029caf" stroke-width="3.4"></circle><path d="M28.5 17c-3.6 5.4-3.6 12.6 2.6 18.4" stroke="#029caf" stroke-width="3.4" stroke-linecap="round"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Notação de determinante — o "valor" da matriz. Mais discreto e mais fácil de aplicar em documentos.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="7e">
+<div class="dv-olabel"><a class="dv-oid" href="#7e">7e</a>Bloco com [α] vazado</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M5 13a8 8 0 0 1 8-8h22a8 8 0 0 1 8 8v22a8 8 0 0 1-8 8H13a8 8 0 0 1-8-8V13Z" fill="#029caf"></path><path d="M15 13h-3v22h3M33 13h3v22h-3" stroke="#fff" stroke-width="2.6" stroke-linecap="round" opacity=".55"></path><circle cx="22" cy="25.5" r="5.4" stroke="#fff" stroke-width="3"></circle><path d="M27.8 18.5c-2.9 4.4-2.9 10.2 2 14.8" stroke="#fff" stroke-width="3" stroke-linecap="round"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M5 13a8 8 0 0 1 8-8h22a8 8 0 0 1 8 8v22a8 8 0 0 1-8 8H13a8 8 0 0 1-8-8V13Z" fill="#029caf"></path><path d="M15 13h-3v22h3M33 13h3v22h-3" stroke="#fff" stroke-width="2.6" stroke-linecap="round" opacity=".55"></path><circle cx="22" cy="25.5" r="5.4" stroke="#fff" stroke-width="3"></circle><path d="M27.8 18.5c-2.9 4.4-2.9 10.2 2 14.8" stroke="#fff" stroke-width="3" stroke-linecap="round"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Versão "app icon": bloco cheio, notação vazada. Único do conjunto que funciona como avatar isolado.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="7f">
+<div class="dv-olabel"><a class="dv-oid" href="#7f">7f</a>Colchete único — assimétrico</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M19 7h-8a3 3 0 0 0-3 3v28a3 3 0 0 0 3 3h8" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" opacity=".38"></path><circle cx="27" cy="26" r="6.8" stroke="#029caf" stroke-width="4.4"></circle><path d="M34.4 16.5c-3.7 5.6-3.7 13 2.6 19" stroke="#029caf" stroke-width="4.4" stroke-linecap="round"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M19 7h-8a3 3 0 0 0-3 3v28a3 3 0 0 0 3 3h8" stroke="#029caf" stroke-width="4.4" stroke-linecap="round" opacity=".38"></path><circle cx="27" cy="26" r="6.8" stroke="#029caf" stroke-width="4.4"></circle><path d="M34.4 16.5c-3.7 5.6-3.7 13 2.6 19" stroke="#029caf" stroke-width="4.4" stroke-linecap="round"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Só o colchete de abertura, como se o wordmark fechasse a matriz. Funciona bem colado no logotipo.</p>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Sugestões: "aplicar <a class="dv-oid" href="#7c">7c</a> no sistema e no favicon" · "<a class="dv-oid" href="#7b">7b</a> com 3×3 elementos" · "ver <a class="dv-oid" href="#7a">7a</a> em fundo escuro"</p>
+</section>
+
+<section class="dv-turn" id="t6">
+<div class="dv-thd"><a class="dv-tid" href="#t6">6</a><span class="dv-tname">Seis direções novas — outras metáforas para a matriz</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="6a">
+<div class="dv-olabel"><a class="dv-oid" href="#6a">6a</a>Funil — muitas revendas, uma matriz</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M7 8h34L28 24v14l-8 5V24L7 8Z" fill="#029caf"></path><path d="M13 5h22" stroke="#029caf" stroke-width="3.2" stroke-linecap="round" opacity=".38"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M7 8h34L28 24v14l-8 5V24L7 8Z" fill="#029caf"></path><path d="M13 5h22" stroke="#029caf" stroke-width="3.2" stroke-linecap="round" opacity=".38"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Tudo entra por cima e sai consolidado — é literalmente o que o faturamento faz. Silhueta única.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="6b">
+<div class="dv-olabel"><a class="dv-oid" href="#6b">6b</a>Anel segmentado — o gráfico vira marca</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><g transform="rotate(-90 24 24)"><circle cx="24" cy="24" r="17" fill="none" stroke="#029caf" stroke-width="7" stroke-dasharray="42 4.8" stroke-dashoffset="0"></circle><circle cx="24" cy="24" r="17" fill="none" stroke="#029caf" stroke-width="7" stroke-dasharray="26 80" stroke-dashoffset="-48" opacity=".42"></circle><circle cx="24" cy="24" r="17" fill="none" stroke="#029caf" stroke-width="7" stroke-dasharray="16 90" stroke-dashoffset="-78" opacity=".24"></circle></g></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><g transform="rotate(-90 24 24)"><circle cx="24" cy="24" r="17" fill="none" stroke="#029caf" stroke-width="7" stroke-dasharray="42 4.8"></circle><circle cx="24" cy="24" r="17" fill="none" stroke="#029caf" stroke-width="7" stroke-dasharray="26 80" stroke-dashoffset="-48" opacity=".42"></circle><circle cx="24" cy="24" r="17" fill="none" stroke="#029caf" stroke-width="7" stroke-dasharray="16 90" stroke-dashoffset="-78" opacity=".24"></circle></g></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Pega emprestado o anel do ranking de sistemas — marca e produto falando a mesma língua.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="6c">
+<div class="dv-olabel"><a class="dv-oid" href="#6c">6c</a>Módulo destacado</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M6 12a6 6 0 0 1 6-6h13v13H6V12Zm0 17h19v13H12a6 6 0 0 1-6-6V29Z" fill="#029caf" opacity=".34"></path><rect x="29" y="6" width="13" height="13" rx="4" fill="#029caf" opacity=".34"></rect><rect x="29" y="27" width="15" height="15" rx="5" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M6 12a6 6 0 0 1 6-6h13v13H6V12Zm0 17h19v13H12a6 6 0 0 1-6-6V29Z" fill="#029caf" opacity=".34"></path><rect x="29" y="6" width="13" height="13" rx="4" fill="#029caf" opacity=".34"></rect><rect x="29" y="27" width="15" height="15" rx="5" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Uma grade onde um módulo cresce e sai do alinhamento — licenciamento e escala em uma forma só.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="6d">
+<div class="dv-olabel"><a class="dv-oid" href="#6d">6d</a>A em espaço negativo</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M6 14a8 8 0 0 1 8-8h20a8 8 0 0 1 8 8v20a8 8 0 0 1-8 8H14a8 8 0 0 1-8-8V14Z" fill="#029caf"></path><path d="M15 35l9-22 9 22M19.5 28h9" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M6 14a8 8 0 0 1 8-8h20a8 8 0 0 1 8 8v20a8 8 0 0 1-8 8H14a8 8 0 0 1-8-8V14Z" fill="#029caf"></path><path d="M15 35l9-22 9 22M19.5 28h9" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Bloco cheio com o A vazado. É o mais "app icon" de todos — e o único que sobrevive a 12px.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="6e">
+<div class="dv-olabel"><a class="dv-oid" href="#6e">6e</a>Malha — o cruzamento</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M17 5v38M31 5v38M5 17h38M5 31h38" stroke="#029caf" stroke-width="2.6" stroke-linecap="round" opacity=".32"></path><rect x="17" y="17" width="14" height="14" rx="4.5" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M17 5v38M31 5v38M5 17h38M5 31h38" stroke="#029caf" stroke-width="2.6" stroke-linecap="round" opacity=".32"></path><rect x="17" y="17" width="14" height="14" rx="4.5" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">A matriz no sentido literal: linhas e colunas com a célula central preenchida. Bem "planilha", no bom sentido.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="6f">
+<div class="dv-olabel"><a class="dv-oid" href="#6f">6f</a>Marca d'água — bloco com recorte de grade</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M6 13a7 7 0 0 1 7-7h22a7 7 0 0 1 7 7v22a7 7 0 0 1-7 7H13a7 7 0 0 1-7-7V13Z" fill="#029caf"></path><circle cx="16" cy="16" r="3.2" fill="#fff" opacity=".55"></circle><circle cx="32" cy="16" r="3.2" fill="#fff" opacity=".55"></circle><circle cx="16" cy="32" r="3.2" fill="#fff" opacity=".55"></circle><circle cx="32" cy="32" r="3.2" fill="#fff" opacity=".55"></circle><circle cx="24" cy="24" r="4.6" fill="#fff"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M6 13a7 7 0 0 1 7-7h22a7 7 0 0 1 7 7v22a7 7 0 0 1-7 7H13a7 7 0 0 1-7-7V13Z" fill="#029caf"></path><circle cx="16" cy="16" r="3.2" fill="#fff" opacity=".55"></circle><circle cx="32" cy="16" r="3.2" fill="#fff" opacity=".55"></circle><circle cx="16" cy="32" r="3.2" fill="#fff" opacity=".55"></circle><circle cx="32" cy="32" r="3.2" fill="#fff" opacity=".55"></circle><circle cx="24" cy="24" r="4.6" fill="#fff"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">A matriz de pontos invertida: bloco sólido, nós vazados. Versão "carimbo" para app e avatar.</p>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Sugestões: "aplicar <a class="dv-oid" href="#6a">6a</a>" · "variações do <a class="dv-oid" href="#6b">6b</a>" · "comparar <a class="dv-oid" href="#6d">6d</a>, <a class="dv-oid" href="#5a">5a</a> e <a class="dv-oid" href="#3a">3a</a> lado a lado em fundo escuro"</p>
+</section>
+
+<section class="dv-turn" id="t5">
+<div class="dv-thd"><a class="dv-tid" href="#t5">5</a><span class="dv-tname">Camadas sem o clichê da pilha isométrica — <a class="dv-oid" href="#4b">4b</a> descartado</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="5a">
+<div class="dv-olabel"><a class="dv-oid" href="#5a">5a</a>Camadas frontais deslocadas</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><rect x="6" y="30" width="26" height="8.5" rx="4.25" fill="#029caf" opacity=".24"></rect><rect x="12" y="19.5" width="30" height="8.5" rx="4.25" fill="#029caf" opacity=".5"></rect><rect x="6" y="9" width="36" height="8.5" rx="4.25" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><rect x="6" y="30" width="26" height="8.5" rx="4.25" fill="#029caf" opacity=".24"></rect><rect x="12" y="19.5" width="30" height="8.5" rx="4.25" fill="#029caf" opacity=".5"></rect><rect x="6" y="9" width="36" height="8.5" rx="4.25" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Vista frontal, larguras diferentes e assimetria — nada de perspectiva isométrica. Ecoa as barras dos rankings do painel.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="5b">
+<div class="dv-olabel"><a class="dv-oid" href="#5b">5b</a>Placa única com fenda</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M9 12a6 6 0 0 1 6-6h18a6 6 0 0 1 6 6v24a6 6 0 0 1-6 6H15a6 6 0 0 1-6-6V12Z" fill="#029caf"></path><path d="M9 22.5h30M18 33h21" stroke="#fff" stroke-width="3.4" stroke-linecap="round"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M9 12a6 6 0 0 1 6-6h18a6 6 0 0 1 6 6v24a6 6 0 0 1-6 6H15a6 6 0 0 1-6-6V12Z" fill="#029caf"></path><path d="M9 22.5h30M18 33h21" stroke="#fff" stroke-width="3.4" stroke-linecap="round"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">As camadas viram espaço negativo dentro de um bloco só. Silhueta forte, ótima em favicon. Precisa de fundo sólido para o vazado aparecer.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="5c">
+<div class="dv-olabel"><a class="dv-oid" href="#5c">5c</a>Leque — camadas em rotação</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><rect x="9" y="18" width="30" height="9" rx="4.5" fill="#029caf" opacity=".22" transform="rotate(-14 24 24)"></rect><rect x="9" y="18" width="30" height="9" rx="4.5" fill="#029caf" opacity=".5" transform="rotate(-7 24 24)"></rect><rect x="9" y="18" width="30" height="9" rx="4.5" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><rect x="9" y="18" width="30" height="9" rx="4.5" fill="#029caf" opacity=".22" transform="rotate(-14 24 24)"></rect><rect x="9" y="18" width="30" height="9" rx="4.5" fill="#029caf" opacity=".5" transform="rotate(-7 24 24)"></rect><rect x="9" y="18" width="30" height="9" rx="4.5" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Mesma ideia de consolidação, mas com rotação em vez de profundidade — assinatura própria e movimento.</p>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Sugestões: "aplicar <a class="dv-oid" href="#5a">5a</a> no sistema" · "<a class="dv-oid" href="#5c">5c</a> com menos rotação" · "voltar para a família de pontos (<a class="dv-oid" href="#3a">3a</a>)"</p>
+</section>
+
+<section class="dv-turn" id="t4">
+<div class="dv-thd"><a class="dv-tid" href="#t4">4</a><span class="dv-tname">Variações das camadas (<a class="dv-oid" href="#2e">2e</a>)</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="4a">
+<div class="dv-olabel"><a class="dv-oid" href="#4a">4a</a>Traço fino, respiro maior</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M24 5 43 14.5 24 24 5 14.5 24 5Z" fill="#029caf"></path><path d="M5 26.5 24 36l19-9.5" stroke="#029caf" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round" opacity=".5"></path><path d="M5 36 24 45.5 43 36" stroke="#029caf" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round" opacity=".24"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M24 5 43 14.5 24 24 5 14.5 24 5Z" fill="#029caf"></path><path d="M5 26.5 24 36l19-9.5" stroke="#029caf" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round" opacity=".5"></path><path d="M5 36 24 45.5 43 36" stroke="#029caf" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round" opacity=".24"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">O mesmo desenho do 2e, só que mais arejado — a placa sólida ganha protagonismo.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="4b">
+<div class="dv-olabel"><a class="dv-oid" href="#4b">4b</a>Três placas cheias</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M24 30 43 39 24 48 5 39 24 30Z" fill="#029caf" opacity=".22"></path><path d="M24 18 43 27 24 36 5 27 24 18Z" fill="#029caf" opacity=".48"></path><path d="M24 6 43 15 24 24 5 15 24 6Z" fill="#029caf"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M24 30 43 39 24 48 5 39 24 30Z" fill="#029caf" opacity=".22"></path><path d="M24 18 43 27 24 36 5 27 24 18Z" fill="#029caf" opacity=".48"></path><path d="M24 6 43 15 24 24 5 15 24 6Z" fill="#029caf"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Sem traços: só massa e opacidade. É o mais sólido do conjunto e o que melhor reduz.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="4c">
+<div class="dv-olabel"><a class="dv-oid" href="#4c">4c</a>Invertida — a base é a matriz</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M24 5 43 14.5 24 24 5 14.5 24 5Z" stroke="#029caf" stroke-width="3" stroke-linejoin="round" opacity=".35"></path><path d="M24 17 43 26 24 35 5 26 24 17Z" stroke="#029caf" stroke-width="3" stroke-linejoin="round" opacity=".6"></path><path d="M24 29 43 38 24 47 5 38 24 29Z" fill="#029caf"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M24 5 43 14.5 24 24 5 14.5 24 5Z" stroke="#029caf" stroke-width="3" stroke-linejoin="round" opacity=".35"></path><path d="M24 17 43 26 24 35 5 26 24 17Z" stroke="#029caf" stroke-width="3" stroke-linejoin="round" opacity=".6"></path><path d="M24 29 43 38 24 47 5 38 24 29Z" fill="#029caf"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Conta a história certa para a Alfa: as revendas em cima, a matriz sustentando embaixo.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="4d">
+<div class="dv-olabel"><a class="dv-oid" href="#4d">4d</a>Duas camadas — mínimo</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M24 9 43 19 24 29 5 19 24 9Z" fill="#029caf"></path><path d="M5 30 24 40l19-10" stroke="#029caf" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" opacity=".42"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M24 9 43 19 24 29 5 19 24 9Z" fill="#029caf"></path><path d="M5 30 24 40l19-10" stroke="#029caf" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" opacity=".42"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Menos é mais: uma placa e um eco. Melhor legibilidade em 16px de toda a família camadas.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="4e">
+<div class="dv-olabel"><a class="dv-oid" href="#4e">4e</a>Cantos suaves</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M24 6 43 15 24 24 5 15 24 6Z" fill="#029caf" stroke="#029caf" stroke-width="5" stroke-linejoin="round"></path><path d="M6 27 24 36l18-9" stroke="#029caf" stroke-width="4.6" stroke-linejoin="round" stroke-linecap="round" opacity=".45"></path><path d="M6 36.5 24 45.5l18-9" stroke="#029caf" stroke-width="4.6" stroke-linejoin="round" stroke-linecap="round" opacity=".2"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M24 6 43 15 24 24 5 15 24 6Z" fill="#029caf" stroke="#029caf" stroke-width="5" stroke-linejoin="round"></path><path d="M6 27 24 36l18-9" stroke="#029caf" stroke-width="4.6" stroke-linejoin="round" stroke-linecap="round" opacity=".45"></path><path d="M6 36.5 24 45.5l18-9" stroke="#029caf" stroke-width="4.6" stroke-linejoin="round" stroke-linecap="round" opacity=".2"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Traço grosso e pontas arredondadas — combina com o desenho gordinho do wordmark.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="4f">
+<div class="dv-olabel"><a class="dv-oid" href="#4f">4f</a>Camadas + núcleo</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M24 5 43 14.5 24 24 5 14.5 24 5Z" stroke="#029caf" stroke-width="3" stroke-linejoin="round" opacity=".45"></path><circle cx="24" cy="14.5" r="5.4" fill="#029caf"></circle><path d="M5 26.5 24 36l19-9.5" stroke="#029caf" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity=".45"></path><path d="M5 36 24 45.5 43 36" stroke="#029caf" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity=".22"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M24 5 43 14.5 24 24 5 14.5 24 5Z" stroke="#029caf" stroke-width="3" stroke-linejoin="round" opacity=".45"></path><circle cx="24" cy="14.5" r="5.4" fill="#029caf"></circle><path d="M5 26.5 24 36l19-9.5" stroke="#029caf" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity=".45"></path><path d="M5 36 24 45.5 43 36" stroke="#029caf" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity=".22"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Funde as duas famílias: o núcleo do <a class="dv-oid" href="#2a">2a</a> dentro da estrutura de camadas.</p>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Sugestões: "aplicar <a class="dv-oid" href="#4b">4b</a> no sistema" · "<a class="dv-oid" href="#4c">4c</a> com traço mais grosso" · "comparar <a class="dv-oid" href="#4b">4b</a> e <a class="dv-oid" href="#3a">3a</a> em fundo escuro"</p>
+</section>
+
+<section class="dv-turn" id="t3">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Variações da matriz de pontos (<a class="dv-oid" href="#2a">2a</a>)</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="3a">
+<div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Núcleo circular</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><circle cx="10" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="10" cy="24" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="24" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="10" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="24" r="7.6" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><circle cx="10" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="10" cy="24" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="24" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="10" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="24" r="7.6" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Tudo em círculo — a forma mais coerente e a que melhor combina com as curvas do wordmark.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="3b">
+<div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a>Só escala — mesma forma, núcleo maior</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><circle cx="10" cy="10" r="3.2" fill="#029caf"></circle><circle cx="24" cy="10" r="3.2" fill="#029caf"></circle><circle cx="38" cy="10" r="3.2" fill="#029caf"></circle><circle cx="10" cy="24" r="3.2" fill="#029caf"></circle><circle cx="38" cy="24" r="3.2" fill="#029caf"></circle><circle cx="10" cy="38" r="3.2" fill="#029caf"></circle><circle cx="24" cy="38" r="3.2" fill="#029caf"></circle><circle cx="38" cy="38" r="3.2" fill="#029caf"></circle><circle cx="24" cy="24" r="7.2" fill="#029caf"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><circle cx="10" cy="10" r="3.2" fill="#029caf"></circle><circle cx="24" cy="10" r="3.2" fill="#029caf"></circle><circle cx="38" cy="10" r="3.2" fill="#029caf"></circle><circle cx="10" cy="24" r="3.2" fill="#029caf"></circle><circle cx="38" cy="24" r="3.2" fill="#029caf"></circle><circle cx="10" cy="38" r="3.2" fill="#029caf"></circle><circle cx="24" cy="38" r="3.2" fill="#029caf"></circle><circle cx="38" cy="38" r="3.2" fill="#029caf"></circle><circle cx="24" cy="24" r="7.2" fill="#029caf"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Sem transparência: a hierarquia vem só do tamanho. Imprime e grava em uma cor só.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="3c">
+<div class="dv-olabel"><a class="dv-oid" href="#3c">3c</a>Dissolvendo nas bordas</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><circle cx="10" cy="10" r="3.1" fill="#029caf" opacity=".2"></circle><circle cx="38" cy="10" r="3.1" fill="#029caf" opacity=".2"></circle><circle cx="10" cy="38" r="3.1" fill="#029caf" opacity=".2"></circle><circle cx="38" cy="38" r="3.1" fill="#029caf" opacity=".2"></circle><circle cx="24" cy="10" r="3.5" fill="#029caf" opacity=".5"></circle><circle cx="10" cy="24" r="3.5" fill="#029caf" opacity=".5"></circle><circle cx="38" cy="24" r="3.5" fill="#029caf" opacity=".5"></circle><circle cx="24" cy="38" r="3.5" fill="#029caf" opacity=".5"></circle><rect x="17" y="17" width="14" height="14" rx="4.6" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><circle cx="10" cy="10" r="3.1" fill="#029caf" opacity=".2"></circle><circle cx="38" cy="10" r="3.1" fill="#029caf" opacity=".2"></circle><circle cx="10" cy="38" r="3.1" fill="#029caf" opacity=".2"></circle><circle cx="38" cy="38" r="3.1" fill="#029caf" opacity=".2"></circle><circle cx="24" cy="10" r="3.5" fill="#029caf" opacity=".5"></circle><circle cx="10" cy="24" r="3.5" fill="#029caf" opacity=".5"></circle><circle cx="38" cy="24" r="3.5" fill="#029caf" opacity=".5"></circle><circle cx="24" cy="38" r="3.5" fill="#029caf" opacity=".5"></circle><rect x="17" y="17" width="14" height="14" rx="4.6" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Gradiente de peso do centro para fora — sugere alcance da matriz. Cuidado em fundo escuro.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="3d">
+<div class="dv-olabel"><a class="dv-oid" href="#3d">3d</a>Mínimo — só os quatro cantos</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><circle cx="10.5" cy="10.5" r="4" fill="#029caf" opacity=".4"></circle><circle cx="37.5" cy="10.5" r="4" fill="#029caf" opacity=".4"></circle><circle cx="10.5" cy="37.5" r="4" fill="#029caf" opacity=".4"></circle><circle cx="37.5" cy="37.5" r="4" fill="#029caf" opacity=".4"></circle><rect x="16.5" y="16.5" width="15" height="15" rx="5" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><circle cx="10.5" cy="10.5" r="4" fill="#029caf" opacity=".4"></circle><circle cx="37.5" cy="10.5" r="4" fill="#029caf" opacity=".4"></circle><circle cx="10.5" cy="37.5" r="4" fill="#029caf" opacity=".4"></circle><circle cx="37.5" cy="37.5" r="4" fill="#029caf" opacity=".4"></circle><rect x="16.5" y="16.5" width="15" height="15" rx="5" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">O mais limpo do conjunto e o que menos entope em 16px. Perde um pouco da ideia de "grade".</p>
+</div>
+</div>
+
+<div class="dv-opt" id="3e">
+<div class="dv-olabel"><a class="dv-oid" href="#3e">3e</a>Grade densa 4×4</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><circle cx="9" cy="9" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="19" cy="9" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="29" cy="9" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="39" cy="9" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="9" cy="19" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="39" cy="19" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="9" cy="29" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="39" cy="29" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="9" cy="39" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="19" cy="39" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="29" cy="39" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="39" cy="39" r="2.5" fill="#029caf" opacity=".35"></circle><rect x="15" y="15" width="18" height="18" rx="6" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><circle cx="9" cy="9" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="19" cy="9" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="29" cy="9" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="39" cy="9" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="9" cy="19" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="39" cy="19" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="9" cy="29" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="39" cy="29" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="9" cy="39" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="19" cy="39" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="29" cy="39" r="2.5" fill="#029caf" opacity=".35"></circle><circle cx="39" cy="39" r="2.5" fill="#029caf" opacity=".35"></circle><rect x="15" y="15" width="18" height="18" rx="6" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Mais nós ao redor = mais escala. Fecha bem em tamanho grande; em 16px os pontos somem.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="3f">
+<div class="dv-olabel"><a class="dv-oid" href="#3f">3f</a>Núcleo vazado</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><circle cx="10" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="10" cy="24" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="24" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="10" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="24" r="7.4" stroke="#029caf" stroke-width="3.4"></circle></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><circle cx="10" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="10" cy="24" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="24" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="10" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="24" r="7.4" stroke="#029caf" stroke-width="3.4"></circle></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Núcleo em contorno — mais leve, combina com interfaces de traço fino. Perde peso no favicon.</p>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Sugestões: "usar <a class="dv-oid" href="#3a">3a</a> no sistema e no favicon" · "<a class="dv-oid" href="#3d">3d</a> mas com os cantos mais fortes" · "ver <a class="dv-oid" href="#3a">3a</a> em fundo escuro"</p>
+</section>
+
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Mais opções de ícone — sem fundo, ao lado do wordmark oficial (o escolhido antes foi <a class="dv-oid" href="#1a">1a</a>)</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2a">
+<div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Matriz de pontos — núcleo sólido</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><circle cx="10" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="10" cy="24" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="24" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="10" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><rect x="17" y="17" width="14" height="14" rx="4.5" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><circle cx="10" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="10" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="10" cy="24" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="24" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="10" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="24" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><circle cx="38" cy="38" r="3.4" fill="#029caf" opacity=".38"></circle><rect x="17" y="17" width="14" height="14" rx="4.5" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Mais leve que o 1a: os satélites viram pontos e o núcleo domina. Ótimo em 16px.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="2b">
+<div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Quadrante — matriz dividida</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><rect x="5.5" y="5.5" width="37" height="37" rx="10" stroke="#029caf" stroke-width="3.2" opacity=".38"></rect><path d="M24 5.5V24h18.5" stroke="#029caf" stroke-width="3.2" opacity=".38" stroke-linecap="round"></path><path d="M24 24h8.5a10 10 0 0 1 10 10v-2a10 10 0 0 1-10 10H24V24Z" fill="#029caf"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><rect x="5.5" y="5.5" width="37" height="37" rx="10" stroke="#029caf" stroke-width="3.2" opacity=".38"></rect><path d="M24 5.5V24h18.5" stroke="#029caf" stroke-width="3.2" opacity=".38" stroke-linecap="round"></path><path d="M24 24h8.5a10 10 0 0 1 10 10v-2a10 10 0 0 1-10 10H24V24Z" fill="#029caf"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Um quadrante preenchido dentro da matriz — leitura de "painel" e de participação.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="2c">
+<div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>A modular — recorte negativo</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M11 40 22.2 9.6a2 2 0 0 1 3.6 0L37 40" stroke="#029caf" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round"></path><rect x="17.5" y="27" width="13" height="5.2" rx="2.6" fill="#029caf" opacity=".4"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M11 40 22.2 9.6a2 2 0 0 1 3.6 0L37 40" stroke="#029caf" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round"></path><rect x="17.5" y="27" width="13" height="5.2" rx="2.6" fill="#029caf" opacity=".4"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Conversa direto com o "A" do wordmark. O mais óbvio da família — e o mais fácil de lembrar.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="2d">
+<div class="dv-olabel"><a class="dv-oid" href="#2d">2d</a>Losango — matriz girada</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><g transform="rotate(45 24 24)"><rect x="8" y="8" width="13" height="13" rx="3.6" fill="#029caf" opacity=".34"></rect><rect x="27" y="8" width="13" height="13" rx="3.6" fill="#029caf" opacity=".34"></rect><rect x="8" y="27" width="13" height="13" rx="3.6" fill="#029caf" opacity=".34"></rect><rect x="27" y="27" width="13" height="13" rx="3.6" fill="#029caf"></rect></g></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><g transform="rotate(45 24 24)"><rect x="8" y="8" width="13" height="13" rx="3.6" fill="#029caf" opacity=".34"></rect><rect x="27" y="8" width="13" height="13" rx="3.6" fill="#029caf" opacity=".34"></rect><rect x="8" y="27" width="13" height="13" rx="3.6" fill="#029caf" opacity=".34"></rect><rect x="27" y="27" width="13" height="13" rx="3.6" fill="#029caf"></rect></g></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Quatro módulos em losango, um sólido. Dá movimento sem perder a geometria.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="2e">
+<div class="dv-olabel"><a class="dv-oid" href="#2e">2e</a>Camadas — matriz que consolida</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M24 6 42 15 24 24 6 15 24 6Z" fill="#029caf"></path><path d="M6 24l18 9 18-9" stroke="#029caf" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" opacity=".55"></path><path d="M6 33l18 9 18-9" stroke="#029caf" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" opacity=".28"></path></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M24 6 42 15 24 24 6 15 24 6Z" fill="#029caf"></path><path d="M6 24l18 9 18-9" stroke="#029caf" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" opacity=".55"></path><path d="M6 33l18 9 18-9" stroke="#029caf" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" opacity=".28"></path></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">Metáfora de consolidação: várias camadas (revendas) sob uma só. Menos "grade", mais produto.</p>
+</div>
+</div>
+
+<div class="dv-opt" id="2f">
+<div class="dv-olabel"><a class="dv-oid" href="#2f">2f</a>Colchete — matriz que agrupa</div>
+<div class="dv-card" style="width:330px;box-sizing:border-box;padding:26px 28px;background:#fff">
+<svg width="56" height="56" viewBox="0 0 48 48" fill="none"><path d="M17 7h-6a4 4 0 0 0-4 4v26a4 4 0 0 0 4 4h6M31 7h6a4 4 0 0 1 4 4v26a4 4 0 0 1-4 4h-6" stroke="#029caf" stroke-width="3.4" stroke-linecap="round" opacity=".42"></path><rect x="17.5" y="17.5" width="13" height="13" rx="4" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:center;gap:11px;margin:22px 0 16px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><path d="M17 7h-6a4 4 0 0 0-4 4v26a4 4 0 0 0 4 4h6M31 7h6a4 4 0 0 1 4 4v26a4 4 0 0 1-4 4h-6" stroke="#029caf" stroke-width="3.4" stroke-linecap="round" opacity=".42"></path><rect x="17.5" y="17.5" width="13" height="13" rx="4" fill="#029caf"></rect></svg>
+<img src="uploads/alfamatriz-6aa3d8a2.png" alt="AlfaMatriz" style="height:17px;width:auto;display:block" />
+</div>
+<p class="dv-note">O núcleo entre colchetes — "tudo o que está dentro da matriz". Bom para uso isolado como avatar.</p>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Diga o número para eu aplicar no sistema: "usar <a class="dv-oid" href="#2c">2c</a>" · "variações do <a class="dv-oid" href="#2a">2a</a>" · "quero ver todos em fundo escuro"</p>
+</section>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Marca + três direções para o Painel Financeiro</span></div>
+
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Sistema de marca — três conceitos de ícone no padrão ícone + wordmark do AlfaGym. Recomendo o primeiro.</div>
+<div class="dv-card" style="width:640px;box-sizing:border-box;padding:36px 38px 32px;background:#ffffff">
+
+<p style="margin:0 0 26px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8c9a9e">Conceito 01 · Matriz</p>
+<div style="display:flex;align-items:center;gap:16px;margin-bottom:10px">
+<svg width="44" height="44" viewBox="0 0 48 48" fill="none"><rect x="4" y="4" width="13" height="13" rx="3.5" fill="#029caf" opacity=".3"></rect><rect x="4" y="31" width="13" height="13" rx="3.5" fill="#029caf" opacity=".3"></rect><rect x="31" y="4" width="13" height="13" rx="3.5" fill="#029caf" opacity=".3"></rect><rect x="31" y="31" width="13" height="13" rx="3.5" fill="#029caf" opacity=".3"></rect><rect x="17.5" y="17.5" width="13" height="13" rx="3.5" fill="#029caf"></rect><path d="M17.5 10.5h13M17.5 37.5h13M10.5 17.5v13M37.5 17.5v13" stroke="#029caf" stroke-width="1.6" stroke-linecap="round" opacity=".45"></path></svg>
+<div style="display:flex;align-items:baseline;gap:0;font-family:'Space Grotesk',sans-serif;font-size:27px;letter-spacing:-.02em;color:#0d1416"><span style="font-weight:400">Alfa</span><span style="font-weight:700">Matriz</span></div>
+</div>
+<p class="dv-note">Quatro nós periféricos (as revendas) ligados a um núcleo sólido — a matriz. Lê bem em 16px e vira favicon direto.</p>
+
+<div style="height:1px;background:rgba(0,0,0,.08);margin:30px 0"></div>
+
+<p style="margin:0 0 26px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8c9a9e">Conceito 02 · A geométrico</p>
+<div style="display:flex;align-items:center;gap:16px;margin-bottom:10px">
+<svg width="44" height="44" viewBox="0 0 48 48" fill="none"><rect x="2" y="2" width="44" height="44" rx="12" fill="#029caf" opacity=".12"></rect><path d="M13 35 24 12l11 23" stroke="#029caf" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M18.5 28h11" stroke="#029caf" stroke-width="3.4" stroke-linecap="round"></path></svg>
+<div style="display:flex;align-items:baseline;gap:0;font-family:'Space Grotesk',sans-serif;font-size:27px;letter-spacing:-.02em;color:#0d1416"><span style="font-weight:400">Alfa</span><span style="font-weight:700">Matriz</span></div>
+</div>
+<p class="dv-note">Monograma A com o traço horizontal virando barra de nível — família toda pode herdar o mesmo container arredondado.</p>
+
+<div style="height:1px;background:rgba(0,0,0,.08);margin:30px 0"></div>
+
+<p style="margin:0 0 26px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8c9a9e">Conceito 03 · Hub</p>
+<div style="display:flex;align-items:center;gap:16px;margin-bottom:10px">
+<svg width="44" height="44" viewBox="0 0 48 48" fill="none"><path d="M24 24 10 12M24 24l14-12M24 24l-14 12M24 24l14 12" stroke="#029caf" stroke-width="1.8" stroke-linecap="round" opacity=".45"></path><circle cx="24" cy="24" r="7.5" fill="#029caf"></circle><circle cx="9.5" cy="11.5" r="4" fill="#029caf" opacity=".45"></circle><circle cx="38.5" cy="11.5" r="4" fill="#029caf" opacity=".45"></circle><circle cx="9.5" cy="36.5" r="4" fill="#029caf" opacity=".45"></circle><circle cx="38.5" cy="36.5" r="4" fill="#029caf" opacity=".45"></circle></svg>
+<div style="display:flex;align-items:baseline;gap:0;font-family:'Space Grotesk',sans-serif;font-size:27px;letter-spacing:-.02em;color:#0d1416"><span style="font-weight:400">Alfa</span><span style="font-weight:700">Matriz</span></div>
+</div>
+<p class="dv-note">Mais orgânico, ótimo para material comercial — porém o mais frágil em tamanho pequeno.</p>
+
+<div style="height:1px;background:rgba(0,0,0,.08);margin:30px 0"></div>
+
+<p style="margin:0 0 16px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8c9a9e">Aplicações do conceito 01</p>
+<div style="display:flex;gap:12px;align-items:stretch;flex-wrap:wrap">
+<div style="flex:1;min-width:180px;background:#0a0f11;border-radius:10px;padding:20px;display:flex;align-items:center;gap:12px">
+<svg width="30" height="30" viewBox="0 0 48 48" fill="none"><rect x="4" y="4" width="13" height="13" rx="3.5" fill="#2ec9d9" opacity=".35"></rect><rect x="4" y="31" width="13" height="13" rx="3.5" fill="#2ec9d9" opacity=".35"></rect><rect x="31" y="4" width="13" height="13" rx="3.5" fill="#2ec9d9" opacity=".35"></rect><rect x="31" y="31" width="13" height="13" rx="3.5" fill="#2ec9d9" opacity=".35"></rect><rect x="17.5" y="17.5" width="13" height="13" rx="3.5" fill="#2ec9d9"></rect></svg>
+<div style="display:flex;align-items:baseline;font-family:'Space Grotesk',sans-serif;font-size:18px;letter-spacing:-.01em;color:#e8f0f2"><span style="font-weight:400">Alfa</span><span style="font-weight:700">Matriz</span></div>
+</div>
+<div style="width:64px;height:64px;border-radius:15px;background:#029caf;display:flex;align-items:center;justify-content:center">
+<svg width="34" height="34" viewBox="0 0 48 48" fill="none"><rect x="4" y="4" width="13" height="13" rx="3.5" fill="#fff" opacity=".45"></rect><rect x="4" y="31" width="13" height="13" rx="3.5" fill="#fff" opacity=".45"></rect><rect x="31" y="4" width="13" height="13" rx="3.5" fill="#fff" opacity=".45"></rect><rect x="31" y="31" width="13" height="13" rx="3.5" fill="#fff" opacity=".45"></rect><rect x="17.5" y="17.5" width="13" height="13" rx="3.5" fill="#fff"></rect></svg>
+</div>
+<div style="width:64px;height:64px;border-radius:15px;background:#0a0f11;display:flex;align-items:center;justify-content:center">
+<svg width="20" height="20" viewBox="0 0 48 48" fill="none"><rect x="4" y="4" width="13" height="13" rx="3.5" fill="#2ec9d9" opacity=".35"></rect><rect x="4" y="31" width="13" height="13" rx="3.5" fill="#2ec9d9" opacity=".35"></rect><rect x="31" y="4" width="13" height="13" rx="3.5" fill="#2ec9d9" opacity=".35"></rect><rect x="31" y="31" width="13" height="13" rx="3.5" fill="#2ec9d9" opacity=".35"></rect><rect x="17.5" y="17.5" width="13" height="13" rx="3.5" fill="#2ec9d9"></rect></svg>
+</div>
+</div>
+
+<div style="height:1px;background:rgba(0,0,0,.08);margin:30px 0"></div>
+
+<p style="margin:0 0 16px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8c9a9e">Paleta e tipografia</p>
+<div style="display:flex;gap:8px;margin-bottom:18px">
+<div style="flex:1"><div style="height:44px;border-radius:7px;background:#029caf"></div><p style="margin:6px 0 0;font:400 9.5px/1 'IBM Plex Mono',monospace;color:#8c9a9e">#029CAF</p></div>
+<div style="flex:1"><div style="height:44px;border-radius:7px;background:#2ec9d9"></div><p style="margin:6px 0 0;font:400 9.5px/1 'IBM Plex Mono',monospace;color:#8c9a9e">#2EC9D9</p></div>
+<div style="flex:1"><div style="height:44px;border-radius:7px;background:#0a0f11"></div><p style="margin:6px 0 0;font:400 9.5px/1 'IBM Plex Mono',monospace;color:#8c9a9e">#0A0F11</p></div>
+<div style="flex:1"><div style="height:44px;border-radius:7px;background:#f6f7f7;border:1px solid rgba(0,0,0,.1)"></div><p style="margin:6px 0 0;font:400 9.5px/1 'IBM Plex Mono',monospace;color:#8c9a9e">#F6F7F7</p></div>
+<div style="flex:1"><div style="height:44px;border-radius:7px;background:#e8a045"></div><p style="margin:6px 0 0;font:400 9.5px/1 'IBM Plex Mono',monospace;color:#8c9a9e">#E8A045</p></div>
+</div>
+<div style="display:grid;grid-template-columns:76px 1fr;gap:10px 18px;align-items:baseline">
+<p style="margin:0;font:400 10px/1 'IBM Plex Mono',monospace;color:#8c9a9e">Display</p><p style="margin:0;font:600 22px/1.1 'Space Grotesk',sans-serif;color:#0d1416;letter-spacing:-.02em">Space Grotesk</p>
+<p style="margin:0;font:400 10px/1 'IBM Plex Mono',monospace;color:#8c9a9e">Texto</p><p style="margin:0;font:450 16px/1.3 'IBM Plex Sans',sans-serif;color:#0d1416">IBM Plex Sans — interface e leitura</p>
+<p style="margin:0;font:400 10px/1 'IBM Plex Mono',monospace;color:#8c9a9e">Números</p><p style="margin:0;font:500 16px/1.3 'IBM Plex Mono',monospace;color:#0d1416">R$ 48.320,00 · 1.284 · 12,4%</p>
+</div>
+
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Dark · rail de ícones colapsável, densidade confortável, números grandes. A evolução direta do que existe hoje.</div>
+<div class="dv-card" style="width:1240px;background:#0a0f11;border-color:rgba(255,255,255,.08)">
+<div style="display:flex;min-height:760px">
+
+<div style="width:68px;flex-shrink:0;background:#0d1417;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:6px">
+<div style="width:34px;height:34px;border-radius:9px;background:#029caf;display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+<svg width="19" height="19" viewBox="0 0 48 48" fill="none"><rect x="4" y="4" width="13" height="13" rx="3.5" fill="#fff" opacity=".45"></rect><rect x="4" y="31" width="13" height="13" rx="3.5" fill="#fff" opacity=".45"></rect><rect x="31" y="4" width="13" height="13" rx="3.5" fill="#fff" opacity=".45"></rect><rect x="31" y="31" width="13" height="13" rx="3.5" fill="#fff" opacity=".45"></rect><rect x="17.5" y="17.5" width="13" height="13" rx="3.5" fill="#fff"></rect></svg>
+</div>
+<div style="width:42px;height:42px;border-radius:11px;background:rgba(46,201,217,.14);display:flex;align-items:center;justify-content:center;position:relative">
+<span style="position:absolute;left:-13px;top:12px;width:3px;height:18px;border-radius:2px;background:#2ec9d9"></span>
+<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2ec9d9" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.306a11.95 11.95 0 015.814-5.518l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"></path></svg>
+</div>
+<div style="width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#71838a" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg></div>
+<div style="width:26px;height:1px;background:rgba(255,255,255,.07);margin:8px 0"></div>
+<div style="width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#71838a" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"></path></svg></div>
+<div style="width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#71838a" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"></path></svg></div>
+<div style="width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#71838a" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"></path></svg></div>
+<div style="width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#71838a" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></div>
+<div style="width:26px;height:1px;background:rgba(255,255,255,.07);margin:8px 0"></div>
+<div style="width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#71838a" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"></path></svg></div>
+<div style="flex:1"></div>
+<div style="width:32px;height:32px;border-radius:50%;background:rgba(46,201,217,.18);color:#2ec9d9;display:flex;align-items:center;justify-content:center;font:600 12px 'IBM Plex Sans',sans-serif">R</div>
+</div>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:20px 28px;border-bottom:1px solid rgba(255,255,255,.06)">
+<div>
+<p style="margin:0 0 4px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#6e7f84">Painéis</p>
+<h1 style="margin:0;font:600 22px/1.15 'Space Grotesk',sans-serif;letter-spacing:-.02em;color:#e8f0f2">Financeiro</h1>
+</div>
+<div style="display:flex;align-items:center;gap:10px">
+<div style="display:flex;background:#141d21;border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:3px">
+<span style="padding:5px 12px;border-radius:6px;font:500 12px 'IBM Plex Sans',sans-serif;color:#93a5aa">Mês</span>
+<span style="padding:5px 12px;border-radius:6px;background:rgba(46,201,217,.14);font:500 12px 'IBM Plex Sans',sans-serif;color:#2ec9d9">Trimestre</span>
+<span style="padding:5px 12px;border-radius:6px;font:500 12px 'IBM Plex Sans',sans-serif;color:#93a5aa">Ano</span>
+</div>
+<div style="width:34px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#93a5aa" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 12a9.75 9.75 0 11-9.4-9.74 7.5 7.5 0 009.4 9.4z"></path></svg></div>
+</div>
+</div>
+
+<div style="padding:24px 28px;display:flex;flex-direction:column;gap:20px">
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+<div style="background:#10171a;border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:20px">
+<p style="margin:0 0 12px;font:500 10.5px/1 'IBM Plex Sans',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#6e7f84">MRR do mês</p>
+<p style="margin:0;font:500 27px/1.05 'IBM Plex Mono',monospace;letter-spacing:-.03em;color:#e8f0f2">R$ 48.320<span style="color:#6e7f84">,00</span></p>
+<div style="display:flex;align-items:center;gap:6px;margin-top:11px"><span style="font:500 11.5px 'IBM Plex Sans',sans-serif;color:#3fbf6a">↑ 8,4%</span><span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#6e7f84">vs. julho</span></div>
+</div>
+<div style="background:#10171a;border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:20px">
+<p style="margin:0 0 12px;font:500 10.5px/1 'IBM Plex Sans',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#6e7f84">Saldo em caixa</p>
+<p style="margin:0;font:500 27px/1.05 'IBM Plex Mono',monospace;letter-spacing:-.03em;color:#e8f0f2">R$ 132.940<span style="color:#6e7f84">,18</span></p>
+<div style="display:flex;align-items:center;gap:6px;margin-top:11px"><span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#6e7f84">4 contas · última conciliação hoje</span></div>
+</div>
+<div style="background:#10171a;border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:20px">
+<p style="margin:0 0 12px;font:500 10.5px/1 'IBM Plex Sans',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#6e7f84">Entradas do mês</p>
+<p style="margin:0;font:500 27px/1.05 'IBM Plex Mono',monospace;letter-spacing:-.03em;color:#3fbf6a">R$ 61.480<span style="opacity:.5">,00</span></p>
+<div style="height:6px;border-radius:3px;background:rgba(255,255,255,.06);margin-top:14px;overflow:hidden"><div style="width:72%;height:100%;background:#3fbf6a;border-radius:3px"></div></div>
+</div>
+<div style="background:#10171a;border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:20px">
+<p style="margin:0 0 12px;font:500 10.5px/1 'IBM Plex Sans',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#6e7f84">Saídas do mês</p>
+<p style="margin:0;font:500 27px/1.05 'IBM Plex Mono',monospace;letter-spacing:-.03em;color:#e8a045">R$ 23.105<span style="opacity:.5">,40</span></p>
+<div style="height:6px;border-radius:3px;background:rgba(255,255,255,.06);margin-top:14px;overflow:hidden"><div style="width:27%;height:100%;background:#e8a045;border-radius:3px"></div></div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">
+<div style="background:#10171a;border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:22px 24px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px">
+<h3 style="margin:0;font:600 15px 'Space Grotesk',sans-serif;color:#e8f0f2;letter-spacing:-.01em">Entradas × Saídas</h3>
+<div style="display:flex;gap:14px"><span style="display:flex;align-items:center;gap:6px;font:400 11px 'IBM Plex Sans',sans-serif;color:#93a5aa"><span style="width:8px;height:8px;border-radius:2px;background:#2ec9d9"></span>Entradas</span><span style="display:flex;align-items:center;gap:6px;font:400 11px 'IBM Plex Sans',sans-serif;color:#93a5aa"><span style="width:8px;height:8px;border-radius:2px;background:#31474d"></span>Saídas</span></div>
+</div>
+<div style="display:flex;align-items:flex-end;gap:26px;height:190px;border-bottom:1px solid rgba(255,255,255,.07);padding-bottom:0">
+<div style="flex:1;display:flex;align-items:flex-end;gap:5px;height:100%"><div style="flex:1;height:52%;background:#2ec9d9;border-radius:4px 4px 0 0;opacity:.85"></div><div style="flex:1;height:29%;background:#31474d;border-radius:4px 4px 0 0"></div></div>
+<div style="flex:1;display:flex;align-items:flex-end;gap:5px;height:100%"><div style="flex:1;height:58%;background:#2ec9d9;border-radius:4px 4px 0 0;opacity:.85"></div><div style="flex:1;height:33%;background:#31474d;border-radius:4px 4px 0 0"></div></div>
+<div style="flex:1;display:flex;align-items:flex-end;gap:5px;height:100%"><div style="flex:1;height:49%;background:#2ec9d9;border-radius:4px 4px 0 0;opacity:.85"></div><div style="flex:1;height:38%;background:#31474d;border-radius:4px 4px 0 0"></div></div>
+<div style="flex:1;display:flex;align-items:flex-end;gap:5px;height:100%"><div style="flex:1;height:71%;background:#2ec9d9;border-radius:4px 4px 0 0;opacity:.85"></div><div style="flex:1;height:31%;background:#31474d;border-radius:4px 4px 0 0"></div></div>
+<div style="flex:1;display:flex;align-items:flex-end;gap:5px;height:100%"><div style="flex:1;height:79%;background:#2ec9d9;border-radius:4px 4px 0 0;opacity:.85"></div><div style="flex:1;height:36%;background:#31474d;border-radius:4px 4px 0 0"></div></div>
+<div style="flex:1;display:flex;align-items:flex-end;gap:5px;height:100%"><div style="flex:1;height:92%;background:#2ec9d9;border-radius:4px 4px 0 0"></div><div style="flex:1;height:35%;background:#31474d;border-radius:4px 4px 0 0"></div></div>
+</div>
+<div style="display:flex;gap:26px;margin-top:9px">
+<span style="flex:1;text-align:center;font:400 11px 'IBM Plex Mono',monospace;color:#6e7f84">MAR</span><span style="flex:1;text-align:center;font:400 11px 'IBM Plex Mono',monospace;color:#6e7f84">ABR</span><span style="flex:1;text-align:center;font:400 11px 'IBM Plex Mono',monospace;color:#6e7f84">MAI</span><span style="flex:1;text-align:center;font:400 11px 'IBM Plex Mono',monospace;color:#6e7f84">JUN</span><span style="flex:1;text-align:center;font:400 11px 'IBM Plex Mono',monospace;color:#6e7f84">JUL</span><span style="flex:1;text-align:center;font:500 11px 'IBM Plex Mono',monospace;color:#2ec9d9">AGO</span>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="background:#10171a;border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between">
+<div><p style="margin:0 0 5px;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#93a5aa">Revendas ativas</p><p style="margin:0;font:500 24px/1 'IBM Plex Mono',monospace;color:#e8f0f2">7</p></div>
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#31474d" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15"></path></svg>
+</div>
+<div style="background:#10171a;border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between">
+<div><p style="margin:0 0 5px;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#93a5aa">Clientes ativos</p><p style="margin:0;font:500 24px/1 'IBM Plex Mono',monospace;color:#e8f0f2">1.284</p></div>
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#31474d" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z"></path></svg>
+</div>
+<div style="background:#10171a;border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between">
+<div><p style="margin:0 0 5px;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#93a5aa">Clientes diretos</p><p style="margin:0;font:500 24px/1 'IBM Plex Mono',monospace;color:#e8f0f2">96</p></div>
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#31474d" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"></path></svg>
+</div>
+<div style="background:linear-gradient(160deg,rgba(2,156,175,.18),rgba(2,156,175,.04));border:1px solid rgba(46,201,217,.2);border-radius:13px;padding:18px 20px">
+<p style="margin:0 0 6px;font:500 11.5px 'IBM Plex Sans',sans-serif;color:#2ec9d9">Fechamento de agosto</p>
+<p style="margin:0 0 12px;font:400 11.5px/1.5 'IBM Plex Sans',sans-serif;color:#93a5aa">7 revendas prontas para faturar.</p>
+<span style="display:inline-flex;padding:7px 14px;border-radius:8px;background:#029caf;font:500 12px 'IBM Plex Sans',sans-serif;color:#fff">Gerar cobranças</span>
+</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+<div style="background:#10171a;border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:22px 24px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px"><h3 style="margin:0;font:600 15px 'Space Grotesk',sans-serif;color:#e8f0f2;letter-spacing:-.01em">Receitas pendentes</h3><a href="#1b" style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#2ec9d9;text-decoration:none">Ver todas</a></div>
+<div style="display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><p style="margin:0 0 3px;font:450 13px 'IBM Plex Sans',sans-serif;color:#e8f0f2">Faturamento AlfaGym · 08/2026</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#6e7f84">Invest Soluções · vence 10/08</p></div><span style="font:500 13px 'IBM Plex Mono',monospace;color:#e8f0f2">R$ 12.480,00</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><p style="margin:0 0 3px;font:450 13px 'IBM Plex Sans',sans-serif;color:#e8f0f2">Faturamento AlfaControl · 08/2026</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#6e7f84">Vertex Sistemas · vence 10/08</p></div><span style="font:500 13px 'IBM Plex Mono',monospace;color:#e8f0f2">R$ 8.940,00</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><p style="margin:0 0 3px;font:450 13px 'IBM Plex Sans',sans-serif;color:#e8f0f2">Licença AlfaMed · direto</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#d05b4b">Clínica Bem Viver · venceu 02/08</p></div><span style="font:500 13px 'IBM Plex Mono',monospace;color:#e8f0f2">R$ 1.290,00</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0"><div><p style="margin:0 0 3px;font:450 13px 'IBM Plex Sans',sans-serif;color:#e8f0f2">Faturamento AlfaSchool · 08/2026</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#6e7f84">Norte Tech · vence 15/08</p></div><span style="font:500 13px 'IBM Plex Mono',monospace;color:#e8f0f2">R$ 5.720,00</span></div>
+</div>
+</div>
+<div style="background:#10171a;border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:22px 24px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px"><h3 style="margin:0;font:600 15px 'Space Grotesk',sans-serif;color:#e8f0f2;letter-spacing:-.01em">Despesas em aberto</h3><a href="#1b" style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#2ec9d9;text-decoration:none">Ver todas</a></div>
+<div style="display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><p style="margin:0 0 3px;font:450 13px 'IBM Plex Sans',sans-serif;color:#e8f0f2">Infraestrutura em nuvem</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#6e7f84">Hetzner · vence 08/08</p></div><span style="font:500 13px 'IBM Plex Mono',monospace;color:#e8f0f2">R$ 3.410,00</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><p style="margin:0 0 3px;font:450 13px 'IBM Plex Sans',sans-serif;color:#e8f0f2">Folha · equipe de suporte</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#6e7f84">Despesa fixa · vence 05/08</p></div><span style="font:500 13px 'IBM Plex Mono',monospace;color:#e8f0f2">R$ 14.200,00</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><p style="margin:0 0 3px;font:450 13px 'IBM Plex Sans',sans-serif;color:#e8f0f2">Licenças de terceiros</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#6e7f84">Diversos · vence 12/08</p></div><span style="font:500 13px 'IBM Plex Mono',monospace;color:#e8f0f2">R$ 1.870,40</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0"><div><p style="margin:0 0 3px;font:450 13px 'IBM Plex Sans',sans-serif;color:#e8f0f2">Contabilidade</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#6e7f84">Escritório Prisma · vence 20/08</p></div><span style="font:500 13px 'IBM Plex Mono',monospace;color:#e8f0f2">R$ 1.980,00</span></div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Light · top nav com subnav, densidade alta e tabelas leves — pensado para quem passa o dia no painel.</div>
+<div class="dv-card" style="width:1240px;background:#f6f7f7">
+<div style="min-height:760px;display:flex;flex-direction:column">
+
+<div style="background:#fff;border-bottom:1px solid #e4e8e9">
+<div style="display:flex;align-items:center;gap:28px;padding:0 26px;height:58px">
+<div style="display:flex;align-items:center;gap:10px">
+<svg width="26" height="26" viewBox="0 0 48 48" fill="none"><rect x="4" y="4" width="13" height="13" rx="3.5" fill="#029caf" opacity=".3"></rect><rect x="4" y="31" width="13" height="13" rx="3.5" fill="#029caf" opacity=".3"></rect><rect x="31" y="4" width="13" height="13" rx="3.5" fill="#029caf" opacity=".3"></rect><rect x="31" y="31" width="13" height="13" rx="3.5" fill="#029caf" opacity=".3"></rect><rect x="17.5" y="17.5" width="13" height="13" rx="3.5" fill="#029caf"></rect></svg>
+<div style="display:flex;align-items:baseline;font-family:'Space Grotesk',sans-serif;font-size:16px;letter-spacing:-.01em;color:#0d1416"><span style="font-weight:400">Alfa</span><span style="font-weight:700">Matriz</span></div>
+</div>
+<div style="display:flex;gap:4px">
+<span style="padding:7px 12px;border-radius:8px;background:#eef2f2;font:500 13px 'IBM Plex Sans',sans-serif;color:#0d1416">Painéis</span>
+<span style="padding:7px 12px;border-radius:8px;font:450 13px 'IBM Plex Sans',sans-serif;color:#5b6b70">Comercial</span>
+<span style="padding:7px 12px;border-radius:8px;font:450 13px 'IBM Plex Sans',sans-serif;color:#5b6b70">Financeiro</span>
+<span style="padding:7px 12px;border-radius:8px;font:450 13px 'IBM Plex Sans',sans-serif;color:#5b6b70">Cadastros</span>
+</div>
+<div style="flex:1"></div>
+<div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 12px;border:1px solid #e4e8e9;border-radius:8px;width:210px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8c9a9e" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5" stroke-linecap="round"></path></svg>
+<span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#8c9a9e">Buscar cliente, revenda…</span>
+</div>
+<div style="display:flex;align-items:center;gap:8px"><span style="width:30px;height:30px;border-radius:50%;background:#e0efF1;color:#017d8c;display:flex;align-items:center;justify-content:center;font:600 12px 'IBM Plex Sans',sans-serif">R</span><span style="font:450 13px 'IBM Plex Sans',sans-serif;color:#3d4c50">Rodrigo</span></div>
+</div>
+<div style="display:flex;gap:22px;padding:0 26px">
+<span style="padding:0 0 11px;font:500 13px 'IBM Plex Sans',sans-serif;color:#0d1416;border-bottom:2px solid #029caf">Financeiro</span>
+<span style="padding:0 0 11px;font:450 13px 'IBM Plex Sans',sans-serif;color:#7a888c;border-bottom:2px solid transparent">Comercial</span>
+<span style="padding:0 0 11px;font:450 13px 'IBM Plex Sans',sans-serif;color:#7a888c;border-bottom:2px solid transparent">Caixa</span>
+<span style="padding:0 0 11px;font:450 13px 'IBM Plex Sans',sans-serif;color:#7a888c;border-bottom:2px solid transparent">Inadimplência</span>
+</div>
+</div>
+
+<div style="padding:22px 26px;display:flex;flex-direction:column;gap:16px">
+
+<div style="display:flex;align-items:flex-end;justify-content:space-between">
+<div><h1 style="margin:0 0 4px;font:600 21px/1.15 'Space Grotesk',sans-serif;letter-spacing:-.02em;color:#0d1416">Painel Financeiro</h1><p style="margin:0;font:400 12.5px 'IBM Plex Sans',sans-serif;color:#7a888c">Competência agosto/2026 · atualizado às 09:12</p></div>
+<div style="display:flex;gap:8px"><span style="padding:8px 13px;border:1px solid #e4e8e9;background:#fff;border-radius:8px;font:450 12.5px 'IBM Plex Sans',sans-serif;color:#3d4c50">Exportar</span><span style="padding:8px 13px;border-radius:8px;background:#029caf;font:500 12.5px 'IBM Plex Sans',sans-serif;color:#fff">Gerar faturamento</span></div>
+</div>
+
+<div style="background:#fff;border:1px solid #e4e8e9;border-radius:12px;display:grid;grid-template-columns:repeat(5,1fr)">
+<div style="padding:18px 20px;border-right:1px solid #eef1f1"><p style="margin:0 0 8px;font:450 11.5px 'IBM Plex Sans',sans-serif;color:#7a888c">MRR</p><p style="margin:0 0 6px;font:500 21px/1 'IBM Plex Mono',monospace;letter-spacing:-.02em;color:#0d1416">R$ 48.320</p><p style="margin:0;font:500 11.5px 'IBM Plex Sans',sans-serif;color:#12915a">↑ 8,4%</p></div>
+<div style="padding:18px 20px;border-right:1px solid #eef1f1"><p style="margin:0 0 8px;font:450 11.5px 'IBM Plex Sans',sans-serif;color:#7a888c">Caixa</p><p style="margin:0 0 6px;font:500 21px/1 'IBM Plex Mono',monospace;letter-spacing:-.02em;color:#0d1416">R$ 132.940</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#7a888c">4 contas</p></div>
+<div style="padding:18px 20px;border-right:1px solid #eef1f1"><p style="margin:0 0 8px;font:450 11.5px 'IBM Plex Sans',sans-serif;color:#7a888c">Entradas</p><p style="margin:0 0 6px;font:500 21px/1 'IBM Plex Mono',monospace;letter-spacing:-.02em;color:#0d1416">R$ 61.480</p><p style="margin:0;font:500 11.5px 'IBM Plex Sans',sans-serif;color:#12915a">↑ 11,2%</p></div>
+<div style="padding:18px 20px;border-right:1px solid #eef1f1"><p style="margin:0 0 8px;font:450 11.5px 'IBM Plex Sans',sans-serif;color:#7a888c">Saídas</p><p style="margin:0 0 6px;font:500 21px/1 'IBM Plex Mono',monospace;letter-spacing:-.02em;color:#0d1416">R$ 23.105</p><p style="margin:0;font:500 11.5px 'IBM Plex Sans',sans-serif;color:#b4671f">↑ 3,1%</p></div>
+<div style="padding:18px 20px"><p style="margin:0 0 8px;font:450 11.5px 'IBM Plex Sans',sans-serif;color:#7a888c">Inadimplência</p><p style="margin:0 0 6px;font:500 21px/1 'IBM Plex Mono',monospace;letter-spacing:-.02em;color:#0d1416">2,7%</p><p style="margin:0;font:500 11.5px 'IBM Plex Sans',sans-serif;color:#12915a">↓ 0,6 p.p.</p></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1.55fr 1fr;gap:16px">
+<div style="background:#fff;border:1px solid #e4e8e9;border-radius:12px;padding:20px 22px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px"><h3 style="margin:0;font:600 14px 'Space Grotesk',sans-serif;color:#0d1416">Fluxo de caixa · 6 meses</h3><span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#7a888c">valores líquidos</span></div>
+<div style="position:relative;height:180px">
+<div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between"><div style="border-top:1px solid #f0f3f3"></div><div style="border-top:1px solid #f0f3f3"></div><div style="border-top:1px solid #f0f3f3"></div><div style="border-top:1px solid #e4e8e9"></div></div>
+<svg viewBox="0 0 600 180" preserveAspectRatio="none" style="position:relative;width:100%;height:180px"><defs><linearGradient id="g1c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#029caf" stop-opacity=".18"></stop><stop offset="1" stop-color="#029caf" stop-opacity="0"></stop></linearGradient></defs><path d="M0 118 L120 104 L240 122 L360 74 L480 58 L600 26 L600 180 L0 180Z" fill="url(#g1c)"></path><path d="M0 118 L120 104 L240 122 L360 74 L480 58 L600 26" fill="none" stroke="#029caf" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"></path><path d="M0 152 L120 148 L240 141 L360 147 L480 143 L600 144" fill="none" stroke="#c8d2d4" stroke-width="2" stroke-dasharray="5 5" stroke-linejoin="round"></path><circle cx="600" cy="26" r="4" fill="#029caf"></circle></svg>
+</div>
+<div style="display:flex;margin-top:8px"><span style="flex:1;font:400 11px 'IBM Plex Mono',monospace;color:#8c9a9e">MAR</span><span style="flex:1;font:400 11px 'IBM Plex Mono',monospace;color:#8c9a9e">ABR</span><span style="flex:1;font:400 11px 'IBM Plex Mono',monospace;color:#8c9a9e">MAI</span><span style="flex:1;font:400 11px 'IBM Plex Mono',monospace;color:#8c9a9e">JUN</span><span style="flex:1;font:400 11px 'IBM Plex Mono',monospace;color:#8c9a9e">JUL</span><span style="flex:0 0 auto;font:500 11px 'IBM Plex Mono',monospace;color:#017d8c">AGO</span></div>
+</div>
+<div style="background:#fff;border:1px solid #e4e8e9;border-radius:12px;padding:20px 22px">
+<h3 style="margin:0 0 16px;font:600 14px 'Space Grotesk',sans-serif;color:#0d1416">MRR por sistema</h3>
+<div style="display:flex;flex-direction:column;gap:13px">
+<div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font:450 12.5px 'IBM Plex Sans',sans-serif;color:#0d1416">AlfaGym</span><span style="font:500 12.5px 'IBM Plex Mono',monospace;color:#3d4c50">R$ 18.240</span></div><div style="height:6px;border-radius:3px;background:#eef2f2"><div style="width:100%;height:100%;border-radius:3px;background:#029caf"></div></div></div>
+<div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font:450 12.5px 'IBM Plex Sans',sans-serif;color:#0d1416">AlfaControl</span><span style="font:500 12.5px 'IBM Plex Mono',monospace;color:#3d4c50">R$ 11.900</span></div><div style="height:6px;border-radius:3px;background:#eef2f2"><div style="width:65%;height:100%;border-radius:3px;background:#029caf"></div></div></div>
+<div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font:450 12.5px 'IBM Plex Sans',sans-serif;color:#0d1416">AlfaSchool</span><span style="font:500 12.5px 'IBM Plex Mono',monospace;color:#3d4c50">R$ 7.480</span></div><div style="height:6px;border-radius:3px;background:#eef2f2"><div style="width:41%;height:100%;border-radius:3px;background:#029caf"></div></div></div>
+<div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font:450 12.5px 'IBM Plex Sans',sans-serif;color:#0d1416">AlfaMed</span><span style="font:500 12.5px 'IBM Plex Mono',monospace;color:#3d4c50">R$ 5.120</span></div><div style="height:6px;border-radius:3px;background:#eef2f2"><div style="width:28%;height:100%;border-radius:3px;background:#029caf"></div></div></div>
+<div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font:450 12.5px 'IBM Plex Sans',sans-serif;color:#0d1416">AlfaHome</span><span style="font:500 12.5px 'IBM Plex Mono',monospace;color:#3d4c50">R$ 3.290</span></div><div style="height:6px;border-radius:3px;background:#eef2f2"><div style="width:18%;height:100%;border-radius:3px;background:#029caf"></div></div></div>
+<div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font:450 12.5px 'IBM Plex Sans',sans-serif;color:#0d1416">AlfaJornada</span><span style="font:500 12.5px 'IBM Plex Mono',monospace;color:#3d4c50">R$ 2.290</span></div><div style="height:6px;border-radius:3px;background:#eef2f2"><div style="width:13%;height:100%;border-radius:3px;background:#029caf"></div></div></div>
+</div>
+</div>
+</div>
+
+<div style="background:#fff;border:1px solid #e4e8e9;border-radius:12px;overflow:hidden">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #eef1f1">
+<h3 style="margin:0;font:600 14px 'Space Grotesk',sans-serif;color:#0d1416">Cobranças em aberto</h3>
+<div style="display:flex;gap:6px"><span style="padding:5px 10px;border-radius:6px;background:#eef2f2;font:500 11.5px 'IBM Plex Sans',sans-serif;color:#0d1416">Todas</span><span style="padding:5px 10px;border-radius:6px;font:450 11.5px 'IBM Plex Sans',sans-serif;color:#7a888c">Vencidas</span><span style="padding:5px 10px;border-radius:6px;font:450 11.5px 'IBM Plex Sans',sans-serif;color:#7a888c">A vencer</span></div>
+</div>
+<div style="display:grid;grid-template-columns:2fr 1.3fr 1fr .9fr .9fr;padding:9px 20px;background:#fafbfb;border-bottom:1px solid #eef1f1">
+<span style="font:500 10.5px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#8c9a9e">Descrição</span><span style="font:500 10.5px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#8c9a9e">Revenda / cliente</span><span style="font:500 10.5px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#8c9a9e">Vencimento</span><span style="font:500 10.5px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#8c9a9e">Status</span><span style="text-align:right;font:500 10.5px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#8c9a9e">Valor</span>
+</div>
+<div style="display:grid;grid-template-columns:2fr 1.3fr 1fr .9fr .9fr;padding:12px 20px;border-bottom:1px solid #f2f5f5;align-items:center"><span style="font:450 12.5px 'IBM Plex Sans',sans-serif;color:#0d1416">Faturamento AlfaGym · 08/2026</span><span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#5b6b70">Invest Soluções</span><span style="font:400 12.5px 'IBM Plex Mono',monospace;color:#5b6b70">10/08</span><span><span style="padding:3px 8px;border-radius:20px;background:#eef2f2;font:500 11px 'IBM Plex Sans',sans-serif;color:#5b6b70">Aberta</span></span><span style="text-align:right;font:500 12.5px 'IBM Plex Mono',monospace;color:#0d1416">R$ 12.480,00</span></div>
+<div style="display:grid;grid-template-columns:2fr 1.3fr 1fr .9fr .9fr;padding:12px 20px;border-bottom:1px solid #f2f5f5;align-items:center"><span style="font:450 12.5px 'IBM Plex Sans',sans-serif;color:#0d1416">Faturamento AlfaControl · 08/2026</span><span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#5b6b70">Vertex Sistemas</span><span style="font:400 12.5px 'IBM Plex Mono',monospace;color:#5b6b70">10/08</span><span><span style="padding:3px 8px;border-radius:20px;background:#eef2f2;font:500 11px 'IBM Plex Sans',sans-serif;color:#5b6b70">Aberta</span></span><span style="text-align:right;font:500 12.5px 'IBM Plex Mono',monospace;color:#0d1416">R$ 8.940,00</span></div>
+<div style="display:grid;grid-template-columns:2fr 1.3fr 1fr .9fr .9fr;padding:12px 20px;border-bottom:1px solid #f2f5f5;align-items:center"><span style="font:450 12.5px 'IBM Plex Sans',sans-serif;color:#0d1416">Licença AlfaMed · direto</span><span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#5b6b70">Clínica Bem Viver</span><span style="font:400 12.5px 'IBM Plex Mono',monospace;color:#b03a2e">02/08</span><span><span style="padding:3px 8px;border-radius:20px;background:#fceceA;font:500 11px 'IBM Plex Sans',sans-serif;color:#b03a2e">Vencida</span></span><span style="text-align:right;font:500 12.5px 'IBM Plex Mono',monospace;color:#0d1416">R$ 1.290,00</span></div>
+<div style="display:grid;grid-template-columns:2fr 1.3fr 1fr .9fr .9fr;padding:12px 20px;border-bottom:1px solid #f2f5f5;align-items:center"><span style="font:450 12.5px 'IBM Plex Sans',sans-serif;color:#0d1416">Faturamento AlfaSchool · 08/2026</span><span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#5b6b70">Norte Tech</span><span style="font:400 12.5px 'IBM Plex Mono',monospace;color:#5b6b70">15/08</span><span><span style="padding:3px 8px;border-radius:20px;background:#eef2f2;font:500 11px 'IBM Plex Sans',sans-serif;color:#5b6b70">Aberta</span></span><span style="text-align:right;font:500 12.5px 'IBM Plex Mono',monospace;color:#0d1416">R$ 5.720,00</span></div>
+<div style="display:grid;grid-template-columns:2fr 1.3fr 1fr .9fr .9fr;padding:12px 20px;align-items:center"><span style="font:450 12.5px 'IBM Plex Sans',sans-serif;color:#0d1416">Faturamento AlfaHome · 08/2026</span><span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#5b6b70">Sul Digital</span><span style="font:400 12.5px 'IBM Plex Mono',monospace;color:#5b6b70">18/08</span><span><span style="padding:3px 8px;border-radius:20px;background:#eef2f2;font:500 11px 'IBM Plex Sans',sans-serif;color:#5b6b70">Aberta</span></span><span style="text-align:right;font:500 12.5px 'IBM Plex Mono',monospace;color:#0d1416">R$ 3.290,00</span></div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1d">
+<div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Dark editorial · quase sem molduras, hierarquia por escala tipográfica e um número-herói. A mais autoral das três.</div>
+<div class="dv-card" style="width:1240px;background:#08100f;border-color:rgba(255,255,255,.08)">
+<div style="display:flex;min-height:760px">
+
+<div style="width:214px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.06);padding:22px 18px;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:30px">
+<svg width="24" height="24" viewBox="0 0 48 48" fill="none"><rect x="4" y="4" width="13" height="13" rx="3.5" fill="#2ec9d9" opacity=".35"></rect><rect x="4" y="31" width="13" height="13" rx="3.5" fill="#2ec9d9" opacity=".35"></rect><rect x="31" y="4" width="13" height="13" rx="3.5" fill="#2ec9d9" opacity=".35"></rect><rect x="31" y="31" width="13" height="13" rx="3.5" fill="#2ec9d9" opacity=".35"></rect><rect x="17.5" y="17.5" width="13" height="13" rx="3.5" fill="#2ec9d9"></rect></svg>
+<div style="display:flex;align-items:baseline;font-family:'Space Grotesk',sans-serif;font-size:15px;color:#e8f0f2"><span style="font-weight:400">Alfa</span><span style="font-weight:700">Matriz</span></div>
+<div style="flex:1"></div>
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5d6f73" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 5l-7 7 7 7"></path></svg>
+</div>
+<p style="margin:0 0 8px;font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#4f6165">Painéis</p>
+<div style="display:flex;flex-direction:column;gap:1px;margin-bottom:22px">
+<span style="padding:7px 9px;border-radius:7px;background:rgba(46,201,217,.1);font:500 13px 'IBM Plex Sans',sans-serif;color:#2ec9d9">Financeiro</span>
+<span style="padding:7px 9px;border-radius:7px;font:450 13px 'IBM Plex Sans',sans-serif;color:#8a9a9e">Comercial</span>
+</div>
+<p style="margin:0 0 8px;font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#4f6165">Comercial</p>
+<div style="display:flex;flex-direction:column;gap:1px;margin-bottom:22px">
+<span style="padding:7px 9px;border-radius:7px;font:450 13px 'IBM Plex Sans',sans-serif;color:#8a9a9e">Revendas</span>
+<span style="padding:7px 9px;border-radius:7px;font:450 13px 'IBM Plex Sans',sans-serif;color:#8a9a9e">Clientes</span>
+<span style="padding:7px 9px;border-radius:7px;font:450 13px 'IBM Plex Sans',sans-serif;color:#8a9a9e">Sistemas</span>
+<span style="padding:7px 9px;border-radius:7px;font:450 13px 'IBM Plex Sans',sans-serif;color:#8a9a9e">Faturamento</span>
+</div>
+<p style="margin:0 0 8px;font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#4f6165">Financeiro</p>
+<div style="display:flex;flex-direction:column;gap:1px">
+<span style="padding:7px 9px;border-radius:7px;font:450 13px 'IBM Plex Sans',sans-serif;color:#8a9a9e">Receitas</span>
+<span style="padding:7px 9px;border-radius:7px;font:450 13px 'IBM Plex Sans',sans-serif;color:#8a9a9e">Despesas</span>
+<span style="padding:7px 9px;border-radius:7px;font:450 13px 'IBM Plex Sans',sans-serif;color:#8a9a9e">Despesas fixas</span>
+<span style="padding:7px 9px;border-radius:7px;font:450 13px 'IBM Plex Sans',sans-serif;color:#8a9a9e">Caixa</span>
+</div>
+<div style="flex:1"></div>
+<div style="display:flex;align-items:center;gap:9px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:28px;height:28px;border-radius:50%;background:rgba(46,201,217,.18);color:#2ec9d9;display:flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Sans',sans-serif">R</span><div style="min-width:0"><p style="margin:0;font:450 12px 'IBM Plex Sans',sans-serif;color:#d5e2e4">Rodrigo</p><p style="margin:0;font:400 10.5px 'IBM Plex Sans',sans-serif;color:#4f6165">Administrador</p></div></div>
+</div>
+
+<div style="flex:1;min-width:0;padding:34px 40px 30px;display:flex;flex-direction:column;gap:34px">
+
+<div style="display:flex;align-items:flex-start;justify-content:space-between">
+<div>
+<p style="margin:0 0 10px;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#4f6165">Agosto 2026 · competência aberta</p>
+<h1 style="margin:0 0 26px;font:400 34px/1.1 'Space Grotesk',sans-serif;letter-spacing:-.03em;color:#e8f0f2">Receita recorrente<br><span style="font-weight:600">de R$ 48.320</span> este mês</h1>
+<div style="display:flex;align-items:center;gap:14px">
+<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;background:rgba(63,191,106,.12);font:500 12px 'IBM Plex Sans',sans-serif;color:#4fcd7c">↑ 8,4% vs. julho</span>
+<span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6f8286">7 revendas · 1.284 clientes ativos</span>
+</div>
+</div>
+<div style="text-align:right">
+<p style="margin:0 0 6px;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#4f6165">Caixa consolidado</p>
+<p style="margin:0;font:400 27px/1 'IBM Plex Mono',monospace;letter-spacing:-.02em;color:#e8f0f2">R$ 132.940,18</p>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font:500 12px 'IBM Plex Sans',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#6f8286">Entradas e saídas</h3><span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#4f6165">últimos 6 meses</span></div>
+<div style="display:flex;gap:22px;align-items:flex-end;height:150px">
+<div style="flex:1;display:flex;align-items:flex-end;gap:4px;height:100%"><div style="flex:1;flex-shrink:0;height:52%;background:#0f7c8a;border-radius:3px 3px 0 0"></div><div style="flex:1;flex-shrink:0;height:29%;background:#1e2f31;border-radius:3px 3px 0 0"></div></div>
+<div style="flex:1;display:flex;align-items:flex-end;gap:4px;height:100%"><div style="flex:1;flex-shrink:0;height:58%;background:#0f7c8a;border-radius:3px 3px 0 0"></div><div style="flex:1;flex-shrink:0;height:33%;background:#1e2f31;border-radius:3px 3px 0 0"></div></div>
+<div style="flex:1;display:flex;align-items:flex-end;gap:4px;height:100%"><div style="flex:1;flex-shrink:0;height:49%;background:#0f7c8a;border-radius:3px 3px 0 0"></div><div style="flex:1;flex-shrink:0;height:38%;background:#1e2f31;border-radius:3px 3px 0 0"></div></div>
+<div style="flex:1;display:flex;align-items:flex-end;gap:4px;height:100%"><div style="flex:1;flex-shrink:0;height:71%;background:#0f7c8a;border-radius:3px 3px 0 0"></div><div style="flex:1;flex-shrink:0;height:31%;background:#1e2f31;border-radius:3px 3px 0 0"></div></div>
+<div style="flex:1;display:flex;align-items:flex-end;gap:4px;height:100%"><div style="flex:1;flex-shrink:0;height:79%;background:#0f7c8a;border-radius:3px 3px 0 0"></div><div style="flex:1;flex-shrink:0;height:36%;background:#1e2f31;border-radius:3px 3px 0 0"></div></div>
+<div style="flex:1;display:flex;align-items:flex-end;gap:4px;height:100%"><div style="flex:1;flex-shrink:0;height:100%;background:#2ec9d9;border-radius:3px 3px 0 0"></div><div style="flex:1;flex-shrink:0;height:35%;background:#31474d;border-radius:3px 3px 0 0"></div></div>
+</div>
+<div style="display:flex;border-top:1px solid rgba(255,255,255,.07);padding-top:9px"><span style="flex:1;font:400 11px 'IBM Plex Mono',monospace;color:#4f6165">MAR</span><span style="flex:1;font:400 11px 'IBM Plex Mono',monospace;color:#4f6165">ABR</span><span style="flex:1;font:400 11px 'IBM Plex Mono',monospace;color:#4f6165">MAI</span><span style="flex:1;font:400 11px 'IBM Plex Mono',monospace;color:#4f6165">JUN</span><span style="flex:1;font:400 11px 'IBM Plex Mono',monospace;color:#4f6165">JUL</span><span style="flex:1;font:500 11px 'IBM Plex Mono',monospace;color:#2ec9d9">AGO</span></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:44px">
+<div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px"><h3 style="margin:0;font:500 12px 'IBM Plex Sans',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#6f8286">A receber</h3><a href="#1d" style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#2ec9d9;text-decoration:none">Ver todas</a></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><p style="margin:0 0 3px;font:450 13.5px 'IBM Plex Sans',sans-serif;color:#dde8ea">Invest Soluções</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#4f6165">AlfaGym · vence 10/08</p></div><span style="font:400 15px 'IBM Plex Mono',monospace;color:#dde8ea">12.480,00</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><p style="margin:0 0 3px;font:450 13.5px 'IBM Plex Sans',sans-serif;color:#dde8ea">Vertex Sistemas</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#4f6165">AlfaControl · vence 10/08</p></div><span style="font:400 15px 'IBM Plex Mono',monospace;color:#dde8ea">8.940,00</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><p style="margin:0 0 3px;font:450 13.5px 'IBM Plex Sans',sans-serif;color:#dde8ea">Norte Tech</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#4f6165">AlfaSchool · vence 15/08</p></div><span style="font:400 15px 'IBM Plex Mono',monospace;color:#dde8ea">5.720,00</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0"><div><p style="margin:0 0 3px;font:450 13.5px 'IBM Plex Sans',sans-serif;color:#dde8ea">Clínica Bem Viver</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#d0705b">AlfaMed · venceu 02/08</p></div><span style="font:400 15px 'IBM Plex Mono',monospace;color:#dde8ea">1.290,00</span></div>
+</div>
+<div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px"><h3 style="margin:0;font:500 12px 'IBM Plex Sans',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#6f8286">A pagar</h3><a href="#1d" style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#2ec9d9;text-decoration:none">Ver todas</a></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><p style="margin:0 0 3px;font:450 13.5px 'IBM Plex Sans',sans-serif;color:#dde8ea">Folha · suporte</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#4f6165">Despesa fixa · vence 05/08</p></div><span style="font:400 15px 'IBM Plex Mono',monospace;color:#dde8ea">14.200,00</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><p style="margin:0 0 3px;font:450 13.5px 'IBM Plex Sans',sans-serif;color:#dde8ea">Infraestrutura</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#4f6165">Hetzner · vence 08/08</p></div><span style="font:400 15px 'IBM Plex Mono',monospace;color:#dde8ea">3.410,00</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><p style="margin:0 0 3px;font:450 13.5px 'IBM Plex Sans',sans-serif;color:#dde8ea">Contabilidade</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#4f6165">Prisma · vence 20/08</p></div><span style="font:400 15px 'IBM Plex Mono',monospace;color:#dde8ea">1.980,00</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0"><div><p style="margin:0 0 3px;font:450 13.5px 'IBM Plex Sans',sans-serif;color:#dde8ea">Licenças de terceiros</p><p style="margin:0;font:400 11.5px 'IBM Plex Sans',sans-serif;color:#4f6165">Diversos · vence 12/08</p></div><span style="font:400 15px 'IBM Plex Mono',monospace;color:#dde8ea">1.870,40</span></div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+</div>
+
+<p class="dv-next">Próximos passos: "seguir com <a class="dv-oid" href="#1b">1b</a> e aplicar em Clientes e Faturamento" · "quero <a class="dv-oid" href="#1c">1c</a> em dark também" · "mais opções de ícone"</p>
+</section>
+</x-dc>
+</body>
+</html>
