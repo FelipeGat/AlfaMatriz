@@ -50,29 +50,10 @@ class PainelController extends Controller
 
     public function comercial()
     {
-        $sistemas = Sistema::withCount(['clientes' => fn ($q) => $q->where('clientes.ativo', true)->where('cliente_sistema.ativo', true)])
-            ->get();
-
-        $ranking = $sistemas->map(function (Sistema $sistema) {
-            $porRevenda = $sistema->clientes()
-                ->where('clientes.ativo', true)
-                ->where('cliente_sistema.ativo', true)
-                ->get(['clientes.id', 'clientes.revenda_id'])
-                ->groupBy('revenda_id');
-
-            $valorTotal = 0;
-            foreach ($porRevenda as $revendaId => $clientes) {
-                $qtd = $clientes->count();
-                $tier = $sistema->tierParaVolume($qtd, $revendaId);
-                $valorTotal += $tier?->calcularMensalidade($qtd) ?? 0;
-            }
-
-            return [
-                'sistema' => $sistema,
-                'clientes_ativos' => $sistema->clientes_count,
-                'valor_estimado' => $valorTotal,
-            ];
-        });
+        // Mesma origem da tela de Sistemas: o valor de atacado precisa bater
+        // entre as duas.
+        $ranking = $this->indicadores->rankingSistemas();
+        $sistemas = $ranking->pluck('sistema');
 
         $porQuantidade = $ranking->sortByDesc('clientes_ativos')->values();
         $porValor = $ranking->sortByDesc('valor_estimado')->values();
@@ -85,7 +66,7 @@ class PainelController extends Controller
         $totalClientesAtivos = $this->indicadores->clientesAtivos();
         $totalSistemasAtivos = $this->indicadores->sistemasAtivos();
         $totalRevendasAtivas = $this->indicadores->revendasAtivas();
-        $mrrEstimado = $ranking->sum('valor_estimado');
+        $mrrEstimado = $this->indicadores->mrrAtacado();
 
         $porRevenda = Cliente::where('ativo', true)
             ->with('revenda')

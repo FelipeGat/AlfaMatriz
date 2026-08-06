@@ -68,17 +68,7 @@ class TodasAsTelasRedesenhadasTest extends TestCase
         $usuario = User::factory()->create();
         $semResumo = [];
 
-        // Sistemas tem anatomia própria no handoff: catálogo à esquerda e
-        // detalhe à direita, com as métricas dentro do card de detalhe. Não
-        // leva faixa de resumo, e cobrar uma seria seguir o teste, não o
-        // desenho.
-        $comAnatomiaPropria = ['sistemas.index'];
-
         foreach (array_keys(self::TELAS) as $rota) {
-            if (in_array($rota, $comAnatomiaPropria, true)) {
-                continue;
-            }
-
             $html = $this->actingAs($usuario)->get(route($rota))->getContent();
 
             // A faixa usa auto-fit/minmax — a mesma regra em todas.

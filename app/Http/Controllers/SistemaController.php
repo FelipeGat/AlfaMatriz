@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Revenda;
 use App\Models\Sistema;
+use App\Services\IndicadoresService;
 use Illuminate\Http\Request;
 
 class SistemaController extends Controller
 {
+    public function __construct(private readonly IndicadoresService $indicadores) {}
+
     public function index(Request $request)
     {
         $sistemas = Sistema::withCount(['clientes' => fn ($q) => $q->where('clientes.ativo', true)->where('cliente_sistema.ativo', true)])
@@ -22,7 +25,18 @@ class SistemaController extends Controller
 
         $detalhe = $selecionado ? $this->detalharSistema($selecionado, $sistemas) : null;
 
-        return view('sistemas.index', compact('sistemas', 'selecionado', 'detalhe'));
+        // Resumo do topo. O atacado sai da mesma origem do painel Comercial —
+        // é o que garante que os dois mostrem o mesmo número.
+        $sistemasAtivos = $this->indicadores->sistemasAtivos();
+        $clientesAtivos = $this->indicadores->clientesAtivos();
+        $mrrAtacado = $this->indicadores->mrrAtacado();
+        $vinculosAtivos = (int) $sistemas->sum('clientes_count');
+        $precoMedio = $vinculosAtivos > 0 ? $mrrAtacado / $vinculosAtivos : 0.0;
+
+        return view('sistemas.index', compact(
+            'sistemas', 'selecionado', 'detalhe',
+            'sistemasAtivos', 'clientesAtivos', 'mrrAtacado', 'vinculosAtivos', 'precoMedio'
+        ));
     }
 
     /**

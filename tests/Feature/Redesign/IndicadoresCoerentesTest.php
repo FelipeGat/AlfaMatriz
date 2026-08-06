@@ -54,6 +54,30 @@ class IndicadoresCoerentesTest extends TestCase
     }
 
     /**
+     * @spec:AC-044 O MRR de atacado aparece no painel Comercial e na tela de
+     * Sistemas. Os dois saem do mesmo cálculo — antes cada tela somava por
+     * conta própria, que é como os números começam a discordar.
+     */
+    public function test_mrr_de_atacado_bate_entre_comercial_e_sistemas(): void
+    {
+        $usuario = User::factory()->create();
+
+        $this->instance(IndicadoresService::class, new class extends IndicadoresService
+        {
+            public function mrrAtacado(): float
+            {
+                return 4242.42;
+            }
+        });
+
+        $comercial = $this->actingAs($usuario)->get(route('comercial'));
+        $sistemas = $this->actingAs($usuario)->get(route('sistemas.index'));
+
+        $this->assertSame(4242.42, $comercial->viewData('mrrEstimado'), 'O Comercial ainda calcula por conta própria.');
+        $this->assertSame(4242.42, $sistemas->viewData('mrrAtacado'), 'A tela de Sistemas ainda calcula por conta própria.');
+    }
+
+    /**
      * @spec:AC-044 Mudar o critério num lugar só não pode fazer as telas
      * divergirem: os painéis consultam o serviço, não contam por conta
      * própria. Substituindo o serviço, as duas telas mudam juntas.

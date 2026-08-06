@@ -50,6 +50,47 @@ class IndicadoresService
             ->sum('valor');
     }
 
+    /**
+     * Valor de atacado por sistema, com o tier aplicado por revenda.
+     *
+     * Vive aqui porque aparece no painel Comercial e na tela de Sistemas: se
+     * cada uma calculasse por conta própria, bastaria alguém ajustar a regra
+     * de um lado para os dois números passarem a discordar.
+     *
+     * @return \Illuminate\Support\Collection<int, array{sistema: Sistema, clientes_ativos: int, valor_estimado: float}>
+     */
+    public function rankingSistemas()
+    {
+        return Sistema::withCount(['clientes' => fn ($q) => $q->where('clientes.ativo', true)->where('cliente_sistema.ativo', true)])
+            ->get()
+            ->map(function (Sistema $sistema) {
+                $porRevenda = $sistema->clientes()
+                    ->where('clientes.ativo', true)
+                    ->where('cliente_sistema.ativo', true)
+                    ->get(['clientes.id', 'clientes.revenda_id'])
+                    ->groupBy('revenda_id');
+
+                $valorTotal = 0.0;
+                foreach ($porRevenda as $revendaId => $clientes) {
+                    $qtd = $clientes->count();
+                    $tier = $sistema->tierParaVolume($qtd, $revendaId);
+                    $valorTotal += $tier?->calcularMensalidade($qtd) ?? 0;
+                }
+
+                return [
+                    'sistema' => $sistema,
+                    'clientes_ativos' => $sistema->clientes_count,
+                    'valor_estimado' => $valorTotal,
+                ];
+            });
+    }
+
+    /** Soma do atacado de todos os sistemas. */
+    public function mrrAtacado(): float
+    {
+        return (float) $this->rankingSistemas()->sum('valor_estimado');
+    }
+
     public function saldoEmCaixa(): float
     {
         return (float) ContaFinanceira::where('ativo', true)->sum('saldo');

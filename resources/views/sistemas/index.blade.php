@@ -8,6 +8,12 @@
     </x-slot>
 
     <div class="space-y-[18px]">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <x-summary-card label="Sistemas ativos" :value="$sistemasAtivos" contexto="de {{ $sistemas->count() }} no catálogo" />
+            <x-summary-card label="Clientes ativos" :value="$clientesAtivos" contexto="base total da Alfa" />
+            <x-summary-card label="MRR atacado" :value="'R$ ' . number_format($mrrAtacado, 2, ',', '.')" contexto="somando todos os sistemas" />
+            <x-summary-card label="Preço médio" :value="'R$ ' . number_format($precoMedio, 2, ',', '.')" contexto="por vínculo ativo" />
+        </div>
 
         {{-- Flex com quebra, não grid fixo: em tela estreita o catálogo e o
              detalhe empilham sozinhos. --}}
