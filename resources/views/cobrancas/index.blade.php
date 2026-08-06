@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-2 text-[13px]">
+        <div class="flex items-center gap-2 text-[14px]">
             <span class="text-mute">Financeiro</span>
             <span class="text-line">/</span>
             <span class="font-medium text-ink">Receitas</span>
@@ -59,7 +59,7 @@
                                 };
                             @endphp
                             <tr class="border-b border-line transition-colors last:border-0 hover:bg-raised">
-                                <td class="px-5 py-3 text-[13px] text-ink">{{ $cobranca->descricao }}</td>
+                                <td class="px-5 py-3 text-[14px] text-ink">{{ $cobranca->descricao }}</td>
                                 <td class="px-5 py-3 text-[12.5px] text-dim">{{ $cobranca->revenda->nome ?? $cobranca->cliente->nome ?? '—' }}</td>
                                 <td class="valor px-5 py-3 text-[12.5px] {{ $vencida ? 'text-bad' : 'text-dim' }}">{{ $cobranca->data_vencimento->format('d/m/Y') }}</td>
                                 <td class="valor px-5 py-3 text-right text-[12.5px] font-medium text-ink">R$ {{ number_format($cobranca->valor, 2, ',', '.') }}</td>
@@ -77,7 +77,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="px-5 py-[34px] text-center text-[13px] text-mute">Nenhuma receita encontrada.</td></tr>
+                            <tr><td colspan="6" class="px-5 py-[34px] text-center text-[14px] text-mute">Nenhuma receita encontrada.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

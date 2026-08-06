@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-2 text-[13px]">
+        <div class="flex items-center gap-2 text-[14px]">
             <span class="text-mute">Painéis</span>
             <span class="text-line">/</span>
             <span class="font-medium text-ink">Financeiro</span>
@@ -72,7 +72,7 @@
                         @php $vencida = $receita->data_vencimento->isPast(); @endphp
                         <li class="flex items-center justify-between gap-3 py-3">
                             <div class="min-w-0">
-                                <p class="truncate text-[13px] text-ink">{{ $receita->descricao }}</p>
+                                <p class="truncate text-[14px] text-ink">{{ $receita->descricao }}</p>
                                 <p class="text-[11.5px] {{ $vencida ? 'text-bad' : 'text-mute' }}">
                                     {{ $receita->revenda->nome ?? $receita->cliente->nome ?? '—' }} ·
                                     {{ $vencida ? 'venceu' : 'vence' }} {{ $receita->data_vencimento->format('d/m/Y') }}
@@ -83,7 +83,7 @@
                             </span>
                         </li>
                     @empty
-                        <li class="py-[34px] text-center text-[13px] text-mute">Nenhuma receita pendente.</li>
+                        <li class="py-[34px] text-center text-[14px] text-mute">Nenhuma receita pendente.</li>
                     @endforelse
                 </ul>
             </x-painel-card>
@@ -98,7 +98,7 @@
                         @php $vencida = $despesa->data_vencimento->isPast(); @endphp
                         <li class="flex items-center justify-between gap-3 py-3">
                             <div class="min-w-0">
-                                <p class="truncate text-[13px] text-ink">{{ $despesa->descricao }}</p>
+                                <p class="truncate text-[14px] text-ink">{{ $despesa->descricao }}</p>
                                 <p class="text-[11.5px] {{ $vencida ? 'text-bad' : 'text-mute' }}">
                                     {{ $despesa->fornecedor->razao_social ?? '—' }} ·
                                     {{ $vencida ? 'venceu' : 'vence' }} {{ $despesa->data_vencimento->format('d/m/Y') }}
@@ -109,7 +109,7 @@
                             </span>
                         </li>
                     @empty
-                        <li class="py-[34px] text-center text-[13px] text-mute">Nenhuma despesa em aberto.</li>
+                        <li class="py-[34px] text-center text-[14px] text-mute">Nenhuma despesa em aberto.</li>
                     @endforelse
                 </ul>
             </x-painel-card>

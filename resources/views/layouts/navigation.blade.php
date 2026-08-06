@@ -95,7 +95,7 @@
                 {{ Str::of(Auth::user()->name)->substr(0, 1)->upper() }}
             </span>
             <div class="min-w-0">
-                <p class="truncate text-[13px] font-medium text-ink">{{ Auth::user()->name }}</p>
+                <p class="truncate text-[14px] font-medium text-ink">{{ Auth::user()->name }}</p>
                 <p class="truncate text-[12px] text-mute">{{ Auth::user()->email }}</p>
             </div>
         </div>

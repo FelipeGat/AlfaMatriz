@@ -40,7 +40,7 @@
 
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-2 text-[13px]">
+        <div class="flex items-center gap-2 text-[14px]">
             <span class="text-mute">Painéis</span>
             <span class="text-line">/</span>
             <span class="font-medium text-ink">Comercial</span>
@@ -108,7 +108,7 @@
                             <li class="flex items-center gap-3 rounded-control py-1.5 pl-3 pr-2" style="box-shadow: inset 3px 0 0 0 {{ $arco['cor'] }};">
                                 <span class="valor w-6 shrink-0 text-[11.5px] text-mute">{{ str_pad($i + 1, 2, '0', STR_PAD_LEFT) }}</span>
                                 <div class="min-w-0 flex-1">
-                                    <p class="truncate text-[13px] text-ink">{{ $arco['nome'] }}</p>
+                                    <p class="truncate text-[14px] text-ink">{{ $arco['nome'] }}</p>
                                     <p class="truncate text-[11px] uppercase tracking-[.06em] text-mute">{{ $arco['categoria'] ?? '—' }}</p>
                                 </div>
                                 <div class="shrink-0 text-right">
@@ -123,7 +123,7 @@
                                 </div>
                             </li>
                         @empty
-                            <li class="py-[34px] text-center text-[13px] text-mute">Nenhum sistema com clientes ainda.</li>
+                            <li class="py-[34px] text-center text-[14px] text-mute">Nenhum sistema com clientes ainda.</li>
                         @endforelse
                     </ul>
                 </div>
@@ -135,11 +135,11 @@
                 <ul class="divide-y divide-line">
                     @forelse ($porRevenda as $nome => $qtd)
                         <li class="flex items-center justify-between gap-3 py-2.5">
-                            <span class="truncate text-[13px] text-ink">{{ $nome }}</span>
+                            <span class="truncate text-[14px] text-ink">{{ $nome }}</span>
                             <span class="valor shrink-0 text-[12.5px] font-medium text-ink">{{ $qtd }}</span>
                         </li>
                     @empty
-                        <li class="py-[34px] text-center text-[13px] text-mute">Nenhum cliente cadastrado.</li>
+                        <li class="py-[34px] text-center text-[14px] text-mute">Nenhum cliente cadastrado.</li>
                     @endforelse
                 </ul>
             </x-painel-card>
@@ -148,11 +148,11 @@
                 <ul class="divide-y divide-line">
                     @forelse ($porCategoria as $categoria => $qtd)
                         <li class="flex items-center justify-between gap-3 py-2.5">
-                            <span class="truncate text-[13px] text-ink">{{ $categoria ?: 'Sem categoria' }}</span>
+                            <span class="truncate text-[14px] text-ink">{{ $categoria ?: 'Sem categoria' }}</span>
                             <span class="valor shrink-0 text-[12.5px] font-medium text-ink">{{ $qtd }}</span>
                         </li>
                     @empty
-                        <li class="py-[34px] text-center text-[13px] text-mute">Nenhum sistema cadastrado.</li>
+                        <li class="py-[34px] text-center text-[14px] text-mute">Nenhum sistema cadastrado.</li>
                     @endforelse
                 </ul>
             </x-painel-card>

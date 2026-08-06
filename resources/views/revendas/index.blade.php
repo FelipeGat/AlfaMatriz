@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-2 text-[13px]">
+        <div class="flex items-center gap-2 text-[14px]">
             <span class="text-mute">Comercial</span>
             <span class="text-line">/</span>
             <span class="font-medium text-ink">Revendas</span>
@@ -41,7 +41,7 @@
                     <tbody>
                         @forelse ($revendas as $revenda)
                             <tr class="border-b border-line transition-colors last:border-0 hover:bg-raised">
-                                <td class="px-5 py-3 text-[13px] text-ink">{{ $revenda->nome }}</td>
+                                <td class="px-5 py-3 text-[14px] text-ink">{{ $revenda->nome }}</td>
                                 <td class="valor px-5 py-3 text-[12.5px] text-dim">{{ $revenda->cnpj ?? '—' }}</td>
                                 <td class="px-5 py-3 text-[12.5px] text-dim">{{ $revenda->contato_nome ?? '—' }}</td>
                                 <td class="valor px-5 py-3 text-[12.5px] text-ink">{{ $revenda->clientes_count }}</td>
@@ -59,7 +59,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="px-5 py-[34px] text-center text-[13px] text-mute">Nenhuma revenda cadastrada.</td></tr>
+                            <tr><td colspan="6" class="px-5 py-[34px] text-center text-[14px] text-mute">Nenhuma revenda cadastrada.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

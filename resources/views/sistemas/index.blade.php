@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-2 text-[13px]">
+        <div class="flex items-center gap-2 text-[14px]">
             <span class="text-mute">Comercial</span>
             <span class="text-line">/</span>
             <span class="font-medium text-ink">Sistemas</span>
@@ -26,7 +26,7 @@
                                class="block rounded-control px-3 py-2 transition-colors {{ $ativo ? 'bg-raised' : 'hover:bg-nav-hover' }}"
                                @if ($ativo) style="box-shadow: inset 2px 0 0 0 var(--brand);" @endif>
                                 <div class="flex items-baseline justify-between gap-2">
-                                    <span class="truncate text-[13px] {{ $ativo ? 'font-medium text-ink' : 'text-dim' }}">{{ $sistema->nome }}</span>
+                                    <span class="truncate text-[14px] {{ $ativo ? 'font-medium text-ink' : 'text-dim' }}">{{ $sistema->nome }}</span>
                                     <span class="valor shrink-0 text-[11.5px] text-mute">{{ $sistema->clientes_count }}</span>
                                 </div>
                                 <div class="mt-1.5 h-1 w-full overflow-hidden rounded-[2px] bg-track">
@@ -36,7 +36,7 @@
                             </a>
                         </li>
                     @empty
-                        <li class="py-[34px] text-center text-[13px] text-mute">Nenhum sistema cadastrado.</li>
+                        <li class="py-[34px] text-center text-[14px] text-mute">Nenhum sistema cadastrado.</li>
                     @endforelse
                 </ul>
             </x-painel-card>
@@ -115,7 +115,7 @@
                                         </div>
                                     </div>
                                 @empty
-                                    <p class="py-[34px] text-center text-[13px] text-mute">Nenhuma faixa de preço cadastrada.</p>
+                                    <p class="py-[34px] text-center text-[14px] text-mute">Nenhuma faixa de preço cadastrada.</p>
                                 @endforelse
                             </div>
                         </x-painel-card>
@@ -138,7 +138,7 @@
                                         </div>
                                     </div>
                                 @empty
-                                    <p class="py-[34px] text-center text-[13px] text-mute">Nenhuma revenda com clientes ativos.</p>
+                                    <p class="py-[34px] text-center text-[14px] text-mute">Nenhuma revenda com clientes ativos.</p>
                                 @endforelse
                             </div>
 

@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-2 text-[13px]">
+        <div class="flex items-center gap-2 text-[14px]">
             <span class="text-mute">Comercial</span>
             <span class="text-line">/</span>
             <span class="font-medium text-ink">Clientes</span>
@@ -75,7 +75,7 @@
                     <tbody>
                         @forelse ($clientes as $cliente)
                             <tr class="border-b border-line transition-colors last:border-0 hover:bg-raised">
-                                <td class="px-5 py-3 text-[13px] text-ink">{{ $cliente->nome }}</td>
+                                <td class="px-5 py-3 text-[14px] text-ink">{{ $cliente->nome }}</td>
                                 <td class="px-5 py-3 text-[12.5px] text-dim">{{ $cliente->revenda->nome ?? 'Venda direta' }}</td>
                                 <td class="max-w-[200px] truncate px-5 py-3 text-[12.5px] text-dim">{{ $cliente->sistemas->pluck('nome')->join(', ') ?: '—' }}</td>
                                 <td class="px-5 py-3 text-[12.5px] text-dim">
@@ -99,7 +99,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="px-5 py-[34px] text-center text-[13px] text-mute">Nenhum cliente encontrado com estes filtros.</td></tr>
+                            <tr><td colspan="6" class="px-5 py-[34px] text-center text-[14px] text-mute">Nenhum cliente encontrado com estes filtros.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
