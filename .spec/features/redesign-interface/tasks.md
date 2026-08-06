@@ -22,28 +22,28 @@ sentido antes delas.
 
 ## T-040 — Alternância de tema com persistência [concluida]
 - Refs: US-020, AC-039
-- Arquivos: resources/views/layouts/app.blade.php, resources/js/app.js, tests/Feature/Redesign/AlternanciaTemaTest.php
+- Arquivos: resources/views/layouts/app.blade.php, tests/Feature/Redesign/SidebarETemaTest.php
 - Notas: botão sol/lua no header, `data-theme` no `<html>`, preferência em
   `localStorage`, aplicada antes da primeira pintura para não piscar branco no
   tema escuro.
 
 ## T-041 — Sidebar colapsável com lockup da marca [concluida]
 - Refs: US-021, AC-041
-- Arquivos: resources/views/layouts/navigation.blade.php, resources/views/components/nav-icon.blade.php, public/brand/alfamatriz-wordmark.png, tests/Feature/Redesign/SidebarColapsavelTest.php
-- Notas: 236px ↔ 68px, estado em `localStorage`, lockup ícone+wordmark no topo,
-  marcador de 3px no item ativo, tooltip nativo quando colapsada. Mantém o
-  comportamento de drawer abaixo de `lg`, que já existe.
+- Arquivos: resources/views/layouts/navigation.blade.php, public/brand/alfamatriz-wordmark.png, tests/Feature/Redesign/MarcaMonocromaticaTest.php
+- Notas: REESCRITA na segunda direção — o menu colapsável foi descartado por
+  decisão do cliente. Agora é fixo em 240px, com lockup monocromático, busca
+  com atalho `/` e item ativo neutro. O drawer abaixo de `lg` permanece.
 
 ## T-042 — Componentes base do novo visual [concluida]
 - Refs: US-022, AC-043
-- Arquivos: resources/views/components/summary-card.blade.php, resources/views/components/stat-card.blade.php, resources/views/components/status-pill.blade.php, resources/views/components/data-table.blade.php, tests/Feature/Redesign/ComponentesBaseTest.php
+- Arquivos: resources/views/components/summary-card.blade.php, resources/views/components/kpi-card.blade.php, resources/views/components/status-pill.blade.php, resources/views/components/painel-card.blade.php, tests/Feature/Redesign/ComponentesBaseTest.php
 - Notas: é aqui que a armadilha do valor monetário é resolvida de uma vez —
   `nowrap` e largura mínima ficam no componente, não espalhados por tela. O
   teste prova que um valor longo não ganha permissão de quebrar.
 
 ## T-043 — Painéis Financeiro e Comercial [concluida]
 - Refs: US-022, US-023, AC-042, AC-044
-- Arquivos: resources/views/dashboard.blade.php, resources/views/dashboard-comercial.blade.php, app/Http/Controllers/PainelController.php, tests/Feature/Redesign/IndicadoresCoerentesTest.php
+- Arquivos: resources/views/dashboard.blade.php, resources/views/dashboard-comercial.blade.php, app/Http/Controllers/PainelController.php, app/Services/IndicadoresService.php, tests/Feature/Redesign/IndicadoresCoerentesTest.php
 - Notas: grade de KPIs, gráfico de entradas × saídas, ranking com rosca. Os
   indicadores que aparecem em mais de uma tela passam a sair de uma origem só
   (AC-044) — é correção de defeito, não só visual.
@@ -63,6 +63,6 @@ sentido antes delas.
 
 ## T-046 — Modais, toasts e estados vazios [concluida]
 - Refs: US-022, AC-042
-- Arquivos: resources/views/components/modal.blade.php, resources/views/components/toast.blade.php
+- Arquivos: resources/views/components/modal.blade.php, resources/views/components/toast.blade.php, resources/views/components/primary-button.blade.php, tailwind.config.js, tests/Feature/Redesign/MigracaoCompletaTest.php
 - Notas: overlay e caixa com as animações do handoff (nada acima de 220ms),
   toast centralizado embaixo, estados vazios das tabelas.
