@@ -77,7 +77,7 @@
                              significa algo (gráfico, situação, indicador). --}}
                         <a href="{{ route($link['route']) }}"
                            class="flex h-[34px] items-center gap-2.5 rounded-control px-2 text-[14px] font-medium transition-colors
-                                  {{ $ativo ? 'bg-nav-active text-ink' : 'text-dim hover:bg-nav-hover hover:text-ink' }}">
+                                  {{ $ativo ? 'bg-nav-active text-ink' : 'text-nav-ink hover:bg-nav-hover hover:text-ink' }}">
                             <span class="h-[18px] w-[18px] shrink-0 {{ $ativo ? 'text-ink' : 'text-mute' }}">
                                 <x-nav-icon :name="$link['icon']" />
                             </span>

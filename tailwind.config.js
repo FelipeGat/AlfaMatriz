@@ -42,6 +42,7 @@ export default {
                 nav: {
                     active: 'var(--nav-active)',
                     hover: 'var(--nav-hover)',
+                    ink: 'var(--nav-ink)',
                 },
                 good: 'var(--good)',
                 warn: 'var(--warn)',

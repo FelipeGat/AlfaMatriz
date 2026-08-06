@@ -38,6 +38,7 @@
     --track2: #333333;
     --nav-active: #1a1a1a;
     --nav-hover: #121212;
+    --nav-ink: #b8b8b8;
     /* O wordmark é PNG colorido: o filtro o torna monocromático por tema. */
     --logo-filter: brightness(0) invert(1);
 }
@@ -61,6 +62,7 @@
     --track2: #c4c4c4;
     --nav-active: #ececec;
     --nav-hover: #f2f2f2;
+    --nav-ink: #4d4d4d;
     --logo-filter: brightness(0);
 }
 
