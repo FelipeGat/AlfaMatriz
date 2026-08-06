@@ -149,7 +149,7 @@ reinvente:**
   com o modo guardado no navegador (já existe hoje). Sistema sem tier de
   atacado aparece esmaecido e com alerta.
 
-## T-040 — Faturamento das revendas [pendente]
+## T-040 — Faturamento das revendas [concluida]
 - Refs: US-022, AC-050, AC-051, AC-052
 - Arquivos: resources/views/faturamento/index.blade.php, app/Http/Controllers/FaturamentoController.php, app/Services/FaturamentoService.php, tests/Feature/Redesign/FaturamentoTest.php
 - Esforço: alto
