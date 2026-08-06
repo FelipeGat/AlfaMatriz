@@ -1,47 +1,74 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-ink leading-tight">Extrato — {{ $contaFinanceira->nome }}</h2>
+    <x-slot name="titulo">Extrato · {{ $contaFinanceira->nome }}</x-slot>
+    <x-slot name="contexto">saldo atual R$ {{ number_format($contaFinanceira->saldo, 2, ',', '.') }}</x-slot>
+    <x-slot name="acoes">
+        <a href="{{ route('contas-financeiras.index') }}"
+           class="h-[34px] px-3 inline-flex items-center rounded-control border border-btn-line
+                  text-[12.5px] font-semibold text-ink-dim hover:text-brand hover:border-brand transition whitespace-nowrap">
+            Voltar ao caixa
+        </a>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
-            <div class="mb-4">
-                <a href="{{ route('contas-financeiras.index') }}" class="text-sm text-brand hover:text-brand-bright">&larr; Voltar para contas</a>
-            </div>
+    <x-tabela min="820px">
+        <thead>
+            <tr class="bg-head border-b border-line font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                <th class="px-4 py-2.5 font-semibold">Data</th>
+                <th class="px-4 py-2.5 font-semibold">Descrição</th>
+                <th class="px-4 py-2.5 font-semibold">Tipo</th>
+                <th class="px-4 py-2.5 font-semibold text-right">Valor</th>
+                <th class="px-4 py-2.5 font-semibold text-right">Saldo resultante</th>
+            </tr>
+        </thead>
 
-            <div class="bg-panel overflow-hidden shadow-sm sm:rounded-lg">
-                <table class="min-w-full divide-y divide-white/5">
-                    <thead class="bg-panel-raised">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-ink-dim uppercase">Data</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-ink-dim uppercase">Descrição</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-ink-dim uppercase">Tipo</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-ink-dim uppercase">Valor</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-ink-dim uppercase">Saldo</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-panel divide-y divide-white/5">
-                        @forelse ($movimentacoes as $mov)
-                            <tr>
-                                <td class="px-6 py-4 text-sm text-ink-dim">{{ $mov->data->format('d/m/Y') }}</td>
-                                <td class="px-6 py-4 text-sm text-ink">{{ $mov->descricao }}</td>
-                                <td class="px-6 py-4 text-sm">
-                                    <span class="px-2 py-1 text-xs rounded-full {{ $mov->tipo === 'entrada' ? 'bg-status-good/15 text-status-good' : 'bg-status-critical/15 text-status-critical' }}">
-                                        {{ ucfirst($mov->tipo) }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-right {{ $mov->tipo === 'saida' ? 'text-status-critical' : 'text-status-good' }}">
-                                    {{ $mov->tipo === 'saida' ? '-' : '+' }} R$ {{ number_format($mov->valor, 2, ',', '.') }}
-                                </td>
-                                <td class="px-6 py-4 text-sm text-right font-medium">R$ {{ number_format($mov->saldo_resultante, 2, ',', '.') }}</td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="5" class="px-6 py-8 text-center text-sm text-ink-dim">Nenhuma movimentação registrada.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-                <div class="p-4">{{ $movimentacoes->links() }}</div>
-            </div>
-        </div>
-    </div>
+        <tbody>
+            @forelse ($movimentacoes as $movimentacao)
+                @php $entrada = $movimentacao->tipo === 'entrada'; @endphp
+
+                <tr class="border-b border-rule hover:bg-chip transition">
+                    <td class="px-4 py-3 font-mono text-[13px] text-ink-dim whitespace-nowrap">
+                        {{ \Illuminate\Support\Carbon::parse($movimentacao->data)->format('d/m/Y') }}
+                    </td>
+
+                    <td class="px-4 py-3 text-[13.5px] text-ink">{{ $movimentacao->descricao }}</td>
+
+                    <td class="px-4 py-3">
+                        <x-badge :tom="match ($movimentacao->tipo) {
+                            'entrada' => 'bom',
+                            'saida' => 'atencao',
+                            default => 'neutro',
+                        }">{{ ucfirst($movimentacao->tipo) }}</x-badge>
+                    </td>
+
+                    {{-- O valor traz o sinal: sem ele, entrada e saída viram a
+                         mesma coisa numa varredura rápida da coluna. --}}
+                    <td class="px-4 py-3 text-right font-mono text-[13.5px] whitespace-nowrap"
+                        style="color: rgb(var(--{{ $entrada ? 'good' : 'chart-out' }}))">
+                        {{ $entrada ? '+' : '−' }}R$ {{ number_format($movimentacao->valor, 2, ',', '.') }}
+                    </td>
+
+                    {{-- O saldo depois do lançamento é o que permite conferir a
+                         conta linha a linha, sem somar de cabeça. --}}
+                    <td class="px-4 py-3 text-right font-mono text-[13.5px] whitespace-nowrap
+                               {{ $movimentacao->saldo_resultante < 0 ? 'text-crit' : 'text-ink' }}">
+                        R$ {{ number_format($movimentacao->saldo_resultante, 2, ',', '.') }}
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="5" class="px-4 py-8 text-center text-[13px] text-ink-mute">
+                        Nenhuma movimentação nesta conta.
+                    </td>
+                </tr>
+            @endforelse
+        </tbody>
+
+        <x-slot name="rodape">
+            <span>{{ $movimentacoes->count() }} de {{ $movimentacoes->total() }} movimentações</span>
+            <span>· página {{ $movimentacoes->currentPage() }} de {{ $movimentacoes->lastPage() }}</span>
+        </x-slot>
+    </x-tabela>
+
+    @if ($movimentacoes->hasPages())
+        <div class="mt-3">{{ $movimentacoes->links() }}</div>
+    @endif
 </x-app-layout>

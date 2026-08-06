@@ -178,7 +178,7 @@ reinvente:**
   ícone) e a ação de pausar recorrência preservada. Reaproveita
   `contas-pagar.baixarEmMassa`.
 
-## T-043 — Caixa e extrato [pendente]
+## T-043 — Caixa e extrato [concluida]
 - Refs: US-024, AC-056, AC-057
 - Arquivos: resources/views/contas-financeiras/index.blade.php, resources/views/contas-financeiras/_form.blade.php, resources/views/contas-financeiras/create.blade.php, resources/views/contas-financeiras/edit.blade.php, resources/views/contas-financeiras/extrato.blade.php, app/Http/Controllers/ContaFinanceiraController.php, tests/Feature/Redesign/CaixaTest.php
 - Esforço: medio
