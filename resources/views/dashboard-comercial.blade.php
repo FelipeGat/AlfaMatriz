@@ -105,7 +105,12 @@
 
                     <ul class="min-w-0 flex-1 space-y-1.5" style="flex-basis: 320px;">
                         @forelse ($painel['dados']['arcos'] as $i => $arco)
-                            <li class="flex items-center gap-3 rounded-control py-1.5 pl-3 pr-2" style="box-shadow: inset 3px 0 0 0 {{ $arco['cor'] }};">
+                            {{-- O marcador é um elemento próprio, não uma sombra
+                                 interna: dentro de um container com raio, a
+                                 sombra herdava o arredondamento e a barra saía
+                                 com as pontas curvas. --}}
+                            <li class="relative flex items-center gap-3 rounded-control py-1.5 pl-3 pr-2">
+                                <span class="absolute inset-y-0 left-0 w-[3px]" style="background: {{ $arco['cor'] }};" aria-hidden="true"></span>
                                 <span class="valor w-6 shrink-0 text-[11.5px] text-mute">{{ str_pad($i + 1, 2, '0', STR_PAD_LEFT) }}</span>
                                 <div class="min-w-0 flex-1">
                                     <p class="truncate text-[14px] text-ink">{{ $arco['nome'] }}</p>

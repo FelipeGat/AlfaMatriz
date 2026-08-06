@@ -19,9 +19,13 @@
                     @forelse ($sistemas as $sistema)
                         @php $ativo = $selecionado && $sistema->id === $selecionado->id; @endphp
                         <li>
+                            {{-- Marcador como elemento próprio: sombra interna
+                                 herdaria o raio do container e sairia curva. --}}
                             <a href="{{ route('sistemas.index', ['sistema' => $sistema->id]) }}"
-                               class="block rounded-control px-3 py-2 transition-colors {{ $ativo ? 'bg-raised' : 'hover:bg-nav-hover' }}"
-                               @if ($ativo) style="box-shadow: inset 2px 0 0 0 var(--brand);" @endif>
+                               class="relative block rounded-control px-3 py-2 transition-colors {{ $ativo ? 'bg-raised' : 'hover:bg-nav-hover' }}">
+                                @if ($ativo)
+                                    <span class="absolute inset-y-0 left-0 w-[2px] bg-brand" aria-hidden="true"></span>
+                                @endif
                                 <div class="flex items-baseline justify-between gap-2">
                                     <span class="truncate text-[14px] {{ $ativo ? 'font-medium text-ink' : 'text-dim' }}">{{ $sistema->nome }}</span>
                                     <span class="valor shrink-0 text-[11.5px] text-mute">{{ $sistema->clientes_count }}</span>
