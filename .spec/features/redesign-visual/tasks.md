@@ -121,7 +121,7 @@ reinvente:**
   chamando a rota `leads.mover` que já existe; menu "Mover" preservado como
   caminho acessível.
 
-## T-037 — Revendas [pendente]
+## T-037 — Revendas [concluida]
 - Refs: US-021, AC-048
 - Arquivos: resources/views/revendas/index.blade.php, resources/views/revendas/_form.blade.php, resources/views/revendas/create.blade.php, resources/views/revendas/edit.blade.php, app/Http/Controllers/RevendaController.php, tests/Feature/Redesign/RevendasTest.php
 - Esforço: medio
