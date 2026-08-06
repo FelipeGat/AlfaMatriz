@@ -82,19 +82,34 @@ class TemasETipografiaTest extends TestCase
      */
     public function test_tipografia_nova_entra_e_a_antiga_sai(): void
     {
-        $layout = file_get_contents(base_path('resources/views/layouts/app.blade.php'));
+        // Os DOIS layouts: o de convidado ficou para trás numa troca de
+        // direção e a tela de login passou a usar outra fonte que o painel.
+        $layouts = [
+            'resources/views/layouts/app.blade.php',
+            'resources/views/layouts/guest.blade.php',
+        ];
 
-        foreach (['geist:', 'geist-mono'] as $familia) {
-            $this->assertStringContainsString($familia, $layout, "A fonte {$familia} não está sendo carregada.");
+        foreach ($layouts as $caminho) {
+            $layout = file_get_contents(base_path($caminho));
+
+            foreach (['geist:', 'geist-mono'] as $familia) {
+                $this->assertStringContainsString($familia, $layout, "A fonte {$familia} não é carregada em {$caminho}.");
+            }
+
+            foreach (['inter:', 'space-grotesk', 'ibm-plex'] as $antiga) {
+                $this->assertStringNotContainsStringIgnoringCase(
+                    $antiga,
+                    $layout,
+                    "A fonte {$antiga} é de uma direção anterior e continua em {$caminho}."
+                );
+            }
+
+            // E o tema salvo vale nos dois, aplicado antes da primeira pintura.
+            $this->assertStringContainsString('alfamatriz-tema', $layout, "{$caminho} ignora o tema salvo.");
+            $this->assertStringContainsString('data-theme=', $layout);
         }
 
-        // As três famílias das direções anteriores saem por completo.
         foreach (['inter:', 'space-grotesk', 'ibm-plex'] as $antiga) {
-            $this->assertStringNotContainsStringIgnoringCase(
-                $antiga,
-                $layout,
-                "A fonte {$antiga} é de uma direção anterior e não pode continuar carregada."
-            );
             $this->assertStringNotContainsStringIgnoringCase($antiga, $this->config);
         }
 

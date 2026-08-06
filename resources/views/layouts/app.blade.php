@@ -7,7 +7,12 @@
 
         <title>{{ config('app.name', 'AlfaMatriz') }}</title>
 
-        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+        {{-- A versão no endereço força o navegador a buscar de novo. Favicon
+             fica num cache próprio, bem mais persistente que o das páginas, e
+             sobrevive até a janela anônima: sem isto, quem já visitou o site
+             continuaria vendo o ícone antigo por tempo indeterminado. --}}
+        <link rel="icon" type="image/svg+xml"
+              href="{{ asset('favicon.svg') }}?v={{ filemtime(public_path('favicon.svg')) }}">
 
         {{-- Tema aplicado ANTES da primeira pintura: no <head> e síncrono.
              Se ficasse no app.js, quem usa o tema escuro veria um flash branco
