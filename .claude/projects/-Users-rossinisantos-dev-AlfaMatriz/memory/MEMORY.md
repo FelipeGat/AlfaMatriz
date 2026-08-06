@@ -1,0 +1,1 @@
+- [Execução sequencial após perda em paralelo](execucao-sequencial-apos-perda-em-paralelo.md) — as faixas paralelas do onp-spec apagaram trabalho não commitado; fazer uma tarefa de cada vez, commitando cada uma.

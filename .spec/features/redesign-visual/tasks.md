@@ -102,7 +102,7 @@ reinvente:**
   entraram esta semana). O controller passa a calcular a fila de ação e as
   séries a partir do banco.
 
-## T-035 — Painéis Financeiro e Comercial [concluida]
+## T-035 — Painéis Financeiro e Comercial [pendente]
 - Refs: US-019, AC-042, AC-043
 - Arquivos: resources/views/dashboard.blade.php, resources/views/dashboard-comercial.blade.php, app/Http/Controllers/PainelController.php, tests/Feature/Redesign/PaineisTest.php
 - Esforço: alto
@@ -111,7 +111,7 @@ reinvente:**
   Comercial: 4 KPIs e os dois rankings em três camadas (bloco de topo com
   total e líder, faixa segmentada proporcional, linhas com barra e share).
 
-## T-036 — Funil de vendas com arrastar e soltar [concluida]
+## T-036 — Funil de vendas com arrastar e soltar [pendente]
 - Refs: US-020, AC-044, AC-045
 - Arquivos: resources/views/leads/index.blade.php, app/Http/Controllers/LeadController.php, tests/Feature/Redesign/FunilTest.php
 - Esforço: alto
@@ -121,7 +121,7 @@ reinvente:**
   chamando a rota `leads.mover` que já existe; menu "Mover" preservado como
   caminho acessível.
 
-## T-037 — Revendas [concluida]
+## T-037 — Revendas [pendente]
 - Refs: US-021, AC-048
 - Arquivos: resources/views/revendas/index.blade.php, resources/views/revendas/_form.blade.php, resources/views/revendas/create.blade.php, resources/views/revendas/edit.blade.php, app/Http/Controllers/RevendaController.php, tests/Feature/Redesign/RevendasTest.php
 - Esforço: medio
@@ -129,7 +129,7 @@ reinvente:**
   de iniciais, base de clientes com barra, chips de sistemas com `+N`, linha
   de pendência marcada em âmbar, linha de totais e rodapé de contagem.
 
-## T-038 — Clientes: lista e formulário [concluida]
+## T-038 — Clientes: lista e formulário [pendente]
 - Refs: US-021, AC-048
 - Arquivos: resources/views/clientes/index.blade.php, resources/views/clientes/_form.blade.php, resources/views/clientes/create.blade.php, resources/views/clientes/edit.blade.php, app/Http/Controllers/ClienteController.php, tests/Feature/Redesign/ClientesTest.php
 - Esforço: alto
@@ -139,7 +139,7 @@ reinvente:**
   de busca de CNPJ (BrasilAPI) e CEP (ViaCEP) que já existe** e o bloco de
   e-mails e telefones.
 
-## T-039 — Produtos: lista comparável e gestão do sistema [concluida]
+## T-039 — Produtos: lista comparável e gestão do sistema [pendente]
 - Refs: US-021, AC-048, AC-049
 - Arquivos: resources/views/produtos/index.blade.php, resources/views/sistemas/index.blade.php, resources/views/sistemas/edit.blade.php, app/Http/Controllers/ProdutoController.php, tests/Feature/Redesign/ProdutosTest.php
 - Esforço: alto
@@ -149,7 +149,7 @@ reinvente:**
   com o modo guardado no navegador (já existe hoje). Sistema sem tier de
   atacado aparece esmaecido e com alerta.
 
-## T-040 — Faturamento das revendas [concluida]
+## T-040 — Faturamento das revendas [pendente]
 - Refs: US-022, AC-050, AC-051, AC-052
 - Arquivos: resources/views/faturamento/index.blade.php, app/Http/Controllers/FaturamentoController.php, app/Services/FaturamentoService.php, tests/Feature/Redesign/FaturamentoTest.php
 - Esforço: alto
@@ -169,7 +169,7 @@ reinvente:**
   rota `cobrancas.baixarEmMassa`, tabela com prazo real por baixo da data e
   marcação de atraso/a vencer.
 
-## T-042 — Despesas / contas a pagar [concluida]
+## T-042 — Despesas / contas a pagar [pendente]
 - Refs: US-023, AC-053, AC-054, AC-055
 - Arquivos: resources/views/contas-pagar/index.blade.php, resources/views/contas-pagar/_form.blade.php, resources/views/contas-pagar/create.blade.php, resources/views/contas-pagar/edit.blade.php, resources/views/contas-fixas-pagar/index.blade.php, app/Http/Controllers/ContaPagarController.php, tests/Feature/Redesign/DespesasTest.php
 - Esforço: alto
@@ -178,7 +178,7 @@ reinvente:**
   ícone) e a ação de pausar recorrência preservada. Reaproveita
   `contas-pagar.baixarEmMassa`.
 
-## T-043 — Caixa e extrato [concluida]
+## T-043 — Caixa e extrato [pendente]
 - Refs: US-024, AC-056, AC-057
 - Arquivos: resources/views/contas-financeiras/index.blade.php, resources/views/contas-financeiras/_form.blade.php, resources/views/contas-financeiras/create.blade.php, resources/views/contas-financeiras/edit.blade.php, resources/views/contas-financeiras/extrato.blade.php, app/Http/Controllers/ContaFinanceiraController.php, tests/Feature/Redesign/CaixaTest.php
 - Esforço: medio
@@ -195,7 +195,7 @@ reinvente:**
   como bloco marcado pelo tipo, subcategoria como linha e contas como chips
   removíveis, com campos de adição em linha tracejada.
 
-## T-045 — Login e telas de autenticação [concluida]
+## T-045 — Login e telas de autenticação [pendente]
 - Refs: US-026, AC-060
 - Arquivos: resources/views/auth/login.blade.php, resources/views/auth/forgot-password.blade.php, resources/views/auth/reset-password.blade.php, resources/views/auth/confirm-password.blade.php, resources/views/auth/verify-email.blade.php, resources/views/layouts/guest.blade.php, tests/Feature/Redesign/LoginTest.php
 - Esforço: medio
