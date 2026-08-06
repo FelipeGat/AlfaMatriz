@@ -130,7 +130,7 @@
     <x-modal name="nova-conta" maxWidth="lg">
         <form method="POST" action="{{ route('contas-financeiras.store') }}" class="p-5">
             <h2 class="font-display text-[15.5px] font-semibold text-ink mb-4">Nova conta</h2>
-            @include('contas-financeiras._form')
+            @include('contas-financeiras._form', ['emModal' => true])
         </form>
     </x-modal>
 </x-app-layout>

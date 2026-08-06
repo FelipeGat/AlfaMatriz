@@ -194,7 +194,7 @@
     <x-modal name="nova-revenda" maxWidth="lg">
         <form method="POST" action="{{ route('revendas.store') }}" class="p-5">
             <h2 class="font-display text-[15.5px] font-semibold text-ink mb-4">Nova revenda</h2>
-            @include('revendas._form')
+            @include('revendas._form', ['emModal' => true])
         </form>
     </x-modal>
 </x-app-layout>

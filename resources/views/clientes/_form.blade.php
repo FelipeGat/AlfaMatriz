@@ -297,12 +297,20 @@
         <textarea id="observacoes" name="observacoes" rows="3" class="block w-full">{{ old('observacoes', $cliente->observacoes ?? '') }}</textarea>
     </div>
 
-    <div class="flex items-center justify-end gap-2">
-        <a href="{{ route('clientes.index') }}"
-           class="h-9 px-3.5 inline-flex items-center rounded-control border border-btn-line
-                  text-[12.5px] font-semibold text-ink-dim hover:text-brand hover:border-brand transition">
-            Cancelar
-        </a>
+    <div class="sticky bottom-0 -mx-5 -mb-5 mt-4 flex items-center justify-end gap-2 border-t border-line bg-panel px-5 py-3">
+        @if ($emModal ?? false)
+            <button type="button" x-on:click="$dispatch('close')"
+                    class="h-9 px-3.5 rounded-control border border-btn-line
+                           text-[12.5px] font-semibold text-ink-dim hover:text-brand hover:border-brand transition">
+                Cancelar
+            </button>
+        @else
+            <a href="{{ route('clientes.index') }}"
+               class="h-9 px-3.5 inline-flex items-center rounded-control border border-btn-line
+                      text-[12.5px] font-semibold text-ink-dim hover:text-brand hover:border-brand transition">
+                Cancelar
+            </a>
+        @endif
         <button type="submit"
                 class="h-9 px-3.5 inline-flex items-center rounded-control bg-brand text-on-brand
                        text-[12.5px] font-semibold hover:bg-brand-bright transition">

@@ -212,7 +212,7 @@
     <x-modal name="novo-cliente" maxWidth="2xl">
         <form method="POST" action="{{ route('clientes.store') }}" class="p-5">
             <h2 class="font-display text-[15.5px] font-semibold text-ink mb-4">Novo cliente</h2>
-            @include('clientes._form')
+            @include('clientes._form', ['emModal' => true])
         </form>
     </x-modal>
 </x-app-layout>

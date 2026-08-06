@@ -65,7 +65,14 @@ $maxWidth = [
 
     <div
         x-show="show"
-        class="mb-6 overflow-hidden rounded-panel border border-line bg-panel shadow-none transform transition-all sm:w-full {{ $maxWidth }} sm:mx-auto"
+        {{--
+            `max-h` + rolagem AQUI, no painel, e não só no container externo:
+            com um formulário alto (o de cliente tem seis seções), rolar o
+            container faz o modal inteiro subir e sair da tela. Rolando por
+            dentro, a moldura fica parada e o conteúdo é que anda — que é o
+            comportamento que se espera de um diálogo.
+        --}}
+        class="mb-6 max-h-[85vh] overflow-y-auto overscroll-contain rounded-panel border border-line bg-panel shadow-none transform transition-all sm:w-full {{ $maxWidth }} sm:mx-auto"
         x-transition:enter="ease-out duration-150"
         x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"

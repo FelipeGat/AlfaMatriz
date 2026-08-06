@@ -187,7 +187,7 @@
     <x-modal name="nova-receita" maxWidth="2xl">
         <form method="POST" action="{{ route('cobrancas.store') }}" class="p-5">
             <h2 class="font-display text-[15.5px] font-semibold text-ink mb-4">Nova receita</h2>
-            @include('cobrancas._form')
+            @include('cobrancas._form', ['emModal' => true])
         </form>
     </x-modal>
 </x-app-layout>
