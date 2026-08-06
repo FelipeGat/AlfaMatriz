@@ -101,6 +101,11 @@
         font-variant-numeric: tabular-nums;
     }
 
+    /*
+     * Campos usam a superfície dos cards, não a elevada: no tema escuro o
+     * `--raised` puxava o campo para a frente do card em que ele está, e a
+     * busca parecia flutuar sobre a sidebar.
+     */
     select,
     textarea,
     input[type='search'],
@@ -110,8 +115,8 @@
     input[type='number'],
     input[type='date'],
     input[type='url'] {
-        @apply bg-raised text-ink border-line rounded-control;
-        @apply placeholder:text-mute focus:border-brand focus:ring-brand;
+        @apply bg-panel text-ink border-line rounded-control;
+        @apply placeholder:text-mute focus:border-ink focus:ring-0;
     }
 
     input[type='checkbox'],

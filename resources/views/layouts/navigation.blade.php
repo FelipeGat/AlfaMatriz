@@ -59,7 +59,7 @@
                 <circle cx="11" cy="11" r="7" /><path stroke-linecap="round" d="M20 20l-3.5-3.5" />
             </svg>
             <input id="busca-menu" type="search" placeholder="Buscar"
-                   class="h-8 w-full rounded-control border-line bg-transparent pl-8 pr-8 text-[12.5px] text-ink placeholder:text-mute focus:border-ink focus:ring-0">
+                   class="h-8 w-full rounded-control border-line bg-panel pl-8 pr-8 text-[12.5px] text-ink placeholder:text-mute focus:border-ink focus:ring-0">
             <kbd class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-line px-1 font-mono text-[11px] leading-4 text-mute">/</kbd>
         </div>
     </div>
