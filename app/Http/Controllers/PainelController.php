@@ -8,29 +8,20 @@ use App\Models\ContaFinanceira;
 use App\Models\ContaPagar;
 use App\Models\Revenda;
 use App\Models\Sistema;
+use App\Services\IndicadoresService;
 
 class PainelController extends Controller
 {
+    public function __construct(private readonly IndicadoresService $indicadores) {}
+
     public function index()
     {
-        $competenciaAtual = now()->format('Y-m');
-        $inicioMes = now()->startOfMonth();
-        $fimMes = now()->endOfMonth();
-
-        $mrr = Cobranca::whereIn('tipo', ['locacao_sistema', 'direta'])
-            ->where('competencia', $competenciaAtual)
-            ->where('status', '!=', 'cancelado')
-            ->sum('valor');
-
-        $saldoTotal = ContaFinanceira::where('ativo', true)->sum('saldo');
-
-        $entradasMes = Cobranca::where('status', 'pago')
-            ->whereBetween('data_pagamento', [$inicioMes, $fimMes])
-            ->sum('valor_pago');
-
-        $saidasMes = ContaPagar::where('status', 'pago')
-            ->whereBetween('data_pagamento', [$inicioMes, $fimMes])
-            ->sum('valor_pago');
+        // Todos os números que também aparecem em outra tela saem daqui —
+        // ver IndicadoresService.
+        $mrr = $this->indicadores->mrr();
+        $saldoTotal = $this->indicadores->saldoEmCaixa();
+        $entradasMes = $this->indicadores->entradasDoMes();
+        $saidasMes = $this->indicadores->saidasDoMes();
 
         $receitasPendentes = Cobranca::where('status', 'pendente')
             ->orderBy('data_vencimento')
@@ -44,9 +35,9 @@ class PainelController extends Controller
             ->limit(5)
             ->get();
 
-        $totalRevendas = Revenda::where('ativo', true)->count();
-        $totalClientes = Cliente::where('ativo', true)->count();
-        $clientesDiretos = Cliente::where('ativo', true)->whereNull('revenda_id')->count();
+        $totalRevendas = $this->indicadores->revendasAtivas();
+        $totalClientes = $this->indicadores->clientesAtivos();
+        $clientesDiretos = $this->indicadores->clientesDiretos();
 
         $historico = $this->historicoSeisMeses();
 
@@ -89,9 +80,11 @@ class PainelController extends Controller
         $maxQuantidade = max($porQuantidade->max('clientes_ativos'), 1);
         $maxValor = max($porValor->max('valor_estimado'), 1);
 
-        $totalClientesAtivos = Cliente::where('ativo', true)->count();
-        $totalSistemasAtivos = Sistema::where('ativo', true)->count();
-        $totalRevendasAtivas = Revenda::where('ativo', true)->count();
+        // Mesma origem do painel financeiro: é o que garante que o mesmo
+        // indicador não mostre dois números em telas diferentes.
+        $totalClientesAtivos = $this->indicadores->clientesAtivos();
+        $totalSistemasAtivos = $this->indicadores->sistemasAtivos();
+        $totalRevendasAtivas = $this->indicadores->revendasAtivas();
         $mrrEstimado = $ranking->sum('valor_estimado');
 
         $porRevenda = Cliente::where('ativo', true)

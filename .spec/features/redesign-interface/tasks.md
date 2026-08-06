@@ -34,16 +34,14 @@ sentido antes delas.
   marcador de 3px no item ativo, tooltip nativo quando colapsada. Mantém o
   comportamento de drawer abaixo de `lg`, que já existe.
 
-## T-042 — Componentes base do novo visual [pendente]
-
+## T-042 — Componentes base do novo visual [concluida]
 - Refs: US-022, AC-043
 - Arquivos: resources/views/components/summary-card.blade.php, resources/views/components/stat-card.blade.php, resources/views/components/status-pill.blade.php, resources/views/components/data-table.blade.php, tests/Feature/Redesign/ComponentesBaseTest.php
 - Notas: é aqui que a armadilha do valor monetário é resolvida de uma vez —
   `nowrap` e largura mínima ficam no componente, não espalhados por tela. O
   teste prova que um valor longo não ganha permissão de quebrar.
 
-## T-043 — Painéis Financeiro e Comercial [pendente]
-
+## T-043 — Painéis Financeiro e Comercial [concluida]
 - Refs: US-022, US-023, AC-042, AC-044
 - Arquivos: resources/views/dashboard.blade.php, resources/views/dashboard-comercial.blade.php, app/Http/Controllers/PainelController.php, tests/Feature/Redesign/IndicadoresCoerentesTest.php
 - Notas: grade de KPIs, gráfico de entradas × saídas, ranking com rosca. Os
