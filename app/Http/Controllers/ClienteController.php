@@ -12,16 +12,31 @@ class ClienteController extends Controller
 {
     public function index(Request $request)
     {
-        $clientes = Cliente::with(['revenda', 'sistemas'])
+        // O filtro é montado uma vez e reaproveitado no resumo: sem isso, os
+        // cards mostrariam a base inteira enquanto a tabela mostra o recorte —
+        // e os dois números na mesma tela não bateriam.
+        $filtrados = fn () => Cliente::query()
             ->when($request->busca, fn ($q) => $q->where('nome', 'like', "%{$request->busca}%"))
             ->when($request->revenda_id, fn ($q) => $q->where('revenda_id', $request->revenda_id))
+            ->when($request->status === 'ativos', fn ($q) => $q->where('ativo', true))
+            ->when($request->status === 'inativos', fn ($q) => $q->where('ativo', false));
+
+        $clientes = $filtrados()
+            ->with(['revenda', 'sistemas'])
             ->orderBy('nome')
             ->paginate(15)
             ->withQueryString();
 
+        $exibidos = $filtrados()->count();
+        $ativos = $filtrados()->where('ativo', true)->count();
+        $inativos = $filtrados()->where('ativo', false)->count();
+        $somaContratos = (float) $filtrados()->where('ativo', true)->sum('valor_mensal');
+
         $revendas = Revenda::orderBy('nome')->get();
 
-        return view('clientes.index', compact('clientes', 'revendas'));
+        return view('clientes.index', compact(
+            'clientes', 'revendas', 'exibidos', 'ativos', 'inativos', 'somaContratos'
+        ));
     }
 
     public function create()

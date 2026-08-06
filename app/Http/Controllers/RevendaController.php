@@ -2,16 +2,27 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Models\Revenda;
+use App\Services\IndicadoresService;
 use Illuminate\Http\Request;
 
 class RevendaController extends Controller
 {
-    public function index()
+    public function index(IndicadoresService $indicadores)
     {
         $revendas = Revenda::withCount('clientes')->orderBy('nome')->paginate(15);
 
-        return view('revendas.index', compact('revendas'));
+        // Resumo do topo. Os contadores saem da mesma origem dos painéis —
+        // é o que faz o número bater entre as telas.
+        $revendasAtivas = $indicadores->revendasAtivas();
+        $clientesEmRevenda = Cliente::where('ativo', true)->whereNotNull('revenda_id')->count();
+        $mrrRevendas = $indicadores->mrr();
+        $ticketMedio = $revendasAtivas > 0 ? $mrrRevendas / $revendasAtivas : 0.0;
+
+        return view('revendas.index', compact(
+            'revendas', 'revendasAtivas', 'clientesEmRevenda', 'mrrRevendas', 'ticketMedio'
+        ));
     }
 
     public function create()

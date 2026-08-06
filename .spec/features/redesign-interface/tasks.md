@@ -48,8 +48,7 @@ sentido antes delas.
   indicadores que aparecem em mais de uma tela passam a sair de uma origem só
   (AC-044) — é correção de defeito, não só visual.
 
-## T-044 — Telas de lista [pendente]
-
+## T-044 — Telas de lista [concluida]
 - Refs: US-022, AC-042, AC-043
 - Arquivos: resources/views/revendas/index.blade.php, resources/views/clientes/index.blade.php, resources/views/cobrancas/index.blade.php, resources/views/contas-pagar/index.blade.php
 - Notas: faixa de cards de resumo, barra de filtros e tabela em card. Filtros

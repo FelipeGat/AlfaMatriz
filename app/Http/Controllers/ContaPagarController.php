@@ -19,7 +19,13 @@ class ContaPagarController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return view('contas-pagar.index', compact('contasPagar'));
+        $hoje = now()->startOfDay();
+        $emAberto = ContaPagar::where('status', 'em_aberto')->sum('valor');
+        $vencidas = ContaPagar::where('status', 'em_aberto')->whereDate('data_vencimento', '<', $hoje)->sum('valor');
+        $fixas = ContaPagar::where('tipo', 'fixa')->where('competencia', now()->format('Y-m'))->sum('valor');
+        $totalMes = ContaPagar::where('competencia', now()->format('Y-m'))->sum('valor');
+
+        return view('contas-pagar.index', compact('contasPagar', 'emAberto', 'vencidas', 'fixas', 'totalMes'));
     }
 
     public function create()

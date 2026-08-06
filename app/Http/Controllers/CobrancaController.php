@@ -19,7 +19,15 @@ class CobrancaController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return view('cobrancas.index', compact('cobrancas'));
+        $hoje = now()->startOfDay();
+        $emAberto = Cobranca::where('status', 'pendente')->sum('valor');
+        $vencidas = Cobranca::where('status', 'pendente')->whereDate('data_vencimento', '<', $hoje)->sum('valor');
+        $baixadas = Cobranca::where('status', 'pago')
+            ->whereBetween('data_pagamento', [now()->startOfMonth(), now()->endOfMonth()])->sum('valor_pago');
+        $totalMes = Cobranca::where('competencia', now()->format('Y-m'))
+            ->where('status', '!=', 'cancelado')->sum('valor');
+
+        return view('cobrancas.index', compact('cobrancas', 'emAberto', 'vencidas', 'baixadas', 'totalMes'));
     }
 
     public function show(Cobranca $cobranca)
