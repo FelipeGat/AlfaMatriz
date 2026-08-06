@@ -2,11 +2,11 @@
 
 @php
     $accents = [
-        'brand' => 'bg-brand/15 text-brand-dim',
-        'good' => 'bg-status-good/15 text-status-good',
-        'warning' => 'bg-status-warning/15 text-status-warning',
-        'critical' => 'bg-status-critical/15 text-status-critical',
-        'ink' => 'bg-white/5 text-ink-dim',
+        'brand' => 'bg-raised text-ink',
+        'good' => 'bg-good/12 text-good',
+        'warning' => 'bg-warn/12 text-warn',
+        'critical' => 'bg-bad/15 text-bad',
+        'ink' => 'bg-raised text-dim',
     ];
 
     $paths = [
@@ -20,9 +20,9 @@
     ];
 @endphp
 
-<div class="bg-panel border border-white/5 shadow-panel rounded-xl p-6">
+<div class="bg-panel border border-line rounded-card p-6">
     <div class="flex items-start justify-between">
-        <p class="text-xs text-ink-mute uppercase tracking-wide">{{ $label }}</p>
+        <p class="text-xs text-mute uppercase tracking-wide">{{ $label }}</p>
         <span class="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 {{ $accents[$accent] ?? $accents['brand'] }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-4 h-4">
                 <path stroke-linecap="round" stroke-linejoin="round" d="{{ $paths[$icon] ?? $paths['trending-up'] }}" />

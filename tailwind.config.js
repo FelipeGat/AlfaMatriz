@@ -37,16 +37,7 @@ export default {
                 mute: 'var(--mute)',
                 // Marca e gráfico são a MESMA cor viva, com usos distintos:
                 // `brand` para detalhes de identidade, `chart` para séries.
-                brand: {
-                    DEFAULT: 'var(--brand)',
-                    // Apelidos temporários (ver bloco de compatibilidade abaixo).
-                    solid: 'var(--ink)',
-                    soft: 'var(--raised)',
-                    line: 'var(--border)',
-                    dim: 'var(--brand)',
-                    bright: 'var(--brand)',
-                    mute: 'var(--raised)',
-                },
+                brand: 'var(--brand)',
                 chart: 'var(--chart)',
                 nav: {
                     active: 'var(--nav-active)',
@@ -58,25 +49,6 @@ export default {
                 track: 'var(--track)',
                 track2: 'var(--track2)',
 
-                // --- Compatibilidade temporária -------------------------
-                // 41 telas ainda usam os nomes antigos. Sem estes apelidos,
-                // o painel ficaria sem estilo entre a troca dos tokens e a
-                // migração da última tela — intervalo ruim num sistema em
-                // produção. Cada apelido some quando a última tela que o usa
-                // for migrada; a tarefa T-046 fecha a lista.
-                canvas: 'var(--bg)',
-                'panel-raised': 'var(--raised)',
-                'ink-dim': 'var(--dim)',
-                'ink-mute': 'var(--mute)',
-                amber: {
-                    signal: 'var(--warn)',
-                    chart: 'var(--warn)',
-                },
-                status: {
-                    good: 'var(--good)',
-                    warning: 'var(--warn)',
-                    critical: 'var(--bad)',
-                },
             },
 
             borderRadius: {

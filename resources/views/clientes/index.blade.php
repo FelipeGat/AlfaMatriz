@@ -8,9 +8,6 @@
     </x-slot>
 
     <div class="space-y-[18px]">
-        @if (session('status'))
-            <div class="rounded-control border border-line bg-raised px-4 py-2.5 text-[12.5px] text-ink">{{ session('status') }}</div>
-        @endif
 
         {{-- Estes cards refletem o RECORTE, não a base inteira: é o que faz o
              número do topo bater com o que a tabela mostra logo abaixo. --}}

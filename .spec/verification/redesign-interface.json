@@ -1,11 +1,11 @@
 {
   "feature": "redesign-interface",
-  "timestamp": "2026-08-05T23:33:19.348Z",
-  "gitRev": "85b8097",
+  "timestamp": "2026-08-06T02:16:11.357Z",
+  "gitRev": "4e90d5a",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
-  "exitCode": 1,
-  "testsParsed": 74,
+  "exitCode": 0,
+  "testsParsed": 97,
   "results": {
     "AC-039": {
       "status": "pass",
@@ -17,14 +17,29 @@
       "testName": "Tests\\Feature\\Redesign\\TemasETipografiaTest::test_tipografia_nova_entra_e_a_antiga_sai @spec:AC-040",
       "method": "tap"
     },
+    "AC-045": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\MarcaMonocromaticaTest::test_icone_da_marca_e_monocromatico_em_todos_os_layouts @spec:AC-045",
+      "method": "tap"
+    },
     "AC-041": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Redesign\\SidebarETemaTest::test_menu_recolhe_e_o_estado_e_lembrado @spec:AC-041",
+      "testName": "Tests\\Feature\\Redesign\\SidebarETemaTest::test_menu_e_fixo_sem_controle_de_recolher @spec:AC-041",
       "method": "tap"
     },
     "AC-042": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Redesign\\TelasAbremTest::test_todas_as_telas_do_painel_abrem_para_usuario_autenticado @spec:AC-042",
+      "testName": "Tests\\Feature\\Redesign\\MigracaoCompletaTest::test_acao_concluida_mostra_aviso_flutuante @spec:AC-042",
+      "method": "tap"
+    },
+    "AC-043": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ComponentesBaseTest::test_valor_monetario_nunca_quebra_em_duas_linhas @spec:AC-043",
+      "method": "tap"
+    },
+    "AC-044": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\IndicadoresCoerentesTest::test_clientes_e_revendas_batem_entre_os_dois_paineis @spec:AC-044",
       "method": "tap"
     }
   },

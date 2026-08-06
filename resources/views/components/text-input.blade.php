@@ -1,3 +1,5 @@
 @props(['disabled' => false])
 
-<input @disabled($disabled) {{ $attributes->merge(['class' => 'bg-panel-raised border-white/10 text-ink placeholder-ink-mute focus:border-brand focus:ring-brand-dim rounded-md shadow-sm']) }}>
+{{-- A aparência vem da regra base em app.css, comum a todos os campos: aqui
+     só o tamanho e o estado desabilitado. --}}
+<input @disabled($disabled) {{ $attributes->merge(['class' => 'h-8 rounded-control text-[12.5px] disabled:cursor-default disabled:text-mute']) }}>

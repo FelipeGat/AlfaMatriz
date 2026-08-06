@@ -5,7 +5,7 @@
 
     <div class="py-12">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-panel overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="bg-panel overflow-hidden sm:rounded-card p-6">
                 <form method="POST" action="{{ route('contas-financeiras.update', $contaFinanceira) }}">
                     @method('PUT')
                     @include('contas-financeiras._form')

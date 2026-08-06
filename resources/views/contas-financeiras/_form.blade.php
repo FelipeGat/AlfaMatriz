@@ -9,7 +9,7 @@
 
     <div>
         <x-input-label for="tipo" value="Tipo" />
-        <select id="tipo" name="tipo" class="mt-1 block w-full border-white/20 rounded-md shadow-sm">
+        <select id="tipo" name="tipo" class="mt-1 block w-full border-line rounded-control">
             @foreach (['corrente' => 'Corrente', 'poupanca' => 'Poupança', 'cartao' => 'Cartão', 'caixa' => 'Caixa'] as $value => $label)
                 <option value="{{ $value }}" {{ old('tipo', $contaFinanceira->tipo ?? 'corrente') === $value ? 'selected' : '' }}>{{ $label }}</option>
             @endforeach
@@ -40,13 +40,13 @@
 
     <div class="flex items-center mt-6">
         <label class="inline-flex items-center">
-            <input type="checkbox" name="ativo" value="1" class="rounded border-white/20 text-brand shadow-sm" {{ old('ativo', $contaFinanceira->ativo ?? true) ? 'checked' : '' }}>
-            <span class="ms-2 text-sm text-ink-dim">Conta ativa</span>
+            <input type="checkbox" name="ativo" value="1" class="rounded border-line text-brand" {{ old('ativo', $contaFinanceira->ativo ?? true) ? 'checked' : '' }}>
+            <span class="ms-2 text-sm text-dim">Conta ativa</span>
         </label>
     </div>
 </div>
 
 <div class="flex items-center justify-end gap-3 mt-6">
-    <a href="{{ route('contas-financeiras.index') }}" class="text-sm text-ink-dim hover:text-ink">Cancelar</a>
+    <a href="{{ route('contas-financeiras.index') }}" class="text-sm text-dim hover:text-ink">Cancelar</a>
     <x-primary-button>Salvar</x-primary-button>
 </div>

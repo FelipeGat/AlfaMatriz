@@ -61,8 +61,7 @@ sentido antes delas.
   o botão), sparkline, faixas de preço, top 5 de revendas. Faturamento com
   prévia por revenda.
 
-## T-046 — Modais, toasts e estados vazios [pendente]
-
+## T-046 — Modais, toasts e estados vazios [concluida]
 - Refs: US-022, AC-042
 - Arquivos: resources/views/components/modal.blade.php, resources/views/components/toast.blade.php
 - Notas: overlay e caixa com as animações do handoff (nada acima de 220ms),

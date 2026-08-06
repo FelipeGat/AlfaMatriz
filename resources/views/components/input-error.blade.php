@@ -1,7 +1,7 @@
 @props(['messages'])
 
 @if ($messages)
-    <ul {{ $attributes->merge(['class' => 'text-sm text-status-critical space-y-1']) }}>
+    <ul {{ $attributes->merge(['class' => 'space-y-1 text-[12px] text-bad']) }}>
         @foreach ((array) $messages as $message)
             <li>{{ $message }}</li>
         @endforeach

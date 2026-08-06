@@ -6,10 +6,10 @@
     <div class="py-12">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @if (session('status'))
-                <div class="p-4 bg-status-good/10 text-status-good rounded-md text-sm">{{ session('status') }}</div>
+                <div class="p-4 bg-good/12 text-good rounded-control text-sm">{{ session('status') }}</div>
             @endif
             @if ($errors->any())
-                <div class="p-4 bg-status-critical/10 text-status-critical rounded-md text-sm">
+                <div class="p-4 bg-bad/10 text-bad rounded-control text-sm">
                     <ul class="list-disc list-inside">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
@@ -18,7 +18,7 @@
                 </div>
             @endif
 
-            <div class="bg-panel overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="bg-panel overflow-hidden sm:rounded-card p-6">
                 <h3 class="font-semibold text-ink mb-4">Configuração</h3>
                 <form method="POST" action="{{ route('sistemas.update', $sistema) }}">
                     @csrf @method('PUT')
@@ -26,7 +26,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <x-input-label for="categoria" value="Categoria" />
-                            <select id="categoria" name="categoria" class="mt-1 block w-full border-white/10 rounded-md shadow-sm">
+                            <select id="categoria" name="categoria" class="mt-1 block w-full border-line rounded-control">
                                 <option value="saas" {{ old('categoria', $sistema->categoria) === 'saas' ? 'selected' : '' }}>SaaS</option>
                                 <option value="crm" {{ old('categoria', $sistema->categoria) === 'crm' ? 'selected' : '' }}>CRM</option>
                             </select>
@@ -38,8 +38,8 @@
                         </div>
                         <div class="flex items-center mt-6">
                             <label class="inline-flex items-center">
-                                <input type="checkbox" name="ativo" value="1" class="rounded border-white/20 text-brand shadow-sm" {{ old('ativo', $sistema->ativo) ? 'checked' : '' }}>
-                                <span class="ms-2 text-sm text-ink-dim">Sistema ativo (participa do motor de faturamento)</span>
+                                <input type="checkbox" name="ativo" value="1" class="rounded border-line text-brand" {{ old('ativo', $sistema->ativo) ? 'checked' : '' }}>
+                                <span class="ms-2 text-sm text-dim">Sistema ativo (participa do motor de faturamento)</span>
                             </label>
                         </div>
                         <div>
@@ -54,51 +54,51 @@
                     </div>
 
                     <div class="flex items-center justify-end gap-3 mt-6">
-                        <a href="{{ route('sistemas.index') }}" class="text-sm text-ink-dim hover:text-ink">Voltar</a>
+                        <a href="{{ route('sistemas.index') }}" class="text-sm text-dim hover:text-ink">Voltar</a>
                         <x-primary-button>Salvar</x-primary-button>
                     </div>
                 </form>
             </div>
 
-            <div class="bg-panel overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <div class="bg-panel overflow-hidden sm:rounded-card p-6">
                 <div class="flex items-center justify-between mb-1">
                     <h3 class="font-semibold text-ink">Tiers de atacado (Alfa → Revenda)</h3>
                 </div>
-                <p class="text-xs text-ink-mute mb-4">
+                <p class="text-xs text-mute mb-4">
                     Tier fechado: preço fixo até o limite de unidades, sem cobrança de excedente. Tier metrado: deixe "unidades inclusas" em 0 e preencha "valor por unidade excedente" — cobra direto por unidade ativa.
                 </p>
 
                 <div class="overflow-x-auto mb-6">
-                    <table class="min-w-full divide-y divide-white/5">
+                    <table class="min-w-full divide-y divide-line">
                         <thead>
                             <tr>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-ink-dim uppercase">Tier</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-ink-dim uppercase">Revenda</th>
-                                <th class="px-3 py-2 text-right text-xs font-medium text-ink-dim uppercase">Preço base</th>
-                                <th class="px-3 py-2 text-right text-xs font-medium text-ink-dim uppercase">Unid. inclusas</th>
-                                <th class="px-3 py-2 text-right text-xs font-medium text-ink-dim uppercase">R$/excedente</th>
-                                <th class="px-3 py-2 text-right text-xs font-medium text-ink-dim uppercase">Limite</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-dim uppercase">Tier</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-dim uppercase">Revenda</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-dim uppercase">Preço base</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-dim uppercase">Unid. inclusas</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-dim uppercase">R$/excedente</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-dim uppercase">Limite</th>
                                 <th class="px-3 py-2"></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-white/5">
+                        <tbody class="divide-y divide-line">
                             @forelse ($sistema->precosAtacado as $tier)
                                 <tr>
                                     <td class="px-3 py-2 text-sm text-ink">{{ $tier->nome }}</td>
-                                    <td class="px-3 py-2 text-sm text-ink-dim">{{ $tier->revenda->nome ?? 'Padrão (todas)' }}</td>
+                                    <td class="px-3 py-2 text-sm text-dim">{{ $tier->revenda->nome ?? 'Padrão (todas)' }}</td>
                                     <td class="px-3 py-2 text-sm text-ink text-right">R$ {{ number_format($tier->preco_base, 2, ',', '.') }}</td>
-                                    <td class="px-3 py-2 text-sm text-ink-dim text-right">{{ $tier->unidades_inclusas ?? '—' }}</td>
-                                    <td class="px-3 py-2 text-sm text-ink-dim text-right">{{ $tier->valor_excedente_unidade ? 'R$ '.number_format($tier->valor_excedente_unidade, 2, ',', '.') : '—' }}</td>
-                                    <td class="px-3 py-2 text-sm text-ink-dim text-right">{{ $tier->limite_unidades ?? 'ilimitado' }}</td>
+                                    <td class="px-3 py-2 text-sm text-dim text-right">{{ $tier->unidades_inclusas ?? '—' }}</td>
+                                    <td class="px-3 py-2 text-sm text-dim text-right">{{ $tier->valor_excedente_unidade ? 'R$ '.number_format($tier->valor_excedente_unidade, 2, ',', '.') : '—' }}</td>
+                                    <td class="px-3 py-2 text-sm text-dim text-right">{{ $tier->limite_unidades ?? 'ilimitado' }}</td>
                                     <td class="px-3 py-2 text-right">
                                         <form action="{{ route('precos.destroy', $tier) }}" method="POST" onsubmit="return confirm('Remover este tier?');">
                                             @csrf @method('DELETE')
-                                            <button type="submit" class="text-status-critical hover:opacity-80 text-sm">Remover</button>
+                                            <button type="submit" class="text-bad hover:opacity-80 text-sm">Remover</button>
                                         </form>
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="7" class="px-3 py-4 text-center text-sm text-ink-mute">Nenhum tier cadastrado ainda.</td></tr>
+                                <tr><td colspan="7" class="px-3 py-4 text-center text-sm text-mute">Nenhum tier cadastrado ainda.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -112,7 +112,7 @@
                     </div>
                     <div>
                         <x-input-label for="revenda_id" value="Revenda" />
-                        <select id="revenda_id" name="revenda_id" class="mt-1 block w-full border-white/10 rounded-md shadow-sm text-sm">
+                        <select id="revenda_id" name="revenda_id" class="mt-1 block w-full border-line rounded-control text-sm">
                             <option value="">Padrão (todas)</option>
                             @foreach ($revendas as $revenda)
                                 <option value="{{ $revenda->id }}">{{ $revenda->nome }}</option>

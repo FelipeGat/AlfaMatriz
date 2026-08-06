@@ -1,4 +1,4 @@
-@props(['align' => 'right', 'width' => '48', 'contentClasses' => 'py-1 bg-panel-raised'])
+@props(['align' => 'right', 'width' => '48', 'contentClasses' => 'py-1 bg-raised'])
 
 @php
 $alignmentClasses = match ($align) {
@@ -25,10 +25,10 @@ $width = match ($width) {
             x-transition:leave="transition ease-in duration-75"
             x-transition:leave-start="opacity-100 scale-100"
             x-transition:leave-end="opacity-0 scale-95"
-            class="absolute z-50 mt-2 {{ $width }} rounded-md shadow-panel {{ $alignmentClasses }}"
+            class="absolute z-50 mt-2 {{ $width }} rounded-control {{ $alignmentClasses }}"
             style="display: none;"
             @click="open = false">
-        <div class="rounded-md ring-1 ring-white/10 {{ $contentClasses }}">
+        <div class="rounded-control ring-1 ring-white/10 {{ $contentClasses }}">
             {{ $content }}
         </div>
     </div>

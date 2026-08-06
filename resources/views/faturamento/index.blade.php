@@ -18,9 +18,6 @@
     </x-slot>
 
     <div class="space-y-[18px]">
-        @if (session('status'))
-            <div class="rounded-control border border-line bg-raised px-4 py-2.5 text-[12.5px] text-ink">{{ session('status') }}</div>
-        @endif
 
         <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
             <x-summary-card label="Revendas a faturar" :value="$pendentes->count()" contexto="de {{ $preview->count() }} com clientes ativos" />

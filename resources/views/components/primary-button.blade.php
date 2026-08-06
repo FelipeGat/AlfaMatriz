@@ -1,3 +1,5 @@
-<button {{ $attributes->merge(['type' => 'submit', 'class' => 'inline-flex items-center px-4 py-2 bg-brand border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-brand-bright focus:bg-brand-bright active:bg-brand-mute focus:outline-none focus:ring-2 focus:ring-brand-dim focus:ring-offset-2 focus:ring-offset-canvas transition ease-in-out duration-150']) }}>
+{{-- Primário monocromático invertido: fundo ink sobre texto bg. É o "Add New"
+     da referência — sem cor, o destaque vem do contraste. --}}
+<button {{ $attributes->merge(['type' => 'submit', 'class' => 'inline-flex h-8 items-center rounded-control bg-ink px-3 text-[12.5px] font-medium text-bg transition-opacity hover:opacity-90 disabled:cursor-default disabled:bg-raised disabled:text-mute disabled:opacity-100']) }}>
     {{ $slot }}
 </button>

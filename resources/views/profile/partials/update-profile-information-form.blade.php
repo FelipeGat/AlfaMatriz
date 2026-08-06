@@ -4,7 +4,7 @@
             {{ __('Profile Information') }}
         </h2>
 
-        <p class="mt-1 text-sm text-ink-dim">
+        <p class="mt-1 text-sm text-dim">
             {{ __("Update your account's profile information and email address.") }}
         </p>
     </header>
@@ -33,13 +33,13 @@
                     <p class="text-sm mt-2 text-ink">
                         {{ __('Your email address is unverified.') }}
 
-                        <button form="send-verification" class="underline text-sm text-ink-dim hover:text-ink rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-dim">
+                        <button form="send-verification" class="underline text-sm text-dim hover:text-ink rounded-control focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink">
                             {{ __('Click here to re-send the verification email.') }}
                         </button>
                     </p>
 
                     @if (session('status') === 'verification-link-sent')
-                        <p class="mt-2 font-medium text-sm text-status-good">
+                        <p class="mt-2 font-medium text-sm text-good">
                             {{ __('A new verification link has been sent to your email address.') }}
                         </p>
                     @endif
@@ -56,7 +56,7 @@
                     x-show="show"
                     x-transition
                     x-init="setTimeout(() => show = false, 2000)"
-                    class="text-sm text-ink-dim"
+                    class="text-sm text-dim"
                 >{{ __('Saved.') }}</p>
             @endif
         </div>

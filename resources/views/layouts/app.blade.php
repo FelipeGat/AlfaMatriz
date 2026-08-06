@@ -96,6 +96,9 @@
                     {{ $slot }}
                 </main>
             </div>
+
+            {{-- Fora do <main> para não rolar junto com o conteúdo. --}}
+            <x-toast />
         </div>
 
         <script>

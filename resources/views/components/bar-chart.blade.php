@@ -27,11 +27,11 @@
         {{-- grid lines --}}
         @for ($i = 0; $i <= 3; $i++)
             @php $y = $paddingTop + $plotHeight - ($plotHeight * $i / 3); @endphp
-            <line x1="{{ $paddingLeft }}" y1="{{ $y }}" x2="{{ $width - $paddingRight }}" y2="{{ $y }}" stroke="currentColor" class="text-white/5" stroke-width="1" />
+            <line x1="{{ $paddingLeft }}" y1="{{ $y }}" x2="{{ $width - $paddingRight }}" y2="{{ $y }}" stroke="currentColor" style="opacity:.5" class="text-line-soft" stroke-width="1" />
         @endfor
 
         {{-- baseline --}}
-        <line x1="{{ $paddingLeft }}" y1="{{ $paddingTop + $plotHeight }}" x2="{{ $width - $paddingRight }}" y2="{{ $paddingTop + $plotHeight }}" stroke="currentColor" class="text-white/10" stroke-width="1" />
+        <line x1="{{ $paddingLeft }}" y1="{{ $paddingTop + $plotHeight }}" x2="{{ $width - $paddingRight }}" y2="{{ $paddingTop + $plotHeight }}" stroke="currentColor" class="text-line" stroke-width="1" />
 
         @foreach ($data as $i => $d)
             @php
@@ -45,31 +45,32 @@
                 $ySaidas = $paddingTop + $plotHeight - $hSaidas;
             @endphp
 
-            {{-- entradas bar --}}
+            {{-- Entrada: série principal --}}
             <rect x="{{ $xEntradas }}" y="{{ $yEntradas }}" width="{{ $barWidth }}" height="{{ max($hEntradas, 1) }}"
-                  rx="4" fill="#029caf">
+                  rx="4" fill="var(--chart)">
                 <title>{{ $d['label'] }} · Entradas: {{ $fmt($d['entradas']) }}</title>
             </rect>
             @if ($d['entradas'] > 0)
-                <text x="{{ $xEntradas + $barWidth / 2 }}" y="{{ $yEntradas - 6 }}" text-anchor="middle" class="fill-ink-dim" font-size="9">{{ number_format($d['entradas'] / 1000, 1, ',', '.') }}k</text>
+                <text x="{{ $xEntradas + $barWidth / 2 }}" y="{{ $yEntradas - 6 }}" text-anchor="middle" class="fill-mute" font-size="9">{{ number_format($d['entradas'] / 1000, 1, ',', '.') }}k</text>
             @endif
 
-            {{-- saidas bar --}}
+            {{-- Saída: série secundária, em superfície neutra --}}
             <rect x="{{ $xSaidas }}" y="{{ $ySaidas }}" width="{{ $barWidth }}" height="{{ max($hSaidas, 1) }}"
-                  rx="4" fill="#c98500">
+                  rx="4" fill="var(--track2)">
                 <title>{{ $d['label'] }} · Saídas: {{ $fmt($d['saidas']) }}</title>
             </rect>
             @if ($d['saidas'] > 0)
-                <text x="{{ $xSaidas + $barWidth / 2 }}" y="{{ $ySaidas - 6 }}" text-anchor="middle" class="fill-ink-dim" font-size="9">{{ number_format($d['saidas'] / 1000, 1, ',', '.') }}k</text>
+                <text x="{{ $xSaidas + $barWidth / 2 }}" y="{{ $ySaidas - 6 }}" text-anchor="middle" class="fill-mute" font-size="9">{{ number_format($d['saidas'] / 1000, 1, ',', '.') }}k</text>
             @endif
 
             {{-- month label --}}
-            <text x="{{ $centerX }}" y="{{ $height - 10 }}" text-anchor="middle" class="fill-ink-mute" font-size="11">{{ $d['label'] }}</text>
+            <text x="{{ $centerX }}" y="{{ $height - 10 }}" text-anchor="middle"
+                  class="{{ $i === count($data) - 1 ? 'fill-ink' : 'fill-mute' }}" font-size="11">{{ $d['label'] }}</text>
         @endforeach
     </svg>
 
-    <div class="flex items-center gap-4 mt-2 text-xs text-ink-dim">
-        <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm" style="background:#029caf"></span> Entradas</span>
-        <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm" style="background:#c98500"></span> Saídas</span>
+    <div class="flex items-center gap-4 mt-2 text-xs text-dim">
+        <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm" style="background: var(--chart)"></span> Entradas</span>
+        <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm" style="background: var(--track2)"></span> Saídas</span>
     </div>
 </div>
