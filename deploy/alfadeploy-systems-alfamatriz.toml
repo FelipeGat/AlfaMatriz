@@ -1,0 +1,30 @@
+# Bloco do AlfaMatriz para o inventário do painel AlfaDeploy
+# (/opt/alfa-deploy/config/systems.toml no LXC 110).
+#
+# Versionado aqui pelo mesmo motivo que o painel versiona o diretório infra/:
+# para sobreviver a uma reinstalação do container.
+#
+# OMISSÕES DELIBERADAS — não são esquecimento:
+#   mysql_container, db, user_table, email_col, pass_col, name_col, admin_id,
+#   cliente_id, seed_domain
+# São os campos que alimentam a re-anonimização e a restauração de contas de
+# teste do painel. O AlfaMatriz guarda dados reais de clientes e do financeiro
+# da Alfa; sem esses campos, aquelas ações não têm alvo e não conseguem
+# embaralhar a base. O staging é embaralhado na origem, quando a cópia é feita
+# (deploy/preparar-staging.sh), e não por botão do painel.
+#
+# Também não há gate_image/prod_image: o AlfaMatriz não publica imagem no
+# GHCR — ele compila no próprio servidor, e o portão do staging é a suíte de
+# testes (deploy/deploy-staging-alfamatriz.sh).
+
+[[systems]]
+name = "AlfaMatriz"
+key = "alfamatriz"
+lxc = 116
+ssh_host = "10.0.3.116"
+dir = "/var/www/alfamatriz"
+stack = "laravel"
+health_port = 80
+health_host = "alfamatriz-staging.tail0939dd.ts.net"
+prod_repo = "FelipeGat/AlfaMatriz"
+prod_status_url = "https://matriz.alfasolucoes.cloud/deploy-status.json"

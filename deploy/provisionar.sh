@@ -27,15 +27,38 @@ TEMPLATE="local:vztmpl/debian-12-standard_12.12-1_amd64.tar.zst"
 ARMAZENAMENTO="dados"
 LOCAL=0
 
+AMBIENTE="producao"
+MEMORIA=2048
+SWAP=2048
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --host) HOST="$2"; shift 2 ;;
         --vmid) VMID="$2"; shift 2 ;;
         --ip) IP="$2"; shift 2 ;;
+        --ambiente) AMBIENTE="$2"; shift 2 ;;
         --local) LOCAL=1; shift ;;
         *) echo "provisionar.sh: argumento desconhecido: $1" >&2; exit 1 ;;
     esac
 done
+
+# O staging é o mesmo sistema com outro endereço e sem porta pública: vive só
+# no tailnet, sem domínio da empresa e sem túnel Cloudflare. É o padrão dos
+# stagings dos outros sistemas da casa.
+case "$AMBIENTE" in
+    producao) ;;
+    staging)
+        [[ "$VMID" == "115" ]] && VMID="116"
+        [[ "$IP" == "10.0.3.115" ]] && IP="10.0.3.116"
+        NOME="alfamatriz-staging"
+        # O host tem 11 GB e já opera com ~8 GB em uso. A produção deste mesmo
+        # software consome 331 MB, então 1 GB de teto é folga real — e evita
+        # repetir o overcommit de 4 GB dos containers Java.
+        MEMORIA=1024
+        SWAP=1024
+        ;;
+    *) echo "provisionar.sh: ambiente inválido \"$AMBIENTE\" (use producao ou staging)" >&2; exit 1 ;;
+esac
 
 info() { echo "==> $*"; }
 falhar() { echo "provisionar.sh: $*" >&2; exit 1; }
@@ -62,7 +85,7 @@ else
     info "criando container $VMID ($NOME) em $IP"
     no_host "pct create $VMID $TEMPLATE \
         --hostname $NOME \
-        --cores 2 --memory 2048 --swap 2048 \
+        --cores 2 --memory $MEMORIA --swap $SWAP \
         --rootfs $ARMAZENAMENTO:16 \
         --net0 name=eth0,bridge=vmbr0,gw=$GATEWAY,ip=$IP/24,type=veth \
         --nameserver '1.1.1.1 8.8.8.8' \
@@ -89,12 +112,17 @@ fi
 
 # ------------------------------------------------------------------- pilha
 
+# php8.2-sqlite3 não é opcional: a suíte roda em SQLite em memória
+# (phpunit.xml), e é ela o portão que aprova o deploy do staging. Sem esse
+# pacote, todo deploy é reprovado por "teste falhando" que não tem nada a ver
+# com o código.
 info "instalando a pilha (apt é idempotente: pacote já instalado não reinstala)"
 no_container "export DEBIAN_FRONTEND=noninteractive && apt-get update -qq && \
     apt-get install -y -qq \
         nginx mariadb-server \
         php8.2-fpm php8.2-cli php8.2-mysql php8.2-mbstring php8.2-xml \
         php8.2-curl php8.2-zip php8.2-gd php8.2-bcmath php8.2-intl \
+        php8.2-sqlite3 \
         git unzip curl ca-certificates gnupg cron"
 
 info "instalando Node.js 20 (para compilar o front-end)"
@@ -147,6 +175,26 @@ no_container "ln -sf /etc/nginx/sites-available/alfamatriz /etc/nginx/sites-enab
     mkdir -p $APP_DIR/public && \
     nginx -t && systemctl reload nginx"
 
+# --------------------------------------------------------- painel AlfaDeploy
+
+# O painel (LXC 110) descobre o estado de cada sistema por um único SSH como
+# root, com a chave dedicada /root/.ssh/alfadeploy. Sem essa chave autorizada
+# aqui, o probe falha e o painel mostra o sistema como desconectado — mesmo
+# com o container de pé e o site respondendo. Foi exatamente o que aconteceu
+# no primeiro provisionamento do staging, porque este passo não existia.
+#
+# Só no staging: o painel monitora o LXC 116 e nada mais. A produção guarda o
+# financeiro da Alfa e não ganha uma chave de acesso que ninguém usa — mesmo
+# critério que mantém o Funnel desligado logo abaixo.
+if [[ "$AMBIENTE" == "staging" ]]; then
+    CHAVE_PAINEL="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIvf2pPREFM9n1PO8/HLdyZtaSE0trZMnORRhG82xmZm alfadeploy@deploy"
+    info "autorizando a chave do painel AlfaDeploy no root"
+    no_container "mkdir -p /root/.ssh; chmod 700 /root/.ssh; \
+        touch /root/.ssh/authorized_keys; chmod 600 /root/.ssh/authorized_keys; \
+        grep -qF '$CHAVE_PAINEL' /root/.ssh/authorized_keys || \
+            echo '$CHAVE_PAINEL' >> /root/.ssh/authorized_keys"
+fi
+
 # ------------------------------------------------------- exposição pública
 
 # Quem publica o painel na internet é o túnel Cloudflare, em
@@ -164,6 +212,10 @@ no_container "if tailscale status >/dev/null 2>&1; then \
         tailscale funnel --https=443 off >/dev/null 2>&1 || true; \
         tailscale serve --bg --https=443 http://127.0.0.1:80 >/dev/null 2>&1 || true; \
     fi"
+
+if [[ "$AMBIENTE" == "staging" ]]; then
+    info "staging: sem túnel Cloudflare e sem porta pública (vive só no tailnet)"
+else
 
 info "instalando o túnel Cloudflare (domínio da empresa)"
 no_container "command -v cloudflared >/dev/null 2>&1 || { \
@@ -186,6 +238,8 @@ no_container "if [ -f /etc/cloudflared/config.yml ]; then \
         echo '    AVISO: /etc/cloudflared/config.yml ainda não existe — crie o túnel antes (cloudflared tunnel login).'; \
     fi"
 
+fi  # fim do bloco exclusivo de produção
+
 # ------------------------------------------------------------------- backup
 
 info "agendando o backup diário do banco"
@@ -195,7 +249,7 @@ no_container "test -f /usr/local/bin/alfamatriz-backup.sh && \
      (crontab -l 2>/dev/null; echo '17 3 * * * /usr/local/bin/alfamatriz-backup.sh >> /var/log/alfamatriz-backup.log 2>&1') | crontab -) || \
     echo 'AVISO: /usr/local/bin/alfamatriz-backup.sh ainda não foi enviado — o cron será criado quando ele existir.'"
 
-info "provisionamento concluído"
+info "provisionamento de $AMBIENTE concluído (LXC $VMID em $IP)"
 echo
 echo "próximos passos:"
 echo "  1. se o container ainda não estiver no tailnet:"

@@ -76,7 +76,11 @@ class ProfileTest extends TestCase
             ->assertRedirect('/');
 
         $this->assertGuest();
-        $this->assertNull($user->fresh());
+
+        // O modelo usa exclusão suave: o registro fica no banco marcado como
+        // excluído. O teste vinha do esqueleto do Breeze.
+        $this->assertSoftDeleted($user);
+        $this->assertNull(User::where('id', $user->id)->first());
     }
 
     public function test_correct_password_must_be_provided_to_delete_account(): void

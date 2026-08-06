@@ -1,0 +1,50 @@
+name: Testes
+
+# Dá ao AlfaMatriz o mesmo sinal verde/vermelho que os outros sistemas da casa
+# têm antes de alguém marcar uma versão. Não substitui o portão do staging
+# (esse roda no servidor, em deploy/deploy-staging-alfamatriz.sh) — os dois
+# olham a mesma suíte, mas em momentos diferentes.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, curl, zip, bcmath, intl, pdo_sqlite
+          coverage: none
+
+      - name: Instalar dependências PHP
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Preparar ambiente
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      # A suíte tem testes que leem public/build/manifest.json: sem compilar,
+      # as telas quebram com ViteManifestNotFoundException.
+      - name: Compilar front-end
+        run: |
+          npm ci
+          npm run build
+
+      - name: Rodar a suíte
+        run: php artisan test
