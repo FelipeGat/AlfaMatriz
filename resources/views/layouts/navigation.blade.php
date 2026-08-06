@@ -82,21 +82,27 @@
                 @php $ativo = request()->routeIs(...(array) $link['pattern']); @endphp
                 <a href="{{ route($link['route']) }}"
                    @class([
-                       'group flex items-center gap-3 h-item text-[13.5px] transition-colors border-l-[3px] px-[13px]',
+                       // Peso 500 no item inteiro: o menu é lido de relance e
+                       // 400 some contra o fundo escuro. O item ativo não
+                       // precisa de peso extra — ele já tem fundo, cor de
+                       // marca e a barra de 3px o separando dos outros.
+                       'group flex items-center gap-3 h-item text-[13.5px] font-medium transition-colors border-l-[3px] px-[13px]',
                        // Recolhido, o item centraliza — e cede 3px à direita
                        // para compensar a barra de marca da esquerda, senão o
                        // ícone fica fora do eixo do rail.
                        'rail:lg:justify-center rail:lg:pl-0 rail:lg:pr-[3px]',
-                       'bg-nav-active text-brand-text font-semibold border-brand' => $ativo,
+                       'bg-nav-active text-brand-text border-brand' => $ativo,
                        'text-ink-dim border-transparent hover:bg-chip hover:text-ink' => ! $ativo,
                    ])
                    @if ($ativo) aria-current="page" @endif
                    title="{{ $link['label'] }}">
+                    {{-- O traço acompanha o texto: ícone em 1.5 ao lado de um
+                         rótulo em 500 fica visivelmente mais leve que ele. --}}
                     <span @class([
                         'h-[18px] w-[18px] shrink-0',
                         'text-brand-text' => $ativo,
                         'text-ink-mute group-hover:text-ink-dim' => ! $ativo,
-                    ])><x-nav-icon :name="$link['icon']" /></span>
+                    ])><x-nav-icon :name="$link['icon']" :peso="1.7" /></span>
                     <span class="truncate rail:lg:hidden">{{ $link['label'] }}</span>
                 </a>
             @endforeach

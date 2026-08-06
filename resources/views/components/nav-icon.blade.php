@@ -1,4 +1,9 @@
-@props(['name'])
+{{--
+    `peso` é a espessura do traço. SVG não entende `font-weight`, então quando
+    um ícone precisa acompanhar o peso do texto ao lado é este número que muda:
+    1.5 é o corpo normal, 1.7 acompanha um rótulo em 500.
+--}}
+@props(['name', 'peso' => 1.5])
 
 @php
     $paths = [
@@ -44,6 +49,6 @@
     ];
 @endphp
 
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-full h-full">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{ $peso }}" class="w-full h-full">
     <path stroke-linecap="round" stroke-linejoin="round" d="{{ $paths[$name] ?? $paths['tag'] }}" />
 </svg>
