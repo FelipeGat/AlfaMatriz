@@ -9,7 +9,50 @@
   Status: pendente | em-andamento | concluida
 -->
 
-## T-031 — Fundação visual: tokens dos dois temas e tipografia [em-andamento]
+## Contrato compartilhado — leia antes de qualquer tarefa de tela
+
+**A referência de design é `Assets/design_handoff_alfamatriz_redesign/`.** Leia
+o `README.md` de lá (seção da sua tela + "Armadilhas já encontradas") e, se
+precisar do detalhe fino, o `AlfaMatriz Sistema.dc.html` — onde os dois
+divergirem, **o HTML manda**. Os protótipos são referência visual, **não código
+para copiar**: estilo inline vira classe Tailwind, interação vira Alpine, e a
+lista vem do controller que já existe.
+
+**A fundação (T-031, T-032, T-033) já está pronta e commitada. Use-a; não
+reinvente:**
+
+- **Cor, tipografia e raio saem de token.** Nenhum hexadecimal em `.blade.php`
+  — há teste varrendo isso (`TokensTest`). Classes: `bg-canvas`, `bg-panel`,
+  `bg-head`, `bg-subtle`, `bg-surface`, `bg-chip`, `bg-board`, `bg-card-grad`,
+  `border-line`, `border-rule`, `border-btn-line`, `text-ink`, `text-ink-dim`,
+  `text-ink-mute`, `text-ink-faint`, `text-brand-text`, `bg-brand`, `text-good`,
+  `text-warn`, `text-crit`, `bg-good-tint`, `bg-warn-tint`, `bg-crit-tint`,
+  `bg-bar-track`. Precisa de alpha própria? `rgb(var(--warn) / 0.4)` em `style`.
+- **Tipografia:** `font-display` (Space Grotesk) em título de painel e número
+  grande; `font-sans` (Geist) no corpo; `font-mono` (Geist Mono) em caixa alta,
+  número de tabela, data, delta e eixo. Número de destaque leva a classe
+  `tabular`.
+- **Raio:** `rounded-panel` (8px) painel/card, `rounded-control` (6) botão e
+  input, `rounded-ctl` (5) controle pequeno, `rounded-tile` (4) tile de ícone e
+  ação de tabela, `rounded-badge` (3) badge e chip.
+- **Componentes prontos** (`resources/views/components/`): `<x-tabela>`,
+  `<x-linha-total>`, `<x-painel>`, `<x-kpi-card>`, `<x-sparkline>`,
+  `<x-badge>`, `<x-faixa-segmentada>`, `<x-acao-tabela>`, `<x-bar-chart>`,
+  `<x-nav-icon>`. **Toda `<table>` passa por `<x-tabela>`** (o teste reprova
+  `<table>` solta numa tela) e **toda linha de totais por `<x-linha-total>`**.
+- **Moldura:** `<x-app-layout>` com os slots novos `titulo`, `contexto` e
+  `acoes` — o slot `header` antigo ainda funciona, mas telas migradas usam os
+  novos.
+- **Grid de cards** sempre `repeat(auto-fit, minmax(200–250px, 1fr))`, nunca
+  `grid-cols-N` fixo — senão os números quebram no meio em janela estreita.
+- **Regra de negócio não muda.** Nenhuma rota, tabela ou migration nova. O
+  controller pode ganhar agregação/série para alimentar a tela, sempre a partir
+  do que já está no banco.
+- **Teste:** cada critério de aceite da sua tarefa vira um método com
+  `@spec:AC-xxx` no docblock, em `tests/Feature/Redesign/`. Rode
+  `php tools/onp-spec-tap.php` até passar. Teste pulado não é prova.
+
+## T-031 — Fundação visual: tokens dos dois temas e tipografia [concluida]
 - Refs: US-016, AC-032, AC-033, AC-034
 - Arquivos: tailwind.config.js, resources/css/app.css, tests/Feature/Redesign/TokensTest.php
 - Esforço: alto
@@ -21,7 +64,7 @@
   (8/6/5/4/3), grade de 4px, barra de rolagem customizada. Carrega Geist e
   Geist Mono além da Space Grotesk. **Primeira tarefa — tudo depende dela.**
 
-## T-032 — Shell: sidebar com rail, topbar, alternador de tema e marca [em-andamento]
+## T-032 — Shell: sidebar com rail, topbar, alternador de tema e marca [concluida]
 - Refs: US-017, AC-035, AC-036, AC-037, AC-038, AC-061
 - Arquivos: resources/views/layouts/app.blade.php, resources/views/layouts/navigation.blade.php, resources/views/components/nav-icon.blade.php, resources/views/components/application-logo.blade.php, resources/js/app.js, public/icon-matriz.svg, public/alfamatriz.png, tests/Feature/Redesign/ShellTest.php
 - Esforço: alto
@@ -36,7 +79,7 @@
   substituindo `logo-tile.svg` (Q-009). Abaixo de 1024px a sidebar vira
   gaveta sobreposta.
 
-## T-033 — Componentes compartilhados do sistema visual [em-andamento]
+## T-033 — Componentes compartilhados do sistema visual [concluida]
 - Refs: US-016, AC-046, AC-047
 - Arquivos: resources/views/components/kpi-card.blade.php, resources/views/components/sparkline.blade.php, resources/views/components/painel.blade.php, resources/views/components/badge.blade.php, resources/views/components/faixa-segmentada.blade.php, resources/views/components/tabela.blade.php, resources/views/components/linha-total.blade.php, resources/views/components/acao-tabela.blade.php, resources/views/components/stat-card.blade.php, resources/views/components/bar-chart.blade.php, tests/Feature/Redesign/ComponentesTest.php
 - Esforço: alto

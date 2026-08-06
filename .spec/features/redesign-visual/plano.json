@@ -1,12 +1,12 @@
 {
-  "runId": "AlfaMatriz-redesign-visual-mshq5ia6",
+  "runId": "AlfaMatriz-redesign-visual-mshqs60f",
   "feature": "redesign-visual",
   "agent": "claude",
   "modo": "paralelo",
   "paralelizar": null,
   "modeloForcado": null,
   "esforcoForcado": null,
-  "geradoEm": "2026-08-06 16:22",
+  "geradoEm": "2026-08-06 16:40",
   "branchTrabalho": "spec/redesign-visual",
   "baseDir": ".spec/features/redesign-visual",
   "specDir": ".spec",
@@ -32,11 +32,6 @@
       "faixa-10",
       "faixa-11",
       "faixa-12"
-    ],
-    [
-      "faixa-13",
-      "faixa-14",
-      "faixa-15"
     ]
   ],
   "faixas": [
@@ -44,92 +39,6 @@
       "id": "faixa-1",
       "branch": "spec/redesign-visual-faixa-1",
       "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-1",
-      "tarefas": [
-        {
-          "id": "T-031",
-          "titulo": "Fundação visual: tokens dos dois temas e tipografia",
-          "modelo": "claude-sonnet-5",
-          "esforco": "high",
-          "arquivos": [
-            "tailwind.config.js",
-            "resources/css/app.css",
-            "tests/Feature/Redesign/TokensTest.php"
-          ],
-          "refs": [
-            "US-016",
-            "AC-032",
-            "AC-033",
-            "AC-034"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "faixa-2",
-      "branch": "spec/redesign-visual-faixa-2",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-2",
-      "tarefas": [
-        {
-          "id": "T-032",
-          "titulo": "Shell: sidebar com rail, topbar, alternador de tema e marca",
-          "modelo": "claude-sonnet-5",
-          "esforco": "high",
-          "arquivos": [
-            "resources/views/layouts/app.blade.php",
-            "resources/views/layouts/navigation.blade.php",
-            "resources/views/components/nav-icon.blade.php",
-            "resources/views/components/application-logo.blade.php",
-            "resources/js/app.js",
-            "public/icon-matriz.svg",
-            "public/alfamatriz.png",
-            "tests/Feature/Redesign/ShellTest.php"
-          ],
-          "refs": [
-            "US-017",
-            "AC-035",
-            "AC-036",
-            "AC-037",
-            "AC-038",
-            "AC-061"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "faixa-3",
-      "branch": "spec/redesign-visual-faixa-3",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-3",
-      "tarefas": [
-        {
-          "id": "T-033",
-          "titulo": "Componentes compartilhados do sistema visual",
-          "modelo": "claude-sonnet-5",
-          "esforco": "high",
-          "arquivos": [
-            "resources/views/components/kpi-card.blade.php",
-            "resources/views/components/sparkline.blade.php",
-            "resources/views/components/painel.blade.php",
-            "resources/views/components/badge.blade.php",
-            "resources/views/components/faixa-segmentada.blade.php",
-            "resources/views/components/tabela.blade.php",
-            "resources/views/components/linha-total.blade.php",
-            "resources/views/components/acao-tabela.blade.php",
-            "resources/views/components/stat-card.blade.php",
-            "resources/views/components/bar-chart.blade.php",
-            "tests/Feature/Redesign/ComponentesTest.php"
-          ],
-          "refs": [
-            "US-016",
-            "AC-046",
-            "AC-047"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "faixa-4",
-      "branch": "spec/redesign-visual-faixa-4",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-4",
       "tarefas": [
         {
           "id": "T-034",
@@ -151,9 +60,9 @@
       ]
     },
     {
-      "id": "faixa-5",
-      "branch": "spec/redesign-visual-faixa-5",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-5",
+      "id": "faixa-2",
+      "branch": "spec/redesign-visual-faixa-2",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-2",
       "tarefas": [
         {
           "id": "T-035",
@@ -175,9 +84,9 @@
       ]
     },
     {
-      "id": "faixa-6",
-      "branch": "spec/redesign-visual-faixa-6",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-6",
+      "id": "faixa-3",
+      "branch": "spec/redesign-visual-faixa-3",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-3",
       "tarefas": [
         {
           "id": "T-036",
@@ -198,9 +107,9 @@
       ]
     },
     {
-      "id": "faixa-7",
-      "branch": "spec/redesign-visual-faixa-7",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-7",
+      "id": "faixa-4",
+      "branch": "spec/redesign-visual-faixa-4",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-4",
       "tarefas": [
         {
           "id": "T-037",
@@ -223,9 +132,9 @@
       ]
     },
     {
-      "id": "faixa-8",
-      "branch": "spec/redesign-visual-faixa-8",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-8",
+      "id": "faixa-5",
+      "branch": "spec/redesign-visual-faixa-5",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-5",
       "tarefas": [
         {
           "id": "T-038",
@@ -248,9 +157,9 @@
       ]
     },
     {
-      "id": "faixa-9",
-      "branch": "spec/redesign-visual-faixa-9",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-9",
+      "id": "faixa-6",
+      "branch": "spec/redesign-visual-faixa-6",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-6",
       "tarefas": [
         {
           "id": "T-039",
@@ -273,9 +182,9 @@
       ]
     },
     {
-      "id": "faixa-10",
-      "branch": "spec/redesign-visual-faixa-10",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-10",
+      "id": "faixa-7",
+      "branch": "spec/redesign-visual-faixa-7",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-7",
       "tarefas": [
         {
           "id": "T-040",
@@ -298,9 +207,9 @@
       ]
     },
     {
-      "id": "faixa-11",
-      "branch": "spec/redesign-visual-faixa-11",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-11",
+      "id": "faixa-8",
+      "branch": "spec/redesign-visual-faixa-8",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-8",
       "tarefas": [
         {
           "id": "T-041",
@@ -326,9 +235,9 @@
       ]
     },
     {
-      "id": "faixa-12",
-      "branch": "spec/redesign-visual-faixa-12",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-12",
+      "id": "faixa-9",
+      "branch": "spec/redesign-visual-faixa-9",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-9",
       "tarefas": [
         {
           "id": "T-042",
@@ -354,9 +263,9 @@
       ]
     },
     {
-      "id": "faixa-13",
-      "branch": "spec/redesign-visual-faixa-13",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-13",
+      "id": "faixa-10",
+      "branch": "spec/redesign-visual-faixa-10",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-10",
       "tarefas": [
         {
           "id": "T-043",
@@ -381,9 +290,9 @@
       ]
     },
     {
-      "id": "faixa-14",
-      "branch": "spec/redesign-visual-faixa-14",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-14",
+      "id": "faixa-11",
+      "branch": "spec/redesign-visual-faixa-11",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-11",
       "tarefas": [
         {
           "id": "T-044",
@@ -404,9 +313,9 @@
       ]
     },
     {
-      "id": "faixa-15",
-      "branch": "spec/redesign-visual-faixa-15",
-      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-15",
+      "id": "faixa-12",
+      "branch": "spec/redesign-visual-faixa-12",
+      "worktree": "../onp-worktrees/AlfaMatriz-redesign-visual-faixa-12",
       "tarefas": [
         {
           "id": "T-045",
@@ -431,6 +340,10 @@
     }
   ],
   "sequenciais": [],
-  "concluidas": [],
+  "concluidas": [
+    "T-031",
+    "T-032",
+    "T-033"
+  ],
   "avisos": []
 }

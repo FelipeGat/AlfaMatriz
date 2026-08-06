@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# executar-tarefas.sh — gerado por `onp-spec plano redesign-visual` em 2026-08-06 16:22
+# executar-tarefas.sh — gerado por `onp-spec plano redesign-visual` em 2026-08-06 16:40
 # NÃO edite à mão: mudou tasks.md ou a config, regenere o plano.
 #
 # uso:
@@ -14,7 +14,7 @@
 set -u
 set -o pipefail
 
-RUN_ID='AlfaMatriz-redesign-visual-mshq5ia6'
+RUN_ID='AlfaMatriz-redesign-visual-mshqs60f'
 FEATURE='redesign-visual'
 BASE_BRANCH='spec/redesign-visual'
 ENGINE='.claude/skills/onp-spec-driven/scripts/onp-spec.mjs'
@@ -166,7 +166,7 @@ iniciar_resumos() {
   trap 'parar_resumos; node "$ENGINE" resumo "$FEATURE" --gravar >/dev/null 2>&1 || true' EXIT
 }
 
-# ── faixa-1: T-031 ──
+# ── faixa-1: T-034 ──
 executar_faixa_1() {
   local WT="$WT_BASE-faixa-1"
   preparar_worktree 'faixa-1' 'spec/redesign-visual-faixa-1' "$WT" || return 1
@@ -174,97 +174,7 @@ executar_faixa_1() {
   : > "$LOG_DIR/faixa-1.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-1' 'T-031' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
-Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
-
-Sua tarefa (somente ela):
-T-031 — "Fundação visual: tokens dos dois temas e tipografia"
-  critérios/refs: AC-032 (Os tokens do design existem e alimentam os dois temas), AC-033 (O texto informativo é legível nos dois temas), AC-034 (Cada família tipográfica tem um papel e está disponível)
-  arquivos permitidos (e seus testes): tailwind.config.js, resources/css/app.css, tests/Feature/Redesign/TokensTest.php
-  mensagem de commit: "T-031 redesign-visual: Fundação visual: tokens dos dois temas e tipografia"
-
-Regras inegociáveis:
-- Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
-- NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
-- Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
-- NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-1.log" 2>&1
-  local st=$?
-  mesclar_faixa 'faixa-1' 'spec/redesign-visual-faixa-1' "$WT" "$st" || return 1
-  marcar_concluidas T-031
-  return 0
-}
-
-# ── faixa-2: T-032 ──
-executar_faixa_2() {
-  local WT="$WT_BASE-faixa-2"
-  preparar_worktree 'faixa-2' 'spec/redesign-visual-faixa-2' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-2' --estado executando --tentativa "$(tentativa 'faixa-2')"
-  : > "$LOG_DIR/faixa-2.log"
-  (
-    cd "$WT" || exit 9
-    rodar_tarefa 'faixa-2' 'T-032' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
-Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
-
-Sua tarefa (somente ela):
-T-032 — "Shell: sidebar com rail, topbar, alternador de tema e marca"
-  critérios/refs: AC-035 (Toda tela autenticada usa o mesmo shell), AC-036 (Recolher o menu vira um rail de ícones, e a escolha sobrevive à navegação), AC-037 (O tema alterna e sobrevive à navegação), AC-038 (O menu marca o item certo, inclusive nas telas filhas), AC-061 (Em tela estreita o menu vira gaveta e nada estoura a largura)
-  arquivos permitidos (e seus testes): resources/views/layouts/app.blade.php, resources/views/layouts/navigation.blade.php, resources/views/components/nav-icon.blade.php, resources/views/components/application-logo.blade.php, resources/js/app.js, public/icon-matriz.svg, public/alfamatriz.png, tests/Feature/Redesign/ShellTest.php
-  mensagem de commit: "T-032 redesign-visual: Shell: sidebar com rail, topbar, alternador de tema e marca"
-
-Regras inegociáveis:
-- Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
-- NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
-- Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
-- NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-2.log" 2>&1
-  local st=$?
-  mesclar_faixa 'faixa-2' 'spec/redesign-visual-faixa-2' "$WT" "$st" || return 1
-  marcar_concluidas T-032
-  return 0
-}
-
-# ── faixa-3: T-033 ──
-executar_faixa_3() {
-  local WT="$WT_BASE-faixa-3"
-  preparar_worktree 'faixa-3' 'spec/redesign-visual-faixa-3' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-3' --estado executando --tentativa "$(tentativa 'faixa-3')"
-  : > "$LOG_DIR/faixa-3.log"
-  (
-    cd "$WT" || exit 9
-    rodar_tarefa 'faixa-3' 'T-033' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
-Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
-
-Sua tarefa (somente ela):
-T-033 — "Componentes compartilhados do sistema visual"
-  critérios/refs: AC-046 (Nenhuma tabela esconde a coluna de ações), AC-047 (As linhas de total não quebram em duas alturas)
-  arquivos permitidos (e seus testes): resources/views/components/kpi-card.blade.php, resources/views/components/sparkline.blade.php, resources/views/components/painel.blade.php, resources/views/components/badge.blade.php, resources/views/components/faixa-segmentada.blade.php, resources/views/components/tabela.blade.php, resources/views/components/linha-total.blade.php, resources/views/components/acao-tabela.blade.php, resources/views/components/stat-card.blade.php, resources/views/components/bar-chart.blade.php, tests/Feature/Redesign/ComponentesTest.php
-  mensagem de commit: "T-033 redesign-visual: Componentes compartilhados do sistema visual"
-
-Regras inegociáveis:
-- Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
-- NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
-- Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
-- NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-3.log" 2>&1
-  local st=$?
-  mesclar_faixa 'faixa-3' 'spec/redesign-visual-faixa-3' "$WT" "$st" || return 1
-  marcar_concluidas T-033
-  return 0
-}
-
-# ── faixa-4: T-034 ──
-executar_faixa_4() {
-  local WT="$WT_BASE-faixa-4"
-  preparar_worktree 'faixa-4' 'spec/redesign-visual-faixa-4' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-4' --estado executando --tentativa "$(tentativa 'faixa-4')"
-  : > "$LOG_DIR/faixa-4.log"
-  (
-    cd "$WT" || exit 9
-    rodar_tarefa 'faixa-4' 'T-034' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-1' 'T-034' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -279,22 +189,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-4.log" 2>&1
+  ) >> "$LOG_DIR/faixa-1.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-4' 'spec/redesign-visual-faixa-4' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-1' 'spec/redesign-visual-faixa-1' "$WT" "$st" || return 1
   marcar_concluidas T-034
   return 0
 }
 
-# ── faixa-5: T-035 ──
-executar_faixa_5() {
-  local WT="$WT_BASE-faixa-5"
-  preparar_worktree 'faixa-5' 'spec/redesign-visual-faixa-5' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-5' --estado executando --tentativa "$(tentativa 'faixa-5')"
-  : > "$LOG_DIR/faixa-5.log"
+# ── faixa-2: T-035 ──
+executar_faixa_2() {
+  local WT="$WT_BASE-faixa-2"
+  preparar_worktree 'faixa-2' 'spec/redesign-visual-faixa-2' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-2' --estado executando --tentativa "$(tentativa 'faixa-2')"
+  : > "$LOG_DIR/faixa-2.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-5' 'T-035' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-2' 'T-035' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -309,22 +219,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-5.log" 2>&1
+  ) >> "$LOG_DIR/faixa-2.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-5' 'spec/redesign-visual-faixa-5' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-2' 'spec/redesign-visual-faixa-2' "$WT" "$st" || return 1
   marcar_concluidas T-035
   return 0
 }
 
-# ── faixa-6: T-036 ──
-executar_faixa_6() {
-  local WT="$WT_BASE-faixa-6"
-  preparar_worktree 'faixa-6' 'spec/redesign-visual-faixa-6' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-6' --estado executando --tentativa "$(tentativa 'faixa-6')"
-  : > "$LOG_DIR/faixa-6.log"
+# ── faixa-3: T-036 ──
+executar_faixa_3() {
+  local WT="$WT_BASE-faixa-3"
+  preparar_worktree 'faixa-3' 'spec/redesign-visual-faixa-3' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-3' --estado executando --tentativa "$(tentativa 'faixa-3')"
+  : > "$LOG_DIR/faixa-3.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-6' 'T-036' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-3' 'T-036' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -339,22 +249,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-6.log" 2>&1
+  ) >> "$LOG_DIR/faixa-3.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-6' 'spec/redesign-visual-faixa-6' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-3' 'spec/redesign-visual-faixa-3' "$WT" "$st" || return 1
   marcar_concluidas T-036
   return 0
 }
 
-# ── faixa-7: T-037 ──
-executar_faixa_7() {
-  local WT="$WT_BASE-faixa-7"
-  preparar_worktree 'faixa-7' 'spec/redesign-visual-faixa-7' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-7' --estado executando --tentativa "$(tentativa 'faixa-7')"
-  : > "$LOG_DIR/faixa-7.log"
+# ── faixa-4: T-037 ──
+executar_faixa_4() {
+  local WT="$WT_BASE-faixa-4"
+  preparar_worktree 'faixa-4' 'spec/redesign-visual-faixa-4' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-4' --estado executando --tentativa "$(tentativa 'faixa-4')"
+  : > "$LOG_DIR/faixa-4.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-7' 'T-037' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-4' 'T-037' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -369,22 +279,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium
-  ) >> "$LOG_DIR/faixa-7.log" 2>&1
+  ) >> "$LOG_DIR/faixa-4.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-7' 'spec/redesign-visual-faixa-7' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-4' 'spec/redesign-visual-faixa-4' "$WT" "$st" || return 1
   marcar_concluidas T-037
   return 0
 }
 
-# ── faixa-8: T-038 ──
-executar_faixa_8() {
-  local WT="$WT_BASE-faixa-8"
-  preparar_worktree 'faixa-8' 'spec/redesign-visual-faixa-8' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-8' --estado executando --tentativa "$(tentativa 'faixa-8')"
-  : > "$LOG_DIR/faixa-8.log"
+# ── faixa-5: T-038 ──
+executar_faixa_5() {
+  local WT="$WT_BASE-faixa-5"
+  preparar_worktree 'faixa-5' 'spec/redesign-visual-faixa-5' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-5' --estado executando --tentativa "$(tentativa 'faixa-5')"
+  : > "$LOG_DIR/faixa-5.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-8' 'T-038' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-5' 'T-038' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -399,22 +309,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-8.log" 2>&1
+  ) >> "$LOG_DIR/faixa-5.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-8' 'spec/redesign-visual-faixa-8' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-5' 'spec/redesign-visual-faixa-5' "$WT" "$st" || return 1
   marcar_concluidas T-038
   return 0
 }
 
-# ── faixa-9: T-039 ──
-executar_faixa_9() {
-  local WT="$WT_BASE-faixa-9"
-  preparar_worktree 'faixa-9' 'spec/redesign-visual-faixa-9' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-9' --estado executando --tentativa "$(tentativa 'faixa-9')"
-  : > "$LOG_DIR/faixa-9.log"
+# ── faixa-6: T-039 ──
+executar_faixa_6() {
+  local WT="$WT_BASE-faixa-6"
+  preparar_worktree 'faixa-6' 'spec/redesign-visual-faixa-6' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-6' --estado executando --tentativa "$(tentativa 'faixa-6')"
+  : > "$LOG_DIR/faixa-6.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-9' 'T-039' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-6' 'T-039' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -429,22 +339,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-9.log" 2>&1
+  ) >> "$LOG_DIR/faixa-6.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-9' 'spec/redesign-visual-faixa-9' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-6' 'spec/redesign-visual-faixa-6' "$WT" "$st" || return 1
   marcar_concluidas T-039
   return 0
 }
 
-# ── faixa-10: T-040 ──
-executar_faixa_10() {
-  local WT="$WT_BASE-faixa-10"
-  preparar_worktree 'faixa-10' 'spec/redesign-visual-faixa-10' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-10' --estado executando --tentativa "$(tentativa 'faixa-10')"
-  : > "$LOG_DIR/faixa-10.log"
+# ── faixa-7: T-040 ──
+executar_faixa_7() {
+  local WT="$WT_BASE-faixa-7"
+  preparar_worktree 'faixa-7' 'spec/redesign-visual-faixa-7' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-7' --estado executando --tentativa "$(tentativa 'faixa-7')"
+  : > "$LOG_DIR/faixa-7.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-10' 'T-040' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-7' 'T-040' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -459,22 +369,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-10.log" 2>&1
+  ) >> "$LOG_DIR/faixa-7.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-10' 'spec/redesign-visual-faixa-10' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-7' 'spec/redesign-visual-faixa-7' "$WT" "$st" || return 1
   marcar_concluidas T-040
   return 0
 }
 
-# ── faixa-11: T-041 ──
-executar_faixa_11() {
-  local WT="$WT_BASE-faixa-11"
-  preparar_worktree 'faixa-11' 'spec/redesign-visual-faixa-11' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-11' --estado executando --tentativa "$(tentativa 'faixa-11')"
-  : > "$LOG_DIR/faixa-11.log"
+# ── faixa-8: T-041 ──
+executar_faixa_8() {
+  local WT="$WT_BASE-faixa-8"
+  preparar_worktree 'faixa-8' 'spec/redesign-visual-faixa-8' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-8' --estado executando --tentativa "$(tentativa 'faixa-8')"
+  : > "$LOG_DIR/faixa-8.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-11' 'T-041' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-8' 'T-041' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -489,22 +399,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-11.log" 2>&1
+  ) >> "$LOG_DIR/faixa-8.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-11' 'spec/redesign-visual-faixa-11' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-8' 'spec/redesign-visual-faixa-8' "$WT" "$st" || return 1
   marcar_concluidas T-041
   return 0
 }
 
-# ── faixa-12: T-042 ──
-executar_faixa_12() {
-  local WT="$WT_BASE-faixa-12"
-  preparar_worktree 'faixa-12' 'spec/redesign-visual-faixa-12' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-12' --estado executando --tentativa "$(tentativa 'faixa-12')"
-  : > "$LOG_DIR/faixa-12.log"
+# ── faixa-9: T-042 ──
+executar_faixa_9() {
+  local WT="$WT_BASE-faixa-9"
+  preparar_worktree 'faixa-9' 'spec/redesign-visual-faixa-9' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-9' --estado executando --tentativa "$(tentativa 'faixa-9')"
+  : > "$LOG_DIR/faixa-9.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-12' 'T-042' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-9' 'T-042' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -519,22 +429,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-12.log" 2>&1
+  ) >> "$LOG_DIR/faixa-9.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-12' 'spec/redesign-visual-faixa-12' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-9' 'spec/redesign-visual-faixa-9' "$WT" "$st" || return 1
   marcar_concluidas T-042
   return 0
 }
 
-# ── faixa-13: T-043 ──
-executar_faixa_13() {
-  local WT="$WT_BASE-faixa-13"
-  preparar_worktree 'faixa-13' 'spec/redesign-visual-faixa-13' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-13' --estado executando --tentativa "$(tentativa 'faixa-13')"
-  : > "$LOG_DIR/faixa-13.log"
+# ── faixa-10: T-043 ──
+executar_faixa_10() {
+  local WT="$WT_BASE-faixa-10"
+  preparar_worktree 'faixa-10' 'spec/redesign-visual-faixa-10' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-10' --estado executando --tentativa "$(tentativa 'faixa-10')"
+  : > "$LOG_DIR/faixa-10.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-13' 'T-043' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-10' 'T-043' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -549,22 +459,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium
-  ) >> "$LOG_DIR/faixa-13.log" 2>&1
+  ) >> "$LOG_DIR/faixa-10.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-13' 'spec/redesign-visual-faixa-13' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-10' 'spec/redesign-visual-faixa-10' "$WT" "$st" || return 1
   marcar_concluidas T-043
   return 0
 }
 
-# ── faixa-14: T-044 ──
-executar_faixa_14() {
-  local WT="$WT_BASE-faixa-14"
-  preparar_worktree 'faixa-14' 'spec/redesign-visual-faixa-14' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-14' --estado executando --tentativa "$(tentativa 'faixa-14')"
-  : > "$LOG_DIR/faixa-14.log"
+# ── faixa-11: T-044 ──
+executar_faixa_11() {
+  local WT="$WT_BASE-faixa-11"
+  preparar_worktree 'faixa-11' 'spec/redesign-visual-faixa-11' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-11' --estado executando --tentativa "$(tentativa 'faixa-11')"
+  : > "$LOG_DIR/faixa-11.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-14' 'T-044' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-11' 'T-044' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -579,22 +489,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium
-  ) >> "$LOG_DIR/faixa-14.log" 2>&1
+  ) >> "$LOG_DIR/faixa-11.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-14' 'spec/redesign-visual-faixa-14' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-11' 'spec/redesign-visual-faixa-11' "$WT" "$st" || return 1
   marcar_concluidas T-044
   return 0
 }
 
-# ── faixa-15: T-045 ──
-executar_faixa_15() {
-  local WT="$WT_BASE-faixa-15"
-  preparar_worktree 'faixa-15' 'spec/redesign-visual-faixa-15' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-15' --estado executando --tentativa "$(tentativa 'faixa-15')"
-  : > "$LOG_DIR/faixa-15.log"
+# ── faixa-12: T-045 ──
+executar_faixa_12() {
+  local WT="$WT_BASE-faixa-12"
+  preparar_worktree 'faixa-12' 'spec/redesign-visual-faixa-12' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-12' --estado executando --tentativa "$(tentativa 'faixa-12')"
+  : > "$LOG_DIR/faixa-12.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-15' 'T-045' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-12' 'T-045' 'Você executa UMA tarefa da feature "redesign-visual" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/redesign-visual/spec.md, .spec/features/redesign-visual/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -609,9 +519,9 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium
-  ) >> "$LOG_DIR/faixa-15.log" 2>&1
+  ) >> "$LOG_DIR/faixa-12.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-15' 'spec/redesign-visual-faixa-15' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-12' 'spec/redesign-visual-faixa-12' "$WT" "$st" || return 1
   marcar_concluidas T-045
   return 0
 }
@@ -701,34 +611,23 @@ executar_tudo() {
   wait "$PID_FAIXA_10" || true
   wait "$PID_FAIXA_11" || true
   wait "$PID_FAIXA_12" || true
-  # onda 5: faixa-13 ∥ faixa-14 ∥ faixa-15
-  info "onda 5: faixa-13 ∥ faixa-14 ∥ faixa-15 — janelas limpas em paralelo"
-  executar_faixa_13 & PID_FAIXA_13=$!
-  executar_faixa_14 & PID_FAIXA_14=$!
-  executar_faixa_15 & PID_FAIXA_15=$!
-  wait "$PID_FAIXA_13" || true
-  wait "$PID_FAIXA_14" || true
-  wait "$PID_FAIXA_15" || true
   encerrar tudo
 }
 
 listar() {
   echo "execução: $RUN_ID (feature $FEATURE, branch $BASE_BRANCH)"
-  echo "  faixa-1  onda 1  T-031"
-  echo "  faixa-2  onda 1  T-032"
-  echo "  faixa-3  onda 1  T-033"
-  echo "  faixa-4  onda 2  T-034"
-  echo "  faixa-5  onda 2  T-035"
-  echo "  faixa-6  onda 2  T-036"
-  echo "  faixa-7  onda 3  T-037"
-  echo "  faixa-8  onda 3  T-038"
-  echo "  faixa-9  onda 3  T-039"
-  echo "  faixa-10  onda 4  T-040"
-  echo "  faixa-11  onda 4  T-041"
-  echo "  faixa-12  onda 4  T-042"
-  echo "  faixa-13  onda 5  T-043"
-  echo "  faixa-14  onda 5  T-044"
-  echo "  faixa-15  onda 5  T-045"
+  echo "  faixa-1  onda 1  T-034"
+  echo "  faixa-2  onda 1  T-035"
+  echo "  faixa-3  onda 1  T-036"
+  echo "  faixa-4  onda 2  T-037"
+  echo "  faixa-5  onda 2  T-038"
+  echo "  faixa-6  onda 2  T-039"
+  echo "  faixa-7  onda 3  T-040"
+  echo "  faixa-8  onda 3  T-041"
+  echo "  faixa-9  onda 3  T-042"
+  echo "  faixa-10  onda 4  T-043"
+  echo "  faixa-11  onda 4  T-044"
+  echo "  faixa-12  onda 4  T-045"
   echo
   echo "reexecutar uma faixa:    --faixa <id>"
   echo "reexecutar sequencial:   --seq <T-xxx>"
@@ -771,9 +670,6 @@ case "$MODO" in
       faixa-10) evento --tipo inicio --escopo "faixa:faixa-10"; iniciar_resumos; executar_faixa_10 || true; encerrar "faixa:faixa-10" ;;
       faixa-11) evento --tipo inicio --escopo "faixa:faixa-11"; iniciar_resumos; executar_faixa_11 || true; encerrar "faixa:faixa-11" ;;
       faixa-12) evento --tipo inicio --escopo "faixa:faixa-12"; iniciar_resumos; executar_faixa_12 || true; encerrar "faixa:faixa-12" ;;
-      faixa-13) evento --tipo inicio --escopo "faixa:faixa-13"; iniciar_resumos; executar_faixa_13 || true; encerrar "faixa:faixa-13" ;;
-      faixa-14) evento --tipo inicio --escopo "faixa:faixa-14"; iniciar_resumos; executar_faixa_14 || true; encerrar "faixa:faixa-14" ;;
-      faixa-15) evento --tipo inicio --escopo "faixa:faixa-15"; iniciar_resumos; executar_faixa_15 || true; encerrar "faixa:faixa-15" ;;
       *) falhar "faixa desconhecida: '$ALVO' — veja as disponíveis com --listar" ;;
     esac ;;
   seq)
