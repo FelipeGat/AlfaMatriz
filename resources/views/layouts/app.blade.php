@@ -1,3 +1,12 @@
+{{--
+    Moldura do painel — sidebar + topbar + conteúdo.
+
+    Slots:
+      $titulo   título da tela (Space Grotesk 17px). Se ausente, cai no $header
+                antigo, para as telas ainda não migradas continuarem de pé.
+      $contexto linha de contexto em caixa alta ao lado do título
+      $acoes    botão primário da tela, à direita da busca
+--}}
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
     <head>
@@ -7,62 +16,93 @@
 
         <title>{{ config('app.name', 'AlfaMatriz') }}</title>
 
+        <link rel="icon" href="/icon-matriz.svg" type="image/svg+xml">
         <link rel="icon" href="/favicon.ico" sizes="32x32">
-        <link rel="icon" href="/favicon-16.png" type="image/png" sizes="16x16">
-        <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|space-grotesk:500,600,700" rel="stylesheet" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+        {{--
+            Tema ANTES da primeira pintura. Se esta decisão esperasse o Alpine,
+            quem usa o tema claro veria o painel escuro piscar a cada
+            navegação. O padrão é escuro: só vira claro quem pediu.
+        --}}
+        <script>
+            (function () {
+                try {
+                    if (localStorage.getItem('alfamatriz:tema') === 'claro') {
+                        document.documentElement.classList.add('theme-light');
+                    }
+                    window.alfaRailAberto = localStorage.getItem('alfamatriz:rail') !== 'fechado';
+                } catch (erro) {
+                    window.alfaRailAberto = true;
+                }
+            })();
+        </script>
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
+
     <body class="h-full font-sans antialiased bg-canvas text-ink">
-        <div x-data="{ sidebarOpen: false }" class="min-h-screen flex">
+        <div x-data="shell" class="min-h-screen flex">
             @include('layouts.navigation')
 
-            {{-- Mobile sidebar overlay --}}
-            <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false"
+            {{-- Véu da gaveta: só existe abaixo de 1024px --}}
+            <div x-show="gavetaAberta" x-cloak @click="gavetaAberta = false"
                  class="fixed inset-0 z-30 bg-black/60 lg:hidden" x-transition.opacity></div>
 
             <div class="flex-1 flex flex-col min-w-0">
-                <header class="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-white/5 bg-canvas/90 backdrop-blur px-4 py-4 sm:px-6 lg:px-8">
-                    <div class="flex items-center gap-3 min-w-0 flex-1">
-                        <button @click="sidebarOpen = true" class="lg:hidden text-ink-dim hover:text-ink shrink-0">
-                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                        </button>
-                        <div class="min-w-0 flex-1 font-display [&_h2]:font-display">
-                            {{ $header ?? '' }}
-                        </div>
+                <header class="sticky top-0 z-20 h-topbar shrink-0 flex items-center gap-4 bg-head border-b border-line px-4 sm:px-7">
+                    {{--
+                        O botão de recolher mora no topbar, e não na sidebar,
+                        justamente para não mudar de lugar entre os dois
+                        estados. No celular ele abre a gaveta.
+                    --}}
+                    <button type="button"
+                            @click="window.innerWidth < 1024 ? gavetaAberta = true : alternarRail()"
+                            class="h-[30px] w-[30px] shrink-0 rounded-ctl border border-btn-line text-ink-mute
+                                   flex items-center justify-center transition hover:text-brand hover:border-brand"
+                            :aria-expanded="railAberto.toString()"
+                            aria-controls="menu-principal"
+                            aria-label="Recolher ou expandir o menu">
+                        <span class="h-[15px] w-[15px]"><x-nav-icon name="panel-left" /></span>
+                    </button>
+
+                    {{--
+                        Prioridade de encolhimento: o título nunca cede espaço
+                        (flex-none), o contexto cede primeiro (min-w-0) e a
+                        busca cede antes dos dois. Sem isso o contexto — que é
+                        mais longo — corta o título ao meio.
+                    --}}
+                    <div class="flex items-baseline gap-3 min-w-0 flex-1">
+                        @isset($titulo)
+                            <h1 class="flex-none max-w-full truncate font-display text-[17px] font-semibold text-ink">{{ $titulo }}</h1>
+                        @else
+                            <div class="flex-none max-w-full truncate font-display [&_h2]:font-display [&_h2]:text-[17px] [&_h2]:font-semibold">{{ $header ?? '' }}</div>
+                        @endisset
+
+                        @isset($contexto)
+                            <p class="flex-1 min-w-0 truncate font-mono text-[11px] uppercase tracking-caps text-ink-faint">{{ $contexto }}</p>
+                        @endisset
                     </div>
 
-                    <div class="flex items-center gap-3 shrink-0">
-                        <x-dropdown align="right" width="48">
-                            <x-slot name="trigger">
-                                <button class="flex items-center gap-2 rounded-full bg-panel hover:bg-panel-raised border border-white/5 pl-1 pr-3 py-1 transition">
-                                    <span class="h-7 w-7 rounded-full bg-brand/20 text-brand-dim flex items-center justify-center text-xs font-semibold">
-                                        {{ Str::of(Auth::user()->name)->substr(0, 1)->upper() }}
-                                    </span>
-                                    <span class="hidden sm:block text-sm text-ink-dim">{{ Auth::user()->name }}</span>
-                                </button>
-                            </x-slot>
-                            <x-slot name="content">
-                                <x-dropdown-link :href="route('profile.edit')">Perfil</x-dropdown-link>
-                                <form method="POST" action="{{ route('logout') }}">
-                                    @csrf
-                                    <x-dropdown-link :href="route('logout')"
-                                            onclick="event.preventDefault(); this.closest('form').submit();">
-                                        Sair
-                                    </x-dropdown-link>
-                                </form>
-                            </x-slot>
-                        </x-dropdown>
+                    <div class="flex items-center gap-2.5 shrink-0">
+                        <label class="hidden md:flex items-center gap-2 h-[34px] flex-1 min-w-[168px] max-w-[300px] px-3
+                                      rounded-control bg-input border border-line text-ink-faint
+                                      focus-within:border-brand transition">
+                            <span class="h-4 w-4 shrink-0"><x-nav-icon name="search" /></span>
+                            <input type="search" disabled
+                                   placeholder="Buscar cliente, revenda, cobrança…"
+                                   class="flex-1 min-w-0 bg-transparent border-0 p-0 text-[13px] text-ink placeholder-ink-faint focus:ring-0">
+                            <span class="shrink-0 rounded-badge border border-btn-line px-1.5 py-px font-mono text-[11px] leading-none text-ink-faint">⌘K</span>
+                        </label>
+
+                        {{ $acoes ?? '' }}
                     </div>
                 </header>
 
-                <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+                <main class="flex-1 px-4 pt-6 pb-10 sm:px-7">
                     {{ $slot }}
                 </main>
             </div>

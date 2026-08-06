@@ -21,8 +21,7 @@
   (8/6/5/4/3), grade de 4px, barra de rolagem customizada. Carrega Geist e
   Geist Mono além da Space Grotesk. **Primeira tarefa — tudo depende dela.**
 
-## T-032 — Shell: sidebar com rail, topbar, alternador de tema e marca [pendente]
-
+## T-032 — Shell: sidebar com rail, topbar, alternador de tema e marca [em-andamento]
 - Refs: US-017, AC-035, AC-036, AC-037, AC-038, AC-061
 - Arquivos: resources/views/layouts/app.blade.php, resources/views/layouts/navigation.blade.php, resources/views/components/nav-icon.blade.php, resources/views/components/application-logo.blade.php, resources/js/app.js, public/icon-matriz.svg, public/alfamatriz.png, tests/Feature/Redesign/ShellTest.php
 - Esforço: alto
