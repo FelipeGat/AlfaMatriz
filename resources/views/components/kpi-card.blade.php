@@ -1,53 +1,52 @@
 @props([
-    'label',
-    'value',
-    'apoio' => null,      // texto de contexto abaixo do valor
-    'variacao' => null,   // número: percentual de variação (positivo/negativo)
-    'tom' => 'ink',       // ink | good | warn | bad — cor do valor
-    'proporcao' => null,  // 0..100: desenha barra em vez de texto de apoio
+    'rotulo',
+    'valor',
+    'delta' => null,          // variação, já formatada ("+7,2% vs jul")
+    'sinal' => 'neutro',      // bom | ruim | neutro — colore o delta
+    'acento' => 'accent',     // token que pinta o fio de luz e a sparkline
+    'icone' => null,          // tile de ícone no canto superior direito
+    'serie' => [],            // série da sparkline
 ])
 
 @php
-    $tons = [
-        'ink' => 'text-ink',
-        'good' => 'text-good',
-        'warn' => 'text-warn',
-        'bad' => 'text-bad',
-    ];
+    $corDoDelta = match ($sinal) {
+        'bom' => 'text-good',
+        'ruim' => 'text-crit',
+        default => 'text-ink-faint',
+    };
 @endphp
 
-{{-- O valor usa `valor` (mono + nowrap) e tamanho fluido: em card estreito
-     ele encolhe em vez de quebrar em duas linhas, que era o defeito mais
-     recorrente do protótipo. --}}
-<div class="rounded-card border border-line bg-panel px-6 py-[22px]">
-    <p class="font-mono text-[10px] font-medium uppercase tracking-[.08em] text-mute">{{ $label }}</p>
+{{--
+    Card de destaque (KPI).
 
-    <p class="valor mt-2 font-medium tracking-[-.03em] text-[clamp(19px,2.1vw,26px)] leading-tight {{ $tons[$tom] ?? $tons['ink'] }}">
-        {{ $value }}
-    </p>
+    O fio de luz de 1px no topo é o que separa o card do fundo sem precisar de
+    sombra — ele nasce e morre transparente, recuado 16px de cada lado, para
+    não virar uma borda.
 
-    @if (! is_null($proporcao))
-        {{-- A barra acompanha o significado do card: entradas em positivo,
-             saídas em atenção. Cor aqui informa, não decora. --}}
-        @php
-            $barras = ['ink' => 'bg-ink', 'good' => 'bg-good', 'warn' => 'bg-warn', 'bad' => 'bg-bad'];
-        @endphp
-        <div class="mt-3 h-1 w-full overflow-hidden rounded-[2px] bg-track">
-            <div class="h-full rounded-[2px] {{ $barras[$tom] ?? $barras['ink'] }}" style="width: {{ max(0, min(100, $proporcao)) }}%"></div>
-        </div>
-        @if ($apoio)
-            <p class="mt-2 text-[11.5px] text-mute">{{ $apoio }}</p>
+    O valor é Space Grotesk com números tabulares: sem `tabular-nums`, cards
+    lado a lado dançam de largura a cada atualização.
+--}}
+<div {{ $attributes->merge(['class' => 'relative overflow-hidden rounded-panel border border-line bg-card-grad px-4 pt-[17px] pb-[15px]']) }}>
+    <div class="absolute top-0 left-4 right-4 h-px pointer-events-none"
+         style="background: linear-gradient(90deg, transparent, rgb(var(--{{ $acento }})), transparent)"></div>
+
+    <div class="flex items-start justify-between gap-3">
+        <p class="text-[11px] uppercase tracking-[0.10em] text-ink-mute">{{ $rotulo }}</p>
+
+        @if ($icone)
+            <span class="h-[26px] w-[26px] shrink-0 rounded-tile flex items-center justify-center"
+                  style="background: rgb(var(--{{ $acento }}) / var(--tint-alpha)); color: rgb(var(--{{ $acento }}))">
+                <span class="h-[14px] w-[14px]"><x-nav-icon :name="$icone" /></span>
+            </span>
         @endif
-    @elseif (! is_null($variacao) || $apoio)
-        <p class="mt-2 flex items-center gap-1.5 text-[11.5px] text-mute">
-            @if (! is_null($variacao))
-                <span class="valor font-medium {{ $variacao >= 0 ? 'text-good' : 'text-bad' }}">
-                    {{ $variacao >= 0 ? '+' : '' }}{{ number_format($variacao, 1, ',', '.') }}%
-                </span>
-            @endif
-            @if ($apoio)
-                <span>{{ $apoio }}</span>
-            @endif
-        </p>
+    </div>
+
+    <p class="mt-2 font-display text-[27px] font-semibold leading-none tracking-[-0.02em] text-ink tabular whitespace-nowrap">{{ $valor }}</p>
+
+    @if ($delta !== null || count($serie) > 1)
+        <div class="mt-3 flex items-end justify-between gap-3">
+            <p class="font-mono text-[11px] {{ $corDoDelta }} truncate">{{ $delta }}</p>
+            <x-sparkline :pontos="$serie" :cor="$acento" />
+        </div>
     @endif
 </div>

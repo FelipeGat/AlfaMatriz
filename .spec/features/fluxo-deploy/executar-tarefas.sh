@@ -166,17 +166,17 @@ iniciar_resumos() {
   trap 'parar_resumos; node "$ENGINE" resumo "$FEATURE" --gravar >/dev/null 2>&1 || true' EXIT
 }
 
-# ── sequencial T-031 (ordem do tasks.md) ──
+# ── sequencial T-046 (ordem do tasks.md) ──
 executar_seq_T_031() {
-  info 'sequencial T-031 — Cadastro do AlfaMatriz no inventário do painel'
-  if rodar_tarefa seq 'T-031' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
+  info 'sequencial T-046 — Cadastro do AlfaMatriz no inventário do painel'
+  if rodar_tarefa seq 'T-046' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/fluxo-deploy/spec.md, .spec/features/fluxo-deploy/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
-T-031 — "Cadastro do AlfaMatriz no inventário do painel"
-  critérios/refs: AC-032 (O painel lista o AlfaMatriz com os dados de acompanhamento), AC-033 (O painel não oferece ações que destruam os dados reais)
+T-046 — "Cadastro do AlfaMatriz no inventário do painel"
+  critérios/refs: AC-063 (O painel lista o AlfaMatriz com os dados de acompanhamento), AC-064 (O painel não oferece ações que destruam os dados reais)
   arquivos permitidos (e seus testes): deploy/alfadeploy-systems-alfamatriz.toml, tests/Feature/FluxoDeploy/InventarioPainelTest.php
-  mensagem de commit: "T-031 fluxo-deploy: Cadastro do AlfaMatriz no inventário do painel"
+  mensagem de commit: "T-046 fluxo-deploy: Cadastro do AlfaMatriz no inventário do painel"
 
 Regras inegociáveis:
 - Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
@@ -186,29 +186,29 @@ Regras inegociáveis:
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium >> "$LOG_DIR/seq.log" 2>&1; then
     # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
     if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-031 fluxo-deploy: Cadastro do AlfaMatriz no inventário do painel (auto-commit do plano)'
+      git add -A && git commit -q -m 'T-046 fluxo-deploy: Cadastro do AlfaMatriz no inventário do painel (auto-commit do plano)'
     fi
-    marcar_concluidas T-031
-    verde "✔ T-031 concluída"
+    marcar_concluidas T-046
+    verde "✔ T-046 concluída"
     return 0
   fi
-  vermelho "✘ T-031 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-031"
-  FALHAS="$FALHAS T-031"
+  vermelho "✘ T-046 falhou (log: $LOG_DIR/seq.log)"
+  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-046"
+  FALHAS="$FALHAS T-046"
   return 1
 }
 
-# ── sequencial T-032 (ordem do tasks.md) ──
+# ── sequencial T-047 (ordem do tasks.md) ──
 executar_seq_T_032() {
-  info 'sequencial T-032 — Executor do staging com portão de testes'
-  if rodar_tarefa seq 'T-032' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
+  info 'sequencial T-047 — Executor do staging com portão de testes'
+  if rodar_tarefa seq 'T-047' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/fluxo-deploy/spec.md, .spec/features/fluxo-deploy/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
-T-032 — "Executor do staging com portão de testes"
-  critérios/refs: AC-034 (O staging acompanha a main automaticamente), AC-035 (Código com teste falhando não entra nem no staging)
+T-047 — "Executor do staging com portão de testes"
+  critérios/refs: AC-065 (O staging acompanha a main automaticamente), AC-066 (Código com teste falhando não entra nem no staging)
   arquivos permitidos (e seus testes): deploy/deploy-staging-alfamatriz.sh, tests/Feature/FluxoDeploy/ExecutorStagingTest.php
-  mensagem de commit: "T-032 fluxo-deploy: Executor do staging com portão de testes"
+  mensagem de commit: "T-047 fluxo-deploy: Executor do staging com portão de testes"
 
 Regras inegociáveis:
 - Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
@@ -218,29 +218,29 @@ Regras inegociáveis:
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium >> "$LOG_DIR/seq.log" 2>&1; then
     # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
     if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-032 fluxo-deploy: Executor do staging com portão de testes (auto-commit do plano)'
+      git add -A && git commit -q -m 'T-047 fluxo-deploy: Executor do staging com portão de testes (auto-commit do plano)'
     fi
-    marcar_concluidas T-032
-    verde "✔ T-032 concluída"
+    marcar_concluidas T-047
+    verde "✔ T-047 concluída"
     return 0
   fi
-  vermelho "✘ T-032 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-032"
-  FALHAS="$FALHAS T-032"
+  vermelho "✘ T-047 falhou (log: $LOG_DIR/seq.log)"
+  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-047"
+  FALHAS="$FALHAS T-047"
   return 1
 }
 
-# ── sequencial T-033 (ordem do tasks.md) ──
+# ── sequencial T-048 (ordem do tasks.md) ──
 executar_seq_T_033() {
-  info 'sequencial T-033 — Vigia de tag para produção'
-  if rodar_tarefa seq 'T-033' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
+  info 'sequencial T-048 — Vigia de tag para produção'
+  if rodar_tarefa seq 'T-048' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/fluxo-deploy/spec.md, .spec/features/fluxo-deploy/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
-T-033 — "Vigia de tag para produção"
-  critérios/refs: AC-036 (A produção aplica a versão marcada, e só ela), AC-037 (Backup antes de migrar e saúde conferida depois)
+T-048 — "Vigia de tag para produção"
+  critérios/refs: AC-067 (A produção aplica a versão marcada, e só ela), AC-068 (Backup antes de migrar e saúde conferida depois)
   arquivos permitidos (e seus testes): deploy/deploy-tag-watcher-alfamatriz.sh, tests/Feature/FluxoDeploy/VigiaTagTest.php
-  mensagem de commit: "T-033 fluxo-deploy: Vigia de tag para produção"
+  mensagem de commit: "T-048 fluxo-deploy: Vigia de tag para produção"
 
 Regras inegociáveis:
 - Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
@@ -250,29 +250,29 @@ Regras inegociáveis:
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium >> "$LOG_DIR/seq.log" 2>&1; then
     # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
     if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-033 fluxo-deploy: Vigia de tag para produção (auto-commit do plano)'
+      git add -A && git commit -q -m 'T-048 fluxo-deploy: Vigia de tag para produção (auto-commit do plano)'
     fi
-    marcar_concluidas T-033
-    verde "✔ T-033 concluída"
+    marcar_concluidas T-048
+    verde "✔ T-048 concluída"
     return 0
   fi
-  vermelho "✘ T-033 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-033"
-  FALHAS="$FALHAS T-033"
+  vermelho "✘ T-048 falhou (log: $LOG_DIR/seq.log)"
+  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-048"
+  FALHAS="$FALHAS T-048"
   return 1
 }
 
-# ── sequencial T-034 (ordem do tasks.md) ──
+# ── sequencial T-049 (ordem do tasks.md) ──
 executar_seq_T_034() {
-  info 'sequencial T-034 — Provisionar o container de staging'
-  if rodar_tarefa seq 'T-034' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
+  info 'sequencial T-049 — Provisionar o container de staging'
+  if rodar_tarefa seq 'T-049' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/fluxo-deploy/spec.md, .spec/features/fluxo-deploy/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
-T-034 — "Provisionar o container de staging"
-  critérios/refs: AC-034 (O staging acompanha a main automaticamente)
+T-049 — "Provisionar o container de staging"
+  critérios/refs: AC-065 (O staging acompanha a main automaticamente)
   arquivos permitidos (e seus testes): deploy/provisionar.sh, tests/Feature/FluxoDeploy/ProvisionarStagingTest.php
-  mensagem de commit: "T-034 fluxo-deploy: Provisionar o container de staging"
+  mensagem de commit: "T-049 fluxo-deploy: Provisionar o container de staging"
 
 Regras inegociáveis:
 - Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
@@ -282,29 +282,29 @@ Regras inegociáveis:
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium >> "$LOG_DIR/seq.log" 2>&1; then
     # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
     if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-034 fluxo-deploy: Provisionar o container de staging (auto-commit do plano)'
+      git add -A && git commit -q -m 'T-049 fluxo-deploy: Provisionar o container de staging (auto-commit do plano)'
     fi
-    marcar_concluidas T-034
-    verde "✔ T-034 concluída"
+    marcar_concluidas T-049
+    verde "✔ T-049 concluída"
     return 0
   fi
-  vermelho "✘ T-034 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-034"
-  FALHAS="$FALHAS T-034"
+  vermelho "✘ T-049 falhou (log: $LOG_DIR/seq.log)"
+  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-049"
+  FALHAS="$FALHAS T-049"
   return 1
 }
 
-# ── sequencial T-035 (ordem do tasks.md) ──
+# ── sequencial T-050 (ordem do tasks.md) ──
 executar_seq_T_035() {
-  info 'sequencial T-035 — Verificação automática no GitHub'
-  if rodar_tarefa seq 'T-035' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
+  info 'sequencial T-050 — Verificação automática no GitHub'
+  if rodar_tarefa seq 'T-050' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/fluxo-deploy/spec.md, .spec/features/fluxo-deploy/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
-T-035 — "Verificação automática no GitHub"
-  critérios/refs: AC-035 (Código com teste falhando não entra nem no staging)
+T-050 — "Verificação automática no GitHub"
+  critérios/refs: AC-066 (Código com teste falhando não entra nem no staging)
   arquivos permitidos (e seus testes): .github/workflows/testes.yml, tests/Feature/FluxoDeploy/VerificacaoGithubTest.php
-  mensagem de commit: "T-035 fluxo-deploy: Verificação automática no GitHub"
+  mensagem de commit: "T-050 fluxo-deploy: Verificação automática no GitHub"
 
 Regras inegociáveis:
 - Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
@@ -314,29 +314,29 @@ Regras inegociáveis:
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium >> "$LOG_DIR/seq.log" 2>&1; then
     # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
     if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-035 fluxo-deploy: Verificação automática no GitHub (auto-commit do plano)'
+      git add -A && git commit -q -m 'T-050 fluxo-deploy: Verificação automática no GitHub (auto-commit do plano)'
     fi
-    marcar_concluidas T-035
-    verde "✔ T-035 concluída"
+    marcar_concluidas T-050
+    verde "✔ T-050 concluída"
     return 0
   fi
-  vermelho "✘ T-035 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-035"
-  FALHAS="$FALHAS T-035"
+  vermelho "✘ T-050 falhou (log: $LOG_DIR/seq.log)"
+  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-050"
+  FALHAS="$FALHAS T-050"
   return 1
 }
 
-# ── sequencial T-036 (ordem do tasks.md) ──
+# ── sequencial T-051 (ordem do tasks.md) ──
 executar_seq_T_036() {
-  info 'sequencial T-036 — Cópia embaralhada da produção para o staging'
-  if rodar_tarefa seq 'T-036' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
+  info 'sequencial T-051 — Cópia embaralhada da produção para o staging'
+  if rodar_tarefa seq 'T-051' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/fluxo-deploy/spec.md, .spec/features/fluxo-deploy/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
-T-036 — "Cópia embaralhada da produção para o staging"
-  critérios/refs: AC-038 (A cópia para staging troca os dados pessoais por falsos)
+T-051 — "Cópia embaralhada da produção para o staging"
+  critérios/refs: AC-069 (A cópia para staging troca os dados pessoais por falsos)
   arquivos permitidos (e seus testes): deploy/preparar-staging.sh, tests/Feature/FluxoDeploy/CopiaEmbaralhadaTest.php
-  mensagem de commit: "T-036 fluxo-deploy: Cópia embaralhada da produção para o staging"
+  mensagem de commit: "T-051 fluxo-deploy: Cópia embaralhada da produção para o staging"
 
 Regras inegociáveis:
 - Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
@@ -346,29 +346,29 @@ Regras inegociáveis:
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium >> "$LOG_DIR/seq.log" 2>&1; then
     # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
     if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-036 fluxo-deploy: Cópia embaralhada da produção para o staging (auto-commit do plano)'
+      git add -A && git commit -q -m 'T-051 fluxo-deploy: Cópia embaralhada da produção para o staging (auto-commit do plano)'
     fi
-    marcar_concluidas T-036
-    verde "✔ T-036 concluída"
+    marcar_concluidas T-051
+    verde "✔ T-051 concluída"
     return 0
   fi
-  vermelho "✘ T-036 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-036"
-  FALHAS="$FALHAS T-036"
+  vermelho "✘ T-051 falhou (log: $LOG_DIR/seq.log)"
+  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-051"
+  FALHAS="$FALHAS T-051"
   return 1
 }
 
-# ── sequencial T-037 (ordem do tasks.md) ──
+# ── sequencial T-052 (ordem do tasks.md) ──
 executar_seq_T_037() {
-  info 'sequencial T-037 — Instalar e conferir no servidor'
-  if rodar_tarefa seq 'T-037' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
+  info 'sequencial T-052 — Instalar e conferir no servidor'
+  if rodar_tarefa seq 'T-052' 'Você executa UMA tarefa da feature "fluxo-deploy" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/fluxo-deploy/spec.md, .spec/features/fluxo-deploy/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
-T-037 — "Instalar e conferir no servidor"
-  critérios/refs: AC-032 (O painel lista o AlfaMatriz com os dados de acompanhamento), AC-034 (O staging acompanha a main automaticamente), AC-036 (A produção aplica a versão marcada, e só ela)
+T-052 — "Instalar e conferir no servidor"
+  critérios/refs: AC-063 (O painel lista o AlfaMatriz com os dados de acompanhamento), AC-065 (O staging acompanha a main automaticamente), AC-067 (A produção aplica a versão marcada, e só ela)
   arquivos permitidos (e seus testes): README.md
-  mensagem de commit: "T-037 fluxo-deploy: Instalar e conferir no servidor"
+  mensagem de commit: "T-052 fluxo-deploy: Instalar e conferir no servidor"
 
 Regras inegociáveis:
 - Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
@@ -378,15 +378,15 @@ Regras inegociáveis:
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium >> "$LOG_DIR/seq.log" 2>&1; then
     # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
     if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-037 fluxo-deploy: Instalar e conferir no servidor (auto-commit do plano)'
+      git add -A && git commit -q -m 'T-052 fluxo-deploy: Instalar e conferir no servidor (auto-commit do plano)'
     fi
-    marcar_concluidas T-037
-    verde "✔ T-037 concluída"
+    marcar_concluidas T-052
+    verde "✔ T-052 concluída"
     return 0
   fi
-  vermelho "✘ T-037 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-037"
-  FALHAS="$FALHAS T-037"
+  vermelho "✘ T-052 falhou (log: $LOG_DIR/seq.log)"
+  amarelo "  reexecute só ela: bash .spec/features/fluxo-deploy/executar-tarefas.sh --seq T-052"
+  FALHAS="$FALHAS T-052"
   return 1
 }
 
@@ -455,13 +455,13 @@ executar_tudo() {
 
 listar() {
   echo "execução: $RUN_ID (feature $FEATURE, branch $BASE_BRANCH)"
-  echo "  seq       T-031 (sequencial)"
-  echo "  seq       T-032 (sequencial)"
-  echo "  seq       T-033 (sequencial)"
-  echo "  seq       T-034 (sequencial)"
-  echo "  seq       T-035 (sequencial)"
-  echo "  seq       T-036 (sequencial)"
-  echo "  seq       T-037 (sequencial)"
+  echo "  seq       T-046 (sequencial)"
+  echo "  seq       T-047 (sequencial)"
+  echo "  seq       T-048 (sequencial)"
+  echo "  seq       T-049 (sequencial)"
+  echo "  seq       T-050 (sequencial)"
+  echo "  seq       T-051 (sequencial)"
+  echo "  seq       T-052 (sequencial)"
   echo
   echo "reexecutar uma faixa:    --faixa <id>"
   echo "reexecutar sequencial:   --seq <T-xxx>"
@@ -496,13 +496,13 @@ case "$MODO" in
     esac ;;
   seq)
     case "$ALVO" in
-      T-031) evento --tipo inicio --escopo "seq:T-031"; iniciar_resumos; executar_seq_T_031 || true; encerrar "seq:T-031" ;;
-      T-032) evento --tipo inicio --escopo "seq:T-032"; iniciar_resumos; executar_seq_T_032 || true; encerrar "seq:T-032" ;;
-      T-033) evento --tipo inicio --escopo "seq:T-033"; iniciar_resumos; executar_seq_T_033 || true; encerrar "seq:T-033" ;;
-      T-034) evento --tipo inicio --escopo "seq:T-034"; iniciar_resumos; executar_seq_T_034 || true; encerrar "seq:T-034" ;;
-      T-035) evento --tipo inicio --escopo "seq:T-035"; iniciar_resumos; executar_seq_T_035 || true; encerrar "seq:T-035" ;;
-      T-036) evento --tipo inicio --escopo "seq:T-036"; iniciar_resumos; executar_seq_T_036 || true; encerrar "seq:T-036" ;;
-      T-037) evento --tipo inicio --escopo "seq:T-037"; iniciar_resumos; executar_seq_T_037 || true; encerrar "seq:T-037" ;;
+      T-046) evento --tipo inicio --escopo "seq:T-046"; iniciar_resumos; executar_seq_T_031 || true; encerrar "seq:T-046" ;;
+      T-047) evento --tipo inicio --escopo "seq:T-047"; iniciar_resumos; executar_seq_T_032 || true; encerrar "seq:T-047" ;;
+      T-048) evento --tipo inicio --escopo "seq:T-048"; iniciar_resumos; executar_seq_T_033 || true; encerrar "seq:T-048" ;;
+      T-049) evento --tipo inicio --escopo "seq:T-049"; iniciar_resumos; executar_seq_T_034 || true; encerrar "seq:T-049" ;;
+      T-050) evento --tipo inicio --escopo "seq:T-050"; iniciar_resumos; executar_seq_T_035 || true; encerrar "seq:T-050" ;;
+      T-051) evento --tipo inicio --escopo "seq:T-051"; iniciar_resumos; executar_seq_T_036 || true; encerrar "seq:T-051" ;;
+      T-052) evento --tipo inicio --escopo "seq:T-052"; iniciar_resumos; executar_seq_T_037 || true; encerrar "seq:T-052" ;;
       *) falhar "tarefa sequencial desconhecida: '$ALVO' — veja as disponíveis com --listar" ;;
     esac ;;
 esac

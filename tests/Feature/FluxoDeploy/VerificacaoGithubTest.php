@@ -10,7 +10,7 @@ class VerificacaoGithubTest extends TestCase
     private const WORKFLOW = '.github/workflows/testes.yml';
 
     /**
-     * @spec:AC-035 A verificação automática roda a suíte na main e nas tags de
+     * @spec:AC-066 A verificação automática roda a suíte na main e nas tags de
      * versão — é o sinal que os outros sistemas da casa têm antes de alguém
      * marcar uma versão para produção.
      */

@@ -1,6 +1,7 @@
 <x-guest-layout>
-    <div class="mb-4 text-sm text-dim">
-        {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
+    <div class="flex flex-col gap-1.5 mb-2">
+        <h1 class="font-display font-semibold text-xl text-ink">Esqueci minha senha</h1>
+        <p class="text-[13.5px] text-ink-dim">{{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}</p>
     </div>
 
     <!-- Session Status -->

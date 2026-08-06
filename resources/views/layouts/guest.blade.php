@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,47 +7,66 @@
 
         <title>{{ config('app.name', 'AlfaMatriz') }}</title>
 
-        {{-- A versão no endereço força o navegador a buscar de novo. Favicon
-             fica num cache próprio, bem mais persistente que o das páginas, e
-             sobrevive até a janela anônima: sem isto, quem já visitou o site
-             continuaria vendo o ícone antigo por tempo indeterminado. --}}
-        <link rel="icon" type="image/svg+xml"
-              href="{{ asset('favicon.svg') }}?v={{ filemtime(public_path('favicon.svg')) }}">
+        <link rel="icon" href="/icon-matriz.svg" type="image/svg+xml">
+        <link rel="icon" href="/favicon.ico" sizes="32x32">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-        {{-- O tema salvo vale também na entrada: sem isto, quem usa o escuro
-             levava um flash branco antes mesmo de logar. --}}
+        <link rel="preconnect" href="https://fonts.bunny.net">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+        {{-- Mesmo tema da porta de dentro: quem usa o claro não pode levar um
+             flash escuro na cara ao abrir a tela de entrada. --}}
         <script>
             (function () {
                 try {
-                    var salvo = localStorage.getItem('alfamatriz-tema');
-                    if (salvo === 'light' || salvo === 'dark') {
-                        document.documentElement.setAttribute('data-theme', salvo);
+                    if (localStorage.getItem('alfamatriz:tema') === 'claro') {
+                        document.documentElement.classList.add('theme-light');
                     }
-                } catch (e) { /* localStorage bloqueado: fica no tema padrão */ }
+                } catch (erro) {
+                    // sem preferência guardada: vale o tema escuro, que é o padrão
+                }
             })();
         </script>
 
-        {{-- Mesma tipografia do painel: sem isto, a tela de entrada usaria
-             outra fonte e destoaria do sistema já no primeiro contato. --}}
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=geist:400,500,600|geist-mono:400,500" rel="stylesheet" />
-
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans text-ink antialiased">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-bg">
-            <a href="/" class="flex items-center gap-[11px]">
-                <svg class="h-[33px] w-[34px] text-ink" viewBox="2 1 44 45.6" fill="none">
-                    <path d="M5 4l13 15L5 34" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".38"/>
-                    <path d="M43 4L30 19l13 15" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".38"/>
-                    <circle cx="24" cy="39" r="6.6" fill="currentColor"/>
-                </svg>
-                <img src="{{ asset('brand/alfamatriz-wordmark.png') }}" alt="AlfaMatriz"
-                     class="h-[19px] w-auto" style="filter: var(--logo-filter);">
-            </a>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-5 bg-panel border border-line overflow-hidden rounded-card">
-                {{ $slot }}
+    <body class="font-sans text-ink antialiased">
+        <div class="min-h-screen bg-canvas flex items-center justify-center px-4 py-10 relative overflow-hidden">
+            {{-- Grade de 56px: dá medida ao vazio sem virar textura. --}}
+            <div class="absolute inset-0 pointer-events-none"
+                 style="background-image:
+                            linear-gradient(var(--grid-line) 1px, transparent 1px),
+                            linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+                        background-size: 56px 56px;"></div>
+
+            {{-- Halo da marca no topo. --}}
+            <div class="absolute -top-[220px] left-1/2 -translate-x-1/2 pointer-events-none"
+                 style="width: 820px; height: 560px;
+                        background: radial-gradient(ellipse at center,
+                            rgb(var(--brand) / 0.16) 0%,
+                            rgb(var(--brand) / 0.05) 45%,
+                            transparent 70%);"></div>
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 h-px w-[520px] pointer-events-none"
+                 style="background: linear-gradient(90deg, transparent, rgb(var(--brand-text) / 0.35), transparent);"></div>
+
+            <div class="w-full relative flex flex-col gap-6" style="max-width: 396px">
+                <div class="rounded-panel border border-line bg-panel flex flex-col gap-6"
+                     style="padding: 30px 28px">
+                    {{-- A marca centraliza no card: sem o texto de apoio ao
+                         lado, encostada à esquerda ela ficava desamarrada do
+                         resto do conteúdo. --}}
+                    <a href="/" class="flex items-center justify-center gap-2.5">
+                        <img src="/icon-matriz.svg" alt="" class="h-9 w-9 shrink-0">
+                        <img src="/alfamatriz.png" alt="AlfaMatriz" class="h-[17px] w-auto shrink-0">
+                    </a>
+
+                    {{ $slot }}
+                </div>
+
+                <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint text-center">
+                    Painel interno · acesso somente por convite
+                </p>
             </div>
         </div>
     </body>

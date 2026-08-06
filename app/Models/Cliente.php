@@ -41,7 +41,7 @@ class Cliente extends Model
     public function sistemas(): BelongsToMany
     {
         return $this->belongsToMany(Sistema::class, 'cliente_sistema')
-            ->withPivot(['ativo', 'ativado_em']);
+            ->withPivot(['ativo', 'ativado_em', 'cancelado_em']);
     }
 
     public function cobrancas(): HasMany

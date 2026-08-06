@@ -1,0 +1,167 @@
+{
+  "feature": "redesign-visual",
+  "timestamp": "2026-08-06T20:08:07.411Z",
+  "gitRev": "029c038",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 107,
+  "results": {
+    "AC-032": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\InventarioPainelTest::test_inventario_traz_os_dados_de_acompanhamento @spec:AC-032",
+      "method": "tap"
+    },
+    "AC-033": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\InventarioPainelTest::test_inventario_nao_da_alvo_para_acao_destrutiva @spec:AC-033",
+      "method": "tap"
+    },
+    "AC-034": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\ExecutorStagingTest::test_aplica_a_novidade_quando_a_suite_passa @spec:AC-034",
+      "method": "tap"
+    },
+    "AC-035": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\ExecutorStagingTest::test_portao_segura_o_deploy_quando_o_teste_falha @spec:AC-035",
+      "method": "tap"
+    },
+    "AC-036": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\VigiaTagTest::test_aplica_a_tag_nova_e_ignora_alteracao_sem_tag @spec:AC-036",
+      "method": "tap"
+    },
+    "AC-037": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\DeploySemJanelaDeErroTest::test_nenhum_script_apaga_a_configuracao_antes_de_reconstruir @spec:AC-037",
+      "method": "tap"
+    },
+    "AC-038": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\FluxoDeploy\\CopiaEmbaralhadaTest::test_troca_dado_pessoal_e_preserva_os_valores @spec:AC-038",
+      "method": "tap"
+    },
+    "AC-039": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\CentroControleTest::test_a_fila_lista_a_pendencia_real_e_leva_para_a_tela_que_resolve @spec:AC-039",
+      "method": "tap"
+    },
+    "AC-040": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\CentroControleTest::test_os_quatro_cards_trazem_valor_variacao_e_tendencia_do_banco @spec:AC-040",
+      "method": "tap"
+    },
+    "AC-041": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\CentroControleTest::test_a_regua_desenha_barra_proporcional_ao_valor @spec:AC-041",
+      "method": "tap"
+    },
+    "AC-042": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\PaineisTest::test_o_painel_financeiro_mostra_mes_historico_e_pendencias @spec:AC-042",
+      "method": "tap"
+    },
+    "AC-043": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\PaineisTest::test_o_ranking_comercial_deixa_comparar_produto_a_produto @spec:AC-043",
+      "method": "tap"
+    },
+    "AC-062": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\IndicadoresCoerentesTest::test_clientes_e_revendas_batem_entre_os_dois_paineis @spec:AC-062",
+      "method": "tap"
+    },
+    "AC-044": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\FunilTest::test_o_quadro_ocupa_a_altura_da_janela_e_cada_coluna_rola_por_dentro @spec:AC-044",
+      "method": "tap"
+    },
+    "AC-045": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\FunilTest::test_o_lead_muda_de_estagio_pelos_dois_caminhos @spec:AC-045",
+      "method": "tap"
+    },
+    "AC-046": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ComponentesTest::test_toda_tabela_rola_por_dentro_e_mantem_as_acoes_alcancaveis @spec:AC-046",
+      "method": "tap"
+    },
+    "AC-047": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ComponentesTest::test_a_linha_de_total_nunca_quebra_em_duas_alturas @spec:AC-047",
+      "method": "tap"
+    },
+    "AC-048": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ClientesTest::test_clientes_traz_resumo_tabela_com_pagamento_e_contagem @spec:AC-048",
+      "method": "tap"
+    },
+    "AC-049": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ProdutosTest::test_produtos_abre_em_lista_ordenada_por_receita @spec:AC-049",
+      "method": "tap"
+    },
+    "AC-050": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\FaturamentoTest::test_a_barra_do_ciclo_resume_e_o_botao_declara_quantas_cobrancas @spec:AC-050",
+      "method": "tap"
+    },
+    "AC-051": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\FaturamentoTest::test_cada_linha_mostra_a_conta_e_o_subtotal_e_a_soma_delas @spec:AC-051",
+      "method": "tap"
+    },
+    "AC-052": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\FaturamentoTest::test_linha_sem_tier_fica_fora_do_subtotal_e_e_explicada @spec:AC-052",
+      "method": "tap"
+    },
+    "AC-053": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\DespesasTest::test_a_faixa_de_atraso_distribui_o_aberto_por_vencimento @spec:AC-053",
+      "method": "tap"
+    },
+    "AC-054": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\DespesasTest::test_selecionar_mostra_o_quanto_e_a_baixa_em_massa_conclui_todos @spec:AC-054",
+      "method": "tap"
+    },
+    "AC-055": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\DespesasTest::test_atrasado_e_a_vencer_se_distinguem_a_primeira_vista @spec:AC-055",
+      "method": "tap"
+    },
+    "AC-056": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\CaixaTest::test_o_caixa_mostra_consolidado_conta_a_conta_e_o_mes @spec:AC-056",
+      "method": "tap"
+    },
+    "AC-057": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\CaixaTest::test_o_extrato_mostra_o_saldo_depois_de_cada_lancamento @spec:AC-057",
+      "method": "tap"
+    },
+    "AC-058": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\CadastrosTest::test_cada_centro_de_custo_e_fornecedor_mostra_quantos_lancamentos_usam @spec:AC-058",
+      "method": "tap"
+    },
+    "AC-059": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\CadastrosTest::test_o_plano_de_contas_le_se_na_horizontal_por_bloco_de_categoria @spec:AC-059",
+      "method": "tap"
+    },
+    "AC-060": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\LoginTest::test_a_tela_de_entrada_traz_marca_centralizada_e_campos @spec:AC-060",
+      "method": "tap"
+    },
+    "AC-061": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ShellTest::test_em_tela_estreita_o_menu_vira_gaveta @spec:AC-061",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

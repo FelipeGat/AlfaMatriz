@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.bunny.net">
+<link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|space-grotesk:500,600,700" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #060b0d; color: #e6eef0; font-family: Inter, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: #029caf; text-decoration: none; }
+  a:hover { color: #26d4e6; }
+  table { border-collapse: collapse; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: #0b1316; }
+  ::-webkit-scrollbar-thumb { background: #101a1e; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #023d44; }
+</style>
+</helmet>
+
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ false }}">
+<div style="min-height:100vh;background:#060b0d;display:flex;align-items:center;justify-content:center;padding:40px 16px;position:relative;overflow:hidden">
+  <div style="position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(230,238,240,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(230,238,240,0.025) 1px,transparent 1px);background-size:56px 56px"></div>
+  <div style="position:absolute;top:-220px;left:50%;transform:translateX(-50%);width:820px;height:560px;pointer-events:none;background:radial-gradient(ellipse at center, rgba(2,156,175,0.14) 0%, rgba(2,156,175,0.05) 45%, transparent 70%)"></div>
+  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:520px;height:1px;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(91,227,239,0.35),transparent)"></div>
+
+  <div style="width:100%;max-width:400px;position:relative;display:flex;flex-direction:column;gap:28px">
+    <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:16px;padding:32px 28px;display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <img src="assets/logo-tile.svg" alt="AlfaMatriz" style="height:44px;width:44px;flex-shrink:0">
+        <div style="line-height:1.15">
+          <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-weight:600;color:#e6eef0;letter-spacing:0.05em">ALFA</p>
+          <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.28em;color:#8798a0">Matriz</p>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <h1 style="margin:0;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:20px;color:#e6eef0">Entrar</h1>
+        <p style="margin:0;font-size:13.5px;color:#9db0b6">Acesso restrito à equipe AlfaMatriz.</p>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label style="font-size:13px;font-weight:500;color:#9db0b6">E-mail</label>
+          <input type="email" value="admin@alfatecnologia.com.br" style="width:100%;height:44px;padding:0 14px;border-radius:8px;background:#101a1e;border:1px solid rgba(255,255,255,0.08);color:#e6eef0;font-size:14.5px;font-family:inherit;outline:none">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label style="font-size:13px;font-weight:500;color:#9db0b6">Senha</label>
+          <div style="position:relative">
+            <input type="password" value="senhasegura" style="width:100%;height:44px;padding:0 44px 0 14px;border-radius:8px;background:#101a1e;border:1px solid rgba(255,255,255,0.08);color:#e6eef0;font-size:14.5px;font-family:inherit;outline:none">
+            <button style="position:absolute;right:6px;top:50%;transform:translateY(-50%);height:32px;width:32px;border:0;background:transparent;border-radius:6px;color:#8798a0;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="color:#5be3ef;background:rgba(2,156,175,0.1)">
+              <svg style="height:18px;width:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:#9db0b6;cursor:pointer">
+            <input type="checkbox" style="height:16px;width:16px;accent-color:#029caf">
+            Lembrar-me
+          </label>
+          <a href="#" style="font-size:13.5px;color:#5be3ef">Esqueci minha senha</a>
+        </div>
+        <button onClick="{{ entrar }}" style="height:46px;border:0;border-radius:8px;background:#029caf;color:#04181b;font-family:inherit;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#26d4e6">Entrar</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:9999px;background:rgba(12,163,12,0.07);border:1px solid rgba(12,163,12,0.2)">
+        <span style="height:7px;width:7px;border-radius:9999px;flex-shrink:0;background:#0ca30c;box-shadow:0 0 6px rgba(12,163,12,.7)"></span>
+        <span style="font-size:12px;color:#9db0b6;letter-spacing:0.02em">Sistemas operacionais</span>
+      </div>
+      <p style="margin:0;font-size:12px;color:#8798a0;letter-spacing:0.02em;text-align:center">Painel interno · acesso somente por convite</p>
+      <div style="display:flex;align-items:center;gap:14px;font-size:12px;color:#8798a0">
+        <a href="#" style="color:#8798a0">Termos de Uso</a>
+        <span style="color:rgba(255,255,255,0.15)">·</span>
+        <a href="#" style="color:#8798a0">Política de Privacidade</a>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ true }}">
+<div style="min-height:100vh;display:flex;background:#060b0d">
+
+  <aside style="width:256px;flex-shrink:0;background:#0b1316;border-right:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;position:sticky;top:0;height:100vh">
+    <div style="height:64px;display:flex;align-items:center;gap:8px;padding:0 24px;border-bottom:1px solid rgba(255,255,255,0.05);flex-shrink:0">
+      <img src="assets/logo-tile.svg" alt="AlfaMatriz" style="height:32px;width:32px;flex-shrink:0">
+      <div style="line-height:1.15">
+        <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-weight:600;color:#e6eef0;letter-spacing:0.05em">ALFA</p>
+        <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.2em;color:#8798a0">Matriz</p>
+      </div>
+    </div>
+
+    <nav style="flex:1;overflow-y:auto;padding:16px 12px;display:flex;flex-direction:column;gap:16px">
+      <sc-for list="{{ navGroups }}" as="grupo" hint-placeholder-count="4">
+        <div>
+          <p style="margin:0 0 4px;padding:0 12px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.15em;color:#8798a0">{{ grupo.label }}</p>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <sc-for list="{{ grupo.items }}" as="item" hint-placeholder-count="3">
+              <a href="#" onClick="{{ item.go }}" style="display:flex;align-items:center;gap:12px;border-radius:8px;padding:8px 12px;font-size:14px;font-weight:500;background:{{ item.bg }};color:{{ item.fg }}">
+                <span style="height:20px;width:20px;flex-shrink:0;display:block">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:100%;height:100%"><path stroke-linecap="round" stroke-linejoin="round" d="{{ item.d }}"></path></svg>
+                </span>
+                {{ item.label }}
+              </a>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </nav>
+
+    <div style="padding:16px 12px;border-top:1px solid rgba(255,255,255,0.05)">
+      <div style="display:flex;align-items:center;gap:12px;border-radius:8px;padding:8px 12px">
+        <span style="height:32px;width:32px;border-radius:9999px;background:rgba(2,156,175,0.2);color:#5be3ef;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0">A</span>
+        <div style="min-width:0">
+          <p style="margin:0;font-size:14px;color:#e6eef0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Administrador Alfa</p>
+          <p style="margin:0;font-size:12px;color:#8798a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">admin@alfatecnologia.com.br</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+    <header style="position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(6,11,13,0.9);backdrop-filter:blur(8px);padding:16px 32px">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1">
+        <div style="min-width:0;flex:1;display:flex;align-items:center;justify-content:space-between;gap:16px">
+          <h2 style="margin:0;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:20px;color:#e6eef0;line-height:1.25">{{ headerTitle }}</h2>
+          <sc-if value="{{ headerAction }}" hint-placeholder-val="{{ true }}">
+            <button style="display:inline-flex;align-items:center;padding:8px 16px;background:#029caf;border:1px solid transparent;border-radius:6px;font-family:inherit;font-weight:600;font-size:12px;color:#fff;text-transform:uppercase;letter-spacing:0.1em;cursor:pointer" style-hover="background:#26d4e6">{{ headerAction }}</button>
+          </sc-if>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <button onClick="{{ sair }}" style="display:flex;align-items:center;gap:8px;border-radius:9999px;background:#0b1316;border:1px solid rgba(255,255,255,0.05);padding:4px 12px 4px 4px;cursor:pointer;font-family:inherit" style-hover="background:#101a1e">
+          <span style="height:28px;width:28px;border-radius:9999px;background:rgba(2,156,175,0.2);color:#5be3ef;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">A</span>
+          <span style="font-size:14px;color:#9db0b6">Administrador Alfa</span>
+        </button>
+      </div>
+    </header>
+
+    <main style="flex:1;padding:24px 32px">
+
+      <sc-if value="{{ isCentro }}" hint-placeholder-val="{{ true }}">
+      <div style="max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:24px;padding:32px 0">
+        <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+          <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:18px;color:#e6eef0">Bom dia, Administrador.</p>
+          <p style="margin:4px 0 0;font-size:14px;color:#8798a0">Aqui está o que precisa da sua atenção hoje.</p>
+        </div>
+
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;align-items:start">
+          <div style="display:flex;flex-direction:column;gap:24px;min-width:0">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ alertas }}" as="a" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:12px;background:{{ a.bg }};box-shadow:inset 0 0 0 1px {{ a.ring }};border-radius:8px;padding:12px 16px">
+                  <span style="height:32px;width:32px;flex-shrink:0;border-radius:9999px;background:#0b1316;display:flex;align-items:center;justify-content:center;color:{{ a.color }}">
+                    <span style="height:18px;width:18px;display:block">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:100%;height:100%"><path stroke-linecap="round" stroke-linejoin="round" d="{{ a.d }}"></path></svg>
+                    </span>
+                  </span>
+                  <span style="font-size:14px;color:{{ a.text }};flex:1">{{ a.mensagem }}</span>
+                  <span style="flex-shrink:0;font-size:11px;color:#8798a0;white-space:nowrap">{{ a.quando }}</span>
+                  <a href="#" style="flex-shrink:0;font-size:12px;font-weight:600;color:{{ a.color }};white-space:nowrap">{{ a.acao }} →</a>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+              <sc-for list="{{ resumo }}" as="r" hint-placeholder-count="6">
+                <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:16px">
+                  <p style="margin:0;font-size:10px;color:#8798a0;text-transform:uppercase">{{ r.label }}</p>
+                  <p style="margin:0;font-size:18px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:{{ r.color }}">{{ r.valor }}</p>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:24px;min-width:0">
+            <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:20px">
+              <p style="margin:0 0 12px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#8798a0">Próximos vencimentos</p>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <sc-for list="{{ vencimentos }}" as="v" hint-placeholder-count="4">
+                  <a href="#" style="display:flex;align-items:center;gap:12px;color:inherit">
+                    <span style="height:24px;width:24px;flex-shrink:0;border-radius:9999px;display:flex;align-items:center;justify-content:center;background:{{ v.bg }};color:{{ v.color }}">
+                      <span style="height:14px;width:14px;display:block">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:100%;height:100%"><path stroke-linecap="round" stroke-linejoin="round" d="{{ v.d }}"></path></svg>
+                      </span>
+                    </span>
+                    <span style="min-width:0;flex:1">
+                      <span style="display:block;font-size:14px;color:#e6eef0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ v.descricao }}</span>
+                      <span style="display:block;font-size:11px;color:#8798a0">{{ v.data }}</span>
+                    </span>
+                    <span style="flex-shrink:0;font-size:12px;font-weight:600;color:{{ v.color }}">{{ v.valor }}</span>
+                  </a>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:20px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <p style="margin:0;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#8798a0">Últimos clientes</p>
+                <a href="#" style="font-size:12px;color:#5be3ef">Ver todos</a>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <sc-for list="{{ ultimosClientes }}" as="c" hint-placeholder-count="4">
+                  <a href="#" style="display:flex;align-items:center;gap:12px;color:inherit">
+                    <span style="height:28px;width:28px;border-radius:9999px;background:rgba(2,156,175,0.15);color:#5be3ef;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0">{{ c.inicial }}</span>
+                    <span style="min-width:0;flex:1">
+                      <span style="display:block;font-size:14px;color:#e6eef0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.nome }}</span>
+                      <span style="display:block;font-size:11px;color:#8798a0">{{ c.data }}</span>
+                    </span>
+                  </a>
+                </sc-for>
+              </div>
+            </div>
+
+            <a href="#" style="display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(2,156,175,0.1);box-shadow:inset 0 0 0 1px rgba(2,156,175,0.25);color:#5be3ef;border-radius:12px;padding:16px;font-size:14px;font-weight:600">+ Novo lead no funil</a>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isFinanceiro }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:24px">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px">
+          <sc-for list="{{ statsFin }}" as="s" hint-placeholder-count="5">
+            <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                <p style="margin:0;font-size:12px;color:#8798a0;text-transform:uppercase;letter-spacing:0.05em">{{ s.label }}</p>
+                <span style="height:32px;width:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:{{ s.bg }};color:{{ s.color }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="{{ s.d }}"></path></svg>
+                </span>
+              </div>
+              <p style="margin:8px 0 0;font-size:24px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:#e6eef0">{{ s.valor }}</p>
+            </div>
+          </sc-for>
+        </div>
+        <p style="margin:-16px 0 0;font-size:12px;color:#8798a0">ARR = MRR × 12 (projeção simples, não considera sazonalidade nem contratos anuais reais).</p>
+
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px">
+          <div style="min-width:0;background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+            <h3 style="margin:0 0 16px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;color:#e6eef0">Entradas x Saídas — últimos 6 meses</h3>
+            <div style="width:100%;min-width:0">
+              <svg viewBox="0 0 720 260" style="width:100%;height:auto">
+                <sc-for list="{{ chartGrid }}" as="g" hint-placeholder-count="4">
+                  <line x1="8" y1="{{ g.y }}" x2="712" y2="{{ g.y }}" stroke="{{ g.stroke }}" stroke-width="1"></line>
+                </sc-for>
+                <sc-for list="{{ chartBars }}" as="b" hint-placeholder-count="6">
+                  <g>
+                    <rect x="{{ b.xE }}" y="{{ b.yE }}" width="28" height="{{ b.hE }}" rx="4" fill="#029caf"></rect>
+                    <text x="{{ b.tE }}" y="{{ b.lE }}" text-anchor="middle" fill="#9db0b6" font-size="9">{{ b.vE }}</text>
+                    <rect x="{{ b.xS }}" y="{{ b.yS }}" width="28" height="{{ b.hS }}" rx="4" fill="#c98500"></rect>
+                    <text x="{{ b.tS }}" y="{{ b.lS }}" text-anchor="middle" fill="#9db0b6" font-size="9">{{ b.vS }}</text>
+                    <text x="{{ b.cx }}" y="250" text-anchor="middle" fill="#8798a0" font-size="11">{{ b.label }}</text>
+                  </g>
+                </sc-for>
+              </svg>
+              <div style="display:flex;align-items:center;gap:16px;margin-top:8px;font-size:12px;color:#9db0b6">
+                <span style="display:inline-flex;align-items:center;gap:6px"><span style="height:10px;width:10px;border-radius:2px;background:#029caf"></span> Entradas</span>
+                <span style="display:inline-flex;align-items:center;gap:6px"><span style="height:10px;width:10px;border-radius:2px;background:#c98500"></span> Saídas</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <sc-for list="{{ contagensFin }}" as="c" hint-placeholder-count="3">
+              <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+                <p style="margin:0;font-size:12px;color:#8798a0;text-transform:uppercase;letter-spacing:0.05em">{{ c.label }}</p>
+                <p style="margin:4px 0 0;font-size:24px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:#e6eef0">{{ c.valor }}</p>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+          <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+              <h3 style="margin:0;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;color:#e6eef0">Receitas pendentes</h3>
+              <a href="#" style="font-size:12px">Ver todas</a>
+            </div>
+            <div>
+              <sc-for list="{{ receitasPendentes }}" as="r" hint-placeholder-count="4">
+                <div style="padding:12px 0;display:flex;align-items:center;justify-content:space-between;font-size:14px;border-top:1px solid rgba(255,255,255,0.05)">
+                  <div style="min-width:0">
+                    <p style="margin:0;color:#e6eef0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.descricao }}</p>
+                    <p style="margin:0;font-size:12px;color:#8798a0">{{ r.meta }}</p>
+                  </div>
+                  <span style="font-weight:500;color:#e6eef0;flex-shrink:0;margin-left:12px">{{ r.valor }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+              <h3 style="margin:0;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;color:#e6eef0">Despesas em aberto</h3>
+              <a href="#" style="font-size:12px">Ver todas</a>
+            </div>
+            <div>
+              <sc-for list="{{ despesasPendentes }}" as="r" hint-placeholder-count="4">
+                <div style="padding:12px 0;display:flex;align-items:center;justify-content:space-between;font-size:14px;border-top:1px solid rgba(255,255,255,0.05)">
+                  <div style="min-width:0">
+                    <p style="margin:0;color:#e6eef0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.descricao }}</p>
+                    <p style="margin:0;font-size:12px;color:#8798a0">{{ r.meta }}</p>
+                  </div>
+                  <span style="font-weight:500;color:#e6eef0;flex-shrink:0;margin-left:12px">{{ r.valor }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isComercial }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:24px">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+          <sc-for list="{{ statsCom }}" as="s" hint-placeholder-count="4">
+            <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                <p style="margin:0;font-size:12px;color:#8798a0;text-transform:uppercase;letter-spacing:0.05em">{{ s.label }}</p>
+                <span style="height:32px;width:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:{{ s.bg }};color:{{ s.color }}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="{{ s.d }}"></path></svg>
+                </span>
+              </div>
+              <p style="margin:8px 0 0;font-size:24px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:#e6eef0">{{ s.valor }}</p>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+          <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+            <h3 style="margin:0 0 4px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;color:#e6eef0">Ranking por quantidade de clientes</h3>
+            <p style="margin:0 0 16px;font-size:12px;color:#8798a0">Clientes ativos por sistema, hoje.</p>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <sc-for list="{{ rankQtd }}" as="i" hint-placeholder-count="6">
+                <div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;font-size:14px;margin-bottom:4px">
+                    <span style="color:#e6eef0">{{ i.nome }}</span>
+                    <span style="color:#9db0b6">{{ i.valor }}</span>
+                  </div>
+                  <div style="height:8px;border-radius:9999px;background:rgba(255,255,255,0.05);overflow:hidden">
+                    <div style="height:100%;border-radius:9999px;background:#029caf;width:{{ i.pct }}"></div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+            <h3 style="margin:0 0 4px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;color:#e6eef0">Ranking por valor gerado</h3>
+            <p style="margin:0 0 16px;font-size:12px;color:#8798a0">Estimativa de atacado mensal por sistema, hoje.</p>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <sc-for list="{{ rankValor }}" as="i" hint-placeholder-count="6">
+                <div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;font-size:14px;margin-bottom:4px">
+                    <span style="color:#e6eef0">{{ i.nome }}</span>
+                    <span style="color:#9db0b6">{{ i.valor }}</span>
+                  </div>
+                  <div style="height:8px;border-radius:9999px;background:rgba(255,255,255,0.05);overflow:hidden">
+                    <div style="height:100%;border-radius:9999px;background:#e8a045;width:{{ i.pct }}"></div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+          <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+            <h3 style="margin:0 0 16px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;color:#e6eef0">Clientes por revenda</h3>
+            <div style="font-size:14px">
+              <sc-for list="{{ porRevenda }}" as="r" hint-placeholder-count="5">
+                <div style="padding:8px 0;display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.05)">
+                  <span style="color:#e6eef0">{{ r.nome }}</span>
+                  <span style="color:#9db0b6">{{ r.qtd }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+            <h3 style="margin:0 0 16px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;color:#e6eef0">Sistemas por categoria</h3>
+            <div style="font-size:14px">
+              <sc-for list="{{ porCategoria }}" as="r" hint-placeholder-count="2">
+                <div style="padding:8px 0;display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.05)">
+                  <span style="color:#e6eef0;text-transform:uppercase">{{ r.nome }}</span>
+                  <span style="color:#9db0b6">{{ r.qtd }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isFunil }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1600px;margin:0 auto;display:flex;flex-direction:column;gap:24px;padding:48px 0">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+          <sc-for list="{{ kpisFunil }}" as="k" hint-placeholder-count="4">
+            <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:16px">
+              <p style="margin:0;font-size:10px;color:#8798a0;text-transform:uppercase">{{ k.label }}</p>
+              <p style="margin:0;font-size:20px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:#e6eef0">{{ k.valor }}</p>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:16px;align-items:stretch;height:620px">
+          <sc-for list="{{ colunas }}" as="col" hint-placeholder-count="6">
+            <div style="width:288px;flex-shrink:0;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid rgba(255,255,255,0.05)">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                  <h3 style="margin:0;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#9db0b6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ col.label }}</h3>
+                  <span style="flex-shrink:0;height:20px;min-width:20px;padding:0 6px;border-radius:9999px;background:#101a1e;color:#8798a0;font-size:11px;display:flex;align-items:center;justify-content:center">{{ col.count }}</span>
+                </div>
+                <span style="flex-shrink:0;font-size:11px;color:#8798a0">{{ col.total }}</span>
+              </div>
+              <div style="flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ col.cards }}" as="lead" hint-placeholder-count="3">
+                  <div style="background:#101a1e;border:1px solid {{ lead.borda }};border-radius:8px;padding:12px;font-size:14px;box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6)">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                      <p style="margin:0;color:#e6eef0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ lead.nome }}</p>
+                      <span style="flex-shrink:0;border-radius:9999px;padding:2px 6px;font-size:10px;font-weight:600;background:{{ lead.tempBg }};color:{{ lead.tempColor }}">{{ lead.dias }}</span>
+                    </div>
+                    <p style="margin:2px 0 0;font-size:12px;color:#8798a0">{{ lead.meta }}</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#5be3ef;font-weight:500">{{ lead.valor }}</p>
+                    <p style="margin:2px 0 0;font-size:10px;color:#8798a0">{{ lead.revenda }}</p>
+                    <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05)">
+                      <button style="background:none;border:0;padding:0;font-family:inherit;font-size:11px;color:#029caf;cursor:pointer" style-hover="color:#26d4e6">Mover ▾</button>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isRevendas }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1280px;margin:0 auto;padding:48px 0">
+        <div style="background:#0b1316;overflow:hidden;border-radius:8px;box-shadow:0 1px 2px 0 rgba(0,0,0,0.05)">
+          <table style="min-width:100%">
+            <thead style="background:#101a1e">
+              <tr>
+                <th style="padding:12px 24px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Nome</th>
+                <th style="padding:12px 24px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">CNPJ</th>
+                <th style="padding:12px 24px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Contato</th>
+                <th style="padding:12px 24px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Clientes</th>
+                <th style="padding:12px 24px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Status</th>
+                <th style="padding:12px 24px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ revendas }}" as="r" hint-placeholder-count="5">
+                <tr style="border-top:1px solid rgba(255,255,255,0.05)">
+                  <td style="padding:16px 24px;font-size:14px;font-weight:500;color:#e6eef0">{{ r.nome }}</td>
+                  <td style="padding:16px 24px;font-size:14px;color:#9db0b6">{{ r.cnpj }}</td>
+                  <td style="padding:16px 24px;font-size:14px;color:#9db0b6">{{ r.contato }}</td>
+                  <td style="padding:16px 24px;font-size:14px;color:#9db0b6">{{ r.clientes }}</td>
+                  <td style="padding:16px 24px;font-size:14px">
+                    <span style="padding:4px 8px;font-size:12px;border-radius:9999px;background:{{ r.statusBg }};color:{{ r.statusColor }}">{{ r.status }}</span>
+                  </td>
+                  <td style="padding:16px 24px;text-align:right;font-size:14px">
+                    <a href="#" style="margin-right:12px">Editar</a>
+                    <a href="#" style="color:#d03b3b">Remover</a>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <div style="padding:16px;font-size:14px;color:#8798a0">Mostrando 5 de 5 revendas</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isClientes }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1280px;margin:0 auto;padding:48px 0">
+        <div style="margin-bottom:16px;display:flex;gap:12px">
+          <input type="text" placeholder="Buscar por nome..." style="flex:1;background:#101a1e;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:8px 12px;font-size:14px;color:#e6eef0;font-family:inherit;outline:none">
+          <select style="background:#101a1e;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:8px 12px;font-size:14px;color:#e6eef0;font-family:inherit">
+            <option>Todas as revendas</option>
+            <option>Invest Soluções</option>
+          </select>
+          <button style="padding:8px 16px;background:#101a1e;border:0;border-radius:6px;font-size:14px;color:#e6eef0;font-family:inherit;cursor:pointer" style-hover="background:rgba(255,255,255,0.1)">Filtrar</button>
+        </div>
+
+        <div style="background:#0b1316;overflow:hidden;border-radius:8px">
+          <table style="min-width:100%">
+            <thead style="background:#101a1e">
+              <tr>
+                <th style="padding:12px 24px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Nome</th>
+                <th style="padding:12px 24px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Revenda</th>
+                <th style="padding:12px 24px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Sistemas</th>
+                <th style="padding:12px 24px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Tipo</th>
+                <th style="padding:12px 24px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Status</th>
+                <th style="padding:12px 24px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ clientes }}" as="c" hint-placeholder-count="8">
+                <tr style="border-top:1px solid rgba(255,255,255,0.05)">
+                  <td style="padding:16px 24px;font-size:14px;font-weight:500;color:#e6eef0">{{ c.nome }}</td>
+                  <td style="padding:16px 24px;font-size:14px;color:#9db0b6">{{ c.revenda }}</td>
+                  <td style="padding:16px 24px;font-size:14px;color:#9db0b6">{{ c.sistemas }}</td>
+                  <td style="padding:16px 24px;font-size:14px;color:#9db0b6">{{ c.tipo }}</td>
+                  <td style="padding:16px 24px;font-size:14px">
+                    <span style="padding:4px 8px;font-size:12px;border-radius:9999px;background:{{ c.statusBg }};color:{{ c.statusColor }}">{{ c.status }}</span>
+                  </td>
+                  <td style="padding:16px 24px;text-align:right;font-size:14px">
+                    <a href="#" onClick="{{ irFormCliente }}" style="margin-right:12px">Editar</a>
+                    <a href="#" style="color:#d03b3b">Remover</a>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <div style="padding:16px;font-size:14px;color:#8798a0">Mostrando 8 de 87 clientes</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isFormCliente }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1024px;margin:0 auto;padding:48px 0">
+        <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+          <div style="margin-bottom:32px">
+            <h3 style="margin:0 0 16px;font-size:14px;font-weight:600;color:#9db0b6;text-transform:uppercase;letter-spacing:0.05em">Dados básicos</h3>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+              <div>
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">Revenda</label>
+                <select style="margin-top:4px;display:block;width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px">
+                  <option>Invest Soluções</option>
+                  <option>— Venda direta da Alfa —</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">Tipo de pessoa</label>
+                <select style="margin-top:4px;display:block;width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px">
+                  <option>Pessoa Jurídica</option>
+                  <option>Pessoa Física</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">CPF/CNPJ</label>
+                <div style="margin-top:4px;display:flex;gap:8px">
+                  <input type="text" value="18.402.771/0001-05" style="display:block;width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px;outline:none">
+                  <button style="flex-shrink:0;padding:8px 12px;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:12px;color:#5be3ef;font-family:inherit;cursor:pointer;white-space:nowrap">Buscar</button>
+                </div>
+              </div>
+              <div style="grid-column:span 2">
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">Razão social</label>
+                <input type="text" value="Academia Corpo & Movimento Ltda" style="margin-top:4px;display:block;width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px;outline:none">
+              </div>
+              <div>
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">Nome fantasia</label>
+                <input type="text" value="Corpo &amp; Movimento" style="margin-top:4px;display:block;width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px;outline:none">
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:32px">
+            <h3 style="margin:0 0 16px;font-size:14px;font-weight:600;color:#9db0b6;text-transform:uppercase;letter-spacing:0.05em">Endereço</h3>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+              <div>
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">CEP</label>
+                <div style="margin-top:4px;display:flex;gap:8px">
+                  <input type="text" value="74110-020" style="width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px;outline:none">
+                  <button style="flex-shrink:0;padding:8px 12px;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:12px;color:#5be3ef;font-family:inherit;cursor:pointer">Buscar</button>
+                </div>
+              </div>
+              <div style="grid-column:span 2">
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">Logradouro</label>
+                <input type="text" value="Rua 84" style="margin-top:4px;display:block;width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px;outline:none">
+              </div>
+              <div>
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">Número</label>
+                <input type="text" value="112" style="margin-top:4px;display:block;width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px;outline:none">
+              </div>
+              <div>
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">Bairro</label>
+                <input type="text" value="Setor Sul" style="margin-top:4px;display:block;width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px;outline:none">
+              </div>
+              <div style="grid-column:span 2">
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">Cidade</label>
+                <input type="text" value="Goiânia" style="margin-top:4px;display:block;width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px;outline:none">
+              </div>
+              <div>
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">UF</label>
+                <input type="text" value="GO" style="margin-top:4px;display:block;width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px;outline:none">
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:32px">
+            <h3 style="margin:0 0 16px;font-size:14px;font-weight:600;color:#9db0b6;text-transform:uppercase;letter-spacing:0.05em">E-mails</h3>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <input type="email" value="financeiro@corpoemovimento.com.br" style="flex:1;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px;outline:none">
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#9db0b6"><input type="checkbox" checked style="accent-color:#029caf">Principal</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#9db0b6"><input type="checkbox" checked style="accent-color:#029caf">Financeiro</label>
+                <button style="background:none;border:0;color:#d03b3b;font-size:13px;font-family:inherit;cursor:pointer">Remover</button>
+              </div>
+              <button style="align-self:flex-start;background:none;border:0;padding:0;font-size:13px;color:#5be3ef;font-family:inherit;cursor:pointer">+ Adicionar e-mail</button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:32px">
+            <h3 style="margin:0 0 16px;font-size:14px;font-weight:600;color:#9db0b6;text-transform:uppercase;letter-spacing:0.05em">Contrato</h3>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+              <div>
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">Tipo de cliente</label>
+                <select style="margin-top:4px;display:block;width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px">
+                  <option>Contrato</option>
+                  <option>Avulso</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">Valor mensal (R$)</label>
+                <input type="text" value="249,00" style="margin-top:4px;display:block;width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px;outline:none">
+              </div>
+              <div>
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">Dia do vencimento</label>
+                <input type="text" value="10" style="margin-top:4px;display:block;width:100%;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px;outline:none">
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;gap:12px;border-top:1px solid rgba(255,255,255,0.05);padding-top:24px">
+            <button onClick="{{ voltarClientes }}" style="padding:8px 16px;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#9db0b6;font-family:inherit;cursor:pointer">Cancelar</button>
+            <button style="padding:8px 16px;background:#029caf;border:0;border-radius:6px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#fff;font-family:inherit;cursor:pointer" style-hover="background:#26d4e6">Salvar</button>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isProdutos }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:24px;padding:48px 0">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:16px 24px;display:inline-block">
+            <p style="margin:0;font-size:12px;color:#8798a0;text-transform:uppercase;letter-spacing:0.05em">MRR total (todos os produtos)</p>
+            <p style="margin:0;font-size:24px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:#e6eef0">R$ 52.430,00</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;background:#0b1316;border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:4px">
+            <button style="padding:6px;border:0;border-radius:6px;background:rgba(2,156,175,0.15);color:#5be3ef;cursor:pointer">
+              <span style="display:block;height:16px;width:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:100%;height:100%"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"></path></svg></span>
+            </button>
+            <button style="padding:6px;border:0;border-radius:6px;background:transparent;color:#8798a0;cursor:pointer">
+              <span style="display:block;height:16px;width:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:100%;height:100%"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zM3.75 12h.007v.008H3.75V12zm0 5.25h.007v.008H3.75v-.008z"></path></svg></span>
+            </button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px">
+          <sc-for list="{{ produtos }}" as="p" hint-placeholder-count="7">
+            <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
+                <div>
+                  <h3 style="margin:0 0 4px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:18px;color:#e6eef0">{{ p.nome }}</h3>
+                  <span style="padding:2px 8px;font-size:12px;border-radius:9999px;background:{{ p.catBg }};color:{{ p.catColor }}">{{ p.categoria }}</span>
+                </div>
+                <span style="padding:4px 8px;font-size:12px;border-radius:9999px;background:{{ p.statusBg }};color:{{ p.statusColor }}">{{ p.status }}</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+                <sc-for list="{{ p.metricas }}" as="m" hint-placeholder-count="6">
+                  <div>
+                    <p style="margin:0;font-size:10px;color:#8798a0;text-transform:uppercase">{{ m.label }}</p>
+                    <p style="margin:0;font-size:18px;font-weight:600;color:{{ m.color }}">{{ m.valor }}</p>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="font-size:12px;color:#8798a0;display:flex;flex-direction:column;gap:4px;margin-bottom:16px">
+                <p style="margin:0"><span style="color:#9db0b6">Versão:</span> {{ p.versao }}</p>
+                <p style="margin:0"><span style="color:#9db0b6">Responsável:</span> {{ p.responsavel }}</p>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;font-size:12px">
+                <a href="#">Configurar preços</a>
+                <a href="#">Editar gestão</a>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isFaturamento }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1152px;margin:0 auto;display:flex;flex-direction:column;gap:24px;padding:48px 0">
+        <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+          <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+            <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px">
+              <div>
+                <label style="display:block;font-size:14px;font-weight:500;color:#9db0b6">Competência</label>
+                <input type="month" value="2026-08" style="margin-top:4px;background:#101a1e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px 12px;color:#e6eef0;font-family:inherit;font-size:14px;outline:none">
+              </div>
+              <p style="margin:0;font-size:12px;color:#8798a0;padding-bottom:8px">Relatório calculado em tempo real com os clientes ativos de hoje.</p>
+            </div>
+            <button style="padding:8px 16px;background:#029caf;border:0;border-radius:6px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#fff;font-family:inherit;cursor:pointer" style-hover="background:#26d4e6">Gerar cobranças consolidadas (2026-08)</button>
+          </div>
+        </div>
+
+        <sc-for list="{{ faturamento }}" as="g" hint-placeholder-count="3">
+          <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:24px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+              <h3 style="margin:0;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;color:#e6eef0">{{ g.revenda }}</h3>
+              <p style="margin:0;font-size:18px;font-weight:600;color:#5be3ef">{{ g.total }}</p>
+            </div>
+            <table style="min-width:100%;font-size:14px">
+              <thead>
+                <tr style="text-align:left;font-size:12px;color:#8798a0;text-transform:uppercase">
+                  <th style="padding:4px 16px 4px 0;font-weight:500">Sistema</th>
+                  <th style="padding:4px 16px 4px 0;font-weight:500">Tier aplicado</th>
+                  <th style="padding:4px 16px 4px 0;font-weight:500;text-align:right">Clientes ativos</th>
+                  <th style="padding:4px 16px 4px 0;font-weight:500;text-align:right">Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ g.linhas }}" as="l" hint-placeholder-count="3">
+                  <tr style="border-top:1px solid rgba(255,255,255,0.05)">
+                    <td style="padding:8px 16px 8px 0;color:#e6eef0">{{ l.sistema }}</td>
+                    <td style="padding:8px 16px 8px 0;color:{{ l.tierColor }}">{{ l.tier }}</td>
+                    <td style="padding:8px 16px 8px 0;color:#9db0b6;text-align:right">{{ l.clientes }}</td>
+                    <td style="padding:8px 16px 8px 0;color:#e6eef0;text-align:right">{{ l.valor }}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isReceitas }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1280px;margin:0 auto;padding:48px 0">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px">
+          <sc-for list="{{ kpisReceitas }}" as="k" hint-placeholder-count="3">
+            <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:16px">
+              <p style="margin:0;font-size:10px;color:#8798a0;text-transform:uppercase">{{ k.label }}</p>
+              <p style="margin:0;font-size:20px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:{{ k.color }}">{{ k.valor }}</p>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin-bottom:16px;display:flex;gap:12px">
+          <select style="background:#101a1e;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:8px 12px;font-size:14px;color:#e6eef0;font-family:inherit">
+            <option>Todos os status</option>
+            <option>Pendente</option>
+            <option>Pago</option>
+            <option>Cancelado</option>
+          </select>
+        </div>
+
+        <div style="background:#0b1316;overflow:hidden;border-radius:8px">
+          <table style="min-width:100%">
+            <thead style="background:#101a1e">
+              <tr>
+                <th style="padding:12px 8px 12px 16px;width:32px"></th>
+                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Descrição</th>
+                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Revenda/Cliente</th>
+                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Vencimento</th>
+                <th style="padding:12px 16px;text-align:right;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Valor</th>
+                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Status</th>
+                <th style="padding:12px 16px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ receitas }}" as="r" hint-placeholder-count="7">
+                <tr style="border-top:1px solid rgba(255,255,255,0.05);background:{{ r.rowBg }}">
+                  <td style="padding:16px 8px 16px 16px"><input type="checkbox" style="accent-color:#029caf"></td>
+                  <td style="padding:16px;font-size:14px;color:#e6eef0">{{ r.descricao }}</td>
+                  <td style="padding:16px;font-size:14px;color:#9db0b6">{{ r.origem }}</td>
+                  <td style="padding:16px;font-size:14px;color:#9db0b6">{{ r.vencimento }}</td>
+                  <td style="padding:16px;font-size:14px;text-align:right;font-weight:500;color:#e6eef0">{{ r.valor }}</td>
+                  <td style="padding:16px;font-size:14px">
+                    <span style="padding:4px 8px;font-size:12px;border-radius:9999px;background:{{ r.statusBg }};color:{{ r.statusColor }}">{{ r.status }}</span>
+                  </td>
+                  <td style="padding:16px;text-align:right;white-space:nowrap">
+                    <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px">
+                      <sc-for list="{{ r.acoes }}" as="ac" hint-placeholder-count="4">
+                        <button title="{{ ac.title }}" style="padding:6px;border:0;background:transparent;border-radius:6px;color:{{ ac.color }};cursor:pointer">
+                          <span style="display:block;height:16px;width:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:100%;height:100%"><path stroke-linecap="round" stroke-linejoin="round" d="{{ ac.d }}"></path></svg></span>
+                        </button>
+                      </sc-for>
+                    </div>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <div style="padding:16px;font-size:14px;color:#8798a0">Mostrando 7 de 42 receitas</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isDespesas }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:24px;padding:48px 0">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+          <sc-for list="{{ kpisDespesas }}" as="k" hint-placeholder-count="3">
+            <div style="background:#0b1316;border:1px solid rgba(255,255,255,0.05);box-shadow:0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);border-radius:12px;padding:16px">
+              <p style="margin:0;font-size:10px;color:#8798a0;text-transform:uppercase">{{ k.label }}</p>
+              <p style="margin:0;font-size:20px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:{{ k.color }}">{{ k.valor }}</p>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;gap:12px">
+          <select style="background:#101a1e;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:8px 12px;font-size:14px;color:#e6eef0;font-family:inherit">
+            <option>Todos os status</option>
+            <option>Em aberto</option>
+            <option>Pago</option>
+          </select>
+          <select style="background:#101a1e;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:8px 12px;font-size:14px;color:#e6eef0;font-family:inherit">
+            <option>Todos os tipos</option>
+            <option>Pontuais</option>
+            <option>Recorrentes</option>
+          </select>
+        </div>
+
+        <div style="background:#0b1316;overflow:hidden;border-radius:8px">
+          <table style="min-width:100%">
+            <thead style="background:#101a1e">
+              <tr>
+                <th style="padding:12px 8px 12px 16px;width:32px"></th>
+                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Descrição</th>
+                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Centro de custo</th>
+                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Vencimento</th>
+                <th style="padding:12px 16px;text-align:right;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Valor</th>
+                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Status</th>
+                <th style="padding:12px 16px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ despesas }}" as="r" hint-placeholder-count="7">
+                <tr style="border-top:1px solid rgba(255,255,255,0.05);background:{{ r.rowBg }}">
+                  <td style="padding:16px 8px 16px 16px"><input type="checkbox" style="accent-color:#029caf"></td>
+                  <td style="padding:16px;font-size:14px;color:#e6eef0">
+                    {{ r.descricao }}
+                    <span style="margin-left:4px;padding:2px 6px;font-size:10px;border-radius:9999px;background:{{ r.tipoBg }};color:{{ r.tipoColor }}">{{ r.tipo }}</span>
+                  </td>
+                  <td style="padding:16px;font-size:14px;color:#9db0b6">{{ r.centro }}</td>
+                  <td style="padding:16px;font-size:14px;color:#9db0b6">{{ r.vencimento }}</td>
+                  <td style="padding:16px;font-size:14px;text-align:right;font-weight:500;color:#e6eef0">{{ r.valor }}</td>
+                  <td style="padding:16px;font-size:14px">
+                    <span style="padding:4px 8px;font-size:12px;border-radius:9999px;background:{{ r.statusBg }};color:{{ r.statusColor }}">{{ r.status }}</span>
+                  </td>
+                  <td style="padding:16px;text-align:right;white-space:nowrap">
+                    <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px">
+                      <sc-for list="{{ r.acoes }}" as="ac" hint-placeholder-count="4">
+                        <button title="{{ ac.title }}" style="padding:6px;border:0;background:transparent;border-radius:6px;color:{{ ac.color }};cursor:pointer">
+                          <span style="display:block;height:16px;width:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:100%;height:100%"><path stroke-linecap="round" stroke-linejoin="round" d="{{ ac.d }}"></path></svg></span>
+                        </button>
+                      </sc-for>
+                    </div>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <div style="padding:16px;font-size:14px;color:#8798a0">Mostrando 7 de 63 despesas</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isCaixa }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1280px;margin:0 auto;padding:48px 0">
+        <div style="margin-bottom:24px;background:#0b1316;border-radius:8px;padding:24px">
+          <p style="margin:0;font-size:14px;color:#9db0b6">Saldo total</p>
+          <p style="margin:0;font-size:30px;font-weight:700;color:#e6eef0">R$ 187.412,68</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+          <sc-for list="{{ contasFinanceiras }}" as="c" hint-placeholder-count="4">
+            <div style="background:#0b1316;border-radius:8px;padding:24px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                <div>
+                  <p style="margin:0;font-weight:600;color:#e6eef0">{{ c.nome }}</p>
+                  <p style="margin:0;font-size:12px;color:#9db0b6;text-transform:uppercase">{{ c.tipo }}</p>
+                </div>
+                <span style="padding:4px 8px;font-size:12px;border-radius:9999px;background:{{ c.statusBg }};color:{{ c.statusColor }}">{{ c.status }}</span>
+              </div>
+              <p style="margin:16px 0 0;font-size:24px;font-weight:700;color:{{ c.saldoColor }}">{{ c.saldo }}</p>
+              <div style="margin-top:16px;display:flex;gap:12px;font-size:14px">
+                <a href="#" onClick="{{ irExtrato }}">Extrato</a>
+                <a href="#">Editar</a>
+                <a href="#" style="color:#d03b3b">Remover</a>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isExtrato }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1024px;margin:0 auto;padding:48px 0">
+        <div style="margin-bottom:16px">
+          <a href="#" onClick="{{ voltarCaixa }}" style="font-size:14px">← Voltar para contas</a>
+        </div>
+        <div style="background:#0b1316;overflow:hidden;border-radius:8px">
+          <table style="min-width:100%">
+            <thead style="background:#101a1e">
+              <tr>
+                <th style="padding:12px 24px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Data</th>
+                <th style="padding:12px 24px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Descrição</th>
+                <th style="padding:12px 24px;text-align:left;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Tipo</th>
+                <th style="padding:12px 24px;text-align:right;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Valor</th>
+                <th style="padding:12px 24px;text-align:right;font-size:12px;font-weight:500;color:#9db0b6;text-transform:uppercase">Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ extrato }}" as="m" hint-placeholder-count="8">
+                <tr style="border-top:1px solid rgba(255,255,255,0.05)">
+                  <td style="padding:16px 24px;font-size:14px;color:#9db0b6">{{ m.data }}</td>
+                  <td style="padding:16px 24px;font-size:14px;color:#e6eef0">{{ m.descricao }}</td>
+                  <td style="padding:16px 24px;font-size:14px">
+                    <span style="padding:4px 8px;font-size:12px;border-radius:9999px;background:{{ m.tipoBg }};color:{{ m.tipoColor }}">{{ m.tipo }}</span>
+                  </td>
+                  <td style="padding:16px 24px;font-size:14px;text-align:right;color:{{ m.tipoColor }}">{{ m.valor }}</td>
+                  <td style="padding:16px 24px;font-size:14px;text-align:right;font-weight:500;color:#e6eef0">{{ m.saldo }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <div style="padding:16px;font-size:14px;color:#8798a0">Mostrando 8 de 214 movimentações</div>
+        </div>
+      </div>
+      </sc-if>
+
+    </main>
+  </div>
+</div>
+</sc-if>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+const ICON = {
+  bolt: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z',
+  up: 'M2.25 18L9 11.25l4.306 4.306a11.95 11.95 0 015.814-5.518l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941',
+  down: 'M2.25 6L9 12.75l4.306-4.306a11.95 11.95 0 015.814 5.518l2.74 1.22m0 0l-2.28-5.941m2.28 5.941l-5.94 2.28',
+  clipboard: 'M9 12h6m-6 4h6m-7 4h8a2 2 0 002-2V6.414a1 1 0 00-.293-.707l-3.414-3.414A1 1 0 0013.586 2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
+  building: 'M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21',
+  users: 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z',
+  cube: 'M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9',
+  repeat: 'M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99',
+  banknotes: 'M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z',
+  tag: 'M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z M6 6h.008v.008H6V6z',
+  alert: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z',
+  check: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+  clock: 'M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z',
+  userPlus: 'M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z',
+  arrowDown: 'M12 21a9 9 0 100-18 9 9 0 000 18zM8.25 12l3.75 3.75L15.75 12M12 8.25v7.5',
+  arrowUp: 'M12 21a9 9 0 100-18 9 9 0 000 18zM15.75 12l-3.75-3.75L8.25 12M12 15.75v-7.5',
+  paperclip: 'M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13',
+  eye: 'M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178zM15 12a3 3 0 11-6 0 3 3 0 016 0z',
+  pencil: 'M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125',
+  trash: 'M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0',
+  pause: 'M15.75 5.25v13.5m-7.5-13.5v13.5',
+};
+
+const BRL = (n, d) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: d === undefined ? 2 : d, maximumFractionDigits: d === undefined ? 2 : d });
+
+const NAV = [
+  { label: 'Painéis', items: [
+    { id: 'centro', label: 'Centro de Controle', d: ICON.bolt },
+    { id: 'financeiro', label: 'Financeiro', d: ICON.up },
+    { id: 'comercial', label: 'Comercial', d: ICON.clipboard },
+  ]},
+  { label: 'Comercial', items: [
+    { id: 'funil', label: 'Funil de Vendas', d: ICON.up },
+    { id: 'revendas', label: 'Revendas', d: ICON.building },
+    { id: 'clientes', label: 'Clientes', d: ICON.users },
+    { id: 'produtos', label: 'Produtos', d: ICON.cube },
+    { id: 'faturamento', label: 'Faturamento', d: ICON.repeat },
+  ]},
+  { label: 'Financeiro', items: [
+    { id: 'receitas', label: 'Receitas', d: ICON.up },
+    { id: 'despesas', label: 'Despesas', d: ICON.down },
+    { id: 'caixa', label: 'Caixa', d: ICON.banknotes },
+  ]},
+  { label: 'Sistema', items: [
+    { id: 'cadastros', label: 'Cadastros', d: ICON.tag },
+  ]},
+];
+
+const TITLES = {
+  centro: ['Centro de Controle', null],
+  financeiro: ['Painel Financeiro', null],
+  comercial: ['Painel Comercial', null],
+  funil: ['Funil de Vendas', '+ Novo lead'],
+  revendas: ['Revendas', '+ Nova revenda'],
+  clientes: ['Clientes', '+ Novo cliente'],
+  formCliente: ['Editar cliente', null],
+  produtos: ['Produtos', null],
+  faturamento: ['Faturamento das revendas', null],
+  receitas: ['Receitas / Contas a receber', '+ Nova receita'],
+  despesas: ['Despesas', '+ Nova despesa'],
+  caixa: ['Caixa / Contas financeiras', '+ Nova conta'],
+  extrato: ['Extrato — Bradesco PJ', null],
+  cadastros: ['Cadastros auxiliares', null],
+};
+
+class Component extends DCLogic {
+  state = { screen: 'centro' };
+
+  go = (id) => (e) => { if (e) e.preventDefault(); this.setState({ screen: id }); };
+
+  renderVals() {
+    const s = this.state.screen;
+    const t = TITLES[s] || TITLES.centro;
+
+    const navGroups = NAV.map(g => ({
+      label: g.label,
+      items: g.items.map(i => ({
+        label: i.label, d: i.d, go: this.go(i.id),
+        bg: i.id === s ? 'rgba(2,156,175,0.1)' : 'transparent',
+        fg: i.id === s ? '#5be3ef' : '#9db0b6',
+      })),
+    }));
+
+    // gráfico
+    const hist = [
+      { label: 'mar', e: 38200, x: 24100 }, { label: 'abr', e: 41500, x: 26800 },
+      { label: 'mai', e: 39800, x: 25200 }, { label: 'jun', e: 46300, x: 28900 },
+      { label: 'jul', e: 48900, x: 27400 }, { label: 'ago', e: 52400, x: 31200 },
+    ];
+    const max = 52400 * 1.15, pH = 204, pT = 24, gW = 704 / 6, bW = 28, gap = 3;
+    const chartBars = hist.map((d, i) => {
+      const cx = 8 + i * gW + gW / 2;
+      const hE = (d.e / max) * pH, hS = (d.x / max) * pH;
+      return {
+        label: d.label, cx,
+        xE: cx - bW - gap / 2, yE: pT + pH - hE, hE, tE: cx - bW / 2 - gap / 2, lE: pT + pH - hE - 6,
+        vE: (d.e / 1000).toFixed(1).replace('.', ',') + 'k',
+        xS: cx + gap / 2, yS: pT + pH - hS, hS, tS: cx + bW / 2 + gap / 2, lS: pT + pH - hS - 6,
+        vS: (d.x / 1000).toFixed(1).replace('.', ',') + 'k',
+      };
+    });
+    const chartGrid = [0, 1, 2, 3].map(i => ({ y: pT + pH - (pH * i / 3), stroke: i === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)' }));
+
+    const acoesReceita = [
+      { title: 'Anexos', d: ICON.paperclip, color: 'rgba(135,152,160,0.7)' },
+      { title: 'Dar baixa', d: ICON.check, color: 'rgba(12,163,12,0.7)' },
+      { title: 'Ver', d: ICON.eye, color: 'rgba(135,152,160,0.7)' },
+      { title: 'Editar', d: ICON.pencil, color: 'rgba(91,227,239,0.7)' },
+      { title: 'Remover', d: ICON.trash, color: 'rgba(208,59,59,0.7)' },
+    ];
+    const acoesDespesa = [
+      { title: 'Anexos', d: ICON.paperclip, color: 'rgba(135,152,160,0.7)' },
+      { title: 'Dar baixa', d: ICON.check, color: 'rgba(12,163,12,0.7)' },
+      { title: 'Pausar recorrência', d: ICON.pause, color: 'rgba(135,152,160,0.7)' },
+      { title: 'Editar', d: ICON.pencil, color: 'rgba(91,227,239,0.7)' },
+      { title: 'Remover', d: ICON.trash, color: 'rgba(208,59,59,0.7)' },
+    ];
+
+    const st = (ok, labelOk, labelNo) => ok
+      ? { status: labelOk, statusBg: 'rgba(12,163,12,0.15)', statusColor: '#0ca30c' }
+      : { status: labelNo, statusBg: '#101a1e', statusColor: '#e6eef0' };
+
+    const receitas = [
+      { descricao: 'Invest Soluções — licenciamento 08/2026', origem: 'Invest Soluções', vencimento: '10/08/2026', valor: BRL(8940), status: 'Pendente', atraso: 0 },
+      { descricao: 'Nexa Sistemas — licenciamento 08/2026', origem: 'Nexa Sistemas', vencimento: '10/08/2026', valor: BRL(5480), status: 'Pendente', atraso: 0 },
+      { descricao: 'Vetor Tecnologia — licenciamento 07/2026', origem: 'Vetor Tecnologia', vencimento: '10/07/2026', valor: BRL(3120), status: 'Pendente', atraso: 2 },
+      { descricao: 'Implantação Gestor — Construtora Ápice', origem: 'Construtora Ápice', vencimento: '05/08/2026', valor: BRL(4500), status: 'Pendente', atraso: 1 },
+      { descricao: 'Prisma Digital — licenciamento 07/2026', origem: 'Prisma Digital', vencimento: '10/07/2026', valor: BRL(1890), status: 'Pago', atraso: 0 },
+      { descricao: 'Invest Soluções — licenciamento 07/2026', origem: 'Invest Soluções', vencimento: '10/07/2026', valor: BRL(8410), status: 'Pago', atraso: 0 },
+      { descricao: 'Treinamento AlfaMed — Clínica Vitale', origem: 'Clínica Vitale', vencimento: '28/06/2026', valor: BRL(1200), status: 'Cancelado', atraso: 0 },
+    ].map(r => ({
+      ...r,
+      rowBg: r.atraso === 2 ? 'rgba(208,59,59,0.1)' : (r.atraso === 1 ? 'rgba(250,178,25,0.1)' : 'transparent'),
+      statusBg: r.status === 'Pago' ? 'rgba(12,163,12,0.15)' : (r.status === 'Cancelado' ? '#101a1e' : 'rgba(250,178,25,0.15)'),
+      statusColor: r.status === 'Pago' ? '#0ca30c' : (r.status === 'Cancelado' ? '#e6eef0' : '#fab219'),
+      acoes: acoesReceita,
+    }));
+
+    const despesas = [
+      { descricao: 'Servidores Hetzner', centro: 'Alfa Tecnologia', vencimento: '05/08/2026', valor: BRL(2840), status: 'Em aberto', tipo: 'Recorrente', atraso: 1 },
+      { descricao: 'Pró-labore sócios', centro: 'Alfa Tecnologia', vencimento: '05/08/2026', valor: BRL(18000), status: 'Em aberto', tipo: 'Recorrente', atraso: 1 },
+      { descricao: 'Contabilidade Consult', centro: 'Alfa Tecnologia', vencimento: '10/08/2026', valor: BRL(1450), status: 'Em aberto', tipo: 'Recorrente', atraso: 0 },
+      { descricao: 'Licenças JetBrains (anual)', centro: 'Alfa Tecnologia', vencimento: '02/07/2026', valor: BRL(3960), status: 'Em aberto', tipo: 'Pontual', atraso: 2 },
+      { descricao: 'Google Workspace', centro: 'Alfa Tecnologia', vencimento: '15/08/2026', valor: BRL(486), status: 'Em aberto', tipo: 'Recorrente', atraso: 0 },
+      { descricao: 'Notebook Dell — equipe dev', centro: 'Alfa Tecnologia', vencimento: '20/07/2026', valor: BRL(7890), status: 'Pago', tipo: 'Pontual', atraso: 0 },
+      { descricao: 'Aluguel escritório', centro: 'Alfa Tecnologia', vencimento: '05/07/2026', valor: BRL(4200), status: 'Pago', tipo: 'Recorrente', atraso: 0 },
+    ].map(r => ({
+      ...r,
+      rowBg: r.atraso === 2 ? 'rgba(208,59,59,0.1)' : (r.atraso === 1 ? 'rgba(250,178,25,0.1)' : 'transparent'),
+      statusBg: r.status === 'Pago' ? 'rgba(12,163,12,0.15)' : 'rgba(250,178,25,0.15)',
+      statusColor: r.status === 'Pago' ? '#0ca30c' : '#fab219',
+      tipoBg: r.tipo === 'Recorrente' ? 'rgba(2,156,175,0.1)' : 'rgba(255,255,255,0.05)',
+      tipoColor: r.tipo === 'Recorrente' ? '#5be3ef' : '#8798a0',
+      acoes: acoesDespesa,
+    }));
+
+    const leadsCols = [
+      { key: 'lead', label: 'Lead', cards: [
+        { nome: 'Academia Pulse', meta: 'SaaS · Indicação', valor: BRL(249, 0) + '/mês', revenda: 'Invest Soluções', dias: '2d', temp: 'quente' },
+        { nome: 'Condomínio Vista Verde', meta: 'SaaS · Site', valor: BRL(299, 0) + '/mês', revenda: 'Venda direta', dias: '5d', temp: 'quente' },
+        { nome: 'Colégio Áurea', meta: 'SaaS · Evento', valor: '—', revenda: 'Venda direta', dias: '9d', temp: 'esfriando' },
+      ]},
+      { key: 'contato', label: 'Contato feito', cards: [
+        { nome: 'Clínica Vitale', meta: 'SaaS · Indicação', valor: BRL(900, 0) + '/mês', revenda: 'Nexa Sistemas', dias: '4d', temp: 'quente' },
+        { nome: 'Transportes Rondon', meta: 'SaaS · Outbound', valor: BRL(620, 0) + '/mês', revenda: 'Venda direta', dias: '16d', temp: 'esfriando' },
+      ]},
+      { key: 'proposta', label: 'Proposta enviada', cards: [
+        { nome: 'Construtora Ápice', meta: 'CRM · Indicação', valor: BRL(1240, 0) + '/mês', revenda: 'Venda direta', dias: '7d', temp: 'quente' },
+        { nome: 'Rede Fit Center', meta: 'SaaS · Inbound', valor: BRL(499, 0) + '/mês', revenda: 'Invest Soluções', dias: '31d', temp: 'frio' },
+      ]},
+      { key: 'negociacao', label: 'Negociação', cards: [
+        { nome: 'Grupo Saúde Mais', meta: 'SaaS · Indicação', valor: BRL(1800, 0) + '/mês', revenda: 'Nexa Sistemas', dias: '11d', temp: 'esfriando' },
+      ]},
+      { key: 'fechado', label: 'Fechado', cards: [
+        { nome: 'Academia Corpo & Movimento', meta: 'SaaS · Indicação', valor: BRL(249, 0) + '/mês', revenda: 'Invest Soluções', dias: '1d', temp: 'quente' },
+        { nome: 'Condomínio Bosque Real', meta: 'SaaS · Site', valor: BRL(299, 0) + '/mês', revenda: 'Vetor Tecnologia', dias: '3d', temp: 'quente' },
+      ]},
+      { key: 'perdido', label: 'Perdido', cards: [
+        { nome: 'Escola Nova Era', meta: 'SaaS · Site', valor: '—', revenda: 'Venda direta', dias: '22d', temp: 'frio' },
+      ]},
+    ];
+    const tempStyle = { quente: ['rgba(12,163,12,0.1)', '#0ca30c'], esfriando: ['rgba(250,178,25,0.1)', '#fab219'], frio: ['rgba(208,59,59,0.1)', '#d03b3b'] };
+    const bordaTemp = { quente: 'rgba(255,255,255,0.05)', esfriando: 'rgba(250,178,25,0.4)', frio: 'rgba(208,59,59,0.4)' };
+    const colunas = leadsCols.map(c => {
+      const total = c.cards.reduce((a, x) => a + (parseFloat(String(x.valor).replace(/[^0-9,]/g, '').replace(',', '.')) || 0), 0);
+      return {
+        label: c.label, count: c.cards.length,
+        total: total > 0 ? BRL(total, 0) : '',
+        cards: c.cards.map(l => ({
+          ...l, borda: bordaTemp[l.temp],
+          tempBg: tempStyle[l.temp][0], tempColor: tempStyle[l.temp][1],
+        })),
+      };
+    });
+
+    const produtosRaw = [
+      { nome: 'AlfaGym', categoria: 'SAAS', mrr: 14940, clientes: 41, ticket: 364.39, cancel: 6, taxa: 5.2, versao: '3.4.1', responsavel: 'Marina Alves' },
+      { nome: 'AlfaControl', categoria: 'SAAS', mrr: 12580, clientes: 28, ticket: 449.29, cancel: 3, taxa: 4.1, versao: '2.8.0', responsavel: 'Diego Prado' },
+      { nome: 'AlfaMed', categoria: 'SAAS', mrr: 9800, clientes: 11, ticket: 890.91, cancel: 1, taxa: 3.4, versao: '1.9.2', responsavel: 'Camila Reis' },
+      { nome: 'Gestor', categoria: 'CRM', mrr: 8400, clientes: 7, ticket: 1200.00, cancel: 0, taxa: 0.0, versao: '5.2.0', responsavel: 'Rafael Lima' },
+      { nome: 'AlfaHome', categoria: 'SAAS', mrr: 4310, clientes: 431, ticket: 10.00, cancel: 58, taxa: 11.9, versao: '1.4.6', responsavel: 'Marina Alves' },
+      { nome: 'AlfaJornada', categoria: 'SAAS', mrr: 2400, clientes: 960, ticket: 2.50, cancel: 74, taxa: 7.2, versao: '1.1.3', responsavel: 'Diego Prado' },
+      { nome: 'AlfaSchool', categoria: 'SAAS', mrr: 0, clientes: 0, ticket: 0, cancel: 0, taxa: 0, versao: '—', responsavel: '—', inativo: true },
+    ];
+    const produtos = produtosRaw.map(p => ({
+      nome: p.nome, categoria: p.categoria, versao: p.versao, responsavel: p.responsavel,
+      catBg: p.categoria === 'CRM' ? 'rgba(2,156,175,0.15)' : 'rgba(255,255,255,0.05)',
+      catColor: p.categoria === 'CRM' ? '#5be3ef' : '#9db0b6',
+      ...(p.inativo
+        ? { status: 'Inativo', statusBg: 'rgba(255,255,255,0.05)', statusColor: '#8798a0' }
+        : { status: 'Ativo', statusBg: 'rgba(12,163,12,0.15)', statusColor: '#0ca30c' }),
+      metricas: [
+        { label: 'MRR', valor: BRL(p.mrr, 0), color: '#e6eef0' },
+        { label: 'ARR', valor: BRL(p.mrr * 12, 0), color: '#e6eef0' },
+        { label: 'Clientes ativos', valor: String(p.clientes), color: '#e6eef0' },
+        { label: 'Ticket médio', valor: BRL(p.ticket), color: '#e6eef0' },
+        { label: 'Cancelados (acum.)', valor: String(p.cancel), color: '#e6eef0' },
+        { label: '% cancelamento', valor: p.taxa.toFixed(1).replace('.', ',') + '%', color: p.taxa > 10 ? '#d03b3b' : '#e6eef0' },
+      ],
+    }));
+
+    const rankQtdRaw = [
+      { nome: 'AlfaJornada', v: 960 }, { nome: 'AlfaHome', v: 431 }, { nome: 'AlfaGym', v: 41 },
+      { nome: 'AlfaControl', v: 28 }, { nome: 'AlfaMed', v: 11 }, { nome: 'Gestor', v: 7 },
+    ];
+    const rankValorRaw = [
+      { nome: 'AlfaGym', v: 14940 }, { nome: 'AlfaControl', v: 12580 }, { nome: 'AlfaMed', v: 9800 },
+      { nome: 'Gestor', v: 8400 }, { nome: 'AlfaHome', v: 4310 }, { nome: 'AlfaJornada', v: 2400 },
+    ];
+
+    return {
+      isLogin: s === 'login',
+      isApp: s !== 'login',
+      isCentro: s === 'centro' || s === 'cadastros',
+      isFinanceiro: s === 'financeiro',
+      isComercial: s === 'comercial',
+      isFunil: s === 'funil',
+      isRevendas: s === 'revendas',
+      isClientes: s === 'clientes',
+      isFormCliente: s === 'formCliente',
+      isProdutos: s === 'produtos',
+      isFaturamento: s === 'faturamento',
+      isReceitas: s === 'receitas',
+      isDespesas: s === 'despesas',
+      isCaixa: s === 'caixa',
+      isExtrato: s === 'extrato',
+      headerTitle: t[0],
+      headerAction: t[1],
+      navGroups,
+      sair: this.go('login'),
+      entrar: this.go('centro'),
+      irFormCliente: this.go('formCliente'),
+      voltarClientes: this.go('clientes'),
+      irExtrato: this.go('extrato'),
+      voltarCaixa: this.go('caixa'),
+
+      alertas: [
+        { mensagem: '2 receitas atrasadas somando R$ 7.620,00', quando: 'há 6 dias', acao: 'Cobrar', d: ICON.alert, bg: 'rgba(208,59,59,0.1)', ring: 'rgba(208,59,59,0.25)', color: '#d03b3b', text: '#e6eef0' },
+        { mensagem: 'Licenças JetBrains vencidas em 02/07 — R$ 3.960,00', quando: 'há 34 dias', acao: 'Pagar', d: ICON.clock, bg: 'rgba(250,178,25,0.1)', ring: 'rgba(250,178,25,0.25)', color: '#fab219', text: '#e6eef0' },
+        { mensagem: '2 leads parados há mais de 30 dias no funil', quando: 'hoje', acao: 'Revisar', d: ICON.userPlus, bg: 'rgba(250,178,25,0.1)', ring: 'rgba(250,178,25,0.25)', color: '#fab219', text: '#e6eef0' },
+        { mensagem: 'Faturamento de 08/2026 gerado para 4 revendas', quando: 'ontem', acao: 'Ver', d: ICON.check, bg: 'rgba(12,163,12,0.1)', ring: 'rgba(12,163,12,0.25)', color: '#0ca30c', text: '#9db0b6' },
+      ],
+      resumo: [
+        { label: 'MRR atual', valor: BRL(52430, 0), color: '#e6eef0' },
+        { label: 'Saldo em caixa', valor: BRL(187413, 0), color: '#e6eef0' },
+        { label: 'Clientes ativos', valor: '1.478', color: '#e6eef0' },
+        { label: 'A receber (7 dias)', valor: BRL(14420, 0), color: '#0ca30c' },
+        { label: 'A pagar (7 dias)', valor: BRL(22776, 0), color: '#fab219' },
+        { label: 'Pipeline aberto', valor: BRL(5108, 0), color: '#e6eef0' },
+      ],
+      vencimentos: [
+        { descricao: 'Invest Soluções — licenciamento 08/2026', data: '10/08', valor: BRL(8940, 0), bg: 'rgba(12,163,12,0.1)', color: '#0ca30c', d: ICON.up },
+        { descricao: 'Pró-labore sócios', data: '05/08', valor: BRL(18000, 0), bg: 'rgba(250,178,25,0.1)', color: '#fab219', d: ICON.down },
+        { descricao: 'Nexa Sistemas — licenciamento 08/2026', data: '10/08', valor: BRL(5480, 0), bg: 'rgba(12,163,12,0.1)', color: '#0ca30c', d: ICON.up },
+        { descricao: 'Servidores Hetzner', data: '05/08', valor: BRL(2840, 0), bg: 'rgba(250,178,25,0.1)', color: '#fab219', d: ICON.down },
+      ],
+      ultimosClientes: [
+        { inicial: 'A', nome: 'Academia Corpo & Movimento', data: '04/08/2026' },
+        { inicial: 'C', nome: 'Condomínio Bosque Real', data: '03/08/2026' },
+        { inicial: 'C', nome: 'Clínica Vitale', data: '01/08/2026' },
+        { inicial: 'T', nome: 'Transportes Rondon', data: '29/07/2026' },
+      ],
+
+      statsFin: [
+        { label: 'MRR (mês atual)', valor: BRL(52430), d: ICON.up, bg: 'rgba(2,156,175,0.15)', color: '#5be3ef' },
+        { label: 'ARR (projetado)', valor: BRL(629160), d: ICON.up, bg: 'rgba(2,156,175,0.15)', color: '#5be3ef' },
+        { label: 'Saldo em caixa', valor: BRL(187412.68), d: ICON.banknotes, bg: 'rgba(255,255,255,0.05)', color: '#9db0b6' },
+        { label: 'Entradas do mês', valor: BRL(52400), d: ICON.arrowDown, bg: 'rgba(12,163,12,0.15)', color: '#0ca30c' },
+        { label: 'Saídas do mês', valor: BRL(31200), d: ICON.arrowUp, bg: 'rgba(250,178,25,0.15)', color: '#fab219' },
+      ],
+      contagensFin: [
+        { label: 'Revendas ativas', valor: '4' },
+        { label: 'Clientes ativos', valor: '1.478' },
+        { label: 'Clientes diretos (fora de revenda)', valor: '312' },
+      ],
+      chartBars, chartGrid,
+      receitasPendentes: [
+        { descricao: 'Invest Soluções — licenciamento 08/2026', meta: 'Invest Soluções · vence 10/08/2026', valor: BRL(8940) },
+        { descricao: 'Nexa Sistemas — licenciamento 08/2026', meta: 'Nexa Sistemas · vence 10/08/2026', valor: BRL(5480) },
+        { descricao: 'Implantação Gestor — Construtora Ápice', meta: 'Construtora Ápice · vence 05/08/2026', valor: BRL(4500) },
+        { descricao: 'Vetor Tecnologia — licenciamento 07/2026', meta: 'Vetor Tecnologia · vence 10/07/2026', valor: BRL(3120) },
+      ],
+      despesasPendentes: [
+        { descricao: 'Pró-labore sócios', meta: 'Alfa Tecnologia · vence 05/08/2026', valor: BRL(18000) },
+        { descricao: 'Licenças JetBrains (anual)', meta: 'JetBrains s.r.o. · vence 02/07/2026', valor: BRL(3960) },
+        { descricao: 'Servidores Hetzner', meta: 'Hetzner Online · vence 05/08/2026', valor: BRL(2840) },
+        { descricao: 'Contabilidade Consult', meta: 'Consult Contábil · vence 10/08/2026', valor: BRL(1450) },
+      ],
+
+      statsCom: [
+        { label: 'Sistemas ativos', valor: '6', d: ICON.cube, bg: 'rgba(2,156,175,0.15)', color: '#5be3ef' },
+        { label: 'Clientes ativos (todos os sistemas)', valor: '1.478', d: ICON.users, bg: 'rgba(12,163,12,0.15)', color: '#0ca30c' },
+        { label: 'Revendas ativas', valor: '4', d: ICON.building, bg: 'rgba(255,255,255,0.05)', color: '#9db0b6' },
+        { label: 'MRR estimado (atacado)', valor: BRL(52430), d: ICON.up, bg: 'rgba(2,156,175,0.15)', color: '#5be3ef' },
+      ],
+      rankQtd: rankQtdRaw.map((r, i) => ({ nome: (i + 1) + '. ' + r.nome, valor: r.v.toLocaleString('pt-BR'), pct: Math.max((r.v / 960) * 100, 3) + '%' })),
+      rankValor: rankValorRaw.map((r, i) => ({ nome: (i + 1) + '. ' + r.nome, valor: BRL(r.v), pct: Math.max((r.v / 14940) * 100, 3) + '%' })),
+      porRevenda: [
+        { nome: 'Invest Soluções', qtd: '624 clientes' },
+        { nome: 'Nexa Sistemas', qtd: '341 clientes' },
+        { nome: 'Vetor Tecnologia', qtd: '148 clientes' },
+        { nome: 'Prisma Digital', qtd: '53 clientes' },
+        { nome: 'Venda direta', qtd: '312 clientes' },
+      ],
+      porCategoria: [{ nome: 'saas', qtd: '6 sistemas' }, { nome: 'crm', qtd: '1 sistema' }],
+
+      kpisFunil: [
+        { label: 'Taxa de conversão', valor: '18,2%' },
+        { label: 'Pipeline (aberto)', valor: BRL(5108, 0) },
+        { label: 'Ticket médio (fechados)', valor: BRL(274, 0) },
+        { label: 'Abertos / Perdidos', valor: '9 / 1' },
+      ],
+      colunas,
+
+      revendas: [
+        { nome: 'Invest Soluções', cnpj: '41.238.109/0001-77', contato: 'Ricardo Alves', clientes: '624', ...st(true, 'Ativa', 'Inativa') },
+        { nome: 'Nexa Sistemas', cnpj: '29.884.512/0001-40', contato: 'Juliana Prado', clientes: '341', ...st(true, 'Ativa', 'Inativa') },
+        { nome: 'Vetor Tecnologia', cnpj: '18.402.771/0001-05', contato: 'Marcos Tavares', clientes: '148', ...st(true, 'Ativa', 'Inativa') },
+        { nome: 'Prisma Digital', cnpj: '33.719.240/0001-62', contato: 'Ana Beatriz Lima', clientes: '53', ...st(true, 'Ativa', 'Inativa') },
+        { nome: 'Orbe Soft', cnpj: '—', contato: '—', clientes: '0', ...st(false, 'Ativa', 'Inativa') },
+      ],
+      clientes: [
+        { nome: 'Academia Corpo & Movimento', revenda: 'Invest Soluções', sistemas: 'AlfaGym', tipo: 'Contrato · R$ 249,00', ...st(true, 'Ativo', 'Inativo') },
+        { nome: 'Condomínio Bosque Real', revenda: 'Vetor Tecnologia', sistemas: 'AlfaControl', tipo: 'Contrato · R$ 299,00', ...st(true, 'Ativo', 'Inativo') },
+        { nome: 'Clínica Vitale', revenda: 'Nexa Sistemas', sistemas: 'AlfaMed', tipo: 'Contrato · R$ 900,00', ...st(true, 'Ativo', 'Inativo') },
+        { nome: 'Construtora Ápice', revenda: 'Venda direta', sistemas: 'Gestor, AlfaJornada', tipo: 'Contrato · R$ 1.240,00', ...st(true, 'Ativo', 'Inativo') },
+        { nome: 'Rede Fit Center', revenda: 'Invest Soluções', sistemas: 'AlfaGym', tipo: 'Contrato · R$ 499,00', ...st(true, 'Ativo', 'Inativo') },
+        { nome: 'Transportes Rondon', revenda: 'Venda direta', sistemas: 'AlfaJornada', tipo: 'Avulso', ...st(true, 'Ativo', 'Inativo') },
+        { nome: 'Grupo Saúde Mais', revenda: 'Nexa Sistemas', sistemas: 'AlfaMed', tipo: 'Contrato · R$ 1.800,00', ...st(true, 'Ativo', 'Inativo') },
+        { nome: 'Escola Nova Era', revenda: 'Venda direta', sistemas: '—', tipo: 'Avulso', ...st(false, 'Ativo', 'Inativo') },
+      ],
+      produtos,
+      faturamento: [
+        { revenda: 'Invest Soluções', total: BRL(8940) + '/mês', linhas: [
+          { sistema: 'AlfaGym', tier: 'Scale', clientes: '41', valor: BRL(499), tierColor: '#9db0b6' },
+          { sistema: 'AlfaHome', tier: 'Único', clientes: '284', valor: BRL(2840), tierColor: '#9db0b6' },
+          { sistema: 'AlfaJornada', tier: 'Único', clientes: '620', valor: BRL(1550), tierColor: '#9db0b6' },
+          { sistema: 'AlfaControl', tier: 'Growth', clientes: '18', valor: BRL(299), tierColor: '#9db0b6' },
+        ]},
+        { revenda: 'Nexa Sistemas', total: BRL(5480) + '/mês', linhas: [
+          { sistema: 'AlfaMed', tier: 'Growth', clientes: '740', valor: BRL(900), tierColor: '#9db0b6' },
+          { sistema: 'AlfaControl', tier: 'Scale', clientes: '24', valor: BRL(699), tierColor: '#9db0b6' },
+          { sistema: 'AlfaJornada', tier: 'Único', clientes: '340', valor: BRL(850), tierColor: '#9db0b6' },
+        ]},
+        { revenda: 'Vetor Tecnologia', total: BRL(3120) + '/mês', linhas: [
+          { sistema: 'AlfaControl', tier: 'Growth', clientes: '14', valor: BRL(299), tierColor: '#9db0b6' },
+          { sistema: 'AlfaGym', tier: 'Growth', clientes: '22', valor: BRL(249), tierColor: '#9db0b6' },
+          { sistema: 'AlfaSchool', tier: 'sem tier compatível — revisar', clientes: '6', valor: '—', tierColor: '#d03b3b' },
+        ]},
+      ],
+      kpisReceitas: [
+        { label: 'A receber', valor: BRL(22040), color: '#fab219' },
+        { label: 'Recebido (este mês)', valor: BRL(30390), color: '#0ca30c' },
+        { label: 'Atrasado', valor: BRL(7620), color: '#d03b3b' },
+      ],
+      receitas,
+      kpisDespesas: [
+        { label: 'A pagar', valor: BRL(26736), color: '#fab219' },
+        { label: 'Pago (este mês)', valor: BRL(12090), color: '#0ca30c' },
+        { label: 'Atrasado', valor: BRL(3960), color: '#d03b3b' },
+      ],
+      despesas,
+      contasFinanceiras: [
+        { nome: 'Bradesco PJ', tipo: 'conta corrente', saldo: BRL(94218.4), saldoColor: '#e6eef0', ...st(true, 'Ativa', 'Inativa') },
+        { nome: 'Nubank PJ', tipo: 'conta corrente', saldo: BRL(41880.12), saldoColor: '#e6eef0', ...st(true, 'Ativa', 'Inativa') },
+        { nome: 'Reserva CDB', tipo: 'aplicação', saldo: BRL(50000), saldoColor: '#e6eef0', ...st(true, 'Ativa', 'Inativa') },
+        { nome: 'Caixa interno', tipo: 'dinheiro', saldo: BRL(1314.16), saldoColor: '#e6eef0', ...st(true, 'Ativa', 'Inativa') },
+      ],
+      extrato: [
+        { data: '05/08/2026', descricao: 'Pagamento — Servidores Hetzner', tipo: 'Saída', valor: '- ' + BRL(2840), saldo: BRL(94218.4), tipoBg: 'rgba(208,59,59,0.15)', tipoColor: '#d03b3b' },
+        { data: '04/08/2026', descricao: 'Recebimento — Prisma Digital 07/2026', tipo: 'Entrada', valor: '+ ' + BRL(1890), saldo: BRL(97058.4), tipoBg: 'rgba(12,163,12,0.15)', tipoColor: '#0ca30c' },
+        { data: '02/08/2026', descricao: 'Pagamento — Google Workspace', tipo: 'Saída', valor: '- ' + BRL(486), saldo: BRL(95168.4), tipoBg: 'rgba(208,59,59,0.15)', tipoColor: '#d03b3b' },
+        { data: '01/08/2026', descricao: 'Recebimento — Invest Soluções 07/2026', tipo: 'Entrada', valor: '+ ' + BRL(8410), saldo: BRL(95654.4), tipoBg: 'rgba(12,163,12,0.15)', tipoColor: '#0ca30c' },
+        { data: '28/07/2026', descricao: 'Pagamento — Notebook Dell', tipo: 'Saída', valor: '- ' + BRL(7890), saldo: BRL(87244.4), tipoBg: 'rgba(208,59,59,0.15)', tipoColor: '#d03b3b' },
+        { data: '25/07/2026', descricao: 'Recebimento — Nexa Sistemas 07/2026', tipo: 'Entrada', valor: '+ ' + BRL(5210), saldo: BRL(95134.4), tipoBg: 'rgba(12,163,12,0.15)', tipoColor: '#0ca30c' },
+        { data: '20/07/2026', descricao: 'Pagamento — Aluguel escritório', tipo: 'Saída', valor: '- ' + BRL(4200), saldo: BRL(89924.4), tipoBg: 'rgba(208,59,59,0.15)', tipoColor: '#d03b3b' },
+        { data: '15/07/2026', descricao: 'Transferência recebida — Reserva CDB', tipo: 'Entrada', valor: '+ ' + BRL(20000), saldo: BRL(94124.4), tipoBg: 'rgba(12,163,12,0.15)', tipoColor: '#0ca30c' },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>

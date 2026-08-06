@@ -77,9 +77,8 @@ class ProfileTest extends TestCase
 
         $this->assertGuest();
 
-        // O modelo usa exclusão suave (deleted_at): o registro continua no
-        // banco, marcado como excluído. O teste vinha do esqueleto do Breeze,
-        // que assume exclusão definitiva.
+        // O modelo usa exclusão suave: o registro fica no banco marcado como
+        // excluído. O teste vinha do esqueleto do Breeze.
         $this->assertSoftDeleted($user);
         $this->assertNull(User::where('id', $user->id)->first());
     }

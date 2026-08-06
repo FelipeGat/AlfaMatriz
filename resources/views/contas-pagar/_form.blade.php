@@ -8,15 +8,6 @@
     </div>
 
     <div>
-        <x-input-label for="tipo" value="Tipo" />
-        <select id="tipo" name="tipo" class="mt-1 block w-full border-line rounded-control">
-            @foreach (['avulsa' => 'Avulsa', 'fixa' => 'Fixa/recorrente'] as $value => $label)
-                <option value="{{ $value }}" {{ old('tipo', $contaPagar->tipo ?? 'avulsa') === $value ? 'selected' : '' }}>{{ $label }}</option>
-            @endforeach
-        </select>
-    </div>
-
-    <div>
         <x-input-label for="valor" value="Valor (R$)" />
         <x-text-input id="valor" name="valor" type="number" step="0.01" min="0" class="mt-1 block w-full" value="{{ old('valor', $contaPagar->valor ?? '') }}" required />
         <x-input-error :messages="$errors->get('valor')" class="mt-2" />
@@ -24,7 +15,7 @@
 
     <div>
         <x-input-label for="centro_custo_id" value="Centro de custo" />
-        <select id="centro_custo_id" name="centro_custo_id" class="mt-1 block w-full border-line rounded-control">
+        <select id="centro_custo_id" name="centro_custo_id" class="mt-1 block w-full border-white/20 rounded-md shadow-sm">
             <option value="">—</option>
             @foreach ($centrosCusto as $centro)
                 <option value="{{ $centro->id }}" {{ (string) old('centro_custo_id', $contaPagar->centro_custo_id ?? '') === (string) $centro->id ? 'selected' : '' }}>{{ $centro->nome }}</option>
@@ -34,7 +25,7 @@
 
     <div>
         <x-input-label for="conta_id" value="Categoria (conta)" />
-        <select id="conta_id" name="conta_id" class="mt-1 block w-full border-line rounded-control">
+        <select id="conta_id" name="conta_id" class="mt-1 block w-full border-white/20 rounded-md shadow-sm">
             <option value="">—</option>
             @foreach ($contas as $conta)
                 <option value="{{ $conta->id }}" {{ (string) old('conta_id', $contaPagar->conta_id ?? '') === (string) $conta->id ? 'selected' : '' }}>
@@ -46,7 +37,7 @@
 
     <div>
         <x-input-label for="fornecedor_id" value="Fornecedor" />
-        <select id="fornecedor_id" name="fornecedor_id" class="mt-1 block w-full border-line rounded-control">
+        <select id="fornecedor_id" name="fornecedor_id" class="mt-1 block w-full border-white/20 rounded-md shadow-sm">
             <option value="">—</option>
             @foreach ($fornecedores as $fornecedor)
                 <option value="{{ $fornecedor->id }}" {{ (string) old('fornecedor_id', $contaPagar->fornecedor_id ?? '') === (string) $fornecedor->id ? 'selected' : '' }}>{{ $fornecedor->razao_social }}</option>
@@ -62,7 +53,7 @@
 
     <div>
         <x-input-label for="conta_financeira_id" value="Conta de pagamento" />
-        <select id="conta_financeira_id" name="conta_financeira_id" class="mt-1 block w-full border-line rounded-control">
+        <select id="conta_financeira_id" name="conta_financeira_id" class="mt-1 block w-full border-white/20 rounded-md shadow-sm">
             <option value="">—</option>
             @foreach ($contasFinanceiras as $conta)
                 <option value="{{ $conta->id }}" {{ (string) old('conta_financeira_id', $contaPagar->conta_financeira_id ?? '') === (string) $conta->id ? 'selected' : '' }}>{{ $conta->nome }}</option>
@@ -77,6 +68,6 @@
 </div>
 
 <div class="flex items-center justify-end gap-3 mt-6">
-    <a href="{{ route('contas-pagar.index') }}" class="text-sm text-dim hover:text-ink">Cancelar</a>
+    <a href="{{ route('contas-pagar.index') }}" class="text-sm text-ink-dim hover:text-ink">Cancelar</a>
     <x-primary-button>Salvar</x-primary-button>
 </div>

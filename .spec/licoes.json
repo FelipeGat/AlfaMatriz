@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "proximoId": 2,
+  "licoes": [
+    {
+      "id": "L-001",
+      "texto": "Não marque tarefa como concluída para destravar o plano: se a prova ainda não existe, a tarefa não está pronta e o audit acusa até o verify passar.",
+      "chave": "TASK_CONCLUIDA_SEM_PROVA::nao marque tarefa como concluida para destravar o plano se a prova ainda nao existe a tarefa nao esta pronta e o audit acusa ate o verify passar",
+      "sinal": "TASK_CONCLUIDA_SEM_PROVA",
+      "escopo": null,
+      "status": "candidata",
+      "recorrencia": 1,
+      "features": [
+        "redesign-visual"
+      ],
+      "evidencias": [
+        {
+          "fonte": "T-031",
+          "feature": "redesign-visual",
+          "quando": "2026-08-06T18:20:50.737Z",
+          "gitRev": "6f126aa"
+        }
+      ],
+      "penalidades": 0,
+      "criadaEm": "2026-08-06T18:20:50.737Z",
+      "ultimaVez": "2026-08-06T18:20:50.737Z"
+    }
+  ]
+}

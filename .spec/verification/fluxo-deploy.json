@@ -1,45 +1,45 @@
 {
   "feature": "fluxo-deploy",
-  "timestamp": "2026-08-05T23:10:15.282Z",
-  "gitRev": "3fe4d78",
+  "timestamp": "2026-08-06T20:11:08.166Z",
+  "gitRev": "029c038",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
-  "exitCode": 1,
-  "testsParsed": 64,
+  "exitCode": 0,
+  "testsParsed": 107,
   "results": {
-    "AC-032": {
+    "AC-063": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\InventarioPainelTest::test_inventario_traz_os_dados_de_acompanhamento @spec:AC-032",
+      "testName": "Tests\\Feature\\FluxoDeploy\\InventarioPainelTest::test_inventario_traz_os_dados_de_acompanhamento @spec:AC-063",
       "method": "tap"
     },
-    "AC-033": {
+    "AC-064": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\InventarioPainelTest::test_inventario_nao_da_alvo_para_acao_destrutiva @spec:AC-033",
+      "testName": "Tests\\Feature\\FluxoDeploy\\InventarioPainelTest::test_inventario_nao_da_alvo_para_acao_destrutiva @spec:AC-064",
       "method": "tap"
     },
-    "AC-034": {
+    "AC-065": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\ExecutorStagingTest::test_aplica_a_novidade_quando_a_suite_passa @spec:AC-034",
+      "testName": "Tests\\Feature\\FluxoDeploy\\ExecutorStagingTest::test_aplica_a_novidade_quando_a_suite_passa @spec:AC-065",
       "method": "tap"
     },
-    "AC-035": {
+    "AC-066": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\ExecutorStagingTest::test_portao_segura_o_deploy_quando_o_teste_falha @spec:AC-035",
+      "testName": "Tests\\Feature\\FluxoDeploy\\ExecutorStagingTest::test_portao_segura_o_deploy_quando_o_teste_falha @spec:AC-066",
       "method": "tap"
     },
-    "AC-036": {
+    "AC-067": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\VigiaTagTest::test_aplica_a_tag_nova_e_ignora_alteracao_sem_tag @spec:AC-036",
+      "testName": "Tests\\Feature\\FluxoDeploy\\VigiaTagTest::test_aplica_a_tag_nova_e_ignora_alteracao_sem_tag @spec:AC-067",
       "method": "tap"
     },
-    "AC-037": {
+    "AC-068": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\VigiaTagTest::test_faz_backup_antes_de_migrar @spec:AC-037",
+      "testName": "Tests\\Feature\\FluxoDeploy\\DeploySemJanelaDeErroTest::test_nenhum_script_apaga_a_configuracao_antes_de_reconstruir @spec:AC-068",
       "method": "tap"
     },
-    "AC-038": {
+    "AC-069": {
       "status": "pass",
-      "testName": "Tests\\Feature\\FluxoDeploy\\CopiaEmbaralhadaTest::test_troca_dado_pessoal_e_preserva_os_valores @spec:AC-038",
+      "testName": "Tests\\Feature\\FluxoDeploy\\CopiaEmbaralhadaTest::test_troca_dado_pessoal_e_preserva_os_valores @spec:AC-069",
       "method": "tap"
     }
   },

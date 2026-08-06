@@ -60,12 +60,12 @@
      }">
 
     {{-- Dados básicos --}}
-    <div class="mb-8">
-        <h3 class="text-sm font-semibold text-dim uppercase tracking-wide mb-4">Dados básicos</h3>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Dados básicos</h3>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
                 <x-input-label for="revenda_id" value="Revenda" />
-                <select id="revenda_id" name="revenda_id" class="mt-1 block w-full border-line rounded-control">
+                <select id="revenda_id" name="revenda_id" class="mt-1 block w-full border-white/10 rounded-md shadow-sm">
                     <option value="">— Venda direta da Alfa —</option>
                     @foreach ($revendas as $revenda)
                         <option value="{{ $revenda->id }}" {{ (string) old('revenda_id', $cliente->revenda_id ?? '') === (string) $revenda->id ? 'selected' : '' }}>
@@ -77,7 +77,7 @@
 
             <div>
                 <x-input-label for="tipo_pessoa" value="Tipo de pessoa" />
-                <select id="tipo_pessoa" name="tipo_pessoa" x-model="tipoPessoa" class="mt-1 block w-full border-line rounded-control" required>
+                <select id="tipo_pessoa" name="tipo_pessoa" x-model="tipoPessoa" class="mt-1 block w-full border-white/10 rounded-md shadow-sm" required>
                     <option value="PJ">Pessoa Jurídica</option>
                     <option value="PF">Pessoa Física</option>
                 </select>
@@ -88,13 +88,13 @@
                 <div class="mt-1 flex gap-2">
                     <x-text-input x-ref="cpfCnpj" id="cpf_cnpj" name="cpf_cnpj" type="text" class="block w-full" value="{{ old('cpf_cnpj', $cliente->cpf_cnpj ?? '') }}" />
                     <button type="button" x-show="tipoPessoa === 'PJ'" @click="buscarCnpj()" :disabled="buscandoCnpj"
-                        class="shrink-0 inline-flex items-center px-3 rounded-control border border-line bg-raised text-dim hover:text-ink hover:border-brand/30 text-xs disabled:opacity-50"
+                        class="shrink-0 inline-flex items-center px-3 rounded-md border border-white/10 bg-panel-raised text-ink-dim hover:text-brand-dim hover:border-brand/30 text-xs disabled:opacity-50"
                         title="Buscar dados na Receita Federal">
                         <span x-show="!buscandoCnpj">Buscar CNPJ</span>
                         <span x-show="buscandoCnpj">Buscando...</span>
                     </button>
                 </div>
-                <p class="mt-1 text-xs text-bad" x-show="erroCnpj" x-text="erroCnpj"></p>
+                <p class="mt-1 text-xs text-status-critical" x-show="erroCnpj" x-text="erroCnpj"></p>
                 <x-input-error :messages="$errors->get('cpf_cnpj')" class="mt-2" />
             </div>
 
@@ -122,70 +122,70 @@
 
             <div class="flex items-center mt-6">
                 <label class="inline-flex items-center">
-                    <input type="checkbox" name="ativo" value="1" class="rounded border-line text-brand" {{ old('ativo', $cliente->ativo ?? true) ? 'checked' : '' }}>
-                    <span class="ms-2 text-sm text-dim">Cliente ativo</span>
+                    <input type="checkbox" name="ativo" value="1" class="rounded border-white/20 text-brand shadow-sm" {{ old('ativo', $cliente->ativo ?? true) ? 'checked' : '' }}>
+                    <span class="ms-2 text-sm text-ink-dim">Cliente ativo</span>
                 </label>
             </div>
         </div>
     </div>
 
     {{-- Contatos --}}
-    <div class="mb-8">
-        <h3 class="text-sm font-semibold text-dim uppercase tracking-wide mb-4">Contatos</h3>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Contatos</h3>
 
         <div class="mb-4">
             <x-input-label value="E-mails" />
             <template x-for="(item, i) in emails" :key="i">
                 <div class="flex items-center gap-3 mt-2">
-                    <input type="email" :name="`emails[${i}][email]`" x-model="item.email" placeholder="email@exemplo.com" class="flex-1 border-line rounded-control text-sm bg-raised text-ink">
-                    <label class="inline-flex items-center text-xs text-mute gap-1">
+                    <input type="email" :name="`emails[${i}][email]`" x-model="item.email" placeholder="email@exemplo.com" class="flex-1 border-white/10 rounded-md shadow-sm text-sm bg-panel-raised text-ink">
+                    <label class="inline-flex items-center text-xs text-ink-mute gap-1">
                         <input type="radio" :name="'emails_principal'" :checked="item.principal" @change="emails.forEach((e,idx) => e.principal = idx === i)" class="text-brand">
                         <input type="hidden" :name="`emails[${i}][principal]`" :value="item.principal ? 1 : 0">
                         Principal
                     </label>
-                    <label class="inline-flex items-center text-xs text-mute gap-1">
+                    <label class="inline-flex items-center text-xs text-ink-mute gap-1">
                         <input type="checkbox" :name="`emails[${i}][financeiro]`" x-model="item.financeiro" value="1" class="rounded text-brand">
                         Financeiro
                     </label>
-                    <button type="button" @click="emails.splice(i, 1)" class="text-bad text-xs">Remover</button>
+                    <button type="button" @click="emails.splice(i, 1)" class="text-status-critical text-xs">Remover</button>
                 </div>
             </template>
-            <button type="button" @click="emails.push({email: '', principal: emails.length === 0, financeiro: false})" class="mt-2 text-xs text-brand hover:text-ink">+ Adicionar e-mail</button>
+            <button type="button" @click="emails.push({email: '', principal: emails.length === 0, financeiro: false})" class="mt-2 text-xs text-brand hover:text-brand-bright">+ Adicionar e-mail</button>
         </div>
 
         <div>
             <x-input-label value="Telefones" />
             <template x-for="(item, i) in telefones" :key="i">
                 <div class="flex items-center gap-3 mt-2">
-                    <input type="text" :name="`telefones[${i}][telefone]`" x-model="item.telefone" placeholder="(27) 99999-9999" class="flex-1 border-line rounded-control text-sm bg-raised text-ink">
-                    <label class="inline-flex items-center text-xs text-mute gap-1">
+                    <input type="text" :name="`telefones[${i}][telefone]`" x-model="item.telefone" placeholder="(27) 99999-9999" class="flex-1 border-white/10 rounded-md shadow-sm text-sm bg-panel-raised text-ink">
+                    <label class="inline-flex items-center text-xs text-ink-mute gap-1">
                         <input type="radio" :name="'telefones_principal'" :checked="item.principal" @change="telefones.forEach((t,idx) => t.principal = idx === i)" class="text-brand">
                         <input type="hidden" :name="`telefones[${i}][principal]`" :value="item.principal ? 1 : 0">
                         Principal
                     </label>
-                    <button type="button" @click="telefones.splice(i, 1)" class="text-bad text-xs">Remover</button>
+                    <button type="button" @click="telefones.splice(i, 1)" class="text-status-critical text-xs">Remover</button>
                 </div>
             </template>
-            <button type="button" @click="telefones.push({telefone: '', principal: telefones.length === 0})" class="mt-2 text-xs text-brand hover:text-ink">+ Adicionar telefone</button>
+            <button type="button" @click="telefones.push({telefone: '', principal: telefones.length === 0})" class="mt-2 text-xs text-brand hover:text-brand-bright">+ Adicionar telefone</button>
         </div>
     </div>
 
     {{-- Endereço --}}
-    <div class="mb-8">
-        <h3 class="text-sm font-semibold text-dim uppercase tracking-wide mb-4">Endereço</h3>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Endereço</h3>
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
                 <x-input-label for="cep" value="CEP" />
                 <div class="mt-1 flex gap-2">
                     <x-text-input x-ref="cep" id="cep" name="cep" type="text" class="block w-full" value="{{ old('cep', $cliente->cep ?? '') }}" />
                     <button type="button" @click="buscarCep()" :disabled="buscandoCep"
-                        class="shrink-0 inline-flex items-center px-3 rounded-control border border-line bg-raised text-dim hover:text-ink hover:border-brand/30 text-xs disabled:opacity-50"
+                        class="shrink-0 inline-flex items-center px-3 rounded-md border border-white/10 bg-panel-raised text-ink-dim hover:text-brand-dim hover:border-brand/30 text-xs disabled:opacity-50"
                         title="Buscar endereço pelo CEP">
                         <span x-show="!buscandoCep">Buscar CEP</span>
                         <span x-show="buscandoCep">Buscando...</span>
                     </button>
                 </div>
-                <p class="mt-1 text-xs text-bad" x-show="erroCep" x-text="erroCep"></p>
+                <p class="mt-1 text-xs text-status-critical" x-show="erroCep" x-text="erroCep"></p>
             </div>
             <div class="sm:col-span-2">
                 <x-input-label for="logradouro" value="Logradouro" />
@@ -205,7 +205,7 @@
             </div>
             <div>
                 <x-input-label for="uf" value="UF" />
-                <input x-ref="uf" id="uf" name="uf" type="text" maxlength="2" class="mt-1 block w-full uppercase border-line rounded-control bg-raised text-ink" value="{{ old('uf', $cliente->uf ?? '') }}">
+                <input x-ref="uf" id="uf" name="uf" type="text" maxlength="2" class="mt-1 block w-full uppercase border-white/10 rounded-md shadow-sm bg-panel-raised text-ink" value="{{ old('uf', $cliente->uf ?? '') }}">
             </div>
             <div>
                 <x-input-label for="complemento" value="Complemento" />
@@ -215,12 +215,12 @@
     </div>
 
     {{-- Informações de contrato --}}
-    <div class="mb-8">
-        <h3 class="text-sm font-semibold text-dim uppercase tracking-wide mb-4">Informações de contrato</h3>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Informações de contrato</h3>
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
                 <x-input-label for="tipo_cliente" value="Tipo de cliente" />
-                <select id="tipo_cliente" name="tipo_cliente" x-model="tipoCliente" class="mt-1 block w-full border-line rounded-control">
+                <select id="tipo_cliente" name="tipo_cliente" x-model="tipoCliente" class="mt-1 block w-full border-white/10 rounded-md shadow-sm">
                     <option value="AVULSO">Avulso</option>
                     <option value="CONTRATO">Contrato mensal</option>
                 </select>
@@ -244,7 +244,7 @@
 
             <div>
                 <x-input-label for="forma_pagamento_recebimento" value="Forma de recebimento" />
-                <select id="forma_pagamento_recebimento" name="forma_pagamento_recebimento" class="mt-1 block w-full border-line rounded-control">
+                <select id="forma_pagamento_recebimento" name="forma_pagamento_recebimento" class="mt-1 block w-full border-white/10 rounded-md shadow-sm">
                     <option value="faturado" {{ old('forma_pagamento_recebimento', $cliente->forma_pagamento_recebimento ?? 'faturado') === 'faturado' ? 'selected' : '' }}>Faturado (PIX/transferência)</option>
                     <option value="boleto" {{ old('forma_pagamento_recebimento', $cliente->forma_pagamento_recebimento ?? '') === 'boleto' ? 'selected' : '' }}>Boleto</option>
                 </select>
@@ -252,16 +252,16 @@
 
             <div class="flex items-center mt-6">
                 <label class="inline-flex items-center">
-                    <input type="checkbox" name="nota_fiscal" value="1" class="rounded border-line text-brand" {{ old('nota_fiscal', $cliente->nota_fiscal ?? false) ? 'checked' : '' }}>
-                    <span class="ms-2 text-sm text-dim">Emite nota fiscal</span>
+                    <input type="checkbox" name="nota_fiscal" value="1" class="rounded border-white/20 text-brand shadow-sm" {{ old('nota_fiscal', $cliente->nota_fiscal ?? false) ? 'checked' : '' }}>
+                    <span class="ms-2 text-sm text-ink-dim">Emite nota fiscal</span>
                 </label>
             </div>
         </div>
     </div>
 
     {{-- Inscrições --}}
-    <div class="mb-8">
-        <h3 class="text-sm font-semibold text-dim uppercase tracking-wide mb-4">Inscrições</h3>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Inscrições</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <x-input-label for="inscricao_estadual" value="Inscrição estadual" />
@@ -275,30 +275,38 @@
     </div>
 
     {{-- Sistemas --}}
-    <div class="mb-8">
-        <h3 class="text-sm font-semibold text-dim uppercase tracking-wide mb-4">Sistemas utilizados</h3>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Sistemas utilizados</h3>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
             @php
                 $sistemasAtivosIds = old('sistemas', ($cliente->sistemas ?? collect())->pluck('id')->all());
             @endphp
             @foreach ($sistemas as $sistema)
                 <label class="inline-flex items-center">
-                    <input type="checkbox" name="sistemas[]" value="{{ $sistema->id }}" class="rounded border-line text-brand"
+                    <input type="checkbox" name="sistemas[]" value="{{ $sistema->id }}" class="rounded border-white/20 text-brand shadow-sm"
                         {{ in_array($sistema->id, $sistemasAtivosIds) ? 'checked' : '' }}>
-                    <span class="ms-2 text-sm text-dim">{{ $sistema->nome }}</span>
+                    <span class="ms-2 text-sm text-ink-dim">{{ $sistema->nome }}</span>
                 </label>
             @endforeach
         </div>
     </div>
 
     {{-- Observações --}}
-    <div class="mb-8">
-        <x-input-label for="observacoes" value="Observações" />
-        <textarea id="observacoes" name="observacoes" rows="3" class="mt-1 block w-full border-line rounded-control bg-raised text-ink">{{ old('observacoes', $cliente->observacoes ?? '') }}</textarea>
+    <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+        <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Observações</h3>
+        <textarea id="observacoes" name="observacoes" rows="3" class="block w-full">{{ old('observacoes', $cliente->observacoes ?? '') }}</textarea>
     </div>
 
-    <div class="flex items-center justify-end gap-3">
-        <a href="{{ route('clientes.index') }}" class="text-sm text-dim hover:text-ink">Cancelar</a>
-        <x-primary-button>Salvar</x-primary-button>
+    <div class="flex items-center justify-end gap-2">
+        <a href="{{ route('clientes.index') }}"
+           class="h-9 px-3.5 inline-flex items-center rounded-control border border-btn-line
+                  text-[12.5px] font-semibold text-ink-dim hover:text-brand hover:border-brand transition">
+            Cancelar
+        </a>
+        <button type="submit"
+                class="h-9 px-3.5 inline-flex items-center rounded-control bg-brand text-on-brand
+                       text-[12.5px] font-semibold hover:bg-brand-bright transition">
+            Salvar cliente
+        </button>
     </div>
 </div>

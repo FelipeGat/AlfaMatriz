@@ -1,118 +1,99 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center gap-2 text-[14px]">
-            <span class="text-mute">Painéis</span>
-            <span class="text-line">/</span>
-            <span class="font-medium text-ink">Financeiro</span>
-        </div>
-    </x-slot>
+    <x-slot name="titulo">Painel Financeiro</x-slot>
+    <x-slot name="contexto">competência {{ now()->format('m/Y') }}</x-slot>
 
-    <div class="space-y-[18px]">
-
-        {{-- auto-fit/minmax: os cards reflowam sozinhos e o valor tem largura
-             mínima garantida — a combinação que impede a quebra de linha. --}}
-        <div class="grid gap-[14px]" style="grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));">
-            <x-kpi-card
-                label="MRR do mês"
-                :value="'R$ ' . number_format($mrr, 2, ',', '.')"
-                apoio="competência {{ now()->format('m/Y') }}" />
-
-            <x-kpi-card
-                label="Saldo em caixa"
-                :value="'R$ ' . number_format($saldoTotal, 2, ',', '.')"
-                :tom="$saldoTotal >= 0 ? 'ink' : 'bad'"
-                apoio="contas ativas" />
-
-            <x-kpi-card
-                label="Entradas do mês"
-                :value="'R$ ' . number_format($entradasMes, 2, ',', '.')"
-                tom="good"
-                :proporcao="$entradasMes + $saidasMes > 0 ? ($entradasMes / ($entradasMes + $saidasMes)) * 100 : 0"
-                apoio="recebido em {{ now()->format('m/Y') }}" />
-
-            <x-kpi-card
-                label="Saídas do mês"
-                :value="'R$ ' . number_format($saidasMes, 2, ',', '.')"
-                tom="warn"
-                :proporcao="$entradasMes + $saidasMes > 0 ? ($saidasMes / ($entradasMes + $saidasMes)) * 100 : 0"
-                apoio="pago em {{ now()->format('m/Y') }}" />
+    <div class="space-y-4">
+        {{-- Os cinco números do mês --}}
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+            <x-kpi-card rotulo="Receita recorrente" :valor="'R$ '.number_format($mrr, 2, ',', '.')"
+                        acento="accent" icone="trending-up" />
+            <x-kpi-card rotulo="Projeção anual" :valor="'R$ '.number_format($arr, 2, ',', '.')"
+                        acento="brand" icone="trending-up" />
+            <x-kpi-card rotulo="Saldo em caixa" :valor="'R$ '.number_format($saldoTotal, 2, ',', '.')"
+                        :acento="$saldoTotal >= 0 ? 'brand' : 'crit'" icone="banknotes" />
+            <x-kpi-card rotulo="Entradas do mês" :valor="'R$ '.number_format($entradasMes, 2, ',', '.')"
+                        acento="good" icone="arrow-down-circle" />
+            <x-kpi-card rotulo="Saídas do mês" :valor="'R$ '.number_format($saidasMes, 2, ',', '.')"
+                        acento="chart-out" icone="arrow-up-circle" />
         </div>
 
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <x-painel-card titulo="Entradas × Saídas — últimos 6 meses" class="lg:col-span-2 min-w-0">
+        {{-- A projeção anual é conta de padeiro, e a tela precisa dizer isso. --}}
+        <p class="text-[11.5px] text-ink-faint">
+            Projeção anual = receita recorrente × 12 (projeção simples: não considera sazonalidade nem contratos anuais reais).
+        </p>
+
+        <div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+            <x-painel titulo="Entradas x saídas" sub="últimos 6 meses" style="grid-column: span 1">
                 <x-bar-chart :data="$historico" />
-            </x-painel-card>
+            </x-painel>
 
-            <div class="space-y-4">
-                <x-summary-card label="Revendas ativas" :value="$totalRevendas" contexto="parceiras da Alfa" />
-                <x-summary-card label="Clientes ativos" :value="$totalClientes" contexto="base total" />
-                <x-summary-card label="Clientes diretos" :value="$clientesDiretos" contexto="fora de revenda" />
-
-                {{-- Destaque neutro: na direção nova, chamar atenção é papel
-                     da superfície, não da cor. --}}
-                <div class="rounded-summary border border-line bg-raised px-[18px] py-4">
-                    <p class="font-mono text-[10px] font-medium uppercase tracking-[.08em] text-mute">Fechamento do mês</p>
-                    <p class="mt-1.5 text-[12.5px] text-dim">Gere as cobranças das revendas da competência {{ now()->format('m/Y') }}.</p>
-                    <a href="{{ route('faturamento.index') }}"
-                       class="mt-3 inline-flex items-center rounded-control bg-ink px-3 py-1.5 text-[12.5px] font-medium text-bg transition-opacity hover:opacity-90">
-                        Ir para Faturamento
-                    </a>
-                </div>
-            </div>
+            <x-painel titulo="Base instalada">
+                <dl class="divide-y divide-rule">
+                    @foreach ([
+                        ['Revendas ativas', $totalRevendas],
+                        ['Clientes ativos', $totalClientes],
+                        ['Clientes diretos', $clientesDiretos],
+                    ] as [$rotulo, $valor])
+                        <div class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                            <dt class="text-[13px] text-ink-dim">{{ $rotulo }}</dt>
+                            <dd class="font-mono text-[13.5px] text-ink tabular">{{ number_format($valor, 0, ',', '.') }}</dd>
+                        </div>
+                    @endforeach
+                </dl>
+            </x-painel>
         </div>
 
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <x-painel-card titulo="Receitas pendentes">
-                <x-slot name="acao">
-                    <a href="{{ route('cobrancas.index') }}" class="text-dim transition-colors hover:text-ink">Ver todas</a>
+        {{-- O que está em aberto dos dois lados --}}
+        <div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+            <x-painel titulo="Receitas pendentes" solto>
+                <x-slot name="acoes">
+                    <a href="{{ route('cobrancas.index', ['status' => 'pendente']) }}"
+                       class="font-mono text-[10.5px] uppercase tracking-caps text-brand-text hover:underline">Ver todas</a>
                 </x-slot>
 
-                <ul class="divide-y divide-line">
-                    @forelse ($receitasPendentes as $receita)
-                        @php $vencida = $receita->data_vencimento->isPast(); @endphp
-                        <li class="flex items-center justify-between gap-3 py-3">
-                            <div class="min-w-0">
-                                <p class="truncate text-[14px] text-ink">{{ $receita->descricao }}</p>
-                                <p class="text-[11.5px] {{ $vencida ? 'text-bad' : 'text-mute' }}">
-                                    {{ $receita->revenda->nome ?? $receita->cliente->nome ?? '—' }} ·
-                                    {{ $vencida ? 'venceu' : 'vence' }} {{ $receita->data_vencimento->format('d/m/Y') }}
-                                </p>
-                            </div>
-                            <span class="valor shrink-0 text-[12.5px] font-medium text-ink">
-                                R$ {{ number_format($receita->valor, 2, ',', '.') }}
+                @forelse ($receitasPendentes as $receita)
+                    <a href="{{ route('cobrancas.index') }}"
+                       class="flex items-center gap-3 px-4 py-3 border-b border-rule last:border-0 hover:bg-chip transition">
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-[13px] text-ink truncate">{{ $receita->descricao }}</span>
+                            <span class="block font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
+                                {{ $receita->revenda?->nome ?? $receita->cliente?->nome_exibicao ?? 'sem origem' }}
+                                · vence {{ \Illuminate\Support\Carbon::parse($receita->data_vencimento)->format('d/m') }}
                             </span>
-                        </li>
-                    @empty
-                        <li class="py-[34px] text-center text-[14px] text-mute">Nenhuma receita pendente.</li>
-                    @endforelse
-                </ul>
-            </x-painel-card>
+                        </span>
+                        <span class="shrink-0 font-mono text-[13px] text-ink whitespace-nowrap">
+                            R$ {{ number_format($receita->valor, 2, ',', '.') }}
+                        </span>
+                    </a>
+                @empty
+                    <p class="px-4 py-6 text-[13px] text-ink-mute">Nenhuma receita em aberto.</p>
+                @endforelse
+            </x-painel>
 
-            <x-painel-card titulo="Despesas em aberto">
-                <x-slot name="acao">
-                    <a href="{{ route('contas-pagar.index') }}" class="text-dim transition-colors hover:text-ink">Ver todas</a>
+            <x-painel titulo="Despesas em aberto" solto>
+                <x-slot name="acoes">
+                    <a href="{{ route('contas-pagar.index', ['status' => 'em_aberto']) }}"
+                       class="font-mono text-[10.5px] uppercase tracking-caps text-brand-text hover:underline">Ver todas</a>
                 </x-slot>
 
-                <ul class="divide-y divide-line">
-                    @forelse ($despesasPendentes as $despesa)
-                        @php $vencida = $despesa->data_vencimento->isPast(); @endphp
-                        <li class="flex items-center justify-between gap-3 py-3">
-                            <div class="min-w-0">
-                                <p class="truncate text-[14px] text-ink">{{ $despesa->descricao }}</p>
-                                <p class="text-[11.5px] {{ $vencida ? 'text-bad' : 'text-mute' }}">
-                                    {{ $despesa->fornecedor->razao_social ?? '—' }} ·
-                                    {{ $vencida ? 'venceu' : 'vence' }} {{ $despesa->data_vencimento->format('d/m/Y') }}
-                                </p>
-                            </div>
-                            <span class="valor shrink-0 text-[12.5px] font-medium text-ink">
-                                R$ {{ number_format($despesa->valor, 2, ',', '.') }}
+                @forelse ($despesasPendentes as $despesa)
+                    <a href="{{ route('contas-pagar.index') }}"
+                       class="flex items-center gap-3 px-4 py-3 border-b border-rule last:border-0 hover:bg-chip transition">
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-[13px] text-ink truncate">{{ $despesa->descricao }}</span>
+                            <span class="block font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
+                                {{ $despesa->fornecedor?->nome ?? 'sem fornecedor' }}
+                                · vence {{ \Illuminate\Support\Carbon::parse($despesa->data_vencimento)->format('d/m') }}
                             </span>
-                        </li>
-                    @empty
-                        <li class="py-[34px] text-center text-[14px] text-mute">Nenhuma despesa em aberto.</li>
-                    @endforelse
-                </ul>
-            </x-painel-card>
+                        </span>
+                        <span class="shrink-0 font-mono text-[13px] text-ink whitespace-nowrap">
+                            R$ {{ number_format($despesa->valor, 2, ',', '.') }}
+                        </span>
+                    </a>
+                @empty
+                    <p class="px-4 py-6 text-[13px] text-ink-mute">Nenhuma despesa em aberto.</p>
+                @endforelse
+            </x-painel>
         </div>
     </div>
 </x-app-layout>

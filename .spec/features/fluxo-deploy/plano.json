@@ -16,7 +16,7 @@
   "faixas": [],
   "sequenciais": [
     {
-      "id": "T-031",
+      "id": "T-046",
       "titulo": "Cadastro do AlfaMatriz no inventário do painel",
       "modelo": "claude-sonnet-5",
       "esforco": "medium",
@@ -25,13 +25,13 @@
         "tests/Feature/FluxoDeploy/InventarioPainelTest.php"
       ],
       "refs": [
-        "US-016",
-        "AC-032",
-        "AC-033"
+        "US-028",
+        "AC-063",
+        "AC-064"
       ]
     },
     {
-      "id": "T-032",
+      "id": "T-047",
       "titulo": "Executor do staging com portão de testes",
       "modelo": "claude-sonnet-5",
       "esforco": "medium",
@@ -40,13 +40,13 @@
         "tests/Feature/FluxoDeploy/ExecutorStagingTest.php"
       ],
       "refs": [
-        "US-017",
-        "AC-034",
-        "AC-035"
+        "US-029",
+        "AC-065",
+        "AC-066"
       ]
     },
     {
-      "id": "T-033",
+      "id": "T-048",
       "titulo": "Vigia de tag para produção",
       "modelo": "claude-sonnet-5",
       "esforco": "medium",
@@ -55,13 +55,13 @@
         "tests/Feature/FluxoDeploy/VigiaTagTest.php"
       ],
       "refs": [
-        "US-018",
-        "AC-036",
-        "AC-037"
+        "US-030",
+        "AC-067",
+        "AC-068"
       ]
     },
     {
-      "id": "T-034",
+      "id": "T-049",
       "titulo": "Provisionar o container de staging",
       "modelo": "claude-sonnet-5",
       "esforco": "medium",
@@ -70,12 +70,12 @@
         "tests/Feature/FluxoDeploy/ProvisionarStagingTest.php"
       ],
       "refs": [
-        "US-017",
-        "AC-034"
+        "US-029",
+        "AC-065"
       ]
     },
     {
-      "id": "T-035",
+      "id": "T-050",
       "titulo": "Verificação automática no GitHub",
       "modelo": "claude-sonnet-5",
       "esforco": "medium",
@@ -84,12 +84,12 @@
         "tests/Feature/FluxoDeploy/VerificacaoGithubTest.php"
       ],
       "refs": [
-        "US-017",
-        "AC-035"
+        "US-029",
+        "AC-066"
       ]
     },
     {
-      "id": "T-036",
+      "id": "T-051",
       "titulo": "Cópia embaralhada da produção para o staging",
       "modelo": "claude-sonnet-5",
       "esforco": "medium",
@@ -98,12 +98,12 @@
         "tests/Feature/FluxoDeploy/CopiaEmbaralhadaTest.php"
       ],
       "refs": [
-        "US-019",
-        "AC-038"
+        "US-031",
+        "AC-069"
       ]
     },
     {
-      "id": "T-037",
+      "id": "T-052",
       "titulo": "Instalar e conferir no servidor",
       "modelo": "claude-sonnet-5",
       "esforco": "medium",
@@ -111,12 +111,12 @@
         "README.md"
       ],
       "refs": [
-        "US-016",
-        "US-017",
-        "US-018",
-        "AC-032",
-        "AC-034",
-        "AC-036"
+        "US-028",
+        "US-029",
+        "US-030",
+        "AC-063",
+        "AC-065",
+        "AC-067"
       ]
     }
   ],

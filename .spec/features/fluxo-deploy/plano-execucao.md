@@ -13,13 +13,13 @@
 
 | tarefa | título | modelo | esforço |
 |---|---|---|---|
-| T-031 | Cadastro do AlfaMatriz no inventário do painel | `claude-sonnet-5` | medium |
-| T-032 | Executor do staging com portão de testes | `claude-sonnet-5` | medium |
-| T-033 | Vigia de tag para produção | `claude-sonnet-5` | medium |
-| T-034 | Provisionar o container de staging | `claude-sonnet-5` | medium |
-| T-035 | Verificação automática no GitHub | `claude-sonnet-5` | medium |
-| T-036 | Cópia embaralhada da produção para o staging | `claude-sonnet-5` | medium |
-| T-037 | Instalar e conferir no servidor | `claude-sonnet-5` | medium |
+| T-046 | Cadastro do AlfaMatriz no inventário do painel | `claude-sonnet-5` | medium |
+| T-047 | Executor do staging com portão de testes | `claude-sonnet-5` | medium |
+| T-048 | Vigia de tag para produção | `claude-sonnet-5` | medium |
+| T-049 | Provisionar o container de staging | `claude-sonnet-5` | medium |
+| T-050 | Verificação automática no GitHub | `claude-sonnet-5` | medium |
+| T-051 | Cópia embaralhada da produção para o staging | `claude-sonnet-5` | medium |
+| T-052 | Instalar e conferir no servidor | `claude-sonnet-5` | medium |
 
 ## Gestão de branches e commits
 

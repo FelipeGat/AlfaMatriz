@@ -14,7 +14,7 @@ class IndicadoresCoerentesTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * @spec:AC-044 O mesmo indicador mostra o mesmo número em telas
+     * @spec:AC-062 O mesmo indicador mostra o mesmo número em telas
      * diferentes. Antes, cada painel contava por conta própria — e é assim
      * que os números começam a divergir, deixando quem usa sem saber qual
      * tela está certa.
@@ -54,7 +54,7 @@ class IndicadoresCoerentesTest extends TestCase
     }
 
     /**
-     * @spec:AC-044 O MRR de atacado aparece no painel Comercial e na tela de
+     * @spec:AC-062 O MRR de atacado aparece no painel Comercial e na tela de
      * Sistemas. Os dois saem do mesmo cálculo — antes cada tela somava por
      * conta própria, que é como os números começam a discordar.
      */
@@ -78,7 +78,7 @@ class IndicadoresCoerentesTest extends TestCase
     }
 
     /**
-     * @spec:AC-044 Mudar o critério num lugar só não pode fazer as telas
+     * @spec:AC-062 Mudar o critério num lugar só não pode fazer as telas
      * divergirem: os painéis consultam o serviço, não contam por conta
      * própria. Substituindo o serviço, as duas telas mudam juntas.
      */

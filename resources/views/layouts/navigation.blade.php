@@ -1,103 +1,166 @@
 @php
+    /**
+     * O menu é ESTRUTURA, não superfície: faixa de borda a borda, sem raio,
+     * marcada por régua e barra. Por isso ele não usa os tokens de card.
+     *
+     * `pattern` aceita lista para que a tela filha mantenha o pai aceso — o
+     * formulário de cliente acende Clientes, o extrato acende Caixa.
+     *
+     * O estado recolhido vem da classe `rail-fechado` no <html>, posta antes
+     * da primeira pintura. Nada aqui depende do Alpine para se posicionar:
+     * se dependesse, a marca nasceria num lugar e saltaria para outro.
+     */
     $grupos = [
         'Painéis' => [
+            ['route' => 'centro-controle', 'pattern' => 'centro-controle', 'label' => 'Centro de Controle', 'icon' => 'bolt'],
             ['route' => 'dashboard', 'pattern' => 'dashboard', 'label' => 'Financeiro', 'icon' => 'trending-up'],
             ['route' => 'comercial', 'pattern' => 'comercial', 'label' => 'Comercial', 'icon' => 'clipboard'],
         ],
         'Comercial' => [
+            ['route' => 'leads.index', 'pattern' => 'leads.*', 'label' => 'Funil de Vendas', 'icon' => 'view-grid'],
             ['route' => 'revendas.index', 'pattern' => 'revendas.*', 'label' => 'Revendas', 'icon' => 'building'],
             ['route' => 'clientes.index', 'pattern' => 'clientes.*', 'label' => 'Clientes', 'icon' => 'users'],
-            ['route' => 'sistemas.index', 'pattern' => 'sistemas.*', 'label' => 'Sistemas', 'icon' => 'cube'],
+            ['route' => 'produtos.index', 'pattern' => ['produtos.*', 'sistemas.*', 'precos.*'], 'label' => 'Produtos', 'icon' => 'cube-outline'],
             ['route' => 'faturamento.index', 'pattern' => 'faturamento.*', 'label' => 'Faturamento', 'icon' => 'repeat'],
         ],
         'Financeiro' => [
             ['route' => 'cobrancas.index', 'pattern' => 'cobrancas.*', 'label' => 'Receitas', 'icon' => 'trending-up'],
-            ['route' => 'contas-pagar.index', 'pattern' => 'contas-pagar.*', 'label' => 'Despesas', 'icon' => 'trending-down'],
-            ['route' => 'contas-fixas-pagar.index', 'pattern' => 'contas-fixas-pagar.*', 'label' => 'Despesas Fixas', 'icon' => 'repeat'],
+            ['route' => 'contas-pagar.index', 'pattern' => ['contas-pagar.*', 'contas-fixas-pagar.*'], 'label' => 'Despesas', 'icon' => 'trending-down'],
             ['route' => 'contas-financeiras.index', 'pattern' => 'contas-financeiras.*', 'label' => 'Caixa', 'icon' => 'banknotes'],
         ],
         'Sistema' => [
-            ['route' => 'cadastros-auxiliares.index', 'pattern' => 'cadastros-auxiliares.*', 'label' => 'Cadastros', 'icon' => 'tag'],
+            ['route' => 'cadastros-auxiliares.index', 'pattern' => ['cadastros-auxiliares.*', 'centros-custo.*', 'fornecedores.*', 'categorias.*', 'subcategorias.*', 'contas.*'], 'label' => 'Cadastros', 'icon' => 'tag'],
         ],
     ];
 @endphp
 
-{{-- Menu fixo de 240px, sem colapso: decisão do cliente na direção
-     Vercel/Linear — a navegação fica sempre no mesmo lugar. Abaixo de `lg`
-     ele vira sobreposição, comportamento que já existia. --}}
+{{--
+    Abaixo de 1024px a sidebar sai do fluxo e vira gaveta — por isso todo o
+    comportamento de rail é `lg:`. A gaveta é sempre larga: recolher só faz
+    sentido quando há conteúdo ao lado disputando espaço.
+--}}
 <aside
-    class="fixed inset-y-0 left-0 z-40 flex w-60 shrink-0 flex-col border-r border-line-soft bg-sidebar
-           -translate-x-full transform transition-transform duration-200 ease-in-out
-           lg:translate-x-0 lg:static lg:z-auto"
-    :class="sidebarOpen && '!translate-x-0'"
-    @keydown.escape.window="sidebarOpen = false"
+    class="fixed inset-y-0 left-0 z-40 shrink-0 flex flex-col bg-panel border-r border-line
+           w-sidebar rail:lg:w-rail
+           transform -translate-x-full transition-transform duration-200 ease-in-out
+           lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:transition-[width] lg:duration-rail lg:ease-out
+           overflow-hidden"
+    :class="gavetaAberta && '!translate-x-0'"
+    @keydown.escape.window="gavetaAberta = false"
 >
-    {{-- Lockup monocromático, sem borda inferior. --}}
-    <div class="flex h-12 shrink-0 items-center gap-2.5 px-4">
-        <a href="{{ route('dashboard') }}" class="flex min-w-0 items-center gap-2.5">
-            <svg class="h-[23px] w-6 shrink-0 text-ink" viewBox="2 1 44 45.6" fill="none">
-                <path d="M5 4l13 15L5 34" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".38"/>
-                <path d="M43 4L30 19l13 15" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".38"/>
-                <circle cx="24" cy="39" r="6.6" fill="currentColor"/>
-            </svg>
-            <img src="{{ asset('brand/alfamatriz-wordmark.png') }}" alt="AlfaMatriz"
-                 class="h-3.5 w-auto" style="filter: var(--logo-filter);">
+    {{-- Header: ícone sempre; wordmark só com o menu aberto --}}
+    <div class="h-topbar shrink-0 flex items-center gap-2.5 border-b border-line px-4
+                rail:lg:px-0 rail:lg:justify-center">
+        <a href="{{ route('centro-controle') }}" class="flex items-center gap-2.5 min-w-0">
+            <img src="/icon-matriz.svg" alt="" class="h-7 w-7 shrink-0">
+            <img src="/alfamatriz.png" alt="AlfaMatriz" class="h-[15px] w-auto shrink-0 rail:lg:hidden">
         </a>
 
-        <button @click="sidebarOpen = false" class="ml-auto text-dim hover:text-ink lg:hidden">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+        <button type="button" @click="gavetaAberta = false"
+                class="ml-auto lg:hidden h-7 w-7 text-ink-mute hover:text-ink transition"
+                aria-label="Fechar menu">
+            <span class="block h-4 w-4"><x-nav-icon name="x-mark" /></span>
         </button>
     </div>
 
-    {{-- Busca estilo "Find", com o atalho indicado à direita. --}}
-    <div class="shrink-0 px-3 pb-3">
-        <div class="relative">
-            <svg class="pointer-events-none absolute left-2.5 top-1/2 h-[13px] w-[13px] -translate-y-1/2 text-mute"
-                 fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="7" /><path stroke-linecap="round" d="M20 20l-3.5-3.5" />
-            </svg>
-            <input id="busca-menu" type="search" placeholder="Buscar"
-                   class="h-8 w-full rounded-control border-line bg-panel pl-8 pr-8 text-[12.5px] text-ink placeholder:text-mute focus:border-ink focus:ring-0">
-            <kbd class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-line px-1 font-mono text-[11px] leading-4 text-mute">/</kbd>
-        </div>
-    </div>
-
-    <nav class="sem-scrollbar flex-1 overflow-y-auto overflow-x-hidden px-3 pb-3">
+    <nav id="menu-principal" class="flex-1 overflow-y-auto py-2">
         @foreach ($grupos as $nomeGrupo => $links)
-            <div class="mb-4">
-                <p class="px-2 pb-1 text-[11px] font-medium text-mute">{{ $nomeGrupo }}</p>
+            {{--
+                Recolhido, o rótulo do grupo some e uma régua toma o lugar
+                dele — menos antes do primeiro grupo, que não separa nada.
+                A régua é um div de 1px com fundo: `border-top` em elemento de
+                altura zero não pinta.
+            --}}
+            @unless ($loop->first)
+                <div class="hidden rail:lg:block h-px mx-[9px] my-[11px] bg-rule-strong"></div>
+            @endunless
 
-                <div class="space-y-0.5">
-                    @foreach ($links as $link)
-                        @php $ativo = request()->routeIs($link['pattern']); @endphp
-                        {{-- Item ativo é neutro: fundo próprio e texto ink, sem
-                             cor de marca. A cor viva ficou reservada para o que
-                             significa algo (gráfico, situação, indicador). --}}
-                        <a href="{{ route($link['route']) }}"
-                           class="flex h-[34px] items-center gap-2.5 rounded-control px-2 text-[14px] font-medium transition-colors
-                                  {{ $ativo ? 'bg-nav-active text-ink' : 'text-nav-ink hover:bg-nav-hover hover:text-ink' }}">
-                            <span class="h-[18px] w-[18px] shrink-0 {{ $ativo ? 'text-ink' : 'text-mute' }}">
-                                <x-nav-icon :name="$link['icon']" />
-                            </span>
-                            <span class="truncate">{{ $link['label'] }}</span>
-                        </a>
-                    @endforeach
-                </div>
-            </div>
+            {{-- O rótulo do grupo ganha um respiro maior acima que abaixo: ele
+                 pertence ao que vem depois, não ao que veio antes. --}}
+            <p class="px-[14px] pt-3 pb-1 first:pt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-caps-max text-ink-faint
+                      rail:lg:hidden">{{ $nomeGrupo }}</p>
+
+            @foreach ($links as $link)
+                @php $ativo = request()->routeIs(...(array) $link['pattern']); @endphp
+                <a href="{{ route($link['route']) }}"
+                   @class([
+                       // Peso 500 no item inteiro: o menu é lido de relance e
+                       // 400 some contra o fundo escuro. O item ativo não
+                       // precisa de peso extra — ele já tem fundo, cor de
+                       // marca e a barra de 3px o separando dos outros.
+                       'group flex items-center gap-3 h-item text-[13.5px] font-medium transition-colors border-l-[3px] px-[13px]',
+                       // Expandido, o item respira: com os rótulos ao lado, a
+                       // fileira colada vira um bloco de texto e a pessoa
+                       // perde a linha ao correr o olho. Recolhido o gap sai —
+                       // no rail o que separa os ícones é a régua de grupo, e
+                       // espaço extra ali só alonga a coluna à toa.
+                       'my-[3px] rail:lg:my-0',
+                       // Recolhido, o item centraliza — e cede 3px à direita
+                       // para compensar a barra de marca da esquerda, senão o
+                       // ícone fica fora do eixo do rail.
+                       'rail:lg:justify-center rail:lg:pl-0 rail:lg:pr-[3px]',
+                       'bg-nav-active text-brand-text border-brand' => $ativo,
+                       'text-ink-dim border-transparent hover:bg-chip hover:text-ink' => ! $ativo,
+                   ])
+                   @if ($ativo) aria-current="page" @endif
+                   title="{{ $link['label'] }}">
+                    {{-- O traço acompanha o texto: ícone em 1.5 ao lado de um
+                         rótulo em 500 fica visivelmente mais leve que ele. --}}
+                    <span @class([
+                        'h-[18px] w-[18px] shrink-0',
+                        'text-brand-text' => $ativo,
+                        'text-ink-mute group-hover:text-ink-dim' => ! $ativo,
+                    ])><x-nav-icon :name="$link['icon']" :peso="1.7" /></span>
+                    <span class="truncate rail:lg:hidden">{{ $link['label'] }}</span>
+                </a>
+            @endforeach
         @endforeach
     </nav>
 
-    <div class="shrink-0 border-t border-line-soft p-3">
-        <div class="flex items-center gap-2.5">
-            <span class="grid h-7 w-7 shrink-0 place-items-center rounded bg-raised text-[12px] font-medium text-ink">
+    <div class="shrink-0 flex items-center gap-2.5 border-t border-line px-[14px] py-3
+                rail:lg:flex-col rail:lg:px-2 rail:lg:gap-2">
+        <a href="{{ route('profile.edit') }}"
+           class="flex items-center gap-2.5 min-w-0 flex-1 group rail:lg:flex-none"
+           title="Perfil de {{ Auth::user()->name }}">
+            {{-- O avatar acompanha a altura dos botões ao lado: 28 contra 30
+                 basta para a fileira do rodapé parecer desalinhada. --}}
+            <span class="h-[30px] w-[30px] shrink-0 rounded-full bg-brand/20 text-brand-text flex items-center justify-center font-mono text-[11.5px] font-semibold">
                 {{ Str::of(Auth::user()->name)->substr(0, 1)->upper() }}
             </span>
-            <div class="min-w-0">
-                <p class="truncate text-[14px] font-medium text-ink">{{ Auth::user()->name }}</p>
-                <p class="truncate text-[12px] text-mute">{{ Auth::user()->email }}</p>
-            </div>
-        </div>
+            <span class="min-w-0 truncate text-[12.5px] text-ink-dim group-hover:text-ink transition rail:lg:hidden">
+                {{ Auth::user()->name }}
+            </span>
+        </a>
+
+        <button type="button"
+                class="relative h-[30px] w-[30px] shrink-0 rounded-ctl text-ink-mute hover:text-ink hover:bg-chip transition flex items-center justify-center"
+                aria-label="Notificações">
+            <span class="h-[18px] w-[18px]"><x-nav-icon name="bell" :peso="1.7" /></span>
+            @if (($naoLidas ?? 0) > 0)
+                <span class="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-crit text-white
+                             font-mono text-[9px] font-semibold leading-[15px] text-center">{{ $naoLidas }}</span>
+            @endif
+        </button>
+
+        <button type="button" @click="alternarTema()"
+                class="h-[30px] w-[30px] shrink-0 rounded-ctl text-ink-mute hover:text-ink hover:bg-chip transition flex items-center justify-center"
+                :aria-label="tema === 'claro' ? 'Usar tema escuro' : 'Usar tema claro'">
+            <span class="h-[18px] w-[18px]" x-show="tema === 'escuro'"><x-nav-icon name="sun" :peso="1.7" /></span>
+            <span class="h-[18px] w-[18px]" x-show="tema === 'claro'" x-cloak><x-nav-icon name="moon" :peso="1.7" /></span>
+        </button>
+
+        {{--
+            Sair fica aqui, visível, e não escondido atrás de um menu: é uma
+            ação que a pessoa procura com pressa, e num painel financeiro
+            interno deixar a sessão aberta é problema de segurança.
+        --}}
+        <form method="POST" action="{{ route('logout') }}" class="shrink-0">
+            @csrf
+            <button type="submit"
+                    class="h-[30px] w-[30px] rounded-ctl text-ink-mute hover:text-crit hover:bg-crit-tint transition flex items-center justify-center"
+                    title="Sair" aria-label="Sair da conta">
+                <span class="h-[18px] w-[18px]"><x-nav-icon name="logout" :peso="1.7" /></span>
+            </button>
+        </form>
     </div>
 </aside>

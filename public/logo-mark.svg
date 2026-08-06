@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34" fill="none">
+  <defs><mask id="cut"><rect width="34" height="34" fill="white"></rect><path d="M2 22.2 L23 22.2 L30 15.2" stroke="black" stroke-width="4" fill="none"></path></mask></defs>
+  <path d="M17 4 L29 30 L23.8 30 L17 14.5 L10.2 30 L5 30 Z" fill="#029caf" mask="url(#cut)"></path>
+  <path d="M2 22.2 L23 22.2 L30 15.2" stroke="#5be3ef" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+  <circle cx="30" cy="15.2" r="1.8" fill="#26d4e6"></circle>
+</svg>

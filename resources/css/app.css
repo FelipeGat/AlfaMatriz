@@ -1,75 +1,158 @@
+/**
+ * Tipografia — três famílias, três papéis fixos.
+ *   Space Grotesk : título de tela/painel e todo número grande de destaque
+ *   Geist         : corpo, rótulo, texto de tabela, botão
+ *   Geist Mono    : caixa alta, número tabular, data, delta, eixo, atalho
+ */
+@import url('https://fonts.bunny.net/css?family=space-grotesk:500,600,700');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/*
- * Tokens dos dois temas.
+/**
+ * Tokens do sistema visual — declarados uma única vez, aqui.
  *
- * Ficam como custom properties e não como classes do Tailwind porque a troca
- * de tema é em tempo de execução: o atributo `data-theme` no <html> muda os
- * valores, e toda a interface acompanha sem precisar de variante `dark:` em
- * cada elemento.
+ * `:root` é o tema ESCURO (padrão do painel; é o que a pessoa vê na primeira
+ * visita). `.theme-light` no <html> troca o conjunto inteiro de uma vez — não
+ * existe tela mestiça, porque nenhuma tela conhece cor: só conhece token.
+ *
+ * Cor cheia vai em canais `R G B` (o Tailwind precisa deles para aplicar
+ * opacidade: `bg-brand/20`). Cor de superfície já vem com a própria alpha,
+ * porque é véu sobre o fundo e não faz sentido diluir de novo.
+ *
+ * ATENÇÃO ao contraste: `ink-dim`, `ink-mute` e `ink-faint` estão calibrados
+ * para ≥ 4,5:1 contra `canvas` E contra `panel` do próprio tema. O cinza
+ * antigo (#95a3a8, 2,6:1) foi reprovado. Não clareie sem recalcular — o teste
+ * de AC-033 recalcula a cada execução e reprova a mudança.
  */
-/*
- * Direção "blueprint" (Vercel/Linear): a interface é monocromática. Cor viva
- * só aparece onde carrega significado — séries de gráfico, indicadores de
- * positivo/negativo e estados de situação. Botão, seleção de menu, link e
- * avatar são todos neutros.
- */
-:root,
-:root[data-theme='dark'] {
-    --bg: #000000;
-    --sidebar: #000000;
-    --panel: #0a0a0a;
-    --raised: #161616;
-    --border: #262626;
-    /* Divisões do "chrome" (sidebar, header): mais discretas que a borda dos
-       cards, que precisa marcar a superfície. */
-    --border-soft: #1a1a1a;
-    --ink: #ededed;
-    --dim: #a1a1a1;
-    --mute: #7a7a7a;
-    --brand: #2ec9d9;
-    --chart: #2ec9d9;
-    --good: #4ac97e;
-    --warn: #e0a13a;
-    --bad: #e5484d;
-    --track: #1f1f1f;
-    --track2: #333333;
-    --nav-active: #1a1a1a;
-    --nav-hover: #121212;
-    --nav-ink: #b8b8b8;
-    /* O wordmark é PNG colorido: o filtro o torna monocromático por tema. */
-    --logo-filter: brightness(0) invert(1);
+:root {
+    color-scheme: dark;
+
+    /* estrutura */
+    --canvas: 7 13 15;              /* #070d0f — fundo da aplicação */
+    --panel: 10 18 21;              /* #0a1215 — sidebar, cabeçalho de painel */
+    --panel-raised: 16 26 30;       /* #101a1e */
+    --head: 10 18 21;               /* #0a1215 — faixa de cabeçalho, rodapé */
+    --surface: rgba(255, 255, 255, 0.025);
+    --subtle: rgba(255, 255, 255, 0.018);
+    --board: rgba(0, 0, 0, 0.28);
+    --input: rgba(255, 255, 255, 0.03);
+    --chip: rgba(255, 255, 255, 0.05);
+    --card-grad: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+
+    /* linhas */
+    --line: rgba(255, 255, 255, 0.08);
+    --rule: rgba(255, 255, 255, 0.055);
+    --rule-strong: rgba(230, 238, 240, 0.30);
+    --btn-line: rgba(255, 255, 255, 0.12);
+    --bar-track: rgba(255, 255, 255, 0.05);
+
+    /* tinta */
+    --ink: 230 238 240;             /* #e6eef0 */
+    --ink-dim: 157 176 182;         /* #9db0b6 */
+    --ink-mute: 135 152 160;        /* #8798a0 */
+    --ink-faint: 123 140 147;       /* #7b8c93 — 5,6:1 sobre canvas */
+
+    /* marca */
+    --brand: 2 156 175;             /* #029caf — o MESMO nos dois temas */
+    --brand-text: 91 227 239;       /* #5be3ef — marca em texto */
+    --brand-bright: 38 212 230;     /* #26d4e6 — hover primário */
+    --brand-mute: 2 61 68;          /* #023d44 */
+    --on-brand: 4 24 27;            /* #04181b — texto sobre a marca */
+    --accent: 91 227 239;           /* #5be3ef */
+    --glow: rgba(2, 156, 175, 0.10);
+    --nav-active: rgba(2, 156, 175, 0.16);
+
+    /* sinal */
+    --good: 12 163 12;              /* #0ca30c */
+    --warn: 250 178 25;             /* #fab219 */
+    --crit: 208 59 59;              /* #d03b3b */
+    --amber: 232 160 69;            /* #e8a045 */
+    --chart-out: 201 133 0;         /* #c98500 */
+    --good-tint: rgba(12, 163, 12, 0.09);
+    --good-line: rgba(12, 163, 12, 0.25);
+    --warn-tint: rgba(250, 178, 25, 0.09);
+    --warn-line: rgba(250, 178, 25, 0.28);
+    --crit-tint: rgba(208, 59, 59, 0.12);
+
+    /* alpha padrão do fundo de badge */
+    --tint-alpha: 0.13;
+
+    /* grade de fundo da tela de entrada */
+    --grid-line: rgba(230, 238, 240, 0.025);
+
+    /* barra de rolagem */
+    --scroll-thumb: rgba(135, 152, 160, 0.34);
+    --scroll-thumb-hover: rgba(2, 156, 175, 0.75);
 }
 
-:root[data-theme='light'] {
-    --bg: #fafafa;
-    --sidebar: #fafafa;
-    --panel: #ffffff;
-    --raised: #f4f4f4;
-    --border: #d9d9d9;
-    --border-soft: #ececec;
-    --ink: #171717;
-    --dim: #666666;
-    --mute: #8f8f8f;
-    --brand: #017d8c;
-    --chart: #029caf;
-    --good: #0f7c46;
-    --warn: #b4671f;
-    --bad: #c62f38;
-    --track: #e8e8e8;
-    --track2: #c4c4c4;
-    --nav-active: #ececec;
-    --nav-hover: #f2f2f2;
-    --nav-ink: #4d4d4d;
-    --logo-filter: brightness(0);
+.theme-light {
+    color-scheme: light;
+
+    /* estrutura */
+    --canvas: 245 248 249;          /* #f5f8f9 */
+    --panel: 255 255 255;           /* #ffffff */
+    --panel-raised: 242 247 248;    /* #f2f7f8 */
+    --head: 250 252 252;            /* #fafcfc */
+    --surface: #ffffff;
+    --subtle: #ffffff;
+    --board: #eaf0f1;
+    --input: #ffffff;
+    --chip: #eef3f4;
+    --card-grad: linear-gradient(180deg, #ffffff, #f2f7f8);
+
+    /* linhas */
+    --line: rgba(11, 26, 30, 0.10);
+    --rule: rgba(11, 26, 30, 0.07);
+    --rule-strong: rgba(11, 26, 30, 0.22);
+    --btn-line: rgba(11, 26, 30, 0.15);
+    --bar-track: rgba(11, 26, 30, 0.07);
+
+    /* tinta */
+    --ink: 11 26 30;                /* #0b1a1e */
+    --ink-dim: 74 92 98;            /* #4a5c62 */
+    --ink-mute: 93 110 117;         /* #5d6e75 — 5,0:1 sobre canvas */
+    /* O handoff traz #66777e; medido contra o fundo claro da aplicação
+       (#f5f8f9) ele dá 4,37:1 e reprova. Escurecido meio passo para 4,56:1,
+       que é o que o próprio handoff exige. */
+    --ink-faint: 99 116 123;        /* #63747b */
+
+    /* marca */
+    --brand: 2 156 175;             /* #029caf — igual ao tema escuro */
+    --brand-text: 6 120 138;        /* #06788a — #5be3ef não contrasta no claro */
+    --brand-bright: 38 212 230;     /* #26d4e6 */
+    --brand-mute: 207 233 237;      /* #cfe9ed */
+    --on-brand: 255 255 255;        /* #ffffff */
+    --accent: 2 156 175;            /* #029caf */
+    --glow: rgba(2, 156, 175, 0.09);
+    --nav-active: rgba(2, 156, 175, 0.10);
+
+    /* sinal */
+    --good: 10 122 10;              /* #0a7a0a */
+    --warn: 181 117 0;              /* #b57500 */
+    --crit: 192 43 43;              /* #c02b2b */
+    --amber: 176 106 18;            /* #b06a12 */
+    --chart-out: 181 117 0;         /* #b57500 */
+    --good-tint: rgba(10, 122, 10, 0.07);
+    --good-line: rgba(10, 122, 10, 0.22);
+    --warn-tint: rgba(181, 117, 0, 0.08);
+    --warn-line: rgba(181, 117, 0, 0.26);
+    --crit-tint: rgba(192, 43, 43, 0.10);
+
+    --tint-alpha: 0.10;
+
+    --grid-line: rgba(11, 26, 30, 0.03);
+
+    --scroll-thumb: rgba(93, 110, 117, 0.34);
+    --scroll-thumb-hover: rgba(2, 156, 175, 0.75);
 }
 
 @layer base {
     html,
     body {
-        @apply bg-bg text-ink;
+        @apply bg-canvas text-ink;
         overflow-x: hidden;
         max-width: 100vw;
     }
@@ -78,98 +161,86 @@
         display: none !important;
     }
 
-    /* Números tabulares em toda a interface: é o que alinha as colunas. */
-    body {
+    /* Número em tabela e em destaque não dança de largura entre linhas. */
+    .tabular {
         font-variant-numeric: tabular-nums;
     }
 
-    .num {
-        @apply font-mono;
-        font-variant-numeric: tabular-nums;
-    }
-
-    /* A navegação rola sem mostrar barra. */
-    .sem-scrollbar {
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-    }
-    .sem-scrollbar::-webkit-scrollbar {
-        display: none;
-    }
-
-    /*
-     * Valor monetário nunca quebra em duas linhas. Foi o defeito mais
-     * recorrente do protótipo: em coluna estreita, "R$ 12.345,67" virava duas
-     * linhas e a coluna ficava ilegível.
-     */
-    .valor {
-        @apply font-mono whitespace-nowrap;
-        font-variant-numeric: tabular-nums;
-    }
-
-    /*
-     * Campos usam a superfície dos cards, não a elevada: no tema escuro o
-     * `--raised` puxava o campo para a frente do card em que ele está, e a
-     * busca parecia flutuar sobre a sidebar.
-     */
     select,
     textarea,
-    input[type='search'],
     input[type='text'],
     input[type='email'],
     input[type='password'],
     input[type='number'],
     input[type='date'],
-    input[type='url'] {
-        @apply bg-panel text-ink border-line rounded-control;
-        @apply placeholder:text-mute focus:border-ink focus:ring-0;
+    input[type='month'],
+    input[type='url'],
+    input[type='search'] {
+        @apply bg-input text-ink placeholder-ink-faint border-line rounded-control focus:border-brand focus:ring-brand;
     }
 
     input[type='checkbox'],
     input[type='radio'] {
-        @apply bg-raised border-line text-brand;
+        @apply bg-input border-btn-line text-brand;
     }
 
     input[type='checkbox']:focus,
     input[type='radio']:focus {
-        @apply ring-brand ring-offset-bg;
+        @apply ring-brand ring-offset-canvas;
+    }
+
+    /**
+     * Barra de rolagem — o único CSS que não dá para escrever inline.
+     * O polegar tem borda transparente com `background-clip` para parecer mais
+     * fino do que a trilha que reserva.
+     */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--scroll-thumb) transparent;
     }
 
     ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
+        width: 11px;
+        height: 11px;
     }
 
-    ::-webkit-scrollbar-track {
-        background: var(--panel);
+    ::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-corner {
+        background: transparent;
     }
 
     ::-webkit-scrollbar-thumb {
-        background: var(--raised);
-        border-radius: 9999px;
+        background: var(--scroll-thumb);
+        border-radius: 3px;
+        border: 3px solid transparent;
+        background-clip: padding-box;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-        background: var(--brand-line);
+        background: var(--scroll-thumb-hover);
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+
+    ::-webkit-scrollbar-thumb:active {
+        background: rgb(var(--brand));
+        background-clip: padding-box;
+    }
+
+    /**
+     * Menu recolhido não reserva largura de barra de rolagem — se reservar,
+     * os ícones do rail saem 6px do centro.
+     *
+     * O estado vem da classe no <html>, posta antes da primeira pintura: se
+     * dependesse de um atributo escrito pelo Alpine, a barra apareceria por um
+     * instante e empurraria os ícones.
+     */
+    .rail-fechado nav#menu-principal {
+        scrollbar-width: none;
+    }
+
+    .rail-fechado nav#menu-principal::-webkit-scrollbar {
+        width: 0;
+        height: 0;
     }
 }
-
-/* Animações do handoff. Nada acima de 220ms. */
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes popIn {
-    from { opacity: 0; transform: scale(.97) translateY(6px); }
-    to { opacity: 1; transform: none; }
-}
-
-@keyframes toastIn {
-    from { opacity: 0; transform: translate(-50%, 8px); }
-    to { opacity: 1; transform: translate(-50%, 0); }
-}
-
-.anim-fade { animation: fadeIn .15s ease; }
-.anim-pop { animation: popIn .18s ease; }
-.anim-toast { animation: toastIn .22s ease; }

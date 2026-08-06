@@ -37,7 +37,7 @@ class VigiaTagTest extends TestCase
     }
 
     /**
-     * @spec:AC-036 Havendo tag nova, o vigia aplica ela em produção e registra
+     * @spec:AC-067 Havendo tag nova, o vigia aplica ela em produção e registra
      * a versão. Sem tag nova, ele não faz nada — alteração na main sozinha
      * nunca chega ao faturamento.
      */
@@ -63,7 +63,7 @@ class VigiaTagTest extends TestCase
     }
 
     /**
-     * @spec:AC-037 O banco é copiado ANTES das migrações, e a ordem importa:
+     * @spec:AC-068 O banco é copiado ANTES das migrações, e a ordem importa:
      * uma migração ruim em cima de faturamento real precisa ter volta.
      */
     public function test_faz_backup_antes_de_migrar(): void
@@ -82,7 +82,7 @@ class VigiaTagTest extends TestCase
     }
 
     /**
-     * @spec:AC-037 Saúde ruim depois de aplicar: o vigia marca a falha e para.
+     * @spec:AC-068 Saúde ruim depois de aplicar: o vigia marca a falha e para.
      * Na execução seguinte ele não tenta de novo — insistir em cima de um
      * sistema quebrado só piora.
      */

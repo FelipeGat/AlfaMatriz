@@ -9,7 +9,7 @@
 
     <div>
         <x-input-label for="tipo" value="Tipo" />
-        <select id="tipo" name="tipo" class="mt-1 block w-full border-line rounded-control">
+        <select id="tipo" name="tipo" class="mt-1 block w-full rounded-control border-line bg-input text-ink">
             @foreach (['locacao_sistema' => 'Locação de sistema (revenda)', 'direta' => 'Venda direta', 'avulsa' => 'Avulsa'] as $value => $label)
                 <option value="{{ $value }}" {{ old('tipo', $cobranca->tipo ?? 'avulsa') === $value ? 'selected' : '' }}>{{ $label }}</option>
             @endforeach
@@ -24,7 +24,7 @@
 
     <div>
         <x-input-label for="revenda_id" value="Revenda" />
-        <select id="revenda_id" name="revenda_id" class="mt-1 block w-full border-line rounded-control">
+        <select id="revenda_id" name="revenda_id" class="mt-1 block w-full rounded-control border-line bg-input text-ink">
             <option value="">—</option>
             @foreach ($revendas as $revenda)
                 <option value="{{ $revenda->id }}" {{ (string) old('revenda_id', $cobranca->revenda_id ?? '') === (string) $revenda->id ? 'selected' : '' }}>{{ $revenda->nome }}</option>
@@ -34,7 +34,7 @@
 
     <div>
         <x-input-label for="cliente_id" value="Cliente" />
-        <select id="cliente_id" name="cliente_id" class="mt-1 block w-full border-line rounded-control">
+        <select id="cliente_id" name="cliente_id" class="mt-1 block w-full rounded-control border-line bg-input text-ink">
             <option value="">—</option>
             @foreach ($clientes as $cliente)
                 <option value="{{ $cliente->id }}" {{ (string) old('cliente_id', $cobranca->cliente_id ?? '') === (string) $cliente->id ? 'selected' : '' }}>{{ $cliente->nome }}</option>
@@ -44,7 +44,7 @@
 
     <div>
         <x-input-label for="sistema_id" value="Sistema" />
-        <select id="sistema_id" name="sistema_id" class="mt-1 block w-full border-line rounded-control">
+        <select id="sistema_id" name="sistema_id" class="mt-1 block w-full rounded-control border-line bg-input text-ink">
             <option value="">—</option>
             @foreach ($sistemas as $sistema)
                 <option value="{{ $sistema->id }}" {{ (string) old('sistema_id', $cobranca->sistema_id ?? '') === (string) $sistema->id ? 'selected' : '' }}>{{ $sistema->nome }}</option>
@@ -65,7 +65,7 @@
 
     <div>
         <x-input-label for="conta_financeira_id" value="Conta de recebimento" />
-        <select id="conta_financeira_id" name="conta_financeira_id" class="mt-1 block w-full border-line rounded-control">
+        <select id="conta_financeira_id" name="conta_financeira_id" class="mt-1 block w-full rounded-control border-line bg-input text-ink">
             <option value="">—</option>
             @foreach ($contasFinanceiras as $conta)
                 <option value="{{ $conta->id }}" {{ (string) old('conta_financeira_id', $cobranca->conta_financeira_id ?? '') === (string) $conta->id ? 'selected' : '' }}>{{ $conta->nome }}</option>
@@ -80,6 +80,6 @@
 </div>
 
 <div class="flex items-center justify-end gap-3 mt-6">
-    <a href="{{ route('cobrancas.index') }}" class="text-sm text-dim hover:text-ink">Cancelar</a>
+    <a href="{{ route('cobrancas.index') }}" class="text-sm text-ink-dim hover:text-ink">Cancelar</a>
     <x-primary-button>Salvar</x-primary-button>
 </div>

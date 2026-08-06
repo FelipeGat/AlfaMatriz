@@ -1,110 +1,214 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center gap-2 text-[14px]">
-            <span class="text-mute">Comercial</span>
-            <span class="text-line">/</span>
-            <span class="font-medium text-ink">Clientes</span>
-        </div>
+    <x-slot name="titulo">Clientes</x-slot>
+    <x-slot name="contexto">{{ $clientes->total() }} cadastrados</x-slot>
+    <x-slot name="acoes">
+        <a href="{{ route('clientes.create') }}"
+           class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand
+                  font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
+            + Novo cliente
+        </a>
     </x-slot>
 
-    <div class="space-y-[18px]">
+    <div class="space-y-4">
+        @if (session('status'))
+            <div class="rounded-panel border px-4 py-2.5 text-[13px]"
+                 style="background: rgb(var(--good) / var(--tint-alpha)); border-color: rgb(var(--good) / 0.25); color: rgb(var(--good))">
+                {{ session('status') }}
+            </div>
+        @endif
 
-        {{-- Estes cards refletem o RECORTE, não a base inteira: é o que faz o
-             número do topo bater com o que a tabela mostra logo abaixo. --}}
-        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-            <x-summary-card label="Exibidos" :value="$exibidos" contexto="com os filtros atuais" />
-            <x-summary-card label="Ativos" :value="$ativos" tom="good" contexto="no recorte" />
-            <x-summary-card label="Inativos" :value="$inativos" contexto="no recorte" />
-            <x-summary-card label="Soma dos contratos" :value="'R$ ' . number_format($somaContratos, 2, ',', '.')" contexto="mensal, só ativos" />
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+            <x-kpi-card rotulo="Clientes cadastrados" :valor="number_format($kpis['cadastrados']['valor'], 0, ',', '.')"
+                        :delta="$kpis['cadastrados']['nota']" acento="accent" icone="users" />
+            <x-kpi-card rotulo="Em contrato" :valor="number_format($kpis['contrato']['valor'], 0, ',', '.')"
+                        :delta="$kpis['contrato']['nota']" acento="brand" icone="repeat" />
+            <x-kpi-card rotulo="Avulsos" :valor="number_format($kpis['avulsos']['valor'], 0, ',', '.')"
+                        :delta="$kpis['avulsos']['nota']" acento="amber" icone="clipboard" />
+            <x-kpi-card rotulo="Ticket médio" :valor="'R$ '.number_format($kpis['ticket']['valor'], 2, ',', '.')"
+                        :delta="$kpis['ticket']['nota']" acento="good" icone="banknotes" />
         </div>
 
         <form method="GET" class="flex flex-wrap items-center gap-2">
-            <div class="relative min-w-[220px] flex-1">
-                <svg class="pointer-events-none absolute left-2.5 top-1/2 h-[13px] w-[13px] -translate-y-1/2 text-mute"
-                     fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
-                    <circle cx="11" cy="11" r="7" /><path stroke-linecap="round" d="M20 20l-3.5-3.5" />
-                </svg>
-                <input type="text" name="busca" value="{{ request('busca') }}" placeholder="Buscar cliente"
-                       class="h-8 w-full rounded-control border-line bg-panel pl-8 text-[12.5px] text-ink placeholder:text-mute focus:border-ink focus:ring-0">
-            </div>
+            <label class="flex items-center gap-2 h-[34px] flex-1 min-w-[220px] max-w-[360px] px-3
+                          rounded-control bg-input border border-line text-ink-faint focus-within:border-brand transition">
+                <span class="h-4 w-4 shrink-0"><x-nav-icon name="search" /></span>
+                <input type="search" name="busca" value="{{ $filtros['busca'] }}"
+                       placeholder="Buscar nome, CNPJ ou cidade…"
+                       class="flex-1 min-w-0 bg-transparent border-0 p-0 text-[13px] text-ink placeholder-ink-faint focus:ring-0">
+            </label>
 
-            <select name="revenda_id" class="h-8 rounded-control border-line bg-panel py-0 text-[12.5px] text-ink focus:border-ink focus:ring-0">
-                <option value="">Todas as revendas</option>
+            <select name="revenda" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
+                <option value="">Todas as origens</option>
+                <option value="direta" @selected($filtros['revenda'] === 'direta')>Venda direta</option>
                 @foreach ($revendas as $revenda)
-                    <option value="{{ $revenda->id }}" {{ (string) request('revenda_id') === (string) $revenda->id ? 'selected' : '' }}>{{ $revenda->nome }}</option>
+                    <option value="{{ $revenda->id }}" @selected((string) $filtros['revenda'] === (string) $revenda->id)>{{ $revenda->nome }}</option>
                 @endforeach
             </select>
 
-            {{-- Situação por link: o filtro vive na query string e sobrevive ao
-                 recarregar e à paginação. --}}
-            <div class="inline-flex rounded-control border border-line bg-raised p-0.5">
-                @foreach (['' => 'Todos', 'ativos' => 'Ativos', 'inativos' => 'Inativos'] as $valor => $rotulo)
-                    @php $marcado = (string) request('status') === $valor; @endphp
-                    <a href="{{ request()->fullUrlWithQuery(['status' => $valor ?: null, 'page' => null]) }}"
-                       class="rounded px-2.5 py-1 font-mono text-[11.5px] transition-colors {{ $marcado ? 'border border-line bg-panel text-ink' : 'text-dim hover:text-ink' }}">
-                        {{ $rotulo }}
-                    </a>
+            <select name="sistema" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
+                <option value="">Todos os sistemas</option>
+                @foreach ($sistemas as $sistema)
+                    <option value="{{ $sistema->id }}" @selected((string) $filtros['sistema'] === (string) $sistema->id)>{{ $sistema->nome }}</option>
                 @endforeach
-            </div>
+            </select>
 
-            <button type="submit" class="h-8 rounded-control border border-line px-3 text-[12.5px] text-dim transition-colors hover:text-ink">
+            <select name="status" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
+                <option value="">Todos</option>
+                <option value="ativo" @selected($filtros['status'] === 'ativo')>Ativos</option>
+                <option value="inativo" @selected($filtros['status'] === 'inativo')>Inativos</option>
+            </select>
+
+            <button type="submit"
+                    class="h-[34px] px-3 rounded-control border border-btn-line text-ink-dim
+                           text-[12.5px] font-semibold hover:text-brand hover:border-brand transition">
                 Filtrar
             </button>
 
-            <a href="{{ route('clientes.create') }}"
-               class="ml-auto inline-flex h-8 items-center rounded-control bg-ink px-3 text-[12.5px] font-medium text-bg transition-opacity hover:opacity-90">
-                Novo cliente
-            </a>
+            <span class="ml-auto flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                <span class="inline-block h-3 w-[2px]" style="background: rgb(var(--warn))"></span>
+                cobrança em atraso
+            </span>
         </form>
 
-        <x-painel-card :sem-padding="true">
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[820px] border-collapse">
-                    <thead>
-                        <tr class="bg-raised">
-                            @foreach (['Nome' => '', 'Revenda' => 'w-[170px]', 'Sistemas' => 'w-[200px]', 'Contrato' => 'w-[130px]', 'Situação' => 'w-[96px]', '' => 'w-[130px]'] as $titulo => $largura)
-                                <th class="{{ $largura }} truncate whitespace-nowrap border-b border-line px-5 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[.08em] text-mute">
-                                    {{ $titulo }}
-                                </th>
-                            @endforeach
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($clientes as $cliente)
-                            <tr class="border-b border-line transition-colors last:border-0 hover:bg-raised">
-                                <td class="px-5 py-3 text-[14px] text-ink">{{ $cliente->nome }}</td>
-                                <td class="px-5 py-3 text-[12.5px] text-dim">{{ $cliente->revenda->nome ?? 'Venda direta' }}</td>
-                                <td class="max-w-[200px] truncate px-5 py-3 text-[12.5px] text-dim">{{ $cliente->sistemas->pluck('nome')->join(', ') ?: '—' }}</td>
-                                <td class="px-5 py-3 text-[12.5px] text-dim">
-                                    @if ($cliente->tipo_cliente === 'CONTRATO')
-                                        <span class="valor text-ink">R$ {{ number_format($cliente->valor_mensal, 2, ',', '.') }}</span>
-                                    @else
-                                        Avulso
-                                    @endif
-                                </td>
-                                <td class="px-5 py-3">
-                                    <x-status-pill :tom="$cliente->ativo ? 'good' : 'neutro'">
-                                        {{ $cliente->ativo ? 'Ativo' : 'Inativo' }}
-                                    </x-status-pill>
-                                </td>
-                                <td class="whitespace-nowrap px-5 py-3 text-right text-[12.5px]">
-                                    <a href="{{ route('clientes.edit', $cliente) }}" class="text-dim transition-colors hover:text-ink">Editar</a>
-                                    <form action="{{ route('clientes.destroy', $cliente) }}" method="POST" class="ml-3 inline" onsubmit="return confirm('Remover este cliente?');">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="text-dim transition-colors hover:text-bad">Remover</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="6" class="px-5 py-[34px] text-center text-[14px] text-mute">Nenhum cliente encontrado com estes filtros.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+        <x-tabela min="1060px">
+            <thead>
+                <tr class="bg-head border-b border-line font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                    <th class="px-4 py-2.5 font-semibold">Cliente</th>
+                    <th class="px-4 py-2.5 font-semibold">Revenda / praça</th>
+                    <th class="px-4 py-2.5 font-semibold">Sistemas</th>
+                    <th class="px-4 py-2.5 font-semibold">Cobrança</th>
+                    <th class="px-4 py-2.5 font-semibold">Pagamento</th>
+                    <th class="px-4 py-2.5 font-semibold">Status</th>
+                    <th class="px-4 py-2.5 font-semibold text-right">Ações</th>
+                </tr>
+            </thead>
 
-            @if ($clientes->hasPages())
-                <div class="border-t border-line px-5 py-3">{{ $clientes->links() }}</div>
+            <tbody>
+                @forelse ($clientes as $cliente)
+                    @php
+                        $pagamento = $pagamentos[$cliente->id] ?? ['estado' => 'sem_cobranca', 'dias' => 0];
+                        $emContrato = $cliente->tipo_cliente === 'CONTRATO';
+                    @endphp
+
+                    <tr class="border-b border-rule hover:bg-chip transition {{ $cliente->ativo ? '' : 'opacity-[0.62]' }}"
+                        @if ($pagamento['estado'] === 'atrasado')
+                            style="border-left: 2px solid rgb(var(--warn)); background: rgb(var(--warn) / 0.05)"
+                        @endif>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <span class="h-8 w-8 shrink-0 rounded-ctl bg-brand/15 text-brand-text
+                                             flex items-center justify-center font-display text-[12.5px] font-semibold">
+                                    {{ Str::of($cliente->nome_exibicao)->substr(0, 2)->upper() }}
+                                </span>
+                                <span class="min-w-0">
+                                    <span class="block text-[13.5px] font-medium text-ink truncate">{{ $cliente->nome_exibicao }}</span>
+                                    <span class="block font-mono text-[11.5px] text-ink-faint truncate">{{ $cliente->cpf_cnpj ?: 'sem documento' }}</span>
+                                </span>
+                            </div>
+                        </td>
+
+                        <td class="px-4 py-3">
+                            @if ($cliente->revenda)
+                                <span class="block text-[13px] text-ink-dim truncate">{{ $cliente->revenda->nome }}</span>
+                            @else
+                                {{-- Venda direta é da casa: merece a cor da marca, não o cinza de "vazio". --}}
+                                <span class="block text-[13px] text-brand-text truncate">Venda direta</span>
+                            @endif
+                            <span class="block font-mono text-[11px] uppercase tracking-caps text-ink-faint truncate">
+                                {{ $cliente->cidade ? $cliente->cidade.'/'.$cliente->uf : 'sem praça' }}
+                            </span>
+                        </td>
+
+                        <td class="px-4 py-3">
+                            @php $ativos = $cliente->sistemas->where('pivot.ativo', true); @endphp
+                            @if ($ativos->isEmpty())
+                                <span class="text-[12.5px] text-ink-faint">nenhum</span>
+                            @else
+                                <div class="flex flex-wrap items-center gap-1">
+                                    @foreach ($ativos->take(3) as $sistema)
+                                        <x-badge>{{ $sistema->nome }}</x-badge>
+                                    @endforeach
+                                    @if ($ativos->count() > 3)
+                                        <x-badge :title="$ativos->pluck('nome')->implode(', ')">+{{ $ativos->count() - 3 }}</x-badge>
+                                    @endif
+                                </div>
+                            @endif
+                        </td>
+
+                        <td class="px-4 py-3">
+                            <span class="block font-mono text-[13px] text-ink whitespace-nowrap">
+                                R$ {{ number_format($cliente->valor_mensal ?? 0, 2, ',', '.') }}
+                            </span>
+                            <span class="block font-mono text-[11px] uppercase tracking-caps text-ink-faint whitespace-nowrap">
+                                {{ $emContrato ? 'contrato · dia '.($cliente->dia_vencimento ?: '—') : 'avulso' }}
+                            </span>
+                        </td>
+
+                        <td class="px-4 py-3">
+                            @switch ($pagamento['estado'])
+                                @case('atrasado')
+                                    <x-badge tom="critico" ponto>Atrasado {{ $pagamento['dias'] }}d</x-badge>
+                                    @break
+                                @case('em_dia')
+                                    <x-badge tom="bom" ponto>Em dia</x-badge>
+                                    @break
+                                @default
+                                    <x-badge>Sem cobrança</x-badge>
+                            @endswitch
+                        </td>
+
+                        <td class="px-4 py-3">
+                            <x-badge :tom="$cliente->ativo ? 'bom' : 'neutro'" ponto>
+                                {{ $cliente->ativo ? 'Ativo' : 'Inativo' }}
+                            </x-badge>
+                        </td>
+
+                        <td class="px-4 py-3">
+                            <div class="flex items-center justify-end gap-1">
+                                <x-acao-tabela icone="paperclip" titulo="Cobranças do cliente"
+                                               :href="route('cobrancas.index', ['cliente' => $cliente->id])" />
+                                <x-acao-tabela icone="pencil" titulo="Editar cliente"
+                                               :href="route('clientes.edit', $cliente)" />
+                                <form method="POST" action="{{ route('clientes.destroy', $cliente) }}"
+                                      onsubmit="return confirm('Remover {{ $cliente->nome_exibicao }}?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <x-acao-tabela icone="trash" titulo="Remover cliente" type="submit" destrutivo />
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7" class="px-4 py-8 text-center text-[13px] text-ink-mute">
+                            Nenhum cliente encontrado com esse recorte.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+
+            @if ($clientes->isNotEmpty())
+                <tfoot>
+                    <x-linha-total>
+                        <td>Nesta página</td>
+                        <td>{{ $totais['contratos'] }} contratos · {{ $totais['avulsos'] }} avulsos</td>
+                        <td></td>
+                        <td>R$ {{ number_format($totais['mensal'], 2, ',', '.') }}</td>
+                        <td>{{ $totais['atrasados'] }} em atraso</td>
+                        <td></td>
+                        <td></td>
+                    </x-linha-total>
+                </tfoot>
             @endif
-        </x-painel-card>
+
+            <x-slot name="rodape">
+                <span>{{ $clientes->count() }} de {{ $clientes->total() }} clientes</span>
+                <span>· página {{ $clientes->currentPage() }} de {{ $clientes->lastPage() }}</span>
+            </x-slot>
+        </x-tabela>
+
+        @if ($clientes->hasPages())
+            <div>{{ $clientes->links() }}</div>
+        @endif
     </div>
 </x-app-layout>

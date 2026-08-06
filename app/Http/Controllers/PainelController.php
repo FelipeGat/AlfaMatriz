@@ -12,13 +12,23 @@ use App\Services\IndicadoresService;
 
 class PainelController extends Controller
 {
+    /**
+     * Os indicadores que aparecem em mais de uma tela saem daqui, não de uma
+     * contagem local. Duplicar a regra é como os números começam a divergir:
+     * basta alguém ajustar o critério de "ativo" num painel e esquecer o
+     * outro, e quem usa deixa de saber qual tela está certa.
+     */
     public function __construct(private readonly IndicadoresService $indicadores) {}
 
     public function index()
     {
-        // Todos os números que também aparecem em outra tela saem daqui —
-        // ver IndicadoresService.
-        $mrr = $this->indicadores->mrr();
+        $competenciaAtual = now()->format('Y-m');
+        $inicioMes = now()->startOfMonth();
+        $fimMes = now()->endOfMonth();
+
+        $mrr = $this->indicadores->mrr($competenciaAtual);
+        $arr = $mrr * 12;
+
         $saldoTotal = $this->indicadores->saldoEmCaixa();
         $entradasMes = $this->indicadores->entradasDoMes();
         $saidasMes = $this->indicadores->saidasDoMes();
@@ -42,7 +52,7 @@ class PainelController extends Controller
         $historico = $this->historicoSeisMeses();
 
         return view('dashboard', compact(
-            'mrr', 'saldoTotal', 'entradasMes', 'saidasMes',
+            'mrr', 'arr', 'saldoTotal', 'entradasMes', 'saidasMes',
             'receitasPendentes', 'despesasPendentes',
             'totalRevendas', 'totalClientes', 'clientesDiretos', 'historico'
         ));
@@ -50,8 +60,9 @@ class PainelController extends Controller
 
     public function comercial()
     {
-        // Mesma origem da tela de Sistemas: o valor de atacado precisa bater
-        // entre as duas.
+        // O ranking também vem do serviço: ele aparece aqui e na tela de
+        // Sistemas, e é o valor de atacado — o número mais fácil de as duas
+        // telas passarem a discordar se cada uma calcular por conta própria.
         $ranking = $this->indicadores->rankingSistemas();
         $sistemas = $ranking->pluck('sistema');
 
@@ -61,8 +72,19 @@ class PainelController extends Controller
         $maxQuantidade = max($porQuantidade->max('clientes_ativos'), 1);
         $maxValor = max($porValor->max('valor_estimado'), 1);
 
-        // Mesma origem do painel financeiro: é o que garante que o mesmo
-        // indicador não mostre dois números em telas diferentes.
+        // Os dois rankings da tela, já em três camadas: o total e o líder no
+        // topo, a faixa segmentada no meio e as linhas embaixo. Cada linha
+        // conhece a própria participação e o próprio tamanho relativo ao
+        // líder — comparar é o motivo desta tela existir.
+        $rankingClientes = $this->ranking(
+            $porQuantidade->map(fn ($l) => ['nome' => $l['sistema']->nome, 'valor' => (float) $l['clientes_ativos']]),
+            'accent'
+        );
+        $rankingValor = $this->ranking(
+            $porValor->map(fn ($l) => ['nome' => $l['sistema']->nome, 'valor' => (float) $l['valor_estimado']]),
+            'chart-out'
+        );
+
         $totalClientesAtivos = $this->indicadores->clientesAtivos();
         $totalSistemasAtivos = $this->indicadores->sistemasAtivos();
         $totalRevendasAtivas = $this->indicadores->revendasAtivas();
@@ -77,11 +99,59 @@ class PainelController extends Controller
 
         $porCategoria = $sistemas->groupBy('categoria')->map->count();
 
+        // Os dois painéis de apoio usam a mesma gramática das linhas do
+        // ranking, para a tela inteira se ler do mesmo jeito.
+        $rankingRevendas = $this->ranking(
+            $porRevenda->map(fn ($qtd, $nome) => ['nome' => $nome, 'valor' => (float) $qtd])->values(),
+            'accent'
+        );
+        $rankingCategorias = $this->ranking(
+            $porCategoria->map(fn ($qtd, $nome) => ['nome' => $nome ?: 'Sem categoria', 'valor' => (float) $qtd])
+                ->sortByDesc('valor')->values(),
+            'brand'
+        );
+
         return view('dashboard-comercial', compact(
             'porQuantidade', 'porValor', 'maxQuantidade', 'maxValor',
             'totalClientesAtivos', 'totalSistemasAtivos', 'totalRevendasAtivas',
-            'mrrEstimado', 'porRevenda', 'porCategoria'
+            'mrrEstimado', 'porRevenda', 'porCategoria',
+            'rankingClientes', 'rankingValor', 'rankingRevendas', 'rankingCategorias'
         ));
+    }
+
+    /**
+     * Monta um ranking comparável a partir de uma lista de `nome`/`valor`.
+     *
+     * `share` é a fatia do total (o que a faixa segmentada desenha) e
+     * `largura` é o tamanho relativo AO LÍDER (o que a barra da linha
+     * desenha). São duas perguntas diferentes — "quanto disso é meu?" e
+     * "quão longe estou do primeiro?" — e usar uma no lugar da outra achata
+     * o ranking inteiro.
+     *
+     * @param  \Illuminate\Support\Collection<int, array{nome: string, valor: float}>  $itens
+     */
+    private function ranking(\Illuminate\Support\Collection $itens, string $cor): array
+    {
+        $itens = $itens->filter(fn ($i) => $i['valor'] > 0)->sortByDesc('valor')->values();
+
+        $total = (float) $itens->sum('valor');
+        $lider = $itens->first();
+        $maior = (float) ($lider['valor'] ?? 0);
+
+        return [
+            'cor' => $cor,
+            'total' => $total,
+            'lider' => $lider ? [
+                'nome' => $lider['nome'],
+                'valor' => $lider['valor'],
+                'share' => $total > 0 ? $lider['valor'] / $total : 0,
+            ] : null,
+            'itens' => $itens->map(fn ($item, $i) => $item + [
+                'posicao' => str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT),
+                'share' => $total > 0 ? $item['valor'] / $total : 0,
+                'largura' => $maior > 0 ? $item['valor'] / $maior : 0,
+            ])->all(),
+        ];
     }
 
     private function historicoSeisMeses(): array

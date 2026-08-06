@@ -17,7 +17,7 @@ class ProvisionarStagingTest extends TestCase
     }
 
     /**
-     * @spec:AC-034 O provisionamento sabe criar o ambiente de staging: outro
+     * @spec:AC-065 O provisionamento sabe criar o ambiente de staging: outro
      * container, outro endereço e — o ponto importante — sem túnel Cloudflare
      * e sem porta pública. O staging vive só no tailnet.
      */
@@ -41,7 +41,7 @@ class ProvisionarStagingTest extends TestCase
     }
 
     /**
-     * @spec:AC-034 Produção continua exatamente como estava: mesmo container,
+     * @spec:AC-065 Produção continua exatamente como estava: mesmo container,
      * mesmo endereço, com o túnel do domínio da empresa.
      */
     public function test_producao_permanece_no_container_e_no_tunel_de_sempre(): void
@@ -53,7 +53,7 @@ class ProvisionarStagingTest extends TestCase
         $this->assertStringContainsString('instalando o túnel Cloudflare', $saida);
     }
 
-    /** @spec:AC-034 Ambiente desconhecido é recusado, em vez de virar produção por engano. */
+    /** @spec:AC-065 Ambiente desconhecido é recusado, em vez de virar produção por engano. */
     public function test_ambiente_invalido_e_recusado(): void
     {
         $processo = new Process(['bash', $this->script, '--local', '--ambiente', 'homologacao']);

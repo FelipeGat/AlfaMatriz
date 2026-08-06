@@ -19,7 +19,7 @@ class InventarioPainelTest extends TestCase
     }
 
     /**
-     * @spec:AC-032 O AlfaMatriz entra no inventário do painel com o que ele
+     * @spec:AC-063 O AlfaMatriz entra no inventário do painel com o que ele
      * precisa para acompanhar: qual container, onde fica a aplicação e como
      * checar a saúde.
      */
@@ -40,7 +40,7 @@ class InventarioPainelTest extends TestCase
     }
 
     /**
-     * @spec:AC-033 O inventário omite os campos que alimentam a
+     * @spec:AC-064 O inventário omite os campos que alimentam a
      * re-anonimização e a restauração de contas de teste. Sem eles, essas
      * ações não têm alvo — e não conseguem embaralhar a base real de clientes
      * e do financeiro da Alfa.

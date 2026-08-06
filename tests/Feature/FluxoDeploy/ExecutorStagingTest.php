@@ -38,7 +38,7 @@ class ExecutorStagingTest extends TestCase
     }
 
     /**
-     * @spec:AC-034 Havendo novidade na main e com a suíte passando, o executor
+     * @spec:AC-065 Havendo novidade na main e com a suíte passando, o executor
      * traz o código, instala dependências, compila o front-end, migra e
      * recarrega os caches.
      */
@@ -60,7 +60,7 @@ class ExecutorStagingTest extends TestCase
     }
 
     /**
-     * @spec:AC-035 Com a suíte falhando, nada é aplicado: o staging volta para
+     * @spec:AC-066 Com a suíte falhando, nada é aplicado: o staging volta para
      * a versão anterior e o executor termina com erro. É o que substitui, aqui,
      * o portão de CI dos outros sistemas.
      */
@@ -84,7 +84,7 @@ class ExecutorStagingTest extends TestCase
         }
     }
 
-    /** @spec:AC-034 Sem novidade na main, o executor não faz nada. */
+    /** @spec:AC-065 Sem novidade na main, o executor não faz nada. */
     public function test_sem_novidade_nao_faz_nada(): void
     {
         $this->criarFerramentas(testesPassam: true);
@@ -103,7 +103,7 @@ class ExecutorStagingTest extends TestCase
     }
 
     /**
-     * @spec:AC-034 O executor não depende do PATH de quem o chama. O cron do
+     * @spec:AC-065 O executor não depende do PATH de quem o chama. O cron do
      * root roda com PATH=/usr/bin:/bin, onde `pct` (em /usr/sbin) não existe —
      * e o script falhava a cada 5 minutos sem ninguém notar.
      */
@@ -126,7 +126,7 @@ class ExecutorStagingTest extends TestCase
         $this->assertLessThan($posUso, $posPath, 'O PATH precisa ser definido antes do primeiro uso do pct.');
     }
 
-    /** @spec:AC-034 Com o marcador de pausa, o executor respeita e sai. */
+    /** @spec:AC-065 Com o marcador de pausa, o executor respeita e sai. */
     public function test_respeita_a_pausa(): void
     {
         $this->criarFerramentas(testesPassam: true);

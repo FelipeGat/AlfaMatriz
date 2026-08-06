@@ -1,0 +1,206 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plano de execução — redesign-visual</title>
+<style>
+  :root { --bg:#fafafa; --fg:#1a1a1a; --card:#fff; --borda:#e2e2e2; --sub:#666;
+          --acc:#0a7c42; --acc-fg:#fff; --aviso:#8a6d00; --aviso-bg:#fff8e1; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141414; --fg:#eaeaea; --card:#1e1e1e; --borda:#333; --sub:#9a9a9a;
+            --acc:#17a35c; --aviso:#e0c36a; --aviso-bg:#2a2410; }
+  }
+  * { box-sizing:border-box }
+  body { margin:0; padding:2rem 1rem; background:var(--bg); color:var(--fg);
+         font:15px/1.55 system-ui,-apple-system,sans-serif }
+  main { max-width:64rem; margin:0 auto }
+  h1 { font-size:1.5rem; margin:0 0 .25rem } h3 { margin:1.5rem 0 .5rem }
+  h4 { margin:0 0 .5rem } small { color:var(--sub); font-weight:400 }
+  .sub { color:var(--sub); margin:0 0 1.25rem }
+  code { font:.85em ui-monospace,monospace; background:var(--card);
+         border:1px solid var(--borda); border-radius:4px; padding:.05em .35em; overflow-wrap:anywhere }
+  .resumo { display:flex; gap:.75rem; flex-wrap:wrap; margin:0 0 1rem }
+  .resumo div { background:var(--card); border:1px solid var(--borda); border-radius:8px;
+                padding:.5rem .9rem } .resumo b { font-size:1.2rem }
+  .executor { background:var(--card); border:1px solid var(--borda); border-radius:10px;
+              padding:1rem; margin:0 0 .5rem }
+  .executor h2 { margin:0 0 .5rem; font-size:1.05rem }
+  .nota { color:var(--sub); font-size:.85rem; margin:.5rem 0 0 }
+  #cmd { display:inline-block; margin-top:.6rem }
+  .grade { display:grid; grid-template-columns:repeat(auto-fit,minmax(17rem,1fr)); gap:.75rem }
+  .faixa { background:var(--card); border:1px solid var(--borda); border-radius:10px; padding: .9rem }
+  .tarefa { display:flex; flex-direction:column; gap:.15rem; padding:.6rem 0;
+            border-top:1px dashed var(--borda) }
+  .tarefa:first-of-type { border-top:0 }
+  .tid { font:700 .85rem ui-monospace,monospace; color:var(--acc) }
+  .meta,.arquivos { font-size:.85rem; color:var(--sub) }
+  .avisos { background:var(--aviso-bg); color:var(--aviso); border-radius:8px;
+            padding:.6rem .9rem; margin:0 0 1rem; font-size:.9rem }
+  ol li { margin:.25rem 0 }
+</style>
+<main>
+  <h1>Plano de execução — redesign-visual</h1>
+  <p class="sub">gerado por <code>onp-spec plano</code> em 2026-08-06 16:40 · regenere após mudar tasks.md</p>
+  <div class="resumo">
+    <div><b>12</b> tarefa(s) em paralelo</div>
+    <div><b>12</b> faixa(s) · <b>4</b> onda(s)</div>
+    <div><b>0</b> sequencial(is)</div>
+    <div>branch <code>spec/redesign-visual</code></div>
+  </div>
+  
+  <div class="executor">
+    <h2>Como executar — via agente</h2>
+    <p>Peça ao agente (Claude Code) para executar o plano. Ele roda:</p>
+    <div><code id="cmd">bash .spec/features/redesign-visual/executar-tarefas.sh</code></div>
+    <p class="nota">Este arquivo é só visualização. Cada faixa roda <code>claude -p</code> num worktree próprio, com contexto limpo, modelo e esforço já definidos.
+    O gate final (verify + audit) roda sozinho; a execução fica em background e, a cada
+    1 minuto, o agente posta no chat a <b>tabela de andamento</b>
+    (<code>onp-spec resumo redesign-visual --tabela</code>) e o
+    <b>resumo geral de andamento</b> (<code>onp-spec resumo redesign-visual</code>).</p>
+  </div>
+  
+    <section class="onda">
+      <h3>Onda 1 <small>faixa-1 ∥ faixa-2 ∥ faixa-3 — em paralelo, janelas limpas</small></h3>
+      <div class="grade">
+      <div class="faixa">
+        <h4>faixa-1 <small>branch <code>spec/redesign-visual-faixa-1</code> · worktree <code>../onp-worktrees/AlfaMatriz-redesign-visual-faixa-1</code></small></h4>
+        
+        <div class="tarefa">
+          <span class="tid">T-034</span>
+          <span class="ttitulo">Centro de Controle</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
+          <span class="arquivos"><code>resources/views/centro-controle/index.blade.php</code> <code>app/Http/Controllers/CentroControleController.php</code> <code>tests/Feature/Redesign/CentroControleTest.php</code></span>
+        </div>
+      </div>
+      <div class="faixa">
+        <h4>faixa-2 <small>branch <code>spec/redesign-visual-faixa-2</code> · worktree <code>../onp-worktrees/AlfaMatriz-redesign-visual-faixa-2</code></small></h4>
+        
+        <div class="tarefa">
+          <span class="tid">T-035</span>
+          <span class="ttitulo">Painéis Financeiro e Comercial</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
+          <span class="arquivos"><code>resources/views/dashboard.blade.php</code> <code>resources/views/dashboard-comercial.blade.php</code> <code>app/Http/Controllers/PainelController.php</code> <code>tests/Feature/Redesign/PaineisTest.php</code></span>
+        </div>
+      </div>
+      <div class="faixa">
+        <h4>faixa-3 <small>branch <code>spec/redesign-visual-faixa-3</code> · worktree <code>../onp-worktrees/AlfaMatriz-redesign-visual-faixa-3</code></small></h4>
+        
+        <div class="tarefa">
+          <span class="tid">T-036</span>
+          <span class="ttitulo">Funil de vendas com arrastar e soltar</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
+          <span class="arquivos"><code>resources/views/leads/index.blade.php</code> <code>app/Http/Controllers/LeadController.php</code> <code>tests/Feature/Redesign/FunilTest.php</code></span>
+        </div>
+      </div></div>
+    </section>
+    <section class="onda">
+      <h3>Onda 2 <small>faixa-4 ∥ faixa-5 ∥ faixa-6 — em paralelo, janelas limpas</small></h3>
+      <div class="grade">
+      <div class="faixa">
+        <h4>faixa-4 <small>branch <code>spec/redesign-visual-faixa-4</code> · worktree <code>../onp-worktrees/AlfaMatriz-redesign-visual-faixa-4</code></small></h4>
+        
+        <div class="tarefa">
+          <span class="tid">T-037</span>
+          <span class="ttitulo">Revendas</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>resources/views/revendas/index.blade.php</code> <code>resources/views/revendas/_form.blade.php</code> <code>resources/views/revendas/create.blade.php</code> <code>resources/views/revendas/edit.blade.php</code> <code>app/Http/Controllers/RevendaController.php</code> <code>tests/Feature/Redesign/RevendasTest.php</code></span>
+        </div>
+      </div>
+      <div class="faixa">
+        <h4>faixa-5 <small>branch <code>spec/redesign-visual-faixa-5</code> · worktree <code>../onp-worktrees/AlfaMatriz-redesign-visual-faixa-5</code></small></h4>
+        
+        <div class="tarefa">
+          <span class="tid">T-038</span>
+          <span class="ttitulo">Clientes: lista e formulário</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
+          <span class="arquivos"><code>resources/views/clientes/index.blade.php</code> <code>resources/views/clientes/_form.blade.php</code> <code>resources/views/clientes/create.blade.php</code> <code>resources/views/clientes/edit.blade.php</code> <code>app/Http/Controllers/ClienteController.php</code> <code>tests/Feature/Redesign/ClientesTest.php</code></span>
+        </div>
+      </div>
+      <div class="faixa">
+        <h4>faixa-6 <small>branch <code>spec/redesign-visual-faixa-6</code> · worktree <code>../onp-worktrees/AlfaMatriz-redesign-visual-faixa-6</code></small></h4>
+        
+        <div class="tarefa">
+          <span class="tid">T-039</span>
+          <span class="ttitulo">Produtos: lista comparável e gestão do sistema</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
+          <span class="arquivos"><code>resources/views/produtos/index.blade.php</code> <code>resources/views/sistemas/index.blade.php</code> <code>resources/views/sistemas/edit.blade.php</code> <code>app/Http/Controllers/ProdutoController.php</code> <code>tests/Feature/Redesign/ProdutosTest.php</code></span>
+        </div>
+      </div></div>
+    </section>
+    <section class="onda">
+      <h3>Onda 3 <small>faixa-7 ∥ faixa-8 ∥ faixa-9 — em paralelo, janelas limpas</small></h3>
+      <div class="grade">
+      <div class="faixa">
+        <h4>faixa-7 <small>branch <code>spec/redesign-visual-faixa-7</code> · worktree <code>../onp-worktrees/AlfaMatriz-redesign-visual-faixa-7</code></small></h4>
+        
+        <div class="tarefa">
+          <span class="tid">T-040</span>
+          <span class="ttitulo">Faturamento das revendas</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
+          <span class="arquivos"><code>resources/views/faturamento/index.blade.php</code> <code>app/Http/Controllers/FaturamentoController.php</code> <code>app/Services/FaturamentoService.php</code> <code>tests/Feature/Redesign/FaturamentoTest.php</code></span>
+        </div>
+      </div>
+      <div class="faixa">
+        <h4>faixa-8 <small>branch <code>spec/redesign-visual-faixa-8</code> · worktree <code>../onp-worktrees/AlfaMatriz-redesign-visual-faixa-8</code></small></h4>
+        
+        <div class="tarefa">
+          <span class="tid">T-041</span>
+          <span class="ttitulo">Receitas / contas a receber</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
+          <span class="arquivos"><code>resources/views/cobrancas/index.blade.php</code> <code>resources/views/cobrancas/_form.blade.php</code> <code>resources/views/cobrancas/create.blade.php</code> <code>resources/views/cobrancas/edit.blade.php</code> <code>resources/views/cobrancas/show.blade.php</code> <code>app/Http/Controllers/CobrancaController.php</code> <code>tests/Feature/Redesign/ReceitasTest.php</code></span>
+        </div>
+      </div>
+      <div class="faixa">
+        <h4>faixa-9 <small>branch <code>spec/redesign-visual-faixa-9</code> · worktree <code>../onp-worktrees/AlfaMatriz-redesign-visual-faixa-9</code></small></h4>
+        
+        <div class="tarefa">
+          <span class="tid">T-042</span>
+          <span class="ttitulo">Despesas / contas a pagar</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
+          <span class="arquivos"><code>resources/views/contas-pagar/index.blade.php</code> <code>resources/views/contas-pagar/_form.blade.php</code> <code>resources/views/contas-pagar/create.blade.php</code> <code>resources/views/contas-pagar/edit.blade.php</code> <code>resources/views/contas-fixas-pagar/index.blade.php</code> <code>app/Http/Controllers/ContaPagarController.php</code> <code>tests/Feature/Redesign/DespesasTest.php</code></span>
+        </div>
+      </div></div>
+    </section>
+    <section class="onda">
+      <h3>Onda 4 <small>faixa-10 ∥ faixa-11 ∥ faixa-12 — em paralelo, janelas limpas</small></h3>
+      <div class="grade">
+      <div class="faixa">
+        <h4>faixa-10 <small>branch <code>spec/redesign-visual-faixa-10</code> · worktree <code>../onp-worktrees/AlfaMatriz-redesign-visual-faixa-10</code></small></h4>
+        
+        <div class="tarefa">
+          <span class="tid">T-043</span>
+          <span class="ttitulo">Caixa e extrato</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>resources/views/contas-financeiras/index.blade.php</code> <code>resources/views/contas-financeiras/_form.blade.php</code> <code>resources/views/contas-financeiras/create.blade.php</code> <code>resources/views/contas-financeiras/edit.blade.php</code> <code>resources/views/contas-financeiras/extrato.blade.php</code> <code>app/Http/Controllers/ContaFinanceiraController.php</code> <code>tests/Feature/Redesign/CaixaTest.php</code></span>
+        </div>
+      </div>
+      <div class="faixa">
+        <h4>faixa-11 <small>branch <code>spec/redesign-visual-faixa-11</code> · worktree <code>../onp-worktrees/AlfaMatriz-redesign-visual-faixa-11</code></small></h4>
+        
+        <div class="tarefa">
+          <span class="tid">T-044</span>
+          <span class="ttitulo">Cadastros auxiliares e plano de contas</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>resources/views/cadastros-auxiliares/index.blade.php</code> <code>app/Http/Controllers/CadastroAuxiliarController.php</code> <code>tests/Feature/Redesign/CadastrosTest.php</code></span>
+        </div>
+      </div>
+      <div class="faixa">
+        <h4>faixa-12 <small>branch <code>spec/redesign-visual-faixa-12</code> · worktree <code>../onp-worktrees/AlfaMatriz-redesign-visual-faixa-12</code></small></h4>
+        
+        <div class="tarefa">
+          <span class="tid">T-045</span>
+          <span class="ttitulo">Login e telas de autenticação</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>resources/views/auth/login.blade.php</code> <code>resources/views/auth/forgot-password.blade.php</code> <code>resources/views/auth/reset-password.blade.php</code> <code>resources/views/auth/confirm-password.blade.php</code> <code>resources/views/auth/verify-email.blade.php</code> <code>resources/views/layouts/guest.blade.php</code> <code>tests/Feature/Redesign/LoginTest.php</code></span>
+        </div>
+      </div></div>
+    </section>
+  
+  <section class="onda">
+    <h3>Branches e commits</h3>
+    <ol>
+      <li>tudo parte da branch de trabalho <code>spec/redesign-visual</code></li>
+      <li>1 faixa = 1 branch + 1 worktree; 1 tarefa = 1 commit <code>T-xxx redesign-visual: título</code></li>
+      <li>merge <code>--no-ff</code> por faixa, na ordem; conflito interrompe e pede você</li>
+      <li>gate final: <code>onp-spec verify redesign-visual</code> + <code>onp-spec audit --ci</code> — exit 0 ou não está pronto</li>
+    </ol>
+  </section>
+</main>

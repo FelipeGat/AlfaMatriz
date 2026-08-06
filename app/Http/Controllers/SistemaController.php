@@ -105,6 +105,6 @@ class SistemaController extends Controller
 
         $sistema->update($data);
 
-        return redirect()->route('sistemas.index')->with('status', 'Sistema atualizado com sucesso.');
+        return redirect()->route('produtos.index')->with('status', 'Sistema atualizado com sucesso.');
     }
 }

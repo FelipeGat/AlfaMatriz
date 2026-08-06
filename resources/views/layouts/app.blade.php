@@ -1,5 +1,14 @@
+{{--
+    Moldura do painel — sidebar + topbar + conteúdo.
+
+    Slots:
+      $titulo   título da tela (Space Grotesk 17px). Se ausente, cai no $header
+                antigo, para as telas ainda não migradas continuarem de pé.
+      $contexto linha de contexto em caixa alta ao lado do título
+      $acoes    botão primário da tela, à direita da busca
+--}}
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" data-theme="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,137 +16,103 @@
 
         <title>{{ config('app.name', 'AlfaMatriz') }}</title>
 
-        {{-- A versão no endereço força o navegador a buscar de novo. Favicon
-             fica num cache próprio, bem mais persistente que o das páginas, e
-             sobrevive até a janela anônima: sem isto, quem já visitou o site
-             continuaria vendo o ícone antigo por tempo indeterminado. --}}
-        <link rel="icon" type="image/svg+xml"
-              href="{{ asset('favicon.svg') }}?v={{ filemtime(public_path('favicon.svg')) }}">
+        <link rel="icon" href="/icon-matriz.svg" type="image/svg+xml">
+        <link rel="icon" href="/favicon.ico" sizes="32x32">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-        {{-- Tema aplicado ANTES da primeira pintura: no <head> e síncrono.
-             Se ficasse no app.js, quem usa o tema escuro veria um flash branco
-             a cada navegação. --}}
+        <link rel="preconnect" href="https://fonts.bunny.net">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+        {{--
+            Tema E estado do menu ANTES da primeira pintura.
+
+            Os dois são preferência guardada no navegador, e o servidor não tem
+            como saber qual é. Se a decisão esperasse o Alpine, ela chegaria
+            DEPOIS de a página já ter sido desenhada: quem usa o tema claro
+            veria o escuro piscar, e o menu nasceria expandido para só então
+            encolher — com a marca deslizando do lugar. Por isso as duas viram
+            classe no <html> aqui, e o CSS resolve o resto sem esperar ninguém.
+        --}}
         <script>
             (function () {
                 try {
-                    var salvo = localStorage.getItem('alfamatriz-tema');
-                    if (salvo === 'light' || salvo === 'dark') {
-                        document.documentElement.setAttribute('data-theme', salvo);
+                    if (localStorage.getItem('alfamatriz:tema') === 'claro') {
+                        document.documentElement.classList.add('theme-light');
                     }
-                } catch (e) { /* localStorage bloqueado: fica no tema padrão */ }
+                    if (localStorage.getItem('alfamatriz:rail') === 'fechado') {
+                        document.documentElement.classList.add('rail-fechado');
+                    }
+                } catch (erro) {
+                    // sem preferência guardada: tema escuro e menu expandido
+                }
             })();
         </script>
 
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=geist:400,500,600|geist-mono:400,500" rel="stylesheet" />
-
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="h-full font-sans antialiased bg-bg text-ink">
-        <div x-data="painel()" class="min-h-screen flex">
+
+    <body class="h-full font-sans antialiased bg-canvas text-ink">
+        <div x-data="shell" class="min-h-screen flex">
             @include('layouts.navigation')
 
-            {{-- Sobreposição do menu em tela estreita --}}
-            <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false"
+            {{-- Véu da gaveta: só existe abaixo de 1024px --}}
+            <div x-show="gavetaAberta" x-cloak @click="gavetaAberta = false"
                  class="fixed inset-0 z-30 bg-black/60 lg:hidden" x-transition.opacity></div>
 
             <div class="flex-1 flex flex-col min-w-0">
-                {{-- Header fino: só breadcrumb e tema. A busca vive na sidebar. --}}
-                <header class="sticky top-0 z-10 flex h-12 items-center justify-between gap-4 border-b border-line-soft bg-bg px-5">
-                    <div class="flex min-w-0 flex-1 items-center gap-3">
-                        <button @click="sidebarOpen = true" class="lg:hidden text-dim hover:text-ink shrink-0">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                        </button>
-                        <div class="min-w-0 flex-1">
-                            {{ $header ?? '' }}
-                        </div>
+                <header class="sticky top-0 z-20 h-topbar shrink-0 flex items-center gap-4 bg-head border-b border-line px-4 sm:px-7">
+                    {{--
+                        O botão de recolher mora no topbar, e não na sidebar,
+                        justamente para não mudar de lugar entre os dois
+                        estados. No celular ele abre a gaveta.
+                    --}}
+                    <button type="button"
+                            @click="window.innerWidth < 1024 ? gavetaAberta = true : alternarRail()"
+                            class="h-[30px] w-[30px] shrink-0 rounded-ctl border border-btn-line text-ink-mute
+                                   flex items-center justify-center transition hover:text-brand hover:border-brand"
+                            :aria-expanded="railAberto.toString()"
+                            aria-controls="menu-principal"
+                            aria-label="Recolher ou expandir o menu">
+                        <span class="h-[15px] w-[15px]"><x-nav-icon name="panel-left" /></span>
+                    </button>
+
+                    {{--
+                        Prioridade de encolhimento: o título nunca cede espaço
+                        (flex-none), o contexto cede primeiro (min-w-0) e a
+                        busca cede antes dos dois. Sem isso o contexto — que é
+                        mais longo — corta o título ao meio.
+                    --}}
+                    <div class="flex items-baseline gap-3 min-w-0 flex-1">
+                        @isset($titulo)
+                            <h1 class="flex-none max-w-full truncate font-display text-[17px] font-semibold text-ink">{{ $titulo }}</h1>
+                        @else
+                            <div class="flex-none max-w-full truncate font-display [&_h2]:font-display [&_h2]:text-[17px] [&_h2]:font-semibold">{{ $header ?? '' }}</div>
+                        @endisset
+
+                        @isset($contexto)
+                            <p class="flex-1 min-w-0 truncate font-mono text-[11px] uppercase tracking-caps text-ink-faint">{{ $contexto }}</p>
+                        @endisset
                     </div>
 
-                    <div class="flex shrink-0 items-center gap-1">
-                        {{-- O ícone mostra o tema para o qual se vai, não o atual. --}}
-                        <button type="button" @click="alternarTema()"
-                                class="grid h-[30px] w-[30px] place-items-center rounded-control text-dim transition-colors hover:bg-raised hover:text-ink"
-                                :aria-label="tema === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'"
-                                :title="tema === 'dark' ? 'Tema claro' : 'Tema escuro'">
-                            <svg x-show="tema === 'dark'" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
-                                <circle cx="12" cy="12" r="4" />
-                                <path stroke-linecap="round" d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-                            </svg>
-                            <svg x-show="tema === 'light'" x-cloak class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-                            </svg>
-                        </button>
+                    <div class="flex items-center gap-2.5 shrink-0">
+                        <label class="hidden md:flex items-center gap-2 h-[34px] flex-1 min-w-[168px] max-w-[300px] px-3
+                                      rounded-control bg-input border border-line text-ink-faint
+                                      focus-within:border-brand transition">
+                            <span class="h-4 w-4 shrink-0"><x-nav-icon name="search" /></span>
+                            <input type="search" disabled
+                                   placeholder="Buscar cliente, revenda, cobrança…"
+                                   class="flex-1 min-w-0 bg-transparent border-0 p-0 text-[13px] text-ink placeholder-ink-faint focus:ring-0">
+                            <span class="shrink-0 rounded-badge border border-btn-line px-1.5 py-px font-mono text-[11px] leading-none text-ink-faint">⌘K</span>
+                        </label>
 
-                        <x-dropdown align="right" width="48">
-                            <x-slot name="trigger">
-                                <button class="grid h-[30px] w-[30px] place-items-center rounded-control text-dim transition-colors hover:bg-raised hover:text-ink">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
-                                        <circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" />
-                                    </svg>
-                                </button>
-                            </x-slot>
-                            <x-slot name="content">
-                                <x-dropdown-link :href="route('profile.edit')">Perfil</x-dropdown-link>
-                                <form method="POST" action="{{ route('logout') }}">
-                                    @csrf
-                                    <x-dropdown-link :href="route('logout')"
-                                            onclick="event.preventDefault(); this.closest('form').submit();">
-                                        Sair
-                                    </x-dropdown-link>
-                                </form>
-                            </x-slot>
-                        </x-dropdown>
+                        {{ $acoes ?? '' }}
                     </div>
                 </header>
 
-                <main class="flex-1 px-4 pb-10 pt-6 sm:px-6 lg:px-[26px]">
+                <main class="flex-1 px-4 pt-6 pb-10 sm:px-7">
                     {{ $slot }}
                 </main>
             </div>
-
-            {{-- Fora do <main> para não rolar junto com o conteúdo. --}}
-            <x-toast />
         </div>
-
-        <script>
-            // Estado puramente visual do painel. Filtros e seleção continuam no
-            // servidor, por query string.
-            //
-            // O menu não recolhe mais: a direção nova o quer fixo. O que restou
-            // do Alpine aqui é o tema e a sobreposição em tela estreita.
-            function painel() {
-                return {
-                    sidebarOpen: false,
-                    tema: 'dark',
-
-                    init() {
-                        try {
-                            this.tema = localStorage.getItem('alfamatriz-tema') || 'dark';
-                        } catch (e) { /* localStorage bloqueado: usa o padrão */ }
-
-                        document.documentElement.setAttribute('data-theme', this.tema);
-
-                        // Atalho "/" foca a busca do menu, como no protótipo.
-                        window.addEventListener('keydown', (e) => {
-                            if (e.key !== '/' || e.metaKey || e.ctrlKey) return;
-                            const alvo = e.target;
-                            if (alvo && ['INPUT', 'TEXTAREA', 'SELECT'].includes(alvo.tagName)) return;
-                            const busca = document.getElementById('busca-menu');
-                            if (busca) { e.preventDefault(); busca.focus(); }
-                        });
-                    },
-
-                    alternarTema() {
-                        this.tema = this.tema === 'dark' ? 'light' : 'dark';
-                        document.documentElement.setAttribute('data-theme', this.tema);
-                        try {
-                            localStorage.setItem('alfamatriz-tema', this.tema);
-                        } catch (e) { /* sem persistência, vale só nesta aba */ }
-                    },
-                };
-            }
-        </script>
     </body>
 </html>

@@ -13,7 +13,7 @@ class CopiaEmbaralhadaTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * @spec:AC-038 A preparação do staging troca nome, e-mail, telefone e CNPJ
+     * @spec:AC-069 A preparação do staging troca nome, e-mail, telefone e CNPJ
      * dos clientes por dados falsos e aplica uma senha de teste — mas NÃO mexe
      * nos valores do financeiro, que são o motivo de o staging existir.
      */
@@ -84,7 +84,7 @@ class CopiaEmbaralhadaTest extends TestCase
     }
 
     /**
-     * @spec:AC-038 Em produção o comando se recusa a rodar: ele apaga dados
+     * @spec:AC-069 Em produção o comando se recusa a rodar: ele apaga dados
      * reais de clientes, e um engano de terminal custaria a base da empresa.
      */
     public function test_recusa_rodar_em_producao_sem_confirmacao(): void

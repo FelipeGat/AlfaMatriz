@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Cobranca extends Model
 {
@@ -42,6 +43,11 @@ class Cobranca extends Model
     public function contaFinanceira(): BelongsTo
     {
         return $this->belongsTo(ContaFinanceira::class);
+    }
+
+    public function anexos(): HasMany
+    {
+        return $this->hasMany(CobrancaAnexo::class);
     }
 
     public function baixar(?float $valorPago = null, ?string $dataPagamento = null): void

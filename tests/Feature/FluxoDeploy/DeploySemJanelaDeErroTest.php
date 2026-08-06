@@ -13,7 +13,7 @@ class DeploySemJanelaDeErroTest extends TestCase
     ];
 
     /**
-     * @spec:AC-037 Nenhum script apaga o cache de configuração antes de
+     * @spec:AC-068 Nenhum script apaga o cache de configuração antes de
      * reconstruí-lo.
      *
      * O `.env` do servidor é 600/root, então o www-data não consegue lê-lo: o

@@ -1,166 +1,44 @@
-@php
-    // Paleta dos segmentos, na ordem do handoff.
-    $cores = ['#029caf', '#2ec9d9', '#0f7c8a', '#7fdce6', '#e8a045', '#8fa4a8'];
-
-    // A rosca: r=47, traço 11, girada -90° para começar no topo. O vão de 2.5
-    // unidades entre arcos é o que separa visualmente os sistemas.
-    $raio = 47;
-    $circunferencia = 2 * M_PI * $raio;
-    $vao = 2.5;
-
-    $montarArcos = function ($itens, string $campo) use ($cores, $circunferencia, $vao) {
-        $total = collect($itens)->sum($campo);
-        $arcos = [];
-        $acumulado = 0;
-
-        foreach ($itens as $i => $item) {
-            $valor = (float) $item[$campo];
-            $fatia = $total > 0 ? $valor / $total : 0;
-            $comprimento = max(($fatia * $circunferencia) - $vao, 0);
-
-            $arcos[] = [
-                'cor' => $cores[$i % count($cores)],
-                'dash' => $comprimento,
-                'offset' => -$acumulado,
-                'nome' => $item['sistema']->nome,
-                'categoria' => $item['sistema']->categoria,
-                'valor' => $valor,
-                'participacao' => $fatia * 100,
-            ];
-
-            $acumulado += $fatia * $circunferencia;
-        }
-
-        return ['arcos' => $arcos, 'total' => $total];
-    };
-
-    $porClientes = $montarArcos($porQuantidade->take(6), 'clientes_ativos');
-    $porValorRanking = $montarArcos($porValor->take(6), 'valor_estimado');
-@endphp
-
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center gap-2 text-[14px]">
-            <span class="text-mute">Painéis</span>
-            <span class="text-line">/</span>
-            <span class="font-medium text-ink">Comercial</span>
-        </div>
-    </x-slot>
+    <x-slot name="titulo">Painel Comercial</x-slot>
+    <x-slot name="contexto">portfólio e base instalada</x-slot>
 
-    <div class="space-y-[18px]" x-data="{ metrica: 'clientes' }">
-
-        <div class="grid gap-[14px]" style="grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));">
-            <x-kpi-card label="Sistemas ativos" :value="$totalSistemasAtivos" apoio="no catálogo" />
-            <x-kpi-card label="Clientes ativos" :value="$totalClientesAtivos" apoio="em todos os sistemas" />
-            <x-kpi-card label="Revendas ativas" :value="$totalRevendasAtivas" apoio="parceiras da Alfa" />
-            <x-kpi-card label="MRR estimado" :value="'R$ ' . number_format($mrrEstimado, 2, ',', '.')" apoio="preço de atacado" />
+    <div class="space-y-4">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+            <x-kpi-card rotulo="Sistemas ativos" :valor="number_format($totalSistemasAtivos, 0, ',', '.')"
+                        acento="accent" icone="cube-outline" />
+            <x-kpi-card rotulo="Clientes ativos" :valor="number_format($totalClientesAtivos, 0, ',', '.')"
+                        acento="brand" icone="users" />
+            <x-kpi-card rotulo="Revendas ativas" :valor="number_format($totalRevendasAtivas, 0, ',', '.')"
+                        acento="amber" icone="building" />
+            <x-kpi-card rotulo="MRR de atacado" :valor="'R$ '.number_format($mrrEstimado, 2, ',', '.')"
+                        acento="chart-out" icone="repeat" />
         </div>
 
-        <x-painel-card titulo="Ranking de sistemas">
-            <x-slot name="acao">
-                {{-- Alternador: puramente visual, os dois conjuntos já vêm do servidor --}}
-                <div class="inline-flex rounded-control border border-line bg-raised p-0.5">
-                    <button type="button" @click="metrica = 'clientes'"
-                            class="rounded px-2.5 py-1 font-mono text-[11.5px] transition-colors"
-                            :class="metrica === 'clientes' ? 'border border-line bg-panel text-ink' : 'text-dim hover:text-ink'">
-                        Por clientes
-                    </button>
-                    <button type="button" @click="metrica = 'valor'"
-                            class="rounded px-2.5 py-1 font-mono text-[11.5px] transition-colors"
-                            :class="metrica === 'valor' ? 'border border-line bg-panel text-ink' : 'text-dim hover:text-ink'">
-                        Por valor
-                    </button>
-                </div>
-            </x-slot>
+        {{-- O destaque da tela: os dois rankings, em três camadas. --}}
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(420px, 1fr))">
+            <x-ranking :ranking="$rankingClientes"
+                       titulo="Produtos por clientes ativos"
+                       nota="quem tem mais base instalada"
+                       rotuloTotal="Clientes ativos" />
 
-            @foreach ([['chave' => 'clientes', 'dados' => $porClientes, 'unidade' => 'clientes', 'moeda' => false],
-                       ['chave' => 'valor', 'dados' => $porValorRanking, 'unidade' => 'por mês', 'moeda' => true]] as $painel)
-                <div x-show="metrica === '{{ $painel['chave'] }}'" @if ($painel['chave'] === 'valor') x-cloak @endif
-                     class="flex flex-wrap items-center gap-6">
+            <x-ranking :ranking="$rankingValor"
+                       titulo="Produtos por valor gerado"
+                       nota="quem sustenta o faturamento"
+                       rotuloTotal="MRR estimado"
+                       formato="reais" />
+        </div>
 
-                    <div class="relative shrink-0" style="width: 206px; height: 206px;">
-                        <svg viewBox="0 0 120 120" class="h-full w-full -rotate-90">
-                            <circle cx="60" cy="60" r="{{ $raio }}" fill="none" stroke="var(--track)" stroke-width="11" />
-                            @foreach ($painel['dados']['arcos'] as $arco)
-                                <circle cx="60" cy="60" r="{{ $raio }}" fill="none"
-                                        stroke="{{ $arco['cor'] }}" stroke-width="11"
-                                        stroke-dasharray="{{ round($arco['dash'], 2) }} {{ round($circunferencia, 2) }}"
-                                        stroke-dashoffset="{{ round($arco['offset'], 2) }}" />
-                            @endforeach
-                        </svg>
+        {{-- Mesma gramática, sem o bloco de topo: são recortes de apoio. --}}
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+            <x-ranking :ranking="$rankingRevendas"
+                       titulo="Clientes por revenda"
+                       nota="inclui venda direta"
+                       compacto />
 
-                        <div class="absolute inset-0 grid place-items-center text-center">
-                            <div>
-                                <p class="valor font-medium tracking-[-.03em] text-[clamp(17px,1.4vw,21px)] text-ink">
-                                    @if ($painel['moeda'])
-                                        R$ {{ number_format($painel['dados']['total'], 0, ',', '.') }}
-                                    @else
-                                        {{ (int) $painel['dados']['total'] }}
-                                    @endif
-                                </p>
-                                <p class="mt-0.5 font-mono text-[10px] font-medium uppercase tracking-[.08em] text-mute">{{ $painel['unidade'] }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <ul class="min-w-0 flex-1 space-y-1.5" style="flex-basis: 320px;">
-                        @forelse ($painel['dados']['arcos'] as $i => $arco)
-                            {{-- O marcador é um elemento próprio, não uma sombra
-                                 interna: dentro de um container com raio, a
-                                 sombra herdava o arredondamento e a barra saía
-                                 com as pontas curvas. --}}
-                            <li class="relative flex items-center gap-3 rounded-control py-1.5 pl-3 pr-2">
-                                <span class="absolute inset-y-0 left-0 w-[3px]" style="background: {{ $arco['cor'] }};" aria-hidden="true"></span>
-                                <span class="valor w-6 shrink-0 text-[11.5px] text-mute">{{ str_pad($i + 1, 2, '0', STR_PAD_LEFT) }}</span>
-                                <div class="min-w-0 flex-1">
-                                    <p class="truncate text-[14px] text-ink">{{ $arco['nome'] }}</p>
-                                    <p class="truncate text-[11px] uppercase tracking-[.06em] text-mute">{{ $arco['categoria'] ?? '—' }}</p>
-                                </div>
-                                <div class="shrink-0 text-right">
-                                    <p class="valor text-[12.5px] font-medium text-ink">
-                                        @if ($painel['moeda'])
-                                            R$ {{ number_format($arco['valor'], 2, ',', '.') }}
-                                        @else
-                                            {{ (int) $arco['valor'] }}
-                                        @endif
-                                    </p>
-                                    <p class="valor text-[11px] text-mute">{{ number_format($arco['participacao'], 1, ',', '.') }}%</p>
-                                </div>
-                            </li>
-                        @empty
-                            <li class="py-[34px] text-center text-[14px] text-mute">Nenhum sistema com clientes ainda.</li>
-                        @endforelse
-                    </ul>
-                </div>
-            @endforeach
-        </x-painel-card>
-
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <x-painel-card titulo="Clientes por revenda">
-                <ul class="divide-y divide-line">
-                    @forelse ($porRevenda as $nome => $qtd)
-                        <li class="flex items-center justify-between gap-3 py-2.5">
-                            <span class="truncate text-[14px] text-ink">{{ $nome }}</span>
-                            <span class="valor shrink-0 text-[12.5px] font-medium text-ink">{{ $qtd }}</span>
-                        </li>
-                    @empty
-                        <li class="py-[34px] text-center text-[14px] text-mute">Nenhum cliente cadastrado.</li>
-                    @endforelse
-                </ul>
-            </x-painel-card>
-
-            <x-painel-card titulo="Sistemas por categoria">
-                <ul class="divide-y divide-line">
-                    @forelse ($porCategoria as $categoria => $qtd)
-                        <li class="flex items-center justify-between gap-3 py-2.5">
-                            <span class="truncate text-[14px] text-ink">{{ $categoria ?: 'Sem categoria' }}</span>
-                            <span class="valor shrink-0 text-[12.5px] font-medium text-ink">{{ $qtd }}</span>
-                        </li>
-                    @empty
-                        <li class="py-[34px] text-center text-[14px] text-mute">Nenhum sistema cadastrado.</li>
-                    @endforelse
-                </ul>
-            </x-painel-card>
+            <x-ranking :ranking="$rankingCategorias"
+                       titulo="Portfólio por categoria"
+                       nota="sistemas por categoria"
+                       compacto />
         </div>
     </div>
 </x-app-layout>
