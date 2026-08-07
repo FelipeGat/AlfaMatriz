@@ -87,6 +87,38 @@ class ScriptPublicarTest extends TestCase
     }
 
     /**
+     * @spec:AC-074 Publicar avisa o executor da fila a pegar o código novo.
+     * O executor só nota o pedido entre um trabalho e outro, então o aviso
+     * precisa sair depois de os caches estarem regravados — senão ele reergue
+     * já lendo configuração velha — e antes de o servidor web ser recarregado.
+     */
+    public function test_publicar_avisa_o_executor_da_fila_a_pegar_o_codigo_novo(): void
+    {
+        $processo = $this->rodarScript();
+
+        $this->assertSame(0, $processo->getExitCode(), $processo->getErrorOutput().$processo->getOutput());
+
+        $chamadas = $this->lerChamadas();
+
+        $indiceViewCache = $this->indiceDaPrimeiraChamadaComPrefixo($chamadas, 'php artisan view:cache');
+        $indiceFila = $this->indiceDaPrimeiraChamadaComPrefixo($chamadas, 'php artisan queue:restart');
+        $indiceReload = $this->indiceDaPrimeiraChamadaComPrefixo($chamadas, 'sudo systemctl reload');
+
+        $this->assertNotNull($indiceFila, 'A publicação precisa avisar o executor da fila.');
+        $this->assertNotNull($indiceViewCache);
+        $this->assertNotNull($indiceReload);
+
+        $this->assertTrue(
+            $indiceViewCache < $indiceFila,
+            'O aviso precisa vir depois dos caches, senão o executor reergue lendo configuração velha.'
+        );
+        $this->assertTrue(
+            $indiceFila < $indiceReload,
+            'O aviso precisa vir antes de o servidor web ser recarregado.'
+        );
+    }
+
+    /**
      * @spec:AC-009 Se uma etapa falhar (aqui, a instalação de dependências
      * PHP), o script para imediatamente, avisa qual etapa falhou e não chega
      * a rodar as etapas seguintes (front-end, migrações, caches).

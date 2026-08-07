@@ -65,6 +65,13 @@ php artisan route:cache || falhar "recarregar cache de rotas"
 etapa "Recarregando cache de views"
 php artisan view:cache || falhar "recarregar cache de views"
 
+# Depois dos caches e antes do PHP-FPM: o executor da fila precisa pegar o
+# código novo, e só nota o pedido entre um trabalho e outro. Isto apenas grava
+# um sinal no cache — é seguro mesmo quando nenhum executor está rodando, e por
+# isso não interrompe a publicação de um servidor que ainda não tem o serviço.
+etapa "Reiniciando o executor da fila"
+php artisan queue:restart || falhar "reiniciar o executor da fila"
+
 etapa "Recarregando PHP-FPM"
 sudo systemctl reload php8.2-fpm || falhar "recarregar PHP-FPM"
 
