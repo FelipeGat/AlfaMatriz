@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -62,11 +63,45 @@ class Sistema extends Model
             return 'sem_endereco';
         }
 
-        if (blank($this->token)) {
+        // A leitura da chave precisa vir protegida: o valor é cifrado, e se a
+        // chave da aplicação for trocada no servidor TODAS as chaves de
+        // integração ficam ilegíveis de uma vez. Sem isto, a tela do painel
+        // quebraria com uma exceção de decifragem em vez de dizer o que houve.
+        if ($this->chaveIlegivel()) {
+            return 'chave_ilegivel';
+        }
+
+        if (blank($this->chaveDeIntegracao())) {
             return 'sem_chave';
         }
 
         return null;
+    }
+
+    /** A chave em claro, ou null quando não há chave ou ela não decifra. */
+    public function chaveDeIntegracao(): ?string
+    {
+        try {
+            return $this->token;
+        } catch (DecryptException) {
+            return null;
+        }
+    }
+
+    /** Existe algo guardado como chave, mas não é possível lê-lo. */
+    public function chaveIlegivel(): bool
+    {
+        if (blank($this->getRawOriginal('token'))) {
+            return false;
+        }
+
+        try {
+            $this->token;
+
+            return false;
+        } catch (DecryptException) {
+            return true;
+        }
     }
 
     public function integracaoConfigurada(): bool
