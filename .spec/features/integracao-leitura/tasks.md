@@ -71,8 +71,8 @@ Vale para todas as tarefas desta feature:
 
 ## T-064 — O contrato em código: interface, transportes e erro [pendente]
 
-- Refs: AC-078
-- Arquivos: app/Services/Integracao/ConectorSistema.php, app/Services/Integracao/RespostaIntegracao.php, app/Services/Integracao/ErroIntegracao.php, app/Services/Integracao/Documento.php, app/Services/Integracao/Dto/ClienteExterno.php, app/Services/Integracao/Dto/RevendaExterna.php, app/Services/Integracao/Dto/LicencaExterna.php, app/Services/Integracao/Dto/PlanoExterno.php, app/Services/Integracao/Dto/UsuarioExterno.php, app/Services/Integracao/Dto/FaturaExterna.php, app/Services/Integracao/Dto/ContadoresExternos.php
+- Refs: AC-078, AC-081, AC-084, AC-088, AC-089, AC-091
+- Arquivos: app/Services/Integracao/ConectorSistema.php, app/Services/Integracao/RespostaIntegracao.php, app/Services/Integracao/ErroIntegracao.php, app/Services/Integracao/Documento.php, app/Services/Integracao/Dto/ClienteExterno.php, app/Services/Integracao/Dto/RevendaExterna.php, app/Services/Integracao/Dto/LicencaExterna.php, app/Services/Integracao/Dto/PlanoExterno.php, app/Services/Integracao/Dto/UsuarioExterno.php, app/Services/Integracao/Dto/FaturaExterna.php, app/Services/Integracao/Dto/ContadoresExternos.php, tests/Feature/Integracao/ContratoEmCodigoTest.php
 - Notas: `Documento` normaliza CPF/CNPJ para só dígitos — é a base do casamento (T-067) e
   precisa ser um lugar só. `ErroIntegracao` carrega o código do catálogo do contrato, e é o
   único tipo de erro que sai desta camada.
