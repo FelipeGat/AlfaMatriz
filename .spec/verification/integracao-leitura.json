@@ -1,0 +1,112 @@
+{
+  "feature": "integracao-leitura",
+  "timestamp": "2026-08-07T22:18:08.825Z",
+  "gitRev": "24aadcd",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 273,
+  "results": {
+    "AC-078": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ConectorFalsoTest::test_o_duble_responde_no_formato_do_contrato @spec:AC-078",
+      "method": "tap"
+    },
+    "AC-079": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ConectorHttpTest::test_sistema_sem_endereco_recusa_antes_de_chamar @spec:AC-079",
+      "method": "tap"
+    },
+    "AC-080": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ConfiguracaoDoSistemaTest::test_salvar_o_sistema_sem_digitar_a_chave_mantem_a_chave @spec:AC-080",
+      "method": "tap"
+    },
+    "AC-081": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ConectorHttpTest::test_a_chave_nunca_aparece_na_mensagem_de_erro @spec:AC-081",
+      "method": "tap"
+    },
+    "AC-082": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ConectorFalsoTest::test_o_duble_sabe_ficar_fora_do_ar @spec:AC-082",
+      "method": "tap"
+    },
+    "AC-083": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\TelasTest::test_toda_tela_diz_de_quando_e_o_dado @spec:AC-083",
+      "method": "tap"
+    },
+    "AC-084": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ComandoSincronizarTest::test_o_comando_sincroniza_todos_os_sistemas_saas @spec:AC-084",
+      "method": "tap"
+    },
+    "AC-085": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\RetratoLocalTest::test_o_banco_recusa_dois_registros_com_o_mesmo_identificador @spec:AC-085",
+      "method": "tap"
+    },
+    "AC-086": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\AusenciaNaOrigemTest::test_cliente_que_sumiu_e_marcado_ausente_e_nao_apagado @spec:AC-086",
+      "method": "tap"
+    },
+    "AC-087": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\AusenciaNaOrigemTest::test_varredura_interrompida_nao_desativa_quem_nao_foi_lido @spec:AC-087",
+      "method": "tap"
+    },
+    "AC-088": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ContratoDocumentadoTest::test_o_contrato_nao_pede_dinheiro_a_nenhum_sistema @spec:AC-088",
+      "method": "tap"
+    },
+    "AC-089": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ConectorFalsoTest::test_os_contadores_chegam_com_a_competencia_pedida @spec:AC-089",
+      "method": "tap"
+    },
+    "AC-090": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\TelasTest::test_a_tela_de_divergencias_aponta_o_caso_e_nao_so_o_total @spec:AC-090",
+      "method": "tap"
+    },
+    "AC-091": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ContratoEmCodigoTest::test_documento_ausente_nunca_casa_com_documento_ausente @spec:AC-091",
+      "method": "tap"
+    },
+    "AC-092": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ImportacaoTest::test_importacao_separa_as_pendencias_por_motivo @spec:AC-092",
+      "method": "tap"
+    },
+    "AC-093": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ImportacaoTest::test_importacao_nunca_cria_cliente_sozinha @spec:AC-093",
+      "method": "tap"
+    },
+    "AC-094": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\TelasTest::test_o_corte_e_recusado_enquanto_houver_pendencia @spec:AC-094",
+      "method": "tap"
+    },
+    "AC-095": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ConfiguracaoDoSistemaTest::test_o_sistema_nasce_apenas_observado_e_o_corte_e_explicito @spec:AC-095",
+      "method": "tap"
+    },
+    "AC-096": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ContratoAlfaGymTest::test_a_recusa_do_alfagym_vira_nao_autenticado_sem_revelar_a_chave @spec:AC-096",
+      "method": "tap"
+    },
+    "AC-097": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ContratoAlfaGymTest::test_as_amostras_reais_do_alfagym_viram_retrato_local_correto @spec:AC-097",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

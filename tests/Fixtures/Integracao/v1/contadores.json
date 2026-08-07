@@ -1,0 +1,25 @@
+{
+  "unidade_cobranca": "academia ativa",
+  "clientes_total": 4,
+  "clientes_ativos": 2,
+  "clientes_pendentes": 1,
+  "clientes_bloqueados": 1,
+  "unidades_ativas": 2,
+  "licencas_ativas": 2,
+  "licencas_vencendo": 1,
+  "licencas_vencidas": 1,
+  "por_revenda": [
+    {
+      "revenda_id_externo": "3",
+      "nome": "Invest Soluções",
+      "clientes_ativos": 2,
+      "unidades_ativas": 2
+    },
+    {
+      "revenda_id_externo": "7",
+      "nome": "Revenda Sem Documento",
+      "clientes_ativos": 0,
+      "unidades_ativas": 0
+    }
+  ]
+}

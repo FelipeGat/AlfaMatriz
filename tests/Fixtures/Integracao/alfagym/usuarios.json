@@ -1,0 +1,29 @@
+[
+  {
+    "id_externo": "512",
+    "cliente_id_externo": "128",
+    "nome": "Marina Alves",
+    "email": "marina@corpoemmovimento.com.br",
+    "papel": "admin",
+    "ativo": true,
+    "ultimo_acesso_em": "2026-08-06T19:03:00-03:00"
+  },
+  {
+    "id_externo": "513",
+    "cliente_id_externo": "129",
+    "nome": "Paulo Freitas",
+    "email": "paulo@ritmo.com.br",
+    "papel": "admin",
+    "ativo": true,
+    "ultimo_acesso_em": "2026-08-06T20:11:00-03:00"
+  },
+  {
+    "id_externo": "514",
+    "cliente_id_externo": "131",
+    "nome": "Conta Suspensa",
+    "email": "contato@suspensa.com.br",
+    "papel": "admin",
+    "ativo": false,
+    "ultimo_acesso_em": null
+  }
+]
