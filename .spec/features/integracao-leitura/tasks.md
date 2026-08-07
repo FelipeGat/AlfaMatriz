@@ -69,24 +69,21 @@ Vale para todas as tarefas desta feature:
   Sem esse registro ninguém descobre que a rotina morreu — é exatamente o defeito que o projeto
   tinha com o agendamento.
 
-## T-064 — O contrato em código: interface, transportes e erro [pendente]
-
+## T-064 — O contrato em código: interface, transportes e erro [concluida]
 - Refs: AC-078, AC-081, AC-084, AC-088, AC-089, AC-091
 - Arquivos: app/Services/Integracao/ConectorSistema.php, app/Services/Integracao/RespostaIntegracao.php, app/Services/Integracao/ErroIntegracao.php, app/Services/Integracao/Documento.php, app/Services/Integracao/Dto/ClienteExterno.php, app/Services/Integracao/Dto/RevendaExterna.php, app/Services/Integracao/Dto/LicencaExterna.php, app/Services/Integracao/Dto/PlanoExterno.php, app/Services/Integracao/Dto/UsuarioExterno.php, app/Services/Integracao/Dto/FaturaExterna.php, app/Services/Integracao/Dto/ContadoresExternos.php, tests/Feature/Integracao/ContratoEmCodigoTest.php
 - Notas: `Documento` normaliza CPF/CNPJ para só dígitos — é a base do casamento (T-067) e
   precisa ser um lugar só. `ErroIntegracao` carrega o código do catálogo do contrato, e é o
   único tipo de erro que sai desta camada.
 
-## T-065 — Conector falso e amostras de resposta [pendente]
-
+## T-065 — Conector falso e amostras de resposta [concluida]
 - Refs: AC-078, AC-082, AC-084, AC-087, AC-089
 - Arquivos: app/Services/Integracao/ConectorFalso.php, app/Services/Integracao/FabricaDeConector.php, tests/Support/FabricaFalsa.php, tests/Support/Amostras.php, tests/Fixtures/Integracao/v1/clientes.json, tests/Fixtures/Integracao/v1/revendas.json, tests/Fixtures/Integracao/v1/licencas.json, tests/Fixtures/Integracao/v1/planos.json, tests/Fixtures/Integracao/v1/usuarios.json, tests/Fixtures/Integracao/v1/financeiro.json, tests/Fixtures/Integracao/v1/contadores.json, tests/Feature/Integracao/ConectorFalsoTest.php
 - Notas: é o que faz a suíte inteira rodar sem rede. O falso programa falha por código de erro e
   guarda o que recebeu, para o teste conferir o que foi enviado. A fábrica é resolvida pelo
   contêiner, e o teste a substitui — nenhum serviço instancia conector direto.
 
-## T-066 — Conector HTTP [pendente]
-
+## T-066 — Conector HTTP [concluida]
 - Refs: AC-078, AC-079, AC-081, AC-084, AC-089
 - Arquivos: app/Services/Integracao/ConectorHttp.php, tests/Feature/Integracao/ConectorHttpTest.php
 - Notas: nova tentativa só em falha de conexão, excesso de pedidos e erro do servidor — nunca em
@@ -94,8 +91,7 @@ Vale para todas as tarefas desta feature:
   (acontece se a chave da aplicação for trocada no servidor) vira erro nomeado, não exceção
   crua. Teste dedicado varre o registro atrás da chave (AC-081).
 
-## T-067 — Casar cliente e revenda do sistema com os da matriz [pendente]
-
+## T-067 — Casar cliente e revenda do sistema com os da matriz [concluida]
 - Refs: AC-091
 - Arquivos: app/Services/Integracao/VinculadorService.php, tests/Feature/Integracao/VinculoTest.php
 - Notas: casa por documento normalizado e **só quando existe exatamente um candidato**. Zero ou
