@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,8 @@ use Illuminate\Support\Collection;
 
 class Sistema extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'nome', 'slug', 'categoria', 'unidade_cobranca', 'base_url', 'token', 'ativo',
         'versao', 'responsavel', 'roadmap',
