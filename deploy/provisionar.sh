@@ -249,6 +249,35 @@ no_container "test -f /usr/local/bin/alfamatriz-backup.sh && \
      (crontab -l 2>/dev/null; echo '17 3 * * * /usr/local/bin/alfamatriz-backup.sh >> /var/log/alfamatriz-backup.log 2>&1') | crontab -) || \
     echo 'AVISO: /usr/local/bin/alfamatriz-backup.sh ainda não foi enviado — o cron será criado quando ele existir.'"
 
+# -------------------------------------------------------------- agendamento
+
+# O agendamento do Laravel só acontece se algo chamar `schedule:run` a cada
+# minuto. Até esta entrega isso não existia: o único cron do servidor era o do
+# backup, então tudo que está em routes/console.php — inclusive o fechamento
+# mensal — nunca rodou sozinho.
+#
+# Escrito em /etc/cron.d, e não com `crontab -l | ... | crontab -`: sobrescrever
+# um arquivo é idempotente por construção, aceita a linha PATH= de forma
+# inequívoca e tem campo de usuário explícito. O nome não pode ter ponto e o
+# modo precisa ser 0644 — exigências do próprio cron, senão ele ignora o
+# arquivo em silêncio.
+#
+# O PATH por extenso e o php pelo caminho absoluto não são zelo: o cron roda
+# com PATH=/usr/bin:/bin, e `schedule:run` dispara subprocessos que precisam
+# encontrar as ferramentas. Foi assim que o cron do AlfaDeploy falhou em
+# silêncio a cada 5 minutos (ver deploy/deploy-staging-alfamatriz.sh).
+#
+# O log nasce com o dono certo porque quem roda é o www-data, e ele não
+# consegue criar arquivo em /var/log — sem isso, todo redirecionamento falha.
+info "agendando as rotinas do painel (schedule:run a cada minuto)"
+no_container "touch /var/log/alfamatriz-schedule.log && \
+    chown www-data:www-data /var/log/alfamatriz-schedule.log"
+no_container "cat > /etc/cron.d/alfamatriz-schedule <<'CRON'
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+* * * * * www-data cd $APP_DIR && /usr/bin/php artisan schedule:run >> /var/log/alfamatriz-schedule.log 2>&1
+CRON
+chmod 0644 /etc/cron.d/alfamatriz-schedule && systemctl restart cron"
+
 info "provisionamento de $AMBIENTE concluído (LXC $VMID em $IP)"
 echo
 echo "próximos passos:"
