@@ -15,6 +15,16 @@ class Sistema extends Model
     protected $fillable = [
         'nome', 'slug', 'categoria', 'unidade_cobranca', 'base_url', 'token', 'ativo',
         'versao', 'responsavel', 'roadmap',
+        'sincronizado_em', 'falhas_consecutivas', 'importado_em', 'cadastro_na_matriz_desde',
+    ];
+
+    /**
+     * O banco já tem o padrão zero, mas ele só vale depois de reler o registro.
+     * Sem o padrão aqui, o contador chega nulo na instância recém-criada — e o
+     * serviço de sincronização soma em cima dele.
+     */
+    protected $attributes = [
+        'falhas_consecutivas' => 0,
     ];
 
     protected function casts(): array
@@ -22,7 +32,52 @@ class Sistema extends Model
         return [
             'ativo' => 'boolean',
             'token' => 'encrypted',
+            'sincronizado_em' => 'datetime',
+            'importado_em' => 'datetime',
+            'cadastro_na_matriz_desde' => 'datetime',
+            'falhas_consecutivas' => 'integer',
         ];
+    }
+
+    /**
+     * Por que este sistema não pode ser sincronizado agora — ou null se pode.
+     *
+     * Devolve um motivo nomeado, e não um booleano, porque a tela precisa
+     * dizer O QUE falta. "Não foi possível sincronizar" manda a pessoa
+     * adivinhar entre quatro causas diferentes.
+     */
+    public function motivoIntegracaoIndisponivel(): ?string
+    {
+        if (! $this->ativo) {
+            return 'sistema_inativo';
+        }
+
+        // Só os produtos vendidos como serviço entram na integração. É este
+        // filtro que mantém o Gestor (categoria crm) de fora.
+        if ($this->categoria !== 'saas') {
+            return 'fora_do_escopo';
+        }
+
+        if (blank($this->base_url)) {
+            return 'sem_endereco';
+        }
+
+        if (blank($this->token)) {
+            return 'sem_chave';
+        }
+
+        return null;
+    }
+
+    public function integracaoConfigurada(): bool
+    {
+        return $this->motivoIntegracaoIndisponivel() === null;
+    }
+
+    /** A matriz já é dona do cadastro deste sistema? */
+    public function cadastroNaMatriz(): bool
+    {
+        return $this->cadastro_na_matriz_desde !== null;
     }
 
     public function clientes(): BelongsToMany
