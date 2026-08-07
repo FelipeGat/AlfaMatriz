@@ -1,11 +1,11 @@
 {
   "feature": "deploy-alfa-server",
-  "timestamp": "2026-08-06T20:08:56.205Z",
-  "gitRev": "029c038",
+  "timestamp": "2026-08-07T15:45:29.107Z",
+  "gitRev": "6d51327",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 107,
+  "testsParsed": 145,
   "results": {
     "AC-001": {
       "status": "pass",

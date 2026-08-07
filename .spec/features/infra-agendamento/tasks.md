@@ -45,8 +45,7 @@ Vale para todas as tarefas desta feature:
   então depois disso o agendamento é inócuo. Documentar o procedimento na seção de operação do
   README. **Esta tarefa precede a T-054 obrigatoriamente.**
 
-## T-054 — Agendamento de sistema chamando as rotinas do painel [pendente]
-
+## T-054 — Agendamento de sistema chamando as rotinas do painel [concluida]
 - Refs: AC-071
 - Arquivos: deploy/provisionar.sh, tests/Feature/Infra/AgendamentoTest.php
 - Notas: Criar `/etc/cron.d/alfamatriz-schedule` sobrescrevendo o arquivo — é idempotente por
@@ -56,8 +55,7 @@ Vale para todas as tarefas desta feature:
   o cron roda com caminho mínimo e falha em silêncio. Roda como o usuário do aplicativo, não
   como administrador — ver T-055.
 
-## T-055 — Configuração legível pelo aplicativo e pastas de trabalho no dono certo [pendente]
-
+## T-055 — Configuração legível pelo aplicativo e pastas de trabalho no dono certo [concluida]
 - Refs: AC-072
 - Arquivos: deploy/provisionar.sh, tests/Feature/Infra/PermissoesDoAplicativoTest.php
 - Notas: Fecha ASM-029. Hoje o arquivo de configuração é exclusivo do administrador; as rotinas
@@ -66,8 +64,7 @@ Vale para todas as tarefas desta feature:
   servidor web não consegue reabrir. Passar para leitura pelo grupo do usuário do aplicativo, e
   garantir o dono das pastas de trabalho e de cache. Tudo idempotente.
 
-## T-056 — Serviço permanente que consome a fila [pendente]
-
+## T-056 — Serviço permanente que consome a fila [concluida]
 - Refs: AC-073
 - Arquivos: deploy/alfamatriz-queue.service, deploy/provisionar.sh, tests/Feature/Infra/ExecutorDeFilaTest.php
 - Notas: Instalar pela mesma mecânica já usada para a configuração do servidor web em
@@ -76,16 +73,14 @@ Vale para todas as tarefas desta feature:
   reergue ao cair e se recicla de tempos em tempos, para código velho não ficar rodando
   indefinidamente. Depende da T-055: sem a permissão de leitura, o serviço não sobe.
 
-## T-057 — Publicar avisa o executor da fila a pegar o código novo [pendente]
-
+## T-057 — Publicar avisa o executor da fila a pegar o código novo [concluida]
 - Refs: AC-074
 - Arquivos: deploy/publicar.sh, tests/Feature/Deploy/ScriptPublicarTest.php
 - Notas: Entra entre a regravação dos caches e o recarregamento do servidor web. O aviso é
   gravado no cache e é seguro mesmo quando nenhum executor está rodando. O teste existente
   assere ordem relativa entre etapas nomeadas — a etapa nova precisa manter a ordem já provada.
 
-## T-058 — Envio de e-mail real no ambiente publicado e comando de conferência [pendente]
-
+## T-058 — Envio de e-mail real no ambiente publicado e comando de conferência [concluida]
 - Refs: AC-075, AC-076, AC-077
 - Arquivos: deploy/.env.producao.exemplo, app/Console/Commands/TestarEmail.php, tests/Feature/Deploy/AmbienteProducaoTest.php, tests/Feature/Infra/TesteDeEmailTest.php
 - Notas: Fecha ASM-028 e responde Q-011. O modelo de ambiente troca o destino de arquivo de log

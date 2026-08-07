@@ -1,11 +1,11 @@
 {
   "feature": "fluxo-deploy",
-  "timestamp": "2026-08-06T20:11:08.166Z",
-  "gitRev": "029c038",
+  "timestamp": "2026-08-07T15:46:32.882Z",
+  "gitRev": "6d51327",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 107,
+  "testsParsed": 145,
   "results": {
     "AC-063": {
       "status": "pass",
