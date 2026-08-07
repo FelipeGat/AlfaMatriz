@@ -347,10 +347,10 @@
       "codigo": "VERIFY_OBSOLETO",
       "feature": "deploy-alfa-server",
       "ref": "—",
-      "ocorrencias": 13,
+      "ocorrencias": 15,
       "primeiraVez": "2026-08-05T17:44:49.524Z",
-      "ultimaVez": "2026-08-07T15:44:43.424Z",
-      "gitRev": "6d51327"
+      "ultimaVez": "2026-08-07T16:00:21.221Z",
+      "gitRev": "9547f6e"
     },
     "ARQUIVO_INEXISTENTE::despesas-fixas::T-019": {
       "codigo": "ARQUIVO_INEXISTENTE",
@@ -518,19 +518,19 @@
       "codigo": "VERIFY_OBSOLETO",
       "feature": "dominio-proprio",
       "ref": "—",
-      "ocorrencias": 10,
+      "ocorrencias": 12,
       "primeiraVez": "2026-08-06T16:22:39.930Z",
-      "ultimaVez": "2026-08-07T15:44:43.425Z",
-      "gitRev": "6d51327"
+      "ultimaVez": "2026-08-07T16:00:21.222Z",
+      "gitRev": "9547f6e"
     },
     "VERIFY_OBSOLETO::gestao-acessos::—": {
       "codigo": "VERIFY_OBSOLETO",
       "feature": "gestao-acessos",
       "ref": "—",
-      "ocorrencias": 10,
+      "ocorrencias": 12,
       "primeiraVez": "2026-08-06T16:22:39.930Z",
-      "ultimaVez": "2026-08-07T15:44:43.425Z",
-      "gitRev": "6d51327"
+      "ultimaVez": "2026-08-07T16:00:21.222Z",
+      "gitRev": "9547f6e"
     },
     "ARQUIVO_INEXISTENTE::redesign-visual::T-031": {
       "codigo": "ARQUIVO_INEXISTENTE",
@@ -1238,19 +1238,19 @@
       "codigo": "VERIFY_OBSOLETO",
       "feature": "redesign-visual",
       "ref": "—",
-      "ocorrencias": 5,
+      "ocorrencias": 7,
       "primeiraVez": "2026-08-06T20:11:08.351Z",
-      "ultimaVez": "2026-08-07T15:44:43.425Z",
-      "gitRev": "6d51327"
+      "ultimaVez": "2026-08-07T16:00:21.222Z",
+      "gitRev": "9547f6e"
     },
     "VERIFY_OBSOLETO::fluxo-deploy::—": {
       "codigo": "VERIFY_OBSOLETO",
       "feature": "fluxo-deploy",
       "ref": "—",
-      "ocorrencias": 4,
+      "ocorrencias": 6,
       "primeiraVez": "2026-08-06T20:30:07.463Z",
-      "ultimaVez": "2026-08-07T15:44:43.425Z",
-      "gitRev": "6d51327"
+      "ultimaVez": "2026-08-07T16:00:21.222Z",
+      "gitRev": "9547f6e"
     },
     "ARQUIVO_INEXISTENTE::infra-agendamento::T-054": {
       "codigo": "ARQUIVO_INEXISTENTE",
@@ -1350,6 +1350,15 @@
       "primeiraVez": "2026-08-07T15:28:43.057Z",
       "ultimaVez": "2026-08-07T15:28:43.057Z",
       "gitRev": "a6c1cc8"
+    },
+    "VERIFY_OBSOLETO::infra-agendamento::—": {
+      "codigo": "VERIFY_OBSOLETO",
+      "feature": "infra-agendamento",
+      "ref": "—",
+      "ocorrencias": 2,
+      "primeiraVez": "2026-08-07T16:00:21.066Z",
+      "ultimaVez": "2026-08-07T16:00:21.222Z",
+      "gitRev": "9547f6e"
     }
   }
 }
