@@ -27,8 +27,7 @@ Vale para todas as tarefas desta feature:
 - Nomes em português no domínio, como no resto do projeto (`Sincronizacao`, `SistemaCliente`).
 - Teste anotado com `@spec:AC-xxx` no docblock, em `tests/Feature/Integracao/`.
 
-## T-059 — Escrever o contrato da integração [pendente]
-
+## T-059 — Escrever o contrato da integração [concluida]
 - Refs: AC-078
 - Arquivos: docs/integracao/CONTRATO-API-v1.md, docs/integracao/CHANGELOG.md, tests/Feature/Integracao/ContratoDocumentadoTest.php
 - Notas: prefixo `/api/matriz/v1`, cabeçalho próprio `X-Matriz-Key`. **Não** reaproveitar a chave
@@ -37,8 +36,7 @@ Vale para todas as tarefas desta feature:
   catálogo fechado de erros e a regra de evolução de versão. O teste confere que o documento
   existe e cobre cada endereço que o conector usa — documento e código não podem divergir.
 
-## T-060 — Configuração do sistema: chave preservada e estado da integração [pendente]
-
+## T-060 — Configuração do sistema: chave preservada e estado da integração [concluida]
 - Refs: AC-079, AC-080
 - Arquivos: config/integracao.php, app/Http/Controllers/SistemaController.php, app/Models/Sistema.php, database/migrations/2026_08_07_120000_add_integracao_to_sistemas_table.php, tests/Feature/Integracao/ConfiguracaoDoSistemaTest.php
 - Notas: **corrige um defeito real já em produção** — o campo da chave é oculto, chega sempre
@@ -47,8 +45,7 @@ Vale para todas as tarefas desta feature:
   quando sincronizou pela última vez, quantas falhas seguidas, quando foi importado e desde
   quando a matriz é dona do cadastro dele.
 
-## T-061 — Retrato local: revendas, clientes e planos [pendente]
-
+## T-061 — Retrato local: revendas, clientes e planos [concluida]
 - Refs: US-036, AC-084, AC-085, AC-086
 - Arquivos: database/migrations/2026_08_07_120100_create_sistema_revendas_table.php, database/migrations/2026_08_07_120200_create_sistema_clientes_table.php, database/migrations/2026_08_07_120300_create_sistema_planos_table.php, app/Models/Concerns/EspelhaSistema.php, app/Models/SistemaRevenda.php, app/Models/SistemaCliente.php, app/Models/SistemaPlano.php, tests/Feature/Integracao/RetratoLocalTest.php
 - Notas: chave única por `(sistema, identificador na origem)`. Cada tabela guarda também a
@@ -56,8 +53,7 @@ Vale para todas as tarefas desta feature:
   carrega o vínculo com o cliente da matriz e a marca de como o vínculo nasceu (automático ou
   manual) — vínculo manual nunca é sobrescrito.
 
-## T-062 — Retrato local: licenças, usuários, financeiro e contadores [pendente]
-
+## T-062 — Retrato local: licenças, usuários, financeiro e contadores [concluida]
 - Refs: US-036, AC-084, AC-085, AC-086, AC-088, AC-089
 - Arquivos: database/migrations/2026_08_07_120400_create_sistema_licencas_table.php, database/migrations/2026_08_07_120500_create_sistema_usuarios_table.php, database/migrations/2026_08_07_120600_create_sistema_faturas_table.php, database/migrations/2026_08_07_120700_create_sistema_contadores_table.php, app/Models/SistemaLicenca.php, app/Models/SistemaUsuario.php, app/Models/SistemaFatura.php, app/Models/SistemaContador.php, tests/Feature/Integracao/RetratoLocalTest.php
 - Notas: o identificador da licença nunca pode ser nulo — sistema sem entidade de licença própria
@@ -65,8 +61,7 @@ Vale para todas as tarefas desta feature:
   entre o banco dos testes e o de produção, e é assim que um teste verde esconde duplicata.
   Contadores são únicos por `(sistema, competência)`.
 
-## T-063 — Registro de cada execução de sincronização [pendente]
-
+## T-063 — Registro de cada execução de sincronização [concluida]
 - Refs: US-036, AC-084, AC-087
 - Arquivos: database/migrations/2026_08_07_120800_create_sincronizacoes_table.php, app/Models/Sincronizacao.php, tests/Feature/Integracao/RetratoLocalTest.php
 - Notas: escopo, origem (agendada, manual, comando), situação (em andamento, sucesso, parcial,

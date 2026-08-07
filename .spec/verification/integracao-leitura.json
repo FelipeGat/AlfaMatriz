@@ -1,0 +1,62 @@
+{
+  "feature": "integracao-leitura",
+  "timestamp": "2026-08-07T16:29:56.473Z",
+  "gitRev": "d38eda6",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 203,
+  "results": {
+    "AC-078": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ContratoDocumentadoTest::test_o_contrato_descreve_todos_os_enderecos_e_formatos @spec:AC-078",
+      "method": "tap"
+    },
+    "AC-079": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ConfiguracaoDoSistemaTest::test_sistema_sem_endereco_diz_que_falta_o_endereco @spec:AC-079",
+      "method": "tap"
+    },
+    "AC-080": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ConfiguracaoDoSistemaTest::test_salvar_o_sistema_sem_digitar_a_chave_mantem_a_chave @spec:AC-080",
+      "method": "tap"
+    },
+    "AC-084": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\RetratoLocalTest::test_a_licenca_derivada_de_cliente_tem_identificador_proprio @spec:AC-084",
+      "method": "tap"
+    },
+    "AC-085": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\RetratoLocalTest::test_o_banco_recusa_dois_registros_com_o_mesmo_identificador @spec:AC-085",
+      "method": "tap"
+    },
+    "AC-086": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\RetratoLocalTest::test_registro_ausente_e_marcado_e_continua_existindo @spec:AC-086",
+      "method": "tap"
+    },
+    "AC-087": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\RetratoLocalTest::test_a_execucao_distingue_sucesso_de_entrada_parcial @spec:AC-087",
+      "method": "tap"
+    },
+    "AC-088": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\RetratoLocalTest::test_a_fatura_derivada_e_reconhecivel @spec:AC-088",
+      "method": "tap"
+    },
+    "AC-089": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\RetratoLocalTest::test_o_contador_e_unico_por_sistema_e_competencia @spec:AC-089",
+      "method": "tap"
+    },
+    "AC-095": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ConfiguracaoDoSistemaTest::test_o_sistema_nasce_apenas_observado_e_o_corte_e_explicito @spec:AC-095",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}
