@@ -20,7 +20,10 @@ class ClienteFactory extends Factory
             // teste é melhor do que herdá-lo sem querer.
             'revenda_id' => null,
             'nome' => fake()->company(),
-            'cpf_cnpj' => fake()->unique()->numerify('##.###.###/0001-##'),
+            // Só dígitos, como o cadastro grava: o controller normaliza antes
+            // de salvar, e uma fábrica formatada faria os testes de casamento
+            // provarem um cenário que não existe.
+            'cpf_cnpj' => fake()->unique()->numerify('##############'),
             'tipo_pessoa' => 'PJ',
             'cidade' => fake()->city(),
             'uf' => 'SP',
