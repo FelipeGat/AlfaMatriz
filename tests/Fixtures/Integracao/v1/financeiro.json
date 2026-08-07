@@ -1,0 +1,26 @@
+[
+  {
+    "id_externo": "lic-91-2026-08", "cliente_id_externo": "128", "revenda_id_externo": "3",
+    "competencia": "2026-08", "valor": 599.00, "moeda": "BRL", "status": "pago",
+    "vencimento_em": "2026-08-10", "pago_em": "2026-08-08", "dias_em_atraso": 0,
+    "unidades_cobradas": 1, "plano": "Growth", "licenca_id_externo": "91", "origem": "derivado"
+  },
+  {
+    "id_externo": "lic-92-2026-08", "cliente_id_externo": "129", "revenda_id_externo": "3",
+    "competencia": "2026-08", "valor": 299.00, "moeda": "BRL", "status": "vencido",
+    "vencimento_em": "2026-08-05", "pago_em": null, "dias_em_atraso": 12,
+    "unidades_cobradas": 1, "plano": "Básico", "licenca_id_externo": "92", "origem": "derivado"
+  },
+  {
+    "id_externo": "lic-94-2026-08", "cliente_id_externo": "131", "revenda_id_externo": "7",
+    "competencia": "2026-08", "valor": 299.00, "moeda": "BRL", "status": "cancelado",
+    "vencimento_em": "2026-08-10", "dias_em_atraso": 0,
+    "unidades_cobradas": 0, "plano": "Básico", "licenca_id_externo": "94", "origem": "derivado"
+  },
+  {
+    "id_externo": "lic-91-2026-07", "cliente_id_externo": "128", "revenda_id_externo": "3",
+    "competencia": "2026-07", "valor": 599.00, "moeda": "BRL", "status": "pago",
+    "vencimento_em": "2026-07-10", "pago_em": "2026-07-09", "dias_em_atraso": 0,
+    "unidades_cobradas": 1, "plano": "Growth", "licenca_id_externo": "91", "origem": "derivado"
+  }
+]

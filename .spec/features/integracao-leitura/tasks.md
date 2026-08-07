@@ -79,15 +79,15 @@ Vale para todas as tarefas desta feature:
 
 ## T-065 — Conector falso e amostras de resposta [pendente]
 
-- Refs: AC-078
-- Arquivos: app/Services/Integracao/ConectorFalso.php, app/Services/Integracao/FabricaDeConector.php, app/Providers/AppServiceProvider.php, tests/Fixtures/Integracao/v1/clientes.json, tests/Fixtures/Integracao/v1/revendas.json, tests/Fixtures/Integracao/v1/licencas.json, tests/Fixtures/Integracao/v1/planos.json, tests/Fixtures/Integracao/v1/financeiro.json, tests/Fixtures/Integracao/v1/contadores.json, tests/Feature/Integracao/ConectorFalsoTest.php
+- Refs: AC-078, AC-082, AC-084, AC-087, AC-089
+- Arquivos: app/Services/Integracao/ConectorFalso.php, app/Services/Integracao/FabricaDeConector.php, tests/Support/FabricaFalsa.php, tests/Support/Amostras.php, tests/Fixtures/Integracao/v1/clientes.json, tests/Fixtures/Integracao/v1/revendas.json, tests/Fixtures/Integracao/v1/licencas.json, tests/Fixtures/Integracao/v1/planos.json, tests/Fixtures/Integracao/v1/usuarios.json, tests/Fixtures/Integracao/v1/financeiro.json, tests/Fixtures/Integracao/v1/contadores.json, tests/Feature/Integracao/ConectorFalsoTest.php
 - Notas: é o que faz a suíte inteira rodar sem rede. O falso programa falha por código de erro e
   guarda o que recebeu, para o teste conferir o que foi enviado. A fábrica é resolvida pelo
   contêiner, e o teste a substitui — nenhum serviço instancia conector direto.
 
 ## T-066 — Conector HTTP [pendente]
 
-- Refs: AC-079, AC-081
+- Refs: AC-078, AC-079, AC-081, AC-084, AC-089
 - Arquivos: app/Services/Integracao/ConectorHttp.php, tests/Feature/Integracao/ConectorHttpTest.php
 - Notas: nova tentativa só em falha de conexão, excesso de pedidos e erro do servidor — nunca em
   recusa, que não melhora repetindo. Chamada sempre fora de transação de banco. Chave ilegível
