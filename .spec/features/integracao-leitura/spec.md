@@ -22,10 +22,16 @@ responder, olhando um lugar só, se o cliente ativo dentro do AlfaGym está send
 cobrado pela Alfa.
 
 Esta feature faz a matriz **enxergar**. Ela ainda não manda em nada: lê o que
-cada sistema tem, guarda um retrato local, mostra o que cada sistema cobra de
-cada cliente, aponta onde o que os sistemas dizem não bate com o que a Alfa
+cada sistema tem, guarda um retrato local, mostra o contrato de cada cliente ao
+lado do uso real, aponta onde o que os sistemas dizem não bate com o que a Alfa
 faturou, e prepara o terreno para a virada — traz o cadastro que já existe lá
 para cá, com uma conferência humana no meio.
+
+**O dinheiro não vem dos sistemas.** O contrato do cliente vive no AlfaMatriz
+(`clientes.valor_mensal`) e o preço da revenda também (tiers de atacado, que já
+geram a cobrança mensal). Dos sistemas vem só o USO: quantas unidades estão
+ativas e em que estado está a licença. Pedir dinheiro a cinco sistemas seria
+manter cinco verdades sobre a mesma coisa.
 
 É a etapa que torna seguro o passo seguinte (`matriz-dona-cadastro`), em que o
 cadastro passa a nascer aqui. Sem o retrato e sem a conferência, o corte seria
@@ -106,9 +112,9 @@ inventar nem perder registro, para que eu possa decidir em cima dela.
 
 - **Dado** um sistema configurado e no ar
 - **Quando** a sincronização é executada
-- **Então** revendas, clientes, planos, licenças e o financeiro da competência
-  daquele sistema passam a existir no retrato local, e a execução fica
-  registrada com quantos itens vieram e quanto tempo levou
+- **Então** revendas, clientes, planos, licenças, usuários administradores e a
+  contagem da competência daquele sistema passam a existir no retrato local, e a
+  execução fica registrada com quantos itens vieram e quanto tempo levou
 
 #### AC-085 — Sincronizar de novo não duplica nada
 
@@ -123,7 +129,7 @@ inventar nem perder registro, para que eu possa decidir em cima dela.
 - **Quando** a sincronização é executada
 - **Então** ele é marcado como ausente na origem, com a data, e continua no
   retrato local (apagar levaria junto o vínculo com o cliente da matriz e o
-  histórico do que já foi faturado)
+  histórico do que ele representou)
 
 #### AC-087 — Varredura interrompida não desativa quem nem chegou a ser lido
 
@@ -132,19 +138,25 @@ inventar nem perder registro, para que eu possa decidir em cima dela.
 - **Então** nenhum registro é marcado como ausente por causa dessa falha, a
   execução é registrada como parcial e o que já entrou permanece
 
-### US-037 — Dá para ver o que cada sistema cobra de cada cliente
+### US-037 — O contrato de cada cliente aparece ao lado do uso real
 
-Como responsável pela Alfa, quero ver, por sistema, por revenda e por cliente,
-o que está sendo cobrado e o que está em atraso, para saber se o que a Alfa
-fatura corresponde ao que os sistemas mostram.
+Como responsável pela Alfa, quero ver o que cada cliente contratou — que é
+informação da matriz — ao lado de quanto ele está de fato usando dentro do
+sistema, para saber se o contrato e a realidade combinam.
 
-#### AC-088 — O financeiro aparece por competência, revenda e cliente
+O dinheiro é todo do AlfaMatriz: o contrato do cliente vive aqui
+(`clientes.valor_mensal`), e o preço da revenda também (tiers de atacado). Do
+sistema vem só o USO. Isso é deliberado — pedir dinheiro a cinco sistemas
+diferentes seria manter cinco verdades sobre a mesma coisa.
 
-- **Dado** um retrato local com o financeiro de uma competência
-- **Quando** a tela de financeiro dos sistemas é aberta naquela competência
-- **Então** ela mostra, por sistema e por revenda, o valor, a situação
-  (pago, em aberto, vencido) e o atraso de cada cliente, com o total conferindo
-  com a soma das linhas
+#### AC-088 — O contrato aparece ao lado do uso, por cliente
+
+- **Dado** clientes com contrato cadastrado na matriz e uso registrado no
+  retrato local
+- **Quando** a tela de contratos e uso é aberta
+- **Então** ela mostra, por revenda e por cliente, o valor contratado (da
+  matriz), quantas unidades estão ativas no sistema, e destaca quem está ativo
+  no sistema sem valor contratado — com o total conferindo com a soma das linhas
 
 #### AC-089 — A contagem da unidade de cobrança fica guardada por competência
 
@@ -162,6 +174,11 @@ fatura corresponde ao que os sistemas mostram.
 - **Então** ela lista onde a contagem do sistema não bate com a que a Alfa
   faturou daquela revenda, e onde um cliente ativo na matriz não aparece ativo
   no sistema — apontando o caso, não apenas o total
+
+O cálculo da cobrança da revenda **não muda**: ele continua saindo do cadastro
+da matriz. A tela só mostra a diferença, para alguém decidir o que fazer —
+deixar a cobrança do mês depender de o sistema estar no ar seria trocar um
+problema conhecido por um pior.
 
 ### US-038 — O cadastro que já existe nos sistemas entra sem virar bagunça
 
@@ -238,8 +255,11 @@ outros quatro.
 
 - **Escrever nos sistemas**: criar, alterar, liberar licença, bloquear ou pôr
   em manutenção é a feature `matriz-dona-cadastro`.
-- O financeiro interno do produto (mensalidade de aluno, conta a receber de
-  condômino): só entra o que o sistema cobra do cliente pela licença.
+- **Qualquer dinheiro vindo dos sistemas.** Nem o financeiro interno do produto
+  (mensalidade de aluno, conta a receber de condômino), nem o valor do contrato
+  do cliente: o contrato vive na matriz e é lá que fica. Do sistema vem só uso e
+  estado de licença.
+- Mudar o cálculo da cobrança da revenda para usar a contagem do sistema.
 - Os outros quatro sistemas: aqui só o AlfaGym expõe o contrato.
 - O produto `gestor` (categoria crm) — ver ASM-035.
 - Aplicar permissão de perfil nas telas novas: entra junto com as ações de
@@ -252,7 +272,7 @@ outros quatro.
 | ID | Suposição | Status | Resolução |
 |---|---|---|---|
 | ASM-030 | A unidade de cobrança do AlfaGym é a academia ativa; a tabela de unidades (filiais) é subdivisão interna e não conta para o faturamento | aberta | Confirmar com o dono do produto e conferir contra o que a Alfa fatura hoje da Invest Soluções |
-| ASM-031 | O AlfaGym não tem título de cobrança próprio, então o financeiro é derivado da licença e marcado como derivado — a tela de divergências não pode acusar diferença em cima de linha derivada | aberta | Fecha ao capturar as respostas reais do AlfaGym (ver Q-012) |
+| ASM-031 | Nenhum valor financeiro precisa vir dos sistemas: o contrato do cliente e o preço da revenda já vivem na matriz, e pedir dinheiro a cinco sistemas seria manter cinco verdades sobre a mesma coisa | confirmada | Decisão do dono do produto em 07/08/2026: "não é para pegar o financeiro do cliente; é relativo ao contrato do cliente com a revenda e da revenda conosco" |
 | ASM-032 | O documento (CNPJ/CPF) é identificador suficiente para casar a maioria dos clientes; os casos sem documento serão minoria tratável à mão | aberta | Só a importação real diz o tamanho da minoria |
 | ASM-033 | A chave de integração é gerada pela matriz e o sistema guarda apenas o resumo criptográfico dela, nunca a chave em claro | aberta | Confirmar ao implementar o lado do AlfaGym |
 | ASM-034 | Uma sincronização sob demanda cabe no tempo de resposta do servidor web, com teto de páginas; a varredura completa fica para a execução agendada | aberta | Medir na primeira sincronização real do AlfaGym |
@@ -262,6 +282,6 @@ outros quatro.
 
 | ID | Pergunta | Status | Resposta |
 |---|---|---|---|
-| Q-012 | O AlfaGym deve ganhar título de cobrança de verdade, ou o financeiro derivado da licença basta para o que a Alfa precisa enxergar? | aberta | — |
+| Q-012 | O AlfaGym deve ganhar título de cobrança de verdade, ou o financeiro derivado da licença basta para o que a Alfa precisa enxergar? | respondida | Não se aplica: nenhum valor vem dos sistemas. O contrato do cliente vive na matriz e o preço da revenda também. |
 | Q-013 | De quanto em quanto tempo a sincronização deve rodar sozinha? O desenho parte de uma leve por hora e uma completa de madrugada | aberta | — |
 | Q-014 | Cliente do sistema sem documento na origem: vincular sempre à mão, ou vale sugerir par por semelhança de nome para o humano confirmar? | aberta | — |

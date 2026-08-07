@@ -6,12 +6,18 @@ use App\Http\Controllers\CentroControleController;
 use App\Http\Controllers\CentroCustoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CobrancaController;
+use App\Http\Controllers\ConferenciaController;
 use App\Http\Controllers\ContaController;
 use App\Http\Controllers\ContaFinanceiraController;
 use App\Http\Controllers\ContaFixaPagarController;
 use App\Http\Controllers\ContaPagarController;
+use App\Http\Controllers\DivergenciaController;
 use App\Http\Controllers\FaturamentoController;
 use App\Http\Controllers\FornecedorController;
+use App\Http\Controllers\IntegracaoClienteController;
+use App\Http\Controllers\IntegracaoController;
+use App\Http\Controllers\IntegracaoContratoController;
+use App\Http\Controllers\IntegracaoLicencaController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\PainelController;
 use App\Http\Controllers\PrecoAtacadoController;
@@ -54,6 +60,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('faturamento', [FaturamentoController::class, 'index'])->name('faturamento.index');
     Route::post('faturamento/gerar', [FaturamentoController::class, 'gerar'])->name('faturamento.gerar');
+
+    // Integração com os sistemas da casa. Só leitura por enquanto: liberar
+    // licença, provisionar cliente e pôr em manutenção entram quando a matriz
+    // passar a ser dona do cadastro.
+    Route::prefix('integracao')->name('integracao.')->group(function () {
+        Route::get('/', [IntegracaoController::class, 'index'])->name('index');
+        Route::post('{sistema}/testar-conexao', [IntegracaoController::class, 'testarConexao'])->name('testar');
+
+        Route::get('conferencia', [ConferenciaController::class, 'index'])->name('conferencia');
+        Route::post('conferencia/{sistemaCliente}/vincular', [ConferenciaController::class, 'vincularCliente'])->name('conferencia.vincular');
+        Route::post('conferencia/{sistemaRevenda}/vincular-revenda', [ConferenciaController::class, 'vincularRevenda'])->name('conferencia.vincularRevenda');
+        Route::post('conferencia/{sistema}/corte', [ConferenciaController::class, 'aplicarCorte'])->name('conferencia.corte');
+
+        Route::get('clientes', [IntegracaoClienteController::class, 'index'])->name('clientes');
+        Route::get('licencas', [IntegracaoLicencaController::class, 'index'])->name('licencas');
+        Route::get('contratos', [IntegracaoContratoController::class, 'index'])->name('contratos');
+        Route::get('contratos/exportar', [IntegracaoContratoController::class, 'exportar'])->name('contratos.exportar');
+        Route::get('divergencias', [DivergenciaController::class, 'index'])->name('divergencias');
+    });
 
     Route::resource('cobrancas', CobrancaController::class);
     Route::post('cobrancas/{cobranca}/baixar', [CobrancaController::class, 'baixar'])->name('cobrancas.baixar');

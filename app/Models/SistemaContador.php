@@ -25,7 +25,7 @@ class SistemaContador extends Model
         'sistema_id', 'competencia', 'unidade_cobranca',
         'clientes_total', 'clientes_ativos', 'clientes_pendentes', 'clientes_bloqueados',
         'unidades_ativas', 'licencas_ativas', 'licencas_vencendo', 'licencas_vencidas',
-        'faturado_no_sistema', 'por_revenda', 'coletado_em',
+        'por_revenda', 'coletado_em',
     ];
 
     protected function casts(): array
@@ -39,7 +39,6 @@ class SistemaContador extends Model
             'licencas_ativas' => 'integer',
             'licencas_vencendo' => 'integer',
             'licencas_vencidas' => 'integer',
-            'faturado_no_sistema' => 'decimal:2',
             'por_revenda' => 'array',
             'coletado_em' => 'datetime',
         ];

@@ -32,8 +32,5 @@ interface ConectorSistema
 
     public function licencas(int $pagina = 1): RespostaIntegracao;
 
-    /** O que o sistema cobra dos clientes na competência (AAAA-MM). */
-    public function financeiro(string $competencia, int $pagina = 1): RespostaIntegracao;
-
     public function contadores(string $competencia): ContadoresExternos;
 }

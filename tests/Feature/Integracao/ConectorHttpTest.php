@@ -69,18 +69,6 @@ class ConectorHttpTest extends TestCase
         });
     }
 
-    /**
-     * @spec:AC-084 A competência viaja no pedido do financeiro e dos
-     * contadores: sem ela, o sistema não sabe de que mês a matriz está falando.
-     */
-    public function test_a_competencia_viaja_no_pedido_do_financeiro(): void
-    {
-        Http::fake(['*' => Http::response($this->envelope([]))]);
-
-        $this->conector()->financeiro('2026-08');
-
-        Http::assertSent(fn (Request $pedido) => str_contains($pedido->url(), 'competencia=2026-08'));
-    }
 
     /**
      * @spec:AC-081 A chave não aparece na mensagem de erro. Ela vaza por onde

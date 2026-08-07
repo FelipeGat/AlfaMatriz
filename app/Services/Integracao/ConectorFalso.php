@@ -30,7 +30,7 @@ class ConectorFalso implements ConectorSistema
     /**
      * @param  array<string, array>  $dados  por escopo: clientes, revendas,
      *                                       planos, usuarios, licencas,
-     *                                       financeiro, contadores, ping
+     *                                       contadores, ping
      */
     public function __construct(
         private array $dados = [],
@@ -139,17 +139,6 @@ class ConectorFalso implements ConectorSistema
     public function licencas(int $pagina = 1): RespostaIntegracao
     {
         return $this->colecao('licencas', $pagina);
-    }
-
-    public function financeiro(string $competencia, int $pagina = 1): RespostaIntegracao
-    {
-        $todos = $this->dados['financeiro'] ?? [];
-        $daCompetencia = array_values(array_filter(
-            $todos,
-            fn ($item) => ($item['competencia'] ?? null) === $competencia
-        ));
-
-        return $this->colecao('financeiro', $pagina, $daCompetencia, ['competencia' => $competencia]);
     }
 
     public function contadores(string $competencia): ContadoresExternos

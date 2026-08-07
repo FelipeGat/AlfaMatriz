@@ -69,11 +69,6 @@ class SistemaCliente extends Model
         return $this->hasMany(SistemaUsuario::class);
     }
 
-    public function faturas(): HasMany
-    {
-        return $this->hasMany(SistemaFatura::class);
-    }
-
     public function vinculado(): bool
     {
         return $this->cliente_id !== null;

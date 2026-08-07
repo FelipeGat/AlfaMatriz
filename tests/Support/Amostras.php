@@ -12,7 +12,7 @@ use App\Services\Integracao\ConectorFalso;
  */
 class Amostras
 {
-    private const ESCOPOS = ['revendas', 'clientes', 'planos', 'usuarios', 'licencas', 'financeiro', 'contadores'];
+    private const ESCOPOS = ['revendas', 'clientes', 'planos', 'usuarios', 'licencas', 'contadores'];
 
     /** Um dublê carregado com todas as amostras de um conjunto. */
     public static function conector(string $conjunto = 'v1', string $sistema = 'alfagym'): ConectorFalso

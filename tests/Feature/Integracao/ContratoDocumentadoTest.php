@@ -17,12 +17,12 @@ class ContratoDocumentadoTest extends TestCase
      */
     private const ENDERECOS = [
         'ping', 'revendas', 'clientes', 'planos', 'licencas', 'usuarios',
-        'financeiro', 'contadores',
+        'contadores',
     ];
 
     /** Os formatos que cada endereço devolve, e que precisam estar descritos. */
     private const FORMATOS = [
-        'ping', 'revenda', 'cliente', 'plano', 'licenca', 'usuario', 'fatura', 'contadores',
+        'ping', 'revenda', 'cliente', 'plano', 'licenca', 'usuario', 'contadores',
     ];
 
     /** O catálogo é fechado: a matriz só entende estes códigos. */
@@ -137,7 +137,7 @@ class ContratoDocumentadoTest extends TestCase
     }
 
     /**
-     * @spec:AC-078 Os três campos que carregam decisão, e não apenas dado,
+     * @spec:AC-078 Os dois campos que carregam decisão, e não apenas dado,
      * precisam estar explicados — são eles que evitam que a matriz minta.
      */
     public function test_o_contrato_explica_os_campos_que_carregam_decisao(): void
@@ -150,9 +150,30 @@ class ContratoDocumentadoTest extends TestCase
 
         // Se vencer a licença realmente barra o acesso naquele sistema.
         $this->assertStringContainsString('bloqueia_acesso', $documento);
+    }
 
-        // Se a linha do financeiro é título de verdade ou derivada da licença.
-        $this->assertStringContainsString('"origem": "derivado"', $documento);
+    /**
+     * @spec:AC-088 O contrato NÃO pede dinheiro a nenhum sistema, e diz isso
+     * com todas as letras. O contrato do cliente e o preço da revenda vivem na
+     * matriz; pedi-los a cinco sistemas seria manter cinco verdades sobre a
+     * mesma coisa, e na primeira divergência ninguém saberia qual acreditar.
+     */
+    public function test_o_contrato_nao_pede_dinheiro_a_nenhum_sistema(): void
+    {
+        $documento = $this->contrato();
+
+        $this->assertStringNotContainsString('/financeiro', $documento);
+        $this->assertStringNotContainsString('faturado_no_sistema', $documento);
+        $this->assertDoesNotMatchRegularExpression(
+            '/^###\s+fatura\s*$/mi',
+            $documento,
+            'Nenhum título de cobrança vem dos sistemas.'
+        );
+        $this->assertStringContainsString(
+            'NENHUM valor em dinheiro',
+            $documento,
+            'O documento precisa deixar isso explícito para quem for integrar o segundo sistema.'
+        );
     }
 
     /**

@@ -77,22 +77,6 @@ class ConectorFalsoTest extends TestCase
         $this->assertFalse($ultima->temProximaPagina());
     }
 
-    /**
-     * @spec:AC-084 O financeiro devolve só a competência pedida: é assim que o
-     * sistema de verdade se comporta, e um dublê que devolvesse tudo esconderia
-     * um filtro esquecido na sincronização.
-     */
-    public function test_o_financeiro_devolve_so_a_competencia_pedida(): void
-    {
-        $conector = Amostras::conector();
-
-        $agosto = $conector->financeiro('2026-08');
-        $julho = $conector->financeiro('2026-07');
-
-        $this->assertCount(3, $agosto->itens());
-        $this->assertCount(1, $julho->itens());
-        $this->assertCount(0, $conector->financeiro('2026-01')->itens());
-    }
 
     /** @spec:AC-089 Os contadores chegam com a competência pedida. */
     public function test_os_contadores_chegam_com_a_competencia_pedida(): void
@@ -161,10 +145,10 @@ class ConectorFalsoTest extends TestCase
 
         $conector->clientes(1);
         $conector->clientes(2);
-        $conector->financeiro('2026-08');
+        $conector->contadores('2026-08');
 
         $this->assertSame(2, $conector->vezesQueChamou('clientes'));
-        $this->assertTrue($conector->chamou('financeiro'));
+        $this->assertTrue($conector->chamou('contadores'));
         $this->assertFalse($conector->chamou('planos'));
 
         $this->assertSame('2026-08', $conector->chamadas()[2]['argumentos']['competencia']);

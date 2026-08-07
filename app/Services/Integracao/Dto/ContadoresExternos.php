@@ -24,7 +24,6 @@ class ContadoresExternos
         public readonly int $licencasAtivas,
         public readonly int $licencasVencendo,
         public readonly int $licencasVencidas,
-        public readonly float $faturadoNoSistema,
         public readonly array $porRevenda,
         public readonly array $cru,
     ) {}
@@ -48,7 +47,6 @@ class ContadoresExternos
             licencasAtivas: (int) ($item['licencas_ativas'] ?? 0),
             licencasVencendo: (int) ($item['licencas_vencendo'] ?? 0),
             licencasVencidas: (int) ($item['licencas_vencidas'] ?? 0),
-            faturadoNoSistema: (float) ($item['faturado_no_sistema'] ?? 0),
             porRevenda: self::normalizarPorRevenda($item['por_revenda'] ?? []),
             cru: $item,
         );
@@ -67,7 +65,6 @@ class ContadoresExternos
             'licencas_ativas' => $this->licencasAtivas,
             'licencas_vencendo' => $this->licencasVencendo,
             'licencas_vencidas' => $this->licencasVencidas,
-            'faturado_no_sistema' => $this->faturadoNoSistema,
             'por_revenda' => $this->porRevenda,
             'coletado_em' => now(),
         ];
@@ -110,7 +107,6 @@ class ContadoresExternos
                 'nome' => (string) ($linha['nome'] ?? ''),
                 'clientes_ativos' => (int) ($linha['clientes_ativos'] ?? 0),
                 'unidades_ativas' => (int) ($linha['unidades_ativas'] ?? 0),
-                'valor' => (float) ($linha['valor'] ?? 0),
             ];
         }
 

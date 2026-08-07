@@ -146,7 +146,6 @@ versão, quando a matriz passar a ser dona do cadastro.
 | GET | `/planos` | coleção de `plano` |
 | GET | `/licencas` | coleção de `licenca` |
 | GET | `/usuarios` | coleção de `usuario` |
-| GET | `/financeiro?competencia=AAAA-MM` | coleção de `fatura` |
 | GET | `/contadores?competencia=AAAA-MM` | objeto `contadores` |
 
 ## Formatos
@@ -280,38 +279,6 @@ nulo: a chave única do retrato local depende dele.
 Só os administradores do cliente. **Nunca** devolver senha, resumo de senha,
 token de sessão ou qualquer credencial.
 
-### fatura
-
-```json
-{
-  "id_externo": "lic-91-2026-08",
-  "cliente_id_externo": "128",
-  "revenda_id_externo": "3",
-  "competencia": "2026-08",
-  "valor": 599.00,
-  "moeda": "BRL",
-  "status": "aberto",
-  "vencimento_em": "2026-08-10",
-  "pago_em": null,
-  "dias_em_atraso": 0,
-  "unidades_cobradas": 1,
-  "plano": "Growth",
-  "licenca_id_externo": "91",
-  "origem": "derivado"
-}
-```
-
-`status` ∈ `pago` · `aberto` · `vencido` · `cancelado`.
-
-`origem` ∈ `titulo` · `derivado`. **`derivado` marca que o sistema não tem
-título de cobrança de verdade e a linha foi inferida da licença.** A tela de
-divergências não acusa diferença em cima de linha derivada — seria falso alarme
-contra um número que o próprio sistema não considera oficial.
-
-Escopo: **só o que o sistema cobra do cliente pela licença.** O financeiro
-interno do produto (mensalidade de aluno, conta a receber de condômino,
-lançamento de família) **não** entra neste contrato.
-
 ### contadores
 
 ```json
@@ -326,14 +293,12 @@ lançamento de família) **não** entra neste contrato.
   "licencas_ativas": 33,
   "licencas_vencendo": 6,
   "licencas_vencidas": 4,
-  "faturado_no_sistema": 8210.00,
   "por_revenda": [
     {
       "revenda_id_externo": "3",
       "nome": "Invest Soluções",
       "clientes_ativos": 18,
-      "unidades_ativas": 18,
-      "valor": 4230.00
+      "unidades_ativas": 18
     }
   ]
 }
@@ -341,6 +306,11 @@ lançamento de família) **não** entra neste contrato.
 
 `por_revenda` existe para a tela de divergências resolver a comparação em **uma**
 chamada, em vez de somar milhares de linhas do lado da matriz.
+
+**Nenhum valor em dinheiro aparece aqui, e isso é deliberado.** O contrato do
+cliente e o preço da revenda vivem no AlfaMatriz; pedir dinheiro a cinco
+sistemas seria manter cinco verdades sobre a mesma coisa, e a primeira vez que
+elas divergissem ninguém saberia qual acreditar. Do sistema vem só o USO.
 
 ## O que o sistema NÃO precisa fazer
 
@@ -350,6 +320,7 @@ Para não haver dúvida sobre o tamanho do trabalho de cada sistema:
   pergunta é a matriz.
 - **Não** precisa guardar histórico nem série temporal. A matriz guarda.
 - **Não** precisa calcular MRR, churn, nem indicador nenhum. A matriz calcula.
-- **Não** precisa expor o financeiro interno do produto.
+- **Não** precisa expor NENHUM valor em dinheiro: nem o financeiro interno do
+  produto, nem o valor do contrato de cada cliente. Os dois vivem no AlfaMatriz.
 - **Não** precisa de tela nova. Só dos endereços e da propriedade de
   configuração da chave.

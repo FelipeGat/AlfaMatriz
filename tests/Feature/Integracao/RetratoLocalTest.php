@@ -6,7 +6,6 @@ use App\Models\Sincronizacao;
 use App\Models\Sistema;
 use App\Models\SistemaCliente;
 use App\Models\SistemaContador;
-use App\Models\SistemaFatura;
 use App\Models\SistemaLicenca;
 use App\Models\SistemaPlano;
 use App\Models\SistemaRevenda;
@@ -179,36 +178,6 @@ class RetratoLocalTest extends TestCase
         $this->assertFalse($semFim->vencida());
     }
 
-    /**
-     * @spec:AC-088 A linha derivada é reconhecível: a tela de divergências não
-     * pode acusar diferença de valor contra um número que o próprio sistema
-     * não considera oficial — falso alarme faz a tela inteira ser ignorada.
-     */
-    public function test_a_fatura_derivada_e_reconhecivel(): void
-    {
-        $cliente = $this->umClienteDeSistema();
-
-        $titulo = SistemaFatura::create([
-            'sistema_id' => $cliente->sistema_id,
-            'sistema_cliente_id' => $cliente->id,
-            'id_externo' => 'nf-1',
-            'competencia' => '2026-08',
-            'valor' => 599.00,
-            'origem' => 'titulo',
-        ]);
-        $derivada = SistemaFatura::create([
-            'sistema_id' => $cliente->sistema_id,
-            'sistema_cliente_id' => $cliente->id,
-            'id_externo' => 'lic-91-2026-08',
-            'competencia' => '2026-08',
-            'valor' => 599.00,
-            'origem' => 'derivado',
-        ]);
-
-        $this->assertFalse($titulo->ehDerivada());
-        $this->assertTrue($derivada->ehDerivada());
-        $this->assertSame(2, SistemaFatura::daCompetencia('2026-08')->count());
-    }
 
     /**
      * @spec:AC-089 A contagem por competência é única por sistema, e a quebra

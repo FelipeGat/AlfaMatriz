@@ -26,11 +26,11 @@ return new class extends Migration
             $table->unsignedInteger('licencas_ativas')->default(0);
             $table->unsignedInteger('licencas_vencendo')->default(0);
             $table->unsignedInteger('licencas_vencidas')->default(0);
-            $table->decimal('faturado_no_sistema', 12, 2)->default(0);
 
             // A quebra por revenda vem pronta do sistema para a tela de
-            // divergências resolver a comparação em UMA chamada, em vez de
-            // somar milhares de linhas do lado da matriz.
+            // divergências resolver a comparação em UMA chamada. Só USO: o
+            // dinheiro vive na matriz, e pedi-lo a cinco sistemas seria manter
+            // cinco verdades sobre a mesma coisa.
             $table->json('por_revenda')->nullable();
 
             $table->timestamp('coletado_em')->nullable();

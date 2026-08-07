@@ -5,7 +5,6 @@ namespace Tests\Feature\Integracao;
 use App\Services\Integracao\Documento;
 use App\Services\Integracao\Dto\ClienteExterno;
 use App\Services\Integracao\Dto\ContadoresExternos;
-use App\Services\Integracao\Dto\FaturaExterna;
 use App\Services\Integracao\Dto\LicencaExterna;
 use App\Services\Integracao\Dto\UsuarioExterno;
 use App\Services\Integracao\ErroIntegracao;
@@ -97,15 +96,6 @@ class ContratoEmCodigoTest extends TestCase
         ]);
 
         $this->assertSame('pendente', $licenca->status);
-
-        $fatura = FaturaExterna::deArray([
-            'id_externo' => 'nf-1',
-            'cliente_id_externo' => '128',
-            'competencia' => '2026-08',
-            'status' => 'parcelado_em_negociacao',
-        ]);
-
-        $this->assertSame('aberto', $fatura->status, 'Tratar como pago o que não se entende esconderia inadimplência.');
     }
 
     /**
@@ -173,36 +163,7 @@ class ContratoEmCodigoTest extends TestCase
         $this->assertTrue($declarou->bloqueiaAcesso);
     }
 
-    /**
-     * @spec:AC-088 A linha do financeiro só é "derivada" quando o sistema
-     * declara. O padrão é título de verdade, porque linha oficial precisa
-     * entrar na comparação de valores da tela de divergências.
-     */
-    public function test_a_fatura_so_e_derivada_quando_o_sistema_declara(): void
-    {
-        $padrao = FaturaExterna::deArray([
-            'id_externo' => 'nf-1', 'cliente_id_externo' => '128', 'competencia' => '2026-08',
-        ]);
-        $derivada = FaturaExterna::deArray([
-            'id_externo' => 'lic-91-2026-08', 'cliente_id_externo' => '128',
-            'competencia' => '2026-08', 'origem' => 'derivado',
-        ]);
 
-        $this->assertSame('titulo', $padrao->origem);
-        $this->assertSame('derivado', $derivada->origem);
-    }
-
-    /** @spec:AC-088 Competência fora do formato é recusada, não silenciada. */
-    public function test_competencia_invalida_e_recusada(): void
-    {
-        $this->expectException(ErroIntegracao::class);
-
-        FaturaExterna::deArray([
-            'id_externo' => 'nf-1',
-            'cliente_id_externo' => '128',
-            'competencia' => 'agosto de 2026',
-        ]);
-    }
 
     /**
      * @spec:AC-081 Credencial que o sistema mande por descuido não entra no
@@ -242,7 +203,7 @@ class ContratoEmCodigoTest extends TestCase
             'unidade_cobranca' => 'academia ativa',
             'unidades_ativas' => '33',
             'por_revenda' => [
-                ['revenda_id_externo' => 3, 'nome' => 'Invest Soluções', 'unidades_ativas' => '18', 'valor' => '4230.00'],
+                ['revenda_id_externo' => 3, 'nome' => 'Invest Soluções', 'unidades_ativas' => '18'],
                 ['sem_identificador' => true],
             ],
         ]);

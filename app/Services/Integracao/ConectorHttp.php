@@ -52,11 +52,6 @@ class ConectorHttp implements ConectorSistema
         return $this->obter('/licencas', $this->paginacao($pagina));
     }
 
-    public function financeiro(string $competencia, int $pagina = 1): RespostaIntegracao
-    {
-        return $this->obter('/financeiro', $this->paginacao($pagina) + ['competencia' => $competencia]);
-    }
-
     public function contadores(string $competencia): ContadoresExternos
     {
         return ContadoresExternos::deArray(
