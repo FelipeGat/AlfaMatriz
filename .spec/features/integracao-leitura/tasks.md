@@ -153,7 +153,7 @@ Vale para todas as tarefas desta feature:
   uma inventa o seu e elas divergem.
 
 ## T-075 — Tela de conferência e aplicação do corte [concluida]
-- Refs: AC-092, AC-093, AC-094
+- Refs: AC-092, AC-094
 - Arquivos: resources/views/integracao/conferencia.blade.php, app/Http/Controllers/ConferenciaController.php, tests/Feature/Integracao/TelasTest.php
 - Notas: os quatro motivos de pendência, cada linha com a ação ao alcance da mão (vincular,
   criar a partir deste, ignorar, escolher qual fica). O botão do corte fica desabilitado
