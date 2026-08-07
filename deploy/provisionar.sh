@@ -249,6 +249,30 @@ no_container "test -f /usr/local/bin/alfamatriz-backup.sh && \
      (crontab -l 2>/dev/null; echo '17 3 * * * /usr/local/bin/alfamatriz-backup.sh >> /var/log/alfamatriz-backup.log 2>&1') | crontab -) || \
     echo 'AVISO: /usr/local/bin/alfamatriz-backup.sh ainda não foi enviado — o cron será criado quando ele existir.'"
 
+# --------------------------------------------- permissões do aplicativo
+
+# As rotinas de fundo (agendamento e fila) rodam como www-data e precisam ler a
+# configuração. Até aqui o .env era exclusivo do root: elas só funcionariam
+# enquanto o cache de configuração existisse, e morreriam no primeiro
+# `config:clear` — deixando o painel respondendo 500 no intervalo, que é
+# exatamente a janela documentada em deploy/deploy-staging-alfamatriz.sh.
+#
+# Rodá-las como root também não resolve: o root passaria a criar arquivos em
+# storage/ que o PHP-FPM (www-data) não consegue reabrir depois — gerador
+# clássico de 500 intermitente.
+#
+# 640 root:www-data é o meio-termo estrito: o dono continua sendo o root, o
+# grupo é exatamente o usuário da aplicação, e nenhum outro usuário do sistema
+# ganha leitura.
+info "garantindo que o painel lê a configuração e escreve nas próprias pastas"
+no_container "if [ -f $APP_DIR/.env ]; then \
+        chown root:www-data $APP_DIR/.env && chmod 640 $APP_DIR/.env; \
+    else \
+        echo '    AVISO: $APP_DIR/.env ainda não existe — as permissões valerão no próximo provisionamento.'; \
+    fi"
+no_container "mkdir -p $APP_DIR/storage $APP_DIR/bootstrap/cache && \
+    chown -R www-data:www-data $APP_DIR/storage $APP_DIR/bootstrap/cache"
+
 # -------------------------------------------------------------- agendamento
 
 # O agendamento do Laravel só acontece se algo chamar `schedule:run` a cada
