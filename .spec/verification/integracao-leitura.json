@@ -1,20 +1,20 @@
 {
   "feature": "integracao-leitura",
-  "timestamp": "2026-08-07T16:29:56.473Z",
-  "gitRev": "d38eda6",
+  "timestamp": "2026-08-07T17:42:07.150Z",
+  "gitRev": "7c0f4ea",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 203,
+  "testsParsed": 267,
   "results": {
     "AC-078": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Integracao\\ContratoDocumentadoTest::test_o_contrato_descreve_todos_os_enderecos_e_formatos @spec:AC-078",
+      "testName": "Tests\\Feature\\Integracao\\ConectorFalsoTest::test_o_duble_responde_no_formato_do_contrato @spec:AC-078",
       "method": "tap"
     },
     "AC-079": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Integracao\\ConfiguracaoDoSistemaTest::test_sistema_sem_endereco_diz_que_falta_o_endereco @spec:AC-079",
+      "testName": "Tests\\Feature\\Integracao\\ConectorHttpTest::test_sistema_sem_endereco_recusa_antes_de_chamar @spec:AC-079",
       "method": "tap"
     },
     "AC-080": {
@@ -22,9 +22,24 @@
       "testName": "Tests\\Feature\\Integracao\\ConfiguracaoDoSistemaTest::test_salvar_o_sistema_sem_digitar_a_chave_mantem_a_chave @spec:AC-080",
       "method": "tap"
     },
+    "AC-081": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ConectorHttpTest::test_a_chave_nunca_aparece_na_mensagem_de_erro @spec:AC-081",
+      "method": "tap"
+    },
+    "AC-082": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ConectorFalsoTest::test_o_duble_sabe_ficar_fora_do_ar @spec:AC-082",
+      "method": "tap"
+    },
+    "AC-083": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\TelasTest::test_toda_tela_diz_de_quando_e_o_dado @spec:AC-083",
+      "method": "tap"
+    },
     "AC-084": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Integracao\\RetratoLocalTest::test_a_licenca_derivada_de_cliente_tem_identificador_proprio @spec:AC-084",
+      "testName": "Tests\\Feature\\Integracao\\ConectorHttpTest::test_o_conector_chama_o_endereco_do_contrato_com_a_chave @spec:AC-084",
       "method": "tap"
     },
     "AC-085": {
@@ -39,17 +54,37 @@
     },
     "AC-087": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Integracao\\RetratoLocalTest::test_a_execucao_distingue_sucesso_de_entrada_parcial @spec:AC-087",
+      "testName": "Tests\\Feature\\Integracao\\ConectorFalsoTest::test_o_duble_sabe_falhar_no_meio_de_uma_varredura @spec:AC-087",
       "method": "tap"
     },
     "AC-088": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Integracao\\RetratoLocalTest::test_a_fatura_derivada_e_reconhecivel @spec:AC-088",
+      "testName": "Tests\\Feature\\Integracao\\ContratoDocumentadoTest::test_o_contrato_nao_pede_dinheiro_a_nenhum_sistema @spec:AC-088",
       "method": "tap"
     },
     "AC-089": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Integracao\\RetratoLocalTest::test_o_contador_e_unico_por_sistema_e_competencia @spec:AC-089",
+      "testName": "Tests\\Feature\\Integracao\\ConectorFalsoTest::test_os_contadores_chegam_com_a_competencia_pedida @spec:AC-089",
+      "method": "tap"
+    },
+    "AC-090": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\TelasTest::test_a_tela_de_divergencias_aponta_o_caso_e_nao_so_o_total @spec:AC-090",
+      "method": "tap"
+    },
+    "AC-091": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\ContratoEmCodigoTest::test_documento_ausente_nunca_casa_com_documento_ausente @spec:AC-091",
+      "method": "tap"
+    },
+    "AC-092": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\TelasTest::test_a_conferencia_separa_as_pendencias_por_motivo @spec:AC-092",
+      "method": "tap"
+    },
+    "AC-094": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Integracao\\TelasTest::test_o_corte_e_recusado_enquanto_houver_pendencia @spec:AC-094",
       "method": "tap"
     },
     "AC-095": {

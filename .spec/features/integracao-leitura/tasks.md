@@ -138,47 +138,41 @@ Vale para todas as tarefas desta feature:
   receita da empresa sem ninguém decidir, porque o faturamento fatura em cima do vínculo
   cliente-sistema.
 
-## T-073 — O corte, sistema por sistema [pendente]
-
+## T-073 — O corte, sistema por sistema [concluida]
 - Refs: AC-094, AC-095
 - Arquivos: app/Services/Integracao/CorteService.php, tests/Feature/Integracao/TelasTest.php
 - Notas: recusa enquanto houver pendência de conferência, dizendo quantas faltam. Aplicado, grava
   quando e por quem. É o marco que a feature seguinte lê para saber se pode escrever naquele
   sistema — e é praticamente irreversível, por isso a trava.
 
-## T-074 — Painel de integração e o selo de "atualizado há" [pendente]
-
+## T-074 — Painel de integração e o selo de "atualizado há" [concluida]
 - Refs: AC-082, AC-083, AC-095
 - Arquivos: resources/views/components/atualizado-em.blade.php, resources/views/integracao/index.blade.php, app/Http/Controllers/IntegracaoController.php, resources/views/layouts/navigation.blade.php, routes/web.php, tests/Feature/Integracao/TelasTest.php
 - Notas: grupo novo **Integração** no menu, entre Comercial e Financeiro — em Comercial viraria um
   grupo de dez itens. Um componente de "atualizado há" só, usado por todas as telas; senão cada
   uma inventa o seu e elas divergem.
 
-## T-075 — Tela de conferência e aplicação do corte [pendente]
-
+## T-075 — Tela de conferência e aplicação do corte [concluida]
 - Refs: AC-092, AC-093, AC-094
 - Arquivos: resources/views/integracao/conferencia.blade.php, app/Http/Controllers/ConferenciaController.php, tests/Feature/Integracao/TelasTest.php
 - Notas: os quatro motivos de pendência, cada linha com a ação ao alcance da mão (vincular,
   criar a partir deste, ignorar, escolher qual fica). O botão do corte fica desabilitado
   enquanto sobrar pendência, com o número na frente.
 
-## T-076 — Tela de clientes por sistema [pendente]
-
+## T-076 — Tela de clientes por sistema [concluida]
 - Refs: US-038, AC-091
 - Arquivos: resources/views/integracao/clientes.blade.php, app/Http/Controllers/IntegracaoClienteController.php, tests/Feature/Integracao/TelasTest.php
 - Notas: tabela consolidada com filtro por sistema, revenda e situação, e a coluna que diz qual
   cliente da matriz corresponde — ou avisa que ainda não há vínculo, com o caminho para resolver.
 
-## T-077 — Tela de licenças dos sistemas [pendente]
-
+## T-077 — Tela de licenças dos sistemas [concluida]
 - Refs: US-036, AC-084
 - Arquivos: resources/views/integracao/licencas.blade.php, app/Http/Controllers/IntegracaoLicencaController.php, tests/Feature/Integracao/TelasTest.php
 - Notas: só leitura nesta feature — pendentes, ativas, vencendo em trinta dias e vencidas, na
   mesma faixa segmentada usada no atraso das Despesas. As ações de liberar e bloquear entram na
   feature seguinte.
 
-## T-078 — Contratos e uso, com exportação [pendente]
-
+## T-078 — Contratos e uso, com exportação [concluida]
 - Refs: AC-088
 - Arquivos: resources/views/integracao/contratos.blade.php, app/Http/Controllers/IntegracaoContratoController.php, tests/Feature/Integracao/TelasTest.php
 - Notas: **nenhum valor vem dos sistemas.** O que o cliente paga sai de
@@ -187,8 +181,7 @@ Vale para todas as tarefas desta feature:
   Total de cada bloco é a soma das linhas logo abaixo. Exportação sem pacote novo, com separador e
   marca de codificação que o Excel em português abre sem estragar os acentos.
 
-## T-079 — Tela de divergências [pendente]
-
+## T-079 — Tela de divergências [concluida]
 - Refs: AC-090
 - Arquivos: app/Services/Integracao/DivergenciaService.php, resources/views/integracao/divergencias.blade.php, app/Http/Controllers/DivergenciaController.php, tests/Feature/Integracao/TelasTest.php
 - Notas: confronta a contagem do sistema com a que a Alfa faturou daquela revenda na competência,
