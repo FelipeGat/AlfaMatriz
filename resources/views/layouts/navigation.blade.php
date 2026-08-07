@@ -23,13 +23,6 @@
             ['route' => 'produtos.index', 'pattern' => ['produtos.*', 'sistemas.*', 'precos.*'], 'label' => 'Produtos', 'icon' => 'cube-outline'],
             ['route' => 'faturamento.index', 'pattern' => 'faturamento.*', 'label' => 'Faturamento', 'icon' => 'repeat'],
         ],
-        'Integração' => [
-            ['route' => 'integracao.index', 'pattern' => ['integracao.index', 'integracao.conferencia*', 'integracao.testar'], 'label' => 'Sistemas', 'icon' => 'cube'],
-            ['route' => 'integracao.clientes', 'pattern' => 'integracao.clientes', 'label' => 'Clientes nos sistemas', 'icon' => 'users'],
-            ['route' => 'integracao.licencas', 'pattern' => 'integracao.licencas', 'label' => 'Licenças', 'icon' => 'document'],
-            ['route' => 'integracao.contratos', 'pattern' => 'integracao.contratos*', 'label' => 'Contratos e uso', 'icon' => 'peso'],
-            ['route' => 'integracao.divergencias', 'pattern' => 'integracao.divergencias', 'label' => 'Divergências', 'icon' => 'alert-triangle'],
-        ],
         'Financeiro' => [
             ['route' => 'cobrancas.index', 'pattern' => 'cobrancas.*', 'label' => 'Receitas', 'icon' => 'trending-up'],
             ['route' => 'contas-pagar.index', 'pattern' => ['contas-pagar.*', 'contas-fixas-pagar.*'], 'label' => 'Despesas', 'icon' => 'trending-down'],

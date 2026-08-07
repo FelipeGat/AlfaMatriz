@@ -1,5 +1,0 @@
-[
-  {"id_externo": "1", "nome": "Trial", "ativo": true, "preco_mensal": 0.00, "moeda": "BRL", "limites": {"max_clientes": 50}},
-  {"id_externo": "2", "nome": "Básico", "ativo": true, "preco_mensal": 299.00, "moeda": "BRL", "limites": {"max_clientes": 200, "max_usuarios": 10}},
-  {"id_externo": "3", "nome": "Growth", "ativo": true, "preco_mensal": 599.00, "moeda": "BRL", "limites": {"max_clientes": 500, "max_usuarios": 20}}
-]
