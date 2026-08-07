@@ -1,0 +1,103 @@
+{
+  "runId": "AlfaMatriz-infra-agendamento-msj3qbhv",
+  "feature": "infra-agendamento",
+  "agent": "claude",
+  "modo": "sequencial",
+  "paralelizar": null,
+  "modeloForcado": null,
+  "esforcoForcado": null,
+  "geradoEm": "2026-08-07 15:30",
+  "branchTrabalho": "spec/infra-agendamento",
+  "baseDir": ".spec/features/infra-agendamento",
+  "specDir": ".spec",
+  "repoName": "AlfaMatriz",
+  "logsDir": "../onp-worktrees/AlfaMatriz-infra-agendamento-logs",
+  "ondas": [],
+  "faixas": [],
+  "sequenciais": [
+    {
+      "id": "T-053",
+      "titulo": "Conferir o fechamento mensal antes de ligar o agendamento",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "README.md"
+      ],
+      "refs": [
+        "US-032"
+      ]
+    },
+    {
+      "id": "T-054",
+      "titulo": "Agendamento de sistema chamando as rotinas do painel",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "deploy/provisionar.sh",
+        "tests/Feature/Infra/AgendamentoTest.php"
+      ],
+      "refs": [
+        "AC-071"
+      ]
+    },
+    {
+      "id": "T-055",
+      "titulo": "Configuração legível pelo aplicativo e pastas de trabalho no dono certo",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "deploy/provisionar.sh",
+        "tests/Feature/Infra/PermissoesDoAplicativoTest.php"
+      ],
+      "refs": [
+        "AC-072"
+      ]
+    },
+    {
+      "id": "T-056",
+      "titulo": "Serviço permanente que consome a fila",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "deploy/alfamatriz-queue.service",
+        "deploy/provisionar.sh",
+        "tests/Feature/Infra/ExecutorDeFilaTest.php"
+      ],
+      "refs": [
+        "AC-073"
+      ]
+    },
+    {
+      "id": "T-057",
+      "titulo": "Publicar avisa o executor da fila a pegar o código novo",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "deploy/publicar.sh",
+        "tests/Feature/Deploy/ScriptPublicarTest.php"
+      ],
+      "refs": [
+        "AC-074"
+      ]
+    },
+    {
+      "id": "T-058",
+      "titulo": "Envio de e-mail real no ambiente publicado e comando de conferência",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "deploy/.env.producao.exemplo",
+        "app/Console/Commands/TestarEmail.php",
+        "tests/Feature/Deploy/AmbienteProducaoTest.php",
+        "tests/Feature/Infra/TesteDeEmailTest.php"
+      ],
+      "refs": [
+        "AC-075",
+        "AC-076",
+        "AC-077"
+      ]
+    }
+  ],
+  "concluidas": [],
+  "avisos": []
+}
