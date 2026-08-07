@@ -1,11 +1,11 @@
 {
   "feature": "redesign-visual",
-  "timestamp": "2026-08-07T16:03:23.981Z",
-  "gitRev": "df11309",
+  "timestamp": "2026-08-06T20:30:07.251Z",
+  "gitRev": "296ccff",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 177,
+  "testsParsed": 110,
   "results": {
     "AC-032": {
       "status": "pass",
@@ -39,7 +39,7 @@
     },
     "AC-038": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Redesign\\MigalhasTest::test_a_tela_filha_mostra_a_secao_e_o_caminho_de_volta @spec:AC-038",
+      "testName": "Tests\\Feature\\Redesign\\ShellTest::test_a_tela_filha_mantem_o_item_do_pai_aceso @spec:AC-038",
       "method": "tap"
     },
     "AC-039": {
@@ -104,7 +104,7 @@
     },
     "AC-049": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Redesign\\CargaInicialTest::test_a_carga_inicial_nao_ressuscita_sistema_removido @spec:AC-049",
+      "testName": "Tests\\Feature\\Redesign\\ProdutosTest::test_produtos_abre_em_lista_ordenada_por_receita @spec:AC-049",
       "method": "tap"
     },
     "AC-050": {
