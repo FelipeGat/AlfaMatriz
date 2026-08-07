@@ -89,6 +89,44 @@ Confere que a URL pública responde em HTTPS, que `/healthz` volta 200, que a
 tela de login abre e que a tela de cadastro está fechada (404). Sai com
 sucesso só se as quatro checagens passarem; senão lista qual falhou.
 
+### Rotinas automáticas do servidor
+
+O servidor executa o agendamento do painel a cada minuto
+(`/etc/cron.d/alfamatriz-schedule`) e mantém um serviço permanente consumindo
+a fila (`alfamatriz-queue`). Para conferir os dois:
+
+```bash
+php artisan schedule:list          # o que está agendado e quando roda
+systemctl status alfamatriz-queue  # o executor da fila
+```
+
+#### Antes de ligar o agendamento pela primeira vez
+
+O fechamento mensal está agendado desde sempre, mas **nunca teve quem o
+disparasse**: até esta entrega o único cron do servidor era o do backup. Ligar
+o agendamento faz a primeira execução acontecer sozinha, sobre uma competência
+que ninguém conferiu — e ela gera cobrança de revenda e conta a pagar de
+verdade.
+
+Por isso, uma vez, antes de publicar a versão que instala o agendamento:
+
+```bash
+cd /var/www/alfamatriz
+php artisan app:fechar-competencia-mensal        # mês atual
+# ou uma competência específica: php artisan app:fechar-competencia-mensal 2026-08
+```
+
+Conferir na saída:
+
+- **Faturamento das revendas** — uma linha por revenda. `cobrança #N — R$ X`
+  significa cobrança criada; `nada a gerar` significa que a revenda não tinha
+  cliente ativo elegível ou que a competência já estava fechada.
+- **Despesas fixas** — as parcelas geradas do mês, e quantas já existiam.
+
+Depois confira em Receitas e em Despesas se os valores batem com o esperado.
+O comando é **idempotente** (não duplica ao rodar de novo na mesma
+competência), então a partir daí o agendamento é inócuo.
+
 ### Backup e restauração
 
 O cron do servidor roda `deploy/backup.sh` uma vez por dia: grava um dump

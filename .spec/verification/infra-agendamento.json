@@ -1,0 +1,47 @@
+{
+  "feature": "infra-agendamento",
+  "timestamp": "2026-08-07T16:04:03.233Z",
+  "gitRev": "df11309",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 177,
+  "results": {
+    "AC-071": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Infra\\AgendamentoTest::test_o_servidor_passa_a_executar_as_rotinas_a_cada_minuto @spec:AC-071",
+      "method": "tap"
+    },
+    "AC-072": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Infra\\PermissoesDoAplicativoTest::test_a_configuracao_fica_legivel_para_o_usuario_do_aplicativo @spec:AC-072",
+      "method": "tap"
+    },
+    "AC-073": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Infra\\ExecutorDeFilaTest::test_o_servidor_ganha_um_servico_permanente_consumindo_a_fila @spec:AC-073",
+      "method": "tap"
+    },
+    "AC-074": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\ScriptPublicarTest::test_publicar_avisa_o_executor_da_fila_a_pegar_o_codigo_novo @spec:AC-074",
+      "method": "tap"
+    },
+    "AC-075": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\AmbienteProducaoTest::test_o_ambiente_publicado_nasce_configurado_para_enviar @spec:AC-075",
+      "method": "tap"
+    },
+    "AC-076": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\AmbienteProducaoTest::test_os_segredos_novos_entram_como_espaco_a_preencher @spec:AC-076",
+      "method": "tap"
+    },
+    "AC-077": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Infra\\TesteDeEmailTest::test_o_comando_mostra_por_onde_o_envio_vai_sair_antes_de_tentar @spec:AC-077",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

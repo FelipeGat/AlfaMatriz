@@ -249,6 +249,84 @@ no_container "test -f /usr/local/bin/alfamatriz-backup.sh && \
      (crontab -l 2>/dev/null; echo '17 3 * * * /usr/local/bin/alfamatriz-backup.sh >> /var/log/alfamatriz-backup.log 2>&1') | crontab -) || \
     echo 'AVISO: /usr/local/bin/alfamatriz-backup.sh ainda não foi enviado — o cron será criado quando ele existir.'"
 
+# --------------------------------------------- permissões do aplicativo
+
+# As rotinas de fundo (agendamento e fila) rodam como www-data e precisam ler a
+# configuração. Até aqui o .env era exclusivo do root: elas só funcionariam
+# enquanto o cache de configuração existisse, e morreriam no primeiro
+# `config:clear` — deixando o painel respondendo 500 no intervalo, que é
+# exatamente a janela documentada em deploy/deploy-staging-alfamatriz.sh.
+#
+# Rodá-las como root também não resolve: o root passaria a criar arquivos em
+# storage/ que o PHP-FPM (www-data) não consegue reabrir depois — gerador
+# clássico de 500 intermitente.
+#
+# 640 root:www-data é o meio-termo estrito: o dono continua sendo o root, o
+# grupo é exatamente o usuário da aplicação, e nenhum outro usuário do sistema
+# ganha leitura.
+info "garantindo que o painel lê a configuração e escreve nas próprias pastas"
+no_container "if [ -f $APP_DIR/.env ]; then \
+        chown root:www-data $APP_DIR/.env && chmod 640 $APP_DIR/.env; \
+    else \
+        echo '    AVISO: $APP_DIR/.env ainda não existe — as permissões valerão no próximo provisionamento.'; \
+    fi"
+no_container "mkdir -p $APP_DIR/storage $APP_DIR/bootstrap/cache && \
+    chown -R www-data:www-data $APP_DIR/storage $APP_DIR/bootstrap/cache"
+
+# -------------------------------------------------------------- agendamento
+
+# O agendamento do Laravel só acontece se algo chamar `schedule:run` a cada
+# minuto. Até esta entrega isso não existia: o único cron do servidor era o do
+# backup, então tudo que está em routes/console.php — inclusive o fechamento
+# mensal — nunca rodou sozinho.
+#
+# Escrito em /etc/cron.d, e não com `crontab -l | ... | crontab -`: sobrescrever
+# um arquivo é idempotente por construção, aceita a linha PATH= de forma
+# inequívoca e tem campo de usuário explícito. O nome não pode ter ponto e o
+# modo precisa ser 0644 — exigências do próprio cron, senão ele ignora o
+# arquivo em silêncio.
+#
+# O PATH por extenso e o php pelo caminho absoluto não são zelo: o cron roda
+# com PATH=/usr/bin:/bin, e `schedule:run` dispara subprocessos que precisam
+# encontrar as ferramentas. Foi assim que o cron do AlfaDeploy falhou em
+# silêncio a cada 5 minutos (ver deploy/deploy-staging-alfamatriz.sh).
+#
+# O log nasce com o dono certo porque quem roda é o www-data, e ele não
+# consegue criar arquivo em /var/log — sem isso, todo redirecionamento falha.
+info "agendando as rotinas do painel (schedule:run a cada minuto)"
+no_container "touch /var/log/alfamatriz-schedule.log && \
+    chown www-data:www-data /var/log/alfamatriz-schedule.log"
+no_container "cat > /etc/cron.d/alfamatriz-schedule <<'CRON'
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+* * * * * www-data cd $APP_DIR && /usr/bin/php artisan schedule:run >> /var/log/alfamatriz-schedule.log 2>&1
+CRON
+chmod 0644 /etc/cron.d/alfamatriz-schedule && systemctl restart cron"
+
+# --------------------------------------------------------- executor da fila
+
+# A fila já estava configurada, mas ninguém a consumia: trabalho enfileirado
+# ficava parado para sempre. Instalado pela mesma mecânica da configuração do
+# Nginx (cópia para a área temporária + envio para dentro do container), para
+# não exigir nenhuma ferramenta nova do host.
+info "instalando o executor da fila (serviço permanente)"
+if [[ "$LOCAL" -eq 1 ]]; then
+    cp "$(dirname "$0")/alfamatriz-queue.service" /tmp/alfamatriz-queue.service
+else
+    scp -o BatchMode=yes "$(dirname "$0")/alfamatriz-queue.service" "$HOST:/tmp/alfamatriz-queue.service"
+fi
+no_host "pct push $VMID /tmp/alfamatriz-queue.service /etc/systemd/system/alfamatriz-queue.service"
+
+no_container "touch /var/log/alfamatriz-queue.log && \
+    chown www-data:www-data /var/log/alfamatriz-queue.log"
+
+# Num container recém-criado o painel ainda não foi publicado e o executor não
+# tem o que executar. Nesse caso o script avisa e segue, em vez de derrubar um
+# provisionamento que no resto está correto — mesmo critério do túnel acima.
+no_container "systemctl daemon-reload && systemctl enable alfamatriz-queue >/dev/null 2>&1 || true; \
+    systemctl restart alfamatriz-queue >/dev/null 2>&1 || true; \
+    systemctl is-active alfamatriz-queue >/dev/null 2>&1 && echo '    executor da fila ativo' || \
+        echo '    AVISO: executor da fila instalado mas não ativo — confira depois de deploy/publicar.sh'"
+
 info "provisionamento de $AMBIENTE concluído (LXC $VMID em $IP)"
 echo
 echo "próximos passos:"
