@@ -302,6 +302,31 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 CRON
 chmod 0644 /etc/cron.d/alfamatriz-schedule && systemctl restart cron"
 
+# --------------------------------------------------------- executor da fila
+
+# A fila já estava configurada, mas ninguém a consumia: trabalho enfileirado
+# ficava parado para sempre. Instalado pela mesma mecânica da configuração do
+# Nginx (cópia para a área temporária + envio para dentro do container), para
+# não exigir nenhuma ferramenta nova do host.
+info "instalando o executor da fila (serviço permanente)"
+if [[ "$LOCAL" -eq 1 ]]; then
+    cp "$(dirname "$0")/alfamatriz-queue.service" /tmp/alfamatriz-queue.service
+else
+    scp -o BatchMode=yes "$(dirname "$0")/alfamatriz-queue.service" "$HOST:/tmp/alfamatriz-queue.service"
+fi
+no_host "pct push $VMID /tmp/alfamatriz-queue.service /etc/systemd/system/alfamatriz-queue.service"
+
+no_container "touch /var/log/alfamatriz-queue.log && \
+    chown www-data:www-data /var/log/alfamatriz-queue.log"
+
+# Num container recém-criado o painel ainda não foi publicado e o executor não
+# tem o que executar. Nesse caso o script avisa e segue, em vez de derrubar um
+# provisionamento que no resto está correto — mesmo critério do túnel acima.
+no_container "systemctl daemon-reload && systemctl enable alfamatriz-queue >/dev/null 2>&1 || true; \
+    systemctl restart alfamatriz-queue >/dev/null 2>&1 || true; \
+    systemctl is-active alfamatriz-queue >/dev/null 2>&1 && echo '    executor da fila ativo' || \
+        echo '    AVISO: executor da fila instalado mas não ativo — confira depois de deploy/publicar.sh'"
+
 info "provisionamento de $AMBIENTE concluído (LXC $VMID em $IP)"
 echo
 echo "próximos passos:"
