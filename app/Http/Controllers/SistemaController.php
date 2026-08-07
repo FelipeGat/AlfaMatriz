@@ -103,6 +103,15 @@ class SistemaController extends Controller
 
         $data['ativo'] = $request->boolean('ativo');
 
+        // O campo da chave é oculto por segurança e por isso chega SEMPRE vazio
+        // quando ninguém o digita. Gravá-lo assim apagaria a chave de
+        // integração toda vez que alguém salvasse qualquer outro campo — e o
+        // sistema pararia de responder à matriz sem nenhum aviso.
+        // Vazio aqui significa "não mexa na chave", nunca "apague a chave".
+        if (blank($data['token'] ?? null)) {
+            unset($data['token']);
+        }
+
         $sistema->update($data);
 
         return redirect()->route('produtos.index')->with('status', 'Sistema atualizado com sucesso.');

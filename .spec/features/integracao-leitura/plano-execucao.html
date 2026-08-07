@@ -1,0 +1,210 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plano de execução — integracao-leitura</title>
+<style>
+  :root { --bg:#fafafa; --fg:#1a1a1a; --card:#fff; --borda:#e2e2e2; --sub:#666;
+          --acc:#0a7c42; --acc-fg:#fff; --aviso:#8a6d00; --aviso-bg:#fff8e1; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141414; --fg:#eaeaea; --card:#1e1e1e; --borda:#333; --sub:#9a9a9a;
+            --acc:#17a35c; --aviso:#e0c36a; --aviso-bg:#2a2410; }
+  }
+  * { box-sizing:border-box }
+  body { margin:0; padding:2rem 1rem; background:var(--bg); color:var(--fg);
+         font:15px/1.55 system-ui,-apple-system,sans-serif }
+  main { max-width:64rem; margin:0 auto }
+  h1 { font-size:1.5rem; margin:0 0 .25rem } h3 { margin:1.5rem 0 .5rem }
+  h4 { margin:0 0 .5rem } small { color:var(--sub); font-weight:400 }
+  .sub { color:var(--sub); margin:0 0 1.25rem }
+  code { font:.85em ui-monospace,monospace; background:var(--card);
+         border:1px solid var(--borda); border-radius:4px; padding:.05em .35em; overflow-wrap:anywhere }
+  .resumo { display:flex; gap:.75rem; flex-wrap:wrap; margin:0 0 1rem }
+  .resumo div { background:var(--card); border:1px solid var(--borda); border-radius:8px;
+                padding:.5rem .9rem } .resumo b { font-size:1.2rem }
+  .executor { background:var(--card); border:1px solid var(--borda); border-radius:10px;
+              padding:1rem; margin:0 0 .5rem }
+  .executor h2 { margin:0 0 .5rem; font-size:1.05rem }
+  .nota { color:var(--sub); font-size:.85rem; margin:.5rem 0 0 }
+  #cmd { display:inline-block; margin-top:.6rem }
+  .grade { display:grid; grid-template-columns:repeat(auto-fit,minmax(17rem,1fr)); gap:.75rem }
+  .faixa { background:var(--card); border:1px solid var(--borda); border-radius:10px; padding: .9rem }
+  .tarefa { display:flex; flex-direction:column; gap:.15rem; padding:.6rem 0;
+            border-top:1px dashed var(--borda) }
+  .tarefa:first-of-type { border-top:0 }
+  .tid { font:700 .85rem ui-monospace,monospace; color:var(--acc) }
+  .meta,.arquivos { font-size:.85rem; color:var(--sub) }
+  .avisos { background:var(--aviso-bg); color:var(--aviso); border-radius:8px;
+            padding:.6rem .9rem; margin:0 0 1rem; font-size:.9rem }
+  ol li { margin:.25rem 0 }
+</style>
+<main>
+  <h1>Plano de execução — integracao-leitura</h1>
+  <p class="sub">gerado por <code>onp-spec plano</code> em 2026-08-07 16:18 · regenere após mudar tasks.md</p>
+  <div class="resumo">
+    <div><b>23</b> tarefa(s), uma após a outra</div>
+    <div>modo <b>sequencial</b> (escolha do usuário)</div>
+    <div>branch <code>spec/integracao-leitura</code></div>
+  </div>
+  
+  <div class="executor">
+    <h2>Como executar — via agente</h2>
+    <p>Peça ao agente (Claude Code) para executar o plano. Ele roda:</p>
+    <div><code id="cmd">bash .spec/features/integracao-leitura/executar-tarefas.sh</code></div>
+    <p class="nota">Este arquivo é só visualização. Cada tarefa roda <code>claude -p</code> na árvore principal, uma após a outra, com contexto limpo e modelo/esforço já definidos.
+    O gate final (verify + audit) roda sozinho; a execução fica em background e, a cada
+    1 minuto, o agente posta no chat a <b>tabela de andamento</b>
+    (<code>onp-spec resumo integracao-leitura --tabela</code>) e o
+    <b>resumo geral de andamento</b> (<code>onp-spec resumo integracao-leitura</code>).</p>
+  </div>
+  
+  
+    <section class="onda">
+      <h3>Ordem de execução <small>uma tarefa após a outra, na árvore principal</small></h3>
+      <div class="grade"><div class="faixa">
+        <div class="tarefa">
+          <span class="tid">T-059</span>
+          <span class="ttitulo">Escrever o contrato da integração</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>docs/integracao/CONTRATO-API-v1.md</code> <code>docs/integracao/CHANGELOG.md</code> <code>tests/Feature/Integracao/ContratoDocumentadoTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-060</span>
+          <span class="ttitulo">Configuração do sistema: chave preservada e estado da integração</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>config/integracao.php</code> <code>app/Http/Controllers/SistemaController.php</code> <code>app/Models/Sistema.php</code> <code>database/migrations/2026_08_07_120000_add_integracao_to_sistemas_table.php</code> <code>tests/Feature/Integracao/ConfiguracaoDoSistemaTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-061</span>
+          <span class="ttitulo">Retrato local: revendas, clientes e planos</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>database/migrations/2026_08_07_120100_create_sistema_revendas_table.php</code> <code>database/migrations/2026_08_07_120200_create_sistema_clientes_table.php</code> <code>database/migrations/2026_08_07_120300_create_sistema_planos_table.php</code> <code>app/Models/SistemaRevenda.php</code> <code>app/Models/SistemaCliente.php</code> <code>app/Models/SistemaPlano.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-062</span>
+          <span class="ttitulo">Retrato local: licenças, usuários, financeiro e contadores</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>database/migrations/2026_08_07_120400_create_sistema_licencas_table.php</code> <code>database/migrations/2026_08_07_120500_create_sistema_usuarios_table.php</code> <code>database/migrations/2026_08_07_120600_create_sistema_faturas_table.php</code> <code>database/migrations/2026_08_07_120700_create_sistema_contadores_table.php</code> <code>app/Models/SistemaLicenca.php</code> <code>app/Models/SistemaUsuario.php</code> <code>app/Models/SistemaFatura.php</code> <code>app/Models/SistemaContador.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-063</span>
+          <span class="ttitulo">Registro de cada execução de sincronização</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>database/migrations/2026_08_07_120800_create_sincronizacoes_table.php</code> <code>app/Models/Sincronizacao.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-064</span>
+          <span class="ttitulo">O contrato em código: interface, transportes e erro</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>app/Services/Integracao/ConectorSistema.php</code> <code>app/Services/Integracao/RespostaIntegracao.php</code> <code>app/Services/Integracao/ErroIntegracao.php</code> <code>app/Services/Integracao/Documento.php</code> <code>app/Services/Integracao/Dto/ClienteExterno.php</code> <code>app/Services/Integracao/Dto/RevendaExterna.php</code> <code>app/Services/Integracao/Dto/LicencaExterna.php</code> <code>app/Services/Integracao/Dto/PlanoExterno.php</code> <code>app/Services/Integracao/Dto/UsuarioExterno.php</code> <code>app/Services/Integracao/Dto/FaturaExterna.php</code> <code>app/Services/Integracao/Dto/ContadoresExternos.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-065</span>
+          <span class="ttitulo">Conector falso e amostras de resposta</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>app/Services/Integracao/ConectorFalso.php</code> <code>app/Services/Integracao/FabricaDeConector.php</code> <code>app/Providers/AppServiceProvider.php</code> <code>tests/Fixtures/Integracao/v1/clientes.json</code> <code>tests/Fixtures/Integracao/v1/revendas.json</code> <code>tests/Fixtures/Integracao/v1/licencas.json</code> <code>tests/Fixtures/Integracao/v1/planos.json</code> <code>tests/Fixtures/Integracao/v1/financeiro.json</code> <code>tests/Fixtures/Integracao/v1/contadores.json</code> <code>tests/Feature/Integracao/ConectorFalsoTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-066</span>
+          <span class="ttitulo">Conector HTTP</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>app/Services/Integracao/ConectorHttp.php</code> <code>tests/Feature/Integracao/ConectorHttpTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-067</span>
+          <span class="ttitulo">Casar cliente e revenda do sistema com os da matriz</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>app/Services/Integracao/VinculadorService.php</code> <code>tests/Feature/Integracao/VinculoTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-068</span>
+          <span class="ttitulo">Sincronizar o cadastro do sistema</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>app/Services/Integracao/SincronizacaoService.php</code> <code>tests/Feature/Integracao/SincronizacaoCadastroTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-069</span>
+          <span class="ttitulo">Ausência na origem e varredura interrompida</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>app/Services/Integracao/SincronizacaoService.php</code> <code>tests/Feature/Integracao/AusenciaNaOrigemTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-070</span>
+          <span class="ttitulo">Sincronizar licenças, financeiro e contadores</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>app/Services/Integracao/SincronizacaoService.php</code> <code>tests/Feature/Integracao/SincronizacaoFinanceiroTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-071</span>
+          <span class="ttitulo">Comando e agendamento da sincronização</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>app/Console/Commands/SincronizarSistemas.php</code> <code>routes/console.php</code> <code>tests/Feature/Integracao/ComandoSincronizarTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-072</span>
+          <span class="ttitulo">Importar o cadastro que já existe no sistema</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>app/Services/Integracao/ImportacaoService.php</code> <code>tests/Feature/Integracao/ImportacaoTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-073</span>
+          <span class="ttitulo">O corte, sistema por sistema</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>app/Services/Integracao/CorteService.php</code> <code>tests/Feature/Integracao/CorteTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-074</span>
+          <span class="ttitulo">Painel de integração e o selo de &quot;atualizado há&quot;</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>resources/views/components/atualizado-em.blade.php</code> <code>resources/views/integracao/index.blade.php</code> <code>app/Http/Controllers/IntegracaoController.php</code> <code>resources/views/layouts/navigation.blade.php</code> <code>routes/web.php</code> <code>tests/Feature/Integracao/PainelTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-075</span>
+          <span class="ttitulo">Tela de conferência e aplicação do corte</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>resources/views/integracao/conferencia.blade.php</code> <code>app/Http/Controllers/ConferenciaController.php</code> <code>tests/Feature/Integracao/TelaConferenciaTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-076</span>
+          <span class="ttitulo">Tela de clientes por sistema</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>resources/views/integracao/clientes.blade.php</code> <code>app/Http/Controllers/IntegracaoClienteController.php</code> <code>tests/Feature/Integracao/TelaClientesTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-077</span>
+          <span class="ttitulo">Tela de licenças dos sistemas</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>resources/views/integracao/licencas.blade.php</code> <code>app/Http/Controllers/IntegracaoLicencaController.php</code> <code>tests/Feature/Integracao/TelaLicencasTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-078</span>
+          <span class="ttitulo">Financeiro dos sistemas e exportação</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>resources/views/integracao/financeiro.blade.php</code> <code>app/Http/Controllers/IntegracaoFinanceiroController.php</code> <code>tests/Feature/Integracao/TelaFinanceiroTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-079</span>
+          <span class="ttitulo">Tela de divergências</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>app/Services/Integracao/DivergenciaService.php</code> <code>resources/views/integracao/divergencias.blade.php</code> <code>app/Http/Controllers/DivergenciaController.php</code> <code>tests/Feature/Integracao/DivergenciaTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-080</span>
+          <span class="ttitulo">AlfaGym: chave da matriz e endereços de leitura</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>tests/Feature/Integracao/ContratoAlfaGymTest.php</code></span>
+        </div>
+        <div class="tarefa">
+          <span class="tid">T-081</span>
+          <span class="ttitulo">Ligar de verdade e provar o formato</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
+          <span class="arquivos"><code>tests/Fixtures/Integracao/alfagym/clientes.json</code> <code>tests/Fixtures/Integracao/alfagym/licencas.json</code> <code>tests/Fixtures/Integracao/alfagym/contadores.json</code> <code>README.md</code></span>
+        </div></div></div>
+    </section>
+  <section class="onda">
+    <h3>Branches e commits</h3>
+    <ol>
+      <li>tudo parte da branch de trabalho <code>spec/integracao-leitura</code></li>
+      <li>as tarefas rodam nela mesma, na ordem; 1 tarefa = 1 commit <code>T-xxx integracao-leitura: título</code></li>
+      <li>gate final: <code>onp-spec verify integracao-leitura</code> + <code>onp-spec audit --ci</code> — exit 0 ou não está pronto</li>
+    </ol>
+  </section>
+</main>

@@ -1,0 +1,384 @@
+{
+  "runId": "AlfaMatriz-integracao-leitura-msj5gfum",
+  "feature": "integracao-leitura",
+  "agent": "claude",
+  "modo": "sequencial",
+  "paralelizar": null,
+  "modeloForcado": null,
+  "esforcoForcado": null,
+  "geradoEm": "2026-08-07 16:18",
+  "branchTrabalho": "spec/integracao-leitura",
+  "baseDir": ".spec/features/integracao-leitura",
+  "specDir": ".spec",
+  "repoName": "AlfaMatriz",
+  "logsDir": "../onp-worktrees/AlfaMatriz-integracao-leitura-logs",
+  "ondas": [],
+  "faixas": [],
+  "sequenciais": [
+    {
+      "id": "T-059",
+      "titulo": "Escrever o contrato da integração",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "docs/integracao/CONTRATO-API-v1.md",
+        "docs/integracao/CHANGELOG.md",
+        "tests/Feature/Integracao/ContratoDocumentadoTest.php"
+      ],
+      "refs": [
+        "AC-078"
+      ]
+    },
+    {
+      "id": "T-060",
+      "titulo": "Configuração do sistema: chave preservada e estado da integração",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "config/integracao.php",
+        "app/Http/Controllers/SistemaController.php",
+        "app/Models/Sistema.php",
+        "database/migrations/2026_08_07_120000_add_integracao_to_sistemas_table.php",
+        "tests/Feature/Integracao/ConfiguracaoDoSistemaTest.php"
+      ],
+      "refs": [
+        "AC-079",
+        "AC-080"
+      ]
+    },
+    {
+      "id": "T-061",
+      "titulo": "Retrato local: revendas, clientes e planos",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "database/migrations/2026_08_07_120100_create_sistema_revendas_table.php",
+        "database/migrations/2026_08_07_120200_create_sistema_clientes_table.php",
+        "database/migrations/2026_08_07_120300_create_sistema_planos_table.php",
+        "app/Models/SistemaRevenda.php",
+        "app/Models/SistemaCliente.php",
+        "app/Models/SistemaPlano.php"
+      ],
+      "refs": [
+        "US-036",
+        "AC-084"
+      ]
+    },
+    {
+      "id": "T-062",
+      "titulo": "Retrato local: licenças, usuários, financeiro e contadores",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "database/migrations/2026_08_07_120400_create_sistema_licencas_table.php",
+        "database/migrations/2026_08_07_120500_create_sistema_usuarios_table.php",
+        "database/migrations/2026_08_07_120600_create_sistema_faturas_table.php",
+        "database/migrations/2026_08_07_120700_create_sistema_contadores_table.php",
+        "app/Models/SistemaLicenca.php",
+        "app/Models/SistemaUsuario.php",
+        "app/Models/SistemaFatura.php",
+        "app/Models/SistemaContador.php"
+      ],
+      "refs": [
+        "US-036",
+        "AC-084",
+        "AC-089"
+      ]
+    },
+    {
+      "id": "T-063",
+      "titulo": "Registro de cada execução de sincronização",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "database/migrations/2026_08_07_120800_create_sincronizacoes_table.php",
+        "app/Models/Sincronizacao.php"
+      ],
+      "refs": [
+        "US-036",
+        "AC-084",
+        "AC-087"
+      ]
+    },
+    {
+      "id": "T-064",
+      "titulo": "O contrato em código: interface, transportes e erro",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/Integracao/ConectorSistema.php",
+        "app/Services/Integracao/RespostaIntegracao.php",
+        "app/Services/Integracao/ErroIntegracao.php",
+        "app/Services/Integracao/Documento.php",
+        "app/Services/Integracao/Dto/ClienteExterno.php",
+        "app/Services/Integracao/Dto/RevendaExterna.php",
+        "app/Services/Integracao/Dto/LicencaExterna.php",
+        "app/Services/Integracao/Dto/PlanoExterno.php",
+        "app/Services/Integracao/Dto/UsuarioExterno.php",
+        "app/Services/Integracao/Dto/FaturaExterna.php",
+        "app/Services/Integracao/Dto/ContadoresExternos.php"
+      ],
+      "refs": [
+        "AC-078"
+      ]
+    },
+    {
+      "id": "T-065",
+      "titulo": "Conector falso e amostras de resposta",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/Integracao/ConectorFalso.php",
+        "app/Services/Integracao/FabricaDeConector.php",
+        "app/Providers/AppServiceProvider.php",
+        "tests/Fixtures/Integracao/v1/clientes.json",
+        "tests/Fixtures/Integracao/v1/revendas.json",
+        "tests/Fixtures/Integracao/v1/licencas.json",
+        "tests/Fixtures/Integracao/v1/planos.json",
+        "tests/Fixtures/Integracao/v1/financeiro.json",
+        "tests/Fixtures/Integracao/v1/contadores.json",
+        "tests/Feature/Integracao/ConectorFalsoTest.php"
+      ],
+      "refs": [
+        "AC-078"
+      ]
+    },
+    {
+      "id": "T-066",
+      "titulo": "Conector HTTP",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/Integracao/ConectorHttp.php",
+        "tests/Feature/Integracao/ConectorHttpTest.php"
+      ],
+      "refs": [
+        "AC-079",
+        "AC-081"
+      ]
+    },
+    {
+      "id": "T-067",
+      "titulo": "Casar cliente e revenda do sistema com os da matriz",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/Integracao/VinculadorService.php",
+        "tests/Feature/Integracao/VinculoTest.php"
+      ],
+      "refs": [
+        "AC-091"
+      ]
+    },
+    {
+      "id": "T-068",
+      "titulo": "Sincronizar o cadastro do sistema",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/Integracao/SincronizacaoService.php",
+        "tests/Feature/Integracao/SincronizacaoCadastroTest.php"
+      ],
+      "refs": [
+        "AC-084",
+        "AC-085"
+      ]
+    },
+    {
+      "id": "T-069",
+      "titulo": "Ausência na origem e varredura interrompida",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/Integracao/SincronizacaoService.php",
+        "tests/Feature/Integracao/AusenciaNaOrigemTest.php"
+      ],
+      "refs": [
+        "AC-086",
+        "AC-087"
+      ]
+    },
+    {
+      "id": "T-070",
+      "titulo": "Sincronizar licenças, financeiro e contadores",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/Integracao/SincronizacaoService.php",
+        "tests/Feature/Integracao/SincronizacaoFinanceiroTest.php"
+      ],
+      "refs": [
+        "AC-084",
+        "AC-088",
+        "AC-089"
+      ]
+    },
+    {
+      "id": "T-071",
+      "titulo": "Comando e agendamento da sincronização",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Console/Commands/SincronizarSistemas.php",
+        "routes/console.php",
+        "tests/Feature/Integracao/ComandoSincronizarTest.php"
+      ],
+      "refs": [
+        "AC-084"
+      ]
+    },
+    {
+      "id": "T-072",
+      "titulo": "Importar o cadastro que já existe no sistema",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/Integracao/ImportacaoService.php",
+        "tests/Feature/Integracao/ImportacaoTest.php"
+      ],
+      "refs": [
+        "AC-091",
+        "AC-092",
+        "AC-093"
+      ]
+    },
+    {
+      "id": "T-073",
+      "titulo": "O corte, sistema por sistema",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/Integracao/CorteService.php",
+        "tests/Feature/Integracao/CorteTest.php"
+      ],
+      "refs": [
+        "AC-094",
+        "AC-095"
+      ]
+    },
+    {
+      "id": "T-074",
+      "titulo": "Painel de integração e o selo de \"atualizado há\"",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "resources/views/components/atualizado-em.blade.php",
+        "resources/views/integracao/index.blade.php",
+        "app/Http/Controllers/IntegracaoController.php",
+        "resources/views/layouts/navigation.blade.php",
+        "routes/web.php",
+        "tests/Feature/Integracao/PainelTest.php"
+      ],
+      "refs": [
+        "AC-082",
+        "AC-083",
+        "AC-095"
+      ]
+    },
+    {
+      "id": "T-075",
+      "titulo": "Tela de conferência e aplicação do corte",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "resources/views/integracao/conferencia.blade.php",
+        "app/Http/Controllers/ConferenciaController.php",
+        "tests/Feature/Integracao/TelaConferenciaTest.php"
+      ],
+      "refs": [
+        "AC-092",
+        "AC-093",
+        "AC-094"
+      ]
+    },
+    {
+      "id": "T-076",
+      "titulo": "Tela de clientes por sistema",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "resources/views/integracao/clientes.blade.php",
+        "app/Http/Controllers/IntegracaoClienteController.php",
+        "tests/Feature/Integracao/TelaClientesTest.php"
+      ],
+      "refs": [
+        "US-038",
+        "AC-091"
+      ]
+    },
+    {
+      "id": "T-077",
+      "titulo": "Tela de licenças dos sistemas",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "resources/views/integracao/licencas.blade.php",
+        "app/Http/Controllers/IntegracaoLicencaController.php",
+        "tests/Feature/Integracao/TelaLicencasTest.php"
+      ],
+      "refs": [
+        "US-036",
+        "AC-084"
+      ]
+    },
+    {
+      "id": "T-078",
+      "titulo": "Financeiro dos sistemas e exportação",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "resources/views/integracao/financeiro.blade.php",
+        "app/Http/Controllers/IntegracaoFinanceiroController.php",
+        "tests/Feature/Integracao/TelaFinanceiroTest.php"
+      ],
+      "refs": [
+        "AC-088",
+        "AC-090"
+      ]
+    },
+    {
+      "id": "T-079",
+      "titulo": "Tela de divergências",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/Integracao/DivergenciaService.php",
+        "resources/views/integracao/divergencias.blade.php",
+        "app/Http/Controllers/DivergenciaController.php",
+        "tests/Feature/Integracao/DivergenciaTest.php"
+      ],
+      "refs": [
+        "AC-090"
+      ]
+    },
+    {
+      "id": "T-080",
+      "titulo": "AlfaGym: chave da matriz e endereços de leitura",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "tests/Feature/Integracao/ContratoAlfaGymTest.php"
+      ],
+      "refs": [
+        "AC-096"
+      ]
+    },
+    {
+      "id": "T-081",
+      "titulo": "Ligar de verdade e provar o formato",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "tests/Fixtures/Integracao/alfagym/clientes.json",
+        "tests/Fixtures/Integracao/alfagym/licencas.json",
+        "tests/Fixtures/Integracao/alfagym/contadores.json",
+        "README.md"
+      ],
+      "refs": [
+        "AC-097"
+      ]
+    }
+  ],
+  "concluidas": [],
+  "avisos": []
+}

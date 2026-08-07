@@ -1,0 +1,20 @@
+[
+  {
+    "id_externo": "3",
+    "nome": "Invest Soluções",
+    "cnpj": "12345678000199",
+    "email": "contato@investsolucoes.com.br",
+    "telefone": "14999990001",
+    "ativo": true,
+    "clientes_ativos": 3
+  },
+  {
+    "id_externo": "7",
+    "nome": "Revenda Sem Documento",
+    "cnpj": null,
+    "email": "contato@semdocumento.com.br",
+    "telefone": null,
+    "ativo": true,
+    "clientes_ativos": 1
+  }
+]
