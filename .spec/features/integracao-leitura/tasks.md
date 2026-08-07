@@ -49,8 +49,8 @@ Vale para todas as tarefas desta feature:
 
 ## T-061 — Retrato local: revendas, clientes e planos [pendente]
 
-- Refs: US-036, AC-084
-- Arquivos: database/migrations/2026_08_07_120100_create_sistema_revendas_table.php, database/migrations/2026_08_07_120200_create_sistema_clientes_table.php, database/migrations/2026_08_07_120300_create_sistema_planos_table.php, app/Models/SistemaRevenda.php, app/Models/SistemaCliente.php, app/Models/SistemaPlano.php
+- Refs: US-036, AC-084, AC-085, AC-086
+- Arquivos: database/migrations/2026_08_07_120100_create_sistema_revendas_table.php, database/migrations/2026_08_07_120200_create_sistema_clientes_table.php, database/migrations/2026_08_07_120300_create_sistema_planos_table.php, app/Models/Concerns/EspelhaSistema.php, app/Models/SistemaRevenda.php, app/Models/SistemaCliente.php, app/Models/SistemaPlano.php, tests/Feature/Integracao/RetratoLocalTest.php
 - Notas: chave única por `(sistema, identificador na origem)`. Cada tabela guarda também a
   resposta crua, para um campo novo do contrato ficar visível sem migração. `sistema_clientes`
   carrega o vínculo com o cliente da matriz e a marca de como o vínculo nasceu (automático ou
@@ -58,8 +58,8 @@ Vale para todas as tarefas desta feature:
 
 ## T-062 — Retrato local: licenças, usuários, financeiro e contadores [pendente]
 
-- Refs: US-036, AC-084, AC-089
-- Arquivos: database/migrations/2026_08_07_120400_create_sistema_licencas_table.php, database/migrations/2026_08_07_120500_create_sistema_usuarios_table.php, database/migrations/2026_08_07_120600_create_sistema_faturas_table.php, database/migrations/2026_08_07_120700_create_sistema_contadores_table.php, app/Models/SistemaLicenca.php, app/Models/SistemaUsuario.php, app/Models/SistemaFatura.php, app/Models/SistemaContador.php
+- Refs: US-036, AC-084, AC-085, AC-086, AC-088, AC-089
+- Arquivos: database/migrations/2026_08_07_120400_create_sistema_licencas_table.php, database/migrations/2026_08_07_120500_create_sistema_usuarios_table.php, database/migrations/2026_08_07_120600_create_sistema_faturas_table.php, database/migrations/2026_08_07_120700_create_sistema_contadores_table.php, app/Models/SistemaLicenca.php, app/Models/SistemaUsuario.php, app/Models/SistemaFatura.php, app/Models/SistemaContador.php, tests/Feature/Integracao/RetratoLocalTest.php
 - Notas: o identificador da licença nunca pode ser nulo — sistema sem entidade de licença própria
   usa um derivado do cliente. Chave única sobre coluna que aceita nulo tem semântica diferente
   entre o banco dos testes e o de produção, e é assim que um teste verde esconde duplicata.
@@ -68,7 +68,7 @@ Vale para todas as tarefas desta feature:
 ## T-063 — Registro de cada execução de sincronização [pendente]
 
 - Refs: US-036, AC-084, AC-087
-- Arquivos: database/migrations/2026_08_07_120800_create_sincronizacoes_table.php, app/Models/Sincronizacao.php
+- Arquivos: database/migrations/2026_08_07_120800_create_sincronizacoes_table.php, app/Models/Sincronizacao.php, tests/Feature/Integracao/RetratoLocalTest.php
 - Notas: escopo, origem (agendada, manual, comando), situação (em andamento, sucesso, parcial,
   falha), itens lidos/criados/atualizados, duração, código e mensagem do erro, e quem disparou.
   Sem esse registro ninguém descobre que a rotina morreu — é exatamente o defeito que o projeto
