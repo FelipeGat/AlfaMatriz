@@ -13,7 +13,7 @@ class Cliente extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'revenda_id', 'nome', 'nome_fantasia', 'razao_social', 'cpf_cnpj',
+        'id_externo_origem', 'revenda_id', 'nome', 'nome_fantasia', 'razao_social', 'cpf_cnpj',
         'tipo_pessoa', 'cidade', 'uf', 'ativo',
         'cep', 'logradouro', 'numero', 'bairro', 'complemento', 'latitude', 'longitude',
         'inscricao_estadual', 'inscricao_municipal', 'nota_fiscal',
@@ -41,7 +41,9 @@ class Cliente extends Model
     public function sistemas(): BelongsToMany
     {
         return $this->belongsToMany(Sistema::class, 'cliente_sistema')
-            ->withPivot(['ativo', 'ativado_em', 'cancelado_em']);
+            ->withPivot(['ativo', 'ativado_em', 'cancelado_em',
+                'licenca_status', 'plano', 'licenca_inicio_em',
+                'licenca_fim_em', 'bloqueia_acesso', 'licenca_id_externo']);
     }
 
     public function cobrancas(): HasMany

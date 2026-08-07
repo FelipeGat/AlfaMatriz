@@ -128,6 +128,16 @@
                                         <x-badge :title="$ativos->pluck('nome')->implode(', ')">+{{ $ativos->count() - 3 }}</x-badge>
                                     @endif
                                 </div>
+                                @foreach ($ativos->take(1) as $sistema)
+                                    @if ($sistema->pivot->licenca_status)
+                                        <span class="mt-1 block font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
+                                            {{ $sistema->nome }} · {{ $sistema->pivot->plano ?? $sistema->pivot->licenca_status }}
+                                            @if ($sistema->pivot->licenca_fim_em)
+                                                · até {{ \Carbon\Carbon::parse($sistema->pivot->licenca_fim_em)->format('d/m/Y') }}
+                                            @endif
+                                        </span>
+                                    @endif
+                                @endforeach
                             @endif
                         </td>
 

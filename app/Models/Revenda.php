@@ -11,7 +11,7 @@ class Revenda extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'nome', 'cnpj', 'contato_nome', 'contato_email', 'contato_telefone', 'ativo',
+        'id_externo_origem', 'nome', 'cnpj', 'contato_nome', 'contato_email', 'contato_telefone', 'ativo',
     ];
 
     protected function casts(): array

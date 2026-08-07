@@ -14,3 +14,10 @@ Schedule::command('app:fechar-competencia-mensal')
     ->lastDayOfMonth('20:00')
     ->withoutOverlapping()
     ->onOneServer();
+
+// Retrato do AlfaGym: leve por hora corrige o que mudou no dia; a varredura
+// completa fica para o comando manual (app:sincronizar-alfagym).
+Schedule::command('app:sincronizar-alfagym')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer();
