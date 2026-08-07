@@ -1,7 +1,7 @@
 {
   "feature": "faturamento-revendas",
-  "timestamp": "2026-08-07T15:59:36.171Z",
-  "gitRev": "9547f6e",
+  "timestamp": "2026-08-07T16:04:35.782Z",
+  "gitRev": "df11309",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,

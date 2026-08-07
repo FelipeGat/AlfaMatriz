@@ -1,11 +1,11 @@
 {
   "feature": "infra-agendamento",
-  "timestamp": "2026-08-07T15:44:28.984Z",
-  "gitRev": "6d51327",
+  "timestamp": "2026-08-07T16:04:03.233Z",
+  "gitRev": "df11309",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 145,
+  "testsParsed": 177,
   "results": {
     "AC-071": {
       "status": "pass",
