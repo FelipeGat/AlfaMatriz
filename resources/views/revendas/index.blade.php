@@ -17,6 +17,34 @@
             <x-aviso tom="critico">{{ session('erro') }}</x-aviso>
         @endif
 
+        {{-- Abas: a gestão de clientes mora aqui, dentro do contexto de revenda. --}}
+        <div class="flex items-center gap-1 border-b border-line">
+            <a href="{{ route('revendas.index', array_merge(request()->query(), ['aba' => 'revendas'])) }}"
+               class="{{ ($aba ?? 'revendas') === 'revendas' ? 'border-brand text-ink' : 'border-transparent text-ink-faint hover:text-ink' }}
+                      -mb-px inline-flex h-9 items-center gap-1.5 border-b-2 px-3 text-[13px] font-semibold transition">
+                Revendas
+            </a>
+            <a href="{{ route('revendas.index', array_merge(request()->query(), ['aba' => 'clientes'])) }}"
+               class="{{ ($aba ?? 'revendas') === 'clientes' ? 'border-brand text-ink' : 'border-transparent text-ink-faint hover:text-ink' }}
+                      -mb-px inline-flex h-9 items-center gap-1.5 border-b-2 px-3 text-[13px] font-semibold transition">
+                Clientes
+            </a>
+        </div>
+
+        @if (($aba ?? 'revendas') === 'clientes')
+            <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+                <x-kpi-card rotulo="Clientes cadastrados" :valor="number_format($clientesView['kpis']['cadastrados']['valor'], 0, ',', '.')"
+                            :delta="$clientesView['kpis']['cadastrados']['nota']" acento="accent" icone="users" />
+                <x-kpi-card rotulo="Em contrato" :valor="number_format($clientesView['kpis']['contrato']['valor'], 0, ',', '.')"
+                            :delta="$clientesView['kpis']['contrato']['nota']" acento="brand" icone="repeat" />
+                <x-kpi-card rotulo="Avulsos" :valor="number_format($clientesView['kpis']['avulsos']['valor'], 0, ',', '.')"
+                            :delta="$clientesView['kpis']['avulsos']['nota']" acento="amber" icone="clipboard" />
+                <x-kpi-card rotulo="Ticket médio" :valor="'R$ '.number_format($clientesView['kpis']['ticket']['valor'], 2, ',', '.')"
+                            :delta="$clientesView['kpis']['ticket']['nota']" acento="good" icone="banknotes" />
+            </div>
+
+            @include('clientes._tabela', $clientesView)
+        @else
         <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
             <x-kpi-card rotulo="Revendas ativas" :valor="$kpis['ativas']['valor']" :delta="$kpis['ativas']['nota']"
                         acento="accent" icone="building" />
@@ -202,6 +230,7 @@
                 @endif
             </x-slot>
         </x-tabela>
+        @endif
     </div>
 
     <x-modal name="nova-revenda" maxWidth="lg">

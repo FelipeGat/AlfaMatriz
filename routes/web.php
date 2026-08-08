@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     if (auth()->user()?->temEscopoDeRevenda()) {
-        return redirect()->route('clientes.index');
+        return redirect()->route('revendas.index', ['aba' => 'clientes']);
     }
 
     return redirect()->route('centro-controle');

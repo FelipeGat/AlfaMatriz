@@ -224,7 +224,7 @@ class ShellTest extends TestCase
         $this->actingAs($this->operador());
 
         $filhas = [
-            route('clientes.create') => 'Clientes',
+            route('clientes.create') => 'Revendas',
             route('contas-financeiras.create') => 'Caixa',
             route('revendas.create') => 'Revendas',
         ];

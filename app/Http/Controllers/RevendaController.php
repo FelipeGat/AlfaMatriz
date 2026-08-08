@@ -7,6 +7,7 @@ use App\Models\Cobranca;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use App\Services\ProvisionadorAlfaGymService;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -14,6 +15,12 @@ class RevendaController extends Controller
 {
     public function index(Request $request)
     {
+        $aba = $request->query('aba', 'revendas');
+
+        if ($aba === 'clientes') {
+            return $this->indexClientes($request);
+        }
+
         $busca = trim((string) $request->query('q', ''));
         $status = $request->query('status', '');
         $ordem = $request->query('ordem', 'mrr');
@@ -54,6 +61,37 @@ class RevendaController extends Controller
             ],
             'kpis' => $this->kpis($revendas, $linhas, $baseTotal, $mrrTotal, $cadastradas),
             'sistemaAlfaGym' => $sistemaAlfaGym,
+        ]);
+    }
+
+    /**
+     * A aba "Clientes" da tela de Revendas: reusa a listagem de clientes da
+     * tela de Clientes, mas dentro do contexto de revendas (admin vê todas,
+     * usuário de revenda vê só a própria).
+     *
+     * @return View
+     */
+    public function indexClientes(Request $request)
+    {
+        $dados = app(ClienteController::class)->dadosDaLista($request);
+        $dados['aba'] = 'clientes';
+
+        $cadastradas = Revenda::when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('id', auth()->user()->revenda_id))->count();
+
+        return view('revendas.index', [
+            'aba' => 'clientes',
+            'linhas' => collect(),
+            'filtros' => ['q' => '', 'status' => '', 'ordem' => 'mrr', 'aba' => 'clientes'],
+            'cadastradas' => $cadastradas,
+            'totais' => ['clientes' => 0, 'mrr' => 0.0, 'sistemas' => 0],
+            'kpis' => [
+                'ativas' => ['valor' => 0, 'nota' => ''],
+                'clientes' => ['valor' => 0, 'nota' => ''],
+                'mrr' => ['valor' => 0.0, 'nota' => ''],
+                'ticket' => ['valor' => 0.0, 'nota' => ''],
+            ],
+            'sistemaAlfaGym' => null,
+            'clientesView' => $dados,
         ]);
     }
 
