@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\Revenda;
+use App\Models\Sistema;
+use App\Services\ProvisionadorAlfaGymService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -31,7 +33,9 @@ class RevendaController extends Controller
         $baseTotal = max(Cliente::where('ativo', true)->count(), 1);
         $mrrTotal = $this->mrrDaCompetencia(now()->format('Y-m'));
 
-        $linhas = $revendas->map(fn (Revenda $revenda) => $this->linha($revenda, $baseTotal));
+        $sistemaAlfaGym = Sistema::query()->where('slug', 'alfagym')->first();
+
+        $linhas = $revendas->map(fn (Revenda $revenda) => $this->linha($revenda, $baseTotal, $sistemaAlfaGym));
 
         $linhas = (match ($ordem) {
             'nome' => $linhas->sortBy('revenda.nome'),
@@ -49,6 +53,7 @@ class RevendaController extends Controller
                 'sistemas' => $linhas->flatMap(fn ($l) => $l['sistemas'])->unique()->count(),
             ],
             'kpis' => $this->kpis($revendas, $linhas, $baseTotal, $mrrTotal, $cadastradas),
+            'sistemaAlfaGym' => $sistemaAlfaGym,
         ]);
     }
 
@@ -58,7 +63,7 @@ class RevendaController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function linha(Revenda $revenda, int $baseTotal): array
+    private function linha(Revenda $revenda, int $baseTotal, ?Sistema $sistemaAlfaGym = null): array
     {
         $clientesAtivos = Cliente::where('revenda_id', $revenda->id)->where('ativo', true);
 
@@ -90,6 +95,7 @@ class RevendaController extends Controller
             'delta' => $this->variacao($mrr, $anterior),
             'sistemas' => $sistemas->all(),
             'emAtraso' => $emAtraso,
+            'provisionada' => $sistemaAlfaGym !== null && $revenda->idExternoNoSistema($sistemaAlfaGym) !== null,
         ];
     }
 
@@ -192,6 +198,39 @@ class RevendaController extends Controller
         $revenda->delete();
 
         return redirect()->route('revendas.index')->with('status', 'Revenda removida.');
+    }
+
+    /**
+     * Provisiona a revenda no AlfaGym: cria lá a revenda + usuário ADMIN_REVENDA
+     * e ancora a revenda local no sistema, para o sincronizador reconhecê-la.
+     */
+    public function provisionar(Request $request, Revenda $revenda)
+    {
+        $this->autorizarAcesso($revenda);
+
+        $sistema = Sistema::query()->where('slug', 'alfagym')->first();
+
+        if (! $sistema) {
+            return back()->with('erro', 'Sistema AlfaGym não está cadastrado na matriz.');
+        }
+
+        $data = $request->validate([
+            'nome_admin' => 'required|string|max:100',
+            'email_admin' => 'required|email|max:255',
+            'senha_admin' => 'required|string|min:8',
+        ]);
+
+        try {
+            (new ProvisionadorAlfaGymService($sistema))->provisionar($revenda, [
+                'nome' => $data['nome_admin'],
+                'email' => $data['email_admin'],
+                'senha' => $data['senha_admin'],
+            ]);
+        } catch (\RuntimeException $e) {
+            return back()->with('erro', $e->getMessage());
+        }
+
+        return back()->with('status', "Revenda {$revenda->nome} provisionada no AlfaGym.");
     }
 
     /**

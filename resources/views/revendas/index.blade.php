@@ -13,6 +13,10 @@
             <x-aviso>{{ session('status') }}</x-aviso>
         @endif
 
+        @if (session('erro'))
+            <x-aviso tom="critico">{{ session('erro') }}</x-aviso>
+        @endif
+
         <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
             <x-kpi-card rotulo="Revendas ativas" :valor="$kpis['ativas']['valor']" :delta="$kpis['ativas']['nota']"
                         acento="accent" icone="building" />
@@ -147,6 +151,18 @@
                                                :href="route('clientes.index', ['revenda' => $revenda->id])" />
                                 <x-acao-tabela icone="repeat" titulo="Faturamento da revenda"
                                                :href="route('faturamento.index')" />
+                                @if ($sistemaAlfaGym && ! $linha['provisionada'])
+                                    <button type="button" @click="$dispatch('open-modal', 'provisionar-revenda-{{ $revenda->id }}')"
+                                            class="inline-flex h-7 w-7 items-center justify-center rounded-tile text-ink-mute transition hover:text-brand hover:bg-chip"
+                                            title="Provisionar no AlfaGym" aria-label="Provisionar no AlfaGym">
+                                        <span class="h-[15px] w-[15px]"><x-nav-icon name="upload" /></span>
+                                    </button>
+                                @elseif ($linha['provisionada'])
+                                    <span class="inline-flex h-7 w-7 items-center justify-center rounded-tile text-ink-faint"
+                                          title="Provisionada no AlfaGym">
+                                        <span class="h-[15px] w-[15px]"><x-nav-icon name="check-circle" /></span>
+                                    </span>
+                                @endif
                                 <x-acao-tabela icone="pencil" titulo="Editar revenda"
                                                :href="route('revendas.edit', $revenda)" />
                                 <x-confirmar :action="route('revendas.destroy', $revenda)" method="DELETE"
@@ -194,4 +210,56 @@
             @include('revendas._form', ['emModal' => true])
         </form>
     </x-modal>
+
+    @foreach ($linhas as $linha)
+        @if ($sistemaAlfaGym && ! $linha['provisionada'])
+            <x-modal :name="'provisionar-revenda-'.$linha['revenda']->id" maxWidth="md">
+                <form method="POST" action="{{ route('revendas.provisionar', $linha['revenda']) }}" class="p-5">
+                    @csrf
+                    <h2 class="font-display text-[15.5px] font-semibold text-ink mb-1">
+                        Provisionar {{ $linha['revenda']->nome }}
+                    </h2>
+                    <p class="text-[13px] text-ink-dim mb-4">
+                        Cria a revenda e o usuário administrador dela no AlfaGym. Os dados abaixo são do
+                        usuário ADMIN_REVENDA que acessará o painel do gym.
+                    </p>
+
+                    <div class="space-y-4">
+                        <div>
+                            <x-input-label for="nome-admin-{{ $linha['revenda']->id }}" value="Nome do administrador" />
+                            <x-text-input id="nome-admin-{{ $linha['revenda']->id }}" name="nome_admin" type="text"
+                                          class="mt-1 block w-full" required autocomplete="off" />
+                            <x-input-error :messages="$errors->get('nome_admin')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="email-admin-{{ $linha['revenda']->id }}" value="E-mail do administrador" />
+                            <x-text-input id="email-admin-{{ $linha['revenda']->id }}" name="email_admin" type="email"
+                                          class="mt-1 block w-full" required autocomplete="off"
+                                          value="{{ $linha['revenda']->contato_email }}" />
+                            <x-input-error :messages="$errors->get('email_admin')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="senha-admin-{{ $linha['revenda']->id }}" value="Senha do administrador" />
+                            <x-text-input id="senha-admin-{{ $linha['revenda']->id }}" name="senha_admin" type="password"
+                                          class="mt-1 block w-full" required minlength="8" autocomplete="new-password" />
+                            <x-input-error :messages="$errors->get('senha_admin')" class="mt-2" />
+                        </div>
+                    </div>
+
+                    <div class="mt-5 flex items-center justify-end gap-2">
+                        <button type="button" x-on:click="$dispatch('close')"
+                                class="h-9 px-3.5 rounded-control border border-btn-line text-[12.5px] font-semibold text-ink-dim hover:text-ink transition">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                                class="h-9 px-3.5 rounded-control bg-brand text-on-brand text-[12.5px] font-semibold hover:bg-brand-bright transition">
+                            Provisionar
+                        </button>
+                    </div>
+                </form>
+            </x-modal>
+        @endif
+    @endforeach
 </x-app-layout>

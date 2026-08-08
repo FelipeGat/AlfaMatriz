@@ -61,6 +61,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('revendas', RevendaController::class)
         ->middleware('permissao:revendas');
+    Route::post('revendas/{revenda}/provisionar', [RevendaController::class, 'provisionar'])
+        ->name('revendas.provisionar')
+        ->middleware('permissao:revendas');
     Route::resource('clientes', ClienteController::class)
         ->middleware('permissao:clientes');
 
