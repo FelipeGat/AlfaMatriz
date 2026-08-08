@@ -202,6 +202,26 @@ class EscopoDeRevendaTest extends TestCase
     }
 
     /**
+     * @spec:AC-XXX O menu esconde os itens de gestão da matriz para usuário de
+     * revenda — o que daria 403 não aparece como link.
+     */
+    public function test_menu_esconde_itens_de_matriz_para_usuario_de_revenda(): void
+    {
+        $cenario = $this->cenario();
+        $usuario = $this->usuarioDaRevenda($cenario['alpha']);
+
+        $resposta = $this->actingAs($usuario)->get(route('clientes.index'));
+
+        $resposta->assertOk();
+        foreach (['centro-controle', 'dashboard', 'comercial', 'produtos.index', 'contas-pagar.index', 'contas-financeiras.index', 'cadastros-auxiliares.index'] as $rota) {
+            $resposta->assertDontSee(route($rota), escape: false);
+        }
+        foreach (['leads.index', 'clientes.index', 'cobrancas.index', 'faturamento.index', 'revendas.index'] as $rota) {
+            $resposta->assertSee(route($rota), escape: false);
+        }
+    }
+
+    /**
      * @spec:AC-XXX Usuário de revenda não gera o fechamento do ciclo de
      * faturamento — decisão da matriz.
      */

@@ -12,26 +12,35 @@
      */
     $grupos = [
         'Painéis' => [
-            ['route' => 'centro-controle', 'pattern' => 'centro-controle', 'label' => 'Centro de Controle', 'icon' => 'bolt'],
-            ['route' => 'dashboard', 'pattern' => 'dashboard', 'label' => 'Financeiro', 'icon' => 'trending-up'],
-            ['route' => 'comercial', 'pattern' => 'comercial', 'label' => 'Comercial', 'icon' => 'clipboard'],
+            ['route' => 'centro-controle', 'pattern' => 'centro-controle', 'label' => 'Centro de Controle', 'icon' => 'bolt', 'matriz' => true],
+            ['route' => 'dashboard', 'pattern' => 'dashboard', 'label' => 'Financeiro', 'icon' => 'trending-up', 'matriz' => true],
+            ['route' => 'comercial', 'pattern' => 'comercial', 'label' => 'Comercial', 'icon' => 'clipboard', 'matriz' => true],
         ],
         'Comercial' => [
             ['route' => 'leads.index', 'pattern' => 'leads.*', 'label' => 'Funil de Vendas', 'icon' => 'view-grid'],
             ['route' => 'revendas.index', 'pattern' => 'revendas.*', 'label' => 'Revendas', 'icon' => 'building'],
             ['route' => 'clientes.index', 'pattern' => 'clientes.*', 'label' => 'Clientes', 'icon' => 'users'],
-            ['route' => 'produtos.index', 'pattern' => ['produtos.*', 'sistemas.*', 'precos.*'], 'label' => 'Produtos', 'icon' => 'cube-outline'],
+            ['route' => 'produtos.index', 'pattern' => ['produtos.*', 'sistemas.*', 'precos.*'], 'label' => 'Produtos', 'icon' => 'cube-outline', 'matriz' => true],
             ['route' => 'faturamento.index', 'pattern' => 'faturamento.*', 'label' => 'Faturamento', 'icon' => 'repeat'],
         ],
         'Financeiro' => [
             ['route' => 'cobrancas.index', 'pattern' => 'cobrancas.*', 'label' => 'Receitas', 'icon' => 'trending-up'],
-            ['route' => 'contas-pagar.index', 'pattern' => ['contas-pagar.*', 'contas-fixas-pagar.*'], 'label' => 'Despesas', 'icon' => 'trending-down'],
-            ['route' => 'contas-financeiras.index', 'pattern' => 'contas-financeiras.*', 'label' => 'Caixa', 'icon' => 'banknotes'],
+            ['route' => 'contas-pagar.index', 'pattern' => ['contas-pagar.*', 'contas-fixas-pagar.*'], 'label' => 'Despesas', 'icon' => 'trending-down', 'matriz' => true],
+            ['route' => 'contas-financeiras.index', 'pattern' => 'contas-financeiras.*', 'label' => 'Caixa', 'icon' => 'banknotes', 'matriz' => true],
         ],
         'Sistema' => [
-            ['route' => 'cadastros-auxiliares.index', 'pattern' => ['cadastros-auxiliares.*', 'centros-custo.*', 'fornecedores.*', 'categorias.*', 'subcategorias.*', 'contas.*'], 'label' => 'Cadastros', 'icon' => 'tag'],
+            ['route' => 'cadastros-auxiliares.index', 'pattern' => ['cadastros-auxiliares.*', 'centros-custo.*', 'fornecedores.*', 'categorias.*', 'subcategorias.*', 'contas.*'], 'label' => 'Cadastros', 'icon' => 'tag', 'matriz' => true],
         ],
     ];
+
+    // Usuário de revenda não vê os itens de gestão da matriz no menu: eles
+    // dariam 403. O que sobra é o próprio portfólio (leads, revenda, clientes,
+    // faturamento, receitas).
+    $escopo = Auth::user()?->temEscopoDeRevenda() ?? false;
+    $grupos = collect($grupos)
+        ->map(fn ($links) => collect($links)->filter(fn ($link) => ! $escopo || empty($link['matriz']))->values()->all())
+        ->filter(fn ($links) => ! empty($links))
+        ->all();
 @endphp
 
 {{--
@@ -51,7 +60,7 @@
     {{-- Header: ícone sempre; wordmark só com o menu aberto --}}
     <div class="h-topbar shrink-0 flex items-center gap-2.5 border-b border-line px-4
                 rail:lg:px-0 rail:lg:justify-center">
-        <a href="{{ route('centro-controle') }}" class="flex items-center gap-2.5 min-w-0">
+        <a href="{{ route($escopo ? 'clientes.index' : 'centro-controle') }}" class="flex items-center gap-2.5 min-w-0">
             <img src="/icon-matriz.svg" alt="" class="h-7 w-7 shrink-0">
             <img src="/alfamatriz.png" alt="AlfaMatriz" class="h-[15px] w-auto shrink-0 rail:lg:hidden">
         </a>
