@@ -130,12 +130,25 @@
                                 </div>
                                 @foreach ($ativos->take(1) as $sistema)
                                     @if ($sistema->pivot->licenca_status)
-                                        <span class="mt-1 block font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
-                                            {{ $sistema->nome }} · {{ $sistema->pivot->plano ?? $sistema->pivot->licenca_status }}
-                                            @if ($sistema->pivot->licenca_fim_em)
-                                                · até {{ \Carbon\Carbon::parse($sistema->pivot->licenca_fim_em)->format('d/m/Y') }}
-                                            @endif
-                                        </span>
+                                        @php
+                                            $fim = $sistema->pivot->licenca_fim_em ? \Carbon\Carbon::parse($sistema->pivot->licenca_fim_em)->endOfDay() : null;
+                                            $hoje = \Carbon\Carbon::now()->endOfDay();
+                                            $bloqueada = (bool) $sistema->pivot->bloqueia_acesso;
+                                            $vencida = $fim && $fim->lt($hoje);
+                                            $vencendo = $fim && ! $vencida && $fim->lte($hoje->copy()->addDays(15));
+                                            $tom = $bloqueada || $vencida ? 'critico' : ($vencendo ? 'atencao' : 'bom');
+                                        @endphp
+                                        <div class="mt-1 flex flex-wrap items-center gap-1">
+                                            <x-badge :tom="$tom" ponto>
+                                                {{ $bloqueada ? 'bloqueada' : ($vencida ? 'vencida' : ($vencendo ? 'vencendo' : 'ativa')) }}
+                                            </x-badge>
+                                            <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
+                                                {{ $sistema->nome }} · {{ $sistema->pivot->plano ?? '—' }}
+                                                @if ($fim)
+                                                    · até {{ $fim->format('d/m/Y') }}
+                                                @endif
+                                            </span>
+                                        </div>
                                     @endif
                                 @endforeach
                             @endif
