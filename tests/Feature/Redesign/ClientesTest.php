@@ -86,8 +86,10 @@ class ClientesTest extends TestCase
         $resposta->assertSee('Em dia', escape: false);
         $resposta->assertSee('Sem cobrança', escape: false);
 
-        // Venda direta é da casa e aparece nomeada, não como campo vazio.
-        $resposta->assertSee('Venda direta', escape: false);
+        // Cliente sem revenda não existe mais como "venda direta" — só quem
+        // ainda não foi vinculado aparece nomeado assim.
+        $resposta->assertSee('Sem revenda', escape: false);
+        $resposta->assertDontSee('Venda direta', escape: false);
         $resposta->assertSee('Belo Horizonte/MG', escape: false);
         $resposta->assertSee('AlfaGym', escape: false);
 
@@ -100,7 +102,7 @@ class ClientesTest extends TestCase
 
         $this->assertStringContainsString(
             '<x-linha-total>',
-            file_get_contents(base_path('resources/views/clientes/index.blade.php'))
+            file_get_contents(base_path('resources/views/clientes/_tabela.blade.php'))
         );
     }
 
@@ -133,14 +135,10 @@ class ClientesTest extends TestCase
             $this->assertSame($esperado, $resposta->viewData('clientes')->first()->nome);
         }
 
-        // Origem: revenda e venda direta são recortes distintos.
+        // Origem: o recorte é por revenda — todo cliente pertence a alguma.
         $resposta = $this->actingAs($operador)->get(route('clientes.index', ['revenda' => $revenda->id]));
         $this->assertCount(1, $resposta->viewData('clientes'));
         $this->assertSame('Academia Central', $resposta->viewData('clientes')->first()->nome);
-
-        $resposta = $this->actingAs($operador)->get(route('clientes.index', ['revenda' => 'direta']));
-        $this->assertCount(1, $resposta->viewData('clientes'));
-        $this->assertSame('Studio Norte', $resposta->viewData('clientes')->first()->nome);
 
         // Sistema licenciado.
         $resposta = $this->actingAs($operador)->get(route('clientes.index', ['sistema' => $sistema->id]));

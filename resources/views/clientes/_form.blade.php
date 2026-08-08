@@ -65,8 +65,8 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
                 <x-input-label for="revenda_id" value="Revenda" />
-                <select id="revenda_id" name="revenda_id" class="mt-1 block w-full border-white/10 rounded-md shadow-sm">
-                    <option value="">— Venda direta da Alfa —</option>
+                <select id="revenda_id" name="revenda_id" class="mt-1 block w-full border-white/10 rounded-md shadow-sm" required>
+                    <option value="" disabled {{ old('revenda_id', $cliente->revenda_id ?? '') === '' ? 'selected' : '' }}>Selecione a revenda</option>
                     @foreach ($revendas as $revenda)
                         <option value="{{ $revenda->id }}" {{ (string) old('revenda_id', $cliente->revenda_id ?? '') === (string) $revenda->id ? 'selected' : '' }}>
                             {{ $revenda->nome }}
