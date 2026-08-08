@@ -81,7 +81,7 @@ class ClientesLicencaTest extends TestCase
         $this->clienteComLicenca([
             'licenca_status' => 'ativa', 'plano' => 'Growth',
             'licenca_fim_em' => now()->addDays(30)->toDateString(),
-            'bloqueia_acesso' => true,
+            'status_saas' => 'bloqueado',
         ]);
 
         $this->actingAs($this->operador())

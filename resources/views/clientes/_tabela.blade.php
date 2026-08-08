@@ -111,10 +111,13 @@
                                 @php
                                     $fim = $sistema->pivot->licenca_fim_em ? \Carbon\Carbon::parse($sistema->pivot->licenca_fim_em)->endOfDay() : null;
                                     $hoje = \Carbon\Carbon::now()->endOfDay();
-                                    $bloqueada = (bool) $sistema->pivot->bloqueia_acesso;
+                                    // O estado real vem do gym: `status_saas` (ativo/bloqueado/pendente).
+                                    // `bloqueia_acesso` é a POLÍTICA da licença (bloquear ao vencer), sempre
+                                    // verdadeira — usá-la aqui marcaria todo mundo como bloqueado.
+                                    $bloqueada = ($sistema->pivot->status_saas ?? '') === 'bloqueado';
                                     $vencida = $fim && $fim->lt($hoje);
                                     $vencendo = $fim && ! $vencida && $fim->lte($hoje->copy()->addDays(15));
-                                    $tom = $bloqueada || $vencida ? 'critico' : ($vencendo ? 'atencao' : 'bom');
+                                    $tom = $bloqueada ? 'critico' : ($vencida ? 'atencao' : ($vencendo ? 'atencao' : 'bom'));
                                 @endphp
                                 <div class="mt-1 flex flex-wrap items-center gap-1">
                                     <x-badge :tom="$tom" ponto>
@@ -165,7 +168,7 @@
                         $licencaGym = collect($cliente->sistemas)
                             ->first(fn ($s) => ($s->pivot->status_saas ?? '') !== '' && $s->slug === 'alfagym');
                         $temLicenca = ! is_null($licencaGym) && filled($licencaGym->pivot->licenca_id_externo ?? null);
-                        $bloqueada = (bool) ($licencaGym->pivot->bloqueia_acesso ?? false);
+                        $bloqueada = ($licencaGym->pivot->status_saas ?? '') === 'bloqueado';
                     @endphp
 
                     <div class="flex justify-end">

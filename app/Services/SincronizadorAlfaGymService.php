@@ -130,9 +130,13 @@ class SincronizadorAlfaGymService
             }
 
             // Vínculo com o sistema (retrato local de "quem usa o quê").
+            // `bloqueia_acesso` DERIVA do status do cliente: o campo de mesmo
+            // nome vindo do gym é a política da licença ("bloquear ao vencer"),
+            // sempre verdadeira — usá-lo aqui marcaria todo mundo como bloqueado.
             $cliente?->sistemas()->syncWithoutDetaching([$this->sistema->id => [
                 'ativo' => $item['ativo'] ?? true,
                 'status_saas' => $item['status'] ?? null,
+                'bloqueia_acesso' => ($item['status'] ?? null) === 'bloqueado' ? 1 : 0,
             ]]);
         }
 
@@ -155,7 +159,6 @@ class SincronizadorAlfaGymService
                 'plano' => $item['plano'] ?? null,
                 'licenca_inicio_em' => $item['inicio_em'] ?? null,
                 'licenca_fim_em' => $item['fim_em'] ?? null,
-                'bloqueia_acesso' => $item['bloqueia_acesso'] ?? null,
                 'licenca_id_externo' => $item['id_externo'] ?? null,
             ]]);
 

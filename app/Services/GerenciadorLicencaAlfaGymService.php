@@ -164,9 +164,9 @@ class GerenciadorLicencaAlfaGymService
             'plano' => $licenca['plano'] ?? null,
             'licenca_inicio_em' => $licenca['inicio_em'] ?? null,
             'licenca_fim_em' => $licenca['fim_em'] ?? null,
-            'bloqueia_acesso' => $licenca['bloqueia_acesso'] ?? null,
             'licenca_id_externo' => $licenca['id_externo'] ?? null,
             'status_saas' => $licenca['status'] ?? null,
+            'bloqueia_acesso' => ($licenca['status'] ?? null) === 'bloqueado' ? 1 : 0,
         ]]);
 
         return $licenca;
