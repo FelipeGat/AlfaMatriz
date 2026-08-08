@@ -1,0 +1,128 @@
+{
+  "runId": "AlfaMatriz-clientes-via-revenda-mskfueum",
+  "feature": "clientes-via-revenda",
+  "agent": "claude",
+  "modo": "paralelo",
+  "paralelizar": null,
+  "modeloForcado": null,
+  "esforcoForcado": null,
+  "geradoEm": "2026-08-08 13:57",
+  "branchTrabalho": "spec/clientes-via-revenda",
+  "baseDir": ".spec/features/clientes-via-revenda",
+  "specDir": ".spec",
+  "repoName": "AlfaMatriz",
+  "logsDir": "../onp-worktrees/AlfaMatriz-clientes-via-revenda-logs",
+  "ondas": [
+    [
+      "faixa-1",
+      "faixa-2"
+    ]
+  ],
+  "faixas": [
+    {
+      "id": "faixa-1",
+      "branch": "spec/clientes-via-revenda-faixa-1",
+      "worktree": "../onp-worktrees/AlfaMatriz-clientes-via-revenda-faixa-1",
+      "tarefas": [
+        {
+          "id": "T-053",
+          "titulo": "Revenda obrigatória no cadastro de cliente",
+          "modelo": "claude-sonnet-5",
+          "esforco": "low",
+          "arquivos": [
+            "app/Http/Controllers/ClienteController.php",
+            "resources/views/clientes/_form.blade.php",
+            "tests/Feature/Redesign/ClientesTest.php"
+          ],
+          "refs": [
+            "US-033",
+            "AC-072"
+          ]
+        },
+        {
+          "id": "T-054",
+          "titulo": "Listagem sem recorte \"venda direta\" e sync sempre vincula à revenda",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "app/Http/Controllers/ClienteController.php",
+            "resources/views/clientes/index.blade.php",
+            "app/Services/SincronizadorAlfaGymService.php",
+            "tests/Feature/Redesign/ClientesTest.php",
+            "tests/Feature/SincronizadorAlfaGymTest.php"
+          ],
+          "refs": [
+            "US-033",
+            "AC-073",
+            "AC-074"
+          ]
+        },
+        {
+          "id": "T-056",
+          "titulo": "Persistir status do cliente vindo do AlfaGym no vínculo",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "database/migrations/2026_08_08_120000_add_status_saas_to_cliente_sistema_table.php",
+            "app/Services/SincronizadorAlfaGymService.php",
+            "app/Models/Cliente.php",
+            "app/Models/Sistema.php",
+            "tests/Feature/SincronizadorAlfaGymTest.php"
+          ],
+          "refs": [
+            "US-035",
+            "AC-077"
+          ]
+        },
+        {
+          "id": "T-057",
+          "titulo": "Admin libera a licença do cliente pelo AlfaGym",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "app/Http/Controllers/ClienteController.php",
+            "app/Services/LiberadorLicencaAlfaGymService.php",
+            "resources/views/clientes/index.blade.php",
+            "routes/web.php",
+            "tests/Feature/SincronizadorAlfaGymTest.php",
+            "tests/Feature/Redesign/ClientesTest.php"
+          ],
+          "refs": [
+            "US-035",
+            "AC-078",
+            "AC-079",
+            "AC-080"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-2",
+      "branch": "spec/clientes-via-revenda-faixa-2",
+      "worktree": "../onp-worktrees/AlfaMatriz-clientes-via-revenda-faixa-2",
+      "tarefas": [
+        {
+          "id": "T-055",
+          "titulo": "Aba \"Clientes\" dentro da tela de Revendas",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "app/Http/Controllers/RevendaController.php",
+            "resources/views/revendas/index.blade.php",
+            "resources/views/layouts/navigation.blade.php",
+            "tests/Feature/Redesign/RevendasTest.php",
+            "tests/Feature/Autorizacao/EscopoDeRevendaTest.php"
+          ],
+          "refs": [
+            "US-034",
+            "AC-075",
+            "AC-076"
+          ]
+        }
+      ]
+    }
+  ],
+  "sequenciais": [],
+  "concluidas": [],
+  "avisos": []
+}
