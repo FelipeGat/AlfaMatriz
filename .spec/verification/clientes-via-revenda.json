@@ -1,7 +1,7 @@
 {
   "feature": "clientes-via-revenda",
-  "timestamp": "2026-08-08T22:26:04.787Z",
-  "gitRev": "cb96d7a",
+  "timestamp": "2026-08-08T22:29:59.269Z",
+  "gitRev": "0ccc6d3",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,

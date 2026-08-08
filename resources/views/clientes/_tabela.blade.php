@@ -161,30 +161,32 @@
                 </td>
 
                 <td class="px-4 py-3">
-                    <div class="flex items-center justify-end gap-1">
-                        @php
-                            $licencaGym = collect($cliente->sistemas)
-                                ->first(fn ($s) => ($s->pivot->status_saas ?? '') !== '' && $s->slug === 'alfagym');
-                            $temLicenca = ! is_null($licencaGym) && filled($licencaGym->pivot->licenca_id_externo ?? null);
-                            $bloqueada = (bool) ($licencaGym->pivot->bloqueia_acesso ?? false);
-                            $mostrarMenuLicenca = $pendente || $temLicenca;
-                        @endphp
+                    @php
+                        $licencaGym = collect($cliente->sistemas)
+                            ->first(fn ($s) => ($s->pivot->status_saas ?? '') !== '' && $s->slug === 'alfagym');
+                        $temLicenca = ! is_null($licencaGym) && filled($licencaGym->pivot->licenca_id_externo ?? null);
+                        $bloqueada = (bool) ($licencaGym->pivot->bloqueia_acesso ?? false);
+                    @endphp
 
-                        @if ($mostrarMenuLicenca)
-                            <x-dropdown width="44">
-                                <x-slot name="trigger">
-                                    <span class="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-tile
-                                                 text-ink-mute transition hover:text-brand hover:bg-chip"
-                                          title="Licença no AlfaGym" aria-label="Licença no AlfaGym">
-                                        <span class="h-[15px] w-[15px]"><x-nav-icon name="tag" /></span>
-                                    </span>
-                                </x-slot>
+                    <div class="flex justify-end">
+                        <x-dropdown width="48" contentClasses="py-1 bg-panel ring-1 ring-line">
+                            <x-slot name="trigger">
+                                <button type="button"
+                                        class="inline-flex h-7 w-7 items-center justify-center rounded-tile
+                                               text-ink-mute transition hover:text-brand hover:bg-chip"
+                                        title="Ações de {{ $cliente->nome_exibicao }}"
+                                        aria-label="Ações de {{ $cliente->nome_exibicao }}">
+                                    <span class="font-display text-[15px] leading-none tracking-[0.08em]">⋯</span>
+                                </button>
+                            </x-slot>
 
-                                <x-slot name="content">
+                            <x-slot name="content">
+                                <div class="py-1">
                                     @if ($pendente)
                                         <button type="button" x-data
                                                 @click="$dispatch('open-modal', 'liberar-licenca-{{ $cliente->id }}')"
-                                                class="block w-full text-left px-3 py-2 text-[12.5px] font-semibold text-brand hover:bg-chip transition">
+                                                class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] font-semibold text-brand hover:bg-chip transition">
+                                            <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="check-circle" /></span>
                                             Liberar licença
                                         </button>
                                     @endif
@@ -192,7 +194,8 @@
                                     @if ($temLicenca)
                                         <button type="button" x-data
                                                 @click="$dispatch('open-modal', 'renovar-licenca-{{ $cliente->id }}')"
-                                                class="block w-full text-left px-3 py-2 text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                                class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                            <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="repeat" /></span>
                                             Renovar licença
                                         </button>
 
@@ -201,7 +204,8 @@
                                                          method="POST" confirmar="Desbloquear"
                                                          :titulo="'Desbloquear '.$cliente->nome_exibicao.'?'"
                                                          mensagem="O acesso do cliente no AlfaGym volta a funcionar.">
-                                                <span class="block w-full text-left px-3 py-2 text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                                <span class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                                    <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="play" /></span>
                                                     Desbloquear licença
                                                 </span>
                                             </x-confirmar>
@@ -210,24 +214,43 @@
                                                          method="POST" confirmar="Bloquear"
                                                          :titulo="'Bloquear '.$cliente->nome_exibicao.'?'"
                                                          mensagem="O acesso do cliente no AlfaGym é interrompido até o desbloqueio.">
-                                                <span class="block w-full text-left px-3 py-2 text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                                <span class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                                    <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="pause" /></span>
                                                     Bloquear licença
                                                 </span>
                                             </x-confirmar>
                                         @endif
                                     @endif
-                                </x-slot>
-                            </x-dropdown>
-                        @endif
 
-                        <x-acao-tabela icone="paperclip" titulo="Cobranças do cliente"
-                                       :href="route('cobrancas.index', ['cliente' => $cliente->id])" />
-                        <x-acao-tabela icone="pencil" titulo="Editar cliente"
-                                       :href="route('clientes.edit', $cliente)" />
-                        <x-confirmar :action="route('clientes.destroy', $cliente)" method="DELETE"
-                                     icone="trash" destrutivo confirmar="Remover"
-                                     :titulo="'Remover '.$cliente->nome_exibicao.'?'"
-                                     mensagem="O cliente sai da lista. As cobranças já emitidas para ele continuam no financeiro." />
+                                    @if ($pendente || $temLicenca)
+                                        <div class="my-1 border-t border-line"></div>
+                                    @endif
+
+                                    <a href="{{ route('cobrancas.index', ['cliente' => $cliente->id]) }}"
+                                       class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                        <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="paperclip" /></span>
+                                        Cobranças do cliente
+                                    </a>
+                                    <a href="{{ route('clientes.edit', $cliente) }}"
+                                       class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                        <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="pencil" /></span>
+                                        Editar cliente
+                                    </a>
+
+                                    <div class="my-1 border-t border-line"></div>
+
+                                    <x-confirmar :action="route('clientes.destroy', $cliente)" method="DELETE"
+                                                 confirmar="Remover" destrutivo
+                                                 :titulo="'Remover '.$cliente->nome_exibicao.'?'"
+                                                 mensagem="O cliente sai da lista. As cobranças já emitidas para ele continuam no financeiro.">
+                                        <span class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-crit hover:bg-crit-tint transition">
+                                            <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="trash" /></span>
+                                            Remover cliente
+                                        </span>
+                                    </x-confirmar>
+                                </div>
+                            </x-slot>
+                        </x-dropdown>
                     </div>
                 </td>
             </tr>
