@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Deploy;
 
+use App\Models\Revenda;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -47,5 +48,47 @@ class CriarUsuarioCommandTest extends TestCase
             Hash::check('SenhaInicial@2026', $usuario->fresh()->password),
             'A senha de quem já existia não pode ser sobrescrita.'
         );
+    }
+
+    /**
+     * @spec:AC-002 Usuário com perfil de revenda nasce com o escopo restrito:
+     * o `--revenda` grava o vínculo e o perfil determina o que ele pode abrir.
+     */
+    public function test_comando_vincular_perfil_e_revenda(): void
+    {
+        $revenda = Revenda::create(['nome' => 'Alpha Rev', 'ativo' => true]);
+
+        $this->artisan('alfa:criar-usuario', [
+            'nome' => 'Gerente Alpha',
+            'email' => 'gerente@alpha.com.br',
+            '--senha' => 'SenhaInicial@2026',
+            '--perfil' => 'operacao',
+            '--revenda' => $revenda->id,
+        ])->assertSuccessful();
+
+        $usuario = User::where('email', 'gerente@alpha.com.br')->first();
+        $this->assertNotNull($usuario);
+        $this->assertSame((int) $revenda->id, (int) $usuario->revenda_id, 'O vínculo com a revenda precisa ser gravado.');
+        $this->assertTrue($usuario->temEscopoDeRevenda(), 'Com revenda_id o usuário passa a ter escopo restrito.');
+        $this->assertTrue(
+            $usuario->perfis()->where('slug', 'operacao')->exists(),
+            'O perfil informado precisa ser atribuído.'
+        );
+    }
+
+    /**
+     * @spec:AC-002 Revenda inexistente é recusada: criar uma conta vinculada a
+     * um escopo que não existe só causaria confusão.
+     */
+    public function test_comando_recusa_revenda_inexistente(): void
+    {
+        $this->artisan('alfa:criar-usuario', [
+            'nome' => 'Sem Dono',
+            'email' => 'sem@dono.com.br',
+            '--senha' => 'SenhaInicial@2026',
+            '--revenda' => 9999,
+        ])->assertFailed();
+
+        $this->assertDatabaseMissing('users', ['email' => 'sem@dono.com.br']);
     }
 }
