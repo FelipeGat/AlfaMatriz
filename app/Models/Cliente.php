@@ -50,7 +50,8 @@ class Cliente extends Model
         return $this->belongsToMany(Sistema::class, 'cliente_sistema')
             ->withPivot(['ativo', 'ativado_em', 'cancelado_em',
                 'licenca_status', 'plano', 'licenca_inicio_em',
-                'licenca_fim_em', 'bloqueia_acesso', 'licenca_id_externo']);
+                'licenca_fim_em', 'bloqueia_acesso', 'licenca_id_externo',
+                'status_saas']);
     }
 
     public function cobrancas(): HasMany

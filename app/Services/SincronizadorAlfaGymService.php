@@ -132,6 +132,7 @@ class SincronizadorAlfaGymService
             // Vínculo com o sistema (retrato local de "quem usa o quê").
             $cliente?->sistemas()->syncWithoutDetaching([$this->sistema->id => [
                 'ativo' => $item['ativo'] ?? true,
+                'status_saas' => $item['status'] ?? null,
             ]]);
         }
 
