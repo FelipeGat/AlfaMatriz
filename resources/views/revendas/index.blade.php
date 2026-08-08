@@ -83,7 +83,7 @@
             </button>
         </form>
 
-        <x-tabela min="1000px">
+        <x-tabela min="1000px" class="tabela-zebrada">
             <thead>
                 <tr class="bg-head border-b border-line font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
                     <th class="px-4 py-2.5 font-semibold">Revenda</th>
@@ -106,16 +106,10 @@
                             style="border-left: 2px solid rgb(var(--warn)); background: rgb(var(--warn) / 0.05)"
                         @endif>
                         <td class="px-4 py-3">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <span class="h-8 w-8 shrink-0 rounded-ctl bg-brand/15 text-brand-text
-                                             flex items-center justify-center font-display text-[12.5px] font-semibold">
-                                    {{ Str::of($revenda->nome)->substr(0, 2)->upper() }}
-                                </span>
-                                <span class="min-w-0">
-                                    <span class="block text-[13.5px] font-medium text-ink truncate">{{ $revenda->nome }}</span>
-                                    <span class="block font-mono text-[11.5px] text-ink-faint truncate">{{ $revenda->cnpj ?: 'sem CNPJ' }}</span>
-                                </span>
-                            </div>
+                            <span class="block min-w-0">
+                                <span class="block text-[13.5px] font-medium text-ink truncate">{{ $revenda->nome }}</span>
+                                <span class="block font-mono text-[11.5px] text-ink-faint truncate">{{ $revenda->cnpj ?: 'sem CNPJ' }}</span>
+                            </span>
                         </td>
 
                         <td class="px-4 py-3">
