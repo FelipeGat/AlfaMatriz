@@ -126,7 +126,8 @@ class ExecutorStagingTest extends TestCase
         $this->assertLessThan($posUso, $posPath, 'O PATH precisa ser definido antes do primeiro uso do pct.');
     }
 
-    /** @spec:AC-065 Com o marcador de pausa, o executor respeita e sai. */
+    /**
+     * @spec:AC-065 Com o marcador de pausa, o executor respeita e sai. */
     public function test_respeita_a_pausa(): void
     {
         $this->criarFerramentas(testesPassam: true);
@@ -137,6 +138,35 @@ class ExecutorStagingTest extends TestCase
         $this->assertSame(0, $processo->getExitCode());
         $this->assertStringContainsString('PAUSADO', $processo->getOutput());
         $this->assertStringNotContainsString('php artisan test', $this->chamadas());
+    }
+
+    /**
+     * @spec:AC-065 O portão roda a suíte na versão nova, mas o route/view cache
+     * da aplicação vigente fica para trás e os testes carregam o cache antigo
+     * (reprovando rotas/views novas). O executor limpa os caches ANTES do
+     * portão — depois da aplicação, o próprio script os recria na versão nova.
+     */
+    public function test_limpa_route_e_view_cache_antes_do_portao(): void
+    {
+        $this->criarFerramentas(testesPassam: true);
+
+        $processo = $this->rodar();
+
+        $this->assertSame(0, $processo->getExitCode(), $processo->getOutput().$processo->getErrorOutput());
+
+        $chamadas = $this->chamadas();
+
+        // As duas limpezas rodaram...
+        $this->assertStringContainsString('php artisan route:clear', $chamadas);
+        $this->assertStringContainsString('php artisan view:clear', $chamadas);
+
+        // ...e rodaram ANTES do portão: o cache velho não pode contaminar a suíte.
+        $posLimpeza = strpos($chamadas, 'php artisan route:clear');
+        $posTeste = strpos($chamadas, 'php artisan test');
+
+        $this->assertNotFalse($posLimpeza, 'A limpeza precisa existir.');
+        $this->assertNotFalse($posTeste, 'O portão precisa existir.');
+        $this->assertLessThan($posTeste, $posLimpeza, 'A limpeza precisa vir antes do portão.');
     }
 
     // ------------------------------------------------------------- apoio

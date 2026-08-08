@@ -104,6 +104,12 @@ no_container "composer install --no-interaction --quiet" || {
     exit 1
 }
 
+# O route/view cache da aplicação vigente fica para trás quando a main anda:
+# a suíte carrega o cache antigo (que não tem as rotas/views novas) e reprova
+# código bom. Limpar antes do portão é obrigatório — depois da aplicação o
+# script recria os caches na versão nova.
+no_container "php artisan route:clear >/dev/null 2>&1 && php artisan view:clear >/dev/null 2>&1" || true
+
 if ! no_container "php artisan test"; then
     log "portão REPROVOU (teste falhando) — staging fica em ${LOCAL_SHA:0:7}"
     veredito reprovado "$REMOTO_SHA" "suite de testes reprovou"
