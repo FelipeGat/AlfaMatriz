@@ -18,18 +18,16 @@
         @endif
 
         {{-- Abas: a gestão de clientes mora aqui, dentro do contexto de revenda. --}}
-        <div class="flex items-center gap-1 border-b border-line">
-            <a href="{{ route('revendas.index', array_merge(request()->query(), ['aba' => 'revendas'])) }}"
-               class="{{ ($aba ?? 'revendas') === 'revendas' ? 'border-brand text-ink' : 'border-transparent text-ink-faint hover:text-ink' }}
-                      -mb-px inline-flex h-9 items-center gap-1.5 border-b-2 px-3 text-[13px] font-semibold transition">
+        <x-abas>
+            <x-abas.item href="{{ route('revendas.index', array_merge(request()->query(), ['aba' => 'revendas'])) }}"
+                         :ativo="($aba ?? 'revendas') === 'revendas'" icone="building">
                 Revendas
-            </a>
-            <a href="{{ route('revendas.index', array_merge(request()->query(), ['aba' => 'clientes'])) }}"
-               class="{{ ($aba ?? 'revendas') === 'clientes' ? 'border-brand text-ink' : 'border-transparent text-ink-faint hover:text-ink' }}
-                      -mb-px inline-flex h-9 items-center gap-1.5 border-b-2 px-3 text-[13px] font-semibold transition">
+            </x-abas.item>
+            <x-abas.item href="{{ route('revendas.index', array_merge(request()->query(), ['aba' => 'clientes'])) }}"
+                         :ativo="($aba ?? 'revendas') === 'clientes'" icone="users">
                 Clientes
-            </a>
-        </div>
+            </x-abas.item>
+        </x-abas>
 
         @if (($aba ?? 'revendas') === 'clientes')
             <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
