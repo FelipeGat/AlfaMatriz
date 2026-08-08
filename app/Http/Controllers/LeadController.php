@@ -11,7 +11,10 @@ class LeadController extends Controller
 {
     public function index(Request $request)
     {
-        $leads = Lead::with(['revenda', 'sistema', 'vendedor'])->orderByDesc('created_at')->get();
+        $leads = Lead::with(['revenda', 'sistema', 'vendedor'])
+            ->when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('revenda_id', auth()->user()->revenda_id))
+            ->orderByDesc('created_at')
+            ->get();
 
         $colunas = collect(Lead::ESTAGIOS)->mapWithKeys(fn ($label, $key) => [
             $key => $leads->where('estagio', $key)->values(),
@@ -32,7 +35,10 @@ class LeadController extends Controller
             'ticket_medio' => $fechados->count() > 0 ? $fechados->sum('valor_estimado') / $fechados->count() : 0,
         ];
 
-        $revendas = Revenda::where('ativo', true)->orderBy('nome')->get();
+        $revendas = Revenda::where('ativo', true)
+            ->when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('id', auth()->user()->revenda_id))
+            ->orderBy('nome')
+            ->get();
         $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
 
         $estagios = $this->estagios($colunas);
@@ -96,6 +102,10 @@ class LeadController extends Controller
         $data['estagio_atualizado_em'] = now();
         $data['vendedor_id'] = auth()->id();
 
+        if (auth()->user()->temEscopoDeRevenda()) {
+            $data['revenda_id'] = auth()->user()->revenda_id;
+        }
+
         Lead::create($data);
 
         return redirect()->route('leads.index')->with('status', 'Lead cadastrado.');
@@ -103,6 +113,8 @@ class LeadController extends Controller
 
     public function update(Request $request, Lead $lead)
     {
+        $this->autorizarAcesso($lead);
+
         $data = $request->validate([
             'nome' => 'required|string|max:255',
             'cpf_cnpj' => 'nullable|string|max:18',
@@ -116,6 +128,10 @@ class LeadController extends Controller
             'observacoes' => 'nullable|string',
         ]);
 
+        if (auth()->user()->temEscopoDeRevenda()) {
+            $data['revenda_id'] = auth()->user()->revenda_id;
+        }
+
         $lead->update($data);
 
         return redirect()->route('leads.index')->with('status', 'Lead atualizado.');
@@ -123,6 +139,8 @@ class LeadController extends Controller
 
     public function mover(Request $request, Lead $lead)
     {
+        $this->autorizarAcesso($lead);
+
         $data = $request->validate([
             'estagio' => 'required|in:'.implode(',', array_keys(Lead::ESTAGIOS)),
             'motivo_perda' => 'nullable|required_if:estagio,perdido|in:'.implode(',', array_keys(Lead::MOTIVOS_PERDA)),
@@ -141,8 +159,19 @@ class LeadController extends Controller
 
     public function destroy(Lead $lead)
     {
+        $this->autorizarAcesso($lead);
+
         $lead->delete();
 
         return redirect()->route('leads.index')->with('status', 'Lead removido.');
+    }
+
+    private function autorizarAcesso(Lead $lead): void
+    {
+        $user = auth()->user();
+
+        if ($user->temEscopoDeRevenda() && $lead->revenda_id !== $user->revenda_id) {
+            abort(403, 'Você só pode acessar os leads da sua revenda.');
+        }
     }
 }

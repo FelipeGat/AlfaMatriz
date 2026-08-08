@@ -27,6 +27,8 @@ class CentroControleController extends Controller
 
     public function index()
     {
+        $this->bloquearVisaoDaMatriz();
+
         $hoje = now()->startOfDay();
 
         return view('centro-controle.index', [

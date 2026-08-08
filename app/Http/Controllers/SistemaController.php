@@ -13,6 +13,8 @@ class SistemaController extends Controller
 
     public function index(Request $request)
     {
+        $this->bloquearVisaoDaMatriz();
+
         $sistemas = Sistema::withCount(['clientes' => fn ($q) => $q->where('clientes.ativo', true)->where('cliente_sistema.ativo', true)])
             ->with(['precosAtacado' => fn ($q) => $q->whereNull('revenda_id')->orderBy('ordem')])
             ->orderBy('categoria')
@@ -86,6 +88,8 @@ class SistemaController extends Controller
 
     public function edit(Sistema $sistema)
     {
+        $this->bloquearVisaoDaMatriz();
+
         $sistema->load(['precosAtacado' => fn ($q) => $q->orderBy('ordem'), 'precosAtacado.revenda']);
         $revendas = \App\Models\Revenda::orderBy('nome')->get();
 
@@ -94,6 +98,8 @@ class SistemaController extends Controller
 
     public function update(Request $request, Sistema $sistema)
     {
+        $this->bloquearVisaoDaMatriz();
+
         $data = $request->validate([
             'categoria' => 'required|in:saas,crm',
             'unidade_cobranca' => 'required|string|max:255',

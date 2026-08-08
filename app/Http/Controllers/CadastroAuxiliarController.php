@@ -8,6 +8,11 @@ use App\Models\Fornecedor;
 
 class CadastroAuxiliarController extends Controller
 {
+    public function __construct()
+    {
+        $this->bloquearVisaoDaMatriz();
+    }
+
     public function index()
     {
         $centrosCusto = CentroCusto::withCount('contasPagar')->orderBy('nome')->get();

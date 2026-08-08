@@ -16,9 +16,10 @@ class RevendaController extends Controller
         $status = $request->query('status', '');
         $ordem = $request->query('ordem', 'mrr');
 
-        $cadastradas = Revenda::count();
+        $cadastradas = Revenda::when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('id', auth()->user()->revenda_id))->count();
 
         $revendas = Revenda::query()
+            ->when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('id', auth()->user()->revenda_id))
             ->when($busca !== '', fn ($q) => $q->where(fn ($sub) => $sub
                 ->where('nome', 'like', "%{$busca}%")
                 ->orWhere('cnpj', 'like', "%{$busca}%")))
@@ -148,11 +149,15 @@ class RevendaController extends Controller
 
     public function create()
     {
+        abort_if(auth()->user()->temEscopoDeRevenda(), 403, 'Sua revenda é provisionada pela matriz.');
+
         return view('revendas.create');
     }
 
     public function store(Request $request)
     {
+        abort_if(auth()->user()->temEscopoDeRevenda(), 403, 'Sua revenda é provisionada pela matriz.');
+
         $data = $this->validated($request);
         $data['ativo'] = $request->boolean('ativo');
 
@@ -163,11 +168,15 @@ class RevendaController extends Controller
 
     public function edit(Revenda $revenda)
     {
+        $this->autorizarAcesso($revenda);
+
         return view('revendas.edit', compact('revenda'));
     }
 
     public function update(Request $request, Revenda $revenda)
     {
+        $this->autorizarAcesso($revenda);
+
         $data = $this->validated($request, $revenda->id);
         $data['ativo'] = $request->boolean('ativo');
 
@@ -178,9 +187,24 @@ class RevendaController extends Controller
 
     public function destroy(Revenda $revenda)
     {
+        $this->autorizarAcesso($revenda);
+
         $revenda->delete();
 
         return redirect()->route('revendas.index')->with('status', 'Revenda removida.');
+    }
+
+    /**
+     * Usuário de revenda só mexe na própria revenda — e também não cadastra
+     * outra revenda (quem tem escopo usa o portfólio que a matriz provisionou).
+     */
+    private function autorizarAcesso(Revenda $revenda): void
+    {
+        $user = auth()->user();
+
+        if ($user->temEscopoDeRevenda() && $revenda->id !== $user->revenda_id) {
+            abort(403, 'Você só pode acessar a própria revenda.');
+        }
     }
 
     private function validated(Request $request, ?int $ignoreId = null): array

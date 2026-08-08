@@ -15,7 +15,14 @@ class FaturamentoController extends Controller
         $competencia = $request->input('competencia', now()->format('Y-m'));
         $mes = \Illuminate\Support\Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
 
-        $revendas = Revenda::where('ativo', true)->orderBy('nome')->get();
+        $escopo = auth()->user()->temEscopoDeRevenda()
+            ? ['id' => auth()->user()->revenda_id]
+            : [];
+
+        $revendas = Revenda::when($escopo, fn ($q) => $q->where($escopo))
+            ->where('ativo', true)
+            ->orderBy('nome')
+            ->get();
 
         $preview = $revendas
             ->map(fn (Revenda $revenda) => $this->painelDaRevenda($revenda))
@@ -24,6 +31,7 @@ class FaturamentoController extends Controller
 
         $cobrancasGeradas = Cobranca::where('tipo', 'locacao_sistema')
             ->where('competencia', $competencia)
+            ->when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('revenda_id', auth()->user()->revenda_id))
             ->with('revenda')
             ->get();
 
@@ -140,6 +148,8 @@ class FaturamentoController extends Controller
 
     public function gerar(Request $request, FaturamentoService $service)
     {
+        abort_if(auth()->user()->temEscopoDeRevenda(), 403, 'O fechamento do ciclo é feito pela matriz.');
+
         $competencia = $request->input('competencia', now()->format('Y-m'));
 
         $resultado = $service->gerarParaCompetencia($competencia);

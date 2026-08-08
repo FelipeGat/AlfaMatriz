@@ -7,6 +7,11 @@ use Illuminate\Http\Request;
 
 class SubcategoriaController extends Controller
 {
+    public function __construct()
+    {
+        $this->bloquearVisaoDaMatriz();
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([

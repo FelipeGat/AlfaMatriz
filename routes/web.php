@@ -24,6 +24,10 @@ use App\Http\Controllers\SubcategoriaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
+    if (auth()->user()?->temEscopoDeRevenda()) {
+        return redirect()->route('clientes.index');
+    }
+
     return redirect()->route('centro-controle');
 });
 
@@ -32,63 +36,105 @@ Route::get('/', function () {
 Route::get('/healthz', SaudeController::class)->name('healthz');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/centro-controle', [CentroControleController::class, 'index'])->name('centro-controle');
-    Route::get('/dashboard', [PainelController::class, 'index'])->name('dashboard');
-    Route::get('/comercial', [PainelController::class, 'comercial'])->name('comercial');
+    Route::get('/centro-controle', [CentroControleController::class, 'index'])->name('centro-controle')
+        ->middleware('permissao:dashboard');
+    Route::get('/dashboard', [PainelController::class, 'index'])->name('dashboard')
+        ->middleware('permissao:dashboard');
+    Route::get('/comercial', [PainelController::class, 'comercial'])->name('comercial')
+        ->middleware('permissao:dashboard');
 
-    Route::get('produtos', [ProdutoController::class, 'index'])->name('produtos.index');
-    Route::put('produtos/{sistema}', [ProdutoController::class, 'update'])->name('produtos.update');
+    Route::get('produtos', [ProdutoController::class, 'index'])->name('produtos.index')
+        ->middleware('permissao:sistemas');
+    Route::put('produtos/{sistema}', [ProdutoController::class, 'update'])->name('produtos.update')
+        ->middleware('permissao:sistemas');
 
-    Route::get('leads', [LeadController::class, 'index'])->name('leads.index');
-    Route::post('leads', [LeadController::class, 'store'])->name('leads.store');
-    Route::put('leads/{lead}', [LeadController::class, 'update'])->name('leads.update');
-    Route::post('leads/{lead}/mover', [LeadController::class, 'mover'])->name('leads.mover');
-    Route::delete('leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy');
+    Route::get('leads', [LeadController::class, 'index'])->name('leads.index')
+        ->middleware('permissao:leads');
+    Route::post('leads', [LeadController::class, 'store'])->name('leads.store')
+        ->middleware('permissao:leads');
+    Route::put('leads/{lead}', [LeadController::class, 'update'])->name('leads.update')
+        ->middleware('permissao:leads');
+    Route::post('leads/{lead}/mover', [LeadController::class, 'mover'])->name('leads.mover')
+        ->middleware('permissao:leads');
+    Route::delete('leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy')
+        ->middleware('permissao:leads');
 
-    Route::resource('revendas', RevendaController::class);
-    Route::resource('clientes', ClienteController::class);
+    Route::resource('revendas', RevendaController::class)
+        ->middleware('permissao:revendas');
+    Route::resource('clientes', ClienteController::class)
+        ->middleware('permissao:clientes');
 
-    Route::resource('sistemas', SistemaController::class)->only(['index', 'edit', 'update']);
-    Route::post('sistemas/{sistema}/precos', [PrecoAtacadoController::class, 'store'])->name('precos.store');
-    Route::delete('precos/{preco}', [PrecoAtacadoController::class, 'destroy'])->name('precos.destroy');
+    Route::resource('sistemas', SistemaController::class)->only(['index', 'edit', 'update'])
+        ->middleware('permissao:sistemas');
+    Route::post('sistemas/{sistema}/precos', [PrecoAtacadoController::class, 'store'])->name('precos.store')
+        ->middleware('permissao:sistemas');
+    Route::delete('precos/{preco}', [PrecoAtacadoController::class, 'destroy'])->name('precos.destroy')
+        ->middleware('permissao:sistemas');
 
-    Route::get('faturamento', [FaturamentoController::class, 'index'])->name('faturamento.index');
-    Route::post('faturamento/gerar', [FaturamentoController::class, 'gerar'])->name('faturamento.gerar');
+    Route::get('faturamento', [FaturamentoController::class, 'index'])->name('faturamento.index')
+        ->middleware('permissao:faturamento');
+    Route::post('faturamento/gerar', [FaturamentoController::class, 'gerar'])->name('faturamento.gerar')
+        ->middleware('permissao:faturamento');
 
-    Route::resource('cobrancas', CobrancaController::class);
-    Route::post('cobrancas/{cobranca}/baixar', [CobrancaController::class, 'baixar'])->name('cobrancas.baixar');
-    Route::post('cobrancas/baixar-em-massa', [CobrancaController::class, 'baixarEmMassa'])->name('cobrancas.baixarEmMassa');
-    Route::get('cobrancas/{cobranca}/anexos', [CobrancaController::class, 'listarAnexos'])->name('cobrancas.anexos.listar');
-    Route::post('cobrancas/{cobranca}/anexos', [CobrancaController::class, 'storeAnexo'])->name('cobrancas.anexos.upload');
-    Route::get('cobrancas/anexos/{anexo}/download', [CobrancaController::class, 'downloadAnexo'])->name('cobrancas.anexos.download');
-    Route::delete('cobrancas/anexos/{anexo}', [CobrancaController::class, 'destroyAnexo'])->name('cobrancas.anexos.destroy');
+    Route::resource('cobrancas', CobrancaController::class)
+        ->middleware('permissao:cobrancas');
+    Route::post('cobrancas/{cobranca}/baixar', [CobrancaController::class, 'baixar'])->name('cobrancas.baixar')
+        ->middleware('permissao:cobrancas');
+    Route::post('cobrancas/baixar-em-massa', [CobrancaController::class, 'baixarEmMassa'])->name('cobrancas.baixarEmMassa')
+        ->middleware('permissao:cobrancas');
+    Route::get('cobrancas/{cobranca}/anexos', [CobrancaController::class, 'listarAnexos'])->name('cobrancas.anexos.listar')
+        ->middleware('permissao:cobrancas');
+    Route::post('cobrancas/{cobranca}/anexos', [CobrancaController::class, 'storeAnexo'])->name('cobrancas.anexos.upload')
+        ->middleware('permissao:cobrancas');
+    Route::get('cobrancas/anexos/{anexo}/download', [CobrancaController::class, 'downloadAnexo'])->name('cobrancas.anexos.download')
+        ->middleware('permissao:cobrancas');
+    Route::delete('cobrancas/anexos/{anexo}', [CobrancaController::class, 'destroyAnexo'])->name('cobrancas.anexos.destroy')
+        ->middleware('permissao:cobrancas');
 
     Route::resource('contas-pagar', ContaPagarController::class)->except(['show'])
-        ->parameters(['contas-pagar' => 'conta_pagar']);
-    Route::post('contas-pagar/{conta_pagar}/baixar', [ContaPagarController::class, 'baixar'])->name('contas-pagar.baixar');
-    Route::post('contas-pagar/baixar-em-massa', [ContaPagarController::class, 'baixarEmMassa'])->name('contas-pagar.baixarEmMassa');
-    Route::get('contas-pagar/{conta_pagar}/anexos', [ContaPagarController::class, 'listarAnexos'])->name('contas-pagar.anexos.listar');
-    Route::post('contas-pagar/{conta_pagar}/anexos', [ContaPagarController::class, 'storeAnexo'])->name('contas-pagar.anexos.upload');
-    Route::get('contas-pagar/anexos/{anexo}/download', [ContaPagarController::class, 'downloadAnexo'])->name('contas-pagar.anexos.download');
-    Route::delete('contas-pagar/anexos/{anexo}', [ContaPagarController::class, 'destroyAnexo'])->name('contas-pagar.anexos.destroy');
+        ->parameters(['contas-pagar' => 'conta_pagar'])
+        ->middleware('permissao:contas_pagar');
+    Route::post('contas-pagar/{conta_pagar}/baixar', [ContaPagarController::class, 'baixar'])->name('contas-pagar.baixar')
+        ->middleware('permissao:contas_pagar');
+    Route::post('contas-pagar/baixar-em-massa', [ContaPagarController::class, 'baixarEmMassa'])->name('contas-pagar.baixarEmMassa')
+        ->middleware('permissao:contas_pagar');
+    Route::get('contas-pagar/{conta_pagar}/anexos', [ContaPagarController::class, 'listarAnexos'])->name('contas-pagar.anexos.listar')
+        ->middleware('permissao:contas_pagar');
+    Route::post('contas-pagar/{conta_pagar}/anexos', [ContaPagarController::class, 'storeAnexo'])->name('contas-pagar.anexos.upload')
+        ->middleware('permissao:contas_pagar');
+    Route::get('contas-pagar/anexos/{anexo}/download', [ContaPagarController::class, 'downloadAnexo'])->name('contas-pagar.anexos.download')
+        ->middleware('permissao:contas_pagar');
+    Route::delete('contas-pagar/anexos/{anexo}', [ContaPagarController::class, 'destroyAnexo'])->name('contas-pagar.anexos.destroy')
+        ->middleware('permissao:contas_pagar');
 
     Route::resource('contas-fixas-pagar', ContaFixaPagarController::class)->only(['index', 'store', 'update', 'destroy'])
-        ->parameters(['contas-fixas-pagar' => 'conta_fixa_pagar']);
-    Route::post('contas-fixas-pagar/gerar', [ContaFixaPagarController::class, 'gerar'])->name('contas-fixas-pagar.gerar');
-    Route::post('contas-fixas-pagar/{conta_fixa_pagar}/pausar', [ContaFixaPagarController::class, 'pausar'])->name('contas-fixas-pagar.pausar');
+        ->parameters(['contas-fixas-pagar' => 'conta_fixa_pagar'])
+        ->middleware('permissao:contas_pagar');
+    Route::post('contas-fixas-pagar/gerar', [ContaFixaPagarController::class, 'gerar'])->name('contas-fixas-pagar.gerar')
+        ->middleware('permissao:contas_pagar');
+    Route::post('contas-fixas-pagar/{conta_fixa_pagar}/pausar', [ContaFixaPagarController::class, 'pausar'])->name('contas-fixas-pagar.pausar')
+        ->middleware('permissao:contas_pagar');
 
     Route::resource('contas-financeiras', ContaFinanceiraController::class)->except(['show'])
-        ->parameters(['contas-financeiras' => 'conta_financeira']);
-    Route::get('contas-financeiras/{conta_financeira}/extrato', [ContaFinanceiraController::class, 'extrato'])->name('contas-financeiras.extrato');
+        ->parameters(['contas-financeiras' => 'conta_financeira'])
+        ->middleware('permissao:financeiro');
+    Route::get('contas-financeiras/{conta_financeira}/extrato', [ContaFinanceiraController::class, 'extrato'])->name('contas-financeiras.extrato')
+        ->middleware('permissao:financeiro');
 
-    Route::get('cadastros-auxiliares', [CadastroAuxiliarController::class, 'index'])->name('cadastros-auxiliares.index');
+    Route::get('cadastros-auxiliares', [CadastroAuxiliarController::class, 'index'])->name('cadastros-auxiliares.index')
+        ->middleware('permissao:financeiro');
     Route::resource('centros-custo', CentroCustoController::class)->only(['store', 'destroy'])
-        ->parameters(['centros-custo' => 'centro_custo']);
-    Route::resource('categorias', CategoriaController::class)->only(['store', 'destroy']);
-    Route::resource('subcategorias', SubcategoriaController::class)->only(['store', 'destroy']);
-    Route::resource('contas', ContaController::class)->only(['store', 'destroy']);
+        ->parameters(['centros-custo' => 'centro_custo'])
+        ->middleware('permissao:financeiro');
+    Route::resource('categorias', CategoriaController::class)->only(['store', 'destroy'])
+        ->middleware('permissao:financeiro');
+    Route::resource('subcategorias', SubcategoriaController::class)->only(['store', 'destroy'])
+        ->middleware('permissao:financeiro');
+    Route::resource('contas', ContaController::class)->only(['store', 'destroy'])
+        ->middleware('permissao:financeiro');
     Route::resource('fornecedores', FornecedorController::class)->only(['index', 'store', 'destroy'])
-        ->parameters(['fornecedores' => 'fornecedor']);
+        ->parameters(['fornecedores' => 'fornecedor'])
+        ->middleware('permissao:financeiro');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

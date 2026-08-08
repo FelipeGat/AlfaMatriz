@@ -19,6 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
             '127.0.0.1',
             '::1',
         ]);
+
+        $middleware->alias([
+            'permissao' => \App\Http\Middleware\ChecarPermissao::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

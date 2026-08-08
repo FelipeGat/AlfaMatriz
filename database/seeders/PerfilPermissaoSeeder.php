@@ -19,6 +19,8 @@ class PerfilPermissaoSeeder extends Seeder
             'contas_pagar' => 'Despesas / contas a pagar',
             'financeiro' => 'Caixa / contas financeiras',
             'dashboard' => 'Dashboard',
+            'leads' => 'Funil de vendas / leads',
+            'faturamento' => 'Faturamento',
         ];
 
         foreach ($recursos as $slug => $descricao) {
@@ -55,6 +57,16 @@ class PerfilPermissaoSeeder extends Seeder
         }
         foreach (['cobrancas', 'contas_pagar', 'financeiro'] as $recurso) {
             $operacao->permissoes()->syncWithoutDetaching([
+                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => false, 'imprimir' => true, 'excluir' => false],
+            ]);
+        }
+        foreach (['leads', 'faturamento'] as $recurso) {
+            $operacao->permissoes()->syncWithoutDetaching([
+                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'imprimir' => true, 'excluir' => false],
+            ]);
+        }
+        foreach (['leads', 'faturamento'] as $recurso) {
+            $financeiro->permissoes()->syncWithoutDetaching([
                 $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => false, 'imprimir' => true, 'excluir' => false],
             ]);
         }

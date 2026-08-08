@@ -22,6 +22,8 @@ class PainelController extends Controller
 
     public function index()
     {
+        $this->bloquearVisaoDaMatriz();
+
         $competenciaAtual = now()->format('Y-m');
         $inicioMes = now()->startOfMonth();
         $fimMes = now()->endOfMonth();
@@ -60,6 +62,8 @@ class PainelController extends Controller
 
     public function comercial()
     {
+        $this->bloquearVisaoDaMatriz();
+
         // O ranking também vem do serviço: ele aparece aqui e na tela de
         // Sistemas, e é o valor de atacado — o número mais fácil de as duas
         // telas passarem a discordar se cada uma calcular por conta própria.

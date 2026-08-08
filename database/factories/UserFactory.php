@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\User;
+use Database\Seeders\PerfilPermissaoSeeder;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -16,6 +17,9 @@ class UserFactory extends Factory
      * The current password being used by the factory.
      */
     protected static ?string $password;
+
+    /** Flag para o state semPerfil: criado sem perfil nenhum. */
+    protected static bool $semPerfil = false;
 
     /**
      * Define the model's default state.
@@ -41,5 +45,34 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            // Um usuário de fábrica navega pelo sistema inteiro: sem perfil ele
+            // tomaria 403 do middleware de permissão em todas as telas. Admin
+            // tem todas as permissões — o papel dos testes é exercitar telas,
+            // não a autorização (que tem testes próprios).
+            if (static::$semPerfil) {
+                static::$semPerfil = false;
+
+                return;
+            }
+
+            (new PerfilPermissaoSeeder)->run();
+            $user->perfis()->attach(\App\Models\Perfil::where('slug', 'admin')->value('id'));
+        });
+    }
+
+    /**
+     * Usuário sem perfil nenhum — para testar a negação do middleware de
+     * permissão. (Opcional, fora do padrão do factory.)
+     */
+    public function semPerfil(): static
+    {
+        static::$semPerfil = true;
+
+        return $this;
     }
 }

@@ -13,6 +13,11 @@ use Illuminate\Support\Facades\Storage;
 
 class ContaPagarController extends Controller
 {
+    public function __construct()
+    {
+        $this->bloquearVisaoDaMatriz();
+    }
+
     public function index(Request $request)
     {
         $contasPagar = ContaPagar::with(['centroCusto', 'conta.subcategoria.categoria', 'fornecedor', 'contaFixaPagar'])

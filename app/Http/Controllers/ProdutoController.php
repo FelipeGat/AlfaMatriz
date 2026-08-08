@@ -9,6 +9,8 @@ class ProdutoController extends Controller
 {
     public function index()
     {
+        $this->bloquearVisaoDaMatriz();
+
         $produtos = Sistema::orderBy('nome')->get()->map(function (Sistema $sistema) {
             $ativos = $sistema->clientesAtivosCount();
             $cancelados = $sistema->clientesCanceladosCount();
@@ -60,6 +62,8 @@ class ProdutoController extends Controller
 
     public function update(Request $request, Sistema $sistema)
     {
+        $this->bloquearVisaoDaMatriz();
+
         $data = $request->validate([
             'versao' => 'nullable|string|max:255',
             'responsavel' => 'nullable|string|max:255',

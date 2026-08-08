@@ -13,6 +13,11 @@ use Illuminate\Http\Request;
 
 class ContaFixaPagarController extends Controller
 {
+    public function __construct()
+    {
+        $this->bloquearVisaoDaMatriz();
+    }
+
     public function index()
     {
         $contasFixas = ContaFixaPagar::with(['centroCusto', 'conta.subcategoria.categoria', 'fornecedor'])

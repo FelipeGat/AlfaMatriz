@@ -7,6 +7,11 @@ use Illuminate\Http\Request;
 
 class FornecedorController extends Controller
 {
+    public function __construct()
+    {
+        $this->bloquearVisaoDaMatriz();
+    }
+
     public function index()
     {
         return redirect()->route('cadastros-auxiliares.index');

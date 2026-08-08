@@ -10,6 +10,8 @@ class PrecoAtacadoController extends Controller
 {
     public function store(Request $request, Sistema $sistema)
     {
+        $this->bloquearVisaoDaMatriz();
+
         $data = $request->validate([
             'revenda_id' => 'nullable|exists:revendas,id',
             'nome' => 'required|string|max:255',
@@ -32,6 +34,8 @@ class PrecoAtacadoController extends Controller
 
     public function destroy(PrecoAtacado $preco)
     {
+        $this->bloquearVisaoDaMatriz();
+
         $sistema = $preco->sistema;
         $preco->delete();
 

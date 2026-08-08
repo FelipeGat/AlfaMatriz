@@ -17,6 +17,7 @@ class CobrancaController extends Controller
     {
         $cobrancas = Cobranca::with(['revenda', 'cliente', 'sistema'])
             ->withCount('anexos')
+            ->when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('revenda_id', auth()->user()->revenda_id))
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->when($request->competencia, fn ($q) => $q->where('competencia', $request->competencia))
             ->orderByDesc('data_vencimento')
@@ -25,7 +26,11 @@ class CobrancaController extends Controller
 
         $hoje = now()->startOfDay();
 
-        $pendentes = Cobranca::where('status', 'pendente')->get(['id', 'valor', 'data_vencimento']);
+        $escopo = auth()->user()->temEscopoDeRevenda()
+            ? ['revenda_id' => auth()->user()->revenda_id]
+            : [];
+
+        $pendentes = Cobranca::where($escopo)->where('status', 'pendente')->get(['id', 'valor', 'data_vencimento']);
         $atrasadas = $pendentes->filter(fn ($c) => $c->data_vencimento->lt($hoje));
 
         $kpis = [
@@ -34,7 +39,8 @@ class CobrancaController extends Controller
             'vence_em_7_dias' => (float) $pendentes->filter(
                 fn ($c) => $c->data_vencimento->between($hoje, $hoje->copy()->addDays(7))
             )->sum('valor'),
-            'recebido_mes' => (float) Cobranca::where('status', 'pago')
+            'recebido_mes' => (float) Cobranca::where($escopo)
+                ->where('status', 'pago')
                 ->whereYear('data_pagamento', $hoje->year)
                 ->whereMonth('data_pagamento', $hoje->month)
                 ->sum('valor_pago'),
@@ -88,6 +94,7 @@ class CobrancaController extends Controller
 
     public function show(Cobranca $cobranca)
     {
+        $this->autorizarAcesso($cobranca);
         $cobranca->load('revenda', 'cliente', 'sistema', 'contaFinanceira');
 
         return view('cobrancas.show', compact('cobranca'));
@@ -96,9 +103,13 @@ class CobrancaController extends Controller
     /** @return array<string, \Illuminate\Support\Collection> */
     private function listasDoFormulario(): array
     {
+        $escopo = auth()->user()->temEscopoDeRevenda()
+            ? ['revenda_id' => auth()->user()->revenda_id]
+            : [];
+
         return [
-            'revendas' => Revenda::orderBy('nome')->get(),
-            'clientes' => Cliente::orderBy('nome')->get(),
+            'revendas' => Revenda::when($escopo, fn ($q) => $q->where($escopo))->orderBy('nome')->get(),
+            'clientes' => Cliente::when($escopo, fn ($q) => $q->where($escopo))->orderBy('nome')->get(),
             'sistemas' => Sistema::orderBy('nome')->get(),
             'contasFinanceiras' => ContaFinanceira::where('ativo', true)->orderBy('nome')->get(),
         ];
@@ -106,17 +117,15 @@ class CobrancaController extends Controller
 
     public function create()
     {
-        $revendas = Revenda::orderBy('nome')->get();
-        $clientes = Cliente::orderBy('nome')->get();
-        $sistemas = Sistema::orderBy('nome')->get();
-        $contasFinanceiras = ContaFinanceira::where('ativo', true)->orderBy('nome')->get();
+        $listas = $this->listasDoFormulario();
 
-        return view('cobrancas.create', compact('revendas', 'clientes', 'sistemas', 'contasFinanceiras'));
+        return view('cobrancas.create', $listas);
     }
 
     public function store(Request $request)
     {
         $data = $this->validated($request);
+        $data = $this->aplicarEscopo($data);
 
         Cobranca::create($data);
 
@@ -125,23 +134,24 @@ class CobrancaController extends Controller
 
     public function edit(Cobranca $cobranca)
     {
-        $revendas = Revenda::orderBy('nome')->get();
-        $clientes = Cliente::orderBy('nome')->get();
-        $sistemas = Sistema::orderBy('nome')->get();
-        $contasFinanceiras = ContaFinanceira::where('ativo', true)->orderBy('nome')->get();
+        $this->autorizarAcesso($cobranca);
 
-        return view('cobrancas.edit', compact('cobranca', 'revendas', 'clientes', 'sistemas', 'contasFinanceiras'));
+        return view('cobrancas.edit', ['cobranca' => $cobranca] + $this->listasDoFormulario());
     }
 
     public function update(Request $request, Cobranca $cobranca)
     {
-        $cobranca->update($this->validated($request));
+        $this->autorizarAcesso($cobranca);
+
+        $cobranca->update($this->aplicarEscopo($this->validated($request)));
 
         return redirect()->route('cobrancas.index')->with('status', 'Receita atualizada com sucesso.');
     }
 
     public function destroy(Cobranca $cobranca)
     {
+        $this->autorizarAcesso($cobranca);
+
         $cobranca->delete();
 
         return redirect()->route('cobrancas.index')->with('status', 'Receita removida.');
@@ -149,6 +159,8 @@ class CobrancaController extends Controller
 
     public function baixar(Request $request, Cobranca $cobranca)
     {
+        $this->autorizarAcesso($cobranca);
+
         $data = $request->validate([
             'valor_pago' => 'nullable|numeric|min:0',
             'data_pagamento' => 'nullable|date',
@@ -167,7 +179,10 @@ class CobrancaController extends Controller
     {
         $data = $request->validate(['ids' => 'required|array', 'ids.*' => 'exists:cobrancas,id']);
 
-        $cobrancas = Cobranca::whereIn('id', $data['ids'])->where('status', 'pendente')->get();
+        $cobrancas = Cobranca::when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('revenda_id', auth()->user()->revenda_id))
+            ->whereIn('id', $data['ids'])
+            ->where('status', 'pendente')
+            ->get();
         $semConta = $cobrancas->whereNull('conta_financeira_id');
 
         $cobrancas->whereNotNull('conta_financeira_id')->each->baixar();
@@ -182,11 +197,15 @@ class CobrancaController extends Controller
 
     public function listarAnexos(Cobranca $cobranca)
     {
+        $this->autorizarAcesso($cobranca);
+
         return response()->json($cobranca->anexos()->latest()->get());
     }
 
     public function storeAnexo(Request $request, Cobranca $cobranca)
     {
+        $this->autorizarAcesso($cobranca);
+
         $data = $request->validate([
             'tipo' => 'required|in:nf,boleto',
             'arquivos' => 'required|array|min:1|max:5',
@@ -212,6 +231,8 @@ class CobrancaController extends Controller
 
     public function downloadAnexo(CobrancaAnexo $anexo)
     {
+        $this->autorizarAcesso($anexo->cobranca);
+
         if (! Storage::disk('public')->exists($anexo->caminho)) {
             abort(404, 'Arquivo não encontrado no servidor.');
         }
@@ -221,6 +242,8 @@ class CobrancaController extends Controller
 
     public function destroyAnexo(CobrancaAnexo $anexo)
     {
+        $this->autorizarAcesso($anexo->cobranca);
+
         Storage::disk('public')->delete($anexo->caminho);
         $anexo->delete();
 
@@ -241,5 +264,27 @@ class CobrancaController extends Controller
             'competencia' => 'nullable|string|max:7',
             'forma_pagamento' => 'nullable|string|max:255',
         ]);
+    }
+
+    /**
+     * Usuário de revenda não escolhe a revenda da cobrança: ela é sempre a
+     * dele. Ignora o campo do formulário e força a própria revenda.
+     */
+    private function aplicarEscopo(array $data): array
+    {
+        if (auth()->user()->temEscopoDeRevenda()) {
+            $data['revenda_id'] = auth()->user()->revenda_id;
+        }
+
+        return $data;
+    }
+
+    private function autorizarAcesso(Cobranca $cobranca): void
+    {
+        $user = auth()->user();
+
+        if ($user->temEscopoDeRevenda() && $cobranca->revenda_id !== $user->revenda_id) {
+            abort(403, 'Você só pode acessar as cobranças da sua revenda.');
+        }
     }
 }

@@ -24,8 +24,9 @@ class AlterarAcessoCommandTest extends TestCase
         ]);
         $idOriginal = $usuario->id;
 
-        $perfil = Perfil::create(['nome' => 'Administrador', 'slug' => 'admin']);
-        $usuario->perfis()->attach($perfil->id);
+        // O factory atribui o perfil admin; o teste o reaproveita e garante o
+        // contrato de que os perfis sobrevivem à troca de credenciais.
+        $usuario->perfis()->syncWithoutDetaching([Perfil::where('slug', 'admin')->value('id')]);
 
         $this->artisan('alfa:alterar-acesso', [
             'email' => 'admin@alfatecnologia.com.br',

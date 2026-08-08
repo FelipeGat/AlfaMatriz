@@ -13,17 +13,21 @@ class ClienteController extends Controller
     public function index(Request $request)
     {
         $busca = trim((string) $request->query('busca', ''));
+        $filtroRevenda = $request->query('revenda');
+
+        $temEscopo = auth()->user()->temEscopoDeRevenda();
 
         $clientes = Cliente::with(['revenda', 'sistemas'])
+            ->when($temEscopo, fn ($q) => $q->where('revenda_id', auth()->user()->revenda_id))
             ->when($busca !== '', fn ($q) => $q->where(fn ($sub) => $sub
                 ->where('nome', 'like', "%{$busca}%")
                 ->orWhere('razao_social', 'like', "%{$busca}%")
                 ->orWhere('nome_fantasia', 'like', "%{$busca}%")
                 ->orWhere('cpf_cnpj', 'like', "%{$busca}%")
                 ->orWhere('cidade', 'like', "%{$busca}%")))
-            ->when($request->query('revenda'), fn ($q, $revenda) => $revenda === 'direta'
+            ->when(! $temEscopo && $filtroRevenda, fn ($q) => $filtroRevenda === 'direta'
                 ? $q->whereNull('revenda_id')
-                : $q->where('revenda_id', $revenda))
+                : $q->where('revenda_id', $filtroRevenda))
             ->when($request->query('sistema'), fn ($q, $sistema) => $q->whereHas('sistemas',
                 fn ($s) => $s->where('sistemas.id', $sistema)->where('cliente_sistema.ativo', true)))
             ->when($request->query('status') === 'ativo', fn ($q) => $q->where('ativo', true))
@@ -39,7 +43,7 @@ class ClienteController extends Controller
         return view('clientes.index', [
             'clientes' => $clientes,
             'pagamentos' => $pagamentos,
-            'revendas' => Revenda::orderBy('nome')->get(),
+            'revendas' => Revenda::when($temEscopo, fn ($q) => $q->where('id', auth()->user()->revenda_id))->orderBy('nome')->get(),
             'sistemas' => Sistema::where('ativo', true)->orderBy('nome')->get(),
             'filtros' => [
                 'busca' => $busca,
@@ -104,15 +108,20 @@ class ClienteController extends Controller
     /** @return array<string, array<string, mixed>> */
     private function kpis(): array
     {
-        $cadastrados = Cliente::count();
-        $ativos = Cliente::where('ativo', true)->count();
-        $emContrato = Cliente::where('ativo', true)->where('tipo_cliente', 'CONTRATO')->count();
-        $avulsos = Cliente::where('ativo', true)->where('tipo_cliente', '!=', 'CONTRATO')->count();
+        $escopo = auth()->user()->temEscopoDeRevenda()
+            ? ['revenda_id' => auth()->user()->revenda_id]
+            : [];
+
+        $cadastrados = Cliente::where($escopo)->count();
+        $ativos = Cliente::where($escopo)->where('ativo', true)->count();
+        $emContrato = Cliente::where($escopo)->where('ativo', true)->where('tipo_cliente', 'CONTRATO')->count();
+        $avulsos = Cliente::where($escopo)->where('ativo', true)->where('tipo_cliente', '!=', 'CONTRATO')->count();
 
         // O ticket é a média de QUEM ESTÁ EM CONTRATO. Somar o valor mensal
         // dos avulsos e dividir pelos em contrato infla o número — o avulso
         // entra no numerador sem entrar no denominador.
-        $mensal = (float) Cliente::where('ativo', true)
+        $mensal = (float) Cliente::where($escopo)
+            ->where('ativo', true)
             ->where('tipo_cliente', 'CONTRATO')
             ->sum('valor_mensal');
 
@@ -146,6 +155,8 @@ class ClienteController extends Controller
 
     public function create()
     {
+        abort_if(auth()->user()->temEscopoDeRevenda(), 403, 'Os clientes da sua revenda são provisionados pela matriz.');
+
         $revendas = Revenda::where('ativo', true)->orderBy('nome')->get();
         $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
 
@@ -154,6 +165,8 @@ class ClienteController extends Controller
 
     public function store(Request $request)
     {
+        abort_if(auth()->user()->temEscopoDeRevenda(), 403, 'Os clientes da sua revenda são provisionados pela matriz.');
+
         $data = $this->validated($request);
         $data = $this->prepararDados($request, $data);
 
@@ -168,7 +181,12 @@ class ClienteController extends Controller
 
     public function edit(Cliente $cliente)
     {
-        $revendas = Revenda::where('ativo', true)->orderBy('nome')->get();
+        $this->autorizarAcesso($cliente);
+
+        $revendas = Revenda::where('ativo', true)
+            ->when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('id', auth()->user()->revenda_id))
+            ->orderBy('nome')
+            ->get();
         $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
         $cliente->load('sistemas', 'emails', 'telefones');
 
@@ -177,8 +195,16 @@ class ClienteController extends Controller
 
     public function update(Request $request, Cliente $cliente)
     {
+        $this->autorizarAcesso($cliente);
+
         $data = $this->validated($request, $cliente->id);
         $data = $this->prepararDados($request, $data);
+
+        // Usuário de revenda nunca muda o dono do cliente: a revenda vem do
+        // escopo dele, não do formulário.
+        if (auth()->user()->temEscopoDeRevenda()) {
+            $data['revenda_id'] = auth()->user()->revenda_id;
+        }
 
         $cliente->update($data);
 
@@ -191,9 +217,24 @@ class ClienteController extends Controller
 
     public function destroy(Cliente $cliente)
     {
+        $this->autorizarAcesso($cliente);
+
         $cliente->delete();
 
         return redirect()->route('clientes.index')->with('status', 'Cliente removido.');
+    }
+
+    /**
+     * Usuário de revenda só acessa os próprios clientes (e ainda assim com o
+     * revenda_id do registro conferindo com o do usuário, nunca o do formulário).
+     */
+    private function autorizarAcesso(Cliente $cliente): void
+    {
+        $user = auth()->user();
+
+        if ($user->temEscopoDeRevenda() && $cliente->revenda_id !== $user->revenda_id) {
+            abort(403, 'Você só pode acessar os clientes da sua revenda.');
+        }
     }
 
     /**

@@ -7,6 +7,11 @@ use Illuminate\Http\Request;
 
 class ContaFinanceiraController extends Controller
 {
+    public function __construct()
+    {
+        $this->bloquearVisaoDaMatriz();
+    }
+
     public function index()
     {
         $contasFinanceiras = ContaFinanceira::withCount('movimentacoes')->orderBy('nome')->get();
