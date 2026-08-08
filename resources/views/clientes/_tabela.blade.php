@@ -176,7 +176,7 @@
                                                text-ink-mute transition hover:text-brand hover:bg-chip"
                                         title="Ações de {{ $cliente->nome_exibicao }}"
                                         aria-label="Ações de {{ $cliente->nome_exibicao }}">
-                                    <span class="font-display text-[15px] leading-none tracking-[0.08em]">⋯</span>
+                                    <span class="h-[15px] w-[15px]"><x-nav-icon name="dots-vertical" /></span>
                                 </button>
                             </x-slot>
 
