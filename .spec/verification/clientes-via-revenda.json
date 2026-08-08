@@ -1,11 +1,57 @@
 {
   "feature": "clientes-via-revenda",
-  "timestamp": "2026-08-08T13:59:43.742Z",
-  "gitRev": "999cd66",
+  "timestamp": "2026-08-08T14:15:44.835Z",
+  "gitRev": "be938b7",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 142,
-  "results": {},
+  "testsParsed": 151,
+  "results": {
+    "AC-072": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\ClientesViaRevenda\\ClientesViaRevendaTest::test_cadastro_de_cliente_exige_revenda @spec:AC-072",
+      "method": "tap"
+    },
+    "AC-073": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\ClientesViaRevenda\\ClientesViaRevendaTest::test_listagem_nao_oferece_recorte_venda_direta @spec:AC-073",
+      "method": "tap"
+    },
+    "AC-074": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\ClientesViaRevenda\\ClientesViaRevendaTest::test_sync_vincula_cliente_a_revenda @spec:AC-074",
+      "method": "tap"
+    },
+    "AC-075": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\ClientesViaRevenda\\ClientesViaRevendaTest::test_tela_de_revendas_mostra_aba_clientes @spec:AC-075",
+      "method": "tap"
+    },
+    "AC-076": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\ClientesViaRevenda\\ClientesViaRevendaTest::test_usuario_de_revenda_so_ve_a_propria_revenda_na_aba @spec:AC-076",
+      "method": "tap"
+    },
+    "AC-077": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\ClientesViaRevenda\\ClientesViaRevendaTest::test_cliente_pendente_aparece_com_acao_de_liberar @spec:AC-077",
+      "method": "tap"
+    },
+    "AC-078": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\ClientesViaRevenda\\ClientesViaRevendaTest::test_liberar_licenca_envia_tipo_valor_e_obs_ao_gym @spec:AC-078",
+      "method": "tap"
+    },
+    "AC-079": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\ClientesViaRevenda\\ClientesViaRevendaTest::test_liberar_licenca_mantem_cliente_na_revenda @spec:AC-079",
+      "method": "tap"
+    },
+    "AC-080": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\ClientesViaRevenda\\ClientesViaRevendaTest::test_recusa_do_gym_aparece_como_erro_sem_gravar @spec:AC-080",
+      "method": "tap"
+    }
+  },
   "principles": {}
 }
