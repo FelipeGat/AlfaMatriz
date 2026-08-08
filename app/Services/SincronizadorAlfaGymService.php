@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Http;
  * Puxa o retrato do AlfaGym pelo contrato /api/matriz/v1 e preenche as
  * tabelas existentes de revendas e clientes, sem criar estrutura nova.
  *
- * Idempotência por (sistema, id_externo_origem): rodar de novo não duplica.
+ * Idempotência por (sistema, id_externo na âncora): rodar de novo não duplica.
  * As licenças moram no vínculo cliente_sistema (o retrato da vigência).
  */
 class SincronizadorAlfaGymService
@@ -78,9 +78,7 @@ class SincronizadorAlfaGymService
         $criadas = $atualizadas = 0;
 
         foreach ($this->todasPaginas('/revendas') as $item) {
-            $revenda = Revenda::query()
-                ->where('id_externo_origem', $item['id_externo'])
-                ->first();
+            $revenda = Revenda::porOrigemExterna($this->sistema, $item['id_externo']);
 
             $dados = [
                 'nome' => $item['nome'] ?? 'Sem nome',
@@ -94,7 +92,8 @@ class SincronizadorAlfaGymService
                 $revenda->update($dados);
                 $atualizadas++;
             } else {
-                Revenda::create($dados + ['id_externo_origem' => $item['id_externo']]);
+                $revenda = Revenda::create($dados);
+                $revenda->ancorarEm($this->sistema, $item['id_externo']);
                 $criadas++;
             }
         }
@@ -107,9 +106,7 @@ class SincronizadorAlfaGymService
         $criados = $atualizados = 0;
 
         foreach ($this->todasPaginas('/clientes') as $item) {
-            $cliente = Cliente::query()
-                ->where('id_externo_origem', $item['id_externo'])
-                ->first();
+            $cliente = Cliente::porOrigemExterna($this->sistema, $item['id_externo']);
 
             $dados = [
                 'nome' => $item['nome'] ?? 'Sem nome',
@@ -127,12 +124,12 @@ class SincronizadorAlfaGymService
                 $cliente->update($dados);
                 $atualizados++;
             } else {
-                Cliente::create($dados + ['id_externo_origem' => $item['id_externo']]);
+                $cliente = Cliente::create($dados);
+                $cliente->ancorarEm($this->sistema, $item['id_externo']);
                 $criados++;
             }
 
             // Vínculo com o sistema (retrato local de "quem usa o quê").
-            $cliente ??= Cliente::query()->where('id_externo_origem', $item['id_externo'])->first();
             $cliente?->sistemas()->syncWithoutDetaching([$this->sistema->id => [
                 'ativo' => $item['ativo'] ?? true,
             ]]);
@@ -146,9 +143,7 @@ class SincronizadorAlfaGymService
         $atualizadas = 0;
 
         foreach ($this->todasPaginas('/licencas') as $item) {
-            $cliente = Cliente::query()
-                ->where('id_externo_origem', $item['cliente_id_externo'] ?? null)
-                ->first();
+            $cliente = Cliente::porOrigemExterna($this->sistema, $item['cliente_id_externo'] ?? null);
 
             if (! $cliente) {
                 continue;
@@ -175,7 +170,7 @@ class SincronizadorAlfaGymService
             return null;
         }
 
-        return Revenda::query()->where('id_externo_origem', $idExterno)->first();
+        return Revenda::porOrigemExterna($this->sistema, $idExterno);
     }
 
     /**

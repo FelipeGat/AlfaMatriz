@@ -76,14 +76,14 @@ class SincronizadorAlfaGymTest extends TestCase
         $this->assertTrue($resultado['ok']);
 
         $this->assertSame(2, Revenda::count());
-        $this->assertSame('Invest Soluções', Revenda::where('id_externo_origem', '1')->first()->nome);
-        $this->assertSame('12345678000199', Revenda::where('id_externo_origem', '1')->first()->cnpj);
+        $this->assertSame('Invest Soluções', Revenda::porOrigemExterna($sistema, '1')->nome);
+        $this->assertSame('12345678000199', Revenda::porOrigemExterna($sistema, '1')->cnpj);
 
-        $cliente = Cliente::where('id_externo_origem', '128')->first();
+        $cliente = Cliente::porOrigemExterna($sistema, '128');
         $this->assertNotNull($cliente);
         $this->assertSame('Academia Corpo em Movimento', $cliente->nome);
         $this->assertSame('98765432000155', $cliente->cpf_cnpj);
-        $this->assertSame(Revenda::where('id_externo_origem', '1')->first()->id, $cliente->revenda_id);
+        $this->assertSame(Revenda::porOrigemExterna($sistema, '1')->id, $cliente->revenda_id);
 
         $vinculo = $cliente->sistemas()->where('sistemas.id', $sistema->id)->first();
         $this->assertNotNull($vinculo);

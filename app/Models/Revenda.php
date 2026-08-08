@@ -2,21 +2,28 @@
 
 namespace App\Models;
 
+use App\Concerns\ComOrigemExterna;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Revenda extends Model
 {
-    use SoftDeletes;
+    use ComOrigemExterna, SoftDeletes;
 
     protected $fillable = [
-        'id_externo_origem', 'nome', 'cnpj', 'contato_nome', 'contato_email', 'contato_telefone', 'ativo',
+        'nome', 'cnpj', 'contato_nome', 'contato_email', 'contato_telefone', 'ativo',
     ];
 
     protected function casts(): array
     {
         return ['ativo' => 'boolean'];
+    }
+
+    public function origensExternas(): MorphMany
+    {
+        return $this->morphMany(OrigemExterna::class, 'entidade');
     }
 
     public function clientes(): HasMany

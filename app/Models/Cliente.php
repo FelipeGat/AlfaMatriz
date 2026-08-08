@@ -2,18 +2,20 @@
 
 namespace App\Models;
 
+use App\Concerns\ComOrigemExterna;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Cliente extends Model
 {
-    use SoftDeletes;
+    use ComOrigemExterna, SoftDeletes;
 
     protected $fillable = [
-        'id_externo_origem', 'revenda_id', 'nome', 'nome_fantasia', 'razao_social', 'cpf_cnpj',
+        'revenda_id', 'nome', 'nome_fantasia', 'razao_social', 'cpf_cnpj',
         'tipo_pessoa', 'cidade', 'uf', 'ativo',
         'cep', 'logradouro', 'numero', 'bairro', 'complemento', 'latitude', 'longitude',
         'inscricao_estadual', 'inscricao_municipal', 'nota_fiscal',
@@ -36,6 +38,11 @@ class Cliente extends Model
     public function revenda(): BelongsTo
     {
         return $this->belongsTo(Revenda::class);
+    }
+
+    public function origensExternas(): MorphMany
+    {
+        return $this->morphMany(OrigemExterna::class, 'entidade');
     }
 
     public function sistemas(): BelongsToMany
