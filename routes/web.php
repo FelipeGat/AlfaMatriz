@@ -66,6 +66,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permissao:revendas');
     Route::resource('clientes', ClienteController::class)
         ->middleware('permissao:clientes');
+    Route::post('clientes/{cliente}/liberar-licenca', [ClienteController::class, 'liberarLicenca'])
+        ->name('clientes.liberarLicenca')
+        ->middleware('permissao:clientes');
 
     Route::resource('sistemas', SistemaController::class)->only(['index', 'edit', 'update'])
         ->middleware('permissao:sistemas');

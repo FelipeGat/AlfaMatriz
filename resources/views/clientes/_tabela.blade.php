@@ -1,0 +1,273 @@
+{{-- Lista de clientes reutilizável: usada em clientes/index e na aba de
+    clientes da tela de revendas. Espera: $clientes, $pagamentos, $revendas,
+    $sistemas, $filtros, $totais. --}}
+
+<form method="GET" class="flex flex-wrap items-center gap-2">
+    <label class="flex items-center gap-2 h-[34px] flex-1 min-w-[220px] max-w-[360px] px-3
+                  rounded-control bg-input border border-line text-ink-faint focus-within:border-brand transition">
+        <span class="h-4 w-4 shrink-0"><x-nav-icon name="search" /></span>
+        <input type="search" name="busca" value="{{ $filtros['busca'] }}"
+               placeholder="Buscar nome, CNPJ ou cidade…"
+               class="flex-1 min-w-0 bg-transparent border-0 p-0 text-[13px] text-ink placeholder-ink-faint focus:ring-0">
+    </label>
+
+    <select name="revenda" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
+        <option value="">Todas as revendas</option>
+        @foreach ($revendas as $revenda)
+            <option value="{{ $revenda->id }}" @selected((string) $filtros['revenda'] === (string) $revenda->id)>{{ $revenda->nome }}</option>
+        @endforeach
+    </select>
+
+    <select name="sistema" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
+        <option value="">Todos os sistemas</option>
+        @foreach ($sistemas as $sistema)
+            <option value="{{ $sistema->id }}" @selected((string) $filtros['sistema'] === (string) $sistema->id)>{{ $sistema->nome }}</option>
+        @endforeach
+    </select>
+
+    <select name="status" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
+        <option value="">Todos</option>
+        <option value="ativo" @selected($filtros['status'] === 'ativo')>Ativos</option>
+        <option value="inativo" @selected($filtros['status'] === 'inativo')>Inativos</option>
+    </select>
+
+    <button type="submit"
+            class="h-[34px] px-3 rounded-control border border-btn-line text-ink-dim
+                   text-[12.5px] font-semibold hover:text-brand hover:border-brand transition">
+        Filtrar
+    </button>
+
+    <span class="ml-auto flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+        <span class="inline-block h-3 w-[2px]" style="background: rgb(var(--warn))"></span>
+        cobrança em atraso
+    </span>
+</form>
+
+<x-tabela min="1060px">
+    <thead>
+        <tr class="bg-head border-b border-line font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+            <th class="px-4 py-2.5 font-semibold">Cliente</th>
+            <th class="px-4 py-2.5 font-semibold">Revenda / praça</th>
+            <th class="px-4 py-2.5 font-semibold">Sistemas</th>
+            <th class="px-4 py-2.5 font-semibold">Cobrança</th>
+            <th class="px-4 py-2.5 font-semibold">Pagamento</th>
+            <th class="px-4 py-2.5 font-semibold">Status</th>
+            <th class="px-4 py-2.5 font-semibold text-right">Ações</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @forelse ($clientes as $cliente)
+            @php
+                $pagamento = $pagamentos[$cliente->id] ?? ['estado' => 'sem_cobranca', 'dias' => 0];
+                $emContrato = $cliente->tipo_cliente === 'CONTRATO';
+                $pendente = collect($cliente->sistemas)
+                    ->first(fn ($s) => ($s->pivot->status_saas ?? '') === 'pendente');
+            @endphp
+
+            <tr class="border-b border-rule hover:bg-chip transition {{ $cliente->ativo ? '' : 'opacity-[0.62]' }}"
+                @if ($pagamento['estado'] === 'atrasado')
+                    style="border-left: 2px solid rgb(var(--warn)); background: rgb(var(--warn) / 0.05)"
+                @endif>
+                <td class="px-4 py-3">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="h-8 w-8 shrink-0 rounded-ctl bg-brand/15 text-brand-text
+                                     flex items-center justify-center font-display text-[12.5px] font-semibold">
+                            {{ Str::of($cliente->nome_exibicao)->substr(0, 2)->upper() }}
+                        </span>
+                        <span class="min-w-0">
+                            <span class="block text-[13.5px] font-medium text-ink truncate">{{ $cliente->nome_exibicao }}</span>
+                            <span class="block font-mono text-[11.5px] text-ink-faint truncate">{{ $cliente->cpf_cnpj ?: 'sem documento' }}</span>
+                        </span>
+                    </div>
+                </td>
+
+                <td class="px-4 py-3">
+                    @if ($cliente->revenda)
+                        <span class="block text-[13px] text-ink-dim truncate">{{ $cliente->revenda->nome }}</span>
+                    @else
+                        <span class="block text-[13px] text-warn truncate">Sem revenda</span>
+                    @endif
+                    <span class="block font-mono text-[11px] uppercase tracking-caps text-ink-faint truncate">
+                        {{ $cliente->cidade ? $cliente->cidade.'/'.$cliente->uf : 'sem praça' }}
+                    </span>
+                </td>
+
+                <td class="px-4 py-3">
+                    @php $ativos = $cliente->sistemas->where('pivot.ativo', true); @endphp
+                    @if ($ativos->isEmpty())
+                        <span class="text-[12.5px] text-ink-faint">nenhum</span>
+                    @else
+                        <div class="flex flex-wrap items-center gap-1">
+                            @foreach ($ativos->take(3) as $sistema)
+                                <x-badge>{{ $sistema->nome }}</x-badge>
+                            @endforeach
+                            @if ($ativos->count() > 3)
+                                <x-badge :title="$ativos->pluck('nome')->implode(', ')">+{{ $ativos->count() - 3 }}</x-badge>
+                            @endif
+                        </div>
+                        @foreach ($ativos->take(1) as $sistema)
+                            @if ($sistema->pivot->licenca_status)
+                                @php
+                                    $fim = $sistema->pivot->licenca_fim_em ? \Carbon\Carbon::parse($sistema->pivot->licenca_fim_em)->endOfDay() : null;
+                                    $hoje = \Carbon\Carbon::now()->endOfDay();
+                                    $bloqueada = (bool) $sistema->pivot->bloqueia_acesso;
+                                    $vencida = $fim && $fim->lt($hoje);
+                                    $vencendo = $fim && ! $vencida && $fim->lte($hoje->copy()->addDays(15));
+                                    $tom = $bloqueada || $vencida ? 'critico' : ($vencendo ? 'atencao' : 'bom');
+                                @endphp
+                                <div class="mt-1 flex flex-wrap items-center gap-1">
+                                    <x-badge :tom="$tom" ponto>
+                                        {{ $bloqueada ? 'bloqueada' : ($vencida ? 'vencida' : ($vencendo ? 'vencendo' : 'ativa')) }}
+                                    </x-badge>
+                                    <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
+                                        {{ $sistema->nome }} · {{ $sistema->pivot->plano ?? '—' }}
+                                        @if ($fim)
+                                            · até {{ $fim->format('d/m/Y') }}
+                                        @endif
+                                    </span>
+                                </div>
+                            @endif
+                        @endforeach
+                    @endif
+                </td>
+
+                <td class="px-4 py-3">
+                    <span class="block font-mono text-[13px] text-ink whitespace-nowrap">
+                        R$ {{ number_format($cliente->valor_mensal ?? 0, 2, ',', '.') }}
+                    </span>
+                    <span class="block font-mono text-[11px] uppercase tracking-caps text-ink-faint whitespace-nowrap">
+                        {{ $emContrato ? 'contrato · dia '.($cliente->dia_vencimento ?: '—') : 'avulso' }}
+                    </span>
+                </td>
+
+                <td class="px-4 py-3">
+                    @switch ($pagamento['estado'])
+                        @case('atrasado')
+                            <x-badge tom="critico" ponto>Atrasado {{ $pagamento['dias'] }}d</x-badge>
+                            @break
+                        @case('em_dia')
+                            <x-badge tom="bom" ponto>Em dia</x-badge>
+                            @break
+                        @default
+                            <x-badge>Sem cobrança</x-badge>
+                    @endswitch
+                </td>
+
+                <td class="px-4 py-3">
+                    <x-badge :tom="$cliente->ativo ? 'bom' : 'neutro'" ponto>
+                        {{ $cliente->ativo ? 'Ativo' : 'Inativo' }}
+                    </x-badge>
+                </td>
+
+                <td class="px-4 py-3">
+                    <div class="flex items-center justify-end gap-1">
+                        @if ($pendente)
+                            <button type="button" x-data
+                                    @click="$dispatch('open-modal', 'liberar-licenca-{{ $cliente->id }}')"
+                                    class="inline-flex h-7 items-center justify-center gap-1.5 rounded-tile px-2
+                                           text-[11.5px] font-semibold text-brand hover:bg-chip transition"
+                                    title="Liberar licença no AlfaGym">
+                                Liberar licença
+                            </button>
+                        @endif
+                        <x-acao-tabela icone="paperclip" titulo="Cobranças do cliente"
+                                       :href="route('cobrancas.index', ['cliente' => $cliente->id])" />
+                        <x-acao-tabela icone="pencil" titulo="Editar cliente"
+                                       :href="route('clientes.edit', $cliente)" />
+                        <x-confirmar :action="route('clientes.destroy', $cliente)" method="DELETE"
+                                     icone="trash" destrutivo confirmar="Remover"
+                                     :titulo="'Remover '.$cliente->nome_exibicao.'?'"
+                                     mensagem="O cliente sai da lista. As cobranças já emitidas para ele continuam no financeiro." />
+                    </div>
+                </td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="7" class="px-4 py-8 text-center text-[13px] text-ink-mute">
+                    Nenhum cliente encontrado com esse recorte.
+                </td>
+            </tr>
+        @endforelse
+    </tbody>
+
+    @if ($clientes->isNotEmpty())
+        <tfoot>
+            <x-linha-total>
+                <td>Nesta página</td>
+                <td>{{ $totais['contratos'] }} contratos · {{ $totais['avulsos'] }} avulsos</td>
+                <td></td>
+                <td>R$ {{ number_format($totais['mensal'], 2, ',', '.') }}</td>
+                <td>{{ $totais['atrasados'] }} em atraso</td>
+                <td></td>
+                <td></td>
+            </x-linha-total>
+        </tfoot>
+    @endif
+
+    <x-slot name="rodape">
+        <span>{{ $clientes->count() }} de {{ $clientes->total() }} clientes</span>
+        <span>· página {{ $clientes->currentPage() }} de {{ $clientes->lastPage() }}</span>
+    </x-slot>
+</x-tabela>
+
+@if ($clientes->hasPages())
+    <div>{{ $clientes->links() }}</div>
+@endif
+
+@foreach ($clientes as $cliente)
+    @if (collect($cliente->sistemas)->first(fn ($s) => ($s->pivot->status_saas ?? '') === 'pendente'))
+        <x-modal name="liberar-licenca-{{ $cliente->id }}" maxWidth="sm">
+            <form method="POST" action="{{ route('clientes.liberarLicenca', $cliente) }}" class="p-5">
+                @csrf
+                <h2 class="font-display text-[15.5px] font-semibold text-ink mb-1">Liberar licença</h2>
+                <p class="text-[12.5px] text-ink-faint mb-4">
+                    {{ $cliente->nome_exibicao }} — a revenda solicitou; a liberação é feita no AlfaGym.
+                </p>
+
+                @if ($errors->has('licenca'))
+                    <div class="mb-3 rounded-md border border-crit/30 bg-crit-tint px-3 py-2 text-[12.5px] text-crit">
+                        {{ $errors->first('licenca') }}
+                    </div>
+                @endif
+
+                <div class="space-y-4">
+                    <div>
+                        <x-input-label for="tipo-{{ $cliente->id }}" value="Tipo de licença" />
+                        <select id="tipo-{{ $cliente->id }}" name="tipo" class="mt-1 block w-full border-white/10 rounded-md shadow-sm" required>
+                            <option value="mensal" @selected(old('tipo') === 'mensal')>Mensal</option>
+                            <option value="anual" @selected(old('tipo') === 'anual')>Anual</option>
+                        </select>
+                        <x-input-error :messages="$errors->get('tipo')" class="mt-2" />
+                    </div>
+
+                    <div>
+                        <x-input-label for="valor-{{ $cliente->id }}" value="Valor (R$)" />
+                        <x-text-input id="valor-{{ $cliente->id }}" name="valor" type="number" step="0.01" min="0"
+                                      :value="old('valor', '')" class="mt-1 block w-full" placeholder="0,00" />
+                        <x-input-error :messages="$errors->get('valor')" class="mt-2" />
+                    </div>
+
+                    <div>
+                        <x-input-label for="obs-{{ $cliente->id }}" value="Observação" />
+                        <textarea id="obs-{{ $cliente->id }}" name="obs" rows="2"
+                                  class="mt-1 block w-full rounded-md border-white/10 bg-white/5 text-[13px] text-ink"
+                                  placeholder="Contrato, proposta…">{{ old('obs') }}</textarea>
+                        <x-input-error :messages="$errors->get('obs')" class="mt-2" />
+                    </div>
+                </div>
+
+                <div class="mt-5 flex items-center justify-end gap-2">
+                    <button type="button" x-on:click="show = false"
+                            class="h-[34px] px-3 rounded-control border border-btn-line text-ink-dim text-[12.5px] font-semibold hover:text-brand hover:border-brand transition">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                            class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition">
+                        Liberar licença
+                    </button>
+                </div>
+            </form>
+        </x-modal>
+    @endif
+@endforeach
