@@ -121,7 +121,7 @@
                                 @endphp
                                 <div class="mt-1 flex flex-wrap items-center gap-1">
                                     <x-badge :tom="$tom" ponto>
-                                        {{ $bloqueada ? 'bloqueada' : ($vencida ? 'vencida' : ($vencendo ? 'vencendo' : 'ativa')) }}
+                                        {{ $bloqueada ? 'suspensa' : ($vencida ? 'vencida' : ($vencendo ? 'vencendo' : 'ativa')) }}
                                     </x-badge>
                                     <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
                                         {{ $sistema->nome }} · {{ $sistema->pivot->plano ?? '—' }}
@@ -204,22 +204,22 @@
 
                                         @if ($bloqueada)
                                             <x-confirmar :action="route('clientes.desbloquearLicenca', $cliente)"
-                                                         method="POST" confirmar="Desbloquear"
-                                                         :titulo="'Desbloquear '.$cliente->nome_exibicao.'?'"
+                                                         method="POST" confirmar="Reativar"
+                                                         :titulo="'Reativar '.$cliente->nome_exibicao.'?'"
                                                          mensagem="O acesso do cliente no AlfaGym volta a funcionar.">
                                                 <span class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
                                                     <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="play" /></span>
-                                                    Desbloquear licença
+                                                    Reativar licença
                                                 </span>
                                             </x-confirmar>
                                         @else
                                             <x-confirmar :action="route('clientes.bloquearLicenca', $cliente)"
-                                                         method="POST" confirmar="Bloquear"
-                                                         :titulo="'Bloquear '.$cliente->nome_exibicao.'?'"
-                                                         mensagem="O acesso do cliente no AlfaGym é interrompido até o desbloqueio.">
+                                                         method="POST" confirmar="Suspender"
+                                                         :titulo="'Suspender '.$cliente->nome_exibicao.'?'"
+                                                         mensagem="O acesso do cliente no AlfaGym é interrompido até o reativar.">
                                                 <span class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
                                                     <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="pause" /></span>
-                                                    Bloquear licença
+                                                    Suspender licença
                                                 </span>
                                             </x-confirmar>
                                         @endif

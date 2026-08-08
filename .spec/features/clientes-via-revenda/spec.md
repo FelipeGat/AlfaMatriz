@@ -123,7 +123,7 @@ cliente ative o sistema no AlfaGym — sem que isso conte como venda avulsa.
 | ID | Suposição | Status | Resolução |
 |---|---|---|---|
 | ASM-027 | O item "Clientes" do menu lateral some: o acesso aos clientes passa a ser pela tela de Revendas (aba "Clientes"), mantendo a rota `clientes.index` como implementação da aba | confirmada | Resposta do usuário: "Some do menu" |
-| ASM-028 | O status do cliente vindo do AlfaGym (pendente/ativo/bloqueado) passa a ser gravado na Matriz para a tela saber quem está aguardando liberação (coluna nova no vínculo `cliente_sistema`) | confirmada | Solução implementada: coluna `status_saas` no vínculo, preenchida pelo sync e pelas operações de licença (liberar/renovar/bloquear/desbloquear) |
+| ASM-028 | O status do cliente vindo do AlfaGym (pendente/ativo/suspenso) passa a ser gravado na Matriz para a tela saber quem está aguardando liberação (coluna nova no vínculo `cliente_sistema`) | confirmada | Solução implementada: coluna `status_saas` no vínculo, preenchida pelo sync e pelas operações de licença (liberar/renovar/suspender/reativar) |
 | ASM-029 | A liberação pelo admin usa os mesmos campos do contrato: tipo (`mensal`/`anual`), valor e observação; plano fica opcional (o gym mantém o atual da subscription quando ausente) | confirmada | Resposta do usuário: observação livre |
 
 ## Perguntas em aberto

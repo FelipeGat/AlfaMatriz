@@ -305,7 +305,7 @@ class ClientesViaRevendaTest extends TestCase
 
     /**
      * Cliente com licença ativa mostra as ações de licenciamento sempre
-     * (Renovar e Bloquear), não só quando pendente.
+     * (Renovar e Suspender), não só quando pendente.
      */
     public function test_cliente_com_licenca_mostra_acoes_sempre_visiveis(): void
     {
@@ -317,7 +317,7 @@ class ClientesViaRevendaTest extends TestCase
 
         $resposta->assertOk();
         $resposta->assertSee('Renovar', escape: false);
-        $resposta->assertSee('Bloquear', escape: false);
+        $resposta->assertSee('Suspender', escape: false);
         $resposta->assertDontSee('>Liberar<', escape: false);
     }
 
