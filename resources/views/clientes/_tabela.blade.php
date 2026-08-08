@@ -162,15 +162,45 @@
 
                 <td class="px-4 py-3">
                     <div class="flex items-center justify-end gap-1">
+                        @php
+                            $licencaGym = collect($cliente->sistemas)
+                                ->first(fn ($s) => ($s->pivot->status_saas ?? '') !== '' && $s->slug === 'alfagym');
+                            $temLicenca = ! is_null($licencaGym) && filled($licencaGym->pivot->licenca_id_externo ?? null);
+                            $bloqueada = (bool) ($licencaGym->pivot->bloqueia_acesso ?? false);
+                        @endphp
+
                         @if ($pendente)
                             <button type="button" x-data
                                     @click="$dispatch('open-modal', 'liberar-licenca-{{ $cliente->id }}')"
                                     class="inline-flex h-7 items-center justify-center gap-1.5 rounded-tile px-2
                                            text-[11.5px] font-semibold text-brand hover:bg-chip transition"
                                     title="Liberar licença no AlfaGym">
-                                Liberar licença
+                                Liberar
                             </button>
                         @endif
+
+                        @if ($temLicenca)
+                            <button type="button" x-data
+                                    @click="$dispatch('open-modal', 'renovar-licenca-{{ $cliente->id }}')"
+                                    class="inline-flex h-7 items-center justify-center gap-1.5 rounded-tile px-2
+                                           text-[11.5px] font-semibold text-ink-dim hover:text-brand hover:bg-chip transition"
+                                    title="Renovar licença no AlfaGym">
+                                Renovar
+                            </button>
+
+                            @if ($bloqueada)
+                                <x-confirmar :action="route('clientes.desbloquearLicenca', $cliente)" method="POST"
+                                             icone="play" confirmar="Desbloquear"
+                                             :titulo="'Desbloquear '.$cliente->nome_exibicao.'?'"
+                                             mensagem="O acesso do cliente no AlfaGym volta a funcionar." />
+                            @else
+                                <x-confirmar :action="route('clientes.bloquearLicenca', $cliente)" method="POST"
+                                             icone="pause" confirmar="Bloquear"
+                                             :titulo="'Bloquear '.$cliente->nome_exibicao.'?'"
+                                             mensagem="O acesso do cliente no AlfaGym é interrompido até o desbloqueio." />
+                            @endif
+                        @endif
+
                         <x-acao-tabela icone="paperclip" titulo="Cobranças do cliente"
                                        :href="route('cobrancas.index', ['cliente' => $cliente->id])" />
                         <x-acao-tabela icone="pencil" titulo="Editar cliente"
@@ -216,7 +246,14 @@
 @endif
 
 @foreach ($clientes as $cliente)
-    @if (collect($cliente->sistemas)->first(fn ($s) => ($s->pivot->status_saas ?? '') === 'pendente'))
+    @php
+        $pendenteModal = collect($cliente->sistemas)
+            ->first(fn ($s) => ($s->pivot->status_saas ?? '') === 'pendente');
+        $temLicencaModal = collect($cliente->sistemas)
+            ->first(fn ($s) => filled($s->pivot->licenca_id_externo ?? null));
+    @endphp
+
+    @if ($pendenteModal)
         <x-modal name="liberar-licenca-{{ $cliente->id }}" maxWidth="sm">
             <form method="POST" action="{{ route('clientes.liberarLicenca', $cliente) }}" class="p-5">
                 @csrf
@@ -265,6 +302,61 @@
                     <button type="submit"
                             class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition">
                         Liberar licença
+                    </button>
+                </div>
+            </form>
+        </x-modal>
+    @endif
+
+    @if ($temLicencaModal)
+        <x-modal name="renovar-licenca-{{ $cliente->id }}" maxWidth="sm">
+            <form method="POST" action="{{ route('clientes.renovarLicenca', $cliente) }}" class="p-5">
+                @csrf
+                <h2 class="font-display text-[15.5px] font-semibold text-ink mb-1">Renovar licença</h2>
+                <p class="text-[12.5px] text-ink-faint mb-4">
+                    {{ $cliente->nome_exibicao }} — um novo período (mensal/anual) é emitido no AlfaGym.
+                </p>
+
+                @if ($errors->has('licenca'))
+                    <div class="mb-3 rounded-md border border-crit/30 bg-crit-tint px-3 py-2 text-[12.5px] text-crit">
+                        {{ $errors->first('licenca') }}
+                    </div>
+                @endif
+
+                <div class="space-y-4">
+                    <div>
+                        <x-input-label for="tipo-ren-{{ $cliente->id }}" value="Tipo de renovação" />
+                        <select id="tipo-ren-{{ $cliente->id }}" name="tipo" class="mt-1 block w-full border-white/10 rounded-md shadow-sm" required>
+                            <option value="mensal" @selected(old('tipo') === 'mensal')>Mensal</option>
+                            <option value="anual" @selected(old('tipo') === 'anual')>Anual</option>
+                        </select>
+                        <x-input-error :messages="$errors->get('tipo')" class="mt-2" />
+                    </div>
+
+                    <div>
+                        <x-input-label for="valor-ren-{{ $cliente->id }}" value="Valor (R$)" />
+                        <x-text-input id="valor-ren-{{ $cliente->id }}" name="valor" type="number" step="0.01" min="0"
+                                      :value="old('valor', '')" class="mt-1 block w-full" placeholder="0,00" />
+                        <x-input-error :messages="$errors->get('valor')" class="mt-2" />
+                    </div>
+
+                    <div>
+                        <x-input-label for="obs-ren-{{ $cliente->id }}" value="Observação" />
+                        <textarea id="obs-ren-{{ $cliente->id }}" name="obs" rows="2"
+                                  class="mt-1 block w-full rounded-md border-white/10 bg-white/5 text-[13px] text-ink"
+                                  placeholder="Renovação de contrato…">{{ old('obs') }}</textarea>
+                        <x-input-error :messages="$errors->get('obs')" class="mt-2" />
+                    </div>
+                </div>
+
+                <div class="mt-5 flex items-center justify-end gap-2">
+                    <button type="button" x-on:click="show = false"
+                            class="h-[34px] px-3 rounded-control border border-btn-line text-ink-dim text-[12.5px] font-semibold hover:text-brand hover:border-brand transition">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                            class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition">
+                        Renovar licença
                     </button>
                 </div>
             </form>

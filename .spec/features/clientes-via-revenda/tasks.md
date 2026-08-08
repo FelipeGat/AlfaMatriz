@@ -30,9 +30,9 @@
 - Esforço: médio
 - Notas: coluna nova `status_saas` no pivot `cliente_sistema` (pendente/ativo/bloqueado), gravada no `sincronizarClientes()` a partir de `$item['status']` (atualmente o payload traz `status` mas o serviço ignora). Adicionar ao `withPivot` de `Cliente` e `Sistema::clientes()`.
 
-## T-057 — Admin libera a licença do cliente pelo AlfaGym [concluida]
+## T-057 — Admin gerencia a licença do cliente pelo AlfaGym [concluida]
 - Refs: US-035, AC-078, AC-079, AC-080
-- Arquivos: app/Http/Controllers/ClienteController.php, app/Services/LiberadorLicencaAlfaGymService.php, resources/views/clientes/index.blade.php, routes/web.php, tests/Feature/SincronizadorAlfaGymTest.php, tests/Feature/Redesign/ClientesTest.php
+- Arquivos: app/Http/Controllers/ClienteController.php, app/Services/GerenciadorLicencaAlfaGymService.php, resources/views/clientes/index.blade.php, resources/views/clientes/_tabela.blade.php, routes/web.php, tests/Feature/SincronizadorAlfaGymTest.php, tests/Feature/Redesign/ClientesTest.php
 - Modelo: claude-sonnet-5
 - Esforço: alto
-- Notas: novo serviço `LiberadorLicencaAlfaGymService` que chama `POST /api/matriz/v1/licencas` (tipo mensal/anual, valor, obs; X-Matriz-Key) e grava o retorno no pivot; rota + ação "Liberar licença" visível só para clientes com `status_saas` pendente; cliente permanece vinculado à revenda (não vira avulso); recusa do gym vira erro sem gravar nada.
+- Notas: serviço `GerenciadorLicencaAlfaGymService` que cobre o ciclo de vida da licença no contrato `/api/matriz/v1/licencas` (X-Matriz-Key): `liberar` (POST /licencas, tipo mensal/anual, valor, obs), `renovar` (POST /licencas/{id}/renovar), `bloquear`/`desbloquear` (POST /licencas/{id}/bloquear|desbloquear); grava o retorno no pivot `cliente_sistema`. Ações de licenciamento sempre visíveis na tabela de clientes (Liberar quando pendente; Renovar e Bloquear/Desbloquear quando há licença); recusa do gym vira erro sem gravar nada; cliente permanece vinculado à revenda (nunca vira avulso).

@@ -69,6 +69,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('clientes/{cliente}/liberar-licenca', [ClienteController::class, 'liberarLicenca'])
         ->name('clientes.liberarLicenca')
         ->middleware('permissao:clientes');
+    Route::post('clientes/{cliente}/renovar-licenca', [ClienteController::class, 'renovarLicenca'])
+        ->name('clientes.renovarLicenca')
+        ->middleware('permissao:clientes');
+    Route::post('clientes/{cliente}/bloquear-licenca', [ClienteController::class, 'bloquearLicenca'])
+        ->name('clientes.bloquearLicenca')
+        ->middleware('permissao:clientes');
+    Route::post('clientes/{cliente}/desbloquear-licenca', [ClienteController::class, 'desbloquearLicenca'])
+        ->name('clientes.desbloquearLicenca')
+        ->middleware('permissao:clientes');
 
     Route::resource('sistemas', SistemaController::class)->only(['index', 'edit', 'update'])
         ->middleware('permissao:sistemas');

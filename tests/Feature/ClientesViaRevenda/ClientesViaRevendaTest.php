@@ -283,4 +283,168 @@ class ClientesViaRevendaTest extends TestCase
         $this->assertSame('pendente', $vinculo->pivot->status_saas, 'A recusa não altera o vínculo.');
         $this->assertNull($vinculo->pivot->licenca_status);
     }
+
+    private function clienteComLicenca(Revenda $revenda, Sistema $sistema, string $status = 'ativa'): Cliente
+    {
+        $cliente = Cliente::create([
+            'nome' => 'Academia Corpo em Movimento', 'revenda_id' => $revenda->id, 'ativo' => true,
+            'tipo_cliente' => 'CONTRATO', 'valor_mensal' => 540.00, 'dia_vencimento' => 15,
+        ]);
+        $cliente->sistemas()->attach($sistema->id, [
+            'ativo' => true,
+            'status_saas' => $status,
+            'licenca_id_externo' => '91',
+            'licenca_status' => $status,
+            'bloqueia_acesso' => $status === 'bloqueado' ? 1 : 0,
+            'licenca_fim_em' => '2026-09-08',
+        ]);
+        $cliente->ancorarEm($sistema, '128');
+
+        return $cliente;
+    }
+
+    /**
+     * Cliente com licença ativa mostra as ações de licenciamento sempre
+     * (Renovar e Bloquear), não só quando pendente.
+     */
+    public function test_cliente_com_licenca_mostra_acoes_sempre_visiveis(): void
+    {
+        $sistema = $this->sistemaAlfaGym();
+        $revenda = $this->revenda();
+        $this->clienteComLicenca($revenda, $sistema);
+
+        $resposta = $this->actingAs($this->admin())->get(route('clientes.index'));
+
+        $resposta->assertOk();
+        $resposta->assertSee('Renovar', escape: false);
+        $resposta->assertSee('Bloquear', escape: false);
+        $resposta->assertDontSee('>Liberar<', escape: false);
+    }
+
+    /**
+     * Renovar licença chama POST /licencas/{id}/renovar no gym e grava o
+     * retorno no vínculo do cliente.
+     */
+    public function test_renovar_licenca_chama_o_gym_e_grava_retorno(): void
+    {
+        $sistema = $this->sistemaAlfaGym();
+        $revenda = $this->revenda();
+        $cliente = $this->clienteComLicenca($revenda, $sistema);
+
+        Http::fake([
+            '*gym.alfasolucoes.cloud/api/matriz/v1/licencas/91/renovar' => Http::response([
+                'contrato' => '1.0', 'sistema' => 'alfagym', 'dados' => [
+                    'id_externo' => '91', 'status' => 'ativa', 'plano' => 'Growth',
+                    'tipo' => 'anual', 'inicio_em' => '2026-08-08', 'fim_em' => '2027-08-08',
+                    'bloqueia_acesso' => false,
+                ],
+            ]),
+        ]);
+
+        $resposta = $this->actingAs($this->admin())->post(route('clientes.renovarLicenca', $cliente), [
+            'tipo' => 'anual', 'valor' => 5400.00, 'obs' => 'Renovação anual',
+        ]);
+
+        $resposta->assertRedirect();
+        $resposta->assertSessionHas('status');
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), '/api/matriz/v1/licencas/91/renovar')
+                && $request['tipo'] === 'anual'
+                && (float) $request['valor'] === 5400.0
+                && $request['obs'] === 'Renovação anual';
+        });
+
+        $vinculo = $cliente->sistemas()->where('sistemas.id', $sistema->id)->first();
+        $this->assertSame('2027-08-08', $vinculo->pivot->licenca_fim_em);
+        $this->assertSame('ativa', $vinculo->pivot->licenca_status);
+    }
+
+    /**
+     * Bloquear licença chama POST /licencas/{id}/bloquear no gym e grava o
+     * novo status do cliente no vínculo.
+     */
+    public function test_bloquear_licenca_chama_o_gym_e_grava_status(): void
+    {
+        $sistema = $this->sistemaAlfaGym();
+        $revenda = $this->revenda();
+        $cliente = $this->clienteComLicenca($revenda, $sistema);
+
+        Http::fake([
+            '*gym.alfasolucoes.cloud/api/matriz/v1/licencas/91/bloquear' => Http::response([
+                'contrato' => '1.0', 'sistema' => 'alfagym', 'dados' => [
+                    'cliente_id_externo' => '128', 'status' => 'bloqueado',
+                ],
+            ]),
+        ]);
+
+        $resposta = $this->actingAs($this->admin())->post(route('clientes.bloquearLicenca', $cliente));
+
+        $resposta->assertRedirect();
+        $resposta->assertSessionHas('status');
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/api/matriz/v1/licencas/91/bloquear'));
+
+        $vinculo = $cliente->sistemas()->where('sistemas.id', $sistema->id)->first();
+        $this->assertSame('bloqueado', $vinculo->pivot->status_saas);
+        $this->assertSame(1, (int) $vinculo->pivot->bloqueia_acesso);
+    }
+
+    /**
+     * Desbloquear licença chama POST /licencas/{id}/desbloquear no gym e grava
+     * o novo status do cliente no vínculo.
+     */
+    public function test_desbloquear_licenca_chama_o_gym_e_grava_status(): void
+    {
+        $sistema = $this->sistemaAlfaGym();
+        $revenda = $this->revenda();
+        $cliente = $this->clienteComLicenca($revenda, $sistema, 'bloqueado');
+
+        Http::fake([
+            '*gym.alfasolucoes.cloud/api/matriz/v1/licencas/91/desbloquear' => Http::response([
+                'contrato' => '1.0', 'sistema' => 'alfagym', 'dados' => [
+                    'cliente_id_externo' => '128', 'status' => 'ativo',
+                ],
+            ]),
+        ]);
+
+        $resposta = $this->actingAs($this->admin())->post(route('clientes.desbloquearLicenca', $cliente));
+
+        $resposta->assertRedirect();
+        $resposta->assertSessionHas('status');
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/api/matriz/v1/licencas/91/desbloquear'));
+
+        $vinculo = $cliente->sistemas()->where('sistemas.id', $sistema->id)->first();
+        $this->assertSame('ativo', $vinculo->pivot->status_saas);
+        $this->assertSame(0, (int) $vinculo->pivot->bloqueia_acesso);
+    }
+
+    /**
+     * Recusa do gym ao renovar aparece como erro sem alterar o vínculo.
+     */
+    public function test_recusa_ao_renovar_aparece_como_erro_sem_gravar(): void
+    {
+        $sistema = $this->sistemaAlfaGym();
+        $revenda = $this->revenda();
+        $cliente = $this->clienteComLicenca($revenda, $sistema);
+
+        Http::fake([
+            '*gym.alfasolucoes.cloud/api/matriz/v1/licencas/91/renovar' => Http::response([
+                'contrato' => '1.0', 'sistema' => 'alfagym',
+                'erro' => ['codigo' => 'PLANO_INVALIDO', 'mensagem' => 'Plano não encontrado para renovação.'],
+            ], 422),
+        ]);
+
+        $resposta = $this->actingAs($this->admin())->post(route('clientes.renovarLicenca', $cliente), [
+            'tipo' => 'anual', 'valor' => 5400.00, 'obs' => null,
+        ]);
+
+        $resposta->assertRedirect();
+        $resposta->assertSessionHasErrors('licenca');
+
+        $vinculo = $cliente->sistemas()->where('sistemas.id', $sistema->id)->first();
+        $this->assertSame('ativa', $vinculo->pivot->status_saas, 'A recusa não altera o vínculo.');
+        $this->assertSame('2026-09-08', $vinculo->pivot->licenca_fim_em, 'O fim da licença continua o mesmo.');
+    }
 }

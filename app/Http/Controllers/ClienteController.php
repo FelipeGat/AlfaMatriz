@@ -6,7 +6,7 @@ use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\Revenda;
 use App\Models\Sistema;
-use App\Services\LiberadorLicencaAlfaGymService;
+use App\Services\GerenciadorLicencaAlfaGymService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -252,19 +252,86 @@ class ClienteController extends Controller
 
         abort_if(! $vinculo || ($vinculo->pivot->status_saas ?? '') !== 'pendente', 422, 'A licença desse cliente não está pendente.');
 
-        $dados = $request->validate([
-            'tipo' => 'required|in:mensal,anual',
-            'valor' => 'nullable|numeric|min:0',
-            'obs' => 'nullable|string|max:500',
-        ]);
+        $dados = $this->validarOperacaoLicenca($request);
 
         try {
-            (new LiberadorLicencaAlfaGymService($sistema))->liberar($cliente, $dados);
+            (new GerenciadorLicencaAlfaGymService($sistema))->liberar($cliente, $dados);
         } catch (\RuntimeException $e) {
             return back()->withErrors(['licenca' => $e->getMessage()])->withInput();
         }
 
         return back()->with('status', 'Licença liberada com sucesso.');
+    }
+
+    /**
+     * Renova a licença do cliente no AlfaGym com um novo período mensal/anual.
+     * Vale para qualquer cliente com licença ativa (incluindo vencida/bloqueada
+     * — quem renova retoma o acesso no novo período).
+     */
+    public function renovarLicenca(Request $request, Cliente $cliente)
+    {
+        $this->autorizarAcesso($cliente);
+
+        $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
+        $dados = $this->validarOperacaoLicenca($request);
+
+        try {
+            (new GerenciadorLicencaAlfaGymService($sistema))->renovar($cliente, $dados);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['licenca' => $e->getMessage()])->withInput();
+        }
+
+        return back()->with('status', 'Licença renovada com sucesso.');
+    }
+
+    /**
+     * Bloqueia o acesso do cliente no AlfaGym.
+     */
+    public function bloquearLicenca(Cliente $cliente)
+    {
+        $this->autorizarAcesso($cliente);
+
+        $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
+
+        try {
+            (new GerenciadorLicencaAlfaGymService($sistema))->bloquear($cliente);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['licenca' => $e->getMessage()])->withInput();
+        }
+
+        return back()->with('status', 'Acesso bloqueado.');
+    }
+
+    /**
+     * Desbloqueia o acesso do cliente no AlfaGym.
+     */
+    public function desbloquearLicenca(Cliente $cliente)
+    {
+        $this->autorizarAcesso($cliente);
+
+        $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
+
+        try {
+            (new GerenciadorLicencaAlfaGymService($sistema))->desbloquear($cliente);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['licenca' => $e->getMessage()])->withInput();
+        }
+
+        return back()->with('status', 'Acesso desbloqueado.');
+    }
+
+    /**
+     * Campos comuns de uma operação sobre a licença (tipo, valor, observação).
+     *
+     * @return array{tipo: string, valor: float|null, obs: string|null}
+     */
+    private function validarOperacaoLicenca(Request $request): array
+    {
+        return $request->validate([
+            'tipo' => 'required|in:mensal,anual',
+            'valor' => 'nullable|numeric|min:0',
+            'obs' => 'nullable|string|max:500',
+        ]);
     }
 
     /**
