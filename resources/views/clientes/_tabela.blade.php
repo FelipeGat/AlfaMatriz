@@ -167,38 +167,57 @@
                                 ->first(fn ($s) => ($s->pivot->status_saas ?? '') !== '' && $s->slug === 'alfagym');
                             $temLicenca = ! is_null($licencaGym) && filled($licencaGym->pivot->licenca_id_externo ?? null);
                             $bloqueada = (bool) ($licencaGym->pivot->bloqueia_acesso ?? false);
+                            $mostrarMenuLicenca = $pendente || $temLicenca;
                         @endphp
 
-                        @if ($pendente)
-                            <button type="button" x-data
-                                    @click="$dispatch('open-modal', 'liberar-licenca-{{ $cliente->id }}')"
-                                    class="inline-flex h-7 items-center justify-center gap-1.5 rounded-tile px-2
-                                           text-[11.5px] font-semibold text-brand hover:bg-chip transition"
-                                    title="Liberar licença no AlfaGym">
-                                Liberar
-                            </button>
-                        @endif
+                        @if ($mostrarMenuLicenca)
+                            <x-dropdown width="44">
+                                <x-slot name="trigger">
+                                    <span class="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-tile
+                                                 text-ink-mute transition hover:text-brand hover:bg-chip"
+                                          title="Licença no AlfaGym" aria-label="Licença no AlfaGym">
+                                        <span class="h-[15px] w-[15px]"><x-nav-icon name="tag" /></span>
+                                    </span>
+                                </x-slot>
 
-                        @if ($temLicenca)
-                            <button type="button" x-data
-                                    @click="$dispatch('open-modal', 'renovar-licenca-{{ $cliente->id }}')"
-                                    class="inline-flex h-7 items-center justify-center gap-1.5 rounded-tile px-2
-                                           text-[11.5px] font-semibold text-ink-dim hover:text-brand hover:bg-chip transition"
-                                    title="Renovar licença no AlfaGym">
-                                Renovar
-                            </button>
+                                <x-slot name="content">
+                                    @if ($pendente)
+                                        <button type="button" x-data
+                                                @click="$dispatch('open-modal', 'liberar-licenca-{{ $cliente->id }}')"
+                                                class="block w-full text-left px-3 py-2 text-[12.5px] font-semibold text-brand hover:bg-chip transition">
+                                            Liberar licença
+                                        </button>
+                                    @endif
 
-                            @if ($bloqueada)
-                                <x-confirmar :action="route('clientes.desbloquearLicenca', $cliente)" method="POST"
-                                             icone="play" confirmar="Desbloquear"
-                                             :titulo="'Desbloquear '.$cliente->nome_exibicao.'?'"
-                                             mensagem="O acesso do cliente no AlfaGym volta a funcionar." />
-                            @else
-                                <x-confirmar :action="route('clientes.bloquearLicenca', $cliente)" method="POST"
-                                             icone="pause" confirmar="Bloquear"
-                                             :titulo="'Bloquear '.$cliente->nome_exibicao.'?'"
-                                             mensagem="O acesso do cliente no AlfaGym é interrompido até o desbloqueio." />
-                            @endif
+                                    @if ($temLicenca)
+                                        <button type="button" x-data
+                                                @click="$dispatch('open-modal', 'renovar-licenca-{{ $cliente->id }}')"
+                                                class="block w-full text-left px-3 py-2 text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                            Renovar licença
+                                        </button>
+
+                                        @if ($bloqueada)
+                                            <x-confirmar :action="route('clientes.desbloquearLicenca', $cliente)"
+                                                         method="POST" confirmar="Desbloquear"
+                                                         :titulo="'Desbloquear '.$cliente->nome_exibicao.'?'"
+                                                         mensagem="O acesso do cliente no AlfaGym volta a funcionar.">
+                                                <span class="block w-full text-left px-3 py-2 text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                                    Desbloquear licença
+                                                </span>
+                                            </x-confirmar>
+                                        @else
+                                            <x-confirmar :action="route('clientes.bloquearLicenca', $cliente)"
+                                                         method="POST" confirmar="Bloquear"
+                                                         :titulo="'Bloquear '.$cliente->nome_exibicao.'?'"
+                                                         mensagem="O acesso do cliente no AlfaGym é interrompido até o desbloqueio.">
+                                                <span class="block w-full text-left px-3 py-2 text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                                    Bloquear licença
+                                                </span>
+                                            </x-confirmar>
+                                        @endif
+                                    @endif
+                                </x-slot>
+                            </x-dropdown>
                         @endif
 
                         <x-acao-tabela icone="paperclip" titulo="Cobranças do cliente"
