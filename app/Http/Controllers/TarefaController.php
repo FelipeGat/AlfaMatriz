@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Sistema;
 use App\Models\Tarefa;
+use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use App\Services\FluxoTarefaService;
 use Illuminate\Http\Request;
@@ -75,9 +76,27 @@ class TarefaController extends Controller
         $data = $request->validate([
             'status' => 'required|in:'.implode(',', array_keys(Tarefa::STATUS)),
             'motivo' => 'nullable|string',
+            'relatorio_aprovado' => 'nullable|boolean',
+            'relatorio_notas' => 'nullable|string',
         ]);
 
-        $fluxo->mover($tarefa, $data['status'], ['motivo' => $data['motivo'] ?? null]);
+        // A confirmação de "Em testes → Concluída" pede as notas do teste no
+        // próprio movimento (ASM-033): registra o relatório antes de checar a
+        // transição, para que um relatório aprovado agora já libere a mesma
+        // conclusão.
+        if ($data['status'] === 'concluida' && $request->filled('relatorio_notas')) {
+            TarefaRelatorioTeste::create([
+                'tarefa_id' => $tarefa->id,
+                'aprovado' => $request->boolean('relatorio_aprovado'),
+                'notas' => $data['relatorio_notas'],
+            ]);
+        }
+
+        try {
+            $fluxo->mover($tarefa, $data['status'], ['motivo' => $data['motivo'] ?? null]);
+        } catch (\RuntimeException $e) {
+            return back()->with('erro', $e->getMessage());
+        }
 
         return redirect()->route('tarefas.index')->with('status', 'Tarefa movida.');
     }
