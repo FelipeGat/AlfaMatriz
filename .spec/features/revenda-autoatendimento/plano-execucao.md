@@ -1,11 +1,12 @@
 # Plano de execução — revenda-autoatendimento
 
-> gerado por `onp-spec plano` em 2026-08-10 13:44 — NÃO edite à mão;
-> mudou tasks.md ou a config? Regenere: `onp-spec plano revenda-autoatendimento`
+> gerado por `onp-spec plano` em 2026-08-10 13:50 — NÃO edite à mão;
+> mudou tasks.md ou a config? Regenere: `onp-spec plano revenda-autoatendimento --paralelizar T-068,T-069,T-070,T-071,T-072`
 
 ## Resumo — o que vai acontecer
 
-- **7 tarefa(s) pendente(s)**: 7 em 7 faixa(s) paralela(s) + 0 sequencial(is)
+- **5 tarefa(s) pendente(s)**: 5 em 5 faixa(s) paralela(s) + 0 sequencial(is) (2 já concluída(s): T-066, T-067)
+- **seleção do usuário**: paralelizar só T-068, T-069, T-070, T-071, T-072 — as demais rodam uma após a outra, ao final
 - **1 faixa = 1 worktree + 1 branch + 1 janela de contexto limpa** — faixas não compartilham nenhum arquivo entre si
 - prefere outra seleção ou uma após a outra? Regenere com `onp-spec plano revenda-autoatendimento --paralelizar T-xxx,T-yyy` ou `--sequencial`
 - tudo acontece na branch de trabalho `spec/revenda-autoatendimento`; levar para a main é decisão sua
@@ -18,43 +19,29 @@
 
 | tarefa | título | modelo | esforço | arquivos |
 |---|---|---|---|---|
-| T-066 | Perfil "revenda" e o acesso criado no provisionamento | `claude-sonnet-5` | high | `database/seeders/PerfilPermissaoSeeder.php`, `app/Http/Controllers/RevendaController.php`, `resources/views/revendas/index.blade.php`, `tests/Feature/RevendaAutoatendimento/AcessoDaRevendaTest.php` |
+| T-068 | A revenda cadastra o próprio cliente | `claude-sonnet-5` | high | `app/Http/Controllers/ClienteController.php`, `resources/views/clientes/_form.blade.php`, `tests/Feature/RevendaAutoatendimento/CadastroPelaRevendaTest.php` |
 
 #### faixa-2 — branch `spec/revenda-autoatendimento-faixa-2` — worktree `../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-2`
 
 | tarefa | título | modelo | esforço | arquivos |
 |---|---|---|---|---|
-| T-067 | Cliente criado no AlfaGym a partir da Matriz | `claude-sonnet-5` | high | `app/Services/ProvisionadorClienteAlfaGymService.php`, `tests/Feature/RevendaAutoatendimento/ProvisionadorClienteAlfaGymTest.php` |
+| T-069 | Licença é assunto da Alfa, não da revenda | `claude-sonnet-5` | medium | `resources/views/clientes/_tabela.blade.php`, `tests/Feature/RevendaAutoatendimento/LicencaSoDoAdminTest.php` |
 
 #### faixa-3 — branch `spec/revenda-autoatendimento-faixa-3` — worktree `../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-3`
 
 | tarefa | título | modelo | esforço | arquivos |
 |---|---|---|---|---|
-| T-068 | A revenda cadastra o próprio cliente | `claude-sonnet-5` | high | `app/Http/Controllers/ClienteController.php`, `resources/views/clientes/_form.blade.php`, `tests/Feature/RevendaAutoatendimento/CadastroPelaRevendaTest.php` |
+| T-070 | Acesso das revendas migradas | `claude-sonnet-5` | medium | `app/Console/Commands/CriarAcessosDeRevendas.php`, `tests/Feature/RevendaAutoatendimento/AcessosDeRevendasMigradasTest.php` |
 
-### Onda 2 — faixa-4 ∥ faixa-5 ∥ faixa-6
+### Onda 2 — faixa-4 ∥ faixa-5
 
 #### faixa-4 — branch `spec/revenda-autoatendimento-faixa-4` — worktree `../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-4`
 
 | tarefa | título | modelo | esforço | arquivos |
 |---|---|---|---|---|
-| T-069 | Licença é assunto da Alfa, não da revenda | `claude-sonnet-5` | medium | `resources/views/clientes/_tabela.blade.php`, `tests/Feature/RevendaAutoatendimento/LicencaSoDoAdminTest.php` |
-
-#### faixa-5 — branch `spec/revenda-autoatendimento-faixa-5` — worktree `../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-5`
-
-| tarefa | título | modelo | esforço | arquivos |
-|---|---|---|---|---|
-| T-070 | Acesso das revendas migradas | `claude-sonnet-5` | medium | `app/Console/Commands/CriarAcessosDeRevendas.php`, `tests/Feature/RevendaAutoatendimento/AcessosDeRevendasMigradasTest.php` |
-
-#### faixa-6 — branch `spec/revenda-autoatendimento-faixa-6` — worktree `../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-6`
-
-| tarefa | título | modelo | esforço | arquivos |
-|---|---|---|---|---|
 | T-071 | Relatório de conferência da migração | `claude-sonnet-5` | medium | `app/Console/Commands/ConferirMigracaoAlfaGym.php`, `tests/Feature/RevendaAutoatendimento/ConferenciaDaMigracaoTest.php` |
 
-### Onda 3 — faixa-7
-
-#### faixa-7 — branch `spec/revenda-autoatendimento-faixa-7` — worktree `../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-7`
+#### faixa-5 — branch `spec/revenda-autoatendimento-faixa-5` — worktree `../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-5`
 
 | tarefa | título | modelo | esforço | arquivos |
 |---|---|---|---|---|

@@ -1,12 +1,18 @@
 {
-  "runId": "AlfaMatriz-revenda-autoatendimento-msna9m63",
+  "runId": "AlfaMatriz-revenda-autoatendimento-msnahmbg",
   "feature": "revenda-autoatendimento",
   "agent": "claude",
   "modo": "paralelo",
-  "paralelizar": null,
+  "paralelizar": [
+    "T-068",
+    "T-069",
+    "T-070",
+    "T-071",
+    "T-072"
+  ],
   "modeloForcado": null,
   "esforcoForcado": null,
-  "geradoEm": "2026-08-10 13:44",
+  "geradoEm": "2026-08-10 13:50",
   "branchTrabalho": "spec/revenda-autoatendimento",
   "baseDir": ".spec/features/revenda-autoatendimento",
   "specDir": ".spec",
@@ -20,11 +26,7 @@
     ],
     [
       "faixa-4",
-      "faixa-5",
-      "faixa-6"
-    ],
-    [
-      "faixa-7"
+      "faixa-5"
     ]
   ],
   "faixas": [
@@ -32,52 +34,6 @@
       "id": "faixa-1",
       "branch": "spec/revenda-autoatendimento-faixa-1",
       "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-1",
-      "tarefas": [
-        {
-          "id": "T-066",
-          "titulo": "Perfil \"revenda\" e o acesso criado no provisionamento",
-          "modelo": "claude-sonnet-5",
-          "esforco": "high",
-          "arquivos": [
-            "database/seeders/PerfilPermissaoSeeder.php",
-            "app/Http/Controllers/RevendaController.php",
-            "resources/views/revendas/index.blade.php",
-            "tests/Feature/RevendaAutoatendimento/AcessoDaRevendaTest.php"
-          ],
-          "refs": [
-            "US-044",
-            "AC-105",
-            "AC-106"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "faixa-2",
-      "branch": "spec/revenda-autoatendimento-faixa-2",
-      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-2",
-      "tarefas": [
-        {
-          "id": "T-067",
-          "titulo": "Cliente criado no AlfaGym a partir da Matriz",
-          "modelo": "claude-sonnet-5",
-          "esforco": "high",
-          "arquivos": [
-            "app/Services/ProvisionadorClienteAlfaGymService.php",
-            "tests/Feature/RevendaAutoatendimento/ProvisionadorClienteAlfaGymTest.php"
-          ],
-          "refs": [
-            "US-041",
-            "AC-099",
-            "AC-100"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "faixa-3",
-      "branch": "spec/revenda-autoatendimento-faixa-3",
-      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-3",
       "tarefas": [
         {
           "id": "T-068",
@@ -100,9 +56,9 @@
       ]
     },
     {
-      "id": "faixa-4",
-      "branch": "spec/revenda-autoatendimento-faixa-4",
-      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-4",
+      "id": "faixa-2",
+      "branch": "spec/revenda-autoatendimento-faixa-2",
+      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-2",
       "tarefas": [
         {
           "id": "T-069",
@@ -122,9 +78,9 @@
       ]
     },
     {
-      "id": "faixa-5",
-      "branch": "spec/revenda-autoatendimento-faixa-5",
-      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-5",
+      "id": "faixa-3",
+      "branch": "spec/revenda-autoatendimento-faixa-3",
+      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-3",
       "tarefas": [
         {
           "id": "T-070",
@@ -143,9 +99,9 @@
       ]
     },
     {
-      "id": "faixa-6",
-      "branch": "spec/revenda-autoatendimento-faixa-6",
-      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-6",
+      "id": "faixa-4",
+      "branch": "spec/revenda-autoatendimento-faixa-4",
+      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-4",
       "tarefas": [
         {
           "id": "T-071",
@@ -164,9 +120,9 @@
       ]
     },
     {
-      "id": "faixa-7",
-      "branch": "spec/revenda-autoatendimento-faixa-7",
-      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-7",
+      "id": "faixa-5",
+      "branch": "spec/revenda-autoatendimento-faixa-5",
+      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-5",
       "tarefas": [
         {
           "id": "T-072",
@@ -185,6 +141,9 @@
     }
   ],
   "sequenciais": [],
-  "concluidas": [],
+  "concluidas": [
+    "T-066",
+    "T-067"
+  ],
   "avisos": []
 }

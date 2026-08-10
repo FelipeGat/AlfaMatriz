@@ -38,11 +38,12 @@
 </style>
 <main>
   <h1>Plano de execução — revenda-autoatendimento</h1>
-  <p class="sub">gerado por <code>onp-spec plano</code> em 2026-08-10 13:44 · regenere após mudar tasks.md</p>
+  <p class="sub">gerado por <code>onp-spec plano</code> em 2026-08-10 13:50 · regenere após mudar tasks.md</p>
   <div class="resumo">
-    <div><b>7</b> tarefa(s) em paralelo</div>
-    <div><b>7</b> faixa(s) · <b>3</b> onda(s)</div>
+    <div><b>5</b> tarefa(s) em paralelo</div>
+    <div><b>5</b> faixa(s) · <b>2</b> onda(s)</div>
     <div><b>0</b> sequencial(is)</div>
+    <div>seleção do usuário: <b>T-068, T-069, T-070, T-071, T-072</b></div>
     <div>branch <code>spec/revenda-autoatendimento</code></div>
   </div>
   
@@ -64,38 +65,14 @@
         <h4>faixa-1 <small>branch <code>spec/revenda-autoatendimento-faixa-1</code> · worktree <code>../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-1</code></small></h4>
         
         <div class="tarefa">
-          <span class="tid">T-066</span>
-          <span class="ttitulo">Perfil &quot;revenda&quot; e o acesso criado no provisionamento</span>
-          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
-          <span class="arquivos"><code>database/seeders/PerfilPermissaoSeeder.php</code> <code>app/Http/Controllers/RevendaController.php</code> <code>resources/views/revendas/index.blade.php</code> <code>tests/Feature/RevendaAutoatendimento/AcessoDaRevendaTest.php</code></span>
-        </div>
-      </div>
-      <div class="faixa">
-        <h4>faixa-2 <small>branch <code>spec/revenda-autoatendimento-faixa-2</code> · worktree <code>../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-2</code></small></h4>
-        
-        <div class="tarefa">
-          <span class="tid">T-067</span>
-          <span class="ttitulo">Cliente criado no AlfaGym a partir da Matriz</span>
-          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
-          <span class="arquivos"><code>app/Services/ProvisionadorClienteAlfaGymService.php</code> <code>tests/Feature/RevendaAutoatendimento/ProvisionadorClienteAlfaGymTest.php</code></span>
-        </div>
-      </div>
-      <div class="faixa">
-        <h4>faixa-3 <small>branch <code>spec/revenda-autoatendimento-faixa-3</code> · worktree <code>../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-3</code></small></h4>
-        
-        <div class="tarefa">
           <span class="tid">T-068</span>
           <span class="ttitulo">A revenda cadastra o próprio cliente</span>
           <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
           <span class="arquivos"><code>app/Http/Controllers/ClienteController.php</code> <code>resources/views/clientes/_form.blade.php</code> <code>tests/Feature/RevendaAutoatendimento/CadastroPelaRevendaTest.php</code></span>
         </div>
-      </div></div>
-    </section>
-    <section class="onda">
-      <h3>Onda 2 <small>faixa-4 ∥ faixa-5 ∥ faixa-6 — em paralelo, janelas limpas</small></h3>
-      <div class="grade">
+      </div>
       <div class="faixa">
-        <h4>faixa-4 <small>branch <code>spec/revenda-autoatendimento-faixa-4</code> · worktree <code>../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-4</code></small></h4>
+        <h4>faixa-2 <small>branch <code>spec/revenda-autoatendimento-faixa-2</code> · worktree <code>../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-2</code></small></h4>
         
         <div class="tarefa">
           <span class="tid">T-069</span>
@@ -105,7 +82,7 @@
         </div>
       </div>
       <div class="faixa">
-        <h4>faixa-5 <small>branch <code>spec/revenda-autoatendimento-faixa-5</code> · worktree <code>../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-5</code></small></h4>
+        <h4>faixa-3 <small>branch <code>spec/revenda-autoatendimento-faixa-3</code> · worktree <code>../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-3</code></small></h4>
         
         <div class="tarefa">
           <span class="tid">T-070</span>
@@ -113,9 +90,13 @@
           <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
           <span class="arquivos"><code>app/Console/Commands/CriarAcessosDeRevendas.php</code> <code>tests/Feature/RevendaAutoatendimento/AcessosDeRevendasMigradasTest.php</code></span>
         </div>
-      </div>
+      </div></div>
+    </section>
+    <section class="onda">
+      <h3>Onda 2 <small>faixa-4 ∥ faixa-5 — em paralelo, janelas limpas</small></h3>
+      <div class="grade">
       <div class="faixa">
-        <h4>faixa-6 <small>branch <code>spec/revenda-autoatendimento-faixa-6</code> · worktree <code>../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-6</code></small></h4>
+        <h4>faixa-4 <small>branch <code>spec/revenda-autoatendimento-faixa-4</code> · worktree <code>../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-4</code></small></h4>
         
         <div class="tarefa">
           <span class="tid">T-071</span>
@@ -123,13 +104,9 @@
           <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
           <span class="arquivos"><code>app/Console/Commands/ConferirMigracaoAlfaGym.php</code> <code>tests/Feature/RevendaAutoatendimento/ConferenciaDaMigracaoTest.php</code></span>
         </div>
-      </div></div>
-    </section>
-    <section class="onda">
-      <h3>Onda 3 <small>faixa-7 — em paralelo, janelas limpas</small></h3>
-      <div class="grade">
+      </div>
       <div class="faixa">
-        <h4>faixa-7 <small>branch <code>spec/revenda-autoatendimento-faixa-7</code> · worktree <code>../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-7</code></small></h4>
+        <h4>faixa-5 <small>branch <code>spec/revenda-autoatendimento-faixa-5</code> · worktree <code>../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-5</code></small></h4>
         
         <div class="tarefa">
           <span class="tid">T-072</span>

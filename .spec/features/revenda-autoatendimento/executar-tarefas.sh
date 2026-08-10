@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# executar-tarefas.sh — gerado por `onp-spec plano revenda-autoatendimento` em 2026-08-10 13:44
+# executar-tarefas.sh — gerado por `onp-spec plano revenda-autoatendimento` em 2026-08-10 13:50
 # NÃO edite à mão: mudou tasks.md ou a config, regenere o plano.
 #
 # uso:
@@ -14,7 +14,7 @@
 set -u
 set -o pipefail
 
-RUN_ID='AlfaMatriz-revenda-autoatendimento-msna9m63'
+RUN_ID='AlfaMatriz-revenda-autoatendimento-msnahmbg'
 FEATURE='revenda-autoatendimento'
 BASE_BRANCH='spec/revenda-autoatendimento'
 ENGINE='.claude/skills/onp-spec-driven/scripts/onp-spec.mjs'
@@ -166,7 +166,7 @@ iniciar_resumos() {
   trap 'parar_resumos; node "$ENGINE" resumo "$FEATURE" --gravar >/dev/null 2>&1 || true' EXIT
 }
 
-# ── faixa-1: T-066 ──
+# ── faixa-1: T-068 ──
 executar_faixa_1() {
   local WT="$WT_BASE-faixa-1"
   preparar_worktree 'faixa-1' 'spec/revenda-autoatendimento-faixa-1' "$WT" || return 1
@@ -174,67 +174,7 @@ executar_faixa_1() {
   : > "$LOG_DIR/faixa-1.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-1' 'T-066' 'Você executa UMA tarefa da feature "revenda-autoatendimento" (fluxo onp-spec, spec-anchored).
-Leia primeiro: .spec/features/revenda-autoatendimento/spec.md, .spec/features/revenda-autoatendimento/tasks.md e .spec/constituicao.md.
-
-Sua tarefa (somente ela):
-T-066 — "Perfil "revenda" e o acesso criado no provisionamento"
-  critérios/refs: AC-105 (Provisionar a revenda cria também o acesso dela ao painel), AC-106 (O acesso da revenda enxerga só a revenda dele)
-  arquivos permitidos (e seus testes): database/seeders/PerfilPermissaoSeeder.php, app/Http/Controllers/RevendaController.php, resources/views/revendas/index.blade.php, tests/Feature/RevendaAutoatendimento/AcessoDaRevendaTest.php
-  mensagem de commit: "T-066 revenda-autoatendimento: Perfil "revenda" e o acesso criado no provisionamento"
-
-Regras inegociáveis:
-- Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
-- NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
-- Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
-- NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-1.log" 2>&1
-  local st=$?
-  mesclar_faixa 'faixa-1' 'spec/revenda-autoatendimento-faixa-1' "$WT" "$st" || return 1
-  marcar_concluidas T-066
-  return 0
-}
-
-# ── faixa-2: T-067 ──
-executar_faixa_2() {
-  local WT="$WT_BASE-faixa-2"
-  preparar_worktree 'faixa-2' 'spec/revenda-autoatendimento-faixa-2' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-2' --estado executando --tentativa "$(tentativa 'faixa-2')"
-  : > "$LOG_DIR/faixa-2.log"
-  (
-    cd "$WT" || exit 9
-    rodar_tarefa 'faixa-2' 'T-067' 'Você executa UMA tarefa da feature "revenda-autoatendimento" (fluxo onp-spec, spec-anchored).
-Leia primeiro: .spec/features/revenda-autoatendimento/spec.md, .spec/features/revenda-autoatendimento/tasks.md e .spec/constituicao.md.
-
-Sua tarefa (somente ela):
-T-067 — "Cliente criado no AlfaGym a partir da Matriz"
-  critérios/refs: AC-099 (O cliente cadastrado pela revenda nasce aguardando licença), AC-100 (Recusa do AlfaGym não deixa cliente órfão na Matriz)
-  arquivos permitidos (e seus testes): app/Services/ProvisionadorClienteAlfaGymService.php, tests/Feature/RevendaAutoatendimento/ProvisionadorClienteAlfaGymTest.php
-  mensagem de commit: "T-067 revenda-autoatendimento: Cliente criado no AlfaGym a partir da Matriz"
-
-Regras inegociáveis:
-- Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
-- NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
-- Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
-- NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-2.log" 2>&1
-  local st=$?
-  mesclar_faixa 'faixa-2' 'spec/revenda-autoatendimento-faixa-2' "$WT" "$st" || return 1
-  marcar_concluidas T-067
-  return 0
-}
-
-# ── faixa-3: T-068 ──
-executar_faixa_3() {
-  local WT="$WT_BASE-faixa-3"
-  preparar_worktree 'faixa-3' 'spec/revenda-autoatendimento-faixa-3' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-3' --estado executando --tentativa "$(tentativa 'faixa-3')"
-  : > "$LOG_DIR/faixa-3.log"
-  (
-    cd "$WT" || exit 9
-    rodar_tarefa 'faixa-3' 'T-068' 'Você executa UMA tarefa da feature "revenda-autoatendimento" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-1' 'T-068' 'Você executa UMA tarefa da feature "revenda-autoatendimento" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/revenda-autoatendimento/spec.md, .spec/features/revenda-autoatendimento/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -249,22 +189,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high
-  ) >> "$LOG_DIR/faixa-3.log" 2>&1
+  ) >> "$LOG_DIR/faixa-1.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-3' 'spec/revenda-autoatendimento-faixa-3' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-1' 'spec/revenda-autoatendimento-faixa-1' "$WT" "$st" || return 1
   marcar_concluidas T-068
   return 0
 }
 
-# ── faixa-4: T-069 ──
-executar_faixa_4() {
-  local WT="$WT_BASE-faixa-4"
-  preparar_worktree 'faixa-4' 'spec/revenda-autoatendimento-faixa-4' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-4' --estado executando --tentativa "$(tentativa 'faixa-4')"
-  : > "$LOG_DIR/faixa-4.log"
+# ── faixa-2: T-069 ──
+executar_faixa_2() {
+  local WT="$WT_BASE-faixa-2"
+  preparar_worktree 'faixa-2' 'spec/revenda-autoatendimento-faixa-2' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-2' --estado executando --tentativa "$(tentativa 'faixa-2')"
+  : > "$LOG_DIR/faixa-2.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-4' 'T-069' 'Você executa UMA tarefa da feature "revenda-autoatendimento" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-2' 'T-069' 'Você executa UMA tarefa da feature "revenda-autoatendimento" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/revenda-autoatendimento/spec.md, .spec/features/revenda-autoatendimento/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -279,22 +219,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium
-  ) >> "$LOG_DIR/faixa-4.log" 2>&1
+  ) >> "$LOG_DIR/faixa-2.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-4' 'spec/revenda-autoatendimento-faixa-4' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-2' 'spec/revenda-autoatendimento-faixa-2' "$WT" "$st" || return 1
   marcar_concluidas T-069
   return 0
 }
 
-# ── faixa-5: T-070 ──
-executar_faixa_5() {
-  local WT="$WT_BASE-faixa-5"
-  preparar_worktree 'faixa-5' 'spec/revenda-autoatendimento-faixa-5' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-5' --estado executando --tentativa "$(tentativa 'faixa-5')"
-  : > "$LOG_DIR/faixa-5.log"
+# ── faixa-3: T-070 ──
+executar_faixa_3() {
+  local WT="$WT_BASE-faixa-3"
+  preparar_worktree 'faixa-3' 'spec/revenda-autoatendimento-faixa-3' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-3' --estado executando --tentativa "$(tentativa 'faixa-3')"
+  : > "$LOG_DIR/faixa-3.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-5' 'T-070' 'Você executa UMA tarefa da feature "revenda-autoatendimento" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-3' 'T-070' 'Você executa UMA tarefa da feature "revenda-autoatendimento" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/revenda-autoatendimento/spec.md, .spec/features/revenda-autoatendimento/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -309,22 +249,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium
-  ) >> "$LOG_DIR/faixa-5.log" 2>&1
+  ) >> "$LOG_DIR/faixa-3.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-5' 'spec/revenda-autoatendimento-faixa-5' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-3' 'spec/revenda-autoatendimento-faixa-3' "$WT" "$st" || return 1
   marcar_concluidas T-070
   return 0
 }
 
-# ── faixa-6: T-071 ──
-executar_faixa_6() {
-  local WT="$WT_BASE-faixa-6"
-  preparar_worktree 'faixa-6' 'spec/revenda-autoatendimento-faixa-6' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-6' --estado executando --tentativa "$(tentativa 'faixa-6')"
-  : > "$LOG_DIR/faixa-6.log"
+# ── faixa-4: T-071 ──
+executar_faixa_4() {
+  local WT="$WT_BASE-faixa-4"
+  preparar_worktree 'faixa-4' 'spec/revenda-autoatendimento-faixa-4' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-4' --estado executando --tentativa "$(tentativa 'faixa-4')"
+  : > "$LOG_DIR/faixa-4.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-6' 'T-071' 'Você executa UMA tarefa da feature "revenda-autoatendimento" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-4' 'T-071' 'Você executa UMA tarefa da feature "revenda-autoatendimento" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/revenda-autoatendimento/spec.md, .spec/features/revenda-autoatendimento/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -339,22 +279,22 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium
-  ) >> "$LOG_DIR/faixa-6.log" 2>&1
+  ) >> "$LOG_DIR/faixa-4.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-6' 'spec/revenda-autoatendimento-faixa-6' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-4' 'spec/revenda-autoatendimento-faixa-4' "$WT" "$st" || return 1
   marcar_concluidas T-071
   return 0
 }
 
-# ── faixa-7: T-072 ──
-executar_faixa_7() {
-  local WT="$WT_BASE-faixa-7"
-  preparar_worktree 'faixa-7' 'spec/revenda-autoatendimento-faixa-7' "$WT" || return 1
-  evento --tipo faixa --faixa 'faixa-7' --estado executando --tentativa "$(tentativa 'faixa-7')"
-  : > "$LOG_DIR/faixa-7.log"
+# ── faixa-5: T-072 ──
+executar_faixa_5() {
+  local WT="$WT_BASE-faixa-5"
+  preparar_worktree 'faixa-5' 'spec/revenda-autoatendimento-faixa-5' "$WT" || return 1
+  evento --tipo faixa --faixa 'faixa-5' --estado executando --tentativa "$(tentativa 'faixa-5')"
+  : > "$LOG_DIR/faixa-5.log"
   (
     cd "$WT" || exit 9
-    rodar_tarefa 'faixa-7' 'T-072' 'Você executa UMA tarefa da feature "revenda-autoatendimento" (fluxo onp-spec, spec-anchored).
+    rodar_tarefa 'faixa-5' 'T-072' 'Você executa UMA tarefa da feature "revenda-autoatendimento" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/revenda-autoatendimento/spec.md, .spec/features/revenda-autoatendimento/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
@@ -369,9 +309,9 @@ Regras inegociáveis:
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' low
-  ) >> "$LOG_DIR/faixa-7.log" 2>&1
+  ) >> "$LOG_DIR/faixa-5.log" 2>&1
   local st=$?
-  mesclar_faixa 'faixa-7' 'spec/revenda-autoatendimento-faixa-7' "$WT" "$st" || return 1
+  mesclar_faixa 'faixa-5' 'spec/revenda-autoatendimento-faixa-5' "$WT" "$st" || return 1
   marcar_concluidas T-072
   return 0
 }
@@ -437,30 +377,22 @@ executar_tudo() {
   wait "$PID_FAIXA_1" || true
   wait "$PID_FAIXA_2" || true
   wait "$PID_FAIXA_3" || true
-  # onda 2: faixa-4 ∥ faixa-5 ∥ faixa-6
-  info "onda 2: faixa-4 ∥ faixa-5 ∥ faixa-6 — janelas limpas em paralelo"
+  # onda 2: faixa-4 ∥ faixa-5
+  info "onda 2: faixa-4 ∥ faixa-5 — janelas limpas em paralelo"
   executar_faixa_4 & PID_FAIXA_4=$!
   executar_faixa_5 & PID_FAIXA_5=$!
-  executar_faixa_6 & PID_FAIXA_6=$!
   wait "$PID_FAIXA_4" || true
   wait "$PID_FAIXA_5" || true
-  wait "$PID_FAIXA_6" || true
-  # onda 3: faixa-7
-  info "onda 3: faixa-7 — janelas limpas em paralelo"
-  executar_faixa_7 & PID_FAIXA_7=$!
-  wait "$PID_FAIXA_7" || true
   encerrar tudo
 }
 
 listar() {
   echo "execução: $RUN_ID (feature $FEATURE, branch $BASE_BRANCH)"
-  echo "  faixa-1  onda 1  T-066"
-  echo "  faixa-2  onda 1  T-067"
-  echo "  faixa-3  onda 1  T-068"
-  echo "  faixa-4  onda 2  T-069"
-  echo "  faixa-5  onda 2  T-070"
-  echo "  faixa-6  onda 2  T-071"
-  echo "  faixa-7  onda 3  T-072"
+  echo "  faixa-1  onda 1  T-068"
+  echo "  faixa-2  onda 1  T-069"
+  echo "  faixa-3  onda 1  T-070"
+  echo "  faixa-4  onda 2  T-071"
+  echo "  faixa-5  onda 2  T-072"
   echo
   echo "reexecutar uma faixa:    --faixa <id>"
   echo "reexecutar sequencial:   --seq <T-xxx>"
@@ -496,8 +428,6 @@ case "$MODO" in
       faixa-3) evento --tipo inicio --escopo "faixa:faixa-3"; iniciar_resumos; executar_faixa_3 || true; encerrar "faixa:faixa-3" ;;
       faixa-4) evento --tipo inicio --escopo "faixa:faixa-4"; iniciar_resumos; executar_faixa_4 || true; encerrar "faixa:faixa-4" ;;
       faixa-5) evento --tipo inicio --escopo "faixa:faixa-5"; iniciar_resumos; executar_faixa_5 || true; encerrar "faixa:faixa-5" ;;
-      faixa-6) evento --tipo inicio --escopo "faixa:faixa-6"; iniciar_resumos; executar_faixa_6 || true; encerrar "faixa:faixa-6" ;;
-      faixa-7) evento --tipo inicio --escopo "faixa:faixa-7"; iniciar_resumos; executar_faixa_7 || true; encerrar "faixa:faixa-7" ;;
       *) falhar "faixa desconhecida: '$ALVO' — veja as disponíveis com --listar" ;;
     esac ;;
   seq)
