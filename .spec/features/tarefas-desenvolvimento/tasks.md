@@ -147,3 +147,16 @@
   (3) `_card.blade.php:31` mapeia `baixa` e `media` para o mesmo tom `neutro`,
   então dois dos quatro níveis são indistinguíveis; a escala do `x-badge`
   (`neutro < marca < atencao < critico`) cobre os quatro.
+
+## T-077 — Cor da etapa na coluna, no padrão do Funil de Vendas [concluida]
+- Refs: US-036, AC-114
+- Arquivos: app/Http/Controllers/TarefaController.php, resources/views/tarefas/index.blade.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php
+- Notas: o quadro nasceu monocromático — `style="width: 276px"` sem faixa e o
+  contador em `bg-chip text-ink-dim` — enquanto o Funil (`leads/index.blade.php:74`)
+  pinta a coluna com `border-top: 3px solid rgb(var(--cor))`, um ponto de 7px e o
+  contador tingido com `var(--tint-alpha)`. Trazer o mesmo padrão: `cor` por
+  etapa vinda do controller (aberta/backlog=accent, em_desenvolvimento/em_testes=brand,
+  ajustes_necessarios=warn, concluida=good, cancelada=neutro/line — terminal sem
+  valor não merece destaque). A borda do CARD não muda: ela continua sendo o
+  canal do aviso de esquecida (AC-093), e duplicar o status ali roubaria o
+  único sinal que não está dito em outro lugar.

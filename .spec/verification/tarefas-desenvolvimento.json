@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-10T14:54:46.855Z",
-  "gitRev": "c61721a",
+  "timestamp": "2026-08-10T15:05:16.534Z",
+  "gitRev": "69ed5ee",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 212,
+  "testsParsed": 213,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -35,6 +35,11 @@
     "AC-113": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_as_quatro_prioridades_tem_cores_distintas @spec:AC-113",
+      "method": "tap"
+    },
+    "AC-114": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_cada_etapa_tem_cor_propria_na_coluna_e_nao_no_card @spec:AC-114",
       "method": "tap"
     },
     "AC-085": {

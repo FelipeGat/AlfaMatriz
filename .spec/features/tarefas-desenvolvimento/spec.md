@@ -73,6 +73,15 @@ aberto, em desenvolvimento, em teste e concluído.
 - **Então** cada nível tem uma cor própria — Baixa, Média, Alta e Crítica não
   compartilham tom entre si, e a escala sobe do mais discreto ao mais grave
 
+#### AC-114 — Cada etapa do quadro tem a sua cor, na coluna
+
+- **Dado** o quadro aberto
+- **Quando** corro o olho pelas colunas
+- **Então** cada etapa tem uma faixa de cor no topo da sua coluna e o contador
+  tingido no mesmo tom, como no Funil de Vendas — e a cor da etapa não é
+  repetida na borda dos cards, que continua reservada ao aviso de tarefa
+  esquecida
+
 ### US-037 — Fluxo com regras que impedem pular etapa
 
 Como responsável pela entrega, quero que o quadro recuse movimentos fora do

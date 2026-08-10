@@ -48,6 +48,7 @@ class TarefaController extends Controller
             return [
                 'chave' => $status,
                 'label' => $label,
+                'cor' => $this->corDaEtapa($status),
                 'ocultas' => $ocultas,
                 'quantidade' => $colunas[$status]->count(),
             ];
@@ -137,5 +138,28 @@ class TarefaController extends Controller
             ->get();
 
         return view('tarefas.historico', compact('tarefas'));
+    }
+
+    /**
+     * Token de cor da etapa, pintado na coluna — nunca no card (AC-114).
+     *
+     * A coluna é o lugar do status porque ela já o nomeia: repetir a cor na
+     * borda de cada card diria sete vezes o que o cabeçalho diz uma, e
+     * roubaria a borda do card, que é o único canal do aviso de tarefa
+     * esquecida (AC-093).
+     *
+     * A escala segue o Funil de Vendas: entrada em `accent`, o meio do fluxo
+     * na marca, o atrito em `warn`, a chegada em `good`. Cancelada fica
+     * neutra de propósito — é terminal sem valor e não disputa atenção.
+     */
+    private function corDaEtapa(string $status): string
+    {
+        return match ($status) {
+            'aberta', 'backlog' => 'accent',
+            'em_desenvolvimento', 'em_testes' => 'brand',
+            'ajustes_necessarios' => 'warn',
+            'concluida' => 'good',
+            default => 'line',
+        };
     }
 }

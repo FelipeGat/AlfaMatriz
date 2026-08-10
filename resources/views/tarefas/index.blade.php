@@ -67,15 +67,25 @@
                         (Q-013).
                     --}}
                     <section class="shrink-0 flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden"
-                             style="width: 276px" data-status="{{ $etapa['chave'] }}"
+                             {{--
+                                 A cor da etapa vive AQUI, na coluna, como no
+                                 Funil de Vendas — e não na borda do card: essa
+                                 continua sendo o canal do aviso de tarefa
+                                 esquecida (AC-093, AC-114).
+                             --}}
+                             style="width: 276px; border-top: 3px solid rgb(var(--{{ $etapa['cor'] }}))"
+                             data-status="{{ $etapa['chave'] }}"
                              @dragover.prevent="permitir('{{ $etapa['chave'] }}')"
                              @dragleave="sobre = null"
                              @drop.prevent="soltar('{{ $etapa['chave'] }}', {{ in_array($etapa['chave'], ['ajustes_necessarios', 'cancelada', 'concluida'], true) ? 'true' : 'false' }})"
                              :class="sobre === '{{ $etapa['chave'] }}' && 'ring-1 ring-brand'">
                         <header class="shrink-0 px-3 py-2.5 border-b border-rule">
                             <div class="flex items-center gap-2">
+                                <span class="h-[7px] w-[7px] shrink-0 rounded-full"
+                                      style="background: rgb(var(--{{ $etapa['cor'] }}))"></span>
                                 <h3 class="min-w-0 truncate font-display text-[14px] font-semibold text-ink">{{ $etapa['label'] }}</h3>
-                                <span class="ml-auto shrink-0 h-5 min-w-[20px] px-1.5 rounded-full font-mono text-[10px] font-semibold leading-5 text-center bg-chip text-ink-dim">
+                                <span class="ml-auto shrink-0 h-5 min-w-[20px] px-1.5 rounded-full font-mono text-[10px] font-semibold leading-5 text-center"
+                                      style="background: rgb(var(--{{ $etapa['cor'] }}) / var(--tint-alpha)); color: rgb(var(--{{ $etapa['cor'] }}))">
                                     {{ $etapa['quantidade'] }}
                                 </span>
                             </div>
@@ -90,7 +100,7 @@
                             --}}
                             @if ($etapa['ocultas'] > 0)
                                 <a href="{{ route('tarefas.historico') }}"
-                                   class="mt-0.5 block font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
+                                   class="mt-0.5 block pl-[15px] font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
                                     +{{ $etapa['ocultas'] }} fora dos últimos 30 dias
                                 </a>
                             @endif
