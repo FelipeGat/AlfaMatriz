@@ -1,12 +1,12 @@
 {
-  "runId": "AlfaMatriz-tarefas-desenvolvimento-msn8lxrh",
+  "runId": "AlfaMatriz-tarefas-desenvolvimento-msnanxb9",
   "feature": "tarefas-desenvolvimento",
   "agent": "claude",
   "modo": "sequencial",
   "paralelizar": null,
   "modeloForcado": null,
   "esforcoForcado": null,
-  "geradoEm": "2026-08-10 12:58",
+  "geradoEm": "2026-08-10 13:55",
   "branchTrabalho": "spec/tarefas-desenvolvimento",
   "baseDir": ".spec/features/tarefas-desenvolvimento",
   "specDir": ".spec",
@@ -16,156 +16,59 @@
   "faixas": [],
   "sequenciais": [
     {
-      "id": "T-058",
-      "titulo": "Estrutura de dados: tarefa, evento de etapa e relatório de teste",
+      "id": "T-073",
+      "titulo": "Menu \"Mover\" volta a oferecer os destinos permitidos",
       "modelo": "claude-sonnet-5",
       "esforco": "high",
       "arquivos": [
-        "database/migrations/2026_08_10_090000_criar_tarefas_desenvolvimento.php",
-        "app/Models/Tarefa.php",
-        "app/Models/TarefaEvento.php",
-        "app/Models/TarefaRelatorioTeste.php",
-        "database/factories/TarefaFactory.php",
-        "tests/Feature/TarefasDesenvolvimento/EstruturaTarefaTest.php"
+        "resources/views/tarefas/_mover.blade.php",
+        "tests/Feature/TarefasDesenvolvimento/MoverTarefaTest.php"
       ],
       "refs": [
-        "US-036",
-        "AC-083",
-        "AC-084",
-        "AC-091"
+        "US-037",
+        "AC-109"
       ]
     },
     {
-      "id": "T-059",
-      "titulo": "Motor do fluxo: transições permitidas, exigências e tempo por etapa",
+      "id": "T-074",
+      "titulo": "Prioridade Crítica, o quarto nível do ciclo",
       "modelo": "claude-sonnet-5",
       "esforco": "high",
+      "arquivos": [
+        "database/migrations/2026_08_10_140000_adicionar_prioridade_critica.php",
+        "app/Models/Tarefa.php",
+        "resources/views/tarefas/_card.blade.php",
+        "tests/Feature/TarefasDesenvolvimento/PrioridadeCriticaTest.php"
+      ],
+      "refs": [
+        "US-036",
+        "AC-110"
+      ]
+    },
+    {
+      "id": "T-075",
+      "titulo": "Devolver do Backlog para Aberta, soltando o responsável",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
       "arquivos": [
         "app/Services/FluxoTarefaService.php",
         "tests/Feature/TarefasDesenvolvimento/FluxoTarefaTest.php"
       ],
       "refs": [
         "US-037",
-        "US-038",
-        "AC-085",
-        "AC-086",
-        "AC-087",
-        "AC-088",
-        "AC-089",
-        "AC-090",
-        "AC-091"
-      ]
-    },
-    {
-      "id": "T-060",
-      "titulo": "Quadro no ar: permissão `tarefas`, rotas, controller e a tela com as colunas",
-      "modelo": "claude-sonnet-5",
-      "esforco": "high",
-      "arquivos": [
-        "database/seeders/PerfilPermissaoSeeder.php",
-        "routes/web.php",
-        "app/Http/Controllers/TarefaController.php",
-        "resources/views/tarefas/index.blade.php",
-        "tests/Feature/TarefasDesenvolvimento/QuadroTest.php",
-        "tests/Feature/TarefasDesenvolvimento/AcessoTarefasTest.php"
-      ],
-      "refs": [
-        "US-036",
-        "US-039",
-        "AC-081",
-        "AC-082",
-        "AC-095"
-      ]
-    },
-    {
-      "id": "T-061",
-      "titulo": "Grupo \"Desenvolvimento\" no menu lateral",
-      "modelo": "claude-sonnet-5",
-      "esforco": "medium",
-      "arquivos": [
-        "resources/views/layouts/navigation.blade.php",
-        "tests/Feature/TarefasDesenvolvimento/MenuDesenvolvimentoTest.php"
-      ],
-      "refs": [
-        "US-036",
-        "US-039",
-        "AC-081",
-        "AC-094"
-      ]
-    },
-    {
-      "id": "T-062",
-      "titulo": "Card da tarefa: sistema, prioridade, tempo na etapa e destaque de esquecida",
-      "modelo": "claude-sonnet-5",
-      "esforco": "medium",
-      "arquivos": [
-        "resources/views/tarefas/_card.blade.php",
-        "resources/views/tarefas/index.blade.php",
-        "tests/Feature/TarefasDesenvolvimento/CardTarefaTest.php"
-      ],
-      "refs": [
-        "US-036",
-        "US-038",
-        "AC-084",
-        "AC-092",
-        "AC-093"
-      ]
-    },
-    {
-      "id": "T-063",
-      "titulo": "Criar e editar tarefa: sistema, responsável e prioridade",
-      "modelo": "claude-sonnet-5",
-      "esforco": "medium",
-      "arquivos": [
-        "resources/views/tarefas/_form.blade.php",
-        "resources/views/tarefas/index.blade.php",
-        "app/Http/Controllers/TarefaController.php",
-        "tests/Feature/TarefasDesenvolvimento/FormularioTarefaTest.php"
-      ],
-      "refs": [
-        "US-036",
-        "AC-083",
-        "AC-084"
-      ]
-    },
-    {
-      "id": "T-064",
-      "titulo": "Mover card: arrastar, menu \"Mover\" e confirmação com motivo ou notas de teste",
-      "modelo": "claude-sonnet-5",
-      "esforco": "high",
-      "arquivos": [
-        "resources/views/tarefas/_mover.blade.php",
-        "resources/views/tarefas/index.blade.php",
-        "app/Http/Controllers/TarefaController.php",
-        "tests/Feature/TarefasDesenvolvimento/MoverTarefaTest.php"
-      ],
-      "refs": [
-        "US-037",
-        "AC-085",
-        "AC-086",
-        "AC-087",
-        "AC-088",
-        "AC-089",
-        "AC-090"
-      ]
-    },
-    {
-      "id": "T-065",
-      "titulo": "Quadro enxuto e histórico inteiro: recorte de 30 dias e listagem sem filtro",
-      "modelo": "claude-sonnet-5",
-      "esforco": "medium",
-      "arquivos": [
-        "resources/views/tarefas/historico.blade.php",
-        "app/Http/Controllers/TarefaController.php",
-        "tests/Feature/TarefasDesenvolvimento/HistoricoTarefasTest.php"
-      ],
-      "refs": [
-        "US-040",
-        "AC-096",
-        "AC-097"
+        "AC-111"
       ]
     }
   ],
-  "concluidas": [],
+  "concluidas": [
+    "T-058",
+    "T-059",
+    "T-060",
+    "T-061",
+    "T-062",
+    "T-063",
+    "T-064",
+    "T-065"
+  ],
   "avisos": []
 }

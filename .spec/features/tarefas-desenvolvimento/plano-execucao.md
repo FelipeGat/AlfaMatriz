@@ -1,11 +1,11 @@
 # Plano de execução — tarefas-desenvolvimento
 
-> gerado por `onp-spec plano` em 2026-08-10 12:58 — NÃO edite à mão;
+> gerado por `onp-spec plano` em 2026-08-10 13:55 — NÃO edite à mão;
 > mudou tasks.md ou a config? Regenere: `onp-spec plano tarefas-desenvolvimento --sequencial`
 
 ## Resumo — o que vai acontecer
 
-- **modo SEQUENCIAL (escolha do usuário)**: 8 tarefa(s) pendente(s), UMA APÓS A OUTRA, na árvore principal
+- **modo SEQUENCIAL (escolha do usuário)**: 3 tarefa(s) pendente(s), UMA APÓS A OUTRA, na árvore principal (8 já concluída(s): T-058, T-059, T-060, T-061, T-062, T-063, T-064, T-065)
 - sem worktrees e sem paralelismo — cada tarefa roda numa janela de contexto limpa, na ordem do tasks.md
 - tudo acontece na branch de trabalho `spec/tarefas-desenvolvimento`; levar para a main é decisão sua
 
@@ -13,14 +13,9 @@
 
 | tarefa | título | modelo | esforço |
 |---|---|---|---|
-| T-058 | Estrutura de dados: tarefa, evento de etapa e relatório de teste | `claude-sonnet-5` | high |
-| T-059 | Motor do fluxo: transições permitidas, exigências e tempo por etapa | `claude-sonnet-5` | high |
-| T-060 | Quadro no ar: permissão `tarefas`, rotas, controller e a tela com as colunas | `claude-sonnet-5` | high |
-| T-061 | Grupo "Desenvolvimento" no menu lateral | `claude-sonnet-5` | medium |
-| T-062 | Card da tarefa: sistema, prioridade, tempo na etapa e destaque de esquecida | `claude-sonnet-5` | medium |
-| T-063 | Criar e editar tarefa: sistema, responsável e prioridade | `claude-sonnet-5` | medium |
-| T-064 | Mover card: arrastar, menu "Mover" e confirmação com motivo ou notas de teste | `claude-sonnet-5` | high |
-| T-065 | Quadro enxuto e histórico inteiro: recorte de 30 dias e listagem sem filtro | `claude-sonnet-5` | medium |
+| T-073 | Menu "Mover" volta a oferecer os destinos permitidos | `claude-sonnet-5` | high |
+| T-074 | Prioridade Crítica, o quarto nível do ciclo | `claude-sonnet-5` | high |
+| T-075 | Devolver do Backlog para Aberta, soltando o responsável | `claude-sonnet-5` | medium |
 
 ## Gestão de branches e commits
 
