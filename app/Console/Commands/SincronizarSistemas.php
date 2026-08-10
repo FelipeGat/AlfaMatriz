@@ -5,6 +5,10 @@ namespace App\Console\Commands;
 use App\Models\Sistema;
 use App\Services\SincronizadorSistemaService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+
+/** Sinaliza o fim do ensaio para desfazer a transação. Não é erro. */
+final class EnsaioConcluido extends \RuntimeException {}
 
 /**
  * Puxa o retrato de cada sistema integrado para a Matriz.
@@ -18,7 +22,8 @@ use Illuminate\Console\Command;
 class SincronizarSistemas extends Command
 {
     protected $signature = 'alfa:sincronizar-sistemas
-                            {--sistema= : slug de um sistema específico (padrão: todos os integráveis)}';
+                            {--sistema= : slug de um sistema específico (padrão: todos os integráveis)}
+                            {--simular : mostra o que faria e desfaz tudo ao final}';
 
     protected $description = 'Puxa revendas, clientes e licenças dos sistemas integrados para a matriz';
 
@@ -37,6 +42,35 @@ class SincronizarSistemas extends Command
             return self::FAILURE;
         }
 
+        if (! $this->option('simular')) {
+            return $this->percorrer($sistemas);
+        }
+
+        // Ensaio: roda igual, relata igual e desfaz tudo. É o portão da virada
+        // de um sistema novo — ler este relatório é o que separa "ancorou o que
+        // já existia" de "duplicou a base inteira".
+        $this->warn('ENSAIO: nada será gravado.');
+
+        $codigo = self::SUCCESS;
+
+        try {
+            DB::transaction(function () use ($sistemas, &$codigo) {
+                $codigo = $this->percorrer($sistemas);
+
+                // A única saída que garante o rollback: sair pelo `return`
+                // confirmaria a transação e gravaria o ensaio.
+                throw new EnsaioConcluido;
+            });
+        } catch (EnsaioConcluido) {
+            $this->warn('ENSAIO concluído: nada foi gravado.');
+        }
+
+        return $codigo;
+    }
+
+    /** @param  \Illuminate\Support\Collection<int, Sistema>  $sistemas */
+    private function percorrer(\Illuminate\Support\Collection $sistemas): int
+    {
         $falhou = false;
 
         foreach ($sistemas as $sistema) {

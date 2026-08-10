@@ -64,8 +64,15 @@ class SincronizadorSistemaService
                 'ativo' => $item['ativo'] ?? true,
             ];
 
+            // Sem âncora, antes de criar: a mesma revenda pode já existir na
+            // Matriz, vinda de outro sistema ou de cadastro manual. Criar de
+            // novo faria um gêmeo e dobraria o faturamento dela.
+            $revenda ??= $this->reconciliarPorDocumento(Revenda::query(), 'cnpj', $dados['cnpj']);
+
             if ($revenda) {
                 $revenda->update($dados);
+                // Reconciliada agora ou já ancorada: ancorar é idempotente.
+                $revenda->ancorarEm($this->sistema, $item['id_externo']);
                 $atualizadas++;
             } else {
                 $revenda = Revenda::create($dados);
@@ -98,8 +105,11 @@ class SincronizadorSistemaService
                 'revenda_id' => $this->revendaPorIdExterno($item['revenda_id_externo'] ?? null)?->id,
             ];
 
+            $cliente ??= $this->reconciliarPorDocumento(Cliente::query(), 'cpf_cnpj', $dados['cpf_cnpj']);
+
             if ($cliente) {
                 $cliente->update($dados);
+                $cliente->ancorarEm($this->sistema, $item['id_externo']);
                 $atualizados++;
             } else {
                 $cliente = Cliente::create($dados);
@@ -225,6 +235,40 @@ class SincronizadorSistemaService
     private function todasPaginas(string $endereco): \Generator
     {
         yield from $this->contrato->paginas($endereco);
+    }
+
+    /**
+     * Casa um registro que já existe na Matriz pelo documento, para a primeira
+     * carga de um sistema novo não duplicar a base.
+     *
+     * A âncora `origens_externas` é por sistema: a revenda que veio do AlfaGym
+     * não é encontrada quando o AlfaControl a envia com outro id externo. O
+     * documento é o único identificador estável entre os dois.
+     *
+     * Três guardas contra casar errado — duplicar é ruim, mas fundir dois
+     * clientes distintos é pior e não tem desfazer:
+     *  - documento precisa ter 11 (CPF) ou 14 (CNPJ) dígitos;
+     *  - o resultado precisa ser único na base;
+     *  - quem já está ancorado em OUTRO id externo deste mesmo sistema fica de
+     *    fora, senão dois registros de lá colidiriam num só aqui.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<covariant \Illuminate\Database\Eloquent\Model>  $query
+     */
+    private function reconciliarPorDocumento($query, string $coluna, ?string $documento): ?object
+    {
+        if ($documento === null || ! in_array(strlen($documento), [11, 14], true)) {
+            return null;
+        }
+
+        $candidatos = $query->where($coluna, $documento)->limit(2)->get();
+
+        if ($candidatos->count() !== 1) {
+            return null;
+        }
+
+        $candidato = $candidatos->first();
+
+        return $candidato->idExternoNoSistema($this->sistema) === null ? $candidato : null;
     }
 
     private function normalizarDocumento(?string $documento): ?string
