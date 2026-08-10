@@ -1,11 +1,36 @@
 <x-app-layout>
-    <x-slot name="titulo">Revendas</x-slot>
-    <x-slot name="contexto">{{ $linhas->count() }} de {{ $cadastradas }} cadastradas</x-slot>
+    <x-slot name="titulo">Revendas e clientes</x-slot>
+
+    {{-- O contexto acompanha a aba: na de clientes, `$linhas` está vazia de
+         propósito, e usá-la dizia "0 de N cadastradas" com a lista cheia. --}}
+    <x-slot name="contexto">
+        @if ($aba === 'clientes')
+            {{ $clientesCadastrados }} clientes cadastrados
+        @else
+            {{ $linhas->count() }} de {{ $cadastradas }} revendas cadastradas
+        @endif
+    </x-slot>
+
+    {{-- A ação segue a aba. Antes o botão era fixo em "+ Nova revenda", e quem
+         abria a aba de clientes não tinha por onde cadastrar um. --}}
     <x-slot name="acoes">
-        <button type="button" x-data @click="$dispatch('open-modal', 'nova-revenda')"
-                class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
-            + Nova revenda
-        </button>
+        @if ($aba === 'clientes')
+            @if (auth()->user()->canPermissao('clientes', 'incluir'))
+                <button type="button" x-data @click="$dispatch('open-modal', 'novo-cliente')"
+                        class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
+                    + Novo cliente
+                </button>
+            @endif
+        @else
+            {{-- Revenda não cadastra revenda: o store já recusa com 403, então
+                 mostrar o botão só entregaria um caminho que termina em erro. --}}
+            @unless (auth()->user()->temEscopoDeRevenda())
+                <button type="button" x-data @click="$dispatch('open-modal', 'nova-revenda')"
+                        class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
+                    + Nova revenda
+                </button>
+            @endunless
+        @endif
     </x-slot>
 
     <div class="space-y-4">
@@ -17,6 +42,37 @@
             <x-aviso tom="critico">{{ session('erro') }}</x-aviso>
         @endif
 
+        {{-- Abas: a gestão de clientes mora aqui, dentro do contexto de revenda. --}}
+        <x-abas>
+            <x-abas.item href="{{ route('revendas.index', array_merge(request()->query(), ['aba' => 'revendas'])) }}"
+                         :ativo="($aba ?? 'revendas') === 'revendas'" icone="building">
+                Revendas
+            </x-abas.item>
+            <x-abas.item href="{{ route('revendas.index', array_merge(request()->query(), ['aba' => 'clientes'])) }}"
+                         :ativo="($aba ?? 'revendas') === 'clientes'" icone="users">
+                Clientes · {{ $clientesCadastrados }}
+            </x-abas.item>
+        </x-abas>
+
+        @if (($aba ?? 'revendas') === 'clientes')
+            <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+                <x-kpi-card rotulo="Clientes cadastrados" :valor="number_format($clientesView['kpis']['cadastrados']['valor'], 0, ',', '.')"
+                            :delta="$clientesView['kpis']['cadastrados']['nota']" acento="accent" icone="users" />
+                <x-kpi-card rotulo="Em contrato" :valor="number_format($clientesView['kpis']['contrato']['valor'], 0, ',', '.')"
+                            :delta="$clientesView['kpis']['contrato']['nota']" acento="brand" icone="repeat" />
+                <x-kpi-card rotulo="Avulsos" :valor="number_format($clientesView['kpis']['avulsos']['valor'], 0, ',', '.')"
+                            :delta="$clientesView['kpis']['avulsos']['nota']" acento="amber" icone="clipboard" />
+                <x-kpi-card rotulo="Ticket médio" :valor="'R$ '.number_format($clientesView['kpis']['ticket']['valor'], 2, ',', '.')"
+                            :delta="$clientesView['kpis']['ticket']['nota']" acento="good" icone="banknotes" />
+            </div>
+
+            @include('clientes._tabela', $clientesView)
+
+            @include('clientes._modal-novo', [
+                'revendas' => $revendasParaCadastro,
+                'sistemas' => $clientesView['sistemas'],
+            ])
+        @else
         <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
             <x-kpi-card rotulo="Revendas ativas" :valor="$kpis['ativas']['valor']" :delta="$kpis['ativas']['nota']"
                         acento="accent" icone="building" />
@@ -57,7 +113,7 @@
             </button>
         </form>
 
-        <x-tabela min="1000px">
+        <x-tabela min="1000px" class="tabela-zebrada">
             <thead>
                 <tr class="bg-head border-b border-line font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
                     <th class="px-4 py-2.5 font-semibold">Revenda</th>
@@ -80,16 +136,10 @@
                             style="border-left: 2px solid rgb(var(--warn)); background: rgb(var(--warn) / 0.05)"
                         @endif>
                         <td class="px-4 py-3">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <span class="h-8 w-8 shrink-0 rounded-ctl bg-brand/15 text-brand-text
-                                             flex items-center justify-center font-display text-[12.5px] font-semibold">
-                                    {{ Str::of($revenda->nome)->substr(0, 2)->upper() }}
-                                </span>
-                                <span class="min-w-0">
-                                    <span class="block text-[13.5px] font-medium text-ink truncate">{{ $revenda->nome }}</span>
-                                    <span class="block font-mono text-[11.5px] text-ink-faint truncate">{{ $revenda->cnpj ?: 'sem CNPJ' }}</span>
-                                </span>
-                            </div>
+                            <span class="block min-w-0">
+                                <span class="block text-[13.5px] font-medium text-ink truncate">{{ $revenda->nome }}</span>
+                                <span class="block font-mono text-[11.5px] text-ink-faint truncate">{{ $revenda->cnpj ?: 'sem CNPJ' }}</span>
+                            </span>
                         </td>
 
                         <td class="px-4 py-3">
@@ -202,6 +252,7 @@
                 @endif
             </x-slot>
         </x-tabela>
+        @endif
     </div>
 
     <x-modal name="nova-revenda" maxWidth="lg">
@@ -220,8 +271,8 @@
                         Provisionar {{ $linha['revenda']->nome }}
                     </h2>
                     <p class="text-[13px] text-ink-dim mb-4">
-                        Cria a revenda e o usuário administrador dela no AlfaGym. Os dados abaixo são do
-                        usuário ADMIN_REVENDA que acessará o painel do gym.
+                        Cria a revenda no AlfaGym e o acesso dela aqui no painel. Os dados abaixo valem
+                        para os dois: com eles a revenda entra na Matriz e cadastra os próprios clientes.
                     </p>
 
                     <div class="space-y-4">

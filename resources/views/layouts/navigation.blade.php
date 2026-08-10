@@ -3,42 +3,62 @@
      * O menu é ESTRUTURA, não superfície: faixa de borda a borda, sem raio,
      * marcada por régua e barra. Por isso ele não usa os tokens de card.
      *
-     * `pattern` aceita lista para que a tela filha mantenha o pai aceso — o
-     * formulário de cliente acende Clientes, o extrato acende Caixa.
+     * `pattern` aceita lista para que a tela filha mantenha o pai aceso — a
+     * tela de cliente acende "Revendas e clientes", o extrato acende Caixa.
+     *
+     * `params` deixa o item apontar para um recorte: a revenda cai direto na
+     * carteira de clientes dela, que é o trabalho dela. Sem isso, ela abria a
+     * aba de revendas com uma linha só — a dela.
      *
      * O estado recolhido vem da classe `rail-fechado` no <html>, posta antes
      * da primeira pintura. Nada aqui depende do Alpine para se posicionar:
      * se dependesse, a marca nasceria num lugar e saltaria para outro.
      */
+    // Precisa vir ANTES do array: o item de revendas usa `$escopo` para
+    // decidir para qual aba apontar.
+    $escopo = Auth::user()?->temEscopoDeRevenda() ?? false;
+
     $grupos = [
         'Painéis' => [
-            ['route' => 'centro-controle', 'pattern' => 'centro-controle', 'label' => 'Centro de Controle', 'icon' => 'bolt', 'matriz' => true],
-            ['route' => 'dashboard', 'pattern' => 'dashboard', 'label' => 'Financeiro', 'icon' => 'trending-up', 'matriz' => true],
-            ['route' => 'comercial', 'pattern' => 'comercial', 'label' => 'Comercial', 'icon' => 'clipboard', 'matriz' => true],
+            ['route' => 'centro-controle', 'recurso' => 'dashboard', 'pattern' => 'centro-controle', 'label' => 'Centro de Controle', 'icon' => 'bolt', 'matriz' => true],
+            ['route' => 'dashboard', 'recurso' => 'dashboard', 'pattern' => 'dashboard', 'label' => 'Financeiro', 'icon' => 'trending-up', 'matriz' => true],
+            ['route' => 'comercial', 'recurso' => 'dashboard', 'pattern' => 'comercial', 'label' => 'Comercial', 'icon' => 'clipboard', 'matriz' => true],
         ],
         'Comercial' => [
-            ['route' => 'leads.index', 'pattern' => 'leads.*', 'label' => 'Funil de Vendas', 'icon' => 'view-grid'],
-            ['route' => 'revendas.index', 'pattern' => 'revendas.*', 'label' => 'Revendas', 'icon' => 'building'],
-            ['route' => 'clientes.index', 'pattern' => 'clientes.*', 'label' => 'Clientes', 'icon' => 'users'],
-            ['route' => 'produtos.index', 'pattern' => ['produtos.*', 'sistemas.*', 'precos.*'], 'label' => 'Produtos', 'icon' => 'cube-outline', 'matriz' => true],
-            ['route' => 'faturamento.index', 'pattern' => 'faturamento.*', 'label' => 'Faturamento', 'icon' => 'repeat'],
+            ['route' => 'leads.index', 'recurso' => 'leads', 'pattern' => 'leads.*', 'label' => 'Funil de Vendas', 'icon' => 'view-grid'],
+            ['route' => 'revendas.index', 'recurso' => 'revendas', 'pattern' => ['revendas.*', 'clientes.*'], 'label' => 'Revendas e clientes', 'icon' => 'building', 'params' => $escopo ? ['aba' => 'clientes'] : []],
+            ['route' => 'produtos.index', 'recurso' => 'sistemas', 'pattern' => ['produtos.*', 'sistemas.*', 'precos.*'], 'label' => 'Produtos', 'icon' => 'cube-outline', 'matriz' => true],
+            ['route' => 'faturamento.index', 'recurso' => 'faturamento', 'pattern' => 'faturamento.*', 'label' => 'Faturamento', 'icon' => 'repeat'],
         ],
         'Financeiro' => [
-            ['route' => 'cobrancas.index', 'pattern' => 'cobrancas.*', 'label' => 'Receitas', 'icon' => 'trending-up'],
-            ['route' => 'contas-pagar.index', 'pattern' => ['contas-pagar.*', 'contas-fixas-pagar.*'], 'label' => 'Despesas', 'icon' => 'trending-down', 'matriz' => true],
-            ['route' => 'contas-financeiras.index', 'pattern' => 'contas-financeiras.*', 'label' => 'Caixa', 'icon' => 'banknotes', 'matriz' => true],
+            ['route' => 'cobrancas.index', 'recurso' => 'cobrancas', 'pattern' => 'cobrancas.*', 'label' => 'Receitas', 'icon' => 'trending-up'],
+            ['route' => 'contas-pagar.index', 'recurso' => 'contas_pagar', 'pattern' => ['contas-pagar.*', 'contas-fixas-pagar.*'], 'label' => 'Despesas', 'icon' => 'trending-down', 'matriz' => true],
+            ['route' => 'contas-financeiras.index', 'recurso' => 'financeiro', 'pattern' => 'contas-financeiras.*', 'label' => 'Caixa', 'icon' => 'banknotes', 'matriz' => true],
+        ],
+        'Desenvolvimento' => [
+            ['route' => 'tarefas.index', 'recurso' => 'tarefas', 'pattern' => 'tarefas.*', 'label' => 'Tarefas', 'icon' => 'view-grid', 'matriz' => true],
         ],
         'Sistema' => [
-            ['route' => 'cadastros-auxiliares.index', 'pattern' => ['cadastros-auxiliares.*', 'centros-custo.*', 'fornecedores.*', 'categorias.*', 'subcategorias.*', 'contas.*'], 'label' => 'Cadastros', 'icon' => 'tag', 'matriz' => true],
+            ['route' => 'cadastros-auxiliares.index', 'recurso' => 'financeiro', 'pattern' => ['cadastros-auxiliares.*', 'centros-custo.*', 'fornecedores.*', 'categorias.*', 'subcategorias.*', 'contas.*'], 'label' => 'Cadastros', 'icon' => 'tag', 'matriz' => true],
         ],
     ];
 
-    // Usuário de revenda não vê os itens de gestão da matriz no menu: eles
-    // dariam 403. O que sobra é o próprio portfólio (leads, revenda, clientes,
-    // faturamento, receitas).
-    $escopo = Auth::user()?->temEscopoDeRevenda() ?? false;
+    // O menu só oferece porta que abre. Dois filtros, por motivos diferentes:
+    //
+    // `matriz` tira do usuário de revenda o que é gestão da Alfa, mesmo que ele
+    // tenha permissão de sobra (revenda com perfil administrativo existe).
+    //
+    // `recurso` tira o que a permissão dele não alcança — sem isso, o perfil
+    // `revenda`, que só enxerga revendas e clientes, via Funil de Vendas,
+    // Faturamento e Receitas no menu e tomava 403 nos três. Item que leva a
+    // 403 é pior que item ausente: quem clica conclui que o sistema quebrou.
+    $usuario = Auth::user();
     $grupos = collect($grupos)
-        ->map(fn ($links) => collect($links)->filter(fn ($link) => ! $escopo || empty($link['matriz']))->values()->all())
+        ->map(fn ($links) => collect($links)
+            ->filter(fn ($link) => ! $escopo || empty($link['matriz']))
+            ->filter(fn ($link) => empty($link['recurso'])
+                || $usuario?->canPermissao($link['recurso'], 'ler'))
+            ->values()->all())
         ->filter(fn ($links) => ! empty($links))
         ->all();
 @endphp
@@ -91,7 +111,7 @@
 
             @foreach ($links as $link)
                 @php $ativo = request()->routeIs(...(array) $link['pattern']); @endphp
-                <a href="{{ route($link['route']) }}"
+                <a href="{{ route($link['route'], $link['params'] ?? []) }}"
                    @class([
                        // Peso 500 no item inteiro: o menu é lido de relance e
                        // 400 some contra o fundo escuro. O item ativo não

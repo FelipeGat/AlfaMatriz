@@ -3,14 +3,31 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\Cobranca;
 use App\Models\Revenda;
 use App\Models\Sistema;
+use App\Services\GerenciadorLicencaAlfaGymService;
+use App\Services\ProvisionadorClienteAlfaGymService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ClienteController extends Controller
 {
     public function index(Request $request)
+    {
+        return view('clientes.index', $this->dadosDaLista($request));
+    }
+
+    /**
+     * Dados da listagem de clientes — reutilizados pela tela de Clientes e
+     * pela aba "Clientes" da tela de Revendas.
+     *
+     * @return array<string, mixed>
+     */
+    public function dadosDaLista(Request $request): array
     {
         $busca = trim((string) $request->query('busca', ''));
         $filtroRevenda = $request->query('revenda');
@@ -25,9 +42,7 @@ class ClienteController extends Controller
                 ->orWhere('nome_fantasia', 'like', "%{$busca}%")
                 ->orWhere('cpf_cnpj', 'like', "%{$busca}%")
                 ->orWhere('cidade', 'like', "%{$busca}%")))
-            ->when(! $temEscopo && $filtroRevenda, fn ($q) => $filtroRevenda === 'direta'
-                ? $q->whereNull('revenda_id')
-                : $q->where('revenda_id', $filtroRevenda))
+            ->when(! $temEscopo && $filtroRevenda, fn ($q) => $q->where('revenda_id', $filtroRevenda))
             ->when($request->query('sistema'), fn ($q, $sistema) => $q->whereHas('sistemas',
                 fn ($s) => $s->where('sistemas.id', $sistema)->where('cliente_sistema.ativo', true)))
             ->when($request->query('status') === 'ativo', fn ($q) => $q->where('ativo', true))
@@ -40,10 +55,17 @@ class ClienteController extends Controller
         // no cliente: sai das cobranças pendentes dele.
         $pagamentos = $this->pagamentos($clientes->getCollection());
 
-        return view('clientes.index', [
+        return [
             'clientes' => $clientes,
             'pagamentos' => $pagamentos,
             'revendas' => Revenda::when($temEscopo, fn ($q) => $q->where('id', auth()->user()->revenda_id))->orderBy('nome')->get(),
+            // O filtro lista TODAS as revendas (inclusive inativas, para achar
+            // cliente antigo); o cadastro só pode oferecer as ativas. São
+            // perguntas diferentes, então são duas listas.
+            'revendasParaCadastro' => Revenda::where('ativo', true)
+                ->when($temEscopo, fn ($q) => $q->where('id', auth()->user()->revenda_id))
+                ->orderBy('nome')
+                ->get(),
             'sistemas' => Sistema::where('ativo', true)->orderBy('nome')->get(),
             'filtros' => [
                 'busca' => $busca,
@@ -53,7 +75,7 @@ class ClienteController extends Controller
             ],
             'kpis' => $this->kpis(),
             'totais' => $this->totais($clientes->getCollection(), $pagamentos),
-        ]);
+        ];
     }
 
     /**
@@ -62,10 +84,10 @@ class ClienteController extends Controller
      * Uma consulta só para todos os clientes à vista — perguntar cliente a
      * cliente transformaria a lista em dezenas de consultas.
      *
-     * @param  \Illuminate\Support\Collection<int, Cliente>  $clientes
+     * @param  Collection<int, Cliente>  $clientes
      * @return array<int, array{estado: string, dias: int}>
      */
-    private function pagamentos(\Illuminate\Support\Collection $clientes): array
+    private function pagamentos(Collection $clientes): array
     {
         $ids = $clientes->pluck('id');
 
@@ -73,12 +95,12 @@ class ClienteController extends Controller
             return [];
         }
 
-        $pendentes = \App\Models\Cobranca::whereIn('cliente_id', $ids)
+        $pendentes = Cobranca::whereIn('cliente_id', $ids)
             ->where('status', 'pendente')
             ->get(['cliente_id', 'data_vencimento'])
             ->groupBy('cliente_id');
 
-        $comCobranca = \App\Models\Cobranca::whereIn('cliente_id', $ids)
+        $comCobranca = Cobranca::whereIn('cliente_id', $ids)
             ->pluck('cliente_id')
             ->unique();
 
@@ -90,7 +112,7 @@ class ClienteController extends Controller
             }
 
             $vencidas = ($pendentes[$cliente->id] ?? collect())
-                ->filter(fn ($c) => \Illuminate\Support\Carbon::parse($c->data_vencimento)->lt($hoje));
+                ->filter(fn ($c) => Carbon::parse($c->data_vencimento)->lt($hoje));
 
             if ($vencidas->isEmpty()) {
                 return [$cliente->id => ['estado' => 'em_dia', 'dias' => 0]];
@@ -99,7 +121,7 @@ class ClienteController extends Controller
             // `diffInDays` do Carbon 3 vem com sinal: data no passado devolve
             // negativo. Aqui a pergunta é "há quantos dias venceu", então o
             // que interessa é a distância, não a direção.
-            $dias = (int) abs($hoje->diffInDays(\Illuminate\Support\Carbon::parse($vencidas->min('data_vencimento'))));
+            $dias = (int) abs($hoje->diffInDays(Carbon::parse($vencidas->min('data_vencimento'))));
 
             return [$cliente->id => ['estado' => 'atrasado', 'dias' => $dias]];
         })->all();
@@ -140,10 +162,10 @@ class ClienteController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Cliente>  $pagina
+     * @param  Collection<int, Cliente>  $pagina
      * @param  array<int, array{estado: string, dias: int}>  $pagamentos
      */
-    private function totais(\Illuminate\Support\Collection $pagina, array $pagamentos): array
+    private function totais(Collection $pagina, array $pagamentos): array
     {
         return [
             'contratos' => $pagina->where('tipo_cliente', 'CONTRATO')->count(),
@@ -153,30 +175,70 @@ class ClienteController extends Controller
         ];
     }
 
-    public function create()
-    {
-        abort_if(auth()->user()->temEscopoDeRevenda(), 403, 'Os clientes da sua revenda são provisionados pela matriz.');
-
-        $revendas = Revenda::where('ativo', true)->orderBy('nome')->get();
-        $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
-
-        return view('clientes.create', compact('revendas', 'sistemas'));
-    }
-
     public function store(Request $request)
     {
-        abort_if(auth()->user()->temEscopoDeRevenda(), 403, 'Os clientes da sua revenda são provisionados pela matriz.');
-
         $data = $this->validated($request);
         $data = $this->prepararDados($request, $data);
 
-        $cliente = Cliente::create($data);
+        // A revenda do cliente vem do escopo de quem cadastra, nunca do
+        // formulário: senão bastaria trocar o campo para pôr um cliente na
+        // carteira de outra revenda.
+        if (auth()->user()->temEscopoDeRevenda()) {
+            $data['revenda_id'] = auth()->user()->revenda_id;
+            // Valor e vencimento são o comercial da Alfa, definidos quando a
+            // licença é liberada — a revenda não os informa.
+            $data['tipo_cliente'] = 'AVULSO';
+            $data['valor_mensal'] = null;
+            $data['dia_vencimento'] = null;
+        }
 
-        $this->sincronizarSistemas($cliente, $request->input('sistemas', []));
-        $this->sincronizarEmails($cliente, $request->input('emails', []));
-        $this->sincronizarTelefones($cliente, $request->input('telefones', []));
+        $sistemas = $request->input('sistemas', []);
+
+        try {
+            // Gravar aqui e criar no AlfaGym andam juntos: se o gym recusa, o
+            // cliente não pode sobrar na Matriz existindo só de um lado.
+            $cliente = DB::transaction(function () use ($request, $data, $sistemas) {
+                $cliente = Cliente::create($data);
+
+                $this->sincronizarSistemas($cliente, $sistemas);
+                $this->sincronizarEmails($cliente, $request->input('emails', []));
+                $this->sincronizarTelefones($cliente, $request->input('telefones', []));
+
+                $this->provisionarNoAlfaGym($cliente, $request, $sistemas);
+
+                return $cliente;
+            });
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['alfagym' => $e->getMessage()])->withInput();
+        }
 
         return redirect()->route('clientes.index')->with('status', 'Cliente cadastrado com sucesso.');
+    }
+
+    /**
+     * Cria o cliente no AlfaGym quando o sistema foi marcado no cadastro.
+     *
+     * O cliente nasce lá aguardando licença — quem libera é o administrador da
+     * Alfa. Sem o AlfaGym marcado, não há nada a provisionar: o cadastro fica
+     * só comercial, na Matriz.
+     *
+     * @param  array<int|string>  $sistemas
+     */
+    private function provisionarNoAlfaGym(Cliente $cliente, Request $request, array $sistemas): void
+    {
+        $alfaGym = Sistema::where('slug', 'alfagym')->first();
+
+        if (! $alfaGym || ! in_array((string) $alfaGym->id, array_map('strval', $sistemas), true)) {
+            return;
+        }
+
+        $admin = $request->validate([
+            'nome_admin' => 'required|string|max:100',
+            'email_admin' => 'required|email|max:255',
+            'senha_admin' => 'required|string|min:8',
+        ]);
+
+        (new ProvisionadorClienteAlfaGymService($alfaGym))->provisionar($cliente->fresh(), $admin);
     }
 
     public function edit(Cliente $cliente)
@@ -225,6 +287,107 @@ class ClienteController extends Controller
     }
 
     /**
+     * Libera a licença do cliente no AlfaGym (o admin da Matriz atende o
+     * pedido da revenda). Só clientes pendentes de licença podem liberar;
+     * o cliente permanece vinculado à revenda (nunca vira avulso).
+     */
+    public function liberarLicenca(Request $request, Cliente $cliente)
+    {
+        $this->exigirDecisaoDaAlfa();
+        $this->autorizarAcesso($cliente);
+
+        $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
+
+        $vinculo = $cliente->sistemas()->where('sistemas.id', $sistema->id)->first();
+
+        abort_if(! $vinculo || ($vinculo->pivot->status_saas ?? '') !== 'pendente', 422, 'A licença desse cliente não está pendente.');
+
+        $dados = $this->validarOperacaoLicenca($request);
+
+        try {
+            (new GerenciadorLicencaAlfaGymService($sistema))->liberar($cliente, $dados);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['licenca' => $e->getMessage()])->withInput();
+        }
+
+        return back()->with('status', 'Licença liberada com sucesso.');
+    }
+
+    /**
+     * Renova a licença do cliente no AlfaGym com um novo período mensal/anual.
+     * Vale para qualquer cliente com licença ativa (incluindo vencida/bloqueada
+     * — quem renova retoma o acesso no novo período).
+     */
+    public function renovarLicenca(Request $request, Cliente $cliente)
+    {
+        $this->exigirDecisaoDaAlfa();
+        $this->autorizarAcesso($cliente);
+
+        $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
+        $dados = $this->validarOperacaoLicenca($request);
+
+        try {
+            (new GerenciadorLicencaAlfaGymService($sistema))->renovar($cliente, $dados);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['licenca' => $e->getMessage()])->withInput();
+        }
+
+        return back()->with('status', 'Licença renovada com sucesso.');
+    }
+
+    /**
+     * Bloqueia o acesso do cliente no AlfaGym.
+     */
+    public function bloquearLicenca(Cliente $cliente)
+    {
+        $this->exigirDecisaoDaAlfa();
+        $this->autorizarAcesso($cliente);
+
+        $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
+
+        try {
+            (new GerenciadorLicencaAlfaGymService($sistema))->bloquear($cliente);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['licenca' => $e->getMessage()])->withInput();
+        }
+
+        return back()->with('status', 'Acesso bloqueado.');
+    }
+
+    /**
+     * Desbloqueia o acesso do cliente no AlfaGym.
+     */
+    public function desbloquearLicenca(Cliente $cliente)
+    {
+        $this->exigirDecisaoDaAlfa();
+        $this->autorizarAcesso($cliente);
+
+        $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
+
+        try {
+            (new GerenciadorLicencaAlfaGymService($sistema))->desbloquear($cliente);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['licenca' => $e->getMessage()])->withInput();
+        }
+
+        return back()->with('status', 'Acesso desbloqueado.');
+    }
+
+    /**
+     * Campos comuns de uma operação sobre a licença (tipo, valor, observação).
+     *
+     * @return array{tipo: string, valor: float|null, obs: string|null}
+     */
+    private function validarOperacaoLicenca(Request $request): array
+    {
+        return $request->validate([
+            'tipo' => 'required|in:mensal,anual',
+            'valor' => 'nullable|numeric|min:0',
+            'obs' => 'nullable|string|max:500',
+        ]);
+    }
+
+    /**
      * Usuário de revenda só acessa os próprios clientes (e ainda assim com o
      * revenda_id do registro conferindo com o do usuário, nunca o do formulário).
      */
@@ -235,6 +398,22 @@ class ClienteController extends Controller
         if ($user->temEscopoDeRevenda() && $cliente->revenda_id !== $user->revenda_id) {
             abort(403, 'Você só pode acessar os clientes da sua revenda.');
         }
+    }
+
+    /**
+     * Licença é decisão da Alfa: a revenda cadastra o cliente e pede, quem
+     * libera, renova, suspende e reativa é o administrador da matriz.
+     *
+     * A tela já esconde as ações de quem tem escopo de revenda — mas esconder
+     * botão não é autorização: sem esta recusa, um POST direto passaria.
+     */
+    private function exigirDecisaoDaAlfa(): void
+    {
+        abort_if(
+            auth()->user()->temEscopoDeRevenda(),
+            403,
+            'A licença do cliente é liberada pela Alfa. Sua revenda acompanha o pedido pela lista de clientes.'
+        );
     }
 
     /**
@@ -347,7 +526,7 @@ class ClienteController extends Controller
     private function validated(Request $request, ?int $ignoreId = null): array
     {
         return $request->validate([
-            'revenda_id' => 'nullable|exists:revendas,id',
+            'revenda_id' => 'required|exists:revendas,id',
             'tipo_pessoa' => 'required|in:PF,PJ',
             'nome' => 'required_if:tipo_pessoa,PF|nullable|string|max:255',
             'razao_social' => 'required_if:tipo_pessoa,PJ|nullable|string|max:255',

@@ -65,14 +65,22 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
                 <x-input-label for="revenda_id" value="Revenda" />
-                <select id="revenda_id" name="revenda_id" class="mt-1 block w-full border-white/10 rounded-md shadow-sm">
-                    <option value="">— Venda direta da Alfa —</option>
+                @if (auth()->user()->temEscopoDeRevenda())
+                    {{-- Uma revenda só cadastra para si: nada a escolher. O
+                         controller ignora este campo e usa o escopo do usuário. --}}
+                    <div class="mt-1 h-[38px] px-3 flex items-center rounded-md border border-line bg-subtle text-[13px] text-ink-dim">
+                        {{ auth()->user()->revenda?->nome }}
+                    </div>
+                @else
+                <select id="revenda_id" name="revenda_id" class="mt-1 block w-full border-white/10 rounded-md shadow-sm" required>
+                    <option value="" disabled {{ old('revenda_id', $cliente->revenda_id ?? '') === '' ? 'selected' : '' }}>Selecione a revenda</option>
                     @foreach ($revendas as $revenda)
                         <option value="{{ $revenda->id }}" {{ (string) old('revenda_id', $cliente->revenda_id ?? '') === (string) $revenda->id ? 'selected' : '' }}>
                             {{ $revenda->nome }}
                         </option>
                     @endforeach
                 </select>
+                @endif
             </div>
 
             <div>
@@ -214,7 +222,9 @@
         </div>
     </div>
 
-    {{-- Informações de contrato --}}
+    {{-- Informações de contrato: o comercial é da Alfa, definido na liberação
+         da licença. Para a revenda o cliente nasce avulso. --}}
+    @unless (auth()->user()->temEscopoDeRevenda())
     <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
         <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Informações de contrato</h3>
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -258,6 +268,7 @@
             </div>
         </div>
     </div>
+    @endunless
 
     {{-- Inscrições --}}
     <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
@@ -290,6 +301,49 @@
             @endforeach
         </div>
     </div>
+
+    {{-- Administrador da academia: o AlfaGym exige um usuário para o cliente
+         poder entrar lá. Só no cadastro — reeditar não recria a conta dele. --}}
+    @if (($modo ?? 'criar') === 'criar')
+        @php $alfaGym = $sistemas->firstWhere('slug', 'alfagym'); @endphp
+        @if ($alfaGym)
+            <div class="rounded-panel border border-line bg-subtle p-4 mb-4"
+                 x-data="{ marcado: {{ in_array($alfaGym->id, $sistemasAtivosIds) ? 'true' : 'false' }} }"
+                 x-init="$el.closest('form').addEventListener('change', e => {
+                     if (e.target.name === 'sistemas[]' && e.target.value === '{{ $alfaGym->id }}') marcado = e.target.checked
+                 })"
+                 x-show="marcado" x-cloak>
+                <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-1">
+                    Administrador da academia ({{ $alfaGym->nome }})
+                </h3>
+                <p class="text-[12.5px] text-ink-faint mb-3">
+                    Com estes dados o cliente entra no {{ $alfaGym->nome }}. Ele nasce aguardando
+                    a liberação da licença pela Alfa.
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <x-input-label for="nome_admin" value="Nome" />
+                        <x-text-input id="nome_admin" name="nome_admin" type="text" class="mt-1 block w-full"
+                                      value="{{ old('nome_admin') }}" autocomplete="off" />
+                        <x-input-error :messages="$errors->get('nome_admin')" class="mt-2" />
+                    </div>
+                    <div>
+                        <x-input-label for="email_admin" value="E-mail" />
+                        <x-text-input id="email_admin" name="email_admin" type="email" class="mt-1 block w-full"
+                                      value="{{ old('email_admin') }}" autocomplete="off" />
+                        <x-input-error :messages="$errors->get('email_admin')" class="mt-2" />
+                    </div>
+                    <div>
+                        <x-input-label for="senha_admin" value="Senha" />
+                        <x-text-input id="senha_admin" name="senha_admin" type="password" class="mt-1 block w-full"
+                                      minlength="8" autocomplete="new-password" />
+                        <x-input-error :messages="$errors->get('senha_admin')" class="mt-2" />
+                    </div>
+                </div>
+                <x-input-error :messages="$errors->get('alfagym')" class="mt-3" />
+            </div>
+        @endif
+    @endif
 
     {{-- Observações --}}
     <div class="rounded-panel border border-line bg-subtle p-4 mb-4">

@@ -20,7 +20,8 @@ A Matriz é o painel único (o painel do AlfaGym só é mantido nesta fase de
 implementação). Ela sincroniza revendas, clientes e licenças do AlfaGym. Esta
 feature muda a Matriz para refletir o modelo "só revenda vende": revenda
 obrigatória no cadastro de cliente, clientes dentro da tela de revendas, e a
-liberação da licença feita pelo admin da Matriz — sem contar como avulso.
+gestão da licença feita pelo admin da Matriz (liberar a pendente, renovar,
+bloquear/desbloquear) — sem contar como avulso.
 
 ## Histórias
 
@@ -114,8 +115,6 @@ cliente ative o sistema no AlfaGym — sem que isso conte como venda avulsa.
 
 - Cadastro/edição de revenda pelo gym (continua como está, nesta fase os dois
   painéis operam).
-- Bloquear/desbloquear/renovar licença pela tela da Matriz (o contrato já
-  expõe, mas a tela só libera por ora).
 - Migração de clientes diretos existentes: no AlfaGym todo cliente pertence a
   uma revenda, então não existe cliente sem revenda a vincular.
 
@@ -124,7 +123,7 @@ cliente ative o sistema no AlfaGym — sem que isso conte como venda avulsa.
 | ID | Suposição | Status | Resolução |
 |---|---|---|---|
 | ASM-027 | O item "Clientes" do menu lateral some: o acesso aos clientes passa a ser pela tela de Revendas (aba "Clientes"), mantendo a rota `clientes.index` como implementação da aba | confirmada | Resposta do usuário: "Some do menu" |
-| ASM-028 | O status do cliente vindo do AlfaGym (pendente/ativo/bloqueado) passa a ser gravado na Matriz para a tela saber quem está aguardando liberação (coluna nova no vínculo `cliente_sistema`) | aberta | — |
+| ASM-028 | O status do cliente vindo do AlfaGym (pendente/ativo/suspenso) passa a ser gravado na Matriz para a tela saber quem está aguardando liberação (coluna nova no vínculo `cliente_sistema`) | confirmada | Solução implementada: coluna `status_saas` no vínculo, preenchida pelo sync e pelas operações de licença (liberar/renovar/suspender/reativar) |
 | ASM-029 | A liberação pelo admin usa os mesmos campos do contrato: tipo (`mensal`/`anual`), valor e observação; plano fica opcional (o gym mantém o atual da subscription quando ausente) | confirmada | Resposta do usuário: observação livre |
 
 ## Perguntas em aberto

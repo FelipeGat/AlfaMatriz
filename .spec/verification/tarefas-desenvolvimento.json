@@ -1,0 +1,97 @@
+{
+  "feature": "tarefas-desenvolvimento",
+  "timestamp": "2026-08-10T15:51:53.485Z",
+  "gitRev": "aed59fc",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 244,
+  "results": {
+    "AC-081": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\MenuDesenvolvimentoTest::test_usuario_da_matriz_ve_o_grupo_desenvolvimento_levando_ao_quadro @spec:AC-081",
+      "method": "tap"
+    },
+    "AC-082": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_quadro_mostra_etapas_na_ordem_com_contagem @spec:AC-082",
+      "method": "tap"
+    },
+    "AC-083": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\EstruturaTarefaTest::test_tarefa_sem_responsavel_nasce_aberta @spec:AC-083",
+      "method": "tap"
+    },
+    "AC-084": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_card_mostra_o_sistema_da_tarefa @spec:AC-084",
+      "method": "tap"
+    },
+    "AC-085": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_movimento_fora_do_fluxo_e_recusado @spec:AC-085",
+      "method": "tap"
+    },
+    "AC-086": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_direcionar_para_backlog_exige_responsavel @spec:AC-086",
+      "method": "tap"
+    },
+    "AC-087": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_devolver_para_ajustes_exige_motivo @spec:AC-087",
+      "method": "tap"
+    },
+    "AC-088": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_cancelar_exige_motivo @spec:AC-088",
+      "method": "tap"
+    },
+    "AC-089": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_concluir_exige_relatorio_de_teste_aprovado @spec:AC-089",
+      "method": "tap"
+    },
+    "AC-090": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_tarefa_concluida_pode_ser_reaberta_e_cancelada_nao_tem_saida @spec:AC-090",
+      "method": "tap"
+    },
+    "AC-091": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\EstruturaTarefaTest::test_evento_de_etapa_registra_entrada_saida_e_duracao @spec:AC-091",
+      "method": "tap"
+    },
+    "AC-092": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_card_mostra_agora_para_tarefa_recem_criada @spec:AC-092",
+      "method": "tap"
+    },
+    "AC-093": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_tarefa_parada_mais_de_24h_em_aberta_ganha_destaque_de_atencao @spec:AC-093",
+      "method": "tap"
+    },
+    "AC-094": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\MenuDesenvolvimentoTest::test_usuario_de_revenda_nao_ve_o_grupo_desenvolvimento @spec:AC-094",
+      "method": "tap"
+    },
+    "AC-095": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AcessoTarefasTest::test_usuario_de_revenda_toma_403_nas_rotas_de_tarefas @spec:AC-095",
+      "method": "tap"
+    },
+    "AC-096": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_concluidas_e_canceladas_antigas_saem_do_quadro @spec:AC-096",
+      "method": "tap"
+    },
+    "AC-097": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_historico_lista_tarefa_antiga_sem_recorte_de_periodo @spec:AC-097",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

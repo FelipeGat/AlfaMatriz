@@ -57,7 +57,9 @@ class SistemaController extends Controller
 
         $mrr = 0.0;
         foreach ($porRevenda as $revendaId => $doRevenda) {
-            $tier = $sistema->tierParaVolume($doRevenda->count(), $revendaId);
+            // Mesma normalização do CentroControleController: venda direta chega
+            // como chave vazia e precisa virar null antes do tier.
+            $tier = $sistema->tierParaVolume($doRevenda->count(), $sistema->chaveDeRevenda($revendaId));
             $mrr += $tier?->calcularMensalidade($doRevenda->count()) ?? 0;
         }
 

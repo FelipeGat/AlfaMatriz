@@ -1,0 +1,42 @@
+{
+  "feature": "sync-contato-do-cliente",
+  "timestamp": "2026-08-10T15:51:28.378Z",
+  "gitRev": "aed59fc",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 244,
+  "results": {
+    "AC-109": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\SyncContatoDoCliente\\ContatoDoClienteTest::test_contato_do_gym_chega_na_ficha_do_cliente @spec:AC-109",
+      "method": "tap"
+    },
+    "AC-110": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\SyncContatoDoCliente\\ContatoDoClienteTest::test_sincronizar_de_novo_nao_duplica @spec:AC-110",
+      "method": "tap"
+    },
+    "AC-111": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\SyncContatoDoCliente\\ContatoDoClienteTest::test_contato_cadastrado_na_matriz_sobrevive @spec:AC-111",
+      "method": "tap"
+    },
+    "AC-112": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\SyncContatoDoCliente\\ContatoDoClienteTest::test_cliente_sem_contato_nao_ganha_registro_em_branco @spec:AC-112",
+      "method": "tap"
+    },
+    "AC-114": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\SyncContatoDoCliente\\ContatoDoClienteTest::test_telefone_trocado_no_gym_entra_sem_apagar_o_antigo @spec:AC-114",
+      "method": "tap"
+    },
+    "AC-113": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\SyncContatoDoCliente\\ContatoDoClienteTest::test_sincronizacao_recupera_o_contato_de_quem_ja_migrou @spec:AC-113",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

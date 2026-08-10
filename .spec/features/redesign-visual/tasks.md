@@ -131,7 +131,7 @@ reinvente:**
 
 ## T-038 — Clientes: lista e formulário [concluida]
 - Refs: US-021, AC-048
-- Arquivos: resources/views/clientes/index.blade.php, resources/views/clientes/_form.blade.php, resources/views/clientes/create.blade.php, resources/views/clientes/edit.blade.php, app/Http/Controllers/ClienteController.php, tests/Feature/Redesign/ClientesTest.php
+- Arquivos: resources/views/clientes/index.blade.php, resources/views/clientes/_form.blade.php, resources/views/clientes/_modal-novo.blade.php, resources/views/clientes/edit.blade.php, app/Http/Controllers/ClienteController.php, tests/Feature/Redesign/ClientesTest.php
 - Esforço: alto
 - Notas: Depende de T-033. Lista com badge de pagamento (Em dia / Atrasado /
   Sem cobrança), venda direta em cor de marca, inativos esmaecidos.

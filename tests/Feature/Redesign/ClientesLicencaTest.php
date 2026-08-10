@@ -76,18 +76,18 @@ class ClientesLicencaTest extends TestCase
             ->assertSee('vencida');
     }
 
-    public function test_licenca_bloqueada_aparece_como_critica(): void
+    public function test_licenca_suspensa_aparece_como_critica(): void
     {
         $this->clienteComLicenca([
             'licenca_status' => 'ativa', 'plano' => 'Growth',
             'licenca_fim_em' => now()->addDays(30)->toDateString(),
-            'bloqueia_acesso' => true,
+            'status_saas' => 'bloqueado',
         ]);
 
         $this->actingAs($this->operador())
             ->get(route('clientes.index'))
             ->assertOk()
-            ->assertSee('bloqueada');
+            ->assertSee('suspensa');
     }
 
     public function test_cliente_sem_licenca_nao_quebra_a_tela(): void

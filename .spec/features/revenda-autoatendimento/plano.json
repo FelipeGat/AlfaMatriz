@@ -1,0 +1,149 @@
+{
+  "runId": "AlfaMatriz-revenda-autoatendimento-msnahmbg",
+  "feature": "revenda-autoatendimento",
+  "agent": "claude",
+  "modo": "paralelo",
+  "paralelizar": [
+    "T-068",
+    "T-069",
+    "T-070",
+    "T-071",
+    "T-072"
+  ],
+  "modeloForcado": null,
+  "esforcoForcado": null,
+  "geradoEm": "2026-08-10 13:50",
+  "branchTrabalho": "spec/revenda-autoatendimento",
+  "baseDir": ".spec/features/revenda-autoatendimento",
+  "specDir": ".spec",
+  "repoName": "AlfaMatriz",
+  "logsDir": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-logs",
+  "ondas": [
+    [
+      "faixa-1",
+      "faixa-2",
+      "faixa-3"
+    ],
+    [
+      "faixa-4",
+      "faixa-5"
+    ]
+  ],
+  "faixas": [
+    {
+      "id": "faixa-1",
+      "branch": "spec/revenda-autoatendimento-faixa-1",
+      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-1",
+      "tarefas": [
+        {
+          "id": "T-068",
+          "titulo": "A revenda cadastra o próprio cliente",
+          "modelo": "claude-sonnet-5",
+          "esforco": "high",
+          "arquivos": [
+            "app/Http/Controllers/ClienteController.php",
+            "resources/views/clientes/_form.blade.php",
+            "tests/Feature/RevendaAutoatendimento/CadastroPelaRevendaTest.php"
+          ],
+          "refs": [
+            "US-041",
+            "US-043",
+            "AC-098",
+            "AC-101",
+            "AC-104"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-2",
+      "branch": "spec/revenda-autoatendimento-faixa-2",
+      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-2",
+      "tarefas": [
+        {
+          "id": "T-069",
+          "titulo": "Licença é assunto da Alfa, não da revenda",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "resources/views/clientes/_tabela.blade.php",
+            "tests/Feature/RevendaAutoatendimento/LicencaSoDoAdminTest.php"
+          ],
+          "refs": [
+            "US-042",
+            "AC-102",
+            "AC-103"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-3",
+      "branch": "spec/revenda-autoatendimento-faixa-3",
+      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-3",
+      "tarefas": [
+        {
+          "id": "T-070",
+          "titulo": "Acesso das revendas migradas",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "app/Console/Commands/CriarAcessosDeRevendas.php",
+            "tests/Feature/RevendaAutoatendimento/AcessosDeRevendasMigradasTest.php"
+          ],
+          "refs": [
+            "US-045",
+            "AC-107"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-4",
+      "branch": "spec/revenda-autoatendimento-faixa-4",
+      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-4",
+      "tarefas": [
+        {
+          "id": "T-071",
+          "titulo": "Relatório de conferência da migração",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "app/Console/Commands/ConferirMigracaoAlfaGym.php",
+            "tests/Feature/RevendaAutoatendimento/ConferenciaDaMigracaoTest.php"
+          ],
+          "refs": [
+            "US-045",
+            "AC-108"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-5",
+      "branch": "spec/revenda-autoatendimento-faixa-5",
+      "worktree": "../onp-worktrees/AlfaMatriz-revenda-autoatendimento-faixa-5",
+      "tarefas": [
+        {
+          "id": "T-072",
+          "titulo": "Fechar as pendências que o audit já aponta neste código",
+          "modelo": "claude-sonnet-5",
+          "esforco": "low",
+          "arquivos": [
+            ".spec/features/clientes-via-revenda/tasks.md"
+          ],
+          "refs": [
+            "US-041",
+            "AC-099"
+          ]
+        }
+      ]
+    }
+  ],
+  "sequenciais": [],
+  "concluidas": [
+    "T-066",
+    "T-067"
+  ],
+  "avisos": []
+}

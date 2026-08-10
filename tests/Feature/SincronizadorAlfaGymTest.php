@@ -90,7 +90,11 @@ class SincronizadorAlfaGymTest extends TestCase
         $this->assertSame('ativa', $vinculo->pivot->licenca_status);
         $this->assertSame('Growth', $vinculo->pivot->plano);
         $this->assertSame('2026-08-01', $vinculo->pivot->licenca_fim_em);
-        $this->assertTrue((bool) $vinculo->pivot->bloqueia_acesso);
+        // O campo `bloqueia_acesso` do gym é a POLÍTICA da licença (bloquear ao
+        // vencer), sempre verdadeira; no vínculo ele deriva do status real do
+        // cliente, então um cliente ATIVO tem acesso não bloqueado.
+        $this->assertSame(0, (int) $vinculo->pivot->bloqueia_acesso);
+        $this->assertSame('ativo', $vinculo->pivot->status_saas);
     }
 
     public function test_rodar_de_novo_nao_duplica(): void

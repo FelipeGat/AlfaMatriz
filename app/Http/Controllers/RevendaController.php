@@ -4,16 +4,26 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\Cobranca;
+use App\Models\Perfil;
 use App\Models\Revenda;
 use App\Models\Sistema;
+use App\Models\User;
 use App\Services\ProvisionadorAlfaGymService;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class RevendaController extends Controller
 {
     public function index(Request $request)
     {
+        $aba = $request->query('aba', 'revendas');
+
+        if ($aba === 'clientes') {
+            return $this->indexClientes($request);
+        }
+
         $busca = trim((string) $request->query('q', ''));
         $status = $request->query('status', '');
         $ordem = $request->query('ordem', 'mrr');
@@ -44,6 +54,8 @@ class RevendaController extends Controller
         })->values();
 
         return view('revendas.index', [
+            'aba' => 'revendas',
+            'clientesCadastrados' => $this->clientesCadastrados(),
             'linhas' => $linhas,
             'filtros' => ['q' => $busca, 'status' => $status, 'ordem' => $ordem],
             'cadastradas' => $cadastradas,
@@ -55,6 +67,51 @@ class RevendaController extends Controller
             'kpis' => $this->kpis($revendas, $linhas, $baseTotal, $mrrTotal, $cadastradas),
             'sistemaAlfaGym' => $sistemaAlfaGym,
         ]);
+    }
+
+    /**
+     * A aba "Clientes" da tela de Revendas: reusa a listagem de clientes da
+     * tela de Clientes, mas dentro do contexto de revendas (admin vê todas,
+     * usuário de revenda vê só a própria).
+     *
+     * @return View
+     */
+    public function indexClientes(Request $request)
+    {
+        $dados = app(ClienteController::class)->dadosDaLista($request);
+        $dados['aba'] = 'clientes';
+
+        $cadastradas = Revenda::when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('id', auth()->user()->revenda_id))->count();
+
+        return view('revendas.index', [
+            'aba' => 'clientes',
+            // O modal de cadastro vive nesta tela agora: precisa da lista de
+            // revendas ATIVAS (não a do filtro) e dos sistemas.
+            'revendasParaCadastro' => $dados['revendasParaCadastro'],
+            'clientesCadastrados' => $dados['clientes']->total(),
+            'linhas' => collect(),
+            'filtros' => ['q' => '', 'status' => '', 'ordem' => 'mrr', 'aba' => 'clientes'],
+            'cadastradas' => $cadastradas,
+            'totais' => ['clientes' => 0, 'mrr' => 0.0, 'sistemas' => 0],
+            'kpis' => [
+                'ativas' => ['valor' => 0, 'nota' => ''],
+                'clientes' => ['valor' => 0, 'nota' => ''],
+                'mrr' => ['valor' => 0.0, 'nota' => ''],
+                'ticket' => ['valor' => 0.0, 'nota' => ''],
+            ],
+            'sistemaAlfaGym' => null,
+            'clientesView' => $dados,
+        ]);
+    }
+
+    /**
+     * Quantos clientes o usuário enxerga — o número que a aba mostra ao lado do
+     * rótulo. É o sinal de que ali tem conteúdo, não decoração.
+     */
+    private function clientesCadastrados(): int
+    {
+        return Cliente::when(auth()->user()->temEscopoDeRevenda(),
+            fn ($q) => $q->where('revenda_id', auth()->user()->revenda_id))->count();
     }
 
     /**
@@ -221,16 +278,58 @@ class RevendaController extends Controller
         ]);
 
         try {
-            (new ProvisionadorAlfaGymService($sistema))->provisionar($revenda, [
-                'nome' => $data['nome_admin'],
-                'email' => $data['email_admin'],
-                'senha' => $data['senha_admin'],
-            ]);
+            // Provisionar no gym e criar o acesso local andam juntos: um acesso
+            // na Matriz apontando para revenda que o gym recusou seria um
+            // usuário que entra e não consegue cadastrar nada.
+            DB::transaction(function () use ($sistema, $revenda, $data) {
+                (new ProvisionadorAlfaGymService($sistema))->provisionar($revenda, [
+                    'nome' => $data['nome_admin'],
+                    'email' => $data['email_admin'],
+                    'senha' => $data['senha_admin'],
+                ]);
+
+                $this->criarAcessoDaRevenda($revenda, $data);
+            });
         } catch (\RuntimeException $e) {
             return back()->with('erro', $e->getMessage());
         }
 
-        return back()->with('status', "Revenda {$revenda->nome} provisionada no AlfaGym.");
+        return back()->with('status', "Revenda {$revenda->nome} provisionada no AlfaGym e com acesso ao painel.");
+    }
+
+    /**
+     * O acesso da revenda ao painel da Matriz, com o mesmo e-mail e senha do
+     * administrador que acabou de ser criado no AlfaGym — uma credencial só
+     * para os dois painéis enquanto ambos operam.
+     *
+     * Reaproveita o usuário quando o e-mail já existe (revenda reprovisionada,
+     * ou acesso criado antes pelo comando de migração): a senha de quem já
+     * entra não é redefinida por um provisionamento.
+     *
+     * @param  array{nome_admin: string, email_admin: string, senha_admin: string}  $data
+     */
+    private function criarAcessoDaRevenda(Revenda $revenda, array $data): void
+    {
+        $existente = User::where('email', $data['email_admin'])->first();
+
+        if ($existente) {
+            $existente->update(['revenda_id' => $revenda->id]);
+            $usuario = $existente;
+        } else {
+            $usuario = User::create([
+                'name' => $data['nome_admin'],
+                'email' => $data['email_admin'],
+                'password' => $data['senha_admin'],
+                'revenda_id' => $revenda->id,
+                'ativo' => true,
+            ]);
+        }
+
+        $perfil = Perfil::where('slug', 'revenda')->first();
+
+        if ($perfil) {
+            $usuario->perfis()->syncWithoutDetaching([$perfil->id]);
+        }
     }
 
     /**

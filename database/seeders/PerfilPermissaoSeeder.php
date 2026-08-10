@@ -21,6 +21,7 @@ class PerfilPermissaoSeeder extends Seeder
             'dashboard' => 'Dashboard',
             'leads' => 'Funil de vendas / leads',
             'faturamento' => 'Faturamento',
+            'tarefas' => 'Tarefas de desenvolvimento',
         ];
 
         foreach ($recursos as $slug => $descricao) {
@@ -68,6 +69,19 @@ class PerfilPermissaoSeeder extends Seeder
         foreach (['leads', 'faturamento'] as $recurso) {
             $financeiro->permissoes()->syncWithoutDetaching([
                 $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => false, 'imprimir' => true, 'excluir' => false],
+            ]);
+        }
+
+        // A revenda entra no MESMO painel da Alfa, então o perfil dela precisa
+        // ser curto de propósito: só revendas e clientes. Reusar `operacao`
+        // mostraria sistemas, dashboard, leads e faturamento — o negócio da
+        // Alfa, não o portfólio da revenda. O que restringe QUAIS revendas e
+        // clientes ela vê continua sendo o `revenda_id` do usuário.
+        $revenda = Perfil::updateOrCreate(['slug' => 'revenda'], ['nome' => 'Revenda']);
+
+        foreach (['revendas', 'clientes'] as $recurso) {
+            $revenda->permissoes()->syncWithoutDetaching([
+                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'imprimir' => true, 'excluir' => false],
             ]);
         }
     }

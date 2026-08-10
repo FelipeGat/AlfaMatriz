@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Redesign;
 
+use App\Models\Cliente;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -216,15 +217,18 @@ class ShellTest extends TestCase
     }
 
     /**
-     * @spec:AC-038 O menu marca o item certo, inclusive nas telas filhas — o
-     * formulário de cliente acende Clientes, a tela de conta acende Caixa.
+     * @spec:AC-038 O menu marca o item certo, inclusive nas telas filhas — a
+     * tela de cliente acende Revendas (o item cobre `clientes.*`), a tela de
+     * conta acende Caixa.
      */
     public function test_a_tela_filha_mantem_o_item_do_pai_aceso(): void
     {
         $this->actingAs($this->operador());
 
+        $cliente = Cliente::create(['nome' => 'Academia Corpo em Movimento', 'ativo' => true]);
+
         $filhas = [
-            route('clientes.create') => 'Clientes',
+            route('clientes.edit', $cliente) => 'Revendas',
             route('contas-financeiras.create') => 'Caixa',
             route('revendas.create') => 'Revendas',
         ];

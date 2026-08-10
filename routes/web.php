@@ -21,11 +21,12 @@ use App\Http\Controllers\RevendaController;
 use App\Http\Controllers\SaudeController;
 use App\Http\Controllers\SistemaController;
 use App\Http\Controllers\SubcategoriaController;
+use App\Http\Controllers\TarefaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     if (auth()->user()?->temEscopoDeRevenda()) {
-        return redirect()->route('clientes.index');
+        return redirect()->route('revendas.index', ['aba' => 'clientes']);
     }
 
     return redirect()->route('centro-controle');
@@ -59,12 +60,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy')
         ->middleware('permissao:leads');
 
+    Route::get('tarefas', [TarefaController::class, 'index'])->name('tarefas.index')
+        ->middleware('permissao:tarefas');
+    Route::get('tarefas/historico', [TarefaController::class, 'historico'])->name('tarefas.historico')
+        ->middleware('permissao:tarefas');
+    Route::post('tarefas', [TarefaController::class, 'store'])->name('tarefas.store')
+        ->middleware('permissao:tarefas');
+    Route::put('tarefas/{tarefa}', [TarefaController::class, 'update'])->name('tarefas.update')
+        ->middleware('permissao:tarefas');
+    Route::post('tarefas/{tarefa}/mover', [TarefaController::class, 'mover'])->name('tarefas.mover')
+        ->middleware('permissao:tarefas');
+
     Route::resource('revendas', RevendaController::class)
         ->middleware('permissao:revendas');
     Route::post('revendas/{revenda}/provisionar', [RevendaController::class, 'provisionar'])
         ->name('revendas.provisionar')
         ->middleware('permissao:revendas');
+    // `create` e `show` ficam de fora: o cadastro de cliente acontece no modal
+    // da lista (uma tela só), e `show` nunca teve método no controller — a rota
+    // gerada apontaria para o nada.
     Route::resource('clientes', ClienteController::class)
+        ->except(['create', 'show'])
+        ->middleware('permissao:clientes');
+    Route::post('clientes/{cliente}/liberar-licenca', [ClienteController::class, 'liberarLicenca'])
+        ->name('clientes.liberarLicenca')
+        ->middleware('permissao:clientes');
+    Route::post('clientes/{cliente}/renovar-licenca', [ClienteController::class, 'renovarLicenca'])
+        ->name('clientes.renovarLicenca')
+        ->middleware('permissao:clientes');
+    Route::post('clientes/{cliente}/bloquear-licenca', [ClienteController::class, 'bloquearLicenca'])
+        ->name('clientes.bloquearLicenca')
+        ->middleware('permissao:clientes');
+    Route::post('clientes/{cliente}/desbloquear-licenca', [ClienteController::class, 'desbloquearLicenca'])
+        ->name('clientes.desbloquearLicenca')
         ->middleware('permissao:clientes');
 
     Route::resource('sistemas', SistemaController::class)->only(['index', 'edit', 'update'])

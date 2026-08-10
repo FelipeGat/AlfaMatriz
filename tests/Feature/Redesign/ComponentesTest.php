@@ -21,7 +21,7 @@ class ComponentesTest extends TestCase
      */
     private const TELAS_COM_TOTAL = [
         'revendas/index.blade.php',
-        'clientes/index.blade.php',
+        'clientes/_tabela.blade.php',
         'produtos/index.blade.php',
         'faturamento/index.blade.php',
     ];
@@ -93,7 +93,7 @@ class ComponentesTest extends TestCase
         $this->assertSame(
             [],
             $foraDoComponente,
-            "Estas telas montam a tabela na mão em vez de usar <x-tabela> — nelas a coluna de ações some "
+            'Estas telas montam a tabela na mão em vez de usar <x-tabela> — nelas a coluna de ações some '
             ."em janela estreita:\n".implode("\n", $foraDoComponente)
         );
     }
@@ -122,7 +122,7 @@ class ComponentesTest extends TestCase
         $this->assertSame(
             [],
             $semComponente,
-            "Estas telas têm linha de totais e não usam <x-linha-total> — os rótulos em caixa alta "
+            'Estas telas têm linha de totais e não usam <x-linha-total> — os rótulos em caixa alta '
             ."vão quebrar e desalinhar a faixa:\n".implode("\n", $semComponente)
         );
     }

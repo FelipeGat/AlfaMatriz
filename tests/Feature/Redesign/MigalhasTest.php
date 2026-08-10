@@ -3,6 +3,7 @@
 namespace Tests\Feature\Redesign;
 
 use App\Models\ContaFinanceira;
+use App\Models\Cliente;
 use App\Models\Revenda;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,6 +33,7 @@ class MigalhasTest extends TestCase
     public function test_a_tela_filha_mostra_a_secao_e_o_caminho_de_volta(): void
     {
         $revenda = Revenda::create(['nome' => 'Invest Soluções', 'ativo' => true]);
+        $cliente = Cliente::create(['nome' => 'Academia Corpo em Movimento', 'revenda_id' => $revenda->id, 'ativo' => true]);
         $conta = ContaFinanceira::create([
             'nome' => 'Bradesco PJ', 'tipo' => 'corrente', 'saldo' => 100.00, 'ativo' => true,
         ]);
@@ -41,7 +43,7 @@ class MigalhasTest extends TestCase
         $filhas = [
             [route('revendas.edit', $revenda), 'Revendas', route('revendas.index'), 'Invest Soluções'],
             [route('revendas.create'), 'Revendas', route('revendas.index'), 'Nova revenda'],
-            [route('clientes.create'), 'Clientes', route('clientes.index'), 'Novo cliente'],
+            [route('clientes.edit', $cliente), 'Clientes', route('clientes.index'), 'Academia Corpo em Movimento'],
             [route('contas-financeiras.extrato', $conta), 'Caixa', route('contas-financeiras.index'), 'Bradesco PJ'],
             [route('contas-financeiras.edit', $conta), 'Caixa', route('contas-financeiras.index'), 'Bradesco PJ'],
             [route('contas-pagar.create'), 'Despesas', route('contas-pagar.index'), 'Nova despesa'],
