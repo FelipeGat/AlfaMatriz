@@ -83,8 +83,7 @@
   T-059 e T-062.
 - Esforço: alto
 
-## T-065 — Quadro enxuto e histórico inteiro: recorte de 30 dias e listagem sem filtro [pendente]
-
+## T-065 — Quadro enxuto e histórico inteiro: recorte de 30 dias e listagem sem filtro [concluida]
 - Refs: US-040, AC-096, AC-097
 - Arquivos: resources/views/tarefas/historico.blade.php, app/Http/Controllers/TarefaController.php, tests/Feature/TarefasDesenvolvimento/HistoricoTarefasTest.php
 - Notas: as colunas Concluída e Cancelada do quadro passam a trazer só os
