@@ -57,8 +57,7 @@
   `'matriz' => true` — é a flag que já tira o item do menu de quem tem escopo
   de revenda. Depende de T-060 (a rota precisa existir).
 
-## T-062 — Card da tarefa: sistema, prioridade, tempo na etapa e destaque de esquecida [pendente]
-
+## T-062 — Card da tarefa: sistema, prioridade, tempo na etapa e destaque de esquecida [concluida]
 - Refs: US-036, US-038, AC-084, AC-092, AC-093
 - Arquivos: resources/views/tarefas/_card.blade.php, resources/views/tarefas/index.blade.php, tests/Feature/TarefasDesenvolvimento/CardTarefaTest.php
 - Notas: porta `timeInCurrentColumn` e `ticketAgingLevel` do `board-utils.ts`
