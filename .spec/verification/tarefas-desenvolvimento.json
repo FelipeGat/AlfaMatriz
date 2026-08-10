@@ -1,7 +1,7 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-10T15:21:18.055Z",
-  "gitRev": "138d994",
+  "timestamp": "2026-08-10T15:36:01.437Z",
+  "gitRev": "5e7a691",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
@@ -124,7 +124,7 @@
     },
     "AC-096": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_concluidas_e_canceladas_antigas_saem_do_quadro @spec:AC-096",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_encerrar_a_tarefa_a_tira_do_quadro @spec:AC-096",
       "method": "tap"
     },
     "AC-097": {
@@ -134,7 +134,12 @@
     },
     "AC-112": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_quadro_leva_ao_historico_e_o_aviso_do_recorte_e_legivel @spec:AC-112",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_cabecalho_do_quadro_leva_ao_historico_mesmo_sem_recorte @spec:AC-112",
+      "method": "tap"
+    },
+    "AC-118": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_historico_reabre_a_concluida_e_nao_oferece_saida_para_a_cancelada @spec:AC-118",
       "method": "tap"
     }
   },

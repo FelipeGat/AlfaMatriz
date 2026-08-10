@@ -37,13 +37,14 @@ aberto, em desenvolvimento, em teste e concluído.
 - **Então** o menu lateral mostra o grupo "Desenvolvimento" com o item
   "Tarefas", e clicar nele abre o quadro (rota `tarefas.index`)
 
-#### AC-082 — O quadro mostra as etapas do ciclo na ordem, com a contagem de cada uma
+#### AC-082 — O quadro mostra as etapas do trabalho em curso, na ordem, com a contagem
 
 - **Dado** que existem tarefas em etapas diferentes
 - **Quando** abro o quadro
-- **Então** vejo as colunas Aberta, Backlog, Em desenvolvimento, Em testes,
-  Ajustes necessários, Concluída e Cancelada nessa ordem, cada uma com o total
-  de tarefas que estão nela
+- **Então** vejo as colunas Aberta, Backlog, Em desenvolvimento, Em testes e
+  Ajustes necessários nessa ordem, cada uma com o total de tarefas que estão
+  nela — e nenhuma coluna de etapa terminal, porque tarefa encerrada não é
+  trabalho em curso
 
 #### AC-083 — Tarefa sem responsável nasce Aberta; com responsável, nasce no Backlog
 
@@ -214,13 +215,12 @@ só para a matriz, para que revendas não enxerguem o backlog interno.
 Como pessoa do time, quero que o quadro mostre só o que ainda é atual, mas sem
 perder nada, para que a auditoria de qualquer tarefa antiga continue possível.
 
-#### AC-096 — Concluídas e canceladas antigas saem do quadro
+#### AC-096 — Encerrar a tarefa a tira do quadro
 
-- **Dado** uma tarefa concluída (ou cancelada) há mais de 30 dias e outra
-  concluída ontem
-- **Quando** abro o quadro
-- **Então** só a de ontem aparece na coluna, e a coluna avisa quantas tarefas
-  mais antigas ficaram fora do recorte
+- **Dado** uma tarefa em Em testes
+- **Quando** eu a concluo (ou cancelo)
+- **Então** ela deixa de aparecer no quadro na mesma hora — sem recorte de
+  data, sem coluna terminal — e passa a viver no histórico
 
 #### AC-097 — O histórico completo continua acessível
 
@@ -229,13 +229,19 @@ perder nada, para que a auditoria de qualquer tarefa antiga continue possível.
 - **Então** ela aparece na listagem, com sistema, responsável, etapa final e
   data, sem nenhum recorte por período aplicado
 
-#### AC-112 — Do quadro se chega ao histórico, e o aviso do recorte é legível
+#### AC-112 — Do quadro se chega ao histórico em um clique
 
-- **Dado** o quadro com uma tarefa concluída fora dos últimos 30 dias
-- **Quando** olho o cabeçalho da coluna Concluída
-- **Então** o nome da etapa aparece inteiro, o aviso de quantas ficaram fora do
-  recorte aparece em linha própria (sem cortar), e clicar nele abre o histórico
-  completo — sem precisar digitar a URL
+- **Dado** o quadro aberto, com ou sem tarefas encerradas
+- **Quando** procuro o que já foi concluído ou cancelado
+- **Então** o cabeçalho do quadro oferece o caminho para o histórico completo,
+  sem precisar digitar a URL
+
+#### AC-118 — A tarefa concluída é reaberta pelo histórico
+
+- **Dado** uma tarefa concluída, que não está mais no quadro
+- **Quando** abro o histórico
+- **Então** ela oferece reabrir, e reabrir a devolve para Em desenvolvimento,
+  de volta ao quadro; tarefa cancelada não oferece esse caminho
 
 ## Fora de escopo
 

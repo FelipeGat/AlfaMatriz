@@ -26,40 +26,43 @@ class HistoricoTarefasTest extends TestCase
     }
 
     /**
-     * @spec:AC-096 Concluídas e canceladas há mais de 30 dias saem do quadro, que avisa quantas ficaram fora.
+     * @spec:AC-096 Encerrar a tarefa a tira do quadro na mesma hora — sem recorte de
+     * data, sem coluna terminal — e ela passa a viver no histórico.
      */
-    public function test_concluidas_e_canceladas_antigas_saem_do_quadro(): void
+    public function test_encerrar_a_tarefa_a_tira_do_quadro(): void
     {
         $usuario = User::factory()->create();
         $criador = User::factory()->create();
 
-        Carbon::setTestNow(Carbon::parse('2026-08-10 10:00:00'));
+        $emTestes = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'em_testes', 'titulo' => 'Vai concluir',
+        ]);
+        $recemCancelada = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'cancelada', 'titulo' => 'Cancelada agora',
+        ]);
 
-        $antiga = Tarefa::factory()->create(['criado_por_id' => $criador->id, 'status' => 'concluida']);
-        $antiga->forceFill(['updated_at' => Carbon::parse('2026-08-10 10:00:00')->subDays(31)])->save();
+        // Antes de encerrar, a tarefa em testes está no quadro.
+        $resposta = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk();
+        $this->assertContains($emTestes->id, $resposta->viewData('colunas')['em_testes']->pluck('id')->all());
 
-        $recente = Tarefa::factory()->create(['criado_por_id' => $criador->id, 'status' => 'concluida']);
-        $recente->forceFill(['updated_at' => Carbon::parse('2026-08-10 10:00:00')->subDay()])->save();
+        // Cancelada de hoje TAMBÉM não aparece: não é questão de idade.
+        $resposta->assertDontSee('Cancelada agora');
+        $this->assertArrayNotHasKey('cancelada', $resposta->viewData('colunas')->all());
 
-        $resposta = $this->actingAs($usuario)->get(route('tarefas.index'));
+        // Conclui pelo mesmo caminho da tela.
+        $this->actingAs($usuario)->post(route('tarefas.mover', $emTestes), [
+            'status' => 'concluida',
+            'relatorio_notas' => 'Reteste aprovado.',
+            'relatorio_aprovado' => '1',
+        ])->assertSessionMissing('erro');
 
-        $resposta->assertOk();
+        $resposta = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk();
+        $resposta->assertDontSee('Vai concluir');
 
-        $colunas = $resposta->viewData('colunas');
-        $idsNaColuna = $colunas['concluida']->pluck('id')->all();
-
-        $this->assertContains($recente->id, $idsNaColuna);
-        $this->assertNotContains($antiga->id, $idsNaColuna);
-
-        // O aviso mora em `ocultas`, não mais concatenado no rótulo: dentro da
-        // coluna de 276px o texto junto truncava justamente no número (AC-112).
-        $etapas = collect($resposta->viewData('etapas'))->keyBy('chave');
-        $this->assertSame(1, $etapas['concluida']['quantidade']);
-        $this->assertSame('Concluída', $etapas['concluida']['label']);
-        $this->assertSame(1, $etapas['concluida']['ocultas']);
-        $resposta->assertSee('fora dos últimos 30 dias');
-
-        $resposta->assertSee($recente->titulo);
+        // E as duas estão no histórico.
+        $historico = $this->actingAs($usuario)->get(route('tarefas.historico'))->assertOk();
+        $historico->assertSee('Vai concluir');
+        $historico->assertSee('Cancelada agora');
     }
 
     /**
@@ -96,35 +99,8 @@ class HistoricoTarefasTest extends TestCase
     }
 
     /**
-     * @spec:AC-112 Do quadro se chega ao histórico: o aviso do recorte aparece em linha
-     * própria (sem ser truncado dentro do rótulo da coluna) e leva ao histórico completo,
-     * e o cabeçalho oferece o caminho mesmo quando nada está fora do recorte.
-     */
-    public function test_quadro_leva_ao_historico_e_o_aviso_do_recorte_e_legivel(): void
-    {
-        $usuario = User::factory()->create();
-        $criador = User::factory()->create();
-
-        Carbon::setTestNow(Carbon::parse('2026-08-10 10:00:00'));
-
-        $antiga = Tarefa::factory()->create(['criado_por_id' => $criador->id, 'status' => 'concluida']);
-        $antiga->forceFill(['updated_at' => Carbon::parse('2026-08-10 10:00:00')->subDays(31)])->save();
-
-        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
-
-        // O rótulo da coluna fica limpo: o aviso não é mais concatenado nele.
-        $this->assertStringNotContainsString('Concluída · 1 fora', $html);
-
-        // O aviso existe, com o número, e é um link para o histórico.
-        $this->assertMatchesRegularExpression(
-            '#<a href="'.preg_quote(route('tarefas.historico'), '#').'"[^>]*>\s*\+1 fora dos últimos 30 dias\s*</a>#u',
-            $html,
-            'O aviso do recorte precisa ser um link para o histórico completo.'
-        );
-    }
-
-    /**
-     * @spec:AC-112 O caminho para o histórico não depende de haver algo fora do recorte.
+     * @spec:AC-112 O cabeçalho do quadro leva ao histórico em um clique, com ou sem
+     * tarefa encerrada — sem depender de digitar a URL.
      */
     public function test_cabecalho_do_quadro_leva_ao_historico_mesmo_sem_recorte(): void
     {
@@ -132,7 +108,39 @@ class HistoricoTarefasTest extends TestCase
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        $this->assertStringNotContainsString('fora dos últimos 30 dias', $html);
         $this->assertStringContainsString('href="'.route('tarefas.historico').'"', $html);
+    }
+
+    /**
+     * @spec:AC-118 Sem a coluna Concluída no quadro, reabrir passa a morar no histórico:
+     * a concluída oferece o caminho de volta, a cancelada não (ela não tem saída no fluxo).
+     */
+    public function test_historico_reabre_a_concluida_e_nao_oferece_saida_para_a_cancelada(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $concluida = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'concluida', 'titulo' => 'Concluída reabrível',
+        ]);
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'cancelada', 'titulo' => 'Cancelada sem volta',
+        ]);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.historico'))->assertOk()->getContent();
+
+        // Uma única ação de reabrir: a da concluída.
+        $this->assertSame(1, substr_count($html, 'Reabrir'),
+            'Só a tarefa concluída pode oferecer reabrir — cancelada não tem saída no mapa de transições.');
+        $this->assertStringContainsString(route('tarefas.mover', $concluida), $html);
+
+        // E ela volta mesmo para o quadro, em desenvolvimento.
+        $this->actingAs($usuario)->post(route('tarefas.mover', $concluida), ['status' => 'em_desenvolvimento'])
+            ->assertSessionMissing('erro');
+
+        $this->assertSame('em_desenvolvimento', $concluida->fresh()->status);
+
+        $quadro = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk();
+        $this->assertContains($concluida->id, $quadro->viewData('colunas')['em_desenvolvimento']->pluck('id')->all());
     }
 }

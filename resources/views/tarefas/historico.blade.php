@@ -10,9 +10,12 @@
     </x-slot>
 
     {{--
-        O quadro (US-040) só mostra concluídas e canceladas dos últimos 30
-        dias; aqui é o caminho de auditoria — a listagem inteira, sem
-        nenhum recorte por período (AC-097).
+        O quadro é só o trabalho em curso: tarefa encerrada sai de lá e passa a
+        viver aqui (AC-082, AC-096). Esta tela é o caminho de auditoria — a
+        listagem inteira, sem nenhum recorte por período (AC-097) — e também a
+        porta de volta: reabrir uma concluída só era possível pelo menu do card
+        no quadro, e sem a coluna Concluída esse caminho deixaria de existir
+        (AC-118).
     --}}
     <x-tabela titulo="Histórico completo" sub="sem recorte de período" min="820px">
         <thead>
@@ -22,6 +25,7 @@
                 <th class="px-4 py-2.5 font-semibold">Responsável</th>
                 <th class="px-4 py-2.5 font-semibold">Etapa final</th>
                 <th class="px-4 py-2.5 font-semibold">Data</th>
+                <th class="px-4 py-2.5 font-semibold text-right">Ação</th>
             </tr>
         </thead>
 
@@ -41,10 +45,24 @@
                     <td class="px-4 py-3 font-mono text-[13px] text-ink-dim whitespace-nowrap">
                         {{ $tarefa->updated_at->format('d/m/Y') }}
                     </td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                        {{-- Cancelada não tem saída no mapa de transições: nada a oferecer. --}}
+                        @if ($tarefa->status === 'concluida')
+                            <form method="POST" action="{{ route('tarefas.mover', $tarefa) }}">
+                                @csrf
+                                <input type="hidden" name="status" value="em_desenvolvimento">
+                                <button type="submit"
+                                        class="h-[28px] px-2.5 rounded-control border border-btn-line
+                                               font-medium text-[12px] text-ink-dim hover:text-brand hover:border-brand transition">
+                                    Reabrir
+                                </button>
+                            </form>
+                        @endif
+                    </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5" class="px-4 py-8 text-center text-[13px] text-ink-mute">
+                    <td colspan="6" class="px-4 py-8 text-center text-[13px] text-ink-mute">
                         Nenhuma tarefa concluída ou cancelada ainda.
                     </td>
                 </tr>

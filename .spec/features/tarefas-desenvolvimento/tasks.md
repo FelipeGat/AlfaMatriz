@@ -184,3 +184,17 @@
   justamente a fila que pede triagem (a regra `aberta → backlog` trava nela).
   Sem cor de alarme: a borda do card já é o canal do aviso de esquecida e
   encher a coluna Aberta de âmbar apagaria esse sinal.
+
+## T-080 — O quadro é o trabalho em curso; o encerrado vive no histórico [concluida]
+- Refs: US-036, US-040, AC-082, AC-096, AC-112, AC-118
+- Arquivos: app/Http/Controllers/TarefaController.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/historico.blade.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php, tests/Feature/TarefasDesenvolvimento/HistoricoTarefasTest.php
+- Notas: sete colunas não cabiam em 1568px e as duas terminais eram justamente
+  as de menor valor no dia a dia. Em vez de recolher (protótipo descartado: a
+  faixa recolhida virava um retângulo alto e vazio), o quadro passa a mostrar
+  só as cinco etapas do trabalho em curso. Com isso o recorte de 30 dias fica
+  sem função e sai — encerrou, saiu do quadro.
+  CUIDADO: reabrir uma tarefa concluída só existia pelo menu "Mover" do card
+  no quadro. Sem a coluna Concluída, esse caminho desaparece e o AC-090 fica
+  sem porta — por isso o histórico ganha a ação de reabrir (AC-118), que
+  chama a mesma rota `tarefas.mover` e o mesmo motor de fluxo. Cancelada não
+  ganha ação nenhuma: ela não tem saída no mapa de transições.

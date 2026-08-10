@@ -29,7 +29,8 @@ class QuadroTest extends TestCase
     }
 
     /**
-     * @spec:AC-082 O quadro mostra as etapas do ciclo na ordem, com a contagem de cada uma.
+     * @spec:AC-082 O quadro mostra as cinco etapas do trabalho EM CURSO, na ordem e com
+     * a contagem — e nenhuma coluna terminal: encerrou, sai do quadro (AC-096).
      */
     public function test_quadro_mostra_etapas_na_ordem_com_contagem(): void
     {
@@ -52,8 +53,9 @@ class QuadroTest extends TestCase
         $etapas = $resposta->viewData('etapas');
 
         $this->assertSame(
-            ['aberta', 'backlog', 'em_desenvolvimento', 'em_testes', 'ajustes_necessarios', 'concluida', 'cancelada'],
-            array_column($etapas, 'chave')
+            ['aberta', 'backlog', 'em_desenvolvimento', 'em_testes', 'ajustes_necessarios'],
+            array_column($etapas, 'chave'),
+            'O quadro é o trabalho em curso: concluída e cancelada não têm coluna.'
         );
 
         $quantidades = array_column($etapas, 'quantidade', 'chave');
@@ -62,12 +64,12 @@ class QuadroTest extends TestCase
         $this->assertSame(1, $quantidades['em_desenvolvimento']);
         $this->assertSame(3, $quantidades['em_testes']);
         $this->assertSame(1, $quantidades['ajustes_necessarios']);
-        $this->assertSame(1, $quantidades['concluida']);
-        $this->assertSame(1, $quantidades['cancelada']);
+        $this->assertArrayNotHasKey('concluida', $quantidades);
+        $this->assertArrayNotHasKey('cancelada', $quantidades);
 
         // A ordem também vale na renderização, não só no array de apoio.
         $conteudo = $resposta->getContent();
-        $rotulos = ['Aberta', 'Backlog', 'Em desenvolvimento', 'Em testes', 'Ajustes necessários', 'Concluída', 'Cancelada'];
+        $rotulos = ['Aberta', 'Backlog', 'Em desenvolvimento', 'Em testes', 'Ajustes necessários'];
         $posicoes = collect($rotulos)->map(fn ($rotulo) => strpos($conteudo, $rotulo));
 
         $this->assertTrue($posicoes->every(fn ($p) => $p !== false));
@@ -95,22 +97,23 @@ class QuadroTest extends TestCase
         $etapas = collect($resposta->viewData('etapas'))->keyBy('chave');
 
         // Toda etapa traz um token de cor, e o fluxo ativo não é monocromático.
-        foreach (Tarefa::STATUS as $status => $label) {
-            $this->assertNotEmpty($etapas[$status]['cor'] ?? null, "A etapa {$label} precisa de uma cor.");
+        $emCurso = collect(Tarefa::STATUS)->keys()
+            ->reject(fn ($s) => in_array($s, Tarefa::STATUS_TERMINAIS, true));
+
+        foreach ($emCurso as $status) {
+            $this->assertNotEmpty($etapas[$status]['cor'] ?? null, "A etapa {$status} precisa de uma cor.");
         }
-        $coresDoFluxo = collect(Tarefa::STATUS)->keys()
-            ->reject(fn ($s) => in_array($s, Tarefa::STATUS_TERMINAIS, true))
-            ->map(fn ($s) => $etapas[$s]['cor']);
+        $coresDoFluxo = $emCurso->map(fn ($s) => $etapas[$s]['cor']);
         $this->assertGreaterThan(1, $coresDoFluxo->unique()->count(),
             'As etapas do fluxo ativo não podem compartilhar uma cor só — o quadro ficaria monocromático.');
 
         // A cor está na COLUNA: faixa no topo do <section> de cada etapa.
-        foreach (Tarefa::STATUS as $status => $label) {
+        foreach ($emCurso as $status) {
             $cor = $etapas[$status]['cor'];
             $this->assertStringContainsString(
                 'border-top: 3px solid rgb(var(--'.$cor.'))',
                 $html,
-                "A coluna {$label} precisa da faixa de cor no topo."
+                "A coluna {$status} precisa da faixa de cor no topo."
             );
         }
 

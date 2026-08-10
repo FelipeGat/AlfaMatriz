@@ -90,20 +90,6 @@
                                 </span>
                             </div>
 
-                            {{--
-                                O aviso do recorte vai em linha própria, como o
-                                "R$ X em jogo" do Funil de Vendas: concatenado
-                                ao rótulo ele truncava em 276px justamente no
-                                número. E é ele o caminho para o histórico —
-                                sem isso, a única forma de auditar uma tarefa
-                                antiga era digitar a URL na mão (AC-112).
-                            --}}
-                            @if ($etapa['ocultas'] > 0)
-                                <a href="{{ route('tarefas.historico') }}"
-                                   class="mt-0.5 block pl-[15px] font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
-                                    +{{ $etapa['ocultas'] }} fora dos últimos 30 dias
-                                </a>
-                            @endif
                         </header>
 
                         <div class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 space-y-2">

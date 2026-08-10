@@ -15,46 +15,32 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
+        // O quadro é o trabalho EM CURSO: concluída e cancelada não têm coluna
+        // (AC-082, AC-096). Sete colunas não cabiam na tela e as duas terminais
+        // eram as de menor valor no dia a dia — encerrou, sai do quadro e passa
+        // a viver no histórico (`historico()`), de onde também se reabre.
+        // Isso aposenta o antigo recorte de 30 dias: não há mais o que recortar.
+        $emCurso = collect(Tarefa::STATUS)->reject(
+            fn ($label, $status) => in_array($status, Tarefa::STATUS_TERMINAIS, true)
+        );
+
         // `eventos` entra no eager load porque o card lê a etapa atual de cada
         // tarefa para o chip de tempo — sem isso é uma consulta por card.
         $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos'])
+            ->whereIn('status', $emCurso->keys())
             ->orderByDesc('created_at')
             ->get();
 
-        // O quadro fica enxuto: concluída e cancelada só mostram os últimos
-        // 30 dias, avisando quantas mais antigas ficaram fora (AC-096). O
-        // histórico completo, sem esse recorte, é a rota de auditoria
-        // (AC-097, em `historico()`).
-        $corte = now()->subDays(30);
-        $foraDoCorte = [];
+        $colunas = $emCurso->mapWithKeys(fn ($label, $status) => [
+            $status => $this->ordenarColuna($tarefas->where('status', $status)->values()),
+        ]);
 
-        $colunas = collect(Tarefa::STATUS)->mapWithKeys(function ($label, $status) use ($tarefas, $corte, &$foraDoCorte) {
-            $doStatus = $tarefas->where('status', $status)->values();
-
-            if (in_array($status, Tarefa::STATUS_TERMINAIS, true)) {
-                $recentes = $doStatus->filter(fn (Tarefa $tarefa) => $tarefa->updated_at->greaterThanOrEqualTo($corte))->values();
-                $foraDoCorte[$status] = $doStatus->count() - $recentes->count();
-                $doStatus = $recentes;
-            }
-
-            return [$status => $this->ordenarColuna($doStatus)];
-        });
-
-        $etapas = collect(Tarefa::STATUS)->map(function ($label, $status) use ($colunas, $foraDoCorte) {
-            $ocultas = $foraDoCorte[$status] ?? 0;
-
-            // `ocultas` sai do rótulo e vira campo próprio: numa coluna de
-            // 276px o texto concatenado truncava exatamente no número, que é
-            // a informação que justifica o recorte. Em linha própria ele cabe
-            // — e vira o link para o histórico completo (AC-112).
-            return [
-                'chave' => $status,
-                'label' => $label,
-                'cor' => $this->corDaEtapa($status),
-                'ocultas' => $ocultas,
-                'quantidade' => $colunas[$status]->count(),
-            ];
-        })->values()->all();
+        $etapas = $emCurso->map(fn ($label, $status) => [
+            'chave' => $status,
+            'label' => $label,
+            'cor' => $this->corDaEtapa($status),
+            'quantidade' => $colunas[$status]->count(),
+        ])->values()->all();
 
         $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
         $usuarios = User::whereNull('revenda_id')->orderBy('name')->get();
