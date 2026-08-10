@@ -54,6 +54,8 @@ class RevendaController extends Controller
         })->values();
 
         return view('revendas.index', [
+            'aba' => 'revendas',
+            'clientesCadastrados' => $this->clientesCadastrados(),
             'linhas' => $linhas,
             'filtros' => ['q' => $busca, 'status' => $status, 'ordem' => $ordem],
             'cadastradas' => $cadastradas,
@@ -83,6 +85,10 @@ class RevendaController extends Controller
 
         return view('revendas.index', [
             'aba' => 'clientes',
+            // O modal de cadastro vive nesta tela agora: precisa da lista de
+            // revendas ATIVAS (não a do filtro) e dos sistemas.
+            'revendasParaCadastro' => $dados['revendasParaCadastro'],
+            'clientesCadastrados' => $dados['clientes']->total(),
             'linhas' => collect(),
             'filtros' => ['q' => '', 'status' => '', 'ordem' => 'mrr', 'aba' => 'clientes'],
             'cadastradas' => $cadastradas,
@@ -96,6 +102,16 @@ class RevendaController extends Controller
             'sistemaAlfaGym' => null,
             'clientesView' => $dados,
         ]);
+    }
+
+    /**
+     * Quantos clientes o usuário enxerga — o número que a aba mostra ao lado do
+     * rótulo. É o sinal de que ali tem conteúdo, não decoração.
+     */
+    private function clientesCadastrados(): int
+    {
+        return Cliente::when(auth()->user()->temEscopoDeRevenda(),
+            fn ($q) => $q->where('revenda_id', auth()->user()->revenda_id))->count();
     }
 
     /**

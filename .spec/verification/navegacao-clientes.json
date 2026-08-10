@@ -1,0 +1,47 @@
+{
+  "feature": "navegacao-clientes",
+  "timestamp": "2026-08-10T15:47:51.886Z",
+  "gitRev": "aed59fc",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 244,
+  "results": {
+    "AC-115": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\NavegacaoClientes\\CaminhoAteOCadastroTest::test_aba_de_clientes_traz_lista_botao_e_formulario @spec:AC-115",
+      "method": "tap"
+    },
+    "AC-116": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\NavegacaoClientes\\CaminhoAteOCadastroTest::test_aba_de_revendas_nao_traz_o_cadastro_de_cliente @spec:AC-116",
+      "method": "tap"
+    },
+    "AC-117": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\NavegacaoClientes\\CaminhoAteOCadastroTest::test_o_menu_leva_a_lista_e_ao_cadastro_de_clientes @spec:AC-117",
+      "method": "tap"
+    },
+    "AC-118": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\NavegacaoClientes\\CaminhoAteOCadastroTest::test_revenda_cai_na_carteira_de_clientes @spec:AC-118",
+      "method": "tap"
+    },
+    "AC-119": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\NavegacaoClientes\\CaminhoAteOCadastroTest::test_filtrar_na_aba_de_clientes_continua_na_aba @spec:AC-119",
+      "method": "tap"
+    },
+    "AC-120": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\NavegacaoClientes\\CaminhoAteOCadastroTest::test_erro_no_cadastro_reabre_o_formulario @spec:AC-120",
+      "method": "tap"
+    },
+    "AC-121": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\NavegacaoClientes\\CaminhoAteOCadastroTest::test_quem_nao_pode_incluir_nao_ve_o_botao @spec:AC-121",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

@@ -2,10 +2,14 @@
     <x-slot name="titulo">Clientes</x-slot>
     <x-slot name="contexto">{{ $clientes->total() }} cadastrados</x-slot>
     <x-slot name="acoes">
-        <button type="button" x-data @click="$dispatch('open-modal', 'novo-cliente')"
-                class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
-            + Novo cliente
-        </button>
+        {{-- Só quem pode incluir: o perfil `financeiro` lê clientes mas não
+             cadastra, e veria um botão que termina em 403 no POST. --}}
+        @if (auth()->user()->canPermissao('clientes', 'incluir'))
+            <button type="button" x-data @click="$dispatch('open-modal', 'novo-cliente')"
+                    class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
+                + Novo cliente
+            </button>
+        @endif
     </x-slot>
 
     <div class="space-y-4">
@@ -27,10 +31,5 @@
         @include('clientes._tabela')
     </div>
 
-    <x-modal name="novo-cliente" maxWidth="2xl">
-        <form method="POST" action="{{ route('clientes.store') }}" class="p-5">
-            <h2 class="font-display text-[15.5px] font-semibold text-ink mb-4">Novo cliente</h2>
-            @include('clientes._form', ['emModal' => true])
-        </form>
-    </x-modal>
+    @include('clientes._modal-novo', ['revendas' => $revendasParaCadastro])
 </x-app-layout>

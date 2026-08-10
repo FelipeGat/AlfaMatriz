@@ -59,6 +59,13 @@ class ClienteController extends Controller
             'clientes' => $clientes,
             'pagamentos' => $pagamentos,
             'revendas' => Revenda::when($temEscopo, fn ($q) => $q->where('id', auth()->user()->revenda_id))->orderBy('nome')->get(),
+            // O filtro lista TODAS as revendas (inclusive inativas, para achar
+            // cliente antigo); o cadastro só pode oferecer as ativas. São
+            // perguntas diferentes, então são duas listas.
+            'revendasParaCadastro' => Revenda::where('ativo', true)
+                ->when($temEscopo, fn ($q) => $q->where('id', auth()->user()->revenda_id))
+                ->orderBy('nome')
+                ->get(),
             'sistemas' => Sistema::where('ativo', true)->orderBy('nome')->get(),
             'filtros' => [
                 'busca' => $busca,
@@ -166,20 +173,6 @@ class ClienteController extends Controller
             'mensal' => (float) $pagina->sum('valor_mensal'),
             'atrasados' => collect($pagamentos)->where('estado', 'atrasado')->count(),
         ];
-    }
-
-    public function create()
-    {
-        // A revenda cadastra o próprio cliente: é o fluxo do negócio, o mesmo
-        // que ela faz hoje no painel do AlfaGym. O que a limita é a lista de
-        // revendas, que para ela tem uma opção só — a dela.
-        $revendas = Revenda::where('ativo', true)
-            ->when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('id', auth()->user()->revenda_id))
-            ->orderBy('nome')
-            ->get();
-        $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
-
-        return view('clientes.create', compact('revendas', 'sistemas'));
     }
 
     public function store(Request $request)

@@ -3,6 +3,13 @@
     $sistemas, $filtros, $totais. --}}
 
 <form method="GET" class="flex flex-wrap items-center gap-2">
+    {{-- Sem isto, filtrar dentro da aba de clientes submete para /revendas sem
+         `aba` e devolve o usuário para a aba de revendas — a busca o expulsava
+         da tela onde ele estava. Só a aba injeta `$aba`; a tela de Clientes
+         não, então o campo não aparece lá. --}}
+    @isset($aba)
+        <input type="hidden" name="aba" value="{{ $aba }}">
+    @endisset
     <label class="flex items-center gap-2 h-[34px] flex-1 min-w-[220px] max-w-[360px] px-3
                   rounded-control bg-input border border-line text-ink-faint focus-within:border-brand transition">
         <span class="h-4 w-4 shrink-0"><x-nav-icon name="search" /></span>

@@ -76,7 +76,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('revendas/{revenda}/provisionar', [RevendaController::class, 'provisionar'])
         ->name('revendas.provisionar')
         ->middleware('permissao:revendas');
+    // `create` e `show` ficam de fora: o cadastro de cliente acontece no modal
+    // da lista (uma tela só), e `show` nunca teve método no controller — a rota
+    // gerada apontaria para o nada.
     Route::resource('clientes', ClienteController::class)
+        ->except(['create', 'show'])
         ->middleware('permissao:clientes');
     Route::post('clientes/{cliente}/liberar-licenca', [ClienteController::class, 'liberarLicenca'])
         ->name('clientes.liberarLicenca')

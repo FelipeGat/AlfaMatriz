@@ -1,11 +1,11 @@
 {
   "feature": "sync-contato-do-cliente",
-  "timestamp": "2026-08-10T15:05:45.309Z",
-  "gitRev": "29e73ca",
+  "timestamp": "2026-08-10T15:51:28.378Z",
+  "gitRev": "aed59fc",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 234,
+  "testsParsed": 244,
   "results": {
     "AC-109": {
       "status": "pass",

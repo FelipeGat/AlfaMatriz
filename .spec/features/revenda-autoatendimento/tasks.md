@@ -28,7 +28,7 @@
 
 ## T-068 — A revenda cadastra o próprio cliente [concluida]
 - Refs: US-041, US-043, AC-098, AC-101, AC-104
-- Arquivos: app/Http/Controllers/ClienteController.php, resources/views/clientes/_form.blade.php, resources/views/clientes/create.blade.php, resources/views/clientes/edit.blade.php, tests/Feature/RevendaAutoatendimento/CadastroPelaRevendaTest.php
+- Arquivos: app/Http/Controllers/ClienteController.php, resources/views/clientes/_form.blade.php, resources/views/clientes/_modal-novo.blade.php, resources/views/clientes/edit.blade.php, tests/Feature/RevendaAutoatendimento/CadastroPelaRevendaTest.php
 - Modelo: claude-sonnet-5
 - Esforço: alto
 - Notas: remover o `abort_if(temEscopoDeRevenda)` de `create` e `store` — é o que hoje recusa a revenda ("Os clientes da sua revenda são provisionados pela matriz"). No `store`, forçar `revenda_id` do escopo do usuário quando ele tem revenda (mesma regra que o `update` já aplica), nunca aceitar do formulário. No `create`, a lista de revendas fica só com a dele. Admin continua escolhendo entre todas as ativas (AC-104). Campos novos no `_form` (nome/e-mail/senha do admin da academia) visíveis quando o AlfaGym está marcado nos sistemas. Cliente cadastrado pela revenda nasce AVULSO: valor mensal e dia de vencimento não aparecem para ela (ASM-040). A criação local e a chamada ao gym (T-067) rodam dentro de `DB::transaction` — recusa do gym desfaz a gravação local (AC-100).

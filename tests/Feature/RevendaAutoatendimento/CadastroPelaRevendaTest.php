@@ -95,7 +95,13 @@ class CadastroPelaRevendaTest extends TestCase
     {
         $usuario = $this->usuarioDaRevenda($this->minhaRevenda);
 
-        $resposta = $this->actingAs($usuario)->get(route('clientes.create'))->assertOk();
+        // Pela tela que o menu alcança, não pelo endpoint solto: o que
+        // interessa é que a revenda CONSIGA CHEGAR ao cadastro.
+        $resposta = $this->actingAs($usuario)
+            ->get(route('revendas.index', ['aba' => 'clientes']))
+            ->assertOk();
+
+        $resposta->assertSee(route('clientes.store'), escape: false);
 
         // A revenda dele aparece; a de outra revenda, não — não há o que escolher.
         $resposta->assertSee('Invest Soluções');
@@ -198,7 +204,11 @@ class CadastroPelaRevendaTest extends TestCase
 
         $admin = User::factory()->create(); // sem revenda_id: usuário da matriz
 
-        $resposta = $this->actingAs($admin)->get(route('clientes.create'))->assertOk();
+        $resposta = $this->actingAs($admin)
+            ->get(route('revendas.index', ['aba' => 'clientes']))
+            ->assertOk();
+
+        $resposta->assertSee(route('clientes.store'), escape: false);
 
         // O admin vê todas as revendas ativas para escolher.
         $resposta->assertSee('Invest Soluções');

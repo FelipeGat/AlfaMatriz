@@ -1,11 +1,36 @@
 <x-app-layout>
-    <x-slot name="titulo">Revendas</x-slot>
-    <x-slot name="contexto">{{ $linhas->count() }} de {{ $cadastradas }} cadastradas</x-slot>
+    <x-slot name="titulo">Revendas e clientes</x-slot>
+
+    {{-- O contexto acompanha a aba: na de clientes, `$linhas` está vazia de
+         propósito, e usá-la dizia "0 de N cadastradas" com a lista cheia. --}}
+    <x-slot name="contexto">
+        @if ($aba === 'clientes')
+            {{ $clientesCadastrados }} clientes cadastrados
+        @else
+            {{ $linhas->count() }} de {{ $cadastradas }} revendas cadastradas
+        @endif
+    </x-slot>
+
+    {{-- A ação segue a aba. Antes o botão era fixo em "+ Nova revenda", e quem
+         abria a aba de clientes não tinha por onde cadastrar um. --}}
     <x-slot name="acoes">
-        <button type="button" x-data @click="$dispatch('open-modal', 'nova-revenda')"
-                class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
-            + Nova revenda
-        </button>
+        @if ($aba === 'clientes')
+            @if (auth()->user()->canPermissao('clientes', 'incluir'))
+                <button type="button" x-data @click="$dispatch('open-modal', 'novo-cliente')"
+                        class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
+                    + Novo cliente
+                </button>
+            @endif
+        @else
+            {{-- Revenda não cadastra revenda: o store já recusa com 403, então
+                 mostrar o botão só entregaria um caminho que termina em erro. --}}
+            @unless (auth()->user()->temEscopoDeRevenda())
+                <button type="button" x-data @click="$dispatch('open-modal', 'nova-revenda')"
+                        class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
+                    + Nova revenda
+                </button>
+            @endunless
+        @endif
     </x-slot>
 
     <div class="space-y-4">
@@ -25,7 +50,7 @@
             </x-abas.item>
             <x-abas.item href="{{ route('revendas.index', array_merge(request()->query(), ['aba' => 'clientes'])) }}"
                          :ativo="($aba ?? 'revendas') === 'clientes'" icone="users">
-                Clientes
+                Clientes · {{ $clientesCadastrados }}
             </x-abas.item>
         </x-abas>
 
@@ -42,6 +67,11 @@
             </div>
 
             @include('clientes._tabela', $clientesView)
+
+            @include('clientes._modal-novo', [
+                'revendas' => $revendasParaCadastro,
+                'sistemas' => $clientesView['sistemas'],
+            ])
         @else
         <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
             <x-kpi-card rotulo="Revendas ativas" :valor="$kpis['ativas']['valor']" :delta="$kpis['ativas']['nota']"

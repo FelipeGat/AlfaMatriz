@@ -1,11 +1,11 @@
 {
   "feature": "gestao-acessos",
-  "timestamp": "2026-08-10T15:08:28.845Z",
-  "gitRev": "31d2c12",
+  "timestamp": "2026-08-10T15:50:11.462Z",
+  "gitRev": "aed59fc",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 234,
+  "testsParsed": 244,
   "results": {
     "AC-029": {
       "status": "pass",
