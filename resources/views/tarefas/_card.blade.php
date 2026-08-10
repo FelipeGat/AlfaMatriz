@@ -28,7 +28,7 @@
     }
     $tomEsquecida = ['atencao' => 'warn', 'critico' => 'crit'][$nivelEsquecida] ?? null;
 
-    $tomPrioridade = ['baixa' => 'neutro', 'media' => 'atencao', 'alta' => 'critico'][$tarefa->prioridade] ?? 'neutro';
+    $tomPrioridade = ['baixa' => 'neutro', 'media' => 'neutro', 'alta' => 'atencao', 'critica' => 'critico'][$tarefa->prioridade] ?? 'neutro';
 @endphp
 
 <article data-tarefa="{{ $tarefa->id }}"

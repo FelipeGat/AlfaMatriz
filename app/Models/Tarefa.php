@@ -30,6 +30,7 @@ class Tarefa extends Model
         'baixa' => 'Baixa',
         'media' => 'Média',
         'alta' => 'Alta',
+        'critica' => 'Crítica',
     ];
 
     protected $fillable = [
