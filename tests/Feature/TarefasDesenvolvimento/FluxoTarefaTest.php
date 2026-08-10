@@ -220,7 +220,7 @@ class FluxoTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-111 Devolver do Backlog para Aberta solta o responsável.
+     * @spec:AC-124 Devolver do Backlog para Aberta solta o responsável.
      */
     public function test_devolver_do_backlog_para_aberta_solta_o_responsavel(): void
     {

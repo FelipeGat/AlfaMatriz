@@ -100,7 +100,7 @@
 -->
 
 ## T-073 — Menu "Mover" volta a oferecer os destinos permitidos [concluida]
-- Refs: US-037, AC-109
+- Refs: US-037, AC-122
 - Arquivos: resources/views/tarefas/_mover.blade.php, tests/Feature/TarefasDesenvolvimento/MoverTarefaTest.php
 - Notas: a correção do `x-data` JÁ ESTÁ APLICADA na árvore de trabalho
   (`@json` dentro de atributo HTML fechava o atributo na primeira aspa dupla,
@@ -114,7 +114,7 @@
 - Esforço: alto
 
 ## T-074 — Prioridade Crítica, o quarto nível do ciclo [concluida]
-- Refs: US-036, AC-110
+- Refs: US-036, AC-123
 - Arquivos: database/migrations/2026_08_10_140000_adicionar_prioridade_critica.php, app/Models/Tarefa.php, resources/views/tarefas/_card.blade.php, tests/Feature/TarefasDesenvolvimento/PrioridadeCriticaTest.php
 - Notas: o alfadev tem quatro níveis e só três foram portados. Migration para
   ampliar o enum `prioridade` de `['baixa','media','alta']` para incluir
@@ -127,7 +127,7 @@
 - Esforço: alto
 
 ## T-075 — Devolver do Backlog para Aberta, soltando o responsável [concluida]
-- Refs: US-037, AC-111
+- Refs: US-037, AC-124
 - Arquivos: app/Services/FluxoTarefaService.php, tests/Feature/TarefasDesenvolvimento/FluxoTarefaTest.php
 - Notas: o alfadev permite `BACKLOG → ABERTA` e, ao fazer isso, limpa o
   responsável (`fromStatus === 'BACKLOG' && toStatus === 'ABERTA'` zera o
@@ -136,7 +136,7 @@
   volta, sem mexer nas outras regras.
 
 ## T-076 — Caminho para o histórico e escala de prioridade legível [concluida]
-- Refs: US-036, US-040, AC-112, AC-113
+- Refs: US-036, US-040, AC-125, AC-126
 - Arquivos: app/Http/Controllers/TarefaController.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/_card.blade.php, tests/Feature/TarefasDesenvolvimento/HistoricoTarefasTest.php, tests/Feature/TarefasDesenvolvimento/CardTarefaTest.php
 - Notas: três defeitos vistos na tela rodando. (1) O quadro não tem link
   nenhum para o histórico — a rota existe e o teste do AC-097 a exercita, mas
@@ -149,7 +149,7 @@
   (`neutro < marca < atencao < critico`) cobre os quatro.
 
 ## T-077 — Cor da etapa na coluna, no padrão do Funil de Vendas [concluida]
-- Refs: US-036, AC-114
+- Refs: US-036, AC-127
 - Arquivos: app/Http/Controllers/TarefaController.php, resources/views/tarefas/index.blade.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php
 - Notas: o quadro nasceu monocromático — `style="width: 276px"` sem faixa e o
   contador em `bg-chip text-ink-dim` — enquanto o Funil (`leads/index.blade.php:74`)
@@ -162,7 +162,7 @@
   único sinal que não está dito em outro lugar.
 
 ## T-078 — Ordem dentro da coluna: prioridade primeiro, depois o que está mais parado [concluida]
-- Refs: US-036, AC-115
+- Refs: US-036, AC-128
 - Arquivos: app/Http/Controllers/TarefaController.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php
 - Notas: hoje o controller ordena só por `created_at desc`, então uma crítica
   antiga afunda embaixo de tarefas baixas recentes — o que anula na prática a
@@ -173,7 +173,7 @@
   junto (o card já os acessa hoje, um por card: some também um N+1).
 
 ## T-079 — Card conta o resumo e assume a falta de responsável [concluida]
-- Refs: US-036, AC-116, AC-117
+- Refs: US-036, AC-129, AC-130
 - Arquivos: resources/views/tarefas/_card.blade.php, tests/Feature/TarefasDesenvolvimento/CardTarefaTest.php
 - Notas: dois buracos vistos com a tela rodando. (1) `resumo` é gravado pelo
   formulário e não aparece em lugar nenhum — dado que se preenche e nunca se
@@ -186,7 +186,7 @@
   encher a coluna Aberta de âmbar apagaria esse sinal.
 
 ## T-080 — O quadro é o trabalho em curso; o encerrado vive no histórico [concluida]
-- Refs: US-036, US-040, AC-082, AC-096, AC-112, AC-118
+- Refs: US-036, US-040, AC-082, AC-096, AC-125, AC-131
 - Arquivos: app/Http/Controllers/TarefaController.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/historico.blade.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php, tests/Feature/TarefasDesenvolvimento/HistoricoTarefasTest.php
 - Notas: sete colunas não cabiam em 1568px e as duas terminais eram justamente
   as de menor valor no dia a dia. Em vez de recolher (protótipo descartado: a
@@ -195,18 +195,18 @@
   sem função e sai — encerrou, saiu do quadro.
   CUIDADO: reabrir uma tarefa concluída só existia pelo menu "Mover" do card
   no quadro. Sem a coluna Concluída, esse caminho desaparece e o AC-090 fica
-  sem porta — por isso o histórico ganha a ação de reabrir (AC-118), que
+  sem porta — por isso o histórico ganha a ação de reabrir (AC-131), que
   chama a mesma rota `tarefas.mover` e o mesmo motor de fluxo. Cancelada não
   ganha ação nenhuma: ela não tem saída no mapa de transições.
 
 ## T-081 — Quadro sem sobra à direita e histórico que conta o custo da tarefa [concluida]
-- Refs: US-036, US-040, AC-119, AC-120
+- Refs: US-036, US-040, AC-132, AC-133
 - Arquivos: app/Models/Tarefa.php, app/Http/Controllers/TarefaController.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/historico.blade.php, resources/views/tarefas/_card.blade.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php, tests/Feature/TarefasDesenvolvimento/HistoricoTarefasTest.php
-- Notas: (AC-119) as colunas são `width: 276px` fixo; com cinco delas sobra uma
+- Notas: (AC-132) as colunas são `width: 276px` fixo; com cinco delas sobra uma
   faixa vazia à direita do quadro. Trocar por `flex: 1 1 276px` com
   `min-width: 276px` — crescem quando há espaço, mantêm a largura de leitura
   quando não há, e o `overflow-x` do quadro continua valendo.
-  (AC-120) o histórico hoje é título, sistema, responsável, etapa final e data
+  (AC-133) o histórico hoje é título, sistema, responsável, etapa final e data
   — não diz nada do que a tarefa custou, sendo que o custo é justamente o que
   os eventos por etapa medem. Acrescentar prioridade, resumo e a duração do
   ciclo (da criação até a entrada na etapa terminal). A formatação curta de

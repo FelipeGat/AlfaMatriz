@@ -200,7 +200,7 @@ class MoverTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-109 O menu "Mover" do card oferece exatamente os destinos que o fluxo
+     * @spec:AC-122 O menu "Mover" do card oferece exatamente os destinos que o fluxo
      * permite — e o card em Cancelada, que não tem saída, não oferece menu nenhum.
      *
      * A causa raiz do bug original: `@json` dentro do atributo `x-data` fecha o
@@ -225,7 +225,7 @@ class MoverTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-109 Tarefa cancelada não tem para onde ir: o card não oferece menu.
+     * @spec:AC-122 Tarefa cancelada não tem para onde ir: o card não oferece menu.
      */
     public function test_card_cancelado_nao_oferece_menu_mover(): void
     {

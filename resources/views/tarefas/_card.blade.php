@@ -27,7 +27,7 @@
 
     // Um tom por nível, sem repetir: com `baixa` e `media` no mesmo neutro,
     // dois dos quatro níveis ficavam indistinguíveis e a escala perdia o
-    // meio. A ordem sobe do mais discreto ao mais grave (AC-113).
+    // meio. A ordem sobe do mais discreto ao mais grave (AC-126).
     $tomPrioridade = [
         'baixa' => 'neutro',
         'media' => 'marca',
@@ -49,7 +49,7 @@
         O resumo só ocupa espaço quando existe: `@if` e não uma linha vazia
         reservada, senão todo card sem resumo ganharia um buraco. Uma linha
         truncada — o card é relance, o texto inteiro é assunto do detalhe
-        (AC-116). O `title` entrega o resto sem custar altura.
+        (AC-129). O `title` entrega o resto sem custar altura.
     --}}
     @if (filled($tarefa->resumo))
         <p class="mt-1 text-[12px] leading-snug text-ink-mute truncate"
@@ -60,7 +60,7 @@
         A linha de metadados tem SEMPRE os dois segmentos. Antes, tarefa sem
         responsável simplesmente omitia o nome, e a falta era lida por
         comparação com os cards vizinhos — logo na coluna Aberta, que é a fila
-        que pede triagem (AC-117). Dito em texto e sem cor de alarme: a borda
+        que pede triagem (AC-130). Dito em texto e sem cor de alarme: a borda
         do card já é o canal do aviso de esquecida.
     --}}
     <p class="mt-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">

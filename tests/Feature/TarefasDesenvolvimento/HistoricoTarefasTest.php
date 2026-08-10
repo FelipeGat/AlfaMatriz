@@ -99,7 +99,7 @@ class HistoricoTarefasTest extends TestCase
     }
 
     /**
-     * @spec:AC-112 Quadro e Histórico são duas abas da mesma tela: as duas aparecem nas
+     * @spec:AC-125 Quadro e Histórico são duas abas da mesma tela: as duas aparecem nas
      * duas telas, e a atual vem marcada como ativa — passar de uma para a outra é um clique.
      */
     public function test_quadro_e_historico_sao_abas_da_mesma_tela(): void
@@ -136,7 +136,7 @@ class HistoricoTarefasTest extends TestCase
     }
 
     /**
-     * @spec:AC-118 Sem a coluna Concluída no quadro, reabrir passa a morar no histórico:
+     * @spec:AC-131 Sem a coluna Concluída no quadro, reabrir passa a morar no histórico:
      * a concluída oferece o caminho de volta, a cancelada não (ela não tem saída no fluxo).
      */
     public function test_historico_reabre_a_concluida_e_nao_oferece_saida_para_a_cancelada(): void
@@ -169,7 +169,7 @@ class HistoricoTarefasTest extends TestCase
     }
 
     /**
-     * @spec:AC-120 A linha do histórico conta o que a tarefa custou: prioridade, resumo
+     * @spec:AC-133 A linha do histórico conta o que a tarefa custou: prioridade, resumo
      * e a duração do ciclo — da criação até entrar na etapa terminal. É o número que
      * justifica cronometrar cada etapa; sem ele os eventos seriam registro que ninguém lê.
      */

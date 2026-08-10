@@ -120,7 +120,7 @@ class TarefaController extends Controller
 
         // Sem recorte de período (AC-097): é o caminho de auditoria para o
         // que o quadro enxuto (`index()`) já tirou de vista.
-        // `eventos` para a duração do ciclo de cada linha (AC-120).
+        // `eventos` para a duração do ciclo de cada linha (AC-133).
         $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos'])
             ->whereIn('status', Tarefa::STATUS_TERMINAIS)
             ->orderByDesc('updated_at')
@@ -131,7 +131,7 @@ class TarefaController extends Controller
 
     /**
      * Ordem dos cards dentro de uma coluna: gravidade primeiro, e no empate a
-     * tarefa mais parada na etapa (AC-115).
+     * tarefa mais parada na etapa (AC-128).
      *
      * Antes a ordem era só `created_at desc`, o que fazia uma crítica antiga
      * afundar embaixo de tarefas baixas recentes — a prioridade ficava
@@ -171,7 +171,7 @@ class TarefaController extends Controller
     }
 
     /**
-     * Token de cor da etapa, pintado na coluna — nunca no card (AC-114).
+     * Token de cor da etapa, pintado na coluna — nunca no card (AC-127).
      *
      * A coluna é o lugar do status porque ela já o nomeia: repetir a cor na
      * borda de cada card diria sete vezes o que o cabeçalho diz uma, e

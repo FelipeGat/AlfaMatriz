@@ -207,7 +207,7 @@ class CardTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-113 Os quatro níveis de prioridade têm cada um a sua cor: nenhum par
+     * @spec:AC-126 Os quatro níveis de prioridade têm cada um a sua cor: nenhum par
      * compartilha tom, e a escala sobe do mais discreto (Baixa) ao mais grave (Crítica).
      *
      * Antes de existir a Crítica, `baixa` e `media` dividiam o tom neutro — dois
@@ -244,7 +244,7 @@ class CardTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-116 O resumo é lido no próprio card; card sem resumo não reserva espaço vazio.
+     * @spec:AC-129 O resumo é lido no próprio card; card sem resumo não reserva espaço vazio.
      */
     public function test_card_mostra_o_resumo_e_omite_a_linha_quando_nao_ha(): void
     {
@@ -275,7 +275,7 @@ class CardTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-117 A falta de responsável é dita no card, não deduzida da ausência do nome.
+     * @spec:AC-130 A falta de responsável é dita no card, não deduzida da ausência do nome.
      */
     public function test_card_sem_responsavel_diz_que_nao_tem(): void
     {

@@ -16,7 +16,7 @@ class PrioridadeCriticaTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * @spec:AC-110 A escolha de prioridade do formulário traz os quatro
+     * @spec:AC-123 A escolha de prioridade do formulário traz os quatro
      * níveis, incluindo Crítica.
      */
     public function test_formulario_de_tarefa_oferece_as_quatro_prioridades(): void
@@ -34,7 +34,7 @@ class PrioridadeCriticaTest extends TestCase
     }
 
     /**
-     * @spec:AC-110 Uma tarefa pode ser salva com prioridade Crítica.
+     * @spec:AC-123 Uma tarefa pode ser salva com prioridade Crítica.
      */
     public function test_tarefa_pode_ser_criada_com_prioridade_critica(): void
     {
@@ -53,7 +53,7 @@ class PrioridadeCriticaTest extends TestCase
     }
 
     /**
-     * @spec:AC-110 O card de uma tarefa Crítica traz a marca vermelha
+     * @spec:AC-123 O card de uma tarefa Crítica traz a marca vermelha
      * (tom "crit"), distinta da tarefa Alta (tom "warn").
      */
     public function test_card_de_tarefa_critica_traz_marca_vermelha_distinta_da_alta(): void

@@ -1,7 +1,7 @@
 {{--
     Abas da tela de Tarefas, no padrão de Revendas: o quadro é o trabalho em
     curso e o histórico é o que já foi encerrado — dois recortes do mesmo
-    assunto, e por isso duas abas da mesma tela, não duas telas (AC-112).
+    assunto, e por isso duas abas da mesma tela, não duas telas (AC-125).
 
     Aqui as abas apontam para rotas distintas em vez de `?aba=`: as duas já
     existiam como rota própria, e um `?aba=` sobre isso só acrescentaria um

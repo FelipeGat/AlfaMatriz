@@ -77,7 +77,7 @@ class QuadroTest extends TestCase
     }
 
     /**
-     * @spec:AC-114 Cada etapa tem a sua cor na COLUNA — faixa no topo e contador
+     * @spec:AC-127 Cada etapa tem a sua cor na COLUNA — faixa no topo e contador
      * tingido, como no Funil de Vendas — e essa cor não invade a borda do card,
      * que continua reservada ao aviso de tarefa esquecida (AC-093).
      */
@@ -128,7 +128,7 @@ class QuadroTest extends TestCase
     }
 
     /**
-     * @spec:AC-115 Dentro da coluna, a gravidade manda: uma crítica antiga fica acima
+     * @spec:AC-128 Dentro da coluna, a gravidade manda: uma crítica antiga fica acima
      * de uma baixa recente. No empate de prioridade, quem está parado há mais tempo
      * na etapa sobe — o mesmo instante que o card mostra no chip de tempo.
      */
@@ -186,7 +186,7 @@ class QuadroTest extends TestCase
     }
 
     /**
-     * @spec:AC-119 As colunas dividem a largura disponível em vez de largura fixa —
+     * @spec:AC-132 As colunas dividem a largura disponível em vez de largura fixa —
      * com cinco colunas numa tela larga sobrava faixa vazia à direita do quadro —
      * e o `min-width` segura a largura de leitura quando a tela aperta.
      */

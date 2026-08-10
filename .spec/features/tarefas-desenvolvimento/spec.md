@@ -60,21 +60,21 @@ aberto, em desenvolvimento, em teste e concluído.
 - **Então** o card do quadro mostra o sistema da tarefa, e só sistemas ativos
   são oferecidos na escolha
 
-#### AC-110 — As quatro prioridades do ciclo, com a crítica em destaque
+#### AC-123 — As quatro prioridades do ciclo, com a crítica em destaque
 
 - **Dado** o formulário de tarefa
 - **Quando** abro a escolha de prioridade
 - **Então** vejo Baixa, Média, Alta e **Crítica**; uma tarefa crítica aparece
   no quadro com a marca vermelha, distinta da Alta
 
-#### AC-113 — Os quatro níveis de prioridade se distinguem entre si
+#### AC-126 — Os quatro níveis de prioridade se distinguem entre si
 
 - **Dado** quatro tarefas no quadro, uma de cada prioridade
 - **Quando** comparo os selos delas
 - **Então** cada nível tem uma cor própria — Baixa, Média, Alta e Crítica não
   compartilham tom entre si, e a escala sobe do mais discreto ao mais grave
 
-#### AC-114 — Cada etapa do quadro tem a sua cor, na coluna
+#### AC-127 — Cada etapa do quadro tem a sua cor, na coluna
 
 - **Dado** o quadro aberto
 - **Quando** corro o olho pelas colunas
@@ -83,7 +83,7 @@ aberto, em desenvolvimento, em teste e concluído.
   repetida na borda dos cards, que continua reservada ao aviso de tarefa
   esquecida
 
-#### AC-115 — Dentro da coluna, o que é mais grave e o que está mais parado sobem
+#### AC-128 — Dentro da coluna, o que é mais grave e o que está mais parado sobem
 
 - **Dado** uma coluna com uma tarefa crítica criada há meses e uma tarefa de
   prioridade baixa criada hoje
@@ -91,21 +91,21 @@ aberto, em desenvolvimento, em teste e concluído.
 - **Então** a crítica aparece acima da baixa; e entre duas tarefas de mesma
   prioridade, a que está parada há mais tempo na etapa aparece primeiro
 
-#### AC-116 — O resumo da tarefa aparece no card
+#### AC-129 — O resumo da tarefa aparece no card
 
 - **Dado** uma tarefa cujo resumo foi preenchido
 - **Quando** olho o card dela no quadro
 - **Então** leio o resumo abaixo do título, sem precisar abrir a tarefa; e o
   card de uma tarefa sem resumo não abre espaço vazio no lugar dele
 
-#### AC-117 — Tarefa sem responsável diz que não tem
+#### AC-130 — Tarefa sem responsável diz que não tem
 
 - **Dado** uma tarefa ainda não direcionada a ninguém
 - **Quando** olho o card dela
 - **Então** o card afirma "sem responsável" — a informação é dita, não
   deduzida da ausência do nome
 
-#### AC-119 — O quadro ocupa a largura disponível
+#### AC-132 — O quadro ocupa a largura disponível
 
 - **Dado** o quadro numa tela larga, com menos colunas do que caberia
 - **Quando** olho a borda direita
@@ -161,14 +161,14 @@ fluxo, para que nada seja dado como concluído sem ter passado por teste.
 - **Então** ela volta para Em desenvolvimento e a única saída da coluna
   Cancelada continua sendo nenhuma (tarefa cancelada não volta ao fluxo)
 
-#### AC-109 — O menu "Mover" oferece de verdade os destinos permitidos
+#### AC-122 — O menu "Mover" oferece de verdade os destinos permitidos
 
 - **Dado** o quadro aberto, com uma tarefa em Em testes
 - **Quando** abro o menu "Mover" do card dela
 - **Então** a lista de destinos traz Concluída, Ajustes necessários e
   Cancelada — e nada além disso; o card em Cancelada não oferece menu nenhum
 
-#### AC-111 — Devolver do Backlog para Aberta solta o responsável
+#### AC-124 — Devolver do Backlog para Aberta solta o responsável
 
 - **Dado** uma tarefa no Backlog, direcionada a alguém
 - **Quando** a movo de volta para Aberta
@@ -237,21 +237,21 @@ perder nada, para que a auditoria de qualquer tarefa antiga continue possível.
 - **Então** ela aparece na listagem, com sistema, responsável, etapa final e
   data, sem nenhum recorte por período aplicado
 
-#### AC-112 — Quadro e Histórico são duas abas da mesma tela
+#### AC-125 — Quadro e Histórico são duas abas da mesma tela
 
 - **Dado** que estou em Tarefas
 - **Quando** olho o topo da tela
 - **Então** vejo as abas Quadro e Histórico, com a atual marcada como ativa, e
   passo de uma para a outra em um clique — sem precisar digitar a URL
 
-#### AC-118 — A tarefa concluída é reaberta pelo histórico
+#### AC-131 — A tarefa concluída é reaberta pelo histórico
 
 - **Dado** uma tarefa concluída, que não está mais no quadro
 - **Quando** abro o histórico
 - **Então** ela oferece reabrir, e reabrir a devolve para Em desenvolvimento,
   de volta ao quadro; tarefa cancelada não oferece esse caminho
 
-#### AC-120 — O histórico conta quanto a tarefa custou
+#### AC-133 — O histórico conta quanto a tarefa custou
 
 - **Dado** uma tarefa encerrada, que passou por várias etapas
 - **Quando** abro o histórico

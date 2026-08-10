@@ -11,7 +11,7 @@
         listagem inteira, sem nenhum recorte por período (AC-097) — e também a
         porta de volta: reabrir uma concluída só era possível pelo menu do card
         no quadro, e sem a coluna Concluída esse caminho deixaria de existir
-        (AC-118).
+        (AC-131).
     --}}
     <x-tabela titulo="Histórico completo" sub="sem recorte de período" min="1040px">
         <thead>
@@ -43,7 +43,7 @@
                     </td>
                     <td class="px-4 py-3 text-[13px] text-ink-dim">{{ $tarefa->responsavel?->name ?? 'Sem responsável' }}</td>
                     <td class="px-4 py-3">
-                        {{-- Mesma escala de tons do card (AC-113). --}}
+                        {{-- Mesma escala de tons do card (AC-126). --}}
                         <x-badge :tom="['baixa' => 'neutro', 'media' => 'marca', 'alta' => 'atencao', 'critica' => 'critico'][$tarefa->prioridade] ?? 'neutro'">
                             {{ \App\Models\Tarefa::PRIORIDADES[$tarefa->prioridade] ?? $tarefa->prioridade }}
                         </x-badge>
@@ -54,7 +54,7 @@
                         </x-badge>
                     </td>
                     {{-- O número que justifica cronometrar cada etapa: quanto a
-                         tarefa levou da criação até encerrar (AC-120). --}}
+                         tarefa levou da criação até encerrar (AC-133). --}}
                     <td class="px-4 py-3 text-right font-mono text-[13px] text-ink-dim whitespace-nowrap"
                         title="Da criação em {{ $tarefa->created_at->format('d/m/Y H:i') }} até o encerramento">
                         {{ ($ciclo = $tarefa->duracaoDoCiclo()) === null ? '—' : \App\Models\Tarefa::duracaoCurta($ciclo) }}

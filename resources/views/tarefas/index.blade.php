@@ -63,11 +63,11 @@
                                  A cor da etapa vive AQUI, na coluna, como no
                                  Funil de Vendas — e não na borda do card: essa
                                  continua sendo o canal do aviso de tarefa
-                                 esquecida (AC-093, AC-114).
+                                 esquecida (AC-093, AC-127).
 
                                  `flex: 1 1 276px` no lugar de largura fixa: com
                                  cinco colunas numa tela larga sobrava uma faixa
-                                 vazia à direita (AC-119). Assim elas dividem o
+                                 vazia à direita (AC-132). Assim elas dividem o
                                  espaço quando ele existe, e o `min-width` segura
                                  a largura de leitura — apertando a tela, o
                                  quadro volta a rolar na horizontal em vez de

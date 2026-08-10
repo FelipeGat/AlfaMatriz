@@ -91,7 +91,7 @@ class Tarefa extends Model
     }
 
     /**
-     * Quanto a tarefa levou da criação até entrar na etapa terminal (AC-120).
+     * Quanto a tarefa levou da criação até entrar na etapa terminal (AC-133).
      *
      * É o número que justifica cronometrar cada etapa: sem ele, os eventos
      * seriam registro que ninguém lê. Devolve null enquanto a tarefa não

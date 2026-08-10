@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-10T16:08:10.954Z",
-  "gitRev": "d6593ca",
+  "timestamp": "2026-08-10T17:02:29.120Z",
+  "gitRev": "f13c7e5",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 218,
+  "testsParsed": 263,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -27,39 +27,39 @@
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_card_mostra_o_sistema_da_tarefa @spec:AC-084",
       "method": "tap"
     },
-    "AC-110": {
+    "AC-123": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PrioridadeCriticaTest::test_formulario_de_tarefa_oferece_as_quatro_prioridades @spec:AC-110",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PrioridadeCriticaTest::test_formulario_de_tarefa_oferece_as_quatro_prioridades @spec:AC-123",
       "method": "tap"
     },
-    "AC-113": {
+    "AC-126": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_as_quatro_prioridades_tem_cores_distintas @spec:AC-113",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_as_quatro_prioridades_tem_cores_distintas @spec:AC-126",
       "method": "tap"
     },
-    "AC-114": {
+    "AC-127": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_cada_etapa_tem_cor_propria_na_coluna_e_nao_no_card @spec:AC-114",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_cada_etapa_tem_cor_propria_na_coluna_e_nao_no_card @spec:AC-127",
       "method": "tap"
     },
-    "AC-115": {
+    "AC-128": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_coluna_ordena_por_prioridade_e_depois_pelo_mais_parado @spec:AC-115",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_coluna_ordena_por_prioridade_e_depois_pelo_mais_parado @spec:AC-128",
       "method": "tap"
     },
-    "AC-116": {
+    "AC-129": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_card_mostra_o_resumo_e_omite_a_linha_quando_nao_ha @spec:AC-116",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_card_mostra_o_resumo_e_omite_a_linha_quando_nao_ha @spec:AC-129",
       "method": "tap"
     },
-    "AC-117": {
+    "AC-130": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_card_sem_responsavel_diz_que_nao_tem @spec:AC-117",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_card_sem_responsavel_diz_que_nao_tem @spec:AC-130",
       "method": "tap"
     },
-    "AC-119": {
+    "AC-132": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_colunas_dividem_a_largura_e_guardam_a_largura_minima @spec:AC-119",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_colunas_dividem_a_largura_e_guardam_a_largura_minima @spec:AC-132",
       "method": "tap"
     },
     "AC-085": {
@@ -92,14 +92,14 @@
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_tarefa_concluida_pode_ser_reaberta_e_cancelada_nao_tem_saida @spec:AC-090",
       "method": "tap"
     },
-    "AC-109": {
+    "AC-122": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\MoverTarefaTest::test_menu_mover_oferece_so_os_destinos_permitidos @spec:AC-109",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\MoverTarefaTest::test_menu_mover_oferece_so_os_destinos_permitidos @spec:AC-122",
       "method": "tap"
     },
-    "AC-111": {
+    "AC-124": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_devolver_do_backlog_para_aberta_solta_o_responsavel @spec:AC-111",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_devolver_do_backlog_para_aberta_solta_o_responsavel @spec:AC-124",
       "method": "tap"
     },
     "AC-091": {
@@ -137,19 +137,19 @@
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_historico_lista_tarefa_antiga_sem_recorte_de_periodo @spec:AC-097",
       "method": "tap"
     },
-    "AC-112": {
+    "AC-125": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_quadro_e_historico_sao_abas_da_mesma_tela @spec:AC-112",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_quadro_e_historico_sao_abas_da_mesma_tela @spec:AC-125",
       "method": "tap"
     },
-    "AC-118": {
+    "AC-131": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_historico_reabre_a_concluida_e_nao_oferece_saida_para_a_cancelada @spec:AC-118",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_historico_reabre_a_concluida_e_nao_oferece_saida_para_a_cancelada @spec:AC-131",
       "method": "tap"
     },
-    "AC-120": {
+    "AC-133": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_historico_mostra_prioridade_resumo_e_duracao_do_ciclo @spec:AC-120",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_historico_mostra_prioridade_resumo_e_duracao_do_ciclo @spec:AC-133",
       "method": "tap"
     }
   },
