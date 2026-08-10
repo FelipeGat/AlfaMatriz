@@ -160,4 +160,58 @@ class LicencaPorSistemaTest extends TestCase
         $resposta->assertOk();
         $resposta->assertDontSee('clientes/'.$soControl->id.'/sistemas/'.$this->control->id.'/licenca', escape: false);
     }
+
+    /**
+     * @spec:AC-139 O cliente com licença em dois sistemas mostra os dois
+     * estados. Antes a coluna pegava o primeiro e escondia o outro — que era
+     * justamente o que podia precisar de ação.
+     */
+    public function test_a_lista_mostra_o_estado_de_cada_sistema(): void
+    {
+        // Gym vencido, AlfaControl ativo: os dois têm de aparecer.
+        $this->cliente->sistemas()->syncWithoutDetaching([
+            $this->gym->id => [
+                'status_saas' => 'ativo', 'licenca_id_externo' => '91',
+                'plano' => 'mensal', 'licenca_fim_em' => now()->subMonth()->toDateString(),
+            ],
+            $this->control->id => [
+                'status_saas' => 'ativo', 'licenca_id_externo' => '77',
+                'plano' => 'anual', 'licenca_fim_em' => now()->addYear()->toDateString(),
+            ],
+        ]);
+
+        $resposta = $this->actingAs($this->admin())->get(route('clientes.index'));
+
+        $resposta->assertOk();
+        $resposta->assertSee('AlfaGym', escape: false);
+        $resposta->assertSee('AlfaControl', escape: false);
+        $resposta->assertSee('vencida', escape: false);
+        $resposta->assertSee('ativa', escape: false);
+    }
+
+    /**
+     * @spec:AC-139 O problema aparece primeiro: quem varre a lista está
+     * procurando o que precisa de ação, e o corte em duas linhas não pode
+     * esconder justamente a licença suspensa.
+     */
+    public function test_o_pior_estado_aparece_antes_do_melhor(): void
+    {
+        $this->cliente->sistemas()->syncWithoutDetaching([
+            $this->gym->id => [
+                'status_saas' => 'ativo', 'licenca_id_externo' => '91',
+                'licenca_fim_em' => now()->addYear()->toDateString(),
+            ],
+            $this->control->id => [
+                'status_saas' => 'bloqueado', 'licenca_id_externo' => '77',
+            ],
+        ]);
+
+        $html = $this->actingAs($this->admin())->get(route('clientes.index'))->getContent();
+
+        $this->assertLessThan(
+            strpos($html, 'AlfaGym'),
+            strpos($html, 'AlfaControl'),
+            'A licença suspensa tem de vir antes da ativa.'
+        );
+    }
 }

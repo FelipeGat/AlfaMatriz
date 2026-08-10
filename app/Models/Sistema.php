@@ -55,6 +55,7 @@ class Sistema extends Model
     public function clientes(): BelongsToMany
     {
         return $this->belongsToMany(Cliente::class, 'cliente_sistema')
+            ->using(ClienteSistema::class)
             ->withPivot(['ativo', 'ativado_em', 'cancelado_em',
                 'licenca_status', 'plano', 'licenca_inicio_em',
                 'licenca_fim_em', 'bloqueia_acesso', 'licenca_id_externo',

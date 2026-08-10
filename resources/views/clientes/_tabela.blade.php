@@ -95,44 +95,54 @@
                 </td>
 
                 <td class="px-4 py-3">
-                    @php $ativos = $cliente->sistemas->where('pivot.ativo', true); @endphp
+                    @php
+                        // Um cliente pode ter licença em mais de um sistema, com
+                        // estados diferentes. Mostrar só o primeiro escondia
+                        // justamente o que precisa de ação.
+                        $ativos = $cliente->sistemas->where('pivot.ativo', true);
+                        $licenciados = $ativos->filter(fn ($s) => $s->pivot->estado() !== 'sem_licenca')
+                            ->sortBy(fn ($s) => $s->pivot->gravidade())
+                            ->values();
+                        $semLicenca = $ativos->filter(fn ($s) => $s->pivot->estado() === 'sem_licenca')->values();
+                        // Corte em duas linhas: a terceira já disputa altura com
+                        // as outras colunas da tabela.
+                        $mostrados = $licenciados->take(2);
+                        $ocultos = $licenciados->count() - $mostrados->count();
+                    @endphp
+
                     @if ($ativos->isEmpty())
                         <span class="text-[12.5px] text-ink-faint">nenhum</span>
                     @else
-                        <div class="flex flex-wrap items-center gap-1">
-                            @foreach ($ativos->take(3) as $sistema)
-                                <x-badge>{{ $sistema->nome }}</x-badge>
-                            @endforeach
-                            @if ($ativos->count() > 3)
-                                <x-badge :title="$ativos->pluck('nome')->implode(', ')">+{{ $ativos->count() - 3 }}</x-badge>
-                            @endif
-                        </div>
-                        @foreach ($ativos->take(1) as $sistema)
-                            @if ($sistema->pivot->licenca_status)
-                                @php
-                                    $fim = $sistema->pivot->licenca_fim_em ? \Carbon\Carbon::parse($sistema->pivot->licenca_fim_em)->endOfDay() : null;
-                                    $hoje = \Carbon\Carbon::now()->endOfDay();
-                                    // O estado real vem do gym: `status_saas` (ativo/bloqueado/pendente).
-                                    // `bloqueia_acesso` é a POLÍTICA da licença (bloquear ao vencer), sempre
-                                    // verdadeira — usá-la aqui marcaria todo mundo como bloqueado.
-                                    $bloqueada = ($sistema->pivot->status_saas ?? '') === 'bloqueado';
-                                    $vencida = $fim && $fim->lt($hoje);
-                                    $vencendo = $fim && ! $vencida && $fim->lte($hoje->copy()->addDays(15));
-                                    $tom = $bloqueada ? 'critico' : ($vencida ? 'atencao' : ($vencendo ? 'atencao' : 'bom'));
-                                @endphp
-                                <div class="mt-1 flex flex-wrap items-center gap-1">
-                                    <x-badge :tom="$tom" ponto>
-                                        {{ $bloqueada ? 'suspensa' : ($vencida ? 'vencida' : ($vencendo ? 'vencendo' : 'ativa')) }}
-                                    </x-badge>
-                                    <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
-                                        {{ $sistema->nome }} · {{ $sistema->pivot->plano ?? '—' }}
-                                        @if ($fim)
-                                            · até {{ $fim->format('d/m/Y') }}
-                                        @endif
-                                    </span>
-                                </div>
-                            @endif
+                        @foreach ($mostrados as $sistema)
+                            @php $vinculo = $sistema->pivot; @endphp
+                            <div class="flex items-center gap-1.5 {{ $loop->first ? '' : 'mt-1' }}">
+                                <span class="h-3.5 w-3.5 shrink-0"><x-marca-sistema :sistema="$sistema" /></span>
+                                <x-badge :tom="$vinculo->tom()" ponto>{{ $vinculo->rotulo() }}</x-badge>
+                                <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
+                                    {{ $sistema->nome }}
+                                    @if ($vinculo->plano)
+                                        · {{ $vinculo->plano }}
+                                    @endif
+                                    @if ($vinculo->fimEm())
+                                        · até {{ $vinculo->fimEm()->format('d/m/Y') }}
+                                    @endif
+                                </span>
+                            </div>
                         @endforeach
+
+                        @if ($ocultos > 0 || $semLicenca->isNotEmpty())
+                            <div class="mt-1 flex flex-wrap items-center gap-1">
+                                @if ($ocultos > 0)
+                                    <x-badge :title="$licenciados->skip(2)->pluck('nome')->implode(', ')">+{{ $ocultos }}</x-badge>
+                                @endif
+                                @foreach ($semLicenca->take(2) as $sistema)
+                                    <x-badge>{{ $sistema->nome }}</x-badge>
+                                @endforeach
+                                @if ($semLicenca->count() > 2)
+                                    <x-badge :title="$semLicenca->pluck('nome')->implode(', ')">+{{ $semLicenca->count() - 2 }}</x-badge>
+                                @endif
+                            </div>
+                        @endif
                     @endif
                 </td>
 
@@ -166,12 +176,17 @@
 
                 <td class="px-4 py-3">
                     @php
-                        // O sistema licenciável deste cliente: quem a Matriz
-                        // gerencia e de quem já se tem retrato de licença.
-                        $sistemaLicenca = collect($cliente->sistemas)
-                            ->first(fn ($s) => ($s->pivot->status_saas ?? '') !== '' && $s->suporta('gerencia_licenca'));
-                        $temLicenca = ! is_null($sistemaLicenca) && filled($sistemaLicenca->pivot->licenca_id_externo ?? null);
-                        $bloqueada = ($sistemaLicenca->pivot->status_saas ?? '') === 'bloqueado';
+                        // Os sistemas cuja licença a Matriz gerencia. Durante a
+                        // implantação de um sistema novo ele não entra aqui: a
+                        // operação continua no painel dele.
+                        $gerenciaveis = collect($cliente->sistemas)
+                            ->filter(fn ($s) => $s->suporta('gerencia_licenca')
+                                && ($s->pivot->status_saas ?? '') !== '')
+                            ->sortBy(fn ($s) => $s->pivot->gravidade())
+                            ->values();
+                        // Com um só, o menu fica idêntico ao de sempre; o
+                        // cabeçalho por sistema só aparece quando há ambiguidade.
+                        $agrupar = $gerenciaveis->count() > 1;
                     @endphp
 
                     <div class="flex justify-end">
@@ -193,47 +208,63 @@
                                          libera, renova nem suspende. --}}
                                     @php $decideLicenca = ! auth()->user()->temEscopoDeRevenda(); @endphp
 
-                                    @if ($decideLicenca && $pendente)
-                                        <button type="button" x-data
-                                                @click="$dispatch('open-modal', 'liberar-licenca-{{ $cliente->id }}')"
-                                                class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] font-semibold text-brand hover:bg-chip transition">
-                                            <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="check-circle" /></span>
-                                            Liberar licença
-                                        </button>
+                                    @if ($decideLicenca)
+                                        @foreach ($gerenciaveis as $sistemaLicenca)
+                                            @php $vinculo = $sistemaLicenca->pivot; @endphp
+
+                                            {{-- O rótulo do item não muda ("Renovar
+                                                 licença", não "Renovar licença do
+                                                 AlfaGym"): quem nomeia o sistema é
+                                                 o cabeçalho do grupo. --}}
+                                            @if ($agrupar)
+                                                <div class="px-3 pt-2 pb-1 font-mono text-[10px] uppercase tracking-caps text-ink-faint">
+                                                    {{ $sistemaLicenca->nome }}
+                                                </div>
+                                            @endif
+
+                                            @if ($vinculo->pendente())
+                                                <button type="button" x-data
+                                                        @click="$dispatch('open-modal', 'liberar-licenca-{{ $cliente->id }}-{{ $sistemaLicenca->id }}')"
+                                                        class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] font-semibold text-brand hover:bg-chip transition">
+                                                    <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="check-circle" /></span>
+                                                    Liberar licença
+                                                </button>
+                                            @endif
+
+                                            @if ($vinculo->temLicenca())
+                                                <button type="button" x-data
+                                                        @click="$dispatch('open-modal', 'renovar-licenca-{{ $cliente->id }}-{{ $sistemaLicenca->id }}')"
+                                                        class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                                    <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="repeat" /></span>
+                                                    Renovar licença
+                                                </button>
+
+                                                @if ($vinculo->suspensa())
+                                                    <x-confirmar :action="route('clientes.desbloquearLicenca', [$cliente, $sistemaLicenca])"
+                                                                 method="POST" confirmar="Reativar"
+                                                                 :titulo="'Reativar '.$cliente->nome_exibicao.'?'"
+                                                                 :mensagem="'O acesso do cliente no '.$sistemaLicenca->nome.' volta a funcionar.'">
+                                                        <span class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                                            <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="play" /></span>
+                                                            Reativar licença
+                                                        </span>
+                                                    </x-confirmar>
+                                                @else
+                                                    <x-confirmar :action="route('clientes.bloquearLicenca', [$cliente, $sistemaLicenca])"
+                                                                 method="POST" confirmar="Suspender"
+                                                                 :titulo="'Suspender '.$cliente->nome_exibicao.'?'"
+                                                                 :mensagem="'O acesso do cliente no '.$sistemaLicenca->nome.' é interrompido até o reativar.'">
+                                                        <span class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
+                                                            <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="pause" /></span>
+                                                            Suspender licença
+                                                        </span>
+                                                    </x-confirmar>
+                                                @endif
+                                            @endif
+                                        @endforeach
                                     @endif
 
-                                    @if ($decideLicenca && $temLicenca)
-                                        <button type="button" x-data
-                                                @click="$dispatch('open-modal', 'renovar-licenca-{{ $cliente->id }}')"
-                                                class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
-                                            <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="repeat" /></span>
-                                            Renovar licença
-                                        </button>
-
-                                        @if ($bloqueada)
-                                            <x-confirmar :action="route('clientes.desbloquearLicenca', [$cliente, $sistemaLicenca])"
-                                                         method="POST" confirmar="Reativar"
-                                                         :titulo="'Reativar '.$cliente->nome_exibicao.'?'"
-                                                         mensagem="O acesso do cliente no AlfaGym volta a funcionar.">
-                                                <span class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
-                                                    <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="play" /></span>
-                                                    Reativar licença
-                                                </span>
-                                            </x-confirmar>
-                                        @else
-                                            <x-confirmar :action="route('clientes.bloquearLicenca', [$cliente, $sistemaLicenca])"
-                                                         method="POST" confirmar="Suspender"
-                                                         :titulo="'Suspender '.$cliente->nome_exibicao.'?'"
-                                                         mensagem="O acesso do cliente no AlfaGym é interrompido até o reativar.">
-                                                <span class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
-                                                    <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="pause" /></span>
-                                                    Suspender licença
-                                                </span>
-                                            </x-confirmar>
-                                        @endif
-                                    @endif
-
-                                    @if ($decideLicenca && ($pendente || $temLicenca))
+                                    @if ($decideLicenca && $gerenciaveis->isNotEmpty())
                                         <div class="my-1 border-t border-line"></div>
                                     @endif
 
@@ -300,129 +331,5 @@
 
 {{-- Os modais de licença só existem para quem decide sobre licença: renderizar
      para a revenda deixaria os formulários de liberar/renovar na página dela. --}}
-@unless (auth()->user()->temEscopoDeRevenda())
-@foreach ($clientes as $cliente)
-    @php
-        // Só os sistemas que a Matriz gerencia entram aqui. Um cliente que só
-        // usa sistema de leitura (o AlfaControl durante a implantação) não tem
-        // modal de licença — e, sem este filtro, a rota era montada sem sistema
-        // e derrubava a tela inteira.
-        $sistemaLicencaModal = collect($cliente->sistemas)
-            ->first(fn ($s) => $s->suporta('gerencia_licenca'));
-        $pendenteModal = $sistemaLicencaModal
-            && ($sistemaLicencaModal->pivot->status_saas ?? '') === 'pendente';
-        $temLicencaModal = $sistemaLicencaModal
-            && filled($sistemaLicencaModal->pivot->licenca_id_externo ?? null);
-    @endphp
 
-    @if ($pendenteModal)
-        <x-modal name="liberar-licenca-{{ $cliente->id }}" maxWidth="sm">
-            <form method="POST" action="{{ route('clientes.liberarLicenca', [$cliente, $sistemaLicencaModal]) }}" class="p-5">
-                @csrf
-                <h2 class="font-display text-[15.5px] font-semibold text-ink mb-1">Liberar licença</h2>
-                <p class="text-[12.5px] text-ink-faint mb-4">
-                    {{ $cliente->nome_exibicao }} — a revenda solicitou; a liberação é feita no AlfaGym.
-                </p>
-
-                @if ($errors->has('licenca'))
-                    <div class="mb-3 rounded-md border border-crit/30 bg-crit-tint px-3 py-2 text-[12.5px] text-crit">
-                        {{ $errors->first('licenca') }}
-                    </div>
-                @endif
-
-                <div class="space-y-4">
-                    <div>
-                        <x-input-label for="tipo-{{ $cliente->id }}" value="Tipo de licença" />
-                        <select id="tipo-{{ $cliente->id }}" name="tipo" class="mt-1 block w-full border-white/10 rounded-md shadow-sm" required>
-                            <option value="mensal" @selected(old('tipo') === 'mensal')>Mensal</option>
-                            <option value="anual" @selected(old('tipo') === 'anual')>Anual</option>
-                        </select>
-                        <x-input-error :messages="$errors->get('tipo')" class="mt-2" />
-                    </div>
-
-                    <div>
-                        <x-input-label for="valor-{{ $cliente->id }}" value="Valor (R$)" />
-                        <x-text-input id="valor-{{ $cliente->id }}" name="valor" type="number" step="0.01" min="0"
-                                      :value="old('valor', '')" class="mt-1 block w-full" placeholder="0,00" />
-                        <x-input-error :messages="$errors->get('valor')" class="mt-2" />
-                    </div>
-
-                    <div>
-                        <x-input-label for="obs-{{ $cliente->id }}" value="Observação" />
-                        <textarea id="obs-{{ $cliente->id }}" name="obs" rows="2"
-                                  class="mt-1 block w-full rounded-md border-white/10 bg-white/5 text-[13px] text-ink"
-                                  placeholder="Contrato, proposta…">{{ old('obs') }}</textarea>
-                        <x-input-error :messages="$errors->get('obs')" class="mt-2" />
-                    </div>
-                </div>
-
-                <div class="mt-5 flex items-center justify-end gap-2">
-                    <button type="button" x-on:click="show = false"
-                            class="h-[34px] px-3 rounded-control border border-btn-line text-ink-dim text-[12.5px] font-semibold hover:text-brand hover:border-brand transition">
-                        Cancelar
-                    </button>
-                    <button type="submit"
-                            class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition">
-                        Liberar licença
-                    </button>
-                </div>
-            </form>
-        </x-modal>
-    @endif
-
-    @if ($temLicencaModal)
-        <x-modal name="renovar-licenca-{{ $cliente->id }}" maxWidth="sm">
-            <form method="POST" action="{{ route('clientes.renovarLicenca', [$cliente, $sistemaLicencaModal]) }}" class="p-5">
-                @csrf
-                <h2 class="font-display text-[15.5px] font-semibold text-ink mb-1">Renovar licença</h2>
-                <p class="text-[12.5px] text-ink-faint mb-4">
-                    {{ $cliente->nome_exibicao }} — um novo período (mensal/anual) é emitido no AlfaGym.
-                </p>
-
-                @if ($errors->has('licenca'))
-                    <div class="mb-3 rounded-md border border-crit/30 bg-crit-tint px-3 py-2 text-[12.5px] text-crit">
-                        {{ $errors->first('licenca') }}
-                    </div>
-                @endif
-
-                <div class="space-y-4">
-                    <div>
-                        <x-input-label for="tipo-ren-{{ $cliente->id }}" value="Tipo de renovação" />
-                        <select id="tipo-ren-{{ $cliente->id }}" name="tipo" class="mt-1 block w-full border-white/10 rounded-md shadow-sm" required>
-                            <option value="mensal" @selected(old('tipo') === 'mensal')>Mensal</option>
-                            <option value="anual" @selected(old('tipo') === 'anual')>Anual</option>
-                        </select>
-                        <x-input-error :messages="$errors->get('tipo')" class="mt-2" />
-                    </div>
-
-                    <div>
-                        <x-input-label for="valor-ren-{{ $cliente->id }}" value="Valor (R$)" />
-                        <x-text-input id="valor-ren-{{ $cliente->id }}" name="valor" type="number" step="0.01" min="0"
-                                      :value="old('valor', '')" class="mt-1 block w-full" placeholder="0,00" />
-                        <x-input-error :messages="$errors->get('valor')" class="mt-2" />
-                    </div>
-
-                    <div>
-                        <x-input-label for="obs-ren-{{ $cliente->id }}" value="Observação" />
-                        <textarea id="obs-ren-{{ $cliente->id }}" name="obs" rows="2"
-                                  class="mt-1 block w-full rounded-md border-white/10 bg-white/5 text-[13px] text-ink"
-                                  placeholder="Renovação de contrato…">{{ old('obs') }}</textarea>
-                        <x-input-error :messages="$errors->get('obs')" class="mt-2" />
-                    </div>
-                </div>
-
-                <div class="mt-5 flex items-center justify-end gap-2">
-                    <button type="button" x-on:click="show = false"
-                            class="h-[34px] px-3 rounded-control border border-btn-line text-ink-dim text-[12.5px] font-semibold hover:text-brand hover:border-brand transition">
-                        Cancelar
-                    </button>
-                    <button type="submit"
-                            class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition">
-                        Renovar licença
-                    </button>
-                </div>
-            </form>
-        </x-modal>
-    @endif
-@endforeach
-@endunless
+@include('clientes._licenca-modais')
