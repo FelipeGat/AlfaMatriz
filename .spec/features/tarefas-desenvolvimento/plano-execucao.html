@@ -38,9 +38,9 @@
 </style>
 <main>
   <h1>Plano de execução — tarefas-desenvolvimento</h1>
-  <p class="sub">gerado por <code>onp-spec plano</code> em 2026-08-10 12:58 · regenere após mudar tasks.md</p>
+  <p class="sub">gerado por <code>onp-spec plano</code> em 2026-08-10 14:16 · regenere após mudar tasks.md</p>
   <div class="resumo">
-    <div><b>8</b> tarefa(s), uma após a outra</div>
+    <div><b>2</b> tarefa(s), uma após a outra</div>
     <div>modo <b>sequencial</b> (escolha do usuário)</div>
     <div>branch <code>spec/tarefas-desenvolvimento</code></div>
   </div>
@@ -61,52 +61,16 @@
       <h3>Ordem de execução <small>uma tarefa após a outra, na árvore principal</small></h3>
       <div class="grade"><div class="faixa">
         <div class="tarefa">
-          <span class="tid">T-058</span>
-          <span class="ttitulo">Estrutura de dados: tarefa, evento de etapa e relatório de teste</span>
+          <span class="tid">T-074</span>
+          <span class="ttitulo">Prioridade Crítica, o quarto nível do ciclo</span>
           <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
-          <span class="arquivos"><code>database/migrations/2026_08_10_090000_criar_tarefas_desenvolvimento.php</code> <code>app/Models/Tarefa.php</code> <code>app/Models/TarefaEvento.php</code> <code>app/Models/TarefaRelatorioTeste.php</code> <code>database/factories/TarefaFactory.php</code> <code>tests/Feature/TarefasDesenvolvimento/EstruturaTarefaTest.php</code></span>
+          <span class="arquivos"><code>database/migrations/2026_08_10_140000_adicionar_prioridade_critica.php</code> <code>app/Models/Tarefa.php</code> <code>resources/views/tarefas/_card.blade.php</code> <code>tests/Feature/TarefasDesenvolvimento/PrioridadeCriticaTest.php</code></span>
         </div>
         <div class="tarefa">
-          <span class="tid">T-059</span>
-          <span class="ttitulo">Motor do fluxo: transições permitidas, exigências e tempo por etapa</span>
-          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
+          <span class="tid">T-075</span>
+          <span class="ttitulo">Devolver do Backlog para Aberta, soltando o responsável</span>
+          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
           <span class="arquivos"><code>app/Services/FluxoTarefaService.php</code> <code>tests/Feature/TarefasDesenvolvimento/FluxoTarefaTest.php</code></span>
-        </div>
-        <div class="tarefa">
-          <span class="tid">T-060</span>
-          <span class="ttitulo">Quadro no ar: permissão `tarefas`, rotas, controller e a tela com as colunas</span>
-          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
-          <span class="arquivos"><code>database/seeders/PerfilPermissaoSeeder.php</code> <code>routes/web.php</code> <code>app/Http/Controllers/TarefaController.php</code> <code>resources/views/tarefas/index.blade.php</code> <code>tests/Feature/TarefasDesenvolvimento/QuadroTest.php</code> <code>tests/Feature/TarefasDesenvolvimento/AcessoTarefasTest.php</code></span>
-        </div>
-        <div class="tarefa">
-          <span class="tid">T-061</span>
-          <span class="ttitulo">Grupo &quot;Desenvolvimento&quot; no menu lateral</span>
-          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
-          <span class="arquivos"><code>resources/views/layouts/navigation.blade.php</code> <code>tests/Feature/TarefasDesenvolvimento/MenuDesenvolvimentoTest.php</code></span>
-        </div>
-        <div class="tarefa">
-          <span class="tid">T-062</span>
-          <span class="ttitulo">Card da tarefa: sistema, prioridade, tempo na etapa e destaque de esquecida</span>
-          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
-          <span class="arquivos"><code>resources/views/tarefas/_card.blade.php</code> <code>resources/views/tarefas/index.blade.php</code> <code>tests/Feature/TarefasDesenvolvimento/CardTarefaTest.php</code></span>
-        </div>
-        <div class="tarefa">
-          <span class="tid">T-063</span>
-          <span class="ttitulo">Criar e editar tarefa: sistema, responsável e prioridade</span>
-          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
-          <span class="arquivos"><code>resources/views/tarefas/_form.blade.php</code> <code>resources/views/tarefas/index.blade.php</code> <code>app/Http/Controllers/TarefaController.php</code> <code>tests/Feature/TarefasDesenvolvimento/FormularioTarefaTest.php</code></span>
-        </div>
-        <div class="tarefa">
-          <span class="tid">T-064</span>
-          <span class="ttitulo">Mover card: arrastar, menu &quot;Mover&quot; e confirmação com motivo ou notas de teste</span>
-          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>high</b></span>
-          <span class="arquivos"><code>resources/views/tarefas/_mover.blade.php</code> <code>resources/views/tarefas/index.blade.php</code> <code>app/Http/Controllers/TarefaController.php</code> <code>tests/Feature/TarefasDesenvolvimento/MoverTarefaTest.php</code></span>
-        </div>
-        <div class="tarefa">
-          <span class="tid">T-065</span>
-          <span class="ttitulo">Quadro enxuto e histórico inteiro: recorte de 30 dias e listagem sem filtro</span>
-          <span class="meta"><code>claude-sonnet-5</code> · esforço <b>medium</b></span>
-          <span class="arquivos"><code>resources/views/tarefas/historico.blade.php</code> <code>app/Http/Controllers/TarefaController.php</code> <code>tests/Feature/TarefasDesenvolvimento/HistoricoTarefasTest.php</code></span>
         </div></div></div>
     </section>
   <section class="onda">

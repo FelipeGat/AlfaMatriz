@@ -18,7 +18,7 @@ class FluxoTarefaService
     /** Para onde cada etapa pode ir; cancelada é terminal e não sai de lugar nenhum. */
     public const TRANSICOES_PERMITIDAS = [
         'aberta' => ['backlog', 'cancelada'],
-        'backlog' => ['em_desenvolvimento', 'cancelada'],
+        'backlog' => ['aberta', 'em_desenvolvimento', 'cancelada'],
         'em_desenvolvimento' => ['em_testes', 'cancelada'],
         'em_testes' => ['concluida', 'ajustes_necessarios', 'cancelada'],
         'ajustes_necessarios' => ['em_desenvolvimento', 'cancelada'],
@@ -44,7 +44,13 @@ class FluxoTarefaService
 
             $this->fecharEventoAberto($tarefa, $agora);
 
-            $tarefa->update(['status' => $novoStatus]);
+            $atualizacao = ['status' => $novoStatus];
+
+            if ($statusAtual === 'backlog' && $novoStatus === 'aberta') {
+                $atualizacao['responsavel_id'] = null;
+            }
+
+            $tarefa->update($atualizacao);
 
             TarefaEvento::create([
                 'tarefa_id' => $tarefa->id,

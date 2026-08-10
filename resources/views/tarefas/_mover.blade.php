@@ -8,7 +8,15 @@
 @endphp
 
 @if (! empty($transicoes))
-    <div class="mt-2 pt-2 border-t border-rule" @click.stop x-data="{ transicoesDoCard: @json($transicoes) }">
+    {{--
+        `Js::from` e não `@json`: dentro de um atributo HTML, a primeira aspa
+        dupla do JSON fecharia o `x-data` no meio, o Alpine não avaliaria nada
+        e o select do menu sairia SEM OPÇÃO — o caminho acessível morreria em
+        silêncio, porque a rota continua respondendo. É a mesma escolha de
+        `clientes/_form.blade.php`.
+    --}}
+    <div class="mt-2 pt-2 border-t border-rule" @click.stop
+         x-data="{ transicoesDoCard: {{ Illuminate\Support\Js::from($transicoes) }} }">
         <button type="button" @click="menuAberto = ! menuAberto"
                 class="font-mono text-[10.5px] uppercase tracking-caps text-ink-mute hover:text-brand transition">
             Mover ▾
@@ -17,8 +25,14 @@
         <form x-show="menuAberto" x-cloak method="POST"
               action="{{ route('tarefas.mover', $tarefa) }}" class="mt-2 space-y-2">
             @csrf
+            {{--
+                `py-0` junto com a altura fixa, como em Revendas e Clientes: o
+                plugin de formulários dá ao select `padding: 8px` em cima e
+                embaixo mais `line-height: 24px` — 42px de caixa. Com `h-8` e
+                `box-sizing: border-box` isso não cabe, e o texto sai cortado.
+            --}}
             <select name="status" x-model="destino"
-                    class="w-full h-8 text-[12px] rounded-control bg-input border-line text-ink">
+                    class="w-full h-8 py-0 text-[12px] rounded-control bg-input border-line text-ink">
                 <template x-for="status in transicoesDoCard" :key="status">
                     <option :value="status" x-text="rotulosStatus[status] ?? status"></option>
                 </template>

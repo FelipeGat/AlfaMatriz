@@ -15,38 +15,32 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $tarefas = Tarefa::with(['sistema', 'responsavel'])
+        // O quadro é o trabalho EM CURSO: concluída e cancelada não têm coluna
+        // (AC-082, AC-096). Sete colunas não cabiam na tela e as duas terminais
+        // eram as de menor valor no dia a dia — encerrou, sai do quadro e passa
+        // a viver no histórico (`historico()`), de onde também se reabre.
+        // Isso aposenta o antigo recorte de 30 dias: não há mais o que recortar.
+        $emCurso = collect(Tarefa::STATUS)->reject(
+            fn ($label, $status) => in_array($status, Tarefa::STATUS_TERMINAIS, true)
+        );
+
+        // `eventos` entra no eager load porque o card lê a etapa atual de cada
+        // tarefa para o chip de tempo — sem isso é uma consulta por card.
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos'])
+            ->whereIn('status', $emCurso->keys())
             ->orderByDesc('created_at')
             ->get();
 
-        // O quadro fica enxuto: concluída e cancelada só mostram os últimos
-        // 30 dias, avisando quantas mais antigas ficaram fora (AC-096). O
-        // histórico completo, sem esse recorte, é a rota de auditoria
-        // (AC-097, em `historico()`).
-        $corte = now()->subDays(30);
-        $foraDoCorte = [];
+        $colunas = $emCurso->mapWithKeys(fn ($label, $status) => [
+            $status => $this->ordenarColuna($tarefas->where('status', $status)->values()),
+        ]);
 
-        $colunas = collect(Tarefa::STATUS)->mapWithKeys(function ($label, $status) use ($tarefas, $corte, &$foraDoCorte) {
-            $doStatus = $tarefas->where('status', $status)->values();
-
-            if (in_array($status, Tarefa::STATUS_TERMINAIS, true)) {
-                $recentes = $doStatus->filter(fn (Tarefa $tarefa) => $tarefa->updated_at->greaterThanOrEqualTo($corte))->values();
-                $foraDoCorte[$status] = $doStatus->count() - $recentes->count();
-                $doStatus = $recentes;
-            }
-
-            return [$status => $doStatus];
-        });
-
-        $etapas = collect(Tarefa::STATUS)->map(function ($label, $status) use ($colunas, $foraDoCorte) {
-            $ocultas = $foraDoCorte[$status] ?? 0;
-
-            return [
-                'chave' => $status,
-                'label' => $ocultas > 0 ? "{$label} · {$ocultas} fora dos últimos 30 dias" : $label,
-                'quantidade' => $colunas[$status]->count(),
-            ];
-        })->values()->all();
+        $etapas = $emCurso->map(fn ($label, $status) => [
+            'chave' => $status,
+            'label' => $label,
+            'cor' => $this->corDaEtapa($status),
+            'quantidade' => $colunas[$status]->count(),
+        ])->values()->all();
 
         $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
         $usuarios = User::whereNull('revenda_id')->orderBy('name')->get();
@@ -126,11 +120,76 @@ class TarefaController extends Controller
 
         // Sem recorte de período (AC-097): é o caminho de auditoria para o
         // que o quadro enxuto (`index()`) já tirou de vista.
-        $tarefas = Tarefa::with(['sistema', 'responsavel'])
+        // `eventos` para a duração do ciclo de cada linha (AC-120).
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos'])
             ->whereIn('status', Tarefa::STATUS_TERMINAIS)
             ->orderByDesc('updated_at')
             ->get();
 
         return view('tarefas.historico', compact('tarefas'));
+    }
+
+    /**
+     * Ordem dos cards dentro de uma coluna: gravidade primeiro, e no empate a
+     * tarefa mais parada na etapa (AC-115).
+     *
+     * Antes a ordem era só `created_at desc`, o que fazia uma crítica antiga
+     * afundar embaixo de tarefas baixas recentes — a prioridade ficava
+     * legível no selo e sem efeito nenhum na leitura da coluna.
+     *
+     * O desempate usa a entrada na etapa ATUAL, o mesmo instante que o card
+     * mostra no chip de tempo: se a ordem seguisse outro critério, a coluna
+     * pareceria embaralhada para quem lê os chips de cima para baixo.
+     *
+     * @param  \Illuminate\Support\Collection<int, Tarefa>  $tarefas
+     * @return \Illuminate\Support\Collection<int, Tarefa>
+     */
+    private function ordenarColuna($tarefas)
+    {
+        $gravidade = array_flip(['critica', 'alta', 'media', 'baixa']);
+
+        // Chave composta em vez de `sortBy([closure, closure])`: essa forma
+        // NÃO ordena por múltiplas chaves — ela considera só a última, e a
+        // gravidade era silenciosamente ignorada.
+        return $tarefas
+            ->sortBy(fn (Tarefa $tarefa) => sprintf(
+                '%d-%020d',
+                $gravidade[$tarefa->prioridade] ?? count($gravidade),
+                $this->entrouNaEtapaEm($tarefa)->getTimestamp(),
+            ))
+            ->values();
+    }
+
+    /**
+     * Quando a tarefa entrou na etapa em que está: o evento ainda sem saída.
+     * Tarefa que nunca se moveu conta a partir da criação — mesmo critério do
+     * card (`_card.blade.php`).
+     */
+    private function entrouNaEtapaEm(Tarefa $tarefa)
+    {
+        return $tarefa->eventos->firstWhere('saiu_em', null)?->entrou_em ?? $tarefa->created_at;
+    }
+
+    /**
+     * Token de cor da etapa, pintado na coluna — nunca no card (AC-114).
+     *
+     * A coluna é o lugar do status porque ela já o nomeia: repetir a cor na
+     * borda de cada card diria sete vezes o que o cabeçalho diz uma, e
+     * roubaria a borda do card, que é o único canal do aviso de tarefa
+     * esquecida (AC-093).
+     *
+     * A escala segue o Funil de Vendas: entrada em `accent`, o meio do fluxo
+     * na marca, o atrito em `warn`, a chegada em `good`. Cancelada fica
+     * neutra de propósito — é terminal sem valor e não disputa atenção.
+     */
+    private function corDaEtapa(string $status): string
+    {
+        return match ($status) {
+            'aberta', 'backlog' => 'accent',
+            'em_desenvolvimento', 'em_testes' => 'brand',
+            'ajustes_necessarios' => 'warn',
+            'concluida' => 'good',
+            default => 'line',
+        };
     }
 }

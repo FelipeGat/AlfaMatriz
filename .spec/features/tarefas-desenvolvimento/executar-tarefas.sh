@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# executar-tarefas.sh — gerado por `onp-spec plano tarefas-desenvolvimento` em 2026-08-10 12:58
+# executar-tarefas.sh — gerado por `onp-spec plano tarefas-desenvolvimento` em 2026-08-10 14:16
 # NÃO edite à mão: mudou tasks.md ou a config, regenere o plano.
 #
 # uso:
@@ -14,10 +14,10 @@
 set -u
 set -o pipefail
 
-RUN_ID='AlfaMatriz-tarefas-desenvolvimento-msn8lxrh'
+RUN_ID='AlfaMatriz-tarefas-dev-tarefas-desenvolvimento-msnbex1k'
 FEATURE='tarefas-desenvolvimento'
-BASE_BRANCH='spec/tarefas-desenvolvimento'
-ENGINE='.claude/skills/onp-spec-driven/scripts/onp-spec.mjs'
+BASE_BRANCH='spec/tarefas-dev-emenda'   # worktree isolado
+ENGINE='/Users/rossinisantos/dev/AlfaMatriz/.claude/skills/onp-spec-driven/scripts/onp-spec.mjs'
 CLAUDE_FLAGS=(--permission-mode acceptEdits --allowedTools 'Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(php:*)')
 STREAM_FLAGS=(--output-format stream-json --verbose)
 FALHAS=""
@@ -65,8 +65,8 @@ preparar_ambiente() {
     info "branch de trabalho: $BASE_BRANCH (a partir de $ATUAL)"
   fi
   git worktree prune
-  LOG_DIR="$(dirname "$TOPLEVEL")/onp-worktrees/AlfaMatriz-tarefas-desenvolvimento-logs"
-  WT_BASE="$(dirname "$TOPLEVEL")/onp-worktrees/AlfaMatriz-tarefas-desenvolvimento"
+  LOG_DIR="$(dirname "$TOPLEVEL")/onp-worktrees/AlfaMatriz-tarefas-dev-tarefas-desenvolvimento-logs"
+  WT_BASE="$(dirname "$TOPLEVEL")/onp-worktrees/AlfaMatriz-tarefas-dev-tarefas-desenvolvimento"
   STREAMS_DIR="${ONP_SPEC_HOME:-$HOME/.onp-spec}/painel/streams/$RUN_ID"
   mkdir -p "$LOG_DIR" "$STREAMS_DIR"
 }
@@ -166,17 +166,17 @@ iniciar_resumos() {
   trap 'parar_resumos; node "$ENGINE" resumo "$FEATURE" --gravar >/dev/null 2>&1 || true' EXIT
 }
 
-# ── sequencial T-058 (ordem do tasks.md) ──
-executar_seq_T_058() {
-  info 'sequencial T-058 — Estrutura de dados: tarefa, evento de etapa e relatório de teste'
-  if rodar_tarefa seq 'T-058' 'Você executa UMA tarefa da feature "tarefas-desenvolvimento" (fluxo onp-spec, spec-anchored).
+# ── sequencial T-074 (ordem do tasks.md) ──
+executar_seq_T_074() {
+  info 'sequencial T-074 — Prioridade Crítica, o quarto nível do ciclo'
+  if rodar_tarefa seq 'T-074' 'Você executa UMA tarefa da feature "tarefas-desenvolvimento" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/tarefas-desenvolvimento/spec.md, .spec/features/tarefas-desenvolvimento/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
-T-058 — "Estrutura de dados: tarefa, evento de etapa e relatório de teste"
-  critérios/refs: AC-083 (Tarefa sem responsável nasce Aberta; com responsável, nasce no Backlog), AC-084 (A tarefa é vinculada a um sistema já cadastrado), AC-091 (Cada mudança de etapa registra entrada, saída e duração)
-  arquivos permitidos (e seus testes): database/migrations/2026_08_10_090000_criar_tarefas_desenvolvimento.php, app/Models/Tarefa.php, app/Models/TarefaEvento.php, app/Models/TarefaRelatorioTeste.php, database/factories/TarefaFactory.php, tests/Feature/TarefasDesenvolvimento/EstruturaTarefaTest.php
-  mensagem de commit: "T-058 tarefas-desenvolvimento: Estrutura de dados: tarefa, evento de etapa e relatório de teste"
+T-074 — "Prioridade Crítica, o quarto nível do ciclo"
+  critérios/refs: AC-110 (As quatro prioridades do ciclo, com a crítica em destaque)
+  arquivos permitidos (e seus testes): database/migrations/2026_08_10_140000_adicionar_prioridade_critica.php, app/Models/Tarefa.php, resources/views/tarefas/_card.blade.php, tests/Feature/TarefasDesenvolvimento/PrioridadeCriticaTest.php
+  mensagem de commit: "T-074 tarefas-desenvolvimento: Prioridade Crítica, o quarto nível do ciclo"
 
 Regras inegociáveis:
 - Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
@@ -186,93 +186,29 @@ Regras inegociáveis:
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high >> "$LOG_DIR/seq.log" 2>&1; then
     # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
     if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-058 tarefas-desenvolvimento: Estrutura de dados: tarefa, evento de etapa e relatório de teste (auto-commit do plano)'
+      git add -A && git commit -q -m 'T-074 tarefas-desenvolvimento: Prioridade Crítica, o quarto nível do ciclo (auto-commit do plano)'
     fi
-    marcar_concluidas T-058
-    verde "✔ T-058 concluída"
+    marcar_concluidas T-074
+    verde "✔ T-074 concluída"
     return 0
   fi
-  vermelho "✘ T-058 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/tarefas-desenvolvimento/executar-tarefas.sh --seq T-058"
-  FALHAS="$FALHAS T-058"
+  vermelho "✘ T-074 falhou (log: $LOG_DIR/seq.log)"
+  amarelo "  reexecute só ela: bash .spec/features/tarefas-desenvolvimento/executar-tarefas.sh --seq T-074"
+  FALHAS="$FALHAS T-074"
   return 1
 }
 
-# ── sequencial T-059 (ordem do tasks.md) ──
-executar_seq_T_059() {
-  info 'sequencial T-059 — Motor do fluxo: transições permitidas, exigências e tempo por etapa'
-  if rodar_tarefa seq 'T-059' 'Você executa UMA tarefa da feature "tarefas-desenvolvimento" (fluxo onp-spec, spec-anchored).
+# ── sequencial T-075 (ordem do tasks.md) ──
+executar_seq_T_075() {
+  info 'sequencial T-075 — Devolver do Backlog para Aberta, soltando o responsável'
+  if rodar_tarefa seq 'T-075' 'Você executa UMA tarefa da feature "tarefas-desenvolvimento" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/tarefas-desenvolvimento/spec.md, .spec/features/tarefas-desenvolvimento/tasks.md e .spec/constituicao.md.
 
 Sua tarefa (somente ela):
-T-059 — "Motor do fluxo: transições permitidas, exigências e tempo por etapa"
-  critérios/refs: AC-085 (Movimento fora do fluxo é recusado), AC-086 (Direcionar para o Backlog exige responsável), AC-087 (Devolver para ajustes exige dizer o que corrigir), AC-088 (Cancelar exige motivo), AC-089 (Concluir exige relatório de teste aprovado), AC-090 (Tarefa concluída pode ser reaberta para desenvolvimento), AC-091 (Cada mudança de etapa registra entrada, saída e duração)
+T-075 — "Devolver do Backlog para Aberta, soltando o responsável"
+  critérios/refs: AC-111 (Devolver do Backlog para Aberta solta o responsável)
   arquivos permitidos (e seus testes): app/Services/FluxoTarefaService.php, tests/Feature/TarefasDesenvolvimento/FluxoTarefaTest.php
-  mensagem de commit: "T-059 tarefas-desenvolvimento: Motor do fluxo: transições permitidas, exigências e tempo por etapa"
-
-Regras inegociáveis:
-- Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
-- NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
-- Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
-- NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high >> "$LOG_DIR/seq.log" 2>&1; then
-    # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
-    if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-059 tarefas-desenvolvimento: Motor do fluxo: transições permitidas, exigências e tempo por etapa (auto-commit do plano)'
-    fi
-    marcar_concluidas T-059
-    verde "✔ T-059 concluída"
-    return 0
-  fi
-  vermelho "✘ T-059 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/tarefas-desenvolvimento/executar-tarefas.sh --seq T-059"
-  FALHAS="$FALHAS T-059"
-  return 1
-}
-
-# ── sequencial T-060 (ordem do tasks.md) ──
-executar_seq_T_060() {
-  info 'sequencial T-060 — Quadro no ar: permissão `tarefas`, rotas, controller e a tela com as colunas'
-  if rodar_tarefa seq 'T-060' 'Você executa UMA tarefa da feature "tarefas-desenvolvimento" (fluxo onp-spec, spec-anchored).
-Leia primeiro: .spec/features/tarefas-desenvolvimento/spec.md, .spec/features/tarefas-desenvolvimento/tasks.md e .spec/constituicao.md.
-
-Sua tarefa (somente ela):
-T-060 — "Quadro no ar: permissão `tarefas`, rotas, controller e a tela com as colunas"
-  critérios/refs: AC-081 (O menu leva ao quadro pelo grupo Desenvolvimento), AC-082 (O quadro mostra as etapas do ciclo na ordem, com a contagem de cada uma), AC-095 (Usuário de revenda recebe 403 nas rotas de tarefas)
-  arquivos permitidos (e seus testes): database/seeders/PerfilPermissaoSeeder.php, routes/web.php, app/Http/Controllers/TarefaController.php, resources/views/tarefas/index.blade.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php, tests/Feature/TarefasDesenvolvimento/AcessoTarefasTest.php
-  mensagem de commit: "T-060 tarefas-desenvolvimento: Quadro no ar: permissão `tarefas`, rotas, controller e a tela com as colunas"
-
-Regras inegociáveis:
-- Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
-- NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
-- Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
-- NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high >> "$LOG_DIR/seq.log" 2>&1; then
-    # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
-    if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-060 tarefas-desenvolvimento: Quadro no ar: permissão `tarefas`, rotas, controller e a tela com as colunas (auto-commit do plano)'
-    fi
-    marcar_concluidas T-060
-    verde "✔ T-060 concluída"
-    return 0
-  fi
-  vermelho "✘ T-060 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/tarefas-desenvolvimento/executar-tarefas.sh --seq T-060"
-  FALHAS="$FALHAS T-060"
-  return 1
-}
-
-# ── sequencial T-061 (ordem do tasks.md) ──
-executar_seq_T_061() {
-  info 'sequencial T-061 — Grupo "Desenvolvimento" no menu lateral'
-  if rodar_tarefa seq 'T-061' 'Você executa UMA tarefa da feature "tarefas-desenvolvimento" (fluxo onp-spec, spec-anchored).
-Leia primeiro: .spec/features/tarefas-desenvolvimento/spec.md, .spec/features/tarefas-desenvolvimento/tasks.md e .spec/constituicao.md.
-
-Sua tarefa (somente ela):
-T-061 — "Grupo "Desenvolvimento" no menu lateral"
-  critérios/refs: AC-081 (O menu leva ao quadro pelo grupo Desenvolvimento), AC-094 (Usuário de revenda não vê o grupo Desenvolvimento no menu)
-  arquivos permitidos (e seus testes): resources/views/layouts/navigation.blade.php, tests/Feature/TarefasDesenvolvimento/MenuDesenvolvimentoTest.php
-  mensagem de commit: "T-061 tarefas-desenvolvimento: Grupo "Desenvolvimento" no menu lateral"
+  mensagem de commit: "T-075 tarefas-desenvolvimento: Devolver do Backlog para Aberta, soltando o responsável"
 
 Regras inegociáveis:
 - Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
@@ -282,143 +218,15 @@ Regras inegociáveis:
 - Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium >> "$LOG_DIR/seq.log" 2>&1; then
     # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
     if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-061 tarefas-desenvolvimento: Grupo "Desenvolvimento" no menu lateral (auto-commit do plano)'
+      git add -A && git commit -q -m 'T-075 tarefas-desenvolvimento: Devolver do Backlog para Aberta, soltando o responsável (auto-commit do plano)'
     fi
-    marcar_concluidas T-061
-    verde "✔ T-061 concluída"
+    marcar_concluidas T-075
+    verde "✔ T-075 concluída"
     return 0
   fi
-  vermelho "✘ T-061 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/tarefas-desenvolvimento/executar-tarefas.sh --seq T-061"
-  FALHAS="$FALHAS T-061"
-  return 1
-}
-
-# ── sequencial T-062 (ordem do tasks.md) ──
-executar_seq_T_062() {
-  info 'sequencial T-062 — Card da tarefa: sistema, prioridade, tempo na etapa e destaque de esquecida'
-  if rodar_tarefa seq 'T-062' 'Você executa UMA tarefa da feature "tarefas-desenvolvimento" (fluxo onp-spec, spec-anchored).
-Leia primeiro: .spec/features/tarefas-desenvolvimento/spec.md, .spec/features/tarefas-desenvolvimento/tasks.md e .spec/constituicao.md.
-
-Sua tarefa (somente ela):
-T-062 — "Card da tarefa: sistema, prioridade, tempo na etapa e destaque de esquecida"
-  critérios/refs: AC-084 (A tarefa é vinculada a um sistema já cadastrado), AC-092 (O card mostra há quanto tempo a tarefa está parada na etapa), AC-093 (Tarefa esquecida em Aberta ou Em testes ganha destaque)
-  arquivos permitidos (e seus testes): resources/views/tarefas/_card.blade.php, resources/views/tarefas/index.blade.php, tests/Feature/TarefasDesenvolvimento/CardTarefaTest.php
-  mensagem de commit: "T-062 tarefas-desenvolvimento: Card da tarefa: sistema, prioridade, tempo na etapa e destaque de esquecida"
-
-Regras inegociáveis:
-- Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
-- NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
-- Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
-- NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium >> "$LOG_DIR/seq.log" 2>&1; then
-    # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
-    if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-062 tarefas-desenvolvimento: Card da tarefa: sistema, prioridade, tempo na etapa e destaque de esquecida (auto-commit do plano)'
-    fi
-    marcar_concluidas T-062
-    verde "✔ T-062 concluída"
-    return 0
-  fi
-  vermelho "✘ T-062 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/tarefas-desenvolvimento/executar-tarefas.sh --seq T-062"
-  FALHAS="$FALHAS T-062"
-  return 1
-}
-
-# ── sequencial T-063 (ordem do tasks.md) ──
-executar_seq_T_063() {
-  info 'sequencial T-063 — Criar e editar tarefa: sistema, responsável e prioridade'
-  if rodar_tarefa seq 'T-063' 'Você executa UMA tarefa da feature "tarefas-desenvolvimento" (fluxo onp-spec, spec-anchored).
-Leia primeiro: .spec/features/tarefas-desenvolvimento/spec.md, .spec/features/tarefas-desenvolvimento/tasks.md e .spec/constituicao.md.
-
-Sua tarefa (somente ela):
-T-063 — "Criar e editar tarefa: sistema, responsável e prioridade"
-  critérios/refs: AC-083 (Tarefa sem responsável nasce Aberta; com responsável, nasce no Backlog), AC-084 (A tarefa é vinculada a um sistema já cadastrado)
-  arquivos permitidos (e seus testes): resources/views/tarefas/_form.blade.php, resources/views/tarefas/index.blade.php, app/Http/Controllers/TarefaController.php, tests/Feature/TarefasDesenvolvimento/FormularioTarefaTest.php
-  mensagem de commit: "T-063 tarefas-desenvolvimento: Criar e editar tarefa: sistema, responsável e prioridade"
-
-Regras inegociáveis:
-- Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
-- NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
-- Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
-- NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium >> "$LOG_DIR/seq.log" 2>&1; then
-    # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
-    if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-063 tarefas-desenvolvimento: Criar e editar tarefa: sistema, responsável e prioridade (auto-commit do plano)'
-    fi
-    marcar_concluidas T-063
-    verde "✔ T-063 concluída"
-    return 0
-  fi
-  vermelho "✘ T-063 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/tarefas-desenvolvimento/executar-tarefas.sh --seq T-063"
-  FALHAS="$FALHAS T-063"
-  return 1
-}
-
-# ── sequencial T-064 (ordem do tasks.md) ──
-executar_seq_T_064() {
-  info 'sequencial T-064 — Mover card: arrastar, menu "Mover" e confirmação com motivo ou notas de teste'
-  if rodar_tarefa seq 'T-064' 'Você executa UMA tarefa da feature "tarefas-desenvolvimento" (fluxo onp-spec, spec-anchored).
-Leia primeiro: .spec/features/tarefas-desenvolvimento/spec.md, .spec/features/tarefas-desenvolvimento/tasks.md e .spec/constituicao.md.
-
-Sua tarefa (somente ela):
-T-064 — "Mover card: arrastar, menu "Mover" e confirmação com motivo ou notas de teste"
-  critérios/refs: AC-085 (Movimento fora do fluxo é recusado), AC-086 (Direcionar para o Backlog exige responsável), AC-087 (Devolver para ajustes exige dizer o que corrigir), AC-088 (Cancelar exige motivo), AC-089 (Concluir exige relatório de teste aprovado), AC-090 (Tarefa concluída pode ser reaberta para desenvolvimento)
-  arquivos permitidos (e seus testes): resources/views/tarefas/_mover.blade.php, resources/views/tarefas/index.blade.php, app/Http/Controllers/TarefaController.php, tests/Feature/TarefasDesenvolvimento/MoverTarefaTest.php
-  mensagem de commit: "T-064 tarefas-desenvolvimento: Mover card: arrastar, menu "Mover" e confirmação com motivo ou notas de teste"
-
-Regras inegociáveis:
-- Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
-- NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
-- Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
-- NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high >> "$LOG_DIR/seq.log" 2>&1; then
-    # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
-    if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-064 tarefas-desenvolvimento: Mover card: arrastar, menu "Mover" e confirmação com motivo ou notas de teste (auto-commit do plano)'
-    fi
-    marcar_concluidas T-064
-    verde "✔ T-064 concluída"
-    return 0
-  fi
-  vermelho "✘ T-064 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/tarefas-desenvolvimento/executar-tarefas.sh --seq T-064"
-  FALHAS="$FALHAS T-064"
-  return 1
-}
-
-# ── sequencial T-065 (ordem do tasks.md) ──
-executar_seq_T_065() {
-  info 'sequencial T-065 — Quadro enxuto e histórico inteiro: recorte de 30 dias e listagem sem filtro'
-  if rodar_tarefa seq 'T-065' 'Você executa UMA tarefa da feature "tarefas-desenvolvimento" (fluxo onp-spec, spec-anchored).
-Leia primeiro: .spec/features/tarefas-desenvolvimento/spec.md, .spec/features/tarefas-desenvolvimento/tasks.md e .spec/constituicao.md.
-
-Sua tarefa (somente ela):
-T-065 — "Quadro enxuto e histórico inteiro: recorte de 30 dias e listagem sem filtro"
-  critérios/refs: AC-096 (Concluídas e canceladas antigas saem do quadro), AC-097 (O histórico completo continua acessível)
-  arquivos permitidos (e seus testes): resources/views/tarefas/historico.blade.php, app/Http/Controllers/TarefaController.php, tests/Feature/TarefasDesenvolvimento/HistoricoTarefasTest.php
-  mensagem de commit: "T-065 tarefas-desenvolvimento: Quadro enxuto e histórico inteiro: recorte de 30 dias e listagem sem filtro"
-
-Regras inegociáveis:
-- Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
-- NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
-- Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
-- NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium >> "$LOG_DIR/seq.log" 2>&1; then
-    # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
-    if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-065 tarefas-desenvolvimento: Quadro enxuto e histórico inteiro: recorte de 30 dias e listagem sem filtro (auto-commit do plano)'
-    fi
-    marcar_concluidas T-065
-    verde "✔ T-065 concluída"
-    return 0
-  fi
-  vermelho "✘ T-065 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/tarefas-desenvolvimento/executar-tarefas.sh --seq T-065"
-  FALHAS="$FALHAS T-065"
+  vermelho "✘ T-075 falhou (log: $LOG_DIR/seq.log)"
+  amarelo "  reexecute só ela: bash .spec/features/tarefas-desenvolvimento/executar-tarefas.sh --seq T-075"
+  FALHAS="$FALHAS T-075"
   return 1
 }
 
@@ -475,27 +283,15 @@ executar_tudo() {
   iniciar_resumos
   info "logs em: $LOG_DIR"
   info "resumo geral de andamento: a cada 1 min aqui no terminal (e via: onp-spec resumo)"
-  executar_seq_T_058 || true
-  executar_seq_T_059 || true
-  executar_seq_T_060 || true
-  executar_seq_T_061 || true
-  executar_seq_T_062 || true
-  executar_seq_T_063 || true
-  executar_seq_T_064 || true
-  executar_seq_T_065 || true
+  executar_seq_T_074 || true
+  executar_seq_T_075 || true
   encerrar tudo
 }
 
 listar() {
   echo "execução: $RUN_ID (feature $FEATURE, branch $BASE_BRANCH)"
-  echo "  seq       T-058 (sequencial)"
-  echo "  seq       T-059 (sequencial)"
-  echo "  seq       T-060 (sequencial)"
-  echo "  seq       T-061 (sequencial)"
-  echo "  seq       T-062 (sequencial)"
-  echo "  seq       T-063 (sequencial)"
-  echo "  seq       T-064 (sequencial)"
-  echo "  seq       T-065 (sequencial)"
+  echo "  seq       T-074 (sequencial)"
+  echo "  seq       T-075 (sequencial)"
   echo
   echo "reexecutar uma faixa:    --faixa <id>"
   echo "reexecutar sequencial:   --seq <T-xxx>"
@@ -530,14 +326,8 @@ case "$MODO" in
     esac ;;
   seq)
     case "$ALVO" in
-      T-058) evento --tipo inicio --escopo "seq:T-058"; iniciar_resumos; executar_seq_T_058 || true; encerrar "seq:T-058" ;;
-      T-059) evento --tipo inicio --escopo "seq:T-059"; iniciar_resumos; executar_seq_T_059 || true; encerrar "seq:T-059" ;;
-      T-060) evento --tipo inicio --escopo "seq:T-060"; iniciar_resumos; executar_seq_T_060 || true; encerrar "seq:T-060" ;;
-      T-061) evento --tipo inicio --escopo "seq:T-061"; iniciar_resumos; executar_seq_T_061 || true; encerrar "seq:T-061" ;;
-      T-062) evento --tipo inicio --escopo "seq:T-062"; iniciar_resumos; executar_seq_T_062 || true; encerrar "seq:T-062" ;;
-      T-063) evento --tipo inicio --escopo "seq:T-063"; iniciar_resumos; executar_seq_T_063 || true; encerrar "seq:T-063" ;;
-      T-064) evento --tipo inicio --escopo "seq:T-064"; iniciar_resumos; executar_seq_T_064 || true; encerrar "seq:T-064" ;;
-      T-065) evento --tipo inicio --escopo "seq:T-065"; iniciar_resumos; executar_seq_T_065 || true; encerrar "seq:T-065" ;;
+      T-074) evento --tipo inicio --escopo "seq:T-074"; iniciar_resumos; executar_seq_T_074 || true; encerrar "seq:T-074" ;;
+      T-075) evento --tipo inicio --escopo "seq:T-075"; iniciar_resumos; executar_seq_T_075 || true; encerrar "seq:T-075" ;;
       *) falhar "tarefa sequencial desconhecida: '$ALVO' — veja as disponíveis com --listar" ;;
     esac ;;
 esac

@@ -153,7 +153,7 @@
                                               action="{{ route('leads.mover', $lead) }}" class="mt-2 space-y-2">
                                             @csrf
                                             <select name="estagio" x-model="destino"
-                                                    class="w-full h-8 text-[12px] rounded-control bg-input border-line text-ink">
+                                                    class="w-full h-8 py-0 text-[12px] rounded-control bg-input border-line text-ink">
                                                 @foreach (\App\Models\Lead::ESTAGIOS as $chave => $label)
                                                     <option value="{{ $chave }}">{{ $label }}</option>
                                                 @endforeach
@@ -161,7 +161,7 @@
 
                                             <template x-if="destino === 'perdido'">
                                                 <select name="motivo_perda" required
-                                                        class="w-full h-8 text-[12px] rounded-control bg-input border-line text-ink">
+                                                        class="w-full h-8 py-0 text-[12px] rounded-control bg-input border-line text-ink">
                                                     <option value="">Motivo da perda…</option>
                                                     @foreach (\App\Models\Lead::MOTIVOS_PERDA as $chave => $label)
                                                         <option value="{{ $chave }}">{{ $label }}</option>

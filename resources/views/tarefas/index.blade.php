@@ -15,6 +15,8 @@
         inteira e as outras ficam desalinhadas.
     --}}
     <div class="flex flex-col gap-4" style="height: calc(100vh - 120px); min-height: 520px">
+        @include('tarefas._abas', ['ativa' => 'quadro'])
+
         @if (session('status'))
             <x-aviso class="shrink-0">{{ session('status') }}</x-aviso>
         @endif
@@ -56,19 +58,38 @@
                         o menu "Mover ▾" do card é o único caminho para elas
                         (Q-013).
                     --}}
-                    <section class="shrink-0 flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden"
-                             style="width: 276px" data-status="{{ $etapa['chave'] }}"
+                    <section class="flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden"
+                             {{--
+                                 A cor da etapa vive AQUI, na coluna, como no
+                                 Funil de Vendas — e não na borda do card: essa
+                                 continua sendo o canal do aviso de tarefa
+                                 esquecida (AC-093, AC-114).
+
+                                 `flex: 1 1 276px` no lugar de largura fixa: com
+                                 cinco colunas numa tela larga sobrava uma faixa
+                                 vazia à direita (AC-119). Assim elas dividem o
+                                 espaço quando ele existe, e o `min-width` segura
+                                 a largura de leitura — apertando a tela, o
+                                 quadro volta a rolar na horizontal em vez de
+                                 espremer o card.
+                             --}}
+                             style="flex: 1 1 276px; min-width: 276px; border-top: 3px solid rgb(var(--{{ $etapa['cor'] }}))"
+                             data-status="{{ $etapa['chave'] }}"
                              @dragover.prevent="permitir('{{ $etapa['chave'] }}')"
                              @dragleave="sobre = null"
                              @drop.prevent="soltar('{{ $etapa['chave'] }}', {{ in_array($etapa['chave'], ['ajustes_necessarios', 'cancelada', 'concluida'], true) ? 'true' : 'false' }})"
                              :class="sobre === '{{ $etapa['chave'] }}' && 'ring-1 ring-brand'">
                         <header class="shrink-0 px-3 py-2.5 border-b border-rule">
                             <div class="flex items-center gap-2">
+                                <span class="h-[7px] w-[7px] shrink-0 rounded-full"
+                                      style="background: rgb(var(--{{ $etapa['cor'] }}))"></span>
                                 <h3 class="min-w-0 truncate font-display text-[14px] font-semibold text-ink">{{ $etapa['label'] }}</h3>
-                                <span class="ml-auto shrink-0 h-5 min-w-[20px] px-1.5 rounded-full font-mono text-[10px] font-semibold leading-5 text-center bg-chip text-ink-dim">
+                                <span class="ml-auto shrink-0 h-5 min-w-[20px] px-1.5 rounded-full font-mono text-[10px] font-semibold leading-5 text-center"
+                                      style="background: rgb(var(--{{ $etapa['cor'] }}) / var(--tint-alpha)); color: rgb(var(--{{ $etapa['cor'] }}))">
                                     {{ $etapa['quantidade'] }}
                                 </span>
                             </div>
+
                         </header>
 
                         <div class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 space-y-2">

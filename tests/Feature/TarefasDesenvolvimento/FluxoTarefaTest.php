@@ -218,4 +218,18 @@ class FluxoTarefaTest extends TestCase
         $this->assertNull($segundo->saiu_em);
         $this->assertNull($segundo->duracao_segundos);
     }
+
+    /**
+     * @spec:AC-111 Devolver do Backlog para Aberta solta o responsável.
+     */
+    public function test_devolver_do_backlog_para_aberta_solta_o_responsavel(): void
+    {
+        $responsavel = User::factory()->create();
+        $tarefa = $this->criarTarefa(['responsavel_id' => $responsavel->id, 'status' => 'backlog']);
+
+        $movida = $this->fluxo->mover($tarefa, 'aberta');
+
+        $this->assertSame('aberta', $movida->status);
+        $this->assertNull($movida->responsavel_id);
+    }
 }

@@ -37,13 +37,14 @@ aberto, em desenvolvimento, em teste e concluído.
 - **Então** o menu lateral mostra o grupo "Desenvolvimento" com o item
   "Tarefas", e clicar nele abre o quadro (rota `tarefas.index`)
 
-#### AC-082 — O quadro mostra as etapas do ciclo na ordem, com a contagem de cada uma
+#### AC-082 — O quadro mostra as etapas do trabalho em curso, na ordem, com a contagem
 
 - **Dado** que existem tarefas em etapas diferentes
 - **Quando** abro o quadro
-- **Então** vejo as colunas Aberta, Backlog, Em desenvolvimento, Em testes,
-  Ajustes necessários, Concluída e Cancelada nessa ordem, cada uma com o total
-  de tarefas que estão nela
+- **Então** vejo as colunas Aberta, Backlog, Em desenvolvimento, Em testes e
+  Ajustes necessários nessa ordem, cada uma com o total de tarefas que estão
+  nela — e nenhuma coluna de etapa terminal, porque tarefa encerrada não é
+  trabalho em curso
 
 #### AC-083 — Tarefa sem responsável nasce Aberta; com responsável, nasce no Backlog
 
@@ -58,6 +59,59 @@ aberto, em desenvolvimento, em teste e concluído.
 - **Quando** escolho o sistema (AlfaGym, AlfaControl, …) e salvo
 - **Então** o card do quadro mostra o sistema da tarefa, e só sistemas ativos
   são oferecidos na escolha
+
+#### AC-110 — As quatro prioridades do ciclo, com a crítica em destaque
+
+- **Dado** o formulário de tarefa
+- **Quando** abro a escolha de prioridade
+- **Então** vejo Baixa, Média, Alta e **Crítica**; uma tarefa crítica aparece
+  no quadro com a marca vermelha, distinta da Alta
+
+#### AC-113 — Os quatro níveis de prioridade se distinguem entre si
+
+- **Dado** quatro tarefas no quadro, uma de cada prioridade
+- **Quando** comparo os selos delas
+- **Então** cada nível tem uma cor própria — Baixa, Média, Alta e Crítica não
+  compartilham tom entre si, e a escala sobe do mais discreto ao mais grave
+
+#### AC-114 — Cada etapa do quadro tem a sua cor, na coluna
+
+- **Dado** o quadro aberto
+- **Quando** corro o olho pelas colunas
+- **Então** cada etapa tem uma faixa de cor no topo da sua coluna e o contador
+  tingido no mesmo tom, como no Funil de Vendas — e a cor da etapa não é
+  repetida na borda dos cards, que continua reservada ao aviso de tarefa
+  esquecida
+
+#### AC-115 — Dentro da coluna, o que é mais grave e o que está mais parado sobem
+
+- **Dado** uma coluna com uma tarefa crítica criada há meses e uma tarefa de
+  prioridade baixa criada hoje
+- **Quando** olho a coluna
+- **Então** a crítica aparece acima da baixa; e entre duas tarefas de mesma
+  prioridade, a que está parada há mais tempo na etapa aparece primeiro
+
+#### AC-116 — O resumo da tarefa aparece no card
+
+- **Dado** uma tarefa cujo resumo foi preenchido
+- **Quando** olho o card dela no quadro
+- **Então** leio o resumo abaixo do título, sem precisar abrir a tarefa; e o
+  card de uma tarefa sem resumo não abre espaço vazio no lugar dele
+
+#### AC-117 — Tarefa sem responsável diz que não tem
+
+- **Dado** uma tarefa ainda não direcionada a ninguém
+- **Quando** olho o card dela
+- **Então** o card afirma "sem responsável" — a informação é dita, não
+  deduzida da ausência do nome
+
+#### AC-119 — O quadro ocupa a largura disponível
+
+- **Dado** o quadro numa tela larga, com menos colunas do que caberia
+- **Quando** olho a borda direita
+- **Então** as colunas se dividem a largura e não sobra faixa vazia depois da
+  última — e numa tela estreita elas voltam a ter a largura mínima de leitura,
+  com o quadro rolando na horizontal
 
 ### US-037 — Fluxo com regras que impedem pular etapa
 
@@ -107,6 +161,20 @@ fluxo, para que nada seja dado como concluído sem ter passado por teste.
 - **Então** ela volta para Em desenvolvimento e a única saída da coluna
   Cancelada continua sendo nenhuma (tarefa cancelada não volta ao fluxo)
 
+#### AC-109 — O menu "Mover" oferece de verdade os destinos permitidos
+
+- **Dado** o quadro aberto, com uma tarefa em Em testes
+- **Quando** abro o menu "Mover" do card dela
+- **Então** a lista de destinos traz Concluída, Ajustes necessários e
+  Cancelada — e nada além disso; o card em Cancelada não oferece menu nenhum
+
+#### AC-111 — Devolver do Backlog para Aberta solta o responsável
+
+- **Dado** uma tarefa no Backlog, direcionada a alguém
+- **Quando** a movo de volta para Aberta
+- **Então** ela volta para a coluna Aberta sem responsável, pronta para ser
+  direcionada a outra pessoa
+
 ### US-038 — Tempo por etapa
 
 Como pessoa do time, quero ver quanto tempo cada tarefa passou em cada etapa,
@@ -155,13 +223,12 @@ só para a matriz, para que revendas não enxerguem o backlog interno.
 Como pessoa do time, quero que o quadro mostre só o que ainda é atual, mas sem
 perder nada, para que a auditoria de qualquer tarefa antiga continue possível.
 
-#### AC-096 — Concluídas e canceladas antigas saem do quadro
+#### AC-096 — Encerrar a tarefa a tira do quadro
 
-- **Dado** uma tarefa concluída (ou cancelada) há mais de 30 dias e outra
-  concluída ontem
-- **Quando** abro o quadro
-- **Então** só a de ontem aparece na coluna, e a coluna avisa quantas tarefas
-  mais antigas ficaram fora do recorte
+- **Dado** uma tarefa em Em testes
+- **Quando** eu a concluo (ou cancelo)
+- **Então** ela deixa de aparecer no quadro na mesma hora — sem recorte de
+  data, sem coluna terminal — e passa a viver no histórico
 
 #### AC-097 — O histórico completo continua acessível
 
@@ -169,6 +236,28 @@ perder nada, para que a auditoria de qualquer tarefa antiga continue possível.
 - **Quando** abro o histórico de tarefas
 - **Então** ela aparece na listagem, com sistema, responsável, etapa final e
   data, sem nenhum recorte por período aplicado
+
+#### AC-112 — Quadro e Histórico são duas abas da mesma tela
+
+- **Dado** que estou em Tarefas
+- **Quando** olho o topo da tela
+- **Então** vejo as abas Quadro e Histórico, com a atual marcada como ativa, e
+  passo de uma para a outra em um clique — sem precisar digitar a URL
+
+#### AC-118 — A tarefa concluída é reaberta pelo histórico
+
+- **Dado** uma tarefa concluída, que não está mais no quadro
+- **Quando** abro o histórico
+- **Então** ela oferece reabrir, e reabrir a devolve para Em desenvolvimento,
+  de volta ao quadro; tarefa cancelada não oferece esse caminho
+
+#### AC-120 — O histórico conta quanto a tarefa custou
+
+- **Dado** uma tarefa encerrada, que passou por várias etapas
+- **Quando** abro o histórico
+- **Então** a linha dela mostra, além do desfecho, a prioridade que tinha, o
+  resumo do que era e **quanto tempo levou do início ao encerramento** — o
+  número que só existe porque cada etapa foi cronometrada
 
 ## Fora de escopo
 

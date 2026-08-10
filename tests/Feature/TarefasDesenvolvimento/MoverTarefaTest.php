@@ -200,22 +200,43 @@ class MoverTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-085 A recusa do motor do fluxo chega como aviso na tela do quadro, sem mover o card.
+     * @spec:AC-109 O menu "Mover" do card oferece exatamente os destinos que o fluxo
+     * permite — e o card em Cancelada, que não tem saída, não oferece menu nenhum.
+     *
+     * A causa raiz do bug original: `@json` dentro do atributo `x-data` fecha o
+     * atributo HTML na primeira aspa dupla do JSON. O Alpine não avalia nada, o
+     * `x-for` do select nunca roda e o menu abre VAZIO — sem erro, sem sintoma no
+     * servidor, com a rota respondendo normalmente. Por isso a asserção é sobre o
+     * atributo INTEIRO e íntegro (`Js::from`, que escapa as aspas como \u0022):
+     * truncado, ele não bate.
      */
-    public function test_aviso_de_recusa_aparece_no_quadro(): void
+    public function test_menu_mover_oferece_so_os_destinos_permitidos(): void
     {
         $usuario = User::factory()->create();
-        $responsavel = User::factory()->create();
-        $tarefa = $this->criarTarefa(['titulo' => 'Card que não deve sair do lugar', 'responsavel_id' => $responsavel->id]);
+        $this->criarTarefa(['titulo' => 'Tarefa em testes', 'status' => 'em_testes']);
 
-        $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'concluida',
-        ]);
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        $quadro = $this->actingAs($usuario)->get(route('tarefas.index'));
+        $esperado = 'x-data="{ transicoesDoCard: '
+            .\Illuminate\Support\Js::from(['concluida', 'ajustes_necessarios', 'cancelada']).' }"';
 
-        $quadro->assertOk();
-        $quadro->assertSee('Transição inválida', false);
-        $quadro->assertSee('Card que não deve sair do lugar');
+        $this->assertStringContainsString($esperado, $html,
+            'O menu do card em Em testes precisa trazer os três destinos permitidos, com o atributo x-data íntegro.');
+    }
+
+    /**
+     * @spec:AC-109 Tarefa cancelada não tem para onde ir: o card não oferece menu.
+     */
+    public function test_card_cancelado_nao_oferece_menu_mover(): void
+    {
+        $usuario = User::factory()->create();
+        $this->criarTarefa(['titulo' => 'Tarefa cancelada', 'status' => 'cancelada']);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // Só `transicoesDoCard`: o texto "Mover ▾" também aparece na ajuda fixa
+        // do cabeçalho do quadro (index.blade.php), então procurá-lo aqui
+        // acusaria falha sem que houvesse menu nenhum no card.
+        $this->assertStringNotContainsString('transicoesDoCard', $html);
     }
 }

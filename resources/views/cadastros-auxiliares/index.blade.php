@@ -165,7 +165,7 @@
                     @csrf
                     <input type="text" name="nome" placeholder="Nova categoria"
                            class="flex-1 min-w-0 h-[34px] rounded-control border-line bg-input text-ink placeholder-ink-faint text-sm" required>
-                    <select name="tipo" class="shrink-0 h-[34px] rounded-control border-line bg-input text-ink-dim text-sm">
+                    <select name="tipo" class="shrink-0 h-[34px] py-0 rounded-control border-line bg-input text-ink-dim text-sm">
                         <option value="despesa">Despesa</option>
                         <option value="receita">Receita</option>
                     </select>
