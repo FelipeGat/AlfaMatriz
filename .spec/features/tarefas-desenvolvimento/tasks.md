@@ -73,8 +73,7 @@
   usuários da matriz (sem escopo de revenda). Salvar sem responsável deixa a
   tarefa em Aberta. Depende de T-060.
 
-## T-064 — Mover card: arrastar, menu "Mover" e confirmação com motivo ou notas de teste [pendente]
-
+## T-064 — Mover card: arrastar, menu "Mover" e confirmação com motivo ou notas de teste [concluida]
 - Refs: US-037, AC-085, AC-086, AC-087, AC-088, AC-089, AC-090
 - Arquivos: resources/views/tarefas/_mover.blade.php, resources/views/tarefas/index.blade.php, app/Http/Controllers/TarefaController.php, tests/Feature/TarefasDesenvolvimento/MoverTarefaTest.php
 - Notas: arrastar como no Funil de Vendas, e o menu "Mover ▾" no card como
