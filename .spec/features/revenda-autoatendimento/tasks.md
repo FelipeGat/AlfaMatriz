@@ -12,16 +12,14 @@
   Teste sem a tag = critério sem prova, e o audit acusa.
 -->
 
-## T-066 — Perfil "revenda" e o acesso criado no provisionamento [pendente]
-
+## T-066 — Perfil "revenda" e o acesso criado no provisionamento [concluida]
 - Refs: US-044, AC-105, AC-106
 - Arquivos: database/seeders/PerfilPermissaoSeeder.php, app/Http/Controllers/RevendaController.php, resources/views/revendas/index.blade.php, tests/Feature/RevendaAutoatendimento/AcessoDaRevendaTest.php
 - Modelo: claude-sonnet-5
 - Esforço: alto
 - Notas: base das demais (o perfil precisa existir antes de qualquer teste de escopo). Perfil novo `revenda` no seeder, com `revendas` e `clientes` (ler + incluir) e NADA de sistemas/dashboard/leads/faturamento — decisão do usuário: `operacao` mostraria menus da Alfa. No `RevendaController::provisionar`, além de chamar o `ProvisionadorAlfaGymService`, criar o `User` local com `revenda_id` e o perfil `revenda`, na MESMA transação do provisionamento: usuário criado com o gym recusando deixaria um acesso apontando para revenda não provisionada. O modal de provisionar já coleta nome/e-mail/senha do admin — reusar esses campos, sem pedir de novo.
 
-## T-067 — Cliente criado no AlfaGym a partir da Matriz [pendente]
-
+## T-067 — Cliente criado no AlfaGym a partir da Matriz [concluida]
 - Refs: US-041, AC-099, AC-100
 - Arquivos: app/Services/ProvisionadorClienteAlfaGymService.php, tests/Feature/RevendaAutoatendimento/ProvisionadorClienteAlfaGymTest.php
 - Modelo: claude-sonnet-5
