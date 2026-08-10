@@ -126,8 +126,7 @@
   constante e não precisa de alteração.
 - Esforço: alto
 
-## T-075 — Devolver do Backlog para Aberta, soltando o responsável [pendente]
-
+## T-075 — Devolver do Backlog para Aberta, soltando o responsável [concluida]
 - Refs: US-037, AC-111
 - Arquivos: app/Services/FluxoTarefaService.php, tests/Feature/TarefasDesenvolvimento/FluxoTarefaTest.php
 - Notas: o alfadev permite `BACKLOG → ABERTA` e, ao fazer isso, limpa o

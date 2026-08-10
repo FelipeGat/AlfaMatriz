@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-10T13:35:54.791Z",
-  "gitRev": "9474f19",
+  "timestamp": "2026-08-10T14:21:36.740Z",
+  "gitRev": "6ca749a",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 196,
+  "testsParsed": 209,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -25,6 +25,11 @@
     "AC-084": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_card_mostra_o_sistema_da_tarefa @spec:AC-084",
+      "method": "tap"
+    },
+    "AC-110": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PrioridadeCriticaTest::test_formulario_de_tarefa_oferece_as_quatro_prioridades @spec:AC-110",
       "method": "tap"
     },
     "AC-085": {
@@ -55,6 +60,16 @@
     "AC-090": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_tarefa_concluida_pode_ser_reaberta_e_cancelada_nao_tem_saida @spec:AC-090",
+      "method": "tap"
+    },
+    "AC-109": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\MoverTarefaTest::test_menu_mover_oferece_so_os_destinos_permitidos @spec:AC-109",
+      "method": "tap"
+    },
+    "AC-111": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_devolver_do_backlog_para_aberta_solta_o_responsavel @spec:AC-111",
       "method": "tap"
     },
     "AC-091": {
