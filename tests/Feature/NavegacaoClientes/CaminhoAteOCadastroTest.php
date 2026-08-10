@@ -44,7 +44,7 @@ class CaminhoAteOCadastroTest extends TestCase
 
         (new PerfilPermissaoSeeder)->run();
 
-        Sistema::factory()->create(['slug' => 'alfagym', 'nome' => 'AlfaGym', 'ativo' => true]);
+        Sistema::factory()->alfagym()->create(['slug' => 'alfagym', 'nome' => 'AlfaGym', 'ativo' => true]);
 
         $this->minhaRevenda = Revenda::create(['nome' => 'Invest Soluções', 'ativo' => true]);
         $this->outraRevenda = Revenda::create(['nome' => 'Concorrente Ltda', 'ativo' => true]);

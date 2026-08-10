@@ -31,6 +31,12 @@ class SistemasPrecosSeeder extends Seeder
             [
                 'nome' => 'AlfaGym', 'slug' => 'alfagym', 'categoria' => 'saas',
                 'unidade_cobranca' => 'academia ativa',
+                // Paridade com o backfill da migration `adicionar_capacidades_aos_sistemas`,
+                // que é quem vale em produção (o deploy roda migrate, não seed).
+                'capacidades' => [
+                    'sincroniza', 'provisiona_revenda', 'provisiona_cliente',
+                    'exige_admin_no_cliente', 'gerencia_licenca',
+                ],
                 'tiers' => [
                     ['nome' => 'Start', 'preco_base' => 99.00, 'unidades_inclusas' => 10, 'limite_unidades' => 10, 'ordem' => 1],
                     ['nome' => 'Growth', 'preco_base' => 249.00, 'unidades_inclusas' => 30, 'limite_unidades' => 30, 'ordem' => 2],
@@ -40,6 +46,9 @@ class SistemasPrecosSeeder extends Seeder
             [
                 'nome' => 'AlfaControl', 'slug' => 'alfacontrol', 'categoria' => 'saas',
                 'unidade_cobranca' => 'condomínio ativo',
+                // Fase 1 da implantação: a Matriz só lê. Revenda, cliente,
+                // licença e módulo continuam sendo operados no painel do AlfaControl.
+                'capacidades' => ['sincroniza', 'sincroniza_modulos'],
                 'tiers' => [
                     ['nome' => 'Start', 'preco_base' => 99.00, 'unidades_inclusas' => 5, 'limite_unidades' => 5, 'ordem' => 1],
                     ['nome' => 'Growth', 'preco_base' => 299.00, 'unidades_inclusas' => 20, 'limite_unidades' => 20, 'ordem' => 2],

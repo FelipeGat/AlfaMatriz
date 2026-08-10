@@ -249,6 +249,16 @@ no_container "test -f /usr/local/bin/alfamatriz-backup.sh && \
      (crontab -l 2>/dev/null; echo '17 3 * * * /usr/local/bin/alfamatriz-backup.sh >> /var/log/alfamatriz-backup.log 2>&1') | crontab -) || \
     echo 'AVISO: /usr/local/bin/alfamatriz-backup.sh ainda não foi enviado — o cron será criado quando ele existir.'"
 
+# ------------------------------------------------------- agendador do Laravel
+
+# Sem esta linha o `Schedule::` de routes/console.php é decoração: nem o retrato
+# horário dos sistemas integrados nem o fechamento mensal de competência rodam.
+# O executor é chamado a cada minuto e é o próprio Laravel quem decide o que
+# está na hora — por isso um único cron cobre todos os agendamentos.
+info "agendando o executor de tarefas do Laravel (schedule:run)"
+no_container "(crontab -l 2>/dev/null | grep -q 'alfamatriz.*schedule:run' || \
+    (crontab -l 2>/dev/null; echo '* * * * * cd $APP_DIR && php artisan schedule:run >> /var/log/alfamatriz-schedule.log 2>&1') | crontab -)"
+
 info "provisionamento de $AMBIENTE concluído (LXC $VMID em $IP)"
 echo
 echo "próximos passos:"

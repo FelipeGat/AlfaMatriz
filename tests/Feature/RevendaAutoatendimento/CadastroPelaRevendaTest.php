@@ -30,7 +30,7 @@ class CadastroPelaRevendaTest extends TestCase
     {
         parent::setUp();
 
-        $this->alfaGym = Sistema::factory()->create([
+        $this->alfaGym = Sistema::factory()->alfagym()->create([
             'slug' => 'alfagym',
             'nome' => 'AlfaGym',
             'base_url' => 'https://gym.alfasolucoes.cloud',

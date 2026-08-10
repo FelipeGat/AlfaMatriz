@@ -34,7 +34,7 @@ class ClienteSemRevendaNaoDerrubaTelaTest extends TestCase
     {
         parent::setUp();
 
-        $this->sistema = Sistema::factory()->create([
+        $this->sistema = Sistema::factory()->alfagym()->create([
             'slug' => 'alfagym', 'nome' => 'AlfaGym', 'ativo' => true,
         ]);
 

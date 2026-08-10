@@ -31,7 +31,7 @@ class ContatoDoClienteTest extends TestCase
     {
         parent::setUp();
 
-        $this->sistema = Sistema::factory()->create([
+        $this->sistema = Sistema::factory()->alfagym()->create([
             'slug' => 'alfagym',
             'base_url' => 'https://gym.alfasolucoes.cloud',
             'token' => 'chave-de-teste',

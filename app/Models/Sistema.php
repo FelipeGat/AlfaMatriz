@@ -14,7 +14,7 @@ class Sistema extends Model
 
     protected $fillable = [
         'nome', 'slug', 'categoria', 'unidade_cobranca', 'base_url', 'token', 'ativo',
-        'versao', 'responsavel', 'roadmap',
+        'capacidades', 'versao', 'responsavel', 'roadmap',
     ];
 
     protected function casts(): array
@@ -22,7 +22,34 @@ class Sistema extends Model
         return [
             'ativo' => 'boolean',
             'token' => 'encrypted',
+            'capacidades' => 'array',
         ];
+    }
+
+    /**
+     * O sistema declara o que sabe fazer pelo contrato da Matriz, em vez de o
+     * código deduzir isso do slug. Perguntar pela capacidade é o que permite
+     * integrar um sistema novo sem tocar em controller nem em tela.
+     */
+    public function suporta(string $capacidade): bool
+    {
+        return in_array($capacidade, $this->capacidades ?? [], true);
+    }
+
+    /**
+     * Tem tudo o que é preciso para a Matriz conversar com ele. Um sistema
+     * cadastrado mas ainda sem endereço ou sem chave não é erro — é o estado
+     * normal entre publicar a integração e configurá-la.
+     */
+    public function integravel(): bool
+    {
+        return (bool) $this->ativo && filled($this->base_url) && filled($this->token);
+    }
+
+    /** @param  \Illuminate\Database\Eloquent\Builder<Sistema>  $query */
+    public function scopeComCapacidade($query, string $capacidade)
+    {
+        return $query->whereJsonContains('capacidades', $capacidade);
     }
 
     public function clientes(): BelongsToMany

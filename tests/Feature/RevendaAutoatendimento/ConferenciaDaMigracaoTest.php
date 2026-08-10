@@ -29,7 +29,7 @@ class ConferenciaDaMigracaoTest extends TestCase
 
         (new PerfilPermissaoSeeder)->run();
 
-        $this->alfaGym = Sistema::factory()->create([
+        $this->alfaGym = Sistema::factory()->alfagym()->create([
             'slug' => 'alfagym', 'nome' => 'AlfaGym', 'ativo' => true,
         ]);
     }

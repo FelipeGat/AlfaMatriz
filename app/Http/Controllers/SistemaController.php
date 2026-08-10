@@ -111,6 +111,15 @@ class SistemaController extends Controller
 
         $data['ativo'] = $request->boolean('ativo');
 
+        // Campo em branco significa "não mexer na chave" — é o que a tela promete
+        // no placeholder ("preencher para trocar"). Sem isto, salvar a tela para
+        // corrigir só o endereço apaga o token e desliga a integração em silêncio:
+        // o campo vazio chega como null (ConvertEmptyStringsToNull), passa no
+        // `nullable` e sobrescreve a chave.
+        if (blank($data['token'] ?? null)) {
+            unset($data['token']);
+        }
+
         $sistema->update($data);
 
         return redirect()->route('produtos.index')->with('status', 'Sistema atualizado com sucesso.');

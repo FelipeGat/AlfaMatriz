@@ -16,7 +16,7 @@ class SincronizadorAlfaGymTest extends TestCase
 
     private function sistemaComConfiguracao(): Sistema
     {
-        return Sistema::factory()->create([
+        return Sistema::factory()->alfagym()->create([
             'slug' => 'alfagym',
             'base_url' => 'https://gym.alfasolucoes.cloud',
             'token' => 'chave-de-teste',

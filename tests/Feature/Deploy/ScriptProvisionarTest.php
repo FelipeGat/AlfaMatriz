@@ -88,6 +88,27 @@ class ScriptProvisionarTest extends TestCase
         );
     }
 
+    /**
+     * @spec:AC-154 O provisionamento instala o cron do `schedule:run`. Sem ele
+     * o `Schedule::` de routes/console.php nunca dispara: o retrato horário dos
+     * sistemas integrados e o fechamento mensal de competência ficam parados
+     * sem que nada acuse.
+     */
+    public function test_provisionamento_instala_o_cron_do_agendador(): void
+    {
+        $processo = $this->rodar();
+        $this->assertSame(0, $processo->getExitCode(), $processo->getErrorOutput().$processo->getOutput());
+
+        $agendador = $this->filtrar($this->lerChamadas(), 'schedule:run');
+
+        $this->assertNotEmpty($agendador, 'O provisionamento precisa instalar o cron do schedule:run.');
+
+        $comando = implode("\n", $agendador);
+        $this->assertStringContainsString('* * * * *', $comando, 'O executor roda a cada minuto — quem decide a hora é o Laravel.');
+        $this->assertStringContainsString('crontab -l', $comando, 'Instalar tem de preservar os crons que já existem (o do backup, por exemplo).');
+        $this->assertStringContainsString('grep -q', $comando, 'Rodar o provisionamento de novo não pode duplicar a linha do cron.');
+    }
+
     /** @spec:AC-008 O script é sintaticamente válido e para no primeiro erro. */
     public function test_script_tem_sintaxe_valida_e_para_no_primeiro_erro(): void
     {

@@ -15,7 +15,7 @@ class ProvisionadorAlfaGymTest extends TestCase
 
     private function cenario(): array
     {
-        $sistema = Sistema::factory()->create([
+        $sistema = Sistema::factory()->alfagym()->create([
             'slug' => 'alfagym',
             'base_url' => 'https://gym.alfasolucoes.cloud',
             'token' => 'chave-de-teste',
