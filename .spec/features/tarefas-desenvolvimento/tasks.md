@@ -23,8 +23,7 @@
   `aberta`, com responsável nasce `backlog`. Base de tudo.
 - Esforço: alto
 
-## T-059 — Motor do fluxo: transições permitidas, exigências e tempo por etapa [pendente]
-
+## T-059 — Motor do fluxo: transições permitidas, exigências e tempo por etapa [concluida]
 - Refs: US-037, US-038, AC-085, AC-086, AC-087, AC-088, AC-089, AC-090, AC-091
 - Arquivos: app/Services/FluxoTarefaService.php, tests/Feature/TarefasDesenvolvimento/FluxoTarefaTest.php
 - Notas: porta `assertTransitionAllowed` + `applyStatusChange` do
