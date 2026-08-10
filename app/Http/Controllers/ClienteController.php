@@ -7,9 +7,11 @@ use App\Models\Cobranca;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use App\Services\GerenciadorLicencaAlfaGymService;
+use App\Services\ProvisionadorClienteAlfaGymService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ClienteController extends Controller
@@ -168,9 +170,13 @@ class ClienteController extends Controller
 
     public function create()
     {
-        abort_if(auth()->user()->temEscopoDeRevenda(), 403, 'Os clientes da sua revenda são provisionados pela matriz.');
-
-        $revendas = Revenda::where('ativo', true)->orderBy('nome')->get();
+        // A revenda cadastra o próprio cliente: é o fluxo do negócio, o mesmo
+        // que ela faz hoje no painel do AlfaGym. O que a limita é a lista de
+        // revendas, que para ela tem uma opção só — a dela.
+        $revendas = Revenda::where('ativo', true)
+            ->when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('id', auth()->user()->revenda_id))
+            ->orderBy('nome')
+            ->get();
         $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
 
         return view('clientes.create', compact('revendas', 'sistemas'));
@@ -178,18 +184,68 @@ class ClienteController extends Controller
 
     public function store(Request $request)
     {
-        abort_if(auth()->user()->temEscopoDeRevenda(), 403, 'Os clientes da sua revenda são provisionados pela matriz.');
-
         $data = $this->validated($request);
         $data = $this->prepararDados($request, $data);
 
-        $cliente = Cliente::create($data);
+        // A revenda do cliente vem do escopo de quem cadastra, nunca do
+        // formulário: senão bastaria trocar o campo para pôr um cliente na
+        // carteira de outra revenda.
+        if (auth()->user()->temEscopoDeRevenda()) {
+            $data['revenda_id'] = auth()->user()->revenda_id;
+            // Valor e vencimento são o comercial da Alfa, definidos quando a
+            // licença é liberada — a revenda não os informa.
+            $data['tipo_cliente'] = 'AVULSO';
+            $data['valor_mensal'] = null;
+            $data['dia_vencimento'] = null;
+        }
 
-        $this->sincronizarSistemas($cliente, $request->input('sistemas', []));
-        $this->sincronizarEmails($cliente, $request->input('emails', []));
-        $this->sincronizarTelefones($cliente, $request->input('telefones', []));
+        $sistemas = $request->input('sistemas', []);
+
+        try {
+            // Gravar aqui e criar no AlfaGym andam juntos: se o gym recusa, o
+            // cliente não pode sobrar na Matriz existindo só de um lado.
+            $cliente = DB::transaction(function () use ($request, $data, $sistemas) {
+                $cliente = Cliente::create($data);
+
+                $this->sincronizarSistemas($cliente, $sistemas);
+                $this->sincronizarEmails($cliente, $request->input('emails', []));
+                $this->sincronizarTelefones($cliente, $request->input('telefones', []));
+
+                $this->provisionarNoAlfaGym($cliente, $request, $sistemas);
+
+                return $cliente;
+            });
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['alfagym' => $e->getMessage()])->withInput();
+        }
 
         return redirect()->route('clientes.index')->with('status', 'Cliente cadastrado com sucesso.');
+    }
+
+    /**
+     * Cria o cliente no AlfaGym quando o sistema foi marcado no cadastro.
+     *
+     * O cliente nasce lá aguardando licença — quem libera é o administrador da
+     * Alfa. Sem o AlfaGym marcado, não há nada a provisionar: o cadastro fica
+     * só comercial, na Matriz.
+     *
+     * @param  array<int|string>  $sistemas
+     */
+    private function provisionarNoAlfaGym(Cliente $cliente, Request $request, array $sistemas): void
+    {
+        $alfaGym = Sistema::where('slug', 'alfagym')->first();
+
+        if (! $alfaGym || ! in_array((string) $alfaGym->id, array_map('strval', $sistemas), true)) {
+            return;
+        }
+
+        $admin = $request->validate([
+            'nome_admin' => 'required|string|max:100',
+            'email_admin' => 'required|email|max:255',
+            'senha_admin' => 'required|string|min:8',
+        ]);
+
+        (new ProvisionadorClienteAlfaGymService($alfaGym))->provisionar($cliente->fresh(), $admin);
     }
 
     public function edit(Cliente $cliente)
