@@ -50,13 +50,7 @@
 
                         <div class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 space-y-2">
                             @forelse ($cards as $tarefa)
-                                <article data-tarefa="{{ $tarefa->id }}"
-                                         class="rounded-ctl bg-card-grad border border-line p-2.5">
-                                    <p class="truncate text-[13.5px] font-medium text-ink">{{ $tarefa->titulo }}</p>
-                                    <p class="mt-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
-                                        {{ $tarefa->sistema?->nome ?? 'Sem sistema' }}@if ($tarefa->responsavel) · {{ $tarefa->responsavel->name }}@endif
-                                    </p>
-                                </article>
+                                @include('tarefas._card', ['tarefa' => $tarefa])
                             @empty
                                 <div class="rounded-ctl border border-dashed border-line px-2 text-center flex items-center justify-center"
                                      style="height: 84px">
