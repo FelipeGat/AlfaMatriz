@@ -15,9 +15,11 @@ Schedule::command('app:fechar-competencia-mensal')
     ->withoutOverlapping()
     ->onOneServer();
 
-// Retrato do AlfaGym: leve por hora corrige o que mudou no dia; a varredura
-// completa fica para o comando manual (app:sincronizar-alfagym).
-Schedule::command('app:sincronizar-alfagym')
+// Retrato dos sistemas integrados: leve por hora corrige o que mudou no dia.
+// Sem --sistema, percorre todos os que declaram `sincroniza` e estão
+// configurados — um sistema novo entra sozinho ao ser configurado, sem mexer
+// no agendamento.
+Schedule::command('alfa:sincronizar-sistemas')
     ->hourly()
     ->withoutOverlapping()
     ->onOneServer();

@@ -46,7 +46,7 @@ class ConferirMigracaoAlfaGym extends Command
             'Sem dono, não entram no faturamento de nenhuma revenda.');
 
         $this->recorte('Clientes licenciados sem âncora de licença', $semAncora,
-            'Renovar e suspender falham: as duas operações precisam do id da licença no AlfaGym. Rode `php artisan app:sincronizar-alfagym`.');
+            'Renovar e suspender falham: as duas operações precisam do id da licença no AlfaGym. Rode `php artisan alfa:sincronizar-sistemas`.');
 
         $this->recorte('Revendas sem acesso ao painel', $semAcesso,
             'Não conseguem entrar para cadastrar cliente. Rode `php artisan alfa:criar-acessos-revendas`.');
