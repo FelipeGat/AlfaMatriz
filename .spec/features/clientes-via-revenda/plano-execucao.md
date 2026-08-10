@@ -19,8 +19,8 @@
 | tarefa | título | modelo | esforço | arquivos |
 |---|---|---|---|---|
 | T-053 | Revenda obrigatória no cadastro de cliente | `claude-sonnet-5` | low | `app/Http/Controllers/ClienteController.php`, `resources/views/clientes/_form.blade.php`, `tests/Feature/Redesign/ClientesTest.php` |
-| T-054 | Listagem sem recorte "venda direta" e sync sempre vincula à revenda | `claude-sonnet-5` | medium | `app/Http/Controllers/ClienteController.php`, `resources/views/clientes/index.blade.php`, `app/Services/SincronizadorAlfaGymService.php`, `tests/Feature/Redesign/ClientesTest.php`, `tests/Feature/SincronizadorAlfaGymTest.php` |
-| T-056 | Persistir status do cliente vindo do AlfaGym no vínculo | `claude-sonnet-5` | medium | `database/migrations/2026_08_08_120000_add_status_saas_to_cliente_sistema_table.php`, `app/Services/SincronizadorAlfaGymService.php`, `app/Models/Cliente.php`, `app/Models/Sistema.php`, `tests/Feature/SincronizadorAlfaGymTest.php` |
+| T-054 | Listagem sem recorte "venda direta" e sync sempre vincula à revenda | `claude-sonnet-5` | medium | `app/Http/Controllers/ClienteController.php`, `resources/views/clientes/index.blade.php`, `app/Services/SincronizadorSistemaService.php`, `tests/Feature/Redesign/ClientesTest.php`, `tests/Feature/SincronizadorAlfaGymTest.php` |
+| T-056 | Persistir status do cliente vindo do AlfaGym no vínculo | `claude-sonnet-5` | medium | `database/migrations/2026_08_08_120000_add_status_saas_to_cliente_sistema_table.php`, `app/Services/SincronizadorSistemaService.php`, `app/Models/Cliente.php`, `app/Models/Sistema.php`, `tests/Feature/SincronizadorAlfaGymTest.php` |
 | T-057 | Admin libera a licença do cliente pelo AlfaGym | `claude-sonnet-5` | high | `app/Http/Controllers/ClienteController.php`, `app/Services/LiberadorLicencaAlfaGymService.php`, `resources/views/clientes/index.blade.php`, `routes/web.php`, `tests/Feature/SincronizadorAlfaGymTest.php`, `tests/Feature/Redesign/ClientesTest.php` |
 
 #### faixa-2 — branch `spec/clientes-via-revenda-faixa-2` — worktree `../onp-worktrees/AlfaMatriz-clientes-via-revenda-faixa-2`

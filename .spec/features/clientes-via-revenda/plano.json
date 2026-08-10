@@ -47,7 +47,7 @@
           "arquivos": [
             "app/Http/Controllers/ClienteController.php",
             "resources/views/clientes/index.blade.php",
-            "app/Services/SincronizadorAlfaGymService.php",
+            "app/Services/SincronizadorSistemaService.php",
             "tests/Feature/Redesign/ClientesTest.php",
             "tests/Feature/SincronizadorAlfaGymTest.php"
           ],
@@ -64,7 +64,7 @@
           "esforco": "medium",
           "arquivos": [
             "database/migrations/2026_08_08_120000_add_status_saas_to_cliente_sistema_table.php",
-            "app/Services/SincronizadorAlfaGymService.php",
+            "app/Services/SincronizadorSistemaService.php",
             "app/Models/Cliente.php",
             "app/Models/Sistema.php",
             "tests/Feature/SincronizadorAlfaGymTest.php"

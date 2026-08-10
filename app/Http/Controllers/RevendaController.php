@@ -8,7 +8,7 @@ use App\Models\Perfil;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use App\Models\User;
-use App\Services\ProvisionadorAlfaGymService;
+use App\Services\ProvisionadorRevendaService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -282,7 +282,7 @@ class RevendaController extends Controller
             // na Matriz apontando para revenda que o gym recusou seria um
             // usuário que entra e não consegue cadastrar nada.
             DB::transaction(function () use ($sistema, $revenda, $data) {
-                (new ProvisionadorAlfaGymService($sistema))->provisionar($revenda, [
+                (new ProvisionadorRevendaService($sistema))->provisionar($revenda, [
                     'nome' => $data['nome_admin'],
                     'email' => $data['email_admin'],
                     'senha' => $data['senha_admin'],

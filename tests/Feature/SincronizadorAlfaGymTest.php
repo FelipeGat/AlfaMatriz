@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\Cliente;
 use App\Models\Revenda;
 use App\Models\Sistema;
-use App\Services\SincronizadorAlfaGymService;
+use App\Services\SincronizadorSistemaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -71,7 +71,7 @@ class SincronizadorAlfaGymTest extends TestCase
         $sistema = $this->sistemaComConfiguracao();
         $this->fakeRespostas();
 
-        $resultado = (new SincronizadorAlfaGymService($sistema))->sincronizar();
+        $resultado = (new SincronizadorSistemaService($sistema))->sincronizar();
 
         $this->assertTrue($resultado['ok']);
 
@@ -102,7 +102,7 @@ class SincronizadorAlfaGymTest extends TestCase
         $sistema = $this->sistemaComConfiguracao();
         $this->fakeRespostas();
 
-        $servico = new SincronizadorAlfaGymService($sistema);
+        $servico = new SincronizadorSistemaService($sistema);
 
         $servico->sincronizar();
         $servico->sincronizar();
@@ -115,7 +115,7 @@ class SincronizadorAlfaGymTest extends TestCase
     {
         $sistema = Sistema::factory()->create(['base_url' => null, 'token' => null]);
 
-        $resultado = (new SincronizadorAlfaGymService($sistema))->sincronizar();
+        $resultado = (new SincronizadorSistemaService($sistema))->sincronizar();
 
         $this->assertFalse($resultado['ok']);
         $this->assertStringContainsString('sem endereço', strtolower($resultado['motivo']));

@@ -7,7 +7,7 @@
 
 O AlfaGym envia o contato de cada cliente no contrato `/api/matriz/v1/clientes`:
 o DTO `MatrizCliente` traz `email` e `telefone` da academia. O
-`SincronizadorAlfaGymService` monta esses dois campos no array que passa para
+`SincronizadorSistemaService` monta esses dois campos no array que passa para
 `Cliente::create()` / `update()` — e eles **desaparecem ali**.
 
 Não é um caso de dado sobrescrito: a tabela `clientes` da Matriz não tem coluna

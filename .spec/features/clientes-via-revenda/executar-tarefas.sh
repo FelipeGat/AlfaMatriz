@@ -195,7 +195,7 @@ Leia primeiro: .spec/features/clientes-via-revenda/spec.md, .spec/features/clien
 Sua tarefa (somente ela):
 T-054 — "Listagem sem recorte "venda direta" e sync sempre vincula à revenda"
   critérios/refs: AC-073 (Listagem de clientes não oferece mais o recorte "venda direta"), AC-074 (Todo cliente sincronizado chega vinculado à revenda)
-  arquivos permitidos (e seus testes): app/Http/Controllers/ClienteController.php, resources/views/clientes/index.blade.php, app/Services/SincronizadorAlfaGymService.php, tests/Feature/Redesign/ClientesTest.php, tests/Feature/SincronizadorAlfaGymTest.php
+  arquivos permitidos (e seus testes): app/Http/Controllers/ClienteController.php, resources/views/clientes/index.blade.php, app/Services/SincronizadorSistemaService.php, tests/Feature/Redesign/ClientesTest.php, tests/Feature/SincronizadorAlfaGymTest.php
   mensagem de commit: "T-054 clientes-via-revenda: Listagem sem recorte "venda direta" e sync sempre vincula à revenda"
 
 Regras inegociáveis:
@@ -210,7 +210,7 @@ Leia primeiro: .spec/features/clientes-via-revenda/spec.md, .spec/features/clien
 Sua tarefa (somente ela):
 T-056 — "Persistir status do cliente vindo do AlfaGym no vínculo"
   critérios/refs: AC-077 (Cliente pendente de licença aparece com ação de liberar)
-  arquivos permitidos (e seus testes): database/migrations/2026_08_08_120000_add_status_saas_to_cliente_sistema_table.php, app/Services/SincronizadorAlfaGymService.php, app/Models/Cliente.php, app/Models/Sistema.php, tests/Feature/SincronizadorAlfaGymTest.php
+  arquivos permitidos (e seus testes): database/migrations/2026_08_08_120000_add_status_saas_to_cliente_sistema_table.php, app/Services/SincronizadorSistemaService.php, app/Models/Cliente.php, app/Models/Sistema.php, tests/Feature/SincronizadorAlfaGymTest.php
   mensagem de commit: "T-056 clientes-via-revenda: Persistir status do cliente vindo do AlfaGym no vínculo"
 
 Regras inegociáveis:

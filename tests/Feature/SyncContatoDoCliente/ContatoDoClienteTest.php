@@ -4,7 +4,7 @@ namespace Tests\Feature\SyncContatoDoCliente;
 
 use App\Models\Cliente;
 use App\Models\Sistema;
-use App\Services\SincronizadorAlfaGymService;
+use App\Services\SincronizadorSistemaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -91,7 +91,7 @@ class ContatoDoClienteTest extends TestCase
 
     private function sincronizar(): void
     {
-        $resultado = (new SincronizadorAlfaGymService($this->sistema))->sincronizar();
+        $resultado = (new SincronizadorSistemaService($this->sistema))->sincronizar();
 
         $this->assertTrue($resultado['ok'], 'A sincronização falhou: '.($resultado['motivo'] ?? ''));
     }

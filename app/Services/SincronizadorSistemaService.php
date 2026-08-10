@@ -5,30 +5,32 @@ namespace App\Services;
 use App\Models\Cliente;
 use App\Models\Revenda;
 use App\Models\Sistema;
-use GuzzleHttp\Psr7\Response;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Facades\Http;
 
 /**
- * Puxa o retrato do AlfaGym pelo contrato /api/matriz/v1 e preenche as
- * tabelas existentes de revendas e clientes, sem criar estrutura nova.
+ * Puxa o retrato de um sistema integrado pelo contrato /api/matriz/v1 e
+ * preenche as tabelas existentes de revendas e clientes, sem criar estrutura
+ * nova.
  *
  * Idempotência por (sistema, id_externo na âncora): rodar de novo não duplica.
  * As licenças moram no vínculo cliente_sistema (o retrato da vigência).
  */
-class SincronizadorAlfaGymService
+class SincronizadorSistemaService
 {
-    private const CONTRATO = '1.0';
+    private readonly ContratoMatriz $contrato;
 
-    public function __construct(private readonly Sistema $sistema) {}
+    public function __construct(private readonly Sistema $sistema)
+    {
+        $this->contrato = new ContratoMatriz($sistema);
+    }
 
     /**
      * @return array<string, mixed> resumo para o relatório do comando
      */
     public function sincronizar(): array
     {
-        if (! $this->sistema->base_url || ! $this->sistema->token) {
+        if (! $this->contrato->configurado()) {
             return ['ok' => false, 'motivo' => 'Sistema sem endereço ou sem chave configurada.'];
         }
 
@@ -41,36 +43,10 @@ class SincronizadorAlfaGymService
 
             return ['ok' => true, 'resumo' => $resumo];
         } catch (RequestException $e) {
-            return ['ok' => false, 'motivo' => 'AlfaGym respondeu '.$e->response->status().'.'];
+            return ['ok' => false, 'motivo' => $this->contrato->mensagemDeLeitura($e)];
         } catch (ConnectionException) {
-            return ['ok' => false, 'motivo' => 'Não consegui falar com o AlfaGym.'];
+            return ['ok' => false, 'motivo' => $this->contrato->mensagemDeConexao()];
         }
-    }
-
-    private function base(): string
-    {
-        return rtrim($this->sistema->base_url, '/').'/api/matriz/v1';
-    }
-
-    private function pegar(string $endereco, array $query = []): array
-    {
-        $resposta = Http::withHeaders(['X-Matriz-Key' => $this->sistema->token])
-            ->acceptJson()
-            ->timeout(30)
-            ->retry(2, 500)
-            ->get($this->base().$endereco, $query)
-            ->throw();
-
-        $corpo = $resposta->json();
-
-        // Contrato que não conhecemos: recusa em vez de gravar dado torto.
-        if (($corpo['contrato'] ?? null) !== self::CONTRATO) {
-            throw new RequestException(new \Illuminate\Http\Client\Response(
-                new Response(400, [], 'contrato incompatível')
-            ));
-        }
-
-        return $corpo['dados'] ?? [];
     }
 
     private function sincronizarRevendas(): array
@@ -243,25 +219,12 @@ class SincronizadorAlfaGymService
 
     /**
      * Percorre todas as páginas de uma coleção paginada.
+     *
+     * @return \Generator<int, array<string, mixed>>
      */
     private function todasPaginas(string $endereco): \Generator
     {
-        $pagina = 1;
-        $tamanho = 200;
-
-        do {
-            $dados = $this->pegar($endereco, ['pagina' => $pagina, 'tamanho' => $tamanho]);
-
-            foreach ($dados as $item) {
-                yield $item;
-            }
-
-            if (count($dados) < $tamanho) {
-                break;
-            }
-
-            $pagina++;
-        } while (count($dados) > 0);
+        yield from $this->contrato->paginas($endereco);
     }
 
     private function normalizarDocumento(?string $documento): ?string

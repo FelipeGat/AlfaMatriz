@@ -5,7 +5,7 @@ namespace Tests\Feature\RevendaAutoatendimento;
 use App\Models\Cliente;
 use App\Models\Revenda;
 use App\Models\Sistema;
-use App\Services\ProvisionadorClienteAlfaGymService;
+use App\Services\ProvisionadorClienteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -90,7 +90,7 @@ class ProvisionadorClienteAlfaGymTest extends TestCase
 
         $cliente = $this->cliente();
 
-        (new ProvisionadorClienteAlfaGymService($this->sistema))->provisionar($cliente, $this->admin());
+        (new ProvisionadorClienteService($this->sistema))->provisionar($cliente, $this->admin());
 
         // O que foi enviado: os campos que o formulário do gym exige, com a
         // revenda apontada pela âncora dela (não pelo id local).
@@ -133,7 +133,7 @@ class ProvisionadorClienteAlfaGymTest extends TestCase
         $cliente = $this->cliente();
 
         try {
-            (new ProvisionadorClienteAlfaGymService($this->sistema))->provisionar($cliente, $this->admin());
+            (new ProvisionadorClienteService($this->sistema))->provisionar($cliente, $this->admin());
             $this->fail('A recusa do AlfaGym deveria ter interrompido o provisionamento.');
         } catch (\RuntimeException $e) {
             // O motivo do gym chega ao admin, não um "respondeu 409" genérico.
@@ -151,7 +151,7 @@ class ProvisionadorClienteAlfaGymTest extends TestCase
         $cliente = $this->cliente();
 
         try {
-            (new ProvisionadorClienteAlfaGymService($this->sistema))->provisionar($cliente, $this->admin());
+            (new ProvisionadorClienteService($this->sistema))->provisionar($cliente, $this->admin());
             $this->fail('Cliente de revenda não provisionada não deveria ser aceito.');
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString('não está provisionada no AlfaGym', $e->getMessage());
@@ -171,7 +171,7 @@ class ProvisionadorClienteAlfaGymTest extends TestCase
         $cliente->ancorarEm($this->sistema, '501');
 
         try {
-            (new ProvisionadorClienteAlfaGymService($this->sistema))->provisionar($cliente, $this->admin());
+            (new ProvisionadorClienteService($this->sistema))->provisionar($cliente, $this->admin());
             $this->fail('Cliente já ancorado não deveria ser provisionado de novo.');
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString('já existe no AlfaGym', $e->getMessage());

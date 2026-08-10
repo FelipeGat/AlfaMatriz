@@ -4,25 +4,26 @@ namespace App\Services;
 
 use App\Models\Cliente;
 use App\Models\Sistema;
-use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Facades\Http;
 
 /**
- * Gerencia a licença de um cliente no AlfaGym pelo contrato
- * /api/matriz/v1/licencas (autenticado por X-Matriz-Key).
+ * Gerencia a licença de um cliente num sistema integrado pelo contrato
+ * /api/matriz/v1/licencas.
  *
- * As operações espelham o ciclo de vida da licença no gym: a revenda cadastra
- * o cliente, que nasce PENDING_LICENSE; o admin da Matriz libera (libera),
- * renova o plano quando vence (renovar), ou interrompe/retoma o acesso
- * (bloquear/desbloquear). O retorno do gym é gravado no vínculo
- * cliente_sistema (o mesmo retrato que o sincronizador mantém), para a tela
- * refletir a mudança sem esperar o próximo ciclo de sync.
+ * As operações espelham o ciclo de vida da licença lá: a revenda cadastra o
+ * cliente, que nasce pendente; o admin da Matriz libera (liberar), renova o
+ * plano quando vence (renovar), ou interrompe/retoma o acesso
+ * (bloquear/desbloquear). O retorno é gravado no vínculo cliente_sistema (o
+ * mesmo retrato que o sincronizador mantém), para a tela refletir a mudança sem
+ * esperar o próximo ciclo de sync.
  */
-class GerenciadorLicencaAlfaGymService
+class GerenciadorLicencaService
 {
-    private const CONTRATO = '1.0';
+    private readonly ContratoMatriz $contrato;
 
-    public function __construct(private readonly Sistema $sistema) {}
+    public function __construct(private readonly Sistema $sistema)
+    {
+        $this->contrato = new ContratoMatriz($sistema);
+    }
 
     /**
      * Libera a licença: o cliente PENDING_LICENSE vira ativo.
@@ -129,23 +130,7 @@ class GerenciadorLicencaAlfaGymService
      */
     private function post(string $caminho, array $corpo): array
     {
-        try {
-            $resposta = Http::withHeaders(['X-Matriz-Key' => $this->sistema->token])
-                ->acceptJson()
-                ->timeout(30)
-                ->post($this->base().$caminho, $corpo)
-                ->throw();
-        } catch (RequestException $e) {
-            throw new \RuntimeException($this->mensagemDeErro($e), 0, $e);
-        }
-
-        $envelope = $resposta->json();
-
-        if (($envelope['contrato'] ?? null) !== self::CONTRATO) {
-            throw new \RuntimeException('AlfaGym respondeu com contrato incompatível.');
-        }
-
-        return $envelope;
+        return $this->contrato->enviar($caminho, $corpo);
     }
 
     /**
@@ -189,26 +174,6 @@ class GerenciadorLicencaAlfaGymService
 
     private function exigirConfigurado(): void
     {
-        if (! $this->sistema->base_url || ! $this->sistema->token) {
-            throw new \RuntimeException('Sistema sem endereço ou sem chave configurada.');
-        }
-    }
-
-    private function base(): string
-    {
-        return rtrim($this->sistema->base_url, '/').'/api/matriz/v1';
-    }
-
-    private function mensagemDeErro(RequestException $e): string
-    {
-        $corpo = $e->response?->json();
-
-        $mensagem = $corpo['erro']['mensagem'] ?? null;
-
-        if (is_string($mensagem) && $mensagem !== '') {
-            return 'AlfaGym recusou: '.$mensagem;
-        }
-
-        return 'AlfaGym respondeu '.$e->response?->status().'.';
+        $this->contrato->exigirConfigurado();
     }
 }

@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Sistema;
-use App\Services\SincronizadorAlfaGymService;
+use App\Services\SincronizadorSistemaService;
 use Illuminate\Console\Command;
 
 class SincronizarAlfaGym extends Command
@@ -22,7 +22,7 @@ class SincronizarAlfaGym extends Command
             return self::FAILURE;
         }
 
-        $resultado = (new SincronizadorAlfaGymService($sistema))->sincronizar();
+        $resultado = (new SincronizadorSistemaService($sistema))->sincronizar();
 
         if (! $resultado['ok']) {
             $this->error($resultado['motivo']);

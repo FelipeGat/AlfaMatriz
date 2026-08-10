@@ -14,17 +14,17 @@
 
 ## T-066 — Perfil "revenda" e o acesso criado no provisionamento [concluida]
 - Refs: US-044, AC-105, AC-106
-- Arquivos: database/seeders/PerfilPermissaoSeeder.php, app/Http/Controllers/RevendaController.php, app/Services/ProvisionadorAlfaGymService.php, resources/views/revendas/index.blade.php, tests/Feature/RevendaAutoatendimento/AcessoDaRevendaTest.php
+- Arquivos: database/seeders/PerfilPermissaoSeeder.php, app/Http/Controllers/RevendaController.php, app/Services/ProvisionadorRevendaService.php, resources/views/revendas/index.blade.php, tests/Feature/RevendaAutoatendimento/AcessoDaRevendaTest.php
 - Modelo: claude-sonnet-5
 - Esforço: alto
-- Notas: base das demais (o perfil precisa existir antes de qualquer teste de escopo). Perfil novo `revenda` no seeder, com `revendas` e `clientes` (ler + incluir) e NADA de sistemas/dashboard/leads/faturamento — decisão do usuário: `operacao` mostraria menus da Alfa. No `RevendaController::provisionar`, além de chamar o `ProvisionadorAlfaGymService`, criar o `User` local com `revenda_id` e o perfil `revenda`, na MESMA transação do provisionamento: usuário criado com o gym recusando deixaria um acesso apontando para revenda não provisionada. O modal de provisionar já coleta nome/e-mail/senha do admin — reusar esses campos, sem pedir de novo.
+- Notas: base das demais (o perfil precisa existir antes de qualquer teste de escopo). Perfil novo `revenda` no seeder, com `revendas` e `clientes` (ler + incluir) e NADA de sistemas/dashboard/leads/faturamento — decisão do usuário: `operacao` mostraria menus da Alfa. No `RevendaController::provisionar`, além de chamar o `ProvisionadorRevendaService`, criar o `User` local com `revenda_id` e o perfil `revenda`, na MESMA transação do provisionamento: usuário criado com o gym recusando deixaria um acesso apontando para revenda não provisionada. O modal de provisionar já coleta nome/e-mail/senha do admin — reusar esses campos, sem pedir de novo.
 
 ## T-067 — Cliente criado no AlfaGym a partir da Matriz [concluida]
 - Refs: US-041, AC-099, AC-100
-- Arquivos: app/Services/ProvisionadorClienteAlfaGymService.php, tests/Feature/RevendaAutoatendimento/ProvisionadorClienteAlfaGymTest.php
+- Arquivos: app/Services/ProvisionadorClienteService.php, tests/Feature/RevendaAutoatendimento/ProvisionadorClienteAlfaGymTest.php
 - Modelo: claude-sonnet-5
 - Esforço: alto
-- Notas: o serviço que fala com o `POST /api/matriz/v1/clientes` aberto na feature `api-matriz-escrita` do AlfaGym. Envia `revenda_id_externo` (a âncora da revenda no sistema, via `idExternoNoSistema`), `nome`, `cnpj`, `telefone`, `cidade`, `uf`, `nome_admin`, `email_admin`, `senha_admin`. Espelha o padrão dos serviços irmãos (`ProvisionadorAlfaGymService`, `GerenciadorLicencaAlfaGymService`): header `X-Matriz-Key`, confere `contrato == 1.0`, recusa vira `RuntimeException` com a mensagem do gym. Ao voltar, ancora o cliente (`ancorarEm`) e grava `status_saas` no vínculo `cliente_sistema` — é o que faz a tela mostrar "pendente de licença" sem esperar o sync. Revenda sem âncora no gym recusa com mensagem clara (a revenda precisa estar provisionada antes).
+- Notas: o serviço que fala com o `POST /api/matriz/v1/clientes` aberto na feature `api-matriz-escrita` do AlfaGym. Envia `revenda_id_externo` (a âncora da revenda no sistema, via `idExternoNoSistema`), `nome`, `cnpj`, `telefone`, `cidade`, `uf`, `nome_admin`, `email_admin`, `senha_admin`. Espelha o padrão dos serviços irmãos (`ProvisionadorRevendaService`, `GerenciadorLicencaService`): header `X-Matriz-Key`, confere `contrato == 1.0`, recusa vira `RuntimeException` com a mensagem do gym. Ao voltar, ancora o cliente (`ancorarEm`) e grava `status_saas` no vínculo `cliente_sistema` — é o que faz a tela mostrar "pendente de licença" sem esperar o sync. Revenda sem âncora no gym recusa com mensagem clara (a revenda precisa estar provisionada antes).
 
 ## T-068 — A revenda cadastra o próprio cliente [concluida]
 - Refs: US-041, US-043, AC-098, AC-101, AC-104
@@ -60,4 +60,4 @@
 - Arquivos: .spec/features/revenda-autoatendimento/tasks.md
 - Modelo: claude-sonnet-5
 - Esforço: baixo
-- Notas: o audit acusava `ProvisionadorAlfaGymService.php` como código órfão desde a feature anterior. Mapeado em T-066, que é a tarefa que passa a usá-lo para criar o acesso local da revenda — mapeamento verdadeiro, sem inventar requisito. Também revalidar (`onp-spec verify`) as features com prova desatualizada, para o gate desta feature não ficar ilegível sob erro alheio.
+- Notas: o audit acusava `ProvisionadorRevendaService.php` como código órfão desde a feature anterior. Mapeado em T-066, que é a tarefa que passa a usá-lo para criar o acesso local da revenda — mapeamento verdadeiro, sem inventar requisito. Também revalidar (`onp-spec verify`) as features com prova desatualizada, para o gate desta feature não ficar ilegível sob erro alheio.

@@ -6,7 +6,7 @@ use App\Models\Cliente;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use App\Models\User;
-use App\Services\SincronizadorAlfaGymService;
+use App\Services\SincronizadorSistemaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -117,7 +117,7 @@ class ClientesViaRevendaTest extends TestCase
             ]),
         ]);
 
-        $servico = new SincronizadorAlfaGymService($sistema);
+        $servico = new SincronizadorSistemaService($sistema);
         $resultado = $servico->sincronizar();
 
         $this->assertTrue($resultado['ok']);

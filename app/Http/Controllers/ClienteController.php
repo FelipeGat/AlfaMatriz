@@ -6,8 +6,8 @@ use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\Revenda;
 use App\Models\Sistema;
-use App\Services\GerenciadorLicencaAlfaGymService;
-use App\Services\ProvisionadorClienteAlfaGymService;
+use App\Services\GerenciadorLicencaService;
+use App\Services\ProvisionadorClienteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -238,7 +238,7 @@ class ClienteController extends Controller
             'senha_admin' => 'required|string|min:8',
         ]);
 
-        (new ProvisionadorClienteAlfaGymService($alfaGym))->provisionar($cliente->fresh(), $admin);
+        (new ProvisionadorClienteService($alfaGym))->provisionar($cliente->fresh(), $admin);
     }
 
     public function edit(Cliente $cliente)
@@ -305,7 +305,7 @@ class ClienteController extends Controller
         $dados = $this->validarOperacaoLicenca($request);
 
         try {
-            (new GerenciadorLicencaAlfaGymService($sistema))->liberar($cliente, $dados);
+            (new GerenciadorLicencaService($sistema))->liberar($cliente, $dados);
         } catch (\RuntimeException $e) {
             return back()->withErrors(['licenca' => $e->getMessage()])->withInput();
         }
@@ -327,7 +327,7 @@ class ClienteController extends Controller
         $dados = $this->validarOperacaoLicenca($request);
 
         try {
-            (new GerenciadorLicencaAlfaGymService($sistema))->renovar($cliente, $dados);
+            (new GerenciadorLicencaService($sistema))->renovar($cliente, $dados);
         } catch (\RuntimeException $e) {
             return back()->withErrors(['licenca' => $e->getMessage()])->withInput();
         }
@@ -346,7 +346,7 @@ class ClienteController extends Controller
         $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
 
         try {
-            (new GerenciadorLicencaAlfaGymService($sistema))->bloquear($cliente);
+            (new GerenciadorLicencaService($sistema))->bloquear($cliente);
         } catch (\RuntimeException $e) {
             return back()->withErrors(['licenca' => $e->getMessage()])->withInput();
         }
@@ -365,7 +365,7 @@ class ClienteController extends Controller
         $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
 
         try {
-            (new GerenciadorLicencaAlfaGymService($sistema))->desbloquear($cliente);
+            (new GerenciadorLicencaService($sistema))->desbloquear($cliente);
         } catch (\RuntimeException $e) {
             return back()->withErrors(['licenca' => $e->getMessage()])->withInput();
         }

@@ -1432,19 +1432,19 @@
       "ultimaVez": "2026-08-08T13:59:43.929Z",
       "gitRev": "999cd66"
     },
-    "ARQUIVO_ORFAO::—::app/Services/ProvisionadorAlfaGymService.php": {
+    "ARQUIVO_ORFAO::—::app/Services/ProvisionadorRevendaService.php": {
       "codigo": "ARQUIVO_ORFAO",
       "feature": "—",
-      "ref": "app/Services/ProvisionadorAlfaGymService.php",
+      "ref": "app/Services/ProvisionadorRevendaService.php",
       "ocorrencias": 24,
       "primeiraVez": "2026-08-08T13:53:24.660Z",
       "ultimaVez": "2026-08-10T13:45:28.465Z",
       "gitRev": "2274f1b"
     },
-    "ARQUIVO_ORFAO::—::app/Services/SincronizadorAlfaGymService.php": {
+    "ARQUIVO_ORFAO::—::app/Services/SincronizadorSistemaService.php": {
       "codigo": "ARQUIVO_ORFAO",
       "feature": "—",
-      "ref": "app/Services/SincronizadorAlfaGymService.php",
+      "ref": "app/Services/SincronizadorSistemaService.php",
       "ocorrencias": 2,
       "primeiraVez": "2026-08-08T13:53:24.660Z",
       "ultimaVez": "2026-08-08T13:54:58.991Z",
@@ -1468,10 +1468,10 @@
       "ultimaVez": "2026-08-08T22:18:01.101Z",
       "gitRev": "8349d79"
     },
-    "ARQUIVO_ORFAO::—::app/Services/GerenciadorLicencaAlfaGymService.php": {
+    "ARQUIVO_ORFAO::—::app/Services/GerenciadorLicencaService.php": {
       "codigo": "ARQUIVO_ORFAO",
       "feature": "—",
-      "ref": "app/Services/GerenciadorLicencaAlfaGymService.php",
+      "ref": "app/Services/GerenciadorLicencaService.php",
       "ocorrencias": 1,
       "primeiraVez": "2026-08-08T22:18:01.102Z",
       "ultimaVez": "2026-08-08T22:18:01.102Z",
