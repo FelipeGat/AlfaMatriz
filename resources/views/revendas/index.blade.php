@@ -201,15 +201,15 @@
                                                :href="route('clientes.index', ['revenda' => $revenda->id])" />
                                 <x-acao-tabela icone="repeat" titulo="Faturamento da revenda"
                                                :href="route('faturamento.index')" />
-                                @if ($sistemaAlfaGym && ! $linha['provisionada'])
+                                @if ($sistemaProvisionador && ! $linha['provisionada'])
                                     <button type="button" @click="$dispatch('open-modal', 'provisionar-revenda-{{ $revenda->id }}')"
                                             class="inline-flex h-7 w-7 items-center justify-center rounded-tile text-ink-mute transition hover:text-brand hover:bg-chip"
-                                            title="Provisionar no AlfaGym" aria-label="Provisionar no AlfaGym">
+                                            title="Provisionar no {{ $sistemaProvisionador->nome }}" aria-label="Provisionar no {{ $sistemaProvisionador->nome }}">
                                         <span class="h-[15px] w-[15px]"><x-nav-icon name="upload" /></span>
                                     </button>
                                 @elseif ($linha['provisionada'])
                                     <span class="inline-flex h-7 w-7 items-center justify-center rounded-tile text-ink-faint"
-                                          title="Provisionada no AlfaGym">
+                                          title="Provisionada no {{ $sistemaProvisionador->nome }}">
                                         <span class="h-[15px] w-[15px]"><x-nav-icon name="check-circle" /></span>
                                     </span>
                                 @endif
@@ -263,7 +263,7 @@
     </x-modal>
 
     @foreach ($linhas as $linha)
-        @if ($sistemaAlfaGym && ! $linha['provisionada'])
+        @if ($sistemaProvisionador && ! $linha['provisionada'])
             <x-modal :name="'provisionar-revenda-'.$linha['revenda']->id" maxWidth="md">
                 <form method="POST" action="{{ route('revendas.provisionar', $linha['revenda']) }}" class="p-5">
                     @csrf
@@ -271,7 +271,7 @@
                         Provisionar {{ $linha['revenda']->nome }}
                     </h2>
                     <p class="text-[13px] text-ink-dim mb-4">
-                        Cria a revenda no AlfaGym e o acesso dela aqui no painel. Os dados abaixo valem
+                        Cria a revenda no {{ $sistemaProvisionador->nome }} e o acesso dela aqui no painel. Os dados abaixo valem
                         para os dois: com eles a revenda entra na Matriz e cadastra os próprios clientes.
                     </p>
 

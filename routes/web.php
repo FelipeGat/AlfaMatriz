@@ -82,16 +82,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('clientes', ClienteController::class)
         ->except(['create', 'show'])
         ->middleware('permissao:clientes');
-    Route::post('clientes/{cliente}/liberar-licenca', [ClienteController::class, 'liberarLicenca'])
+    // A licença é de um cliente NUM sistema: o mesmo cliente pode ter licença
+    // no AlfaGym e no AlfaControl, com estados diferentes. O sistema é
+    // identidade do recurso, por isso vai na URL — os nomes das rotas não
+    // mudam, só ganham um argumento.
+    Route::post('clientes/{cliente}/sistemas/{sistema}/licenca/liberar', [ClienteController::class, 'liberarLicenca'])
         ->name('clientes.liberarLicenca')
         ->middleware('permissao:clientes');
-    Route::post('clientes/{cliente}/renovar-licenca', [ClienteController::class, 'renovarLicenca'])
+    Route::post('clientes/{cliente}/sistemas/{sistema}/licenca/renovar', [ClienteController::class, 'renovarLicenca'])
         ->name('clientes.renovarLicenca')
         ->middleware('permissao:clientes');
-    Route::post('clientes/{cliente}/bloquear-licenca', [ClienteController::class, 'bloquearLicenca'])
+    Route::post('clientes/{cliente}/sistemas/{sistema}/licenca/bloquear', [ClienteController::class, 'bloquearLicenca'])
         ->name('clientes.bloquearLicenca')
         ->middleware('permissao:clientes');
-    Route::post('clientes/{cliente}/desbloquear-licenca', [ClienteController::class, 'desbloquearLicenca'])
+    Route::post('clientes/{cliente}/sistemas/{sistema}/licenca/desbloquear', [ClienteController::class, 'desbloquearLicenca'])
         ->name('clientes.desbloquearLicenca')
         ->middleware('permissao:clientes');
 

@@ -32,11 +32,7 @@ class ClientesViaRevendaTest extends TestCase
 
     private function sistemaAlfaGym(): Sistema
     {
-        return Sistema::create([
-            'nome' => 'AlfaGym', 'slug' => 'alfagym',
-            'unidade_cobranca' => 'academia ativa', 'ativo' => true,
-            'base_url' => 'https://gym.alfasolucoes.cloud', 'token' => 'chave-de-teste',
-        ]);
+        return Sistema::factory()->alfagym()->create(['token' => 'chave-de-teste']);
     }
 
     private function clientePendente(Revenda $revenda, Sistema $sistema): Cliente
@@ -205,7 +201,7 @@ class ClientesViaRevendaTest extends TestCase
             ]),
         ]);
 
-        $resposta = $this->actingAs($this->admin())->post(route('clientes.liberarLicenca', $cliente), [
+        $resposta = $this->actingAs($this->admin())->post(route('clientes.liberarLicenca', [$cliente, $sistema]), [
             'tipo' => 'mensal', 'valor' => 540.00, 'obs' => 'Contrato 2026',
         ]);
 
@@ -246,7 +242,7 @@ class ClientesViaRevendaTest extends TestCase
             ]),
         ]);
 
-        $this->actingAs($this->admin())->post(route('clientes.liberarLicenca', $cliente), [
+        $this->actingAs($this->admin())->post(route('clientes.liberarLicenca', [$cliente, $sistema]), [
             'tipo' => 'anual', 'valor' => 5400.00, 'obs' => 'Contrato anual',
         ]);
 
@@ -272,7 +268,7 @@ class ClientesViaRevendaTest extends TestCase
             ], 422),
         ]);
 
-        $resposta = $this->actingAs($this->admin())->post(route('clientes.liberarLicenca', $cliente), [
+        $resposta = $this->actingAs($this->admin())->post(route('clientes.liberarLicenca', [$cliente, $sistema]), [
             'tipo' => 'mensal', 'valor' => 540.00, 'obs' => null,
         ]);
 
@@ -341,7 +337,7 @@ class ClientesViaRevendaTest extends TestCase
             ]),
         ]);
 
-        $resposta = $this->actingAs($this->admin())->post(route('clientes.renovarLicenca', $cliente), [
+        $resposta = $this->actingAs($this->admin())->post(route('clientes.renovarLicenca', [$cliente, $sistema]), [
             'tipo' => 'anual', 'valor' => 5400.00, 'obs' => 'Renovação anual',
         ]);
 
@@ -378,7 +374,7 @@ class ClientesViaRevendaTest extends TestCase
             ]),
         ]);
 
-        $resposta = $this->actingAs($this->admin())->post(route('clientes.bloquearLicenca', $cliente));
+        $resposta = $this->actingAs($this->admin())->post(route('clientes.bloquearLicenca', [$cliente, $sistema]));
 
         $resposta->assertRedirect();
         $resposta->assertSessionHas('status');
@@ -408,7 +404,7 @@ class ClientesViaRevendaTest extends TestCase
             ]),
         ]);
 
-        $resposta = $this->actingAs($this->admin())->post(route('clientes.desbloquearLicenca', $cliente));
+        $resposta = $this->actingAs($this->admin())->post(route('clientes.desbloquearLicenca', [$cliente, $sistema]));
 
         $resposta->assertRedirect();
         $resposta->assertSessionHas('status');
@@ -436,7 +432,7 @@ class ClientesViaRevendaTest extends TestCase
             ], 422),
         ]);
 
-        $resposta = $this->actingAs($this->admin())->post(route('clientes.renovarLicenca', $cliente), [
+        $resposta = $this->actingAs($this->admin())->post(route('clientes.renovarLicenca', [$cliente, $sistema]), [
             'tipo' => 'anual', 'valor' => 5400.00, 'obs' => null,
         ]);
 

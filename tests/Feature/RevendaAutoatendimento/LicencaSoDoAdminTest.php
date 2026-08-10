@@ -107,7 +107,7 @@ class LicencaSoDoAdminTest extends TestCase
         Http::fake();
 
         $this->actingAs($this->usuarioDaRevenda())
-            ->post(route('clientes.liberarLicenca', $this->pendente), [
+            ->post(route('clientes.liberarLicenca', [$this->pendente, $this->alfaGym]), [
                 'tipo' => 'mensal', 'valor' => '200.00', 'obs' => 'tentativa',
             ])
             ->assertForbidden();
@@ -129,15 +129,15 @@ class LicencaSoDoAdminTest extends TestCase
         $usuario = $this->usuarioDaRevenda();
 
         $this->actingAs($usuario)
-            ->post(route('clientes.renovarLicenca', $this->licenciado), ['tipo' => 'anual'])
+            ->post(route('clientes.renovarLicenca', [$this->licenciado, $this->alfaGym]), ['tipo' => 'anual'])
             ->assertForbidden();
 
         $this->actingAs($usuario)
-            ->post(route('clientes.bloquearLicenca', $this->licenciado))
+            ->post(route('clientes.bloquearLicenca', [$this->licenciado, $this->alfaGym]))
             ->assertForbidden();
 
         $this->actingAs($usuario)
-            ->post(route('clientes.desbloquearLicenca', $this->licenciado))
+            ->post(route('clientes.desbloquearLicenca', [$this->licenciado, $this->alfaGym]))
             ->assertForbidden();
 
         Http::assertNothingSent();
@@ -158,7 +158,7 @@ class LicencaSoDoAdminTest extends TestCase
         $this->assertSame($this->revenda->id, $this->pendente->revenda_id);
 
         $this->actingAs($this->usuarioDaRevenda())
-            ->post(route('clientes.liberarLicenca', $this->pendente), ['tipo' => 'mensal'])
+            ->post(route('clientes.liberarLicenca', [$this->pendente, $this->alfaGym]), ['tipo' => 'mensal'])
             ->assertForbidden();
 
         Http::assertNothingSent();

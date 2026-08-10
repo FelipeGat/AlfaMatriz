@@ -287,20 +287,18 @@ class ClienteController extends Controller
     }
 
     /**
-     * Libera a licença do cliente no AlfaGym (o admin da Matriz atende o
+     * Libera a licença do cliente no sistema (o admin da Matriz atende o
      * pedido da revenda). Só clientes pendentes de licença podem liberar;
      * o cliente permanece vinculado à revenda (nunca vira avulso).
      */
-    public function liberarLicenca(Request $request, Cliente $cliente)
+    public function liberarLicenca(Request $request, Cliente $cliente, Sistema $sistema)
     {
         $this->exigirDecisaoDaAlfa();
         $this->autorizarAcesso($cliente);
 
-        $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
+        $vinculo = $this->exigirLicencaGerenciavel($cliente, $sistema);
 
-        $vinculo = $cliente->sistemas()->where('sistemas.id', $sistema->id)->first();
-
-        abort_if(! $vinculo || ($vinculo->pivot->status_saas ?? '') !== 'pendente', 422, 'A licença desse cliente não está pendente.');
+        abort_if(($vinculo->pivot->status_saas ?? '') !== 'pendente', 422, 'A licença desse cliente não está pendente.');
 
         $dados = $this->validarOperacaoLicenca($request);
 
@@ -314,16 +312,16 @@ class ClienteController extends Controller
     }
 
     /**
-     * Renova a licença do cliente no AlfaGym com um novo período mensal/anual.
+     * Renova a licença do cliente no sistema com um novo período mensal/anual.
      * Vale para qualquer cliente com licença ativa (incluindo vencida/bloqueada
      * — quem renova retoma o acesso no novo período).
      */
-    public function renovarLicenca(Request $request, Cliente $cliente)
+    public function renovarLicenca(Request $request, Cliente $cliente, Sistema $sistema)
     {
         $this->exigirDecisaoDaAlfa();
         $this->autorizarAcesso($cliente);
 
-        $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
+        $this->exigirLicencaGerenciavel($cliente, $sistema);
         $dados = $this->validarOperacaoLicenca($request);
 
         try {
@@ -336,14 +334,14 @@ class ClienteController extends Controller
     }
 
     /**
-     * Bloqueia o acesso do cliente no AlfaGym.
+     * Bloqueia o acesso do cliente no sistema.
      */
-    public function bloquearLicenca(Cliente $cliente)
+    public function bloquearLicenca(Cliente $cliente, Sistema $sistema)
     {
         $this->exigirDecisaoDaAlfa();
         $this->autorizarAcesso($cliente);
 
-        $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
+        $this->exigirLicencaGerenciavel($cliente, $sistema);
 
         try {
             (new GerenciadorLicencaService($sistema))->bloquear($cliente);
@@ -355,14 +353,14 @@ class ClienteController extends Controller
     }
 
     /**
-     * Desbloqueia o acesso do cliente no AlfaGym.
+     * Desbloqueia o acesso do cliente no sistema.
      */
-    public function desbloquearLicenca(Cliente $cliente)
+    public function desbloquearLicenca(Cliente $cliente, Sistema $sistema)
     {
         $this->exigirDecisaoDaAlfa();
         $this->autorizarAcesso($cliente);
 
-        $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
+        $this->exigirLicencaGerenciavel($cliente, $sistema);
 
         try {
             (new GerenciadorLicencaService($sistema))->desbloquear($cliente);
@@ -385,6 +383,30 @@ class ClienteController extends Controller
             'valor' => 'nullable|numeric|min:0',
             'obs' => 'nullable|string|max:500',
         ]);
+    }
+
+    /**
+     * O sistema da rota precisa (a) saber gerenciar licença pela Matriz e
+     * (b) ter esse cliente. Substitui o `where('slug', 'alfagym')` que estava
+     * espalhado pelas quatro ações: a pergunta certa é sobre a capacidade, não
+     * sobre qual produto é.
+     *
+     * Durante a implantação de um sistema novo, `gerencia_licenca` fica
+     * desligada — a tela não oferece a ação e um POST direto é recusado aqui.
+     */
+    private function exigirLicencaGerenciavel(Cliente $cliente, Sistema $sistema): object
+    {
+        abort_unless(
+            $sistema->suporta('gerencia_licenca'),
+            422,
+            "A licença do {$sistema->nome} não é gerenciada pela Matriz."
+        );
+
+        $vinculo = $cliente->sistemas()->where('sistemas.id', $sistema->id)->first();
+
+        abort_if(! $vinculo, 404, "Esse cliente não usa o {$sistema->nome}.");
+
+        return $vinculo;
     }
 
     /**

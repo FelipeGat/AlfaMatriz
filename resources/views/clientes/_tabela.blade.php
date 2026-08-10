@@ -166,10 +166,12 @@
 
                 <td class="px-4 py-3">
                     @php
-                        $licencaGym = collect($cliente->sistemas)
-                            ->first(fn ($s) => ($s->pivot->status_saas ?? '') !== '' && $s->slug === 'alfagym');
-                        $temLicenca = ! is_null($licencaGym) && filled($licencaGym->pivot->licenca_id_externo ?? null);
-                        $bloqueada = ($licencaGym->pivot->status_saas ?? '') === 'bloqueado';
+                        // O sistema licenciável deste cliente: quem a Matriz
+                        // gerencia e de quem já se tem retrato de licença.
+                        $sistemaLicenca = collect($cliente->sistemas)
+                            ->first(fn ($s) => ($s->pivot->status_saas ?? '') !== '' && $s->suporta('gerencia_licenca'));
+                        $temLicenca = ! is_null($sistemaLicenca) && filled($sistemaLicenca->pivot->licenca_id_externo ?? null);
+                        $bloqueada = ($sistemaLicenca->pivot->status_saas ?? '') === 'bloqueado';
                     @endphp
 
                     <div class="flex justify-end">
@@ -209,7 +211,7 @@
                                         </button>
 
                                         @if ($bloqueada)
-                                            <x-confirmar :action="route('clientes.desbloquearLicenca', $cliente)"
+                                            <x-confirmar :action="route('clientes.desbloquearLicenca', [$cliente, $sistemaLicenca])"
                                                          method="POST" confirmar="Reativar"
                                                          :titulo="'Reativar '.$cliente->nome_exibicao.'?'"
                                                          mensagem="O acesso do cliente no AlfaGym volta a funcionar.">
@@ -219,7 +221,7 @@
                                                 </span>
                                             </x-confirmar>
                                         @else
-                                            <x-confirmar :action="route('clientes.bloquearLicenca', $cliente)"
+                                            <x-confirmar :action="route('clientes.bloquearLicenca', [$cliente, $sistemaLicenca])"
                                                          method="POST" confirmar="Suspender"
                                                          :titulo="'Suspender '.$cliente->nome_exibicao.'?'"
                                                          mensagem="O acesso do cliente no AlfaGym é interrompido até o reativar.">
@@ -301,15 +303,21 @@
 @unless (auth()->user()->temEscopoDeRevenda())
 @foreach ($clientes as $cliente)
     @php
-        $pendenteModal = collect($cliente->sistemas)
-            ->first(fn ($s) => ($s->pivot->status_saas ?? '') === 'pendente');
-        $temLicencaModal = collect($cliente->sistemas)
-            ->first(fn ($s) => filled($s->pivot->licenca_id_externo ?? null));
+        // Só os sistemas que a Matriz gerencia entram aqui. Um cliente que só
+        // usa sistema de leitura (o AlfaControl durante a implantação) não tem
+        // modal de licença — e, sem este filtro, a rota era montada sem sistema
+        // e derrubava a tela inteira.
+        $sistemaLicencaModal = collect($cliente->sistemas)
+            ->first(fn ($s) => $s->suporta('gerencia_licenca'));
+        $pendenteModal = $sistemaLicencaModal
+            && ($sistemaLicencaModal->pivot->status_saas ?? '') === 'pendente';
+        $temLicencaModal = $sistemaLicencaModal
+            && filled($sistemaLicencaModal->pivot->licenca_id_externo ?? null);
     @endphp
 
     @if ($pendenteModal)
         <x-modal name="liberar-licenca-{{ $cliente->id }}" maxWidth="sm">
-            <form method="POST" action="{{ route('clientes.liberarLicenca', $cliente) }}" class="p-5">
+            <form method="POST" action="{{ route('clientes.liberarLicenca', [$cliente, $sistemaLicencaModal]) }}" class="p-5">
                 @csrf
                 <h2 class="font-display text-[15.5px] font-semibold text-ink mb-1">Liberar licença</h2>
                 <p class="text-[12.5px] text-ink-faint mb-4">
@@ -364,7 +372,7 @@
 
     @if ($temLicencaModal)
         <x-modal name="renovar-licenca-{{ $cliente->id }}" maxWidth="sm">
-            <form method="POST" action="{{ route('clientes.renovarLicenca', $cliente) }}" class="p-5">
+            <form method="POST" action="{{ route('clientes.renovarLicenca', [$cliente, $sistemaLicencaModal]) }}" class="p-5">
                 @csrf
                 <h2 class="font-display text-[15.5px] font-semibold text-ink mb-1">Renovar licença</h2>
                 <p class="text-[12.5px] text-ink-faint mb-4">

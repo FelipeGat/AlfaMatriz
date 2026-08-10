@@ -43,9 +43,11 @@ class RevendaController extends Controller
         $baseTotal = max(Cliente::where('ativo', true)->count(), 1);
         $mrrTotal = $this->mrrDaCompetencia(now()->format('Y-m'));
 
-        $sistemaAlfaGym = Sistema::query()->where('slug', 'alfagym')->first();
+        // Quem provisiona revenda pela Matriz, seja qual for o produto. Na
+        // Fase 1 do AlfaControl só o AlfaGym declara essa capacidade.
+        $sistemaProvisionador = Sistema::comCapacidade('provisiona_revenda')->first();
 
-        $linhas = $revendas->map(fn (Revenda $revenda) => $this->linha($revenda, $baseTotal, $sistemaAlfaGym));
+        $linhas = $revendas->map(fn (Revenda $revenda) => $this->linha($revenda, $baseTotal, $sistemaProvisionador));
 
         $linhas = (match ($ordem) {
             'nome' => $linhas->sortBy('revenda.nome'),
@@ -65,7 +67,7 @@ class RevendaController extends Controller
                 'sistemas' => $linhas->flatMap(fn ($l) => $l['sistemas'])->unique()->count(),
             ],
             'kpis' => $this->kpis($revendas, $linhas, $baseTotal, $mrrTotal, $cadastradas),
-            'sistemaAlfaGym' => $sistemaAlfaGym,
+            'sistemaProvisionador' => $sistemaProvisionador,
         ]);
     }
 
@@ -99,7 +101,7 @@ class RevendaController extends Controller
                 'mrr' => ['valor' => 0.0, 'nota' => ''],
                 'ticket' => ['valor' => 0.0, 'nota' => ''],
             ],
-            'sistemaAlfaGym' => null,
+            'sistemaProvisionador' => null,
             'clientesView' => $dados,
         ]);
     }
@@ -120,7 +122,7 @@ class RevendaController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function linha(Revenda $revenda, int $baseTotal, ?Sistema $sistemaAlfaGym = null): array
+    private function linha(Revenda $revenda, int $baseTotal, ?Sistema $sistemaProvisionador = null): array
     {
         $clientesAtivos = Cliente::where('revenda_id', $revenda->id)->where('ativo', true);
 
@@ -152,7 +154,7 @@ class RevendaController extends Controller
             'delta' => $this->variacao($mrr, $anterior),
             'sistemas' => $sistemas->all(),
             'emAtraso' => $emAtraso,
-            'provisionada' => $sistemaAlfaGym !== null && $revenda->idExternoNoSistema($sistemaAlfaGym) !== null,
+            'provisionada' => $sistemaProvisionador !== null && $revenda->idExternoNoSistema($sistemaProvisionador) !== null,
         ];
     }
 
@@ -265,10 +267,10 @@ class RevendaController extends Controller
     {
         $this->autorizarAcesso($revenda);
 
-        $sistema = Sistema::query()->where('slug', 'alfagym')->first();
+        $sistema = Sistema::comCapacidade('provisiona_revenda')->first();
 
         if (! $sistema) {
-            return back()->with('erro', 'Sistema AlfaGym não está cadastrado na matriz.');
+            return back()->with('erro', 'Nenhum sistema da matriz provisiona revenda.');
         }
 
         $data = $request->validate([
