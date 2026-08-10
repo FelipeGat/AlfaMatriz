@@ -113,8 +113,7 @@
   mesmo bug volta na próxima edição da view.
 - Esforço: alto
 
-## T-074 — Prioridade Crítica, o quarto nível do ciclo [pendente]
-
+## T-074 — Prioridade Crítica, o quarto nível do ciclo [concluida]
 - Refs: US-036, AC-110
 - Arquivos: database/migrations/2026_08_10_140000_adicionar_prioridade_critica.php, app/Models/Tarefa.php, resources/views/tarefas/_card.blade.php, tests/Feature/TarefasDesenvolvimento/PrioridadeCriticaTest.php
 - Notas: o alfadev tem quatro níveis e só três foram portados. Migration para
