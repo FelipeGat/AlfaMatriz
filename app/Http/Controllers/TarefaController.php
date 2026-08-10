@@ -19,15 +19,34 @@ class TarefaController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        $colunas = collect(Tarefa::STATUS)->mapWithKeys(fn ($label, $status) => [
-            $status => $tarefas->where('status', $status)->values(),
-        ]);
+        // O quadro fica enxuto: concluída e cancelada só mostram os últimos
+        // 30 dias, avisando quantas mais antigas ficaram fora (AC-096). O
+        // histórico completo, sem esse recorte, é a rota de auditoria
+        // (AC-097, em `historico()`).
+        $corte = now()->subDays(30);
+        $foraDoCorte = [];
 
-        $etapas = collect(Tarefa::STATUS)->map(fn ($label, $status) => [
-            'chave' => $status,
-            'label' => $label,
-            'quantidade' => $colunas[$status]->count(),
-        ])->values()->all();
+        $colunas = collect(Tarefa::STATUS)->mapWithKeys(function ($label, $status) use ($tarefas, $corte, &$foraDoCorte) {
+            $doStatus = $tarefas->where('status', $status)->values();
+
+            if (in_array($status, Tarefa::STATUS_TERMINAIS, true)) {
+                $recentes = $doStatus->filter(fn (Tarefa $tarefa) => $tarefa->updated_at->greaterThanOrEqualTo($corte))->values();
+                $foraDoCorte[$status] = $doStatus->count() - $recentes->count();
+                $doStatus = $recentes;
+            }
+
+            return [$status => $doStatus];
+        });
+
+        $etapas = collect(Tarefa::STATUS)->map(function ($label, $status) use ($colunas, $foraDoCorte) {
+            $ocultas = $foraDoCorte[$status] ?? 0;
+
+            return [
+                'chave' => $status,
+                'label' => $ocultas > 0 ? "{$label} · {$ocultas} fora dos últimos 30 dias" : $label,
+                'quantidade' => $colunas[$status]->count(),
+            ];
+        })->values()->all();
 
         $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
         $usuarios = User::whereNull('revenda_id')->orderBy('name')->get();
@@ -105,6 +124,13 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        return view('tarefas.historico');
+        // Sem recorte de período (AC-097): é o caminho de auditoria para o
+        // que o quadro enxuto (`index()`) já tirou de vista.
+        $tarefas = Tarefa::with(['sistema', 'responsavel'])
+            ->whereIn('status', Tarefa::STATUS_TERMINAIS)
+            ->orderByDesc('updated_at')
+            ->get();
+
+        return view('tarefas.historico', compact('tarefas'));
     }
 }
