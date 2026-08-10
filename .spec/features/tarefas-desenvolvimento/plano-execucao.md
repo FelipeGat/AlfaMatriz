@@ -1,6 +1,6 @@
 # Plano de execução — tarefas-desenvolvimento
 
-> gerado por `onp-spec plano` em 2026-08-10 13:55 — NÃO edite à mão;
+> gerado por `onp-spec plano` em 2026-08-10 14:00 — NÃO edite à mão;
 > mudou tasks.md ou a config? Regenere: `onp-spec plano tarefas-desenvolvimento --sequencial`
 
 ## Resumo — o que vai acontecer
@@ -34,7 +34,7 @@ bash .spec/features/tarefas-desenvolvimento/executar-tarefas.sh
 Cada tarefa roda `claude -p` com **janela de contexto limpa**, na árvore principal,
 uma após a outra, com `--model` e `--effort` já definidos por tarefa e permissões `acceptEdits`.
 Os prompts exatos estão embutidos no script.
-Logs: `../onp-worktrees/AlfaMatriz-tarefas-desenvolvimento-logs/`.
+Logs: `../onp-worktrees/AlfaMatriz-tarefas-dev-tarefas-desenvolvimento-logs/`.
 
 ### 📣 Acompanhamento — tabela + resumo no chat (a cada 1 min)
 

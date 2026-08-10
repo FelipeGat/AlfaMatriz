@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# executar-tarefas.sh — gerado por `onp-spec plano tarefas-desenvolvimento` em 2026-08-10 13:55
+# executar-tarefas.sh — gerado por `onp-spec plano tarefas-desenvolvimento` em 2026-08-10 14:00
 # NÃO edite à mão: mudou tasks.md ou a config, regenere o plano.
 #
 # uso:
@@ -14,10 +14,10 @@
 set -u
 set -o pipefail
 
-RUN_ID='AlfaMatriz-tarefas-desenvolvimento-msnanxb9'
+RUN_ID='AlfaMatriz-tarefas-dev-tarefas-desenvolvimento-msnatpa6'
 FEATURE='tarefas-desenvolvimento'
 BASE_BRANCH='spec/tarefas-desenvolvimento'
-ENGINE='.claude/skills/onp-spec-driven/scripts/onp-spec.mjs'
+ENGINE='/Users/rossinisantos/dev/AlfaMatriz/.claude/skills/onp-spec-driven/scripts/onp-spec.mjs'
 CLAUDE_FLAGS=(--permission-mode acceptEdits --allowedTools 'Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(php:*)')
 STREAM_FLAGS=(--output-format stream-json --verbose)
 FALHAS=""
@@ -65,8 +65,8 @@ preparar_ambiente() {
     info "branch de trabalho: $BASE_BRANCH (a partir de $ATUAL)"
   fi
   git worktree prune
-  LOG_DIR="$(dirname "$TOPLEVEL")/onp-worktrees/AlfaMatriz-tarefas-desenvolvimento-logs"
-  WT_BASE="$(dirname "$TOPLEVEL")/onp-worktrees/AlfaMatriz-tarefas-desenvolvimento"
+  LOG_DIR="$(dirname "$TOPLEVEL")/onp-worktrees/AlfaMatriz-tarefas-dev-tarefas-desenvolvimento-logs"
+  WT_BASE="$(dirname "$TOPLEVEL")/onp-worktrees/AlfaMatriz-tarefas-dev-tarefas-desenvolvimento"
   STREAMS_DIR="${ONP_SPEC_HOME:-$HOME/.onp-spec}/painel/streams/$RUN_ID"
   mkdir -p "$LOG_DIR" "$STREAMS_DIR"
 }
