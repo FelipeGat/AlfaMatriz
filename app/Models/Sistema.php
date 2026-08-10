@@ -62,6 +62,11 @@ class Sistema extends Model
                 'status_saas']);
     }
 
+    public function modulos(): HasMany
+    {
+        return $this->hasMany(Modulo::class);
+    }
+
     public function precosAtacado(): HasMany
     {
         return $this->hasMany(PrecoAtacado::class);

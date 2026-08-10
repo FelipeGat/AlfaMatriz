@@ -302,6 +302,49 @@
         </div>
     </div>
 
+    {{-- Módulos contratados: adicionais cobrados à parte da licença.
+
+         Somente leitura, e com a origem declarada. Na Fase 1 quem contrata e
+         cancela é o painel do sistema — oferecer um checkbox aqui prometeria
+         uma edição que não existe. --}}
+    @php
+        $modulosDoCliente = isset($cliente)
+            ? $cliente->modulosContratados()->with('modulo.sistema')->get()
+                ->filter(fn ($c) => $c->modulo !== null)
+                ->sortBy(fn ($c) => [$c->modulo->sistema->nome ?? '', $c->modulo->codigo])
+            : collect();
+    @endphp
+
+    @if ($modulosDoCliente->isNotEmpty())
+        <div class="rounded-panel border border-line bg-subtle p-4 mb-4">
+            <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-1">
+                Módulos contratados
+            </h3>
+            <p class="text-[12.5px] text-ink-faint mb-3">
+                Gerenciados no painel do sistema de origem. Aqui só o retrato, que alimenta o faturamento.
+            </p>
+            <div class="space-y-1.5">
+                @foreach ($modulosDoCliente as $contratacao)
+                    <div class="flex flex-wrap items-center gap-2">
+                        <x-badge :tom="$contratacao->ativo() ? 'bom' : 'neutro'" ponto>
+                            {{ $contratacao->status }}
+                        </x-badge>
+                        <span class="text-[13px] text-ink-dim">{{ $contratacao->modulo->nome }}</span>
+                        <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                            {{ $contratacao->modulo->sistema->nome ?? '—' }}
+                            @if ($contratacao->valor_mensal !== null)
+                                · R$ {{ number_format((float) $contratacao->valor_mensal, 2, ',', '.') }}/mês
+                            @endif
+                            @if ($contratacao->data_fim)
+                                · até {{ $contratacao->data_fim->format('d/m/Y') }}
+                            @endif
+                        </span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     {{-- Usuário administrador: alguns sistemas exigem uma conta para o cliente
          poder entrar lá; outros (o AlfaControl) criam o usuário depois, no
          próprio painel. Quem decide é a capacidade, não o nome do produto.

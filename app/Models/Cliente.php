@@ -55,6 +55,12 @@ class Cliente extends Model
                 'status_saas']);
     }
 
+    /** Módulos que este cliente tem contratados, em qualquer sistema. */
+    public function modulosContratados(): HasMany
+    {
+        return $this->hasMany(ClienteModulo::class);
+    }
+
     public function cobrancas(): HasMany
     {
         return $this->hasMany(Cobranca::class);

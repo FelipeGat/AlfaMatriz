@@ -52,6 +52,11 @@ class ReconciliacaoPorDocumentoTest extends TestCase
             '*control.alfasolucoes.cloud/api/matriz/v1/licencas*' => Http::response([
                 'contrato' => '1.0', 'sistema' => 'alfacontrol', 'dados' => [],
             ]),
+            // O AlfaControl declara `sincroniza_modulos`, então o ciclo também
+            // consulta o catálogo e as contratações.
+            '*control.alfasolucoes.cloud/api/matriz/v1/modulos*' => Http::response([
+                'contrato' => '1.0', 'sistema' => 'alfacontrol', 'dados' => [],
+            ]),
         ]);
     }
 

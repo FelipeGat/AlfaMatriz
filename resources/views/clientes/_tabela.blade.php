@@ -126,6 +126,14 @@
                                     @if ($vinculo->fimEm())
                                         · até {{ $vinculo->fimEm()->format('d/m/Y') }}
                                     @endif
+                                    @php
+                                        $modulosDoSistema = $cliente->modulosContratados
+                                            ->filter(fn ($c) => $c->status === 'ativo'
+                                                && $c->modulo?->sistema_id === $sistema->id);
+                                    @endphp
+                                    @if ($modulosDoSistema->isNotEmpty())
+                                        · <span title="{{ $modulosDoSistema->map(fn ($c) => $c->modulo->codigo)->implode(', ') }}">{{ $modulosDoSistema->count() }} módulos</span>
+                                    @endif
                                 </span>
                             </div>
                         @endforeach

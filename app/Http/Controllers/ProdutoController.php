@@ -11,7 +11,8 @@ class ProdutoController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $produtos = Sistema::orderBy('nome')->get()->map(function (Sistema $sistema) {
+        $produtos = Sistema::with(['modulos.contratacoes' => fn ($q) => $q->where('status', 'ativo')])
+            ->orderBy('nome')->get()->map(function (Sistema $sistema) {
             $ativos = $sistema->clientesAtivosCount();
             $cancelados = $sistema->clientesCanceladosCount();
             $mrr = $sistema->mrrEstimado();
@@ -27,6 +28,10 @@ class ProdutoController extends Controller
                 // Sem tier de atacado o sistema não entra no faturamento das
                 // revendas — é a pendência que a tela precisa gritar.
                 'sem_tier' => $sistema->tiersVigentes()->isEmpty(),
+                // Módulos são receita à parte da licença: sem eles na tela, o
+                // MRR do produto parece menor do que é.
+                'modulos_ativos' => $sistema->modulos->filter(fn ($m) => $m->contratacoes->isNotEmpty())->count(),
+                'mrr_modulos' => (float) $sistema->modulos->sum(fn ($m) => $m->contratacoes->sum('valor_mensal')),
             ];
         });
 

@@ -34,7 +34,7 @@ class ClienteController extends Controller
 
         $temEscopo = auth()->user()->temEscopoDeRevenda();
 
-        $clientes = Cliente::with(['revenda', 'sistemas'])
+        $clientes = Cliente::with(['revenda', 'sistemas', 'modulosContratados.modulo'])
             ->when($temEscopo, fn ($q) => $q->where('revenda_id', auth()->user()->revenda_id))
             ->when($busca !== '', fn ($q) => $q->where(fn ($sub) => $sub
                 ->where('nome', 'like', "%{$busca}%")

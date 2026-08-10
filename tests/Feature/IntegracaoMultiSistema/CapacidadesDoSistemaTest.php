@@ -26,7 +26,13 @@ class CapacidadesDoSistemaTest extends TestCase
     {
         // Volta ao mundo anterior à migration: a coluna não existe e a linha do
         // AlfaGym está lá, como está em produção hoje.
-        $this->artisan('migrate:rollback', ['--step' => 1])->assertSuccessful();
+        //
+        // Aponta para a migration pelo caminho, não por `--step`: qualquer
+        // migration criada depois desta faria o passo cair na errada, e o teste
+        // passaria a provar outra coisa em silêncio.
+        $this->artisan('migrate:rollback', [
+            '--path' => 'database/migrations/2026_08_11_090000_adicionar_capacidades_aos_sistemas.php',
+        ])->assertSuccessful();
 
         DB::table('sistemas')->insert([
             'nome' => 'AlfaGym', 'slug' => 'alfagym', 'categoria' => 'saas',

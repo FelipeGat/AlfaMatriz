@@ -209,6 +209,18 @@
                             <dt class="text-[12px] text-ink-mute">Ticket médio</dt>
                             <dd class="font-mono text-[12.5px] text-ink-dim">R$ {{ number_format($produto['ticket_medio'], 2, ',', '.') }}</dd>
                         </div>
+                        @if ($produto['modulos_ativos'] > 0)
+                            {{-- Módulos são cobrados à parte da licença: sem
+                                 esta linha o MRR do produto parece menor do que é. --}}
+                            <div class="flex items-center justify-between gap-2">
+                                <dt class="text-[12px] text-ink-mute">
+                                    Módulos <span class="text-ink-faint">({{ $produto['modulos_ativos'] }})</span>
+                                </dt>
+                                <dd class="font-mono text-[12.5px] text-ink-dim">
+                                    R$ {{ number_format($produto['mrr_modulos'], 2, ',', '.') }}
+                                </dd>
+                            </div>
+                        @endif
                         <div class="flex items-center justify-between gap-2">
                             <dt class="text-[12px] text-ink-mute">Churn</dt>
                             <dd class="font-mono text-[12.5px] {{ $produto['taxa_cancelamento'] > 10 ? 'text-crit' : 'text-ink-dim' }}">

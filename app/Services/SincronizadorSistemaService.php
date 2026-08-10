@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Cliente;
+use App\Models\ClienteModulo;
+use App\Models\Modulo;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use Illuminate\Http\Client\ConnectionException;
@@ -39,6 +41,7 @@ class SincronizadorSistemaService
                 'revendas' => $this->sincronizarRevendas(),
                 'clientes' => $this->sincronizarClientes(),
                 'licencas' => $this->sincronizarLicencas(),
+                'modulos' => $this->sincronizarModulos(),
             ];
 
             return ['ok' => true, 'resumo' => $resumo];
@@ -235,6 +238,108 @@ class SincronizadorSistemaService
     private function todasPaginas(string $endereco): \Generator
     {
         yield from $this->contrato->paginas($endereco);
+    }
+
+    /**
+     * Catálogo de módulos e o que cada cliente contratou.
+     *
+     * Só para quem declara `sincroniza_modulos`: o AlfaGym não tem módulos, e
+     * consultar endereços que ele não serve daria 404 a cada ciclo.
+     *
+     * @return array<string, mixed>
+     */
+    private function sincronizarModulos(): array
+    {
+        if (! $this->sistema->suporta('sincroniza_modulos')) {
+            return ['ignorado' => true];
+        }
+
+        return [
+            'catalogo' => $this->sincronizarCatalogoDeModulos(),
+            'contratados' => $this->sincronizarModulosContratados(),
+        ];
+    }
+
+    /** @return array<string, int> */
+    private function sincronizarCatalogoDeModulos(): array
+    {
+        $vistos = [];
+        $gravados = 0;
+
+        foreach ($this->todasPaginas('/modulos') as $item) {
+            $codigo = $item['codigo'] ?? null;
+
+            if (! $codigo) {
+                continue;
+            }
+
+            Modulo::updateOrCreate(
+                ['sistema_id' => $this->sistema->id, 'codigo' => $codigo],
+                [
+                    'nome' => $item['nome'] ?? $codigo,
+                    'descricao' => $item['descricao'] ?? null,
+                    'ativo' => $item['ativo'] ?? true,
+                ]
+            );
+
+            $vistos[] = $codigo;
+            $gravados++;
+        }
+
+        // Módulo que saiu do catálogo da origem vira inativo — nunca apagado:
+        // remover levaria junto, em cascata, o histórico de contratações.
+        $desativados = Modulo::where('sistema_id', $this->sistema->id)
+            ->when($vistos !== [], fn ($q) => $q->whereNotIn('codigo', $vistos))
+            ->where('ativo', true)
+            ->update(['ativo' => false]);
+
+        return ['gravados' => $gravados, 'desativados' => $desativados];
+    }
+
+    /** @return array<string, int> */
+    private function sincronizarModulosContratados(): array
+    {
+        $catalogo = Modulo::where('sistema_id', $this->sistema->id)->get()->keyBy('codigo');
+        $vistos = [];
+        $gravados = 0;
+
+        foreach ($this->todasPaginas('/modulos-contratados') as $item) {
+            $modulo = $catalogo->get($item['modulo_codigo'] ?? null);
+            $cliente = Cliente::porOrigemExterna($this->sistema, (string) ($item['cliente_id_externo'] ?? ''));
+
+            // Sem cliente ancorado ou sem módulo no catálogo não há onde
+            // pendurar a contratação — mesma postura do sync de licenças.
+            if (! $modulo || ! $cliente) {
+                continue;
+            }
+
+            $contratacao = ClienteModulo::updateOrCreate(
+                ['cliente_id' => $cliente->id, 'modulo_id' => $modulo->id],
+                [
+                    'status' => $item['status'] ?? 'ativo',
+                    'data_inicio' => $item['inicio_em'] ?? null,
+                    'data_fim' => $item['fim_em'] ?? null,
+                    'valor_mensal' => $item['valor_mensal'] ?? null,
+                    'observacao' => $item['observacao'] ?? null,
+                ]
+            );
+
+            if (filled($item['id_externo'] ?? null)) {
+                $contratacao->ancorarEm($this->sistema, (string) $item['id_externo']);
+            }
+
+            $vistos[] = $contratacao->id;
+            $gravados++;
+        }
+
+        // Contratação que sumiu da origem foi encerrada lá: registra o fim em
+        // vez de apagar, senão o faturamento perde a memória do período.
+        $encerrados = ClienteModulo::whereIn('modulo_id', $catalogo->pluck('id'))
+            ->when($vistos !== [], fn ($q) => $q->whereNotIn('id', $vistos))
+            ->where('status', 'ativo')
+            ->update(['status' => 'inativo', 'data_fim' => now()->toDateString()]);
+
+        return ['gravados' => $gravados, 'encerrados' => $encerrados];
     }
 
     /**
