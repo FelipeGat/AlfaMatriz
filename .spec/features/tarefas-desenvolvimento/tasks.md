@@ -11,8 +11,7 @@
   planejador de mandá-las para faixas paralelas que quebrariam entre si.
 -->
 
-## T-058 — Estrutura de dados: tarefa, evento de etapa e relatório de teste [pendente]
-
+## T-058 — Estrutura de dados: tarefa, evento de etapa e relatório de teste [concluida]
 - Refs: US-036, AC-083, AC-084, AC-091
 - Arquivos: database/migrations/2026_08_10_090000_criar_tarefas_desenvolvimento.php, app/Models/Tarefa.php, app/Models/TarefaEvento.php, app/Models/TarefaRelatorioTeste.php, database/factories/TarefaFactory.php, tests/Feature/TarefasDesenvolvimento/EstruturaTarefaTest.php
 - Notas: três tabelas — `tarefas` (título, resumo, detalhes, sistema_id nulo,
