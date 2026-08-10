@@ -34,8 +34,7 @@
   (saiu_em + duracao_segundos) e abre o próximo. Depende de T-058.
 - Esforço: alto
 
-## T-060 — Quadro no ar: permissão `tarefas`, rotas, controller e a tela com as colunas [pendente]
-
+## T-060 — Quadro no ar: permissão `tarefas`, rotas, controller e a tela com as colunas [concluida]
 - Refs: US-036, US-039, AC-081, AC-082, AC-095
 - Arquivos: database/seeders/PerfilPermissaoSeeder.php, routes/web.php, app/Http/Controllers/TarefaController.php, resources/views/tarefas/index.blade.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php, tests/Feature/TarefasDesenvolvimento/AcessoTarefasTest.php
 - Notas: recurso `tarefas` novo no seeder de permissões (só perfis da matriz
