@@ -155,10 +155,20 @@ class CaminhoAteOCadastroTest extends TestCase
         );
     }
 
-    /** Links internos de uma página já carregada (o segundo salto). */
+    /**
+     * Links internos de uma página já carregada (o segundo salto).
+     *
+     * O endereço vem de `config('app.url')`, não escrito à mão: com
+     * `http://localhost` fixo aqui, a varredura só enxergava links no ambiente
+     * de quem tem essa APP_URL. No staging, onde ela é o endereço Tailscale,
+     * nenhum link casava, o segundo salto vinha vazio e o teste acusava
+     * "não existe caminho" — com a tela funcionando perfeitamente.
+     */
     private function linksDaPagina(string $html): array
     {
-        preg_match_all('/href="(http:\/\/localhost[^"#]*)"/', $html, $hrefs);
+        $base = preg_quote(rtrim(config('app.url'), '/'), '/');
+
+        preg_match_all('/href="('.$base.'[^"#]*)"/', $html, $hrefs);
 
         return array_values(array_unique($hrefs[1]));
     }

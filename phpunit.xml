@@ -19,6 +19,13 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!--
+            APP_URL fixa para os testes. Sem isto, a suíte herda a do ambiente
+            e muda de resultado conforme a máquina: o mesmo commit passava no
+            localhost e reprovava no staging, onde a APP_URL é o endereço
+            Tailscale. Teste que depende de onde roda não é portão, é sorteio.
+        -->
+        <env name="APP_URL" value="http://localhost"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
