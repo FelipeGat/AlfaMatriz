@@ -65,8 +65,7 @@
   atenção a partir de 24h / crítico a partir de 48h, só em Aberta e Em testes.
   Prioridade em `x-badge` com os tons já existentes. Depende de T-060.
 
-## T-063 — Criar e editar tarefa: sistema, responsável e prioridade [pendente]
-
+## T-063 — Criar e editar tarefa: sistema, responsável e prioridade [concluida]
 - Refs: US-036, AC-083, AC-084
 - Arquivos: resources/views/tarefas/_form.blade.php, resources/views/tarefas/index.blade.php, app/Http/Controllers/TarefaController.php, tests/Feature/TarefasDesenvolvimento/FormularioTarefaTest.php
 - Notas: modal no padrão do `x-modal` já usado em Leads. Select de sistema
