@@ -1,12 +1,12 @@
 {
-  "runId": "AlfaMatriz-tarefas-dev-tarefas-desenvolvimento-msnatpa6",
+  "runId": "AlfaMatriz-tarefas-dev-tarefas-desenvolvimento-msnbex1k",
   "feature": "tarefas-desenvolvimento",
   "agent": "claude",
   "modo": "sequencial",
   "paralelizar": null,
   "modeloForcado": null,
   "esforcoForcado": null,
-  "geradoEm": "2026-08-10 14:00",
+  "geradoEm": "2026-08-10 14:16",
   "branchTrabalho": "spec/tarefas-desenvolvimento",
   "baseDir": ".spec/features/tarefas-desenvolvimento",
   "specDir": ".spec",
@@ -15,20 +15,6 @@
   "ondas": [],
   "faixas": [],
   "sequenciais": [
-    {
-      "id": "T-073",
-      "titulo": "Menu \"Mover\" volta a oferecer os destinos permitidos",
-      "modelo": "claude-sonnet-5",
-      "esforco": "high",
-      "arquivos": [
-        "resources/views/tarefas/_mover.blade.php",
-        "tests/Feature/TarefasDesenvolvimento/MoverTarefaTest.php"
-      ],
-      "refs": [
-        "US-037",
-        "AC-109"
-      ]
-    },
     {
       "id": "T-074",
       "titulo": "Prioridade Crítica, o quarto nível do ciclo",
@@ -68,7 +54,8 @@
     "T-062",
     "T-063",
     "T-064",
-    "T-065"
+    "T-065",
+    "T-073"
   ],
   "avisos": []
 }

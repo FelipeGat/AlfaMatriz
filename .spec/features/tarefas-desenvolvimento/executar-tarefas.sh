@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# executar-tarefas.sh — gerado por `onp-spec plano tarefas-desenvolvimento` em 2026-08-10 14:00
+# executar-tarefas.sh — gerado por `onp-spec plano tarefas-desenvolvimento` em 2026-08-10 14:16
 # NÃO edite à mão: mudou tasks.md ou a config, regenere o plano.
 #
 # uso:
@@ -14,9 +14,9 @@
 set -u
 set -o pipefail
 
-RUN_ID='AlfaMatriz-tarefas-dev-tarefas-desenvolvimento-msnatpa6'
+RUN_ID='AlfaMatriz-tarefas-dev-tarefas-desenvolvimento-msnbex1k'
 FEATURE='tarefas-desenvolvimento'
-BASE_BRANCH='spec/tarefas-dev-emenda'   # worktree isolado: a branch original está em uso pelo diretório principal
+BASE_BRANCH='spec/tarefas-dev-emenda'   # worktree isolado
 ENGINE='/Users/rossinisantos/dev/AlfaMatriz/.claude/skills/onp-spec-driven/scripts/onp-spec.mjs'
 CLAUDE_FLAGS=(--permission-mode acceptEdits --allowedTools 'Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(php:*)')
 STREAM_FLAGS=(--output-format stream-json --verbose)
@@ -166,38 +166,6 @@ iniciar_resumos() {
   trap 'parar_resumos; node "$ENGINE" resumo "$FEATURE" --gravar >/dev/null 2>&1 || true' EXIT
 }
 
-# ── sequencial T-073 (ordem do tasks.md) ──
-executar_seq_T_073() {
-  info 'sequencial T-073 — Menu "Mover" volta a oferecer os destinos permitidos'
-  if rodar_tarefa seq 'T-073' 'Você executa UMA tarefa da feature "tarefas-desenvolvimento" (fluxo onp-spec, spec-anchored).
-Leia primeiro: .spec/features/tarefas-desenvolvimento/spec.md, .spec/features/tarefas-desenvolvimento/tasks.md e .spec/constituicao.md.
-
-Sua tarefa (somente ela):
-T-073 — "Menu "Mover" volta a oferecer os destinos permitidos"
-  critérios/refs: AC-109 (O menu "Mover" oferece de verdade os destinos permitidos)
-  arquivos permitidos (e seus testes): resources/views/tarefas/_mover.blade.php, tests/Feature/TarefasDesenvolvimento/MoverTarefaTest.php
-  mensagem de commit: "T-073 tarefas-desenvolvimento: Menu "Mover" volta a oferecer os destinos permitidos"
-
-Regras inegociáveis:
-- Todo critério de aceite referenciado vira teste com @spec:AC-xxx no título.
-- NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
-- Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
-- NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' high >> "$LOG_DIR/seq.log" 2>&1; then
-    # commit de segurança se o agente esqueceu (rastreabilidade > perfeição)
-    if [ -n "$(git status --porcelain)" ]; then
-      git add -A && git commit -q -m 'T-073 tarefas-desenvolvimento: Menu "Mover" volta a oferecer os destinos permitidos (auto-commit do plano)'
-    fi
-    marcar_concluidas T-073
-    verde "✔ T-073 concluída"
-    return 0
-  fi
-  vermelho "✘ T-073 falhou (log: $LOG_DIR/seq.log)"
-  amarelo "  reexecute só ela: bash .spec/features/tarefas-desenvolvimento/executar-tarefas.sh --seq T-073"
-  FALHAS="$FALHAS T-073"
-  return 1
-}
-
 # ── sequencial T-074 (ordem do tasks.md) ──
 executar_seq_T_074() {
   info 'sequencial T-074 — Prioridade Crítica, o quarto nível do ciclo'
@@ -315,7 +283,6 @@ executar_tudo() {
   iniciar_resumos
   info "logs em: $LOG_DIR"
   info "resumo geral de andamento: a cada 1 min aqui no terminal (e via: onp-spec resumo)"
-  executar_seq_T_073 || true
   executar_seq_T_074 || true
   executar_seq_T_075 || true
   encerrar tudo
@@ -323,7 +290,6 @@ executar_tudo() {
 
 listar() {
   echo "execução: $RUN_ID (feature $FEATURE, branch $BASE_BRANCH)"
-  echo "  seq       T-073 (sequencial)"
   echo "  seq       T-074 (sequencial)"
   echo "  seq       T-075 (sequencial)"
   echo
@@ -360,7 +326,6 @@ case "$MODO" in
     esac ;;
   seq)
     case "$ALVO" in
-      T-073) evento --tipo inicio --escopo "seq:T-073"; iniciar_resumos; executar_seq_T_073 || true; encerrar "seq:T-073" ;;
       T-074) evento --tipo inicio --escopo "seq:T-074"; iniciar_resumos; executar_seq_T_074 || true; encerrar "seq:T-074" ;;
       T-075) evento --tipo inicio --escopo "seq:T-075"; iniciar_resumos; executar_seq_T_075 || true; encerrar "seq:T-075" ;;
       *) falhar "tarefa sequencial desconhecida: '$ALVO' — veja as disponíveis com --listar" ;;

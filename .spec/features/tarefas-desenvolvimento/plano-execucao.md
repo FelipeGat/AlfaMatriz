@@ -1,11 +1,11 @@
 # Plano de execução — tarefas-desenvolvimento
 
-> gerado por `onp-spec plano` em 2026-08-10 14:00 — NÃO edite à mão;
+> gerado por `onp-spec plano` em 2026-08-10 14:16 — NÃO edite à mão;
 > mudou tasks.md ou a config? Regenere: `onp-spec plano tarefas-desenvolvimento --sequencial`
 
 ## Resumo — o que vai acontecer
 
-- **modo SEQUENCIAL (escolha do usuário)**: 3 tarefa(s) pendente(s), UMA APÓS A OUTRA, na árvore principal (8 já concluída(s): T-058, T-059, T-060, T-061, T-062, T-063, T-064, T-065)
+- **modo SEQUENCIAL (escolha do usuário)**: 2 tarefa(s) pendente(s), UMA APÓS A OUTRA, na árvore principal (9 já concluída(s): T-058, T-059, T-060, T-061, T-062, T-063, T-064, T-065, T-073)
 - sem worktrees e sem paralelismo — cada tarefa roda numa janela de contexto limpa, na ordem do tasks.md
 - tudo acontece na branch de trabalho `spec/tarefas-desenvolvimento`; levar para a main é decisão sua
 
@@ -13,7 +13,6 @@
 
 | tarefa | título | modelo | esforço |
 |---|---|---|---|
-| T-073 | Menu "Mover" volta a oferecer os destinos permitidos | `claude-sonnet-5` | high |
 | T-074 | Prioridade Crítica, o quarto nível do ciclo | `claude-sonnet-5` | high |
 | T-075 | Devolver do Backlog para Aberta, soltando o responsável | `claude-sonnet-5` | medium |
 
