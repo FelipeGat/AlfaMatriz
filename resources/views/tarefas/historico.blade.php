@@ -1,13 +1,9 @@
 <x-app-layout>
     <x-slot name="titulo">Histórico de tarefas</x-slot>
     <x-slot name="contexto">{{ $tarefas->count() }} tarefas no histórico</x-slot>
-    <x-slot name="acoes">
-        <a href="{{ route('tarefas.index') }}"
-           class="h-[34px] px-3 inline-flex items-center rounded-control border border-btn-line
-                  text-[12.5px] font-semibold text-ink-dim hover:text-brand hover:border-brand transition whitespace-nowrap">
-            Voltar ao quadro
-        </a>
-    </x-slot>
+
+    <div class="flex flex-col gap-4">
+        @include('tarefas._abas', ['ativa' => 'historico'])
 
     {{--
         O quadro é só o trabalho em curso: tarefa encerrada sai de lá e passa a
@@ -73,4 +69,5 @@
             <span>{{ $tarefas->count() }} tarefas no histórico</span>
         </x-slot>
     </x-tabela>
+    </div>
 </x-app-layout>

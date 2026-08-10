@@ -2,16 +2,6 @@
     <x-slot name="titulo">Tarefas</x-slot>
     <x-slot name="contexto">{{ $tarefas->count() }} tarefas no quadro</x-slot>
     <x-slot name="acoes">
-        {{--
-            Caminho permanente para a auditoria: o aviso de recorte no
-            cabeçalho da coluna só aparece quando há algo fora dos 30 dias,
-            e num quadro novo isso deixaria o histórico inalcançável.
-        --}}
-        <a href="{{ route('tarefas.historico') }}"
-           class="h-[34px] px-3 inline-flex items-center rounded-control border border-line text-ink-dim
-                  font-medium text-[12.5px] hover:text-ink hover:bg-chip transition whitespace-nowrap">
-            Histórico
-        </a>
         <button type="button" x-data @click="$dispatch('open-modal', 'nova-tarefa')"
                 class="h-[34px] px-3 rounded-control bg-brand text-on-brand font-semibold text-[12.5px]
                        hover:bg-brand-bright transition whitespace-nowrap">
@@ -25,6 +15,8 @@
         inteira e as outras ficam desalinhadas.
     --}}
     <div class="flex flex-col gap-4" style="height: calc(100vh - 120px); min-height: 520px">
+        @include('tarefas._abas', ['ativa' => 'quadro'])
+
         @if (session('status'))
             <x-aviso class="shrink-0">{{ session('status') }}</x-aviso>
         @endif

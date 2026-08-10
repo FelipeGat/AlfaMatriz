@@ -1,7 +1,7 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-10T15:36:01.437Z",
-  "gitRev": "5e7a691",
+  "timestamp": "2026-08-10T16:00:10.347Z",
+  "gitRev": "2c0390d",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
@@ -134,7 +134,7 @@
     },
     "AC-112": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_cabecalho_do_quadro_leva_ao_historico_mesmo_sem_recorte @spec:AC-112",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_quadro_e_historico_sao_abas_da_mesma_tela @spec:AC-112",
       "method": "tap"
     },
     "AC-118": {

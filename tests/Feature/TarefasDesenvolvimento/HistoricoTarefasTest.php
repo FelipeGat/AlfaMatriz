@@ -99,16 +99,40 @@ class HistoricoTarefasTest extends TestCase
     }
 
     /**
-     * @spec:AC-112 O cabeçalho do quadro leva ao histórico em um clique, com ou sem
-     * tarefa encerrada — sem depender de digitar a URL.
+     * @spec:AC-112 Quadro e Histórico são duas abas da mesma tela: as duas aparecem nas
+     * duas telas, e a atual vem marcada como ativa — passar de uma para a outra é um clique.
      */
-    public function test_cabecalho_do_quadro_leva_ao_historico_mesmo_sem_recorte(): void
+    public function test_quadro_e_historico_sao_abas_da_mesma_tela(): void
     {
         $usuario = User::factory()->create();
 
-        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+        $quadro = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('href="'.route('tarefas.historico').'"', $html);
+        // As duas abas existem no quadro, e a do quadro é a ativa.
+        $this->assertMatchesRegularExpression(
+            '#<a href="'.preg_quote(route('tarefas.index'), '#').'"\s+aria-current="page"#u',
+            $quadro,
+            'No quadro, a aba Quadro precisa estar marcada como ativa.'
+        );
+        $this->assertMatchesRegularExpression(
+            '#<a href="'.preg_quote(route('tarefas.historico'), '#').'"\s+aria-current="false"#u',
+            $quadro,
+            'A aba Histórico precisa estar disponível a partir do quadro.'
+        );
+
+        $historico = $this->actingAs($usuario)->get(route('tarefas.historico'))->assertOk()->getContent();
+
+        // E o espelho: no histórico, a ativa é a outra.
+        $this->assertMatchesRegularExpression(
+            '#<a href="'.preg_quote(route('tarefas.historico'), '#').'"\s+aria-current="page"#u',
+            $historico,
+            'No histórico, a aba Histórico precisa estar marcada como ativa.'
+        );
+        $this->assertMatchesRegularExpression(
+            '#<a href="'.preg_quote(route('tarefas.index'), '#').'"\s+aria-current="false"#u',
+            $historico,
+            'A aba Quadro precisa levar de volta a partir do histórico.'
+        );
     }
 
     /**

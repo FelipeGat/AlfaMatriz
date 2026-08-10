@@ -229,12 +229,12 @@ perder nada, para que a auditoria de qualquer tarefa antiga continue possível.
 - **Então** ela aparece na listagem, com sistema, responsável, etapa final e
   data, sem nenhum recorte por período aplicado
 
-#### AC-112 — Do quadro se chega ao histórico em um clique
+#### AC-112 — Quadro e Histórico são duas abas da mesma tela
 
-- **Dado** o quadro aberto, com ou sem tarefas encerradas
-- **Quando** procuro o que já foi concluído ou cancelado
-- **Então** o cabeçalho do quadro oferece o caminho para o histórico completo,
-  sem precisar digitar a URL
+- **Dado** que estou em Tarefas
+- **Quando** olho o topo da tela
+- **Então** vejo as abas Quadro e Histórico, com a atual marcada como ativa, e
+  passo de uma para a outra em um clique — sem precisar digitar a URL
 
 #### AC-118 — A tarefa concluída é reaberta pelo histórico
 
