@@ -16,7 +16,7 @@ set -o pipefail
 
 RUN_ID='AlfaMatriz-tarefas-dev-tarefas-desenvolvimento-msnatpa6'
 FEATURE='tarefas-desenvolvimento'
-BASE_BRANCH='spec/tarefas-desenvolvimento'
+BASE_BRANCH='spec/tarefas-dev-emenda'   # worktree isolado: a branch original está em uso pelo diretório principal
 ENGINE='/Users/rossinisantos/dev/AlfaMatriz/.claude/skills/onp-spec-driven/scripts/onp-spec.mjs'
 CLAUDE_FLAGS=(--permission-mode acceptEdits --allowedTools 'Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(php:*)')
 STREAM_FLAGS=(--output-format stream-json --verbose)
