@@ -10,6 +10,19 @@ Não é um produto vendido — é a matriz que enxerga e cobra as revendas dos d
 - MySQL via Docker (`docker-compose.yml`)
 - Alpine.js pra interatividade leve (sem SPA)
 
+### Cuidado ao trazer campo de integração
+
+A atribuição em massa do Eloquent **descarta em silêncio** o que não está no
+`$fillable` do modelo — sem erro, sem aviso. Foi assim que o e-mail e o telefone
+que o AlfaGym manda sumiram por meses: o sincronizador entregava os dois para
+`Cliente::create()` e a tabela `clientes` nem tem essas colunas (contato mora em
+`cliente_emails` e `cliente_telefones`).
+
+Ao ligar um campo novo vindo de integração, confira contra o `$fillable` e as
+colunas de verdade antes de confiar que ele chegou. Ligar
+`Model::preventSilentlyDiscardingAttributes()` no projeto inteiro resolveria a
+classe do problema, mas mexe em todos os modelos e ainda não foi avaliado.
+
 ## Módulos
 
 - **Painéis**: Financeiro (MRR, caixa, entradas/saídas) e Comercial (ranking de sistemas por clientes/valor)
