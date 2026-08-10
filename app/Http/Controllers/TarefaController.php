@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Sistema;
 use App\Models\Tarefa;
+use App\Models\User;
 use App\Services\FluxoTarefaService;
 use Illuminate\Http\Request;
 
@@ -26,7 +28,10 @@ class TarefaController extends Controller
             'quantidade' => $colunas[$status]->count(),
         ])->values()->all();
 
-        return view('tarefas.index', compact('tarefas', 'colunas', 'etapas'));
+        $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
+        $usuarios = User::whereNull('revenda_id')->orderBy('name')->get();
+
+        return view('tarefas.index', compact('tarefas', 'colunas', 'etapas', 'sistemas', 'usuarios'));
     }
 
     public function store(Request $request)
@@ -35,6 +40,9 @@ class TarefaController extends Controller
 
         $data = $request->validate([
             'titulo' => 'required|string|max:255',
+            'sistema_id' => 'nullable|exists:sistemas,id',
+            'responsavel_id' => 'nullable|exists:users,id',
+            'prioridade' => 'required|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
         ]);
 
         $data['criado_por_id'] = auth()->id();
@@ -50,6 +58,9 @@ class TarefaController extends Controller
 
         $data = $request->validate([
             'titulo' => 'required|string|max:255',
+            'sistema_id' => 'nullable|exists:sistemas,id',
+            'responsavel_id' => 'nullable|exists:users,id',
+            'prioridade' => 'required|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
         ]);
 
         $tarefa->update($data);

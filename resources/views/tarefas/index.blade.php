@@ -1,6 +1,13 @@
 <x-app-layout>
     <x-slot name="titulo">Tarefas</x-slot>
     <x-slot name="contexto">{{ $tarefas->count() }} tarefas no quadro</x-slot>
+    <x-slot name="acoes">
+        <button type="button" x-data @click="$dispatch('open-modal', 'nova-tarefa')"
+                class="h-[34px] px-3 rounded-control bg-brand text-on-brand font-semibold text-[12.5px]
+                       hover:bg-brand-bright transition whitespace-nowrap">
+            + Nova tarefa
+        </button>
+    </x-slot>
 
     {{--
         Mesmo truque do Funil de Vendas: a tela ocupa a altura da janela e o
@@ -50,7 +57,10 @@
 
                         <div class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 space-y-2">
                             @forelse ($cards as $tarefa)
-                                @include('tarefas._card', ['tarefa' => $tarefa])
+                                <div x-data @click="$dispatch('open-modal', 'editar-tarefa-{{ $tarefa->id }}')"
+                                     class="cursor-pointer">
+                                    @include('tarefas._card', ['tarefa' => $tarefa])
+                                </div>
                             @empty
                                 <div class="rounded-ctl border border-dashed border-line px-2 text-center flex items-center justify-center"
                                      style="height: 84px">
@@ -84,4 +94,16 @@
             }));
         });
     </script>
+
+    {{-- Modal: nova tarefa --}}
+    <x-modal name="nova-tarefa" maxWidth="lg">
+        @include('tarefas._form', ['tarefa' => null, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
+    </x-modal>
+
+    {{-- Modal: editar tarefa — uma por card, como em Clientes --}}
+    @foreach ($tarefas as $tarefa)
+        <x-modal name="editar-tarefa-{{ $tarefa->id }}" maxWidth="lg">
+            @include('tarefas._form', ['tarefa' => $tarefa, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
+        </x-modal>
+    @endforeach
 </x-app-layout>
