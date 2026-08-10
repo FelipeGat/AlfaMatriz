@@ -242,4 +242,66 @@ class CardTarefaTest extends TestCase
         $this->assertCount(4, array_unique($tokens),
             'Cada prioridade precisa de um tom próprio — tons repetidos: '.json_encode($tokens, JSON_UNESCAPED_UNICODE));
     }
+
+    /**
+     * @spec:AC-116 O resumo é lido no próprio card; card sem resumo não reserva espaço vazio.
+     */
+    public function test_card_mostra_o_resumo_e_omite_a_linha_quando_nao_ha(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Com resumo',
+            'resumo' => 'Academia reclamou que o export não traz linhas.',
+        ]);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+        $this->assertStringContainsString('Academia reclamou que o export não traz linhas.', $html);
+
+        // Sem resumo, nenhum parágrafo de resumo é emitido para aquele card.
+        Tarefa::query()->delete();
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Sem resumo',
+            'resumo' => null,
+        ]);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+        $this->assertStringContainsString('Sem resumo', $html);
+        $this->assertStringNotContainsString('text-ink-mute truncate', $html,
+            'Card sem resumo não pode emitir a linha do resumo.');
+    }
+
+    /**
+     * @spec:AC-117 A falta de responsável é dita no card, não deduzida da ausência do nome.
+     */
+    public function test_card_sem_responsavel_diz_que_nao_tem(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+        $responsavel = User::factory()->create(['name' => 'Joana Dev']);
+
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Ainda não direcionada',
+            'responsavel_id' => null,
+        ]);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+        $this->assertStringContainsString('Sem responsável', $html);
+
+        // Com responsável, o nome ocupa o mesmo segmento — e o aviso some.
+        Tarefa::query()->delete();
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Direcionada',
+            'responsavel_id' => $responsavel->id,
+        ]);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+        $this->assertStringContainsString('Joana Dev', $html);
+        $this->assertStringNotContainsString('Sem responsável', $html);
+    }
 }

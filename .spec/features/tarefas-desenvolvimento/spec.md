@@ -90,6 +90,20 @@ aberto, em desenvolvimento, em teste e concluído.
 - **Então** a crítica aparece acima da baixa; e entre duas tarefas de mesma
   prioridade, a que está parada há mais tempo na etapa aparece primeiro
 
+#### AC-116 — O resumo da tarefa aparece no card
+
+- **Dado** uma tarefa cujo resumo foi preenchido
+- **Quando** olho o card dela no quadro
+- **Então** leio o resumo abaixo do título, sem precisar abrir a tarefa; e o
+  card de uma tarefa sem resumo não abre espaço vazio no lugar dele
+
+#### AC-117 — Tarefa sem responsável diz que não tem
+
+- **Dado** uma tarefa ainda não direcionada a ninguém
+- **Quando** olho o card dela
+- **Então** o card afirma "sem responsável" — a informação é dita, não
+  deduzida da ausência do nome
+
 ### US-037 — Fluxo com regras que impedem pular etapa
 
 Como responsável pela entrega, quero que o quadro recuse movimentos fora do

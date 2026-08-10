@@ -171,3 +171,16 @@
   critério que o card exibe no chip de tempo — se a ordem discordasse do que
   o chip mostra, a lista pareceria embaralhada. Isso exige carregar `eventos`
   junto (o card já os acessa hoje, um por card: some também um N+1).
+
+## T-079 — Card conta o resumo e assume a falta de responsável [concluida]
+- Refs: US-036, AC-116, AC-117
+- Arquivos: resources/views/tarefas/_card.blade.php, tests/Feature/TarefasDesenvolvimento/CardTarefaTest.php
+- Notas: dois buracos vistos com a tela rodando. (1) `resumo` é gravado pelo
+  formulário e não aparece em lugar nenhum — dado que se preenche e nunca se
+  lê é pior que campo ausente; entra como uma linha sob o título, truncada,
+  e some quando vazio. (2) A ausência de responsável hoje é lida por
+  comparação com os cards vizinhos; a linha de metadados passa a ter sempre
+  os dois segmentos, dizendo "sem responsável" quando for o caso — é
+  justamente a fila que pede triagem (a regra `aberta → backlog` trava nela).
+  Sem cor de alarme: a borda do card já é o canal do aviso de esquecida e
+  encher a coluna Aberta de âmbar apagaria esse sinal.

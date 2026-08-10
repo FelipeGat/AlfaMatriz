@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-10T15:16:26.543Z",
-  "gitRev": "e1b8a24",
+  "timestamp": "2026-08-10T15:21:18.055Z",
+  "gitRev": "138d994",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 214,
+  "testsParsed": 216,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -45,6 +45,16 @@
     "AC-115": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_coluna_ordena_por_prioridade_e_depois_pelo_mais_parado @spec:AC-115",
+      "method": "tap"
+    },
+    "AC-116": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_card_mostra_o_resumo_e_omite_a_linha_quando_nao_ha @spec:AC-116",
+      "method": "tap"
+    },
+    "AC-117": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_card_sem_responsavel_diz_que_nao_tem @spec:AC-117",
       "method": "tap"
     },
     "AC-085": {
