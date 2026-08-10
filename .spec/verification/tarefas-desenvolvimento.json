@@ -1,7 +1,7 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-10T17:02:29.120Z",
-  "gitRev": "f13c7e5",
+  "timestamp": "2026-08-10T17:55:22.028Z",
+  "gitRev": "67c6396",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
