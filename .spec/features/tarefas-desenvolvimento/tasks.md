@@ -49,8 +49,7 @@
   Depende de T-058 e T-059.
 - Esforço: alto
 
-## T-061 — Grupo "Desenvolvimento" no menu lateral [pendente]
-
+## T-061 — Grupo "Desenvolvimento" no menu lateral [concluida]
 - Refs: US-036, US-039, AC-081, AC-094
 - Arquivos: resources/views/layouts/navigation.blade.php, tests/Feature/TarefasDesenvolvimento/MenuDesenvolvimentoTest.php
 - Notas: grupo novo entre "Financeiro" e "Sistema", com o item Tarefas
