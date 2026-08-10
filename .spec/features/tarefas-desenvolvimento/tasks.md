@@ -99,8 +99,7 @@
   a tela que leva até ela estava morta.
 -->
 
-## T-073 — Menu "Mover" volta a oferecer os destinos permitidos [pendente]
-
+## T-073 — Menu "Mover" volta a oferecer os destinos permitidos [concluida]
 - Refs: US-037, AC-109
 - Arquivos: resources/views/tarefas/_mover.blade.php, tests/Feature/TarefasDesenvolvimento/MoverTarefaTest.php
 - Notas: a correção do `x-data` JÁ ESTÁ APLICADA na árvore de trabalho
