@@ -112,8 +112,10 @@ class SincronizadorAlfaGymService
                 'nome' => $item['nome'] ?? 'Sem nome',
                 'razao_social' => $item['razao_social'] ?? null,
                 'cpf_cnpj' => $this->normalizarDocumento($item['cpf_cnpj'] ?? null),
-                'email' => $item['email'] ?? null,
-                'telefone' => $item['telefone'] ?? null,
+                // `email` e `telefone` NÃO entram aqui: a tabela clientes não
+                // tem essas colunas e a atribuição em massa os descartava em
+                // silêncio. O contato mora em cliente_emails/cliente_telefones,
+                // gravado logo abaixo, depois de o cliente existir.
                 'cidade' => $item['cidade'] ?? null,
                 'uf' => $item['uf'] ?? null,
                 'ativo' => $item['ativo'] ?? true,
@@ -138,6 +140,10 @@ class SincronizadorAlfaGymService
                 'status_saas' => $item['status'] ?? null,
                 'bloqueia_acesso' => ($item['status'] ?? null) === 'bloqueado' ? 1 : 0,
             ]]);
+
+            if ($cliente) {
+                $this->guardarContato($cliente, $item['email'] ?? null, $item['telefone'] ?? null);
+            }
         }
 
         return ['criados' => $criados, 'atualizados' => $atualizados];
@@ -166,6 +172,64 @@ class SincronizadorAlfaGymService
         }
 
         return ['atualizadas' => $atualizadas];
+    }
+
+    /**
+     * Grava o contato que o AlfaGym informou, sem apagar nada.
+     *
+     * Ao contrário do formulário da tela (que regrava a lista inteira a cada
+     * save), aqui o sync é um convidado: pode acrescentar o que a origem
+     * conhece, nunca varrer o que o time cadastrou na Matriz — um e-mail
+     * financeiro anotado aqui não pode sumir na próxima hora cheia.
+     */
+    private function guardarContato(Cliente $cliente, ?string $email, ?string $telefone): void
+    {
+        $email = trim((string) $email);
+        $telefone = trim((string) $telefone);
+
+        if ($email !== '') {
+            $this->acrescentarContato(
+                fn () => $cliente->emails(),
+                'email',
+                $email,
+                fn (bool $principal) => ['email' => $email, 'principal' => $principal, 'financeiro' => false]
+            );
+        }
+
+        if ($telefone !== '') {
+            $this->acrescentarContato(
+                fn () => $cliente->telefones(),
+                'telefone',
+                $telefone,
+                fn (bool $principal) => ['telefone' => $telefone, 'principal' => $principal]
+            );
+        }
+    }
+
+    /**
+     * Acrescenta um contato se ele ainda não existir, casando pelo VALOR.
+     *
+     * Principal só quando o cliente ainda não tem nenhum: se alguém já escolheu
+     * um principal na Matriz, o do gym entra como adicional. O sincronizador
+     * não desfaz decisão tomada por gente.
+     *
+     * O primeiro parâmetro é uma FÁBRICA de relação, não a relação: `where()`
+     * muta o construtor de consulta, então reusar o mesmo objeto faria a
+     * segunda pergunta herdar a condição da primeira — e ela responderia
+     * "não existe principal" para todo cliente.
+     *
+     * @param  callable(): \Illuminate\Database\Eloquent\Relations\HasMany<\Illuminate\Database\Eloquent\Model, Cliente>  $relacao
+     * @param  callable(bool): array<string, mixed>  $novo
+     */
+    private function acrescentarContato(callable $relacao, string $campo, string $valor, callable $novo): void
+    {
+        if ($relacao()->where($campo, $valor)->exists()) {
+            return;
+        }
+
+        $ehOPrimeiroPrincipal = ! $relacao()->where('principal', true)->exists();
+
+        $relacao()->create($novo($ehOPrimeiroPrincipal));
     }
 
     private function revendaPorIdExterno(?string $idExterno): ?Revenda
