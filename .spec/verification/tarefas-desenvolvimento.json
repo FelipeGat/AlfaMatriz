@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-10T14:21:36.740Z",
-  "gitRev": "6ca749a",
+  "timestamp": "2026-08-10T14:54:46.855Z",
+  "gitRev": "c61721a",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 209,
+  "testsParsed": 212,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -30,6 +30,11 @@
     "AC-110": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PrioridadeCriticaTest::test_formulario_de_tarefa_oferece_as_quatro_prioridades @spec:AC-110",
+      "method": "tap"
+    },
+    "AC-113": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_as_quatro_prioridades_tem_cores_distintas @spec:AC-113",
       "method": "tap"
     },
     "AC-085": {
@@ -105,6 +110,11 @@
     "AC-097": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_historico_lista_tarefa_antiga_sem_recorte_de_periodo @spec:AC-097",
+      "method": "tap"
+    },
+    "AC-112": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_quadro_leva_ao_historico_e_o_aviso_do_recorte_e_legivel @spec:AC-112",
       "method": "tap"
     }
   },

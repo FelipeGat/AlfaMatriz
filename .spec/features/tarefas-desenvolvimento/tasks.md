@@ -134,3 +134,16 @@
   assignee) — é como se desdireciona um ticket. Aqui a transição não existe.
   Acrescentar ao mapa de transições permitidas e soltar o `responsavel_id` na
   volta, sem mexer nas outras regras.
+
+## T-076 — Caminho para o histórico e escala de prioridade legível [concluida]
+- Refs: US-036, US-040, AC-112, AC-113
+- Arquivos: app/Http/Controllers/TarefaController.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/_card.blade.php, tests/Feature/TarefasDesenvolvimento/HistoricoTarefasTest.php, tests/Feature/TarefasDesenvolvimento/CardTarefaTest.php
+- Notas: três defeitos vistos na tela rodando. (1) O quadro não tem link
+  nenhum para o histórico — a rota existe e o teste do AC-097 a exercita, mas
+  o caminho humano nunca foi construído. (2) O controller enfia o aviso do
+  recorte dentro do próprio `label` da coluna, que trunca em 276px e come
+  justamente o número; separar em `ocultas` e renderizar em linha própria no
+  cabeçalho, no padrão do Funil de Vendas, virando o link do item (1).
+  (3) `_card.blade.php:31` mapeia `baixa` e `media` para o mesmo tom `neutro`,
+  então dois dos quatro níveis são indistinguíveis; a escala do `x-badge`
+  (`neutro < marca < atencao < critico`) cobre os quatro.

@@ -66,6 +66,13 @@ aberto, em desenvolvimento, em teste e concluído.
 - **Então** vejo Baixa, Média, Alta e **Crítica**; uma tarefa crítica aparece
   no quadro com a marca vermelha, distinta da Alta
 
+#### AC-113 — Os quatro níveis de prioridade se distinguem entre si
+
+- **Dado** quatro tarefas no quadro, uma de cada prioridade
+- **Quando** comparo os selos delas
+- **Então** cada nível tem uma cor própria — Baixa, Média, Alta e Crítica não
+  compartilham tom entre si, e a escala sobe do mais discreto ao mais grave
+
 ### US-037 — Fluxo com regras que impedem pular etapa
 
 Como responsável pela entrega, quero que o quadro recuse movimentos fora do
@@ -190,6 +197,14 @@ perder nada, para que a auditoria de qualquer tarefa antiga continue possível.
 - **Quando** abro o histórico de tarefas
 - **Então** ela aparece na listagem, com sistema, responsável, etapa final e
   data, sem nenhum recorte por período aplicado
+
+#### AC-112 — Do quadro se chega ao histórico, e o aviso do recorte é legível
+
+- **Dado** o quadro com uma tarefa concluída fora dos últimos 30 dias
+- **Quando** olho o cabeçalho da coluna Concluída
+- **Então** o nome da etapa aparece inteiro, o aviso de quantas ficaram fora do
+  recorte aparece em linha própria (sem cortar), e clicar nele abre o histórico
+  completo — sem precisar digitar a URL
 
 ## Fora de escopo
 

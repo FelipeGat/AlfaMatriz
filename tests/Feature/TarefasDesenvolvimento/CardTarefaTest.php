@@ -205,4 +205,41 @@ class CardTarefaTest extends TestCase
         $resposta->assertOk();
         $resposta->assertDontSee('data-esquecida', false);
     }
+
+    /**
+     * @spec:AC-113 Os quatro níveis de prioridade têm cada um a sua cor: nenhum par
+     * compartilha tom, e a escala sobe do mais discreto (Baixa) ao mais grave (Crítica).
+     *
+     * Antes de existir a Crítica, `baixa` e `media` dividiam o tom neutro — dois
+     * dos quatro níveis eram indistinguíveis no quadro e a escala perdia o meio.
+     */
+    public function test_as_quatro_prioridades_tem_cores_distintas(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        foreach (array_keys(Tarefa::PRIORIDADES) as $prioridade) {
+            Tarefa::factory()->create([
+                'criado_por_id' => $criador->id,
+                'titulo' => "Tarefa {$prioridade}",
+                'prioridade' => $prioridade,
+            ]);
+        }
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // Cada selo de prioridade traz o token de cor do seu tom; recolhemos o
+        // token que acompanha cada rótulo e exigimos quatro valores distintos.
+        $tokens = [];
+        foreach (Tarefa::PRIORIDADES as $chave => $rotulo) {
+            $this->assertMatchesRegularExpression('/'.preg_quote($rotulo, '/').'/u', $html,
+                "O rótulo {$rotulo} precisa aparecer no quadro.");
+
+            preg_match('/<span[^>]*--([a-z-]+)[^>]*>\s*'.preg_quote($rotulo, '/').'\s*<\/span>/u', $html, $m);
+            $tokens[$chave] = $m[1] ?? 'sem-token';
+        }
+
+        $this->assertCount(4, array_unique($tokens),
+            'Cada prioridade precisa de um tom próprio — tons repetidos: '.json_encode($tokens, JSON_UNESCAPED_UNICODE));
+    }
 }

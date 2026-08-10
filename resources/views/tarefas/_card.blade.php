@@ -28,7 +28,15 @@
     }
     $tomEsquecida = ['atencao' => 'warn', 'critico' => 'crit'][$nivelEsquecida] ?? null;
 
-    $tomPrioridade = ['baixa' => 'neutro', 'media' => 'neutro', 'alta' => 'atencao', 'critica' => 'critico'][$tarefa->prioridade] ?? 'neutro';
+    // Um tom por nível, sem repetir: com `baixa` e `media` no mesmo neutro,
+    // dois dos quatro níveis ficavam indistinguíveis e a escala perdia o
+    // meio. A ordem sobe do mais discreto ao mais grave (AC-113).
+    $tomPrioridade = [
+        'baixa' => 'neutro',
+        'media' => 'marca',
+        'alta' => 'atencao',
+        'critica' => 'critico',
+    ][$tarefa->prioridade] ?? 'neutro';
 @endphp
 
 <article data-tarefa="{{ $tarefa->id }}"

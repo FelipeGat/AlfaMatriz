@@ -2,6 +2,16 @@
     <x-slot name="titulo">Tarefas</x-slot>
     <x-slot name="contexto">{{ $tarefas->count() }} tarefas no quadro</x-slot>
     <x-slot name="acoes">
+        {{--
+            Caminho permanente para a auditoria: o aviso de recorte no
+            cabeçalho da coluna só aparece quando há algo fora dos 30 dias,
+            e num quadro novo isso deixaria o histórico inalcançável.
+        --}}
+        <a href="{{ route('tarefas.historico') }}"
+           class="h-[34px] px-3 inline-flex items-center rounded-control border border-line text-ink-dim
+                  font-medium text-[12.5px] hover:text-ink hover:bg-chip transition whitespace-nowrap">
+            Histórico
+        </a>
         <button type="button" x-data @click="$dispatch('open-modal', 'nova-tarefa')"
                 class="h-[34px] px-3 rounded-control bg-brand text-on-brand font-semibold text-[12.5px]
                        hover:bg-brand-bright transition whitespace-nowrap">
@@ -69,6 +79,21 @@
                                     {{ $etapa['quantidade'] }}
                                 </span>
                             </div>
+
+                            {{--
+                                O aviso do recorte vai em linha própria, como o
+                                "R$ X em jogo" do Funil de Vendas: concatenado
+                                ao rótulo ele truncava em 276px justamente no
+                                número. E é ele o caminho para o histórico —
+                                sem isso, a única forma de auditar uma tarefa
+                                antiga era digitar a URL na mão (AC-112).
+                            --}}
+                            @if ($etapa['ocultas'] > 0)
+                                <a href="{{ route('tarefas.historico') }}"
+                                   class="mt-0.5 block font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
+                                    +{{ $etapa['ocultas'] }} fora dos últimos 30 dias
+                                </a>
+                            @endif
                         </header>
 
                         <div class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 space-y-2">

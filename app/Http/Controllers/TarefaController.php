@@ -41,9 +41,14 @@ class TarefaController extends Controller
         $etapas = collect(Tarefa::STATUS)->map(function ($label, $status) use ($colunas, $foraDoCorte) {
             $ocultas = $foraDoCorte[$status] ?? 0;
 
+            // `ocultas` sai do rótulo e vira campo próprio: numa coluna de
+            // 276px o texto concatenado truncava exatamente no número, que é
+            // a informação que justifica o recorte. Em linha própria ele cabe
+            // — e vira o link para o histórico completo (AC-112).
             return [
                 'chave' => $status,
-                'label' => $ocultas > 0 ? "{$label} · {$ocultas} fora dos últimos 30 dias" : $label,
+                'label' => $label,
+                'ocultas' => $ocultas,
                 'quantidade' => $colunas[$status]->count(),
             ];
         })->values()->all();
