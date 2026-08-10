@@ -73,7 +73,10 @@ class IndicadoresService
                 $valorTotal = 0.0;
                 foreach ($porRevenda as $revendaId => $clientes) {
                     $qtd = $clientes->count();
-                    $tier = $sistema->tierParaVolume($qtd, $revendaId);
+                    // Cliente sem revenda vira chave vazia no groupBy — `chaveDeRevenda`
+                    // a normaliza para null (o tier padrão). Sem isso, um único
+                    // cliente de venda direta derruba a tela inteira com TypeError.
+                    $tier = $sistema->tierParaVolume($qtd, $sistema->chaveDeRevenda($revendaId));
                     $valorTotal += $tier?->calcularMensalidade($qtd) ?? 0;
                 }
 
