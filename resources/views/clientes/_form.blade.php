@@ -302,47 +302,52 @@
         </div>
     </div>
 
-    {{-- Administrador da academia: o AlfaGym exige um usuário para o cliente
-         poder entrar lá. Só no cadastro — reeditar não recria a conta dele. --}}
+    {{-- Usuário administrador: alguns sistemas exigem uma conta para o cliente
+         poder entrar lá; outros (o AlfaControl) criam o usuário depois, no
+         próprio painel. Quem decide é a capacidade, não o nome do produto.
+
+         Só no cadastro — reeditar não recria a conta dele. --}}
     @if (($modo ?? 'criar') === 'criar')
-        @php $alfaGym = $sistemas->firstWhere('slug', 'alfagym'); @endphp
-        @if ($alfaGym)
+        @foreach ($sistemas->filter(fn ($s) => $s->suporta('exige_admin_no_cliente')) as $sistemaAdmin)
             <div class="rounded-panel border border-line bg-subtle p-4 mb-4"
-                 x-data="{ marcado: {{ in_array($alfaGym->id, $sistemasAtivosIds) ? 'true' : 'false' }} }"
+                 x-data="{ marcado: {{ in_array($sistemaAdmin->id, $sistemasAtivosIds) ? 'true' : 'false' }} }"
                  x-init="$el.closest('form').addEventListener('change', e => {
-                     if (e.target.name === 'sistemas[]' && e.target.value === '{{ $alfaGym->id }}') marcado = e.target.checked
+                     if (e.target.name === 'sistemas[]' && e.target.value === '{{ $sistemaAdmin->id }}') marcado = e.target.checked
                  })"
                  x-show="marcado" x-cloak>
                 <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-1">
-                    Administrador da academia ({{ $alfaGym->nome }})
+                    Usuário administrador no {{ $sistemaAdmin->nome }}
                 </h3>
                 <p class="text-[12.5px] text-ink-faint mb-3">
-                    Com estes dados o cliente entra no {{ $alfaGym->nome }}. Ele nasce aguardando
+                    Com estes dados o cliente entra no {{ $sistemaAdmin->nome }}. Ele nasce aguardando
                     a liberação da licença pela Alfa.
                 </p>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                        <x-input-label for="nome_admin" value="Nome" />
-                        <x-text-input id="nome_admin" name="nome_admin" type="text" class="mt-1 block w-full"
-                                      value="{{ old('nome_admin') }}" autocomplete="off" />
-                        <x-input-error :messages="$errors->get('nome_admin')" class="mt-2" />
+                        <x-input-label for="nome_admin_{{ $sistemaAdmin->id }}" value="Nome" />
+                        <x-text-input id="nome_admin_{{ $sistemaAdmin->id }}" name="admins[{{ $sistemaAdmin->id }}][nome]"
+                                      type="text" class="mt-1 block w-full"
+                                      value="{{ old('admins.'.$sistemaAdmin->id.'.nome') }}" autocomplete="off" />
+                        <x-input-error :messages="$errors->get('admins.'.$sistemaAdmin->id.'.nome')" class="mt-2" />
                     </div>
                     <div>
-                        <x-input-label for="email_admin" value="E-mail" />
-                        <x-text-input id="email_admin" name="email_admin" type="email" class="mt-1 block w-full"
-                                      value="{{ old('email_admin') }}" autocomplete="off" />
-                        <x-input-error :messages="$errors->get('email_admin')" class="mt-2" />
+                        <x-input-label for="email_admin_{{ $sistemaAdmin->id }}" value="E-mail" />
+                        <x-text-input id="email_admin_{{ $sistemaAdmin->id }}" name="admins[{{ $sistemaAdmin->id }}][email]"
+                                      type="email" class="mt-1 block w-full"
+                                      value="{{ old('admins.'.$sistemaAdmin->id.'.email') }}" autocomplete="off" />
+                        <x-input-error :messages="$errors->get('admins.'.$sistemaAdmin->id.'.email')" class="mt-2" />
                     </div>
                     <div>
-                        <x-input-label for="senha_admin" value="Senha" />
-                        <x-text-input id="senha_admin" name="senha_admin" type="password" class="mt-1 block w-full"
+                        <x-input-label for="senha_admin_{{ $sistemaAdmin->id }}" value="Senha" />
+                        <x-text-input id="senha_admin_{{ $sistemaAdmin->id }}" name="admins[{{ $sistemaAdmin->id }}][senha]"
+                                      type="password" class="mt-1 block w-full"
                                       minlength="8" autocomplete="new-password" />
-                        <x-input-error :messages="$errors->get('senha_admin')" class="mt-2" />
+                        <x-input-error :messages="$errors->get('admins.'.$sistemaAdmin->id.'.senha')" class="mt-2" />
                     </div>
                 </div>
-                <x-input-error :messages="$errors->get('alfagym')" class="mt-3" />
+                <x-input-error :messages="$errors->get('integracao')" class="mt-3" />
             </div>
-        @endif
+        @endforeach
     @endif
 
     {{-- Observações --}}

@@ -84,9 +84,13 @@ class CadastroPelaRevendaTest extends TestCase
             'uf' => 'MG',
             'sistemas' => [$this->alfaGym->id],
             'telefones' => [['telefone' => '3188887777', 'principal' => 1]],
-            'nome_admin' => 'Ciclana de Souza',
-            'email_admin' => 'ciclana@corpoemmovimento.com.br',
-            'senha_admin' => 'senha-forte-456',
+            // Um bloco de admin por sistema que o exige — o AlfaControl, por
+            // exemplo, cria o usuário depois, no painel dele.
+            'admins' => [$this->alfaGym->id => [
+                'nome' => 'Ciclana de Souza',
+                'email' => 'ciclana@corpoemmovimento.com.br',
+                'senha' => 'senha-forte-456',
+            ]],
         ], $extra);
     }
 
@@ -145,7 +149,7 @@ class CadastroPelaRevendaTest extends TestCase
 
         $this->actingAs($usuario)
             ->post(route('clientes.store'), $this->formulario())
-            ->assertSessionHasErrors('alfagym');
+            ->assertSessionHasErrors('integracao');
 
         // Nada pela metade: um cliente que existe aqui e não existe lá não teria
         // como ser licenciado depois.
@@ -233,9 +237,7 @@ class CadastroPelaRevendaTest extends TestCase
 
         $this->actingAs($admin)->post(route('clientes.store'), $this->formulario([
             'sistemas' => [],
-            'nome_admin' => null,
-            'email_admin' => null,
-            'senha_admin' => null,
+            'admins' => [],
         ]))->assertRedirect(route('clientes.index'));
 
         $this->assertDatabaseHas('clientes', ['nome' => 'Academia Corpo em Movimento']);

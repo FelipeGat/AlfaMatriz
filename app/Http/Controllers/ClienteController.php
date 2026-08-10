@@ -195,7 +195,7 @@ class ClienteController extends Controller
         $sistemas = $request->input('sistemas', []);
 
         try {
-            // Gravar aqui e criar no AlfaGym andam juntos: se o gym recusa, o
+            // Gravar aqui e criar lá andam juntos: se o outro lado recusa, o
             // cliente não pode sobrar na Matriz existindo só de um lado.
             $cliente = DB::transaction(function () use ($request, $data, $sistemas) {
                 $cliente = Cliente::create($data);
@@ -204,41 +204,68 @@ class ClienteController extends Controller
                 $this->sincronizarEmails($cliente, $request->input('emails', []));
                 $this->sincronizarTelefones($cliente, $request->input('telefones', []));
 
-                $this->provisionarNoAlfaGym($cliente, $request, $sistemas);
+                $this->provisionarNosSistemas($cliente, $request, $sistemas);
 
                 return $cliente;
             });
         } catch (\RuntimeException $e) {
-            return back()->withErrors(['alfagym' => $e->getMessage()])->withInput();
+            return back()->withErrors(['integracao' => $e->getMessage()])->withInput();
         }
 
         return redirect()->route('clientes.index')->with('status', 'Cliente cadastrado com sucesso.');
     }
 
     /**
-     * Cria o cliente no AlfaGym quando o sistema foi marcado no cadastro.
+     * Cria o cliente nos sistemas marcados que a Matriz sabe provisionar.
      *
      * O cliente nasce lá aguardando licença — quem libera é o administrador da
-     * Alfa. Sem o AlfaGym marcado, não há nada a provisionar: o cadastro fica
-     * só comercial, na Matriz.
+     * Alfa. Sistema marcado que a Matriz não provisiona (o AlfaControl durante
+     * a implantação) não dispara chamada nenhuma: o vínculo fica só comercial,
+     * e o cadastro de lá continua sendo feito no painel dele.
      *
      * @param  array<int|string>  $sistemas
      */
-    private function provisionarNoAlfaGym(Cliente $cliente, Request $request, array $sistemas): void
+    private function provisionarNosSistemas(Cliente $cliente, Request $request, array $sistemas): void
     {
-        $alfaGym = Sistema::where('slug', 'alfagym')->first();
+        $marcados = array_map('strval', $sistemas);
 
-        if (! $alfaGym || ! in_array((string) $alfaGym->id, array_map('strval', $sistemas), true)) {
-            return;
+        $provisionaveis = Sistema::comCapacidade('provisiona_cliente')
+            ->whereIn('id', $sistemas)
+            ->get()
+            ->filter(fn (Sistema $sistema) => in_array((string) $sistema->id, $marcados, true));
+
+        foreach ($provisionaveis as $sistema) {
+            (new ProvisionadorClienteService($sistema))
+                ->provisionar($cliente->fresh(), $this->validarAdmin($request, $sistema));
+        }
+    }
+
+    /**
+     * Os dados do administrador daquele sistema, quando ele exige um.
+     *
+     * @return array{nome_admin: string, email_admin: string, senha_admin: string}
+     */
+    private function validarAdmin(Request $request, Sistema $sistema): array
+    {
+        if (! $sistema->suporta('exige_admin_no_cliente')) {
+            return ['nome_admin' => '', 'email_admin' => '', 'senha_admin' => ''];
         }
 
-        $admin = $request->validate([
-            'nome_admin' => 'required|string|max:100',
-            'email_admin' => 'required|email|max:255',
-            'senha_admin' => 'required|string|min:8',
+        $chave = "admins.{$sistema->id}";
+
+        $dados = $request->validate([
+            "{$chave}.nome" => 'required|string|max:100',
+            "{$chave}.email" => 'required|email|max:255',
+            "{$chave}.senha" => 'required|string|min:8',
         ]);
 
-        (new ProvisionadorClienteService($alfaGym))->provisionar($cliente->fresh(), $admin);
+        $admin = data_get($dados, "admins.{$sistema->id}");
+
+        return [
+            'nome_admin' => $admin['nome'],
+            'email_admin' => $admin['email'],
+            'senha_admin' => $admin['senha'],
+        ];
     }
 
     public function edit(Cliente $cliente)
