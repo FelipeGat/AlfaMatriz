@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-10T16:00:10.347Z",
-  "gitRev": "2c0390d",
+  "timestamp": "2026-08-10T16:08:10.954Z",
+  "gitRev": "d6593ca",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 216,
+  "testsParsed": 218,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -55,6 +55,11 @@
     "AC-117": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_card_sem_responsavel_diz_que_nao_tem @spec:AC-117",
+      "method": "tap"
+    },
+    "AC-119": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_colunas_dividem_a_largura_e_guardam_a_largura_minima @spec:AC-119",
       "method": "tap"
     },
     "AC-085": {
@@ -140,6 +145,11 @@
     "AC-118": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_historico_reabre_a_concluida_e_nao_oferece_saida_para_a_cancelada @spec:AC-118",
+      "method": "tap"
+    },
+    "AC-120": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_historico_mostra_prioridade_resumo_e_duracao_do_ciclo @spec:AC-120",
       "method": "tap"
     }
   },

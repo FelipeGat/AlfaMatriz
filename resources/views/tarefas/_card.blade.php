@@ -8,12 +8,9 @@
     $entrouNaEtapaEm = $eventoAberto?->entrou_em ?? $tarefa->created_at;
     $segundosNaEtapa = $entrouNaEtapaEm->diffInSeconds(now());
 
-    $tempoNaEtapa = match (true) {
-        $segundosNaEtapa < 60 => 'agora',
-        $segundosNaEtapa < 3600 => intdiv($segundosNaEtapa, 60).'m',
-        $segundosNaEtapa < 86400 => intdiv($segundosNaEtapa, 3600).'h',
-        default => intdiv($segundosNaEtapa, 86400).'d',
-    };
+    // Mesma régua do histórico (`Tarefa::duracaoCurta`): "3h" precisa querer
+    // dizer a mesma coisa nas duas telas.
+    $tempoNaEtapa = \App\Models\Tarefa::duracaoCurta((int) $segundosNaEtapa);
 
     // AC-093: só Aberta e Em testes ganham destaque de tarefa esquecida.
     $etapasComDestaqueDeEsquecida = ['aberta', 'em_testes'];

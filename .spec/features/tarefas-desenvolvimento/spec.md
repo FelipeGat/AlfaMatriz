@@ -105,6 +105,14 @@ aberto, em desenvolvimento, em teste e concluído.
 - **Então** o card afirma "sem responsável" — a informação é dita, não
   deduzida da ausência do nome
 
+#### AC-119 — O quadro ocupa a largura disponível
+
+- **Dado** o quadro numa tela larga, com menos colunas do que caberia
+- **Quando** olho a borda direita
+- **Então** as colunas se dividem a largura e não sobra faixa vazia depois da
+  última — e numa tela estreita elas voltam a ter a largura mínima de leitura,
+  com o quadro rolando na horizontal
+
 ### US-037 — Fluxo com regras que impedem pular etapa
 
 Como responsável pela entrega, quero que o quadro recuse movimentos fora do
@@ -242,6 +250,14 @@ perder nada, para que a auditoria de qualquer tarefa antiga continue possível.
 - **Quando** abro o histórico
 - **Então** ela oferece reabrir, e reabrir a devolve para Em desenvolvimento,
   de volta ao quadro; tarefa cancelada não oferece esse caminho
+
+#### AC-120 — O histórico conta quanto a tarefa custou
+
+- **Dado** uma tarefa encerrada, que passou por várias etapas
+- **Quando** abro o histórico
+- **Então** a linha dela mostra, além do desfecho, a prioridade que tinha, o
+  resumo do que era e **quanto tempo levou do início ao encerramento** — o
+  número que só existe porque cada etapa foi cronometrada
 
 ## Fora de escopo
 

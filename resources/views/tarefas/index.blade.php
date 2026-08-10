@@ -58,14 +58,22 @@
                         o menu "Mover ▾" do card é o único caminho para elas
                         (Q-013).
                     --}}
-                    <section class="shrink-0 flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden"
+                    <section class="flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden"
                              {{--
                                  A cor da etapa vive AQUI, na coluna, como no
                                  Funil de Vendas — e não na borda do card: essa
                                  continua sendo o canal do aviso de tarefa
                                  esquecida (AC-093, AC-114).
+
+                                 `flex: 1 1 276px` no lugar de largura fixa: com
+                                 cinco colunas numa tela larga sobrava uma faixa
+                                 vazia à direita (AC-119). Assim elas dividem o
+                                 espaço quando ele existe, e o `min-width` segura
+                                 a largura de leitura — apertando a tela, o
+                                 quadro volta a rolar na horizontal em vez de
+                                 espremer o card.
                              --}}
-                             style="width: 276px; border-top: 3px solid rgb(var(--{{ $etapa['cor'] }}))"
+                             style="flex: 1 1 276px; min-width: 276px; border-top: 3px solid rgb(var(--{{ $etapa['cor'] }}))"
                              data-status="{{ $etapa['chave'] }}"
                              @dragover.prevent="permitir('{{ $etapa['chave'] }}')"
                              @dragleave="sobre = null"

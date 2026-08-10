@@ -120,7 +120,8 @@ class TarefaController extends Controller
 
         // Sem recorte de período (AC-097): é o caminho de auditoria para o
         // que o quadro enxuto (`index()`) já tirou de vista.
-        $tarefas = Tarefa::with(['sistema', 'responsavel'])
+        // `eventos` para a duração do ciclo de cada linha (AC-120).
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos'])
             ->whereIn('status', Tarefa::STATUS_TERMINAIS)
             ->orderByDesc('updated_at')
             ->get();

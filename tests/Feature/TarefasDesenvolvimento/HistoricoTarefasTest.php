@@ -167,4 +167,44 @@ class HistoricoTarefasTest extends TestCase
         $quadro = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk();
         $this->assertContains($concluida->id, $quadro->viewData('colunas')['em_desenvolvimento']->pluck('id')->all());
     }
+
+    /**
+     * @spec:AC-120 A linha do histórico conta o que a tarefa custou: prioridade, resumo
+     * e a duração do ciclo — da criação até entrar na etapa terminal. É o número que
+     * justifica cronometrar cada etapa; sem ele os eventos seriam registro que ninguém lê.
+     */
+    public function test_historico_mostra_prioridade_resumo_e_duracao_do_ciclo(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        Carbon::setTestNow(Carbon::parse('2026-08-10 12:00:00'));
+
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Webhook de pagamento',
+            'resumo' => 'Baixa automática ao receber o retorno do gateway.',
+            'prioridade' => 'critica',
+            'status' => 'em_testes',
+        ]);
+        $tarefa->forceFill(['created_at' => Carbon::parse('2026-08-10 12:00:00')->subDays(12)])->save();
+
+        // Encerra agora: o ciclo é a distância entre a criação e este instante.
+        $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
+            'status' => 'concluida',
+            'relatorio_notas' => 'Aprovado.',
+            'relatorio_aprovado' => '1',
+        ])->assertSessionMissing('erro');
+
+        $this->assertSame(12 * 86400, $tarefa->fresh()->load('eventos')->duracaoDoCiclo());
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.historico'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Baixa automática ao receber o retorno do gateway.', $html,
+            'O resumo diz o QUE era a tarefa — quem audita precisa disso, não só do nome.');
+        $this->assertStringContainsString('Crítica', $html, 'A prioridade que a tarefa tinha faz parte do desfecho.');
+        $this->assertStringContainsString('12d', $html, 'A duração do ciclo precisa aparecer na linha.');
+
+        Carbon::setTestNow();
+    }
 }

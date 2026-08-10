@@ -198,3 +198,17 @@
   sem porta — por isso o histórico ganha a ação de reabrir (AC-118), que
   chama a mesma rota `tarefas.mover` e o mesmo motor de fluxo. Cancelada não
   ganha ação nenhuma: ela não tem saída no mapa de transições.
+
+## T-081 — Quadro sem sobra à direita e histórico que conta o custo da tarefa [concluida]
+- Refs: US-036, US-040, AC-119, AC-120
+- Arquivos: app/Models/Tarefa.php, app/Http/Controllers/TarefaController.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/historico.blade.php, resources/views/tarefas/_card.blade.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php, tests/Feature/TarefasDesenvolvimento/HistoricoTarefasTest.php
+- Notas: (AC-119) as colunas são `width: 276px` fixo; com cinco delas sobra uma
+  faixa vazia à direita do quadro. Trocar por `flex: 1 1 276px` com
+  `min-width: 276px` — crescem quando há espaço, mantêm a largura de leitura
+  quando não há, e o `overflow-x` do quadro continua valendo.
+  (AC-120) o histórico hoje é título, sistema, responsável, etapa final e data
+  — não diz nada do que a tarefa custou, sendo que o custo é justamente o que
+  os eventos por etapa medem. Acrescentar prioridade, resumo e a duração do
+  ciclo (da criação até a entrada na etapa terminal). A formatação curta de
+  duração já existe embutida no `_card.blade.php`; vira `Tarefa::duracaoCurta()`
+  para os dois usarem a mesma régua.

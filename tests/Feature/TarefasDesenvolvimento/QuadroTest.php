@@ -184,4 +184,21 @@ class QuadroTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    /**
+     * @spec:AC-119 As colunas dividem a largura disponível em vez de largura fixa —
+     * com cinco colunas numa tela larga sobrava faixa vazia à direita do quadro —
+     * e o `min-width` segura a largura de leitura quando a tela aperta.
+     */
+    public function test_colunas_dividem_a_largura_e_guardam_a_largura_minima(): void
+    {
+        $usuario = User::factory()->create();
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('flex: 1 1 276px; min-width: 276px', $html,
+            'A coluna precisa crescer com o espaço e manter a largura mínima de leitura.');
+        $this->assertStringNotContainsString('style="width: 276px', $html,
+            'Largura fixa deixa sobra à direita quando há menos colunas do que caberia.');
+    }
 }
