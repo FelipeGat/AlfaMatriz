@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-10T13:35:54.791Z",
-  "gitRev": "9474f19",
+  "timestamp": "2026-08-10T14:17:45.286Z",
+  "gitRev": "3ce588e",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 196,
+  "testsParsed": 227,
   "results": {
     "AC-081": {
       "status": "pass",

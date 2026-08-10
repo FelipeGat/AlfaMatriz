@@ -356,163 +356,163 @@
       "codigo": "ARQUIVO_INEXISTENTE",
       "feature": "despesas-fixas",
       "ref": "T-019",
-      "ocorrencias": 117,
+      "ocorrencias": 126,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "ARQUIVO_INEXISTENTE::despesas-fixas::T-020": {
       "codigo": "ARQUIVO_INEXISTENTE",
       "feature": "despesas-fixas",
       "ref": "T-020",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "ARQUIVO_INEXISTENTE::despesas-fixas::T-021": {
       "codigo": "ARQUIVO_INEXISTENTE",
       "feature": "despesas-fixas",
       "ref": "T-021",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "AC_SEM_TESTE::despesas-fixas::AC-020": {
       "codigo": "AC_SEM_TESTE",
       "feature": "despesas-fixas",
       "ref": "AC-020",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "AC_SEM_TESTE::despesas-fixas::AC-021": {
       "codigo": "AC_SEM_TESTE",
       "feature": "despesas-fixas",
       "ref": "AC-021",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "AC_SEM_TESTE::despesas-fixas::AC-022": {
       "codigo": "AC_SEM_TESTE",
       "feature": "despesas-fixas",
       "ref": "AC-022",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "AC_SEM_TESTE::despesas-fixas::AC-023": {
       "codigo": "AC_SEM_TESTE",
       "feature": "despesas-fixas",
       "ref": "AC-023",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "ARQUIVO_INEXISTENTE::faturamento-revendas::T-014": {
       "codigo": "ARQUIVO_INEXISTENTE",
       "feature": "faturamento-revendas",
       "ref": "T-014",
-      "ocorrencias": 132,
+      "ocorrencias": 141,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "ARQUIVO_INEXISTENTE::faturamento-revendas::T-015": {
       "codigo": "ARQUIVO_INEXISTENTE",
       "feature": "faturamento-revendas",
       "ref": "T-015",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "ARQUIVO_INEXISTENTE::faturamento-revendas::T-016": {
       "codigo": "ARQUIVO_INEXISTENTE",
       "feature": "faturamento-revendas",
       "ref": "T-016",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "ARQUIVO_INEXISTENTE::faturamento-revendas::T-017": {
       "codigo": "ARQUIVO_INEXISTENTE",
       "feature": "faturamento-revendas",
       "ref": "T-017",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "AC_SEM_TESTE::faturamento-revendas::AC-013": {
       "codigo": "AC_SEM_TESTE",
       "feature": "faturamento-revendas",
       "ref": "AC-013",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "AC_SEM_TESTE::faturamento-revendas::AC-014": {
       "codigo": "AC_SEM_TESTE",
       "feature": "faturamento-revendas",
       "ref": "AC-014",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "AC_SEM_TESTE::faturamento-revendas::AC-015": {
       "codigo": "AC_SEM_TESTE",
       "feature": "faturamento-revendas",
       "ref": "AC-015",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "AC_SEM_TESTE::faturamento-revendas::AC-016": {
       "codigo": "AC_SEM_TESTE",
       "feature": "faturamento-revendas",
       "ref": "AC-016",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "AC_SEM_TESTE::faturamento-revendas::AC-017": {
       "codigo": "AC_SEM_TESTE",
       "feature": "faturamento-revendas",
       "ref": "AC-017",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "AC_SEM_TESTE::faturamento-revendas::AC-018": {
       "codigo": "AC_SEM_TESTE",
       "feature": "faturamento-revendas",
       "ref": "AC-018",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "AC_SEM_TESTE::faturamento-revendas::AC-019": {
       "codigo": "AC_SEM_TESTE",
       "feature": "faturamento-revendas",
       "ref": "AC-019",
-      "ocorrencias": 39,
+      "ocorrencias": 42,
       "primeiraVez": "2026-08-05T17:44:49.525Z",
-      "ultimaVez": "2026-08-10T13:45:28.464Z",
-      "gitRev": "2274f1b"
+      "ultimaVez": "2026-08-10T14:18:04.354Z",
+      "gitRev": "3ce588e"
     },
     "VERIFY_OBSOLETO::dominio-proprio::—": {
       "codigo": "VERIFY_OBSOLETO",

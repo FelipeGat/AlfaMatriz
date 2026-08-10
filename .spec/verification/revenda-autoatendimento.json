@@ -1,0 +1,67 @@
+{
+  "feature": "revenda-autoatendimento",
+  "timestamp": "2026-08-10T14:14:45.175Z",
+  "gitRev": "3ce588e",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 227,
+  "results": {
+    "AC-098": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\RevendaAutoatendimento\\CadastroPelaRevendaTest::test_revenda_abre_o_cadastro_de_cliente @spec:AC-098",
+      "method": "tap"
+    },
+    "AC-099": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\RevendaAutoatendimento\\CadastroPelaRevendaTest::test_cliente_da_revenda_nasce_aguardando_licenca @spec:AC-099",
+      "method": "tap"
+    },
+    "AC-100": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\RevendaAutoatendimento\\CadastroPelaRevendaTest::test_recusa_do_gym_nao_grava_cliente_na_matriz @spec:AC-100",
+      "method": "tap"
+    },
+    "AC-101": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\RevendaAutoatendimento\\CadastroPelaRevendaTest::test_revenda_nao_cadastra_para_outra_revenda @spec:AC-101",
+      "method": "tap"
+    },
+    "AC-102": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\RevendaAutoatendimento\\LicencaSoDoAdminTest::test_revenda_ve_o_estado_mas_nao_as_acoes_de_licenca @spec:AC-102",
+      "method": "tap"
+    },
+    "AC-103": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\RevendaAutoatendimento\\LicencaSoDoAdminTest::test_revenda_nao_libera_licenca_nem_por_post_direto @spec:AC-103",
+      "method": "tap"
+    },
+    "AC-104": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\RevendaAutoatendimento\\CadastroPelaRevendaTest::test_admin_escolhe_a_revenda_e_o_cliente_nao_vira_venda_direta @spec:AC-104",
+      "method": "tap"
+    },
+    "AC-105": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\RevendaAutoatendimento\\AcessoDaRevendaTest::test_provisionar_cria_o_acesso_da_revenda_ao_painel @spec:AC-105",
+      "method": "tap"
+    },
+    "AC-106": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\RevendaAutoatendimento\\AcessoDaRevendaTest::test_acesso_da_revenda_enxerga_so_a_propria_revenda @spec:AC-106",
+      "method": "tap"
+    },
+    "AC-107": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\RevendaAutoatendimento\\AcessosDeRevendasMigradasTest::test_cria_acesso_para_revenda_migrada @spec:AC-107",
+      "method": "tap"
+    },
+    "AC-108": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\RevendaAutoatendimento\\ConferenciaDaMigracaoTest::test_aponta_as_tres_divergencias_separadamente @spec:AC-108",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

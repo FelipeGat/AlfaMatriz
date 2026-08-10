@@ -1,11 +1,11 @@
 {
   "feature": "redesign-visual",
-  "timestamp": "2026-08-10T13:39:06.661Z",
-  "gitRev": "dae7baa",
+  "timestamp": "2026-08-10T14:17:22.200Z",
+  "gitRev": "3ce588e",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 196,
+  "testsParsed": 227,
   "results": {
     "AC-032": {
       "status": "pass",
