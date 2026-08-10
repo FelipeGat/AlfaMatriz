@@ -179,7 +179,12 @@
 
                             <x-slot name="content">
                                 <div class="py-1">
-                                    @if ($pendente)
+                                    {{-- Licença é decisão da Alfa. A revenda
+                                         acompanha o estado do cliente, mas não
+                                         libera, renova nem suspende. --}}
+                                    @php $decideLicenca = ! auth()->user()->temEscopoDeRevenda(); @endphp
+
+                                    @if ($decideLicenca && $pendente)
                                         <button type="button" x-data
                                                 @click="$dispatch('open-modal', 'liberar-licenca-{{ $cliente->id }}')"
                                                 class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] font-semibold text-brand hover:bg-chip transition">
@@ -188,7 +193,7 @@
                                         </button>
                                     @endif
 
-                                    @if ($temLicenca)
+                                    @if ($decideLicenca && $temLicenca)
                                         <button type="button" x-data
                                                 @click="$dispatch('open-modal', 'renovar-licenca-{{ $cliente->id }}')"
                                                 class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
@@ -219,7 +224,7 @@
                                         @endif
                                     @endif
 
-                                    @if ($pendente || $temLicenca)
+                                    @if ($decideLicenca && ($pendente || $temLicenca))
                                         <div class="my-1 border-t border-line"></div>
                                     @endif
 
@@ -284,6 +289,9 @@
     <div>{{ $clientes->links() }}</div>
 @endif
 
+{{-- Os modais de licença só existem para quem decide sobre licença: renderizar
+     para a revenda deixaria os formulários de liberar/renovar na página dela. --}}
+@unless (auth()->user()->temEscopoDeRevenda())
 @foreach ($clientes as $cliente)
     @php
         $pendenteModal = collect($cliente->sistemas)
@@ -402,3 +410,4 @@
         </x-modal>
     @endif
 @endforeach
+@endunless

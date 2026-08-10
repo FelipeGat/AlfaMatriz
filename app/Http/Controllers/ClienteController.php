@@ -300,6 +300,7 @@ class ClienteController extends Controller
      */
     public function liberarLicenca(Request $request, Cliente $cliente)
     {
+        $this->exigirDecisaoDaAlfa();
         $this->autorizarAcesso($cliente);
 
         $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
@@ -326,6 +327,7 @@ class ClienteController extends Controller
      */
     public function renovarLicenca(Request $request, Cliente $cliente)
     {
+        $this->exigirDecisaoDaAlfa();
         $this->autorizarAcesso($cliente);
 
         $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
@@ -345,6 +347,7 @@ class ClienteController extends Controller
      */
     public function bloquearLicenca(Cliente $cliente)
     {
+        $this->exigirDecisaoDaAlfa();
         $this->autorizarAcesso($cliente);
 
         $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
@@ -363,6 +366,7 @@ class ClienteController extends Controller
      */
     public function desbloquearLicenca(Cliente $cliente)
     {
+        $this->exigirDecisaoDaAlfa();
         $this->autorizarAcesso($cliente);
 
         $sistema = Sistema::where('slug', 'alfagym')->firstOrFail();
@@ -401,6 +405,22 @@ class ClienteController extends Controller
         if ($user->temEscopoDeRevenda() && $cliente->revenda_id !== $user->revenda_id) {
             abort(403, 'Você só pode acessar os clientes da sua revenda.');
         }
+    }
+
+    /**
+     * Licença é decisão da Alfa: a revenda cadastra o cliente e pede, quem
+     * libera, renova, suspende e reativa é o administrador da matriz.
+     *
+     * A tela já esconde as ações de quem tem escopo de revenda — mas esconder
+     * botão não é autorização: sem esta recusa, um POST direto passaria.
+     */
+    private function exigirDecisaoDaAlfa(): void
+    {
+        abort_if(
+            auth()->user()->temEscopoDeRevenda(),
+            403,
+            'A licença do cliente é liberada pela Alfa. Sua revenda acompanha o pedido pela lista de clientes.'
+        );
     }
 
     /**
