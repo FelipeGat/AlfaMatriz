@@ -91,3 +91,49 @@
   histórico completo, em `x-tabela`, com sistema, responsável, etapa final e
   data, sem nenhum recorte de período — é o caminho de auditoria. Depende de
   T-060.
+
+<!--
+  Emenda de 2026-08-10, depois de olhar a tela rodando: três defeitos que
+  passaram pelo gate porque a especificação não tinha critério de aceite para
+  eles. O primeiro é o grave — a rota respondia e o teste provava a rota, mas
+  a tela que leva até ela estava morta.
+-->
+
+## T-073 — Menu "Mover" volta a oferecer os destinos permitidos [pendente]
+
+- Refs: US-037, AC-109
+- Arquivos: resources/views/tarefas/_mover.blade.php, tests/Feature/TarefasDesenvolvimento/MoverTarefaTest.php
+- Notas: a correção do `x-data` JÁ ESTÁ APLICADA na árvore de trabalho
+  (`@json` dentro de atributo HTML fechava o atributo na primeira aspa dupla,
+  o Alpine não avaliava e o `x-for` do select nunca renderizava opção nenhuma;
+  trocado por `Illuminate\Support\Js::from`, como em `clientes/_form.blade.php`).
+  Falta o TESTE DE REGRESSÃO: renderizar o quadro e assertar que o HTML do
+  card em Em testes traz os três destinos permitidos no menu, que o card em
+  Cancelada não traz menu, e — o que pega a causa raiz — que o atributo
+  `x-data` do bloco de mover não sai truncado. Sem essa última asserção o
+  mesmo bug volta na próxima edição da view.
+- Esforço: alto
+
+## T-074 — Prioridade Crítica, o quarto nível do ciclo [pendente]
+
+- Refs: US-036, AC-110
+- Arquivos: database/migrations/2026_08_10_140000_adicionar_prioridade_critica.php, app/Models/Tarefa.php, resources/views/tarefas/_card.blade.php, tests/Feature/TarefasDesenvolvimento/PrioridadeCriticaTest.php
+- Notas: o alfadev tem quatro níveis e só três foram portados. Migration para
+  ampliar o enum `prioridade` de `['baixa','media','alta']` para incluir
+  `critica` (e a volta atrás no `down`), mais a constante `Tarefa::PRIORIDADES`.
+  No card, o mapa de tons está em `_card.blade.php:31` e hoje pinta ALTA de
+  vermelho; com quatro níveis o alinhamento com o alfadev é baixa=neutro,
+  media=neutro, alta=atencao (âmbar) e critica=critico (vermelho) — os tons
+  do `x-badge` são bom|atencao|critico|marca|neutro. O `_form.blade.php` lê a
+  constante e não precisa de alteração.
+- Esforço: alto
+
+## T-075 — Devolver do Backlog para Aberta, soltando o responsável [pendente]
+
+- Refs: US-037, AC-111
+- Arquivos: app/Services/FluxoTarefaService.php, tests/Feature/TarefasDesenvolvimento/FluxoTarefaTest.php
+- Notas: o alfadev permite `BACKLOG → ABERTA` e, ao fazer isso, limpa o
+  responsável (`fromStatus === 'BACKLOG' && toStatus === 'ABERTA'` zera o
+  assignee) — é como se desdireciona um ticket. Aqui a transição não existe.
+  Acrescentar ao mapa de transições permitidas e soltar o `responsavel_id` na
+  volta, sem mexer nas outras regras.

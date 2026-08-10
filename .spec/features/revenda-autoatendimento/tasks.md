@@ -34,16 +34,14 @@
 - Esforço: alto
 - Notas: remover o `abort_if(temEscopoDeRevenda)` de `create` e `store` — é o que hoje recusa a revenda ("Os clientes da sua revenda são provisionados pela matriz"). No `store`, forçar `revenda_id` do escopo do usuário quando ele tem revenda (mesma regra que o `update` já aplica), nunca aceitar do formulário. No `create`, a lista de revendas fica só com a dele. Admin continua escolhendo entre todas as ativas (AC-104). Campos novos no `_form` (nome/e-mail/senha do admin da academia) visíveis quando o AlfaGym está marcado nos sistemas. Cliente cadastrado pela revenda nasce AVULSO: valor mensal e dia de vencimento não aparecem para ela (ASM-040). A criação local e a chamada ao gym (T-067) rodam dentro de `DB::transaction` — recusa do gym desfaz a gravação local (AC-100).
 
-## T-069 — Licença é assunto da Alfa, não da revenda [pendente]
-
+## T-069 — Licença é assunto da Alfa, não da revenda [concluida]
 - Refs: US-042, AC-102, AC-103
 - Arquivos: resources/views/clientes/_tabela.blade.php, tests/Feature/RevendaAutoatendimento/LicencaSoDoAdminTest.php
 - Modelo: claude-sonnet-5
 - Esforço: medio
 - Notas: as quatro ações de licença (liberar/renovar/suspender/reativar) hoje aparecem para qualquer um que chegue na tabela. Esconder para quem tem escopo de revenda — e, mais importante, RECUSAR no controller: esconder botão não é autorização. O `ClienteController::liberarLicenca` e irmãos já chamam `autorizarAcesso`, que só confere se o cliente é da revenda dele; falta negar a operação em si para escopo de revenda. O teste de AC-103 precisa provar que nenhuma licença foi criada ou alterada, não só que a resposta foi 403.
 
-## T-070 — Acesso das revendas migradas [pendente]
-
+## T-070 — Acesso das revendas migradas [concluida]
 - Refs: US-045, AC-107
 - Arquivos: app/Console/Commands/CriarAcessosDeRevendas.php, tests/Feature/RevendaAutoatendimento/AcessosDeRevendasMigradasTest.php
 - Modelo: claude-sonnet-5

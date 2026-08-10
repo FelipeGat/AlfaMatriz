@@ -8,7 +8,15 @@
 @endphp
 
 @if (! empty($transicoes))
-    <div class="mt-2 pt-2 border-t border-rule" @click.stop x-data="{ transicoesDoCard: @json($transicoes) }">
+    {{--
+        `Js::from` e não `@json`: dentro de um atributo HTML, a primeira aspa
+        dupla do JSON fecharia o `x-data` no meio, o Alpine não avaliaria nada
+        e o select do menu sairia SEM OPÇÃO — o caminho acessível morreria em
+        silêncio, porque a rota continua respondendo. É a mesma escolha de
+        `clientes/_form.blade.php`.
+    --}}
+    <div class="mt-2 pt-2 border-t border-rule" @click.stop
+         x-data="{ transicoesDoCard: {{ Illuminate\Support\Js::from($transicoes) }} }">
         <button type="button" @click="menuAberto = ! menuAberto"
                 class="font-mono text-[10.5px] uppercase tracking-caps text-ink-mute hover:text-brand transition">
             Mover ▾

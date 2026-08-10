@@ -59,6 +59,13 @@ aberto, em desenvolvimento, em teste e concluído.
 - **Então** o card do quadro mostra o sistema da tarefa, e só sistemas ativos
   são oferecidos na escolha
 
+#### AC-110 — As quatro prioridades do ciclo, com a crítica em destaque
+
+- **Dado** o formulário de tarefa
+- **Quando** abro a escolha de prioridade
+- **Então** vejo Baixa, Média, Alta e **Crítica**; uma tarefa crítica aparece
+  no quadro com a marca vermelha, distinta da Alta
+
 ### US-037 — Fluxo com regras que impedem pular etapa
 
 Como responsável pela entrega, quero que o quadro recuse movimentos fora do
@@ -106,6 +113,20 @@ fluxo, para que nada seja dado como concluído sem ter passado por teste.
 - **Quando** a reabro
 - **Então** ela volta para Em desenvolvimento e a única saída da coluna
   Cancelada continua sendo nenhuma (tarefa cancelada não volta ao fluxo)
+
+#### AC-109 — O menu "Mover" oferece de verdade os destinos permitidos
+
+- **Dado** o quadro aberto, com uma tarefa em Em testes
+- **Quando** abro o menu "Mover" do card dela
+- **Então** a lista de destinos traz Concluída, Ajustes necessários e
+  Cancelada — e nada além disso; o card em Cancelada não oferece menu nenhum
+
+#### AC-111 — Devolver do Backlog para Aberta solta o responsável
+
+- **Dado** uma tarefa no Backlog, direcionada a alguém
+- **Quando** a movo de volta para Aberta
+- **Então** ela volta para a coluna Aberta sem responsável, pronta para ser
+  direcionada a outra pessoa
 
 ### US-038 — Tempo por etapa
 
