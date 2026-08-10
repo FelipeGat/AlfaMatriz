@@ -160,3 +160,14 @@
   valor não merece destaque). A borda do CARD não muda: ela continua sendo o
   canal do aviso de esquecida (AC-093), e duplicar o status ali roubaria o
   único sinal que não está dito em outro lugar.
+
+## T-078 — Ordem dentro da coluna: prioridade primeiro, depois o que está mais parado [concluida]
+- Refs: US-036, AC-115
+- Arquivos: app/Http/Controllers/TarefaController.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php
+- Notas: hoje o controller ordena só por `created_at desc`, então uma crítica
+  antiga afunda embaixo de tarefas baixas recentes — o que anula na prática a
+  prioridade. Ordenar por gravidade (critica > alta > media > baixa) e, no
+  empate, pela entrada na etapa atual (mais antiga primeiro), usando o mesmo
+  critério que o card exibe no chip de tempo — se a ordem discordasse do que
+  o chip mostra, a lista pareceria embaralhada. Isso exige carregar `eventos`
+  junto (o card já os acessa hoje, um por card: some também um N+1).

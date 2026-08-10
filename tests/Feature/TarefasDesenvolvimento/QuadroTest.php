@@ -5,6 +5,7 @@ namespace Tests\Feature\TarefasDesenvolvimento;
 use App\Models\Sistema;
 use App\Models\Tarefa;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -121,5 +122,63 @@ class QuadroTest extends TestCase
                     'A borda do card não pode carregar a cor da etapa — ela é do aviso de esquecida.');
             }
         }
+    }
+
+    /**
+     * @spec:AC-115 Dentro da coluna, a gravidade manda: uma crítica antiga fica acima
+     * de uma baixa recente. No empate de prioridade, quem está parado há mais tempo
+     * na etapa sobe — o mesmo instante que o card mostra no chip de tempo.
+     */
+    public function test_coluna_ordena_por_prioridade_e_depois_pelo_mais_parado(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        Carbon::setTestNow(Carbon::parse('2026-08-10 12:00:00'));
+
+        // Criadas fora de ordem de propósito: a crítica é a MAIS ANTIGA, que
+        // no critério anterior (created_at desc) a jogaria para o fim.
+        // `created_at` não é preenchível por atribuição em massa: sem o
+        // forceFill as quatro nasceriam no mesmo instante e o desempate não
+        // teria o que desempatar.
+        $nascidaEm = function (Tarefa $tarefa, $quando) {
+            return $tarefa->forceFill(['created_at' => $quando])->save() ? $tarefa : $tarefa;
+        };
+
+        $critica = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'aberta',
+            'prioridade' => 'critica', 'titulo' => 'Crítica antiga',
+        ]);
+        $nascidaEm($critica, now()->subDays(30));
+
+        $baixaRecente = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'aberta',
+            'prioridade' => 'baixa', 'titulo' => 'Baixa de hoje',
+        ]);
+        $nascidaEm($baixaRecente, now()->subMinutes(5));
+
+        // Duas de mesma prioridade: a mais parada precisa vir antes.
+        $mediaParada = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'aberta',
+            'prioridade' => 'media', 'titulo' => 'Média parada',
+        ]);
+        $nascidaEm($mediaParada, now()->subDays(9));
+
+        $mediaNova = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'aberta',
+            'prioridade' => 'media', 'titulo' => 'Média nova',
+        ]);
+        $nascidaEm($mediaNova, now()->subHours(2));
+
+        $resposta = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk();
+        $ordem = $resposta->viewData('colunas')['aberta']->pluck('id')->all();
+
+        $this->assertSame(
+            [$critica->id, $mediaParada->id, $mediaNova->id, $baixaRecente->id],
+            $ordem,
+            'A coluna precisa descer da mais grave para a menos grave, e no empate da mais parada para a mais nova.'
+        );
+
+        Carbon::setTestNow();
     }
 }

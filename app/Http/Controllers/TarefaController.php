@@ -15,7 +15,9 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $tarefas = Tarefa::with(['sistema', 'responsavel'])
+        // `eventos` entra no eager load porque o card lê a etapa atual de cada
+        // tarefa para o chip de tempo — sem isso é uma consulta por card.
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos'])
             ->orderByDesc('created_at')
             ->get();
 
@@ -35,7 +37,7 @@ class TarefaController extends Controller
                 $doStatus = $recentes;
             }
 
-            return [$status => $doStatus];
+            return [$status => $this->ordenarColuna($doStatus)];
         });
 
         $etapas = collect(Tarefa::STATUS)->map(function ($label, $status) use ($colunas, $foraDoCorte) {
@@ -138,6 +140,47 @@ class TarefaController extends Controller
             ->get();
 
         return view('tarefas.historico', compact('tarefas'));
+    }
+
+    /**
+     * Ordem dos cards dentro de uma coluna: gravidade primeiro, e no empate a
+     * tarefa mais parada na etapa (AC-115).
+     *
+     * Antes a ordem era só `created_at desc`, o que fazia uma crítica antiga
+     * afundar embaixo de tarefas baixas recentes — a prioridade ficava
+     * legível no selo e sem efeito nenhum na leitura da coluna.
+     *
+     * O desempate usa a entrada na etapa ATUAL, o mesmo instante que o card
+     * mostra no chip de tempo: se a ordem seguisse outro critério, a coluna
+     * pareceria embaralhada para quem lê os chips de cima para baixo.
+     *
+     * @param  \Illuminate\Support\Collection<int, Tarefa>  $tarefas
+     * @return \Illuminate\Support\Collection<int, Tarefa>
+     */
+    private function ordenarColuna($tarefas)
+    {
+        $gravidade = array_flip(['critica', 'alta', 'media', 'baixa']);
+
+        // Chave composta em vez de `sortBy([closure, closure])`: essa forma
+        // NÃO ordena por múltiplas chaves — ela considera só a última, e a
+        // gravidade era silenciosamente ignorada.
+        return $tarefas
+            ->sortBy(fn (Tarefa $tarefa) => sprintf(
+                '%d-%020d',
+                $gravidade[$tarefa->prioridade] ?? count($gravidade),
+                $this->entrouNaEtapaEm($tarefa)->getTimestamp(),
+            ))
+            ->values();
+    }
+
+    /**
+     * Quando a tarefa entrou na etapa em que está: o evento ainda sem saída.
+     * Tarefa que nunca se moveu conta a partir da criação — mesmo critério do
+     * card (`_card.blade.php`).
+     */
+    private function entrouNaEtapaEm(Tarefa $tarefa)
+    {
+        return $tarefa->eventos->firstWhere('saiu_em', null)?->entrou_em ?? $tarefa->created_at;
     }
 
     /**

@@ -82,6 +82,14 @@ aberto, em desenvolvimento, em teste e concluído.
   repetida na borda dos cards, que continua reservada ao aviso de tarefa
   esquecida
 
+#### AC-115 — Dentro da coluna, o que é mais grave e o que está mais parado sobem
+
+- **Dado** uma coluna com uma tarefa crítica criada há meses e uma tarefa de
+  prioridade baixa criada hoje
+- **Quando** olho a coluna
+- **Então** a crítica aparece acima da baixa; e entre duas tarefas de mesma
+  prioridade, a que está parada há mais tempo na etapa aparece primeiro
+
 ### US-037 — Fluxo com regras que impedem pular etapa
 
 Como responsável pela entrega, quero que o quadro recuse movimentos fora do
