@@ -25,8 +25,14 @@
         <form x-show="menuAberto" x-cloak method="POST"
               action="{{ route('tarefas.mover', $tarefa) }}" class="mt-2 space-y-2">
             @csrf
+            {{--
+                `py-0` junto com a altura fixa, como em Revendas e Clientes: o
+                plugin de formulários dá ao select `padding: 8px` em cima e
+                embaixo mais `line-height: 24px` — 42px de caixa. Com `h-8` e
+                `box-sizing: border-box` isso não cabe, e o texto sai cortado.
+            --}}
             <select name="status" x-model="destino"
-                    class="w-full h-8 text-[12px] rounded-control bg-input border-line text-ink">
+                    class="w-full h-8 py-0 text-[12px] rounded-control bg-input border-line text-ink">
                 <template x-for="status in transicoesDoCard" :key="status">
                     <option :value="status" x-text="rotulosStatus[status] ?? status"></option>
                 </template>
