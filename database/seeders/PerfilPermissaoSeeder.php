@@ -21,6 +21,7 @@ class PerfilPermissaoSeeder extends Seeder
             'dashboard' => 'Dashboard',
             'leads' => 'Funil de vendas / leads',
             'faturamento' => 'Faturamento',
+            'tarefas' => 'Tarefas de desenvolvimento',
         ];
 
         foreach ($recursos as $slug => $descricao) {

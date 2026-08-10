@@ -21,6 +21,7 @@ use App\Http\Controllers\RevendaController;
 use App\Http\Controllers\SaudeController;
 use App\Http\Controllers\SistemaController;
 use App\Http\Controllers\SubcategoriaController;
+use App\Http\Controllers\TarefaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -58,6 +59,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permissao:leads');
     Route::delete('leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy')
         ->middleware('permissao:leads');
+
+    Route::get('tarefas', [TarefaController::class, 'index'])->name('tarefas.index')
+        ->middleware('permissao:tarefas');
+    Route::get('tarefas/historico', [TarefaController::class, 'historico'])->name('tarefas.historico')
+        ->middleware('permissao:tarefas');
+    Route::post('tarefas', [TarefaController::class, 'store'])->name('tarefas.store')
+        ->middleware('permissao:tarefas');
+    Route::put('tarefas/{tarefa}', [TarefaController::class, 'update'])->name('tarefas.update')
+        ->middleware('permissao:tarefas');
+    Route::post('tarefas/{tarefa}/mover', [TarefaController::class, 'mover'])->name('tarefas.mover')
+        ->middleware('permissao:tarefas');
 
     Route::resource('revendas', RevendaController::class)
         ->middleware('permissao:revendas');
