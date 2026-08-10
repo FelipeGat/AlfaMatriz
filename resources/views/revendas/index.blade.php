@@ -241,8 +241,8 @@
                         Provisionar {{ $linha['revenda']->nome }}
                     </h2>
                     <p class="text-[13px] text-ink-dim mb-4">
-                        Cria a revenda e o usuário administrador dela no AlfaGym. Os dados abaixo são do
-                        usuário ADMIN_REVENDA que acessará o painel do gym.
+                        Cria a revenda no AlfaGym e o acesso dela aqui no painel. Os dados abaixo valem
+                        para os dois: com eles a revenda entra na Matriz e cadastra os próprios clientes.
                     </p>
 
                     <div class="space-y-4">

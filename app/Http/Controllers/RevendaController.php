@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\Cobranca;
+use App\Models\Perfil;
 use App\Models\Revenda;
 use App\Models\Sistema;
+use App\Models\User;
 use App\Services\ProvisionadorAlfaGymService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class RevendaController extends Controller
 {
@@ -259,16 +262,58 @@ class RevendaController extends Controller
         ]);
 
         try {
-            (new ProvisionadorAlfaGymService($sistema))->provisionar($revenda, [
-                'nome' => $data['nome_admin'],
-                'email' => $data['email_admin'],
-                'senha' => $data['senha_admin'],
-            ]);
+            // Provisionar no gym e criar o acesso local andam juntos: um acesso
+            // na Matriz apontando para revenda que o gym recusou seria um
+            // usuário que entra e não consegue cadastrar nada.
+            DB::transaction(function () use ($sistema, $revenda, $data) {
+                (new ProvisionadorAlfaGymService($sistema))->provisionar($revenda, [
+                    'nome' => $data['nome_admin'],
+                    'email' => $data['email_admin'],
+                    'senha' => $data['senha_admin'],
+                ]);
+
+                $this->criarAcessoDaRevenda($revenda, $data);
+            });
         } catch (\RuntimeException $e) {
             return back()->with('erro', $e->getMessage());
         }
 
-        return back()->with('status', "Revenda {$revenda->nome} provisionada no AlfaGym.");
+        return back()->with('status', "Revenda {$revenda->nome} provisionada no AlfaGym e com acesso ao painel.");
+    }
+
+    /**
+     * O acesso da revenda ao painel da Matriz, com o mesmo e-mail e senha do
+     * administrador que acabou de ser criado no AlfaGym — uma credencial só
+     * para os dois painéis enquanto ambos operam.
+     *
+     * Reaproveita o usuário quando o e-mail já existe (revenda reprovisionada,
+     * ou acesso criado antes pelo comando de migração): a senha de quem já
+     * entra não é redefinida por um provisionamento.
+     *
+     * @param  array{nome_admin: string, email_admin: string, senha_admin: string}  $data
+     */
+    private function criarAcessoDaRevenda(Revenda $revenda, array $data): void
+    {
+        $existente = User::where('email', $data['email_admin'])->first();
+
+        if ($existente) {
+            $existente->update(['revenda_id' => $revenda->id]);
+            $usuario = $existente;
+        } else {
+            $usuario = User::create([
+                'name' => $data['nome_admin'],
+                'email' => $data['email_admin'],
+                'password' => $data['senha_admin'],
+                'revenda_id' => $revenda->id,
+                'ativo' => true,
+            ]);
+        }
+
+        $perfil = Perfil::where('slug', 'revenda')->first();
+
+        if ($perfil) {
+            $usuario->perfis()->syncWithoutDetaching([$perfil->id]);
+        }
     }
 
     /**

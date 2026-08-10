@@ -61,7 +61,7 @@ class ProvisionadorAlfaGymTest extends TestCase
             'nome_admin' => 'Admin Alpha',
             'email_admin' => 'admin@alpharev.com',
             'senha_admin' => 'senha-forte-123',
-        ])->assertSessionHas('status', 'Revenda Alpha Rev provisionada no AlfaGym.');
+        ])->assertSessionHas('status', 'Revenda Alpha Rev provisionada no AlfaGym e com acesso ao painel.');
 
         $this->assertDatabaseHas('origens_externas', [
             'entidade_type' => Revenda::class,
