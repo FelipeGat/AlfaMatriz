@@ -9,7 +9,7 @@ use App\Models\User;
 use Illuminate\Console\Command;
 
 /**
- * Confere a migração do AlfaGym antes de virar a chave.
+ * Confere a migração de um sistema antes de virar a chave.
  *
  * Os dados vêm pelo sincronizador; este comando não corrige nada, só olha e
  * conta o que ficou de fora. Três coisas quebram DEPOIS da virada se passarem
@@ -17,27 +17,36 @@ use Illuminate\Console\Command;
  *
  *  1. cliente sem revenda — não tem dono nem entra no faturamento de ninguém;
  *  2. cliente licenciado sem âncora de licença — renovar e suspender falham,
- *     porque as duas operações precisam do id da licença no AlfaGym;
+ *     porque as duas operações precisam do id da licença no sistema de origem;
  *  3. revenda sem acesso ao painel — a revenda migrada não consegue entrar.
  *
  * Sai 0 só quando as três listas estão vazias: serve como porteiro da virada.
  */
-class ConferirMigracaoAlfaGym extends Command
+class ConferirMigracao extends Command
 {
-    protected $signature = 'alfa:conferir-migracao-alfagym';
+    protected $signature = 'alfa:conferir-migracao {--sistema=alfagym : slug do sistema a conferir}';
 
-    protected $description = 'Confere o que veio do AlfaGym e lista as divergências antes de virar a chave';
+    protected $description = 'Confere o que veio de um sistema e lista as divergências antes de virar a chave';
+
+    /** O nome antigo continua valendo: runbook escrito antes não quebra. */
+    protected $aliases = ['alfa:conferir-migracao-alfagym'];
 
     public function handle(): int
     {
-        $sistema = Sistema::where('slug', 'alfagym')->first();
+        $slug = $this->option('sistema');
+        $sistema = Sistema::where('slug', $slug)->first();
 
         if (! $sistema) {
-            $this->error('Sistema AlfaGym não está cadastrado na matriz.');
+            $this->error("Sistema '{$slug}' não está cadastrado na matriz.");
 
             return self::FAILURE;
         }
 
+        $this->line("<options=bold>{$sistema->nome}</>");
+
+        // Global de propósito: cliente sem revenda não entra no faturamento de
+        // ninguém, use ele qual produto for. O mesmo vale para revenda sem
+        // acesso ao painel. Só a âncora de licença é por sistema.
         $semRevenda = Cliente::whereNull('revenda_id')->orderBy('nome')->pluck('nome');
         $semAncora = $this->licenciadosSemAncora($sistema);
         $semAcesso = $this->revendasSemAcesso();
@@ -46,7 +55,7 @@ class ConferirMigracaoAlfaGym extends Command
             'Sem dono, não entram no faturamento de nenhuma revenda.');
 
         $this->recorte('Clientes licenciados sem âncora de licença', $semAncora,
-            'Renovar e suspender falham: as duas operações precisam do id da licença no AlfaGym. Rode `php artisan alfa:sincronizar-sistemas`.');
+            'Renovar e suspender falham: as duas operações precisam do id da licença na origem. Rode `php artisan alfa:sincronizar-sistemas`.');
 
         $this->recorte('Revendas sem acesso ao painel', $semAcesso,
             'Não conseguem entrar para cadastrar cliente. Rode `php artisan alfa:criar-acessos-revendas`.');
@@ -56,7 +65,7 @@ class ConferirMigracaoAlfaGym extends Command
         $this->newLine();
 
         if ($total === 0) {
-            $this->info('Nenhuma divergência: a base do AlfaGym está pronta para virar a chave.');
+            $this->info("Nenhuma divergência: a base do {$sistema->nome} está pronta para virar a chave.");
 
             return self::SUCCESS;
         }

@@ -62,7 +62,7 @@ class ConferenciaDaMigracaoTest extends TestCase
         // 3. revenda sem acesso ao painel
         Revenda::create(['nome' => 'Revenda Migrada', 'ativo' => true]);
 
-        $this->artisan('alfa:conferir-migracao-alfagym')
+        $this->artisan('alfa:conferir-migracao')
             ->expectsOutputToContain('Academia Órfã')
             ->expectsOutputToContain('Academia Sem Âncora')
             ->expectsOutputToContain('Revenda Migrada')
@@ -81,7 +81,7 @@ class ConferenciaDaMigracaoTest extends TestCase
             'licenca_fim_em' => '2026-12-31', 'licenca_id_externo' => '9001',
         ]);
 
-        $this->artisan('alfa:conferir-migracao-alfagym')
+        $this->artisan('alfa:conferir-migracao')
             ->expectsOutputToContain('Nenhuma divergência')
             ->assertSuccessful();
     }
@@ -96,7 +96,7 @@ class ConferenciaDaMigracaoTest extends TestCase
         $pendente = Cliente::create(['nome' => 'Academia Pendente', 'revenda_id' => $revenda->id, 'ativo' => true]);
         $pendente->sistemas()->attach($this->alfaGym->id, ['ativo' => true, 'status_saas' => 'pendente']);
 
-        $this->artisan('alfa:conferir-migracao-alfagym')
+        $this->artisan('alfa:conferir-migracao')
             ->expectsOutputToContain('Nenhuma divergência')
             ->assertSuccessful();
     }
@@ -107,7 +107,7 @@ class ConferenciaDaMigracaoTest extends TestCase
         $revenda = Revenda::create(['nome' => 'Revenda Migrada', 'ativo' => true]);
         Cliente::create(['nome' => 'Academia Órfã', 'ativo' => true]);
 
-        $this->artisan('alfa:conferir-migracao-alfagym')->assertFailed();
+        $this->artisan('alfa:conferir-migracao')->assertFailed();
 
         // Quem corrige é o sincronizador ou o comando de acessos — este aqui
         // serve para você decidir, não para decidir por você.
@@ -120,8 +120,8 @@ class ConferenciaDaMigracaoTest extends TestCase
     {
         $this->alfaGym->delete();
 
-        $this->artisan('alfa:conferir-migracao-alfagym')
-            ->expectsOutputToContain('AlfaGym não está cadastrado')
+        $this->artisan('alfa:conferir-migracao')
+            ->expectsOutputToContain("Sistema 'alfagym' não está cadastrado")
             ->assertFailed();
     }
 }
