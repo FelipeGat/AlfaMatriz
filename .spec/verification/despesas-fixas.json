@@ -1,0 +1,11 @@
+{
+  "feature": "despesas-fixas",
+  "timestamp": "2026-08-10T16:49:18.076Z",
+  "gitRev": "800ffc9",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 249,
+  "results": {},
+  "principles": {}
+}

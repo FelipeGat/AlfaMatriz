@@ -1,11 +1,11 @@
 {
   "feature": "clientes-via-revenda",
-  "timestamp": "2026-08-10T15:48:27.943Z",
-  "gitRev": "aed59fc",
+  "timestamp": "2026-08-10T16:48:26.256Z",
+  "gitRev": "800ffc9",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 244,
+  "testsParsed": 249,
   "results": {
     "AC-072": {
       "status": "pass",

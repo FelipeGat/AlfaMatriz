@@ -1,11 +1,11 @@
 {
   "feature": "dominio-proprio",
-  "timestamp": "2026-08-10T15:49:20.382Z",
-  "gitRev": "aed59fc",
+  "timestamp": "2026-08-10T16:49:50.825Z",
+  "gitRev": "800ffc9",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 244,
+  "testsParsed": 249,
   "results": {
     "AC-024": {
       "status": "pass",
