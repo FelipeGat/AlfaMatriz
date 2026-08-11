@@ -21,10 +21,16 @@ Três consequências:
 1. **Não existe "confirmar o gym por um ciclo"** antes de ligar o AlfaControl —
    o sync do gym nunca rodou em produção. Os dois entram pela primeira vez.
 
-2. **O risco de duplicação não se materializa.** Comparei os documentos das duas
-   produções (hasheados dentro do banco): **sobreposição zero** — nenhuma
-   revenda e nenhum cliente é o mesmo nos dois sistemas. A reconciliação
-   continua no código como proteção, mas não é ela que decide a virada.
+2. **A sobreposição existe, e é justamente a revenda.** A INVEST SOLUÇÕES está
+   nos dois sistemas com o mesmo CNPJ — e **formatada dos dois lados**
+   (`52.638.029/0001-05`). É exatamente o caso que a reconciliação existe para
+   resolver, e o caso em que o bug de máscara (corrigido em 11/08) teria
+   duplicado a revenda e cobrado a mesma empresa duas vezes.
+
+   > Correção de registro: a primeira versão deste documento dizia
+   > "sobreposição zero". Eu havia comparado contra o **staging** do AlfaGym
+   > (LXC 101 no Proxmox), achando que era produção. A produção do gym é outro
+   > servidor — `187.127.2.226`, credenciais em `AlfaGym/CLAUDE.md`.
 
 3. **A licença do AlfaControl está fora.** O sistema não tem a capacidade
    `sincroniza_licencas`, porque `renovar` lá somava licenças ativas em vez de
@@ -149,3 +155,58 @@ Para o TLS fechar entre os dois stagings, o LXC 116 recebeu uma linha em
 `/etc/hosts` (`control.alfasolucoes.cloud` → `10.0.3.136`) e passou a confiar no
 certificado autoassinado do staging do AlfaControl. **Nada disso é necessário em
 produção**, onde o certificado é real — mas fica lá até alguém remover.
+
+---
+
+## Ligar o AlfaGym — o que está pronto e o que falta
+
+**Servidor de produção: `187.127.2.226`** (hostname `gym`). Não confundir com o
+LXC 101 do Proxmox, que também se chama `alfagym`, também roda
+`docker-compose.prod.yml` e também tem containers `alfagym-*` — mas é STAGING.
+O sinal são os dados: o staging tem "Revenda Staging Teste" e "Revenda Teste
+Fase5"; a produção tem INVEST SOLUCOES LTDA, Empresa e Revenda Teste.
+
+Estado hoje:
+
+| | |
+|---|---|
+| contrato `/api/matriz/v1` | publicado e respondendo |
+| `MATRIZ_API_KEY_HASH` | **vazio** — contrato desligado |
+| TLS no origin | Let's Encrypt válido para `gym.alfasolucoes.cloud` |
+| caminho direto (sem Cloudflare) | funciona, com `--resolve` para 187.127.2.226 |
+
+### O que a carga faria
+
+```
+revendas:  1 ANCORADA (INVEST, ja na Matriz vinda do AlfaControl)
+           2 criadas (Empresa; Revenda Teste, sem documento)
+academias: 8 criadas — nenhuma coincide com os condominios do AlfaControl
+```
+
+### Passos (o 2 exige janela)
+
+1. Gerar a chave e gravar o hash no `.env` do servidor:
+   `echo -n "<chave>" | sha256sum` → `MATRIZ_API_KEY_HASH`
+
+2. ⚠️ **Reiniciar o backend.** O gym roda **um único container**, sem
+   blue/green — ao contrário do AlfaControl, onde a troca é sem downtime. Aqui
+   o gym fica fora do ar durante o boot do Spring. Escolher a janela.
+
+3. Testar se o `X-Matriz-Key` sobrevive ao Cloudflare:
+   `curl -H "X-Matriz-Key: <chave>" https://gym.alfasolucoes.cloud/api/matriz/v1/ping`
+   - **200** → usar `https://gym.alfasolucoes.cloud` como `base_url`.
+   - **401** → o Cloudflare está removendo o header. Contornar com uma linha em
+     `/etc/hosts` do LXC 115 (`187.127.2.226 gym.alfasolucoes.cloud`), que faz o
+     TLS continuar válido e tira o Cloudflare do caminho.
+
+   Vale testar porque o 401 observado no staging veio de outra topologia — lá o
+   caminho passa por um túnel, aqui é proxy direto para o origin.
+
+4. Configurar `base_url` e `token` na Matriz, rodar `--simular`, conferir que a
+   INVEST aparece como **atualizada** (e não criada), e só então carregar.
+
+### Pendência de segurança
+
+A senha de root de `187.127.2.226` está **commitada em texto puro** em
+`AlfaGym/CLAUDE.md`, junto com o IP. Quem tem o repositório tem o servidor.
+Rotacionar e tirar do arquivo.
