@@ -69,5 +69,58 @@
                 </p>
             </div>
         </div>
+
+        {{-- A tela de entrada costuma ficar aberta a manhã inteira numa aba de
+             fundo. Sem isto, o token que veio no HTML vence junto com a sessão
+             e o primeiro clique em "Entrar" volta para o login com o aviso de
+             sessão expirada — só na segunda tentativa é que dá certo. Aqui o
+             token é trocado antes disso: ao voltar para a aba, e de tempos em
+             tempos enquanto ela estiver à vista. --}}
+        <script>
+            (function () {
+                const INTERVALO = 15 * 60 * 1000;
+
+                async function renovarToken() {
+                    try {
+                        const resposta = await fetch('{{ route('csrf-token') }}', {
+                            headers: { 'Accept': 'application/json' },
+                            credentials: 'same-origin',
+                            cache: 'no-store',
+                        });
+
+                        if (! resposta.ok) {
+                            return;
+                        }
+
+                        const { token } = await resposta.json();
+
+                        if (! token) {
+                            return;
+                        }
+
+                        document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', token);
+                        document.querySelectorAll('input[name="_token"]').forEach((campo) => {
+                            campo.value = token;
+                        });
+                    } catch (erro) {
+                        // Sem rede, ou já logado em outra aba: o envio ainda
+                        // acontece com o token antigo, e quem cuida do resto é
+                        // o tratamento de 419 em bootstrap/app.php.
+                    }
+                }
+
+                setInterval(() => {
+                    if (document.visibilityState === 'visible') {
+                        renovarToken();
+                    }
+                }, INTERVALO);
+
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') {
+                        renovarToken();
+                    }
+                });
+            })();
+        </script>
     </body>
 </html>

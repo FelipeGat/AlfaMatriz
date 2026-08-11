@@ -36,6 +36,15 @@ Route::get('/', function () {
 // existir qualquer sessão.
 Route::get('/healthz', SaudeController::class)->name('healthz');
 
+// Token fresco para as telas de fora (login, senha esquecida): elas ficam
+// abertas por horas e o token embutido no HTML vence junto com a sessão.
+// Buscar aqui renova os dois de uma vez, porque a resposta também recria o
+// cookie de sessão. Só faz sentido antes de entrar — sessão de quem já está
+// dentro deve expirar mesmo.
+Route::get('/csrf-token', fn () => response()->json(['token' => csrf_token()]))
+    ->middleware('guest')
+    ->name('csrf-token');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/centro-controle', [CentroControleController::class, 'index'])->name('centro-controle')
         ->middleware('permissao:dashboard');

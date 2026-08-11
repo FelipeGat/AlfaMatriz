@@ -1,8 +1,12 @@
 <?php
 
+use App\Http\Middleware\ChecarPermissao;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -21,9 +25,31 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'permissao' => \App\Http\Middleware\ChecarPermissao::class,
+            'permissao' => ChecarPermissao::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Tela parada tempo demais envelhece a sessão, e com ela o token do
+        // formulário: o envio chega com um token que não vale mais e o Laravel
+        // devolve a página "419 Page Expired", de onde não se sai — foi preciso
+        // fechar a aba para conseguir entrar. Aqui o beco vira uma volta ao
+        // login, já com token novo e dizendo o que aconteceu.
         //
+        // O gancho é no HttpException, e não no TokenMismatchException: o
+        // Laravel troca um pelo outro antes de consultar estes callbacks.
+        $exceptions->render(function (HttpException $e, Request $request) {
+            if ($e->getStatusCode() !== 419 || ! $e->getPrevious() instanceof TokenMismatchException) {
+                return null;
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Sua sessão expirou. Atualize a página e tente de novo.',
+                ], 419);
+            }
+
+            return redirect()->route('login')
+                ->withInput($request->except('password', '_token'))
+                ->withErrors(['sessao' => 'Sua sessão expirou por inatividade. Entre novamente.']);
+        });
     })->create();

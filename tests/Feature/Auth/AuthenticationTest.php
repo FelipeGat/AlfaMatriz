@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -40,6 +41,44 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertGuest();
+    }
+
+    /**
+     * Tela de login aberta por horas: o token do formulário vence junto com a
+     * sessão. Em vez da página "419", de onde só se sai fechando a aba, o
+     * envio precisa voltar ao login com aviso e com o e-mail preservado.
+     */
+    public function test_token_vencido_volta_para_o_login_com_aviso(): void
+    {
+        // O middleware de CSRF se desliga sozinho quando roda em teste; sem
+        // desfazer isso, o cenário que quebrou em produção não acontece aqui.
+        $this->app->instance(ValidateCsrfToken::class, new class($this->app, $this->app['encrypter']) extends ValidateCsrfToken
+        {
+            protected function runningUnitTests(): bool
+            {
+                return false;
+            }
+        });
+
+        $response = $this->post('/login', [
+            'email' => 'alguem@alfatecnologia.com.br',
+            'password' => 'password',
+            '_token' => 'token-de-uma-sessao-que-ja-morreu',
+        ]);
+
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHasErrors('sessao');
+        $this->assertSame('alguem@alfatecnologia.com.br', session('_old_input.email'));
+        $this->assertArrayNotHasKey('password', session('_old_input', []));
+        $this->assertGuest();
+    }
+
+    public function test_tela_de_login_renova_o_token_da_sessao(): void
+    {
+        $response = $this->get('/csrf-token');
+
+        $response->assertOk();
+        $response->assertJson(['token' => csrf_token()]);
     }
 
     public function test_users_can_logout(): void
