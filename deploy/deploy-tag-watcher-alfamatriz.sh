@@ -102,7 +102,33 @@ if [[ -f "$FALHOU" ]]; then
     exit 0
 fi
 
-git fetch --quiet --tags origin 2>/dev/null || { log "fetch de tags FALHOU"; exit 1; }
+# `--force` e não o fetch comum: tag RECRIADA no remoto (apontando para outro
+# commit) faz o fetch sem força sair 1 com "would clobber existing tag", e o
+# vigia aborta AQUI, antes de olhar tag nenhuma. Em 2026-08-11 isso congelou a
+# produção por 1h20: a v2026.08.11.3 foi recriada e a v2026.08.11.7, que nada
+# tinha a ver com ela, simplesmente não chegou. Mover tag é fato da vida e não
+# pode ter poder de veto sobre a esteira inteira.
+#
+# O erro do git vai para o LOG, não para /dev/null. "fetch de tags FALHOU"
+# sozinho não diz nada: foi preciso entrar no container e rodar o fetch à mão
+# para descobrir a causa, com a produção surda o tempo todo.
+if ! ERRO_FETCH=$(git fetch --quiet --tags --force origin 2>&1); then
+    log "fetch de tags FALHOU: ${ERRO_FETCH:-<git não disse nada>}"
+
+    # Telemetria de falha, e por quê: o painel lê este arquivo e mostrava
+    # VERDE, porque ele descrevia a última aplicação bem-sucedida e não a
+    # tentativa de agora. Produção parada aparecendo como saudável é pior que
+    # produção parada. A tag informada continua sendo a que está no ar.
+    TAG=$(cat "$ESTADO" 2>/dev/null || echo "")
+    escrever_status "falha"
+
+    # Sem gravar o marcador de bloqueio, de propósito: ele existe para deploy
+    # que passou e quebrou a saúde, onde insistir piora. Falha de fetch é
+    # quase sempre transitória (rede, remoto fora do ar) e tentar de novo em 5
+    # minutos é exatamente o certo — o marcador transformaria um soluço de
+    # rede em parada que só sai com alguém apagando arquivo no servidor.
+    exit 1
+fi
 
 TAG=$(git tag -l 'v[0-9]*' --sort=-v:refname | head -1)
 

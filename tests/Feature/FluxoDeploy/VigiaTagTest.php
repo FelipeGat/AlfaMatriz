@@ -153,6 +153,106 @@ class VigiaTagTest extends TestCase
         );
     }
 
+    /**
+     * @spec:AC-067 Tag recriada no remoto não pode congelar a esteira. Sem
+     * `--force`, o fetch sai 1 com "would clobber existing tag" e o vigia
+     * aborta antes de olhar qualquer tag — inclusive a nova, que nada tem a
+     * ver com a que foi movida.
+     *
+     * Aconteceu em 2026-08-11: a v2026.08.11.3 foi recriada apontando para
+     * outro commit e a produção ficou 1h20 sem ver a v2026.08.11.7, falhando
+     * de 5 em 5 minutos com uma linha de log que não dizia o motivo.
+     */
+    public function test_tag_recriada_no_remoto_nao_congela_a_esteira(): void
+    {
+        // Aqui o fetch precisa ser REAL: é ele que está sendo testado.
+        $this->criarFerramentas(saude: '200', fetchDeMentira: false);
+
+        $origem = $this->tmp('vigia-origem-');
+        $this->executar(['git', 'init', '--quiet', '--bare', $origem]);
+        $this->executar(['git', 'remote', 'add', 'origin', $origem], $this->repo);
+        $this->executar(['git', 'push', '--quiet', 'origin', 'HEAD', '--tags'], $this->repo);
+
+        // O movimento acontece POR FORA, noutra cópia — é o que reproduz o
+        // incidente. Movendo a tag no próprio repositório do vigia, ele já
+        // ficaria de acordo com o remoto e não haveria clobber nenhum: o
+        // teste passaria com ou sem `--force`, que foi o meu primeiro erro
+        // ao escrevê-lo.
+        $outra = $this->tmp('vigia-outra-');
+        $this->executar(['git', 'clone', '--quiet', $origem, $outra.'/copia']);
+        $copia = $outra.'/copia';
+        $this->executar(['git', 'config', 'user.email', 'teste@exemplo.com'], $copia);
+        $this->executar(['git', 'config', 'user.name', 'Teste'], $copia);
+
+        file_put_contents($copia.'/versao.txt', 'v2');
+        $this->executar(['git', 'commit', '--quiet', '-am', 'segundo'], $copia);
+
+        // A v1.0.0 do remoto muda de commit — o clobber que trava tudo.
+        $this->executar(['git', 'tag', '-f', 'v1.0.0'], $copia);
+        $this->executar(['git', 'push', '--quiet', '--force', 'origin', 'v1.0.0'], $copia);
+
+        // E chega a release nova, que é a que precisa entrar.
+        $this->executar(['git', 'tag', 'v1.1.0'], $copia);
+        $this->executar(['git', 'push', '--quiet', 'origin', 'v1.1.0'], $copia);
+
+        // O vigia continua com a v1.0.0 velha apontando para o commit velho,
+        // exatamente como o container de produção estava.
+        $this->assertNotSame(
+            trim((new Process(['git', 'rev-parse', 'v1.0.0'], $copia))->mustRun()->getOutput()),
+            trim((new Process(['git', 'rev-parse', 'v1.0.0'], $this->repo))->mustRun()->getOutput()),
+            'O cenário exige a tag local divergindo da do remoto.'
+        );
+
+        // O vigia parte de um estado anterior e da tag velha no repositório
+        // local, como o container estava.
+        file_put_contents($this->repo.'/.deploy-tag-state', "v1.0.0\n");
+
+        $processo = $this->rodar();
+
+        $this->assertSame(0, $processo->getExitCode(), $processo->getOutput().$processo->getErrorOutput());
+        $this->assertStringNotContainsString('fetch de tags FALHOU', $processo->getOutput());
+        $this->assertSame('v1.1.0', trim(file_get_contents($this->repo.'/.deploy-tag-state')));
+
+        $this->apagar($origem);
+        $this->apagar($outra);
+    }
+
+    /**
+     * @spec:AC-067 Fetch que falha precisa dizer POR QUE no log e parar de
+     * mostrar verde no painel — sem, porém, gravar o marcador que bloqueia as
+     * próximas tentativas: falha de rede se resolve tentando de novo.
+     */
+    public function test_falha_de_fetch_aparece_no_log_e_na_telemetria(): void
+    {
+        $this->criarFerramentas(saude: '200');
+
+        // git que falha só no fetch, com uma mensagem reconhecível.
+        $this->binario('git', <<<'BASH'
+#!/usr/bin/env bash
+echo "git $*" >> "$ALFA_LOG"
+if [ "$1" = "fetch" ]; then echo "fatal: could not read from remote" >&2; exit 1; fi
+exec /usr/bin/git "$@"
+BASH);
+
+        file_put_contents($this->repo.'/.deploy-tag-state', "v1.0.0\n");
+
+        $processo = $this->rodar();
+
+        $this->assertNotSame(0, $processo->getExitCode());
+
+        // O motivo, e não só "FALHOU".
+        $this->assertStringContainsString('could not read from remote', $processo->getOutput());
+
+        // O painel precisa enxergar falha, com a tag que continua no ar.
+        $status = json_decode(file_get_contents($this->repo.'/public/deploy-status.json'), true);
+        $this->assertSame('falha', $status['estado']);
+        $this->assertSame('v1.0.0', $status['tag']);
+
+        // E o bloqueio NÃO pode ter sido gravado: soluço de rede não vira
+        // parada que só sai com alguém apagando arquivo no servidor.
+        $this->assertFileDoesNotExist($this->repo.'/.deploy-tag-failed');
+    }
+
     // ------------------------------------------------------------- apoio
 
     private function rodar(): Process
@@ -195,13 +295,19 @@ class VigiaTagTest extends TestCase
         $this->executar(['git', 'tag', 'v1.0.0'], $this->repo);
     }
 
-    private function criarFerramentas(string $saude): void
+    private function criarFerramentas(string $saude, bool $fetchDeMentira = true): void
     {
-        // `git` real, menos o fetch (não há remoto neste repositório de teste).
-        $this->binario('git', <<<'BASH'
+        // `git` real, menos o fetch — a maioria dos cenários não tem remoto.
+        // Quem testa o próprio fetch pede o git inteiro (`fetchDeMentira:
+        // false`) e monta um remoto de verdade.
+        $this->binario('git', $fetchDeMentira ? <<<'BASH'
 #!/usr/bin/env bash
 echo "git $*" >> "$ALFA_LOG"
 if [ "$1" = "fetch" ]; then exit 0; fi
+exec /usr/bin/git "$@"
+BASH : <<<'BASH'
+#!/usr/bin/env bash
+echo "git $*" >> "$ALFA_LOG"
 exec /usr/bin/git "$@"
 BASH);
 
