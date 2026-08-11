@@ -8,9 +8,17 @@
     $sufixo = $tarefa?->id ?? 'nova';
 @endphp
 
+{{--
+    O botão se tranca no primeiro envio: dois cliques rápidos mandavam dois
+    envios, e o segundo publicava o comentário de novo (a tarefa em si só era
+    regravada igual, mas comentário é linha nova a cada vez). O `submit` já
+    disparou quando o `disabled` entra, então o envio em curso não é cancelado
+    — o que morre é o SEGUNDO clique.
+--}}
 <form method="POST"
       action="{{ $tarefa ? route('tarefas.update', $tarefa) : route('tarefas.store') }}"
-      class="p-6 space-y-4">
+      class="p-6 space-y-4"
+      x-data="{ enviando: false }" @submit="enviando = true">
     @csrf
     @if ($tarefa)
         @method('PUT')
@@ -78,6 +86,9 @@
 
     <div class="flex justify-end gap-3">
         <x-secondary-button x-on:click="$dispatch('close')">Cancelar</x-secondary-button>
-        <x-primary-button>Salvar</x-primary-button>
+        {{-- O rótulo literal é o que vale sem JS; com Alpine no ar, ele vira
+             o aviso de que o envio está em curso. --}}
+        <x-primary-button x-bind:disabled="enviando"
+                          x-text="enviando ? 'Salvando…' : 'Salvar'">Salvar</x-primary-button>
     </div>
 </form>

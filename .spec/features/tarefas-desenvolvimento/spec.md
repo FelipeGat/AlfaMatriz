@@ -272,7 +272,8 @@ esse detalhe fique datado e assinado junto da tarefa, e não num chat à parte.
 - **Então** o mesmo envio grava o cadastro e publica o comentário, que passa a
   aparecer na tarefa com o nome de quem escreveu e a data, do mais antigo para
   o mais novo, e o card anuncia quantos comentários existem — com o campo em
-  branco, salvar não publica nada
+  branco, salvar não publica nada, e clicar em Salvar duas vezes seguidas
+  publica o comentário uma vez só
 
 #### AC-135 — O comentário é texto puro
 

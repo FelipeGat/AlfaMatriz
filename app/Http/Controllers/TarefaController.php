@@ -102,7 +102,7 @@ class TarefaController extends Controller
 
         $tarefa->update($data);
 
-        if ($comentario !== '') {
+        if ($comentario !== '' && ! $this->reenvioDoMesmoComentario($tarefa, $comentario)) {
             $tarefa->comentarios()->create([
                 'autor_id' => auth()->id(),
                 'corpo' => $comentario,
@@ -113,6 +113,28 @@ class TarefaController extends Controller
             'status',
             $comentario !== '' ? 'Tarefa atualizada e comentário publicado.' : 'Tarefa atualizada.',
         );
+    }
+
+    /**
+     * O mesmo comentário, do mesmo autor, publicado há instantes.
+     *
+     * Salvar é um clique só na intenção, mas o clique duplo manda dois envios
+     * — e o cadastro aguenta ser regravado igual, enquanto o comentário é
+     * linha nova a cada vez. O botão se tranca no primeiro envio
+     * (`_form.blade.php`), e isto é a rede embaixo dele: vale quando o JS não
+     * roda e quando o "voltar" do navegador reenvia o formulário.
+     *
+     * A janela é curta de propósito. Ela existe para desfazer um acidente de
+     * um segundo, não para proibir alguém de repetir a mesma frase mais tarde
+     * — e repetir a mesma frase no MESMO minuto é sempre o acidente.
+     */
+    private function reenvioDoMesmoComentario(Tarefa $tarefa, string $corpo): bool
+    {
+        return $tarefa->comentarios()
+            ->where('autor_id', auth()->id())
+            ->where('corpo', $corpo)
+            ->where('created_at', '>=', now()->subMinute())
+            ->exists();
     }
 
     public function mover(Request $request, Tarefa $tarefa, FluxoTarefaService $fluxo)

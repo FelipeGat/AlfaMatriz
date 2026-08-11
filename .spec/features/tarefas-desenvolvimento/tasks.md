@@ -272,3 +272,22 @@
   salvar faria o clique no lixo publicar o comentário que estivesse escrito no
   campo.
 - Esforço: baixo
+
+## T-086 — Clique duplo no Salvar publicava o comentário duas vezes [concluida]
+- Refs: US-049, AC-134
+- Arquivos: resources/views/tarefas/_form.blade.php, app/Http/Controllers/TarefaController.php, tests/Feature/TarefasDesenvolvimento/ComentariosTarefaTest.php
+- Notas: visto com a tela rodando. Dois cliques rápidos no Salvar mandam dois
+  envios; o cadastro aguenta ser regravado igual (mesmo título, mesma
+  prioridade), mas o comentário é linha NOVA a cada envio — e a conversa
+  aparecia com a mesma frase duas vezes. Defeito que só nasceu quando o
+  comentário passou a viajar no formulário da tarefa (T-085).
+  Duas camadas, porque uma só não cobre: o botão se tranca no primeiro envio
+  (`enviando` no Alpine, com o rótulo virando "Salvando…"), e o controller
+  recusa o MESMO texto do MESMO autor na MESMA tarefa dentro de um minuto.
+  A trava do servidor é a que vale sem JS e no "voltar" do navegador; a janela
+  é curta de propósito — ela desfaz um acidente de um segundo, e repetir a
+  mesma frase no mesmo minuto é sempre o acidente.
+  CUIDADO: o `disabled` entra no handler do `submit`, que dispara DEPOIS de o
+  envio começar — desabilitar antes disso cancelaria o próprio envio que se
+  quer preservar. O que morre é o segundo clique, não o primeiro.
+- Esforço: baixo

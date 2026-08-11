@@ -101,6 +101,54 @@ class ComentariosTarefaTest extends TestCase
     }
 
     /**
+     * @spec:AC-134 Clique duplo no Salvar não publica o comentário duas vezes
+     * — nem quando o botão que se tranca não chega a rodar.
+     */
+    public function test_clique_duplo_no_salvar_nao_duplica_o_comentario(): void
+    {
+        $autor = User::factory()->create();
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $autor->id,
+            'status' => 'em_desenvolvimento',
+        ]);
+
+        $envio = $this->envioDoModal($tarefa, ['comentario' => 'O cliente ligou de novo hoje.']);
+
+        $this->actingAs($autor)->put(route('tarefas.update', $tarefa), $envio);
+        $this->actingAs($autor)->put(route('tarefas.update', $tarefa), $envio);
+
+        $this->assertSame(1, $tarefa->comentarios()->count());
+
+        // A trava é uma janela, não uma mordaça: passado o acidente, a mesma
+        // frase volta a ser publicável.
+        $this->travel(2)->minutes();
+        $this->actingAs($autor)->put(route('tarefas.update', $tarefa), $envio);
+        $this->assertSame(2, $tarefa->comentarios()->count());
+        $this->travelBack();
+    }
+
+    /**
+     * @spec:AC-134 A trava do reenvio é estreita: outro texto no mesmo minuto
+     * é comentário de verdade e entra.
+     */
+    public function test_comentario_diferente_no_mesmo_minuto_continua_entrando(): void
+    {
+        $autor = User::factory()->create();
+        $tarefa = Tarefa::factory()->create(['criado_por_id' => $autor->id]);
+
+        $this->actingAs($autor)->put(
+            route('tarefas.update', $tarefa),
+            $this->envioDoModal($tarefa, ['comentario' => 'Primeiro ponto.']),
+        );
+        $this->actingAs($autor)->put(
+            route('tarefas.update', $tarefa),
+            $this->envioDoModal($tarefa, ['comentario' => 'Segundo ponto, logo em seguida.']),
+        );
+
+        $this->assertSame(2, $tarefa->comentarios()->count());
+    }
+
+    /**
      * @spec:AC-135 O comentário é texto puro: o que se digita é o que fica
      * gravado, sem nenhuma marcação interpretada — o traço continua traço.
      */
