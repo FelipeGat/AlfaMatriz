@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -51,26 +52,36 @@ class ContaFixaPagar extends Model
         return $this->hasMany(ContaPagar::class);
     }
 
-    public function vigenteEm(\DateTimeInterface $data): bool
+    /**
+     * A despesa gera parcela nesta competência (AAAA-MM)?
+     *
+     * A vigência é avaliada contra o mês inteiro, não contra um dia: uma
+     * despesa que começa dia 20 pertence à competência daquele mês desde o
+     * dia 1. Medir por dia fazia o cadastro e o fechamento discordarem — a
+     * tela não gerava nada, e o último dia do mês gerava.
+     */
+    public function vigenteNaCompetencia(string $competencia): bool
     {
         if (! $this->ativo) {
             return false;
         }
 
-        if ($this->data_inicio->gt($data)) {
+        $inicioDoMes = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
+
+        if ($this->data_inicio->gt($inicioDoMes->copy()->endOfMonth())) {
             return false;
         }
 
-        return ! $this->data_fim || $this->data_fim->gte($data);
+        return ! $this->data_fim || $this->data_fim->gte($inicioDoMes);
     }
 
     /**
      * Data de vencimento da parcela para uma competência (AAAA-MM), com o dia
      * clampado ao último dia do mês quando o mês for mais curto que dia_vencimento.
      */
-    public function dataVencimentoParaCompetencia(string $competencia): \Carbon\Carbon
+    public function dataVencimentoParaCompetencia(string $competencia): Carbon
     {
-        $mes = \Carbon\Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
+        $mes = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
         $dia = min($this->dia_vencimento, $mes->daysInMonth);
 
         return $mes->copy()->setDay($dia);

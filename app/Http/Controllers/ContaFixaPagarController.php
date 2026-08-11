@@ -44,10 +44,9 @@ class ContaFixaPagarController extends Controller
         $fixa = ContaFixaPagar::create([...$this->validated($request), 'ativo' => true]);
 
         // Já gera a parcela da competência atual pra despesa aparecer na lista
-        // de despesas imediatamente, sem esperar o fechamento do mês.
-        if ($fixa->vigenteEm(now())) {
-            $service->gerarParaCompetencia(now()->format('Y-m'));
-        }
+        // de despesas imediatamente, sem esperar o fechamento do mês. Só a
+        // dela: o service decide sozinho se há vigência e se já existe.
+        $service->gerarParaTemplate($fixa, now()->format('Y-m'));
 
         return redirect()->route('contas-pagar.index')->with('status', 'Despesa recorrente cadastrada.');
     }

@@ -24,39 +24,59 @@ class DespesaFixaService
             ->get();
 
         foreach ($templates as $template) {
-            $jaExiste = ContaPagar::where('conta_fixa_pagar_id', $template->id)
-                ->where('competencia', $competencia)
-                ->exists();
-
-            if ($jaExiste) {
-                $resultado[] = ['descricao' => $template->descricao, 'status' => 'ja_gerado'];
-
-                continue;
-            }
-
-            $contaPagar = ContaPagar::create([
-                'conta_fixa_pagar_id' => $template->id,
-                'centro_custo_id' => $template->centro_custo_id,
-                'conta_id' => $template->conta_id,
-                'fornecedor_id' => $template->fornecedor_id,
-                'conta_financeira_id' => $template->conta_financeira_id,
-                'descricao' => $template->descricao,
-                'valor' => $template->valor,
-                'data_vencimento' => $template->dataVencimentoParaCompetencia($competencia),
-                'status' => 'em_aberto',
-                'tipo' => 'fixa',
-                'competencia' => $competencia,
-                'forma_pagamento' => $template->forma_pagamento,
-            ]);
-
-            $resultado[] = [
-                'descricao' => $template->descricao,
-                'status' => 'gerado',
-                'conta_pagar_id' => $contaPagar->id,
-                'valor' => (float) $contaPagar->valor,
-            ];
+            $resultado[] = $this->gerarParaTemplate($template, $competencia);
         }
 
         return $resultado;
+    }
+
+    /**
+     * Gera a parcela de UMA despesa fixa na competência informada.
+     *
+     * É o caminho usado pelo cadastro, que precisa materializar só a despesa
+     * recém-criada — chamar `gerarParaCompetencia` ali fechava o mês inteiro
+     * de carona, materializando todas as outras despesas fixas ativas.
+     *
+     * Não cria nada se a despesa estiver fora de vigência ou se a parcela da
+     * competência já existir; a vigência é checada aqui, e não em quem chama,
+     * para que cadastro e fechamento nunca usem critérios diferentes.
+     *
+     * @return array{descricao: string, status: string, conta_pagar_id?: int, valor?: float}
+     */
+    public function gerarParaTemplate(ContaFixaPagar $template, string $competencia): array
+    {
+        if (! $template->vigenteNaCompetencia($competencia)) {
+            return ['descricao' => $template->descricao, 'status' => 'fora_de_vigencia'];
+        }
+
+        $jaExiste = ContaPagar::where('conta_fixa_pagar_id', $template->id)
+            ->where('competencia', $competencia)
+            ->exists();
+
+        if ($jaExiste) {
+            return ['descricao' => $template->descricao, 'status' => 'ja_gerado'];
+        }
+
+        $contaPagar = ContaPagar::create([
+            'conta_fixa_pagar_id' => $template->id,
+            'centro_custo_id' => $template->centro_custo_id,
+            'conta_id' => $template->conta_id,
+            'fornecedor_id' => $template->fornecedor_id,
+            'conta_financeira_id' => $template->conta_financeira_id,
+            'descricao' => $template->descricao,
+            'valor' => $template->valor,
+            'data_vencimento' => $template->dataVencimentoParaCompetencia($competencia),
+            'status' => 'em_aberto',
+            'tipo' => 'fixa',
+            'competencia' => $competencia,
+            'forma_pagamento' => $template->forma_pagamento,
+        ]);
+
+        return [
+            'descricao' => $template->descricao,
+            'status' => 'gerado',
+            'conta_pagar_id' => $contaPagar->id,
+            'valor' => (float) $contaPagar->valor,
+        ];
     }
 }
