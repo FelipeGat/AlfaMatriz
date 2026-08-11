@@ -56,6 +56,7 @@
             <th class="px-4 py-2.5 font-semibold">Cliente</th>
             <th class="px-4 py-2.5 font-semibold">Revenda / praça</th>
             <th class="px-4 py-2.5 font-semibold">Sistemas</th>
+            <th class="px-4 py-2.5 font-semibold">Licença</th>
             <th class="px-4 py-2.5 font-semibold">Cobrança</th>
             <th class="px-4 py-2.5 font-semibold">Pagamento</th>
             <th class="px-4 py-2.5 font-semibold">Status</th>
@@ -150,6 +151,29 @@
                                     <x-badge :title="$semLicenca->pluck('nome')->implode(', ')">+{{ $semLicenca->count() - 2 }}</x-badge>
                                 @endif
                             </div>
+                        @endif
+                    @endif
+                </td>
+
+                {{-- Valor da licença no sistema de origem. Coluna própria, e não
+                     misturada com "Cobrança": aquela é o acordo comercial da Alfa
+                     com o cliente, esta é o preço registrado lá. --}}
+                <td class="px-4 py-3">
+                    @php
+                        $comValor = $ativos->filter(fn ($s) => $s->pivot->valorDaLicenca() !== null);
+                        $totalLicenca = $comValor->sum(fn ($s) => $s->pivot->valorDaLicenca());
+                    @endphp
+                    @if ($comValor->isEmpty())
+                        <span class="font-mono text-[12.5px] text-ink-faint">—</span>
+                    @else
+                        <span class="block font-mono text-[13px] text-ink whitespace-nowrap"
+                              title="{{ $comValor->map(fn ($s) => $s->nome.': R$ '.number_format($s->pivot->valorDaLicenca(), 2, ',', '.'))->implode(' · ') }}">
+                            R$ {{ number_format($totalLicenca, 2, ',', '.') }}
+                        </span>
+                        @if ($comValor->count() > 1)
+                            <span class="block font-mono text-[11px] uppercase tracking-caps text-ink-faint whitespace-nowrap">
+                                {{ $comValor->count() }} sistemas
+                            </span>
                         @endif
                     @endif
                 </td>
@@ -306,7 +330,7 @@
             </tr>
         @empty
             <tr>
-                <td colspan="7" class="px-4 py-8 text-center text-[13px] text-ink-mute">
+                <td colspan="8" class="px-4 py-8 text-center text-[13px] text-ink-mute">
                     Nenhum cliente encontrado com esse recorte.
                 </td>
             </tr>
@@ -319,6 +343,7 @@
                 <td>Nesta página</td>
                 <td>{{ $totais['contratos'] }} contratos · {{ $totais['avulsos'] }} avulsos</td>
                 <td></td>
+                <td>R$ {{ number_format($totais['licencas'], 2, ',', '.') }}</td>
                 <td>R$ {{ number_format($totais['mensal'], 2, ',', '.') }}</td>
                 <td>{{ $totais['atrasados'] }} em atraso</td>
                 <td></td>

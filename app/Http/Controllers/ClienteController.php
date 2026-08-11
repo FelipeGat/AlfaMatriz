@@ -171,6 +171,10 @@ class ClienteController extends Controller
             'contratos' => $pagina->where('tipo_cliente', 'CONTRATO')->count(),
             'avulsos' => $pagina->where('tipo_cliente', '!=', 'CONTRATO')->count(),
             'mensal' => (float) $pagina->sum('valor_mensal'),
+            // Somatório das licenças vigentes na página — separado do comercial.
+            'licencas' => (float) $pagina->sum(fn (Cliente $c) => $c->sistemas
+                ->where('pivot.ativo', true)
+                ->sum(fn ($s) => $s->pivot->valorDaLicenca() ?? 0)),
             'atrasados' => collect($pagamentos)->where('estado', 'atrasado')->count(),
         ];
     }

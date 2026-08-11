@@ -152,6 +152,9 @@ class SincronizadorSistemaService
             $cliente->sistemas()->syncWithoutDetaching([$this->sistema->id => [
                 'licenca_status' => $item['status'] ?? null,
                 'plano' => $item['plano'] ?? null,
+                // Nem todo sistema informa valor: o contrato do AlfaGym ainda
+                // não expõe `valor`, e null aqui é o estado normal dele.
+                'licenca_valor' => $item['valor'] ?? null,
                 'licenca_inicio_em' => $item['inicio_em'] ?? null,
                 'licenca_fim_em' => $item['fim_em'] ?? null,
                 'licenca_id_externo' => $item['id_externo'] ?? null,

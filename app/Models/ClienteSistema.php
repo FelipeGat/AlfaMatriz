@@ -86,6 +86,21 @@ class ClienteSistema extends Pivot
         return filled($this->licenca_id_externo);
     }
 
+    /**
+     * O valor da licença informado pela origem, quando ela informa.
+     *
+     * Só conta se a licença está de pé: licença suspensa ou sem retrato não é
+     * receita corrente, e somá-la infla o total da tela.
+     */
+    public function valorDaLicenca(): ?float
+    {
+        if ($this->licenca_valor === null || in_array($this->estado(), ['sem_licenca', 'suspensa'], true)) {
+            return null;
+        }
+
+        return (float) $this->licenca_valor;
+    }
+
     /** Há algum retrato de licença deste cliente neste sistema. */
     public function temRetrato(): bool
     {
