@@ -115,8 +115,7 @@
                                      @click="$dispatch('open-modal', 'editar-tarefa-{{ $tarefa->id }}')"
                                      class="cursor-grab active:cursor-grabbing"
                                      :class="arrastando === {{ $tarefa->id }} && 'opacity-50'">
-                                    @include('tarefas._card', ['tarefa' => $tarefa])
-                                    @include('tarefas._mover', ['tarefa' => $tarefa, 'transicoes' => $transicoes])
+                                    @include('tarefas._card', ['tarefa' => $tarefa, 'transicoes' => $transicoes])
                                 </div>
                             @empty
                                 <div class="rounded-ctl border border-dashed border-line px-2 text-center flex items-center justify-center"

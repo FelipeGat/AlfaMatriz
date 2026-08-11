@@ -86,4 +86,11 @@
             </x-badge>
         @endif
     </div>
+
+    {{--
+        O menu mora DENTRO do `<article>`: fora dele, o bloco ficava solto
+        abaixo da borda do card e lia-se como um controle do quadro, não da
+        tarefa — ainda mais com outro card logo abaixo, à mesma distância.
+    --}}
+    @include('tarefas._mover', ['tarefa' => $tarefa, 'transicoes' => $transicoes ?? []])
 </article>
