@@ -249,3 +249,26 @@
   as quebras de linha. Não sobra marcação para auditar nem sanitizador para
   manter; o traço digitado continua traço.
 - Esforço: baixo
+
+## T-085 — Um botão só no modal: o comentário vai junto no Salvar [concluida]
+- Refs: US-049, AC-134, AC-136
+- Arquivos: app/Http/Controllers/TarefaController.php, routes/web.php, resources/views/tarefas/_form.blade.php, resources/views/tarefas/_comentarios.blade.php, resources/views/tarefas/_comentarios-remocao.blade.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/historico.blade.php, tests/Feature/TarefasDesenvolvimento/ComentariosTarefaTest.php
+- Notas: o modal tinha dois botões de envio — "Salvar" no meio da tela e
+  "Comentar" embaixo — porque a conversa era um formulário separado, montado
+  DEPOIS do formulário da tarefa. Para quem edita, é uma passada só na tarefa:
+  o comentário vira mais um campo do cadastro (`comentario`, anulável) e o
+  Salvar publica os dois. Campo em branco não publica nada — é o caso comum de
+  quem abriu o modal só para trocar o responsável. Some a rota
+  `tarefas.comentarios.store` junto com o método `comentar()`: sem botão, era
+  código morto.
+  CUIDADO: com a conversa DENTRO do formulário, os formulários de apagar não
+  cabem mais ali — formulário aninhado é HTML inválido e o navegador descarta o
+  interno. Os botões do lixo passam a apontar, pelo atributo `form`, para os
+  formulários que `_comentarios-remocao` monta depois do fechamento do
+  formulário da tarefa, ainda dentro do modal. O teste assere o PAR (o `form=`
+  do botão e o `id=` do formulário): sem ele, o lixo não apaga nada e a falha é
+  silenciosa na tela.
+  Apagar segue com envio próprio de propósito: é destrutivo, e ir de carona no
+  salvar faria o clique no lixo publicar o comentário que estivesse escrito no
+  campo.
+- Esforço: baixo

@@ -137,10 +137,10 @@
     @foreach ($tarefas as $tarefa)
         @if ($tarefa->comentarios->isNotEmpty())
             <x-modal name="comentarios-tarefa-{{ $tarefa->id }}" maxWidth="lg">
-                <div class="px-6 pt-6">
-                    <h3 class="font-display font-semibold text-ink text-lg">{{ $tarefa->titulo }}</h3>
+                <div class="px-6 pt-6 pb-4">
+                    <h3 class="font-display font-semibold text-ink text-lg mb-4">{{ $tarefa->titulo }}</h3>
+                    @include('tarefas._comentarios', ['tarefa' => $tarefa, 'somenteLeitura' => true])
                 </div>
-                @include('tarefas._comentarios', ['tarefa' => $tarefa, 'somenteLeitura' => true])
                 <div class="px-6 pb-6 flex justify-end">
                     <x-secondary-button x-on:click="$dispatch('close')">Fechar</x-secondary-button>
                 </div>

@@ -203,14 +203,14 @@
         @include('tarefas._form', ['tarefa' => null, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
     </x-modal>
 
-    {{-- Modal: editar tarefa — uma por card, como em Clientes.
-         Os comentários entram DEPOIS do formulário, e não dentro: são dois
-         envios independentes, e formulário aninhado é HTML inválido — o
-         comentário viraria campo do cadastro e se perderia no salvar. --}}
+    {{-- Modal: editar tarefa — uma por card, como em Clientes. O `_form` já
+         traz a conversa dentro dele, porque o comentário é publicado pelo
+         mesmo Salvar; o que vem depois são só os formulários de apagar
+         comentário, que não podem ficar aninhados nele. --}}
     @foreach ($tarefas as $tarefa)
         <x-modal name="editar-tarefa-{{ $tarefa->id }}" maxWidth="lg">
             @include('tarefas._form', ['tarefa' => $tarefa, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
-            @include('tarefas._comentarios', ['tarefa' => $tarefa])
+            @include('tarefas._comentarios-remocao', ['tarefa' => $tarefa])
         </x-modal>
     @endforeach
 

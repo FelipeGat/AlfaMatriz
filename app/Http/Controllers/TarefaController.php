@@ -89,11 +89,30 @@ class TarefaController extends Controller
             'sistema_id' => 'nullable|exists:sistemas,id',
             'responsavel_id' => 'nullable|exists:users,id',
             'prioridade' => 'required|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
+            'comentario' => 'nullable|string|max:4000',
         ]);
+
+        // O comentário viaja no mesmo envio do cadastro (US-049): um botão só
+        // no modal, e nada de decidir entre "Salvar" e "Comentar" para o que,
+        // para quem edita, é uma passada só na tarefa. Campo em branco não
+        // publica nada — é o caso comum de quem abriu o modal só para trocar o
+        // responsável.
+        $comentario = trim($data['comentario'] ?? '');
+        unset($data['comentario']);
 
         $tarefa->update($data);
 
-        return redirect()->route('tarefas.index')->with('status', 'Tarefa atualizada.');
+        if ($comentario !== '') {
+            $tarefa->comentarios()->create([
+                'autor_id' => auth()->id(),
+                'corpo' => $comentario,
+            ]);
+        }
+
+        return redirect()->route('tarefas.index')->with(
+            'status',
+            $comentario !== '' ? 'Tarefa atualizada e comentário publicado.' : 'Tarefa atualizada.',
+        );
     }
 
     public function mover(Request $request, Tarefa $tarefa, FluxoTarefaService $fluxo)
@@ -130,37 +149,6 @@ class TarefaController extends Controller
         // perdia a cada arrasto. O mesmo vale para o "Reabrir" do histórico,
         // que agora não abandona a página nem a busca em que se estava.
         return redirect()->back(fallback: route('tarefas.index'))->with('status', 'Tarefa movida.');
-    }
-
-    /**
-     * Um comentário novo na tarefa (US-041).
-     *
-     * O texto é gravado CRU, do jeito que foi digitado: os marcadores viram
-     * lista só na hora de imprimir (`TarefaComentario::marcadoresEmHtml`).
-     * Guardar HTML pronto no banco amarraria a conversa antiga à regra de
-     * formatação de hoje — e obrigaria a confiar no que já está gravado.
-     */
-    public function comentar(Request $request, Tarefa $tarefa)
-    {
-        $this->bloquearVisaoDaMatriz();
-
-        $data = $request->validate([
-            'corpo' => 'required|string|max:4000',
-        ]);
-
-        $tarefa->comentarios()->create([
-            'autor_id' => auth()->id(),
-            'corpo' => $data['corpo'],
-        ]);
-
-        // Volta para a tela de onde veio, como o mover: comentar a partir do
-        // quadro filtrado não pode desfazer o recorte de quem estava lendo.
-        // E volta com o modal da tarefa ABERTO (`tarefa-aberta`): conversa em
-        // que cada frase fecha a janela não é conversa — quem escreveu quer
-        // ver o que escreveu, e normalmente escrever de novo.
-        return redirect()->back(fallback: route('tarefas.index'))
-            ->with('status', 'Comentário adicionado.')
-            ->with('tarefa-aberta', $tarefa->id);
     }
 
     /**

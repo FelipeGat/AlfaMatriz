@@ -265,13 +265,14 @@ Como pessoa do time, quero comentar na tarefa, para registrar o que o título e
 o resumo não cabem — o que o cliente disse, o que falta, em que ordem — e que
 esse detalhe fique datado e assinado junto da tarefa, e não num chat à parte.
 
-#### AC-134 — O comentário fica na tarefa, com autor e data
+#### AC-134 — O comentário é publicado junto com o Salvar da tarefa
 
 - **Dado** uma tarefa do quadro
-- **Quando** abro o card e escrevo um comentário
-- **Então** ele passa a aparecer na tarefa com o nome de quem escreveu e a data,
-  do mais antigo para o mais novo, e o card anuncia quantos comentários existem
-  — comentário vazio não é aceito
+- **Quando** abro o card, escrevo um comentário e salvo
+- **Então** o mesmo envio grava o cadastro e publica o comentário, que passa a
+  aparecer na tarefa com o nome de quem escreveu e a data, do mais antigo para
+  o mais novo, e o card anuncia quantos comentários existem — com o campo em
+  branco, salvar não publica nada
 
 #### AC-135 — O comentário é texto puro
 

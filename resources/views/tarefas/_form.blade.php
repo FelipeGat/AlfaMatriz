@@ -66,6 +66,16 @@
         </div>
     </div>
 
+    {{--
+        A conversa entra DENTRO do formulário, e o campo de comentário é mais
+        um campo dele: um botão só, no fim, publica o comentário junto com o
+        cadastro. Só na edição — tarefa que ainda não existe não tem conversa,
+        e o modal de criação não teria onde pendurar o comentário.
+    --}}
+    @if ($tarefa)
+        @include('tarefas._comentarios', ['tarefa' => $tarefa])
+    @endif
+
     <div class="flex justify-end gap-3">
         <x-secondary-button x-on:click="$dispatch('close')">Cancelar</x-secondary-button>
         <x-primary-button>Salvar</x-primary-button>

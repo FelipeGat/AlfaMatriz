@@ -6,6 +6,13 @@
      * para "o cliente ligou de novo, agora o erro é outro". Isso vive aqui,
      * datado e assinado, dentro do mesmo modal em que a tarefa se edita.
      *
+     * Esta partial NÃO abre formulário nenhum: no modo de escrita ela vive
+     * DENTRO do formulário da tarefa, e o campo de comentário é mais um campo
+     * dele — quem salva a tarefa publica o comentário junto. Formulário
+     * aninhado é HTML inválido, e é por isso que os botões de apagar apontam,
+     * pelo atributo `form`, para os formulários que `_comentarios-remocao`
+     * monta depois do fechamento deste.
+     *
      * `$somenteLeitura` é o histórico: tarefa encerrada se lê, não se comenta
      * — quem quer voltar a escrever reabre a tarefa (AC-131), e aí ela está
      * no quadro de novo.
@@ -14,7 +21,7 @@
     $comentarios = $tarefa->comentarios;
 @endphp
 
-<div class="px-6 pb-6 {{ $somenteLeitura ? 'pt-4' : 'pt-5 border-t border-rule' }}">
+<div @class(['border-t border-rule pt-4' => ! $somenteLeitura])>
     <div class="flex items-center gap-2">
         <h4 class="font-display text-[14px] font-semibold text-ink">Comentários</h4>
         <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
@@ -35,17 +42,15 @@
                     </p>
 
                     {{-- Só o autor apaga o próprio, e a mesma regra vale no
-                         servidor: o botão some, a rota recusa. --}}
+                         servidor: o botão some, a rota recusa. O `form` aponta
+                         para fora — apagar é envio próprio, e não pode ir de
+                         carona no salvar da tarefa. --}}
                     @if (! $somenteLeitura && $comentario->autor_id === auth()->id())
-                        <form method="POST" action="{{ route('tarefas.comentarios.destroy', $comentario) }}"
-                              class="shrink-0">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" title="Apagar este comentário"
-                                    class="p-1 rounded-tile text-ink-faint hover:text-crit transition">
-                                <span class="block h-[13px] w-[13px]"><x-nav-icon name="trash" /></span>
-                            </button>
-                        </form>
+                        <button type="submit" form="apagar-comentario-{{ $comentario->id }}"
+                                title="Apagar este comentário"
+                                class="shrink-0 p-1 rounded-tile text-ink-faint hover:text-crit transition">
+                            <span class="block h-[13px] w-[13px]"><x-nav-icon name="trash" /></span>
+                        </button>
                     @endif
                 </div>
 
@@ -67,29 +72,25 @@
     </div>
 
     @unless ($somenteLeitura)
-        <form method="POST" action="{{ route('tarefas.comentarios.store', $tarefa) }}" class="mt-4">
-            @csrf
+        <div class="mt-4">
+            <x-input-label for="comentario-{{ $tarefa->id }}" value="Novo comentário" />
 
-            <x-input-label for="corpo-{{ $tarefa->id }}" value="Novo comentário" />
-
-            {{-- O campo não formata nada: o que se digita é o que fica
-                 gravado e o que aparece na tela, quebras de linha inclusive.
-                 Quem quiser enumerar escreve os traços à mão, e eles
-                 continuam traços. --}}
-            <textarea id="corpo-{{ $tarefa->id }}" name="corpo" rows="3" required maxlength="4000"
+            {{-- O campo não formata nada: o que se digita é o que fica gravado
+                 e o que aparece na tela, quebras de linha inclusive. --}}
+            <textarea id="comentario-{{ $tarefa->id }}" name="comentario" rows="3" maxlength="4000"
                       placeholder="O que mais precisa ser dito sobre esta tarefa…"
                       class="mt-1 block w-full text-[13px] rounded-control bg-input border-line text-ink"></textarea>
 
-            @error('corpo')
+            @error('comentario')
                 <p class="mt-1 text-[12px] text-crit">{{ $message }}</p>
             @enderror
 
-            <div class="mt-2 flex items-center justify-end gap-3">
-                <button type="submit"
-                        class="h-[30px] px-3 rounded-control bg-brand text-on-brand font-semibold text-[12px] hover:bg-brand-bright transition">
-                    Comentar
-                </button>
-            </div>
-        </form>
+            {{-- Sem botão próprio, o campo precisa dizer quando é publicado:
+                 caixa de texto que não anuncia o próprio envio é caixa que se
+                 preenche e se perde ao fechar o modal. --}}
+            <p class="mt-1 text-[11.5px] text-ink-faint">
+                Entra na tarefa quando você salvar. Em branco, nada é publicado.
+            </p>
+        </div>
     @endunless
 </div>
