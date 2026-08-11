@@ -38,17 +38,6 @@
                 </template>
             </select>
 
-            {{--
-                Bloquear sem dizer por quê só troca a coluna em que o card
-                apodrece. O texto aqui é o que permite a outra pessoa destravar
-                a tarefa depois — quem parou sabe o que está esperando; três
-                dias depois, ninguém sabe.
-            --}}
-            <template x-if="destino === 'bloqueada'">
-                <textarea name="motivo" rows="2" required placeholder="O que está travando? (esperando quem, o quê)"
-                          class="w-full text-[12px] rounded-control bg-input border-line text-ink"></textarea>
-            </template>
-
             <template x-if="destino === 'ajustes_necessarios'">
                 <textarea name="motivo" rows="2" required placeholder="O que precisa ser corrigido…"
                           class="w-full text-[12px] rounded-control bg-input border-line text-ink"></textarea>
@@ -84,5 +73,28 @@
                 Confirmar
             </button>
         </form>
+
+        {{--
+            Bloquear tem formulário PRÓPRIO, e não uma opção do select acima:
+            travar deixou de ser etapa, e listá-lo junto dos destinos faria o
+            menu voltar a ensinar que a tarefa muda de lugar quando trava — que
+            é exatamente a ideia que a tarja no card veio desfazer.
+
+            Só aparece para tarefa solta: quem já está travado destrava pelo
+            botão da tarja, que fica ao lado do motivo que deixou de valer.
+        --}}
+        @if (! $tarefa->estaBloqueada())
+            <form x-show="menuAberto" x-cloak method="POST"
+                  action="{{ route('tarefas.bloquear', $tarefa) }}" class="mt-2 pt-2 border-t border-rule space-y-2">
+                @csrf
+                <textarea name="motivo" rows="2" required placeholder="Bloquear: esperando quem, e o quê…"
+                          class="w-full text-[12px] rounded-control bg-input border-line text-ink"></textarea>
+                <button type="submit"
+                        class="w-full h-8 rounded-control border font-semibold text-[12px] transition hover:bg-chip"
+                        style="border-color: rgb(var(--warn) / 0.45); color: rgb(var(--warn))">
+                    Bloquear tarefa
+                </button>
+            </form>
+        @endif
     </div>
 @endif

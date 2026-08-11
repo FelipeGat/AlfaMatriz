@@ -25,6 +25,17 @@
     }
     $tomEsquecida = ['atencao' => 'warn', 'critico' => 'crit'][$nivelEsquecida] ?? null;
 
+    // Travada manda na borda. O aviso de esquecida mede abandono, e tarefa
+    // travada não está abandonada — está esperando, com o porquê escrito. Se os
+    // dois disputassem a borda, o card diria "ninguém olha para mim" sobre uma
+    // tarefa que alguém parou de propósito.
+    $bloqueada = $tarefa->estaBloqueada();
+    $corDaBorda = match (true) {
+        $bloqueada => 'rgb(var(--warn) / 0.45)',
+        (bool) $tomEsquecida => 'rgb(var(--'.$tomEsquecida.') / 0.4)',
+        default => 'var(--line)',
+    };
+
     // Um tom por nível, sem repetir: com `baixa` e `media` no mesmo neutro,
     // dois dos quatro níveis ficavam indistinguíveis e a escala perdia o
     // meio. A ordem sobe do mais discreto ao mais grave (AC-126).
@@ -37,9 +48,10 @@
 @endphp
 
 <article data-tarefa="{{ $tarefa->id }}"
-         @if ($nivelEsquecida) data-esquecida="{{ $nivelEsquecida }}" @endif
+         @if ($nivelEsquecida && ! $bloqueada) data-esquecida="{{ $nivelEsquecida }}" @endif
+         @if ($bloqueada) data-bloqueada="1" @endif
          class="rounded-ctl bg-card-grad border p-2.5"
-         style="border-color: {{ $tomEsquecida ? 'rgb(var(--'.$tomEsquecida.') / 0.4)' : 'var(--line)' }}">
+         style="border-color: {{ $corDaBorda }}">
     <div class="flex items-start gap-2">
         <p class="min-w-0 flex-1 truncate text-[13.5px] font-medium text-ink">{{ $tarefa->titulo }}</p>
         {{--
@@ -76,6 +88,51 @@
     <p class="mt-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
         {{ $tarefa->sistema?->nome ?? 'Sem sistema' }} · {{ $tarefa->responsavel?->name ?? 'Sem responsável' }}
     </p>
+
+    {{--
+        A tarja de bloqueio.
+
+        O motivo ocupa a largura inteira e quebra em até duas linhas — truncado
+        numa linha só, o "porquê" existiria apenas no tooltip, e o argumento
+        inteiro de tirar o bloqueio da coluna era ele viajar junto da etapa. Um
+        card que diz "travada" sem dizer do quê obriga a abrir a tarefa para
+        descobrir, que é o trabalho que a tarja existe para poupar.
+    --}}
+    @if ($bloqueada)
+        <div class="mt-2 rounded-[4px] px-2.5 py-[7px] border-l-2"
+             style="background: rgb(var(--warn) / var(--tint-alpha)); border-color: rgb(var(--warn))">
+            <div class="flex items-center gap-1.5">
+                <span class="shrink-0 h-3 w-3" style="color: rgb(var(--warn))">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-3 w-3">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                    </svg>
+                </span>
+                <span class="flex-1 min-w-0 truncate font-mono text-[9.5px] font-semibold uppercase tracking-caps"
+                      style="color: rgb(var(--warn))">
+                    {{ $tarefa->rotuloDoBloqueio() }}
+                </span>
+
+                {{-- Destravar mora na tarja, e não no menu: quem lê o motivo é
+                     quem acabou de descobrir que ele não vale mais. --}}
+                <form method="POST" action="{{ route('tarefas.bloquear', $tarefa) }}" @click.stop>
+                    @csrf
+                    <button type="submit" title="Destravar tarefa" aria-label="Destravar tarefa"
+                            class="shrink-0 h-5 w-5 rounded-[3px] border flex items-center justify-center transition hover:bg-chip"
+                            style="border-color: rgb(var(--warn) / 0.45); color: rgb(var(--warn))">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" class="h-[11px] w-[11px]">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                        </svg>
+                    </button>
+                </form>
+            </div>
+
+            <p class="mt-1 text-[11.5px] leading-snug text-ink line-clamp-2" title="{{ $tarefa->bloqueio_motivo }}">
+                {{ $tarefa->bloqueio_motivo }}
+            </p>
+        </div>
+    @endif
 
     <div class="mt-2 pt-2 border-t border-rule flex items-center gap-2">
         <x-badge :tom="$tomEsquecida ? $nivelEsquecida : 'neutro'"

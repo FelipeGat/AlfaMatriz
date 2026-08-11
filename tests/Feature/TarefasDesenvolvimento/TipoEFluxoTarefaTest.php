@@ -140,47 +140,68 @@ class TipoEFluxoTarefaTest extends TestCase
         $tarefa = $this->criarTarefa(['status' => 'em_desenvolvimento']);
 
         try {
-            $this->fluxo->mover($tarefa, 'bloqueada');
+            $this->fluxo->bloquear($tarefa, '   ');
             $this->fail('Esperava recusa por falta de motivo.');
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString('travando a tarefa', $e->getMessage());
         }
 
-        $this->assertSame('em_desenvolvimento', $tarefa->fresh()->status);
+        $this->assertFalse($tarefa->fresh()->estaBloqueada());
 
-        $movida = $this->fluxo->mover($tarefa, 'bloqueada', [
-            'motivo' => 'Esperando o fabricante liberar o firmware.',
-        ]);
+        $travada = $this->fluxo->bloquear($tarefa, 'Esperando o fabricante liberar o firmware.');
 
-        $this->assertSame('bloqueada', $movida->status);
-        $this->assertDatabaseHas('tarefa_eventos', [
-            'tarefa_id' => $tarefa->id,
-            'para_status' => 'bloqueada',
-            'motivo' => 'Esperando o fabricante liberar o firmware.',
-        ]);
+        $this->assertTrue($travada->estaBloqueada());
+        $this->assertSame('Esperando o fabricante liberar o firmware.', $travada->bloqueio_motivo);
     }
 
     /**
-     * @spec:AC-181 A tarefa bloqueada volta para a etapa de onde parou, e o tempo que
-     * ficou esperando fica cronometrado — é o número que a etapa existe para produzir.
+     * @spec:AC-181 A tarefa travada NÃO sai da etapa: o bloqueio é marca, não lugar.
+     * Como coluna, ele apagava onde a tarefa estava — e o fluxo tinha de reconstruir
+     * isso na mão para não devolver à bancada o código que estava em teste.
      */
-    public function test_bloqueada_volta_para_onde_parou_e_o_tempo_parado_fica_registrado(): void
+    public function test_a_tarefa_travada_nao_sai_da_etapa(): void
     {
         $tarefa = $this->criarTarefa(['status' => 'em_testes']);
 
-        $this->fluxo->mover($tarefa, 'bloqueada', ['motivo' => 'Esperando o cliente validar.']);
+        $travada = $this->fluxo->bloquear($tarefa, 'Esperando o cliente validar.');
 
-        // Quem bloqueou esperando validação estava em Em testes: devolver essa
-        // tarefa para Em andamento diria que o código voltou para a bancada.
-        $this->assertContains('em_testes', FluxoTarefaService::transicoesDe($tarefa->fresh()));
+        $this->assertSame('em_testes', $travada->status);
+        $this->assertTrue($travada->estaBloqueada());
 
-        $this->fluxo->mover($tarefa->fresh(), 'em_testes');
+        // "Bloqueada agora", e não "Bloqueada há agora": a régua curta devolve
+        // a palavra "agora" no primeiro minuto, e concatenar o "há" nela dá uma
+        // frase que não existe.
+        $this->assertSame('Bloqueada agora', $travada->rotuloDoBloqueio());
+        $this->assertSame('Bloqueada há 2d', $travada->fresh()
+            ->forceFill(['bloqueado_em' => now()->subDays(2)])->rotuloDoBloqueio());
 
-        $this->assertSame('em_testes', $tarefa->fresh()->status);
+        // Nenhum evento de etapa nasce do bloqueio: `tarefa_eventos` mede
+        // permanência em ETAPA, e uma linha aqui faria o cronômetro contar duas
+        // passagens por Em testes onde houve uma só.
+        $this->assertSame(0, $tarefa->eventos()->count());
 
-        $bloqueio = $tarefa->eventos()->where('para_status', 'bloqueada')->first();
-        $this->assertNotNull($bloqueio->saiu_em);
-        $this->assertNotNull($bloqueio->duracao_segundos);
+        $solta = $this->fluxo->destravar($travada);
+
+        $this->assertSame('em_testes', $solta->status);
+        $this->assertFalse($solta->estaBloqueada());
+    }
+
+    /**
+     * @spec:AC-190 Mudar de etapa destrava. O bloqueio é sempre sobre o trabalho de uma
+     * etapa — "esperando o cliente validar" é uma frase sobre Em testes —, e carregá-lo
+     * adiante faria o card anunciar um impedimento que já não vale.
+     */
+    public function test_mover_a_tarefa_tira_a_marca_de_travada(): void
+    {
+        $tarefa = $this->criarTarefa(['status' => 'em_testes']);
+
+        $this->fluxo->bloquear($tarefa, 'Esperando o cliente validar.');
+
+        $movida = $this->fluxo->mover($tarefa->fresh(), 'em_desenvolvimento');
+
+        $this->assertSame('em_desenvolvimento', $movida->status);
+        $this->assertFalse($movida->estaBloqueada());
+        $this->assertNull($movida->bloqueio_motivo);
     }
 
     /**

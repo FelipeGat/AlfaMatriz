@@ -4,6 +4,7 @@ namespace Tests\Feature\TarefasDesenvolvimento;
 
 use App\Models\Tarefa;
 use App\Models\User;
+use App\Services\FluxoTarefaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Js;
 use Tests\TestCase;
@@ -217,14 +218,11 @@ class MoverTarefaTest extends TestCase
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        // Em testes ganhou dois destinos além dos três originais: a volta seca
-        // para Em andamento — que antes só existia declarando uma reprovação
-        // que não houve — e o bloqueio, para o teste que fica esperando alguém
-        // (AC-183, AC-180).
+        // Em testes ganhou a volta seca para Em andamento, que antes só existia
+        // declarando uma reprovação que não houve (AC-183). Bloquear saiu da
+        // lista: travar deixou de ser etapa e virou ação própria (AC-190).
         $esperado = 'x-data="{ transicoesDoCard: '
-            .Js::from([
-                'concluida', 'ajustes_necessarios', 'em_desenvolvimento', 'bloqueada', 'cancelada',
-            ]).' }"';
+            .Js::from(['concluida', 'ajustes_necessarios', 'em_desenvolvimento', 'cancelada']).' }"';
 
         $this->assertStringContainsString($esperado, $html,
             'O menu do card em Em testes precisa trazer os destinos permitidos, com o atributo x-data íntegro.');
@@ -249,41 +247,55 @@ class MoverTarefaTest extends TestCase
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        // O card entrega a lista de destinos ao ser pego.
+        // O card entrega ao quadro, ao ser pego: os próprios destinos, o tipo
+        // (que decide se concluir pede relatório) e se já está travado.
+        // O `preg_replace` tira a indentação do atributo multilinha — a
+        // asserção é sobre o que o card informa, não sobre como o Blade quebrou
+        // a linha.
+        $numaLinha = preg_replace('/\s+/', ' ', $html);
+
         $this->assertStringContainsString(
-            'pegar('.Tarefa::first()->id.', '.Js::from(['concluida', 'bloqueada', 'backlog', 'cancelada']).')',
-            $html,
-            'O card precisa levar os próprios destinos para o quadro no dragstart.'
+            'pegar( '.Tarefa::first()->id.', '.Js::from(['concluida', 'backlog', 'cancelada'])->toHtml()
+                .", 'operacional', false )",
+            $numaLinha,
+            'O card precisa levar destinos, tipo e situação de bloqueio para o quadro no dragstart.'
         );
 
         // E cada coluna do quadro se pergunta se aceita o que está na mão.
-        foreach (['aberta', 'backlog', 'em_desenvolvimento', 'bloqueada', 'em_testes', 'ajustes_necessarios'] as $etapa) {
+        foreach (['aberta', 'backlog', 'em_desenvolvimento', 'em_testes', 'ajustes_necessarios'] as $etapa) {
             $this->assertStringContainsString("aceita('".$etapa."')", $html,
                 "A coluna {$etapa} precisa consultar se aceita o card arrastado.");
         }
     }
 
     /**
-     * @spec:AC-188 Soltar numa etapa que pede texto abre o formulário do card já com o
-     * destino escolhido. Antes o arrasto morria em silêncio — não movia e não dizia
-     * nada, o que se lê como sistema quebrado e não como regra.
+     * @spec:AC-188 Soltar numa etapa que pede texto abre o painel de motivo, que nomeia
+     * a ação e diz por que o texto está sendo pedido. Antes o arrasto morria em
+     * silêncio — não movia e não dizia nada, o que se lê como sistema quebrado.
      */
-    public function test_soltar_onde_pede_texto_abre_o_formulario_do_card(): void
+    public function test_soltar_onde_pede_texto_abre_o_painel_de_motivo(): void
     {
         $usuario = User::factory()->create();
-        $tarefa = $this->criarTarefa(['status' => 'em_desenvolvimento']);
+        $this->criarTarefa(['status' => 'em_testes']);
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        // A coluna Bloqueada se declara como etapa que pede texto...
-        $this->assertStringContainsString("soltar('bloqueada', true)", $html);
+        // As etapas e faixas que pedem texto se declaram no solto...
+        $this->assertStringContainsString("soltar('ajustes_necessarios', true)", $html);
+        $this->assertStringContainsString("soltar('bloqueio', true)", $html);
 
-        // ...o quadro abre o menu em vez de engolir o solto...
-        $this->assertStringContainsString("\$dispatch('abrir-mover', { tarefa, destino: status })", $html);
+        // ...e o quadro abre o painel em vez de engolir o gesto.
+        $this->assertStringContainsString('this.abrirPendente(tarefa, status)', $html);
 
-        // ...e o card escuta, porque o evento nasce no quadro, que é o pai dele.
-        $this->assertStringContainsString('@abrir-mover.window', $html);
-        $this->assertStringContainsString('$event.detail.tarefa === '.$tarefa->id, $html);
+        // O painel nomeia a ação e o resultado — "Confirmar" é o que se aperta
+        // sem ler —, e diz por que está pedindo o texto.
+        $this->assertStringContainsString('Devolvendo para ajustes', $html);
+        $this->assertStringContainsString('Devolver para ajustes', $html);
+        $this->assertStringContainsString('Bloquear tarefa', $html);
+        $this->assertStringContainsString('Quem for corrigir precisa saber o que falhou', $html);
+
+        // A coluna de destino segue realçada enquanto o motivo não vem.
+        $this->assertStringContainsString("pendente?.destino === 'ajustes_necessarios'", $html);
     }
 
     /**
@@ -306,6 +318,59 @@ class MoverTarefaTest extends TestCase
         // E continua sem ser coluna: nenhuma etapa terminal entra no quadro.
         $etapas = $this->actingAs($usuario)->get(route('tarefas.index'))->viewData('etapas');
         $this->assertNotContains('concluida', array_column($etapas, 'chave'));
+    }
+
+    /**
+     * @spec:AC-191 A tarja do card diz há quanto tempo a tarefa está travada e por quê,
+     * com o destravar ao lado. O motivo ocupa a largura inteira e quebra em duas linhas:
+     * truncado, o "porquê" só existiria no tooltip — e ele viajar junto da etapa era o
+     * argumento inteiro de tirar o bloqueio da coluna.
+     */
+    public function test_a_tarja_do_card_carrega_o_motivo_e_o_destravar(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = $this->criarTarefa(['status' => 'em_testes']);
+
+        app(FluxoTarefaService::class)
+            ->bloquear($tarefa, 'Revenda não respondeu o e-mail de confirmação.');
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // O card continua na coluna Em testes, com a tarja dentro dele.
+        $colunas = $this->actingAs($usuario)->get(route('tarefas.index'))->viewData('colunas');
+        $this->assertContains($tarefa->id, $colunas['em_testes']->pluck('id')->all());
+
+        $this->assertStringContainsString('Bloqueada agora', $html);
+        $this->assertStringContainsString('Revenda não respondeu o e-mail de confirmação.', $html);
+
+        // O destravar mora na tarja: quem lê o motivo é quem acabou de
+        // descobrir que ele não vale mais.
+        $this->assertStringContainsString(route('tarefas.bloquear', $tarefa), $html);
+        $this->assertStringContainsString('Destravar tarefa', $html);
+    }
+
+    /**
+     * @spec:AC-192 A faixa Bloquear recebe o card arrastado e conta as travadas do
+     * recorte. Bloquear é o que sobrou da coluna: a tarefa não sai da etapa, então não
+     * há para onde arrastá-la — mas o gesto continua existindo e precisa de destino.
+     */
+    public function test_a_faixa_de_bloquear_recebe_o_card_e_conta_as_travadas(): void
+    {
+        $usuario = User::factory()->create();
+        $fluxo = app(FluxoTarefaService::class);
+
+        $fluxo->bloquear($this->criarTarefa(['status' => 'em_testes']), 'Esperando o cliente.');
+        $fluxo->bloquear($this->criarTarefa(['status' => 'em_desenvolvimento']), 'Falta acesso ao servidor.');
+        $this->criarTarefa(['status' => 'backlog', 'responsavel_id' => User::factory()->create()->id]);
+
+        $resposta = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk();
+
+        $this->assertSame(2, $resposta->viewData('totalBloqueadas'),
+            'O contador da faixa mede as travadas do recorte, como os das colunas.');
+
+        $html = $resposta->getContent();
+        $this->assertStringContainsString("soltar('bloqueio', true)", $html);
+        $this->assertStringContainsString("aceita('bloqueio')", $html);
     }
 
     /**

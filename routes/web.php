@@ -79,6 +79,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permissao:tarefas');
     Route::post('tarefas/{tarefa}/mover', [TarefaController::class, 'mover'])->name('tarefas.mover')
         ->middleware('permissao:tarefas');
+    // Travar não é mover: a tarefa fica na etapa e só ganha a marca. Por isso
+    // rota própria, e não um destino de `tarefas.mover` — o bloqueio saiu do
+    // mapa de transições justamente para parar de fingir que era etapa.
+    Route::post('tarefas/{tarefa}/bloquear', [TarefaController::class, 'bloquear'])
+        ->name('tarefas.bloquear')
+        ->middleware('permissao:tarefas');
     // Não há rota de criar comentário: ele viaja no `tarefas.update`, no mesmo
     // envio do cadastro. Corrigir e apagar continuam sendo caminho próprio —
     // mexem no que já foi publicado, e não podem ir de carona no salvar.

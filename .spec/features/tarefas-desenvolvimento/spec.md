@@ -376,18 +376,23 @@ retorna —, não havia para onde levar o card.
 
 #### AC-180 — Bloquear exige dizer o que está travando
 
-- **Dado** uma tarefa em Em andamento
-- **Quando** a movo para Bloqueada sem escrever o que trava
-- **Então** o movimento é recusado; com o texto, ela é bloqueada e o motivo fica
-  gravado no histórico de etapas dela
+- **Dado** uma tarefa em curso
+- **Quando** a bloqueio sem escrever o que trava
+- **Então** o bloqueio é recusado; com o texto, ela é marcada como travada e o
+  motivo fica guardado nela
 
-#### AC-181 — A bloqueada volta para a etapa de onde parou, e o tempo parado fica medido
+#### AC-181 — A tarefa travada não sai da etapa
 
-- **Dado** uma tarefa que foi bloqueada estando em Em testes
-- **Quando** ela é destravada
-- **Então** posso devolvê-la para Em testes, e não só para Em andamento — o
-  código não voltou para a bancada, ele ficou esperando; e a etapa Bloqueada
-  fecha com entrada, saída e duração, como qualquer outra
+- **Dado** uma tarefa em Em testes
+- **Quando** ela é bloqueada e depois destravada
+- **Então** ela continua em Em testes o tempo todo — o bloqueio é marca, não
+  lugar (US-058)
+
+> **Revisto em 11/08/2026.** Estes dois critérios nasceram com Bloqueada sendo
+> coluna e foram reescritos quando ela virou marca. O handoff de design pediu a
+> mudança, e o argumento decisivo estava no próprio código: o mapa de transições
+> precisava listar Em testes como volta de Bloqueada, à mão, para reconstruir a
+> etapa que a coluna tinha apagado.
 
 ### US-056 — Recuar não precisa de permissão
 
@@ -446,6 +451,43 @@ embutida.
 - **Então** a conclusão é recusada: o relatório aprovado é da passagem anterior,
   e o teste que provava o código de antes não prova o de depois. O mesmo vale
   para a tarefa que voltou de Ajustes necessários
+
+### US-058 — O bloqueio deixa de ser lugar e vira marca
+
+Como pessoa do time, quero que a tarefa travada continue na etapa em que está,
+para que o quadro não minta sobre onde o trabalho parou.
+
+Bloqueada foi coluna por um dia. Como coluna, ela **apagava a etapa** em que a
+tarefa estava — e o fluxo tinha de reconstruir isso na mão, oferecendo Em testes
+como volta só para não devolver à bancada o código que estava em teste. Era
+contorno em cima de informação jogada fora. É a mudança estrutural do redesenho
+(handoff de 11/08/2026).
+
+#### AC-190 — A tarefa travada não muda de etapa, e mover destrava
+
+- **Dado** uma tarefa em Em testes
+- **Quando** eu a bloqueio
+- **Então** ela continua em Em testes, ganha a marca e o motivo, e nenhum evento
+  de etapa nasce disso — `tarefa_eventos` mede permanência em etapa, e uma linha
+  ali faria o cronômetro contar duas passagens onde houve uma. Movê-la para
+  outra etapa tira a marca: o bloqueio é sempre sobre o trabalho de uma etapa, e
+  carregá-lo adiante faria o card anunciar um impedimento que já não vale
+
+#### AC-191 — A tarja do card diz há quanto tempo e por quê
+
+- **Dado** uma tarefa travada no quadro
+- **Quando** olho o card dela
+- **Então** leio uma tarja âmbar com o tempo travado e o motivo em até duas
+  linhas — o motivo ocupa a largura inteira, porque truncado ele só existiria no
+  tooltip, e ele viajar junto da etapa é o argumento inteiro da mudança — com o
+  botão de destravar ao lado, onde está quem acabou de ler que o motivo não vale
+
+#### AC-192 — A faixa Bloquear recebe o card e conta as travadas
+
+- **Dado** o quadro com tarefas travadas
+- **Quando** arrasto um card até a faixa Bloquear
+- **Então** o painel de motivo abre; e a faixa mostra quantas tarefas do recorte
+  estão travadas, como os contadores das colunas
 
 ## Fora de escopo
 

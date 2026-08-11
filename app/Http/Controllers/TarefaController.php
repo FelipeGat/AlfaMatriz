@@ -57,8 +57,13 @@ class TarefaController extends Controller
         // "X de Y" do cabeçalho, o aviso de que há trabalho fora do recorte.
         $totalNoQuadro = Tarefa::whereIn('status', $emCurso->keys())->count();
 
+        // O contador da faixa de bloqueio. Ele mede o RECORTE, como os das
+        // colunas: com filtro ligado, um número falando do quadro inteiro
+        // apontaria para cards que não estão na tela.
+        $totalBloqueadas = $tarefas->filter->estaBloqueada()->count();
+
         return view('tarefas.index', compact(
-            'tarefas', 'colunas', 'etapas', 'filtros', 'totalNoQuadro',
+            'tarefas', 'colunas', 'etapas', 'filtros', 'totalNoQuadro', 'totalBloqueadas',
         ) + $this->listasDeFiltro());
     }
 
@@ -252,6 +257,33 @@ class TarefaController extends Controller
         // perdia a cada arrasto. O mesmo vale para o "Reabrir" do histórico,
         // que agora não abandona a página nem a busca em que se estava.
         return redirect()->back(fallback: route('tarefas.index'))->with('status', 'Tarefa movida.');
+    }
+
+    /**
+     * Trava a tarefa sem tirá-la da etapa, ou destrava.
+     *
+     * Uma rota só para os dois sentidos porque, para quem usa, é um botão só
+     * que alterna — e dois caminhos separados abririam a chance de destravar o
+     * que já está solto, ou travar duas vezes, sem nada a ganhar.
+     */
+    public function bloquear(Request $request, Tarefa $tarefa, FluxoTarefaService $fluxo)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $data = $request->validate([
+            'motivo' => 'nullable|string|max:2000',
+        ]);
+
+        try {
+            $tarefa->estaBloqueada()
+                ? $fluxo->destravar($tarefa)
+                : $fluxo->bloquear($tarefa, $data['motivo'] ?? null);
+        } catch (\RuntimeException $e) {
+            return back()->with('erro', $e->getMessage());
+        }
+
+        return redirect()->back(fallback: route('tarefas.index'))
+            ->with('status', $tarefa->fresh()->estaBloqueada() ? 'Tarefa bloqueada.' : 'Tarefa destravada.');
     }
 
     /**
@@ -493,17 +525,15 @@ class TarefaController extends Controller
      * na marca, o atrito em `warn`, a chegada em `good`. Cancelada fica
      * neutra de propósito — é terminal sem valor e não disputa atenção.
      *
-     * Bloqueada divide o `warn` com Ajustes necessários porque as duas são a
-     * mesma notícia — o trabalho parou e alguém precisa agir —, e a faixa de
-     * atrito ficar contínua no quadro é exatamente o que se quer enxergar de
-     * longe.
+     * O `warn` do bloqueio saiu daqui junto com a coluna: ele agora é a cor da
+     * tarja no card e da faixa de solto, que é onde o bloqueio passou a viver.
      */
     private function corDaEtapa(string $status): string
     {
         return match ($status) {
             'aberta', 'backlog' => 'accent',
             'em_desenvolvimento', 'em_testes' => 'brand',
-            'bloqueada', 'ajustes_necessarios' => 'warn',
+            'ajustes_necessarios' => 'warn',
             'concluida' => 'good',
             default => 'line',
         };

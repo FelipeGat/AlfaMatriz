@@ -1,5 +1,43 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 11/08/2026 — A tarefa travada não muda mais de lugar
+
+A coluna "Bloqueada", criada hoje mais cedo, saiu do quadro. No lugar dela, a
+tarefa travada **fica na coluna em que está** e ganha uma tarja âmbar com o
+motivo, o tempo parado e um botão de destravar.
+
+O problema da coluna era que ela apagava a informação mais útil: com o card
+dentro dela, ninguém sabia se aquele trabalho tinha parado no meio do
+desenvolvimento ou já em teste — e o sistema tinha que adivinhar para onde
+devolver a tarefa quando ela destravasse. Agora não há o que adivinhar.
+
+### Novidades
+
+- **Tarja de bloqueio no card.** O motivo aparece embaixo do título, em duas
+  linhas, junto do tempo travado ("Bloqueada há 2d"). Antes era preciso abrir a
+  tarefa para descobrir o que estava esperando.
+- **Faixa "Bloquear" no fim do quadro**, ao lado da faixa "Concluir". Arraste o
+  card até ela e escreva o que trava. A faixa também mostra quantas tarefas
+  estão travadas.
+- **Painel de motivo com nome e explicação.** Quando o movimento pede um texto
+  — bloquear, cancelar, devolver para ajustes, concluir —, abre um painel que
+  diz o que vai acontecer ("Bloqueando a tarefa"), explica numa linha por que o
+  texto está sendo pedido, e cujo botão nomeia o resultado ("Bloquear tarefa")
+  em vez de dizer "Confirmar", que é o que se aperta sem ler. A coluna de
+  destino fica destacada enquanto você escreve.
+
+### Melhorias
+
+- **Mover uma tarefa travada a destrava.** O bloqueio é sempre sobre o trabalho
+  de uma etapa — "esperando o cliente validar" é uma frase sobre a fase de
+  testes. Ao mudar de etapa, a marca sai, porque alguém agiu.
+- **A tarefa travada continua contando o tempo da etapa em que está**, sem
+  ganhar uma passagem extra no histórico só por ter sido bloqueada.
+
+> A publicação inclui uma atualização do banco. As tarefas que estiverem na
+> coluna Bloqueada voltam sozinhas para a etapa de onde saíram, mantendo o
+> motivo e o tempo travado.
+
 ## AlfaMatriz — 11/08/2026 — O quadro passou a caber o trabalho que não é desenvolvimento
 
 Até aqui, o quadro de Tarefas só sabia acompanhar um tipo de trabalho: o ciclo

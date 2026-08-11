@@ -38,22 +38,16 @@ class FluxoTarefaService
         'desenvolvimento' => [
             'aberta' => ['backlog', 'cancelada'],
             'backlog' => ['aberta', 'em_desenvolvimento', 'cancelada'],
-            'em_desenvolvimento' => ['em_testes', 'bloqueada', 'backlog', 'cancelada'],
-            // Destrava de volta para onde parou: quem bloqueou esperando o
-            // cliente validar estava em Em testes, e devolver essa tarefa para
-            // Em andamento diria que o código voltou para a bancada — não
-            // voltou, ele só ficou esperando.
-            'bloqueada' => ['em_desenvolvimento', 'em_testes', 'backlog', 'cancelada'],
-            'em_testes' => ['concluida', 'ajustes_necessarios', 'em_desenvolvimento', 'bloqueada', 'cancelada'],
-            'ajustes_necessarios' => ['em_desenvolvimento', 'bloqueada', 'cancelada'],
+            'em_desenvolvimento' => ['em_testes', 'backlog', 'cancelada'],
+            'em_testes' => ['concluida', 'ajustes_necessarios', 'em_desenvolvimento', 'cancelada'],
+            'ajustes_necessarios' => ['em_desenvolvimento', 'cancelada'],
             'concluida' => ['em_desenvolvimento'],
             'cancelada' => ['aberta'],
         ],
         'operacional' => [
             'aberta' => ['backlog', 'cancelada'],
             'backlog' => ['aberta', 'em_desenvolvimento', 'cancelada'],
-            'em_desenvolvimento' => ['concluida', 'bloqueada', 'backlog', 'cancelada'],
-            'bloqueada' => ['em_desenvolvimento', 'backlog', 'cancelada'],
+            'em_desenvolvimento' => ['concluida', 'backlog', 'cancelada'],
             // Etapas do ciclo de desenvolvimento: a tarefa operacional não
             // CHEGA nelas — nenhuma etapa dela oferece esse destino. Elas estão
             // aqui como saída de emergência para o caso de alguém trocar o tipo
@@ -113,6 +107,14 @@ class FluxoTarefaService
 
             $tarefa->update($atualizacao);
 
+            // Mudar de etapa destrava. O bloqueio é sempre sobre o trabalho de
+            // uma etapa — "esperando o cliente validar" é uma frase sobre Em
+            // testes —, e carregá-lo para a etapa seguinte faria o card
+            // anunciar um impedimento que não vale mais. Quem moveu, agiu.
+            if ($tarefa->bloqueado_em !== null) {
+                $tarefa->forceFill(['bloqueado_em' => null, 'bloqueio_motivo' => null])->save();
+            }
+
             TarefaEvento::create([
                 'tarefa_id' => $tarefa->id,
                 'de_status' => $statusAtual,
@@ -123,6 +125,51 @@ class FluxoTarefaService
 
             return $tarefa->refresh();
         });
+    }
+
+    /**
+     * Marca a tarefa como travada, sem tirá-la da etapa.
+     *
+     * O bloqueio já foi etapa, e como etapa ele APAGAVA onde a tarefa estava —
+     * o mapa de transições tinha de reconstruir isso na mão para não devolver à
+     * bancada o código que estava em teste. Como marca, não há o que
+     * reconstruir: a tarefa não saiu do lugar.
+     *
+     * Por isso também não nasce evento aqui. `tarefa_eventos` mede permanência
+     * em ETAPA, e uma linha de bloqueio ali fecharia o evento da etapa atual —
+     * o cronômetro passaria a contar duas passagens onde houve uma só.
+     */
+    public function bloquear(Tarefa $tarefa, ?string $motivo): Tarefa
+    {
+        if (trim((string) $motivo) === '') {
+            throw new \RuntimeException('É preciso dizer o que está travando a tarefa.');
+        }
+
+        if ($tarefa->estaBloqueada()) {
+            throw new \RuntimeException('Esta tarefa já está bloqueada.');
+        }
+
+        if (in_array($tarefa->status, Tarefa::STATUS_TERMINAIS, true)) {
+            throw new \RuntimeException('Tarefa encerrada não tem trabalho para travar.');
+        }
+
+        // `forceFill` porque as duas colunas ficam fora do `fillable`: travar é
+        // ação com regra própria, e um `update` vindo do formulário de cadastro
+        // não deveria ser capaz de marcar tarefa como bloqueada de passagem.
+        $tarefa->forceFill([
+            'bloqueado_em' => now(),
+            'bloqueio_motivo' => trim((string) $motivo),
+        ])->save();
+
+        return $tarefa->refresh();
+    }
+
+    /** Tira a marca de travada. A etapa não muda porque ela nunca mudou. */
+    public function destravar(Tarefa $tarefa): Tarefa
+    {
+        $tarefa->forceFill(['bloqueado_em' => null, 'bloqueio_motivo' => null])->save();
+
+        return $tarefa->refresh();
     }
 
     private function assertTransicaoPermitida(Tarefa $tarefa, string $novoStatus): void
@@ -142,14 +189,6 @@ class FluxoTarefaService
     {
         if ($novoStatus === 'backlog' && ! $tarefa->responsavel_id) {
             throw new \RuntimeException('É preciso direcionar a tarefa para alguém antes de mover para o Backlog.');
-        }
-
-        // Parar sem dizer por quê seria trocar um card apodrecendo em Em
-        // andamento por um card apodrecendo em Bloqueada. O motivo é o que
-        // permite a alguém destravar a tarefa depois — e é ele que responde a
-        // pergunta que a etapa existe para fazer: esperando o quê, e de quem.
-        if ($novoStatus === 'bloqueada' && ! $this->motivoPreenchido($dados)) {
-            throw new \RuntimeException('É preciso dizer o que está travando a tarefa.');
         }
 
         if ($novoStatus === 'ajustes_necessarios' && ! $this->motivoPreenchido($dados)) {

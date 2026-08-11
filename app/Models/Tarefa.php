@@ -27,12 +27,29 @@ class Tarefa extends Model
         'aberta' => 'Aberta',
         'backlog' => 'Backlog',
         'em_desenvolvimento' => 'Em andamento',
-        'bloqueada' => 'Bloqueada',
         'em_testes' => 'Em testes',
         'ajustes_necessarios' => 'Ajustes necessários',
         'concluida' => 'Concluída',
         'cancelada' => 'Cancelada',
     ];
+
+    /**
+     * Etapas que existiram e não existem mais.
+     *
+     * `bloqueada` foi coluna por um dia e virou marca (`bloqueado_em`). Ela sai
+     * do fluxo, mas não some do passado: as tarefas encerradas antes da mudança
+     * têm eventos que apontam para ela, e apagar esse rótulo faria o histórico
+     * delas exibir a chave crua no lugar do nome da etapa.
+     */
+    public const ETAPAS_APOSENTADAS = [
+        'bloqueada' => 'Bloqueada',
+    ];
+
+    /** O nome de uma etapa, inclusive das que já não existem no fluxo. */
+    public static function rotuloDaEtapa(string $status): string
+    {
+        return self::STATUS[$status] ?? self::ETAPAS_APOSENTADAS[$status] ?? $status;
+    }
 
     /**
      * O tipo escolhe o fluxo da tarefa (ver `FluxoTarefaService`).
@@ -65,7 +82,49 @@ class Tarefa extends Model
     {
         return [
             'iniciada_em' => 'datetime',
+            'bloqueado_em' => 'datetime',
         ];
+    }
+
+    /**
+     * A tarefa está travada esperando alguém?
+     *
+     * O bloqueio é marca e não etapa: a tarefa continua na coluna em que
+     * estava, e é `bloqueado_em` que responde por ele. Fora do `fillable` de
+     * propósito — quem bloqueia passa pelo `FluxoTarefaService`, que exige o
+     * motivo; um `update` de formulário não deveria conseguir travar tarefa.
+     */
+    public function estaBloqueada(): bool
+    {
+        return $this->bloqueado_em !== null;
+    }
+
+    /** Há quanto tempo está travada, na régua curta do quadro ("3h", "2d"). */
+    public function bloqueadaHa(): ?string
+    {
+        if (! $this->estaBloqueada()) {
+            return null;
+        }
+
+        return self::duracaoCurta((int) $this->bloqueado_em->diffInSeconds(now()));
+    }
+
+    /**
+     * O texto da tarja: "Bloqueada agora" ou "Bloqueada há 2d".
+     *
+     * O "há" some no primeiro minuto porque a régua curta devolve a palavra
+     * "agora" para ele, e "bloqueada há agora" não é frase — é o que sai quando
+     * se concatena rótulo com medida sem olhar o resultado na tela.
+     */
+    public function rotuloDoBloqueio(): ?string
+    {
+        $duracao = $this->bloqueadaHa();
+
+        return match (true) {
+            $duracao === null => null,
+            $duracao === 'agora' => 'Bloqueada agora',
+            default => 'Bloqueada há '.$duracao,
+        };
     }
 
     protected static function booted(): void
