@@ -75,9 +75,31 @@ class TarefaController extends Controller
 
         $data['criado_por_id'] = auth()->id();
 
-        Tarefa::create($data);
+        // Mesma rede do comentário (AC-137): aqui o clique duplo custa mais
+        // caro, porque a segunda tarefa não é uma linha repetida na conversa —
+        // é um card a mais no quadro, que alguém vai ter de cancelar na mão.
+        if (! $this->reenvioDaMesmaTarefa($data)) {
+            Tarefa::create($data);
+        }
 
         return redirect()->route('tarefas.index')->with('status', 'Tarefa criada.');
+    }
+
+    /**
+     * A mesma tarefa, do mesmo autor, criada há instantes.
+     *
+     * A comparação é o FORMULÁRIO INTEIRO — título, sistema, responsável e
+     * prioridade — e não só o título: abrir três tarefas "Renovar certificado"
+     * em sistemas diferentes é trabalho legítimo de quem está cadastrando em
+     * série, e um segundo envio idêntico em tudo é sempre o duplo clique.
+     *
+     * @param  array<string, mixed>  $dados
+     */
+    private function reenvioDaMesmaTarefa(array $dados): bool
+    {
+        return Tarefa::where($dados)
+            ->where('created_at', '>=', now()->subMinute())
+            ->exists();
     }
 
     public function update(Request $request, Tarefa $tarefa)

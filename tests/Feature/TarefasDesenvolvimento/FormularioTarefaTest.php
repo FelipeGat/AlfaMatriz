@@ -96,6 +96,48 @@ class FormularioTarefaTest extends TestCase
     }
 
     /**
+     * @spec:AC-137 Clique duplo no Salvar não cria a tarefa duas vezes.
+     */
+    public function test_clique_duplo_no_salvar_nao_cria_a_tarefa_duas_vezes(): void
+    {
+        $usuario = User::factory()->create();
+
+        $envio = ['titulo' => 'Renovar certificado', 'prioridade' => 'alta'];
+
+        $this->actingAs($usuario)->post(route('tarefas.store'), $envio);
+        $this->actingAs($usuario)->post(route('tarefas.store'), $envio);
+
+        $this->assertSame(1, Tarefa::where('titulo', 'Renovar certificado')->count());
+
+        // A trava é uma janela, não uma mordaça: a mesma tarefa volta a ser
+        // criável depois — refazer um trabalho é decisão de quem cadastra.
+        $this->travel(2)->minutes();
+        $this->actingAs($usuario)->post(route('tarefas.store'), $envio);
+        $this->assertSame(2, Tarefa::where('titulo', 'Renovar certificado')->count());
+        $this->travelBack();
+    }
+
+    /**
+     * @spec:AC-137 A trava compara o formulário inteiro: cadastrar em série o
+     * mesmo título para sistemas diferentes continua criando as duas.
+     */
+    public function test_mesmo_titulo_para_outro_sistema_continua_criando(): void
+    {
+        $usuario = User::factory()->create();
+        $gym = Sistema::factory()->create(['nome' => 'AlfaGym', 'slug' => 'alfagym']);
+        $control = Sistema::factory()->create(['nome' => 'AlfaControl', 'slug' => 'alfacontrol']);
+
+        $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'titulo' => 'Renovar certificado', 'prioridade' => 'alta', 'sistema_id' => $gym->id,
+        ]);
+        $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'titulo' => 'Renovar certificado', 'prioridade' => 'alta', 'sistema_id' => $control->id,
+        ]);
+
+        $this->assertSame(2, Tarefa::where('titulo', 'Renovar certificado')->count());
+    }
+
+    /**
      * @spec:AC-084 Editar uma tarefa existente troca o sistema vinculado, e o card passa a mostrar o novo sistema.
      */
     public function test_editar_tarefa_troca_o_sistema_vinculado(): void

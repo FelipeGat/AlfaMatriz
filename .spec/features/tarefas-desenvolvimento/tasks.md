@@ -291,3 +291,17 @@
   envio começar — desabilitar antes disso cancelaria o próprio envio que se
   quer preservar. O que morre é o segundo clique, não o primeiro.
 - Esforço: baixo
+
+## T-087 — A mesma rede do duplo clique na criação da tarefa [concluida]
+- Refs: US-036, AC-137
+- Arquivos: app/Http/Controllers/TarefaController.php, tests/Feature/TarefasDesenvolvimento/FormularioTarefaTest.php
+- Notas: o botão que se tranca (T-086) mora no `_form`, que é o mesmo dos dois
+  modais — a criação já herdou essa camada. Faltava a do servidor, que é a que
+  vale sem JS e no "voltar" do navegador, e aqui o acidente custa mais caro:
+  a segunda tarefa não é linha repetida na conversa, é um card a mais no quadro
+  que alguém vai ter de cancelar na mão.
+  A comparação é o FORMULÁRIO INTEIRO — título, sistema, responsável,
+  prioridade e autor —, e não só o título: abrir três "Renovar certificado" em
+  sistemas diferentes é trabalho legítimo de quem cadastra em série, e um
+  segundo envio idêntico em tudo, no mesmo minuto, é sempre o duplo clique.
+- Esforço: baixo

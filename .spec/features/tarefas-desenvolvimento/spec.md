@@ -60,6 +60,13 @@ aberto, em desenvolvimento, em teste e concluído.
 - **Então** o card do quadro mostra o sistema da tarefa, e só sistemas ativos
   são oferecidos na escolha
 
+#### AC-137 — Salvar duas vezes não cria a tarefa duas vezes
+
+- **Dado** o formulário de nova tarefa preenchido
+- **Quando** clico em Salvar duas vezes seguidas
+- **Então** o quadro ganha um card só; e cadastrar em série o mesmo título para
+  sistemas diferentes continua criando uma tarefa para cada
+
 #### AC-123 — As quatro prioridades do ciclo, com a crítica em destaque
 
 - **Dado** o formulário de tarefa
