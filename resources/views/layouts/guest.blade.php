@@ -7,8 +7,8 @@
 
         <title>{{ config('app.name', 'AlfaMatriz') }}</title>
 
-        <link rel="icon" href="/icon-matriz.svg" type="image/svg+xml">
-        <link rel="icon" href="/favicon.ico" sizes="32x32">
+        <link rel="icon" href="/icon-matriz-solid.svg" type="image/svg+xml">
+        <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
