@@ -70,6 +70,14 @@
             </div>
         </div>
 
+        {{-- Mesma pilha de avisos da porta de dentro (ver layouts/app): sem
+             ela aqui, um aviso nesta tela simplesmente não teria onde
+             pousar e não apareceria. Aqui não há topbar, então a faixa começa
+             no alto da janela. --}}
+        <div id="pilha-avisos"
+             class="fixed top-0 left-1/2 -translate-x-1/2 z-[60] pt-4 px-4 w-full
+                    flex flex-col items-center gap-2 pointer-events-none"></div>
+
         {{-- A tela de entrada costuma ficar aberta a manhã inteira numa aba de
              fundo. Sem isto, o token que veio no HTML vence junto com a sessão
              e o primeiro clique em "Entrar" volta para o login com o aviso de

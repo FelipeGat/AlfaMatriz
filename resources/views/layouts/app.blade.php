@@ -122,5 +122,23 @@
                 </main>
             </div>
         </div>
+
+        {{--
+            Onde os avisos pousam.
+
+            A pilha é fixa e fica FORA do fluxo de propósito: enquanto o aviso
+            nascia no meio do conteúdo, aparecer um custava à página inteira a
+            altura dele — o mesmo layout tinha duas alturas, e quem estava
+            lendo (ou mirando um botão) perdia o lugar no instante em que a
+            confirmação chegava. Aqui ele passa por cima, sem mover nada.
+
+            Quem entrega os avisos aqui é o componente aviso, de qualquer
+            canto da tela. A faixa em si não recebe clique: ela cobre o topo
+            inteiro e roubaria o que está embaixo — só os avisos voltam a
+            receber ponteiro.
+        --}}
+        <div id="pilha-avisos"
+             class="fixed top-topbar left-1/2 -translate-x-1/2 z-[60] pt-3 px-4 w-full
+                    flex flex-col items-center gap-2 pointer-events-none"></div>
     </body>
 </html>

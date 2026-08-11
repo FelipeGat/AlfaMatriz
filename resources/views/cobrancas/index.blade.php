@@ -9,7 +9,7 @@
     </x-slot>
 
     @if (session('status'))
-        <x-aviso class="mb-4">{{ session('status') }}</x-aviso>
+        <x-aviso>{{ session('status') }}</x-aviso>
     @endif
     @if ($errors->any())
         <div class="mb-4 rounded-control border border-crit-tint bg-crit-tint px-4 py-3 text-sm text-crit">{{ $errors->first() }}</div>

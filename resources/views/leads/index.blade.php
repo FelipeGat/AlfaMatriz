@@ -16,7 +16,7 @@
     --}}
     <div class="flex flex-col gap-4" style="height: calc(100vh - 120px); min-height: 520px">
         @if (session('status'))
-            <x-aviso class="shrink-0">{{ session('status') }}</x-aviso>
+            <x-aviso>{{ session('status') }}</x-aviso>
         @endif
 
         <div class="shrink-0 grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">

@@ -30,10 +30,10 @@
         ])
 
         @if (session('status'))
-            <x-aviso class="shrink-0">{{ session('status') }}</x-aviso>
+            <x-aviso>{{ session('status') }}</x-aviso>
         @endif
         @if (session('erro'))
-            <x-aviso class="shrink-0" tom="critico">{{ session('erro') }}</x-aviso>
+            <x-aviso tom="critico">{{ session('erro') }}</x-aviso>
         @endif
 
         <div x-data="quadroTarefas" class="relative flex-1 min-h-0 flex flex-col rounded-panel border border-line bg-board overflow-hidden">
