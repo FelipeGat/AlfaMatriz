@@ -43,6 +43,55 @@ done
 
 log(){ echo "$(date '+%F %T') alfamatriz: $*" | tee -a "$LOG" 2>/dev/null || echo "alfamatriz: $*"; }
 
+# ------------------------------------------------------------------ trava
+#
+# Uma execução por vez. São DOIS gatilhos apontando para o mesmo diretório: o
+# cron de 5 em 5 minutos e o botão do painel (que chega aqui pelo
+# `deploy-staging alfamatriz` do host). Juntos, fariam `git merge` e
+# `composer install` um em cima do outro — e o segundo esbarraria no
+# index.lock do git com uma mensagem que ninguém relaciona à causa.
+#
+# A trava fica AQUI e não em quem chama: é o único ponto por onde os dois
+# caminhos passam. Enquanto ela viveu só do lado do painel, protegia clique
+# contra clique e deixava passar o encontro com o cron, que é o provável.
+#
+# `mkdir` e não `flock`, mesma escolha do vigia de tags e pelo mesmo motivo:
+# criar diretório é atômico nos dois sistemas, e `flock` é do util-linux — não
+# existe no macOS, onde esta suíte roda. Trava que só funciona no servidor não
+# é testável.
+#
+# Fica no /run e não em "$DIR/.deploy-staging.lock" como a do vigia: o vigia
+# roda DENTRO do container, mas este script roda no host e o $DIR dele é um
+# caminho do LXC. Um mkdir daqui criaria a trava no /var/www do host, que não
+# é o mesmo diretório que ele protege.
+#
+# Quem chega depois desiste em silêncio e sai 0: para o cron, encontrar o
+# vizinho rodando é o dia normal, não incidente — sair 1 pintaria a unit de
+# vermelho a cada cinco minutos.
+TRAVA=${TRAVA:-/run/deploy-staging-alfamatriz.lock.d}
+
+# Trava esquecida por queda no meio do caminho bloquearia todo deploy seguinte
+# — o mesmo modo de falha do marcador de erro do vigia. Um deploy leva ~2
+# minutos; uma hora é folga suficiente para não competir com execução legítima.
+if [[ -d "$TRAVA" ]] && [[ -z "$(find "$TRAVA" -maxdepth 0 -mmin -60 2>/dev/null)" ]]; then
+    log "trava antiga (>60min) — assumindo que ficou para trás e seguindo"
+    rmdir "$TRAVA" 2>/dev/null || true
+fi
+
+if mkdir "$TRAVA" 2>/dev/null; then
+    # Liberada em qualquer saída, inclusive nas que reprovam no portão.
+    trap 'rmdir "$TRAVA" 2>/dev/null || true' EXIT
+elif [[ -d "$TRAVA" ]]; then
+    log "já há um deploy em curso — nada a fazer"
+    exit 0
+else
+    # mkdir falhou e a trava NÃO existe: é problema de ambiente (diretório pai
+    # ausente ou sem permissão), não vizinho rodando. Tratar os dois casos como
+    # o mesmo faria o deploy parar para sempre em silêncio, que é justamente o
+    # que esta trava não pode causar.
+    log "não consegui criar a trava em $TRAVA — seguindo sem ela"
+fi
+
 # Roda um comando dentro do container de staging (ou aqui mesmo, com --local).
 #
 # `pct exec` usa shell de LOGIN de propósito: é o que carrega o PATH com

@@ -169,7 +169,81 @@ class ExecutorStagingTest extends TestCase
         $this->assertLessThan($posTeste, $posLimpeza, 'A limpeza precisa vir antes do portão.');
     }
 
+    /**
+     * @spec:AC-065 Dois gatilhos apontam para o mesmo diretório — o cron de 5
+     * em 5 minutos e o botão do painel. O segundo a chegar desiste em vez de
+     * rodar `git merge` e `composer install` por cima do primeiro.
+     */
+    public function test_nao_roda_duas_vezes_ao_mesmo_tempo(): void
+    {
+        $this->criarFerramentas(testesPassam: true);
+        $shaAnterior = $this->shaAtual();
+
+        // O vizinho é a própria trava: um mkdir feito por quem chegou antes.
+        mkdir($this->travaDoTeste());
+
+        $processo = $this->rodar();
+
+        // Desistir não é erro: para o cron, achar o vizinho rodando é o dia
+        // normal. Erro seria terminar diferente de zero e pintar a unit de
+        // vermelho a cada cinco minutos.
+        $this->assertSame(0, $processo->getExitCode(), $processo->getOutput().$processo->getErrorOutput());
+        $this->assertStringContainsString('já há um deploy em curso', $processo->getOutput());
+
+        // E, principalmente: não encostou no repositório.
+        $chamadas = $this->chamadas();
+        foreach (['php artisan test', 'composer install', 'npm run build'] as $proibida) {
+            $this->assertStringNotContainsString($proibida, $chamadas, "Não pode rodar \"{$proibida}\" com outro deploy em curso.");
+        }
+        // Comparado com o SHA de ANTES, não com origin/main: sem o fetch —
+        // que ele não chegou a fazer — a referência local ainda aponta para a
+        // versão velha, e a comparação passaria por acidente.
+        $this->assertSame($shaAnterior, $this->shaAtual(), 'O código novo não pode ter sido aplicado.');
+    }
+
+    /**
+     * @spec:AC-065 Trava esquecida por queda no meio do caminho não pode
+     * bloquear todo deploy seguinte: passada uma hora, ela é assumida como
+     * abandonada. É a mesma regra do vigia de tags.
+     */
+    public function test_trava_antiga_e_assumida(): void
+    {
+        $this->criarFerramentas(testesPassam: true);
+
+        $trava = $this->travaDoTeste();
+        mkdir($trava);
+        touch($trava, time() - 7200);
+
+        $processo = $this->rodar();
+
+        $this->assertSame(0, $processo->getExitCode(), $processo->getOutput().$processo->getErrorOutput());
+        $this->assertStringContainsString('trava antiga', $processo->getOutput());
+        $this->assertSame($this->shaDaMain(), $this->shaAtual(), 'Trava abandonada não pode impedir o deploy.');
+    }
+
+    /** @spec:AC-065 A trava é liberada ao sair, inclusive quando o portão reprova. */
+    public function test_a_trava_e_liberada_ao_sair(): void
+    {
+        $this->criarFerramentas(testesPassam: false);
+
+        $this->rodar();
+
+        $this->assertDirectoryDoesNotExist(
+            $this->travaDoTeste(),
+            'Portão reprovado também precisa devolver a trava — senão o próximo deploy não roda.'
+        );
+    }
+
     // ------------------------------------------------------------- apoio
+
+    /**
+     * Onde a trava deste teste vive: dentro do repositório descartável, nunca
+     * no /run do sistema — ver o comentário em `rodar()`.
+     */
+    private function travaDoTeste(): string
+    {
+        return $this->repo.'/deploy.lock.d';
+    }
 
     private function rodar(): Process
     {
@@ -181,6 +255,12 @@ class ExecutorStagingTest extends TestCase
                 'ALFA_LOG' => $this->log,
                 'LOG' => $this->repo.'/deploy.log',
                 'HOME' => $this->repo,
+                // Trava PRÓPRIA, obrigatória: a suíte roda dentro do portão,
+                // ou seja, dentro de um deploy que já segura a trava de
+                // verdade. Com o caminho padrão, todo teste daqui encontraria
+                // "já há um deploy em curso", não rodaria nada, e o portão
+                // reprovaria o próprio código que estava validando.
+                'TRAVA' => $this->travaDoTeste(),
             ]
         );
         $processo->run();
