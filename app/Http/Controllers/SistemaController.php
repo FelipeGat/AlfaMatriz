@@ -15,28 +15,40 @@ class SistemaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $sistemas = Sistema::withCount(['clientes' => fn ($q) => $q->where('clientes.ativo', true)->where('cliente_sistema.ativo', true)])
+        // A lista INTEIRA continua sendo carregada: ela alimenta o resumo do
+        // topo, a seleção por query string e a participação de cada sistema no
+        // total. Só a TABELA é cortada em páginas, no fim.
+        $todos = Sistema::withCount(['clientes' => fn ($q) => $q->where('clientes.ativo', true)->where('cliente_sistema.ativo', true)])
             ->with(['precosAtacado' => fn ($q) => $q->whereNull('revenda_id')->orderBy('ordem')])
             ->orderBy('categoria')
             ->orderBy('nome')
             ->get();
 
         // A seleção vive na query string: sobrevive ao recarregar e pode ser
-        // compartilhada por link.
-        $selecionado = $sistemas->firstWhere('id', (int) $request->sistema) ?? $sistemas->first();
+        // compartilhada por link. Ela procura no conjunto todo, não na página:
+        // um link para o sistema da página 3 precisa continuar abrindo nele.
+        $selecionado = $todos->firstWhere('id', (int) $request->sistema) ?? $todos->first();
 
-        $detalhe = $selecionado ? $this->detalharSistema($selecionado, $sistemas) : null;
+        $detalhe = $selecionado ? $this->detalharSistema($selecionado, $todos) : null;
 
         // Resumo do topo. O atacado sai da mesma origem do painel Comercial —
         // é o que garante que os dois mostrem o mesmo número.
         $sistemasAtivos = $this->indicadores->sistemasAtivos();
         $clientesAtivos = $this->indicadores->clientesAtivos();
         $mrrAtacado = $this->indicadores->mrrAtacado();
-        $vinculosAtivos = (int) $sistemas->sum('clientes_count');
+        $vinculosAtivos = (int) $todos->sum('clientes_count');
         $precoMedio = $vinculosAtivos > 0 ? $mrrAtacado / $vinculosAtivos : 0.0;
 
+        // O aviso de "sem preço de atacado" era contado na própria view. Com a
+        // tabela paginada isso passaria a contar só a página, e a pendência
+        // sumiria do rodapé por estar na página seguinte — some justamente
+        // quando é mais importante ver.
+        $semTier = $todos->filter(fn (Sistema $s) => $s->precosAtacado->isEmpty())->count();
+
+        $sistemas = $this->paginarColecao($todos);
+
         return view('sistemas.index', compact(
-            'sistemas', 'selecionado', 'detalhe',
+            'sistemas', 'selecionado', 'detalhe', 'semTier',
             'sistemasAtivos', 'clientesAtivos', 'mrrAtacado', 'vinculosAtivos', 'precoMedio'
         ));
     }

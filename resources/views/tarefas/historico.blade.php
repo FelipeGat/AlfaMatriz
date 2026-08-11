@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="titulo">Histórico de tarefas</x-slot>
-    <x-slot name="contexto">{{ $tarefas->count() }} tarefas no histórico</x-slot>
+    <x-slot name="contexto">{{ $tarefas->total() }} tarefas no histórico</x-slot>
 
     <div class="flex flex-col gap-4">
         @include('tarefas._abas', ['ativa' => 'historico'])
@@ -88,8 +88,15 @@
         </tbody>
 
         <x-slot name="rodape">
-            <span>{{ $tarefas->count() }} tarefas no histórico</span>
+            <span>{{ $tarefas->count() }} de {{ $tarefas->total() }} tarefas no histórico</span>
+            @if ($tarefas->hasPages())
+                <span>· página {{ $tarefas->currentPage() }} de {{ $tarefas->lastPage() }}</span>
+            @endif
         </x-slot>
     </x-tabela>
+
+    @if ($tarefas->hasPages())
+        <div>{{ $tarefas->links() }}</div>
+    @endif
     </div>
 </x-app-layout>

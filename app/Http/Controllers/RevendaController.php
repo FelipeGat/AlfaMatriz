@@ -55,18 +55,27 @@ class RevendaController extends Controller
             default => $linhas->sortByDesc('mrr'),
         })->values();
 
+        // Totais, KPIs e escala da barra saem da lista INTEIRA, antes do corte
+        // de página: a barra de base compara revenda com a maior do recorte, e
+        // se o divisor fosse o maior da página a mesma revenda mudaria de
+        // tamanho conforme a página em que aparecesse.
+        $totais = [
+            'clientes' => (int) $linhas->sum('clientes'),
+            'mrr' => (float) $linhas->sum('mrr'),
+            'sistemas' => $linhas->flatMap(fn ($l) => $l['sistemas'])->unique()->count(),
+        ];
+        $kpis = $this->kpis($revendas, $linhas, $baseTotal, $mrrTotal, $cadastradas);
+        $maiorBase = max((int) $linhas->max('clientes'), 1);
+
         return view('revendas.index', [
             'aba' => 'revendas',
             'clientesCadastrados' => $this->clientesCadastrados(),
-            'linhas' => $linhas,
+            'linhas' => $this->paginarColecao($linhas),
             'filtros' => ['q' => $busca, 'status' => $status, 'ordem' => $ordem],
             'cadastradas' => $cadastradas,
-            'totais' => [
-                'clientes' => (int) $linhas->sum('clientes'),
-                'mrr' => (float) $linhas->sum('mrr'),
-                'sistemas' => $linhas->flatMap(fn ($l) => $l['sistemas'])->unique()->count(),
-            ],
-            'kpis' => $this->kpis($revendas, $linhas, $baseTotal, $mrrTotal, $cadastradas),
+            'maiorBase' => $maiorBase,
+            'totais' => $totais,
+            'kpis' => $kpis,
             'sistemaProvisionador' => $sistemaProvisionador,
         ]);
     }
@@ -94,6 +103,11 @@ class RevendaController extends Controller
             'linhas' => collect(),
             'filtros' => ['q' => '', 'status' => '', 'ordem' => 'mrr', 'aba' => 'clientes'],
             'cadastradas' => $cadastradas,
+            // A tabela de revendas não é renderizada nesta aba, mas a view é a
+            // MESMA: a régua da barra segue o resto dos placeholders abaixo,
+            // para nenhum ajuste futuro no template esbarrar em variável que
+            // só existe na outra aba.
+            'maiorBase' => 1,
             'totais' => ['clientes' => 0, 'mrr' => 0.0, 'sistemas' => 0],
             'kpis' => [
                 'ativas' => ['valor' => 0, 'nota' => ''],

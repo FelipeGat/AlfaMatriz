@@ -7,7 +7,10 @@
         @if ($aba === 'clientes')
             {{ $clientesCadastrados }} clientes cadastrados
         @else
-            {{ $linhas->count() }} de {{ $cadastradas }} revendas cadastradas
+            {{-- `total()`, não `count()`: com a lista paginada, `count()` é o
+                 tamanho da PÁGINA e o cabeçalho dizia "20 de 137" mesmo sem
+                 filtro nenhum aplicado. --}}
+            {{ $linhas->total() }} de {{ $cadastradas }} revendas cadastradas
         @endif
     </x-slot>
 
@@ -127,8 +130,10 @@
             </thead>
 
             <tbody>
-                @php $maiorBase = max($linhas->max('clientes') ?: 1, 1); @endphp
-
+                {{-- `$maiorBase` vem do controller e olha o recorte inteiro. Se
+                     fosse o maior da página, a barra da mesma revenda encolheria
+                     ou cresceria conforme a página — comparação que muda de
+                     régua não compara nada. --}}
                 @forelse ($linhas as $linha)
                     @php $revenda = $linha['revenda']; @endphp
                     <tr class="border-b border-rule hover:bg-chip transition {{ $revenda->ativo ? '' : 'opacity-60' }}"
@@ -246,12 +251,19 @@
             @endif
 
             <x-slot name="rodape">
-                <span>{{ $linhas->count() }} de {{ $cadastradas }} revendas</span>
+                <span>{{ $linhas->count() }} de {{ $linhas->total() }} revendas</span>
+                @if ($linhas->hasPages())
+                    <span>· página {{ $linhas->currentPage() }} de {{ $linhas->lastPage() }}</span>
+                @endif
                 @if ($kpis['mrr']['valor'] > 0)
                     <span>· {{ $kpis['mrr']['nota'] }} vem de revenda</span>
                 @endif
             </x-slot>
         </x-tabela>
+
+        @if ($linhas->hasPages())
+            <div class="mt-3">{{ $linhas->links() }}</div>
+        @endif
         @endif
     </div>
 

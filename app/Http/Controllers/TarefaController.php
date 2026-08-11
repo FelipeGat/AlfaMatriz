@@ -121,10 +121,15 @@ class TarefaController extends Controller
         // Sem recorte de período (AC-097): é o caminho de auditoria para o
         // que o quadro enxuto (`index()`) já tirou de vista.
         // `eventos` para a duração do ciclo de cada linha (AC-133).
+        //
+        // Paginar não recorta nada — a lista continua inteira, só chega em
+        // páginas. É a tabela que mais cresce (nada nunca sai dela) e era a
+        // única que carregava o histórico completo, com os eventos de cada
+        // tarefa, numa resposta só.
         $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos'])
             ->whereIn('status', Tarefa::STATUS_TERMINAIS)
             ->orderByDesc('updated_at')
-            ->get();
+            ->paginate(self::POR_PAGINA);
 
         return view('tarefas.historico', compact('tarefas'));
     }

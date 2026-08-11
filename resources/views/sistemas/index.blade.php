@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="titulo">Sistemas &amp; preço de atacado</x-slot>
-    <x-slot name="contexto">{{ $sistemas->count() }} sistemas</x-slot>
+    <x-slot name="contexto">{{ $sistemas->total() }} sistemas</x-slot>
     <x-slot name="acoes">
         <a href="{{ route('produtos.index') }}"
            class="h-[34px] px-3 inline-flex items-center rounded-control border border-btn-line
@@ -93,12 +93,21 @@
             </tbody>
 
             <x-slot name="rodape">
-                <span>{{ $sistemas->count() }} sistemas</span>
-                @php $semTier = $sistemas->filter(fn ($s) => $s->precosAtacado->isEmpty())->count(); @endphp
+                <span>{{ $sistemas->count() }} de {{ $sistemas->total() }} sistemas</span>
+                @if ($sistemas->hasPages())
+                    <span>· página {{ $sistemas->currentPage() }} de {{ $sistemas->lastPage() }}</span>
+                @endif
+                {{-- `$semTier` conta a lista inteira (vem do controller): a
+                     pendência não pode sumir do rodapé só por estar na página
+                     seguinte. --}}
                 @if ($semTier > 0)
                     <span style="color: rgb(var(--warn))">· {{ $semTier }} sem preço de atacado</span>
                 @endif
             </x-slot>
         </x-tabela>
+
+        @if ($sistemas->hasPages())
+            <div class="mt-3">{{ $sistemas->links() }}</div>
+        @endif
     </div>
 </x-app-layout>

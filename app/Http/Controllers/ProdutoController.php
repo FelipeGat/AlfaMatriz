@@ -44,12 +44,16 @@ class ProdutoController extends Controller
             ->sortByDesc('mrr')
             ->values();
 
+        // A largura da barra é calculada contra o maior MRR da lista INTEIRA,
+        // ainda aqui em cima. Se o divisor fosse o maior da página, o segundo
+        // colocado apareceria com barra cheia na página 2 e a leitura "quem
+        // sustenta a casa" — a razão de ser desta lista — se perderia.
         $maiorMrr = (float) ($produtos->max('mrr') ?: 0);
 
         return view('produtos.index', [
-            'produtos' => $produtos->map(fn ($p) => $p + [
+            'produtos' => $this->paginarColecao($produtos->map(fn ($p) => $p + [
                 'largura' => $maiorMrr > 0 ? $p['mrr'] / $maiorMrr : 0,
-            ]),
+            ])),
             'mrrTotal' => $mrrTotal,
             'totais' => [
                 'mrr' => $mrrTotal,

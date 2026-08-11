@@ -168,8 +168,13 @@
                     </tfoot>
                 @endif
 
+                {{-- As contagens seguem sendo do catálogo inteiro, não da
+                     página: "3 sem tier de atacado" é pendência da casa. --}}
                 <x-slot name="rodape">
-                    <span>{{ $contagens['sistemas'] }} sistemas · {{ $contagens['ativos'] }} ativos</span>
+                    <span>{{ $produtos->count() }} de {{ $contagens['sistemas'] }} sistemas · {{ $contagens['ativos'] }} ativos</span>
+                    @if ($produtos->hasPages())
+                        <span>· página {{ $produtos->currentPage() }} de {{ $produtos->lastPage() }}</span>
+                    @endif
                     @if ($contagens['sem_tier'] > 0)
                         <span style="color: rgb(var(--warn))">· {{ $contagens['sem_tier'] }} sem tier de atacado</span>
                     @endif
@@ -240,6 +245,13 @@
                 </article>
             @endforeach
         </div>
+
+        {{-- Um paginador só, FORA dos dois blocos: lista e cartões mostram a
+             mesma página da mesma lista, e duplicar o controle dentro de cada
+             modo daria dois lugares para o mesmo estado sair de sincronia. --}}
+        @if ($produtos->hasPages())
+            <div>{{ $produtos->links() }}</div>
+        @endif
     </div>
 
     <script>

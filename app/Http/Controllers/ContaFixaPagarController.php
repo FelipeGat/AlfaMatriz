@@ -22,11 +22,14 @@ class ContaFixaPagarController extends Controller
     {
         $contasFixas = ContaFixaPagar::with(['centroCusto', 'conta.subcategoria.categoria', 'fornecedor'])
             ->orderBy('descricao')
-            ->get();
+            ->paginate(self::POR_PAGINA);
 
-        $ativas = $contasFixas->where('ativo', true);
-        $totalMensal = (float) $ativas->sum('valor');
-        $quantidadeAtivas = $ativas->count();
+        // O compromisso mensal e a contagem de ativas saem do BANCO, não da
+        // coleção da tela. Somar a página daria um "total mensal" que encolhe
+        // ao avançar de página — e este número decide se o mês fecha.
+        $ativas = ContaFixaPagar::where('ativo', true);
+        $totalMensal = (float) (clone $ativas)->sum('valor');
+        $quantidadeAtivas = (clone $ativas)->count();
 
         // Quantas já viraram conta a pagar nesta competência: é o que diz se o
         // mês foi fechado ou não, sem precisar abrir a tela de Despesas.
