@@ -55,7 +55,7 @@
                     </p>
                 </div>
                 <p class="ml-auto shrink-0 hidden sm:block font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
-                    arraste o card para mover de etapa
+                    arraste o card para mover · solte em concluir ✓ para encerrar
                 </p>
             </div>
 
@@ -70,7 +70,7 @@
                         solto direto — o menu "Mover ▾" do card é o único
                         caminho para elas (Q-013).
                     --}}
-                    <section class="flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden"
+                    <section class="flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden transition-opacity"
                              {{--
                                  A cor da etapa vive AQUI, na coluna, como no
                                  Funil de Vendas — e não na borda do card: essa
@@ -90,7 +90,15 @@
                              @dragover.prevent="permitir('{{ $etapa['chave'] }}')"
                              @dragleave="sobre = null"
                              @drop.prevent="soltar('{{ $etapa['chave'] }}', {{ in_array($etapa['chave'], ['bloqueada', 'ajustes_necessarios', 'cancelada', 'concluida'], true) ? 'true' : 'false' }})"
-                             :class="sobre === '{{ $etapa['chave'] }}' && 'ring-1 ring-brand'">
+                             {{-- Enquanto o card está na mão, a coluna que não
+                                  o aceita apaga. É o que faz a regra do fluxo
+                                  virar coisa que se VÊ antes de soltar: o
+                                  "transição inválida" deixa de ser a primeira
+                                  notícia de que aquele caminho não existia. --}}
+                             :class="{
+                                 'ring-1 ring-brand': sobre === '{{ $etapa['chave'] }}',
+                                 'opacity-25': ! aceita('{{ $etapa['chave'] }}'),
+                             }">
                         <header class="shrink-0 px-3 py-2.5 border-b border-rule">
                             <div class="flex items-center gap-2">
                                 <span class="h-[7px] w-[7px] shrink-0 rounded-full"
@@ -112,8 +120,21 @@
                                 <div x-data="{ menuAberto: false, destino: '{{ $transicoes[0] ?? '' }}' }"
                                      draggable="true"
                                      data-tarefa="{{ $tarefa->id }}"
-                                     @dragstart="arrastando = {{ $tarefa->id }}"
-                                     @dragend="arrastando = null; sobre = null"
+                                     {{-- O card entrega os próprios destinos ao
+                                          pegar: é assim que o quadro sabe quais
+                                          colunas apagar durante o arrasto. --}}
+                                     @dragstart="pegar({{ $tarefa->id }}, {{ Illuminate\Support\Js::from($transicoes) }})"
+                                     @dragend="largar()"
+                                     {{-- Soltar numa etapa que pede texto chega
+                                          aqui: abre o menu deste card já com o
+                                          destino escolhido. `.window` porque o
+                                          evento nasce no quadro, que é o PAI
+                                          deste card — subindo, ele não passaria
+                                          por aqui. --}}
+                                     @abrir-mover.window="if ($event.detail.tarefa === {{ $tarefa->id }}) {
+                                         destino = $event.detail.destino;
+                                         menuAberto = true;
+                                     }"
                                      @click="$dispatch('open-modal', 'editar-tarefa-{{ $tarefa->id }}')"
                                      class="cursor-grab active:cursor-grabbing"
                                      :class="arrastando === {{ $tarefa->id }} && 'opacity-50'">
@@ -128,6 +149,43 @@
                         </div>
                     </section>
                 @endforeach
+
+                {{--
+                    O alvo de concluir.
+
+                    Concluída não tem coluna, e está certo: o quadro é o
+                    trabalho em curso, e cards encerrados só ocupariam espaço
+                    (AC-096). Mas o preço disso era a ação mais importante do
+                    fluxo ter virado a mais escondida — terminar uma tarefa só
+                    acontecia dentro do menu de um dropdown, enquanto todo o
+                    resto do quadro se move arrastando.
+
+                    Por isso uma FAIXA e não uma coluna: ela não guarda card
+                    nenhum e não cresce, só recebe o solto. O quadro continua
+                    sem etapa terminal, e terminar volta a ter gesto.
+
+                    Ela sempre pede confirmação, mesmo na tarefa operacional,
+                    que não tem relatório a preencher: encerrar tira o card da
+                    vista, e um arrasto torto não deveria ser capaz disso
+                    sozinho.
+                --}}
+                <section class="shrink-0 self-stretch flex flex-col items-center justify-center gap-2
+                                rounded-control border border-dashed transition-opacity"
+                         style="flex: 0 0 60px; border-color: rgb(var(--good) / 0.4); background: rgb(var(--good) / calc(var(--tint-alpha) / 2))"
+                         title="Arraste um card até aqui para concluir"
+                         @dragover.prevent="permitir('concluida')"
+                         @dragleave="sobre = null"
+                         @drop.prevent="soltar('concluida', true)"
+                         :class="{
+                             'ring-1 ring-brand': sobre === 'concluida',
+                             'opacity-25': ! aceita('concluida'),
+                         }">
+                    <span class="text-[15px] leading-none" style="color: rgb(var(--good))" aria-hidden="true">✓</span>
+                    <span class="font-mono text-[10.5px] uppercase tracking-caps"
+                          style="writing-mode: vertical-rl; color: rgb(var(--good))">
+                        Concluir
+                    </span>
+                </section>
             </div>
 
             {{-- Um formulário só, apontado para a tarefa que foi solta. --}}
@@ -149,6 +207,14 @@
                 arrastando: null,
                 sobre: null,
 
+                // Para onde o card que está na mão pode ir. Sai do mesmo lugar
+                // que alimenta o menu "Mover ▾" (`FluxoTarefaService`), e é o
+                // que permite ao quadro MOSTRAR a regra em vez de aplicá-la por
+                // cima de quem já soltou: sem isso, arrastar uma tarefa
+                // operacional até Em testes era um caminho aberto que só
+                // respondia "transição inválida" depois do fato.
+                destinos: [],
+
                 // Modelo de rota com marcador: o id só é conhecido no solto.
                 rotaMover: @json(route('tarefas.mover', ['tarefa' => '__ID__'])),
 
@@ -169,25 +235,48 @@
                     this.temMaisDireita = q.scrollLeft + q.clientWidth < q.scrollWidth - 1;
                 },
 
+                /** Esta etapa é destino possível para o card que está na mão? */
+                aceita(status) {
+                    return this.arrastando === null || this.destinos.includes(status);
+                },
+
+                pegar(tarefa, destinos) {
+                    this.arrastando = tarefa;
+                    this.destinos = destinos;
+                },
+
+                largar() {
+                    this.arrastando = null;
+                    this.destinos = [];
+                    this.sobre = null;
+                },
+
                 permitir(status) {
-                    if (this.arrastando !== null) {
+                    if (this.arrastando !== null && this.aceita(status)) {
                         this.sobre = status;
                     }
                 },
 
                 soltar(status, exigeTexto) {
                     const tarefa = this.arrastando;
-                    this.sobre = null;
-                    this.arrastando = null;
+                    const permitido = this.aceita(status);
 
-                    if (tarefa === null) {
+                    this.largar();
+
+                    if (tarefa === null || ! permitido) {
                         return;
                     }
 
-                    // Ajustes, cancelamento e conclusão pedem texto que o
-                    // solto não tem como responder — quem quer mover para lá
-                    // usa o menu "Mover ▾" do card, onde a pergunta cabe.
+                    // Bloqueio, ajustes, cancelamento e conclusão pedem um
+                    // texto que o solto não tem como responder. Antes o arrasto
+                    // simplesmente morria aqui, sem mover e sem dizer nada — o
+                    // que se lê como sistema quebrado, não como regra. Agora
+                    // ele ABRE o formulário do card já com o destino escolhido:
+                    // o arrasto deixa de ser um beco sem saída e vira o começo
+                    // da pergunta.
                     if (exigeTexto) {
+                        this.$dispatch('abrir-mover', { tarefa, destino: status });
+
                         return;
                     }
 

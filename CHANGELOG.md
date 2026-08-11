@@ -35,6 +35,22 @@ devolver um card para a etapa anterior sem cerimônia.
 
 ### Melhorias
 
+- **O quadro mostra para onde o card pode ir, enquanto você arrasta.** Ao pegar
+  um card, as colunas que não aceitam aquela tarefa ficam apagadas. Antes o
+  quadro deixava você arrastar para qualquer lugar e só respondia depois, com um
+  aviso de "transição inválida" — o caminho parecia existir até o fim. Isso vale
+  especialmente para a tarefa operacional, que não tem como ir para "Em testes".
+- **Arrastar para uma coluna que pede explicação abre a explicação.** Bloquear,
+  cancelar e devolver para ajustes precisam de um texto, e no meio de um arrasto
+  não há onde escrever. Antes, soltar o card nessas colunas simplesmente não
+  fazia nada — nem movia, nem avisava, o que parecia defeito. Agora o arrasto
+  abre a caixinha do card já com o destino escolhido, e é só escrever e
+  confirmar.
+- **Uma faixa "Concluir ✓" no fim do quadro.** Como Concluída não tem coluna,
+  encerrar uma tarefa só era possível pelo menu do card — a ação mais importante
+  do fluxo era a única sem gesto. Agora dá para arrastar o card até a faixa, que
+  abre a confirmação: pedindo o relatório de teste, se for tarefa de
+  desenvolvimento, ou só confirmando, se for operacional.
 - **Escolher o responsável já move a tarefa.** Direcionar uma tarefa da coluna
   Aberta a leva para o Backlog no mesmo salvar, e tirar o responsável de uma
   tarefa do Backlog a devolve para Aberta. Antes isso só valia na criação: na

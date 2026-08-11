@@ -231,6 +231,84 @@ class MoverTarefaTest extends TestCase
     }
 
     /**
+     * @spec:AC-187 Durante o arrasto, a coluna que não aceita o card apaga: o card
+     * entrega os próprios destinos ao ser pego, e cada coluna se pergunta se está
+     * neles. Antes o quadro deixava soltar em qualquer lugar e só depois respondia
+     * "transição inválida" — o caminho parecia existir até o fim.
+     */
+    public function test_o_quadro_apaga_a_coluna_que_nao_aceita_o_card_arrastado(): void
+    {
+        $usuario = User::factory()->create();
+
+        // Operacional em Em andamento: ela NUNCA passa por testes, e era
+        // exatamente esse arrasto que terminava em "transição inválida".
+        $this->criarTarefa([
+            'titulo' => 'Falar com o fabricante', 'tipo' => 'operacional',
+            'status' => 'em_desenvolvimento',
+        ]);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // O card entrega a lista de destinos ao ser pego.
+        $this->assertStringContainsString(
+            'pegar('.Tarefa::first()->id.', '.Js::from(['concluida', 'bloqueada', 'backlog', 'cancelada']).')',
+            $html,
+            'O card precisa levar os próprios destinos para o quadro no dragstart.'
+        );
+
+        // E cada coluna do quadro se pergunta se aceita o que está na mão.
+        foreach (['aberta', 'backlog', 'em_desenvolvimento', 'bloqueada', 'em_testes', 'ajustes_necessarios'] as $etapa) {
+            $this->assertStringContainsString("aceita('".$etapa."')", $html,
+                "A coluna {$etapa} precisa consultar se aceita o card arrastado.");
+        }
+    }
+
+    /**
+     * @spec:AC-188 Soltar numa etapa que pede texto abre o formulário do card já com o
+     * destino escolhido. Antes o arrasto morria em silêncio — não movia e não dizia
+     * nada, o que se lê como sistema quebrado e não como regra.
+     */
+    public function test_soltar_onde_pede_texto_abre_o_formulario_do_card(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = $this->criarTarefa(['status' => 'em_desenvolvimento']);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // A coluna Bloqueada se declara como etapa que pede texto...
+        $this->assertStringContainsString("soltar('bloqueada', true)", $html);
+
+        // ...o quadro abre o menu em vez de engolir o solto...
+        $this->assertStringContainsString("\$dispatch('abrir-mover', { tarefa, destino: status })", $html);
+
+        // ...e o card escuta, porque o evento nasce no quadro, que é o pai dele.
+        $this->assertStringContainsString('@abrir-mover.window', $html);
+        $this->assertStringContainsString('$event.detail.tarefa === '.$tarefa->id, $html);
+    }
+
+    /**
+     * @spec:AC-189 A faixa "Concluir" recebe o card arrastado e pede a confirmação:
+     * Concluída não tem coluna (AC-096) e isso está certo, mas o preço era a ação mais
+     * importante do fluxo ser a única sem gesto, escondida dentro de um dropdown.
+     */
+    public function test_a_faixa_de_concluir_recebe_o_card_e_pede_confirmacao(): void
+    {
+        $usuario = User::factory()->create();
+        $this->criarTarefa(['status' => 'em_testes']);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // Recebe o solto, e sempre confirmando: encerrar tira o card da vista,
+        // e um arrasto torto não deveria ser capaz disso sozinho.
+        $this->assertStringContainsString("soltar('concluida', true)", $html);
+        $this->assertStringContainsString("aceita('concluida')", $html);
+
+        // E continua sem ser coluna: nenhuma etapa terminal entra no quadro.
+        $etapas = $this->actingAs($usuario)->get(route('tarefas.index'))->viewData('etapas');
+        $this->assertNotContains('concluida', array_column($etapas, 'chave'));
+    }
+
+    /**
      * @spec:AC-122 Tarefa cancelada não aparece no quadro, então não há card nem menu
      * para ela ali — o caminho de volta dela mora no histórico (AC-184).
      */
