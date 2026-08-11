@@ -1,4 +1,14 @@
 *.log
+# Marcadores que os scripts de deploy gravam na raiz da aplicação, no servidor:
+# .deploy-gate (veredito do portão), .deploy-tag-state, .deploy-tag-failed,
+# .deploy-paused, .deploy-tag.lock. São estado do ambiente, nunca do código.
+#
+# Sem esta linha eles aparecem como arquivo não rastreado, e o painel AlfaDeploy
+# — que conta `git status --porcelain` — pinta um selo "±N adaptações locais"
+# permanente no staging. Esse selo existe para denunciar divergência local (foi
+# ela que deixou o AlfaGym servindo código velho por 2 dias sem alarme); um ±1
+# falso e fixo ensina a ignorá-lo justamente onde ele deve ser levado a sério.
+/.deploy-*
 .DS_Store
 .env
 .env.backup

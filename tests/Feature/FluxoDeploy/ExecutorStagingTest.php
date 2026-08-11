@@ -234,6 +234,35 @@ class ExecutorStagingTest extends TestCase
         );
     }
 
+    /**
+     * @spec:AC-065 Os marcadores que o deploy grava na raiz da aplicação são
+     * estado do ambiente, não código — e precisam estar ignorados pelo git.
+     *
+     * O painel AlfaDeploy mede divergência local com `git status --porcelain`,
+     * que conta arquivo não rastreado junto com modificado. Um marcador fora
+     * do .gitignore vira selo "±N adaptações locais" permanente no staging, e
+     * esse selo é o que denuncia container servindo código velho.
+     */
+    public function test_marcadores_do_deploy_nao_sujam_o_repositorio(): void
+    {
+        // Escritos por deploy-staging-alfamatriz.sh e pelo vigia de tags.
+        $marcadores = [
+            '.deploy-gate', '.deploy-tag-state', '.deploy-tag-failed',
+            '.deploy-paused', '.deploy-tag.lock',
+        ];
+
+        foreach ($marcadores as $marcador) {
+            $processo = new Process(['git', 'check-ignore', '-q', $marcador], base_path());
+            $processo->run();
+
+            $this->assertSame(
+                0,
+                $processo->getExitCode(),
+                "O marcador {$marcador} precisa estar no .gitignore: no servidor ele aparece como arquivo não rastreado."
+            );
+        }
+    }
+
     // ------------------------------------------------------------- apoio
 
     /**
