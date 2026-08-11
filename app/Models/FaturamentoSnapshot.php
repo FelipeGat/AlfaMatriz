@@ -11,13 +11,17 @@ class FaturamentoSnapshot extends Model
 
     protected $fillable = [
         'competencia', 'sistema_id', 'revenda_id', 'clientes_ativos',
-        'valor_unitario', 'total', 'cobranca_id',
+        'valor_unitario', 'valor_licenciamento', 'valor_modulos', 'detalhe_modulos',
+        'total', 'cobranca_id',
     ];
 
     protected function casts(): array
     {
         return [
             'valor_unitario' => 'decimal:2',
+            'valor_licenciamento' => 'decimal:2',
+            'valor_modulos' => 'decimal:2',
+            'detalhe_modulos' => 'array',
             'total' => 'decimal:2',
         ];
     }
