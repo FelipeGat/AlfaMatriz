@@ -28,7 +28,10 @@ $width = match ($width) {
             class="absolute z-50 mt-2 {{ $width }} rounded-control {{ $alignmentClasses }}"
             style="display: none;"
             @click="open = false">
-        <div class="rounded-control ring-1 ring-white/10 {{ $contentClasses }}">
+        {{-- A borda vem do token, não de um branco fixo: no tema claro
+             `white/10` sobre painel branco não desenhava nada, e o menu
+             flutuava sem recorte contra a tabela. --}}
+        <div class="rounded-control border border-line {{ $contentClasses }}">
             {{ $content }}
         </div>
     </div>

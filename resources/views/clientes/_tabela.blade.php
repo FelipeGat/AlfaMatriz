@@ -222,7 +222,7 @@
                     @endphp
 
                     <div class="flex justify-end">
-                        <x-dropdown width="48" contentClasses="py-1 bg-panel ring-1 ring-line">
+                        <x-dropdown width="48" contentClasses="py-1 bg-panel">
                             <x-slot name="trigger">
                                 <button type="button"
                                         class="inline-flex h-7 w-7 items-center justify-center rounded-tile
