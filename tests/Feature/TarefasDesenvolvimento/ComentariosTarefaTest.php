@@ -237,6 +237,76 @@ class ComentariosTarefaTest extends TestCase
     }
 
     /**
+     * @spec:AC-138 O autor corrige o próprio comentário, e a correção fica
+     * dita na tela — sem perder a data original nem o lugar na conversa.
+     */
+    public function test_autor_corrige_o_proprio_comentario_e_a_correcao_fica_dita(): void
+    {
+        $autor = User::factory()->create();
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $autor->id,
+            'status' => 'em_desenvolvimento',
+        ]);
+
+        $comentario = $tarefa->comentarios()->create([
+            'autor_id' => $autor->id,
+            'corpo' => 'O erro acontece no boleto vencido.',
+        ]);
+
+        // Campo e botão acham o formulário pelo mesmo id: sem o par, o lápis
+        // não corrige nada e a falha é silenciosa na tela.
+        $quadro = $this->actingAs($autor)->get(route('tarefas.index'));
+        $quadro->assertSee('form="editar-comentario-'.$comentario->id.'"', escape: false);
+        $quadro->assertSee('id="editar-comentario-'.$comentario->id.'"', escape: false);
+
+        $resposta = $this->actingAs($autor)->put(route('tarefas.comentarios.update', $comentario), [
+            'corpo' => 'O erro acontece no boleto vencido E no cancelado.',
+        ]);
+
+        $resposta->assertRedirect();
+        // Corrigir é feito no meio da leitura: o modal volta aberto.
+        $resposta->assertSessionHas('tarefa-aberta', $tarefa->id);
+
+        $comentario->refresh();
+        $this->assertSame('O erro acontece no boleto vencido E no cancelado.', $comentario->corpo);
+        $this->assertNotNull($comentario->editado_em);
+
+        $quadro = $this->actingAs($autor)->get(route('tarefas.index'));
+        $quadro->assertSee('O erro acontece no boleto vencido E no cancelado.');
+        $quadro->assertSee('editado');
+        // A data original fica: corrigir não reposiciona a frase na conversa.
+        $quadro->assertSee($comentario->created_at->format('d/m/Y H:i'));
+    }
+
+    /**
+     * @spec:AC-138 Corrigir o comentário alheio é recusado, e corrigir para
+     * texto vazio também — quem quis apagar tem o botão de apagar.
+     */
+    public function test_comentario_alheio_e_correcao_vazia_sao_recusados(): void
+    {
+        $autor = User::factory()->create();
+        $outro = User::factory()->create();
+        $tarefa = Tarefa::factory()->create(['criado_por_id' => $autor->id]);
+
+        $comentario = $tarefa->comentarios()->create([
+            'autor_id' => $autor->id,
+            'corpo' => 'Texto original.',
+        ]);
+
+        $this->actingAs($outro)
+            ->put(route('tarefas.comentarios.update', $comentario), ['corpo' => 'Reescrita alheia'])
+            ->assertForbidden();
+
+        $this->actingAs($autor)
+            ->put(route('tarefas.comentarios.update', $comentario), ['corpo' => '   '])
+            ->assertSessionHasErrors('corpo');
+
+        $comentario->refresh();
+        $this->assertSame('Texto original.', $comentario->corpo);
+        $this->assertNull($comentario->editado_em);
+    }
+
+    /**
      * @spec:AC-136 A conversa da tarefa encerrada continua legível no
      * histórico — e só legível: lá não há campo de comentário.
      */
@@ -258,6 +328,8 @@ class ComentariosTarefaTest extends TestCase
         $historico->assertOk();
         $historico->assertSee('Cancelada porque o cliente desistiu do módulo.');
         $historico->assertDontSee('name="comentario"', escape: false);
+        // Nem campo de escrever, nem correção: auditoria é leitura.
+        $historico->assertDontSee('editar-comentario-', escape: false);
     }
 
     /**
@@ -284,8 +356,16 @@ class ComentariosTarefaTest extends TestCase
         $this->assertDatabaseMissing('tarefa_comentarios', ['corpo' => 'Tentativa de comentário']);
 
         $this->actingAs($daRevenda)
+            ->put(route('tarefas.comentarios.update', $comentario), ['corpo' => 'Reescrita por revenda'])
+            ->assertForbidden();
+
+        $this->actingAs($daRevenda)
             ->delete(route('tarefas.comentarios.destroy', $comentario))
             ->assertForbidden();
-        $this->assertDatabaseHas('tarefa_comentarios', ['id' => $comentario->id]);
+
+        $this->assertDatabaseHas('tarefa_comentarios', [
+            'id' => $comentario->id,
+            'corpo' => 'Conversa interna da matriz.',
+        ]);
     }
 }

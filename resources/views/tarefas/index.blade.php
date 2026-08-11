@@ -210,7 +210,7 @@
     @foreach ($tarefas as $tarefa)
         <x-modal name="editar-tarefa-{{ $tarefa->id }}" maxWidth="lg">
             @include('tarefas._form', ['tarefa' => $tarefa, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
-            @include('tarefas._comentarios-remocao', ['tarefa' => $tarefa])
+            @include('tarefas._comentarios-envios', ['tarefa' => $tarefa])
         </x-modal>
     @endforeach
 

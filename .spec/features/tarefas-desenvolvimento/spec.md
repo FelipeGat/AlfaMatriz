@@ -290,6 +290,15 @@ esse detalhe fique datado e assinado junto da tarefa, e não num chat à parte.
   quebras de linha preservadas: nada é interpretado — o traço continua traço e
   o HTML chega como texto
 
+#### AC-138 — O autor corrige o próprio comentário, e a correção fica dita
+
+- **Dado** um comentário que escrevi
+- **Quando** clico no lápis, mudo o texto e confirmo
+- **Então** o comentário passa a mostrar o texto novo, marcado como editado e
+  guardando a data original — sem trocar de lugar na conversa. Corrigir o
+  comentário de outra pessoa é recusado, e correção vazia também: quem quis
+  apagar tem o botão de apagar
+
 #### AC-136 — A conversa é do autor, e sobrevive ao encerramento
 
 - **Dado** um comentário que escrevi
@@ -303,8 +312,9 @@ esse detalhe fique datado e assinado junto da tarefa, e não num chat à parte.
 
 - Anexos de imagem na tarefa (o alfadev tem; fica para depois).
 - Qualquer formatação no comentário: marcador de lista, numeração, markdown.
-- Editar comentário já publicado, menção a pessoa (@) e notificação de
-  comentário novo.
+- Histórico de versões do comentário: a tela diz QUE foi corrigido, não o que
+  dizia antes.
+- Menção a pessoa (@) e notificação de comentário novo.
 - Comentar direto pelo histórico, sem reabrir a tarefa.
 - Modal de detalhe com histórico completo e linha do tempo visual.
 - Painel de indicadores do ciclo (tempo médio, taxa de aprovação, timeline).
@@ -327,7 +337,7 @@ esse detalhe fique datado e assinado junto da tarefa, e não num chat à parte.
 | ASM-033 | O relatório de teste é registrado no próprio momento da transição (como no alfadev: a confirmação de "Em testes → Concluída" pede as notas do teste), sem tela separada de relatórios. | confirmada | Implementado e provado por AC-089: o relatório é gravado na própria confirmação do movimento, e um aprovado libera a conclusão na hora. |
 | ASM-034 | O vínculo com sistema é opcional: tarefa interna que não pertence a nenhum produto (ex.: infraestrutura) pode ficar sem sistema. | confirmada | Implementado: `sistema_id` é anulável e o card mostra "Sem sistema" quando falta (AC-084, AC-116). |
 | ASM-047 | O comentário é texto puro — sem markdown, lista, negrito, link ou imagem — e a conversa não notifica ninguém: quem acompanha a tarefa a abre. | confirmada | Confirmado pelo usuário em 2026-08-11: a formatação de lista foi entregue e retirada em seguida. O corpo sai pelo escape normal do Blade, sem conversão nenhuma — não há marcação para auditar nem sanitizador para manter. |
-| ASM-048 | Só o autor apaga o próprio comentário, e ninguém edita comentário publicado. | aberta | Implementado assim em US-049 (AC-136). Apagar o alheio seria reescrever a conversa de outra pessoa; editar sem registro de edição faria a tarefa contar uma história que não aconteceu. |
+| ASM-048 | Só o autor corrige e apaga o próprio comentário, e toda correção fica marcada na tela. | confirmada | Confirmado pelo usuário em 2026-08-11, que pediu a edição depois da primeira entrega. Mexer no comentário alheio seria reescrever a conversa de outra pessoa; a marca de editado existe porque reescrever em silêncio faria a tarefa contar uma história que não aconteceu. O carimbo é coluna própria (`editado_em`), e não `updated_at`, que se move por qualquer gravação futura na linha. |
 | ASM-035 | Os dados do alfadev não são migrados: o quadro do AlfaMatriz nasce vazio e o alfadev é desligado depois, manualmente. | aberta | **Decisão pendente do dono do produto.** Enquanto o alfadev seguir em uso, os dois bancos divergem. Migrar o histórico do Supabase é feature própria; desligar o alfadev sem migrar descarta o histórico dele. |
 
 ## Perguntas em aberto

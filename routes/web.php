@@ -80,11 +80,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('tarefas/{tarefa}/mover', [TarefaController::class, 'mover'])->name('tarefas.mover')
         ->middleware('permissao:tarefas');
     // Não há rota de criar comentário: ele viaja no `tarefas.update`, no mesmo
-    // envio do cadastro. Apagar continua sendo caminho próprio — é destrutivo,
-    // e não pode ir de carona no salvar.
+    // envio do cadastro. Corrigir e apagar continuam sendo caminho próprio —
+    // mexem no que já foi publicado, e não podem ir de carona no salvar.
     //
     // Sem o id da tarefa no caminho, como os anexos: o comentário já sabe de
     // quem é, e um segundo id no endereço só criaria um par para conferir.
+    Route::put('tarefas/comentarios/{comentario}', [TarefaController::class, 'editarComentario'])
+        ->name('tarefas.comentarios.update')
+        ->middleware('permissao:tarefas');
     Route::delete('tarefas/comentarios/{comentario}', [TarefaController::class, 'excluirComentario'])
         ->name('tarefas.comentarios.destroy')
         ->middleware('permissao:tarefas');

@@ -305,3 +305,26 @@
   sistemas diferentes é trabalho legítimo de quem cadastra em série, e um
   segundo envio idêntico em tudo, no mesmo minuto, é sempre o duplo clique.
 - Esforço: baixo
+
+## T-088 — Corrigir o próprio comentário, com a correção dita na tela [concluida]
+- Refs: US-049, AC-138, AC-136
+- Arquivos: database/migrations/2026_08_11_110000_marcar_comentario_editado.php, app/Models/TarefaComentario.php, app/Http/Controllers/TarefaController.php, routes/web.php, resources/views/tarefas/_comentarios.blade.php, resources/views/tarefas/_comentarios-envios.blade.php, resources/views/tarefas/index.blade.php, tests/Feature/TarefasDesenvolvimento/ComentariosTarefaTest.php
+- Notas: até aqui, comentário errado só tinha a saída de apagar e reescrever —
+  o que jogava fora a data original e o lugar da frase na conversa. O lápis
+  abre a correção NO LUGAR (Alpine: o parágrafo sai, o campo entra) e o texto
+  novo vai pelo mesmo par `form=`/`id=` que o apagar já usava: o campo e os
+  botões ficam no meio da lista, dentro do formulário da tarefa, e o envio mora
+  fora dele. `_comentarios-remocao` vira `_comentarios-envios` e passa a montar
+  os dois formulários por comentário.
+  CUIDADO: o formulário de correção vai VAZIO — o `textarea` que ele envia está
+  na lista, ligado a ele pelo atributo `form`. Quem mover esse campo para
+  dentro do formulário da tarefa faz o texto ser enviado no Salvar e a correção
+  parar de funcionar em silêncio; por isso o teste assere o par.
+  A marca de editado é coluna própria (`editado_em`) e não `updated_at`: o
+  carimbo é DITO na tela, então precisa querer dizer exatamente "o texto mudou
+  depois de publicado" — `updated_at` se move por qualquer gravação futura na
+  linha e passaria a acusar edição onde não houve nenhuma.
+  Correção vazia é recusada em vez de apagar: quem quis apagar tem o botão do
+  lixo, e um campo que some com a frase quando fica em branco apaga por
+  acidente.
+- Esforço: baixo

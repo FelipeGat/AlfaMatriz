@@ -196,6 +196,38 @@ class TarefaController extends Controller
     }
 
     /**
+     * Corrige um comentário — só o próprio, e a correção fica dita.
+     *
+     * Comentário errado é o erro mais barato de cometer, e até agora só havia
+     * a saída de apagar e reescrever — o que jogava fora a data original e o
+     * lugar da frase na conversa. Corrigir preserva os dois.
+     *
+     * O `editado_em` não é enfeite: reescrever em silêncio faria a tarefa
+     * contar uma história que não aconteceu, e quem leu a versão anterior não
+     * teria como saber que ela mudou. Editar o comentário alheio continua fora
+     * de questão — a regra é a mesma do apagar.
+     */
+    public function editarComentario(Request $request, TarefaComentario $comentario)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        abort_unless($comentario->autor_id === auth()->id(), 403, 'Só o autor corrige o próprio comentário.');
+
+        $data = $request->validate([
+            'corpo' => 'required|string|max:4000',
+        ]);
+
+        $comentario->update([
+            'corpo' => trim($data['corpo']),
+            'editado_em' => now(),
+        ]);
+
+        return redirect()->back(fallback: route('tarefas.index'))
+            ->with('status', 'Comentário corrigido.')
+            ->with('tarefa-aberta', $comentario->tarefa_id);
+    }
+
+    /**
      * Apaga um comentário — só o próprio.
      *
      * Errar o comentário é o erro mais barato de cometer e, sem esta porta, o
