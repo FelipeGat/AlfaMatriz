@@ -409,7 +409,15 @@ class SincronizadorSistemaService
             return null;
         }
 
-        $candidatos = $query->where($coluna, $documento)->limit(2)->get();
+        // Compara NORMALIZADO dos dois lados. O documento que chega já vem só
+        // com dígitos, mas o que está gravado aqui pode ter máscara: cadastro
+        // feito à mão guarda "52.638.029/0001-05". Comparar cru contra
+        // normalizado nunca casa — e o efeito é justamente a duplicação que
+        // esta função existe para evitar. Pego no ensaio da primeira carga
+        // real, com a revenda que existia nos dois lados.
+        $normalizado = "REPLACE(REPLACE(REPLACE(REPLACE({$coluna}, '.', ''), '/', ''), '-', ''), ' ', '')";
+
+        $candidatos = $query->whereRaw("{$normalizado} = ?", [$documento])->limit(2)->get();
 
         if ($candidatos->count() !== 1) {
             return null;

@@ -230,4 +230,56 @@ class ReconciliacaoPorDocumentoTest extends TestCase
 
         $this->assertSame(0, Revenda::count(), 'O ensaio não pode gravar.');
     }
+
+    /**
+     * @spec:AC-166 Cadastro feito à mão guarda o documento COM máscara. O que
+     * chega da origem vem só com dígitos. Comparar um contra o outro nunca
+     * casa — e o resultado é a duplicação que esta função existe para evitar.
+     *
+     * Pego no ensaio da primeira carga real em produção: a revenda "Invest
+     * Soluções" estava na Matriz como `52.638.029/0001-05` e chegou do
+     * AlfaControl como `52638029000105`. O ensaio disse "1 criada" quando
+     * deveria dizer "1 atualizada".
+     */
+    public function test_documento_com_mascara_no_cadastro_local_casa(): void
+    {
+        $existente = Revenda::create([
+            'nome' => 'Invest Soluções', 'cnpj' => '52.638.029/0001-05', 'ativo' => true,
+        ]);
+
+        $this->fakeDoControl(revendas: [[
+            'id_externo' => '900', 'nome' => 'INVEST SOLUÇÕES LTDA',
+            'cnpj' => '52638029000105', 'email' => null, 'telefone' => null, 'ativo' => true,
+        ]]);
+
+        $this->assertTrue($this->sincronizarControl()['ok']);
+
+        $this->assertSame(1, Revenda::count(), 'A revenda mascarada tem de casar, não duplicar.');
+        $this->assertSame('900', $existente->refresh()->idExternoNoSistema($this->control));
+    }
+
+    /**
+     * @spec:AC-166 Vale para clientes, e com qualquer separador comum.
+     */
+    public function test_mascara_de_cpf_e_cnpj_em_clientes(): void
+    {
+        $revenda = Revenda::create(['nome' => 'Invest', 'cnpj' => '12345678000199', 'ativo' => true]);
+        $revenda->ancorarEm($this->control, '900');
+
+        $comCnpj = Cliente::create(['nome' => 'Com CNPJ', 'cpf_cnpj' => '98.765.432/0001-10', 'ativo' => true]);
+        $comCpf = Cliente::create(['nome' => 'Com CPF', 'cpf_cnpj' => '123.456.789-09', 'ativo' => true]);
+
+        $this->fakeDoControl(clientes: [
+            ['id_externo' => '501', 'nome' => 'Com CNPJ', 'cpf_cnpj' => '98765432000110',
+                'cidade' => null, 'uf' => null, 'ativo' => true, 'status' => 'ativo', 'revenda_id_externo' => '900'],
+            ['id_externo' => '502', 'nome' => 'Com CPF', 'cpf_cnpj' => '12345678909',
+                'cidade' => null, 'uf' => null, 'ativo' => true, 'status' => 'ativo', 'revenda_id_externo' => '900'],
+        ]);
+
+        $this->sincronizarControl();
+
+        $this->assertSame(2, Cliente::count(), 'Nenhum dos dois podia duplicar.');
+        $this->assertSame('501', $comCnpj->refresh()->idExternoNoSistema($this->control));
+        $this->assertSame('502', $comCpf->refresh()->idExternoNoSistema($this->control));
+    }
 }
