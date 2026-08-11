@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\ComOrigemExterna;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -33,6 +34,20 @@ class Cliente extends Model
             'longitude' => 'decimal:7',
             'data_cadastro' => 'date',
         ];
+    }
+
+    /**
+     * UF é código de duas letras, não texto livre: normalizar é parte do dado.
+     *
+     * O formulário tinha a classe `uppercase` do Tailwind, que é só
+     * text-transform — mostrava "ES" e gravava "es". Aqui pega todo caminho de
+     * escrita, inclusive o sincronizador, que traz UF de sistema de fora.
+     */
+    protected function uf(): Attribute
+    {
+        return Attribute::set(
+            fn (?string $valor) => $valor === null ? null : mb_strtoupper(trim($valor))
+        );
     }
 
     public function revenda(): BelongsTo
