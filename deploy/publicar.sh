@@ -56,6 +56,11 @@ npm run build || falhar "compilar front-end"
 etapa "Aplicando migrações"
 php artisan migrate --force || falhar "aplicar migrações"
 
+# Permissão é dado semeado, não migrado: sem esta etapa, todo recurso novo
+# nasce invisível em produção — some do menu e devolve 403, sem erro nenhum.
+etapa "Aplicando cargas de referência"
+php artisan alfa:semear-referencia || falhar "aplicar cargas de referência"
+
 etapa "Recarregando cache de configuração"
 php artisan config:cache || falhar "recarregar cache de configuração"
 

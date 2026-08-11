@@ -141,6 +141,9 @@ aplicar(){
     npm ci --silent || return 1
     npm run build || return 1
     php artisan migrate --force || return 1
+    # Depois do migrate e antes dos caches: permissão é dado semeado, não
+    # migrado, e sem isto todo recurso novo nasce invisível em produção.
+    php artisan alfa:semear-referencia || return 1
     # Sem `config:clear`: ele deixaria a produção sem configuração por alguns
     # segundos, devolvendo 500 a quem estivesse usando. O `config:cache`
     # reescreve o arquivo de uma vez só.

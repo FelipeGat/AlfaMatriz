@@ -106,8 +106,16 @@ lembrar a sequência certa.
 - **Dado** o container já provisionado
 - **Quando** o operador roda o script de publicação (`deploy/publicar.sh`)
 - **Então** o script traz o código, instala dependências de produção, compila o
-  front-end, aplica as migrações e recarrega os caches — parando com erro
-  claro se qualquer etapa falhar
+  front-end, aplica as migrações, aplica as cargas de referência e recarrega os
+  caches — parando com erro claro se qualquer etapa falhar
+
+#### AC-009b — Publicar deixa as cargas de referência em dia
+
+- **Dado** uma versão que acrescentou um recurso novo ao cadastro de permissões
+- **Quando** essa versão é publicada
+- **Então** a permissão do recurso passa a existir no ambiente publicado, sem
+  ninguém rodar carga à mão — porque o deploy aplica as cargas de referência
+  idempotentes junto das migrações
 
 #### AC-010 — A conferência pós-deploy é automática
 

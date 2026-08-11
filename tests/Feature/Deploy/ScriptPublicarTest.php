@@ -40,9 +40,9 @@ class ScriptPublicarTest extends TestCase
 
     /**
      * @spec:AC-009 Rodar o script de publicação, com tudo saudável, executa as
-     * cinco etapas (buscar código, instalar dependências de produção,
-     * compilar o front-end, aplicar migrações e recarregar os caches) em
-     * ordem e termina com sucesso.
+     * seis etapas (buscar código, instalar dependências de produção,
+     * compilar o front-end, aplicar migrações, aplicar as cargas de referência
+     * e recarregar os caches) em ordem e termina com sucesso.
      */
     public function test_publicar_executa_todas_as_etapas_em_ordem_e_sai_com_sucesso(): void
     {
@@ -57,6 +57,7 @@ class ScriptPublicarTest extends TestCase
         $indiceNpmCi = $this->indiceDaPrimeiraChamadaComPrefixo($chamadas, 'npm ci');
         $indiceNpmBuild = $this->indiceDaPrimeiraChamadaComPrefixo($chamadas, 'npm run build');
         $indiceMigrate = $this->indiceDaPrimeiraChamadaComPrefixo($chamadas, 'php artisan migrate --force');
+        $indiceSemear = $this->indiceDaPrimeiraChamadaComPrefixo($chamadas, 'php artisan alfa:semear-referencia');
         $indiceConfigCache = $this->indiceDaPrimeiraChamadaComPrefixo($chamadas, 'php artisan config:cache');
         $indiceRouteCache = $this->indiceDaPrimeiraChamadaComPrefixo($chamadas, 'php artisan route:cache');
         $indiceViewCache = $this->indiceDaPrimeiraChamadaComPrefixo($chamadas, 'php artisan view:cache');
@@ -68,6 +69,7 @@ class ScriptPublicarTest extends TestCase
             'npm ci' => $indiceNpmCi,
             'npm run build' => $indiceNpmBuild,
             'php artisan migrate --force' => $indiceMigrate,
+            'php artisan alfa:semear-referencia' => $indiceSemear,
             'php artisan config:cache' => $indiceConfigCache,
             'php artisan route:cache' => $indiceRouteCache,
             'php artisan view:cache' => $indiceViewCache,
@@ -80,7 +82,10 @@ class ScriptPublicarTest extends TestCase
         $this->assertTrue($indiceComposer < $indiceNpmCi);
         $this->assertTrue($indiceNpmCi < $indiceNpmBuild);
         $this->assertTrue($indiceNpmBuild < $indiceMigrate);
-        $this->assertTrue($indiceMigrate < $indiceConfigCache);
+        // A carga de referência precisa do schema já migrado e precisa estar
+        // no banco antes dos caches — daí a posição entre os dois.
+        $this->assertTrue($indiceMigrate < $indiceSemear);
+        $this->assertTrue($indiceSemear < $indiceConfigCache);
         $this->assertTrue($indiceConfigCache < $indiceRouteCache);
         $this->assertTrue($indiceRouteCache < $indiceViewCache);
         $this->assertTrue($indiceViewCache < $indiceReload);

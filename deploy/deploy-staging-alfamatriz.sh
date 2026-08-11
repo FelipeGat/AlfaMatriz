@@ -125,6 +125,9 @@ log "portão aprovou — aplicando ${REMOTO_SHA:0:7}"
 no_container "npm ci --silent" || { log "npm ci FALHOU"; exit 1; }
 no_container "npm run build" || { log "build do front-end FALHOU"; exit 1; }
 no_container "php artisan migrate --force" || { log "migração FALHOU"; exit 1; }
+# Mesma etapa da produção, e aqui é onde ela precisa ser vista primeiro: se uma
+# carga de referência quebrar, que quebre no staging.
+no_container "php artisan alfa:semear-referencia" || { log "carga de referência FALHOU"; exit 1; }
 # Sem `config:clear` antes: ele apaga o cache e deixa uma janela de segundos
 # em que o app não tem configuração nenhuma — o .env é 600/root e o www-data
 # não consegue lê-lo como alternativa, então TODA requisição no intervalo
