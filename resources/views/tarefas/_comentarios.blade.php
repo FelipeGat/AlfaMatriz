@@ -50,22 +50,12 @@
                 </div>
 
                 {{--
-                    `{!! !!}` é seguro aqui e só aqui: `marcadoresEmHtml()`
-                    escapa o texto ANTES de montar qualquer tag, e as únicas
-                    tags que ela emite são de lista e parágrafo.
-
-                    O estilo das listas vive na casca porque o corpo vem do
-                    model sem classe nenhuma — o Tailwind zera marcador e
-                    recuo, então sem isto a lista sairia como texto corrido e
-                    o marcador não apareceria.
+                    Texto puro, pelo escape normal do Blade: nada que se digite
+                    no campo vira HTML. `whitespace-pre-line` guarda as quebras
+                    de linha de quem enumerou à mão — sem isso, três linhas
+                    escritas em sequência sairiam grudadas num parágrafo só.
                 --}}
-                <div class="mt-1.5 text-[13px] leading-snug text-ink-dim
-                            [&_p]:mt-1.5 [&_p:first-child]:mt-0
-                            [&_ul]:mt-1.5 [&_ul]:pl-4 [&_ul]:list-disc
-                            [&_ol]:mt-1.5 [&_ol]:pl-5 [&_ol]:list-decimal
-                            [&_li]:mt-0.5 [&_li]:marker:text-ink-faint">
-                    {!! $comentario->corpoEmHtml() !!}
-                </div>
+                <p class="mt-1.5 text-[13px] leading-snug text-ink-dim whitespace-pre-line">{{ $comentario->corpo }}</p>
             </article>
         @empty
             <p class="text-[12.5px] text-ink-mute">
@@ -77,73 +67,16 @@
     </div>
 
     @unless ($somenteLeitura)
-        {{--
-            Os marcadores são um atalho de digitação, não um editor: os botões
-            escrevem `- ` e `1. ` no campo, e o Enter continua a lista sozinho
-            (e a encerra quando o item sai vazio). O que fica gravado é o texto
-            que se vê — quem preferir digitar o traço na mão tem o mesmo
-            resultado, e quem abrir o comentário por outro caminho lê algo que
-            continua fazendo sentido.
-        --}}
-        <form method="POST" action="{{ route('tarefas.comentarios.store', $tarefa) }}" class="mt-4"
-              x-data="{
-                  /** Aplica o marcador nas linhas tocadas pela seleção. */
-                  marcar(tipo) {
-                      const campo = this.$refs.campo;
-                      const valor = campo.value;
-                      const inicio = valor.lastIndexOf('\n', Math.max(campo.selectionStart - 1, 0)) + 1;
-                      let fim = valor.indexOf('\n', campo.selectionEnd);
-                      if (fim === -1) fim = valor.length;
-
-                      const linhas = valor.slice(inicio, fim).split('\n').map((linha, i) => {
-                          const limpa = linha.replace(/^\s*([-*•]|\d+[.)])\s+/, '');
-                          return (tipo === 'numero' ? (i + 1) + '. ' : '- ') + limpa;
-                      });
-
-                      campo.setRangeText(linhas.join('\n'), inicio, fim, 'end');
-                      campo.focus();
-                  },
-
-                  /** Enter dentro de uma lista abre o próximo item. */
-                  continuar(evento) {
-                      const campo = this.$refs.campo;
-                      if (campo.selectionStart !== campo.selectionEnd) return;
-
-                      const valor = campo.value;
-                      const inicio = valor.lastIndexOf('\n', Math.max(campo.selectionStart - 1, 0)) + 1;
-                      const linha = valor.slice(inicio, campo.selectionStart);
-                      const marcador = linha.match(/^\s*([-*•]|(\d+)[.)])\s+/);
-                      if (! marcador) return;
-
-                      evento.preventDefault();
-
-                      // Item vazio quer dizer que a lista acabou: o marcador
-                      // solto sai e a escrita volta a ser parágrafo.
-                      if (linha.trim() === marcador[0].trim()) {
-                          campo.setRangeText('', inicio, campo.selectionStart, 'end');
-                          return;
-                      }
-
-                      const proximo = marcador[2] ? (Number(marcador[2]) + 1) + '. ' : '- ';
-                      campo.setRangeText('\n' + proximo, campo.selectionStart, campo.selectionStart, 'end');
-                  },
-              }">
+        <form method="POST" action="{{ route('tarefas.comentarios.store', $tarefa) }}" class="mt-4">
             @csrf
 
-            <div class="flex items-center gap-2">
-                <x-input-label for="corpo-{{ $tarefa->id }}" value="Novo comentário" class="flex-1" />
-                <button type="button" @click="marcar('ponto')" title="Lista com marcador"
-                        class="h-[26px] px-2 rounded-control border border-btn-line font-mono text-[11px] text-ink-mute hover:text-brand hover:border-brand transition">
-                    • lista
-                </button>
-                <button type="button" @click="marcar('numero')" title="Lista numerada"
-                        class="h-[26px] px-2 rounded-control border border-btn-line font-mono text-[11px] text-ink-mute hover:text-brand hover:border-brand transition">
-                    1. lista
-                </button>
-            </div>
+            <x-input-label for="corpo-{{ $tarefa->id }}" value="Novo comentário" />
 
-            <textarea id="corpo-{{ $tarefa->id }}" name="corpo" x-ref="campo" rows="3" required maxlength="4000"
-                      @keydown.enter="continuar($event)"
+            {{-- O campo não formata nada: o que se digita é o que fica
+                 gravado e o que aparece na tela, quebras de linha inclusive.
+                 Quem quiser enumerar escreve os traços à mão, e eles
+                 continuam traços. --}}
+            <textarea id="corpo-{{ $tarefa->id }}" name="corpo" rows="3" required maxlength="4000"
                       placeholder="O que mais precisa ser dito sobre esta tarefa…"
                       class="mt-1 block w-full text-[13px] rounded-control bg-input border-line text-ink"></textarea>
 
@@ -151,11 +84,7 @@
                 <p class="mt-1 text-[12px] text-crit">{{ $message }}</p>
             @enderror
 
-            <div class="mt-2 flex items-center justify-between gap-3">
-                <p class="text-[11.5px] text-ink-faint">
-                    Comece a linha com <span class="font-mono">-</span> para marcador ou
-                    <span class="font-mono">1.</span> para numeração.
-                </p>
+            <div class="mt-2 flex items-center justify-end gap-3">
                 <button type="submit"
                         class="h-[30px] px-3 rounded-control bg-brand text-on-brand font-semibold text-[12px] hover:bg-brand-bright transition">
                     Comentar

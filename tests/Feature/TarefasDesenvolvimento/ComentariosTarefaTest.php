@@ -88,10 +88,10 @@ class ComentariosTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-135 Linhas com "-" viram lista com marcador e linhas com "1."
-     * viram lista numerada, na mesma leitura.
+     * @spec:AC-135 O comentário é texto puro: o que se digita é o que fica
+     * gravado, sem nenhuma marcação interpretada — o traço continua traço.
      */
-    public function test_marcadores_viram_lista_com_ponto_e_lista_numerada(): void
+    public function test_comentario_e_guardado_e_exibido_como_texto_puro(): void
     {
         $usuario = User::factory()->create();
         $tarefa = Tarefa::factory()->create([
@@ -99,36 +99,22 @@ class ComentariosTarefaTest extends TestCase
             'status' => 'em_desenvolvimento',
         ]);
 
-        $this->actingAs($usuario)->post(route('tarefas.comentarios.store', $tarefa), [
-            'corpo' => "Falta fechar:\n- ajustar o filtro\n- refazer o teste\n\nNa ordem:\n1. subir o banco\n2. rodar a migração",
-        ]);
+        $corpo = "Falta fechar:\n- ajustar o filtro\n1. subir o banco";
 
-        $html = TarefaComentario::first()->corpoEmHtml();
+        $this->actingAs($usuario)->post(route('tarefas.comentarios.store', $tarefa), ['corpo' => $corpo]);
 
-        $this->assertStringContainsString('<p>Falta fechar:</p>', $html);
-        $this->assertStringContainsString('<ul><li>ajustar o filtro</li><li>refazer o teste</li></ul>', $html);
-        $this->assertStringContainsString('<ol><li>subir o banco</li><li>rodar a migração</li></ol>', $html);
+        $this->assertSame($corpo, TarefaComentario::first()->corpo);
 
         $quadro = $this->actingAs($usuario)->get(route('tarefas.index'));
-        $quadro->assertSee('<li>ajustar o filtro</li>', escape: false);
-        $quadro->assertSee('<ol><li>subir o banco</li>', escape: false);
+        $quadro->assertSee('- ajustar o filtro');
+        $quadro->assertSee('1. subir o banco');
+        // Nenhuma tag de lista sai da conversa: a quebra de linha é do CSS.
+        $quadro->assertDontSee('<li>', escape: false);
     }
 
     /**
-     * @spec:AC-135 A lista numerada começa no número que a pessoa escreveu:
-     * quem retoma no "4." está falando do quarto item.
-     */
-    public function test_lista_numerada_comeca_no_numero_escrito(): void
-    {
-        $this->assertStringContainsString(
-            '<ol start="4"><li>revisar o layout</li><li>publicar</li></ol>',
-            TarefaComentario::marcadoresEmHtml("4. revisar o layout\n5. publicar"),
-        );
-    }
-
-    /**
-     * @spec:AC-135 O corpo é escapado antes de virar HTML: só as tags de lista
-     * e de parágrafo saem da conversão, o resto chega à tela como texto.
+     * @spec:AC-135 HTML digitado no campo chega à tela como texto: o corpo sai
+     * pelo escape normal do Blade, sem nenhuma conversão pelo caminho.
      */
     public function test_html_digitado_no_comentario_nao_vira_html(): void
     {
@@ -139,16 +125,13 @@ class ComentariosTarefaTest extends TestCase
         ]);
 
         $this->actingAs($usuario)->post(route('tarefas.comentarios.store', $tarefa), [
-            'corpo' => '- <script>alert(1)</script> confere isto',
+            'corpo' => '<script>alert(1)</script> confere isto',
         ]);
 
-        $html = TarefaComentario::first()->corpoEmHtml();
-
-        $this->assertStringNotContainsString('<script>', $html);
-        $this->assertStringContainsString('&lt;script&gt;', $html);
-
         $quadro = $this->actingAs($usuario)->get(route('tarefas.index'));
+
         $quadro->assertDontSee('<script>alert(1)</script>', escape: false);
+        $quadro->assertSee('&lt;script&gt;alert(1)&lt;/script&gt; confere isto', escape: false);
     }
 
     /**

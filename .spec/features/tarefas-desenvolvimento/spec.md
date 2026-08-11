@@ -273,14 +273,13 @@ esse detalhe fique datado e assinado junto da tarefa, e não num chat à parte.
   do mais antigo para o mais novo, e o card anuncia quantos comentários existem
   — comentário vazio não é aceito
 
-#### AC-135 — Marcadores viram lista de verdade
+#### AC-135 — O comentário é texto puro
 
 - **Dado** que estou escrevendo um comentário
-- **Quando** começo linhas com `-` (ou uso o botão de marcador) ou com `1.`
-  (ou o botão de numeração)
-- **Então** o comentário é exibido como lista com marcador ou lista numerada,
-  respeitando o número em que a contagem começou — e nada além de lista e
-  parágrafo é interpretado: HTML digitado no campo aparece como texto
+- **Quando** enumero itens à mão, quebro linhas ou digito HTML
+- **Então** o que aparece na tela é exatamente o que foi digitado, com as
+  quebras de linha preservadas: nada é interpretado — o traço continua traço e
+  o HTML chega como texto
 
 #### AC-136 — A conversa é do autor, e sobrevive ao encerramento
 
@@ -294,6 +293,7 @@ esse detalhe fique datado e assinado junto da tarefa, e não num chat à parte.
 ## Fora de escopo
 
 - Anexos de imagem na tarefa (o alfadev tem; fica para depois).
+- Qualquer formatação no comentário: marcador de lista, numeração, markdown.
 - Editar comentário já publicado, menção a pessoa (@) e notificação de
   comentário novo.
 - Comentar direto pelo histórico, sem reabrir a tarefa.
@@ -317,7 +317,7 @@ esse detalhe fique datado e assinado junto da tarefa, e não num chat à parte.
 | ASM-032 | O acesso é controlado por um recurso de permissão novo, `tarefas`, no mesmo esquema de perfis/permissões já usado (`permissao:tarefas`), somado ao bloqueio por escopo de revenda. | confirmada | Implementado e provado: AC-095 (403 para revenda) e AC-094 (some do menu). O recurso está no `PerfilPermissaoSeeder`. |
 | ASM-033 | O relatório de teste é registrado no próprio momento da transição (como no alfadev: a confirmação de "Em testes → Concluída" pede as notas do teste), sem tela separada de relatórios. | confirmada | Implementado e provado por AC-089: o relatório é gravado na própria confirmação do movimento, e um aprovado libera a conclusão na hora. |
 | ASM-034 | O vínculo com sistema é opcional: tarefa interna que não pertence a nenhum produto (ex.: infraestrutura) pode ficar sem sistema. | confirmada | Implementado: `sistema_id` é anulável e o card mostra "Sem sistema" quando falta (AC-084, AC-116). |
-| ASM-047 | O comentário é texto simples com marcadores de lista — não markdown completo, sem negrito, link ou imagem — e a conversa não notifica ninguém: quem acompanha a tarefa a abre. | aberta | Implementado assim em US-049. A conversão é lista branca (`TarefaComentario::marcadoresEmHtml`), o que permite imprimir o corpo sem abrir XSS; markdown completo pediria sanitizador de verdade. |
+| ASM-047 | O comentário é texto puro — sem markdown, lista, negrito, link ou imagem — e a conversa não notifica ninguém: quem acompanha a tarefa a abre. | confirmada | Confirmado pelo usuário em 2026-08-11: a formatação de lista foi entregue e retirada em seguida. O corpo sai pelo escape normal do Blade, sem conversão nenhuma — não há marcação para auditar nem sanitizador para manter. |
 | ASM-048 | Só o autor apaga o próprio comentário, e ninguém edita comentário publicado. | aberta | Implementado assim em US-049 (AC-136). Apagar o alheio seria reescrever a conversa de outra pessoa; editar sem registro de edição faria a tarefa contar uma história que não aconteceu. |
 | ASM-035 | Os dados do alfadev não são migrados: o quadro do AlfaMatriz nasce vazio e o alfadev é desligado depois, manualmente. | aberta | **Decisão pendente do dono do produto.** Enquanto o alfadev seguir em uso, os dois bancos divergem. Migrar o histórico do Supabase é feature própria; desligar o alfadev sem migrar descarta o histórico dele. |
 

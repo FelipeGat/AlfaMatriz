@@ -263,11 +263,13 @@ class TarefaController extends Controller
     /**
      * Aplica o recorte comum às duas abas.
      *
-     * A busca varre título, resumo E detalhes: quem procura uma tarefa pelo
-     * número do chamado ou pelo nome do cliente costuma ter escrito isso no
-     * corpo, não no título. As três condições vão dentro de um `where`
-     * aninhado — soltas, o `orWhere` escaparia do `whereIn` de status e o
-     * quadro passaria a mostrar tarefa concluída.
+     * A busca varre título, resumo, detalhes E os comentários: quem procura
+     * uma tarefa pelo número do chamado ou pelo nome do cliente costuma ter
+     * escrito isso no corpo, não no título — e desde que a tarefa tem
+     * conversa, o corpo mais provável é justamente o comentário, que é onde o
+     * assunto continua depois de a tarefa nascer. As condições vão dentro de
+     * um `where` aninhado — soltas, o `orWhere` escaparia do `whereIn` de
+     * status e o quadro passaria a mostrar tarefa concluída.
      *
      * "Sem sistema" e "Sem responsável" são filtro de verdade, não enfeite: a
      * coluna Aberta é a fila de triagem, e achar o que ainda não tem dono é
@@ -282,7 +284,9 @@ class TarefaController extends Controller
             ->when($filtros['busca'] !== '', fn ($q) => $q->where(fn ($sub) => $sub
                 ->where('titulo', 'like', '%'.$filtros['busca'].'%')
                 ->orWhere('resumo', 'like', '%'.$filtros['busca'].'%')
-                ->orWhere('detalhes', 'like', '%'.$filtros['busca'].'%')))
+                ->orWhere('detalhes', 'like', '%'.$filtros['busca'].'%')
+                ->orWhereHas('comentarios', fn ($comentario) => $comentario
+                    ->where('corpo', 'like', '%'.$filtros['busca'].'%'))))
             ->when($filtros['sistema'] === 'sem', fn ($q) => $q->whereNull('sistema_id'))
             ->when($filtros['sistema'] !== '' && $filtros['sistema'] !== 'sem',
                 fn ($q) => $q->where('sistema_id', $filtros['sistema']))

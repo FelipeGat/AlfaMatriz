@@ -82,6 +82,66 @@ class FiltrosTarefasTest extends TestCase
         );
     }
 
+    public function test_busca_do_quadro_varre_os_comentarios(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+        $this->semearQuadro($criador);
+
+        // Depois de a tarefa nascer, o assunto continua nos comentários: o
+        // segundo chamado do mesmo cliente não está no título nem nos
+        // detalhes, e sem isto a busca devolveria tela vazia para quem digita
+        // um número que está escrito na tarefa.
+        Tarefa::where('titulo', 'Ajustar relatorio de vendas')->first()->comentarios()->create([
+            'autor_id' => $criador->id,
+            'corpo' => 'Cliente reabriu no chamado 5090.',
+        ]);
+
+        $resposta = $this->actingAs($usuario)
+            ->get(route('tarefas.index', ['busca' => '5090']))
+            ->assertOk();
+
+        $this->assertSame(
+            ['Ajustar relatorio de vendas'],
+            $resposta->viewData('tarefas')->pluck('titulo')->all()
+        );
+    }
+
+    public function test_busca_do_historico_varre_os_comentarios(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $encerrada = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Integracao de estoque',
+            'resumo' => 'Sem relacao com o termo procurado',
+            'detalhes' => 'Sem relacao com o termo procurado',
+            'status' => 'cancelada',
+        ]);
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Outra encerrada',
+            'resumo' => 'Sem relacao com o termo procurado',
+            'detalhes' => 'Sem relacao com o termo procurado',
+            'status' => 'concluida',
+        ]);
+
+        $encerrada->comentarios()->create([
+            'autor_id' => $criador->id,
+            'corpo' => 'Cancelada porque o cliente desistiu do modulo de estoque.',
+        ]);
+
+        $resposta = $this->actingAs($usuario)
+            ->get(route('tarefas.historico', ['busca' => 'desistiu']))
+            ->assertOk();
+
+        $this->assertSame(
+            ['Integracao de estoque'],
+            $resposta->viewData('tarefas')->pluck('titulo')->all()
+        );
+    }
+
     public function test_busca_do_quadro_nao_traz_tarefa_encerrada(): void
     {
         $usuario = User::factory()->create();
