@@ -67,13 +67,30 @@ cd "$DIR" || { log "diretório $DIR não existe"; exit 1; }
 # correta e travada ao mesmo tempo, que é o pior dos dois mundos para
 # diagnosticar.
 #
-# `-n`: quem chega depois desiste em silêncio em vez de enfileirar — não faz
-# sentido duas aplicações da mesma tag.
-exec 9>"$DIR/.deploy-tag.lock"
-if ! flock -n 9; then
+# `mkdir` e não `flock`: a criação de diretório é atômica nos dois sistemas, e
+# `flock` é do util-linux — não existe no macOS, onde a suíte deste script
+# roda. Um lock que só funciona no servidor não é testável, e este script já
+# provou que precisa de teste.
+#
+# Quem chega depois desiste em silêncio em vez de enfileirar: não faz sentido
+# aplicar a mesma tag duas vezes.
+TRAVA="$DIR/.deploy-tag.lock"
+
+# Trava esquecida por queda no meio do caminho bloquearia todo deploy seguinte
+# — o mesmo modo de falha do marcador de erro. Um deploy leva ~2 minutos; uma
+# hora é folga suficiente para não competir com execução legítima.
+if [[ -d "$TRAVA" ]] && [[ -z "$(find "$TRAVA" -maxdepth 0 -mmin -60 2>/dev/null)" ]]; then
+    log "trava antiga (>60min) — assumindo que ficou para trás e seguindo"
+    rmdir "$TRAVA" 2>/dev/null || true
+fi
+
+if ! mkdir "$TRAVA" 2>/dev/null; then
     log "outra execução em andamento — saindo"
     exit 0
 fi
+
+# Liberada em qualquer saída, inclusive nas que gravam marcador de falha.
+trap 'rmdir "$TRAVA" 2>/dev/null || true' EXIT
 
 if [[ -f "$PAUSADO" ]]; then
     log "PAUSADO (.deploy-paused) — nada a fazer"

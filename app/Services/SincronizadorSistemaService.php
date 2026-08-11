@@ -138,8 +138,21 @@ class SincronizadorSistemaService
         return ['criados' => $criados, 'atualizados' => $atualizados];
     }
 
+    /**
+     * O retrato da licença — só para quem a Matriz sabe ler com segurança.
+     *
+     * Um sistema pode ter cadastro em ordem e licença não. Puxar o retrato de
+     * uma base onde renovar encadeia licenças ativas faria a Matriz espelhar o
+     * defeito e faturar em cima dele. Sem a capacidade, a licença fica
+     * intocada: o cliente aparece na lista sem estado de licença, que é
+     * honesto, em vez de aparecer com um estado errado.
+     */
     private function sincronizarLicencas(): array
     {
+        if (! $this->sistema->suporta('sincroniza_licencas')) {
+            return ['ignorado' => true, 'atualizadas' => 0];
+        }
+
         $atualizadas = 0;
 
         foreach ($this->todasPaginas('/licencas') as $item) {

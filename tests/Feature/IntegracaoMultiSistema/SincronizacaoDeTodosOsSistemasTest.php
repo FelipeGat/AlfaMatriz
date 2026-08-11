@@ -137,4 +137,46 @@ class SincronizacaoDeTodosOsSistemasTest extends TestCase
 
         $this->artisan('app:sincronizar-alfagym')->assertSuccessful();
     }
+
+    /**
+     * @spec:AC-164 Sistema sem `sincroniza_licencas` tem revenda e cliente
+     * sincronizados, mas a licença não é lida.
+     *
+     * O AlfaControl está nesse estado: renovar lá encadeia licenças ativas em
+     * vez de substituir a anterior. Espelhar esse retrato faria a Matriz herdar
+     * o defeito e — pior — faturar em cima dele. O cliente aparece na lista sem
+     * estado de licença, que é honesto, em vez de aparecer com um estado errado.
+     */
+    public function test_licenca_nao_e_lida_sem_a_capacidade(): void
+    {
+        $control = Sistema::factory()->alfacontrol()->create(['token' => 'chave-control']);
+
+        $this->assertFalse($control->suporta('sincroniza_licencas'));
+
+        Http::preventStrayRequests();
+        Http::fake(['*control.alfasolucoes.cloud/*' => $this->respostaVazia('alfacontrol')]);
+
+        $this->artisan('alfa:sincronizar-sistemas', ['--sistema' => 'alfacontrol'])->assertSuccessful();
+
+        Http::assertSent(fn ($r) => str_contains($r->url(), '/clientes'));
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), '/licencas'));
+    }
+
+    /**
+     * @spec:AC-164 O AlfaGym continua lendo licença — é o que ele já fazia, e
+     * a separação não pode tirar isso dele.
+     */
+    public function test_o_alfagym_continua_lendo_licenca(): void
+    {
+        $gym = Sistema::factory()->alfagym()->create(['token' => 'chave-gym']);
+
+        $this->assertTrue($gym->suporta('sincroniza_licencas'));
+
+        Http::preventStrayRequests();
+        Http::fake(['*gym.alfasolucoes.cloud/*' => $this->respostaVazia('alfagym')]);
+
+        $this->artisan('alfa:sincronizar-sistemas', ['--sistema' => 'alfagym'])->assertSuccessful();
+
+        Http::assertSent(fn ($r) => str_contains($r->url(), '/licencas'));
+    }
 }

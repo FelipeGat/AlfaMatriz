@@ -34,8 +34,8 @@ class SistemasPrecosSeeder extends Seeder
                 // Paridade com o backfill da migration `adicionar_capacidades_aos_sistemas`,
                 // que é quem vale em produção (o deploy roda migrate, não seed).
                 'capacidades' => [
-                    'sincroniza', 'provisiona_revenda', 'provisiona_cliente',
-                    'exige_admin_no_cliente', 'gerencia_licenca',
+                    'sincroniza', 'sincroniza_licencas', 'provisiona_revenda',
+                    'provisiona_cliente', 'exige_admin_no_cliente', 'gerencia_licenca',
                 ],
                 'tiers' => [
                     ['nome' => 'Start', 'preco_base' => 99.00, 'unidades_inclusas' => 10, 'limite_unidades' => 10, 'ordem' => 1],
@@ -48,6 +48,11 @@ class SistemasPrecosSeeder extends Seeder
                 'unidade_cobranca' => 'condomínio ativo',
                 // Fase 1 da implantação: a Matriz só lê. Revenda, cliente,
                 // licença e módulo continuam sendo operados no painel do AlfaControl.
+                //
+                // Sem `sincroniza_licencas`: renovar no AlfaControl encadeia
+                // licenças ativas em vez de substituir a anterior, e espelhar
+                // esse retrato faria a Matriz faturar em cima do defeito.
+                // Ligar quando a origem estiver corrigida.
                 'capacidades' => ['sincroniza', 'sincroniza_modulos'],
                 'tiers' => [
                     ['nome' => 'Start', 'preco_base' => 99.00, 'unidades_inclusas' => 5, 'limite_unidades' => 5, 'ordem' => 1],

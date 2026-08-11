@@ -45,6 +45,7 @@ class SistemaFactory extends Factory
             'base_url' => 'https://gym.alfasolucoes.cloud',
             'capacidades' => [
                 'sincroniza',
+                'sincroniza_licencas',
                 'provisiona_revenda',
                 'provisiona_cliente',
                 'exige_admin_no_cliente',

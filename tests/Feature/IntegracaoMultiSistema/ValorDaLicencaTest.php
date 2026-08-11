@@ -31,7 +31,13 @@ class ValorDaLicencaTest extends TestCase
     {
         parent::setUp();
 
-        $this->control = Sistema::factory()->alfacontrol()->create(['token' => 'chave-control']);
+        // Com `sincroniza_licencas`: este teste é sobre ler o valor da licença.
+        // O AlfaControl real ainda não tem essa capacidade — renovar lá encadeia
+        // licenças ativas, e espelhar isso faria a Matriz faturar sobre o defeito.
+        $this->control = Sistema::factory()->alfacontrol()->create([
+            'token' => 'chave-control',
+            'capacidades' => ['sincroniza', 'sincroniza_licencas', 'sincroniza_modulos'],
+        ]);
 
         $revenda = Revenda::create(['nome' => 'Invest', 'cnpj' => '12345678000199', 'ativo' => true]);
         $revenda->ancorarEm($this->control, '900');

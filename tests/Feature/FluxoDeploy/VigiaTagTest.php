@@ -247,4 +247,59 @@ BASH);
             (new Process(['rm', '-rf', $caminho]))->run();
         }
     }
+
+    /**
+     * @spec:AC-163 Duas execuções ao mesmo tempo não aplicam a mesma tag duas
+     * vezes.
+     *
+     * Aconteceu ao publicar a v2026.08.10: uma execução manual e o timer das
+     * :05 chamaram `migrate --force` juntas, a segunda estourou em "Table
+     * already exists" e gravou o marcador — que BLOQUEIA todo deploy seguinte.
+     * A produção ficou correta e travada ao mesmo tempo.
+     */
+    public function test_execucao_concorrente_desiste_em_silencio(): void
+    {
+        $this->criarFerramentas(saude: '200');
+
+        // A trava de uma execução que ainda está de pé.
+        mkdir($this->repo.'/.deploy-tag.lock');
+
+        $processo = $this->rodar();
+
+        $this->assertSame(0, $processo->getExitCode());
+        $this->assertStringContainsString('outra execução em andamento', $processo->getOutput());
+        $this->assertStringNotContainsString('php artisan migrate', $this->chamadas());
+        $this->assertFileDoesNotExist($this->repo.'/.deploy-tag-failed', 'Concorrência não é falha: não pode bloquear o próximo deploy.');
+    }
+
+    /**
+     * @spec:AC-163 Trava esquecida por queda no meio do caminho não bloqueia
+     * para sempre — seria o mesmo modo de falha do marcador de erro.
+     */
+    public function test_trava_antiga_e_assumida(): void
+    {
+        $this->criarFerramentas(saude: '200');
+
+        mkdir($this->repo.'/.deploy-tag.lock');
+        touch($this->repo.'/.deploy-tag.lock', time() - 7200);
+
+        $processo = $this->rodar();
+
+        $this->assertSame(0, $processo->getExitCode(), $processo->getOutput().$processo->getErrorOutput());
+        $this->assertStringContainsString('trava antiga', $processo->getOutput());
+        $this->assertStringContainsString('php artisan migrate --force', $this->chamadas());
+    }
+
+    /** A trava é liberada ao sair, senão a execução seguinte se auto-bloqueia. */
+    public function test_a_trava_e_liberada_ao_sair(): void
+    {
+        $this->criarFerramentas(saude: '200');
+
+        $this->rodar();
+        $this->assertDirectoryDoesNotExist($this->repo.'/.deploy-tag.lock');
+
+        // E a execução seguinte roda normalmente (UPTODATE, sem tag nova).
+        $segunda = $this->rodar();
+        $this->assertStringContainsString('UPTODATE', $segunda->getOutput());
+    }
 }
