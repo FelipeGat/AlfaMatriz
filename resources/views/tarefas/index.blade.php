@@ -1,6 +1,12 @@
 <x-app-layout>
     <x-slot name="titulo">Tarefas</x-slot>
-    <x-slot name="contexto">{{ $tarefas->count() }} tarefas no quadro</x-slot>
+    {{-- Com filtro ligado o cabeçalho diz "X de Y": sem o denominador, um
+         quadro recortado é indistinguível de um quadro vazio. --}}
+    <x-slot name="contexto">
+        {{ $tarefas->count() < $totalNoQuadro
+            ? $tarefas->count().' de '.$totalNoQuadro.' tarefas no quadro'
+            : $tarefas->count().' tarefas no quadro' }}
+    </x-slot>
     <x-slot name="acoes">
         <button type="button" x-data @click="$dispatch('open-modal', 'nova-tarefa')"
                 class="h-[34px] px-3 rounded-control bg-brand text-on-brand font-semibold text-[12.5px]
@@ -16,6 +22,12 @@
     --}}
     <div class="flex flex-col gap-4" style="height: calc(100vh - 120px); min-height: 520px">
         @include('tarefas._abas', ['ativa' => 'quadro'])
+
+        @include('tarefas._filtros', [
+            'filtros' => $filtros,
+            'sistemas' => $sistemas,
+            'usuarios' => $usuarios,
+        ])
 
         @if (session('status'))
             <x-aviso class="shrink-0">{{ session('status') }}</x-aviso>

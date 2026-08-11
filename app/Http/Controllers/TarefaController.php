@@ -7,7 +7,9 @@ use App\Models\Tarefa;
 use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use App\Services\FluxoTarefaService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class TarefaController extends Controller
 {
@@ -24,10 +26,13 @@ class TarefaController extends Controller
             fn ($label, $status) => in_array($status, Tarefa::STATUS_TERMINAIS, true)
         );
 
+        $filtros = $this->filtros($request);
+
         // `eventos` entra no eager load porque o card lê a etapa atual de cada
         // tarefa para o chip de tempo — sem isso é uma consulta por card.
         $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos'])
             ->whereIn('status', $emCurso->keys())
+            ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('created_at')
             ->get();
 
@@ -35,6 +40,9 @@ class TarefaController extends Controller
             $status => $this->ordenarColuna($tarefas->where('status', $status)->values()),
         ]);
 
+        // A contagem da coluna é a do RECORTE, não a do quadro inteiro: com
+        // filtro ligado, um selo dizendo 12 sobre três cards visíveis mediria
+        // outra coisa que não o que está na tela.
         $etapas = $emCurso->map(fn ($label, $status) => [
             'chave' => $status,
             'label' => $label,
@@ -42,10 +50,13 @@ class TarefaController extends Controller
             'quantidade' => $colunas[$status]->count(),
         ])->values()->all();
 
-        $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
-        $usuarios = User::whereNull('revenda_id')->orderBy('name')->get();
+        // Quantas tarefas o quadro teria sem filtro nenhum: é o denominador do
+        // "X de Y" do cabeçalho, o aviso de que há trabalho fora do recorte.
+        $totalNoQuadro = Tarefa::whereIn('status', $emCurso->keys())->count();
 
-        return view('tarefas.index', compact('tarefas', 'colunas', 'etapas', 'sistemas', 'usuarios'));
+        return view('tarefas.index', compact(
+            'tarefas', 'colunas', 'etapas', 'filtros', 'totalNoQuadro',
+        ) + $this->listasDeFiltro());
     }
 
     public function store(Request $request)
@@ -111,12 +122,18 @@ class TarefaController extends Controller
             return back()->with('erro', $e->getMessage());
         }
 
-        return redirect()->route('tarefas.index')->with('status', 'Tarefa movida.');
+        // Volta para a tela de onde veio, e não para o quadro cru: com filtro
+        // ligado, mover um card devolvia o quadro inteiro e o recorte se
+        // perdia a cada arrasto. O mesmo vale para o "Reabrir" do histórico,
+        // que agora não abandona a página nem a busca em que se estava.
+        return redirect()->back(fallback: route('tarefas.index'))->with('status', 'Tarefa movida.');
     }
 
     public function historico(Request $request)
     {
         $this->bloquearVisaoDaMatriz();
+
+        $filtros = $this->filtros($request);
 
         // Sem recorte de período (AC-097): é o caminho de auditoria para o
         // que o quadro enxuto (`index()`) já tirou de vista.
@@ -126,12 +143,112 @@ class TarefaController extends Controller
         // páginas. É a tabela que mais cresce (nada nunca sai dela) e era a
         // única que carregava o histórico completo, com os eventos de cada
         // tarefa, numa resposta só.
+        //
+        // `withQueryString` porque a busca só serve se sobreviver ao clique em
+        // "próxima": sem isso, a página 2 volta a ser o histórico inteiro.
         $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos'])
-            ->whereIn('status', Tarefa::STATUS_TERMINAIS)
+            ->whereIn('status', $filtros['desfecho'] !== '' ? [$filtros['desfecho']] : Tarefa::STATUS_TERMINAIS)
+            ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('updated_at')
-            ->paginate(self::POR_PAGINA);
+            ->paginate(self::POR_PAGINA)
+            ->withQueryString();
 
-        return view('tarefas.historico', compact('tarefas'));
+        // Denominador do "X de Y" do cabeçalho, como no quadro: o histórico
+        // inteiro, para o recorte se anunciar como recorte.
+        $totalNoHistorico = Tarefa::whereIn('status', Tarefa::STATUS_TERMINAIS)->count();
+
+        return view('tarefas.historico', compact(
+            'tarefas', 'filtros', 'totalNoHistorico',
+        ) + $this->listasDeFiltro());
+    }
+
+    /**
+     * Recorte pedido na query string, já normalizado.
+     *
+     * O mesmo recorte serve as duas abas: quem procurou "boleto" no quadro e
+     * não achou vai procurar a mesma coisa no histórico, e trocar de aba não
+     * deveria obrigar a redigitar. `desfecho` é o único que só o histórico
+     * usa — no quadro não há status terminal para escolher.
+     *
+     * Prioridade e desfecho passam por lista branca: valor inventado na URL
+     * vira "sem filtro" em vez de devolver uma tela vazia sem explicação.
+     *
+     * @return array<string, string>
+     */
+    private function filtros(Request $request): array
+    {
+        $prioridade = $this->textoDaQuery($request, 'prioridade');
+        $desfecho = $this->textoDaQuery($request, 'desfecho');
+
+        return [
+            'busca' => $this->textoDaQuery($request, 'busca'),
+            'sistema' => $this->textoDaQuery($request, 'sistema'),
+            'responsavel' => $this->textoDaQuery($request, 'responsavel'),
+            'prioridade' => array_key_exists($prioridade, Tarefa::PRIORIDADES) ? $prioridade : '',
+            'desfecho' => in_array($desfecho, Tarefa::STATUS_TERMINAIS, true) ? $desfecho : '',
+        ];
+    }
+
+    /**
+     * Um campo da query string como texto limpo.
+     *
+     * `?sistema[]=1` chega como array e o cast direto para string seria um
+     * erro fatal — a URL é digitável por qualquer um, então o que não for
+     * texto simplesmente não filtra.
+     */
+    private function textoDaQuery(Request $request, string $campo): string
+    {
+        $valor = $request->query($campo, '');
+
+        return is_string($valor) ? trim($valor) : '';
+    }
+
+    /**
+     * Aplica o recorte comum às duas abas.
+     *
+     * A busca varre título, resumo E detalhes: quem procura uma tarefa pelo
+     * número do chamado ou pelo nome do cliente costuma ter escrito isso no
+     * corpo, não no título. As três condições vão dentro de um `where`
+     * aninhado — soltas, o `orWhere` escaparia do `whereIn` de status e o
+     * quadro passaria a mostrar tarefa concluída.
+     *
+     * "Sem sistema" e "Sem responsável" são filtro de verdade, não enfeite: a
+     * coluna Aberta é a fila de triagem, e achar o que ainda não tem dono é
+     * exatamente o que se pergunta ali (AC-130).
+     *
+     * @param  Builder<Tarefa>  $query
+     * @param  array<string, string>  $filtros
+     */
+    private function aplicarFiltros($query, array $filtros): void
+    {
+        $query
+            ->when($filtros['busca'] !== '', fn ($q) => $q->where(fn ($sub) => $sub
+                ->where('titulo', 'like', '%'.$filtros['busca'].'%')
+                ->orWhere('resumo', 'like', '%'.$filtros['busca'].'%')
+                ->orWhere('detalhes', 'like', '%'.$filtros['busca'].'%')))
+            ->when($filtros['sistema'] === 'sem', fn ($q) => $q->whereNull('sistema_id'))
+            ->when($filtros['sistema'] !== '' && $filtros['sistema'] !== 'sem',
+                fn ($q) => $q->where('sistema_id', $filtros['sistema']))
+            ->when($filtros['responsavel'] === 'sem', fn ($q) => $q->whereNull('responsavel_id'))
+            ->when($filtros['responsavel'] !== '' && $filtros['responsavel'] !== 'sem',
+                fn ($q) => $q->where('responsavel_id', $filtros['responsavel']))
+            ->when($filtros['prioridade'] !== '', fn ($q) => $q->where('prioridade', $filtros['prioridade']));
+    }
+
+    /**
+     * As listas que abastecem os selects — de filtro e de cadastro.
+     *
+     * Sistemas só os ativos, como no formulário; usuários sem escopo de
+     * revenda, que são os que podem responder por tarefa da matriz.
+     *
+     * @return array<string, Collection<int, mixed>>
+     */
+    private function listasDeFiltro(): array
+    {
+        return [
+            'sistemas' => Sistema::where('ativo', true)->orderBy('nome')->get(),
+            'usuarios' => User::whereNull('revenda_id')->orderBy('name')->get(),
+        ];
     }
 
     /**
@@ -146,8 +263,8 @@ class TarefaController extends Controller
      * mostra no chip de tempo: se a ordem seguisse outro critério, a coluna
      * pareceria embaralhada para quem lê os chips de cima para baixo.
      *
-     * @param  \Illuminate\Support\Collection<int, Tarefa>  $tarefas
-     * @return \Illuminate\Support\Collection<int, Tarefa>
+     * @param  Collection<int, Tarefa>  $tarefas
+     * @return Collection<int, Tarefa>
      */
     private function ordenarColuna($tarefas)
     {

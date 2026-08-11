@@ -1,9 +1,23 @@
 <x-app-layout>
     <x-slot name="titulo">Histórico de tarefas</x-slot>
-    <x-slot name="contexto">{{ $tarefas->total() }} tarefas no histórico</x-slot>
+    <x-slot name="contexto">
+        {{ $tarefas->total() < $totalNoHistorico
+            ? $tarefas->total().' de '.$totalNoHistorico.' tarefas no histórico'
+            : $tarefas->total().' tarefas no histórico' }}
+    </x-slot>
 
     <div class="flex flex-col gap-4">
         @include('tarefas._abas', ['ativa' => 'historico'])
+
+        {{-- Aqui o recorte ganha um campo a mais que o quadro: concluída e
+             cancelada são as duas únicas linhas possíveis, e separar uma da
+             outra é a primeira pergunta de quem audita. --}}
+        @include('tarefas._filtros', [
+            'filtros' => $filtros,
+            'sistemas' => $sistemas,
+            'usuarios' => $usuarios,
+            'comDesfecho' => true,
+        ])
 
     {{--
         O quadro é só o trabalho em curso: tarefa encerrada sai de lá e passa a
@@ -80,8 +94,13 @@
                 </tr>
             @empty
                 <tr>
+                    {{-- Histórico vazio e busca sem resultado são duas coisas
+                         diferentes: a primeira não tem o que fazer, a segunda
+                         se resolve mudando o recorte. --}}
                     <td colspan="8" class="px-4 py-8 text-center text-[13px] text-ink-mute">
-                        Nenhuma tarefa concluída ou cancelada ainda.
+                        {{ $totalNoHistorico > 0
+                            ? 'Nenhuma tarefa encontrada com esse recorte.'
+                            : 'Nenhuma tarefa concluída ou cancelada ainda.' }}
                     </td>
                 </tr>
             @endforelse
