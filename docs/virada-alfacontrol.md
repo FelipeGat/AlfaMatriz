@@ -1,59 +1,57 @@
 # Implantação do AlfaControl na Matriz — runbook
 
-Fase 1: a Matriz **só lê** o AlfaControl. Revenda, cliente, licença e módulo
-continuam sendo operados no painel `/saas` do AlfaControl durante toda a
-implantação. Este documento é a ordem de ligar as coisas, e o que conferir
-entre um passo e outro.
+**Estado em 10/08/2026, madrugada.** A Matriz está publicada em produção
+(`v2026.08.10.2`) e **inerte**: AlfaGym e AlfaControl estão cadastrados sem
+`base_url` e sem `token`, então `integravel()` é falso e o sincronizador os
+ignora. Nada é lido de sistema nenhum até alguém configurar.
 
-A ordem importa: cada passo é reversível sozinho, e nenhum deles mexe no
-AlfaGym, que está em produção.
-
----
-
-## 0. Antes de qualquer coisa
-
-O AlfaGym continua rodando o tempo todo. Se algo neste runbook afetar o retrato
-dele, pare e volte atrás — a generalização foi feita para não tocá-lo, e o
-`CompatibilidadeAlfaGymTest` existe justamente para acusar isso antes.
+Fase 1: a Matriz **só lê**. Revenda, cliente, licença e módulo continuam sendo
+operados no painel `/saas` do AlfaControl durante toda a implantação.
 
 ---
 
-## 1. Publicar a Matriz com o AlfaControl **desconfigurado**
+## O que a implantação real desmentiu
 
-Publicar a generalização com o AlfaControl **sem `base_url` e sem `token`**.
+Este documento foi escrito supondo um incremento sobre uma integração do
+AlfaGym já rodando em produção. **Ela nunca rodou.** A produção da Matriz estava
+127 commits atrás, sem a tabela `origens_externas`, com 1 revenda e 0 clientes.
 
-Nesse estado `Sistema::integravel()` é falso e o sincronizador o ignora em
-silêncio — é o estado normal entre publicar a integração e configurá-la.
+Três consequências:
 
-Conferir depois de publicar:
+1. **Não existe "confirmar o gym por um ciclo"** antes de ligar o AlfaControl —
+   o sync do gym nunca rodou em produção. Os dois entram pela primeira vez.
 
-```bash
-php artisan alfa:sincronizar-sistemas          # só o AlfaGym deve aparecer
-php artisan alfa:conferir-migracao             # o gym continua sem divergência
-```
+2. **O risco de duplicação não se materializa.** Comparei os documentos das duas
+   produções (hasheados dentro do banco): **sobreposição zero** — nenhuma
+   revenda e nenhum cliente é o mesmo nos dois sistemas. A reconciliação
+   continua no código como proteção, mas não é ela que decide a virada.
 
-Abrir a lista de clientes e confirmar que as ações de licença do AlfaGym
-continuam onde estavam.
-
-> ⚠️ **O `schedule:run` entra aqui, e em janela própria.** Ele nunca foi
-> instalado em produção — ligá-lo dispara pela primeira vez o retrato horário
-> **e** o `app:fechar-competencia-mensal`. Não misturar com a configuração do
-> AlfaControl: se algo sair torto, é preciso saber qual dos dois causou.
+3. **A licença do AlfaControl está fora.** O sistema não tem a capacidade
+   `sincroniza_licencas`, porque `renovar` lá somava licenças ativas em vez de
+   substituir — 6 clientes com mais de uma ativa, um deles com quatro. Correção
+   pronta em PR no repositório do AlfaControl; enquanto não entrar, revenda,
+   cliente e módulo sincronizam e licença não é lida.
 
 ---
 
-## 2. Ligar a API do lado do AlfaControl
+## Ordem de ligar
 
-No AlfaControl, gerar a chave e publicar o hash:
+Cada passo é reversível sozinho. A ordem existe para que, se algo sair torto,
+se saiba **qual** passo causou.
+
+### 1. Chave no AlfaControl (produção)
 
 ```bash
 CHAVE=$(openssl rand -hex 32)
-echo -n "$CHAVE" | sha256sum          # o hash vai para MATRIZ_API_KEY_HASH
+echo -n "$CHAVE" | sha256sum          # → MATRIZ_API_KEY_HASH
 ```
 
-`MATRIZ_API_KEY_HASH` precisa estar nos **dois** serviços do
-`docker-compose.prod.yml` (blue e green). Esquecer um faz a API cair a cada
-troca de deploy — e o sintoma é indistinguível de "sistema fora do ar".
+Precisa estar nos **dois** serviços do `docker-compose.prod.yml` (blue e green).
+Esquecer um faz a API cair a cada troca de deploy, e o sintoma é
+indistinguível de "sistema fora do ar".
+
+⚠️ O contrato só existe em produção depois de uma tag `v*` no AlfaControl — a
+`main` alimenta staging, não produção.
 
 Conferir:
 
@@ -62,103 +60,92 @@ curl -s -H "X-Matriz-Key: $CHAVE" https://control.alfasolucoes.cloud/api/matriz/
 # → {"contrato":"1.0","sistema":"alfacontrol","cadastro_local_aberto":true,...}
 
 curl -s -o /dev/null -w '%{http_code}\n' https://control.alfasolucoes.cloud/api/matriz/v1/ping
-# → 401, e o corpo é o envelope do contrato (não o {"error":...} do resto da app)
+# → 401
 ```
 
-Chave vazia deixa a API desligada: é o kill switch, e não precisa de redeploy.
+### 2. Endereço e chave na Matriz
 
----
+Na tela de Sistemas, preencher `base_url` e `token` do `alfacontrol`. Salvar a
+tela sem redigitar a chave **não** a apaga mais.
 
-## 3. Ensaiar a carga na Matriz
-
-Cadastrar `base_url` e `token` do sistema `alfacontrol` na tela de Sistemas, e
-**ensaiar antes de gravar**:
+### 3. Ensaiar
 
 ```bash
 php artisan alfa:sincronizar-sistemas --sistema=alfacontrol --simular
 ```
 
-O ensaio roda tudo dentro de uma transação e desfaz ao final. **Ler o relatório
-é o portão desta etapa**, não formalidade:
+Roda tudo em transação e desfaz. **Ler o relatório é o portão**, não
+formalidade. Com os dados de hoje o esperado é criar 1 revenda e ~10 clientes —
+qualquer número muito diferente disso merece investigação antes de gravar.
 
-- `criadas` alto demais em revendas é o sinal de que a reconciliação por
-  documento não casou o que devia — a mesma revenda já existe na Matriz vinda
-  do AlfaGym, com outro id externo. Conferir os CNPJs antes de rodar de verdade;
-  duplicar revenda dobra a cobrança dela.
-- Cliente aparecendo como criado quando já existe na Matriz tem a mesma causa.
-
-Só seguir quando os números fizerem sentido.
-
----
-
-## 4. Carregar de verdade
+### 4. Carregar e conferir
 
 ```bash
 php artisan alfa:sincronizar-sistemas --sistema=alfacontrol
 php artisan alfa:conferir-migracao --sistema=alfacontrol
 ```
 
-A conferência sai com erro enquanto houver: cliente sem revenda, cliente
-licenciado sem âncora de licença, ou revenda sem acesso ao painel.
+A conferência sai com erro enquanto houver cliente sem revenda, cliente
+licenciado sem âncora de licença, ou revenda sem acesso ao painel. As duas
+primeiras não devem aparecer com a licença desligada.
 
-Depois disso, na tela de clientes: o cliente que usa os dois sistemas mostra
-**duas linhas**, uma por sistema, e o AlfaControl aparece **sem ações de
-licença** — o que está certo nesta fase.
+### 5. O `schedule:run` — o único passo que pede janela vigiada
 
----
+**Ainda não foi instalado em produção**, e é de propósito.
 
-## 5. Deixar o ciclo horário assumir
+Ligá-lo dispara pela primeira vez o retrato horário **e**
+`app:fechar-competencia-mensal`, que nunca rodou. Com 0 clientes o fechamento
+não gera cobrança nenhuma, mas isso deixa de valer no instante em que o passo 4
+carregar a base.
 
-Com o retrato conferido, o `schedule:run` do passo 1 já mantém tudo em dia. O
-sincronizador percorre todos os sistemas configurados, e uma indisponibilidade
-do AlfaControl não interrompe o AlfaGym.
-
----
-
-## 6. Gate de acesso do AlfaControl (independente, mas relacionado)
-
-Descoberta desta implantação: **congelar um cliente no painel do AlfaControl
-nunca impediu ninguém de logar**. O gate novo sobe em modo `observar`.
-
-```bash
-mysql -u <user> -p alfacontrol < docs/gate-cliente-censo.sql   # no repo do AlfaControl
-```
-
-Se algum cliente marcado como `inativo`/`congelado` logou nos últimos 30 dias,
-há gente usando o sistema com o status errado — a lista vai para a operação
-**antes** de virar `bloquear`. Depois de uma semana em observação, com o log
-limpo:
-
-```
-AUTH_GATE_CLIENTE_MODO=bloquear
-```
-
-Desligar não precisa de redeploy: `AUTH_GATE_CLIENTE_STATUS=` (vazio).
+Fazer **depois** da carga conferida, com alguém olhando, e nunca na mesma janela
+da configuração dos sistemas. O bloco idempotente está em
+`deploy/provisionar.sh`.
 
 ---
 
 ## O que NÃO acontece nesta fase
 
 - A Matriz não cria revenda nem cliente no AlfaControl.
-- A Matriz não libera, renova nem suspende licença no AlfaControl. A tela não
-  oferece a ação, e um POST direto é recusado com 422.
-- A Matriz não contrata nem cancela módulo — só lê o que está contratado.
+- Não libera, renova nem suspende licença: a tela não oferece a ação e um POST
+  direto é recusado com 422.
+- Não lê licença do AlfaControl.
+- Não contrata nem cancela módulo — só lê o que está contratado.
 
-Tudo isso é a Fase 2, e depende de o AlfaControl publicar o lado de escrita do
-contrato. Ligar cada uma é acrescentar a capacidade correspondente na linha do
-sistema (`provisiona_revenda`, `provisiona_cliente`, `gerencia_licenca`,
-`gerencia_modulos`) — sem tocar em controller nem em tela.
+Cada uma é uma capacidade na linha do sistema (`provisiona_revenda`,
+`provisiona_cliente`, `gerencia_licenca`, `sincroniza_licencas`,
+`gerencia_modulos`). Ligar é uma linha no banco, sem tocar em código.
 
-⚠️ **`exige_admin_no_cliente` não entra**: o AlfaControl não cria usuário
+⚠️ `exige_admin_no_cliente` **não entra**: o AlfaControl não cria usuário
 administrador junto com o cliente, ao contrário do AlfaGym.
 
 ---
 
-## Pendências registradas
+## Pendências fora da Matriz
 
-- **Faturamento com módulos** está fora até a resposta de: `valor_mensal` no
-  AlfaControl é preço de **atacado** (revenda→Alfa) ou de **varejo**
-  (condomínio→revenda)? Se for varejo, somá-lo na cobrança da revenda infla a
-  fatura. Os módulos já são lidos e exibidos; só a soma na cobrança espera.
-- **Contagem de unidades**: hoje 1 por cliente ativo, sem olhar a licença — a
-  mesma regra que o faturamento já usa. Registrado como decisão.
+**Gate de acesso do AlfaControl.** Censo feito em produção: os 12 clientes estão
+`ativo`, nenhum em `inativo`/`congelado`. O gate barraria zero pessoas, então
+dispensa a semana em modo `observar` — pode subir direto em
+`AUTH_GATE_CLIENTE_MODO=bloquear`. Refazer o censo se demorar: um único cliente
+congelado no meio tempo muda a resposta.
+
+Vale lembrar por que importa: hoje congelar um cliente no painel **não corta o
+acesso de ninguém**.
+
+**Licenças duplicadas.** PR aberto no AlfaControl com a correção e o script de
+consolidação do que já está gravado. Depois que entrar, ligar
+`sincroniza_licencas` no `alfacontrol` faz a licença voltar a ser lida — e a
+coluna "Licença" da lista de clientes passa a preencher sozinha.
+
+**Rotina de expiração.** Não existe no AlfaControl: licença vencida continua
+marcada como ativa. O contrato já reporta o status efetivo para a Matriz não
+espelhar isso, mas a base de origem só muda quando alguém criar a rotina.
+
+---
+
+## Ajustes locais no staging (lembrete de limpeza)
+
+Para o TLS fechar entre os dois stagings, o LXC 116 recebeu uma linha em
+`/etc/hosts` (`control.alfasolucoes.cloud` → `10.0.3.136`) e passou a confiar no
+certificado autoassinado do staging do AlfaControl. **Nada disso é necessário em
+produção**, onde o certificado é real — mas fica lá até alguém remover.
