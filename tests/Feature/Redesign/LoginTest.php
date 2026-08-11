@@ -28,7 +28,7 @@ class LoginTest extends TestCase
         $html = $resposta->getContent();
 
         // ── A marca do handoff, ícone e wordmark, CENTRALIZADA no card.
-        $resposta->assertSee('/icon-matriz.svg', escape: false);
+        $resposta->assertSee('/icon-matriz-solid.svg', escape: false);
         $resposta->assertSee('/alfamatriz.png', escape: false);
         $resposta->assertDontSee('logo-tile.svg', escape: false);
         $this->assertMatchesRegularExpression(
@@ -85,7 +85,7 @@ class LoginTest extends TestCase
             $resposta = $this->get($url);
 
             $resposta->assertOk();
-            $resposta->assertSee('/icon-matriz.svg', escape: false);
+            $resposta->assertSee('/icon-matriz-solid.svg', escape: false);
             $resposta->assertSee('Painel interno', escape: false);
         }
 

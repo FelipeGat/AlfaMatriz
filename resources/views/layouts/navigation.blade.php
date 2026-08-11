@@ -81,7 +81,7 @@
     <div class="h-topbar shrink-0 flex items-center gap-2.5 border-b border-line px-4
                 rail:lg:px-0 rail:lg:justify-center">
         <a href="{{ route($escopo ? 'clientes.index' : 'centro-controle') }}" class="flex items-center gap-2.5 min-w-0">
-            <img src="/icon-matriz.svg" alt="" class="h-7 w-7 shrink-0">
+            <img src="/icon-matriz-solid.svg" alt="" class="h-7 w-7 shrink-0">
             <img src="/alfamatriz.png" alt="AlfaMatriz" class="h-[15px] w-auto shrink-0 rail:lg:hidden">
         </a>
 

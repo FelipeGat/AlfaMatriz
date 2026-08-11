@@ -57,7 +57,7 @@
                          lado, encostada à esquerda ela ficava desamarrada do
                          resto do conteúdo. --}}
                     <a href="/" class="flex items-center justify-center gap-2.5">
-                        <img src="/icon-matriz.svg" alt="" class="h-9 w-9 shrink-0">
+                        <img src="/icon-matriz-solid.svg" alt="" class="h-9 w-9 shrink-0">
                         <img src="/alfamatriz.png" alt="AlfaMatriz" class="h-[17px] w-auto shrink-0">
                     </a>
 

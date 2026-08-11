@@ -6,7 +6,7 @@
     favicon; o wordmark entra quando há largura para ele.
 --}}
 <span {{ $attributes->merge(['class' => 'inline-flex items-center gap-2.5']) }}>
-    <img src="/icon-matriz.svg" alt="{{ $somenteIcone ? 'AlfaMatriz' : '' }}" class="{{ $icone }} shrink-0">
+    <img src="/icon-matriz-solid.svg" alt="{{ $somenteIcone ? 'AlfaMatriz' : '' }}" class="{{ $icone }} shrink-0">
 
     @unless ($somenteIcone)
         <img src="/alfamatriz.png" alt="AlfaMatriz" class="{{ $wordmark }} w-auto shrink-0">

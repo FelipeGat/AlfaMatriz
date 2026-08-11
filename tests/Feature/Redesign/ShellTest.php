@@ -86,7 +86,7 @@ class ShellTest extends TestCase
 
         // A marca do handoff substituiu a anterior em toda tela do painel.
         $resposta = $this->get(route('centro-controle'));
-        $resposta->assertSee('/icon-matriz.svg', escape: false);
+        $resposta->assertSee('/icon-matriz-solid.svg', escape: false);
         $resposta->assertSee('/alfamatriz.png', escape: false);
         $resposta->assertDontSee('logo-tile.svg', escape: false);
 
