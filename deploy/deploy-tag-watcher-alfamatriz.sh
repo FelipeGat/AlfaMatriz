@@ -57,6 +57,24 @@ escrever_status(){
 
 cd "$DIR" || { log "diretório $DIR não existe"; exit 1; }
 
+# Uma execução por vez. O `deploy-staging` já tem esta trava; este script
+# nasceu depois e não a herdou — a mesma história do PATH acima.
+#
+# Sem ela, uma execução manual e o timer das :05 rodam juntas e as duas chamam
+# `migrate --force` ao mesmo tempo: a segunda estoura em "Table already exists",
+# grava o marcador de falha e BLOQUEIA todo deploy seguinte, enquanto a
+# primeira termina bem. Aconteceu ao publicar a v2026.08.10: produção ficou
+# correta e travada ao mesmo tempo, que é o pior dos dois mundos para
+# diagnosticar.
+#
+# `-n`: quem chega depois desiste em silêncio em vez de enfileirar — não faz
+# sentido duas aplicações da mesma tag.
+exec 9>"$DIR/.deploy-tag.lock"
+if ! flock -n 9; then
+    log "outra execução em andamento — saindo"
+    exit 0
+fi
+
 if [[ -f "$PAUSADO" ]]; then
     log "PAUSADO (.deploy-paused) — nada a fazer"
     exit 0
