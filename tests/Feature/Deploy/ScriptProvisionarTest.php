@@ -89,7 +89,7 @@ class ScriptProvisionarTest extends TestCase
     }
 
     /**
-     * @spec:AC-154 O provisionamento instala o cron do `schedule:run`. Sem ele
+     * @spec:AC-014 O provisionamento instala o cron do `schedule:run`. Sem ele
      * o `Schedule::` de routes/console.php nunca dispara: o retrato horário dos
      * sistemas integrados e o fechamento mensal de competência ficam parados
      * sem que nada acuse.
@@ -107,6 +107,70 @@ class ScriptProvisionarTest extends TestCase
         $this->assertStringContainsString('* * * * *', $comando, 'O executor roda a cada minuto — quem decide a hora é o Laravel.');
         $this->assertStringContainsString('crontab -l', $comando, 'Instalar tem de preservar os crons que já existem (o do backup, por exemplo).');
         $this->assertStringContainsString('grep -q', $comando, 'Rodar o provisionamento de novo não pode duplicar a linha do cron.');
+    }
+
+    /**
+     * @spec:AC-013 O provisionamento instala em /usr/local/bin os scripts que
+     * o cron executa. Eram cópias manuais: uma etapa acrescentada ao vigia de
+     * tags ficou publicada no repositório e ausente do arquivo que roda, sem
+     * erro nenhum — o deploy passava e simplesmente não fazia o que o código
+     * dizia.
+     */
+    public function test_provisionamento_instala_os_scripts_que_o_cron_executa(): void
+    {
+        $processo = $this->rodar();
+        $this->assertSame(0, $processo->getExitCode(), $processo->getErrorOutput().$processo->getOutput());
+
+        $chamadas = $this->lerChamadas();
+
+        foreach ([
+            'alfamatriz-backup.sh' => 'backup.sh',
+            'deploy-tag-watcher-alfamatriz.sh' => 'deploy-tag-watcher-alfamatriz.sh',
+        ] as $destino => $origem) {
+            $instalacao = $this->filtrar($chamadas, $destino);
+
+            $this->assertNotEmpty($instalacao, "O provisionamento precisa instalar {$destino}.");
+
+            $comando = implode("\n", $instalacao);
+            $this->assertStringContainsString(
+                "deploy/{$origem}",
+                $comando,
+                "O {$destino} instalado tem de vir do repositório, não de uma cópia solta."
+            );
+        }
+    }
+
+    /**
+     * @spec:AC-013 A instalação sobrescreve por renomeação, não por escrita
+     * direta: o vigia roda a cada 5 minutos e o bash lê o script sob demanda,
+     * então trocar o conteúdo embaixo de uma execução em curso a corromperia.
+     */
+    public function test_instalacao_dos_scripts_troca_o_arquivo_por_renomeacao(): void
+    {
+        $this->rodar();
+
+        $instalacao = implode("\n", $this->filtrar($this->lerChamadas(), 'deploy-tag-watcher-alfamatriz.sh'));
+
+        $this->assertStringContainsString('.novo', $instalacao, 'Escreve num temporário antes de assumir o lugar.');
+        $this->assertStringContainsString('mv -f', $instalacao, 'A troca é por rename, que é atômico e preserva o inode em uso.');
+    }
+
+    /**
+     * @spec:AC-013 O provisionamento instala o cron do vigia de tags. Sem ele
+     * nenhuma versão nova chega à produção sozinha, e o `publicar.sh` vira
+     * passo manual obrigatório.
+     */
+    public function test_provisionamento_instala_o_cron_do_vigia_de_tags(): void
+    {
+        $this->rodar();
+
+        $vigia = $this->filtrar($this->lerChamadas(), 'deploy-tag-watcher-alfamatriz.sh >/dev/null');
+
+        $this->assertNotEmpty($vigia, 'O provisionamento precisa agendar o vigia de tags.');
+
+        $comando = implode("\n", $vigia);
+        $this->assertStringContainsString('*/5 * * * *', $comando);
+        $this->assertStringContainsString('grep -q', $comando, 'Provisionar de novo não pode duplicar a linha do cron.');
     }
 
     /** @spec:AC-008 O script é sintaticamente válido e para no primeiro erro. */

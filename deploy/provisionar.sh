@@ -240,6 +240,42 @@ no_container "if [ -f /etc/cloudflared/config.yml ]; then \
 
 fi  # fim do bloco exclusivo de produção
 
+# ------------------------------------------------- scripts operacionais
+
+# O cron não executa os scripts do repositório: ele chama /usr/local/bin. Eram
+# cópias feitas à mão, e nada as mantinha em dia — uma etapa acrescentada ao
+# vigia de tags ficou inerte em produção, publicada no repositório e ausente do
+# arquivo que roda. Não dá erro: o deploy passa, só não faz o que o código diz.
+#
+# Instalar daqui fecha isso, e sem tirar a leitura do repositório como fonte:
+# o que vale continua sendo deploy/, este passo só o espelha.
+instalar_script() {
+    local origem="$APP_DIR/deploy/$1"
+    local destino="/usr/local/bin/$2"
+
+    # Escreve num temporário e renomeia: `rename` é atômico e preserva o inode
+    # antigo para quem já estiver executando. Sobrescrever direto arriscaria
+    # corromper o vigia no meio de uma rodada — ele roda a cada 5 minutos, e o
+    # bash lê o script sob demanda, não de uma vez.
+    no_container "if [ -f '$origem' ]; then \
+            install -m 755 '$origem' '$destino.novo' && mv -f '$destino.novo' '$destino' && echo '    $2 instalado'; \
+        else \
+            echo '    AVISO: $origem ainda não existe — rode deploy/publicar.sh e provisione de novo.'; \
+        fi"
+}
+
+info "instalando os scripts operacionais em /usr/local/bin"
+instalar_script backup.sh alfamatriz-backup.sh
+
+if [[ "$AMBIENTE" != "staging" ]]; then
+    # Só produção: o staging é movido pelo vigia da main, que roda no host.
+    instalar_script deploy-tag-watcher-alfamatriz.sh deploy-tag-watcher-alfamatriz.sh
+
+    info "agendando o vigia de tags (aplica cada v* nova em produção)"
+    no_container "(crontab -l 2>/dev/null | grep -q deploy-tag-watcher-alfamatriz || \
+        (crontab -l 2>/dev/null; echo '*/5 * * * * /usr/local/bin/deploy-tag-watcher-alfamatriz.sh >/dev/null 2>&1') | crontab -)"
+fi
+
 # ------------------------------------------------------------------- backup
 
 info "agendando o backup diário do banco"

@@ -117,6 +117,24 @@ lembrar a sequência certa.
   ninguém rodar carga à mão — porque o deploy aplica as cargas de referência
   idempotentes junto das migrações
 
+#### AC-013 — O provisionamento instala os scripts que o cron executa
+
+- **Dado** que o cron chama os scripts de `/usr/local/bin`, e não os do
+  repositório
+- **Quando** o provisionamento roda
+- **Então** ele instala ali, a partir de `deploy/`, o script de backup e o vigia
+  de tags — trocando o arquivo por renomeação, para não corromper uma execução
+  em curso — e agenda o vigia, de modo que uma alteração publicada no
+  repositório não fique inerte no arquivo que roda
+
+#### AC-014 — O provisionamento instala o cron do agendador
+
+- **Dado** o container provisionado
+- **Quando** o provisionamento roda
+- **Então** o `schedule:run` fica agendado a cada minuto, sem duplicar a linha
+  se o provisionamento rodar de novo — sem ele o `Schedule::` de
+  `routes/console.php` nunca dispara e nada acusa
+
 #### AC-010 — A conferência pós-deploy é automática
 
 - **Dado** o sistema publicado na URL pública
