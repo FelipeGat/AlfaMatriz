@@ -51,6 +51,19 @@
                         @if (filled($tarefa->resumo))
                             <p class="mt-0.5 text-[12px] leading-snug text-ink-mute">{{ $tarefa->resumo }}</p>
                         @endif
+
+                        {{-- A conversa é justamente o que explica o desfecho:
+                             auditar uma tarefa cancelada sem poder ler o que
+                             foi dito nela é ler o resultado sem o motivo. Só
+                             leitura — para voltar a escrever, reabre-se a
+                             tarefa (AC-131). --}}
+                        @if (($totalComentarios = $tarefa->comentarios->count()) > 0)
+                            <button type="button" x-data
+                                    @click="$dispatch('open-modal', 'comentarios-tarefa-{{ $tarefa->id }}')"
+                                    class="mt-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
+                                {{ $totalComentarios }} {{ $totalComentarios === 1 ? 'comentário' : 'comentários' }} ▾
+                            </button>
+                        @endif
                     </td>
                     <td class="px-4 py-3 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
                         {{ $tarefa->sistema?->nome ?? 'Sem sistema' }}
@@ -118,4 +131,20 @@
         <div>{{ $tarefas->links() }}</div>
     @endif
     </div>
+
+    {{-- Um modal por linha COM comentário: a página traz 20 tarefas, e montar
+         modal vazio para as que não têm conversa seria peso sem leitura. --}}
+    @foreach ($tarefas as $tarefa)
+        @if ($tarefa->comentarios->isNotEmpty())
+            <x-modal name="comentarios-tarefa-{{ $tarefa->id }}" maxWidth="lg">
+                <div class="px-6 pt-6">
+                    <h3 class="font-display font-semibold text-ink text-lg">{{ $tarefa->titulo }}</h3>
+                </div>
+                @include('tarefas._comentarios', ['tarefa' => $tarefa, 'somenteLeitura' => true])
+                <div class="px-6 pb-6 flex justify-end">
+                    <x-secondary-button x-on:click="$dispatch('close')">Fechar</x-secondary-button>
+                </div>
+            </x-modal>
+        @endif
+    @endforeach
 </x-app-layout>

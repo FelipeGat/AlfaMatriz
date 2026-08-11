@@ -72,5 +72,18 @@
                  :title="'Na etapa há '.$tempoNaEtapa">
             {{ $tempoNaEtapa }}
         </x-badge>
+
+        {{--
+            O selo de comentários só aparece quando há algum: é o único aviso
+            de que existe conversa dentro do card — sem ele, o detalhe que
+            alguém escreveu ontem ficaria escondido atrás de um clique que
+            ninguém tem motivo para dar. Card sem comentário não ganha um
+            "0" para ler.
+        --}}
+        @if (($totalComentarios = $tarefa->comentarios->count()) > 0)
+            <x-badge :title="$totalComentarios.' comentário(s) nesta tarefa'">
+                {{ $totalComentarios }} {{ $totalComentarios === 1 ? 'comentário' : 'comentários' }}
+            </x-badge>
+        @endif
     </div>
 </article>

@@ -73,6 +73,17 @@ class Tarefa extends Model
     }
 
     /**
+     * A conversa da tarefa, do mais antigo ao mais novo (US-049).
+     *
+     * A ordem vive na relação, e não em cada tela, porque comentário fora de
+     * ordem não é uma lista bagunçada — é uma resposta antes da pergunta.
+     */
+    public function comentarios(): HasMany
+    {
+        return $this->hasMany(TarefaComentario::class)->oldest();
+    }
+
+    /**
      * Duração em forma curta: "agora", "40m", "3h", "12d".
      *
      * Uma régua só para o quadro e o histórico: o chip do card mede o tempo na

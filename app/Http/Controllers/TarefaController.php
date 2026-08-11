@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Sistema;
 use App\Models\Tarefa;
+use App\Models\TarefaComentario;
 use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use App\Services\FluxoTarefaService;
@@ -30,7 +31,9 @@ class TarefaController extends Controller
 
         // `eventos` entra no eager load porque o card lê a etapa atual de cada
         // tarefa para o chip de tempo — sem isso é uma consulta por card.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos'])
+        // `comentarios.autor` pelo mesmo motivo: o quadro já monta o modal de
+        // cada card, e a conversa inteira é impressa dentro dele.
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor'])
             ->whereIn('status', $emCurso->keys())
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('created_at')
@@ -129,6 +132,60 @@ class TarefaController extends Controller
         return redirect()->back(fallback: route('tarefas.index'))->with('status', 'Tarefa movida.');
     }
 
+    /**
+     * Um comentário novo na tarefa (US-041).
+     *
+     * O texto é gravado CRU, do jeito que foi digitado: os marcadores viram
+     * lista só na hora de imprimir (`TarefaComentario::marcadoresEmHtml`).
+     * Guardar HTML pronto no banco amarraria a conversa antiga à regra de
+     * formatação de hoje — e obrigaria a confiar no que já está gravado.
+     */
+    public function comentar(Request $request, Tarefa $tarefa)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $data = $request->validate([
+            'corpo' => 'required|string|max:4000',
+        ]);
+
+        $tarefa->comentarios()->create([
+            'autor_id' => auth()->id(),
+            'corpo' => $data['corpo'],
+        ]);
+
+        // Volta para a tela de onde veio, como o mover: comentar a partir do
+        // quadro filtrado não pode desfazer o recorte de quem estava lendo.
+        // E volta com o modal da tarefa ABERTO (`tarefa-aberta`): conversa em
+        // que cada frase fecha a janela não é conversa — quem escreveu quer
+        // ver o que escreveu, e normalmente escrever de novo.
+        return redirect()->back(fallback: route('tarefas.index'))
+            ->with('status', 'Comentário adicionado.')
+            ->with('tarefa-aberta', $tarefa->id);
+    }
+
+    /**
+     * Apaga um comentário — só o próprio.
+     *
+     * Errar o comentário é o erro mais barato de cometer e, sem esta porta, o
+     * mais caro de conviver: fica na tarefa para sempre. Mas apagar o
+     * comentário alheio seria reescrever a conversa de outra pessoa, então a
+     * regra é estreita de propósito, e vale mesmo para quem administra.
+     */
+    public function excluirComentario(TarefaComentario $comentario)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        abort_unless($comentario->autor_id === auth()->id(), 403, 'Só o autor apaga o próprio comentário.');
+
+        $tarefaId = $comentario->tarefa_id;
+
+        $comentario->delete();
+
+        return redirect()->back(fallback: route('tarefas.index'))
+            ->with('status', 'Comentário removido.')
+            ->with('tarefa-aberta', $tarefaId);
+    }
+
     public function historico(Request $request)
     {
         $this->bloquearVisaoDaMatriz();
@@ -146,7 +203,7 @@ class TarefaController extends Controller
         //
         // `withQueryString` porque a busca só serve se sobreviver ao clique em
         // "próxima": sem isso, a página 2 volta a ser o histórico inteiro.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos'])
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor'])
             ->whereIn('status', $filtros['desfecho'] !== '' ? [$filtros['desfecho']] : Tarefa::STATUS_TERMINAIS)
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('updated_at')

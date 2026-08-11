@@ -212,3 +212,26 @@
   ciclo (da criação até a entrada na etapa terminal). A formatação curta de
   duração já existe embutida no `_card.blade.php`; vira `Tarefa::duracaoCurta()`
   para os dois usarem a mesma régua.
+
+## T-083 — Comentários na tarefa, com marcadores de lista [concluida]
+- Refs: US-049, AC-134, AC-135, AC-136, AC-095
+- Arquivos: database/migrations/2026_08_11_100000_criar_comentarios_de_tarefa.php, app/Models/TarefaComentario.php, app/Models/Tarefa.php, app/Http/Controllers/TarefaController.php, routes/web.php, resources/views/tarefas/_comentarios.blade.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/_card.blade.php, resources/views/tarefas/historico.blade.php, tests/Feature/TarefasDesenvolvimento/ComentariosTarefaTest.php
+- Notas: `detalhes` já existe na tabela e nunca teve campo na tela — mas um
+  textarea único não serviria aqui: o que falta não é UM texto longo, é o
+  registro do que foi sendo dito, datado e assinado. Daí uma tabela própria,
+  `tarefa_comentarios` (tarefa, autor anulável, corpo, timestamps), e não uma
+  coluna a mais em `tarefas`. Autor anulável de propósito: quem escreveu pode
+  sair da empresa, e o porquê de uma decisão é o que a tarefa tem de mais caro.
+  Os marcadores são conversão na LEITURA, não no gravar: o banco guarda o texto
+  como foi digitado e `TarefaComentario::marcadoresEmHtml()` monta as listas na
+  hora de imprimir — guardar HTML pronto amarraria a conversa antiga à regra de
+  hoje e obrigaria a confiar no que já está no banco.
+  CUIDADO: o corpo sai com `{!! !!}`, então a conversão escapa o texto ANTES de
+  montar qualquer tag e só emite `<p>`, `<ul>`, `<ol>` e `<li>` — é lista
+  branca, não markdown; markdown completo pediria sanitizador de verdade.
+  Os comentários entram DEPOIS do `_form` dentro do modal, nunca dentro dele:
+  são dois envios independentes e formulário aninhado é HTML inválido — o
+  comentário viraria campo do cadastro e se perderia no salvar.
+  O histórico recebe a mesma partial em modo `somenteLeitura`: auditar um
+  cancelamento sem poder ler o que foi dito é ler o resultado sem o motivo.
+- Esforço: médio

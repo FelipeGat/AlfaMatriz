@@ -203,10 +203,31 @@
         @include('tarefas._form', ['tarefa' => null, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
     </x-modal>
 
-    {{-- Modal: editar tarefa — uma por card, como em Clientes --}}
+    {{-- Modal: editar tarefa — uma por card, como em Clientes.
+         Os comentários entram DEPOIS do formulário, e não dentro: são dois
+         envios independentes, e formulário aninhado é HTML inválido — o
+         comentário viraria campo do cadastro e se perderia no salvar. --}}
     @foreach ($tarefas as $tarefa)
         <x-modal name="editar-tarefa-{{ $tarefa->id }}" maxWidth="lg">
             @include('tarefas._form', ['tarefa' => $tarefa, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
+            @include('tarefas._comentarios', ['tarefa' => $tarefa])
         </x-modal>
     @endforeach
+
+    {{--
+        Comentar recarrega a página, e sem isto o modal da tarefa fecharia a
+        cada frase escrita. O evento é o mesmo que o clique no card dispara, e
+        só depois de o Alpine já ter percorrido a página (`alpine:initialized`)
+        — em `alpine:init` o modal ainda não está escutando e o aviso cairia no
+        vazio.
+    --}}
+    @if (session('tarefa-aberta') && $tarefas->contains('id', session('tarefa-aberta')))
+        <script>
+            document.addEventListener('alpine:initialized', () => {
+                window.dispatchEvent(new CustomEvent('open-modal', {
+                    detail: 'editar-tarefa-{{ session('tarefa-aberta') }}',
+                }));
+            });
+        </script>
+    @endif
 </x-app-layout>

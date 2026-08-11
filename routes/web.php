@@ -79,6 +79,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permissao:tarefas');
     Route::post('tarefas/{tarefa}/mover', [TarefaController::class, 'mover'])->name('tarefas.mover')
         ->middleware('permissao:tarefas');
+    Route::post('tarefas/{tarefa}/comentarios', [TarefaController::class, 'comentar'])->name('tarefas.comentarios.store')
+        ->middleware('permissao:tarefas');
+    // Sem o id da tarefa no caminho, como os anexos: o comentário já sabe de
+    // quem é, e um segundo id no endereço só criaria um par para conferir.
+    Route::delete('tarefas/comentarios/{comentario}', [TarefaController::class, 'excluirComentario'])
+        ->name('tarefas.comentarios.destroy')
+        ->middleware('permissao:tarefas');
 
     Route::resource('revendas', RevendaController::class)
         ->middleware('permissao:revendas');
