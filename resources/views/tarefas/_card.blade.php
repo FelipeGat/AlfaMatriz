@@ -42,6 +42,16 @@
          style="border-color: {{ $tomEsquecida ? 'rgb(var(--'.$tomEsquecida.') / 0.4)' : 'var(--line)' }}">
     <div class="flex items-start gap-2">
         <p class="min-w-0 flex-1 truncate text-[13.5px] font-medium text-ink">{{ $tarefa->titulo }}</p>
+        {{--
+            Só a operacional se anuncia. Marcar as duas encheria o quadro de um
+            selo "Desenvolvimento" que não diz nada — quase tudo ali é —, e o
+            que se precisa saber de relance é o contrário: por que AQUELE card
+            vai pular a coluna de testes. Mesma regra do resumo e do selo de
+            comentários: o selo aparece quando tem o que dizer.
+        --}}
+        @if ($tarefa->tipo === 'operacional')
+            <x-badge>Operacional</x-badge>
+        @endif
         <x-badge :tom="$tomPrioridade">{{ \App\Models\Tarefa::PRIORIDADES[$tarefa->prioridade] ?? $tarefa->prioridade }}</x-badge>
     </div>
 

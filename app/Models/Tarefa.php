@@ -13,15 +13,38 @@ class Tarefa extends Model
     use HasFactory;
     use SoftDeletes;
 
-    /** Ordem do quadro do ciclo de desenvolvimento. */
+    /**
+     * Ordem do quadro.
+     *
+     * "Em andamento" e não mais "Em desenvolvimento": a coluna passou a receber
+     * também tarefa operacional, que não é desenvolvida — e um telefonema para
+     * o fabricante parado numa coluna chamada "Em desenvolvimento" faria a
+     * coluna mentir. A CHAVE continua `em_desenvolvimento` de propósito: ela
+     * está gravada em milhares de linhas de `tarefa_eventos`, e renomear o dado
+     * para arrumar um rótulo de tela reescreveria histórico.
+     */
     public const STATUS = [
         'aberta' => 'Aberta',
         'backlog' => 'Backlog',
-        'em_desenvolvimento' => 'Em desenvolvimento',
+        'em_desenvolvimento' => 'Em andamento',
+        'bloqueada' => 'Bloqueada',
         'em_testes' => 'Em testes',
         'ajustes_necessarios' => 'Ajustes necessários',
         'concluida' => 'Concluída',
         'cancelada' => 'Cancelada',
+    ];
+
+    /**
+     * O tipo escolhe o fluxo da tarefa (ver `FluxoTarefaService`).
+     *
+     * Não é o mesmo eixo da prioridade: "crítica" dizia ao mesmo tempo que a
+     * tarefa é grave e que ela é do ciclo de desenvolvimento. Separando, a
+     * gravidade continua sendo gravidade e o tipo passa a responder por onde a
+     * tarefa anda — e se ela precisa de teste aprovado para fechar.
+     */
+    public const TIPOS = [
+        'desenvolvimento' => 'Desenvolvimento',
+        'operacional' => 'Operacional',
     ];
 
     public const STATUS_TERMINAIS = ['concluida', 'cancelada'];
@@ -34,7 +57,7 @@ class Tarefa extends Model
     ];
 
     protected $fillable = [
-        'titulo', 'resumo', 'detalhes', 'sistema_id', 'responsavel_id',
+        'titulo', 'resumo', 'detalhes', 'tipo', 'sistema_id', 'responsavel_id',
         'criado_por_id', 'prioridade', 'status', 'iniciada_em',
     ];
 
@@ -48,6 +71,7 @@ class Tarefa extends Model
     protected static function booted(): void
     {
         static::creating(function (Tarefa $tarefa): void {
+            $tarefa->tipo ??= 'desenvolvimento';
             $tarefa->status ??= $tarefa->responsavel_id ? 'backlog' : 'aberta';
         });
     }

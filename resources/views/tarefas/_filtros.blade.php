@@ -49,6 +49,16 @@
         @endforeach
     </select>
 
+    {{-- Com desenvolvimento e operacional no mesmo quadro, isolar um dos dois
+         passou a ser pergunta de rotina: o quadro do ciclo continua existindo,
+         agora como um recorte em vez de uma tela. --}}
+    <select name="tipo" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
+        <option value="">Todos os tipos</option>
+        @foreach (\App\Models\Tarefa::TIPOS as $chave => $rotulo)
+            <option value="{{ $chave }}" @selected($filtros['tipo'] === $chave)>{{ $rotulo }}</option>
+        @endforeach
+    </select>
+
     <select name="prioridade" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
         <option value="">Todas as prioridades</option>
         @foreach (\App\Models\Tarefa::PRIORIDADES as $chave => $rotulo)

@@ -65,10 +65,10 @@
                     @php $cards = $colunas[$etapa['chave']]; @endphp
 
                     {{--
-                        As etapas que pedem texto (ajustes, cancelamento,
-                        conclusão com relatório) não aceitam o solto direto —
-                        o menu "Mover ▾" do card é o único caminho para elas
-                        (Q-013).
+                        As etapas que pedem texto (bloqueio, ajustes,
+                        cancelamento, conclusão com relatório) não aceitam o
+                        solto direto — o menu "Mover ▾" do card é o único
+                        caminho para elas (Q-013).
                     --}}
                     <section class="flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden"
                              {{--
@@ -89,7 +89,7 @@
                              data-status="{{ $etapa['chave'] }}"
                              @dragover.prevent="permitir('{{ $etapa['chave'] }}')"
                              @dragleave="sobre = null"
-                             @drop.prevent="soltar('{{ $etapa['chave'] }}', {{ in_array($etapa['chave'], ['ajustes_necessarios', 'cancelada', 'concluida'], true) ? 'true' : 'false' }})"
+                             @drop.prevent="soltar('{{ $etapa['chave'] }}', {{ in_array($etapa['chave'], ['bloqueada', 'ajustes_necessarios', 'cancelada', 'concluida'], true) ? 'true' : 'false' }})"
                              :class="sobre === '{{ $etapa['chave'] }}' && 'ring-1 ring-brand'">
                         <header class="shrink-0 px-3 py-2.5 border-b border-rule">
                             <div class="flex items-center gap-2">
@@ -106,7 +106,9 @@
 
                         <div class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 space-y-2">
                             @forelse ($cards as $tarefa)
-                                @php $transicoes = \App\Services\FluxoTarefaService::TRANSICOES_PERMITIDAS[$tarefa->status] ?? []; @endphp
+                                {{-- Os destinos são do CARD, não do status: o
+                                     fluxo depende do tipo da tarefa. --}}
+                                @php $transicoes = \App\Services\FluxoTarefaService::transicoesDe($tarefa); @endphp
                                 <div x-data="{ menuAberto: false, destino: '{{ $transicoes[0] ?? '' }}' }"
                                      draggable="true"
                                      data-tarefa="{{ $tarefa->id }}"

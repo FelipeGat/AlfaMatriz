@@ -5,8 +5,8 @@ namespace Tests\Feature\TarefasDesenvolvimento;
 use App\Models\Sistema;
 use App\Models\Tarefa;
 use App\Models\User;
-use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
@@ -29,7 +29,7 @@ class QuadroTest extends TestCase
     }
 
     /**
-     * @spec:AC-082 O quadro mostra as cinco etapas do trabalho EM CURSO, na ordem e com
+     * @spec:AC-082 O quadro mostra as etapas do trabalho EM CURSO, na ordem e com
      * a contagem — e nenhuma coluna terminal: encerrou, sai do quadro (AC-096).
      */
     public function test_quadro_mostra_etapas_na_ordem_com_contagem(): void
@@ -41,6 +41,7 @@ class QuadroTest extends TestCase
         Tarefa::factory()->create(['criado_por_id' => $criador->id, 'sistema_id' => $sistema->id, 'status' => 'aberta']);
         Tarefa::factory()->count(2)->create(['criado_por_id' => $criador->id, 'status' => 'backlog']);
         Tarefa::factory()->create(['criado_por_id' => $criador->id, 'status' => 'em_desenvolvimento']);
+        Tarefa::factory()->create(['criado_por_id' => $criador->id, 'status' => 'bloqueada']);
         Tarefa::factory()->count(3)->create(['criado_por_id' => $criador->id, 'status' => 'em_testes']);
         Tarefa::factory()->create(['criado_por_id' => $criador->id, 'status' => 'ajustes_necessarios']);
         Tarefa::factory()->create(['criado_por_id' => $criador->id, 'status' => 'concluida']);
@@ -52,8 +53,10 @@ class QuadroTest extends TestCase
 
         $etapas = $resposta->viewData('etapas');
 
+        // Bloqueada entra entre Em andamento e Em testes: é de lá que a tarefa
+        // trava, e é para lá que ela volta (US-055).
         $this->assertSame(
-            ['aberta', 'backlog', 'em_desenvolvimento', 'em_testes', 'ajustes_necessarios'],
+            ['aberta', 'backlog', 'em_desenvolvimento', 'bloqueada', 'em_testes', 'ajustes_necessarios'],
             array_column($etapas, 'chave'),
             'O quadro é o trabalho em curso: concluída e cancelada não têm coluna.'
         );
@@ -62,6 +65,7 @@ class QuadroTest extends TestCase
         $this->assertSame(1, $quantidades['aberta']);
         $this->assertSame(2, $quantidades['backlog']);
         $this->assertSame(1, $quantidades['em_desenvolvimento']);
+        $this->assertSame(1, $quantidades['bloqueada']);
         $this->assertSame(3, $quantidades['em_testes']);
         $this->assertSame(1, $quantidades['ajustes_necessarios']);
         $this->assertArrayNotHasKey('concluida', $quantidades);
@@ -69,7 +73,9 @@ class QuadroTest extends TestCase
 
         // A ordem também vale na renderização, não só no array de apoio.
         $conteudo = $resposta->getContent();
-        $rotulos = ['Aberta', 'Backlog', 'Em desenvolvimento', 'Em testes', 'Ajustes necessários'];
+        // "Em andamento" e não mais "Em desenvolvimento": a coluna passou a
+        // receber também tarefa operacional, que não é desenvolvida (US-054).
+        $rotulos = ['Aberta', 'Backlog', 'Em andamento', 'Bloqueada', 'Em testes', 'Ajustes necessários'];
         $posicoes = collect($rotulos)->map(fn ($rotulo) => strpos($conteudo, $rotulo));
 
         $this->assertTrue($posicoes->every(fn ($p) => $p !== false));

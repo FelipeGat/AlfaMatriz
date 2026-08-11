@@ -137,35 +137,46 @@ class HistoricoTarefasTest extends TestCase
 
     /**
      * @spec:AC-131 Sem a coluna Concluída no quadro, reabrir passa a morar no histórico:
-     * a concluída oferece o caminho de volta, a cancelada não (ela não tem saída no fluxo).
+     * a concluída volta para a bancada, e a cancelada volta para a fila (AC-184).
      */
-    public function test_historico_reabre_a_concluida_e_nao_oferece_saida_para_a_cancelada(): void
+    public function test_historico_reabre_as_duas_terminais_cada_uma_para_o_seu_lugar(): void
     {
         $usuario = User::factory()->create();
         $criador = User::factory()->create();
+        $dono = User::factory()->create();
 
         $concluida = Tarefa::factory()->create([
             'criado_por_id' => $criador->id, 'status' => 'concluida', 'titulo' => 'Concluída reabrível',
         ]);
-        Tarefa::factory()->create([
-            'criado_por_id' => $criador->id, 'status' => 'cancelada', 'titulo' => 'Cancelada sem volta',
+        $cancelada = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'responsavel_id' => $dono->id,
+            'status' => 'cancelada', 'titulo' => 'Cancelada por engano',
         ]);
 
         $html = $this->actingAs($usuario)->get(route('tarefas.historico'))->assertOk()->getContent();
 
-        // Uma única ação de reabrir: a da concluída.
-        $this->assertSame(1, substr_count($html, 'Reabrir'),
-            'Só a tarefa concluída pode oferecer reabrir — cancelada não tem saída no mapa de transições.');
+        // As duas oferecem volta: cancelar por engano custava o histórico
+        // inteiro, porque a única saída era recadastrar a tarefa do zero.
+        $this->assertSame(2, substr_count($html, 'Reabrir'));
         $this->assertStringContainsString(route('tarefas.mover', $concluida), $html);
+        $this->assertStringContainsString(route('tarefas.mover', $cancelada), $html);
 
-        // E ela volta mesmo para o quadro, em desenvolvimento.
         $this->actingAs($usuario)->post(route('tarefas.mover', $concluida), ['status' => 'em_desenvolvimento'])
             ->assertSessionMissing('erro');
 
         $this->assertSame('em_desenvolvimento', $concluida->fresh()->status);
 
-        $quadro = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk();
-        $this->assertContains($concluida->id, $quadro->viewData('colunas')['em_desenvolvimento']->pluck('id')->all());
+        // A cancelada volta para a FILA, e sem dono: retomá-la é uma decisão
+        // nova, provavelmente de outra pessoa (AC-130).
+        $this->actingAs($usuario)->post(route('tarefas.mover', $cancelada), ['status' => 'aberta'])
+            ->assertSessionMissing('erro');
+
+        $this->assertSame('aberta', $cancelada->fresh()->status);
+        $this->assertNull($cancelada->fresh()->responsavel_id);
+
+        $colunas = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->viewData('colunas');
+        $this->assertContains($concluida->id, $colunas['em_desenvolvimento']->pluck('id')->all());
+        $this->assertContains($cancelada->id, $colunas['aberta']->pluck('id')->all());
     }
 
     /**

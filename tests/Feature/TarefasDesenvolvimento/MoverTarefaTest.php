@@ -3,9 +3,9 @@
 namespace Tests\Feature\TarefasDesenvolvimento;
 
 use App\Models\Tarefa;
-use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Js;
 use Tests\TestCase;
 
 /**
@@ -217,15 +217,22 @@ class MoverTarefaTest extends TestCase
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
+        // Em testes ganhou dois destinos além dos três originais: a volta seca
+        // para Em andamento — que antes só existia declarando uma reprovação
+        // que não houve — e o bloqueio, para o teste que fica esperando alguém
+        // (AC-183, AC-180).
         $esperado = 'x-data="{ transicoesDoCard: '
-            .\Illuminate\Support\Js::from(['concluida', 'ajustes_necessarios', 'cancelada']).' }"';
+            .Js::from([
+                'concluida', 'ajustes_necessarios', 'em_desenvolvimento', 'bloqueada', 'cancelada',
+            ]).' }"';
 
         $this->assertStringContainsString($esperado, $html,
-            'O menu do card em Em testes precisa trazer os três destinos permitidos, com o atributo x-data íntegro.');
+            'O menu do card em Em testes precisa trazer os destinos permitidos, com o atributo x-data íntegro.');
     }
 
     /**
-     * @spec:AC-122 Tarefa cancelada não tem para onde ir: o card não oferece menu.
+     * @spec:AC-122 Tarefa cancelada não aparece no quadro, então não há card nem menu
+     * para ela ali — o caminho de volta dela mora no histórico (AC-184).
      */
     public function test_card_cancelado_nao_oferece_menu_mover(): void
     {

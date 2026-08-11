@@ -35,6 +35,29 @@
                           value="{{ old('titulo', $tarefa->titulo ?? '') }}" required />
         </div>
 
+        {{--
+            O tipo vem antes de tudo porque é ele que decide o resto: a tarefa
+            de desenvolvimento passa por Em testes e só fecha com teste
+            aprovado; a operacional fecha direto de Em andamento. É a única
+            escolha do formulário que muda o caminho do card, então ela é dita
+            embaixo do campo — o select sozinho não tem como explicar isso.
+        --}}
+        <div class="sm:col-span-2">
+            <x-input-label for="tipo-{{ $sufixo }}" value="Tipo" />
+            <select id="tipo-{{ $sufixo }}" name="tipo" class="mt-1 block w-full">
+                @foreach (\App\Models\Tarefa::TIPOS as $chave => $label)
+                    <option value="{{ $chave }}"
+                            @selected(old('tipo', $tarefa->tipo ?? 'desenvolvimento') === $chave)>
+                        {{ $label }}
+                    </option>
+                @endforeach
+            </select>
+            <p class="mt-1 text-[11.5px] text-ink-faint">
+                Desenvolvimento passa por testes e só fecha com relatório aprovado.
+                Operacional — contatar fornecedor, renovar certificado — fecha direto.
+            </p>
+        </div>
+
         <div>
             <x-input-label for="sistema_id-{{ $sufixo }}" value="Sistema" />
             <select id="sistema_id-{{ $sufixo }}" name="sistema_id" class="mt-1 block w-full">

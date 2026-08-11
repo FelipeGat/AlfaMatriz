@@ -47,7 +47,16 @@
                     {{-- Título e resumo na mesma célula, como no card: quem
                          audita precisa saber o QUE era a tarefa, não só o nome. --}}
                     <td class="px-4 py-3">
-                        <p class="text-[13.5px] text-ink">{{ $tarefa->titulo }}</p>
+                        {{-- O selo de operacional acompanha o título como no
+                             card: sem ele, uma tarefa encerrada sem nenhum
+                             relatório de teste pareceria falha de processo, e
+                             não o processo dela. --}}
+                        <p class="text-[13.5px] text-ink">
+                            {{ $tarefa->titulo }}
+                            @if ($tarefa->tipo === 'operacional')
+                                <x-badge class="ml-1 align-middle">Operacional</x-badge>
+                            @endif
+                        </p>
                         @if (filled($tarefa->resumo))
                             <p class="mt-0.5 text-[12px] leading-snug text-ink-mute">{{ $tarefa->resumo }}</p>
                         @endif
@@ -91,12 +100,30 @@
                         <span class="text-ink-faint">{{ $tarefa->updated_at->format('H:i') }}</span>
                     </td>
                     <td class="px-4 py-3 text-right whitespace-nowrap">
-                        {{-- Cancelada não tem saída no mapa de transições: nada a oferecer. --}}
-                        @if ($tarefa->status === 'concluida')
+                        {{--
+                            As duas terminais voltam, e cada uma para o lugar
+                            que faz sentido: a concluída volta para a bancada,
+                            porque quem a reabre já sabe o que quer mexer; a
+                            cancelada volta para a FILA, sem dono, porque
+                            desistir dela foi uma decisão e retomá-la é uma nova
+                            — provavelmente com outra pessoa e outra prioridade.
+
+                            Cancelada era terminal de verdade, e a única saída
+                            era recadastrar a tarefa do zero: um clique de
+                            engano custava o histórico inteiro e o cronômetro
+                            junto, que é exatamente o que este quadro existe
+                            para guardar.
+                        --}}
+                        @php
+                            $reabrirPara = ['concluida' => 'em_desenvolvimento', 'cancelada' => 'aberta'][$tarefa->status] ?? null;
+                        @endphp
+
+                        @if ($reabrirPara)
                             <form method="POST" action="{{ route('tarefas.mover', $tarefa) }}">
                                 @csrf
-                                <input type="hidden" name="status" value="em_desenvolvimento">
+                                <input type="hidden" name="status" value="{{ $reabrirPara }}">
                                 <button type="submit"
+                                        title="Volta para {{ \App\Models\Tarefa::STATUS[$reabrirPara] }}"
                                         class="h-[28px] px-2.5 rounded-control border border-btn-line
                                                font-medium text-[12px] text-ink-dim hover:text-brand hover:border-brand transition">
                                     Reabrir

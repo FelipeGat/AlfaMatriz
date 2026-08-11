@@ -41,10 +41,17 @@ aberto, em desenvolvimento, em teste e concluído.
 
 - **Dado** que existem tarefas em etapas diferentes
 - **Quando** abro o quadro
-- **Então** vejo as colunas Aberta, Backlog, Em desenvolvimento, Em testes e
-  Ajustes necessários nessa ordem, cada uma com o total de tarefas que estão
+- **Então** vejo as colunas Aberta, Backlog, Em andamento, Bloqueada, Em testes
+  e Ajustes necessários nessa ordem, cada uma com o total de tarefas que estão
   nela — e nenhuma coluna de etapa terminal, porque tarefa encerrada não é
   trabalho em curso
+
+> **Revisto em 11/08/2026.** A coluna "Em desenvolvimento" passou a se chamar
+> **Em andamento** (US-054): ela recebe também tarefa operacional, que não é
+> desenvolvida, e um telefonema parado numa coluna chamada "Em desenvolvimento"
+> faria a coluna mentir. A chave do dado continua `em_desenvolvimento` — ela
+> está gravada no histórico de etapas, e renomear o dado para arrumar um rótulo
+> de tela reescreveria o passado. **Bloqueada** é coluna nova (US-055).
 
 #### AC-083 — Tarefa sem responsável nasce Aberta; com responsável, nasce no Backlog
 
@@ -161,19 +168,35 @@ fluxo, para que nada seja dado como concluído sem ter passado por teste.
   um relatório de teste aprovado; registrando um relatório aprovado, a mesma
   conclusão passa
 
+> **Revisto em 11/08/2026 (AC-186).** O relatório vale para a PASSAGEM em que
+> foi escrito, não para a tarefa inteira, e a exigência é do tipo
+> desenvolvimento (AC-177).
+
 #### AC-090 — Tarefa concluída pode ser reaberta para desenvolvimento
 
 - **Dado** uma tarefa Concluída
 - **Quando** a reabro
-- **Então** ela volta para Em desenvolvimento e a única saída da coluna
-  Cancelada continua sendo nenhuma (tarefa cancelada não volta ao fluxo)
+- **Então** ela volta para Em andamento
+
+> **Revisto em 11/08/2026 (US-056).** A segunda metade deste critério dizia que
+> a Cancelada não tinha saída nenhuma. A intenção era boa — cancelar é uma
+> decisão, e decisão não se desfaz de leve —, mas cancelar é um clique, e o
+> preço do clique errado era o histórico inteiro: a única saída viável passou a
+> ser recadastrar a tarefa do zero, jogando fora a conversa e o cronômetro que
+> este quadro existe para guardar. Um estado sem volta alcançável por acidente
+> é uma armadilha, não uma garantia. A saída nova é AC-184.
 
 #### AC-122 — O menu "Mover" oferece de verdade os destinos permitidos
 
 - **Dado** o quadro aberto, com uma tarefa em Em testes
 - **Quando** abro o menu "Mover" do card dela
-- **Então** a lista de destinos traz Concluída, Ajustes necessários e
-  Cancelada — e nada além disso; o card em Cancelada não oferece menu nenhum
+- **Então** a lista de destinos traz Concluída, Ajustes necessários, Em
+  andamento, Bloqueada e Cancelada — e nada além disso; tarefa cancelada não
+  aparece no quadro, então não há card nem menu para ela ali (o caminho de volta
+  dela é o do histórico, AC-184)
+
+> **Revisto em 11/08/2026.** Os destinos passaram a depender do TIPO da tarefa
+> (AC-177), e os dois novos são recuos (US-056).
 
 #### AC-124 — Devolver do Backlog para Aberta solta o responsável
 
@@ -308,6 +331,122 @@ esse detalhe fique datado e assinado junto da tarefa, e não num chat à parte.
   continua legível pelo histórico — só leitura, porque escrever de novo é
   reabrir a tarefa
 
+### US-054 — O quadro cabe o trabalho que não é desenvolvimento
+
+Como pessoa do time da Alfa, quero abrir no mesmo quadro uma tarefa que não é
+de desenvolvimento — entrar em contato com o fabricante do equipamento, renovar
+um certificado —, para não ter um segundo lugar para olhar e uma dúvida a cada
+cadastro sobre onde a tarefa mora.
+
+O fluxo de hoje obrigaria essa tarefa a fingir que foi desenvolvida e testada
+para poder ser concluída. O `ASM-034` já admitia trabalho que não pertence a
+produto nenhum ao deixar o sistema opcional; o fluxo é que não acompanhou.
+
+#### AC-177 — A tarefa operacional fecha direto de Em andamento
+
+- **Dado** uma tarefa do tipo Operacional em Em andamento
+- **Quando** a concluo
+- **Então** ela é concluída sem passar por Em testes e sem relatório nenhum, e
+  Em testes não é oferecida como destino para ela
+
+#### AC-178 — O tipo abre um caminho, não afrouxa o outro
+
+- **Dado** uma tarefa do tipo Desenvolvimento em Em andamento
+- **Quando** tento concluí-la direto
+- **Então** o movimento é recusado como transição inválida: o atalho da
+  operacional não vale para ela
+
+#### AC-179 — O tipo se anuncia no card e recorta o quadro
+
+- **Dado** o quadro com tarefas dos dois tipos
+- **Quando** olho os cards
+- **Então** só a operacional traz o selo do tipo — marcar as duas encheria o
+  quadro de um selo que não diz nada, e o que se precisa saber de relance é qual
+  card vai pular a coluna de testes; e o filtro de tipo isola um dos dois
+
+### US-055 — Parar o trabalho sem sumir com a tarefa
+
+Como responsável por uma tarefa, quero poder declarar que ela travou esperando
+alguém, para que ela não fique apodrecendo numa coluna que diz que estou
+trabalhando nela.
+
+Até aqui, de Em andamento só se saía para Em testes ou para o cancelamento.
+Quando a tarefa travava — o cliente não responde, falta acesso, o fabricante não
+retorna —, não havia para onde levar o card.
+
+#### AC-180 — Bloquear exige dizer o que está travando
+
+- **Dado** uma tarefa em Em andamento
+- **Quando** a movo para Bloqueada sem escrever o que trava
+- **Então** o movimento é recusado; com o texto, ela é bloqueada e o motivo fica
+  gravado no histórico de etapas dela
+
+#### AC-181 — A bloqueada volta para a etapa de onde parou, e o tempo parado fica medido
+
+- **Dado** uma tarefa que foi bloqueada estando em Em testes
+- **Quando** ela é destravada
+- **Então** posso devolvê-la para Em testes, e não só para Em andamento — o
+  código não voltou para a bancada, ele ficou esperando; e a etapa Bloqueada
+  fecha com entrada, saída e duração, como qualquer outra
+
+### US-056 — Recuar não precisa de permissão
+
+Como pessoa do time, quero poder devolver a tarefa para a etapa anterior sem
+ritual, para não ter de arrastar o card por uma etapa que não aconteceu só para
+chegar onde a realidade já está.
+
+O princípio: **restringir o avanço, liberar o recuo**. Avançar pula trabalho, e
+é por isso que avançar se guarda. Um quadro que recusa a volta não impede o
+erro — ele ensina a mentir para o quadro, e como cada etapa é cronometrada, a
+mentira não fica na tela: ela contamina o número.
+
+#### AC-182 — De Em andamento a tarefa volta ao Backlog
+
+- **Dado** uma tarefa em Em andamento
+- **Quando** a devolvo para o Backlog
+- **Então** ela volta, sem exigência nenhuma além das que o Backlog já faz
+
+#### AC-183 — De Em testes ela volta a Em andamento sem declarar reprovação
+
+- **Dado** uma tarefa em Em testes que foi movida para lá por engano
+- **Quando** a devolvo para Em andamento
+- **Então** ela volta sem passar por Ajustes necessários e sem registrar
+  relatório nenhum — obrigar toda volta a virar reprovação sujava o sinal de
+  retrabalho: a coluna deixava de dizer "a qualidade está ruim" e passava a
+  dizer "alguém clicou errado"
+
+#### AC-184 — A cancelada volta para a fila, sem dono
+
+- **Dado** uma tarefa cancelada, no histórico
+- **Quando** clico em Reabrir
+- **Então** ela volta para Aberta e sem responsável — retomar o que foi
+  cancelado é decisão nova, provavelmente de outra pessoa; a concluída continua
+  voltando para Em andamento (AC-090, AC-131)
+
+#### AC-185 — Direcionar move a tarefa; tirar o dono a devolve para a fila
+
+- **Dado** uma tarefa em Aberta
+- **Quando** escolho um responsável e salvo
+- **Então** ela vai para o Backlog no mesmo gesto, com o movimento registrado no
+  histórico de etapas — e tirar o responsável de uma tarefa do Backlog a devolve
+  para Aberta. Na criação isso já valia; na edição, o mesmo fato tinha
+  comportamento diferente e exigia arrastar o card em seguida
+
+### US-057 — O relatório prova a passagem, não a tarefa
+
+Como responsável pela entrega, quero que o teste aprovado valha para o código
+que foi testado, para que reabrir uma tarefa não venha com a aprovação antiga
+embutida.
+
+#### AC-186 — Reconcluir depois de reabrir exige relatório novo
+
+- **Dado** uma tarefa concluída com relatório aprovado, reaberta e levada de
+  novo até Em testes
+- **Quando** tento concluí-la sem registrar um relatório novo
+- **Então** a conclusão é recusada: o relatório aprovado é da passagem anterior,
+  e o teste que provava o código de antes não prova o de depois. O mesmo vale
+  para a tarefa que voltou de Ajustes necessários
+
 ## Fora de escopo
 
 - Anexos de imagem na tarefa (o alfadev tem; fica para depois).
@@ -338,6 +477,9 @@ esse detalhe fique datado e assinado junto da tarefa, e não num chat à parte.
 | ASM-034 | O vínculo com sistema é opcional: tarefa interna que não pertence a nenhum produto (ex.: infraestrutura) pode ficar sem sistema. | confirmada | Implementado: `sistema_id` é anulável e o card mostra "Sem sistema" quando falta (AC-084, AC-116). |
 | ASM-047 | O comentário é texto puro — sem markdown, lista, negrito, link ou imagem — e a conversa não notifica ninguém: quem acompanha a tarefa a abre. | confirmada | Confirmado pelo usuário em 2026-08-11: a formatação de lista foi entregue e retirada em seguida. O corpo sai pelo escape normal do Blade, sem conversão nenhuma — não há marcação para auditar nem sanitizador para manter. |
 | ASM-048 | Só o autor corrige e apaga o próprio comentário, e toda correção fica marcada na tela. | confirmada | Confirmado pelo usuário em 2026-08-11, que pediu a edição depois da primeira entrega. Mexer no comentário alheio seria reescrever a conversa de outra pessoa; a marca de editado existe porque reescrever em silêncio faria a tarefa contar uma história que não aconteceu. O carimbo é coluna própria (`editado_em`), e não `updated_at`, que se move por qualquer gravação futura na linha. |
+| ASM-049 | Os dois tipos dividem o mesmo quadro, em vez de cada um ter a sua tela. | confirmada | Confirmado pelo usuário em 2026-08-11. Separar criaria dois lugares para olhar e uma dúvida a cada cadastro ("isso é dev ou não?"), e a maior parte do que se pergunta ao quadro — o que está travado, o que está esquecido, quem está com o quê — é a mesma pergunta para os dois. Quem quiser o quadro do ciclo puro tem o filtro de tipo (AC-179). |
+| ASM-050 | O tipo pode ser trocado depois do cadastro, e trocá-lo não prende a tarefa. | confirmada | Implementado: o fluxo operacional guarda saídas para Em testes e Ajustes necessários mesmo sem oferecer entrada nelas. Sem isso, trocar para Operacional uma tarefa que já estava em teste deixaria o card numa coluna sem nenhum caminho de volta. |
+| ASM-051 | A etapa Bloqueada NÃO recebe o destaque de tarefa esquecida (AC-093). | aberta | Decisão de projeto, tomada em 2026-08-11: a escala de 24h/48h existe para etapa em que ninguém deveria estar parado, e a Bloqueada é a etapa em que estar parado é o esperado — esperar um fornecedor por uma semana é normal. Ela já se anuncia pela coluna própria e pelo motivo escrito. **Rever quando houver uso real:** se o time começar a esquecer tarefa bloqueada, o destaque volta, com uma régua mais larga. |
 | ASM-035 | Os dados do alfadev não são migrados: o quadro do AlfaMatriz nasce vazio e o alfadev é desligado depois, manualmente. | aberta | **Decisão pendente do dono do produto.** Enquanto o alfadev seguir em uso, os dois bancos divergem. Migrar o histórico do Supabase é feature própria; desligar o alfadev sem migrar descarta o histórico dele. |
 
 ## Perguntas em aberto

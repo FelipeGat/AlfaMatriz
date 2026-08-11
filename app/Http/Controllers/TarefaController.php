@@ -68,11 +68,20 @@ class TarefaController extends Controller
 
         $data = $request->validate([
             'titulo' => 'required|string|max:255',
+            // `nullable` e não `required`: o tipo tem padrão no modelo, e um
+            // envio sem ele (formulário antigo em cache, integração futura) vale
+            // como tarefa de desenvolvimento em vez de virar erro de validação.
+            'tipo' => 'nullable|in:'.implode(',', array_keys(Tarefa::TIPOS)),
             'sistema_id' => 'nullable|exists:sistemas,id',
             'responsavel_id' => 'nullable|exists:users,id',
             'prioridade' => 'required|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
         ]);
 
+        // O padrão é resolvido AQUI, e não só no modelo, por causa da linha
+        // abaixo: a busca por reenvio compara o formulário inteiro, e um `tipo`
+        // nulo viraria `tipo IS NULL` — que não casa com a linha gravada, onde
+        // ele é 'desenvolvimento'. O duplo clique voltaria a criar duas tarefas.
+        $data['tipo'] ??= 'desenvolvimento';
         $data['criado_por_id'] = auth()->id();
 
         // Mesma rede do comentário (AC-137): aqui o clique duplo custa mais
@@ -102,17 +111,22 @@ class TarefaController extends Controller
             ->exists();
     }
 
-    public function update(Request $request, Tarefa $tarefa)
+    public function update(Request $request, Tarefa $tarefa, FluxoTarefaService $fluxo)
     {
         $this->bloquearVisaoDaMatriz();
 
         $data = $request->validate([
             'titulo' => 'required|string|max:255',
+            'tipo' => 'nullable|in:'.implode(',', array_keys(Tarefa::TIPOS)),
             'sistema_id' => 'nullable|exists:sistemas,id',
             'responsavel_id' => 'nullable|exists:users,id',
             'prioridade' => 'required|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
             'comentario' => 'nullable|string|max:4000',
         ]);
+
+        // Envio sem o campo mantém o tipo que a tarefa já tem: `null` aqui
+        // apagaria a coluna, porque o padrão do modelo só vale na criação.
+        $data['tipo'] ??= $tarefa->tipo;
 
         // O comentário viaja no mesmo envio do cadastro (US-049): um botão só
         // no modal, e nada de decidir entre "Salvar" e "Comentar" para o que,
@@ -124,6 +138,8 @@ class TarefaController extends Controller
 
         $tarefa->update($data);
 
+        $etapaNova = $this->seguirOResponsavel($tarefa, $fluxo);
+
         if ($comentario !== '' && ! $this->reenvioDoMesmoComentario($tarefa, $comentario)) {
             $tarefa->comentarios()->create([
                 'autor_id' => auth()->id(),
@@ -131,10 +147,47 @@ class TarefaController extends Controller
             ]);
         }
 
-        return redirect()->route('tarefas.index')->with(
-            'status',
-            $comentario !== '' ? 'Tarefa atualizada e comentário publicado.' : 'Tarefa atualizada.',
-        );
+        $aviso = ['Tarefa atualizada.'];
+
+        if ($etapaNova) {
+            $aviso[] = 'Movida para '.Tarefa::STATUS[$etapaNova].'.';
+        }
+
+        if ($comentario !== '') {
+            $aviso[] = 'Comentário publicado.';
+        }
+
+        return redirect()->route('tarefas.index')->with('status', implode(' ', $aviso));
+    }
+
+    /**
+     * Direcionar move a tarefa; tirar o dono a devolve para a fila.
+     *
+     * Na criação, escolher responsável já fazia a tarefa nascer no Backlog
+     * (`Tarefa::booted`) — mas na edição o mesmo gesto a deixava em Aberta, e
+     * quem direcionava tinha de arrastar o card em seguida. Era o mesmo fato
+     * com dois comportamentos, e dois passos para uma intenção só.
+     *
+     * O movimento passa pelo motor do fluxo, e não por um `update` direto, para
+     * o cronômetro da etapa continuar honesto: um card que troca de coluna sem
+     * evento seria tempo de Aberta contado como tempo de Backlog.
+     *
+     * Só vale entre Aberta e Backlog. Trocar o responsável de uma tarefa que já
+     * está em andamento é trocar quem faz, não recomeçar o fluxo dela.
+     */
+    private function seguirOResponsavel(Tarefa $tarefa, FluxoTarefaService $fluxo): ?string
+    {
+        $destino = match (true) {
+            $tarefa->status === 'aberta' && $tarefa->responsavel_id !== null => 'backlog',
+            $tarefa->status === 'backlog' && $tarefa->responsavel_id === null => 'aberta',
+            default => null,
+        };
+
+        if ($destino) {
+            $fluxo->mover($tarefa, $destino);
+        }
+
+        return $destino;
     }
 
     /**
@@ -163,6 +216,12 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
+        // As notas seguem opcionais AQUI de propósito, mesmo depois de o
+        // `required` do textarea (`_mover.blade.php`) se revelar a única trava
+        // de verdade: quem manda uma conclusão sem elas não passa mais, mas é o
+        // motor do fluxo que recusa, e com a frase que explica o porquê. Um
+        // `required` nesta lista responderia "o campo notas é obrigatório" a
+        // quem tentou concluir uma tarefa que sequer chegou em Em testes.
         $data = $request->validate([
             'status' => 'required|in:'.implode(',', array_keys(Tarefa::STATUS)),
             'motivo' => 'nullable|string',
@@ -300,12 +359,16 @@ class TarefaController extends Controller
     {
         $prioridade = $this->textoDaQuery($request, 'prioridade');
         $desfecho = $this->textoDaQuery($request, 'desfecho');
+        $tipo = $this->textoDaQuery($request, 'tipo');
 
         return [
             'busca' => $this->textoDaQuery($request, 'busca'),
             'sistema' => $this->textoDaQuery($request, 'sistema'),
             'responsavel' => $this->textoDaQuery($request, 'responsavel'),
             'prioridade' => array_key_exists($prioridade, Tarefa::PRIORIDADES) ? $prioridade : '',
+            // Com os dois tipos no mesmo quadro, "quero ver só o
+            // desenvolvimento" passou a ser uma pergunta que a tela recebe.
+            'tipo' => array_key_exists($tipo, Tarefa::TIPOS) ? $tipo : '',
             'desfecho' => in_array($desfecho, Tarefa::STATUS_TERMINAIS, true) ? $desfecho : '',
         ];
     }
@@ -357,7 +420,8 @@ class TarefaController extends Controller
             ->when($filtros['responsavel'] === 'sem', fn ($q) => $q->whereNull('responsavel_id'))
             ->when($filtros['responsavel'] !== '' && $filtros['responsavel'] !== 'sem',
                 fn ($q) => $q->where('responsavel_id', $filtros['responsavel']))
-            ->when($filtros['prioridade'] !== '', fn ($q) => $q->where('prioridade', $filtros['prioridade']));
+            ->when($filtros['prioridade'] !== '', fn ($q) => $q->where('prioridade', $filtros['prioridade']))
+            ->when($filtros['tipo'] !== '', fn ($q) => $q->where('tipo', $filtros['tipo']));
     }
 
     /**
@@ -428,13 +492,18 @@ class TarefaController extends Controller
      * A escala segue o Funil de Vendas: entrada em `accent`, o meio do fluxo
      * na marca, o atrito em `warn`, a chegada em `good`. Cancelada fica
      * neutra de propósito — é terminal sem valor e não disputa atenção.
+     *
+     * Bloqueada divide o `warn` com Ajustes necessários porque as duas são a
+     * mesma notícia — o trabalho parou e alguém precisa agir —, e a faixa de
+     * atrito ficar contínua no quadro é exatamente o que se quer enxergar de
+     * longe.
      */
     private function corDaEtapa(string $status): string
     {
         return match ($status) {
             'aberta', 'backlog' => 'accent',
             'em_desenvolvimento', 'em_testes' => 'brand',
-            'ajustes_necessarios' => 'warn',
+            'bloqueada', 'ajustes_necessarios' => 'warn',
             'concluida' => 'good',
             default => 'line',
         };

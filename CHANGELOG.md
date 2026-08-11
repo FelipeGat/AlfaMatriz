@@ -1,5 +1,69 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 11/08/2026 — O quadro passou a caber o trabalho que não é desenvolvimento
+
+Até aqui, o quadro de Tarefas só sabia acompanhar um tipo de trabalho: o ciclo
+de desenvolvimento. Toda tarefa tinha de passar por "Em desenvolvimento" e por
+"Em testes", e só fechava com um relatório de teste aprovado. Uma tarefa como
+**"entrar em contato com o fabricante do equipamento"** não tem nada disso — e
+para poder ser concluída, ela precisava fingir que foi desenvolvida e testada.
+
+Agora a tarefa tem **tipo**, e é o tipo que decide o caminho dela. Junto veio a
+etapa **Bloqueada**, para a tarefa que travou esperando alguém, e a liberdade de
+devolver um card para a etapa anterior sem cerimônia.
+
+### Novidades
+
+- **Tipo de tarefa: Desenvolvimento ou Operacional.** A de desenvolvimento segue
+  o ciclo inteiro e continua só fechando com teste aprovado. A operacional —
+  falar com fornecedor, renovar certificado, resolver algo de infraestrutura —
+  vai de "Em andamento" direto para "Concluída", sem passar por testes e sem
+  relatório. As duas dividem o mesmo quadro; o filtro de tipo isola uma delas
+  quando você quiser ver só o ciclo de desenvolvimento.
+- **Coluna "Bloqueada", para o trabalho que travou.** Quando a tarefa para por
+  causa de alguém de fora — o cliente não responde, falta acesso, o fornecedor
+  não retorna —, ela sai de "Em andamento" e vai para Bloqueada, dizendo o que
+  está travando. Antes não havia para onde levar esse card: ele ficava parado
+  numa coluna que dizia que alguém estava trabalhando nele. E como cada etapa é
+  cronometrada, o tempo que se perde esperando os outros passou a ser um número
+  que dá para ver.
+- **Reabrir tarefa cancelada.** Cancelar é um clique, e cancelar por engano
+  custava caro: a única saída era recadastrar a tarefa do zero, perdendo a
+  conversa e todo o histórico dela. Agora a cancelada volta pelo histórico, para
+  a fila de Aberta e sem responsável — porque retomar o que foi cancelado
+  costuma ser uma decisão nova, e muitas vezes de outra pessoa.
+
+### Melhorias
+
+- **Escolher o responsável já move a tarefa.** Direcionar uma tarefa da coluna
+  Aberta a leva para o Backlog no mesmo salvar, e tirar o responsável de uma
+  tarefa do Backlog a devolve para Aberta. Antes isso só valia na criação: na
+  edição era preciso escolher a pessoa e depois arrastar o card à mão.
+- **Devolver um card ficou simples.** De "Em andamento" dá para voltar ao
+  Backlog, e de "Em testes" dá para voltar a "Em andamento" sem precisar
+  declarar uma reprovação que não houve. Isso não é só conforto: como toda volta
+  precisava virar "Ajustes necessários", aquela coluna acabava contando erro de
+  clique junto com defeito de verdade, e deixava de servir para medir
+  retrabalho.
+- **"Em desenvolvimento" agora se chama "Em andamento".** A coluna passou a
+  receber também tarefa operacional, e um telefonema parado numa coluna chamada
+  "Em desenvolvimento" faria a coluna dizer o que não é. As tarefas e o
+  histórico não mudaram de lugar — mudou só o nome na tela.
+
+### Correções
+
+- **Reabrir uma tarefa concluída não vem mais com o teste antigo aprovado.** Uma
+  tarefa que já tinha sido concluída, quando reaberta e mexida, podia ser
+  concluída de novo **sem nenhum teste novo**: o sistema aceitava o relatório
+  aprovado do ciclo anterior como prova. Ou seja, o teste que provava o código
+  de antes valia como prova do código de depois. Agora cada passagem por "Em
+  testes" pede o seu próprio relatório — o que vale também para a tarefa que
+  voltou de "Ajustes necessários".
+
+> A publicação inclui uma atualização do banco. As tarefas que já existem
+> continuam exatamente onde estão, e todas elas entram como tipo
+> **Desenvolvimento**.
+
 ## AlfaMatriz — 11/08/2026 — Busca e conversa nas tarefas, telas mais rápidas
 
 ### Novidades
