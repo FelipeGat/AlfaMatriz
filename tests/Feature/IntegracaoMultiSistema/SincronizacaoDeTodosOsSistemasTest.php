@@ -179,4 +179,49 @@ class SincronizacaoDeTodosOsSistemasTest extends TestCase
 
         Http::assertSent(fn ($r) => str_contains($r->url(), '/licencas'));
     }
+
+    /**
+     * @spec:AC-165 Desligar a leitura de licença apaga o retrato que sobrou.
+     *
+     * Sem isto, o estado gravado numa leitura anterior fica congelado na tela
+     * para sempre — a Matriz não consegue mais confirmar nem corrigir, e o
+     * usuário vê uma licença "ativa" que ninguém mais atualiza. É dado
+     * derivado: volta inteiro no primeiro ciclo depois de religar.
+     */
+    public function test_desligar_a_leitura_apaga_o_retrato_que_sobrou(): void
+    {
+        $control = Sistema::factory()->alfacontrol()->create(['token' => 'chave-control']);
+
+        $cliente = \App\Models\Cliente::create(['nome' => 'Condomínio', 'ativo' => true]);
+        $cliente->sistemas()->attach($control->id, [
+            'ativo' => true, 'status_saas' => 'ativo',
+            'licenca_status' => 'ativa', 'licenca_id_externo' => '77',
+            'plano' => 'mensal', 'licenca_valor' => 349.00,
+            'licenca_fim_em' => now()->addYear()->toDateString(),
+        ]);
+
+        Http::preventStrayRequests();
+        Http::fake(['*control.alfasolucoes.cloud/*' => $this->respostaVazia('alfacontrol')]);
+
+        $this->artisan('alfa:sincronizar-sistemas', ['--sistema' => 'alfacontrol'])->assertSuccessful();
+
+        $vinculo = $cliente->fresh()->sistemas()->first()->pivot;
+
+        $this->assertNull($vinculo->licenca_status);
+        $this->assertNull($vinculo->licenca_id_externo);
+        $this->assertNull($vinculo->licenca_valor);
+        $this->assertNull($vinculo->plano);
+        $this->assertNull($vinculo->fimEm(), 'Sem vigência, a tela não mostra "até <data>".');
+        $this->assertNull($vinculo->valorDaLicenca(), 'A coluna Licença fica vazia.');
+
+        // Não há licença para renovar nem suspender: é o que impede a tela de
+        // oferecer ação sobre um retrato que a Matriz não mantém mais.
+        $this->assertFalse($vinculo->temLicenca());
+
+        // O vínculo em si continua, e `status_saas` também: ele vem de
+        // /clientes (o cliente ESTÁ ativo no AlfaControl), não de /licencas.
+        // Apagá-lo seria jogar fora informação boa junto com a suspeita.
+        $this->assertTrue((bool) $vinculo->ativo);
+        $this->assertSame('ativo', $vinculo->status_saas);
+    }
 }

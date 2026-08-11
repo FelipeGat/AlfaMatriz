@@ -150,7 +150,11 @@ class SincronizadorSistemaService
     private function sincronizarLicencas(): array
     {
         if (! $this->sistema->suporta('sincroniza_licencas')) {
-            return ['ignorado' => true, 'atualizadas' => 0];
+            // Sem a capacidade, o retrato que sobrou de uma leitura anterior
+            // fica congelado na tela para sempre — um estado que a Matriz não
+            // consegue mais confirmar nem corrigir. Apagar é o honesto: é dado
+            // derivado, e volta inteiro no primeiro ciclo depois de religar.
+            return ['ignorado' => true, 'atualizadas' => 0, 'limpos' => $this->limparRetratoDeLicenca()];
         }
 
         $atualizadas = 0;
@@ -254,6 +258,30 @@ class SincronizadorSistemaService
     private function todasPaginas(string $endereco): \Generator
     {
         yield from $this->contrato->paginas($endereco);
+    }
+
+    /**
+     * Zera o retrato de licença deste sistema nos vínculos.
+     *
+     * Só mexe em quem tem algo gravado, para não escrever à toa a cada ciclo.
+     */
+    private function limparRetratoDeLicenca(): int
+    {
+        return \Illuminate\Support\Facades\DB::table('cliente_sistema')
+            ->where('sistema_id', $this->sistema->id)
+            ->where(fn ($q) => $q
+                ->whereNotNull('licenca_status')
+                ->orWhereNotNull('licenca_id_externo')
+                ->orWhereNotNull('licenca_fim_em')
+                ->orWhereNotNull('licenca_valor'))
+            ->update([
+                'licenca_status' => null,
+                'plano' => null,
+                'licenca_valor' => null,
+                'licenca_inicio_em' => null,
+                'licenca_fim_em' => null,
+                'licenca_id_externo' => null,
+            ]);
     }
 
     /**
