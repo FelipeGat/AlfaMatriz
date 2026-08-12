@@ -49,9 +49,18 @@ class VigiaTagTest extends TestCase
         $this->assertSame(0, $processo->getExitCode(), $processo->getOutput().$processo->getErrorOutput());
 
         $chamadas = $this->chamadas();
-        $this->assertStringContainsString('git checkout', $chamadas);
+        $this->assertStringContainsString('checkout --detach', $chamadas);
         $this->assertStringContainsString('php artisan migrate --force', $chamadas);
         $this->assertSame('v1.0.0', trim(file_get_contents($this->repo.'/.deploy-tag-state')));
+
+        // E a versão entrou pelo azul/verde: o que está no ar é uma das duas
+        // cópias, apontada por um symlink — e não mais o próprio diretório em
+        // que o vigia trabalhou.
+        $this->assertMatchesRegularExpression(
+            '#/versoes/(azul|verde)$#',
+            (string) readlink($this->repo.'/atual'),
+            'A tag precisa ter sido publicada numa das cópias, pela troca do symlink.'
+        );
 
         // Rodar de novo, sem tag nova, não pode aplicar coisa alguma.
         file_put_contents($this->log, '');
@@ -96,7 +105,7 @@ class VigiaTagTest extends TestCase
         $this->assertFileExists($this->repo.'/.deploy-tag-failed');
         $this->assertFileDoesNotExist($this->repo.'/.deploy-tag-state', 'Versão quebrada não pode ser registrada como aplicada.');
 
-        $estado = json_decode(file_get_contents($this->repo.'/public/deploy-status.json'), true);
+        $estado = json_decode(file_get_contents($this->repo.'/deploy-status.json'), true);
         $this->assertSame('falha', $estado['estado'] ?? null, 'O painel precisa enxergar a falha.');
 
         // Segunda execução: bloqueada pelo marcador.
@@ -106,6 +115,34 @@ class VigiaTagTest extends TestCase
         $this->assertSame(0, $segunda->getExitCode());
         $this->assertStringContainsString('BLOQUEADO', $segunda->getOutput());
         $this->assertStringNotContainsString('php artisan migrate', $this->chamadas());
+    }
+
+    /**
+     * @spec:AC-170 Versão que passa no ensaio, entra no ar e derruba a saúde
+     * pública volta sozinha — e o vigia registra a falha e para.
+     *
+     * É o caso que o azul/verde tornou barato: a versão anterior continua
+     * inteira na outra cópia, então desfazer é trocar um symlink de volta. Sem
+     * isso, a produção ficaria quebrada até alguém acordar.
+     */
+    public function test_versao_que_quebra_depois_de_entrar_volta_sozinha(): void
+    {
+        // Passa no ensaio (127.0.0.1), reprova no endereço público.
+        $this->criarFerramentas(saude: '200', saudePublica: '503');
+
+        $processo = $this->rodar();
+
+        $this->assertNotSame(0, $processo->getExitCode());
+        $this->assertStringContainsString('troca foi DESFEITA', $processo->getOutput());
+
+        // A versão quebrada não pode ficar registrada como aplicada, e a
+        // esteira precisa ficar bloqueada: sem isso, o vigia traria a mesma
+        // tag de volta em cinco minutos.
+        $this->assertFileDoesNotExist($this->repo.'/.deploy-tag-state');
+        $this->assertFileExists($this->repo.'/.deploy-tag-failed');
+
+        $estado = json_decode(file_get_contents($this->repo.'/deploy-status.json'), true);
+        $this->assertSame('falha', $estado['estado'] ?? null);
     }
 
     /**
@@ -244,7 +281,7 @@ BASH);
         $this->assertStringContainsString('could not read from remote', $processo->getOutput());
 
         // O painel precisa enxergar falha, com a tag que continua no ar.
-        $status = json_decode(file_get_contents($this->repo.'/public/deploy-status.json'), true);
+        $status = json_decode(file_get_contents($this->repo.'/deploy-status.json'), true);
         $this->assertSame('falha', $status['estado']);
         $this->assertSame('v1.0.0', $status['tag']);
 
@@ -266,6 +303,11 @@ BASH);
                 'LOG' => $this->repo.'/deploy-tag.log',
                 'HEALTH_URL' => 'https://exemplo.invalido/healthz',
                 'HOME' => $this->repo,
+                // Quem confere a saúde agora é o publicar.sh, que insiste
+                // algumas vezes antes de desistir. Sem encurtar a espera, cada
+                // cenário de falha custaria 20 segundos à suíte.
+                'TENTATIVAS_SAUDE' => '2',
+                'ESPERA_SAUDE' => '0',
             ]
         );
         $processo->run();
@@ -295,7 +337,7 @@ BASH);
         $this->executar(['git', 'tag', 'v1.0.0'], $this->repo);
     }
 
-    private function criarFerramentas(string $saude, bool $fetchDeMentira = true): void
+    private function criarFerramentas(string $saude, bool $fetchDeMentira = true, ?string $saudePublica = null): void
     {
         // `git` real, menos o fetch — a maioria dos cenários não tem remoto.
         // Quem testa o próprio fetch pede o git inteiro (`fetchDeMentira:
@@ -311,7 +353,21 @@ echo "git $*" >> "$ALFA_LOG"
 exec /usr/bin/git "$@"
 BASH);
 
-        $this->binario('curl', "#!/usr/bin/env bash\necho \"curl \$*\" >> \"\$ALFA_LOG\"\nprintf '{$saude}'\nexit 0\n");
+        // A saúde do ensaio (127.0.0.1, antes da troca) e a do endereço
+        // público (depois da troca) podem divergir — é essa diferença que
+        // separa "não entrou" de "entrou, quebrou e voltou sozinho".
+        $publica = $saudePublica ?? $saude;
+        $this->binario('curl', <<<BASH
+#!/usr/bin/env bash
+echo "curl \$*" >> "\$ALFA_LOG"
+for arg in "\$@"; do
+    case "\$arg" in
+        *127.0.0.1*) printf '{$saude}'; exit 0 ;;
+    esac
+done
+printf '{$publica}'
+exit 0
+BASH);
 
         foreach (['composer', 'npm', 'php', 'systemctl'] as $ferramenta) {
             $this->binario($ferramenta, "#!/usr/bin/env bash\necho \"{$ferramenta} \$*\" >> \"\$ALFA_LOG\"\nexit 0\n");

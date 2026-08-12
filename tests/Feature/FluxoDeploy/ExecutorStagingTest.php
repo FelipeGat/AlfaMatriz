@@ -84,6 +84,35 @@ class ExecutorStagingTest extends TestCase
         }
     }
 
+    /**
+     * @spec:AC-175 Reprovar no portão não pode mais exigir um `git reset
+     * --hard` em cima do site vivo.
+     *
+     * O executor antigo mesclava a `main` no diretório que estava NO AR e só
+     * então rodava a suíte ali: durante toda a rodada o staging servia código
+     * não verificado, e reprovar significava desfazer à força por cima dele. É
+     * exatamente o cenário que o azul/verde existe para eliminar, e é fácil de
+     * reintroduzir sem perceber ao mexer no script.
+     */
+    public function test_o_executor_nao_mexe_no_diretorio_que_esta_no_ar(): void
+    {
+        $fonte = file_get_contents(base_path('deploy/deploy-staging-alfamatriz.sh'));
+
+        foreach (['git reset --hard', 'git merge --ff-only'] as $proibido) {
+            foreach (preg_split('/\R/', $fonte) as $numero => $linha) {
+                if (preg_match('/^\s*#/', $linha)) {
+                    continue;
+                }
+
+                $this->assertStringNotContainsString(
+                    $proibido,
+                    $linha,
+                    'deploy-staging-alfamatriz.sh:'.($numero + 1)." mexe no código do ambiente que está atendendo (\"{$proibido}\")."
+                );
+            }
+        }
+    }
+
     /** @spec:AC-065 Sem novidade na main, o executor não faz nada. */
     public function test_sem_novidade_nao_faz_nada(): void
     {
@@ -290,6 +319,8 @@ class ExecutorStagingTest extends TestCase
                 // "já há um deploy em curso", não rodaria nada, e o portão
                 // reprovaria o próprio código que estava validando.
                 'TRAVA' => $this->travaDoTeste(),
+                'TENTATIVAS_SAUDE' => '2',
+                'ESPERA_SAUDE' => '0',
             ]
         );
         $processo->run();
@@ -325,6 +356,14 @@ class ExecutorStagingTest extends TestCase
         // O "staging" é um clone parado no v1...
         $this->executar(['git', 'clone', '--quiet', '--branch', 'main', $origem, $this->repo]);
 
+        // ...com o motor da publicação dentro dele. O executor roda no host
+        // Proxmox e o publicar.sh roda DENTRO do container: o caminho tem de
+        // ser o do container, e é por isso que ele não pode ser resolvido a
+        // partir de onde o executor está.
+        mkdir($this->repo.'/deploy', 0755, true);
+        copy(base_path('deploy/publicar.sh'), $this->repo.'/deploy/publicar.sh');
+        chmod($this->repo.'/deploy/publicar.sh', 0755);
+
         // ...enquanto a origem recebe o v2.
         file_put_contents($trabalho.'/versao.txt', 'v2');
         $this->executar(['git', 'commit', '--quiet', '-am', 'v2'], $trabalho);
@@ -343,9 +382,14 @@ class ExecutorStagingTest extends TestCase
 
         $this->binario('php', $php);
 
-        foreach (['composer', 'npm', 'systemctl', 'pct'] as $ferramenta) {
+        foreach (['composer', 'npm', 'systemctl', 'pct', 'sudo'] as $ferramenta) {
             $this->binario($ferramenta, "#!/usr/bin/env bash\necho \"{$ferramenta} \$*\" >> \"\$ALFA_LOG\"\nexit 0\n");
         }
+
+        // A publicação confere a saúde da cópia em preparo pela porta de
+        // ensaio antes de trocar. Sem este `curl`, todo cenário desta suíte
+        // reprovaria no ensaio por não haver servidor nenhum de pé.
+        $this->binario('curl', "#!/usr/bin/env bash\necho \"curl \$*\" >> \"\$ALFA_LOG\"\nprintf '200'\nexit 0\n");
     }
 
     private function binario(string $nome, string $conteudo): void

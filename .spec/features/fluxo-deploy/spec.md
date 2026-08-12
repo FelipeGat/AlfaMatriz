@@ -98,10 +98,16 @@ telefone de cliente real fiquem numa segunda base.
 
 ## Fora de escopo
 
-- Blue-green ou implantação sem interrupção: o AlfaMatriz é container único,
-  como o AlfaHome.
-- Rollback automático: falhou, o vigia para e avisa; voltar versão é decisão
-  humana (o painel já tem a tela de versões).
+- ~~Blue-green ou implantação sem interrupção: o AlfaMatriz é container único,
+  como o AlfaHome.~~ **Revisto em 2026-08-11**: container único não impede duas
+  cópias da aplicação no mesmo disco, e o custo de não ter isso era uma janela
+  de ~2 minutos de código misturado a cada publicação. Virou a feature
+  `deploy-azul-verde`.
+- ~~Rollback automático: falhou, o vigia para e avisa; voltar versão é decisão
+  humana (o painel já tem a tela de versões).~~ **Revisto em 2026-08-11**: o que
+  justificava a decisão humana era o custo de voltar (reconstruir tudo). Com
+  azul/verde a volta é a troca de um symlink com a versão anterior intacta.
+  Virou a US-051 da `deploy-azul-verde`.
 - Migrar os outros sistemas para o portão por testes: eles continuam no CI/GHCR.
 - Publicação de imagem no GHCR: o AlfaMatriz compila no servidor.
 - Anonimização contínua: o embaralhamento acontece quando a cópia é feita, não

@@ -139,55 +139,30 @@ veredito() { # $1=resultado (ok|reprovado) $2=sha $3=motivo
 FIM" 2>/dev/null || true
 }
 
-# --------------------------------------------------------------- o portão
+# ------------------------------------------------ portão e aplicação
+#
+# As duas coisas acontecem numa chamada só, dentro do publicar.sh — o mesmo
+# motor que a produção usa. O portão (a suíte) roda como `--portao`, DENTRO da
+# cópia em preparo, depois das dependências e antes de qualquer outra etapa.
+#
+# É o que muda de verdade em relação a antes: o código novo era mesclado no
+# diretório QUE ESTAVA NO AR e testado ali; reprovando, o conserto era um
+# `git reset --hard` em cima do site vivo, que ficava servindo código não
+# verificado durante toda a rodada da suíte. Agora, reprovando, o staging nem
+# soube que houve tentativa.
+#
+# O `--url-publica` fica de fora aqui de propósito: o publicar.sh já confere a
+# saúde pela porta de ensaio ANTES de trocar, e o staging não tem endereço
+# público para conferir depois.
 
-# Traz o código ANTES de testar (é a versão nova que precisa ser aprovada),
-# mas guarda a anterior para poder voltar se o portão reprovar.
-no_container "git merge --ff-only origin/main" || { log "CONFLITO ff-only"; exit 1; }
+log "portão: rodando a suíte na cópia em preparo e publicando se ela passar"
 
-log "portão: instalando dependências e rodando a suíte"
-no_container "composer install --no-interaction --quiet" || {
-    log "portão REPROVOU (composer falhou) — voltando para ${LOCAL_SHA:0:7}"
-    veredito reprovado "$REMOTO_SHA" "instalacao de dependencias falhou"
-    no_container "git reset --hard $LOCAL_SHA"
-    exit 1
-}
-
-# O route/view cache da aplicação vigente fica para trás quando a main anda:
-# a suíte carrega o cache antigo (que não tem as rotas/views novas) e reprova
-# código bom. Limpar antes do portão é obrigatório — depois da aplicação o
-# script recria os caches na versão nova.
-no_container "php artisan route:clear >/dev/null 2>&1 && php artisan view:clear >/dev/null 2>&1" || true
-
-if ! no_container "php artisan test"; then
-    log "portão REPROVOU (teste falhando) — staging fica em ${LOCAL_SHA:0:7}"
-    veredito reprovado "$REMOTO_SHA" "suite de testes reprovou"
-    no_container "git reset --hard $LOCAL_SHA"
+if ! no_container "deploy/publicar.sh --dir $DIR --ref origin/main --portao 'php artisan test'"; then
+    log "portão REPROVOU ou a publicação falhou — staging fica em ${LOCAL_SHA:0:7}"
+    veredito reprovado "$REMOTO_SHA" "suite de testes reprovou ou a publicacao falhou"
     exit 1
 fi
 
-log "portão aprovou — aplicando ${REMOTO_SHA:0:7}"
-    veredito ok "$REMOTO_SHA" "suite aprovou"
-
-# ------------------------------------------------------------- aplicação
-
-no_container "npm ci --silent" || { log "npm ci FALHOU"; exit 1; }
-no_container "npm run build" || { log "build do front-end FALHOU"; exit 1; }
-no_container "php artisan migrate --force" || { log "migração FALHOU"; exit 1; }
-# Mesma etapa da produção, e aqui é onde ela precisa ser vista primeiro: se uma
-# carga de referência quebrar, que quebre no staging.
-no_container "php artisan alfa:semear-referencia" || { log "carga de referência FALHOU"; exit 1; }
-# Sem `config:clear` antes: ele apaga o cache e deixa uma janela de segundos
-# em que o app não tem configuração nenhuma — o .env é 600/root e o www-data
-# não consegue lê-lo como alternativa, então TODA requisição no intervalo
-# devolve 500. O `config:cache` sozinho reescreve o arquivo de uma vez.
-no_container "php artisan config:cache >/dev/null"
-no_container "php artisan route:cache >/dev/null && php artisan view:cache >/dev/null"
-
-if [[ "$LOCAL" -eq 1 ]]; then
-    systemctl reload php8.2-fpm >/dev/null 2>&1 || true
-else
-    pct exec "$LXC" -- systemctl reload php8.2-fpm >/dev/null 2>&1 || true
-fi
+veredito ok "$REMOTO_SHA" "suite aprovou"
 
 log "staging atualizado para ${REMOTO_SHA:0:7}"

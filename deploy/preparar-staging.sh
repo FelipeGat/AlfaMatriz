@@ -32,6 +32,12 @@ falhar(){ echo "preparar-staging.sh: $*" >&2; exit 1; }
 [[ -n "$DUMP" ]] || falhar "informe a cópia da produção com --dump"
 [[ -f "$DUMP" ]] || falhar "o arquivo \"$DUMP\" não existe"
 
+# Com azul/verde, a aplicação que roda é a da versão publicada — a raiz é só o
+# clone de controle e não tem vendor, então `php artisan` dali não funciona. O
+# `atual` é o endereço estável da versão no ar; sem ele (instalação ainda não
+# convertida, ou diretório de teste), vale a própria raiz.
+[[ -d "$DIR/atual" ]] && DIR="$DIR/atual"
+
 cd "$DIR" || falhar "diretório $DIR não existe"
 
 # Trava dupla: este script existe para o staging. Rodá-lo com o .env de

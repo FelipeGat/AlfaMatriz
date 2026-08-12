@@ -1,5 +1,43 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 12/08/2026 — Atualizações deixam de ser sentidas por quem está usando
+
+Até aqui, publicar uma versão nova mexia no sistema **enquanto ele atendia**.
+Por cerca de dois minutos, quem estivesse trabalhando podia encontrar telas com
+erro, botões que não respondiam ou uma página em branco — e, se a atualização
+falhasse no meio, o sistema ficava quebrado até alguém arrumar à mão. Era o
+motivo de as publicações ficarem para o fim do dia.
+
+Agora a versão nova é montada por completo **ao lado** da que está no ar, testada
+ali, e só entra quando está pronta e respondendo. A troca é instantânea. É o
+mesmo mecanismo que o AlfaControl já usa há tempos.
+
+### Melhorias
+
+- **Publicar não interrompe mais ninguém.** A versão nova é preparada numa área
+  separada e conferida antes de entrar. Quem estiver com uma tela aberta no
+  momento da troca continua de onde parou.
+- **Atualização que dá errado não chega a aparecer.** Falhando qualquer etapa do
+  preparo, o sistema simplesmente continua na versão anterior — sem nenhuma
+  alteração e sem ninguém perceber que houve tentativa.
+- **Versão com problema volta sozinha.** Se a versão nova entrar e o sistema não
+  responder, a anterior volta ao ar em cerca de um segundo, sem esperar por
+  ninguém. Antes, um problema fora do horário comercial ficaria de pé até
+  alguém acordar.
+- **Voltar de versão passou a ser imediato.** A versão anterior fica inteira e
+  pronta no servidor. Voltar deixou de significar reconstruir tudo — de ~2
+  minutos para ~1 segundo.
+- **O ambiente de teste passou a usar o mesmo caminho da produção.** Além de
+  ensaiar o mecanismo antes de ele valer para o faturamento, o ambiente de teste
+  deixou de ficar servindo código ainda não verificado enquanto a verificação
+  rodava.
+- **Anexos de cobranças e contas a pagar saíram de dentro da versão.** Eles
+  passam a viver num lugar próprio no servidor: uma troca de versão não tem mais
+  como fazer arquivo anexado sumir da vista.
+
+> Nenhuma ação é necessária da sua parte. A mudança é no servidor; as telas e os
+> dados são exatamente os mesmos.
+
 ## AlfaMatriz — 11/08/2026 — Entrar no quadro deixou de exigir acesso de administrador
 
 Até aqui, quem trabalhava no quadro de Tarefas precisava do mesmo acesso de quem

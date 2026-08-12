@@ -13,15 +13,21 @@
 # chega aqui — é o que separa "estou mexendo no código" de "isto vale para o
 # faturamento da empresa".
 #
-# Falhou o health-check? O vigia grava um marcador e PARA. Não tenta de novo
-# sozinho: insistir em cima de um sistema quebrado só piora, e alguém precisa
-# olhar. Para liberar, apague o marcador.
+# A aplicação é AZUL/VERDE (deploy/publicar.sh): a versão nova é montada na
+# cópia que não está no ar e só entra depois de passar na porta de ensaio.
+# Falhando antes da troca, a produção sequer é tocada; falhando a saúde DEPOIS
+# da troca, a versão anterior volta ao ar sozinha, em ~1 segundo.
+#
+# Nos dois casos o vigia grava um marcador e PARA. Não tenta de novo sozinho:
+# insistir em cima de um sistema quebrado só piora, e alguém precisa olhar.
+# Para liberar, apague o marcador.
 
 set -uo pipefail
 
 DIR=/var/www/alfamatriz
+# Endereço público. Quem pergunta a saúde é o publicar.sh, depois da troca —
+# e é a resposta dele que decide se a versão fica ou volta.
 HEALTH_URL="${HEALTH_URL:-https://matriz.alfasolucoes.cloud/healthz}"
-HEALTH_TIMEOUT=90
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -43,8 +49,23 @@ export PATH="$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ESTADO="$DIR/.deploy-tag-state"
 FALHOU="$DIR/.deploy-tag-failed"
 PAUSADO="$DIR/.deploy-paused"
-STATUS_JSON="$DIR/public/deploy-status.json"
+# Fica na raiz da instalação, e não em public/: com azul/verde o public/ é da
+# VERSÃO e troca a cada publicação — a telemetria descreve a instalação e
+# precisa sobreviver à troca. O nginx a serve na mesma URL de sempre, por um
+# `alias` (ver deploy/nginx-alfamatriz.conf).
+STATUS_JSON="$DIR/deploy-status.json"
 LOG="${LOG:-$DIR/storage/logs/deploy-tag.log}"
+
+# O motor da publicação é o publicar.sh — o mesmo que o staging usa. Enquanto
+# cada script tinha a sua cópia das etapas, elas derivaram: a carga de
+# referência foi acrescentada num e faltou no outro, e recurso novo nasceu
+# invisível em produção. Uma implementação só, dois chamadores.
+#
+# Vizinho primeiro: é assim que a suíte consegue exercitar o vigia contra um
+# repositório descartável. No servidor o vigia roda de /usr/local/bin, onde não
+# há vizinho, e cai no deploy/ do clone de controle.
+PUBLICADOR="${PUBLICADOR:-$(dirname "$0")/publicar.sh}"
+[[ -x "$PUBLICADOR" ]] || PUBLICADOR="$DIR/deploy/publicar.sh"
 
 mkdir -p "$(dirname "$LOG")" 2>/dev/null || true
 log(){ echo "$(date '+%F %T') $*" | tee -a "$LOG" 2>/dev/null || echo "$*"; }
@@ -160,44 +181,41 @@ if ! bash "$DIR/deploy/backup.sh" >>"$LOG" 2>&1; then
 fi
 
 # ------------------------------------------------------------ aplicação
+#
+# Quem faz o trabalho é o publicar.sh, no esquema azul/verde: a versão nova é
+# montada inteira na cópia que NÃO está no ar, conferida por uma porta de
+# ensaio que só o localhost alcança, e só então colocada no ar pela troca de um
+# symlink. A produção que está atendendo não é tocada até esse instante.
+#
+# Antes disto, o `git checkout` e o `composer install` rodavam em cima do
+# diretório servido: por ~2 minutos o site misturava código velho e novo, e um
+# build que falhasse no meio deixava a produção quebrada.
 
-aplicar(){
-    git checkout --quiet "$TAG" || return 1
-    composer install --no-dev --optimize-autoloader --no-interaction || return 1
-    npm ci --silent || return 1
-    npm run build || return 1
-    php artisan migrate --force || return 1
-    # Depois do migrate e antes dos caches: permissão é dado semeado, não
-    # migrado, e sem isto todo recurso novo nasce invisível em produção.
-    php artisan alfa:semear-referencia || return 1
-    # Sem `config:clear`: ele deixaria a produção sem configuração por alguns
-    # segundos, devolvendo 500 a quem estivesse usando. O `config:cache`
-    # reescreve o arquivo de uma vez só.
-    php artisan config:cache >/dev/null 2>&1 || return 1
-    php artisan route:cache >/dev/null 2>&1 || return 1
-    php artisan view:cache >/dev/null 2>&1 || return 1
-    systemctl reload php8.2-fpm >/dev/null 2>&1 || true
-    return 0
-}
+log "aplicando $TAG (azul/verde) via $PUBLICADOR"
 
-if ! aplicar >>"$LOG" 2>&1; then
-    log "FALHA ao aplicar $TAG — o banco já tem cópia desta execução"
-    echo "aplicação de $TAG falhou em $(date -Is)" > "$FALHOU"
-    escrever_status "falha"
-    exit 1
-fi
+"$PUBLICADOR" --dir "$DIR" --ref "$TAG" --url-publica "$HEALTH_URL" >>"$LOG" 2>&1
+CODIGO_PUBLICACAO=$?
 
-# --------------------------------------------------------- saúde depois
-
-log "conferindo saúde em $HEALTH_URL"
-CODIGO=$(curl -s -o /dev/null -w '%{http_code}' --max-time "$HEALTH_TIMEOUT" "$HEALTH_URL" 2>/dev/null)
-
-if [[ "$CODIGO" != "200" ]]; then
-    log "FALHA: saúde respondeu $CODIGO depois de aplicar $TAG"
-    echo "health-check falhou ($CODIGO) em $(date -Is)" > "$FALHOU"
-    escrever_status "falha"
-    exit 1
-fi
+case "$CODIGO_PUBLICACAO" in
+    0)
+        ;;
+    2)
+        # Trocou, a saúde reprovou e o publicar.sh já desfez a troca: a versão
+        # anterior voltou ao ar em ~1 segundo, com dependências e caches
+        # intactos. O vigia só registra e para.
+        log "FALHA: $TAG subiu, a saúde reprovou e a troca foi DESFEITA — a versão anterior está no ar"
+        log "       as migrações de $TAG continuam aplicadas no banco (a cópia de antes está em /var/backups/alfamatriz)"
+        echo "saúde reprovou depois da troca; voltou sozinho para a versão anterior em $(date -Is)" > "$FALHOU"
+        escrever_status "falha"
+        exit 1
+        ;;
+    *)
+        log "FALHA ao preparar $TAG — a versão anterior segue no ar, intacta (o banco já tem cópia desta execução)"
+        echo "aplicação de $TAG falhou em $(date -Is)" > "$FALHOU"
+        escrever_status "falha"
+        exit 1
+        ;;
+esac
 
 echo "$TAG" > "$ESTADO"
 escrever_status "ok"

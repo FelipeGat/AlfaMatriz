@@ -9,6 +9,16 @@
 # ela que deixou o AlfaGym servindo código velho por 2 dias sem alarme); um ±1
 # falso e fixo ensina a ignorá-lo justamente onde ele deve ser levado a sério.
 /.deploy-*
+# Layout azul/verde do servidor (deploy/publicar.sh). São diretórios e
+# symlinks da INSTALAÇÃO, criados dentro da raiz do clone de controle — e o
+# painel AlfaDeploy conta `git status --porcelain` para denunciar servidor
+# rodando código adaptado à mão. Sem estas linhas, todo servidor convertido
+# nasceria com um "±4 adaptações locais" permanente e falso.
+/versoes/
+/compartilhado/
+/atual
+/preparo
+/deploy-status.json
 .DS_Store
 .env
 .env.backup

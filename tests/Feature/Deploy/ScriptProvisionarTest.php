@@ -105,6 +105,15 @@ class ScriptProvisionarTest extends TestCase
 
         $comando = implode("\n", $agendador);
         $this->assertStringContainsString('* * * * *', $comando, 'O executor roda a cada minuto — quem decide a hora é o Laravel.');
+        // Com azul/verde a aplicação vive na versão publicada: a raiz é só o
+        // clone de controle, não tem `vendor`, e o agendador falharia a cada
+        // minuto num log que ninguém abre — parando o fechamento de
+        // competência sem nada acusar.
+        $this->assertStringContainsString(
+            'cd /var/www/alfamatriz/atual',
+            $comando,
+            'O agendador precisa rodar na versão publicada, pelo symlink.'
+        );
         $this->assertStringContainsString('crontab -l', $comando, 'Instalar tem de preservar os crons que já existem (o do backup, por exemplo).');
         $this->assertStringContainsString('grep -q', $comando, 'Rodar o provisionamento de novo não pode duplicar a linha do cron.');
     }
@@ -126,6 +135,10 @@ class ScriptProvisionarTest extends TestCase
         foreach ([
             'alfamatriz-backup.sh' => 'backup.sh',
             'deploy-tag-watcher-alfamatriz.sh' => 'deploy-tag-watcher-alfamatriz.sh',
+            // Voltar versão tem de estar à mão numa hora ruim: quem entra no
+            // container durante um incidente não deveria ter de lembrar o
+            // caminho do repositório.
+            'alfamatriz-voltar.sh' => 'voltar.sh',
         ] as $destino => $origem) {
             $instalacao = $this->filtrar($chamadas, $destino);
 
@@ -171,6 +184,61 @@ class ScriptProvisionarTest extends TestCase
         $comando = implode("\n", $vigia);
         $this->assertStringContainsString('*/5 * * * *', $comando);
         $this->assertStringContainsString('grep -q', $comando, 'Provisionar de novo não pode duplicar a linha do cron.');
+    }
+
+    /**
+     * @spec:AC-174 O provisionamento converte a instalação para azul/verde
+     * sozinho. A conversão é idempotente, então ele a chama sempre — mesmo
+     * critério que já vale para o resto do script, e o que permite consertar
+     * um servidor torto rodando o provisionamento de novo.
+     */
+    public function test_provisionamento_converte_a_instalacao_para_azul_verde(): void
+    {
+        $processo = $this->rodar();
+        $this->assertSame(0, $processo->getExitCode(), $processo->getErrorOutput().$processo->getOutput());
+
+        $chamadas = implode("\n", $this->lerChamadas());
+
+        $this->assertStringContainsString(
+            'converter-para-azul-verde.sh',
+            $chamadas,
+            'O provisionamento precisa converter a instalação, senão o servidor fica no formato antigo para sempre.'
+        );
+
+        // E o Nginx precisa achar as duas raízes: sem elas o `nginx -t` falha
+        // num servidor recém-criado, antes da primeira publicação.
+        $this->assertStringContainsString('versoes/azul/public', $chamadas);
+        $this->assertStringContainsString('versoes/verde/public', $chamadas);
+    }
+
+    /**
+     * @spec:AC-174 A conversão roda ANTES de a configuração do Nginx ser
+     * trocada, e a ordem é o que separa uma conversão invisível de meio minuto
+     * de site fora do ar.
+     *
+     * A configuração nova serve `/var/www/alfamatriz/atual/public`, um caminho
+     * que só passa a existir na conversão. Recarregando o Nginx primeiro, todo
+     * acesso responderia 404 até ela terminar — indisponibilidade causada
+     * justamente pelo passo que existe para acabar com a janela de erro das
+     * publicações. Foi assim que este script nasceu, e o defeito só apareceu
+     * ao montar a sequência real da implantação.
+     */
+    public function test_a_conversao_acontece_antes_de_o_nginx_ser_trocado(): void
+    {
+        $this->rodar();
+
+        $chamadas = implode("\n", $this->lerChamadas());
+
+        $posConversao = strpos($chamadas, 'converter-para-azul-verde.sh');
+        $posNginx = strpos($chamadas, 'sites-available/alfamatriz');
+
+        $this->assertNotFalse($posConversao, 'A conversão precisa ser chamada.');
+        $this->assertNotFalse($posNginx, 'A configuração do Nginx precisa ser instalada.');
+        $this->assertLessThan(
+            $posNginx,
+            $posConversao,
+            'Trocar o Nginx antes da conversão aponta o site para uma pasta que ainda não existe.'
+        );
     }
 
     /** @spec:AC-008 O script é sintaticamente válido e para no primeiro erro. */

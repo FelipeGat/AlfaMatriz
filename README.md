@@ -72,19 +72,68 @@ Cria o LXC 115, instala PHP 8.2 + Nginx + MariaDB + Tailscale e publica o
 Funnel na porta 443. Rodar de novo sobre um servidor já provisionado não
 recria o container nem apaga o banco — só confere que está tudo no lugar.
 
-### Publicar uma nova versão
+### Publicar uma nova versão (azul/verde)
 
 ```bash
-deploy/publicar.sh
+deploy/publicar.sh --ref v2026.08.12
 ```
 
-Busca o código, instala as dependências de produção, compila o front-end,
-aplica as migrações e recarrega os caches. Para na primeira etapa que falhar,
-avisando qual foi — não deixa o servidor pela metade.
+A instalação tem **duas cópias completas** da aplicação e dois symlinks:
 
-Antes do primeiro deploy, copiar `deploy/.env.producao.exemplo` para `.env`
-no servidor, preencher os segredos (em especial `ADMIN_PASSWORD`, exigido
-pela carga inicial) e rodar `php artisan migrate --seed` uma vez.
+```
+/var/www/alfamatriz/
+├── versoes/azul/        cópia completa da aplicação
+├── versoes/verde/       a outra
+├── compartilhado/       .env e anexos — não pertencem a nenhuma versão
+├── atual   -> versoes/…  o que o Nginx serve na porta 80
+├── preparo -> versoes/…  a outra, servida só em 127.0.0.1:8081
+└── .git, deploy/, marcadores do deploy
+```
+
+Publicar é montar a versão nova **inteira** na cópia que não está no ar
+(código, dependências, front-end, caches), perguntar a saúde dela pela porta de
+ensaio e só então apontar `atual` para ela — um `rename` de symlink, invisível
+para quem está usando. É o mesmo desenho do AlfaControl, com "duas cópias +
+symlink" no lugar de "dois containers + upstream do Nginx".
+
+Falhando em qualquer etapa antes da troca, a produção não chega a ser tocada.
+Falhando a saúde **depois** da troca, a versão anterior volta sozinha.
+
+Duas coisas que o esquema não resolve, e é bom saber antes de marcar uma versão:
+
+- **O banco é um só.** A migração roda antes da troca e continua aplicada se a
+  troca for desfeita. Migração precisa ser compatível com a versão anterior:
+  acrescentar numa versão, remover em outra.
+- **A versão anterior é uma só.** Voltar duas vezes seguidas não existe.
+
+Antes do primeiro deploy, preencher `/var/www/alfamatriz/compartilhado/.env`
+com os segredos (em especial `ADMIN_PASSWORD`, exigido pela carga inicial) e
+rodar `php artisan migrate --seed` uma vez.
+
+### Voltar para a versão anterior
+
+```bash
+alfamatriz-voltar.sh          # no servidor; ou deploy/voltar.sh
+```
+
+Troca os symlinks de volta. A versão anterior está inteira no disco, com
+dependências e caches quentes — a volta leva ~1 segundo, não os ~2 minutos de
+reconstruir tudo. Depois de voltar, a esteira fica **bloqueada**
+(`.deploy-tag-failed`): sem isso o vigia traria a mesma versão de volta em
+cinco minutos. Para liberar, corrija, marque uma versão nova e apague o
+marcador.
+
+O banco não volta junto. Estrago no banco é `deploy/restaurar.sh`.
+
+### Converter um servidor do formato antigo
+
+```bash
+deploy/converter-para-azul-verde.sh
+```
+
+Roda sozinho pelo `provisionar.sh` e é idempotente. Constrói tudo ao lado — o
+segredo, os anexos e a versão que está no ar são preservados, e o site continua
+respondendo durante a conversão inteira.
 
 Contas além do admin são criadas depois, no servidor, com:
 

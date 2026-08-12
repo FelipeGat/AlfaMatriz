@@ -159,6 +159,26 @@ no_container "if [ -f /root/.alfamatriz-db-pass ]; then \
     mariadb -e \"ALTER USER '$BANCO'@'localhost' IDENTIFIED BY '\$SENHA';\"; \
     mariadb -e \"GRANT ALL PRIVILEGES ON $BANCO.* TO '$BANCO'@'localhost'; FLUSH PRIVILEGES;\""
 
+# ----------------------------------------------------- conversão azul/verde
+#
+# ANTES do Nginx, e a ordem não é arbitrária: a configuração nova serve
+# `$APP_DIR/atual/public`, que só passa a existir aqui. Recarregando o Nginx
+# primeiro, o site responderia 404 durante toda a conversão — meio minuto de
+# indisponibilidade num passo que existe justamente para acabar com a janela de
+# erro das publicações.
+
+# Instalação antiga (um diretório só, publicado por cima de si mesmo) vira
+# azul/verde aqui. O script é idempotente: numa instalação já convertida ele
+# sai sem fazer nada, e num servidor onde a aplicação ainda nem foi clonada
+# nem chega a ser chamado.
+info "convertendo a instalação para azul/verde, se ainda não estiver"
+no_container "if [ -d $APP_DIR/.git ] && [ -f $APP_DIR/deploy/converter-para-azul-verde.sh ]; then \
+        bash $APP_DIR/deploy/converter-para-azul-verde.sh --dir $APP_DIR || \
+            echo '    AVISO: a conversão não concluiu — confira antes de publicar.'; \
+    else \
+        echo '    aplicação ainda não clonada aqui: a conversão roda no próximo provisionamento.'; \
+    fi"
+
 # -------------------------------------------------------------------- nginx
 
 info "instalando configuração do Nginx"
@@ -170,9 +190,21 @@ else
     no_host "pct push $VMID /tmp/nginx-alfamatriz.conf /etc/nginx/sites-available/alfamatriz"
 fi
 
+# O nginx serve o symlink `atual`, nunca uma pasta de versão — é essa
+# indireção que faz a publicação azul/verde trocar de versão sem recarregar
+# nada.
+#
+# Os `mkdir` e os symlinks daqui são para o servidor RECÉM-CRIADO, onde a
+# conversão acima não teve o que converter: sem eles o `nginx -t` reclamaria de
+# caminho ausente e o provisionamento pararia antes da primeira publicação. Num
+# servidor convertido, tudo isto já existe e nada é sobrescrito.
 no_container "ln -sf /etc/nginx/sites-available/alfamatriz /etc/nginx/sites-enabled/alfamatriz && \
     rm -f /etc/nginx/sites-enabled/default && \
-    mkdir -p $APP_DIR/public && \
+    mkdir -p $APP_DIR/versoes/azul/public $APP_DIR/versoes/verde/public \
+             $APP_DIR/compartilhado/anexos"
+
+no_container "test -L $APP_DIR/atual || ln -sfn $APP_DIR/versoes/azul $APP_DIR/atual; \
+    test -L $APP_DIR/preparo || ln -sfn $APP_DIR/versoes/verde $APP_DIR/preparo; \
     nginx -t && systemctl reload nginx"
 
 # --------------------------------------------------------- painel AlfaDeploy
@@ -266,6 +298,9 @@ instalar_script() {
 
 info "instalando os scripts operacionais em /usr/local/bin"
 instalar_script backup.sh alfamatriz-backup.sh
+# A volta de versão precisa estar à mão numa hora ruim: quem entra no container
+# durante um incidente não deveria ter de lembrar o caminho do repositório.
+instalar_script voltar.sh alfamatriz-voltar.sh
 
 if [[ "$AMBIENTE" != "staging" ]]; then
     # Só produção: o staging é movido pelo vigia da main, que roda no host.
@@ -291,16 +326,29 @@ no_container "test -f /usr/local/bin/alfamatriz-backup.sh && \
 # horário dos sistemas integrados nem o fechamento mensal de competência rodam.
 # O executor é chamado a cada minuto e é o próprio Laravel quem decide o que
 # está na hora — por isso um único cron cobre todos os agendamentos.
+# `cd $APP_DIR/atual` e não `$APP_DIR`: com azul/verde a aplicação vive na
+# versão publicada, e a raiz é só o clone de controle — que não tem vendor e
+# faria o agendador falhar a cada minuto. O symlink é o endereço estável.
 info "agendando o executor de tarefas do Laravel (schedule:run)"
 no_container "(crontab -l 2>/dev/null | grep -q 'alfamatriz.*schedule:run' || \
-    (crontab -l 2>/dev/null; echo '* * * * * cd $APP_DIR && php artisan schedule:run >> /var/log/alfamatriz-schedule.log 2>&1') | crontab -)"
+    (crontab -l 2>/dev/null; echo '* * * * * cd $APP_DIR/atual && php artisan schedule:run >> /var/log/alfamatriz-schedule.log 2>&1') | crontab -)"
+
+# O cron antigo apontava para a raiz. Deixá-lo para trás não dá erro visível:
+# ele simplesmente falha a cada minuto num log que ninguém abre, e o
+# fechamento de competência para de rodar.
+no_container "crontab -l 2>/dev/null | grep -q 'cd $APP_DIR && php artisan schedule:run' && \
+    (crontab -l 2>/dev/null | grep -v 'cd $APP_DIR && php artisan schedule:run' | crontab -) && \
+    echo '    linha antiga do agendador (apontava para a raiz) removida' || true"
 
 info "provisionamento de $AMBIENTE concluído (LXC $VMID em $IP)"
 echo
 echo "próximos passos:"
 echo "  1. se o container ainda não estiver no tailnet:"
 echo "       pct exec $VMID -- tailscale up --hostname=$NOME"
-echo "  2. copie deploy/.env.producao.exemplo para $APP_DIR/.env e preencha os segredos"
+echo "  2. o segredo é da instalação, não da versão: preencha"
+echo "       $APP_DIR/compartilhado/.env"
 echo "     (a senha do banco está em /root/.alfamatriz-db-pass dentro do container)"
-echo "  3. deploy/publicar.sh"
+echo "  3. deploy/publicar.sh --ref <tag>   (prepara a cópia de reserva e troca no fim)"
 echo "  4. deploy/smoke.sh"
+echo
+echo "para voltar à versão anterior a qualquer momento: alfamatriz-voltar.sh"

@@ -40,7 +40,13 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
+            // Anexos de cobranças e contas a pagar são dado do usuário, não da
+            // versão. Em produção a publicação é azul/verde (deploy/publicar.sh):
+            // a pasta da aplicação troca a cada versão, e um anexo gravado
+            // dentro dela sumiria da vista na troca seguinte — sem erro nenhum,
+            // só um download que passa a responder "arquivo não encontrado".
+            // Por isso o servidor aponta esta raiz para compartilhado/anexos.
+            'root' => env('FILESYSTEM_PUBLIC_ROOT', storage_path('app/public')),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
@@ -74,7 +80,10 @@ return [
     */
 
     'links' => [
-        public_path('storage') => storage_path('app/public'),
+        // Mesma raiz do disco `public` acima — se as duas divergirem, o
+        // `storage:link` de cada publicação aponta para uma pasta e a
+        // aplicação grava noutra.
+        public_path('storage') => env('FILESYSTEM_PUBLIC_ROOT', storage_path('app/public')),
     ],
 
 ];
