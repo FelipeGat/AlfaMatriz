@@ -688,16 +688,12 @@
                         return;
                     }
 
+                    // `prepararTeclado` já põe o card no mesmo estado que um
+                    // `dragstart` põe — etapa e tipo inclusive. Por isso o
+                    // `abrirPendente` daqui não precisa dos dois argumentos:
+                    // eles já valem quando ele é chamado.
                     this.prepararTeclado(alvo);
-                    // Pelo teclado não houve arrasto: a etapa e o tipo saem do
-                    // próprio card, que já os declara para o quadro.
-                    const alvo = document.querySelector(`[data-tarefa="${this.selecionado}"]`);
-
-                    this.abrirPendente(
-                        this.selecionado, 'bloqueio',
-                        alvo?.closest('[data-status]')?.dataset.status ?? null,
-                        alvo?.dataset.tipo ?? null,
-                    );
+                    this.abrirPendente(this.selecionado, 'bloqueio');
                 },
 
                 /** Põe o card selecionado no mesmo estado que um `dragstart` põe. */
