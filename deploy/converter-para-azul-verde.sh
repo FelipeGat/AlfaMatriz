@@ -134,6 +134,25 @@ done
 
 ln -sfn "$COMPARTILHADO/.env" "$AZUL/.env" || falhar "não consegui apontar o .env da cópia azul"
 
+# A versão que está no ar na hora da conversão é, por definição, anterior a
+# esta entrega — e pode ser anterior TAMBÉM ao `FILESYSTEM_PUBLIC_ROOT`. Nesse
+# caso ela continua gravando anexo dentro da própria cópia, e um arquivo
+# enviado entre a conversão e a publicação seguinte se perderia na troca: o
+# registro no banco continuaria lá, apontando para um caminho vazio.
+#
+# Não dá para consertar daqui sem alterar o código publicado à mão, que é
+# justamente o que este projeto não faz. Então isto AVISA, alto, em vez de
+# deixar a descoberta para o dia em que alguém não achar um boleto.
+if ! grep -q 'FILESYSTEM_PUBLIC_ROOT' "$AZUL/config/filesystems.php" 2>/dev/null; then
+    echo
+    echo "    ATENÇÃO: a versão que está no ar ainda não conhece o"
+    echo "    FILESYSTEM_PUBLIC_ROOT, então ela grava anexo DENTRO da cópia."
+    echo "    Um anexo enviado antes da próxima publicação se perde na troca."
+    echo "    Publique uma versão desta entrega assim que puder; até lá, evite"
+    echo "    anexar arquivos em cobranças e contas a pagar."
+    echo
+fi
+
 info "recarregando os caches da cópia azul"
 ( cd "$AZUL" && php artisan storage:link ) || falhar "não consegui ligar a pasta pública de anexos"
 ( cd "$AZUL" && php artisan config:cache >/dev/null ) || falhar "não consegui gerar o cache de configuração"

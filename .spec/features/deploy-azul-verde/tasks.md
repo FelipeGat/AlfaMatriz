@@ -81,7 +81,37 @@
      remoção seguinte levava as duas. Não dá erro — só para de rodar. O
      staging ficou 6 minutos assim, entre a conversão e a correção.
 
-## T-102b — Converter a produção (LXC 115) [pendente]
+## T-102b — Converter a produção (LXC 115) [concluida]
+- Refs: US-050, US-052, AC-167, AC-174
+- Executado em 12/08/2026, **sem mudar a versão no ar**: a produção continua na
+  `v2026.08.11.9`, só o mecanismo de publicação mudou. Converter e publicar são
+  decisões separadas, e só estavam presas uma na outra porque o provisionamento
+  lia os scripts do clone do servidor (resolvido: agora ele os envia quando o
+  clone é anterior).
+- Ordem seguida, e ela importa — (1) pausar o vigia e gerar cópia do banco;
+  (2) `provisionar.sh`, que converte com as cópias no commit que estava no ar e
+  só então troca o Nginx; (3) mover o **clone de controle** para a `main`, o
+  que só é seguro DEPOIS da troca do Nginx, porque até ali a raiz ainda era
+  servida — movê-la antes publicaria código novo por acidente; (4)
+  `provisionar.sh` de novo, agora instalando os scripts operacionais do clone
+  novo; (5) despausar. Conferido: saúde 200 local e pela Cloudflare, `smoke.sh`
+  nas quatro checagens, `deploy-status.json` respondendo pelo `alias`,
+  crontab com as três linhas, vigia dizendo UPTODATE sem gravar falha.
+- **Pendência conhecida — anexos.** A `v2026.08.11.9` não conhece o
+  `FILESYSTEM_PUBLIC_ROOT`, então grava anexo dentro da própria cópia. Um
+  arquivo anexado a cobrança ou conta a pagar ANTES da próxima publicação se
+  perde na troca: o registro fica no banco apontando para um caminho vazio.
+  Hoje há zero anexos nos dois ambientes. O conversor passou a avisar isso em
+  voz alta; some sozinho quando a próxima versão for publicada.
+
+## T-102c — Publicar a primeira versão pelo azul/verde em produção [pendente]
+- Refs: US-050, US-051, AC-167, AC-168, AC-170
+- Notas: a esteira nova está instalada mas ainda não foi exercitada em
+  produção de ponta a ponta — o vigia só chegou a dizer UPTODATE. A próxima tag
+  `v*` faz isso: montar a versão na cópia verde, conferir pela porta de ensaio
+  e trocar. Acompanhar `storage/logs/deploy-tag.log` na primeira vez e
+  cronometrar a troca. É essa publicação que também encerra a pendência dos
+  anexos.
 - Refs: US-050, US-052, AC-167, AC-174
 - Arquivos: —
 - Notas: execução real, fora de horário de uso, nesta ordem — (1) `df -h` no

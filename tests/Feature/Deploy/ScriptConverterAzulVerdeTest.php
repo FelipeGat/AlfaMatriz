@@ -97,6 +97,50 @@ class ScriptConverterAzulVerdeTest extends TestCase
     }
 
     /**
+     * @spec:AC-173 Convertendo uma versão que ainda não conhece o
+     * `FILESYSTEM_PUBLIC_ROOT`, a conversão AVISA que os anexos ainda não são
+     * compartilhados.
+     *
+     * A versão no ar na hora da conversão é, por definição, anterior a esta
+     * entrega — e pode ser anterior também ao disco de anexos compartilhado.
+     * Ela continua gravando dentro da própria cópia, e um arquivo enviado
+     * entre a conversão e a publicação seguinte se perderia na troca: o
+     * registro no banco continuaria lá, apontando para um caminho vazio.
+     *
+     * Não há conserto daqui que não seja alterar o código publicado à mão. O
+     * que dá para fazer é não deixar a descoberta para o dia em que alguém não
+     * achar um boleto.
+     */
+    public function test_avisa_quando_a_versao_no_ar_ainda_grava_anexo_dentro_da_copia(): void
+    {
+        $processo = $this->converter();
+
+        $this->assertSame(0, $processo->getExitCode());
+        $this->assertStringContainsString('ATENÇÃO', $processo->getOutput());
+        $this->assertStringContainsString('anexo DENTRO da cópia', $processo->getOutput());
+    }
+
+    /**
+     * @spec:AC-173 E não avisa quando a versão já sabe gravar no lugar
+     * compartilhado — um aviso que aparece sempre é um aviso que ninguém lê.
+     */
+    public function test_nao_avisa_quando_a_versao_ja_conhece_o_disco_compartilhado(): void
+    {
+        mkdir($this->instalacao.'/config', 0755, true);
+        file_put_contents(
+            $this->instalacao.'/config/filesystems.php',
+            "<?php return ['disks' => ['public' => ['root' => env('FILESYSTEM_PUBLIC_ROOT')]]];\n"
+        );
+        $this->executar(['git', 'add', '-A'], $this->instalacao);
+        $this->executar(['git', 'commit', '--quiet', '-m', 'anexos compartilhados'], $this->instalacao);
+
+        $processo = $this->converter();
+
+        $this->assertSame(0, $processo->getExitCode());
+        $this->assertStringNotContainsString('ATENÇÃO', $processo->getOutput());
+    }
+
+    /**
      * @spec:AC-174 A instalação antiga continua inteira: as dependências são
      * COPIADAS, não movidas. Interromper a conversão no meio não pode deixar o
      * servidor sem o que ele estava servindo até então.
