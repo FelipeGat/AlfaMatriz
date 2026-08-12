@@ -75,7 +75,8 @@
     @unless ($comDesfecho)
         <label class="h-[34px] flex items-center gap-2 px-3 rounded-control border border-line
                       bg-input text-[12.5px] text-ink-dim cursor-pointer hover:text-brand transition">
-            <input type="checkbox" name="esperando" value="1" @checked(($filtros['esperando'] ?? '') === '1')
+            <input type="checkbox" name="situacao" value="esperando_mim"
+                   @checked(($filtros['situacao'] ?? '') === 'esperando_mim')
                    class="h-[13px] w-[13px] rounded-[3px] bg-input border-btn-line text-brand focus:ring-0">
             Só as que esperam por você
         </label>

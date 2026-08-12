@@ -33,51 +33,21 @@
         inteira e as outras ficam desalinhadas.
     --}}
     <div class="flex flex-col gap-4" style="height: calc(100vh - 120px); min-height: 520px">
-        {{--
-            O chip "N p/ você" é a caixa de entrada do quadro: sem ele, saber
-            que alguém está esperando uma resposta sua exigiria abrir os cards
-            um a um. Primeiro da fila e na cor da marca de propósito — é a única
-            coisa da tela que fala com VOCÊ, e não sobre o trabalho.
-
-            Ele conta o quadro inteiro, não o recorte: caixa de entrada que
-            esconde mensagem porque há um filtro ligado deixa de ser caixa de
-            entrada. Clicar aplica o filtro; clicar de novo tira.
-        --}}
-        <div class="shrink-0 flex items-center gap-3">
-            @include('tarefas._abas', ['ativa' => 'quadro'])
-
-            @if ($esperandoVoce > 0)
-                @php $filtrando = ($filtros['esperando'] ?? '') === '1'; @endphp
-                <a href="{{ request()->fullUrlWithQuery(['esperando' => $filtrando ? null : '1']) }}"
-                   title="{{ $filtrando ? 'Mostrar o quadro inteiro' : 'Ver só as que esperam por você' }}"
-                   class="h-[26px] inline-flex items-center gap-1.5 px-2.5 rounded-full border text-[12px] font-semibold transition"
-                   style="{{ $filtrando
-                       ? 'background: rgb(var(--brand)); border-color: rgb(var(--brand)); color: rgb(var(--on-brand))'
-                       : 'background: rgb(var(--brand) / var(--tint-alpha)); border-color: rgb(var(--brand) / 0.45); color: rgb(var(--brand-text))' }}">
-                    <span class="h-3 w-3"><x-nav-icon name="chat" :peso="1.9" /></span>
-                    {{ $esperandoVoce }} p/ você
-                </a>
-            @endif
-        </div>
+        {{-- O chip "N p/ você" NÃO vive aqui: ele é o primeiro dos chips do
+             cabeçalho do quadro, junto das outras duas contagens. Solto acima
+             das abas, ele seria a única contagem fora do quadro que conta. --}}
+        @include('tarefas._abas', ['ativa' => 'quadro'])
 
         {{--
-            Os quatro números do quadro.
+            NÃO há faixa de KPI aqui, e isso é decisão, não esquecimento.
 
-            Eles medem o quadro INTEIRO, e não o recorte: um KPI que muda ao
-            filtrar por sistema deixa de responder "como está o trabalho" e
-            passa a responder "como está esta busca" — pergunta que os
-            contadores de coluna, logo abaixo, já respondem.
+            O `AlfaMatriz Sistema.dc.html` mostra quatro números no topo desta
+            tela, mas ele é a VERSÃO RESUMIDA — o próprio README diz isso. A
+            referência do quadro é o `AlfaMatriz Tarefas.dc.html`, e lá o quadro
+            começa logo abaixo dos filtros e ocupa a altura inteira. Uma faixa
+            de cards aqui rouba ~100px de uma tela cuja única queixa era caber
+            pouco card por coluna.
         --}}
-        {{-- 200px, a mesma régua do Funil: as duas telas são quadro com quatro
-             números em cima, e larguras mínimas diferentes fariam as faixas
-             quebrarem em pontos diferentes na mesma janela. --}}
-        <div class="shrink-0 grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
-            @foreach ($kpis as $kpi)
-                <x-kpi-card :rotulo="$kpi['rotulo']" :valor="$kpi['valor']"
-                            :acento="$kpi['acento']" :delta="$kpi['nota']" :sinal="$kpi['sinal']" />
-            @endforeach
-        </div>
-
         @include('tarefas._filtros', [
             'filtros' => $filtros,
             'sistemas' => $sistemas,
@@ -109,15 +79,38 @@
                 <span class="h-7 w-7 shrink-0 rounded-tile flex items-center justify-center bg-brand/15 text-brand-text">
                     <span class="h-[15px] w-[15px]"><x-nav-icon name="view-grid" /></span>
                 </span>
-                <div class="min-w-0">
-                    <h2 class="font-display text-[15.5px] font-semibold text-ink leading-tight">Quadro de tarefas</h2>
-                    <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
-                        {{ count($etapas) }} etapas · {{ $tarefas->count() }} tarefas
+                {{-- `flex:0 0 auto` no título e `flex:0 1 auto` nos chips: quem
+                     cede espaço primeiro são os chips, não o nome do quadro. É
+                     a mesma prioridade de encolhimento da topbar. --}}
+                <div class="shrink-0">
+                    <h2 class="font-display text-[15px] font-semibold text-ink leading-tight whitespace-nowrap">Quadro de tarefas</h2>
+                    <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint whitespace-nowrap">
+                        {{ count($etapas) }} etapas · concluída = em produção
                     </p>
                 </div>
-                <p class="ml-auto shrink-0 hidden sm:block font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
-                    arraste o card para mover · solte em concluir ✓ para encerrar
-                </p>
+
+                {{--
+                    Os chips do quadro.
+
+                    Eles são o que sobrou das faixas verticais de solto: aquelas
+                    faziam duas coisas, receber o gesto e mostrar as contagens.
+                    O gesto foi para os botões do card; a contagem é trabalho de
+                    cabeçalho, e aqui não custa 132px de largura.
+
+                    Cada um é também um filtro. Chip zerado não aparece: um "0
+                    travadas" permanente ensina a não ler a fila.
+                --}}
+                <div class="ml-auto min-w-0 flex items-center gap-2 overflow-x-auto">
+                    @foreach ($chips as $chip)
+                        <a href="{{ $chip['href'] }}" title="{{ $chip['title'] }}"
+                           class="shrink-0 h-[26px] px-[9px] inline-flex items-center gap-1.5 rounded-tile border
+                                  font-mono text-[10.5px] font-semibold uppercase tracking-[0.06em] whitespace-nowrap transition"
+                           style="border-color: {{ $chip['borda'] }}; background: {{ $chip['fundo'] }}; color: rgb(var(--{{ $chip['cor'] }}))">
+                            <x-nav-icon :name="$chip['icone']" :peso="1.9" class="h-3 w-3 shrink-0" />
+                            {{ $chip['label'] }}
+                        </a>
+                    @endforeach
+                </div>
             </div>
 
             @php
@@ -177,7 +170,8 @@
                                 @include('tarefas._coluna-cabecalho', ['etapa' => $etapa])
                             </div>
                         @endforeach
-                        <div class="shrink-0" style="flex: 0 0 132px" aria-hidden="true"></div>
+                        {{-- Sem espaçador: ele existia para alinhar com as duas
+                             faixas de solto, que saíram do quadro. --}}
                     </div>
                 @endif
 
@@ -213,74 +207,16 @@
                         @endforeach
 
                 {{--
-                    O alvo de bloquear, irmão do de concluir.
+                    As duas faixas verticais de solto (Bloquear e Concluir)
+                    SAÍRAM daqui, e não é esquecimento.
 
-                    Bloquear é o que sobrou da coluna Bloqueada: a tarefa não sai
-                    da etapa, então não há para onde arrastá-la — mas o gesto
-                    continua sendo o mesmo, e uma faixa dá destino a ele sem
-                    devolver ao quadro uma coluna que mentia sobre onde o
-                    trabalho está.
+                    Elas gastavam 132px de largura do quadro para dar destino a
+                    um gesto — e largura é justamente o que falta numa tela de
+                    seis colunas. O que faziam bem, mostrar as duas contagens e
+                    servir de porta para travadas e histórico, virou trabalho do
+                    cabeçalho: são os chips lá em cima. A ação em si foi para o
+                    card, que é de quem ela fala.
                 --}}
-                <section class="shrink-0 self-stretch flex flex-col items-center justify-center gap-2
-                                rounded-control border border-dashed transition-opacity"
-                         style="flex: 0 0 60px; border-color: rgb(var(--warn) / 0.4); background: rgb(var(--warn) / calc(var(--tint-alpha) / 2))"
-                         title="Arraste um card até aqui para bloquear"
-                         @dragover.prevent="permitir('bloqueio')"
-                         @dragleave="sobre = null"
-                         @drop.prevent="soltar('bloqueio', true)"
-                         :class="{
-                             'ring-1 ring-brand': sobre === 'bloqueio' || pendente?.destino === 'bloqueio',
-                             'opacity-25': ! aceita('bloqueio'),
-                         }">
-                    <span class="text-[13px] leading-none" style="color: rgb(var(--warn))" aria-hidden="true">🔒</span>
-                    <span class="font-mono text-[10.5px] uppercase tracking-caps"
-                          style="writing-mode: vertical-rl; color: rgb(var(--warn))">
-                        Bloquear
-                    </span>
-                    @if ($totalBloqueadas > 0)
-                        <span class="font-mono text-[10px] font-semibold h-5 min-w-[20px] px-1.5 rounded-full leading-5 text-center"
-                              style="background: rgb(var(--warn) / var(--tint-alpha)); color: rgb(var(--warn))">
-                            {{ $totalBloqueadas }}
-                        </span>
-                    @endif
-                </section>
-
-                {{--
-                    O alvo de concluir.
-
-                    Concluída não tem coluna, e está certo: o quadro é o
-                    trabalho em curso, e cards encerrados só ocupariam espaço
-                    (AC-096). Mas o preço disso era a ação mais importante do
-                    fluxo ter virado a mais escondida — terminar uma tarefa só
-                    acontecia dentro do menu de um dropdown, enquanto todo o
-                    resto do quadro se move arrastando.
-
-                    Por isso uma FAIXA e não uma coluna: ela não guarda card
-                    nenhum e não cresce, só recebe o solto. O quadro continua
-                    sem etapa terminal, e terminar volta a ter gesto.
-
-                    Ela sempre pede confirmação, mesmo na tarefa operacional,
-                    que não tem relatório a preencher: encerrar tira o card da
-                    vista, e um arrasto torto não deveria ser capaz disso
-                    sozinho.
-                --}}
-                <section class="shrink-0 self-stretch flex flex-col items-center justify-center gap-2
-                                rounded-control border border-dashed transition-opacity"
-                         style="flex: 0 0 60px; border-color: rgb(var(--good) / 0.4); background: rgb(var(--good) / calc(var(--tint-alpha) / 2))"
-                         title="Arraste um card até aqui para concluir"
-                         @dragover.prevent="permitir('concluida')"
-                         @dragleave="sobre = null"
-                         @drop.prevent="soltar('concluida', true)"
-                         :class="{
-                             'ring-1 ring-brand': sobre === 'concluida' || pendente?.destino === 'concluida',
-                             'opacity-25': ! aceita('concluida'),
-                         }">
-                    <span class="text-[15px] leading-none" style="color: rgb(var(--good))" aria-hidden="true">✓</span>
-                    <span class="font-mono text-[10.5px] uppercase tracking-caps"
-                          style="writing-mode: vertical-rl; color: rgb(var(--good))">
-                        Concluir
-                    </span>
-                </section>
                     </div>
                 @endforeach
             </div>

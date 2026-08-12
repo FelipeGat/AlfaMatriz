@@ -34,8 +34,15 @@
         </span>
     </div>
 
-    {{-- Duas notícias que só aparecem quando existem: nenhuma coluna ganha uma
-         linha vazia para ler. --}}
+    {{--
+        A segunda linha do cabeçalho, com uma prioridade declarada.
+
+        O aviso ganha do portão quando existe: "acima do limite" é uma notícia
+        de agora, e o portão é a descrição fixa da coluna — quem já sabe onde
+        está não precisa reler o que a etapa examina, mas precisa saber que ela
+        estourou. Sem a disputa resolvida aqui, as duas linhas apareceriam
+        juntas e a coluna ganharia duas alturas diferentes conforme o dia.
+    --}}
     @if ($etapa['acimaDoLimite'])
         <p class="mt-1 font-mono text-[10px] uppercase tracking-caps" style="color: rgb(var(--warn))">
             acima do limite
@@ -44,5 +51,11 @@
         <p class="mt-1 font-mono text-[10px] uppercase tracking-caps" style="color: rgb(var(--warn))">
             {{ $etapa['aguardandoTriagem'] }} aguardando triagem
         </p>
+    @elseif ($portao = \App\Models\Tarefa::PORTAO_DA_ETAPA[$etapa['chave']] ?? null)
+        {{-- Recuada até o nome, e não até a borda: ela descreve a etapa, e
+             alinhada com o ponto de cor pareceria um terceiro item da linha
+             de cima. --}}
+        <p class="mt-1 pl-[15px] font-mono text-[10px] uppercase tracking-caps text-ink-faint truncate"
+           title="{{ $portao }}">{{ $portao }}</p>
     @endif
 </header>

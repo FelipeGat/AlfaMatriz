@@ -283,4 +283,51 @@ class QuadroTest extends TestCase
         $this->assertStringNotContainsString('style="width: 276px', $html,
             'Largura fixa deixa sobra à direita quando há menos colunas do que caberia.');
     }
+
+    /**
+     * @spec:AC-205 O cabeçalho da coluna DIZ O PORTÃO. Sem a linha, "Em revisão" e
+     * "Em staging" são dois nomes que só quem escreveu o fluxo distingue — e separar
+     * esses dois portões foi o motivo inteiro de abrir a etapa Em testes.
+     *
+     * O aviso ganha do portão quando existe: "acima do limite" é notícia de agora, o
+     * portão é a descrição fixa da coluna.
+     */
+    public function test_a_coluna_diz_o_portao_que_ela_examina(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('PR · admin analisa', $html);
+        $this->assertStringContainsString('na main · dev valida', $html);
+        $this->assertStringContainsString('fila do admin · tag v*', $html);
+
+        // Estourando o WIP, a notícia de agora toma o lugar da descrição fixa.
+        Tarefa::factory()->count(4)->create(['criado_por_id' => $criador->id, 'status' => 'em_revisao']);
+
+        $cheio = $this->actingAs($usuario)->get(route('tarefas.index'))->getContent();
+
+        $this->assertStringContainsString('acima do limite', $cheio);
+        $this->assertStringNotContainsString('PR · admin analisa', $cheio);
+    }
+
+    /**
+     * @spec:AC-205 Coluna vazia é informação, e o que ela informa muda conforme a
+     * etapa: Backlog vazio é fila sem prioridade, Em andamento vazio é ninguém tocando
+     * nada. Uma frase genérica repetida seis vezes desperdiça as seis notícias.
+     */
+    public function test_cada_coluna_vazia_diz_o_que_falta_nela(): void
+    {
+        $usuario = User::factory()->create();
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        foreach (['Fila de triagem vazia', 'Nada priorizado', 'Ninguém tocando nada',
+            'Nenhum PR aberto', 'Nada em staging', 'Nada para subir'] as $frase) {
+            $this->assertStringContainsString($frase, $html);
+        }
+
+        $this->assertStringNotContainsString('Nenhuma tarefa aqui', $html);
+    }
 }

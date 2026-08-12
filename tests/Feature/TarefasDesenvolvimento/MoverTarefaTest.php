@@ -313,7 +313,10 @@ class MoverTarefaTest extends TestCase
         // pergunta em vez de afirmar: se ele pede texto depende do portão de
         // onde o card veio, e a coluna renderizada não sabe disso.
         $this->assertStringContainsString("soltar('em_desenvolvimento', pedeTexto('em_desenvolvimento'))", $html);
-        $this->assertStringContainsString("soltar('bloqueio', true)", $html);
+
+        // Bloquear não é mais destino de arrasto: ele virou botão do card, e o
+        // painel abre pelo `abrirPendente` em vez de por uma faixa de solto.
+        $this->assertStringNotContainsString("soltar('bloqueio', true)", $html);
 
         // ...e o quadro abre o painel em vez de engolir o gesto.
         $this->assertStringContainsString('this.abrirPendente(tarefa, status)', $html);
@@ -334,23 +337,39 @@ class MoverTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-189 A faixa "Concluir" recebe o card arrastado e pede a confirmação:
-     * Concluída não tem coluna (AC-096) e isso está certo, mas o preço era a ação mais
-     * importante do fluxo ser a única sem gesto, escondida dentro de um dropdown.
+     * @spec:AC-189 Concluir tem GESTO e não vive escondido num dropdown.
+     *
+     * O critério nasceu contra a ação mais importante do fluxo ser a única sem
+     * caminho direto. A faixa vertical de solto resolvia isso gastando 132px da
+     * largura do quadro; o desenho final resolve com um botão no próprio card —
+     * mesma queixa, preço menor. O botão só aparece onde o fluxo permite: fixo,
+     * ele ficaria morto na maioria dos cards, e botão que quase nunca funciona
+     * ensina a não clicar em nenhum.
      */
-    public function test_a_faixa_de_concluir_recebe_o_card_e_pede_confirmacao(): void
+    public function test_concluir_e_botao_do_card_e_so_onde_o_fluxo_permite(): void
     {
         $usuario = User::factory()->create();
-        $this->criarTarefa(['status' => 'em_revisao']);
+        $pronta = $this->criarTarefa(['status' => 'pronta_producao', 'titulo' => 'Já validada']);
+        $emRevisao = $this->criarTarefa(['status' => 'em_revisao', 'titulo' => 'Ainda em leitura']);
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        // Recebe o solto, e sempre confirmando: encerrar tira o card da vista,
-        // e um arrasto torto não deveria ser capaz disso sozinho.
-        $this->assertStringContainsString("soltar('concluida', true)", $html);
-        $this->assertStringContainsString("aceita('concluida')", $html);
+        $this->assertStringContainsString(
+            "abrirPendente({$pronta->id}, 'concluida')",
+            $this->trechoDoCard($html, $pronta->id),
+            'De Pronta p/ produção o fluxo permite concluir: o botão precisa estar no card.'
+        );
+        $this->assertStringNotContainsString(
+            "abrirPendente({$emRevisao->id}, 'concluida')",
+            $this->trechoDoCard($html, $emRevisao->id),
+            'De Em revisão não se conclui: o botão não pode aparecer só para recusar depois.'
+        );
 
-        // E continua sem ser coluna: nenhuma etapa terminal entra no quadro.
+        // As faixas verticais saíram junto: elas custavam largura numa tela de
+        // seis colunas, e o que faziam bem virou chip de cabeçalho.
+        $this->assertStringNotContainsString("soltar('concluida', true)", $html);
+
+        // E Concluída continua sem ser coluna: nenhuma etapa terminal no quadro.
         $etapas = $this->actingAs($usuario)->get(route('tarefas.index'))->viewData('etapas');
         $this->assertNotContains('concluida', array_column($etapas, 'chave'));
     }
@@ -385,27 +404,39 @@ class MoverTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-192 A faixa Bloquear recebe o card arrastado e conta as travadas do
-     * recorte. Bloquear é o que sobrou da coluna: a tarefa não sai da etapa, então não
-     * há para onde arrastá-la — mas o gesto continua existindo e precisa de destino.
+     * @spec:AC-190 Bloquear é SEMPRE válido e mora no card.
+     *
+     * Travar não é mover: não depende de para onde a tarefa pode ir, então o
+     * botão não some conforme a etapa. A faixa vertical que recebia esse gesto
+     * saiu — o que ela fazia bem, contar as travadas e servir de porta para
+     * elas, virou chip do cabeçalho.
      */
-    public function test_a_faixa_de_bloquear_recebe_o_card_e_conta_as_travadas(): void
+    public function test_bloquear_e_botao_do_card_e_a_contagem_virou_chip(): void
     {
         $usuario = User::factory()->create();
-        $fluxo = app(FluxoTarefaService::class);
+        $solta = $this->criarTarefa(['status' => 'em_revisao', 'titulo' => 'Solta']);
+        $travada = $this->criarTarefa(['status' => 'em_revisao', 'titulo' => 'Travada']);
 
-        $fluxo->bloquear($this->criarTarefa(['status' => 'em_revisao']), 'Esperando o cliente.');
-        $fluxo->bloquear($this->criarTarefa(['status' => 'em_desenvolvimento']), 'Falta acesso ao servidor.');
-        $this->criarTarefa(['status' => 'backlog', 'responsavel_id' => User::factory()->create()->id]);
+        app(FluxoTarefaService::class)->bloquear($travada, 'Esperando a credencial.');
 
-        $resposta = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk();
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        $this->assertSame(2, $resposta->viewData('totalBloqueadas'),
-            'O contador da faixa mede as travadas do recorte, como os das colunas.');
+        // Na solta, o botão ABRE o painel: travar exige o motivo, e um POST
+        // direto daqui seria recusado com uma frase que ninguém pediu.
+        $this->assertStringContainsString(
+            "abrirPendente({$solta->id}, 'bloqueio')", $this->trechoDoCard($html, $solta->id)
+        );
 
-        $html = $resposta->getContent();
-        $this->assertStringContainsString("soltar('bloqueio', true)", $html);
-        $this->assertStringContainsString("aceita('bloqueio')", $html);
+        // Na travada, o mesmo lugar vira destravar — que não pede texto.
+        $this->assertStringContainsString(
+            route('tarefas.bloquear', $travada), $this->trechoDoCard($html, $travada->id)
+        );
+        $this->assertStringContainsString('Destravar tarefa', $this->trechoDoCard($html, $travada->id));
+
+        // A faixa vertical saiu, e a contagem virou chip clicável.
+        $this->assertStringNotContainsString("soltar('bloqueio', true)", $html);
+        $this->assertStringContainsString('1 travadas', $html);
+        $this->assertStringContainsString('situacao=travadas', $html);
     }
 
     /**
@@ -423,5 +454,14 @@ class MoverTarefaTest extends TestCase
         // do cabeçalho do quadro (index.blade.php), então procurá-lo aqui
         // acusaria falha sem que houvesse menu nenhum no card.
         $this->assertStringNotContainsString('transicoesDoCard', $html);
+    }
+
+    /** O HTML de um card só, do `data-tarefa` dele até o fim do `<article>`. */
+    private function trechoDoCard(string $html, int $tarefaId): string
+    {
+        $inicio = strpos($html, 'data-tarefa="'.$tarefaId.'"');
+        $this->assertNotFalse($inicio, "A tarefa {$tarefaId} não apareceu no quadro.");
+
+        return substr($html, $inicio, strpos($html, '</article>', $inicio) - $inicio);
     }
 }

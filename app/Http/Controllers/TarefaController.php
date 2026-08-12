@@ -94,72 +94,86 @@ class TarefaController extends Controller
 
         $raias = $this->raias($request, $tarefas, $emCurso);
 
-        $kpis = $this->kpisDoQuadro($emCurso, $etapas, $totalNoQuadro, $esperandoVoce);
+        $chips = $this->chipsDoQuadro($emCurso, $filtros, $esperandoVoce);
 
         return view('tarefas.index', compact(
             'tarefas', 'colunas', 'etapas', 'filtros', 'totalNoQuadro', 'totalBloqueadas',
-            'esperandoVoce', 'kpis', 'raias',
+            'esperandoVoce', 'chips', 'raias',
         ) + $this->listasDeFiltro());
     }
 
     /**
-     * Os quatro números do topo do quadro.
+     * Os chips do cabeçalho do quadro.
      *
-     * Eles medem o QUADRO INTEIRO, e não o recorte dos filtros — ao contrário
-     * dos contadores de coluna, que falam do que está na tela. A diferença é de
-     * propósito: um KPI que muda quando alguém filtra por sistema deixa de
-     * responder "como está o trabalho" e passa a responder "como está esta
-     * busca", que é a pergunta que as colunas já respondem logo abaixo.
+     * Eles são o que sobrou das duas faixas verticais de solto: aquelas faziam
+     * duas coisas ao mesmo tempo — receber o card arrastado e mostrar as
+     * contagens — e gastavam 132px de largura para isso, numa tela de seis
+     * colunas onde largura é o recurso escasso. O gesto foi para os botões do
+     * card; a contagem virou cabeçalho, que já existia.
      *
-     * "Esperando você" é a terceira camada de aviso da pergunta na revisão,
-     * junto do chip do cabeçalho e do sino: quem abre a tela de Tarefas sem
-     * passar pelo quadro ainda precisa descobrir que a bola está com ele.
+     * Cada chip é também um filtro, e clicar no que já está ligado desliga: sem
+     * isso a única saída de um recorte seria o "Limpar" lá dos filtros, longe
+     * de onde a pessoa clicou.
+     *
+     * As contagens são do QUADRO INTEIRO, não do recorte. Elas são fila de
+     * trabalho: uma fila que encolhe porque há um filtro de sistema ligado
+     * deixa de responder "quanto falta".
      *
      * @param  Collection<string, string>  $emCurso
-     * @param  list<array<string, mixed>>  $etapas
-     * @return list<array<string, mixed>>
+     * @param  array<string, string>  $filtros
+     * @return list<array<string, string>>
      */
-    private function kpisDoQuadro($emCurso, array $etapas, int $totalNoQuadro, int $esperandoVoce): array
+    private function chipsDoQuadro($emCurso, array $filtros, int $esperandoVoce): array
     {
-        $aguardandoTriagem = Tarefa::whereIn('status', $emCurso->keys())
-            ->where('prioridade', 'nao_definida')
-            ->count();
+        $noQuadro = fn () => Tarefa::whereIn('status', $emCurso->keys());
 
-        // "Hoje" e não "nas últimas 24h": o número é lido junto com a data do
-        // dia, e uma janela deslizante faria o mesmo card dizer números
-        // diferentes de manhã e à tarde sem nada ter acontecido.
-        $concluidasHoje = Tarefa::where('status', 'concluida')
-            ->whereHas('eventos', fn ($evento) => $evento
-                ->where('para_status', 'concluida')
-                ->whereDate('entrou_em', today()))
-            ->count();
-
-        $etapasComCarga = collect($etapas)->filter(fn ($etapa) => $etapa['quantidade'] > 0)->count();
-
-        return [
+        $chips = [
+            // Primeiro e em destaque: é a caixa de entrada da pessoa. Sem ele,
+            // saber que há uma pergunta dependia de olhar a coluna certa.
             [
-                'rotulo' => 'No quadro', 'valor' => $totalNoQuadro, 'acento' => 'accent',
-                'nota' => $etapasComCarga.' etapa'.($etapasComCarga === 1 ? '' : 's').' em curso',
-                'sinal' => 'neutro',
+                'chave' => 'esperando_mim', 'total' => $esperandoVoce,
+                'label' => $esperandoVoce.' p/ você', 'icone' => 'duvida', 'cor' => 'brand-text',
+                'title' => 'Perguntas esperando resposta sua',
+                'fundo' => 'rgb(var(--brand) / 0.12)', 'fundoAtivo' => 'rgb(var(--brand) / 0.26)',
+                'borda' => 'rgb(var(--brand) / 0.45)',
             ],
             [
-                'rotulo' => 'Esperando você', 'valor' => $esperandoVoce, 'acento' => 'brand',
-                'nota' => $esperandoVoce === 1 ? 'pergunta na revisão' : 'perguntas na revisão',
-                'sinal' => 'neutro',
+                'chave' => 'travadas', 'total' => $noQuadro()->whereNotNull('bloqueado_em')->count(),
+                'label' => null, 'icone' => 'cadeado-fechado', 'cor' => 'warn',
+                'title' => 'Tarefas travadas esperando alguém',
+                'fundo' => 'var(--warn-tint)', 'fundoAtivo' => 'rgb(var(--warn) / 0.24)',
+                'borda' => 'var(--warn-line)',
             ],
             [
-                // Âmbar só quando há o que triar: um card permanentemente
-                // aceso em zero ensina a não olhar para a cor.
-                'rotulo' => 'Aguardando triagem', 'valor' => $aguardandoTriagem,
-                'acento' => $aguardandoTriagem > 0 ? 'warn' : 'accent',
-                'nota' => 'abertas sem prioridade',
-                'sinal' => $aguardandoTriagem > 0 ? 'ruim' : 'neutro',
-            ],
-            [
-                'rotulo' => 'Concluídas hoje', 'valor' => $concluidasHoje, 'acento' => 'good',
-                'nota' => 'foram para o histórico', 'sinal' => $concluidasHoje > 0 ? 'bom' : 'neutro',
+                'chave' => 'prontas', 'total' => $noQuadro()->where('status', 'pronta_producao')->count(),
+                'label' => null, 'icone' => 'seta-cima', 'cor' => 'good',
+                'title' => 'Fila do admin: validadas no staging, esperando a tag subir',
+                'fundo' => 'var(--good-tint)', 'fundoAtivo' => 'rgb(var(--good) / 0.24)',
+                'borda' => 'var(--good-line)',
             ],
         ];
+
+        $chips = array_map(function (array $chip) use ($filtros) {
+            $ligado = ($filtros['situacao'] ?? '') === $chip['chave'];
+
+            return [
+                'label' => $chip['label'] ?? $chip['total'].' '.match ($chip['chave']) {
+                    'travadas' => 'travadas',
+                    'prontas' => 'p/ subir',
+                },
+                'icone' => $chip['icone'],
+                'cor' => $chip['cor'],
+                'title' => $ligado ? 'Mostrando só este recorte — clique para ver o quadro inteiro' : $chip['title'],
+                'fundo' => $ligado ? $chip['fundoAtivo'] : $chip['fundo'],
+                'borda' => $chip['borda'],
+                'total' => $chip['total'],
+                'href' => request()->fullUrlWithQuery(['situacao' => $ligado ? null : $chip['chave']]),
+            ];
+        }, $chips);
+
+        // Chip zerado não aparece: um "0 travadas" permanente ensina a não ler
+        // a fila, e o espaço dele é largura que a coluna quer.
+        return array_values(array_filter($chips, fn (array $chip) => $chip['total'] > 0));
     }
 
     public function store(Request $request)
@@ -827,6 +841,7 @@ class TarefaController extends Controller
         $prioridade = $this->textoDaQuery($request, 'prioridade');
         $desfecho = $this->textoDaQuery($request, 'desfecho');
         $tipo = $this->textoDaQuery($request, 'tipo');
+        $situacao = $this->textoDaQuery($request, 'situacao');
 
         return [
             'busca' => $this->textoDaQuery($request, 'busca'),
@@ -837,11 +852,12 @@ class TarefaController extends Controller
             // desenvolvimento" passou a ser uma pergunta que a tela recebe.
             'tipo' => array_key_exists($tipo, Tarefa::TIPOS) ? $tipo : '',
             'desfecho' => in_array($desfecho, Tarefa::STATUS_TERMINAIS, true) ? $desfecho : '',
-            // "Só as que esperam por você" — o mesmo recorte que o chip do
-            // cabeçalho aplica ao ser clicado. Booleano em texto porque todo o
-            // resto dos filtros viaja assim, e um tipo diferente aqui obrigaria
-            // cada leitor a lembrar da exceção.
-            'esperando' => $this->textoDaQuery($request, 'esperando') === '1' ? '1' : '',
+            // O recorte por SITUAÇÃO, que é o que os chips do cabeçalho do
+            // quadro aplicam ao serem clicados. Um campo só para os três, e não
+            // um booleano por chip: eles são mutuamente exclusivos — ninguém
+            // pergunta "as travadas que também esperam por mim" —, e três
+            // booleanos permitiriam justamente essa combinação sem sentido.
+            'situacao' => in_array($situacao, ['esperando_mim', 'travadas', 'prontas'], true) ? $situacao : '',
         ];
     }
 
@@ -894,8 +910,12 @@ class TarefaController extends Controller
                 fn ($q) => $q->where('responsavel_id', $filtros['responsavel']))
             ->when($filtros['prioridade'] !== '', fn ($q) => $q->where('prioridade', $filtros['prioridade']))
             ->when($filtros['tipo'] !== '', fn ($q) => $q->where('tipo', $filtros['tipo']))
-            ->when(($filtros['esperando'] ?? '') === '1',
-                fn ($q) => $q->esperandoRespostaDe(auth()->id()));
+            ->when(($filtros['situacao'] ?? '') === 'esperando_mim',
+                fn ($q) => $q->esperandoRespostaDe(auth()->id()))
+            ->when(($filtros['situacao'] ?? '') === 'travadas',
+                fn ($q) => $q->whereNotNull('bloqueado_em'))
+            ->when(($filtros['situacao'] ?? '') === 'prontas',
+                fn ($q) => $q->where('status', 'pronta_producao'));
     }
 
     /**

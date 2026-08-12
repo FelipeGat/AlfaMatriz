@@ -383,9 +383,10 @@ class PerguntaNaRevisaoTest extends TestCase
     }
 
     /**
-     * @spec:AC-200 O chip "N p/ você" conta o QUADRO INTEIRO, e não o recorte: caixa
-     * de entrada que esconde mensagem porque há um filtro ligado deixa de ser caixa de
-     * entrada. Clicando, filtra.
+     * @spec:AC-200 O chip "N p/ você" é o PRIMEIRO do cabeçalho do quadro e é a caixa
+     * de entrada da pessoa: sem ele, saber que alguém espera uma resposta sua dependia
+     * de olhar a coluna certa. Ele conta o quadro INTEIRO — caixa de entrada que
+     * esconde mensagem porque há um filtro ligado deixa de ser caixa de entrada.
      */
     public function test_o_chip_conta_o_quadro_inteiro_e_filtra_ao_ser_clicado(): void
     {
@@ -400,13 +401,14 @@ class PerguntaNaRevisaoTest extends TestCase
 
         $this->fluxo->perguntar($tarefa, $revisor, 'Pergunta.');
 
-        // Sem pergunta para ele, o revisor não vê chip nenhum.
+        // Chip zerado não aparece: um "0 p/ você" permanente ensina a não ler.
         $this->actingAs($revisor)->get(route('tarefas.index'))->assertOk()->assertDontSee('p/ você');
 
-        $this->actingAs($dev)->get(route('tarefas.index'))->assertOk()->assertSee('1 p/ você');
+        $doDev = $this->actingAs($dev)->get(route('tarefas.index'))->assertOk();
+        $doDev->assertSee('1 p/ você');
+        $doDev->assertSee('situacao=esperando_mim', escape: false);
 
-        // Mesmo com um filtro apertado que esconde a tarefa, o chip continua
-        // anunciando que alguém espera.
+        // Mesmo com um filtro que esconde a tarefa, o chip continua anunciando.
         $this->actingAs($dev)
             ->get(route('tarefas.index', ['busca' => 'Sem conversa nenhuma']))
             ->assertOk()
@@ -414,55 +416,13 @@ class PerguntaNaRevisaoTest extends TestCase
 
         // E o recorte do chip mostra só o que espera por ele.
         $colunas = $this->actingAs($dev)
-            ->get(route('tarefas.index', ['esperando' => '1']))
+            ->get(route('tarefas.index', ['situacao' => 'esperando_mim']))
             ->assertOk()
             ->viewData('colunas');
 
         $ids = collect($colunas)->flatMap->pluck('id')->all();
         $this->assertContains($tarefa->id, $ids);
         $this->assertNotContains($outra->id, $ids);
-    }
-
-    /**
-     * @spec:AC-203 A terceira camada de aviso: o KPI "Esperando você" no topo da tela
-     * de Tarefas. Quem chega à tela sem varrer o quadro ainda precisa descobrir que a
-     * bola está com ele.
-     *
-     * Os quatro números medem o QUADRO INTEIRO, e não o recorte: um KPI que muda ao
-     * filtrar deixa de responder "como está o trabalho" e passa a responder "como está
-     * esta busca" — que é o que os contadores de coluna já respondem.
-     */
-    public function test_a_faixa_de_kpis_do_quadro(): void
-    {
-        [$tarefa, $dev, $revisor] = $this->emRevisao();
-
-        Tarefa::factory()->create([
-            'criado_por_id' => $revisor->id,
-            'status' => 'aberta',
-            'prioridade' => 'nao_definida',
-        ]);
-
-        $this->fluxo->perguntar($tarefa, $revisor, 'Uma dúvida.');
-
-        $kpis = collect($this->actingAs($dev)->get(route('tarefas.index'))->assertOk()->viewData('kpis'))
-            ->keyBy('rotulo');
-
-        $this->assertSame(2, $kpis['No quadro']['valor']);
-        $this->assertSame(1, $kpis['Esperando você']['valor']);
-        $this->assertSame(1, $kpis['Aguardando triagem']['valor']);
-        $this->assertSame(0, $kpis['Concluídas hoje']['valor']);
-
-        // Com o que triar, o card acende; sem, ele fica neutro — um card
-        // permanentemente âmbar em zero ensina a não olhar para a cor.
-        $this->assertSame('warn', $kpis['Aguardando triagem']['acento']);
-
-        // E o recorte não mexe nos números do topo.
-        $comFiltro = collect($this->actingAs($dev)
-            ->get(route('tarefas.index', ['busca' => 'nada que exista']))
-            ->viewData('kpis'))->keyBy('rotulo');
-
-        $this->assertSame(2, $comFiltro['No quadro']['valor']);
-        $this->assertSame(1, $comFiltro['Esperando você']['valor']);
     }
 
     /**

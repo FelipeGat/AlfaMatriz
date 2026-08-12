@@ -316,21 +316,66 @@
         @endif
 
         {{--
-            O Mover virou chevron. Como texto, ele ocupava uma linha inteira do
-            card e comia a largura do nome do sistema — três palavras gastas
-            para abrir um menu que quase sempre fica fechado.
+            Os três botões de ação, no canto direito do rodapé.
+
+            Eles são o que substituiu as duas faixas verticais de solto: as
+            faixas gastavam 132px de largura do quadro para dar destino a um
+            gesto, e a largura é justamente o que falta numa tela de seis
+            colunas. Aqui a ação fica no card de que ela fala.
+
+            Bloquear é SEMPRE válido — travar não é mover, e não depende de
+            para onde a tarefa pode ir. Concluir só aparece onde o fluxo
+            permite: fixo, ele ficaria morto na maioria dos cards, e botão que
+            quase nunca funciona ensina a não clicar em nenhum.
         --}}
-        @if (! empty($transicoes ?? []))
-            <button type="button" @click.stop="menuAberto = ! menuAberto"
-                    title="Mover tarefa" aria-label="Mover tarefa"
-                    class="shrink-0 h-5 w-5 rounded-control flex items-center justify-center
-                           text-ink-faint hover:text-brand transition"
-                    :class="menuAberto && 'text-brand'">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-3 w-3">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                </svg>
-            </button>
-        @endif
+        <div class="ml-auto shrink-0 flex items-center gap-1">
+            <form method="POST" action="{{ route('tarefas.bloquear', $tarefa) }}" @click.stop>
+                @csrf
+                @unless ($bloqueada)
+                    {{-- Travar exige o motivo, então o botão abre o painel em
+                         vez de enviar: um POST daqui seria recusado pelo motor
+                         do fluxo com uma frase que a pessoa não pediu. --}}
+                    <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, 'bloqueio')"
+                            title="Bloquear tarefa" aria-label="Bloquear tarefa"
+                            class="h-5 w-5 rounded-[3px] border border-line flex items-center justify-center
+                                   text-ink-mute transition hover:text-warn hover:border-warn-line">
+                        <x-nav-icon name="cadeado-fechado" :peso="1.9" class="h-[11px] w-[11px]" />
+                    </button>
+                @else
+                    <button type="submit" title="Destravar tarefa" aria-label="Destravar tarefa"
+                            class="h-5 w-5 rounded-[3px] border flex items-center justify-center transition"
+                            style="border-color: var(--warn-line); background: var(--warn-tint); color: rgb(var(--warn))">
+                        <x-nav-icon name="cadeado-aberto" :peso="1.9" class="h-[11px] w-[11px]" />
+                    </button>
+                @endunless
+            </form>
+
+            @if (in_array('concluida', $transicoes ?? [], true))
+                <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, 'concluida')"
+                        title="Concluir tarefa" aria-label="Concluir tarefa"
+                        class="h-5 w-5 rounded-[3px] border flex items-center justify-center transition hover:brightness-110"
+                        style="border-color: var(--good-line); background: var(--good-tint); color: rgb(var(--good))">
+                    <x-nav-icon name="check" :peso="1.9" class="h-[11px] w-[11px]" />
+                </button>
+            @endif
+
+            {{--
+                O Mover virou chevron. Como texto, ele ocupava uma linha inteira
+                do card e comia a largura do nome do sistema — três palavras
+                gastas para abrir um menu que quase sempre fica fechado.
+            --}}
+            @if (! empty($transicoes ?? []))
+                <button type="button" @click.stop="menuAberto = ! menuAberto"
+                        title="Mover tarefa" aria-label="Mover tarefa"
+                        class="h-5 w-5 rounded-[3px] flex items-center justify-center
+                               text-ink-faint hover:text-brand transition"
+                        :class="menuAberto && 'text-brand'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-3 w-3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                </button>
+            @endif
+        </div>
     </div>
 
     {{--

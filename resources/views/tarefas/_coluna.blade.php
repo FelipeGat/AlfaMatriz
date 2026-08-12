@@ -113,7 +113,12 @@
         @empty
             <div class="rounded-ctl border border-dashed border-line px-2 text-center flex items-center justify-center"
                  style="height: 84px">
-                <p class="text-[11.5px] text-ink-faint">Nenhuma tarefa aqui</p>
+                {{-- Uma frase por etapa: coluna vazia é informação, e o que ela
+                     informa muda conforme a etapa. "Nenhuma tarefa aqui" seis
+                     vezes desperdiça as seis notícias. --}}
+                <p class="text-[11.5px] text-ink-faint">
+                    {{ \App\Models\Tarefa::VAZIO_DA_ETAPA[$etapa['chave']] ?? 'Nenhuma tarefa aqui' }}
+                </p>
             </div>
         @endforelse
     </div>

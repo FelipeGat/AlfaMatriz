@@ -52,6 +52,37 @@ class Tarefa extends Model
      * recuperação de cada uma é outra. Um rótulo só para as três devolveria à
      * tela o mesmo achatamento que a coluna de Ajustes fazia no fluxo.
      */
+    /**
+     * O que cada portão examina, dito no cabeçalho da própria coluna.
+     *
+     * Sem isso, "Em revisão" e "Em staging" são dois nomes que só quem escreveu
+     * o fluxo distingue. Com a linha, a coluna declara quem analisa e o que ele
+     * está olhando — a informação que separa os dois portões que a etapa única
+     * de Em testes mantinha embolados.
+     */
+    public const PORTAO_DA_ETAPA = [
+        'em_revisao' => 'PR · admin analisa',
+        'em_staging' => 'na main · dev valida',
+        'pronta_producao' => 'fila do admin · tag v*',
+    ];
+
+    /**
+     * O que a coluna diz quando está vazia.
+     *
+     * Uma frase por etapa, e não "Nenhuma tarefa aqui" repetido seis vezes:
+     * coluna vazia é informação, e o que ela informa muda conforme a etapa —
+     * Backlog vazio é fila sem prioridade definida, Em andamento vazio é
+     * ninguém tocando nada. O texto genérico desperdiça as duas notícias.
+     */
+    public const VAZIO_DA_ETAPA = [
+        'aberta' => 'Fila de triagem vazia',
+        'backlog' => 'Nada priorizado',
+        'em_desenvolvimento' => 'Ninguém tocando nada',
+        'em_revisao' => 'Nenhum PR aberto',
+        'em_staging' => 'Nada em staging',
+        'pronta_producao' => 'Nada para subir',
+    ];
+
     public const RETORNO_POR_ORIGEM = [
         'em_revisao' => 'Voltou da revisão',
         'em_staging' => 'Voltou do staging',
