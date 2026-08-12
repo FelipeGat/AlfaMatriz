@@ -146,34 +146,86 @@ class FaturamentoService
     }
 
     /**
+     * O que o fechamento cobraria das revendas nesta competência, sem gravar
+     * nada — a mesma conta de `gerarParaCompetencia`: licenciamento pelo tier
+     * de cada revenda mais os módulos vigentes no mês.
+     *
+     * Existe porque o Centro de Controle precisa mostrar receita recorrente
+     * ANTES de alguém rodar o fechamento. Até existir, o card zerava todo dia
+     * 1º — como se a receita tivesse evaporado na virada do mês.
+     *
+     * Ignora snapshot já gravado de propósito: a pergunta aqui é "quanto vale
+     * o contratado hoje", não "quanto ainda falta gerar". Sistema sem tier
+     * compatível fica de fora, pelo mesmo motivo de sempre — cobrar por ele
+     * seria inventar um preço que ninguém configurou.
+     *
+     * @return array{total: float, porRevenda: array<int, float>}
+     */
+    public function previsaoDaCompetencia(?string $competencia = null): array
+    {
+        $competencia ??= now()->format('Y-m');
+
+        $porRevenda = [];
+
+        foreach (Revenda::where('ativo', true)->get() as $revenda) {
+            $sistemas = Sistema::where('ativo', true)
+                ->whereHas('clientes', fn ($q) => $q->where('revenda_id', $revenda->id)
+                    ->where('clientes.ativo', true)
+                    ->where('cliente_sistema.ativo', true))
+                ->get();
+
+            $total = 0.0;
+
+            foreach ($sistemas as $sistema) {
+                $clientesAtivos = $sistema->clientes()
+                    ->where('revenda_id', $revenda->id)
+                    ->where('clientes.ativo', true)
+                    ->where('cliente_sistema.ativo', true)
+                    ->get(['clientes.id']);
+
+                $tier = $sistema->tierParaVolume($clientesAtivos->count(), $revenda->id);
+
+                if (! $tier) {
+                    continue;
+                }
+
+                $total += $tier->calcularMensalidade($clientesAtivos->count())
+                    + $this->modulosDaCompetencia($sistema, $clientesAtivos->pluck('id'), $competencia)['total'];
+            }
+
+            if ($total > 0) {
+                $porRevenda[$revenda->id] = $total;
+            }
+        }
+
+        return [
+            'total' => (float) array_sum($porRevenda),
+            'porRevenda' => $porRevenda,
+        ];
+    }
+
+    /**
      * Os módulos que esses clientes tinham vigentes na competência.
      *
      * "Vigente" é ter começado até o fim do mês e não ter terminado antes do
      * começo dele — um módulo contratado no dia 20 entra na competência, e um
-     * encerrado no mês anterior não.
+     * encerrado no mês anterior não. A regra mora em
+     * `ClienteModulo::vigentesNaCompetencia()`, porque a prévia da tela e o MRR
+     * de atacado precisam somar exatamente o mesmo que a fatura.
      *
-     * Só `status = ativo`: contratação suspensa ou encerrada não é receita
-     * corrente. Valor nulo soma zero — o campo é opcional no AlfaControl, e
-     * módulo ativado sem preço é lacuna de cadastro, não erro de cálculo.
+     * Valor nulo soma zero — o campo é opcional no AlfaControl, e módulo
+     * ativado sem preço é lacuna de cadastro, não erro de cálculo.
      *
      * @param  \Illuminate\Support\Collection<int, int>  $clienteIds
      * @return array{total: float, detalhe: array<int, array<string, mixed>>}
      */
     private function modulosDaCompetencia(Sistema $sistema, $clienteIds, string $competencia): array
     {
-        if ($clienteIds->isEmpty()) {
+        $contratacoes = ClienteModulo::vigentesNaCompetencia($sistema->id, $clienteIds, $competencia);
+
+        if ($contratacoes->isEmpty()) {
             return ['total' => 0.0, 'detalhe' => []];
         }
-
-        $inicioDoMes = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
-
-        $contratacoes = ClienteModulo::query()
-            ->with('modulo')
-            ->whereIn('cliente_id', $clienteIds)
-            ->where('status', 'ativo')
-            ->whereHas('modulo', fn ($q) => $q->where('sistema_id', $sistema->id))
-            ->get()
-            ->filter(fn (ClienteModulo $c) => $c->vigenteEm($inicioDoMes));
 
         $detalhe = $contratacoes
             ->groupBy(fn (ClienteModulo $c) => $c->modulo->codigo)

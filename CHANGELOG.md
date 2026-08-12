@@ -1,5 +1,45 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 12/08/2026 — Os números das telas voltam a fechar
+
+Os indicadores do Centro de Controle, do Faturamento e dos painéis mostravam
+valores que não batiam entre si — e, em vários casos, não batiam nem com a
+linha desenhada logo abaixo deles. Nenhuma regra de negócio mudou: o que muda é
+que as contas passam a dar o mesmo resultado em toda tela que as mostra.
+
+### Correções
+
+- **A receita recorrente não zera mais na virada do mês.** Enquanto o
+  fechamento da competência não era gerado não havia cobrança para somar, e o
+  card mostrava R$ 0,00 — como se a receita tivesse evaporado no dia 1º. Agora
+  ele mostra o valor **contratado**, o que o fechamento cobraria se rodasse
+  agora, marcado como tal; assim que o fechamento roda, volta a ser o faturado.
+- **A prévia do Faturamento passa a somar o mesmo que o botão "Gerar".** Ela
+  não contava os módulos contratados, então prometia um total menor do que a
+  cobrança que seria criada — numa tela cuja razão de existir é ser conferida
+  antes de gerar. A conta escrita por extenso agora declara a parcela de
+  módulos.
+- **O MRR de atacado e o MRR dos produtos incluem os módulos.** Módulo é
+  receita recorrente e entra na fatura; sem ele, os painéis anunciavam menos do
+  que a casa fatura. Módulo de cliente já desativado deixou de ser somado.
+- **O card de clientes parou de se contradizer.** Ele chegava a dizer "8
+  clientes ativos" e, logo abaixo, "+10 no mês", porque a contagem do mês
+  incluía cliente desativado que o total não conta.
+- **Quem entrou é medido pela data de cadastro.** A base veio de importação, e
+  o sistema usava a data em que o registro foi criado — o que fazia toda a base
+  aparecer como entrada do mês e a curva de crescimento virar um degrau.
+- **A minitendência do caixa parou de discordar do saldo.** Ajustes e
+  transferências eram lidos ao contrário na curva histórica, e movimentação de
+  conta encerrada era descontada de um saldo que não considera essas contas.
+- **A folga de caixa deixou de encolher por causa de conta agendada.** A média
+  de despesa incluía tudo que já estava lançado para os meses seguintes — então
+  quanto mais organizada a agenda de contas, menor a folga que a tela mostrava.
+- **A curva do "Atrasado" termina no valor impresso acima dela.** Ela vinha
+  contando títulos que ainda nem tinham vencido.
+- **Revenda desativada com receita no mês voltou à régua de origem.** O dinheiro
+  dela entrava no total, mas a barra sumia — e a soma das barras deixava de
+  bater com o número logo acima, sem nada explicando a diferença.
+
 ## AlfaMatriz — 12/08/2026 — Quadro agrupado, teclado, celular e ordem escolhida à mão
 
 Última leva do redesenho da tela de Tarefas.

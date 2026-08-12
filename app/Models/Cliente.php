@@ -96,6 +96,31 @@ class Cliente extends Model
         return is_null($this->revenda_id);
     }
 
+    /**
+     * O dia em que o cliente entrou na base.
+     *
+     * `created_at` é quando a LINHA nasceu. A base veio de importação, então
+     * ele marca o dia da migração para todo mundo de uma vez — usá-lo como
+     * data de entrada faz a base inteira parecer ter chegado no mesmo dia, e
+     * qualquer contagem de "novos no mês" devolve o cadastro inteiro.
+     *
+     * `data_cadastro` é a data que o formulário coleta. Onde ela falta, o
+     * `created_at` é o melhor palpite que existe.
+     *
+     * Quem precisa FILTRAR por isso no banco usa a expressão equivalente em
+     * SQL — acessor não vai para o WHERE.
+     */
+    public function getDataEntradaAttribute(): ?\Illuminate\Support\Carbon
+    {
+        return $this->data_cadastro ?? $this->created_at;
+    }
+
+    /** A mesma regra do acessor, em SQL, para filtro e ordenação. */
+    public static function expressaoDeEntrada(): string
+    {
+        return 'COALESCE(clientes.data_cadastro, DATE(clientes.created_at))';
+    }
+
     public function isContratoMensal(): bool
     {
         return $this->ativo && $this->tipo_cliente === 'CONTRATO' && $this->valor_mensal > 0 && $this->dia_vencimento > 0;

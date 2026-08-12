@@ -15,7 +15,12 @@ class ProdutoController extends Controller
             ->orderBy('nome')->get()->map(function (Sistema $sistema) {
             $ativos = $sistema->clientesAtivosCount();
             $cancelados = $sistema->clientesCanceladosCount();
-            $mrr = $sistema->mrrEstimado();
+            // O MRR do produto é o recorrente inteiro: licença mais módulos.
+            // Contando só a licença, o topo da tela somava menos que a fatura,
+            // e o produto aparecia menor do que é. A linha de módulos logo
+            // abaixo abre a parcela, não acrescenta a ela.
+            $mrrModulos = $sistema->mrrModulos();
+            $mrr = $sistema->mrrEstimado() + $mrrModulos;
 
             return [
                 'sistema' => $sistema,
@@ -29,9 +34,12 @@ class ProdutoController extends Controller
                 // revendas — é a pendência que a tela precisa gritar.
                 'sem_tier' => $sistema->tiersVigentes()->isEmpty(),
                 // Módulos são receita à parte da licença: sem eles na tela, o
-                // MRR do produto parece menor do que é.
+                // MRR do produto parece menor do que é. O valor sai da mesma
+                // regra de vigência que a fatura usa — a contagem própria que
+                // morava aqui somava contratação de cliente já desativado e
+                // ignorava a vigência na competência.
                 'modulos_ativos' => $sistema->modulos->filter(fn ($m) => $m->contratacoes->isNotEmpty())->count(),
-                'mrr_modulos' => (float) $sistema->modulos->sum(fn ($m) => $m->contratacoes->sum('valor_mensal')),
+                'mrr_modulos' => $mrrModulos,
             ];
         });
 

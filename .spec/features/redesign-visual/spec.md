@@ -134,6 +134,19 @@ hoje, para não ter que varrer cinco telas atrás de pendência.
   ainda não está atrasado, a competência ainda é a do mês corrente, e a
   saudação diz "boa noite"
 
+#### AC-218 — Mês sem fechamento mostra o contratado, não zero
+
+- **Dado** que o fechamento da competência corrente ainda não foi gerado, e
+  portanto não existe cobrança para somar
+- **Quando** a pessoa olha a receita recorrente no Centro de Controle
+- **Então** o card mostra o valor CONTRATADO — o que o fechamento cobraria se
+  rodasse agora, licenciamento das revendas mais os contratos diretos — marcado
+  como contratado, em vez de exibir R$ 0,00 como se a receita tivesse sumido na
+  virada do mês; e a régua de origem abre esse mesmo total por origem, de forma
+  que a soma das barras bata com o número acima delas
+- **E** meses passados sem fechamento continuam valendo o que foi de fato
+  cobrado: o contratado é a foto de hoje e não remonta histórico
+
 ### US-019 — Os painéis Financeiro e Comercial deixam comparar
 
 Como responsável pela operação, quero que os painéis mostrem grandeza relativa

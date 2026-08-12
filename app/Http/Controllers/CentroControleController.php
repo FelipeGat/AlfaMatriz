@@ -10,6 +10,7 @@ use App\Models\Lead;
 use App\Models\MovimentacaoFinanceira;
 use App\Models\Revenda;
 use App\Models\Sistema;
+use App\Services\IndicadoresService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -25,6 +26,14 @@ class CentroControleController extends Controller
     /** Quantos meses cada minitendência mostra. */
     private const MESES_DA_SERIE = 6;
 
+    /**
+     * Os números que também aparecem em outras telas saem do serviço, não de
+     * uma contagem local. Esta tela contava por conta própria — repetindo
+     * consulta por consulta o que o serviço já fazia —, que é exatamente como
+     * dois painéis passam a mostrar números diferentes do mesmo indicador.
+     */
+    public function __construct(private readonly IndicadoresService $indicadores) {}
+
     public function index()
     {
         $this->bloquearVisaoDaMatriz();
@@ -38,7 +47,11 @@ class CentroControleController extends Controller
             'origemMrr' => $this->origemDoMrr(),
             'proximos' => $this->proximosSeteDias($hoje),
             'pipeline' => $this->pipeline(),
-            'entraram' => Cliente::where('created_at', '>=', now()->subDays(7))->latest()->limit(5)->get(),
+            'entraram' => Cliente::where('ativo', true)
+                ->whereRaw(Cliente::expressaoDeEntrada().' >= ?', [now()->subDays(7)->toDateString()])
+                ->orderByRaw(Cliente::expressaoDeEntrada().' desc')
+                ->limit(5)
+                ->get(),
         ]);
     }
 
@@ -67,23 +80,29 @@ class CentroControleController extends Controller
     /** @return array<int, array<string, mixed>> */
     private function cards(Carbon $hoje): array
     {
-        $mrrAtual = $this->mrrDaCompetencia(now()->format('Y-m'));
+        $competencia = now()->format('Y-m');
+        $mrrAtual = $this->mrrDaCompetencia($competencia);
         $mrrAnterior = $this->mrrDaCompetencia(now()->subMonth()->format('Y-m'));
 
-        $saldo = (float) ContaFinanceira::where('ativo', true)->sum('saldo');
+        $saldo = $this->indicadores->saldoEmCaixa();
 
         $atrasadas = Cobranca::where('status', 'pendente')
             ->whereDate('data_vencimento', '<', $hoje)
             ->get(['valor', 'data_vencimento']);
 
-        $clientesAtivos = Cliente::where('ativo', true)->count();
-        $novosNoMes = Cliente::where('created_at', '>=', now()->startOfMonth())->count();
+        $clientesAtivos = $this->indicadores->clientesAtivos();
+        $novosNoMes = $this->novosNoMes();
+
+        // O card precisa dizer de onde veio o número: contratado e faturado
+        // não são a mesma coisa, e confundir os dois é pior que zerar.
+        $contratado = ! $this->indicadores->competenciaFoiFaturada($competencia);
+        $variacaoMrr = $this->variacao($mrrAtual, $mrrAnterior, now()->subMonth()->translatedFormat('M'));
 
         return [
             [
                 'rotulo' => 'Receita recorrente',
                 'valor' => $this->emReais($mrrAtual),
-                'delta' => $this->variacao($mrrAtual, $mrrAnterior, now()->subMonth()->translatedFormat('M')),
+                'delta' => $contratado ? $variacaoMrr.' · contratado' : $variacaoMrr,
                 'sinal' => $mrrAtual >= $mrrAnterior ? 'bom' : 'ruim',
                 'acento' => 'accent',
                 'icone' => 'trending-up',
@@ -108,7 +127,7 @@ class CentroControleController extends Controller
                 'sinal' => $atrasadas->isEmpty() ? 'bom' : 'ruim',
                 'acento' => 'crit',
                 'icone' => 'alert-triangle',
-                'serie' => $this->serieDoAtraso(),
+                'serie' => $this->serieDoAtraso($hoje),
             ],
             [
                 'rotulo' => 'Clientes ativos',
@@ -122,12 +141,41 @@ class CentroControleController extends Controller
         ];
     }
 
+    /**
+     * Receita recorrente da competência.
+     *
+     * Enquanto o fechamento do mês não roda não existe cobrança para somar, e
+     * o card ficava R$ 0,00 todo dia 1º — como se a receita tivesse evaporado
+     * na virada do mês. Sem fechamento, vale o contratado: a mesma conta que o
+     * fechamento faria se rodasse agora.
+     *
+     * A troca só vale para o mês corrente. O contratado é a foto de HOJE, e
+     * aplicá-lo a um mês passado inventaria um histórico que nunca existiu —
+     * para trás, quem manda é a cobrança que foi de fato gerada.
+     */
     private function mrrDaCompetencia(string $competencia): float
     {
-        return (float) Cobranca::whereIn('tipo', ['locacao_sistema', 'direta'])
-            ->where('competencia', $competencia)
-            ->where('status', '!=', 'cancelado')
-            ->sum('valor');
+        if ($this->indicadores->competenciaFoiFaturada($competencia)) {
+            return $this->indicadores->mrr($competencia);
+        }
+
+        return $competencia === now()->format('Y-m')
+            ? $this->indicadores->mrrContratado($competencia)
+            : $this->indicadores->mrr($competencia);
+    }
+
+    /**
+     * Clientes que entraram no mês.
+     *
+     * Conta só os ativos, pelo mesmo critério do número grande do card. Sem
+     * esse filtro o card se contradizia sozinho: "8 clientes ativos, +10 no
+     * mês", porque o total olhava `ativo` e o delta olhava a tabela inteira.
+     */
+    private function novosNoMes(): int
+    {
+        return Cliente::where('ativo', true)
+            ->whereRaw(Cliente::expressaoDeEntrada().' >= ?', [now()->startOfMonth()->toDateString()])
+            ->count();
     }
 
     /** @return list<float> */
@@ -149,8 +197,18 @@ class CentroControleController extends Controller
     {
         return $this->ultimosMeses()
             ->map(function (Carbon $mes) use ($saldoAtual) {
-                $depois = (float) MovimentacaoFinanceira::where('data', '>', $mes->copy()->endOfMonth()->toDateString())
-                    ->selectRaw("COALESCE(SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE -valor END), 0) as total")
+                $depois = (float) MovimentacaoFinanceira::query()
+                    // Mesmo escopo do saldo de hoje: só contas ativas. Descontar
+                    // movimento de conta inativa de um saldo que as ignora era
+                    // metade do motivo de a curva não fechar com o card.
+                    ->whereIn('conta_financeira_id', ContaFinanceira::where('ativo', true)->select('id'))
+                    ->whereDate('data', '>', $mes->copy()->endOfMonth()->toDateString())
+                    // O sinal é o mesmo de `ContaFinanceira::reprocessarSaldo()`:
+                    // só `saida` subtrai. Aqui tudo que não fosse `entrada`
+                    // subtraía, então cada `ajuste` e cada `transferencia`
+                    // deslocava a curva pelo DOBRO do próprio valor, para o
+                    // lado errado — e o erro se acumulava mês a mês.
+                    ->selectRaw("COALESCE(SUM(CASE WHEN tipo = 'saida' THEN -valor ELSE valor END), 0) as total")
                     ->value('total');
 
                 return $saldoAtual - $depois;
@@ -158,22 +216,53 @@ class CentroControleController extends Controller
             ->all();
     }
 
-    /** @return list<float> */
-    private function serieDoAtraso(): array
+    /**
+     * Quanto já estava vencido e não pago ao fim de cada mês.
+     *
+     * Antes, cada ponto somava o que VENCIA dentro do mês — o que jogava no
+     * último ponto títulos que ainda nem tinham vencido, e fazia a linha
+     * discordar do número impresso logo acima dela. Agora o corte do último
+     * ponto é hoje, então ele fecha exatamente com o valor do card.
+     *
+     * O que foi pago não deixa rastro de quando saiu do atraso, então os
+     * pontos anteriores contam o que segue pendente — a curva mostra o atraso
+     * que sobreviveu, não o que existiu em cada mês.
+     *
+     * @return list<float>
+     */
+    private function serieDoAtraso(Carbon $hoje): array
     {
         return $this->ultimosMeses()
-            ->map(fn (Carbon $mes) => (float) Cobranca::where('status', 'pendente')
-                ->whereBetween('data_vencimento', [$mes->copy()->startOfMonth(), $mes->copy()->endOfMonth()])
-                ->sum('valor'))
+            ->map(function (Carbon $mes) use ($hoje) {
+                $fimDoMes = $mes->copy()->endOfMonth();
+                $corte = $fimDoMes->isAfter($hoje) ? $hoje : $fimDoMes;
+
+                return (float) Cobranca::where('status', 'pendente')
+                    ->whereDate('data_vencimento', '<', $corte->toDateString())
+                    ->sum('valor');
+            })
             ->all();
     }
 
-    /** @return list<float> */
+    /**
+     * Quantos clientes ativos a base tinha ao fim de cada mês.
+     *
+     * Conta pela data de ENTRADA, não por `created_at`: a base veio de
+     * importação, e `created_at` marca o dia da migração para todo mundo — a
+     * curva virava um degrau, com cinco meses zerados e tudo aparecendo de uma
+     * vez no último ponto.
+     *
+     * A base não data a desativação, então esta curva conta quem entrou até
+     * aquele mês e SEGUE ativo hoje: ela mostra a entrada, não o churn, e por
+     * isso nunca desce. Fazê-la descer exige gravar quando o cliente saiu.
+     *
+     * @return list<float>
+     */
     private function serieDeClientes(): array
     {
         return $this->ultimosMeses()
             ->map(fn (Carbon $mes) => (float) Cliente::where('ativo', true)
-                ->where('created_at', '<=', $mes->copy()->endOfMonth())
+                ->whereRaw(Cliente::expressaoDeEntrada().' <= ?', [$mes->copy()->endOfMonth()->toDateString()])
                 ->count())
             ->all();
     }
@@ -312,15 +401,25 @@ class CentroControleController extends Controller
     private function origemDoMrr(): array
     {
         $competencia = now()->format('Y-m');
-        $anterior = now()->subMonth()->format('Y-m');
+
+        $atual = $this->valoresPorOrigem($competencia);
+        $passado = $this->valoresPorOrigem(now()->subMonth()->format('Y-m'));
 
         $linhas = collect();
 
-        foreach (Revenda::where('ativo', true)->get() as $revenda) {
+        // Revenda desativada que ainda tem receita na competência continua na
+        // régua: ela sai do cadastro, mas o dinheiro dela segue dentro do card.
+        // Varrer só as ativas fazia a soma das barras não bater com o número
+        // logo acima delas, sem nada na tela explicando a diferença.
+        $revendas = Revenda::where('ativo', true)
+            ->orWhereIn('id', array_keys($atual['revendas']))
+            ->get();
+
+        foreach ($revendas as $revenda) {
             $linhas->push([
                 'nome' => $revenda->nome,
-                'valor' => $this->mrrPorOrigem($competencia, $revenda->id),
-                'anterior' => $this->mrrPorOrigem($anterior, $revenda->id),
+                'valor' => (float) ($atual['revendas'][$revenda->id] ?? 0),
+                'anterior' => (float) ($passado['revendas'][$revenda->id] ?? 0),
                 'clientes' => Cliente::where('revenda_id', $revenda->id)->where('ativo', true)->count(),
                 'cor' => 'accent',
             ]);
@@ -328,8 +427,8 @@ class CentroControleController extends Controller
 
         $linhas->push([
             'nome' => 'Venda direta',
-            'valor' => $this->mrrPorOrigem($competencia, null),
-            'anterior' => $this->mrrPorOrigem($anterior, null),
+            'valor' => $atual['direta'],
+            'anterior' => $passado['direta'],
             'clientes' => Cliente::whereNull('revenda_id')->where('ativo', true)->count(),
             'cor' => 'brand',
         ]);
@@ -353,15 +452,44 @@ class CentroControleController extends Controller
         ];
     }
 
-    private function mrrPorOrigem(string $competencia, ?int $revendaId): float
+    /**
+     * Quanto cada origem traz na competência, pela MESMA regra do card:
+     * faturado quando o fechamento rodou, contratado enquanto não rodou.
+     *
+     * Mês passado sem fechamento fica zerado de propósito — o contratado é a
+     * foto de hoje, e usá-lo para trás inventaria um histórico que não houve.
+     *
+     * @return array{revendas: array<int, float>, direta: float}
+     */
+    private function valoresPorOrigem(string $competencia): array
     {
-        return (float) Cobranca::whereIn('tipo', ['locacao_sistema', 'direta'])
+        if (! $this->indicadores->competenciaFoiFaturada($competencia)) {
+            return $competencia === now()->format('Y-m')
+                ? $this->indicadores->mrrContratadoPorOrigem($competencia)
+                : ['revendas' => [], 'direta' => 0.0];
+        }
+
+        $porRevenda = [];
+        $direta = 0.0;
+
+        $somas = Cobranca::whereIn('tipo', ['locacao_sistema', 'direta'])
             ->where('competencia', $competencia)
             ->where('status', '!=', 'cancelado')
-            ->when($revendaId === null,
-                fn ($q) => $q->whereNull('revenda_id'),
-                fn ($q) => $q->where('revenda_id', $revendaId))
-            ->sum('valor');
+            ->selectRaw('revenda_id, SUM(valor) as total')
+            ->groupBy('revenda_id')
+            ->get();
+
+        foreach ($somas as $soma) {
+            if ($soma->revenda_id === null) {
+                $direta += (float) $soma->total;
+
+                continue;
+            }
+
+            $porRevenda[(int) $soma->revenda_id] = (float) $soma->total;
+        }
+
+        return ['revendas' => $porRevenda, 'direta' => $direta];
     }
 
     // ── Coluna direita ────────────────────────────────────────────────────
@@ -430,7 +558,18 @@ class CentroControleController extends Controller
      */
     private function folgaDeCaixa(float $saldo): string
     {
-        $mediaMensal = (float) ContaPagar::where('data_vencimento', '>=', now()->subMonths(3))
+        // Janela FECHADA de três meses, e sem os cancelados.
+        //
+        // Faltava o limite de cima: a soma pegava de três meses atrás até o
+        // fim dos tempos, incluindo tudo que já está agendado para a frente —
+        // e as contas fixas nascem com meses de antecedência. Dividir isso por
+        // 3 inflava a "média mensal" em várias vezes, e a folga encolhia na
+        // mesma proporção. Quanto mais organizada a agenda, pior o número.
+        $mediaMensal = (float) ContaPagar::whereBetween('data_vencimento', [
+            now()->subMonths(3)->startOfDay()->toDateString(),
+            now()->startOfDay()->toDateString(),
+        ])
+            ->where('status', '!=', 'cancelado')
             ->sum('valor') / 3;
 
         if ($mediaMensal <= 0 || $saldo <= 0) {

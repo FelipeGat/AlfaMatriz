@@ -55,6 +55,42 @@ class ClienteModulo extends Model
      * Começou até o fim do mês e não terminou antes do começo dele — é o que
      * decide se entra na cobrança daquele período.
      */
+    /**
+     * As contratações de um sistema, entre estes clientes, vigentes na
+     * competência.
+     *
+     * Origem única da regra: ela decide receita em três lugares — a fatura que
+     * o fechamento gera, a prévia que a tela de Faturamento mostra antes de
+     * gerar, e o MRR de atacado dos painéis. Enquanto morava só dentro do
+     * motor de faturamento, os outros dois simplesmente não somavam módulo, e
+     * a prévia mostrava menos do que o fechamento ia cobrar.
+     *
+     * Só `status = ativo`: contratação suspensa ou encerrada não é receita
+     * corrente.
+     *
+     * @param  \Illuminate\Support\Collection<int, int>|array<int, int>  $clienteIds
+     * @return \Illuminate\Support\Collection<int, ClienteModulo>
+     */
+    public static function vigentesNaCompetencia(int $sistemaId, $clienteIds, string $competencia): \Illuminate\Support\Collection
+    {
+        $clienteIds = collect($clienteIds);
+
+        if ($clienteIds->isEmpty()) {
+            return collect();
+        }
+
+        $inicioDoMes = \Illuminate\Support\Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
+
+        return static::query()
+            ->with('modulo')
+            ->whereIn('cliente_id', $clienteIds)
+            ->where('status', 'ativo')
+            ->whereHas('modulo', fn ($q) => $q->where('sistema_id', $sistemaId))
+            ->get()
+            ->filter(fn (self $c) => $c->vigenteEm($inicioDoMes))
+            ->values();
+    }
+
     public function vigenteEm(\Carbon\CarbonInterface $inicioDoMes): bool
     {
         $fimDoMes = $inicioDoMes->copy()->endOfMonth();

@@ -188,7 +188,9 @@
                                     {{ Str::of($cliente->nome_exibicao)->substr(0, 1)->upper() }}
                                 </span>
                                 <span class="min-w-0 flex-1 truncate text-[13px] text-ink-dim">{{ $cliente->nome_exibicao }}</span>
-                                <span class="shrink-0 font-mono text-[11px] text-ink-faint">{{ $cliente->created_at->format('d/m') }}</span>
+                                {{-- A data de entrada, a mesma que filtrou a lista. `created_at`
+                                     aqui mostrava o dia da importação, e não o do cadastro. --}}
+                                <span class="shrink-0 font-mono text-[11px] text-ink-faint">{{ $cliente->data_entrada?->format('d/m') }}</span>
                             </a>
                         @empty
                             <p class="px-4 py-6 text-[13px] text-ink-mute">Nenhum cliente novo nos últimos 7 dias.</p>

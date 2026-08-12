@@ -19,6 +19,18 @@ use App\Models\Sistema;
  */
 class IndicadoresService
 {
+    /**
+     * A previsão de faturamento por competência, calculada uma vez só.
+     *
+     * O Centro de Controle pergunta o contratado três vezes no mesmo
+     * carregamento — o card, a minitendência e a régua de origem. A previsão
+     * varre revenda por revenda, sistema por sistema, e ainda os módulos
+     * vigentes de cada um: refazer essa varredura a cada pergunta custa a tela.
+     *
+     * @var array<string, array{total: float, porRevenda: array<int, float>}>
+     */
+    private array $previsaoMemo = [];
+
     public function clientesAtivos(): int
     {
         return Cliente::where('ativo', true)->count();
@@ -51,44 +63,124 @@ class IndicadoresService
     }
 
     /**
+     * A competência já teve fechamento rodado?
+     *
+     * Distinguir "ninguém faturou ainda" de "faturou e deu zero" é o que
+     * impede o card de receita recorrente de tratar mês não fechado como mês
+     * sem receita.
+     */
+    public function competenciaFoiFaturada(string $competencia): bool
+    {
+        return Cobranca::whereIn('tipo', ['locacao_sistema', 'direta'])
+            ->where('competencia', $competencia)
+            ->where('status', '!=', 'cancelado')
+            ->exists();
+    }
+
+    /**
+     * O recorrente dos clientes que a matriz atende direto.
+     *
+     * Fora do faturamento de propósito: `FaturamentoService` só consolida
+     * revenda, e cliente direto é cobrado à mão pela tela de Receitas. Sem
+     * somar aqui, ele sumiria da receita contratada.
+     *
+     * A regra é a mesma de `Cliente::isContratoMensal()` — se ela mudar lá,
+     * muda aqui.
+     */
+    public function contratosDiretos(): float
+    {
+        return (float) Cliente::where('ativo', true)
+            ->whereNull('revenda_id')
+            ->where('tipo_cliente', 'CONTRATO')
+            ->where('valor_mensal', '>', 0)
+            ->where('dia_vencimento', '>', 0)
+            ->sum('valor_mensal');
+    }
+
+    /**
+     * Receita recorrente contratada: o que o fechamento cobraria se rodasse
+     * agora, mais os contratos diretos.
+     *
+     * É a foto de HOJE. Serve para a competência corrente, não para remontar
+     * mês passado — para trás, quem manda é a cobrança que foi de fato gerada.
+     *
+     * O serviço de faturamento é resolvido aqui dentro, e não no construtor,
+     * porque os testes trocam este serviço por uma classe anônima sem
+     * argumentos: exigir dependência no construtor quebraria todos eles.
+     */
+    public function mrrContratado(?string $competencia = null): float
+    {
+        return $this->previsao($competencia)['total'] + $this->contratosDiretos();
+    }
+
+    /** @return array{total: float, porRevenda: array<int, float>} */
+    private function previsao(?string $competencia): array
+    {
+        $chave = $competencia ?? now()->format('Y-m');
+
+        return $this->previsaoMemo[$chave] ??= app(FaturamentoService::class)->previsaoDaCompetencia($chave);
+    }
+
+    /**
+     * O contratado aberto por origem: cada revenda e a venda direta.
+     *
+     * A régua de origem precisa somar exatamente o mesmo que o card — se cada
+     * um aplicasse a própria regra, a soma das barras discordaria do número
+     * impresso logo acima delas.
+     *
+     * @return array{revendas: array<int, float>, direta: float}
+     */
+    public function mrrContratadoPorOrigem(?string $competencia = null): array
+    {
+        return [
+            'revendas' => $this->previsao($competencia)['porRevenda'],
+            'direta' => $this->contratosDiretos(),
+        ];
+    }
+
+    /**
      * Valor de atacado por sistema, com o tier aplicado por revenda.
      *
      * Vive aqui porque aparece no painel Comercial e na tela de Sistemas: se
      * cada uma calculasse por conta própria, bastaria alguém ajustar a regra
      * de um lado para os dois números passarem a discordar.
      *
-     * @return \Illuminate\Support\Collection<int, array{sistema: Sistema, clientes_ativos: int, valor_estimado: float}>
+     * O cálculo do tier é o de `Sistema::mrrEstimado()`, e não uma cópia dele:
+     * este método repetia aquele laço linha por linha, de modo que a tela de
+     * Produtos e o painel Comercial podiam passar a discordar sobre o valor do
+     * MESMO sistema ao primeiro ajuste em um dos dois.
+     *
+     * `valor_estimado` é o recorrente inteiro — licença mais módulos —, porque
+     * é ele que a fatura cobra. Quem precisa das partes tem `valor_licenca` e
+     * `valor_modulos`.
+     *
+     * @return \Illuminate\Support\Collection<int, array{sistema: Sistema, clientes_ativos: int, valor_estimado: float, valor_licenca: float, valor_modulos: float}>
      */
     public function rankingSistemas()
     {
         return Sistema::withCount(['clientes' => fn ($q) => $q->where('clientes.ativo', true)->where('cliente_sistema.ativo', true)])
             ->get()
             ->map(function (Sistema $sistema) {
-                $porRevenda = $sistema->clientes()
-                    ->where('clientes.ativo', true)
-                    ->where('cliente_sistema.ativo', true)
-                    ->get(['clientes.id', 'clientes.revenda_id'])
-                    ->groupBy('revenda_id');
-
-                $valorTotal = 0.0;
-                foreach ($porRevenda as $revendaId => $clientes) {
-                    $qtd = $clientes->count();
-                    // Cliente sem revenda vira chave vazia no groupBy — `chaveDeRevenda`
-                    // a normaliza para null (o tier padrão). Sem isso, um único
-                    // cliente de venda direta derruba a tela inteira com TypeError.
-                    $tier = $sistema->tierParaVolume($qtd, $sistema->chaveDeRevenda($revendaId));
-                    $valorTotal += $tier?->calcularMensalidade($qtd) ?? 0;
-                }
+                $licenca = $sistema->mrrEstimado();
+                $modulos = $sistema->mrrModulos();
 
                 return [
                     'sistema' => $sistema,
                     'clientes_ativos' => $sistema->clientes_count,
-                    'valor_estimado' => $valorTotal,
+                    'valor_estimado' => $licenca + $modulos,
+                    'valor_licenca' => $licenca,
+                    'valor_modulos' => $modulos,
                 ];
             });
     }
 
-    /** Soma do atacado de todos os sistemas. */
+    /**
+     * Soma do atacado de todos os sistemas: licença mais módulos.
+     *
+     * Sem os módulos este número saía abaixo do que a fatura cobra — módulo é
+     * receita recorrente e entra na cobrança da revenda como segunda parcela
+     * da mesma linha.
+     */
     public function mrrAtacado(): float
     {
         return (float) $this->rankingSistemas()->sum('valor_estimado');

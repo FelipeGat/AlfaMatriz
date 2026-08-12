@@ -114,8 +114,35 @@ class Sistema extends Model
     }
 
     /**
-     * MRR estimado hoje: soma o tier aplicável de cada revenda (+ diretos) que
-     * usa este sistema, dado o nº de clientes ativos que cada uma tem nele.
+     * O recorrente de MÓDULOS deste sistema na competência.
+     *
+     * Módulo é cobrado à parte da licença e entra na fatura como segunda
+     * parcela da mesma linha. Some só de cliente ativo com vínculo ativo — a
+     * mesma população que o tier conta.
+     */
+    public function mrrModulos(?string $competencia = null): float
+    {
+        $clienteIds = $this->clientes()
+            ->where('clientes.ativo', true)
+            ->where('cliente_sistema.ativo', true)
+            ->pluck('clientes.id');
+
+        return (float) ClienteModulo::vigentesNaCompetencia(
+            $this->id,
+            $clienteIds,
+            $competencia ?? now()->format('Y-m')
+        )->sum('valor_mensal');
+    }
+
+    /**
+     * MRR de LICENÇA estimado hoje: soma o tier aplicável de cada revenda (+
+     * diretos) que usa este sistema, dado o nº de clientes ativos que cada uma
+     * tem nele.
+     *
+     * NÃO inclui módulos — quem quer o recorrente inteiro soma `mrrModulos()`.
+     * Ficam separados porque as duas telas que mostram o número também mostram
+     * a parcela de módulos à parte, e um método que junta as duas escondia
+     * justamente a divisão que elas precisam exibir.
      */
     public function mrrEstimado(): float
     {

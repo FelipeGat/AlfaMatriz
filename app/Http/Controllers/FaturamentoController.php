@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ClienteModulo;
 use App\Models\Cobranca;
 use App\Models\Revenda;
 use App\Models\Sistema;
@@ -25,7 +26,7 @@ class FaturamentoController extends Controller
             ->get();
 
         $preview = $revendas
-            ->map(fn (Revenda $revenda) => $this->painelDaRevenda($revenda))
+            ->map(fn (Revenda $revenda) => $this->painelDaRevenda($revenda, $competencia))
             ->filter(fn ($painel) => $painel['linhas']->isNotEmpty())
             ->values();
 
@@ -69,7 +70,7 @@ class FaturamentoController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function painelDaRevenda(Revenda $revenda): array
+    private function painelDaRevenda(Revenda $revenda, string $competencia): array
     {
         $sistemas = Sistema::where('ativo', true)
             ->whereHas('clientes', fn ($q) => $q->where('revenda_id', $revenda->id)
@@ -78,14 +79,24 @@ class FaturamentoController extends Controller
             ->orderBy('nome')
             ->get();
 
-        $linhas = $sistemas->map(function (Sistema $sistema) use ($revenda) {
-            $unidades = $sistema->clientes()
+        $linhas = $sistemas->map(function (Sistema $sistema) use ($revenda, $competencia) {
+            $clientes = $sistema->clientes()
                 ->where('revenda_id', $revenda->id)
                 ->where('clientes.ativo', true)
                 ->where('cliente_sistema.ativo', true)
-                ->count();
+                ->pluck('clientes.id');
+
+            $unidades = $clientes->count();
 
             $tier = $sistema->tierParaVolume($unidades, $revenda->id);
+            $licenca = $tier?->calcularMensalidade($unidades);
+
+            // Módulos entram na linha como segunda parcela, igual ao motor que
+            // gera a cobrança. A prévia somava só a licença e prometia um total
+            // menor do que o "Gerar" ia produzir — numa tela cuja razão de
+            // existir é ser auditável ANTES de gerar.
+            $modulos = (float) ClienteModulo::vigentesNaCompetencia($sistema->id, $clientes, $competencia)
+                ->sum('valor_mensal');
 
             return [
                 'sistema' => $sistema->nome,
@@ -93,8 +104,10 @@ class FaturamentoController extends Controller
                 'unidade_cobranca' => $sistema->unidade_cobranca,
                 'tier' => $tier?->nome,
                 'tipo_tier' => $this->tipoDoTier($tier),
-                'calculo' => $this->calculo($tier, $unidades),
-                'valor' => $tier?->calcularMensalidade($unidades),
+                'calculo' => $this->calculo($tier, $unidades, $modulos),
+                'valor' => $tier === null ? null : $licenca + $modulos,
+                'valor_licenca' => $licenca,
+                'valor_modulos' => $modulos,
                 'sem_tier' => $tier === null,
             ];
         });
@@ -123,7 +136,7 @@ class FaturamentoController extends Controller
      * A conta em uma frase — a coluna que torna o valor auditável antes de
      * virar cobrança.
      */
-    private function calculo(?\App\Models\PrecoAtacado $tier, int $unidades): ?string
+    private function calculo(?\App\Models\PrecoAtacado $tier, int $unidades, float $modulos = 0.0): ?string
     {
         if (! $tier) {
             return null;
@@ -132,18 +145,24 @@ class FaturamentoController extends Controller
         $inclusas = $tier->unidades_inclusas ?? 0;
         $emReais = fn ($v) => 'R$ '.number_format((float) $v, 2, ',', '.');
 
+        // Os módulos aparecem como parcela própria da conta: o valor da linha
+        // deixa de ser conferível se a soma tiver uma parte que a frase não diz.
+        $comModulos = fn (string $conta) => $modulos > 0
+            ? $conta.' + módulos '.$emReais($modulos)
+            : $conta;
+
         if ($unidades <= $inclusas || $tier->valor_excedente_unidade === null) {
-            return $tier->limite_unidades
+            return $comModulos($tier->limite_unidades
                 ? 'fixo · teto '.number_format($tier->limite_unidades, 0, ',', '.')
-                : 'fixo do tier';
+                : 'fixo do tier');
         }
 
         $excedente = $unidades - $inclusas;
         $conta = $excedente.' × '.$emReais($tier->valor_excedente_unidade);
 
-        return $tier->preco_base > 0
+        return $comModulos($tier->preco_base > 0
             ? $emReais($tier->preco_base).' + '.$conta
-            : $conta;
+            : $conta);
     }
 
     public function gerar(Request $request, FaturamentoService $service)
