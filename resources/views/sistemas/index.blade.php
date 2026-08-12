@@ -127,5 +127,84 @@
         @if ($sistemas->hasPages())
             <div class="mt-3">{{ $sistemas->links() }}</div>
         @endif
+
+        {{-- A ficha do sistema selecionado.
+             O controller montava estes números desde sempre e a tela nunca os
+             desenhou. A seleção já viajava na URL (?sistema=7), inclusive com
+             teste garantindo que o link abre o sistema certo: faltava só o
+             painel do outro lado. --}}
+        @if ($detalhe)
+            <x-painel :titulo="$selecionado->nome"
+                      :sub="$selecionado->ativo ? 'ficha do produto' : 'produto desativado'">
+                <div class="grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))">
+                    <div>
+                        <dl class="space-y-2.5">
+                            @foreach ([
+                                ['Clientes ativos', number_format($detalhe['clientes_ativos'], 0, ',', '.')],
+                                ['MRR de licença', 'R$ '.number_format($detalhe['mrr'], 2, ',', '.')],
+                                ['Preço médio por licença', 'R$ '.number_format($detalhe['preco_medio'], 2, ',', '.')],
+                                ['Participação na base', number_format($detalhe['participacao'], 1, ',', '.').'%'],
+                            ] as [$rotulo, $valor])
+                                <div class="flex items-baseline justify-between gap-3">
+                                    <dt class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">{{ $rotulo }}</dt>
+                                    <dd class="font-mono text-[13px] text-ink tabular whitespace-nowrap">{{ $valor }}</dd>
+                                </div>
+                            @endforeach
+                        </dl>
+
+                        {{-- Produto desativado vale zero de propósito: o
+                             fechamento não o fatura. Sem esta linha, o R$ 0,00
+                             acima pareceria falta de tier. --}}
+                        @unless ($selecionado->ativo)
+                            <p class="mt-3 text-[12px] text-ink-mute">
+                                Desativado não entra no faturamento — por isso o MRR é zero.
+                            </p>
+                        @endunless
+                    </div>
+
+                    <div>
+                        <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Faixa de atacado vigente</p>
+                        @if ($detalhe['tier_vigente'])
+                            <p class="mt-1.5 text-[13.5px] text-ink">{{ $detalhe['tier_vigente']->nome }}</p>
+                            <p class="font-mono text-[11.5px] text-ink-mute">
+                                R$ {{ number_format($detalhe['tier_vigente']->preco_base, 2, ',', '.') }}
+                                @if ($detalhe['tier_vigente']->unidades_inclusas)
+                                    · {{ $detalhe['tier_vigente']->unidades_inclusas }} inclusas
+                                @endif
+                            </p>
+                        @else
+                            <p class="mt-1.5 text-[13px]" style="color: rgb(var(--warn))">
+                                Nenhuma faixa comporta {{ $detalhe['clientes_ativos'] }} unidades — fica fora do faturamento.
+                            </p>
+                        @endif
+
+                        <p class="mt-3 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                            {{ $detalhe['tiers']->count() }} {{ $detalhe['tiers']->count() === 1 ? 'faixa cadastrada' : 'faixas cadastradas' }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Quem revende</p>
+                        @forelse ($detalhe['top_revendas'] as $linha)
+                            <div class="mt-1.5 flex items-baseline justify-between gap-3">
+                                <span class="min-w-0 truncate text-[13px] text-ink-dim">{{ $linha['nome'] }}</span>
+                                <span class="shrink-0 font-mono text-[12px] text-ink-mute whitespace-nowrap">
+                                    {{ $linha['clientes'] }} · R$ {{ number_format($linha['mrr'], 2, ',', '.') }}
+                                </span>
+                            </div>
+                        @empty
+                            <p class="mt-1.5 text-[13px] text-ink-mute">Nenhum cliente ativo neste sistema.</p>
+                        @endforelse
+
+                        @if ($detalhe['outras_revendas'] > 0)
+                            <p class="mt-2 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                                + {{ $detalhe['outras_revendas'] }} {{ $detalhe['outras_revendas'] === 1 ? 'outra' : 'outras' }}
+                                · {{ $detalhe['clientes_em_outras'] }} clientes
+                            </p>
+                        @endif
+                    </div>
+                </div>
+            </x-painel>
+        @endif
     </div>
 </x-app-layout>

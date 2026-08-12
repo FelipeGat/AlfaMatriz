@@ -31,6 +31,17 @@
         <x-input-error :messages="$errors->get('contato_telefone')" class="mt-2" />
     </div>
 
+    <div>
+        {{-- Desde quando a revenda existe. Em branco, vale o dia em que a linha
+             foi criada — que na base importada é o dia da migração, igual para
+             todo mundo. Preencher é o que faz a curva de crescimento contar a
+             história real. --}}
+        <x-input-label for="data_cadastro" value="Desde quando é revenda" />
+        <x-text-input id="data_cadastro" name="data_cadastro" type="date" class="mt-1 block w-full"
+                      value="{{ old('data_cadastro', isset($revenda) ? $revenda->data_cadastro?->toDateString() : now()->toDateString()) }}" />
+        <x-input-error :messages="$errors->get('data_cadastro')" class="mt-2" />
+    </div>
+
     <div class="flex items-center mt-6">
         <label class="inline-flex items-center">
             <input type="checkbox" name="ativo" value="1" class="rounded border-line text-brand" {{ old('ativo', $revenda->ativo ?? true) ? 'checked' : '' }}>

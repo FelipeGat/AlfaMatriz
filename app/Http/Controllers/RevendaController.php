@@ -369,6 +369,10 @@ class RevendaController extends Controller
             'contato_nome' => 'nullable|string|max:255',
             'contato_email' => 'nullable|email|max:255',
             'contato_telefone' => 'nullable|string|max:30',
+            // Desde quando a revenda existe, que não é o dia em que a linha
+            // nasceu aqui. É o que permite a curva de crescimento dizer a
+            // verdade sobre a base importada.
+            'data_cadastro' => 'nullable|date',
         ]);
     }
 }

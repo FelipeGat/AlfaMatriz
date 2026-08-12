@@ -1,5 +1,40 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 12/08/2026 — A ficha do produto, e curvas que só aparecem quando têm o que dizer
+
+### Novidades
+
+- **A tela de Sistemas ganhou a ficha do produto selecionado**, embaixo da
+  lista: clientes ativos, receita de licença, preço médio, participação na
+  base, a faixa de atacado que se aplica hoje e quais revendas o revendem. Os
+  números já eram apurados a cada abertura da tela — faltava a tela mostrá-los.
+  Clicar num produto da lista abre a ficha dele, e o endereço da página guarda a
+  escolha: dá para mandar o link de um produto específico para alguém.
+- **Agora dá para registrar desde quando uma revenda ou um produto existe.** É
+  um campo novo nos dois cadastros. Até aqui o sistema só sabia o dia em que o
+  registro foi criado aqui dentro — que, para tudo que veio na importação, é o
+  mesmo dia para todo mundo.
+- **Os cards do painel Comercial ganharam minitendência**, a linha miúda que
+  mostra o caminho dos últimos meses.
+
+### Sobre as minitendências
+
+Uma curva só aparece quando tem o que dizer. Se tudo o que está na base entrou
+no mesmo mês — o retrato de quem acabou de importar o cadastro —, a linha seria
+um degrau afirmando "tudo apareceu de uma vez", o que é verdade sobre o dia da
+importação e mentira sobre a história do negócio. Nesse caso o card mostra só o
+número.
+
+Conforme as datas forem sendo preenchidas, ou conforme entrarem cadastros
+novos ao longo dos meses, a curva aparece sozinha.
+
+A do MRR mostra o que foi **faturado** em cada fechamento, e precisa de pelo
+menos dois para existir: mês sem fechamento não vira um ponto zero, porque zero
+diria "faturamos nada" quando o que houve foi "ninguém fechou o mês".
+
+> A publicação inclui uma atualização do banco (a data de cadastro de revendas e
+> produtos). Nenhum dado existente é alterado.
+
 ## AlfaMatriz — 12/08/2026 — A tela de Sistemas mostra o resumo que já calculava
 
 ### Novidades

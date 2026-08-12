@@ -4,7 +4,11 @@
 
     <div class="space-y-4">
         <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+            {{-- Cada curva vem vazia quando não tem o que dizer, e o card
+                 simplesmente não desenha a linha. Ver
+                 `IndicadoresService::serieDeEntrada()` para quando isso vale. --}}
             <x-kpi-card rotulo="Sistemas ativos" :valor="number_format($totalSistemasAtivos, 0, ',', '.')"
+                        :serie="$serieSistemas"
                         acento="accent" icone="cube-outline" />
             {{-- O único card desta tela com tendência: é o único indicador cujo
                  histórico o banco guarda (a data de cadastro do cliente). --}}
@@ -14,8 +18,15 @@
                         :serie="$serieClientes"
                         acento="brand" icone="users" />
             <x-kpi-card rotulo="Revendas ativas" :valor="number_format($totalRevendasAtivas, 0, ',', '.')"
+                        :serie="$serieRevendas"
                         acento="amber" icone="building" />
+            {{-- A curva do MRR é o FATURADO de cada fechamento — a única
+                 história que existe. O número grande é o estimado de hoje, que
+                 não tem foto mensal. Por isso o delta diz de onde vem a linha:
+                 sem essa palavra, seriam duas medidas no mesmo card sem aviso. --}}
             <x-kpi-card rotulo="MRR de atacado" :valor="'R$ '.number_format($mrrEstimado, 2, ',', '.')"
+                        :delta="count($serieMrr) > 1 ? 'linha: fechamentos anteriores' : null"
+                        :serie="$serieMrr"
                         acento="chart-out" icone="repeat" />
         </div>
 

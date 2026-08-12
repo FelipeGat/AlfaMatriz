@@ -72,13 +72,12 @@ class SistemaController extends Controller
 
         $porRevenda = $clientes->groupBy('revenda_id');
 
-        $mrr = 0.0;
-        foreach ($porRevenda as $revendaId => $doRevenda) {
-            // Mesma normalização do CentroControleController: venda direta chega
-            // como chave vazia e precisa virar null antes do tier.
-            $tier = $sistema->tierParaVolume($doRevenda->count(), $sistema->chaveDeRevenda($revendaId));
-            $mrr += $tier?->calcularMensalidade($doRevenda->count()) ?? 0;
-        }
+        // O MRR e a abertura por revenda saem da MESMA origem, no modelo. Este
+        // laço já existiu aqui — era a quarta cópia da conta de tier no
+        // código, e a única sem a guarda de produto desativado: o painel
+        // mostraria receita de um sistema que o resto do sistema dá como zero.
+        $mrrPorRevenda = $sistema->mrrPorRevenda();
+        $mrr = (float) $mrrPorRevenda->sum();
 
         $revendas = Revenda::whereIn('id', $porRevenda->keys()->filter())->get()->keyBy('id');
 
@@ -86,11 +85,14 @@ class SistemaController extends Controller
             ->map(fn ($doRevenda, $revendaId) => [
                 'nome' => $revendas[$revendaId]->nome ?? 'Venda direta',
                 'clientes' => $doRevenda->count(),
+                'mrr' => (float) ($mrrPorRevenda[$revendaId] ?? 0),
             ])
             ->sortByDesc('clientes')
             ->values();
 
-        $totalClientesTodosSistemas = max($todos->sum('clientes_count'), 1);
+        // Participação sobre o catálogo ATIVO, que é o que o resumo do topo
+        // conta: medir contra os desativados encolheria a fatia de todo mundo.
+        $totalClientesTodosSistemas = max($todos->where('ativo', true)->sum('clientes_count'), 1);
 
         return [
             'clientes_ativos' => $clientes->count(),
@@ -124,6 +126,10 @@ class SistemaController extends Controller
             'unidade_cobranca' => 'required|string|max:255',
             'base_url' => 'nullable|url|max:255',
             'token' => 'nullable|string',
+            // Desde quando o produto está no catálogo — ver a migration
+            // `data_de_cadastro_de_revenda_e_sistema` para o porquê de não ser
+            // o `created_at`.
+            'data_cadastro' => 'nullable|date',
         ]);
 
         $data['ativo'] = $request->boolean('ativo');

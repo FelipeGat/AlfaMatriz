@@ -36,6 +36,15 @@
                             <x-text-input id="unidade_cobranca" name="unidade_cobranca" type="text" class="mt-1 block w-full" value="{{ old('unidade_cobranca', $sistema->unidade_cobranca) }}" required />
                             <x-input-error :messages="$errors->get('unidade_cobranca')" class="mt-2" />
                         </div>
+                        <div>
+                            {{-- Em branco, vale o dia em que a linha foi criada —
+                                 que na base importada é o dia da migração, igual
+                                 para todo o catálogo. --}}
+                            <x-input-label for="data_cadastro" value="No catálogo desde" />
+                            <x-text-input id="data_cadastro" name="data_cadastro" type="date" class="mt-1 block w-full"
+                                          value="{{ old('data_cadastro', $sistema->data_cadastro?->toDateString()) }}" />
+                            <x-input-error :messages="$errors->get('data_cadastro')" class="mt-2" />
+                        </div>
                         <div class="flex items-center mt-6">
                             <label class="inline-flex items-center">
                                 <input type="checkbox" name="ativo" value="1" class="rounded border-white/20 text-brand shadow-sm" {{ old('ativo', $sistema->ativo) ? 'checked' : '' }}>

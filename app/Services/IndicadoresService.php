@@ -6,6 +6,7 @@ use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\ContaFinanceira;
 use App\Models\ContaPagar;
+use App\Models\FaturamentoSnapshot;
 use App\Models\Revenda;
 use App\Models\Sistema;
 
@@ -75,13 +76,84 @@ class IndicadoresService
      */
     public function serieDeClientesAtivos(int $meses): array
     {
+        return $this->serieDeEntrada(fn () => Cliente::where('ativo', true), Cliente::expressaoDeEntrada(), $meses);
+    }
+
+    /** A mesma curva, para revendas. @return list<float> */
+    public function serieDeRevendasAtivas(int $meses): array
+    {
+        return $this->serieDeEntrada(fn () => Revenda::where('ativo', true), Revenda::expressaoDeEntrada(), $meses);
+    }
+
+    /** A mesma curva, para o catálogo de produtos. @return list<float> */
+    public function serieDeSistemasAtivos(int $meses): array
+    {
+        return $this->serieDeEntrada(fn () => Sistema::where('ativo', true), Sistema::expressaoDeEntrada(), $meses);
+    }
+
+    /**
+     * Quantos registros ativos existiam ao fim de cada mês, pela data de
+     * entrada — do mais antigo ao mais recente.
+     *
+     * Devolve lista VAZIA quando todas as entradas caem num mês só. É o caso
+     * da base recém-importada: a curva viraria `[0,0,0,0,0,N]`, que afirma
+     * "tudo apareceu de uma vez" — falso sobre a história e verdadeiro apenas
+     * sobre o dia da migração. Card sem curva é honesto; curva inventada, não.
+     *
+     * A regra se cura sozinha: assim que as entradas se espalharem por mais de
+     * um mês — por cadastro novo ou por alguém preencher a data que se sabe —
+     * a curva aparece.
+     *
+     * @param  \Closure():\Illuminate\Database\Eloquent\Builder  $base
+     * @return list<float>
+     */
+    private function serieDeEntrada(\Closure $base, string $expressao, int $meses): array
+    {
+        // `SUBSTR(data, 1, 7)` recorta o "AAAA-MM" e funciona nos dois bancos.
+        // `DATE_FORMAT` seria mais expressivo e é só do MySQL: a suíte roda em
+        // SQLite, e a tela inteira devolvia 500 no teste enquanto passava no
+        // navegador — o tipo de erro que só aparece depois de publicado.
+        $mesesComEntrada = (int) $base()
+            ->selectRaw("COUNT(DISTINCT SUBSTR($expressao, 1, 7)) as n")
+            ->value('n');
+
+        if ($mesesComEntrada <= 1) {
+            return [];
+        }
+
         return collect(range($meses - 1, 0))
-            ->map(fn (int $atras) => (float) Cliente::where('ativo', true)
-                ->whereRaw(Cliente::expressaoDeEntrada().' <= ?', [
+            ->map(fn (int $atras) => (float) $base()
+                ->whereRaw($expressao.' <= ?', [
                     now()->copy()->subMonths($atras)->endOfMonth()->toDateString(),
                 ])
                 ->count())
             ->all();
+    }
+
+    /**
+     * O atacado efetivamente faturado, um ponto por fechamento gravado.
+     *
+     * É a única história real do MRR: não existe foto mensal do estimado, e o
+     * estimado é sempre a foto de HOJE. Mês sem fechamento não vira ponto zero
+     * — zero diria "faturamos nada", quando o que houve foi "ninguém fechou o
+     * mês". Com menos de dois fechamentos não há tendência, e a curva não sai.
+     *
+     * Cobre só o que vai para revenda, que é o que o fechamento consolida.
+     *
+     * @return list<float>
+     */
+    public function serieDeAtacadoFaturado(int $competencias): array
+    {
+        $porCompetencia = FaturamentoSnapshot::selectRaw('competencia, SUM(total) as total')
+            ->groupBy('competencia')
+            ->orderBy('competencia')
+            ->pluck('total', 'competencia');
+
+        if ($porCompetencia->count() < 2) {
+            return [];
+        }
+
+        return $porCompetencia->take(-$competencias)->map(fn ($t) => (float) $t)->values()->all();
     }
 
     public function revendasAtivas(): int

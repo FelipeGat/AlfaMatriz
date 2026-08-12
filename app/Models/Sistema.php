@@ -14,7 +14,7 @@ class Sistema extends Model
 
     protected $fillable = [
         'nome', 'slug', 'categoria', 'unidade_cobranca', 'base_url', 'token', 'ativo',
-        'capacidades', 'versao', 'responsavel', 'roadmap',
+        'capacidades', 'versao', 'responsavel', 'roadmap', 'data_cadastro',
     ];
 
     protected function casts(): array
@@ -23,7 +23,23 @@ class Sistema extends Model
             'ativo' => 'boolean',
             'token' => 'encrypted',
             'capacidades' => 'array',
+            'data_cadastro' => 'date',
         ];
+    }
+
+    /**
+     * O dia em que o produto entrou no catálogo — mesma regra de
+     * `Cliente::data_entrada`, pelo mesmo motivo.
+     */
+    public function getDataEntradaAttribute(): ?\Illuminate\Support\Carbon
+    {
+        return $this->data_cadastro ?? $this->created_at;
+    }
+
+    /** A mesma regra em SQL, para filtro e ordenação. */
+    public static function expressaoDeEntrada(): string
+    {
+        return 'COALESCE(sistemas.data_cadastro, DATE(sistemas.created_at))';
     }
 
     /**
@@ -154,29 +170,42 @@ class Sistema extends Model
      */
     public function mrrEstimado(): float
     {
-        // Mesma guarda de `mrrModulos()`, pelo mesmo motivo: produto desativado
-        // fica fora do fechamento, logo não vale receita nenhuma.
+        return (float) $this->mrrPorRevenda()->sum();
+    }
+
+    /**
+     * O MRR de licença aberto por revenda. A chave é o id da revenda; a venda
+     * direta chega do `groupBy` como chave vazia, que `chaveDeRevenda()`
+     * normaliza para o tier padrão.
+     *
+     * É a origem tanto do total quanto da abertura no painel de detalhe da
+     * tela de Sistemas. Enquanto cada um fazia o próprio laço, os dois podiam
+     * discordar — e a cópia do painel sequer tinha a guarda de produto
+     * desativado, então ele mostraria receita de um sistema que o resto do
+     * sistema já dá como zero.
+     *
+     * Produto desativado devolve coleção vazia: ele fica fora do fechamento,
+     * logo não vale receita nenhuma.
+     *
+     * @return \Illuminate\Support\Collection<int|string, float>
+     */
+    public function mrrPorRevenda(): \Illuminate\Support\Collection
+    {
         if (! $this->ativo) {
-            return 0.0;
+            return collect();
         }
 
-        $porRevenda = $this->clientes()
+        return $this->clientes()
             ->where('clientes.ativo', true)
             ->where('cliente_sistema.ativo', true)
             ->get(['clientes.id', 'clientes.revenda_id'])
-            ->groupBy('revenda_id');
+            ->groupBy('revenda_id')
+            ->map(function ($clientes, $revendaId) {
+                $qtd = $clientes->count();
+                $tier = $this->tierParaVolume($qtd, $this->chaveDeRevenda($revendaId));
 
-        $total = 0;
-        foreach ($porRevenda as $revendaId => $clientes) {
-            $qtd = $clientes->count();
-            // `groupBy` devolve a chave como texto, e o cliente de venda
-            // direta (sem revenda) vira a chave vazia — que não é null. Sem
-            // esta normalização, uma única venda direta derruba o cálculo.
-            $tier = $this->tierParaVolume($qtd, $this->chaveDeRevenda($revendaId));
-            $total += $tier?->calcularMensalidade($qtd) ?? 0;
-        }
-
-        return $total;
+                return (float) ($tier?->calcularMensalidade($qtd) ?? 0);
+            });
     }
 
     /**

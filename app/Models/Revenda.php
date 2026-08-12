@@ -14,11 +14,31 @@ class Revenda extends Model
 
     protected $fillable = [
         'nome', 'cnpj', 'contato_nome', 'contato_email', 'contato_telefone', 'ativo',
+        'data_cadastro',
     ];
 
     protected function casts(): array
     {
-        return ['ativo' => 'boolean'];
+        return [
+            'ativo' => 'boolean',
+            'data_cadastro' => 'date',
+        ];
+    }
+
+    /**
+     * O dia em que a revenda entrou na base — ver `Cliente::data_entrada`, que
+     * segue a mesma regra e existe pelo mesmo motivo: `created_at` é o dia da
+     * importação para todo mundo de uma vez.
+     */
+    public function getDataEntradaAttribute(): ?\Illuminate\Support\Carbon
+    {
+        return $this->data_cadastro ?? $this->created_at;
+    }
+
+    /** A mesma regra em SQL, para filtro e ordenação. */
+    public static function expressaoDeEntrada(): string
+    {
+        return 'COALESCE(revendas.data_cadastro, DATE(revendas.created_at))';
     }
 
     public function origensExternas(): MorphMany

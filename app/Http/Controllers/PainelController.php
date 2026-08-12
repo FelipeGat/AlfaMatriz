@@ -122,12 +122,11 @@ class PainelController extends Controller
             'brand'
         );
 
-        // Só o card de clientes ganha tendência, e o motivo é o banco: ele é o
-        // único destes quatro cujo histórico existe de verdade (a data de
-        // cadastro do cliente). Revendas e Sistemas só têm `created_at`, que é
-        // o dia da importação para toda a base — uma curva feita dele seria um
-        // degrau, e um degrau inventado é pior que card sem curva. Ver o
-        // relatório da rodada para o que falta para eles terem uma.
+        // As quatro curvas saem do serviço, e cada uma volta VAZIA quando não
+        // tem o que dizer — base cujas entradas caem todas num mês só, ou MRR
+        // sem dois fechamentos para comparar. O card sabe se esconder a linha;
+        // o que ele não pode é desenhar um degrau que afirma "tudo apareceu de
+        // uma vez", que é o que sairia de `created_at` numa base importada.
         $novosClientes = $this->indicadores->novosClientesNoMes();
 
         return view('dashboard-comercial', compact(
@@ -136,6 +135,9 @@ class PainelController extends Controller
             'rankingClientes', 'rankingValor', 'rankingRevendas', 'rankingCategorias'
         ) + [
             'serieClientes' => $this->indicadores->serieDeClientesAtivos(6),
+            'serieSistemas' => $this->indicadores->serieDeSistemasAtivos(6),
+            'serieRevendas' => $this->indicadores->serieDeRevendasAtivas(6),
+            'serieMrr' => $this->indicadores->serieDeAtacadoFaturado(6),
         ]);
     }
 

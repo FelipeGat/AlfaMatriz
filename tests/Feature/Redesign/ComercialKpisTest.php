@@ -3,6 +3,7 @@
 namespace Tests\Feature\Redesign;
 
 use App\Models\Cliente;
+use App\Models\FaturamentoSnapshot;
 use App\Models\PrecoAtacado;
 use App\Models\Revenda;
 use App\Models\Sistema;
@@ -223,21 +224,72 @@ class ComercialKpisTest extends TestCase
     }
 
     /**
-     * @spec:AC-062 Os cards sem histórico no banco não ganham curva inventada.
-     * Sistemas e Revendas só têm `created_at`, que é o dia da importação para
-     * toda a base — uma curva feita dele seria um degrau.
+     * @spec:AC-062 Base cujas entradas caem todas no mesmo mês não ganha
+     * curva. É o retrato da base importada: a linha sairia `[0,0,0,0,0,N]`,
+     * afirmando "tudo apareceu de uma vez" — verdade sobre o dia da migração,
+     * mentira sobre a história do negócio.
      */
-    public function test_cards_sem_historico_nao_ganham_curva(): void
+    public function test_base_toda_do_mesmo_mes_nao_ganha_curva(): void
     {
         $this->sistemaComTier(Sistema::factory()->alfagym()->create(), 100.00);
-        Revenda::create(['nome' => 'Invest', 'ativo' => true]);
+        Revenda::create(['nome' => 'Invest', 'ativo' => true, 'data_cadastro' => now()->toDateString()]);
+        Cliente::create(['nome' => 'Único', 'ativo' => true, 'data_cadastro' => now()->toDateString()]);
 
         $dados = $this->comercial()->original->getData();
 
-        $this->assertArrayHasKey('serieClientes', $dados);
-        foreach (['serieSistemas', 'serieRevendas', 'serieMrr'] as $inventada) {
-            $this->assertArrayNotHasKey($inventada, $dados, "A tela passou a desenhar $inventada sem o banco guardar esse histórico.");
+        foreach (['serieClientes', 'serieSistemas', 'serieRevendas', 'serieMrr'] as $serie) {
+            $this->assertSame([], $dados[$serie], "A curva $serie desenhou um degrau em vez de se calar.");
         }
+    }
+
+    /**
+     * @spec:AC-062 E a regra se cura sozinha: assim que as entradas se
+     * espalham por mais de um mês, a curva aparece — sem ninguém ligar nada.
+     */
+    public function test_a_curva_aparece_quando_as_entradas_se_espalham(): void
+    {
+        // `subMonths(5)` é o primeiro mês da janela de 6 — em `subMonths(4)`
+        // ela nasceria depois do ponto inicial, e o teste mediria outra coisa.
+        Revenda::create(['nome' => 'Antiga', 'ativo' => true, 'data_cadastro' => now()->subMonths(5)->toDateString()]);
+        Revenda::create(['nome' => 'Nova', 'ativo' => true, 'data_cadastro' => now()->toDateString()]);
+
+        $serie = $this->comercial()->original->getData()['serieRevendas'];
+
+        $this->assertCount(6, $serie);
+        $this->assertEqualsWithDelta(1.0, $serie[0], 0.01, 'No começo da janela só existia a revenda antiga.');
+        $this->assertEqualsWithDelta(2.0, $serie[5], 0.01, 'No fim, as duas.');
+    }
+
+    /**
+     * @spec:AC-062 A curva do MRR é a dos fechamentos gravados, e um
+     * fechamento só não é tendência. Mês sem fechamento não vira ponto zero:
+     * zero diria "faturamos nada", quando ninguém fechou o mês.
+     */
+    public function test_a_curva_do_mrr_exige_dois_fechamentos(): void
+    {
+        $sistema = $this->sistemaComTier(Sistema::factory()->alfagym()->create(), 100.00);
+        $revenda = Revenda::create(['nome' => 'Invest', 'ativo' => true]);
+
+        $snapshot = fn (string $competencia, float $total) => FaturamentoSnapshot::create([
+            'competencia' => $competencia,
+            'sistema_id' => $sistema->id,
+            'revenda_id' => $revenda->id,
+            'clientes_ativos' => 1,
+            'valor_unitario' => $total,
+            'valor_licenciamento' => $total,
+            'valor_modulos' => 0,
+            'total' => $total,
+        ]);
+
+        $snapshot(now()->subMonth()->format('Y-m'), 500.00);
+        $this->assertSame([], $this->comercial()->original->getData()['serieMrr'], 'Um fechamento só não é tendência.');
+
+        $snapshot(now()->format('Y-m'), 800.00);
+        $serie = $this->comercial()->original->getData()['serieMrr'];
+
+        $this->assertCount(2, $serie);
+        $this->assertEqualsWithDelta(500.0, $serie[0], 0.01);
+        $this->assertEqualsWithDelta(800.0, $serie[1], 0.01);
     }
 
     /**
