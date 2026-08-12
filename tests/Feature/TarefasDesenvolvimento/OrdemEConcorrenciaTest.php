@@ -35,7 +35,7 @@ class OrdemEConcorrenciaTest extends TestCase
         $tarefa = $this->criarTarefa();
 
         // Alguém já moveu enquanto o menu estava aberto na tela do outro.
-        $tarefa->update(['status' => 'em_testes']);
+        $tarefa->update(['status' => 'em_revisao']);
 
         $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
             'status' => 'backlog',
@@ -43,13 +43,14 @@ class OrdemEConcorrenciaTest extends TestCase
         ])->assertSessionHas('erro');
 
         $this->assertStringContainsString('Alguém já moveu esta tarefa', session('erro'));
-        $this->assertStringContainsString('Em testes', session('erro'));
-        $this->assertSame('em_testes', $tarefa->fresh()->status);
+        $this->assertStringContainsString('Em revisão', session('erro'));
+        $this->assertSame('em_revisao', $tarefa->fresh()->status);
 
         // Com a etapa de origem certa, o movimento passa.
         $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
             'status' => 'em_desenvolvimento',
-            'de_status' => 'em_testes',
+            'de_status' => 'em_revisao',
+            'motivo' => 'Falta tratar o retorno vazio da API.',
         ])->assertSessionMissing('erro');
 
         $this->assertSame('em_desenvolvimento', $tarefa->fresh()->status);
@@ -109,7 +110,7 @@ class OrdemEConcorrenciaTest extends TestCase
         $this->assertSame(['Primeira', 'Segunda', 'Recém-chegada'], $coluna);
 
         // E a posição não viaja com o card para outra coluna.
-        $this->actingAs($usuario)->post(route('tarefas.mover', $primeira), ['status' => 'em_testes']);
+        $this->actingAs($usuario)->post(route('tarefas.mover', $primeira), ['status' => 'em_revisao']);
 
         $this->assertNull($primeira->fresh()->ordem);
     }
@@ -125,7 +126,7 @@ class OrdemEConcorrenciaTest extends TestCase
         $admin = User::factory()->create();
 
         $daColuna = $this->criarTarefa(['titulo' => 'Desta coluna']);
-        $deOutra = $this->criarTarefa(['titulo' => 'De outra', 'status' => 'em_testes']);
+        $deOutra = $this->criarTarefa(['titulo' => 'De outra', 'status' => 'em_revisao']);
 
         $this->actingAs($membro)->post(route('tarefas.posicionar'), [
             'status' => 'em_desenvolvimento',

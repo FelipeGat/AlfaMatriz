@@ -300,8 +300,8 @@
  * por uma tira de chips, entrega a mesma informação numa leitura que cabe.
  *
  * Em CSS, e não em `x-show`: a regra precisa valer no primeiro pixel pintado.
- * Com JavaScript decidindo, o celular mostraria as cinco colunas por um quadro
- * antes de esconder quatro — e esse piscar é pior que a rolagem que ele veio
+ * Com JavaScript decidindo, o celular mostraria as seis colunas por um quadro
+ * antes de esconder cinco — e esse piscar é pior que a rolagem que ele veio
  * consertar.
  */
 @media (max-width: 1023px) {
@@ -312,8 +312,9 @@
     [data-quadro].etapa-aberta section[data-status='aberta'],
     [data-quadro].etapa-backlog section[data-status='backlog'],
     [data-quadro].etapa-em_desenvolvimento section[data-status='em_desenvolvimento'],
-    [data-quadro].etapa-em_testes section[data-status='em_testes'],
-    [data-quadro].etapa-ajustes_necessarios section[data-status='ajustes_necessarios'] {
+    [data-quadro].etapa-em_revisao section[data-status='em_revisao'],
+    [data-quadro].etapa-em_staging section[data-status='em_staging'],
+    [data-quadro].etapa-pronta_producao section[data-status='pronta_producao'] {
         display: flex;
     }
 

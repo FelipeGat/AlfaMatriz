@@ -59,6 +59,8 @@
             <div x-show="gavetaAberta" x-cloak @click="gavetaAberta = false"
                  class="fixed inset-0 z-30 bg-black/60 lg:hidden" x-transition.opacity></div>
 
+            @include('layouts.notificacoes')
+
             <div class="flex-1 flex flex-col min-w-0">
                 <header class="sticky top-0 z-20 h-topbar shrink-0 flex items-center gap-4 bg-head border-b border-line px-4 sm:px-7">
                     {{--

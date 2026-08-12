@@ -83,24 +83,63 @@ class FluxoTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-087 Devolver para ajustes exige dizer o que corrigir.
+     * @spec:AC-087 Devolver de um portão para a bancada exige dizer o que corrigir.
      */
-    public function test_devolver_para_ajustes_exige_motivo(): void
+    public function test_devolver_para_a_bancada_exige_motivo(): void
     {
-        $tarefa = $this->criarTarefa(['status' => 'em_testes']);
+        $tarefa = $this->criarTarefa(['status' => 'em_revisao']);
 
         try {
-            $this->fluxo->mover($tarefa, 'ajustes_necessarios');
+            $this->fluxo->mover($tarefa, 'em_desenvolvimento');
             $this->fail('Esperava recusa por falta de descrição.');
         } catch (\RuntimeException $e) {
-            $this->assertStringContainsString('descrever o que precisa ser corrigido', $e->getMessage());
+            $this->assertStringContainsString('o que precisa ser corrigido', $e->getMessage());
         }
 
-        $this->assertSame('em_testes', $tarefa->fresh()->status);
+        $this->assertSame('em_revisao', $tarefa->fresh()->status);
 
-        $movida = $this->fluxo->mover($tarefa, 'ajustes_necessarios', ['motivo' => 'Falhou no cenário de CPF duplicado.']);
+        $movida = $this->fluxo->mover($tarefa, 'em_desenvolvimento', ['motivo' => 'Falhou no cenário de CPF duplicado.']);
 
-        $this->assertSame('ajustes_necessarios', $movida->status);
+        $this->assertSame('em_desenvolvimento', $movida->status);
+
+        // A devolução não é um recuo qualquer: ela carimba de qual portão a
+        // tarefa voltou, que é o que a coluna única de Ajustes achatava.
+        $this->assertSame('em_revisao', $movida->retorno_de);
+        $this->assertSame('Voltou da revisão', $movida->rotuloDoRetorno());
+        $this->assertSame('Falhou no cenário de CPF duplicado.', $movida->retorno_motivo);
+    }
+
+    /**
+     * @spec:AC-087 Voltar do Backlog para a bancada não é reprovação e não pede motivo.
+     */
+    public function test_comecar_a_trabalhar_nao_pede_motivo(): void
+    {
+        $responsavel = User::factory()->create();
+        $tarefa = $this->criarTarefa([
+            'status' => 'backlog',
+            'responsavel_id' => $responsavel->id,
+        ]);
+
+        $movida = $this->fluxo->mover($tarefa, 'em_desenvolvimento');
+
+        $this->assertSame('em_desenvolvimento', $movida->status);
+        $this->assertNull($movida->retorno_de);
+    }
+
+    /**
+     * @spec:AC-087 Andar para frente apaga a tarja de retorno.
+     */
+    public function test_a_tarja_de_retorno_some_quando_a_tarefa_anda(): void
+    {
+        $tarefa = $this->criarTarefa(['status' => 'em_staging']);
+
+        $devolvida = $this->fluxo->mover($tarefa, 'em_desenvolvimento', ['motivo' => 'Quebrou ao subir.']);
+        $this->assertSame('em_staging', $devolvida->retorno_de);
+
+        $seguinte = $this->fluxo->mover($devolvida, 'em_revisao');
+
+        $this->assertNull($seguinte->retorno_de);
+        $this->assertNull($seguinte->retorno_motivo);
     }
 
     /**
@@ -125,17 +164,17 @@ class FluxoTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-089 Concluir exige relatório de teste aprovado.
+     * @spec:AC-089 Liberar para a fila da produção exige a validação do staging.
      */
-    public function test_concluir_exige_relatorio_de_teste_aprovado(): void
+    public function test_liberar_para_producao_exige_validacao_do_staging(): void
     {
-        $tarefa = $this->criarTarefa(['status' => 'em_testes']);
+        $tarefa = $this->criarTarefa(['status' => 'em_staging']);
 
         try {
-            $this->fluxo->mover($tarefa, 'concluida');
-            $this->fail('Esperava recusa por falta de relatório de teste.');
+            $this->fluxo->mover($tarefa, 'pronta_producao');
+            $this->fail('Esperava recusa por falta de validação.');
         } catch (\RuntimeException $e) {
-            $this->assertStringContainsString('relatório de teste aprovado', $e->getMessage());
+            $this->assertStringContainsString('validar o staging', $e->getMessage());
         }
 
         TarefaRelatorioTeste::create([
@@ -145,13 +184,13 @@ class FluxoTarefaTest extends TestCase
         ]);
 
         try {
-            $this->fluxo->mover($tarefa, 'concluida');
-            $this->fail('Esperava recusa: o último relatório está reprovado.');
+            $this->fluxo->mover($tarefa, 'pronta_producao');
+            $this->fail('Esperava recusa: a última validação está reprovada.');
         } catch (\RuntimeException $e) {
-            $this->assertStringContainsString('relatório de teste aprovado', $e->getMessage());
+            $this->assertStringContainsString('validar o staging', $e->getMessage());
         }
 
-        $this->assertSame('em_testes', $tarefa->fresh()->status);
+        $this->assertSame('em_staging', $tarefa->fresh()->status);
 
         TarefaRelatorioTeste::create([
             'tarefa_id' => $tarefa->id,
@@ -159,9 +198,9 @@ class FluxoTarefaTest extends TestCase
             'notas' => 'Tudo certo no reteste.',
         ]);
 
-        $movida = $this->fluxo->mover($tarefa, 'concluida');
+        $movida = $this->fluxo->mover($tarefa, 'pronta_producao');
 
-        $this->assertSame('concluida', $movida->status);
+        $this->assertSame('pronta_producao', $movida->status);
     }
 
     /**
@@ -200,7 +239,7 @@ class FluxoTarefaTest extends TestCase
         $this->fluxo->mover($tarefa, 'em_desenvolvimento');
 
         Carbon::setTestNow(Carbon::parse('2026-08-10 11:30:00'));
-        $this->fluxo->mover($tarefa, 'em_testes');
+        $this->fluxo->mover($tarefa, 'em_revisao');
         Carbon::setTestNow();
 
         $eventos = $tarefa->eventos()->orderBy('id')->get();
@@ -214,7 +253,7 @@ class FluxoTarefaTest extends TestCase
 
         $segundo = $eventos[1];
         $this->assertSame('em_desenvolvimento', $segundo->de_status);
-        $this->assertSame('em_testes', $segundo->para_status);
+        $this->assertSame('em_revisao', $segundo->para_status);
         $this->assertNull($segundo->saiu_em);
         $this->assertNull($segundo->duracao_segundos);
     }

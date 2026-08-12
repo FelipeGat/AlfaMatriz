@@ -43,10 +43,21 @@
                 </template>
             </select>
 
-            <template x-if="destino === 'ajustes_necessarios'">
-                <textarea name="motivo" rows="2" required placeholder="O que precisa ser corrigido…"
-                          class="w-full text-[12px] rounded-control bg-input border-line text-ink"></textarea>
-            </template>
+            {{-- Devolver para a bancada só cobra motivo quando a tarefa vem de
+                 um portão: aí é reprovação. Do Backlog é só começar a
+                 trabalhar, e um campo obrigatório ali pediria justificativa
+                 para alguém pegar a própria tarefa. --}}
+            @if (in_array($tarefa->status, \App\Models\Tarefa::PORTOES, true))
+                <template x-if="destino === 'em_desenvolvimento'">
+                    <textarea name="motivo" rows="2" required
+                              placeholder="{{ match ($tarefa->status) {
+                                  'em_revisao' => 'O que precisa ser corrigido no PR…',
+                                  'em_staging' => 'O que quebrou no staging · voltar ou corrigir em frente…',
+                                  default => 'O que apareceu antes de subir…',
+                              } }}"
+                              class="w-full text-[12px] rounded-control bg-input border-line text-ink"></textarea>
+                </template>
+            @endif
 
             <template x-if="destino === 'cancelada'">
                 <textarea name="motivo" rows="2" required placeholder="Motivo do cancelamento…"
@@ -61,15 +72,22 @@
                 outras tarefas.
             --}}
             @if ($tarefa->tipo === 'desenvolvimento')
-                <template x-if="destino === 'concluida'">
+                <template x-if="destino === 'pronta_producao'">
                     <div class="space-y-2">
-                        <textarea name="relatorio_notas" rows="2" required placeholder="Notas do relatório de teste…"
+                        <textarea name="relatorio_notas" rows="2" placeholder="O que foi conferido no staging…"
                                   class="w-full text-[12px] rounded-control bg-input border-line text-ink"></textarea>
                         <label class="flex items-center gap-2 text-[11.5px] text-ink-dim">
-                            <input type="checkbox" name="relatorio_aprovado" value="1">
-                            Relatório aprovado
+                            <input type="checkbox" name="relatorio_aprovado" value="1" checked>
+                            Validado no staging
                         </label>
                     </div>
+                </template>
+
+                {{-- Concluída significa EM PRODUÇÃO: a versão é o que liga a
+                     tarefa à tag que o vigia aplicou. --}}
+                <template x-if="destino === 'concluida'">
+                    <input type="text" name="versao_producao" required placeholder="v1.4.2"
+                           class="w-full h-8 py-0 text-[12px] rounded-control bg-input border-line text-ink">
                 </template>
             @endif
 

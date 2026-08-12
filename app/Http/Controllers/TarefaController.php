@@ -34,7 +34,10 @@ class TarefaController extends Controller
         // tarefa para o chip de tempo — sem isso é uma consulta por card.
         // `comentarios.autor` pelo mesmo motivo: o quadro já monta o modal de
         // cada card, e a conversa inteira é impressa dentro dele.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens'])
+        // `perguntaPara` entra porque a tarja de pergunta nomeia quem deve a
+        // resposta — sem ele, cada card com conversa aberta faz a própria
+        // consulta pelo nome.
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara'])
             ->whereIn('status', $emCurso->keys())
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('created_at')
@@ -80,11 +83,83 @@ class TarefaController extends Controller
         // apontaria para cards que não estão na tela.
         $totalBloqueadas = $tarefas->filter->estaBloqueada()->count();
 
+        // Quantas esperam por VOCÊ. Diferente dos outros contadores, este mede
+        // o quadro INTEIRO e não o recorte: ele é caixa de entrada, e uma caixa
+        // de entrada que esconde mensagens porque há um filtro de sistema
+        // ligado deixa de ser caixa de entrada. É também por isso que clicar
+        // nele filtra em vez de rolar até o card.
+        $esperandoVoce = Tarefa::whereIn('status', $emCurso->keys())
+            ->esperandoRespostaDe(auth()->id())
+            ->count();
+
         $raias = $this->raias($request, $tarefas, $emCurso);
 
+        $kpis = $this->kpisDoQuadro($emCurso, $etapas, $totalNoQuadro, $esperandoVoce);
+
         return view('tarefas.index', compact(
-            'tarefas', 'colunas', 'etapas', 'filtros', 'totalNoQuadro', 'totalBloqueadas', 'raias',
+            'tarefas', 'colunas', 'etapas', 'filtros', 'totalNoQuadro', 'totalBloqueadas',
+            'esperandoVoce', 'kpis', 'raias',
         ) + $this->listasDeFiltro());
+    }
+
+    /**
+     * Os quatro números do topo do quadro.
+     *
+     * Eles medem o QUADRO INTEIRO, e não o recorte dos filtros — ao contrário
+     * dos contadores de coluna, que falam do que está na tela. A diferença é de
+     * propósito: um KPI que muda quando alguém filtra por sistema deixa de
+     * responder "como está o trabalho" e passa a responder "como está esta
+     * busca", que é a pergunta que as colunas já respondem logo abaixo.
+     *
+     * "Esperando você" é a terceira camada de aviso da pergunta na revisão,
+     * junto do chip do cabeçalho e do sino: quem abre a tela de Tarefas sem
+     * passar pelo quadro ainda precisa descobrir que a bola está com ele.
+     *
+     * @param  Collection<string, string>  $emCurso
+     * @param  list<array<string, mixed>>  $etapas
+     * @return list<array<string, mixed>>
+     */
+    private function kpisDoQuadro($emCurso, array $etapas, int $totalNoQuadro, int $esperandoVoce): array
+    {
+        $aguardandoTriagem = Tarefa::whereIn('status', $emCurso->keys())
+            ->where('prioridade', 'nao_definida')
+            ->count();
+
+        // "Hoje" e não "nas últimas 24h": o número é lido junto com a data do
+        // dia, e uma janela deslizante faria o mesmo card dizer números
+        // diferentes de manhã e à tarde sem nada ter acontecido.
+        $concluidasHoje = Tarefa::where('status', 'concluida')
+            ->whereHas('eventos', fn ($evento) => $evento
+                ->where('para_status', 'concluida')
+                ->whereDate('entrou_em', today()))
+            ->count();
+
+        $etapasComCarga = collect($etapas)->filter(fn ($etapa) => $etapa['quantidade'] > 0)->count();
+
+        return [
+            [
+                'rotulo' => 'No quadro', 'valor' => $totalNoQuadro, 'acento' => 'accent',
+                'nota' => $etapasComCarga.' etapa'.($etapasComCarga === 1 ? '' : 's').' em curso',
+                'sinal' => 'neutro',
+            ],
+            [
+                'rotulo' => 'Esperando você', 'valor' => $esperandoVoce, 'acento' => 'brand',
+                'nota' => $esperandoVoce === 1 ? 'pergunta na revisão' : 'perguntas na revisão',
+                'sinal' => 'neutro',
+            ],
+            [
+                // Âmbar só quando há o que triar: um card permanentemente
+                // aceso em zero ensina a não olhar para a cor.
+                'rotulo' => 'Aguardando triagem', 'valor' => $aguardandoTriagem,
+                'acento' => $aguardandoTriagem > 0 ? 'warn' : 'accent',
+                'nota' => 'abertas sem prioridade',
+                'sinal' => $aguardandoTriagem > 0 ? 'ruim' : 'neutro',
+            ],
+            [
+                'rotulo' => 'Concluídas hoje', 'valor' => $concluidasHoje, 'acento' => 'good',
+                'nota' => 'foram para o histórico', 'sinal' => $concluidasHoje > 0 ? 'bom' : 'neutro',
+            ],
+        ];
     }
 
     public function store(Request $request)
@@ -384,22 +459,30 @@ class TarefaController extends Controller
             'motivo' => 'nullable|string',
             'relatorio_aprovado' => 'nullable|boolean',
             'relatorio_notas' => 'nullable|string',
+            'versao_producao' => 'nullable|string|max:60',
         ]);
 
-        // A confirmação de "Em testes → Concluída" pede as notas do teste no
-        // próprio movimento (ASM-033): registra o relatório antes de checar a
-        // transição, para que um relatório aprovado agora já libere a mesma
-        // conclusão.
-        if ($data['status'] === 'concluida' && $request->filled('relatorio_notas')) {
+        // A confirmação de "Em staging → Pronta p/ produção" carrega o carimbo
+        // da validação (ASM-033): registra o relatório antes de checar a
+        // transição, para que a validação feita agora já libere o mesmo
+        // movimento. O relatório se prende sozinho ao evento AINDA ABERTO, que
+        // neste instante é o do staging — é dessa passagem que ele fala.
+        //
+        // O texto é opcional e o carimbo não: o que o admin precisa saber antes
+        // de subir a tag é que alguém validou, e a nota é o detalhe de como.
+        if ($data['status'] === 'pronta_producao' && $request->has('relatorio_aprovado')) {
             TarefaRelatorioTeste::create([
                 'tarefa_id' => $tarefa->id,
                 'aprovado' => $request->boolean('relatorio_aprovado'),
-                'notas' => $data['relatorio_notas'],
+                'notas' => $data['relatorio_notas'] ?? null,
             ]);
         }
 
         try {
-            $fluxo->mover($tarefa, $data['status'], ['motivo' => $data['motivo'] ?? null]);
+            $fluxo->mover($tarefa, $data['status'], [
+                'motivo' => $data['motivo'] ?? null,
+                'versao_producao' => $data['versao_producao'] ?? null,
+            ]);
         } catch (\RuntimeException $e) {
             return back()->with('erro', $e->getMessage());
         }
@@ -436,6 +519,38 @@ class TarefaController extends Controller
 
         return redirect()->back(fallback: route('tarefas.index'))
             ->with('status', $tarefa->fresh()->estaBloqueada() ? 'Tarefa bloqueada.' : 'Tarefa destravada.');
+    }
+
+    /**
+     * Pergunta ao outro lado da revisão, ou responde a bola que está com você.
+     *
+     * Uma rota só para os dois sentidos pelo mesmo motivo do bloqueio: na tela
+     * é uma tarja com um botão que alterna conforme de quem é a vez, e dois
+     * caminhos separados abririam a chance de responder o que ninguém perguntou.
+     *
+     * Perguntar e responder NÃO passam por `motivoParaNaoMover`: travar isso não
+     * impede ninguém de trabalhar no que não foi pedido — impede de REGISTRAR, e
+     * o quadro passa a mentir. Quem responde já é conferido pelo ponteiro.
+     */
+    public function conversar(Request $request, Tarefa $tarefa, FluxoTarefaService $fluxo)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $data = $request->validate([
+            'corpo' => 'nullable|string|max:2000',
+        ]);
+
+        $usuario = auth()->user();
+
+        try {
+            $tarefa->esperaRespostaDe($usuario)
+                ? $fluxo->responder($tarefa, $usuario, $data['corpo'] ?? null)
+                : $fluxo->perguntar($tarefa, $usuario, $data['corpo'] ?? null);
+        } catch (\RuntimeException $e) {
+            return back()->with('erro', $e->getMessage());
+        }
+
+        return $this->voltarParaATarefa($tarefa->id);
     }
 
     /**
@@ -722,6 +837,11 @@ class TarefaController extends Controller
             // desenvolvimento" passou a ser uma pergunta que a tela recebe.
             'tipo' => array_key_exists($tipo, Tarefa::TIPOS) ? $tipo : '',
             'desfecho' => in_array($desfecho, Tarefa::STATUS_TERMINAIS, true) ? $desfecho : '',
+            // "Só as que esperam por você" — o mesmo recorte que o chip do
+            // cabeçalho aplica ao ser clicado. Booleano em texto porque todo o
+            // resto dos filtros viaja assim, e um tipo diferente aqui obrigaria
+            // cada leitor a lembrar da exceção.
+            'esperando' => $this->textoDaQuery($request, 'esperando') === '1' ? '1' : '',
         ];
     }
 
@@ -773,7 +893,9 @@ class TarefaController extends Controller
             ->when($filtros['responsavel'] !== '' && $filtros['responsavel'] !== 'sem',
                 fn ($q) => $q->where('responsavel_id', $filtros['responsavel']))
             ->when($filtros['prioridade'] !== '', fn ($q) => $q->where('prioridade', $filtros['prioridade']))
-            ->when($filtros['tipo'] !== '', fn ($q) => $q->where('tipo', $filtros['tipo']));
+            ->when($filtros['tipo'] !== '', fn ($q) => $q->where('tipo', $filtros['tipo']))
+            ->when(($filtros['esperando'] ?? '') === '1',
+                fn ($q) => $q->esperandoRespostaDe(auth()->id()));
     }
 
     /**
@@ -887,9 +1009,11 @@ class TarefaController extends Controller
     {
         return match ($status) {
             'aberta', 'backlog' => 'accent',
-            'em_desenvolvimento', 'em_testes' => 'brand',
-            'ajustes_necessarios' => 'warn',
-            'concluida' => 'good',
+            'em_desenvolvimento', 'em_revisao', 'em_staging' => 'brand',
+            // A porta da produção é chegada, não trabalho em curso: ela ganha o
+            // mesmo tom de Concluída porque, do ponto de vista de quem olha o
+            // quadro, o que está ali já passou por tudo que havia para passar.
+            'pronta_producao', 'concluida' => 'good',
             default => 'line',
         };
     }

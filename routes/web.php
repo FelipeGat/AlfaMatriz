@@ -13,6 +13,7 @@ use App\Http\Controllers\ContaPagarController;
 use App\Http\Controllers\FaturamentoController;
 use App\Http\Controllers\FornecedorController;
 use App\Http\Controllers\LeadController;
+use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\PainelController;
 use App\Http\Controllers\PrecoAtacadoController;
 use App\Http\Controllers\ProdutoController;
@@ -46,6 +47,11 @@ Route::get('/csrf-token', fn () => response()->json(['token' => csrf_token()]))
     ->name('csrf-token');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    // O sino não tem tela: o painel viaja com a sidebar, em todas as telas.
+    // A única ação que chega ao servidor é dar por lido.
+    Route::post('notificacoes/lidas', [NotificacaoController::class, 'marcarLidas'])
+        ->name('notificacoes.lidas');
+
     Route::get('/centro-controle', [CentroControleController::class, 'index'])->name('centro-controle')
         ->middleware('permissao:dashboard');
     Route::get('/dashboard', [PainelController::class, 'index'])->name('dashboard')
@@ -84,6 +90,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // mapa de transições justamente para parar de fingir que era etapa.
     Route::post('tarefas/{tarefa}/bloquear', [TarefaController::class, 'bloquear'])
         ->name('tarefas.bloquear')
+        ->middleware('permissao:tarefas');
+    // Perguntar também não é mover, e não é bloquear: o PR continua aberto e a
+    // tarefa continua no WIP. Rota própria pela mesma razão do bloqueio — o que
+    // muda é de quem é a vez, não onde a tarefa está.
+    Route::post('tarefas/{tarefa}/conversar', [TarefaController::class, 'conversar'])
+        ->name('tarefas.conversar')
         ->middleware('permissao:tarefas');
     // Não há rota de criar comentário: ele viaja no `tarefas.update`, no mesmo
     // envio do cadastro. Corrigir e apagar continuam sendo caminho próprio —

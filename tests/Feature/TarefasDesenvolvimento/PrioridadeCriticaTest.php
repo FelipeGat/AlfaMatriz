@@ -81,9 +81,14 @@ class PrioridadeCriticaTest extends TestCase
             'data-tarefa="'.$critica->id.'"',
             'background: rgb(var(--crit) / var(--tint-alpha))',
         ], false);
+        // O âmbar da prioridade alta é o `amber` do selo, e não o `warn` das
+        // marcas do card. A asserção citava `warn` e passava por acidente: quem
+        // a satisfazia era o contador da coluna Ajustes necessários, que ficava
+        // depois do Backlog no quadro e tinha essa cor. Com a coluna eliminada,
+        // o acaso acabou — e a asserção volta a falar do selo que ela nomeia.
         $resposta->assertSeeInOrder([
             'data-tarefa="'.$alta->id.'"',
-            'background: rgb(var(--warn) / var(--tint-alpha))',
+            'background: rgb(var(--amber) / var(--tint-alpha))',
         ], false);
     }
 }

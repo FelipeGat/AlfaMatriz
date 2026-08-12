@@ -148,7 +148,7 @@ class FiltrosTarefasTest extends TestCase
         $criador = User::factory()->create();
 
         Tarefa::factory()->create([
-            'criado_por_id' => $criador->id, 'titulo' => 'Boleto em curso', 'status' => 'em_testes',
+            'criado_por_id' => $criador->id, 'titulo' => 'Boleto em curso', 'status' => 'em_revisao',
         ]);
         Tarefa::factory()->create([
             'criado_por_id' => $criador->id, 'titulo' => 'Boleto concluido', 'status' => 'concluida',
@@ -321,7 +321,7 @@ class FiltrosTarefasTest extends TestCase
             'criado_por_id' => $criador->id, 'titulo' => 'Boleto encerrado', 'status' => 'cancelada',
         ]);
         Tarefa::factory()->create([
-            'criado_por_id' => $criador->id, 'titulo' => 'Boleto em curso', 'status' => 'em_testes',
+            'criado_por_id' => $criador->id, 'titulo' => 'Boleto em curso', 'status' => 'em_revisao',
         ]);
 
         $resposta = $this->actingAs($usuario)

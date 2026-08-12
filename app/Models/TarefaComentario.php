@@ -17,12 +17,13 @@ class TarefaComentario extends Model
 {
     protected $table = 'tarefa_comentarios';
 
-    protected $fillable = ['tarefa_id', 'autor_id', 'corpo', 'editado_em'];
+    protected $fillable = ['tarefa_id', 'autor_id', 'corpo', 'editado_em', 'pergunta'];
 
     protected function casts(): array
     {
         return [
             'editado_em' => 'datetime',
+            'pergunta' => 'boolean',
         ];
     }
 

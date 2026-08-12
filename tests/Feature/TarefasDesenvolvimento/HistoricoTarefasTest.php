@@ -34,26 +34,25 @@ class HistoricoTarefasTest extends TestCase
         $usuario = User::factory()->create();
         $criador = User::factory()->create();
 
-        $emTestes = Tarefa::factory()->create([
-            'criado_por_id' => $criador->id, 'status' => 'em_testes', 'titulo' => 'Vai concluir',
+        $prontaProducao = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'pronta_producao', 'titulo' => 'Vai concluir',
         ]);
         $recemCancelada = Tarefa::factory()->create([
             'criado_por_id' => $criador->id, 'status' => 'cancelada', 'titulo' => 'Cancelada agora',
         ]);
 
-        // Antes de encerrar, a tarefa em testes está no quadro.
+        // Antes de encerrar, a tarefa na porta da produção está no quadro.
         $resposta = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk();
-        $this->assertContains($emTestes->id, $resposta->viewData('colunas')['em_testes']->pluck('id')->all());
+        $this->assertContains($prontaProducao->id, $resposta->viewData('colunas')['pronta_producao']->pluck('id')->all());
 
         // Cancelada de hoje TAMBÉM não aparece: não é questão de idade.
         $resposta->assertDontSee('Cancelada agora');
         $this->assertArrayNotHasKey('cancelada', $resposta->viewData('colunas')->all());
 
         // Conclui pelo mesmo caminho da tela.
-        $this->actingAs($usuario)->post(route('tarefas.mover', $emTestes), [
+        $this->actingAs($usuario)->post(route('tarefas.mover', $prontaProducao), [
             'status' => 'concluida',
-            'relatorio_notas' => 'Reteste aprovado.',
-            'relatorio_aprovado' => '1',
+            'versao_producao' => 'v1.4.2',
         ])->assertSessionMissing('erro');
 
         $resposta = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk();
@@ -196,15 +195,14 @@ class HistoricoTarefasTest extends TestCase
             'titulo' => 'Webhook de pagamento',
             'resumo' => 'Baixa automática ao receber o retorno do gateway.',
             'prioridade' => 'critica',
-            'status' => 'em_testes',
+            'status' => 'pronta_producao',
         ]);
         $tarefa->forceFill(['created_at' => Carbon::parse('2026-08-10 12:00:00')->subDays(12)])->save();
 
         // Encerra agora: o ciclo é a distância entre a criação e este instante.
         $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
             'status' => 'concluida',
-            'relatorio_notas' => 'Aprovado.',
-            'relatorio_aprovado' => '1',
+            'versao_producao' => 'v1.4.2',
         ])->assertSessionMissing('erro');
 
         $this->assertSame(12 * 86400, $tarefa->fresh()->load('eventos')->duracaoDoCiclo());

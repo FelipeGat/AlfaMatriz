@@ -78,28 +78,29 @@ class MoverTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-087 Devolver para ajustes exige dizer o que corrigir.
+     * @spec:AC-087 Devolver de um portão para a bancada exige dizer o que corrigir.
      */
-    public function test_devolver_para_ajustes_exige_motivo(): void
+    public function test_devolver_para_a_bancada_exige_motivo(): void
     {
         $usuario = User::factory()->create();
-        $tarefa = $this->criarTarefa(['status' => 'em_testes']);
+        $tarefa = $this->criarTarefa(['status' => 'em_revisao']);
 
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'ajustes_necessarios',
+            'status' => 'em_desenvolvimento',
         ]);
 
         $resposta->assertSessionHas('erro');
-        $this->assertStringContainsString('descrever o que precisa ser corrigido', session('erro'));
-        $this->assertSame('em_testes', $tarefa->fresh()->status);
+        $this->assertStringContainsString('o que precisa ser corrigido', session('erro'));
+        $this->assertSame('em_revisao', $tarefa->fresh()->status);
 
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'ajustes_necessarios',
+            'status' => 'em_desenvolvimento',
             'motivo' => 'Falhou no cenário de CPF duplicado.',
         ]);
 
         $resposta->assertSessionMissing('erro');
-        $this->assertSame('ajustes_necessarios', $tarefa->fresh()->status);
+        $this->assertSame('em_desenvolvimento', $tarefa->fresh()->status);
+        $this->assertSame('em_revisao', $tarefa->fresh()->retorno_de);
     }
 
     /**
@@ -128,50 +129,77 @@ class MoverTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-089 Concluir exige relatório de teste aprovado; registrar um aprovado no próprio movimento libera a conclusão.
+     * @spec:AC-089 Liberar para a produção exige a validação do staging; carimbá-la no
+     * próprio movimento libera a passagem.
      */
-    public function test_concluir_exige_relatorio_de_teste_aprovado(): void
+    public function test_liberar_para_producao_exige_validacao_do_staging(): void
     {
         $usuario = User::factory()->create();
-        $tarefa = $this->criarTarefa(['status' => 'em_testes']);
+        $tarefa = $this->criarTarefa(['status' => 'em_staging']);
 
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'concluida',
+            'status' => 'pronta_producao',
         ]);
 
         $resposta->assertSessionHas('erro');
-        $this->assertStringContainsString('relatório de teste aprovado', session('erro'));
-        $this->assertSame('em_testes', $tarefa->fresh()->status);
+        $this->assertStringContainsString('validar o staging', session('erro'));
+        $this->assertSame('em_staging', $tarefa->fresh()->status);
 
-        // Registrar um relatório reprovado no próprio movimento continua recusando.
+        // Desmarcar o "Validado no staging" no próprio movimento continua recusando.
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'concluida',
+            'status' => 'pronta_producao',
+            'relatorio_aprovado' => '0',
             'relatorio_notas' => 'Falhou no cenário de CPF duplicado.',
         ]);
 
         $resposta->assertSessionHas('erro');
-        $this->assertStringContainsString('relatório de teste aprovado', session('erro'));
-        $this->assertSame('em_testes', $tarefa->fresh()->status);
+        $this->assertStringContainsString('validar o staging', session('erro'));
+        $this->assertSame('em_staging', $tarefa->fresh()->status);
         $this->assertDatabaseHas('tarefa_relatorios_teste', [
             'tarefa_id' => $tarefa->id,
             'aprovado' => false,
             'notas' => 'Falhou no cenário de CPF duplicado.',
         ]);
 
-        // Registrar um relatório aprovado no mesmo movimento libera a conclusão.
+        // O carimbo é o que importa; a nota é opcional.
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'concluida',
-            'relatorio_notas' => 'Tudo certo no reteste.',
+            'status' => 'pronta_producao',
             'relatorio_aprovado' => '1',
         ]);
 
         $resposta->assertSessionMissing('erro');
-        $this->assertSame('concluida', $tarefa->fresh()->status);
+        $this->assertSame('pronta_producao', $tarefa->fresh()->status);
         $this->assertDatabaseHas('tarefa_relatorios_teste', [
             'tarefa_id' => $tarefa->id,
             'aprovado' => true,
-            'notas' => 'Tudo certo no reteste.',
         ]);
+    }
+
+    /**
+     * @spec:AC-187 Concluir pede a versão que subiu — é ela que responde "desde
+     * quando o cliente tem isso".
+     */
+    public function test_concluir_pede_a_versao_que_subiu(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = $this->criarTarefa(['status' => 'pronta_producao']);
+
+        $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
+            'status' => 'concluida',
+        ]);
+
+        $resposta->assertSessionHas('erro');
+        $this->assertStringContainsString('versão que subiu', session('erro'));
+        $this->assertSame('pronta_producao', $tarefa->fresh()->status);
+
+        $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
+            'status' => 'concluida',
+            'versao_producao' => 'v1.4.2',
+        ]);
+
+        $resposta->assertSessionMissing('erro');
+        $this->assertSame('concluida', $tarefa->fresh()->status);
+        $this->assertSame('v1.4.2', $tarefa->fresh()->versao_producao);
     }
 
     /**
@@ -214,18 +242,19 @@ class MoverTarefaTest extends TestCase
     public function test_menu_mover_oferece_so_os_destinos_permitidos(): void
     {
         $usuario = User::factory()->create();
-        $this->criarTarefa(['titulo' => 'Tarefa em testes', 'status' => 'em_testes']);
+        $this->criarTarefa(['titulo' => 'Tarefa em revisão', 'status' => 'em_revisao']);
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        // Em testes ganhou a volta seca para Em andamento, que antes só existia
-        // declarando uma reprovação que não houve (AC-183). Bloquear saiu da
-        // lista: travar deixou de ser etapa e virou ação própria (AC-190).
+        // Da revisão a tarefa avança para o staging ou volta para a bancada —
+        // a volta é a própria reprovação, e leva o motivo (AC-087). Bloquear
+        // ficou de fora: travar deixou de ser etapa e virou ação própria
+        // (AC-190).
         $esperado = 'x-data="{ transicoesDoCard: '
-            .Js::from(['concluida', 'ajustes_necessarios', 'em_desenvolvimento', 'cancelada']).' }"';
+            .Js::from(['em_staging', 'em_desenvolvimento', 'cancelada']).' }"';
 
         $this->assertStringContainsString($esperado, $html,
-            'O menu do card em Em testes precisa trazer os destinos permitidos, com o atributo x-data íntegro.');
+            'O menu do card em Em revisão precisa trazer os destinos permitidos, com o atributo x-data íntegro.');
     }
 
     /**
@@ -262,7 +291,7 @@ class MoverTarefaTest extends TestCase
         );
 
         // E cada coluna do quadro se pergunta se aceita o que está na mão.
-        foreach (['aberta', 'backlog', 'em_desenvolvimento', 'em_testes', 'ajustes_necessarios'] as $etapa) {
+        foreach (['aberta', 'backlog', 'em_desenvolvimento', 'em_revisao', 'em_staging', 'pronta_producao'] as $etapa) {
             $this->assertStringContainsString("aceita('".$etapa."')", $html,
                 "A coluna {$etapa} precisa consultar se aceita o card arrastado.");
         }
@@ -276,12 +305,14 @@ class MoverTarefaTest extends TestCase
     public function test_soltar_onde_pede_texto_abre_o_painel_de_motivo(): void
     {
         $usuario = User::factory()->create();
-        $this->criarTarefa(['status' => 'em_testes']);
+        $this->criarTarefa(['status' => 'em_revisao']);
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        // As etapas e faixas que pedem texto se declaram no solto...
-        $this->assertStringContainsString("soltar('ajustes_necessarios', true)", $html);
+        // As etapas e faixas que pedem texto se declaram no solto. Em andamento
+        // pergunta em vez de afirmar: se ele pede texto depende do portão de
+        // onde o card veio, e a coluna renderizada não sabe disso.
+        $this->assertStringContainsString("soltar('em_desenvolvimento', pedeTexto('em_desenvolvimento'))", $html);
         $this->assertStringContainsString("soltar('bloqueio', true)", $html);
 
         // ...e o quadro abre o painel em vez de engolir o gesto.
@@ -289,13 +320,17 @@ class MoverTarefaTest extends TestCase
 
         // O painel nomeia a ação e o resultado — "Confirmar" é o que se aperta
         // sem ler —, e diz por que está pedindo o texto.
-        $this->assertStringContainsString('Devolvendo para ajustes', $html);
-        $this->assertStringContainsString('Devolver para ajustes', $html);
+        $this->assertStringContainsString('Devolvendo para Em andamento', $html);
+        $this->assertStringContainsString('Devolver para correção', $html);
         $this->assertStringContainsString('Bloquear tarefa', $html);
-        $this->assertStringContainsString('Quem for corrigir precisa saber o que falhou', $html);
+        $this->assertStringContainsString('Diga o que precisa ser corrigido no PR', $html);
+
+        // E a devolução muda de texto conforme o portão: falhar no staging não
+        // é reprovar um PR, porque lá o código já está na main.
+        $this->assertStringContainsString('o código JÁ está na main', $html);
 
         // A coluna de destino segue realçada enquanto o motivo não vem.
-        $this->assertStringContainsString("pendente?.destino === 'ajustes_necessarios'", $html);
+        $this->assertStringContainsString("pendente?.destino === 'em_desenvolvimento'", $html);
     }
 
     /**
@@ -306,7 +341,7 @@ class MoverTarefaTest extends TestCase
     public function test_a_faixa_de_concluir_recebe_o_card_e_pede_confirmacao(): void
     {
         $usuario = User::factory()->create();
-        $this->criarTarefa(['status' => 'em_testes']);
+        $this->criarTarefa(['status' => 'em_revisao']);
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
@@ -329,16 +364,16 @@ class MoverTarefaTest extends TestCase
     public function test_a_tarja_do_card_carrega_o_motivo_e_o_destravar(): void
     {
         $usuario = User::factory()->create();
-        $tarefa = $this->criarTarefa(['status' => 'em_testes']);
+        $tarefa = $this->criarTarefa(['status' => 'em_revisao']);
 
         app(FluxoTarefaService::class)
             ->bloquear($tarefa, 'Revenda não respondeu o e-mail de confirmação.');
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        // O card continua na coluna Em testes, com a tarja dentro dele.
+        // O card continua na coluna Em revisão, com a tarja dentro dele.
         $colunas = $this->actingAs($usuario)->get(route('tarefas.index'))->viewData('colunas');
-        $this->assertContains($tarefa->id, $colunas['em_testes']->pluck('id')->all());
+        $this->assertContains($tarefa->id, $colunas['em_revisao']->pluck('id')->all());
 
         $this->assertStringContainsString('Bloqueada agora', $html);
         $this->assertStringContainsString('Revenda não respondeu o e-mail de confirmação.', $html);
@@ -359,7 +394,7 @@ class MoverTarefaTest extends TestCase
         $usuario = User::factory()->create();
         $fluxo = app(FluxoTarefaService::class);
 
-        $fluxo->bloquear($this->criarTarefa(['status' => 'em_testes']), 'Esperando o cliente.');
+        $fluxo->bloquear($this->criarTarefa(['status' => 'em_revisao']), 'Esperando o cliente.');
         $fluxo->bloquear($this->criarTarefa(['status' => 'em_desenvolvimento']), 'Falta acesso ao servidor.');
         $this->criarTarefa(['status' => 'backlog', 'responsavel_id' => User::factory()->create()->id]);
 

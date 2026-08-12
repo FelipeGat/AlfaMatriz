@@ -66,6 +66,21 @@
         @endforeach
     </select>
 
+    {{--
+        "Só as que esperam por você" é o mesmo recorte do chip do cabeçalho,
+        aqui em forma de caixa: quem chegou pelos filtros não deveria precisar
+        descobrir que o atalho existe lá em cima. Fora do histórico, porque
+        tarefa encerrada não tem conversa em aberto.
+    --}}
+    @unless ($comDesfecho)
+        <label class="h-[34px] flex items-center gap-2 px-3 rounded-control border border-line
+                      bg-input text-[12.5px] text-ink-dim cursor-pointer hover:text-brand transition">
+            <input type="checkbox" name="esperando" value="1" @checked(($filtros['esperando'] ?? '') === '1')
+                   class="h-[13px] w-[13px] rounded-[3px] bg-input border-btn-line text-brand focus:ring-0">
+            Só as que esperam por você
+        </label>
+    @endunless
+
     @if ($comDesfecho)
         <select name="desfecho" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
             <option value="">Todos os desfechos</option>

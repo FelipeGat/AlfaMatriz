@@ -32,7 +32,11 @@
          data-status="{{ $etapa['chave'] }}"
          @dragover.prevent="permitir('{{ $etapa['chave'] }}')"
          @dragleave="sobre = null"
-         @drop.prevent="soltar('{{ $etapa['chave'] }}', {{ in_array($etapa['chave'], ['ajustes_necessarios', 'cancelada', 'concluida'], true) ? 'true' : 'false' }})"
+         {{-- Quem decide se abre painel é o `pedeTexto`, e não uma lista fixa
+              aqui: Em andamento pede texto vindo de um portão e não pede vindo
+              do Backlog, e a coluna renderizada no servidor não tem como saber
+              de onde o card que ainda vai ser arrastado veio. --}}
+         @drop.prevent="soltar('{{ $etapa['chave'] }}', pedeTexto('{{ $etapa['chave'] }}'))"
          {{-- Enquanto o card está na mão, a coluna que não o aceita apaga. É o
               que faz a regra do fluxo virar coisa que se VÊ antes de soltar: o
               "transição inválida" deixa de ser a primeira notícia de que aquele

@@ -27,10 +27,35 @@ class Tarefa extends Model
         'aberta' => 'Aberta',
         'backlog' => 'Backlog',
         'em_desenvolvimento' => 'Em andamento',
-        'em_testes' => 'Em testes',
-        'ajustes_necessarios' => 'Ajustes necessários',
+        'em_revisao' => 'Em revisão',
+        'em_staging' => 'Em staging',
+        'pronta_producao' => 'Pronta p/ produção',
         'concluida' => 'Concluída',
         'cancelada' => 'Cancelada',
+    ];
+
+    /**
+     * Os portões do ciclo de desenvolvimento — onde a tarefa é examinada.
+     *
+     * Reprovar num deles devolve a tarefa para Em andamento carimbando de qual
+     * portão ela voltou. É essa distinção que a coluna única de Ajustes
+     * achatava: reprovar um PR, quebrar em staging e ser barrada na porta da
+     * produção chegavam todas ao mesmo lugar, sem dizer de onde vinham.
+     */
+    public const PORTOES = ['em_revisao', 'em_staging', 'pronta_producao'];
+
+    /**
+     * O que a tarja de retorno diz, conforme o portão que reprovou.
+     *
+     * "Voltou da revisão" e "Voltou do staging" descrevem situações
+     * materialmente diferentes — na segunda o código já está na main — e a
+     * recuperação de cada uma é outra. Um rótulo só para as três devolveria à
+     * tela o mesmo achatamento que a coluna de Ajustes fazia no fluxo.
+     */
+    public const RETORNO_POR_ORIGEM = [
+        'em_revisao' => 'Voltou da revisão',
+        'em_staging' => 'Voltou do staging',
+        'pronta_producao' => 'Voltou da porta da produção',
     ];
 
     /**
@@ -40,9 +65,17 @@ class Tarefa extends Model
      * do fluxo, mas não some do passado: as tarefas encerradas antes da mudança
      * têm eventos que apontam para ela, e apagar esse rótulo faria o histórico
      * delas exibir a chave crua no lugar do nome da etapa.
+     *
+     * `em_testes` guardava dois portões (a leitura do PR e a validação rodando)
+     * e se abriu em três etapas; `ajustes_necessarios` virou a marca de retorno.
+     * Os dois saem do FLUXO, não do vocabulário: as tarefas encerradas antes da
+     * mudança passaram por eles de verdade, e o histórico delas continua tendo
+     * de saber pronunciar esses nomes.
      */
     public const ETAPAS_APOSENTADAS = [
         'bloqueada' => 'Bloqueada',
+        'em_testes' => 'Em testes',
+        'ajustes_necessarios' => 'Ajustes necessários',
     ];
 
     /** O nome de uma etapa, inclusive das que já não existem no fluxo. */
@@ -74,7 +107,8 @@ class Tarefa extends Model
      */
     public const LIMITE_DE_WIP = [
         'em_desenvolvimento' => 3,
-        'em_testes' => 3,
+        'em_revisao' => 3,
+        'em_staging' => 3,
     ];
 
     /**
@@ -91,8 +125,9 @@ class Tarefa extends Model
     public const HORAS_ATE_ENVELHECER = [
         'aberta' => 24,
         'em_desenvolvimento' => 72,
-        'em_testes' => 24,
-        'ajustes_necessarios' => 48,
+        'em_revisao' => 24,
+        'em_staging' => 24,
+        'pronta_producao' => 24,
     ];
 
     /**
@@ -137,6 +172,8 @@ class Tarefa extends Model
         return [
             'iniciada_em' => 'datetime',
             'bloqueado_em' => 'datetime',
+            'pergunta_em' => 'datetime',
+            'rodadas' => 'integer',
         ];
     }
 
@@ -208,6 +245,83 @@ class Tarefa extends Model
         };
     }
 
+    /**
+     * A tarefa voltou de um portão e ainda não andou para frente?
+     *
+     * Fora do `fillable` pelo mesmo motivo do bloqueio: a marca nasce da recusa
+     * num portão, que exige o motivo, e um `update` de formulário não deveria
+     * ser capaz de carimbar retorno de passagem.
+     */
+    public function temRetorno(): bool
+    {
+        return $this->retorno_de !== null;
+    }
+
+    /** "Voltou da revisão", "Voltou do staging" — ou null, se não voltou. */
+    public function rotuloDoRetorno(): ?string
+    {
+        if (! $this->temRetorno()) {
+            return null;
+        }
+
+        return self::RETORNO_POR_ORIGEM[$this->retorno_de]
+            ?? 'Voltou de '.self::rotuloDaEtapa($this->retorno_de);
+    }
+
+    /** Há uma pergunta esperando resposta? */
+    public function temPergunta(): bool
+    {
+        return $this->pergunta_em !== null;
+    }
+
+    /**
+     * A bola está com esta pessoa?
+     *
+     * É o que alimenta o chip "N p/ você" do cabeçalho e o filtro "Só as que
+     * esperam por você" — a caixa de entrada de quem abre o quadro.
+     */
+    public function esperaRespostaDe(?User $usuario): bool
+    {
+        return $usuario !== null
+            && $this->temPergunta()
+            && $this->pergunta_para_id === $usuario->id;
+    }
+
+    /**
+     * O texto da tarja de pergunta, com o nome em linha própria na tela.
+     *
+     * Devolve só quem deve a resposta porque é essa a informação inteira da
+     * tarja: uma pergunta pendente sem o nome de quem a deve não diz a ninguém
+     * que a bola é sua.
+     */
+    public function rotuloDaPergunta(): ?string
+    {
+        if (! $this->temPergunta()) {
+            return null;
+        }
+
+        return 'Aguardando resposta de '.($this->perguntaPara?->name ?? 'alguém');
+    }
+
+    /**
+     * Três idas e voltas sem resolver — o quadro sugere devolver para correção.
+     *
+     * O sinal não é sobre a conversa estar longa: é sobre o PR estar grande
+     * demais ou a tarefa ter sido mal especificada. Por isso ele vive na
+     * contagem de RODADAS e não na de comentários — cinco dúvidas mandadas de
+     * uma vez são uma rodada só, e não são sintoma de nada.
+     */
+    public function conversaEmpacada(): bool
+    {
+        return $this->rodadas >= 3;
+    }
+
+    /** As tarefas cuja bola está com esta pessoa. */
+    public function scopeEsperandoRespostaDe($query, ?int $usuarioId)
+    {
+        return $query->whereNotNull('pergunta_em')->where('pergunta_para_id', $usuarioId);
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Tarefa $tarefa): void {
@@ -229,6 +343,28 @@ class Tarefa extends Model
     public function criadoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'criado_por_id');
+    }
+
+    /**
+     * O outro lado da conversa, lembrado entre uma rodada e outra.
+     *
+     * Persistido de propósito: responder apaga o ponteiro da pergunta, e sem
+     * este campo o sistema esqueceria com quem estava falando exatamente no
+     * momento em que a pessoa devolve a bola.
+     */
+    public function interlocutor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'interlocutor_id');
+    }
+
+    public function perguntaDe(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pergunta_de_id');
+    }
+
+    public function perguntaPara(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pergunta_para_id');
     }
 
     public function eventos(): HasMany

@@ -20,6 +20,19 @@ Alpine.data('shell', () => ({
     // Gaveta é coisa de tela estreita: some junto com a navegação.
     gavetaAberta: false,
 
+    /**
+     * O painel do sino.
+     *
+     * O estado mora AQUI, e não num `x-data` dentro da sidebar, porque o painel
+     * precisa ser irmão do <aside> e não filho dele: o aside tem
+     * `overflow: hidden` (para a transição de largura do rail) e um `transform`
+     * (para a gaveta do celular). O overflow corta qualquer filho que passe da
+     * borda, e o transform faz o aside virar bloco contido — o que impede até
+     * `position: fixed` de escapar. Com o botão dentro e o painel fora, os dois
+     * precisam de um estado em comum, e o `shell` é o ancestral dos dois.
+     */
+    sinoAberto: false,
+
     tema: document.documentElement.classList.contains('theme-light') ? 'claro' : 'escuro',
 
     alternarRail() {

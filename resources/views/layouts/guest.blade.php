@@ -64,6 +64,17 @@
                     {{ $slot }}
                 </div>
 
+                {{--
+                    O selo "Sistemas operacionais" do handoff (§15) NÃO entra
+                    aqui, e não é esquecimento: ele saiu a pedido do dono do
+                    produto, junto com o "Acesso restrito à equipe AlfaMatriz"
+                    — a tela diz o que é e para de falar. O `LoginTest` guarda
+                    as duas ausências para que ninguém as reponha achando que
+                    está cumprindo o handoff.
+
+                    A checagem de saúde continua de pé: ela serve ao deploy, que
+                    é quem sempre dependeu dela.
+                --}}
                 <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint text-center">
                     Painel interno · acesso somente por convite
                 </p>

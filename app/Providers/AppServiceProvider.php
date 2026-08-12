@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\Notificacao;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -36,5 +38,26 @@ class AppServiceProvider extends ServiceProvider
         RedirectIfAuthenticated::redirectUsing(
             fn (Request $request) => $request->user()?->telaInicial() ?? route('login', absolute: false)
         );
+
+        // O sino vive no rodapé da sidebar, que é servida em TODAS as telas —
+        // e um controller de cada tela passando as notificações seria a mesma
+        // linha repetida vinte vezes, esperando a primeira ser esquecida. O
+        // composer prende os dados ao componente que os usa.
+        //
+        // As DUAS views, porque o botão e o painel foram separados: o botão
+        // mora na sidebar e lê `$naoLidas`; o painel é irmão dela (fugindo do
+        // `overflow-hidden` e do `transform` do aside) e lê a lista.
+        View::composer(['layouts.navigation', 'layouts.notificacoes'], function ($view) {
+            $usuario = auth()->user();
+
+            $view->with([
+                'notificacoes' => $usuario
+                    ? Notificacao::where('destinatario_id', $usuario->id)->latest('id')->limit(12)->get()
+                    : collect(),
+                'naoLidas' => $usuario
+                    ? Notificacao::naoLidasDe($usuario->id)->count()
+                    : 0,
+            ]);
+        });
     }
 }

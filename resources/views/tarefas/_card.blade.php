@@ -51,6 +51,14 @@
     // de gravidade, é a triagem que ainda não aconteceu. Alta desceu para o
     // âmbar mais quente para os dois não se confundirem.
     $tomPrioridade = \App\Models\Tarefa::TOM_DA_PRIORIDADE[$tarefa->prioridade] ?? 'neutro';
+
+    // A pergunta em aberto e o comentário que a abriu. Vem da coleção já
+    // carregada, e não de uma consulta por card: o quadro renderiza dezenas de
+    // cards, e uma consulta em cada um deles é o N+1 clássico da tela.
+    $temPergunta = $tarefa->temPergunta();
+    $perguntaAberta = $temPergunta
+        ? $tarefa->comentarios->where('pergunta', true)->last()
+        : null;
 @endphp
 
 <article data-tarefa="{{ $tarefa->id }}"
@@ -82,6 +90,111 @@
     @if (filled($tarefa->resumo))
         <p class="mt-1 text-[12px] leading-snug text-ink-mute truncate"
            title="{{ $tarefa->resumo }}">{{ $tarefa->resumo }}</p>
+    @endif
+
+    {{--
+        A tarja de pergunta.
+
+        Dúvida na revisão não é impedimento nem correção: o PR continua aberto,
+        a tarefa continua no WIP e a tarja é da cor da marca, não do alerta —
+        pintá-la de âmbar junto do bloqueio ensinaria que perguntar é problema.
+
+        O NOME OCUPA LINHA PRÓPRIA. Na primeira linha cabem o ícone, o selo de
+        rodada e pouco mais; "Aguardando resposta de Camila" precisa de mais do
+        que sobra, e era justamente ele que sumia truncado — quem deve a
+        resposta é a informação inteira da tarja.
+    --}}
+    @if ($temPergunta)
+        <div class="mt-2 rounded-[4px] px-2.5 py-[7px] border-l-2"
+             style="background: rgb(var(--brand) / var(--tint-alpha)); border-color: rgb(var(--brand))">
+            <div class="flex items-center gap-1.5">
+                <span class="shrink-0" style="color: rgb(var(--brand-text))">
+                    <x-nav-icon name="chat" :peso="1.9" class="h-3 w-3" />
+                </span>
+
+                {{-- O selo de rodada acende no limite: três idas e voltas não é
+                     conversa comprida, é PR grande demais ou tarefa mal
+                     especificada — e aí o quadro sugere devolver para correção. --}}
+                <span class="ml-auto shrink-0 px-1.5 py-px rounded-badge font-mono text-[9.5px] font-semibold"
+                      @if ($tarefa->conversaEmpacada()) title="Três rodadas sem resolver: talvez seja hora de devolver para correção." @endif
+                      style="{{ $tarefa->conversaEmpacada()
+                          ? 'background: rgb(var(--crit) / var(--tint-alpha)); color: rgb(var(--crit))'
+                          : 'background: var(--chip); color: rgb(var(--ink-mute))' }}">
+                    {{ max(1, $tarefa->rodadas) }}ª rodada
+                </span>
+            </div>
+
+            <p class="mt-1 font-mono text-[9.5px] font-semibold uppercase tracking-caps truncate"
+               style="color: rgb(var(--brand-text))"
+               title="{{ $tarefa->rotuloDaPergunta() }}">
+                {{ $tarefa->rotuloDaPergunta() }}
+            </p>
+
+            @if (filled($perguntaAberta?->corpo))
+                <p class="mt-1 text-[11.5px] leading-snug text-ink line-clamp-2"
+                   title="{{ $perguntaAberta->corpo }}">{{ $perguntaAberta->corpo }}</p>
+            @endif
+
+            {{-- Responder abre o campo NO CARD, sem modal: a resposta de uma
+                 dúvida é curta, e obrigar a abrir a tarefa para escrever duas
+                 linhas é o atrito que faz a pergunta ficar sem resposta. --}}
+            @if ($tarefa->esperaRespostaDe(auth()->user()))
+                <div x-data="{ respondendo: false }" @click.stop>
+                    <button type="button" x-show="! respondendo" @click="respondendo = true; $nextTick(() => $refs.resposta.focus())"
+                            class="mt-1.5 h-6 px-2 rounded-[3px] border font-semibold text-[11px] transition hover:bg-chip"
+                            style="border-color: rgb(var(--brand) / 0.45); color: rgb(var(--brand-text))">
+                        Responder
+                    </button>
+
+                    <form x-show="respondendo" x-cloak method="POST"
+                          action="{{ route('tarefas.conversar', $tarefa) }}" class="mt-1.5 space-y-1.5">
+                        @csrf
+                        <textarea x-ref="resposta" name="corpo" rows="2" required
+                                  placeholder="Sua resposta…"
+                                  @keydown.escape.stop="respondendo = false"
+                                  class="w-full text-[11.5px] rounded-[3px] bg-input border-line text-ink"></textarea>
+                        <div class="flex items-center gap-1.5">
+                            <button type="submit"
+                                    class="h-6 px-2 rounded-[3px] font-semibold text-[11px] bg-brand text-on-brand transition hover:bg-brand-bright">
+                                Responder
+                            </button>
+                            <button type="button" @click="respondendo = false"
+                                    class="h-6 px-2 rounded-[3px] font-semibold text-[11px] text-ink-mute transition hover:bg-chip">
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            @endif
+        </div>
+    @endif
+
+    {{--
+        A tarja de retorno.
+
+        Ela nomeia o PORTÃO que reprovou — "Voltou da revisão" e "Voltou do
+        staging" descrevem recuperações materialmente diferentes, e era esse
+        detalhe que a coluna única de Ajustes achatava. Some sozinha quando a
+        tarefa anda para frente; o registro permanente fica nos eventos.
+    --}}
+    @if ($tarefa->temRetorno())
+        <div class="mt-2 rounded-[4px] px-2.5 py-[7px] border-l-2"
+             style="background: var(--warn-tint); border-color: rgb(var(--warn))">
+            <div class="flex items-center gap-1.5">
+                <span class="shrink-0" style="color: rgb(var(--warn))">
+                    <x-nav-icon name="arrow-uturn-left" :peso="1.9" class="h-3 w-3" />
+                </span>
+                <span class="flex-1 min-w-0 truncate font-mono text-[9.5px] font-semibold uppercase tracking-caps"
+                      style="color: rgb(var(--warn))">
+                    {{ $tarefa->rotuloDoRetorno() }}
+                </span>
+            </div>
+
+            @if (filled($tarefa->retorno_motivo))
+                <p class="mt-1 text-[11.5px] leading-snug text-ink line-clamp-2"
+                   title="{{ $tarefa->retorno_motivo }}">{{ $tarefa->retorno_motivo }}</p>
+            @endif
+        </div>
     @endif
 
     {{--

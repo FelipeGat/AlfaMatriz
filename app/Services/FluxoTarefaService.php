@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Notificacao;
 use App\Models\Tarefa;
+use App\Models\TarefaComentario;
 use App\Models\TarefaEvento;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -38,9 +41,15 @@ class FluxoTarefaService
         'desenvolvimento' => [
             'aberta' => ['backlog', 'cancelada'],
             'backlog' => ['aberta', 'em_desenvolvimento', 'cancelada'],
-            'em_desenvolvimento' => ['em_testes', 'backlog', 'cancelada'],
-            'em_testes' => ['concluida', 'ajustes_necessarios', 'em_desenvolvimento', 'cancelada'],
-            'ajustes_necessarios' => ['em_desenvolvimento', 'cancelada'],
+            'em_desenvolvimento' => ['em_revisao', 'backlog', 'cancelada'],
+            // Reprovar em qualquer portão devolve para Em andamento e carimba
+            // de onde a tarefa voltou. Não há coluna intermediária: a antiga
+            // Ajustes tinha uma saída só, com o mesmo dono, e por isso nunca
+            // respondeu à pergunta que uma coluna existe para responder — quem
+            // está segurando a tarefa.
+            'em_revisao' => ['em_staging', 'em_desenvolvimento', 'cancelada'],
+            'em_staging' => ['pronta_producao', 'em_desenvolvimento', 'cancelada'],
+            'pronta_producao' => ['concluida', 'em_staging', 'em_desenvolvimento', 'cancelada'],
             'concluida' => ['em_desenvolvimento'],
             'cancelada' => ['aberta'],
         ],
@@ -51,10 +60,11 @@ class FluxoTarefaService
             // Etapas do ciclo de desenvolvimento: a tarefa operacional não
             // CHEGA nelas — nenhuma etapa dela oferece esse destino. Elas estão
             // aqui como saída de emergência para o caso de alguém trocar o tipo
-            // de uma tarefa que já estava em teste: sem isso, o card ficaria
+            // de uma tarefa que já estava num portão: sem isso, o card ficaria
             // preso numa coluna sem nenhum caminho de volta.
-            'em_testes' => ['em_desenvolvimento', 'concluida', 'cancelada'],
-            'ajustes_necessarios' => ['em_desenvolvimento', 'cancelada'],
+            'em_revisao' => ['em_desenvolvimento', 'concluida', 'cancelada'],
+            'em_staging' => ['em_desenvolvimento', 'concluida', 'cancelada'],
+            'pronta_producao' => ['em_desenvolvimento', 'concluida', 'cancelada'],
             'concluida' => ['em_desenvolvimento'],
             'cancelada' => ['aberta'],
         ],
@@ -88,7 +98,9 @@ class FluxoTarefaService
         $this->assertTransicaoPermitida($tarefa, $novoStatus);
         $this->assertExigenciasAtendidas($tarefa, $novoStatus, $dados);
 
-        return DB::transaction(function () use ($tarefa, $statusAtual, $novoStatus, $dados) {
+        $ehRetorno = $this->ehRetornoDePortao($statusAtual, $novoStatus);
+
+        return DB::transaction(function () use ($tarefa, $statusAtual, $novoStatus, $dados, $ehRetorno) {
             $agora = now();
 
             $this->fecharEventoAberto($tarefa, $agora);
@@ -111,11 +123,27 @@ class FluxoTarefaService
             $tarefa->update($atualizacao);
 
             // Mudar de etapa destrava. O bloqueio é sempre sobre o trabalho de
-            // uma etapa — "esperando o cliente validar" é uma frase sobre Em
-            // testes —, e carregá-lo para a etapa seguinte faria o card
-            // anunciar um impedimento que não vale mais. Quem moveu, agiu.
+            // uma etapa — "esperando o cliente validar" é uma frase sobre a
+            // etapa em que foi dita —, e carregá-lo para a etapa seguinte faria
+            // o card anunciar um impedimento que não vale mais. Quem moveu, agiu.
             if ($tarefa->bloqueado_em !== null) {
                 $tarefa->forceFill(['bloqueado_em' => null, 'bloqueio_motivo' => null])->save();
+            }
+
+            $this->reposicionarMarcas($tarefa, $novoStatus, $statusAtual, $dados, $ehRetorno);
+
+            // Ser devolvido é a notícia que menos pode esperar alguém abrir o
+            // quadro: a tarefa voltou para a bancada e o trabalho recomeça.
+            if ($ehRetorno) {
+                Notificacao::avisar($tarefa->responsavel_id, auth()->id(), [
+                    'tipo' => 'retorno',
+                    'nivel' => 'atencao',
+                    'icone' => 'arrow-uturn-left',
+                    'titulo' => '"'.$tarefa->titulo.'" voltou para correção',
+                    'meta' => Tarefa::RETORNO_POR_ORIGEM[$statusAtual] ?? Tarefa::rotuloDaEtapa($statusAtual),
+                    'rota' => route('tarefas.index'),
+                    'tarefa_id' => $tarefa->id,
+                ]);
             }
 
             TarefaEvento::create([
@@ -127,6 +155,207 @@ class FluxoTarefaService
             ]);
 
             return $tarefa->refresh();
+        });
+    }
+
+    /** Voltar de um portão para a bancada é reprovação, e não recuo qualquer. */
+    private function ehRetornoDePortao(string $statusAtual, string $novoStatus): bool
+    {
+        return $novoStatus === 'em_desenvolvimento'
+            && in_array($statusAtual, Tarefa::PORTOES, true);
+    }
+
+    /**
+     * Onde as marcas do card ficam depois de a tarefa mudar de etapa.
+     *
+     * O retorno é a única que NASCE de um movimento; as outras duas só morrem
+     * nele. A ordem importa: a mesma passagem que carimba o retorno não pode
+     * apagá-lo em seguida, e é por isso que a limpeza é o ramo `else` e não uma
+     * linha solta antes.
+     *
+     * @param  array{motivo?: ?string, versao_producao?: ?string}  $dados
+     */
+    private function reposicionarMarcas(
+        Tarefa $tarefa,
+        string $novoStatus,
+        string $statusAtual,
+        array $dados,
+        bool $ehRetorno,
+    ): void {
+        $marcas = [];
+
+        if ($ehRetorno) {
+            $marcas['retorno_de'] = $statusAtual;
+            $marcas['retorno_motivo'] = trim((string) ($dados['motivo'] ?? ''));
+
+            // A conversa que empacou foi resolvida pela própria devolução — é
+            // exatamente o que o alerta de terceira rodada sugere fazer. Manter
+            // a contagem deixaria o card vermelho para sempre, avisando sobre
+            // um impasse que já foi tratado.
+            $marcas['rodadas'] = 0;
+        } else {
+            // Andar para frente apaga a tarja: ela descreve de onde a tarefa
+            // voltou da última vez, e uma tarefa que já saiu da bancada não
+            // está mais voltando de lugar nenhum.
+            $marcas['retorno_de'] = null;
+            $marcas['retorno_motivo'] = null;
+        }
+
+        // A pergunta é sobre o trabalho de uma etapa, como o bloqueio: uma
+        // dúvida sobre o PR não sobrevive à tarefa sair da revisão. O que
+        // sobrevive é `interlocutor_id` — perder com quem se estava falando é
+        // justamente o que persistir esse campo existe para evitar.
+        if ($novoStatus !== $statusAtual) {
+            $marcas['pergunta_de_id'] = null;
+            $marcas['pergunta_para_id'] = null;
+            $marcas['pergunta_em'] = null;
+        }
+
+        if (isset($dados['versao_producao']) && trim((string) $dados['versao_producao']) !== '') {
+            $marcas['versao_producao'] = trim((string) $dados['versao_producao']);
+        }
+
+        $tarefa->forceFill($marcas)->save();
+    }
+
+    /**
+     * Registra uma pergunta e passa a bola para o outro lado.
+     *
+     * Numa revisão só há dois lados, então não se escolhe destinatário: quem
+     * pergunta é de um lado, e a pergunta vai para o outro.
+     *
+     * A tarefa NÃO sai da etapa e NÃO sai do WIP — responder é rápido, e fingir
+     * que ela saiu de circulação seria mentira. Também não conta como travada:
+     * uma dúvida de vinte minutos diluiria o sinal de um bloqueio de seis dias.
+     */
+    public function perguntar(Tarefa $tarefa, User $quemPergunta, ?string $corpo): TarefaComentario
+    {
+        if (trim((string) $corpo) === '') {
+            throw new \RuntimeException('É preciso escrever a pergunta.');
+        }
+
+        if (in_array($tarefa->status, Tarefa::STATUS_TERMINAIS, true)) {
+            throw new \RuntimeException('Tarefa encerrada não tem conversa em aberto.');
+        }
+
+        $paraId = $this->outroLado($tarefa, $quemPergunta);
+
+        if ($paraId === null) {
+            throw new \RuntimeException('Não há outro lado nesta tarefa para receber a pergunta.');
+        }
+
+        return DB::transaction(function () use ($tarefa, $quemPergunta, $corpo, $paraId) {
+            $comentario = $tarefa->comentarios()->create([
+                'autor_id' => $quemPergunta->id,
+                'corpo' => trim((string) $corpo),
+                'pergunta' => true,
+            ]);
+
+            $tarefa->forceFill([
+                'rodadas' => $tarefa->rodadas + ($this->abreRodadaNova($tarefa, $quemPergunta) ? 1 : 0),
+                'interlocutor_id' => $paraId,
+                'pergunta_de_id' => $quemPergunta->id,
+                'pergunta_para_id' => $paraId,
+                'pergunta_em' => now(),
+            ])->save();
+
+            Notificacao::avisar($paraId, $quemPergunta->id, [
+                'tipo' => 'pergunta',
+                'nivel' => 'atencao',
+                'icone' => 'chat',
+                'titulo' => $quemPergunta->name.' perguntou em "'.$tarefa->titulo.'"',
+                'meta' => 'Aguardando a sua resposta',
+                'rota' => route('tarefas.index', ['esperando' => '1']),
+                'tarefa_id' => $tarefa->id,
+            ]);
+
+            return $comentario;
+        });
+    }
+
+    /**
+     * A rodada só anda quando a bola estava com quem pergunta.
+     *
+     * Cinco dúvidas mandadas de uma vez são uma rodada, e insistir sem ter
+     * recebido resposta é a MESMA rodada — senão quem cobra retorno inflaria
+     * sozinho um contador que existe para medir idas E voltas. Sem pergunta
+     * aberta, a bola é de quem fala: ninguém deve nada a ninguém.
+     */
+    private function abreRodadaNova(Tarefa $tarefa, User $quemPergunta): bool
+    {
+        if (! $tarefa->temPergunta()) {
+            return true;
+        }
+
+        return $tarefa->pergunta_para_id === $quemPergunta->id;
+    }
+
+    /**
+     * Quem recebe a pergunta: o responsável, ou o interlocutor quando é ele
+     * mesmo quem está perguntando.
+     *
+     * Devolve null quando não há segundo lado — tarefa sem responsável e sem
+     * ninguém do outro lado ainda não é uma conversa.
+     */
+    private function outroLado(Tarefa $tarefa, User $quemPergunta): ?int
+    {
+        if ($tarefa->responsavel_id !== null && $tarefa->responsavel_id !== $quemPergunta->id) {
+            return $tarefa->responsavel_id;
+        }
+
+        return $tarefa->interlocutor_id !== $quemPergunta->id ? $tarefa->interlocutor_id : null;
+    }
+
+    /**
+     * Responde e devolve a bola, apagando o ponteiro.
+     *
+     * `rodadas` e `interlocutor_id` ficam: eles vivem fora do ponteiro
+     * exatamente para sobreviver a esta linha. Guardados dentro dele, toda
+     * rodada nova recomeçaria do 1 e o alerta de terceira rodada nunca
+     * dispararia.
+     */
+    public function responder(Tarefa $tarefa, User $quemResponde, ?string $corpo): TarefaComentario
+    {
+        if (trim((string) $corpo) === '') {
+            throw new \RuntimeException('É preciso escrever a resposta.');
+        }
+
+        if (! $tarefa->temPergunta()) {
+            throw new \RuntimeException('Não há pergunta aberta nesta tarefa.');
+        }
+
+        if ($tarefa->pergunta_para_id !== $quemResponde->id) {
+            throw new \RuntimeException('Esta pergunta não é para você.');
+        }
+
+        return DB::transaction(function () use ($tarefa, $quemResponde, $corpo) {
+            $comentario = $tarefa->comentarios()->create([
+                'autor_id' => $quemResponde->id,
+                'corpo' => trim((string) $corpo),
+            ]);
+
+            $perguntou = $tarefa->pergunta_de_id;
+
+            $tarefa->forceFill([
+                'interlocutor_id' => $perguntou,
+                'pergunta_de_id' => null,
+                'pergunta_para_id' => null,
+                'pergunta_em' => null,
+            ])->save();
+
+            // Quem perguntou não fica olhando o card à espera: a resposta é o
+            // evento que o traz de volta.
+            Notificacao::avisar($perguntou, $quemResponde->id, [
+                'tipo' => 'resposta',
+                'nivel' => 'marca',
+                'icone' => 'chat',
+                'titulo' => $quemResponde->name.' respondeu em "'.$tarefa->titulo.'"',
+                'meta' => 'A bola voltou para você',
+                'rota' => route('tarefas.index'),
+                'tarefa_id' => $tarefa->id,
+            ]);
+
+            return $comentario;
         });
     }
 
@@ -178,8 +407,12 @@ class FluxoTarefaService
     private function assertTransicaoPermitida(Tarefa $tarefa, string $novoStatus): void
     {
         if (! in_array($novoStatus, self::transicoesDe($tarefa), true)) {
-            $origem = Tarefa::STATUS[$tarefa->status] ?? $tarefa->status;
-            $destino = Tarefa::STATUS[$novoStatus] ?? $novoStatus;
+            // `rotuloDaEtapa` e não `STATUS`: a tarefa parada numa etapa
+            // aposentada é justamente a que mais recebe esta recusa, e dizer
+            // "não é possível mover de em_testes" devolveria a chave crua a
+            // quem só queria saber por que o card não anda.
+            $origem = Tarefa::rotuloDaEtapa($tarefa->status);
+            $destino = Tarefa::rotuloDaEtapa($novoStatus);
 
             throw new \RuntimeException("Transição inválida: não é possível mover de {$origem} para {$destino}.");
         }
@@ -194,18 +427,35 @@ class FluxoTarefaService
             throw new \RuntimeException('É preciso direcionar a tarefa para alguém antes de mover para o Backlog.');
         }
 
-        if ($novoStatus === 'ajustes_necessarios' && ! $this->motivoPreenchido($dados)) {
-            throw new \RuntimeException('É preciso descrever o que precisa ser corrigido.');
+        // Reprovar sem dizer o que reprovou manda a pessoa que recebe o card
+        // abrir o PR e adivinhar. Só o retorno DE UM PORTÃO cobra o texto:
+        // Backlog → Em andamento é só começar a trabalhar, e não tem motivo a dar.
+        if ($this->ehRetornoDePortao($tarefa->status, $novoStatus) && ! $this->motivoPreenchido($dados)) {
+            throw new \RuntimeException('É preciso dizer o que precisa ser corrigido.');
         }
 
         if ($novoStatus === 'cancelada' && ! $this->motivoPreenchido($dados)) {
             throw new \RuntimeException('O motivo do cancelamento é obrigatório.');
         }
 
-        if ($novoStatus === 'concluida'
+        // O portão do teste mudou de lugar junto com as etapas: ele guardava a
+        // saída do antigo Em testes, e agora guarda a entrada na fila da
+        // produção. É aqui que o dev afirma ter validado o staging, e é essa
+        // nota que o admin lê antes de subir a tag — depois deste ponto não há
+        // mais quem confira.
+        if ($novoStatus === 'pronta_producao'
             && $tarefa->tipo === 'desenvolvimento'
             && ! $this->aprovadaNestaPassagem($tarefa)) {
-            throw new \RuntimeException('Só é possível concluir depois de um relatório de teste aprovado.');
+            throw new \RuntimeException('Só é possível liberar para produção depois de validar o staging.');
+        }
+
+        // Concluída passou a significar EM PRODUÇÃO, e a versão é o que liga a
+        // tarefa à tag que subiu — sem ela, "concluída" volta a ser uma
+        // afirmação que ninguém consegue conferir depois.
+        if ($novoStatus === 'concluida'
+            && $tarefa->tipo === 'desenvolvimento'
+            && trim((string) ($dados['versao_producao'] ?? $tarefa->versao_producao ?? '')) === '') {
+            throw new \RuntimeException('É preciso registrar a versão que subiu para produção.');
         }
     }
 
@@ -218,14 +468,14 @@ class FluxoTarefaService
     }
 
     /**
-     * O teste desta passagem por Em testes foi aprovado?
+     * A validação desta passagem pelo staging foi aprovada?
      *
      * "Desta passagem" é a correção de um vazamento: a checagem lia o último
      * relatório da tarefa INTEIRA, então uma tarefa concluída, reaberta,
      * remexida e reconcluída passava pelo portão apoiada no "aprovado" do ciclo
      * anterior — o teste que provava o código de antes valia como prova do
-     * código de depois. O mesmo valia para a tarefa que voltou de Ajustes
-     * necessários: ela reentrava em Em testes já aprovada.
+     * código de depois. O mesmo vale para a tarefa devolvida para correção: ela
+     * reentra no staging sem herdar o carimbo da volta anterior.
      *
      * O recorte é o EVENTO da etapa atual, não a data dele. Por data, reabrir e
      * reconcluir dentro do mesmo segundo — o caso comum de quem está corrigindo

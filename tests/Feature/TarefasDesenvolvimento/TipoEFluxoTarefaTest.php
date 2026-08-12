@@ -53,10 +53,10 @@ class TipoEFluxoTarefaTest extends TestCase
         $this->assertSame('concluida', $movida->status);
         $this->assertDatabaseCount('tarefa_relatorios_teste', 0);
 
-        // E ela nem chega a Em testes: a coluna não é destino dela.
+        // E ela nem chega aos portões do ciclo: não são destino dela.
         $emAndamento = $this->criarTarefa(['tipo' => 'operacional', 'status' => 'em_desenvolvimento']);
 
-        $this->assertNotContains('em_testes', FluxoTarefaService::transicoesDe($emAndamento));
+        $this->assertNotContains('em_revisao', FluxoTarefaService::transicoesDe($emAndamento));
     }
 
     /**
@@ -72,7 +72,7 @@ class TipoEFluxoTarefaTest extends TestCase
 
         try {
             $this->fluxo->mover($tarefa, 'concluida');
-            $this->fail('Esperava recusa: desenvolvimento não fecha sem passar por Em testes.');
+            $this->fail('Esperava recusa: desenvolvimento não fecha sem passar pelos portões.');
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString('Transição inválida', $e->getMessage());
         }
@@ -82,8 +82,8 @@ class TipoEFluxoTarefaTest extends TestCase
 
     /**
      * @spec:AC-179 O tipo se anuncia no card e recorta o quadro — só a operacional
-     * ganha selo, porque o que se precisa saber de relance é qual card vai pular a
-     * coluna de testes.
+     * ganha selo, porque o que se precisa saber de relance é qual card vai pular os
+     * portões do ciclo.
      */
     public function test_tipo_aparece_no_card_e_filtra_o_quadro(): void
     {
@@ -161,11 +161,11 @@ class TipoEFluxoTarefaTest extends TestCase
      */
     public function test_a_tarefa_travada_nao_sai_da_etapa(): void
     {
-        $tarefa = $this->criarTarefa(['status' => 'em_testes']);
+        $tarefa = $this->criarTarefa(['status' => 'em_revisao']);
 
         $travada = $this->fluxo->bloquear($tarefa, 'Esperando o cliente validar.');
 
-        $this->assertSame('em_testes', $travada->status);
+        $this->assertSame('em_revisao', $travada->status);
         $this->assertTrue($travada->estaBloqueada());
 
         // "Bloqueada agora", e não "Bloqueada há agora": a régua curta devolve
@@ -177,12 +177,12 @@ class TipoEFluxoTarefaTest extends TestCase
 
         // Nenhum evento de etapa nasce do bloqueio: `tarefa_eventos` mede
         // permanência em ETAPA, e uma linha aqui faria o cronômetro contar duas
-        // passagens por Em testes onde houve uma só.
+        // passagens pela etapa onde houve uma só.
         $this->assertSame(0, $tarefa->eventos()->count());
 
         $solta = $this->fluxo->destravar($travada);
 
-        $this->assertSame('em_testes', $solta->status);
+        $this->assertSame('em_revisao', $solta->status);
         $this->assertFalse($solta->estaBloqueada());
     }
 
@@ -193,11 +193,13 @@ class TipoEFluxoTarefaTest extends TestCase
      */
     public function test_mover_a_tarefa_tira_a_marca_de_travada(): void
     {
-        $tarefa = $this->criarTarefa(['status' => 'em_testes']);
+        $tarefa = $this->criarTarefa(['status' => 'em_revisao']);
 
         $this->fluxo->bloquear($tarefa, 'Esperando o cliente validar.');
 
-        $movida = $this->fluxo->mover($tarefa->fresh(), 'em_desenvolvimento');
+        $movida = $this->fluxo->mover($tarefa->fresh(), 'em_desenvolvimento', [
+            'motivo' => 'Reprovado na leitura: falta tratar o retorno vazio.',
+        ]);
 
         $this->assertSame('em_desenvolvimento', $movida->status);
         $this->assertFalse($movida->estaBloqueada());
@@ -222,21 +224,23 @@ class TipoEFluxoTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-183 De Em testes a tarefa volta a Em andamento sem declarar reprovação:
-     * obrigar toda volta a virar "ajustes necessários" sujava o sinal de retrabalho —
-     * a coluna deixava de dizer "a qualidade está ruim" e passava a dizer "alguém
-     * clicou errado".
+     * @spec:AC-183 Voltar de um portão não inventa reprovação de teste.
+     *
+     * O critério original dizia que a volta de Em testes NÃO declarava
+     * reprovação — a coluna de Ajustes era opcional, e obrigá-la sujava o sinal
+     * de retrabalho. Com Ajustes eliminado, a devolução passou a ser o próprio
+     * ato de reprovar e cobra o motivo (AC-087); o que sobrevive daqui é o
+     * outro lado da regra: a volta não fabrica relatório de teste nenhum, e o
+     * card não passa por etapa que não existe mais.
      */
-    public function test_de_em_testes_a_tarefa_volta_sem_declarar_reprovacao(): void
+    public function test_voltar_de_um_portao_nao_inventa_relatorio(): void
     {
-        $tarefa = $this->criarTarefa(['status' => 'em_testes']);
+        $tarefa = $this->criarTarefa(['status' => 'em_revisao']);
 
-        $movida = $this->fluxo->mover($tarefa, 'em_desenvolvimento');
+        $movida = $this->fluxo->mover($tarefa, 'em_desenvolvimento', ['motivo' => 'Falta tratar o retorno vazio.']);
 
         $this->assertSame('em_desenvolvimento', $movida->status);
 
-        // A volta seca não inventa reprovação nenhuma: nada de relatório, e
-        // nenhuma passagem por Ajustes necessários.
         $this->assertDatabaseCount('tarefa_relatorios_teste', 0);
         $this->assertSame(0, $tarefa->eventos()->where('para_status', 'ajustes_necessarios')->count());
     }
@@ -302,11 +306,11 @@ class TipoEFluxoTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-186 O relatório prova ESTA passagem por Em testes: a tarefa concluída,
+     * @spec:AC-186 O relatório prova ESTA passagem pelo staging: a tarefa concluída,
      * reaberta e reconcluída passava pelo portão apoiada no "aprovado" do ciclo
      * anterior — o teste que provava o código de antes valia como prova do de depois.
      */
-    public function test_reconcluir_depois_de_reabrir_exige_relatorio_novo(): void
+    public function test_reliberar_depois_de_reabrir_exige_relatorio_novo(): void
     {
         $tarefa = $this->criarTarefa([
             'status' => 'backlog',
@@ -314,32 +318,73 @@ class TipoEFluxoTarefaTest extends TestCase
         ]);
 
         $this->fluxo->mover($tarefa, 'em_desenvolvimento');
-        $this->fluxo->mover($tarefa, 'em_testes');
+        $this->fluxo->mover($tarefa, 'em_revisao');
+        $this->fluxo->mover($tarefa->fresh(), 'em_staging');
 
         TarefaRelatorioTeste::create([
             'tarefa_id' => $tarefa->id, 'aprovado' => true, 'notas' => 'Ciclo 1 aprovado.',
         ]);
 
-        $this->fluxo->mover($tarefa, 'concluida');
+        $this->fluxo->mover($tarefa->fresh(), 'pronta_producao');
+        $this->fluxo->mover($tarefa->fresh(), 'concluida', ['versao_producao' => 'v1.4.2']);
         $this->assertSame('concluida', $tarefa->fresh()->status);
 
         // Ciclo 2: o aprovado lá de trás não vale como prova do código novo.
         $this->fluxo->mover($tarefa->fresh(), 'em_desenvolvimento');
-        $this->fluxo->mover($tarefa->fresh(), 'em_testes');
+        $this->fluxo->mover($tarefa->fresh(), 'em_revisao');
+        $this->fluxo->mover($tarefa->fresh(), 'em_staging');
 
         try {
-            $this->fluxo->mover($tarefa->fresh(), 'concluida');
-            $this->fail('Esperava recusa: o relatório aprovado é do ciclo anterior.');
+            $this->fluxo->mover($tarefa->fresh(), 'pronta_producao');
+            $this->fail('Esperava recusa: a validação aprovada é do ciclo anterior.');
         } catch (\RuntimeException $e) {
-            $this->assertStringContainsString('relatório de teste aprovado', $e->getMessage());
+            $this->assertStringContainsString('validar o staging', $e->getMessage());
         }
 
-        $this->assertSame('em_testes', $tarefa->fresh()->status);
+        $this->assertSame('em_staging', $tarefa->fresh()->status);
 
         TarefaRelatorioTeste::create([
             'tarefa_id' => $tarefa->id, 'aprovado' => true, 'notas' => 'Ciclo 2 aprovado.',
         ]);
 
-        $this->assertSame('concluida', $this->fluxo->mover($tarefa->fresh(), 'concluida')->status);
+        $this->assertSame('pronta_producao', $this->fluxo->mover($tarefa->fresh(), 'pronta_producao')->status);
+    }
+
+    /**
+     * @spec:AC-187 Concluída significa EM PRODUÇÃO, e a versão é o que liga a tarefa
+     * à tag que subiu. Sem ela, "concluída" volta a ser uma afirmação que ninguém
+     * consegue conferir depois — era o que a conclusão a partir de Em testes fazia,
+     * marcando como pronta a tarefa cujo código estava só no staging.
+     */
+    public function test_concluir_exige_a_versao_que_subiu(): void
+    {
+        $tarefa = $this->criarTarefa(['status' => 'pronta_producao']);
+
+        try {
+            $this->fluxo->mover($tarefa, 'concluida');
+            $this->fail('Esperava recusa por falta da versão.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('versão que subiu', $e->getMessage());
+        }
+
+        $this->assertSame('pronta_producao', $tarefa->fresh()->status);
+
+        $movida = $this->fluxo->mover($tarefa, 'concluida', ['versao_producao' => 'v1.4.2']);
+
+        $this->assertSame('concluida', $movida->status);
+        $this->assertSame('v1.4.2', $movida->versao_producao);
+    }
+
+    /**
+     * @spec:AC-187 A tarefa operacional encerra sem versão: telefonema não tem tag.
+     */
+    public function test_operacional_encerra_sem_versao(): void
+    {
+        $tarefa = $this->criarTarefa(['tipo' => 'operacional', 'status' => 'em_desenvolvimento']);
+
+        $movida = $this->fluxo->mover($tarefa, 'concluida');
+
+        $this->assertSame('concluida', $movida->status);
+        $this->assertNull($movida->versao_producao);
     }
 }

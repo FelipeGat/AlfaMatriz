@@ -164,9 +164,12 @@ class CardTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-093 Passando de 48h, o destaque de Em testes vira crítico.
+     * @spec:AC-093 Passando do dobro da régua, o destaque da etapa vira crítico.
+     *
+     * Em revisão herdou as 24h que Em testes tinha: revisar um PR é fila, e a
+     * régua de fila é mais curta que a da bancada.
      */
-    public function test_tarefa_parada_mais_de_48h_em_testes_ganha_destaque_critico(): void
+    public function test_tarefa_parada_mais_do_que_o_dobro_da_regua_ganha_destaque_critico(): void
     {
         $usuario = User::factory()->create();
         $criador = User::factory()->create();
@@ -174,7 +177,7 @@ class CardTarefaTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-08-08 10:00:00'));
         Tarefa::factory()->create([
             'criado_por_id' => $criador->id,
-            'status' => 'em_testes',
+            'status' => 'em_revisao',
         ]);
 
         Carbon::setTestNow(Carbon::parse('2026-08-10 12:00:00'));

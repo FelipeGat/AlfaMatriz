@@ -207,8 +207,18 @@
             </template>
         </div>
 
-        <button type="button"
+        {{--
+            O sino. O PAINEL não mora aqui — ele é irmão do <aside>, no
+            `app.blade.php`, e o motivo está em duas propriedades deste
+            elemento: `overflow-hidden`, que corta qualquer filho passando da
+            borda, e o `transform` da gaveta, que faz o aside virar bloco
+            contido e impede até `position: fixed` de escapar dele.
+
+            O estado é o `sinoAberto` do `shell`, que é ancestral dos dois.
+        --}}
+        <button type="button" @click="sinoAberto = ! sinoAberto"
                 class="relative h-[30px] w-[30px] shrink-0 rounded-ctl text-ink-mute hover:text-ink hover:bg-chip transition flex items-center justify-center"
+                :class="sinoAberto && 'bg-chip text-ink'"
                 aria-label="Notificações">
             <span class="h-[18px] w-[18px]"><x-nav-icon name="bell" :peso="1.7" /></span>
             @if (($naoLidas ?? 0) > 0)

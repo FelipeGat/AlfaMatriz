@@ -103,12 +103,12 @@ class PerfisDoQuadroTest extends TestCase
         $dela = $this->criarTarefa(['responsavel_id' => $camila->id]);
 
         // A própria anda.
-        $this->actingAs($membro)->post(route('tarefas.mover', $minha), ['status' => 'em_testes'])
+        $this->actingAs($membro)->post(route('tarefas.mover', $minha), ['status' => 'em_revisao'])
             ->assertSessionMissing('erro');
-        $this->assertSame('em_testes', $minha->fresh()->status);
+        $this->assertSame('em_revisao', $minha->fresh()->status);
 
         // A de outra pessoa, não — e a recusa diz de quem é.
-        $this->actingAs($membro)->post(route('tarefas.mover', $dela), ['status' => 'em_testes'])
+        $this->actingAs($membro)->post(route('tarefas.mover', $dela), ['status' => 'em_revisao'])
             ->assertSessionHas('erro');
 
         $this->assertStringContainsString('Camila Reis', session('erro'));
@@ -226,9 +226,9 @@ class PerfisDoQuadroTest extends TestCase
         $this->assertTrue($admin->podeTriarTarefas());
         $this->assertNull($dela->motivoParaNaoMover($admin));
 
-        $this->actingAs($admin)->post(route('tarefas.mover', $dela), ['status' => 'em_testes'])
+        $this->actingAs($admin)->post(route('tarefas.mover', $dela), ['status' => 'em_revisao'])
             ->assertSessionMissing('erro');
 
-        $this->assertSame('em_testes', $dela->fresh()->status);
+        $this->assertSame('em_revisao', $dela->fresh()->status);
     }
 }

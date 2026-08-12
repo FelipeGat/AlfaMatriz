@@ -1,3 +1,15 @@
+@php
+    /**
+     * Os destinos cuja chegada exige um texto — o que abre o painel de motivo.
+     *
+     * Em andamento está na lista, mas com ressalva: só pede texto quando a
+     * tarefa vem de um portão (ver `pedeTexto`). Vindo do Backlog é só começar
+     * a trabalhar, e um painel ali pediria justificativa para pegar a própria
+     * tarefa.
+     */
+    $etapasComTexto = ['em_desenvolvimento', 'cancelada', 'concluida', 'pronta_producao'];
+@endphp
+
 <x-app-layout>
     <x-slot name="titulo">Tarefas</x-slot>
     {{-- Com filtro ligado o cabeçalho diz "X de Y": sem o denominador, um
@@ -21,7 +33,50 @@
         inteira e as outras ficam desalinhadas.
     --}}
     <div class="flex flex-col gap-4" style="height: calc(100vh - 120px); min-height: 520px">
-        @include('tarefas._abas', ['ativa' => 'quadro'])
+        {{--
+            O chip "N p/ você" é a caixa de entrada do quadro: sem ele, saber
+            que alguém está esperando uma resposta sua exigiria abrir os cards
+            um a um. Primeiro da fila e na cor da marca de propósito — é a única
+            coisa da tela que fala com VOCÊ, e não sobre o trabalho.
+
+            Ele conta o quadro inteiro, não o recorte: caixa de entrada que
+            esconde mensagem porque há um filtro ligado deixa de ser caixa de
+            entrada. Clicar aplica o filtro; clicar de novo tira.
+        --}}
+        <div class="shrink-0 flex items-center gap-3">
+            @include('tarefas._abas', ['ativa' => 'quadro'])
+
+            @if ($esperandoVoce > 0)
+                @php $filtrando = ($filtros['esperando'] ?? '') === '1'; @endphp
+                <a href="{{ request()->fullUrlWithQuery(['esperando' => $filtrando ? null : '1']) }}"
+                   title="{{ $filtrando ? 'Mostrar o quadro inteiro' : 'Ver só as que esperam por você' }}"
+                   class="h-[26px] inline-flex items-center gap-1.5 px-2.5 rounded-full border text-[12px] font-semibold transition"
+                   style="{{ $filtrando
+                       ? 'background: rgb(var(--brand)); border-color: rgb(var(--brand)); color: rgb(var(--on-brand))'
+                       : 'background: rgb(var(--brand) / var(--tint-alpha)); border-color: rgb(var(--brand) / 0.45); color: rgb(var(--brand-text))' }}">
+                    <span class="h-3 w-3"><x-nav-icon name="chat" :peso="1.9" /></span>
+                    {{ $esperandoVoce }} p/ você
+                </a>
+            @endif
+        </div>
+
+        {{--
+            Os quatro números do quadro.
+
+            Eles medem o quadro INTEIRO, e não o recorte: um KPI que muda ao
+            filtrar por sistema deixa de responder "como está o trabalho" e
+            passa a responder "como está esta busca" — pergunta que os
+            contadores de coluna, logo abaixo, já respondem.
+        --}}
+        {{-- 200px, a mesma régua do Funil: as duas telas são quadro com quatro
+             números em cima, e larguras mínimas diferentes fariam as faixas
+             quebrarem em pontos diferentes na mesma janela. --}}
+        <div class="shrink-0 grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+            @foreach ($kpis as $kpi)
+                <x-kpi-card :rotulo="$kpi['rotulo']" :valor="$kpi['valor']"
+                            :acento="$kpi['acento']" :delta="$kpi['nota']" :sinal="$kpi['sinal']" />
+            @endforeach
+        </div>
 
         @include('tarefas._filtros', [
             'filtros' => $filtros,
@@ -447,7 +502,15 @@
 
                 // Etapas que só se alcança com texto: o teclado abre o painel
                 // nelas, como o arraste faz.
-                etapasComTexto: @json(['ajustes_necessarios', 'cancelada', 'concluida']),
+                {{-- Por variável, e não literal: o `@json` do Blade separa os
+                     argumentos com `explode(',')`, então um array escrito à mão
+                     com quatro elementos perde o último e sai com o colchete
+                     aberto — erro de sintaxe na view compilada, não no Blade. --}}
+                etapasComTexto: @json($etapasComTexto),
+
+                // Os portões do ciclo: é de onde a tarefa VEM que decide se
+                // voltar para a bancada é reprovação ou só começar a trabalhar.
+                portoes: @json(\App\Models\Tarefa::PORTOES),
 
                 selecionado: null,
                 atalhosAbertos: false,
@@ -723,7 +786,23 @@
                         return;
                     }
 
-                    this.soltar(destino, this.etapasComTexto.includes(destino));
+                    this.soltar(destino, this.pedeTexto(destino));
+                },
+
+                /**
+                 * Este destino abre o painel de motivo?
+                 *
+                 * Em andamento é o caso que não se resolve só pelo destino:
+                 * vindo de um portão ele é reprovação e cobra o texto; vindo do
+                 * Backlog é só começar a trabalhar, e não há motivo a dar. Um
+                 * painel ali pediria justificativa para pegar a própria tarefa.
+                 */
+                pedeTexto(destino) {
+                    if (destino === 'em_desenvolvimento') {
+                        return this.portoes.includes(this.statusArrastado);
+                    }
+
+                    return this.etapasComTexto.includes(destino);
                 },
 
                 // Onde o ponteiro desceu, e quando o último arrasto terminou.
@@ -810,12 +889,37 @@
                             botao: 'Bloquear tarefa',
                             cor: 'warn', campo: 'motivo', obrigatorio: true, pedeAprovacao: false,
                         },
-                        ajustes_necessarios: {
-                            titulo: 'Devolvendo para ajustes',
-                            porque: 'Quem for corrigir precisa saber o que falhou — sem isso, a devolução vira uma volta sem instrução.',
-                            placeholder: 'O que precisa ser corrigido…',
-                            botao: 'Devolver para ajustes',
+                        // A devolução muda de sentido conforme o portão que
+                        // reprovou — é isso que a coluna única de Ajustes
+                        // achatava. Vindo do staging o código JÁ está na main,
+                        // e a recuperação é materialmente outra.
+                        em_desenvolvimento: {
+                            titulo: 'Devolvendo para Em andamento',
+                            porque: {
+                                em_revisao: 'Diga o que precisa ser corrigido no PR. Sem isso, quem recebe abre o card sem saber o que reprovou.',
+                                em_staging: 'Falhou em staging — o código JÁ está na main. Diga o que quebrou e se precisa voltar a versão (deploy/voltar.sh) ou dá para corrigir seguindo em frente.',
+                                pronta_producao: 'Reprovada antes de a tag subir. Diga o que apareceu.',
+                            }[this.statusArrastado] ?? 'Diga o que precisa ser corrigido.',
+                            placeholder: {
+                                em_revisao: 'O que precisa ser corrigido no PR…',
+                                em_staging: 'O que quebrou no staging · voltar ou corrigir em frente…',
+                                pronta_producao: 'O que apareceu antes de subir…',
+                            }[this.statusArrastado] ?? 'O que precisa ser corrigido…',
+                            botao: 'Devolver para correção',
                             cor: 'warn', campo: 'motivo', obrigatorio: true, pedeAprovacao: false,
+                        },
+                        // O carimbo do staging: é aqui que o dev afirma ter
+                        // validado, e é essa nota que o admin lê antes de
+                        // taggear. Texto opcional; o que importa é o carimbo.
+                        pronta_producao: {
+                            titulo: 'Liberando para Pronta p/ produção',
+                            porque: 'Vai para a fila do admin, que sobe a tag. Diga o que você conferiu no staging — é o que ele lê antes de subir.',
+                            placeholder: 'O que foi conferido no staging…',
+                            botao: 'Liberar para o admin subir',
+                            cor: 'good',
+                            campo: ehDev ? 'relatorio_notas' : null,
+                            obrigatorio: false,
+                            pedeAprovacao: ehDev,
                         },
                         cancelada: {
                             titulo: 'Cancelando a tarefa',
@@ -825,16 +929,16 @@
                             cor: 'crit', campo: 'motivo', obrigatorio: true, pedeAprovacao: false,
                         },
                         concluida: {
-                            titulo: 'Concluindo a tarefa',
+                            titulo: 'Encerrando como Concluída',
                             porque: ehDev
-                                ? 'A conclusão só passa com um relatório de teste aprovado desta passagem por Em testes.'
-                                : 'Tarefa operacional fecha sem relatório. A confirmação existe porque encerrar tira o card do quadro.',
-                            placeholder: 'Notas do relatório de teste…',
-                            botao: 'Concluir tarefa',
+                                ? 'Concluída significa EM PRODUÇÃO: a tag subiu e o vigia aplicou. Registre a versão — é ela que responde "desde quando o cliente tem isso".'
+                                : 'Tarefa operacional não passa por PR nem por tag. Registre o que foi feito — é o que sobra como prova depois.',
+                            placeholder: ehDev ? 'v1.4.2' : 'O que foi feito…',
+                            botao: ehDev ? 'Subiu para produção' : 'Encerrar tarefa',
                             cor: 'good',
-                            campo: ehDev ? 'relatorio_notas' : null,
+                            campo: ehDev ? 'versao_producao' : 'relatorio_notas',
                             obrigatorio: ehDev,
-                            pedeAprovacao: ehDev,
+                            pedeAprovacao: false,
                         },
                     };
 
