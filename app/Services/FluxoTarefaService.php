@@ -228,8 +228,12 @@ class FluxoTarefaService
      * que ela saiu de circulação seria mentira. Também não conta como travada:
      * uma dúvida de vinte minutos diluiria o sinal de um bloqueio de seis dias.
      */
-    public function perguntar(Tarefa $tarefa, User $quemPergunta, ?string $corpo): TarefaComentario
-    {
+    public function perguntar(
+        Tarefa $tarefa,
+        User $quemPergunta,
+        ?string $corpo,
+        ?int $paraEscolhido = null,
+    ): TarefaComentario {
         if (trim((string) $corpo) === '') {
             throw new \RuntimeException('É preciso escrever a pergunta.');
         }
@@ -238,10 +242,17 @@ class FluxoTarefaService
             throw new \RuntimeException('Tarefa encerrada não tem conversa em aberto.');
         }
 
-        $paraId = $this->outroLado($tarefa, $quemPergunta);
+        // O lado que o quadro sabe sozinho MANDA sobre a escolha: numa revisão
+        // só há dois lados, e deixar escolher onde não há escolha abriria a
+        // porta para mandar a pergunta a quem não está na conversa.
+        $paraId = $tarefa->outroLadoDe($quemPergunta) ?? $paraEscolhido;
 
         if ($paraId === null) {
-            throw new \RuntimeException('Não há outro lado nesta tarefa para receber a pergunta.');
+            throw new \RuntimeException('Escolha para quem vai a pergunta.');
+        }
+
+        if ($paraId === $quemPergunta->id) {
+            throw new \RuntimeException('A pergunta precisa ir para outra pessoa.');
         }
 
         return DB::transaction(function () use ($tarefa, $quemPergunta, $corpo, $paraId) {
@@ -290,22 +301,6 @@ class FluxoTarefaService
         }
 
         return $tarefa->pergunta_para_id === $quemPergunta->id;
-    }
-
-    /**
-     * Quem recebe a pergunta: o responsável, ou o interlocutor quando é ele
-     * mesmo quem está perguntando.
-     *
-     * Devolve null quando não há segundo lado — tarefa sem responsável e sem
-     * ninguém do outro lado ainda não é uma conversa.
-     */
-    private function outroLado(Tarefa $tarefa, User $quemPergunta): ?int
-    {
-        if ($tarefa->responsavel_id !== null && $tarefa->responsavel_id !== $quemPergunta->id) {
-            return $tarefa->responsavel_id;
-        }
-
-        return $tarefa->interlocutor_id !== $quemPergunta->id ? $tarefa->interlocutor_id : null;
     }
 
     /**

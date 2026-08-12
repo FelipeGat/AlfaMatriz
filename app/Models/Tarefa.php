@@ -331,6 +331,35 @@ class Tarefa extends Model
         return $this->rodadas >= 3;
     }
 
+    /**
+     * Para quem a pergunta desta pessoa vai, quando o quadro sabe sozinho.
+     *
+     * Numa revisão só há dois lados, e por isso não se escolhe destinatário: o
+     * outro lado é o responsável, ou o interlocutor de quem já conversou aqui.
+     *
+     * Devolve null quando NÃO há segundo lado — a tarefa é de quem está
+     * perguntando e ninguém entrou na conversa ainda. Isso não é um impedimento,
+     * é uma pergunta a mais a fazer: a tela oferece a escolha em vez de esconder
+     * o botão, porque não ter com quem falar ainda é diferente de não poder
+     * perguntar.
+     *
+     * Mora aqui, e não no serviço, porque a VIEW precisa da mesma resposta para
+     * decidir se mostra o select — duas cópias da regra divergiriam na primeira
+     * vez que alguém mexesse numa delas.
+     */
+    public function outroLadoDe(?User $quemPergunta): ?int
+    {
+        if (! $quemPergunta) {
+            return null;
+        }
+
+        if ($this->responsavel_id !== null && $this->responsavel_id !== $quemPergunta->id) {
+            return $this->responsavel_id;
+        }
+
+        return $this->interlocutor_id !== $quemPergunta->id ? $this->interlocutor_id : null;
+    }
+
     /** As tarefas cuja bola está com esta pessoa. */
     public function scopeEsperandoRespostaDe($query, ?int $usuarioId)
     {

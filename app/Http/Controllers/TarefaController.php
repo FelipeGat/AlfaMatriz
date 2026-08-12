@@ -594,6 +594,10 @@ class TarefaController extends Controller
 
         $data = $request->validate([
             'corpo' => 'nullable|string|max:2000',
+            // Só chega preenchido quando a tarefa ainda não tem outro lado: aí
+            // a tela pergunta a quem passar a vez em vez de esconder o botão.
+            // Quando há lado, o motor ignora este campo.
+            'pergunta_para_id' => 'nullable|exists:users,id',
         ]);
 
         $usuario = auth()->user();
@@ -601,7 +605,7 @@ class TarefaController extends Controller
         try {
             $tarefa->esperaRespostaDe($usuario)
                 ? $fluxo->responder($tarefa, $usuario, $data['corpo'] ?? null)
-                : $fluxo->perguntar($tarefa, $usuario, $data['corpo'] ?? null);
+                : $fluxo->perguntar($tarefa, $usuario, $data['corpo'] ?? null, $data['pergunta_para_id'] ?? null);
         } catch (\RuntimeException $e) {
             return back()->with('erro', $e->getMessage());
         }

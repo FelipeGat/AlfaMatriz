@@ -174,7 +174,16 @@
             --}}
             @if (! in_array($tarefa->status, \App\Models\Tarefa::STATUS_TERMINAIS, true)
                     && ! $tarefa->esperaRespostaDe(auth()->user()))
-                <div class="mt-2 flex items-center gap-2">
+                @php
+                    // Quem recebe a pergunta, quando o quadro sabe sozinho. Nulo
+                    // aqui não é impedimento: é uma pergunta a mais a fazer.
+                    $outroLado = $tarefa->outroLadoDe(auth()->user());
+                    $candidatos = $outroLado
+                        ? collect()
+                        : collect($usuarios ?? [])->reject(fn ($u) => $u->id === auth()->id());
+                @endphp
+
+                <div class="mt-2 flex flex-wrap items-center gap-2">
                     <button type="submit" form="perguntar-{{ $tarefa->id }}"
                             onclick="document.getElementById('pergunta-corpo-{{ $tarefa->id }}').value =
                                      document.getElementById('comentario-{{ $tarefa->id }}').value"
@@ -183,9 +192,37 @@
                         Perguntar
                     </button>
 
+                    {{--
+                        Sem outro lado, a tela PERGUNTA a quem passar a vez.
+
+                        O caso é comum e não é erro: a tarefa é sua e ninguém
+                        entrou na conversa ainda. Antes o botão aparecia e o
+                        envio morria com "não há outro lado" — uma recusa que
+                        culpa a pessoa por uma informação que a tela nunca pediu.
+                        Botão que some seria pior ainda: some sem dizer por quê,
+                        e some justamente de quem só tem esse caminho.
+
+                        O `form` liga o select ao envio escondido, como o botão.
+                    --}}
+                    @if ($outroLado === null)
+                        <select name="pergunta_para_id" form="perguntar-{{ $tarefa->id }}" required
+                                class="shrink-0 h-[28px] py-0 max-w-[200px] text-[12px] rounded-control
+                                       bg-input border-line text-ink-dim">
+                            <option value="">Perguntar a quem…</option>
+                            @foreach ($candidatos as $candidato)
+                                <option value="{{ $candidato->id }}">{{ $candidato->name }}</option>
+                            @endforeach
+                        </select>
+                    @endif
+
                     <p class="min-w-0 flex-1 text-[11.5px] text-ink-faint">
-                        Salvar publica o comentário. <strong class="font-semibold">Perguntar</strong> publica e
-                        passa a vez para o outro lado.
+                        Salvar publica o comentário.
+                        <strong class="font-semibold">Perguntar</strong>
+                        @if ($outroLado === null)
+                            publica e passa a vez para quem você escolher — esta tarefa ainda não tem outro lado.
+                        @else
+                            publica e passa a vez para o outro lado.
+                        @endif
                     </p>
                 </div>
             @else

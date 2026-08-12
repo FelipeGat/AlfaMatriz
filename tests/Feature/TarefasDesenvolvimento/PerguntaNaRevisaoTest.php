@@ -442,6 +442,100 @@ class PerguntaNaRevisaoTest extends TestCase
     }
 
     /**
+     * @spec:AC-206 Sem outro lado, o botão Perguntar APARECE e pergunta a quem passar
+     * a vez — nunca some em silêncio.
+     *
+     * O caso é comum e não é erro: a tarefa é sua e ninguém entrou na conversa ainda.
+     * Esconder o botão tiraria o único caminho de quem mais precisa dele, e sem dizer
+     * por quê.
+     */
+    public function test_sem_outro_lado_a_tela_pergunta_a_quem_passar_a_vez(): void
+    {
+        $dono = User::factory()->create(['name' => 'Rafael Lima']);
+        $outra = User::factory()->create(['name' => 'Camila Reis']);
+
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $dono->id,
+            'responsavel_id' => $dono->id,
+            'status' => 'em_revisao',
+        ]);
+
+        $this->assertNull($tarefa->outroLadoDe($dono), 'Sem responsável alheio nem interlocutor, não há lado.');
+
+        $html = $this->actingAs($dono)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Perguntar', $html);
+        $this->assertStringContainsString('Perguntar a quem…', $html);
+        $this->assertStringContainsString('esta tarefa ainda não tem outro lado', $html);
+        $this->assertStringContainsString('Camila Reis', $html);
+
+        // A escolha vale: a pergunta vai para quem foi escolhido.
+        $this->actingAs($dono)->post(route('tarefas.conversar', $tarefa), [
+            'corpo' => 'Consegue olhar este trecho comigo?',
+            'pergunta_para_id' => $outra->id,
+        ])->assertSessionMissing('erro');
+
+        $tarefa->refresh();
+
+        $this->assertSame($outra->id, $tarefa->pergunta_para_id);
+        $this->assertSame($outra->id, $tarefa->interlocutor_id);
+        $this->assertSame(1, $tarefa->rodadas);
+    }
+
+    /**
+     * @spec:AC-206 Com outro lado, o quadro aponta SOZINHO: numa revisão só há dois
+     * lados, e oferecer escolha onde não há escolha abriria a porta para mandar a
+     * pergunta a quem não está na conversa.
+     */
+    public function test_com_outro_lado_nao_ha_escolha_e_a_escolhida_e_ignorada(): void
+    {
+        [$tarefa, $dev, $revisor] = $this->emRevisao();
+        $estranho = User::factory()->create(['name' => 'Quem passava por ali']);
+
+        $html = $this->actingAs($revisor)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('Perguntar a quem…', $html);
+        $this->assertStringContainsString('passa a vez para o outro lado', $html);
+
+        // Mesmo mandando um destinatário à mão, o lado conhecido manda.
+        $this->actingAs($revisor)->post(route('tarefas.conversar', $tarefa), [
+            'corpo' => 'Dúvida.',
+            'pergunta_para_id' => $estranho->id,
+        ])->assertSessionMissing('erro');
+
+        $this->assertSame($dev->id, $tarefa->fresh()->pergunta_para_id);
+    }
+
+    /**
+     * @spec:AC-206 Sem lado e sem escolha, a recusa DIZ o que falta — e o que falta é
+     * uma informação que a tela pede, não um erro de quem escreveu.
+     */
+    public function test_sem_lado_e_sem_escolha_a_recusa_diz_o_que_falta(): void
+    {
+        $dono = User::factory()->create();
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $dono->id,
+            'responsavel_id' => $dono->id,
+            'status' => 'em_revisao',
+        ]);
+
+        $this->actingAs($dono)->post(route('tarefas.conversar', $tarefa), [
+            'corpo' => 'Uma dúvida solta.',
+        ])->assertSessionHas('erro');
+
+        $this->assertStringContainsString('Escolha para quem vai a pergunta', session('erro'));
+        $this->assertFalse($tarefa->fresh()->temPergunta());
+
+        // E não dá para perguntar a si mesmo.
+        $this->actingAs($dono)->post(route('tarefas.conversar', $tarefa), [
+            'corpo' => 'Uma dúvida solta.',
+            'pergunta_para_id' => $dono->id,
+        ])->assertSessionHas('erro');
+
+        $this->assertStringContainsString('ir para outra pessoa', session('erro'));
+    }
+
+    /**
      * @spec:AC-194 Tarefa encerrada não tem conversa em aberto: a bola não fica com
      * ninguém depois que o card sai do quadro.
      */
