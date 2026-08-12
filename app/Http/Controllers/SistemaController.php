@@ -36,7 +36,12 @@ class SistemaController extends Controller
         $sistemasAtivos = $this->indicadores->sistemasAtivos();
         $clientesAtivos = $this->indicadores->clientesAtivos();
         $mrrAtacado = $this->indicadores->mrrAtacado();
-        $vinculosAtivos = (int) $todos->sum('clientes_count');
+        // Só vínculo de sistema ATIVO. O numerador já não conta produto
+        // desativado — ele fica fora do fechamento —, e dividir por licenças
+        // que ele ignora achatava o preço médio na proporção do catálogo
+        // aposentado: quanto mais produto antigo na base, menor o preço médio
+        // que a tela mostrava, sem nada ter mudado de preço.
+        $vinculosAtivos = (int) $todos->where('ativo', true)->sum('clientes_count');
         $precoMedio = $vinculosAtivos > 0 ? $mrrAtacado / $vinculosAtivos : 0.0;
 
         // O aviso de "sem preço de atacado" era contado na própria view. Com a

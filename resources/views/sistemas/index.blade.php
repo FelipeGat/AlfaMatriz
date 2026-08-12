@@ -14,6 +14,24 @@
             <x-aviso>{{ session('status') }}</x-aviso>
         @endif
 
+        {{-- O resumo do topo. O controller já o calculava desde sempre e a
+             view nunca o desenhou: os números existiam, iam para cá e morriam
+             sem chegar a ninguém. --}}
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+            <x-kpi-card rotulo="Sistemas ativos" :valor="number_format($sistemasAtivos, 0, ',', '.')"
+                        acento="accent" icone="cube-outline" />
+            <x-kpi-card rotulo="Clientes ativos" :valor="number_format($clientesAtivos, 0, ',', '.')"
+                        acento="brand" icone="users" />
+            <x-kpi-card rotulo="MRR de atacado" :valor="'R$ '.number_format($mrrAtacado, 2, ',', '.')"
+                        acento="chart-out" icone="repeat" />
+            {{-- O preço médio é por LICENÇA, não por cliente: um cliente com
+                 dois sistemas paga duas. É o mesmo vocabulário do ranking do
+                 Comercial. --}}
+            <x-kpi-card rotulo="Preço médio por licença" :valor="'R$ '.number_format($precoMedio, 2, ',', '.')"
+                        :delta="$vinculosAtivos.' '.($vinculosAtivos === 1 ? 'licença ativa' : 'licenças ativas')"
+                        acento="amber" icone="banknotes" />
+        </div>
+
         <x-tabela min="980px">
             <thead>
                 <tr class="bg-head border-b border-line font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">

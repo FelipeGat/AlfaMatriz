@@ -1,5 +1,24 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 12/08/2026 — A tela de Sistemas mostra o resumo que já calculava
+
+### Novidades
+
+- **Faixa de resumo no topo de Sistemas**, com sistemas ativos, clientes
+  ativos, MRR de atacado e preço médio por licença. Os quatro números já eram
+  calculados a cada abertura da tela; faltava a tela desenhá-los.
+
+### Correções
+
+- **O preço médio por licença estava baixo demais.** Ele dividia a receita de
+  atacado pelas licenças de **todos** os produtos, inclusive os desativados —
+  que não geram receita nenhuma, porque o faturamento os ignora. Quanto mais
+  produto aposentado no catálogo, menor o preço médio exibido, sem preço nenhum
+  ter mudado. Agora o divisor conta só as licenças dos produtos ativos.
+
+> "Por licença", e não "por cliente": um cliente com dois sistemas paga duas
+> licenças. É o mesmo vocabulário do ranking de produtos no painel Comercial.
+
 ## AlfaMatriz — 12/08/2026 — O painel Comercial para de discordar de si mesmo
 
 O Comercial mostrava, na mesma tela, dois números diferentes com o mesmo nome —
