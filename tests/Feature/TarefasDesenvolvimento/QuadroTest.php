@@ -330,4 +330,58 @@ class QuadroTest extends TestCase
 
         $this->assertStringNotContainsString('Nenhuma tarefa aqui', $html);
     }
+
+    /**
+     * @spec:AC-212 Os quatro chips aparecem SEMPRE, e zerados ficam apagados em vez de
+     * sumir: o cabeçalho não muda de forma conforme o dia, e "0 travadas" também é
+     * notícia. Todos filtram, menos o de hoje — o que foi concluído já saiu do quadro,
+     * e ele leva ao Histórico.
+     */
+    public function test_os_quatro_chips_do_cabecalho_aparecem_sempre_e_filtram(): void
+    {
+        $usuario = User::factory()->create();
+
+        $chips = collect($this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->viewData('chips'));
+
+        $this->assertCount(4, $chips, 'Zerado o chip fica apagado, não some.');
+
+        $this->assertSame(
+            ['0 p/ você', '0 travadas', '0 p/ subir', '0 hoje'],
+            $chips->pluck('label')->all()
+        );
+
+        $recortes = $chips->pluck('href')->all();
+        $this->assertStringContainsString('situacao=esperando_mim', $recortes[0]);
+        $this->assertStringContainsString('situacao=travadas', $recortes[1]);
+        $this->assertStringContainsString('situacao=prontas', $recortes[2]);
+        $this->assertSame(route('tarefas.historico'), $recortes[3],
+            'O de hoje não filtra o quadro: o que foi concluído já saiu dele.');
+    }
+
+    /**
+     * @spec:AC-213 O controle de raias é um segmented control, como o Quadro/Histórico:
+     * as três opções são uma escolha ENTRE si. Como texto solto, liam-se como três
+     * links independentes — nada dizia que ligar uma desliga as outras.
+     */
+    public function test_as_raias_sao_um_segmented_control(): void
+    {
+        $usuario = User::factory()->create();
+
+        $html = $this->actingAs($usuario)
+            ->get(route('tarefas.index', ['raias' => 'responsavel']))
+            ->assertOk()
+            ->getContent();
+
+        // A pílula do componente compartilhado, e a opção ativa marcada como o
+        // resto do sistema marca — inclusive para leitor de tela.
+        $this->assertStringContainsString('rounded-control border border-line bg-surface p-1', $html);
+        $this->assertMatchesRegularExpression(
+            '/raias=responsavel"\s+aria-current="page"/u', $html,
+            'A raia ligada precisa se anunciar como a atual.'
+        );
+
+        foreach (['Nenhuma', 'Responsável', 'Sistema'] as $opcao) {
+            $this->assertStringContainsString($opcao, $html);
+        }
+    }
 }

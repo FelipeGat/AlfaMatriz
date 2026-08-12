@@ -404,8 +404,10 @@ class PerguntaNaRevisaoTest extends TestCase
 
         $this->fluxo->perguntar($tarefa, $revisor, 'Pergunta.');
 
-        // Chip zerado não aparece: um "0 p/ você" permanente ensina a não ler.
-        $this->actingAs($revisor)->get(route('tarefas.index'))->assertOk()->assertDontSee('p/ você');
+        // Zerado o chip não some — fica apagado. Some, o cabeçalho mudaria de
+        // forma conforme o dia, e quem abre o quadro numa terça calma não
+        // descobriria que o recorte existe. Para o revisor ele diz ZERO.
+        $this->actingAs($revisor)->get(route('tarefas.index'))->assertOk()->assertSee('0 p/ você');
 
         $doDev = $this->actingAs($dev)->get(route('tarefas.index'))->assertOk();
         $doDev->assertSee('1 p/ você');

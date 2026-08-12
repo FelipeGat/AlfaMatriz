@@ -97,14 +97,18 @@
                     O gesto foi para os botões do card; a contagem é trabalho de
                     cabeçalho, e aqui não custa 132px de largura.
 
-                    Cada um é também um filtro. Chip zerado não aparece: um "0
-                    travadas" permanente ensina a não ler a fila.
+                    Cada um é também um filtro, e os quatro aparecem sempre —
+                    inclusive zerados. Zerado ele fica APAGADO em vez de sumir:
+                    o cabeçalho não muda de forma conforme o dia, e "0 travadas"
+                    também é notícia. Ver `chipsDoQuadro` para o porquê da
+                    divergência com o protótipo.
                 --}}
                 <div class="ml-auto min-w-0 flex items-center gap-2 overflow-x-auto">
                     @foreach ($chips as $chip)
                         <a href="{{ $chip['href'] }}" title="{{ $chip['title'] }}"
                            class="shrink-0 h-[26px] px-[9px] inline-flex items-center gap-1.5 rounded-tile border
-                                  font-mono text-[10.5px] font-semibold uppercase tracking-[0.06em] whitespace-nowrap transition"
+                                  font-mono text-[10.5px] font-semibold uppercase tracking-[0.06em] whitespace-nowrap transition
+                                  {{ $chip['total'] === 0 ? 'opacity-45 hover:opacity-100' : '' }}"
                            style="border-color: {{ $chip['borda'] }}; background: {{ $chip['fundo'] }}; color: rgb(var(--{{ $chip['cor'] }}))">
                             <x-nav-icon :name="$chip['icone']" :peso="1.9" class="h-3 w-3 shrink-0" />
                             {{ $chip['label'] }}

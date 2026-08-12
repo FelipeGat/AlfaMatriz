@@ -48,6 +48,24 @@
                         'concluida' => $tarefa->tipo === 'desenvolvimento',
                         default => false,
                     };
+
+                    /**
+                     * O nome do destino, e a exceção que o protótipo faz.
+                     *
+                     * Vindo de um PORTÃO, "Em andamento" não descreve o que o
+                     * clique faz: a tarefa não está avançando para a bancada,
+                     * está sendo REPROVADA e devolvida. Um menu que chama as
+                     * duas coisas pelo mesmo nome esconde a única que tem
+                     * consequência — e o card do outro lado vai amanhecer com
+                     * uma tarja que ninguém acha que pediu.
+                     *
+                     * Vindo do Backlog é literalmente começar a trabalhar, e aí
+                     * "Em andamento" é o nome certo.
+                     */
+                    $rotulo = $destino === 'em_desenvolvimento'
+                            && in_array($tarefa->status, \App\Models\Tarefa::PORTOES, true)
+                        ? 'Devolver para correção'
+                        : \App\Models\Tarefa::rotuloDaEtapa($destino);
                 @endphp
 
                 <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, '{{ $destino }}', '{{ $tarefa->status }}', '{{ $tarefa->tipo }}')"
@@ -56,9 +74,7 @@
                     <span class="h-[7px] w-[7px] shrink-0 rounded-full"
                           style="background: rgb(var(--{{ \App\Models\Tarefa::corDaEtapa($destino) }}))"></span>
 
-                    <span class="flex-1 min-w-0 truncate">
-                        {{ \App\Models\Tarefa::rotuloDaEtapa($destino) }}
-                    </span>
+                    <span class="flex-1 min-w-0 truncate">{{ $rotulo }}</span>
 
                     @if ($pedeMotivo)
                         <span class="shrink-0 font-mono text-[9px] uppercase tracking-[0.06em] text-ink-faint">

@@ -185,9 +185,16 @@ class TarefaController extends Controller
             ];
         }, $chips);
 
-        // Chip zerado não aparece: um "0 travadas" permanente ensina a não ler
-        // a fila, e o espaço dele é largura que a coluna quer.
-        return array_values(array_filter($chips, fn (array $chip) => $chip['total'] > 0));
+        // Os quatro aparecem SEMPRE, inclusive zerados.
+        //
+        // O protótipo esconde o chip em zero (`filter(k => !k.label.startsWith('0 '))`)
+        // e a razão é boa: "0 travadas" permanente ensina a não ler a fila. Mas
+        // esconder faz o cabeçalho mudar de forma conforme o dia, e quem abre o
+        // quadro numa terça calma não descobre que os recortes existem — some
+        // justamente a informação de que NÃO há nada travado, que é uma notícia.
+        // Decisão do dono do produto, contra o protótipo, e declarada aqui para
+        // quem vier depois não "consertar" de volta.
+        return array_values($chips);
     }
 
     /**

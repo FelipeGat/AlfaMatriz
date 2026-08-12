@@ -275,6 +275,48 @@ class MoverTarefaTest extends TestCase
     }
 
     /**
+     * @spec:AC-211 Vindo de um portão, o destino Em andamento se chama "Devolver para
+     * correção" — nunca pelo nome da etapa.
+     *
+     * "Em andamento" não descreve o que o clique faz ali: a tarefa não está avançando
+     * para a bancada, está sendo REPROVADA e devolvida. Um menu que chama as duas
+     * coisas pelo mesmo nome esconde a única que tem consequência, e o card do outro
+     * lado amanhece com uma tarja que ninguém acha que pediu.
+     */
+    public function test_o_menu_chama_a_devolucao_pelo_que_ela_e(): void
+    {
+        $usuario = User::factory()->create();
+        $responsavel = User::factory()->create();
+
+        foreach (['em_revisao', 'em_staging', 'pronta_producao'] as $portao) {
+            $tarefa = $this->criarTarefa(['status' => $portao, 'titulo' => 'No portão '.$portao]);
+
+            $card = $this->trechoDoCard(
+                $this->actingAs($usuario)->get(route('tarefas.index'))->getContent(), $tarefa->id
+            );
+
+            $this->assertStringContainsString('Devolver para correção', $card,
+                "De {$portao} a volta é reprovação, e o menu precisa dizer isso.");
+            $this->assertStringNotContainsString('>Em andamento<', $card);
+
+            $tarefa->delete();
+        }
+
+        // Do Backlog é literalmente começar a trabalhar: aí o nome da etapa é
+        // o nome certo, e "Devolver para correção" seria mentira.
+        $doBacklog = $this->criarTarefa([
+            'status' => 'backlog', 'responsavel_id' => $responsavel->id, 'titulo' => 'Na fila',
+        ]);
+
+        $card = $this->trechoDoCard(
+            $this->actingAs($usuario)->get(route('tarefas.index'))->getContent(), $doBacklog->id
+        );
+
+        $this->assertStringContainsString('Em andamento', $card);
+        $this->assertStringNotContainsString('Devolver para correção', $card);
+    }
+
+    /**
      * @spec:AC-187 Durante o arrasto, a coluna que não aceita o card apaga: o card
      * entrega os próprios destinos ao ser pego, e cada coluna se pergunta se está
      * neles. Antes o quadro deixava soltar em qualquer lugar e só depois respondia

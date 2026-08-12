@@ -124,18 +124,22 @@
         pode ser guardada nos favoritos ou mandada pronta para alguém.
     --}}
     @if ($raias)
-        <span class="ml-auto flex items-center gap-1">
+        {{-- Segmented control, o mesmo do Quadro/Histórico: as três opções são
+             uma escolha ENTRE si, e como texto solto elas se liam como três
+             links independentes — nada dizia que ligar uma desliga as outras,
+             nem qual estava valendo agora. --}}
+        <span class="ml-auto flex items-center gap-2">
             <span class="font-mono text-[10px] uppercase tracking-caps text-ink-faint">Raias</span>
-            @foreach (['nenhuma' => 'Nenhuma', 'responsavel' => 'Responsável', 'sistema' => 'Sistema'] as $modo => $rotulo)
-                <a href="{{ request()->fullUrlWithQuery(['raias' => $modo]) }}"
-                   @class([
-                       'h-[26px] px-2 inline-flex items-center rounded-control text-[12px] transition',
-                       'bg-chip text-ink font-semibold' => $raias['modo'] === $modo,
-                       'text-ink-faint hover:text-brand' => $raias['modo'] !== $modo,
-                   ])>
-                    {{ $rotulo }}
-                </a>
-            @endforeach
+
+            <x-abas>
+                @foreach (['nenhuma' => 'Nenhuma', 'responsavel' => 'Responsável', 'sistema' => 'Sistema'] as $modo => $rotulo)
+                    <x-abas.item :href="request()->fullUrlWithQuery(['raias' => $modo])"
+                                 :ativo="$raias['modo'] === $modo"
+                                 :icone="['nenhuma' => 'view-grid', 'responsavel' => 'users', 'sistema' => 'cube'][$modo]">
+                        {{ $rotulo }}
+                    </x-abas.item>
+                @endforeach
+            </x-abas>
         </span>
     @endif
 
