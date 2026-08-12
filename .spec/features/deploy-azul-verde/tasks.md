@@ -61,22 +61,46 @@
   ali: o portão roda na cópia em preparo, e reprovar não exige mais um
   `git reset --hard` em cima do site vivo.
 
-## T-102 — Converter staging e produção no servidor [pendente]
+## T-102a — Converter o staging (LXC 116) [concluida]
+- Refs: US-050, US-052, US-053, AC-167, AC-174, AC-175
+- Arquivos: —
+- Executado em 12/08/2026. Ordem seguida: deploy antigo para levar os scripts
+  novos ao container → pausa → `provisionar.sh --ambiente staging` → cópia do
+  `deploy-staging-alfamatriz.sh` para o `/usr/local/bin` do host → despausa →
+  publicação real. Conferido: `atual`/`preparo` alternando entre as cópias,
+  saúde 200 nas duas portas, porta de ensaio respondendo só no localhost,
+  sonda do painel devolvendo `SHA=db34acd DIRTY=0 CODE=200`, anexos e `.env`
+  em `compartilhado/`, 12 GB livres. Volta de versão cronometrada:
+  **0,48 s**. Um deploy completo pelo executor novo levou 90 s, todo ele fora
+  do ar da versão publicada.
+- **Dois defeitos encontrados aqui, que teriam ido para a produção:**
+  1. O `provisionar.sh` trocava a configuração do Nginx antes de converter — o
+     site responderia 404 durante toda a conversão.
+  2. A troca do cron do `schedule:run` deixava o servidor **sem agendador
+     nenhum**: a checagem de "já existe" casava com a linha antiga, e a
+     remoção seguinte levava as duas. Não dá erro — só para de rodar. O
+     staging ficou 6 minutos assim, entre a conversão e a correção.
+
+## T-102b — Converter a produção (LXC 115) [pendente]
 - Refs: US-050, US-052, AC-167, AC-174
 - Arquivos: —
-- Notas: execução real, nesta ordem e nunca em paralelo — (1) conferir `df -h`
-  no LXC (ASM-041); (2) converter o **staging** (LXC 116) rodando
-  `deploy/provisionar.sh --ambiente staging`, e só DEPOIS copiar o
-  `deploy-staging-alfamatriz.sh` novo para o `/usr/local/bin` do **host
-  Proxmox** — ele passa a chamar o `publicar.sh` dentro do container, e chamá-lo
-  antes da conversão falharia; (3) publicar uma versão pelo staging e conferir
-  a linha do AlfaMatriz no painel AlfaDeploy (ASM-043); (4) só então converter
-  a **produção** (LXC 115), fora de horário de uso, com backup do banco
-  recém-gerado; (5) conferir que um anexo antigo de cobrança ainda abre depois
-  da conversão, e que a `deploy-status.json` continua respondendo na URL
-  pública; (6) publicar uma versão de verdade e cronometrar a troca; (7) apagar
-  `vendor/` e `node_modules/` da raiz de controle.
-- Atenção: o executor de staging vive no **host**, e o
-  `provisionar.sh` só instala scripts DENTRO do container. Ele não se atualiza
-  sozinho — já aconteceu de uma etapa publicada no repositório ficar inerte em
-  produção por causa disso.
+- Notas: execução real, fora de horário de uso, nesta ordem — (1) `df -h` no
+  LXC 115 (havia 14 GB livres em 12/08); (2) `deploy/backup.sh` para ter cópia
+  do banco desta hora, e não a da madrugada; (3) **pausar o vigia**
+  (`touch /var/www/alfamatriz/.deploy-paused`) — ele roda de 5 em 5 minutos e
+  não pode disparar no meio da conversão; (4) marcar a tag `v*`, que é o que
+  move a produção, e deixar o vigia antigo aplicá-la uma última vez pelo
+  caminho antigo — é o que leva os scripts novos ao container; (5)
+  `deploy/provisionar.sh` (produção), que converte, troca o Nginx, instala o
+  vigia novo e o `alfamatriz-voltar.sh` e corrige o cron do agendador; (6)
+  **conferir o crontab com os próprios olhos** — o agendador é o item que já
+  sumiu em silêncio uma vez (T-102a); (7) despausar; (8) conferir a saúde na
+  URL pública, a `deploy-status.json` respondendo pelo `alias` do Nginx e a
+  linha do sistema no painel; (9) publicar a tag seguinte e cronometrar a
+  troca; (10) só então apagar `vendor/` e `node_modules/` da raiz de controle.
+- Diferença em relação ao staging: aqui há **anexos** possíveis. Em 12/08 a
+  pasta estava vazia nos dois ambientes; conferir de novo antes, e depois da
+  conversão abrir um anexo antigo de cobrança pela tela.
+- Atenção: diferente do staging, o vigia da produção roda DENTRO do container e
+  é instalado pelo `provisionar.sh` — não há passo manual no host. O script do
+  host só existe para o staging.
