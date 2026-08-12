@@ -62,7 +62,7 @@ class TarefaController extends Controller
             return [
                 'chave' => $status,
                 'label' => $label,
-                'cor' => $this->corDaEtapa($status),
+                'cor' => Tarefa::corDaEtapa($status),
                 'quantidade' => $daEtapa->count(),
                 'andando' => $andando,
                 'limite' => $limite,
@@ -1067,33 +1067,5 @@ class TarefaController extends Controller
     private function entrouNaEtapaEm(Tarefa $tarefa)
     {
         return $tarefa->eventos->firstWhere('saiu_em', null)?->entrou_em ?? $tarefa->created_at;
-    }
-
-    /**
-     * Token de cor da etapa, pintado na coluna — nunca no card (AC-127).
-     *
-     * A coluna é o lugar do status porque ela já o nomeia: repetir a cor na
-     * borda de cada card diria sete vezes o que o cabeçalho diz uma, e
-     * roubaria a borda do card, que é o único canal do aviso de tarefa
-     * esquecida (AC-093).
-     *
-     * A escala segue o Funil de Vendas: entrada em `accent`, o meio do fluxo
-     * na marca, o atrito em `warn`, a chegada em `good`. Cancelada fica
-     * neutra de propósito — é terminal sem valor e não disputa atenção.
-     *
-     * O `warn` do bloqueio saiu daqui junto com a coluna: ele agora é a cor da
-     * tarja no card e da faixa de solto, que é onde o bloqueio passou a viver.
-     */
-    private function corDaEtapa(string $status): string
-    {
-        return match ($status) {
-            'aberta', 'backlog' => 'accent',
-            'em_desenvolvimento', 'em_revisao', 'em_staging' => 'brand',
-            // A porta da produção é chegada, não trabalho em curso: ela ganha o
-            // mesmo tom de Concluída porque, do ponto de vista de quem olha o
-            // quadro, o que está ali já passou por tudo que havia para passar.
-            'pronta_producao', 'concluida' => 'good',
-            default => 'line',
-        };
     }
 }

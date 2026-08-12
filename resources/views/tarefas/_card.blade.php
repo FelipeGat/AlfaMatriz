@@ -315,7 +315,7 @@
             @unless ($bloqueada)
                 {{-- Abre o painel em vez de enviar: travar exige o motivo, e um
                      POST daqui seria recusado com uma frase que ninguém pediu. --}}
-                <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, 'bloqueio')"
+                <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, 'bloqueio', '{{ $tarefa->status }}', '{{ $tarefa->tipo }}')"
                         title="Bloquear tarefa" aria-label="Bloquear tarefa"
                         class="h-5 w-5 rounded-badge border border-line flex items-center justify-center
                                text-ink-mute transition hover:text-warn hover:border-warn-line">
@@ -324,7 +324,7 @@
             @endunless
 
             @if (in_array('concluida', $transicoes ?? [], true))
-                <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, 'concluida')"
+                <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, 'concluida', '{{ $tarefa->status }}', '{{ $tarefa->tipo }}')"
                         title="Concluir tarefa" aria-label="Concluir tarefa"
                         class="h-5 w-5 rounded-badge border flex items-center justify-center transition"
                         style="border-color: var(--good-line); background: var(--good-tint); color: rgb(var(--good))">

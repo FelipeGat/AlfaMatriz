@@ -153,10 +153,10 @@ class PerfisDoQuadroTest extends TestCase
         $this->assertStringContainsString('draggable="false" title="Esta tarefa está com Camila Reis.'
             .' Só quem faz triagem move o trabalho de outra pessoa." data-tarefa="'.$dela->id.'"', $numaLinha);
 
-        // A minha continua arrastável, e só ela traz menu — um `x-data` de
-        // menu na página inteira, que é o do card dele.
+        // A minha continua arrastável, e só ela traz menu — quem não pode
+        // mover não recebe destino nenhum, então a lista de botões nem existe.
         $this->assertStringContainsString('draggable="true" data-tarefa="'.$minha->id.'"', $numaLinha);
-        $this->assertSame(1, substr_count($html, 'x-data="{ transicoesDoCard:'));
+        $this->assertSame(1, substr_count($html, 'Mover para'));
     }
 
     /**

@@ -247,14 +247,31 @@ class MoverTarefaTest extends TestCase
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
         // Da revisão a tarefa avança para o staging ou volta para a bancada —
-        // a volta é a própria reprovação, e leva o motivo (AC-087). Bloquear
-        // ficou de fora: travar deixou de ser etapa e virou ação própria
-        // (AC-190).
-        $esperado = 'x-data="{ transicoesDoCard: '
-            .Js::from(['em_staging', 'em_desenvolvimento', 'cancelada']).' }"';
+        // a volta é a própria reprovação, e leva o motivo (AC-087).
+        //
+        // O menu é uma LISTA DE BOTÕES, um por destino: o select escondia os
+        // três até ser aberto, e "Confirmar" no pé era o que se aperta sem ler.
+        // Cada botão só abre o painel, que é quem nomeia o resultado.
+        $card = $this->trechoDoCard($html, Tarefa::first()->id);
 
-        $this->assertStringContainsString($esperado, $html,
-            'O menu do card em Em revisão precisa trazer os destinos permitidos, com o atributo x-data íntegro.');
+        foreach (['em_staging', 'em_desenvolvimento', 'cancelada'] as $destino) {
+            $this->assertStringContainsString('abrirPendente('.Tarefa::first()->id.", '{$destino}'", $card);
+        }
+
+        $this->assertStringContainsString('Mover para', $card);
+        $this->assertStringContainsString('Em staging', $card);
+
+        // A volta para a bancada vindo de um portão é reprovação: o menu avisa
+        // que ela cobra texto ANTES do clique.
+        $this->assertStringContainsString('pede motivo', $card);
+
+        // Bloquear fecha a lista e não entra nela: travar não é mover.
+        $this->assertStringContainsString('Marcar como bloqueada', $card);
+
+        // E o formulário de bloqueio que ficava sempre aberto no menu saiu — o
+        // texto agora é pedido pelo painel, como o de todas as outras.
+        $this->assertStringNotContainsString('Bloquear: esperando quem', $card);
+        $this->assertStringNotContainsString('Confirmar', $card);
     }
 
     /**
@@ -357,12 +374,12 @@ class MoverTarefaTest extends TestCase
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
         $this->assertStringContainsString(
-            "abrirPendente({$pronta->id}, 'concluida')",
+            "abrirPendente({$pronta->id}, 'concluida'",
             $this->trechoDoCard($html, $pronta->id),
             'De Pronta p/ produção o fluxo permite concluir: o botão precisa estar no card.'
         );
         $this->assertStringNotContainsString(
-            "abrirPendente({$emRevisao->id}, 'concluida')",
+            "abrirPendente({$emRevisao->id}, 'concluida'",
             $this->trechoDoCard($html, $emRevisao->id),
             'De Em revisão não se conclui: o botão não pode aparecer só para recusar depois.'
         );
@@ -426,7 +443,7 @@ class MoverTarefaTest extends TestCase
         // Na solta, o botão ABRE o painel: travar exige o motivo, e um POST
         // direto daqui seria recusado com uma frase que ninguém pediu.
         $this->assertStringContainsString(
-            "abrirPendente({$solta->id}, 'bloqueio')", $this->trechoDoCard($html, $solta->id)
+            "abrirPendente({$solta->id}, 'bloqueio'", $this->trechoDoCard($html, $solta->id)
         );
 
         // Na travada, o mesmo lugar vira destravar — que não pede texto.

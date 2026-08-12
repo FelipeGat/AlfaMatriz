@@ -1,123 +1,94 @@
 @php
     /**
-     * Menu "Mover ▾" do card: caminho acessível (teclado, celular) para as
-     * mesmas transições que o arrastar oferece, e o único caminho para as
-     * que pedem texto — ajustes necessários, cancelamento e conclusão com
-     * relatório de teste (Q-013, US-037).
+     * O menu "Mover ▾" do card: uma LISTA DE BOTÕES, um por destino.
+     *
+     * Era um `<select>` com um textarea condicional embaixo e um "Confirmar" no
+     * pé — o menu tentava ser o formulário inteiro. Três problemas nisso: o
+     * select esconde os destinos até ser aberto (e são três ou quatro, não
+     * trinta); "Confirmar" é o que se aperta sem ler; e o texto do motivo era
+     * pedido ali, longe da coluna de destino, duplicando o painel que o quadro
+     * já tem.
+     *
+     * Agora cada destino é um botão que só faz uma coisa: abrir o painel de
+     * motivo (`abrirPendente`, no `index.blade.php`), que é quem nomeia o
+     * resultado no próprio botão — "Subiu para produção", "Devolver para
+     * correção". Onde a transição não pede texto, o painel confirma e envia
+     * mesmo assim: o gesto é sempre o mesmo, o que muda é o que ele pergunta.
+     *
+     * Medidas do `design/AlfaMatriz Tarefas.dc.html`: item de 30px, raio 4px,
+     * ponto de 7px na cor da etapa de DESTINO, e "pede motivo" em mono 9px à
+     * direita quando a transição cobra texto.
+     *
+     * Espera: $tarefa, $transicoes.
      */
 @endphp
 
-@if (! empty($transicoes))
-    {{--
-        `Js::from` e não `@json`: dentro de um atributo HTML, a primeira aspa
-        dupla do JSON fecharia o `x-data` no meio, o Alpine não avaliaria nada
-        e o select do menu sairia SEM OPÇÃO — o caminho acessível morreria em
-        silêncio, porque a rota continua respondendo. É a mesma escolha de
-        `clientes/_form.blade.php`.
-    --}}
-    {{--
-        Só os formulários: o gatilho virou o chevron do rodapé do card
-        (`_card.blade.php`), que abre e fecha o mesmo `menuAberto`. Como texto,
-        ele gastava uma linha inteira do card para abrir um menu que quase
-        sempre fica fechado.
-    --}}
-    <div x-show="menuAberto" x-cloak class="mt-2 pt-2 border-t border-rule" @click.stop
-         x-data="{ transicoesDoCard: {{ Illuminate\Support\Js::from($transicoes) }} }">
-        <form method="POST"
-              action="{{ route('tarefas.mover', $tarefa) }}" class="mt-2 space-y-2">
-            @csrf
-            {{-- A etapa que o card tinha quando esta tela foi montada: se
-                 alguém moveu enquanto o menu estava aberto, o envio é recusado
-                 em vez de sobrescrever o movimento do outro (AC-208). --}}
-            <input type="hidden" name="de_status" value="{{ $tarefa->status }}">
-            {{--
-                `py-0` junto com a altura fixa, como em Revendas e Clientes: o
-                plugin de formulários dá ao select `padding: 8px` em cima e
-                embaixo mais `line-height: 24px` — 42px de caixa. Com `h-8` e
-                `box-sizing: border-box` isso não cabe, e o texto sai cortado.
-            --}}
-            <select name="status" x-model="destino"
-                    class="w-full h-8 py-0 text-[12px] rounded-control bg-input border-line text-ink">
-                <template x-for="status in transicoesDoCard" :key="status">
-                    <option :value="status" x-text="rotulosStatus[status] ?? status"></option>
-                </template>
-            </select>
+@if (! empty($transicoes) || ! $tarefa->estaBloqueada())
+    <div x-show="menuAberto" x-cloak @click.stop
+         class="mt-[9px] pt-[9px] border-t border-rule flex flex-col gap-1"
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0 -translate-y-1">
 
-            {{-- Devolver para a bancada só cobra motivo quando a tarefa vem de
-                 um portão: aí é reprovação. Do Backlog é só começar a
-                 trabalhar, e um campo obrigatório ali pediria justificativa
-                 para alguém pegar a própria tarefa. --}}
-            @if (in_array($tarefa->status, \App\Models\Tarefa::PORTOES, true))
-                <template x-if="destino === 'em_desenvolvimento'">
-                    <textarea name="motivo" rows="2" required
-                              placeholder="{{ match ($tarefa->status) {
-                                  'em_revisao' => 'O que precisa ser corrigido no PR…',
-                                  'em_staging' => 'O que quebrou no staging · voltar ou corrigir em frente…',
-                                  default => 'O que apareceu antes de subir…',
-                              } }}"
-                              class="w-full text-[12px] rounded-control bg-input border-line text-ink"></textarea>
-                </template>
-            @endif
+        @if (! empty($transicoes))
+            <p class="mb-0.5 font-mono text-[9.5px] uppercase tracking-[0.1em] text-ink-faint">Mover para</p>
 
-            <template x-if="destino === 'cancelada'">
-                <textarea name="motivo" rows="2" required placeholder="Motivo do cancelamento…"
-                          class="w-full text-[12px] rounded-control bg-input border-line text-ink"></textarea>
-            </template>
+            @foreach ($transicoes as $destino)
+                @php
+                    /**
+                     * Esta transição cobra texto?
+                     *
+                     * Voltar para a bancada só cobra quando a tarefa vem de um
+                     * PORTÃO — aí é reprovação. Do Backlog é só começar a
+                     * trabalhar, e anunciar "pede motivo" ali seria prometer uma
+                     * pergunta que o painel não vai fazer.
+                     */
+                    $pedeMotivo = match ($destino) {
+                        'em_desenvolvimento' => in_array($tarefa->status, \App\Models\Tarefa::PORTOES, true),
+                        'cancelada' => true,
+                        'concluida' => $tarefa->tipo === 'desenvolvimento',
+                        default => false,
+                    };
+                @endphp
 
-            {{--
-                O relatório é pergunta do ciclo de desenvolvimento. Pedir notas
-                de teste para "ligar para o fabricante" só ensinaria a escrever
-                qualquer coisa no campo — e um campo que se aprende a preencher
-                por obrigação deixa de valer como prova de teste em todas as
-                outras tarefas.
-            --}}
-            @if ($tarefa->tipo === 'desenvolvimento')
-                <template x-if="destino === 'pronta_producao'">
-                    <div class="space-y-2">
-                        <textarea name="relatorio_notas" rows="2" placeholder="O que foi conferido no staging…"
-                                  class="w-full text-[12px] rounded-control bg-input border-line text-ink"></textarea>
-                        <label class="flex items-center gap-2 text-[11.5px] text-ink-dim">
-                            <input type="checkbox" name="relatorio_aprovado" value="1" checked>
-                            Validado no staging
-                        </label>
-                    </div>
-                </template>
+                <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, '{{ $destino }}', '{{ $tarefa->status }}', '{{ $tarefa->tipo }}')"
+                        class="flex items-center gap-2 w-full h-[30px] px-2 rounded-tile border border-btn-line
+                               bg-transparent text-ink text-[12.5px] text-left transition hover:border-brand/50">
+                    <span class="h-[7px] w-[7px] shrink-0 rounded-full"
+                          style="background: rgb(var(--{{ \App\Models\Tarefa::corDaEtapa($destino) }}))"></span>
 
-                {{-- Concluída significa EM PRODUÇÃO: a versão é o que liga a
-                     tarefa à tag que o vigia aplicou. --}}
-                <template x-if="destino === 'concluida'">
-                    <input type="text" name="versao_producao" required placeholder="v1.4.2"
-                           class="w-full h-8 py-0 text-[12px] rounded-control bg-input border-line text-ink">
-                </template>
-            @endif
+                    <span class="flex-1 min-w-0 truncate">
+                        {{ \App\Models\Tarefa::rotuloDaEtapa($destino) }}
+                    </span>
 
-            <button type="submit"
-                    class="w-full h-8 rounded-control bg-brand text-on-brand font-semibold text-[12px] hover:bg-brand-bright transition">
-                Confirmar
-            </button>
-        </form>
+                    @if ($pedeMotivo)
+                        <span class="shrink-0 font-mono text-[9px] uppercase tracking-[0.06em] text-ink-faint">
+                            pede motivo
+                        </span>
+                    @endif
+                </button>
+            @endforeach
+        @endif
 
         {{--
-            Bloquear tem formulário PRÓPRIO, e não uma opção do select acima:
-            travar deixou de ser etapa, e listá-lo junto dos destinos faria o
-            menu voltar a ensinar que a tarefa muda de lugar quando trava — que
-            é exatamente a ideia que a tarja no card veio desfazer.
+            Bloquear fecha a lista, e não entra nela: travar NÃO é mover — a
+            tarefa fica na etapa em que está. Listá-lo junto dos destinos faria
+            o menu voltar a ensinar que ela muda de lugar quando trava, que é
+            exatamente a ideia que a tarja no card veio desfazer. Daí o âmbar e
+            a borda âmbar, separando-o da lista sem precisar de um título.
 
-            Só aparece para tarefa solta: quem já está travado destrava pelo
-            botão da tarja, que fica ao lado do motivo que deixou de valer.
+            Antes havia aqui um formulário de bloqueio SEMPRE ABERTO, com
+            textarea e botão próprios: o menu perguntava o motivo do bloqueio a
+            quem tinha aberto o menu para mover. O texto agora é pedido pelo
+            painel, no mesmo lugar em que todos os outros são.
         --}}
-        @if (! $tarefa->estaBloqueada())
-            <form method="POST"
-                  action="{{ route('tarefas.bloquear', $tarefa) }}" class="mt-2 pt-2 border-t border-rule space-y-2">
-                @csrf
-                <textarea name="motivo" rows="2" required placeholder="Bloquear: esperando quem, e o quê…"
-                          class="w-full text-[12px] rounded-control bg-input border-line text-ink"></textarea>
-                <button type="submit"
-                        class="w-full h-8 rounded-control border font-semibold text-[12px] transition hover:bg-chip"
-                        style="border-color: rgb(var(--warn) / 0.45); color: rgb(var(--warn))">
-                    Bloquear tarefa
-                </button>
-            </form>
-        @endif
+        @unless ($tarefa->estaBloqueada())
+            <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, 'bloqueio', '{{ $tarefa->status }}', '{{ $tarefa->tipo }}')"
+                    class="flex items-center gap-2 w-full h-[30px] px-2 rounded-tile border
+                           text-[12.5px] font-semibold text-left transition hover:brightness-110"
+                    style="border-color: var(--warn-line); background: var(--warn-tint); color: rgb(var(--warn))">
+                <x-nav-icon name="cadeado-fechado" :peso="1.8" class="h-3 w-3 shrink-0" />
+                Marcar como bloqueada
+            </button>
+        @endunless
     </div>
 @endif

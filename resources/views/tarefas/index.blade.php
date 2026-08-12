@@ -689,7 +689,15 @@
                     }
 
                     this.prepararTeclado(alvo);
-                    this.abrirPendente(this.selecionado, 'bloqueio');
+                    // Pelo teclado não houve arrasto: a etapa e o tipo saem do
+                    // próprio card, que já os declara para o quadro.
+                    const alvo = document.querySelector(`[data-tarefa="${this.selecionado}"]`);
+
+                    this.abrirPendente(
+                        this.selecionado, 'bloqueio',
+                        alvo?.closest('[data-status]')?.dataset.status ?? null,
+                        alvo?.dataset.tipo ?? null,
+                    );
                 },
 
                 /** Põe o card selecionado no mesmo estado que um `dragstart` põe. */
@@ -884,7 +892,25 @@
                     return receitas[destino] ?? null;
                 },
 
-                abrirPendente(tarefa, destino) {
+                /**
+                 * Abre o painel de motivo de um card.
+                 *
+                 * `de` e `tipo` chegam explícitos quando o painel é aberto pelo
+                 * MENU ou pelos botões do rodapé — fora do arrasto, os campos do
+                 * card na mão estão nulos, e sem eles o painel escolheria a cópia
+                 * errada (a devolução não saberia de qual portão veio) e o envio
+                 * iria sem `de_status`, desligando a guarda de concorrência.
+                 * Arrastando, os dois já valem e os argumentos são dispensáveis.
+                 */
+                abrirPendente(tarefa, destino, de = null, tipo = null) {
+                    if (de !== null) {
+                        this.statusArrastado = de;
+                    }
+
+                    if (tipo !== null) {
+                        this.tipoArrastado = tipo;
+                    }
+
                     const receita = this.receita(destino);
 
                     if (! receita) {

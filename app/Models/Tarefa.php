@@ -109,6 +109,29 @@ class Tarefa extends Model
         'ajustes_necessarios' => 'Ajustes necessários',
     ];
 
+    /**
+     * O tom de cada etapa, num lugar só.
+     *
+     * O quadro pinta a coluna com ele, e o menu "Mover ▾" pinta com ele o ponto
+     * de cada destino — inclusive os terminais, que não têm coluna. Vivia
+     * privado no controller, e a view que precisava da mesma resposta teria de
+     * repetir a escala: escala copiada é escala que diverge.
+     *
+     * `pronta_producao` compartilha o tom de `concluida` porque, do ponto de
+     * vista de quem olha o quadro, o que está ali já passou por tudo que havia
+     * para passar. `cancelada` fica neutra: é terminal sem valor, e não disputa
+     * atenção com as outras.
+     */
+    public static function corDaEtapa(string $status): string
+    {
+        return match ($status) {
+            'aberta', 'backlog' => 'accent',
+            'em_desenvolvimento', 'em_revisao', 'em_staging' => 'brand',
+            'pronta_producao', 'concluida' => 'good',
+            default => 'line',
+        };
+    }
+
     /** O nome de uma etapa, inclusive das que já não existem no fluxo. */
     public static function rotuloDaEtapa(string $status): string
     {
