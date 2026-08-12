@@ -61,11 +61,29 @@ LOG="${LOG:-$DIR/storage/logs/deploy-tag.log}"
 # referência foi acrescentada num e faltou no outro, e recurso novo nasceu
 # invisível em produção. Uma implementação só, dois chamadores.
 #
-# Vizinho primeiro: é assim que a suíte consegue exercitar o vigia contra um
-# repositório descartável. No servidor o vigia roda de /usr/local/bin, onde não
-# há vizinho, e cai no deploy/ do clone de controle.
-PUBLICADOR="${PUBLICADOR:-$(dirname "$0")/publicar.sh}"
-[[ -x "$PUBLICADOR" ]] || PUBLICADOR="$DIR/deploy/publicar.sh"
+# Três lugares, nesta ordem, e a ordem tem razão de ser:
+#
+#   1. o clone de controle — é o que está publicado, então o publicador é
+#      sempre o da versão que está no ar;
+#   2. o vizinho do próprio script — é assim que a suíte exercita o vigia
+#      contra um repositório descartável;
+#   3. /usr/local/bin/alfamatriz-publicar.sh — ÚLTIMO recurso, para o servidor
+#      recém-convertido, cuja versão no ar é anterior ao azul/verde e ainda não
+#      tem o publicador no próprio clone.
+#
+# O instalado ficar por último é o que evita o defeito que este projeto já
+# pagou uma vez: uma cópia em /usr/local/bin que envelhece em silêncio,
+# publicada no repositório e ausente do arquivo que roda.
+if [[ -z "${PUBLICADOR:-}" ]]; then
+    for CANDIDATO in \
+        "$DIR/deploy/publicar.sh" \
+        "$(dirname "$0")/publicar.sh" \
+        "/usr/local/bin/alfamatriz-publicar.sh"
+    do
+        [[ -x "$CANDIDATO" ]] && { PUBLICADOR="$CANDIDATO"; break; }
+    done
+    PUBLICADOR="${PUBLICADOR:-$DIR/deploy/publicar.sh}"
+fi
 
 mkdir -p "$(dirname "$LOG")" 2>/dev/null || true
 log(){ echo "$(date '+%F %T') $*" | tee -a "$LOG" 2>/dev/null || echo "$*"; }

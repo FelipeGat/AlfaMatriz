@@ -77,6 +77,27 @@ no_container() {
     no_host "pct exec $VMID -- bash -lc $(printf '%q' "$1")"
 }
 
+# Leva um arquivo do deploy/ daqui para dentro do container.
+#
+# Existe para o caso em que o clone do servidor está numa versão ANTERIOR à
+# deste script — converter um servidor para azul/verde é exatamente isso: a
+# versão no ar ainda não conhece o `publicar.sh` nem o conversor. Sem esta
+# saída, converter o mecanismo de publicação exigiria publicar código novo
+# antes, prendendo uma decisão na outra sem necessidade.
+enviar_para_container() { # $1=arquivo do deploy/  $2=destino dentro do container
+    local origem_local="$(dirname "$0")/$1"
+
+    [[ -f "$origem_local" ]] || return 1
+
+    if [[ "$LOCAL" -eq 1 ]]; then
+        cp "$origem_local" "/tmp/$1" || return 1
+    else
+        scp -q -o BatchMode=yes "$origem_local" "$HOST:/tmp/$1" || return 1
+    fi
+
+    no_host "pct push $VMID /tmp/$1 $2"
+}
+
 # ---------------------------------------------------------------- container
 
 if no_host "pct config $VMID >/dev/null 2>&1"; then
@@ -172,8 +193,17 @@ no_container "if [ -f /root/.alfamatriz-db-pass ]; then \
 # sai sem fazer nada, e num servidor onde a aplicação ainda nem foi clonada
 # nem chega a ser chamado.
 info "convertendo a instalação para azul/verde, se ainda não estiver"
-no_container "if [ -d $APP_DIR/.git ] && [ -f $APP_DIR/deploy/converter-para-azul-verde.sh ]; then \
-        bash $APP_DIR/deploy/converter-para-azul-verde.sh --dir $APP_DIR || \
+
+# O conversor sai daqui, e não do clone do servidor: a versão que está no ar
+# quando se converte é, por definição, uma que ainda não o contém.
+CONVERSOR="$APP_DIR/deploy/converter-para-azul-verde.sh"
+if ! no_container "test -f '$CONVERSOR'" 2>/dev/null; then
+    enviar_para_container converter-para-azul-verde.sh /tmp/converter-para-azul-verde.sh \
+        && CONVERSOR=/tmp/converter-para-azul-verde.sh
+fi
+
+no_container "if [ -d $APP_DIR/.git ] && [ -f $CONVERSOR ]; then \
+        bash $CONVERSOR --dir $APP_DIR || \
             echo '    AVISO: a conversão não concluiu — confira antes de publicar.'; \
     else \
         echo '    aplicação ainda não clonada aqui: a conversão roda no próximo provisionamento.'; \
@@ -281,9 +311,31 @@ fi  # fim do bloco exclusivo de produção
 #
 # Instalar daqui fecha isso, e sem tirar a leitura do repositório como fonte:
 # o que vale continua sendo deploy/, este passo só o espelha.
+#
+# Quando o clone do servidor está numa versão ANTERIOR à do script — é o caso
+# ao converter um servidor para azul/verde, onde a versão no ar ainda não
+# conhece o `publicar.sh` novo —, o arquivo é enviado daqui. Sem essa saída, a
+# conversão exigiria publicar uma versão nova antes, e as duas decisões
+# (converter o mecanismo, publicar código) ficariam presas uma na outra sem
+# necessidade.
 instalar_script() {
     local origem="$APP_DIR/deploy/$1"
     local destino="/usr/local/bin/$2"
+
+    # Clone do servidor mais antigo que este script: manda o arquivo daqui,
+    # para /tmp — nunca para dentro do clone, que ficaria com arquivo
+    # não rastreado e passaria a acusar adaptação local que não existe.
+    if ! no_container "test -f '$origem'" 2>/dev/null; then
+        if enviar_para_container "$1" "/tmp/$1"; then
+            no_container "install -m 755 '/tmp/$1' '$destino.novo' && \
+                mv -f '$destino.novo' '$destino' && rm -f '/tmp/$1' && \
+                echo '    $2 instalado (enviado daqui: o clone do servidor ainda não o tem)'"
+            return 0
+        fi
+
+        no_container "echo '    AVISO: $origem não existe no servidor nem aqui.'"
+        return 0
+    fi
 
     # Escreve num temporário e renomeia: `rename` é atômico e preserva o inode
     # antigo para quem já estiver executando. Sobrescrever direto arriscaria
@@ -301,6 +353,12 @@ instalar_script backup.sh alfamatriz-backup.sh
 # A volta de versão precisa estar à mão numa hora ruim: quem entra no container
 # durante um incidente não deveria ter de lembrar o caminho do repositório.
 instalar_script voltar.sh alfamatriz-voltar.sh
+# O motor da publicação também é instalado, como ÚLTIMO recurso do vigia: num
+# servidor recém-convertido, a versão que está no ar é anterior ao azul/verde e
+# o `deploy/publicar.sh` do clone ainda não existe. Assim que a primeira versão
+# nova entrar, o vigia volta a preferir o do clone — que é sempre igual ao
+# código publicado, e não uma cópia que envelhece em silêncio.
+instalar_script publicar.sh alfamatriz-publicar.sh
 
 if [[ "$AMBIENTE" != "staging" ]]; then
     # Só produção: o staging é movido pelo vigia da main, que roda no host.

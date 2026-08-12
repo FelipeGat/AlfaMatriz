@@ -146,6 +146,39 @@ class VigiaTagTest extends TestCase
     }
 
     /**
+     * @spec:AC-176 O vigia publica pelo `publicar.sh` DO CLONE quando ele
+     * existe — isto é, pelo publicador da versão que está no ar.
+     *
+     * A alternativa instalada em /usr/local/bin só existe como último recurso,
+     * para o servidor recém-convertido, cuja versão publicada é anterior ao
+     * azul/verde e ainda não conhece o publicador. Deixá-la ganhar do clone
+     * reintroduziria o defeito que este projeto já pagou: uma cópia que
+     * envelhece em silêncio, publicada no repositório e ausente do arquivo que
+     * roda — o deploy passa e não faz o que o código diz.
+     */
+    public function test_o_vigia_prefere_o_publicador_da_versao_que_esta_no_ar(): void
+    {
+        $this->criarFerramentas(saude: '200');
+
+        // Um publicador de mentira DENTRO do clone. Se o vigia preferir este,
+        // ele deixa o rastro; se preferir outro, o rastro não aparece.
+        file_put_contents(
+            $this->repo.'/deploy/publicar.sh',
+            "#!/usr/bin/env bash\necho 'PUBLICADOR-DO-CLONE' >> \"\$ALFA_LOG\"\nexit 0\n"
+        );
+        chmod($this->repo.'/deploy/publicar.sh', 0755);
+
+        $processo = $this->rodar();
+
+        $this->assertSame(0, $processo->getExitCode(), $processo->getOutput().$processo->getErrorOutput());
+        $this->assertStringContainsString(
+            'PUBLICADOR-DO-CLONE',
+            $this->chamadas(),
+            'Havendo publicador no clone, é ele que publica.'
+        );
+    }
+
+    /**
      * @spec:AC-069 O vigia roda pelo cron, que entrega um PATH mínimo
      * (/usr/bin:/bin). As ferramentas de build vivem em /usr/local/bin — se o
      * script não completar o PATH sozinho, ele funciona quando alguém o chama
