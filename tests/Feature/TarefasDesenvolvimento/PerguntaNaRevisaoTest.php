@@ -63,7 +63,6 @@ class PerguntaNaRevisaoTest extends TestCase
         $this->assertNotNull($tarefa->pergunta_em);
         $this->assertTrue($tarefa->esperaRespostaDe($dev));
         $this->assertFalse($tarefa->esperaRespostaDe($revisor));
-        $this->assertSame('Aguardando resposta de Rafael Lima', $tarefa->rotuloDaPergunta());
 
         // A pergunta vira comentário marcado: sem a marca, a linha do tempo
         // mostra a pergunta como comentário comum e a resposta perde a que ela
@@ -296,7 +295,11 @@ class PerguntaNaRevisaoTest extends TestCase
         $html = $this->actingAs($revisor)->get(route('tarefas.index'))->assertOk()->getContent();
         $card = $this->trechoDoCard($html, $tarefa->id);
 
-        $this->assertStringContainsString('Aguardando resposta de Rafael Lima', $card);
+        // O rótulo e o NOME ficam em linhas separadas: na primeira cabem o
+        // ícone e o tempo, e "Aguardando resposta de Rafael Lima" ali seria
+        // truncado justamente na parte que importa.
+        $this->assertStringContainsString('Aguardando resposta', $card);
+        $this->assertStringContainsString('Rafael Lima', $card);
         $this->assertStringContainsString('Esse retorno vazio acontece em produção?', $card);
         $this->assertStringContainsString('1ª rodada', $card);
 
@@ -355,7 +358,7 @@ class PerguntaNaRevisaoTest extends TestCase
         $doRevisor = $this->trechoDoCard(
             $this->actingAs($revisor)->get(route('tarefas.index'))->getContent(), $tarefa->id
         );
-        $this->assertStringContainsString('Aguardando resposta de', $doRevisor);
+        $this->assertStringContainsString('Aguardando resposta', $doRevisor);
         $this->assertStringNotContainsString('Sua resposta…', $doRevisor);
     }
 

@@ -27,6 +27,9 @@
         'cadeado-fechado' => 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
         'cadeado-aberto' => 'M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
         'check' => 'M4.5 12.75l6 6 9-13.5',
+        // O selo de comentários do card: balão com a ponta para baixo, que é o
+        // que o protótipo usa — distinto do `chat` de três pontos da pergunta.
+        'balao' => 'M8.25 18.75L12 22.5l3.75-3.75M3 10.5a7.5 7.5 0 1115 0 7.5 7.5 0 01-15 0z',
         'seta-cima' => 'M12 19.5v-15m0 0l-6.75 6.75M12 4.5l6.75 6.75',
         // Dúvida na revisão: interrogação em círculo, o ícone que o handoff usa
         // no chip de quem espera resposta.

@@ -1,0 +1,2302 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.bunny.net/css?family=space-grotesk:500,600,700" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Geist, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: #029caf; text-decoration: none; }
+  a:hover { color: #26d4e6; }
+  textarea, button, input, select { font-family: inherit; }
+  @keyframes entra { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes sobe { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  * { scrollbar-width: thin; scrollbar-color: rgba(135,152,160,0.34) transparent; }
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(135,152,160,0.34); border-radius: 3px; border: 3px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(2,156,175,0.75); border: 2px solid transparent; background-clip: padding-box; }
+</style>
+</helmet>
+
+<div style="height:100vh;background:{{ t.canvas }};color:{{ t.ink }};display:flex;flex-direction:column;overflow:hidden">
+
+  <div style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:10px 20px;border-bottom:1px solid {{ t.line }};background:{{ t.head }}">
+    <div style="min-width:0;margin-right:4px">
+      <h1 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600;color:{{ t.ink }};white-space:nowrap">Tarefas</h1>
+      <p style="margin:1px 0 0;font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:{{ t.inkFaint }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ resumoTopo }}</p>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:2px;padding:3px;border-radius:6px;border:1px solid {{ t.line }};background:{{ t.surface }};flex-shrink:0">
+      <sc-for list="{{ abas }}" as="a" hint-placeholder-count="2">
+        <button onClick="{{ a.go }}" style="height:26px;padding:0 12px;border:0;border-radius:4px;background:{{ a.bg }};color:{{ a.color }};font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">{{ a.label }}</button>
+      </sc-for>
+    </div>
+
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <button onClick="{{ abrirDemo }}" title="Simular uma pergunta na revisão, passo a passo" style="height:32px;padding:0 11px;border-radius:5px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.inkDim }};font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Simular</button>
+      <button onClick="{{ toggleAtalhos }}" title="Atalhos de teclado" aria-label="Atalhos de teclado" style="height:32px;width:32px;border-radius:5px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.inkMute }};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;padding:0;cursor:pointer">?</button>
+      <button onClick="{{ toggleTheme }}" title="{{ t.themeLabel }}" aria-label="{{ t.themeLabel }}" style="height:32px;width:32px;border-radius:5px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.inkMute }};display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" d="{{ t.themeIcon }}"></path></svg>
+      </button>
+      <div title="Perfil de quem está usando o painel" style="display:flex;align-items:center;gap:2px;padding:3px;border-radius:6px;border:1px solid {{ t.line }};background:{{ t.surface }}">
+        <sc-for list="{{ perfis }}" as="p" hint-placeholder-count="2">
+          <button onClick="{{ p.go }}" style="height:24px;padding:0 10px;border:0;border-radius:4px;background:{{ p.bg }};color:{{ p.color }};font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap">{{ p.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;gap:2px;padding:3px;border-radius:6px;border:1px solid {{ t.line }};background:{{ t.surface }}">
+        <sc-for list="{{ vistas }}" as="v" hint-placeholder-count="2">
+          <button onClick="{{ v.go }}" style="height:24px;padding:0 10px;border:0;border-radius:4px;background:{{ v.bg }};color:{{ v.color }};font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap">{{ v.label }}</button>
+        </sc-for>
+      </div>
+      <button onClick="{{ abrirNova }}" style="height:32px;padding:0 13px;border:0;border-radius:6px;background:#029caf;color:{{ t.onBrand }};font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">+ Nova tarefa</button>
+    </div>
+  </div>
+
+  <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;padding:10px 20px;border-bottom:1px solid {{ t.line }};background:{{ t.canvas }};flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border-radius:6px;background:{{ t.input }};border:1px solid {{ buscaBorda }};color:{{ t.inkMute }};font-size:13px;flex:0 1 250px;min-width:170px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;flex-shrink:0"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4.5-4.5" stroke-linecap="round"></path></svg>
+      <input ref="{{ refBusca }}" type="text" value="{{ busca }}" onInput="{{ onBusca }}" placeholder="Buscar tarefa…" style="flex:1;min-width:0;height:100%;border:0;background:transparent;color:{{ t.ink }};font-size:13px;outline:none">
+      <span style="flex-shrink:0;font-family:'Geist Mono',monospace;font-size:10.5px;color:{{ t.inkFaint }};border:1px solid {{ t.btnLine }};border-radius:3px;padding:0 4px">/</span>
+    </div>
+
+    <sc-for list="{{ filtros }}" as="f" hint-placeholder-count="2">
+      <select value="{{ f.valor }}" onChange="{{ f.onChange }}" style="height:32px;padding:0 8px;border-radius:6px;background:{{ t.input }};border:1px solid {{ f.borda }};color:{{ f.cor }};font-size:12.5px;cursor:pointer">
+        <sc-for list="{{ f.opcoes }}" as="o" hint-placeholder-count="3">
+          <option value="{{ o.v }}">{{ o.label }}</option>
+        </sc-for>
+      </select>
+    </sc-for>
+
+    <sc-if value="{{ mostrarQuadro }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0">
+        <span style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:{{ t.inkFaint }};white-space:nowrap">Raias</span>
+        <div style="display:flex;align-items:center;gap:2px;padding:3px;border-radius:6px;border:1px solid {{ t.line }};background:{{ t.surface }}">
+          <sc-for list="{{ opcoesRaia }}" as="r" hint-placeholder-count="3">
+            <button onClick="{{ r.go }}" style="height:24px;padding:0 10px;border:0;border-radius:4px;background:{{ r.bg }};color:{{ r.color }};font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap">{{ r.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ temRecorte }}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{ limparFiltros }}" style="flex-shrink:0;height:32px;padding:0 11px;border-radius:6px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.brandText }};font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Limpar recorte</button>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ vistaCelular }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;justify-content:center;padding:16px;overflow:auto">
+    <div style="width:390px;height:760px;max-height:100%;flex-shrink:0;margin:auto;display:flex;flex-direction:column;border-radius:26px;background:{{ t.canvas }};border:1px solid {{ t.line }};box-shadow:0 24px 60px -30px rgba(0,0,0,0.7);overflow:hidden">
+
+      <div style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:14px 16px 10px;border-bottom:1px solid {{ t.line }};background:{{ t.head }}">
+        <div style="min-width:0;flex:1">
+          <h2 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:600;color:{{ t.ink }}">Tarefas</h2>
+          <p style="margin:2px 0 0;font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:{{ t.inkFaint }};white-space:nowrap">{{ resumoTopo }}</p>
+        </div>
+        <button onClick="{{ abrirNova }}" aria-label="Nova tarefa" style="flex-shrink:0;height:44px;width:44px;border:0;border-radius:8px;background:#029caf;color:{{ t.onBrand }};font-size:20px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer">+</button>
+      </div>
+
+      <div style="flex-shrink:0;display:flex;gap:7px;padding:10px 12px;overflow-x:auto;border-bottom:1px solid {{ t.line }}">
+        <sc-for list="{{ etapasMobile }}" as="e" hint-placeholder-count="5">
+          <button onClick="{{ e.go }}" style="flex-shrink:0;height:38px;padding:0 12px;display:flex;align-items:center;gap:7px;border-radius:8px;border:1px solid {{ e.borda }};background:{{ e.bg }};color:{{ e.cor }};font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">
+            <span style="height:6px;width:6px;flex-shrink:0;border-radius:9999px;background:{{ e.ponto }}"></span>
+            {{ e.label }}
+            <span style="flex-shrink:0;padding:1px 6px;border-radius:9999px;background:{{ e.chipBg }};font-family:'Geist Mono',monospace;font-size:10px">{{ e.count }}</span>
+          </button>
+        </sc-for>
+      </div>
+
+      <div style="flex-shrink:0;display:flex;align-items:center;gap:9px;padding:11px 16px;border-bottom:1px solid {{ t.line }};background:{{ t.panel }}">
+        <span style="height:8px;width:8px;flex-shrink:0;border-radius:9999px;background:{{ etapaMobile.cor }}"></span>
+        <h3 style="margin:0;flex:1;min-width:0;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:{{ t.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ etapaMobile.label }}</h3>
+        <sc-if value="{{ etapaMobile.aviso }}" hint-placeholder-val="{{ false }}">
+          <span style="flex-shrink:0;font-family:'Geist Mono',monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:{{ t.warn }};white-space:nowrap">{{ etapaMobile.aviso }}</span>
+        </sc-if>
+        <span style="flex-shrink:0;height:22px;padding:0 8px;border-radius:9999px;background:{{ etapaMobile.chipBg }};color:{{ etapaMobile.chipColor }};font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ etapaMobile.contador }}</span>
+      </div>
+
+      <div style="flex:1;min-height:0;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{ etapaMobile.cards }}" as="card" hint-placeholder-count="3">
+          <article style="border-radius:8px;background:{{ t.panelRaised }};border:1px solid {{ card.borderColor }};box-shadow:{{ t.cardShadow }};padding:13px">
+            <div onClick="{{ card.onClick }}" onMouseDown="{{ card.onMouseDown }}" style="cursor:pointer">
+              <div style="display:flex;align-items:flex-start;gap:8px">
+                <p style="margin:0;min-width:0;flex:1;font-size:15px;font-weight:500;line-height:1.35;color:{{ t.ink }}">{{ card.titulo }}</p>
+                <span style="flex-shrink:0;padding:3px 7px;border-radius:3px;background:{{ card.prioBg }};color:{{ card.prioColor }};font-family:'Geist Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase">{{ card.prioridade }}</span>
+              </div>
+              <sc-if value="{{ card.temResumo }}" hint-placeholder-val="{{ true }}">
+                <p style="margin:6px 0 0;font-size:13px;line-height:1.45;color:{{ t.inkMute }};display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ card.resumo }}</p>
+              </sc-if>
+              <sc-if value="{{ card.temPergunta }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:10px;padding:8px 10px;border-radius:5px;background:{{ t.perguntaBg }};border-left:2px solid {{ t.brandSolid }}">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="{{ t.brandText }}" stroke-width="1.9" style="width:13px;height:13px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"></path></svg>
+                    <span style="flex:1;min-width:0;font-family:'Geist Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:{{ t.brandText }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ card.perguntaLabel }}</span>
+                    <span style="flex-shrink:0;padding:1px 6px;border-radius:3px;background:{{ card.rodadaBg }};color:{{ card.rodadaCor }};font-family:'Geist Mono',monospace;font-size:9.5px;font-weight:600;white-space:nowrap">{{ card.rodadaLabel }}</span>
+                  </div>
+                  <p style="margin:5px 0 0;font-size:12.5px;line-height:1.4;color:{{ t.ink }};white-space:pre-wrap">{{ card.perguntaTexto }}</p>
+                  <sc-if value="{{ card.devoResposta }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ card.abrirResposta }}" style="margin-top:8px;width:100%;height:44px;border-radius:6px;border:1px solid {{ t.brandSolid }};background:transparent;color:{{ t.brandText }};font-size:13px;font-weight:600;cursor:pointer">Responder</button>
+                  </sc-if>
+                  <sc-if value="{{ card.respondendo }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:8px;animation:entra 140ms ease-out">
+                      <textarea ref="{{ refResposta }}" rows="3" value="{{ respostaTexto }}" onInput="{{ onResposta }}" placeholder="Sua resposta…" style="display:block;width:100%;padding:9px 10px;border-radius:6px;background:{{ t.input }};border:1px solid {{ t.brandSolid }};color:{{ t.ink }};font-size:13px;line-height:1.45;resize:vertical;outline:none"></textarea>
+                      <div style="margin-top:8px;display:flex;gap:8px">
+                        <button onClick="{{ cancelarResposta }}" style="flex:0 0 auto;height:44px;padding:0 16px;border-radius:6px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.inkDim }};font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>
+                        <button onClick="{{ enviarResposta }}" style="flex:1;height:44px;border-radius:6px;border:0;background:#029caf;color:{{ t.onBrand }};font-size:13px;font-weight:600;cursor:pointer">Enviar resposta</button>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ card.temRetorno }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:10px;padding:8px 10px;border-radius:5px;background:{{ t.warnTint }};border-left:2px solid {{ t.warn }}">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="{{ t.warn }}" stroke-width="1.9" style="width:13px;height:13px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"></path></svg>
+                    <span style="flex:1;min-width:0;font-family:'Geist Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:{{ t.warn }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ card.retornoLabel }}</span>
+                  </div>
+                  <p style="margin:5px 0 0;font-size:12.5px;line-height:1.4;color:{{ t.ink }}">{{ card.retornoMotivo }}</p>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ card.bloqueado }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:10px;padding:8px 10px;border-radius:5px;background:{{ t.warnTint }};border-left:2px solid {{ t.warn }}">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="{{ t.warn }}" stroke-width="1.8" style="width:13px;height:13px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path></svg>
+                    <span style="flex:1;min-width:0;font-family:'Geist Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:{{ t.warn }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ card.bloqueadoLabel }}</span>
+                  </div>
+                  <p style="margin:5px 0 0;font-size:12.5px;line-height:1.4;color:{{ t.ink }}">{{ card.motivo }}</p>
+                </div>
+              </sc-if>
+              <div style="margin-top:11px;padding-top:11px;border-top:1px solid {{ t.rule }};display:flex;align-items:center;gap:9px">
+                <span style="flex-shrink:0;height:26px;width:26px;border-radius:9999px;background:{{ card.avatarBg }};border:{{ card.avatarBorder }};color:{{ card.avatarColor }};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600">{{ card.iniciais }}</span>
+                <span style="min-width:0;flex:1;font-size:12.5px;color:{{ t.inkMute }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ card.sistema }}</span>
+                <span style="flex-shrink:0;padding:3px 7px;border-radius:3px;background:{{ card.tempoBg }};color:{{ card.tempoColor }};font-family:'Geist Mono',monospace;font-size:11px;font-weight:600">{{ card.tempo }}</span>
+                <sc-if value="{{ card.temItens }}" hint-placeholder-val="{{ false }}">
+                  <span style="flex-shrink:0;display:flex;align-items:center;gap:3px;color:{{ card.itensCor }};font-family:'Geist Mono',monospace;font-size:11px">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" style="width:12px;height:12px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    {{ card.itensLabel }}
+                  </span>
+                </sc-if>
+                <sc-if value="{{ card.temComentarios }}" hint-placeholder-val="{{ false }}">
+                  <span style="flex-shrink:0;display:flex;align-items:center;gap:3px;color:{{ t.inkMute }};font-family:'Geist Mono',monospace;font-size:11px">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:12px;height:12px"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75L12 22.5l3.75-3.75M3 10.5a7.5 7.5 0 1115 0 7.5 7.5 0 01-15 0z"></path></svg>
+                    {{ card.comentarios }}
+                  </span>
+                </sc-if>
+              </div>
+            </div>
+
+            <button onClick="{{ card.toggleMenu }}" style="margin-top:11px;width:100%;height:44px;border-radius:6px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ card.menuCor }};font-size:13px;font-weight:600;cursor:pointer">Mover {{ card.menuSeta }}</button>
+
+            <sc-if value="{{ card.menuAberto }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:9px;display:flex;flex-direction:column;gap:6px;animation:entra 140ms ease-out">
+                <sc-for list="{{ card.destinos }}" as="d" hint-placeholder-count="3">
+                  <button onClick="{{ d.go }}" style="display:flex;align-items:center;gap:9px;width:100%;height:44px;padding:0 11px;border-radius:6px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.ink }};font-size:13px;text-align:left;cursor:pointer">
+                    <span style="height:7px;width:7px;flex-shrink:0;border-radius:9999px;background:{{ d.cor }}"></span>
+                    <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.label }}</span>
+                    <sc-if value="{{ d.pedeTexto }}" hint-placeholder-val="{{ false }}">
+                      <span style="flex-shrink:0;font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:{{ t.inkFaint }}">pede motivo</span>
+                    </sc-if>
+                  </button>
+                </sc-for>
+                <button onClick="{{ card.toggleBloqueio }}" style="display:flex;align-items:center;gap:9px;width:100%;height:44px;padding:0 11px;border-radius:6px;border:1px solid {{ t.warnLine }};background:{{ t.warnTint }};color:{{ t.warn }};font-size:13px;font-weight:600;text-align:left;cursor:pointer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:13px;height:13px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path></svg>
+                  {{ card.rotuloBloqueio }}
+                </button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ card.pendente }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:10px;border-radius:6px;background:{{ card.pendTint }};border:1px solid {{ card.pendLine }};border-left:2px solid {{ card.pendCor }};padding:12px;animation:entra 160ms ease-out">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="height:7px;width:7px;flex-shrink:0;border-radius:9999px;background:{{ card.pendCor }}"></span>
+                  <p style="margin:0;flex:1;min-width:0;font-size:13px;color:{{ t.ink }}">{{ card.pendVerbo }} <strong style="font-weight:600;color:{{ card.pendCor }}">{{ card.pendLabel }}</strong></p>
+                </div>
+                <p style="margin:7px 0 0;font-size:12px;line-height:1.45;color:{{ t.inkDim }}">{{ card.pendAjuda }}</p>
+                <textarea ref="{{ refPendente }}" rows="3" value="{{ pendenteTexto }}" onInput="{{ onPendenteTexto }}" placeholder="{{ card.pendPlaceholder }}" style="margin-top:9px;display:block;width:100%;padding:9px 10px;border-radius:6px;background:{{ t.input }};border:1px solid {{ card.pendLine }};color:{{ t.ink }};font-size:13px;line-height:1.45;resize:vertical;outline:none"></textarea>
+                <div style="margin-top:9px;display:flex;align-items:center;gap:8px">
+                  <button onClick="{{ card.cancelar }}" style="flex:0 0 auto;height:44px;padding:0 16px;border-radius:6px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.inkDim }};font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">Cancelar</button>
+                  <button onClick="{{ card.confirmar }}" style="flex:1;min-width:0;height:44px;border-radius:6px;border:0;background:{{ card.pendCor }};color:{{ card.pendOn }};font-size:13px;font-weight:600;cursor:pointer;opacity:{{ card.confirmaOpacidade }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ card.pendAcao }}</button>
+                </div>
+              </div>
+            </sc-if>
+          </article>
+        </sc-for>
+
+        <sc-if value="{{ etapaMobile.vazia }}" hint-placeholder-val="{{ false }}">
+          <div style="height:96px;border-radius:8px;border:1px dashed {{ t.line }};display:flex;align-items:center;justify-content:center">
+            <p style="margin:0;font-size:13px;color:{{ t.inkFaint }}">{{ etapaMobile.textoVazio }}</p>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ etapaMobile.temCriacao }}" hint-placeholder-val="{{ false }}">
+        <div style="flex-shrink:0;padding:10px 12px;border-top:1px solid {{ t.line }};background:{{ t.panel }}">
+          <input type="text" value="{{ etapaMobile.rascunho }}" onInput="{{ etapaMobile.onRascunho }}" onKeyDown="{{ etapaMobile.onEnter }}" placeholder="+ nova tarefa · Enter para criar" style="display:block;width:100%;height:44px;padding:0 12px;border-radius:8px;background:{{ t.input }};border:1px dashed {{ t.btnLine }};color:{{ t.ink }};font-size:13.5px;outline:none">
+        </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ mostrarQuadro }}" hint-placeholder-val="{{ true }}">
+  <div style="flex:1;min-height:0;padding:14px 20px 18px;display:flex;flex-direction:column">
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column;border-radius:8px;border:1px solid {{ t.line }};background:{{ t.board }};overflow:hidden">
+
+      <div style="flex-shrink:0;display:flex;align-items:center;gap:12px;padding:0 16px;height:50px;border-bottom:1px solid {{ t.line }}">
+        <span style="height:27px;width:27px;flex-shrink:0;border-radius:4px;background:rgba(2,156,175,0.15);color:{{ t.brandText }};display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"></path></svg>
+        </span>
+        <div style="flex:0 0 auto">
+          <h2 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:{{ t.ink }};line-height:1.2;white-space:nowrap">Quadro de tarefas</h2>
+          <p style="margin:1px 0 0;font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:{{ t.inkFaint }};white-space:nowrap">6 etapas · concluída = em produção</p>
+        </div>
+        <div style="margin-left:auto;flex:0 1 auto;min-width:0;display:flex;align-items:center;gap:8px">
+          <sc-for list="{{ chipsQuadro }}" as="k" hint-placeholder-count="2">
+            <button onClick="{{ k.go }}" title="{{ k.title }}" style="flex-shrink:0;height:26px;padding:0 9px;display:flex;align-items:center;gap:6px;border-radius:4px;border:1px solid {{ k.borda }};background:{{ k.bg }};color:{{ k.cor }};font-family:'Geist Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" style="width:12px;height:12px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="{{ k.icone }}"></path></svg>
+              {{ k.label }}
+            </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="flex:1;min-height:0;display:flex;overflow:hidden">
+        <div style="flex:1;min-width:0;min-height:0;overflow-x:auto;overflow-y:{{ scrollerY }};padding:12px">
+          <div style="min-width:{{ wrapMinW }};height:{{ wrapH }};display:flex;flex-direction:column;gap:{{ laneGap }}">
+
+            <div style="display:flex;gap:10px;position:sticky;top:0;z-index:5">
+              <sc-for list="{{ cabecalhos }}" as="h" hint-placeholder-count="5">
+                <div style="width:{{ h.largura }};min-width:{{ h.minLarg }};flex:{{ h.flex }};display:flex;flex-direction:column;border-radius:6px 6px 0 0;background:{{ t.panel }};border:1px solid {{ t.line }};border-bottom:{{ h.bordaBaixo }};border-top:3px solid {{ h.cor }};overflow:hidden">
+                  <sc-if value="{{ h.recolhida }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ h.expandir }}" title="Expandir {{ h.label }}" style="width:100%;padding:10px 0;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer">
+                      <span style="height:19px;min-width:19px;padding:0 5px;border-radius:9999px;background:{{ h.chipBg }};color:{{ h.chipColor }};font-family:'Geist Mono',monospace;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ h.contador }}</span>
+                      <span style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:{{ t.inkMute }};writing-mode:vertical-rl;white-space:nowrap">{{ h.label }}</span>
+                    </button>
+                  </sc-if>
+                  <sc-if value="{{ h.expandida }}" hint-placeholder-val="{{ true }}">
+                    <div style="padding:9px 8px 9px 12px">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span style="height:7px;width:7px;flex-shrink:0;border-radius:9999px;background:{{ h.cor }}"></span>
+                        <h3 style="margin:0;min-width:0;flex:1;font-family:'Space Grotesk',sans-serif;font-size:13.5px;font-weight:600;color:{{ t.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ h.label }}</h3>
+                        <span title="{{ h.wipTitle }}" style="flex-shrink:0;height:19px;padding:0 6px;border-radius:9999px;background:{{ h.chipBg }};color:{{ h.chipColor }};font-family:'Geist Mono',monospace;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ h.contador }}</span>
+                        <button onClick="{{ h.recolher }}" title="Recolher coluna" aria-label="Recolher coluna" style="flex-shrink:0;height:19px;width:19px;border:0;border-radius:3px;background:transparent;color:{{ t.inkFaint }};display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer" style-hover="color:#029caf">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5"></path></svg>
+                        </button>
+                      </div>
+                      <sc-if value="{{ h.aviso }}" hint-placeholder-val="{{ false }}">
+                        <p style="margin:5px 0 0;font-family:'Geist Mono',monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:{{ h.avisoCor }};white-space:nowrap">{{ h.aviso }}</p>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+
+            <sc-for list="{{ raias }}" as="lane" hint-placeholder-count="1">
+              <div style="flex:{{ laneFlex }};min-height:{{ laneMinH }};display:flex;flex-direction:column;gap:6px">
+                <sc-if value="{{ lane.temCabecalho }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:sticky;left:0;display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:5px;background:{{ t.panel }};border:1px solid {{ t.line }};width:max-content;min-width:260px">
+                    <span style="height:22px;width:22px;flex-shrink:0;border-radius:{{ lane.avatarRaio }};background:{{ lane.avatarBg }};border:{{ lane.avatarBorda }};color:{{ lane.avatarCor }};display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:600">{{ lane.iniciais }}</span>
+                    <span style="font-size:13px;font-weight:600;color:{{ t.ink }};white-space:nowrap">{{ lane.label }}</span>
+                    <span style="flex-shrink:0;padding:1px 6px;border-radius:3px;background:{{ t.chip }};color:{{ t.inkMute }};font-family:'Geist Mono',monospace;font-size:10px;font-weight:600">{{ lane.total }}</span>
+                    <sc-if value="{{ lane.aviso }}" hint-placeholder-val="{{ false }}">
+                      <span style="flex-shrink:0;padding:1px 6px;border-radius:3px;background:{{ t.warnTint }};color:{{ t.warn }};font-family:'Geist Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap">{{ lane.aviso }}</span>
+                    </sc-if>
+                  </div>
+                </sc-if>
+
+                <div style="flex:{{ laneFlex }};min-height:{{ laneMinH }};display:flex;gap:10px;align-items:stretch">
+                  <sc-for list="{{ lane.colunas }}" as="col" hint-placeholder-count="5">
+                    <div onDragOver="{{ col.onDragOver }}" onDragLeave="{{ col.onDragLeave }}" onDrop="{{ col.onDrop }}" style="width:{{ col.largura }};min-width:{{ col.minLarg }};flex:{{ col.flex }};min-height:{{ col.minH }};max-height:{{ col.maxH }};display:flex;flex-direction:column;border-radius:{{ col.raio }};background:{{ col.bg }};border:1px solid {{ t.line }};border-top:{{ col.bordaTopo }};overflow:hidden;opacity:{{ col.opacity }};box-shadow:{{ col.ring }};transition:opacity 120ms ease,box-shadow 120ms ease">
+                      <sc-if value="{{ col.expandida }}" hint-placeholder-val="{{ true }}">
+                        <div style="flex:1;min-height:0;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:10px">
+                          <sc-for list="{{ col.cards }}" as="card" hint-placeholder-count="2">
+                            <div style="display:flex;flex-direction:column;gap:10px">
+                              <sc-if value="{{ card.marcaAntes }}" hint-placeholder-val="{{ false }}">
+                                <div style="height:2px;border-radius:2px;background:{{ t.brandSolid }}"></div>
+                              </sc-if>
+                              <article draggable="{{ card.draggable }}" onDragStart="{{ card.onDragStart }}" onDragEnd="{{ card.onDragEnd }}" onDragOver="{{ card.onDragOver }}" onMouseDown="{{ card.onMouseDown }}" onClick="{{ card.onClick }}" style="border-radius:5px;background:{{ t.panelRaised }};border:1px solid {{ card.borderColor }};box-shadow:{{ card.shadow }};padding:10px;opacity:{{ card.opacity }};cursor:grab;transition:box-shadow 120ms ease">
+                                <div style="display:flex;align-items:flex-start;gap:8px">
+                                  <p style="margin:0;min-width:0;flex:1;font-size:13.5px;font-weight:500;line-height:1.35;color:{{ t.ink }}">{{ card.titulo }}</p>
+                                  <sc-if value="{{ card.operacional }}" hint-placeholder-val="{{ false }}">
+                                    <span style="flex-shrink:0;padding:2px 6px;border-radius:3px;background:{{ t.chip }};color:{{ t.inkMute }};font-family:'Geist Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase">Oper.</span>
+                                  </sc-if>
+                                  <span style="flex-shrink:0;padding:2px 6px;border-radius:3px;background:{{ card.prioBg }};color:{{ card.prioColor }};font-family:'Geist Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase">{{ card.prioridade }}</span>
+                                </div>
+
+                                <sc-if value="{{ card.temResumo }}" hint-placeholder-val="{{ true }}">
+                                  <p style="margin:5px 0 0;font-size:12px;line-height:1.4;color:{{ t.inkMute }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ card.resumo }}</p>
+                                </sc-if>
+
+                                <sc-if value="{{ card.temPergunta }}" hint-placeholder-val="{{ false }}">
+                                  <div style="margin-top:8px;padding:7px 9px;border-radius:4px;background:{{ t.perguntaBg }};border-left:2px solid {{ t.brandSolid }}">
+                                    <div style="display:flex;align-items:center;gap:6px">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="{{ t.brandText }}" stroke-width="1.9" style="width:12px;height:12px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"></path></svg>
+                                      <span style="flex:1;min-width:0;font-family:'Geist Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:{{ t.brandText }};white-space:nowrap">Aguardando resposta</span>
+                                      <span style="flex-shrink:0;font-family:'Geist Mono',monospace;font-size:9.5px;color:{{ t.inkMute }}">{{ card.perguntaHa }}</span>
+                                    </div>
+                                    <div style="margin-top:4px;display:flex;align-items:center;gap:6px">
+                                      <span style="flex:1;min-width:0;font-size:12px;font-weight:600;color:{{ t.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ card.perguntaPara }}</span>
+                                      <span style="flex-shrink:0;padding:1px 5px;border-radius:3px;background:{{ card.rodadaBg }};color:{{ card.rodadaCor }};font-family:'Geist Mono',monospace;font-size:9px;font-weight:600;white-space:nowrap">{{ card.rodadaLabel }}</span>
+                                    </div>
+                                    <p title="{{ card.perguntaTexto }}" style="margin:4px 0 0;font-size:11.5px;line-height:1.4;color:{{ t.ink }};display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap">{{ card.perguntaTexto }}</p>
+                                    <sc-if value="{{ card.alertaRodada }}" hint-placeholder-val="{{ false }}">
+                                      <p style="margin:5px 0 0;font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:{{ t.crit }}">considere devolver para correção</p>
+                                    </sc-if>
+                                    <sc-if value="{{ card.devoResposta }}" hint-placeholder-val="{{ false }}">
+                                      <button onClick="{{ card.abrirResposta }}" style="margin-top:7px;width:100%;height:26px;border-radius:4px;border:1px solid {{ t.brandSolid }};background:transparent;color:{{ t.brandText }};font-size:11.5px;font-weight:600;cursor:pointer">Responder</button>
+                                    </sc-if>
+                                    <sc-if value="{{ card.respondendo }}" hint-placeholder-val="{{ false }}">
+                                      <div style="margin-top:7px;animation:entra 140ms ease-out">
+                                        <textarea ref="{{ refResposta }}" rows="2" value="{{ respostaTexto }}" onInput="{{ onResposta }}" placeholder="Sua resposta…" style="display:block;width:100%;padding:7px 9px;border-radius:4px;background:{{ t.input }};border:1px solid {{ t.brandSolid }};color:{{ t.ink }};font-size:12px;line-height:1.45;resize:vertical;outline:none"></textarea>
+                                        <div style="margin-top:6px;display:flex;gap:6px">
+                                          <button onClick="{{ cancelarResposta }}" style="flex:0 0 auto;height:26px;padding:0 10px;border-radius:4px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.inkDim }};font-size:11.5px;font-weight:600;cursor:pointer">Cancelar</button>
+                                          <button onClick="{{ enviarResposta }}" style="flex:1;height:26px;border-radius:4px;border:0;background:#029caf;color:{{ t.onBrand }};font-size:11.5px;font-weight:600;cursor:pointer">Enviar resposta</button>
+                                        </div>
+                                      </div>
+                                    </sc-if>
+                                  </div>
+                                </sc-if>
+
+                                <sc-if value="{{ card.temRetorno }}" hint-placeholder-val="{{ false }}">
+                                  <div style="margin-top:8px;padding:7px 9px;border-radius:4px;background:{{ t.warnTint }};border-left:2px solid {{ t.warn }}">
+                                    <div style="display:flex;align-items:center;gap:6px">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="{{ t.warn }}" stroke-width="1.9" style="width:12px;height:12px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"></path></svg>
+                                      <span style="flex:1;min-width:0;font-family:'Geist Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:{{ t.warn }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ card.retornoLabel }}</span>
+                                    </div>
+                                    <p title="{{ card.retornoMotivo }}" style="margin:4px 0 0;font-size:11.5px;line-height:1.4;color:{{ t.ink }};display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ card.retornoMotivo }}</p>
+                                  </div>
+                                </sc-if>
+
+                                <sc-if value="{{ card.bloqueado }}" hint-placeholder-val="{{ false }}">
+                                  <div style="margin-top:8px;padding:7px 9px;border-radius:4px;background:{{ t.warnTint }};border-left:2px solid {{ t.warn }}">
+                                    <div style="display:flex;align-items:center;gap:6px">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="{{ t.warn }}" stroke-width="1.8" style="width:12px;height:12px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path></svg>
+                                      <span style="flex:1;min-width:0;font-family:'Geist Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:{{ t.warn }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ card.bloqueadoLabel }}</span>
+                                      <button onClick="{{ card.destravar }}" title="Destravar tarefa" aria-label="Destravar tarefa" style="flex-shrink:0;height:20px;width:20px;border:1px solid {{ t.warnLine }};border-radius:3px;background:transparent;color:{{ t.warn }};display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" style="width:11px;height:11px"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path></svg>
+                                      </button>
+                                    </div>
+                                    <p title="{{ card.motivo }}" style="margin:4px 0 0;font-size:11.5px;line-height:1.4;color:{{ t.ink }};display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ card.motivo }}</p>
+                                  </div>
+                                </sc-if>
+
+                                <div style="margin-top:9px;padding-top:9px;border-top:1px solid {{ t.rule }};display:flex;align-items:center;gap:7px">
+                                  <span title="{{ card.responsavelTitle }}" style="flex-shrink:0;height:21px;width:21px;border-radius:9999px;background:{{ card.avatarBg }};border:{{ card.avatarBorder }};color:{{ card.avatarColor }};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600">{{ card.iniciais }}</span>
+                                  <span title="{{ card.sistema }}" style="min-width:56px;flex:1;font-size:11.5px;color:{{ t.inkMute }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ card.sistema }}</span>
+                                  <span title="Na etapa há {{ card.tempo }}" style="flex-shrink:0;padding:2px 6px;border-radius:3px;background:{{ card.tempoBg }};color:{{ card.tempoColor }};font-family:'Geist Mono',monospace;font-size:10px;font-weight:600">{{ card.tempo }}</span>
+                                  <sc-if value="{{ card.temItens }}" hint-placeholder-val="{{ false }}">
+                                    <span title="{{ card.itensTitle }}" style="flex-shrink:0;display:flex;align-items:center;gap:3px;color:{{ card.itensCor }};font-family:'Geist Mono',monospace;font-size:10px">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" style="width:11px;height:11px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                      {{ card.itensLabel }}
+                                    </span>
+                                  </sc-if>
+                                  <sc-if value="{{ card.temComentarios }}" hint-placeholder-val="{{ false }}">
+                                    <span title="{{ card.comentariosTitle }}" style="flex-shrink:0;display:flex;align-items:center;gap:3px;color:{{ t.inkMute }};font-family:'Geist Mono',monospace;font-size:10px">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:11px;height:11px"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75L12 22.5l3.75-3.75M3 10.5a7.5 7.5 0 1115 0 7.5 7.5 0 01-15 0z"></path></svg>
+                                      {{ card.comentarios }}
+                                    </span>
+                                  </sc-if>
+                                  <div style="flex-shrink:0;margin-left:auto;display:flex;align-items:center;gap:4px">
+                                    <button onClick="{{ card.toggleBloqueio }}" title="{{ card.bloqTitle }}" aria-label="{{ card.bloqTitle }}" style="flex-shrink:0;height:20px;width:20px;display:flex;align-items:center;justify-content:center;border:1px solid {{ card.bloqBorda }};border-radius:3px;padding:0;background:{{ card.bloqBg }};color:{{ card.bloqCor }};cursor:pointer" style-hover="color:{{ t.warn }};border-color:{{ t.warnLine }}">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" style="width:11px;height:11px"><path stroke-linecap="round" stroke-linejoin="round" d="{{ card.bloqIcone }}"></path></svg>
+                                    </button>
+                                    <sc-if value="{{ card.podeConcluir }}" hint-placeholder-val="{{ false }}">
+                                      <button onClick="{{ card.concluir }}" title="Concluir tarefa" aria-label="Concluir tarefa" style="flex-shrink:0;height:20px;width:20px;display:flex;align-items:center;justify-content:center;border:1px solid {{ t.goodLine }};border-radius:3px;padding:0;background:{{ t.goodTint }};color:{{ t.good }};cursor:pointer" style-hover="background:{{ t.good }};color:{{ t.onSignal }}">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:11px;height:11px"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path></svg>
+                                      </button>
+                                    </sc-if>
+                                    <button onClick="{{ card.toggleMenu }}" title="Mover de etapa · atalho M" aria-label="Mover de etapa" style="flex-shrink:0;height:20px;width:20px;display:flex;align-items:center;justify-content:center;border:1px solid {{ card.menuBorda }};border-radius:3px;padding:0;background:transparent;color:{{ card.menuCor }};cursor:pointer" style-hover="color:#029caf;border-color:rgba(2,156,175,0.5)">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;transform:{{ card.menuGiro }};transition:transform 140ms ease"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path></svg>
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <sc-if value="{{ card.menuAberto }}" hint-placeholder-val="{{ false }}">
+                                  <div style="margin-top:9px;padding-top:9px;border-top:1px solid {{ t.rule }};display:flex;flex-direction:column;gap:4px;animation:entra 140ms ease-out">
+                                    <p style="margin:0 0 2px;font-family:'Geist Mono',monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:{{ t.inkFaint }}">Mover para</p>
+                                    <sc-for list="{{ card.destinos }}" as="d" hint-placeholder-count="3">
+                                      <button onClick="{{ d.go }}" style="display:flex;align-items:center;gap:8px;width:100%;height:30px;padding:0 8px;border-radius:4px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.ink }};font-size:12.5px;text-align:left;cursor:pointer" style-hover="border-color:rgba(2,156,175,0.5)">
+                                        <span style="height:7px;width:7px;flex-shrink:0;border-radius:9999px;background:{{ d.cor }}"></span>
+                                        <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.label }}</span>
+                                        <sc-if value="{{ d.pedeTexto }}" hint-placeholder-val="{{ false }}">
+                                          <span style="flex-shrink:0;font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:{{ t.inkFaint }}">pede motivo</span>
+                                        </sc-if>
+                                      </button>
+                                    </sc-for>
+                                    <button onClick="{{ card.toggleBloqueio }}" style="display:flex;align-items:center;gap:8px;width:100%;height:30px;padding:0 8px;border-radius:4px;border:1px solid {{ t.warnLine }};background:{{ t.warnTint }};color:{{ t.warn }};font-size:12.5px;font-weight:600;text-align:left;cursor:pointer">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:12px;height:12px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path></svg>
+                                      {{ card.rotuloBloqueio }}
+                                    </button>
+                                  </div>
+                                </sc-if>
+
+                                <sc-if value="{{ card.pendente }}" hint-placeholder-val="{{ false }}">
+                                  <div style="margin-top:10px;border-radius:5px;background:{{ card.pendTint }};border:1px solid {{ card.pendLine }};border-left:2px solid {{ card.pendCor }};padding:10px;animation:entra 160ms ease-out">
+                                    <div style="display:flex;align-items:center;gap:8px">
+                                      <span style="height:7px;width:7px;flex-shrink:0;border-radius:9999px;background:{{ card.pendCor }}"></span>
+                                      <p style="margin:0;flex:1;min-width:0;font-size:12.5px;color:{{ t.ink }}">{{ card.pendVerbo }} <strong style="font-weight:600;color:{{ card.pendCor }}">{{ card.pendLabel }}</strong></p>
+                                      <button onClick="{{ card.cancelar }}" title="Cancelar" aria-label="Cancelar" style="flex-shrink:0;height:20px;width:20px;border:0;border-radius:3px;background:transparent;color:{{ t.inkMute }};display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                      </button>
+                                    </div>
+                                    <p style="margin:6px 0 0;font-size:11.5px;line-height:1.45;color:{{ t.inkDim }}">{{ card.pendAjuda }}</p>
+                                    <textarea ref="{{ refPendente }}" rows="2" value="{{ pendenteTexto }}" onInput="{{ onPendenteTexto }}" placeholder="{{ card.pendPlaceholder }}" style="margin-top:8px;display:block;width:100%;padding:7px 9px;border-radius:5px;background:{{ t.input }};border:1px solid {{ card.pendLine }};color:{{ t.ink }};font-size:12px;line-height:1.45;resize:vertical;outline:none"></textarea>
+                                    <sc-if value="{{ card.pedeAprovacao }}" hint-placeholder-val="{{ false }}">
+                                      <label style="margin-top:8px;display:flex;align-items:center;gap:7px;font-size:11.5px;color:{{ t.inkDim }};cursor:pointer">
+                                        <input type="checkbox" checked="{{ pendenteAprovado }}" onChange="{{ onPendenteAprovado }}" style="height:14px;width:14px;accent-color:#029caf">
+                                        Validado no staging
+                                      </label>
+                                    </sc-if>
+                                    <div style="margin-top:8px;display:flex;flex-direction:column;gap:7px">
+                                      <p style="margin:0;font-family:'Geist Mono',monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:{{ card.avisoCor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ card.avisoTexto }}</p>
+                                      <button onClick="{{ card.confirmar }}" style="width:100%;height:30px;padding:0 10px;border-radius:5px;border:0;background:{{ card.pendCor }};color:{{ card.pendOn }};font-size:12px;font-weight:600;cursor:pointer;opacity:{{ card.confirmaOpacidade }};white-space:nowrap">{{ card.pendAcao }}</button>
+                                    </div>
+                                  </div>
+                                </sc-if>
+                              </article>
+                            </div>
+                          </sc-for>
+
+                          <sc-if value="{{ col.marcaFim }}" hint-placeholder-val="{{ false }}">
+                            <div style="height:2px;border-radius:2px;background:{{ t.brandSolid }}"></div>
+                          </sc-if>
+
+                          <sc-if value="{{ col.vazia }}" hint-placeholder-val="{{ false }}">
+                            <div style="height:{{ col.vazioH }};border-radius:5px;border:1px dashed {{ t.line }};display:flex;align-items:center;justify-content:center">
+                              <p style="margin:0;font-size:11.5px;color:{{ t.inkFaint }};text-align:center;padding:0 8px">{{ col.textoVazio }}</p>
+                            </div>
+                          </sc-if>
+                        </div>
+
+                        <sc-if value="{{ col.temCriacao }}" hint-placeholder-val="{{ false }}">
+                          <div style="flex-shrink:0;padding:8px 10px;border-top:1px solid {{ t.rule }};background:{{ t.panel }}">
+                            <input ref="{{ col.refRapida }}" type="text" value="{{ col.rascunho }}" onInput="{{ col.onRascunho }}" onKeyDown="{{ col.onEnter }}" placeholder="+ nova tarefa · Enter para criar" style="display:block;width:100%;height:30px;padding:0 9px;border-radius:5px;background:{{ t.input }};border:1px dashed {{ col.bordaRapida }};color:{{ t.ink }};font-size:12px;outline:none">
+                          </div>
+                        </sc-if>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ noHistorico }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;padding:14px 20px 18px;display:flex;flex-direction:column">
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column;border-radius:8px;border:1px solid {{ t.line }};background:{{ t.board }};overflow:hidden">
+      <div style="flex-shrink:0;display:flex;align-items:center;gap:12px;padding:0 16px;height:50px;border-bottom:1px solid {{ t.line }}">
+        <span style="height:27px;width:27px;flex-shrink:0;border-radius:4px;background:{{ t.chip }};color:{{ t.inkMute }};display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </span>
+        <div style="min-width:0">
+          <h2 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:{{ t.ink }};line-height:1.2;white-space:nowrap">Histórico</h2>
+          <p style="margin:1px 0 0;font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:{{ t.inkFaint }};white-space:nowrap">{{ resumoHistorico }}</p>
+        </div>
+        <p style="margin:0 0 0 auto;flex-shrink:0;font-size:12px;color:{{ t.inkMute }};max-width:420px;text-align:right">O quadro é só o trabalho em curso: tarefa encerrada sai de lá e passa a viver aqui.</p>
+      </div>
+
+      <div style="flex:1;min-height:0;overflow:auto;background:{{ t.panel }}">
+        <table style="width:100%;border-collapse:collapse;min-width:900px">
+          <thead>
+            <tr style="position:sticky;top:0;z-index:2;background:{{ t.head }}">
+              <sc-for list="{{ colsHistorico }}" as="c" hint-placeholder-count="7">
+                <th style="padding:0 14px;height:38px;text-align:{{ c.align }};font-family:'Geist Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:{{ t.inkMute }};border-bottom:1px solid {{ t.line }};white-space:nowrap">{{ c.label }}</th>
+              </sc-for>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ historico }}" as="h" hint-placeholder-count="4">
+              <tr>
+                <td style="padding:11px 14px;border-bottom:1px solid {{ t.rule }}">
+                  <p style="margin:0;font-size:13.5px;font-weight:500;color:{{ t.ink }}">{{ h.titulo }}</p>
+                  <sc-if value="{{ h.temResumo }}" hint-placeholder-val="{{ false }}">
+                    <p style="margin:2px 0 0;font-size:11.5px;color:{{ t.inkMute }}">{{ h.resumo }}</p>
+                  </sc-if>
+                </td>
+                <td style="padding:11px 14px;border-bottom:1px solid {{ t.rule }};font-size:13px;color:{{ t.inkDim }};white-space:nowrap">{{ h.sistema }}</td>
+                <td style="padding:11px 14px;border-bottom:1px solid {{ t.rule }};font-size:13px;color:{{ t.inkDim }};white-space:nowrap">{{ h.responsavel }}</td>
+                <td style="padding:11px 14px;border-bottom:1px solid {{ t.rule }}">
+                  <span style="padding:2px 7px;border-radius:3px;background:{{ h.prioBg }};color:{{ h.prioColor }};font-family:'Geist Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap">{{ h.prioridade }}</span>
+                </td>
+                <td style="padding:11px 14px;border-bottom:1px solid {{ t.rule }}">
+                  <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:3px;background:{{ h.desfechoBg }};color:{{ h.desfechoCor }};font-family:'Geist Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap">
+                    <span style="height:5px;width:5px;border-radius:9999px;background:{{ h.desfechoCor }}"></span>{{ h.desfecho }}
+                  </span>
+                  <sc-if value="{{ h.temMotivo }}" hint-placeholder-val="{{ false }}">
+                    <p title="{{ h.motivo }}" style="margin:3px 0 0;font-size:11.5px;color:{{ t.inkMute }};max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ h.motivo }}</p>
+                  </sc-if>
+                </td>
+                <td style="padding:11px 14px;border-bottom:1px solid {{ t.rule }};font-family:'Geist Mono',monospace;font-size:12.5px;color:{{ t.inkDim }};text-align:right;white-space:nowrap">{{ h.ciclo }}</td>
+                <td style="padding:11px 14px;border-bottom:1px solid {{ t.rule }};font-family:'Geist Mono',monospace;font-size:12.5px;color:{{ t.inkDim }};white-space:nowrap">{{ h.encerrada }}</td>
+                <td style="padding:11px 14px;border-bottom:1px solid {{ t.rule }};text-align:right;white-space:nowrap">
+                  <button onClick="{{ h.abrir }}" style="height:26px;padding:0 10px;margin-right:6px;border-radius:4px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.inkDim }};font-size:12px;font-weight:600;cursor:pointer">Ver</button>
+                  <button onClick="{{ h.reabrir }}" title="{{ h.reabrirTitle }}" style="height:26px;padding:0 10px;border-radius:4px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.brandText }};font-size:12px;font-weight:600;cursor:pointer">Reabrir</button>
+                </td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+        <sc-if value="{{ historicoVazio }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:40px;text-align:center">
+            <p style="margin:0;font-size:13px;color:{{ t.inkFaint }}">Nenhuma tarefa encerrada com esse recorte.</p>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ detalhe }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ fecharDetalhe }}" style="position:fixed;inset:0;z-index:60;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:24px">
+      <div onClick="{{ pararClique }}" style="width:100%;max-width:620px;max-height:88vh;display:flex;flex-direction:column;border-radius:8px;background:{{ t.panel }};border:1px solid {{ t.line }};overflow:hidden;box-shadow:0 24px 48px -24px rgba(0,0,0,0.7);animation:sobe 160ms ease-out">
+        <div style="flex-shrink:0;padding:14px 16px;border-bottom:1px solid {{ t.line }};display:flex;align-items:center;gap:10px">
+          <span style="height:7px;width:7px;flex-shrink:0;border-radius:9999px;background:{{ detalhe.etapaCor }}"></span>
+          <div style="min-width:0;flex:1">
+            <h3 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:{{ t.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Editar tarefa</h3>
+            <p style="margin:1px 0 0;font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:{{ t.inkFaint }};white-space:nowrap">{{ detalhe.etapaLabel }} · há {{ detalhe.tempo }}</p>
+          </div>
+          <button onClick="{{ fecharDetalhe }}" aria-label="Fechar" style="flex-shrink:0;height:26px;width:26px;border:0;border-radius:4px;background:transparent;color:{{ t.inkMute }};display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+
+        <div style="flex:1;min-height:0;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px">
+          <sc-if value="{{ detalhe.temPergunta }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:9px 11px;border-radius:5px;background:{{ detalhe.perguntaBg }};border:1px solid {{ detalhe.perguntaBorda }};border-left:2px solid {{ detalhe.perguntaCor }}">
+              <div style="display:flex;align-items:center;gap:9px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="{{ detalhe.perguntaCor }}" stroke-width="1.8" style="width:14px;height:14px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"></path></svg>
+                <span style="flex:1;min-width:0;font-size:12.5px;font-weight:500;color:{{ t.ink }}">{{ detalhe.perguntaLabel }}</span>
+                <span style="flex-shrink:0;font-family:'Geist Mono',monospace;font-size:10.5px;color:{{ detalhe.perguntaCor }};white-space:nowrap">{{ detalhe.perguntaMeta }}</span>
+              </div>
+              <sc-if value="{{ detalhe.avisoRodada }}" hint-placeholder-val="{{ false }}">
+                <p style="margin:6px 0 0;font-size:11.5px;line-height:1.45;color:{{ t.inkDim }}">{{ detalhe.avisoRodada }}</p>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ detalhe.bloqueado }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:5px;background:{{ t.warnTint }};border:1px solid {{ t.warnLine }};border-left:2px solid {{ t.warn }}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="{{ t.warn }}" stroke-width="1.8" style="width:14px;height:14px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path></svg>
+              <span style="flex:1;min-width:0;font-size:12.5px;color:{{ t.ink }}">{{ detalhe.motivo }}</span>
+              <span style="flex-shrink:0;font-family:'Geist Mono',monospace;font-size:10.5px;font-weight:600;color:{{ t.warn }}">{{ detalhe.bloqueadoHa }}</span>
+              <button onClick="{{ detalhe.destravar }}" style="flex-shrink:0;height:24px;padding:0 9px;border:1px solid {{ t.warnLine }};border-radius:4px;background:transparent;color:{{ t.warn }};font-size:11.5px;font-weight:600;cursor:pointer">Destravar</button>
+            </div>
+          </sc-if>
+
+          <div>
+            <label style="display:block;font-size:12px;font-weight:500;color:{{ t.inkDim }};margin-bottom:5px">Título</label>
+            <input type="text" value="{{ rascunho.titulo }}" onInput="{{ campos.titulo }}" style="display:block;width:100%;height:36px;padding:0 10px;border-radius:6px;background:{{ t.input }};border:1px solid {{ t.line }};color:{{ t.ink }};font-size:13.5px;outline:none">
+          </div>
+
+          <div>
+            <label style="display:block;font-size:12px;font-weight:500;color:{{ t.inkDim }};margin-bottom:5px">Resumo</label>
+            <textarea rows="2" value="{{ rascunho.resumo }}" onInput="{{ campos.resumo }}" placeholder="Uma linha do que precisa acontecer…" style="display:block;width:100%;padding:8px 10px;border-radius:6px;background:{{ t.input }};border:1px solid {{ t.line }};color:{{ t.ink }};font-size:13px;line-height:1.45;resize:vertical;outline:none"></textarea>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+            <sc-for list="{{ camposSelect }}" as="s" hint-placeholder-count="4">
+              <div>
+                <label style="display:block;font-size:12px;font-weight:500;color:{{ t.inkDim }};margin-bottom:5px">{{ s.label }}</label>
+                <select value="{{ s.valor }}" onChange="{{ s.onChange }}" style="display:block;width:100%;height:36px;padding:0 10px;border-radius:6px;background:{{ t.input }};border:1px solid {{ t.line }};color:{{ t.ink }};font-size:13px;cursor:pointer">
+                  <sc-for list="{{ s.opcoes }}" as="o" hint-placeholder-count="3">
+                    <option value="{{ o.v }}">{{ o.label }}</option>
+                  </sc-for>
+                </select>
+              </div>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{ semTriagem }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:0;padding:9px 11px;border-radius:5px;background:{{ t.warnTint }};border:1px solid {{ t.warnLine }};font-size:11.5px;line-height:1.5;color:{{ t.inkDim }}">{{ notaTriagem }}</p>
+          </sc-if>
+
+          <div style="border-top:1px solid {{ t.rule }};padding-top:14px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <p style="margin:0;flex:1;font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:{{ t.inkMute }}">Checklist</p>
+              <sc-if value="{{ detalhe.temItens }}" hint-placeholder-val="{{ false }}">
+                <span style="font-family:'Geist Mono',monospace;font-size:10.5px;color:{{ t.inkFaint }}">{{ detalhe.itensFeitos }}</span>
+              </sc-if>
+            </div>
+            <sc-if value="{{ detalhe.temItens }}" hint-placeholder-val="{{ false }}">
+              <div style="height:4px;border-radius:2px;background:{{ t.chip }};overflow:hidden;margin-bottom:10px">
+                <div style="height:100%;width:{{ detalhe.itensPct }};background:{{ t.good }};transition:width 160ms ease"></div>
+              </div>
+            </sc-if>
+            <div onDragOver="{{ pararArraste }}" onDrop="{{ detalhe.soltarItem }}" style="display:flex;flex-direction:column;gap:2px">
+              <sc-for list="{{ detalhe.itens }}" as="i" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <sc-if value="{{ i.marcaAntes }}" hint-placeholder-val="{{ false }}">
+                    <div style="height:2px;border-radius:2px;background:{{ t.brandSolid }}"></div>
+                  </sc-if>
+                  <div draggable="true" onDragStart="{{ i.onDragStart }}" onDragOver="{{ i.onDragOver }}" onDragEnd="{{ i.onDragEnd }}" style="display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:5px;opacity:{{ i.opacidade }}" style-hover="background:{{ t.chip }}">
+                    <span title="Arraste para reordenar" style="flex-shrink:0;color:{{ t.inkFaint }};display:flex;align-items:center;justify-content:center;cursor:grab">
+                      <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><circle cx="9" cy="6" r="1.4"></circle><circle cx="15" cy="6" r="1.4"></circle><circle cx="9" cy="12" r="1.4"></circle><circle cx="15" cy="12" r="1.4"></circle><circle cx="9" cy="18" r="1.4"></circle><circle cx="15" cy="18" r="1.4"></circle></svg>
+                    </span>
+                    <input type="checkbox" checked="{{ i.feito }}" onChange="{{ i.alternar }}" style="height:15px;width:15px;flex-shrink:0;accent-color:#029caf;cursor:pointer">
+                    <input type="text" value="{{ i.texto }}" onInput="{{ i.editar }}" style="flex:1;min-width:0;height:26px;padding:0 6px;border-radius:4px;border:1px solid transparent;background:transparent;font-size:12.5px;line-height:1.4;color:{{ i.cor }};text-decoration:{{ i.risco }};outline:none" style-focus="border-color:{{ t.btnLine }};background:{{ t.input }};text-decoration:none">
+                    <button onClick="{{ i.remover }}" title="Remover item" style="flex-shrink:0;height:20px;width:20px;border:0;border-radius:3px;background:transparent;color:{{ t.inkFaint }};display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer" style-hover="color:#d03b3b">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                  </div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ detalhe.marcaFimItens }}" hint-placeholder-val="{{ false }}">
+                <div style="height:2px;border-radius:2px;background:{{ t.brandSolid }}"></div>
+              </sc-if>
+            </div>
+            <input type="text" value="{{ novoItem }}" onInput="{{ onNovoItem }}" onKeyDown="{{ detalhe.adicionarItem }}" placeholder="+ item · Enter para adicionar" style="margin-top:8px;display:block;width:100%;height:32px;padding:0 10px;border-radius:5px;background:{{ t.input }};border:1px dashed {{ t.btnLine }};color:{{ t.ink }};font-size:12.5px;outline:none">
+            <p style="margin:6px 0 0;font-size:11px;line-height:1.45;color:{{ t.inkFaint }}">Checklist não é subtarefa: não tem responsável nem etapa, e não entra na conta de trabalho em curso. O que precisa de dono próprio vira tarefa.</p>
+          </div>
+
+          <div style="border-top:1px solid {{ t.rule }};padding-top:14px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <p style="margin:0;flex:1;font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:{{ t.inkMute }}">Conversa</p>
+              <span style="font-family:'Geist Mono',monospace;font-size:10.5px;color:{{ t.inkFaint }}">{{ detalhe.totalComentarios }}</span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto">
+              <sc-for list="{{ detalhe.comentarios }}" as="c" hint-placeholder-count="2">
+                <div style="padding:9px 11px;border-radius:5px;background:{{ t.surface }};border:1px solid {{ t.line }}">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="height:20px;width:20px;flex-shrink:0;border-radius:9999px;background:{{ c.avatarBg }};color:{{ t.ink }};display:flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:600">{{ c.iniciais }}</span>
+                    <span style="font-size:12.5px;font-weight:600;color:{{ t.ink }}">{{ c.autor }}</span>
+                    <span style="font-family:'Geist Mono',monospace;font-size:10px;color:{{ t.inkFaint }}">{{ c.quando }}</span>
+                    <sc-if value="{{ c.proprio }}" hint-placeholder-val="{{ false }}">
+                      <button onClick="{{ c.remover }}" title="Remover comentário" style="margin-left:auto;flex-shrink:0;height:20px;width:20px;border:0;border-radius:3px;background:transparent;color:{{ t.crit }};display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                      </button>
+                    </sc-if>
+                  </div>
+                  <p style="margin:6px 0 0;font-size:12.5px;line-height:1.5;color:{{ t.inkDim }};white-space:pre-wrap">{{ c.corpo }}</p>
+                </div>
+              </sc-for>
+              <sc-if value="{{ detalhe.semComentarios }}" hint-placeholder-val="{{ false }}">
+                <p style="margin:0;padding:12px;text-align:center;font-size:12px;color:{{ t.inkFaint }};border:1px dashed {{ t.line }};border-radius:5px">Nenhum comentário ainda — o primeiro costuma ser o que a tarefa não conseguiu dizer no título.</p>
+              </sc-if>
+            </div>
+
+            <div style="margin-top:10px">
+              <textarea rows="2" value="{{ rascunho.comentario }}" onInput="{{ campos.comentario }}" placeholder="{{ placeholderComentario }}" style="display:block;width:100%;padding:8px 10px;border-radius:6px;background:{{ t.input }};border:1px solid {{ t.line }};color:{{ t.ink }};font-size:12.5px;line-height:1.45;resize:vertical;outline:none"></textarea>
+              <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <sc-if value="{{ detalhe.devoResposta }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ responder }}" style="height:30px;padding:0 13px;border-radius:5px;border:0;background:#029caf;color:{{ t.onBrand }};font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Responder</button>
+                </sc-if>
+                <sc-if value="{{ podePerguntar }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ perguntar }}" title="Publica e passa a vez para o outro lado" style="height:30px;padding:0 13px;border-radius:5px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.ink }};font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Perguntar</button>
+                </sc-if>
+                <p style="margin:0;flex:1;min-width:120px;font-size:11px;line-height:1.4;color:{{ t.inkFaint }}">{{ ajudaComentario }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex-shrink:0;padding:12px 16px;border-top:1px solid {{ t.line }};background:{{ t.head }};display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button onClick="{{ detalhe.toggleBloqueio }}" style="height:34px;padding:0 12px;border-radius:6px;border:1px solid {{ t.warnLine }};background:transparent;color:{{ t.warn }};font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">{{ detalhe.rotuloBloqueio }}</button>
+          <sc-if value="{{ detalhe.podeExcluir }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ acaoExcluir }}" title="Excluir apaga o registro. Para encerrar com rastro, use Cancelar no menu Mover." style="height:34px;padding:0 12px;border-radius:6px;border:1px solid {{ t.critLine }};background:{{ excluirBg }};color:{{ excluirCor }};font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">{{ rotuloExcluir }}</button>
+          </sc-if>
+          <sc-if value="{{ confirmarExclusao }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:11.5px;line-height:1.35;color:{{ t.crit }};max-width:210px">Apaga o registro. Para encerrar com rastro, cancele pelo menu Mover.</span>
+          </sc-if>
+          <span style="margin-left:auto"></span>
+          <button onClick="{{ fecharDetalhe }}" style="height:34px;padding:0 14px;border-radius:6px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.inkDim }};font-size:12.5px;font-weight:600;cursor:pointer">Cancelar</button>
+          <button onClick="{{ salvarDetalhe }}" style="height:34px;padding:0 16px;border:0;border-radius:6px;background:#029caf;color:{{ t.onBrand }};font-size:12.5px;font-weight:600;cursor:pointer">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ novaAberta }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ fecharNova }}" style="position:fixed;inset:0;z-index:60;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:24px">
+      <div onClick="{{ pararClique }}" style="width:100%;max-width:560px;display:flex;flex-direction:column;border-radius:8px;background:{{ t.panel }};border:1px solid {{ t.line }};overflow:hidden;box-shadow:0 24px 48px -24px rgba(0,0,0,0.7);animation:sobe 160ms ease-out">
+        <div style="flex-shrink:0;padding:14px 16px;border-bottom:1px solid {{ t.line }};display:flex;align-items:center;gap:10px">
+          <h3 style="margin:0;flex:1;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:{{ t.ink }}">Nova tarefa</h3>
+          <button onClick="{{ fecharNova }}" aria-label="Fechar" style="height:26px;width:26px;border:0;border-radius:4px;background:transparent;color:{{ t.inkMute }};display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="display:block;font-size:12px;font-weight:500;color:{{ t.inkDim }};margin-bottom:5px">Título</label>
+            <input ref="{{ refNovaTitulo }}" type="text" value="{{ rascunho.titulo }}" onInput="{{ campos.titulo }}" placeholder="O que precisa ser feito" style="display:block;width:100%;height:36px;padding:0 10px;border-radius:6px;background:{{ t.input }};border:1px solid {{ tituloBorda }};color:{{ t.ink }};font-size:13.5px;outline:none">
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:500;color:{{ t.inkDim }};margin-bottom:5px">Resumo</label>
+            <textarea rows="2" value="{{ rascunho.resumo }}" onInput="{{ campos.resumo }}" placeholder="Opcional — uma linha de contexto" style="display:block;width:100%;padding:8px 10px;border-radius:6px;background:{{ t.input }};border:1px solid {{ t.line }};color:{{ t.ink }};font-size:13px;line-height:1.45;resize:vertical;outline:none"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+            <sc-for list="{{ camposSelect }}" as="s" hint-placeholder-count="4">
+              <div>
+                <label style="display:block;font-size:12px;font-weight:500;color:{{ t.inkDim }};margin-bottom:5px">{{ s.label }}</label>
+                <select value="{{ s.valor }}" onChange="{{ s.onChange }}" style="display:block;width:100%;height:36px;padding:0 10px;border-radius:6px;background:{{ t.input }};border:1px solid {{ t.line }};color:{{ t.ink }};font-size:13px;cursor:pointer">
+                  <sc-for list="{{ s.opcoes }}" as="o" hint-placeholder-count="3">
+                    <option value="{{ o.v }}">{{ o.label }}</option>
+                  </sc-for>
+                </select>
+              </div>
+            </sc-for>
+          </div>
+          <p style="margin:0;padding:9px 11px;border-radius:5px;background:{{ avisoNovaBg }};border:1px solid {{ avisoNovaBorda }};font-size:11.5px;line-height:1.5;color:{{ t.inkDim }}">{{ avisoDestinoNova }}</p>
+        </div>
+        <div style="flex-shrink:0;padding:12px 16px;border-top:1px solid {{ t.line }};background:{{ t.head }};display:flex;justify-content:flex-end;gap:10px">
+          <button onClick="{{ fecharNova }}" style="height:34px;padding:0 14px;border-radius:6px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.inkDim }};font-size:12.5px;font-weight:600;cursor:pointer">Cancelar</button>
+          <button onClick="{{ criarTarefa }}" style="height:34px;padding:0 16px;border:0;border-radius:6px;background:#029caf;color:{{ t.onBrand }};font-size:12.5px;font-weight:600;cursor:pointer;opacity:{{ criarOpacidade }}">Criar tarefa</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ mostrarAtalhos }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ toggleAtalhos }}" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;padding:24px">
+      <div onClick="{{ pararClique }}" style="width:100%;max-width:440px;border-radius:8px;background:{{ t.panel }};border:1px solid {{ t.line }};overflow:hidden;box-shadow:0 24px 48px -24px rgba(0,0,0,0.7)">
+        <div style="padding:14px 16px;border-bottom:1px solid {{ t.line }};display:flex;align-items:center;gap:10px">
+          <h3 style="margin:0;flex:1;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:{{ t.ink }}">Atalhos de teclado</h3>
+          <button onClick="{{ toggleAtalhos }}" aria-label="Fechar" style="height:24px;width:24px;border:0;border-radius:4px;background:transparent;color:{{ t.inkMute }};display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <div style="padding:6px 0">
+          <sc-for list="{{ atalhos }}" as="a" hint-placeholder-count="9">
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 16px">
+              <span style="flex-shrink:0;width:106px;display:flex;gap:4px">
+                <sc-for list="{{ a.teclas }}" as="k" hint-placeholder-count="1">
+                  <span style="padding:2px 6px;border-radius:3px;background:{{ t.chip }};border:1px solid {{ t.btnLine }};color:{{ t.ink }};font-family:'Geist Mono',monospace;font-size:10.5px;font-weight:600;white-space:nowrap">{{ k }}</span>
+                </sc-for>
+              </span>
+              <span style="flex:1;min-width:0;font-size:12.5px;color:{{ t.inkDim }}">{{ a.desc }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ demoAberta }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;right:20px;bottom:20px;z-index:75;width:352px;border-radius:8px;background:{{ t.panel }};border:1px solid {{ t.brandSolid }};box-shadow:0 24px 48px -20px rgba(0,0,0,0.65);overflow:hidden;animation:sobe 160ms ease-out">
+      <div style="padding:11px 14px;border-bottom:1px solid {{ t.line }};background:{{ t.head }};display:flex;align-items:center;gap:9px">
+        <span style="flex:1;min-width:0;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;color:{{ t.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Simulação · pergunta na revisão</span>
+        <span style="flex-shrink:0;font-family:'Geist Mono',monospace;font-size:10.5px;color:{{ t.inkFaint }}">{{ demoContador }}</span>
+        <button onClick="{{ fecharDemo }}" aria-label="Fechar simulação" style="flex-shrink:0;height:22px;width:22px;border:0;border-radius:4px;background:transparent;color:{{ t.inkMute }};display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div style="padding:13px 14px;display:flex;flex-direction:column;gap:8px">
+        <p style="margin:0;font-size:13.5px;font-weight:600;color:{{ t.ink }};line-height:1.35">{{ demoPasso.titulo }}</p>
+        <p style="margin:0;font-size:12.5px;line-height:1.5;color:{{ t.inkDim }}">{{ demoPasso.texto }}</p>
+        <div style="padding:8px 10px;border-radius:5px;background:{{ t.perguntaBg }};border-left:2px solid {{ t.brandSolid }}">
+          <p style="margin:0;font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:{{ t.brandText }}">Olhe o quadro</p>
+          <p style="margin:4px 0 0;font-size:12px;line-height:1.45;color:{{ t.ink }}">{{ demoPasso.olhe }}</p>
+        </div>
+      </div>
+      <div style="padding:11px 14px;border-top:1px solid {{ t.line }};background:{{ t.head }};display:flex;align-items:center;gap:9px">
+        <sc-if value="{{ demoTemProximo }}" hint-placeholder-val="{{ true }}">
+          <p style="margin:0;flex:1;min-width:0;font-family:'Geist Mono',monospace;font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;color:{{ t.inkFaint }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ demoPerfilLabel }}</p>
+          <button onClick="{{ avancarDemo }}" style="flex-shrink:0;height:32px;padding:0 14px;border:0;border-radius:6px;background:#029caf;color:{{ t.onBrand }};font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">Executar passo</button>
+        </sc-if>
+        <sc-if value="{{ demoTerminou }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ abrirDemo }}" style="flex:1;height:32px;border-radius:6px;border:1px solid {{ t.btnLine }};background:transparent;color:{{ t.ink }};font-size:12.5px;font-weight:600;cursor:pointer">Rodar de novo</button>
+          <button onClick="{{ fecharDemo }}" style="flex:1;height:32px;border:0;border-radius:6px;background:#029caf;color:{{ t.onBrand }};font-size:12.5px;font-weight:600;cursor:pointer">Fechar</button>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:80;padding:9px 14px;border-radius:6px;background:{{ t.panelRaised }};border:1px solid {{ t.line }};box-shadow:0 12px 28px -14px rgba(0,0,0,0.6);font-size:12.5px;color:{{ t.ink }};animation:sobe 140ms ease-out;max-width:80vw">{{ toast }}</div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+const DARK = {
+  canvas: '#070d0f', panel: '#0a1215', panelRaised: '#101a1e', head: '#0a1215',
+  surface: 'rgba(255,255,255,0.025)', board: 'rgba(0,0,0,0.28)',
+  input: 'rgba(255,255,255,0.03)', chip: 'rgba(255,255,255,0.05)',
+  line: 'rgba(255,255,255,0.12)', rule: 'rgba(255,255,255,0.10)', btnLine: 'rgba(255,255,255,0.12)',
+  ink: '#e6eef0', inkDim: '#9db0b6', inkMute: '#8798a0', inkFaint: '#7b8c93',
+  brandSolid: '#029caf', brandRGB: '2 156 175', brandText: '#5be3ef', onBrand: '#04181b', onSignal: '#04181b',
+  good: '#0ca30c', warn: '#fab219', crit: '#d03b3b', accent: '#5be3ef', amber: '#e8a045',
+  goodRGB: '12 163 12', warnRGB: '250 178 25', critRGB: '208 59 59', accentRGB: '91 227 239', amberRGB: '232 160 69',
+  goodTint: 'rgba(12,163,12,0.065)', goodLine: 'rgba(12,163,12,0.4)',
+  warnTint: 'rgba(250,178,25,0.085)', warnLine: 'rgba(250,178,25,0.4)',
+  critLine: 'rgba(208,59,59,0.4)', perguntaBg: 'rgba(2,156,175,0.085)',
+  cardShadow: '0 1px 2px rgba(0,0,0,0.35)', cardShadowDrag: '0 6px 16px -6px rgba(0,0,0,0.6)',
+  themeIcon: 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z',
+  themeLabel: 'Tema claro', tintAlpha: 0.13,
+};
+
+const LIGHT = {
+  canvas: '#f5f8f9', panel: '#ffffff', panelRaised: '#ffffff', head: '#fafcfc',
+  surface: '#ffffff', board: '#eaf0f1',
+  input: '#ffffff', chip: '#eef3f4',
+  line: 'rgba(11,26,30,0.14)', rule: 'rgba(11,26,30,0.12)', btnLine: 'rgba(11,26,30,0.15)',
+  ink: '#0b1a1e', inkDim: '#4a5c62', inkMute: '#5d6e75', inkFaint: '#63747b',
+  brandSolid: '#029caf', brandRGB: '2 156 175', brandText: '#06788a', onBrand: '#ffffff', onSignal: '#ffffff',
+  good: '#0a7a0a', warn: '#b57500', crit: '#c02b2b', accent: '#029caf', amber: '#b06a12',
+  goodRGB: '10 122 10', warnRGB: '181 117 0', critRGB: '192 43 43', accentRGB: '2 156 175', amberRGB: '176 106 18',
+  goodTint: 'rgba(10,122,10,0.06)', goodLine: 'rgba(10,122,10,0.35)',
+  warnTint: 'rgba(181,117,0,0.08)', warnLine: 'rgba(181,117,0,0.35)',
+  critLine: 'rgba(192,43,43,0.35)', perguntaBg: 'rgba(2,156,175,0.07)',
+  cardShadow: '0 1px 2px rgba(11,26,30,0.07)', cardShadowDrag: '0 6px 16px -6px rgba(11,26,30,0.18)',
+  themeIcon: 'M21.752 15.002A9.72 9.72 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z',
+  themeLabel: 'Tema escuro', tintAlpha: 0.10,
+};
+
+const STATUS = {
+  aberta: 'Aberta', backlog: 'Backlog', em_desenvolvimento: 'Em andamento',
+  em_revisao: 'Em revisão', em_staging: 'Em staging', pronta_producao: 'Pronta p/ produção',
+  concluida: 'Concluída', cancelada: 'Cancelada',
+};
+
+/**
+ * Etapas em curso.
+ *
+ * "Em testes" era um portão só, mas guardava DOIS: revisão de PR (admin lê o
+ * código) e validação em staging (dev testa rodando). Revisor, artefato e modo
+ * de falha diferentes — junto, o quadro não respondia "quem espera quem".
+ *
+ * E "Pronta p/ produção" existe porque a subida é um ato separado: staging vem
+ * da main, produção vem da tag (deploy-tag-watcher, a cada 5min). Sem essa
+ * coluna, ou a tarefa fica em staging mentindo e ocupando WIP, ou é concluída
+ * antes de o usuário ter. Concluída aqui significa EM PRODUÇÃO.
+ *
+ * "Ajustes necessários" SAIU. O teste de uma coluna é se ela muda quem segura a
+ * tarefa: Pronta p/ produção passa a bola do dev para o admin; Ajustes devolvia
+ * ao mesmo dev de Em andamento, e sua única saída era justamente Em andamento —
+ * um pulo que não contava nada. Pior: achatava as três reprovações (PR, staging,
+ * porta da produção) numa coluna só, e escondia retrabalho do WIP. Virou MARCA
+ * de retorno no card, que diz de qual portão voltou.
+ */
+const ETAPAS = [
+  { chave: 'aberta', label: 'Aberta', cor: 'accent', vazio: 'Fila de triagem vazia', criacao: true, envelhece: 24 },
+  { chave: 'backlog', label: 'Backlog', cor: 'accent', vazio: 'Nada priorizado', criacao: true, envelhece: null },
+  { chave: 'em_desenvolvimento', label: 'Em andamento', cor: 'brandSolid', vazio: 'Ninguém tocando nada', wip: 3, envelhece: 72 },
+  { chave: 'em_revisao', label: 'Em revisão', cor: 'brandSolid', vazio: 'Nenhum PR aberto', wip: 3, envelhece: 24, portao: 'PR · admin analisa' },
+  { chave: 'em_staging', label: 'Em staging', cor: 'brandSolid', vazio: 'Nada em staging', wip: 3, envelhece: 24, portao: 'na main · dev valida' },
+  { chave: 'pronta_producao', label: 'Pronta p/ produção', cor: 'good', vazio: 'Nada para subir', envelhece: 24, portao: 'fila do admin · tag v*' },
+];
+
+const COR_STATUS = { aberta: 'accent', backlog: 'accent', em_desenvolvimento: 'brandSolid', em_revisao: 'brandSolid', em_staging: 'brandSolid', pronta_producao: 'good', concluida: 'good', cancelada: 'inkMute' };
+
+const FLUXOS = {
+  desenvolvimento: {
+    aberta: ['backlog', 'cancelada'],
+    backlog: ['aberta', 'em_desenvolvimento', 'cancelada'],
+    em_desenvolvimento: ['em_revisao', 'backlog', 'cancelada'],
+    // Reprovar devolve para Em andamento e carimba de qual portão voltou —
+    // não há coluna intermediária.
+    em_revisao: ['em_staging', 'em_desenvolvimento', 'cancelada'],
+    em_staging: ['pronta_producao', 'em_desenvolvimento', 'cancelada'],
+    pronta_producao: ['concluida', 'em_staging', 'em_desenvolvimento', 'cancelada'],
+  },
+  // Tarefa operacional não tem PR, não passa por staging e não é taggeada:
+  // exigir isso de um telefonema só ensinaria a marcar caixinha.
+  operacional: {
+    aberta: ['backlog', 'cancelada'],
+    backlog: ['aberta', 'em_desenvolvimento', 'cancelada'],
+    em_desenvolvimento: ['concluida', 'backlog', 'cancelada'],
+  },
+};
+
+/** Retorno = voltar para Em andamento vindo de um portão. Só então pede motivo. */
+const PORTOES = ['em_revisao', 'em_staging', 'pronta_producao'];
+
+
+
+/** Texto do painel de motivo por PORTÃO de origem: reprovar um PR e falhar em
+ *  staging pedem coisas diferentes, porque na segunda o código já está na main. */
+/** Encerrar tarefa operacional não é subir versão: telefonema não tem tag.
+ *  Mesmo padrão do AJUSTES_POR_ORIGEM, mas ramificando por tipo. */
+const CONCLUIR_OPERACIONAL = {
+  acao: 'Encerrar tarefa',
+  ajuda: 'Tarefa operacional não passa por PR nem por tag. Registre o que foi feito — é o que sobra como prova depois.',
+  placeholder: 'O que foi feito…',
+};
+
+/** A devolução muda de sentido conforme o portão que reprovou — é isso que a
+ *  coluna única de Ajustes achatava. */
+const RETORNO_POR_ORIGEM = {
+  em_revisao: {
+    label: 'Voltou da revisão',
+    ajuda: 'Diga o que precisa ser corrigido no PR. Sem isso, quem recebe abre o card sem saber o que reprovou.',
+    placeholder: 'O que precisa ser corrigido no PR…',
+  },
+  em_staging: {
+    label: 'Voltou do staging',
+    ajuda: 'Falhou em staging — o código JÁ está na main. Diga o que quebrou e se precisa voltar a versão (deploy/voltar.sh) ou dá para corrigir seguindo em frente.',
+    placeholder: 'O que quebrou no staging · voltar ou corrigir em frente…',
+  },
+  pronta_producao: {
+    label: 'Voltou da porta da produção',
+    ajuda: 'Reprovada antes de a tag subir. Diga o que apareceu.',
+    placeholder: 'O que apareceu antes de subir…',
+  },
+};
+
+const PEDE_TEXTO = {
+  // Só pede painel quando vem de um portão (ver painelDe): backlog →
+  // Em andamento é só começar a trabalhar, não tem motivo a dar.
+  em_desenvolvimento: {
+    verbo: 'Devolvendo para', label: 'Em andamento', cor: 'warn', rgb: 'warnRGB', acao: 'Devolver para correção',
+    ajuda: 'Diga o que precisa ser corrigido.',
+    placeholder: 'O que precisa ser corrigido…', obrigatorio: true,
+  },
+  cancelada: {
+    verbo: 'Encerrando como', label: 'Cancelada', cor: 'crit', rgb: 'critRGB', acao: 'Cancelar tarefa',
+    ajuda: 'Cancelar tira o card do quadro sem entrega. O motivo é o que permite auditar a decisão depois.',
+    placeholder: 'Por que esta tarefa não será feita…', obrigatorio: true,
+  },
+  concluida: {
+    verbo: 'Encerrando como', label: 'Concluída', cor: 'good', rgb: 'goodRGB', acao: 'Subiu para produção',
+    ajuda: 'Concluída significa EM PRODUÇÃO: a tag subiu e o vigia aplicou. Registre a versão — é ela que responde "desde quando o cliente tem isso".',
+    placeholder: 'v1.4.2', obrigatorio: 'desenvolvimento',
+  },
+  // O "Relatório aprovado" pertencia ao antigo Em testes. Agora ele vive AQUI:
+  // é neste portão que o dev diz que validou o staging, e é essa nota que o
+  // admin lê antes de taggear. Texto opcional; o que importa é o carimbo.
+  pronta_producao: {
+    verbo: 'Liberando para', label: 'Pronta p/ produção', cor: 'good', rgb: 'goodRGB', acao: 'Liberar para o admin subir',
+    ajuda: 'Vai para a fila do admin, que sobe a tag. Diga o que você conferiu no staging — é o que ele lê antes de subir.',
+    placeholder: 'O que foi conferido no staging…', obrigatorio: false, aprovacao: true,
+  },
+  bloqueio: {
+    verbo: 'Marcando como', label: 'Bloqueada', cor: 'warn', rgb: 'warnRGB', acao: 'Bloquear tarefa',
+    ajuda: 'A tarefa fica onde está — só passa a contar como travada. Diga o que está esperando: é esse texto que permite outra pessoa destravar depois.',
+    placeholder: 'Esperando quem, o quê…', obrigatorio: true,
+  },
+};
+
+const PRIORIDADES = {
+  // Sem este estado, tarefa aberta por quem não faz triagem cairia em "Média"
+  // por omissão — e o padrão viraria uma mentira que ninguém revisa. "A
+  // definir" pede triagem em vez de fingir que ela já aconteceu.
+  nao_definida: { label: 'A definir', cor: 'warn', rgb: 'warnRGB' },
+  baixa: { label: 'Baixa', cor: null },
+  media: { label: 'Média', cor: 'brandSolid', rgb: 'brandRGB' },
+  alta: { label: 'Alta', cor: 'amber', rgb: 'amberRGB' },
+  critica: { label: 'Crítica', cor: 'crit', rgb: 'critRGB' },
+};
+
+const SISTEMAS = ['AlfaMatriz', 'AlfaGym', 'AlfaControl', 'AlfaMed', 'AlfaJornada', 'AlfaHome', 'AlfaSchool', 'Gestor'];
+const USUARIOS = ['Diego Prado', 'Camila Reis', 'Marina Alves', 'Rafael Lima'];
+const EU = 'Diego Prado';
+
+/**
+ * Perfis.
+ *
+ * São dois: admin e membro. A capacidade é que define o perfil, não o cargo
+ * nem a senioridade — a mesma regra vale para todo mundo que não é admin, e
+ * a tela nunca nomeia quem é a pessoa do outro lado.
+ *
+ * A restrição NÃO é sobre criar nem sobre comentar: é sobre TRIAGEM —
+ * prioridade e responsável. Quem não faz triagem também não puxa trabalho:
+ * só move o que já está com ele. Como entrar em Aberta solta o responsável
+ * (AC-130), a fila de triagem fica naturalmente fora do alcance de quem não
+ * é admin, sem precisar de regra própria.
+ *
+ * O que deliberadamente NÃO se restringe: abrir tarefa, comentar, bloquear,
+ * checklist, e mover as próprias. Travar isso não impediria ninguém de
+ * trabalhar em algo não pedido — impediria de REGISTRAR, e o quadro passaria
+ * a mentir. O objetivo é o contrário: fazer o registro ser o caminho fácil.
+ */
+const PERFIS = {
+  admin: { label: 'Admin', usuario: 'Diego Prado', triagem: true, excluir: true },
+  membro: { label: 'Membro', usuario: 'Marina Alves', triagem: false, excluir: false },
+};
+
+const c = (id, autor, corpo, quando, pergunta) => ({ id, autor, corpo, quando, pergunta: !!pergunta });
+// Checklist, não subtarefa: item marcável dentro da tarefa. Não tem status,
+// não tem responsável, não entra no fluxo nem no WIP — quebra o trabalho sem
+// criar uma hierarquia que o quadro, o histórico e os filtros teriam de
+// representar. Trabalho que precisa de dono próprio já é tarefa irmã.
+const it = (id, texto, feito) => ({ id, texto, feito });
+
+const TAREFAS = [
+  { id: 1, status: 'aberta', titulo: 'Boleto duplicado na Invest Soluções', resumo: 'Cobrança de 08/2026 gerou dois boletos para a mesma revenda.', sistema: 'AlfaMatriz', responsavel: null, prioridade: 'critica', tipo: 'desenvolvimento', horas: 54, comentarios: [c(101, 'Camila Reis', 'A revenda já pagou o primeiro. O segundo precisa ser cancelado antes do vencimento.', 'há 2d'), c(102, 'Diego Prado', 'Achei: o job de faturamento roda duas vezes quando a competência é reaberta.', 'há 1d'), c(103, 'Camila Reis', 'Consigo assumir amanhã cedo.', 'há 4h')] },
+  { id: 2, status: 'aberta', titulo: 'Importar extrato OFX do Bradesco', resumo: '', sistema: 'AlfaMatriz', responsavel: null, prioridade: 'nao_definida', tipo: 'desenvolvimento', horas: 31, comentarios: [c(104, 'Rafael Lima', 'O banco só entrega OFX 1.0.2 — o parser precisa aceitar SGML, não só XML.', 'há 1d')] },
+  { id: 3, status: 'aberta', titulo: 'Ligar para a Hetzner sobre o upgrade', resumo: 'Confirmar janela de manutenção do servidor novo.', sistema: null, responsavel: null, prioridade: 'nao_definida', tipo: 'operacional', horas: 6, comentarios: [] },
+  { id: 4, status: 'backlog', titulo: 'Tier de atacado do AlfaSchool', resumo: '6 escolas ativas não entram no faturamento de 08/2026.', sistema: 'AlfaMatriz', responsavel: 'Diego Prado', prioridade: 'alta', tipo: 'desenvolvimento', horas: 20, comentarios: [c(105, 'Diego Prado', 'Falta definir se o preço é por escola ou por aluno ativo.', 'há 20h'), c(106, 'Marina Alves', 'Por escola. O comercial já vendeu assim para a Vetor.', 'há 18h')], itens: [it(1, 'Definir régua de preço com o comercial', true), it(2, 'Cadastrar o tier no AlfaSchool', false), it(3, 'Refazer a prévia de faturamento da Vetor', false)] },
+  { id: 5, status: 'backlog', titulo: 'Exportar clientes em CSV', resumo: 'Pedido recorrente do time comercial.', sistema: 'AlfaMatriz', responsavel: 'Camila Reis', prioridade: 'media', tipo: 'desenvolvimento', horas: 96, comentarios: [] },
+  { id: 6, status: 'backlog', titulo: 'Renovar certificado do painel da Nexa', resumo: '', sistema: null, responsavel: 'Rafael Lima', prioridade: 'alta', tipo: 'operacional', horas: 12, comentarios: [c(107, 'Rafael Lima', 'Vence em 9 dias.', 'há 12h')] },
+  { id: 7, status: 'em_desenvolvimento', titulo: 'Recorrência de despesa fixa', resumo: 'Gerar as 12 parcelas ao salvar, não sob demanda.', sistema: 'AlfaMatriz', responsavel: 'Camila Reis', prioridade: 'alta', tipo: 'desenvolvimento', horas: 3, comentarios: [c(108, 'Camila Reis', 'Decidi gerar na criação. Sob demanda o fechamento e o cadastro discordavam.', 'há 3h')] },
+  { id: 8, status: 'em_desenvolvimento', titulo: 'Baixa parcial de cobrança', resumo: 'Permitir registrar recebimento menor que o título.', sistema: 'AlfaControl', responsavel: 'Diego Prado', prioridade: 'media', tipo: 'desenvolvimento', horas: 29, comentarios: [c(109, 'Diego Prado', 'O saldo residual precisa virar um novo título, senão o aging mente.', 'há 1d')], itens: [it(4, 'Campo de valor recebido na baixa', true), it(5, 'Gerar título residual', true), it(6, 'Ajustar o aging para contar o residual', false), it(7, 'Conferir o relatório de inadimplência', false)] },
+  { id: 19, status: 'em_revisao', titulo: 'Plano de contas em árvore', resumo: 'Categoria › subcategoria › conta.', sistema: 'AlfaMatriz', responsavel: 'Camila Reis', prioridade: 'media', tipo: 'desenvolvimento', horas: 52, comentarios: [c(117, 'Diego Prado', 'Dá para remover categoria com lançamento amarrado? O que acontece com o histórico?', 'há 3d', true)], rodadas: 4, interlocutor: 'Camila Reis', pergunta: { de: 'Diego Prado', para: 'Camila Reis', horas: 38 } },
+  { id: 9, status: 'em_desenvolvimento', titulo: 'Sincronizar módulos do AlfaGym', resumo: 'Âncora de licença some ao trocar de tier.', sistema: 'AlfaGym', responsavel: 'Marina Alves', prioridade: 'alta', tipo: 'desenvolvimento', horas: 80, comentarios: [c(110, 'Marina Alves', 'Reproduzido: a troca de tier apaga e recria o vínculo em vez de atualizar.', 'há 3d')] },
+  { id: 10, status: 'em_desenvolvimento', titulo: 'Integração com a API do Asaas', resumo: 'Cobrança automática das revendas.', sistema: 'AlfaMatriz', responsavel: 'Rafael Lima', prioridade: 'alta', tipo: 'desenvolvimento', horas: 190, comentarios: [c(111, 'Rafael Lima', 'Sandbox funcionando. Falta produção.', 'há 7d')], itens: [it(8, 'Mapear o contrato de cobrança', true), it(9, 'Webhook de baixa automática', true), it(10, 'Homologar em sandbox', true), it(11, 'Trocar credencial para produção', false), it(12, 'Piloto com a Invest Soluções', false)], bloqueio: { motivo: 'Esperando credencial de produção do financeiro', horas: 152 } },
+  { id: 11, status: 'em_revisao', titulo: 'Check-in por QR Code', resumo: 'Catraca não lê o código em contraluz.', sistema: 'AlfaGym', responsavel: 'Marina Alves', prioridade: 'media', tipo: 'desenvolvimento', horas: 26, comentarios: [c(112, 'Marina Alves', 'Aumentei o contraste do QR. Testando na academia Pulse hoje.', 'há 1d')] },
+  { id: 12, status: 'em_revisao', titulo: 'Relatório de inadimplência', resumo: 'Somatório não bate quando há baixa parcial.', sistema: 'AlfaControl', responsavel: 'Diego Prado', prioridade: 'alta', tipo: 'desenvolvimento', horas: 4, comentarios: [c(114, 'Camila Reis', '1) Por que o residual entra como título novo em vez de abater?\n2) O aging recalcula sozinho ou precisa do job?\n3) Testou com baixa maior que o saldo?', 'há 2h', true)], rodadas: 2, interlocutor: 'Camila Reis', pergunta: { de: 'Camila Reis', para: 'Diego Prado', horas: 2 } },
+  { id: 15, status: 'em_staging', titulo: 'Aging de receitas por faixa', resumo: 'Faixas de 1-15, 16-30 e +30 dias.', sistema: 'AlfaMatriz', responsavel: 'Diego Prado', prioridade: 'alta', tipo: 'desenvolvimento', horas: 18, comentarios: [c(115, 'Diego Prado', 'Na main desde ontem. Conferindo contra o extrato de julho no staging.', 'há 18h')] },
+  { id: 16, status: 'em_staging', titulo: 'Baixa parcial no relatório de caixa', resumo: 'Somatório do extrato diverge após baixa parcial.', sistema: 'AlfaControl', responsavel: 'Marina Alves', prioridade: 'media', tipo: 'desenvolvimento', horas: 30, comentarios: [], envelhecida: true },
+  { id: 17, status: 'pronta_producao', titulo: 'Tema claro do painel', resumo: 'Validado no staging nas 13 telas.', sistema: 'AlfaMatriz', responsavel: 'Marina Alves', prioridade: 'media', tipo: 'desenvolvimento', horas: 26, comentarios: [c(116, 'Marina Alves', 'Contraste conferido em todas as telas. Pode taggear.', 'há 26h')] },
+  { id: 18, status: 'pronta_producao', titulo: 'Capacidade de sincronizar licença', resumo: '', sistema: 'AlfaGym', responsavel: 'Rafael Lima', prioridade: 'alta', tipo: 'desenvolvimento', horas: 6, comentarios: [] },
+  { id: 13, status: 'em_desenvolvimento', titulo: 'Provisionar acesso da Orbe Soft', resumo: 'Aguardando a revenda confirmar o e-mail do responsável.', sistema: null, responsavel: 'Rafael Lima', prioridade: 'baixa', tipo: 'operacional', horas: 40, comentarios: [], bloqueio: { motivo: 'Revenda não respondeu o e-mail de confirmação', horas: 36 } },
+  { id: 14, status: 'em_desenvolvimento', titulo: 'Exportação de faturamento em PDF', resumo: 'Subtotal por revenda saiu fora da página.', sistema: 'AlfaMatriz', responsavel: 'Camila Reis', prioridade: 'media', tipo: 'desenvolvimento', horas: 9, comentarios: [c(113, 'Diego Prado', 'Reprovado: com 4 revendas o subtotal da última cai na página seguinte, sem cabeçalho.', 'há 9h')], retorno: { de: 'em_revisao', motivo: 'Com 4 revendas o subtotal da última cai na página seguinte, sem cabeçalho' } },
+];
+
+const HISTORICO = [
+  { id: 201, status: 'concluida', titulo: 'Extrato por conta financeira', resumo: 'Saldo corrido por movimentação.', sistema: 'AlfaMatriz', responsavel: 'Diego Prado', prioridade: 'alta', tipo: 'desenvolvimento', motivo: 'v1.4.1', ciclo: '4d', encerrada: '05/08/2026', comentarios: [] },
+  { id: 202, status: 'concluida', titulo: 'Plano de contas em árvore', resumo: '', sistema: 'AlfaMatriz', responsavel: 'Marina Alves', prioridade: 'media', tipo: 'desenvolvimento', motivo: 'v1.4.0', ciclo: '9d', encerrada: '04/08/2026', comentarios: [] },
+  { id: 203, status: 'cancelada', titulo: 'App nativo para as revendas', resumo: 'Versão iOS do painel de revenda.', sistema: null, responsavel: 'Rafael Lima', prioridade: 'baixa', tipo: 'desenvolvimento', motivo: 'Sem demanda: as 4 revendas usam o painel web no desktop.', ciclo: '31d', encerrada: '02/08/2026', comentarios: [] },
+  { id: 204, status: 'concluida', titulo: 'Migrar backup para o Backblaze', resumo: '', sistema: null, responsavel: 'Rafael Lima', prioridade: 'media', tipo: 'operacional', motivo: '', ciclo: '2d', encerrada: '31/07/2026', comentarios: [] },
+  { id: 205, status: 'concluida', titulo: 'Bloqueio de tarefa vira marca', resumo: 'Sai a coluna, entra a tarja no card.', sistema: 'AlfaMatriz', responsavel: 'Camila Reis', prioridade: 'alta', tipo: 'desenvolvimento', motivo: 'v1.4.2', ciclo: '6d', encerrada: '30/07/2026', comentarios: [] },
+];
+
+/**
+ * Pergunta na revisão ≠ bloqueio.
+ *
+ * Bloqueio é impedimento externo e indefinido ("esperando credencial do
+ * financeiro"). Dúvida entre duas pessoas do time é outra coisa: a bola passa
+ * do revisor para o autor sem mudar de etapa, sem sair do WIP (responder é
+ * rápido; fingir que saiu de circulação seria mentira) e sem entrar na conta de
+ * travadas — senão uma dúvida de 20 minutos dilui o sinal de um bloqueio de 6
+ * dias.
+ *
+ * O ponteiro rastreia DE QUEM É A VEZ, não perguntas: 5 dúvidas viram um
+ * comentário e uma rodada. Respondeu parcial? O revisor pergunta de novo e vira
+ * rodada 2. Daí sai um sinal que não existia — 3ª rodada quer dizer que o PR
+ * está grande demais ou a tarefa foi mal especificada.
+ */
+/** Passo a passo que roda nas MESMAS funções do quadro — nada é encenado. */
+const DEMO_ID = 12;
+const DEMO = [
+  { perfil: 'admin', titulo: 'Admin revisa e pergunta',
+    texto: 'Diego lê o PR inteiro e junta as três dúvidas num comentário só, depois clica Perguntar.',
+    olhe: 'O card ganha "Aguardando resposta de Marina · 1ª rodada". Três perguntas, uma rodada.',
+    acao: { t: 'perguntar', quem: 'Diego Prado', corpo: '1) Por que o residual vira título novo?\n2) O aging recalcula sozinho?\n3) Testou baixa maior que o saldo?' } },
+  { perfil: 'membro', titulo: 'Marina descobre que deve resposta',
+    texto: 'Trocamos para o perfil dela. Ela não precisa procurar: o chip no topo conta o que espera por ela.',
+    olhe: 'Chip "1 p/ você" em ciano no cabeçalho. Clicando, o quadro filtra só isso.',
+    acao: { t: 'filtrar' } },
+  { perfil: 'membro', titulo: 'Ela responde no próprio card',
+    texto: 'Sem abrir modal: o botão Responder na tarja abre o campo ali mesmo.',
+    olhe: 'A tarja some — a bola voltou para o Diego. A rodada continua sendo a 1ª.',
+    acao: { t: 'responder', quem: 'Marina Alves', corpo: 'Vira título novo para o aging não mentir. O recálculo é no mesmo request.' } },
+  { perfil: 'admin', titulo: 'Ainda ficou dúvida: 2ª rodada',
+    texto: 'A resposta abriu outra pergunta. Diego pergunta de novo.',
+    olhe: 'Agora sim o contador anda: "2ª rodada". Ida e volta, não mensagens.',
+    acao: { t: 'perguntar', quem: 'Diego Prado', corpo: 'E se o cliente pagar duas vezes o mesmo título?' } },
+  { perfil: 'admin', titulo: 'Perguntar de novo NÃO conta rodada',
+    texto: 'Diego lembra de mais uma coisa e pergunta outra vez, sem ter recebido resposta.',
+    olhe: 'Continua "2ª rodada". O ponteiro rastreia de quem é a vez, não quantas mensagens foram escritas.',
+    acao: { t: 'perguntar', quem: 'Diego Prado', corpo: 'Ah, e o extrato reflete isso na hora?' } },
+  { perfil: 'admin', titulo: 'Terceira rodada acende o alerta',
+    texto: 'Marina responde e Diego pergunta pela terceira vez.',
+    olhe: '"3ª rodada" em vermelho e o quadro sugere: considere devolver para correção. Três idas e voltas quer dizer que o PR está grande demais ou a tarefa foi mal especificada.',
+    acao: { t: 'cicloCompleto', responde: 'Marina Alves', pergunta: 'Diego Prado',
+      respostaCorpo: 'Reflete. Coloquei teste para pagamento em duplicidade.',
+      perguntaCorpo: 'Esse teste cobre baixa parcial seguida de duplicidade?' } },
+];
+
+const LIMITE_RODADAS = 3;
+const HORAS_ATE_BLOQUEIO = 24;
+
+const PALETA = ['brandRGB', 'accentRGB', 'amberRGB', 'goodRGB'];
+
+const ATALHOS = [
+  { teclas: ['↑', '↓'], desc: 'Move a seleção dentro da coluna' },
+  { teclas: ['←', '→'], desc: 'Move a seleção entre colunas' },
+  { teclas: ['⇧', '←/→'], desc: 'Move a TAREFA de etapa, respeitando o fluxo' },
+  { teclas: ['B'], desc: 'Bloqueia ou destrava a tarefa selecionada' },
+  { teclas: ['M'], desc: 'Abre o menu Mover do card' },
+  { teclas: ['Enter'], desc: 'Abre o detalhe da tarefa' },
+  { teclas: ['C'], desc: 'Nova tarefa na fila de triagem' },
+  { teclas: ['N'], desc: 'Abre o formulário completo de nova tarefa' },
+  { teclas: ['/'], desc: 'Vai para a busca' },
+  { teclas: ['Esc'], desc: 'Fecha o que estiver aberto' },
+  { teclas: ['?'], desc: 'Mostra esta lista' },
+];
+
+const VAZIO = { titulo: '', resumo: '', tipo: 'desenvolvimento', sistema: '', responsavel: '', prioridade: 'media', comentario: '' };
+
+class Component extends DCLogic {
+  state = {
+    theme: 'dark', aba: 'quadro',
+    tarefas: TAREFAS, historico: HISTORICO,
+    arrastando: null, sobre: null, sobreIndice: null,
+    pendente: null, pendenteTexto: '', pendenteAprovado: true,
+    menu: null, detalhe: null, novaAberta: false,
+    rascunho: { ...VAZIO }, rapidas: {},
+    recolhidas: [], raia: 'nenhuma',
+    busca: '', filtroTipo: '', filtroPrioridade: '', filtroDesfecho: '', filtroSituacao: '',
+    selecionado: 7, mostrarAtalhos: false, toast: '', concluidasHoje: 3,
+    novoItem: '', vista: 'desktop', etapaMobile: 'em_desenvolvimento',
+    itemArrastando: null, itemSobre: null, confirmarExclusao: false,
+    perfil: 'admin', respondendo: null, respostaTexto: '', demo: null,
+  };
+
+  perfilAtual = () => PERFIS[this.state.perfil] || PERFIS.admin;
+
+  // ── simulação ─────────────────────────────────────────────────────────────
+  abrirDemo = () => this.setState(s => ({
+    demo: 0, perfil: 'admin', aba: 'quadro', vista: 'desktop', raia: 'nenhuma',
+    filtroSituacao: '', busca: '', detalhe: null, respondendo: null, menu: null, pendente: null,
+    tarefas: s.tarefas.map(x => x.id !== DEMO_ID ? x : {
+      ...x, status: 'em_revisao', responsavel: 'Marina Alves', horas: 4,
+      comentarios: [], pergunta: null, rodadas: 0, interlocutor: null, bloqueio: null, retorno: null,
+    }),
+  }));
+  fecharDemo = () => this.setState({ demo: null, filtroSituacao: '' });
+
+  avancarDemo = () => {
+    const i = this.state.demo;
+    const passo = DEMO[i];
+    if (!passo) return;
+    this.setState({ perfil: passo.perfil, filtroSituacao: '' });
+    const a = passo.acao;
+    if (a.t === 'perguntar') this.perguntarEm(DEMO_ID, a.corpo, a.quem);
+    if (a.t === 'responder') this.responderEm(DEMO_ID, a.corpo, {}, a.quem);
+    if (a.t === 'filtrar') this.setState({ filtroSituacao: 'esperando_mim' });
+    if (a.t === 'cicloCompleto') {
+      this.responderEm(DEMO_ID, a.respostaCorpo, {}, a.responde);
+      setTimeout(() => this.perguntarEm(DEMO_ID, a.perguntaCorpo, a.pergunta), 420);
+    }
+    this.setState({ demo: i + 1 });
+  };
+  setPerfil = (perfil) => () => this.setState({ perfil, detalhe: null, novaAberta: false, menu: null, pendente: null, confirmarExclusao: false });
+
+  /** Pode mover esta tarefa? Devolve o motivo quando não. */
+  podeMover = (tarefa) => {
+    const p = this.perfilAtual();
+    if (p.triagem) return null;
+    if (tarefa.responsavel !== p.usuario) {
+      return tarefa.responsavel
+        ? `Esta tarefa está com ${tarefa.responsavel}. Só um admin move o trabalho de outra pessoa.`
+        : 'Tarefa sem responsável fica na triagem — um admin define prioridade e quem resolve.';
+    }
+    return null;
+  };
+
+  /** O texto do item é editável no lugar: um input sem moldura até receber
+   *  foco. Modo de edição separado só criaria um clique a mais para corrigir
+   *  uma palavra. */
+  editarItem = (tarefaId, itemId) => (e) => {
+    const texto = e.target.value;
+    this.setState(s => ({ tarefas: s.tarefas.map(x => x.id !== tarefaId ? x : { ...x, itens: (x.itens || []).map(i => i.id === itemId ? { ...i, texto } : i) }) }));
+  };
+
+  pegarItem = (itemId) => (e) => {
+    if (e && e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(itemId)); } catch (err) {} }
+    this.setState({ itemArrastando: itemId });
+  };
+  sobrevoarItem = (indice) => (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    const alvo = e.clientY < r.top + r.height / 2 ? indice : indice + 1;
+    if (this.state.itemSobre !== alvo) this.setState({ itemSobre: alvo });
+  };
+  largarItem = () => this.setState({ itemArrastando: null, itemSobre: null });
+  soltarItem = (tarefaId) => (e) => {
+    e.preventDefault();
+    const { itemArrastando, itemSobre } = this.state;
+    if (itemArrastando === null) return;
+    this.setState(s => ({
+      itemArrastando: null, itemSobre: null,
+      tarefas: s.tarefas.map(x => {
+        if (x.id !== tarefaId) return x;
+        const lista = (x.itens || []).slice();
+        const de = lista.findIndex(i => i.id === itemArrastando);
+        if (de < 0) return x;
+        const [movido] = lista.splice(de, 1);
+        let para = itemSobre === null ? lista.length : itemSobre;
+        if (de < para) para -= 1;
+        lista.splice(Math.max(0, Math.min(para, lista.length)), 0, movido);
+        return { ...x, itens: lista };
+      }),
+    }));
+  };
+
+  /** Excluir não é cancelar. Cancelar encerra com motivo e fica auditável no
+   *  histórico; excluir apaga o registro — por isso pede confirmação e vive
+   *  longe do fluxo, no rodapé do detalhe. */
+  pedirExclusao = () => this.setState(s => ({ confirmarExclusao: !s.confirmarExclusao }));
+  excluirTarefa = () => {
+    const id = this.state.detalhe;
+    if (!id) return;
+    this.setState(s => ({
+      tarefas: s.tarefas.filter(x => x.id !== id),
+      historico: s.historico.filter(x => x.id !== id),
+      detalhe: null, confirmarExclusao: false, rascunho: { ...VAZIO },
+    }));
+    this.avisar('Tarefa excluída.');
+  };
+
+  setVista = (vista) => () => this.setState({ vista, menu: null, pendente: null, detalhe: null });
+  setEtapaMobile = (chave) => () => this.setState({ etapaMobile: chave, menu: null, pendente: null });
+  onNovoItem = (e) => this.setState({ novoItem: e.target.value });
+
+  alternarItem = (tarefaId, itemId) => () => this.setState(s => ({
+    tarefas: s.tarefas.map(x => x.id !== tarefaId ? x : { ...x, itens: (x.itens || []).map(i => i.id === itemId ? { ...i, feito: !i.feito } : i) }),
+  }));
+
+  removerItem = (tarefaId, itemId) => (e) => {
+    if (e) e.stopPropagation();
+    this.setState(s => ({ tarefas: s.tarefas.map(x => x.id !== tarefaId ? x : { ...x, itens: (x.itens || []).filter(i => i.id !== itemId) }) }));
+  };
+
+  adicionarItem = (tarefaId) => (e) => {
+    if (e && e.key && e.key !== 'Enter') return;
+    if (e && e.preventDefault) e.preventDefault();
+    const texto = this.state.novoItem.trim();
+    if (!texto) return;
+    this.setState(s => ({
+      novoItem: '',
+      tarefas: s.tarefas.map(x => x.id !== tarefaId ? x : { ...x, itens: (x.itens || []).concat({ id: ++this.proximoId, texto, feito: false }) }),
+    }));
+  };
+
+  proximoId = 900;
+  arrastouEm = 0;
+  clique = { x: 0, y: 0 };
+  focarPendente = false;
+  focarNova = false;
+
+  componentDidMount() { document.addEventListener('keydown', this.tecla); }
+  componentWillUnmount() { document.removeEventListener('keydown', this.tecla); clearTimeout(this.timerToast); }
+  componentDidUpdate() {
+    if (this.focarPendente && this.elPendente) { this.focarPendente = false; this.elPendente.focus(); }
+    if (this.focarNova && this.elNovaTitulo) { this.focarNova = false; this.elNovaTitulo.focus(); }
+    if (this.focarResposta && this.elResposta) { this.focarResposta = false; this.elResposta.focus(); }
+  }
+
+  avisar = (msg) => {
+    clearTimeout(this.timerToast);
+    this.setState({ toast: msg });
+    this.timerToast = setTimeout(() => this.setState({ toast: '' }), 2600);
+  };
+
+  pararClique = (e) => e.stopPropagation();
+  pararArraste = (e) => e.preventDefault();
+  setTheme = () => this.setState(s => ({ theme: s.theme === 'dark' ? 'light' : 'dark' }));
+  setAba = (aba) => () => this.setState({ aba, menu: null, pendente: null });
+  setRaia = (raia) => () => this.setState({ raia, recolhidas: [] });
+  toggleAtalhos = () => this.setState(s => ({ mostrarAtalhos: !s.mostrarAtalhos }));
+
+  onBusca = (e) => this.setState({ busca: e.target.value });
+  setFiltro = (chave) => (e) => this.setState({ [chave]: e.target.value });
+  limparFiltros = () => this.setState({ busca: '', filtroTipo: '', filtroPrioridade: '', filtroDesfecho: '', filtroSituacao: '' });
+
+  /** Atalho da faixa Bloquear: o contador vira o filtro "só travadas". */
+  verTravadas = () => this.setState(s => ({ aba: 'quadro', filtroSituacao: s.filtroSituacao === 'travadas' ? '' : 'travadas' }));
+  verConcluidas = () => this.setState({ aba: 'historico', filtroDesfecho: 'concluida', filtroSituacao: '' });
+  verProntas = () => this.setState(s => ({ aba: 'quadro', filtroSituacao: s.filtroSituacao === 'prontas' ? '' : 'prontas' }));
+  verEsperandoMim = () => this.setState(s => ({ aba: 'quadro', filtroSituacao: s.filtroSituacao === 'esperando_mim' ? '' : 'esperando_mim' }));
+
+  refBusca = (el) => { this.elBusca = el; };
+  refPendente = (el) => { this.elPendente = el; };
+  refNovaTitulo = (el) => { this.elNovaTitulo = el; };
+  refRapida = (chave) => (el) => { this.rapidas = this.rapidas || {}; this.rapidas[chave] = el; };
+
+  recolher = (chave) => (e) => { if (e) e.stopPropagation(); this.setState(s => ({ recolhidas: s.recolhidas.concat(chave) })); };
+  expandir = (chave) => () => this.setState(s => ({ recolhidas: s.recolhidas.filter(x => x !== chave) }));
+
+  destinosDe = (tarefa) => (FLUXOS[tarefa.tipo === 'operacional' ? 'operacional' : 'desenvolvimento'][tarefa.status] || []);
+
+  /** O painel de motivo desta transição, ou null. */
+  painelDe = (tarefa, destino) => {
+    if (destino === 'em_desenvolvimento') {
+      return PORTOES.includes(tarefa.status) ? PEDE_TEXTO.em_desenvolvimento : null;
+    }
+    return PEDE_TEXTO[destino] || null;
+  };
+  exigeTexto = (tarefa, destino) => {
+    const cfg = this.painelDe(tarefa, destino);
+    if (!cfg) return false;
+    return cfg.obrigatorio === true || cfg.obrigatorio === tarefa.tipo;
+  };
+
+  // ── arraste ───────────────────────────────────────────────────────────────
+  pegar = (id) => (e) => {
+    if (e && e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(id)); } catch (err) {} }
+    this.setState({ arrastando: id, pendente: null, menu: null, selecionado: id });
+  };
+  largar = () => { this.arrastouEm = Date.now(); this.setState({ arrastando: null, sobre: null, sobreIndice: null }); };
+  sobrevoarColuna = (chave) => (e) => {
+    e.preventDefault();
+    if (this.state.sobre !== chave || this.state.sobreIndice !== null) this.setState({ sobre: chave, sobreIndice: null });
+  };
+  // Sobre um card, o índice de inserção sai da metade da altura — é o que
+  // permite reordenar dentro da própria coluna, não só trocar de etapa.
+  sobrevoarCard = (chave, indice) => (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    const alvo = e.clientY < r.top + r.height / 2 ? indice : indice + 1;
+    if (this.state.sobre !== chave || this.state.sobreIndice !== alvo) this.setState({ sobre: chave, sobreIndice: alvo });
+  };
+  sair = () => { if (this.state.sobre !== null) this.setState({ sobre: null, sobreIndice: null }); };
+
+  mouseDown = (e) => { this.clique = { x: e.clientX, y: e.clientY }; };
+  clicar = (id) => (e) => {
+    if (e.target.closest('button') || e.target.closest('textarea') || e.target.closest('input')) return;
+    const dist = Math.hypot(e.clientX - this.clique.x, e.clientY - this.clique.y);
+    if (dist > 4 || Date.now() - this.arrastouEm < 300) return;
+    this.abrirDetalhe(id)();
+  };
+
+  abrirPendente = (id, destino) => {
+    const alvo = this.buscar(id);
+    this.focarPendente = true;
+    this.setState({
+      arrastando: null, sobre: null, sobreIndice: null, menu: null,
+      pendente: { id, destino }, pendenteTexto: '', pendenteAprovado: true, selecionado: id,
+      recolhidas: alvo ? this.state.recolhidas.filter(x => x !== alvo.status) : this.state.recolhidas,
+    });
+  };
+
+  buscar = (id) => this.state.tarefas.find(x => x.id === id);
+
+  soltar = (chave) => (e) => {
+    e.preventDefault();
+    const id = this.state.arrastando;
+    const indice = this.state.sobreIndice;
+    if (id === null) return;
+    const tarefa = this.buscar(id);
+    if (!tarefa) { this.largar(); return; }
+
+    const barreira = chave === 'bloqueio' ? null : this.podeMover(tarefa);
+    if (barreira) { this.avisar(barreira); this.largar(); return; }
+
+    if (chave === 'bloqueio') {
+      if (tarefa.bloqueio) { this.avisar('Esta tarefa já está bloqueada.'); this.largar(); return; }
+      this.abrirPendente(id, 'bloqueio');
+      return;
+    }
+    if (chave === tarefa.status) { this.mover(id, chave, indice); return; }
+    if (!this.destinosDe(tarefa).includes(chave)) {
+      this.avisar('O fluxo não permite ir de ' + STATUS[tarefa.status] + ' para ' + STATUS[chave] + '.');
+      this.largar(); return;
+    }
+    if (this.painelDe(tarefa, chave)) { this.abrirPendente(id, chave); return; }
+    this.mover(id, chave, indice);
+  };
+
+  /** Move de etapa e/ou reordena dentro da coluna. */
+  mover = (id, status, indice) => this.setState(s => {
+    const lista = s.tarefas.slice();
+    const i = lista.findIndex(x => x.id === id);
+    if (i < 0) return { arrastando: null, sobre: null, sobreIndice: null };
+    const [tar] = lista.splice(i, 1);
+    // Andar para frente limpa a marca de retorno: ela descreve a devolução, não
+    // é histórico permanente — esse fica nos eventos.
+    const avancou = status !== tar.status && status !== 'em_desenvolvimento';
+    const atualizado = { ...tar, status, horas: tar.status === status ? tar.horas : 0, retorno: avancou ? null : tar.retorno };
+    const posicoes = [];
+    lista.forEach((x, idx) => { if (x.status === status) posicoes.push(idx); });
+    let insere;
+    if (indice === null || indice === undefined || indice >= posicoes.length) {
+      insere = posicoes.length ? posicoes[posicoes.length - 1] + 1 : lista.length;
+    } else {
+      insere = posicoes[indice];
+    }
+    lista.splice(insere, 0, atualizado);
+    return { tarefas: lista, arrastando: null, sobre: null, sobreIndice: null, menu: null };
+  });
+
+  escolherDestino = (id, destino) => () => {
+    const tarefa = this.buscar(id);
+    if (!tarefa) return;
+    const barreira = this.podeMover(tarefa);
+    if (barreira) { this.avisar(barreira); return; }
+    if (this.painelDe(tarefa, destino)) { this.abrirPendente(id, destino); return; }
+    this.mover(id, destino, null);
+    this.avisar('Movida para ' + STATUS[destino] + '.');
+  };
+
+  toggleMenu = (id) => (e) => {
+    if (e) e.stopPropagation();
+    this.setState(s => ({ menu: s.menu === id ? null : id, pendente: null, selecionado: id }));
+  };
+
+  cancelarPendente = (e) => { if (e) e.stopPropagation(); this.setState({ pendente: null, pendenteTexto: '', sobre: null }); };
+  onPendenteTexto = (e) => this.setState({ pendenteTexto: e.target.value });
+  onPendenteAprovado = (e) => this.setState({ pendenteAprovado: e.target.checked });
+
+  confirmarPendente = (e) => {
+    if (e) e.stopPropagation();
+    const { pendente, pendenteTexto } = this.state;
+    if (!pendente) return;
+    const tarefa = this.buscar(pendente.id);
+    if (!tarefa) return;
+    const obrigatorio = pendente.destino === 'bloqueio' ? true : this.exigeTexto(tarefa, pendente.destino);
+    if (obrigatorio && !pendenteTexto.trim()) {
+      if (this.elPendente) this.elPendente.focus();
+      this.avisar('O texto é obrigatório para esta transição.');
+      return;
+    }
+    const { id, destino } = pendente;
+    const texto = pendenteTexto.trim();
+    this.setState(s => {
+      const limpo = { pendente: null, pendenteTexto: '', sobre: null, sobreIndice: null, menu: null };
+      if (destino === 'bloqueio') {
+        return { ...limpo, tarefas: s.tarefas.map(x => x.id === id ? { ...x, bloqueio: { motivo: texto, horas: 0 } } : x) };
+      }
+      if (destino === 'concluida' || destino === 'cancelada') {
+        const alvo = s.tarefas.find(x => x.id === id);
+        return {
+          ...limpo,
+          concluidasHoje: destino === 'concluida' ? s.concluidasHoje + 1 : s.concluidasHoje,
+          tarefas: s.tarefas.filter(x => x.id !== id),
+          historico: [{ ...alvo, status: destino, motivo: texto, ciclo: alvo.horas < 24 ? Math.round(alvo.horas) + 'h' : Math.round(alvo.horas / 24) + 'd', encerrada: 'agora', bloqueio: null }].concat(s.historico),
+        };
+      }
+      return {
+        ...limpo,
+        tarefas: s.tarefas.map(x => {
+          if (x.id !== id) return x;
+          // Devolvida por um portão: a etapa de origem vira marca no card, com
+          // o motivo. É o que a coluna Ajustes achatava.
+          const volta = destino === 'em_desenvolvimento' && PORTOES.includes(x.status);
+          return { ...x, status: destino, horas: 0, retorno: volta ? { de: x.status, motivo: texto } : null };
+        }),
+      };
+    });
+    this.avisar(destino === 'bloqueio' ? 'Tarefa bloqueada.' : (destino === 'concluida' ? 'Concluída — foi para o histórico.' : (destino === 'cancelada' ? 'Cancelada — foi para o histórico.' : 'Movida para ' + STATUS[destino] + '.')));
+  };
+
+  destravar = (id) => (e) => {
+    if (e) e.stopPropagation();
+    this.setState(s => ({ tarefas: s.tarefas.map(x => x.id === id ? { ...x, bloqueio: null } : x) }));
+    this.avisar('Tarefa destravada.');
+  };
+  alternarBloqueio = (id) => (e) => {
+    if (e) e.stopPropagation();
+    const tarefa = this.buscar(id);
+    if (!tarefa) return;
+    if (tarefa.bloqueio) this.destravar(id)();
+    else this.abrirPendente(id, 'bloqueio');
+  };
+
+  // ── detalhe ───────────────────────────────────────────────────────────────
+  abrirDetalhe = (id) => (e) => {
+    if (e) e.stopPropagation();
+    const alvo = this.buscar(id) || this.state.historico.find(x => x.id === id);
+    if (!alvo) return;
+    this.setState({
+      detalhe: id, menu: null, pendente: null, selecionado: id, confirmarExclusao: false, novoItem: '',
+      rascunho: {
+        titulo: alvo.titulo, resumo: alvo.resumo || '', tipo: alvo.tipo,
+        sistema: alvo.sistema || '', responsavel: alvo.responsavel || '',
+        prioridade: alvo.prioridade, comentario: '',
+      },
+    });
+  };
+  fecharDetalhe = () => this.setState({ detalhe: null, rascunho: { ...VAZIO }, confirmarExclusao: false, itemArrastando: null, itemSobre: null });
+
+  campo = (chave) => (e) => this.setState(s => ({ rascunho: { ...s.rascunho, [chave]: e.target.value } }));
+
+  /** Quem é o outro lado da conversa, ou null se não houver um.
+   *  Olha o interlocutor persistido ANTES do responsável: responder apaga o
+   *  ponteiro, e sem essa memória a conversa perdia com quem estava falando. */
+  outroLado = (tarefa, eu) => {
+    if (!tarefa) return null;
+    if (tarefa.pergunta) return tarefa.pergunta.para === eu ? tarefa.pergunta.de : tarefa.pergunta.para;
+    if (tarefa.interlocutor && tarefa.interlocutor !== eu) return tarefa.interlocutor;
+    const ultimoOutro = (tarefa.comentarios || []).filter(k => k.autor !== eu).slice(-1)[0];
+    if (ultimoOutro) return ultimoOutro.autor;
+    if (tarefa.responsavel && tarefa.responsavel !== eu) return tarefa.responsavel;
+    // Tarefa própria e sem conversa alguma: não há para quem passar a vez.
+    return null;
+  };
+
+  /** Comentar passando a vez: o ponteiro aponta para o OUTRO lado, não para uma
+   *  pessoa escolhida à mão — numa revisão só há dois lados. */
+  perguntarEm = (id, texto, eu, extra) => {
+    const outro = this.outroLado(this.buscar(id), eu);
+    if (!outro) return false;
+    this.setState(s => ({
+      ...(extra || {}),
+      tarefas: s.tarefas.map(x => {
+        if (x.id !== id) return x;
+        // A contagem vive na TAREFA, não no ponteiro: `responder()` apaga o
+        // ponteiro, e guardá-la ali fazia toda rodada nova começar do 1.
+        // Mas só conta rodada quando a bola está COMIGO: perguntar de novo sem
+        // ter recebido resposta é a mesma rodada — o ponteiro rastreia de quem
+        // é a vez, não quantas mensagens foram escritas.
+        const minhaVez = !x.pergunta || x.pergunta.para === eu;
+        const rodadas = (x.rodadas || 0) + (minhaVez ? 1 : 0);
+        return {
+          ...x, rodadas, interlocutor: outro,
+          comentarios: x.comentarios.concat({ id: ++this.proximoId, autor: eu, corpo: texto, quando: 'agora', pergunta: true }),
+          pergunta: { de: eu, para: outro, horas: 0 },
+        };
+      }),
+    }));
+    return true;
+  };
+
+  perguntar = () => {
+    const texto = this.state.rascunho.comentario.trim();
+    if (!texto) { this.avisar('Escreva a pergunta antes de passar a vez.'); return; }
+    const eu = this.perfilAtual().usuario;
+    const ok = this.perguntarEm(this.state.detalhe, texto, eu, { rascunho: { ...this.state.rascunho, comentario: '' } });
+    this.avisar(ok ? 'Pergunta publicada — a vez passou.' : 'Não há outro lado: a tarefa é sua e ninguém perguntou nada.');
+  };
+
+  /** Responder limpa o ponteiro: a bola volta para quem perguntou. */
+  responderEm = (id, texto, extra, quem) => {
+    const eu = quem || this.perfilAtual().usuario;
+    this.setState(s => ({
+      ...(extra || {}),
+      tarefas: s.tarefas.map(x => x.id !== id ? x : {
+        ...x,
+        comentarios: x.comentarios.concat({ id: ++this.proximoId, autor: eu, corpo: texto, quando: 'agora', pergunta: false }),
+        // Guarda com quem se estava falando: o ponteiro some, o interlocutor não.
+        interlocutor: x.pergunta ? x.pergunta.de : x.interlocutor,
+        pergunta: null,
+      }),
+    }));
+    this.avisar('Respondido — a vez voltou para quem perguntou.');
+  };
+
+  responder = () => {
+    const texto = this.state.rascunho.comentario.trim();
+    if (!texto) { this.avisar('Escreva a resposta.'); return; }
+    this.responderEm(this.state.detalhe, texto, { rascunho: { ...this.state.rascunho, comentario: '' } });
+  };
+
+  // Responder direto no card: uma dúvida de uma linha não deve custar abrir
+  // modal. Mesmo padrão do painel de motivo, que já vive dentro do card.
+  abrirResposta = (id) => (e) => {
+    if (e) e.stopPropagation();
+    this.focarResposta = true;
+    this.setState({ respondendo: id, respostaTexto: '', menu: null, pendente: null, selecionado: id });
+  };
+  onResposta = (e) => this.setState({ respostaTexto: e.target.value });
+  cancelarResposta = (e) => { if (e) e.stopPropagation(); this.setState({ respondendo: null, respostaTexto: '' }); };
+  enviarResposta = (e) => {
+    if (e) e.stopPropagation();
+    const texto = this.state.respostaTexto.trim();
+    if (!texto) { if (this.elResposta) this.elResposta.focus(); this.avisar('Escreva a resposta.'); return; }
+    this.responderEm(this.state.respondendo, texto, { respondendo: null, respostaTexto: '' });
+  };
+  refResposta = (el) => { this.elResposta = el; };
+
+  salvarDetalhe = () => {
+    const { detalhe, rascunho } = this.state;
+    if (!rascunho.titulo.trim()) { this.avisar('O título é obrigatório.'); return; }
+    const comentario = rascunho.comentario.trim();
+    this.setState(s => {
+      const aplica = (x) => x.id !== detalhe ? x : {
+        ...x,
+        titulo: rascunho.titulo.trim(), resumo: rascunho.resumo.trim(), tipo: rascunho.tipo,
+        sistema: rascunho.sistema || null, responsavel: rascunho.responsavel || null,
+        prioridade: rascunho.prioridade,
+        comentarios: comentario ? x.comentarios.concat({ id: ++this.proximoId, autor: EU, corpo: comentario, quando: 'agora' }) : x.comentarios,
+      };
+      return { tarefas: s.tarefas.map(aplica), historico: s.historico.map(aplica), detalhe: null, rascunho: { ...VAZIO } };
+    });
+    this.avisar(comentario ? 'Tarefa salva e comentário publicado.' : 'Tarefa salva.');
+  };
+
+  removerComentario = (tarefaId, comentarioId) => (e) => {
+    if (e) e.stopPropagation();
+    this.setState(s => ({
+      tarefas: s.tarefas.map(x => x.id !== tarefaId ? x : { ...x, comentarios: x.comentarios.filter(k => k.id !== comentarioId) }),
+    }));
+  };
+
+  // ── criação ───────────────────────────────────────────────────────────────
+  abrirNova = () => { this.focarNova = true; this.setState({ novaAberta: true, rascunho: { ...VAZIO } }); };
+  fecharNova = () => this.setState({ novaAberta: false, rascunho: { ...VAZIO } });
+
+  criarTarefa = () => {
+    const r = this.state.rascunho;
+    if (!r.titulo.trim()) { this.avisar('O título é obrigatório.'); if (this.elNovaTitulo) this.elNovaTitulo.focus(); return; }
+    // Mesma regra do Tarefa::booted(): com responsável nasce em Backlog; sem
+    // responsável, na fila de triagem.
+    const p = this.perfilAtual();
+    const status = p.triagem && r.responsavel ? 'backlog' : 'aberta';
+    const nova = {
+      id: ++this.proximoId, status, titulo: r.titulo.trim(), resumo: r.resumo.trim(),
+      tipo: r.tipo, sistema: r.sistema || null,
+      responsavel: p.triagem ? (r.responsavel || null) : null,
+      prioridade: p.triagem ? r.prioridade : 'nao_definida',
+      horas: 0, comentarios: [], bloqueio: null,
+    };
+    this.setState(s => ({ tarefas: [nova].concat(s.tarefas), novaAberta: false, rascunho: { ...VAZIO }, selecionado: nova.id, aba: 'quadro' }));
+    this.avisar('Criada em ' + STATUS[status] + '.');
+  };
+
+  onRapida = (chave) => (e) => { const v = e.target.value; this.setState(s => ({ rapidas: { ...s.rapidas, [chave]: v } })); };
+  criarRapida = (chave) => (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const texto = (this.state.rapidas[chave] || '').trim();
+    if (!texto) return;
+    const p = this.perfilAtual();
+    const destino = p.triagem ? chave : 'aberta';
+    const nova = {
+      id: ++this.proximoId, status: destino, titulo: texto, resumo: '', tipo: 'desenvolvimento',
+      sistema: null, responsavel: null, prioridade: p.triagem ? 'media' : 'nao_definida',
+      horas: 0, comentarios: [], bloqueio: null,
+    };
+    this.setState(s => ({ tarefas: [nova].concat(s.tarefas), rapidas: { ...s.rapidas, [chave]: '' }, selecionado: nova.id }));
+    this.avisar(destino === chave ? 'Criada em ' + STATUS[destino] + '.' : 'Criada na triagem — um admin define prioridade e responsável.');
+  };
+
+  reabrir = (id) => (e) => {
+    if (e) e.stopPropagation();
+    this.setState(s => {
+      const alvo = s.historico.find(x => x.id === id);
+      if (!alvo) return {};
+      const para = alvo.status === 'concluida' ? 'em_desenvolvimento' : 'aberta';
+      const volta = { ...alvo, status: para, horas: 0, bloqueio: null, responsavel: para === 'aberta' ? null : alvo.responsavel };
+      delete volta.motivo; delete volta.ciclo; delete volta.encerrada;
+      return { historico: s.historico.filter(x => x.id !== id), tarefas: [volta].concat(s.tarefas), aba: 'quadro', selecionado: id };
+    });
+    this.avisar('Tarefa reaberta.');
+  };
+
+  // ── teclado ───────────────────────────────────────────────────────────────
+  tecla = (e) => {
+    const emCampo = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || '').toUpperCase());
+
+    if (e.key === 'Escape') {
+      if (emCampo) { e.target.blur(); return; }
+      if (this.state.mostrarAtalhos) return this.setState({ mostrarAtalhos: false });
+      if (this.state.novaAberta) return this.fecharNova();
+      if (this.state.detalhe) return this.fecharDetalhe();
+      if (this.state.pendente) return this.cancelarPendente();
+      if (this.state.menu) return this.setState({ menu: null });
+      return;
+    }
+    if (emCampo || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (this.state.detalhe || this.state.novaAberta) return;
+
+    if (e.key === '/') { e.preventDefault(); if (this.elBusca) this.elBusca.focus(); return; }
+    if (e.key === '?') { e.preventDefault(); return this.toggleAtalhos(); }
+    if (e.key === 'n' || e.key === 'N') { e.preventDefault(); return this.abrirNova(); }
+    if (this.state.aba !== 'quadro') return;
+    if (e.key === 'c' || e.key === 'C') {
+      e.preventDefault();
+      const alvo = (this.rapidas || {}).aberta;
+      if (alvo) alvo.focus(); else this.abrirNova();
+      return;
+    }
+
+    const grade = this.grade();
+    if (!grade.length) return;
+    const atual = this.localizar(grade, this.state.selecionado);
+
+    if (e.key === 'b' || e.key === 'B') {
+      e.preventDefault();
+      if (atual) this.alternarBloqueio(grade[atual.c].cards[atual.i].id)();
+      return;
+    }
+    if (e.key === 'm' || e.key === 'M') {
+      e.preventDefault();
+      if (atual) this.toggleMenu(grade[atual.c].cards[atual.i].id)();
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (atual) this.abrirDetalhe(grade[atual.c].cards[atual.i].id)();
+      return;
+    }
+
+    const setas = { ArrowUp: 'cima', ArrowDown: 'baixo', ArrowLeft: 'esq', ArrowRight: 'dir' };
+    const dir = setas[e.key];
+    if (!dir) return;
+    e.preventDefault();
+
+    if (!atual) {
+      const primeira = grade.find(x => x.cards.length);
+      if (primeira) this.setState({ selecionado: primeira.cards[0].id });
+      return;
+    }
+    const tarefa = grade[atual.c].cards[atual.i];
+
+    if (e.shiftKey && (dir === 'esq' || dir === 'dir')) {
+      const barreira = this.podeMover(tarefa);
+      if (barreira) { this.avisar(barreira); return; }
+      const alvo = grade[atual.c + (dir === 'dir' ? 1 : -1)];
+      if (!alvo) { this.avisar('Não há etapa nessa direção.'); return; }
+      if (!this.destinosDe(tarefa).includes(alvo.chave)) {
+        this.avisar('O fluxo não permite ir de ' + grade[atual.c].label + ' para ' + alvo.label + '.');
+        return;
+      }
+      if (this.painelDe(tarefa, alvo.chave)) this.abrirPendente(tarefa.id, alvo.chave);
+      else { this.mover(tarefa.id, alvo.chave, null); this.avisar('Movida para ' + alvo.label + '.'); }
+      return;
+    }
+
+    if (dir === 'cima' || dir === 'baixo') {
+      const cards = grade[atual.c].cards;
+      const j = Math.min(Math.max(atual.i + (dir === 'baixo' ? 1 : -1), 0), cards.length - 1);
+      this.setState({ selecionado: cards[j].id });
+      return;
+    }
+    const passo = dir === 'dir' ? 1 : -1;
+    for (let k = atual.c + passo; k >= 0 && k < grade.length; k += passo) {
+      if (grade[k].cards.length) {
+        this.setState({ selecionado: grade[k].cards[Math.min(atual.i, grade[k].cards.length - 1)].id });
+        return;
+      }
+    }
+  };
+
+  filtrar = (lista) => {
+    const q = this.state.busca.trim().toLowerCase();
+    return lista.filter(x => {
+      if (this.state.filtroTipo && x.tipo !== this.state.filtroTipo) return false;
+      if (this.state.filtroPrioridade && x.prioridade !== this.state.filtroPrioridade) return false;
+      if (this.state.filtroSituacao === 'travadas' && !x.bloqueio) return false;
+      if (this.state.filtroSituacao === 'curso' && x.bloqueio) return false;
+      if (this.state.filtroSituacao === 'prontas' && x.status !== 'pronta_producao') return false;
+      if (this.state.filtroSituacao === 'esperando_mim' && !(x.pergunta && x.pergunta.para === this.perfilAtual().usuario)) return false;
+      if (!q) return true;
+      return [x.titulo, x.resumo, x.sistema, x.responsavel, (x.comentarios || []).map(k => k.corpo).join(' ')]
+        .some(v => (v || '').toLowerCase().includes(q));
+    });
+  };
+
+  grade = () => {
+    const vis = this.filtrar(this.state.tarefas);
+    return ETAPAS.map(e => ({ chave: e.chave, label: e.label, cards: vis.filter(x => x.status === e.chave) }));
+  };
+
+  localizar = (grade, id) => {
+    for (let k = 0; k < grade.length; k++) {
+      const i = grade[k].cards.findIndex(x => x.id === id);
+      if (i >= 0) return { c: k, i };
+    }
+    return null;
+  };
+
+  renderVals() {
+    const t = this.state.theme === 'dark' ? DARK : LIGHT;
+    const S = this.state;
+    // Fica no TOPO: montarCard, as raias, os chips e o detalhe leem `perfil`, e
+    // qualquer declaração mais abaixo cai em temporal dead zone.
+    const perfil = this.perfilAtual();
+    const comRaias = S.raia !== 'nenhuma';
+    const noQuadro = S.aba === 'quadro';
+
+    const tint = (rgb, a) => `rgba(${rgb.split(' ').join(',')},${a})`;
+    const dur = (h) => h < 1 ? 'agora' : (h < 24 ? Math.round(h) + 'h' : Math.round(h / 24) + 'd');
+    const iniciais = (n) => n.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase();
+    const corDe = (n) => t[PALETA[n.length % PALETA.length]];
+    const corStatus = (st) => t[COR_STATUS[st]] || t.brandSolid;
+
+    const visiveis = this.filtrar(S.tarefas);
+    const arrastada = S.arrastando === null ? null : this.buscar(S.arrastando);
+    const destinos = arrastada ? this.destinosDe(arrastada) : null;
+    const aceita = (chave) => destinos === null || destinos.includes(chave) || chave === arrastada.status;
+
+    // Um só conjunto define "há recorte" — usado pelo estado vazio, pelo
+    // subtítulo e pelo botão Limpar. Separados, eles se contradiziam.
+    const recorteAtivo = !!(S.busca || S.filtroTipo || S.filtroPrioridade || S.filtroSituacao);
+    const larguraCol = comRaias ? '272px' : 'auto';
+    const flexCol = comRaias ? '0 0 272px' : '1 1 272px';
+
+    const semTriagemNaEtapa = {};
+    S.tarefas.forEach(x => { if (x.prioridade === 'nao_definida') semTriagemNaEtapa[x.status] = (semTriagemNaEtapa[x.status] || 0) + 1; });
+
+    const cabecalhos = ETAPAS.map(e => {
+      const recolhida = S.recolhidas.includes(e.chave);
+      const daEtapa = S.tarefas.filter(x => x.status === e.chave);
+      const emCurso = daEtapa.filter(x => !x.bloqueio).length;
+      const travadas = daEtapa.length - emCurso;
+      const estourou = e.wip && emCurso > e.wip;
+      const cor = t[e.cor] || t.brandSolid;
+      const rgb = e.cor === 'brandSolid' ? t.brandRGB : (t[e.cor + 'RGB'] || t.brandRGB);
+      return {
+        label: e.label, cor, recolhida, expandida: !recolhida,
+        largura: recolhida ? '42px' : larguraCol,
+        minLarg: recolhida ? '42px' : '272px',
+        flex: recolhida ? '0 0 42px' : flexCol,
+        bordaBaixo: comRaias ? `1px solid ${t.line}` : '0',
+        contador: e.wip ? `${emCurso}/${e.wip}` : String(daEtapa.length),
+        wipTitle: e.wip ? `${emCurso} em curso de um limite de ${e.wip}` + (travadas ? ` · ${travadas} travada(s) fora da conta` : '') : `${daEtapa.length} tarefas`,
+        chipBg: estourou ? tint(t.warnRGB, t.tintAlpha) : tint(rgb, t.tintAlpha),
+        chipColor: estourou ? t.warn : cor,
+        // Quantas esperam triagem: é o sinal que o admin precisa ver de longe,
+        // já que quem não faz triagem abre tudo com prioridade "a definir".
+        aviso: estourou
+          ? `acima do limite de ${e.wip}`
+          : (semTriagemNaEtapa[e.chave] ? `${semTriagemNaEtapa[e.chave]} aguardando triagem` : (e.portao || (e.exigeTexto ? 'pede motivo ao soltar' : ''))),
+        avisoCor: estourou || semTriagemNaEtapa[e.chave] ? t.warn : t.inkFaint,
+        recolher: this.recolher(e.chave), expandir: this.expandir(e.chave),
+      };
+    });
+
+    const montarCard = (x, indice, chave) => {
+      const p = PRIORIDADES[x.prioridade] || PRIORIDADES.baixa;
+      const prioRGB = p.rgb ? (p.rgb === 'brandRGB' ? t.brandRGB : t[p.rgb]) : null;
+      const etapa = ETAPAS.find(e => e.chave === x.status) || {};
+      const limiar = etapa.envelhece;
+      const nivel = (limiar === null || limiar === undefined) ? null : (x.horas >= limiar * 2 ? 'crit' : (x.horas >= limiar ? 'warn' : null));
+      const nivelCor = nivel ? t[nivel] : null;
+      const nivelRGB = nivel ? t[nivel + 'RGB'] : null;
+      let pend = S.pendente && S.pendente.id === x.id ? this.painelDe(x, S.pendente.destino) : null;
+      if (pend && S.pendente.destino === 'em_desenvolvimento' && RETORNO_POR_ORIGEM[x.status]) {
+        pend = { ...pend, ...RETORNO_POR_ORIGEM[x.status], label: 'Em andamento' };
+      }
+      if (pend && S.pendente.destino === 'concluida' && x.tipo === 'operacional') {
+        pend = { ...pend, ...CONCLUIR_OPERACIONAL };
+      }
+      const pendCor = pend ? t[pend.cor] : null;
+      const pendRGB = pend ? t[pend.rgb] : null;
+      const obrigatorio = pend ? (S.pendente.destino === 'bloqueio' ? true : this.exigeTexto(x, S.pendente.destino)) : false;
+      const preenchido = !!S.pendenteTexto.trim();
+      const semDono = !x.responsavel;
+      const sel = S.selecionado === x.id;
+      const menuAberto = S.menu === x.id;
+      return {
+        titulo: x.titulo,
+        temResumo: !!x.resumo, resumo: x.resumo,
+        sistema: x.sistema || 'Sem sistema',
+        iniciais: semDono ? '' : iniciais(x.responsavel),
+        responsavelTitle: x.responsavel || 'Sem responsável',
+        avatarBg: semDono ? 'transparent' : tint(corDe(x.responsavel), 0.18),
+        avatarBorder: semDono ? `1px dashed ${t.inkFaint}` : '0',
+        avatarColor: semDono ? t.inkFaint : t.ink,
+        operacional: x.tipo === 'operacional',
+        prioridade: p.label,
+        prioBg: prioRGB ? tint(prioRGB, t.tintAlpha) : t.chip,
+        prioColor: p.cor ? t[p.cor] : t.inkMute,
+        tempo: dur(x.horas),
+        tempoBg: nivelRGB ? tint(nivelRGB, t.tintAlpha) : t.chip,
+        tempoColor: nivelCor || t.inkMute,
+        temComentarios: x.comentarios.length > 0,
+        comentarios: String(x.comentarios.length),
+        comentariosTitle: `${x.comentarios.length} comentário(s)`,
+        temItens: (x.itens || []).length > 0,
+        itensLabel: (x.itens || []).filter(i => i.feito).length + '/' + (x.itens || []).length,
+        itensTitle: `${(x.itens || []).filter(i => i.feito).length} de ${(x.itens || []).length} itens concluídos`,
+        itensCor: (x.itens || []).length && (x.itens || []).every(i => i.feito) ? t.good : t.inkMute,
+        temPergunta: !!x.pergunta,
+        // O nome ganha linha própria: no row da tarja sobram ~97px, e
+        // "AGUARDANDO RESPOSTA DE CAMILA" precisa de 187px — quem deve a
+        // resposta, que é a informação inteira da tarja, era o que sumia.
+        perguntaLabel: x.pergunta ? 'Aguardando resposta de ' + x.pergunta.para.split(' ')[0] : '',
+        perguntaPara: x.pergunta ? x.pergunta.para : '',
+        perguntaHa: x.pergunta ? dur(x.pergunta.horas) : '',
+        perguntaTexto: x.pergunta ? (x.comentarios.filter(k => k.pergunta).slice(-1)[0] || {}).corpo || '' : '',
+        // 3ª rodada não é detalhe: é o quadro dizendo que perguntar de novo
+        // provavelmente não resolve — devolver para correção resolve.
+        rodadaLabel: x.pergunta ? (x.rodadas || 1) + 'ª rodada' : '',
+        rodadaCor: x.pergunta && (x.rodadas || 1) >= LIMITE_RODADAS ? t.crit : t.inkMute,
+        rodadaBg: x.pergunta && (x.rodadas || 1) >= LIMITE_RODADAS ? tint(t.critRGB, t.tintAlpha) : t.chip,
+        alertaRodada: !!(x.pergunta && (x.rodadas || 1) >= LIMITE_RODADAS),
+        alertaPergunta: !!(x.pergunta && x.pergunta.horas >= HORAS_ATE_BLOQUEIO),
+        devoResposta: !!(x.pergunta && x.pergunta.para === perfil.usuario),
+        abrirResposta: this.abrirResposta(x.id),
+        respondendo: S.respondendo === x.id,
+        temRetorno: !!x.retorno,
+        retornoLabel: x.retorno ? (RETORNO_POR_ORIGEM[x.retorno.de] || {}).label || 'Devolvida' : '',
+        retornoMotivo: x.retorno ? x.retorno.motivo : '',
+        bloqueado: !!x.bloqueio,
+        motivo: x.bloqueio ? x.bloqueio.motivo : '',
+        bloqueadoHa: x.bloqueio ? dur(x.bloqueio.horas) : '',
+        // O motivo ocupa a linha inteira e vai até duas linhas: ele é a razão
+        // de Bloqueada ter virado marca em vez de coluna. Truncado a duas
+        // palavras, o "porquê" só existiria no tooltip — fora do relance, que
+        // é onde o quadro opera. Etapa e tempo sobem para o cabeçalho da
+        // tarja, e o Destravar virou ícone.
+        bloqueadoLabel: x.bloqueio ? 'Bloqueada há ' + dur(x.bloqueio.horas) : '',
+        destravar: this.destravar(x.id),
+        marcaAntes: S.arrastando !== null && S.sobre === chave && S.sobreIndice === indice,
+        borderColor: pend ? pendCor : ((x.bloqueio || x.retorno) ? t.warnLine : (sel ? t.brandSolid : (nivelCor ? tint(nivelRGB, 0.4) : t.line))),
+        shadow: S.arrastando === x.id ? t.cardShadowDrag : (sel ? `0 0 0 1px ${t.brandSolid}` : t.cardShadow),
+        opacity: S.arrastando === x.id ? 0.5 : 1,
+        draggable: pend ? 'false' : 'true',
+        onDragStart: this.pegar(x.id), onDragEnd: this.largar,
+        onDragOver: this.sobrevoarCard(chave, indice),
+        onMouseDown: this.mouseDown, onClick: this.clicar(x.id),
+        toggleMenu: this.toggleMenu(x.id),
+        // "Mover ▾" custava 51px de rodapé — o suficiente para o nome do
+        // sistema virar "Alfa…" nos cards com mais selos. Como ícone, cabe;
+        // a ação continua nomeada no atalho M, no menu aberto e no detalhe.
+        menuAberto, menuSeta: menuAberto ? '▴' : '▾',
+        menuGiro: menuAberto ? 'rotate(180deg)' : 'none',
+        menuBorda: menuAberto ? tint(t.brandRGB, 0.5) : t.btnLine,
+        menuCor: menuAberto ? t.brandText : t.inkMute,
+        destinos: this.destinosDe(x).map(d => ({
+          label: PORTOES.includes(x.status) && d === 'em_desenvolvimento' ? 'Devolver para correção' : STATUS[d],
+          cor: corStatus(d), pedeTexto: !!this.painelDe(x, d), go: this.escolherDestino(x.id, d),
+        })),
+        toggleBloqueio: this.alternarBloqueio(x.id),
+        rotuloBloqueio: x.bloqueio ? 'Destravar tarefa' : 'Marcar como bloqueada',
+        // Bloquear vale em qualquer etapa, então é botão fixo. Concluir NÃO:
+        // o fluxo só permite a partir de Em testes (ou Em andamento, no
+        // operacional). Botão fixo ficaria morto na maioria dos cards — por
+        // isso ele aparece só onde a transição existe.
+        bloqTitle: x.bloqueio ? 'Destravar · atalho B' : 'Bloquear · atalho B',
+        bloqIcone: x.bloqueio
+          ? 'M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z'
+          : 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
+        bloqCor: x.bloqueio ? t.warn : t.inkMute,
+        bloqBorda: x.bloqueio ? t.warnLine : t.line,
+        bloqBg: x.bloqueio ? t.warnTint : 'transparent',
+        podeConcluir: this.destinosDe(x).includes('concluida'),
+        concluir: this.escolherDestino(x.id, 'concluida'),
+        pendente: !!pend,
+        pendVerbo: pend ? pend.verbo : '', pendLabel: pend ? pend.label : '',
+        pendAjuda: pend ? pend.ajuda : '', pendAcao: pend ? pend.acao : '',
+        pendPlaceholder: pend ? pend.placeholder : '',
+        pedeAprovacao: !!(pend && pend.aprovacao),
+        avisoTexto: obrigatorio ? 'obrigatório' : 'opcional',
+        avisoCor: obrigatorio && !preenchido ? t.warn : t.inkFaint,
+        confirmaOpacidade: obrigatorio && !preenchido ? 0.5 : 1,
+        pendCor, pendOn: t.onSignal,
+        pendTint: pend ? tint(pendRGB, t.tintAlpha * 0.6) : 'transparent',
+        pendLine: pend ? tint(pendRGB, 0.35) : t.line,
+        cancelar: this.cancelarPendente, confirmar: this.confirmarPendente,
+      };
+    };
+
+    const montarColunas = (lista) => ETAPAS.map(e => {
+      const recolhida = S.recolhidas.includes(e.chave);
+      const cards = lista.filter(x => x.status === e.chave);
+      const ativo = S.sobre === e.chave;
+      const cor = t[e.cor] || t.brandSolid;
+      return {
+        expandida: !recolhida,
+        largura: recolhida ? '42px' : larguraCol,
+        minLarg: recolhida ? '42px' : '272px',
+        flex: recolhida ? '0 0 42px' : flexCol,
+        raio: comRaias ? '6px' : '0 0 6px 6px',
+        bordaTopo: comRaias ? `1px solid ${t.line}` : '0',
+        minH: comRaias ? '96px' : '0', maxH: 'none',
+        bg: 'transparent',
+        vazia: cards.length === 0,
+        vazioH: comRaias ? '72px' : '76px',
+        // O texto de coluna vazia só vale quando a coluna está REALMENTE
+        // vazia. Sob recorte, o vazio é do filtro — e Aberta é a fila de
+        // triagem: dizer "fila vazia" com 3 tarefas esperando dono é o oposto
+        // do que o AC-130 quer.
+        textoVazio: recorteAtivo ? 'Nada no recorte' : e.vazio,
+        temCriacao: !comRaias && !!e.criacao,
+        refRapida: this.refRapida(e.chave),
+        rascunho: S.rapidas[e.chave] || '',
+        onRascunho: this.onRapida(e.chave),
+        onEnter: this.criarRapida(e.chave),
+        bordaRapida: (S.rapidas[e.chave] || '').trim() ? tint(t.brandRGB, 0.6) : t.btnLine,
+        marcaFim: S.arrastando !== null && ativo && S.sobreIndice !== null && S.sobreIndice >= cards.length,
+        opacity: aceita(e.chave) ? 1 : 0.25,
+        ring: ativo ? `0 0 0 1px ${cor}` : 'none',
+        onDragOver: this.sobrevoarColuna(e.chave), onDragLeave: this.sair, onDrop: this.soltar(e.chave),
+        cards: cards.map((x, i) => montarCard(x, i, e.chave)),
+      };
+    });
+
+    let raias;
+    if (!comRaias) {
+      raias = [{ temCabecalho: false, colunas: montarColunas(visiveis) }];
+    } else {
+      const chaveDe = (x) => S.raia === 'responsavel' ? (x.responsavel || 'Sem responsável') : (x.sistema || 'Sem sistema');
+      const nomes = [];
+      visiveis.forEach(x => { const k = chaveDe(x); if (!nomes.includes(k)) nomes.push(k); });
+      nomes.sort((a, b) => (a.startsWith('Sem ') ? 1 : 0) - (b.startsWith('Sem ') ? 1 : 0) || a.localeCompare(b, 'pt-BR'));
+      raias = nomes.map(nome => {
+        const lista = visiveis.filter(x => chaveDe(x) === nome);
+        const vazio = nome.startsWith('Sem ');
+        const emCurso = lista.filter(x => x.status === 'em_desenvolvimento' && !x.bloqueio).length;
+        const travadas = lista.filter(x => x.bloqueio).length;
+        return {
+          temCabecalho: true, label: nome, total: String(lista.length),
+          iniciais: vazio ? '—' : iniciais(nome),
+          avatarRaio: S.raia === 'responsavel' ? '9999px' : '4px',
+          avatarBg: vazio ? 'transparent' : tint(corDe(nome), 0.18),
+          avatarBorda: vazio ? `1px dashed ${t.inkFaint}` : '0',
+          avatarCor: vazio ? t.inkFaint : t.ink,
+          aviso: S.raia === 'responsavel' && emCurso > 2 ? `${emCurso} em andamento` : (travadas ? `${travadas} travada${travadas > 1 ? 's' : ''}` : ''),
+          colunas: montarColunas(lista),
+        };
+      });
+      if (!raias.length) raias = [{ temCabecalho: false, colunas: montarColunas([]) }];
+    }
+
+    // ── detalhe ──
+    const alvoDet = S.detalhe === null ? null : (this.buscar(S.detalhe) || S.historico.find(x => x.id === S.detalhe));
+    const detalhe = !alvoDet ? null : {
+      etapaCor: corStatus(alvoDet.status),
+      etapaLabel: STATUS[alvoDet.status],
+      tempo: dur(alvoDet.horas || 0),
+      bloqueado: !!alvoDet.bloqueio,
+      motivo: alvoDet.bloqueio ? alvoDet.bloqueio.motivo : '',
+      bloqueadoHa: alvoDet.bloqueio ? dur(alvoDet.bloqueio.horas) : '',
+      destravar: this.destravar(alvoDet.id),
+      toggleBloqueio: this.alternarBloqueio(alvoDet.id),
+      rotuloBloqueio: alvoDet.bloqueio ? 'Destravar tarefa' : 'Marcar como bloqueada',
+      temPergunta: !!alvoDet.pergunta,
+      perguntaLabel: alvoDet.pergunta ? 'Aguardando resposta de ' + alvoDet.pergunta.para : '',
+      perguntaMeta: alvoDet.pergunta ? (alvoDet.rodadas || 1) + 'ª rodada · há ' + dur(alvoDet.pergunta.horas) : '',
+      perguntaCor: alvoDet.pergunta && (alvoDet.rodadas || 1) >= LIMITE_RODADAS ? t.crit : t.brandText,
+      perguntaBg: alvoDet.pergunta && (alvoDet.rodadas || 1) >= LIMITE_RODADAS ? tint(t.critRGB, t.tintAlpha * 0.7) : tint(t.brandRGB, t.tintAlpha * 0.7),
+      perguntaBorda: alvoDet.pergunta && (alvoDet.rodadas || 1) >= LIMITE_RODADAS ? tint(t.critRGB, 0.35) : tint(t.brandRGB, 0.3),
+      avisoRodada: alvoDet.pergunta && (alvoDet.rodadas || 1) >= LIMITE_RODADAS
+        ? (alvoDet.rodadas || 1) + 'ª rodada de perguntas. Provavelmente não é mais dúvida: devolva para correção e conversem fora do portão.' : '',
+      // Quem deve a resposta vê "Responder"; quem perguntou vê "Perguntar".
+      devoResposta: !!(alvoDet.pergunta && alvoDet.pergunta.para === perfil.usuario),
+      temItens: (alvoDet.itens || []).length > 0,
+      itensFeitos: (alvoDet.itens || []).filter(i => i.feito).length + ' de ' + (alvoDet.itens || []).length,
+      itensPct: (alvoDet.itens || []).length ? Math.round((alvoDet.itens || []).filter(i => i.feito).length / (alvoDet.itens || []).length * 100) + '%' : '0%',
+      itens: (alvoDet.itens || []).map((i, idx) => ({
+        texto: i.texto, feito: i.feito,
+        cor: i.feito ? t.inkFaint : t.ink,
+        risco: i.feito ? 'line-through' : 'none',
+        opacidade: S.itemArrastando === i.id ? 0.4 : 1,
+        marcaAntes: S.itemArrastando !== null && S.itemSobre === idx,
+        alternar: this.alternarItem(alvoDet.id, i.id),
+        editar: this.editarItem(alvoDet.id, i.id),
+        remover: this.removerItem(alvoDet.id, i.id),
+        onDragStart: this.pegarItem(i.id),
+        onDragOver: this.sobrevoarItem(idx),
+        onDragEnd: this.largarItem,
+      })),
+      marcaFimItens: S.itemArrastando !== null && S.itemSobre !== null && S.itemSobre >= (alvoDet.itens || []).length,
+      soltarItem: this.soltarItem(alvoDet.id),
+      adicionarItem: this.adicionarItem(alvoDet.id),
+      podeExcluir: this.perfilAtual().excluir,
+      totalComentarios: alvoDet.comentarios.length + (alvoDet.comentarios.length === 1 ? ' comentário' : ' comentários'),
+      semComentarios: alvoDet.comentarios.length === 0,
+      comentarios: alvoDet.comentarios.map(k => ({
+        autor: k.autor, corpo: k.corpo, quando: k.quando,
+        iniciais: iniciais(k.autor), avatarBg: tint(corDe(k.autor), 0.18),
+        proprio: k.autor === EU, remover: this.removerComentario(alvoDet.id, k.id),
+      })),
+    };
+
+    const opcoesSistema = [{ v: '', label: 'Sem sistema' }].concat(SISTEMAS.map(s2 => ({ v: s2, label: s2 })));
+    const opcoesUsuario = [{ v: '', label: 'Sem responsável' }].concat(USUARIOS.map(u => ({ v: u, label: u })));
+    // Campo que a pessoa NUNCA pode editar não aparece desabilitado: some, e a
+    // ausência é explicada uma vez. Botão morto sem motivo é a pior saída.
+    const camposSelect = [
+      { label: 'Tipo', valor: S.rascunho.tipo, onChange: this.campo('tipo'), opcoes: [{ v: 'desenvolvimento', label: 'Desenvolvimento' }, { v: 'operacional', label: 'Operacional' }] },
+      { label: 'Sistema', valor: S.rascunho.sistema, onChange: this.campo('sistema'), opcoes: opcoesSistema },
+    ];
+    if (perfil.triagem) {
+      camposSelect.splice(1, 0, { label: 'Prioridade', valor: S.rascunho.prioridade, onChange: this.campo('prioridade'), opcoes: Object.keys(PRIORIDADES).map(k => ({ v: k, label: PRIORIDADES[k].label })) });
+      camposSelect.push({ label: 'Responsável', valor: S.rascunho.responsavel, onChange: this.campo('responsavel'), opcoes: opcoesUsuario });
+    }
+
+    const historicoFiltrado = this.filtrar(S.historico).filter(x => !S.filtroDesfecho || x.status === S.filtroDesfecho);
+    const travadasTotal = S.tarefas.filter(x => x.bloqueio).length;
+    const prontasTotal = S.tarefas.filter(x => x.status === 'pronta_producao').length;
+    const esperandoMim = S.tarefas.filter(x => x.pergunta && x.pergunta.para === perfil.usuario).length;
+    const temRecorte = recorteAtivo || !!S.filtroDesfecho;
+
+    const filtros = [
+      { valor: S.filtroTipo, onChange: this.setFiltro('filtroTipo'), opcoes: [{ v: '', label: 'Todos os tipos' }, { v: 'desenvolvimento', label: 'Desenvolvimento' }, { v: 'operacional', label: 'Operacional' }] },
+      { valor: S.filtroPrioridade, onChange: this.setFiltro('filtroPrioridade'), opcoes: [{ v: '', label: 'Todas as prioridades' }].concat(Object.keys(PRIORIDADES).map(k => ({ v: k, label: PRIORIDADES[k].label }))) },
+    ];
+    if (noQuadro) {
+      filtros.push({ valor: S.filtroSituacao, onChange: this.setFiltro('filtroSituacao'), opcoes: [{ v: '', label: 'Todas as situações' }, { v: 'travadas', label: 'Só as travadas' }, { v: 'curso', label: 'Só as em curso' }, { v: 'prontas', label: 'Só as prontas p/ produção' }, { v: 'esperando_mim', label: 'Só as que esperam por você' }] });
+    }
+    if (!noQuadro) {
+      filtros.push({ valor: S.filtroDesfecho, onChange: this.setFiltro('filtroDesfecho'), opcoes: [{ v: '', label: 'Todos os desfechos' }, { v: 'concluida', label: 'Concluída' }, { v: 'cancelada', label: 'Cancelada' }] });
+    }
+
+    return {
+      t, cabecalhos, raias, detalhe, camposSelect,
+      // A vista escolhe a FORMA do quadro; a aba escolhe O QUE aparece. Com as
+      // duas condições misturadas, Histórico no celular não renderizava nada.
+      noQuadro,
+      noHistorico: !noQuadro,
+      mostrarQuadro: noQuadro && S.vista === 'desktop',
+      abas: [{ label: 'Quadro', v: 'quadro' }, { label: 'Histórico', v: 'historico' }].map(a => ({
+        label: a.label, go: this.setAba(a.v),
+        bg: S.aba === a.v ? tint(t.brandRGB, 0.14) : 'transparent',
+        color: S.aba === a.v ? t.brandText : t.inkMute,
+      })),
+      busca: S.busca, onBusca: this.onBusca, refBusca: this.refBusca,
+      buscaBorda: S.busca ? tint(t.brandRGB, 0.5) : t.line,
+      filtros: filtros.map(f => ({ ...f, borda: f.valor ? tint(t.brandRGB, 0.5) : t.line, cor: f.valor ? t.ink : t.inkDim })),
+      temRecorte, limparFiltros: this.limparFiltros,
+      // Sob recorte o número precisa se anunciar como recorte: "2 de 14".
+      resumoTopo: noQuadro
+        ? (recorteAtivo ? `${visiveis.length} de ${S.tarefas.length} no quadro` : `${visiveis.length} no quadro · ${travadasTotal} travadas`)
+        : (S.filtroDesfecho || recorteAtivo ? `${historicoFiltrado.length} de ${S.historico.length} encerradas` : `${historicoFiltrado.length} encerradas`),
+      resumoHistorico: `${historicoFiltrado.length} tarefas encerradas`,
+      pendenteTexto: S.pendenteTexto, onPendenteTexto: this.onPendenteTexto,
+      pendenteAprovado: S.pendenteAprovado, onPendenteAprovado: this.onPendenteAprovado,
+      refPendente: this.refPendente,
+      wrapMinW: comRaias ? 'max-content' : '0',
+      wrapH: comRaias ? 'auto' : '100%',
+      scrollerY: comRaias ? 'auto' : 'hidden',
+      laneFlex: comRaias ? '0 0 auto' : '1',
+      laneMinH: comRaias ? 'auto' : '0',
+      laneGap: comRaias ? '14px' : '0px',
+      dica: comRaias ? 'raias por ' + (S.raia === 'responsavel' ? 'responsável' : 'sistema') : 'arraste entre colunas, ou ⇧ + ← →',
+      opcoesRaia: [{ label: 'Nenhuma', v: 'nenhuma' }, { label: 'Responsável', v: 'responsavel' }, { label: 'Sistema', v: 'sistema' }].map(o => ({
+        label: o.label, go: this.setRaia(o.v),
+        bg: S.raia === o.v ? tint(t.brandRGB, 0.14) : 'transparent',
+        color: S.raia === o.v ? t.brandText : t.inkMute,
+      })),
+      // As faixas verticais de solto saíram: bloquear e concluir agora são
+      // botões no próprio card. Sobrou o que elas faziam bem — mostrar as duas
+      // contagens e servir de porta para travadas e histórico — e isso é
+      // trabalho de cabeçalho, não de duas colunas ocupando 110px de largura.
+      chipsQuadro: [
+        // Primeiro chip e em destaque: é a caixa de entrada da pessoa. Sem
+        // isso, saber que há uma pergunta dependia de olhar a coluna certa.
+        {
+          label: esperandoMim + ' p/ você', go: this.verEsperandoMim,
+          icone: 'M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z',
+          title: 'Perguntas esperando resposta sua',
+          bg: S.filtroSituacao === 'esperando_mim' ? tint(t.brandRGB, 0.26) : tint(t.brandRGB, 0.12),
+          borda: tint(t.brandRGB, 0.45), cor: t.brandText,
+        },
+        {
+          label: travadasTotal + ' travadas', go: this.verTravadas,
+          icone: 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
+          title: S.filtroSituacao === 'travadas' ? 'Mostrando só as travadas — clique para ver todas' : 'Clique para ver só as travadas',
+          bg: S.filtroSituacao === 'travadas' ? tint(t.warnRGB, 0.24) : t.warnTint,
+          borda: t.warnLine, cor: t.warn,
+        },
+        {
+          label: prontasTotal + ' p/ subir', go: this.verProntas,
+          icone: 'M12 19.5v-15m0 0l-6.75 6.75M12 4.5l6.75 6.75',
+          title: 'Fila do admin: validadas no staging, esperando a tag subir',
+          bg: S.filtroSituacao === 'prontas' ? tint(t.goodRGB, 0.24) : t.goodTint,
+          borda: t.goodLine, cor: t.good,
+        },
+        {
+          label: S.concluidasHoje + ' hoje', go: this.verConcluidas,
+          icone: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+          title: S.concluidasHoje + ' em produção hoje · clique para abrir o histórico',
+          bg: t.goodTint, borda: t.goodLine, cor: t.good,
+        },
+      ].filter(k => !k.label.startsWith('0 ')),
+      colsHistorico: [
+        { label: 'Tarefa', align: 'left' }, { label: 'Sistema', align: 'left' }, { label: 'Responsável', align: 'left' },
+        { label: 'Prioridade', align: 'left' }, { label: 'Desfecho / versão', align: 'left' },
+        { label: 'Ciclo', align: 'right' }, { label: 'Encerrada', align: 'left' }, { label: '', align: 'right' },
+      ],
+      historico: historicoFiltrado.map(x => {
+        const p = PRIORIDADES[x.prioridade] || PRIORIDADES.baixa;
+        const prioRGB = p.rgb ? (p.rgb === 'brandRGB' ? t.brandRGB : t[p.rgb]) : null;
+        const bom = x.status === 'concluida';
+        return {
+          titulo: x.titulo, temResumo: !!x.resumo, resumo: x.resumo,
+          sistema: x.sistema || 'Sem sistema', responsavel: x.responsavel || 'Sem responsável',
+          prioridade: p.label,
+          prioBg: prioRGB ? tint(prioRGB, t.tintAlpha) : t.chip,
+          prioColor: p.cor ? t[p.cor] : t.inkMute,
+          desfecho: STATUS[x.status],
+          desfechoBg: tint(bom ? t.goodRGB : t.critRGB, t.tintAlpha),
+          desfechoCor: bom ? t.good : t.crit,
+          temMotivo: !!x.motivo, motivo: x.motivo,
+          ciclo: x.ciclo, encerrada: x.encerrada,
+          abrir: this.abrirDetalhe(x.id), reabrir: this.reabrir(x.id),
+          reabrirTitle: 'Volta para ' + (bom ? 'Em andamento' : 'Aberta'),
+        };
+      }),
+      historicoVazio: historicoFiltrado.length === 0,
+      rascunho: S.rascunho,
+      campos: { titulo: this.campo('titulo'), resumo: this.campo('resumo'), comentario: this.campo('comentario') },
+      tituloBorda: S.rascunho.titulo.trim() ? t.line : tint(t.warnRGB, 0.5),
+      criarOpacidade: S.rascunho.titulo.trim() ? 1 : 0.5,
+      avisoDestinoNova: !perfil.triagem
+        ? 'A tarefa nasce em Aberta, com prioridade "a definir". Um admin faz a triagem e diz quem resolve.'
+        : S.rascunho.responsavel
+        ? 'Com responsável definido, a tarefa nasce em Backlog.'
+        : 'Sem responsável, a tarefa nasce em Aberta — a fila de triagem.',
+      novaAberta: S.novaAberta, abrirNova: this.abrirNova, fecharNova: this.fecharNova,
+      criarTarefa: this.criarTarefa, refNovaTitulo: this.refNovaTitulo,
+      fecharDetalhe: this.fecharDetalhe, salvarDetalhe: this.salvarDetalhe,
+      pararClique: this.pararClique, pararArraste: this.pararArraste,
+      perguntar: this.perguntar, responder: this.responder,
+      demoAberta: S.demo !== null,
+      demoPasso: S.demo !== null && DEMO[S.demo] ? DEMO[S.demo] : { titulo: 'Fim da simulação', texto: 'O ciclo completo aconteceu no card “Relatório de inadimplência”, usando as mesmas funções do quadro.', olhe: 'Reabra a simulação para ver de novo, ou brinque à vontade — o card está com 3 rodadas e o alerta ligado.' },
+      demoContador: S.demo !== null ? Math.min(S.demo + 1, DEMO.length) + ' de ' + DEMO.length : '',
+      demoTemProximo: S.demo !== null && S.demo < DEMO.length,
+      demoTerminou: S.demo !== null && S.demo >= DEMO.length,
+      demoPerfilLabel: S.demo !== null && DEMO[S.demo] ? 'Vai trocar para ' + PERFIS[DEMO[S.demo].perfil].label : '',
+      abrirDemo: this.abrirDemo, avancarDemo: this.avancarDemo, fecharDemo: this.fecharDemo,
+      respostaTexto: S.respostaTexto, onResposta: this.onResposta, refResposta: this.refResposta,
+      cancelarResposta: this.cancelarResposta, enviarResposta: this.enviarResposta,
+      podePerguntar: !!(alvoDet && !(alvoDet.pergunta && alvoDet.pergunta.para === perfil.usuario) && this.outroLado(alvoDet, perfil.usuario)),
+      placeholderComentario: alvoDet && alvoDet.pergunta && alvoDet.pergunta.para === perfil.usuario
+        ? 'Sua resposta…' : 'O que mais precisa ser dito sobre esta tarefa…',
+      ajudaComentario: alvoDet && alvoDet.pergunta && alvoDet.pergunta.para === perfil.usuario
+        ? 'Responder devolve a vez para quem perguntou.'
+        : (alvoDet && this.outroLado(alvoDet, perfil.usuario)
+          ? 'Perguntar publica e passa a vez. Salvar só registra o comentário.'
+          : 'A tarefa é sua e ninguém perguntou nada — não há para quem passar a vez. Salvar registra o comentário.'),
+      perfis: Object.keys(PERFIS).map(k => ({
+        label: PERFIS[k].label, go: this.setPerfil(k),
+        bg: S.perfil === k ? tint(t.brandRGB, 0.14) : 'transparent',
+        color: S.perfil === k ? t.brandText : t.inkMute,
+      })),
+      semTriagem: !perfil.triagem,
+      avisoNovaBg: perfil.triagem ? t.surface : t.warnTint,
+      avisoNovaBorda: perfil.triagem ? t.line : t.warnLine,
+      notaTriagem: 'Prioridade e responsável são definidos na triagem por um admin — por isso não aparecem aqui.',
+      usuarioAtual: perfil.usuario,
+      novoItem: S.novoItem, onNovoItem: this.onNovoItem,
+      confirmarExclusao: S.confirmarExclusao, pedirExclusao: this.pedirExclusao, excluirTarefa: this.excluirTarefa,
+      rotuloExcluir: S.confirmarExclusao ? 'Confirmar exclusão' : 'Excluir',
+      excluirBg: S.confirmarExclusao ? t.crit : 'transparent',
+      excluirCor: S.confirmarExclusao ? '#ffffff' : t.crit,
+      acaoExcluir: S.confirmarExclusao ? this.excluirTarefa : this.pedirExclusao,
+      vistaDesktop: S.vista === 'desktop', vistaCelular: S.vista === 'celular' && noQuadro,
+      vistas: [{ label: 'Desktop', v: 'desktop' }, { label: 'Celular', v: 'celular' }].map(o => ({
+        label: o.label, go: this.setVista(o.v),
+        bg: S.vista === o.v ? tint(t.brandRGB, 0.14) : 'transparent',
+        color: S.vista === o.v ? t.brandText : t.inkMute,
+      })),
+      // No celular o quadro não é um quadro: 5 colunas de 272px não cabem, e
+      // arrastar entre elas com o polegar é hostil. Uma etapa por vez, trocada
+      // por uma tira de chips, e o movimento pelo menu — que já é o caminho
+      // acessível do desktop.
+      etapasMobile: ETAPAS.map(e => {
+        const daEtapa = visiveis.filter(x => x.status === e.chave);
+        const cor = t[e.cor] || t.brandSolid;
+        const ativo = S.etapaMobile === e.chave;
+        return {
+          label: e.label, count: String(daEtapa.length), go: this.setEtapaMobile(e.chave),
+          bg: ativo ? tint(t.brandRGB, 0.14) : 'transparent',
+          borda: ativo ? tint(t.brandRGB, 0.45) : t.line,
+          cor: ativo ? t.ink : t.inkMute,
+          ponto: cor,
+          chipBg: ativo ? tint(t.brandRGB, 0.18) : t.chip,
+        };
+      }),
+      etapaMobile: (() => {
+        const e = ETAPAS.find(x => x.chave === S.etapaMobile) || ETAPAS[0];
+        const daEtapa = S.tarefas.filter(x => x.status === e.chave);
+        const emCurso = daEtapa.filter(x => !x.bloqueio).length;
+        const estourou = e.wip && emCurso > e.wip;
+        const cards = visiveis.filter(x => x.status === e.chave);
+        return {
+          label: e.label, cor: t[e.cor] || t.brandSolid,
+          contador: e.wip ? `${emCurso}/${e.wip}` : String(daEtapa.length),
+          chipBg: estourou ? tint(t.warnRGB, t.tintAlpha) : tint(e.cor === 'brandSolid' ? t.brandRGB : (t[e.cor + 'RGB'] || t.brandRGB), t.tintAlpha),
+          chipColor: estourou ? t.warn : (t[e.cor] || t.brandSolid),
+          aviso: estourou ? `acima do limite de ${e.wip}` : '',
+          vazia: cards.length === 0,
+          textoVazio: recorteAtivo ? 'Nada no recorte' : e.vazio,
+          temCriacao: !!e.criacao,
+          rascunho: S.rapidas[e.chave] || '',
+          onRascunho: this.onRapida(e.chave),
+          onEnter: this.criarRapida(e.chave),
+          cards: cards.map((x, i) => montarCard(x, i, e.chave)),
+        };
+      })(),
+      atalhos: ATALHOS, mostrarAtalhos: S.mostrarAtalhos, toggleAtalhos: this.toggleAtalhos,
+      toggleTheme: this.setTheme, toast: S.toast,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

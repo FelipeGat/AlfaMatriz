@@ -18,16 +18,18 @@
              não na borda do card: essa continua sendo o canal do aviso de
              tarefa esquecida (AC-093, AC-127).
 
-             `flex: 1 1 276px` no lugar de largura fixa: com cinco colunas numa
+             `flex: 1 1 272px` no lugar de largura fixa: com seis colunas numa
              tela larga sobrava uma faixa vazia à direita (AC-132). Assim elas
              dividem o espaço quando ele existe, e o `min-width` segura a
              largura de leitura — apertando a tela, o quadro volta a rolar na
-             horizontal em vez de espremer o card.
+             horizontal em vez de espremer o card. Os 272px são do protótipo, e
+             o `min-width` junto é obrigatório: sem ele o flex encolhe a coluna
+             abaixo da largura em que o card ainda se lê.
          --}}
          {{-- A faixa de cor só onde o cabeçalho está: em raias ela se repetiria
               uma vez por faixa, competindo com o cabeçalho fixo do topo, que é
               quem nomeia a etapa. Cor repetida sem rótulo vira listra. --}}
-         style="flex: 1 1 276px; min-width: 276px;
+         style="flex: 1 1 272px; min-width: 272px;
                 border-top: {{ $comCabecalho ? '3px solid rgb(var(--'.$etapa['cor'].'))' : '1px solid var(--line)' }}"
          data-status="{{ $etapa['chave'] }}"
          @dragover.prevent="permitir('{{ $etapa['chave'] }}')"
@@ -55,7 +57,7 @@
     @endif
 
     <div data-cards="{{ $alvo }}"
-         class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 space-y-2">
+         class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-[10px] space-y-[10px]">
         @forelse ($cards as $tarefa)
             @php
                 /**

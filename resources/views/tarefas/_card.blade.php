@@ -1,8 +1,14 @@
 @php
     /**
-     * Card do quadro: sistema, prioridade e tempo na etapa atual (US-038).
-     * A etapa atual é o evento de `tarefa_eventos` ainda sem saída; tarefa
-     * que nunca se moveu (sem evento nenhum) conta a partir da criação.
+     * Card do quadro.
+     *
+     * As medidas vêm do `design/AlfaMatriz Tarefas.dc.html`, que tem todo
+     * estilo inline em px literais — ele é a especificação dimensional, e o
+     * `design/TAREFAS-SPEC.md` resume os mesmos números. Nada aqui foi medido
+     * em screenshot: cada valor arbitrário abaixo está no fonte do protótipo.
+     *
+     * A etapa atual é o evento de `tarefa_eventos` ainda sem saída; tarefa que
+     * nunca se moveu (sem evento nenhum) conta a partir da criação.
      */
     $eventoAberto = $tarefa->eventos->firstWhere('saiu_em', null);
     $entrouNaEtapaEm = $eventoAberto?->entrou_em ?? $tarefa->created_at;
@@ -12,14 +18,9 @@
     // dizer a mesma coisa nas duas telas.
     $tempoNaEtapa = \App\Models\Tarefa::duracaoCurta((int) $segundosNaEtapa);
 
-    // O envelhecimento passou a valer em TODAS as etapas de trabalho, cada uma
-    // com a sua régua (AC-193). Antes só Aberta e Em testes acendiam, com 24h
-    // fixas para as duas — mas três dias escrevendo código é trabalho, enquanto
-    // três dias esperando alguém testar é fila, e a tarefa que mais apodrece,
-    // a de Em andamento parada há dias, não era medida por ninguém.
-    //
-    // O aviso dobra de peso no dobro do prazo, como já fazia: o primeiro nível
-    // chama atenção, o segundo diz que passou da hora.
+    // O envelhecimento vale em TODAS as etapas de trabalho, cada uma com a sua
+    // régua (AC-193): três dias escrevendo código é trabalho, três dias
+    // esperando alguém revisar é fila. O aviso dobra de peso no dobro do prazo.
     $limiar = \App\Models\Tarefa::HORAS_ATE_ENVELHECER[$tarefa->status] ?? null;
     $nivelEsquecida = null;
     if ($limiar !== null) {
@@ -32,91 +33,120 @@
     }
     $tomEsquecida = ['atencao' => 'warn', 'critico' => 'crit'][$nivelEsquecida] ?? null;
 
-    // Travada manda na borda. O aviso de esquecida mede abandono, e tarefa
-    // travada não está abandonada — está esperando, com o porquê escrito. Se os
-    // dois disputassem a borda, o card diria "ninguém olha para mim" sobre uma
-    // tarefa que alguém parou de propósito.
     $bloqueada = $tarefa->estaBloqueada();
+    $temPergunta = $tarefa->temPergunta();
+    $temRetorno = $tarefa->temRetorno();
+
+    /**
+     * A cor da borda, na precedência do protótipo.
+     *
+     * A ordem não é estética: ela responde "qual notícia manda". Bloqueio e
+     * retorno vencem o envelhecimento porque tarefa travada não está
+     * abandonada — está esperando, com o porquê escrito; e pergunta vence a
+     * régua de tempo pelo mesmo motivo. Seleção pelo teclado entra entre as
+     * duas: ela é onde a pessoa ESTÁ, e some assim que ela sai.
+     */
     $corDaBorda = match (true) {
-        $bloqueada => 'rgb(var(--warn) / 0.45)',
+        $bloqueada || $temRetorno => 'rgb(var(--warn) / 0.4)',
+        $temPergunta => 'rgb(var(--brand) / 0.4)',
         (bool) $tomEsquecida => 'rgb(var(--'.$tomEsquecida.') / 0.4)',
         default => 'var(--line)',
     };
 
-    // Um tom por nível, sem repetir: com `baixa` e `media` no mesmo neutro,
-    // dois dos quatro níveis ficavam indistinguíveis e a escala perdia o
-    // meio. A ordem sobe do mais discreto ao mais grave (AC-126).
-    //
-    // "A definir" fica fora da escala e no âmbar de alerta: ela não é um grau
-    // de gravidade, é a triagem que ainda não aconteceu. Alta desceu para o
-    // âmbar mais quente para os dois não se confundirem.
+    // Um tom por nível de prioridade, sem repetir (AC-126). "A definir" fica
+    // fora da escala, no âmbar de alerta: não é um grau de gravidade, é a
+    // triagem que ainda não aconteceu.
     $tomPrioridade = \App\Models\Tarefa::TOM_DA_PRIORIDADE[$tarefa->prioridade] ?? 'neutro';
+    $corPrioridade = ['neutro' => null, 'marca' => 'brand', 'ambar' => 'amber',
+                      'atencao' => 'warn', 'critico' => 'crit'][$tomPrioridade] ?? null;
 
-    // A pergunta em aberto e o comentário que a abriu. Vem da coleção já
-    // carregada, e não de uma consulta por card: o quadro renderiza dezenas de
-    // cards, e uma consulta em cada um deles é o N+1 clássico da tela.
-    $temPergunta = $tarefa->temPergunta();
-    $perguntaAberta = $temPergunta
-        ? $tarefa->comentarios->where('pergunta', true)->last()
+    // A pergunta em aberto e o comentário que a abriu, da coleção já carregada:
+    // o quadro renderiza dezenas de cards, e uma consulta em cada um é o N+1
+    // clássico desta tela.
+    $perguntaAberta = $temPergunta ? $tarefa->comentarios->where('pergunta', true)->last() : null;
+    $perguntaHa = $temPergunta
+        ? \App\Models\Tarefa::duracaoCurta((int) $tarefa->pergunta_em->diffInSeconds(now()))
         : null;
+
+    $responsavel = $tarefa->responsavel;
+    $iniciais = $responsavel
+        ? \Illuminate\Support\Str::of($responsavel->name)->explode(' ')
+            ->take(2)->map(fn ($p) => mb_substr($p, 0, 1))->implode('')
+        : '';
+
+    // A cor do avatar sai do NOME, e não do id: o mesmo rosto guarda o mesmo
+    // tom entre telas e entre bancos, e a paleta tem quatro entradas para as
+    // pessoas não virarem todas o mesmo círculo azul.
+    $paletaAvatar = ['brand', 'accent', 'amber', 'good'];
+    $corAvatar = $responsavel ? $paletaAvatar[mb_strlen($responsavel->name) % 4] : null;
+
+    $progresso = $tarefa->progressoDoChecklist();
+    $totalComentarios = $tarefa->comentarios->count();
 @endphp
 
+{{--
+    raio 5px, padding 10px, `panelRaised` de fundo e a sombra de 1px que só
+    esta tela usa — o resto do painel decidiu não ter sombra, mas o quadro
+    empilha cards sobre um fundo recuado e sem ela eles encostam no board.
+--}}
 <article data-tarefa="{{ $tarefa->id }}"
          @if ($nivelEsquecida && ! $bloqueada) data-esquecida="{{ $nivelEsquecida }}" @endif
          @if ($bloqueada) data-bloqueada="1" @endif
-         class="rounded-ctl bg-card-grad border p-2.5"
+         class="rounded-[5px] border p-[10px] bg-card-quadro shadow-card"
          style="border-color: {{ $corDaBorda }}">
+
+    {{-- Linha 1: título e selos. `flex-start` porque o título quebra em duas
+         linhas e os selos ficam alinhados com a primeira. --}}
     <div class="flex items-start gap-2">
-        <p class="min-w-0 flex-1 truncate text-[13.5px] font-medium text-ink">{{ $tarefa->titulo }}</p>
-        {{--
-            Só a operacional se anuncia. Marcar as duas encheria o quadro de um
-            selo "Desenvolvimento" que não diz nada — quase tudo ali é —, e o
-            que se precisa saber de relance é o contrário: por que AQUELE card
-            vai pular a coluna de testes. Mesma regra do resumo e do selo de
-            comentários: o selo aparece quando tem o que dizer.
-        --}}
+        <p class="min-w-0 flex-1 text-[13.5px] font-medium leading-[1.35] text-ink">{{ $tarefa->titulo }}</p>
+
         @if ($tarefa->tipo === 'operacional')
-            <x-badge>Operacional</x-badge>
+            <span class="shrink-0 px-1.5 py-0.5 rounded-badge bg-chip text-ink-mute
+                         font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em]">Oper.</span>
         @endif
-        <x-badge :tom="$tomPrioridade">{{ \App\Models\Tarefa::PRIORIDADES[$tarefa->prioridade] ?? $tarefa->prioridade }}</x-badge>
+
+        <span class="shrink-0 px-1.5 py-0.5 rounded-badge font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em]"
+              style="{{ $corPrioridade
+                  ? 'background: rgb(var(--'.$corPrioridade.') / var(--tint-alpha)); color: rgb(var(--'.$corPrioridade.'))'
+                  : 'background: var(--chip); color: rgb(var(--ink-mute))' }}">
+            {{ \App\Models\Tarefa::PRIORIDADES[$tarefa->prioridade] ?? $tarefa->prioridade }}
+        </span>
     </div>
 
-    {{--
-        O resumo só ocupa espaço quando existe: `@if` e não uma linha vazia
-        reservada, senão todo card sem resumo ganharia um buraco. Uma linha
-        truncada — o card é relance, o texto inteiro é assunto do detalhe
-        (AC-129). O `title` entrega o resto sem custar altura.
-    --}}
+    {{-- Resumo: uma linha só. O texto inteiro é assunto do detalhe (AC-129), e
+         o `title` entrega o resto sem custar altura. --}}
     @if (filled($tarefa->resumo))
-        <p class="mt-1 text-[12px] leading-snug text-ink-mute truncate"
+        <p class="mt-[5px] text-[12px] leading-[1.4] text-ink-mute truncate"
            title="{{ $tarefa->resumo }}">{{ $tarefa->resumo }}</p>
     @endif
 
     {{--
         A tarja de pergunta.
 
-        Dúvida na revisão não é impedimento nem correção: o PR continua aberto,
-        a tarefa continua no WIP e a tarja é da cor da marca, não do alerta —
-        pintá-la de âmbar junto do bloqueio ensinaria que perguntar é problema.
+        Dúvida na revisão não é impedimento: o PR continua aberto, a tarefa
+        continua no WIP, e a tarja é da cor da MARCA — de âmbar, junto do
+        bloqueio, ela ensinaria que perguntar é problema.
 
-        O NOME OCUPA LINHA PRÓPRIA. Na primeira linha cabem o ícone, o selo de
-        rodada e pouco mais; "Aguardando resposta de Camila" precisa de mais do
-        que sobra, e era justamente ele que sumia truncado — quem deve a
-        resposta é a informação inteira da tarja.
+        O NOME OCUPA LINHA PRÓPRIA. Na primeira linha cabem o rótulo e o tempo;
+        "Aguardando resposta de Camila" ali dentro seria truncado justamente na
+        parte que importa — quem deve a resposta é a informação inteira da tarja.
     --}}
     @if ($temPergunta)
-        <div class="mt-2 rounded-[4px] px-2.5 py-[7px] border-l-2"
-             style="background: rgb(var(--brand) / var(--tint-alpha)); border-color: rgb(var(--brand))">
+        <div class="mt-2 px-[9px] py-[7px] rounded-tile border-l-2"
+             style="background: rgb(var(--brand) / 0.085); border-color: rgb(var(--brand))">
             <div class="flex items-center gap-1.5">
-                <span class="shrink-0" style="color: rgb(var(--brand-text))">
-                    <x-nav-icon name="chat" :peso="1.9" class="h-3 w-3" />
+                <x-nav-icon name="duvida" :peso="1.9" class="h-3 w-3 shrink-0 text-brand-text" />
+                <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] text-brand-text whitespace-nowrap">
+                    Aguardando resposta
                 </span>
+                <span class="shrink-0 font-mono text-[9.5px] text-ink-mute">{{ $perguntaHa }}</span>
+            </div>
 
-                {{-- O selo de rodada acende no limite: três idas e voltas não é
-                     conversa comprida, é PR grande demais ou tarefa mal
-                     especificada — e aí o quadro sugere devolver para correção. --}}
-                <span class="ml-auto shrink-0 px-1.5 py-px rounded-badge font-mono text-[9.5px] font-semibold"
-                      @if ($tarefa->conversaEmpacada()) title="Três rodadas sem resolver: talvez seja hora de devolver para correção." @endif
+            <div class="mt-1 flex items-center gap-1.5">
+                <span class="flex-1 min-w-0 text-[12px] font-semibold text-ink truncate">
+                    {{ $tarefa->perguntaPara?->name ?? 'alguém' }}
+                </span>
+                <span class="shrink-0 px-[5px] py-px rounded-badge font-mono text-[9px] font-semibold whitespace-nowrap"
                       style="{{ $tarefa->conversaEmpacada()
                           ? 'background: rgb(var(--crit) / var(--tint-alpha)); color: rgb(var(--crit))'
                           : 'background: var(--chip); color: rgb(var(--ink-mute))' }}">
@@ -124,43 +154,49 @@
                 </span>
             </div>
 
-            <p class="mt-1 font-mono text-[9.5px] font-semibold uppercase tracking-caps truncate"
-               style="color: rgb(var(--brand-text))"
-               title="{{ $tarefa->rotuloDaPergunta() }}">
-                {{ $tarefa->rotuloDaPergunta() }}
-            </p>
-
             @if (filled($perguntaAberta?->corpo))
-                <p class="mt-1 text-[11.5px] leading-snug text-ink line-clamp-2"
+                <p class="mt-1 text-[11.5px] leading-[1.4] text-ink line-clamp-2 whitespace-pre-wrap"
                    title="{{ $perguntaAberta->corpo }}">{{ $perguntaAberta->corpo }}</p>
             @endif
 
-            {{-- Responder abre o campo NO CARD, sem modal: a resposta de uma
-                 dúvida é curta, e obrigar a abrir a tarefa para escrever duas
-                 linhas é o atrito que faz a pergunta ficar sem resposta. --}}
+            {{-- Três idas e voltas quer dizer que o PR está grande demais ou a
+                 tarefa foi mal especificada — e aí perguntar de novo não é o
+                 que resolve. --}}
+            @if ($tarefa->conversaEmpacada())
+                <p class="mt-[5px] font-mono text-[9px] uppercase tracking-[0.06em]" style="color: rgb(var(--crit))">
+                    considere devolver para correção
+                </p>
+            @endif
+
+            {{-- Responder abre o campo NO CARD: a resposta de uma dúvida é
+                 curta, e obrigar a abrir a tarefa para escrever duas linhas é o
+                 atrito que faz a pergunta ficar sem resposta. --}}
             @if ($tarefa->esperaRespostaDe(auth()->user()))
                 <div x-data="{ respondendo: false }" @click.stop>
-                    <button type="button" x-show="! respondendo" @click="respondendo = true; $nextTick(() => $refs.resposta.focus())"
-                            class="mt-1.5 h-6 px-2 rounded-[3px] border font-semibold text-[11px] transition hover:bg-chip"
-                            style="border-color: rgb(var(--brand) / 0.45); color: rgb(var(--brand-text))">
+                    <button type="button" x-show="! respondendo"
+                            @click="respondendo = true; $nextTick(() => $refs.resposta.focus())"
+                            class="mt-[7px] w-full h-[26px] rounded-tile border border-brand bg-transparent
+                                   text-brand-text text-[11.5px] font-semibold transition hover:bg-brand/10">
                         Responder
                     </button>
 
                     <form x-show="respondendo" x-cloak method="POST"
-                          action="{{ route('tarefas.conversar', $tarefa) }}" class="mt-1.5 space-y-1.5">
+                          action="{{ route('tarefas.conversar', $tarefa) }}" class="mt-[7px]">
                         @csrf
-                        <textarea x-ref="resposta" name="corpo" rows="2" required
-                                  placeholder="Sua resposta…"
+                        <textarea x-ref="resposta" name="corpo" rows="2" required placeholder="Sua resposta…"
                                   @keydown.escape.stop="respondendo = false"
-                                  class="w-full text-[11.5px] rounded-[3px] bg-input border-line text-ink"></textarea>
-                        <div class="flex items-center gap-1.5">
-                            <button type="submit"
-                                    class="h-6 px-2 rounded-[3px] font-semibold text-[11px] bg-brand text-on-brand transition hover:bg-brand-bright">
-                                Responder
-                            </button>
+                                  class="block w-full px-[9px] py-[7px] rounded-tile bg-input border border-brand
+                                         text-ink text-[12px] leading-[1.45] resize-y focus:ring-0"></textarea>
+                        <div class="mt-1.5 flex gap-1.5">
                             <button type="button" @click="respondendo = false"
-                                    class="h-6 px-2 rounded-[3px] font-semibold text-[11px] text-ink-mute transition hover:bg-chip">
+                                    class="shrink-0 h-[26px] px-2.5 rounded-tile border border-btn-line
+                                           text-ink-dim text-[11.5px] font-semibold transition hover:bg-chip">
                                 Cancelar
+                            </button>
+                            <button type="submit"
+                                    class="flex-1 h-[26px] rounded-tile bg-brand text-on-brand
+                                           text-[11.5px] font-semibold transition hover:bg-brand-bright">
+                                Enviar resposta
                             </button>
                         </div>
                     </form>
@@ -169,29 +205,20 @@
         </div>
     @endif
 
-    {{--
-        A tarja de retorno.
-
-        Ela nomeia o PORTÃO que reprovou — "Voltou da revisão" e "Voltou do
-        staging" descrevem recuperações materialmente diferentes, e era esse
-        detalhe que a coluna única de Ajustes achatava. Some sozinha quando a
-        tarefa anda para frente; o registro permanente fica nos eventos.
-    --}}
-    @if ($tarefa->temRetorno())
-        <div class="mt-2 rounded-[4px] px-2.5 py-[7px] border-l-2"
+    {{-- A tarja de retorno nomeia o PORTÃO que reprovou: "Voltou da revisão" e
+         "Voltou do staging" descrevem recuperações diferentes, e era esse
+         detalhe que a coluna única de Ajustes achatava. --}}
+    @if ($temRetorno)
+        <div class="mt-2 px-[9px] py-[7px] rounded-tile border-l-2"
              style="background: var(--warn-tint); border-color: rgb(var(--warn))">
             <div class="flex items-center gap-1.5">
-                <span class="shrink-0" style="color: rgb(var(--warn))">
-                    <x-nav-icon name="arrow-uturn-left" :peso="1.9" class="h-3 w-3" />
-                </span>
-                <span class="flex-1 min-w-0 truncate font-mono text-[9.5px] font-semibold uppercase tracking-caps"
-                      style="color: rgb(var(--warn))">
-                    {{ $tarefa->rotuloDoRetorno() }}
-                </span>
+                <x-nav-icon name="arrow-uturn-left" :peso="1.9" class="h-3 w-3 shrink-0" style="color: rgb(var(--warn))" />
+                <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] truncate"
+                      style="color: rgb(var(--warn))">{{ $tarefa->rotuloDoRetorno() }}</span>
             </div>
 
             @if (filled($tarefa->retorno_motivo))
-                <p class="mt-1 text-[11.5px] leading-snug text-ink line-clamp-2"
+                <p class="mt-1 text-[11.5px] leading-[1.4] text-ink line-clamp-2"
                    title="{{ $tarefa->retorno_motivo }}">{{ $tarefa->retorno_motivo }}</p>
             @endif
         </div>
@@ -200,177 +227,121 @@
     {{--
         A tarja de bloqueio.
 
-        O motivo ocupa a largura inteira e quebra em até duas linhas — truncado
-        numa linha só, o "porquê" existiria apenas no tooltip, e o argumento
-        inteiro de tirar o bloqueio da coluna era ele viajar junto da etapa. Um
-        card que diz "travada" sem dizer do quê obriga a abrir a tarefa para
-        descobrir, que é o trabalho que a tarja existe para poupar.
+        O motivo ocupa a largura inteira e vai até duas linhas: ele é a razão de
+        Bloqueada ter virado marca em vez de coluna. Truncado a duas palavras, o
+        "porquê" só existiria no tooltip — fora do relance, que é onde o quadro
+        opera. Etapa e tempo sobem para o cabeçalho da tarja, e o Destravar é
+        ícone.
     --}}
     @if ($bloqueada)
-        <div class="mt-2 rounded-[4px] px-2.5 py-[7px] border-l-2"
-             style="background: rgb(var(--warn) / var(--tint-alpha)); border-color: rgb(var(--warn))">
+        <div class="mt-2 px-[9px] py-[7px] rounded-tile border-l-2"
+             style="background: var(--warn-tint); border-color: rgb(var(--warn))">
             <div class="flex items-center gap-1.5">
-                <span class="shrink-0 h-3 w-3" style="color: rgb(var(--warn))">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-3 w-3">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                              d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                    </svg>
-                </span>
-                <span class="flex-1 min-w-0 truncate font-mono text-[9.5px] font-semibold uppercase tracking-caps"
-                      style="color: rgb(var(--warn))">
-                    {{ $tarefa->rotuloDoBloqueio() }}
-                </span>
+                <x-nav-icon name="cadeado-fechado" :peso="1.8" class="h-3 w-3 shrink-0" style="color: rgb(var(--warn))" />
+                <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] truncate"
+                      style="color: rgb(var(--warn))">{{ $tarefa->rotuloDoBloqueio() }}</span>
 
-                {{-- Destravar mora na tarja, e não no menu: quem lê o motivo é
-                     quem acabou de descobrir que ele não vale mais. --}}
                 <form method="POST" action="{{ route('tarefas.bloquear', $tarefa) }}" @click.stop>
                     @csrf
                     <button type="submit" title="Destravar tarefa" aria-label="Destravar tarefa"
-                            class="shrink-0 h-5 w-5 rounded-[3px] border flex items-center justify-center transition hover:bg-chip"
-                            style="border-color: rgb(var(--warn) / 0.45); color: rgb(var(--warn))">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" class="h-[11px] w-[11px]">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                        </svg>
+                            class="shrink-0 h-5 w-5 rounded-badge border flex items-center justify-center transition hover:bg-chip"
+                            style="border-color: var(--warn-line); color: rgb(var(--warn))">
+                        <x-nav-icon name="cadeado-aberto" :peso="1.9" class="h-[11px] w-[11px]" />
                     </button>
                 </form>
             </div>
 
-            <p class="mt-1 text-[11.5px] leading-snug text-ink line-clamp-2" title="{{ $tarefa->bloqueio_motivo }}">
+            <p class="mt-1 text-[11.5px] leading-[1.4] text-ink line-clamp-2" title="{{ $tarefa->bloqueio_motivo }}">
                 {{ $tarefa->bloqueio_motivo }}
             </p>
         </div>
     @endif
 
     {{--
-        O rodapé: quem, onde, há quanto tempo — e o que a tarefa ainda deve.
+        O rodapé.
 
-        O responsável virou avatar porque o nome dele e o nome do sistema
-        disputavam a mesma linha, e os dois saíam truncados. A inicial num
-        círculo identifica quem já se conhece sem gastar largura; o nome inteiro
-        continua no `title`, para quem não reconhece a inicial.
-
-        Sem responsável, o círculo é TRACEJADO e o card diz a frase (AC-130):
-        um contorno vazio é símbolo, e símbolo se aprende — a fila de triagem
-        não pode depender de quem já aprendeu. Como é a exceção, dizer custa
-        largura só nos cards que precisam.
+        `min-width:56px` no sistema não é enfeite: sem ele o flex encolhe o nome
+        até "Alfa…" para caber os selos, e o card perde justamente o dado que
+        diz de qual produto ele fala.
     --}}
-    <div class="mt-2 pt-2 border-t border-rule flex items-center gap-2">
-        @php $responsavel = $tarefa->responsavel; @endphp
-
-        @if ($responsavel)
-            <span class="shrink-0 h-[18px] w-[18px] rounded-full flex items-center justify-center
-                         font-mono text-[9px] font-semibold uppercase"
-                  style="background: rgb(var(--brand) / var(--tint-alpha)); color: rgb(var(--brand-text))"
-                  title="{{ $responsavel->name }}">
-                {{ \Illuminate\Support\Str::of($responsavel->name)->squish()->explode(' ')
-                    ->take(2)->map(fn ($parte) => mb_substr($parte, 0, 1))->implode('') }}
-            </span>
-        @else
-            <span class="shrink-0 h-[18px] w-[18px] rounded-full border border-dashed"
-                  style="border-color: rgb(var(--ink-faint))" aria-hidden="true"></span>
-        @endif
-
-        {{--
-            Quebra em duas linhas em vez de truncar: com responsável, aqui só
-            cabe o nome do sistema e nada quebra — mas na tarefa sem dono a
-            frase e o sistema dividem a linha, e truncando some justamente o
-            sistema, que é a informação que sobrou.
-        --}}
-        <span class="min-w-0 line-clamp-2 leading-tight font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
-            @if (! $responsavel) Sem responsável · @endif{{ $tarefa->sistema?->nome ?? 'Sem sistema' }}
+    <div class="mt-[9px] pt-[9px] border-t border-rule flex items-center gap-[7px]">
+        {{-- Sem responsável, o círculo é tracejado e vazio (AC-130): a lacuna
+             se vê, em vez de virar uma inicial inventada. --}}
+        <span title="{{ $responsavel?->name ?? 'Sem responsável' }}"
+              class="shrink-0 h-[21px] w-[21px] rounded-full flex items-center justify-center text-[9px] font-semibold"
+              style="{{ $responsavel
+                  ? 'background: rgb(var(--'.$corAvatar.') / 0.18); color: rgb(var(--ink))'
+                  : 'background: transparent; border: 1px dashed rgb(var(--ink-faint)); color: rgb(var(--ink-faint))' }}">
+            {{ $iniciais }}
         </span>
 
-        <span class="ml-auto"></span>
+        <span class="flex-1 text-[11.5px] text-ink-mute truncate" style="min-width: 56px"
+              title="{{ $tarefa->sistema?->nome ?? 'Sem sistema' }}">
+            {{ $tarefa->sistema?->nome ?? 'Sem sistema' }}
+        </span>
 
-        <x-badge :tom="$tomEsquecida ? $nivelEsquecida : 'neutro'"
-                 :title="'Na etapa há '.$tempoNaEtapa">
+        <span title="Na etapa há {{ $tempoNaEtapa }}"
+              class="shrink-0 px-1.5 py-0.5 rounded-badge font-mono text-[10px] font-semibold"
+              style="{{ $tomEsquecida
+                  ? 'background: rgb(var(--'.$tomEsquecida.') / var(--tint-alpha)); color: rgb(var(--'.$tomEsquecida.'))'
+                  : 'background: var(--chip); color: rgb(var(--ink-mute))' }}">
             {{ $tempoNaEtapa }}
-        </x-badge>
+        </span>
 
-        {{-- O progresso do checklist, quando existe checklist. É a única
-             pendência do card que não é uma data: diz quanto FALTA, e não há
-             quanto tempo está parado. --}}
-        @if ($progresso = $tarefa->progressoDoChecklist())
-            <x-badge :tom="$progresso['feitos'] === $progresso['total'] ? 'bom' : 'neutro'"
-                     :title="$progresso['feitos'].' de '.$progresso['total'].' itens do checklist concluídos'">
-                ✓ {{ $progresso['feitos'] }}/{{ $progresso['total'] }}
-            </x-badge>
+        @if ($progresso)
+            <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px]"
+                  title="{{ $progresso['feitos'] }} de {{ $progresso['total'] }} itens concluídos"
+                  style="color: {{ $progresso['feitos'] === $progresso['total'] ? 'rgb(var(--good))' : 'rgb(var(--ink-mute))' }}">
+                <x-nav-icon name="check-circle" :peso="1.9" class="h-[11px] w-[11px]" />
+                {{ $progresso['feitos'] }}/{{ $progresso['total'] }}
+            </span>
+        @endif
+
+        @if ($totalComentarios > 0)
+            <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px] text-ink-mute"
+                  title="{{ $totalComentarios }} comentário{{ $totalComentarios === 1 ? '' : 's' }}">
+                <x-nav-icon name="balao" :peso="1.8" class="h-[11px] w-[11px]" />
+                {{ $totalComentarios }}
+            </span>
         @endif
 
         {{--
-            O selo de comentários só aparece quando há algum: é o único aviso
-            de que existe conversa dentro do card — sem ele, o detalhe que
-            alguém escreveu ontem ficaria escondido atrás de um clique que
-            ninguém tem motivo para dar. Card sem comentário não ganha um "0"
-            para ler.
-
-            Só o número, com a palavra no `title`: escrito por extenso, ele
-            empurrava o resto do rodapé para fora em card estreito, e "3" ao
-            lado de um balão já é a frase inteira.
-        --}}
-        @if (($totalComentarios = $tarefa->comentarios->count()) > 0)
-            <x-badge :title="$totalComentarios === 1 ? '1 comentário nesta tarefa' : $totalComentarios.' comentários nesta tarefa'">
-                ✎ {{ $totalComentarios }}
-            </x-badge>
-        @endif
-
-        {{--
-            Os três botões de ação, no canto direito do rodapé.
-
-            Eles são o que substituiu as duas faixas verticais de solto: as
-            faixas gastavam 132px de largura do quadro para dar destino a um
-            gesto, e a largura é justamente o que falta numa tela de seis
-            colunas. Aqui a ação fica no card de que ela fala.
-
-            Bloquear é SEMPRE válido — travar não é mover, e não depende de
-            para onde a tarefa pode ir. Concluir só aparece onde o fluxo
-            permite: fixo, ele ficaria morto na maioria dos cards, e botão que
+            Os três botões. Bloquear é SEMPRE válido — travar não é mover, e não
+            depende de para onde a tarefa pode ir. Concluir só aparece onde o
+            fluxo permite: fixo, ficaria morto na maioria dos cards, e botão que
             quase nunca funciona ensina a não clicar em nenhum.
         --}}
-        <div class="ml-auto shrink-0 flex items-center gap-1">
-            <form method="POST" action="{{ route('tarefas.bloquear', $tarefa) }}" @click.stop>
-                @csrf
-                @unless ($bloqueada)
-                    {{-- Travar exige o motivo, então o botão abre o painel em
-                         vez de enviar: um POST daqui seria recusado pelo motor
-                         do fluxo com uma frase que a pessoa não pediu. --}}
-                    <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, 'bloqueio')"
-                            title="Bloquear tarefa" aria-label="Bloquear tarefa"
-                            class="h-5 w-5 rounded-[3px] border border-line flex items-center justify-center
-                                   text-ink-mute transition hover:text-warn hover:border-warn-line">
-                        <x-nav-icon name="cadeado-fechado" :peso="1.9" class="h-[11px] w-[11px]" />
-                    </button>
-                @else
-                    <button type="submit" title="Destravar tarefa" aria-label="Destravar tarefa"
-                            class="h-5 w-5 rounded-[3px] border flex items-center justify-center transition"
-                            style="border-color: var(--warn-line); background: var(--warn-tint); color: rgb(var(--warn))">
-                        <x-nav-icon name="cadeado-aberto" :peso="1.9" class="h-[11px] w-[11px]" />
-                    </button>
-                @endunless
-            </form>
+        <div class="shrink-0 ml-auto flex items-center gap-1">
+            @unless ($bloqueada)
+                {{-- Abre o painel em vez de enviar: travar exige o motivo, e um
+                     POST daqui seria recusado com uma frase que ninguém pediu. --}}
+                <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, 'bloqueio')"
+                        title="Bloquear tarefa" aria-label="Bloquear tarefa"
+                        class="h-5 w-5 rounded-badge border border-line flex items-center justify-center
+                               text-ink-mute transition hover:text-warn hover:border-warn-line">
+                    <x-nav-icon name="cadeado-fechado" :peso="1.9" class="h-[11px] w-[11px]" />
+                </button>
+            @endunless
 
             @if (in_array('concluida', $transicoes ?? [], true))
                 <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, 'concluida')"
                         title="Concluir tarefa" aria-label="Concluir tarefa"
-                        class="h-5 w-5 rounded-[3px] border flex items-center justify-center transition hover:brightness-110"
+                        class="h-5 w-5 rounded-badge border flex items-center justify-center transition"
                         style="border-color: var(--good-line); background: var(--good-tint); color: rgb(var(--good))">
-                    <x-nav-icon name="check" :peso="1.9" class="h-[11px] w-[11px]" />
+                    <x-nav-icon name="check" :peso="2.2" class="h-[11px] w-[11px]" />
                 </button>
             @endif
 
-            {{--
-                O Mover virou chevron. Como texto, ele ocupava uma linha inteira
-                do card e comia a largura do nome do sistema — três palavras
-                gastas para abrir um menu que quase sempre fica fechado.
-            --}}
             @if (! empty($transicoes ?? []))
                 <button type="button" @click.stop="menuAberto = ! menuAberto"
-                        title="Mover tarefa" aria-label="Mover tarefa"
-                        class="h-5 w-5 rounded-[3px] flex items-center justify-center
-                               text-ink-faint hover:text-brand transition"
-                        :class="menuAberto && 'text-brand'">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-3 w-3">
+                        title="Mover de etapa · atalho M" aria-label="Mover de etapa"
+                        class="h-5 w-5 rounded-badge border flex items-center justify-center transition"
+                        :style="menuAberto
+                            ? 'border-color: rgb(var(--brand) / 0.5); color: rgb(var(--brand-text))'
+                            : 'border-color: var(--btn-line); color: rgb(var(--ink-faint))'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         class="h-[11px] w-[11px] transition-transform duration-150"
+                         :class="menuAberto && 'rotate-180'">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                     </svg>
                 </button>

@@ -119,7 +119,7 @@ class ChecklistTarefaTest extends TestCase
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
         $this->assertStringContainsString('1/3', $html);
-        $this->assertStringContainsString('1 de 3 itens do checklist concluídos', $html);
+        $this->assertStringContainsString('1 de 3 itens concluídos', $html);
     }
 
     /**

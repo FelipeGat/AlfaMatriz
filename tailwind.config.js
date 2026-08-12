@@ -74,6 +74,7 @@ export default {
                 surface: veu('surface'),          // superfície de card
                 subtle: veu('subtle'),            // superfície de painel de lista
                 board: veu('board'),              // fundo recuado do quadro do funil
+                'card-quadro': veu('card-quadro'), // card do quadro de Tarefas
                 input: veu('input'),              // input, select, busca
                 chip: veu('chip'),                // chip, hover de linha, tile neutro
 
@@ -153,6 +154,21 @@ export default {
 
             transitionDuration: {
                 rail: '180ms',
+            },
+
+            /**
+             * A única sombra do sistema, e ela é só do quadro de Tarefas.
+             *
+             * O painel decidiu não ter sombra — o contraste vem do hairline e
+             * do degrau de superfície. O quadro é a exceção porque empilha
+             * cards sobre um fundo RECUADO (`board`): sem o 1px de sombra eles
+             * encostam no fundo e a pilha vira um bloco só. `card-arrasto` é a
+             * mesma peça levantada, e a diferença entre as duas é o que diz que
+             * o card saiu do lugar.
+             */
+            boxShadow: {
+                card: 'var(--sombra-card)',
+                'card-arrasto': 'var(--sombra-card-arrasto)',
             },
 
             letterSpacing: {

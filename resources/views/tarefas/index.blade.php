@@ -163,10 +163,10 @@
                     faixas de solto, que existem em cada linha de raia.
                 --}}
                 @if ($comRaias)
-                    <div class="sticky top-0 z-10 shrink-0 flex gap-3 bg-board pb-1">
+                    <div class="sticky top-0 z-10 shrink-0 flex gap-[10px] bg-board pb-1">
                         @foreach ($etapas as $etapa)
                             <div class="rounded-control bg-panel border border-line overflow-hidden"
-                                 style="flex: 1 1 276px; min-width: 276px; border-top: 3px solid rgb(var(--{{ $etapa['cor'] }}))">
+                                 style="flex: 1 1 272px; min-width: 272px; border-top: 3px solid rgb(var(--{{ $etapa['cor'] }}))">
                                 @include('tarefas._coluna-cabecalho', ['etapa' => $etapa])
                             </div>
                         @endforeach
@@ -195,7 +195,7 @@
                         </header>
                     @endif
 
-                    <div class="flex gap-3 items-stretch {{ $comRaias ? 'shrink-0' : 'flex-1 min-h-0' }}"
+                    <div class="flex gap-[10px] items-stretch {{ $comRaias ? 'shrink-0' : 'flex-1 min-h-0' }}"
                          @if ($comRaias) style="min-height: 180px" @endif>
                         @foreach ($etapas as $etapa)
                             @include('tarefas._coluna', [

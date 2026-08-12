@@ -285,7 +285,7 @@ class CardTarefaTest extends TestCase
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
         $this->assertStringContainsString('Sem resumo', $html);
-        $this->assertStringNotContainsString('text-ink-mute truncate', $html,
+        $this->assertStringNotContainsString('leading-[1.4] text-ink-mute truncate', $html,
             'Card sem resumo não pode emitir a linha do resumo.');
     }
 
@@ -341,12 +341,15 @@ class CardTarefaTest extends TestCase
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
         // Duas iniciais, não a lista inteira de nomes.
-        $this->assertMatchesRegularExpression('/title="Joana Ribeiro Dev">\s*JR\s*</u', $html);
+        // `[^>]*` entre o title e o `>`: o avatar carrega classe e estilo
+        // depois do title, e prender a asserção à ordem dos atributos a faria
+        // quebrar a cada ajuste de estilo sem nada ter mudado na tela.
+        $this->assertMatchesRegularExpression('/title="Joana Ribeiro Dev"[^>]*>\s*JR\s*</u', $html);
 
         // E o Mover deixou de gastar uma linha de texto no card. A busca é por
         // BOTÃO com esse rótulo: a expressão ainda aparece em comentários do
         // script do quadro, que não são o que se lê na tela.
-        $this->assertStringContainsString('aria-label="Mover tarefa"', $html);
+        $this->assertStringContainsString('aria-label="Mover de etapa"', $html);
         $this->assertDoesNotMatchRegularExpression('/<button[^>]*>\s*Mover ▾/u', $html);
     }
 }

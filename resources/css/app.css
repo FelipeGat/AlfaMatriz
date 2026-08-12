@@ -85,6 +85,18 @@
     /* alpha padrão do fundo de badge */
     --tint-alpha: 0.13;
 
+    /* A sombra do card do quadro — a única do sistema (ver tailwind.config). */
+    --sombra-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --sombra-card-arrasto: 0 6px 16px -6px rgba(0, 0, 0, 0.6);
+
+    /* O fundo do card do quadro.
+       Token próprio, e não `panel-raised`: o protótipo pede #101a1e no escuro
+       (que é o mesmo) mas BRANCO PURO no claro, e o `panel-raised` claro do
+       repositório é #f2f7f8 — usado por modal de anexos e formulário de
+       cliente, telas que já estão certas. Clarear o token compartilhado para
+       acertar o card mexeria nelas de carona. */
+    --card-quadro: #101a1e;
+
     /* grade de fundo da tela de entrada */
     --grid-line: rgba(230, 238, 240, 0.025);
 
@@ -159,6 +171,15 @@
     --crit-tint: rgba(192, 43, 43, 0.10);
 
     --tint-alpha: 0.10;
+
+    /* No claro a sombra é bem mais fraca: o card já se separa do board pelo
+       branco contra o cinza, e a sombra do escuro aqui vira sujeira. */
+    --sombra-card: 0 1px 2px rgba(11, 26, 30, 0.07);
+    --sombra-card-arrasto: 0 6px 16px -6px rgba(11, 26, 30, 0.18);
+
+    /* Branco puro contra o board #eaf0f1: é o que separa o card do fundo
+       recuado quando não há sombra forte para fazer isso. */
+    --card-quadro: #ffffff;
 
     --grid-line: rgba(11, 26, 30, 0.03);
 

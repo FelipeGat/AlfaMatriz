@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.bunny.net">
+<link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|space-grotesk:500,600,700|jetbrains-mono:400,500,600" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #04080a; color: #e6eef0; font-family: Inter, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: #5be3ef; text-decoration: none; }
+  a:hover { color: #26d4e6; }
+</style>
+</helmet>
+
+<section style="padding:64px 64px 0;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:940px">
+    <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:600;color:#e6eef0">Turno 2 — o raio de canto, revisto · <a href="#3a" style="font-size:20px">3a</a> é a mistura que você pediu</p>
+    <p style="margin:0;font-size:15px;color:#9db0b6;line-height:1.6;text-wrap:pretty">Você está certo. O problema em <a href="#1a">1a</a> não é só o raio ser grande (14px em cards de 1400px) — é que ele briga com o wordmark, que já é a coisa mais arredondada da tela, e é usado em <em>caixa dentro de caixa</em>: card 14 dentro de painel 14 dentro de moldura 16. Curvatura empilhada é o que dá a sensação de app de consumo, não de painel financeiro.</p>
+    <p style="margin:0;font-size:15px;color:#9db0b6;line-height:1.6;text-wrap:pretty">A tendência atual em ferramentas internas (Linear, Vercel, Stripe, Height) foi na direção oposta: <strong style="color:#e6eef0;font-weight:600">raio curto e escalonado</strong> — 8/6/4 — com <strong style="color:#e6eef0;font-weight:600">hairline de 1px</strong> e numerais tabulares fazendo o contraste, no lugar da curva. A regra que quase ninguém aplica e resolve metade do incômodo é <strong style="color:#e6eef0;font-weight:600">raio aninhado</strong>: filho = pai − padding. Já a linha brutalista/planilha (raio 0, réguas em vez de cards) é a outra ponta viva hoje — mais séria, e cabe num sistema que cobra dinheiro. As duas estão abaixo, com o mesmo conteúdo de 1a.</p>
+    <p style="margin:0;font-size:15px;color:#9db0b6;line-height:1.6">Uma que eu <em>não</em> recomendo aqui: squircle/curvatura contínua (iOS 26). Ela só compensa em raio grande — resolveria a aparência, não o excesso.</p>
+    <p style="margin:0;font-size:15px;color:#9db0b6;line-height:1.6;text-wrap:pretty"><a href="#3a">3a</a> é o corpo de 2a com o menu de 2b: o menu vira faixa de borda a borda (raio 0, marca de 2px no ativo, cabeçalho e rodapé separados por régua) e o conteúdo mantém os painéis de raio 8 com hairline. <a href="#2b">2b</a> fica abaixo só como referência da ponta sem cards.</p>
+  </div>
+
+  <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap">
+
+    <div id="3a" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:#04181b;background:#5be3ef;padding:4px 10px;border-radius:4px">3a</span>
+        <div>
+          <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:600;color:#e6eef0">Preciso + sidebar em réguas <span style="color:#5be3ef">(direção final)</span></p>
+          <p style="margin:0;font-size:13px;color:#8798a0">Corpo de 2a — raio 8/6/4 e hairline. Menu de 2b — faixa cheia, raio 0, marca de 2px no ativo.</p>
+        </div>
+      </div>
+
+      <div style="width:1400px;height:900px;overflow:hidden;border-radius:8px;border:1px solid {{ t.border }};background:{{ t.frameBg }};display:flex;box-shadow:0 40px 80px -40px rgba(0,0,0,0.9)">
+        <div style="width:{{ railWidth }};flex-shrink:0;background:{{ t.sideBg }};border-right:1px solid {{ t.border }};display:flex;flex-direction:column;transition:width 180ms ease;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;height:56px;flex-shrink:0;padding:0 14px;border-bottom:1px solid {{ t.border }}">
+            <img src="assets/icon-matriz.svg" alt="AlfaMatriz" style="height:28px;width:28px;flex-shrink:0">
+            <img src="uploads/alfamatriz.png" alt="AlfaMatriz" style="height:15px;width:auto;flex-shrink:0;opacity:{{ railLabelOpacity }};display:{{ railLabelDisplay }};transition:opacity 140ms ease">
+            <button onClick="{{ toggleRail }}" title="Recolher menu" aria-label="Recolher menu" style="margin-left:auto;flex-shrink:0;height:24px;width:24px;border-radius:3px;border:1px solid {{ t.btnBorder }};background:transparent;color:{{ t.inkMute }};display:{{ railLabelDisplay }};align-items:center;justify-content:center;padding:0;cursor:pointer" style-hover="color:#029caf;border-color:rgba(2,156,175,0.45)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"></path></svg>
+            </button>
+          </div>
+          <button onClick="{{ toggleRail }}" title="Expandir menu" aria-label="Expandir menu" style="flex-shrink:0;height:26px;width:26px;margin:12px auto 4px;border-radius:3px;border:1px solid {{ t.btnBorder }};background:transparent;color:{{ t.inkMute }};display:{{ railExpandDisplay }};align-items:center;justify-content:center;padding:0;cursor:pointer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"></path></svg>
+          </button>
+
+          <div style="padding:10px 0">
+            <sc-for list="{{ railGroupsT }}" as="g" hint-placeholder-count="4">
+              <div style="margin-bottom:6px">
+                <p style="margin:0 0 2px;padding:6px 14px;font-size:9.5px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:{{ t.inkFaint }};white-space:nowrap;height:12px;box-sizing:content-box;opacity:{{ railLabelOpacity }};transition:opacity 140ms ease">{{ g.label }}</p>
+                <sc-for list="{{ g.items }}" as="r" hint-placeholder-count="3">
+                  <div title="{{ r.label }}" style="height:34px;display:flex;align-items:center;gap:12px;padding:0 14px;background:{{ r.bg }};color:{{ r.color }};cursor:pointer;border-left:2px solid {{ r.mark }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:18px;height:18px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="{{ r.d }}"></path></svg>
+                    <span style="flex:1;min-width:0;font-size:13.5px;font-weight:{{ r.weight }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:{{ railLabelOpacity }};display:{{ railLabelDisplay }};transition:opacity 140ms ease">{{ r.label }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:auto;display:flex;flex-direction:{{ footerDir }};align-items:center;justify-content:center;gap:8px;padding:12px 14px;border-top:1px solid {{ t.border }}">
+            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+              <span title="Administrador Alfa" style="height:28px;width:28px;flex-shrink:0;border-radius:9999px;background:rgba(2,156,175,0.18);color:{{ t.brandText }};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;cursor:pointer">A</span>
+              <span style="flex:1;min-width:0;font-size:12.5px;color:{{ t.inkMute }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:{{ railLabelOpacity }};display:{{ railLabelDisplay }}">Administrador Alfa</span>
+            </div>
+            <button title="Notificações" aria-label="Notificações" style="position:relative;flex-shrink:0;height:28px;width:28px;border-radius:3px;border:1px solid {{ t.btnBorder }};background:transparent;color:{{ t.inkMute }};display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer" style-hover="color:#029caf;border-color:rgba(2,156,175,0.45)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" d="{{ bellIcon }}"></path></svg>
+              <span style="position:absolute;top:-4px;right:-4px;min-width:15px;height:15px;padding:0 3px;border-radius:9999px;background:{{ t.crit }};color:#fff;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center">4</span>
+            </button>
+            <button onClick="{{ toggleTheme }}" title="{{ themeLabel }}" aria-label="{{ themeLabel }}" style="flex-shrink:0;height:28px;width:28px;border-radius:3px;border:1px solid {{ t.btnBorder }};background:transparent;color:{{ t.inkMute }};display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer" style-hover="color:#029caf;border-color:rgba(2,156,175,0.45)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" d="{{ themeIcon }}"></path></svg>
+            </button>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;position:relative">
+          <div style="position:absolute;top:0;left:0;right:0;height:240px;pointer-events:none;background:radial-gradient(ellipse 80% 100% at 18% 0%, {{ t.glow }}, transparent 70%)"></div>
+
+          <div style="position:relative;padding:24px 32px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:24px">
+            <div>
+              <p style="margin:0 0 4px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:{{ t.brandText }}">Quinta · 06 ago 2026</p>
+              <h1 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:31px;font-weight:600;color:{{ t.ink }};letter-spacing:-0.01em">Bom dia, Administrador</h1>
+              <p style="margin:6px 0 0;font-size:14px;color:{{ t.inkDim }}">4 itens pedem decisão sua hoje · fechamento de 08/2026 em 25 dias</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px 0 12px;border-radius:6px;background:{{ t.inputBg }};border:1px solid {{ t.border }};color:{{ t.inkMute }};font-size:13px;min-width:250px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4.5-4.5" stroke-linecap="round"></path></svg>
+                Buscar cliente, revenda, cobrança…
+                <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:{{ t.inkMute }};border:1px solid {{ t.btnBorder }};border-radius:3px;padding:1px 5px">⌘K</span>
+              </div>
+              <button style="height:36px;padding:0 14px;border:0;border-radius:6px;background:#029caf;color:{{ t.onBrand }};font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Faturar 08/2026</button>
+            </div>
+          </div>
+
+          <div style="position:relative;padding:24px 32px;display:flex;flex-direction:column;gap:20px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+              <sc-for list="{{ heroT }}" as="h" hint-placeholder-count="4">
+                <div style="position:relative;border-radius:8px;padding:16px;background:{{ t.panelBg }};border:1px solid {{ t.border }};overflow:hidden">
+                  <div style="position:absolute;top:0;left:0;width:34px;height:2px;background:{{ h.accent }}"></div>
+                  <p style="margin:0;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:{{ t.inkMute }}">{{ h.label }}</p>
+                  <p style="margin:8px 0 0;font-family:'Space Grotesk',sans-serif;font-size:27px;font-weight:600;color:{{ t.ink }};letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ h.valor }}</p>
+                  <div style="margin-top:10px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px">
+                    <span style="font-size:12px;font-weight:500;color:{{ h.deltaColor }}">{{ h.delta }}</span>
+                    <svg viewBox="0 0 88 26" style="width:88px;height:26px;flex-shrink:0"><path d="{{ h.spark }}" fill="none" stroke="{{ h.accent }}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1.55fr 1fr;gap:16px;align-items:start">
+              <div style="border-radius:8px;background:{{ t.subtleBg }};border:1px solid {{ t.border }};overflow:hidden">
+                <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid {{ t.border }}">
+                  <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:14.5px;font-weight:600;color:{{ t.ink }}">Fila de ação</p>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:{{ t.inkMute }}">4 abertos</span>
+                </div>
+                <sc-for list="{{ filaT }}" as="f" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid {{ t.rule }};position:relative">
+                    <div style="position:absolute;left:0;top:0;bottom:0;width:2px;background:{{ f.color }}"></div>
+                    <span style="height:28px;width:28px;flex-shrink:0;border-radius:4px;background:{{ f.bg }};color:{{ f.color }};display:flex;align-items:center;justify-content:center">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" d="{{ f.d }}"></path></svg>
+                    </span>
+                    <div style="min-width:0;flex:1">
+                      <p style="margin:0;font-size:14px;color:{{ t.ink }};font-weight:500">{{ f.titulo }}</p>
+                      <p style="margin:2px 0 0;font-size:12px;color:{{ t.inkMute }}">{{ f.sub }}</p>
+                    </div>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:{{ f.color }};flex-shrink:0">{{ f.valor }}</span>
+                    <button style="flex-shrink:0;height:28px;padding:0 11px;border-radius:4px;border:1px solid {{ t.btnBorder }};background:transparent;color:{{ t.ink }};font-family:inherit;font-size:12px;font-weight:600;cursor:pointer" style-hover="border-color:rgba(2,156,175,0.5);color:#029caf">{{ f.acao }}</button>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div style="border-radius:8px;background:{{ t.subtleBg }};border:1px solid {{ t.border }};padding:14px 16px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                    <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:14.5px;font-weight:600;color:{{ t.ink }}">Próximos 7 dias</p>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:{{ t.good }}">−R$ 8.356 líq.</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column">
+                    <sc-for list="{{ agendaT }}" as="g" hint-placeholder-count="5">
+                      <div style="display:flex;gap:12px;align-items:flex-start;padding-bottom:13px">
+                        <p style="margin:0;width:34px;flex-shrink:0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:{{ t.inkMute }}">{{ g.dia }}</p>
+                        <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;align-self:stretch">
+                          <span style="height:7px;width:7px;border-radius:9999px;background:{{ g.color }};margin-top:4px"></span>
+                          <span style="flex:1;width:1px;background:{{ t.border }};margin-top:2px"></span>
+                        </div>
+                        <div style="min-width:0;flex:1">
+                          <p style="margin:0;font-size:13px;color:{{ t.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.descricao }}</p>
+                          <p style="margin:1px 0 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:{{ g.color }}">{{ g.valor }}</p>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="border-radius:8px;background:rgba(2,156,175,0.07);border:1px solid rgba(2,156,175,0.24);padding:14px 16px">
+                  <p style="margin:0;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:{{ t.brandText }}">Pipeline aberto</p>
+                  <p style="margin:6px 0 0;font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:600;color:{{ t.ink }};font-variant-numeric:tabular-nums">R$ 5.108<span style="font-size:14px;color:{{ t.inkDim }}">/mês</span></p>
+                  <p style="margin:4px 0 12px;font-size:12px;color:{{ t.inkDim }}">9 leads abertos · 2 parados há +30 dias</p>
+                  <button style="width:100%;height:32px;border-radius:5px;border:1px solid rgba(2,156,175,0.35);background:transparent;color:{{ t.brandText }};font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Abrir funil</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="2b" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:#04181b;background:#5be3ef;padding:4px 10px;border-radius:4px">2b</span>
+        <div>
+          <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:600;color:#e6eef0">Réguas — raio 0, sem cards</p>
+          <p style="margin:0;font-size:13px;color:#8798a0">A outra ponta viva: hierarquia por régua e faixa, não por caixa. Mais sério, menos acolhedor.</p>
+        </div>
+      </div>
+
+      <div style="width:1400px;height:900px;overflow:hidden;border-radius:4px;border:1px solid rgba(255,255,255,0.1);background:#060c0e;display:flex;box-shadow:0 40px 80px -40px rgba(0,0,0,0.9)">
+        <div style="width:{{ railWidth }};flex-shrink:0;background:#080f11;border-right:1px solid rgba(255,255,255,0.09);display:flex;flex-direction:column;transition:width 180ms ease;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;height:56px;flex-shrink:0;padding:0 14px;border-bottom:1px solid rgba(255,255,255,0.09)">
+            <img src="assets/icon-matriz.svg" alt="AlfaMatriz" style="height:28px;width:28px;flex-shrink:0">
+            <img src="uploads/alfamatriz.png" alt="AlfaMatriz" style="height:15px;width:auto;flex-shrink:0;opacity:{{ railLabelOpacity }};display:{{ railLabelDisplay }}">
+            <button onClick="{{ toggleRail }}" title="Recolher menu" aria-label="Recolher menu" style="margin-left:auto;flex-shrink:0;height:24px;width:24px;border-radius:2px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#5f6f76;display:{{ railLabelDisplay }};align-items:center;justify-content:center;padding:0;cursor:pointer" style-hover="color:#5be3ef">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"></path></svg>
+            </button>
+          </div>
+          <button onClick="{{ toggleRail }}" title="Expandir menu" aria-label="Expandir menu" style="flex-shrink:0;height:26px;width:26px;margin:12px auto 4px;border-radius:2px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#5f6f76;display:{{ railExpandDisplay }};align-items:center;justify-content:center;padding:0;cursor:pointer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"></path></svg>
+          </button>
+
+          <div style="padding:8px 0">
+            <sc-for list="{{ railGroups }}" as="g" hint-placeholder-count="4">
+              <div style="margin-bottom:6px">
+                <p style="margin:0 0 2px;padding:6px 14px;font-size:9.5px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#455459;white-space:nowrap;height:12px;box-sizing:content-box;opacity:{{ railLabelOpacity }}">{{ g.label }}</p>
+                <sc-for list="{{ g.items }}" as="r" hint-placeholder-count="3">
+                  <div title="{{ r.label }}" style="height:34px;display:flex;align-items:center;gap:12px;padding:0 14px;background:{{ r.bg }};color:{{ r.color }};cursor:pointer;border-left:2px solid {{ r.mark }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:18px;height:18px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="{{ r.d }}"></path></svg>
+                    <span style="flex:1;min-width:0;font-size:13.5px;font-weight:{{ r.weight }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:{{ railLabelOpacity }};display:{{ railLabelDisplay }}">{{ r.label }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:auto;display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid rgba(255,255,255,0.09)">
+            <span style="height:26px;width:26px;flex-shrink:0;border-radius:9999px;background:rgba(2,156,175,0.2);color:#5be3ef;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">A</span>
+            <span style="flex:1;min-width:0;font-size:12.5px;color:#8798a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:{{ railLabelOpacity }};display:{{ railLabelDisplay }}">Administrador Alfa</span>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 28px;border-bottom:1px solid rgba(255,255,255,0.09);background:#080f11">
+            <div style="display:flex;align-items:baseline;gap:14px">
+              <h1 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:600;color:#e6eef0">Centro de Controle</h1>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#5f6f76">Quinta · 06 ago 2026 · 09:14</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;border-radius:2px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#8798a0;font-size:12.5px;min-width:230px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4.5-4.5" stroke-linecap="round"></path></svg>
+                Buscar…
+                <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#5f6f76;border:1px solid rgba(255,255,255,0.12);padding:1px 4px">⌘K</span>
+              </div>
+              <button style="height:32px;padding:0 14px;border:0;border-radius:2px;background:#029caf;color:#04181b;font-family:inherit;font-weight:600;font-size:12.5px;cursor:pointer">Faturar 08/2026</button>
+            </div>
+          </div>
+
+          <div style="padding:26px 28px 20px;border-bottom:1px solid rgba(255,255,255,0.09)">
+            <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:600;color:#e6eef0;letter-spacing:-0.01em">Bom dia, Administrador</p>
+            <p style="margin:5px 0 0;font-size:14px;color:#8798a0">4 itens pedem decisão sua hoje · fechamento de 08/2026 em 25 dias</p>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid rgba(255,255,255,0.09)">
+            <sc-for list="{{ heroA }}" as="h" hint-placeholder-count="4">
+              <div style="padding:18px 28px;border-right:1px solid rgba(255,255,255,0.07)">
+                <p style="margin:0;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#8798a0">{{ h.label }}</p>
+                <p style="margin:8px 0 0;font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:600;color:#e6eef0;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ h.valor }}</p>
+                <div style="margin-top:8px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px">
+                  <span style="font-size:12px;font-weight:500;color:{{ h.deltaColor }}">{{ h.delta }}</span>
+                  <svg viewBox="0 0 88 26" style="width:80px;height:24px;flex-shrink:0"><path d="{{ h.spark }}" fill="none" stroke="{{ h.accent }}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="flex:1;min-height:0;display:grid;grid-template-columns:1.55fr 1fr">
+            <div style="min-width:0;border-right:1px solid rgba(255,255,255,0.09);display:flex;flex-direction:column">
+              <div style="height:34px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:#0a1215;border-bottom:1px solid rgba(255,255,255,0.09)">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#8798a0">Fila de ação</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#d03b3b">4 abertos</span>
+              </div>
+              <sc-for list="{{ fila }}" as="f" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:14px;padding:15px 28px;border-bottom:1px solid rgba(255,255,255,0.06);border-left:2px solid {{ f.color }}">
+                  <div style="min-width:0;flex:1">
+                    <p style="margin:0;font-size:14px;color:#e6eef0;font-weight:500">{{ f.titulo }}</p>
+                    <p style="margin:2px 0 0;font-size:12px;color:#8798a0">{{ f.sub }}</p>
+                  </div>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:{{ f.color }};flex-shrink:0">{{ f.valor }}</span>
+                  <button style="flex-shrink:0;height:26px;padding:0 11px;border-radius:2px;border:1px solid rgba(255,255,255,0.13);background:transparent;color:#e6eef0;font-family:inherit;font-size:11.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer" style-hover="border-color:rgba(91,227,239,0.4);color:#5be3ef">{{ f.acao }}</button>
+                </div>
+              </sc-for>
+
+              <div style="height:34px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:#0a1215;border-top:1px solid rgba(255,255,255,0.09);border-bottom:1px solid rgba(255,255,255,0.09)">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#8798a0">MRR por revenda · 08/2026</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#8798a0">R$ 52.430</span>
+              </div>
+              <sc-for list="{{ revendasC }}" as="r" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:14px;padding:0 28px;height:33px;border-bottom:1px solid rgba(255,255,255,0.06)">
+                  <span style="flex-shrink:0;width:136px;font-size:13px;color:#e6eef0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.nome }}</span>
+                  <span style="flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#5f6f76;width:48px;text-align:right">{{ r.clientes }}</span>
+                  <div style="flex:1;min-width:0;height:12px;background:rgba(255,255,255,0.04);position:relative">
+                    <div style="position:absolute;left:0;top:0;bottom:0;width:{{ r.pct }};background:{{ r.barColor }}"></div>
+                  </div>
+                  <span style="flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:13px;color:#e6eef0;width:78px;text-align:right">{{ r.valor }}</span>
+                  <span style="flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:{{ r.deltaColor }};width:52px;text-align:right">{{ r.delta }}</span>
+                </div>
+              </sc-for>
+
+              <div style="margin-top:auto;padding:16px 28px;border-top:1px solid rgba(255,255,255,0.09);display:flex;align-items:flex-end;justify-content:space-between;gap:24px">
+                <div>
+                  <p style="margin:0;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#8798a0">Pipeline aberto</p>
+                  <p style="margin:6px 0 0;font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:600;color:#e6eef0;font-variant-numeric:tabular-nums">R$ 5.108<span style="font-size:14px;color:#9db0b6">/mês</span></p>
+                  <p style="margin:4px 0 0;font-size:12px;color:#8798a0">9 leads abertos · 2 parados há +30 dias</p>
+                </div>
+                <button style="height:30px;padding:0 16px;border-radius:2px;border:1px solid rgba(91,227,239,0.3);background:transparent;color:#5be3ef;font-family:inherit;font-size:11.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer">Abrir funil</button>
+              </div>
+            </div>
+
+            <div style="min-width:0;display:flex;flex-direction:column">
+              <div style="height:34px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#0a1215;border-bottom:1px solid rgba(255,255,255,0.09)">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#8798a0">Próximos 7 dias</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#0ca30c">−8.356 líq.</span>
+              </div>
+              <sc-for list="{{ agenda }}" as="g" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:12px;padding:13px 24px;border-bottom:1px solid rgba(255,255,255,0.06)">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#5f6f76;width:34px;flex-shrink:0">{{ g.dia }}</span>
+                  <span style="height:16px;width:2px;background:{{ g.color }};flex-shrink:0"></span>
+                  <span style="flex:1;min-width:0;font-size:13px;color:#e6eef0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.descricao }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px;color:{{ g.color }};flex-shrink:0">{{ g.valor }}</span>
+                </div>
+              </sc-for>
+              <div style="height:34px;flex-shrink:0;display:flex;align-items:center;padding:0 24px;background:#0a1215;border-top:1px solid rgba(255,255,255,0.09);border-bottom:1px solid rgba(255,255,255,0.09)">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#8798a0">Entraram esta semana</span>
+              </div>
+              <sc-for list="{{ novosB }}" as="c" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:11px;padding:11px 24px;border-bottom:1px solid rgba(255,255,255,0.06)">
+                  <span style="height:24px;width:24px;flex-shrink:0;border-radius:9999px;background:rgba(2,156,175,0.15);color:#5be3ef;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">{{ c.inicial }}</span>
+                  <span style="flex:1;min-width:0;font-size:13px;color:#9db0b6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.nome }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding:64px;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;flex-direction:column;gap:6px;max-width:900px">
+    <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:600;color:#e6eef0">Turno 1 — Centro de Controle, três direções</p>
+    <p style="margin:0;font-size:15px;color:#9db0b6;line-height:1.6">Mesma paleta Alfa, mesmos dados. O que muda é o conceito: <a href="#1a">1a</a> trata o painel como cockpit de operação, <a href="#1b">1b</a> como leitura calma orientada a decisão, <a href="#1c">1c</a> como terminal financeiro denso. Escolha uma e eu aplico nas 12 telas.</p>
+  </div>
+
+  <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap">
+
+    <div id="1a" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:#04181b;background:#5be3ef;padding:4px 10px;border-radius:6px">1a</span>
+        <div>
+          <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:600;color:#e6eef0">Cockpit</p>
+          <p style="margin:0;font-size:13px;color:#8798a0">Rail de ícones, fila de ação, vidro e brilho de marca. Densidade média-alta.</p>
+        </div>
+      </div>
+
+      <div style="width:1400px;height:900px;overflow:hidden;border-radius:16px;border:1px solid rgba(255,255,255,0.07);background:#070d0f;display:flex;box-shadow:0 40px 80px -40px rgba(0,0,0,0.9)">
+        <div style="width:{{ railWidth }};flex-shrink:0;background:linear-gradient(180deg,#0a1215 0%,#070d0f 100%);border-right:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;padding:20px 14px;transition:width 180ms ease;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;height:34px;flex-shrink:0;margin-bottom:18px">
+            <img src="assets/icon-matriz.svg" alt="AlfaMatriz" style="height:32px;width:32px;flex-shrink:0">
+            <img src="uploads/alfamatriz.png" alt="AlfaMatriz" style="height:17px;width:auto;flex-shrink:0;opacity:{{ railLabelOpacity }};display:{{ railLabelDisplay }};transition:opacity 140ms ease">
+            <button onClick="{{ toggleRail }}" title="Recolher menu" aria-label="Recolher menu" style="margin-left:auto;flex-shrink:0;height:26px;width:26px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#5f6f76;display:{{ railLabelDisplay }};align-items:center;justify-content:center;padding:0;cursor:pointer" style-hover="color:#5be3ef;border-color:rgba(91,227,239,0.3)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"></path></svg>
+            </button>
+          </div>
+
+          <button onClick="{{ toggleRail }}" title="Expandir menu" aria-label="Expandir menu" style="flex-shrink:0;height:30px;width:30px;margin:0 auto 16px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#5f6f76;display:{{ railExpandDisplay }};align-items:center;justify-content:center;padding:0;cursor:pointer" style-hover="color:#5be3ef;border-color:rgba(91,227,239,0.3)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"></path></svg>
+          </button>
+
+          <sc-for list="{{ railGroups }}" as="g" hint-placeholder-count="4">
+            <div style="margin-bottom:16px">
+              <p style="margin:0 0 6px;padding:0 8px;font-size:9.5px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#455459;white-space:nowrap;height:12px;opacity:{{ railLabelOpacity }};transition:opacity 140ms ease">{{ g.label }}</p>
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <sc-for list="{{ g.items }}" as="r" hint-placeholder-count="3">
+                  <div title="{{ r.label }}" style="height:38px;border-radius:10px;display:flex;align-items:center;gap:12px;padding:0 9px;background:{{ r.bg }};color:{{ r.color }};position:relative;cursor:pointer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:19px;height:19px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="{{ r.d }}"></path></svg>
+                    <span style="flex:1;min-width:0;font-size:13.5px;font-weight:{{ r.weight }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:{{ railLabelOpacity }};transition:opacity 140ms ease">{{ r.label }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+
+          <div style="margin-top:auto;display:flex;align-items:center;gap:10px;padding:6px 4px">
+            <span style="height:30px;width:30px;flex-shrink:0;border-radius:9999px;background:rgba(2,156,175,0.2);color:#5be3ef;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">A</span>
+            <span style="flex:1;min-width:0;font-size:12.5px;color:#8798a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:{{ railLabelOpacity }};display:{{ railLabelDisplay }};transition:opacity 140ms ease">Administrador Alfa</span>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;position:relative">
+          <div style="position:absolute;top:0;left:0;right:0;height:280px;pointer-events:none;background:radial-gradient(ellipse 80% 100% at 20% 0%, rgba(2,156,175,0.13), transparent 70%)"></div>
+
+          <div style="position:relative;padding:26px 36px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:24px">
+            <div>
+              <p style="margin:0 0 4px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#5be3ef">Quinta · 06 ago 2026</p>
+              <h1 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:32px;font-weight:600;color:#e6eef0;letter-spacing:-0.01em">Bom dia, Administrador</h1>
+              <p style="margin:6px 0 0;font-size:14px;color:#9db0b6">4 itens pedem decisão sua hoje · fechamento de 08/2026 em 25 dias</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="display:flex;align-items:center;gap:10px;height:38px;padding:0 12px 0 14px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);color:#8798a0;font-size:13px;min-width:250px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4.5-4.5" stroke-linecap="round"></path></svg>
+                Buscar cliente, revenda, cobrança…
+                <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:#5f6f76;border:1px solid rgba(255,255,255,0.1);border-radius:5px;padding:1px 5px">⌘K</span>
+              </div>
+              <button style="height:38px;padding:0 16px;border:0;border-radius:10px;background:#029caf;color:#04181b;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Faturar 08/2026</button>
+            </div>
+          </div>
+
+          <div style="position:relative;padding:26px 36px;display:flex;flex-direction:column;gap:22px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+              <sc-for list="{{ heroA }}" as="h" hint-placeholder-count="4">
+                <div style="position:relative;border-radius:14px;padding:18px 18px 14px;background:linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.015));border:1px solid rgba(255,255,255,0.07);overflow:hidden">
+                  <div style="position:absolute;top:0;left:18px;right:18px;height:1px;background:linear-gradient(90deg,transparent,{{ h.accent }},transparent)"></div>
+                  <p style="margin:0;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#8798a0">{{ h.label }}</p>
+                  <p style="margin:8px 0 0;font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:600;color:#e6eef0;letter-spacing:-0.02em">{{ h.valor }}</p>
+                  <div style="margin-top:10px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px">
+                    <span style="font-size:12px;font-weight:500;color:{{ h.deltaColor }}">{{ h.delta }}</span>
+                    <svg viewBox="0 0 88 26" style="width:88px;height:26px;flex-shrink:0"><path d="{{ h.spark }}" fill="none" stroke="{{ h.accent }}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1.55fr 1fr;gap:20px;align-items:start">
+              <div style="border-radius:14px;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.06);overflow:hidden">
+                <div style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.06)">
+                  <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:#e6eef0">Fila de ação</p>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8798a0">4 abertos</span>
+                </div>
+                <sc-for list="{{ fila }}" as="f" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:1px solid rgba(255,255,255,0.045);position:relative">
+                    <div style="position:absolute;left:0;top:0;bottom:0;width:2px;background:{{ f.color }}"></div>
+                    <span style="height:30px;width:30px;flex-shrink:0;border-radius:9px;background:{{ f.bg }};color:{{ f.color }};display:flex;align-items:center;justify-content:center">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" d="{{ f.d }}"></path></svg>
+                    </span>
+                    <div style="min-width:0;flex:1">
+                      <p style="margin:0;font-size:14px;color:#e6eef0;font-weight:500">{{ f.titulo }}</p>
+                      <p style="margin:2px 0 0;font-size:12px;color:#8798a0">{{ f.sub }}</p>
+                    </div>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:{{ f.color }};flex-shrink:0">{{ f.valor }}</span>
+                    <button style="flex-shrink:0;height:30px;padding:0 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#e6eef0;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">{{ f.acao }}</button>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:20px">
+                <div style="border-radius:14px;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.06);padding:16px 18px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                    <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:#e6eef0">Próximos 7 dias</p>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#0ca30c">−R$ 8.356 líq.</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column">
+                    <sc-for list="{{ agenda }}" as="g" hint-placeholder-count="5">
+                      <div style="display:flex;gap:12px;align-items:flex-start;padding-bottom:14px">
+                        <div style="width:34px;flex-shrink:0;text-align:right">
+                          <p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:12px;color:#8798a0">{{ g.dia }}</p>
+                        </div>
+                        <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;align-self:stretch">
+                          <span style="height:8px;width:8px;border-radius:9999px;background:{{ g.color }};margin-top:4px"></span>
+                          <span style="flex:1;width:1px;background:rgba(255,255,255,0.08);margin-top:2px"></span>
+                        </div>
+                        <div style="min-width:0;flex:1">
+                          <p style="margin:0;font-size:13px;color:#e6eef0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.descricao }}</p>
+                          <p style="margin:1px 0 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:{{ g.color }}">{{ g.valor }}</p>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="border-radius:14px;background:linear-gradient(135deg,rgba(2,156,175,0.14),rgba(2,156,175,0.04));border:1px solid rgba(2,156,175,0.22);padding:16px 18px">
+                  <p style="margin:0;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#5be3ef">Pipeline aberto</p>
+                  <p style="margin:6px 0 0;font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:600;color:#e6eef0">R$ 5.108<span style="font-size:14px;color:#9db0b6">/mês</span></p>
+                  <p style="margin:4px 0 12px;font-size:12px;color:#9db0b6">9 leads abertos · 2 parados há +30 dias</p>
+                  <button style="width:100%;height:34px;border-radius:9px;border:1px solid rgba(91,227,239,0.3);background:rgba(2,156,175,0.15);color:#5be3ef;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Abrir funil</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1b" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:#04181b;background:#5be3ef;padding:4px 10px;border-radius:6px">1b</span>
+        <div>
+          <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:600;color:#e6eef0">Leitura calma</p>
+          <p style="margin:0;font-size:13px;color:#8798a0">Sem caixas. Tipografia e divisores conduzem. Uma decisão por vez.</p>
+        </div>
+      </div>
+
+      <div style="width:1400px;height:900px;overflow:hidden;border-radius:16px;border:1px solid rgba(255,255,255,0.07);background:#0a1114;display:flex;box-shadow:0 40px 80px -40px rgba(0,0,0,0.9)">
+        <div style="width:236px;flex-shrink:0;border-right:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;padding:26px 0">
+          <div style="padding:0 24px 26px;display:flex;align-items:center;gap:10px">
+            <img src="assets/icon-matriz.svg" alt="" style="height:30px;width:30px;flex-shrink:0">
+            <img src="uploads/alfamatriz.png" alt="AlfaMatriz" style="height:16px;width:auto">
+          </div>
+          <sc-for list="{{ navB }}" as="g" hint-placeholder-count="4">
+            <div style="padding:0 12px 20px">
+              <p style="margin:0 0 8px;padding:0 12px;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#5f6f76">{{ g.label }}</p>
+              <div style="display:flex;flex-direction:column;gap:1px">
+                <sc-for list="{{ g.items }}" as="i" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:11px;padding:8px 12px;border-radius:8px;font-size:14px;background:{{ i.bg }};color:{{ i.color }};font-weight:{{ i.weight }}">
+                    <span style="width:3px;height:16px;border-radius:2px;background:{{ i.mark }}"></span>
+                    {{ i.label }}
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <div style="max-width:860px;margin:0 auto;padding:40px 40px 18px">
+            <p style="margin:0;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:#5f6f76">Quinta-feira, 6 de agosto</p>
+            <h1 style="margin:10px 0 0;font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:600;color:#e6eef0;letter-spacing:-0.02em;line-height:1.15">Quatro decisões<br>esperam por você.</h1>
+            <p style="margin:12px 0 0;font-size:15px;color:#9db0b6;line-height:1.55;max-width:560px;text-wrap:pretty">O caixa cobre os próximos 30 dias com folga. O que pesa hoje é cobrança atrasada e dois leads esfriando no funil.</p>
+
+            <div style="margin-top:30px;display:flex;gap:48px;padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.07)">
+              <sc-for list="{{ heroB }}" as="h" hint-placeholder-count="4">
+                <div>
+                  <p style="margin:0;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#5f6f76">{{ h.label }}</p>
+                  <p style="margin:6px 0 0;font-family:'Space Grotesk',sans-serif;font-size:27px;font-weight:600;color:{{ h.color }};letter-spacing:-0.02em">{{ h.valor }}</p>
+                  <p style="margin:3px 0 0;font-size:12px;color:#8798a0">{{ h.nota }}</p>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="margin-top:26px">
+              <p style="margin:0 0 4px;font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:600;color:#e6eef0">Precisa de você</p>
+              <div style="margin-top:10px;display:flex;flex-direction:column">
+                <sc-for list="{{ decisoesB }}" as="d" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:baseline;gap:18px;padding:13px 0;border-top:1px solid rgba(255,255,255,0.07)">
+                    <span style="flex-shrink:0;width:7px;height:7px;border-radius:9999px;background:{{ d.color }};transform:translateY(-3px)"></span>
+                    <div style="flex:1;min-width:0">
+                      <p style="margin:0;font-size:15px;color:#e6eef0;line-height:1.45">{{ d.titulo }}</p>
+                      <p style="margin:4px 0 0;font-size:13px;color:#8798a0">{{ d.sub }}</p>
+                    </div>
+                    <a href="#" style="flex-shrink:0;font-size:14px;font-weight:600;color:{{ d.color }}">{{ d.acao }} →</a>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="margin-top:26px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.07);display:flex;gap:56px">
+              <div style="flex:1">
+                <p style="margin:0 0 14px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#5f6f76">Vence nos próximos 7 dias</p>
+                <sc-for list="{{ agenda }}" as="g" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:baseline;gap:12px;padding:5px 0">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#5f6f76;width:34px;flex-shrink:0">{{ g.dia }}</span>
+                    <span style="flex:1;min-width:0;font-size:14px;color:#9db0b6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.descricao }}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:{{ g.color }};flex-shrink:0">{{ g.valor }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="width:220px;flex-shrink:0">
+                <p style="margin:0 0 14px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#5f6f76">Entraram esta semana</p>
+                <sc-for list="{{ novosB }}" as="c" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:10px;padding:5px 0">
+                    <span style="height:24px;width:24px;flex-shrink:0;border-radius:9999px;background:rgba(2,156,175,0.15);color:#5be3ef;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">{{ c.inicial }}</span>
+                    <span style="flex:1;min-width:0;font-size:13px;color:#9db0b6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.nome }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1c" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:#04181b;background:#5be3ef;padding:4px 10px;border-radius:6px">1c</span>
+        <div>
+          <p style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:600;color:#e6eef0">Terminal</p>
+          <p style="margin:0;font-size:13px;color:#8798a0">Máxima densidade, números monoespaçados, tudo à vista sem scroll.</p>
+        </div>
+      </div>
+
+      <div style="width:1400px;height:900px;overflow:hidden;border-radius:16px;border:1px solid rgba(255,255,255,0.09);background:#050a0c;display:flex;flex-direction:column;box-shadow:0 40px 80px -40px rgba(0,0,0,0.9)">
+        <div style="height:44px;flex-shrink:0;display:flex;align-items:center;gap:20px;padding:0 16px;border-bottom:1px solid rgba(255,255,255,0.08);background:#080f12">
+          <div style="display:flex;align-items:center;gap:8px">
+            <img src="assets/icon-matriz.svg" alt="" style="height:22px;width:22px;flex-shrink:0">
+            <img src="uploads/alfamatriz.png" alt="AlfaMatriz" style="height:13px;width:auto">
+          </div>
+          <div style="display:flex;align-items:center;gap:2px">
+            <sc-for list="{{ tabsC }}" as="t" hint-placeholder-count="7">
+              <div style="height:44px;display:flex;align-items:center;padding:0 12px;font-size:12.5px;font-weight:500;color:{{ t.color }};border-bottom:2px solid {{ t.mark }}">{{ t.label }}</div>
+            </sc-for>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:14px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#5f6f76">
+            <span style="display:flex;align-items:center;gap:6px"><span style="height:6px;width:6px;border-radius:9999px;background:#0ca30c;box-shadow:0 0 6px rgba(12,163,12,.8)"></span>LIVE</span>
+            <span>06 AGO 2026 · 09:14</span>
+            <span style="height:24px;width:24px;border-radius:6px;background:rgba(2,156,175,0.2);color:#5be3ef;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">A</span>
+          </div>
+        </div>
+
+        <div style="flex-shrink:0;display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid rgba(255,255,255,0.08);background:#070d10">
+          <sc-for list="{{ tickerC }}" as="k" hint-placeholder-count="6">
+            <div style="padding:11px 16px;border-right:1px solid rgba(255,255,255,0.06)">
+              <p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#5f6f76">{{ k.label }}</p>
+              <div style="display:flex;align-items:baseline;gap:8px;margin-top:5px">
+                <p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:600;color:{{ k.color }};letter-spacing:-0.01em">{{ k.valor }}</p>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:{{ k.deltaColor }}">{{ k.delta }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="flex:1;min-height:0;display:grid;grid-template-columns:1fr 372px">
+          <div style="min-width:0;display:flex;flex-direction:column;border-right:1px solid rgba(255,255,255,0.08)">
+            <div style="height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:#0a1215;border-bottom:1px solid rgba(255,255,255,0.08)">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#8798a0">Exceções · requer ação</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#d03b3b">4</span>
+            </div>
+            <sc-for list="{{ excecoesC }}" as="e" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid rgba(255,255,255,0.055)">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.08em;padding:2px 6px;border-radius:3px;background:{{ e.bg }};color:{{ e.color }};flex-shrink:0;width:66px;text-align:center">{{ e.tag }}</span>
+                <span style="flex:1;min-width:0;font-size:13px;color:#e6eef0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.titulo }}</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#5f6f76;flex-shrink:0">{{ e.quando }}</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:{{ e.color }};flex-shrink:0;width:96px;text-align:right">{{ e.valor }}</span>
+                <a href="#" style="flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#5be3ef;width:56px;text-align:right">{{ e.acao }}</a>
+              </div>
+            </sc-for>
+
+            <div style="height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:#0a1215;border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);margin-top:8px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#8798a0">MRR por revenda · 08/2026</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#8798a0">R$ 52.430</span>
+            </div>
+            <sc-for list="{{ revendasC }}" as="r" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,0.045)">
+                <span style="flex-shrink:0;width:132px;font-size:13px;color:#e6eef0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.nome }}</span>
+                <span style="flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:11px;color:#5f6f76;width:52px;text-align:right">{{ r.clientes }}</span>
+                <div style="flex:1;min-width:0;height:14px;background:rgba(255,255,255,0.04);position:relative">
+                  <div style="position:absolute;left:0;top:0;bottom:0;width:{{ r.pct }};background:{{ r.barColor }}"></div>
+                </div>
+                <span style="flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:13px;color:#e6eef0;width:88px;text-align:right">{{ r.valor }}</span>
+                <span style="flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:11px;color:{{ r.deltaColor }};width:52px;text-align:right">{{ r.delta }}</span>
+              </div>
+            </sc-for>
+
+            <div style="height:32px;flex-shrink:0;display:flex;align-items:center;padding:0 16px;background:#0a1215;border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);margin-top:8px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#8798a0">Entradas x saídas · 6 meses</span>
+            </div>
+            <div style="flex:1;min-height:0;padding:12px 16px">
+              <svg viewBox="0 0 620 150" style="width:100%;height:100%">
+                <sc-for list="{{ gridC }}" as="g" hint-placeholder-count="4">
+                  <line x1="0" y1="{{ g.y }}" x2="620" y2="{{ g.y }}" stroke="rgba(255,255,255,0.055)" stroke-width="1"></line>
+                </sc-for>
+                <sc-for list="{{ barsC }}" as="b" hint-placeholder-count="6">
+                  <g>
+                    <rect x="{{ b.xE }}" y="{{ b.yE }}" width="26" height="{{ b.hE }}" fill="#029caf"></rect>
+                    <rect x="{{ b.xS }}" y="{{ b.yS }}" width="26" height="{{ b.hS }}" fill="#c98500"></rect>
+                    <text x="{{ b.cx }}" y="146" text-anchor="middle" fill="#5f6f76" font-size="10" font-family="JetBrains Mono, monospace">{{ b.label }}</text>
+                  </g>
+                </sc-for>
+              </svg>
+            </div>
+          </div>
+
+          <div style="min-width:0;display:flex;flex-direction:column">
+            <div style="height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:#0a1215;border-bottom:1px solid rgba(255,255,255,0.08)">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#8798a0">Calendário · 7 dias</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#0ca30c">−8.356</span>
+            </div>
+            <sc-for list="{{ agenda }}" as="g" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,0.045)">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#5f6f76;width:32px;flex-shrink:0">{{ g.dia }}</span>
+                <span style="height:14px;width:2px;background:{{ g.color }};flex-shrink:0"></span>
+                <span style="flex:1;min-width:0;font-size:12.5px;color:#9db0b6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.descricao }}</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:{{ g.color }};flex-shrink:0">{{ g.valor }}</span>
+              </div>
+            </sc-for>
+
+            <div style="height:32px;flex-shrink:0;display:flex;align-items:center;padding:0 16px;background:#0a1215;border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);margin-top:8px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#8798a0">Funil · estágios</span>
+            </div>
+            <sc-for list="{{ funilC }}" as="f" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.045)">
+                <span style="flex-shrink:0;width:96px;font-size:12.5px;color:#9db0b6">{{ f.label }}</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#5f6f76;width:20px;text-align:right;flex-shrink:0">{{ f.count }}</span>
+                <div style="flex:1;min-width:0;height:12px;background:rgba(255,255,255,0.04);position:relative">
+                  <div style="position:absolute;left:0;top:0;bottom:0;width:{{ f.pct }};background:{{ f.color }}"></div>
+                </div>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#e6eef0;width:64px;text-align:right;flex-shrink:0">{{ f.valor }}</span>
+              </div>
+            </sc-for>
+
+            <div style="height:32px;flex-shrink:0;display:flex;align-items:center;padding:0 16px;background:#0a1215;border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);margin-top:8px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#8798a0">Contas · saldo</span>
+            </div>
+            <sc-for list="{{ contasC }}" as="c" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,0.045)">
+                <div style="min-width:0">
+                  <p style="margin:0;font-size:12.5px;color:#e6eef0">{{ c.nome }}</p>
+                  <p style="margin:1px 0 0;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#5f6f76">{{ c.tipo }}</p>
+                </div>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#e6eef0;flex-shrink:0">{{ c.saldo }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const ICON = {
+  bolt: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z',
+  up: 'M2.25 18L9 11.25l4.306 4.306a11.95 11.95 0 015.814-5.518l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941',
+  down: 'M2.25 6L9 12.75l4.306-4.306a11.95 11.95 0 015.814 5.518l2.74 1.22m0 0l-2.28-5.941m2.28 5.941l-5.94 2.28',
+  clipboard: 'M9 12h6m-6 4h6m-7 4h8a2 2 0 002-2V6.414a1 1 0 00-.293-.707l-3.414-3.414A1 1 0 0013.586 2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
+  building: 'M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21',
+  users: 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z',
+  cube: 'M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9',
+  repeat: 'M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99',
+  banknotes: 'M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z',
+  tag: 'M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z',
+  alert: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z',
+  clock: 'M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z',
+  userPlus: 'M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z',
+  check: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+};
+
+const spark = (vals) => {
+  const min = Math.min(...vals), max = Math.max(...vals), r = max - min || 1;
+  return vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${(i / (vals.length - 1) * 86 + 1).toFixed(1)},${(24 - ((v - min) / r) * 22).toFixed(1)}`).join(' ');
+};
+
+const RAIL_GROUPS = [
+  { label: 'Painéis', items: [
+    { label: 'Centro de Controle', d: ICON.bolt, on: true },
+    { label: 'Financeiro', d: ICON.up },
+    { label: 'Comercial', d: ICON.clipboard },
+  ]},
+  { label: 'Comercial', items: [
+    { label: 'Funil de Vendas', d: ICON.userPlus },
+    { label: 'Revendas', d: ICON.building },
+    { label: 'Clientes', d: ICON.users },
+    { label: 'Produtos', d: ICON.cube },
+    { label: 'Faturamento', d: ICON.repeat },
+  ]},
+  { label: 'Financeiro', items: [
+    { label: 'Receitas', d: ICON.up },
+    { label: 'Despesas', d: ICON.down },
+    { label: 'Caixa', d: ICON.banknotes },
+  ]},
+  { label: 'Sistema', items: [
+    { label: 'Cadastros', d: ICON.tag },
+  ]},
+];
+
+const THEMES = {
+  dark: {
+    frameBg: '#070d0f', sideBg: '#0a1215', headBg: '#0a1215',
+    border: 'rgba(255,255,255,0.08)', rule: 'rgba(255,255,255,0.055)',
+    panelBg: 'rgba(255,255,255,0.025)', subtleBg: 'rgba(255,255,255,0.018)',
+    inputBg: 'rgba(255,255,255,0.03)', chipBg: 'rgba(255,255,255,0.03)',
+    ink: '#e6eef0', inkDim: '#9db0b6', inkMute: '#8798a0', inkFaint: '#455459',
+    btnBorder: 'rgba(255,255,255,0.12)', barTrack: 'rgba(255,255,255,0.04)',
+    glow: 'rgba(2,156,175,0.10)', navActiveBg: 'rgba(2,156,175,0.16)',
+    onBrand: '#04181b', brandText: '#5be3ef', accent: '#5be3ef', amber: '#e8a045',
+    good: '#0ca30c', warn: '#fab219', crit: '#d03b3b', tintAlpha: 0.12,
+    themeIcon: 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z',
+    themeLabel: 'Tema claro',
+  },
+  light: {
+    frameBg: '#f5f8f9', sideBg: '#ffffff', headBg: '#ffffff',
+    border: 'rgba(11,26,30,0.10)', rule: 'rgba(11,26,30,0.07)',
+    panelBg: '#ffffff', subtleBg: '#ffffff',
+    inputBg: '#ffffff', chipBg: '#eef3f4',
+    ink: '#0b1a1e', inkDim: '#4a5c62', inkMute: '#6b7c83', inkFaint: '#9aa8ad',
+    btnBorder: 'rgba(11,26,30,0.14)', barTrack: 'rgba(11,26,30,0.06)',
+    glow: 'rgba(2,156,175,0.09)', navActiveBg: 'rgba(2,156,175,0.10)',
+    onBrand: '#ffffff', brandText: '#06788a', accent: '#029caf', amber: '#b06a12',
+    good: '#0a7a0a', warn: '#b57500', crit: '#c02b2b', tintAlpha: 0.10,
+    themeIcon: 'M21.752 15.002A9.72 9.72 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z',
+    themeLabel: 'Tema escuro',
+  },
+};
+
+const tint = (hex, a) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+};
+
+const ICON_BELL = 'M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0';
+
+class Component extends DCLogic {
+  state = { railOpen: true, theme: 'dark' };
+
+  toggleRail = () => this.setState(s => ({ railOpen: !s.railOpen }));
+  toggleTheme = () => this.setState(s => ({ theme: s.theme === 'dark' ? 'light' : 'dark' }));
+
+  renderVals() {
+    const open = this.state.railOpen;
+    const t = THEMES[this.state.theme] || THEMES.dark;
+
+    const hist = [
+      { label: 'MAR', e: 38200, s: 24100 }, { label: 'ABR', e: 41500, s: 26800 },
+      { label: 'MAI', e: 39800, s: 25200 }, { label: 'JUN', e: 46300, s: 28900 },
+      { label: 'JUL', e: 48900, s: 27400 }, { label: 'AGO', e: 52400, s: 31200 },
+    ];
+    const maxC = 52400 * 1.12, pH = 124, gW = 620 / 6;
+    const barsC = hist.map((d, i) => {
+      const cx = i * gW + gW / 2;
+      const hE = (d.e / maxC) * pH, hS = (d.s / maxC) * pH;
+      return { label: d.label, cx, xE: cx - 27, yE: pH - hE + 4, hE, xS: cx + 1, yS: pH - hS + 4, hS };
+    });
+
+    const navBGroups = [
+      { label: 'Painéis', items: [['Centro de Controle', true], ['Financeiro'], ['Comercial']] },
+      { label: 'Comercial', items: [['Funil de Vendas'], ['Revendas'], ['Clientes'], ['Produtos'], ['Faturamento']] },
+      { label: 'Financeiro', items: [['Receitas'], ['Despesas'], ['Caixa']] },
+      { label: 'Sistema', items: [['Cadastros']] },
+    ];
+
+    const agenda = [
+      { dia: '05/08', descricao: 'Pró-labore sócios', valor: '−18.000', color: '#fab219' },
+      { dia: '05/08', descricao: 'Servidores Hetzner', valor: '−2.840', color: '#fab219' },
+      { dia: '10/08', descricao: 'Invest Soluções · 08/2026', valor: '+8.940', color: '#0ca30c' },
+      { dia: '10/08', descricao: 'Nexa Sistemas · 08/2026', valor: '+5.480', color: '#0ca30c' },
+      { dia: '10/08', descricao: 'Contabilidade Consult', valor: '−1.450', color: '#fab219' },
+    ];
+
+    const heroT = [
+      { label: 'MRR', valor: 'R$ 52.430', delta: '+7,2% vs jul', deltaColor: t.good, accent: t.accent, spark: spark([38200, 41500, 39800, 46300, 48900, 52400]) },
+      { label: 'Caixa', valor: 'R$ 187.413', delta: '30 dias de folga', deltaColor: t.inkDim, accent: t.accent, spark: spark([142000, 151000, 158000, 166000, 179000, 187413]) },
+      { label: 'Atrasado', valor: 'R$ 11.580', delta: '3 títulos', deltaColor: t.crit, accent: t.crit, spark: spark([4200, 3100, 6800, 5900, 9400, 11580]) },
+      { label: 'Clientes ativos', valor: '1.478', delta: '+34 no mês', deltaColor: t.good, accent: t.amber, spark: spark([1289, 1322, 1361, 1398, 1444, 1478]) },
+    ];
+    const filaT = [
+      { titulo: '2 receitas atrasadas de revenda', sub: 'Vetor Tecnologia e Prisma Digital · 07/2026', valor: 'R$ 7.620', acao: 'Cobrar', d: ICON.alert, color: t.crit },
+      { titulo: 'Licenças JetBrains vencidas em 02/07', sub: 'Despesa pontual · 34 dias em atraso', valor: 'R$ 3.960', acao: 'Pagar', d: ICON.clock, color: t.warn },
+      { titulo: '2 leads parados há mais de 30 dias', sub: 'Rede Fit Center · Escola Nova Era', valor: 'R$ 499', acao: 'Revisar', d: ICON.userPlus, color: t.warn },
+      { titulo: 'AlfaSchool sem tier de atacado', sub: 'Vetor Tecnologia · 6 clientes não faturados', valor: '—', acao: 'Definir', d: ICON.cube, color: t.accent },
+    ].map(f => ({ ...f, bg: tint(f.color, t.tintAlpha) }));
+    const agendaT = [
+      { dia: '05/08', descricao: 'Pró-labore sócios', valor: '−18.000', color: t.warn },
+      { dia: '05/08', descricao: 'Servidores Hetzner', valor: '−2.840', color: t.warn },
+      { dia: '10/08', descricao: 'Invest Soluções · 08/2026', valor: '+8.940', color: t.good },
+      { dia: '10/08', descricao: 'Nexa Sistemas · 08/2026', valor: '+5.480', color: t.good },
+      { dia: '10/08', descricao: 'Contabilidade Consult', valor: '−1.450', color: t.warn },
+    ];
+
+    return {
+      t,
+      toggleTheme: this.toggleTheme,
+      themeIcon: t.themeIcon,
+      themeLabel: t.themeLabel,
+      bellIcon: ICON_BELL,
+      heroT, filaT, agendaT,
+      railGroupsT: RAIL_GROUPS.map(g => ({
+        label: g.label,
+        items: g.items.map(r => ({
+          label: r.label, d: r.d,
+          weight: r.on ? '600' : '500',
+          bg: r.on ? t.navActiveBg : 'transparent',
+          color: r.on ? t.brandText : t.inkMute,
+          mark: r.on ? '#029caf' : 'transparent',
+        })),
+      })),
+      footerDir: open ? 'row' : 'column',
+      railWidth: open ? '228px' : '70px',
+      railLabelOpacity: open ? 1 : 0,
+      railLabelDisplay: open ? 'block' : 'none',
+      railExpandDisplay: open ? 'none' : 'flex',
+      toggleRail: this.toggleRail,
+      railGroups: RAIL_GROUPS.map(g => ({
+        label: g.label,
+        items: g.items.map(r => ({
+          label: r.label, d: r.d,
+          weight: r.on ? '600' : '500',
+          bg: r.on ? 'rgba(2,156,175,0.16)' : 'transparent',
+          color: r.on ? '#5be3ef' : '#8798a0',
+          mark: r.on ? '#029caf' : 'transparent',
+        })),
+      })),
+
+      heroA: [
+        { label: 'MRR', valor: 'R$ 52.430', delta: '+7,2% vs jul', deltaColor: '#0ca30c', accent: '#5be3ef', spark: spark([38200, 41500, 39800, 46300, 48900, 52400]) },
+        { label: 'Caixa', valor: 'R$ 187.413', delta: '30 dias de folga', deltaColor: '#9db0b6', accent: '#5be3ef', spark: spark([142000, 151000, 158000, 166000, 179000, 187413]) },
+        { label: 'Atrasado', valor: 'R$ 11.580', delta: '3 títulos', deltaColor: '#d03b3b', accent: '#d03b3b', spark: spark([4200, 3100, 6800, 5900, 9400, 11580]) },
+        { label: 'Clientes ativos', valor: '1.478', delta: '+34 no mês', deltaColor: '#0ca30c', accent: '#e8a045', spark: spark([1289, 1322, 1361, 1398, 1444, 1478]) },
+      ],
+      fila: [
+        { titulo: '2 receitas atrasadas de revenda', sub: 'Vetor Tecnologia e Prisma Digital · 07/2026', valor: 'R$ 7.620', acao: 'Cobrar', d: ICON.alert, bg: 'rgba(208,59,59,0.12)', color: '#d03b3b' },
+        { titulo: 'Licenças JetBrains vencidas em 02/07', sub: 'Despesa pontual · 34 dias em atraso', valor: 'R$ 3.960', acao: 'Pagar', d: ICON.clock, bg: 'rgba(250,178,25,0.12)', color: '#fab219' },
+        { titulo: '2 leads parados há mais de 30 dias', sub: 'Rede Fit Center · Escola Nova Era', valor: 'R$ 499', acao: 'Revisar', d: ICON.userPlus, bg: 'rgba(250,178,25,0.12)', color: '#fab219' },
+        { titulo: 'AlfaSchool sem tier de atacado', sub: 'Vetor Tecnologia · 6 clientes não faturados', valor: '—', acao: 'Definir', d: ICON.cube, bg: 'rgba(2,156,175,0.12)', color: '#5be3ef' },
+      ],
+      agenda,
+
+      navB: navBGroups.map(g => ({
+        label: g.label,
+        items: g.items.map(([label, on]) => ({
+          label,
+          bg: on ? 'rgba(2,156,175,0.09)' : 'transparent',
+          color: on ? '#e6eef0' : '#8798a0',
+          weight: on ? '600' : '400',
+          mark: on ? '#029caf' : 'transparent',
+        })),
+      })),
+      heroB: [
+        { label: 'MRR', valor: 'R$ 52.430', nota: '+7,2% sobre julho', color: '#e6eef0' },
+        { label: 'Caixa', valor: 'R$ 187.413', nota: '4 contas', color: '#e6eef0' },
+        { label: 'Atrasado', valor: 'R$ 11.580', nota: '3 títulos', color: '#d03b3b' },
+        { label: 'Clientes', valor: '1.478', nota: '+34 no mês', color: '#e6eef0' },
+      ],
+      decisoesB: [
+        { titulo: 'Vetor Tecnologia e Prisma Digital estão com R$ 7.620 em atraso desde julho.', sub: 'Nenhuma cobrança enviada nos últimos 6 dias.', acao: 'Cobrar', color: '#d03b3b' },
+        { titulo: 'A licença anual da JetBrains venceu em 02/07 — R$ 3.960.', sub: 'Despesa pontual, sem baixa registrada.', acao: 'Pagar', color: '#fab219' },
+        { titulo: 'Rede Fit Center e Escola Nova Era estão paradas há mais de 30 dias.', sub: 'Proposta enviada e nenhum contato desde então.', acao: 'Revisar', color: '#fab219' },
+        { titulo: 'AlfaSchool tem 6 clientes ativos e nenhum tier de atacado configurado.', sub: 'Esses clientes não entram no faturamento de 08/2026.', acao: 'Definir', color: '#5be3ef' },
+      ],
+      novosB: [
+        { inicial: 'A', nome: 'Academia Corpo & Movimento' },
+        { inicial: 'C', nome: 'Condomínio Bosque Real' },
+        { inicial: 'C', nome: 'Clínica Vitale' },
+        { inicial: 'T', nome: 'Transportes Rondon' },
+      ],
+
+      tabsC: [
+        ['Controle', true], ['Financeiro'], ['Comercial'], ['Funil'], ['Revendas'], ['Produtos'], ['Faturamento'],
+      ].map(([label, on]) => ({ label, color: on ? '#e6eef0' : '#5f6f76', mark: on ? '#029caf' : 'transparent' })),
+      tickerC: [
+        { label: 'MRR', valor: '52.430', delta: '+7,2%', color: '#e6eef0', deltaColor: '#0ca30c' },
+        { label: 'ARR proj.', valor: '629.160', delta: '+7,2%', color: '#e6eef0', deltaColor: '#0ca30c' },
+        { label: 'Caixa', valor: '187.413', delta: '+4,7%', color: '#e6eef0', deltaColor: '#0ca30c' },
+        { label: 'A receber 7d', valor: '14.420', delta: '4 tít.', color: '#0ca30c', deltaColor: '#5f6f76' },
+        { label: 'A pagar 7d', valor: '22.776', delta: '5 tít.', color: '#fab219', deltaColor: '#5f6f76' },
+        { label: 'Atrasado', valor: '11.580', delta: '3 tít.', color: '#d03b3b', deltaColor: '#5f6f76' },
+      ],
+      excecoesC: [
+        { tag: 'ATRASO', titulo: 'Vetor Tecnologia · licenciamento 07/2026', quando: '26d', valor: '3.120', acao: 'COBRAR', bg: 'rgba(208,59,59,0.14)', color: '#d03b3b' },
+        { tag: 'ATRASO', titulo: 'Implantação Gestor · Construtora Ápice', quando: '1d', valor: '4.500', acao: 'COBRAR', bg: 'rgba(208,59,59,0.14)', color: '#d03b3b' },
+        { tag: 'VENCIDA', titulo: 'Licenças JetBrains (anual)', quando: '34d', valor: '3.960', acao: 'PAGAR', bg: 'rgba(250,178,25,0.14)', color: '#fab219' },
+        { tag: 'SEM TIER', titulo: 'AlfaSchool · 6 clientes não faturados', quando: '—', valor: '—', acao: 'DEFINIR', bg: 'rgba(2,156,175,0.14)', color: '#5be3ef' },
+      ],
+      revendasC: [
+        { nome: 'Invest Soluções', clientes: '624', valor: '8.940', pct: '100%', delta: '+6,3%', barColor: '#029caf', deltaColor: '#0ca30c' },
+        { nome: 'Nexa Sistemas', clientes: '341', valor: '5.480', pct: '61%', delta: '+5,2%', barColor: '#029caf', deltaColor: '#0ca30c' },
+        { nome: 'Vetor Tecnologia', clientes: '148', valor: '3.120', pct: '35%', delta: '−1,8%', barColor: '#c98500', deltaColor: '#d03b3b' },
+        { nome: 'Prisma Digital', clientes: '53', valor: '1.890', pct: '21%', delta: '+2,1%', barColor: '#029caf', deltaColor: '#0ca30c' },
+        { nome: 'Venda direta', clientes: '312', valor: '33.000', pct: '92%', delta: '+9,4%', barColor: '#5be3ef', deltaColor: '#0ca30c' },
+      ],
+      gridC: [0, 1, 2, 3].map(i => ({ y: 4 + pH - (pH * i / 3) })),
+      barsC,
+      funilC: [
+        { label: 'Lead', count: '3', valor: '548', pct: '38%', color: '#5be3ef' },
+        { label: 'Contato feito', count: '2', valor: '1.520', pct: '62%', color: '#5be3ef' },
+        { label: 'Proposta', count: '2', valor: '1.739', pct: '71%', color: '#029caf' },
+        { label: 'Negociação', count: '1', valor: '1.800', pct: '100%', color: '#029caf' },
+        { label: 'Fechado', count: '2', valor: '548', pct: '30%', color: '#0ca30c' },
+        { label: 'Perdido', count: '1', valor: '—', pct: '14%', color: '#d03b3b' },
+      ],
+      contasC: [
+        { nome: 'Bradesco PJ', tipo: 'conta corrente', saldo: '94.218' },
+        { nome: 'Reserva CDB', tipo: 'aplicação', saldo: '50.000' },
+        { nome: 'Nubank PJ', tipo: 'conta corrente', saldo: '41.880' },
+        { nome: 'Caixa interno', tipo: 'dinheiro', saldo: '1.314' },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>

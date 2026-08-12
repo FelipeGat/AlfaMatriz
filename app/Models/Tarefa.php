@@ -45,14 +45,6 @@ class Tarefa extends Model
     public const PORTOES = ['em_revisao', 'em_staging', 'pronta_producao'];
 
     /**
-     * O que a tarja de retorno diz, conforme o portão que reprovou.
-     *
-     * "Voltou da revisão" e "Voltou do staging" descrevem situações
-     * materialmente diferentes — na segunda o código já está na main — e a
-     * recuperação de cada uma é outra. Um rótulo só para as três devolveria à
-     * tela o mesmo achatamento que a coluna de Ajustes fazia no fluxo.
-     */
-    /**
      * O que cada portão examina, dito no cabeçalho da própria coluna.
      *
      * Sem isso, "Em revisão" e "Em staging" são dois nomes que só quem escreveu
@@ -83,6 +75,14 @@ class Tarefa extends Model
         'pronta_producao' => 'Nada para subir',
     ];
 
+    /**
+     * O que a tarja de retorno diz, conforme o portão que reprovou.
+     *
+     * "Voltou da revisão" e "Voltou do staging" descrevem situações
+     * materialmente diferentes — na segunda o código já está na main — e a
+     * recuperação de cada uma é outra. Um rótulo só para as três devolveria à
+     * tela o mesmo achatamento que a coluna de Ajustes fazia no fluxo.
+     */
     public const RETORNO_POR_ORIGEM = [
         'em_revisao' => 'Voltou da revisão',
         'em_staging' => 'Voltou do staging',
@@ -316,22 +316,6 @@ class Tarefa extends Model
         return $usuario !== null
             && $this->temPergunta()
             && $this->pergunta_para_id === $usuario->id;
-    }
-
-    /**
-     * O texto da tarja de pergunta, com o nome em linha própria na tela.
-     *
-     * Devolve só quem deve a resposta porque é essa a informação inteira da
-     * tarja: uma pergunta pendente sem o nome de quem a deve não diz a ninguém
-     * que a bola é sua.
-     */
-    public function rotuloDaPergunta(): ?string
-    {
-        if (! $this->temPergunta()) {
-            return null;
-        }
-
-        return 'Aguardando resposta de '.($this->perguntaPara?->name ?? 'alguém');
     }
 
     /**

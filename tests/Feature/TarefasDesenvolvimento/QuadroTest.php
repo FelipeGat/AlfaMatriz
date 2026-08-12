@@ -278,7 +278,7 @@ class QuadroTest extends TestCase
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('flex: 1 1 276px; min-width: 276px', $html,
+        $this->assertStringContainsString('flex: 1 1 272px; min-width: 272px', $html,
             'A coluna precisa crescer com o espaço e manter a largura mínima de leitura.');
         $this->assertStringNotContainsString('style="width: 276px', $html,
             'Largura fixa deixa sobra à direita quando há menos colunas do que caberia.');

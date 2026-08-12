@@ -103,8 +103,8 @@ class TipoEFluxoTarefaTest extends TestCase
         // Recorta o card de cada tarefa: a palavra "Operacional" também aparece
         // na explicação do tipo dentro do modal de cadastro, então procurá-la na
         // página inteira acusaria selo onde há só texto de ajuda.
-        $this->assertStringContainsString('Operacional', $this->trechoDoCard($html, $operacional->id));
-        $this->assertStringNotContainsString('Operacional', $this->trechoDoCard($html, $desenvolvimento->id),
+        $this->assertStringContainsString('Oper.', $this->trechoDoCard($html, $operacional->id));
+        $this->assertStringNotContainsString('Oper.', $this->trechoDoCard($html, $desenvolvimento->id),
             'Só a operacional se anuncia: um selo "Desenvolvimento" em quase todo card não diria nada.');
 
         $colunas = $this->actingAs($usuario)
