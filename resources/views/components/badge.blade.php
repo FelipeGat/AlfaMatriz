@@ -1,5 +1,5 @@
 @props([
-    'tom' => 'neutro',   // bom | atencao | critico | marca | neutro
+    'tom' => 'neutro',   // bom | ambar | atencao | critico | marca | neutro
     'ponto' => false,    // ponto de status antes do texto
 ])
 
@@ -7,8 +7,13 @@
     // Cada tom é um token; o fundo é o mesmo token com a alpha de tingimento
     // do tema (0,13 no escuro, 0,10 no claro) — por isso ele vem de
     // `var(--tint-alpha)` e não de um número fixo aqui.
+    // `ambar` e `atencao` são dois âmbares de propósito, e o sistema já os
+    // trazia separados: a escala de prioridade precisa de cinco degraus
+    // distinguíveis entre si (AC-126), e o alerta de tarefa parada não pode
+    // dividir tom com o grau "Alta", que é gravidade e não alarme.
     $token = match ($tom) {
         'bom' => 'good',
+        'ambar' => 'amber',
         'atencao' => 'warn',
         'critico' => 'crit',
         'marca' => 'brand-text',

@@ -1,5 +1,45 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 11/08/2026 — Checklist na tarefa, limite por coluna e triagem visível
+
+Quatro mudanças no quadro de Tarefas, seguindo o novo desenho da tela.
+
+### Novidades
+
+- **Checklist dentro da tarefa.** Abrindo a tarefa, agora há uma lista de
+  conferência: itens que se marcam, com barra de progresso, texto editável no
+  lugar, reordenação arrastando e remoção. O card mostra o progresso ("✓ 2/4"),
+  então dá para ver de fora quanto ainda falta.
+  É lista de conferência, não subtarefa: o item não tem responsável nem etapa e
+  não aparece no quadro. Trabalho que precisa de dono próprio continua sendo uma
+  tarefa à parte.
+- **Prioridade "A definir".** Quem abre uma tarefa nem sempre é quem decide a
+  urgência dela — e, sem essa opção, o cadastro caía em "Média" por omissão,
+  fazendo o padrão virar uma classificação que ninguém fez. As tarefas assim
+  ficam no fim da coluna e o cabeçalho conta quantas estão **aguardando
+  triagem**.
+- **Limite de tarefas por coluna.** "Em andamento" e "Em testes" passam a
+  mostrar "2/3", e o contador fica âmbar com o aviso "acima do limite" quando
+  passa de três. Tarefa travada não ocupa vaga: o limite existe para conter o
+  que está sendo tocado ao mesmo tempo, e quem está esperando terceiro não está
+  produzindo.
+
+### Melhorias
+
+- **O aviso de tarefa esquecida passou a valer em todas as colunas**, com prazo
+  próprio para cada uma: 24h em Aberta e em Em testes, 48h em Ajustes e 72h em
+  Em andamento. Antes só Aberta e Em testes acendiam, com o mesmo prazo — e a
+  tarefa que mais apodrece, a que está há dias em andamento, não era vigiada por
+  ninguém. O Backlog continua sem prazo, porque ali esperar é o esperado.
+- **O card ficou mais legível.** O responsável virou um círculo com as iniciais
+  (o nome completo aparece ao passar o mouse) e o botão "Mover" virou uma seta.
+  Os dois nomes — o da pessoa e o do sistema — disputavam a mesma linha e saíam
+  cortados. Tarefa sem responsável continua dizendo isso com todas as letras, ao
+  lado de um círculo tracejado.
+
+> A publicação inclui uma atualização do banco: a tabela do checklist e a nova
+> opção de prioridade. Nenhuma tarefa existente muda de lugar ou de prioridade.
+
 ## AlfaMatriz — 11/08/2026 — A tarefa travada não muda mais de lugar
 
 A coluna "Bloqueada", criada hoje mais cedo, saiu do quadro. No lugar dela, a

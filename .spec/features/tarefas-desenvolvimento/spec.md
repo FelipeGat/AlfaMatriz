@@ -489,8 +489,114 @@ contorno em cima de informação jogada fora. É a mudança estrutural do redese
 - **Então** o painel de motivo abre; e a faixa mostra quantas tarefas do recorte
   estão travadas, como os contadores das colunas
 
+### US-059 — O quadro mede o que trava e o que ainda não foi decidido
+
+Como pessoa do time, quero que o quadro avise sozinho quando uma etapa está
+cheia, quando uma tarefa envelheceu e quando ninguém priorizou, para que essas
+três coisas não dependam de alguém reparar nelas.
+
+#### AC-193 — O envelhecimento tem régua própria por etapa
+
+- **Dado** uma tarefa parada há dois dias em Em andamento
+- **Quando** olho o card
+- **Então** ela ainda não acende — três dias escrevendo código é trabalho —, e
+  passa a acender depois de 72h; em Em testes e em Aberta bastam 24h, em
+  Ajustes 48h, e o Backlog nunca envelhece, porque lá ficar parada é o que a
+  tarefa deve fazer
+
+> **Revisto em 11/08/2026.** O AC-093 media só Aberta e Em testes, com 24h para
+> as duas. A tarefa que mais apodrece é a de Em andamento parada há dias, e ela
+> não era medida por ninguém.
+
+#### AC-194 — "A definir" é prioridade, e o cabeçalho conta a triagem
+
+- **Dado** uma tarefa sem prioridade escolhida
+- **Quando** olho a coluna dela
+- **Então** o selo diz "A definir" em âmbar, o card fica no fim da ordem — ela
+  não é o grau mais baixo, é a decisão que não foi tomada, e passar na frente do
+  que alguém chamou de crítico seria mentira — e o cabeçalho da coluna conta
+  quantas aguardam triagem
+
+#### AC-195 — O limite de WIP conta só o que anda
+
+- **Dado** Em andamento com quatro tarefas, uma delas travada
+- **Quando** olho o contador
+- **Então** ele diz 3/3 e não acusa excesso: vaga ocupada por tarefa travada não
+  é trabalho em curso, e somá-la faria o quadro reclamar justamente quando o
+  time está impedido de produzir. Destravando a quarta, o contador vira 4/3 em
+  âmbar. Fila não tem limite: encher o Backlog não atrapalha ninguém
+
+#### AC-202 — O rodapé do card traz o avatar do responsável
+
+- **Dado** um card com responsável
+- **Quando** olho o rodapé
+- **Então** vejo a inicial dele num círculo, com o nome inteiro no `title`, e o
+  sistema ao lado — os dois nomes disputavam a mesma linha e saíam truncados. Um
+  card sem responsável traz o círculo tracejado **e** a frase (AC-130): contorno
+  vazio é símbolo, e a fila de triagem não pode depender de quem já o aprendeu
+
+### US-060 — Checklist dentro da tarefa
+
+Como pessoa do time, quero uma lista de conferência dentro da tarefa, para
+registrar os passos dela sem abrir uma tarefa para cada passo.
+
+É **checklist, não subtarefa**: o item não tem responsável nem etapa, não entra
+no limite de WIP e não vai para o histórico. Subtarefa obrigaria a responder em
+que coluna ela mora, se conta no WIP e se o pai anda sozinho quando a filha
+trava. Trabalho que precisa de dono próprio vira tarefa irmã.
+
+#### AC-196 — O item entra no fim, e a ordem é de quem escreve
+
+- **Dado** um checklist com itens
+- **Quando** incluo um item novo
+- **Então** ele entra no fim da lista; e arrastar um item reordena a lista, que
+  é gravada inteira — um checklist é uma sequência, e o item lembrado depois
+  pode ser o primeiro passo
+
+#### AC-197 — Marcar, corrigir e remover são de qualquer um
+
+- **Dado** um item escrito por outra pessoa
+- **Quando** eu o marco, corrijo o texto ou o removo
+- **Então** todos funcionam: diferente do comentário, o item não é do autor —
+  checklist é combinado do time, e quem confere um passo raramente é quem o
+  escreveu. Texto em branco não apaga o item; quem quis remover tem o remover
+
+#### AC-198 — O card mostra o progresso, e só quando há checklist
+
+- **Dado** uma tarefa com três itens, um feito
+- **Quando** olho o card
+- **Então** leio o progresso 1/3; e a tarefa sem checklist não mostra "0/0", que
+  anunciaria como pendência uma lista que não existe
+
+#### AC-199 — Reordenar não alcança checklist de outra tarefa
+
+- **Dado** a lista de ids chegando do navegador
+- **Quando** ela traz um id que não é desta tarefa
+- **Então** esse item é ignorado e a ordem dele fica intacta
+
+#### AC-200 — O item morre com a tarefa
+
+- **Dado** uma tarefa com checklist
+- **Quando** a tarefa é apagada
+- **Então** os itens vão junto, sem deixar linha órfã
+
+#### AC-201 — Revenda não alcança o checklist
+
+- **Dado** que estou autenticado como usuário com escopo de revenda
+- **Quando** acesso qualquer rota de item pela URL
+- **Então** recebo 403, como no resto do quadro (AC-095)
+
 ## Fora de escopo
 
+- Perfis Admin e Membro no quadro (o handoff de design os especifica; ficam para
+  uma entrega própria, porque mexem em permissão e não só em tela).
+- Raias por responsável ou sistema.
+- Vista mobile própria (uma etapa por vez, com tira de chips).
+- Atalhos de teclado do quadro.
+- Reordenar tarefas dentro da coluna (coluna `ordem` em `tarefas`).
+- Guarda de concorrência ao mover (mandar o `de_status` esperado e recusar com
+  "alguém já moveu esta tarefa").
+- Excluir tarefa (diferente de cancelar), com confirmação em dois passos.
 - Anexos de imagem na tarefa (o alfadev tem; fica para depois).
 - Qualquer formatação no comentário: marcador de lista, numeração, markdown.
 - Histórico de versões do comentário: a tela diz QUE foi corrigido, não o que

@@ -104,6 +104,7 @@
         e o modal de criação não teria onde pendurar o comentário.
     --}}
     @if ($tarefa)
+        @include('tarefas._checklist', ['tarefa' => $tarefa])
         @include('tarefas._comentarios', ['tarefa' => $tarefa])
     @endif
 

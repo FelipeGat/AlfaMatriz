@@ -79,8 +79,9 @@
                     </td>
                     <td class="px-4 py-3 text-[13px] text-ink-dim">{{ $tarefa->responsavel?->name ?? 'Sem responsável' }}</td>
                     <td class="px-4 py-3">
-                        {{-- Mesma escala de tons do card (AC-126). --}}
-                        <x-badge :tom="['baixa' => 'neutro', 'media' => 'marca', 'alta' => 'atencao', 'critica' => 'critico'][$tarefa->prioridade] ?? 'neutro'">
+                        {{-- Mesma escala de tons do card, agora de uma fonte só
+                             (AC-126): copiada, ela já divergiu uma vez. --}}
+                        <x-badge :tom="\App\Models\Tarefa::TOM_DA_PRIORIDADE[$tarefa->prioridade] ?? 'neutro'">
                             {{ \App\Models\Tarefa::PRIORIDADES[$tarefa->prioridade] ?? $tarefa->prioridade }}
                         </x-badge>
                     </td>

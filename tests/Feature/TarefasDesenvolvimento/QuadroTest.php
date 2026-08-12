@@ -5,6 +5,7 @@ namespace Tests\Feature\TarefasDesenvolvimento;
 use App\Models\Sistema;
 use App\Models\Tarefa;
 use App\Models\User;
+use App\Services\FluxoTarefaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -79,6 +80,79 @@ class QuadroTest extends TestCase
 
         $this->assertTrue($posicoes->every(fn ($p) => $p !== false));
         $this->assertSame($posicoes->sort()->values()->all(), $posicoes->values()->all());
+    }
+
+    /**
+     * @spec:AC-195 O limite de WIP conta só o que ANDA: vaga ocupada por tarefa travada
+     * não é trabalho em curso, e somá-la faria o quadro acusar excesso justamente quando
+     * o time está impedido de produzir. Fila não tem limite — encher o Backlog não
+     * atrapalha ninguém, e um alarme ali só ensinaria a ignorar alarme.
+     */
+    public function test_o_limite_de_wip_conta_so_o_que_anda(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+        $fluxo = app(FluxoTarefaService::class);
+
+        // Quatro em Em andamento, uma delas travada: andando são 3, no limite.
+        $emAndamento = Tarefa::factory()->count(4)->create([
+            'criado_por_id' => $criador->id, 'status' => 'em_desenvolvimento',
+        ]);
+        $fluxo->bloquear($emAndamento->first(), 'Esperando acesso ao servidor.');
+
+        Tarefa::factory()->count(9)->create(['criado_por_id' => $criador->id, 'status' => 'backlog']);
+
+        $etapas = collect($this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->viewData('etapas'))
+            ->keyBy('chave');
+
+        $this->assertSame(4, $etapas['em_desenvolvimento']['quantidade']);
+        $this->assertSame(3, $etapas['em_desenvolvimento']['andando']);
+        $this->assertSame(3, $etapas['em_desenvolvimento']['limite']);
+        $this->assertFalse($etapas['em_desenvolvimento']['acimaDoLimite'],
+            'Três andando com uma travada está no limite, não acima dele.');
+
+        // Destravar a quarta estoura o limite.
+        $fluxo->destravar($emAndamento->first());
+
+        $etapas = collect($this->actingAs($usuario)->get(route('tarefas.index'))->viewData('etapas'))->keyBy('chave');
+        $this->assertTrue($etapas['em_desenvolvimento']['acimaDoLimite']);
+
+        // Nove no Backlog não estouram nada: fila não tem limite.
+        $this->assertNull($etapas['backlog']['limite']);
+        $this->assertFalse($etapas['backlog']['acimaDoLimite']);
+    }
+
+    /**
+     * @spec:AC-194 "A definir" é prioridade de verdade: ela fecha a ordem da coluna — não
+     * é o grau mais baixo, é a decisão que não foi tomada — e o cabeçalho conta quantas
+     * aguardam triagem, que é como se acha o que classificar sem ela subir na frente do
+     * que alguém já chamou de crítico.
+     */
+    public function test_a_definir_fecha_a_ordem_e_o_cabecalho_conta_a_triagem(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'aberta',
+            'prioridade' => 'nao_definida', 'titulo' => 'Sem triagem',
+        ]);
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'aberta',
+            'prioridade' => 'baixa', 'titulo' => 'Baixa mesmo',
+        ]);
+
+        $resposta = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk();
+
+        // Mesmo abaixo da Baixa: sem triagem não é o mesmo que pouco urgente.
+        $this->assertSame(
+            ['Baixa mesmo', 'Sem triagem'],
+            $resposta->viewData('colunas')['aberta']->pluck('titulo')->all()
+        );
+
+        $etapas = collect($resposta->viewData('etapas'))->keyBy('chave');
+        $this->assertSame(1, $etapas['aberta']['aguardandoTriagem']);
+        $this->assertStringContainsString('1 aguardando triagem', $resposta->getContent());
     }
 
     /**

@@ -91,6 +91,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     //
     // Sem o id da tarefa no caminho, como os anexos: o comentário já sabe de
     // quem é, e um segundo id no endereço só criaria um par para conferir.
+    // Checklist: criar e reordenar pendem da tarefa (é ela que dá a lista);
+    // marcar, corrigir e remover pendem do item, que já sabe de quem é.
+    Route::post('tarefas/{tarefa}/itens', [TarefaController::class, 'criarItem'])
+        ->name('tarefas.itens.store')
+        ->middleware('permissao:tarefas');
+    Route::post('tarefas/{tarefa}/itens/ordenar', [TarefaController::class, 'ordenarItens'])
+        ->name('tarefas.itens.ordenar')
+        ->middleware('permissao:tarefas');
+    Route::put('tarefas/itens/{item}', [TarefaController::class, 'atualizarItem'])
+        ->name('tarefas.itens.update')
+        ->middleware('permissao:tarefas');
+    Route::delete('tarefas/itens/{item}', [TarefaController::class, 'excluirItem'])
+        ->name('tarefas.itens.destroy')
+        ->middleware('permissao:tarefas');
+
     Route::put('tarefas/comentarios/{comentario}', [TarefaController::class, 'editarComentario'])
         ->name('tarefas.comentarios.update')
         ->middleware('permissao:tarefas');

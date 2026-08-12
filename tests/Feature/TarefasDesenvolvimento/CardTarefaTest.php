@@ -185,35 +185,47 @@ class CardTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-093 Tarefa parada há muito tempo em outra etapa (fora de
-     * Aberta e Em testes) nunca recebe esse destaque.
+     * @spec:AC-193 O envelhecimento vale em todas as etapas de trabalho, cada uma com a
+     * sua régua — e o Backlog fica de fora, porque lá ficar parada é o que a tarefa deve
+     * fazer. Em andamento aguenta 72h antes de acender: três dias escrevendo código é
+     * trabalho, três dias esperando alguém testar é fila.
      */
-    public function test_tarefa_parada_muito_tempo_em_outra_etapa_nunca_recebe_destaque(): void
+    public function test_envelhecimento_tem_regua_propria_por_etapa_e_poupa_o_backlog(): void
     {
         $usuario = User::factory()->create();
         $criador = User::factory()->create();
 
-        Carbon::setTestNow(Carbon::parse('2026-08-01 10:00:00'));
-        Tarefa::factory()->create([
-            'criado_por_id' => $criador->id,
-            'status' => 'em_desenvolvimento',
-        ]);
+        // 48h em Em andamento ainda é trabalho: abaixo das 72h, nada acende.
+        Carbon::setTestNow(Carbon::parse('2026-08-08 10:00:00'));
+        Tarefa::factory()->create(['criado_por_id' => $criador->id, 'status' => 'em_desenvolvimento']);
 
         Carbon::setTestNow(Carbon::parse('2026-08-10 10:00:00'));
-        $resposta = $this->actingAs($usuario)->get(route('tarefas.index'));
+        $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()
+            ->assertDontSee('data-esquecida', false);
 
-        $resposta->assertOk();
-        $resposta->assertDontSee('data-esquecida', false);
+        // Passando das 72h, acende — o que a régua fixa de antes nunca via.
+        Carbon::setTestNow(Carbon::parse('2026-08-11 12:00:00'));
+        $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()
+            ->assertSee('data-esquecida="atencao"', false);
+
+        // O Backlog é fila: ficar parada lá é o que a tarefa deve fazer.
+        Tarefa::query()->update(['status' => 'backlog']);
+
+        Carbon::setTestNow(Carbon::parse('2026-09-30 10:00:00'));
+        $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()
+            ->assertDontSee('data-esquecida', false);
     }
 
     /**
-     * @spec:AC-126 Os quatro níveis de prioridade têm cada um a sua cor: nenhum par
-     * compartilha tom, e a escala sobe do mais discreto (Baixa) ao mais grave (Crítica).
+     * @spec:AC-126 Cada prioridade tem a sua cor: nenhum par compartilha tom, e a
+     * escala sobe do mais discreto (Baixa) ao mais grave (Crítica).
      *
      * Antes de existir a Crítica, `baixa` e `media` dividiam o tom neutro — dois
      * dos quatro níveis eram indistinguíveis no quadro e a escala perdia o meio.
+     * Com "A definir" (AC-194) são cinco, e Alta desceu para o âmbar mais quente
+     * para não dividir tom com ela: um é gravidade, o outro é triagem que falta.
      */
-    public function test_as_quatro_prioridades_tem_cores_distintas(): void
+    public function test_cada_prioridade_tem_cor_distinta(): void
     {
         $usuario = User::factory()->create();
         $criador = User::factory()->create();
@@ -239,7 +251,7 @@ class CardTarefaTest extends TestCase
             $tokens[$chave] = $m[1] ?? 'sem-token';
         }
 
-        $this->assertCount(4, array_unique($tokens),
+        $this->assertCount(count(Tarefa::PRIORIDADES), array_unique($tokens),
             'Cada prioridade precisa de um tom próprio — tons repetidos: '.json_encode($tokens, JSON_UNESCAPED_UNICODE));
     }
 
@@ -303,5 +315,35 @@ class CardTarefaTest extends TestCase
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
         $this->assertStringContainsString('Joana Dev', $html);
         $this->assertStringNotContainsString('Sem responsável', $html);
+    }
+
+    /**
+     * @spec:AC-202 O responsável virou avatar no rodapé, com a inicial e o nome inteiro
+     * no `title`: o nome dele e o do sistema disputavam a mesma linha e os dois saíam
+     * truncados. Sem responsável o círculo é tracejado E a frase continua dita (AC-130)
+     * — contorno vazio é símbolo, e a fila de triagem não pode depender de quem já
+     * aprendeu o símbolo.
+     */
+    public function test_o_rodape_traz_o_avatar_do_responsavel_e_o_chevron_de_mover(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+        $dona = User::factory()->create(['name' => 'Joana Ribeiro Dev']);
+
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'em_desenvolvimento',
+            'responsavel_id' => $dona->id, 'titulo' => 'Com dona',
+        ]);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // Duas iniciais, não a lista inteira de nomes.
+        $this->assertMatchesRegularExpression('/title="Joana Ribeiro Dev">\s*JR\s*</u', $html);
+
+        // E o Mover deixou de gastar uma linha de texto no card. A busca é por
+        // BOTÃO com esse rótulo: a expressão ainda aparece em comentários do
+        // script do quadro, que não são o que se lê na tela.
+        $this->assertStringContainsString('aria-label="Mover tarefa"', $html);
+        $this->assertDoesNotMatchRegularExpression('/<button[^>]*>\s*Mover ▾/u', $html);
     }
 }

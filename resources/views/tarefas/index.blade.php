@@ -108,12 +108,40 @@
                                 <span class="h-[7px] w-[7px] shrink-0 rounded-full"
                                       style="background: rgb(var(--{{ $etapa['cor'] }}))"></span>
                                 <h3 class="min-w-0 truncate font-display text-[14px] font-semibold text-ink">{{ $etapa['label'] }}</h3>
+
+                                {{--
+                                    O contador vira "4/3" onde há limite de WIP,
+                                    e tinge de âmbar ao estourar. O numerador é
+                                    o que ANDA: a tarefa travada não ocupa vaga,
+                                    porque o limite existe para conter trabalho
+                                    começado em paralelo, e tarefa parada não
+                                    está sendo tocada por ninguém.
+                                --}}
+                                @php
+                                    $corDoContador = $etapa['acimaDoLimite'] ? 'warn' : $etapa['cor'];
+                                @endphp
                                 <span class="ml-auto shrink-0 h-5 min-w-[20px] px-1.5 rounded-full font-mono text-[10px] font-semibold leading-5 text-center"
-                                      style="background: rgb(var(--{{ $etapa['cor'] }}) / var(--tint-alpha)); color: rgb(var(--{{ $etapa['cor'] }}))">
-                                    {{ $etapa['quantidade'] }}
+                                      style="background: rgb(var(--{{ $corDoContador }}) / var(--tint-alpha)); color: rgb(var(--{{ $corDoContador }}))"
+                                      @if ($etapa['acimaDoLimite']) title="Acima do limite de {{ $etapa['limite'] }} tarefas em curso nesta etapa" @endif>
+                                    @if ($etapa['limite'])
+                                        {{ $etapa['andando'] }}/{{ $etapa['limite'] }}
+                                    @else
+                                        {{ $etapa['quantidade'] }}
+                                    @endif
                                 </span>
                             </div>
 
+                            {{-- Duas notícias que só aparecem quando existem:
+                                 nenhuma coluna ganha uma linha vazia para ler. --}}
+                            @if ($etapa['acimaDoLimite'])
+                                <p class="mt-1 font-mono text-[10px] uppercase tracking-caps" style="color: rgb(var(--warn))">
+                                    acima do limite
+                                </p>
+                            @elseif ($etapa['aguardandoTriagem'] > 0)
+                                <p class="mt-1 font-mono text-[10px] uppercase tracking-caps" style="color: rgb(var(--warn))">
+                                    {{ $etapa['aguardandoTriagem'] }} aguardando triagem
+                                </p>
+                            @endif
                         </header>
 
                         <div class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 space-y-2">
@@ -304,6 +332,57 @@
     --}}
     <script>
         document.addEventListener('alpine:init', () => {
+            /**
+             * O checklist de uma tarefa: arrastar para reordenar.
+             *
+             * Mora aqui, e não num `x-data` no HTML, porque o atributo é
+             * delimitado por aspas duplas — qualquer aspa dupla dentro dele,
+             * até num comentário de código, o fecha no meio e entrega
+             * JavaScript truncado ao Alpine. A lista continua aparecendo, e
+             * nada nela responde.
+             */
+            Alpine.data('checklist', (tarefaId) => ({
+                arrastando: null,
+
+                soltarSobre(alvo) {
+                    if (! this.arrastando || this.arrastando === alvo) {
+                        return;
+                    }
+
+                    const lista = this.$refs.lista;
+                    const linhas = [...lista.children];
+                    const destino = linhas.indexOf(alvo);
+                    const origem = linhas.indexOf(this.arrastando);
+
+                    lista.insertBefore(this.arrastando, origem < destino ? alvo.nextSibling : alvo);
+                    this.salvarOrdem();
+                },
+
+                /**
+                 * A ordem vai INTEIRA, lida do DOM depois do arrasto.
+                 *
+                 * Mandar só "o item X foi para a posição N" obrigaria o
+                 * servidor a recalcular o resto — e a divergir do que está na
+                 * tela assim que dois arrastos chegassem fora de ordem.
+                 */
+                salvarOrdem() {
+                    const envio = document.getElementById('ordenar-checklist-' + tarefaId);
+
+                    envio.querySelectorAll('input[data-ordem]').forEach((campo) => campo.remove());
+
+                    [...this.$refs.lista.children].forEach((linha) => {
+                        const campo = document.createElement('input');
+                        campo.type = 'hidden';
+                        campo.name = 'ordem[]';
+                        campo.dataset.ordem = '1';
+                        campo.value = linha.dataset.item;
+                        envio.appendChild(campo);
+                    });
+
+                    envio.requestSubmit();
+                },
+            }));
+
             Alpine.data('quadroTarefas', () => ({
                 arrastando: null,
                 sobre: null,
@@ -497,6 +576,7 @@
     @foreach ($tarefas as $tarefa)
         <x-modal name="editar-tarefa-{{ $tarefa->id }}" maxWidth="lg">
             @include('tarefas._form', ['tarefa' => $tarefa, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
+            @include('tarefas._checklist-envios', ['tarefa' => $tarefa])
             @include('tarefas._comentarios-envios', ['tarefa' => $tarefa])
         </x-modal>
     @endforeach

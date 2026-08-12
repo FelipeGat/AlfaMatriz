@@ -66,11 +66,65 @@ class Tarefa extends Model
 
     public const STATUS_TERMINAIS = ['concluida', 'cancelada'];
 
+    /**
+     * Quantas tarefas ANDANDO cabem numa etapa antes de o quadro reclamar.
+     *
+     * Só as etapas de trabalho têm limite. Fila não tem WIP: encher o Backlog
+     * não atrapalha ninguém, e um alarme ali só ensinaria a ignorar o alarme.
+     */
+    public const LIMITE_DE_WIP = [
+        'em_desenvolvimento' => 3,
+        'em_testes' => 3,
+    ];
+
+    /**
+     * A partir de quantas horas parada numa etapa a tarefa vira aviso.
+     *
+     * Cada etapa tem a sua régua porque o que é normal em uma é sintoma na
+     * outra: três dias escrevendo código é trabalho, três dias esperando alguém
+     * testar é fila. O AC-093 media só Aberta e Em testes — mas a tarefa que
+     * mais apodrece é a de Em andamento parada há dias, e ela não era medida.
+     *
+     * Backlog fica de fora: lá a tarefa está esperando a vez, e ficar parada é
+     * o que ela deve fazer.
+     */
+    public const HORAS_ATE_ENVELHECER = [
+        'aberta' => 24,
+        'em_desenvolvimento' => 72,
+        'em_testes' => 24,
+        'ajustes_necessarios' => 48,
+    ];
+
+    /**
+     * A escala de gravidade, do mais discreto ao mais grave — e, no fim, a
+     * ausência de decisão.
+     *
+     * "A definir" não é um grau da escala: é a tarefa que ainda não foi
+     * triada. Ela existe para que quem abre uma tarefa sem poder priorizá-la
+     * não empurre o cadastro para "Média" por omissão, transformando o padrão
+     * numa afirmação que ninguém fez.
+     */
     public const PRIORIDADES = [
         'baixa' => 'Baixa',
         'media' => 'Média',
         'alta' => 'Alta',
         'critica' => 'Crítica',
+        'nao_definida' => 'A definir',
+    ];
+
+    /**
+     * O tom do selo de cada prioridade, num lugar só.
+     *
+     * Vivia duplicado no card e no histórico, e a escala já tinha errado uma
+     * vez por isso — dois níveis no mesmo neutro, indistinguíveis. Uma escala
+     * copiada é uma escala que vai divergir.
+     */
+    public const TOM_DA_PRIORIDADE = [
+        'baixa' => 'neutro',
+        'media' => 'marca',
+        'alta' => 'ambar',
+        'critica' => 'critico',
+        'nao_definida' => 'atencao',
     ];
 
     protected $fillable = [
@@ -208,5 +262,37 @@ class Tarefa extends Model
     public function relatoriosTeste(): HasMany
     {
         return $this->hasMany(TarefaRelatorioTeste::class);
+    }
+
+    /**
+     * O checklist da tarefa, na ordem escolhida por quem escreveu.
+     *
+     * A ordem vive na relação, e não em cada tela, pelo mesmo motivo dos
+     * comentários: uma lista de conferência fora de ordem não é uma lista
+     * bagunçada — é um passo antes do passo que o habilita.
+     */
+    public function itens(): HasMany
+    {
+        return $this->hasMany(TarefaItem::class)->orderBy('ordem')->orderBy('id');
+    }
+
+    /**
+     * O progresso do checklist, ou null quando não há checklist.
+     *
+     * Devolve null em vez de "0 de 0" porque tarefa sem checklist não está com
+     * o checklist zerado — ela não tem um, e o card não deve anunciar um vazio
+     * como se fosse pendência.
+     *
+     * @return array{feitos: int, total: int}|null
+     */
+    public function progressoDoChecklist(): ?array
+    {
+        $total = $this->itens->count();
+
+        if ($total === 0) {
+            return null;
+        }
+
+        return ['feitos' => $this->itens->where('feito', true)->count(), 'total' => $total];
     }
 }

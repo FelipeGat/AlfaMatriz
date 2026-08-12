@@ -12,14 +12,21 @@
     // dizer a mesma coisa nas duas telas.
     $tempoNaEtapa = \App\Models\Tarefa::duracaoCurta((int) $segundosNaEtapa);
 
-    // AC-093: só Aberta e Em testes ganham destaque de tarefa esquecida.
-    $etapasComDestaqueDeEsquecida = ['aberta', 'em_testes'];
+    // O envelhecimento passou a valer em TODAS as etapas de trabalho, cada uma
+    // com a sua régua (AC-193). Antes só Aberta e Em testes acendiam, com 24h
+    // fixas para as duas — mas três dias escrevendo código é trabalho, enquanto
+    // três dias esperando alguém testar é fila, e a tarefa que mais apodrece,
+    // a de Em andamento parada há dias, não era medida por ninguém.
+    //
+    // O aviso dobra de peso no dobro do prazo, como já fazia: o primeiro nível
+    // chama atenção, o segundo diz que passou da hora.
+    $limiar = \App\Models\Tarefa::HORAS_ATE_ENVELHECER[$tarefa->status] ?? null;
     $nivelEsquecida = null;
-    if (in_array($tarefa->status, $etapasComDestaqueDeEsquecida, true)) {
+    if ($limiar !== null) {
         $horasNaEtapa = $segundosNaEtapa / 3600;
         $nivelEsquecida = match (true) {
-            $horasNaEtapa >= 48 => 'critico',
-            $horasNaEtapa >= 24 => 'atencao',
+            $horasNaEtapa >= $limiar * 2 => 'critico',
+            $horasNaEtapa >= $limiar => 'atencao',
             default => null,
         };
     }
@@ -39,12 +46,11 @@
     // Um tom por nível, sem repetir: com `baixa` e `media` no mesmo neutro,
     // dois dos quatro níveis ficavam indistinguíveis e a escala perdia o
     // meio. A ordem sobe do mais discreto ao mais grave (AC-126).
-    $tomPrioridade = [
-        'baixa' => 'neutro',
-        'media' => 'marca',
-        'alta' => 'atencao',
-        'critica' => 'critico',
-    ][$tarefa->prioridade] ?? 'neutro';
+    //
+    // "A definir" fica fora da escala e no âmbar de alerta: ela não é um grau
+    // de gravidade, é a triagem que ainda não aconteceu. Alta desceu para o
+    // âmbar mais quente para os dois não se confundirem.
+    $tomPrioridade = \App\Models\Tarefa::TOM_DA_PRIORIDADE[$tarefa->prioridade] ?? 'neutro';
 @endphp
 
 <article data-tarefa="{{ $tarefa->id }}"
@@ -77,17 +83,6 @@
         <p class="mt-1 text-[12px] leading-snug text-ink-mute truncate"
            title="{{ $tarefa->resumo }}">{{ $tarefa->resumo }}</p>
     @endif
-
-    {{--
-        A linha de metadados tem SEMPRE os dois segmentos. Antes, tarefa sem
-        responsável simplesmente omitia o nome, e a falta era lida por
-        comparação com os cards vizinhos — logo na coluna Aberta, que é a fila
-        que pede triagem (AC-130). Dito em texto e sem cor de alarme: a borda
-        do card já é o canal do aviso de esquecida.
-    --}}
-    <p class="mt-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">
-        {{ $tarefa->sistema?->nome ?? 'Sem sistema' }} · {{ $tarefa->responsavel?->name ?? 'Sem responsável' }}
-    </p>
 
     {{--
         A tarja de bloqueio.
@@ -134,23 +129,94 @@
         </div>
     @endif
 
+    {{--
+        O rodapé: quem, onde, há quanto tempo — e o que a tarefa ainda deve.
+
+        O responsável virou avatar porque o nome dele e o nome do sistema
+        disputavam a mesma linha, e os dois saíam truncados. A inicial num
+        círculo identifica quem já se conhece sem gastar largura; o nome inteiro
+        continua no `title`, para quem não reconhece a inicial.
+
+        Sem responsável, o círculo é TRACEJADO e o card diz a frase (AC-130):
+        um contorno vazio é símbolo, e símbolo se aprende — a fila de triagem
+        não pode depender de quem já aprendeu. Como é a exceção, dizer custa
+        largura só nos cards que precisam.
+    --}}
     <div class="mt-2 pt-2 border-t border-rule flex items-center gap-2">
+        @php $responsavel = $tarefa->responsavel; @endphp
+
+        @if ($responsavel)
+            <span class="shrink-0 h-[18px] w-[18px] rounded-full flex items-center justify-center
+                         font-mono text-[9px] font-semibold uppercase"
+                  style="background: rgb(var(--brand) / var(--tint-alpha)); color: rgb(var(--brand-text))"
+                  title="{{ $responsavel->name }}">
+                {{ \Illuminate\Support\Str::of($responsavel->name)->squish()->explode(' ')
+                    ->take(2)->map(fn ($parte) => mb_substr($parte, 0, 1))->implode('') }}
+            </span>
+        @else
+            <span class="shrink-0 h-[18px] w-[18px] rounded-full border border-dashed"
+                  style="border-color: rgb(var(--ink-faint))" aria-hidden="true"></span>
+        @endif
+
+        {{--
+            Quebra em duas linhas em vez de truncar: com responsável, aqui só
+            cabe o nome do sistema e nada quebra — mas na tarefa sem dono a
+            frase e o sistema dividem a linha, e truncando some justamente o
+            sistema, que é a informação que sobrou.
+        --}}
+        <span class="min-w-0 line-clamp-2 leading-tight font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+            @if (! $responsavel) Sem responsável · @endif{{ $tarefa->sistema?->nome ?? 'Sem sistema' }}
+        </span>
+
+        <span class="ml-auto"></span>
+
         <x-badge :tom="$tomEsquecida ? $nivelEsquecida : 'neutro'"
                  :title="'Na etapa há '.$tempoNaEtapa">
             {{ $tempoNaEtapa }}
         </x-badge>
 
+        {{-- O progresso do checklist, quando existe checklist. É a única
+             pendência do card que não é uma data: diz quanto FALTA, e não há
+             quanto tempo está parado. --}}
+        @if ($progresso = $tarefa->progressoDoChecklist())
+            <x-badge :tom="$progresso['feitos'] === $progresso['total'] ? 'bom' : 'neutro'"
+                     :title="$progresso['feitos'].' de '.$progresso['total'].' itens do checklist concluídos'">
+                ✓ {{ $progresso['feitos'] }}/{{ $progresso['total'] }}
+            </x-badge>
+        @endif
+
         {{--
             O selo de comentários só aparece quando há algum: é o único aviso
             de que existe conversa dentro do card — sem ele, o detalhe que
             alguém escreveu ontem ficaria escondido atrás de um clique que
-            ninguém tem motivo para dar. Card sem comentário não ganha um
-            "0" para ler.
+            ninguém tem motivo para dar. Card sem comentário não ganha um "0"
+            para ler.
+
+            Só o número, com a palavra no `title`: escrito por extenso, ele
+            empurrava o resto do rodapé para fora em card estreito, e "3" ao
+            lado de um balão já é a frase inteira.
         --}}
         @if (($totalComentarios = $tarefa->comentarios->count()) > 0)
-            <x-badge :title="$totalComentarios.' comentário(s) nesta tarefa'">
-                {{ $totalComentarios }} {{ $totalComentarios === 1 ? 'comentário' : 'comentários' }}
+            <x-badge :title="$totalComentarios === 1 ? '1 comentário nesta tarefa' : $totalComentarios.' comentários nesta tarefa'">
+                ✎ {{ $totalComentarios }}
             </x-badge>
+        @endif
+
+        {{--
+            O Mover virou chevron. Como texto, ele ocupava uma linha inteira do
+            card e comia a largura do nome do sistema — três palavras gastas
+            para abrir um menu que quase sempre fica fechado.
+        --}}
+        @if (! empty($transicoes ?? []))
+            <button type="button" @click.stop="menuAberto = ! menuAberto"
+                    title="Mover tarefa" aria-label="Mover tarefa"
+                    class="shrink-0 h-5 w-5 rounded-control flex items-center justify-center
+                           text-ink-faint hover:text-brand transition"
+                    :class="menuAberto && 'text-brand'">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-3 w-3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+            </button>
         @endif
     </div>
 

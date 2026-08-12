@@ -15,14 +15,15 @@
         silêncio, porque a rota continua respondendo. É a mesma escolha de
         `clientes/_form.blade.php`.
     --}}
-    <div class="mt-2 pt-2 border-t border-rule" @click.stop
+    {{--
+        Só os formulários: o gatilho virou o chevron do rodapé do card
+        (`_card.blade.php`), que abre e fecha o mesmo `menuAberto`. Como texto,
+        ele gastava uma linha inteira do card para abrir um menu que quase
+        sempre fica fechado.
+    --}}
+    <div x-show="menuAberto" x-cloak class="mt-2 pt-2 border-t border-rule" @click.stop
          x-data="{ transicoesDoCard: {{ Illuminate\Support\Js::from($transicoes) }} }">
-        <button type="button" @click="menuAberto = ! menuAberto"
-                class="font-mono text-[10.5px] uppercase tracking-caps text-ink-mute hover:text-brand transition">
-            Mover ▾
-        </button>
-
-        <form x-show="menuAberto" x-cloak method="POST"
+        <form method="POST"
               action="{{ route('tarefas.mover', $tarefa) }}" class="mt-2 space-y-2">
             @csrf
             {{--
@@ -84,7 +85,7 @@
             botão da tarja, que fica ao lado do motivo que deixou de valer.
         --}}
         @if (! $tarefa->estaBloqueada())
-            <form x-show="menuAberto" x-cloak method="POST"
+            <form method="POST"
                   action="{{ route('tarefas.bloquear', $tarefa) }}" class="mt-2 pt-2 border-t border-rule space-y-2">
                 @csrf
                 <textarea name="motivo" rows="2" required placeholder="Bloquear: esperando quem, e o quê…"

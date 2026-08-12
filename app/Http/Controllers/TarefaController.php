@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Sistema;
 use App\Models\Tarefa;
 use App\Models\TarefaComentario;
+use App\Models\TarefaItem;
 use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use App\Services\FluxoTarefaService;
@@ -33,7 +34,7 @@ class TarefaController extends Controller
         // tarefa para o chip de tempo — sem isso é uma consulta por card.
         // `comentarios.autor` pelo mesmo motivo: o quadro já monta o modal de
         // cada card, e a conversa inteira é impressa dentro dele.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor'])
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens'])
             ->whereIn('status', $emCurso->keys())
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('created_at')
@@ -46,12 +47,29 @@ class TarefaController extends Controller
         // A contagem da coluna é a do RECORTE, não a do quadro inteiro: com
         // filtro ligado, um selo dizendo 12 sobre três cards visíveis mediria
         // outra coisa que não o que está na tela.
-        $etapas = $emCurso->map(fn ($label, $status) => [
-            'chave' => $status,
-            'label' => $label,
-            'cor' => $this->corDaEtapa($status),
-            'quantidade' => $colunas[$status]->count(),
-        ])->values()->all();
+        $etapas = $emCurso->map(function ($label, $status) use ($colunas) {
+            $daEtapa = $colunas[$status];
+
+            // O WIP conta só o que ANDA: vaga ocupada por tarefa travada não é
+            // trabalho em curso, e somá-la faria o limite acusar excesso
+            // justamente quando o time está impedido de produzir.
+            $andando = $daEtapa->reject->estaBloqueada()->count();
+            $limite = Tarefa::LIMITE_DE_WIP[$status] ?? null;
+
+            return [
+                'chave' => $status,
+                'label' => $label,
+                'cor' => $this->corDaEtapa($status),
+                'quantidade' => $daEtapa->count(),
+                'andando' => $andando,
+                'limite' => $limite,
+                'acimaDoLimite' => $limite !== null && $andando > $limite,
+                // Quantas ainda não foram triadas. A coluna Aberta é a fila de
+                // triagem, mas o número aparece onde houver: tarefa sem
+                // prioridade no meio do fluxo é a que ninguém vai priorizar.
+                'aguardandoTriagem' => $daEtapa->where('prioridade', 'nao_definida')->count(),
+            ];
+        })->values()->all();
 
         // Quantas tarefas o quadro teria sem filtro nenhum: é o denominador do
         // "X de Y" do cabeçalho, o aviso de que há trabalho fora do recorte.
@@ -286,6 +304,111 @@ class TarefaController extends Controller
             ->with('status', $tarefa->fresh()->estaBloqueada() ? 'Tarefa bloqueada.' : 'Tarefa destravada.');
     }
 
+    /** Acrescenta um item ao checklist, no fim da lista. */
+    public function criarItem(Request $request, Tarefa $tarefa)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $data = $request->validate(['texto' => 'required|string|max:255']);
+
+        $tarefa->itens()->create(['texto' => trim($data['texto'])]);
+
+        return $this->voltarParaATarefa($tarefa->id);
+    }
+
+    /**
+     * Marca, desmarca ou corrige o texto de um item.
+     *
+     * Uma rota para as duas coisas porque, no checklist, elas são o mesmo
+     * gesto de "mexer neste item" — e separá-las criaria duas rotas que fazem
+     * `update` na mesma linha, com a mesma autorização e o mesmo retorno.
+     *
+     * Diferente do comentário, o item NÃO é do autor: checklist é combinado do
+     * time, e quem confere um passo raramente é quem o escreveu.
+     */
+    public function atualizarItem(Request $request, TarefaItem $item)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $data = $request->validate([
+            'texto' => 'nullable|string|max:255',
+            'feito' => 'nullable|boolean',
+        ]);
+
+        $mudancas = [];
+
+        // Texto em branco não apaga o item: quem quis remover tem o botão de
+        // remover, e um item sem texto seria uma linha que ninguém sabe ler.
+        if (filled($data['texto'] ?? null)) {
+            $mudancas['texto'] = trim($data['texto']);
+        }
+
+        if ($request->has('feito')) {
+            $mudancas['feito'] = $request->boolean('feito');
+        }
+
+        if ($mudancas !== []) {
+            $item->update($mudancas);
+        }
+
+        return $this->voltarParaATarefa($item->tarefa_id);
+    }
+
+    public function excluirItem(TarefaItem $item)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $tarefaId = $item->tarefa_id;
+
+        $item->delete();
+
+        return $this->voltarParaATarefa($tarefaId);
+    }
+
+    /**
+     * Regrava a ordem do checklist a partir da sequência recebida.
+     *
+     * A ordem chega inteira, e não como "mova o item X para a posição N":
+     * arrastar reordena a lista toda na tela, e mandar só o movimento obrigaria
+     * o servidor a recalcular o que o navegador já sabe — divergindo na
+     * primeira vez que dois arrastos chegassem fora de ordem.
+     *
+     * `whereIn` amarrado à tarefa: sem isso, um id de outra tarefa na lista
+     * reordenaria checklist alheio.
+     */
+    public function ordenarItens(Request $request, Tarefa $tarefa)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $data = $request->validate([
+            'ordem' => 'required|array',
+            'ordem.*' => 'integer',
+        ]);
+
+        $daTarefa = $tarefa->itens()->pluck('id')->all();
+
+        foreach ($data['ordem'] as $posicao => $id) {
+            if (in_array((int) $id, $daTarefa, true)) {
+                TarefaItem::where('id', $id)->update(['ordem' => $posicao + 1]);
+            }
+        }
+
+        return $this->voltarParaATarefa($tarefa->id);
+    }
+
+    /**
+     * Volta para a tela de onde veio, com a tarefa reaberta.
+     *
+     * Todo mexer no checklist acontece dentro do modal da tarefa, e voltar sem
+     * o `tarefa-aberta` fecharia o modal a cada item marcado — a lista de
+     * conferência viraria uma sequência de reaberturas.
+     */
+    private function voltarParaATarefa(int $tarefaId)
+    {
+        return redirect()->back(fallback: route('tarefas.index'))
+            ->with('tarefa-aberta', $tarefaId);
+    }
+
     /**
      * Corrige um comentário — só o próprio, e a correção fica dita.
      *
@@ -358,7 +481,7 @@ class TarefaController extends Controller
         //
         // `withQueryString` porque a busca só serve se sobreviver ao clique em
         // "próxima": sem isso, a página 2 volta a ser o histórico inteiro.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor'])
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens'])
             ->whereIn('status', $filtros['desfecho'] !== '' ? [$filtros['desfecho']] : Tarefa::STATUS_TERMINAIS)
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('updated_at')
@@ -489,7 +612,11 @@ class TarefaController extends Controller
      */
     private function ordenarColuna($tarefas)
     {
-        $gravidade = array_flip(['critica', 'alta', 'media', 'baixa']);
+        // "A definir" fecha a lista: ela não é o grau mais baixo da escala, é a
+        // decisão que ainda não foi tomada — e colocá-la no topo faria a tarefa
+        // que ninguém classificou passar na frente da que alguém chamou de
+        // crítica. Quem procura o que triar tem o contador no cabeçalho.
+        $gravidade = array_flip(['critica', 'alta', 'media', 'baixa', 'nao_definida']);
 
         // Chave composta em vez de `sortBy([closure, closure])`: essa forma
         // NÃO ordena por múltiplas chaves — ela considera só a última, e a
