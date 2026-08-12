@@ -212,6 +212,43 @@ class ScriptProvisionarTest extends TestCase
     }
 
     /**
+     * @spec:AC-014 A linha antiga do agendador é removida ANTES de a nova ser
+     * acrescentada — na ordem inversa, o servidor fica sem agendador nenhum.
+     *
+     * Foi o que aconteceu ao converter o staging: a checagem de "já existe"
+     * procurava `alfamatriz.*schedule:run`, padrão que casa com a linha antiga
+     * também. Ela impedia a inclusão da nova, e a remoção logo em seguida
+     * levava a antiga junto. O crontab ficou só com o backup, sem nada acusar
+     * — o fechamento mensal de competência simplesmente pararia de rodar.
+     */
+    public function test_a_troca_do_cron_do_agendador_nao_deixa_o_servidor_sem_agendador(): void
+    {
+        $this->rodar();
+
+        $chamadas = implode("\n", $this->lerChamadas());
+
+        $posRemocao = strpos($chamadas, "grep -v 'cd /var/www/alfamatriz && php artisan schedule:run'");
+        $posInclusao = strpos($chamadas, 'cd /var/www/alfamatriz/atual && php artisan schedule:run');
+
+        $this->assertNotFalse($posRemocao, 'A linha antiga precisa ser removida.');
+        $this->assertNotFalse($posInclusao, 'A linha nova precisa ser acrescentada.');
+        $this->assertLessThan(
+            $posInclusao,
+            $posRemocao,
+            'Remover depois de incluir apaga as duas: o servidor fica sem agendador.'
+        );
+
+        // E a checagem de "já existe" tem de olhar o caminho NOVO. Um padrão
+        // que casa com as duas formas não distingue "já está certo" de "está
+        // errado" — foi exatamente esse o defeito.
+        $this->assertStringNotContainsString(
+            "grep -q 'alfamatriz.*schedule:run'",
+            file_get_contents(base_path('deploy/provisionar.sh')),
+            'Padrão que casa com a linha antiga e com a nova impede a correção de acontecer.'
+        );
+    }
+
+    /**
      * @spec:AC-174 A conversão roda ANTES de a configuração do Nginx ser
      * trocada, e a ordem é o que separa uma conversão invisível de meio minuto
      * de site fora do ar.

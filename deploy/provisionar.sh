@@ -329,16 +329,33 @@ no_container "test -f /usr/local/bin/alfamatriz-backup.sh && \
 # `cd $APP_DIR/atual` e não `$APP_DIR`: com azul/verde a aplicação vive na
 # versão publicada, e a raiz é só o clone de controle — que não tem vendor e
 # faria o agendador falhar a cada minuto. O symlink é o endereço estável.
+#
+# ORDEM: remover a linha antiga PRIMEIRO, acrescentar a nova DEPOIS.
+#
+# Ao contrário, o servidor fica sem agendador nenhum, e sem nada acusar: a
+# checagem de "já existe" casava com a linha antiga (as duas contêm
+# "alfamatriz" e "schedule:run"), então a nova não era acrescentada — e em
+# seguida a antiga era removida. Aconteceu na conversão do staging, e só
+# apareceu porque a verificação lia o crontab depois. O fechamento mensal de
+# competência e o retrato horário dos sistemas integrados teriam simplesmente
+# parado de rodar.
 info "agendando o executor de tarefas do Laravel (schedule:run)"
-no_container "(crontab -l 2>/dev/null | grep -q 'alfamatriz.*schedule:run' || \
-    (crontab -l 2>/dev/null; echo '* * * * * cd $APP_DIR/atual && php artisan schedule:run >> /var/log/alfamatriz-schedule.log 2>&1') | crontab -)"
 
-# O cron antigo apontava para a raiz. Deixá-lo para trás não dá erro visível:
-# ele simplesmente falha a cada minuto num log que ninguém abre, e o
-# fechamento de competência para de rodar.
+# A linha antiga apontava para a raiz da instalação, que com azul/verde não
+# tem mais a aplicação.
 no_container "crontab -l 2>/dev/null | grep -q 'cd $APP_DIR && php artisan schedule:run' && \
     (crontab -l 2>/dev/null | grep -v 'cd $APP_DIR && php artisan schedule:run' | crontab -) && \
     echo '    linha antiga do agendador (apontava para a raiz) removida' || true"
+
+# A busca é pelo caminho NOVO, não por "alfamatriz.*schedule:run": um padrão
+# que casa com as duas formas não distingue "já está certo" de "está errado".
+no_container "(crontab -l 2>/dev/null | grep -qF 'cd $APP_DIR/atual && php artisan schedule:run' || \
+    (crontab -l 2>/dev/null; echo '* * * * * cd $APP_DIR/atual && php artisan schedule:run >> /var/log/alfamatriz-schedule.log 2>&1') | crontab -)"
+
+# Conferência, e não confiança: um agendador ausente não dá erro visível — ele
+# só deixa de rodar, num log que ninguém abre.
+no_container "crontab -l 2>/dev/null | grep -qF 'schedule:run' && echo '    agendador no cron: ok' || \
+    echo '    AVISO: o agendador NÃO ficou no cron — o fechamento de competência não vai rodar.'"
 
 info "provisionamento de $AMBIENTE concluído (LXC $VMID em $IP)"
 echo
