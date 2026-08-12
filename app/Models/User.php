@@ -97,4 +97,60 @@ class User extends Authenticatable
             })
             ->exists();
     }
+
+    /**
+     * A primeira tela que este usuário realmente alcança.
+     *
+     * O destino depois do login era fixo — o Centro de Controle —, e isso valia
+     * enquanto todo perfil o enxergava. Perfis estreitos (quem só trabalha no
+     * quadro de tarefas, a revenda) passavam a receber **403 logo depois de
+     * entrar**: a senha certa levando a uma parede se lê como conta quebrada, e
+     * não como tela que não é sua.
+     *
+     * Mora aqui porque a pergunta é feita em dois lugares — o login e o desvio
+     * de quem já está autenticado. Em listas separadas, elas divergiriam.
+     *
+     * A ordem é a de "casa": o Centro de Controle para quem o tem, e depois as
+     * telas que costumam ser o dia inteiro de quem só tem uma. Sem nenhuma,
+     * cai no perfil, que toda conta enxerga.
+     */
+    public function telaInicial(): string
+    {
+        // A chave é o RECURSO da permissão, não o nome da rota — o Centro de
+        // Controle é guardado por `permissao:dashboard`, e usar o nome da tela
+        // aqui faria a checagem falhar em silêncio para todo mundo, mandando
+        // até o administrador para a segunda opção da lista.
+        $telas = [
+            'dashboard' => 'centro-controle',
+            'tarefas' => 'tarefas.index',
+            'clientes' => 'clientes.index',
+            'revendas' => 'revendas.index',
+        ];
+
+        foreach ($telas as $recurso => $rota) {
+            if ($this->canPermissao($recurso, 'ler')) {
+                return route($rota, absolute: false);
+            }
+        }
+
+        return route('profile.edit', absolute: false);
+    }
+
+    /**
+     * Pode organizar o trabalho dos outros no quadro de tarefas?
+     *
+     * Triagem é decidir a prioridade e escolher quem faz — e, por consequência,
+     * mexer no trabalho que está com outra pessoa. Quem não tem a capacidade
+     * continua abrindo, comentando, bloqueando e tocando as próprias tarefas:
+     * a regra é sobre organizar, não sobre trabalhar.
+     *
+     * Método nomeado, e não um `canPermissao` espalhado pelas telas, porque
+     * esta pergunta aparece em seis lugares — formulário, card, arraste, menu,
+     * cadastro e movimento — e um deles esquecido é uma tela dizendo que pode
+     * o que a rota vai recusar.
+     */
+    public function podeTriarTarefas(): bool
+    {
+        return $this->canPermissao('tarefas_triagem', 'incluir');
+    }
 }

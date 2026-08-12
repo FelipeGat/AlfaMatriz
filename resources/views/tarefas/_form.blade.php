@@ -6,6 +6,12 @@
      * repete uma vez por card no quadro.
      */
     $sufixo = $tarefa?->id ?? 'nova';
+
+    // Prioridade e responsável são decisões de triagem. Para quem não a tem,
+    // eles não aparecem desabilitados — somem. Campo travado à vista é um
+    // convite recusado toda vez que se olha para ele, e a tela passaria a
+    // conversar sobre uma permissão em vez de sobre a tarefa.
+    $podeTriar = auth()->user()?->podeTriarTarefas() ?? false;
 @endphp
 
 {{--
@@ -71,31 +77,52 @@
             </select>
         </div>
 
-        <div>
-            <x-input-label for="responsavel_id-{{ $sufixo }}" value="Responsável" />
-            <select id="responsavel_id-{{ $sufixo }}" name="responsavel_id" class="mt-1 block w-full">
-                <option value="">—</option>
-                @foreach ($usuarios as $usuario)
-                    <option value="{{ $usuario->id }}"
-                            @selected(old('responsavel_id', $tarefa->responsavel_id ?? '') == $usuario->id)>
-                        {{ $usuario->name }}
-                    </option>
-                @endforeach
-            </select>
-        </div>
+        @if ($podeTriar)
+            <div>
+                <x-input-label for="responsavel_id-{{ $sufixo }}" value="Responsável" />
+                <select id="responsavel_id-{{ $sufixo }}" name="responsavel_id" class="mt-1 block w-full">
+                    <option value="">—</option>
+                    @foreach ($usuarios as $usuario)
+                        <option value="{{ $usuario->id }}"
+                                @selected(old('responsavel_id', $tarefa->responsavel_id ?? '') == $usuario->id)>
+                            {{ $usuario->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
 
-        <div>
-            <x-input-label for="prioridade-{{ $sufixo }}" value="Prioridade" />
-            <select id="prioridade-{{ $sufixo }}" name="prioridade" class="mt-1 block w-full">
-                @foreach (\App\Models\Tarefa::PRIORIDADES as $chave => $label)
-                    <option value="{{ $chave }}"
-                            @selected(old('prioridade', $tarefa->prioridade ?? 'media') === $chave)>
-                        {{ $label }}
-                    </option>
-                @endforeach
-            </select>
-        </div>
+            <div>
+                <x-input-label for="prioridade-{{ $sufixo }}" value="Prioridade" />
+                <select id="prioridade-{{ $sufixo }}" name="prioridade" class="mt-1 block w-full">
+                    @foreach (\App\Models\Tarefa::PRIORIDADES as $chave => $label)
+                        <option value="{{ $chave }}"
+                                @selected(old('prioridade', $tarefa->prioridade ?? 'media') === $chave)>
+                            {{ $label }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+        @endif
     </div>
+
+    {{--
+        A ausência dita UMA vez, e no lugar onde os campos estariam.
+
+        Sem esta linha, o formulário curto se lê como versão incompleta da tela
+        — e a pessoa procura o campo que "sumiu", ou pior, acha que a tarefa
+        dela nasce sem prioridade porque o sistema esqueceu. Dizer quem decide
+        também responde a quem pedir.
+    --}}
+    @unless ($podeTriar)
+        <p class="text-[11.5px] leading-snug text-ink-mute">
+            @if ($tarefa)
+                A prioridade e o responsável desta tarefa são definidos na triagem.
+            @else
+                A tarefa entra como <strong class="text-ink">A definir</strong> e sem responsável:
+                priorizar e direcionar são decisões da triagem.
+            @endif
+        </p>
+    @endunless
 
     {{--
         A conversa entra DENTRO do formulário, e o campo de comentário é mais

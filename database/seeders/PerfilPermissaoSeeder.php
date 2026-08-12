@@ -22,6 +22,13 @@ class PerfilPermissaoSeeder extends Seeder
             'leads' => 'Funil de vendas / leads',
             'faturamento' => 'Faturamento',
             'tarefas' => 'Tarefas de desenvolvimento',
+
+            // Triagem é CAPACIDADE, não cargo: decidir a prioridade de uma
+            // tarefa e escolher quem a faz. Recurso próprio porque quem
+            // trabalha no quadro não é necessariamente quem organiza o
+            // trabalho dos outros — e sem separar, as duas coisas viriam
+            // juntas por acidente, como vinham.
+            'tarefas_triagem' => 'Triagem de tarefas (priorizar e direcionar)',
         ];
 
         foreach ($recursos as $slug => $descricao) {
@@ -71,6 +78,20 @@ class PerfilPermissaoSeeder extends Seeder
                 $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => false, 'imprimir' => true, 'excluir' => false],
             ]);
         }
+
+        // Quem trabalha no quadro sem organizar o trabalho dos outros.
+        //
+        // O perfil existe para que "abrir e tocar tarefa" deixe de exigir a
+        // capacidade de priorizar e direcionar. Ele NÃO é uma versão reduzida
+        // do time: comentar, bloquear, mexer no checklist e mover as próprias
+        // tarefas seguem abertos, porque travar isso não impede ninguém de
+        // trabalhar em algo não pedido — impede de REGISTRAR, e aí o quadro
+        // passa a mentir sobre o que está acontecendo.
+        $membro = Perfil::updateOrCreate(['slug' => 'membro'], ['nome' => 'Membro do time']);
+
+        $membro->permissoes()->syncWithoutDetaching([
+            $todasPermissoes['tarefas'] => ['ler' => true, 'incluir' => true, 'imprimir' => true, 'excluir' => false],
+        ]);
 
         // A revenda entra no MESMO painel da Alfa, então o perfil dela precisa
         // ser curto de propósito: só revendas e clientes. Reusar `operacao`

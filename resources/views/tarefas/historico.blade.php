@@ -116,7 +116,11 @@
                             para guardar.
                         --}}
                         @php
-                            $reabrirPara = ['concluida' => 'em_desenvolvimento', 'cancelada' => 'aberta'][$tarefa->status] ?? null;
+                            // Reabrir é mover: quem não pode mover a tarefa
+                            // também não a tira do histórico (AC-205).
+                            $reabrirPara = $tarefa->motivoParaNaoMover(auth()->user())
+                                ? null
+                                : (['concluida' => 'em_desenvolvimento', 'cancelada' => 'aberta'][$tarefa->status] ?? null);
                         @endphp
 
                         @if ($reabrirPara)

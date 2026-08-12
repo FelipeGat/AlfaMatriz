@@ -97,7 +97,15 @@ class TarefaController extends Controller
             'tipo' => 'nullable|in:'.implode(',', array_keys(Tarefa::TIPOS)),
             'sistema_id' => 'nullable|exists:sistemas,id',
             'responsavel_id' => 'nullable|exists:users,id',
-            'prioridade' => 'required|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
+            // Obrigatória só para quem tem o campo. Para quem não triaga ele
+            // nem aparece no formulário (`_form.blade.php`), e exigi-lo aqui
+            // faria o salvar recusar com "prioridade é obrigatória" um campo
+            // que a pessoa não tem como preencher — a tela funcionaria e a
+            // rota diria não.
+            'prioridade' => [
+                auth()->user()?->podeTriarTarefas() ? 'required' : 'nullable',
+                'in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
+            ],
         ]);
 
         // O padrão é resolvido AQUI, e não só no modelo, por causa da linha
@@ -107,6 +115,8 @@ class TarefaController extends Controller
         $data['tipo'] ??= 'desenvolvimento';
         $data['criado_por_id'] = auth()->id();
 
+        $data = $this->semTriagemDeQuemNaoTriaga($data);
+
         // Mesma rede do comentário (AC-137): aqui o clique duplo custa mais
         // caro, porque a segunda tarefa não é uma linha repetida na conversa —
         // é um card a mais no quadro, que alguém vai ter de cancelar na mão.
@@ -115,6 +125,37 @@ class TarefaController extends Controller
         }
 
         return redirect()->route('tarefas.index')->with('status', 'Tarefa criada.');
+    }
+
+    /**
+     * Tira do envio o que só a triagem decide.
+     *
+     * Esconder os campos na tela não é regra — é sugestão: a rota continua
+     * aceitando `prioridade` e `responsavel_id` de qualquer envio, e um
+     * formulário guardado, um "voltar" do navegador ou um POST à mão passariam
+     * por cima da tela. A regra mora aqui.
+     *
+     * Não é erro de validação, é omissão silenciosa: quem não triaga não
+     * mandou esses campos por má-fé, e recusar o cadastro inteiro por causa
+     * deles transformaria uma capacidade que a pessoa não tem num obstáculo
+     * para o trabalho que ela tem.
+     *
+     * @param  array<string, mixed>  $dados
+     * @return array<string, mixed>
+     */
+    private function semTriagemDeQuemNaoTriaga(array $dados, ?Tarefa $tarefa = null): array
+    {
+        if (auth()->user()?->podeTriarTarefas()) {
+            return $dados;
+        }
+
+        // Na criação, a tarefa nasce sem dono e esperando triagem. "Média" por
+        // omissão seria uma classificação que ninguém fez, e é o motivo de
+        // "A definir" existir (AC-194).
+        $dados['prioridade'] = $tarefa?->prioridade ?? 'nao_definida';
+        $dados['responsavel_id'] = $tarefa?->responsavel_id;
+
+        return $dados;
     }
 
     /**
@@ -143,13 +184,26 @@ class TarefaController extends Controller
             'tipo' => 'nullable|in:'.implode(',', array_keys(Tarefa::TIPOS)),
             'sistema_id' => 'nullable|exists:sistemas,id',
             'responsavel_id' => 'nullable|exists:users,id',
-            'prioridade' => 'required|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
+            // Obrigatória só para quem tem o campo. Para quem não triaga ele
+            // nem aparece no formulário (`_form.blade.php`), e exigi-lo aqui
+            // faria o salvar recusar com "prioridade é obrigatória" um campo
+            // que a pessoa não tem como preencher — a tela funcionaria e a
+            // rota diria não.
+            'prioridade' => [
+                auth()->user()?->podeTriarTarefas() ? 'required' : 'nullable',
+                'in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
+            ],
             'comentario' => 'nullable|string|max:4000',
         ]);
 
         // Envio sem o campo mantém o tipo que a tarefa já tem: `null` aqui
         // apagaria a coluna, porque o padrão do modelo só vale na criação.
         $data['tipo'] ??= $tarefa->tipo;
+
+        // Na edição, o que a triagem decidiu fica como está: quem não triaga
+        // salvar a tarefa não pode zerar a prioridade nem soltar o responsável
+        // de passagem.
+        $data = $this->semTriagemDeQuemNaoTriaga($data, $tarefa);
 
         // O comentário viaja no mesmo envio do cadastro (US-049): um botão só
         // no modal, e nada de decidir entre "Salvar" e "Comentar" para o que,
@@ -238,6 +292,14 @@ class TarefaController extends Controller
     public function mover(Request $request, Tarefa $tarefa, FluxoTarefaService $fluxo)
     {
         $this->bloquearVisaoDaMatriz();
+
+        // Autorização, e não regra de fluxo: o `FluxoTarefaService` responde
+        // por onde a tarefa PODE andar, e não tem — nem deve ter — noção de
+        // quem está pedindo. A recusa sai com o motivo dito, porque "não
+        // permitido" sem dizer de quem é a tarefa manda a pessoa adivinhar.
+        if ($impedimento = $tarefa->motivoParaNaoMover(auth()->user())) {
+            return back()->with('erro', $impedimento);
+        }
 
         // As notas seguem opcionais AQUI de propósito, mesmo depois de o
         // `required` do textarea (`_mover.blade.php`) se revelar a única trava

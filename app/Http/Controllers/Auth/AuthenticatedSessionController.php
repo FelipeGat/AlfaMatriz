@@ -28,7 +28,9 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('centro-controle', absolute: false));
+        // A tela inicial é a do USUÁRIO, e não uma constante: perfil estreito
+        // caía em 403 logo depois de entrar (`User::telaInicial`).
+        return redirect()->intended($request->user()->telaInicial());
     }
 
     /**

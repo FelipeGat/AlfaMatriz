@@ -146,11 +146,28 @@
 
                         <div class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 space-y-2">
                             @forelse ($cards as $tarefa)
-                                {{-- Os destinos são do CARD, não do status: o
-                                     fluxo depende do tipo da tarefa. --}}
-                                @php $transicoes = \App\Services\FluxoTarefaService::transicoesDe($tarefa); @endphp
+                                @php
+                                    /**
+                                     * Os destinos são do CARD, não do status: o
+                                     * fluxo depende do tipo da tarefa.
+                                     *
+                                     * E quem não pode mover ESTA tarefa não
+                                     * recebe destino nenhum — o card não
+                                     * arrasta e não mostra o chevron. Oferecer
+                                     * e recusar depois é o vício que o quadro
+                                     * acabou de perder nas regras de fluxo; não
+                                     * faria sentido reintroduzi-lo na
+                                     * autorização. O porquê fica no `title`, e
+                                     * a rota continua recusando com a frase.
+                                     */
+                                    $impedimento = $tarefa->motivoParaNaoMover(auth()->user());
+                                    $transicoes = $impedimento
+                                        ? []
+                                        : \App\Services\FluxoTarefaService::transicoesDe($tarefa);
+                                @endphp
                                 <div x-data="{ menuAberto: false, destino: '{{ $transicoes[0] ?? '' }}' }"
-                                     draggable="true"
+                                     draggable="{{ $impedimento ? 'false' : 'true' }}"
+                                     @if ($impedimento) title="{{ $impedimento }}" @endif
                                      data-tarefa="{{ $tarefa->id }}"
                                      {{-- O card entrega os próprios destinos ao
                                           pegar: é assim que o quadro sabe quais
@@ -163,7 +180,7 @@
                                      )"
                                      @dragend="largar()"
                                      @click="$dispatch('open-modal', 'editar-tarefa-{{ $tarefa->id }}')"
-                                     class="cursor-grab active:cursor-grabbing"
+                                     class="{{ $impedimento ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing' }}"
                                      :class="arrastando === {{ $tarefa->id }} && 'opacity-50'">
                                     @include('tarefas._card', ['tarefa' => $tarefa, 'transicoes' => $transicoes])
                                 </div>

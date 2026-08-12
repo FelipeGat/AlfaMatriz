@@ -586,10 +586,63 @@ trava. Trabalho que precisa de dono próprio vira tarefa irmã.
 - **Quando** acesso qualquer rota de item pela URL
 - **Então** recebo 403, como no resto do quadro (AC-095)
 
+### US-061 — Triagem é capacidade, não cargo
+
+Como administrador da Alfa, quero que abrir e tocar tarefa não exija a
+capacidade de organizar o trabalho dos outros, para que quem executa não
+precise de acesso de quem prioriza.
+
+A regra é sobre **capacidade**, e a tela nunca nomeia cargo. Ela entra no
+esquema de permissões que já existe, como o recurso `tarefas_triagem` — e o
+perfil "Membro do time" é simplesmente quem tem `tarefas` sem ele.
+
+#### AC-203 — Quem não triaga não decide prioridade nem responsável
+
+- **Dado** que não tenho a capacidade de triagem
+- **Quando** abro uma tarefa
+- **Então** o formulário não mostra prioridade nem responsável, diz uma vez que
+  essas duas coisas são decididas na triagem, e a tarefa nasce **A definir** e
+  sem dono — e mandar os campos à mão, por formulário guardado ou POST forjado,
+  não passa por cima disso: esconder na tela é sugestão, não regra. Ao salvar
+  uma tarefa já existente, o que a triagem decidiu fica como está
+
+#### AC-204 — Quem não triaga move só o que está com ele, e a recusa é dita
+
+- **Dado** uma tarefa que está com outra pessoa
+- **Quando** tento movê-la
+- **Então** a recusa diz de quem é a tarefa e que só a triagem move o trabalho
+  alheio; a minha própria anda normalmente. A fila de triagem fica fora do
+  alcance sem regra própria, porque entrar em Aberta solta o responsável
+  (AC-130) e nada de lá está com alguém
+
+#### AC-205 — O quadro não oferece o que vai recusar
+
+- **Dado** o quadro visto por quem não triaga
+- **Quando** olho um card que está com outra pessoa
+- **Então** ele não arrasta, não traz o menu de mover e explica o porquê ao
+  passar o mouse; reabrir pelo histórico segue a mesma regra
+
+#### AC-206 — Não se restringe o que é trabalho
+
+- **Dado** qualquer tarefa do quadro, mesmo de outra pessoa
+- **Quando** comento, bloqueio ou mexo no checklist dela
+- **Então** funciona. Travar isso não impede ninguém de trabalhar em algo não
+  pedido — impede de **registrar**, e aí o quadro passa a mentir sobre o que
+  está acontecendo
+
+#### AC-207 — Quem entra chega numa tela que abre
+
+- **Dado** uma conta que só alcança o quadro de tarefas
+- **Quando** faço login
+- **Então** caio no quadro, e não num 403: o destino fixo do login valia
+  enquanto todo perfil enxergava o Centro de Controle, e a senha certa levando a
+  uma parede se lê como conta quebrada. Para quem alcança o Centro de Controle,
+  ele continua sendo a casa
+
 ## Fora de escopo
 
-- Perfis Admin e Membro no quadro (o handoff de design os especifica; ficam para
-  uma entrega própria, porque mexem em permissão e não só em tela).
+- Excluir tarefa (só de quem triaga, segundo o handoff): não existe caminho de
+  exclusão de tarefa hoje, então a regra fica junto da feature que a criar.
 - Raias por responsável ou sistema.
 - Vista mobile própria (uma etapa por vez, com tira de chips).
 - Atalhos de teclado do quadro.

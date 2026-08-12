@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Perfil;
 use App\Models\User;
 use Database\Seeders\PerfilPermissaoSeeder;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -20,6 +21,9 @@ class UserFactory extends Factory
 
     /** Flag para o state semPerfil: criado sem perfil nenhum. */
     protected static bool $semPerfil = false;
+
+    /** Flag para o state membro: entra no quadro, mas não faz triagem. */
+    protected static bool $membro = false;
 
     /**
      * Define the model's default state.
@@ -61,8 +65,28 @@ class UserFactory extends Factory
             }
 
             (new PerfilPermissaoSeeder)->run();
-            $user->perfis()->attach(\App\Models\Perfil::where('slug', 'admin')->value('id'));
+
+            $slug = 'admin';
+
+            if (static::$membro) {
+                static::$membro = false;
+                $slug = 'membro';
+            }
+
+            $user->perfis()->attach(Perfil::where('slug', $slug)->value('id'));
         });
+    }
+
+    /**
+     * Usuário que trabalha no quadro mas não organiza o trabalho dos outros:
+     * abre, comenta, bloqueia e move as próprias tarefas, e não prioriza nem
+     * direciona.
+     */
+    public function membro(): static
+    {
+        static::$membro = true;
+
+        return $this;
     }
 
     /**

@@ -153,6 +153,33 @@ class Tarefa extends Model
         return $this->bloqueado_em !== null;
     }
 
+    /**
+     * Por que esta pessoa não pode mover esta tarefa — ou null, se pode.
+     *
+     * Devolve a FRASE, e não um booleano, porque a recusa precisa dizer o
+     * motivo em dois lugares diferentes: no flash da rota e no `title` do card
+     * que não arrasta. Com um booleano, cada lugar escreveria a sua versão, e
+     * as duas divergiriam na primeira vez que alguém mexesse numa delas.
+     *
+     * Quem faz triagem move qualquer tarefa; quem não faz move as suas. A fila
+     * de triagem fica fora do alcance sem precisar de regra própria: entrar em
+     * Aberta solta o responsável (AC-130), então nenhuma tarefa de lá está com
+     * ninguém.
+     */
+    public function motivoParaNaoMover(?User $usuario): ?string
+    {
+        if (! $usuario || $usuario->podeTriarTarefas() || $this->responsavel_id === $usuario->id) {
+            return null;
+        }
+
+        if (! $this->responsavel_id) {
+            return 'Esta tarefa ainda não tem responsável. Só quem faz triagem move o que está na fila.';
+        }
+
+        return 'Esta tarefa está com '.($this->responsavel?->name ?? 'outra pessoa')
+            .'. Só quem faz triagem move o trabalho de outra pessoa.';
+    }
+
     /** Há quanto tempo está travada, na régua curta do quadro ("3h", "2d"). */
     public function bloqueadaHa(): ?string
     {

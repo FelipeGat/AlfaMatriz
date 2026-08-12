@@ -1,5 +1,43 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 11/08/2026 — Entrar no quadro deixou de exigir acesso de administrador
+
+Até aqui, quem trabalhava no quadro de Tarefas precisava do mesmo acesso de quem
+organiza o trabalho de todo mundo. Não havia meio-termo: ou a pessoa entrava
+como administradora, ou não entrava.
+
+Agora existe o perfil **Membro do time**, e a diferença é sobre **o que a pessoa
+decide**, não sobre cargo. Quem é membro trabalha no quadro igual: abre tarefa,
+comenta, marca checklist, bloqueia o que travou e move as próprias tarefas. O
+que ele não faz é priorizar, escolher quem faz e mexer no que está com outra
+pessoa.
+
+### Novidades
+
+- **Perfil "Membro do time".** Para dar acesso a alguém, é só atribuir esse
+  perfil em vez do de administrador.
+- **Tarefa aberta por um membro entra como "A definir" e sem responsável.** Os
+  dois campos nem aparecem no formulário dele, com uma linha explicando que essa
+  decisão é da triagem. É a razão de a prioridade "A definir" existir: sem ela,
+  a tarefa cairia em "Média" por omissão e o padrão viraria uma classificação
+  que ninguém fez.
+- **O quadro não oferece o que vai recusar.** Um card que está com outra pessoa
+  não arrasta e não mostra o botão de mover — e, passando o mouse, ele diz o
+  porquê: *"Esta tarefa está com Camila Reis. Só quem faz triagem move o
+  trabalho de outra pessoa."*
+
+### Correções
+
+- **Entrar com um perfil restrito levava a uma tela de acesso negado.** O
+  sistema mandava todo mundo para o Centro de Controle depois do login, o que
+  funcionava enquanto todo perfil o enxergava. Quem só tem o quadro de tarefas
+  batia num 403 logo depois de digitar a senha certa — o que parece conta
+  quebrada, e não tela que não é sua. Agora o login leva à primeira tela que a
+  conta realmente abre. Para quem tem o Centro de Controle, nada muda.
+
+> A publicação não exige nada da sua parte: o perfil novo é criado sozinho, e
+> nenhuma conta existente muda de acesso.
+
 ## AlfaMatriz — 11/08/2026 — Checklist na tarefa, limite por coluna e triagem visível
 
 Quatro mudanças no quadro de Tarefas, seguindo o novo desenho da tela.
