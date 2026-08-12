@@ -10,6 +10,10 @@
      * não se confundirem entre faixas) e $comCabecalho.
      */
     $alvo = $faixa.'::'.$etapa['chave'];
+
+    // Um conjunto só define "há recorte", usado pelo texto de coluna vazia e
+    // pelo botão Limpar. Separados, os dois se contradiziam.
+    $temRecorte = collect($filtros ?? [])->contains(fn ($valor) => $valor !== '');
 @endphp
 
 <section class="flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden transition-opacity"
@@ -29,8 +33,9 @@
          {{-- A faixa de cor só onde o cabeçalho está: em raias ela se repetiria
               uma vez por faixa, competindo com o cabeçalho fixo do topo, que é
               quem nomeia a etapa. Cor repetida sem rótulo vira listra. --}}
-         style="flex: 1 1 272px; min-width: 272px;
-                border-top: {{ $comCabecalho ? '3px solid rgb(var(--'.$etapa['cor'].'))' : '1px solid var(--line)' }}"
+         :style="recolhidas.includes('{{ $etapa['chave'] }}')
+             ? 'flex: 0 0 42px; min-width: 42px; border-top: {{ $comCabecalho ? '3px solid rgb(var(--'.$etapa['cor'].'))' : '1px solid var(--line)' }}'
+             : 'flex: 1 1 272px; min-width: 272px; border-top: {{ $comCabecalho ? '3px solid rgb(var(--'.$etapa['cor'].'))' : '1px solid var(--line)' }}'"
          data-status="{{ $etapa['chave'] }}"
          @dragover.prevent="permitir('{{ $etapa['chave'] }}')"
          @dragleave="sobre = null"
@@ -56,7 +61,7 @@
         @include('tarefas._coluna-cabecalho', ['etapa' => $etapa])
     @endif
 
-    <div data-cards="{{ $alvo }}"
+    <div data-cards="{{ $alvo }}" x-show="! recolhidas.includes('{{ $etapa['chave'] }}')"
          class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-[10px] space-y-[10px]">
         @forelse ($cards as $tarefa)
             @php
@@ -98,7 +103,7 @@
                  {{-- Soltar um card SOBRE outro da mesma coluna reordena; de
                       coluna diferente, o evento segue subindo e a coluna
                       resolve como movimento de etapa. --}}
-                 @dragover="permitirSobreCard($event, '{{ $etapa['chave'] }}')"
+                 @dragover="permitirSobreCard($event, '{{ $etapa['chave'] }}', {{ $tarefa->id }})"
                  @drop="soltarSobreCard($event, $el, '{{ $etapa['chave'] }}', '{{ $alvo }}')"
                  {{-- O card faz as duas coisas: abre no clique e arrasta. Sem o
                       limiar, um arrasto curto — o começo de qualquer arrasto, na
@@ -106,10 +111,20 @@
                  @pointerdown="marcarInicioDoClique($event)"
                  @click="if (foiClique($event)) $dispatch('open-modal', 'editar-tarefa-{{ $tarefa->id }}')"
                  class="rounded-ctl {{ $impedimento ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing' }}"
+                 {{-- Na mão: meio apagado e com a sombra maior. A opacidade diz
+                      "isto saiu do lugar" e a sombra diz "está por cima" — uma
+                      só das duas deixa o card ambíguo entre arrastado e
+                      desabilitado. --}}
                  :class="{
-                     'opacity-50': arrastando === {{ $tarefa->id }},
+                     'opacity-50 shadow-card-arrasto': arrastando === {{ $tarefa->id }},
                      'ring-1 ring-brand': selecionado === {{ $tarefa->id }},
                  }">
+                {{-- A linha de inserção: 2px na cor da marca, onde o card vai
+                     cair. Sem ela, reordenar é soltar e torcer — o gesto não
+                     diz onde vai parar até já ter parado. --}}
+                <div x-show="sobreCard === {{ $tarefa->id }}" x-cloak aria-hidden="true"
+                     class="h-0.5 rounded-sm mb-[10px]" style="background: rgb(var(--brand))"></div>
+
                 @include('tarefas._card', ['tarefa' => $tarefa, 'transicoes' => $transicoes])
             </div>
         @empty
@@ -118,8 +133,13 @@
                 {{-- Uma frase por etapa: coluna vazia é informação, e o que ela
                      informa muda conforme a etapa. "Nenhuma tarefa aqui" seis
                      vezes desperdiça as seis notícias. --}}
-                <p class="text-[11.5px] text-ink-faint">
-                    {{ \App\Models\Tarefa::VAZIO_DA_ETAPA[$etapa['chave']] ?? 'Nenhuma tarefa aqui' }}
+                {{-- Sob recorte a frase muda: "Nada priorizado" com um filtro
+                     ligado seria mentira — pode haver muito priorizado, só não
+                     no que se pediu para ver. --}}
+                <p class="text-[11.5px] text-ink-faint text-center px-2">
+                    {{ $temRecorte
+                        ? 'Nada no recorte'
+                        : (\App\Models\Tarefa::VAZIO_DA_ETAPA[$etapa['chave']] ?? 'Nenhuma tarefa aqui') }}
                 </p>
             </div>
         @endforelse
@@ -133,18 +153,20 @@
         Orbe" — e para essa frase o formulário completo é uma cerimônia que faz
         a pessoa deixar para depois, ou anotar em outro lugar.
 
-        Só em Aberta: tarefa sem responsável nasce lá (`Tarefa::booted`), e a
-        criação rápida não tem onde perguntar por um. No pé do Backlog, ela
-        entregaria um card que aparece na coluna ao lado — um controle que
-        promete um lugar e entrega outro é a definição de quadro que mente.
+        Em Aberta e no Backlog. O Backlog só entrou depois de o formulário
+        passar a DECLARAR a coluna de destino: `Tarefa::booted` decide a etapa
+        pelo responsável, e sem o campo o card criado no pé do Backlog nascia em
+        Aberta — um controle que promete um lugar e entrega outro.
 
         E só na faixa sem raia: com o quadro agrupado, um campo por faixa
         prometeria criar a tarefa DENTRO daquela raia, o que ele não faz.
     --}}
-    @if ($etapa['chave'] === 'aberta' && $faixa === 'todas')
+    @if (in_array($etapa['chave'], ['aberta', 'backlog'], true) && $faixa === 'todas')
         <form method="POST" action="{{ route('tarefas.store') }}"
-              class="shrink-0 px-2 pb-2 pt-1 border-t border-rule">
+              x-show="! recolhidas.includes('{{ $etapa['chave'] }}')"
+              class="shrink-0 px-[10px] py-2 border-t border-rule">
             @csrf
+            <input type="hidden" name="status" value="{{ $etapa['chave'] }}">
             <input type="text" name="titulo" maxlength="255" required data-criacao-rapida
                    placeholder="+ nova tarefa · Enter para criar"
                    class="w-full min-h-[34px] px-2 py-1 text-[12.5px] text-ink placeholder-ink-faint

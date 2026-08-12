@@ -236,60 +236,16 @@
                 ler. Enquanto vazio, o botão fica apagado e a exigência está
                 dita em âmbar, não escondida no `required` do navegador.
             --}}
-            <div x-show="pendente" x-cloak x-transition.opacity.duration.150ms
-                 class="absolute inset-0 z-20 flex items-end justify-center pb-5 px-4 pointer-events-none">
-                <form method="POST" :action="pendente?.acao" @submit="enviandoPendente = true"
-                      class="pointer-events-auto w-[440px] max-w-full rounded-panel border bg-panel p-4 shadow-xl"
-                      x-transition:enter="transition ease-out duration-200"
-                      x-transition:enter-start="opacity-0 translate-y-2"
-                      x-transition:enter-end="opacity-100 translate-y-0"
-                      :style="`border-color: rgb(var(--${pendente?.cor}) / 0.45);
-                               border-top: 2px solid rgb(var(--${pendente?.cor}));
-                               background-image: linear-gradient(rgb(var(--${pendente?.cor}) / calc(var(--tint-alpha) / 2)), rgb(var(--${pendente?.cor}) / calc(var(--tint-alpha) / 2)))`">
-                    @csrf
-                    <input type="hidden" name="status" :value="pendente?.status">
-                    <input type="hidden" name="de_status" :value="pendente?.de">
+            {{--
+                O painel de motivo NÃO mora aqui.
 
-                    <div class="flex items-start gap-3">
-                        <div class="min-w-0 flex-1">
-                            <h3 class="font-display text-[14.5px] font-semibold text-ink" x-text="pendente?.titulo"></h3>
-                            <p class="mt-0.5 text-[11.5px] leading-snug text-ink-mute" x-text="pendente?.porque"></p>
-                        </div>
-                        <button type="button" @click="fecharPendente()" aria-label="Desistir"
-                                class="shrink-0 h-6 w-6 rounded-control text-ink-faint hover:text-ink transition">✕</button>
-                    </div>
-
-                    <template x-if="pendente?.campo">
-                        <textarea x-ref="textoPendente" :name="pendente.campo" rows="3"
-                                  :placeholder="pendente.placeholder"
-                                  x-model="textoPendente"
-                                  class="mt-3 w-full text-[12.5px] rounded-control bg-input border-line text-ink"></textarea>
-                    </template>
-
-                    <template x-if="pendente?.pedeAprovacao">
-                        <label class="mt-2 flex items-center gap-2 text-[11.5px] text-ink-dim">
-                            <input type="checkbox" name="relatorio_aprovado" value="1">
-                            Relatório aprovado
-                        </label>
-                    </template>
-
-                    <div class="mt-3 flex items-center gap-3">
-                        <button type="submit"
-                                :disabled="(pendente?.obrigatorio && ! textoPendente.trim()) || enviandoPendente"
-                                class="h-8 px-3 rounded-control font-semibold text-[12.5px] transition disabled:cursor-not-allowed"
-                                :style="(pendente?.obrigatorio && ! textoPendente.trim()) || enviandoPendente
-                                    ? 'background: rgb(var(--line)); color: rgb(var(--ink-faint))'
-                                    : `background: rgb(var(--${pendente?.cor})); color: rgb(var(--on-brand))`"
-                                x-text="enviandoPendente ? 'Enviando…' : pendente?.botao"></button>
-
-                        <span x-show="pendente?.obrigatorio && ! textoPendente.trim()"
-                              class="font-mono text-[10.5px] uppercase tracking-caps"
-                              style="color: rgb(var(--warn))">
-                            obrigatório
-                        </span>
-                    </div>
-                </form>
-            </div>
+                Ele era um bloco flutuante ancorado ao rodapé do quadro, e isso
+                custava a ligação com o gesto: a pessoa soltava um card na
+                terceira coluna e o pedido de texto aparecia lá embaixo, longe
+                do card de que falava. No protótipo ele nasce DENTRO do card
+                (ver `_card.blade.php`), logo abaixo do rodapé — o texto é sobre
+                aquela tarefa e aparece nela.
+            --}}
 
             {{--
                 Os atalhos, atrás do "?".
@@ -409,6 +365,43 @@
                 arrastando: null,
                 sobre: null,
 
+                /**
+                 * As colunas recolhidas, guardadas entre visitas.
+                 *
+                 * Recolher é escolha de quem trabalha numa etapa só e não quer
+                 * as outras cinco comendo largura — e ela não pode se desfazer
+                 * a cada F5, senão vira um gesto que se repete todo dia. O
+                 * `localStorage` é o mesmo lugar do tema e do rail.
+                 */
+                recolhidas: [],
+
+                /** Sobre qual card o arrasto está pairando, para a linha de inserção. */
+                sobreCard: null,
+
+                init() {
+                    try {
+                        this.recolhidas = JSON.parse(
+                            localStorage.getItem('alfamatriz:colunas-recolhidas') || '[]'
+                        );
+                    } catch (erro) {
+                        this.recolhidas = [];
+                    }
+                },
+
+                alternarColuna(chave) {
+                    this.recolhidas = this.recolhidas.includes(chave)
+                        ? this.recolhidas.filter((x) => x !== chave)
+                        : [...this.recolhidas, chave];
+
+                    try {
+                        localStorage.setItem('alfamatriz:colunas-recolhidas', JSON.stringify(this.recolhidas));
+                    } catch (erro) {
+                        // Navegação anônima ou cota cheia: a escolha vale para
+                        // esta sessão e não sobrevive — o que não justifica
+                        // quebrar o quadro.
+                    }
+                },
+
                 // Para onde o card que está na mão pode ir. Sai do mesmo lugar
                 // que alimenta o menu "Mover ▾" (`FluxoTarefaService`), e é o
                 // que permite ao quadro MOSTRAR a regra em vez de aplicá-la por
@@ -496,11 +489,18 @@
                         && this.statusArrastado === status;
                 },
 
-                permitirSobreCard(evento, status) {
-                    if (this.ehReordenacao(status)) {
-                        evento.preventDefault();
-                        evento.stopPropagation();
+                permitirSobreCard(evento, status, id) {
+                    if (! this.ehReordenacao(status)) {
+                        return;
                     }
+
+                    evento.preventDefault();
+                    evento.stopPropagation();
+
+                    // A linha aparece acima do card sob o ponteiro — menos no
+                    // próprio card arrastado, onde ela só piscaria embaixo do
+                    // que já está na mão.
+                    this.sobreCard = id === this.arrastando ? null : id;
                 },
 
                 soltarSobreCard(evento, alvo, status, chaveDaLista) {
@@ -514,6 +514,8 @@
                     // A lista é a da FAIXA, não a do status: com raias ligadas,
                     // a mesma etapa aparece uma vez por raia, e reordenar
                     // pegaria a primeira delas em vez daquela onde se soltou.
+                    this.sobreCard = null;
+
                     const lista = document.querySelector(`[data-cards="${chaveDaLista}"]`);
                     const arrastado = lista.querySelector(`[data-tarefa="${this.arrastando}"]`);
 
@@ -799,6 +801,7 @@
                     }
 
                     this.arrastando = null;
+                    this.sobreCard = null;
                     this.destinos = [];
                     this.tipoArrastado = null;
                     this.statusArrastado = null;
@@ -819,10 +822,10 @@
 
                     const receitas = {
                         bloqueio: {
-                            titulo: 'Bloqueando a tarefa',
-                            porque: 'A tarefa continua na etapa em que está — o motivo é o que permite outra pessoa destravá-la depois.',
-                            placeholder: 'Esperando quem, e o quê…',
-                            botao: 'Bloquear tarefa',
+                            verbo: 'Marcando como', label: 'Bloqueada',
+                            porque: 'A tarefa fica onde está — só passa a contar como travada. Diga o que está esperando: é esse texto que permite outra pessoa destravar depois.',
+                            placeholder: 'Esperando quem, o quê…',
+                            acaoRotulo: 'Bloquear tarefa',
                             cor: 'warn', campo: 'motivo', obrigatorio: true, pedeAprovacao: false,
                         },
                         // A devolução muda de sentido conforme o portão que
@@ -830,7 +833,7 @@
                         // achatava. Vindo do staging o código JÁ está na main,
                         // e a recuperação é materialmente outra.
                         em_desenvolvimento: {
-                            titulo: 'Devolvendo para Em andamento',
+                            verbo: 'Devolvendo para', label: 'Em andamento',
                             porque: {
                                 em_revisao: 'Diga o que precisa ser corrigido no PR. Sem isso, quem recebe abre o card sem saber o que reprovou.',
                                 em_staging: 'Falhou em staging — o código JÁ está na main. Diga o que quebrou e se precisa voltar a versão (deploy/voltar.sh) ou dá para corrigir seguindo em frente.',
@@ -841,36 +844,36 @@
                                 em_staging: 'O que quebrou no staging · voltar ou corrigir em frente…',
                                 pronta_producao: 'O que apareceu antes de subir…',
                             }[this.statusArrastado] ?? 'O que precisa ser corrigido…',
-                            botao: 'Devolver para correção',
+                            acaoRotulo: 'Devolver para correção',
                             cor: 'warn', campo: 'motivo', obrigatorio: true, pedeAprovacao: false,
                         },
                         // O carimbo do staging: é aqui que o dev afirma ter
                         // validado, e é essa nota que o admin lê antes de
                         // taggear. Texto opcional; o que importa é o carimbo.
                         pronta_producao: {
-                            titulo: 'Liberando para Pronta p/ produção',
+                            verbo: 'Liberando para', label: 'Pronta p/ produção',
                             porque: 'Vai para a fila do admin, que sobe a tag. Diga o que você conferiu no staging — é o que ele lê antes de subir.',
                             placeholder: 'O que foi conferido no staging…',
-                            botao: 'Liberar para o admin subir',
+                            acaoRotulo: 'Liberar para o admin subir',
                             cor: 'good',
                             campo: ehDev ? 'relatorio_notas' : null,
                             obrigatorio: false,
                             pedeAprovacao: ehDev,
                         },
                         cancelada: {
-                            titulo: 'Cancelando a tarefa',
+                            verbo: 'Encerrando como', label: 'Cancelada',
                             porque: 'Cancelar encerra a tarefa. O motivo fica no histórico, e é o que explica a decisão para quem a reabrir um dia.',
                             placeholder: 'Motivo do cancelamento…',
-                            botao: 'Cancelar tarefa',
+                            acaoRotulo: 'Cancelar tarefa',
                             cor: 'crit', campo: 'motivo', obrigatorio: true, pedeAprovacao: false,
                         },
                         concluida: {
-                            titulo: 'Encerrando como Concluída',
+                            verbo: 'Encerrando como', label: 'Concluída',
                             porque: ehDev
                                 ? 'Concluída significa EM PRODUÇÃO: a tag subiu e o vigia aplicou. Registre a versão — é ela que responde "desde quando o cliente tem isso".'
                                 : 'Tarefa operacional não passa por PR nem por tag. Registre o que foi feito — é o que sobra como prova depois.',
                             placeholder: ehDev ? 'v1.4.2' : 'O que foi feito…',
-                            botao: ehDev ? 'Subiu para produção' : 'Encerrar tarefa',
+                            acaoRotulo: ehDev ? 'Subiu para produção' : 'Encerrar tarefa',
                             cor: 'good',
                             campo: ehDev ? 'versao_producao' : 'relatorio_notas',
                             obrigatorio: ehDev,
@@ -895,6 +898,10 @@
                     this.pendente = {
                         ...receita,
                         destino,
+                        // O id vai junto porque o painel agora mora DENTRO do
+                        // card: cada card pergunta se o pendente é dele, e sem
+                        // isso todos abririam o painel ao mesmo tempo.
+                        id: tarefa,
                         // Bloquear tem rota própria: travar não é mover.
                         status: ehBloqueio ? null : destino,
                         de: this.statusArrastado,

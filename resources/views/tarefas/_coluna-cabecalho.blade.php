@@ -30,7 +30,27 @@
     };
 @endphp
 
-<header class="shrink-0 pt-[9px] pb-[9px] pl-3 pr-2">
+{{--
+    Recolhida, a coluna vira uma tira de 42px com o contador em cima e o nome
+    na vertical. Ela some do caminho sem sair do quadro — quem trabalha numa
+    etapa só recupera a largura das outras cinco sem perder de vista que elas
+    existem, e o contador continua dizendo quanto há lá dentro.
+--}}
+<button type="button" x-show="recolhidas.includes('{{ $etapa['chave'] }}')" x-cloak
+        @click="alternarColuna('{{ $etapa['chave'] }}')"
+        title="Expandir {{ $etapa['label'] }}" aria-label="Expandir {{ $etapa['label'] }}"
+        class="w-full py-2.5 flex flex-col items-center gap-2.5">
+    <span class="h-[19px] min-w-[19px] px-[5px] rounded-full flex items-center justify-center
+                 font-mono text-[10px] font-semibold"
+          style="background: rgb(var(--{{ $corDoContador }}) / var(--tint-alpha)); color: rgb(var(--{{ $corDoContador }}))">
+        {{ $etapa['limite'] ? $etapa['andando'].'/'.$etapa['limite'] : $etapa['quantidade'] }}
+    </span>
+    <span class="font-mono text-[10px] uppercase tracking-caps text-ink-mute whitespace-nowrap"
+          style="writing-mode: vertical-rl">{{ $etapa['label'] }}</span>
+</button>
+
+<header class="shrink-0 pt-[9px] pb-[9px] pl-3 pr-2"
+        x-show="! recolhidas.includes('{{ $etapa['chave'] }}')">
     <div class="flex items-center gap-2">
         <span class="h-[7px] w-[7px] shrink-0 rounded-full"
               style="background: rgb(var(--{{ $etapa['cor'] }}))"></span>
@@ -60,6 +80,13 @@
                 {{ $etapa['quantidade'] }}
             @endif
         </span>
+
+        <button type="button" @click="alternarColuna('{{ $etapa['chave'] }}')"
+                title="Recolher coluna" aria-label="Recolher coluna"
+                class="shrink-0 h-[19px] w-[19px] rounded-badge flex items-center justify-center
+                       text-ink-faint transition hover:text-brand">
+            <x-nav-icon name="chevron-duplo-esquerda" :peso="2" class="h-3 w-3" />
+        </button>
     </div>
 
     @if ($aviso)

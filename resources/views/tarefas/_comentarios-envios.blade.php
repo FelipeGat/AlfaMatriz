@@ -14,6 +14,20 @@
      */
 @endphp
 
+{{--
+    O envio de PERGUNTAR, irmão dos de cima e fora do formulário pelo mesmo
+    motivo. O `corpo` vai num campo escondido porque o textarea que a pessoa
+    preenche pertence ao formulário da tarefa — o botão copia o texto para cá
+    no clique.
+--}}
+@unless (in_array($tarefa->status, \App\Models\Tarefa::STATUS_TERMINAIS, true))
+    <form id="perguntar-{{ $tarefa->id }}" method="POST"
+          action="{{ route('tarefas.conversar', $tarefa) }}" class="hidden">
+        @csrf
+        <input type="hidden" id="pergunta-corpo-{{ $tarefa->id }}" name="corpo" value="">
+    </form>
+@endunless
+
 @foreach ($tarefa->comentarios as $comentario)
     @if ($comentario->autor_id === auth()->id())
         <form id="editar-comentario-{{ $comentario->id }}" method="POST"

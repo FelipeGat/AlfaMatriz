@@ -259,12 +259,14 @@ class FluxoTarefaService
                 'pergunta_em' => now(),
             ])->save();
 
+            // A meta diz a RODADA e o relógio: "perguntou" sozinho não separa a
+            // primeira dúvida da terceira, e é a terceira que pede outra ação.
             Notificacao::avisar($paraId, $quemPergunta->id, [
                 'tipo' => 'pergunta',
-                'nivel' => 'atencao',
-                'icone' => 'chat',
-                'titulo' => $quemPergunta->name.' perguntou em "'.$tarefa->titulo.'"',
-                'meta' => 'Aguardando a sua resposta',
+                'nivel' => $tarefa->conversaEmpacada() ? 'critico' : 'atencao',
+                'icone' => 'duvida',
+                'titulo' => $quemPergunta->name.' perguntou em «'.$tarefa->titulo.'»',
+                'meta' => max(1, $tarefa->rodadas).'ª rodada · aguardando sua resposta',
                 'rota' => route('tarefas.index', ['esperando' => '1']),
                 'tarefa_id' => $tarefa->id,
             ]);
@@ -348,8 +350,8 @@ class FluxoTarefaService
             Notificacao::avisar($perguntou, $quemResponde->id, [
                 'tipo' => 'resposta',
                 'nivel' => 'marca',
-                'icone' => 'chat',
-                'titulo' => $quemResponde->name.' respondeu em "'.$tarefa->titulo.'"',
+                'icone' => 'duvida',
+                'titulo' => $quemResponde->name.' respondeu em «'.$tarefa->titulo.'»',
                 'meta' => 'A bola voltou para você',
                 'rota' => route('tarefas.index'),
                 'tarefa_id' => $tarefa->id,

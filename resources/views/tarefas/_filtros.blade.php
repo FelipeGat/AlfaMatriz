@@ -24,7 +24,7 @@
                   rounded-control bg-input border border-line text-ink-faint focus-within:border-brand transition">
         <span class="h-4 w-4 shrink-0"><x-nav-icon name="search" /></span>
         <input type="search" name="busca" value="{{ $filtros['busca'] }}"
-               placeholder="Buscar título, resumo ou detalhes…"
+               placeholder="Buscar título, resumo, sistema, responsável ou comentário…"
                class="flex-1 min-w-0 bg-transparent border-0 p-0 text-[13px] text-ink placeholder-ink-faint focus:ring-0">
     </label>
 
@@ -73,13 +73,22 @@
         tarefa encerrada não tem conversa em aberto.
     --}}
     @unless ($comDesfecho)
-        <label class="h-[34px] flex items-center gap-2 px-3 rounded-control border border-line
-                      bg-input text-[12.5px] text-ink-dim cursor-pointer hover:text-brand transition">
-            <input type="checkbox" name="situacao" value="esperando_mim"
-                   @checked(($filtros['situacao'] ?? '') === 'esperando_mim')
-                   class="h-[13px] w-[13px] rounded-[3px] bg-input border-btn-line text-brand focus:ring-0">
-            Só as que esperam por você
-        </label>
+        {{-- A situação é UM campo com quatro respostas, e não quatro caixas:
+             elas são mutuamente exclusivas — ninguém pergunta "as travadas que
+             também esperam por mim" — e caixas independentes permitiriam
+             justamente essa combinação sem sentido. É o mesmo recorte que os
+             chips do cabeçalho aplicam. --}}
+        <select name="situacao" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
+            <option value="">Qualquer situação</option>
+            @foreach ([
+                'esperando_mim' => 'Só as que esperam por você',
+                'travadas' => 'Só as travadas',
+                'em_curso' => 'Só as em curso',
+                'prontas' => 'Só as prontas p/ subir',
+            ] as $chave => $rotulo)
+                <option value="{{ $chave }}" @selected(($filtros['situacao'] ?? '') === $chave)>{{ $rotulo }}</option>
+            @endforeach
+        </select>
     @endunless
 
     @if ($comDesfecho)
@@ -135,7 +144,7 @@
         <a href="{{ url()->current() }}"
            class="h-[34px] px-3 inline-flex items-center rounded-control
                   font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
-            Limpar
+            Limpar recorte
         </a>
     @endif
 </form>

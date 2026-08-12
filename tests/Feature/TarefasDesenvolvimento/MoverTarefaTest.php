@@ -323,7 +323,9 @@ class MoverTarefaTest extends TestCase
 
         // O painel nomeia a ação e o resultado — "Confirmar" é o que se aperta
         // sem ler —, e diz por que está pedindo o texto.
-        $this->assertStringContainsString('Devolvendo para Em andamento', $html);
+        // O painel nomeia a ação em duas partes — verbo e destino em negrito
+        // na cor dele —, como o protótipo: "Devolvendo para **Em andamento**".
+        $this->assertStringContainsString("verbo: 'Devolvendo para', label: 'Em andamento'", $html);
         $this->assertStringContainsString('Devolver para correção', $html);
         $this->assertStringContainsString('Bloquear tarefa', $html);
         $this->assertStringContainsString('Diga o que precisa ser corrigido no PR', $html);

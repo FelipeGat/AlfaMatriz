@@ -151,6 +151,17 @@ class TarefaController extends Controller
                 'fundo' => 'var(--good-tint)', 'fundoAtivo' => 'rgb(var(--good) / 0.24)',
                 'borda' => 'var(--good-line)',
             ],
+            // O único que não filtra o quadro: o que foi concluído hoje já saiu
+            // dele. Ele leva ao Histórico, que é onde essas tarefas passaram a
+            // viver — e por isso não tem estado "ligado".
+            [
+                'chave' => 'hoje', 'total' => $this->concluidasHoje(),
+                'label' => null, 'icone' => 'check-circle', 'cor' => 'good',
+                'title' => 'Foram para produção hoje · clique para abrir o histórico',
+                'fundo' => 'var(--good-tint)', 'fundoAtivo' => 'var(--good-tint)',
+                'borda' => 'var(--good-line)',
+                'rota' => 'historico',
+            ],
         ];
 
         $chips = array_map(function (array $chip) use ($filtros) {
@@ -160,6 +171,7 @@ class TarefaController extends Controller
                 'label' => $chip['label'] ?? $chip['total'].' '.match ($chip['chave']) {
                     'travadas' => 'travadas',
                     'prontas' => 'p/ subir',
+                    'hoje' => 'hoje',
                 },
                 'icone' => $chip['icone'],
                 'cor' => $chip['cor'],
@@ -167,13 +179,31 @@ class TarefaController extends Controller
                 'fundo' => $ligado ? $chip['fundoAtivo'] : $chip['fundo'],
                 'borda' => $chip['borda'],
                 'total' => $chip['total'],
-                'href' => request()->fullUrlWithQuery(['situacao' => $ligado ? null : $chip['chave']]),
+                'href' => ($chip['rota'] ?? null) === 'historico'
+                    ? route('tarefas.historico')
+                    : request()->fullUrlWithQuery(['situacao' => $ligado ? null : $chip['chave']]),
             ];
         }, $chips);
 
         // Chip zerado não aparece: um "0 travadas" permanente ensina a não ler
         // a fila, e o espaço dele é largura que a coluna quer.
         return array_values(array_filter($chips, fn (array $chip) => $chip['total'] > 0));
+    }
+
+    /**
+     * Quantas foram para produção HOJE.
+     *
+     * "Hoje" e não "nas últimas 24h": o número é lido junto com a data do dia,
+     * e uma janela deslizante faria o mesmo chip dizer valores diferentes de
+     * manhã e à tarde sem nada ter acontecido.
+     */
+    private function concluidasHoje(): int
+    {
+        return Tarefa::where('status', 'concluida')
+            ->whereHas('eventos', fn ($evento) => $evento
+                ->where('para_status', 'concluida')
+                ->whereDate('entrou_em', today()))
+            ->count();
     }
 
     public function store(Request $request)
@@ -193,6 +223,12 @@ class TarefaController extends Controller
             // coluna, que manda só o título. Exigi-la aqui faria a tela
             // funcionar e a rota dizer não.
             'prioridade' => 'nullable|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
+            // A criação rápida do pé da coluna DECLARA onde nasce. Sem isso, o
+            // `booted` decidia pela presença de responsável e o card criado no
+            // Backlog aparecia em Aberta — o controle prometia um lugar e
+            // entregava outro. Só as duas colunas de fila são destino válido:
+            // criar direto em Em revisão pularia o trabalho.
+            'status' => 'nullable|in:aberta,backlog',
         ]);
 
         // O padrão é resolvido AQUI, e não só no modelo, por causa da linha
@@ -302,6 +338,12 @@ class TarefaController extends Controller
         // "A definir" existir (AC-194).
         $dados['prioridade'] = $tarefa?->prioridade ?? 'nao_definida';
         $dados['responsavel_id'] = $tarefa?->responsavel_id;
+
+        // E a coluna declarada também cai: Backlog é "priorizado e com dono", e
+        // quem não triaga não pode dar nenhum dos dois. Deixar passar criaria
+        // no Backlog um card sem responsável, que é a contradição que a coluna
+        // Aberta existe para não ter.
+        unset($dados['status']);
 
         return $dados;
     }
@@ -857,7 +899,7 @@ class TarefaController extends Controller
             // um booleano por chip: eles são mutuamente exclusivos — ninguém
             // pergunta "as travadas que também esperam por mim" —, e três
             // booleanos permitiriam justamente essa combinação sem sentido.
-            'situacao' => in_array($situacao, ['esperando_mim', 'travadas', 'prontas'], true) ? $situacao : '',
+            'situacao' => in_array($situacao, ['esperando_mim', 'travadas', 'em_curso', 'prontas'], true) ? $situacao : '',
         ];
     }
 
@@ -901,7 +943,15 @@ class TarefaController extends Controller
                 ->orWhere('resumo', 'like', '%'.$filtros['busca'].'%')
                 ->orWhere('detalhes', 'like', '%'.$filtros['busca'].'%')
                 ->orWhereHas('comentarios', fn ($comentario) => $comentario
-                    ->where('corpo', 'like', '%'.$filtros['busca'].'%'))))
+                    ->where('corpo', 'like', '%'.$filtros['busca'].'%'))
+                // Sistema e responsável entram na busca porque é assim que se
+                // procura na prática: "aquela do AlfaGym", "as da Camila". Sem
+                // eles, quem digita o nome do produto recebe zero resultado num
+                // quadro que tem seis cards dele.
+                ->orWhereHas('sistema', fn ($sistema) => $sistema
+                    ->where('nome', 'like', '%'.$filtros['busca'].'%'))
+                ->orWhereHas('responsavel', fn ($pessoa) => $pessoa
+                    ->where('name', 'like', '%'.$filtros['busca'].'%'))))
             ->when($filtros['sistema'] === 'sem', fn ($q) => $q->whereNull('sistema_id'))
             ->when($filtros['sistema'] !== '' && $filtros['sistema'] !== 'sem',
                 fn ($q) => $q->where('sistema_id', $filtros['sistema']))
@@ -914,6 +964,11 @@ class TarefaController extends Controller
                 fn ($q) => $q->esperandoRespostaDe(auth()->id()))
             ->when(($filtros['situacao'] ?? '') === 'travadas',
                 fn ($q) => $q->whereNotNull('bloqueado_em'))
+            // "Em curso" é o complemento de travadas: o que está ANDANDO. É a
+            // mesma conta do WIP, e por isso a mesma definição — vaga ocupada
+            // por tarefa parada não é trabalho em curso.
+            ->when(($filtros['situacao'] ?? '') === 'em_curso',
+                fn ($q) => $q->whereNull('bloqueado_em'))
             ->when(($filtros['situacao'] ?? '') === 'prontas',
                 fn ($q) => $q->where('status', 'pronta_producao'));
     }

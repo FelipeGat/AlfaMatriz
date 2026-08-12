@@ -230,13 +230,14 @@ class OrdemEConcorrenciaTest extends TestCase
      * responsável nasce lá, e o mesmo campo no pé do Backlog entregaria um card que
      * aparece na coluna ao lado.
      */
-    public function test_criacao_rapida_abre_tarefa_com_o_titulo_e_so_existe_em_aberta(): void
+    public function test_criacao_rapida_existe_em_aberta_e_backlog_e_declara_a_coluna(): void
     {
         $usuario = User::factory()->create();
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        $this->assertSame(1, substr_count($html, 'Enter para criar'));
+        // Duas colunas de fila, dois campos: Aberta e Backlog.
+        $this->assertSame(2, substr_count($html, 'Enter para criar'));
 
         Carbon::setTestNow(now());
 
@@ -248,5 +249,20 @@ class OrdemEConcorrenciaTest extends TestCase
         $this->assertNotNull($tarefa, 'A criação rápida manda só o título — exigir prioridade a quebraria.');
         $this->assertSame('aberta', $tarefa->status);
         $this->assertSame('media', $tarefa->prioridade);
+
+        // O campo do Backlog DECLARA a coluna. Sem isso o `booted` decidiria
+        // pelo responsável e o card nasceria em Aberta — um controle que
+        // promete um lugar e entrega outro.
+        $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'titulo' => 'Priorizada direto', 'status' => 'backlog',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('backlog', Tarefa::firstWhere('titulo', 'Priorizada direto')->status);
+
+        // E só as duas colunas de fila são destino: criar direto em Em revisão
+        // pularia o trabalho que a etapa existe para examinar.
+        $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'titulo' => 'Pulando o fluxo', 'status' => 'em_revisao',
+        ])->assertSessionHasErrors('status');
     }
 }

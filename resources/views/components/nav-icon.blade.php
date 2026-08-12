@@ -31,6 +31,8 @@
         // que o protótipo usa — distinto do `chat` de três pontos da pergunta.
         'balao' => 'M8.25 18.75L12 22.5l3.75-3.75M3 10.5a7.5 7.5 0 1115 0 7.5 7.5 0 01-15 0z',
         'seta-cima' => 'M12 19.5v-15m0 0l-6.75 6.75M12 4.5l6.75 6.75',
+        // Recolher coluna: duas setas, porque uma só se lê como "voltar".
+        'chevron-duplo-esquerda' => 'M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5',
         // Dúvida na revisão: interrogação em círculo, o ícone que o handoff usa
         // no chip de quem espera resposta.
         'duvida' => 'M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z',

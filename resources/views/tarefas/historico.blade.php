@@ -34,7 +34,7 @@
                 <th class="px-4 py-2.5 font-semibold">Sistema</th>
                 <th class="px-4 py-2.5 font-semibold">Responsável</th>
                 <th class="px-4 py-2.5 font-semibold">Prioridade</th>
-                <th class="px-4 py-2.5 font-semibold">Desfecho</th>
+                <th class="px-4 py-2.5 font-semibold">Desfecho / versão</th>
                 <th class="px-4 py-2.5 font-semibold text-right">Ciclo</th>
                 <th class="px-4 py-2.5 font-semibold">Encerrada em</th>
                 <th class="px-4 py-2.5 font-semibold text-right">Ação</th>
@@ -89,6 +89,14 @@
                         <x-badge :tom="$tarefa->status === 'concluida' ? 'bom' : 'critico'">
                             {{ \App\Models\Tarefa::STATUS[$tarefa->status] ?? $tarefa->status }}
                         </x-badge>
+
+                        {{-- A versão é o que liga a tarefa à tag que subiu, e é
+                             ela que responde "desde quando o cliente tem isso"
+                             — a pergunta que chega pelo suporte e que sem ela
+                             só se responde procurando no histórico do git. --}}
+                        @if (filled($tarefa->versao_producao))
+                            <p class="mt-1 font-mono text-[11.5px] text-ink-mute">{{ $tarefa->versao_producao }}</p>
+                        @endif
                     </td>
                     {{-- O número que justifica cronometrar cada etapa: quanto a
                          tarefa levou da criação até encerrar (AC-133). --}}

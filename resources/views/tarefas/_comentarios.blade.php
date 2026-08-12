@@ -22,6 +22,40 @@
 @endphp
 
 <div @class(['border-t border-rule pt-4' => ! $somenteLeitura])>
+    {{--
+        O banner de pergunta em aberto.
+
+        O card já traz a tarja, mas quem abre o detalhe para responder chega
+        aqui — e sem o banner, a conversa aberta seria mais um comentário no
+        meio da lista, indistinguível dos outros. Ele diz de quem é a vez e em
+        que rodada a conversa está.
+    --}}
+    @if ($tarefa->temPergunta())
+        @php $empacada = $tarefa->conversaEmpacada(); @endphp
+
+        <div class="mb-4 px-[9px] py-[7px] rounded-tile border-l-2"
+             style="background: rgb(var(--brand) / 0.085); border-color: rgb(var(--brand))">
+            <div class="flex items-center gap-1.5">
+                <x-nav-icon name="duvida" :peso="1.9" class="h-3 w-3 shrink-0 text-brand-text" />
+                <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] text-brand-text">
+                    Aguardando resposta de {{ $tarefa->perguntaPara?->name ?? 'alguém' }}
+                </span>
+                <span class="shrink-0 px-[5px] py-px rounded-badge font-mono text-[9px] font-semibold"
+                      style="{{ $empacada
+                          ? 'background: rgb(var(--crit) / var(--tint-alpha)); color: rgb(var(--crit))'
+                          : 'background: var(--chip); color: rgb(var(--ink-mute))' }}">
+                    {{ max(1, $tarefa->rodadas) }}ª rodada
+                </span>
+            </div>
+
+            @if ($empacada)
+                <p class="mt-[5px] font-mono text-[9px] uppercase tracking-[0.06em]" style="color: rgb(var(--crit))">
+                    considere devolver para correção
+                </p>
+            @endif
+        </div>
+    @endif
+
     <div class="flex items-center gap-2">
         <h4 class="font-display text-[14px] font-semibold text-ink">Comentários</h4>
         <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
@@ -123,12 +157,45 @@
                 <p class="mt-1 text-[12px] text-crit">{{ $message }}</p>
             @enderror
 
-            {{-- Sem botão próprio, o campo precisa dizer quando é publicado:
-                 caixa de texto que não anuncia o próprio envio é caixa que se
-                 preenche e se perde ao fechar o modal. --}}
-            <p class="mt-1 text-[11.5px] text-ink-faint">
-                Entra na tarefa quando você salvar. Em branco, nada é publicado.
-            </p>
+            {{--
+                Duas saídas para o mesmo campo, e a diferença entre elas é de
+                quem fica a vez.
+
+                Salvar publica um comentário e não move nada. PERGUNTAR publica
+                e passa a bola: a tarja aparece no card do outro lado, o sino o
+                avisa e a rodada anda se ela estava com quem perguntou. É o
+                mesmo texto — o que muda é se alguém está sendo cobrado por ele.
+
+                O botão vive fora do formulário da tarefa pelo atributo `form`,
+                como o corrigir e o apagar: formulário aninhado é HTML inválido.
+                E ele copia o `corpo` para o campo escondido no clique, porque o
+                textarea pertence ao outro formulário — sem isso, perguntar
+                mandaria vazio.
+            --}}
+            @if (! in_array($tarefa->status, \App\Models\Tarefa::STATUS_TERMINAIS, true)
+                    && ! $tarefa->esperaRespostaDe(auth()->user()))
+                <div class="mt-2 flex items-center gap-2">
+                    <button type="submit" form="perguntar-{{ $tarefa->id }}"
+                            onclick="document.getElementById('pergunta-corpo-{{ $tarefa->id }}').value =
+                                     document.getElementById('comentario-{{ $tarefa->id }}').value"
+                            class="shrink-0 h-[28px] px-2.5 rounded-control border text-[12px] font-semibold transition hover:bg-chip"
+                            style="border-color: rgb(var(--brand) / 0.45); color: rgb(var(--brand-text))">
+                        Perguntar
+                    </button>
+
+                    <p class="min-w-0 flex-1 text-[11.5px] text-ink-faint">
+                        Salvar publica o comentário. <strong class="font-semibold">Perguntar</strong> publica e
+                        passa a vez para o outro lado.
+                    </p>
+                </div>
+            @else
+                {{-- Sem botão próprio, o campo precisa dizer quando é publicado:
+                     caixa de texto que não anuncia o próprio envio é caixa que se
+                     preenche e se perde ao fechar o modal. --}}
+                <p class="mt-1 text-[11.5px] text-ink-faint">
+                    Entra na tarefa quando você salvar. Em branco, nada é publicado.
+                </p>
+            @endif
         </div>
     @endunless
 </div>
