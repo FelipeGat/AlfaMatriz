@@ -251,12 +251,21 @@ class MoverTarefaTest extends TestCase
         //
         // O menu é uma LISTA DE BOTÕES, um por destino: o select escondia os
         // três até ser aberto, e "Confirmar" no pé era o que se aperta sem ler.
-        // Cada botão só abre o painel, que é quem nomeia o resultado.
-        $card = $this->trechoDoCard($html, Tarefa::first()->id);
+        // O clique não faz a mesma coisa nos três: só quem abre painel chama
+        // `abrirPendente`. Em staging não pede nada, então é POST direto —
+        // antes ele caía no `if (! receita) return` e o clique não fazia NADA.
+        $id = Tarefa::first()->id;
+        $card = $this->trechoDoCard($html, $id);
 
-        foreach (['em_staging', 'em_desenvolvimento', 'cancelada'] as $destino) {
-            $this->assertStringContainsString('abrirPendente('.Tarefa::first()->id.", '{$destino}'", $card);
-        }
+        $this->assertStringContainsString("abrirPendente({$id}, 'em_desenvolvimento'", $card);
+        $this->assertStringContainsString("abrirPendente({$id}, 'cancelada'", $card);
+
+        $this->assertStringNotContainsString("abrirPendente({$id}, 'em_staging'", $card);
+        $this->assertMatchesRegularExpression(
+            '/name="status" value="em_staging">\s*<input type="hidden" name="de_status" value="em_revisao"/u',
+            $card,
+            'Destino sem motivo move na hora, e leva o de_status da guarda de concorrência.'
+        );
 
         $this->assertStringContainsString('Mover para', $card);
         $this->assertStringContainsString('Em staging', $card);

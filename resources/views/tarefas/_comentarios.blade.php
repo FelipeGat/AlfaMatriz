@@ -36,7 +36,7 @@
         <div class="mb-4 px-[9px] py-[7px] rounded-tile border-l-2"
              style="background: rgb(var(--brand) / 0.085); border-color: rgb(var(--brand))">
             <div class="flex items-center gap-1.5">
-                <x-nav-icon name="duvida" :peso="1.9" class="h-3 w-3 shrink-0 text-brand-text" />
+                <span class="h-3 w-3 shrink-0 text-brand-text"><x-nav-icon name="duvida" :peso="1.9" /></span>
                 <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] text-brand-text">
                     Aguardando resposta de {{ $tarefa->perguntaPara?->name ?? 'alguém' }}
                 </span>

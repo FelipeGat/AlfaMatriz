@@ -131,11 +131,13 @@
         <span class="ml-auto flex items-center gap-2">
             <span class="font-mono text-[10px] uppercase tracking-caps text-ink-faint">Raias</span>
 
+            {{-- Sem ícone: o desenho não tem nenhum aqui, e "Nenhuma" com um
+                 ícone de grade ao lado prometia uma vista que não existe. Três
+                 palavras curtas se distinguem sozinhas. --}}
             <x-abas>
                 @foreach (['nenhuma' => 'Nenhuma', 'responsavel' => 'Responsável', 'sistema' => 'Sistema'] as $modo => $rotulo)
                     <x-abas.item :href="request()->fullUrlWithQuery(['raias' => $modo])"
-                                 :ativo="$raias['modo'] === $modo"
-                                 :icone="['nenhuma' => 'view-grid', 'responsavel' => 'users', 'sistema' => 'cube'][$modo]">
+                                 :ativo="$raias['modo'] === $modo">
                         {{ $rotulo }}
                     </x-abas.item>
                 @endforeach

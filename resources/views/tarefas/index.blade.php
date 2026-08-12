@@ -110,7 +110,7 @@
                                   font-mono text-[10.5px] font-semibold uppercase tracking-[0.06em] whitespace-nowrap transition
                                   {{ $chip['total'] === 0 ? 'opacity-45 hover:opacity-100' : '' }}"
                            style="border-color: {{ $chip['borda'] }}; background: {{ $chip['fundo'] }}; color: rgb(var(--{{ $chip['cor'] }}))">
-                            <x-nav-icon :name="$chip['icone']" :peso="1.9" class="h-3 w-3 shrink-0" />
+                            <span class="h-3 w-3 shrink-0"><x-nav-icon :name="$chip['icone']" :peso="1.9" /></span>
                             {{ $chip['label'] }}
                         </a>
                     @endforeach

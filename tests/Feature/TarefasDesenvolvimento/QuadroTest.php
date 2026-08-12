@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\FluxoTarefaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 /**
@@ -383,5 +384,46 @@ class QuadroTest extends TestCase
         foreach (['Nenhuma', 'Responsável', 'Sistema'] as $opcao) {
             $this->assertStringContainsString($opcao, $html);
         }
+    }
+
+    /**
+     * @spec:AC-214 Nenhum `<x-nav-icon>` recebe `class` ou `style` direto.
+     *
+     * O componente crava `class="w-full h-full"` no `<svg>` e NÃO mescla atributos —
+     * então `class="h-3 w-3"` passada a ele é descartada em silêncio e o ícone estica
+     * até o tamanho do pai. Aconteceu em onze lugares de uma vez: o cadeado do menu
+     * saiu enorme e quebrou o rótulo em duas linhas.
+     *
+     * O tamanho vem do `<span>` que o envolve, que é como o resto do repositório faz.
+     * Este teste varre o fonte porque o defeito não aparece no HTML: a classe some
+     * antes de chegar lá, e o resultado é uma tela torta com markup impecável.
+     */
+    public function test_nenhum_icone_recebe_classe_direto(): void
+    {
+        $ofensores = [];
+
+        foreach (File::allFiles(resource_path('views')) as $arquivo) {
+            if (! str_ends_with($arquivo->getFilename(), '.blade.php')) {
+                continue;
+            }
+
+            // A própria definição do componente é quem escreve o `class` do svg.
+            if (str_contains($arquivo->getPathname(), 'components/nav-icon.blade.php')) {
+                continue;
+            }
+
+            preg_match_all('/<x-nav-icon[^>]*>/', $arquivo->getContents(), $usos);
+
+            foreach ($usos[0] as $uso) {
+                if (preg_match('/\s(class|style)=/', $uso)) {
+                    $ofensores[] = str_replace(resource_path('views').'/', '', $arquivo->getPathname()).': '.$uso;
+                }
+            }
+        }
+
+        $this->assertSame([], $ofensores,
+            'O <x-nav-icon> descarta `class` e `style` — o tamanho e a cor vêm do <span> que o '
+                ."envolve. Estes ficariam do tamanho do pai, sem erro nenhum na tela:\n  "
+                .implode("\n  ", $ofensores));
     }
 }

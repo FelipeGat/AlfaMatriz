@@ -85,7 +85,7 @@
                 title="Recolher coluna" aria-label="Recolher coluna"
                 class="shrink-0 h-[19px] w-[19px] rounded-badge flex items-center justify-center
                        text-ink-faint transition hover:text-brand">
-            <x-nav-icon name="chevron-duplo-esquerda" :peso="2" class="h-3 w-3" />
+            <span class="h-3 w-3"><x-nav-icon name="chevron-duplo-esquerda" :peso="2" /></span>
         </button>
     </div>
 

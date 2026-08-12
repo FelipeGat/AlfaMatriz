@@ -135,7 +135,7 @@
         <div class="mt-2 px-[9px] py-[7px] rounded-tile border-l-2"
              style="background: rgb(var(--brand) / 0.085); border-color: rgb(var(--brand))">
             <div class="flex items-center gap-1.5">
-                <x-nav-icon name="duvida" :peso="1.9" class="h-3 w-3 shrink-0 text-brand-text" />
+                <span class="h-3 w-3 shrink-0 text-brand-text"><x-nav-icon name="duvida" :peso="1.9" /></span>
                 <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] text-brand-text whitespace-nowrap">
                     Aguardando resposta
                 </span>
@@ -212,7 +212,7 @@
         <div class="mt-2 px-[9px] py-[7px] rounded-tile border-l-2"
              style="background: var(--warn-tint); border-color: rgb(var(--warn))">
             <div class="flex items-center gap-1.5">
-                <x-nav-icon name="arrow-uturn-left" :peso="1.9" class="h-3 w-3 shrink-0" style="color: rgb(var(--warn))" />
+                <span class="h-3 w-3 shrink-0" style="color: rgb(var(--warn))"><x-nav-icon name="arrow-uturn-left" :peso="1.9" /></span>
                 <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] truncate"
                       style="color: rgb(var(--warn))">{{ $tarefa->rotuloDoRetorno() }}</span>
             </div>
@@ -237,7 +237,7 @@
         <div class="mt-2 px-[9px] py-[7px] rounded-tile border-l-2"
              style="background: var(--warn-tint); border-color: rgb(var(--warn))">
             <div class="flex items-center gap-1.5">
-                <x-nav-icon name="cadeado-fechado" :peso="1.8" class="h-3 w-3 shrink-0" style="color: rgb(var(--warn))" />
+                <span class="h-3 w-3 shrink-0" style="color: rgb(var(--warn))"><x-nav-icon name="cadeado-fechado" :peso="1.8" /></span>
                 <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] truncate"
                       style="color: rgb(var(--warn))">{{ $tarefa->rotuloDoBloqueio() }}</span>
 
@@ -246,7 +246,7 @@
                     <button type="submit" title="Destravar tarefa" aria-label="Destravar tarefa"
                             class="shrink-0 h-5 w-5 rounded-badge border flex items-center justify-center transition hover:bg-chip"
                             style="border-color: var(--warn-line); color: rgb(var(--warn))">
-                        <x-nav-icon name="cadeado-aberto" :peso="1.9" class="h-[11px] w-[11px]" />
+                        <span class="h-[11px] w-[11px]"><x-nav-icon name="cadeado-aberto" :peso="1.9" /></span>
                     </button>
                 </form>
             </div>
@@ -292,7 +292,7 @@
             <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px]"
                   title="{{ $progresso['feitos'] }} de {{ $progresso['total'] }} itens concluídos"
                   style="color: {{ $progresso['feitos'] === $progresso['total'] ? 'rgb(var(--good))' : 'rgb(var(--ink-mute))' }}">
-                <x-nav-icon name="check-circle" :peso="1.9" class="h-[11px] w-[11px]" />
+                <span class="h-[11px] w-[11px]"><x-nav-icon name="check-circle" :peso="1.9" /></span>
                 {{ $progresso['feitos'] }}/{{ $progresso['total'] }}
             </span>
         @endif
@@ -300,7 +300,7 @@
         @if ($totalComentarios > 0)
             <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px] text-ink-mute"
                   title="{{ $totalComentarios }} comentário{{ $totalComentarios === 1 ? '' : 's' }}">
-                <x-nav-icon name="balao" :peso="1.8" class="h-[11px] w-[11px]" />
+                <span class="h-[11px] w-[11px]"><x-nav-icon name="balao" :peso="1.8" /></span>
                 {{ $totalComentarios }}
             </span>
         @endif
@@ -319,7 +319,7 @@
                         title="Bloquear tarefa" aria-label="Bloquear tarefa"
                         class="h-5 w-5 rounded-badge border border-line flex items-center justify-center
                                text-ink-mute transition hover:text-warn hover:border-warn-line">
-                    <x-nav-icon name="cadeado-fechado" :peso="1.9" class="h-[11px] w-[11px]" />
+                    <span class="h-[11px] w-[11px]"><x-nav-icon name="cadeado-fechado" :peso="1.9" /></span>
                 </button>
             @endunless
 
@@ -328,7 +328,7 @@
                         title="Concluir tarefa" aria-label="Concluir tarefa"
                         class="h-5 w-5 rounded-badge border flex items-center justify-center transition"
                         style="border-color: var(--good-line); background: var(--good-tint); color: rgb(var(--good))">
-                    <x-nav-icon name="check" :peso="2.2" class="h-[11px] w-[11px]" />
+                    <span class="h-[11px] w-[11px]"><x-nav-icon name="check" :peso="2.2" /></span>
                 </button>
             @endif
 
@@ -385,7 +385,7 @@
                 <button type="button" @click.stop="fecharPendente()" title="Cancelar" aria-label="Cancelar"
                         class="shrink-0 h-5 w-5 rounded-badge flex items-center justify-center text-ink-mute
                                transition hover:text-ink">
-                    <x-nav-icon name="x-mark" :peso="2" class="h-3 w-3" />
+                    <span class="h-3 w-3"><x-nav-icon name="x-mark" :peso="2" /></span>
                 </button>
             </div>
 

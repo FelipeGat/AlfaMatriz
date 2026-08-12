@@ -35,17 +35,28 @@
             @foreach ($transicoes as $destino)
                 @php
                     /**
-                     * Esta transição cobra texto?
+                     * Este destino abre o painel de motivo?
                      *
-                     * Voltar para a bancada só cobra quando a tarefa vem de um
-                     * PORTÃO — aí é reprovação. Do Backlog é só começar a
-                     * trabalhar, e anunciar "pede motivo" ali seria prometer uma
-                     * pergunta que o painel não vai fazer.
+                     * É a mesma pergunta que o `painelDe` do protótipo faz, e a
+                     * resposta manda em DUAS coisas ao mesmo tempo: se o botão
+                     * abre o painel ou move na hora, e se ele anuncia "pede
+                     * motivo". As duas precisam concordar — um destino que diz
+                     * "pede motivo" e move em silêncio, ou que não diz nada e
+                     * abre um painel, ensina a não ler o rótulo.
+                     *
+                     * Voltar para a bancada só entra quando a tarefa vem de um
+                     * PORTÃO: aí é reprovação, e o texto é obrigatório. Do
+                     * Backlog é literalmente começar a trabalhar, e um painel
+                     * ali pediria justificativa para pegar a própria tarefa.
+                     *
+                     * `pronta_producao` entra mesmo com o texto OPCIONAL: o
+                     * painel dela carrega o "Validado no staging", e sem esse
+                     * carimbo o motor recusa a passagem. Mover na hora daria
+                     * uma recusa que a tela nunca deu chance de evitar.
                      */
-                    $pedeMotivo = match ($destino) {
+                    $abrePainel = match ($destino) {
                         'em_desenvolvimento' => in_array($tarefa->status, \App\Models\Tarefa::PORTOES, true),
-                        'cancelada' => true,
-                        'concluida' => $tarefa->tipo === 'desenvolvimento',
+                        'cancelada', 'concluida', 'pronta_producao' => true,
                         default => false,
                     };
 
@@ -58,30 +69,54 @@
                      * duas coisas pelo mesmo nome esconde a única que tem
                      * consequência — e o card do outro lado vai amanhecer com
                      * uma tarja que ninguém acha que pediu.
-                     *
-                     * Vindo do Backlog é literalmente começar a trabalhar, e aí
-                     * "Em andamento" é o nome certo.
                      */
                     $rotulo = $destino === 'em_desenvolvimento'
                             && in_array($tarefa->status, \App\Models\Tarefa::PORTOES, true)
                         ? 'Devolver para correção'
                         : \App\Models\Tarefa::rotuloDaEtapa($destino);
+
+                    $linha = 'flex items-center gap-2 w-full h-[30px] px-2 rounded-tile border border-btn-line'
+                        .' bg-transparent text-ink text-[12.5px] text-left transition hover:border-brand/50';
                 @endphp
 
-                <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, '{{ $destino }}', '{{ $tarefa->status }}', '{{ $tarefa->tipo }}')"
-                        class="flex items-center gap-2 w-full h-[30px] px-2 rounded-tile border border-btn-line
-                               bg-transparent text-ink text-[12.5px] text-left transition hover:border-brand/50">
-                    <span class="h-[7px] w-[7px] shrink-0 rounded-full"
-                          style="background: rgb(var(--{{ \App\Models\Tarefa::corDaEtapa($destino) }}))"></span>
+                {{--
+                    Destino que NÃO abre painel move na hora.
 
-                    <span class="flex-1 min-w-0 truncate">{{ $rotulo }}</span>
+                    Antes todos chamavam `abrirPendente`, e para os que não têm
+                    receita — Em staging, Backlog, Aberta, Em revisão — ele saía
+                    pelo `if (! receita) return`: o clique não fazia nada, em
+                    silêncio. Estes são um POST direto, com o `de_status` que a
+                    guarda de concorrência exige.
+                --}}
+                @if ($abrePainel)
+                    <button type="button" class="{{ $linha }}"
+                            @click.stop="abrirPendente({{ $tarefa->id }}, '{{ $destino }}', '{{ $tarefa->status }}', '{{ $tarefa->tipo }}')">
+                        <span class="h-[7px] w-[7px] shrink-0 rounded-full"
+                              style="background: rgb(var(--{{ \App\Models\Tarefa::corDaEtapa($destino) }}))"></span>
 
-                    @if ($pedeMotivo)
+                        <span class="flex-1 min-w-0 truncate">{{ $rotulo }}</span>
+
                         <span class="shrink-0 font-mono text-[9px] uppercase tracking-[0.06em] text-ink-faint">
                             pede motivo
                         </span>
-                    @endif
-                </button>
+                    </button>
+                @else
+                    <form method="POST" action="{{ route('tarefas.mover', $tarefa) }}" class="w-full">
+                        @csrf
+                        {{-- A etapa que o card tinha quando a tela foi montada:
+                             se alguém moveu enquanto o menu estava aberto, o
+                             envio é recusado em vez de sobrescrever (AC-208). --}}
+                        <input type="hidden" name="status" value="{{ $destino }}">
+                        <input type="hidden" name="de_status" value="{{ $tarefa->status }}">
+
+                        <button type="submit" class="{{ $linha }}">
+                            <span class="h-[7px] w-[7px] shrink-0 rounded-full"
+                                  style="background: rgb(var(--{{ \App\Models\Tarefa::corDaEtapa($destino) }}))"></span>
+
+                            <span class="flex-1 min-w-0 truncate">{{ $rotulo }}</span>
+                        </button>
+                    </form>
+                @endif
             @endforeach
         @endif
 
@@ -102,7 +137,7 @@
                     class="flex items-center gap-2 w-full h-[30px] px-2 rounded-tile border
                            text-[12.5px] font-semibold text-left transition hover:brightness-110"
                     style="border-color: var(--warn-line); background: var(--warn-tint); color: rgb(var(--warn))">
-                <x-nav-icon name="cadeado-fechado" :peso="1.8" class="h-3 w-3 shrink-0" />
+                <span class="h-3 w-3 shrink-0"><x-nav-icon name="cadeado-fechado" :peso="1.8" /></span>
                 Marcar como bloqueada
             </button>
         @endunless
