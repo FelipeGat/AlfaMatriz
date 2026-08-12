@@ -45,8 +45,17 @@
                 class="group flex items-center gap-2 rounded-control px-1 py-0.5 hover:bg-chip transition"
                 :class="arrastando === $el && 'opacity-40'">
 
-                <span class="shrink-0 cursor-grab font-mono text-[11px] text-ink-faint select-none"
-                      title="Arraste para reordenar" aria-hidden="true">⠿</span>
+                {{-- A alça é o ícone de seis pontos do desenho, e não o
+                     caractere ⠿: em fonte sem esse glifo ele saía como
+                     retângulo vazio, e a alça virava um defeito à vista. --}}
+                <span class="shrink-0 flex items-center justify-center cursor-grab text-ink-faint"
+                      title="Arraste para reordenar" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor" class="h-[13px] w-[13px]">
+                        <circle cx="9" cy="6" r="1.4" /><circle cx="15" cy="6" r="1.4" />
+                        <circle cx="9" cy="12" r="1.4" /><circle cx="15" cy="12" r="1.4" />
+                        <circle cx="9" cy="18" r="1.4" /><circle cx="15" cy="18" r="1.4" />
+                    </svg>
+                </span>
 
                 {{--
                     O `feito=0` escondido vem ANTES da caixa e no mesmo envio:
@@ -106,4 +115,13 @@
                       !bg-transparent !rounded-none !border-x-0 !border-t-0 !border-b !border-transparent
                       focus:!border-brand">
     </div>
+
+    {{-- A nota existe para não precisarem perguntar. Sem ela, "checklist" e
+         "subtarefa" viram sinônimos, e a primeira pergunta de quem usa é em que
+         coluna o item mora e se ele conta no WIP — que é justamente o que o
+         checklist não responde por não ser nenhuma das duas coisas. --}}
+    <p class="mt-1.5 px-1 text-[11px] leading-[1.45] text-ink-faint">
+        Checklist não é subtarefa: não tem responsável nem etapa, e não entra na conta de trabalho em curso.
+        O que precisa de dono próprio vira tarefa.
+    </p>
 </div>

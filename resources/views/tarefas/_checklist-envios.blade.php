@@ -20,6 +20,14 @@
      está DENTRO do formulário de edição, e formulário aninhado é HTML
      inválido. --}}
 @if (auth()->user()?->podeTriarTarefas())
+    {{-- Bloquear e destravar: a mesma rota nos dois sentidos, como o botão do
+         card. Fora do formulário da tarefa porque aninhar é HTML inválido — o
+         textarea do rodapé aponta para cá pelo atributo `form`. --}}
+    <form id="bloquear-tarefa-{{ $tarefa->id }}" method="POST"
+          action="{{ route('tarefas.bloquear', $tarefa) }}" class="hidden">
+        @csrf
+    </form>
+
     <form id="excluir-tarefa-{{ $tarefa->id }}" method="POST"
           action="{{ route('tarefas.destroy', $tarefa) }}" class="hidden">
         @csrf

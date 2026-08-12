@@ -989,7 +989,7 @@
     </script>
 
     {{-- Modal: nova tarefa --}}
-    <x-modal name="nova-tarefa" maxWidth="lg">
+    <x-modal name="nova-tarefa" maxWidth="tarefa">
         @include('tarefas._form', ['tarefa' => null, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
     </x-modal>
 
@@ -998,7 +998,7 @@
          mesmo Salvar; o que vem depois são só os formulários de apagar
          comentário, que não podem ficar aninhados nele. --}}
     @foreach ($tarefas as $tarefa)
-        <x-modal name="editar-tarefa-{{ $tarefa->id }}" maxWidth="lg">
+        <x-modal name="editar-tarefa-{{ $tarefa->id }}" maxWidth="tarefa">
             @include('tarefas._form', ['tarefa' => $tarefa, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
             @include('tarefas._checklist-envios', ['tarefa' => $tarefa])
             @include('tarefas._comentarios-envios', ['tarefa' => $tarefa])

@@ -56,11 +56,12 @@
         </div>
     @endif
 
-    <div class="flex items-center gap-2">
-        <h4 class="font-display text-[14px] font-semibold text-ink">Comentários</h4>
-        <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
-            {{ $comentarios->count() }}
-        </span>
+    {{-- "Conversa", e não "Comentários": o que acontece aqui é uma troca com
+         vez definida — perguntar passa a bola, responder devolve. "Comentários"
+         descreveria um mural, onde ninguém deve nada a ninguém. --}}
+    <div class="flex items-center gap-2 mb-2.5">
+        <p class="flex-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-mute">Conversa</p>
+        <span class="font-mono text-[10.5px] text-ink-faint">{{ $comentarios->count() }}</span>
     </div>
 
     {{-- Altura limitada com rolagem própria: uma tarefa velha pode ter trinta
@@ -70,17 +71,34 @@
         @forelse ($comentarios as $comentario)
             @php $doAutor = ! $somenteLeitura && $comentario->autor_id === auth()->id(); @endphp
 
-            <article x-data="{ editando: false }" class="rounded-ctl border border-line bg-chip px-3 py-2.5">
+            @php
+                // A cor do avatar sai do NOME, como no card: o mesmo rosto
+                // guarda o mesmo tom entre as duas telas.
+                $autor = $comentario->autor;
+                $iniciaisAutor = $autor
+                    ? \Illuminate\Support\Str::of($autor->name)->explode(' ')
+                        ->take(2)->map(fn ($p) => mb_substr($p, 0, 1))->implode('')
+                    : '—';
+                $corAutor = $autor ? ['brand', 'accent', 'amber', 'good'][mb_strlen($autor->name) % 4] : 'ink-faint';
+            @endphp
+
+            <article x-data="{ editando: false }" class="rounded-[5px] border border-line bg-surface px-[11px] py-[9px]">
                 <div class="flex items-center gap-2">
-                    <p class="min-w-0 flex-1 truncate font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
-                        {{ $comentario->autor?->name ?? 'Autor removido' }}
-                        · {{ $comentario->created_at->format('d/m/Y H:i') }}
+                    <span class="shrink-0 h-5 w-5 rounded-full flex items-center justify-center text-[8.5px] font-semibold text-ink"
+                          style="background: rgb(var(--{{ $corAutor }}) / 0.18)">{{ $iniciaisAutor }}</span>
+
+                    <span class="text-[12.5px] font-semibold text-ink">
+                        {{ $autor?->name ?? 'Autor removido' }}
+                    </span>
+
+                    <span class="min-w-0 truncate font-mono text-[10px] text-ink-faint">
+                        {{ $comentario->created_at->diffForHumans(short: true) }}
                         {{-- A correção é dita: quem leu a versão anterior
                              precisa saber que ela mudou. --}}
                         @if ($comentario->editado_em)
                             · <span title="Corrigido em {{ $comentario->editado_em->format('d/m/Y H:i') }}">editado</span>
                         @endif
-                    </p>
+                    </span>
 
                     {{-- Só o autor corrige e apaga o próprio, e a mesma regra
                          vale no servidor: o botão some, a rota recusa. O `form`
@@ -90,7 +108,7 @@
                     @if ($doAutor)
                         <button type="button" @click="editando = ! editando"
                                 title="Corrigir este comentário"
-                                class="shrink-0 p-1 rounded-tile text-ink-faint hover:text-brand transition">
+                                class="ml-auto shrink-0 p-1 rounded-tile text-ink-faint hover:text-brand transition">
                             <span class="block h-[13px] w-[13px]"><x-nav-icon name="pencil" /></span>
                         </button>
                         <button type="submit" form="apagar-comentario-{{ $comentario->id }}"
@@ -108,7 +126,7 @@
                     escritas em sequência sairiam grudadas num parágrafo só.
                 --}}
                 <p @if ($doAutor) x-show="! editando" @endif
-                   class="mt-1.5 text-[13px] leading-snug text-ink-dim whitespace-pre-line">{{ $comentario->corpo }}</p>
+                   class="mt-1.5 text-[12.5px] leading-[1.5] text-ink-dim whitespace-pre-wrap">{{ $comentario->corpo }}</p>
 
                 @if ($doAutor)
                     {{-- O campo troca de dono pelo atributo `form`: ele vive
@@ -135,7 +153,7 @@
                 @endif
             </article>
         @empty
-            <p class="text-[12.5px] text-ink-mute">
+            <p class="px-3 py-3 rounded-[5px] border border-dashed border-line text-center text-[12px] text-ink-faint">
                 {{ $somenteLeitura
                     ? 'Esta tarefa foi encerrada sem comentários.'
                     : 'Nenhum comentário ainda — o primeiro costuma ser o que a tarefa não conseguiu dizer no título.' }}

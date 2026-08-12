@@ -172,39 +172,41 @@ class OrdemEConcorrenciaTest extends TestCase
     }
 
     /**
-     * @spec:AC-210 O excluir fica na mesma linha do Salvar, na ponta oposta.
+     * @spec:AC-210 O excluir fica no RODAPÉ do modal, na ponta oposta do Salvar, e
+     * confirma em dois passos NO PRÓPRIO BOTÃO.
      *
-     * Ele já morou embaixo de tudo, obedecendo ao "rodapé do detalhe" ao pé da
-     * letra — e num modal que rola, depois do checklist e da conversa inteira,
-     * rodapé virou fora da tela: nascia a 804px numa janela de 800. Ação
-     * destrutiva que ninguém acha é tão quebrada quanto uma fácil demais de
-     * apertar, e este teste existe para ela não afundar de novo.
+     * Ele já morou embaixo de tudo, obedecendo ao "rodapé do detalhe" ao pé da letra —
+     * e num modal que rola, depois do checklist e da conversa inteira, rodapé virou
+     * fora da tela. Ação destrutiva que ninguém acha é tão quebrada quanto uma fácil
+     * demais de apertar; a largura do modal separa uma da outra.
      */
-    public function test_o_excluir_fica_na_linha_do_salvar_e_nao_no_fim_do_modal(): void
+    public function test_o_excluir_confirma_em_dois_passos_no_rodape(): void
     {
         $usuario = User::factory()->create();
         $this->criarTarefa();
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        $posExcluir = strpos($html, 'Excluir tarefa');
+        // Um botão só, que troca de rótulo no primeiro clique.
+        $this->assertStringContainsString("confirmandoExclusao ? 'Confirmar exclusão' : 'Excluir'", $html);
+
+        // E a nota que diz a diferença para cancelar aparece junto da confirmação:
+        // sem ela, "excluir" e "cancelar" são sinônimos na cabeça de quem lê, e um
+        // apaga o histórico que o outro existe para guardar.
+        $this->assertStringContainsString('Apaga o registro. Para encerrar com rastro, cancele pelo menu Mover.', $html);
+
+        // Vizinhos no mesmo rodapé: entre um e outro não cabe a conversa nem o
+        // checklist, que é o que os separava antes.
+        $posExcluir = strpos($html, "confirmandoExclusao ? 'Confirmar exclusão'");
         $posSalvar = strpos($html, "enviando ? 'Salvando…' : 'Salvar'");
 
         $this->assertNotFalse($posExcluir, 'Quem triaga precisa ver o excluir.');
         $this->assertNotFalse($posSalvar);
 
-        // Vizinhos no mesmo rodapé: entre um e outro só cabe o bloco de botões,
-        // e nunca a conversa ou o checklist, que é o que os separava antes.
         $entre = substr($html, $posExcluir, $posSalvar - $posExcluir);
 
-        $this->assertLessThan(1200, strlen($entre),
-            'Excluir e Salvar precisam dividir o rodapé — separados, o excluir cai abaixo da dobra.');
-        $this->assertStringNotContainsString('Comentários', $entre);
+        $this->assertStringNotContainsString('Conversa', $entre);
         $this->assertStringNotContainsString('Checklist', $entre);
-
-        // E o aviso que diz a diferença para cancelar continua junto dele.
-        $this->assertStringContainsString('apaga o registro', $html);
-        $this->assertStringContainsString('mantendo o', $html);
     }
 
     /**

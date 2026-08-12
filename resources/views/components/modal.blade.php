@@ -11,6 +11,9 @@ $maxWidth = [
     'lg' => 'sm:max-w-lg',
     'xl' => 'sm:max-w-xl',
     '2xl' => 'sm:max-w-2xl',
+    // O modal da tarefa: 620px é o valor do desenho, e não há passo da escala
+    // do Tailwind nesse ponto — `xl` dá 576 e `2xl` dá 672.
+    'tarefa' => 'sm:max-w-[620px]',
 ][$maxWidth];
 @endphp
 
