@@ -256,7 +256,7 @@ class MoverTarefaTest extends TestCase
 
         $this->assertStringContainsString(
             'pegar( '.Tarefa::first()->id.', '.Js::from(['concluida', 'backlog', 'cancelada'])->toHtml()
-                .", 'operacional', false )",
+                .", 'operacional', false, 'em_desenvolvimento' )",
             $numaLinha,
             'O card precisa levar destinos, tipo e situação de bloqueio para o quadro no dragstart.'
         );

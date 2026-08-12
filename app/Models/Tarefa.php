@@ -129,7 +129,7 @@ class Tarefa extends Model
 
     protected $fillable = [
         'titulo', 'resumo', 'detalhes', 'tipo', 'sistema_id', 'responsavel_id',
-        'criado_por_id', 'prioridade', 'status', 'iniciada_em',
+        'criado_por_id', 'prioridade', 'status', 'ordem', 'iniciada_em',
     ];
 
     protected function casts(): array

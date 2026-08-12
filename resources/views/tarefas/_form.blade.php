@@ -135,6 +135,47 @@
         @include('tarefas._comentarios', ['tarefa' => $tarefa])
     @endif
 
+    {{--
+        O excluir vive no RODAPÉ, longe dos botões do fluxo, e declara ali
+        mesmo a diferença para cancelar. Sem essa frase, "excluir" e "cancelar"
+        são dois sinônimos na cabeça de quem lê — e um deles apaga o histórico
+        que o outro existe para guardar.
+
+        Dois passos porque é a única ação do quadro sem desfazer. O botão de
+        confirmação some ao fechar o modal (`x-data` local), então uma tarefa
+        aberta de novo nunca aparece com a confirmação já armada.
+    --}}
+    @if ($tarefa && $podeTriar)
+        <div class="pt-4 border-t border-rule" x-data="{ confirmando: false }">
+            <div x-show="! confirmando">
+                <button type="button" @click="confirmando = true"
+                        class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-crit-text transition">
+                    Excluir tarefa
+                </button>
+            </div>
+
+            <div x-show="confirmando" x-cloak class="space-y-2">
+                <p class="text-[11.5px] leading-snug text-ink-mute">
+                    Excluir <strong class="text-ink">apaga o registro</strong>: a conversa, o checklist e o
+                    tempo por etapa somem junto, e não há como desfazer. Para encerrar a tarefa mantendo o
+                    histórico, o caminho é <strong class="text-ink">cancelar</strong>, pelo menu de mover.
+                </p>
+                <div class="flex items-center gap-2">
+                    <button type="submit" form="excluir-tarefa-{{ $tarefa->id }}"
+                            class="h-8 px-3 rounded-control font-semibold text-[12px] text-on-brand transition"
+                            style="background: rgb(var(--crit))">
+                        Excluir para sempre
+                    </button>
+                    <button type="button" @click="confirmando = false"
+                            class="h-8 px-3 rounded-control border border-btn-line text-[12px] text-ink-dim
+                                   hover:text-ink transition">
+                        Manter
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="flex justify-end gap-3">
         <x-secondary-button x-on:click="$dispatch('close')">Cancelar</x-secondary-button>
         {{-- O rótulo literal é o que vale sem JS; com Alpine no ar, ele vira

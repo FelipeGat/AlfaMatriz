@@ -1,42 +1,50 @@
 # Changelog — AlfaMatriz
 
-## AlfaMatriz — 12/08/2026 — Atualizações deixam de ser sentidas por quem está usando
+## AlfaMatriz — 12/08/2026 — Quadro agrupado, teclado, celular e ordem escolhida à mão
 
-Até aqui, publicar uma versão nova mexia no sistema **enquanto ele atendia**.
-Por cerca de dois minutos, quem estivesse trabalhando podia encontrar telas com
-erro, botões que não respondiam ou uma página em branco — e, se a atualização
-falhasse no meio, o sistema ficava quebrado até alguém arrumar à mão. Era o
-motivo de as publicações ficarem para o fim do dia.
+Última leva do redesenho da tela de Tarefas.
 
-Agora a versão nova é montada por completo **ao lado** da que está no ar, testada
-ali, e só entra quando está pronta e respondendo. A troca é instantânea. É o
-mesmo mecanismo que o AlfaControl já usa há tempos.
+### Novidades
 
-### Melhorias
+- **Raias.** O quadro pode ser agrupado por **responsável** ou por **sistema**,
+  com o cabeçalho das etapas fixo no topo. Diferente do filtro, a raia não
+  esconde nada: mostra tudo separado. É como se responde "quem está com o quê" e
+  "onde cada produto está travado", que são perguntas que somem quando se olha
+  coluna por coluna com todo mundo misturado. Na raia por pessoa, quem está com
+  mais de duas tarefas andando ao mesmo tempo ganha um aviso.
+- **O quadro no celular.** Uma etapa por vez, trocada por uma tira de botões com
+  a contagem de cada uma. Antes eram cinco colunas espremidas numa tela onde
+  cabe pouco mais de uma.
+- **Atalhos de teclado.** Setas andam pelos cards e pelas colunas, `⇧` com as
+  setas move a tarefa de etapa, `B` bloqueia, `M` abre o menu, `Enter` abre a
+  tarefa, `C` cria rápido, `N` abre o formulário, `/` vai para a busca e `?`
+  mostra a lista inteira. Nada dispara enquanto você está digitando.
+- **Criação rápida.** No pé da coluna Aberta há um campo: escreva o título, dê
+  Enter e a tarefa está aberta. Metade do que se abre no dia é uma frase, e para
+  uma frase o formulário completo é uma cerimônia que faz a pessoa deixar para
+  depois.
+- **Ordem escolhida à mão.** Arrastando um card sobre outro da mesma coluna, a
+  ordem passa a ser a que você escolheu. O quadro ordena sozinho por gravidade,
+  mas "o que é mais grave" não é a mesma pergunta que "qual eu pego primeiro" —
+  entre duas tarefas altas, quem conhece o trabalho sabe que uma destrava a
+  outra. A coluna que ninguém arrumou continua ordenada sozinha.
+- **Excluir tarefa**, diferente de cancelar. Cancelar encerra com motivo e fica
+  no histórico; excluir apaga o registro, e serve para a tarefa que nunca
+  deveria ter sido aberta. Fica no rodapé do detalhe, pede confirmação em dois
+  passos e é só de quem faz triagem.
 
-- **Publicar não interrompe mais ninguém.** A versão nova é preparada numa área
-  separada e conferida antes de entrar. Quem estiver com uma tela aberta no
-  momento da troca continua de onde parou.
-- **Atualização que dá errado não chega a aparecer.** Falhando qualquer etapa do
-  preparo, o sistema simplesmente continua na versão anterior — sem nenhuma
-  alteração e sem ninguém perceber que houve tentativa.
-- **Versão com problema volta sozinha.** Se a versão nova entrar e o sistema não
-  responder, a anterior volta ao ar em cerca de um segundo, sem esperar por
-  ninguém. Antes, um problema fora do horário comercial ficaria de pé até
-  alguém acordar.
-- **Voltar de versão passou a ser imediato.** A versão anterior fica inteira e
-  pronta no servidor. Voltar deixou de significar reconstruir tudo — de ~2
-  minutos para ~1 segundo.
-- **O ambiente de teste passou a usar o mesmo caminho da produção.** Além de
-  ensaiar o mecanismo antes de ele valer para o faturamento, o ambiente de teste
-  deixou de ficar servindo código ainda não verificado enquanto a verificação
-  rodava.
-- **Anexos de cobranças e contas a pagar saíram de dentro da versão.** Eles
-  passam a viver num lugar próprio no servidor: uma troca de versão não tem mais
-  como fazer arquivo anexado sumir da vista.
+### Correções
 
-> Nenhuma ação é necessária da sua parte. A mudança é no servidor; as telas e os
-> dados são exatamente os mesmos.
+- **Duas pessoas movendo o mesmo card não se atropelam mais.** Antes o segundo
+  movimento vencia em silêncio, e quem moveu primeiro só descobria se
+  recarregasse a tela. Agora o segundo é recusado, dizendo para onde a tarefa já
+  tinha ido.
+- **Arrastar um card não abre mais a tarefa no meio do gesto.** O card faz as
+  duas coisas — abre no clique e arrasta —, e o começo de qualquer arrasto
+  contava como clique.
+
+> A publicação inclui uma atualização do banco (a posição do card na coluna).
+> Nenhuma tarefa muda de lugar.
 
 ## AlfaMatriz — 11/08/2026 — Entrar no quadro deixou de exigir acesso de administrador
 

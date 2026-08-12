@@ -16,6 +16,17 @@
     @csrf
 </form>
 
+{{-- O excluir da tarefa mora aqui pelo mesmo motivo dos outros: o botão dele
+     está DENTRO do formulário de edição, e formulário aninhado é HTML
+     inválido. --}}
+@if (auth()->user()?->podeTriarTarefas())
+    <form id="excluir-tarefa-{{ $tarefa->id }}" method="POST"
+          action="{{ route('tarefas.destroy', $tarefa) }}" class="hidden">
+        @csrf
+        @method('DELETE')
+    </form>
+@endif
+
 <form id="ordenar-checklist-{{ $tarefa->id }}" method="POST"
       action="{{ route('tarefas.itens.ordenar', $tarefa) }}" class="hidden">
     @csrf

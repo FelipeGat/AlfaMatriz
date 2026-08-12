@@ -27,6 +27,7 @@
             'filtros' => $filtros,
             'sistemas' => $sistemas,
             'usuarios' => $usuarios,
+            'raias' => $raias,
         ])
 
         @if (session('status'))
@@ -36,7 +37,12 @@
             <x-aviso tom="critico">{{ session('erro') }}</x-aviso>
         @endif
 
-        <div x-data="quadroTarefas" class="relative flex-1 min-h-0 flex flex-col rounded-panel border border-line bg-board overflow-hidden">
+        {{-- O teclado escuta na JANELA: o quadro não recebe foco, e exigir que
+             ele recebesse obrigaria a clicar no fundo antes de a primeira seta
+             funcionar. Quem filtra o que não deve disparar é o próprio
+             `aoTeclar` (campo em foco, tecla com modificador). --}}
+        <div x-data="quadroTarefas" @keydown.window="aoTeclar($event)"
+             class="relative flex-1 min-h-0 flex flex-col rounded-panel border border-line bg-board overflow-hidden">
             <div x-show="temMaisEsquerda" x-cloak aria-hidden="true"
                  class="pointer-events-none absolute left-0 top-0 bottom-0 w-10 z-10"
                  style="background: linear-gradient(90deg, rgb(var(--canvas) / 0.55), transparent)"></div>
@@ -59,140 +65,97 @@
                 </p>
             </div>
 
-            <div x-ref="quadro" @scroll="medirBordas()" @resize.window="medirBordas()" x-init="medirBordas()"
-                 class="relative flex-1 min-h-0 flex gap-3 items-stretch overflow-x-auto p-3.5">
+            @php
+                // Sem raias o quadro é uma faixa só, que ocupa a altura toda.
+                // Com raias ele empilha, e a rolagem passa a ser vertical.
+                $comRaias = $raias['modo'] !== 'nenhuma';
+            @endphp
+
+            {{--
+                A tira de etapas do celular.
+
+                Ela substitui as colunas que não cabem, e por isso carrega o que
+                o cabeçalho da coluna carregaria: o nome, a contagem e o aviso
+                de limite estourado. Sem a contagem, trocar de etapa viraria
+                tentativa e erro — a pessoa tocaria em cada chip para descobrir
+                onde está o trabalho.
+
+                Alvos de 44px porque é um controle de dedo, e 44px é o mínimo
+                que não erra o vizinho.
+            --}}
+            <div class="lg:hidden shrink-0 -mx-1 flex gap-1.5 overflow-x-auto pb-1">
                 @foreach ($etapas as $etapa)
-                    @php $cards = $colunas[$etapa['chave']]; @endphp
+                    <button type="button" @click="etapaMobile = '{{ $etapa['chave'] }}'"
+                            class="shrink-0 h-11 px-3 rounded-control border text-[12.5px] whitespace-nowrap transition"
+                            :class="etapaMobile === '{{ $etapa['chave'] }}'
+                                ? 'border-brand text-ink font-semibold bg-chip'
+                                : 'border-line text-ink-mute'">
+                        {{ $etapa['label'] }}
+                        <span class="ml-1 font-mono text-[11px]"
+                              style="color: rgb(var(--{{ $etapa['acimaDoLimite'] ? 'warn' : $etapa['cor'] }}))">
+                            @if ($etapa['limite'])
+                                {{ $etapa['andando'] }}/{{ $etapa['limite'] }}
+                            @else
+                                {{ $etapa['quantidade'] }}
+                            @endif
+                        </span>
+                    </button>
+                @endforeach
+            </div>
 
-                    {{--
-                        As etapas que pedem texto (bloqueio, ajustes,
-                        cancelamento, conclusão com relatório) não aceitam o
-                        solto direto — o menu "Mover ▾" do card é o único
-                        caminho para elas (Q-013).
-                    --}}
-                    <section class="flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden transition-opacity"
-                             {{--
-                                 A cor da etapa vive AQUI, na coluna, como no
-                                 Funil de Vendas — e não na borda do card: essa
-                                 continua sendo o canal do aviso de tarefa
-                                 esquecida (AC-093, AC-127).
+            <div x-ref="quadro" data-quadro @scroll="medirBordas()" @resize.window="medirBordas()" x-init="medirBordas()"
+                 :class="'etapa-' + etapaMobile"
+                 class="relative flex-1 min-h-0 flex flex-col gap-3 overflow-auto p-3.5">
 
-                                 `flex: 1 1 276px` no lugar de largura fixa: com
-                                 cinco colunas numa tela larga sobrava uma faixa
-                                 vazia à direita (AC-132). Assim elas dividem o
-                                 espaço quando ele existe, e o `min-width` segura
-                                 a largura de leitura — apertando a tela, o
-                                 quadro volta a rolar na horizontal em vez de
-                                 espremer o card.
-                             --}}
-                             style="flex: 1 1 276px; min-width: 276px; border-top: 3px solid rgb(var(--{{ $etapa['cor'] }}))"
-                             data-status="{{ $etapa['chave'] }}"
-                             @dragover.prevent="permitir('{{ $etapa['chave'] }}')"
-                             @dragleave="sobre = null"
-                             @drop.prevent="soltar('{{ $etapa['chave'] }}', {{ in_array($etapa['chave'], ['bloqueada', 'ajustes_necessarios', 'cancelada', 'concluida'], true) ? 'true' : 'false' }})"
-                             {{-- Enquanto o card está na mão, a coluna que não
-                                  o aceita apaga. É o que faz a regra do fluxo
-                                  virar coisa que se VÊ antes de soltar: o
-                                  "transição inválida" deixa de ser a primeira
-                                  notícia de que aquele caminho não existia. --}}
-                             {{-- O realce SEGUE enquanto o painel de motivo está
-                                  aberto: o card ainda não chegou, e a coluna
-                                  apagando junto com o solto faria o painel
-                                  parecer desligado do gesto que o abriu. --}}
-                             :class="{
-                                 'ring-1 ring-brand': sobre === '{{ $etapa['chave'] }}' || pendente?.destino === '{{ $etapa['chave'] }}',
-                                 'opacity-25': ! aceita('{{ $etapa['chave'] }}'),
-                             }">
-                        <header class="shrink-0 px-3 py-2.5 border-b border-rule">
-                            <div class="flex items-center gap-2">
-                                <span class="h-[7px] w-[7px] shrink-0 rounded-full"
-                                      style="background: rgb(var(--{{ $etapa['cor'] }}))"></span>
-                                <h3 class="min-w-0 truncate font-display text-[14px] font-semibold text-ink">{{ $etapa['label'] }}</h3>
-
-                                {{--
-                                    O contador vira "4/3" onde há limite de WIP,
-                                    e tinge de âmbar ao estourar. O numerador é
-                                    o que ANDA: a tarefa travada não ocupa vaga,
-                                    porque o limite existe para conter trabalho
-                                    começado em paralelo, e tarefa parada não
-                                    está sendo tocada por ninguém.
-                                --}}
-                                @php
-                                    $corDoContador = $etapa['acimaDoLimite'] ? 'warn' : $etapa['cor'];
-                                @endphp
-                                <span class="ml-auto shrink-0 h-5 min-w-[20px] px-1.5 rounded-full font-mono text-[10px] font-semibold leading-5 text-center"
-                                      style="background: rgb(var(--{{ $corDoContador }}) / var(--tint-alpha)); color: rgb(var(--{{ $corDoContador }}))"
-                                      @if ($etapa['acimaDoLimite']) title="Acima do limite de {{ $etapa['limite'] }} tarefas em curso nesta etapa" @endif>
-                                    @if ($etapa['limite'])
-                                        {{ $etapa['andando'] }}/{{ $etapa['limite'] }}
-                                    @else
-                                        {{ $etapa['quantidade'] }}
-                                    @endif
-                                </span>
+                {{--
+                    Em raias, o cabeçalho das etapas fica FIXO no topo: as faixas
+                    empilham e a rolagem vira vertical, então sem isto a pessoa
+                    perde de vista em que coluna está olhando na terceira raia.
+                    O espaçador da direita mantém o alinhamento com as duas
+                    faixas de solto, que existem em cada linha de raia.
+                --}}
+                @if ($comRaias)
+                    <div class="sticky top-0 z-10 shrink-0 flex gap-3 bg-board pb-1">
+                        @foreach ($etapas as $etapa)
+                            <div class="rounded-control bg-panel border border-line overflow-hidden"
+                                 style="flex: 1 1 276px; min-width: 276px; border-top: 3px solid rgb(var(--{{ $etapa['cor'] }}))">
+                                @include('tarefas._coluna-cabecalho', ['etapa' => $etapa])
                             </div>
+                        @endforeach
+                        <div class="shrink-0" style="flex: 0 0 132px" aria-hidden="true"></div>
+                    </div>
+                @endif
 
-                            {{-- Duas notícias que só aparecem quando existem:
-                                 nenhuma coluna ganha uma linha vazia para ler. --}}
-                            @if ($etapa['acimaDoLimite'])
-                                <p class="mt-1 font-mono text-[10px] uppercase tracking-caps" style="color: rgb(var(--warn))">
-                                    acima do limite
-                                </p>
-                            @elseif ($etapa['aguardandoTriagem'] > 0)
-                                <p class="mt-1 font-mono text-[10px] uppercase tracking-caps" style="color: rgb(var(--warn))">
-                                    {{ $etapa['aguardandoTriagem'] }} aguardando triagem
-                                </p>
+                @foreach ($raias['faixas'] as $faixa)
+                    @if ($faixa['titulo'])
+                        <header class="shrink-0 flex items-center gap-2 pt-1">
+                            <h3 class="font-display text-[13.5px] font-semibold text-ink">{{ $faixa['titulo'] }}</h3>
+
+                            {{--
+                                Mais de duas em andamento: o selo não é elogio
+                                nem bronca, é a conta que a raia por pessoa
+                                existe para fazer. Quem está com quatro coisas
+                                ao mesmo tempo não está tocando quatro — está
+                                revezando entre elas.
+                            --}}
+                            @if ($faixa['sobrecarga'])
+                                <x-badge tom="atencao" title="Mais de duas tarefas em andamento ao mesmo tempo">
+                                    trabalho em paralelo
+                                </x-badge>
                             @endif
                         </header>
+                    @endif
 
-                        <div class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 space-y-2">
-                            @forelse ($cards as $tarefa)
-                                @php
-                                    /**
-                                     * Os destinos são do CARD, não do status: o
-                                     * fluxo depende do tipo da tarefa.
-                                     *
-                                     * E quem não pode mover ESTA tarefa não
-                                     * recebe destino nenhum — o card não
-                                     * arrasta e não mostra o chevron. Oferecer
-                                     * e recusar depois é o vício que o quadro
-                                     * acabou de perder nas regras de fluxo; não
-                                     * faria sentido reintroduzi-lo na
-                                     * autorização. O porquê fica no `title`, e
-                                     * a rota continua recusando com a frase.
-                                     */
-                                    $impedimento = $tarefa->motivoParaNaoMover(auth()->user());
-                                    $transicoes = $impedimento
-                                        ? []
-                                        : \App\Services\FluxoTarefaService::transicoesDe($tarefa);
-                                @endphp
-                                <div x-data="{ menuAberto: false, destino: '{{ $transicoes[0] ?? '' }}' }"
-                                     draggable="{{ $impedimento ? 'false' : 'true' }}"
-                                     @if ($impedimento) title="{{ $impedimento }}" @endif
-                                     data-tarefa="{{ $tarefa->id }}"
-                                     {{-- O card entrega os próprios destinos ao
-                                          pegar: é assim que o quadro sabe quais
-                                          colunas apagar durante o arrasto. --}}
-                                     @dragstart="pegar(
-                                         {{ $tarefa->id }},
-                                         {{ Illuminate\Support\Js::from($transicoes) }},
-                                         '{{ $tarefa->tipo }}',
-                                         {{ $tarefa->estaBloqueada() ? 'true' : 'false' }}
-                                     )"
-                                     @dragend="largar()"
-                                     @click="$dispatch('open-modal', 'editar-tarefa-{{ $tarefa->id }}')"
-                                     class="{{ $impedimento ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing' }}"
-                                     :class="arrastando === {{ $tarefa->id }} && 'opacity-50'">
-                                    @include('tarefas._card', ['tarefa' => $tarefa, 'transicoes' => $transicoes])
-                                </div>
-                            @empty
-                                <div class="rounded-ctl border border-dashed border-line px-2 text-center flex items-center justify-center"
-                                     style="height: 84px">
-                                    <p class="text-[11.5px] text-ink-faint">Nenhuma tarefa aqui</p>
-                                </div>
-                            @endforelse
-                        </div>
-                    </section>
-                @endforeach
+                    <div class="flex gap-3 items-stretch {{ $comRaias ? 'shrink-0' : 'flex-1 min-h-0' }}"
+                         @if ($comRaias) style="min-height: 180px" @endif>
+                        @foreach ($etapas as $etapa)
+                            @include('tarefas._coluna', [
+                                'etapa' => $etapa,
+                                'cards' => $faixa['colunas'][$etapa['chave']],
+                                'faixa' => $faixa['chave'],
+                                'comCabecalho' => ! $comRaias,
+                            ])
+                        @endforeach
 
                 {{--
                     O alvo de bloquear, irmão do de concluir.
@@ -263,6 +226,8 @@
                         Concluir
                     </span>
                 </section>
+                    </div>
+                @endforeach
             </div>
 
             {{--
@@ -292,6 +257,7 @@
                                background-image: linear-gradient(rgb(var(--${pendente?.cor}) / calc(var(--tint-alpha) / 2)), rgb(var(--${pendente?.cor}) / calc(var(--tint-alpha) / 2)))`">
                     @csrf
                     <input type="hidden" name="status" :value="pendente?.status">
+                    <input type="hidden" name="de_status" :value="pendente?.de">
 
                     <div class="flex items-start gap-3">
                         <div class="min-w-0 flex-1">
@@ -334,10 +300,58 @@
                 </form>
             </div>
 
+            {{--
+                Os atalhos, atrás do "?".
+
+                Atalho que ninguém descobre é atalho que não existe — e a
+                alternativa, uma legenda fixa no rodapé, cobraria espaço de todo
+                mundo o tempo todo para servir a quem já decorou.
+            --}}
+            <div x-show="atalhosAbertos" x-cloak x-transition.opacity.duration.150ms
+                 @click="atalhosAbertos = false"
+                 class="absolute inset-0 z-30 flex items-center justify-center p-4"
+                 style="background: rgb(var(--canvas) / 0.75)">
+                <div @click.stop class="w-[420px] max-w-full rounded-panel border border-line bg-panel p-4 shadow-xl">
+                    <div class="flex items-center gap-2">
+                        <h3 class="font-display text-[14.5px] font-semibold text-ink">Atalhos do quadro</h3>
+                        <button type="button" @click="atalhosAbertos = false" aria-label="Fechar"
+                                class="ml-auto h-6 w-6 rounded-control text-ink-faint hover:text-ink transition">✕</button>
+                    </div>
+
+                    <dl class="mt-3 space-y-1.5">
+                        @foreach ([
+                            '↑ ↓' => 'Anda pelos cards da coluna',
+                            '← →' => 'Troca de coluna',
+                            '⇧ ← →' => 'Move a tarefa de etapa',
+                            'B' => 'Bloqueia ou destrava',
+                            'M' => 'Abre o menu de mover',
+                            'Enter' => 'Abre a tarefa',
+                            'C' => 'Criação rápida',
+                            'N' => 'Nova tarefa (formulário)',
+                            '/' => 'Busca',
+                            'Esc' => 'Fecha o que estiver aberto',
+                            '?' => 'Mostra esta lista',
+                        ] as $tecla => $oQueFaz)
+                            <div class="flex items-center gap-3">
+                                <dt class="shrink-0 w-[72px] font-mono text-[11px] text-ink-dim">{{ $tecla }}</dt>
+                                <dd class="text-[12.5px] text-ink-mute">{{ $oQueFaz }}</dd>
+                            </div>
+                        @endforeach
+                    </dl>
+                </div>
+            </div>
+
             {{-- Um formulário só, apontado para a tarefa que foi solta. --}}
             <form x-ref="formMover" method="POST" action="" class="hidden">
                 @csrf
                 <input type="hidden" name="status" x-ref="statusMover">
+                <input type="hidden" name="de_status" x-ref="deStatusMover">
+            </form>
+
+            {{-- A ordem da coluna, montada do DOM no solto sobre outro card. --}}
+            <form x-ref="formPosicionar" method="POST" action="{{ route('tarefas.posicionar') }}" class="hidden">
+                @csrf
+                <input type="hidden" name="status" x-ref="statusPosicionar">
             </form>
         </div>
     </div>
@@ -416,6 +430,28 @@
                 // relatório de teste, e o painel é do quadro, não do card.
                 tipoArrastado: null,
 
+                // A etapa em que o card estava quando foi pego: viaja no envio
+                // para o servidor recusar movimento sobre movimento alheio.
+                statusArrastado: null,
+
+                // Posicionar card na coluna é organizar trabalho alheio, e
+                // segue a mesma capacidade de priorizar e direcionar.
+                podeTriar: {{ auth()->user()?->podeTriarTarefas() ? 'true' : 'false' }},
+
+                // A etapa que o celular está mostrando. No quadro largo ela não
+                // faz nada: quem esconde as outras é o CSS, por media query.
+                etapaMobile: @json($etapas[0]['chave'] ?? 'aberta'),
+
+                // A ordem das etapas, para as setas saberem o que é "a próxima".
+                etapasEmOrdem: @json(array_column($etapas, 'chave')),
+
+                // Etapas que só se alcança com texto: o teclado abre o painel
+                // nelas, como o arraste faz.
+                etapasComTexto: @json(['ajustes_necessarios', 'cancelada', 'concluida']),
+
+                selecionado: null,
+                atalhosAbertos: false,
+
                 // O que o painel de motivo está perguntando agora.
                 pendente: null,
                 textoPendente: '',
@@ -442,23 +478,315 @@
                     this.temMaisDireita = q.scrollLeft + q.clientWidth < q.scrollWidth - 1;
                 },
 
+                /**
+                 * Reordenar dentro da coluna, quando o card é solto sobre outro
+                 * card da MESMA etapa.
+                 *
+                 * A ordem automática responde "o que é mais grave", que não é a
+                 * mesma pergunta que "qual eu pego primeiro" — entre duas altas,
+                 * quem conhece o trabalho sabe que uma destrava a outra.
+                 *
+                 * Posicionar é organizar trabalho alheio, então segue a mesma
+                 * capacidade de priorizar: sem ela, o solto sobre card não faz
+                 * nada e o evento sobe para a coluna, que decide se é movimento
+                 * de etapa.
+                 */
+                ehReordenacao(status) {
+                    return this.podeTriar
+                        && this.arrastando !== null
+                        && this.statusArrastado === status;
+                },
+
+                permitirSobreCard(evento, status) {
+                    if (this.ehReordenacao(status)) {
+                        evento.preventDefault();
+                        evento.stopPropagation();
+                    }
+                },
+
+                soltarSobreCard(evento, alvo, status, chaveDaLista) {
+                    if (! this.ehReordenacao(status)) {
+                        return;
+                    }
+
+                    evento.preventDefault();
+                    evento.stopPropagation();
+
+                    // A lista é a da FAIXA, não a do status: com raias ligadas,
+                    // a mesma etapa aparece uma vez por raia, e reordenar
+                    // pegaria a primeira delas em vez daquela onde se soltou.
+                    const lista = document.querySelector(`[data-cards="${chaveDaLista}"]`);
+                    const arrastado = lista.querySelector(`[data-tarefa="${this.arrastando}"]`);
+
+                    this.largar();
+
+                    if (! arrastado || arrastado === alvo) {
+                        return;
+                    }
+
+                    const linhas = [...lista.children];
+                    const destino = linhas.indexOf(alvo);
+                    const origem = linhas.indexOf(arrastado);
+
+                    lista.insertBefore(arrastado, origem < destino ? alvo.nextSibling : alvo);
+
+                    // A coluna inteira vai no envio, lida do DOM: mandar só "X
+                    // foi para N" faria o servidor recalcular o que o navegador
+                    // já sabe, e divergir no segundo arrasto.
+                    const envio = this.$refs.formPosicionar;
+                    envio.querySelectorAll('input[data-ordem]').forEach((campo) => campo.remove());
+                    this.$refs.statusPosicionar.value = status;
+
+                    [...lista.children].forEach((linha) => {
+                        const campo = document.createElement('input');
+                        campo.type = 'hidden';
+                        campo.name = 'ordem[]';
+                        campo.dataset.ordem = '1';
+                        campo.value = linha.dataset.tarefa;
+                        envio.appendChild(campo);
+                    });
+
+                    envio.submit();
+                },
+
+                /**
+                 * O teclado do quadro.
+                 *
+                 * Quem passa o dia aqui move dezenas de cards, e cada um custa
+                 * pegar o mouse, mirar e arrastar. As setas fazem o mesmo
+                 * percurso sem tirar a mão de onde ela já está.
+                 *
+                 * Nada dispara enquanto se digita: sem esta guarda, escrever
+                 * "backlog" na busca moveria cards pelo caminho — o `b` bloqueia
+                 * e o `c` abre criação rápida. É a primeira coisa a conferir,
+                 * porque o estrago é silencioso.
+                 */
+                aoTeclar(evento) {
+                    const digitando = evento.target.closest('input, textarea, select, [contenteditable]');
+                    const tecla = evento.key;
+
+                    if (tecla === 'Escape') {
+                        this.fecharPendente();
+                        this.atalhosAbertos = false;
+
+                        return;
+                    }
+
+                    if (digitando || evento.metaKey || evento.ctrlKey || evento.altKey) {
+                        return;
+                    }
+
+                    const acoes = {
+                        // `document` e não `$refs`: a busca vive na barra de
+                        // filtros, que é irmã do quadro e não filha dele — e a
+                        // criação rápida se repete por coluna, então um `ref`
+                        // ali seria um nome disputado por vários elementos.
+                        '/': () => document.querySelector('input[name="busca"]')?.focus(),
+                        '?': () => (this.atalhosAbertos = ! this.atalhosAbertos),
+                        n: () => this.$dispatch('open-modal', 'nova-tarefa'),
+                        c: () => document.querySelector('[data-criacao-rapida]')?.focus(),
+                        ArrowUp: () => this.andarNaColuna(-1),
+                        ArrowDown: () => this.andarNaColuna(1),
+                        ArrowLeft: () => (evento.shiftKey ? this.moverUmaEtapa(-1) : this.andarEntreColunas(-1)),
+                        ArrowRight: () => (evento.shiftKey ? this.moverUmaEtapa(1) : this.andarEntreColunas(1)),
+                        Enter: () => this.abrirSelecionado(),
+                        m: () => this.abrirMenuDoSelecionado(),
+                        b: () => this.travarSelecionado(),
+                    };
+
+                    const acao = acoes[tecla] ?? acoes[tecla.toLowerCase?.()];
+
+                    if (acao) {
+                        evento.preventDefault();
+                        acao();
+                    }
+                },
+
+                /** Os cards visíveis de uma etapa, na ordem em que estão na tela. */
+                cardsDaEtapa(status) {
+                    return [...document.querySelectorAll(`section[data-status="${status}"] [data-tarefa]`)];
+                },
+
+                elementoSelecionado() {
+                    return this.selecionado === null
+                        ? null
+                        : document.querySelector(`[data-tarefa="${this.selecionado}"]`);
+                },
+
+                etapaDoSelecionado() {
+                    return this.elementoSelecionado()?.closest('section[data-status]')?.dataset.status ?? null;
+                },
+
+                selecionar(elemento) {
+                    if (! elemento) {
+                        return;
+                    }
+
+                    this.selecionado = Number(elemento.dataset.tarefa);
+                    elemento.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                },
+
+                andarNaColuna(passo) {
+                    const status = this.etapaDoSelecionado() ?? this.etapasEmOrdem[0];
+                    const cards = this.cardsDaEtapa(status);
+                    const atual = cards.findIndex((c) => Number(c.dataset.tarefa) === this.selecionado);
+
+                    this.selecionar(cards[Math.max(0, Math.min(cards.length - 1, atual + passo))] ?? cards[0]);
+                },
+
+                andarEntreColunas(passo) {
+                    const status = this.etapaDoSelecionado() ?? this.etapasEmOrdem[0];
+                    let indice = this.etapasEmOrdem.indexOf(status);
+
+                    // Pula as etapas vazias: parar numa coluna sem card seria
+                    // perder a seleção e obrigar a voltar.
+                    for (let i = 0; i < this.etapasEmOrdem.length; i++) {
+                        indice += passo;
+
+                        if (indice < 0 || indice >= this.etapasEmOrdem.length) {
+                            return;
+                        }
+
+                        const cards = this.cardsDaEtapa(this.etapasEmOrdem[indice]);
+
+                        if (cards.length) {
+                            this.etapaMobile = this.etapasEmOrdem[indice];
+                            this.selecionar(cards[0]);
+
+                            return;
+                        }
+                    }
+                },
+
+                abrirSelecionado() {
+                    if (this.selecionado !== null) {
+                        this.$dispatch('open-modal', 'editar-tarefa-' + this.selecionado);
+                    }
+                },
+
+                abrirMenuDoSelecionado() {
+                    const alvo = this.elementoSelecionado();
+
+                    if (alvo) {
+                        Alpine.$data(alvo).menuAberto = ! Alpine.$data(alvo).menuAberto;
+                    }
+                },
+
+                travarSelecionado() {
+                    const alvo = this.elementoSelecionado();
+
+                    if (! alvo) {
+                        return;
+                    }
+
+                    // Destravar é imediato — não há o que perguntar. Travar
+                    // passa pelo painel, porque o motivo é obrigatório.
+                    if (alvo.dataset.bloqueada) {
+                        alvo.querySelector('form[action*="bloquear"]')?.requestSubmit();
+
+                        return;
+                    }
+
+                    this.prepararTeclado(alvo);
+                    this.abrirPendente(this.selecionado, 'bloqueio');
+                },
+
+                /** Põe o card selecionado no mesmo estado que um `dragstart` põe. */
+                prepararTeclado(alvo) {
+                    this.pegar(
+                        Number(alvo.dataset.tarefa),
+                        JSON.parse(alvo.dataset.destinos || '[]'),
+                        alvo.dataset.tipo,
+                        !! alvo.dataset.bloqueada,
+                        alvo.closest('section[data-status]')?.dataset.status,
+                    );
+                },
+
+                moverUmaEtapa(passo) {
+                    const alvo = this.elementoSelecionado();
+
+                    if (! alvo) {
+                        return;
+                    }
+
+                    const status = this.etapaDoSelecionado();
+                    const destino = this.etapasEmOrdem[this.etapasEmOrdem.indexOf(status) + passo];
+
+                    this.prepararTeclado(alvo);
+
+                    // Fora do fluxo, nada acontece — e não é silêncio: a coluna
+                    // vizinha já está apagada na tela desde que a seleção
+                    // aconteceu, então a recusa foi anunciada antes do gesto.
+                    if (! destino || ! this.aceita(destino)) {
+                        this.largar();
+
+                        return;
+                    }
+
+                    this.soltar(destino, this.etapasComTexto.includes(destino));
+                },
+
+                // Onde o ponteiro desceu, e quando o último arrasto terminou.
+                inicioDoClique: null,
+                fimDoArrasto: 0,
+
+                marcarInicioDoClique(evento) {
+                    this.inicioDoClique = { x: evento.clientX, y: evento.clientY };
+                },
+
+                /**
+                 * Foi clique, ou foi o fim de um arrasto?
+                 *
+                 * O card abre o detalhe no clique E arrasta, e sem separar os
+                 * dois o gesto de arrastar terminava com o modal aberto por
+                 * cima — inclusive quando o arrasto foi recusado, porque aí o
+                 * `click` chega igual.
+                 *
+                 * Duas peneiras, porque uma só não pega os dois casos: 4px de
+                 * folga para a mão que treme sobre um clique legítimo, e 300ms
+                 * de carência depois de um arrasto, para o `click` que o
+                 * navegador dispara ao soltar não passar por clique.
+                 */
+                foiClique(evento) {
+                    if (Date.now() - this.fimDoArrasto < 300) {
+                        return false;
+                    }
+
+                    if (! this.inicioDoClique) {
+                        return true;
+                    }
+
+                    const andou = Math.hypot(
+                        evento.clientX - this.inicioDoClique.x,
+                        evento.clientY - this.inicioDoClique.y,
+                    );
+
+                    return andou < 4;
+                },
+
                 /** Esta etapa é destino possível para o card que está na mão? */
                 aceita(status) {
                     return this.arrastando === null || this.destinos.includes(status);
                 },
 
-                pegar(tarefa, destinos, tipo, bloqueada) {
+                pegar(tarefa, destinos, tipo, bloqueada, status) {
                     this.arrastando = tarefa;
                     // Bloquear é destino de quem ainda não está travado; para
                     // quem já está, a saída é o botão da própria tarja.
                     this.destinos = bloqueada ? destinos : [...destinos, 'bloqueio'];
                     this.tipoArrastado = tipo;
+                    this.statusArrastado = status;
                 },
 
                 largar() {
+                    if (this.arrastando !== null) {
+                        this.fimDoArrasto = Date.now();
+                    }
+
                     this.arrastando = null;
                     this.destinos = [];
                     this.tipoArrastado = null;
+                    this.statusArrastado = null;
                     this.sobre = null;
                 },
 
@@ -529,6 +857,7 @@
                         destino,
                         // Bloquear tem rota própria: travar não é mover.
                         status: ehBloqueio ? null : destino,
+                        de: this.statusArrastado,
                         acao: (ehBloqueio ? this.rotaBloquear : this.rotaMover).replace('__ID__', tarefa),
                     };
 
@@ -550,12 +879,15 @@
                     const tarefa = this.arrastando;
                     const permitido = this.aceita(status);
                     const tipo = this.tipoArrastado;
+                    const de = this.statusArrastado;
 
                     this.largar();
                     this.tipoArrastado = tipo;
+                    this.statusArrastado = de;
 
                     if (tarefa === null || ! permitido) {
                         this.tipoArrastado = null;
+                        this.statusArrastado = null;
 
                         return;
                     }
@@ -572,9 +904,11 @@
                         return;
                     }
 
-                    this.tipoArrastado = null;
                     this.$refs.formMover.action = this.rotaMover.replace('__ID__', tarefa);
                     this.$refs.statusMover.value = status;
+                    this.$refs.deStatusMover.value = de ?? '';
+                    this.tipoArrastado = null;
+                    this.statusArrastado = null;
                     this.$refs.formMover.submit();
                 },
             }));

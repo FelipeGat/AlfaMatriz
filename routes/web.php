@@ -91,6 +91,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     //
     // Sem o id da tarefa no caminho, como os anexos: o comentário já sabe de
     // quem é, e um segundo id no endereço só criaria um par para conferir.
+    // Excluir apaga o registro; cancelar encerra com motivo e fica no
+    // histórico. São coisas diferentes, e por isso caminhos diferentes.
+    Route::delete('tarefas/{tarefa}', [TarefaController::class, 'destroy'])
+        ->name('tarefas.destroy')
+        ->middleware('permissao:tarefas');
+
+    // Posicionar card dentro da coluna. Sem id na rota: o envio traz a coluna
+    // inteira, porque arrastar reordena a lista toda na tela.
+    Route::post('tarefas/posicionar', [TarefaController::class, 'posicionarNaColuna'])
+        ->name('tarefas.posicionar')
+        ->middleware('permissao:tarefas');
+
     // Checklist: criar e reordenar pendem da tarefa (é ela que dá a lista);
     // marcar, corrigir e remover pendem do item, que já sabe de quem é.
     Route::post('tarefas/{tarefa}/itens', [TarefaController::class, 'criarItem'])

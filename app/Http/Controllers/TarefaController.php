@@ -80,8 +80,10 @@ class TarefaController extends Controller
         // apontaria para cards que não estão na tela.
         $totalBloqueadas = $tarefas->filter->estaBloqueada()->count();
 
+        $raias = $this->raias($request, $tarefas, $emCurso);
+
         return view('tarefas.index', compact(
-            'tarefas', 'colunas', 'etapas', 'filtros', 'totalNoQuadro', 'totalBloqueadas',
+            'tarefas', 'colunas', 'etapas', 'filtros', 'totalNoQuadro', 'totalBloqueadas', 'raias',
         ) + $this->listasDeFiltro());
     }
 
@@ -97,15 +99,11 @@ class TarefaController extends Controller
             'tipo' => 'nullable|in:'.implode(',', array_keys(Tarefa::TIPOS)),
             'sistema_id' => 'nullable|exists:sistemas,id',
             'responsavel_id' => 'nullable|exists:users,id',
-            // Obrigatória só para quem tem o campo. Para quem não triaga ele
-            // nem aparece no formulário (`_form.blade.php`), e exigi-lo aqui
-            // faria o salvar recusar com "prioridade é obrigatória" um campo
-            // que a pessoa não tem como preencher — a tela funcionaria e a
-            // rota diria não.
-            'prioridade' => [
-                auth()->user()?->podeTriarTarefas() ? 'required' : 'nullable',
-                'in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
-            ],
+            // Nunca obrigatória. Ela falta em dois envios legítimos: o de quem
+            // não triaga, que não tem o campo, e o da criação rápida do pé da
+            // coluna, que manda só o título. Exigi-la aqui faria a tela
+            // funcionar e a rota dizer não.
+            'prioridade' => 'nullable|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
         ]);
 
         // O padrão é resolvido AQUI, e não só no modelo, por causa da linha
@@ -113,6 +111,7 @@ class TarefaController extends Controller
         // nulo viraria `tipo IS NULL` — que não casa com a linha gravada, onde
         // ele é 'desenvolvimento'. O duplo clique voltaria a criar duas tarefas.
         $data['tipo'] ??= 'desenvolvimento';
+        $data['prioridade'] ??= 'media';
         $data['criado_por_id'] = auth()->id();
 
         $data = $this->semTriagemDeQuemNaoTriaga($data);
@@ -125,6 +124,66 @@ class TarefaController extends Controller
         }
 
         return redirect()->route('tarefas.index')->with('status', 'Tarefa criada.');
+    }
+
+    /**
+     * As raias do quadro: o mesmo quadro, quebrado em faixas.
+     *
+     * Uma raia não é um filtro — o filtro esconde, a raia mostra tudo separado.
+     * A pergunta que ela responde é de distribuição ("quem está com o quê",
+     * "onde cada sistema está travado"), e essa pergunta some quando se olha
+     * coluna por coluna com todo mundo misturado.
+     *
+     * `nenhuma` devolve uma faixa só, sem título: é o quadro de sempre, e a
+     * tela não precisa perguntar se há raias para saber o que desenhar dentro
+     * de cada coluna.
+     *
+     * @param  Collection<int, Tarefa>  $tarefas
+     * @param  Collection<string, string>  $emCurso
+     * @return array{modo: string, faixas: array<int, array<string, mixed>>}
+     */
+    private function raias(Request $request, $tarefas, $emCurso): array
+    {
+        $modo = $this->textoDaQuery($request, 'raias');
+        $modo = in_array($modo, ['responsavel', 'sistema'], true) ? $modo : 'nenhuma';
+
+        if ($modo === 'nenhuma') {
+            return ['modo' => $modo, 'faixas' => [[
+                'chave' => 'todas',
+                'titulo' => null,
+                'colunas' => $emCurso->mapWithKeys(fn ($label, $status) => [
+                    $status => $this->ordenarColuna($tarefas->where('status', $status)->values()),
+                ]),
+                'sobrecarga' => false,
+            ]]];
+        }
+
+        // "Sem responsável"/"Sem sistema" é raia de verdade, e a ÚLTIMA: ela é
+        // uma pergunta em aberto ("de quem isto vai ser?"), não um grupo — e no
+        // meio da lista ela se leria como só mais uma pessoa.
+        $agrupadas = $tarefas->groupBy(fn (Tarefa $tarefa) => $modo === 'responsavel'
+            ? ($tarefa->responsavel?->name ?? "\u{FFFF}Sem responsável")
+            : ($tarefa->sistema?->nome ?? "\u{FFFF}Sem sistema"))
+            ->sortKeys();
+
+        $faixas = $agrupadas->map(function ($daFaixa, $titulo) use ($emCurso, $modo) {
+            $colunas = $emCurso->mapWithKeys(fn ($label, $status) => [
+                $status => $this->ordenarColuna($daFaixa->where('status', $status)->values()),
+            ]);
+
+            return [
+                'chave' => $titulo,
+                'titulo' => ltrim($titulo, "\u{FFFF}"),
+                'colunas' => $colunas,
+                // Mais de duas em andamento é o selo de quem pegou trabalho
+                // demais. Vale só nas raias de pessoa: sistema com cinco
+                // tarefas andando é projeto grande, não sobrecarga de ninguém.
+                'sobrecarga' => $modo === 'responsavel'
+                    && $colunas['em_desenvolvimento']->reject->estaBloqueada()->count() > 2,
+            ];
+        })->values()->all();
+
+        return ['modo' => $modo, 'faixas' => $faixas];
     }
 
     /**
@@ -184,21 +243,18 @@ class TarefaController extends Controller
             'tipo' => 'nullable|in:'.implode(',', array_keys(Tarefa::TIPOS)),
             'sistema_id' => 'nullable|exists:sistemas,id',
             'responsavel_id' => 'nullable|exists:users,id',
-            // Obrigatória só para quem tem o campo. Para quem não triaga ele
-            // nem aparece no formulário (`_form.blade.php`), e exigi-lo aqui
-            // faria o salvar recusar com "prioridade é obrigatória" um campo
-            // que a pessoa não tem como preencher — a tela funcionaria e a
-            // rota diria não.
-            'prioridade' => [
-                auth()->user()?->podeTriarTarefas() ? 'required' : 'nullable',
-                'in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
-            ],
+            // Nunca obrigatória. Ela falta em dois envios legítimos: o de quem
+            // não triaga, que não tem o campo, e o da criação rápida do pé da
+            // coluna, que manda só o título. Exigi-la aqui faria a tela
+            // funcionar e a rota dizer não.
+            'prioridade' => 'nullable|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
             'comentario' => 'nullable|string|max:4000',
         ]);
 
         // Envio sem o campo mantém o tipo que a tarefa já tem: `null` aqui
         // apagaria a coluna, porque o padrão do modelo só vale na criação.
         $data['tipo'] ??= $tarefa->tipo;
+        $data['prioridade'] ??= $tarefa->prioridade;
 
         // Na edição, o que a triagem decidiu fica como está: quem não triaga
         // salvar a tarefa não pode zerar a prioridade nem soltar o responsável
@@ -301,6 +357,21 @@ class TarefaController extends Controller
             return back()->with('erro', $impedimento);
         }
 
+        // Duas pessoas movendo o mesmo card: o segundo envio ganhava em
+        // silêncio, e quem moveu primeiro só descobria ao recarregar — se
+        // recarregasse. O formulário manda a etapa que o card TINHA na tela, e
+        // a divergência vira recusa em vez de sobrescrita.
+        //
+        // A conferência é opcional (`nullable`) porque nem todo caminho tem
+        // como saber a etapa de origem — e uma guarda que recusa envio sem o
+        // campo transformaria concorrência, que é rara, em falha comum.
+        $deStatus = $request->input('de_status');
+
+        if ($deStatus && $deStatus !== $tarefa->status) {
+            return back()->with('erro', 'Alguém já moveu esta tarefa para '
+                .Tarefa::rotuloDaEtapa($tarefa->status).'. Confira o quadro antes de mover de novo.');
+        }
+
         // As notas seguem opcionais AQUI de propósito, mesmo depois de o
         // `required` do textarea (`_mover.blade.php`) se revelar a única trava
         // de verdade: quem manda uma conclusão sem elas não passa mais, mas é o
@@ -309,6 +380,7 @@ class TarefaController extends Controller
         // quem tentou concluir uma tarefa que sequer chegou em Em testes.
         $data = $request->validate([
             'status' => 'required|in:'.implode(',', array_keys(Tarefa::STATUS)),
+            'de_status' => 'nullable|string',
             'motivo' => 'nullable|string',
             'relatorio_aprovado' => 'nullable|boolean',
             'relatorio_notas' => 'nullable|string',
@@ -364,6 +436,69 @@ class TarefaController extends Controller
 
         return redirect()->back(fallback: route('tarefas.index'))
             ->with('status', $tarefa->fresh()->estaBloqueada() ? 'Tarefa bloqueada.' : 'Tarefa destravada.');
+    }
+
+    /**
+     * Apaga a tarefa. Não é cancelar.
+     *
+     * Cancelar encerra com motivo e fica auditável no histórico — é a decisão
+     * de não fazer, registrada. Excluir tira o registro da existência: serve
+     * para a tarefa que nunca deveria ter sido aberta (duplicada, aberta na
+     * conta errada, teste), e não para a que foi descartada.
+     *
+     * Só de quem triaga, e mesmo assim atrás de dois passos na tela: é a única
+     * ação do quadro que não tem desfazer.
+     */
+    public function destroy(Tarefa $tarefa)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        if (! auth()->user()?->podeTriarTarefas()) {
+            return back()->with('erro', 'Só quem faz triagem exclui tarefa. Para encerrar sem apagar, cancele.');
+        }
+
+        // `forceDelete` porque excluir aqui QUER dizer sumir: a tarefa usa
+        // SoftDeletes, e um `delete()` deixaria a linha no banco sem aparecer
+        // em lugar nenhum — nem no quadro, nem no histórico, nem para quem
+        // fosse auditar. Excluir pela metade é o pior dos dois mundos.
+        $tarefa->forceDelete();
+
+        return redirect()->route('tarefas.index')->with('status', 'Tarefa excluída.');
+    }
+
+    /**
+     * Regrava a ordem dos cards de UMA coluna, a partir da sequência recebida.
+     *
+     * Posicionar card é organizar o trabalho — decidir o que se pega primeiro —,
+     * então segue a mesma capacidade que priorizar e direcionar. Quem não triaga
+     * não recebe a alça de arraste (`_card.blade.php`), e aqui a rota confirma.
+     *
+     * Só posiciona quem está na coluna informada: a lista de ids vem do
+     * navegador, e um id de outra coluna reordenaria o que não estava à vista.
+     */
+    public function posicionarNaColuna(Request $request)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        if (! auth()->user()?->podeTriarTarefas()) {
+            return back()->with('erro', 'Só quem faz triagem posiciona os cards da coluna.');
+        }
+
+        $data = $request->validate([
+            'status' => 'required|in:'.implode(',', array_keys(Tarefa::STATUS)),
+            'ordem' => 'required|array',
+            'ordem.*' => 'integer',
+        ]);
+
+        $daColuna = Tarefa::where('status', $data['status'])->pluck('id')->all();
+
+        foreach ($data['ordem'] as $posicao => $id) {
+            if (in_array((int) $id, $daColuna, true)) {
+                Tarefa::where('id', $id)->update(['ordem' => $posicao + 1]);
+            }
+        }
+
+        return redirect()->back(fallback: route('tarefas.index'));
     }
 
     /** Acrescenta um item ao checklist, no fim da lista. */
@@ -674,6 +809,39 @@ class TarefaController extends Controller
      */
     private function ordenarColuna($tarefas)
     {
+        // Coluna que alguém arrumou à mão fica como foi arrumada.
+        //
+        // A ordem automática responde "o que é mais grave", que não é a mesma
+        // pergunta que "qual eu pego primeiro" — entre duas tarefas altas, quem
+        // conhece o trabalho sabe que uma destrava a outra, e o quadro não tem
+        // como saber. Mas isso só vale onde alguém de fato arrumou: coluna
+        // intocada segue a régua automática, senão a primeira renderização
+        // viraria uma lista congelada.
+        //
+        // O que chega depois (card movido de outra coluna, tarefa nova) entra
+        // sem posição e vai para o FIM, ordenado entre os seus pela régua
+        // automática — ele ainda não foi colocado em lugar nenhum.
+        if ($tarefas->whereNotNull('ordem')->isNotEmpty()) {
+            return $tarefas
+                ->sortBy(fn (Tarefa $tarefa) => sprintf(
+                    '%d-%010d-%s',
+                    $tarefa->ordem === null ? 1 : 0,
+                    $tarefa->ordem ?? 0,
+                    $this->chaveAutomatica($tarefa),
+                ))
+                ->values();
+        }
+
+        return $tarefas->sortBy(fn (Tarefa $tarefa) => $this->chaveAutomatica($tarefa))->values();
+    }
+
+    /**
+     * A régua automática: gravidade primeiro, e no empate o mais parado.
+     *
+     * @return string
+     */
+    private function chaveAutomatica(Tarefa $tarefa)
+    {
         // "A definir" fecha a lista: ela não é o grau mais baixo da escala, é a
         // decisão que ainda não foi tomada — e colocá-la no topo faria a tarefa
         // que ninguém classificou passar na frente da que alguém chamou de
@@ -683,13 +851,11 @@ class TarefaController extends Controller
         // Chave composta em vez de `sortBy([closure, closure])`: essa forma
         // NÃO ordena por múltiplas chaves — ela considera só a última, e a
         // gravidade era silenciosamente ignorada.
-        return $tarefas
-            ->sortBy(fn (Tarefa $tarefa) => sprintf(
-                '%d-%020d',
-                $gravidade[$tarefa->prioridade] ?? count($gravidade),
-                $this->entrouNaEtapaEm($tarefa)->getTimestamp(),
-            ))
-            ->values();
+        return sprintf(
+            '%d-%020d',
+            $gravidade[$tarefa->prioridade] ?? count($gravidade),
+            $this->entrouNaEtapaEm($tarefa)->getTimestamp(),
+        );
     }
 
     /**

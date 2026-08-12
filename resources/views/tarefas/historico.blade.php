@@ -127,6 +127,7 @@
                             <form method="POST" action="{{ route('tarefas.mover', $tarefa) }}">
                                 @csrf
                                 <input type="hidden" name="status" value="{{ $reabrirPara }}">
+                                <input type="hidden" name="de_status" value="{{ $tarefa->status }}">
                                 <button type="submit"
                                         title="Volta para {{ \App\Models\Tarefa::STATUS[$reabrirPara] }}"
                                         class="h-[28px] px-2.5 rounded-control border border-btn-line

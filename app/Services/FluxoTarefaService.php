@@ -93,7 +93,10 @@ class FluxoTarefaService
 
             $this->fecharEventoAberto($tarefa, $agora);
 
-            $atualizacao = ['status' => $novoStatus];
+            // A posição manual é DENTRO de uma coluna: levá-la junto faria o
+            // card chegar na coluna nova já encaixado num lugar que ninguém
+            // escolheu para ele ali. Sem posição, ele entra no fim, esperando.
+            $atualizacao = ['status' => $novoStatus, 'ordem' => null];
 
             // Entrar em Aberta solta o responsável, venha de onde vier: Aberta é
             // a fila do que ainda não tem dono (AC-130), e um card com nome

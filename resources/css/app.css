@@ -290,3 +290,37 @@
         background: var(--zebra);
     }
 }
+
+/*
+ * O quadro de tarefas no celular: uma etapa por vez.
+ *
+ * Quadro é uma tela de comparação — cinco colunas lado a lado para o olho
+ * cruzar. No celular não cabe comparação nenhuma: sobra uma coluna e meia, e a
+ * pessoa rola na horizontal procurando onde estava. Uma etapa por vez, trocada
+ * por uma tira de chips, entrega a mesma informação numa leitura que cabe.
+ *
+ * Em CSS, e não em `x-show`: a regra precisa valer no primeiro pixel pintado.
+ * Com JavaScript decidindo, o celular mostraria as cinco colunas por um quadro
+ * antes de esconder quatro — e esse piscar é pior que a rolagem que ele veio
+ * consertar.
+ */
+@media (max-width: 1023px) {
+    [data-quadro] section[data-status] {
+        display: none;
+    }
+
+    [data-quadro].etapa-aberta section[data-status='aberta'],
+    [data-quadro].etapa-backlog section[data-status='backlog'],
+    [data-quadro].etapa-em_desenvolvimento section[data-status='em_desenvolvimento'],
+    [data-quadro].etapa-em_testes section[data-status='em_testes'],
+    [data-quadro].etapa-ajustes_necessarios section[data-status='ajustes_necessarios'] {
+        display: flex;
+    }
+
+    /* As faixas de solto saem junto com o arrastar: no toque, o gesto de
+       arrastar não existe, e um alvo que não recebe nada é área morta
+       ocupando a largura que falta para o card. */
+    [data-quadro] section[title*='Arraste'] {
+        display: none;
+    }
+}

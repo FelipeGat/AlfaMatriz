@@ -26,6 +26,10 @@
         <form method="POST"
               action="{{ route('tarefas.mover', $tarefa) }}" class="mt-2 space-y-2">
             @csrf
+            {{-- A etapa que o card tinha quando esta tela foi montada: se
+                 alguém moveu enquanto o menu estava aberto, o envio é recusado
+                 em vez de sobrescrever o movimento do outro (AC-208). --}}
+            <input type="hidden" name="de_status" value="{{ $tarefa->status }}">
             {{--
                 `py-0` junto com a altura fixa, como em Revendas e Clientes: o
                 plugin de formulários dá ao select `padding: 8px` em cima e

@@ -11,7 +11,7 @@
 
     Espera: $filtros, $sistemas, $usuarios. `$comDesfecho` só o histórico passa.
 --}}
-@props(['comDesfecho' => false])
+@props(['comDesfecho' => false, 'raias' => null])
 
 @php
     // Se nada foi pedido, não há o que limpar — e um botão "Limpar" aceso
@@ -77,11 +77,42 @@
         </select>
     @endif
 
+    {{-- O agrupamento viaja junto do recorte: sem este campo, filtrar
+         desmancharia as raias, e a pessoa refaria a escolha a cada busca. --}}
+    @if ($raias)
+        <input type="hidden" name="raias" value="{{ $raias['modo'] }}">
+    @endif
+
     <button type="submit"
             class="h-[34px] px-3 rounded-control border border-btn-line text-ink-dim
                    text-[12.5px] font-semibold hover:text-brand hover:border-brand transition">
         Filtrar
     </button>
+
+    {{--
+        As raias não são filtro, e por isso ficam separadas dos selects: filtro
+        ESCONDE o que não interessa, raia mostra tudo separado. A pergunta delas
+        é de distribuição — quem está com o quê, onde cada sistema travou —, e
+        essa some quando se olha coluna por coluna com todo mundo junto.
+
+        Links, e não select: cada opção é um endereço, então a visão agrupada
+        pode ser guardada nos favoritos ou mandada pronta para alguém.
+    --}}
+    @if ($raias)
+        <span class="ml-auto flex items-center gap-1">
+            <span class="font-mono text-[10px] uppercase tracking-caps text-ink-faint">Raias</span>
+            @foreach (['nenhuma' => 'Nenhuma', 'responsavel' => 'Responsável', 'sistema' => 'Sistema'] as $modo => $rotulo)
+                <a href="{{ request()->fullUrlWithQuery(['raias' => $modo]) }}"
+                   @class([
+                       'h-[26px] px-2 inline-flex items-center rounded-control text-[12px] transition',
+                       'bg-chip text-ink font-semibold' => $raias['modo'] === $modo,
+                       'text-ink-faint hover:text-brand' => $raias['modo'] !== $modo,
+                   ])>
+                    {{ $rotulo }}
+                </a>
+            @endforeach
+        </span>
+    @endif
 
     @if ($temFiltro)
         {{-- Link e não botão: limpar é ir para a mesma tela sem query nenhuma. --}}

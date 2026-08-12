@@ -41,17 +41,22 @@ aberto, em desenvolvimento, em teste e concluído.
 
 - **Dado** que existem tarefas em etapas diferentes
 - **Quando** abro o quadro
-- **Então** vejo as colunas Aberta, Backlog, Em andamento, Bloqueada, Em testes
-  e Ajustes necessários nessa ordem, cada uma com o total de tarefas que estão
-  nela — e nenhuma coluna de etapa terminal, porque tarefa encerrada não é
-  trabalho em curso
+- **Então** vejo as colunas Aberta, Backlog, Em andamento, Em testes e Ajustes
+  necessários nessa ordem, cada uma com o total de tarefas que estão nela — e
+  nenhuma coluna de etapa terminal, porque tarefa encerrada não é trabalho em
+  curso
 
 > **Revisto em 11/08/2026.** A coluna "Em desenvolvimento" passou a se chamar
 > **Em andamento** (US-054): ela recebe também tarefa operacional, que não é
 > desenvolvida, e um telefonema parado numa coluna chamada "Em desenvolvimento"
 > faria a coluna mentir. A chave do dado continua `em_desenvolvimento` — ela
 > está gravada no histórico de etapas, e renomear o dado para arrumar um rótulo
-> de tela reescreveria o passado. **Bloqueada** é coluna nova (US-055).
+> de tela reescreveria o passado.
+>
+> **Bloqueada chegou a ser coluna e deixou de ser no mesmo dia** (US-058): como
+> coluna, ela apagava a etapa em que a tarefa estava. O contador de cada coluna
+> ganhou o limite de WIP (AC-195) e o aviso de triagem pendente (AC-194), e as
+> etapas passaram a ser lidas uma por vez no celular (AC-215).
 
 #### AC-083 — Tarefa sem responsável nasce Aberta; com responsável, nasce no Backlog
 
@@ -639,16 +644,95 @@ perfil "Membro do time" é simplesmente quem tem `tarefas` sem ele.
   uma parede se lê como conta quebrada. Para quem alcança o Centro de Controle,
   ele continua sendo a casa
 
+### US-062 — Duas mãos no mesmo quadro
+
+Como pessoa do time, quero que o quadro não perca movimento de outra pessoa e
+que a ordem da coluna possa ser escolhida à mão, para que o que está na tela
+seja o que está acontecendo.
+
+#### AC-208 — Movimento sobre movimento alheio é recusado
+
+- **Dado** um card que outra pessoa já moveu enquanto o meu menu estava aberto
+- **Quando** confirmo o meu movimento
+- **Então** ele é recusado dizendo para onde a tarefa já foi. Antes o segundo
+  envio ganhava em silêncio, e quem moveu primeiro só descobria ao recarregar
+
+#### AC-209 — A coluna arrumada à mão fica como foi arrumada
+
+- **Dado** uma coluna cuja ordem alguém escolheu arrastando
+- **Quando** volto a ela
+- **Então** a ordem escolhida manda; a coluna que ninguém tocou segue a régua
+  automática (AC-128), e o card que chega depois entra no fim, sem posição.
+  Mudar de etapa apaga a posição, que é sempre dentro de UMA coluna. Posicionar
+  é organizar trabalho alheio, então pede a mesma capacidade de triagem
+
+#### AC-210 — Excluir apaga; cancelar encerra
+
+- **Dado** uma tarefa aberta por engano
+- **Quando** uso o excluir do rodapé do detalhe, em dois passos
+- **Então** o registro some de verdade — e a tela declara ali mesmo que, para
+  encerrar mantendo o histórico, o caminho é cancelar. Excluir é só de quem
+  triaga
+
+#### AC-211 — O card separa o clique do arrasto
+
+- **Dado** que o card abre no clique e também arrasta
+- **Quando** começo um arrasto curto
+- **Então** o detalhe não abre: o clique só vale se o ponteiro andou menos de
+  4px e não houve arraste nos últimos 300ms
+
+#### AC-212 — Criação rápida no pé da coluna Aberta
+
+- **Dado** que quero abrir uma tarefa que cabe numa frase
+- **Quando** escrevo no campo do pé da coluna e dou Enter
+- **Então** a tarefa é criada com esse título; o campo existe só em Aberta,
+  porque é lá que a tarefa sem responsável nasce
+
+### US-063 — O mesmo quadro em três leituras
+
+Como pessoa do time, quero ler o quadro agrupado, no celular e pelo teclado,
+para que a tela sirva à pergunta do momento e ao aparelho que estiver na mão.
+
+#### AC-213 — As raias agrupam sem esconder
+
+- **Dado** o quadro com tarefas de várias pessoas
+- **Quando** escolho a raia por Responsável (ou por Sistema)
+- **Então** o quadro se separa em faixas, com o cabeçalho das etapas fixo no
+  topo, e nada é escondido — filtro esconde, raia separa. "Sem responsável" é a
+  última faixa: é uma pergunta em aberto, não um grupo
+
+#### AC-214 — A raia de quem está com trabalho demais se anuncia
+
+- **Dado** alguém com mais de duas tarefas andando ao mesmo tempo
+- **Quando** olho a raia dessa pessoa
+- **Então** ela traz o selo de trabalho em paralelo; tarefa travada não conta,
+  porque quem espera terceiro não está tocando nada. O selo não existe nas raias
+  por sistema
+
+#### AC-215 — No celular, uma etapa por vez
+
+- **Dado** o quadro num telefone
+- **Quando** abro a tela
+- **Então** vejo uma etapa por vez, trocada por uma tira de chips com a contagem
+  e o limite, sem as faixas de solto — no toque não há arrastar. A troca é regra
+  de CSS: decidida em JavaScript, ela mostraria as cinco colunas por um quadro
+  antes de esconder quatro
+
+#### AC-216 — O quadro anda pelo teclado
+
+- **Dado** o quadro aberto
+- **Quando** uso as setas
+- **Então** ando pelos cards e pelas colunas, `⇧+←/→` move a tarefa de etapa
+  recusando o que o fluxo não permite, `B` bloqueia, `M` abre o menu, `Enter`
+  abre a tarefa, `C` e `N` criam, `/` busca, `Esc` fecha e `?` lista tudo — e
+  nada dispara enquanto se digita, senão escrever "backlog" na busca moveria
+  cards pelo caminho
+
 ## Fora de escopo
 
-- Excluir tarefa (só de quem triaga, segundo o handoff): não existe caminho de
-  exclusão de tarefa hoje, então a regra fica junto da feature que a criar.
-- Raias por responsável ou sistema.
-- Vista mobile própria (uma etapa por vez, com tira de chips).
-- Atalhos de teclado do quadro.
-- Reordenar tarefas dentro da coluna (coluna `ordem` em `tarefas`).
-- Guarda de concorrência ao mover (mandar o `de_status` esperado e recusar com
-  "alguém já moveu esta tarefa").
+> O handoff de design de 11/08/2026 foi entregue por inteiro. O que segue
+> abaixo continua fora — são itens do escopo original da feature, não do
+> redesenho.
 - Excluir tarefa (diferente de cancelar), com confirmação em dois passos.
 - Anexos de imagem na tarefa (o alfadev tem; fica para depois).
 - Qualquer formatação no comentário: marcador de lista, numeração, markdown.
