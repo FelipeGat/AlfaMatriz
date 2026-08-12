@@ -171,6 +171,42 @@ class OrdemEConcorrenciaTest extends TestCase
     }
 
     /**
+     * @spec:AC-210 O excluir fica na mesma linha do Salvar, na ponta oposta.
+     *
+     * Ele já morou embaixo de tudo, obedecendo ao "rodapé do detalhe" ao pé da
+     * letra — e num modal que rola, depois do checklist e da conversa inteira,
+     * rodapé virou fora da tela: nascia a 804px numa janela de 800. Ação
+     * destrutiva que ninguém acha é tão quebrada quanto uma fácil demais de
+     * apertar, e este teste existe para ela não afundar de novo.
+     */
+    public function test_o_excluir_fica_na_linha_do_salvar_e_nao_no_fim_do_modal(): void
+    {
+        $usuario = User::factory()->create();
+        $this->criarTarefa();
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        $posExcluir = strpos($html, 'Excluir tarefa');
+        $posSalvar = strpos($html, "enviando ? 'Salvando…' : 'Salvar'");
+
+        $this->assertNotFalse($posExcluir, 'Quem triaga precisa ver o excluir.');
+        $this->assertNotFalse($posSalvar);
+
+        // Vizinhos no mesmo rodapé: entre um e outro só cabe o bloco de botões,
+        // e nunca a conversa ou o checklist, que é o que os separava antes.
+        $entre = substr($html, $posExcluir, $posSalvar - $posExcluir);
+
+        $this->assertLessThan(1200, strlen($entre),
+            'Excluir e Salvar precisam dividir o rodapé — separados, o excluir cai abaixo da dobra.');
+        $this->assertStringNotContainsString('Comentários', $entre);
+        $this->assertStringNotContainsString('Checklist', $entre);
+
+        // E o aviso que diz a diferença para cancelar continua junto dele.
+        $this->assertStringContainsString('apaga o registro', $html);
+        $this->assertStringContainsString('mantendo o', $html);
+    }
+
+    /**
      * @spec:AC-211 O card abre no clique E arrasta: o clique só vale se o ponteiro andou
      * menos de 4px e não houve arraste nos últimos 300ms. Sem as duas peneiras, o começo
      * de qualquer arrasto terminava com o modal aberto por cima do gesto.

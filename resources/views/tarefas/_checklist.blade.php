@@ -90,7 +90,7 @@
                 <button type="submit" form="apagar-item-{{ $item->id }}"
                         title="Remover item" aria-label="Remover item"
                         class="shrink-0 h-5 w-5 rounded-control text-ink-faint opacity-0 group-hover:opacity-100
-                               focus:opacity-100 hover:text-crit-text transition">✕</button>
+                               focus:opacity-100 hover:text-crit transition">✕</button>
             </li>
         @endforeach
     </ul>

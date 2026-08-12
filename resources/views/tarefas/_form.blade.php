@@ -136,31 +136,36 @@
     @endif
 
     {{--
-        O excluir vive no RODAPÉ, longe dos botões do fluxo, e declara ali
-        mesmo a diferença para cancelar. Sem essa frase, "excluir" e "cancelar"
-        são dois sinônimos na cabeça de quem lê — e um deles apaga o histórico
-        que o outro existe para guardar.
+        Excluir fica na MESMA linha do Salvar, na ponta oposta.
 
-        Dois passos porque é a única ação do quadro sem desfazer. O botão de
-        confirmação some ao fechar o modal (`x-data` local), então uma tarefa
-        aberta de novo nunca aparece com a confirmação já armada.
+        Ele já morou embaixo de tudo, obedecendo ao "rodapé do detalhe" ao pé da
+        letra — e num modal que rola, depois do checklist e da conversa inteira,
+        rodapé virou fora da tela: o botão nascia a 804px numa janela de 800.
+        Ação destrutiva que ninguém acha é tão quebrada quanto uma fácil demais
+        de apertar.
+
+        A separação que o desenho pedia continua, só que na horizontal: quem vem
+        salvar encontra o excluir sem procurar, e a largura inteira do modal
+        separa um do outro. Dois passos porque é a única ação do quadro sem
+        desfazer, e a confirmação abre ACIMA da linha, onde cabe a frase que
+        diz a diferença para cancelar — sem ela, "excluir" e "cancelar" são
+        sinônimos na cabeça de quem lê, e um deles apaga o histórico que o
+        outro existe para guardar.
+
+        O `x-data` é local ao bloco, então a confirmação se desarma ao fechar o
+        modal: tarefa reaberta nunca aparece com o gatilho engatilhado.
     --}}
-    @if ($tarefa && $podeTriar)
-        <div class="pt-4 border-t border-rule" x-data="{ confirmando: false }">
-            <div x-show="! confirmando">
-                <button type="button" @click="confirmando = true"
-                        class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-crit-text transition">
-                    Excluir tarefa
-                </button>
-            </div>
-
-            <div x-show="confirmando" x-cloak class="space-y-2">
+    <div @if ($tarefa && $podeTriar) x-data="{ confirmando: false }" @endif>
+        @if ($tarefa && $podeTriar)
+            <div x-show="confirmando" x-cloak
+                 class="mb-3 rounded-control border p-3"
+                 style="border-color: rgb(var(--crit) / 0.4); background: rgb(var(--crit) / var(--tint-alpha))">
                 <p class="text-[11.5px] leading-snug text-ink-mute">
                     Excluir <strong class="text-ink">apaga o registro</strong>: a conversa, o checklist e o
                     tempo por etapa somem junto, e não há como desfazer. Para encerrar a tarefa mantendo o
                     histórico, o caminho é <strong class="text-ink">cancelar</strong>, pelo menu de mover.
                 </p>
-                <div class="flex items-center gap-2">
+                <div class="mt-2 flex items-center gap-2">
                     <button type="submit" form="excluir-tarefa-{{ $tarefa->id }}"
                             class="h-8 px-3 rounded-control font-semibold text-[12px] text-on-brand transition"
                             style="background: rgb(var(--crit))">
@@ -173,14 +178,24 @@
                     </button>
                 </div>
             </div>
-        </div>
-    @endif
+        @endif
 
-    <div class="flex justify-end gap-3">
-        <x-secondary-button x-on:click="$dispatch('close')">Cancelar</x-secondary-button>
-        {{-- O rótulo literal é o que vale sem JS; com Alpine no ar, ele vira
-             o aviso de que o envio está em curso. --}}
-        <x-primary-button x-bind:disabled="enviando"
-                          x-text="enviando ? 'Salvando…' : 'Salvar'">Salvar</x-primary-button>
+        <div class="flex items-center gap-3">
+            @if ($tarefa && $podeTriar)
+                <button type="button" @click="confirmando = true" x-show="! confirmando"
+                        class="text-[12.5px] transition hover:underline"
+                        style="color: rgb(var(--crit))">
+                    Excluir tarefa
+                </button>
+            @endif
+
+            <div class="ml-auto flex gap-3">
+                <x-secondary-button x-on:click="$dispatch('close')">Cancelar</x-secondary-button>
+                {{-- O rótulo literal é o que vale sem JS; com Alpine no ar, ele vira
+                     o aviso de que o envio está em curso. --}}
+                <x-primary-button x-bind:disabled="enviando"
+                                  x-text="enviando ? 'Salvando…' : 'Salvar'">Salvar</x-primary-button>
+            </div>
+        </div>
     </div>
 </form>
