@@ -6,7 +6,12 @@
         <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
             <x-kpi-card rotulo="Sistemas ativos" :valor="number_format($totalSistemasAtivos, 0, ',', '.')"
                         acento="accent" icone="cube-outline" />
+            {{-- O único card desta tela com tendência: é o único indicador cujo
+                 histórico o banco guarda (a data de cadastro do cliente). --}}
             <x-kpi-card rotulo="Clientes ativos" :valor="number_format($totalClientesAtivos, 0, ',', '.')"
+                        :delta="$novosClientes > 0 ? '+'.$novosClientes.' no mês' : 'nenhum novo no mês'"
+                        :sinal="$novosClientes > 0 ? 'bom' : 'neutro'"
+                        :serie="$serieClientes"
                         acento="brand" icone="users" />
             <x-kpi-card rotulo="Revendas ativas" :valor="number_format($totalRevendasAtivas, 0, ',', '.')"
                         acento="amber" icone="building" />
@@ -16,10 +21,14 @@
 
         {{-- O destaque da tela: os dois rankings, em três camadas. --}}
         <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(420px, 1fr))">
+            {{-- "Licenças ativas", e não "Clientes ativos": este total soma o
+                 nº de clientes de CADA produto, então um cliente com dois
+                 sistemas entra duas vezes. Chamá-lo de clientes ativos punha
+                 dois números diferentes sob o mesmo nome na mesma tela. --}}
             <x-ranking :ranking="$rankingClientes"
                        titulo="Produtos por clientes ativos"
                        nota="quem tem mais base instalada"
-                       rotuloTotal="Clientes ativos" />
+                       rotuloTotal="Licenças ativas" />
 
             <x-ranking :ranking="$rankingValor"
                        titulo="Produtos por valor gerado"

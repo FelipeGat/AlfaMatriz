@@ -1,5 +1,36 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 12/08/2026 — O painel Comercial para de discordar de si mesmo
+
+O Comercial mostrava, na mesma tela, dois números diferentes com o mesmo nome —
+e listava produtos que o card logo acima dizia não existir mais.
+
+### Correções
+
+- **O total do ranking de produtos passa a se chamar "Licenças ativas".** Ele
+  soma quantos clientes cada produto tem, então um cliente com dois sistemas
+  entra duas vezes: nunca foi o número de clientes. Enquanto se chamava
+  "Clientes ativos", a tela exibia 8 no card e 7 logo abaixo, sob o mesmo nome.
+- **Produto desativado sai dos rankings e do MRR.** Ele continuava aparecendo
+  na lista de produtos — sob um card que conta só os ativos — e ainda somava
+  receita no "MRR de atacado", dinheiro que o fechamento nunca cobraria, porque
+  o faturamento pula produto desativado.
+- **Duas revendas com o mesmo nome voltam a ser duas linhas.** Em "Clientes por
+  revenda" elas colapsavam numa só, somando a base das duas sob um rótulo que
+  não dizia qual era qual.
+- **O portfólio por categoria conta só os produtos ativos**, como o card acima
+  dele.
+
+### Novidades
+
+- **O card "Clientes ativos" ganhou variação e minitendência**, iguais às do
+  Centro de Controle — as duas telas agora desenham a mesma curva, da mesma
+  origem.
+
+> Os cards "Sistemas ativos", "Revendas ativas" e "MRR de atacado" seguem sem
+> minitendência: o sistema ainda não guarda a data de entrada de revendas e
+> sistemas, e uma curva tirada da data de importação mostraria um degrau falso.
+
 ## AlfaMatriz — 12/08/2026 — Os números das telas voltam a fechar
 
 Os indicadores do Centro de Controle, do Faturamento e dos painéis mostravam

@@ -167,15 +167,13 @@ class CentroControleController extends Controller
     /**
      * Clientes que entraram no mês.
      *
-     * Conta só os ativos, pelo mesmo critério do número grande do card. Sem
-     * esse filtro o card se contradizia sozinho: "8 clientes ativos, +10 no
-     * mês", porque o total olhava `ativo` e o delta olhava a tabela inteira.
+     * Sai do serviço, e não de uma contagem local: o Comercial mostra o mesmo
+     * número, e duas contagens separadas é como as duas telas começam a
+     * discordar.
      */
     private function novosNoMes(): int
     {
-        return Cliente::where('ativo', true)
-            ->whereRaw(Cliente::expressaoDeEntrada().' >= ?', [now()->startOfMonth()->toDateString()])
-            ->count();
+        return $this->indicadores->novosClientesNoMes();
     }
 
     /** @return list<float> */
@@ -245,26 +243,15 @@ class CentroControleController extends Controller
     }
 
     /**
-     * Quantos clientes ativos a base tinha ao fim de cada mês.
-     *
-     * Conta pela data de ENTRADA, não por `created_at`: a base veio de
-     * importação, e `created_at` marca o dia da migração para todo mundo — a
-     * curva virava um degrau, com cinco meses zerados e tudo aparecendo de uma
-     * vez no último ponto.
-     *
-     * A base não data a desativação, então esta curva conta quem entrou até
-     * aquele mês e SEGUE ativo hoje: ela mostra a entrada, não o churn, e por
-     * isso nunca desce. Fazê-la descer exige gravar quando o cliente saiu.
+     * A mesma curva que o Comercial desenha, vinda da mesma origem — ver
+     * `IndicadoresService::serieDeClientesAtivos()`, inclusive para o motivo de
+     * ela nunca descer.
      *
      * @return list<float>
      */
     private function serieDeClientes(): array
     {
-        return $this->ultimosMeses()
-            ->map(fn (Carbon $mes) => (float) Cliente::where('ativo', true)
-                ->whereRaw(Cliente::expressaoDeEntrada().' <= ?', [$mes->copy()->endOfMonth()->toDateString()])
-                ->count())
-            ->all();
+        return $this->indicadores->serieDeClientesAtivos(self::MESES_DA_SERIE);
     }
 
     /** @return Collection<int, Carbon> */

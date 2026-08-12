@@ -70,22 +70,19 @@ class PainelController extends Controller
         $ranking = $this->indicadores->rankingSistemas();
         $sistemas = $ranking->pluck('sistema');
 
-        $porQuantidade = $ranking->sortByDesc('clientes_ativos')->values();
-        $porValor = $ranking->sortByDesc('valor_estimado')->values();
-
-        $maxQuantidade = max($porQuantidade->max('clientes_ativos'), 1);
-        $maxValor = max($porValor->max('valor_estimado'), 1);
-
         // Os dois rankings da tela, já em três camadas: o total e o líder no
         // topo, a faixa segmentada no meio e as linhas embaixo. Cada linha
         // conhece a própria participação e o próprio tamanho relativo ao
         // líder — comparar é o motivo desta tela existir.
+        //
+        // O `ranking()` já ordena por valor, então ordenar antes era trabalho
+        // jogado fora.
         $rankingClientes = $this->ranking(
-            $porQuantidade->map(fn ($l) => ['nome' => $l['sistema']->nome, 'valor' => (float) $l['clientes_ativos']]),
+            $ranking->map(fn ($l) => ['nome' => $l['sistema']->nome, 'valor' => (float) $l['clientes_ativos']]),
             'accent'
         );
         $rankingValor = $this->ranking(
-            $porValor->map(fn ($l) => ['nome' => $l['sistema']->nome, 'valor' => (float) $l['valor_estimado']]),
+            $ranking->map(fn ($l) => ['nome' => $l['sistema']->nome, 'valor' => (float) $l['valor_estimado']]),
             'chart-out'
         );
 
@@ -94,33 +91,52 @@ class PainelController extends Controller
         $totalRevendasAtivas = $this->indicadores->revendasAtivas();
         $mrrEstimado = $this->indicadores->mrrAtacado();
 
+        // Agrupa por ID, não por nome: duas revendas homônimas viravam uma
+        // linha só, somando a base das duas sob um nome que não distingue
+        // qual é qual. O nome continua sendo o rótulo, mas não é a chave.
+        //
+        // Cliente de revenda desativada continua contado — ele está ativo, e o
+        // total desta lista precisa fechar com o card "Clientes ativos". Por
+        // isso a lista pode trazer mais linhas do que o card de revendas ATIVAS
+        // anuncia: são coisas diferentes, base de clientes e cadastro vigente.
         $porRevenda = Cliente::where('ativo', true)
             ->with('revenda')
             ->get()
-            ->groupBy(fn ($c) => $c->revenda?->nome ?? 'Venda direta')
-            ->map->count()
-            ->sortByDesc(fn ($qtd) => $qtd);
+            ->groupBy(fn ($c) => $c->revenda_id ?? 0)
+            ->map(fn ($clientes) => [
+                'nome' => $clientes->first()->revenda?->nome ?? 'Venda direta',
+                'valor' => (float) $clientes->count(),
+            ])
+            ->values();
 
+        // Categoria dos sistemas ATIVOS — `$sistemas` vem do ranking, que já
+        // não traz produto desativado.
         $porCategoria = $sistemas->groupBy('categoria')->map->count();
 
         // Os dois painéis de apoio usam a mesma gramática das linhas do
         // ranking, para a tela inteira se ler do mesmo jeito.
-        $rankingRevendas = $this->ranking(
-            $porRevenda->map(fn ($qtd, $nome) => ['nome' => $nome, 'valor' => (float) $qtd])->values(),
-            'accent'
-        );
+        $rankingRevendas = $this->ranking($porRevenda, 'accent');
         $rankingCategorias = $this->ranking(
             $porCategoria->map(fn ($qtd, $nome) => ['nome' => $nome ?: 'Sem categoria', 'valor' => (float) $qtd])
-                ->sortByDesc('valor')->values(),
+                ->values(),
             'brand'
         );
 
+        // Só o card de clientes ganha tendência, e o motivo é o banco: ele é o
+        // único destes quatro cujo histórico existe de verdade (a data de
+        // cadastro do cliente). Revendas e Sistemas só têm `created_at`, que é
+        // o dia da importação para toda a base — uma curva feita dele seria um
+        // degrau, e um degrau inventado é pior que card sem curva. Ver o
+        // relatório da rodada para o que falta para eles terem uma.
+        $novosClientes = $this->indicadores->novosClientesNoMes();
+
         return view('dashboard-comercial', compact(
-            'porQuantidade', 'porValor', 'maxQuantidade', 'maxValor',
             'totalClientesAtivos', 'totalSistemasAtivos', 'totalRevendasAtivas',
-            'mrrEstimado', 'porRevenda', 'porCategoria',
+            'mrrEstimado', 'novosClientes',
             'rankingClientes', 'rankingValor', 'rankingRevendas', 'rankingCategorias'
-        ));
+        ) + [
+            'serieClientes' => $this->indicadores->serieDeClientesAtivos(6),
+        ]);
     }
 
     /**

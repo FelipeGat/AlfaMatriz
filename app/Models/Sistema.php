@@ -122,6 +122,14 @@ class Sistema extends Model
      */
     public function mrrModulos(?string $competencia = null): float
     {
+        // Sistema desativado não gera receita: o fechamento pula ele
+        // (`FaturamentoService` só varre `ativo`), então nada dele é cobrado.
+        // Sem esta guarda, o painel somava no MRR um dinheiro que a fatura
+        // nunca ia produzir.
+        if (! $this->ativo) {
+            return 0.0;
+        }
+
         $clienteIds = $this->clientes()
             ->where('clientes.ativo', true)
             ->where('cliente_sistema.ativo', true)
@@ -146,6 +154,12 @@ class Sistema extends Model
      */
     public function mrrEstimado(): float
     {
+        // Mesma guarda de `mrrModulos()`, pelo mesmo motivo: produto desativado
+        // fica fora do fechamento, logo não vale receita nenhuma.
+        if (! $this->ativo) {
+            return 0.0;
+        }
+
         $porRevenda = $this->clientes()
             ->where('clientes.ativo', true)
             ->where('cliente_sistema.ativo', true)

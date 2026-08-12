@@ -41,6 +41,49 @@ class IndicadoresService
         return Cliente::where('ativo', true)->whereNull('revenda_id')->count();
     }
 
+    /**
+     * Clientes que entraram no mês corrente.
+     *
+     * Conta só ativos, pelo mesmo critério de `clientesAtivos()` — do
+     * contrário o card se contradiz, dizendo que entraram mais clientes do que
+     * a base inteira tem.
+     */
+    public function novosClientesNoMes(): int
+    {
+        return Cliente::where('ativo', true)
+            ->whereRaw(Cliente::expressaoDeEntrada().' >= ?', [now()->startOfMonth()->toDateString()])
+            ->count();
+    }
+
+    /**
+     * Quantos clientes ativos a base tinha ao fim de cada um dos últimos
+     * meses, do mais antigo ao mais recente.
+     *
+     * Vive aqui porque a curva aparece no Centro de Controle e no Comercial:
+     * cada tela montando a própria faria as duas discordarem sobre o mesmo
+     * desenho — que é exatamente o que o AC-062 existe para impedir.
+     *
+     * Conta pela data de ENTRADA, não por `created_at`: a base veio de
+     * importação, e `created_at` marca o dia da migração para todo mundo de
+     * uma vez, o que transforma a curva num degrau.
+     *
+     * A base não data a desativação, então a curva conta quem entrou até
+     * aquele mês e SEGUE ativo hoje. Ela mostra a entrada, não o churn, e por
+     * isso nunca desce.
+     *
+     * @return list<float>
+     */
+    public function serieDeClientesAtivos(int $meses): array
+    {
+        return collect(range($meses - 1, 0))
+            ->map(fn (int $atras) => (float) Cliente::where('ativo', true)
+                ->whereRaw(Cliente::expressaoDeEntrada().' <= ?', [
+                    now()->copy()->subMonths($atras)->endOfMonth()->toDateString(),
+                ])
+                ->count())
+            ->all();
+    }
+
     public function revendasAtivas(): int
     {
         return Revenda::where('ativo', true)->count();
@@ -158,7 +201,12 @@ class IndicadoresService
      */
     public function rankingSistemas()
     {
-        return Sistema::withCount(['clientes' => fn ($q) => $q->where('clientes.ativo', true)->where('cliente_sistema.ativo', true)])
+        // Só produto ATIVO. Sem este filtro, um sistema desativado continuava
+        // aparecendo nos rankings do Comercial logo abaixo de um card que diz
+        // quantos sistemas estão ativos — a tela contradizia a si mesma — e
+        // ainda entrava no MRR, que o fechamento nunca cobraria.
+        return Sistema::where('ativo', true)
+            ->withCount(['clientes' => fn ($q) => $q->where('clientes.ativo', true)->where('cliente_sistema.ativo', true)])
             ->get()
             ->map(function (Sistema $sistema) {
                 $licenca = $sistema->mrrEstimado();
