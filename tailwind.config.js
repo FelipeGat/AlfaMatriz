@@ -25,9 +25,29 @@ const veu = (nome) => `var(--${nome})`;
 
 /** @type {import('tailwindcss').Config} */
 export default {
+    /**
+     * As fontes que o Tailwind varre.
+     *
+     * `storage/framework/views` saiu daqui, e a razão é que ele tornava o build
+     * NÃO DETERMINÍSTICO: aquela pasta é o cache de views compiladas, então o
+     * CSS gerado dependia de quais telas alguém tinha aberto antes de compilar.
+     * O mesmo commit produzia bundles diferentes — 74kB com o cache quente,
+     * 66kB com ele frio —, e "por que o CSS mudou sem ninguém mexer em CSS" é
+     * das perguntas mais caras de responder.
+     *
+     * O que ele acrescentava era só a página de erro do modo debug do Laravel
+     * (`Foundation/resources/exceptions/renderer`), que **injeta o próprio CSS
+     * compilado** e nunca usou este bundle. As demais views de vendor que
+     * chegam a ser compiladas são as de paginação — que continuam listadas
+     * explicitamente acima, sem depender de cache nenhum — e as de e-mail, que
+     * usam estilo inline por exigência dos clientes de e-mail.
+     *
+     * View de vendor que um dia precise deste CSS entra aqui pelo caminho dela,
+     * como a paginação: explícita, e não por efeito colateral de alguém ter
+     * aberto uma tela antes do `npm run build`.
+     */
     content: [
         './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
-        './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
         './resources/js/**/*.js',
     ],

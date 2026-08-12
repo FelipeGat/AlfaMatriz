@@ -347,6 +347,23 @@ funcione no celular, para conferir um dado sem abrir o notebook.
   botão do topbar, e o conteúdo se reorganiza sem provocar rolagem horizontal
   da página inteira
 
+### US-028 — O mesmo commit produz o mesmo CSS
+
+Como quem publica, quero que compilar o front duas vezes do mesmo código dê o
+mesmo resultado, para que "por que o CSS mudou sem ninguém mexer em CSS" nunca
+precise ser respondido.
+
+#### AC-217 — A varredura do Tailwind não depende do cache de views
+
+- **Dado** o mesmo commit
+- **Quando** compilo o front com o cache de views quente e depois com ele frio
+- **Então** o CSS gerado é o mesmo. O cache de views compiladas
+  (`storage/framework/views`) não entra na varredura: ele é estado da máquina,
+  não código, e por ele o bundle mudava de tamanho conforme as telas que alguém
+  tivesse aberto antes de compilar
+- **E** view de vendor que precise deste CSS entra pelo caminho dela, explícita,
+  como já acontece com a paginação
+
 ## Fora de escopo
 
 - **Nenhum módulo, rota, tabela ou regra de negócio nova.** Muda a
