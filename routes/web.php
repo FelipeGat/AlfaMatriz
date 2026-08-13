@@ -191,8 +191,16 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // cadastro inteiro, preenchia e só descobria que não podia ao enviar — o
     // 403 chegava depois do trabalho, e se lê como sistema quebrado, não como
     // porta que não é sua. É a mesma correção que `usuarios.ativo` já fazia
-    // por outro motivo. Antes de `sistemas/{sistema}/edit` porque `create`
-    // é caminho literal e não pode ser lido como id.
+    // por outro motivo.
+    //
+    // Fora do recurso porque o `only()` não fixa a ação de UMA rota só: ou o
+    // grupo inteiro passa a exigir `incluir` — e aí quem lê o catálogo perde a
+    // listagem —, ou a ação continua saindo do verbo.
+    //
+    // A posição depois do resource é indiferente HOJE: `sistemas/create` tem um
+    // segmento e `sistemas/{sistema}/edit` tem três, e o único que leria
+    // "create" como id — o `show`, em `GET sistemas/{sistema}` — está fora do
+    // `only()`. Se ele voltar, esta linha tem de subir para antes do recurso.
     Route::get('sistemas/create', [SistemaController::class, 'create'])->name('sistemas.create')
         ->middleware('permissao:sistemas,incluir');
     Route::post('sistemas/{sistema}/precos', [PrecoAtacadoController::class, 'store'])->name('precos.store')
