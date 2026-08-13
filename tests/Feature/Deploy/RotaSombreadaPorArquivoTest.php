@@ -37,8 +37,22 @@ class RotaSombreadaPorArquivoTest extends TestCase
             ->unique()
             ->values();
 
+        // `storage` é a ÚNICA sobreposição legítima, e é legítima por desenho:
+        // o symlink `public/storage` existe exatamente para o servidor web
+        // entregar os anexos direto do disco, e a rota `storage/{path}` do
+        // Laravel é o caminho de quem não tem o symlink. Aqui o disco ganhar da
+        // rota é o objetivo, não o acidente.
+        //
+        // A exceção é nomeada, e não uma consequência de o symlink faltar. Sem
+        // ela o teste passava na máquina de quem nunca rodou `storage:link` e
+        // reprovava no servidor, que tem — e foi assim que ele segurou o
+        // portão do staging por meia hora, barrando a correção que ele mesmo
+        // existe para proteger. Teste que muda de resultado com o ambiente não
+        // é portão, é sorteio.
+        $legitimos = ['.', '..', 'storage'];
+
         $publicos = collect(scandir(public_path()))
-            ->reject(fn (string $nome) => in_array($nome, ['.', '..'], true))
+            ->reject(fn (string $nome) => in_array($nome, $legitimos, true))
             ->values();
 
         $colisoes = $publicos->intersect($rotas)->values()->all();
