@@ -136,6 +136,13 @@ class CadastroDeSistemaTest extends TestCase
      * Cadastrar é `incluir` no recurso `sistemas` — a mesma porta de preço e
      * tier. O perfil Financeiro lê a tela e não cadastra; sem o gate, ele
      * criaria produto no catálogo pela URL.
+     *
+     * O FORMULÁRIO fecha junto, e esta parte é nova. Dentro do
+     * `Route::resource`, o GET de `create` tinha a ação inferida do verbo e
+     * pedia `ler`: quem só lê abria o cadastro inteiro, preenchia e só descobria
+     * que não podia ao enviar. O 403 chegava depois do trabalho — e 403 depois
+     * do trabalho não se lê como "esta porta não é sua", se lê como sistema
+     * quebrado. Por isso `create` saiu do recurso com a ação fixada.
      */
     public function test_quem_so_le_o_catalogo_nao_cadastra(): void
     {
@@ -144,7 +151,7 @@ class CadastroDeSistemaTest extends TestCase
         $financeiro = User::factory()->semPerfil()->create();
         $financeiro->perfis()->attach(Perfil::where('slug', 'financeiro')->value('id'));
 
-        $this->actingAs($financeiro)->get(route('sistemas.create'))->assertOk();
+        $this->actingAs($financeiro)->get(route('sistemas.create'))->assertForbidden();
         $this->actingAs($financeiro)->post(route('sistemas.store'), $this->campos())->assertForbidden();
 
         $this->assertSame(0, Sistema::count());

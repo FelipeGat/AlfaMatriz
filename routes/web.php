@@ -181,12 +181,20 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('clientes.desbloquearLicenca')
         ->middleware('permissao:clientes');
 
-    // `create` e `store` entram no mesmo recurso, e não em rota solta, para o
-    // cadastro herdar a MESMA porta que já protege preço e tier: registrar
-    // sistema é decisão de quem cuida do catálogo. O verbo faz o resto — o
-    // middleware lê `incluir` no POST e `ler` no GET.
-    Route::resource('sistemas', SistemaController::class)->only(['index', 'create', 'store', 'edit', 'update'])
+    // O cadastro herda a MESMA porta que já protege preço e tier: registrar
+    // sistema é decisão de quem cuida do catálogo.
+    Route::resource('sistemas', SistemaController::class)->only(['index', 'store', 'edit', 'update'])
         ->middleware('permissao:sistemas');
+    // `create` sai do recurso para fixar a ação em `incluir`, e não deixá-la
+    // ser inferida do verbo. Dentro do resource, o GET do formulário pedia
+    // `ler`: o perfil Financeiro, que lê o catálogo e não o edita, abria o
+    // cadastro inteiro, preenchia e só descobria que não podia ao enviar — o
+    // 403 chegava depois do trabalho, e se lê como sistema quebrado, não como
+    // porta que não é sua. É a mesma correção que `usuarios.ativo` já fazia
+    // por outro motivo. Antes de `sistemas/{sistema}/edit` porque `create`
+    // é caminho literal e não pode ser lido como id.
+    Route::get('sistemas/create', [SistemaController::class, 'create'])->name('sistemas.create')
+        ->middleware('permissao:sistemas,incluir');
     Route::post('sistemas/{sistema}/precos', [PrecoAtacadoController::class, 'store'])->name('precos.store')
         ->middleware('permissao:sistemas');
     Route::delete('precos/{preco}', [PrecoAtacadoController::class, 'destroy'])->name('precos.destroy')
