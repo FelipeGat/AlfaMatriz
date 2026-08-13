@@ -238,6 +238,21 @@ alcançáveis, para não perder o botão de editar quando a janela é estreita.
   alternador permite voltar para cartões, com a escolha guardada para a próxima
   visita
 
+#### AC-221 — O seletor de páginas obedece ao botão de tema
+
+- **Dado** qualquer listagem paginada do painel (revendas, clientes, produtos,
+  receitas, despesas, extrato, contas, usuários, auditoria, histórico de
+  tarefas)
+- **Quando** alterno entre tema claro e escuro
+- **Então** o seletor de páginas acompanha, porque desenha com os tokens do
+  sistema — e não com as variantes `dark:` do Tailwind, que sem `darkMode`
+  declarado seguem o sistema operacional em vez da classe `.theme-light` do
+  `<html>` que comanda o tema aqui
+- **E** ele fica no rodapé do painel da tabela, à direita da contagem, no
+  formato do handoff: controles de 26px, raio 4px e fio `btn-line`, com
+  Anterior, os números de página e Próxima. Em Produtos, cujo paginador é
+  único para os modos lista e cartões, ele fica logo abaixo do painel
+
 ### US-022 — Faturamento auditável antes de gerar
 
 Como responsável pelo faturamento, quero conferir de onde saiu cada valor antes
@@ -374,8 +389,9 @@ precise ser respondido.
   (`storage/framework/views`) não entra na varredura: ele é estado da máquina,
   não código, e por ele o bundle mudava de tamanho conforme as telas que alguém
   tivesse aberto antes de compilar
-- **E** view de vendor que precise deste CSS entra pelo caminho dela, explícita,
-  como já acontece com a paginação
+- **E** view de vendor que precise deste CSS entra pelo caminho dela, explícita.
+  A paginação já foi esse caso; hoje o seletor de páginas é nosso e mora em
+  `resources/views`, então nenhum caminho de vendor está listado (ver [AC-221])
 
 ## Fora de escopo
 

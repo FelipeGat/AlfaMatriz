@@ -176,10 +176,12 @@
 
             <x-slot name="rodape">
                 <span>{{ $cobrancas->count() }} de {{ $cobrancas->total() }} receitas</span>
+                @if ($cobrancas->hasPages())
+                    <span>· página {{ $cobrancas->currentPage() }} de {{ $cobrancas->lastPage() }}</span>
+                @endif
+                {{ $cobrancas->links() }}
             </x-slot>
         </x-tabela>
-
-        <div class="mt-4">{{ $cobrancas->links() }}</div>
     </div>
 
     <x-anexos-modal name="anexos-receita" resource-url="{{ url('cobrancas') }}" anexo-url="{{ url('cobrancas/anexos') }}" />

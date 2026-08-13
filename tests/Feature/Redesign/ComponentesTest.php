@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Redesign;
 
+use Illuminate\Pagination\LengthAwarePaginator;
 use Tests\TestCase;
 
 /**
@@ -124,6 +125,53 @@ class ComponentesTest extends TestCase
             $semComponente,
             'Estas telas têm linha de totais e não usam <x-linha-total> — os rótulos em caixa alta '
             ."vão quebrar e desalinhar a faixa:\n".implode("\n", $semComponente)
+        );
+    }
+
+    /**
+     * @spec:AC-221 O seletor de páginas obedece ao botão de tema — desenha com
+     * os tokens do sistema, e não com as variantes `dark:` do Tailwind.
+     *
+     * A falha que este teste tranca é SILENCIOSA no HTML: a view de paginação
+     * do framework produz marcação correta, só que pintada em `bg-white` e
+     * `gray-300`, com o escuro resolvido por `dark:`. Como o
+     * `tailwind.config.js` não declara `darkMode`, `dark:` cai no padrão
+     * `media` e obedece ao sistema operacional — não à classe `.theme-light`
+     * do <html>, que é quem manda no tema aqui. O seletor ficava branco no
+     * tema escuro, e ninguém repara olhando só o Blade.
+     */
+    public function test_o_seletor_de_paginas_desenha_com_os_tokens_do_sistema(): void
+    {
+        $seletor = (new LengthAwarePaginator(range(1, 15), 87, 15, 3, ['path' => '/x']))
+            ->links()->toHtml();
+
+        foreach (['dark:', 'bg-white', 'bg-gray-', 'text-gray-', 'border-gray-'] as $cru) {
+            $this->assertStringNotContainsString(
+                $cru,
+                $seletor,
+                "O seletor de páginas voltou a usar `{$cru}`, que não acompanha o botão de tema."
+            );
+        }
+
+        // E o que ele usa no lugar: a receita do handoff em tokens do sistema.
+        foreach (['rounded-tile', 'border-btn-line', 'text-ink-mute', 'bg-chip'] as $token) {
+            $this->assertStringContainsString($token, $seletor, "Faltou o token `{$token}` no seletor de páginas.");
+        }
+
+        // Nenhuma tela pode escapar apontando outra view no próprio `links()`:
+        // seria a view do framework de volta, numa listagem só.
+        $comViewPropria = [];
+        foreach ($this->telas() as $tela) {
+            if (preg_match('/->links\(\s*[\'"]/', $this->conteudo($tela))) {
+                $comViewPropria[] = $tela;
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $comViewPropria,
+            "Estas telas passam uma view ao `links()` e furam a paginação do painel:\n"
+            .implode("\n", $comViewPropria)
         );
     }
 }

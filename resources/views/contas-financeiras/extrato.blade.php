@@ -68,10 +68,7 @@
         <x-slot name="rodape">
             <span>{{ $movimentacoes->count() }} de {{ $movimentacoes->total() }} movimentações</span>
             <span>· página {{ $movimentacoes->currentPage() }} de {{ $movimentacoes->lastPage() }}</span>
+            {{ $movimentacoes->links() }}
         </x-slot>
     </x-tabela>
-
-    @if ($movimentacoes->hasPages())
-        <div class="mt-3">{{ $movimentacoes->links() }}</div>
-    @endif
 </x-app-layout>

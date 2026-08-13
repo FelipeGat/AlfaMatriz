@@ -142,9 +142,6 @@
     <x-slot name="rodape">
         <span>{{ $usuarios->count() }} de {{ $usuarios->total() }} contas</span>
         <span>· página {{ $usuarios->currentPage() }} de {{ $usuarios->lastPage() }}</span>
+        {{ $usuarios->links() }}
     </x-slot>
 </x-tabela>
-
-@if ($usuarios->hasPages())
-    <div>{{ $usuarios->links() }}</div>
-@endif

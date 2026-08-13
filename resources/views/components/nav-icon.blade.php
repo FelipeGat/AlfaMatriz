@@ -66,6 +66,11 @@
         'arrow-up-circle' => 'M12 15.75v-7.5m0 0l3 3m-3-3l-3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
         'plus' => 'M12 4.5v15m7.5-7.5h-15',
         'chevron-down' => 'M19.5 8.25l-7.5 7.5-7.5-7.5',
+        // Página anterior e próxima no rodapé da tabela. Um chevron só, e não
+        // o duplo de `chevron-duplo-esquerda`: ali o duplo evita a leitura
+        // "voltar", aqui voltar é exatamente o que o botão faz.
+        'chevron-left' => 'M15.75 19.5L8.25 12l7.5-7.5',
+        'chevron-right' => 'M8.25 4.5l7.5 7.5-7.5 7.5',
         // Mais ações de uma linha da tabela: três pontos verticais (padrão de
         // menu de ação em tabelas — Google Material, Linear etc.).
         'dots-vertical' => 'M12 5.25a.75.75 0 11-.75.75.75.75 0 01.75-.75zm0 6a.75.75 0 11-.75.75.75.75 0 01.75-.75zm0 6a.75.75 0 11-.75.75.75.75 0 01.75-.75z',

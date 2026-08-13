@@ -355,12 +355,9 @@
     <x-slot name="rodape">
         <span>{{ $clientes->count() }} de {{ $clientes->total() }} clientes</span>
         <span>· página {{ $clientes->currentPage() }} de {{ $clientes->lastPage() }}</span>
+        {{ $clientes->links() }}
     </x-slot>
 </x-tabela>
-
-@if ($clientes->hasPages())
-    <div>{{ $clientes->links() }}</div>
-@endif
 
 {{-- Os modais de licença só existem para quem decide sobre licença: renderizar
      para a revenda deixaria os formulários de liberar/renovar na página dela. --}}

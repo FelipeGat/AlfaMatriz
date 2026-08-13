@@ -258,12 +258,9 @@
                 @if ($kpis['mrr']['valor'] > 0)
                     <span>· {{ $kpis['mrr']['nota'] }} vem de revenda</span>
                 @endif
+                {{ $linhas->links() }}
             </x-slot>
         </x-tabela>
-
-        @if ($linhas->hasPages())
-            <div class="mt-3">{{ $linhas->links() }}</div>
-        @endif
         @endif
     </div>
 

@@ -318,10 +318,13 @@
 
         {{-- Um paginador só, FORA dos dois blocos: lista e cartões mostram a
              mesma página da mesma lista, e duplicar o controle dentro de cada
-             modo daria dois lugares para o mesmo estado sair de sincronia. --}}
-        @if ($produtos->hasPages())
-            <div>{{ $produtos->links() }}</div>
-        @endif
+             modo daria dois lugares para o mesmo estado sair de sincronia.
+
+             É por isso que aqui ele não entra no rodapé do `x-tabela` como nas
+             outras nove listagens: aquele rodapé só existe no modo lista. O
+             `flex` é o que o `ml-auto` do seletor precisa para encostar à
+             direita, alinhado com a borda do painel acima. --}}
+        <div class="flex">{{ $produtos->links() }}</div>
         @endif
     </div>
 

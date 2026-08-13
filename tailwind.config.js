@@ -38,16 +38,16 @@ export default {
      * O que ele acrescentava era só a página de erro do modo debug do Laravel
      * (`Foundation/resources/exceptions/renderer`), que **injeta o próprio CSS
      * compilado** e nunca usou este bundle. As demais views de vendor que
-     * chegam a ser compiladas são as de paginação — que continuam listadas
-     * explicitamente acima, sem depender de cache nenhum — e as de e-mail, que
-     * usam estilo inline por exigência dos clientes de e-mail.
+     * chegam a ser compiladas são as de e-mail, que usam estilo inline por
+     * exigência dos clientes de e-mail.
      *
-     * View de vendor que um dia precise deste CSS entra aqui pelo caminho dela,
-     * como a paginação: explícita, e não por efeito colateral de alguém ter
-     * aberto uma tela antes do `npm run build`.
+     * A paginação já esteve listada aqui pelo caminho do framework; hoje é
+     * nossa (`resources/views/vendor/pagination/alfamatriz.blade.php`) e entra
+     * pela varredura de views normal. View de vendor que um dia precise deste
+     * CSS volta a entrar assim, pelo caminho dela — explícita, e não por efeito
+     * colateral de alguém ter aberto uma tela antes do `npm run build`.
      */
     content: [
-        './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
         './resources/views/**/*.blade.php',
         './resources/js/**/*.js',
     ],

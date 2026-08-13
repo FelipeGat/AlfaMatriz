@@ -170,12 +170,9 @@
             @if ($tarefas->hasPages())
                 <span>· página {{ $tarefas->currentPage() }} de {{ $tarefas->lastPage() }}</span>
             @endif
+            {{ $tarefas->links() }}
         </x-slot>
     </x-tabela>
-
-    @if ($tarefas->hasPages())
-        <div>{{ $tarefas->links() }}</div>
-    @endif
     </div>
 
     {{-- Um modal por linha COM comentário: a página traz 20 tarefas, e montar

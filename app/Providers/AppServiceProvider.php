@@ -10,6 +10,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -30,6 +31,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // A paginação do painel é nossa, e não a do framework: a do Laravel
+        // resolve o tema com variantes `dark:`, que sem `darkMode` no
+        // `tailwind.config.js` seguem o sistema operacional em vez da classe
+        // `.theme-light` do <html>. Aqui, e não em cada `links()`, porque são
+        // dez listagens e a décima-primeira nasceria com a view do framework.
+        Paginator::defaultView('vendor.pagination.alfamatriz');
+
         // Em produção o painel só existe atrás do Funnel, sempre em HTTPS.
         // Forçar o esquema evita conteúdo misto se algum link for gerado
         // antes de o cabeçalho do proxy ser lido.

@@ -109,12 +109,9 @@
                 @if ($contasFixas->hasPages())
                     <span>· página {{ $contasFixas->currentPage() }} de {{ $contasFixas->lastPage() }}</span>
                 @endif
+                {{ $contasFixas->links() }}
             </x-slot>
         </x-tabela>
-
-        @if ($contasFixas->hasPages())
-            <div class="mt-3">{{ $contasFixas->links() }}</div>
-        @endif
 
             <div class="rounded-panel border border-line bg-subtle p-4">
                 <h3 class="font-mono text-[10.5px] font-semibold uppercase tracking-caps-wide text-ink-faint mb-3">Nova despesa fixa</h3>

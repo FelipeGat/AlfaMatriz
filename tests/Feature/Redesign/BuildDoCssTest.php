@@ -33,9 +33,18 @@ class BuildDoCssTest extends TestCase
         $this->assertStringNotContainsString("'./storage/framework/views", $config,
             'O cache de views compiladas não pode entrar na varredura: ele torna o build não determinístico.');
 
-        // As fontes que valem são código versionado — e a view de vendor que
-        // precisa deste CSS entra explícita, como a paginação.
+        // As fontes que valem são código versionado.
         $this->assertStringContainsString("'./resources/views/**/*.blade.php'", $config);
-        $this->assertStringContainsString('Pagination/resources/views', $config);
+
+        // O seletor de páginas deixou de ser a view do framework e passou a ser
+        // nossa, dentro de `resources/views` — logo, coberto pela entrada
+        // acima, e a entrada explícita do caminho de vendor saiu junto. O que
+        // ainda pode dar errado é a view VOLTAR para fora da varredura: as
+        // classes dela seriam podadas e o seletor renderizaria sem estilo
+        // nenhum, que é uma falha silenciosa — o HTML sai certo.
+        $this->assertFileExists(
+            resource_path('views/vendor/pagination/alfamatriz.blade.php'),
+            'O seletor de páginas precisa morar sob `resources/views` para o Tailwind varrer as classes dele.'
+        );
     }
 }

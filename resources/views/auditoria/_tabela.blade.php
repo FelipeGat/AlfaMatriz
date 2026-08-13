@@ -151,9 +151,6 @@
     <x-slot name="rodape">
         <span>{{ $registros->count() }} de {{ $registros->total() }} registros</span>
         <span>· página {{ $registros->currentPage() }} de {{ $registros->lastPage() }}</span>
+        {{ $registros->links() }}
     </x-slot>
 </x-tabela>
-
-@if ($registros->hasPages())
-    <div>{{ $registros->links() }}</div>
-@endif

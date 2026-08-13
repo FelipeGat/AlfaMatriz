@@ -258,12 +258,9 @@
                 <x-slot name="rodape">
                     <span>{{ $contasPagar->count() }} de {{ $contasPagar->total() }} despesas</span>
                     <span>· página {{ $contasPagar->currentPage() }} de {{ $contasPagar->lastPage() }}</span>
+                    {{ $contasPagar->links() }}
                 </x-slot>
             </x-tabela>
-
-            @if ($contasPagar->hasPages())
-                <div class="mt-3">{{ $contasPagar->links() }}</div>
-            @endif
         </div>
     </div>
 
