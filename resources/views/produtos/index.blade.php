@@ -52,7 +52,10 @@
             </x-abas.item>
             <x-abas.item href="{{ route('produtos.index', array_merge(request()->query(), ['aba' => 'internos'])) }}"
                          :ativo="$aba === 'internos'" icone="settings">
-                Internos · {{ $contagens['internos'] }}
+                {{-- "Internos" sozinho é adjetivo sem substantivo: internos o
+                     quê? Ao lado de "Produtos", que é um substantivo inteiro, a
+                     aba pedia que o leitor completasse a frase. --}}
+                Sistemas internos · {{ $contagens['internos'] }}
             </x-abas.item>
         </x-abas>
 

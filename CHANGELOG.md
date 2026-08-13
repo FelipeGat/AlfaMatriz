@@ -61,12 +61,17 @@ sumia do filtro e da raia do quadro.
   vende. Interno é o que a Alfa usa para trabalhar. Todo o catálogo de hoje
   entrou como Produto — nada mudou de lugar.
 - **A tela de Produtos ganhou duas abas.** "Produtos" é a lista de sempre,
-  ordenada por receita. "Internos" é uma lista própria, com responsável, versão
-  e quantas tarefas estão abertas em cada um — sem MRR, ARR nem churn, que não
-  existem para sistema interno.
+  ordenada por receita. "Sistemas internos" é uma lista própria, com
+  responsável, versão e quantas tarefas estão abertas em cada um — sem MRR, ARR
+  nem churn, que não existem para sistema interno.
 - **Dá para cadastrar sistema pela tela.** Até aqui, sistema novo só entrava por
   seeder ou direto no banco. O botão do topo acompanha a aba: na de internos ele
   já abre o formulário sem os campos comerciais.
+- **O ícone de um sistema passou a ser um arquivo, e não código.** Basta largar
+  `public/sistemas/<slug>.svg` (ou `.png`) e ele aparece na lista e no quadro.
+  Antes a relação de marcas era uma lista escrita dentro do componente, então
+  todo sistema cadastrado pela tela nascia sem ícone até alguém alterar o
+  código. Sem arquivo, continua aparecendo pelas iniciais do nome.
 - **A tarefa pode apontar para um sistema interno.** O select do quadro e o
   filtro passaram a oferecer as duas famílias, separadas — numa lista corrida,
   "AlfaMatriz" apareceria entre dois produtos como se também fosse vendido.
