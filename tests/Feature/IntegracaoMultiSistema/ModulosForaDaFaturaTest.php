@@ -170,12 +170,13 @@ class ModulosForaDaFaturaTest extends TestCase
 
         $this->assertEqualsWithDelta(398.80, app(IndicadoresService::class)->mrrAtacado(), 0.01);
 
-        // E o número chega igual às duas telas que o mostram.
+        // E o número chega igual à tela que o mostra. Eram duas: a outra,
+        // `sistemas.index`, foi removida por não ter link em lugar nenhum. O
+        // catálogo que ficou — `produtos.index` — é conferido contra este mesmo
+        // valor pelo teste seguinte, inclusive contra o `IndicadoresService`.
         $comercial = $this->actingAs($this->admin())->get(route('comercial'));
-        $sistemas = $this->actingAs($this->admin())->get(route('sistemas.index'));
 
         $this->assertEqualsWithDelta(398.80, (float) $comercial->viewData('mrrEstimado'), 0.01);
-        $this->assertEqualsWithDelta(398.80, (float) $sistemas->viewData('mrrAtacado'), 0.01);
     }
 
     /**

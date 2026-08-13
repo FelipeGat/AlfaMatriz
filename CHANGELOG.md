@@ -78,6 +78,11 @@ sumia do filtro e da raia do quadro.
 
 ### Melhorias
 
+- **Produtos ganhou "Licenças ativas" e "Preço médio por licença".** Os dois
+  moravam numa segunda tela de catálogo que nenhum menu linkava — a tela saiu e
+  os números vieram para onde as pessoas realmente olham. O preço médio divide
+  o MRR só pelas licenças de produto ativo: produto aposentado já vale zero em
+  cima, e contá-lo embaixo afundava a média sem nada ter mudado de preço.
 - **Nome, versão e responsável do sistema passaram a ter campo.** Os três só se
   preenchiam no banco.
 - **Sistema interno fica fora de tudo que fala de dinheiro:** faturamento,

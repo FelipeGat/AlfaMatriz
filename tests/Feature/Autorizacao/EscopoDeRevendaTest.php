@@ -172,7 +172,7 @@ class EscopoDeRevendaTest extends TestCase
         $cenario = $this->cenario();
         $usuario = $this->usuarioDaRevenda($cenario['alpha']);
 
-        foreach (['centro-controle', 'dashboard', 'comercial', 'produtos.index', 'sistemas.index'] as $rota) {
+        foreach (['centro-controle', 'dashboard', 'comercial', 'produtos.index'] as $rota) {
             $this->actingAs($usuario)->get(route($rota))->assertForbidden();
         }
     }

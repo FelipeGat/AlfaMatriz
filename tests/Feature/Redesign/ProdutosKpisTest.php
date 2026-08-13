@@ -10,14 +10,19 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * O resumo do topo da tela de Sistemas.
+ * O resumo do topo da tela de Produtos.
  *
- * O controller calculava estes quatro números desde sempre e a view nunca os
- * desenhou: eles eram consultados no banco, mandados para a tela e morriam ali
- * sem chegar a ninguém. E o preço médio ainda vinha errado, dividindo um MRR
- * que ignora produto desativado por licenças que o incluíam.
+ * Estes números moravam em `sistemas.index`, uma segunda tela de catálogo que
+ * nenhuma view linkava — o menu sempre apontou para Produtos. Ela foi removida
+ * e eles vieram junto, porque o preço médio por licença não existia em nenhum
+ * outro lugar: o MRR total sozinho não distingue poucas licenças caras de
+ * muitas baratas.
+ *
+ * O que o preço médio guarda é a coerência entre numerador e divisor. Produto
+ * desativado fica fora do fechamento e tem MRR zero; somar as licenças dele
+ * embaixo afundava o número na proporção do catálogo aposentado.
  */
-class SistemasKpisTest extends TestCase
+class ProdutosKpisTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -60,17 +65,19 @@ class SistemasKpisTest extends TestCase
         $gym = $this->sistemaComTier(Sistema::factory()->alfagym()->create(), 300.00);
         $this->vincular($gym, 2);
 
-        $resposta = $this->actingAs($this->operador())->get(route('sistemas.index'));
+        $resposta = $this->actingAs($this->operador())->get(route('produtos.index'));
         $resposta->assertOk();
 
-        $resposta->assertSee('Sistemas ativos', escape: false);
-        $resposta->assertSee('MRR de atacado', escape: false);
+        $resposta->assertSee('MRR total', escape: false);
+        $resposta->assertSee('Licenças ativas', escape: false);
         $resposta->assertSee('Preço médio por licença', escape: false);
 
-        // E os valores, não só os rótulos.
+        // E os valores, não só os rótulos. Os dois são distintivos o bastante
+        // para provar que chegaram: a contagem de licenças seria só um "2" no
+        // meio da página, então ela é conferida pelo `viewData`.
         $resposta->assertSee('300,00', escape: false);
         $resposta->assertSee('150,00', escape: false); // 300 / 2 licenças
-        $resposta->assertSee('2 licenças ativas', escape: false);
+        $this->assertSame(2, $resposta->viewData('vinculosAtivos'));
     }
 
     /**
@@ -87,9 +94,9 @@ class SistemasKpisTest extends TestCase
         $this->vincular($vivo, 1);
         $this->vincular($morto, 3);
 
-        $resposta = $this->actingAs($this->operador())->get(route('sistemas.index'));
+        $resposta = $this->actingAs($this->operador())->get(route('produtos.index'));
 
-        $this->assertEqualsWithDelta(100.0, (float) $resposta->viewData('mrrAtacado'), 0.01);
+        $this->assertEqualsWithDelta(100.0, (float) $resposta->viewData('mrrTotal'), 0.01);
         $this->assertSame(1, $resposta->viewData('vinculosAtivos'), 'As 3 licenças do produto desativado entraram no divisor.');
 
         // Antes: 100 / 4 = 25,00. Agora: 100 / 1 = 100,00.
@@ -105,9 +112,9 @@ class SistemasKpisTest extends TestCase
         $gym = $this->sistemaComTier(Sistema::factory()->alfagym()->create(), 450.00);
         $this->vincular($gym, 3);
 
-        $resposta = $this->actingAs($this->operador())->get(route('sistemas.index'));
+        $resposta = $this->actingAs($this->operador())->get(route('produtos.index'));
 
-        $mrr = (float) $resposta->viewData('mrrAtacado');
+        $mrr = (float) $resposta->viewData('mrrTotal');
         $licencas = $resposta->viewData('vinculosAtivos');
 
         $this->assertSame(3, $licencas);
@@ -122,7 +129,7 @@ class SistemasKpisTest extends TestCase
     {
         $this->sistemaComTier(Sistema::factory()->alfagym()->create(), 300.00);
 
-        $resposta = $this->actingAs($this->operador())->get(route('sistemas.index'));
+        $resposta = $this->actingAs($this->operador())->get(route('produtos.index'));
 
         $resposta->assertOk();
         $this->assertSame(0, $resposta->viewData('vinculosAtivos'));

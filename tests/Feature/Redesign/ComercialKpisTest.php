@@ -136,11 +136,14 @@ class ComercialKpisTest extends TestCase
         $this->assertEqualsWithDelta(0.0, $morto->fresh()->mrrEstimado(), 0.01);
 
         // E as duas telas que mostram o número seguem mostrando o mesmo.
+        // A segunda era `sistemas.index`, removida por não ter link em lugar
+        // nenhum; o catálogo que ficou é `produtos.index`, onde o mesmo total
+        // se chama `mrrTotal` por ser a soma das linhas da tela.
         $comercial = $this->comercial();
-        $sistemas = $this->actingAs($this->operador())->get(route('sistemas.index'));
+        $produtos = $this->actingAs($this->operador())->get(route('produtos.index'));
 
         $this->assertEqualsWithDelta(100.0, (float) $comercial->viewData('mrrEstimado'), 0.01);
-        $this->assertEqualsWithDelta(100.0, (float) $sistemas->viewData('mrrAtacado'), 0.01);
+        $this->assertEqualsWithDelta(100.0, (float) $produtos->viewData('mrrTotal'), 0.01);
     }
 
     /**

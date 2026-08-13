@@ -66,6 +66,19 @@ class ProdutoController extends Controller
         // sustenta a casa" — a razão de ser desta lista — se perderia.
         $maiorMrr = (float) ($produtos->max('mrr') ?: 0);
 
+        // Preço médio por licença — veio da tela `sistemas.index`, removida por
+        // não ter link em lugar nenhum. Ele responde "quanto vale, em média,
+        // cada licença que a casa tem em pé", que o MRR total sozinho não diz:
+        // o mesmo MRR pode vir de poucas licenças caras ou de muitas baratas.
+        //
+        // O divisor conta SÓ as licenças de produto ativo, e essa é a regra
+        // inteira: produto desativado tem `mrrEstimado()` zero, então já está
+        // fora do numerador. Somar as licenças dele embaixo achataria o preço
+        // médio na proporção do catálogo aposentado — quanto mais produto
+        // antigo na base, menor o preço médio, sem nada ter mudado de preço.
+        $vinculosAtivos = (int) $produtos->filter(fn ($p) => $p['sistema']->ativo)->sum('clientes_ativos');
+        $precoMedio = $vinculosAtivos > 0 ? $mrrTotal / $vinculosAtivos : 0.0;
+
         // Os internos não passam por nada disso: eles não têm cliente, tier nem
         // MRR, e a única coisa que se pode dizer deles é quanto trabalho está
         // aberto contra cada um. Vêm inteiros, sem paginar — o catálogo de
@@ -83,6 +96,8 @@ class ProdutoController extends Controller
                 'largura' => $maiorMrr > 0 ? $p['mrr'] / $maiorMrr : 0,
             ])),
             'mrrTotal' => $mrrTotal,
+            'vinculosAtivos' => $vinculosAtivos,
+            'precoMedio' => $precoMedio,
             'totais' => [
                 'mrr' => $mrrTotal,
                 'arr' => $mrrTotal * 12,
@@ -96,20 +111,5 @@ class ProdutoController extends Controller
                 'internos' => $internos->count(),
             ],
         ]);
-    }
-
-    public function update(Request $request, Sistema $sistema)
-    {
-        $this->bloquearVisaoDaMatriz();
-
-        $data = $request->validate([
-            'versao' => 'nullable|string|max:255',
-            'responsavel' => 'nullable|string|max:255',
-            'roadmap' => 'nullable|string',
-        ]);
-
-        $sistema->update($data);
-
-        return redirect()->route('produtos.index')->with('status', "Informações de gestão de {$sistema->nome} atualizadas.");
     }
 }

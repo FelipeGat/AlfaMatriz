@@ -73,6 +73,25 @@
                 </p>
             </div>
 
+            {{-- Os dois vieram da tela `sistemas.index`, removida por não ter
+                 link em lugar nenhum. Ficam ao lado do MRR de propósito: os
+                 três são a mesma conta lida de ângulos diferentes — o total, o
+                 que o divide e o resultado. Separados, o leitor teria de
+                 confiar que o preço médio se refere àquele MRR. --}}
+            <div class="flex-1 min-w-[200px] rounded-panel border border-line bg-card-grad px-4 py-3">
+                <p class="text-[11px] uppercase tracking-[0.10em] text-ink-mute">Licenças ativas</p>
+                <p class="mt-1 font-display text-[24px] font-semibold leading-none text-ink tabular whitespace-nowrap">
+                    {{ number_format($vinculosAtivos, 0, ',', '.') }}
+                </p>
+            </div>
+
+            <div class="flex-1 min-w-[200px] rounded-panel border border-line bg-card-grad px-4 py-3">
+                <p class="text-[11px] uppercase tracking-[0.10em] text-ink-mute">Preço médio por licença</p>
+                <p class="mt-1 font-display text-[24px] font-semibold leading-none text-ink tabular whitespace-nowrap">
+                    R$ {{ number_format($precoMedio, 2, ',', '.') }}
+                </p>
+            </div>
+
             <div class="shrink-0 flex items-center gap-0.5 rounded-control border border-line bg-input" style="padding: 3px">
                 <button type="button" @click="definir('lista')"
                         class="h-7 px-2.5 rounded-tile inline-flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-caps transition"

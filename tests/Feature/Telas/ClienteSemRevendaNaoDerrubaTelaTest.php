@@ -69,10 +69,16 @@ class ClienteSemRevendaNaoDerrubaTelaTest extends TestCase
             ->assertOk();
     }
 
-    public function test_tela_de_sistemas_abre_com_cliente_sem_revenda(): void
+    /**
+     * A guarda muda de tela, e não some: `sistemas.index` foi removida por não
+     * ter link em lugar nenhum, e `produtos.index` é o catálogo que ficou. Ela
+     * agrupa por revenda pelo mesmo caminho, então é onde o cliente órfão
+     * derrubaria a tela hoje.
+     */
+    public function test_tela_de_produtos_abre_com_cliente_sem_revenda(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get(route('sistemas.index'))
+            ->get(route('produtos.index'))
             ->assertOk();
     }
 

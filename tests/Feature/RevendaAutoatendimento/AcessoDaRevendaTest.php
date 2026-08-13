@@ -164,6 +164,8 @@ class AcessoDaRevendaTest extends TestCase
         // o que a Alfa cobra desta aqui.
         $this->actingAs($usuario)->get(route('faturamento.index'))->assertForbidden();
         $this->actingAs($usuario)->get(route('leads.index'))->assertForbidden();
-        $this->actingAs($usuario)->get(route('sistemas.index'))->assertForbidden();
+        // O catálogo é `produtos.index`: a lista em `sistemas.index` saiu junto
+        // com a rota, que nenhuma tela linkava.
+        $this->actingAs($usuario)->get(route('produtos.index'))->assertForbidden();
     }
 }

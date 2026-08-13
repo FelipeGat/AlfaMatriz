@@ -77,8 +77,10 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
 
     Route::get('produtos', [ProdutoController::class, 'index'])->name('produtos.index')
         ->middleware('permissao:sistemas');
-    Route::put('produtos/{sistema}', [ProdutoController::class, 'update'])->name('produtos.update')
-        ->middleware('permissao:sistemas');
+    // Não há `produtos.update`: versão, responsável e roadmap se editam na tela
+    // do sistema (`sistemas.update`), que é a única com formulário para eles.
+    // O endpoint existiu sem view que o chamasse e sem teste — a rota registrada
+    // era a única ocorrência dele no repositório inteiro.
 
     Route::get('leads', [LeadController::class, 'index'])->name('leads.index')
         ->middleware('permissao:leads');
@@ -183,7 +185,13 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
 
     // O cadastro herda a MESMA porta que já protege preço e tier: registrar
     // sistema é decisão de quem cuida do catálogo.
-    Route::resource('sistemas', SistemaController::class)->only(['index', 'store', 'edit', 'update'])
+    //
+    // Sem `index`: `GET /sistemas` servia uma lista de catálogo que nenhuma
+    // tela linkava — o menu sempre apontou para `produtos.index`, e o
+    // `sistemas.*` do `pattern` está lá só para o item ficar aceso nas telas
+    // filhas. Ela respondia 403 no servidor desde 06/08, sombreada pela pasta
+    // de marcas, e ninguém notou: é a medida de quanto era usada.
+    Route::resource('sistemas', SistemaController::class)->only(['store', 'edit', 'update'])
         ->middleware('permissao:sistemas');
     // `create` sai do recurso para fixar a ação em `incluir`, e não deixá-la
     // ser inferida do verbo. Dentro do resource, o GET do formulário pedia

@@ -54,11 +54,19 @@ class IndicadoresCoerentesTest extends TestCase
     }
 
     /**
-     * @spec:AC-062 O MRR de atacado aparece no painel Comercial e na tela de
-     * Sistemas. Os dois saem do mesmo cálculo — antes cada tela somava por
-     * conta própria, que é como os números começam a discordar.
+     * @spec:AC-062 O painel Comercial não soma o MRR de atacado por conta
+     * própria: ele pergunta ao serviço. Trocando o serviço, o painel muda
+     * junto — se ele contasse sozinho, ficaria no número velho.
+     *
+     * Eram duas telas aqui. A outra, `sistemas.index`, foi removida por não ter
+     * link em lugar nenhum. O catálogo que ficou, `produtos.index`, honra a
+     * mesma coerência por outro caminho e de propósito: o topo dele é a SOMA
+     * DAS LINHAS, invariante que `ModulosForaDaFaturaTest` guarda, e é o mesmo
+     * teste que confere essa soma contra o `IndicadoresService`. Trocar o topo
+     * por uma leitura do serviço quebraria a invariante — o número do topo
+     * deixaria de ser explicável pelas linhas embaixo dele.
      */
-    public function test_mrr_de_atacado_bate_entre_comercial_e_sistemas(): void
+    public function test_o_comercial_consulta_o_servico_para_o_mrr_de_atacado(): void
     {
         $usuario = User::factory()->create();
 
@@ -71,10 +79,8 @@ class IndicadoresCoerentesTest extends TestCase
         });
 
         $comercial = $this->actingAs($usuario)->get(route('comercial'));
-        $sistemas = $this->actingAs($usuario)->get(route('sistemas.index'));
 
         $this->assertSame(4242.42, $comercial->viewData('mrrEstimado'), 'O Comercial ainda calcula por conta própria.');
-        $this->assertSame(4242.42, $sistemas->viewData('mrrAtacado'), 'A tela de Sistemas ainda calcula por conta própria.');
     }
 
     /**

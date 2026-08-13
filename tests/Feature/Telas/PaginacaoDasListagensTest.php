@@ -85,34 +85,6 @@ class PaginacaoDasListagensTest extends TestCase
         $this->assertStringContainsString('status=ativo', $linhas->url(1));
     }
 
-    public function test_sistemas_pagina_de_vinte_em_vinte(): void
-    {
-        Sistema::factory()->count(self::CADASTROS)->create();
-
-        $this->assertPaginada(route('sistemas.index'), 'sistemas');
-    }
-
-    public function test_a_pendencia_de_preco_de_atacado_conta_o_catalogo_inteiro(): void
-    {
-        Sistema::factory()->count(self::CADASTROS)->create();
-
-        // Nenhum sistema tem tier: o rodapé precisa acusar os 25 em qualquer
-        // página. Contando só a página, a página 2 diria "5 sem preço".
-        $this->assertSame(self::CADASTROS, $this->dadosDaTela(route('sistemas.index'), 'semTier'));
-        $this->assertSame(self::CADASTROS, $this->dadosDaTela(route('sistemas.index', ['page' => 2]), 'semTier'));
-    }
-
-    public function test_o_link_para_um_sistema_da_segunda_pagina_continua_abrindo_nele(): void
-    {
-        $sistemas = Sistema::factory()->count(self::CADASTROS)->create();
-        $ultimo = $sistemas->sortBy('nome')->last();
-
-        // A seleção procura no catálogo inteiro, não na página exibida.
-        $this->get(route('sistemas.index', ['sistema' => $ultimo->id]))
-            ->assertOk()
-            ->assertViewHas('selecionado', fn ($selecionado) => $selecionado->is($ultimo));
-    }
-
     public function test_produtos_pagina_de_vinte_em_vinte(): void
     {
         Sistema::factory()->count(self::CADASTROS)->create();
