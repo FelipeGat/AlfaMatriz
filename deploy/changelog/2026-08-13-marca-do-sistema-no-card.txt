@@ -1,0 +1,20 @@
+<b>📋 AlfaMatriz — Changelog 13/08/2026</b>
+<i>O card diz de que produto é a tarefa, e com quem ela está</i>
+
+O rodapé do card trazia as iniciais do responsável num círculo e o nome do sistema escrito ao lado. Eram as duas informações certas nos dois lugares errados: “JR” só quer dizer alguma coisa para quem já decorou de quem é, e o nome do produto ocupava a única faixa com largura de sobra do card.
+
+<b>⚡ O círculo virou o ícone do sistema</b>
+
+É a mesma marca que identifica o produto nas outras telas, e ela é reconhecida de relance, sem ler — é para isso que a marca existe. O nome do sistema não se perdeu: aparece ao parar o mouse sobre o ícone.
+
+<b>⚡ O nome de quem responde aparece escrito</b>
+
+No lugar onde antes ficava o nome do sistema. Primeiro e último nome — só o primeiro empata duas Julianas do time —, e o nome completo aparece ao parar o mouse em cima.
+
+<b>⚡ As faltas continuam ditas</b>
+
+Tarefa sem sistema fica com o círculo vazio e tracejado, no mesmo lugar, em vez de emprestar a marca de outro produto. Tarefa sem responsável continua dizendo “Sem responsável” por extenso: a falta é afirmada, não deduzida de um espaço em branco.
+
+Nada mudou de tamanho no card, nem de posição — as duas informações apenas trocaram de vaga.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

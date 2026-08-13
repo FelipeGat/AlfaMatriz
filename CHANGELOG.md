@@ -1,5 +1,31 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 13/08/2026 — O card diz de que produto é a tarefa, e com quem ela está
+
+O rodapé do card trazia as iniciais do responsável num círculo e o nome do
+sistema escrito ao lado. Eram as duas informações certas nos dois lugares
+errados: "JR" só quer dizer alguma coisa para quem já decorou de quem é, e o
+nome do produto ocupava a única faixa com largura de sobra do card.
+
+### Melhorias
+
+- **O círculo do card passou a ser o ícone do sistema.** É a mesma marca que
+  identifica o produto nas outras telas, e ela é reconhecida de relance, sem
+  ler — é para isso que a marca existe. O nome do sistema continua no card:
+  aparece ao parar o mouse sobre o ícone.
+- **O nome de quem responde pela tarefa aparece escrito**, no lugar onde antes
+  ficava o nome do sistema. Primeiro e último nome — só o primeiro empata duas
+  Julianas do time —, e o nome completo aparece ao parar o mouse em cima.
+- **Tarefa sem sistema fica com o círculo vazio e tracejado**, no mesmo lugar,
+  em vez de emprestar a marca de outro produto. E tarefa sem responsável
+  continua dizendo "Sem responsável" por extenso: a falta é afirmada, não
+  deduzida de um espaço em branco.
+
+> Nada mudou de tamanho no card, nem de posição: as duas informações apenas
+> trocaram de vaga. A marca ganhou o lugar em que é lida por reconhecimento, e
+> o nome da pessoa — que não tem símbolo equivalente — ganhou a largura de que
+> precisava para caber inteiro.
+
 ## AlfaMatriz — 13/08/2026 — A tarefa passa a ter número, e é por ele que se acha
 
 Para pedir uma tarefa a alguém era preciso descrever a tarefa inteira — "aquela
