@@ -139,16 +139,26 @@ O **nome de quem deve resposta ocupa linha própria** — em 197px de row não c
 gap:7px`:
 
 ```
-[avatar 21×21px redondo, 9px/600]        flex-shrink:0
-[sistema 11.5px inkMute]                 flex:1; min-width:56px  ← o min-width evita "Alfa…"
+[ícone do sistema 21×21px redondo]       flex-shrink:0
+[responsável 11.5px inkMute]             flex:1; min-width:56px  ← o min-width evita "Joa…"
 [tempo na etapa  selo mono 10px/600]     flex-shrink:0
 [selo checklist  3/5  mono 10px]         flex-shrink:0, só se houver
 [selo comentários  mono 10px]            flex-shrink:0, só se houver
 [grupo de 3 botões]                      margin-left:auto; gap:4px
 ```
 
-Avatar sem responsável: fundo transparente, `border:1px dashed inkFaint`, sem iniciais.
-Avatar com responsável: `tint(cor-derivada-do-nome, 0.18)`, iniciais em `ink`.
+Círculo sem sistema: fundo transparente, `border:1px dashed inkFaint`, vazio.
+Círculo com sistema: fundo `chip`, com o ícone da marca (`x-marca-sistema`) preenchendo os 21px;
+sistema sem arquivo de marca cai nas iniciais do nome, como nas outras telas.
+
+Responsável: primeiro e último nome, com o nome inteiro no `title`. Sem responsável, a frase
+"Sem responsável" em `inkFaint` — a lacuna é dita, não deduzida da ausência do nome (AC-130).
+
+> **Decisão de 13/08/2026, posterior ao handoff.** As duas vagas trocaram de dono: o desenho original
+> punha as iniciais do responsável no círculo e o nome do sistema no texto. A marca do produto é
+> reconhecida de relance, sem ler — é para isso que ela existe —, enquanto "JR" num círculo exigia
+> decorar quem é ou parar o mouse em cima. O nome da pessoa, que não tem símbolo equivalente, ficou
+> onde há largura para ser lido.
 
 Botões do grupo: **20×20px**, raio `3px`, ícone `11px`, `border:1px solid`. São três — bloquear/destravar
 (sempre), concluir (só onde o fluxo permite), Mover ▾ (chevron que gira 180° quando aberto).

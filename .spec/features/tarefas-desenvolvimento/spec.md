@@ -69,8 +69,9 @@ aberto, em desenvolvimento, em teste e concluído.
 
 - **Dado** o formulário de nova tarefa
 - **Quando** escolho o sistema (AlfaGym, AlfaControl, …) e salvo
-- **Então** o card do quadro mostra o sistema da tarefa, e só sistemas ativos
-  são oferecidos na escolha
+- **Então** o card do quadro mostra o sistema da tarefa — o ícone da marca no
+  rodapé, com o nome no `title` (AC-202) —, e só sistemas ativos são oferecidos
+  na escolha
 
 #### AC-137 — Salvar duas vezes não cria a tarefa duas vezes
 
@@ -531,14 +532,17 @@ três coisas não dependam de alguém reparar nelas.
   time está impedido de produzir. Destravando a quarta, o contador vira 4/3 em
   âmbar. Fila não tem limite: encher o Backlog não atrapalha ninguém
 
-#### AC-202 — O rodapé do card traz o avatar do responsável
+#### AC-202 — O rodapé do card traz a marca do sistema e o nome de quem responde
 
-- **Dado** um card com responsável
+- **Dado** um card com responsável e sistema
 - **Quando** olho o rodapé
-- **Então** vejo a inicial dele num círculo, com o nome inteiro no `title`, e o
-  sistema ao lado — os dois nomes disputavam a mesma linha e saíam truncados. Um
-  card sem responsável traz o círculo tracejado **e** a frase (AC-130): contorno
-  vazio é símbolo, e a fila de triagem não pode depender de quem já o aprendeu
+- **Então** vejo o ícone do sistema no círculo e o nome do responsável ao lado,
+  primeiro e último — os dois nomes disputavam a mesma linha e saíam truncados,
+  e a marca do produto é reconhecida sem ler, enquanto duas iniciais no círculo
+  pediam decorar quem é "JR". Cada um guarda o valor inteiro no `title`. Um card
+  sem sistema traz o círculo tracejado, e um sem responsável diz a frase por
+  extenso (AC-130): contorno vazio é símbolo, e a fila de triagem não pode
+  depender de quem já o aprendeu
 
 ### US-060 — Checklist dentro da tarefa
 

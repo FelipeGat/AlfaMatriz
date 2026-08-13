@@ -68,17 +68,21 @@
         ? \App\Models\Tarefa::duracaoCurta((int) $tarefa->pergunta_em->diffInSeconds(now()))
         : null;
 
+    /**
+     * Primeiro e último nome do responsável.
+     *
+     * O nome inteiro não cabe no rodapé, e o pedaço que sobra tem de ser o que
+     * distingue: só o primeiro nome empata duas Julianas do time, e o `title`
+     * com o nome completo continua a um passe de mouse. Nome único fica como
+     * está — repeti-lo em vez de acusar a falta do sobrenome seria pior.
+     */
     $responsavel = $tarefa->responsavel;
-    $iniciais = $responsavel
-        ? \Illuminate\Support\Str::of($responsavel->name)->explode(' ')
-            ->take(2)->map(fn ($p) => mb_substr($p, 0, 1))->implode('')
-        : '';
-
-    // A cor do avatar sai do NOME, e não do id: o mesmo rosto guarda o mesmo
-    // tom entre telas e entre bancos, e a paleta tem quatro entradas para as
-    // pessoas não virarem todas o mesmo círculo azul.
-    $paletaAvatar = ['brand', 'accent', 'amber', 'good'];
-    $corAvatar = $responsavel ? $paletaAvatar[mb_strlen($responsavel->name) % 4] : null;
+    $partesDoNome = $responsavel
+        ? \Illuminate\Support\Str::of($responsavel->name)->squish()->explode(' ')->filter()->values()
+        : collect();
+    $nomeCurto = $partesDoNome->count() > 1
+        ? $partesDoNome->first().' '.$partesDoNome->last()
+        : $partesDoNome->first();
 
     $progresso = $tarefa->progressoDoChecklist();
     $totalComentarios = $tarefa->comentarios->count();
@@ -283,24 +287,39 @@
     {{--
         O rodapé.
 
-        `min-width:56px` no sistema não é enfeite: sem ele o flex encolhe o nome
-        até "Alfa…" para caber os selos, e o card perde justamente o dado que
-        diz de qual produto ele fala.
+        As duas vagas trocaram de dono: o SISTEMA fica no círculo e o
+        RESPONSÁVEL no texto. A marca do produto é reconhecida de relance, sem
+        ler — é para isso que ela existe —, enquanto duas iniciais no círculo
+        exigiam decorar quem é "JR" ou parar o mouse em cima para descobrir. O
+        nome da pessoa, que não tem símbolo equivalente, fica onde há largura
+        para ser lido. Nenhum dos dois perdeu o `title` com o valor inteiro.
+
+        `min-width:56px` no nome não é enfeite: sem ele o flex encolhe o texto
+        até "Joa…" para caber os selos, e o card perde justamente o dado que
+        diz com quem a tarefa está.
     --}}
     <div class="mt-[9px] pt-[9px] border-t border-rule flex items-center gap-[7px]">
-        {{-- Sem responsável, o círculo é tracejado e vazio (AC-130): a lacuna
-             se vê, em vez de virar uma inicial inventada. --}}
-        <span title="{{ $responsavel?->name ?? 'Sem responsável' }}"
-              class="shrink-0 h-[21px] w-[21px] rounded-full flex items-center justify-center text-[9px] font-semibold"
-              style="{{ $responsavel
-                  ? 'background: rgb(var(--'.$corAvatar.') / 0.18); color: rgb(var(--ink))'
-                  : 'background: transparent; border: 1px dashed rgb(var(--ink-faint)); color: rgb(var(--ink-faint))' }}">
-            {{ $iniciais }}
+        {{-- Sem sistema, o círculo é tracejado e vazio: a lacuna se vê, em vez
+             de virar uma marca emprestada de outro produto. O ícone em si vem
+             do `x-marca-sistema` — o mapa de qual arquivo serve a qual slug
+             mora lá, e uma segunda cópia aqui divergiria na primeira marca
+             nova. --}}
+        <span title="{{ $tarefa->sistema?->nome ?? 'Sem sistema' }}"
+              class="shrink-0 h-[21px] w-[21px] rounded-full flex items-center justify-center overflow-hidden"
+              style="{{ $tarefa->sistema
+                  ? 'background: var(--chip)'
+                  : 'background: transparent; border: 1px dashed rgb(var(--ink-faint))' }}">
+            @if ($tarefa->sistema)
+                <x-marca-sistema :sistema="$tarefa->sistema" />
+            @endif
         </span>
 
-        <span class="flex-1 text-[11.5px] text-ink-mute truncate" style="min-width: 56px"
-              title="{{ $tarefa->sistema?->nome ?? 'Sem sistema' }}">
-            {{ $tarefa->sistema?->nome ?? 'Sem sistema' }}
+        {{-- Sem responsável, a frase é dita por extenso (AC-130): a informação
+             é afirmada, não deduzida da ausência do nome. --}}
+        <span class="flex-1 text-[11.5px] truncate {{ $responsavel ? 'text-ink-mute' : 'text-ink-faint' }}"
+              style="min-width: 56px"
+              title="{{ $responsavel?->name ?? 'Sem responsável' }}">
+            {{ $nomeCurto ?? 'Sem responsável' }}
         </span>
 
         <span title="Na etapa há {{ $tempoNaEtapa }}"

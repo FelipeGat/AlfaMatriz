@@ -321,13 +321,14 @@ class CardTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-202 O responsável virou avatar no rodapé, com a inicial e o nome inteiro
-     * no `title`: o nome dele e o do sistema disputavam a mesma linha e os dois saíam
-     * truncados. Sem responsável o círculo é tracejado E a frase continua dita (AC-130)
-     * — contorno vazio é símbolo, e a fila de triagem não pode depender de quem já
-     * aprendeu o símbolo.
+     * @spec:AC-202 O rodapé traz o ícone do sistema no círculo e o responsável escrito
+     * ao lado: a marca do produto é reconhecida sem ler, e duas iniciais no círculo
+     * exigiam decorar quem é "JR". Do nome saem o primeiro e o último — só o primeiro
+     * empata duas Julianas —, com o nome inteiro no `title`. Sem responsável a frase
+     * continua dita por extenso (AC-130): a fila de triagem não pode depender de quem
+     * já aprendeu o símbolo do contorno vazio.
      */
-    public function test_o_rodape_traz_o_avatar_do_responsavel_e_o_chevron_de_mover(): void
+    public function test_o_rodape_traz_o_responsavel_pelo_nome_e_o_chevron_de_mover(): void
     {
         $usuario = User::factory()->create();
         $criador = User::factory()->create();
@@ -340,17 +341,43 @@ class CardTarefaTest extends TestCase
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        // Duas iniciais, não a lista inteira de nomes.
-        // `[^>]*` entre o title e o `>`: o avatar carrega classe e estilo
-        // depois do title, e prender a asserção à ordem dos atributos a faria
-        // quebrar a cada ajuste de estilo sem nada ter mudado na tela.
-        $this->assertMatchesRegularExpression('/title="Joana Ribeiro Dev"[^>]*>\s*JR\s*</u', $html);
+        // Primeiro e último, sem o nome do meio — e não as iniciais.
+        // `[^>]*` entre o title e o `>`: o texto carrega classe e estilo depois
+        // do title, e prender a asserção à ordem dos atributos a faria quebrar
+        // a cada ajuste de estilo sem nada ter mudado na tela.
+        $this->assertMatchesRegularExpression('/title="Joana Ribeiro Dev"[^>]*>\s*Joana Dev\s*</u', $html);
+        $this->assertDoesNotMatchRegularExpression('/>\s*JR\s*</u', $html);
 
         // E o Mover deixou de gastar uma linha de texto no card. A busca é por
         // BOTÃO com esse rótulo: a expressão ainda aparece em comentários do
         // script do quadro, que não são o que se lê na tela.
         $this->assertStringContainsString('aria-label="Mover de etapa"', $html);
         $this->assertDoesNotMatchRegularExpression('/<button[^>]*>\s*Mover ▾/u', $html);
+    }
+
+    /**
+     * @spec:AC-084 O círculo do rodapé carrega a MARCA do sistema, não mais as iniciais
+     * de quem responde: o ícone identifica o produto de relance, sem ler. Sistema sem
+     * arquivo de marca cai nas iniciais do próprio nome, que é o que o `x-marca-sistema`
+     * já faz nas outras telas; tarefa sem sistema fica com o círculo vazio e a frase.
+     */
+    public function test_o_circulo_do_rodape_traz_a_marca_do_sistema(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+        $sistema = Sistema::factory()->create(['nome' => 'AlfaGym', 'slug' => 'alfagym']);
+
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'backlog',
+            'sistema_id' => $sistema->id, 'titulo' => 'Com sistema',
+        ]);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // O nome do sistema saiu do texto do rodapé e virou o `title` do
+        // círculo, com o arquivo da marca dentro dele.
+        $this->assertMatchesRegularExpression(
+            '/title="AlfaGym"[^>]*>\s*<img src="\/sistemas\/alfagym\.svg"/u', $html);
     }
 
     /**
