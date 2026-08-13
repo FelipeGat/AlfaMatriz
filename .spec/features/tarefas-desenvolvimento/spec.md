@@ -834,6 +834,26 @@ conversa empacada (três idas e voltas, AC-190) que essa captura evita.
   `de_status` continua sendo conferido (AC-208), e "Alguém já moveu esta
   tarefa" vira aviso em vez de troca de tela
 
+#### AC-231 — Cada ação manda só o que ela mudou
+
+- **Dado** um quadro com sessenta tarefas
+- **Quando** marco um item do checklist
+- **Então** o servidor NÃO devolve o quadro nem os modais. Eles custam 906 KB e
+  2,2 MB — juntos, quase a página inteira —, e marcar um item mudou um "3/5"
+  num card. Mandá-los por clique é trocar a recarga por outra recarga com
+  outro nome
+- **E** no lugar deles vêm alvos nomeados: o card que mudou, os seis cabeçalhos
+  de etapa e a tira de chips, que somam ~27 KB. Os contadores entram sempre
+  porque travar uma tarefa a tira da conta de trabalho em curso
+- **E** o quadro inteiro só volta quando o card muda de LUGAR (mover, criar,
+  excluir, salvar); os modais, só quando o conjunto de tarefas muda. Reordenar
+  dentro da coluna não devolve nenhum dos dois: o navegador já reordenou antes
+  de enviar, e é dele que a ordem sai
+- **E** ao soltar, o card muda de coluna na hora, sem esperar a resposta. Sem
+  isso ele ficava meio segundo na coluna de origem e o gesto parecia ter
+  falhado — a resposta chega depois e corrige a posição, ou devolve o card com
+  a frase que explica a recusa
+
 ## Fora de escopo
 
 > O handoff de design de 11/08/2026 foi entregue por inteiro. O que segue

@@ -44,6 +44,10 @@
      criação, quem fecha é o `fecharModal`, porque o "nova tarefa" é único e
      vive fora daquele bloco. --}}
 <form method="POST" data-parcial
+      {{-- O Salvar PUBLICA o comentário escrito no campo. Sem esvaziá-lo, ele
+           continuaria na tela depois de gravado, e o Salvar seguinte publicaria
+           a mesma frase de novo — o mesmo motivo do Perguntar. --}}
+      @if ($edicao) data-limpa="#comentario-{{ $tarefa->id }}" @endif
       action="{{ $edicao ? route('tarefas.update', $tarefa) : route('tarefas.store') }}"
       class="flex flex-col"
       {{-- `bloqueada` é estado de tela, não do servidor, porque travar e

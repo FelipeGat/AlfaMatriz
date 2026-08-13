@@ -304,7 +304,7 @@ class TarefaController extends Controller
             Tarefa::create($data);
         }
 
-        return $this->voltarParaOQuadro($request, 'Tarefa criada.', fecharModal: 'nova-tarefa');
+        return $this->voltarParaOQuadro($request, 'Tarefa criada.', fecharModal: 'nova-tarefa', mudouOConjunto: true, limparModal: true);
     }
 
     /**
@@ -482,7 +482,16 @@ class TarefaController extends Controller
             $aviso[] = 'Comentário publicado.';
         }
 
-        return $this->voltarParaOQuadro($request, implode(' ', $aviso));
+        return $this->voltarParaOQuadro(
+            $request,
+            implode(' ', $aviso),
+            fecharModal: 'editar-tarefa-'.$tarefa->id,
+            tarefa: $tarefa,
+            // A conversa volta porque o Salvar PUBLICA o comentário escrito no
+            // campo: sem ela, reabrir a tarefa não mostraria a frase que acabou
+            // de ser gravada.
+            regioes: self::PEDACOS_DA_VEZ,
+        );
     }
 
     /**
@@ -608,7 +617,11 @@ class TarefaController extends Controller
         // ligado, mover um card devolvia o quadro inteiro e o recorte se
         // perdia a cada arrasto. O mesmo vale para o "Reabrir" do histórico,
         // que agora não abandona a página nem a busca em que se estava.
-        return $this->voltarParaOQuadro($request, 'Tarefa movida.');
+        return $this->voltarParaOQuadro(
+            $request,
+            'Tarefa movida.',
+            mudouOConjunto: in_array($data['status'], Tarefa::STATUS_TERMINAIS, true),
+        );
     }
 
     /**
@@ -710,7 +723,7 @@ class TarefaController extends Controller
         // fosse auditar. Excluir pela metade é o pior dos dois mundos.
         $tarefa->forceDelete();
 
-        return $this->voltarParaOQuadro($request, 'Tarefa excluída.');
+        return $this->voltarParaOQuadro($request, 'Tarefa excluída.', mudouOConjunto: true);
     }
 
     /**
@@ -745,7 +758,11 @@ class TarefaController extends Controller
             }
         }
 
-        return $this->voltarParaOQuadro($request);
+        // Sem o quadro: o navegador já reordenou a coluna ANTES de enviar — é
+        // dele que a ordem sai, lida do DOM (`soltarSobreCard`). Redesenhar
+        // 900 KB para confirmar o que já está na tela é o gasto mais fácil de
+        // não fazer.
+        return $this->voltarParaOQuadro($request, comQuadro: false);
     }
 
     /** Acrescenta um item ao checklist, no fim da lista. */
@@ -885,9 +902,30 @@ class TarefaController extends Controller
         ?string $aviso = null,
         string $tom = 'bom',
         ?string $fecharModal = null,
+        bool $mudouOConjunto = false,
+        ?Tarefa $tarefa = null,
+        array $regioes = [],
+        bool $limparModal = false,
+        bool $comQuadro = true,
     ) {
         if ($request->expectsJson()) {
-            return $this->respostaParcial($request, null, [], $aviso, $tom, comModais: true, fecharModal: $fecharModal);
+            return $this->respostaParcial(
+                $request,
+                $tarefa,
+                $regioes,
+                $aviso,
+                $tom,
+                // Os modais custam 2,2 MB num quadro de sessenta tarefas — um
+                // formulário completo por card, cada um com a lista inteira de
+                // sistemas e de pessoas. Só voltam quando o CONJUNTO de tarefas
+                // muda (criar, excluir, encerrar), porque aí há modal a nascer
+                // ou a morrer. Mover entre duas colunas do quadro não muda
+                // conjunto nenhum, e pagava esse preço a cada arrasto.
+                comModais: $mudouOConjunto,
+                fecharModal: $fecharModal,
+                comQuadro: $comQuadro,
+                limparModal: $limparModal,
+            );
         }
 
         return redirect()->back(fallback: route('tarefas.index'))
@@ -932,6 +970,8 @@ class TarefaController extends Controller
         string $tom = 'bom',
         bool $comModais = false,
         ?string $fecharModal = null,
+        bool $comQuadro = false,
+        bool $limparModal = false,
     ) {
         $pedacos = [];
 
@@ -952,20 +992,52 @@ class TarefaController extends Controller
                 'checklist-envios' => 'tarefas._checklist-envios',
                 'conversa' => 'tarefas._comentarios',
                 'conversa-envios' => 'tarefas._comentarios-envios',
+                'formulario' => 'tarefas._form',
             ];
+
+            $sistemas = $this->listasDeFiltro()['sistemas'];
 
             foreach ($regioes as $regiao) {
                 $pedacos["{$regiao}-{$tarefa->id}"] = view(
                     $partials[$regiao],
-                    compact('tarefa', 'usuarios'),
+                    compact('tarefa', 'usuarios', 'sistemas'),
                 )->render();
             }
         }
 
         $dados = $this->dadosDoQuadro($request);
 
+        /**
+         * O quadro INTEIRO só quando o card muda de lugar.
+         *
+         * Ele custa 906 KB e ~140ms num quadro de sessenta tarefas — quase uma
+         * página. Marcar um item do checklist mudava exatamente um "3/5" num
+         * card, e pagava esse preço por clique: a tela parou de recarregar e
+         * continuou lenta, que é trocar um defeito por outro.
+         *
+         * Sem ele vão os alvos nomeados: o card que mudou, os seis cabeçalhos
+         * de etapa (o WIP não conta tarefa travada, então travar mexe neles) e
+         * a tira de chips. Somados dão ~15 KB.
+         */
+        if (! $comQuadro) {
+            foreach ($dados['etapas'] as $etapa) {
+                $pedacos["etapa-{$etapa['chave']}"] = view('tarefas._coluna-cabecalho', compact('etapa'))->render();
+            }
+
+            $pedacos['chips-do-quadro'] = view('tarefas._chips', ['chips' => $dados['chips']])->render();
+
+            if ($tarefa && $dados['tarefas']->contains('id', $tarefa->id)) {
+                $pedacos["card-{$tarefa->id}"] = view('tarefas._card', [
+                    'tarefa' => $tarefa,
+                    'transicoes' => $tarefa->motivoParaNaoMover(auth()->user())
+                        ? []
+                        : FluxoTarefaService::transicoesDe($tarefa),
+                ])->render();
+            }
+        }
+
         return response()->json([
-            'quadro' => view('tarefas._quadro', $dados)->render(),
+            'quadro' => $comQuadro ? view('tarefas._quadro', $dados)->render() : null,
             'pedacos' => $pedacos,
             'tarefa' => $tarefa?->id,
             // Os modais só voltam quando a ação mudou QUAIS tarefas o quadro
@@ -978,6 +1050,12 @@ class TarefaController extends Controller
             // "nova-tarefa" é único e vive fora do bloco que é trocado, então
             // ninguém o fecha por tabela.
             'fecharModal' => $fecharModal,
+            // Fechar e ESVAZIAR são coisas diferentes. O "nova tarefa" precisa
+            // das duas: ele não é redesenhado, e guardaria o título da tarefa
+            // que acabou de nascer. O de edição precisa só da primeira — o que
+            // está nos campos dele é justamente o que foi salvo, e um `reset()`
+            // o devolveria ao valor ANTERIOR, que o servidor havia impresso.
+            'limparModal' => $limparModal,
             // O bloqueio decide dois controles do rodapé do modal, que são
             // Alpine e não voltam em `pedacos`: o campo "o que está travando" e
             // o botão que alterna entre travar e destravar.

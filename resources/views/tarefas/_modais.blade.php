@@ -20,7 +20,12 @@
 
 @foreach ($tarefas as $tarefa)
     <x-modal name="editar-tarefa-{{ $tarefa->id }}" maxWidth="tarefa">
-        @include('tarefas._form', ['tarefa' => $tarefa, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
+        {{-- `contents` para o invólucro não entrar no layout: o painel do modal
+             espera o `<form class="flex flex-col">` como filho direto, e um div
+             comum no meio soltaria o cabeçalho e o rodapé grudados. --}}
+        <div class="contents" data-pedaco="formulario-{{ $tarefa->id }}">
+            @include('tarefas._form', ['tarefa' => $tarefa, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
+        </div>
 
         {{-- Os envios escondidos também são trocados: um item novo no checklist
              precisa dos formulários de corrigir e apagar DELE, e um comentário

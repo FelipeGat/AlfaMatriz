@@ -50,30 +50,41 @@ class AcoesSemRecarregarTest extends TestCase
             ->putJson(route('tarefas.itens.update', $item), ['feito' => '1']);
 
         $resposta->assertOk();
-        $resposta->assertJsonStructure(['quadro', 'pedacos', 'tarefa', 'bloqueada', 'aviso']);
         $resposta->assertJsonPath('tarefa', $tarefa->id);
-
         $this->assertTrue($item->fresh()->feito);
 
-        // O quadro volta INTEIRO, e não só o card: marcar um item muda o "1/1"
-        // do rodapé do card, e travar uma tarefa mudaria o contador de WIP da
-        // coluna e os chips do cabeçalho. Trocar só o card deixaria esses
-        // números mentindo, que é pior do que recarregar.
-        $quadro = $resposta->json('quadro');
-        $this->assertStringContainsString('Corrigir o boleto da Orbe', $quadro);
-        $this->assertStringContainsString('Quadro de tarefas', $quadro);
+        // O quadro INTEIRO não volta, e é isso que faz a diferença de peso: ele
+        // custa ~900 KB num quadro de sessenta tarefas, e marcar um item mudou
+        // um "1/1" num card. Mandá-lo por clique trocaria a recarga da página
+        // por outra recarga, com outro nome.
+        $resposta->assertJsonPath('quadro', null);
+        $resposta->assertJsonPath('modais', null);
 
-        // Só as regiões que a ação MEXEU. A conversa fica de fora de propósito:
-        // trocá-la redesenharia por baixo de quem talvez esteja corrigindo um
-        // comentário ali. E o formulário da tarefa não volta em região nenhuma
-        // — é essa ausência que preserva o título editado.
+        // No lugar dele vêm os alvos nomeados. Os cabeçalhos de etapa e os chips
+        // entram sempre porque travar uma tarefa muda o WIP da coluna — vaga
+        // ocupada por tarefa travada não conta como trabalho em curso — e a
+        // contagem de travadas. Sem eles, esses números mentiriam.
         $pedacos = $resposta->json('pedacos');
         $this->assertSame([
             "checklist-{$tarefa->id}",
             "checklist-envios-{$tarefa->id}",
+            'etapa-aberta',
+            'etapa-backlog',
+            'etapa-em_desenvolvimento',
+            'etapa-em_revisao',
+            'etapa-em_staging',
+            'etapa-pronta_producao',
+            'chips-do-quadro',
+            "card-{$tarefa->id}",
         ], array_keys($pedacos));
 
         $this->assertStringContainsString('Conferir o valor', $pedacos["checklist-{$tarefa->id}"]);
+        $this->assertStringContainsString('Corrigir o boleto da Orbe', $pedacos["card-{$tarefa->id}"]);
+
+        // A conversa fica de fora de propósito: trocá-la redesenharia por baixo
+        // de quem talvez esteja corrigindo um comentário ali. E o formulário da
+        // tarefa não volta em região nenhuma — é essa ausência que preserva o
+        // título editado e o comentário ainda não publicado.
         $this->assertStringNotContainsString('name="titulo"', $resposta->getContent());
     }
 
@@ -106,8 +117,13 @@ class AcoesSemRecarregarTest extends TestCase
         $foraDoRecorte = $this->criarTarefa(['titulo' => 'Trocar o certificado do vigia']);
         $item = $tarefa->itens()->create(['texto' => 'Conferir o valor']);
 
+        // Pelo `mover`, que é a ação que ainda manda o quadro inteiro — nela o
+        // card muda de coluna, e trocar um card no lugar não o faz mudar de mãe.
         $quadro = $this->actingAs($usuario)
-            ->putJson(route('tarefas.itens.update', $item).'?busca=boleto', ['feito' => '1'])
+            ->postJson(route('tarefas.mover', $tarefa).'?busca=boleto', [
+                'status' => 'em_revisao',
+                'de_status' => 'em_desenvolvimento',
+            ])
             ->assertOk()
             ->json('quadro');
 
@@ -152,17 +168,28 @@ class AcoesSemRecarregarTest extends TestCase
 
         $bloqueio->assertOk();
         $bloqueio->assertJsonPath('bloqueada', true);
-        $this->assertStringContainsString('Esperando o acesso do cliente', $bloqueio->json('quadro'));
+        $this->assertStringContainsString(
+            'Esperando o acesso do cliente',
+            $bloqueio->json("pedacos.card-{$tarefa->id}"),
+        );
         $this->assertStringContainsString(
             'Esperando o acesso do cliente',
             $bloqueio->json("pedacos.avisos-{$tarefa->id}"),
         );
 
+        // O WIP da coluna volta junto: a tarefa travada sai da conta de trabalho
+        // em curso, e o contador precisa dizer isso sem o quadro inteiro atrás.
+        $this->assertNotNull($bloqueio->json('pedacos.etapa-em_desenvolvimento'));
+        $this->assertNotNull($bloqueio->json('pedacos.chips-do-quadro'));
+
         $destrave = $this->actingAs($usuario)->postJson(route('tarefas.bloquear', $tarefa));
 
         $destrave->assertOk();
         $destrave->assertJsonPath('bloqueada', false);
-        $this->assertStringNotContainsString('Esperando o acesso do cliente', $destrave->json('quadro'));
+        $this->assertStringNotContainsString(
+            'Esperando o acesso do cliente',
+            $destrave->json("pedacos.card-{$tarefa->id}"),
+        );
     }
 
     /**
@@ -208,7 +235,10 @@ class AcoesSemRecarregarTest extends TestCase
             'O botão some no celular',
             $resposta->json("pedacos.conversa-{$tarefa->id}"),
         );
-        $this->assertStringContainsString('Aguardando resposta', $resposta->json('quadro'));
+        $this->assertStringContainsString(
+            'Aguardando resposta',
+            $resposta->json("pedacos.card-{$tarefa->id}"),
+        );
     }
 
     /**
@@ -229,7 +259,7 @@ class AcoesSemRecarregarTest extends TestCase
     }
 
     /**
-     * @spec:AC-230 Mover card é o gesto mais repetido do quadro, e era o que mais custava:
+     * @spec:AC-231 Mover card é o gesto mais repetido do quadro, e era o que mais custava:
      * cada arrasto repintava a tela inteira e devolvia a rolagem das seis colunas ao começo.
      */
     public function test_mover_devolve_o_quadro_e_os_modais_sem_redirect(): void
@@ -244,12 +274,13 @@ class AcoesSemRecarregarTest extends TestCase
 
         $resposta->assertOk();
         $this->assertSame('em_revisao', $tarefa->fresh()->status);
-
-        // Os modais voltam junto: mover para uma etapa terminal tira a tarefa
-        // do quadro, e o modal dela precisa sair com ela.
-        $this->assertNotNull($resposta->json('modais'));
-        $this->assertStringContainsString("editar-tarefa-{$tarefa->id}", $resposta->json('modais'));
         $this->assertStringContainsString('Corrigir o boleto da Orbe', $resposta->json('quadro'));
+
+        // Os modais NÃO voltam: mover entre duas colunas do quadro não cria nem
+        // destrói modal nenhum, e eles custam ~2,2 MB num quadro de sessenta
+        // tarefas — um formulário completo por card. Era esse o peso que fazia
+        // cada arrasto parecer uma recarga.
+        $resposta->assertJsonPath('modais', null);
     }
 
     /**

@@ -53,17 +53,8 @@
         também é notícia. Ver `chipsDoQuadro` para o porquê da
         divergência com o protótipo.
     --}}
-    <div class="ml-auto min-w-0 flex items-center gap-2 overflow-x-auto">
-        @foreach ($chips as $chip)
-            <a href="{{ $chip['href'] }}" title="{{ $chip['title'] }}"
-               class="shrink-0 h-[26px] px-[9px] inline-flex items-center gap-1.5 rounded-tile border
-                      font-mono text-[10.5px] font-semibold uppercase tracking-[0.06em] whitespace-nowrap transition
-                      {{ $chip['total'] === 0 ? 'opacity-45 hover:opacity-100' : '' }}"
-               style="border-color: {{ $chip['borda'] }}; background: {{ $chip['fundo'] }}; color: rgb(var(--{{ $chip['cor'] }}))">
-                <span class="h-3 w-3 shrink-0"><x-nav-icon :name="$chip['icone']" :peso="1.9" /></span>
-                {{ $chip['label'] }}
-            </a>
-        @endforeach
+    <div class="ml-auto min-w-0 flex items-center gap-2 overflow-x-auto" data-pedaco="chips-do-quadro">
+        @include('tarefas._chips', ['chips' => $chips])
     </div>
 </div>
 
@@ -124,7 +115,8 @@
         <div class="sticky top-0 z-10 shrink-0 flex gap-[10px] bg-board pb-1">
             @foreach ($etapas as $etapa)
                 <div class="rounded-control bg-panel border border-line overflow-hidden"
-                     style="flex: 1 1 272px; min-width: 272px; border-top: 3px solid rgb(var(--{{ $etapa['cor'] }}))">
+                     style="flex: 1 1 272px; min-width: 272px; border-top: 3px solid rgb(var(--{{ $etapa['cor'] }}))"
+                     data-pedaco="etapa-{{ $etapa['chave'] }}">
                     @include('tarefas._coluna-cabecalho', ['etapa' => $etapa])
                 </div>
             @endforeach

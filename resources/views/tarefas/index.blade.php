@@ -782,6 +782,30 @@
                     return andou < 4;
                 },
 
+                /**
+                 * Põe o card na coluna de destino sem esperar o servidor.
+                 *
+                 * A faixa vem do próprio card: com raias ligadas, a mesma etapa
+                 * aparece uma vez por raia, e mandar o card para a primeira
+                 * delas o faria pular de pessoa — visivelmente errado até a
+                 * resposta chegar e consertar.
+                 */
+                adiantarMovimento(tarefa, status) {
+                    const card = document.querySelector(`[data-tarefa="${tarefa}"]`);
+                    const listaAtual = card?.closest('[data-cards]');
+
+                    if (! listaAtual) {
+                        return;
+                    }
+
+                    const faixa = listaAtual.dataset.cards.split('::')[0];
+                    const destino = document.querySelector(`[data-cards="${faixa}::${status}"]`);
+
+                    if (destino) {
+                        destino.prepend(card);
+                    }
+                },
+
                 /** Esta etapa é destino possível para o card que está na mão? */
                 aceita(status) {
                     return this.arrastando === null || this.destinos.includes(status);
@@ -970,6 +994,18 @@
                         return;
                     }
 
+                    // O card muda de coluna ANTES da resposta.
+                    //
+                    // Sem isto, soltar não fazia nada visível até o servidor
+                    // responder: o card ficava na coluna de origem por meio
+                    // segundo, e o gesto parecia ter falhado — a ponto de se
+                    // arrastar de novo. Quem chega depois é a verdade: a
+                    // resposta redesenha o quadro e corrige a posição, inclusive
+                    // a ordem dentro da coluna, que é o servidor quem decide.
+                    // Se o movimento for recusado, o card volta pelo mesmo
+                    // caminho, com a frase explicando.
+                    this.adiantarMovimento(tarefa, status);
+
                     this.$refs.formMover.action = this.rotaMover.replace('__ID__', tarefa);
                     this.$refs.statusMover.value = status;
                     this.$refs.deStatusMover.value = de ?? '';
@@ -1155,7 +1191,13 @@
                 // anterior no campo. A recarga fazia essa limpeza de graça.
                 if (dados.fecharModal) {
                     window.dispatchEvent(new CustomEvent('close-modal', { detail: dados.fecharModal }));
+                }
 
+                // Esvaziar é pedido à parte, e não consequência de fechar: no
+                // modal de edição os campos JÁ contêm o que foi salvo, e um
+                // `reset()` os devolveria ao valor que o servidor imprimiu
+                // antes — desfazendo na tela a edição que acabou de gravar.
+                if (dados.limparModal && dados.fecharModal) {
                     document.querySelectorAll(`[data-modal="${dados.fecharModal}"] form`)
                         .forEach((form) => form.reset());
                 }

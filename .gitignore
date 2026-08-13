@@ -10,6 +10,17 @@
 # com a agravante de que o download cai onde o navegador estiver apontando, às
 # vezes na raiz do repositório.
 *.zip
+# E a pasta que sai do zip, pelo mesmo motivo. Descompactar ao lado do download
+# é o gesto seguinte ao baixar, e o macOS batiza a segunda rodada de
+# "…redesign 2" — então nem apagar a primeira resolve.
+#
+# A exceção logo abaixo não é detalhe: `design_handoff_alfamatriz_redesign/` tem
+# 12 arquivos VERSIONADOS. Regra ignorada não desrastreia o que já está no
+# índice, então nada sumiria hoje — mas um arquivo NOVO dentro dela passaria a
+# ser engolido sem aviso, que é a pior forma de perder trabalho: o `git status`
+# fica limpo e ninguém procura o que não está sendo acusado.
+Assets/design_handoff_*/
+!Assets/design_handoff_alfamatriz_redesign/
 # Marcadores que os scripts de deploy gravam na raiz da aplicação, no servidor:
 # .deploy-gate (veredito do portão), .deploy-tag-state, .deploy-tag-failed,
 # .deploy-paused, .deploy-tag.lock. São estado do ambiente, nunca do código.

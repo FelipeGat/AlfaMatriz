@@ -57,8 +57,13 @@
 
     {{-- Em raias o cabeçalho é um só, fixo no topo do quadro: repetido faixa a
          faixa, ele viraria a maior parte da tela. --}}
+    {{-- O alvo nomeado é o que deixa o contador da coluna voltar sozinho,
+         sem o quadro inteiro atrás dele. `shrink-0` no invólucro porque a
+         seção é um flex vertical e o cabeçalho não pode encolher. --}}
     @if ($comCabecalho)
-        @include('tarefas._coluna-cabecalho', ['etapa' => $etapa])
+        <div class="shrink-0" data-pedaco="etapa-{{ $etapa['chave'] }}">
+            @include('tarefas._coluna-cabecalho', ['etapa' => $etapa])
+        </div>
     @endif
 
     {{-- A coluna rola por dentro, e o quadro é redesenhado inteiro a cada ação
@@ -129,7 +134,12 @@
                 <div x-show="sobreCard === {{ $tarefa->id }}" x-cloak aria-hidden="true"
                      class="h-0.5 rounded-sm mb-[10px]" style="background: rgb(var(--brand))"></div>
 
-                @include('tarefas._card', ['tarefa' => $tarefa, 'transicoes' => $transicoes])
+                {{-- Alvo nomeado: marcar um item do checklist muda o "3/5" DESTE
+                     card e mais nada. Redesenhar o quadro para isso mandava
+                     906 KB; o card sozinho tem ~15 KB. --}}
+                <div class="contents" data-pedaco="card-{{ $tarefa->id }}">
+                    @include('tarefas._card', ['tarefa' => $tarefa, 'transicoes' => $transicoes])
+                </div>
             </div>
         @empty
             <div class="rounded-ctl border border-dashed border-line px-2 text-center flex items-center justify-center"
