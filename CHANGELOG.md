@@ -1,5 +1,107 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 12/08/2026 — Em testes guardava dois portões, e perguntar virava bloqueio
+
+O quadro de tarefas mudou de forma. Duas colunas saíram, três entraram, e a
+conversa sobre uma tarefa passou a ter dono da vez.
+
+### As seis etapas
+
+**"Em testes" se abriu em três: Em revisão, Em staging e Pronta p/ produção.** A
+etapa única guardava dois portões diferentes — o admin lendo o código de um PR e
+o dev validando o que já subiu ao staging. Cada um tem outro revisor, outro
+artefato e outro jeito de falhar; juntos no mesmo balde, o quadro não respondia
+quem estava esperando quem.
+
+**"Pronta p/ produção" é coluna porque a bola troca de mão ali.** É o único ponto
+em que o trabalho sai do dev e vai para o admin subir a tag. O critério vale para
+o quadro inteiro: uma coluna só se justifica se muda quem está segurando a
+tarefa.
+
+**"Concluída" agora significa EM PRODUÇÃO.** Antes, concluir a partir de Em
+testes marcava como pronta uma tarefa cujo código estava só no staging. Agora o
+encerramento pede a versão que subiu (`v1.4.2`), e ela aparece no histórico — é
+ela que responde "desde quando o cliente tem isso", a pergunta que chega pelo
+suporte.
+
+Tarefa operacional continua fechando direto de Em andamento, sem PR, sem staging
+e sem versão: exigir tag de um telefonema só ensinaria a preencher o campo por
+obrigação.
+
+### "Ajustes necessários" virou marca
+
+A coluna tinha uma saída só — Em andamento, com o mesmo dono — e por isso nunca
+respondeu à pergunta que uma coluna existe para responder. Ela também achatava
+três reprovações diferentes numa só.
+
+Agora reprovar devolve a tarefa direto para Em andamento com uma tarja que
+**nomeia o portão**: *Voltou da revisão*, *Voltou do staging*, *Voltou da porta
+da produção* — mais o motivo, que passou a ser obrigatório. Vindo do staging, o
+texto do pedido avisa que o código **já está na main** e pergunta se é caso de
+voltar a versão ou de corrigir seguindo em frente: a recuperação é materialmente
+diferente de um PR reprovado.
+
+### Perguntar na revisão
+
+Dúvida durante a revisão não é impedimento nem correção, e agora tem lugar
+próprio. Perguntar **publica o comentário e passa a vez** para o outro lado. A
+tarefa não sai da etapa e não conta como travada — responder é rápido, e fingir
+que ela saiu de circulação seria mentira.
+
+- O card ganha uma tarja com quem deve a resposta, há quanto tempo, e a pergunta
+- Responder abre o campo **no próprio card**, sem abrir a tarefa
+- Quem tem perguntas esperando vê um contador no cabeçalho do quadro, que filtra
+  ao ser clicado
+- Na tarefa que ainda não tem outro lado — a sua, que ninguém comentou —, a tela
+  pergunta a quem passar a vez
+
+**A contagem de rodadas mede idas e voltas, não perguntas.** Cinco dúvidas
+mandadas de uma vez são uma rodada; insistir sem ter recebido resposta é a mesma.
+Na terceira, o quadro acende e sugere devolver para correção — três idas e voltas
+costuma querer dizer que o PR está grande demais ou que a tarefa foi mal
+especificada.
+
+### O sino da sidebar
+
+O sino deixou de ser enfeite. Ele avisa quando alguém perguntou, quando
+responderam, e quando uma tarefa sua voltou para correção — com a rodada e o
+tempo de espera. O painel lista o que aconteceu; o rodapé leva ao Centro de
+Controle, que continua respondendo o que **exige ação**. São perguntas
+diferentes: o sino conta o que mudou, a fila mostra o que está pendente.
+
+### A tela de Tarefas
+
+- **Seis colunas**, cada uma dizendo no cabeçalho o que examina — "PR · admin
+  analisa", "na main · dev valida", "fila do admin · tag v*"
+- **Colunas recolhem** e a escolha sobrevive ao F5, para quem trabalha numa etapa
+  só
+- **Bloquear e concluir viraram botões no card**, no lugar das duas faixas
+  verticais que gastavam largura
+- **O menu Mover** virou uma lista: um destino por linha, marcando os que pedem
+  motivo antes do clique
+- **Coluna vazia diz o que falta nela** — "Fila de triagem vazia", "Nenhum PR
+  aberto" — e, sob filtro, "Nada no recorte"
+- **A criação rápida chegou ao Backlog**, além de Aberta
+
+### Correções
+
+- **O modal da tarefa não tinha campo de Resumo.** O card mostra o resumo embaixo
+  do título desde sempre, e a única forma de preenchê-lo era pelo banco.
+- **O modal não dizia em que etapa a tarefa estava.** Agora o cabeçalho traz a
+  etapa e há quanto tempo ela está lá, e os avisos de pergunta e bloqueio
+  aparecem antes dos campos — eles explicam por que a tarefa está parada.
+- **Excluir confirma em dois passos** e diz a diferença para cancelar. As duas
+  palavras são sinônimas na cabeça de quem lê, e uma apaga o histórico que a
+  outra existe para guardar.
+- **O histórico mostra a versão** em que cada tarefa chegou à produção.
+- **A busca do quadro passou a varrer sistema e responsável.** Quem digitava o
+  nome do produto recebia zero resultado num quadro com seis cards dele.
+
+> A publicação inclui atualizações do banco: as marcas de retorno e de conversa
+> nas tarefas, a versão de produção, e a tabela de notificações. **Nenhuma tarefa
+> existente mudou de etapa** — a conversão só age sobre tarefas nas etapas
+> antigas, e não havia nenhuma.
+
 ## AlfaMatriz — 12/08/2026 — A ficha do produto, e curvas que só aparecem quando têm o que dizer
 
 ### Novidades
