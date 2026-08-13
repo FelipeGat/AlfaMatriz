@@ -231,14 +231,14 @@
         @endunless
 
         {{--
-            Checklist, imagens e conversa só na edição: tarefa que ainda não
+            Checklist, anexos e conversa só na edição: tarefa que ainda não
             existe não tem nenhuma das três, e o modal de criação não teria onde
-            pendurar o comentário nem para qual id enviar a imagem.
+            pendurar o comentário nem para qual id enviar o arquivo.
 
-            A galeria fica ENTRE o checklist e a conversa de propósito: ela é
+            Os anexos ficam ENTRE o checklist e a conversa de propósito: são
             prova do que a tarefa é, e a conversa é o que se diz sobre isso.
-            Depois da conversa, a imagem viraria rodapé de uma lista que já
-            rola por dentro.
+            Depois da conversa, virariam rodapé de uma lista que já rola por
+            dentro.
         --}}
         {{-- Checklist e conversa vêm embrulhados num `data-pedaco`: são as duas
              regiões que o servidor redesenha e troca no lugar depois de marcar
@@ -246,14 +246,14 @@
              `display: contents` pelo mesmo motivo dos avisos — o pai é um flex
              com vão, e um filho a mais mudaria o espaçamento.
 
-             A galeria fica de fora porque já se atualiza sozinha: ela mantém as
-             imagens em estado do Alpine e envia por `fetch` desde a US-064. --}}
+             Os anexos ficam de fora porque já se atualizam sozinhos: eles vivem
+             em estado do Alpine e enviam por `fetch` desde a US-064. --}}
         @if ($edicao)
             <div class="contents" data-pedaco="checklist-{{ $tarefa->id }}">
                 @include('tarefas._checklist', ['tarefa' => $tarefa])
             </div>
 
-            @include('tarefas._imagens', ['tarefa' => $tarefa])
+            @include('tarefas._anexos', ['tarefa' => $tarefa])
 
             <div class="contents" data-pedaco="conversa-{{ $tarefa->id }}">
                 @include('tarefas._comentarios', ['tarefa' => $tarefa])

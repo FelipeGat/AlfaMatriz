@@ -152,36 +152,53 @@
             }));
 
             /**
-             * A galeria de imagens de uma tarefa (US-064).
+             * Os anexos de uma tarefa (US-064).
              *
              * Envia por `fetch`, e não por formulário como o checklist: o gesto
-             * que esta galeria serve é colar um print no meio de escrever o
+             * que esta seção serve é colar um print no meio de escrever o
              * comentário que o explica, e recarregar a tela ali descartaria o
              * texto ainda não publicado.
              */
-            Alpine.data('imagensDaTarefa', (tarefaId, iniciais) => ({
-                imagens: iniciais,
+            Alpine.data('anexosDaTarefa', (tarefaId, iniciais) => ({
+                anexos: iniciais,
                 enviando: false,
                 erro: null,
 
+                // A mesma separação que o Blade faz no modo leitura, refeita
+                // aqui porque a lista muda sem a página recarregar: figura vai
+                // para a grade de miniaturas, o resto vira linha.
+                get imagens() {
+                    return this.anexos.filter((anexo) => anexo.eh_imagem);
+                },
+
+                get arquivos() {
+                    return this.anexos.filter((anexo) => ! anexo.eh_imagem);
+                },
+
                 /**
-                 * O teto do PHP de produção, repetido aqui porque é ele que
-                 * decide se o arquivo chega ou não.
+                 * Os tetos do PHP de produção, repetidos aqui porque são eles
+                 * que decidem se o arquivo chega ou não.
                  *
-                 * `upload_max_filesize` são 2 MB e `post_max_size` são 8 MB —
-                 * padrões do Debian, que o provisionamento não altera. O quarto
-                 * arquivo de 2 MB faria o PHP descartar o corpo INTEIRO do
-                 * POST, e o erro que chega ao navegador é de CSRF, sem relação
-                 * nenhuma com tamanho.
+                 * `upload_max_filesize` são 12 MB e `post_max_size` são 16 MB
+                 * (ver `deploy/provisionar.sh`). Os dois precisam ser
+                 * respeitados, e o segundo é o traiçoeiro: estourá-lo faz o PHP
+                 * descartar o corpo INTEIRO do POST, e o que chega ao navegador
+                 * é um erro de CSRF sem relação nenhuma com tamanho. Por isso a
+                 * SOMA do lote é conferida, e não só cada arquivo — três de
+                 * 12 MB passam um a um e derrubam o envio juntos.
+                 *
+                 * 15 e não 16: o corpo multipart carrega os limites, os nomes
+                 * dos campos e o token junto dos arquivos.
                  */
-                teto: 2 * 1024 * 1024,
+                teto: 12 * 1024 * 1024,
+                tetoDoEnvio: 15 * 1024 * 1024,
                 porEnvio: 3,
 
                 /**
                  * Colar da área de transferência.
                  *
                  * O ouvinte é de `window` porque não há onde mais pendurá-lo:
-                 * ninguém dá foco à galeria antes de colar — cola-se com o
+                 * ninguém dá foco à seção antes de colar — cola-se com o
                  * cursor no campo de comentário, que é justamente onde se
                  * estava escrevendo. Em troca, ele precisa saber se ESTE modal
                  * é o que está aberto: o quadro desenha um por card, e sem a
@@ -194,14 +211,17 @@
                         return;
                     }
 
+                    // Qualquer arquivo, e não só imagem: copiar um `.log` no
+                    // gerenciador de arquivos e colar aqui é o mesmo gesto de
+                    // colar um print, e quem faz um espera o outro. O que
+                    // continua passando direto é texto — `kind` só é `file`
+                    // quando há arquivo de verdade, então colar uma frase no
+                    // comentário segue sendo colar uma frase.
                     const arquivos = [...(evento.clipboardData?.items ?? [])]
-                        .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+                        .filter((item) => item.kind === 'file')
                         .map((item) => item.getAsFile())
                         .filter(Boolean);
 
-                    // Sem imagem na área de transferência não há o que fazer, e
-                    // é o caso comum: colar texto no comentário continua sendo
-                    // colar texto. Só se toma o evento de quem o usaria.
                     if (! arquivos.length) {
                         return;
                     }
@@ -228,20 +248,44 @@
                     this.erro = null;
 
                     if (arquivos.length > this.porEnvio) {
-                        this.erro = 'Até ' + this.porEnvio + ' imagens por vez — as demais ficaram de fora.';
+                        this.erro = 'Até ' + this.porEnvio + ' arquivos por vez — os demais ficaram de fora.';
                         arquivos = arquivos.slice(0, this.porEnvio);
                     }
 
                     this.enviando = true;
 
                     try {
-                        const corpo = new FormData();
+                        // Encolher ANTES de somar: é a redução que decide o
+                        // tamanho real do lote, e um print de 20 MB que vira
+                        // 900 KB não pode ser recusado pelo que ele pesava
+                        // antes de ser reduzido.
+                        const preparados = [];
 
                         for (const arquivo of arquivos) {
-                            corpo.append('imagens[]', await this.reduzir(arquivo));
+                            preparados.push(await this.reduzir(arquivo));
                         }
 
-                        const resposta = await fetch('{{ url('tarefas') }}/' + tarefaId + '/imagens', {
+                        const soma = preparados.reduce((total, arquivo) => total + arquivo.size, 0);
+
+                        // A recusa é DITA aqui porque o servidor não teria como
+                        // dizê-la: passando de `post_max_size`, o PHP descarta o
+                        // corpo antes de o Laravel existir, e a resposta que
+                        // chega fala de CSRF. Melhor uma frase que diz o que
+                        // fazer do que um erro que fala de outra coisa.
+                        if (soma > this.tetoDoEnvio) {
+                            throw new Error(
+                                'Os arquivos somam ' + Math.round(soma / 1048576) + ' MB e o envio aceita até '
+                                + Math.round(this.tetoDoEnvio / 1048576) + ' MB de uma vez — mande em duas levas.'
+                            );
+                        }
+
+                        const corpo = new FormData();
+
+                        for (const arquivo of preparados) {
+                            corpo.append('anexos[]', arquivo);
+                        }
+
+                        const resposta = await fetch('{{ url('tarefas') }}/' + tarefaId + '/anexos', {
                             method: 'POST',
                             headers: {
                                 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
@@ -254,18 +298,18 @@
                             const dados = await resposta.json().catch(() => ({}));
 
                             // A recusa da validação vem em `errors`, uma lista
-                            // por campo. Sem juntá-las, "Cada imagem precisa ter
-                            // até 2 MB" viraria um "Falha ao enviar" que não
-                            // diz o que mudar.
+                            // por campo. Sem juntá-las, "Cada arquivo precisa
+                            // ter até 12 MB" viraria um "Falha ao enviar" que
+                            // não diz o que mudar.
                             throw new Error(
                                 Object.values(dados.errors ?? {}).flat().join(' ')
                                 || dados.message
-                                || 'Não foi possível anexar a imagem.'
+                                || 'Não foi possível anexar o arquivo.'
                             );
                         }
 
                         const dados = await resposta.json();
-                        this.imagens = [...this.imagens, ...dados.imagens];
+                        this.anexos = [...this.anexos, ...dados.anexos];
                     } catch (erro) {
                         this.erro = erro.message;
                     } finally {
@@ -274,24 +318,26 @@
                 },
 
                 /**
-                 * Encolhe o que não caberia no POST — e só isso.
+                 * Encolhe a FIGURA que não caberia no POST — e só isso.
                  *
-                 * Um print de tela cheia num monitor 2560×1440 passa dos 2 MB
-                 * com facilidade, e ele é exatamente o arquivo que a revisão
-                 * precisa anexar. Sem isto, o caso principal da feature seria o
-                 * que ela recusa.
+                 * Só figura, porque só ela pode ser redesenhada sem deixar de
+                 * ser o que era: um log cortado pela metade não é um log menor,
+                 * é outro arquivo. O que não é imagem e não cabe é recusado com
+                 * a frase que diz o tamanho — não há cortesia possível.
                  *
                  * O arquivo que já cabe é enviado INTACTO, byte a byte: uma
                  * recodificação preventiva borraria o texto de todo print por
-                 * um problema que aquele arquivo não tinha. Só o que estoura é
-                 * redesenhado — e a alternativa, para esse, é a recusa.
+                 * um problema que aquele arquivo não tinha. Com o teto em 12 MB
+                 * isso passou a valer para quase todo print — o caso que sobra
+                 * aqui é a foto de máquina fotográfica, não a captura de tela,
+                 * que antes do teto novo era reduzida à toa.
                  *
                  * Se algo aqui falhar (navegador antigo, imagem corrompida), o
                  * original segue como estava e quem responde é o servidor, com
                  * a frase certa. Encolher é uma cortesia, não um pré-requisito.
                  */
                 async reduzir(arquivo) {
-                    if (arquivo.size <= this.teto) {
+                    if (arquivo.size <= this.teto || ! arquivo.type.startsWith('image/')) {
                         return arquivo;
                     }
 
@@ -330,17 +376,17 @@
                     return arquivo;
                 },
 
-                async remover(imagem) {
+                async remover(anexo) {
                     this.erro = null;
 
                     // Some da tela antes da resposta: a remoção é do próprio
                     // autor e o servidor já concordou com a mesma regra. Se
-                    // recusar, ela volta — e aí a frase explica por quê.
-                    const antes = this.imagens;
-                    this.imagens = this.imagens.filter((atual) => atual.id !== imagem.id);
+                    // recusar, ele volta — e aí a frase explica por quê.
+                    const antes = this.anexos;
+                    this.anexos = this.anexos.filter((atual) => atual.id !== anexo.id);
 
                     try {
-                        const resposta = await fetch('{{ url('tarefas/imagens') }}/' + imagem.id, {
+                        const resposta = await fetch('{{ url('tarefas/anexos') }}/' + anexo.id, {
                             method: 'DELETE',
                             headers: {
                                 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
@@ -349,10 +395,10 @@
                         });
 
                         if (! resposta.ok) {
-                            throw new Error('Não foi possível remover a imagem.');
+                            throw new Error('Não foi possível remover o anexo.');
                         }
                     } catch (erro) {
-                        this.imagens = antes;
+                        this.anexos = antes;
                         this.erro = erro.message;
                     }
                 },

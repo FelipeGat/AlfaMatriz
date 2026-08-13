@@ -732,38 +732,42 @@ para que a tela sirva à pergunta do momento e ao aparelho que estiver na mão.
   nada dispara enquanto se digita, senão escrever "backlog" na busca moveria
   cards pelo caminho
 
-### US-064 — Imagem na tarefa
+### US-064 — Anexo na tarefa
 
-Como pessoa que revisa, quero anexar imagens à tarefa — escolhendo o arquivo ou
-colando da área de transferência —, para mostrar o defeito em vez de descrevê-lo.
+Como pessoa que revisa, quero anexar arquivos à tarefa — print, log, planilha ou
+PDF, escolhendo o arquivo ou colando da área de transferência —, para mostrar o
+defeito em vez de descrevê-lo.
 
 "O botão saiu do lugar" é uma frase que só quem viu a tela entende. Na revisão,
 descrever por escrito custa rodadas que uma captura encerra de uma vez — e é a
-conversa empacada (três idas e voltas, AC-190) que essa captura evita.
+conversa empacada (três idas e voltas, AC-190) que essa captura evita. O log do
+erro e a planilha do cliente encerram a mesma dúvida pelo mesmo motivo: a
+história nasceu só com imagem em 13/08/2026 e foi generalizada no mesmo dia,
+quando ficou claro que "ser figura" nunca foi a razão pela qual se anexa algo.
 
-#### AC-223 — A imagem entra por arquivo ou por Ctrl+V
+#### AC-223 — O anexo entra por arquivo ou por Ctrl+V
 
 - **Dado** uma tarefa aberta
-- **Quando** escolho um arquivo de imagem, ou colo um print com a tarefa aberta
-- **Então** ele entra na galeria da tarefa, com nome, tamanho e quem anexou. A
-  imagem é da TAREFA, e não do comentário: a prova não depende de achar em qual
-  comentário ela foi parar. O que a área de transferência entrega sem nome
-  ("image.png") vira `captura-AAAA-MM-DD-HHMMSS`, senão três prints colados
+- **Quando** escolho um arquivo, ou colo um print com a tarefa aberta
+- **Então** ele entra na seção de anexos da tarefa, com nome, tamanho e quem
+  anexou. O anexo é da TAREFA, e não do comentário: a prova não depende de achar
+  em qual comentário ela foi parar. O que a área de transferência entrega sem
+  nome ("image.png") vira `captura-AAAA-MM-DD-HHMMSS`, senão três prints colados
   viram três legendas idênticas — e é justamente a legenda que distingue o que a
   miniatura, pequena, já não distingue
 
 #### AC-224 — O print grande entra mesmo assim
 
-- **Dado** uma captura de tela cheia, acima do teto de 2 MB
+- **Dado** uma captura de tela cheia, acima do teto por arquivo
 - **Quando** a anexo
 - **Então** o navegador a encolhe para 1920px no maior lado antes de enviar, e
-  ela entra. Sem isso, o caso principal da feature seria o que ela recusa: um
-  print de 2560×1440 passa dos 2 MB com facilidade. O arquivo que já cabe é
-  enviado INTACTO — recodificar por precaução borraria o texto de todo print por
-  um problema que aquele arquivo não tinha. Os limites são do PHP de produção,
-  não de produto: 2 MB por arquivo (`upload_max_filesize`) e três por envio (o
-  quarto faria o PHP descartar o corpo inteiro do POST e chegar como erro de
-  CSRF, sem relação nenhuma com tamanho)
+  ela entra. O arquivo que já cabe é enviado INTACTO — recodificar por precaução
+  borraria o texto de todo print por um problema que aquele arquivo não tinha.
+  Só FIGURA é encolhida: um log cortado pela metade não é um log menor, é outro
+  arquivo. Os limites são do PHP de produção, não de produto: 12 MB por arquivo
+  (`upload_max_filesize`) e três por envio, com a SOMA do lote limitada a 15 MB
+  porque estourar `post_max_size` faz o PHP descartar o corpo inteiro do POST e
+  chegar como erro de CSRF, sem relação nenhuma com tamanho
 
 #### AC-225 — Anexar não descarta o que está escrito
 
@@ -774,32 +778,35 @@ conversa empacada (três idas e voltas, AC-190) que essa captura evita.
   escrevendo —, e o caminho do checklist (enviar e voltar) apagaria o rascunho
   no momento exato em que ele importa
 
-#### AC-226 — Quem anexou apaga; a imagem morre com a tarefa e sobrevive ao autor
+#### AC-226 — Quem anexou apaga; o anexo morre com a tarefa e sobrevive ao autor
 
-- **Dado** uma imagem anexada por outra pessoa
-- **Quando** tento removê-la
+- **Dado** um anexo de outra pessoa
+- **Quando** tento removê-lo
 - **Então** a rota recusa e o botão nem aparece — mesma regra do comentário, e
-  não a do checklist: o item é combinado do time, mas a imagem é o que ALGUÉM
-  mostrou para sustentar um argumento. Excluir a tarefa leva as imagens junto; a
+  não a do checklist: o item é combinado do time, mas o anexo é o que ALGUÉM
+  mostrou para sustentar um argumento. Excluir a tarefa leva os anexos junto; a
   saída de quem anexou não leva — a legenda passa a dizer "Autor removido" e a
   prova fica
 
-#### AC-227 — O card conta, e a imagem só sai pela rota
+#### AC-227 — O card conta, e o anexo só sai pela rota
 
-- **Dado** uma tarefa com imagens
+- **Dado** uma tarefa com anexos
 - **Quando** olho o card no quadro
 - **Então** vejo um selo com a contagem, ao lado dos de checklist e comentários,
   e o card não fica mais alto — a miniatura no card custaria ~46px de altura
-  justamente na etapa em que mais se anexa imagem. O arquivo mora no disco
+  justamente na etapa em que mais se anexa arquivo. Um selo só para print e log:
+  a distinção entre eles não muda nada de fora do card. O arquivo mora no disco
   `public` porque é o único que sobrevive à publicação azul/verde, mas quem o
-  entrega é rota com `auth` e `permissao:tarefas`, e não o `/storage` do disco
+  entrega é rota com `auth` e `permissao:tarefas`, e não o `/storage` do disco —
+  que o nginx passa a recusar, para que a frase anterior seja verdade
 
-#### AC-228 — Revenda não alcança a imagem
+#### AC-228 — Revenda não alcança o anexo
 
 - **Dado** um usuário com escopo de revenda
-- **Quando** ele pede qualquer rota de imagem — anexar, ver ou remover
+- **Quando** ele pede qualquer rota de anexo — anexar, ver ou remover
 - **Então** recebe 403, como no resto do quadro (AC-095): sem isso o backlog
-  interno vazaria por uma porta lateral, agora levando capturas de tela junto
+  interno vazaria por uma porta lateral, agora levando capturas de tela e log de
+  cliente junto
 
 #### AC-229 — Mexer na tarefa aberta não recarrega a tela
 
@@ -854,6 +861,42 @@ conversa empacada (três idas e voltas, AC-190) que essa captura evita.
   falhado — a resposta chega depois e corrige a posição, ou devolve o card com
   a frase que explica a recusa
 
+#### AC-232 — O que não é figura entra pela mesma porta
+
+- **Dado** uma tarefa aberta
+- **Quando** anexo o log do erro, a planilha que o cliente mandou ou o PDF do
+  boleto
+- **Então** entram na mesma seção das imagens, e não numa segunda lista: quem
+  anexa não distingue os dois no gesto, e separá-los custaria uma terceira caixa
+  num modal de 620px. O que ainda os separa é a FORMA — figura vira miniatura na
+  grade, arquivo vira linha com ícone, nome e tamanho —, porque um log de 800 KB
+  não tem miniatura que se olhe e um print reduzido a uma linha de texto perde o
+  que veio mostrar
+- **E** entram imagem, PDF, texto, log, CSV e planilha do Excel; SVG e HTML não,
+  porque são documento com script dentro e esta rota os devolveria no mesmo
+  domínio da sessão de quem abre a tarefa; ZIP não, porque a validação não
+  alcança o que está dentro dele
+- **E** um `.log` entra sem `log` constar da lista de extensões aceitas: a regra
+  do Laravel deduz a extensão do MIME do conteúdo, e texto puro deduz `txt`
+
+#### AC-233 — O nome no disco sai do conteúdo, e o anexo só sai pela rota
+
+- **Dado** um arquivo cujo conteúdo e cuja extensão discordam
+- **Quando** o anexo
+- **Então** o nome com que ele é gravado no disco vem do CONTEÚDO, nunca do nome
+  enviado — o nome de origem fica só como legenda que a tela mostra. Sem isso, o
+  nome de um arquivo dentro da pasta publicada seria escolhido por quem envia
+- **E** só figura é entregue embutida (`inline`), porque a grade precisa dela
+  dentro de um `<img>`; todo o resto sai como download. Não é medo do PDF: é que
+  a lista de tipos é conferida uma vez só, no envio, e quem a ampliar daqui a um
+  ano não vai reler a rota
+- **E** o nginx recusa `/storage/` por inteiro. O symlink `public/storage` é
+  criado por toda publicação e deixava qualquer anexo — de tarefa, de cobrança e
+  de conta a pagar — legível por quem adivinhasse o nome, sem sessão nenhuma,
+  enquanto o código dizia que o arquivo só sai por rota com `auth`. Nenhuma tela
+  do sistema monta URL de `/storage` (conferido em 13/08/2026): a recusa não
+  tira nada de ninguém, só faz a frase do código virar verdade
+
 ## Fora de escopo
 
 > O handoff de design de 11/08/2026 foi entregue por inteiro. O que segue
@@ -864,7 +907,10 @@ conversa empacada (três idas e voltas, AC-190) que essa captura evita.
   do corpo do comentário.
 - Visualizador próprio de imagem (zoom, girar): a miniatura abre em aba nova,
   onde o navegador já faz as três coisas.
-- Anexo que não seja imagem na tarefa (PDF, log, planilha).
+- Prévia de PDF ou de planilha dentro do modal: a linha diz nome e tamanho, e
+  abrir é baixar. Renderizar documento no painel de 620px custaria biblioteca
+  nova para um arquivo que quase sempre se quer levar embora, não espiar.
+- ZIP, executável, SVG e HTML como anexo (ver AC-232).
 - Qualquer formatação no comentário: marcador de lista, numeração, markdown.
 - Histórico de versões do comentário: a tela diz QUE foi corrigido, não o que
   dizia antes.
@@ -896,7 +942,8 @@ conversa empacada (três idas e voltas, AC-190) que essa captura evita.
 | ASM-050 | O tipo pode ser trocado depois do cadastro, e trocá-lo não prende a tarefa. | confirmada | Implementado: o fluxo operacional guarda saídas para Em testes e Ajustes necessários mesmo sem oferecer entrada nelas. Sem isso, trocar para Operacional uma tarefa que já estava em teste deixaria o card numa coluna sem nenhum caminho de volta. |
 | ASM-051 | A etapa Bloqueada NÃO recebe o destaque de tarefa esquecida (AC-093). | aberta | Decisão de projeto, tomada em 2026-08-11: a escala de 24h/48h existe para etapa em que ninguém deveria estar parado, e a Bloqueada é a etapa em que estar parado é o esperado — esperar um fornecedor por uma semana é normal. Ela já se anuncia pela coluna própria e pelo motivo escrito. **Rever quando houver uso real:** se o time começar a esquecer tarefa bloqueada, o destaque volta, com uma régua mais larga. |
 | ASM-052 | A imagem se prende à TAREFA, e não ao comentário: uma galeria só, cronológica, irmã do checklist no modal. | confirmada | Escolhido pelo dono do produto em 2026-08-13, entre prender ao comentário, prender à tarefa e as duas coisas. O que se compra: a prova não depende de achar em qual comentário ela foi parar, e a mesma imagem não aparece duas vezes na tela. O que se paga: a imagem não sabe de que fala — quem quiser amarrar uma captura a um argumento escreve o comentário do lado. **Rever se aparecer tarefa com muitas imagens de assuntos diferentes:** aí a galeria vira um monte e o vínculo com o comentário passa a valer o custo. |
-| ASM-053 | O teto de 2 MB por imagem e três por envio é limite de INFRAESTRUTURA, não decisão de produto. | aberta | São os padrões do Debian (`upload_max_filesize` 2M, `post_max_size` 8M) que o `deploy/provisionar.sh` não altera — o nginx já aceita 20M, quem barra é o PHP. A tela contorna encolhendo o que passa disso (AC-224), então o limite só aparece para quem tenta anexar foto de máquina fotográfica. **Rever se o encolhimento incomodar:** subir o php.ini para 10M/12M é uma linha no provisionamento, mas ela não alcança máquina já provisionada — precisa ser aplicada à mão em produção. |
+| ASM-053 | O teto por arquivo e por envio é limite de INFRAESTRUTURA, não decisão de produto. | confirmada | Eram os padrões do Debian (`upload_max_filesize` 2M, `post_max_size` 8M) que o `deploy/provisionar.sh` não alterava — o nginx já aceitava 20M, quem barrava era o PHP. Os 2M cabiam enquanto só entrava imagem, que o navegador encolhe (AC-224); log, planilha e PDF não podem ser encolhidos, e por isso o provisionamento passou a escrever **12M/16M** num `conf.d` em 13/08/2026. **Pendência de operação:** o `provisionar.sh` não alcança máquina já provisionada — o `.ini` precisa ser aplicado à mão na produção atual, senão a validação aceita 12M e o PHP continua cortando em 2M. De quebra, é o que faz cobrança e conta a pagar pararem de prometer 10M (`CobrancaController:213`, `ContaPagarController:167`) e entregar 2M. |
+| ASM-054 | O disco de upload não é servido pelo nginx; todo arquivo sai por rota com `auth`. | confirmada | O código sempre disse isso, e até 13/08/2026 não era verdade: o symlink `public/storage`, recriado por toda publicação, deixava qualquer anexo de tarefa, cobrança e conta a pagar legível por quem adivinhasse o nome — e o nome é `uniqid()` mais `time()`, que são o relógio, não segredo. O `location ^~ /storage/ { deny all; }` fecha isso (AC-233). Conferido no mesmo dia que nenhuma tela do sistema monta URL de `/storage`. **Rever se alguma feature futura precisar de arquivo público de verdade** (logo de revenda em e-mail, por exemplo): aí o caminho é um disco à parte, e não reabrir este. |
 | ASM-035 | Os dados do alfadev não são migrados: o quadro do AlfaMatriz nasce vazio e o alfadev é desligado depois, manualmente. | aberta | **Decisão pendente do dono do produto.** Enquanto o alfadev seguir em uso, os dois bancos divergem. Migrar o histórico do Supabase é feature própria; desligar o alfadev sem migrar descarta o histórico dele. |
 
 ## Perguntas em aberto

@@ -73,19 +73,19 @@
                              tarefa (AC-131). --}}
                         @php
                             // O botão anuncia o que há para ler — conversa,
-                            // imagem ou as duas. Sem a imagem no rótulo, a
+                            // anexo ou os dois. Sem o anexo no rótulo, a
                             // tarefa encerrada que só tinha prints não abria
                             // botão nenhum, e o print costuma ser justamente o
                             // que explica o desfecho que o texto não explicou.
                             $totalComentarios = $tarefa->comentarios->count();
-                            $totalImagens = $tarefa->imagens->count();
+                            $totalAnexos = $tarefa->anexos->count();
 
                             $oQueHa = collect([
                                 $totalComentarios > 0
                                     ? $totalComentarios.' '.($totalComentarios === 1 ? 'comentário' : 'comentários')
                                     : null,
-                                $totalImagens > 0
-                                    ? $totalImagens.' '.($totalImagens === 1 ? 'imagem' : 'imagens')
+                                $totalAnexos > 0
+                                    ? $totalAnexos.' '.($totalAnexos === 1 ? 'anexo' : 'anexos')
                                     : null,
                             ])->filter();
                         @endphp
@@ -194,16 +194,16 @@
     </x-tabela>
     </div>
 
-    {{-- Um modal por linha COM comentário OU imagem: a página traz 20 tarefas,
-         e montar modal vazio para as que não têm nem uma nem outra seria peso
-         sem leitura. A imagem entrou na condição junto com a galeria (US-064):
+    {{-- Um modal por linha COM comentário OU anexo: a página traz 20 tarefas,
+         e montar modal vazio para as que não têm nem um nem outro seria peso
+         sem leitura. O anexo entrou na condição junto com a galeria (US-064):
          sem isso, a tarefa encerrada que só tinha prints não abria nada. --}}
     @foreach ($tarefas as $tarefa)
-        @if ($tarefa->comentarios->isNotEmpty() || $tarefa->imagens->isNotEmpty())
+        @if ($tarefa->comentarios->isNotEmpty() || $tarefa->anexos->isNotEmpty())
             <x-modal name="comentarios-tarefa-{{ $tarefa->id }}" maxWidth="lg">
                 <div class="px-6 pt-6 pb-4">
                     <h3 class="font-display font-semibold text-ink text-lg mb-4">{{ $tarefa->titulo }}</h3>
-                    @include('tarefas._imagens', ['tarefa' => $tarefa, 'somenteLeitura' => true])
+                    @include('tarefas._anexos', ['tarefa' => $tarefa, 'somenteLeitura' => true])
                     @include('tarefas._comentarios', ['tarefa' => $tarefa, 'somenteLeitura' => true])
                 </div>
                 <div class="px-6 pb-6 flex justify-end">

@@ -1,5 +1,42 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 13/08/2026 — A tarefa passou a aceitar o log, e não só o print
+
+A galeria de imagens saiu de manhã e a tarde mostrou o resto do caso: o log do
+erro, a planilha que o cliente mandou, o PDF do boleto. São a mesma coisa que a
+captura — a prova que o texto da tarefa não dá — e estavam de fora só por não
+serem figura, que nunca foi a razão pela qual se anexa alguma coisa.
+
+### Novidades
+
+- **A galeria virou "Anexos"** e passou a aceitar PDF, texto, log, CSV e
+  planilha do Excel, além das imagens. Tudo na mesma seção, porque quem anexa
+  não distingue os dois no gesto: a figura continua saindo como miniatura, e o
+  arquivo vira uma linha com nome e tamanho.
+- **Colar com Ctrl+V passou a valer para qualquer arquivo**, não só para print:
+  copiar um `.log` no gerenciador de arquivos e colar na tarefa aberta é o mesmo
+  gesto.
+- **O teto por arquivo subiu de 2 MB para 12 MB.** Imagem grande o navegador
+  encolhia; log e planilha não têm como ser encolhidos, e era esse o motivo de o
+  limite ter de subir junto. Efeito colateral bem-vindo: quase todo print agora
+  sobe intacto, sem passar pela redução que borrava texto.
+- **O selo do card virou um clipe** e conta os anexos todos, sem separar por
+  tipo — a distinção não muda nada de fora do card.
+
+### Segurança
+
+- **O disco de anexos deixou de ser servido direto pelo endereço público.** Ele
+  ficava pendurado num endereço aberto por um symlink que toda publicação
+  recriava, e por ali qualquer anexo — de tarefa, de cobrança e de conta a pagar
+  — era legível por quem adivinhasse o nome do arquivo, sem sessão nenhuma. O
+  código já dizia que o arquivo só sai por rota autenticada; agora é verdade.
+- **O nome com que o arquivo é gravado passou a vir do conteúdo**, e não do nome
+  que o navegador enviou. Quem envia deixa de escolher como o arquivo se chama
+  dentro da pasta publicada.
+- **Anexo que não é imagem é entregue como download**, e nunca aberto dentro da
+  página. Só figura precisa ser exibida embutida, e restringir isso agora impede
+  que ampliar a lista de tipos um dia vire hospedagem de página no sistema.
+
 ## AlfaMatriz — 13/08/2026 — A tarefa passou a poder mostrar, e não só descrever
 
 "O botão saiu do lugar" é uma frase que só quem viu a tela entende. Na revisão,

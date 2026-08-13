@@ -494,15 +494,15 @@ class Tarefa extends Model
     }
 
     /**
-     * As imagens da tarefa, da mais antiga à mais nova (US-064).
+     * Os anexos da tarefa, do mais antigo ao mais novo (US-064).
      *
      * Cronológica pelo mesmo motivo da conversa: a segunda captura costuma ser
      * resposta à primeira — "era assim" e "ficou assim" só se leem na ordem em
-     * que chegaram.
+     * que chegaram. Vale igual para o par log-antes/log-depois.
      */
-    public function imagens(): HasMany
+    public function anexos(): HasMany
     {
-        return $this->hasMany(TarefaImagem::class)->oldest();
+        return $this->hasMany(TarefaAnexo::class)->oldest();
     }
 
     /**

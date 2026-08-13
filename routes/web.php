@@ -148,23 +148,23 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('tarefas.itens.destroy')
         ->middleware('permissao:tarefas');
 
-    // Imagens: anexar pende da tarefa (é ela que ganha a imagem); ver e
-    // remover pendem da imagem, que já sabe de quem é — mesma divisão do
+    // Anexos: anexar pende da tarefa (é ela que ganha o arquivo); ver e
+    // remover pendem do anexo, que já sabe de quem é — mesma divisão do
     // checklist, pelo mesmo motivo.
     //
-    // VER passa por aqui, e não pelo `/storage` do disco, para a imagem ficar
+    // VER passa por aqui, e não pelo `/storage` do disco, para o anexo ficar
     // atrás de `auth` e de `permissao:tarefas` como o resto do quadro. O
     // arquivo mora no disco `public` porque é o único que sobrevive à
     // publicação azul/verde (ver `config/filesystems.php`), e não porque a
-    // imagem deva ser pública.
-    Route::post('tarefas/{tarefa}/imagens', [TarefaController::class, 'anexarImagem'])
-        ->name('tarefas.imagens.store')
+    // captura de um defeito — ou o log de um cliente — deva ser pública.
+    Route::post('tarefas/{tarefa}/anexos', [TarefaController::class, 'anexarArquivo'])
+        ->name('tarefas.anexos.store')
         ->middleware('permissao:tarefas');
-    Route::get('tarefas/imagens/{imagem}', [TarefaController::class, 'verImagem'])
-        ->name('tarefas.imagens.ver')
+    Route::get('tarefas/anexos/{anexo}', [TarefaController::class, 'verAnexo'])
+        ->name('tarefas.anexos.ver')
         ->middleware('permissao:tarefas');
-    Route::delete('tarefas/imagens/{imagem}', [TarefaController::class, 'excluirImagem'])
-        ->name('tarefas.imagens.destroy')
+    Route::delete('tarefas/anexos/{anexo}', [TarefaController::class, 'excluirAnexo'])
+        ->name('tarefas.anexos.destroy')
         ->middleware('permissao:tarefas');
 
     Route::put('tarefas/comentarios/{comentario}', [TarefaController::class, 'editarComentario'])

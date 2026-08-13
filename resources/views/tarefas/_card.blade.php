@@ -86,7 +86,7 @@
 
     $progresso = $tarefa->progressoDoChecklist();
     $totalComentarios = $tarefa->comentarios->count();
-    $totalImagens = $tarefa->imagens->count();
+    $totalAnexos = $tarefa->anexos->count();
 @endphp
 
 {{--
@@ -355,13 +355,17 @@
 
         {{-- Contagem, e não miniatura (US-064): a faixa com o primeiro print
              deixaria o card ~46px mais alto, e a coluna cabe menos cards por
-             tela justamente na etapa em que mais se anexa imagem. O selo diz
-             que há o que ver; ver é dentro da tarefa. --}}
-        @if ($totalImagens > 0)
+             tela justamente na etapa em que mais se anexa arquivo. O selo diz
+             que há o que ver; ver é dentro da tarefa.
+
+             Um selo só para print, log e planilha: separá-los daria três
+             contagens numa linha que já carrega checklist, conversa e três
+             botões — e a distinção entre eles não muda nada de fora do card. --}}
+        @if ($totalAnexos > 0)
             <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px] text-ink-mute"
-                  title="{{ $totalImagens }} {{ $totalImagens === 1 ? 'imagem' : 'imagens' }}">
-                <span class="h-[11px] w-[11px]"><x-nav-icon name="imagem" :peso="1.8" /></span>
-                {{ $totalImagens }}
+                  title="{{ $totalAnexos }} {{ $totalAnexos === 1 ? 'anexo' : 'anexos' }}">
+                <span class="h-[11px] w-[11px]"><x-nav-icon name="paperclip" :peso="1.8" /></span>
+                {{ $totalAnexos }}
             </span>
         @endif
 
