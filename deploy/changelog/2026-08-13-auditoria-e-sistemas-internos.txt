@@ -1,0 +1,44 @@
+<b>📋 AlfaMatriz — Changelog 13/08/2026</b>
+<i>Parte 1 de 2 — Auditoria</i>
+
+O painel respondia bem a "como está" e não sabia responder "como estava, e quem mudou". O valor mensal de um cliente caía pela metade e o valor anterior deixava de existir no instante do salvamento.
+
+<b>🆕 Novidades</b>
+
+• <b>Toda mudança de cadastro e de financeiro deixa linha.</b> Clientes, revendas, produtos e tiers, receitas, despesas, contas fixas, caixa, leads e cadastros auxiliares — quem mexeu, quando, e o valor de antes ao lado do de depois, campo a campo.
+• <b>A exclusão guarda a última cópia.</b> O registro sai da lista e a linha de auditoria continua trazendo o cadastro inteiro.
+• <b>O acesso ao painel é registrado:</b> entrada, saída, senha recusada e bloqueio por tentativas em sequência, com o IP.
+• <b>Mudança de permissão tem rastro próprio</b> — os perfis de uma conta e a grade de um perfil, com os nomes de antes e de depois.
+• <b>O que sai do sistema também conta:</b> download de anexo de receita e despesa, geração do faturamento do mês, provisionamento de revenda e cada operação de licença.
+• <b>Tela de Auditoria, no menu Sistema.</b> Filtra por pessoa, área, ação e período, e abre o antes/depois de cada linha sem sair da lista.
+• <b>Histórico dentro do próprio registro.</b> Cliente, receita, despesa e produto ganharam a linha do tempo no rodapé da tela.
+
+<b>🔒 Segurança</b>
+
+• <b>A senha nunca entra no rastro</b> — nem em texto, nem em hash. Senha errada num login costuma ser a senha certa de outro sistema.
+• <b>A auditoria só se lê.</b> Nenhuma tela, rota ou caminho de código altera uma linha já gravada.
+• <b>Só o administrador enxerga.</b> A mesma tela mostra receita, cliente, salário em despesa e permissão — pendurá-la numa permissão existente daria o sistema inteiro a quem tinha um pedaço.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
+---
+<b>📋 AlfaMatriz — Changelog 13/08/2026</b>
+<i>Parte 2 de 2 — Produtos e sistemas internos</i>
+
+Para o faturamento, "sistema" quer dizer produto vendido — tem cliente, tier e MRR. Para uma tarefa, quer dizer o sistema sobre o qual o trabalho é. A própria Matriz, a infra e o site não são produto nenhum, então a tarefa deles nascia sem sistema e sumia do filtro do quadro.
+
+<b>🆕 Novidades</b>
+
+• <b>Sistema passou a ter natureza: Produto ou Interno.</b> Todo o catálogo de hoje entrou como Produto — nada mudou de lugar.
+• <b>A tela de Produtos ganhou duas abas.</b> "Sistemas internos" é uma lista própria, com responsável, versão e quantas tarefas estão abertas — sem MRR, ARR nem churn.
+• <b>Dá para cadastrar sistema pela tela</b>, sem seeder nem acesso ao banco.
+• <b>Campo de marca no cadastro.</b> PNG, WEBP ou JPG até 512 KB, e o ícone passa a identificar o sistema no card de tarefa e nas listas.
+• <b>A tarefa pode apontar para um sistema interno.</b> O select e o filtro do quadro oferecem as duas famílias, separadas.
+
+<b>⚡ Melhorias</b>
+
+• <b>Produtos ganhou "Licenças ativas" e "Preço médio por licença".</b> O preço médio divide o MRR só pelas licenças de produto ativo.
+• <b>Nome, versão e responsável do sistema passaram a ter campo.</b> Os três só se preenchiam no banco.
+• <b>Sistema interno fica fora de tudo que fala de dinheiro:</b> faturamento, ranking do Comercial, ticket médio e os selects de cliente, lead e cobrança.
+• <b>Produto que já tem cliente ou tier não vira interno.</b> A troca é recusada com a explicação na tela.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

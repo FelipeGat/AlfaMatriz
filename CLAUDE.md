@@ -158,5 +158,15 @@ de outros sistemas.
 - **Só Telegram.** O `CLAUDE.md` do AlfaControl manda mandar para o Discord em seguida — aqui não.
   Decisão do dono do produto em 12/08/2026: não enviar e não oferecer.
 - **Só depois de o texto ser aprovado**, como o próprio AlfaControl já manda.
-- O `curl` para `api.telegram.org` é recusado pelo classificador do modo automático. Monte o script e
-  peça para rodar com `! bash <script>` — não fique tentando variação de comando.
+- **Use `deploy/publicar-changelog.sh`. Não remonte o `curl`.** Escreva a mensagem em
+  `deploy/changelog/AAAA-MM-DD-assunto.txt` — HTML do Telegram, partes separadas por uma linha com
+  apenas `---` — e rode `deploy/publicar-changelog.sh --conferir <arquivo>` para ver sem enviar, ou
+  sem o `--conferir` para enviar. O script já confere o limite de 4096 ANTES de mandar qualquer
+  parte, confere `"ok":true` no corpo da resposta, e extrai o token do AlfaControl na hora de rodar,
+  em vez de guardá-lo. Remontar o `curl` significa reescolher o chat, reescrever a checagem de erro e
+  redescobrir o limite — três coisas que só se erram uma vez em produção.
+- **O envio sai direto daqui.** Esta seção já mandou pedir `! bash <script>` ao dono do produto,
+  dizendo que o classificador recusava. Em 13/08/2026 o envio saiu sem recusa nenhuma, e a orientação
+  antiga custava uma volta inteira: eu entregava o comando e ele rodava o que eu podia rodar. Se a
+  recusa aparecer um dia, o `! bash deploy/publicar-changelog.sh <arquivo>` continua valendo como
+  saída — mas tente primeiro.
