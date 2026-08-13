@@ -1,5 +1,37 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 13/08/2026 — A tarefa passa a ter número, e é por ele que se acha
+
+Para pedir uma tarefa a alguém era preciso descrever a tarefa inteira — "aquela
+do boleto duplicado, do AlfaGym". O número existia desde sempre no endereço da
+tarefa, mas não aparecia em lugar nenhum que se pudesse ler no quadro nem
+digitar na busca.
+
+### Novidades
+
+- **Todo card mostra o número da tarefa**, antes do título. O mesmo número abre
+  o cabeçalho do modal (`#128 · Em revisão · há 3h`) e a linha do histórico, que
+  é onde se procura o que já saiu do quadro.
+- **A busca acha pelo número**, com ou sem o "#" — quem copia do card leva o
+  símbolo junto, quem ouviu o número no telefone digita só o número. Ela
+  continua varrendo o texto ao mesmo tempo: "128" traz a tarefa 128 e também as
+  que têm 128 escrito no título, no resumo ou nos comentários.
+
+> É o número que a tarefa sempre teve — o mesmo do endereço dela na barra do
+> navegador —, e não um contador novo. Dois números para a mesma tarefa
+> divergiriam um dia, e ninguém saberia qual deles o outro lado quis dizer. Sem
+> zeros à esquerda, que fixam uma largura que a milésima tarefa estoura.
+
+### Correções
+
+- **O resumo digitado no modal não era salvo.** O campo existe no formulário
+  desde que o card passou a mostrá-lo embaixo do título, mas a rota descartava o
+  que ele mandava: o texto era digitado, enviado e recusado em silêncio, e o
+  modal reabria vazio. Agora grava. Apagar o texto de propósito apaga mesmo, e
+  os envios que não têm o campo — a criação rápida no pé da coluna e o
+  formulário de quem não faz triagem — mantêm o resumo que já estava lá, em vez
+  de zerá-lo de passagem.
+
 ## AlfaMatriz — 12/08/2026 — Cadastrar quem usa o painel deixou de exigir SSH
 
 Criar uma conta, desativar quem saiu ou corrigir um perfil errado passava por um

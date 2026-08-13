@@ -1,0 +1,22 @@
+<b>📋 AlfaMatriz — Changelog 13/08/2026</b>
+<i>A tarefa passa a ter número, e é por ele que se acha</i>
+
+Para pedir uma tarefa a alguém era preciso descrever a tarefa inteira — “aquela do boleto duplicado, do AlfaGym”. O número existia desde sempre no endereço da tarefa, mas não aparecia em lugar nenhum que se pudesse ler no quadro nem digitar na busca.
+
+<b>🆕 Todo card mostra o número da tarefa</b>
+
+Ele vem antes do título, no card. O mesmo número abre o cabeçalho da tarefa quando ela é aberta (<code>#128 · Em revisão · há 3h</code>) e a linha do histórico, que é onde se procura o que já saiu do quadro.
+
+É o número que a tarefa sempre teve — o mesmo do endereço dela na barra do navegador —, e não um contador novo. Dois números para a mesma tarefa divergiriam um dia, e ninguém saberia qual deles o outro lado quis dizer.
+
+<b>🔎 A busca acha pelo número</b>
+
+Com ou sem o “#”: quem copia do card leva o símbolo junto, quem ouviu o número no telefone digita só o número.
+
+Ela continua varrendo o texto ao mesmo tempo — “128” traz a tarefa 128 e também as que têm 128 escrito no título, no resumo ou nos comentários.
+
+<b>🔧 Correções</b>
+
+• <b>O resumo digitado na tarefa não era salvo.</b> O campo existe no formulário desde que o card passou a mostrá-lo embaixo do título, mas o sistema descartava o que ele mandava: o texto era digitado, enviado e recusado em silêncio, e a tarefa reabria com o resumo vazio. Agora grava. Apagar o texto de propósito apaga mesmo, e a criação rápida no pé da coluna — que manda só o título — mantém o resumo que já estava lá, em vez de zerá-lo de passagem.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
