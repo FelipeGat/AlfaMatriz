@@ -11,6 +11,11 @@
      *
      * O formulário de correção vai vazio de propósito: o `textarea` que ele
      * envia está lá na lista, junto do texto que se está corrigindo.
+     *
+     * `data-parcial` nos três: perguntar, corrigir e apagar acontecem com o
+     * modal aberto e no meio de uma leitura, e recarregar ali descartaria o
+     * comentário que ainda está sendo escrito no campo de baixo. Ver
+     * `trocarPedacos`, no `index`.
      */
 @endphp
 
@@ -21,7 +26,11 @@
     no clique.
 --}}
 @unless (in_array($tarefa->status, \App\Models\Tarefa::STATUS_TERMINAIS, true))
-    <form id="perguntar-{{ $tarefa->id }}" method="POST"
+    {{-- `data-limpa` esvazia o campo de comentário depois do envio. Perguntar
+         PUBLICA o que está escrito nele, e sem recarga o texto continuaria na
+         tela — o Salvar seguinte publicaria a mesma frase uma segunda vez. --}}
+    <form id="perguntar-{{ $tarefa->id }}" method="POST" data-parcial
+          data-limpa="#comentario-{{ $tarefa->id }}"
           action="{{ route('tarefas.conversar', $tarefa) }}" class="hidden">
         @csrf
         <input type="hidden" id="pergunta-corpo-{{ $tarefa->id }}" name="corpo" value="">
@@ -30,13 +39,13 @@
 
 @foreach ($tarefa->comentarios as $comentario)
     @if ($comentario->autor_id === auth()->id())
-        <form id="editar-comentario-{{ $comentario->id }}" method="POST"
+        <form id="editar-comentario-{{ $comentario->id }}" method="POST" data-parcial
               action="{{ route('tarefas.comentarios.update', $comentario) }}" class="hidden">
             @csrf
             @method('PUT')
         </form>
 
-        <form id="apagar-comentario-{{ $comentario->id }}" method="POST"
+        <form id="apagar-comentario-{{ $comentario->id }}" method="POST" data-parcial
               action="{{ route('tarefas.comentarios.destroy', $comentario) }}" class="hidden">
             @csrf
             @method('DELETE')

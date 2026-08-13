@@ -41,7 +41,16 @@
 <form method="POST"
       action="{{ $edicao ? route('tarefas.update', $tarefa) : route('tarefas.store') }}"
       class="flex flex-col"
-      x-data="{ enviando: false, confirmandoExclusao: false, travando: false }"
+      {{-- `bloqueada` é estado de tela, não do servidor, porque travar e
+           destravar acontecem com este modal aberto e sem recarga: quem o
+           atualiza depois da ação é o `trocarPedacos` do quadro. Nasce do PHP
+           para a primeira pintura estar certa. --}}
+      x-data="{
+          enviando: false,
+          confirmandoExclusao: false,
+          travando: false,
+          bloqueada: {{ $edicao && $tarefa->estaBloqueada() ? 'true' : 'false' }},
+      }"
       @submit="enviando = true">
     @csrf
     @if ($edicao)
@@ -86,81 +95,19 @@
 
     <div class="px-4 py-4 flex flex-col gap-3.5">
         {{--
-            Os três banners, logo abaixo do cabeçalho, na ordem do card
-            (pergunta, retorno, bloqueio).
+            Os três banners — pergunta, retorno, bloqueio —, que agora moram em
+            `_avisos-da-tarefa`: eles mudam com o modal ABERTO (perguntar,
+            responder, travar, destravar), e é este bloco que o servidor manda
+            redesenhado para ser trocado no lugar sem recarregar a tela.
 
-            Eles respondem "por que esta tarefa está parada" antes de qualquer
-            campo. Enterrados no meio do formulário, seriam lidos depois de a
-            pessoa já ter decidido o que veio fazer.
+            `display: contents` não é enfeite. O pai é um flex com `gap-3.5`, e
+            um invólucro comum contaria como filho mesmo vazio — a tarefa sem
+            nenhum dos três avisos ganharia 14px de vão antes do título, um
+            espaço que ninguém pediu e que muda conforme o dia.
         --}}
-        @if ($edicao && $tarefa->temPergunta())
-            <div class="px-[11px] py-[9px] rounded-[5px] border border-l-2"
-                 style="background: rgb(var(--brand) / 0.085); border-color: rgb(var(--brand) / 0.4);
-                        border-left-color: rgb(var(--brand))">
-                <div class="flex items-center gap-2.5">
-                    <span class="h-3.5 w-3.5 shrink-0 text-brand-text"><x-nav-icon name="duvida" :peso="1.8" /></span>
-                    <span class="flex-1 min-w-0 text-[12.5px] font-medium text-ink">
-                        Aguardando resposta de {{ $tarefa->perguntaPara?->name ?? 'alguém' }}
-                    </span>
-                    <span class="shrink-0 font-mono text-[10.5px] whitespace-nowrap text-brand-text">
-                        {{ max(1, $tarefa->rodadas) }}ª rodada
-                    </span>
-                </div>
-
-                @if ($tarefa->conversaEmpacada())
-                    <p class="mt-1.5 text-[11.5px] leading-[1.45] text-ink-dim">
-                        Três idas e voltas sem resolver costuma querer dizer que o PR está grande demais ou que
-                        a tarefa foi mal especificada — considere devolver para correção.
-                    </p>
-                @endif
-            </div>
-        @endif
-
-        {{--
-            O retorno faltava aqui, e era o único dos três que só existia no
-            card. Lá o motivo é clamp de duas linhas — quem abria a tarefa para
-            LER o que reprovou encontrava o formulário sem nenhuma menção à
-            devolução, e a única cópia inteira do texto estava no `title` da
-            tarja. Por isso este não tem clamp: é este o lugar onde o motivo
-            aparece por extenso, com as quebras de linha que quem escreveu deu.
-        --}}
-        @if ($edicao && $tarefa->temRetorno())
-            <div class="px-[11px] py-[9px] rounded-[5px] border border-l-2"
-                 style="background: var(--warn-tint); border-color: var(--warn-line);
-                        border-left-color: rgb(var(--warn))">
-                <div class="flex items-center gap-2.5">
-                    <span class="h-3.5 w-3.5 shrink-0" style="color: rgb(var(--warn))">
-                        <x-nav-icon name="arrow-uturn-left" :peso="1.8" />
-                    </span>
-                    <span class="flex-1 min-w-0 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em]"
-                          style="color: rgb(var(--warn))">{{ $tarefa->rotuloDoRetorno() }}</span>
-                </div>
-
-                @if (filled($tarefa->retorno_motivo))
-                    <p class="mt-1.5 text-[12.5px] leading-[1.45] text-ink whitespace-pre-wrap">{{ $tarefa->retorno_motivo }}</p>
-                @endif
-            </div>
-        @endif
-
-        @if ($edicao && $tarefa->estaBloqueada())
-            <div class="flex items-center gap-2.5 px-[11px] py-[9px] rounded-[5px] border border-l-2"
-                 style="background: var(--warn-tint); border-color: var(--warn-line);
-                        border-left-color: rgb(var(--warn))">
-                <span class="h-3.5 w-3.5 shrink-0" style="color: rgb(var(--warn))">
-                    <x-nav-icon name="cadeado-fechado" :peso="1.8" />
-                </span>
-                <span class="flex-1 min-w-0 text-[12.5px] text-ink">{{ $tarefa->bloqueio_motivo }}</span>
-                <span class="shrink-0 font-mono text-[10.5px] font-semibold whitespace-nowrap"
-                      style="color: rgb(var(--warn))">{{ $tarefa->bloqueadaHa() }}</span>
-
-                {{-- Destravar é envio próprio, e o formulário da tarefa não pode
-                     aninhar outro: o `form` aponta para fora, como o corrigir e
-                     o apagar da conversa. --}}
-                <button type="submit" form="bloquear-tarefa-{{ $tarefa->id }}"
-                        class="shrink-0 h-6 px-2.5 rounded-tile border text-[11.5px] font-semibold transition hover:bg-chip"
-                        style="border-color: var(--warn-line); color: rgb(var(--warn))">
-                    Destravar
-                </button>
+        @if ($edicao)
+            <div class="contents" data-pedaco="avisos-{{ $tarefa->id }}">
+                @include('tarefas._avisos-da-tarefa', ['tarefa' => $tarefa])
             </div>
         @endif
 
@@ -284,10 +231,24 @@
             Depois da conversa, a imagem viraria rodapé de uma lista que já
             rola por dentro.
         --}}
+        {{-- Checklist e conversa vêm embrulhados num `data-pedaco`: são as duas
+             regiões que o servidor redesenha e troca no lugar depois de marcar
+             um item, corrigir um comentário ou passar a vez. O invólucro é
+             `display: contents` pelo mesmo motivo dos avisos — o pai é um flex
+             com vão, e um filho a mais mudaria o espaçamento.
+
+             A galeria fica de fora porque já se atualiza sozinha: ela mantém as
+             imagens em estado do Alpine e envia por `fetch` desde a US-064. --}}
         @if ($edicao)
-            @include('tarefas._checklist', ['tarefa' => $tarefa])
+            <div class="contents" data-pedaco="checklist-{{ $tarefa->id }}">
+                @include('tarefas._checklist', ['tarefa' => $tarefa])
+            </div>
+
             @include('tarefas._imagens', ['tarefa' => $tarefa])
-            @include('tarefas._comentarios', ['tarefa' => $tarefa])
+
+            <div class="contents" data-pedaco="conversa-{{ $tarefa->id }}">
+                @include('tarefas._comentarios', ['tarefa' => $tarefa])
+            </div>
         @endif
     </div>
 
@@ -301,8 +262,12 @@
         {{-- Travar exige o motivo, então o botão do rodapé revela o campo em vez
              de enviar: um POST sem texto seria recusado pelo motor do fluxo com
              uma frase que a pessoa não pediu. --}}
-        @if ($edicao && ! $tarefa->estaBloqueada())
-            <div x-show="travando" x-cloak class="flex items-end gap-2">
+        {{-- `! bloqueada` no Alpine, e não um `@if` do Blade: travar e destravar
+             acontecem sem recarregar a página, e uma condição resolvida no
+             servidor deixaria o rodapé oferecendo "Bloquear tarefa" numa tarefa
+             que acabou de travar. O estado inicial continua vindo do PHP. --}}
+        @if ($edicao)
+            <div x-show="travando && ! bloqueada" x-cloak class="flex items-end gap-2">
                 <div class="flex-1 min-w-0">
                     <label for="bloqueio-{{ $sufixo }}" class="block mb-[5px] text-[12px] font-medium text-ink-dim">
                         O que está travando?
@@ -322,19 +287,29 @@
 
         <div class="flex flex-wrap items-center gap-2.5">
             @if ($edicao)
-                @if ($tarefa->estaBloqueada())
-                    <button type="submit" form="bloquear-tarefa-{{ $tarefa->id }}"
-                            class="h-[34px] px-3 rounded-control border text-[12.5px] font-semibold whitespace-nowrap transition hover:bg-chip"
-                            style="border-color: var(--warn-line); color: rgb(var(--warn))">
-                        Destravar tarefa
-                    </button>
-                @else
-                    <button type="button" @click="travando = ! travando"
-                            class="h-[34px] px-3 rounded-control border text-[12.5px] font-semibold whitespace-nowrap transition hover:bg-chip"
-                            style="border-color: var(--warn-line); color: rgb(var(--warn))">
-                        Marcar como bloqueada
-                    </button>
-                @endif
+                {{-- Os dois botões existem no HTML e o Alpine mostra um; o que
+                     começa escondido leva o `display:none` no MESMO `style` das
+                     cores — atributo repetido perde a segunda cópia, e o botão
+                     sairia sem moldura nem tom de aviso.
+
+                     Assim o rodapé acompanha um travamento que aconteceu sem
+                     recarga, e ainda assim nasce certo na primeira pintura:
+                     `x-cloak` nos dois esconderia ambos enquanto o Alpine não
+                     subisse, e rodapé sem botão nenhum é pior que um botão que
+                     chega meio quadro depois. --}}
+                <button type="submit" form="bloquear-tarefa-{{ $tarefa->id }}" x-show="bloqueada"
+                        class="h-[34px] px-3 rounded-control border text-[12.5px] font-semibold whitespace-nowrap transition hover:bg-chip"
+                        style="border-color: var(--warn-line); color: rgb(var(--warn));
+                               @if (! $tarefa->estaBloqueada()) display: none @endif">
+                    Destravar tarefa
+                </button>
+
+                <button type="button" @click="travando = ! travando" x-show="! bloqueada"
+                        class="h-[34px] px-3 rounded-control border text-[12.5px] font-semibold whitespace-nowrap transition hover:bg-chip"
+                        style="border-color: var(--warn-line); color: rgb(var(--warn));
+                               @if ($tarefa->estaBloqueada()) display: none @endif">
+                    Marcar como bloqueada
+                </button>
 
                 {{--
                     Excluir em DOIS passos, e o segundo se anuncia no próprio

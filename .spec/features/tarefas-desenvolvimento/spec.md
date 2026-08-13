@@ -801,6 +801,25 @@ conversa empacada (três idas e voltas, AC-190) que essa captura evita.
 - **Então** recebe 403, como no resto do quadro (AC-095): sem isso o backlog
   interno vazaria por uma porta lateral, agora levando capturas de tela junto
 
+#### AC-229 — Mexer na tarefa aberta não recarrega a tela
+
+- **Dado** que estou com uma tarefa aberta e um comentário escrito, mas ainda
+  não publicado, no campo de baixo
+- **Quando** marco um item do checklist, corrijo um comentário já publicado,
+  passo a vez ao outro lado ou travo a tarefa
+- **Então** a página não recarrega: o que escrevi continua escrito, a rolagem
+  do quadro e da coluna fica onde estava, e o cursor não sai do campo. Voltam
+  do servidor o quadro redesenhado — porque travar muda o contador de WIP da
+  coluna e os chips do cabeçalho, não só o card — e só as regiões do modal que
+  aquela ação mexeu. O formulário da tarefa não volta em região nenhuma, e é
+  essa ausência que preserva o que ainda não foi salvo
+- **E** sem `Accept: application/json` a rota responde o redirect de antes, com
+  `tarefa-aberta` reabrindo o modal: é o caminho do `<form>` puro, que é como
+  estas ações continuam funcionando se o `fetch` falhar
+- **E** mover card, criar tarefa, salvar o formulário e excluir continuam
+  recarregando — nessas quatro, ou a tarefa deixa de estar onde estava, ou o
+  modal tinha mesmo que fechar
+
 ## Fora de escopo
 
 > O handoff de design de 11/08/2026 foi entregue por inteiro. O que segue

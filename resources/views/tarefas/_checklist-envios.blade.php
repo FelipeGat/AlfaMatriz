@@ -8,10 +8,20 @@
      *
      * Os de item vão vazios de propósito — a caixa de marcar e o campo de texto
      * que eles enviam estão lá na lista, junto do item que se está mexendo.
+     *
+     * `data-parcial` marca quem NÃO recarrega a página: o quadro intercepta o
+     * envio, manda por `fetch` e troca as regiões que voltaram (ver
+     * `trocarPedacos`, no `index`). Sem a marca, o formulário é enviado pelo
+     * navegador como sempre foi — é o que acontece se o JavaScript falhar, e é
+     * o caminho que a suíte exercita.
+     *
+     * O excluir da tarefa fica de fora de propósito: ele não tem para onde
+     * voltar. Apagada a tarefa, o modal não deve continuar aberto e o quadro
+     * inteiro é outro — recarregar ali é a resposta certa.
      */
 @endphp
 
-<form id="novo-item-{{ $tarefa->id }}" method="POST"
+<form id="novo-item-{{ $tarefa->id }}" method="POST" data-parcial
       action="{{ route('tarefas.itens.store', $tarefa) }}" class="hidden">
     @csrf
 </form>
@@ -23,7 +33,7 @@
     {{-- Bloquear e destravar: a mesma rota nos dois sentidos, como o botão do
          card. Fora do formulário da tarefa porque aninhar é HTML inválido — o
          textarea do rodapé aponta para cá pelo atributo `form`. --}}
-    <form id="bloquear-tarefa-{{ $tarefa->id }}" method="POST"
+    <form id="bloquear-tarefa-{{ $tarefa->id }}" method="POST" data-parcial
           action="{{ route('tarefas.bloquear', $tarefa) }}" class="hidden">
         @csrf
     </form>
@@ -35,19 +45,19 @@
     </form>
 @endif
 
-<form id="ordenar-checklist-{{ $tarefa->id }}" method="POST"
+<form id="ordenar-checklist-{{ $tarefa->id }}" method="POST" data-parcial
       action="{{ route('tarefas.itens.ordenar', $tarefa) }}" class="hidden">
     @csrf
 </form>
 
 @foreach ($tarefa->itens as $item)
-    <form id="item-{{ $item->id }}" method="POST"
+    <form id="item-{{ $item->id }}" method="POST" data-parcial
           action="{{ route('tarefas.itens.update', $item) }}" class="hidden">
         @csrf
         @method('PUT')
     </form>
 
-    <form id="apagar-item-{{ $item->id }}" method="POST"
+    <form id="apagar-item-{{ $item->id }}" method="POST" data-parcial
           action="{{ route('tarefas.itens.destroy', $item) }}" class="hidden">
         @csrf
         @method('DELETE')

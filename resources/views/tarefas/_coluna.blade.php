@@ -61,7 +61,11 @@
         @include('tarefas._coluna-cabecalho', ['etapa' => $etapa])
     @endif
 
-    <div data-cards="{{ $alvo }}" x-show="! recolhidas.includes('{{ $etapa['chave'] }}')"
+    {{-- A coluna rola por dentro, e o quadro é redesenhado inteiro a cada ação
+         parcial: sem a chave de rolagem, a lista voltaria ao topo e o card em
+         que se estava mexendo sairia da vista. --}}
+    <div data-cards="{{ $alvo }}" data-rolagem="cards:{{ $alvo }}"
+         x-show="! recolhidas.includes('{{ $etapa['chave'] }}')"
          class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-[10px] space-y-[10px]">
         @forelse ($cards as $tarefa)
             @php

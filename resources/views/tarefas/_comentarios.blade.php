@@ -67,7 +67,8 @@
     {{-- Altura limitada com rolagem própria: uma tarefa velha pode ter trinta
          comentários, e o campo de escrever não pode ir parar fora da tela por
          causa disso. --}}
-    <div class="mt-3 space-y-2 max-h-[240px] overflow-y-auto overscroll-y-contain">
+    <div class="mt-3 space-y-2 max-h-[240px] overflow-y-auto overscroll-y-contain"
+         data-rolagem="conversa-{{ $tarefa->id }}">
         @forelse ($comentarios as $comentario)
             @php $doAutor = ! $somenteLeitura && $comentario->autor_id === auth()->id(); @endphp
 
@@ -167,7 +168,11 @@
 
             {{-- O campo não formata nada: o que se digita é o que fica gravado
                  e o que aparece na tela, quebras de linha inclusive. --}}
-            <textarea id="comentario-{{ $tarefa->id }}" name="comentario" rows="3" maxlength="4000"
+            {{-- `data-preserva` porque este campo mora DENTRO da conversa, que é
+                 redesenhada quando se corrige ou apaga um comentário publicado:
+                 sem ele, consertar a vírgula de uma frase antiga apagaria o
+                 parágrafo que ainda estava sendo escrito aqui. --}}
+            <textarea id="comentario-{{ $tarefa->id }}" name="comentario" rows="3" maxlength="4000" data-preserva
                       placeholder="O que mais precisa ser dito sobre esta tarefa…"
                       class="mt-1 block w-full text-[13px] rounded-control bg-input border-line text-ink"></textarea>
 

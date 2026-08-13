@@ -208,7 +208,12 @@
                         Responder
                     </button>
 
-                    <form x-show="respondendo" x-cloak method="POST"
+                    {{-- `data-parcial`: responder daqui redesenha o quadro no
+                         lugar, sem recarga. É o que mantém a rolagem da coluna
+                         onde estava — a tarja fica a meia tela de altura, e
+                         voltar ao topo depois de responder obrigaria a
+                         reencontrar o card a cada resposta. --}}
+                    <form x-show="respondendo" x-cloak method="POST" data-parcial
                           action="{{ route('tarefas.conversar', $tarefa) }}" class="mt-[7px]">
                         @csrf
                         <textarea x-ref="resposta" name="corpo" rows="2" required placeholder="Sua resposta…"
@@ -269,7 +274,7 @@
                 <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] truncate"
                       style="color: rgb(var(--warn))">{{ $tarefa->rotuloDoBloqueio() }}</span>
 
-                <form method="POST" action="{{ route('tarefas.bloquear', $tarefa) }}" @click.stop>
+                <form method="POST" data-parcial action="{{ route('tarefas.bloquear', $tarefa) }}" @click.stop>
                     @csrf
                     <button type="submit" title="Destravar tarefa" aria-label="Destravar tarefa"
                             class="shrink-0 h-5 w-5 rounded-badge border flex items-center justify-center transition hover:bg-chip"
@@ -417,7 +422,14 @@
         tarjas: o painel é uma notícia do card, não uma janela por cima dele.
     --}}
     <template x-if="pendente && pendente.id === {{ $tarefa->id }}">
+        {{-- `data-parcial` só no bloqueio. Travar não tira a tarefa da etapa —
+             quem travou continua olhando para o mesmo card, e recarregar ali
+             custa a rolagem da coluna. Os outros destinos MOVEM a tarefa: o
+             card sai de onde estava, e a recarga é o que confirma o movimento
+             de corpo inteiro, com a guarda de concorrência do `de_status`
+             respondendo pelo caminho de sempre. --}}
         <form method="POST" :action="pendente.acao" @submit="enviandoPendente = true" @click.stop
+              :data-parcial="pendente.destino === 'bloqueio' ? '' : null"
               class="mt-[10px] p-[10px] rounded-[5px] border border-l-2"
               :style="`background: rgb(var(--${pendente.cor}) / calc(var(--tint-alpha) / 2));
                        border-color: rgb(var(--${pendente.cor}) / 0.4);

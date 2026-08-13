@@ -18,10 +18,49 @@ use Illuminate\Support\Facades\Storage;
 
 class TarefaController extends Controller
 {
+    /**
+     * As regiões do modal que cada ação redesenha, por `data-pedaco`.
+     *
+     * A lista é curta de propósito. Trocar uma região é redesenhá-la por baixo
+     * de quem talvez esteja escrevendo nela, então cada ação devolve só o que
+     * ela mesma mexeu: marcar um item do checklist não toca na conversa, e é
+     * isso que deixa uma correção de comentário em curso sobreviver ao clique.
+     *
+     * `avisos` são os três banners do topo (pergunta, retorno, bloqueio), que
+     * mudam sem a tarefa sair da etapa; `-envios` são os formulários escondidos
+     * que a lista alcança pelo atributo `form`, e que precisam acompanhar quem
+     * nasce e quem some.
+     */
+    private const PEDACOS_DO_CHECKLIST = ['checklist', 'checklist-envios'];
+
+    private const PEDACOS_DA_CONVERSA = ['conversa', 'conversa-envios'];
+
+    private const PEDACOS_DA_VEZ = ['avisos', 'conversa', 'conversa-envios'];
+
+    private const PEDACOS_DO_BLOQUEIO = ['avisos'];
+
+
     public function index(Request $request)
     {
         $this->bloquearVisaoDaMatriz();
 
+        return view('tarefas.index', $this->dadosDoQuadro($request));
+    }
+
+    /**
+     * Tudo que o quadro precisa para ser desenhado, do cabeçalho aos cards.
+     *
+     * Está fora do `index` porque o quadro é redesenhado em DOIS momentos: ao
+     * abrir a tela e a cada ação parcial, quando `_quadro` volta sozinho no
+     * JSON para ser trocado sem recarregar a página (ver `respostaParcial`).
+     * Deixar a montagem dentro do `index` obrigaria a segunda a recalcular os
+     * mesmos números por conta — e a divergir do quadro de verdade no primeiro
+     * contador que mudasse de regra.
+     *
+     * @return array<string, mixed>
+     */
+    private function dadosDoQuadro(Request $request): array
+    {
         // O quadro é o trabalho EM CURSO: concluída e cancelada não têm coluna
         // (AC-082, AC-096). Sete colunas não cabiam na tela e as duas terminais
         // eram as de menor valor no dia a dia — encerrou, sai do quadro e passa
@@ -101,10 +140,10 @@ class TarefaController extends Controller
 
         $chips = $this->chipsDoQuadro($emCurso, $filtros, $esperandoVoce);
 
-        return view('tarefas.index', compact(
+        return compact(
             'tarefas', 'colunas', 'etapas', 'filtros', 'totalNoQuadro', 'totalBloqueadas',
             'esperandoVoce', 'chips', 'raias',
-        ) + $this->listasDeFiltro());
+        ) + $this->listasDeFiltro();
     }
 
     /**
@@ -592,11 +631,18 @@ class TarefaController extends Controller
                 ? $fluxo->destravar($tarefa)
                 : $fluxo->bloquear($tarefa, $data['motivo'] ?? null);
         } catch (\RuntimeException $e) {
-            return back()->with('erro', $e->getMessage());
+            return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DO_BLOQUEIO, $e->getMessage(), 'critico');
         }
 
-        return redirect()->back(fallback: route('tarefas.index'))
-            ->with('status', $tarefa->fresh()->estaBloqueada() ? 'Tarefa bloqueada.' : 'Tarefa destravada.');
+        // Travar não move a tarefa, então quem travou continua olhando para
+        // ela: este é o único caminho de bloqueio, valha ele o botão da tarja
+        // no card ou o do rodapé do modal.
+        return $this->voltarParaATarefa(
+            $request,
+            $tarefa->id,
+            self::PEDACOS_DO_BLOQUEIO,
+            $tarefa->fresh()->estaBloqueada() ? 'Tarefa bloqueada.' : 'Tarefa destravada.',
+        );
     }
 
     /**
@@ -629,10 +675,14 @@ class TarefaController extends Controller
                 ? $fluxo->responder($tarefa, $usuario, $data['corpo'] ?? null)
                 : $fluxo->perguntar($tarefa, $usuario, $data['corpo'] ?? null, $data['pergunta_para_id'] ?? null);
         } catch (\RuntimeException $e) {
-            return back()->with('erro', $e->getMessage());
+            // A recusa também volta pelo caminho parcial: com o modal aberto e
+            // sem recarga, um `back()` cru trocaria a tela inteira por causa de
+            // um erro — e a frase que explica a recusa é justamente o que a
+            // pessoa precisa ler sem perder de vista onde estava.
+            return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DA_VEZ, $e->getMessage(), 'critico');
         }
 
-        return $this->voltarParaATarefa($tarefa->id);
+        return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DA_VEZ);
     }
 
     /**
@@ -707,7 +757,7 @@ class TarefaController extends Controller
 
         $tarefa->itens()->create(['texto' => trim($data['texto'])]);
 
-        return $this->voltarParaATarefa($tarefa->id);
+        return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DO_CHECKLIST);
     }
 
     /**
@@ -745,10 +795,10 @@ class TarefaController extends Controller
             $item->update($mudancas);
         }
 
-        return $this->voltarParaATarefa($item->tarefa_id);
+        return $this->voltarParaATarefa($request, $item->tarefa_id, self::PEDACOS_DO_CHECKLIST);
     }
 
-    public function excluirItem(TarefaItem $item)
+    public function excluirItem(Request $request, TarefaItem $item)
     {
         $this->bloquearVisaoDaMatriz();
 
@@ -756,7 +806,7 @@ class TarefaController extends Controller
 
         $item->delete();
 
-        return $this->voltarParaATarefa($tarefaId);
+        return $this->voltarParaATarefa($request, $tarefaId, self::PEDACOS_DO_CHECKLIST);
     }
 
     /**
@@ -787,20 +837,103 @@ class TarefaController extends Controller
             }
         }
 
-        return $this->voltarParaATarefa($tarefa->id);
+        return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DO_CHECKLIST);
     }
 
     /**
-     * Volta para a tela de onde veio, com a tarefa reaberta.
+     * O retorno de quem mexeu na tarefa sem sair de dentro dela.
      *
-     * Todo mexer no checklist acontece dentro do modal da tarefa, e voltar sem
-     * o `tarefa-aberta` fecharia o modal a cada item marcado — a lista de
-     * conferência viraria uma sequência de reaberturas.
+     * Dois caminhos para o mesmo fim: com JavaScript no ar, a tela nem chega a
+     * recarregar (`respostaParcial`); sem ele, volta o redirect de sempre, e
+     * `tarefa-aberta` reabre o modal — senão a lista de conferência viraria uma
+     * sequência de reaberturas, um por item marcado.
+     *
+     * O segundo caminho não é herança a ser removida: é o que responde ao
+     * formulário puro, que é como estas ações continuam funcionando quando o
+     * `fetch` falha e o navegador envia o `<form>` por conta.
      */
-    private function voltarParaATarefa(int $tarefaId)
+    private function voltarParaATarefa(Request $request, int $tarefaId, array $regioes = [], ?string $aviso = null, string $tom = 'bom')
     {
+        if ($request->expectsJson()) {
+            return $this->respostaParcial($request, Tarefa::find($tarefaId), $regioes, $aviso, $tom);
+        }
+
         return redirect()->back(fallback: route('tarefas.index'))
+            ->with($tom === 'bom' ? 'status' : 'erro', $aviso)
             ->with('tarefa-aberta', $tarefaId);
+    }
+
+    /**
+     * A resposta de uma ação feita DENTRO do modal da tarefa, sem recarregar.
+     *
+     * O modal é onde se lê a tarefa e se escreve sobre ela, e recarregar a
+     * página ali cobra caro: o texto ainda não publicado do campo de comentário
+     * some, a rolagem do quadro volta ao começo e a lista de conferência vira
+     * uma sequência de reaberturas. O `tarefa-aberta` da sessão remendava o
+     * último sintoma reabrindo o modal — mas reabrir não é não ter fechado, e
+     * os outros dois continuavam.
+     *
+     * Voltam DOIS grupos de HTML, e é preciso os dois:
+     *
+     * - `quadro` é o quadro inteiro redesenhado. Não é exagero: marcar um item
+     *   muda o "3/5" do card, e travar uma tarefa muda o contador de WIP da
+     *   coluna e os chips do cabeçalho, porque vaga ocupada por tarefa travada
+     *   não conta como trabalho em curso. Trocar só o card deixaria esses
+     *   números mentindo — e número errado no cabeçalho é pior que recarregar.
+     * - `pedacos` são as regiões do modal aberto, uma por `data-pedaco`, e vêm
+     *   só as que a ação MEXEU. A economia não é de bytes: cada região trocada
+     *   é um pedaço de tela redesenhado por baixo de quem talvez esteja
+     *   escrevendo nele. Marcar um item do checklist não devolve a conversa,
+     *   justamente para não apagar a correção de comentário em curso.
+     *
+     *   O formulário da tarefa não volta em região nenhuma, e é essa ausência
+     *   que preserva o título editado e o comentário ainda não publicado.
+     *
+     * Quem não manda `Accept: application/json` continua recebendo o redirect
+     * de sempre — é o caminho de quem está sem JavaScript, e é o que a suíte
+     * exercita.
+     */
+    private function respostaParcial(Request $request, ?Tarefa $tarefa, array $regioes = [], ?string $aviso = null, string $tom = 'bom')
+    {
+        $pedacos = [];
+
+        if ($tarefa) {
+            // Recarregado do banco com as relações que as partials leem: o
+            // model que chegou pelo route binding traz o estado de ANTES da
+            // ação, e a conversa recém-publicada não estaria nele.
+            $tarefa = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'imagens.autor'])
+                ->find($tarefa->id);
+        }
+
+        if ($tarefa) {
+            $usuarios = $this->listasDeFiltro()['usuarios'];
+
+            $partials = [
+                'avisos' => 'tarefas._avisos-da-tarefa',
+                'checklist' => 'tarefas._checklist',
+                'checklist-envios' => 'tarefas._checklist-envios',
+                'conversa' => 'tarefas._comentarios',
+                'conversa-envios' => 'tarefas._comentarios-envios',
+            ];
+
+            foreach ($regioes as $regiao) {
+                $pedacos["{$regiao}-{$tarefa->id}"] = view(
+                    $partials[$regiao],
+                    compact('tarefa', 'usuarios'),
+                )->render();
+            }
+        }
+
+        return response()->json([
+            'quadro' => view('tarefas._quadro', $this->dadosDoQuadro($request))->render(),
+            'pedacos' => $pedacos,
+            'tarefa' => $tarefa?->id,
+            // O bloqueio decide dois controles do rodapé do modal, que são
+            // Alpine e não voltam em `pedacos`: o campo "o que está travando" e
+            // o botão que alterna entre travar e destravar.
+            'bloqueada' => (bool) $tarefa?->estaBloqueada(),
+            'aviso' => $aviso ? view('tarefas._aviso', ['texto' => $aviso, 'tom' => $tom])->render() : null,
+        ]);
     }
 
     /**
@@ -956,9 +1089,7 @@ class TarefaController extends Controller
             'editado_em' => now(),
         ]);
 
-        return redirect()->back(fallback: route('tarefas.index'))
-            ->with('status', 'Comentário corrigido.')
-            ->with('tarefa-aberta', $comentario->tarefa_id);
+        return $this->voltarParaATarefa($request, $comentario->tarefa_id, self::PEDACOS_DA_CONVERSA, 'Comentário corrigido.');
     }
 
     /**
@@ -969,7 +1100,7 @@ class TarefaController extends Controller
      * comentário alheio seria reescrever a conversa de outra pessoa, então a
      * regra é estreita de propósito, e vale mesmo para quem administra.
      */
-    public function excluirComentario(TarefaComentario $comentario)
+    public function excluirComentario(Request $request, TarefaComentario $comentario)
     {
         $this->bloquearVisaoDaMatriz();
 
@@ -979,9 +1110,7 @@ class TarefaController extends Controller
 
         $comentario->delete();
 
-        return redirect()->back(fallback: route('tarefas.index'))
-            ->with('status', 'Comentário removido.')
-            ->with('tarefa-aberta', $tarefaId);
+        return $this->voltarParaATarefa($request, $tarefaId, self::PEDACOS_DA_CONVERSA, 'Comentário removido.');
     }
 
     public function historico(Request $request)

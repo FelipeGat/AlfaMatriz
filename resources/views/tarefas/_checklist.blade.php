@@ -109,7 +109,12 @@
          escrevem vários seguidos. --}}
     <div class="mt-1.5 flex items-center gap-2 px-1">
         <span class="shrink-0 font-mono text-[11px] text-ink-faint select-none" aria-hidden="true">+</span>
-        <input type="text" name="texto" form="novo-item-{{ $tarefa->id }}" maxlength="255"
+        {{-- O `id` é o que devolve o cursor a este campo depois do envio: a
+             lista é redesenhada pelo servidor, e sem ele escrever cinco itens
+             seguidos custaria um clique a cada Enter (ver `guardarFoco`, no
+             `index`). --}}
+        <input type="text" id="novo-item-campo-{{ $tarefa->id }}"
+               name="texto" form="novo-item-{{ $tarefa->id }}" maxlength="255"
                placeholder="Novo item — Enter para incluir"
                class="flex-1 min-w-0 px-0 py-0.5 text-[12.5px] text-ink placeholder-ink-faint transition
                       !bg-transparent !rounded-none !border-x-0 !border-t-0 !border-b !border-transparent
