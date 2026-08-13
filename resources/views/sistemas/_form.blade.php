@@ -30,8 +30,14 @@
         <x-input-label for="natureza" value="Natureza" />
 
         @if ($podeTrocar)
+            {{-- As MESMAS medidas do `x-text-input` (`h-8`, `text-[12.5px]`,
+                 `rounded-control`). Sem elas o select nasce com a altura padrão
+                 do navegador — uns 10px mais alto que o campo Nome, que está
+                 ao lado dele na mesma fileira. Cor e raio já vêm da regra base
+                 de `app.css`; o `border-white/10 rounded-md shadow-sm` que
+                 estava aqui só a desfazia. --}}
             <select id="natureza" name="natureza" x-model="natureza"
-                    class="mt-1 block w-full border-white/10 rounded-md shadow-sm">
+                    class="mt-1 block w-full h-8 py-0 text-[12.5px]">
                 @foreach (\App\Models\Sistema::NATUREZAS as $chave => $rotulo)
                     <option value="{{ $chave }}" @selected($naturezaAtual === $chave)>{{ $rotulo }}</option>
                 @endforeach
@@ -44,7 +50,10 @@
             {{-- Travado, e dizendo por quê no mesmo lugar. Um select
                  desabilitado sem explicação vira uma pergunta que a tela não
                  responde: quem lê tenta de novo em vez de procurar a causa. --}}
-            <p class="mt-1 h-[42px] flex items-center px-3 rounded-md bg-input text-sm text-ink-dim">
+            {{-- Mesma altura do select que ele substitui: trocar de sistema
+                 travado para destravado não pode mexer no alinhamento da
+                 fileira. --}}
+            <p class="mt-1 h-8 flex items-center px-3 rounded-control bg-input text-[12.5px] text-ink-dim">
                 {{ \App\Models\Sistema::NATUREZAS[$sistema->natureza] }}
             </p>
             <p class="mt-1 text-xs text-ink-mute">
@@ -73,7 +82,7 @@
     {{-- Bloco comercial: só existe para quem se vende. --}}
     <div x-show="natureza === 'produto'" @if ($naturezaAtual !== 'produto') style="display: none" @endif>
         <x-input-label for="categoria" value="Categoria" />
-        <select id="categoria" name="categoria" class="mt-1 block w-full border-white/10 rounded-md shadow-sm">
+        <select id="categoria" name="categoria" class="mt-1 block w-full h-8 py-0 text-[12.5px]">
             <option value="saas" @selected(old('categoria', $sistema->categoria ?? 'saas') === 'saas')>SaaS</option>
             <option value="crm" @selected(old('categoria', $sistema->categoria ?? null) === 'crm')>CRM</option>
         </select>

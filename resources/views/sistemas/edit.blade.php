@@ -92,7 +92,7 @@
                     </div>
                     <div>
                         <x-input-label for="revenda_id" value="Revenda" />
-                        <select id="revenda_id" name="revenda_id" class="mt-1 block w-full border-white/10 rounded-md shadow-sm text-sm">
+                        <select id="revenda_id" name="revenda_id" class="mt-1 block w-full h-8 py-0 text-[12.5px]">
                             <option value="">Padrão (todas)</option>
                             @foreach ($revendas as $revenda)
                                 <option value="{{ $revenda->id }}">{{ $revenda->nome }}</option>
