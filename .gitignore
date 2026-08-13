@@ -1,4 +1,15 @@
 *.log
+# O handoff de design chega como .zip baixado, e cada rodada gera outro:
+# "Sistema Alfa_ Redesign visual (3).zip", "(4)", "(5)"… Eles são o TRANSPORTE,
+# não a especificação — essa é o conteúdo descompactado, que já é versionado em
+# `design/`. Guardar as duas coisas dá ao mesmo texto dois lugares, e o dia em
+# que divergirem o zip ganha, porque é o que parece mais recente.
+#
+# Sem esta linha cada download vira arquivo não rastreado até alguém apagá-lo à
+# mão — o mesmo "±N adaptações locais" falso que o bloco abaixo explica, e aqui
+# com a agravante de que o download cai onde o navegador estiver apontando, às
+# vezes na raiz do repositório.
+*.zip
 # Marcadores que os scripts de deploy gravam na raiz da aplicação, no servidor:
 # .deploy-gate (veredito do portão), .deploy-tag-state, .deploy-tag-failed,
 # .deploy-paused, .deploy-tag.lock. São estado do ambiente, nunca do código.
