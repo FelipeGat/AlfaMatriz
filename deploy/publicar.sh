@@ -265,8 +265,24 @@ etapa "Compilando front-end"
 # Os anexos de cobranças e contas a pagar vivem em compartilhado/anexos, fora
 # das versões (ver config/filesystems.php). Este link é só a porta de entrada
 # pública para eles, e precisa existir em cada cópia.
+#
+# `--force` porque sem ele o comando RECUSA um link existente, imprime "already
+# exists" e **sai com sucesso** — o deploy segue e o link errado sobrevive. E
+# ele sobrevive de verdade: as versões azul e verde se alternam, então um link
+# criado numa publicação antiga continua na pasta quando ela é reusada, fora do
+# git por ser ignorado.
+#
+# Foi exatamente o que aconteceu em produção: o link apontava para
+# `versoes/azul/storage/app/public` enquanto o `FILESYSTEM_PUBLIC_ROOT` mandava
+# gravar em `compartilhado/anexos`. A aplicação escrevia num lugar e o servidor
+# lia noutro. Ficou invisível por meses porque NADA no sistema servia esse disco
+# por URL — o download de anexo passa pela rota (`Storage::download`), do lado
+# do servidor. A marca do sistema, num `<img src>`, foi a primeira a precisar.
+#
+# `--force` só remove SYMLINK (`isRemovableSymlink` checa `is_link`), então
+# pasta de verdade com arquivo dentro nunca é apagada por aqui.
 etapa "Ligando a pasta pública de anexos"
-( cd "$ALVO" && php artisan storage:link ) || falhar "ligar a pasta pública de anexos"
+( cd "$ALVO" && php artisan storage:link --force ) || falhar "ligar a pasta pública de anexos"
 
 etapa "Aplicando migrações"
 ( cd "$ALVO" && php artisan migrate --force ) || falhar "aplicar migrações"
