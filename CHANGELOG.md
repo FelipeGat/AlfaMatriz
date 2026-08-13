@@ -1,5 +1,79 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 12/08/2026 — Cadastrar quem usa o painel deixou de exigir SSH
+
+Criar uma conta, desativar quem saiu ou corrigir um perfil errado passava por um
+comando no servidor. Agora tem tela, e o acesso de quem saiu fecha de verdade.
+
+### Usuários e permissões
+
+**Nova tela, em Sistema › Usuários e permissões**, só para administradores. Ela
+lista as contas com perfil, alcance e situação, e permite criar, editar,
+redefinir senha, desativar e excluir.
+
+A segunda aba mostra **o que cada perfil alcança**, recurso por recurso, com
+ler, incluir, imprimir e excluir separados. Tirar um recurso de um perfil some
+com o item do menu de quem o tem, na hora.
+
+O perfil **Administrador não se edita** — ele é quem reabre esta tela. Se o
+único administrador pudesse tirar "Usuários do sistema" do próprio perfil,
+ninguém mais entraria aqui, ele inclusive, e a saída seria pelo servidor. Pelo
+mesmo motivo, ninguém tira o próprio perfil de administrador, se desativa nem
+se exclui.
+
+### A senha nunca é escolhida por quem cadastra
+
+Não há campo de senha no formulário, e a ausência é a decisão: campo de senha
+costuma produzir a mesma senha para o time inteiro. O sistema gera uma senha
+forte, mostra **uma única vez** para ser repassada, e pede que a pessoa escolha
+a dela no primeiro acesso.
+
+Ela não fica guardada em lugar nenhum em texto claro e não reaparece se a
+página for recarregada. Perdida antes de ser entregue, o caminho é gerar outra —
+o que é melhor do que existir um canto do sistema onde senhas em claro esperam
+alguém abrir.
+
+### Perfil Comercial
+
+**Novo perfil para quem vende**: funil de vendas, clientes e revendas. Sem
+excluir em nenhum dos três — apagar lead, cliente ou revenda desfaz histórico de
+funil e de faturamento.
+
+Ele não vê painel nenhum, e isso é a razão de o perfil existir: o mais próximo
+era Operação, que traz junto o Centro de Controle — onde a primeira fileira é
+**Saldo em caixa** e **Receita recorrente**. Quem vende entra direto no Funil de
+Vendas.
+
+### Correções
+
+- **Toda caixa de seleção marcada aparecia desmarcada no tema claro.** O tique
+  era branco sobre fundo branco: o "Lembrar-me" do login, o "Revenda ativa" do
+  cadastro de revenda e qualquer outra caixa do painel mostravam-se vazias mesmo
+  estando marcadas. No tema escuro o defeito não aparecia, que é por que durou.
+- **A marca no topo da barra lateral levava alguns perfis a um "sem
+  permissão".** Ela apontava sempre para o Centro de Controle; agora leva cada
+  pessoa à tela inicial dela. O mesmo valia para quem digitava o endereço do
+  painel direto no navegador.
+
+> **Duas mudanças de comportamento que valem atenção.** **Conta desativada agora
+> bloqueia de verdade** — o campo existia e não era consultado em lugar nenhum,
+> então desativar alguém não fechava acesso nenhum. Agora o login recusa com
+> mensagem própria e a sessão de quem já estava dentro cai no clique seguinte.
+> E **quem entra com uma senha recebida de outra pessoa troca antes de usar o
+> painel**, inclusive contas que já existiam e nunca trocaram a inicial.
+
+### Ainda vai precisar de ajuste
+
+Os perfis e o alcance de cada um foram desenhados a partir do uso de hoje, e
+esta é a primeira vez que a grade inteira fica visível numa tela. É esperado que
+apareçam recortes faltando e permissões sobrando conforme cada área for usando —
+alguém que precisa ver uma tela e não vê, ou o contrário.
+
+**Ajustes pontuais em perfis e permissões vêm nas próximas semanas.** A diferença
+é que agora eles se fazem pela tela, na hora: não dependem mais de alterar código
+nem de subir versão. Se algo estiver apertado ou largo demais para o seu trabalho,
+avise — é ajuste de minutos.
+
 ## AlfaMatriz — 12/08/2026 — Entradas e saídas passam a ser o caixa, e a receita bate entre as telas
 
 ### Correções
