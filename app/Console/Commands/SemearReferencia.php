@@ -60,7 +60,26 @@ class SemearReferencia extends Command
                 continue;
             }
 
-            $this->callSilent('db:seed', ['--class' => $seeder, '--force' => true]);
+            // O retorno do `callSilent` é CONFERIDO, e não descartado.
+            //
+            // Hoje o caso comum já é seguro: seeder que estoura lança exceção,
+            // ela sobe pelo kernel e o processo sai com 1. O que passava batido
+            // era o `db:seed` que devolvesse código de falha SEM lançar — aí a
+            // linha seguinte anunciava "aplicado", o comando devolvia SUCCESS e
+            // o `|| falhar` do `publicar.sh` não disparava.
+            //
+            // É a mesma característica que deixou o `storage:link` quebrar a
+            // produção em silêncio: comando que reclama e sai com zero. E aqui
+            // custa caro — sem esta carga, todo recurso novo nasce invisível em
+            // produção, sumindo do menu e devolvendo 403.
+            $codigo = $this->callSilent('db:seed', ['--class' => $seeder, '--force' => true]);
+
+            if ($codigo !== self::SUCCESS) {
+                $this->error("  {$nome}: FALHOU (código {$codigo})");
+
+                return self::FAILURE;
+            }
+
             $this->line("  {$nome}: aplicado");
         }
 

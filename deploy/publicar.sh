@@ -260,6 +260,20 @@ etapa "Instalando dependências do front-end"
 ( cd "$ALVO" && npm ci ) || falhar "instalar dependências do front-end"
 
 etapa "Compilando front-end"
+# `public/hot` é o bilhete que o Vite deixa quando o servidor de
+# desenvolvimento está no ar: existindo o arquivo, o `@vite` do Blade para de
+# apontar para os assets compilados e passa a apontar para o endereço que está
+# lá dentro. Num servidor esse endereço não responde, e a tela inteira sobe sem
+# CSS nem JS — sem erro no deploy, porque compilar deu certo.
+#
+# Ele é ignorado pelo git, e as cópias azul e verde são REUSADAS: o `checkout`
+# não remove arquivo ignorado, então um `npm run dev` rodado uma vez dentro de
+# uma versão ficaria lá para sempre. É a mesma armadilha do symlink de anexos,
+# em outro arquivo.
+#
+# Removido ANTES do build, e não depois: se o build falhar, a cópia em preparo
+# fica sem o bilhete em vez de ficar com um bilhete velho.
+rm -f "$ALVO/public/hot"
 ( cd "$ALVO" && npm run build ) || falhar "compilar front-end"
 
 # Os anexos de cobranças e contas a pagar vivem em compartilhado/anexos, fora
