@@ -86,7 +86,8 @@
 
     <div class="px-4 py-4 flex flex-col gap-3.5">
         {{--
-            Os dois banners, logo abaixo do cabeçalho.
+            Os três banners, logo abaixo do cabeçalho, na ordem do card
+            (pergunta, retorno, bloqueio).
 
             Eles respondem "por que esta tarefa está parada" antes de qualquer
             campo. Enterrados no meio do formulário, seriam lidos depois de a
@@ -111,6 +112,32 @@
                         Três idas e voltas sem resolver costuma querer dizer que o PR está grande demais ou que
                         a tarefa foi mal especificada — considere devolver para correção.
                     </p>
+                @endif
+            </div>
+        @endif
+
+        {{--
+            O retorno faltava aqui, e era o único dos três que só existia no
+            card. Lá o motivo é clamp de duas linhas — quem abria a tarefa para
+            LER o que reprovou encontrava o formulário sem nenhuma menção à
+            devolução, e a única cópia inteira do texto estava no `title` da
+            tarja. Por isso este não tem clamp: é este o lugar onde o motivo
+            aparece por extenso, com as quebras de linha que quem escreveu deu.
+        --}}
+        @if ($edicao && $tarefa->temRetorno())
+            <div class="px-[11px] py-[9px] rounded-[5px] border border-l-2"
+                 style="background: var(--warn-tint); border-color: var(--warn-line);
+                        border-left-color: rgb(var(--warn))">
+                <div class="flex items-center gap-2.5">
+                    <span class="h-3.5 w-3.5 shrink-0" style="color: rgb(var(--warn))">
+                        <x-nav-icon name="arrow-uturn-left" :peso="1.8" />
+                    </span>
+                    <span class="flex-1 min-w-0 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em]"
+                          style="color: rgb(var(--warn))">{{ $tarefa->rotuloDoRetorno() }}</span>
+                </div>
+
+                @if (filled($tarefa->retorno_motivo))
+                    <p class="mt-1.5 text-[12.5px] leading-[1.45] text-ink whitespace-pre-wrap">{{ $tarefa->retorno_motivo }}</p>
                 @endif
             </div>
         @endif

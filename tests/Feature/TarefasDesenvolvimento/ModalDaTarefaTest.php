@@ -99,6 +99,30 @@ class ModalDaTarefaTest extends TestCase
     }
 
     /**
+     * @spec:AC-215 O retorno é o terceiro banner, e o modal é onde o motivo aparece
+     * INTEIRO: na tarja do card ele é clamp de duas linhas, e quem abre a tarefa está
+     * abrindo justamente para ler o que reprovou.
+     */
+    public function test_o_retorno_traz_o_portao_e_o_motivo_por_extenso(): void
+    {
+        [$tarefa, $dono] = $this->tarefaCompleta();
+
+        $motivo = 'A migração não roda com dado antigo: a coluna nova entra NOT NULL '
+            .'e as linhas de 2024 ficam sem valor. Precisa de default ou de backfill antes.';
+
+        app(FluxoTarefaService::class)->mover($tarefa, 'em_desenvolvimento', ['motivo' => $motivo]);
+
+        $modal = $this->modalDe($tarefa->fresh(), $dono);
+
+        $retorno = strpos($modal, 'Voltou da revisão');
+        $this->assertNotFalse($retorno, 'O modal não nomeia o portão que reprovou.');
+        $this->assertLessThan(strpos($modal, 'name="titulo"'), $retorno, 'O retorno vem antes do primeiro campo.');
+
+        // Sem clamp: é a frase toda, e não o pedaço que coube no card.
+        $this->assertStringContainsString(e($motivo), $modal);
+    }
+
+    /**
      * @spec:AC-216 A ordem dos campos: Título, Resumo, e então a grade Tipo,
      * Prioridade, Sistema, Responsável. O resumo faltava — e é ele que o card mostra
      * embaixo do título, então a única forma de preenchê-lo era pelo banco.
