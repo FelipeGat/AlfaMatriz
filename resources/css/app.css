@@ -244,6 +244,21 @@
         @apply bg-input border-btn-line text-brand;
     }
 
+    /**
+     * O estado MARCADO tem de vir depois, e a razão é que a regra acima o
+     * apagava: o plugin de forms pinta o fundo da caixa marcada com
+     * `currentColor` e desenha o tique em branco por cima. `bg-input` na regra
+     * geral vence esse fundo — e o tique branco fica branco sobre branco.
+     *
+     * No tema escuro o defeito passava despercebido, porque o tique branco
+     * sobrevive contra o fundo escuro do `bg-input`. No claro, toda caixa
+     * marcada do painel aparecia desmarcada.
+     */
+    input[type='checkbox']:checked,
+    input[type='radio']:checked {
+        background-color: currentColor;
+    }
+
     input[type='checkbox']:focus,
     input[type='radio']:focus {
         @apply ring-brand ring-offset-canvas;
