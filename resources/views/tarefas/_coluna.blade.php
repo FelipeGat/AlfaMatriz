@@ -166,7 +166,7 @@
         prometeria criar a tarefa DENTRO daquela raia, o que ele não faz.
     --}}
     @if (in_array($etapa['chave'], ['aberta', 'backlog'], true) && $faixa === 'todas')
-        <form method="POST" action="{{ route('tarefas.store') }}"
+        <form method="POST" action="{{ route('tarefas.store') }}" data-parcial
               x-show="! recolhidas.includes('{{ $etapa['chave'] }}')"
               class="shrink-0 px-[10px] py-2 border-t border-rule">
             @csrf

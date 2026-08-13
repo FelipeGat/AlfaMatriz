@@ -428,8 +428,7 @@
              card sai de onde estava, e a recarga é o que confirma o movimento
              de corpo inteiro, com a guarda de concorrência do `de_status`
              respondendo pelo caminho de sempre. --}}
-        <form method="POST" :action="pendente.acao" @submit="enviandoPendente = true" @click.stop
-              :data-parcial="pendente.destino === 'bloqueio' ? '' : null"
+        <form method="POST" :action="pendente.acao" @submit="enviandoPendente = true" @click.stop data-parcial
               class="mt-[10px] p-[10px] rounded-[5px] border border-l-2"
               :style="`background: rgb(var(--${pendente.cor}) / calc(var(--tint-alpha) / 2));
                        border-color: rgb(var(--${pendente.cor}) / 0.4);

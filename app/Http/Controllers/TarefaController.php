@@ -304,7 +304,7 @@ class TarefaController extends Controller
             Tarefa::create($data);
         }
 
-        return redirect()->route('tarefas.index')->with('status', 'Tarefa criada.');
+        return $this->voltarParaOQuadro($request, 'Tarefa criada.', fecharModal: 'nova-tarefa');
     }
 
     /**
@@ -482,7 +482,7 @@ class TarefaController extends Controller
             $aviso[] = 'Comentário publicado.';
         }
 
-        return redirect()->route('tarefas.index')->with('status', implode(' ', $aviso));
+        return $this->voltarParaOQuadro($request, implode(' ', $aviso));
     }
 
     /**
@@ -546,7 +546,7 @@ class TarefaController extends Controller
         // quem está pedindo. A recusa sai com o motivo dito, porque "não
         // permitido" sem dizer de quem é a tarefa manda a pessoa adivinhar.
         if ($impedimento = $tarefa->motivoParaNaoMover(auth()->user())) {
-            return back()->with('erro', $impedimento);
+            return $this->voltarParaOQuadro($request, $impedimento, 'critico');
         }
 
         // Duas pessoas movendo o mesmo card: o segundo envio ganhava em
@@ -560,8 +560,8 @@ class TarefaController extends Controller
         $deStatus = $request->input('de_status');
 
         if ($deStatus && $deStatus !== $tarefa->status) {
-            return back()->with('erro', 'Alguém já moveu esta tarefa para '
-                .Tarefa::rotuloDaEtapa($tarefa->status).'. Confira o quadro antes de mover de novo.');
+            return $this->voltarParaOQuadro($request, 'Alguém já moveu esta tarefa para '
+                .Tarefa::rotuloDaEtapa($tarefa->status).'. Confira o quadro antes de mover de novo.', 'critico');
         }
 
         // As notas seguem opcionais AQUI de propósito, mesmo depois de o
@@ -601,14 +601,14 @@ class TarefaController extends Controller
                 'versao_producao' => $data['versao_producao'] ?? null,
             ]);
         } catch (\RuntimeException $e) {
-            return back()->with('erro', $e->getMessage());
+            return $this->voltarParaOQuadro($request, $e->getMessage(), 'critico');
         }
 
         // Volta para a tela de onde veio, e não para o quadro cru: com filtro
         // ligado, mover um card devolvia o quadro inteiro e o recorte se
         // perdia a cada arrasto. O mesmo vale para o "Reabrir" do histórico,
         // que agora não abandona a página nem a busca em que se estava.
-        return redirect()->back(fallback: route('tarefas.index'))->with('status', 'Tarefa movida.');
+        return $this->voltarParaOQuadro($request, 'Tarefa movida.');
     }
 
     /**
@@ -696,12 +696,12 @@ class TarefaController extends Controller
      * Só de quem triaga, e mesmo assim atrás de dois passos na tela: é a única
      * ação do quadro que não tem desfazer.
      */
-    public function destroy(Tarefa $tarefa)
+    public function destroy(Request $request, Tarefa $tarefa)
     {
         $this->bloquearVisaoDaMatriz();
 
         if (! auth()->user()?->podeTriarTarefas()) {
-            return back()->with('erro', 'Só quem faz triagem exclui tarefa. Para encerrar sem apagar, cancele.');
+            return $this->voltarParaOQuadro($request, 'Só quem faz triagem exclui tarefa. Para encerrar sem apagar, cancele.', 'critico');
         }
 
         // `forceDelete` porque excluir aqui QUER dizer sumir: a tarefa usa
@@ -710,7 +710,7 @@ class TarefaController extends Controller
         // fosse auditar. Excluir pela metade é o pior dos dois mundos.
         $tarefa->forceDelete();
 
-        return redirect()->route('tarefas.index')->with('status', 'Tarefa excluída.');
+        return $this->voltarParaOQuadro($request, 'Tarefa excluída.');
     }
 
     /**
@@ -728,7 +728,7 @@ class TarefaController extends Controller
         $this->bloquearVisaoDaMatriz();
 
         if (! auth()->user()?->podeTriarTarefas()) {
-            return back()->with('erro', 'Só quem faz triagem posiciona os cards da coluna.');
+            return $this->voltarParaOQuadro($request, 'Só quem faz triagem posiciona os cards da coluna.', 'critico');
         }
 
         $data = $request->validate([
@@ -745,7 +745,7 @@ class TarefaController extends Controller
             }
         }
 
-        return redirect()->back(fallback: route('tarefas.index'));
+        return $this->voltarParaOQuadro($request);
     }
 
     /** Acrescenta um item ao checklist, no fim da lista. */
@@ -864,6 +864,37 @@ class TarefaController extends Controller
     }
 
     /**
+     * O retorno das ações que mexem no QUADRO, e não dentro de uma tarefa.
+     *
+     * Mover, reordenar, criar, salvar e excluir. Nas cinco, a resposta antiga
+     * era um redirect para o quadro — e era ele que a queixa original chamava
+     * de "recarrega a página inteira": arrastar um card é o gesto mais repetido
+     * desta tela, e cada arrasto custava uma repintura completa, com a rolagem
+     * das seis colunas voltando ao começo.
+     *
+     * Diferente das ações do modal, estas mudam QUAIS tarefas o quadro tem, e
+     * por isso levam os modais junto. Trocá-los fecha o que estiver aberto, que
+     * é o que salvar e excluir sempre fizeram.
+     *
+     * O redirect continua respondendo a quem não manda `Accept:
+     * application/json` — inclusive ao "Reabrir" do histórico, que usa a mesma
+     * rota `mover` e é uma tela sem esta camada.
+     */
+    private function voltarParaOQuadro(
+        Request $request,
+        ?string $aviso = null,
+        string $tom = 'bom',
+        ?string $fecharModal = null,
+    ) {
+        if ($request->expectsJson()) {
+            return $this->respostaParcial($request, null, [], $aviso, $tom, comModais: true, fecharModal: $fecharModal);
+        }
+
+        return redirect()->back(fallback: route('tarefas.index'))
+            ->with($tom === 'bom' ? 'status' : 'erro', $aviso);
+    }
+
+    /**
      * A resposta de uma ação feita DENTRO do modal da tarefa, sem recarregar.
      *
      * O modal é onde se lê a tarefa e se escreve sobre ela, e recarregar a
@@ -893,8 +924,15 @@ class TarefaController extends Controller
      * de sempre — é o caminho de quem está sem JavaScript, e é o que a suíte
      * exercita.
      */
-    private function respostaParcial(Request $request, ?Tarefa $tarefa, array $regioes = [], ?string $aviso = null, string $tom = 'bom')
-    {
+    private function respostaParcial(
+        Request $request,
+        ?Tarefa $tarefa,
+        array $regioes = [],
+        ?string $aviso = null,
+        string $tom = 'bom',
+        bool $comModais = false,
+        ?string $fecharModal = null,
+    ) {
         $pedacos = [];
 
         if ($tarefa) {
@@ -924,10 +962,22 @@ class TarefaController extends Controller
             }
         }
 
+        $dados = $this->dadosDoQuadro($request);
+
         return response()->json([
-            'quadro' => view('tarefas._quadro', $this->dadosDoQuadro($request))->render(),
+            'quadro' => view('tarefas._quadro', $dados)->render(),
             'pedacos' => $pedacos,
             'tarefa' => $tarefa?->id,
+            // Os modais só voltam quando a ação mudou QUAIS tarefas o quadro
+            // tem. Trocá-los fecha o que estiver aberto — certo em salvar,
+            // excluir e criar, que sempre terminaram com o modal fechado;
+            // errado nas ações do checklist e da conversa, que acontecem
+            // justamente com ele aberto.
+            'modais' => $comModais ? view('tarefas._modais', $dados)->render() : null,
+            // Qual modal fechar por nome. Só a criação precisa disto: o modal
+            // "nova-tarefa" é único e vive fora do bloco que é trocado, então
+            // ninguém o fecha por tabela.
+            'fecharModal' => $fecharModal,
             // O bloqueio decide dois controles do rodapé do modal, que são
             // Alpine e não voltam em `pedacos`: o campo "o que está travando" e
             // o botão que alterna entre travar e destravar.

@@ -15,9 +15,9 @@
      * navegador como sempre foi — é o que acontece se o JavaScript falhar, e é
      * o caminho que a suíte exercita.
      *
-     * O excluir da tarefa fica de fora de propósito: ele não tem para onde
-     * voltar. Apagada a tarefa, o modal não deve continuar aberto e o quadro
-     * inteiro é outro — recarregar ali é a resposta certa.
+     * O excluir entra junto. Ele tem para onde voltar: o quadro sem a tarefa, e
+     * o bloco de modais sem o dela — e é essa troca que fecha o modal aberto,
+     * já que cada `x-modal` nasce com `show: false`.
      */
 @endphp
 
@@ -38,7 +38,7 @@
         @csrf
     </form>
 
-    <form id="excluir-tarefa-{{ $tarefa->id }}" method="POST"
+    <form id="excluir-tarefa-{{ $tarefa->id }}" method="POST" data-parcial
           action="{{ route('tarefas.destroy', $tarefa) }}" class="hidden">
         @csrf
         @method('DELETE')

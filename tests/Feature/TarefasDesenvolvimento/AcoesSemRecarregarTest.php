@@ -212,11 +212,10 @@ class AcoesSemRecarregarTest extends TestCase
     }
 
     /**
-     * @spec:AC-229 Excluir a tarefa fica de fora do caminho parcial de propósito: não há
-     * para onde voltar. Apagada a tarefa, o modal não deve seguir aberto e o quadro
-     * inteiro é outro — recarregar ali é a resposta certa.
+     * @spec:AC-229 Sem `Accept: application/json`, excluir também segue redirecionando — é
+     * o mesmo caminho do `<form>` puro que atende todas as outras ações sem JavaScript.
      */
-    public function test_excluir_a_tarefa_continua_recarregando_a_tela(): void
+    public function test_sem_json_excluir_continua_redirecionando(): void
     {
         // A conta padrão da fábrica já triaga, e excluir é só de quem triaga.
         $usuario = User::factory()->create();
@@ -227,5 +226,107 @@ class AcoesSemRecarregarTest extends TestCase
             ->assertRedirect(route('tarefas.index'));
 
         $this->assertNull(Tarefa::withTrashed()->find($tarefa->id));
+    }
+
+    /**
+     * @spec:AC-230 Mover card é o gesto mais repetido do quadro, e era o que mais custava:
+     * cada arrasto repintava a tela inteira e devolvia a rolagem das seis colunas ao começo.
+     */
+    public function test_mover_devolve_o_quadro_e_os_modais_sem_redirect(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = $this->criarTarefa(['titulo' => 'Corrigir o boleto da Orbe', 'responsavel_id' => $usuario->id]);
+
+        $resposta = $this->actingAs($usuario)->postJson(route('tarefas.mover', $tarefa), [
+            'status' => 'em_revisao',
+            'de_status' => 'em_desenvolvimento',
+        ]);
+
+        $resposta->assertOk();
+        $this->assertSame('em_revisao', $tarefa->fresh()->status);
+
+        // Os modais voltam junto: mover para uma etapa terminal tira a tarefa
+        // do quadro, e o modal dela precisa sair com ela.
+        $this->assertNotNull($resposta->json('modais'));
+        $this->assertStringContainsString("editar-tarefa-{$tarefa->id}", $resposta->json('modais'));
+        $this->assertStringContainsString('Corrigir o boleto da Orbe', $resposta->json('quadro'));
+    }
+
+    /**
+     * @spec:AC-230 A guarda de concorrência não muda de contrato ao mudar de transporte: o
+     * `de_status` continua sendo conferido, e a recusa vira aviso em vez de troca de tela.
+     */
+    public function test_mover_sobre_movimento_alheio_volta_como_aviso(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = $this->criarTarefa(['status' => 'em_revisao', 'responsavel_id' => $usuario->id]);
+
+        $resposta = $this->actingAs($usuario)->postJson(route('tarefas.mover', $tarefa), [
+            'status' => 'em_staging',
+            // A etapa que o card TINHA na tela de quem mandou — já vencida.
+            'de_status' => 'em_desenvolvimento',
+        ]);
+
+        $resposta->assertOk();
+        $this->assertNotNull($resposta->json('aviso'));
+        $this->assertStringContainsString('Alguém já moveu esta tarefa', $resposta->json('aviso'));
+        $this->assertSame('em_revisao', $tarefa->fresh()->status);
+    }
+
+    /**
+     * @spec:AC-230 A tarefa criada sem recarga precisa NASCER com o modal dela. Sem os
+     * modais na resposta, o card apareceria no quadro e não abriria ao clique — e uma tela
+     * que mostra o que não abre é pior que a recarga que ela evitou.
+     */
+    public function test_criar_devolve_os_modais_com_a_tarefa_nova(): void
+    {
+        $usuario = User::factory()->create();
+
+        $resposta = $this->actingAs($usuario)
+            ->postJson(route('tarefas.store'), ['titulo' => 'Nascida sem recarregar', 'status' => 'aberta']);
+
+        $resposta->assertOk();
+
+        $nova = Tarefa::firstWhere('titulo', 'Nascida sem recarregar');
+        $this->assertNotNull($nova);
+        $this->assertStringContainsString("editar-tarefa-{$nova->id}", $resposta->json('modais'));
+
+        // O modal "nova tarefa" é único e vive fora do bloco trocado: ninguém o
+        // fecharia por tabela, então o servidor diz o nome dele.
+        $resposta->assertJsonPath('fecharModal', 'nova-tarefa');
+    }
+
+    /**
+     * @spec:AC-230 Excluir e salvar terminam com o modal fechado, como terminavam quando a
+     * página recarregava — só que agora quem fecha é a troca do bloco de modais, porque
+     * cada `x-modal` nasce com `show: false`.
+     */
+    public function test_excluir_tira_a_tarefa_do_bloco_de_modais(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = $this->criarTarefa();
+
+        $resposta = $this->actingAs($usuario)->deleteJson(route('tarefas.destroy', $tarefa));
+
+        $resposta->assertOk();
+        $this->assertNull(Tarefa::withTrashed()->find($tarefa->id));
+        $this->assertStringNotContainsString("editar-tarefa-{$tarefa->id}", $resposta->json('modais'));
+    }
+
+    /**
+     * @spec:AC-230 As ações do modal NÃO trocam os modais: fazer isso fecharia a tarefa que
+     * a pessoa está lendo a cada item marcado, que é o defeito que esta mudança removeu.
+     */
+    public function test_mexer_no_checklist_nao_devolve_os_modais(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = $this->criarTarefa();
+        $item = $tarefa->itens()->create(['texto' => 'Conferir o valor']);
+
+        $this->actingAs($usuario)
+            ->putJson(route('tarefas.itens.update', $item), ['feito' => '1'])
+            ->assertOk()
+            ->assertJsonPath('modais', null)
+            ->assertJsonPath('fecharModal', null);
     }
 }

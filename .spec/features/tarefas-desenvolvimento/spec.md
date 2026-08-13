@@ -816,9 +816,23 @@ conversa empacada (três idas e voltas, AC-190) que essa captura evita.
 - **E** sem `Accept: application/json` a rota responde o redirect de antes, com
   `tarefa-aberta` reabrindo o modal: é o caminho do `<form>` puro, que é como
   estas ações continuam funcionando se o `fetch` falhar
-- **E** mover card, criar tarefa, salvar o formulário e excluir continuam
-  recarregando — nessas quatro, ou a tarefa deixa de estar onde estava, ou o
-  modal tinha mesmo que fechar
+#### AC-230 — Mexer no quadro também não recarrega
+
+- **Dado** que estou com o quadro rolado até a quinta coluna
+- **Quando** arrasto um card de etapa, reordeno dentro da coluna, crio uma
+  tarefa, salvo o formulário ou excluo
+- **Então** a página não recarrega e a rolagem fica onde estava. Arrastar é o
+  gesto mais repetido desta tela, e era o que mais custava: cada arrasto
+  repintava tudo e devolvia as seis colunas ao começo
+- **E** a tarefa recém-criada abre ao clique — o bloco de modais volta
+  redesenhado junto, senão o card apareceria no quadro sem ter modal
+- **E** salvar, criar e excluir terminam com o modal fechado, como terminavam
+  quando a página recarregava: quem fecha é a troca do bloco de modais, porque
+  cada `x-modal` nasce fechado. O "nova tarefa" é fechado e esvaziado pelo
+  nome, por viver fora desse bloco
+- **E** a guarda de concorrência não muda de contrato ao mudar de transporte: o
+  `de_status` continua sendo conferido (AC-208), e "Alguém já moveu esta
+  tarefa" vira aviso em vez de troca de tela
 
 ## Fora de escopo
 

@@ -544,7 +544,7 @@
                         envio.appendChild(campo);
                     });
 
-                    envio.submit();
+                    envio.requestSubmit();
                 },
 
                 /**
@@ -975,7 +975,11 @@
                     this.$refs.deStatusMover.value = de ?? '';
                     this.tipoArrastado = null;
                     this.statusArrastado = null;
-                    this.$refs.formMover.submit();
+                    // `requestSubmit` e não `submit`: só o primeiro dispara o
+                    // evento `submit`, que é por onde a camada parcial escuta.
+                    // Com `submit()` o navegador envia por cima dela, e a tela
+                    // recarrega como antes — sem erro nenhum a acusar.
+                    this.$refs.formMover.requestSubmit();
                 },
             }));
         });
@@ -1134,6 +1138,28 @@
                     }
                 }
 
+                // Os modais só voltam quando a ação mudou QUAIS tarefas existem
+                // no quadro. Sem esta troca, a tarefa recém-criada apareceria no
+                // quadro e não abriria ao clique — o modal dela não existiria —,
+                // e a excluída deixaria o dela para trás. Trocá-los também é o
+                // que FECHA o modal depois de salvar e de excluir: cada um nasce
+                // com `show: false`, como acontecia quando a página recarregava.
+                if (dados.modais !== null && dados.modais !== undefined) {
+                    trocar(document.querySelector('[data-modais]'), dados.modais);
+                }
+
+                // O "nova tarefa" é o único modal fora do bloco acima — ele não
+                // pertence a tarefa nenhuma —, então é fechado pelo nome. E
+                // esvaziado: por não ser trocado, ele guardaria o que acabou de
+                // ser gravado, e a próxima tarefa nasceria com o título da
+                // anterior no campo. A recarga fazia essa limpeza de graça.
+                if (dados.fecharModal) {
+                    window.dispatchEvent(new CustomEvent('close-modal', { detail: dados.fecharModal }));
+
+                    document.querySelectorAll(`[data-modal="${dados.fecharModal}"] form`)
+                        .forEach((form) => form.reset());
+                }
+
                 // O painel de motivo é estado do quadro, não do HTML: sem
                 // fechá-lo, ele reabriria sozinho assim que o card voltasse a
                 // ser desenhado, já com a tarefa travada atrás dele.
@@ -1251,24 +1277,19 @@
 
     {{-- Modal: editar tarefa — uma por card, como em Clientes. O `_form` já
          traz a conversa dentro dele, porque o comentário é publicado pelo
-         mesmo Salvar; o que vem depois são só os formulários de apagar
-         comentário, que não podem ficar aninhados nele. --}}
-    @foreach ($tarefas as $tarefa)
-        <x-modal name="editar-tarefa-{{ $tarefa->id }}" maxWidth="tarefa">
-            @include('tarefas._form', ['tarefa' => $tarefa, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
+         mesmo Salvar.
 
-            {{-- Os envios escondidos também são trocados: um item novo no
-                 checklist precisa dos formulários de corrigir e apagar DELE, e
-                 um comentário apagado deixa para trás um par que aponta para
-                 um id que já não existe. --}}
-            <div data-pedaco="checklist-envios-{{ $tarefa->id }}">
-                @include('tarefas._checklist-envios', ['tarefa' => $tarefa])
-            </div>
-            <div data-pedaco="conversa-envios-{{ $tarefa->id }}">
-                @include('tarefas._comentarios-envios', ['tarefa' => $tarefa])
-            </div>
-        </x-modal>
-    @endforeach
+         O bloco é redesenhado inteiro quando uma ação muda QUAIS tarefas estão
+         no quadro (criar, excluir, mover para etapa terminal): sem isso, a
+         tarefa recém-criada apareceria no quadro e não abriria ao clique. E é
+         essa troca que fecha o modal depois de Salvar, como a recarga fazia. --}}
+    <div data-modais>
+        @include('tarefas._modais', [
+            'tarefas' => $tarefas,
+            'sistemas' => $sistemas,
+            'usuarios' => $usuarios,
+        ])
+    </div>
 
     {{--
         Comentar recarrega a página, e sem isto o modal da tarefa fecharia a

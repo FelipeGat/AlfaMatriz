@@ -38,7 +38,12 @@
     quando o `disabled` entra, então o envio em curso não é cancelado — o que
     morre é o SEGUNDO clique.
 --}}
-<form method="POST"
+{{-- `data-parcial` também aqui: o Salvar era o último envio da tela a repintar
+     a página inteira. O modal continua fechando ao salvar, mas por outro
+     caminho — o bloco de modais volta redesenhado e cada um nasce fechado. Na
+     criação, quem fecha é o `fecharModal`, porque o "nova tarefa" é único e
+     vive fora daquele bloco. --}}
+<form method="POST" data-parcial
       action="{{ $edicao ? route('tarefas.update', $tarefa) : route('tarefas.store') }}"
       class="flex flex-col"
       {{-- `bloqueada` é estado de tela, não do servidor, porque travar e

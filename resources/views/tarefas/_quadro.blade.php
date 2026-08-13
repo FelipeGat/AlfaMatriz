@@ -247,14 +247,14 @@
 </div>
 
 {{-- Um formulário só, apontado para a tarefa que foi solta. --}}
-<form x-ref="formMover" method="POST" action="" class="hidden">
+<form x-ref="formMover" method="POST" action="" class="hidden" data-parcial>
     @csrf
     <input type="hidden" name="status" x-ref="statusMover">
     <input type="hidden" name="de_status" x-ref="deStatusMover">
 </form>
 
 {{-- A ordem da coluna, montada do DOM no solto sobre outro card. --}}
-<form x-ref="formPosicionar" method="POST" action="{{ route('tarefas.posicionar') }}" class="hidden">
+<form x-ref="formPosicionar" method="POST" action="{{ route('tarefas.posicionar') }}" class="hidden" data-parcial>
     @csrf
     <input type="hidden" name="status" x-ref="statusPosicionar">
 </form>

@@ -42,6 +42,11 @@ $maxWidth = [
             document.body.classList.remove('overflow-y-hidden');
         }
     })"
+    {{-- O nome também no DOM: quem fecha o modal por evento às vezes precisa
+         alcançar o conteúdo dele em seguida — o quadro de tarefas esvazia o
+         formulário de "nova tarefa" depois de gravar, porque esse modal não é
+         redesenhado e guardaria o que acabou de ser salvo. --}}
+    data-modal="{{ $name }}"
     x-on:open-modal.window="$event.detail == '{{ $name }}' ? show = true : null"
     x-on:close-modal.window="$event.detail == '{{ $name }}' ? show = false : null"
     x-on:close.stop="show = false"
