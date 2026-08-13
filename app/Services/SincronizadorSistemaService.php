@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Auditoria;
 use App\Models\Cliente;
 use App\Models\ClienteModulo;
 use App\Models\Modulo;
@@ -44,12 +45,56 @@ class SincronizadorSistemaService
                 'modulos' => $this->sincronizarModulos(),
             ];
 
+            $this->registrarCiclo($resumo);
+
             return ['ok' => true, 'resumo' => $resumo];
         } catch (RequestException $e) {
             return ['ok' => false, 'motivo' => $this->contrato->mensagemDeLeitura($e)];
         } catch (ConnectionException) {
             return ['ok' => false, 'motivo' => $this->contrato->mensagemDeConexao()];
         }
+    }
+
+    /**
+     * O rastro de um ciclo de sincronização.
+     *
+     * UMA linha por ciclo, e não uma por registro tocado. As mudanças de
+     * cliente e de módulo já deixam a própria linha — os modelos são auditados
+     * e a sincronização escreve por eles. O que faltava era o contexto: sem
+     * esta linha, quem abre a auditoria vê trinta clientes alterados por
+     * "Sistema" às 3 da manhã e não tem como saber que foi um ciclo só, nem
+     * quantos vínculos de licença foram espelhados — esses moram no pivô
+     * `cliente_sistema`, que não dispara evento nenhum.
+     *
+     * Ciclo que não mexeu em nada não registra. O comando roda de hora em hora
+     * e quase sempre não acha novidade; uma linha por execução encheria a tela
+     * de "Sistema sincronizou: 0, 0, 0" e enterraria o dia em que houve algo.
+     *
+     * @param  array<string, array<string, mixed>>  $resumo
+     */
+    private function registrarCiclo(array $resumo): void
+    {
+        $numeros = [];
+
+        foreach ($resumo as $area => $contagens) {
+            foreach ($contagens as $chave => $valor) {
+                if (is_int($valor) && $valor > 0) {
+                    $numeros[$area.' · '.$chave] = ['de' => null, 'para' => $valor];
+                }
+            }
+        }
+
+        if ($numeros === []) {
+            return;
+        }
+
+        Auditoria::registrar(
+            recurso: 'sistemas',
+            acao: 'sincronizou',
+            alvo: $this->sistema,
+            descricao: $this->sistema->nome,
+            alteracoes: $numeros,
+        );
     }
 
     private function sincronizarRevendas(): array

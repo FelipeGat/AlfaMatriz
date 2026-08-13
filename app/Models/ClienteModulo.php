@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use App\Concerns\ComOrigemExterna;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * A contratação de um módulo por um cliente.
@@ -16,6 +20,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class ClienteModulo extends Model
 {
+    use Auditavel;
+
+    protected string $recursoAuditoria = 'clientes';
+
     use ComOrigemExterna, HasFactory;
 
     protected $table = 'cliente_modulo';
@@ -68,10 +76,10 @@ class ClienteModulo extends Model
      * Só `status = ativo`: contratação suspensa ou encerrada não é receita
      * corrente.
      *
-     * @param  \Illuminate\Support\Collection<int, int>|array<int, int>  $clienteIds
-     * @return \Illuminate\Support\Collection<int, ClienteModulo>
+     * @param  Collection<int, int>|array<int, int>  $clienteIds
+     * @return Collection<int, ClienteModulo>
      */
-    public static function vigentesNaCompetencia(int $sistemaId, $clienteIds, string $competencia): \Illuminate\Support\Collection
+    public static function vigentesNaCompetencia(int $sistemaId, $clienteIds, string $competencia): Collection
     {
         $clienteIds = collect($clienteIds);
 
@@ -79,7 +87,7 @@ class ClienteModulo extends Model
             return collect();
         }
 
-        $inicioDoMes = \Illuminate\Support\Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
+        $inicioDoMes = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
 
         return static::query()
             ->with('modulo')
@@ -91,7 +99,7 @@ class ClienteModulo extends Model
             ->values();
     }
 
-    public function vigenteEm(\Carbon\CarbonInterface $inicioDoMes): bool
+    public function vigenteEm(CarbonInterface $inicioDoMes): bool
     {
         $fimDoMes = $inicioDoMes->copy()->endOfMonth();
 
@@ -100,5 +108,14 @@ class ClienteModulo extends Model
         }
 
         return ! ($this->data_fim && $this->data_fim->lt($inicioDoMes));
+    }
+
+    /**
+     * Quem contratou o quê. Sem os dois nomes a linha diria "ClienteModulo
+     * #412", e a pergunta que se faz aqui é sempre sobre o par.
+     */
+    public function descricaoDeAuditoria(): string
+    {
+        return trim(($this->cliente->nome ?? 'cliente ?').' · '.($this->modulo->nome ?? 'módulo ?'));
     }
 }

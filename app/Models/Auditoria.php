@@ -218,6 +218,7 @@ class Auditoria extends Model
             'baixou' => 'Baixou arquivo',
             'provisionou' => 'Provisionou',
             'licenca' => 'Licença',
+            'sincronizou' => 'Sincronizou',
             default => Str::ucfirst($acao),
         };
     }

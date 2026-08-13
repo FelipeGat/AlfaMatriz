@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,29 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Tarefa extends Model
 {
-    use HasFactory;
+    use Auditavel, HasFactory;
+
+    protected string $recursoAuditoria = 'tarefas';
+
+    /**
+     * A posição do card na coluna fica FORA do rastro.
+     *
+     * Arrastar um card para reordenar não é fato de negócio — é arrumação de
+     * mesa, e acontece dezenas de vezes por dia. Registrada, ela empurraria
+     * para fora da primeira página a mudança de etapa que aconteceu no meio.
+     *
+     * Hoje a reordenação nem chega aqui (`TarefaController` a faz por query,
+     * que não dispara evento), mas a exclusão é declarada assim mesmo: quem
+     * um dia trocar aquele `update` por um salvamento de modelo não deveria
+     * descobrir o efeito colateral pela tela de auditoria.
+     *
+     * @return array<int, string>
+     */
+    public function camposForaDaAuditoria(): array
+    {
+        return ['ordem'];
+    }
+
     use SoftDeletes;
 
     /**

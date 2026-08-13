@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,6 +14,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class TarefaItem extends Model
 {
+    use Auditavel;
+
+    protected string $recursoAuditoria = 'tarefas';
+
+    /** A posição na lista é arrumação, não fato — ver `Tarefa`. */
+    public function camposForaDaAuditoria(): array
+    {
+        return ['ordem'];
+    }
+
+    public function descricaoDeAuditoria(): string
+    {
+        return (string) $this->texto;
+    }
+
     protected $table = 'tarefa_itens';
 
     protected $fillable = ['tarefa_id', 'texto', 'feito', 'ordem'];

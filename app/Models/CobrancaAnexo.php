@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CobrancaAnexo extends Model
 {
+    use Auditavel;
+
+    protected string $recursoAuditoria = 'cobrancas';
+
     protected $table = 'cobranca_anexos';
 
     protected $fillable = [
@@ -45,5 +50,14 @@ class CobrancaAnexo extends Model
     public function getUrlAttribute(): string
     {
         return route('cobrancas.anexos.download', $this->id);
+    }
+
+    /**
+     * O anexo se apresenta pelo nome que tinha ao ser enviado — `nome_arquivo`
+     * é o identificador aleatório do disco, que não diz nada a ninguém.
+     */
+    public function descricaoDeAuditoria(): string
+    {
+        return $this->nome_original;
     }
 }

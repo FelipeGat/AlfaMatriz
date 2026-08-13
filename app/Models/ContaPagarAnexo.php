@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ContaPagarAnexo extends Model
 {
+    use Auditavel;
+
+    protected string $recursoAuditoria = 'contas_pagar';
+
     protected $table = 'conta_pagar_anexos';
 
     protected $fillable = [
@@ -45,5 +50,13 @@ class ContaPagarAnexo extends Model
     public function getUrlAttribute(): string
     {
         return route('contas-pagar.anexos.download', $this->id);
+    }
+
+    /**
+     * Ver `CobrancaAnexo::descricaoDeAuditoria()` — mesmo motivo.
+     */
+    public function descricaoDeAuditoria(): string
+    {
+        return $this->nome_original;
     }
 }

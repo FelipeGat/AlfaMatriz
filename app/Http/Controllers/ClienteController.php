@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Auditoria;
 use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\Revenda;
@@ -478,6 +479,13 @@ class ClienteController extends Controller
     {
         $jaVinculados = $cliente->sistemas()->pluck('sistemas.id')->all();
 
+        // O retrato de ANTES, para a auditoria: quais sistemas estavam ativos.
+        // Precisa ser lido aqui porque as três operações abaixo mexem no PIVÔ
+        // `cliente_sistema` — `attach` e `updateExistingPivot` não disparam
+        // evento nenhum do Eloquent, nem com `ClienteSistema` sendo um `Pivot`.
+        // O trait de auditoria não vê nada disto acontecer.
+        $antes = $cliente->sistemas()->wherePivot('ativo', true)->pluck('sistemas.nome')->sort()->values()->all();
+
         foreach ($sistemaIdsSelecionados as $id) {
             if (in_array($id, $jaVinculados)) {
                 $cliente->sistemas()->updateExistingPivot($id, ['ativo' => true, 'cancelado_em' => null]);
@@ -490,6 +498,46 @@ class ClienteController extends Controller
         foreach ($desmarcados as $id) {
             $cliente->sistemas()->updateExistingPivot($id, ['ativo' => false, 'cancelado_em' => now()->toDateString()]);
         }
+
+        $this->registrarMudancaDeSistemas($cliente, $antes);
+    }
+
+    /**
+     * O rastro de quais sistemas o cliente usa.
+     *
+     * Não é detalhe de cadastro: tirar um sistema daqui marca o vínculo como
+     * cancelado, e é isso que decide se o cliente entra na fatura daquele
+     * produto no mês seguinte. Sem registro, a receita cai e não há como dizer
+     * quem decidiu, nem quando.
+     *
+     * Guarda os NOMES pelo mesmo motivo dos perfis de usuário: a linha tem de
+     * continuar legível anos depois, e uma lista de ids exige consultar uma
+     * tabela que pode ter mudado.
+     *
+     * @param  array<int, string>  $antes
+     */
+    private function registrarMudancaDeSistemas(Cliente $cliente, array $antes): void
+    {
+        $depois = $cliente->sistemas()->wherePivot('ativo', true)
+            ->pluck('sistemas.nome')->sort()->values()->all();
+
+        // Salvar a ficha sem mexer nos sistemas é o caso comum — a mesma tela
+        // corrige um telefone. Registrar assim mesmo encheria a auditoria de
+        // mudanças que não mudaram nada.
+        if ($antes === $depois) {
+            return;
+        }
+
+        Auditoria::registrar(
+            recurso: 'clientes',
+            acao: 'alterou',
+            alvo: $cliente,
+            descricao: $cliente->nome,
+            alteracoes: ['sistemas' => [
+                'de' => $antes ? implode(', ', $antes) : 'nenhum',
+                'para' => $depois ? implode(', ', $depois) : 'nenhum',
+            ]],
+        );
     }
 
     /**
@@ -498,6 +546,14 @@ class ClienteController extends Controller
      */
     private function sincronizarEmails(Cliente $cliente, array $emails): void
     {
+        // O retrato de ANTES, para a auditoria. Este método regrava a lista do
+        // zero a cada salvamento — é o padrão destrutivo explicado acima —, e o
+        // trait de auditoria, ligado nos modelos, registraria três exclusões e
+        // três criações toda vez que alguém salvasse a ficha para corrigir a
+        // cidade. Comparar as duas listas transforma isso em uma linha, e só
+        // quando algo realmente mudou.
+        $antes = $cliente->emails()->orderBy('email')->pluck('email')->all();
+
         $cliente->emails()->delete();
 
         $temPrincipal = false;
@@ -519,10 +575,18 @@ class ClienteController extends Controller
         if (! $temPrincipal && $cliente->emails()->exists()) {
             $cliente->emails()->first()->update(['principal' => true]);
         }
+
+        $this->registrarMudancaDeContatos(
+            $cliente, 'e-mails', $antes,
+            $cliente->emails()->orderBy('email')->pluck('email')->all()
+        );
     }
 
     private function sincronizarTelefones(Cliente $cliente, array $telefones): void
     {
+        // Mesma razão do `sincronizarEmails`: a lista é regravada do zero.
+        $antes = $cliente->telefones()->orderBy('telefone')->pluck('telefone')->all();
+
         $cliente->telefones()->delete();
 
         $temPrincipal = false;
@@ -543,6 +607,40 @@ class ClienteController extends Controller
         if (! $temPrincipal && $cliente->telefones()->exists()) {
             $cliente->telefones()->first()->update(['principal' => true]);
         }
+
+        $this->registrarMudancaDeContatos(
+            $cliente, 'telefones', $antes,
+            $cliente->telefones()->orderBy('telefone')->pluck('telefone')->all()
+        );
+    }
+
+    /**
+     * O rastro de uma lista de contatos que foi regravada do zero.
+     *
+     * Uma linha por MUDANÇA, e não por registro tocado. O e-mail e o telefone
+     * do cliente são por onde a cobrança chega: trocar um e-mail financeiro
+     * desvia o boleto, e essa é exatamente a alteração sobre a qual alguém vai
+     * perguntar depois.
+     *
+     * @param  array<int, string>  $antes
+     * @param  array<int, string>  $depois
+     */
+    private function registrarMudancaDeContatos(Cliente $cliente, string $campo, array $antes, array $depois): void
+    {
+        if ($antes === $depois) {
+            return;
+        }
+
+        Auditoria::registrar(
+            recurso: 'clientes',
+            acao: 'alterou',
+            alvo: $cliente,
+            descricao: $cliente->nome,
+            alteracoes: [$campo => [
+                'de' => $antes ? implode(', ', $antes) : 'nenhum',
+                'para' => $depois ? implode(', ', $depois) : 'nenhum',
+            ]],
+        );
     }
 
     /**
@@ -559,7 +657,12 @@ class ClienteController extends Controller
             $data['razao_social'] = $data['nome'];
             $data['nome_fantasia'] = null;
         } else {
-            $data['nome'] = $data['nome_fantasia'] ?: $data['razao_social'];
+            // `?? null` como a linha do PF logo acima: `nome_fantasia` é
+            // opcional na validação, então a chave pode simplesmente não vir.
+            // Pelo formulário ela sempre vem — vazia vira null e o `?:` cai no
+            // `razao_social` —, mas qualquer envio que não seja o formulário
+            // derrubava aqui com 500 em vez de gravar o cliente.
+            $data['nome'] = ($data['nome_fantasia'] ?? null) ?: $data['razao_social'];
         }
 
         if (! empty($data['cpf_cnpj'])) {
