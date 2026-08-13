@@ -98,7 +98,21 @@
     {{-- Linha 1: título e selos. `flex-start` porque o título quebra em duas
          linhas e os selos ficam alinhados com a primeira. --}}
     <div class="flex items-start gap-2">
-        <p class="min-w-0 flex-1 text-[13.5px] font-medium leading-[1.35] text-ink">{{ $tarefa->titulo }}</p>
+        {{--
+            O número da tarefa é PREFIXO do título, dentro do mesmo parágrafo.
+
+            Como item próprio do flex ele abriria uma coluna fixa que tira
+            largura do título nos dois lados da quebra, e alinhar 10px contra
+            13,5px em `items-start` pediria um deslocamento que não está na
+            especificação. No mesmo bloco de texto ele senta na linha de base do
+            título de graça, e o título que quebra em duas linhas o mantém onde
+            se lê primeiro — que é para isso que o número existe: dizer em voz
+            alta "olha a 128" sem descrever a tarefa inteira.
+        --}}
+        <p class="min-w-0 flex-1 text-[13.5px] font-medium leading-[1.35] text-ink">
+            <span class="font-mono text-[10px] font-normal text-ink-faint">{{ $tarefa->codigo() }}</span>
+            {{ $tarefa->titulo }}
+        </p>
 
         @if ($tarefa->tipo === 'operacional')
             <span class="shrink-0 px-1.5 py-0.5 rounded-badge bg-chip text-ink-mute

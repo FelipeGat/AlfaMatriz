@@ -61,8 +61,13 @@
             </h3>
 
             @if ($edicao)
-                <p class="mt-px font-mono text-[10px] uppercase tracking-[0.12em] text-ink-faint whitespace-nowrap">
-                    {{ \App\Models\Tarefa::rotuloDaEtapa($tarefa->status) }} · há {{ $tempoNaEtapa }}
+                {{-- O número abre a linha porque é o que se copia daqui para
+                     pedir a tarefa a alguém — e `truncate` no lugar do
+                     `whitespace-nowrap`: com um item a mais, a linha que não
+                     coubesse passaria a pintar por cima do botão de fechar em
+                     vez de cortar. --}}
+                <p class="mt-px font-mono text-[10px] uppercase tracking-[0.12em] text-ink-faint truncate">
+                    {{ $tarefa->codigo() }} · {{ \App\Models\Tarefa::rotuloDaEtapa($tarefa->status) }} · há {{ $tempoNaEtapa }}
                 </p>
             @endif
         </div>

@@ -352,4 +352,35 @@ class CardTarefaTest extends TestCase
         $this->assertStringContainsString('aria-label="Mover de etapa"', $html);
         $this->assertDoesNotMatchRegularExpression('/<button[^>]*>\s*Mover ▾/u', $html);
     }
+
+    /**
+     * O card imprime o número da tarefa, que é como ela é chamada fora da tela.
+     *
+     * O `id` já era o identificador de todo o resto — a URL, o `data-tarefa`, o
+     * nome do modal — e era o único dado da tarefa que nunca aparecia para quem
+     * olha o quadro: para pedir "aquela do boleto duplicado" era preciso
+     * descrever a tarefa inteira.
+     */
+    public function test_o_card_mostra_o_numero_da_tarefa(): void
+    {
+        $usuario = User::factory()->create();
+
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => User::factory(),
+            'status' => 'backlog',
+            'titulo' => 'Corrigir boleto duplicado',
+        ]);
+
+        $this->assertSame('#'.$tarefa->id, $tarefa->codigo(), 'O número da tarefa é o id, sem contador paralelo.');
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // Prefixo do título, no MESMO parágrafo: como item próprio do flex ele
+        // abriria uma coluna fixa que tira largura das duas linhas do título.
+        $this->assertMatchesRegularExpression(
+            '/#'.$tarefa->id.'<\/span>\s*Corrigir boleto duplicado/u',
+            $html,
+            'O número precisa vir colado ao título, dentro do parágrafo dele.'
+        );
+    }
 }

@@ -47,11 +47,16 @@
                     {{-- Título e resumo na mesma célula, como no card: quem
                          audita precisa saber o QUE era a tarefa, não só o nome. --}}
                     <td class="px-4 py-3">
-                        {{-- O selo de operacional acompanha o título como no
-                             card: sem ele, uma tarefa encerrada sem nenhum
-                             relatório de teste pareceria falha de processo, e
-                             não o processo dela. --}}
+                        {{-- Número e selo de operacional acompanham o título
+                             como no card. O número, porque tarefa encerrada é
+                             justamente a que se cita por ele — em release note e
+                             em conversa de suporte —, e é aqui que se procura o
+                             que já saiu do quadro. O selo, porque sem ele uma
+                             tarefa encerrada sem nenhum relatório de teste
+                             pareceria falha de processo, e não o processo
+                             dela. --}}
                         <p class="text-[13.5px] text-ink">
+                            <span class="font-mono text-[10.5px] text-ink-faint">{{ $tarefa->codigo() }}</span>
                             {{ $tarefa->titulo }}
                             @if ($tarefa->tipo === 'operacional')
                                 <x-badge class="ml-1 align-middle">Operacional</x-badge>

@@ -216,4 +216,29 @@ class HistoricoTarefasTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    /**
+     * A linha do histórico traz o mesmo número do card.
+     *
+     * Tarefa encerrada é a que mais se cita por número — em release note e em
+     * conversa de suporte —, e é aqui que se procura o que já saiu do quadro.
+     */
+    public function test_a_linha_do_historico_traz_o_numero_da_tarefa(): void
+    {
+        $usuario = User::factory()->create();
+
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => User::factory(),
+            'titulo' => 'Webhook de pagamento',
+            'status' => 'concluida',
+        ]);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.historico'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/#'.$tarefa->id.'<\/span>\s*Webhook de pagamento/u',
+            $html,
+            'O número precisa vir antes do título, como no card.'
+        );
+    }
 }

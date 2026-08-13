@@ -225,4 +225,18 @@ class ModalDaTarefaTest extends TestCase
         // Excluir é só de quem triaga.
         $this->assertStringNotContainsString("'Confirmar exclusão'", $modal);
     }
+
+    /**
+     * O cabeçalho abre com o número da tarefa: é daqui que ele é copiado para
+     * pedi-la a alguém, e a tela que mostra a tarefa inteira era justamente a
+     * que não dizia como ela se chama.
+     */
+    public function test_o_cabecalho_abre_com_o_numero_da_tarefa(): void
+    {
+        [$tarefa, $dono] = $this->tarefaCompleta();
+
+        $modal = $this->modalDe($tarefa, $dono);
+
+        $this->assertStringContainsString('#'.$tarefa->id.' · Em revisão', $modal);
+    }
 }

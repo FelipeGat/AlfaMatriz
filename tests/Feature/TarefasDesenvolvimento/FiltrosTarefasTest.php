@@ -370,6 +370,70 @@ class FiltrosTarefasTest extends TestCase
             ->assertRedirect($quadroFiltrado);
     }
 
+    public function test_busca_encontra_a_tarefa_pelo_numero_do_card(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+        $this->semearQuadro($criador);
+
+        // Sem dígito nenhum no corpo: o que se está medindo é o número do
+        // card, e texto sorteado pela fábrica poderia responder por ele.
+        $alvo = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Fila de importação travando',
+            'resumo' => 'Sem numeral no corpo',
+            'detalhes' => 'Sem numeral no corpo',
+            'status' => 'backlog',
+        ]);
+
+        // Com e sem o "#" que a tela imprime: quem copia do card leva o
+        // símbolo junto, e quem ouviu o número no telefone digita só o número.
+        foreach ([(string) $alvo->id, '#'.$alvo->id] as $digitado) {
+            $resposta = $this->actingAs($usuario)
+                ->get(route('tarefas.index', ['busca' => $digitado]))
+                ->assertOk();
+
+            $this->assertSame([$alvo->id], $resposta->viewData('tarefas')->pluck('id')->all(),
+                "Buscar por \"{$digitado}\" precisa achar a tarefa {$alvo->id}.");
+        }
+    }
+
+    public function test_busca_por_numero_continua_varrendo_o_texto(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $alvo = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Fila de importação travando',
+            'resumo' => 'Sem numeral no corpo',
+            'detalhes' => 'Sem numeral no corpo',
+            'status' => 'backlog',
+        ]);
+
+        // O número da tarefa escrito no CORPO de outra: é o caso que denuncia
+        // o grupo de OU mal montado — com o `orWhere` do id na frente, o `and`
+        // do título gruda nele e a busca por texto passa a valer só dentro da
+        // tarefa daquele número.
+        $porTexto = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Revisar chamado',
+            'detalhes' => 'Depende da tarefa '.$alvo->id,
+            'status' => 'backlog',
+        ]);
+
+        $encontradas = $this->actingAs($usuario)
+            ->get(route('tarefas.index', ['busca' => (string) $alvo->id]))
+            ->assertOk()
+            ->viewData('tarefas')->pluck('id')->all();
+
+        sort($encontradas);
+        $esperadas = [$alvo->id, $porTexto->id];
+        sort($esperadas);
+
+        $this->assertSame($esperadas, $encontradas);
+    }
+
     private static function porPagina(): int
     {
         return Controller::POR_PAGINA;

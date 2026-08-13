@@ -948,6 +948,14 @@ class TarefaController extends Controller
      */
     private function aplicarFiltros($query, array $filtros): void
     {
+        // O número do card, com ou sem o "#" que a tela imprime: quem recebe
+        // "dá uma olhada na 128" digita o que ouviu, e sem esta linha o único
+        // dado da tarefa que não a encontraria seria justamente o que existe
+        // para nomeá-la. Continua sendo um OU — "128" também acha a tarefa que
+        // tem 128 escrito no corpo, que é outra pergunta legítima.
+        $numero = ltrim($filtros['busca'], '#');
+        $buscaPorNumero = $numero !== '' && ctype_digit($numero);
+
         $query
             ->when($filtros['busca'] !== '', fn ($q) => $q->where(fn ($sub) => $sub
                 ->where('titulo', 'like', '%'.$filtros['busca'].'%')
@@ -962,7 +970,13 @@ class TarefaController extends Controller
                 ->orWhereHas('sistema', fn ($sistema) => $sistema
                     ->where('nome', 'like', '%'.$filtros['busca'].'%'))
                 ->orWhereHas('responsavel', fn ($pessoa) => $pessoa
-                    ->where('name', 'like', '%'.$filtros['busca'].'%'))))
+                    ->where('name', 'like', '%'.$filtros['busca'].'%'))
+                // No FIM da cadeia de propósito: como primeira condição do
+                // grupo, o `or` seria descartado na compilação e o `and` do
+                // título grudaria neste — a busca por texto passaria a valer
+                // só dentro da tarefa daquele número.
+                ->when($buscaPorNumero, fn ($comNumero) => $comNumero
+                    ->orWhere('tarefas.id', (int) $numero))))
             ->when($filtros['sistema'] === 'sem', fn ($q) => $q->whereNull('sistema_id'))
             ->when($filtros['sistema'] !== '' && $filtros['sistema'] !== 'sem',
                 fn ($q) => $q->where('sistema_id', $filtros['sistema']))

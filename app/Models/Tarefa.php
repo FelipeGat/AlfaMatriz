@@ -232,6 +232,26 @@ class Tarefa extends Model
     }
 
     /**
+     * O número pelo qual a tarefa é chamada fora da tela: "#128".
+     *
+     * É o `id` e não um contador novo. Ele já é único, já é o que está na URL
+     * da tarefa, no `data-tarefa` do card e no nome do modal — um segundo
+     * número daria à mesma tarefa dois nomes, e o dia em que os dois
+     * divergissem ninguém saberia qual dos dois o outro lado quis dizer.
+     *
+     * O "#" mora aqui porque três telas o escrevem — card, modal e histórico.
+     * Esquecido em uma delas, o mesmo número viraria dois vocabulários, e quem
+     * copia de uma tela para procurar na outra não acharia.
+     *
+     * Sem zeros à esquerda: "#0042" fixa uma largura que a milésima tarefa
+     * estoura, e aí o acervo teria dois formatos para a mesma coisa.
+     */
+    public function codigo(): string
+    {
+        return '#'.$this->id;
+    }
+
+    /**
      * A tarefa está travada esperando alguém?
      *
      * O bloqueio é marca e não etapa: a tarefa continua na coluna em que
