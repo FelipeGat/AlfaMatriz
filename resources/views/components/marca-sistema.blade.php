@@ -20,14 +20,33 @@
      */
     $slug = $sistema->slug ?? '';
 
-    $icones = [
-        'alfacontrol' => '/sistemas/alfacontrol.svg',
-        'alfagym' => '/sistemas/alfagym.svg',
-        'alfajornada' => '/sistemas/alfajornada.svg',
-        'alfamed' => '/sistemas/alfamed.svg',
-        'alfahome' => '/sistemas/alfahome.png',
-        'gestor' => '/sistemas/gestor.png',
-    ];
+    /**
+     * O ícone é achado por CONVENÇÃO — `public/sistemas/<slug>.svg` ou `.png` —
+     * e não por uma lista escrita aqui dentro.
+     *
+     * A lista existia e tinha as seis marcas da casa, todas com o arquivo já
+     * nomeado pelo slug: ela não decidia nada que o nome do arquivo não
+     * decidisse. O que ela fazia era transformar "dar ícone a um sistema novo"
+     * numa alteração de código — desde que dá para cadastrar sistema pela tela,
+     * isso passou a significar que todo sistema cadastrado nasce sem ícone e só
+     * um deploy o dá. Agora basta largar o arquivo na pasta.
+     *
+     * SVG antes de PNG porque é o formato das marcas mais recentes e escala sem
+     * borrar nos 26px do tile. `is_file` e não `file_exists`: diretório com o
+     * nome do slug passaria no segundo e devolveria um <img> quebrado.
+     */
+    $icone = null;
+
+    if ($slug !== '') {
+        foreach (['svg', 'png'] as $extensao) {
+            $caminho = '/sistemas/'.$slug.'.'.$extensao;
+
+            if (is_file(public_path($caminho))) {
+                $icone = $caminho;
+                break;
+            }
+        }
+    }
 
     // base = tema escuro (o padrão do painel) · claro = quando houver troca
     $wordmarks = [
@@ -67,8 +86,8 @@
             {{ $sistema->nome }}
         </span>
     @endif
-@elseif ($arquivo = $icones[$slug] ?? null)
-    <img src="{{ $arquivo }}" alt=""
+@elseif ($icone)
+    <img src="{{ $icone }}" alt=""
          {{ $attributes->merge(['class' => 'object-contain '.$tamanho]) }}>
 @else
     {{-- Sistema sem ícone: iniciais, como Revendas e Clientes já fazem. --}}
