@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Middleware\ChecarPermissao;
+use App\Http\Middleware\ContaAtiva;
+use App\Http\Middleware\TrocaDeSenhaObrigatoria;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -26,6 +28,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'permissao' => ChecarPermissao::class,
+            'conta-ativa' => ContaAtiva::class,
+            'senha-em-dia' => TrocaDeSenhaObrigatoria::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

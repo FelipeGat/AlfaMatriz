@@ -990,13 +990,26 @@ class TarefaController extends Controller
      * Sistemas só os ativos, como no formulário; usuários sem escopo de
      * revenda, que são os que podem responder por tarefa da matriz.
      *
+     * Conta desativada sai da lista — não se dirige trabalho a quem não entra
+     * mais. Mas continua quem JÁ é responsável ou interlocutor de alguma
+     * tarefa: fora da lista, o `select` de uma tarefa antiga perderia o valor
+     * escolhido, e salvá-la a esvaziaria sem ninguém pedir. O filtro do
+     * histórico depende da mesma lista, e sem eles não haveria como procurar
+     * pelo que a pessoa deixou.
+     *
      * @return array<string, Collection<int, mixed>>
      */
     private function listasDeFiltro(): array
     {
         return [
             'sistemas' => Sistema::where('ativo', true)->orderBy('nome')->get(),
-            'usuarios' => User::whereNull('revenda_id')->orderBy('name')->get(),
+            'usuarios' => User::whereNull('revenda_id')
+                ->where(fn ($query) => $query
+                    ->where('ativo', true)
+                    ->orWhereHas('tarefas')
+                    ->orWhereHas('tarefasComoInterlocutor'))
+                ->orderBy('name')
+                ->get(),
         ];
     }
 

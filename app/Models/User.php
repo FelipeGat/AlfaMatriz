@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -64,6 +65,22 @@ class User extends Authenticatable
     public function revenda(): BelongsTo
     {
         return $this->belongsTo(Revenda::class);
+    }
+
+    /**
+     * O trabalho ligado a esta pessoa. Existem para responder a UMA pergunta:
+     * a conta desativada ainda aparece em alguma tarefa? Se aparece, ela
+     * continua nas listas do quadro — some de lá e o `select` da tarefa antiga
+     * perde o valor escolhido.
+     */
+    public function tarefas(): HasMany
+    {
+        return $this->hasMany(Tarefa::class, 'responsavel_id');
+    }
+
+    public function tarefasComoInterlocutor(): HasMany
+    {
+        return $this->hasMany(Tarefa::class, 'interlocutor_id');
     }
 
     /**

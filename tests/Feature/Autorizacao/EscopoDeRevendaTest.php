@@ -5,9 +5,11 @@ namespace Tests\Feature\Autorizacao;
 use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\Lead;
+use App\Models\Perfil;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use App\Models\User;
+use Database\Seeders\PerfilPermissaoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -213,12 +215,51 @@ class EscopoDeRevendaTest extends TestCase
         $resposta = $this->actingAs($usuario)->get(route('clientes.index'));
 
         $resposta->assertOk();
-        foreach (['centro-controle', 'dashboard', 'comercial', 'produtos.index', 'contas-pagar.index', 'contas-financeiras.index', 'cadastros-auxiliares.index'] as $rota) {
+        foreach (['centro-controle', 'dashboard', 'comercial', 'produtos.index', 'contas-pagar.index', 'contas-financeiras.index', 'cadastros-auxiliares.index', 'usuarios.index'] as $rota) {
             $resposta->assertDontSee(route($rota), escape: false);
         }
         foreach (['leads.index', 'clientes.index', 'cobrancas.index', 'faturamento.index', 'revendas.index'] as $rota) {
             $resposta->assertSee(route($rota), escape: false);
         }
+    }
+
+    /**
+     * @spec:AC-XXX A tela de usuários é só do administrador da matriz. O
+     * recurso `usuarios` já existia no seeder desde o primeiro dia e só o
+     * perfil `admin` o recebe: nenhum outro perfil abre a tela nem salva a
+     * grade de permissões de ninguém.
+     */
+    public function test_so_o_administrador_alcanca_a_tela_de_usuarios(): void
+    {
+        // Semeado à mão: quem monta o cenário aqui é `semPerfil()`, que pula o
+        // seeder de propósito — e sem ele não há perfil nenhum para anexar.
+        (new PerfilPermissaoSeeder)->run();
+
+        $admin = Perfil::where('slug', 'admin')->firstOrFail();
+
+        foreach (['financeiro', 'operacao', 'membro'] as $slug) {
+            $usuario = User::factory()->semPerfil()->create();
+            $usuario->perfis()->attach(Perfil::where('slug', $slug)->value('id'));
+
+            $this->actingAs($usuario)->get(route('usuarios.index'))->assertForbidden();
+            $this->actingAs($usuario)->post(route('usuarios.store'), [])->assertForbidden();
+            $this->actingAs($usuario)->put(route('perfis.permissoes', $admin), [])->assertForbidden();
+        }
+    }
+
+    /**
+     * @spec:AC-XXX Contas do painel são gestão da matriz: a revenda não
+     * cadastra nem desativa ninguém, mesmo com perfil administrativo.
+     */
+    public function test_usuario_de_revenda_nao_alcanca_a_tela_de_usuarios(): void
+    {
+        $cenario = $this->cenario();
+        $usuario = $this->usuarioDaRevenda($cenario['alpha']);
+
+        $this->actingAs($usuario)->get(route('usuarios.index'))->assertForbidden();
+        $this->actingAs($usuario)
+            ->put(route('perfis.permissoes', Perfil::where('slug', 'operacao')->firstOrFail()), [])
+            ->assertForbidden();
     }
 
     /**

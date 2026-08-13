@@ -86,6 +86,10 @@ class CriarAcessosDeRevendas extends Command
                 'password' => $senha,
                 'revenda_id' => $revenda->id,
                 'ativo' => true,
+                // A senha sai daqui no relatório para ser repassada por quem
+                // administra — ou seja, ela passa por um canal que não é da
+                // pessoa. A troca no primeiro acesso é o que lhe dá vida curta.
+                'primeiro_acesso' => true,
             ]);
 
             $usuario->perfis()->syncWithoutDetaching([$perfil->id]);

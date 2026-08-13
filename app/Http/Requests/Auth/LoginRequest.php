@@ -50,6 +50,21 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // A conta desativada é recusada DEPOIS do attempt, e não como condição
+        // dentro dele. Quem chega aqui já provou a senha, então dizer o motivo
+        // não entrega nada a quem não a tinha — enquanto o "credenciais
+        // inválidas" genérico faria a pessoa desativada acreditar que o painel
+        // quebrou, e ligar para o suporte em vez de para quem a desativou.
+        if (! Auth::user()->ativo) {
+            Auth::guard('web')->logout();
+            $this->session()->invalidate();
+            $this->session()->regenerateToken();
+
+            throw ValidationException::withMessages([
+                'email' => 'Esta conta está desativada. Fale com um administrador.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

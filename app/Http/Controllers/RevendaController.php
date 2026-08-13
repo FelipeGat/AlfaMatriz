@@ -338,6 +338,13 @@ class RevendaController extends Controller
                 'password' => $data['senha_admin'],
                 'revenda_id' => $revenda->id,
                 'ativo' => true,
+                // ÚNICA conta que nasce sem a troca obrigatória, e o motivo é
+                // o parágrafo acima: esta senha é a MESMA do AlfaGym, de
+                // propósito. Forçar a troca aqui separaria as duas em silêncio
+                // — a pessoa passaria a ter uma senha em cada painel sem nunca
+                // ter pedido isso, e descobriria no dia em que o outro
+                // recusasse a que ela acabou de escolher.
+                'primeiro_acesso' => false,
             ]);
         }
 

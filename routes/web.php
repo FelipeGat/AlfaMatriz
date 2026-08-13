@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\PrimeiroAcessoController;
 use App\Http\Controllers\CadastroAuxiliarController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\CentroControleController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\FornecedorController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\PainelController;
+use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PrecoAtacadoController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\ProfileController;
@@ -23,6 +25,7 @@ use App\Http\Controllers\SaudeController;
 use App\Http\Controllers\SistemaController;
 use App\Http\Controllers\SubcategoriaController;
 use App\Http\Controllers\TarefaController;
+use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -46,7 +49,17 @@ Route::get('/csrf-token', fn () => response()->json(['token' => csrf_token()]))
     ->middleware('guest')
     ->name('csrf-token');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+// `conta-ativa` e `senha-em-dia` no grupo inteiro, e não rota a rota: as duas
+// regras valem para TUDO que está atrás do login, e uma lista de rotas seria
+// uma lista para alguém esquecer de completar na próxima tela.
+Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(function () {
+    // Troca obrigatória de senha. Isenta do `senha-em-dia` por nome, dentro do
+    // próprio middleware — no grupo por causa das outras duas checagens.
+    Route::get('primeiro-acesso', [PrimeiroAcessoController::class, 'edit'])
+        ->name('senha.primeiro-acesso');
+    Route::put('primeiro-acesso', [PrimeiroAcessoController::class, 'update'])
+        ->name('senha.primeiro-acesso.update');
+
     // O sino não tem tela: o painel viaja com a sidebar, em todas as telas.
     // A única ação que chega ao servidor é dar por lido.
     Route::post('notificacoes/lidas', [NotificacaoController::class, 'marcarLidas'])
@@ -224,6 +237,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('cadastros-auxiliares', [CadastroAuxiliarController::class, 'index'])->name('cadastros-auxiliares.index')
         ->middleware('permissao:financeiro');
+
+    Route::get('usuarios', [UsuarioController::class, 'index'])->name('usuarios.index')
+        ->middleware('permissao:usuarios');
+    Route::post('usuarios', [UsuarioController::class, 'store'])->name('usuarios.store')
+        ->middleware('permissao:usuarios');
+    Route::put('usuarios/{usuario}', [UsuarioController::class, 'update'])->name('usuarios.update')
+        ->middleware('permissao:usuarios');
+    Route::post('usuarios/{usuario}/senha', [UsuarioController::class, 'redefinirSenha'])->name('usuarios.senha')
+        ->middleware('permissao:usuarios');
+    // Ação fixada em `excluir`, e não inferida do POST: o middleware leria
+    // "incluir" pelo verbo, e fechar o acesso de alguém não é incluir nada.
+    Route::post('usuarios/{usuario}/ativo', [UsuarioController::class, 'alternarAtivo'])->name('usuarios.ativo')
+        ->middleware('permissao:usuarios,excluir');
+    Route::delete('usuarios/{usuario}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy')
+        ->middleware('permissao:usuarios');
+    // A grade de permissões mora na segunda aba de `usuarios.index`; o perfil
+    // não tem tela própria, só o salvamento.
+    Route::put('perfis/{perfil}/permissoes', [PerfilController::class, 'update'])->name('perfis.permissoes')
+        ->middleware('permissao:usuarios');
     Route::resource('centros-custo', CentroCustoController::class)->only(['store', 'destroy'])
         ->parameters(['centros-custo' => 'centro_custo'])
         ->middleware('permissao:financeiro');

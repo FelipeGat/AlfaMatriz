@@ -8,6 +8,16 @@ use Illuminate\Database\Seeder;
 
 class PerfilPermissaoSeeder extends Seeder
 {
+    /**
+     * Este seeder é o ESTADO INICIAL da grade, não a verdade sobre ela.
+     *
+     * Desde que a tela de usuários passou a editar permissões, rodá-lo de novo
+     * reescreve o que foi ajustado por lá: os `syncWithoutDetaching` abaixo
+     * levam valores explícitos para cada ação. Em produção isso não acontece —
+     * o deploy roda só `migrate --force` —, mas em desenvolvimento um
+     * `db:seed` desfaz o ajuste sem avisar. O perfil `admin` é o único imune,
+     * porque a tela não o edita.
+     */
     public function run(): void
     {
         $recursos = [

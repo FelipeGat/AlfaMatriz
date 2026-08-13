@@ -38,7 +38,29 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            // Conta JÁ estabelecida, não recém-criada: o padrão do banco é
+            // `primeiro_acesso = true`, e herdá-lo faria todo usuário de teste
+            // cair na troca obrigatória de senha antes de chegar à tela que o
+            // teste queria exercitar. Quem testa a troca usa o state abaixo.
+            'primeiro_acesso' => false,
+            'ativo' => true,
         ];
+    }
+
+    /** Conta recém-criada pelo administrador, com a senha ainda emprestada. */
+    public function primeiroAcesso(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'primeiro_acesso' => true,
+        ]);
+    }
+
+    /** Conta desativada: o login recusa e a sessão viva cai no próximo clique. */
+    public function desativado(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'ativo' => false,
+        ]);
     }
 
     /**
