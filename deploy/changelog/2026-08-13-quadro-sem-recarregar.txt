@@ -1,0 +1,26 @@
+<b>📋 AlfaMatriz — Changelog 13/08/2026</b>
+<i>O quadro de tarefas parou de recarregar a cada clique</i>
+
+Marcar um item, comentar, travar, arrastar um card: toda mudança repintava a tela inteira. Quem estava escrevendo perdia o texto, quem estava na quinta coluna voltava para a primeira, e o card só saía do lugar meio segundo depois de solto — tempo suficiente para achar que o gesto falhou e arrastar de novo.
+
+<b>🆕 Novidades</b>
+
+• <b>Nada mais recarrega a página.</b> Checklist, conversa, bloqueio, arrastar, criar, salvar e excluir acontecem sem a tela piscar. A tarefa que estava aberta continua aberta.
+• <b>O comentário que você está escrevendo não some mais.</b> Antes, marcar um item do checklist no meio de uma frase descartava o que ainda não tinha sido publicado. Agora ele fica onde estava — inclusive se você corrigir um comentário antigo enquanto escreve o novo.
+• <b>O quadro não volta mais ao começo.</b> A rolagem das colunas e a posição dentro de cada uma ficam onde você deixou. Marcar um item numa tarefa da quinta coluna deixou de custar reencontrar o próprio card.
+• <b>O card sai da coluna no instante em que você solta.</b> Não há mais espera entre o gesto e a resposta. Se o movimento for recusado, o card volta com a frase explicando por quê — em vez de a tela inteira trocar por causa de um aviso.
+• <b>Dá para escrever vários itens de checklist seguidos.</b> O cursor não sai mais do campo a cada Enter.
+• <b>Os contadores acompanham na hora.</b> O limite de trabalho em curso de cada coluna e as contagens do cabeçalho — travadas, esperando por você, prontas p/ subir — mudam junto com a ação, sem esperar a próxima visita à tela.
+
+<b>⚡ Desempenho</b>
+
+• <b>Cada ação passou a mandar só o que mudou.</b> Marcar um item do checklist trafegava quase uma página inteira para alterar um "3/5" num card; agora são 27 KB. Arrastar um card caiu de 3,1 MB para 912 KB.
+• <b>Do clique até a tela mudar: cerca de 160 ms</b>, medido num quadro com sessenta tarefas.
+
+<b>🛟 Sem surpresa</b>
+
+• <b>A regra de quem pode o quê não mudou.</b> Mover a tarefa de outra pessoa, excluir, corrigir comentário alheio: tudo continua sendo recusado como antes, e a recusa agora aparece como aviso no canto, sem tirar você de onde estava.
+• <b>Dois movendo o mesmo card continua sendo recusado.</b> Quem chega depois recebe "Alguém já moveu esta tarefa" em vez de sobrescrever em silêncio.
+• <b>Sem JavaScript, tudo continua funcionando</b> pelo caminho antigo, com a tela recarregando.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
