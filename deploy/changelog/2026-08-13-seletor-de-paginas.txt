@@ -1,0 +1,18 @@
+<b>📋 AlfaMatriz — Changelog 13/08/2026</b>
+<i>O seletor de páginas passa a ser do painel</i>
+
+<b>🔧 Correções</b>
+
+• <b>O seletor de páginas ignorava o botão de tema.</b> Toda listagem que passa de uma página — clientes, revendas, produtos, receitas, despesas, contas, extrato, usuários, auditoria e o histórico de tarefas — terminava numa caixa branca com botões cinzas, solta abaixo do painel. Ela não era nossa: vinha pronta do framework, pintada por fora do sistema visual. No tema escuro ficava branca; no claro, dependia do que estivesse configurado no computador de quem olhava, e não do botão de tema do próprio AlfaMatriz. Ainda dizia <i>"Showing 1 to 15 of 87 results"</i>, em inglês, repetindo a contagem que o rodapé da tabela já dava em português.
+
+Agora o seletor é desenhado com as cores do painel e acompanha o botão de tema nos dois sentidos.
+
+<b>🎨 Interface</b>
+
+• <b>Ele mudou de lugar: entrou no rodapé da tabela.</b> É onde o desenho sempre previu — a contagem à esquerda (<i>15 de 87 clientes · página 1 de 11</i>) e, na mesma faixa, à direita, <i>Anterior</i>, os números de página e <i>Próxima</i>. Some a caixa avulsa embaixo do painel, e some a informação dita duas vezes.
+
+Os números de página continuam ali de propósito. O desenho previa só Anterior e Próxima, mas em telas como a Auditoria, que passa de dez páginas, sem eles não há como saltar direto — ir da página 1 à 9 seriam oito cliques.
+
+Em <b>Produtos</b> o seletor fica logo abaixo do painel, e não dentro dele: aquela tela alterna entre lista e cartões, os dois modos compartilham a mesma paginação, e o rodapé da tabela só existe num deles.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
