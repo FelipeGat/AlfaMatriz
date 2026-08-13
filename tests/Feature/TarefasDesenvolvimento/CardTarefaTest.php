@@ -376,8 +376,12 @@ class CardTarefaTest extends TestCase
 
         // O nome do sistema saiu do texto do rodapé e virou o `title` do
         // círculo, com o arquivo da marca dentro dele.
+        //
+        // `/marcas/`, e não `/sistemas/`: a pasta foi renomeada porque o nome
+        // antigo sombreava a rota `sistemas` no nginx do servidor. Ver
+        // `tests/Feature/Deploy/RotaSombreadaPorArquivoTest`.
         $this->assertMatchesRegularExpression(
-            '/title="AlfaGym"[^>]*>\s*<img src="\/sistemas\/alfagym\.svg"/u', $html);
+            '/title="AlfaGym"[^>]*>\s*<img src="\/marcas\/alfagym\.svg"/u', $html);
     }
 
     /**

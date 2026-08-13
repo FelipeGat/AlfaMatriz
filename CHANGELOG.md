@@ -68,7 +68,7 @@ sumia do filtro e da raia do quadro.
   seeder ou direto no banco. O botão do topo acompanha a aba: na de internos ele
   já abre o formulário sem os campos comerciais.
 - **O ícone de um sistema passou a ser um arquivo, e não código.** Basta largar
-  `public/sistemas/<slug>.svg` (ou `.png`) e ele aparece na lista e no quadro.
+  `public/marcas/<slug>.svg` (ou `.png`) e ele aparece na lista e no quadro.
   Antes a relação de marcas era uma lista escrita dentro do componente, então
   todo sistema cadastrado pela tela nascia sem ícone até alguém alterar o
   código. Sem arquivo, continua aparecendo pelas iniciais do nome.

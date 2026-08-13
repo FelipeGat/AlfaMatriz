@@ -7,8 +7,17 @@
 @php
     /**
      * A marca de cada produto, resolvida pelo slug. Os arquivos vivem em
-     * `public/sistemas/` e vêm da pasta de marcas da casa; a regra de qual
+     * `public/marcas/` e vêm da pasta de marcas da casa; a regra de qual
      * usar mora aqui, e não espalhada nas telas.
+     *
+     * A pasta se chamava `public/sistemas/` e NÃO PODE voltar a se chamar:
+     * o nginx da instalação resolve `try_files $uri $uri/ /index.php`, então
+     * uma pasta com o nome de uma rota é encontrada no disco antes de o
+     * Laravel ser consultado. Com `autoindex` desligado, servir um diretório é
+     * 403 — e foi assim que `GET /sistemas` e `POST /sistemas` morreram no
+     * staging, com cara de problema de permissão. `tests/Feature/Deploy/
+     * RotaSombreadaPorArquivoTest` guarda isso, porque nenhum outro teste
+     * consegue: a suíte fala com o Laravel direto e nunca passa pelo nginx.
      *
      * Ícone e wordmark servem a lugares diferentes: o ícone é quadrado e
      * identifica de relance numa tabela; o wordmark é comprido e só cabe onde
@@ -21,7 +30,7 @@
     $slug = $sistema->slug ?? '';
 
     /**
-     * O ícone é achado por CONVENÇÃO — `public/sistemas/<slug>.svg` ou `.png` —
+     * O ícone é achado por CONVENÇÃO — `public/marcas/<slug>.svg` ou `.png` —
      * e não por uma lista escrita aqui dentro.
      *
      * A lista existia e tinha as seis marcas da casa, todas com o arquivo já
@@ -39,7 +48,7 @@
 
     if ($slug !== '') {
         foreach (['svg', 'png'] as $extensao) {
-            $caminho = '/sistemas/'.$slug.'.'.$extensao;
+            $caminho = '/marcas/'.$slug.'.'.$extensao;
 
             if (is_file(public_path($caminho))) {
                 $icone = $caminho;
@@ -50,11 +59,11 @@
 
     // base = tema escuro (o padrão do painel) · claro = quando houver troca
     $wordmarks = [
-        'alfacontrol' => ['/sistemas/alfacontrol-wordmark.png', null],
-        'alfagym' => ['/sistemas/alfagym-wordmark.png', null],
-        'alfahome' => ['/sistemas/alfahome-wordmark.png', '/sistemas/alfahome-wordmark-claro.png'],
-        'alfajornada' => ['/sistemas/alfajornada-wordmark.png', '/sistemas/alfajornada-wordmark-claro.png'],
-        'alfamed' => ['/sistemas/alfamed-wordmark.png', '/sistemas/alfamed-wordmark-claro.png'],
+        'alfacontrol' => ['/marcas/alfacontrol-wordmark.png', null],
+        'alfagym' => ['/marcas/alfagym-wordmark.png', null],
+        'alfahome' => ['/marcas/alfahome-wordmark.png', '/marcas/alfahome-wordmark-claro.png'],
+        'alfajornada' => ['/marcas/alfajornada-wordmark.png', '/marcas/alfajornada-wordmark-claro.png'],
+        'alfamed' => ['/marcas/alfamed-wordmark.png', '/marcas/alfamed-wordmark-claro.png'],
         // Gestor ainda não tem wordmark na pasta de marcas.
     ];
 @endphp
