@@ -213,34 +213,28 @@ no_container "if [ -d $APP_DIR/.git ] && [ -f $CONVERSOR ]; then \
 
 # Os limites de upload do PHP.
 #
-# O Debian entrega `upload_max_filesize` de 2M e `post_max_size` de 8M, e até
-# 13/08/2026 este script não os tocava — o nginx aceitava 20M e quem barrava era
-# o PHP, três camadas abaixo, com um erro que não fala de tamanho: passando de
-# `post_max_size` o PHP descarta o corpo INTEIRO do POST, e o Laravel responde
-# falha de CSRF sobre um formulário que nunca chegou.
+# O CONTEÚDO e o porquê moram em `deploy/php-alfamatriz.ini`, empurrado daqui
+# como o `nginx-alfamatriz.conf` — um arquivo versionado, e não texto embutido
+# no script. Assim há um lugar só para conferir o que o servidor tem, e aplicar
+# à mão numa máquina já provisionada é empurrar o MESMO arquivo, sem chance de
+# o servidor e o repositório divergirem numa vírgula.
 #
-# 2M cabia enquanto a tarefa só aceitava imagem, que o navegador encolhe antes
-# de enviar (US-064). Log, planilha e PDF não têm como ser encolhidos, e é por
-# isso que o teto subiu junto com eles. De quebra, cobrança e conta a pagar
-# param de prometer 10M na validação e entregar 2M na prática.
-#
-# `post_max_size` maior que `upload_max_filesize` de propósito: o corpo carrega
-# os limites do multipart, os nomes dos campos e o token junto dos arquivos.
-# E os dois abaixo do `client_max_body_size 20M` do nginx, para quem recusa ser
-# sempre o PHP — que sabe dizer qual arquivo e de que tamanho.
-#
-# Arquivo em `conf.d`, e não edição do `php.ini`: um `.ini` solto sobrevive a
+# Em `conf.d`, e não edição do `php.ini`: um `.ini` solto sobrevive ao
 # `apt upgrade` do pacote do PHP, e reprovisionar reescreve o mesmo arquivo em
 # vez de acrescentar linha repetida a cada volta.
-info "ajustando limites de upload do PHP (12M por arquivo, 16M por envio)"
-no_container "for SAPI in fpm cli; do \
-        mkdir -p /etc/php/8.2/\$SAPI/conf.d && \
-        printf '%s\n' \
-            '; AlfaMatriz — ver deploy/provisionar.sh. Não editar à mão.' \
-            'upload_max_filesize = 12M' \
-            'post_max_size = 16M' \
-            > /etc/php/8.2/\$SAPI/conf.d/99-alfamatriz.ini; \
-    done && systemctl reload php8.2-fpm"
+#
+# Nos dois SAPIs: o `fpm` é quem atende o upload, e o `cli` existe para o
+# `artisan` do deploy enxergar os mesmos limites que a aplicação.
+info "instalando limites de upload do PHP (12M por arquivo, 16M por envio)"
+if [[ "$LOCAL" -eq 1 ]]; then
+    cp "$(dirname "$0")/php-alfamatriz.ini" /tmp/php-alfamatriz.ini
+else
+    scp -o BatchMode=yes "$(dirname "$0")/php-alfamatriz.ini" "$HOST:/tmp/php-alfamatriz.ini"
+fi
+no_container "mkdir -p /etc/php/8.2/fpm/conf.d /etc/php/8.2/cli/conf.d"
+no_host "pct push $VMID /tmp/php-alfamatriz.ini /etc/php/8.2/fpm/conf.d/99-alfamatriz.ini"
+no_host "pct push $VMID /tmp/php-alfamatriz.ini /etc/php/8.2/cli/conf.d/99-alfamatriz.ini"
+no_container "systemctl reload php8.2-fpm"
 
 # -------------------------------------------------------------------- nginx
 
