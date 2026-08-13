@@ -1,6 +1,18 @@
 {{--
     O seletor de páginas do painel.
 
+    MORA AQUI, e não em `resources/views/vendor/pagination/`, que é onde a
+    convenção do Laravel manda publicar view de pacote. O motivo é o
+    `view:cache`: o `ViewCacheCommand::bladeFilesIn()` monta o Finder com
+    `->exclude('vendor')`, então NADA sob `resources/views/vendor/` é
+    pré-compilado. Em desenvolvimento não se nota — o servidor compila sob
+    demanda com um usuário que pode escrever em `storage/framework/views`. Em
+    produção o `publicar.sh` roda `view:cache` como root e o `www-data` não
+    escreve ali: a view ficava de fora do cache, tentava compilar no primeiro
+    pedido com paginador, o `tempnam()` caía no temp do sistema e a listagem
+    devolvia 500. A página de erro do Laravel compila sob demanda também, falha
+    pelo mesmo motivo, e o rastro mostrava só o `tempnam` — escondendo a causa.
+
     Existe porque a view de paginação do Laravel é `bg-white` / `gray-300` /
     `blue-300` no claro e resolve o escuro com variantes `dark:` — e o
     `tailwind.config.js` não declara `darkMode`, então `dark:` cai no padrão

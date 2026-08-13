@@ -3,6 +3,7 @@
 namespace Tests\Feature\Redesign;
 
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 /**
@@ -173,5 +174,50 @@ class ComponentesTest extends TestCase
             "Estas telas passam uma view ao `links()` e furam a paginação do painel:\n"
             .implode("\n", $comViewPropria)
         );
+    }
+
+    /**
+     * @spec:AC-222 O seletor de páginas é pré-compilável pelo `view:cache`.
+     *
+     * Este teste nasceu de um 500 em staging. O seletor tinha sido posto em
+     * `resources/views/vendor/pagination/`, que é onde a convenção do Laravel
+     * manda publicar view de pacote — só que o `ViewCacheCommand` monta o
+     * Finder com `->exclude('vendor')`, e nada dali entra no cache. Em
+     * desenvolvimento não aparece: o servidor compila sob demanda com um
+     * usuário que escreve em `storage/framework/views`. Em produção o
+     * `publicar.sh` roda `view:cache` como root, o `www-data` não escreve ali,
+     * e a única view fora do cache derrubava toda listagem paginada.
+     *
+     * Roda o comando DE VERDADE em vez de repetir a regra de exclusão aqui: é
+     * o framework que decide o que entra no cache, e uma cópia da regra
+     * envelheceria sem ninguém perceber.
+     */
+    public function test_o_seletor_de_paginas_entra_no_cache_de_views(): void
+    {
+        try {
+            Artisan::call('view:cache');
+
+            $compilados = glob(storage_path('framework/views/*.php')) ?: [];
+
+            $temOSeletor = false;
+            foreach ($compilados as $arquivo) {
+                if (str_contains(file_get_contents($arquivo), 'paginacao/seletor.blade.php')) {
+                    $temOSeletor = true;
+                    break;
+                }
+            }
+
+            $this->assertTrue(
+                $temOSeletor,
+                'O `view:cache` não pré-compilou o seletor de páginas. Em produção ele teria de compilar '
+                .'no primeiro pedido, e o usuário do servidor web não escreve em `storage/framework/views`: '
+                .'toda listagem paginada devolve 500. Quase sempre a causa é a view ter ido parar sob um '
+                .'diretório `vendor/`, que o `ViewCacheCommand` exclui.'
+            );
+        } finally {
+            // Não deixar o cache quente para quem rodou a suíte: view compilada
+            // sobrevivendo entre execuções é fonte de teste que passa sozinho.
+            Artisan::call('view:clear');
+        }
     }
 }

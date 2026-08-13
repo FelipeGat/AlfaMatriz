@@ -43,7 +43,7 @@ class BuildDoCssTest extends TestCase
         // classes dela seriam podadas e o seletor renderizaria sem estilo
         // nenhum, que é uma falha silenciosa — o HTML sai certo.
         $this->assertFileExists(
-            resource_path('views/vendor/pagination/alfamatriz.blade.php'),
+            resource_path('views/paginacao/seletor.blade.php'),
             'O seletor de páginas precisa morar sob `resources/views` para o Tailwind varrer as classes dele.'
         );
     }

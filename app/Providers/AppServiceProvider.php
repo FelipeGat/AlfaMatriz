@@ -36,7 +36,11 @@ class AppServiceProvider extends ServiceProvider
         // `tailwind.config.js` seguem o sistema operacional em vez da classe
         // `.theme-light` do <html>. Aqui, e não em cada `links()`, porque são
         // dez listagens e a décima-primeira nasceria com a view do framework.
-        Paginator::defaultView('vendor.pagination.alfamatriz');
+        //
+        // O caminho NÃO é `vendor.pagination.*`, que seria a convenção: o
+        // `view:cache` exclui `vendor/`, e a view ficaria fora do cache — ver
+        // o cabeçalho de `resources/views/paginacao/seletor.blade.php`.
+        Paginator::defaultView('paginacao.seletor');
 
         // Em produção o painel só existe atrás do Funnel, sempre em HTTPS.
         // Forçar o esquema evita conteúdo misto se algum link for gerado

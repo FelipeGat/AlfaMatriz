@@ -253,6 +253,19 @@ alcançáveis, para não perder o botão de editar quando a janela é estreita.
   Anterior, os números de página e Próxima. Em Produtos, cujo paginador é
   único para os modos lista e cartões, ele fica logo abaixo do painel
 
+#### AC-222 — O seletor de páginas é pré-compilável pelo `view:cache`
+
+- **Dado** o deploy, que roda `php artisan view:cache` como root e serve o app
+  por um usuário que não escreve em `storage/framework/views`
+- **Quando** o cache de views é montado
+- **Então** a view do seletor de páginas entra nele — o que exige que ela NÃO
+  more sob um diretório `vendor/`, porque o `ViewCacheCommand` monta o Finder
+  com `->exclude('vendor')` e nada dali é pré-compilado
+- **E** a consequência de errar isso não aparece em desenvolvimento, onde a
+  compilação sob demanda funciona: aparece só no servidor, como 500 em toda
+  listagem paginada, com a página de erro do Laravel falhando junto (ela também
+  compila sob demanda) e escondendo a causa atrás de um aviso de `tempnam()`
+
 ### US-022 — Faturamento auditável antes de gerar
 
 Como responsável pelo faturamento, quero conferir de onde saiu cada valor antes
@@ -391,7 +404,8 @@ precise ser respondido.
   tivesse aberto antes de compilar
 - **E** view de vendor que precise deste CSS entra pelo caminho dela, explícita.
   A paginação já foi esse caso; hoje o seletor de páginas é nosso e mora em
-  `resources/views`, então nenhum caminho de vendor está listado (ver [AC-221])
+  `resources/views/paginacao`, então nenhum caminho de vendor está listado
+  (ver [AC-221] e [AC-222])
 
 ## Fora de escopo
 

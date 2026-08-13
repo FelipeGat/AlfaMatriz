@@ -42,8 +42,8 @@ export default {
      * exigência dos clientes de e-mail.
      *
      * A paginação já esteve listada aqui pelo caminho do framework; hoje é
-     * nossa (`resources/views/vendor/pagination/alfamatriz.blade.php`) e entra
-     * pela varredura de views normal. View de vendor que um dia precise deste
+     * nossa (`resources/views/paginacao/seletor.blade.php`) e entra pela
+     * varredura de views normal. View de vendor que um dia precise deste
      * CSS volta a entrar assim, pelo caminho dela — explícita, e não por efeito
      * colateral de alguém ter aberto uma tela antes do `npm run build`.
      */
