@@ -138,6 +138,66 @@ class FormularioTarefaTest extends TestCase
     }
 
     /**
+     * @spec:AC-216 O resumo digitado no modal chega ao banco — na criação e na
+     * edição. Ele existia no formulário e no card, mas não na validação das
+     * rotas, e `validate()` devolve só o que validou: o campo era preenchido,
+     * enviado e descartado sem que nada na tela dissesse isso.
+     */
+    public function test_o_resumo_do_modal_e_gravado_na_criacao_e_na_edicao(): void
+    {
+        $usuario = User::factory()->create();
+
+        $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'titulo' => 'Exportar frequência',
+            'resumo' => 'Academia reclamou que o export não traz linhas.',
+            'prioridade' => 'alta',
+        ]);
+
+        $tarefa = Tarefa::where('titulo', 'Exportar frequência')->sole();
+        $this->assertSame('Academia reclamou que o export não traz linhas.', $tarefa->resumo);
+
+        $this->actingAs($usuario)->put(route('tarefas.update', $tarefa), [
+            'titulo' => $tarefa->titulo,
+            'resumo' => 'O filtro de data derrubava todas as linhas.',
+            'prioridade' => $tarefa->prioridade,
+        ]);
+
+        $this->assertSame('O filtro de data derrubava todas as linhas.', $tarefa->fresh()->resumo);
+    }
+
+    /**
+     * @spec:AC-216 Textarea limpo apaga o resumo; envio SEM o campo mantém o que
+     * está gravado. A diferença importa porque a criação rápida do pé da coluna
+     * manda só o título, e o modal de quem não triaga é um formulário curto —
+     * nenhum dos dois pode zerar de passagem o resumo de uma tarefa.
+     */
+    public function test_resumo_vazio_apaga_e_envio_sem_o_campo_preserva(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $usuario->id,
+            'resumo' => 'Baixa automática ao receber o retorno do gateway.',
+            'status' => 'backlog',
+        ]);
+
+        $this->actingAs($usuario)->put(route('tarefas.update', $tarefa), [
+            'titulo' => $tarefa->titulo,
+            'prioridade' => $tarefa->prioridade,
+        ]);
+
+        $this->assertSame('Baixa automática ao receber o retorno do gateway.', $tarefa->fresh()->resumo,
+            'Envio sem o campo não pode apagar o resumo gravado.');
+
+        $this->actingAs($usuario)->put(route('tarefas.update', $tarefa), [
+            'titulo' => $tarefa->titulo,
+            'resumo' => '',
+            'prioridade' => $tarefa->prioridade,
+        ]);
+
+        $this->assertNull($tarefa->fresh()->resumo, 'Textarea limpo apaga o resumo.');
+    }
+
+    /**
      * @spec:AC-084 Editar uma tarefa existente troca o sistema vinculado, e o card passa a mostrar o novo sistema.
      */
     public function test_editar_tarefa_troca_o_sistema_vinculado(): void
