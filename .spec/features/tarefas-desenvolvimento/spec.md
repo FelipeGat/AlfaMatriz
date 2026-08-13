@@ -732,13 +732,86 @@ para que a tela sirva à pergunta do momento e ao aparelho que estiver na mão.
   nada dispara enquanto se digita, senão escrever "backlog" na busca moveria
   cards pelo caminho
 
+### US-064 — Imagem na tarefa
+
+Como pessoa que revisa, quero anexar imagens à tarefa — escolhendo o arquivo ou
+colando da área de transferência —, para mostrar o defeito em vez de descrevê-lo.
+
+"O botão saiu do lugar" é uma frase que só quem viu a tela entende. Na revisão,
+descrever por escrito custa rodadas que uma captura encerra de uma vez — e é a
+conversa empacada (três idas e voltas, AC-190) que essa captura evita.
+
+#### AC-223 — A imagem entra por arquivo ou por Ctrl+V
+
+- **Dado** uma tarefa aberta
+- **Quando** escolho um arquivo de imagem, ou colo um print com a tarefa aberta
+- **Então** ele entra na galeria da tarefa, com nome, tamanho e quem anexou. A
+  imagem é da TAREFA, e não do comentário: a prova não depende de achar em qual
+  comentário ela foi parar. O que a área de transferência entrega sem nome
+  ("image.png") vira `captura-AAAA-MM-DD-HHMMSS`, senão três prints colados
+  viram três legendas idênticas — e é justamente a legenda que distingue o que a
+  miniatura, pequena, já não distingue
+
+#### AC-224 — O print grande entra mesmo assim
+
+- **Dado** uma captura de tela cheia, acima do teto de 2 MB
+- **Quando** a anexo
+- **Então** o navegador a encolhe para 1920px no maior lado antes de enviar, e
+  ela entra. Sem isso, o caso principal da feature seria o que ela recusa: um
+  print de 2560×1440 passa dos 2 MB com facilidade. O arquivo que já cabe é
+  enviado INTACTO — recodificar por precaução borraria o texto de todo print por
+  um problema que aquele arquivo não tinha. Os limites são do PHP de produção,
+  não de produto: 2 MB por arquivo (`upload_max_filesize`) e três por envio (o
+  quarto faria o PHP descartar o corpo inteiro do POST e chegar como erro de
+  CSRF, sem relação nenhuma com tamanho)
+
+#### AC-225 — Anexar não descarta o que está escrito
+
+- **Dado** um comentário sendo escrito no modal, ainda não publicado
+- **Quando** colo um print no meio da frase
+- **Então** a imagem sobe sem recarregar a tela e o texto continua onde estava.
+  O gesto que a galeria serve é justamente esse — colar a prova do que se está
+  escrevendo —, e o caminho do checklist (enviar e voltar) apagaria o rascunho
+  no momento exato em que ele importa
+
+#### AC-226 — Quem anexou apaga; a imagem morre com a tarefa e sobrevive ao autor
+
+- **Dado** uma imagem anexada por outra pessoa
+- **Quando** tento removê-la
+- **Então** a rota recusa e o botão nem aparece — mesma regra do comentário, e
+  não a do checklist: o item é combinado do time, mas a imagem é o que ALGUÉM
+  mostrou para sustentar um argumento. Excluir a tarefa leva as imagens junto; a
+  saída de quem anexou não leva — a legenda passa a dizer "Autor removido" e a
+  prova fica
+
+#### AC-227 — O card conta, e a imagem só sai pela rota
+
+- **Dado** uma tarefa com imagens
+- **Quando** olho o card no quadro
+- **Então** vejo um selo com a contagem, ao lado dos de checklist e comentários,
+  e o card não fica mais alto — a miniatura no card custaria ~46px de altura
+  justamente na etapa em que mais se anexa imagem. O arquivo mora no disco
+  `public` porque é o único que sobrevive à publicação azul/verde, mas quem o
+  entrega é rota com `auth` e `permissao:tarefas`, e não o `/storage` do disco
+
+#### AC-228 — Revenda não alcança a imagem
+
+- **Dado** um usuário com escopo de revenda
+- **Quando** ele pede qualquer rota de imagem — anexar, ver ou remover
+- **Então** recebe 403, como no resto do quadro (AC-095): sem isso o backlog
+  interno vazaria por uma porta lateral, agora levando capturas de tela junto
+
 ## Fora de escopo
 
 > O handoff de design de 11/08/2026 foi entregue por inteiro. O que segue
 > abaixo continua fora — são itens do escopo original da feature, não do
 > redesenho.
 - Excluir tarefa (diferente de cancelar), com confirmação em dois passos.
-- Anexos de imagem na tarefa (o alfadev tem; fica para depois).
+- Imagem presa ao COMENTÁRIO, em vez de à tarefa (ver ASM-052), e imagem dentro
+  do corpo do comentário.
+- Visualizador próprio de imagem (zoom, girar): a miniatura abre em aba nova,
+  onde o navegador já faz as três coisas.
+- Anexo que não seja imagem na tarefa (PDF, log, planilha).
 - Qualquer formatação no comentário: marcador de lista, numeração, markdown.
 - Histórico de versões do comentário: a tela diz QUE foi corrigido, não o que
   dizia antes.
@@ -769,6 +842,8 @@ para que a tela sirva à pergunta do momento e ao aparelho que estiver na mão.
 | ASM-049 | Os dois tipos dividem o mesmo quadro, em vez de cada um ter a sua tela. | confirmada | Confirmado pelo usuário em 2026-08-11. Separar criaria dois lugares para olhar e uma dúvida a cada cadastro ("isso é dev ou não?"), e a maior parte do que se pergunta ao quadro — o que está travado, o que está esquecido, quem está com o quê — é a mesma pergunta para os dois. Quem quiser o quadro do ciclo puro tem o filtro de tipo (AC-179). |
 | ASM-050 | O tipo pode ser trocado depois do cadastro, e trocá-lo não prende a tarefa. | confirmada | Implementado: o fluxo operacional guarda saídas para Em testes e Ajustes necessários mesmo sem oferecer entrada nelas. Sem isso, trocar para Operacional uma tarefa que já estava em teste deixaria o card numa coluna sem nenhum caminho de volta. |
 | ASM-051 | A etapa Bloqueada NÃO recebe o destaque de tarefa esquecida (AC-093). | aberta | Decisão de projeto, tomada em 2026-08-11: a escala de 24h/48h existe para etapa em que ninguém deveria estar parado, e a Bloqueada é a etapa em que estar parado é o esperado — esperar um fornecedor por uma semana é normal. Ela já se anuncia pela coluna própria e pelo motivo escrito. **Rever quando houver uso real:** se o time começar a esquecer tarefa bloqueada, o destaque volta, com uma régua mais larga. |
+| ASM-052 | A imagem se prende à TAREFA, e não ao comentário: uma galeria só, cronológica, irmã do checklist no modal. | confirmada | Escolhido pelo dono do produto em 2026-08-13, entre prender ao comentário, prender à tarefa e as duas coisas. O que se compra: a prova não depende de achar em qual comentário ela foi parar, e a mesma imagem não aparece duas vezes na tela. O que se paga: a imagem não sabe de que fala — quem quiser amarrar uma captura a um argumento escreve o comentário do lado. **Rever se aparecer tarefa com muitas imagens de assuntos diferentes:** aí a galeria vira um monte e o vínculo com o comentário passa a valer o custo. |
+| ASM-053 | O teto de 2 MB por imagem e três por envio é limite de INFRAESTRUTURA, não decisão de produto. | aberta | São os padrões do Debian (`upload_max_filesize` 2M, `post_max_size` 8M) que o `deploy/provisionar.sh` não altera — o nginx já aceita 20M, quem barra é o PHP. A tela contorna encolhendo o que passa disso (AC-224), então o limite só aparece para quem tenta anexar foto de máquina fotográfica. **Rever se o encolhimento incomodar:** subir o php.ini para 10M/12M é uma linha no provisionamento, mas ela não alcança máquina já provisionada — precisa ser aplicada à mão em produção. |
 | ASM-035 | Os dados do alfadev não são migrados: o quadro do AlfaMatriz nasce vazio e o alfadev é desligado depois, manualmente. | aberta | **Decisão pendente do dono do produto.** Enquanto o alfadev seguir em uso, os dois bancos divergem. Migrar o histórico do Supabase é feature própria; desligar o alfadev sem migrar descarta o histórico dele. |
 
 ## Perguntas em aberto

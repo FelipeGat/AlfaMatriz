@@ -148,6 +148,25 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('tarefas.itens.destroy')
         ->middleware('permissao:tarefas');
 
+    // Imagens: anexar pende da tarefa (é ela que ganha a imagem); ver e
+    // remover pendem da imagem, que já sabe de quem é — mesma divisão do
+    // checklist, pelo mesmo motivo.
+    //
+    // VER passa por aqui, e não pelo `/storage` do disco, para a imagem ficar
+    // atrás de `auth` e de `permissao:tarefas` como o resto do quadro. O
+    // arquivo mora no disco `public` porque é o único que sobrevive à
+    // publicação azul/verde (ver `config/filesystems.php`), e não porque a
+    // imagem deva ser pública.
+    Route::post('tarefas/{tarefa}/imagens', [TarefaController::class, 'anexarImagem'])
+        ->name('tarefas.imagens.store')
+        ->middleware('permissao:tarefas');
+    Route::get('tarefas/imagens/{imagem}', [TarefaController::class, 'verImagem'])
+        ->name('tarefas.imagens.ver')
+        ->middleware('permissao:tarefas');
+    Route::delete('tarefas/imagens/{imagem}', [TarefaController::class, 'excluirImagem'])
+        ->name('tarefas.imagens.destroy')
+        ->middleware('permissao:tarefas');
+
     Route::put('tarefas/comentarios/{comentario}', [TarefaController::class, 'editarComentario'])
         ->name('tarefas.comentarios.update')
         ->middleware('permissao:tarefas');

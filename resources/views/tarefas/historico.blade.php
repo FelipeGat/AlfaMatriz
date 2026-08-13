@@ -71,11 +71,30 @@
                              foi dito nela é ler o resultado sem o motivo. Só
                              leitura — para voltar a escrever, reabre-se a
                              tarefa (AC-131). --}}
-                        @if (($totalComentarios = $tarefa->comentarios->count()) > 0)
+                        @php
+                            // O botão anuncia o que há para ler — conversa,
+                            // imagem ou as duas. Sem a imagem no rótulo, a
+                            // tarefa encerrada que só tinha prints não abria
+                            // botão nenhum, e o print costuma ser justamente o
+                            // que explica o desfecho que o texto não explicou.
+                            $totalComentarios = $tarefa->comentarios->count();
+                            $totalImagens = $tarefa->imagens->count();
+
+                            $oQueHa = collect([
+                                $totalComentarios > 0
+                                    ? $totalComentarios.' '.($totalComentarios === 1 ? 'comentário' : 'comentários')
+                                    : null,
+                                $totalImagens > 0
+                                    ? $totalImagens.' '.($totalImagens === 1 ? 'imagem' : 'imagens')
+                                    : null,
+                            ])->filter();
+                        @endphp
+
+                        @if ($oQueHa->isNotEmpty())
                             <button type="button" x-data
                                     @click="$dispatch('open-modal', 'comentarios-tarefa-{{ $tarefa->id }}')"
                                     class="mt-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
-                                {{ $totalComentarios }} {{ $totalComentarios === 1 ? 'comentário' : 'comentários' }} ▾
+                                {{ $oQueHa->implode(' · ') }} ▾
                             </button>
                         @endif
                     </td>
@@ -175,13 +194,16 @@
     </x-tabela>
     </div>
 
-    {{-- Um modal por linha COM comentário: a página traz 20 tarefas, e montar
-         modal vazio para as que não têm conversa seria peso sem leitura. --}}
+    {{-- Um modal por linha COM comentário OU imagem: a página traz 20 tarefas,
+         e montar modal vazio para as que não têm nem uma nem outra seria peso
+         sem leitura. A imagem entrou na condição junto com a galeria (US-064):
+         sem isso, a tarefa encerrada que só tinha prints não abria nada. --}}
     @foreach ($tarefas as $tarefa)
-        @if ($tarefa->comentarios->isNotEmpty())
+        @if ($tarefa->comentarios->isNotEmpty() || $tarefa->imagens->isNotEmpty())
             <x-modal name="comentarios-tarefa-{{ $tarefa->id }}" maxWidth="lg">
                 <div class="px-6 pt-6 pb-4">
                     <h3 class="font-display font-semibold text-ink text-lg mb-4">{{ $tarefa->titulo }}</h3>
+                    @include('tarefas._imagens', ['tarefa' => $tarefa, 'somenteLeitura' => true])
                     @include('tarefas._comentarios', ['tarefa' => $tarefa, 'somenteLeitura' => true])
                 </div>
                 <div class="px-6 pb-6 flex justify-end">

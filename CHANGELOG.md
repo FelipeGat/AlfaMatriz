@@ -1,5 +1,42 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 13/08/2026 — A tarefa passou a poder mostrar, e não só descrever
+
+"O botão saiu do lugar" é uma frase que só quem viu a tela entende. Na revisão,
+descrever um defeito por escrito custava idas e voltas que uma captura encerra
+de uma vez — e o quadro já contava as rodadas dessa conversa sem ter como
+encurtá-la.
+
+### Novidades
+
+- **A tarefa ganhou galeria de imagens**, entre o checklist e a conversa. Vale
+  para a tarefa inteira, na ordem em que as imagens chegaram: a primeira costuma
+  ser "era assim" e a segunda, "ficou assim".
+- **Colar com Ctrl+V anexa o print direto**, com a tarefa aberta — sem salvar em
+  arquivo antes. O que a área de transferência entrega sem nome vira
+  `captura-AAAA-MM-DD-HHMMSS`, para três prints colados não virarem três
+  legendas idênticas.
+- **Anexar não descarta o comentário que está sendo escrito.** A imagem sobe sem
+  recarregar a tela, e o texto continua onde estava — que é o caso de sempre:
+  cola-se o print no meio da frase que o explica.
+- **Print de tela cheia entra mesmo assim.** Acima do teto, o navegador reduz
+  antes de enviar; o arquivo que já cabe sobe intacto, byte a byte, para não
+  borrar o texto de um print que não tinha problema nenhum.
+- **O card conta as imagens** no rodapé, ao lado dos selos de checklist e
+  comentários, sem ficar mais alto. O histórico abre a galeria em leitura para
+  as tarefas encerradas — inclusive as que só tinham imagem e nenhum comentário.
+
+### Melhorias
+
+- **Quem anexou apaga o que anexou.** Mesma regra do comentário, e não a do
+  checklist: o item é combinado do time, mas a imagem é o que alguém mostrou
+  para sustentar um argumento.
+- **A imagem sai por rota autenticada**, e não pelo endereço público do disco —
+  ela mora lá por uma razão de publicação, não porque a captura de um defeito
+  deva ser pública. Revenda continua sem alcançar nada do quadro.
+- **A imagem sobrevive à saída de quem a anexou** e morre junto com a tarefa: a
+  legenda passa a dizer "Autor removido" e a prova fica.
+
 ## AlfaMatriz — 13/08/2026 — O sistema passou a lembrar quem fez o quê
 
 Até aqui o painel respondia bem a "como está" e não tinha como responder a "como

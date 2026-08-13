@@ -365,6 +365,213 @@
                 },
             }));
 
+            /**
+             * A galeria de imagens de uma tarefa (US-064).
+             *
+             * Envia por `fetch`, e não por formulário como o checklist: o gesto
+             * que esta galeria serve é colar um print no meio de escrever o
+             * comentário que o explica, e recarregar a tela ali descartaria o
+             * texto ainda não publicado.
+             */
+            Alpine.data('imagensDaTarefa', (tarefaId, iniciais) => ({
+                imagens: iniciais,
+                enviando: false,
+                erro: null,
+
+                /**
+                 * O teto do PHP de produção, repetido aqui porque é ele que
+                 * decide se o arquivo chega ou não.
+                 *
+                 * `upload_max_filesize` são 2 MB e `post_max_size` são 8 MB —
+                 * padrões do Debian, que o provisionamento não altera. O quarto
+                 * arquivo de 2 MB faria o PHP descartar o corpo INTEIRO do
+                 * POST, e o erro que chega ao navegador é de CSRF, sem relação
+                 * nenhuma com tamanho.
+                 */
+                teto: 2 * 1024 * 1024,
+                porEnvio: 3,
+
+                /**
+                 * Colar da área de transferência.
+                 *
+                 * O ouvinte é de `window` porque não há onde mais pendurá-lo:
+                 * ninguém dá foco à galeria antes de colar — cola-se com o
+                 * cursor no campo de comentário, que é justamente onde se
+                 * estava escrevendo. Em troca, ele precisa saber se ESTE modal
+                 * é o que está aberto: o quadro desenha um por card, e sem a
+                 * pergunta um Ctrl+V anexaria a mesma imagem em cinquenta
+                 * tarefas de uma vez. `offsetParent` é nulo debaixo de um
+                 * `display:none`, que é como o modal fechado fica.
+                 */
+                colar(evento) {
+                    if (! this.$el.offsetParent || this.enviando) {
+                        return;
+                    }
+
+                    const arquivos = [...(evento.clipboardData?.items ?? [])]
+                        .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+                        .map((item) => item.getAsFile())
+                        .filter(Boolean);
+
+                    // Sem imagem na área de transferência não há o que fazer, e
+                    // é o caso comum: colar texto no comentário continua sendo
+                    // colar texto. Só se toma o evento de quem o usaria.
+                    if (! arquivos.length) {
+                        return;
+                    }
+
+                    evento.preventDefault();
+                    this.enviar(arquivos);
+                },
+
+                escolher(evento) {
+                    const arquivos = [...evento.target.files];
+
+                    // Zerar o campo ANTES de enviar: sem isso, escolher o mesmo
+                    // arquivo duas vezes seguidas não dispara `change` na
+                    // segunda — o valor não mudou —, e quem removeu uma imagem
+                    // por engano não consegue anexá-la de novo.
+                    evento.target.value = '';
+
+                    if (arquivos.length) {
+                        this.enviar(arquivos);
+                    }
+                },
+
+                async enviar(arquivos) {
+                    this.erro = null;
+
+                    if (arquivos.length > this.porEnvio) {
+                        this.erro = 'Até ' + this.porEnvio + ' imagens por vez — as demais ficaram de fora.';
+                        arquivos = arquivos.slice(0, this.porEnvio);
+                    }
+
+                    this.enviando = true;
+
+                    try {
+                        const corpo = new FormData();
+
+                        for (const arquivo of arquivos) {
+                            corpo.append('imagens[]', await this.reduzir(arquivo));
+                        }
+
+                        const resposta = await fetch('{{ url('tarefas') }}/' + tarefaId + '/imagens', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                'Accept': 'application/json',
+                            },
+                            body: corpo,
+                        });
+
+                        if (! resposta.ok) {
+                            const dados = await resposta.json().catch(() => ({}));
+
+                            // A recusa da validação vem em `errors`, uma lista
+                            // por campo. Sem juntá-las, "Cada imagem precisa ter
+                            // até 2 MB" viraria um "Falha ao enviar" que não
+                            // diz o que mudar.
+                            throw new Error(
+                                Object.values(dados.errors ?? {}).flat().join(' ')
+                                || dados.message
+                                || 'Não foi possível anexar a imagem.'
+                            );
+                        }
+
+                        const dados = await resposta.json();
+                        this.imagens = [...this.imagens, ...dados.imagens];
+                    } catch (erro) {
+                        this.erro = erro.message;
+                    } finally {
+                        this.enviando = false;
+                    }
+                },
+
+                /**
+                 * Encolhe o que não caberia no POST — e só isso.
+                 *
+                 * Um print de tela cheia num monitor 2560×1440 passa dos 2 MB
+                 * com facilidade, e ele é exatamente o arquivo que a revisão
+                 * precisa anexar. Sem isto, o caso principal da feature seria o
+                 * que ela recusa.
+                 *
+                 * O arquivo que já cabe é enviado INTACTO, byte a byte: uma
+                 * recodificação preventiva borraria o texto de todo print por
+                 * um problema que aquele arquivo não tinha. Só o que estoura é
+                 * redesenhado — e a alternativa, para esse, é a recusa.
+                 *
+                 * Se algo aqui falhar (navegador antigo, imagem corrompida), o
+                 * original segue como estava e quem responde é o servidor, com
+                 * a frase certa. Encolher é uma cortesia, não um pré-requisito.
+                 */
+                async reduzir(arquivo) {
+                    if (arquivo.size <= this.teto) {
+                        return arquivo;
+                    }
+
+                    try {
+                        const bitmap = await createImageBitmap(arquivo);
+
+                        // 1920 no maior lado: é a largura em que um print de
+                        // tela continua legível linha a linha. Reduzir mais
+                        // apagaria justamente o texto que o print foi anexado
+                        // para mostrar.
+                        const escala = Math.min(1, 1920 / Math.max(bitmap.width, bitmap.height));
+                        const tela = document.createElement('canvas');
+                        tela.width = Math.round(bitmap.width * escala);
+                        tela.height = Math.round(bitmap.height * escala);
+                        tela.getContext('2d').drawImage(bitmap, 0, 0, tela.width, tela.height);
+                        bitmap.close();
+
+                        // JPEG, e em três qualidades: PNG redesenhado por canvas
+                        // costuma sair MAIOR que o original (ele perde a
+                        // otimização de quem o gerou), e aí a redução não
+                        // reduziria nada.
+                        for (const qualidade of [0.92, 0.8, 0.65]) {
+                            const blob = await new Promise((r) => tela.toBlob(r, 'image/jpeg', qualidade));
+
+                            if (blob && blob.size <= this.teto) {
+                                const nome = (arquivo.name || 'captura').replace(/\.[^.]+$/, '');
+
+                                return new File([blob], nome + '.jpg', { type: 'image/jpeg' });
+                            }
+                        }
+                    } catch (erro) {
+                        // Segue com o original: o servidor recusa com a frase
+                        // certa, que é melhor do que um erro de JavaScript.
+                    }
+
+                    return arquivo;
+                },
+
+                async remover(imagem) {
+                    this.erro = null;
+
+                    // Some da tela antes da resposta: a remoção é do próprio
+                    // autor e o servidor já concordou com a mesma regra. Se
+                    // recusar, ela volta — e aí a frase explica por quê.
+                    const antes = this.imagens;
+                    this.imagens = this.imagens.filter((atual) => atual.id !== imagem.id);
+
+                    try {
+                        const resposta = await fetch('{{ url('tarefas/imagens') }}/' + imagem.id, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                'Accept': 'application/json',
+                            },
+                        });
+
+                        if (! resposta.ok) {
+                            throw new Error('Não foi possível remover a imagem.');
+                        }
+                    } catch (erro) {
+                        this.imagens = antes;
+                        this.erro = erro.message;
+                    }
+                },
+            }));
+
             Alpine.data('quadroTarefas', () => ({
                 arrastando: null,
                 sobre: null,

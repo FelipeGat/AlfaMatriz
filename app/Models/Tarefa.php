@@ -494,6 +494,18 @@ class Tarefa extends Model
     }
 
     /**
+     * As imagens da tarefa, da mais antiga à mais nova (US-064).
+     *
+     * Cronológica pelo mesmo motivo da conversa: a segunda captura costuma ser
+     * resposta à primeira — "era assim" e "ficou assim" só se leem na ordem em
+     * que chegaram.
+     */
+    public function imagens(): HasMany
+    {
+        return $this->hasMany(TarefaImagem::class)->oldest();
+    }
+
+    /**
      * Duração em forma curta: "agora", "40m", "3h", "12d".
      *
      * Uma régua só para o quadro e o histórico: o chip do card mede o tempo na

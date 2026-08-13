@@ -5,13 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Sistema;
 use App\Models\Tarefa;
 use App\Models\TarefaComentario;
+use App\Models\TarefaImagem;
 use App\Models\TarefaItem;
 use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use App\Services\FluxoTarefaService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 
 class TarefaController extends Controller
 {
@@ -37,7 +40,9 @@ class TarefaController extends Controller
         // `perguntaPara` entra porque a tarja de pergunta nomeia quem deve a
         // resposta — sem ele, cada card com conversa aberta faz a própria
         // consulta pelo nome.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara'])
+        // `imagens.autor` pelo mesmo motivo dos comentários: o chip do card
+        // conta as imagens e a galeria do modal nomeia quem anexou cada uma.
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'imagens.autor'])
             ->whereIn('status', $emCurso->keys())
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('created_at')
@@ -799,6 +804,132 @@ class TarefaController extends Controller
     }
 
     /**
+     * Anexa imagens à tarefa (US-064).
+     *
+     * Responde JSON, e NÃO redireciona de volta como o checklist faz.
+     *
+     * A diferença não é gosto: o gesto que esta rota serve é colar um print no
+     * meio de escrever o comentário que o explica. Recarregar a tela ali
+     * descartaria o texto ainda não publicado — o campo de comentário mora no
+     * mesmo modal e nada dele foi enviado ainda. O checklist tem o mesmo
+     * defeito e cabe menos, porque marcar um item raramente acontece no meio
+     * de uma frase. O `fetch` já é caminho conhecido da casa: é como os anexos
+     * de cobrança e de conta a pagar enviam (`components/anexos-modal`).
+     *
+     * O teto de 2 MB por arquivo não é escolha de produto — é o
+     * `upload_max_filesize` do PHP de produção, que o provisionamento não
+     * altera. Três por envio pelo mesmo motivo: `post_max_size` são 8 MB, e o
+     * quarto arquivo faria o PHP descartar o corpo inteiro do POST, que chega
+     * aqui como um erro de CSRF sem relação nenhuma com o tamanho. A tela
+     * reduz o que passar disso antes de mandar (ver `imagensDaTarefa`), então
+     * o limite só aparece para quem tenta anexar uma foto de máquina.
+     */
+    public function anexarImagem(Request $request, Tarefa $tarefa)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $request->validate([
+            'imagens' => 'required|array|min:1|max:3',
+            // `image` recusa o que não for imagem de verdade — e recusa SVG por
+            // conta própria desde o Laravel 11, que é o que importa aqui: SVG é
+            // documento com script dentro, não figura, e esta rota o devolveria
+            // no mesmo domínio da sessão de quem abre a tarefa.
+            'imagens.*' => 'required|image|mimes:jpg,jpeg,png,gif,webp|max:2048',
+        ], [
+            'imagens.*.max' => 'Cada imagem precisa ter até 2 MB.',
+            'imagens.max' => 'Até três imagens por vez.',
+        ]);
+
+        $anexadas = collect($request->file('imagens'))->map(function ($arquivo) use ($tarefa) {
+            $extensao = strtolower($arquivo->getClientOriginalExtension() ?: $arquivo->extension());
+
+            // Nome aleatório no disco, como os outros anexos: o nome de origem
+            // é de quem enviou e pode repetir, conter caminho ou não existir.
+            $nomeArquivo = uniqid().'_'.time().'.'.$extensao;
+
+            return $tarefa->imagens()->create([
+                'autor_id' => auth()->id(),
+                'nome_original' => $this->nomeDeExibicao($arquivo, $extensao),
+                'nome_arquivo' => $nomeArquivo,
+                'caminho' => $arquivo->storeAs('imagens/tarefas', $nomeArquivo, 'public'),
+                'tamanho' => $arquivo->getSize(),
+            ])->load('autor');
+        });
+
+        return response()->json(['imagens' => $anexadas->values()]);
+    }
+
+    /**
+     * O nome com que a imagem se apresenta na tela.
+     *
+     * Colar da área de transferência não traz nome: o navegador entrega o
+     * arquivo como "image.png", quando entrega algum. Três prints colados na
+     * mesma tarefa viravam três legendas idênticas — e a legenda existe
+     * justamente para distinguir o que a miniatura, pequena, já não distingue.
+     * A data é a única coisa que a área de transferência realmente carrega.
+     */
+    private function nomeDeExibicao(UploadedFile $arquivo, string $extensao): string
+    {
+        $original = (string) $arquivo->getClientOriginalName();
+        $semNome = in_array(pathinfo($original, PATHINFO_FILENAME), ['', 'image', 'blob'], true);
+
+        return $semNome
+            ? 'captura-'.now()->format('Y-m-d-His').'.'.$extensao
+            : preg_replace('/[^a-zA-Z0-9._-]/', '_', $original);
+    }
+
+    /**
+     * Entrega o arquivo da imagem.
+     *
+     * Passa por aqui, e não pelo `/storage` do disco, para a imagem herdar
+     * `auth` e `permissao:tarefas` — o arquivo mora no disco `public` por uma
+     * razão de deploy (é o único que sobrevive ao azul/verde), não porque a
+     * captura de um defeito deva ser pública.
+     *
+     * Sem registro de auditoria, ao contrário do download de nota fiscal: ali
+     * a linha existe porque o documento SAI do sistema e não volta; aqui olhar
+     * a imagem é o ato normal de ler a tarefa, e uma linha por miniatura
+     * carregada afogaria a tela de auditoria no primeiro dia.
+     */
+    public function verImagem(TarefaImagem $imagem)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        abort_unless(
+            Storage::disk('public')->exists($imagem->caminho),
+            404,
+            'Imagem não encontrada no servidor.'
+        );
+
+        // `nosniff` porque o navegador não pode reinterpretar o tipo do que
+        // veio de upload: sem ele, um arquivo que passou pela validação como
+        // imagem poderia ser tratado como outra coisa no domínio da sessão.
+        return Storage::disk('public')->response($imagem->caminho, $imagem->nome_original, [
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
+     * Remove a imagem — só quem a anexou.
+     *
+     * Mesma regra do comentário, e não a do checklist: o item de checklist é
+     * combinado do time e qualquer um o risca, mas a imagem é o que ALGUÉM
+     * mostrou para sustentar um argumento. Apagar a prova alheia é reescrever
+     * a conversa de outra pessoa.
+     */
+    public function excluirImagem(TarefaImagem $imagem)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        abort_unless($imagem->autor_id === auth()->id(), 403, 'Só quem anexou apaga a própria imagem.');
+
+        Storage::disk('public')->delete($imagem->caminho);
+        $imagem->delete();
+
+        return response()->json(['removida' => $imagem->id]);
+    }
+
+    /**
      * Corrige um comentário — só o próprio, e a correção fica dita.
      *
      * Comentário errado é o erro mais barato de cometer, e até agora só havia
@@ -870,7 +1001,7 @@ class TarefaController extends Controller
         //
         // `withQueryString` porque a busca só serve se sobreviver ao clique em
         // "próxima": sem isso, a página 2 volta a ser o histórico inteiro.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens'])
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens', 'imagens.autor'])
             ->whereIn('status', $filtros['desfecho'] !== '' ? [$filtros['desfecho']] : Tarefa::STATUS_TERMINAIS)
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('updated_at')

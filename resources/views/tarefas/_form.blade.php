@@ -275,12 +275,18 @@
         @endunless
 
         {{--
-            Checklist e conversa só na edição: tarefa que ainda não existe não
-            tem nem uma nem outra, e o modal de criação não teria onde pendurar
-            o comentário.
+            Checklist, imagens e conversa só na edição: tarefa que ainda não
+            existe não tem nenhuma das três, e o modal de criação não teria onde
+            pendurar o comentário nem para qual id enviar a imagem.
+
+            A galeria fica ENTRE o checklist e a conversa de propósito: ela é
+            prova do que a tarefa é, e a conversa é o que se diz sobre isso.
+            Depois da conversa, a imagem viraria rodapé de uma lista que já
+            rola por dentro.
         --}}
         @if ($edicao)
             @include('tarefas._checklist', ['tarefa' => $tarefa])
+            @include('tarefas._imagens', ['tarefa' => $tarefa])
             @include('tarefas._comentarios', ['tarefa' => $tarefa])
         @endif
     </div>
