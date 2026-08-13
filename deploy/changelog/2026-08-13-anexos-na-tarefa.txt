@@ -1,0 +1,23 @@
+<b>📋 AlfaMatriz — Changelog 13/08/2026</b>
+<i>A tarefa passou a poder mostrar, e não só descrever</i>
+
+"O botão saiu do lugar" é uma frase que só quem viu a tela entende. Na revisão, descrever um defeito por escrito custava idas e voltas — e o quadro já contava essas rodadas sem ter como encurtá-las. Faltava o caminho de mostrar em vez de contar: o print da tela, o log do erro, a planilha que o cliente mandou.
+
+<b>🆕 Novidades</b>
+
+• <b>A tarefa ganhou uma seção de anexos</b>, entre o checklist e a conversa. Aceita imagem, PDF, texto, log, CSV e planilha do Excel. Os anexos valem para a tarefa inteira e ficam na ordem em que chegaram: o primeiro costuma ser "era assim" e o segundo, "ficou assim".
+• <b>Print aparece como miniatura; arquivo, como linha</b> com nome e tamanho. Um log de 800 KB não tem miniatura que se olhe, e um print reduzido a uma linha de texto perderia justamente o que ele veio mostrar.
+• <b>Colar com Ctrl+V anexa direto</b>, com a tarefa aberta — sem precisar salvar em arquivo antes. Vale para o print e vale para o arquivo copiado no gerenciador. Print colado não vem com nome, então ele entra datado (<i>captura-2026-08-13-153012</i>): três prints colados não viram três legendas iguais.
+• <b>Anexar não apaga o comentário que você está escrevendo.</b> O arquivo sobe sem recarregar a tela e o texto continua onde estava — que é o caso de sempre, colar o print no meio da frase que o explica.
+• <b>Até 12 MB por arquivo.</b> Print de tela cheia entra inteiro, sem passar por redução; acima disso, o próprio navegador reduz a imagem antes de enviar. Até três arquivos por vez.
+• <b>O card conta os anexos</b> no rodapé, ao lado dos selos de checklist e de comentários — e sem ficar mais alto: a coluna continua cabendo o mesmo tanto de cards.
+• <b>O histórico abre os anexos em leitura.</b> Tarefa encerrada que tinha anexo e nenhum comentário não abria nada antes.
+
+<b>🔒 Segurança</b>
+
+• <b>Nenhum anexo do sistema fica mais num endereço aberto.</b> A pasta de arquivos enviados era alcançável por um endereço público, e por ali qualquer anexo — de tarefa, de cobrança e de conta a pagar — podia ser lido por quem acertasse o nome do arquivo, sem estar logado. Agora todo arquivo passa pelo painel, e só chega a quem tem permissão.
+• <b>Quem anexou apaga o que anexou.</b> É a regra do comentário, e não a do checklist: o item do checklist é combinado do time, mas o anexo é o que alguém mostrou para sustentar um argumento.
+• <b>Anexo que não é imagem é baixado, nunca aberto dentro da página.</b>
+• <b>O anexo sobrevive à saída de quem o enviou</b> e sai junto com a tarefa. Sem o autor, a legenda passa a dizer "Autor removido" e a prova fica.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
