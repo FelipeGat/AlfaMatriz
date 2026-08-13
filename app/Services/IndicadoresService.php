@@ -7,8 +7,10 @@ use App\Models\Cobranca;
 use App\Models\ContaFinanceira;
 use App\Models\ContaPagar;
 use App\Models\FaturamentoSnapshot;
+use App\Models\MovimentacaoFinanceira;
 use App\Models\Revenda;
 use App\Models\Sistema;
+use Illuminate\Support\Carbon;
 
 /**
  * Origem única dos indicadores que aparecem em mais de uma tela.
@@ -131,6 +133,79 @@ class IndicadoresService
     }
 
     /**
+     * A receita recorrente de cada um dos últimos meses, pela mesma regra do
+     * card — faturado onde houve fechamento, contratado no mês corrente.
+     *
+     * @return list<float>
+     */
+    public function serieDoMrr(int $meses): array
+    {
+        return $this->semSinal(
+            $this->ultimosMeses($meses)
+                ->map(fn (Carbon $mes) => $this->mrrDaCompetencia($mes->format('Y-m')))
+                ->all()
+        );
+    }
+
+    /**
+     * O saldo em caixa ao fim de cada um dos últimos meses, recomposto de trás
+     * para frente: o saldo de hoje menos tudo que se movimentou depois daquele
+     * mês. É o único jeito honesto — não existe foto histórica do saldo.
+     *
+     * @return list<float>
+     */
+    public function serieDoSaldo(int $meses): array
+    {
+        $saldoAtual = $this->saldoEmCaixa();
+
+        return $this->semSinal(
+            $this->ultimosMeses($meses)
+                ->map(function (Carbon $mes) use ($saldoAtual) {
+                    $depois = (float) MovimentacaoFinanceira::query()
+                        ->whereIn('conta_financeira_id', ContaFinanceira::where('ativo', true)->select('id'))
+                        ->whereDate('data', '>', $mes->copy()->endOfMonth()->toDateString())
+                        ->selectRaw("COALESCE(SUM(CASE WHEN tipo = 'saida' THEN -valor ELSE valor END), 0) as total")
+                        ->value('total');
+
+                    return $saldoAtual - $depois;
+                })
+                ->all()
+        );
+    }
+
+    /** Entradas de caixa mês a mês. @return list<float> */
+    public function serieDeEntradas(int $meses): array
+    {
+        return $this->semSinal($this->ultimosMeses($meses)->map(fn (Carbon $m) => $this->entradasDoMes($m))->all());
+    }
+
+    /** Saídas de caixa mês a mês. @return list<float> */
+    public function serieDeSaidas(int $meses): array
+    {
+        return $this->semSinal($this->ultimosMeses($meses)->map(fn (Carbon $m) => $this->saidasDoMes($m))->all());
+    }
+
+    /** @return \Illuminate\Support\Collection<int, Carbon> */
+    private function ultimosMeses(int $meses)
+    {
+        return collect(range($meses - 1, 0))
+            ->map(fn (int $atras) => now()->copy()->subMonths($atras)->startOfMonth());
+    }
+
+    /**
+     * Curva toda zerada não é tendência, é ruído: uma reta no meio do card
+     * dizendo nada. Mesma escolha de `serieDeEntrada()` — o card sabe se calar
+     * quando a série vem vazia.
+     *
+     * @param  list<float>  $serie
+     * @return list<float>
+     */
+    private function semSinal(array $serie): array
+    {
+        return array_sum(array_map('abs', $serie)) > 0 ? $serie : [];
+    }
+
+    /**
      * O atacado efetivamente faturado, um ponto por fechamento gravado.
      *
      * É a única história real do MRR: não existe foto mensal do estimado, e o
@@ -228,6 +303,40 @@ class IndicadoresService
         return $this->previsao($competencia)['total'] + $this->contratosDiretos();
     }
 
+    /**
+     * A receita recorrente da competência, pela regra COMPLETA: o faturado
+     * quando o fechamento rodou, o contratado enquanto não rodou.
+     *
+     * Mora aqui porque a mesma pergunta é feita no Centro de Controle e no
+     * painel Financeiro. Enquanto a regra viveu só dentro do Centro de
+     * Controle, as duas telas mostraram números diferentes sob o mesmo rótulo
+     * — R$ 99,00 numa e R$ 0,00 na outra, no mesmo dia e na mesma competência.
+     *
+     * A troca vale só para o mês corrente: o contratado é a foto de HOJE, e
+     * aplicá-lo a um mês passado inventaria histórico que não houve.
+     */
+    public function mrrDaCompetencia(?string $competencia = null): float
+    {
+        $competencia ??= now()->format('Y-m');
+
+        if ($this->competenciaFoiFaturada($competencia) || $competencia !== now()->format('Y-m')) {
+            return $this->mrr($competencia);
+        }
+
+        return $this->mrrContratado($competencia);
+    }
+
+    /**
+     * A competência corrente ainda não foi fechada? É o que autoriza a tela a
+     * dizer "contratado" em vez de deixar o número passar por faturado.
+     */
+    public function mrrEhContratado(?string $competencia = null): bool
+    {
+        $competencia ??= now()->format('Y-m');
+
+        return $competencia === now()->format('Y-m') && ! $this->competenciaFoiFaturada($competencia);
+    }
+
     /** @return array{total: float, porRevenda: array<int, float>} */
     private function previsao(?string $competencia): array
     {
@@ -311,17 +420,44 @@ class IndicadoresService
         return (float) ContaFinanceira::where('ativo', true)->sum('saldo');
     }
 
-    public function entradasDoMes(): float
+    /**
+     * O que ENTROU no caixa no mês, pelo livro-caixa.
+     *
+     * Antes somava cobrança baixada, que é outra coisa: o livro tem também
+     * `ajuste` e `transferencia` — o "Saldo inicial" de uma conta nova, por
+     * exemplo. O saldo em caixa se movia por valores que os cards ao lado dele
+     * não explicavam, e não havia como fechar "saldo anterior + entradas −
+     * saídas" olhando a tela.
+     *
+     * O sinal é o de `ContaFinanceira::reprocessarSaldo()`: só `saida`
+     * subtrai. E o escopo é o de `saldoEmCaixa()`: só conta ativa — somar
+     * movimento de conta que o saldo ignora é como as duas medidas param de
+     * fechar.
+     */
+    public function entradasDoMes(?Carbon $mes = null): float
     {
-        return (float) Cobranca::where('status', 'pago')
-            ->whereBetween('data_pagamento', [now()->startOfMonth(), now()->endOfMonth()])
-            ->sum('valor_pago');
+        return $this->movimentadoNoMes($mes, entradas: true);
     }
 
-    public function saidasDoMes(): float
+    /** O que SAIU do caixa no mês — ver `entradasDoMes()`. */
+    public function saidasDoMes(?Carbon $mes = null): float
     {
-        return (float) ContaPagar::where('status', 'pago')
-            ->whereBetween('data_pagamento', [now()->startOfMonth(), now()->endOfMonth()])
-            ->sum('valor_pago');
+        return $this->movimentadoNoMes($mes, entradas: false);
+    }
+
+    private function movimentadoNoMes(?Carbon $mes, bool $entradas): float
+    {
+        $mes ??= now();
+
+        return (float) MovimentacaoFinanceira::query()
+            ->whereIn('conta_financeira_id', ContaFinanceira::where('ativo', true)->select('id'))
+            ->whereBetween('data', [
+                $mes->copy()->startOfMonth()->toDateString(),
+                $mes->copy()->endOfMonth()->toDateString(),
+            ])
+            ->when($entradas,
+                fn ($q) => $q->where('tipo', '!=', 'saida'),
+                fn ($q) => $q->where('tipo', 'saida'))
+            ->sum('valor');
     }
 }

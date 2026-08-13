@@ -1,5 +1,32 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 12/08/2026 — Entradas e saídas passam a ser o caixa, e a receita bate entre as telas
+
+### Correções
+
+- **"Receita recorrente" mostrava valores diferentes no Financeiro e no Centro
+  de Controle.** O Centro de Controle passou a exibir a receita contratada
+  enquanto o mês não é fechado; o Financeiro continuou somando só o que já
+  virou cobrança. No mesmo dia, na mesma competência, um dizia R$ 99,00 e o
+  outro R$ 0,00. Agora os dois saem do mesmo cálculo, e o Financeiro também
+  avisa quando o número é contratado. A projeção anual acompanha, em vez de
+  multiplicar um zero por doze.
+- **"Entradas do mês" e "Saídas do mês" agora são o caixa.** Elas contavam
+  títulos baixados, enquanto o "Saldo em caixa" ao lado vinha do
+  extrato — e não havia como fechar "saldo anterior + entradas − saídas"
+  olhando a tela. O gráfico de seis meses passou a sair da mesma fonte, então
+  o último mês dele é exatamente o número dos cards.
+
+### Novidades
+
+- **Os cards do Financeiro ganharam minitendência**: receita recorrente, saldo,
+  entradas e saídas. A curva não aparece quando seria uma reta no zero.
+
+> **Duas mudanças de comportamento que valem atenção.** Um título marcado como
+> pago **sem conta financeira escolhida** não move o caixa — e deixou de contar
+> como entrada. E o saldo inicial lançado ao cadastrar uma conta aparece como
+> entrada do mês em que foi lançado, porque é dinheiro que entrou na conta.
+
 ## AlfaMatriz — 12/08/2026 — Em testes guardava dois portões, e perguntar virava bloqueio
 
 O quadro de tarefas mudou de forma. Duas colunas saíram, três entraram, e a

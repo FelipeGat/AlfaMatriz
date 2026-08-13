@@ -5,15 +5,23 @@
     <div class="space-y-4">
         {{-- Os cinco números do mês --}}
         <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+            {{-- O mesmo número, a mesma marca e a mesma curva do Centro de
+                 Controle: as duas telas perguntam ao serviço, e é isso que as
+                 impede de mostrar valores diferentes sob este rótulo. --}}
             <x-kpi-card rotulo="Receita recorrente" :valor="'R$ '.number_format($mrr, 2, ',', '.')"
+                        :delta="$mrrContratado ? 'contratado · competência ainda não fechada' : null"
+                        :serie="$serieMrr"
                         acento="accent" icone="trending-up" />
             <x-kpi-card rotulo="Projeção anual" :valor="'R$ '.number_format($arr, 2, ',', '.')"
                         acento="brand" icone="trending-up" />
             <x-kpi-card rotulo="Saldo em caixa" :valor="'R$ '.number_format($saldoTotal, 2, ',', '.')"
+                        :serie="$serieSaldo"
                         :acento="$saldoTotal >= 0 ? 'brand' : 'crit'" icone="banknotes" />
             <x-kpi-card rotulo="Entradas do mês" :valor="'R$ '.number_format($entradasMes, 2, ',', '.')"
+                        :serie="$serieEntradas"
                         acento="good" icone="arrow-down-circle" />
             <x-kpi-card rotulo="Saídas do mês" :valor="'R$ '.number_format($saidasMes, 2, ',', '.')"
+                        :serie="$serieSaidas"
                         acento="chart-out" icone="arrow-up-circle" />
         </div>
 

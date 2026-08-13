@@ -24,11 +24,12 @@ class PainelController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $competenciaAtual = now()->format('Y-m');
-        $inicioMes = now()->startOfMonth();
-        $fimMes = now()->endOfMonth();
-
-        $mrr = $this->indicadores->mrr($competenciaAtual);
+        // A MESMA regra do Centro de Controle, vinda da mesma origem: faturado
+        // quando o fechamento rodou, contratado enquanto não rodou. Enquanto
+        // esta tela somava só cobrança gerada, as duas mostravam números
+        // diferentes sob o rótulo "Receita recorrente" no mesmo dia.
+        $mrr = $this->indicadores->mrrDaCompetencia();
+        $mrrContratado = $this->indicadores->mrrEhContratado();
         $arr = $mrr * 12;
 
         $saldoTotal = $this->indicadores->saldoEmCaixa();
@@ -54,10 +55,17 @@ class PainelController extends Controller
         $historico = $this->historicoSeisMeses();
 
         return view('dashboard', compact(
-            'mrr', 'arr', 'saldoTotal', 'entradasMes', 'saidasMes',
+            'mrr', 'arr', 'mrrContratado', 'saldoTotal', 'entradasMes', 'saidasMes',
             'receitasPendentes', 'despesasPendentes',
             'totalRevendas', 'totalClientes', 'clientesDiretos', 'historico'
-        ));
+        ) + [
+            // As curvas saem do serviço, e voltam vazias quando não têm o que
+            // dizer — o card se cala em vez de desenhar uma reta no zero.
+            'serieMrr' => $this->indicadores->serieDoMrr(6),
+            'serieSaldo' => $this->indicadores->serieDoSaldo(6),
+            'serieEntradas' => $this->indicadores->serieDeEntradas(6),
+            'serieSaidas' => $this->indicadores->serieDeSaidas(6),
+        ]);
     }
 
     public function comercial()
@@ -176,23 +184,24 @@ class PainelController extends Controller
         ];
     }
 
+    /**
+     * O gráfico de entradas x saídas.
+     *
+     * Os valores saem do serviço, não de uma consulta própria: o último mês do
+     * gráfico é o mesmo número dos cards "Entradas do mês" e "Saídas do mês"
+     * logo acima dele. Enquanto este método tinha a própria cópia da conta,
+     * eram duas implementações do mesmo valor esperando divergir — e nenhuma
+     * das duas lia o livro-caixa.
+     */
     private function historicoSeisMeses(): array
     {
-        $meses = collect(range(5, 0))->map(fn ($i) => now()->subMonths($i)->startOfMonth());
-
-        return $meses->map(function ($mes) {
-            $inicio = $mes->copy()->startOfMonth();
-            $fim = $mes->copy()->endOfMonth();
-
-            return [
+        return collect(range(5, 0))
+            ->map(fn ($i) => now()->copy()->subMonths($i)->startOfMonth())
+            ->map(fn ($mes) => [
                 'label' => ucfirst($mes->translatedFormat('M/y')),
-                'entradas' => (float) Cobranca::where('status', 'pago')
-                    ->whereBetween('data_pagamento', [$inicio, $fim])
-                    ->sum('valor_pago'),
-                'saidas' => (float) ContaPagar::where('status', 'pago')
-                    ->whereBetween('data_pagamento', [$inicio, $fim])
-                    ->sum('valor_pago'),
-            ];
-        })->all();
+                'entradas' => $this->indicadores->entradasDoMes($mes),
+                'saidas' => $this->indicadores->saidasDoMes($mes),
+            ])
+            ->all();
     }
 }

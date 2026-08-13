@@ -115,7 +115,7 @@ class CentroControleController extends Controller
                 'sinal' => $saldo >= 0 ? 'neutro' : 'ruim',
                 'acento' => 'brand',
                 'icone' => 'banknotes',
-                'serie' => $this->serieDoSaldo($saldo),
+                'serie' => $this->serieDoSaldo(),
             ],
             [
                 'rotulo' => 'Atrasado',
@@ -155,13 +155,7 @@ class CentroControleController extends Controller
      */
     private function mrrDaCompetencia(string $competencia): float
     {
-        if ($this->indicadores->competenciaFoiFaturada($competencia)) {
-            return $this->indicadores->mrr($competencia);
-        }
-
-        return $competencia === now()->format('Y-m')
-            ? $this->indicadores->mrrContratado($competencia)
-            : $this->indicadores->mrr($competencia);
+        return $this->indicadores->mrrDaCompetencia($competencia);
     }
 
     /**
@@ -176,42 +170,22 @@ class CentroControleController extends Controller
         return $this->indicadores->novosClientesNoMes();
     }
 
-    /** @return list<float> */
-    private function serieDoMrr(): array
-    {
-        return $this->ultimosMeses()
-            ->map(fn (Carbon $mes) => $this->mrrDaCompetencia($mes->format('Y-m')))
-            ->all();
-    }
-
     /**
-     * Saldo no fim de cada mês, recomposto de trás para frente: o saldo de
-     * hoje menos tudo que se movimentou depois daquele mês. É o único jeito
-     * honesto — não existe foto histórica do saldo gravada.
+     * As duas curvas saem do serviço: o Financeiro desenha as mesmas, e cada
+     * tela montando a sua era como elas passariam a discordar. Ver
+     * `IndicadoresService::serieDoMrr()` e `serieDoSaldo()`.
      *
      * @return list<float>
      */
-    private function serieDoSaldo(float $saldoAtual): array
+    private function serieDoMrr(): array
     {
-        return $this->ultimosMeses()
-            ->map(function (Carbon $mes) use ($saldoAtual) {
-                $depois = (float) MovimentacaoFinanceira::query()
-                    // Mesmo escopo do saldo de hoje: só contas ativas. Descontar
-                    // movimento de conta inativa de um saldo que as ignora era
-                    // metade do motivo de a curva não fechar com o card.
-                    ->whereIn('conta_financeira_id', ContaFinanceira::where('ativo', true)->select('id'))
-                    ->whereDate('data', '>', $mes->copy()->endOfMonth()->toDateString())
-                    // O sinal é o mesmo de `ContaFinanceira::reprocessarSaldo()`:
-                    // só `saida` subtrai. Aqui tudo que não fosse `entrada`
-                    // subtraía, então cada `ajuste` e cada `transferencia`
-                    // deslocava a curva pelo DOBRO do próprio valor, para o
-                    // lado errado — e o erro se acumulava mês a mês.
-                    ->selectRaw("COALESCE(SUM(CASE WHEN tipo = 'saida' THEN -valor ELSE valor END), 0) as total")
-                    ->value('total');
+        return $this->indicadores->serieDoMrr(self::MESES_DA_SERIE);
+    }
 
-                return $saldoAtual - $depois;
-            })
-            ->all();
+    /** @return list<float> */
+    private function serieDoSaldo(): array
+    {
+        return $this->indicadores->serieDoSaldo(self::MESES_DA_SERIE);
     }
 
     /**

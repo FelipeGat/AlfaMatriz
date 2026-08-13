@@ -35,7 +35,17 @@ class PaineisTest extends TestCase
      */
     public function test_o_painel_financeiro_mostra_mes_historico_e_pendencias(): void
     {
-        ContaFinanceira::create(['nome' => 'Bradesco PJ', 'tipo' => 'corrente', 'saldo' => 94218.40, 'ativo' => true]);
+        $conta = ContaFinanceira::create(['nome' => 'Bradesco PJ', 'tipo' => 'corrente', 'saldo' => 0, 'ativo' => true]);
+
+        // Saldo de abertura, lançado no mês PASSADO. Entradas e saídas agora
+        // saem do livro-caixa, e um ajuste de abertura lançado hoje entraria
+        // em "Entradas do mês" — ele é dinheiro que entrou na conta, mas não é
+        // receita do mês. Datado no mês anterior, ele compõe o saldo sem
+        // poluir o número do mês corrente.
+        $conta->movimentacoes()->create([
+            'tipo' => 'ajuste', 'descricao' => 'Saldo inicial', 'valor' => 92418.40,
+            'saldo_resultante' => 0, 'data' => now()->subMonth()->startOfMonth()->toDateString(),
+        ]);
 
         Cobranca::create([
             'descricao' => 'Mensalidade Invest', 'valor' => 8940.00,
@@ -48,18 +58,23 @@ class PaineisTest extends TestCase
         // Liquidadas HOJE de propósito: com data relativa (subDays) o
         // lançamento atravessa a virada do mês nos primeiros dias e cai no
         // ponto anterior do gráfico, fazendo o teste falhar por calendário.
+        // Baixadas pelo caminho real (`baixar`), que é o que escreve no
+        // livro-caixa. Marcar `status = pago` direto na linha move o título e
+        // não move dinheiro nenhum — o saldo não mudaria, e uma "entrada" sem
+        // lastro no caixa é justamente o que esta tela deixou de contar.
         Cobranca::create([
-            'descricao' => 'Recebida', 'valor' => 5000.00, 'valor_pago' => 5000.00,
+            'descricao' => 'Recebida', 'valor' => 5000.00,
             'data_vencimento' => now()->toDateString(),
-            'data_pagamento' => now()->toDateString(),
-            'status' => 'pago', 'tipo' => 'avulsa',
-        ]);
+            'status' => 'pendente', 'tipo' => 'avulsa',
+            'conta_financeira_id' => $conta->id,
+        ])->baixar(5000.00, now()->toDateString());
+
         ContaPagar::create([
-            'descricao' => 'Aluguel', 'valor' => 3200.00, 'valor_pago' => 3200.00,
+            'descricao' => 'Aluguel', 'valor' => 3200.00,
             'data_vencimento' => now()->toDateString(),
-            'data_pagamento' => now()->toDateString(),
-            'status' => 'pago',
-        ]);
+            'status' => 'em_aberto',
+            'conta_financeira_id' => $conta->id,
+        ])->baixar(3200.00, now()->toDateString());
         ContaPagar::create([
             'descricao' => 'Servidores', 'valor' => 1800.00,
             'data_vencimento' => now()->addDays(9)->toDateString(),
