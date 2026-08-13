@@ -140,3 +140,23 @@ antes de escrever CSS**. As quatro que mais se repetiram:
 - `design/AlfaMatriz Tarefas.dc.html` — **abra num editor e leia os `style=` inline.** Eles são a
   especificação dimensional: ache o texto do elemento e o estilo ao lado é a medida dele. Nada aqui
   precisa ser adivinhado nem medido em screenshot.
+
+---
+
+## Publicar o changelog
+
+O procedimento vale para todos os sistemas Alfa, mas mora num repo só:
+**`~/dev/AlfaControl/CLAUDE.md`, seção do Telegram.** Lá estão o token do bot, o `chat_id` do grupo
+"Alfa Solucoes Alertas" e o formato — HTML com `<b>`/`<i>`, primeira linha
+`<b>📋 AlfaMatriz — Changelog DD/MM/AAAA</b>`, emojis por seção, assinatura no fim, e divisão em
+partes autocontidas acima de ~4096 caracteres. Não duplique o token aqui.
+
+Procurar neste repo, nos servidores ou nos containers **não acha nada**: o `.spec` lista o envio como
+trabalho futuro, e os únicos Telegram que aparecem na infra são canais de alerta de backup e de LGPD,
+de outros sistemas.
+
+- **Só Telegram.** O `CLAUDE.md` do AlfaControl manda mandar para o Discord em seguida — aqui não.
+  Decisão do dono do produto em 12/08/2026: não enviar e não oferecer.
+- **Só depois de o texto ser aprovado**, como o próprio AlfaControl já manda.
+- O `curl` para `api.telegram.org` é recusado pelo classificador do modo automático. Monte o script e
+  peça para rodar com `! bash <script>` — não fique tentando variação de comando.
