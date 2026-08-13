@@ -141,6 +141,44 @@
         </label>
     </div>
 
+    {{-- A marca. Vale para produto e para interno: é ela que identifica o
+         sistema no rodapé do card de tarefa, e sistema interno tem tarefa como
+         qualquer outro — era justamente ele que nascia sem ícone nenhum. --}}
+    <div class="sm:col-span-2">
+        <x-input-label for="marca" value="Marca do sistema" />
+
+        <div class="mt-1 flex items-center gap-3">
+            <span class="h-[38px] w-[38px] shrink-0 rounded-tile bg-chip flex items-center justify-center overflow-hidden">
+                <x-marca-sistema :sistema="$sistema ?? new \App\Models\Sistema(['nome' => 'Novo'])"
+                                 tamanho="h-[26px] w-[26px]" />
+            </span>
+
+            <input id="marca" name="marca" type="file" accept="image/png,image/webp,image/jpeg"
+                   class="flex-1 min-w-0 text-[12.5px] text-ink-dim file:mr-3 file:h-8 file:px-3 file:rounded-control
+                          file:border file:border-btn-line file:bg-transparent file:text-ink-dim
+                          file:text-[12.5px] file:font-semibold hover:file:text-brand">
+        </div>
+
+        {{-- SVG fica de fora e o texto diz isso: sem a frase, quem tem o logo
+             em SVG — que é o formato em que logo costuma vir — conclui que o
+             campo está quebrado. --}}
+        <p class="mt-1 text-xs text-ink-mute">
+            PNG, WEBP ou JPG, até 512 KB. Aparece no card de tarefa e nas listas.
+            SVG não entra por aqui: ele aceita script dentro e seria servido do mesmo
+            endereço do painel — os SVG que existem hoje vieram pelo repositório.
+        </p>
+
+        @if ($edicao)
+            <label class="mt-2 inline-flex items-center">
+                <input type="checkbox" name="remover_marca" value="1"
+                       class="rounded border-white/20 text-brand shadow-sm">
+                <span class="ms-2 text-sm text-ink-dim">Remover a marca atual</span>
+            </label>
+        @endif
+
+        <x-input-error :messages="$errors->get('marca')" class="mt-2" />
+    </div>
+
     <div>
         <x-input-label for="base_url" value="Base URL da API SaaS" />
         <x-text-input id="base_url" name="base_url" type="text" class="mt-1 block w-full"

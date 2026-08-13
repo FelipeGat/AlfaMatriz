@@ -47,7 +47,26 @@
     $icone = null;
 
     if ($slug !== '') {
-        foreach (['svg', 'png'] as $extensao) {
+        // A ENVIADA pela tela vem primeiro. Ela mora no disco `public`, que em
+        // produção aponta para `compartilhado/` — e não para dentro da versão,
+        // que troca a cada publicação (azul/verde). Marca gravada na pasta da
+        // aplicação sumiria no deploy seguinte, sem erro nenhum: só um ícone
+        // que um dia deixa de aparecer.
+        //
+        // Vem primeiro porque é a mais recente por definição: quem acabou de
+        // enviar espera ver o que enviou, mesmo que exista uma versão embutida
+        // no repositório para o mesmo slug.
+        foreach (['png', 'webp', 'jpg'] as $extensao) {
+            if (Storage::disk('public')->exists('marcas/'.$slug.'.'.$extensao)) {
+                $icone = Storage::disk('public')->url('marcas/'.$slug.'.'.$extensao);
+                break;
+            }
+        }
+
+        // As seis marcas da casa, que viajam no repositório. SVG antes de PNG
+        // porque é o formato das mais recentes e escala sem borrar nos 26px do
+        // tile.
+        foreach ($icone ? [] : ['svg', 'png'] as $extensao) {
             $caminho = '/marcas/'.$slug.'.'.$extensao;
 
             if (is_file(public_path($caminho))) {

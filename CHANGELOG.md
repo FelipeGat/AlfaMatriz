@@ -67,11 +67,14 @@ sumia do filtro e da raia do quadro.
 - **Dá para cadastrar sistema pela tela.** Até aqui, sistema novo só entrava por
   seeder ou direto no banco. O botão do topo acompanha a aba: na de internos ele
   já abre o formulário sem os campos comerciais.
-- **O ícone de um sistema passou a ser um arquivo, e não código.** Basta largar
-  `public/marcas/<slug>.svg` (ou `.png`) e ele aparece na lista e no quadro.
-  Antes a relação de marcas era uma lista escrita dentro do componente, então
-  todo sistema cadastrado pela tela nascia sem ícone até alguém alterar o
-  código. Sem arquivo, continua aparecendo pelas iniciais do nome.
+- **O sistema ganhou campo de marca no cadastro.** Envie um PNG, WEBP ou JPG de
+  até 512 KB e ele passa a identificar o sistema no card de tarefa e nas listas.
+  Até aqui o ícone só existia para os seis produtos cujas marcas vêm no
+  repositório: qualquer sistema cadastrado pela tela — os internos, em especial
+  — ficava nas iniciais do nome para sempre, porque pôr o arquivo no lugar
+  exigia acesso ao servidor. Dá para trocar e para remover pela mesma tela.
+  SVG não entra por aí: ele aceita script dentro e seria servido do mesmo
+  endereço do painel.
 - **A tarefa pode apontar para um sistema interno.** O select do quadro e o
   filtro passaram a oferecer as duas famílias, separadas — numa lista corrida,
   "AlfaMatriz" apareceria entre dois produtos como se também fosse vendido.

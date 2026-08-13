@@ -20,7 +20,9 @@
 
             <div class="bg-panel overflow-hidden shadow-sm sm:rounded-lg p-6">
                 <h3 class="font-semibold text-ink mb-4">Configuração</h3>
-                <form method="POST" action="{{ route('sistemas.update', $sistema) }}">
+                {{-- `enctype` por causa do campo de marca — ver o comentário
+                     igual em `sistemas/create.blade.php`. --}}
+                <form method="POST" action="{{ route('sistemas.update', $sistema) }}" enctype="multipart/form-data">
                     @csrf @method('PUT')
 
                     @include('sistemas._form', ['sistema' => $sistema])

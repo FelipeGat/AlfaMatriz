@@ -18,7 +18,10 @@
         <div class="bg-panel overflow-hidden shadow-sm sm:rounded-lg p-6">
             <h3 class="font-semibold text-ink mb-4">Cadastro</h3>
 
-            <form method="POST" action="{{ route('sistemas.store') }}">
+            {{-- `enctype` por causa do campo de marca: sem ele o navegador manda
+                 só o NOME do arquivo, e o `hasFile` do controller nunca vê
+                 nada — o envio "funciona" e a marca não aparece. --}}
+            <form method="POST" action="{{ route('sistemas.store') }}" enctype="multipart/form-data">
                 @csrf
 
                 @include('sistemas._form', ['sistema' => null, 'natureza' => $natureza])

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class SistemaController extends Controller
@@ -55,7 +56,17 @@ class SistemaController extends Controller
         // alguém preencheu um formulário de cadastro.
         $data['capacidades'] = [];
 
+        // `marca` não é coluna: o arquivo é achado pelo slug, então ele sai do
+        // array antes de virar `create`. Sem isto o Eloquent o descartaria em
+        // silêncio hoje — e estouraria no dia em que alguém ligar o
+        // `preventSilentlyDiscardingAttributes`.
+        unset($data['marca'], $data['remover_marca']);
+
         $sistema = Sistema::create($data);
+
+        // Depois do `create`, e não antes: o nome do arquivo é o slug, e no
+        // cadastro o slug só existe depois de gerado a partir do nome.
+        $this->salvarMarca($request, $sistema);
 
         return redirect()
             ->route('produtos.index', $sistema->ehInterno() ? ['aba' => 'internos'] : [])
@@ -115,7 +126,11 @@ class SistemaController extends Controller
             unset($data['token']);
         }
 
+        unset($data['marca'], $data['remover_marca']);
+
         $sistema->update($data);
+
+        $this->salvarMarca($request, $sistema);
 
         return redirect()
             ->route('produtos.index', $sistema->ehInterno() ? ['aba' => 'internos'] : [])
@@ -147,11 +162,68 @@ class SistemaController extends Controller
             'token' => 'nullable|string',
             'versao' => 'nullable|string|max:255',
             'responsavel' => 'nullable|string|max:255',
+            // A marca do sistema. SVG fica DE FORA de propósito, e é a única
+            // restrição desta tela que não é sobre tamanho: SVG é XML, aceita
+            // `<script>` dentro, e seria servido do mesmo domínio do painel —
+            // um logo enviado viraria execução de código na sessão de quem
+            // abrisse o quadro de tarefas. As marcas em SVG que existem hoje
+            // vieram pelo repositório, que passa por revisão; o que chega por
+            // formulário é raster.
+            //
+            // `image` além do `mimes` porque ele confere o CONTEÚDO: script
+            // renomeado para `.png` passa na extensão e morre aqui.
+            'marca' => 'nullable|image|mimes:png,webp,jpg|max:512',
+            'remover_marca' => 'nullable|boolean',
             // Desde quando o produto está no catálogo — ver a migration
             // `data_de_cadastro_de_revenda_e_sistema` para o porquê de não ser
             // o `created_at`.
             'data_cadastro' => 'nullable|date',
         ];
+    }
+
+    /**
+     * Grava a marca enviada, ou apaga a que havia.
+     *
+     * O arquivo vai para o disco `public`, e não para `public/marcas/` do
+     * repositório: em produção a pasta da aplicação troca a cada publicação
+     * (azul/verde), e a marca gravada lá dentro sumiria no deploy seguinte —
+     * sem erro nenhum, só um ícone que um dia deixa de aparecer. O disco
+     * `public` aponta para `compartilhado/`, que sobrevive à troca. É a mesma
+     * razão pela qual os anexos de cobrança moram lá.
+     *
+     * O nome é o SLUG, e não um id aleatório como nos anexos: aqui o arquivo
+     * não é um entre vários, é O ícone daquele sistema. Nomeado pelo slug, ele
+     * é achado pelo mesmo caminho das marcas que vêm no repositório, e não
+     * precisa de coluna no banco para ser encontrado.
+     */
+    private function salvarMarca(Request $request, Sistema $sistema): void
+    {
+        if (! $request->hasFile('marca') && ! $request->boolean('remover_marca')) {
+            return;
+        }
+
+        // A anterior sai em QUALQUER extensão antes de a nova entrar. Sem isto,
+        // trocar um PNG por um WEBP deixaria os dois no disco, e quem decidiria
+        // qual aparece seria a ordem de busca do componente — o sistema
+        // mostraria a marca velha e ninguém saberia por quê.
+        foreach (['png', 'webp', 'jpg'] as $extensao) {
+            Storage::disk('public')->delete('marcas/'.$sistema->slug.'.'.$extensao);
+        }
+
+        if (! $request->hasFile('marca')) {
+            return;
+        }
+
+        $arquivo = $request->file('marca');
+
+        // A extensão sai do CONTEÚDO (`extension()` consulta o mime), e não do
+        // nome que veio do navegador: o nome é texto do usuário e entraria no
+        // caminho do arquivo. `jpeg` é normalizado para `jpg` porque é a
+        // extensão que o componente procura — as duas nomeiam o mesmo formato,
+        // e aceitar as duas faria a busca depender de qual chegou.
+        $extensao = $arquivo->extension() === 'jpeg' ? 'jpg' : $arquivo->extension();
+
+        $arquivo->storeAs('marcas', $sistema->slug.'.'.$extensao, 'public');
     }
 
     /**
