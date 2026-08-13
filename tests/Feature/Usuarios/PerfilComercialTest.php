@@ -95,6 +95,16 @@ class PerfilComercialTest extends TestCase
         }
     }
 
+    public function test_a_raiz_nao_o_joga_no_centro_de_controle(): void
+    {
+        // Digitar o endereço do painel — o caminho mais natural de todos —
+        // levava a raiz a redirecioná-lo para o Centro de Controle, e ele
+        // batia num 403 sem nunca ter clicado em nada.
+        $this->actingAs($this->vendedor())
+            ->get('/')
+            ->assertRedirect(route('leads.index', absolute: false));
+    }
+
     public function test_a_marca_no_topo_leva_para_casa_e_nao_para_um_403(): void
     {
         // O logo apontava para o Centro de Controle para todo mundo que não

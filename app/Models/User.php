@@ -138,6 +138,14 @@ class User extends Authenticatable
         // Controle é guardado por `permissao:dashboard`, e usar o nome da tela
         // aqui faria a checagem falhar em silêncio para todo mundo, mandando
         // até o administrador para a segunda opção da lista.
+        // A revenda vai para a carteira dela (AC-118), e não para a lista de
+        // revendas com uma linha só. A regra morava na raiz `/`, o que fazia o
+        // login mandá-la para um lugar e a raiz para outro; aqui os três
+        // chamadores dão a mesma resposta.
+        if ($this->temEscopoDeRevenda()) {
+            return route('revendas.index', ['aba' => 'clientes'], absolute: false);
+        }
+
         $telas = [
             'dashboard' => 'centro-controle',
             'tarefas' => 'tarefas.index',

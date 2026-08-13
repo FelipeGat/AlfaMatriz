@@ -28,13 +28,15 @@ use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    if (auth()->user()?->temEscopoDeRevenda()) {
-        return redirect()->route('revendas.index', ['aba' => 'clientes']);
-    }
-
-    return redirect()->route('centro-controle');
-});
+// A raiz não é tela: encaminha para a inicial de QUEM ABRE. Ela mandava todo
+// mundo que não fosse revenda ao Centro de Controle, e quem não tem `dashboard`
+// — o perfil comercial — recebia 403 ao digitar o endereço do painel. É o
+// último dos quatro desvios a perguntar a `telaInicial()`, que existe
+// exatamente para nenhum deles responder por conta própria.
+//
+// Visitante deslogado vai direto ao login, e não ao Centro de Controle para de
+// lá ser expulso: o destino é o mesmo, com um salto a menos.
+Route::get('/', fn () => redirect()->to(auth()->user()?->telaInicial() ?? route('login')));
 
 // Fora do grupo autenticado de propósito: o deploy confere a saúde antes de
 // existir qualquer sessão.
