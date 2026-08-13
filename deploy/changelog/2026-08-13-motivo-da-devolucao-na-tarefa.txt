@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 13/08/2026</b>
+<i>Tarefa devolvida diz o motivo também quando aberta</i>
+
+<b>🔧 Correções</b>
+
+• <b>O motivo da devolução só existia no card.</b> Quando uma tarefa volta de um portão — da revisão, do staging ou da porta da produção —, o card ganha uma tarja âmbar com o motivo. Só que ali o texto é cortado em duas linhas, e abrir a tarefa para ler o resto não adiantava: o formulário abria sem menção nenhuma à devolução. A pergunta em aberto e o bloqueio apareciam no topo; o retorno, não. Quem abria a tarefa justamente para saber o que reprovou encontrava a tela como se nada tivesse acontecido.
+
+Agora a devolução é a terceira tarja no topo da tarefa, junto das outras duas e antes de qualquer campo. Ela nomeia o portão que reprovou — <i>Voltou da revisão</i>, <i>Voltou do staging</i>, <i>Voltou da porta da produção</i> — e traz o motivo <b>inteiro</b>, com as quebras de linha de quem escreveu. É este o lugar de ler o texto por extenso.
+
+O card continua cortando em duas linhas, que é o certo para quem passa os olhos pela coluna sem parar em tarefa nenhuma.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
