@@ -56,7 +56,7 @@
                              pareceria falha de processo, e não o processo
                              dela. --}}
                         <p class="text-[13.5px] text-ink">
-                            <span class="font-mono text-[10.5px] text-ink-faint">{{ $tarefa->codigo() }}</span>
+                            <span class="font-mono text-[11.5px] font-semibold text-ink-dim">{{ $tarefa->codigo() }}</span>
                             {{ $tarefa->titulo }}
                             @if ($tarefa->tipo === 'operacional')
                                 <x-badge class="ml-1 align-middle">Operacional</x-badge>

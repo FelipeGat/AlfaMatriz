@@ -102,15 +102,24 @@
             O número da tarefa é PREFIXO do título, dentro do mesmo parágrafo.
 
             Como item próprio do flex ele abriria uma coluna fixa que tira
-            largura do título nos dois lados da quebra, e alinhar 10px contra
-            13,5px em `items-start` pediria um deslocamento que não está na
-            especificação. No mesmo bloco de texto ele senta na linha de base do
-            título de graça, e o título que quebra em duas linhas o mantém onde
-            se lê primeiro — que é para isso que o número existe: dizer em voz
-            alta "olha a 128" sem descrever a tarefa inteira.
+            largura do título nos dois lados da quebra, e alinhar tipo miúdo
+            contra 13,5px em `items-start` pediria um deslocamento que não está
+            na especificação. No mesmo bloco de texto ele senta na linha de base
+            do título de graça, e o título que quebra em duas linhas o mantém
+            onde se lê primeiro — que é para isso que o número existe: dizer em
+            voz alta "olha a 128" sem descrever a tarefa inteira.
+
+            `ink-dim` e não `ink-faint`: o faint é o degrau mais apagado da
+            escala nos dois temas, e um número que precisa ser LIDO de relance
+            não pode morar na cor reservada a rótulo de apoio. Sobe também de
+            10px para 11,5px, e a mono ganha peso — juntos eles dão destaque
+            sem cor própria. Cor aqui seria mentira: no card, marca quer dizer
+            "tem pergunta" e âmbar quer dizer "travada", e o número não é
+            notícia nenhuma sobre a tarefa. O título continua acima dele, em
+            `ink` cheio a 13,5px, porque quem procura pelo assunto é a maioria.
         --}}
         <p class="min-w-0 flex-1 text-[13.5px] font-medium leading-[1.35] text-ink">
-            <span class="font-mono text-[10px] font-normal text-ink-faint">{{ $tarefa->codigo() }}</span>
+            <span class="font-mono text-[11.5px] font-semibold text-ink-dim">{{ $tarefa->codigo() }}</span>
             {{ $tarefa->titulo }}
         </p>
 
