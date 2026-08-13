@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Auditoria;
 use App\Models\Cliente;
 use App\Models\Sistema;
 
@@ -41,14 +42,16 @@ class GerenciadorLicencaService
             throw new \RuntimeException('Cliente não está ancorado no AlfaGym; não há licença para liberar.');
         }
 
-        $resposta = $this->post('/licencas', [
-            'cliente_id_externo' => $idExterno,
-            'tipo' => $dados['tipo'],
-            'valor' => $dados['valor'],
-            'obs' => $dados['obs'] ?? null,
-        ]);
+        return $this->auditando($cliente, 'liberar', function () use ($idExterno, $dados, $cliente) {
+            $resposta = $this->post('/licencas', [
+                'cliente_id_externo' => $idExterno,
+                'tipo' => $dados['tipo'],
+                'valor' => $dados['valor'],
+                'obs' => $dados['obs'] ?? null,
+            ]);
 
-        return $this->espelhar($cliente, $resposta);
+            return $this->espelhar($cliente, $resposta);
+        });
     }
 
     /**
@@ -67,13 +70,15 @@ class GerenciadorLicencaService
             throw new \RuntimeException('Cliente não possui licença no AlfaGym para renovar.');
         }
 
-        $resposta = $this->post("/licencas/{$idExternoLicenca}/renovar", [
-            'tipo' => $dados['tipo'],
-            'valor' => $dados['valor'],
-            'obs' => $dados['obs'] ?? null,
-        ]);
+        return $this->auditando($cliente, 'renovar', function () use ($idExternoLicenca, $dados, $cliente) {
+            $resposta = $this->post("/licencas/{$idExternoLicenca}/renovar", [
+                'tipo' => $dados['tipo'],
+                'valor' => $dados['valor'],
+                'obs' => $dados['obs'] ?? null,
+            ]);
 
-        return $this->espelhar($cliente, $resposta);
+            return $this->espelhar($cliente, $resposta);
+        });
     }
 
     /**
@@ -109,17 +114,91 @@ class GerenciadorLicencaService
             throw new \RuntimeException('Cliente não possui licença no AlfaGym para '.$acao.'.');
         }
 
-        $resposta = $this->post("/licencas/{$idExternoLicenca}/{$acao}", []);
+        return $this->auditando($cliente, $acao, function () use ($idExternoLicenca, $acao, $cliente) {
+            $resposta = $this->post("/licencas/{$idExternoLicenca}/{$acao}", []);
 
-        $dados = $resposta['dados'] ?? [];
+            $dados = $resposta['dados'] ?? [];
 
-        // Bloquear/desbloquear devolve o status do cliente, não da licença.
-        $cliente->sistemas()->syncWithoutDetaching([$this->sistema->id => [
-            'status_saas' => $dados['status'] ?? null,
-            'bloqueia_acesso' => ($dados['status'] ?? null) === 'bloqueado' ? 1 : 0,
-        ]]);
+            // Bloquear/desbloquear devolve o status do cliente, não da licença.
+            $cliente->sistemas()->syncWithoutDetaching([$this->sistema->id => [
+                'status_saas' => $dados['status'] ?? null,
+                'bloqueia_acesso' => ($dados['status'] ?? null) === 'bloqueado' ? 1 : 0,
+            ]]);
 
-        return $dados;
+            return $dados;
+        });
+    }
+
+    /**
+     * Roda a operação e grava o que ela fez com a licença.
+     *
+     * O registro é escrito à mão porque a licença mora no PIVÔ
+     * `cliente_sistema`, e `syncWithoutDetaching` não dispara evento nenhum do
+     * Eloquent — o trait de auditoria não vê nada acontecer. Sem isto, cortar o
+     * acesso de uma academia seria a operação mais consequente do painel e a
+     * única sem rastro.
+     *
+     * Fica no SERVIÇO, e não nos quatro métodos do controller, porque é aqui
+     * que passa toda mudança de licença. No controller seriam quatro cópias,
+     * esperando a quinta operação nascer sem a sua.
+     *
+     * O retrato de depois é relido do banco em vez de montado a partir da
+     * resposta do gym: o que a auditoria precisa afirmar é o que FICOU gravado
+     * aqui, e não o que o outro lado disse que ia acontecer.
+     *
+     * @param  callable(): array<string, mixed>  $operacao
+     * @return array<string, mixed>
+     */
+    private function auditando(Cliente $cliente, string $acao, callable $operacao): array
+    {
+        $antes = $this->retratoDaLicenca($cliente);
+
+        // Fora do try: operação que estourou não mudou nada, e uma linha de
+        // auditoria para ela diria que mudou.
+        $resultado = $operacao();
+
+        $depois = $this->retratoDaLicenca($cliente);
+
+        $mudou = ['operação' => ['de' => null, 'para' => $acao]];
+
+        foreach ($depois as $campo => $valor) {
+            if (($antes[$campo] ?? null) !== $valor) {
+                $mudou[$campo] = ['de' => $antes[$campo] ?? null, 'para' => $valor];
+            }
+        }
+
+        Auditoria::registrar(
+            recurso: 'clientes',
+            acao: 'licenca',
+            alvo: $cliente,
+            descricao: $cliente->nome.' · '.$this->sistema->nome,
+            alteracoes: $mudou,
+        );
+
+        return $resultado;
+    }
+
+    /**
+     * O estado da licença deste cliente neste sistema, agora.
+     *
+     * @return array<string, mixed>
+     */
+    private function retratoDaLicenca(Cliente $cliente): array
+    {
+        $pivo = $cliente->sistemas()
+            ->where('sistemas.id', $this->sistema->id)
+            ->first()?->pivot;
+
+        if (! $pivo) {
+            return [];
+        }
+
+        $campos = [
+            'licenca_status', 'plano', 'licenca_inicio_em',
+            'licenca_fim_em', 'status_saas', 'bloqueia_acesso',
+        ];
+
+        return array_combine($campos, array_map(fn ($campo) => $pivo->{$campo}, $campos));
     }
 
     /**

@@ -41,6 +41,7 @@
         'Sistema' => [
             ['route' => 'cadastros-auxiliares.index', 'recurso' => 'financeiro', 'pattern' => ['cadastros-auxiliares.*', 'centros-custo.*', 'fornecedores.*', 'categorias.*', 'subcategorias.*', 'contas.*'], 'label' => 'Cadastros', 'icon' => 'tag', 'matriz' => true],
             ['route' => 'usuarios.index', 'recurso' => 'usuarios', 'pattern' => ['usuarios.*', 'perfis.*'], 'label' => 'Usuários e permissões', 'icon' => 'users', 'matriz' => true],
+            ['route' => 'auditoria.index', 'recurso' => 'auditoria', 'pattern' => 'auditoria.*', 'label' => 'Auditoria', 'icon' => 'eye', 'matriz' => true],
         ],
     ];
 

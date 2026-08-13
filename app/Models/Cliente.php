@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use App\Concerns\ComOrigemExterna;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Cliente extends Model
 {
-    use ComOrigemExterna, SoftDeletes;
+    use Auditavel, ComOrigemExterna, SoftDeletes;
+
+    protected string $recursoAuditoria = 'clientes';
 
     protected $fillable = [
         'revenda_id', 'nome', 'nome_fantasia', 'razao_social', 'cpf_cnpj',

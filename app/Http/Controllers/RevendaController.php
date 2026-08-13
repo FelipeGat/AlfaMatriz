@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Auditoria;
 use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\Perfil;
@@ -309,6 +310,20 @@ class RevendaController extends Controller
         } catch (\RuntimeException $e) {
             return back()->with('erro', $e->getMessage());
         }
+
+        // Depois do `catch`, e não dentro da transação: provisionamento que o
+        // gym recusou não provisionou nada, e a linha diria que sim.
+        //
+        // O e-mail do administrador criado entra; a senha, não — ela veio no
+        // formulário e some com ele. Sem o e-mail, a linha não responderia à
+        // única pergunta que se faz aqui: qual acesso foi aberto lá fora.
+        Auditoria::registrar(
+            recurso: 'revendas',
+            acao: 'provisionou',
+            alvo: $revenda,
+            descricao: $revenda->nome.' · '.$sistema->nome,
+            alteracoes: ['administrador' => ['de' => null, 'para' => $data['email_admin']]],
+        );
 
         return back()->with('status', "Revenda {$revenda->nome} provisionada no AlfaGym e com acesso ao painel.");
     }

@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Lead extends Model
 {
-    use SoftDeletes;
+    use Auditavel, SoftDeletes;
+
+    protected string $recursoAuditoria = 'leads';
 
     /** Ordem do Kanban. */
     public const ESTAGIOS = [

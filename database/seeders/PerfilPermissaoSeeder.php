@@ -39,6 +39,15 @@ class PerfilPermissaoSeeder extends Seeder
             // trabalho dos outros — e sem separar, as duas coisas viriam
             // juntas por acidente, como vinham.
             'tarefas_triagem' => 'Triagem de tarefas (priorizar e direcionar)',
+
+            // Recurso próprio, e não uma aba de `usuarios`: o rastro atravessa
+            // as áreas — a mesma tela mostra receita, cliente, salário em
+            // despesa e mudança de permissão. Pendurá-lo em qualquer permissão
+            // existente daria a visão do sistema inteiro a quem só tinha a de
+            // um pedaço. Espelha
+            // `2026_08_13_110000_permissao_de_auditoria.php`, que é quem leva
+            // isto a produção; aqui é só o estado inicial de quem semeia.
+            'auditoria' => 'Auditoria (rastro de quem fez o quê)',
         ];
 
         foreach ($recursos as $slug => $descricao) {

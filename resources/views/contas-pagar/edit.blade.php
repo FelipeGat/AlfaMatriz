@@ -4,12 +4,14 @@
                     :atual="'Editar despesa'" />
     </x-slot>
 
-    <div class="" style="max-width: 1000px">
+    <div class="space-y-6" style="max-width: 1000px">
             <div class="bg-panel overflow-hidden sm:rounded-card p-6">
                 <form method="POST" action="{{ route('contas-pagar.update', $contaPagar) }}">
                     @method('PUT')
                     @include('contas-pagar._form')
                 </form>
             </div>
+
+            <x-linha-do-tempo :registro="$contaPagar" />
         </div>
 </x-app-layout>

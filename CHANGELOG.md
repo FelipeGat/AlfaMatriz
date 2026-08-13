@@ -1,5 +1,51 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 13/08/2026 — O sistema passou a lembrar quem fez o quê
+
+Até aqui o painel respondia bem a "como está" e não tinha como responder a "como
+estava, e quem mudou". O valor mensal de um cliente cai pela metade e não há
+consulta que devolva o valor anterior — ele deixou de existir no instante do
+salvamento. Uma conta ganha perfil de administrador e a tela passa a mostrar
+apenas o resultado, nunca quando nem por decisão de quem.
+
+### Novidades
+
+- **Toda mudança de cadastro e de financeiro passa a deixar linha.** Clientes,
+  revendas, produtos e tiers, receitas, despesas, contas fixas, caixa, leads e
+  cadastros auxiliares: quem mexeu, quando, e o valor de antes ao lado do de
+  depois, campo a campo.
+- **A exclusão guarda a última cópia do que havia.** O registro sai da lista e a
+  linha de auditoria continua trazendo o cadastro inteiro — é a única
+  testemunha do que foi perdido.
+- **O acesso ao painel também é registrado:** entrada, saída, senha recusada e
+  bloqueio por tentativas em sequência, com o IP. A senha digitada não é gravada
+  em lugar nenhum — nem em texto, nem em hash.
+- **Mudança de permissão deixa rastro próprio.** Trocar os perfis de uma conta e
+  mexer na grade de um perfil aparecem com os nomes de antes e de depois. Nada
+  disso passa pelo caminho comum de gravação, e sem registro explícito seriam as
+  duas mudanças mais consequentes do painel e as únicas invisíveis.
+- **O que sai do sistema sem alterar cadastro também conta:** download de anexo
+  de receita e de despesa, geração do faturamento do mês, provisionamento de
+  revenda e cada operação de licença — liberar, renovar, bloquear e desbloquear.
+- **Tela de Auditoria, no menu Sistema.** Filtra por pessoa, área, ação e
+  período, e abre o antes/depois de cada linha sem sair da lista.
+- **Histórico dentro do próprio registro.** Cliente, receita, despesa e produto
+  ganharam a linha do tempo no rodapé da tela — a pergunta "quem mexeu nisto?"
+  nasce olhando para o registro, e não na tela de auditoria.
+
+### Melhorias
+
+- **A auditoria só se lê.** Não há tela, rota nem caminho de código que altere
+  uma linha já gravada; a tentativa é recusada com erro, e não em silêncio.
+- **O rastro guarda o nome de quem agiu, congelado.** A conta pode ser
+  renomeada ou excluída depois, e a linha continua dizendo quem era — inclusive
+  quando o e-mail da tentativa recusada nunca correspondeu a conta nenhuma.
+- **A porta é estreita: só o administrador.** A mesma tela mostra receita,
+  cliente, salário em despesa e mudança de permissão; pendurá-la numa permissão
+  existente daria a visão do sistema inteiro a quem só tinha a de um pedaço. O
+  histórico dentro do registro obedece à mesma regra — quem edita um cliente não
+  passa a ver valores que nunca teve acesso a ver.
+
 ## AlfaMatriz — 13/08/2026 — O que a Alfa vende e o que a Alfa usa deixam de ser a mesma lista
 
 A tela de Produtos e o quadro de tarefas perguntavam à mesma lista coisas

@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class MovimentacaoFinanceira extends Model
 {
+    use Auditavel;
+
+    protected string $recursoAuditoria = 'financeiro';
+
     protected $table = 'movimentacoes_financeiras';
 
     protected $fillable = [

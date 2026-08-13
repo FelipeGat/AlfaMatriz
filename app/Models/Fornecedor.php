@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Fornecedor extends Model
 {
-    use SoftDeletes;
+    use Auditavel, SoftDeletes;
+
+    protected string $recursoAuditoria = 'financeiro';
 
     protected $table = 'fornecedores';
 

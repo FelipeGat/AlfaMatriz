@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Auditoria;
 use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\CobrancaAnexo;
@@ -236,6 +237,18 @@ class CobrancaController extends Controller
         if (! Storage::disk('public')->exists($anexo->caminho)) {
             abort(404, 'Arquivo não encontrado no servidor.');
         }
+
+        // O único fato do sistema que não deixa marca nenhuma no dado: o
+        // arquivo sai daqui e passa a existir na máquina de quem baixou. Boleto
+        // e comprovante trazem conta bancária e CNPJ, então "quem levou isto
+        // embora, e quando" é pergunta que alguém vai fazer — e a resposta só
+        // existe se for gravada no momento.
+        Auditoria::registrar(
+            recurso: 'cobrancas',
+            acao: 'baixou',
+            alvo: $anexo->cobranca,
+            descricao: $anexo->nome_original,
+        );
 
         return Storage::disk('public')->download($anexo->caminho, $anexo->nome_original);
     }

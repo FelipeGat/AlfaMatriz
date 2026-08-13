@@ -125,5 +125,11 @@
                 </form>
             </div>
             @endunless
+
+            {{-- Fora do `@unless` acima: o histórico vale para os dois — o
+                 sistema interno também muda de nome, de capacidade e de
+                 natureza, e é justamente a virada de natureza que alguém vai
+                 querer datar depois. --}}
+            <x-linha-do-tempo :registro="$sistema" />
         </div>
 </x-app-layout>

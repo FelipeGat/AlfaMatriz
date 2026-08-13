@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Cobranca extends Model
 {
+    use Auditavel;
+
+    protected string $recursoAuditoria = 'cobrancas';
+
     protected $fillable = [
         'revenda_id', 'cliente_id', 'sistema_id', 'conta_financeira_id',
         'descricao', 'valor', 'data_vencimento', 'data_pagamento', 'valor_pago',

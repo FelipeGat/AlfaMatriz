@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\PrimeiroAcessoController;
+use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\CadastroAuxiliarController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\CentroControleController;
@@ -262,6 +263,11 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // não tem tela própria, só o salvamento.
     Route::put('perfis/{perfil}/permissoes', [PerfilController::class, 'update'])->name('perfis.permissoes')
         ->middleware('permissao:usuarios');
+    // Uma rota só, e de leitura. A auditoria não tem `store`, `update` nem
+    // `destroy` de propósito: o modelo recusa alteração, e um endpoint de
+    // escrita seria a única porta capaz de fazê-la mentir.
+    Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index')
+        ->middleware('permissao:auditoria');
     Route::resource('centros-custo', CentroCustoController::class)->only(['store', 'destroy'])
         ->parameters(['centros-custo' => 'centro_custo'])
         ->middleware('permissao:financeiro');

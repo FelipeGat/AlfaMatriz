@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ContaFinanceira extends Model
 {
+    use Auditavel;
+
+    protected string $recursoAuditoria = 'financeiro';
+
     protected $table = 'contas_financeiras';
 
     protected $fillable = [

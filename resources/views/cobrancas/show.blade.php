@@ -61,6 +61,8 @@
             </x-tabela>
         @endif
 
+        <x-linha-do-tempo :registro="$cobranca" />
+
         <div class="flex items-center gap-4">
             <a href="{{ route('cobrancas.index') }}" class="text-sm text-ink-dim hover:text-ink">&larr; Voltar</a>
             @if ($cobranca->status === 'pendente')

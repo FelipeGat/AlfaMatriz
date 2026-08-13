@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Auditoria;
 use App\Models\ClienteModulo;
 use App\Models\Cobranca;
 use App\Models\Revenda;
@@ -174,6 +175,17 @@ class FaturamentoController extends Controller
         $resultado = $service->gerarParaCompetencia($competencia);
 
         $cobrancasGeradas = collect($resultado)->filter(fn ($r) => isset($r['cobranca_id']))->count();
+
+        // As receitas criadas já deixam a própria linha, uma a uma. Esta é a
+        // linha do FECHAMENTO: quem apertou o botão e em que competência. Sem
+        // ela, as cobranças geradas se parecem com dezenas de lançamentos
+        // avulsos feitos no mesmo segundo, e ninguém consegue dizer se foram um
+        // fechamento ou um engano repetido.
+        Auditoria::registrar(
+            recurso: 'faturamento',
+            acao: 'gerou',
+            descricao: "competência {$competencia} · {$cobrancasGeradas} cobrança(s)",
+        );
 
         return redirect()->route('faturamento.index', ['competencia' => $competencia])
             ->with('status', "Faturamento da competência {$competencia} gerado: {$cobrancasGeradas} cobrança(s) consolidada(s) criada(s).");

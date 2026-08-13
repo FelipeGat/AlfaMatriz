@@ -7,8 +7,15 @@
 
     {{-- Formulário respira melhor com largura limitada; a tabela é que não
          pode ter, porque desliza inteira ao recolher o menu. --}}
-    <form method="POST" action="{{ route('clientes.update', $cliente) }}" style="max-width: 1000px">
-        @method('PUT')
-        @include('clientes._form', ['modo' => 'editar'])
-    </form>
+    <div class="space-y-6" style="max-width: 1000px">
+        <form method="POST" action="{{ route('clientes.update', $cliente) }}">
+            @method('PUT')
+            @include('clientes._form', ['modo' => 'editar'])
+        </form>
+
+        {{-- Depois do formulário, e não ao lado: o histórico é consulta, e
+             disputar a largura com os campos empurraria o formulário para
+             metade da tela em nome de algo que se abre uma vez por mês. --}}
+        <x-linha-do-tempo :registro="$cliente" />
+    </div>
 </x-app-layout>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -10,7 +11,9 @@ use Illuminate\Support\Collection;
 
 class Sistema extends Model
 {
-    use HasFactory;
+    use Auditavel, HasFactory;
+
+    protected string $recursoAuditoria = 'sistemas';
 
     /**
      * O que a linha É.

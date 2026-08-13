@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use App\Concerns\ComOrigemExterna;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,7 +11,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Revenda extends Model
 {
-    use ComOrigemExterna, SoftDeletes;
+    use Auditavel, ComOrigemExterna, SoftDeletes;
+
+    protected string $recursoAuditoria = 'revendas';
 
     protected $fillable = [
         'nome', 'cnpj', 'contato_nome', 'contato_email', 'contato_telefone', 'ativo',

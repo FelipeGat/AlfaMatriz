@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Concerns\Auditavel;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +16,9 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, SoftDeletes;
+    use Auditavel, HasFactory, Notifiable, SoftDeletes;
+
+    protected string $recursoAuditoria = 'usuarios';
 
     /**
      * The attributes that are mass assignable.
@@ -81,6 +84,17 @@ class User extends Authenticatable
     public function tarefasComoInterlocutor(): HasMany
     {
         return $this->hasMany(Tarefa::class, 'interlocutor_id');
+    }
+
+    /**
+     * A conta é `name`, e não `nome`: é o único modelo do painel que herda o
+     * vocabulário do Laravel em vez do nosso. Sem este método, toda linha de
+     * auditoria sobre uma conta se apresentaria como "User #7" — o padrão do
+     * trait procura `nome` e não acha nada.
+     */
+    public function descricaoDeAuditoria(): string
+    {
+        return $this->name;
     }
 
     /**

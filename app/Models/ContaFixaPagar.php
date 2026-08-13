@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ContaFixaPagar extends Model
 {
+    use Auditavel;
+
+    protected string $recursoAuditoria = 'contas_pagar';
+
     protected $table = 'contas_fixas_pagar';
 
     protected $fillable = [

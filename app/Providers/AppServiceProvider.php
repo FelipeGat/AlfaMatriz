@@ -2,9 +2,15 @@
 
 namespace App\Providers;
 
+use App\Listeners\RegistrarAcesso;
 use App\Models\Notificacao;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Lockout;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -38,6 +44,15 @@ class AppServiceProvider extends ServiceProvider
         RedirectIfAuthenticated::redirectUsing(
             fn (Request $request) => $request->user()?->telaInicial() ?? route('login', absolute: false)
         );
+
+        // O rastro de acesso. Aqui, e não numa descoberta automática de
+        // listeners, porque estes quatro são de classes do FRAMEWORK: não há
+        // onde pendurar a anotação, e uma lista explícita é o único lugar em
+        // que se enxerga de uma vez o que está sendo ouvido.
+        Event::listen(Login::class, [RegistrarAcesso::class, 'entrou']);
+        Event::listen(Logout::class, [RegistrarAcesso::class, 'saiu']);
+        Event::listen(Failed::class, [RegistrarAcesso::class, 'recusada']);
+        Event::listen(Lockout::class, [RegistrarAcesso::class, 'bloqueado']);
 
         // O sino vive no rodapé da sidebar, que é servida em TODAS as telas —
         // e um controller de cada tela passando as notificações seria a mesma

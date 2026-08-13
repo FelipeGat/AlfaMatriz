@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Auditoria;
 use App\Models\CentroCusto;
 use App\Models\Conta;
 use App\Models\ContaFinanceira;
@@ -188,6 +189,16 @@ class ContaPagarController extends Controller
         if (! Storage::disk('public')->exists($anexo->caminho)) {
             abort(404, 'Arquivo não encontrado no servidor.');
         }
+
+        // Mesma razão do anexo de receita: nota fiscal e comprovante de despesa
+        // saem do sistema quando alguém os baixa, e o dado que eles carregam
+        // não volta. A linha aqui é a única testemunha disso.
+        Auditoria::registrar(
+            recurso: 'contas_pagar',
+            acao: 'baixou',
+            alvo: $anexo->contaPagar,
+            descricao: $anexo->nome_original,
+        );
 
         return Storage::disk('public')->download($anexo->caminho, $anexo->nome_original);
     }

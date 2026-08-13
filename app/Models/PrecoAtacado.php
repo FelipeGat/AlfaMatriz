@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PrecoAtacado extends Model
 {
+    use Auditavel;
+
+    protected string $recursoAuditoria = 'sistemas';
+
     protected $table = 'precos_atacado';
 
     protected $fillable = [

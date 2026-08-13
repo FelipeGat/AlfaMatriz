@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Auditoria;
 use App\Models\Perfil;
 use App\Models\Permissao;
 use Illuminate\Http\RedirectResponse;
@@ -57,8 +58,79 @@ class PerfilController extends Controller
             )];
         });
 
+        $antes = $this->gradeAtual($perfil);
+
         $perfil->permissoes()->sync($grade->all());
 
+        $this->registrarMudancaDeGrade($perfil, $antes, $this->gradeAtual($perfil->fresh()));
+
         return back()->with('status', "Permissões do perfil {$perfil->nome} salvas.");
+    }
+
+    /**
+     * A grade como está agora, achatada em `recurso · ação => bool`.
+     *
+     * Achatada de propósito: a comparação que interessa é caixa a caixa, e uma
+     * estrutura aninhada obrigaria a percorrer dois níveis só para descobrir
+     * que uma delas virou.
+     *
+     * @return array<string, bool>
+     */
+    private function gradeAtual(Perfil $perfil): array
+    {
+        $grade = [];
+
+        foreach ($perfil->permissoes()->get() as $permissao) {
+            foreach (self::AÇÕES as $acao) {
+                $grade[$permissao->recurso.' · '.$acao] = (bool) $permissao->pivot->{$acao};
+            }
+        }
+
+        return $grade;
+    }
+
+    /**
+     * O rastro da mudança de grade.
+     *
+     * Escrito à mão porque quem muda é `perfil_permissao`, tabela de ligação
+     * sem modelo e sem evento do Eloquent — o trait de auditoria não a enxerga.
+     * E é a mudança mais consequente do painel inteiro: mexer numa caixa aqui
+     * altera de uma vez o que TODAS as contas daquele perfil alcançam, sem
+     * tocar em nenhuma delas.
+     *
+     * Só as caixas que viraram entram na linha. A grade tem quinze recursos por
+     * quatro ações; gravá-la inteira a cada salvamento sepultaria a única caixa
+     * mexida no meio de cinquenta e nove que continuaram iguais.
+     *
+     * @param  array<string, bool>  $antes
+     * @param  array<string, bool>  $depois
+     */
+    private function registrarMudancaDeGrade(Perfil $perfil, array $antes, array $depois): void
+    {
+        $mudou = [];
+
+        // Percorre a união das duas, e não só o "depois": recurso criado por
+        // uma migração nova aparece apenas de um lado, e ler só um deles
+        // esconderia metade das diferenças possíveis.
+        foreach (array_keys($antes + $depois) as $caixa) {
+            $de = $antes[$caixa] ?? false;
+            $para = $depois[$caixa] ?? false;
+
+            if ($de !== $para) {
+                $mudou[$caixa] = ['de' => $de ? 'sim' : 'não', 'para' => $para ? 'sim' : 'não'];
+            }
+        }
+
+        if ($mudou === []) {
+            return;
+        }
+
+        Auditoria::registrar(
+            recurso: 'usuarios',
+            acao: 'permissoes',
+            alvo: $perfil,
+            descricao: 'perfil '.$perfil->nome,
+            alteracoes: $mudou,
+        );
     }
 }

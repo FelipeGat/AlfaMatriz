@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Auditoria;
 use App\Models\Perfil;
 use App\Models\Permissao;
 use App\Models\Revenda;
@@ -101,7 +102,7 @@ class UsuarioController extends Controller
         $usuario->email_verified_at = now();
         $usuario->save();
 
-        $usuario->perfis()->sync($dados['perfis']);
+        $this->sincronizarPerfis($usuario, $dados['perfis']);
 
         return back()->with('senha_gerada', ['nome' => $usuario->name, 'email' => $usuario->email, 'senha' => $senha]);
     }
@@ -123,7 +124,7 @@ class UsuarioController extends Controller
             'revenda_id' => $dados['revenda_id'] ?? null,
         ]);
 
-        $usuario->perfis()->sync($dados['perfis']);
+        $this->sincronizarPerfis($usuario, $dados['perfis']);
 
         return back()->with('status', "Conta de {$usuario->name} atualizada.");
     }
@@ -136,7 +137,24 @@ class UsuarioController extends Controller
     {
         $senha = $this->senhaGerada();
 
-        $usuario->update(['password' => $senha, 'primeiro_acesso' => true]);
+        // O automático do trait é calado aqui porque ele diria "alterou
+        // usuário: password, primeiro_acesso" — verdade, e não a informação.
+        // Quem lê a auditoria quer achar "fulano redefiniu a senha de
+        // beltrano", que é uma das poucas ações capazes de dar a conta de
+        // alguém a outra pessoa.
+        Auditoria::semRegistro(
+            fn () => $usuario->update(['password' => $senha, 'primeiro_acesso' => true])
+        );
+
+        Auditoria::registrar(
+            recurso: 'usuarios',
+            acao: 'senha',
+            alvo: $usuario,
+            // A senha gerada NÃO entra — nem aqui, nem no antes/depois. Ela é
+            // mostrada uma vez na tela de quem a gerou e some; guardá-la numa
+            // tabela que ninguém apaga desfaria isso.
+            descricao: $usuario->email,
+        );
 
         return back()->with('senha_gerada', ['nome' => $usuario->name, 'email' => $usuario->email, 'senha' => $senha]);
     }
@@ -163,6 +181,49 @@ class UsuarioController extends Controller
         $usuario->delete();
 
         return back()->with('status', "Conta de {$usuario->name} excluída.");
+    }
+
+    /**
+     * Troca os perfis da conta e deixa o rastro disso.
+     *
+     * O rastro precisa ser escrito à mão porque a tabela que muda é a de
+     * ligação: `perfil_user` não é modelo, não dispara evento do Eloquent, e
+     * portanto passa inteira por baixo do trait de auditoria. Sem isto, a
+     * mudança que mais importa na tela de usuários — quem virou administrador,
+     * e quando — seria a única que não deixaria linha.
+     *
+     * Guarda os NOMES, e não os ids: a linha tem de continuar legível anos
+     * depois, e "de [Operação] para [Administrador]" responde sozinha, enquanto
+     * "de [3] para [1]" exige uma consulta a uma tabela que pode ter mudado.
+     *
+     * @param  array<int, int>  $perfis
+     */
+    private function sincronizarPerfis(User $usuario, array $perfis): void
+    {
+        $antes = $usuario->perfis()->orderBy('nome')->pluck('nome')->all();
+
+        $usuario->perfis()->sync($perfis);
+
+        $depois = $usuario->perfis()->orderBy('nome')->pluck('nome')->all();
+
+        // Salvar o formulário sem mexer nos perfis é o caso comum — a tela é a
+        // mesma para corrigir um e-mail. Registrar assim mesmo encheria a
+        // auditoria de mudanças de permissão que não mudaram permissão nenhuma,
+        // que é o tipo de ruído capaz de fazer a tela parar de ser lida.
+        if ($antes === $depois) {
+            return;
+        }
+
+        Auditoria::registrar(
+            recurso: 'usuarios',
+            acao: 'permissoes',
+            alvo: $usuario,
+            descricao: $usuario->email,
+            alteracoes: ['perfis' => [
+                'de' => $antes ? implode(', ', $antes) : 'nenhum',
+                'para' => $depois ? implode(', ', $depois) : 'nenhum',
+            ]],
+        );
     }
 
     /**

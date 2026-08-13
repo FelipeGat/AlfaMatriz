@@ -30,6 +30,16 @@
 /atual
 /preparo
 /deploy-status.json
+# Banco SQLite que nasce na raiz quando alguém roda `artisan` com
+# `DB_CONNECTION=sqlite` sobreposto na linha de comando: o `DB_DATABASE` do
+# `.env` continua valendo, e o driver usa o NOME DO BANCO DE PRODUÇÃO como nome
+# de arquivo. Já apareceu uma vez, com o schema inteiro e nenhum dado.
+#
+# Ignorado, e não só apagado, porque o arquivo reaparece exatamente aqui toda
+# vez que alguém repetir o comando — e o nome não parece lixo, parece coisa da
+# aplicação. É o candidato perfeito a entrar num `git add .` distraído e virar
+# 368 KB de banco no remoto.
+/alfatecnologia
 .DS_Store
 .env
 .env.backup
