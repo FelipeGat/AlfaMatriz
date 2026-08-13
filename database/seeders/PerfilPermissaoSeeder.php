@@ -103,6 +103,25 @@ class PerfilPermissaoSeeder extends Seeder
             $todasPermissoes['tarefas'] => ['ler' => true, 'incluir' => true, 'imprimir' => true, 'excluir' => false],
         ]);
 
+        // Quem vende não é quem opera. O perfil mais próximo era `operacao`, e
+        // ele traz junto o negócio da Alfa: sistemas e preço de atacado,
+        // faturamento, receitas, despesas e os painéis.
+        //
+        // Sem painel nenhum, e não por esquecimento: os dois que existem falam
+        // de dinheiro da casa — o Centro de Controle abre com "Saldo em caixa"
+        // e o Comercial mostra o MRR de atacado. Por isso `telaInicial()`
+        // conhece o funil: sem painel, é lá que este perfil tem casa.
+        //
+        // Espelha `2026_08_12_180000_criar_perfil_comercial.php`, que é quem
+        // leva isto a produção — aqui é só o estado inicial de quem semeia.
+        $comercial = Perfil::updateOrCreate(['slug' => 'comercial'], ['nome' => 'Comercial']);
+
+        foreach (['leads', 'clientes', 'revendas'] as $recurso) {
+            $comercial->permissoes()->syncWithoutDetaching([
+                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'imprimir' => true, 'excluir' => false],
+            ]);
+        }
+
         // A revenda entra no MESMO painel da Alfa, então o perfil dela precisa
         // ser curto de propósito: só revendas e clientes. Reusar `operacao`
         // mostraria sistemas, dashboard, leads e faturamento — o negócio da

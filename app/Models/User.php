@@ -124,8 +124,9 @@ class User extends Authenticatable
      * entrar**: a senha certa levando a uma parede se lê como conta quebrada, e
      * não como tela que não é sua.
      *
-     * Mora aqui porque a pergunta é feita em dois lugares — o login e o desvio
-     * de quem já está autenticado. Em listas separadas, elas divergiriam.
+     * Mora aqui porque a pergunta é feita em três lugares — o login, o desvio
+     * de quem já está autenticado e a marca no topo da sidebar. Em listas
+     * separadas, elas divergiriam.
      *
      * A ordem é a de "casa": o Centro de Controle para quem o tem, e depois as
      * telas que costumam ser o dia inteiro de quem só tem uma. Sem nenhuma,
@@ -140,6 +141,12 @@ class User extends Authenticatable
         $telas = [
             'dashboard' => 'centro-controle',
             'tarefas' => 'tarefas.index',
+            // O funil vem ANTES de clientes: quem vende e não tem painel — o
+            // perfil `comercial` — cairia na carteira já formada, e não na fila
+            // que ele trabalha o dia inteiro. Não muda a casa de ninguém mais:
+            // os outros perfis com `leads` também têm `dashboard`, e param na
+            // primeira linha.
+            'leads' => 'leads.index',
             'clientes' => 'clientes.index',
             'revendas' => 'revendas.index',
         ];

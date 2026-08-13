@@ -81,7 +81,12 @@
     {{-- Header: ícone sempre; wordmark só com o menu aberto --}}
     <div class="h-topbar shrink-0 flex items-center gap-2.5 border-b border-line px-4
                 rail:lg:px-0 rail:lg:justify-center">
-        <a href="{{ route($escopo ? 'clientes.index' : 'centro-controle') }}" class="flex items-center gap-2.5 min-w-0">
+        {{-- A marca leva para CASA, e casa não é a mesma para todo mundo: o
+             destino era o Centro de Controle para quem não fosse revenda, e
+             quem não tem `dashboard` — o perfil comercial — clicava no logo
+             para tomar 403. `telaInicial()` é quem sabe a resposta, e já a dava
+             ao login e ao desvio de quem entra. --}}
+        <a href="{{ Auth::user()->telaInicial() }}" class="flex items-center gap-2.5 min-w-0">
             <img src="/icon-matriz-solid.svg" alt="" class="h-7 w-7 shrink-0">
             <img src="/alfamatriz.png" alt="AlfaMatriz" class="h-[15px] w-auto shrink-0 rail:lg:hidden">
         </a>
