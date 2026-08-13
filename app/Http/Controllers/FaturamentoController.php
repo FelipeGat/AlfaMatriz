@@ -72,7 +72,7 @@ class FaturamentoController extends Controller
      */
     private function painelDaRevenda(Revenda $revenda, string $competencia): array
     {
-        $sistemas = Sistema::where('ativo', true)
+        $sistemas = Sistema::produtos()->where('ativo', true)
             ->whereHas('clientes', fn ($q) => $q->where('revenda_id', $revenda->id)
                 ->where('clientes.ativo', true)
                 ->where('cliente_sistema.ativo', true))

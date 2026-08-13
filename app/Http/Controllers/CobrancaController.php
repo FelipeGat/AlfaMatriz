@@ -110,7 +110,7 @@ class CobrancaController extends Controller
         return [
             'revendas' => Revenda::when($escopo, fn ($q) => $q->where($escopo))->orderBy('nome')->get(),
             'clientes' => Cliente::when($escopo, fn ($q) => $q->where($escopo))->orderBy('nome')->get(),
-            'sistemas' => Sistema::orderBy('nome')->get(),
+            'sistemas' => Sistema::produtos()->orderBy('nome')->get(),
             'contasFinanceiras' => ContaFinanceira::where('ativo', true)->orderBy('nome')->get(),
         ];
     }

@@ -12,8 +12,26 @@ class Sistema extends Model
 {
     use HasFactory;
 
+    /**
+     * O que a linha É.
+     *
+     * `produto` é o que a Alfa vende: tem cliente, tier de atacado, MRR e entra
+     * no fechamento. `interno` é o que a Alfa USA para trabalhar — a própria
+     * Matriz, a infra, o site. Ele existe para a tarefa ter onde apontar, e por
+     * isso não aparece em nenhuma tela que fale de dinheiro.
+     *
+     * A distinção não é a mesma de `ativo`. Produto desativado é produto que
+     * saiu do catálogo: ele vale zero, mas o histórico dele é comercial.
+     * Sistema interno nunca foi comercial — somá-lo a zero no ticket médio
+     * seria dividir a receita por uma população maior do que a que a gerou.
+     */
+    public const NATUREZAS = [
+        'produto' => 'Produto',
+        'interno' => 'Sistema interno',
+    ];
+
     protected $fillable = [
-        'nome', 'slug', 'categoria', 'unidade_cobranca', 'base_url', 'token', 'ativo',
+        'nome', 'slug', 'natureza', 'categoria', 'unidade_cobranca', 'base_url', 'token', 'ativo',
         'capacidades', 'versao', 'responsavel', 'roadmap', 'data_cadastro',
     ];
 
@@ -68,6 +86,46 @@ class Sistema extends Model
         return $query->whereJsonContains('capacidades', $capacidade);
     }
 
+    /**
+     * O catálogo comercializado — a população de toda tela que fala de receita.
+     *
+     * É escopo, e não um `where` repetido em cada controller, porque a pergunta
+     * é uma só e aparece em uma dúzia de lugares: esquecida em UM deles, um
+     * sistema interno entra numa conta de dinheiro valendo zero e puxa para
+     * baixo o ticket médio, a participação e o preço médio de todo mundo — sem
+     * que nada tenha mudado de preço.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Sistema>  $query
+     */
+    public function scopeProdutos($query)
+    {
+        return $query->where('natureza', 'produto');
+    }
+
+    /** @param  \Illuminate\Database\Eloquent\Builder<Sistema>  $query */
+    public function scopeInternos($query)
+    {
+        return $query->where('natureza', 'interno');
+    }
+
+    public function ehInterno(): bool
+    {
+        return $this->natureza === 'interno';
+    }
+
+    /**
+     * Pode virar produto, ou deixar de ser?
+     *
+     * Só enquanto ninguém depende da resposta comercial. Um sistema com cliente
+     * vinculado ou com tier configurado já está no fechamento; transformá-lo em
+     * interno o tiraria da fatura em silêncio, e a revenda descobriria pelo
+     * boleto que não veio.
+     */
+    public function podeTrocarDeNatureza(): bool
+    {
+        return ! $this->clientes()->exists() && ! $this->precosAtacado()->exists();
+    }
+
     public function clientes(): BelongsToMany
     {
         return $this->belongsToMany(Cliente::class, 'cliente_sistema')
@@ -81,6 +139,18 @@ class Sistema extends Model
     public function modulos(): HasMany
     {
         return $this->hasMany(Modulo::class);
+    }
+
+    /**
+     * O trabalho aberto contra este sistema.
+     *
+     * É a única métrica que um sistema interno tem — ele não tem cliente, nem
+     * MRR, nem churn. A lista de internos se sustenta nela: sem esse número,
+     * seriam nomes sem nenhum sinal de vida.
+     */
+    public function tarefas(): HasMany
+    {
+        return $this->hasMany(Tarefa::class);
     }
 
     public function precosAtacado(): HasMany

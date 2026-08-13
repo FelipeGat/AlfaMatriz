@@ -180,7 +180,11 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('clientes.desbloquearLicenca')
         ->middleware('permissao:clientes');
 
-    Route::resource('sistemas', SistemaController::class)->only(['index', 'edit', 'update'])
+    // `create` e `store` entram no mesmo recurso, e não em rota solta, para o
+    // cadastro herdar a MESMA porta que já protege preço e tier: registrar
+    // sistema é decisão de quem cuida do catálogo. O verbo faz o resto — o
+    // middleware lê `incluir` no POST e `ler` no GET.
+    Route::resource('sistemas', SistemaController::class)->only(['index', 'create', 'store', 'edit', 'update'])
         ->middleware('permissao:sistemas');
     Route::post('sistemas/{sistema}/precos', [PrecoAtacadoController::class, 'store'])->name('precos.store')
         ->middleware('permissao:sistemas');

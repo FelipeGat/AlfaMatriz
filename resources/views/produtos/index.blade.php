@@ -1,6 +1,27 @@
 <x-app-layout>
     <x-slot name="titulo">Produtos</x-slot>
-    <x-slot name="contexto">{{ $contagens['sistemas'] }} sistemas · {{ $contagens['ativos'] }} ativos</x-slot>
+
+    {{-- O contexto acompanha a aba: na de internos, as contagens do catálogo
+         comercial falariam de uma lista que não está na tela. --}}
+    <x-slot name="contexto">
+        @if ($aba === 'internos')
+            {{ $contagens['internos'] }} sistemas internos
+        @else
+            {{ $contagens['sistemas'] }} sistemas · {{ $contagens['ativos'] }} ativos
+        @endif
+    </x-slot>
+
+    {{-- A ação segue a aba, como em Revendas: quem está na lista de internos
+         quer cadastrar um interno, e um botão fixo em "Novo produto" o levaria
+         a um formulário com os campos errados já escolhidos. --}}
+    @if (auth()->user()->canPermissao('sistemas', 'incluir'))
+        <x-slot name="acoes">
+            <a href="{{ route('sistemas.create', $aba === 'internos' ? ['natureza' => 'interno'] : []) }}"
+               class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
+                {{ $aba === 'internos' ? '+ Novo sistema interno' : '+ Novo produto' }}
+            </a>
+        </x-slot>
+    @endif
 
     {{--
         Sete cartões numa grade de três deixavam um buraco na última fila, e
@@ -14,6 +35,33 @@
             <x-aviso>{{ session('status') }}</x-aviso>
         @endif
 
+        {{--
+            Duas populações, uma tela.
+
+            O que a Alfa VENDE e o que a Alfa USA moram na mesma tabela e são
+            perguntas diferentes: o produto responde por receita, o interno só
+            existe para a tarefa ter onde apontar. Misturá-los numa lista só
+            poria linhas de MRR zero no meio da comparação que a lista existe
+            para permitir — e o zero de quem nunca foi vendido se leria como o
+            zero de quem parou de vender.
+        --}}
+        <x-abas>
+            <x-abas.item href="{{ route('produtos.index', array_merge(request()->query(), ['aba' => 'produtos'])) }}"
+                         :ativo="$aba === 'produtos'" icone="cube-outline">
+                Produtos · {{ $contagens['sistemas'] }}
+            </x-abas.item>
+            <x-abas.item href="{{ route('produtos.index', array_merge(request()->query(), ['aba' => 'internos'])) }}"
+                         :ativo="$aba === 'internos'" icone="settings">
+                Internos · {{ $contagens['internos'] }}
+            </x-abas.item>
+        </x-abas>
+
+        @if ($aba === 'internos')
+            @include('produtos._internos', ['internos' => $internos])
+        @else
+        {{-- A lista de produtos segue na indentação de antes, de propósito:
+             recuá-la em um nível trocaria um diff de duas linhas por um de
+             duzentas, todas de espaço em branco. --}}
         <div class="flex flex-wrap items-center gap-3">
             <div class="flex-1 min-w-[240px] rounded-panel border border-line bg-card-grad px-4 py-3">
                 <p class="text-[11px] uppercase tracking-[0.10em] text-ink-mute">MRR total · todos os produtos</p>
@@ -251,6 +299,7 @@
              modo daria dois lugares para o mesmo estado sair de sincronia. --}}
         @if ($produtos->hasPages())
             <div>{{ $produtos->links() }}</div>
+        @endif
         @endif
     </div>
 

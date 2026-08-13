@@ -16,6 +16,11 @@
     // conversar sobre uma permissão em vez de sobre a tarefa.
     $podeTriar = auth()->user()?->podeTriarTarefas() ?? false;
 
+    // O `optgroup` só entra quando há as duas famílias. Rótulo de grupo sobre
+    // um grupo só é moldura, e a casa que ainda não cadastrou nenhum sistema
+    // interno veria "Produto" acima da lista de sempre, sem nada a distinguir.
+    $agruparSistemas = $sistemas->pluck('natureza')->unique()->count() > 1;
+
     if ($edicao) {
         // O subtítulo diz ONDE a tarefa está e HÁ QUANTO TEMPO — a mesma
         // pergunta que o chip do card responde, e a primeira que se faz ao
@@ -187,13 +192,20 @@
 
             <div>
                 <label for="sistema_id-{{ $sufixo }}" class="block mb-[5px] text-[12px] font-medium text-ink-dim">Sistema</label>
+                {{-- Agrupado por natureza: produto e sistema interno são duas
+                     famílias, e numa lista corrida "AlfaMatriz" apareceria
+                     entre dois produtos como se também fosse vendido. --}}
                 <select id="sistema_id-{{ $sufixo }}" name="sistema_id"
                         class="block w-full h-9 py-0 rounded-control bg-input border-line text-ink text-[13px]">
                     <option value="">—</option>
-                    @foreach ($sistemas as $sistema)
-                        <option value="{{ $sistema->id }}" @selected(old('sistema_id', $tarefa->sistema_id ?? '') == $sistema->id)>
-                            {{ $sistema->nome }}
-                        </option>
+                    @foreach ($sistemas->groupBy('natureza') as $natureza => $doGrupo)
+                        @if ($agruparSistemas) <optgroup label="{{ \App\Models\Sistema::NATUREZAS[$natureza] ?? $natureza }}"> @endif
+                        @foreach ($doGrupo as $sistema)
+                            <option value="{{ $sistema->id }}" @selected(old('sistema_id', $tarefa->sistema_id ?? '') == $sistema->id)>
+                                {{ $sistema->nome }}
+                            </option>
+                        @endforeach
+                        @if ($agruparSistemas) </optgroup> @endif
                     @endforeach
                 </select>
             </div>

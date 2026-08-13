@@ -66,7 +66,7 @@ class ClienteController extends Controller
                 ->when($temEscopo, fn ($q) => $q->where('id', auth()->user()->revenda_id))
                 ->orderBy('nome')
                 ->get(),
-            'sistemas' => Sistema::where('ativo', true)->orderBy('nome')->get(),
+            'sistemas' => Sistema::produtos()->where('ativo', true)->orderBy('nome')->get(),
             'filtros' => [
                 'busca' => $busca,
                 'revenda' => $request->query('revenda', ''),
@@ -280,7 +280,7 @@ class ClienteController extends Controller
             ->when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('id', auth()->user()->revenda_id))
             ->orderBy('nome')
             ->get();
-        $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
+        $sistemas = Sistema::produtos()->where('ativo', true)->orderBy('nome')->get();
         $cliente->load('sistemas', 'emails', 'telefones');
 
         return view('clientes.edit', compact('cliente', 'revendas', 'sistemas'));

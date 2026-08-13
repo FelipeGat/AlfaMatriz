@@ -33,7 +33,7 @@ class FaturamentoService
         foreach ($revendas as $revenda) {
             $breakdown = [];
 
-            $sistemas = Sistema::where('ativo', true)
+            $sistemas = Sistema::produtos()->where('ativo', true)
                 ->whereHas('clientes', fn ($q) => $q->where('revenda_id', $revenda->id)->where('clientes.ativo', true)->where('cliente_sistema.ativo', true))
                 ->get();
 
@@ -168,7 +168,7 @@ class FaturamentoService
         $porRevenda = [];
 
         foreach (Revenda::where('ativo', true)->get() as $revenda) {
-            $sistemas = Sistema::where('ativo', true)
+            $sistemas = Sistema::produtos()->where('ativo', true)
                 ->whereHas('clientes', fn ($q) => $q->where('revenda_id', $revenda->id)
                     ->where('clientes.ativo', true)
                     ->where('cliente_sistema.ativo', true))

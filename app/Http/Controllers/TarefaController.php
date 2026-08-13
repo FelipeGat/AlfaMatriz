@@ -1014,6 +1014,16 @@ class TarefaController extends Controller
      * Sistemas só os ativos, como no formulário; usuários sem escopo de
      * revenda, que são os que podem responder por tarefa da matriz.
      *
+     * É a ÚNICA lista de sistemas do painel que não é filtrada por natureza, e
+     * de propósito: aqui a pergunta não é "o que a Alfa vende", é "sobre o que
+     * este trabalho é". A própria Matriz, a infra e o site produzem tarefa como
+     * qualquer produto — e enquanto só o catálogo comercial era oferecido, essa
+     * tarefa nascia sem sistema e sumia do filtro e da raia.
+     *
+     * Ordenada por natureza antes do nome porque o `select` agrupa nas duas
+     * famílias: a ordem do grupo sai da ordem das linhas, e sem isto o
+     * `optgroup` alternaria produto e interno a cada opção.
+     *
      * Conta desativada sai da lista — não se dirige trabalho a quem não entra
      * mais. Mas continua quem JÁ é responsável ou interlocutor de alguma
      * tarefa: fora da lista, o `select` de uma tarefa antiga perderia o valor
@@ -1026,7 +1036,13 @@ class TarefaController extends Controller
     private function listasDeFiltro(): array
     {
         return [
-            'sistemas' => Sistema::where('ativo', true)->orderBy('nome')->get(),
+            'sistemas' => Sistema::where('ativo', true)
+                // Produto primeiro, e não a ordem alfabética da coluna — que
+                // poria "interno" antes de "produto" e enterraria o catálogo
+                // que responde pela maior parte das tarefas.
+                ->orderByRaw("CASE WHEN natureza = 'produto' THEN 0 ELSE 1 END")
+                ->orderBy('nome')
+                ->get(),
             'usuarios' => User::whereNull('revenda_id')
                 ->where(fn ($query) => $query
                     ->where('ativo', true)

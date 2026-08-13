@@ -39,7 +39,7 @@ class LeadController extends Controller
             ->when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('id', auth()->user()->revenda_id))
             ->orderBy('nome')
             ->get();
-        $sistemas = Sistema::where('ativo', true)->orderBy('nome')->get();
+        $sistemas = Sistema::produtos()->where('ativo', true)->orderBy('nome')->get();
 
         $estagios = $this->estagios($colunas);
 

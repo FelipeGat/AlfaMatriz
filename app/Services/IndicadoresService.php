@@ -90,7 +90,7 @@ class IndicadoresService
     /** A mesma curva, para o catálogo de produtos. @return list<float> */
     public function serieDeSistemasAtivos(int $meses): array
     {
-        return $this->serieDeEntrada(fn () => Sistema::where('ativo', true), Sistema::expressaoDeEntrada(), $meses);
+        return $this->serieDeEntrada(fn () => Sistema::produtos()->where('ativo', true), Sistema::expressaoDeEntrada(), $meses);
     }
 
     /**
@@ -238,7 +238,7 @@ class IndicadoresService
 
     public function sistemasAtivos(): int
     {
-        return Sistema::where('ativo', true)->count();
+        return Sistema::produtos()->where('ativo', true)->count();
     }
 
     /**
@@ -386,7 +386,7 @@ class IndicadoresService
         // aparecendo nos rankings do Comercial logo abaixo de um card que diz
         // quantos sistemas estão ativos — a tela contradizia a si mesma — e
         // ainda entrava no MRR, que o fechamento nunca cobraria.
-        return Sistema::where('ativo', true)
+        return Sistema::produtos()->where('ativo', true)
             ->withCount(['clientes' => fn ($q) => $q->where('clientes.ativo', true)->where('cliente_sistema.ativo', true)])
             ->get()
             ->map(function (Sistema $sistema) {

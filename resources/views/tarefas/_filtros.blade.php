@@ -34,8 +34,16 @@
              para anunciar a falta (AC-084), e repeti-la aqui a colocaria na
              página mesmo quando nenhum card tem lacuna nenhuma. --}}
         <option value="sem" @selected($filtros['sistema'] === 'sem')>Nenhum sistema</option>
-        @foreach ($sistemas as $sistema)
-            <option value="{{ $sistema->id }}" @selected($filtros['sistema'] === (string) $sistema->id)>{{ $sistema->nome }}</option>
+        {{-- Agrupado como no formulário da tarefa, pelo mesmo motivo: filtrar
+             por "AlfaMatriz" e por "AlfaGym" são perguntas de tipos
+             diferentes. O grupo some quando só há uma família. --}}
+        @php $agruparSistemas = $sistemas->pluck('natureza')->unique()->count() > 1; @endphp
+        @foreach ($sistemas->groupBy('natureza') as $natureza => $doGrupo)
+            @if ($agruparSistemas) <optgroup label="{{ \App\Models\Sistema::NATUREZAS[$natureza] ?? $natureza }}"> @endif
+            @foreach ($doGrupo as $sistema)
+                <option value="{{ $sistema->id }}" @selected($filtros['sistema'] === (string) $sistema->id)>{{ $sistema->nome }}</option>
+            @endforeach
+            @if ($agruparSistemas) </optgroup> @endif
         @endforeach
     </select>
 

@@ -331,7 +331,7 @@ class CentroControleController extends Controller
     /** @return Collection<int, Sistema> */
     private function sistemasSemTier(): Collection
     {
-        return Sistema::where('ativo', true)->get()->filter(function (Sistema $sistema) {
+        return Sistema::produtos()->where('ativo', true)->get()->filter(function (Sistema $sistema) {
             $porRevenda = $sistema->clientes()
                 ->where('clientes.ativo', true)
                 ->where('cliente_sistema.ativo', true)

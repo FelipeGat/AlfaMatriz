@@ -1,5 +1,47 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 13/08/2026 — O que a Alfa vende e o que a Alfa usa deixam de ser a mesma lista
+
+A tela de Produtos e o quadro de tarefas perguntavam à mesma lista coisas
+diferentes. Para o faturamento, "sistema" quer dizer produto comercializado —
+tem cliente, tier de atacado e MRR. Para uma tarefa, "sistema" quer dizer o
+sistema sobre o qual o trabalho é. A própria Matriz, a infra e o site não são
+produto nenhum, então não estavam na lista: a tarefa deles nascia sem sistema e
+sumia do filtro e da raia do quadro.
+
+### Novidades
+
+- **Sistema passou a ter natureza: Produto ou Interno.** Produto é o que a Alfa
+  vende. Interno é o que a Alfa usa para trabalhar. Todo o catálogo de hoje
+  entrou como Produto — nada mudou de lugar.
+- **A tela de Produtos ganhou duas abas.** "Produtos" é a lista de sempre,
+  ordenada por receita. "Internos" é uma lista própria, com responsável, versão
+  e quantas tarefas estão abertas em cada um — sem MRR, ARR nem churn, que não
+  existem para sistema interno.
+- **Dá para cadastrar sistema pela tela.** Até aqui, sistema novo só entrava por
+  seeder ou direto no banco. O botão do topo acompanha a aba: na de internos ele
+  já abre o formulário sem os campos comerciais.
+- **A tarefa pode apontar para um sistema interno.** O select do quadro e o
+  filtro passaram a oferecer as duas famílias, separadas — numa lista corrida,
+  "AlfaMatriz" apareceria entre dois produtos como se também fosse vendido.
+
+### Melhorias
+
+- **Nome, versão e responsável do sistema passaram a ter campo.** Os três só se
+  preenchiam no banco.
+- **Sistema interno fica fora de tudo que fala de dinheiro:** faturamento,
+  ranking do Comercial, ticket médio, preço médio, contagem de sistemas ativos e
+  os selects de cliente, lead e cobrança. Um sistema de MRR zero no meio da
+  comparação de receita baixaria as médias da casa inteira sem nada ter mudado
+  de preço.
+- **Produto que já tem cliente ou tier não vira interno.** A troca é recusada
+  com a explicação na tela: tirá-lo do catálogo o removeria do faturamento sem
+  aviso, e a revenda descobriria pelo boleto que não veio.
+
+> O identificador (slug) se escolhe uma vez, no cadastro, e não muda depois: é
+> por ele que a marca do produto aparece nas telas e que a sincronização acha o
+> sistema. Trocá-lo mais tarde desfaria as duas amarras em silêncio.
+
 ## AlfaMatriz — 13/08/2026 — O card diz de que produto é a tarefa, e com quem ela está
 
 O rodapé do card trazia as iniciais do responsável num círculo e o nome do

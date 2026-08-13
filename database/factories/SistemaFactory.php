@@ -23,6 +23,7 @@ class SistemaFactory extends Factory
         return [
             'nome' => $nome,
             'slug' => Str::slug($nome).'-'.(++self::$sequencia),
+            'natureza' => 'produto',
             'categoria' => 'saas',
             'unidade_cobranca' => 'unidade ativa',
             'base_url' => null,
@@ -66,6 +67,21 @@ class SistemaFactory extends Factory
             'unidade_cobranca' => 'condomínio ativo',
             'base_url' => 'https://control.alfasolucoes.cloud',
             'capacidades' => ['sincroniza', 'sincroniza_modulos'],
+        ]);
+    }
+
+    /**
+     * Um sistema de dentro de casa: existe para a tarefa apontar, e não se
+     * vende. Sem categoria e sem unidade de cobrança porque não tem nem uma
+     * nem outra — um interno com esses campos preenchidos passaria despercebido
+     * num teste que deveria provar que ele fica fora do comercial.
+     */
+    public function interno(): static
+    {
+        return $this->state([
+            'natureza' => 'interno',
+            'categoria' => null,
+            'unidade_cobranca' => null,
         ]);
     }
 

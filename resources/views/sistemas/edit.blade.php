@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="caminho">
-        <x-migalhas :caminho="[['rotulo' => 'Produtos', 'rota' => route('produtos.index')]]"
+        <x-migalhas :caminho="[['rotulo' => 'Produtos', 'rota' => route('produtos.index', $sistema->ehInterno() ? ['aba' => 'internos'] : [])]]"
                     :atual="$sistema->nome" />
     </x-slot>
 
@@ -23,52 +23,21 @@
                 <form method="POST" action="{{ route('sistemas.update', $sistema) }}">
                     @csrf @method('PUT')
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <x-input-label for="categoria" value="Categoria" />
-                            <select id="categoria" name="categoria" class="mt-1 block w-full border-white/10 rounded-md shadow-sm">
-                                <option value="saas" {{ old('categoria', $sistema->categoria) === 'saas' ? 'selected' : '' }}>SaaS</option>
-                                <option value="crm" {{ old('categoria', $sistema->categoria) === 'crm' ? 'selected' : '' }}>CRM</option>
-                            </select>
-                        </div>
-                        <div>
-                            <x-input-label for="unidade_cobranca" value="Unidade de cobrança" />
-                            <x-text-input id="unidade_cobranca" name="unidade_cobranca" type="text" class="mt-1 block w-full" value="{{ old('unidade_cobranca', $sistema->unidade_cobranca) }}" required />
-                            <x-input-error :messages="$errors->get('unidade_cobranca')" class="mt-2" />
-                        </div>
-                        <div>
-                            {{-- Em branco, vale o dia em que a linha foi criada —
-                                 que na base importada é o dia da migração, igual
-                                 para todo o catálogo. --}}
-                            <x-input-label for="data_cadastro" value="No catálogo desde" />
-                            <x-text-input id="data_cadastro" name="data_cadastro" type="date" class="mt-1 block w-full"
-                                          value="{{ old('data_cadastro', $sistema->data_cadastro?->toDateString()) }}" />
-                            <x-input-error :messages="$errors->get('data_cadastro')" class="mt-2" />
-                        </div>
-                        <div class="flex items-center mt-6">
-                            <label class="inline-flex items-center">
-                                <input type="checkbox" name="ativo" value="1" class="rounded border-white/20 text-brand shadow-sm" {{ old('ativo', $sistema->ativo) ? 'checked' : '' }}>
-                                <span class="ms-2 text-sm text-ink-dim">Sistema ativo (participa do motor de faturamento)</span>
-                            </label>
-                        </div>
-                        <div>
-                            <x-input-label for="base_url" value="Base URL da API SaaS" />
-                            <x-text-input id="base_url" name="base_url" type="text" class="mt-1 block w-full" value="{{ old('base_url', $sistema->base_url) }}" placeholder="https://api.produto.com.br" />
-                            <x-input-error :messages="$errors->get('base_url')" class="mt-2" />
-                        </div>
-                        <div>
-                            <x-input-label for="token" value="Token de integração" />
-                            <x-text-input id="token" name="token" type="password" class="mt-1 block w-full" placeholder="{{ $sistema->token ? '•••••••• (preencher para trocar)' : 'não configurado' }}" />
-                        </div>
-                    </div>
+                    @include('sistemas._form', ['sistema' => $sistema])
 
                     <div class="flex items-center justify-end gap-3 mt-6">
-                        <a href="{{ route('produtos.index') }}" class="text-sm text-ink-dim hover:text-ink">Voltar</a>
+                        <a href="{{ route('produtos.index', $sistema->ehInterno() ? ['aba' => 'internos'] : []) }}"
+                           class="text-sm text-ink-dim hover:text-ink">Voltar</a>
                         <x-primary-button>Salvar</x-primary-button>
                     </div>
                 </form>
             </div>
 
+            {{-- Tier é preço de atacado cobrado da revenda. Sistema interno não
+                 é cobrado de ninguém: o painel inteiro sai, em vez de aparecer
+                 vazio — uma tabela de preços zerada convida a preencher o que
+                 nunca vai ser faturado. --}}
+            @unless ($sistema->ehInterno())
             <div class="bg-panel overflow-hidden shadow-sm sm:rounded-lg p-6">
                 <div class="flex items-center justify-between mb-1">
                     <h3 class="font-semibold text-ink">Tiers de atacado (Alfa → Revenda)</h3>
@@ -155,5 +124,6 @@
                     </div>
                 </form>
             </div>
+            @endunless
         </div>
 </x-app-layout>

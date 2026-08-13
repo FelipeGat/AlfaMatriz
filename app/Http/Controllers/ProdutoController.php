@@ -3,15 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sistema;
+use App\Models\Tarefa;
 use Illuminate\Http\Request;
 
 class ProdutoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $this->bloquearVisaoDaMatriz();
 
-        $produtos = Sistema::with(['modulos.contratacoes' => fn ($q) => $q->where('status', 'ativo')])
+        // A conta dos produtos roda nas DUAS abas, e não só na deles: a aba de
+        // internos exibe a contagem do catálogo comercial no próprio rótulo, e
+        // o cabeçalho da tela também. Poupá-la exigiria um segundo caminho de
+        // contagem — e dois caminhos discordam. O catálogo é de punhado.
+        $aba = $request->query('aba') === 'internos' ? 'internos' : 'produtos';
+
+        $produtos = Sistema::produtos()
+            ->with(['modulos.contratacoes' => fn ($q) => $q->where('status', 'ativo')])
             ->orderBy('nome')->get()->map(function (Sistema $sistema) {
             $ativos = $sistema->clientesAtivosCount();
             $cancelados = $sistema->clientesCanceladosCount();
@@ -58,7 +66,19 @@ class ProdutoController extends Controller
         // sustenta a casa" — a razão de ser desta lista — se perderia.
         $maiorMrr = (float) ($produtos->max('mrr') ?: 0);
 
+        // Os internos não passam por nada disso: eles não têm cliente, tier nem
+        // MRR, e a única coisa que se pode dizer deles é quanto trabalho está
+        // aberto contra cada um. Vêm inteiros, sem paginar — o catálogo de
+        // dentro de casa é de punhado, e um paginador aqui dividiria o `page`
+        // com a outra aba.
+        $internos = Sistema::internos()
+            ->withCount(['tarefas' => fn ($q) => $q->whereNotIn('status', Tarefa::STATUS_TERMINAIS)])
+            ->orderBy('nome')
+            ->get();
+
         return view('produtos.index', [
+            'aba' => $aba,
+            'internos' => $internos,
             'produtos' => $this->paginarColecao($produtos->map(fn ($p) => $p + [
                 'largura' => $maiorMrr > 0 ? $p['mrr'] / $maiorMrr : 0,
             ])),
@@ -73,6 +93,7 @@ class ProdutoController extends Controller
                 'sistemas' => $produtos->count(),
                 'ativos' => $produtos->filter(fn ($p) => $p['sistema']->ativo)->count(),
                 'sem_tier' => $produtos->where('sem_tier', true)->count(),
+                'internos' => $internos->count(),
             ],
         ]);
     }
