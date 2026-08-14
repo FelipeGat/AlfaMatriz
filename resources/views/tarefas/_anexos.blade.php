@@ -54,7 +54,12 @@
                            title="{{ $imagem->nome_original }} · {{ $imagem->tamanho_formatado }} · {{ $imagem->autor_nome }}"
                            class="block aspect-[4/3] rounded-[5px] border border-line bg-surface overflow-hidden
                                   transition hover:border-brand">
-                            <img src="{{ $imagem->url }}" alt="{{ $imagem->nome_original }}"
+                            {{-- O `src` é a MINIATURA e o `href` acima é o
+                                 original: a caixa tem ~140px e não há por que
+                                 baixar 12 MB para pintá-la. Sem miniatura
+                                 gravada, `url_miniatura` devolve o próprio
+                                 original — ver `TarefaAnexo`. --}}
+                            <img src="{{ $imagem->url_miniatura }}" alt="{{ $imagem->nome_original }}"
                                  loading="lazy" class="h-full w-full object-cover">
                         </a>
                     @endforeach
@@ -119,7 +124,9 @@
                     <a :href="anexo.url" target="_blank" rel="noopener"
                        :title="anexo.nome_original + ' · ' + anexo.tamanho_formatado + ' · ' + anexo.autor_nome"
                        class="block h-full w-full transition group-hover:opacity-90">
-                        <img :src="anexo.url" :alt="anexo.nome_original" loading="lazy"
+                        {{-- Miniatura na grade, original no link — ver o mesmo
+                             par no modo leitura, logo acima. --}}
+                        <img :src="anexo.url_miniatura" :alt="anexo.nome_original" loading="lazy"
                              class="h-full w-full object-cover">
                     </a>
 

@@ -205,7 +205,7 @@ class ContaPagarController extends Controller
 
     public function destroyAnexo(ContaPagarAnexo $anexo)
     {
-        Storage::disk('public')->delete($anexo->caminho);
+        // O arquivo sai junto com a linha — ver o `deleting` do `ContaPagarAnexo`.
         $anexo->delete();
 
         return response()->json(['message' => 'Anexo removido.']);

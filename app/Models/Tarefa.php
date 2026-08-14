@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Tarefa extends Model
 {
@@ -437,6 +438,35 @@ class Tarefa extends Model
         static::creating(function (Tarefa $tarefa): void {
             $tarefa->tipo ??= 'desenvolvimento';
             $tarefa->status ??= $tarefa->responsavel_id ? 'backlog' : 'aberta';
+        });
+
+        /*
+         * O cascade do banco apaga as LINHAS dos anexos, e é tudo o que ele
+         * sabe fazer: arquivo em disco não tem chave estrangeira. Sem isto,
+         * excluir uma tarefa deixava cada print e cada log no disco para
+         * sempre — sem erro nenhum, sem linha que os apontasse e sem ninguém
+         * para procurá-los.
+         *
+         * `forceDeleting` e não `deleting`: a tarefa tem exclusão reversível, e
+         * uma tarefa que ainda pode voltar precisa voltar com as provas.
+         *
+         * Os arquivos saem por `Storage` em vez de passar cada anexo pelo
+         * Eloquent, para o cascade continuar sendo o ÚNICO caminho das linhas —
+         * é assim que comentário e item de checklist já somem daqui. Passando
+         * um a um, o anexo viraria o único filho a escrever uma linha de
+         * auditoria por unidade na exclusão de UMA tarefa, e doze prints
+         * empurrariam a exclusão da tarefa para fora da tela.
+         */
+        static::forceDeleting(function (Tarefa $tarefa): void {
+            // Original e miniatura, e o `filter` tira os nulos: a maioria das
+            // linhas não tem miniatura — ver `TarefaAnexo::getUrlMiniatura`.
+            Storage::disk('public')->delete(
+                $tarefa->anexos()
+                    ->get(['caminho', 'caminho_miniatura'])
+                    ->flatMap(fn (TarefaAnexo $anexo) => [$anexo->caminho, $anexo->caminho_miniatura])
+                    ->filter()
+                    ->all()
+            );
         });
     }
 

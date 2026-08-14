@@ -257,7 +257,9 @@ class CobrancaController extends Controller
     {
         $this->autorizarAcesso($anexo->cobranca);
 
-        Storage::disk('public')->delete($anexo->caminho);
+        // O arquivo sai junto com a linha, e quem faz isso é o `deleting` do
+        // `CobrancaAnexo` — aqui a remoção era feita na mão, e todo caminho
+        // novo que apagasse a linha sem repetir o gesto deixava o arquivo.
         $anexo->delete();
 
         return response()->json(['message' => 'Anexo removido.']);

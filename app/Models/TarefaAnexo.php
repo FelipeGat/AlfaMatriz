@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Um arquivo anexado à tarefa — print, log, planilha ou PDF.
@@ -46,7 +47,7 @@ class TarefaAnexo extends Model
      */
     public const ACEITE_DO_SELETOR = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.log,.csv,.xls,.xlsx';
 
-    protected $fillable = ['tarefa_id', 'autor_id', 'nome_original', 'nome_arquivo', 'mime', 'caminho', 'tamanho'];
+    protected $fillable = ['tarefa_id', 'autor_id', 'nome_original', 'nome_arquivo', 'mime', 'caminho', 'caminho_miniatura', 'tamanho'];
 
     /**
      * O que a tela precisa saber sobre o anexo, e nada mais.
@@ -55,9 +56,32 @@ class TarefaAnexo extends Model
      * estiver aqui não existe para ela — e `caminho` fica de fora de propósito:
      * é o lugar do arquivo no disco, que só o servidor tem o que fazer com.
      */
-    protected $appends = ['tamanho_formatado', 'url', 'autor_nome', 'eh_imagem'];
+    protected $appends = ['tamanho_formatado', 'url', 'url_miniatura', 'autor_nome', 'eh_imagem'];
 
-    protected $hidden = ['caminho', 'nome_arquivo'];
+    protected $hidden = ['caminho', 'caminho_miniatura', 'nome_arquivo'];
+
+    /**
+     * A linha que morre leva o arquivo do disco junto.
+     *
+     * No EVENTO, e não só na rota que remove um anexo por vez: o `excluirAnexo`
+     * fazia as duas metades na mão, e qualquer caminho novo que apagasse a
+     * linha sem repetir o gesto deixaria o arquivo para trás. Arquivo órfão não
+     * dá erro nenhum — nada aponta para ele, ninguém o procura, e ele só se
+     * apresenta como disco cheio anos depois, quando já não se sabe de quem é.
+     *
+     * NÃO alcança a exclusão da tarefa inteira: lá as linhas somem pelo cascade
+     * do banco, que o Eloquent não vê passar. Quem cobre esse caso é o
+     * `forceDeleting` do próprio `Tarefa`.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (TarefaAnexo $anexo): void {
+            // As duas metades: original e miniatura. `array_filter` porque a
+            // segunda é nula na maioria das linhas — anexo que não é figura
+            // nunca teve uma, e a figura pequena não ganhou.
+            Storage::disk('public')->delete(array_filter([$anexo->caminho, $anexo->caminho_miniatura]));
+        });
+    }
 
     public function tarefa(): BelongsTo
     {
@@ -113,6 +137,25 @@ class TarefaAnexo extends Model
     public function getUrlAttribute(): string
     {
         return route('tarefas.anexos.ver', $this->id);
+    }
+
+    /**
+     * O endereço da versão pequena — o que a GRADE pinta.
+     *
+     * Cai no original quando não há miniatura, e isso não é falha: a coluna é
+     * nula de propósito para quem não é figura, para a figura que já é menor
+     * que a grade e para o formato que o GD não leu. O `<img>` continua
+     * funcionando, exatamente como funcionava antes desta coluna existir.
+     *
+     * O link do card NÃO usa este endereço: clicar abre o original em aba nova,
+     * que é onde se lê o print. A miniatura só existe para a grade não baixar
+     * 12 MB para pintar 140 pixels.
+     */
+    public function getUrlMiniaturaAttribute(): string
+    {
+        return $this->caminho_miniatura
+            ? route('tarefas.anexos.ver', ['anexo' => $this->id, 'min' => 1])
+            : $this->url;
     }
 
     /**

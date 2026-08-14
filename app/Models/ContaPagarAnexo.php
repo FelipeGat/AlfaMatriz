@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class ContaPagarAnexo extends Model
 {
@@ -19,6 +20,14 @@ class ContaPagarAnexo extends Model
     ];
 
     protected $appends = ['tamanho_formatado', 'tipo_formatado', 'url'];
+
+    /** Ver `CobrancaAnexo::booted()` — mesma regra e mesmo motivo. */
+    protected static function booted(): void
+    {
+        static::deleting(function (ContaPagarAnexo $anexo): void {
+            Storage::disk('public')->delete($anexo->caminho);
+        });
+    }
 
     public function contaPagar(): BelongsTo
     {

@@ -392,6 +392,18 @@
                  */
                 guardar(arquivos) {
                     for (const arquivo of arquivos) {
+                        // `blob:` do próprio navegador: a miniatura mostra o
+                        // arquivo que está na máquina de quem anexou, porque o
+                        // servidor ainda não o viu.
+                        //
+                        // Os dois endereços são o MESMO aqui, e este é o único
+                        // lugar em que isso acontece: a versão pequena nasce no
+                        // servidor, que ainda não recebeu este arquivo. Não
+                        // custa nada — o `blob:` já está na máquina e não
+                        // viaja. Depois do Salvar o servidor redesenha a tela e
+                        // a grade passa a pedir a miniatura de verdade.
+                        const url = URL.createObjectURL(arquivo);
+
                         this.anexos = [...this.anexos, {
                             id: 'novo-' + (++this.sequencia),
                             arquivo,
@@ -400,10 +412,8 @@
                             tamanho: arquivo.size,
                             tamanho_formatado: this.emTamanho(arquivo.size),
                             eh_imagem: arquivo.type.startsWith('image/'),
-                            // `blob:` do próprio navegador: a miniatura mostra o
-                            // arquivo que está na máquina de quem anexou,
-                            // porque o servidor ainda não o viu.
-                            url: URL.createObjectURL(arquivo),
+                            url,
+                            url_miniatura: url,
                         }];
                     }
 

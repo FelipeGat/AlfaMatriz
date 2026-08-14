@@ -6,6 +6,7 @@ use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class ContaPagar extends Model
 {
@@ -59,6 +60,14 @@ class ContaPagar extends Model
     public function anexos(): HasMany
     {
         return $this->hasMany(ContaPagarAnexo::class);
+    }
+
+    /** Ver `Cobranca::booted()` — mesma armadilha e mesma correção. */
+    protected static function booted(): void
+    {
+        static::deleting(function (ContaPagar $conta): void {
+            Storage::disk('public')->delete($conta->anexos()->pluck('caminho')->all());
+        });
     }
 
     public function baixar(?float $valorPago = null, ?string $dataPagamento = null): void

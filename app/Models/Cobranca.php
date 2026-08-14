@@ -6,6 +6,7 @@ use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Cobranca extends Model
 {
@@ -53,6 +54,21 @@ class Cobranca extends Model
     public function anexos(): HasMany
     {
         return $this->hasMany(CobrancaAnexo::class);
+    }
+
+    /**
+     * Ver `Tarefa::booted()` — mesma armadilha: o cascade do banco leva as
+     * linhas dos anexos e deixa os arquivos no disco, porque arquivo não tem
+     * chave estrangeira.
+     *
+     * `deleting` e não `forceDeleting`: a receita não tem exclusão reversível,
+     * então excluir aqui já é definitivo.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (Cobranca $cobranca): void {
+            Storage::disk('public')->delete($cobranca->anexos()->pluck('caminho')->all());
+        });
     }
 
     public function baixar(?float $valorPago = null, ?string $dataPagamento = null): void

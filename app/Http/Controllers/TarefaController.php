@@ -10,6 +10,7 @@ use App\Models\TarefaItem;
 use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use App\Services\FluxoTarefaService;
+use App\Services\MiniaturaDeAnexo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -1192,16 +1193,23 @@ class TarefaController extends Controller
             // é de quem enviou e pode repetir, conter caminho ou não existir.
             $nomeArquivo = uniqid().'_'.time().'.'.$extensao;
 
+            // A pasta continua `imagens/tarefas` de propósito: renomeá-la
+            // deixaria para trás todo arquivo já publicado, e o `caminho`
+            // guardado linha a linha é o que aponta para ele. Pasta é
+            // endereço, não rótulo.
+            $caminho = $arquivo->storeAs('imagens/tarefas', $nomeArquivo, 'public');
+
             return $tarefa->anexos()->create([
                 'autor_id' => auth()->id(),
                 'nome_original' => $this->nomeDeExibicao($arquivo, $extensao),
                 'nome_arquivo' => $nomeArquivo,
                 'mime' => $arquivo->getMimeType(),
-                // A pasta continua `imagens/tarefas` de propósito: renomeá-la
-                // deixaria para trás todo arquivo já publicado, e o `caminho`
-                // guardado linha a linha é o que aponta para ele. Pasta é
-                // endereço, não rótulo.
-                'caminho' => $arquivo->storeAs('imagens/tarefas', $nomeArquivo, 'public'),
+                'caminho' => $caminho,
+                // DEPOIS de gravar o original, e a partir do arquivo no disco:
+                // um `UploadedFile` só se lê uma vez, e o original é o que tem
+                // de existir mesmo que a miniatura não nasça. Nulo é resposta
+                // normal — ver `MiniaturaDeAnexo::gerar`.
+                'caminho_miniatura' => MiniaturaDeAnexo::gerar($caminho),
                 'tamanho' => $arquivo->getSize(),
             ])->load('autor');
         });
@@ -1249,12 +1257,31 @@ class TarefaController extends Controller
      * o anexo é o ato normal de ler a tarefa, e uma linha por miniatura
      * carregada afogaria a tela de auditoria no primeiro dia.
      */
-    public function verAnexo(TarefaAnexo $anexo)
+    public function verAnexo(Request $request, TarefaAnexo $anexo)
     {
         $this->bloquearVisaoDaMatriz();
 
+        /*
+         * `?min=1` pede a versão pequena, que é a que a GRADE pinta.
+         *
+         * Parâmetro na mesma rota, e não uma rota ao lado, porque tudo o que
+         * está escrito aqui embaixo — `nosniff`, embutido só para figura, o
+         * cache imutável e o `private` — vale igual para as duas versões. Uma
+         * segunda rota seria uma segunda cópia dessas quatro decisões, e a
+         * cópia que ninguém relê é a que fica para trás.
+         *
+         * A miniatura é sempre JPEG e sempre figura, então ela não muda nem o
+         * tipo nem o modo de entrega — o `min` só troca QUAL arquivo sai.
+         *
+         * Sem miniatura gravada, o pedido cai no original: é o que a tela já
+         * faria sozinha (`url_miniatura` devolve o endereço do original), e é o
+         * que mantém honesto um `?min=1` copiado à mão.
+         */
+        $miniatura = $request->boolean('min') && $anexo->caminho_miniatura;
+        $caminho = $miniatura ? $anexo->caminho_miniatura : $anexo->caminho;
+
         abort_unless(
-            Storage::disk('public')->exists($anexo->caminho),
+            Storage::disk('public')->exists($caminho),
             404,
             'Anexo não encontrado no servidor.'
         );
@@ -1263,11 +1290,11 @@ class TarefaController extends Controller
         // veio de upload: sem ele, um arquivo que passou pela validação como
         // uma coisa poderia ser tratado como outra no domínio da sessão.
         return Storage::disk('public')->response(
-            $anexo->caminho,
+            $caminho,
             $anexo->nome_original,
             [
                 'X-Content-Type-Options' => 'nosniff',
-                'Content-Type' => $anexo->mime ?: 'application/octet-stream',
+                'Content-Type' => $miniatura ? 'image/jpeg' : ($anexo->mime ?: 'application/octet-stream'),
                 /*
                  * O anexo é IMUTÁVEL, e por isso o navegador pode guardá-lo.
                  *
@@ -1313,7 +1340,10 @@ class TarefaController extends Controller
 
         abort_unless($anexo->autor_id === auth()->id(), 403, 'Só quem anexou apaga o próprio arquivo.');
 
-        Storage::disk('public')->delete($anexo->caminho);
+        // O arquivo sai junto com a linha, e quem faz isso é o `deleting` do
+        // `TarefaAnexo` — aqui as duas metades eram feitas na mão, e esta era a
+        // ÚNICA porta que apagava o arquivo. Excluir a tarefa inteira levava só
+        // as linhas, e os prints ficavam no disco para sempre.
         $anexo->delete();
 
         return response()->json(['removido' => $anexo->id]);

@@ -6,6 +6,7 @@ use App\Models\Revenda;
 use App\Models\Tarefa;
 use App\Models\TarefaAnexo;
 use App\Models\User;
+use App\Services\MiniaturaDeAnexo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -285,20 +286,35 @@ class AnexosDaTarefaTest extends TestCase
     /**
      * @spec:AC-226 O anexo morre com a tarefa: sem o cascade, excluir uma tarefa deixaria
      * linhas apontando para um `tarefa_id` que não existe mais.
+     *
+     * E morre INTEIRO — linha e arquivo. O cascade é do banco, que só sabe de
+     * linhas: até 14/08/2026 excluir uma tarefa deixava cada print e cada log no
+     * disco para sempre, sem erro nenhum e sem nada que os apontasse.
      */
     public function test_anexo_morre_com_a_tarefa(): void
     {
         $tarefa = $this->criarTarefa();
 
         $this->actingAs(User::factory()->create())->post(route('tarefas.anexos.store', $tarefa), [
-            'anexos' => [UploadedFile::fake()->image('print.png')],
+            'anexos' => [
+                UploadedFile::fake()->image('print.png'),
+                UploadedFile::fake()->create('erro.log', 12, 'text/plain'),
+            ],
         ])->assertOk();
 
+        $caminhos = $tarefa->fresh()->anexos->pluck('caminho');
+        $this->assertCount(2, $caminhos);
+
         // `forceDelete`, e não `delete`: a tarefa tem exclusão reversível, e o
-        // anexo só some quando a linha some de verdade.
+        // anexo só some quando a linha some de verdade — uma tarefa que ainda
+        // pode voltar precisa voltar com as provas.
+        $tarefa->delete();
+        $caminhos->each(fn (string $caminho) => Storage::disk('public')->assertExists($caminho));
+
         $tarefa->forceDelete();
 
         $this->assertDatabaseCount('tarefa_anexos', 0);
+        $caminhos->each(fn (string $caminho) => Storage::disk('public')->assertMissing($caminho));
     }
 
     /**
@@ -354,6 +370,12 @@ class AnexosDaTarefaTest extends TestCase
         $this->assertStringContainsString('anexosDaTarefa('.$tarefa->id, $html);
         $this->assertStringContainsString('antes.png', $html);
         $this->assertStringContainsString('erro.log', $html);
+
+        // A semente carrega o endereço da MINIATURA, que é o que a grade pinta.
+        // O nome do campo é o contrato entre o servidor e o `x-for`: errá-lo
+        // não dá erro nenhum, dá `<img src="">` — doze molduras vazias onde
+        // deveriam estar as provas, e nada na tela dizendo por quê.
+        $this->assertStringContainsString('url_miniatura', $html);
     }
 
     /**
@@ -405,6 +427,214 @@ class AnexosDaTarefaTest extends TestCase
     }
 
     /**
+     * @spec:AC-235 A figura grande ganha uma versão pequena, e é ELA que a grade pinta.
+     *
+     * A caixa da grade tem ~140×105 e o `<img>` apontava para o original, de até 12 MB.
+     * Nenhuma camada de fora resolve: a rota responde `private`, então a borda não guarda
+     * a figura, e PNG e JPEG não encolhem com `gzip` no caminho.
+     *
+     * O ORIGINAL continua intacto e continua sendo o que o clique abre — a miniatura é só
+     * o que a grade desenha.
+     */
+    public function test_a_figura_grande_ganha_miniatura_e_a_grade_aponta_para_ela(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = $this->criarTarefa();
+
+        $this->actingAs($usuario)->post(route('tarefas.anexos.store', $tarefa), [
+            'anexos' => [UploadedFile::fake()->image('print-grande.png', 1600, 1200)],
+        ])->assertOk();
+
+        $anexo = $tarefa->fresh()->anexos->sole();
+
+        $this->assertNotNull($anexo->caminho_miniatura);
+        Storage::disk('public')->assertExists($anexo->caminho_miniatura);
+        Storage::disk('public')->assertExists($anexo->caminho);
+
+        // Menor que o original, que é a razão de ela existir.
+        $this->assertLessThan(
+            Storage::disk('public')->size($anexo->caminho),
+            Storage::disk('public')->size($anexo->caminho_miniatura),
+            'Uma miniatura que não é menor que o original não economiza nada.'
+        );
+
+        // 320 no maior lado, e a proporção preservada: recortar aqui decidiria
+        // pela grade um enquadramento que o CSS já faz, e erraria no dia em que
+        // a caixa deixasse de ser 4/3.
+        [$largura, $altura] = getimagesize(Storage::disk('public')->path($anexo->caminho_miniatura));
+        $this->assertSame(320, $largura);
+        $this->assertSame(240, $altura);
+
+        // Os dois endereços são diferentes, e o do card continua sendo o original.
+        $this->assertStringContainsString('min=1', $anexo->url_miniatura);
+        $this->assertStringNotContainsString('min=1', $anexo->url);
+    }
+
+    /**
+     * @spec:AC-235 Nulo é resposta normal, e a tela cai no original sem saber da diferença.
+     *
+     * Três casos legítimos de não haver miniatura: o anexo não é figura, a figura já é
+     * menor que a grade (reduzir 200px para 320px produziria uma segunda cópia no disco
+     * para não economizar nada) e o formato que o GD não lê. Nos três, `url_miniatura`
+     * devolve o original — é o comportamento de antes desta coluna existir.
+     */
+    public function test_o_que_nao_precisa_de_miniatura_cai_no_original(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = $this->criarTarefa();
+
+        $this->actingAs($usuario)->post(route('tarefas.anexos.store', $tarefa), [
+            'anexos' => [
+                UploadedFile::fake()->image('print-pequeno.png', 200, 150),
+                UploadedFile::fake()->create('erro.log', 30, 'text/plain'),
+            ],
+        ])->assertOk();
+
+        [$pequena, $arquivo] = $tarefa->fresh()->anexos->all();
+
+        foreach ([$pequena, $arquivo] as $anexo) {
+            $this->assertNull($anexo->caminho_miniatura);
+            $this->assertSame($anexo->url, $anexo->url_miniatura);
+        }
+
+        // E o `?min=1` copiado à mão não vira 404: cai no original.
+        $this->actingAs($usuario)
+            ->get(route('tarefas.anexos.ver', ['anexo' => $pequena, 'min' => 1]))
+            ->assertOk();
+    }
+
+    /**
+     * @spec:AC-235 A miniatura sai pela MESMA rota, com os mesmos cuidados.
+     *
+     * Uma rota ao lado seria uma segunda cópia de quatro decisões — `nosniff`, embutido só
+     * para figura, `private` e o cache imutável —, e a cópia que ninguém relê é a que fica
+     * para trás. Aqui o `?min=1` só troca qual arquivo sai.
+     */
+    public function test_a_miniatura_sai_pela_mesma_rota_com_os_mesmos_cuidados(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = $this->criarTarefa();
+
+        $this->actingAs($usuario)->post(route('tarefas.anexos.store', $tarefa), [
+            'anexos' => [UploadedFile::fake()->image('print.png', 1600, 1200)],
+        ])->assertOk();
+
+        $anexo = $tarefa->fresh()->anexos->sole();
+
+        $resposta = $this->actingAs($usuario)
+            ->get(route('tarefas.anexos.ver', ['anexo' => $anexo, 'min' => 1]))
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+
+        // Por diretiva e não por texto inteiro, como o teste do cache do
+        // original logo abaixo: o Symfony reordena as diretivas por conta.
+        $cache = $resposta->headers->get('Cache-Control');
+        $this->assertStringContainsString('private', $cache);
+        $this->assertStringContainsString('max-age=31536000', $cache);
+        $this->assertStringContainsString('immutable', $cache);
+        $this->assertStringNotContainsString('public', $cache);
+
+        // Sempre JPEG, venha o original de que formato vier — e embutida, que é
+        // como a grade a coloca dentro de um `<img>`.
+        $this->assertSame('image/jpeg', $resposta->headers->get('content-type'));
+        $this->assertStringStartsWith('inline', $resposta->headers->get('content-disposition'));
+
+        // E o que sai é menos byte do que o original pela mesma rota.
+        $original = $this->actingAs($usuario)->get(route('tarefas.anexos.ver', $anexo))->assertOk();
+
+        $this->assertLessThan(
+            strlen($original->streamedContent()),
+            strlen($resposta->streamedContent()),
+            'A rota devolveu a miniatura do mesmo tamanho do original — o ?min não pegou.'
+        );
+
+        // Deslogado não sai, como o original: a versão pequena de um print de
+        // cliente é o print de um cliente.
+        $this->post(route('logout'));
+        $this->get(route('tarefas.anexos.ver', ['anexo' => $anexo, 'min' => 1]))
+            ->assertRedirect(route('login'));
+    }
+
+    /**
+     * @spec:AC-235 Os anexos que já estavam no disco ganham miniatura sem ninguém pedir.
+     *
+     * É o que a migração faz ao subir. O laço mora no serviço justamente para caber aqui:
+     * migração roda uma vez, sobre uma tabela vazia no ambiente de teste, e o que ela faz
+     * nunca seria exercitado — o backfill que ninguém testa é o que se descobre torto em
+     * produção, onde já não dá para rodar de novo.
+     *
+     * São três figuras grandes de propósito. O laço PAGINA, e o filtro (`caminho_miniatura`
+     * nula) muda a cada linha que ele preenche: paginando por deslocamento, a segunda
+     * página pularia tantas quantas a primeira preencheu, e o backfill deixaria metade do
+     * acervo para trás sem reclamar de nada.
+     */
+    public function test_o_acervo_antigo_ganha_miniatura_e_o_laco_nao_pula_linha(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = $this->criarTarefa();
+
+        $this->actingAs($usuario)->post(route('tarefas.anexos.store', $tarefa), [
+            'anexos' => [
+                UploadedFile::fake()->image('um.png', 900, 700),
+                UploadedFile::fake()->image('dois.png', 900, 700),
+                UploadedFile::fake()->image('tres.png', 900, 700),
+            ],
+        ])->assertOk();
+
+        // Volta o acervo ao estado de antes da coluna existir: linhas com o
+        // original no disco e nenhuma miniatura.
+        $anexos = $tarefa->fresh()->anexos;
+        Storage::disk('public')->delete($anexos->pluck('caminho_miniatura')->filter()->all());
+        DB::table('tarefa_anexos')->update(['caminho_miniatura' => null]);
+
+        // Uma linha por página, que é o que obriga o laço a virar de página
+        // duas vezes com o filtro mudando debaixo dele. No tamanho de verdade
+        // (500) as três caberiam numa página só e o erro de deslocamento
+        // passaria despercebido: com `each` no lugar de `eachById`, isto aqui
+        // devolve 2 e a do meio fica para trás em silêncio.
+        $this->assertSame(3, MiniaturaDeAnexo::gerarAsQueFaltam(porVez: 1));
+
+        $tarefa->fresh()->anexos->each(function (TarefaAnexo $anexo): void {
+            $this->assertNotNull($anexo->caminho_miniatura, 'O laço pulou uma linha do acervo.');
+            Storage::disk('public')->assertExists($anexo->caminho_miniatura);
+        });
+
+        // Rodar de novo não refaz o que já está feito — a migração pode ser
+        // reaplicada numa restauração, e regerar tudo custaria uma volta de GD
+        // por anexo para chegar ao mesmo lugar.
+        $this->assertSame(0, MiniaturaDeAnexo::gerarAsQueFaltam());
+    }
+
+    /**
+     * @spec:AC-235 Apagar o anexo leva as DUAS metades do disco.
+     *
+     * A miniatura é o segundo arquivo de uma linha só, e é o tipo de coisa que se esquece:
+     * quem apagasse só o original deixaria para trás um órfão que nem aparece na pasta ao
+     * lado do irmão, porque o irmão já não está lá.
+     */
+    public function test_apagar_o_anexo_leva_a_miniatura_junto(): void
+    {
+        $autor = User::factory()->create();
+        $tarefa = $this->criarTarefa();
+
+        $this->actingAs($autor)->post(route('tarefas.anexos.store', $tarefa), [
+            'anexos' => [UploadedFile::fake()->image('print.png', 1600, 1200)],
+        ])->assertOk();
+
+        $anexo = $tarefa->fresh()->anexos->sole();
+        $miniatura = $anexo->caminho_miniatura;
+
+        $this->assertNotNull($miniatura);
+
+        $this->actingAs($autor)
+            ->delete(route('tarefas.anexos.destroy', $anexo))
+            ->assertOk();
+
+        Storage::disk('public')->assertMissing($anexo->caminho);
+        Storage::disk('public')->assertMissing($miniatura);
+    }
+
+    /**
      * @spec:AC-232 O histórico abre os anexos em leitura, e nas duas formas.
      *
      * Tarefa encerrada se lê, não se anexa: lá a lista sai pronta do Blade, sem Alpine
@@ -418,9 +648,11 @@ class AnexosDaTarefaTest extends TestCase
         $usuario = User::factory()->create();
         $tarefa = $this->criarTarefa(['titulo' => 'Erro no fechamento', 'status' => 'pronta_producao']);
 
+        // A figura vai GRANDE aqui de propósito: é o que faz nascer miniatura, e
+        // sem ela a conferência lá embaixo passaria por acaso.
         $this->actingAs($usuario)->post(route('tarefas.anexos.store', $tarefa), [
             'anexos' => [
-                UploadedFile::fake()->image('tela-do-erro.png', 200, 150),
+                UploadedFile::fake()->image('tela-do-erro.png', 1400, 900),
                 UploadedFile::fake()->create('stacktrace.log', 30, 'text/plain'),
             ],
         ])->assertOk();
@@ -442,6 +674,11 @@ class AnexosDaTarefaTest extends TestCase
         $this->assertStringContainsString('tela-do-erro.png', $html);
         $this->assertStringContainsString('stacktrace.log', $html);
         $this->assertStringNotContainsString('anexosDaTarefa(', $html);
+
+        // Este é o SEGUNDO desenho da grade, em Blade puro, e ele também pinta
+        // a miniatura — uma tarefa encerrada tem tantos prints quanto uma
+        // aberta, e a tela do histórico não tem por que baixar os originais.
+        $this->assertStringContainsString('min=1', $html);
     }
 
     /**
