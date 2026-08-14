@@ -66,7 +66,7 @@ class RaiaComFiltroTest extends TestCase
         // A âncora da barra é o fundo composto dela, e não `sticky top-0`: essa
         // classe também é do topo da página, que continua na tela.
         $this->assertStringNotContainsString('data-quadro', $html);
-        $this->assertStringNotContainsString('background: var(--board), rgb(var(--canvas))', $html);
+        $this->assertStringNotContainsString('background: linear-gradient(var(--board), var(--board)), rgb(var(--canvas))', $html);
     }
 
     /**

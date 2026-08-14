@@ -714,6 +714,14 @@ para que a tela sirva à pergunta do momento e ao aparelho que estiver na mão.
   página: sozinho, o véu é translúcido no escuro (`rgba(0,0,0,0.28)`) e sólido no
   claro — e foi por isso que o defeito existiu só num dos temas
 
+> **O véu vai dentro de um `linear-gradient`, e isso não é estilo — é validade.**
+> No atalho `background`, só a ÚLTIMA camada pode ser uma cor. Escrito como
+> `background: var(--board), rgb(var(--canvas))`, o navegador descarta a
+> declaração INTEIRA e a barra fica sem fundo nenhum — transparente de verdade,
+> pior que o véu de 28% que havia antes. E o teste continuou verde, porque ele
+> confere se a string está no HTML: **marcação não prova CSS válido.** Só foi
+> pego abrindo a tela e lendo o estilo computado.
+
 #### AC-259 — Não sobra fresta acima do cabeçalho fixo
 
 - **Dado** o quadro em raias, rolando os cards para cima

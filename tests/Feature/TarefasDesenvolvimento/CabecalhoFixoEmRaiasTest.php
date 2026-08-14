@@ -46,7 +46,7 @@ class CabecalhoFixoEmRaiasTest extends TestCase
 
         // E ela carrega a BASE junto com o véu. Sem a base, o tema escuro deixa
         // os cards atravessarem o cabeçalho.
-        $this->assertStringContainsString('background: var(--board), rgb(var(--canvas))', $html,
+        $this->assertStringContainsString('background: linear-gradient(var(--board), var(--board)), rgb(var(--canvas))', $html,
             'A barra fixa voltou a ser pintada só com o véu translúcido — no tema '.
             'escuro os cards aparecem através dela ao rolar.');
 

@@ -188,8 +188,19 @@
             deste mesmo quadro, logo acima, já fazem assim. Esta era a única
             fixa sem ela.
         --}}
+        {{-- O VÉU VAI NUM GRADIENTE, e não solto — sem isso o CSS é inválido.
+
+             No atalho `background`, só a ÚLTIMA camada pode ser uma cor; as
+             demais têm de ser imagem. `background: var(--board), rgb(...)`
+             resolve para duas cores, o navegador descarta a declaração INTEIRA
+             e a barra fica sem fundo nenhum — transparente de verdade, pior que
+             o véu de 28% que havia antes. `linear-gradient` de uma cor para ela
+             mesma é uma imagem, e pinta exatamente o mesmo véu.
+
+             Isso passou por um teste verde: ele conferia se a string estava no
+             HTML, e ela estava. Marcação não prova CSS válido. --}}
         <div class="sticky top-0 z-10 shrink-0 flex gap-[10px] pt-3.5 pb-1 border-b border-line"
-             style="background: var(--board), rgb(var(--canvas))">
+             style="background: linear-gradient(var(--board), var(--board)), rgb(var(--canvas))">
             @foreach ($etapas as $etapa)
                 <div class="rounded-control bg-panel border border-line overflow-hidden"
                      style="flex: 1 1 272px; min-width: 272px; border-top: 3px solid rgb(var(--{{ $etapa['cor'] }}))"

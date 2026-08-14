@@ -400,3 +400,22 @@
   pintava errado, e o defeito era de GEOMETRIA — uma faixa que a barra não
   alcançava. Sintoma visual descrito em texto merece uma captura antes do
   terceiro palpite.
+
+## T-115 — O fundo da barra fixa era CSS inválido e o navegador o descartava [concluida]
+
+- Refs: US-063, AC-251
+- Arquivos: resources/views/tarefas/_quadro.blade.php, tests/Feature/TarefasDesenvolvimento/CabecalhoFixoEmRaiasTest.php, tests/Feature/TarefasDesenvolvimento/RaiaComFiltroTest.php
+- Esforço: baixo
+- Notas: `background: var(--board), rgb(var(--canvas))` é INVÁLIDO — no atalho
+  `background` só a última camada pode ser cor, e `var(--board)` resolve para
+  `rgba(0,0,0,0.28)` numa posição que exige imagem. O navegador descarta a
+  declaração inteira: `background-color` computado ficava `rgba(0,0,0,0)` e
+  `background-image` `none`. A barra ficou 100% transparente — PIOR que antes de
+  T-110, quando ao menos tinha o véu de 28%. Envolver o véu num
+  `linear-gradient` de uma cor para ela mesma o torna uma camada de imagem
+  válida, e pinta exatamente o mesmo.
+  **Como isto passou:** o teste de T-110 conferia se a STRING estava no HTML, e
+  estava. Marcação não prova CSS válido. Quatro relatos do usuário e três
+  consertos errados depois, o defeito só apareceu ao abrir a tela e ler o estilo
+  computado — `getComputedStyle(barra).backgroundColor`.
+  **Lição:** correção visual sem olhar a tela é chute com teste verde por cima.
