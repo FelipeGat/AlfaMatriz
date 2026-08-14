@@ -1,0 +1,20 @@
+<b>📋 AlfaMatriz — Changelog 14/08/2026</b>
+<i>O quadro agrupado por pessoa deixou de ser uma grade quando você filtra — e três defeitos dele saíram junto</i>
+
+As raias — agrupar o quadro por responsável ou por sistema — são úteis para ver o time inteiro de uma vez. Mas quem usava com filtro ligado passava mais tempo rolando do que lendo. Esta entrega é sobre isso.
+
+<b>⚡ Raia com filtro vira lista</b>
+
+• <b>O problema era ter duas dimensões ao mesmo tempo.</b> Pessoas empilhadas na vertical, seis etapas na horizontal. Sem filtro isso se paga: é o retrato do time. Com filtro, não — sobram poucas tarefas espalhadas em muitas células vazias, e cada faixa continua cobrando a largura e a altura inteiras. Rolava-se nos dois sentidos para ver meia dúzia de cards.
+• <b>Agora, com filtro aplicado, o agrupamento vira uma lista.</b> Uma seção por pessoa (ou por sistema), uma linha por tarefa, e a etapa passa a ser uma coluna da linha em vez de uma posição no espaço. Some uma dimensão, some a rolagem lateral, e a altura passa a ser do tamanho do que o filtro deixou.
+• <b>Da lista se trabalha, não só se lê.</b> Clicar na linha abre a tarefa como sempre, e o menu "Mover" continua ali, com as mesmas regras de fluxo e o mesmo pedido de motivo. Não virou relatório.
+• <b>E tem porta de volta.</b> Um link "ver como quadro" no cabeçalho devolve a grade sem desfazer o filtro. Quem prefere o kanban mesmo filtrado continua com ele a um clique.
+• <b>Sem filtro, nada muda.</b> A grade continua sendo a grade — a troca é resposta ao recorte, não uma opinião nova sobre raias.
+
+<b>🔧 Três defeitos do quadro agrupado</b>
+
+• <b>Com o cursor sobre um card, a roda do mouse não rolava a tela.</b> Cada coluna era uma área de rolagem própria que interrompia a rolagem do quadro. Como card ocupa quase toda a tela, rolar para baixo virava caçar um vão entre eles. Agora a coluna só segura a rolagem onde ela é quem rola — no quadro sem agrupamento.
+• <b>Os cards apareciam através do cabeçalho fixo das etapas.</b> O fundo daquela barra era translúcido, e só no tema escuro — no claro o defeito não existia, que é como ele passou tanto tempo. Agora ela é opaca, e ganhou uma linha embaixo para o card sumir atrás de algo em vez de parecer cortado no meio.
+• <b>E sobrava uma fresta acima do cabeçalho</b>, onde o card reaparecia depois de passar por baixo dele. Era o respiro interno do quadro: a barra fixa não conseguia subir além dele. O respiro foi para dentro da própria barra, e a fresta deixou de existir.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
