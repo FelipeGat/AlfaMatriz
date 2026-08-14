@@ -84,6 +84,10 @@ class UsuarioController extends Controller
     {
         $dados = $this->validar($request);
 
+        if ($erro = $this->recusarPromocaoIndevida($request, $dados['perfis'])) {
+            return $erro;
+        }
+
         $senha = $this->senhaGerada();
 
         $usuario = new User([
@@ -111,6 +115,10 @@ class UsuarioController extends Controller
     {
         $dados = $this->validar($request, $usuario);
 
+        if ($erro = $this->recusarPromocaoIndevida($request, $dados['perfis'], $usuario)) {
+            return $erro;
+        }
+
         // Tirar o próprio admin é a única forma que sobrou de alguém se trancar
         // do lado de fora — o perfil `admin` em si é imutável. A recusa é aqui,
         // e não na view, porque a view não é o que guarda o sistema.
@@ -133,8 +141,23 @@ class UsuarioController extends Controller
      * Nova senha para quem perdeu a que tinha. Não é "ver a senha": ninguém,
      * nem o administrador, consegue ler a atual — ela só existe em hash.
      */
-    public function redefinirSenha(User $usuario): RedirectResponse
+    public function redefinirSenha(Request $request, User $usuario): RedirectResponse
     {
+        // Mesma regra de AC-264, do outro lado: quem não é administrador não
+        // lê a senha nova de quem é. Sem isto, a permissão `usuarios` sozinha
+        // bastaria para tomar a conta do admin — não promovendo, mas trocando
+        // a chave da porta dele.
+        if ($usuario->ehAdmin() && ! $request->user()->ehAdmin()) {
+            Auditoria::registrar(
+                recurso: 'usuarios',
+                acao: 'senha_admin_recusada',
+                alvo: $usuario,
+                descricao: $usuario->email,
+            );
+
+            return back()->with('erro', 'Só um administrador redefine a senha de outro administrador.');
+        }
+
         $senha = $this->senhaGerada();
 
         // O automático do trait é calado aqui porque ele diria "alterou
@@ -269,6 +292,38 @@ class UsuarioController extends Controller
     }
 
     /**
+     * Só administrador promove alguém a administrador — a mesma trava que
+     * `PerfilController` já escreve no cabeçalho dele, aplicada do lado de cá:
+     * lá o perfil `admin` não se edita, aqui ninguém que não o tenha o concede.
+     *
+     * Sem isto, `usuarios` é administrador por outro nome: quem a tem marca o
+     * próprio perfil como Administrador e a permissão vira posse do sistema
+     * inteiro, não gestão de contas. Hoje só o admin tem `usuarios` — a recusa
+     * existe para o dia em que outro perfil a ganhar.
+     *
+     * A recusa é total, não uma poda do que foi enviado: o formulário volta
+     * inteiro sem aplicar nada, e os perfis da conta (nova ou existente)
+     * continuam exatamente como estavam.
+     *
+     * @param  array<int, int>  $perfis
+     */
+    private function recusarPromocaoIndevida(Request $request, array $perfis, ?User $alvo = null): ?RedirectResponse
+    {
+        if (! $this->contémAdmin($perfis) || $request->user()->ehAdmin()) {
+            return null;
+        }
+
+        Auditoria::registrar(
+            recurso: 'usuarios',
+            acao: 'promocao_recusada',
+            alvo: $alvo,
+            descricao: $alvo?->email ?? (string) $request->input('email'),
+        );
+
+        return back()->with('erro', 'Só um administrador promove alguém a administrador.');
+    }
+
+    /**
      * Fechar a própria conta e deixar o sistema sem administrador ativo são o
      * mesmo acidente visto de dois ângulos. O segundo teste parece redundante
      * hoje — só o admin abre esta tela, então sempre sobraria ele —, e existe
@@ -285,7 +340,7 @@ class UsuarioController extends Controller
             ->whereHas('perfis', fn ($q) => $q->where('slug', 'admin'))
             ->doesntExist();
 
-        if ($ultimoAdmin && $usuario->perfis->contains('slug', 'admin')) {
+        if ($ultimoAdmin && $usuario->ehAdmin()) {
             return back()->with('erro', 'Esta é a última conta de administrador ativa. Promova outra pessoa antes.');
         }
 
