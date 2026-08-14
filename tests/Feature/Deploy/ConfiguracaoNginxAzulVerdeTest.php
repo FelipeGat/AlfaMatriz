@@ -21,6 +21,39 @@ class ConfiguracaoNginxAzulVerdeTest extends TestCase
     }
 
     /**
+     * O disco de upload fica fechado, MENOS a marca do sistema.
+     *
+     * As duas metades precisam andar juntas, e cada uma já quebrou sozinha:
+     * sem o `deny`, todo anexo de cobrança e de tarefa volta a ser legível sem
+     * sessão; sem a exceção da marca, o logo do sistema some com 403 de quatro
+     * telas — foi o que aconteceu em 14/08/2026, ao fechar /storage inteiro
+     * afirmando que nenhuma tela montava URL de lá.
+     */
+    public function test_o_disco_de_upload_fica_fechado_menos_a_marca(): void
+    {
+        $this->assertMatchesRegularExpression(
+            '/location \^~ \/storage\/ \{\s*deny all;/',
+            $this->conf,
+            'Sem o deny, todo anexo volta a ser legível por quem adivinhar o nome do arquivo.'
+        );
+
+        $this->assertStringContainsString(
+            'location ^~ /storage/marcas/',
+            $this->conf,
+            'O x-marca-sistema monta /storage/marcas/… — sem esta exceção o logo dá 403.'
+        );
+
+        // `^~` e não `~`: é a forma que vence a regex do `.php$` por
+        // precedência do nginx. Com `~` o prefixo casaria por ordem, e um
+        // arquivo .php debaixo de /storage voltaria a ser executado.
+        $this->assertStringNotContainsString(
+            'location ~ /storage/',
+            $this->conf,
+            'Sem o ^~ a regra passa a depender da ordem, e a regex do .php alcança o disco de upload.'
+        );
+    }
+
+    /**
      * @spec:AC-167 A raiz servida é o symlink `atual`, nunca uma pasta de
      * versão. Apontar direto para `versoes/azul` faria a publicação alternar
      * cópias enquanto o Nginx serviria sempre a mesma.
