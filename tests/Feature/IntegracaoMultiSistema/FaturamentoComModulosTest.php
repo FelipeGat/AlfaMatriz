@@ -10,6 +10,7 @@ use App\Models\PrecoAtacado;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use App\Services\FaturamentoService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -24,6 +25,30 @@ use Tests\TestCase;
 class FaturamentoComModulosTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * O relógio fica parado durante o teste. A competência sai de `now()` em
+     * dois lugares — aqui e dentro do serviço —, e uma virada de mês entre as
+     * duas chamadas faria cada lado medir um mês diferente. Além disso as datas
+     * são montadas a partir de hoje: `startOfMonth()->addDay()` cairia no
+     * futuro se o teste rodasse no dia 1º, e `subMonths()` a partir do dia 29,
+     * 30 ou 31 transborda para o mês seguinte ao passar por fevereiro.
+     *
+     * A data escolhida não é nenhuma dessas bordas — é um dia 13 comum.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Carbon::setTestNow(Carbon::parse('2026-08-13 10:00:00', 'America/Sao_Paulo'));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
 
     private function competencia(): string
     {
