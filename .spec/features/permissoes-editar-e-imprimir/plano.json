@@ -1,0 +1,114 @@
+{
+  "runId": "AlfaMatriz-permissoes-editar-e-imprimir-mstinh81",
+  "feature": "permissoes-editar-e-imprimir",
+  "agent": "claude",
+  "modo": "paralelo",
+  "paralelizar": null,
+  "modeloForcado": null,
+  "esforcoForcado": null,
+  "geradoEm": "2026-08-14 22:26",
+  "branchTrabalho": "spec/permissoes-editar-e-imprimir",
+  "baseDir": ".spec/features/permissoes-editar-e-imprimir",
+  "specDir": ".spec",
+  "repoName": "AlfaMatriz",
+  "logsDir": "../onp-worktrees/AlfaMatriz-permissoes-editar-e-imprimir-logs",
+  "ondas": [
+    [
+      "faixa-1",
+      "faixa-2",
+      "faixa-3"
+    ]
+  ],
+  "faixas": [
+    {
+      "id": "faixa-1",
+      "branch": "spec/permissoes-editar-e-imprimir-faixa-1",
+      "worktree": "../onp-worktrees/AlfaMatriz-permissoes-editar-e-imprimir-faixa-1",
+      "tarefas": [
+        {
+          "id": "T-001",
+          "titulo": "A ação `imprimir` passa a recusar",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "routes/web.php",
+            "app/Http/Controllers/FaturamentoController.php",
+            "tests/Feature/Permissoes/ImprimirTest.php"
+          ],
+          "refs": [
+            "US-077",
+            "AC-272",
+            "AC-273",
+            "AC-274"
+          ]
+        },
+        {
+          "id": "T-004",
+          "titulo": "As edições que usam POST",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "routes/web.php",
+            "tests/Feature/Permissoes/EdicaoPorPostTest.php"
+          ],
+          "refs": [
+            "US-078",
+            "AC-278"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-2",
+      "branch": "spec/permissoes-editar-e-imprimir-faixa-2",
+      "worktree": "../onp-worktrees/AlfaMatriz-permissoes-editar-e-imprimir-faixa-2",
+      "tarefas": [
+        {
+          "id": "T-002",
+          "titulo": "A coluna `editar` e o backfill",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "database/migrations/2026_08_15_090000_separar_editar_de_incluir.php",
+            "database/seeders/PerfilPermissaoSeeder.php",
+            "tests/Feature/Permissoes/MigracaoEditarTest.php"
+          ],
+          "refs": [
+            "US-078",
+            "AC-279",
+            "AC-280"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-3",
+      "branch": "spec/permissoes-editar-e-imprimir-faixa-3",
+      "worktree": "../onp-worktrees/AlfaMatriz-permissoes-editar-e-imprimir-faixa-3",
+      "tarefas": [
+        {
+          "id": "T-003",
+          "titulo": "`editar` vira ação de verdade no domínio",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "app/Models/User.php",
+            "app/Http/Middleware/ChecarPermissao.php",
+            "app/Http/Controllers/PerfilController.php",
+            "resources/views/usuarios/_permissoes.blade.php",
+            "tests/Feature/Permissoes/GradeComEditarTest.php"
+          ],
+          "refs": [
+            "US-078",
+            "AC-275",
+            "AC-276",
+            "AC-277"
+          ]
+        }
+      ]
+    }
+  ],
+  "sequenciais": [],
+  "concluidas": [],
+  "avisos": []
+}
