@@ -845,6 +845,12 @@ gesto, que se deixa para depois.
 - **E** a guarda de concorrência não muda de contrato ao mudar de transporte: o
   `de_status` continua sendo conferido (AC-208), e "Alguém já moveu esta
   tarefa" vira aviso em vez de troca de tela
+- **E** o botão que se tranca no clique DESTRANCA quando a viagem acaba, dê no
+  que der. Enquanto o Salvar recarregava a página, isso era de graça: voltava
+  um formulário novo. Sem a recarga, ninguém desfazia — nem o modal de edição
+  nem o de nova tarefa são redesenhados pela resposta do Salvar, e reabrir a
+  tarefa mostrava "Salvando…" num botão morto. Na recusa é pior: ela deixa o
+  modal aberto, e era justamente ali que faltava o botão para tentar de novo
 
 #### AC-231 — Cada ação manda só o que ela mudou
 

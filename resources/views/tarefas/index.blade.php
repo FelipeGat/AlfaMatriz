@@ -1551,6 +1551,30 @@
                         document.querySelector('[data-molde-de-erro]').innerHTML
                             .replace('__FRASE__', escapado.innerHTML),
                     );
+                }).finally(() => {
+                    /*
+                     * A viagem acabou — quem se trancou no clique precisa saber.
+                     *
+                     * Trocar a recarga por um `fetch` tirou de cena algo que
+                     * ninguém tinha assumido: era a recarga que devolvia o
+                     * formulário ao repouso. O botão que se tranca para o
+                     * segundo clique não publicar duas vezes ficava trancado
+                     * para sempre nos dois formulários que a resposta NÃO
+                     * redesenha — o de editar (o bloco de modais só volta
+                     * quando o conjunto de tarefas muda) e o de nova tarefa
+                     * (que mora fora daquele bloco). Reabrir a tarefa mostrava
+                     * "Salvando…" num botão morto.
+                     *
+                     * No `finally`, e não no `aplicar`: a recusa é justamente
+                     * quando se precisa do botão de volta — "Alguém já moveu
+                     * esta tarefa" deixava a tela sem como tentar outra vez.
+                     *
+                     * Um evento, e não `Alpine.$data(form).enviando = false`:
+                     * assim as duas metades do estado moram lado a lado no
+                     * formulário que as tem, e o `data-parcial` de quem não se
+                     * tranca ignora o aviso sem precisar saber dele.
+                     */
+                    form.dispatchEvent(new CustomEvent('envio-terminou'));
                 });
             });
         })();

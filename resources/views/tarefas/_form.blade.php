@@ -37,6 +37,13 @@
     envios, e o segundo publicava o comentário de novo. O `submit` já disparou
     quando o `disabled` entra, então o envio em curso não é cancelado — o que
     morre é o SEGUNDO clique.
+
+    E DESTRANCA quando a viagem acaba, dê no que der. Enquanto o Salvar
+    recarregava a página, destrancar era de graça — a página voltava nova. Com
+    o envio parcial não é: nem o modal de edição nem o de nova tarefa são
+    redesenhados pela resposta do Salvar, então o `true` ficava, e reabrir a
+    tarefa mostrava "Salvando…" num botão morto. Quem avisa é o remetente
+    parcial, no `index.blade.php`.
 --}}
 {{-- `data-parcial` também aqui: o Salvar era o último envio da tela a repintar
      a página inteira. O modal continua fechando ao salvar, mas por outro
@@ -66,7 +73,8 @@
           travando: false,
           bloqueada: {{ $edicao && $tarefa->estaBloqueada() ? 'true' : 'false' }},
       }"
-      @submit="enviando = true">
+      @submit="enviando = true"
+      @envio-terminou="enviando = false">
     @csrf
     @if ($edicao)
         @method('PUT')

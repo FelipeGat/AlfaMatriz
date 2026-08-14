@@ -1,5 +1,20 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 14/08/2026 — O Salvar ficava preso em "Salvando…"
+
+Depois de salvar uma tarefa uma vez, reabrir aquela mesma tarefa mostrava o
+botão escrito "Salvando…" e sem responder ao clique. O mesmo acontecia no
+"Nova tarefa" depois da primeira tarefa criada. Só saía recarregando a página.
+
+### Correções
+
+- **O Salvar volta ao normal quando o envio termina.** O botão se tranca no
+  primeiro clique de propósito — é o que impede o clique duplo de publicar o
+  comentário duas vezes —, e passou a destrancar sozinho no fim.
+- **Inclusive quando o envio é recusado.** "Alguém já moveu esta tarefa"
+  deixava o modal aberto e sem botão nenhum para tentar de novo, que é
+  justamente a hora em que ele faz falta.
+
 ## AlfaMatriz — 13/08/2026 — O print entra junto com a tarefa, e não depois dela
 
 A seção de anexos só existia depois de salvar. Quem abre uma tarefa quase

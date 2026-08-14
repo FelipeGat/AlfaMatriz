@@ -360,4 +360,46 @@ class AcoesSemRecarregarTest extends TestCase
             ->assertJsonPath('modais', null)
             ->assertJsonPath('fecharModal', null);
     }
+
+    /**
+     * @spec:AC-230 O botão que se tranca no clique precisa destrancar sozinho, porque
+     * ninguém mais o faz.
+     *
+     * Enquanto o Salvar recarregava a página, destrancar era de graça: voltava um
+     * formulário novo. Com o envio parcial não volta — o teste acima é a razão disso, e o
+     * preço apareceu aqui. Nem o modal de edição nem o de nova tarefa são redesenhados pela
+     * resposta do Salvar, então `enviando` ficava em `true` e reabrir a tarefa mostrava
+     * "Salvando…" num botão morto. O `form.reset()` da criação não desfaz: ele limpa CAMPO,
+     * não estado do Alpine.
+     *
+     * As duas metades vivem em arquivos diferentes e nenhuma acusa a falta da outra —
+     * trancar sem destrancar dá um botão morto, destrancar sem trancar volta a publicar o
+     * comentário duas vezes no clique duplo. Por isso o par é conferido junto.
+     */
+    public function test_o_salvar_destranca_quando_o_envio_parcial_termina(): void
+    {
+        $this->criarTarefa();
+
+        $html = $this->actingAs(User::factory()->create())
+            ->get(route('tarefas.index'))
+            ->assertOk()
+            ->getContent();
+
+        // As duas metades, no formulário que as tem — o de criação e o de
+        // edição, um por card.
+        $this->assertStringContainsString('@submit="enviando = true"', $html);
+        $this->assertStringContainsString('@envio-terminou="enviando = false"', $html);
+        $this->assertSame(
+            substr_count($html, '@submit="enviando = true"'),
+            substr_count($html, '@envio-terminou="enviando = false"')
+        );
+
+        // E o aviso do outro lado, no `finally` do remetente: no `catch` só, a
+        // recusa — que é quando mais se precisa tentar de novo — deixaria a
+        // tela sem botão.
+        $this->assertMatchesRegularExpression(
+            '/\.finally\(\(\) => \{.*?envio-terminou.*?\}\);/s',
+            $html
+        );
+    }
 }
