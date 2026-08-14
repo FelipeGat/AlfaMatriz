@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Redesign;
 
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -13,6 +15,11 @@ use Tests\TestCase;
  */
 class LoginTest extends TestCase
 {
+    // A moldura das telas de dentro só se confere com alguém autenticado, e
+    // isso passou a valer quando a tela de recuperação — a única irmã do login
+    // aberta a visitante — saiu do ar (AC-260).
+    use RefreshDatabase;
+
     /**
      * @spec:AC-060 O login traz a marca e os campos, sem ruído — card centrado,
      * marca centralizada nele, e-mail e senha com mostrar/ocultar, lembrar-me e
@@ -43,7 +50,14 @@ class LoginTest extends TestCase
         $this->assertStringContainsString("showPw ? 'text' : 'password'", $html);
         $this->assertStringContainsString('name="remember"', $html);
         $resposta->assertSee('Lembrar-me', escape: false);
-        $resposta->assertSee(route('password.request'), escape: false);
+
+        // A recuperação de senha SAIU da tela (AC-260). A view nunca a
+        // desenhou incondicionalmente — ela pergunta por `Route::has` —, então
+        // some a rota, some o link. A afirmação aqui é pela ausência do texto,
+        // e não por `route('password.request')`: essa chamada agora derruba o
+        // teste com "rota não definida" antes de chegar a afirmar coisa alguma.
+        $resposta->assertDontSee('Esqueci minha senha', escape: false);
+        $resposta->assertDontSee('forgot-password', escape: false);
 
         // ── Sem ruído: o selo de estado e o texto de apoio saíram a pedido do
         // dono do produto. A tela diz o que é e para de falar.
@@ -81,13 +95,19 @@ class LoginTest extends TestCase
      */
     public function test_as_demais_telas_de_autenticacao_usam_a_mesma_moldura(): void
     {
-        foreach ([route('login'), route('password.request')] as $url) {
-            $resposta = $this->get($url);
+        // A tela de "esqueci minha senha" era a segunda desta lista e saiu do
+        // ar (AC-260). A moldura continua sendo de mais de uma tela, e é isso
+        // que o critério cobra — o que mudou é que as irmãs do login agora
+        // ficam DEPOIS da porta, não antes dela.
+        $resposta = $this->get(route('login'));
+        $resposta->assertOk();
+        $resposta->assertSee('/icon-matriz-solid.svg', escape: false);
+        $resposta->assertSee('Painel interno', escape: false);
 
-            $resposta->assertOk();
-            $resposta->assertSee('/icon-matriz-solid.svg', escape: false);
-            $resposta->assertSee('Painel interno', escape: false);
-        }
+        $resposta = $this->actingAs(User::factory()->create())->get(route('password.confirm'));
+        $resposta->assertOk();
+        $resposta->assertSee('/icon-matriz-solid.svg', escape: false);
+        $resposta->assertSee('Painel interno', escape: false);
 
         // O cadastro público continua desativado — a moldura nova não reabre
         // uma porta que foi fechada de propósito.

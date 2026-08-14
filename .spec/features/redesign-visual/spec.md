@@ -372,8 +372,17 @@ está no ar, para saber se o problema é a minha senha ou o servidor.
 - **Dado** alguém não autenticado
 - **Quando** abre a tela de entrada
 - **Então** vê o card centrado com a marca centralizada nele, os campos de
-  e-mail e senha (com mostrar/ocultar senha), lembrar-me e recuperação de
-  senha — e nada além disso: a porta de entrada não explica a si mesma
+  e-mail e senha (com mostrar/ocultar senha) e lembrar-me — e nada além disso:
+  a porta de entrada não explica a si mesma
+
+<!--
+  A recuperação de senha saiu desta lista em 14/08/2026, junto com as rotas
+  (ver AC-260). Ela nunca chegou a funcionar em produção — o `MAIL_MAILER` é
+  `log` — e uma tela que promete um e-mail que não sai é pior que uma tela que
+  não promete nada. Quem perde a senha pede a um administrador, que gera uma
+  nova na tela de usuários.
+-->
+
 
 ### US-027 — Mobile funcional
 
