@@ -111,6 +111,14 @@ que o quadro não demore mais a abrir a cada tarefa que o time cria.
 - **Então** o modal abre com os mesmos campos e o mesmo conteúdo de hoje,
   buscados no momento do clique
 
+#### AC-250 — O pedido de motivo existe uma vez só, e continua aparecendo dentro do card
+
+- **Dado** um quadro com 120 tarefas
+- **Quando** a tela é carregada e, em seguida, alguém pede para travar uma tarefa
+- **Então** o formulário de motivo aparece no HTML uma vez só (e não uma por card),
+  e ao ser pedido ele é desenhado **dentro do card daquela tarefa** — colado nela,
+  como sempre esteve
+
 #### AC-242 — As ações do modal continuam funcionando
 
 - **Dado** o modal de uma tarefa aberto pelo clique no card
@@ -216,4 +224,4 @@ fique mais lenta a cada revenda que entra na base.
 
 | ID | Pergunta | Status | Resposta |
 |---|---|---|---|
-| Q-019 | Com o modal fora do HTML, o quadro ainda cresce ~16 KB por card (medido: 1,9 MB com 120 tarefas). Boa parte disso é o painel de motivo, impresso em TODOS os cards para um painel que só pode estar aberto em um — mas ele nasce dentro do card de propósito, para o pedido de texto aparecer colado no card de que fala. Vale movê-lo para uma instância única, ou o quadro deve passar a limitar quantos cards mostra por coluna? | aberta | — |
+| Q-019 | Com o modal fora do HTML, o quadro ainda cresce ~16 KB por card (medido: 1,9 MB com 120 tarefas). Boa parte disso é o painel de motivo, impresso em TODOS os cards para um painel que só pode estar aberto em um — mas ele nasce dentro do card de propósito, para o pedido de texto aparecer colado no card de que fala. Vale movê-lo para uma instância única, ou o quadro deve passar a limitar quantos cards mostra por coluna? | respondida | O painel APARECER DENTRO DO CARD é requisito firme — decisão do dono do produto em 14/08/2026. Então nem flutuante, nem paginar o quadro: o molde passa a existir uma vez só e é clonado dentro do card que o pediu. Medido: 4090 bytes por card, 479 KB com 120 tarefas, 26% da tela. Vira AC-250. |

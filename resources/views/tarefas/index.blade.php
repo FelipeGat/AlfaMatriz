@@ -637,6 +637,13 @@
                     } catch (erro) {
                         this.recolhidas = [];
                     }
+
+                    // Um ponto só decide onde o pedido de motivo aparece, e é
+                    // este. `pendente` é zerado de quatro lugares — o cancelar,
+                    // o Esc, o atalho e a resposta parcial lá do `aplicar()`, que
+                    // mexe no estado de fora — e um caminho esquecido deixaria o
+                    // painel aberto num card que já mudou de lugar.
+                    this.$watch('pendente', (valor) => this.sincronizarPainelDoMotivo(valor));
                 },
 
                 alternarColuna(chave) {
@@ -1205,12 +1212,68 @@
                         acao: (ehBloqueio ? this.rotaBloquear : this.rotaMover).replace('__ID__', tarefa),
                     };
 
-                    this.$nextTick(() => this.$refs.textoPendente?.focus());
                 },
 
                 fecharPendente() {
                     this.pendente = null;
                     this.textoPendente = '';
+                },
+
+                /**
+                 * Põe (ou tira) o pedido de motivo de dentro do card.
+                 *
+                 * O formulário existe uma vez só, como molde, e é clonado para
+                 * `[data-motivo="{id}"]` — que mora dentro do `<article>` da
+                 * tarefa. Continuar aparecendo DENTRO do card é requisito: ele
+                 * já foi um bloco flutuante no rodapé do quadro e voltou para
+                 * cá, porque o texto pedido longe do card perdia a ligação com
+                 * o gesto que o pediu.
+                 *
+                 * `mutateDom` cala o observador do Alpine enquanto o DOM muda, e
+                 * os dois passos de dentro fazem o que ele faria — é o mesmo
+                 * cuidado do `trocar()` lá embaixo. Sem `destroyTree`, cada
+                 * abertura deixa para trás os efeitos do painel anterior; sem
+                 * `initTree`, o clone é HTML morto: o botão não envia e o campo
+                 * não escreve em `textoPendente`.
+                 */
+                sincronizarPainelDoMotivo(pendente) {
+                    this.$el.querySelectorAll('[data-motivo]').forEach((lugar) => {
+                        if (! lugar.firstElementChild) {
+                            return;
+                        }
+
+                        Alpine.mutateDom(() => {
+                            [...lugar.children].forEach((filho) => Alpine.destroyTree(filho));
+                            lugar.innerHTML = '';
+                        });
+                    });
+
+                    if (! pendente) {
+                        return;
+                    }
+
+                    const molde = this.$el.querySelector('[data-molde-do-motivo]');
+                    const lugar = this.$el.querySelector(`[data-motivo="${pendente.id}"]`);
+
+                    if (! molde || ! lugar) {
+                        return;
+                    }
+
+                    Alpine.mutateDom(() => {
+                        lugar.appendChild(molde.content.cloneNode(true));
+                        Alpine.initTree(lugar);
+                    });
+
+                    // O campo é procurado no DOM, e NÃO por `$refs`.
+                    //
+                    // `initTree` no `lugar` faz dele a raiz da árvore que está
+                    // sendo iniciada, e o `x-ref` de dentro passa a se registrar
+                    // ali em vez de no quadro — `this.$refs.textoPendente` fica
+                    // `undefined` e o `?.` engole a falha em silêncio: o painel
+                    // abre certo e o cursor não vai para o campo. Enquanto o
+                    // formulário morava direto no card não havia raiz no meio, e
+                    // por isso o `$refs` funcionava.
+                    this.$nextTick(() => lugar.querySelector('textarea')?.focus());
                 },
 
                 permitir(status) {

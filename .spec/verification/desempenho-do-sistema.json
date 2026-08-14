@@ -1,11 +1,11 @@
 {
   "feature": "desempenho-do-sistema",
-  "timestamp": "2026-08-14T15:44:38.451Z",
-  "gitRev": "0afad7c",
+  "timestamp": "2026-08-14T17:15:15.415Z",
+  "gitRev": "8158bde",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 770,
+  "testsParsed": 773,
   "results": {
     "AC-236": {
       "status": "pass",
@@ -35,6 +35,11 @@
     "AC-241": {
       "status": "pass",
       "testName": "Tests\\Feature\\Desempenho\\QuadroLeveTest::test_o_modal_buscado_no_clique_traz_a_tarefa_inteira @spec:AC-241",
+      "method": "tap"
+    },
+    "AC-250": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\PainelDoMotivoTest::test_o_pedido_de_motivo_existe_uma_vez_so @spec:AC-250",
       "method": "tap"
     },
     "AC-242": {

@@ -250,3 +250,9 @@
     @csrf
     <input type="hidden" name="status" x-ref="statusPosicionar">
 </form>
+
+{{-- O molde do pedido de motivo: um para o quadro inteiro, clonado para dentro
+     do card que o pediu. Aqui, e não no `index`, porque é este bloco que volta
+     inteiro quando o quadro é redesenhado — no `index` o molde sobreviveria à
+     troca e o clone dentro do card não, e as duas metades se separariam. --}}
+@include('tarefas._painel-motivo')

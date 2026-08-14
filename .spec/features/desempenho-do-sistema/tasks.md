@@ -80,6 +80,33 @@
   `IndicadoresService.php` com T-106 — as duas rodam em sequência, nunca lado a
   lado.
 
+## T-109 — O pedido de motivo vira molde único, clonado dentro do card [concluida]
+- Refs: US-066, AC-250
+- Arquivos: resources/views/tarefas/_card.blade.php, resources/views/tarefas/_painel-motivo.blade.php, resources/views/tarefas/_quadro.blade.php, resources/views/tarefas/index.blade.php, tests/Feature/Desempenho/PainelDoMotivoTest.php
+- Esforço: alto
+- Notas: resposta de Q-019. O formulário está impresso em todos os cards, guardado
+  por `pendente.id === {id}` — mas `pendente` é estado do QUADRO, então só um pode
+  abrir. Medido: 4090 bytes por card, 479 KB com 120 tarefas.
+  Vira um `<template>` no nível do quadro, clonado para dentro de
+  `[data-motivo="{id}"]` quando abre. **O requisito visual é inegociável: aparece
+  DENTRO do card** — já foi flutuante uma vez e foi revertido, porque o pedido de
+  texto longe do card perdia a ligação com o gesto (ver o comentário em `_card`).
+  Clonar e destruir usam `Alpine.mutateDom` + `initTree`/`destroyTree`, como o
+  `trocar()` do quadro já faz. Um `$watch('pendente')` é o único ponto que
+  sincroniza — `aplicar()` também zera `pendente` de fora, e um caminho esquecido
+  deixaria o painel aberto num card que já mudou.
+
+  **Duas coisas só apareceram no navegador, e nenhum teste de servidor as pegaria
+  — conferido com Playwright em 14/08/2026:**
+  1. `initTree` no lugar do clone faz DELE a raiz da árvore, e o `x-ref` de dentro
+     passa a se registrar ali em vez de no quadro: `$refs.textoPendente` fica
+     `undefined`, o `?.` engole em silêncio e o cursor não vai para o campo. O
+     foco passou a procurar o `textarea` pelo DOM.
+  2. Sem uma guarda `x-if="pendente"` DENTRO do molde, fechar o painel zera
+     `pendente` com os bindings do clone ainda vivos, e cada um deles lê
+     `pendente.cor`, `pendente.acao`… de um `null` — 19 TypeError por
+     cancelamento. Era o `x-if` do card que fazia esse curto-circuito antes.
+
 ## T-108 — A previsão de faturamento consulta em bloco [concluida]
 - Refs: US-069, AC-248, AC-249
 - Arquivos: app/Services/FaturamentoService.php, tests/Feature/Desempenho/PrevisaoEmBlocoTest.php
