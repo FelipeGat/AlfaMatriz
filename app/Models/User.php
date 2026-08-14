@@ -261,6 +261,20 @@ class User extends Authenticatable
     }
 
     /**
+     * Esta conta tem o perfil Administrador?
+     *
+     * A pergunta era feita solta, com `perfis->contains('slug', 'admin')`
+     * repetido em três pontos de `UsuarioController` — e um deles escrito
+     * errado (`'admin'` vs `'administrador'`, digamos) falharia calado, sem o
+     * PHP acusar nada. Nomeando o método, o erro de digitação vira erro de
+     * sintaxe em vez de buraco de segurança.
+     */
+    public function ehAdmin(): bool
+    {
+        return $this->perfis->contains('slug', 'admin');
+    }
+
+    /**
      * Pode organizar o trabalho dos outros no quadro de tarefas?
      *
      * Triagem é decidir a prioridade e escolher quem faz — e, por consequência,
