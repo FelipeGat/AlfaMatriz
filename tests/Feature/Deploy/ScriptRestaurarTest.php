@@ -24,12 +24,7 @@ class ScriptRestaurarTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (glob($this->dir.'/*') ?: [] as $arquivo) {
-            unlink($arquivo);
-        }
-        if (is_dir($this->dir)) {
-            rmdir($this->dir);
-        }
+        $this->apagarPasta($this->dir);
 
         parent::tearDown();
     }
@@ -45,7 +40,7 @@ class ScriptRestaurarTest extends TestCase
         $semConfirmar = $this->rodar(['--arquivo', $this->copia]);
         $this->assertNotSame(0, $semConfirmar->getExitCode(), 'Sem --confirmo a restauração não pode rodar.');
         $this->assertStringContainsString('--confirmo', $semConfirmar->getErrorOutput());
-        $this->assertStringContainsString('NÃO foi alterado', $semConfirmar->getErrorOutput());
+        $this->assertStringContainsString('nada foi alterado', $semConfirmar->getErrorOutput());
 
         // Confirmou, mas o arquivo não existe.
         $inexistente = $this->rodar(['--arquivo', $this->dir.'/nao-existe.sql.gz', '--confirmo']);
@@ -71,6 +66,89 @@ class ScriptRestaurarTest extends TestCase
     }
 
     /**
+     * @spec:AC-012 A cópia dos anexos passa pela mesma régua da do banco:
+     * arquivo que não existe, arquivo vazio e falta de --confirmo são
+     * recusados antes de qualquer coisa ser escrita no destino.
+     */
+    public function test_restaurar_anexos_recusa_pelas_mesmas_razoes(): void
+    {
+        $destino = $this->dir.'/destino';
+        $tar = $this->criarTarDeAnexos(['nota.pdf' => 'PDF de teste']);
+
+        $semConfirmar = $this->rodar(['--anexos', $tar, '--destino', $destino]);
+        $this->assertNotSame(0, $semConfirmar->getExitCode(), 'Sem --confirmo os anexos não podem voltar.');
+        $this->assertStringContainsString('--confirmo', $semConfirmar->getErrorOutput());
+
+        $inexistente = $this->rodar(['--anexos', $this->dir.'/nao-existe.tar.gz', '--destino', $destino, '--confirmo']);
+        $this->assertNotSame(0, $inexistente->getExitCode());
+        $this->assertStringContainsString('não existe', $inexistente->getErrorOutput());
+
+        $vazio = $this->dir.'/vazio.tar.gz';
+        touch($vazio);
+        $copiaVazia = $this->rodar(['--anexos', $vazio, '--destino', $destino, '--confirmo']);
+        $this->assertNotSame(0, $copiaVazia->getExitCode());
+        $this->assertStringContainsString('vazio', $copiaVazia->getErrorOutput());
+
+        // Recusado é recusado: o destino não pode nem ter sido criado.
+        $this->assertDirectoryDoesNotExist($destino);
+    }
+
+    /**
+     * @spec:AC-012 Restaurar anexos devolve o que se perdeu sem apagar o que
+     * chegou depois da cópia — quem recupera um arquivo apagado por engano não
+     * pode perder junto os anexos enviados desde então.
+     */
+    public function test_restaurar_anexos_devolve_o_perdido_sem_apagar_o_novo(): void
+    {
+        $destino = $this->dir.'/destino';
+        mkdir($destino.'/cobrancas', 0755, true);
+        // Chegou depois da cópia: não está no tar e precisa sobreviver.
+        file_put_contents($destino.'/cobrancas/recente.pdf', 'enviado hoje');
+
+        $tar = $this->criarTarDeAnexos(['cobrancas/antiga.pdf' => 'estava na cópia']);
+
+        $processo = $this->rodar(['--anexos', $tar, '--destino', $destino, '--confirmo']);
+
+        $this->assertSame(0, $processo->getExitCode(), $processo->getErrorOutput().$processo->getOutput());
+
+        $this->assertFileExists($destino.'/cobrancas/antiga.pdf', 'O anexo da cópia deveria ter voltado.');
+        $this->assertSame('estava na cópia', file_get_contents($destino.'/cobrancas/antiga.pdf'));
+
+        $this->assertFileExists($destino.'/cobrancas/recente.pdf', 'O anexo enviado depois da cópia não pode ser apagado.');
+        $this->assertSame('enviado hoje', file_get_contents($destino.'/cobrancas/recente.pdf'));
+
+        // Sem --arquivo, o banco não pode ter sido tocado.
+        $this->assertStringNotContainsString('restaurando '.$this->copia, $processo->getOutput());
+    }
+
+    /**
+     * Monta um .tar.gz com os caminhos relativos à raiz dos anexos, do mesmo
+     * jeito que o backup.sh grava (`tar -C "$ANEXOS" .`).
+     *
+     * @param  array<string, string>  $arquivos  caminho relativo => conteúdo
+     */
+    private function criarTarDeAnexos(array $arquivos): string
+    {
+        $origem = $this->dir.'/origem-'.bin2hex(random_bytes(4));
+        mkdir($origem, 0755, true);
+
+        foreach ($arquivos as $caminho => $conteudo) {
+            $completo = $origem.'/'.$caminho;
+            if (! is_dir(dirname($completo))) {
+                mkdir(dirname($completo), 0755, true);
+            }
+            file_put_contents($completo, $conteudo);
+        }
+
+        $tar = $this->dir.'/alfamatriz-anexos-2026-08-05-'.bin2hex(random_bytes(4)).'.tar.gz';
+
+        $processo = new Process(['tar', '-czf', $tar, '-C', $origem, '.']);
+        $processo->mustRun();
+
+        return $tar;
+    }
+
+    /**
      * @param  array<int, string>  $argumentos
      */
     private function rodar(array $argumentos): Process
@@ -79,5 +157,22 @@ class ScriptRestaurarTest extends TestCase
         $processo->run();
 
         return $processo;
+    }
+
+    private function apagarPasta(string $caminho): void
+    {
+        if (! is_dir($caminho)) {
+            return;
+        }
+
+        foreach (glob($caminho.'/{,.}*', GLOB_BRACE) ?: [] as $item) {
+            if (basename($item) === '.' || basename($item) === '..') {
+                continue;
+            }
+
+            is_dir($item) ? $this->apagarPasta($item) : unlink($item);
+        }
+
+        rmdir($caminho);
     }
 }

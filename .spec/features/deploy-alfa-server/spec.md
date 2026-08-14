@@ -145,25 +145,37 @@ lembrar a sequência certa.
 
 ### US-005 — Os dados reais têm cópia de segurança
 
-Como responsável pela Alfa, quero uma cópia diária do banco com histórico de
-uma semana, para que uma falha de disco ou um erro de operação não leve embora
-o faturamento e o financeiro da empresa.
+Como responsável pela Alfa, quero uma cópia diária do banco e dos anexos com
+histórico de uma semana, para que uma falha de disco ou um erro de operação não
+leve embora o faturamento e o financeiro da empresa.
+
+O banco guarda só o CAMINHO de cada anexo, nunca o conteúdo: cópia que leva um
+sem o outro devolve a linha da cobrança e não o PDF, e a tela passa a responder
+"arquivo não encontrado" para um anexo que o sistema jura existir. Por isso as
+duas metades andam juntas — e são podadas pela mesma régua, para que cada dump
+encontre os anexos da mesma data.
 
 #### AC-011 — Cópia diária com histórico de sete dias
 
 - **Dado** o script de backup (`deploy/backup.sh`) rodando todo dia pelo
   agendador do servidor
 - **Quando** ele é executado
-- **Então** ele grava um arquivo compactado do banco datado no diretório de
-  backup e apaga as cópias com mais de sete dias, mantendo as sete mais recentes
+- **Então** ele grava um arquivo compactado do banco e outro dos anexos, ambos
+  datados, no diretório de backup, e apaga as cópias com mais de sete dias de
+  cada série, mantendo as sete mais recentes de cada uma
 
 #### AC-012 — Restaurar exige confirmação e arquivo válido
 
-- **Dado** o script de restauração (`deploy/restaurar.sh`)
-- **Quando** o operador o chama apontando um arquivo que não existe, ou sem
-  confirmar explicitamente que quer sobrescrever o banco
+- **Dado** o script de restauração (`deploy/restaurar.sh`), que aceita
+  restaurar o banco, os anexos, ou os dois
+- **Quando** o operador o chama apontando um arquivo que não existe ou está
+  vazio, ou sem confirmar explicitamente que quer sobrescrever produção
 - **Então** o script recusa e termina com erro explicando o motivo, sem tocar no
-  banco de produção
+  banco nem no destino dos anexos
+
+Restaurar anexos extrai por cima do destino, sem limpá-lo antes: quem recupera
+um arquivo apagado por engano não pode perder junto os que chegaram depois da
+cópia — e apagar aqui não teria volta.
 
 ## Fora de escopo
 
