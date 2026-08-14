@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Revenda;
 use App\Models\Sistema;
+use App\Rules\EnderecoPublico;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -158,7 +159,10 @@ class SistemaController extends Controller
         return [
             'categoria' => $interno ? 'nullable|in:saas,crm' : 'required|in:saas,crm',
             'unidade_cobranca' => $interno ? 'nullable|string|max:255' : 'required|string|max:255',
-            'base_url' => 'nullable|url|max:255',
+            // `url` confere o formato; `EnderecoPublico` recusa `http://` e as
+            // faixas internas (AC-269, AC-270) — a chave de integração viaja
+            // neste endereço a cada chamada.
+            'base_url' => ['nullable', 'url', 'max:255', new EnderecoPublico],
             'token' => 'nullable|string',
             'versao' => 'nullable|string|max:255',
             'responsavel' => 'nullable|string|max:255',
