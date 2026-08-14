@@ -1,0 +1,25 @@
+<b>📋 AlfaMatriz — Changelog 14/08/2026</b>
+<i>O sistema parou de ficar mais lento conforme o trabalho se acumula</i>
+
+Esta é uma entrega sem tela nova e sem botão novo: nada muda de lugar e nenhum número muda de valor. O que muda é o preço de abrir cada tela — e principalmente o fato de esse preço ter parado de crescer.
+
+O problema não aparecia como erro. Aparecia como "hoje está devagar", num dia qualquer, sem nada que explicasse por quê. A explicação era que várias telas cobravam por item: cada tarefa no quadro, cada revenda na base, cada produto no catálogo somava trabalho ao carregamento. Quanto mais o sistema fosse usado, mais lento ele ficava.
+
+<b>⚡ O quadro de tarefas</b>
+
+• <b>Ele baixava o formulário de edição de TODAS as tarefas, toda vez.</b> Com 120 tarefas no quadro, isso dava 5,5 MB por abertura — para mostrar, no máximo, uma tarefa aberta. Agora a tarefa é buscada no momento em que se clica nela. A mesma tela caiu para 1,85 MB.
+• <b>E ele perguntava ao banco quem é você três vezes por card.</b> Somadas às perguntas do menu, eram 397 consultas num quadro de 120 tarefas. Hoje são 16 — e são 16 também com 5 tarefas. O quadro passou a custar o mesmo cheio ou vazio.
+• <b>De brinde, a tarefa que abre é sempre a versão de agora.</b> Antes o formulário era a foto do momento em que a tela tinha sido carregada: se alguém mexesse na tarefa enquanto ela estava aberta em outra máquina, quem salvasse por último gravava por cima com dado velho.
+
+<b>⚡ Os painéis</b>
+
+• <b>O Painel Financeiro caiu de 76 para 16 consultas</b>, e o Centro de Controle de 72 para 26. O gráfico de entradas e saídas estava refazendo mês a mês exatamente a mesma conta que os cards logo acima dele já tinham feito.
+• <b>O Comercial e a tela de Clientes também encolheram</b> — de 32 para 14 e de 31 para 12.
+• <b>O ranking de produtos e a previsão de faturamento pararam de crescer com a base.</b> Os dois consultavam por produto e por revenda: dobrar o catálogo dobrava o custo da tela. Agora não muda.
+
+<b>🔒 O que continua exatamente igual</b>
+
+• <b>Nenhum valor mudou.</b> Receita recorrente, saldo em caixa, entradas, saídas, previsão de faturamento por revenda — tudo confere com o que mostrava antes, e há teste automático guardando cada um desses números justamente para provar isso. Mexemos no custo, não na conta.
+• <b>Nenhuma permissão afrouxou.</b> Quem não enxergava uma tela continua sem enxergar, e quem tentava entrar continua recusado. A checagem passou a ser feita uma vez por carregamento em vez de dezenas, mas ela é jogada fora no começo de toda visita — permissão que sobrevivesse à visita seria permissão que não se revoga.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
