@@ -1,5 +1,31 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 13/08/2026 — A cópia diária passou a levar os anexos junto
+
+O banco guarda o *caminho* de cada anexo, nunca o arquivo em si. A cópia diária
+levava só o banco — e restaurá-la devolveria a linha da cobrança sem o PDF, com
+a tela respondendo "arquivo não encontrado" para um anexo que o sistema jura
+existir. Enquanto anexo era só print de tarefa, dava para conviver; desde que a
+tarefa passou a aceitar log, planilha e PDF, e a cobrança e a conta a pagar
+passaram a ter os seus, o que ficava de fora da cópia deixou de ser detalhe.
+
+O servidor inteiro já tinha cópia diária, e continua tendo. Mas recuperar um
+anexo por ela significa restaurar a máquina toda — caro demais para o caso
+comum, que é um arquivo apagado por engano.
+
+### A cópia de segurança
+
+- **Os anexos entram na cópia diária**, ao lado do banco: PDF de cobrança e de
+  conta a pagar, arquivo de tarefa e marca de sistema. Sete dias de histórico,
+  o mesmo que o banco já tinha, e as duas séries são podadas pela mesma régua —
+  para que cada cópia do banco encontre os anexos da mesma data.
+- **Dá para restaurar só uma das metades.** O caso comum não é perder o
+  servidor inteiro, é perder um lado só: recuperar um anexo apagado por engano
+  não deveria custar jogar fora o banco de hoje.
+- **Restaurar anexo não apaga o que chegou depois.** Os arquivos da cópia
+  voltam por cima dos que estão lá, e nada é limpo antes — quem recupera um
+  anexo perdido não perde junto os que foram enviados desde então.
+
 ## AlfaMatriz — 13/08/2026 — A tarefa passou a aceitar o log, e não só o print
 
 A galeria de imagens saiu de manhã e a tarde mostrou o resto do caso: o log do
