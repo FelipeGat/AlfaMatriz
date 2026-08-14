@@ -162,21 +162,63 @@ class Sistema extends Model
     }
 
     /**
+     * Os clientes que este sistema realmente cobra: cliente ativo com vínculo
+     * ativo — a população que o tier conta e que os módulos seguem.
+     *
+     * Da relação carregada quando ela veio junto, do banco quando não. Sem
+     * isso, quem varre o catálogo pergunta os clientes de cada sistema duas
+     * vezes: uma para a licença e outra para os módulos.
+     *
+     * @return \Illuminate\Support\Collection<int, Cliente>
+     */
+    public function clientesComVinculoAtivo(): \Illuminate\Support\Collection
+    {
+        if ($this->relationLoaded('clientes')) {
+            return $this->clientes
+                ->filter(fn (Cliente $cliente) => $cliente->ativo && $cliente->pivot->ativo)
+                ->values();
+        }
+
+        return $this->clientes()
+            ->where('clientes.ativo', true)
+            ->where('cliente_sistema.ativo', true)
+            ->get(['clientes.id', 'clientes.revenda_id']);
+    }
+
+    /**
      * Tiers/planos de atacado vigentes para uma revenda (ou o padrão, se $revendaId for null),
      * já ordenados do mais barato para o mais caro.
      */
     public function tiersVigentes(?int $revendaId = null): Collection
     {
-        $vigentes = $this->precosAtacado()
-            ->where(function ($q) use ($revendaId) {
-                $q->where('revenda_id', $revendaId)->orWhereNull('revenda_id');
-            })
-            ->whereDate('vigencia_inicio', '<=', now())
-            ->where(function ($q) {
-                $q->whereNull('vigencia_fim')->orWhereDate('vigencia_fim', '>=', now());
-            })
-            ->orderBy('ordem')
-            ->get();
+        // Da relação já carregada quando ela veio junto, do banco quando não.
+        //
+        // Quem varre o catálogo inteiro — o ranking do Comercial e a tela de
+        // Produtos — pergunta os tiers de cada sistema, e uma vez por revenda
+        // que usa cada sistema. Eram dezenas de consultas idênticas em recorte,
+        // e a lista de tiers de um produto cabe folgada na memória.
+        $vigentes = $this->relationLoaded('precosAtacado')
+            ? $this->precosAtacado
+                ->filter(fn (PrecoAtacado $tier) => $tier->revenda_id === $revendaId || $tier->revenda_id === null)
+                // `whereDate` compara só a DATA, e o cast do modelo entrega
+                // Carbon no início do dia: comparar contra `today()` é a mesma
+                // pergunta que o banco respondia.
+                ->filter(fn (PrecoAtacado $tier) => $tier->vigencia_inicio === null
+                    || $tier->vigencia_inicio->lessThanOrEqualTo(today()))
+                ->filter(fn (PrecoAtacado $tier) => $tier->vigencia_fim === null
+                    || $tier->vigencia_fim->greaterThanOrEqualTo(today()))
+                ->sortBy('ordem')
+                ->values()
+            : $this->precosAtacado()
+                ->where(function ($q) use ($revendaId) {
+                    $q->where('revenda_id', $revendaId)->orWhereNull('revenda_id');
+                })
+                ->whereDate('vigencia_inicio', '<=', now())
+                ->where(function ($q) {
+                    $q->whereNull('vigencia_fim')->orWhereDate('vigencia_fim', '>=', now());
+                })
+                ->orderBy('ordem')
+                ->get();
 
         // Se a revenda tem tiers próprios, eles sobrepõem os padrão (revenda_id = null) para o mesmo "nome".
         if ($revendaId) {
@@ -219,15 +261,29 @@ class Sistema extends Model
             return 0.0;
         }
 
-        $clienteIds = $this->clientes()
-            ->where('clientes.ativo', true)
-            ->where('cliente_sistema.ativo', true)
-            ->pluck('clientes.id');
+        $clienteIds = $this->clientesComVinculoAtivo()->pluck('id');
+        $competencia ??= now()->format('Y-m');
+
+        // Com os módulos e as contratações já carregados, a soma sai da memória
+        // — é o caminho de quem varre o catálogo inteiro. A regra de vigência é
+        // a MESMA de `ClienteModulo::vigentesNaCompetencia()`, e precisa
+        // continuar sendo: é ela que a fatura aplica, e as duas divergirem faz
+        // a prévia mentir sobre o que vai ser cobrado.
+        if ($this->relationLoaded('modulos') && $this->modulos->every->relationLoaded('contratacoes')) {
+            $inicioDoMes = \Illuminate\Support\Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
+
+            return (float) $this->modulos
+                ->flatMap->contratacoes
+                ->filter(fn (ClienteModulo $c) => $c->status === 'ativo')
+                ->filter(fn (ClienteModulo $c) => $clienteIds->contains($c->cliente_id))
+                ->filter(fn (ClienteModulo $c) => $c->vigenteEm($inicioDoMes))
+                ->sum('valor_mensal');
+        }
 
         return (float) ClienteModulo::vigentesNaCompetencia(
             $this->id,
             $clienteIds,
-            $competencia ?? now()->format('Y-m')
+            $competencia
         )->sum('valor_mensal');
     }
 
@@ -268,10 +324,7 @@ class Sistema extends Model
             return collect();
         }
 
-        return $this->clientes()
-            ->where('clientes.ativo', true)
-            ->where('cliente_sistema.ativo', true)
-            ->get(['clientes.id', 'clientes.revenda_id'])
+        return $this->clientesComVinculoAtivo()
             ->groupBy('revenda_id')
             ->map(function ($clientes, $revendaId) {
                 $qtd = $clientes->count();

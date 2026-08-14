@@ -361,12 +361,16 @@ class AnexosDaTarefaTest extends TestCase
             ],
         ])->assertOk();
 
-        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+        // O selo é do CARD, e o card está no quadro.
+        $quadro = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('title="2 anexos"', $html);
+        $this->assertStringContainsString('title="2 anexos"', $quadro);
 
-        // A seção do modal é desenhada a partir desta semente: sem ela, a tela
-        // pediria a lista de novo a cada card aberto.
+        // A seção é do MODAL, que é buscado à parte desde que o quadro parou de
+        // imprimir um modal por tarefa. Ela é desenhada a partir desta semente:
+        // sem ela, a tela pediria a lista de novo a cada card aberto.
+        $html = $this->actingAs($usuario)->get(route('tarefas.modal', $tarefa))->assertOk()->getContent();
+
         $this->assertStringContainsString('anexosDaTarefa('.$tarefa->id, $html);
         $this->assertStringContainsString('antes.png', $html);
         $this->assertStringContainsString('erro.log', $html);

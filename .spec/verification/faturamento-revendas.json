@@ -1,11 +1,22 @@
 {
   "feature": "faturamento-revendas",
-  "timestamp": "2026-08-10T16:50:16.965Z",
-  "gitRev": "800ffc9",
+  "timestamp": "2026-08-14T15:52:30.272Z",
+  "gitRev": "0afad7c",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 249,
-  "results": {},
+  "testsParsed": 770,
+  "results": {
+    "AC-013": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\ScriptProvisionarTest::test_provisionamento_instala_os_scripts_que_o_cron_executa @spec:AC-013",
+      "method": "tap"
+    },
+    "AC-014": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\ScriptProvisionarTest::test_provisionamento_instala_o_cron_do_agendador @spec:AC-014",
+      "method": "tap"
+    }
+  },
   "principles": {}
 }

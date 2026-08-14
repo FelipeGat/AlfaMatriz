@@ -201,6 +201,11 @@ class PainelController extends Controller
             ->map(fn ($i) => now()->startOfMonth()->subMonths($i))
             ->map(fn ($mes) => [
                 'label' => ucfirst($mes->translatedFormat('M/y')),
+                // As mesmas somas dos cards e das curvas, e agora sem repetir a
+                // ida ao banco: o serviço carrega o livro-caixa da janela numa
+                // consulta e responde os doze pedidos daí. Antes eram doze
+                // consultas aqui, sobre exatamente os mesmos meses que
+                // `serieDeEntradas`/`serieDeSaidas` já tinham somado.
                 'entradas' => $this->indicadores->entradasDoMes($mes),
                 'saidas' => $this->indicadores->saidasDoMes($mes),
             ])

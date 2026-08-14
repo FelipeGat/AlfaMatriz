@@ -74,17 +74,32 @@ class AppServiceProvider extends ServiceProvider
         // As DUAS views, porque o botão e o painel foram separados: o botão
         // mora na sidebar e lê `$naoLidas`; o painel é irmão dela (fugindo do
         // `overflow-hidden` e do `transform` do aside) e lê a lista.
+        // As duas views são desenhadas em TODA tela, e o closure roda uma vez
+        // por view: sem memória, o sino custava quatro consultas por página
+        // para responder duas perguntas.
+        //
+        // A memória mora nos atributos da REQUISIÇÃO, e não numa propriedade do
+        // provider nem no `once()`: a requisição é o único escopo que termina
+        // sozinho. Guardado em qualquer lugar mais longevo, o sino congelaria —
+        // aviso novo só apareceria quando o processo reiniciasse, e o sintoma
+        // seria "as notificações pararam", que ninguém liga a um cache.
         View::composer(['layouts.navigation', 'layouts.notificacoes'], function ($view) {
-            $usuario = auth()->user();
+            $requisicao = request();
 
-            $view->with([
-                'notificacoes' => $usuario
-                    ? Notificacao::where('destinatario_id', $usuario->id)->latest('id')->limit(12)->get()
-                    : collect(),
-                'naoLidas' => $usuario
-                    ? Notificacao::naoLidasDe($usuario->id)->count()
-                    : 0,
-            ]);
+            if (! $requisicao->attributes->has('sino')) {
+                $usuario = auth()->user();
+
+                $requisicao->attributes->set('sino', [
+                    'notificacoes' => $usuario
+                        ? Notificacao::where('destinatario_id', $usuario->id)->latest('id')->limit(12)->get()
+                        : collect(),
+                    'naoLidas' => $usuario
+                        ? Notificacao::naoLidasDe($usuario->id)->count()
+                        : 0,
+                ]);
+            }
+
+            $view->with($requisicao->attributes->get('sino'));
         });
     }
 }

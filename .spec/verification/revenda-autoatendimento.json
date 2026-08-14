@@ -1,11 +1,11 @@
 {
   "feature": "revenda-autoatendimento",
-  "timestamp": "2026-08-10T16:52:32.725Z",
-  "gitRev": "800ffc9",
+  "timestamp": "2026-08-14T16:01:51.244Z",
+  "gitRev": "0afad7c",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 249,
+  "testsParsed": 770,
   "results": {
     "AC-098": {
       "status": "pass",

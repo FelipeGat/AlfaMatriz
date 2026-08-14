@@ -97,6 +97,12 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware('permissao:tarefas');
     Route::get('tarefas/historico', [TarefaController::class, 'historico'])->name('tarefas.historico')
         ->middleware('permissao:tarefas');
+    // O modal de uma tarefa, buscado no clique. Antes do `{tarefa}` genérico
+    // não haveria conflito — `historico` é que precisa vir antes, por ser
+    // literal —, mas fica junto do quadro porque é dele que ele é servido.
+    Route::get('tarefas/{tarefa}/modal', [TarefaController::class, 'modal'])
+        ->name('tarefas.modal')
+        ->middleware('permissao:tarefas');
     Route::post('tarefas', [TarefaController::class, 'store'])->name('tarefas.store')
         ->middleware('permissao:tarefas');
     Route::put('tarefas/{tarefa}', [TarefaController::class, 'update'])->name('tarefas.update')

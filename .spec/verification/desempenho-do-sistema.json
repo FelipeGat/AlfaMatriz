@@ -1,0 +1,82 @@
+{
+  "feature": "desempenho-do-sistema",
+  "timestamp": "2026-08-14T15:44:38.451Z",
+  "gitRev": "0afad7c",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 770,
+  "results": {
+    "AC-236": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\PermissaoEmCacheTest::test_quadro_nao_repergunta_permissao_por_card @spec:AC-236",
+      "method": "tap"
+    },
+    "AC-237": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\PermissaoEmCacheTest::test_custo_do_quadro_nao_cresce_com_o_volume @spec:AC-237",
+      "method": "tap"
+    },
+    "AC-238": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\PermissaoEmCacheTest::test_sidebar_decide_os_links_sem_uma_consulta_por_item @spec:AC-238",
+      "method": "tap"
+    },
+    "AC-239": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\PermissaoEmCacheTest::test_quem_nao_tem_permissao_continua_sem_ver_e_sem_entrar @spec:AC-239",
+      "method": "tap"
+    },
+    "AC-240": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\QuadroLeveTest::test_o_html_do_quadro_para_de_crescer_com_o_volume @spec:AC-240",
+      "method": "tap"
+    },
+    "AC-241": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\QuadroLeveTest::test_o_modal_buscado_no_clique_traz_a_tarefa_inteira @spec:AC-241",
+      "method": "tap"
+    },
+    "AC-242": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\QuadroLeveTest::test_as_acoes_do_modal_continuam_funcionando @spec:AC-242",
+      "method": "tap"
+    },
+    "AC-243": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\SinoUmaVezTest::test_o_sino_consulta_uma_vez_por_requisicao @spec:AC-243",
+      "method": "tap"
+    },
+    "AC-244": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\PaineisTest::test_painel_financeiro_cabe_em_trinta_consultas @spec:AC-244",
+      "method": "tap"
+    },
+    "AC-245": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\PaineisTest::test_centro_de_controle_cabe_em_trinta_consultas @spec:AC-245",
+      "method": "tap"
+    },
+    "AC-246": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\PaineisTest::test_os_numeros_dos_paineis_nao_mudam @spec:AC-246",
+      "method": "tap"
+    },
+    "AC-247": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\RankingSistemasTest::test_o_ranking_nao_consulta_por_sistema @spec:AC-247",
+      "method": "tap"
+    },
+    "AC-248": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\PrevisaoEmBlocoTest::test_o_custo_da_previsao_nao_cresce_com_as_revendas @spec:AC-248",
+      "method": "tap"
+    },
+    "AC-249": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Desempenho\\PrevisaoEmBlocoTest::test_o_valor_previsto_nao_muda @spec:AC-249",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ClienteModulo;
 use App\Models\Cobranca;
 use App\Models\FaturamentoSnapshot;
+use App\Models\Modulo;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use Carbon\Carbon;
@@ -167,21 +168,31 @@ class FaturamentoService
 
         $porRevenda = [];
 
-        foreach (Revenda::where('ativo', true)->get() as $revenda) {
-            $sistemas = Sistema::produtos()->where('ativo', true)
-                ->whereHas('clientes', fn ($q) => $q->where('revenda_id', $revenda->id)
-                    ->where('clientes.ativo', true)
-                    ->where('cliente_sistema.ativo', true))
-                ->get();
+        // O catálogo inteiro UMA vez, com o que a conta lê de cada produto: os
+        // clientes (para o volume), os tiers (para o preço) e as contratações
+        // de módulo (para a segunda parcela da linha).
+        //
+        // Era um laço aninhado — uma consulta de sistemas por revenda, e três
+        // por sistema de cada revenda —, então o custo crescia com revendas ×
+        // sistemas. A conta é a mesma; o que mudou é que ela passou a ser feita
+        // sobre dado já na memória.
+        $sistemas = Sistema::produtos()->where('ativo', true)
+            ->with(['clientes', 'precosAtacado', 'modulos.contratacoes'])
+            ->get();
 
+        foreach (Revenda::where('ativo', true)->get() as $revenda) {
             $total = 0.0;
 
             foreach ($sistemas as $sistema) {
-                $clientesAtivos = $sistema->clientes()
+                $clientesAtivos = $sistema->clientesComVinculoAtivo()
                     ->where('revenda_id', $revenda->id)
-                    ->where('clientes.ativo', true)
-                    ->where('cliente_sistema.ativo', true)
-                    ->get(['clientes.id']);
+                    ->values();
+
+                // Fazia o papel do `whereHas` que escolhia os sistemas desta
+                // revenda: sem cliente dela aqui, não há o que cobrar.
+                if ($clientesAtivos->isEmpty()) {
+                    continue;
+                }
 
                 $tier = $sistema->tierParaVolume($clientesAtivos->count(), $revenda->id);
 
@@ -221,7 +232,7 @@ class FaturamentoService
      */
     private function modulosDaCompetencia(Sistema $sistema, $clienteIds, string $competencia): array
     {
-        $contratacoes = ClienteModulo::vigentesNaCompetencia($sistema->id, $clienteIds, $competencia);
+        $contratacoes = $this->contratacoesVigentes($sistema, $clienteIds, $competencia);
 
         if ($contratacoes->isEmpty()) {
             return ['total' => 0.0, 'detalhe' => []];
@@ -243,5 +254,43 @@ class FaturamentoService
             'total' => (float) $contratacoes->sum('valor_mensal'),
             'detalhe' => $detalhe,
         ];
+    }
+
+    /**
+     * As contratações vigentes deste sistema, da memória quando o chamador já
+     * trouxe os módulos, do banco quando não.
+     *
+     * A REGRA é uma só, `ClienteModulo::vigenteEm()` — a mesma dos dois
+     * caminhos. Duplicar o critério de vigência aqui seria abrir a porta para a
+     * prévia e a fatura discordarem sobre o mesmo módulo, que é o erro que
+     * `vigentesNaCompetencia()` existe para evitar.
+     *
+     * @param  \Illuminate\Support\Collection<int, int>  $clienteIds
+     * @return \Illuminate\Support\Collection<int, ClienteModulo>
+     */
+    private function contratacoesVigentes(Sistema $sistema, $clienteIds, string $competencia)
+    {
+        $clienteIds = collect($clienteIds);
+
+        if ($clienteIds->isEmpty()) {
+            return collect();
+        }
+
+        if (! $sistema->relationLoaded('modulos') || ! $sistema->modulos->every->relationLoaded('contratacoes')) {
+            return ClienteModulo::vigentesNaCompetencia($sistema->id, $clienteIds, $competencia);
+        }
+
+        $inicioDoMes = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
+
+        return $sistema->modulos
+            // O módulo é pendurado em cada contratação porque o detalhamento o
+            // nomeia pelo código: sem isto, cada linha iria buscá-lo sozinha e
+            // o laço voltaria pela porta dos fundos.
+            ->flatMap(fn (Modulo $modulo) => $modulo->contratacoes
+                ->each(fn (ClienteModulo $c) => $c->setRelation('modulo', $modulo)))
+            ->filter(fn (ClienteModulo $c) => $c->status === 'ativo')
+            ->filter(fn (ClienteModulo $c) => $clienteIds->contains($c->cliente_id))
+            ->filter(fn (ClienteModulo $c) => $c->vigenteEm($inicioDoMes))
+            ->values();
     }
 }

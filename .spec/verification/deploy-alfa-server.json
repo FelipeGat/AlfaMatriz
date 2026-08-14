@@ -1,11 +1,11 @@
 {
   "feature": "deploy-alfa-server",
-  "timestamp": "2026-08-10T16:48:52.575Z",
-  "gitRev": "800ffc9",
+  "timestamp": "2026-08-14T15:47:47.256Z",
+  "gitRev": "0afad7c",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 249,
+  "testsParsed": 770,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -47,9 +47,14 @@
       "testName": "Tests\\Feature\\Deploy\\ScriptProvisionarTest::test_provisionar_duas_vezes_nao_recria_container_nem_apaga_banco @spec:AC-008",
       "method": "tap"
     },
-    "AC-009": {
+    "AC-013": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Deploy\\ScriptPublicarTest::test_publicar_executa_todas_as_etapas_em_ordem_e_sai_com_sucesso @spec:AC-009",
+      "testName": "Tests\\Feature\\Deploy\\ScriptProvisionarTest::test_provisionamento_instala_os_scripts_que_o_cron_executa @spec:AC-013",
+      "method": "tap"
+    },
+    "AC-014": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Deploy\\ScriptProvisionarTest::test_provisionamento_instala_o_cron_do_agendador @spec:AC-014",
       "method": "tap"
     },
     "AC-010": {

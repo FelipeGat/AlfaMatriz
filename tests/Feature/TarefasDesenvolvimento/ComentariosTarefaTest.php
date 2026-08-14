@@ -66,12 +66,17 @@ class ComentariosTarefaTest extends TestCase
             'corpo' => 'O cliente confirmou que o erro só acontece no boleto vencido.',
         ]);
 
-        $quadro = $this->actingAs($autor)->get(route('tarefas.index'));
-        $quadro->assertOk();
-        $quadro->assertSee('O cliente confirmou que o erro só acontece no boleto vencido.');
-        $quadro->assertSee('Marina');
-        // O selo do card é o único aviso de que existe conversa lá dentro.
-        $quadro->assertSee('1 comentário');
+        // O selo do card é o único aviso de que existe conversa lá dentro, e é
+        // no quadro que ele fica. A conversa em si vive no modal, buscado à
+        // parte desde que o quadro parou de imprimir um modal por tarefa.
+        $this->actingAs($autor)->get(route('tarefas.index'))
+            ->assertOk()
+            ->assertSee('1 comentário');
+
+        $modal = $this->actingAs($autor)->get(route('tarefas.modal', $tarefa));
+        $modal->assertOk();
+        $modal->assertSee('O cliente confirmou que o erro só acontece no boleto vencido.');
+        $modal->assertSee('Marina');
     }
 
     /**
@@ -169,11 +174,11 @@ class ComentariosTarefaTest extends TestCase
 
         $this->assertSame($corpo, TarefaComentario::first()->corpo);
 
-        $quadro = $this->actingAs($usuario)->get(route('tarefas.index'));
-        $quadro->assertSee('- ajustar o filtro');
-        $quadro->assertSee('1. subir o banco');
+        $modal = $this->actingAs($usuario)->get(route('tarefas.modal', $tarefa));
+        $modal->assertSee('- ajustar o filtro');
+        $modal->assertSee('1. subir o banco');
         // Nenhuma tag de lista sai da conversa: a quebra de linha é do CSS.
-        $quadro->assertDontSee('<li>', escape: false);
+        $modal->assertDontSee('<li>', escape: false);
     }
 
     /**
@@ -193,10 +198,10 @@ class ComentariosTarefaTest extends TestCase
             $this->envioDoModal($tarefa, ['comentario' => '<script>alert(1)</script> confere isto']),
         );
 
-        $quadro = $this->actingAs($usuario)->get(route('tarefas.index'));
+        $modal = $this->actingAs($usuario)->get(route('tarefas.modal', $tarefa));
 
-        $quadro->assertDontSee('<script>alert(1)</script>', escape: false);
-        $quadro->assertSee('&lt;script&gt;alert(1)&lt;/script&gt; confere isto', escape: false);
+        $modal->assertDontSee('<script>alert(1)</script>', escape: false);
+        $modal->assertSee('&lt;script&gt;alert(1)&lt;/script&gt; confere isto', escape: false);
     }
 
     /**
@@ -220,9 +225,9 @@ class ComentariosTarefaTest extends TestCase
 
         // Botão e formulário se acham pelo mesmo id: sem o par, o lixo não
         // apaga nada e a falha é silenciosa na tela.
-        $quadro = $this->actingAs($autor)->get(route('tarefas.index'));
-        $quadro->assertSee('form="apagar-comentario-'.$comentario->id.'"', escape: false);
-        $quadro->assertSee('id="apagar-comentario-'.$comentario->id.'"', escape: false);
+        $modal = $this->actingAs($autor)->get(route('tarefas.modal', $tarefa));
+        $modal->assertSee('form="apagar-comentario-'.$comentario->id.'"', escape: false);
+        $modal->assertSee('id="apagar-comentario-'.$comentario->id.'"', escape: false);
 
         $this->actingAs($outro)
             ->delete(route('tarefas.comentarios.destroy', $comentario))
@@ -255,9 +260,9 @@ class ComentariosTarefaTest extends TestCase
 
         // Campo e botão acham o formulário pelo mesmo id: sem o par, o lápis
         // não corrige nada e a falha é silenciosa na tela.
-        $quadro = $this->actingAs($autor)->get(route('tarefas.index'));
-        $quadro->assertSee('form="editar-comentario-'.$comentario->id.'"', escape: false);
-        $quadro->assertSee('id="editar-comentario-'.$comentario->id.'"', escape: false);
+        $modal = $this->actingAs($autor)->get(route('tarefas.modal', $tarefa));
+        $modal->assertSee('form="editar-comentario-'.$comentario->id.'"', escape: false);
+        $modal->assertSee('id="editar-comentario-'.$comentario->id.'"', escape: false);
 
         $resposta = $this->actingAs($autor)->put(route('tarefas.comentarios.update', $comentario), [
             'corpo' => 'O erro acontece no boleto vencido E no cancelado.',
@@ -271,11 +276,11 @@ class ComentariosTarefaTest extends TestCase
         $this->assertSame('O erro acontece no boleto vencido E no cancelado.', $comentario->corpo);
         $this->assertNotNull($comentario->editado_em);
 
-        $quadro = $this->actingAs($autor)->get(route('tarefas.index'));
-        $quadro->assertSee('O erro acontece no boleto vencido E no cancelado.');
-        $quadro->assertSee('editado');
+        $modal = $this->actingAs($autor)->get(route('tarefas.modal', $tarefa));
+        $modal->assertSee('O erro acontece no boleto vencido E no cancelado.');
+        $modal->assertSee('editado');
         // A data original fica: corrigir não reposiciona a frase na conversa.
-        $quadro->assertSee($comentario->created_at->format('d/m/Y H:i'));
+        $modal->assertSee($comentario->created_at->format('d/m/Y H:i'));
     }
 
     /**

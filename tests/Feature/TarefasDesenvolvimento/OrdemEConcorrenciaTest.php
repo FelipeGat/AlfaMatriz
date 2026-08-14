@@ -183,9 +183,11 @@ class OrdemEConcorrenciaTest extends TestCase
     public function test_o_excluir_confirma_em_dois_passos_no_rodape(): void
     {
         $usuario = User::factory()->create();
-        $this->criarTarefa();
+        $tarefa = $this->criarTarefa();
 
-        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+        // O rodapé é do MODAL, buscado à parte desde que o quadro parou de
+        // imprimir um modal por tarefa.
+        $html = $this->actingAs($usuario)->get(route('tarefas.modal', $tarefa))->assertOk()->getContent();
 
         // Um botão só, que troca de rótulo no primeiro clique.
         $this->assertStringContainsString("confirmandoExclusao ? 'Confirmar exclusão' : 'Excluir'", $html);

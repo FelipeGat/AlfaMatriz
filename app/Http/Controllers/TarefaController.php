@@ -76,14 +76,17 @@ class TarefaController extends Controller
 
         // `eventos` entra no eager load porque o card lê a etapa atual de cada
         // tarefa para o chip de tempo — sem isso é uma consulta por card.
-        // `comentarios.autor` pelo mesmo motivo: o quadro já monta o modal de
-        // cada card, e a conversa inteira é impressa dentro dele.
+        // `comentarios` porque o card mostra a pergunta em aberto e conta a
+        // conversa; `anexos` porque ele conta os anexos; `itens` pelo "3/5".
         // `perguntaPara` entra porque a tarja de pergunta nomeia quem deve a
         // resposta — sem ele, cada card com conversa aberta faz a própria
         // consulta pelo nome.
-        // `anexos.autor` pelo mesmo motivo dos comentários: o chip do card
-        // conta os anexos e a seção do modal nomeia quem anexou cada um.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
+        //
+        // Sem os AUTORES de comentário e de anexo: quem os nomeava era o modal,
+        // e ele saiu daqui — agora é buscado no clique, com o próprio eager
+        // load (ver `modal()`). Carregá-los aqui era trazer duas relações
+        // inteiras por card para não imprimir nenhuma delas.
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios', 'itens', 'perguntaPara', 'anexos'])
             ->whereIn('status', $emCurso->keys())
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('created_at')
@@ -257,6 +260,33 @@ class TarefaController extends Controller
                 ->where('para_status', 'concluida')
                 ->whereDate('entrou_em', today()))
             ->count();
+    }
+
+    /**
+     * O modal de UMA tarefa, buscado no clique.
+     *
+     * O quadro imprimia o modal de edição de todas as tarefas de uma vez, com
+     * o formulário, a lista de conferência, os anexos e a conversa inteira de
+     * cada uma — cerca de 45 KB por card. Medido em 14/08/2026, a tela pesava
+     * 382 KB com cinco tarefas e 5,5 MB com cento e vinte: um custo que crescia
+     * com o trabalho acumulado do time e era pago inteiro a cada abertura, para
+     * mostrar no máximo um modal.
+     *
+     * Devolve a MESMA partial `_modais` de antes, com uma tarefa só. Reusá-la é
+     * o que impede o modal buscado no clique de divergir do que o quadro
+     * desenhava: um segundo molde seria uma cópia a manter, e a primeira
+     * diferença apareceria como campo que some ao reabrir a tarefa.
+     */
+    public function modal(Request $request, Tarefa $tarefa)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $tarefa = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
+            ->findOrFail($tarefa->id);
+
+        return response()->view('tarefas._modais', [
+            'tarefas' => collect([$tarefa]),
+        ] + $this->listasDeFiltro());
     }
 
     public function store(Request $request)
@@ -1058,12 +1088,18 @@ class TarefaController extends Controller
             'quadro' => $comQuadro ? view('tarefas._quadro', $dados)->render() : null,
             'pedacos' => $pedacos,
             'tarefa' => $tarefa?->id,
-            // Os modais só voltam quando a ação mudou QUAIS tarefas o quadro
-            // tem. Trocá-los fecha o que estiver aberto — certo em salvar,
-            // excluir e criar, que sempre terminaram com o modal fechado;
-            // errado nas ações do checklist e da conversa, que acontecem
-            // justamente com ele aberto.
-            'modais' => $comModais ? view('tarefas._modais', $dados)->render() : null,
+            // O bloco de modais só volta quando a ação mudou QUAIS tarefas o
+            // quadro tem — e volta VAZIO. Trocá-lo fecha o que estiver aberto:
+            // certo em salvar, excluir e criar, que sempre terminaram com o
+            // modal fechado; errado nas ações do checklist e da conversa, que
+            // acontecem justamente com ele aberto — por isso lá vai `null`, que
+            // manda não mexer no bloco.
+            //
+            // Vazio, e não com os modais das tarefas: eles não moram mais na
+            // página. A tarefa recém-criada abre ao clique como qualquer outra,
+            // porque o modal é buscado na hora (`tarefas.modal`) — antes ela
+            // precisava vir na resposta, senão o card aparecia e não abria.
+            'modais' => $comModais ? '' : null,
             // Qual modal fechar por nome. Só a criação precisa disto: o modal
             // "nova-tarefa" é único e vive fora do bloco que é trocado, então
             // ninguém o fecha por tabela.

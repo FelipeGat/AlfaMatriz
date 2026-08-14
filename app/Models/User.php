@@ -120,13 +120,91 @@ class User extends Authenticatable
         return $query;
     }
 
+    /**
+     * As quatro ações que o modelo de acesso conhece — as colunas de
+     * `perfil_permissao`. Lista fixa porque ela vira nome de coluna: o método
+     * antigo interpolava `$acao` direto no `where`, e uma ação escrita errado
+     * derrubava a consulta em vez de simplesmente responder "não pode".
+     */
+    private const ACOES = ['ler', 'incluir', 'imprimir', 'excluir'];
+
+    /**
+     * O que esta conta pode, achatado em `recurso:acao` — resolvido UMA vez.
+     *
+     * @var array<string, true>|null
+     */
+    private ?array $permissoesConcedidas = null;
+
     public function canPermissao(string $recurso, string $acao): bool
     {
-        return $this->perfis()
-            ->whereHas('permissoes', function ($q) use ($recurso, $acao) {
-                $q->where('recurso', $recurso)->where("perfil_permissao.{$acao}", true);
-            })
-            ->exists();
+        return isset($this->permissoesConcedidas()[$recurso.':'.$acao]);
+    }
+
+    /**
+     * Joga fora o que esta conta pode, para ser perguntado de novo.
+     *
+     * Chamado no começo de toda requisição por `PermissoesDaRequisicao` — é o
+     * que fixa o tempo de vida do cache em uma requisição. Também serve a quem
+     * mexe na grade e precisa reler no MESMO processo, como a tela de perfis.
+     */
+    public function esquecerPermissoes(): void
+    {
+        $this->permissoesConcedidas = null;
+    }
+
+    /**
+     * Tudo que esta conta pode, numa consulta só.
+     *
+     * A pergunta é a MESMA o tempo todo e era feita ao banco a cada vez: a
+     * sidebar decide 14 links, o sino e a linha do tempo perguntam pelos seus,
+     * e o quadro repete três vezes por card. Medido em 14/08/2026, eram 17
+     * consultas em qualquer tela e 379 num quadro com 120 tarefas — 95% da
+     * tela era a mesma pergunta.
+     *
+     * O cache vive na INSTÂNCIA do modelo, e não no cache da aplicação: o
+     * guard devolve o mesmo objeto durante a requisição inteira, então isto
+     * cobre o carregamento; e permissão que sobrevivesse ao request seria
+     * permissão que não se revoga — quem perde acesso continuaria entrando até
+     * o cache expirar.
+     *
+     * Um `join` e não o `whereHas` de antes: nem `Perfil` nem `Permissao` têm
+     * exclusão reversível, então as duas formas enxergam exatamente as mesmas
+     * linhas. Ainda sai pela relação `perfis()` para que o nome da tabela de
+     * ligação continue morando num lugar só.
+     *
+     * @return array<string, true>
+     */
+    private function permissoesConcedidas(): array
+    {
+        if ($this->permissoesConcedidas !== null) {
+            return $this->permissoesConcedidas;
+        }
+
+        $concedidas = [];
+
+        $linhas = $this->perfis()
+            ->join('perfil_permissao', 'perfil_permissao.perfil_id', '=', 'perfis.id')
+            ->join('permissoes', 'permissoes.id', '=', 'perfil_permissao.permissao_id')
+            ->get([
+                'permissoes.recurso as recurso',
+                'perfil_permissao.ler as ler',
+                'perfil_permissao.incluir as incluir',
+                'perfil_permissao.imprimir as imprimir',
+                'perfil_permissao.excluir as excluir',
+            ]);
+
+        foreach ($linhas as $linha) {
+            foreach (self::ACOES as $acao) {
+                // Duas contas podem conceder o mesmo recurso por perfis
+                // diferentes: basta UMA linha permitir, que é o que o `exists`
+                // de antes respondia.
+                if ($linha->$acao) {
+                    $concedidas[$linha->recurso.':'.$acao] = true;
+                }
+            }
+        }
+
+        return $this->permissoesConcedidas = $concedidas;
     }
 
     /**

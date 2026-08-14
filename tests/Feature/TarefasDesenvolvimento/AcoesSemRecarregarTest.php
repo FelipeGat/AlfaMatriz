@@ -305,11 +305,14 @@ class AcoesSemRecarregarTest extends TestCase
     }
 
     /**
-     * @spec:AC-230 A tarefa criada sem recarga precisa NASCER com o modal dela. Sem os
-     * modais na resposta, o card apareceria no quadro e não abriria ao clique — e uma tela
-     * que mostra o que não abre é pior que a recarga que ela evitou.
+     * @spec:AC-230 A tarefa criada sem recarga precisa ABRIR ao clique. Uma tela que
+     * mostra o que não abre é pior que a recarga que ela evitou.
+     *
+     * O modal dela já veio DENTRO desta resposta, quando o quadro imprimia um modal por
+     * tarefa. Não vem mais — o bloco volta VAZIO, e o modal é buscado no clique como o de
+     * qualquer outra tarefa. A garantia é a mesma; o que mudou é de onde ele vem.
      */
-    public function test_criar_devolve_os_modais_com_a_tarefa_nova(): void
+    public function test_a_tarefa_criada_sem_recarga_abre_ao_clique(): void
     {
         $usuario = User::factory()->create();
 
@@ -320,7 +323,16 @@ class AcoesSemRecarregarTest extends TestCase
 
         $nova = Tarefa::firstWhere('titulo', 'Nascida sem recarregar');
         $this->assertNotNull($nova);
-        $this->assertStringContainsString("editar-tarefa-{$nova->id}", $resposta->json('modais'));
+
+        // Vazio, e não `null`: `null` manda não mexer no bloco, e é o que as
+        // ações do modal aberto devolvem. Aqui o bloco É trocado — é essa troca
+        // que fecha o modal de "nova tarefa" e não deixa modal velho para trás.
+        $this->assertSame('', $resposta->json('modais'));
+
+        $this->actingAs($usuario)->get(route('tarefas.modal', $nova))
+            ->assertOk()
+            ->assertSee("editar-tarefa-{$nova->id}", escape: false)
+            ->assertSee('Nascida sem recarregar', escape: false);
 
         // O modal "nova tarefa" é único e vive fora do bloco trocado: ninguém o
         // fecharia por tabela, então o servidor diz o nome dele.
@@ -329,8 +341,7 @@ class AcoesSemRecarregarTest extends TestCase
 
     /**
      * @spec:AC-230 Excluir e salvar terminam com o modal fechado, como terminavam quando a
-     * página recarregava — só que agora quem fecha é a troca do bloco de modais, porque
-     * cada `x-modal` nasce com `show: false`.
+     * página recarregava — quem fecha é a troca do bloco de modais, que o esvazia.
      */
     public function test_excluir_tira_a_tarefa_do_bloco_de_modais(): void
     {

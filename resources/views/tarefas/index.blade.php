@@ -912,7 +912,7 @@
 
                 abrirSelecionado() {
                     if (this.selecionado !== null) {
-                        this.$dispatch('open-modal', 'editar-tarefa-' + this.selecionado);
+                        this.$dispatch('abrir-tarefa', this.selecionado);
                     }
                 },
 
@@ -1326,6 +1326,51 @@
             };
 
             /**
+             * Abre a tarefa: busca o modal dela e só então manda mostrar.
+             *
+             * O quadro não traz mais modal nenhum — ele trazia o de todas as
+             * tarefas, e era isso que fazia a tela pesar megabytes. O preço da
+             * troca é esta viagem, e ela é curta: um modal tem ~45 KB.
+             *
+             * Um por vez, e sempre novo. Guardar os já abertos pouparia a
+             * segunda viagem e traria de volta o defeito que a mudança
+             * resolveu: modal guardado é a foto de quando foi buscado, e
+             * reabrir a tarefa depois de alguém tê-la mexido mostraria o estado
+             * velho — com o agravante de que o Salvar dali gravaria por cima.
+             *
+             * Enquanto a viagem não volta, nada acontece na tela. É de
+             * propósito: abrir um modal vazio e preenchê-lo depois faria a
+             * tarefa piscar, e o vazio duraria o suficiente para alguém clicar
+             * nele. Falhou, recarrega — é o mesmo caminho de `enviar()` para a
+             * sessão vencida.
+             */
+            const abrirTarefa = async (id) => {
+                try {
+                    const resposta = await fetch('{{ url('tarefas') }}/' + id + '/modal', {
+                        headers: { 'Accept': 'text/html' },
+                    });
+
+                    if (! resposta.ok) {
+                        location.reload();
+
+                        return;
+                    }
+
+                    trocar(document.querySelector('[data-modais]'), await resposta.text());
+
+                    window.dispatchEvent(new CustomEvent('open-modal', { detail: 'editar-tarefa-' + id }));
+                } catch (erro) {
+                    location.reload();
+                }
+            };
+
+            // Um ponto de entrada só, por evento: o clique no card, o Enter do
+            // teclado e a reabertura depois de comentar pedem a mesma coisa, e
+            // moram em três lugares que não se enxergam — a partial da coluna,
+            // o componente Alpine do quadro e um script solto no fim da página.
+            window.addEventListener('abrir-tarefa', (evento) => abrirTarefa(evento.detail));
+
+            /**
              * Devolve o foco a quem o tinha, se ele sobreviveu à troca.
              *
              * O campo de novo item é a razão desta função existir: escrevem-se
@@ -1595,21 +1640,23 @@
         @include('tarefas._form', ['tarefa' => null, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
     </x-modal>
 
-    {{-- Modal: editar tarefa — uma por card, como em Clientes. O `_form` já
-         traz a conversa dentro dele, porque o comentário é publicado pelo
-         mesmo Salvar.
+    {{-- Modal: editar tarefa — VAZIO ao abrir a tela.
 
-         O bloco é redesenhado inteiro quando uma ação muda QUAIS tarefas estão
-         no quadro (criar, excluir, mover para etapa terminal): sem isso, a
-         tarefa recém-criada apareceria no quadro e não abriria ao clique. E é
-         essa troca que fecha o modal depois de Salvar, como a recarga fazia. --}}
-    <div data-modais>
-        @include('tarefas._modais', [
-            'tarefas' => $tarefas,
-            'sistemas' => $sistemas,
-            'usuarios' => $usuarios,
-        ])
-    </div>
+         Ele já foi impresso aqui para todas as tarefas do quadro, e era o que
+         fazia a tela pesar: o `_form` traz a conversa inteira, a lista de
+         conferência e os anexos de cada tarefa, ~45 KB por card. Cento e vinte
+         tarefas somavam 5,5 MB — baixados por completo a cada abertura, para
+         mostrar no máximo um modal.
+
+         Agora o bloco recebe UM modal por vez, buscado no clique
+         (`tarefas.modal`, ver `abrirTarefa` no script). Duas consequências que
+         eram efeito colateral e viraram regra:
+
+         - o modal aberto é sempre o do estado ATUAL da tarefa, porque acabou de
+           ser buscado — antes ele era a foto do momento em que a tela abriu;
+         - esvaziar o bloco fecha o que estiver aberto, que é o que a troca dos
+           modais já fazia depois de Salvar, criar e excluir. --}}
+    <div data-modais></div>
 
     {{--
         Comentar recarrega a página, e sem isto o modal da tarefa fecharia a
@@ -1621,8 +1668,11 @@
     @if (session('tarefa-aberta') && $tarefas->contains('id', session('tarefa-aberta')))
         <script>
             document.addEventListener('alpine:initialized', () => {
-                window.dispatchEvent(new CustomEvent('open-modal', {
-                    detail: 'editar-tarefa-{{ session('tarefa-aberta') }}',
+                {{-- `abrir-tarefa`: o modal não está na página, é buscado. Sem
+                     isto, o `open-modal` cairia no vazio e a tarefa que a
+                     pessoa estava lendo não voltaria. --}}
+                window.dispatchEvent(new CustomEvent('abrir-tarefa', {
+                    detail: {{ session('tarefa-aberta') }},
                 }));
             });
         </script>

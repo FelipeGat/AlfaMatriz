@@ -1,11 +1,11 @@
 {
   "feature": "redesign-visual",
-  "timestamp": "2026-08-10T16:52:07.668Z",
-  "gitRev": "800ffc9",
+  "timestamp": "2026-08-14T15:59:59.523Z",
+  "gitRev": "0afad7c",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 249,
+  "testsParsed": 770,
   "results": {
     "AC-032": {
       "status": "pass",
@@ -49,12 +49,12 @@
     },
     "AC-040": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Redesign\\CentroControleTest::test_os_quatro_cards_trazem_valor_variacao_e_tendencia_do_banco @spec:AC-040",
+      "testName": "Tests\\Feature\\Redesign\\CentroControleKpisTest::test_o_delta_de_clientes_nao_pode_superar_o_total_do_card @spec:AC-040",
       "method": "tap"
     },
     "AC-041": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Redesign\\CentroControleTest::test_a_regua_desenha_barra_proporcional_ao_valor @spec:AC-041",
+      "testName": "Tests\\Feature\\Redesign\\CentroControleKpisTest::test_revenda_desativada_com_receita_continua_na_regua @spec:AC-041",
       "method": "tap"
     },
     "AC-070": {
@@ -62,9 +62,14 @@
       "testName": "Tests\\Feature\\Redesign\\FusoHorarioTest::test_o_painel_raciocina_no_fuso_de_quem_opera @spec:AC-070",
       "method": "tap"
     },
+    "AC-218": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\CentroControleKpisTest::test_mes_sem_fechamento_mostra_o_contratado_e_nao_zero @spec:AC-218",
+      "method": "tap"
+    },
     "AC-042": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Redesign\\PaineisTest::test_o_painel_financeiro_mostra_mes_historico_e_pendencias @spec:AC-042",
+      "testName": "Tests\\Feature\\Redesign\\FinanceiroKpisTest::test_entradas_menos_saidas_explicam_o_movimento_do_saldo @spec:AC-042",
       "method": "tap"
     },
     "AC-043": {
@@ -74,7 +79,7 @@
     },
     "AC-062": {
       "status": "pass",
-      "testName": "Tests\\Feature\\Redesign\\IndicadoresCoerentesTest::test_clientes_e_revendas_batem_entre_os_dois_paineis @spec:AC-062",
+      "testName": "Tests\\Feature\\Redesign\\ComercialKpisTest::test_a_janela_de_seis_meses_nao_repete_mes_no_dia_31 @spec:AC-062",
       "method": "tap"
     },
     "AC-044": {
@@ -105,6 +110,16 @@
     "AC-049": {
       "status": "pass",
       "testName": "Tests\\Feature\\Redesign\\CargaInicialTest::test_a_carga_inicial_nao_ressuscita_sistema_removido @spec:AC-049",
+      "method": "tap"
+    },
+    "AC-221": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ComponentesTest::test_o_seletor_de_paginas_desenha_com_os_tokens_do_sistema @spec:AC-221",
+      "method": "tap"
+    },
+    "AC-222": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\ComponentesTest::test_o_seletor_de_paginas_entra_no_cache_de_views @spec:AC-222",
       "method": "tap"
     },
     "AC-050": {
@@ -165,6 +180,11 @@
     "AC-061": {
       "status": "pass",
       "testName": "Tests\\Feature\\Redesign\\ShellTest::test_em_tela_estreita_o_menu_vira_gaveta @spec:AC-061",
+      "method": "tap"
+    },
+    "AC-217": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Redesign\\BuildDoCssTest::test_a_varredura_do_tailwind_nao_depende_do_cache_de_views @spec:AC-217",
       "method": "tap"
     }
   },

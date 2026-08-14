@@ -464,7 +464,9 @@ class PerguntaNaRevisaoTest extends TestCase
 
         $this->assertNull($tarefa->outroLadoDe($dono), 'Sem responsável alheio nem interlocutor, não há lado.');
 
-        $html = $this->actingAs($dono)->get(route('tarefas.index'))->assertOk()->getContent();
+        // A escolha de destinatário mora no modal, que é buscado à parte desde
+        // que o quadro parou de imprimir um modal por tarefa.
+        $html = $this->actingAs($dono)->get(route('tarefas.modal', $tarefa))->assertOk()->getContent();
 
         $this->assertStringContainsString('Perguntar', $html);
         $this->assertStringContainsString('Perguntar a quem…', $html);
@@ -494,7 +496,7 @@ class PerguntaNaRevisaoTest extends TestCase
         [$tarefa, $dev, $revisor] = $this->emRevisao();
         $estranho = User::factory()->create(['name' => 'Quem passava por ali']);
 
-        $html = $this->actingAs($revisor)->get(route('tarefas.index'))->assertOk()->getContent();
+        $html = $this->actingAs($revisor)->get(route('tarefas.modal', $tarefa))->assertOk()->getContent();
 
         $this->assertStringNotContainsString('Perguntar a quem…', $html);
         $this->assertStringContainsString('passa a vez para o outro lado', $html);

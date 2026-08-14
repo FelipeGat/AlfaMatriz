@@ -39,18 +39,21 @@ class ModalDaTarefaTest extends TestCase
         return [$tarefa, $dono];
     }
 
+    /**
+     * O modal vem da rota dele, e não fatiado do HTML do quadro.
+     *
+     * O quadro imprimia o modal de todas as tarefas, e este ajudante achava o
+     * pedaço certo procurando o marcador do `x-modal`. Isso acabou: a tela
+     * pesava 5,5 MB com 120 tarefas, e o modal passou a ser buscado no clique.
+     * O que se lê aqui é o mesmo HTML da mesma partial — só que sem carregar o
+     * quadro inteiro para chegar nele.
+     */
     private function modalDe(Tarefa $tarefa, User $usuario): string
     {
-        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
-
-        // Âncora no marcador DO MODAL, e não no nome solto: `editar-tarefa-1`
-        // aparece antes, no `@click` do card que abre o modal — ancorar ali
-        // devolveria um pedaço do quadro em vez do formulário.
-        $marca = 'open-modal.window="$event.detail == \'editar-tarefa-'.$tarefa->id.'\'';
-        $inicio = strpos($html, $marca);
-        $this->assertNotFalse($inicio, "O modal da tarefa {$tarefa->id} não apareceu.");
-
-        return substr($html, $inicio, 30000);
+        return $this->actingAs($usuario)
+            ->get(route('tarefas.modal', $tarefa))
+            ->assertOk()
+            ->getContent();
     }
 
     /**

@@ -34,6 +34,9 @@ class CentroControleController extends Controller
      */
     public function __construct(private readonly IndicadoresService $indicadores) {}
 
+    /** @var Collection<int, Lead>|null */
+    private ?Collection $leadsAbertos = null;
+
     public function index()
     {
         $this->bloquearVisaoDaMatriz();
@@ -130,7 +133,7 @@ class CentroControleController extends Controller
                 'sinal' => $atrasadas->isEmpty() ? 'bom' : 'ruim',
                 'acento' => 'crit',
                 'icone' => 'alert-triangle',
-                'serie' => $this->serieDoAtraso($hoje),
+                'serie' => $this->serieDoAtraso($hoje, $atrasadas),
             ],
             [
                 'rotulo' => 'Clientes ativos',
@@ -205,15 +208,19 @@ class CentroControleController extends Controller
      *
      * @return list<float>
      */
-    private function serieDoAtraso(Carbon $hoje): array
+    private function serieDoAtraso(Carbon $hoje, Collection $atrasadas): array
     {
+        // Sem consulta nenhuma: os títulos vencidos JÁ foram buscados para o
+        // card de atraso, e todo corte da curva é anterior a hoje — o recorte
+        // que os trouxe. Eram seis somas ao banco sobre janelas encaixadas uma
+        // dentro da outra, todas sobre o mesmo punhado de linhas.
         return $this->ultimosMeses()
-            ->map(function (Carbon $mes) use ($hoje) {
+            ->map(function (Carbon $mes) use ($hoje, $atrasadas) {
                 $fimDoMes = $mes->copy()->endOfMonth();
                 $corte = $fimDoMes->isAfter($hoje) ? $hoje : $fimDoMes;
 
-                return (float) Cobranca::where('status', 'pendente')
-                    ->whereDate('data_vencimento', '<', $corte->toDateString())
+                return (float) $atrasadas
+                    ->filter(fn ($cobranca) => Carbon::parse($cobranca->data_vencimento)->lt($corte))
                     ->sum('valor');
             })
             ->all();
@@ -285,7 +292,10 @@ class CentroControleController extends Controller
             ];
         }
 
-        $saldo = (float) ContaFinanceira::where('ativo', true)->sum('saldo');
+        // Pelo serviço, e não por uma soma própria: é a MESMA pergunta que o
+        // card de saldo faz logo acima, e duas cópias da conta são como as duas
+        // passam a discordar. De quebra, a resposta já está pronta.
+        $saldo = $this->indicadores->saldoEmCaixa();
         if ($saldo < 0) {
             $fila[] = [
                 'nivel' => 'critico',
@@ -298,8 +308,7 @@ class CentroControleController extends Controller
             ];
         }
 
-        $abertos = Lead::whereNotIn('estagio', Lead::ESTAGIOS_TERMINAIS)->get();
-        $parados = $abertos->filter(fn (Lead $lead) => $lead->diasNoEstagio() > 30);
+        $parados = $this->leadsAbertos()->filter(fn (Lead $lead) => $lead->diasNoEstagio() > 30);
 
         if ($parados->isNotEmpty()) {
             $fila[] = [
@@ -489,12 +498,23 @@ class CentroControleController extends Controller
 
     private function pipeline(): array
     {
-        $abertos = Lead::whereNotIn('estagio', Lead::ESTAGIOS_TERMINAIS)->get();
+        $abertos = $this->leadsAbertos();
 
         return [
             'valor' => (float) $abertos->sum('valor_estimado'),
             'quantidade' => $abertos->count(),
         ];
+    }
+
+    /**
+     * O funil aberto, lido uma vez por carregamento.
+     *
+     * A fila de ação procura nele os leads parados e o painel de pipeline soma
+     * o valor — a mesma lista, buscada duas vezes na mesma tela.
+     */
+    private function leadsAbertos(): Collection
+    {
+        return $this->leadsAbertos ??= Lead::whereNotIn('estagio', Lead::ESTAGIOS_TERMINAIS)->get();
     }
 
     // ── Formatação ────────────────────────────────────────────────────────

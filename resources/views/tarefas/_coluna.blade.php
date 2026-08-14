@@ -118,7 +118,10 @@
                       limiar, um arrasto curto — o começo de qualquer arrasto, na
                       prática — terminava com o modal aberto por cima do gesto. --}}
                  @pointerdown="marcarInicioDoClique($event)"
-                 @click="if (foiClique($event)) $dispatch('open-modal', 'editar-tarefa-{{ $tarefa->id }}')"
+                 {{-- `abrir-tarefa` e não `open-modal`: o modal desta tarefa
+                      não está na página — ele é buscado no clique. Ver
+                      `abrirTarefa` no script do quadro. --}}
+                 @click="if (foiClique($event)) $dispatch('abrir-tarefa', {{ $tarefa->id }})"
                  class="rounded-ctl {{ $impedimento ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing' }}"
                  {{-- Na mão: meio apagado e com a sombra maior. A opacidade diz
                       "isto saiu do lugar" e a sombra diz "está por cima" — uma

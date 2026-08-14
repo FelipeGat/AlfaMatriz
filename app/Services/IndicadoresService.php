@@ -34,6 +34,32 @@ class IndicadoresService
      */
     private array $previsaoMemo = [];
 
+    /**
+     * O caixa de cada mês, `AAAA-MM` => entradas e saídas.
+     *
+     * O livro-caixa era somado UM MÊS POR CONSULTA, e as mesmas somas eram
+     * pedidas de três lugares no mesmo carregamento: as duas curvas dos cards e
+     * o gráfico de entradas × saídas, que refazia mês a mês o que as curvas já
+     * tinham calculado. Medido em 14/08/2026, davam 26 `SUM(valor)` idênticos
+     * por abertura do Painel Financeiro.
+     *
+     * @var array<string, array{entradas: float, saidas: float}>
+     */
+    private array $caixaPorMes = [];
+
+    /** O mês mais antigo já carregado em `caixaPorMes` — antes dele, é preciso ir ao banco. */
+    private ?string $caixaCarregadaDe = null;
+
+    /**
+     * Respostas que não mudam dentro de uma requisição, guardadas pela chave da
+     * pergunta. `competenciaFoiFaturada` sozinha era perguntada oito vezes no
+     * Painel Financeiro e onze no Centro de Controle — sempre sobre a mesma
+     * competência, sempre com a mesma resposta.
+     *
+     * @var array<string, mixed>
+     */
+    private array $memo = [];
+
     public function clientesAtivos(): int
     {
         return Cliente::where('ativo', true)->count();
@@ -146,11 +172,52 @@ class IndicadoresService
      */
     public function serieDoMrr(int $meses): array
     {
+        $competencias = $this->ultimosMeses($meses)->map(fn (Carbon $mes) => $mes->format('Y-m'));
+
+        // As seis competências numa consulta. Cada ponto da curva perguntava
+        // duas coisas ao banco — "foi faturada?" e "quanto?" — sobre a mesma
+        // tabela e o mesmo filtro, o que dava onze consultas para desenhar seis
+        // pontos.
+        $this->carregarMrrDe($competencias->all());
+
         return $this->semSinal(
-            $this->ultimosMeses($meses)
-                ->map(fn (Carbon $mes) => $this->mrrDaCompetencia($mes->format('Y-m')))
-                ->all()
+            $competencias->map(fn (string $competencia) => $this->mrrDaCompetencia($competencia))->all()
         );
+    }
+
+    /**
+     * O faturado de várias competências de uma vez.
+     *
+     * Preenche as duas respostas que `mrrDaCompetencia()` precisa por mês: a
+     * soma e o "houve fechamento". Uma competência que aparece no agrupamento é
+     * uma competência com cobrança gerada — que é exatamente o que o `exists()`
+     * de `competenciaFoiFaturada()` responde, inclusive quando a soma dá zero.
+     *
+     * @param  list<string>  $competencias
+     */
+    private function carregarMrrDe(array $competencias): void
+    {
+        $faltando = array_values(array_filter(
+            $competencias,
+            fn (string $competencia) => ! array_key_exists("mrr:{$competencia}", $this->memo)
+        ));
+
+        if ($faltando === []) {
+            return;
+        }
+
+        $somas = Cobranca::whereIn('tipo', ['locacao_sistema', 'direta'])
+            ->whereIn('competencia', $faltando)
+            ->where('status', '!=', 'cancelado')
+            ->selectRaw('competencia, COALESCE(SUM(valor), 0) as total')
+            ->groupBy('competencia')
+            ->get()
+            ->mapWithKeys(fn ($linha) => [$linha->competencia => (float) $linha->total]);
+
+        foreach ($faltando as $competencia) {
+            $this->memo["mrr:{$competencia}"] = $somas[$competencia] ?? 0.0;
+            $this->memo["faturada:{$competencia}"] = $somas->has($competencia);
+        }
     }
 
     /**
@@ -164,17 +231,13 @@ class IndicadoresService
     {
         $saldoAtual = $this->saldoEmCaixa();
 
+        // O livro-caixa inteiro da janela, numa consulta. Era uma por mês, e as
+        // seis somavam o mesmo intervalo em pedaços que se sobrepunham.
+        $this->carregarCaixa($this->ultimosMeses($meses)->first());
+
         return $this->semSinal(
             $this->ultimosMeses($meses)
-                ->map(function (Carbon $mes) use ($saldoAtual) {
-                    $depois = (float) MovimentacaoFinanceira::query()
-                        ->whereIn('conta_financeira_id', ContaFinanceira::where('ativo', true)->select('id'))
-                        ->whereDate('data', '>', $mes->copy()->endOfMonth()->toDateString())
-                        ->selectRaw("COALESCE(SUM(CASE WHEN tipo = 'saida' THEN -valor ELSE valor END), 0) as total")
-                        ->value('total');
-
-                    return $saldoAtual - $depois;
-                })
+                ->map(fn (Carbon $mes) => $saldoAtual - $this->movimentadoDepoisDe($mes))
                 ->all()
         );
     }
@@ -182,12 +245,16 @@ class IndicadoresService
     /** Entradas de caixa mês a mês. @return list<float> */
     public function serieDeEntradas(int $meses): array
     {
+        $this->carregarCaixa($this->ultimosMeses($meses)->first());
+
         return $this->semSinal($this->ultimosMeses($meses)->map(fn (Carbon $m) => $this->entradasDoMes($m))->all());
     }
 
     /** Saídas de caixa mês a mês. @return list<float> */
     public function serieDeSaidas(int $meses): array
     {
+        $this->carregarCaixa($this->ultimosMeses($meses)->first());
+
         return $this->semSinal($this->ultimosMeses($meses)->map(fn (Carbon $m) => $this->saidasDoMes($m))->all());
     }
 
@@ -255,8 +322,10 @@ class IndicadoresService
      */
     public function mrr(?string $competencia = null): float
     {
-        return (float) Cobranca::whereIn('tipo', ['locacao_sistema', 'direta'])
-            ->where('competencia', $competencia ?? now()->format('Y-m'))
+        $competencia ??= now()->format('Y-m');
+
+        return $this->memo["mrr:{$competencia}"] ??= (float) Cobranca::whereIn('tipo', ['locacao_sistema', 'direta'])
+            ->where('competencia', $competencia)
             ->where('status', '!=', 'cancelado')
             ->sum('valor');
     }
@@ -270,7 +339,9 @@ class IndicadoresService
      */
     public function competenciaFoiFaturada(string $competencia): bool
     {
-        return Cobranca::whereIn('tipo', ['locacao_sistema', 'direta'])
+        // A pergunta mais repetida dos dois painéis: onze vezes no Centro de
+        // Controle, sempre sobre a mesma competência.
+        return $this->memo["faturada:{$competencia}"] ??= Cobranca::whereIn('tipo', ['locacao_sistema', 'direta'])
             ->where('competencia', $competencia)
             ->where('status', '!=', 'cancelado')
             ->exists();
@@ -288,7 +359,7 @@ class IndicadoresService
      */
     public function contratosDiretos(): float
     {
-        return (float) Cliente::where('ativo', true)
+        return $this->memo['contratosDiretos'] ??= (float) Cliente::where('ativo', true)
             ->whereNull('revenda_id')
             ->where('tipo_cliente', 'CONTRATO')
             ->where('valor_mensal', '>', 0)
@@ -395,7 +466,12 @@ class IndicadoresService
         // aparecendo nos rankings do Comercial logo abaixo de um card que diz
         // quantos sistemas estão ativos — a tela contradizia a si mesma — e
         // ainda entrava no MRR, que o fechamento nunca cobraria.
+        // As três relações que `mrrEstimado()` e `mrrModulos()` leem, trazidas
+        // de uma vez. Sem elas, cada produto custava as próprias consultas — os
+        // clientes dele duas vezes, os tiers uma por revenda, e as contratações
+        // de módulo —, e um catálogo com o dobro de produtos custava o dobro.
         return Sistema::produtos()->where('ativo', true)
+            ->with(['clientes', 'precosAtacado', 'modulos.contratacoes'])
             ->withCount(['clientes' => fn ($q) => $q->where('clientes.ativo', true)->where('cliente_sistema.ativo', true)])
             ->get()
             ->map(function (Sistema $sistema) {
@@ -426,7 +502,7 @@ class IndicadoresService
 
     public function saldoEmCaixa(): float
     {
-        return (float) ContaFinanceira::where('ativo', true)->sum('saldo');
+        return $this->memo['saldo'] ??= (float) ContaFinanceira::where('ativo', true)->sum('saldo');
     }
 
     /**
@@ -445,28 +521,98 @@ class IndicadoresService
      */
     public function entradasDoMes(?Carbon $mes = null): float
     {
-        return $this->movimentadoNoMes($mes, entradas: true);
+        return $this->caixaDoMes($mes ?? now())['entradas'];
     }
 
     /** O que SAIU do caixa no mês — ver `entradasDoMes()`. */
     public function saidasDoMes(?Carbon $mes = null): float
     {
-        return $this->movimentadoNoMes($mes, entradas: false);
+        return $this->caixaDoMes($mes ?? now())['saidas'];
     }
 
-    private function movimentadoNoMes(?Carbon $mes, bool $entradas): float
+    /**
+     * O caixa de um mês, do que já foi carregado ou indo buscar.
+     *
+     * @return array{entradas: float, saidas: float}
+     */
+    private function caixaDoMes(Carbon $mes): array
     {
-        $mes ??= now();
+        $chave = $mes->format('Y-m');
 
-        return (float) MovimentacaoFinanceira::query()
+        if (! array_key_exists($chave, $this->caixaPorMes)) {
+            $this->carregarCaixa($mes);
+        }
+
+        return $this->caixaPorMes[$chave];
+    }
+
+    /**
+     * Carrega o livro-caixa de `$desde` em diante, mês a mês, NUMA consulta.
+     *
+     * Sem teto: movimento lançado com data futura conta para quem pergunta o
+     * saldo de um mês passado — `serieDoSaldo()` desconta "tudo que se moveu
+     * depois". Fechar a janela no mês corrente esconderia esse movimento do
+     * desconto e faria a curva do saldo subir sem motivo.
+     *
+     * Meses sem movimento nenhum entram zerados: sem isso, cada mês vazio
+     * voltaria a ser perguntado ao banco toda vez — e mês vazio é justamente o
+     * caso de quem acabou de instalar.
+     */
+    private function carregarCaixa(Carbon $desde): void
+    {
+        $inicio = $desde->copy()->startOfMonth();
+
+        // Já temos, e vindo de antes: nada a fazer.
+        if ($this->caixaCarregadaDe !== null && $this->caixaCarregadaDe <= $inicio->format('Y-m')) {
+            return;
+        }
+
+        // `SUBSTR(data, 1, 7)` recorta o "AAAA-MM" e funciona nos dois bancos —
+        // o mesmo motivo de `serieDeEntrada()`: `DATE_FORMAT` é só do MySQL e a
+        // suíte roda em SQLite.
+        //
+        // O sinal é o de `ContaFinanceira::reprocessarSaldo()`: só `saida`
+        // subtrai, e `ajuste`/`transferencia` entram como entrada. E o escopo é
+        // o de `saldoEmCaixa()`: só conta ativa — somar movimento de conta que
+        // o saldo ignora é como as duas medidas param de fechar.
+        $porMes = MovimentacaoFinanceira::query()
             ->whereIn('conta_financeira_id', ContaFinanceira::where('ativo', true)->select('id'))
-            ->whereBetween('data', [
-                $mes->copy()->startOfMonth()->toDateString(),
-                $mes->copy()->endOfMonth()->toDateString(),
-            ])
-            ->when($entradas,
-                fn ($q) => $q->where('tipo', '!=', 'saida'),
-                fn ($q) => $q->where('tipo', 'saida'))
-            ->sum('valor');
+            ->where('data', '>=', $inicio->toDateString())
+            ->selectRaw('SUBSTR(data, 1, 7) as mes')
+            ->selectRaw("COALESCE(SUM(CASE WHEN tipo != 'saida' THEN valor ELSE 0 END), 0) as entradas")
+            ->selectRaw("COALESCE(SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END), 0) as saidas")
+            ->groupBy('mes')
+            ->get()
+            ->mapWithKeys(fn ($linha) => [$linha->mes => [
+                'entradas' => (float) $linha->entradas,
+                'saidas' => (float) $linha->saidas,
+            ]])
+            ->all();
+
+        $this->caixaPorMes = $porMes;
+        $this->caixaCarregadaDe = $inicio->format('Y-m');
+
+        // Do início da janela até hoje, todo mês existe — com movimento ou sem.
+        for ($mes = $inicio->copy(); $mes->lessThanOrEqualTo(now()); $mes->addMonth()) {
+            $this->caixaPorMes[$mes->format('Y-m')] ??= ['entradas' => 0.0, 'saidas' => 0.0];
+        }
+    }
+
+    /**
+     * O que se movimentou DEPOIS do fim de um mês, com sinal — entradas menos
+     * saídas. É o desconto que recompõe o saldo histórico em `serieDoSaldo()`.
+     */
+    private function movimentadoDepoisDe(Carbon $mes): float
+    {
+        $limite = $mes->format('Y-m');
+
+        return array_sum(array_map(
+            fn (array $caixa) => $caixa['entradas'] - $caixa['saidas'],
+            array_filter(
+                $this->caixaPorMes,
+                fn (string $chave) => $chave > $limite,
+                ARRAY_FILTER_USE_KEY
+            )
+        ));
     }
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\ChecarPermissao;
 use App\Http\Middleware\ContaAtiva;
+use App\Http\Middleware\PermissoesDaRequisicao;
 use App\Http\Middleware\TrocaDeSenhaObrigatoria;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -25,6 +26,11 @@ return Application::configure(basePath: dirname(__DIR__))
             '127.0.0.1',
             '::1',
         ]);
+
+        // No FIM do grupo `web`, depois de a sessão ter dito quem é a pessoa:
+        // é o que garante que o cache de permissão da conta valha por uma
+        // requisição e não mais que isso. Ver `PermissoesDaRequisicao`.
+        $middleware->appendToGroup('web', PermissoesDaRequisicao::class);
 
         $middleware->alias([
             'permissao' => ChecarPermissao::class,

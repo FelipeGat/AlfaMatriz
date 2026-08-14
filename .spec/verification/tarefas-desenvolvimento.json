@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-10T17:55:22.028Z",
-  "gitRev": "67c6396",
+  "timestamp": "2026-08-14T16:05:14.881Z",
+  "gitRev": "0afad7c",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 263,
+  "testsParsed": 770,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -27,6 +27,11 @@
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_card_mostra_o_sistema_da_tarefa @spec:AC-084",
       "method": "tap"
     },
+    "AC-137": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\IntegracaoMultiSistema\\ReconciliacaoPorDocumentoTest::test_revenda_existente_e_ancorada_e_nao_duplicada @spec:AC-137",
+      "method": "tap"
+    },
     "AC-123": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PrioridadeCriticaTest::test_formulario_de_tarefa_oferece_as_quatro_prioridades @spec:AC-123",
@@ -34,7 +39,7 @@
     },
     "AC-126": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_as_quatro_prioridades_tem_cores_distintas @spec:AC-126",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_cada_prioridade_tem_cor_distinta @spec:AC-126",
       "method": "tap"
     },
     "AC-127": {
@@ -74,7 +79,7 @@
     },
     "AC-087": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_devolver_para_ajustes_exige_motivo @spec:AC-087",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_devolver_para_a_bancada_exige_motivo @spec:AC-087",
       "method": "tap"
     },
     "AC-088": {
@@ -84,7 +89,7 @@
     },
     "AC-089": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_concluir_exige_relatorio_de_teste_aprovado @spec:AC-089",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FluxoTarefaTest::test_liberar_para_producao_exige_validacao_do_staging @spec:AC-089",
       "method": "tap"
     },
     "AC-090": {
@@ -144,12 +149,277 @@
     },
     "AC-131": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_historico_reabre_a_concluida_e_nao_oferece_saida_para_a_cancelada @spec:AC-131",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_historico_reabre_as_duas_terminais_cada_uma_para_o_seu_lugar @spec:AC-131",
       "method": "tap"
     },
     "AC-133": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\HistoricoTarefasTest::test_historico_mostra_prioridade_resumo_e_duracao_do_ciclo @spec:AC-133",
+      "method": "tap"
+    },
+    "AC-134": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\IntegracaoMultiSistema\\SincronizacaoDeTodosOsSistemasTest::test_sincroniza_todos_os_sistemas_configurados @spec:AC-134",
+      "method": "tap"
+    },
+    "AC-135": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\IntegracaoMultiSistema\\SincronizacaoDeTodosOsSistemasTest::test_falha_de_um_sistema_nao_para_os_outros @spec:AC-135",
+      "method": "tap"
+    },
+    "AC-138": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\IntegracaoMultiSistema\\ReconciliacaoPorDocumentoTest::test_ensaio_nao_grava_e_relata_o_que_faria @spec:AC-138",
+      "method": "tap"
+    },
+    "AC-136": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\IntegracaoMultiSistema\\SincronizacaoDeTodosOsSistemasTest::test_a_recusa_nomeia_o_sistema_certo @spec:AC-136",
+      "method": "tap"
+    },
+    "AC-177": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\TipoEFluxoTarefaTest::test_tarefa_operacional_fecha_direto_de_em_andamento @spec:AC-177",
+      "method": "tap"
+    },
+    "AC-178": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\TipoEFluxoTarefaTest::test_tarefa_de_desenvolvimento_nao_fecha_direto_de_em_andamento @spec:AC-178",
+      "method": "tap"
+    },
+    "AC-179": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\TipoEFluxoTarefaTest::test_tipo_aparece_no_card_e_filtra_o_quadro @spec:AC-179",
+      "method": "tap"
+    },
+    "AC-180": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\TipoEFluxoTarefaTest::test_bloquear_exige_dizer_o_que_trava @spec:AC-180",
+      "method": "tap"
+    },
+    "AC-181": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\TipoEFluxoTarefaTest::test_a_tarefa_travada_nao_sai_da_etapa @spec:AC-181",
+      "method": "tap"
+    },
+    "AC-182": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\TipoEFluxoTarefaTest::test_de_em_andamento_a_tarefa_volta_ao_backlog @spec:AC-182",
+      "method": "tap"
+    },
+    "AC-183": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\TipoEFluxoTarefaTest::test_voltar_de_um_portao_nao_inventa_relatorio @spec:AC-183",
+      "method": "tap"
+    },
+    "AC-184": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\TipoEFluxoTarefaTest::test_cancelada_volta_para_a_fila_sem_dono @spec:AC-184",
+      "method": "tap"
+    },
+    "AC-185": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\TipoEFluxoTarefaTest::test_direcionar_move_para_o_backlog_e_tirar_o_dono_devolve_para_aberta @spec:AC-185",
+      "method": "tap"
+    },
+    "AC-186": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\TipoEFluxoTarefaTest::test_reliberar_depois_de_reabrir_exige_relatorio_novo @spec:AC-186",
+      "method": "tap"
+    },
+    "AC-190": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\MoverTarefaTest::test_bloquear_e_botao_do_card_e_a_contagem_virou_chip @spec:AC-190",
+      "method": "tap"
+    },
+    "AC-191": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\MoverTarefaTest::test_a_tarja_do_card_carrega_o_motivo_e_o_destravar @spec:AC-191",
+      "method": "tap"
+    },
+    "AC-193": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_envelhecimento_tem_regua_propria_por_etapa_e_poupa_o_backlog @spec:AC-193",
+      "method": "tap"
+    },
+    "AC-194": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PerguntaNaRevisaoTest::test_perguntar_passa_a_bola_para_o_outro_lado @spec:AC-194",
+      "method": "tap"
+    },
+    "AC-195": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PerguntaNaRevisaoTest::test_perguntar_nao_move_a_tarefa_nem_a_trava @spec:AC-195",
+      "method": "tap"
+    },
+    "AC-202": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_o_rodape_traz_o_responsavel_pelo_nome_e_o_chevron_de_mover @spec:AC-202",
+      "method": "tap"
+    },
+    "AC-196": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ChecklistTarefaTest::test_item_entra_no_fim_e_a_lista_pode_ser_reordenada @spec:AC-196",
+      "method": "tap"
+    },
+    "AC-197": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ChecklistTarefaTest::test_item_e_marcado_desmarcado_e_corrigido_por_qualquer_um @spec:AC-197",
+      "method": "tap"
+    },
+    "AC-198": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ChecklistTarefaTest::test_o_card_mostra_o_progresso_so_quando_ha_checklist @spec:AC-198",
+      "method": "tap"
+    },
+    "AC-199": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ChecklistTarefaTest::test_reordenar_ignora_item_de_outra_tarefa @spec:AC-199",
+      "method": "tap"
+    },
+    "AC-200": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ChecklistTarefaTest::test_apagar_a_tarefa_leva_o_checklist_junto @spec:AC-200",
+      "method": "tap"
+    },
+    "AC-201": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ChecklistTarefaTest::test_revenda_nao_alcanca_as_rotas_do_checklist @spec:AC-201",
+      "method": "tap"
+    },
+    "AC-203": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PerfisDoQuadroTest::test_tarefa_aberta_por_quem_nao_triaga_nasce_sem_prioridade_e_sem_dono @spec:AC-203",
+      "method": "tap"
+    },
+    "AC-204": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PerfisDoQuadroTest::test_quem_nao_triaga_move_a_propria_e_recebe_recusa_dita_na_alheia @spec:AC-204",
+      "method": "tap"
+    },
+    "AC-205": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PerfisDoQuadroTest::test_o_card_alheio_nao_arrasta_e_explica_o_porque @spec:AC-205",
+      "method": "tap"
+    },
+    "AC-206": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PerfisDoQuadroTest::test_quem_nao_triaga_comenta_bloqueia_e_mexe_no_checklist_de_qualquer_tarefa @spec:AC-206",
+      "method": "tap"
+    },
+    "AC-207": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PerfisDoQuadroTest::test_o_login_leva_a_primeira_tela_que_a_conta_abre @spec:AC-207",
+      "method": "tap"
+    },
+    "AC-208": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\OrdemEConcorrenciaTest::test_mover_sobre_movimento_alheio_e_recusado @spec:AC-208",
+      "method": "tap"
+    },
+    "AC-209": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\OrdemEConcorrenciaTest::test_coluna_arrumada_a_mao_manda_e_a_intocada_segue_a_regua @spec:AC-209",
+      "method": "tap"
+    },
+    "AC-210": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\OrdemEConcorrenciaTest::test_excluir_apaga_de_verdade_e_e_so_de_quem_triaga @spec:AC-210",
+      "method": "tap"
+    },
+    "AC-211": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\MoverTarefaTest::test_o_menu_chama_a_devolucao_pelo_que_ela_e @spec:AC-211",
+      "method": "tap"
+    },
+    "AC-212": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\OrdemEConcorrenciaTest::test_criacao_rapida_existe_em_aberta_e_backlog_e_declara_a_coluna @spec:AC-212",
+      "method": "tap"
+    },
+    "AC-213": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_as_raias_sao_um_segmented_control @spec:AC-213",
+      "method": "tap"
+    },
+    "AC-214": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_nenhum_icone_recebe_classe_direto @spec:AC-214",
+      "method": "tap"
+    },
+    "AC-215": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ModalDaTarefaTest::test_o_cabecalho_traz_etapa_e_tempo @spec:AC-215",
+      "method": "tap"
+    },
+    "AC-216": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FormularioTarefaTest::test_o_resumo_do_modal_e_gravado_na_criacao_e_na_edicao @spec:AC-216",
+      "method": "tap"
+    },
+    "AC-223": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AnexosDaTarefaTest::test_anexa_imagem_por_arquivo @spec:AC-223",
+      "method": "tap"
+    },
+    "AC-224": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AnexosDaTarefaTest::test_recusa_o_que_nao_cabe_e_o_tipo_que_nao_entra @spec:AC-224",
+      "method": "tap"
+    },
+    "AC-225": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AnexosDaTarefaTest::test_anexar_responde_json_em_vez_de_recarregar_a_tela @spec:AC-225",
+      "method": "tap"
+    },
+    "AC-226": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AnexosDaTarefaTest::test_so_quem_anexou_apaga_o_proprio_anexo @spec:AC-226",
+      "method": "tap"
+    },
+    "AC-227": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AnexosDaTarefaTest::test_o_card_traz_o_selo_de_anexos_e_a_secao_abre_no_modal @spec:AC-227",
+      "method": "tap"
+    },
+    "AC-228": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AnexosDaTarefaTest::test_revenda_nao_alcanca_as_rotas_de_anexo @spec:AC-228",
+      "method": "tap"
+    },
+    "AC-229": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AcoesSemRecarregarTest::test_mexer_no_checklist_devolve_os_pedacos_e_nao_um_redirect @spec:AC-229",
+      "method": "tap"
+    },
+    "AC-230": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AcoesSemRecarregarTest::test_mover_sobre_movimento_alheio_volta_como_aviso @spec:AC-230",
+      "method": "tap"
+    },
+    "AC-231": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AcoesSemRecarregarTest::test_mover_devolve_o_quadro_e_os_modais_sem_redirect @spec:AC-231",
+      "method": "tap"
+    },
+    "AC-232": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AnexosDaTarefaTest::test_anexa_log_planilha_e_pdf @spec:AC-232",
+      "method": "tap"
+    },
+    "AC-233": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AnexosDaTarefaTest::test_o_nome_no_disco_nao_herda_a_extensao_enviada @spec:AC-233",
+      "method": "tap"
+    },
+    "AC-234": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AnexosDaTarefaTest::test_a_tarefa_nasce_com_os_anexos_junto @spec:AC-234",
+      "method": "tap"
+    },
+    "AC-235": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AnexosDaTarefaTest::test_a_figura_grande_ganha_miniatura_e_a_grade_aponta_para_ela @spec:AC-235",
       "method": "tap"
     }
   },
