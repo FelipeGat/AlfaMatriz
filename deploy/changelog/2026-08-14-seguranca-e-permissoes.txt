@@ -1,0 +1,40 @@
+<b>📋 AlfaMatriz — Changelog 14/08/2026</b>
+<i>Uma varredura de segurança no sistema inteiro, e duas permissões que existiam na tela sem existir de verdade</i>
+
+Esta entrega tem duas metades. A primeira é uma varredura de segurança: o sistema foi vasculhado inteiro — quem enxerga o quê, o que o navegador recebe, como os arquivos são guardados, o que vai parar no log. A segunda é a correção de duas caixas da grade de perfis que estavam lá para marcar e não faziam nada.
+
+Antes do que mudou, o que foi conferido e estava certo, porque isso delimita o resto: o isolamento por revenda (cada revenda só enxerga o próprio portfólio), o tratamento de texto nas telas, o banco de dados, o envio de arquivos e a senha — que nunca é gravada em lugar nenhum, nem no rastro de auditoria.
+
+<b>🔐 Seis portas que ficaram abertas</b>
+
+• <b>"Esqueci minha senha" saiu do ar — e isso muda o seu dia.</b> A tela existia, mas o servidor nunca foi configurado para enviar e-mail: quem clicava lia "enviamos o link" e não recebia nada, nunca. Pior, se alguém baixasse o nível de detalhe do log para investigar outra coisa, cada pedido passaria a gravar um link de redefinição válido, por uma hora, num arquivo de texto. <b>A partir de agora, quem esquecer a senha pede a um administrador</b>, que gera uma nova na tela de Usuários. A senha vem marcada para troca obrigatória no primeiro acesso.
+• <b>Dava para ficar chutando senha sem limite numa tela.</b> No login já havia trava — cinco erros e a conta para por alguns minutos. Na tela que pede a senha de novo, não havia nenhuma. Agora tem o mesmo limite.
+• <b>Quem administrava usuários era, na prática, dono do sistema.</b> Bastava marcar o próprio perfil como Administrador, ou trocar a senha de um administrador e ler a nova na tela. Hoje só um administrador faz essas duas coisas — e a tentativa recusada fica registrada na auditoria.
+• <b>O navegador não recebia nenhuma instrução de segurança.</b> Agora toda página diz a ele de onde pode carregar conteúdo e para onde pode enviar dados: tudo preso ao próprio sistema. Se um dia entrar código indevido numa tela, ele não consegue mandar dado de cliente para fora.
+• <b>O endereço dos sistemas integrados era campo livre.</b> O painel envia uma chave secreta para esse endereço a cada consulta. Quem editasse o catálogo podia apontá-lo para um servidor próprio e receber a chave. Agora só aceita endereço público e seguro.
+• <b>A pasta dos anexos era protegida por uma linha solta de configuração.</b> Boletos, notas fiscais e prints de defeito. Se alguém apagasse essa linha numa edição, tudo ficaria acessível e ninguém perceberia. Agora existe uma verificação automática que acusa na hora.
+
+---
+
+<b>📋 AlfaMatriz — Changelog 14/08/2026 (parte 2)</b>
+<i>As duas caixas da grade de perfis que não faziam nada</i>
+
+<b>✏️ "Editar" virou permissão própria</b>
+
+• <b>O problema: quem podia cadastrar, podia reescrever tudo.</b> A grade tinha quatro caixas — Ler, Incluir, Imprimir, Excluir — e não havia "Editar". Quem recebia permissão para cadastrar um lead recebia junto, sem ninguém decidir isso, a permissão de alterar todos os leads já existentes. A grade não tinha como dizer o contrário.
+• <b>Agora são cinco caixas, e "Editar" é uma delas.</b> Dá para conceder "registra o que chega" sem conceder "reescreve o que já está registrado". Poder total continua sendo só do perfil Administrador.
+• <b>A separação alcança também o que não parece edição.</b> Mover uma tarefa no quadro, mover um lead no funil, dar baixa numa cobrança, bloquear uma licença e repor a senha de alguém: nenhuma dessas ações cria nada, todas mexem no que já existe. São dezesseis telas assim, e todas passaram a exigir "Editar". Sem isso, a separação valeria só para os formulários e ficaria pela metade.
+• <b>Ninguém perde acesso na virada.</b> Quem hoje cadastra ganha "Editar" automaticamente na publicação. A separação passa a EXISTIR na grade, e cada perfil pode ter a edição retirada com calma, um a um, quando você decidir.
+
+<b>🖨️ "Imprimir" passou a valer</b>
+
+• <b>Ela nunca recusou nada.</b> A caixa estava na grade desde o começo e nenhuma tela a consultava. O administrador marcava, desmarcava, e o sistema seguia igual — uma permissão que não recusa nada é pior que uma ausente, porque faz a tela afirmar um controle que não existe.
+• <b>Agora ela guarda o que tira dado de dentro do sistema:</b> a planilha do Faturamento e o download de boleto, nota fiscal e comprovante. Ver a tela continua livre; o que passou a ser controlado é levar embora.
+• <b>Como todos os perfis já vinham com "Imprimir" marcado, ninguém perde nada agora.</b> A diferença é que desmarcar a caixa passou a ter efeito.
+
+<b>📊 E o botão de exportar passou a exportar</b>
+
+• <b>Descoberto no caminho: "Exportar prévia", na tela de Faturamento, nunca exportou nada.</b> Ele recarregava a página e pronto — o pedido de exportação era ignorado pelo sistema.
+• <b>Agora sai uma planilha de verdade</b>, com as mesmas linhas da prévia na tela: revenda, sistema, unidades, faixa, o cálculo que originou o valor, licença, módulos e total. Já formatada para abrir direito no Excel em português, com acentos e colunas separadas.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
