@@ -476,6 +476,44 @@ class AnexosDaTarefaTest extends TestCase
     }
 
     /**
+     * @spec:AC-235 A miniatura não é baixada de novo a cada abertura.
+     *
+     * O anexo sai por rota com `auth` (AC-227), e por isso herdava o `no-cache, private`
+     * que o Laravel dá a toda página com sessão — sem `ETag` nem `Last-Modified` para uma
+     * revalidação responder 304. Abrir a mesma tarefa dez vezes baixava os mesmos prints
+     * dez vezes, cada um por um pedido de PHP inteiro. E tudo chegava no pior momento: a
+     * grade só pede as figuras quando o modal ABRE, porque `loading="lazy"` dentro de um
+     * modal fechado não pede nada.
+     *
+     * Guardar é seguro porque o arquivo é imutável: cada envio cria linha e nome novos, e o
+     * id nunca passa a apontar para outro conteúdo. `private` é o que mantém isso no
+     * navegador de quem abriu, e fora de cache compartilhado — o teste fixa os dois juntos,
+     * porque `public` aqui seria vazar anexo de cliente para quem passar pelo caminho.
+     */
+    public function test_a_imagem_pode_ser_guardada_pelo_navegador_de_quem_abriu(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = $this->criarTarefa();
+
+        $this->actingAs($usuario)->post(route('tarefas.anexos.store', $tarefa), [
+            'anexos' => [UploadedFile::fake()->image('tela.png', 1200, 800)],
+        ])->assertOk();
+
+        $cache = $this->actingAs($usuario)
+            ->get(route('tarefas.anexos.ver', $tarefa->fresh()->anexos->sole()))
+            ->assertOk()
+            ->headers->get('Cache-Control');
+
+        $this->assertStringContainsString('private', $cache);
+        $this->assertStringContainsString('max-age=31536000', $cache);
+        $this->assertStringNotContainsString('no-cache', $cache);
+        $this->assertStringNotContainsString('no-store', $cache);
+
+        // `public` seria pôr anexo de cliente em qualquer cache do caminho.
+        $this->assertStringNotContainsString('public', $cache);
+    }
+
+    /**
      * @spec:AC-234 A prova entra JUNTO com a tarefa: quem abre uma tarefa quase sempre
      * está olhando para o print que a motivou, e pedir para salvar primeiro e anexar
      * depois é pedir um segundo gesto — que se deixa para depois, e aí a tarefa nasce

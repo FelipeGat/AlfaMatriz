@@ -933,6 +933,25 @@ gesto, que se deixa para depois.
   na criação a legenda aparece antes de o servidor ver o arquivo, e três
   "image.png" que trocam de nome sozinhos depois de salvar não distinguem nada
 
+#### AC-235 — A miniatura não é baixada de novo a cada abertura
+
+- **Dado** uma tarefa com prints anexados, que já abri antes
+- **Quando** abro a tarefa outra vez
+- **Então** as miniaturas vêm do navegador, e não da rede. Sair por rota com
+  `auth` (AC-227) fazia o anexo herdar o `no-cache, private` de toda página com
+  sessão, e sem `ETag` nem `Last-Modified` nem a revalidação teria como
+  responder 304: cada abertura rebaixava todos os prints, um pedido de PHP
+  inteiro por miniatura — sessão (que é no banco), `auth`, `permissao:tarefas` e
+  mais duas consultas
+- **E** a conta chegava toda no pior momento: a grade só pede as figuras quando
+  o modal ABRE, porque `loading="lazy"` dentro de um modal fechado
+  (`display:none`) não pede nada. A espera acontecia exatamente ao olhar
+- **E** guardar é seguro porque o arquivo é imutável — cada envio cria linha e
+  nome de disco novos, e o id nunca passa a apontar para outro conteúdo. É
+  `private`, nunca `public`: o anexo está atrás de `auth`, e um cache
+  compartilhado no caminho passaria a servir print e log de cliente a quem não
+  tem sessão
+
 ## Fora de escopo
 
 > O handoff de design de 11/08/2026 foi entregue por inteiro. O que segue

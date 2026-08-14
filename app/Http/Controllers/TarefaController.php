@@ -1268,6 +1268,32 @@ class TarefaController extends Controller
             [
                 'X-Content-Type-Options' => 'nosniff',
                 'Content-Type' => $anexo->mime ?: 'application/octet-stream',
+                /*
+                 * O anexo é IMUTÁVEL, e por isso o navegador pode guardá-lo.
+                 *
+                 * Cada envio cria uma linha nova e um nome de disco novo, e
+                 * apagar apaga os dois: o id nunca passa a apontar para outro
+                 * conteúdo, e o auto-incremento não o reaproveita.
+                 *
+                 * Sem esta linha a resposta saía com o `no-cache, private` que
+                 * o Laravel dá a toda página com sessão, e sem `ETag` nem
+                 * `Last-Modified` para uma revalidação responder 304 — ou seja,
+                 * nenhuma miniatura era reaproveitada nunca. Abrir a mesma
+                 * tarefa dez vezes baixava os mesmos prints dez vezes, cada um
+                 * por um pedido de PHP inteiro: sessão (que aqui é no banco),
+                 * `auth`, `permissao:tarefas` e mais duas consultas.
+                 *
+                 * E a conta chegava toda de uma vez no pior momento: a grade só
+                 * começa a pedir as figuras quando o modal ABRE, porque
+                 * `loading="lazy"` dentro de um modal fechado (`display:none`)
+                 * não pede nada. A espera acontecia exatamente ao olhar.
+                 *
+                 * `private` porque isto está atrás de `auth`: guarda no
+                 * navegador de quem abriu, nunca num cache compartilhado.
+                 * `immutable` dispensa até a ida de revalidação, que aqui
+                 * voltaria com o arquivo inteiro de novo.
+                 */
+                'Cache-Control' => 'private, max-age=31536000, immutable',
             ],
             $anexo->eh_imagem ? 'inline' : 'attachment'
         );

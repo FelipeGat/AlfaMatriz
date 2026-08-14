@@ -1,5 +1,25 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 14/08/2026 — As miniaturas eram baixadas de novo a cada abertura
+
+Abrir uma tarefa com prints anexados demorava — e demorava toda vez, não só na
+primeira. O anexo sai por rota com sessão, para ficar atrás de login como o
+resto do quadro, e com isso ele herdava a instrução de "não guardar" que vale
+para as páginas do sistema. Nenhuma miniatura era reaproveitada: cada abertura
+rebaixava todos os prints, um pedido completo por miniatura.
+
+E a conta chegava toda de uma vez no pior momento, porque as figuras só começam
+a ser pedidas quando o modal abre — que é exatamente quando se está olhando.
+
+### Correções
+
+- **A imagem já vista abre na hora.** O navegador de quem abriu passa a guardar
+  o anexo, que nunca muda: cada envio grava um arquivo novo, e apagar apaga o
+  arquivo junto.
+- **A guarda é só no navegador de quem tem acesso**, nunca em cache de
+  passagem — print e log de cliente continuam saindo apenas para quem tem
+  sessão e permissão.
+
 ## AlfaMatriz — 14/08/2026 — O Salvar ficava preso em "Salvando…"
 
 Depois de salvar uma tarefa uma vez, reabrir aquela mesma tarefa mostrava o
