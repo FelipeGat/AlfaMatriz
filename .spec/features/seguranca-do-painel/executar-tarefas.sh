@@ -18,7 +18,12 @@ RUN_ID='AlfaMatriz-seguranca-do-painel-mstg50ii'
 FEATURE='seguranca-do-painel'
 BASE_BRANCH='spec/seguranca-do-painel'
 ENGINE='.claude/skills/onp-spec-driven/scripts/onp-spec.mjs'
-CLAUDE_FLAGS=(--permission-mode acceptEdits --allowedTools 'Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(php:*)')
+# `git rm` e `git mv` entram na lista porque tarefa que APAGA arquivo é tarefa
+# como qualquer outra — e sem eles a faixa que remove uma rota fica tentando
+# contornar uma porta fechada em vez de fazer o trabalho. Na primeira execução
+# (14/08/2026) a T-001 era exatamente isso, e as quatro faixas da onda 1
+# terminaram sem commit nenhum.
+CLAUDE_FLAGS=(--permission-mode acceptEdits --allowedTools 'Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git mv:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(php:*)')
 STREAM_FLAGS=(--output-format stream-json --verbose)
 FALHAS=""
 COM_GATE=1
@@ -208,7 +213,9 @@ Regras inegociáveis:
 - NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium &&
+- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.
+- NUNCA use `git stash`. Ele já custou uma execução inteira: a sessão terminou com o trabalho guardado, a branch ficou vazia e o merge não trouxe nada. Para comparar antes e depois, COMMITE primeiro — o commit é o que sobrevive ao fim da sessão, e o stash não.
+- Antes de terminar, rode `git log --oneline -1` e confirme que o SEU commit está lá. Sem commit, a tarefa não aconteceu.' 'claude-sonnet-5' medium &&
     rodar_tarefa 'faixa-1' 'T-002' 'Você executa UMA tarefa da feature "seguranca-do-painel" (fluxo onp-spec, spec-anchored).
 Leia primeiro: .spec/features/seguranca-do-painel/spec.md, .spec/features/seguranca-do-painel/tasks.md e .spec/constituicao.md.
 
@@ -223,7 +230,9 @@ Regras inegociáveis:
 - NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium
+- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.
+- NUNCA use `git stash`. Ele já custou uma execução inteira: a sessão terminou com o trabalho guardado, a branch ficou vazia e o merge não trouxe nada. Para comparar antes e depois, COMMITE primeiro — o commit é o que sobrevive ao fim da sessão, e o stash não.
+- Antes de terminar, rode `git log --oneline -1` e confirme que o SEU commit está lá. Sem commit, a tarefa não aconteceu.' 'claude-sonnet-5' medium
   ) >> "$LOG_DIR/faixa-1.log" 2>&1
   local st=$?
   mesclar_faixa 'faixa-1' 'spec/seguranca-do-painel-faixa-1' "$WT" "$st" || return 1
@@ -253,7 +262,9 @@ Regras inegociáveis:
 - NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium
+- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.
+- NUNCA use `git stash`. Ele já custou uma execução inteira: a sessão terminou com o trabalho guardado, a branch ficou vazia e o merge não trouxe nada. Para comparar antes e depois, COMMITE primeiro — o commit é o que sobrevive ao fim da sessão, e o stash não.
+- Antes de terminar, rode `git log --oneline -1` e confirme que o SEU commit está lá. Sem commit, a tarefa não aconteceu.' 'claude-sonnet-5' medium
   ) >> "$LOG_DIR/faixa-2.log" 2>&1
   local st=$?
   mesclar_faixa 'faixa-2' 'spec/seguranca-do-painel-faixa-2' "$WT" "$st" || return 1
@@ -283,7 +294,9 @@ Regras inegociáveis:
 - NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium
+- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.
+- NUNCA use `git stash`. Ele já custou uma execução inteira: a sessão terminou com o trabalho guardado, a branch ficou vazia e o merge não trouxe nada. Para comparar antes e depois, COMMITE primeiro — o commit é o que sobrevive ao fim da sessão, e o stash não.
+- Antes de terminar, rode `git log --oneline -1` e confirme que o SEU commit está lá. Sem commit, a tarefa não aconteceu.' 'claude-sonnet-5' medium
   ) >> "$LOG_DIR/faixa-3.log" 2>&1
   local st=$?
   mesclar_faixa 'faixa-3' 'spec/seguranca-do-painel-faixa-3' "$WT" "$st" || return 1
@@ -313,7 +326,9 @@ Regras inegociáveis:
 - NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium
+- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.
+- NUNCA use `git stash`. Ele já custou uma execução inteira: a sessão terminou com o trabalho guardado, a branch ficou vazia e o merge não trouxe nada. Para comparar antes e depois, COMMITE primeiro — o commit é o que sobrevive ao fim da sessão, e o stash não.
+- Antes de terminar, rode `git log --oneline -1` e confirme que o SEU commit está lá. Sem commit, a tarefa não aconteceu.' 'claude-sonnet-5' medium
   ) >> "$LOG_DIR/faixa-4.log" 2>&1
   local st=$?
   mesclar_faixa 'faixa-4' 'spec/seguranca-do-painel-faixa-4' "$WT" "$st" || return 1
@@ -343,7 +358,9 @@ Regras inegociáveis:
 - NUNCA enfraqueça, pule (skip/todo) ou apague um teste para passar — teste pulado não é prova e o audit acusa.
 - Rode os testes localmente com `php tools/onp-spec-tap.php` até passarem.
 - NÃO edite tasks.md, NÃO rode onp-spec verify/audit e NÃO toque em outras tarefas — o orquestrador cuida disso.
-- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.' 'claude-sonnet-5' medium
+- Ao final de CADA tarefa: `git add` só no que você tocou e um commit próprio.
+- NUNCA use `git stash`. Ele já custou uma execução inteira: a sessão terminou com o trabalho guardado, a branch ficou vazia e o merge não trouxe nada. Para comparar antes e depois, COMMITE primeiro — o commit é o que sobrevive ao fim da sessão, e o stash não.
+- Antes de terminar, rode `git log --oneline -1` e confirme que o SEU commit está lá. Sem commit, a tarefa não aconteceu.' 'claude-sonnet-5' medium
   ) >> "$LOG_DIR/faixa-5.log" 2>&1
   local st=$?
   mesclar_faixa 'faixa-5' 'spec/seguranca-do-painel-faixa-5' "$WT" "$st" || return 1
