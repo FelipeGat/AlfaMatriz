@@ -1,0 +1,24 @@
+<b>📋 AlfaMatriz — Changelog 14/08/2026</b>
+<i>O print entra junto com a tarefa, e o Salvar destravou</i>
+
+A seção de anexos só existia depois de salvar. Quem abre uma tarefa quase sempre está olhando para o print que a motivou — e ter de gravar primeiro para anexar em seguida transforma isso num segundo gesto, que se deixa para depois. O resultado era a tarefa nascer descrevendo por escrito o que já estava na tela de quem a abriu.
+
+<b>🆕 Novidades</b>
+
+• <b>A nova tarefa aceita imagem e arquivo antes de existir.</b> A mesma seção de sempre, com a mesma cara: figura vira miniatura, log e planilha viram linha com nome e tamanho. Print cola com Ctrl+V ali mesmo, sem precisar da tarefa aberta.
+• <b>Os arquivos viajam no mesmo envio que cria a tarefa.</b> Não é gravar e anexar em seguida: se fossem dois passos, uma falha no segundo deixaria a tarefa gravada e a prova perdida.
+• <b>Dá para tirar um da lista antes de salvar</b> — nada foi para o servidor ainda, então remover é só remover.
+• <b>Até três anexos na criação</b>, o mesmo teto de cada envio da tarefa já aberta. Do quarto em diante a tela diz para anexar com a tarefa aberta, em vez de recusar em silêncio.
+• <b>Arquivo recusado recusa a criação inteira</b>, com o texto todo ainda no lugar para corrigir e reenviar. A alternativa seria a pior das duas: a tarefa fica, o anexo some, e ninguém é avisado.
+
+<b>🔧 Correções</b>
+
+• <b>O Salvar ficava preso em "Salvando…".</b> Depois de salvar uma tarefa uma vez, reabrir aquela mesma tarefa mostrava o botão escrito "Salvando…" e sem responder ao clique — e o mesmo acontecia no "Nova tarefa" depois da primeira tarefa criada. Só saía recarregando a página. Ele se tranca no primeiro clique de propósito, que é o que impede o clique duplo de publicar o comentário duas vezes, e passou a destrancar sozinho quando o envio termina.
+• <b>Inclusive quando o envio é recusado.</b> "Alguém já moveu esta tarefa" deixava o modal aberto e sem botão nenhum para tentar de novo, que é justamente a hora em que ele faz falta.
+
+<b>⚡ Melhorias</b>
+
+• <b>As miniaturas abrem na hora a partir da segunda vez.</b> O anexo sai por rota com sessão, para ficar atrás de login como o resto do quadro, e com isso herdava a instrução de "não guardar" que vale para as páginas do sistema: cada abertura rebaixava todos os prints de novo, um pedido completo por miniatura. E a conta chegava toda junta no pior momento, porque as figuras só começam a ser pedidas quando o modal abre — que é exatamente quando se está olhando.
+• <b>A guarda é só no navegador de quem tem acesso</b>, nunca em cache de passagem: print e log de cliente continuam saindo apenas para quem tem sessão e permissão.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

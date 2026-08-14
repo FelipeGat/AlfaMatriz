@@ -1,0 +1,22 @@
+<b>📋 AlfaMatriz — Changelog 14/08/2026</b>
+<i>O que se exclui some do servidor, e a grade parou de baixar o arquivo inteiro</i>
+
+Duas coisas que ninguém vê acontecer e que se pagam com o tempo: arquivo que continua no servidor depois de o registro sumir, e miniatura que baixa o original inteiro para pintar um quadradinho.
+
+<b>🔧 Correções</b>
+
+• <b>Excluir uma tarefa deixava os anexos no servidor.</b> A tarefa sumia da tela e do banco, e cada print e cada log continuavam ocupando espaço — sem nada que os apontasse e sem ninguém que fosse procurá-los. Agora somem junto.
+• <b>Valia igual para receita e despesa, e ali é mais sério.</b> O que ficava para trás era boleto e nota fiscal, com conta bancária e CNPJ dentro. Arquivo desses sobrando num servidor, sem nada que o aponte, é pior do que ocupar espaço.
+• <b>Só a remoção de um anexo por vez fazia certo</b> — e era a única porta que fazia, porque estava escrito ali na mão. A regra passou para um lugar só, o que quer dizer que toda porta nova já nasce fazendo o mesmo.
+
+Nada disso aparecia como erro. Era o tipo de conta que só se apresenta como disco cheio anos depois, numa pasta de nomes aleatórios que já não se sabe de quem são — e aí não há como separar o que sobrou do que ainda está em uso.
+
+<b>⚡ Melhorias</b>
+
+• <b>A grade de anexos abre bem mais rápido.</b> A miniatura tem cerca de 140 pixels de largura, e cada uma estava baixando o arquivo original — que pode chegar a 12 MB. Agora toda figura ganha uma cópia pequena no envio, e é essa cópia que a grade mostra: ela fica entre 9 e 25 KB, seja qual for o tamanho do original.
+• <b>O original continua intacto, e continua sendo o que o clique abre.</b> A cópia pequena existe só para a grade não precisar do arquivo grande. A prova do defeito não é mexida em byte nenhum, e abre em tamanho real como sempre abriu.
+• <b>Os prints que já estavam no sistema ganham a cópia pequena sozinhos</b>, na publicação, sem ninguém reenviar nada.
+• <b>A diferença aparece no pior momento, que é o melhor lugar para ela aparecer.</b> As figuras só começam a ser pedidas quando o modal abre — ou seja, exatamente quando se está olhando para ele.
+• <b>Quem anexa não muda nada no que faz.</b> Continua escolhendo o arquivo ou colando o print com Ctrl+V; a cópia pequena é feita no servidor, depois, sem pedir nada a ninguém.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
