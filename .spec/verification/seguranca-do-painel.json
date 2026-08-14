@@ -1,0 +1,27 @@
+{
+  "feature": "seguranca-do-painel",
+  "timestamp": "2026-08-14T21:29:46.644Z",
+  "gitRev": "34adbf3",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 801,
+  "results": {
+    "AC-269": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Seguranca\\EnderecoDeSistemaTest::test_o_cadastro_recusa_endereco_sem_https @spec:AC-269",
+      "method": "tap"
+    },
+    "AC-270": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Seguranca\\EnderecoDeSistemaTest::test_o_cadastro_recusa_endereco_de_rede_interna with data set \"localhost\" @spec:AC-270",
+      "method": "tap"
+    },
+    "AC-271": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Seguranca\\DiscoDeAnexosFechadoTest::test_storage_continua_fechado_e_so_marcas_e_servido @spec:AC-271",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}
