@@ -94,8 +94,21 @@ class ScriptBackupTest extends TestCase
 
         $this->assertSame(0, $processo->getExitCode(), $processo->getErrorOutput().$processo->getOutput());
 
-        $copia = sprintf('%s/alfamatriz-anexos-%s.tar.gz', $this->dir, date('Y-m-d'));
-        $this->assertFileExists($copia, 'A cópia dos anexos deveria ter sido gerada.');
+        // O nome sai do `date` do SHELL, que segue o relógio do sistema; o
+        // `date()` do PHP segue o fuso da aplicação (America/Sao_Paulo). Num
+        // servidor em UTC os dois discordam do dia entre 21h e a meia-noite, e
+        // montar o nome esperado aqui reprovaria o portão do staging só nesse
+        // intervalo — foi o que aconteceu em 13/08/2026. A pasta é temporária e
+        // nasce vazia: o arquivo que apareceu é o que o script acabou de gerar.
+        $copias = glob($this->dir.'/alfamatriz-anexos-*.tar.gz') ?: [];
+        $this->assertCount(1, $copias, 'A cópia dos anexos deveria ter sido gerada.');
+
+        $copia = $copias[0];
+        $this->assertMatchesRegularExpression(
+            '/alfamatriz-anexos-\d{4}-\d{2}-\d{2}\.tar\.gz$/',
+            $copia,
+            'A cópia dos anexos é datada, para parear com o dump do banco do mesmo dia.'
+        );
 
         $listagem = new Process(['tar', '-tzf', $copia]);
         $listagem->run();
