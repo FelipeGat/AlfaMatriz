@@ -12,7 +12,7 @@
 - Arquivos: routes/auth.php, tests/Feature/Seguranca/ConfirmarSenhaTest.php
 - Notas: `throttle:6,1` no `POST confirm-password`, o mesmo par que `verification.verify` e `verification.send` já usam neste arquivo — não invente um limite novo. **Depende de T-001**: mesmo arquivo de rotas.
 
-## T-003 — Fechar a escalada por `usuarios` [pendente]
+## T-003 — Fechar a escalada por `usuarios` [concluida]
 - Refs: US-073, AC-264, AC-265
 - Arquivos: app/Http/Controllers/UsuarioController.php, app/Models/User.php, tests/Feature/Seguranca/EscaladaDeUsuariosTest.php
 - Notas: um `ehAdmin()` no `User` (a pergunta já é feita solta em três lugares do `UsuarioController`), e duas recusas: `validar()`/`update()`/`store()` rejeitam o perfil `admin` vindo de quem não é admin, e `redefinirSenha()` rejeita alvo administrador. A recusa é no servidor, não no `disabled` da view — é a mesma regra que o `PerfilController` já escreveu no cabeçalho dele. Registre a tentativa recusada na auditoria: quem tenta se promover é exatamente o que a tabela existe para contar.
