@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CabecalhosDeSeguranca;
 use App\Http\Middleware\ChecarPermissao;
 use App\Http\Middleware\ContaAtiva;
 use App\Http\Middleware\PermissoesDaRequisicao;
@@ -31,6 +32,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // é o que garante que o cache de permissão da conta valha por uma
         // requisição e não mais que isso. Ver `PermissoesDaRequisicao`.
         $middleware->appendToGroup('web', PermissoesDaRequisicao::class);
+
+        // Toda tela do painel, autenticada ou não — por isso no grupo `web`
+        // e não atrás de `auth`. Ver `CabecalhosDeSeguranca`.
+        $middleware->appendToGroup('web', CabecalhosDeSeguranca::class);
 
         $middleware->alias([
             'permissao' => ChecarPermissao::class,
