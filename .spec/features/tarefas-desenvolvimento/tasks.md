@@ -354,3 +354,17 @@
   escopo de que dependem; cada linha carrega o `data-motivo="{id}"` como o card
   faz. A coluna do eixo da raia é omitida (AC-254). A volta para a grade é um
   parâmetro na URL que não mexe nos filtros (AC-256).
+
+## T-112 — A coluna cortava a rolagem do quadro em raias [concluida]
+
+- Refs: US-063, AC-257
+- Arquivos: resources/views/tarefas/_coluna.blade.php, tests/Feature/TarefasDesenvolvimento/RolagemEmRaiasTest.php
+- Esforço: baixo
+- Notas: `overscroll-behavior: contain` na lista de cards corta o encadeamento da
+  rolagem para o pai. Sem raias isso é certo — a coluna é quem rola, e conter
+  evita a página rolar junto quando a lista acaba. Em raias quem rola é o quadro
+  inteiro, e cada coluna virava barreira: com o cursor sobre um card, ou seja na
+  maior parte da tela, a roda morria ali. A contenção passa a valer só onde a
+  coluna é o scroller (`$comCabecalho`, que é o mesmo que "sem raias").
+  `overflow-y-auto` fica nos dois casos, senão a célula cheia estoura a altura
+  da faixa em vez de rolar por dentro.

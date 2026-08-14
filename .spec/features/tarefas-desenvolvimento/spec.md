@@ -714,6 +714,15 @@ para que a tela sirva à pergunta do momento e ao aparelho que estiver na mão.
   página: sozinho, o véu é translúcido no escuro (`rgba(0,0,0,0.28)`) e sólido no
   claro — e foi por isso que o defeito existiu só num dos temas
 
+#### AC-257 — Em raias, a coluna não engole a rolagem do quadro
+
+- **Dado** o quadro em raias, com o cursor parado sobre um card
+- **Quando** giro a roda do mouse
+- **Então** o quadro rola. A coluna só contém a rolagem onde ela é quem rola —
+  no quadro sem raias —, porque em raias quem rola é a tela inteira e conter em
+  cada coluna transformava a maior parte dela em barreira: rolar virava caçar um
+  vão entre os cards
+
 #### AC-214 — A raia de quem está com trabalho demais se anuncia
 
 - **Dado** alguém com mais de duas tarefas andando ao mesmo tempo

@@ -69,9 +69,24 @@
     {{-- A coluna rola por dentro, e o quadro é redesenhado inteiro a cada ação
          parcial: sem a chave de rolagem, a lista voltaria ao topo e o card em
          que se estava mexendo sairia da vista. --}}
+    {{--
+         `overscroll-y-contain` SÓ onde a coluna é quem rola na vertical.
+
+         Sem raias ele é certo: cada coluna rola por dentro, o quadro não rola
+         na vertical, e conter evita que a PÁGINA role junto quando a lista da
+         coluna acaba.
+
+         Em raias é o oposto. Quem rola é o quadro inteiro, e cada coluna vira
+         um contêiner de rolagem com a corrente cortada: com o cursor sobre um
+         card — ou seja, na maior parte da tela — a roda do mouse morria ali e o
+         quadro não andava. Rolar virava caçar um vão entre os cards.
+
+         `overflow-y-auto` fica nos dois casos: sem ele a célula com muitos
+         cards estouraria a altura da faixa em vez de rolar por dentro.
+    --}}
     <div data-cards="{{ $alvo }}" data-rolagem="cards:{{ $alvo }}"
          x-show="! recolhidas.includes('{{ $etapa['chave'] }}')"
-         class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-[10px] space-y-[10px]">
+         class="flex-1 min-h-0 overflow-y-auto p-[10px] space-y-[10px] {{ $comCabecalho ? 'overscroll-y-contain' : '' }}">
         @forelse ($cards as $tarefa)
             @php
                 /**
