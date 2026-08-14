@@ -1,0 +1,165 @@
+{
+  "runId": "AlfaMatriz-seguranca-do-painel-mstg50ii",
+  "feature": "seguranca-do-painel",
+  "agent": "claude",
+  "modo": "paralelo",
+  "paralelizar": null,
+  "modeloForcado": null,
+  "esforcoForcado": null,
+  "geradoEm": "2026-08-14 21:15",
+  "branchTrabalho": "spec/seguranca-do-painel",
+  "baseDir": ".spec/features/seguranca-do-painel",
+  "specDir": ".spec",
+  "repoName": "AlfaMatriz",
+  "logsDir": "../onp-worktrees/AlfaMatriz-seguranca-do-painel-logs",
+  "ondas": [
+    [
+      "faixa-1",
+      "faixa-2",
+      "faixa-3"
+    ],
+    [
+      "faixa-4",
+      "faixa-5"
+    ]
+  ],
+  "faixas": [
+    {
+      "id": "faixa-1",
+      "branch": "spec/seguranca-do-painel-faixa-1",
+      "worktree": "../onp-worktrees/AlfaMatriz-seguranca-do-painel-faixa-1",
+      "tarefas": [
+        {
+          "id": "T-001",
+          "titulo": "Tirar do ar a recuperação de senha por e-mail",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "routes/auth.php",
+            "app/Http/Controllers/Auth/NewPasswordController.php",
+            "app/Http/Controllers/Auth/PasswordResetLinkController.php",
+            "app/Http/Controllers/Auth/RegisteredUserController.php",
+            "resources/views/auth/forgot-password.blade.php",
+            "resources/views/auth/reset-password.blade.php",
+            "resources/views/auth/register.blade.php",
+            "tests/Feature/Auth/PasswordResetTest.php",
+            "tests/Feature/Seguranca/RecuperacaoDeSenhaTest.php"
+          ],
+          "refs": [
+            "US-071",
+            "AC-260",
+            "AC-261",
+            "AC-262"
+          ]
+        },
+        {
+          "id": "T-002",
+          "titulo": "Limitar as tentativas de confirmar a senha",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "routes/auth.php",
+            "tests/Feature/Seguranca/ConfirmarSenhaTest.php"
+          ],
+          "refs": [
+            "US-072",
+            "AC-263"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-2",
+      "branch": "spec/seguranca-do-painel-faixa-2",
+      "worktree": "../onp-worktrees/AlfaMatriz-seguranca-do-painel-faixa-2",
+      "tarefas": [
+        {
+          "id": "T-003",
+          "titulo": "Fechar a escalada por `usuarios`",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "app/Http/Controllers/UsuarioController.php",
+            "app/Models/User.php",
+            "tests/Feature/Seguranca/EscaladaDeUsuariosTest.php"
+          ],
+          "refs": [
+            "US-073",
+            "AC-264",
+            "AC-265"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-3",
+      "branch": "spec/seguranca-do-painel-faixa-3",
+      "worktree": "../onp-worktrees/AlfaMatriz-seguranca-do-painel-faixa-3",
+      "tarefas": [
+        {
+          "id": "T-004",
+          "titulo": "Cabeçalhos de segurança emitidos pelo aplicativo",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "app/Http/Middleware/CabecalhosDeSeguranca.php",
+            "bootstrap/app.php",
+            "tests/Feature/Seguranca/CabecalhosDeSegurancaTest.php"
+          ],
+          "refs": [
+            "US-074",
+            "AC-266",
+            "AC-267",
+            "AC-268"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-4",
+      "branch": "spec/seguranca-do-painel-faixa-4",
+      "worktree": "../onp-worktrees/AlfaMatriz-seguranca-do-painel-faixa-4",
+      "tarefas": [
+        {
+          "id": "T-005",
+          "titulo": "Endereço de sistema integrado só público e em HTTPS",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "app/Rules/EnderecoPublico.php",
+            "app/Http/Controllers/SistemaController.php",
+            "tests/Feature/Seguranca/EnderecoDeSistemaTest.php"
+          ],
+          "refs": [
+            "US-075",
+            "AC-269",
+            "AC-270"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faixa-5",
+      "branch": "spec/seguranca-do-painel-faixa-5",
+      "worktree": "../onp-worktrees/AlfaMatriz-seguranca-do-painel-faixa-5",
+      "tarefas": [
+        {
+          "id": "T-006",
+          "titulo": "Guarda de regressão do fechamento de `/storage/`",
+          "modelo": "claude-sonnet-5",
+          "esforco": "medium",
+          "arquivos": [
+            "tests/Feature/Seguranca/DiscoDeAnexosFechadoTest.php"
+          ],
+          "refs": [
+            "US-076",
+            "AC-271"
+          ]
+        }
+      ]
+    }
+  ],
+  "sequenciais": [],
+  "concluidas": [],
+  "avisos": []
+}
