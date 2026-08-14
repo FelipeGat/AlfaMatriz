@@ -714,6 +714,14 @@ para que a tela sirva à pergunta do momento e ao aparelho que estiver na mão.
   página: sozinho, o véu é translúcido no escuro (`rgba(0,0,0,0.28)`) e sólido no
   claro — e foi por isso que o defeito existiu só num dos temas
 
+#### AC-258 — O cabeçalho fixo das raias se lê como camada, não como corte
+
+- **Dado** o quadro em raias, com cards passando por baixo do cabeçalho ao rolar
+- **Quando** olho a linha onde eles somem
+- **Então** o cabeçalho tem borda inferior de 1px, e o card desliza para trás de
+  algo em vez de ser cortado no meio por nada. É a regra que o Topbar e o
+  cabeçalho do próprio quadro já seguem — esta era a única barra fixa sem ela
+
 #### AC-257 — Em raias, a coluna não engole a rolagem do quadro
 
 - **Dado** o quadro em raias, com o cursor parado sobre um card

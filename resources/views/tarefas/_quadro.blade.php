@@ -157,7 +157,20 @@
             tema nenhum; o que muda é que agora ela é opaca. Nenhum valor novo:
             são os mesmos dois tokens, empilhados na ordem em que já estavam.
         --}}
-        <div class="sticky top-0 z-10 shrink-0 flex gap-[10px] pb-1"
+        {{--
+            A borda inferior é o que faz a barra ser LIDA como camada.
+
+            Opaca ela já esconde o que passa por baixo — mas esconder sem marcar
+            onde some faz o card parecer cortado no meio por nada, e não deslizar
+            para trás de alguma coisa. É a diferença entre uma guilhotina e um
+            plano acima do outro.
+
+            Regra do próprio sistema, não invenção: toda barra fixa leva borda
+            inferior de 1px — o Topbar (design/README §Topbar) e o cabeçalho
+            deste mesmo quadro, logo acima, já fazem assim. Esta era a única
+            fixa sem ela.
+        --}}
+        <div class="sticky top-0 z-10 shrink-0 flex gap-[10px] pb-1 border-b border-line"
              style="background: var(--board), rgb(var(--canvas))">
             @foreach ($etapas as $etapa)
                 <div class="rounded-control bg-panel border border-line overflow-hidden"

@@ -368,3 +368,15 @@
   coluna é o scroller (`$comCabecalho`, que é o mesmo que "sem raias").
   `overflow-y-auto` fica nos dois casos, senão a célula cheia estoura a altura
   da faixa em vez de rolar por dentro.
+
+## T-113 — A barra fixa das raias não marcava onde o card sumia [concluida]
+
+- Refs: US-063, AC-258
+- Arquivos: resources/views/tarefas/_quadro.blade.php, tests/Feature/TarefasDesenvolvimento/CabecalhoFixoEmRaiasTest.php
+- Esforço: baixo
+- Notas: complemento de T-110. Aquela deixou a barra OPACA, e resolveu os cards
+  aparecerem através dela. Faltava a outra metade: esconder sem marcar onde
+  esconde faz o card parecer cortado no meio por nada, em vez de deslizar para
+  trás de uma camada. A resposta é a regra que o sistema já tem — barra fixa
+  leva borda inferior de 1px (`design/README.md`, seção Topbar; e o cabeçalho
+  deste mesmo quadro, que fica logo acima). Esta era a única fixa sem ela.

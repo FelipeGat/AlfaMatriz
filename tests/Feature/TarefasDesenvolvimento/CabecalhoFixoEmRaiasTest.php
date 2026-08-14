@@ -55,4 +55,33 @@ class CabecalhoFixoEmRaiasTest extends TestCase
         $this->assertStringNotContainsString('sticky top-0 z-10 shrink-0 flex gap-[10px] bg-board', $html,
             'A barra fixa voltou a ser pintada só com `bg-board`.');
     }
+
+    /**
+     * @spec:AC-258 A barra fixa tem borda inferior: esconder o card sem marcar
+     * ONDE ele some faz parecer que ele foi cortado no meio por nada.
+     */
+    public function test_a_barra_fixa_marca_onde_o_card_some(): void
+    {
+        $usuario = User::factory()->create();
+        Tarefa::factory()->count(3)->create([
+            'criado_por_id' => $usuario->id,
+            'responsavel_id' => $usuario->id,
+            'status' => 'em_desenvolvimento',
+        ]);
+
+        $html = $this->actingAs($usuario)
+            ->get(route('tarefas.index', ['raias' => 'responsavel']))
+            ->assertOk()
+            ->getContent();
+
+        // A âncora é a barra inteira: a borda tem de estar NELA, e não numa
+        // qualquer da página. É a mesma regra do Topbar e do cabeçalho do
+        // quadro — toda barra fixa se separa do que passa por baixo.
+        $this->assertStringContainsString(
+            'sticky top-0 z-10 shrink-0 flex gap-[10px] pb-1 border-b border-line',
+            $html,
+            'A barra fixa das raias perdeu a borda inferior — o card volta a '.
+            'parecer cortado no meio em vez de deslizar para trás dela.'
+        );
+    }
 }
