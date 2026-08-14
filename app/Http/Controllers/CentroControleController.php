@@ -82,7 +82,10 @@ class CentroControleController extends Controller
     {
         $competencia = now()->format('Y-m');
         $mrrAtual = $this->mrrDaCompetencia($competencia);
-        $mrrAnterior = $this->mrrDaCompetencia(now()->subMonth()->format('Y-m'));
+        // `startOfMonth()` antes do `subMonth()`: no dia 31 o Carbon transborda
+        // (31/02 não existe e vira 03/03), e a competência "anterior" sairia
+        // igual à atual — o card compararia o mês com ele mesmo.
+        $mrrAnterior = $this->mrrDaCompetencia(now()->startOfMonth()->subMonth()->format('Y-m'));
 
         $saldo = $this->indicadores->saldoEmCaixa();
 
@@ -96,7 +99,7 @@ class CentroControleController extends Controller
         // O card precisa dizer de onde veio o número: contratado e faturado
         // não são a mesma coisa, e confundir os dois é pior que zerar.
         $contratado = ! $this->indicadores->competenciaFoiFaturada($competencia);
-        $variacaoMrr = $this->variacao($mrrAtual, $mrrAnterior, now()->subMonth()->translatedFormat('M'));
+        $variacaoMrr = $this->variacao($mrrAtual, $mrrAnterior, now()->startOfMonth()->subMonth()->translatedFormat('M'));
 
         return [
             [
@@ -232,7 +235,7 @@ class CentroControleController extends Controller
     private function ultimosMeses(): Collection
     {
         return collect(range(self::MESES_DA_SERIE - 1, 0))
-            ->map(fn (int $atras) => now()->copy()->subMonths($atras)->startOfMonth());
+            ->map(fn (int $atras) => now()->startOfMonth()->subMonths($atras));
     }
 
     // ── Fila de ação ──────────────────────────────────────────────────────
@@ -364,7 +367,7 @@ class CentroControleController extends Controller
         $competencia = now()->format('Y-m');
 
         $atual = $this->valoresPorOrigem($competencia);
-        $passado = $this->valoresPorOrigem(now()->subMonth()->format('Y-m'));
+        $passado = $this->valoresPorOrigem(now()->startOfMonth()->subMonth()->format('Y-m'));
 
         $linhas = collect();
 

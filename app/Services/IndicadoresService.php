@@ -126,7 +126,13 @@ class IndicadoresService
         return collect(range($meses - 1, 0))
             ->map(fn (int $atras) => (float) $base()
                 ->whereRaw($expressao.' <= ?', [
-                    now()->copy()->subMonths($atras)->endOfMonth()->toDateString(),
+                    // `startOfMonth()` ANTES de `subMonths()`: subtrair mês a
+                    // partir do dia 31 transborda, porque 31/02 não existe e o
+                    // Carbon avança para 03/03. Visto do dia 31 de março, a
+                    // janela repetia dezembro e março e pulava novembro e
+                    // fevereiro. O dia 1º existe em todo mês, então normalizar
+                    // primeiro não tem para onde transbordar.
+                    now()->startOfMonth()->subMonths($atras)->endOfMonth()->toDateString(),
                 ])
                 ->count())
             ->all();
@@ -189,7 +195,10 @@ class IndicadoresService
     private function ultimosMeses(int $meses)
     {
         return collect(range($meses - 1, 0))
-            ->map(fn (int $atras) => now()->copy()->subMonths($atras)->startOfMonth());
+            // Mesma ordem de `serieDeEntrada()`, pelo mesmo motivo: normalizar
+            // para o dia 1º antes de subtrair, senão a janela transborda nos
+            // dias 29 a 31.
+            ->map(fn (int $atras) => now()->startOfMonth()->subMonths($atras));
     }
 
     /**

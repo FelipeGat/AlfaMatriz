@@ -196,7 +196,9 @@ class PainelController extends Controller
     private function historicoSeisMeses(): array
     {
         return collect(range(5, 0))
-            ->map(fn ($i) => now()->copy()->subMonths($i)->startOfMonth())
+            // `startOfMonth()` antes do `subMonths()` — ver IndicadoresService:
+            // subtrair a partir do dia 31 transborda e desalinha a janela.
+            ->map(fn ($i) => now()->startOfMonth()->subMonths($i))
             ->map(fn ($mes) => [
                 'label' => ucfirst($mes->translatedFormat('M/y')),
                 'entradas' => $this->indicadores->entradasDoMes($mes),

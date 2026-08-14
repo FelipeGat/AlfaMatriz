@@ -150,7 +150,9 @@ class RevendaController extends Controller
             ->pluck('sistemas.nome');
 
         $mrr = $this->mrrDaRevenda($revenda->id, now()->format('Y-m'));
-        $anterior = $this->mrrDaRevenda($revenda->id, now()->subMonth()->format('Y-m'));
+        // Ver CentroControleController: sem normalizar para o dia 1º, no dia 31
+        // a competência anterior sai igual à atual.
+        $anterior = $this->mrrDaRevenda($revenda->id, now()->startOfMonth()->subMonth()->format('Y-m'));
 
         // A pendência que interessa aqui é a que trava o dinheiro: cobrança
         // dessa revenda vencida e ainda não paga.

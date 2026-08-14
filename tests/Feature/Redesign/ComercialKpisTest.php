@@ -50,6 +50,44 @@ class ComercialKpisTest extends TestCase
         parent::tearDown();
     }
 
+    /**
+     * @spec:AC-062 A janela de seis meses tem seis meses DIFERENTES, inclusive
+     * quando a tela é aberta num dia 31.
+     *
+     * Este é o único teste da classe que anda o relógio até uma borda, e é de
+     * propósito: `subMonths()` a partir do dia 31 transborda — 31/02 não existe
+     * e o Carbon avança para 03/03 —, e a janela saía com dezembro e março
+     * repetidos, sem novembro nem fevereiro. A curva do painel mostrava seis
+     * pontos que não eram seis meses.
+     *
+     * Com uma revenda por mês, a curva acumulada tem de ser 1,2,3,4,5,6. Antes
+     * do conserto ela vinha 1,3,3,4,6,6 — o degrau denuncia o mês contado duas
+     * vezes e o mês que sumiu.
+     */
+    public function test_a_janela_de_seis_meses_nao_repete_mes_no_dia_31(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-31 10:00:00', 'America/Sao_Paulo'));
+
+        // Uma revenda por mês, do começo da janela até o mês corrente. O dia 10
+        // existe em todos eles, então a montagem do teste não repete o defeito
+        // que ele veio medir.
+        foreach (range(5, 0) as $atras) {
+            Revenda::create([
+                'nome' => "Revenda {$atras}",
+                'ativo' => true,
+                'data_cadastro' => now()->startOfMonth()->subMonths($atras)->addDays(9)->toDateString(),
+            ]);
+        }
+
+        $serie = $this->comercial()->original->getData()['serieRevendas'];
+
+        $this->assertSame(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            array_map('floatval', $serie),
+            'A curva pulou ou repetiu um mês: a janela de seis não cobre seis meses distintos.'
+        );
+    }
+
     private function operador(): User
     {
         return User::factory()->create();

@@ -79,7 +79,10 @@ class ContaFinanceiraController extends Controller
     private function serieDeSaldo(ContaFinanceira $conta): array
     {
         return collect(range(5, 0))->map(function (int $atras) use ($conta) {
-            $fim = now()->copy()->subMonths($atras)->endOfMonth();
+            // Normaliza para o dia 1º antes de subtrair: a partir do dia 31 o
+            // Carbon transborda (31/02 não existe e vira 03/03), e a janela
+            // repetiria um mês e pularia outro. Ver IndicadoresService.
+            $fim = now()->startOfMonth()->subMonths($atras)->endOfMonth();
 
             $depois = (float) $conta->movimentacoes()
                 ->where('data', '>', $fim->toDateString())
