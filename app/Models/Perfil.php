@@ -19,6 +19,6 @@ class Perfil extends Model
     public function permissoes(): BelongsToMany
     {
         return $this->belongsToMany(Permissao::class, 'perfil_permissao')
-            ->withPivot(['ler', 'incluir', 'imprimir', 'excluir']);
+            ->withPivot(['ler', 'incluir', 'editar', 'imprimir', 'excluir']);
     }
 }

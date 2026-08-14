@@ -52,7 +52,7 @@ class EscaladaDeUsuariosTest extends TestCase
         Perfil::where('slug', 'operacao')->first()->permissoes()
             ->syncWithoutDetaching([
                 Permissao::where('recurso', 'usuarios')->value('id') => [
-                    'ler' => true, 'incluir' => true, 'imprimir' => true, 'excluir' => true,
+                    'ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => true,
                 ],
             ]);
 

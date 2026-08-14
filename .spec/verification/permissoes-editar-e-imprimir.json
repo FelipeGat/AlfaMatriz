@@ -1,0 +1,57 @@
+{
+  "feature": "permissoes-editar-e-imprimir",
+  "timestamp": "2026-08-14T22:50:01.119Z",
+  "gitRev": "b933789",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 829,
+  "results": {
+    "AC-272": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Permissoes\\ImprimirTest::test_sem_imprimir_a_exportacao_do_faturamento_e_recusada @spec:AC-272",
+      "method": "tap"
+    },
+    "AC-273": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Permissoes\\ImprimirTest::test_sem_imprimir_baixar_anexo_financeiro_e_recusado @spec:AC-273",
+      "method": "tap"
+    },
+    "AC-274": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Permissoes\\ImprimirTest::test_quem_tem_imprimir_continua_exportando_e_baixando @spec:AC-274",
+      "method": "tap"
+    },
+    "AC-275": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Permissoes\\GradeComEditarTest::test_a_grade_tem_a_caixa_editar_e_ela_e_salva @spec:AC-275",
+      "method": "tap"
+    },
+    "AC-276": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Permissoes\\GradeComEditarTest::test_sem_editar_alterar_registro_existente_e_recusado @spec:AC-276",
+      "method": "tap"
+    },
+    "AC-277": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Permissoes\\EdicaoPorPostTest::test_quem_so_cadastra_ainda_cria_tarefa @spec:AC-277",
+      "method": "tap"
+    },
+    "AC-278": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Permissoes\\EdicaoPorPostTest::test_mover_tarefa_exige_editar @spec:AC-278",
+      "method": "tap"
+    },
+    "AC-279": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Permissoes\\MigracaoEditarTest::test_quem_inclui_herda_editar @spec:AC-279",
+      "method": "tap"
+    },
+    "AC-280": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Permissoes\\MigracaoEditarTest::test_administrador_recebe_editar_em_todos_os_recursos @spec:AC-280",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

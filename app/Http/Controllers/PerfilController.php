@@ -23,7 +23,7 @@ use Illuminate\Http\Request;
  */
 class PerfilController extends Controller
 {
-    private const AÇÕES = ['ler', 'incluir', 'imprimir', 'excluir'];
+    private const AÇÕES = ['ler', 'incluir', 'editar', 'imprimir', 'excluir'];
 
     public function __construct()
     {

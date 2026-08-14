@@ -126,7 +126,7 @@ class User extends Authenticatable
      * antigo interpolava `$acao` direto no `where`, e uma ação escrita errado
      * derrubava a consulta em vez de simplesmente responder "não pode".
      */
-    private const ACOES = ['ler', 'incluir', 'imprimir', 'excluir'];
+    private const ACOES = ['ler', 'incluir', 'editar', 'imprimir', 'excluir'];
 
     /**
      * O que esta conta pode, achatado em `recurso:acao` — resolvido UMA vez.
@@ -189,6 +189,7 @@ class User extends Authenticatable
                 'permissoes.recurso as recurso',
                 'perfil_permissao.ler as ler',
                 'perfil_permissao.incluir as incluir',
+                'perfil_permissao.editar as editar',
                 'perfil_permissao.imprimir as imprimir',
                 'perfil_permissao.excluir as excluir',
             ]);

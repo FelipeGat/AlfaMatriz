@@ -17,6 +17,15 @@ class PerfilPermissaoSeeder extends Seeder
      * o deploy roda só `migrate --force` —, mas em desenvolvimento um
      * `db:seed` desfaz o ajuste sem avisar. O perfil `admin` é o único imune,
      * porque a tela não o edita.
+     *
+     * `editar` acompanha `incluir` em toda linha daqui, e isso é o ESTADO
+     * INICIAL — não a regra. A ação nasceu separada justamente para poder
+     * divergir: um perfil que registra o que chega sem reescrever o que já
+     * está registrado. Quem separa de verdade é o administrador, na grade;
+     * aqui os dois coincidem porque é o que a migração
+     * `2026_08_15_090000_separar_editar_de_incluir.php` faz com o dado que já
+     * existe, e um estado inicial diferente do backfill faria a mesma grade
+     * ter dois começos possíveis dependendo de como o banco nasceu.
      */
     public function run(): void
     {
@@ -62,39 +71,39 @@ class PerfilPermissaoSeeder extends Seeder
 
         foreach ($todasPermissoes as $permissaoId) {
             $admin->permissoes()->syncWithoutDetaching([
-                $permissaoId => ['ler' => true, 'incluir' => true, 'imprimir' => true, 'excluir' => true],
+                $permissaoId => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => true],
             ]);
         }
 
         foreach (['cobrancas', 'contas_pagar', 'financeiro', 'dashboard'] as $recurso) {
             $financeiro->permissoes()->syncWithoutDetaching([
-                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'imprimir' => true, 'excluir' => false],
+                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
             ]);
         }
         foreach (['revendas', 'clientes', 'sistemas'] as $recurso) {
             $financeiro->permissoes()->syncWithoutDetaching([
-                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => false, 'imprimir' => true, 'excluir' => false],
+                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => false, 'editar' => false, 'imprimir' => true, 'excluir' => false],
             ]);
         }
 
         foreach (['revendas', 'clientes', 'sistemas', 'dashboard'] as $recurso) {
             $operacao->permissoes()->syncWithoutDetaching([
-                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'imprimir' => true, 'excluir' => false],
+                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
             ]);
         }
         foreach (['cobrancas', 'contas_pagar', 'financeiro'] as $recurso) {
             $operacao->permissoes()->syncWithoutDetaching([
-                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => false, 'imprimir' => true, 'excluir' => false],
+                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => false, 'editar' => false, 'imprimir' => true, 'excluir' => false],
             ]);
         }
         foreach (['leads', 'faturamento'] as $recurso) {
             $operacao->permissoes()->syncWithoutDetaching([
-                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'imprimir' => true, 'excluir' => false],
+                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
             ]);
         }
         foreach (['leads', 'faturamento'] as $recurso) {
             $financeiro->permissoes()->syncWithoutDetaching([
-                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => false, 'imprimir' => true, 'excluir' => false],
+                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => false, 'editar' => false, 'imprimir' => true, 'excluir' => false],
             ]);
         }
 
@@ -109,7 +118,7 @@ class PerfilPermissaoSeeder extends Seeder
         $membro = Perfil::updateOrCreate(['slug' => 'membro'], ['nome' => 'Membro do time']);
 
         $membro->permissoes()->syncWithoutDetaching([
-            $todasPermissoes['tarefas'] => ['ler' => true, 'incluir' => true, 'imprimir' => true, 'excluir' => false],
+            $todasPermissoes['tarefas'] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
         ]);
 
         // Quem vende não é quem opera. O perfil mais próximo era `operacao`, e
@@ -127,7 +136,7 @@ class PerfilPermissaoSeeder extends Seeder
 
         foreach (['leads', 'clientes', 'revendas'] as $recurso) {
             $comercial->permissoes()->syncWithoutDetaching([
-                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'imprimir' => true, 'excluir' => false],
+                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
             ]);
         }
 
@@ -140,7 +149,7 @@ class PerfilPermissaoSeeder extends Seeder
 
         foreach (['revendas', 'clientes'] as $recurso) {
             $revenda->permissoes()->syncWithoutDetaching([
-                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'imprimir' => true, 'excluir' => false],
+                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
             ]);
         }
     }

@@ -9,6 +9,7 @@ use App\Models\Revenda;
 use App\Models\Sistema;
 use App\Services\FaturamentoService;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FaturamentoController extends Controller
 {
@@ -45,6 +46,26 @@ class FaturamentoController extends Controller
                 'unidade_cobranca' => $l['unidade_cobranca'],
             ]))->values();
 
+        // A exportação sai DAQUI, e não de uma rota própria, porque ela é a
+        // mesma prévia — mesmo escopo de revenda, mesma competência, mesmas
+        // linhas. Rota separada seria uma segunda montagem para manter em dia
+        // com esta, e o dia em que divergissem a planilha passaria a discordar
+        // da tela sem nada acusar.
+        //
+        // A recusa também é aqui, pelo mesmo motivo: `permissao:faturamento`
+        // no `GET` resolve para `ler`, e é o que tem de valer para a TELA. É o
+        // parâmetro que separa ver de levar embora, e ele só existe neste
+        // ponto.
+        if ($request->input('exportar') === 'csv') {
+            abort_unless(
+                $request->user()->canPermissao('faturamento', 'imprimir'),
+                403,
+                'Você não tem permissão para exportar o faturamento.'
+            );
+
+            return $this->exportarPrevia($preview, $competencia);
+        }
+
         return view('faturamento.index', [
             'competencia' => $competencia,
             'preview' => $preview,
@@ -63,6 +84,57 @@ class FaturamentoController extends Controller
                 'rotulo' => $mes->translatedFormat('m/Y'),
             ],
         ]);
+    }
+
+    /**
+     * A prévia como planilha — uma linha por sistema de cada revenda.
+     *
+     * O botão "Exportar prévia" existia na tela desde sempre e não exportava
+     * nada: ele apontava para esta mesma rota com `?exportar=csv`, e ninguém
+     * lia o parâmetro. Recarregava a página e pronto — descoberto em
+     * 15/08/2026, ao dar função à permissão de imprimir.
+     *
+     * As colunas são as da tela, na mesma ordem, incluindo `calculo`: é a
+     * conta que originou o valor, e uma planilha de conferência sem ela obriga
+     * quem confere a voltar para a tela justamente no momento em que precisa
+     * comparar as duas.
+     *
+     * `;` como separador e BOM no começo porque o destino é o Excel em
+     * português: com vírgula ele joga a linha inteira numa célula só, e sem o
+     * BOM ele lê o UTF-8 como Latin-1 e todo acento vira ruído.
+     *
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $preview
+     */
+    private function exportarPrevia($preview, string $competencia): StreamedResponse
+    {
+        $linhas = $preview->flatMap(fn ($painel) => $painel['linhas']->map(fn ($linha) => [
+            $painel['revenda']->nome,
+            $linha['sistema'],
+            $linha['unidades'],
+            $linha['unidade_cobranca'],
+            $linha['tier'] ?? 'sem faixa',
+            $linha['calculo'],
+            $linha['valor_licenca'],
+            $linha['valor_modulos'],
+            $linha['valor'],
+        ]));
+
+        return response()->streamDownload(function () use ($linhas) {
+            $saida = fopen('php://output', 'w');
+
+            fwrite($saida, "\xEF\xBB\xBF");
+
+            fputcsv($saida, [
+                'Revenda', 'Sistema', 'Unidades', 'Unidade de cobrança',
+                'Faixa', 'Cálculo', 'Licença', 'Módulos', 'Total',
+            ], ';');
+
+            foreach ($linhas as $linha) {
+                fputcsv($saida, $linha, ';');
+            }
+
+            fclose($saida);
+        }, "faturamento-{$competencia}.csv", ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /**

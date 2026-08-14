@@ -118,8 +118,9 @@ não consiga reescrever o que já está registrado.
 | ID | Suposição | Status | Resolução |
 |---|---|---|---|
 | ASM-062 | Ligar `imprimir` não tira acesso de ninguém hoje, porque o `PerfilPermissaoSeeder` concede a ação a todo perfil em todo recurso | confirmada | `database/seeders/PerfilPermissaoSeeder.php` linhas 64–143 |
-| ASM-063 | `revendas.provisionar`, `faturamento.gerar` e `contas-fixas-pagar.gerar` continuam sob `incluir`: os três CRIAM registros, não alteram os que existem | aberta | conferir com o dono do produto ao revisar a lista rota a rota |
-| ASM-064 | Nenhuma tela decide o que mostrar perguntando por `incluir` como sinônimo de "pode editar" — se alguma decidir, o botão apareceria para quem a rota vai recusar | aberta | varrer as views por `canPermissao(..., 'incluir')` antes de fechar a T-003 |
+| ASM-063 | `revendas.provisionar`, `faturamento.gerar` e `contas-fixas-pagar.gerar` continuam sob `incluir`: os três CRIAM registros, não alteram os que existem | aberta | a regra de decisão ficou escrita no cabeçalho de `routes/web.php` ("o registro que esta rota toca já existia antes dela ser chamada?"); falta o dono do produto confirmar as três |
+| ASM-064 | Nenhuma tela decide o que mostrar perguntando por `incluir` como sinônimo de "pode editar" — se alguma decidir, o botão apareceria para quem a rota vai recusar | confirmada | as três ocorrências de `canPermissao(..., 'incluir')` nas views guardam botões "+ Novo" (revendas, clientes, produtos) — criação, não edição |
+| ASM-065 | O botão "Exportar prévia" do Faturamento exportava alguma coisa | invalidada | ele apontava para a própria tela com `?exportar=csv` e **ninguém lia o parâmetro** — recarregava a página e nada mais. A exportação foi implementada nesta feature (T-001), a pedido do dono do produto, para a permissão ter o que guardar |
 
 ## Perguntas em aberto
 

@@ -92,7 +92,7 @@ class RegistroDeContaEPermissaoTest extends TestCase
         $grade = [];
 
         foreach ($operacao->permissoes as $permissao) {
-            foreach (['ler', 'incluir', 'imprimir', 'excluir'] as $acao) {
+            foreach (['ler', 'incluir', 'editar', 'imprimir', 'excluir'] as $acao) {
                 if ($permissao->pivot->{$acao}) {
                     $grade[$permissao->recurso][$acao] = '1';
                 }
@@ -119,7 +119,7 @@ class RegistroDeContaEPermissaoTest extends TestCase
         $grade = [];
 
         foreach ($operacao->permissoes as $permissao) {
-            foreach (['ler', 'incluir', 'imprimir', 'excluir'] as $acao) {
+            foreach (['ler', 'incluir', 'editar', 'imprimir', 'excluir'] as $acao) {
                 if ($permissao->pivot->{$acao}) {
                     $grade[$permissao->recurso][$acao] = '1';
                 }

@@ -1,12 +1,22 @@
 {{-- A grade de cada perfil. Espera: $perfisComGrade, $permissoes.
 
     Uma tabela por perfil, empilhadas — mesmo arranjo dos cadastros auxiliares.
-    A alternativa seria uma matriz única com um bloco de quatro colunas por
-    perfil: vinte colunas de caixa, larga demais para caber e impossível de ler
-    sem contar cabeçalho. --}}
+    A alternativa seria uma matriz única com um bloco de cinco colunas por
+    perfil: vinte e cinco colunas de caixa, larga demais para caber e impossível
+    de ler sem contar cabeçalho. --}}
 
 @php
-    $ações = ['ler' => 'Ler', 'incluir' => 'Incluir', 'imprimir' => 'Imprimir', 'excluir' => 'Excluir'];
+    // `Editar` vem logo depois de `Incluir` porque é dele que ela se separou em
+    // 15/08/2026: até então, cadastrar era o mesmo que reescrever tudo o que já
+    // estava cadastrado. Lado a lado, a diferença entre as duas se lê sem
+    // precisar de legenda.
+    $ações = [
+        'ler' => 'Ler',
+        'incluir' => 'Incluir',
+        'editar' => 'Editar',
+        'imprimir' => 'Imprimir',
+        'excluir' => 'Excluir',
+    ];
 @endphp
 
 {{-- ARMADILHA: nada de `bg-input` na caixa. O `:checked` do plugin de forms

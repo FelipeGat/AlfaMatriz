@@ -55,6 +55,20 @@ Route::get('/csrf-token', fn () => response()->json(['token' => csrf_token()]))
 // `conta-ativa` e `senha-em-dia` no grupo inteiro, e não rota a rota: as duas
 // regras valem para TUDO que está atrás do login, e uma lista de rotas seria
 // uma lista para alguém esquecer de completar na próxima tela.
+//
+// Sobre o `,editar` que aparece em dezesseis rotas POST abaixo: o
+// `ChecarPermissao` infere a ação do verbo, e para o POST ele responde
+// "incluir". Está certo na maioria dos casos e ERRADO justamente onde mais
+// importa — mover uma tarefa, mover um lead, dar baixa numa cobrança, bloquear
+// uma licença e repor a senha de alguém não criam nada: mexem no que já
+// existe. Sem fixar a ação, quem recebesse só "cadastrar" continuaria fazendo
+// as dezesseis, e a separação entre cadastrar e editar (15/08/2026) valeria
+// apenas para os formulários que usam PUT — ou seja, metade dela.
+//
+// A regra para decidir, quando entrar rota nova: o registro que esta rota toca
+// já existia antes dela ser chamada? Se sim, é `editar`. `faturamento.gerar`,
+// `contas-fixas-pagar.gerar`, `revendas.provisionar` e os `store` continuam em
+// `incluir` porque a resposta ali é não.
 Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(function () {
     // Troca obrigatória de senha. Isenta do `senha-em-dia` por nome, dentro do
     // próprio middleware — no grupo por causa das outras duas checagens.
@@ -89,7 +103,7 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::put('leads/{lead}', [LeadController::class, 'update'])->name('leads.update')
         ->middleware('permissao:leads');
     Route::post('leads/{lead}/mover', [LeadController::class, 'mover'])->name('leads.mover')
-        ->middleware('permissao:leads');
+        ->middleware('permissao:leads,editar');
     Route::delete('leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy')
         ->middleware('permissao:leads');
 
@@ -108,19 +122,19 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::put('tarefas/{tarefa}', [TarefaController::class, 'update'])->name('tarefas.update')
         ->middleware('permissao:tarefas');
     Route::post('tarefas/{tarefa}/mover', [TarefaController::class, 'mover'])->name('tarefas.mover')
-        ->middleware('permissao:tarefas');
+        ->middleware('permissao:tarefas,editar');
     // Travar não é mover: a tarefa fica na etapa e só ganha a marca. Por isso
     // rota própria, e não um destino de `tarefas.mover` — o bloqueio saiu do
     // mapa de transições justamente para parar de fingir que era etapa.
     Route::post('tarefas/{tarefa}/bloquear', [TarefaController::class, 'bloquear'])
         ->name('tarefas.bloquear')
-        ->middleware('permissao:tarefas');
+        ->middleware('permissao:tarefas,editar');
     // Perguntar também não é mover, e não é bloquear: o PR continua aberto e a
     // tarefa continua no WIP. Rota própria pela mesma razão do bloqueio — o que
     // muda é de quem é a vez, não onde a tarefa está.
     Route::post('tarefas/{tarefa}/conversar', [TarefaController::class, 'conversar'])
         ->name('tarefas.conversar')
-        ->middleware('permissao:tarefas');
+        ->middleware('permissao:tarefas,editar');
     // Não há rota de criar comentário: ele viaja no `tarefas.update`, no mesmo
     // envio do cadastro. Corrigir e apagar continuam sendo caminho próprio —
     // mexem no que já foi publicado, e não podem ir de carona no salvar.
@@ -137,7 +151,7 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // inteira, porque arrastar reordena a lista toda na tela.
     Route::post('tarefas/posicionar', [TarefaController::class, 'posicionarNaColuna'])
         ->name('tarefas.posicionar')
-        ->middleware('permissao:tarefas');
+        ->middleware('permissao:tarefas,editar');
 
     // Checklist: criar e reordenar pendem da tarefa (é ela que dá a lista);
     // marcar, corrigir e remover pendem do item, que já sabe de quem é.
@@ -146,7 +160,7 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware('permissao:tarefas');
     Route::post('tarefas/{tarefa}/itens/ordenar', [TarefaController::class, 'ordenarItens'])
         ->name('tarefas.itens.ordenar')
-        ->middleware('permissao:tarefas');
+        ->middleware('permissao:tarefas,editar');
     Route::put('tarefas/itens/{item}', [TarefaController::class, 'atualizarItem'])
         ->name('tarefas.itens.update')
         ->middleware('permissao:tarefas');
@@ -197,16 +211,16 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // mudam, só ganham um argumento.
     Route::post('clientes/{cliente}/sistemas/{sistema}/licenca/liberar', [ClienteController::class, 'liberarLicenca'])
         ->name('clientes.liberarLicenca')
-        ->middleware('permissao:clientes');
+        ->middleware('permissao:clientes,editar');
     Route::post('clientes/{cliente}/sistemas/{sistema}/licenca/renovar', [ClienteController::class, 'renovarLicenca'])
         ->name('clientes.renovarLicenca')
-        ->middleware('permissao:clientes');
+        ->middleware('permissao:clientes,editar');
     Route::post('clientes/{cliente}/sistemas/{sistema}/licenca/bloquear', [ClienteController::class, 'bloquearLicenca'])
         ->name('clientes.bloquearLicenca')
-        ->middleware('permissao:clientes');
+        ->middleware('permissao:clientes,editar');
     Route::post('clientes/{cliente}/sistemas/{sistema}/licenca/desbloquear', [ClienteController::class, 'desbloquearLicenca'])
         ->name('clientes.desbloquearLicenca')
-        ->middleware('permissao:clientes');
+        ->middleware('permissao:clientes,editar');
 
     // O cadastro herda a MESMA porta que já protege preço e tier: registrar
     // sistema é decisão de quem cuida do catálogo.
@@ -249,15 +263,15 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::resource('cobrancas', CobrancaController::class)
         ->middleware('permissao:cobrancas');
     Route::post('cobrancas/{cobranca}/baixar', [CobrancaController::class, 'baixar'])->name('cobrancas.baixar')
-        ->middleware('permissao:cobrancas');
+        ->middleware('permissao:cobrancas,editar');
     Route::post('cobrancas/baixar-em-massa', [CobrancaController::class, 'baixarEmMassa'])->name('cobrancas.baixarEmMassa')
-        ->middleware('permissao:cobrancas');
+        ->middleware('permissao:cobrancas,editar');
     Route::get('cobrancas/{cobranca}/anexos', [CobrancaController::class, 'listarAnexos'])->name('cobrancas.anexos.listar')
         ->middleware('permissao:cobrancas');
     Route::post('cobrancas/{cobranca}/anexos', [CobrancaController::class, 'storeAnexo'])->name('cobrancas.anexos.upload')
         ->middleware('permissao:cobrancas');
     Route::get('cobrancas/anexos/{anexo}/download', [CobrancaController::class, 'downloadAnexo'])->name('cobrancas.anexos.download')
-        ->middleware('permissao:cobrancas');
+        ->middleware('permissao:cobrancas,imprimir');
     Route::delete('cobrancas/anexos/{anexo}', [CobrancaController::class, 'destroyAnexo'])->name('cobrancas.anexos.destroy')
         ->middleware('permissao:cobrancas');
 
@@ -265,15 +279,15 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->parameters(['contas-pagar' => 'conta_pagar'])
         ->middleware('permissao:contas_pagar');
     Route::post('contas-pagar/{conta_pagar}/baixar', [ContaPagarController::class, 'baixar'])->name('contas-pagar.baixar')
-        ->middleware('permissao:contas_pagar');
+        ->middleware('permissao:contas_pagar,editar');
     Route::post('contas-pagar/baixar-em-massa', [ContaPagarController::class, 'baixarEmMassa'])->name('contas-pagar.baixarEmMassa')
-        ->middleware('permissao:contas_pagar');
+        ->middleware('permissao:contas_pagar,editar');
     Route::get('contas-pagar/{conta_pagar}/anexos', [ContaPagarController::class, 'listarAnexos'])->name('contas-pagar.anexos.listar')
         ->middleware('permissao:contas_pagar');
     Route::post('contas-pagar/{conta_pagar}/anexos', [ContaPagarController::class, 'storeAnexo'])->name('contas-pagar.anexos.upload')
         ->middleware('permissao:contas_pagar');
     Route::get('contas-pagar/anexos/{anexo}/download', [ContaPagarController::class, 'downloadAnexo'])->name('contas-pagar.anexos.download')
-        ->middleware('permissao:contas_pagar');
+        ->middleware('permissao:contas_pagar,imprimir');
     Route::delete('contas-pagar/anexos/{anexo}', [ContaPagarController::class, 'destroyAnexo'])->name('contas-pagar.anexos.destroy')
         ->middleware('permissao:contas_pagar');
 
@@ -283,7 +297,7 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::post('contas-fixas-pagar/gerar', [ContaFixaPagarController::class, 'gerar'])->name('contas-fixas-pagar.gerar')
         ->middleware('permissao:contas_pagar');
     Route::post('contas-fixas-pagar/{conta_fixa_pagar}/pausar', [ContaFixaPagarController::class, 'pausar'])->name('contas-fixas-pagar.pausar')
-        ->middleware('permissao:contas_pagar');
+        ->middleware('permissao:contas_pagar,editar');
 
     Route::resource('contas-financeiras', ContaFinanceiraController::class)->except(['show'])
         ->parameters(['contas-financeiras' => 'conta_financeira'])
@@ -301,7 +315,7 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::put('usuarios/{usuario}', [UsuarioController::class, 'update'])->name('usuarios.update')
         ->middleware('permissao:usuarios');
     Route::post('usuarios/{usuario}/senha', [UsuarioController::class, 'redefinirSenha'])->name('usuarios.senha')
-        ->middleware('permissao:usuarios');
+        ->middleware('permissao:usuarios,editar');
     // Ação fixada em `excluir`, e não inferida do POST: o middleware leria
     // "incluir" pelo verbo, e fechar o acesso de alguém não é incluir nada.
     Route::post('usuarios/{usuario}/ativo', [UsuarioController::class, 'alternarAtivo'])->name('usuarios.ativo')
