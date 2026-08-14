@@ -1,0 +1,16 @@
+<b>📋 AlfaMatriz — Changelog 14/08/2026</b>
+<i>O quadro de tarefas ficou mais leve de novo, e nada mudou de lugar</i>
+
+Continuação da entrega de desempenho de hoje mais cedo. Aquela tirou o formulário de edição de dentro de todas as tarefas; esta tira a última coisa que ainda era impressa em todos os cards para servir a um só.
+
+<b>⚡ Melhorias</b>
+
+• <b>O pedido de motivo era baixado 120 vezes para abrir uma.</b> É aquele quadrinho que aparece quando se trava uma tarefa, se conclui ou se arrasta para uma etapa que exige explicação. Só pode haver um aberto por vez — mas cada card trazia a própria cópia dele. Num quadro de 120 tarefas eram 479 KB de formulários que nunca abririam.
+• <b>Agora existe um só, e ele é montado no card que pediu.</b> O quadro caiu de 1,85 MB para 1,29 MB. Somando com a entrega de mais cedo, a mesma tela saiu de 5,5 MB para 1,29 MB — pouco menos de um quarto do que era.
+• <b>Visualmente, nada mudou.</b> O pedido de motivo continua abrindo dentro do card, colado na tarefa de que fala, com o mesmo texto, a mesma cor e o mesmo campo. Isso não é acaso: ele já foi um painel flutuante no rodapé do quadro uma vez, e foi trazido de volta para dentro do card justamente porque pedir explicação longe da tarefa fazia perder a ligação com o que tinha acabado de ser feito.
+
+<b>🔎 Uma nota sobre como isso foi conferido</b>
+
+Os testes automáticos passaram com duas coisas quebradas — eles conferem o que o servidor manda, e o que quebrou estava no navegador. Achamos as duas dirigindo o Chrome à mão: o cursor deixava de ir para o campo de motivo ao abrir, e cancelar enchia o console de erro. As duas foram corrigidas antes de subir, e ficaram escritas no código para não voltarem.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
