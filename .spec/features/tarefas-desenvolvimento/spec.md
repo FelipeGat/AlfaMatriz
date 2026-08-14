@@ -745,6 +745,11 @@ erro e a planilha do cliente encerram a mesma dúvida pelo mesmo motivo: a
 história nasceu só com imagem em 13/08/2026 e foi generalizada no mesmo dia,
 quando ficou claro que "ser figura" nunca foi a razão pela qual se anexa algo.
 
+O anexo passou a caber na CRIAÇÃO no mesmo dia (AC-234), pelo mesmo motivo: a
+tarefa quase sempre nasce de algo que já está na tela de quem a abre, e a
+seção só existia depois de salvar — o que transformava anexar num segundo
+gesto, que se deixa para depois.
+
 #### AC-223 — O anexo entra por arquivo ou por Ctrl+V
 
 - **Dado** uma tarefa aberta
@@ -896,6 +901,31 @@ quando ficou claro que "ser figura" nunca foi a razão pela qual se anexa algo.
   enquanto o código dizia que o arquivo só sai por rota com `auth`. Nenhuma tela
   do sistema monta URL de `/storage` (conferido em 13/08/2026): a recusa não
   tira nada de ninguém, só faz a frase do código virar verdade
+
+#### AC-234 — A prova entra junto com a tarefa
+
+- **Dado** o modal de nova tarefa aberto
+- **Quando** escolho um arquivo, ou colo um print, antes de salvar
+- **Então** ele aparece na mesma seção de anexos, com a mesma cara que teria na
+  tarefa já aberta — miniatura para figura, linha para o resto —, e vai junto no
+  Salvar. Quem abre uma tarefa quase sempre está olhando para o print que a
+  motivou; pedir para salvar primeiro e anexar depois é pedir um segundo gesto,
+  e o segundo gesto se deixa para depois — aí a tarefa nasce descrevendo por
+  escrito o que já estava na tela
+- **E** os arquivos viajam no MESMO POST que cria a tarefa, e não num envio
+  depois dela: não existe id a que prendê-los antes disso, e criar primeiro para
+  anexar em seguida deixaria a tarefa gravada e a prova perdida se o segundo
+  envio falhasse
+- **E** o teto de três vale para a LISTA INTEIRA na criação, e não por lote:
+  antes de a tarefa existir não há próxima leva. O quarto arquivo entra com ela
+  já aberta, e a tela diz isso em vez de recusar em silêncio
+- **E** o arquivo recusado (tipo, tamanho, quantidade) recusa a criação INTEIRA.
+  O envio é parcial, então a recusa chega com o modal aberto e o texto todo no
+  lugar, e corrigir custa um clique — enquanto nascer sem o anexo seria a pior
+  das duas saídas: a tarefa fica, a prova some, e ninguém é avisado
+- **E** o que é colado ganha o nome datado já na tela, e não só depois de gravar:
+  na criação a legenda aparece antes de o servidor ver o arquivo, e três
+  "image.png" que trocam de nome sozinhos depois de salvar não distinguem nada
 
 ## Fora de escopo
 

@@ -13,6 +13,7 @@ use App\Services\FluxoTarefaService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
@@ -285,7 +286,19 @@ class TarefaController extends Controller
             // entregava outro. Só as duas colunas de fila são destino válido:
             // criar direto em Em revisão pularia o trabalho.
             'status' => 'nullable|in:aberta,backlog',
-        ]);
+
+            // A prova entra JUNTO com a tarefa (AC-234). Até aqui ela só entrava
+            // depois, com a tarefa aberta — e quem abre uma tarefa a partir de
+            // um print acabava descrevendo por escrito o que já tinha na tela,
+            // porque o segundo gesto é fácil de deixar para depois.
+            ...$this->regrasDeAnexo(obrigatorio: false),
+        ], $this->recadosDeAnexo());
+
+        // Fora do `$data` antes de qualquer outra coisa: ele vira `where()` na
+        // busca por reenvio e `create()` logo em seguida, e nenhum dos dois sabe
+        // o que fazer com um arquivo — o primeiro compararia `UploadedFile` com
+        // coluna e o segundo tentaria gravá-lo numa tarefa.
+        $arquivos = Arr::pull($data, 'anexos', []);
 
         // O padrão é resolvido AQUI, e não só no modelo, por causa da linha
         // abaixo: a busca por reenvio compara o formulário inteiro, e um `tipo`
@@ -300,8 +313,12 @@ class TarefaController extends Controller
         // Mesma rede do comentário (AC-137): aqui o clique duplo custa mais
         // caro, porque a segunda tarefa não é uma linha repetida na conversa —
         // é um card a mais no quadro, que alguém vai ter de cancelar na mão.
+        //
+        // Os arquivos entram DENTRO do mesmo `if`, e não ao lado: no clique
+        // duplo os dois envios carregam os mesmos anexos, e gravá-los fora daqui
+        // deixaria o print duplicado na tarefa que a trava acabou de preservar.
         if (! $this->reenvioDaMesmaTarefa($data)) {
-            Tarefa::create($data);
+            $this->gravarAnexos($arquivos, Tarefa::create($data));
         }
 
         return $this->voltarParaOQuadro($request, 'Tarefa criada.', fecharModal: 'nova-tarefa', mudouOConjunto: true, limparModal: true);
@@ -1065,7 +1082,11 @@ class TarefaController extends Controller
     }
 
     /**
-     * Anexa arquivos à tarefa (US-064).
+     * Anexa arquivos à tarefa JÁ ABERTA (US-064).
+     *
+     * A tarefa que ainda não existe entra por outro lugar — os arquivos viajam
+     * no mesmo POST que a cria (`store`), porque não há id a que prendê-los
+     * antes disso. As regras e a gravação são as mesmas nos dois casos.
      *
      * Responde JSON, e NÃO redireciona de volta como o checklist faz.
      *
@@ -1092,20 +1113,59 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $request->validate([
-            'anexos' => 'required|array|min:1|max:3',
+        $request->validate($this->regrasDeAnexo(obrigatorio: true), $this->recadosDeAnexo());
+
+        $anexados = $this->gravarAnexos($request->file('anexos'), $tarefa);
+
+        return response()->json(['anexos' => $anexados->values()]);
+    }
+
+    /**
+     * As regras do arquivo, iguais nas duas portas por onde ele entra.
+     *
+     * São duas desde a criação com anexo (AC-234): a tarefa já aberta, que
+     * recebe arquivo por `anexarArquivo`, e a tarefa que ainda não existe, que
+     * o recebe no mesmo POST que a cria. Duas cópias da lista divergiriam no
+     * primeiro tipo aceito a mais — e é essa lista que decide o que o servidor
+     * guarda no disco publicado, não um detalhe de mensagem.
+     *
+     * A única diferença entre as duas é a PRESENÇA: no envio da tarefa aberta o
+     * arquivo é a razão do pedido e vir vazio é erro; na criação a maioria das
+     * tarefas nasce sem nenhum.
+     *
+     * @return array<string, string>
+     */
+    private function regrasDeAnexo(bool $obrigatorio): array
+    {
+        return [
+            'anexos' => ($obrigatorio ? 'required|array|min:1' : 'nullable|array').'|max:3',
             // `mimes:` não olha o nome do arquivo: detecta o mime do CONTEÚDO e
             // pergunta qual extensão corresponde a ele. É por isso que SVG e
             // HTML não entram sem estarem citados em lugar nenhum — e é por
             // isso que `log` também não precisa estar (texto puro deduz `txt`).
             'anexos.*' => 'required|file|mimes:'.implode(',', TarefaAnexo::EXTENSOES_VALIDADAS).'|max:12288',
-        ], [
+        ];
+    }
+
+    /** @return array<string, string> */
+    private function recadosDeAnexo(): array
+    {
+        return [
             'anexos.*.mimes' => 'A tarefa aceita imagem, PDF, texto ou log, CSV e planilha do Excel.',
             'anexos.*.max' => 'Cada arquivo precisa ter até 12 MB.',
             'anexos.max' => 'Até três arquivos por vez.',
-        ]);
+        ];
+    }
 
-        $anexados = collect($request->file('anexos'))->map(function (UploadedFile $arquivo) use ($tarefa) {
+    /**
+     * Grava no disco os arquivos que vieram no envio.
+     *
+     * @param  array<int, UploadedFile>  $arquivos
+     * @return Collection<int, TarefaAnexo>
+     */
+    private function gravarAnexos(array $arquivos, Tarefa $tarefa): Collection
+    {
+        return collect($arquivos)->map(function (UploadedFile $arquivo) use ($tarefa) {
             /*
              * A extensão do disco sai do CONTEÚDO, nunca do nome enviado.
              *
@@ -1145,8 +1205,6 @@ class TarefaController extends Controller
                 'tamanho' => $arquivo->getSize(),
             ])->load('autor');
         });
-
-        return response()->json(['anexos' => $anexados->values()]);
     }
 
     /**

@@ -48,6 +48,12 @@
            continuaria na tela depois de gravado, e o Salvar seguinte publicaria
            a mesma frase de novo — o mesmo motivo do Perguntar. --}}
       @if ($edicao) data-limpa="#comentario-{{ $tarefa->id }}" @endif
+      {{-- Só a criação carrega arquivo, e por isso só ela é multipart: o
+           `new FormData(form)` do envio parcial embala os arquivos sozinho,
+           mas o envio comum do navegador — sem JavaScript — manda os NOMES e
+           deixa o conteúdo para trás sem avisar. Na edição o anexo vai por
+           `fetch` próprio, e o `enctype` aqui só engordaria todo Salvar. --}}
+      @unless ($edicao) enctype="multipart/form-data" @endunless
       action="{{ $edicao ? route('tarefas.update', $tarefa) : route('tarefas.store') }}"
       class="flex flex-col"
       {{-- `bloqueada` é estado de tela, não do servidor, porque travar e
@@ -231,14 +237,21 @@
         @endunless
 
         {{--
-            Checklist, anexos e conversa só na edição: tarefa que ainda não
-            existe não tem nenhuma das três, e o modal de criação não teria onde
-            pendurar o comentário nem para qual id enviar o arquivo.
+            Checklist e conversa só na edição: tarefa que ainda não existe não
+            tem nenhuma das duas, e o modal de criação não teria onde pendurar o
+            comentário nem sobre o que combinar um item.
 
-            Os anexos ficam ENTRE o checklist e a conversa de propósito: são
+            Os anexos são o caso à parte, e por isso o include está fora do `@if`
+            — quem abre uma tarefa quase sempre está olhando para o print que a
+            motivou (AC-234). Pedir para salvar primeiro e anexar depois é pedir
+            um segundo gesto que se deixa para depois, e aí a tarefa nasce
+            descrevendo por escrito o que já estava na tela.
+
+            Ele fica ENTRE o checklist e a conversa de propósito: os anexos são
             prova do que a tarefa é, e a conversa é o que se diz sobre isso.
             Depois da conversa, virariam rodapé de uma lista que já rola por
-            dentro.
+            dentro. Na criação, onde as outras duas não existem, ele é o fim do
+            corpo — e a ordem entre os três continua a mesma.
         --}}
         {{-- Checklist e conversa vêm embrulhados num `data-pedaco`: são as duas
              regiões que o servidor redesenha e troca no lugar depois de marcar
@@ -252,9 +265,11 @@
             <div class="contents" data-pedaco="checklist-{{ $tarefa->id }}">
                 @include('tarefas._checklist', ['tarefa' => $tarefa])
             </div>
+        @endif
 
-            @include('tarefas._anexos', ['tarefa' => $tarefa])
+        @include('tarefas._anexos', ['tarefa' => $tarefa])
 
+        @if ($edicao)
             <div class="contents" data-pedaco="conversa-{{ $tarefa->id }}">
                 @include('tarefas._comentarios', ['tarefa' => $tarefa])
             </div>

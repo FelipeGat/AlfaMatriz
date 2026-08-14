@@ -474,4 +474,135 @@ class AnexosDaTarefaTest extends TestCase
         $this->assertDatabaseHas('tarefa_anexos', ['id' => $anexo->id]);
         $this->assertSame(1, TarefaAnexo::count());
     }
+
+    /**
+     * @spec:AC-234 A prova entra JUNTO com a tarefa: quem abre uma tarefa quase sempre
+     * está olhando para o print que a motivou, e pedir para salvar primeiro e anexar
+     * depois é pedir um segundo gesto — que se deixa para depois, e aí a tarefa nasce
+     * descrevendo por escrito o que já estava na tela.
+     */
+    public function test_a_tarefa_nasce_com_os_anexos_junto(): void
+    {
+        $usuario = User::factory()->create(['name' => 'Rossini Santos']);
+
+        $this->actingAs($usuario)
+            ->post(route('tarefas.store'), [
+                'titulo' => 'Botão de salvar saiu do lugar no Chrome',
+                'anexos' => [
+                    UploadedFile::fake()->image('tela-do-erro.png', 800, 600),
+                    UploadedFile::fake()->create('console.log', 40, 'text/plain'),
+                ],
+            ])
+            ->assertRedirect(route('tarefas.index'));
+
+        $tarefa = Tarefa::sole();
+        $anexos = $tarefa->anexos;
+
+        $this->assertCount(2, $anexos);
+        $this->assertSame(['tela-do-erro.png', 'console.log'], $anexos->pluck('nome_original')->all());
+        $this->assertTrue($anexos->every(fn ($anexo) => $anexo->autor_id === $usuario->id));
+
+        // Os dois passam pela mesma gravação da tarefa já aberta: o arquivo vai
+        // parar no disco, e a separação entre miniatura e linha continua saindo
+        // do conteúdo, não do nome.
+        $this->assertSame([true, false], $anexos->pluck('eh_imagem')->all());
+        $anexos->each(fn ($anexo) => Storage::disk('public')->assertExists($anexo->caminho));
+    }
+
+    /**
+     * @spec:AC-234 O anexo recusado leva a criação inteira junto, em vez de a tarefa
+     * nascer sem ele: a recusa acontece com o modal aberto e o texto todo ainda na tela
+     * (o envio é parcial, sem recarga), então corrigir o arquivo custa um clique. Nascer
+     * sem o print seria a pior das duas: a tarefa fica, a prova some, e ninguém é avisado.
+     */
+    public function test_anexo_recusado_recusa_a_criacao_inteira(): void
+    {
+        $usuario = User::factory()->create();
+        $png = UploadedFile::fake()->image('inofensivo.png', 40, 30);
+
+        $this->actingAs($usuario)
+            ->post(route('tarefas.store'), [
+                'titulo' => 'Erro no fechamento do mês',
+                'anexos' => [new UploadedFile($png->getPathname(), 'payload.php', 'image/png', null, true)],
+            ])
+            ->assertSessionHasErrors('anexos.0');
+
+        $this->assertSame(0, Tarefa::count());
+        $this->assertSame(0, TarefaAnexo::count());
+    }
+
+    /**
+     * @spec:AC-234 O teto de três é do envio, e na criação o envio é um só: os arquivos
+     * viajam no mesmo POST do formulário, então não existe "próxima leva" antes de a
+     * tarefa existir. O quarto arquivo entra com ela já aberta.
+     */
+    public function test_a_criacao_aceita_no_maximo_tres_anexos(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->post(route('tarefas.store'), [
+                'titulo' => 'Migrar o relatório antigo',
+                'anexos' => [
+                    UploadedFile::fake()->image('um.png'),
+                    UploadedFile::fake()->image('dois.png'),
+                    UploadedFile::fake()->image('tres.png'),
+                    UploadedFile::fake()->image('quatro.png'),
+                ],
+            ])
+            ->assertSessionHasErrors('anexos');
+
+        $this->assertSame(0, Tarefa::count());
+    }
+
+    /**
+     * @spec:AC-234
+     *
+     * @spec:AC-137 O clique duplo não duplica o anexo, e por isso a gravação mora DENTRO
+     * da trava de reenvio: os dois envios carregam os mesmos arquivos, e gravá-los ao lado
+     * dela deixaria o print repetido justamente na tarefa que a trava preservou.
+     */
+    public function test_clique_duplo_na_criacao_nao_duplica_o_anexo(): void
+    {
+        $usuario = User::factory()->create();
+        $envio = ['titulo' => 'Corrigir o boleto vencido', 'prioridade' => 'media'];
+
+        // Arquivos novos no segundo envio, e não os mesmos objetos: o navegador
+        // manda o conteúdo de novo, e o `UploadedFile` do primeiro já foi movido
+        // para o disco — reaproveitá-lo testaria outra coisa.
+        $this->actingAs($usuario)->post(route('tarefas.store'), $envio + [
+            'anexos' => [UploadedFile::fake()->image('boleto.png')],
+        ]);
+
+        $this->actingAs($usuario)->post(route('tarefas.store'), $envio + [
+            'anexos' => [UploadedFile::fake()->image('boleto.png')],
+        ]);
+
+        $this->assertSame(1, Tarefa::count());
+        $this->assertSame(1, TarefaAnexo::count());
+    }
+
+    /**
+     * @spec:AC-234 O formulário de criação DECLARA que carrega arquivo, e o de edição não.
+     *
+     * As duas linhas somem em silêncio: sem `name`, o campo não entra no envio e a tarefa
+     * nasce sem os anexos que a tela acabou de mostrar; sem `enctype`, o navegador manda os
+     * NOMES e deixa o conteúdo para trás quando o envio não passa pelo JavaScript. Nenhuma
+     * das duas dá erro — por isso o teste as fixa.
+     *
+     * Na edição o campo continua SEM nome: lá o anexo vai por `fetch` próprio, e um campo
+     * nomeado entraria em todo Salvar como um upload vazio.
+     */
+    public function test_so_o_formulario_de_criacao_carrega_arquivo(): void
+    {
+        $this->criarTarefa();
+
+        $html = $this->actingAs(User::factory()->create())
+            ->get(route('tarefas.index'))
+            ->assertOk()
+            ->getContent();
+
+        // Uma vez cada: o modal de criação é único, e o de edição — que existe
+        // um por card — não pode ter nenhum dos dois.
+        $this->assertSame(1, substr_count($html, 'name="anexos[]"'));
+        $this->assertSame(1, substr_count($html, 'enctype="multipart/form-data"'));
+    }
 }

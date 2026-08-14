@@ -158,11 +158,23 @@
              * que esta seção serve é colar um print no meio de escrever o
              * comentário que o explica, e recarregar a tela ali descartaria o
              * texto ainda não publicado.
+             *
+             * `tarefaId` nulo é a CRIAÇÃO (AC-234): a mesma seção, o mesmo
+             * gesto e a mesma cara, mas sem servidor do outro lado — não há id
+             * a que prender arquivo. Ali os arquivos ficam na tela e saem no
+             * POST que cria a tarefa, pelo `input` que o Blade nomeia; o que
+             * muda é o destino de `enviar` e de `remover`, não o resto.
              */
             Alpine.data('anexosDaTarefa', (tarefaId, iniciais) => ({
                 anexos: iniciais,
                 enviando: false,
                 erro: null,
+
+                /** A tarefa ainda não existe: nada aqui fala com o servidor. */
+                criacao: tarefaId === null,
+
+                /** Só para dar chave ao `x-for` do que ainda não tem id no banco. */
+                sequencia: 0,
 
                 // A mesma separação que o Blade faz no modo leitura, refeita
                 // aqui porque a lista muda sem a página recarregar: figura vai
@@ -173,6 +185,17 @@
 
                 get arquivos() {
                     return this.anexos.filter((anexo) => ! anexo.eh_imagem);
+                },
+
+                // Na criação nada é enviado — o que ocupa o botão é o encolher
+                // da figura grande. "Enviando…" ali prometeria uma viagem que
+                // só vai acontecer no Salvar.
+                get rotuloDoBotao() {
+                    if (! this.enviando) {
+                        return 'Anexar arquivo';
+                    }
+
+                    return this.criacao ? 'Preparando…' : 'Enviando…';
                 },
 
                 /**
@@ -237,7 +260,18 @@
                     // arquivo duas vezes seguidas não dispara `change` na
                     // segunda — o valor não mudou —, e quem removeu uma imagem
                     // por engano não consegue anexá-la de novo.
-                    evento.target.value = '';
+                    //
+                    // Na criação o campo não é zerado: ele é DEVOLVIDO à lista
+                    // da tela, que é a carga do formulário. O seletor acabou de
+                    // escrever ali só o que foi escolhido agora, e essa escolha
+                    // ainda pode ser recusada logo abaixo — por tipo, tamanho ou
+                    // por já haver três. Sem devolver, a tela mostraria os três
+                    // anexos de sempre e o envio levaria o quarto, sozinho.
+                    if (this.criacao) {
+                        this.sincronizar();
+                    } else {
+                        evento.target.value = '';
+                    }
 
                     if (arquivos.length) {
                         this.enviar(arquivos);
@@ -247,9 +281,22 @@
                 async enviar(arquivos) {
                     this.erro = null;
 
-                    if (arquivos.length > this.porEnvio) {
-                        this.erro = 'Até ' + this.porEnvio + ' arquivos por vez — os demais ficaram de fora.';
-                        arquivos = arquivos.slice(0, this.porEnvio);
+                    // Na criação o teto conta a LISTA INTEIRA, e não o lote: os
+                    // três vão num POST só, junto do formulário, então não há
+                    // "próxima leva" antes de a tarefa existir. Com a tarefa
+                    // aberta, o mesmo três é por envio — e quem tem mais manda
+                    // em duas vezes.
+                    const lugares = this.porEnvio - (this.criacao ? this.anexos.length : 0);
+
+                    if (arquivos.length > lugares) {
+                        this.erro = this.criacao
+                            ? 'A tarefa nasce com até ' + this.porEnvio + ' anexos — o resto entra com ela já aberta.'
+                            : 'Até ' + this.porEnvio + ' arquivos por vez — os demais ficaram de fora.';
+                        arquivos = arquivos.slice(0, Math.max(lugares, 0));
+
+                        if (! arquivos.length) {
+                            return;
+                        }
                     }
 
                     this.enviando = true;
@@ -265,7 +312,11 @@
                             preparados.push(await this.reduzir(arquivo));
                         }
 
-                        const soma = preparados.reduce((total, arquivo) => total + arquivo.size, 0);
+                        // O que já está na tela pesa junto na criação: os
+                        // anexados antes ainda não saíram daqui, e vão no mesmo
+                        // corpo que os de agora.
+                        const soma = preparados.reduce((total, arquivo) => total + arquivo.size, 0)
+                            + (this.criacao ? this.anexos.reduce((total, anexo) => total + anexo.tamanho, 0) : 0);
 
                         // A recusa é DITA aqui porque o servidor não teria como
                         // dizê-la: passando de `post_max_size`, o PHP descarta o
@@ -277,6 +328,14 @@
                                 'Os arquivos somam ' + Math.round(soma / 1048576) + ' MB e o envio aceita até '
                                 + Math.round(this.tetoDoEnvio / 1048576) + ' MB de uma vez — mande em duas levas.'
                             );
+                        }
+
+                        // Daqui em diante é viagem, e na criação não há para
+                        // onde: o arquivo fica na tela até o Salvar levá-lo.
+                        if (this.criacao) {
+                            this.guardar(preparados);
+
+                            return;
                         }
 
                         const corpo = new FormData();
@@ -315,6 +374,133 @@
                     } finally {
                         this.enviando = false;
                     }
+                },
+
+                /**
+                 * Guarda na tela o que ainda não tem tarefa a que se prender.
+                 *
+                 * O item nasce com os MESMOS campos que o servidor devolveria —
+                 * `nome_original`, `tamanho_formatado`, `url`, `eh_imagem`,
+                 * `autor_id` —, e é isso que faz a grade e a lista serem as
+                 * mesmas nos dois modos. A alternativa era um segundo desenho
+                 * da seção, que divergiria do primeiro no dia em que um dos dois
+                 * mudasse.
+                 *
+                 * `id` é texto (`novo-1`) e não número de propósito: ele só
+                 * serve de chave para o `x-for`, e um inteiro se pareceria com
+                 * id de banco para quem chamasse `remover` sem olhar.
+                 */
+                guardar(arquivos) {
+                    for (const arquivo of arquivos) {
+                        this.anexos = [...this.anexos, {
+                            id: 'novo-' + (++this.sequencia),
+                            arquivo,
+                            autor_id: {{ auth()->id() ?? 'null' }},
+                            nome_original: this.batizar(arquivo),
+                            tamanho: arquivo.size,
+                            tamanho_formatado: this.emTamanho(arquivo.size),
+                            eh_imagem: arquivo.type.startsWith('image/'),
+                            // `blob:` do próprio navegador: a miniatura mostra o
+                            // arquivo que está na máquina de quem anexou,
+                            // porque o servidor ainda não o viu.
+                            url: URL.createObjectURL(arquivo),
+                        }];
+                    }
+
+                    this.sincronizar();
+                },
+
+                /**
+                 * A lista da tela vira a carga do formulário.
+                 *
+                 * O campo de arquivo é o único que não se escreve: o que ele
+                 * carrega só muda por escolha de quem usa, ou por uma
+                 * `FileList` montada à mão — que é para isso que o
+                 * `DataTransfer` existe. Sem esta linha, o que fosse COLADO
+                 * nunca entraria no envio (nunca passou pelo seletor) e o que
+                 * fosse REMOVIDO da tela continuaria indo junto.
+                 *
+                 * É também o que faz o print grande viajar já encolhido: volta
+                 * para o campo o arquivo reduzido, não o que foi escolhido.
+                 */
+                sincronizar() {
+                    const carga = new DataTransfer();
+
+                    for (const anexo of this.anexos) {
+                        carga.items.add(anexo.arquivo);
+                    }
+
+                    this.$refs.carga.files = carga.files;
+                },
+
+                /**
+                 * O nome com que o anexo colado se apresenta.
+                 *
+                 * É a mesma regra do `nomeDeExibicao` do controlador, repetida
+                 * aqui por um motivo que só existe na criação: a legenda aparece
+                 * ANTES de o servidor ver o arquivo. Sem isto, três prints
+                 * colados viram três "image.png" na tela e trocam de nome
+                 * sozinhos depois de salvar — e a legenda existe justamente para
+                 * distinguir o que a miniatura, pequena, já não distingue.
+                 *
+                 * O servidor continua batizando o que chega sem nome: é ele que
+                 * alcança a tarefa já aberta e o envio sem JavaScript.
+                 */
+                batizar(arquivo) {
+                    const nome = arquivo.name || '';
+
+                    if (! ['', 'image', 'blob'].includes(nome.replace(/\.[^.]+$/, ''))) {
+                        return nome;
+                    }
+
+                    const agora = new Date();
+                    const dois = (valor) => String(valor).padStart(2, '0');
+
+                    return 'captura-'
+                        + agora.getFullYear() + '-' + dois(agora.getMonth() + 1) + '-' + dois(agora.getDate())
+                        + '-' + dois(agora.getHours()) + dois(agora.getMinutes()) + dois(agora.getSeconds())
+                        + '.' + (nome.includes('.') ? nome.split('.').pop() : 'png');
+                },
+
+                /** A mesma régua do `tamanho_formatado` do servidor — a lista
+                 *  da criação é desenhada sem ele ter visto o arquivo. */
+                emTamanho(bytes) {
+                    if (bytes < 1024) {
+                        return bytes + ' B';
+                    }
+
+                    if (bytes < 1048576) {
+                        return Math.round(bytes / 1024 * 10) / 10 + ' KB';
+                    }
+
+                    return Math.round(bytes / 1048576 * 10) / 10 + ' MB';
+                },
+
+                /**
+                 * O formulário foi esvaziado — a lista vai junto.
+                 *
+                 * Quem chama o `reset()` é o quadro, depois de a tarefa nascer:
+                 * o "nova tarefa" é o único modal que o servidor não redesenha,
+                 * então ele guardaria o que acabou de ser gravado. Sem isto, os
+                 * anexos da tarefa criada continuariam na tela e a PRÓXIMA
+                 * tarefa nasceria com eles — desta vez de verdade, porque o
+                 * `reset` limpa o campo mas não a lista que o reescreve.
+                 *
+                 * `contains` porque o ouvinte é de `window`: o evento sobe de
+                 * qualquer formulário da página, e só o que me contém é meu.
+                 */
+                esvaziar(evento) {
+                    if (! this.criacao || ! evento.target.contains(this.$el)) {
+                        return;
+                    }
+
+                    for (const anexo of this.anexos) {
+                        URL.revokeObjectURL(anexo.url);
+                    }
+
+                    this.anexos = [];
+                    this.erro = null;
+                    this.sincronizar();
                 },
 
                 /**
@@ -378,6 +564,18 @@
 
                 async remover(anexo) {
                     this.erro = null;
+
+                    // Na criação o anexo nunca saiu daqui: some da tela, sai da
+                    // carga e devolve o `blob:` ao navegador, sem ninguém a quem
+                    // pedir licença — não há linha no banco nem arquivo no
+                    // disco para desfazer.
+                    if (this.criacao) {
+                        this.anexos = this.anexos.filter((atual) => atual.id !== anexo.id);
+                        URL.revokeObjectURL(anexo.url);
+                        this.sincronizar();
+
+                        return;
+                    }
 
                     // Some da tela antes da resposta: a remoção é do próprio
                     // autor e o servidor já concordou com a mesma regra. Se

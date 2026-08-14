@@ -1,5 +1,30 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 13/08/2026 — O print entra junto com a tarefa, e não depois dela
+
+A seção de anexos só existia depois de salvar. Quem abre uma tarefa quase
+sempre está olhando para o print que a motivou — e ter de gravar primeiro para
+anexar em seguida transforma isso num segundo gesto, que se deixa para depois.
+O resultado era a tarefa nascer descrevendo por escrito o que já estava na tela
+de quem a abriu.
+
+### Novidades
+
+- **A nova tarefa aceita imagem e arquivo antes de existir.** A mesma seção de
+  sempre, com a mesma cara: figura vira miniatura, log e planilha viram linha
+  com nome e tamanho. Print cola com Ctrl+V ali mesmo, sem a tarefa aberta.
+- **Os arquivos viajam no mesmo envio que cria a tarefa.** Não é gravar e
+  anexar em seguida: se fossem dois passos, uma falha no segundo deixaria a
+  tarefa gravada e a prova perdida.
+- **Dá para tirar um da lista antes de salvar** — nada foi para o servidor
+  ainda, então remover é só remover.
+- **Até três anexos na criação**, que é o mesmo teto de cada envio da tarefa já
+  aberta. Antes de ela existir não há segunda leva; do quarto em diante, a tela
+  diz para anexar com a tarefa aberta em vez de recusar em silêncio.
+- **Arquivo recusado recusa a criação inteira**, com o texto todo ainda no
+  lugar para corrigir e reenviar. A alternativa seria a pior das duas: a tarefa
+  fica, o anexo some, e ninguém é avisado.
+
 ## AlfaMatriz — 13/08/2026 — A cópia diária passou a levar os anexos junto
 
 O banco guarda o *caminho* de cada anexo, nunca o arquivo em si. A cópia diária

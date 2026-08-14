@@ -22,9 +22,17 @@
      * `$somenteLeitura` é o histórico: tarefa encerrada se lê, não se anexa. Lá
      * a lista sai pronta do Blade, sem Alpine nenhum — a página do histórico
      * não tem por que carregar um ouvinte de colar.
+     *
+     * `$tarefa` nulo é a CRIAÇÃO (AC-234), e é o único modo em que a seção não
+     * fala com o servidor: sem id, não há a que prender arquivo nenhum. Os
+     * arquivos ficam na tela e viajam no mesmo POST que cria a tarefa, pelo
+     * próprio `input`, que aqui é a carga do formulário — ver `sincronizar` no
+     * `anexosDaTarefa`.
      */
     $somenteLeitura ??= false;
-    $anexos = $tarefa->anexos;
+    $tarefa ??= null;
+    $criacao = ! $tarefa;
+    $anexos = $tarefa?->anexos ?? collect();
 
     // A separação é a mesma nos dois modos; no editável ela se repete em
     // JavaScript porque lá a lista muda sem recarregar a página.
@@ -79,9 +87,16 @@
         atributo no meio, o Alpine recebe JavaScript truncado e o bloco morre em
         silêncio. É a mesma armadilha que o checklist documenta.
     --}}
+    {{-- `@reset.window` e não `@reset`: o evento nasce no `<form>`, que é o PAI
+         desta caixa, e sobe daqui para fora — um ouvinte pendurado aqui dentro
+         nunca o veria passar. Quem o dispara é o `form.reset()` que o quadro
+         chama depois de criar a tarefa; sem ele, a lista da tela sobreviveria à
+         tarefa que acabou de nascer e a próxima começaria com os anexos da
+         anterior. --}}
     <div class="pt-4 border-t border-rule"
-         x-data="anexosDaTarefa({{ $tarefa->id }}, @js($anexos))"
-         @paste.window="colar($event)">
+         x-data="anexosDaTarefa({{ $tarefa?->id ?? 'null' }}, @js($anexos))"
+         @paste.window="colar($event)"
+         @reset.window="esvaziar($event)">
 
         <div class="flex items-center gap-2 mb-2.5">
             <h4 class="flex-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Anexos</h4>
@@ -160,33 +175,55 @@
         </div>
 
         {{-- O vazio é dito, e não deduzido de um espaço em branco — mesma
-             escolha da conversa. --}}
+             escolha da conversa. Na criação ele diz outra coisa: ali a frase
+             sobre a revisão falaria de uma conversa que ainda não começou, e o
+             que importa é que a prova pode entrar agora, sem um segundo gesto
+             depois de salvar. --}}
         <p x-show="! anexos.length" x-cloak
            class="px-3 py-3 rounded-[5px] border border-dashed border-line text-center text-[12px] text-ink-faint">
-            Nenhum anexo ainda — na revisão, um print ou o log do erro costuma encerrar a dúvida que três respostas não encerram.
+            @if ($criacao)
+                Nenhum anexo ainda — o print do defeito ou o log do erro pode entrar já aqui, e vai junto ao salvar.
+            @else
+                Nenhum anexo ainda — na revisão, um print ou o log do erro costuma encerrar a dúvida que três respostas não encerram.
+            @endif
         </p>
 
         <div class="mt-1.5 flex flex-wrap items-center gap-2">
             {{--
-                O `input` não tem `name` de propósito.
+                O `name` do `input` é o que separa os dois modos, e é a linha
+                mais fácil de quebrar em silêncio desta seção.
 
-                Ele vive DENTRO do formulário da tarefa, que não é multipart —
-                com nome, ele entraria no envio do salvar como um campo vazio a
-                mais, sem nunca carregar arquivo nenhum. Sem nome, não é
-                enviado por ninguém: quem lê os arquivos é o `escolher()`.
+                NA EDIÇÃO ele não tem nome de propósito: vive dentro do
+                formulário da tarefa, que não é multipart, e com nome entraria
+                no envio do Salvar como um campo vazio a mais, sem nunca
+                carregar arquivo nenhum. Quem lê os arquivos ali é o
+                `escolher()`, que os manda por `fetch`.
+
+                NA CRIAÇÃO ele É a carga: não há id para o `fetch` mirar, então
+                os arquivos viajam no POST que cria a tarefa, por este campo. O
+                `sincronizar()` reescreve o que ele carrega a cada arquivo que
+                entra ou sai — inclusive os colados, que nunca passaram pelo
+                seletor. Tirar o nome daqui faz a tarefa nascer sem os anexos
+                que a tela mostrou, sem erro nenhum.
             --}}
             <label class="shrink-0 h-[26px] px-2.5 rounded-control border border-btn-line flex items-center gap-1.5
                           text-[12px] font-medium text-ink-dim cursor-pointer transition hover:text-ink"
                    :class="enviando && 'opacity-50 pointer-events-none'">
                 <span class="h-[13px] w-[13px]"><x-nav-icon name="paperclip" :peso="1.8" /></span>
-                <span x-text="enviando ? 'Enviando…' : 'Anexar arquivo'">Anexar arquivo</span>
+                <span x-text="rotuloDoBotao">Anexar arquivo</span>
                 <input type="file" accept="{{ \App\Models\TarefaAnexo::ACEITE_DO_SELETOR }}" multiple
+                       @if ($criacao) name="anexos[]" @endif x-ref="carga"
                        class="sr-only" @change="escolher($event)" :disabled="enviando">
             </label>
 
             <p class="min-w-0 flex-1 text-[11.5px] text-ink-faint">
-                Imagem, PDF, log ou planilha. Print cola com
-                <strong class="font-semibold text-ink-mute">Ctrl+V</strong>, com a tarefa aberta.
+                @if ($criacao)
+                    Imagem, PDF, log ou planilha — vão junto ao salvar. Print cola com
+                    <strong class="font-semibold text-ink-mute">Ctrl+V</strong>, aqui mesmo.
+                @else
+                    Imagem, PDF, log ou planilha. Print cola com
+                    <strong class="font-semibold text-ink-mute">Ctrl+V</strong>, com a tarefa aberta.
+                @endif
             </p>
         </div>
 
