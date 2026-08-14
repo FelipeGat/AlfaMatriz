@@ -1,12 +1,57 @@
 {
   "feature": "seguranca-do-painel",
-  "timestamp": "2026-08-14T21:29:46.644Z",
-  "gitRev": "34adbf3",
+  "timestamp": "2026-08-14T22:06:22.132Z",
+  "gitRev": "7462d9b",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 801,
+  "testsParsed": 817,
   "results": {
+    "AC-260": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Seguranca\\RecuperacaoDeSenhaTest::test_login_nao_tem_link_de_recuperacao_de_senha @spec:AC-260",
+      "method": "tap"
+    },
+    "AC-261": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Seguranca\\RecuperacaoDeSenhaTest::test_forgot_password_responde_404 @spec:AC-261",
+      "method": "tap"
+    },
+    "AC-262": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Seguranca\\RecuperacaoDeSenhaTest::test_controller_de_cadastro_publico_nao_existe @spec:AC-262",
+      "method": "tap"
+    },
+    "AC-263": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Seguranca\\ConfirmarSenhaTest::test_setima_tentativa_errada_de_confirmar_a_senha_e_recusada @spec:AC-263",
+      "method": "tap"
+    },
+    "AC-264": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Seguranca\\EscaladaDeUsuariosTest::test_gestor_sem_admin_nao_cria_conta_administradora @spec:AC-264",
+      "method": "tap"
+    },
+    "AC-265": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Seguranca\\EscaladaDeUsuariosTest::test_gestor_sem_admin_nao_redefine_a_senha_de_um_administrador @spec:AC-265",
+      "method": "tap"
+    },
+    "AC-266": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Seguranca\\CabecalhosDeSegurancaTest::test_tela_nao_autenticada_traz_content_security_policy @spec:AC-266",
+      "method": "tap"
+    },
+    "AC-267": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Seguranca\\CabecalhosDeSegurancaTest::test_em_producao_traz_strict_transport_security_com_um_ano @spec:AC-267",
+      "method": "tap"
+    },
+    "AC-268": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\Seguranca\\CabecalhosDeSegurancaTest::test_aplicativo_emite_os_cabecalhos_que_hoje_so_o_nginx_poe @spec:AC-268",
+      "method": "tap"
+    },
     "AC-269": {
       "status": "pass",
       "testName": "Tests\\Feature\\Seguranca\\EnderecoDeSistemaTest::test_o_cadastro_recusa_endereco_sem_https @spec:AC-269",

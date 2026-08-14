@@ -4,7 +4,12 @@
 
 ## T-001 — Tirar do ar a recuperação de senha por e-mail [concluida]
 - Refs: US-071, AC-260, AC-261, AC-262
-- Arquivos: routes/auth.php, app/Http/Controllers/Auth/NewPasswordController.php, app/Http/Controllers/Auth/PasswordResetLinkController.php, app/Http/Controllers/Auth/RegisteredUserController.php, resources/views/auth/forgot-password.blade.php, resources/views/auth/reset-password.blade.php, resources/views/auth/register.blade.php, tests/Feature/Auth/PasswordResetTest.php, tests/Feature/Seguranca/RecuperacaoDeSenhaTest.php
+- Arquivos: routes/auth.php, tests/Feature/Seguranca/RecuperacaoDeSenhaTest.php
+- Apagados: app/Http/Controllers/Auth/NewPasswordController.php, app/Http/Controllers/Auth/PasswordResetLinkController.php, app/Http/Controllers/Auth/RegisteredUserController.php, resources/views/auth/forgot-password.blade.php, resources/views/auth/reset-password.blade.php, resources/views/auth/register.blade.php, tests/Feature/Auth/PasswordResetTest.php
+  (fora de `Arquivos:` de propósito: o audit confere que todo caminho listado
+  ali EXISTE, e para uma tarefa que remove, o sucesso é justamente o contrário.
+  Listá-los lá fazia a tarefa acusar sete arquivos sumidos por ter feito o que
+  foi pedida.)
 - Notas: as quatro rotas de `password.request`/`password.email`/`password.reset`/`password.store` saem do grupo `guest`. A view de login NÃO muda — ela já condiciona o link a `Route::has('password.request')`, então sumir a rota some o link (AC-260); confirme isso em vez de editar a view. `PasswordResetTest.php` some junto: ele testa o que deixa de existir. O `RegisteredUserController` e o `register.blade.php` saem no mesmo commit — nunca foram roteados, e um controller de cadastro público parado no repositório é uma linha de rota de distância de virar cadastro público. Deixe o comentário de `routes/auth.php` explicando POR QUE não há recuperação (o `MAIL_MAILER=log`, a senha que nasce do admin com `primeiro_acesso`), senão a próxima pessoa a repõe achando que faltou.
 
 ## T-002 — Limitar as tentativas de confirmar a senha [concluida]

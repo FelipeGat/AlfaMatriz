@@ -197,9 +197,12 @@ reinvente:**
 
 ## T-045 — Login e telas de autenticação [concluida]
 - Refs: US-026, AC-060
-- Arquivos: resources/views/auth/login.blade.php, resources/views/auth/forgot-password.blade.php, resources/views/auth/reset-password.blade.php, resources/views/auth/confirm-password.blade.php, resources/views/auth/verify-email.blade.php, resources/views/layouts/guest.blade.php, tests/Feature/Redesign/LoginTest.php
+- Arquivos: resources/views/auth/login.blade.php, resources/views/auth/confirm-password.blade.php, resources/views/auth/verify-email.blade.php, resources/views/auth/primeiro-acesso.blade.php, resources/views/layouts/guest.blade.php, tests/Feature/Redesign/LoginTest.php
 - Esforço: medio
-- Notas: Depende de T-031. Fundo com grade de 56px e halo radial de marca,
+- Notas: `forgot-password` e `reset-password` saíram desta lista em 14/08/2026
+  porque as telas deixaram de existir (AC-260) — a recuperação por e-mail nunca
+  funcionou em produção. `primeiro-acesso` entrou no lugar: é a irmã do login
+  que restou usando a mesma moldura. Depende de T-031. Fundo com grade de 56px e halo radial de marca,
   card de 396px com marca, campos de 40px com mostrar/ocultar senha,
   lembrar-me e recuperação, e selo de sistemas operacionais alimentado pela
   rota `/healthz` que já existe. As demais telas de autenticação herdam a
