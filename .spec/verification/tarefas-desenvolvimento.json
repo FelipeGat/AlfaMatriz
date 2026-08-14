@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-14T19:59:15.174Z",
-  "gitRev": "03893b4",
+  "timestamp": "2026-08-14T20:16:34.305Z",
+  "gitRev": "b45db11",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 782,
+  "testsParsed": 783,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -345,6 +345,11 @@
     "AC-251": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CabecalhoFixoEmRaiasTest::test_o_cabecalho_fixo_das_raias_e_opaco @spec:AC-251",
+      "method": "tap"
+    },
+    "AC-259": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CabecalhoFixoEmRaiasTest::test_nao_sobra_fresta_acima_da_barra_fixa @spec:AC-259",
       "method": "tap"
     },
     "AC-258": {

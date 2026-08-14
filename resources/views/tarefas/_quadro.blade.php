@@ -132,7 +132,25 @@
 <div x-ref="quadro" data-quadro data-rolagem="quadro"
      @scroll="medirBordas()" @resize.window="medirBordas()" x-init="medirBordas()"
      :class="'etapa-' + etapaMobile"
-     class="relative flex-1 min-h-0 flex flex-col gap-3 overflow-auto p-3.5">
+     {{--
+         O respiro DE CIMA sai daqui quando há raias, e vai para dentro da barra
+         fixa. Não é preciosismo: é o que decide se sobra uma fresta.
+
+         `position: sticky` não sobe além do CONTENT BOX do pai, e o content box
+         começa depois do `padding-top`. Com `p-3.5` no contêiner, o cabeçalho
+         grudava a 14px do topo — e naqueles 14px o conteúdo continuava passando
+         à vista: o card sumia por baixo da barra e REAPARECIA acima dela, na
+         fresta. Fundo opaco não resolve, porque a fresta está FORA da barra.
+
+         Sem `padding-top`, o content box começa na borda, a barra gruda no topo
+         de verdade, e o respiro volta como `pt-3.5` DENTRO dela — pintado com o
+         fundo dela, portanto tapando o que passa. Em repouso a tela fica
+         idêntica; o que muda é que a fresta deixa de existir.
+
+         Sem raias não há barra fixa para carregar o respiro, então ele fica aqui
+         mesmo.
+     --}}
+     class="relative flex-1 min-h-0 flex flex-col gap-3 overflow-auto px-3.5 pb-3.5 {{ $comRaias ? '' : 'pt-3.5' }}">
 
     {{--
         Em raias, o cabeçalho das etapas fica FIXO no topo: as faixas
@@ -170,7 +188,7 @@
             deste mesmo quadro, logo acima, já fazem assim. Esta era a única
             fixa sem ela.
         --}}
-        <div class="sticky top-0 z-10 shrink-0 flex gap-[10px] pb-1 border-b border-line"
+        <div class="sticky top-0 z-10 shrink-0 flex gap-[10px] pt-3.5 pb-1 border-b border-line"
              style="background: var(--board), rgb(var(--canvas))">
             @foreach ($etapas as $etapa)
                 <div class="rounded-control bg-panel border border-line overflow-hidden"

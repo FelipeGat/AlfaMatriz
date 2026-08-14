@@ -74,14 +74,57 @@ class CabecalhoFixoEmRaiasTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        // A âncora é a barra inteira: a borda tem de estar NELA, e não numa
-        // qualquer da página. É a mesma regra do Topbar e do cabeçalho do
-        // quadro — toda barra fixa se separa do que passa por baixo.
-        $this->assertStringContainsString(
-            'sticky top-0 z-10 shrink-0 flex gap-[10px] pb-1 border-b border-line',
-            $html,
+        // A borda tem de estar NA BARRA, e não numa qualquer da página — então
+        // a asserção recorta a tag da barra e olha só dentro dela. Fixar a
+        // lista inteira de classes tornaria o teste refém de qualquer ajuste de
+        // espaçamento, o que já aconteceu uma vez.
+        $inicio = strpos($html, '<div class="sticky top-0');
+        $this->assertNotFalse($inicio, 'A barra fixa das etapas sumiu do quadro em raias.');
+
+        $tag = substr($html, $inicio, strpos($html, '>', $inicio) - $inicio);
+
+        $this->assertStringContainsString('border-b border-line', $tag,
             'A barra fixa das raias perdeu a borda inferior — o card volta a '.
-            'parecer cortado no meio em vez de deslizar para trás dela.'
-        );
+            'parecer cortado no meio em vez de deslizar para trás dela.');
+    }
+
+    /**
+     * @spec:AC-259 Não sobra fresta acima da barra fixa: o respiro de cima mora
+     * DENTRO dela, senão o card reaparece acima do cabeçalho depois de passar.
+     */
+    public function test_nao_sobra_fresta_acima_da_barra_fixa(): void
+    {
+        $usuario = User::factory()->create();
+        Tarefa::factory()->count(3)->create([
+            'criado_por_id' => $usuario->id,
+            'responsavel_id' => $usuario->id,
+            'status' => 'em_desenvolvimento',
+        ]);
+
+        $comRaias = $this->actingAs($usuario)
+            ->get(route('tarefas.index', ['raias' => 'responsavel']))
+            ->assertOk()
+            ->getContent();
+
+        // O contêiner de rolagem perde o respiro DE CIMA: é ele que empurrava o
+        // content box para baixo e criava a fresta que o `sticky` não alcança.
+        $this->assertStringContainsString('overflow-auto px-3.5 pb-3.5', $comRaias);
+        $this->assertStringNotContainsString('overflow-auto px-3.5 pb-3.5 pt-3.5', $comRaias,
+            'O respiro de cima voltou para o contêiner — a fresta volta com ele.');
+
+        // E o respiro reaparece DENTRO da barra, onde o fundo dela o pinta.
+        $this->assertStringContainsString('sticky top-0 z-10 shrink-0 flex gap-[10px] pt-3.5', $comRaias,
+            'A barra fixa perdeu o respiro próprio — em repouso o cabeçalho '.
+            'passa a encostar na borda do quadro.');
+
+        // Sem raias não há barra para carregar o respiro: ele fica no contêiner.
+        $semRaias = $this->actingAs($usuario)
+            ->get(route('tarefas.index'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('overflow-auto px-3.5 pb-3.5 pt-3.5', $semRaias,
+            'O quadro sem raias perdeu o respiro de cima — as colunas encostam '.
+            'na borda.');
     }
 }

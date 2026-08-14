@@ -714,6 +714,16 @@ para que a tela sirva à pergunta do momento e ao aparelho que estiver na mão.
   página: sozinho, o véu é translúcido no escuro (`rgba(0,0,0,0.28)`) e sólido no
   claro — e foi por isso que o defeito existiu só num dos temas
 
+#### AC-259 — Não sobra fresta acima do cabeçalho fixo
+
+- **Dado** o quadro em raias, rolando os cards para cima
+- **Quando** um card passa por baixo do cabeçalho das etapas
+- **Então** ele some e NÃO reaparece acima da barra. `position: sticky` não sobe
+  além do content box do pai, então o `padding-top` do contêiner de rolagem
+  virava uma fresta de 14px em que o conteúdo continuava passando à vista —
+  fundo opaco não a tapava, porque ela fica FORA da barra. O respiro de cima
+  mora dentro do cabeçalho, pintado com o fundo dele
+
 #### AC-258 — O cabeçalho fixo das raias se lê como camada, não como corte
 
 - **Dado** o quadro em raias, com cards passando por baixo do cabeçalho ao rolar

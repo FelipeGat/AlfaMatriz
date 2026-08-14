@@ -380,3 +380,23 @@
   trás de uma camada. A resposta é a regra que o sistema já tem — barra fixa
   leva borda inferior de 1px (`design/README.md`, seção Topbar; e o cabeçalho
   deste mesmo quadro, que fica logo acima). Esta era a única fixa sem ela.
+
+## T-114 — A fresta acima do cabeçalho fixo das raias [concluida]
+
+- Refs: US-063, AC-259
+- Arquivos: resources/views/tarefas/_quadro.blade.php, tests/Feature/TarefasDesenvolvimento/CabecalhoFixoEmRaiasTest.php
+- Esforço: baixo
+- Notas: ESTE era o defeito relatado — T-110 (barra opaca) e T-113 (borda
+  inferior) são melhorias reais, mas nenhuma tocava nele.
+  `position: sticky` não sobe além do CONTENT BOX do pai, e o content box começa
+  depois do `padding-top`. Com `p-3.5` no contêiner de rolagem, a barra grudava
+  a 14px do topo e naqueles 14px o conteúdo seguia passando à vista: o card
+  sumia por baixo do cabeçalho e REAPARECIA acima dele. Fundo opaco nunca ia
+  resolver — a fresta fica FORA da barra.
+  O respiro de cima sai do contêiner e vai para dentro da barra (`pt-3.5`), onde
+  o fundo dela o pinta. Em repouso a tela é idêntica. Sem raias não há barra
+  para carregá-lo, então lá ele fica no contêiner mesmo.
+  **Lição:** três tentativas erraram porque eu li o código procurando o que
+  pintava errado, e o defeito era de GEOMETRIA — uma faixa que a barra não
+  alcançava. Sintoma visual descrito em texto merece uma captura antes do
+  terceiro palpite.
