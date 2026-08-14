@@ -17,7 +17,7 @@
 - Arquivos: app/Http/Controllers/UsuarioController.php, app/Models/User.php, tests/Feature/Seguranca/EscaladaDeUsuariosTest.php
 - Notas: um `ehAdmin()` no `User` (a pergunta já é feita solta em três lugares do `UsuarioController`), e duas recusas: `validar()`/`update()`/`store()` rejeitam o perfil `admin` vindo de quem não é admin, e `redefinirSenha()` rejeita alvo administrador. A recusa é no servidor, não no `disabled` da view — é a mesma regra que o `PerfilController` já escreveu no cabeçalho dele. Registre a tentativa recusada na auditoria: quem tenta se promover é exatamente o que a tabela existe para contar.
 
-## T-004 — Cabeçalhos de segurança emitidos pelo aplicativo [pendente]
+## T-004 — Cabeçalhos de segurança emitidos pelo aplicativo [concluida]
 - Refs: US-074, AC-266, AC-267, AC-268
 - Arquivos: app/Http/Middleware/CabecalhosDeSeguranca.php, bootstrap/app.php, tests/Feature/Seguranca/CabecalhosDeSegurancaTest.php
 - Notas: middleware novo no grupo `web`. Emite CSP, `Permissions-Policy` e — só em produção — `Strict-Transport-Security`; e repete `X-Frame-Options`, `X-Content-Type-Options` e `Referrer-Policy`, que hoje só existem no nginx e por isso nenhum teste alcança (AC-268). O `script-src` mantém `'unsafe-inline'` e `'unsafe-eval'`: o Alpine avalia expressão com `new Function`, e sem eles o quadro de tarefas para de funcionar (ASM-061) — escreva isso no comentário, com o que a política DE FATO fecha, para ninguém a ler como proteção contra XSS que ela não é. `img-src` precisa de `data:` (as miniaturas de anexo e os ícones embutidos). Confira no navegador as telas mais pesadas de Alpine antes de dar por pronto: quadro de tarefas, Centro de Controle e o funil de leads.
