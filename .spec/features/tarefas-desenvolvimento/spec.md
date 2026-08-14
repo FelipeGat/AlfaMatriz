@@ -705,6 +705,15 @@ para que a tela sirva à pergunta do momento e ao aparelho que estiver na mão.
   topo, e nada é escondido — filtro esconde, raia separa. "Sem responsável" é a
   última faixa: é uma pergunta em aberto, não um grupo
 
+#### AC-251 — O cabeçalho fixo das raias esconde o que passa por baixo
+
+- **Dado** o quadro em raias, no tema ESCURO, com cards suficientes para rolar
+- **Quando** rolo a lista
+- **Então** os cards somem atrás do cabeçalho das etapas em vez de aparecerem
+  através dele. O fundo da barra fixa empilha o véu do quadro sobre a base da
+  página: sozinho, o véu é translúcido no escuro (`rgba(0,0,0,0.28)`) e sólido no
+  claro — e foi por isso que o defeito existiu só num dos temas
+
 #### AC-214 — A raia de quem está com trabalho demais se anuncia
 
 - **Dado** alguém com mais de duas tarefas andando ao mesmo tempo
@@ -731,6 +740,56 @@ para que a tela sirva à pergunta do momento e ao aparelho que estiver na mão.
   abre a tarefa, `C` e `N` criam, `/` busca, `Esc` fecha e `?` lista tudo — e
   nada dispara enquanto se digita, senão escrever "backlog" na busca moveria
   cards pelo caminho
+
+### US-070 — Raia com filtro não é grade, é lista
+
+Como pessoa do time, quero que o quadro agrupado deixe de ser uma grade quando
+eu aplico um filtro, para parar de rolar nos dois eixos atrás de meia dúzia de
+tarefas espalhadas em células vazias.
+
+Raia é uma grade de duas dimensões: pessoas (ou sistemas) na vertical, seis
+etapas na horizontal. Sem filtro ela se paga — é o retrato do time. Com filtro,
+não: o recorte esvazia as células mas o custo de layout de cada faixa continua
+inteiro (6 × 272px de largura, 180px de altura mínima por faixa), e sobra rolar
+muito para ver pouco. Encolher coluna não resolve — o problema é a dimensão a
+mais, não a largura dela.
+
+#### AC-252 — Raia com filtro vira tabela agrupada
+
+- **Dado** o quadro em raias (por responsável ou por sistema) com um filtro aplicado
+- **Quando** a tela é carregada
+- **Então** no lugar da grade vem uma tabela: uma seção por raia, uma linha por
+  tarefa, e a etapa como coluna do registro em vez de posição no espaço
+
+#### AC-253 — Sem filtro, a raia continua sendo a grade de sempre
+
+- **Dado** o quadro em raias sem nenhum filtro aplicado
+- **Quando** a tela é carregada
+- **Então** as faixas e as colunas continuam como estão hoje — a troca é resposta
+  ao recorte, e não uma mudança de opinião sobre raias
+
+#### AC-254 — A coluna que a seção já diz não se repete
+
+- **Dado** a tabela agrupada por responsável (ou por sistema)
+- **Quando** olho as colunas
+- **Então** a que a seção já nomeia não aparece de novo em cada linha — agrupar
+  por responsável e repetir o nome em toda linha é gastar largura para dizer o
+  que o cabeçalho da seção acabou de dizer
+
+#### AC-255 — Da tabela se trabalha, não só se lê
+
+- **Dado** uma linha da tabela
+- **Quando** a uso
+- **Então** clicar abre a tarefa no mesmo modal do quadro, e o menu "Mover ▾"
+  move de etapa com as mesmas regras de fluxo e o mesmo pedido de motivo — sem
+  isso a tabela seria um relatório, e o recorte é justamente onde se trabalha
+
+#### AC-256 — A porta de volta fica à vista
+
+- **Dado** a tabela aberta por causa de um filtro
+- **Quando** quero o quadro mesmo assim
+- **Então** um link no cabeçalho devolve a grade sem tirar o filtro — trocar o
+  layout de alguém sem deixar como voltar é decidir por ela
 
 ### US-064 — Anexo na tarefa
 

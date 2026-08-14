@@ -328,3 +328,29 @@
   lixo, e um campo que some com a frase quando fica em branco apaga por
   acidente.
 - Esforço: baixo
+
+## T-110 — O cabeçalho fixo das raias era translúcido no tema escuro [concluida]
+
+- Refs: US-063, AC-251
+- Arquivos: resources/views/tarefas/_quadro.blade.php, tests/Feature/TarefasDesenvolvimento/CabecalhoFixoEmRaiasTest.php
+- Esforço: baixo
+- Notas: a barra fixa usava `bg-board`, e `--board` é um VÉU — `rgba(0,0,0,0.28)`
+  no escuro, sólido no claro. Como fundo do quadro está certo (ele recua sobre o
+  canvas); como fundo de barra fixa, não: 72% dela era buraco e os cards
+  apareciam através do cabeçalho ao rolar. Passa a empilhar `var(--board)` sobre
+  `rgb(var(--canvas))` — os mesmos dois tokens que já estão atrás dela, na mesma
+  ordem —, então a cor não muda em tema nenhum e a barra vira opaca.
+  **O defeito só existia num tema.** É o lembrete de que o checkpoint do
+  redesign ("compare no claro E no escuro") precisa incluir os estados de
+  ROLAGEM, não só a tela parada.
+
+## T-111 — Raia com filtro vira tabela agrupada [concluida]
+- Refs: US-070, AC-252, AC-253, AC-254, AC-255, AC-256
+- Arquivos: app/Http/Controllers/TarefaController.php, resources/views/tarefas/_quadro.blade.php, resources/views/tarefas/_tabela-raias.blade.php, tests/Feature/TarefasDesenvolvimento/RaiaComFiltroTest.php
+- Esforço: alto
+- Notas: o gatilho é a COMBINAÇÃO — raia ligada E pelo menos um filtro aplicado.
+  Sem filtro a grade fica (AC-253). A tabela mora dentro do mesmo
+  `x-data="quadroTarefas"`, senão o menu "Mover ▾" e o pedido de motivo perdem o
+  escopo de que dependem; cada linha carrega o `data-motivo="{id}"` como o card
+  faz. A coluna do eixo da raia é omitida (AC-254). A volta para a grade é um
+  parâmetro na URL que não mexe nos filtros (AC-256).

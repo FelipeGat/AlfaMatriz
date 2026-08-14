@@ -54,6 +54,21 @@
         divergência com o protótipo.
     --}}
     <div class="ml-auto min-w-0 flex items-center gap-2 overflow-x-auto" data-pedaco="chips-do-quadro">
+        {{-- A porta de volta para a grade, SEM tirar o filtro (AC-256): trocar o
+             layout de alguém e não deixar como voltar é decidir por ela. Só
+             aparece quando a troca aconteceu — link para o estado em que já se
+             está é ruído. --}}
+        @if ($comoTabela ?? false)
+            <a href="{{ request()->fullUrlWithQuery(['vista' => 'quadro']) }}"
+               data-voltar-ao-quadro
+               title="Ver como quadro, mantendo o filtro"
+               class="shrink-0 h-[26px] px-2.5 rounded-badge border border-line flex items-center gap-1.5
+                      text-[12px] text-ink-dim hover:text-ink transition">
+                <span class="h-3 w-3"><x-nav-icon name="view-grid" :peso="1.8" /></span>
+                ver como quadro
+            </a>
+        @endif
+
         @include('tarefas._chips', ['chips' => $chips])
     </div>
 </div>
@@ -99,6 +114,21 @@
 {{-- `data-rolagem` é o que faz a faixa voltar para onde estava depois de o
      quadro ser redesenhado por uma ação parcial. Sem ele, marcar um item numa
      tarefa da quinta coluna jogava a rolagem de volta à primeira. --}}
+{{--
+    Raia COM filtro não é grade — é tabela agrupada (US-070).
+
+    A grade continua sendo a resposta certa para a raia SEM filtro: ali a segunda
+    dimensão se paga, porque é o retrato do time inteiro. Com filtro ela cobra o
+    layout cheio para mostrar células vazias, e é isso que a tabela desfaz.
+
+    A troca é aqui, e não dentro do contêiner de rolagem, porque a tabela tem a
+    própria rolagem e os próprios alvos: herdar o `data-quadro` faria o arrasto
+    horizontal e o `medirBordas()` medirem uma tela que não existe mais.
+--}}
+@if ($comRaias && ($comoTabela ?? false))
+    @include('tarefas._tabela-raias', ['raias' => $raias, 'filtros' => $filtros])
+@else
+
 <div x-ref="quadro" data-quadro data-rolagem="quadro"
      @scroll="medirBordas()" @resize.window="medirBordas()" x-init="medirBordas()"
      :class="'etapa-' + etapaMobile"
@@ -112,7 +142,23 @@
         faixas de solto, que existem em cada linha de raia.
     --}}
     @if ($comRaias)
-        <div class="sticky top-0 z-10 shrink-0 flex gap-[10px] bg-board pb-1">
+        {{--
+            O fundo é o VÉU SOBRE A BASE, e não `bg-board` sozinho.
+
+            `--board` é um véu translúcido no tema escuro (`rgba(0,0,0,0.28)`) e
+            uma cor sólida no claro. Como fundo do quadro isso é certo — ele
+            recua sobre o `canvas` da página. Como fundo de uma barra FIXA, não:
+            no tema escuro os cards continuavam visíveis atravessando o
+            cabeçalho enquanto se rolava, porque 72% dele é buraco. No claro o
+            defeito não aparecia, e foi assim que ele passou.
+
+            As duas camadas reproduzem exatamente o que já está atrás da barra —
+            o véu do quadro sobre o canvas do `<body>` —, então a cor não muda em
+            tema nenhum; o que muda é que agora ela é opaca. Nenhum valor novo:
+            são os mesmos dois tokens, empilhados na ordem em que já estavam.
+        --}}
+        <div class="sticky top-0 z-10 shrink-0 flex gap-[10px] pb-1"
+             style="background: var(--board), rgb(var(--canvas))">
             @foreach ($etapas as $etapa)
                 <div class="rounded-control bg-panel border border-line overflow-hidden"
                      style="flex: 1 1 272px; min-width: 272px; border-top: 3px solid rgb(var(--{{ $etapa['cor'] }}))"
@@ -170,6 +216,8 @@
         </div>
     @endforeach
 </div>
+
+@endif
 
 {{--
     O painel de motivo.

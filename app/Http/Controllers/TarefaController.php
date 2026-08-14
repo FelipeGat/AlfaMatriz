@@ -145,9 +145,11 @@ class TarefaController extends Controller
 
         $chips = $this->chipsDoQuadro($emCurso, $filtros, $esperandoVoce);
 
+        $comoTabela = $this->raiaViraTabela($request, $raias, $filtros);
+
         return compact(
             'tarefas', 'colunas', 'etapas', 'filtros', 'totalNoQuadro', 'totalBloqueadas',
-            'esperandoVoce', 'chips', 'raias',
+            'esperandoVoce', 'chips', 'raias', 'comoTabela',
         ) + $this->listasDeFiltro();
     }
 
@@ -371,6 +373,39 @@ class TarefaController extends Controller
      * @param  Collection<string, string>  $emCurso
      * @return array{modo: string, faixas: array<int, array<string, mixed>>}
      */
+    /**
+     * A raia com filtro deixa de ser grade e vira tabela.
+     *
+     * Raia é uma grade de DUAS dimensões: pessoas na vertical, seis etapas na
+     * horizontal. Sem filtro ela se paga — é o retrato do time. Com filtro, não:
+     * o recorte esvazia as células e o custo de layout de cada faixa continua
+     * inteiro (6 × 272px de largura, 180px de altura mínima), então sobra rolar
+     * nos dois eixos atrás de meia dúzia de tarefas espalhadas em célula vazia.
+     *
+     * Encolher a coluna vazia não resolve: o que sobra é a dimensão a mais, não
+     * a largura dela. A tabela tira uma — a etapa vira coluna do registro.
+     *
+     * `?vista=quadro` devolve a grade sem tirar o filtro: trocar o layout de
+     * alguém sem deixar como voltar é decidir por ela (AC-256).
+     *
+     * @param  array<string, mixed>  $raias
+     * @param  array<string, string>  $filtros
+     */
+    private function raiaViraTabela(Request $request, array $raias, array $filtros): bool
+    {
+        if ($raias['modo'] === 'nenhuma') {
+            return false;
+        }
+
+        if ($this->textoDaQuery($request, 'vista') === 'quadro') {
+            return false;
+        }
+
+        // Qualquer recorte conta, inclusive a busca: procurar uma tarefa
+        // específica é justamente quando a grade mais atrapalha.
+        return collect($filtros)->contains(fn ($valor) => $valor !== '');
+    }
+
     private function raias(Request $request, $tarefas, $emCurso): array
     {
         $modo = $this->textoDaQuery($request, 'raias');

@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-14T16:05:14.881Z",
-  "gitRev": "0afad7c",
+  "timestamp": "2026-08-14T19:27:55.918Z",
+  "gitRev": "d6335af",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 770,
+  "testsParsed": 779,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -342,6 +342,11 @@
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_as_raias_sao_um_segmented_control @spec:AC-213",
       "method": "tap"
     },
+    "AC-251": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CabecalhoFixoEmRaiasTest::test_o_cabecalho_fixo_das_raias_e_opaco @spec:AC-251",
+      "method": "tap"
+    },
     "AC-214": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_nenhum_icone_recebe_classe_direto @spec:AC-214",
@@ -355,6 +360,31 @@
     "AC-216": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FormularioTarefaTest::test_o_resumo_do_modal_e_gravado_na_criacao_e_na_edicao @spec:AC-216",
+      "method": "tap"
+    },
+    "AC-252": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RaiaComFiltroTest::test_raia_com_filtro_vira_tabela @spec:AC-252",
+      "method": "tap"
+    },
+    "AC-253": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RaiaComFiltroTest::test_raia_sem_filtro_continua_grade @spec:AC-253",
+      "method": "tap"
+    },
+    "AC-254": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RaiaComFiltroTest::test_a_coluna_do_eixo_da_raia_nao_se_repete @spec:AC-254",
+      "method": "tap"
+    },
+    "AC-255": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RaiaComFiltroTest::test_da_tabela_se_abre_e_se_move @spec:AC-255",
+      "method": "tap"
+    },
+    "AC-256": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RaiaComFiltroTest::test_a_volta_para_a_grade_mantem_o_filtro @spec:AC-256",
       "method": "tap"
     },
     "AC-223": {
