@@ -398,7 +398,7 @@ fi
 
 # ------------------------------------------------------------------- backup
 
-info "agendando o backup diário do banco"
+info "agendando o backup diário do banco e dos anexos"
 no_container "mkdir -p /var/backups/alfamatriz"
 no_container "test -f /usr/local/bin/alfamatriz-backup.sh && \
     (crontab -l 2>/dev/null | grep -q alfamatriz-backup || \
