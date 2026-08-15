@@ -8,8 +8,9 @@ use Tests\TestCase;
 
 /**
  * A aba de Manutenção e atualizações ainda é promessa: nenhum dado ligado.
- * O que se prova é o contrato do placeholder — a porta existe no menu, a
- * tela abre para qualquer pessoa logada e diz "Em breve" nomeando o que vem
+ * O que se prova é o contrato do placeholder — a porta existe no menu da
+ * matriz (para revenda o grupo continua invisível: AC-094, provado no
+ * MenuDesenvolvimentoTest), a tela abre e diz "Em breve" nomeando o que vem
  * (agenda por sistema e histórico com changelog), em vez de fingir conteúdo.
  */
 class ManutencaoTest extends TestCase

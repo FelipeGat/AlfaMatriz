@@ -363,9 +363,10 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // Manutenção e atualizações: por enquanto só a promessa — a tela conta o
     // que vai morar aqui (agenda de manutenção por sistema e histórico com o
     // changelog) sem integrar nada. Sem `permissao:` de propósito: é
-    // informativa, e o aviso de janela de manutenção interessa a todo mundo
-    // que entra, revenda inclusive. `Route::view` porque ainda não existe
-    // dado para um controller buscar.
+    // informativa e ainda não tem dado. No menu o item é da matriz (AC-094:
+    // revenda não vê o grupo Desenvolvimento); se a agenda um dia falar com
+    // a revenda, a porta dela se decide junto com a integração. `Route::view`
+    // porque ainda não existe dado para um controller buscar.
     Route::view('manutencao', 'manutencao.index')->name('manutencao.index');
     Route::resource('centros-custo', CentroCustoController::class)->only(['store', 'destroy'])
         ->parameters(['centros-custo' => 'centro_custo'])
