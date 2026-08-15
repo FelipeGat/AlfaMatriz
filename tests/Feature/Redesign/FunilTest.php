@@ -110,8 +110,10 @@ class FunilTest extends TestCase
         $this->assertStringNotContainsString('rolarQuadro', $html,
             'Traduzir roda vertical em rolagem lateral foi o que criou o encadeamento.');
 
-        // A coluna mantém a largura de leitura do card.
-        $this->assertStringContainsString('width: 276px', $html);
+        // A coluna mantém a largura de leitura do card do `sm` para cima; no
+        // celular ela cede à tela (era 276px fixos sempre, e num iPhone de
+        // 390px o card ficava espremido).
+        $this->assertStringContainsString('sm:w-[276px]', $html);
 
         // Com o quadro rolando, a sombra na borda avisa que há mais coluna:
         // barra fina em tema escuro passa despercebida.
