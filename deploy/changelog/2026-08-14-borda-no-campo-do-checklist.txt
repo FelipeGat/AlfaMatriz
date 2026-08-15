@@ -1,0 +1,9 @@
+<b>📋 AlfaMatriz — Changelog 14/08/2026</b>
+<i>Campo de novo item do checklist ganhou moldura</i>
+
+<b>🔧 Correções</b>
+
+• <b>O campo de adicionar item ao checklist agora tem borda.</b> Ele aparecia como uma linha solta no fim da lista, sem nada que o marcasse como campo — dava para confundir com um item já existente. Agora tem a moldura tracejada do desenho, que é a mesma dos outros campos de "adicionar" do sistema.
+• <b>O + saiu da frente e entrou no próprio campo.</b> A dica virou "+ item · Enter para adicionar", dentro do campo. Escrever vários itens seguidos continua como antes: o cursor volta ao campo a cada Enter.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
