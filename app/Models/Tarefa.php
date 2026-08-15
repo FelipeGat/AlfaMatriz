@@ -118,11 +118,17 @@ class Tarefa extends Model
      * materialmente diferentes — na segunda o código já está na main — e a
      * recuperação de cada uma é outra. Um rótulo só para as três devolveria à
      * tela o mesmo achatamento que a coluna de Ajustes fazia no fluxo.
+     *
+     * `concluida` é a reabertura: Concluída significa EM PRODUÇÃO, e "Voltou
+     * da produção" é a mais grave das quatro — o defeito está no ar enquanto
+     * o card volta. É o rótulo do tipo desenvolvimento; a operacional tem o
+     * dela em `rotuloDoRetornoVindoDe`.
      */
     public const RETORNO_POR_ORIGEM = [
         'em_revisao' => 'Voltou da revisão',
         'em_staging' => 'Voltou do staging',
         'pronta_producao' => 'Voltou da porta da produção',
+        'concluida' => 'Voltou da produção',
     ];
 
     /**
@@ -401,8 +407,24 @@ class Tarefa extends Model
             return null;
         }
 
-        return self::RETORNO_POR_ORIGEM[$this->retorno_de]
-            ?? 'Voltou de '.self::rotuloDaEtapa($this->retorno_de);
+        return $this->rotuloDoRetornoVindoDe($this->retorno_de);
+    }
+
+    /**
+     * O rótulo de uma volta vinda de `$origem`, no vocabulário do TIPO.
+     *
+     * A operacional é o caso que o mapa não cobre: a única volta que ela tem é
+     * a reabertura, e "Voltou da produção" anunciaria uma produção que um
+     * telefonema não teve. Fica "Reaberta" — que é tudo o que aconteceu.
+     */
+    public function rotuloDoRetornoVindoDe(string $origem): string
+    {
+        if ($origem === 'concluida' && $this->tipo !== 'desenvolvimento') {
+            return 'Reaberta';
+        }
+
+        return self::RETORNO_POR_ORIGEM[$origem]
+            ?? 'Voltou de '.self::rotuloDaEtapa($origem);
     }
 
     /** Há uma pergunta esperando resposta? */

@@ -57,6 +57,8 @@ class FluxoTarefaService
             'em_revisao' => ['em_staging', 'em_desenvolvimento', 'cancelada'],
             'em_staging' => ['pronta_producao', 'em_desenvolvimento', 'cancelada'],
             'pronta_producao' => ['concluida', 'em_staging', 'em_desenvolvimento', 'cancelada'],
+            // Reabrir é reprovação de quem usou o que subiu: cobra motivo e
+            // carimba o retorno, como os portões (`ehRetornoParaBancada`).
             'concluida' => ['em_desenvolvimento'],
             'cancelada' => ['aberta'],
         ],
@@ -138,7 +140,7 @@ class FluxoTarefaService
         $this->assertTransicaoPermitida($tarefa, $novoStatus, $livre);
         $this->assertExigenciasAtendidas($tarefa, $novoStatus, $dados);
 
-        $ehRetorno = $this->ehRetornoDePortao($statusAtual, $novoStatus);
+        $ehRetorno = $this->ehRetornoParaBancada($statusAtual, $novoStatus);
 
         return DB::transaction(function () use ($tarefa, $statusAtual, $novoStatus, $dados, $ehRetorno) {
             $agora = now();
@@ -198,7 +200,7 @@ class FluxoTarefaService
                     'nivel' => 'atencao',
                     'icone' => 'arrow-uturn-left',
                     'titulo' => '"'.$tarefa->titulo.'" voltou para correção',
-                    'meta' => Tarefa::RETORNO_POR_ORIGEM[$statusAtual] ?? Tarefa::rotuloDaEtapa($statusAtual),
+                    'meta' => $tarefa->rotuloDoRetornoVindoDe($statusAtual),
                     'rota' => route('tarefas.index'),
                     'tarefa_id' => $tarefa->id,
                 ]);
@@ -220,11 +222,19 @@ class FluxoTarefaService
         });
     }
 
-    /** Voltar de um portão para a bancada é reprovação, e não recuo qualquer. */
-    private function ehRetornoDePortao(string $statusAtual, string $novoStatus): bool
+    /**
+     * Voltar para a bancada vindo de um portão — ou de Concluída — é
+     * reprovação, e não recuo qualquer.
+     *
+     * A reabertura entra na mesma regra porque é o exame mais duro dos
+     * quatro: quem reprova aqui é quem usou o que subiu. Ela já foi volta
+     * livre, e o card aterrissava em Em andamento indistinguível de trabalho
+     * novo — quem o recebia não tinha como saber POR QUE a tarefa voltou.
+     */
+    private function ehRetornoParaBancada(string $statusAtual, string $novoStatus): bool
     {
         return $novoStatus === 'em_desenvolvimento'
-            && in_array($statusAtual, Tarefa::PORTOES, true);
+            && ($statusAtual === 'concluida' || in_array($statusAtual, Tarefa::PORTOES, true));
     }
 
     /**
@@ -270,6 +280,14 @@ class FluxoTarefaService
             // a contagem deixaria o card vermelho para sempre, avisando sobre
             // um impasse que já foi tratado.
             $marcas['rodadas'] = 0;
+
+            // A reabertura devolve o trabalho, não a versão: com ela guardada,
+            // a reconclusão passava no portão apoiada na versão do ciclo
+            // anterior — o mesmo vazamento que `testeDestaPassagem` fechou
+            // para o relatório de teste.
+            if ($statusAtual === 'concluida') {
+                $marcas['versao_producao'] = null;
+            }
         } else {
             // Andar para frente apaga a tarja: ela descreve de onde a tarefa
             // voltou da última vez, e uma tarefa que já saiu da bancada não
@@ -607,9 +625,10 @@ class FluxoTarefaService
         }
 
         // Reprovar sem dizer o que reprovou manda a pessoa que recebe o card
-        // abrir o PR e adivinhar. Só o retorno DE UM PORTÃO cobra o texto:
-        // Backlog → Em andamento é só começar a trabalhar, e não tem motivo a dar.
-        if ($this->ehRetornoDePortao($tarefa->status, $novoStatus) && ! $this->motivoPreenchido($dados)) {
+        // abrir o PR e adivinhar. Só o retorno de portão ou de Concluída cobra
+        // o texto: Backlog → Em andamento é só começar a trabalhar, e não tem
+        // motivo a dar.
+        if ($this->ehRetornoParaBancada($tarefa->status, $novoStatus) && ! $this->motivoPreenchido($dados)) {
             throw new \RuntimeException('É preciso dizer o que precisa ser corrigido.');
         }
 

@@ -330,7 +330,7 @@ class TipoEFluxoTarefaTest extends TestCase
         $this->assertSame('concluida', $tarefa->fresh()->status);
 
         // Ciclo 2: o aprovado lá de trás não vale como prova do código novo.
-        $this->fluxo->mover($tarefa->fresh(), 'em_desenvolvimento');
+        $this->fluxo->mover($tarefa->fresh(), 'em_desenvolvimento', ['motivo' => 'Erro apareceu em produção.']);
         $this->fluxo->mover($tarefa->fresh(), 'em_revisao');
         $this->fluxo->mover($tarefa->fresh(), 'em_staging');
 
@@ -348,6 +348,68 @@ class TipoEFluxoTarefaTest extends TestCase
         ]);
 
         $this->assertSame('pronta_producao', $this->fluxo->mover($tarefa->fresh(), 'pronta_producao')->status);
+    }
+
+    /**
+     * @spec:AC-187 A versão também prova ESTA passagem: reabrir limpa
+     * `versao_producao`, senão a reconclusão passava no portão apoiada na
+     * versão do ciclo anterior — a mesma fresta do relatório de teste, no
+     * outro carimbo.
+     */
+    public function test_reconcluir_depois_de_reabrir_exige_versao_nova(): void
+    {
+        $tarefa = $this->criarTarefa(['status' => 'concluida']);
+        $tarefa->forceFill(['versao_producao' => 'v1.4.2'])->save();
+
+        $this->fluxo->mover($tarefa, 'em_desenvolvimento', ['motivo' => 'Erro no fechamento do mês.']);
+
+        $this->assertNull($tarefa->fresh()->versao_producao);
+
+        $this->fluxo->mover($tarefa->fresh(), 'em_revisao');
+        $this->fluxo->mover($tarefa->fresh(), 'em_staging');
+
+        TarefaRelatorioTeste::create([
+            'tarefa_id' => $tarefa->id, 'aprovado' => true, 'notas' => 'Reteste aprovado.',
+        ]);
+
+        $this->fluxo->mover($tarefa->fresh(), 'pronta_producao');
+
+        try {
+            $this->fluxo->mover($tarefa->fresh(), 'concluida');
+            $this->fail('Esperava recusa: a versão registrada era do ciclo anterior.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('versão que subiu', $e->getMessage());
+        }
+
+        $movida = $this->fluxo->mover($tarefa->fresh(), 'concluida', ['versao_producao' => 'v1.5.0']);
+
+        $this->assertSame('v1.5.0', $movida->versao_producao);
+    }
+
+    /**
+     * @spec:AC-090 Reabrir a operacional cobra o mesmo motivo, mas fala a
+     * língua do tipo: "Voltou da produção" anunciaria uma produção que um
+     * telefonema não teve.
+     */
+    public function test_reabrir_operacional_cobra_motivo_e_fala_a_lingua_do_tipo(): void
+    {
+        $tarefa = $this->criarTarefa(['tipo' => 'operacional', 'status' => 'concluida']);
+
+        try {
+            $this->fluxo->mover($tarefa, 'em_desenvolvimento');
+            $this->fail('Esperava recusa: reabrir sem dizer por quê.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('o que precisa ser corrigido', $e->getMessage());
+        }
+
+        $reaberta = $this->fluxo->mover(
+            $tarefa->fresh(),
+            'em_desenvolvimento',
+            ['motivo' => 'Fabricante não retornou o chamado.'],
+        );
+
+        $this->assertSame('concluida', $reaberta->retorno_de);
+        $this->assertSame('Reaberta', $reaberta->rotuloDoRetorno());
     }
 
     /**

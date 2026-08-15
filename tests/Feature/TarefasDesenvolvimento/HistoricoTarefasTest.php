@@ -156,14 +156,26 @@ class HistoricoTarefasTest extends TestCase
 
         // As duas oferecem volta: cancelar por engano custava o histórico
         // inteiro, porque a única saída era recadastrar a tarefa do zero.
-        $this->assertSame(2, substr_count($html, 'Reabrir'));
+        // A concluída não envia direto — o botão abre o pedido de motivo.
+        $this->assertStringContainsString('reabrir-tarefa-'.$concluida->id, $html);
         $this->assertStringContainsString(route('tarefas.mover', $concluida), $html);
         $this->assertStringContainsString(route('tarefas.mover', $cancelada), $html);
 
+        // Reabrir sem dizer por quê é recusado: o card chegava à bancada
+        // indistinguível de trabalho novo.
         $this->actingAs($usuario)->post(route('tarefas.mover', $concluida), ['status' => 'em_desenvolvimento'])
-            ->assertSessionMissing('erro');
+            ->assertSessionHas('erro');
+
+        $this->assertSame('concluida', $concluida->fresh()->status);
+
+        $this->actingAs($usuario)->post(route('tarefas.mover', $concluida), [
+            'status' => 'em_desenvolvimento',
+            'motivo' => 'Cliente reportou erro no fechamento.',
+        ])->assertSessionMissing('erro');
 
         $this->assertSame('em_desenvolvimento', $concluida->fresh()->status);
+        $this->assertSame('concluida', $concluida->fresh()->retorno_de);
+        $this->assertSame('Cliente reportou erro no fechamento.', $concluida->fresh()->retorno_motivo);
 
         // A cancelada volta para a FILA, e sem dono: retomá-la é uma decisão
         // nova, provavelmente de outra pessoa (AC-130).

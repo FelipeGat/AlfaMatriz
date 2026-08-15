@@ -63,10 +63,13 @@ class ModalHistoricoDaTarefaTest extends TestCase
 
         $this->abrirHistorico()->assertSee('@click.stop', false);
 
-        // E reabrir continua reabrindo, como antes da linha virar alvo.
+        // E reabrir continua reabrindo, como antes da linha virar alvo — com
+        // o motivo que a reabertura passou a cobrar (é reprovação, como as
+        // dos portões).
         $this->actingAs(User::factory()->create())->post(route('tarefas.mover', $tarefa), [
             'status' => 'em_desenvolvimento',
             'de_status' => 'concluida',
+            'motivo' => 'Erro voltou a aparecer no cliente.',
         ])->assertSessionMissing('erro');
 
         $this->assertSame('em_desenvolvimento', $tarefa->fresh()->status);

@@ -209,10 +209,37 @@ class FluxoTarefaTest extends TestCase
     public function test_tarefa_concluida_pode_ser_reaberta_e_cancelada_nao_tem_saida(): void
     {
         $tarefa = $this->criarTarefa(['status' => 'concluida']);
+        $tarefa->forceFill(['versao_producao' => 'v1.4.2'])->save();
 
-        $reaberta = $this->fluxo->mover($tarefa, 'em_desenvolvimento');
+        // Reabrir é reprovação de quem usou o que subiu: sem motivo, o card
+        // chegava à bancada indistinguível de trabalho novo, e quem o recebia
+        // não tinha como saber por que a tarefa voltou.
+        try {
+            $this->fluxo->mover($tarefa, 'em_desenvolvimento');
+            $this->fail('Esperava recusa: reabrir sem dizer por quê.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('o que precisa ser corrigido', $e->getMessage());
+        }
+
+        $this->assertSame('concluida', $tarefa->fresh()->status);
+
+        $reaberta = $this->fluxo->mover(
+            $tarefa->fresh(),
+            'em_desenvolvimento',
+            ['motivo' => 'Relatório sai zerado no cliente.'],
+        );
 
         $this->assertSame('em_desenvolvimento', $reaberta->status);
+
+        // A volta carimba de onde veio e por quê, como as dos portões — é a
+        // tarja que o card exibe na bancada.
+        $this->assertSame('concluida', $reaberta->retorno_de);
+        $this->assertSame('Voltou da produção', $reaberta->rotuloDoRetorno());
+        $this->assertSame('Relatório sai zerado no cliente.', $reaberta->retorno_motivo);
+
+        // A versão pertence ao ciclo que subiu: guardada, a reconclusão
+        // passava no portão apoiada na versão do ciclo anterior.
+        $this->assertNull($reaberta->versao_producao);
 
         $cancelada = $this->criarTarefa(['status' => 'cancelada']);
 

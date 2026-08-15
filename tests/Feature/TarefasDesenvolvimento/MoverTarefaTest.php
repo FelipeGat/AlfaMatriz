@@ -214,12 +214,23 @@ class MoverTarefaTest extends TestCase
         $usuario = User::factory()->membro()->create();
         $tarefa = $this->criarTarefa(['status' => 'concluida', 'responsavel_id' => $usuario->id]);
 
+        // Sem motivo a reabertura é recusada: reabrir é reprovar o que está
+        // em produção, e o card chegava à bancada sem ninguém saber por quê.
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
             'status' => 'em_desenvolvimento',
         ]);
 
+        $resposta->assertSessionHas('erro');
+        $this->assertSame('concluida', $tarefa->fresh()->status);
+
+        $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
+            'status' => 'em_desenvolvimento',
+            'motivo' => 'Cliente reportou o erro de novo.',
+        ]);
+
         $resposta->assertSessionMissing('erro');
         $this->assertSame('em_desenvolvimento', $tarefa->fresh()->status);
+        $this->assertSame('concluida', $tarefa->fresh()->retorno_de);
 
         $cancelada = $this->criarTarefa(['status' => 'cancelada', 'responsavel_id' => $usuario->id]);
 

@@ -133,8 +133,10 @@
                     <td class="px-4 py-3 text-right whitespace-nowrap">
                         {{--
                             As duas terminais voltam, e cada uma para o lugar
-                            que faz sentido: a concluída volta para a bancada,
-                            porque quem a reabre já sabe o que quer mexer; a
+                            que faz sentido: a concluída volta para a bancada
+                            — passando pelo pedido de motivo, porque reabrir é
+                            reprovar o que está em produção, e quem recebe o
+                            card não é necessariamente quem clicou aqui; a
                             cancelada volta para a FILA, sem dono, porque
                             desistir dela foi uma decisão e retomá-la é uma nova
                             — provavelmente com outra pessoa e outra prioridade.
@@ -148,18 +150,28 @@
                         @php
                             // Reabrir é mover: quem não pode mover a tarefa
                             // também não a tira do histórico (AC-205).
-                            $reabrirPara = $tarefa->motivoParaNaoMover(auth()->user())
-                                ? null
-                                : (['concluida' => 'em_desenvolvimento', 'cancelada' => 'aberta'][$tarefa->status] ?? null);
+                            $podeReabrir = ! $tarefa->motivoParaNaoMover(auth()->user())
+                                && in_array($tarefa->status, \App\Models\Tarefa::STATUS_TERMINAIS, true);
                         @endphp
 
-                        @if ($reabrirPara)
+                        @if ($podeReabrir && $tarefa->status === 'concluida')
+                            {{-- O clique não envia: abre o pedido de motivo. O
+                                 submit direto era como o card chegava à bancada
+                                 sem ninguém saber por que voltou. --}}
+                            <button type="button"
+                                    @click.stop="$dispatch('open-modal', 'reabrir-tarefa-{{ $tarefa->id }}')"
+                                    title="Volta para {{ \App\Models\Tarefa::STATUS['em_desenvolvimento'] }}"
+                                    class="h-[28px] px-2.5 rounded-control border border-btn-line
+                                           font-medium text-[12px] text-ink-dim hover:text-brand hover:border-brand transition">
+                                Reabrir
+                            </button>
+                        @elseif ($podeReabrir)
                             <form method="POST" action="{{ route('tarefas.mover', $tarefa) }}" @click.stop>
                                 @csrf
-                                <input type="hidden" name="status" value="{{ $reabrirPara }}">
-                                <input type="hidden" name="de_status" value="{{ $tarefa->status }}">
+                                <input type="hidden" name="status" value="aberta">
+                                <input type="hidden" name="de_status" value="cancelada">
                                 <button type="submit"
-                                        title="Volta para {{ \App\Models\Tarefa::STATUS[$reabrirPara] }}"
+                                        title="Volta para {{ \App\Models\Tarefa::STATUS['aberta'] }}"
                                         class="h-[28px] px-2.5 rounded-control border border-btn-line
                                                font-medium text-[12px] text-ink-dim hover:text-brand hover:border-brand transition">
                                     Reabrir
@@ -278,5 +290,58 @@
                 <x-secondary-button x-on:click="$dispatch('close')">Fechar</x-secondary-button>
             </div>
         </x-modal>
+
+        {{-- O pedido de motivo da reabertura. É a mesma regra dos portões
+             (`ehRetornoParaBancada`): a volta carimba de onde veio e por quê,
+             e o texto pedido aqui vira a tarja do card na bancada. Modal, e
+             não painel no card, porque no histórico não há card — só a linha
+             da tabela. --}}
+        @if ($tarefa->status === 'concluida' && ! $tarefa->motivoParaNaoMover(auth()->user()))
+            <x-modal name="reabrir-tarefa-{{ $tarefa->id }}" maxWidth="md" focusable>
+                <form method="POST" action="{{ route('tarefas.mover', $tarefa) }}"
+                      x-data="{ motivo: '', enviando: false }" @submit="enviando = true"
+                      class="px-6 pt-6 pb-6 flex flex-col gap-3">
+                    @csrf
+                    <input type="hidden" name="status" value="em_desenvolvimento">
+                    <input type="hidden" name="de_status" value="concluida">
+
+                    <div>
+                        <h3 class="font-display font-semibold text-ink text-lg">
+                            Reabrindo
+                            <span class="font-mono text-[12px] font-semibold text-ink-dim">{{ $tarefa->codigo() }}</span>
+                            {{ $tarefa->titulo }}
+                        </h3>
+                        {{-- Por que o texto está sendo pedido — sem a causa, a
+                             pessoa escreve qualquer coisa para passar, como no
+                             painel de motivo do quadro. --}}
+                        <p class="mt-1 text-[12.5px] leading-snug text-ink-mute">
+                            {{ $tarefa->tipo === 'desenvolvimento'
+                                ? 'O código desta tarefa está em produção. Diga o que apareceu — é o que quem recebe o card lê antes de mexer, e a tarefa refaz revisão e staging antes de subir de novo.'
+                                : 'Diga por que ela está voltando — sem isso, o card chega em Em andamento sem ninguém saber o que reabriu.' }}
+                        </p>
+                    </div>
+
+                    <textarea name="motivo" rows="3" x-model="motivo"
+                              placeholder="{{ $tarefa->tipo === 'desenvolvimento' ? 'O que apareceu em produção…' : 'Por que está voltando…' }}"
+                              class="block w-full px-[9px] py-[7px] rounded-[5px] bg-input text-ink
+                                     text-[12px] leading-[1.45] resize-y focus:ring-0"
+                              style="border: 1px solid rgb(var(--warn) / 0.4)"></textarea>
+
+                    <div class="flex items-center gap-2">
+                        <p class="flex-1 font-mono text-[9.5px] uppercase tracking-[0.08em]"
+                           :style="motivo.trim() ? 'color: rgb(var(--ink-faint))' : 'color: rgb(var(--warn))'">
+                            obrigatório</p>
+                        <x-secondary-button type="button" x-on:click="$dispatch('close')">Cancelar</x-secondary-button>
+                        <button type="submit" :disabled="! motivo.trim() || enviando"
+                                class="h-[30px] px-2.5 rounded-[5px] text-[12px] font-semibold whitespace-nowrap
+                                       transition disabled:cursor-not-allowed"
+                                :style="(! motivo.trim() || enviando)
+                                    ? 'background: rgb(var(--line)); color: rgb(var(--ink-faint))'
+                                    : 'background: rgb(var(--warn)); color: rgb(var(--on-brand))'"
+                                x-text="enviando ? 'Enviando…' : 'Reabrir tarefa'"></button>
+                    </div>
+                </form>
+            </x-modal>
+        @endif
     @endforeach
 </x-app-layout>
