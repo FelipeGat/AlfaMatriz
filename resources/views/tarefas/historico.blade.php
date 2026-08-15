@@ -43,7 +43,12 @@
 
         <tbody>
             @forelse ($tarefas as $tarefa)
-                <tr class="border-b border-rule hover:bg-chip transition">
+                {{-- A linha inteira é a porta do histórico completo (AC-293):
+                     quem audita clica na TAREFA, não num alvo pequeno dentro
+                     dela. Os controles que já agem por conta própria — o
+                     Reabrir — seguram o clique com `@click.stop` (AC-294). --}}
+                <tr x-data @click="$dispatch('open-modal', 'historico-tarefa-{{ $tarefa->id }}')"
+                    class="border-b border-rule hover:bg-chip transition cursor-pointer">
                     {{-- Título e resumo na mesma célula, como no card: quem
                          audita precisa saber o QUE era a tarefa, não só o nome. --}}
                     <td class="px-4 py-3">
@@ -66,17 +71,12 @@
                             <p class="mt-0.5 text-[12px] leading-snug text-ink-mute">{{ $tarefa->resumo }}</p>
                         @endif
 
-                        {{-- A conversa é justamente o que explica o desfecho:
-                             auditar uma tarefa cancelada sem poder ler o que
-                             foi dito nela é ler o resultado sem o motivo. Só
-                             leitura — para voltar a escrever, reabre-se a
-                             tarefa (AC-131). --}}
                         @php
-                            // O botão anuncia o que há para ler — conversa,
-                            // anexo ou os dois. Sem o anexo no rótulo, a
-                            // tarefa encerrada que só tinha prints não abria
-                            // botão nenhum, e o print costuma ser justamente o
-                            // que explica o desfecho que o texto não explicou.
+                            // O rótulo anuncia o que há para ler — conversa,
+                            // anexo ou os dois. Era um botão com modal próprio;
+                            // agora é só o anúncio: a linha inteira abre o
+                            // histórico completo, e um segundo alvo clicável
+                            // dentro dela disputaria o mesmo gesto.
                             $totalComentarios = $tarefa->comentarios->count();
                             $totalAnexos = $tarefa->anexos->count();
 
@@ -91,11 +91,9 @@
                         @endphp
 
                         @if ($oQueHa->isNotEmpty())
-                            <button type="button" x-data
-                                    @click="$dispatch('open-modal', 'comentarios-tarefa-{{ $tarefa->id }}')"
-                                    class="mt-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
-                                {{ $oQueHa->implode(' · ') }} ▾
-                            </button>
+                            <p class="mt-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                                {{ $oQueHa->implode(' · ') }}
+                            </p>
                         @endif
                     </td>
                     <td class="px-4 py-3 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
@@ -156,7 +154,7 @@
                         @endphp
 
                         @if ($reabrirPara)
-                            <form method="POST" action="{{ route('tarefas.mover', $tarefa) }}">
+                            <form method="POST" action="{{ route('tarefas.mover', $tarefa) }}" @click.stop>
                                 @csrf
                                 <input type="hidden" name="status" value="{{ $reabrirPara }}">
                                 <input type="hidden" name="de_status" value="{{ $tarefa->status }}">
@@ -194,22 +192,86 @@
     </x-tabela>
     </div>
 
-    {{-- Um modal por linha COM comentário OU anexo: a página traz 20 tarefas,
-         e montar modal vazio para as que não têm nem um nem outro seria peso
-         sem leitura. O anexo entrou na condição junto com a galeria (US-064):
-         sem isso, a tarefa encerrada que só tinha prints não abria nada. --}}
+    {{-- O histórico completo de cada linha (US-082): linha do tempo, relatórios
+         de teste, checklist, anexos e conversa — tudo somente leitura, no
+         mesmo modal. Ele existe para TODA linha, e não só para quem tem
+         comentário ou anexo como antes: a linha do tempo sempre existe, e é
+         justamente a tarefa "vazia" que só ela explica. As demais seções só
+         aparecem quando têm o que dizer (AC-300) — seção vazia é peso sem
+         leitura. --}}
     @foreach ($tarefas as $tarefa)
-        @if ($tarefa->comentarios->isNotEmpty() || $tarefa->anexos->isNotEmpty())
-            <x-modal name="comentarios-tarefa-{{ $tarefa->id }}" maxWidth="lg">
-                <div class="px-6 pt-6 pb-4">
-                    <h3 class="font-display font-semibold text-ink text-lg mb-4">{{ $tarefa->titulo }}</h3>
+        <x-modal name="historico-tarefa-{{ $tarefa->id }}" maxWidth="lg">
+            <div class="px-6 pt-6 pb-4 flex flex-col gap-5">
+                <div>
+                    <h3 class="font-display font-semibold text-ink text-lg">
+                        <span class="font-mono text-[12px] font-semibold text-ink-dim">{{ $tarefa->codigo() }}</span>
+                        {{ $tarefa->titulo }}
+                    </h3>
+                    @if (filled($tarefa->resumo))
+                        <p class="mt-0.5 text-[12.5px] leading-snug text-ink-mute">{{ $tarefa->resumo }}</p>
+                    @endif
+                </div>
+
+                @include('tarefas._linha-do-tempo', ['tarefa' => $tarefa])
+
+                @if ($tarefa->relatoriosTeste->isNotEmpty())
+                    <div>
+                        <div class="flex items-center gap-2 mb-2.5">
+                            <h4 class="flex-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Relatórios de teste</h4>
+                        </div>
+                        <ul class="flex flex-col gap-2">
+                            @foreach ($tarefa->relatoriosTeste->sortBy('created_at') as $relatorio)
+                                <li>
+                                    <p class="flex items-center gap-2">
+                                        <x-badge :tom="$relatorio->aprovado ? 'bom' : 'critico'">
+                                            {{ $relatorio->aprovado ? 'Aprovado' : 'Reprovado' }}
+                                        </x-badge>
+                                        <span class="font-mono text-[11.5px] text-ink-faint">{{ $relatorio->created_at->format('d/m/Y H:i') }}</span>
+                                    </p>
+                                    @if (filled($relatorio->notas))
+                                        <p class="mt-0.5 text-[12px] leading-snug text-ink-mute">{{ $relatorio->notas }}</p>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                {{-- Listagem própria, e não a `_checklist`: aquela é o modo de
+                     edição e vive presa ao Alpine do quadro. Aqui o checklist
+                     é registro — o que ficou feito e o que não ficou. --}}
+                @if ($tarefa->itens->isNotEmpty())
+                    @php $progresso = $tarefa->progressoDoChecklist(); @endphp
+                    <div>
+                        <div class="flex items-center gap-2 mb-2.5">
+                            <h4 class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Checklist</h4>
+                            <span class="font-mono text-[10.5px] text-ink-mute">
+                                {{ $progresso['feitos'] }}/{{ $progresso['total'] }}
+                            </span>
+                        </div>
+                        <ul class="flex flex-col gap-1.5">
+                            @foreach ($tarefa->itens->sortBy('ordem') as $item)
+                                <li class="flex items-start gap-2 text-[12.5px]">
+                                    <span class="mt-[5px] h-[7px] w-[7px] rounded-full shrink-0"
+                                          style="background: rgb(var(--{{ $item->feito ? 'good' : 'line' }}))"></span>
+                                    <span class="{{ $item->feito ? 'text-ink-faint line-through' : 'text-ink' }}">{{ $item->texto }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                @if ($tarefa->anexos->isNotEmpty())
                     @include('tarefas._anexos', ['tarefa' => $tarefa, 'somenteLeitura' => true])
+                @endif
+
+                @if ($tarefa->comentarios->isNotEmpty())
                     @include('tarefas._comentarios', ['tarefa' => $tarefa, 'somenteLeitura' => true])
-                </div>
-                <div class="px-6 pb-6 flex justify-end">
-                    <x-secondary-button x-on:click="$dispatch('close')">Fechar</x-secondary-button>
-                </div>
-            </x-modal>
-        @endif
+                @endif
+            </div>
+            <div class="px-6 pb-6 flex justify-end">
+                <x-secondary-button x-on:click="$dispatch('close')">Fechar</x-secondary-button>
+            </div>
+        </x-modal>
     @endforeach
 </x-app-layout>

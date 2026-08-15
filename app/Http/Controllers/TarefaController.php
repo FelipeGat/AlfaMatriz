@@ -1494,7 +1494,11 @@ class TarefaController extends Controller
         //
         // `withQueryString` porque a busca só serve se sobreviver ao clique em
         // "próxima": sem isso, a página 2 volta a ser o histórico inteiro.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens', 'anexos.autor'])
+        // `eventos.autor`, `criadoPor` e `relatoriosTeste` são o modal de
+        // histórico completo (US-082): a linha do tempo assina cada movimento
+        // e a criação, e os relatórios contam as aprovações. Tudo no mesmo
+        // `with()` — o modal nasce com a página, sem consulta por linha.
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos.autor', 'criadoPor', 'comentarios.autor', 'itens', 'anexos.autor', 'relatoriosTeste'])
             ->whereIn('status', $filtros['desfecho'] !== '' ? [$filtros['desfecho']] : Tarefa::STATUS_TERMINAIS)
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('updated_at')
