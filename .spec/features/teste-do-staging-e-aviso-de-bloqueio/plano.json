@@ -1,0 +1,111 @@
+{
+  "runId": "AlfaMatriz-teste-do-staging-e-aviso-de-bloqueio-msugfenb",
+  "feature": "teste-do-staging-e-aviso-de-bloqueio",
+  "agent": "claude",
+  "modo": "sequencial",
+  "paralelizar": null,
+  "modeloForcado": null,
+  "esforcoForcado": null,
+  "geradoEm": "2026-08-15 14:11",
+  "branchTrabalho": "spec/teste-do-staging-e-aviso-de-bloqueio",
+  "baseDir": ".spec/features/teste-do-staging-e-aviso-de-bloqueio",
+  "specDir": ".spec",
+  "repoName": "AlfaMatriz",
+  "logsDir": "../onp-worktrees/AlfaMatriz-teste-do-staging-e-aviso-de-bloqueio-logs",
+  "ondas": [],
+  "faixas": [],
+  "sequenciais": [
+    {
+      "id": "T-121",
+      "titulo": "Quem testou entra no relatório de teste",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "database/migrations/2026_08_15_150000_quem_testou_no_relatorio_de_teste.php",
+        "app/Models/TarefaRelatorioTeste.php"
+      ],
+      "refs": [
+        "AC-304"
+      ]
+    },
+    {
+      "id": "T-122",
+      "titulo": "Registrar o teste do staging sem mover o card",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/FluxoTarefaService.php",
+        "app/Http/Controllers/TarefaController.php",
+        "routes/web.php",
+        "tests/Feature/TarefasDesenvolvimento/RegistrarTesteDoStagingTest.php"
+      ],
+      "refs": [
+        "AC-303",
+        "AC-305",
+        "AC-306",
+        "AC-307",
+        "AC-308"
+      ]
+    },
+    {
+      "id": "T-123",
+      "titulo": "O bloqueio avisa no sino",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/FluxoTarefaService.php",
+        "app/Models/User.php",
+        "tests/Feature/TarefasDesenvolvimento/AvisoDeBloqueioTest.php"
+      ],
+      "refs": [
+        "AC-309",
+        "AC-310"
+      ]
+    },
+    {
+      "id": "T-124",
+      "titulo": "Comando do portão do staging",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Console/Commands/PortaoDoStaging.php",
+        "tests/Feature/TarefasDesenvolvimento/PortaoDoStagingTest.php"
+      ],
+      "refs": [
+        "AC-311",
+        "AC-312",
+        "AC-313"
+      ]
+    },
+    {
+      "id": "T-125",
+      "titulo": "O deploy chama o portão nos dois vereditos",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "deploy/deploy-staging-alfamatriz.sh",
+        "tests/Feature/TarefasDesenvolvimento/GanchoDoDeployTest.php"
+      ],
+      "refs": [
+        "AC-314"
+      ]
+    },
+    {
+      "id": "T-126",
+      "titulo": "A ação na tela e o autor no histórico",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "resources/views/tarefas/_modais.blade.php",
+        "resources/views/tarefas/_card.blade.php",
+        "resources/views/tarefas/_linha-do-tempo.blade.php"
+      ],
+      "refs": [
+        "AC-303",
+        "AC-304"
+      ]
+    }
+  ],
+  "concluidas": [],
+  "avisos": []
+}

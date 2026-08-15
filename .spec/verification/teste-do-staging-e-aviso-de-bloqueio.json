@@ -1,0 +1,72 @@
+{
+  "feature": "teste-do-staging-e-aviso-de-bloqueio",
+  "timestamp": "2026-08-15T14:29:51.314Z",
+  "gitRev": "350e4b8",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 863,
+  "results": {
+    "AC-303": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RegistrarTesteDoStagingTest::test_membro_que_nao_e_responsavel_registra_o_teste_sem_mover_o_card @spec:AC-303",
+      "method": "tap"
+    },
+    "AC-304": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RegistrarTesteDoStagingTest::test_o_historico_mostra_quem_testou_ao_lado_do_veredito @spec:AC-304",
+      "method": "tap"
+    },
+    "AC-305": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RegistrarTesteDoStagingTest::test_teste_aprovado_registrado_libera_a_ida_para_pronta_producao @spec:AC-305",
+      "method": "tap"
+    },
+    "AC-306": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RegistrarTesteDoStagingTest::test_reprovar_sem_notas_e_recusado @spec:AC-306",
+      "method": "tap"
+    },
+    "AC-307": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RegistrarTesteDoStagingTest::test_registrar_avisa_o_responsavel_e_nao_avisa_a_si_mesmo @spec:AC-307",
+      "method": "tap"
+    },
+    "AC-308": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RegistrarTesteDoStagingTest::test_fora_do_staging_o_registro_e_recusado @spec:AC-308",
+      "method": "tap"
+    },
+    "AC-309": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AvisoDeBloqueioTest::test_bloquear_avisa_responsavel_e_quem_triaga_menos_quem_bloqueou @spec:AC-309",
+      "method": "tap"
+    },
+    "AC-310": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AvisoDeBloqueioTest::test_ninguem_recebe_duas_vezes_nem_se_auto_avisa @spec:AC-310",
+      "method": "tap"
+    },
+    "AC-311": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PortaoDoStagingTest::test_reprovou_bloqueia_a_coluna_com_o_motivo_padrao_e_avisa @spec:AC-311",
+      "method": "tap"
+    },
+    "AC-312": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PortaoDoStagingTest::test_bloqueio_manual_fica_intacto_nos_dois_vereditos @spec:AC-312",
+      "method": "tap"
+    },
+    "AC-313": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\PortaoDoStagingTest::test_passou_destrava_so_o_que_o_portao_travou @spec:AC-313",
+      "method": "tap"
+    },
+    "AC-314": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\GanchoDoDeployTest::test_o_script_chama_o_portao_nos_dois_vereditos_sem_derrubar_o_deploy @spec:AC-314",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}
