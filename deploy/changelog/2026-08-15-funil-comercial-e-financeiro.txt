@@ -1,0 +1,37 @@
+<b>📋 AlfaMatriz — Changelog 15/08/2026</b>
+<i>O funil conta a história de cada lead, quem vende ganha painel próprio com meta, e o financeiro passa a olhar o ano inteiro</i>
+
+<b>🆕 Funil de Vendas</b>
+
+• <b>Cada lead agora tem a própria história.</b> O card expande num painel de detalhamento com a conversa registrada — data do contato, o que ficou combinado, o que falta — e anexos de prova, como print de e-mail ou WhatsApp. O lead deixa de ser só um card com nome e valor: quem pegar a negociação no meio sabe exatamente onde ela parou.
+
+• <b>"Próximo passo" na cara do card.</b> Um resumo de uma linha do que está sendo acordado agora, visível sem abrir nada. O histórico completo mora na conversa; o card mostra só o estado atual.
+
+• <b>Filtro de período no quadro.</b> Mês anterior, mês atual, próximo mês ou um intervalo personalizado — e datas digitadas fora de ordem são corrigidas em vez de virarem erro. Sem filtro, o quadro segue mostrando tudo.
+
+• <b>Quem vende vê o próprio funil.</b> O vendedor com perfil comercial passa a ver no quadro só os leads que são dele — a carteira dos colegas e a visão da empresa inteira continuam sendo assunto de quem gerencia.
+
+<b>🆕 Dashboard Comercial</b>
+
+• <b>Quem vende ganhou painel próprio.</b> O "Meu Painel Comercial" mostra taxa de conversão, pipeline aberto, ticket médio e abertos/perdidos — só da própria mesa, nunca o dinheiro da casa nem o desempenho de outro vendedor. É a nova casa do perfil comercial: entrar no sistema cai direto nele, e o menu ganhou a porta.
+
+---
+<b>📋 AlfaMatriz — Changelog 15/08/2026 · parte 2</b>
+
+• <b>Metas de venda por vendedor.</b> O gestor lança a meta de cada vendedor por competência, e cada um acompanha o realizado contra ela com selo de progresso. Mês sem meta lançada não mostra "0%" — mostra que ninguém definiu quanto era para bater, que é outra conversa.
+
+• <b>O painel do gestor mostra quem vendeu o quê.</b> Vendas por vendedor na competência e o avanço do funil estágio a estágio, com quantidade e valor em cada etapa — mesmo as vazias, para o desenho do funil não mentir.
+
+<b>🆕 Painel Financeiro</b>
+
+• <b>Dá para navegar entre os meses.</b> Os cards do topo deixam de mostrar só o mês corrente: dá para voltar a um mês fechado e ver as entradas, as saídas e o saldo que a conta tinha NAQUELE fim de mês — sem sair da tela nem exportar nada.
+
+• <b>O gráfico mostra o ano inteiro, incluindo o que vem por aí.</b> De janeiro a dezembro: realizado até o mês de hoje e PREVISTO dali em diante — a receita pela recorrência contratada e a despesa pelas contas fixas vigentes (ou pelo que já foi lançado em Contas a Pagar). Mês futuro em branco dizia "nada esperado" quando a verdade era "nada aconteceu ainda". E há filtro de período para focar onde interessa.
+
+<b>⚡ Melhorias</b>
+
+• <b>Funil de Vendas no celular.</b> As colunas do quadro agora cedem à largura da tela, uma por vez, em vez de espremerem o card numa largura fixa de desktop.
+
+• <b>Painel de quem vende, sem o caixa de ninguém.</b> A grade de permissões ganhou o recurso próprio "Dashboard Comercial", separado dos painéis de dinheiro da casa — é o que permite dar painel a quem vende sem abrir saldo em caixa nem receita da empresa. Quem já via o painel Comercial continua vendo, com as mesmas ações de sempre.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
