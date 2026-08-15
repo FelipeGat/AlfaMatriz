@@ -1,0 +1,72 @@
+{
+  "runId": "AlfaMatriz-modal-historico-da-tarefa-msu81qg1",
+  "feature": "modal-historico-da-tarefa",
+  "agent": "claude",
+  "modo": "sequencial",
+  "paralelizar": null,
+  "modeloForcado": null,
+  "esforcoForcado": null,
+  "geradoEm": "2026-08-15 10:16",
+  "branchTrabalho": "spec/modal-historico-da-tarefa",
+  "baseDir": ".spec/features/modal-historico-da-tarefa",
+  "specDir": ".spec",
+  "repoName": "AlfaMatriz",
+  "logsDir": "../onp-worktrees/AlfaMatriz-modal-historico-da-tarefa-logs",
+  "ondas": [],
+  "faixas": [],
+  "sequenciais": [
+    {
+      "id": "T-118",
+      "titulo": "Autor do evento: banco, serviço e modelo",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "database/migrations/2026_08_15_100000_autor_do_evento_da_tarefa.php",
+        "app/Services/FluxoTarefaService.php",
+        "app/Models/TarefaEvento.php",
+        "tests/Feature/TarefasDesenvolvimento/AutorDoEventoTest.php"
+      ],
+      "refs": [
+        "US-083",
+        "AC-301"
+      ]
+    },
+    {
+      "id": "T-119",
+      "titulo": "Partial da linha do tempo da tarefa",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "resources/views/tarefas/_linha-do-tempo.blade.php"
+      ],
+      "refs": [
+        "US-082",
+        "AC-295",
+        "AC-296",
+        "AC-302"
+      ]
+    },
+    {
+      "id": "T-120",
+      "titulo": "Página do histórico: linha clicável e modal completo",
+      "modelo": "claude-sonnet-5",
+      "esforco": "high",
+      "arquivos": [
+        "resources/views/tarefas/historico.blade.php",
+        "app/Http/Controllers/TarefaController.php",
+        "tests/Feature/TarefasDesenvolvimento/ModalHistoricoDaTarefaTest.php"
+      ],
+      "refs": [
+        "US-082",
+        "AC-293",
+        "AC-294",
+        "AC-297",
+        "AC-298",
+        "AC-299",
+        "AC-300"
+      ]
+    }
+  ],
+  "concluidas": [],
+  "avisos": []
+}

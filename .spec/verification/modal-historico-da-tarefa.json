@@ -1,0 +1,62 @@
+{
+  "feature": "modal-historico-da-tarefa",
+  "timestamp": "2026-08-15T11:04:48.835Z",
+  "gitRev": "7f92735",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 851,
+  "results": {
+    "AC-293": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ModalHistoricoDaTarefaTest::test_a_linha_abre_o_modal_de_historico @spec:AC-293",
+      "method": "tap"
+    },
+    "AC-294": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ModalHistoricoDaTarefaTest::test_reabrir_continua_agindo_sem_abrir_o_modal @spec:AC-294",
+      "method": "tap"
+    },
+    "AC-295": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ModalHistoricoDaTarefaTest::test_linha_do_tempo_mostra_cada_movimento @spec:AC-295",
+      "method": "tap"
+    },
+    "AC-296": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ModalHistoricoDaTarefaTest::test_etapa_aposentada_aparece_com_o_nome @spec:AC-296",
+      "method": "tap"
+    },
+    "AC-297": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ModalHistoricoDaTarefaTest::test_conversa_e_anexos_no_mesmo_modal @spec:AC-297",
+      "method": "tap"
+    },
+    "AC-298": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ModalHistoricoDaTarefaTest::test_checklist_com_estado_final @spec:AC-298",
+      "method": "tap"
+    },
+    "AC-299": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ModalHistoricoDaTarefaTest::test_relatorios_de_teste_com_veredito_e_notas @spec:AC-299",
+      "method": "tap"
+    },
+    "AC-300": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ModalHistoricoDaTarefaTest::test_secao_vazia_nao_aparece @spec:AC-300",
+      "method": "tap"
+    },
+    "AC-301": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AutorDoEventoTest::test_movimento_pela_rota_grava_o_autor @spec:AC-301",
+      "method": "tap"
+    },
+    "AC-302": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ModalHistoricoDaTarefaTest::test_autor_aparece_quando_existe @spec:AC-302",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}
