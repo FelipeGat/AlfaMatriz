@@ -1,0 +1,65 @@
+{
+  "runId": "AlfaMatriz-quem-revisa-e-quem-testa-msultu9h",
+  "feature": "quem-revisa-e-quem-testa",
+  "agent": "claude",
+  "modo": "sequencial",
+  "paralelizar": null,
+  "modeloForcado": null,
+  "esforcoForcado": null,
+  "geradoEm": "2026-08-15 16:42",
+  "branchTrabalho": "spec/quem-revisa-e-quem-testa",
+  "baseDir": ".spec/features/quem-revisa-e-quem-testa",
+  "specDir": ".spec",
+  "repoName": "AlfaMatriz",
+  "logsDir": "../onp-worktrees/AlfaMatriz-quem-revisa-e-quem-testa-logs",
+  "ondas": [],
+  "faixas": [],
+  "sequenciais": [
+    {
+      "id": "T-127",
+      "titulo": "O motor: apontar ao mover, recomeçar ao entrar",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/FluxoTarefaService.php",
+        "app/Http/Controllers/TarefaController.php",
+        "tests/Feature/TarefasDesenvolvimento/QuemRevisaEQuemTestaTest.php"
+      ],
+      "refs": [
+        "AC-316",
+        "AC-317",
+        "AC-318",
+        "AC-319"
+      ]
+    },
+    {
+      "id": "T-128",
+      "titulo": "O seletor no painel do movimento",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "resources/views/tarefas/_painel-motivo.blade.php",
+        "resources/views/tarefas/index.blade.php",
+        "tests/Feature/TarefasDesenvolvimento/QuemRevisaEQuemTestaTest.php"
+      ],
+      "refs": [
+        "AC-315"
+      ]
+    },
+    {
+      "id": "T-129",
+      "titulo": "A tarja do teste nomeia o testador",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "resources/views/tarefas/_avisos-da-tarefa.blade.php",
+        "tests/Feature/TarefasDesenvolvimento/QuemRevisaEQuemTestaTest.php"
+      ],
+      "refs": [
+        "AC-320"
+      ]
+    }
+  ],
+  "concluidas": [],
+  "avisos": []
+}
