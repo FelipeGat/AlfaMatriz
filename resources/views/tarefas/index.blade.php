@@ -6,8 +6,14 @@
      * tarefa vem de um portão (ver `pedeTexto`). Vindo do Backlog é só começar
      * a trabalhar, e um painel ali pediria justificativa para pegar a própria
      * tarefa.
+     *
+     * Os portões de exame entraram DEPOIS de rodar sem eles: a primeira versão
+     * deixava o arrasto passar direto (a escolha de quem revisa/testa era só
+     * do menu), e no primeiro dia de uso o dono arrastou para a revisão
+     * esperando a pergunta — arrasto que passa reto se lê como feature que não
+     * existe. O painel deles não cobra texto: oferece uma pessoa, opcional.
      */
-    $etapasComTexto = ['em_desenvolvimento', 'cancelada', 'concluida', 'pronta_producao'];
+    $etapasComTexto = ['em_desenvolvimento', 'em_revisao', 'em_staging', 'cancelada', 'concluida', 'pronta_producao'];
 @endphp
 
 <x-app-layout>
@@ -676,6 +682,10 @@
                 // para o servidor recusar movimento sobre movimento alheio.
                 statusArrastado: null,
 
+                // O responsável do card na mão: o seletor de quem revisa/testa
+                // o desabilita — a bola do portão vai para quem examina.
+                responsavelArrastado: null,
+
                 // Posicionar card na coluna é organizar trabalho alheio, e
                 // segue a mesma capacidade de priorizar e direcionar.
                 podeTriar: {{ auth()->user()?->podeTriarTarefas() ? 'true' : 'false' }},
@@ -962,6 +972,7 @@
                         alvo.dataset.tipo,
                         !! alvo.dataset.bloqueada,
                         alvo.closest('section[data-status]')?.dataset.status,
+                        Number(alvo.dataset.responsavel) || null,
                     );
                 },
 
@@ -1072,13 +1083,16 @@
                     return this.arrastando === null || this.destinos.includes(status);
                 },
 
-                pegar(tarefa, destinos, tipo, bloqueada, status) {
+                pegar(tarefa, destinos, tipo, bloqueada, status, responsavel = null) {
                     this.arrastando = tarefa;
                     // Bloquear é destino de quem ainda não está travado; para
                     // quem já está, a saída é o botão da própria tarja.
                     this.destinos = bloqueada ? destinos : [...destinos, 'bloqueio'];
                     this.tipoArrastado = tipo;
                     this.statusArrastado = status;
+                    // Para o seletor de quem revisa/testa desabilitar o
+                    // responsável também quando o painel nasce de um arrasto.
+                    this.responsavelArrastado = responsavel;
                 },
 
                 largar() {
@@ -1091,6 +1105,7 @@
                     this.destinos = [];
                     this.tipoArrastado = null;
                     this.statusArrastado = null;
+                    this.responsavelArrastado = null;
                     this.sobre = null;
                 },
 
@@ -1147,10 +1162,11 @@
                             pedeAprovacao: ehDev,
                         },
                         // Quem revisa / quem testa (US-087): o apontamento mora
-                        // no gesto de mover, e só no caminho do MENU — o
-                        // arrasto continua direto (Q-038), porque estes dois
-                        // destinos ficam fora de `etapasComTexto`. Opcional de
-                        // propósito: sem escolha, a coluna segue como fila.
+                        // no gesto de mover — menu, arrasto e teclado abrem o
+                        // mesmo painel (Q-038, revisada no primeiro dia de uso:
+                        // o arrasto que passava reto se lia como feature que
+                        // não existe). Opcional de propósito: sem escolha, a
+                        // coluna segue como fila.
                         em_revisao: {
                             verbo: 'Enviando para', label: 'Em revisão',
                             porque: 'O PR vai para exame. Aponte quem revisa e o sino avisa a pessoa na hora — sem apontar, a coluna fica como fila.',
@@ -1232,8 +1248,9 @@
                         // Para o seletor de "quem revisa / quem testa"
                         // desabilitar o responsável: a bola do portão vai para
                         // quem examina, e a tela não deve oferecer a escolha
-                        // que o motor vai recusar.
-                        responsavel,
+                        // que o motor vai recusar. No arrasto e no teclado o
+                        // argumento não vem — vale o do card na mão.
+                        responsavel: responsavel ?? this.responsavelArrastado,
                     };
 
                 },
@@ -1311,14 +1328,17 @@
                     const permitido = this.aceita(status);
                     const tipo = this.tipoArrastado;
                     const de = this.statusArrastado;
+                    const responsavel = this.responsavelArrastado;
 
                     this.largar();
                     this.tipoArrastado = tipo;
                     this.statusArrastado = de;
+                    this.responsavelArrastado = responsavel;
 
                     if (tarefa === null || ! permitido) {
                         this.tipoArrastado = null;
                         this.statusArrastado = null;
+                        this.responsavelArrastado = null;
 
                         return;
                     }

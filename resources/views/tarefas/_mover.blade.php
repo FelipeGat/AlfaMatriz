@@ -76,10 +76,10 @@
                     $abrePainel = match ($destino) {
                         'em_desenvolvimento' => in_array($tarefa->status, \App\Models\Tarefa::PORTOES, true),
                         'cancelada', 'concluida', 'pronta_producao' => true,
-                        // Os portões de exame abrem painel pelo MENU para
-                        // oferecer o "quem revisa / quem testa" (US-087). Só
-                        // aqui: o arrasto continua movendo direto (Q-038) —
-                        // eles ficam fora de `etapasComTexto` de propósito.
+                        // Os portões de exame abrem painel para oferecer o
+                        // "quem revisa / quem testa" (US-087) — aqui e no
+                        // arrasto (`etapasComTexto`), que na primeira versão
+                        // passava reto e se lia como feature que não existe.
                         'em_revisao', 'em_staging' => $tarefa->tipo === 'desenvolvimento',
                         default => false,
                     };

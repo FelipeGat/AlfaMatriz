@@ -57,6 +57,12 @@ class QuemRevisaEQuemTestaTest extends TestCase
         $resposta->assertSee('apontar quem');
         $resposta->assertSee('name="interlocutor_id"', false);
         $resposta->assertSee('sem apontar · a coluna é a fila');
+
+        // O ARRASTO também abre o painel (Q-038, revisada no primeiro dia de
+        // uso): os dois portões de exame estão na lista que faz o solto abrir
+        // painel em vez de mover direto. Sem isto, arrastar para a revisão
+        // passava reto — e se lia como feature que não existe.
+        $resposta->assertSee('"em_revisao","em_staging"', false);
     }
 
     /**

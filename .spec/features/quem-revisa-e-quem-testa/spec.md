@@ -37,10 +37,11 @@ hora — sem depender de cargo fixo, porque o papel muda de tarefa para tarefa.
 
 #### AC-315 — O painel do movimento oferece a escolha nas entradas dos portões
 
-- **Dado** o menu Mover de uma tarefa de desenvolvimento
-- **Quando** o destino escolhido é Em revisão ou Em staging
-- **Então** o painel de confirmação mostra um seletor opcional de pessoa
-  ("Quem revisa?" / "Quem testa?") — e as demais transições seguem sem ele
+- **Dado** uma tarefa de desenvolvimento sendo movida — pelo menu Mover, pelo
+  arrasto ou pelo teclado
+- **Quando** o destino é Em revisão ou Em staging
+- **Então** o painel de confirmação abre com um seletor opcional de pessoa
+  ("Quem revisa?" / "Quem testa?") — e as demais transições seguem como eram
 
 #### AC-316 — O apontado vira o outro lado e fica sabendo
 
@@ -81,10 +82,6 @@ hora — sem depender de cargo fixo, porque o papel muda de tarefa para tarefa.
   apontado, mantém o texto genérico de hoje
 
 ## Fora de escopo
-
-- **O arrasto não pergunta** (decisão do dono, Q-038): arrastar para um portão
-  continua movendo na hora, sem apontamento — quem quer apontar usa o menu
-  Mover, e sem apontamento a coluna segue como fila.
 - **Nenhum campo novo de "revisor"/"testador"**: a bola usa o interlocutor,
   que já existe e já é "o outro lado" da conversa.
 - **O chip "N p/ você" continua contando só perguntas abertas** — o
@@ -107,4 +104,4 @@ hora — sem depender de cargo fixo, porque o papel muda de tarefa para tarefa.
 | ID | Pergunta | Status | Resposta |
 |---|---|---|---|
 | Q-037 | Entrar num portão sem apontar ninguém apaga a lembrança do interlocutor anterior? | respondida | Sim — cada portão recomeça; dentro do portão a memória segue como hoje (dono, 15/08/2026). |
-| Q-038 | Onde a escolha aparece? | respondida | Só no painel do menu Mover; o arrasto continua rápido e sem pergunta (dono, 15/08/2026). |
+| Q-038 | Onde a escolha aparece? | respondida | Em todo movimento para os portões de exame — menu, arrasto e teclado abrem o mesmo painel. Revisada pelo dono em 15/08/2026, no primeiro dia de uso: a resposta original ("só no menu; arrasto direto") fez o arrasto passar reto, e arrasto que passa reto se lê como feature que não existe. |

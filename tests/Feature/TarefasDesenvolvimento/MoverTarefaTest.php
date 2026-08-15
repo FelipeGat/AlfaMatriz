@@ -369,9 +369,12 @@ class MoverTarefaTest extends TestCase
         // a linha.
         $numaLinha = preg_replace('/\s+/', ' ', $html);
 
+        // Sem o `)` final de propósito: depois da etapa ainda viaja o
+        // responsável (US-087), que varia por tarefa — o contrato aqui é
+        // destinos, tipo, bloqueio e etapa.
         $this->assertStringContainsString(
             'pegar( '.Tarefa::first()->id.', '.Js::from(['concluida', 'backlog', 'cancelada'])->toHtml()
-                .", 'operacional', false, 'em_desenvolvimento' )",
+                .", 'operacional', false, 'em_desenvolvimento',",
             $numaLinha,
             'O card precisa levar destinos, tipo e situação de bloqueio para o quadro no dragstart.'
         );

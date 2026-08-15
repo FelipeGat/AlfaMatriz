@@ -115,6 +115,7 @@
                  data-destinos='@json($transicoes)'
                  data-tipo="{{ $tarefa->tipo }}"
                  data-bloqueada="{{ $tarefa->estaBloqueada() ? '1' : '' }}"
+                 data-responsavel="{{ $tarefa->responsavel_id }}"
                  {{-- O card entrega os próprios destinos ao pegar: é assim que
                       o quadro sabe quais colunas apagar durante o arrasto. --}}
                  @dragstart="pegar(
@@ -122,7 +123,8 @@
                      {{ Illuminate\Support\Js::from($transicoes) }},
                      '{{ $tarefa->tipo }}',
                      {{ $tarefa->estaBloqueada() ? 'true' : 'false' }},
-                     '{{ $tarefa->status }}'
+                     '{{ $tarefa->status }}',
+                     {{ $tarefa->responsavel_id ?? 'null' }}
                  )"
                  @dragend="largar()"
                  {{-- Soltar um card SOBRE outro da mesma coluna reordena; de
