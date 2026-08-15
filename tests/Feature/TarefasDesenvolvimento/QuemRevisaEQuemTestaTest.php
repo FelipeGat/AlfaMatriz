@@ -42,6 +42,24 @@ class QuemRevisaEQuemTestaTest extends TestCase
     }
 
     /**
+     * @spec:AC-315 O painel do movimento oferece a escolha nas entradas dos
+     * portões de exame — "Quem revisa?" / "Quem testa?" —, o menu anuncia
+     * "apontar quem" nesses destinos, e o seletor envia o apontado.
+     */
+    public function test_o_quadro_oferece_o_seletor_nas_entradas_dos_portoes(): void
+    {
+        [, $dono] = $this->minhaTarefaEmAndamento();
+
+        $resposta = $this->actingAs($dono)->get(route('tarefas.index'));
+
+        $resposta->assertSee('Quem revisa?');
+        $resposta->assertSee('Quem testa?');
+        $resposta->assertSee('apontar quem');
+        $resposta->assertSee('name="interlocutor_id"', false);
+        $resposta->assertSee('sem apontar · a coluna é a fila');
+    }
+
+    /**
      * @spec:AC-316 Quem é apontado ao mover para um portão vira o outro lado da
      * tarefa e recebe o aviso no sino — a bola chega com o nome de quem a segura.
      */

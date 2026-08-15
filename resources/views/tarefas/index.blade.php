@@ -1146,6 +1146,25 @@
                             obrigatorio: false,
                             pedeAprovacao: ehDev,
                         },
+                        // Quem revisa / quem testa (US-087): o apontamento mora
+                        // no gesto de mover, e só no caminho do MENU — o
+                        // arrasto continua direto (Q-038), porque estes dois
+                        // destinos ficam fora de `etapasComTexto`. Opcional de
+                        // propósito: sem escolha, a coluna segue como fila.
+                        em_revisao: {
+                            verbo: 'Enviando para', label: 'Em revisão',
+                            porque: 'O PR vai para exame. Aponte quem revisa e o sino avisa a pessoa na hora — sem apontar, a coluna fica como fila.',
+                            acaoRotulo: 'Enviar para revisão',
+                            cor: 'brand', campo: null, obrigatorio: false, pedeAprovacao: false,
+                            pessoa: 'Quem revisa?',
+                        },
+                        em_staging: {
+                            verbo: 'Enviando para', label: 'Em staging',
+                            porque: 'O código vai rodar no staging. Aponte quem testa e o sino avisa a pessoa na hora — sem apontar, a coluna fica como fila.',
+                            acaoRotulo: 'Enviar para staging',
+                            cor: 'brand', campo: null, obrigatorio: false, pedeAprovacao: false,
+                            pessoa: 'Quem testa?',
+                        },
                         cancelada: {
                             verbo: 'Encerrando como', label: 'Cancelada',
                             porque: 'Cancelar encerra a tarefa. O motivo fica no histórico, e é o que explica a decisão para quem a reabrir um dia.',
@@ -1180,7 +1199,7 @@
                  * iria sem `de_status`, desligando a guarda de concorrência.
                  * Arrastando, os dois já valem e os argumentos são dispensáveis.
                  */
-                abrirPendente(tarefa, destino, de = null, tipo = null) {
+                abrirPendente(tarefa, destino, de = null, tipo = null, responsavel = null) {
                     if (de !== null) {
                         this.statusArrastado = de;
                     }
@@ -1210,6 +1229,11 @@
                         status: ehBloqueio ? null : destino,
                         de: this.statusArrastado,
                         acao: (ehBloqueio ? this.rotaBloquear : this.rotaMover).replace('__ID__', tarefa),
+                        // Para o seletor de "quem revisa / quem testa"
+                        // desabilitar o responsável: a bola do portão vai para
+                        // quem examina, e a tela não deve oferecer a escolha
+                        // que o motor vai recusar.
+                        responsavel,
                     };
 
                 },

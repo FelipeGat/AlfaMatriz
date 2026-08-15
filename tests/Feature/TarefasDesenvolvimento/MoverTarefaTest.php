@@ -249,6 +249,7 @@ class MoverTarefaTest extends TestCase
         // lista do fluxo. Quem triaga vê o quadro inteiro (AC-283).
         $usuario = User::factory()->membro()->create();
         $this->criarTarefa(['titulo' => 'Tarefa em revisão', 'status' => 'em_revisao', 'responsavel_id' => $usuario->id]);
+        $naBancada = $this->criarTarefa(['titulo' => 'Tarefa na bancada', 'status' => 'em_desenvolvimento', 'responsavel_id' => $usuario->id]);
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
@@ -257,25 +258,33 @@ class MoverTarefaTest extends TestCase
         //
         // O menu é uma LISTA DE BOTÕES, um por destino: o select escondia os
         // três até ser aberto, e "Confirmar" no pé era o que se aperta sem ler.
-        // O clique não faz a mesma coisa nos três: só quem abre painel chama
-        // `abrirPendente`. Em staging não pede nada, então é POST direto —
-        // antes ele caía no `if (! receita) return` e o clique não fazia NADA.
-        $id = Tarefa::first()->id;
+        // Os três destinos abrem painel — a devolução e o cancelamento cobram
+        // motivo, e a entrada num portão de exame oferece o "quem revisa /
+        // quem testa" (US-087), anunciado como "apontar quem" e não como
+        // "pede motivo": apontar é escolha opcional, não texto cobrado.
+        $id = Tarefa::firstWhere('titulo', 'Tarefa em revisão')->id;
         $card = $this->trechoDoCard($html, $id);
 
         $this->assertStringContainsString("abrirPendente({$id}, 'em_desenvolvimento'", $card);
         $this->assertStringContainsString("abrirPendente({$id}, 'cancelada'", $card);
-
-        $this->assertStringNotContainsString("abrirPendente({$id}, 'em_staging'", $card);
-        $this->assertMatchesRegularExpression(
-            '/name="de_status" value="em_revisao">.*<button type="submit" name="status" value="em_staging"/su',
-            $card,
-            'Destino sem motivo move na hora: o status viaja no botão que enviou, '
-                .'e o de_status da guarda de concorrência no formulário único do menu.'
-        );
+        $this->assertStringContainsString("abrirPendente({$id}, 'em_staging'", $card);
+        $this->assertStringContainsString('apontar quem', $card);
 
         $this->assertStringContainsString('Mover para', $card);
         $this->assertStringContainsString('Em staging', $card);
+
+        // Destino que não pede nada continua movendo NA HORA: o status viaja
+        // no botão que enviou, e o de_status da guarda de concorrência no
+        // formulário único do menu. É a guarda contra o bug original, em que
+        // o clique sem receita não fazia NADA, em silêncio.
+        $cardNaBancada = $this->trechoDoCard($html, $naBancada->id);
+
+        $this->assertMatchesRegularExpression(
+            '/name="de_status" value="em_desenvolvimento">.*<button type="submit" name="status" value="backlog"/su',
+            $cardNaBancada,
+            'Destino sem painel move na hora: o status viaja no botão que enviou, '
+                .'e o de_status da guarda de concorrência no formulário único do menu.'
+        );
 
         // A volta para a bancada vindo de um portão é reprovação: o menu avisa
         // que ela cobra texto ANTES do clique.

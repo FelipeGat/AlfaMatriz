@@ -76,8 +76,20 @@
                     $abrePainel = match ($destino) {
                         'em_desenvolvimento' => in_array($tarefa->status, \App\Models\Tarefa::PORTOES, true),
                         'cancelada', 'concluida', 'pronta_producao' => true,
+                        // Os portões de exame abrem painel pelo MENU para
+                        // oferecer o "quem revisa / quem testa" (US-087). Só
+                        // aqui: o arrasto continua movendo direto (Q-038) —
+                        // eles ficam fora de `etapasComTexto` de propósito.
+                        'em_revisao', 'em_staging' => $tarefa->tipo === 'desenvolvimento',
                         default => false,
                     };
+
+                    // O aviso à direita do item diz o que o painel vai pedir —
+                    // e apontar não é motivo: nos portões de exame ele oferece
+                    // uma escolha opcional, não cobra um texto.
+                    $dica = in_array($destino, \App\Models\Tarefa::PORTOES_DE_EXAME, true)
+                        ? 'apontar quem'
+                        : 'pede motivo';
 
                     /**
                      * O nome do destino, e a exceção que o protótipo faz.
@@ -110,14 +122,14 @@
                 --}}
                 @if ($abrePainel)
                     <button type="button" class="{{ $linha }}"
-                            @click.stop="abrirPendente({{ $tarefa->id }}, '{{ $destino }}', '{{ $tarefa->status }}', '{{ $tarefa->tipo }}')">
+                            @click.stop="abrirPendente({{ $tarefa->id }}, '{{ $destino }}', '{{ $tarefa->status }}', '{{ $tarefa->tipo }}', {{ $tarefa->responsavel_id ?? 'null' }})">
                         <span class="h-[7px] w-[7px] shrink-0 rounded-full"
                               style="background: rgb(var(--{{ \App\Models\Tarefa::corDaEtapa($destino) }}))"></span>
 
                         <span class="flex-1 min-w-0 truncate">{{ $rotulo }}</span>
 
                         <span class="shrink-0 font-mono text-[9px] uppercase tracking-[0.06em] text-ink-faint">
-                            pede motivo
+                            {{ $dica }}
                         </span>
                     </button>
                 @else

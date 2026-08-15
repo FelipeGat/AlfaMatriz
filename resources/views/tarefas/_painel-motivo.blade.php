@@ -77,6 +77,26 @@
                       :style="`border: 1px solid rgb(var(--${pendente.cor}) / 0.4)`"></textarea>
         </template>
 
+        {{-- Quem revisa / quem testa (US-087): nos portões de exame o painel
+             oferece uma pessoa, não pede um texto. O responsável aparece
+             desabilitado — a bola do portão vai para quem examina, e a tela
+             não deve oferecer a escolha que o motor vai recusar. --}}
+        <template x-if="pendente.pessoa">
+            <div class="mt-2">
+                <label class="block mb-[5px] font-mono text-[9.5px] uppercase tracking-[0.08em] text-ink-faint"
+                       x-text="pendente.pessoa"></label>
+                <select name="interlocutor_id"
+                        class="block w-full h-[30px] px-[9px] rounded-[5px] bg-input text-ink text-[12px] focus:ring-0"
+                        :style="`border: 1px solid rgb(var(--${pendente.cor}) / 0.4)`">
+                    <option value="">— sem apontar · a coluna é a fila —</option>
+                    @foreach ($usuarios as $usuario)
+                        <option value="{{ $usuario->id }}"
+                                :disabled="pendente.responsavel === {{ $usuario->id }}">{{ $usuario->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </template>
+
         {{-- O carimbo do staging. Nasce marcado: o caminho comum é ter
              validado, e quem NÃO validou é quem precisa agir para dizer. --}}
         <template x-if="pendente.pedeAprovacao">
