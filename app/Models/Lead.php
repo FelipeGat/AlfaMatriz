@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Lead extends Model
@@ -26,7 +27,7 @@ class Lead extends Model
 
     public const ESTAGIOS_TERMINAIS = ['cliente_ativo', 'perdido'];
 
-    public const ORIGENS = ['Google', 'Facebook', 'Instagram', 'Indicação', 'Site', 'WhatsApp', 'Outro'];
+    public const ORIGENS = ['Google', 'Facebook', 'Instagram', 'Indicação', 'Site', 'WhatsApp', 'Migração', 'Outro'];
 
     public const TIPOS_INTERESSE = [
         'saas' => 'Sistema (SaaS)',
@@ -49,7 +50,7 @@ class Lead extends Model
     protected $fillable = [
         'nome', 'cpf_cnpj', 'email', 'telefone', 'revenda_id', 'sistema_id',
         'tipo_interesse', 'origem', 'estagio', 'estagio_atualizado_em',
-        'valor_estimado', 'motivo_perda', 'observacoes', 'vendedor_id', 'cliente_id',
+        'valor_estimado', 'motivo_perda', 'observacoes', 'proximo_passo', 'vendedor_id', 'cliente_id',
     ];
 
     protected function casts(): array
@@ -78,6 +79,17 @@ class Lead extends Model
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    /** A conversa registrada — mais recente primeiro, para o topo do painel ser o estado mais atual. */
+    public function comentarios(): HasMany
+    {
+        return $this->hasMany(LeadComentario::class)->latest();
+    }
+
+    public function anexos(): HasMany
+    {
+        return $this->hasMany(LeadAnexo::class)->latest();
     }
 
     public function isAberto(): bool

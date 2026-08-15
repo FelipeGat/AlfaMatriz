@@ -32,6 +32,37 @@
                         acento="amber" icone="view-grid" />
         </div>
 
+        {{-- Filtro de período: por quando o lead ENTROU, não uma janela que
+             esconde lead antigo do quadro — por isso o padrão é "todos" e o
+             filtro é sempre uma escolha explícita de quem está olhando. --}}
+        <div class="shrink-0 flex flex-wrap items-center gap-2">
+            <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Período de entrada</span>
+
+            <form method="GET" class="flex flex-wrap items-center gap-1.5">
+                <select name="periodo" onchange="this.form.submit()"
+                        class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
+                    <option value="todos" {{ $filtroPeriodo === 'todos' ? 'selected' : '' }}>Todos</option>
+                    <option value="mes_anterior" {{ $filtroPeriodo === 'mes_anterior' ? 'selected' : '' }}>Mês anterior</option>
+                    <option value="mes_atual" {{ $filtroPeriodo === 'mes_atual' ? 'selected' : '' }}>Mês atual</option>
+                    <option value="proximo_mes" {{ $filtroPeriodo === 'proximo_mes' ? 'selected' : '' }}>Próximo mês</option>
+                    <option value="personalizado" {{ $filtroPeriodo === 'personalizado' ? 'selected' : '' }}>Período personalizado</option>
+                </select>
+
+                @if ($filtroPeriodo === 'personalizado')
+                    <input type="date" name="periodo_de" value="{{ $periodoDe }}" onchange="this.form.submit()"
+                           class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
+                    <span class="font-mono text-[10.5px] text-ink-faint">até</span>
+                    <input type="date" name="periodo_ate" value="{{ $periodoAte }}" onchange="this.form.submit()"
+                           class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
+                @endif
+            </form>
+
+            @unless ($filtroPeriodo === 'todos')
+                <a href="{{ route('leads.index') }}"
+                   class="font-mono text-[10.5px] uppercase tracking-caps text-brand-text hover:underline">Limpar</a>
+            @endunless
+        </div>
+
         {{-- Quadro ---------------------------------------------------------- --}}
         <div x-data="funil" class="relative flex-1 min-h-0 flex flex-col rounded-panel border border-line bg-board overflow-hidden">
             {{-- Sombras nas bordas: quando o quadro não cabe, elas são a única
@@ -65,13 +96,24 @@
                  nome, valor e revenda sem espremer. O quadro rola na
                  horizontal, com `shift`+roda (que o navegador já faz) e a
                  sombra na borda avisando que há mais coluna adiante. --}}
+            {{-- `snap-x snap-mandatory` só entra em ação em quem arrasta com o
+                 dedo — mouse com roda ignora scroll-snap normalmente, então
+                 não muda nada no desktop. --}}
             <div x-ref="quadro" @scroll="medirBordas()" @resize.window="medirBordas()" x-init="medirBordas()"
-                 class="relative flex-1 min-h-0 flex gap-3 items-stretch overflow-x-auto p-3.5">
+                 class="relative flex-1 min-h-0 flex gap-3 items-stretch overflow-x-auto p-3.5 snap-x snap-mandatory sm:snap-none">
                 @foreach ($estagios as $estagio)
                     @php $cards = $colunas[$estagio['chave']]; @endphp
 
-                    <section class="shrink-0 flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden"
-                             style="width: 276px; border-top: 3px solid rgb(var(--{{ $estagio['cor'] }}))"
+                    {{-- Largura da coluna: quase a tela inteira abaixo de
+                         640px (uma coluna por vez, como um app de Kanban de
+                         celular — Trello faz igual), 276px fixos do `sm` para
+                         cima. Antes era 276px sempre, e num iPhone de 390px
+                         a coluna seguinte aparecia só como uma tira cortada
+                         na borda — dava para adivinhar que havia mais, não
+                         para ler o que tinha lá (AC pedido em 15/08/2026). --}}
+                    <section class="shrink-0 flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden
+                                     snap-start w-[calc(100vw-3.5rem)] max-w-[360px] sm:w-[276px] sm:max-w-none"
+                             style="border-top: 3px solid rgb(var(--{{ $estagio['cor'] }}))"
                              data-estagio="{{ $estagio['chave'] }}"
                              @dragover.prevent="permitir('{{ $estagio['chave'] }}')"
                              @dragleave="sobre = null"
@@ -108,7 +150,8 @@
                                          data-lead="{{ $lead->id }}"
                                          @dragstart="arrastando = {{ $lead->id }}"
                                          @dragend="arrastando = null; sobre = null"
-                                         x-data="{ menuAberto: false, destino: '{{ $estagio['chave'] }}' }"
+                                         @click="$dispatch('open-modal', 'lead-{{ $lead->id }}')"
+                                         x-data="{ menuAberto: false, destino: '{{ $estagio['chave'] }}', expandido: false }"
                                          class="rounded-ctl bg-card-grad border p-2.5 cursor-grab active:cursor-grabbing transition hover:border-brand"
                                          style="border-color: {{ $tomTemp && $tomTemp !== 'good' ? 'rgb(var(--'.$tomTemp.') / 0.4)' : 'var(--line)' }}"
                                          :class="arrastando === {{ $lead->id }} && 'opacity-50'">
@@ -133,6 +176,43 @@
                                         <span class="min-w-0 flex-1 truncate text-right text-[11px] text-ink-faint">
                                             {{ $lead->revenda?->nome ?? 'Venda direta' }}
                                         </span>
+                                        {{-- Setinha de expandir: olhada rápida sem
+                                             abrir o painel inteiro. `.stop` nos
+                                             dois cliques (botão e card) para não
+                                             abrir o modal ao mesmo tempo. --}}
+                                        {{-- `-m-1.5` compensa o `p-1.5`: a área de
+                                             toque cresce para ~32px (dedo real
+                                             mira, não só o ícone de 12px) sem
+                                             empurrar o layout ao redor. --}}
+                                        <button type="button" @click.stop="expandido = ! expandido"
+                                                class="shrink-0 -m-1.5 p-1.5 flex items-center justify-center rounded-badge text-ink-faint hover:text-brand transition"
+                                                :aria-label="expandido ? 'Recolher detalhes' : 'Ver mais detalhes'">
+                                            <span class="h-3 w-3 transition-transform" :class="expandido && 'rotate-180'">
+                                                <x-nav-icon name="chevron-down" :peso="1.8" />
+                                            </span>
+                                        </button>
+                                    </div>
+
+                                    {{-- Detalhes rápidos, sem abrir o painel: o
+                                         que o card normal esconde (contato,
+                                         próximo passo, última interação). --}}
+                                    <div x-show="expandido" x-cloak @click.stop
+                                         class="mt-2 pt-2 border-t border-rule space-y-1 text-[11px] text-ink-faint">
+                                        @if ($lead->email)
+                                            <p class="truncate">✉ {{ $lead->email }}</p>
+                                        @endif
+                                        @if ($lead->telefone)
+                                            <p class="truncate">☎ {{ $lead->telefone }}</p>
+                                        @endif
+                                        @if ($lead->proximo_passo)
+                                            <p class="line-clamp-2"><span class="text-ink-mute">Próximo passo:</span> {{ $lead->proximo_passo }}</p>
+                                        @endif
+                                        @if ($lead->comentarios->isNotEmpty())
+                                            <p>Última interação: {{ $lead->comentarios->first()->created_at->format('d/m/Y') }}</p>
+                                        @endif
+                                        @if (! $lead->email && ! $lead->telefone && ! $lead->proximo_passo && $lead->comentarios->isEmpty())
+                                            <p>Sem detalhes ainda — clique no card para adicionar.</p>
+                                        @endif
                                     </div>
 
                                     {{--
@@ -143,7 +223,7 @@
                                         um resto do desenho antigo — é o caminho
                                         acessível.
                                     --}}
-                                    <div class="mt-2 pt-2 border-t border-rule">
+                                    <div class="mt-2 pt-2 border-t border-rule" @click.stop>
                                         <button type="button" @click="menuAberto = ! menuAberto"
                                                 class="font-mono text-[10.5px] uppercase tracking-caps text-ink-mute hover:text-brand transition">
                                             Mover ▾
@@ -336,4 +416,184 @@
             </div>
         </form>
     </x-modal>
+
+    {{-- Reabre o painel de onde uma ação (comentário, anexo, salvar) saiu —
+         sem isto, cada envio recarregava a página e o painel fechava
+         sozinho, perdendo o lugar de quem estava no meio de uma conversa. --}}
+    <script>
+        document.addEventListener('alpine:init', () => {
+            const leadId = new URLSearchParams(window.location.search).get('lead');
+            if (leadId) {
+                window.addEventListener('DOMContentLoaded', () => {
+                    Alpine.nextTick(() => window.dispatchEvent(
+                        new CustomEvent('open-modal', { detail: 'lead-' + leadId })
+                    ));
+                });
+            }
+        });
+    </script>
+
+    {{-- Painel de detalhamento de cada lead: edição, histórico da conversa e
+         provas (print de e-mail/WhatsApp). Mesma dupla comentário+anexo que
+         a Tarefa já usa — pedido em 15/08/2026: "enriquecer o card com datas
+         da última conversa, print do e-mail ou whatsapp, o que falta para o
+         fechamento, o que está sendo acordado". --}}
+    @foreach ($colunas->flatten(1) as $lead)
+        <x-modal name="lead-{{ $lead->id }}" maxWidth="tarefa">
+            <div class="flex flex-col max-h-[85vh]">
+                <div class="shrink-0 flex items-start gap-3 p-5 border-b border-rule">
+                    <div class="min-w-0 flex-1">
+                        <h3 class="font-display font-semibold text-ink text-lg truncate">{{ $lead->nome }}</h3>
+                        <p class="mt-0.5 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                            {{ \App\Models\Lead::ESTAGIOS[$lead->estagio] }} · {{ $lead->diasNoEstagio() }} dias no estágio
+                            @if ($lead->revenda) · {{ $lead->revenda->nome }} @endif
+                        </p>
+                    </div>
+                    <button type="button" x-on:click="$dispatch('close')"
+                            class="shrink-0 h-8 w-8 flex items-center justify-center rounded-control text-ink-faint hover:text-ink hover:bg-chip transition"
+                            aria-label="Fechar">✕</button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-5 space-y-6">
+                    {{-- Dados do lead + próximo passo --}}
+                    <form action="{{ route('leads.update', $lead) }}" method="POST" class="space-y-4">
+                        @csrf
+                        @method('PUT')
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="sm:col-span-2">
+                                <x-input-label value="Nome / Empresa" />
+                                <x-text-input name="nome" type="text" class="mt-1 block w-full" value="{{ $lead->nome }}" required />
+                            </div>
+                            <div>
+                                <x-input-label value="E-mail" />
+                                <x-text-input name="email" type="email" class="mt-1 block w-full" value="{{ $lead->email }}" />
+                            </div>
+                            <div>
+                                <x-input-label value="Telefone" />
+                                <x-text-input name="telefone" type="text" class="mt-1 block w-full" value="{{ $lead->telefone }}" />
+                            </div>
+                            <div>
+                                <x-input-label value="Interesse" />
+                                <select name="tipo_interesse" class="mt-1 block w-full">
+                                    @foreach (\App\Models\Lead::TIPOS_INTERESSE as $chave => $label)
+                                        <option value="{{ $chave }}" {{ $lead->tipo_interesse === $chave ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <x-input-label value="Sistema (se for SaaS)" />
+                                <select name="sistema_id" class="mt-1 block w-full">
+                                    <option value="">—</option>
+                                    @foreach ($sistemas as $sistema)
+                                        <option value="{{ $sistema->id }}" {{ (int) $lead->sistema_id === $sistema->id ? 'selected' : '' }}>{{ $sistema->nome }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <x-input-label value="Origem" />
+                                <select name="origem" class="mt-1 block w-full">
+                                    <option value="">—</option>
+                                    @foreach (\App\Models\Lead::ORIGENS as $origem)
+                                        <option value="{{ $origem }}" {{ $lead->origem === $origem ? 'selected' : '' }}>{{ $origem }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <x-input-label value="Valor estimado (R$)" />
+                                <x-text-input name="valor_estimado" type="number" step="0.01" min="0" class="mt-1 block w-full" value="{{ $lead->valor_estimado }}" />
+                            </div>
+                            <div class="sm:col-span-2">
+                                <x-input-label value="Revenda (se aplicável)" />
+                                <select name="revenda_id" class="mt-1 block w-full">
+                                    <option value="">— Venda direta —</option>
+                                    @foreach ($revendas as $revenda)
+                                        <option value="{{ $revenda->id }}" {{ (int) $lead->revenda_id === $revenda->id ? 'selected' : '' }}>{{ $revenda->nome }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <x-input-label value="O que falta para fechar / o que está sendo acordado" />
+                                <textarea name="proximo_passo" rows="2" class="mt-1 block w-full"
+                                          placeholder="Ex.: aguardando retorno do financeiro deles; combinamos visita técnica dia 20/08.">{{ $lead->proximo_passo }}</textarea>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <x-input-label value="Observações" />
+                                <textarea name="observacoes" rows="2" class="mt-1 block w-full">{{ $lead->observacoes }}</textarea>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end">
+                            <x-primary-button>Salvar</x-primary-button>
+                        </div>
+                    </form>
+
+                    {{-- Anexos: print de e-mail/WhatsApp, proposta em PDF --}}
+                    <div class="pt-5 border-t border-rule">
+                        <h4 class="font-display text-[14px] font-semibold text-ink mb-2">Anexos</h4>
+
+                        @if ($lead->anexos->isNotEmpty())
+                            <div class="space-y-2 mb-3">
+                                @foreach ($lead->anexos as $anexo)
+                                    <div class="flex items-center gap-2 rounded-control border border-line bg-input px-3 py-2">
+                                        @if ($anexo->eh_imagem)
+                                            <a href="{{ $anexo->url }}" target="_blank" class="shrink-0">
+                                                <img src="{{ $anexo->url }}" alt="{{ $anexo->nome_original }}"
+                                                     class="h-10 w-10 rounded-badge object-cover border border-line">
+                                            </a>
+                                        @else
+                                            <span class="shrink-0 h-10 w-10 rounded-badge bg-chip flex items-center justify-center text-[10px] font-mono uppercase text-ink-faint">
+                                                arq
+                                            </span>
+                                        @endif
+                                        <a href="{{ $anexo->url }}" target="_blank" class="min-w-0 flex-1 truncate text-[12.5px] text-ink hover:text-brand-text">
+                                            {{ $anexo->nome_original }}
+                                        </a>
+                                        <span class="shrink-0 font-mono text-[10.5px] text-ink-faint">{{ $anexo->tamanho_formatado }}</span>
+                                        <form method="POST" action="{{ route('leads.anexos.destroy', $anexo) }}"
+                                              onsubmit="return confirm('Remover este anexo?')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="shrink-0 text-ink-faint hover:text-crit-text transition" aria-label="Remover anexo">✕</button>
+                                        </form>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        <form method="POST" action="{{ route('leads.anexos.store', $lead) }}" enctype="multipart/form-data" class="flex items-center gap-2">
+                            @csrf
+                            <input type="file" name="anexos[]" multiple accept="{{ \App\Models\LeadAnexo::ACEITE_DO_SELETOR }}"
+                                   class="flex-1 text-[12px] text-ink-faint file:mr-3 file:py-1.5 file:px-3 file:rounded-control file:border-0 file:bg-chip file:text-ink file:text-[11.5px] file:cursor-pointer">
+                            <x-secondary-button type="submit">Anexar</x-secondary-button>
+                        </form>
+                    </div>
+
+                    {{-- Histórico da conversa: data da última ligação, o que ficou combinado --}}
+                    <div class="pt-5 border-t border-rule">
+                        <h4 class="font-display text-[14px] font-semibold text-ink mb-2">Histórico da conversa</h4>
+
+                        <form method="POST" action="{{ route('leads.comentarios.store', $lead) }}" class="mb-3 space-y-2">
+                            @csrf
+                            <textarea name="texto" rows="2" required class="block w-full"
+                                      placeholder="Ex.: 12/08 falei com o financeiro, disseram que decidem até sexta."></textarea>
+                            <div class="flex justify-end">
+                                <x-secondary-button type="submit">Registrar</x-secondary-button>
+                            </div>
+                        </form>
+
+                        @forelse ($lead->comentarios as $comentario)
+                            <div class="py-2.5 border-t border-rule first:border-0">
+                                <p class="text-[13px] text-ink whitespace-pre-line">{{ $comentario->texto }}</p>
+                                <p class="mt-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                                    {{ $comentario->autor?->name ?? 'Autor removido' }} · {{ $comentario->created_at->format('d/m/Y H:i') }}
+                                </p>
+                            </div>
+                        @empty
+                            <p class="text-[12.5px] text-ink-mute">Nenhum registro ainda.</p>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </x-modal>
+    @endforeach
 </x-app-layout>
