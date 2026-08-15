@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 
 class User extends Authenticatable
 {
@@ -291,5 +292,29 @@ class User extends Authenticatable
     public function podeTriarTarefas(): bool
     {
         return $this->canPermissao('tarefas_triagem', 'incluir');
+    }
+
+    /**
+     * Quem faz triagem, em lote — os ids de todas as contas com a capacidade.
+     *
+     * É a mesma pergunta de `podeTriarTarefas`, feita de fora para dentro:
+     * lá, "esta conta pode?"; aqui, "quais contas podem?". A consulta espelha
+     * a capacidade de propósito (mesmo recurso, mesma ação) — duas respostas
+     * para "quem triaga" fariam a tela e o sino divergirem.
+     *
+     * Serve aos avisos que são sobre ORGANIZAR o trabalho — um bloqueio novo,
+     * por exemplo — e por isso pula conta desativada: ela não abre o quadro, e
+     * um sino que ninguém pode ler não avisa, acumula.
+     *
+     * @return Collection<int, int>
+     */
+    public static function idsDeQuemTriaTarefas(): Collection
+    {
+        return self::query()
+            ->where('ativo', true)
+            ->whereHas('perfis.permissoes', fn ($query) => $query
+                ->where('recurso', 'tarefas_triagem')
+                ->where('perfil_permissao.incluir', true))
+            ->pluck('id');
     }
 }

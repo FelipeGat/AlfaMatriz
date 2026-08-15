@@ -9,6 +9,7 @@ use App\Models\TarefaEvento;
 use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * O motor do fluxo do quadro: só deixa a tarefa se mover entre etapas que o
@@ -489,7 +490,42 @@ class FluxoTarefaService
             'bloqueio_motivo' => trim((string) $motivo),
         ])->save();
 
+        $this->avisarBloqueio($tarefa);
+
         return $tarefa->refresh();
+    }
+
+    /**
+     * O bloqueio é notícia para quem pode destravá-lo: o responsável (é o
+     * trabalho dele que parou) e quem faz triagem (é quem vai atrás do
+     * impedimento ou reorganiza o quadro). A tarja âmbar só aparece para quem
+     * ABRE o quadro — e "staging quebrou" não pode esperar alguém abrir.
+     *
+     * Quem bloqueou não recebe (`avisar` cala para o autor), e o `unique`
+     * garante um aviso só para o responsável que também triaga. Sem autor —
+     * o bloqueio do portão do deploy roda sem sessão — todo mundo recebe,
+     * que é o comportamento certo: ninguém ali agiu.
+     */
+    private function avisarBloqueio(Tarefa $tarefa): void
+    {
+        $destinatarios = User::idsDeQuemTriaTarefas()
+            ->push($tarefa->responsavel_id)
+            ->filter()
+            ->unique();
+
+        foreach ($destinatarios as $destinatarioId) {
+            Notificacao::avisar($destinatarioId, auth()->id(), [
+                'tipo' => 'bloqueio',
+                'nivel' => 'atencao',
+                'icone' => 'cadeado-fechado',
+                'titulo' => '«'.$tarefa->titulo.'» foi bloqueada',
+                // O motivo é a informação inteira do aviso, na régua curta da
+                // coluna `meta` — o texto completo continua na tarja do card.
+                'meta' => Str::limit((string) $tarefa->bloqueio_motivo, 120),
+                'rota' => route('tarefas.index'),
+                'tarefa_id' => $tarefa->id,
+            ]);
+        }
     }
 
     /** Tira a marca de travada. A etapa não muda porque ela nunca mudou. */
