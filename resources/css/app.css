@@ -233,8 +233,16 @@
 
     /* A lista aberta do select é desenhada pelo sistema operacional e não
        aceita CSS. `color-scheme` no :root é o único controle que existe: é
-       ele que faz o menu nativo abrir escuro no tema escuro. */
-    select option {
+       ele que faz o menu nativo abrir escuro no tema escuro.
+
+       O `optgroup` entra na mesma regra porque fora dela ele fica transparente
+       herdando a tinta do tema — e o Chrome pinta o rótulo do grupo sobre a
+       base clara do próprio popup. No escuro isso é tinta clara sobre fundo
+       claro: "Produto" e "Sistema interno" somem no select de Sistema, o
+       único agrupado. No claro a tinta herdada é escura e o defeito não
+       aparece — por isso ele passou despercebido até aqui. */
+    select option,
+    select optgroup {
         background: rgb(var(--panel));
         color: rgb(var(--ink));
     }
