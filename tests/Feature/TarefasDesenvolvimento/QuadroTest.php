@@ -310,7 +310,57 @@ class QuadroTest extends TestCase
         $cheio = $this->actingAs($usuario)->get(route('tarefas.index'))->getContent();
 
         $this->assertStringContainsString('acima do limite', $cheio);
-        $this->assertStringNotContainsString('PR · admin analisa', $cheio);
+
+        // A disputa é DO CABEÇALHO DA COLUNA, e o recorte diz isso: a página
+        // inteira não fica sem o portão — a legenda da esteira continua
+        // ensinando o que a coluna examina, estourada ou não.
+        $inicio = strpos($cheio, 'data-status="em_revisao"');
+        $cabecalho = substr($cheio, $inicio, strpos($cheio, '</header>', $inicio) - $inicio);
+
+        $this->assertStringNotContainsString('PR · admin analisa', $cabecalho);
+    }
+
+    /**
+     * A legenda da esteira, atrás do ícone de dúvida do cabeçalho: as sete
+     * paradas na ordem do fluxo e as regras que o quadro só mostra uma por
+     * vez — a volta dos portões, o bloqueio que é marca e o desvio da
+     * operacional. Sob demanda, como os atalhos: orientação fixa cobraria
+     * espaço de todo mundo para servir a quem chegou ontem.
+     */
+    public function test_a_legenda_da_esteira_orienta_sobre_o_fluxo(): void
+    {
+        $usuario = User::factory()->create();
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // A porta e o painel existem, e abrir não recarrega a página.
+        $this->assertStringContainsString('title="Como a esteira funciona"', $html);
+        $this->assertStringContainsString('fluxoAberto', $html);
+
+        // As paradas aparecem na ordem em que a tarefa passa por elas — a
+        // legenda que embaralha a ordem ensina um fluxo que não existe. A
+        // âncora é o título DO PAINEL (com o `</h3>`): o mesmo texto aparece
+        // antes no `title` do botão, e cortar ali mediria o quadro, não a
+        // legenda.
+        $inicio = strpos($html, 'Como a esteira funciona</h3>');
+        $this->assertNotFalse($inicio, 'O painel da legenda existe.');
+        $legenda = substr($html, $inicio);
+        $posicoes = array_map(
+            fn (string $rotulo) => strpos($legenda, $rotulo),
+            ['Aberta', 'Backlog', 'Em andamento', 'Em revisão', 'Em staging', 'Pronta p/ produção', 'Concluída'],
+        );
+
+        $this->assertNotContains(false, $posicoes, 'Toda parada da esteira aparece na legenda.');
+
+        $ordenadas = $posicoes;
+        sort($ordenadas);
+        $this->assertSame($ordenadas, $posicoes, 'As paradas aparecem na ordem do fluxo.');
+
+        // As regras que andam por fora da linha.
+        $this->assertStringContainsString('devolve a tarefa para Em andamento', $legenda);
+        $this->assertStringContainsString('sai da conta de WIP', $legenda);
+        $this->assertStringContainsString('passa a bola sem mover o card', $legenda);
+        $this->assertStringContainsString('vai direto para Concluída', $legenda);
     }
 
     /**

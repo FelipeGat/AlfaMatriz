@@ -708,6 +708,12 @@
                 selecionado: null,
                 atalhosAbertos: false,
 
+                // A legenda da esteira, atrás do ícone de dúvida do cabeçalho.
+                // Vive aqui, e não na partial, pelo mesmo motivo dos atalhos:
+                // o quadro é redesenhado a cada ação parcial, e o estado do
+                // componente é o que sobrevive à troca.
+                fluxoAberto: false,
+
                 // O que o painel de motivo está perguntando agora.
                 pendente: null,
                 textoPendente: '',
@@ -833,6 +839,7 @@
                     if (tecla === 'Escape') {
                         this.fecharPendente();
                         this.atalhosAbertos = false;
+                        this.fluxoAberto = false;
 
                         return;
                     }

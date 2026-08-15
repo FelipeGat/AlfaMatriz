@@ -39,6 +39,19 @@
         </p>
     </div>
 
+    {{-- A porta da legenda da esteira: só o ícone, por escolha do dono — a
+         versão com rótulo ("como funciona") foi recusada. O tamanho é o dos
+         ícones da sidebar (18px): além do precedente, 18/24 é escala exata
+         de 0,75, e foi a interrogação desenhada em escala quebrada que
+         chegou deformada na primeira versão. `mute` e não `faint`: ícone
+         sozinho, sem borda, a cor é o único anúncio de que ele existe. --}}
+    <button type="button" @click="fluxoAberto = true"
+            title="Como a esteira funciona" aria-label="Como a esteira funciona"
+            class="shrink-0 h-[26px] w-[26px] rounded-badge flex items-center justify-center
+                   text-ink-mute hover:text-brand transition">
+        <span class="h-[18px] w-[18px]"><x-nav-icon name="duvida" :peso="1.7" /></span>
+    </button>
+
     {{--
         Os chips do quadro.
 
@@ -325,6 +338,98 @@
                 </div>
             @endforeach
         </dl>
+    </div>
+</div>
+
+{{--
+    A legenda da esteira, atrás do ícone de dúvida do cabeçalho.
+
+    Mesma decisão dos atalhos: orientação fixa cobraria espaço de todo mundo o
+    tempo todo para servir a quem chegou ontem. Sob demanda, cabe dizer o que o
+    quadro só mostra uma regra por vez: a ordem das paradas, a volta dos
+    portões, o bloqueio que não é coluna e o desvio da operacional.
+--}}
+@php
+    /**
+     * Rótulo, cor e portão saem das MESMAS constantes que pintam as colunas
+     * (`rotuloDaEtapa`, `corDaEtapa`, `PORTAO_DA_ETAPA`): legenda copiada é
+     * legenda que diverge do quadro que ela explica. Só a nota das etapas sem
+     * portão nasce aqui, com o texto do handoff (README §16.1).
+     */
+    $esteira = [
+        ['chave' => 'aberta', 'nota' => 'fila de triagem'],
+        ['chave' => 'backlog', 'nota' => 'priorizado, sem ninguém tocando'],
+        ['chave' => 'em_desenvolvimento', 'nota' => 'a bancada de quem executa'],
+        ['chave' => 'em_revisao', 'nota' => \App\Models\Tarefa::PORTAO_DA_ETAPA['em_revisao']],
+        ['chave' => 'em_staging', 'nota' => \App\Models\Tarefa::PORTAO_DA_ETAPA['em_staging']],
+        ['chave' => 'pronta_producao', 'nota' => \App\Models\Tarefa::PORTAO_DA_ETAPA['pronta_producao']],
+        ['chave' => 'concluida', 'nota' => 'em produção · a versão diz desde quando'],
+    ];
+@endphp
+<div x-show="fluxoAberto" x-cloak x-transition.opacity.duration.150ms
+     @click="fluxoAberto = false"
+     class="absolute inset-0 z-30 flex items-center justify-center p-4"
+     style="background: rgb(var(--canvas) / 0.75)">
+    <div @click.stop class="w-[420px] max-w-full max-h-full overflow-y-auto rounded-panel border border-line bg-panel p-4 shadow-xl">
+        <div class="flex items-center gap-2">
+            <h3 class="font-display text-[14.5px] font-semibold text-ink">Como a esteira funciona</h3>
+            <button type="button" @click="fluxoAberto = false" aria-label="Fechar"
+                    class="ml-auto h-6 w-6 rounded-control text-ink-faint hover:text-ink transition">✕</button>
+        </div>
+
+        <div class="mt-3">
+            @foreach ($esteira as $parada)
+                <div class="flex items-center gap-2">
+                    <span class="h-[7px] w-[7px] shrink-0 rounded-full"
+                          style="background: rgb(var(--{{ \App\Models\Tarefa::corDaEtapa($parada['chave']) }}))"></span>
+                    <span class="shrink-0 text-[12.5px] font-semibold text-ink">
+                        {{ \App\Models\Tarefa::rotuloDaEtapa($parada['chave']) }}
+                    </span>
+                    <span class="min-w-0 truncate font-mono text-[9.5px] uppercase tracking-[0.1em] text-ink-faint"
+                          title="{{ $parada['nota'] }}">{{ $parada['nota'] }}</span>
+                </div>
+                {{-- O fio entre as paradas: 3px de recuo centralizam a linha de
+                     1px sob o ponto de 7px da parada de cima. --}}
+                @unless ($loop->last)
+                    <div class="ml-[3px] h-2.5 border-l border-line" aria-hidden="true"></div>
+                @endunless
+            @endforeach
+        </div>
+
+        {{-- O que anda por fora da linha. Cada ícone e cor é o que o card já
+             usa para a mesma notícia — a legenda ensina o símbolo, não cria um. --}}
+        <div class="mt-3 pt-3 border-t border-line space-y-1.5">
+            @foreach ([
+                ['icone' => 'arrow-uturn-left', 'cor' => 'warn',
+                 'frase' => 'Reprovar num portão devolve a tarefa para Em andamento, com o motivo — a tarja no card diz de onde ela voltou.'],
+                ['icone' => 'cadeado-fechado', 'cor' => 'warn',
+                 'frase' => 'Bloqueada é marca, não coluna: a tarefa fica na etapa em que está e sai da conta de WIP.'],
+                ['icone' => 'duvida', 'cor' => 'brand-text',
+                 'frase' => 'Perguntar passa a bola sem mover o card — na 3ª rodada o quadro acende o alerta de conversa empacada.'],
+            ] as $marca)
+                <div class="flex items-start gap-2.5">
+                    <span class="mt-px h-3.5 w-3.5 shrink-0" style="color: rgb(var(--{{ $marca['cor'] }}))">
+                        <x-nav-icon :name="$marca['icone']" :peso="1.8" />
+                    </span>
+                    <p class="text-[12px] leading-[1.4] text-ink-mute">{{ $marca['frase'] }}</p>
+                </div>
+            @endforeach
+
+            <div class="flex items-start gap-2.5">
+                <span class="shrink-0 px-1.5 py-0.5 rounded-badge bg-chip text-ink-mute
+                             font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em]">Oper.</span>
+                <p class="text-[12px] leading-[1.4] text-ink-mute">
+                    A tarefa operacional não tem PR nem staging: de Em andamento ela vai direto para Concluída.
+                </p>
+            </div>
+
+            <div class="flex items-start gap-2.5">
+                <span class="mt-px h-3.5 w-3.5 shrink-0 text-ink-faint"><x-nav-icon name="x-mark" :peso="1.8" /></span>
+                <p class="text-[12px] leading-[1.4] text-ink-mute">
+                    Cancelar encerra de qualquer etapa, sempre com o motivo. As encerradas vivem na aba Histórico.
+                </p>
+            </div>
+        </div>
     </div>
 </div>
 
