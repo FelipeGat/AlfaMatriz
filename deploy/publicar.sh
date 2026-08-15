@@ -315,6 +315,21 @@ etapa "Recarregando caches"
 ( cd "$ALVO" && php artisan route:cache >/dev/null ) || falhar "recarregar cache de rotas"
 ( cd "$ALVO" && php artisan view:cache >/dev/null ) || falhar "recarregar cache de views"
 
+# O preparo inteiro roda como root — é o watcher que chama daqui de dentro do
+# container — e tudo que ele cria nasce root:root, inclusive storage/logs. O
+# PHP-FPM roda como www-data e NÃO CONSEGUE gravar ali: produção passou dois
+# dias sem registrar exceção web nenhuma, e o 500 do Centro de Controle de
+# 14/08 teve de ser diagnosticado às cegas. A cópia volta para www-data antes
+# de ir ao ar; o handler de erro do Laravel falha em silêncio quando não pode
+# escrever, então nada no deploy nem na tela denuncia o problema.
+# Só como root e onde www-data existe: a suíte roda este script num sandbox
+# sem nenhum dos dois, e ali não há PHP-FPM para proteger — abortar a
+# publicação por causa do chown inverteria o remédio.
+if [[ "${EUID:-$(id -u)}" -eq 0 ]] && id -u www-data >/dev/null 2>&1; then
+    etapa "Devolvendo storage ao usuário do PHP-FPM"
+    chown -R www-data:www-data "$ALVO/storage" "$ALVO/bootstrap/cache" || falhar "devolver storage ao www-data"
+fi
+
 # ------------------------------------------------------------------- ensaio
 
 etapa "Conferindo a saúde da versão preparada (porta de ensaio)"
