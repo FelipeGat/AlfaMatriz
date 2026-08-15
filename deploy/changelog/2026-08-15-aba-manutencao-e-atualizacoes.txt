@@ -3,6 +3,6 @@
 
 <b>✨ Novidades</b>
 
-• <b>Manutenção e atualizações, por enquanto como promessa.</b> O grupo Sistema do menu ganhou uma aba nova, aberta a todos os perfis — revendas incluídas. Ela ainda não tem conteúdo ligado: a tela avisa "Em breve" e nomeia o que vai morar ali — as atualizações programadas de cada sistema, avisadas antes de acontecer, e o histórico do que cada versão publicada mudou, com o changelog completo. A aba existe antes do conteúdo de propósito, para ninguém estranhar quando ela começar a falar.
+• <b>Manutenção e atualizações, por enquanto como promessa.</b> O grupo Desenvolvimento do menu ganhou uma aba nova, aberta a todos os perfis — revendas incluídas. Ela ainda não tem conteúdo ligado: a tela avisa "Em breve" e nomeia o que vai morar ali — as atualizações programadas de cada sistema, avisadas antes de acontecer, e o histórico do que cada versão publicada mudou, com o changelog completo. A aba existe antes do conteúdo de propósito, para ninguém estranhar quando ela começar a falar.
 
 <i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

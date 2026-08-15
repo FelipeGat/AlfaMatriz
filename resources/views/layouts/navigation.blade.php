@@ -40,15 +40,18 @@
         ],
         'Desenvolvimento' => [
             ['route' => 'tarefas.index', 'recurso' => 'tarefas', 'pattern' => 'tarefas.*', 'label' => 'Tarefas', 'icon' => 'view-grid', 'matriz' => true],
+            // Ao lado de Tarefas porque é dali que o conteúdo vai nascer: o
+            // quadro produz a versão, a aba anuncia. Sem `recurso` nem
+            // `matriz` de propósito — a tela só informa (agenda de manutenção
+            // e changelog), e quem mais precisa do aviso é justamente a
+            // revenda, cujos clientes sentem a janela. Para ela o grupo
+            // aparece só com este item, já que Tarefas é da matriz.
+            ['route' => 'manutencao.index', 'pattern' => 'manutencao.*', 'label' => 'Manutenção e atualizações', 'icon' => 'wrench'],
         ],
         'Sistema' => [
             ['route' => 'cadastros-auxiliares.index', 'recurso' => 'financeiro', 'pattern' => ['cadastros-auxiliares.*', 'centros-custo.*', 'fornecedores.*', 'categorias.*', 'subcategorias.*', 'contas.*'], 'label' => 'Cadastros', 'icon' => 'tag', 'matriz' => true],
             ['route' => 'usuarios.index', 'recurso' => 'usuarios', 'pattern' => ['usuarios.*', 'perfis.*'], 'label' => 'Usuários e permissões', 'icon' => 'users', 'matriz' => true],
             ['route' => 'auditoria.index', 'recurso' => 'auditoria', 'pattern' => 'auditoria.*', 'label' => 'Auditoria', 'icon' => 'eye', 'matriz' => true],
-            // Sem `recurso` nem `matriz` de propósito: a tela só informa —
-            // agenda de manutenção e changelog —, e quem mais precisa do
-            // aviso é justamente a revenda, cujos clientes sentem a janela.
-            ['route' => 'manutencao.index', 'pattern' => 'manutencao.*', 'label' => 'Manutenção e atualizações', 'icon' => 'wrench'],
         ],
     ];
 
