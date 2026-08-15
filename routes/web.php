@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\Auth\PrimeiroAcessoController;
 use App\Http\Controllers\AuditoriaController;
+use App\Http\Controllers\Auth\PrimeiroAcessoController;
 use App\Http\Controllers\CadastroAuxiliarController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\CentroControleController;
@@ -134,6 +134,13 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // muda é de quem é a vez, não onde a tarefa está.
     Route::post('tarefas/{tarefa}/conversar', [TarefaController::class, 'conversar'])
         ->name('tarefas.conversar')
+        ->middleware('permissao:tarefas,editar');
+    // Registrar o teste do staging tampouco é mover: quem testa normalmente
+    // não é quem move — o carimbo que só viajava dentro de `tarefas.mover`
+    // deixava o teste do testador sem onde existir. Rota própria pela mesma
+    // razão do bloqueio e da pergunta: é registro sobre o trabalho da etapa.
+    Route::post('tarefas/{tarefa}/testar', [TarefaController::class, 'testar'])
+        ->name('tarefas.testar')
         ->middleware('permissao:tarefas,editar');
     // Não há rota de criar comentário: ele viaja no `tarefas.update`, no mesmo
     // envio do cadastro. Corrigir e apagar continuam sendo caminho próprio —

@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Sistema;
 use App\Models\Tarefa;
-use App\Models\TarefaComentario;
 use App\Models\TarefaAnexo;
+use App\Models\TarefaComentario;
 use App\Models\TarefaItem;
 use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
@@ -41,6 +41,7 @@ class TarefaController extends Controller
 
     private const PEDACOS_DO_BLOQUEIO = ['avisos'];
 
+    private const PEDACOS_DO_TESTE = ['avisos'];
 
     public function index(Request $request)
     {
@@ -682,6 +683,11 @@ class TarefaController extends Controller
         if ($data['status'] === 'pronta_producao' && $request->has('relatorio_aprovado')) {
             TarefaRelatorioTeste::create([
                 'tarefa_id' => $tarefa->id,
+                // Quem carimbou. O carimbo do painel é a validação de quem
+                // move afirmando ter testado — e agora que o relatório tem
+                // assinatura, deixá-la vazia aqui faria só o teste registrado
+                // pelo card dizer quem foi.
+                'user_id' => auth()->id(),
                 'aprovado' => $request->boolean('relatorio_aprovado'),
                 'notas' => $data['relatorio_notas'] ?? null,
             ]);
@@ -713,6 +719,38 @@ class TarefaController extends Controller
             $request,
             mudouOConjunto: in_array($data['status'], Tarefa::STATUS_TERMINAIS, true),
         );
+    }
+
+    /**
+     * Registra o veredito do teste do staging, sem mover o card.
+     *
+     * Não passa por `motivoParaNaoMover` de propósito, como perguntar e
+     * bloquear: quem testa em staging normalmente NÃO é o responsável pela
+     * tarefa, e travar o registro não impediria o teste — impediria de
+     * REGISTRÁ-LO, e o quadro passaria a depender de quem move relatar o
+     * teste dos outros.
+     */
+    public function testar(Request $request, Tarefa $tarefa, FluxoTarefaService $fluxo)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $data = $request->validate([
+            'aprovado' => 'required|boolean',
+            'notas' => 'nullable|string|max:2000',
+        ]);
+
+        try {
+            $fluxo->registrarTesteDoStaging(
+                $tarefa,
+                $request->user(),
+                $request->boolean('aprovado'),
+                $data['notas'] ?? null,
+            );
+        } catch (\RuntimeException $e) {
+            return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DO_TESTE, $e->getMessage(), 'critico');
+        }
+
+        return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DO_TESTE, 'Teste do staging registrado.');
     }
 
     /**

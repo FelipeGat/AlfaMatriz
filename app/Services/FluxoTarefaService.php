@@ -6,6 +6,7 @@ use App\Models\Notificacao;
 use App\Models\Tarefa;
 use App\Models\TarefaComentario;
 use App\Models\TarefaEvento;
+use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -396,6 +397,62 @@ class FluxoTarefaService
 
             return $comentario;
         });
+    }
+
+    /**
+     * Registra o veredito do teste do staging, sem mover a tarefa.
+     *
+     * Quem testa não é necessariamente quem move: no processo do time, o
+     * testador não é o responsável pela tarefa — e enquanto o carimbo da
+     * validação só viajava no movimento para Pronta p/ produção, o teste dele
+     * não tinha onde existir. Aqui o relatório nasce assinado e preso ao
+     * evento aberto (a passagem atual pelo staging), que é exatamente o que o
+     * portão da produção lê depois (`aprovadaNestaPassagem`).
+     *
+     * A tarefa NÃO sai do lugar: registrar o teste é sobre o trabalho da
+     * etapa, como a pergunta e o bloqueio — mover continua sendo gesto de quem
+     * move, apoiado no veredito registrado.
+     */
+    public function registrarTesteDoStaging(
+        Tarefa $tarefa,
+        User $quemTestou,
+        bool $aprovado,
+        ?string $notas,
+    ): TarefaRelatorioTeste {
+        // Só a tarefa de desenvolvimento em Em staging tem staging para
+        // testar. Registrar veredito fora daí criaria um relatório solto que a
+        // etapa seguinte poderia ler como prova do que ninguém validou.
+        if ($tarefa->tipo !== 'desenvolvimento' || $tarefa->status !== 'em_staging') {
+            throw new \RuntimeException('Só a tarefa em Em staging tem teste do staging para registrar.');
+        }
+
+        // Reprovar sem dizer o quê manda o dev abrir o staging e adivinhar —
+        // a mesma regra do retorno de portão. Aprovar dispensa o texto: o
+        // veredito é a informação inteira.
+        if (! $aprovado && trim((string) $notas) === '') {
+            throw new \RuntimeException('É preciso dizer o que reprovou no teste.');
+        }
+
+        $relatorio = $tarefa->relatoriosTeste()->create([
+            'user_id' => $quemTestou->id,
+            'aprovado' => $aprovado,
+            'notas' => trim((string) $notas) !== '' ? trim((string) $notas) : null,
+        ]);
+
+        // O responsável é quem age sobre o veredito — segue para a fila da
+        // produção ou volta para a bancada — e não deveria descobri-lo por
+        // acaso. `avisar` já cala quando quem testou é o próprio responsável.
+        Notificacao::avisar($tarefa->responsavel_id, $quemTestou->id, [
+            'tipo' => 'teste_staging',
+            'nivel' => $aprovado ? 'marca' : 'atencao',
+            'icone' => $aprovado ? 'check-circle' : 'alert-triangle',
+            'titulo' => $quemTestou->name.($aprovado ? ' aprovou' : ' reprovou').' o staging de «'.$tarefa->titulo.'»',
+            'meta' => $aprovado ? 'Staging validado · pronta para seguir' : 'Reprovada no teste do staging',
+            'rota' => route('tarefas.index'),
+            'tarefa_id' => $tarefa->id,
+        ]);
+
+        return $relatorio;
     }
 
     /**
