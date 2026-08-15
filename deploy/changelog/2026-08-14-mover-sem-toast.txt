@@ -1,0 +1,9 @@
+<b>📋 AlfaMatriz — Changelog 14/08/2026</b>
+<i>Mover card ficou silencioso</i>
+
+<b>⚡ Melhorias</b>
+
+• <b>Mover uma tarefa no quadro não exibe mais o aviso "Tarefa movida".</b> O card aparecendo na coluna nova já é a confirmação — o aviso só repetia o que a tela tinha acabado de mostrar, a cada arrasto.
+• <b>Os avisos que explicam algo continuam aparecendo.</b> Se alguém moveu a mesma tarefa antes de você, se a etapa exige motivo ou se o movimento não é permitido, a recusa segue na tela — esses avisos dizem por que o card <i>não</i> andou.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
