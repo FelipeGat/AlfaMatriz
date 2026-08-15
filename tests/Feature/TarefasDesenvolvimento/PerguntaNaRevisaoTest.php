@@ -200,21 +200,35 @@ class PerguntaNaRevisaoTest extends TestCase
 
     /**
      * @spec:AC-195 Mudar de etapa apaga o ponteiro — a dúvida era sobre o trabalho
-     * daquela etapa —, mas o interlocutor fica: esquecer com quem se estava falando é
-     * o que persistir esse campo existe para evitar.
+     * daquela etapa. O interlocutor tem duas sortes (US-087): entrar num portão de
+     * EXAME recomeça a conversa, porque quem chega fala com o examinador desta
+     * passagem; nas demais mudanças ele fica — esquecer com quem se estava falando
+     * é o que persistir esse campo existe para evitar.
      */
-    public function test_mudar_de_etapa_apaga_o_ponteiro_e_guarda_o_interlocutor(): void
+    public function test_mudar_de_etapa_apaga_o_ponteiro_e_o_interlocutor_segue_a_regra_do_portao(): void
     {
         [$tarefa, $dev, $revisor] = $this->emRevisao();
 
         $this->fluxo->perguntar($tarefa, $revisor, 'Isso não deveria estar no service?');
 
+        // Entrada num portão de exame sem apontar ninguém: o ponteiro apaga e
+        // a conversa recomeça — a pergunta do staging não é do revisor de ontem.
         $movida = $this->fluxo->mover($tarefa->fresh(), 'em_staging');
 
         $this->assertNull($movida->pergunta_em);
         $this->assertNull($movida->pergunta_de_id);
         $this->assertNull($movida->pergunta_para_id);
-        $this->assertSame($dev->id, $movida->interlocutor_id);
+        $this->assertNull($movida->interlocutor_id);
+
+        // Fora dos portões de exame, o interlocutor sobrevive: a conversa do
+        // staging continua sendo a referência na fila da produção.
+        $this->fluxo->perguntar($movida, $revisor, 'Validou o fluxo do boleto?');
+        $this->fluxo->registrarTesteDoStaging($movida->fresh(), $revisor, true, null);
+
+        $naFila = $this->fluxo->mover($movida->fresh(), 'pronta_producao');
+
+        $this->assertNull($naFila->pergunta_em);
+        $this->assertSame($dev->id, $naFila->interlocutor_id);
     }
 
     /**

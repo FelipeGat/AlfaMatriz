@@ -670,6 +670,9 @@ class TarefaController extends Controller
             'relatorio_aprovado' => 'nullable|boolean',
             'relatorio_notas' => 'nullable|string',
             'versao_producao' => 'nullable|string|max:60',
+            // Quem revisa / quem testa (US-087): opcional, e só as entradas
+            // nos portões de exame o usam — o motor ignora no resto.
+            'interlocutor_id' => 'nullable|exists:users,id',
         ]);
 
         // A confirmação de "Em staging → Pronta p/ produção" carrega o carimbo
@@ -701,6 +704,7 @@ class TarefaController extends Controller
             $fluxo->mover($tarefa, $data['status'], [
                 'motivo' => $data['motivo'] ?? null,
                 'versao_producao' => $data['versao_producao'] ?? null,
+                'interlocutor_id' => $data['interlocutor_id'] ?? null,
             ], livre: (bool) $request->user()?->podeTriarTarefas());
         } catch (\RuntimeException $e) {
             return $this->voltarParaOQuadro($request, $e->getMessage(), 'critico');

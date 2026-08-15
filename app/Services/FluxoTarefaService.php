@@ -129,7 +129,7 @@ class FluxoTarefaService
      * etapas — guardam a informação que cada chegada registra, e um
      * cancelamento sem motivo mente igual venha de quem vier.
      *
-     * @param  array{motivo?: ?string}  $dados
+     * @param  array{motivo?: ?string, versao_producao?: ?string, interlocutor_id?: int|string|null}  $dados
      */
     public function mover(Tarefa $tarefa, string $novoStatus, array $dados = [], bool $livre = false): Tarefa
     {
@@ -172,6 +172,24 @@ class FluxoTarefaService
 
             $this->reposicionarMarcas($tarefa, $novoStatus, $statusAtual, $dados, $ehRetorno);
 
+            // O apontado fica sabendo que a bola chegou nele — pelo sino, não
+            // pelo chip de perguntas: apontar não cobra resposta em texto,
+            // cobra o exame. `avisar` cala quando quem moveu apontou a si
+            // mesmo.
+            $apontado = $dados['interlocutor_id'] ?? null;
+
+            if ($apontado && $this->entradaEmPortaoDeExame($tarefa, $novoStatus, $statusAtual)) {
+                Notificacao::avisar((int) $apontado, auth()->id(), [
+                    'tipo' => 'apontamento',
+                    'nivel' => 'atencao',
+                    'icone' => 'eye',
+                    'titulo' => '«'.$tarefa->titulo.'» está com você',
+                    'meta' => 'Entrou em '.Tarefa::rotuloDaEtapa($novoStatus).' · apontada para você',
+                    'rota' => route('tarefas.index'),
+                    'tarefa_id' => $tarefa->id,
+                ]);
+            }
+
             // Ser devolvido é a notícia que menos pode esperar alguém abrir o
             // quadro: a tarefa voltou para a bancada e o trabalho recomeça.
             if ($ehRetorno) {
@@ -210,6 +228,21 @@ class FluxoTarefaService
     }
 
     /**
+     * Esta passagem é uma ENTRADA num portão de exame?
+     *
+     * Só a tarefa de desenvolvimento entra de verdade — a operacional que
+     * encalha num portão (a saída de emergência da troca de tipo) não tem
+     * exame acontecendo, e recomeçar a conversa dela seria mexer no que o
+     * movimento não tocou.
+     */
+    private function entradaEmPortaoDeExame(Tarefa $tarefa, string $novoStatus, string $statusAtual): bool
+    {
+        return $tarefa->tipo === 'desenvolvimento'
+            && $novoStatus !== $statusAtual
+            && in_array($novoStatus, Tarefa::PORTOES_DE_EXAME, true);
+    }
+
+    /**
      * Onde as marcas do card ficam depois de a tarefa mudar de etapa.
      *
      * O retorno é a única que NASCE de um movimento; as outras duas só morrem
@@ -217,7 +250,7 @@ class FluxoTarefaService
      * apagá-lo em seguida, e é por isso que a limpeza é o ramo `else` e não uma
      * linha solta antes.
      *
-     * @param  array{motivo?: ?string, versao_producao?: ?string}  $dados
+     * @param  array{motivo?: ?string, versao_producao?: ?string, interlocutor_id?: int|string|null}  $dados
      */
     private function reposicionarMarcas(
         Tarefa $tarefa,
@@ -253,6 +286,18 @@ class FluxoTarefaService
             $marcas['pergunta_de_id'] = null;
             $marcas['pergunta_para_id'] = null;
             $marcas['pergunta_em'] = null;
+        }
+
+        // A exceção da sobrevivência: cada portão de exame RECOMEÇA a conversa
+        // (Q-037). Quem entra na revisão ou no staging fala com o examinador
+        // desta passagem — sem o recomeço, a pergunta do staging apontava para
+        // o revisor de ontem, e não havia como apontar o testador. As rodadas
+        // zeram junto (ASM-079): o alerta de 3ª rodada é sobre a conversa
+        // atual, e herdar a contagem acenderia o aviso de um impasse que já
+        // acabou. O apontado, quando houver, já entra como o outro lado.
+        if ($this->entradaEmPortaoDeExame($tarefa, $novoStatus, $statusAtual)) {
+            $marcas['interlocutor_id'] = $dados['interlocutor_id'] ?? null;
+            $marcas['rodadas'] = 0;
         }
 
         if (isset($dados['versao_producao']) && trim((string) $dados['versao_producao']) !== '') {
@@ -570,6 +615,15 @@ class FluxoTarefaService
 
         if ($novoStatus === 'cancelada' && ! $this->motivoPreenchido($dados)) {
             throw new \RuntimeException('O motivo do cancelamento é obrigatório.');
+        }
+
+        // A bola do portão vai para quem EXAMINA. O responsável já está na
+        // tarefa — apontá-lo não acrescenta lado nenhum, só faria o sino dizer
+        // "está com você" a quem nunca a soltou.
+        if (($dados['interlocutor_id'] ?? null)
+            && in_array($novoStatus, Tarefa::PORTOES_DE_EXAME, true)
+            && (int) $dados['interlocutor_id'] === (int) $tarefa->responsavel_id) {
+            throw new \RuntimeException('Aponte outra pessoa: o responsável já está na tarefa.');
         }
 
         // O portão do teste mudou de lugar junto com as etapas: ele guardava a

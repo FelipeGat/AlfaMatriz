@@ -70,6 +70,17 @@ class Tarefa extends Model
     public const PORTOES = ['em_revisao', 'em_staging', 'pronta_producao'];
 
     /**
+     * Os portões onde a bola muda de mão para EXAME — revisão e staging.
+     *
+     * É neles que o painel do movimento oferece apontar quem revisa ou quem
+     * testa, e é neles que a conversa recomeça a cada entrada (Q-037): quem
+     * chega fala com o examinador DESTA passagem, não com o da etapa
+     * anterior. Pronta p/ produção fica de fora — lá a fila é do admin
+     * inteiro, e apontar uma pessoa não acrescentaria lado nenhum.
+     */
+    public const PORTOES_DE_EXAME = ['em_revisao', 'em_staging'];
+
+    /**
      * O que cada portão examina, dito no cabeçalho da própria coluna.
      *
      * Sem isso, "Em revisão" e "Em staging" são dois nomes que só quem escreveu
