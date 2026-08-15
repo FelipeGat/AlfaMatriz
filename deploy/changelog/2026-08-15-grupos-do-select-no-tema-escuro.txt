@@ -1,0 +1,8 @@
+<b>📋 AlfaMatriz — Changelog 15/08/2026</b>
+<i>Os grupos do seletor de sistema voltaram a aparecer no tema escuro</i>
+
+<b>🔧 Correções</b>
+
+• <b>Os títulos "Produto" e "Sistema interno" sumiam na lista de sistemas.</b> No modal da tarefa, ao abrir o seletor de sistema no tema escuro, os títulos que separam os grupos ficavam invisíveis — texto claro sobre fundo claro. A lista parecia uma sequência corrida, sem dizer onde acabavam os produtos e começavam os sistemas internos. Agora os grupos aparecem nos dois temas, pintados como o resto da lista.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
