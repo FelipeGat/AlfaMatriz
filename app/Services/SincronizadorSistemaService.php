@@ -110,7 +110,10 @@ class SincronizadorSistemaService
         $criadas = $atualizadas = $ignoradas = 0;
 
         foreach ($this->todasPaginas('/revendas') as $item) {
-            $revenda = Revenda::porOrigemExterna($this->sistema, $item['id_externo']);
+            // Com os excluídos: a âncora é a identidade primária, e uma
+            // revenda excluída SEM documento só é reconhecível por ela — a
+            // reconciliação lá embaixo não tem documento por onde achá-la.
+            $revenda = Revenda::porOrigemExterna($this->sistema, $item['id_externo'], comExcluidos: true);
 
             $dados = [
                 'nome' => $item['nome'] ?? 'Sem nome',

@@ -4,6 +4,7 @@ namespace App\Concerns;
 
 use App\Models\OrigemExterna;
 use App\Models\Sistema;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Resolução de uma entidade local pela âncora num sistema externo.
@@ -17,8 +18,14 @@ trait ComOrigemExterna
     /**
      * O registro desta entidade que existe na origem `sistema` com o
      * `id_externo` dado, ou null.
+     *
+     * `$comExcluidos` é para a sincronização, e só para PULAR: a âncora de
+     * uma revenda excluída continua ocupando (sistema, id_externo), e não
+     * enxergar a entidade atrás dela mandava o ciclo criar uma gêmea — que
+     * colidia na âncora e derrubava tudo. A reconciliação por documento não
+     * cobre esse caso: a excluída pode não ter documento nenhum.
      */
-    public static function porOrigemExterna(Sistema $sistema, string $idExterno): ?static
+    public static function porOrigemExterna(Sistema $sistema, string $idExterno, bool $comExcluidos = false): ?static
     {
         $origem = OrigemExterna::query()
             ->where('entidade_type', static::class)
@@ -31,7 +38,14 @@ trait ComOrigemExterna
             return null;
         }
 
-        return static::query()->find($origem->entidade_id);
+        // Pelo trait, e não por `method_exists`: `withTrashed` é macro que o
+        // SoftDeletes registra no BUILDER, não método da classe — perguntar à
+        // classe responde não para todo mundo, e o ramo nunca rodaria.
+        $query = $comExcluidos && in_array(SoftDeletes::class, class_uses_recursive(static::class), true)
+            ? static::withTrashed()
+            : static::query();
+
+        return $query->find($origem->entidade_id);
     }
 
     /**
