@@ -143,6 +143,36 @@ class QuemRevisaEQuemTestaTest extends TestCase
     }
 
     /**
+     * @spec:AC-320 A tarja do teste diz DE QUEM se espera o teste quando há um
+     * testador apontado — e mantém o texto genérico quando não há.
+     */
+    public function test_a_tarja_do_teste_nomeia_o_testador_apontado(): void
+    {
+        [$tarefa, $dono] = $this->minhaTarefaEmAndamento();
+        $testador = User::factory()->membro()->create(['name' => 'Alexandre Souza']);
+
+        $this->actingAs($dono)->post(route('tarefas.mover', $tarefa), [
+            'status' => 'em_revisao',
+        ]);
+        $this->actingAs($dono)->post(route('tarefas.mover', $tarefa->fresh()), [
+            'status' => 'em_staging', 'interlocutor_id' => $testador->id,
+        ]);
+
+        $this->actingAs($dono)->get(route('tarefas.modal', $tarefa))
+            ->assertSee('aguardando o teste de Alexandre Souza');
+
+        // Sem apontado, a espera não tem nome: a coluna é a fila.
+        $semApontado = Tarefa::factory()->create([
+            'criado_por_id' => $dono->id,
+            'responsavel_id' => $dono->id,
+            'status' => 'em_staging',
+        ]);
+
+        $this->actingAs($dono)->get(route('tarefas.modal', $semApontado))
+            ->assertSee('aguardando o teste do staging');
+    }
+
+    /**
      * @spec:AC-319 O responsável não pode ser o apontado: a bola do portão vai
      * para quem examina, e ele já está na tarefa — a recusa explica isso.
      */

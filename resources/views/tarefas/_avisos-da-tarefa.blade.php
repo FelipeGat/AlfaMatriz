@@ -113,7 +113,16 @@
             </span>
             <span class="flex-1 min-w-0 text-[12.5px] font-medium text-ink">
                 @if ($testeDaPassagem === null)
-                    Na main, aguardando o teste do staging
+                    {{-- O testador apontado no movimento (US-087) dá nome à
+                         espera: "aguardando o teste de Fulano" diz quem o
+                         quadro está esperando — sem apontado, a coluna é fila
+                         e a espera é de quem chegar primeiro. Um eco só: a
+                         frase quebrada em duas linhas rende com quebra no
+                         meio, e a busca por texto (e o leitor de tela) veem
+                         duas metades. --}}
+                    {{ $tarefa->interlocutor
+                        ? 'Na main, aguardando o teste de '.$tarefa->interlocutor->name
+                        : 'Na main, aguardando o teste do staging' }}
                 @else
                     Staging {{ $testeDaPassagem->aprovado ? 'aprovado' : 'reprovado' }}
                     por {{ $testeDaPassagem->autor?->name ?? 'alguém' }}
