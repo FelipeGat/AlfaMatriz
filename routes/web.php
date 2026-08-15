@@ -360,6 +360,13 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // escrita seria a única porta capaz de fazê-la mentir.
     Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index')
         ->middleware('permissao:auditoria');
+    // Manutenção e atualizações: por enquanto só a promessa — a tela conta o
+    // que vai morar aqui (agenda de manutenção por sistema e histórico com o
+    // changelog) sem integrar nada. Sem `permissao:` de propósito: é
+    // informativa, e o aviso de janela de manutenção interessa a todo mundo
+    // que entra, revenda inclusive. `Route::view` porque ainda não existe
+    // dado para um controller buscar.
+    Route::view('manutencao', 'manutencao.index')->name('manutencao.index');
     Route::resource('centros-custo', CentroCustoController::class)->only(['store', 'destroy'])
         ->parameters(['centros-custo' => 'centro_custo'])
         ->middleware('permissao:financeiro');
