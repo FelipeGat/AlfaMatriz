@@ -8,6 +8,7 @@ use App\Models\ClienteModulo;
 use App\Models\Modulo;
 use App\Models\Revenda;
 use App\Models\Sistema;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 
@@ -78,6 +79,13 @@ class SincronizadorSistemaService
 
         foreach ($resumo as $area => $contagens) {
             foreach ($contagens as $chave => $valor) {
+                // 'ignoradas' é estado, não movimento: a revenda excluída
+                // segue excluída a cada ciclo, e uma linha por hora sobre o
+                // mesmo fato enterraria o dia em que algo de fato mudou.
+                if ($chave === 'ignoradas') {
+                    continue;
+                }
+
                 if (is_int($valor) && $valor > 0) {
                     $numeros[$area.' · '.$chave] = ['de' => null, 'para' => $valor];
                 }
@@ -99,7 +107,7 @@ class SincronizadorSistemaService
 
     private function sincronizarRevendas(): array
     {
-        $criadas = $atualizadas = 0;
+        $criadas = $atualizadas = $ignoradas = 0;
 
         foreach ($this->todasPaginas('/revendas') as $item) {
             $revenda = Revenda::porOrigemExterna($this->sistema, $item['id_externo']);
@@ -117,6 +125,17 @@ class SincronizadorSistemaService
             // novo faria um gêmeo e dobraria o faturamento dela.
             $revenda ??= $this->reconciliarPorDocumento(Revenda::query(), 'cnpj', $dados['cnpj']);
 
+            // Excluída na Matriz é decisão de gente, e o sincronizador não a
+            // desfaz — nem conseguiria recriar: o índice único de CNPJ ainda
+            // enxerga a linha excluída, e o INSERT derrubava o ciclo INTEIRO
+            // de hora em hora, levando junto clientes, licenças e módulos.
+            // Ela fica como está, e o resumo do comando diz quantas ficaram.
+            if ($revenda?->trashed()) {
+                $ignoradas++;
+
+                continue;
+            }
+
             if ($revenda) {
                 $revenda->update($dados);
                 // Reconciliada agora ou já ancorada: ancorar é idempotente.
@@ -129,7 +148,7 @@ class SincronizadorSistemaService
             }
         }
 
-        return ['criadas' => $criadas, 'atualizadas' => $atualizadas];
+        return ['criadas' => $criadas, 'atualizadas' => $atualizadas, 'ignoradas' => $ignoradas];
     }
 
     private function sincronizarClientes(): array
@@ -462,6 +481,14 @@ class SincronizadorSistemaService
         // real, com a revenda que existia nos dois lados.
         $normalizado = "REPLACE(REPLACE(REPLACE(REPLACE({$coluna}, '.', ''), '/', ''), '-', ''), ' ', '')";
 
+        // Os excluídos ENTRAM na busca quando o modelo os guarda: a linha
+        // soft-deletada continua ocupando o documento no índice único, e o
+        // escopo padrão a escondia daqui — o fluxo seguia para o create() e
+        // colidia com ela. Foi o que parou a sincronização em produção.
+        if (in_array(SoftDeletes::class, class_uses_recursive($query->getModel()), true)) {
+            $query = $query->withTrashed();
+        }
+
         $candidatos = $query->whereRaw("{$normalizado} = ?", [$documento])->limit(2)->get();
 
         if ($candidatos->count() !== 1) {
@@ -469,6 +496,13 @@ class SincronizadorSistemaService
         }
 
         $candidato = $candidatos->first();
+
+        // Excluído volta como está, ANTES da guarda de âncora: quem chama
+        // precisa saber que o documento está tomado — um null aqui mandaria
+        // o fluxo direto para o create() que colide.
+        if (method_exists($candidato, 'trashed') && $candidato->trashed()) {
+            return $candidato;
+        }
 
         return $candidato->idExternoNoSistema($this->sistema) === null ? $candidato : null;
     }
