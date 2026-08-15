@@ -122,7 +122,7 @@
                 --}}
                 @if ($abrePainel)
                     <button type="button" class="{{ $linha }}"
-                            @click.stop="abrirPendente({{ $tarefa->id }}, '{{ $destino }}', '{{ $tarefa->status }}', '{{ $tarefa->tipo }}', {{ $tarefa->responsavel_id ?? 'null' }})">
+                            @click.stop="abrirPendente({{ $tarefa->id }}, '{{ $destino }}', '{{ $tarefa->status }}', '{{ $tarefa->tipo }}')">
                         <span class="h-[7px] w-[7px] shrink-0 rounded-full"
                               style="background: rgb(var(--{{ \App\Models\Tarefa::corDaEtapa($destino) }}))"></span>
 

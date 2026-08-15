@@ -682,10 +682,6 @@
                 // para o servidor recusar movimento sobre movimento alheio.
                 statusArrastado: null,
 
-                // O responsável do card na mão: o seletor de quem revisa/testa
-                // o desabilita — a bola do portão vai para quem examina.
-                responsavelArrastado: null,
-
                 // Posicionar card na coluna é organizar trabalho alheio, e
                 // segue a mesma capacidade de priorizar e direcionar.
                 podeTriar: {{ auth()->user()?->podeTriarTarefas() ? 'true' : 'false' }},
@@ -972,7 +968,6 @@
                         alvo.dataset.tipo,
                         !! alvo.dataset.bloqueada,
                         alvo.closest('section[data-status]')?.dataset.status,
-                        Number(alvo.dataset.responsavel) || null,
                     );
                 },
 
@@ -1083,16 +1078,13 @@
                     return this.arrastando === null || this.destinos.includes(status);
                 },
 
-                pegar(tarefa, destinos, tipo, bloqueada, status, responsavel = null) {
+                pegar(tarefa, destinos, tipo, bloqueada, status) {
                     this.arrastando = tarefa;
                     // Bloquear é destino de quem ainda não está travado; para
                     // quem já está, a saída é o botão da própria tarja.
                     this.destinos = bloqueada ? destinos : [...destinos, 'bloqueio'];
                     this.tipoArrastado = tipo;
                     this.statusArrastado = status;
-                    // Para o seletor de quem revisa/testa desabilitar o
-                    // responsável também quando o painel nasce de um arrasto.
-                    this.responsavelArrastado = responsavel;
                 },
 
                 largar() {
@@ -1105,7 +1097,6 @@
                     this.destinos = [];
                     this.tipoArrastado = null;
                     this.statusArrastado = null;
-                    this.responsavelArrastado = null;
                     this.sobre = null;
                 },
 
@@ -1215,7 +1206,7 @@
                  * iria sem `de_status`, desligando a guarda de concorrência.
                  * Arrastando, os dois já valem e os argumentos são dispensáveis.
                  */
-                abrirPendente(tarefa, destino, de = null, tipo = null, responsavel = null) {
+                abrirPendente(tarefa, destino, de = null, tipo = null) {
                     if (de !== null) {
                         this.statusArrastado = de;
                     }
@@ -1245,12 +1236,6 @@
                         status: ehBloqueio ? null : destino,
                         de: this.statusArrastado,
                         acao: (ehBloqueio ? this.rotaBloquear : this.rotaMover).replace('__ID__', tarefa),
-                        // Para o seletor de "quem revisa / quem testa"
-                        // desabilitar o responsável: a bola do portão vai para
-                        // quem examina, e a tela não deve oferecer a escolha
-                        // que o motor vai recusar. No arrasto e no teclado o
-                        // argumento não vem — vale o do card na mão.
-                        responsavel: responsavel ?? this.responsavelArrastado,
                     };
 
                 },
@@ -1328,17 +1313,14 @@
                     const permitido = this.aceita(status);
                     const tipo = this.tipoArrastado;
                     const de = this.statusArrastado;
-                    const responsavel = this.responsavelArrastado;
 
                     this.largar();
                     this.tipoArrastado = tipo;
                     this.statusArrastado = de;
-                    this.responsavelArrastado = responsavel;
 
                     if (tarefa === null || ! permitido) {
                         this.tipoArrastado = null;
                         this.statusArrastado = null;
-                        this.responsavelArrastado = null;
 
                         return;
                     }

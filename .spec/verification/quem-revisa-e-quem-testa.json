@@ -1,7 +1,7 @@
 {
   "feature": "quem-revisa-e-quem-testa",
-  "timestamp": "2026-08-15T17:22:29.032Z",
-  "gitRev": "b0f3600",
+  "timestamp": "2026-08-15T17:38:05.793Z",
+  "gitRev": "fb8f96e",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
@@ -29,7 +29,7 @@
     },
     "AC-319": {
       "status": "pass",
-      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuemRevisaEQuemTestaTest::test_apontar_o_responsavel_e_recusado @spec:AC-319",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuemRevisaEQuemTestaTest::test_apontar_o_responsavel_vale_e_avisa @spec:AC-319",
       "method": "tap"
     },
     "AC-320": {

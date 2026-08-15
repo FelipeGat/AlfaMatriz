@@ -617,15 +617,6 @@ class FluxoTarefaService
             throw new \RuntimeException('O motivo do cancelamento é obrigatório.');
         }
 
-        // A bola do portão vai para quem EXAMINA. O responsável já está na
-        // tarefa — apontá-lo não acrescenta lado nenhum, só faria o sino dizer
-        // "está com você" a quem nunca a soltou.
-        if (($dados['interlocutor_id'] ?? null)
-            && in_array($novoStatus, Tarefa::PORTOES_DE_EXAME, true)
-            && (int) $dados['interlocutor_id'] === (int) $tarefa->responsavel_id) {
-            throw new \RuntimeException('Aponte outra pessoa: o responsável já está na tarefa.');
-        }
-
         // O portão do teste mudou de lugar junto com as etapas: ele guardava a
         // saída do antigo Em testes, e agora guarda a entrada na fila da
         // produção. É aqui que o dev afirma ter validado o staging, e é essa

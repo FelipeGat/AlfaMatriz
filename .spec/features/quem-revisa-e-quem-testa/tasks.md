@@ -23,8 +23,9 @@
 - Arquivos: app/Services/FluxoTarefaService.php, app/Http/Controllers/TarefaController.php, tests/Feature/TarefasDesenvolvimento/QuemRevisaEQuemTestaTest.php
 - Notas: `mover` aceita `interlocutor_id` opcional nos `$dados`. Entrada de
   tarefa de desenvolvimento em `em_revisao`/`em_staging`: `interlocutor_id` =
-  apontado ?? null e `rodadas` = 0 (ASM-079 — cada portão recomeça). Apontado
-  == responsável é recusa (AC-319); apontado só vale nas entradas desses dois
+  apontado ?? null e `rodadas` = 0 (ASM-079 — cada portão recomeça). Apontar o
+  próprio responsável VALE (AC-319/Q-039 — revisado no primeiro dia de uso: é
+  o "dev valida" de sempre); apontado só vale nas entradas desses dois
   portões. Aviso ao apontado no padrão do sino (`Notificacao::avisar` já cala
   quando quem move aponta a si mesmo). AC-317 não pede código: `outroLadoDe`
   já prefere o interlocutor quando o responsável pergunta — pede prova.

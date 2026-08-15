@@ -56,7 +56,7 @@ class QuemRevisaEQuemTestaTest extends TestCase
         $resposta->assertSee('Quem testa?');
         $resposta->assertSee('apontar quem');
         $resposta->assertSee('name="interlocutor_id"', false);
-        $resposta->assertSee('sem apontar · a coluna é a fila');
+        $resposta->assertSee('— sem apontar —');
 
         // O ARRASTO também abre o painel (Q-038, revisada no primeiro dia de
         // uso): os dois portões de exame estão na lista que faz o solto abrir
@@ -179,22 +179,41 @@ class QuemRevisaEQuemTestaTest extends TestCase
     }
 
     /**
-     * @spec:AC-319 O responsável não pode ser o apontado: a bola do portão vai
-     * para quem examina, e ele já está na tarefa — a recusa explica isso.
+     * @spec:AC-319 Apontar o próprio responsável vale — é o "dev valida" de
+     * sempre: quem move o card de outra pessoa devolve a bola para ela, o sino
+     * avisa e a tarja nomeia a espera. (A primeira versão recusava; o uso real
+     * a desmentiu no mesmo dia — Q-039.)
      */
-    public function test_apontar_o_responsavel_e_recusado(): void
+    public function test_apontar_o_responsavel_vale_e_avisa(): void
     {
-        [$tarefa, $dono] = $this->minhaTarefaEmAndamento();
+        $dev = User::factory()->membro()->create(['name' => 'Felipe Torres']);
+        $admin = User::factory()->create(['name' => 'Rossini Alves']);
 
-        $this->actingAs($dono)->post(route('tarefas.mover', $tarefa), [
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $admin->id,
+            'responsavel_id' => $dev->id,
             'status' => 'em_revisao',
-            'interlocutor_id' => $dono->id,
+        ]);
+
+        $this->actingAs($admin)->post(route('tarefas.mover', $tarefa), [
+            'status' => 'em_staging',
+            'interlocutor_id' => $dev->id,
         ]);
 
         $tarefa->refresh();
 
-        // O movimento inteiro é recusado: nem o status anda, nem a bola.
-        $this->assertSame('em_desenvolvimento', $tarefa->status);
-        $this->assertNull($tarefa->interlocutor_id);
+        $this->assertSame('em_staging', $tarefa->status);
+        $this->assertSame($dev->id, $tarefa->interlocutor_id);
+
+        // "Teu card chegou ao staging — o teste é teu": informação, não eco.
+        $aviso = Notificacao::where('tipo', 'apontamento')
+            ->where('destinatario_id', $dev->id)
+            ->first();
+
+        $this->assertNotNull($aviso);
+
+        // E a tarja do teste nomeia a espera com o próprio responsável.
+        $this->actingAs($admin)->get(route('tarefas.modal', $tarefa))
+            ->assertSee('aguardando o teste de Felipe Torres');
     }
 }

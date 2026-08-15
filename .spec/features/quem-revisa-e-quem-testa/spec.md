@@ -65,13 +65,15 @@ hora — sem depender de cargo fixo, porque o papel muda de tarefa para tarefa.
   pergunta seguinte do responsável volta a oferecer a escolha do destinatário,
   em vez de apontar para o revisor de ontem
 
-#### AC-319 — O responsável não pode ser o apontado
+#### AC-319 — Apontar o próprio responsável vale — é o "dev valida" de sempre
 
 - **Dado** uma tarefa de desenvolvimento com responsável
-- **Quando** alguém tenta movê-la para um portão apontando o próprio
+- **Quando** outra pessoa a move para um portão apontando o próprio
   responsável
-- **Então** o movimento é recusado com a frase que explica — a bola do portão
-  vai para quem examina, e o responsável já está na tarefa
+- **Então** o apontamento vale como qualquer outro: ele vira o interlocutor,
+  o sino avisa que a bola está com ele, e a tarja nomeia a espera — a
+  primeira versão recusava essa escolha, e o uso real a desmentiu no mesmo
+  dia (Q-039)
 
 #### AC-320 — A tarja do teste diz de quem se espera o teste
 
@@ -105,3 +107,4 @@ hora — sem depender de cargo fixo, porque o papel muda de tarefa para tarefa.
 |---|---|---|---|
 | Q-037 | Entrar num portão sem apontar ninguém apaga a lembrança do interlocutor anterior? | respondida | Sim — cada portão recomeça; dentro do portão a memória segue como hoje (dono, 15/08/2026). |
 | Q-038 | Onde a escolha aparece? | respondida | Em todo movimento para os portões de exame — menu, arrasto e teclado abrem o mesmo painel. Revisada pelo dono em 15/08/2026, no primeiro dia de uso: a resposta original ("só no menu; arrasto direto") fez o arrasto passar reto, e arrasto que passa reto se lê como feature que não existe. |
+| Q-039 | O responsável pode ser o apontado? | respondida | Sim (dono, 15/08/2026, no primeiro dia de uso). A recusa original assumia que apontar só existia para criar um "outro lado" de conversa — mas apontar o dev para validar o próprio staging é o modo "dev valida" da spec do redesign, e o aviso "está com você" é informação, não eco. |

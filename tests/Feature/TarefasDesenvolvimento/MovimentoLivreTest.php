@@ -134,12 +134,10 @@ class MovimentoLivreTest extends TestCase
         $html = $this->actingAs($admin)->get(route('tarefas.index'))->assertOk()->getContent();
         $numaLinha = preg_replace('/\s+/', ' ', $html);
 
-        // Sem o `)` final de propósito: depois da etapa ainda viaja o
-        // responsável (US-087), que varia por tarefa.
         $this->assertStringContainsString(
             'pegar( '.Tarefa::first()->id.', '
                 .Js::from(['aberta', 'backlog', 'em_desenvolvimento', 'em_staging', 'pronta_producao', 'concluida', 'cancelada'])->toHtml()
-                .", 'desenvolvimento', false, 'em_revisao',",
+                .", 'desenvolvimento', false, 'em_revisao' )",
             $numaLinha,
             'Para quem triaga, o card precisa entregar todas as etapas menos a atual.'
         );

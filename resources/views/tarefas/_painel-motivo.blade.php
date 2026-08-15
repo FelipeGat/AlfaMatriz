@@ -78,20 +78,22 @@
         </template>
 
         {{-- Quem revisa / quem testa (US-087): nos portões de exame o painel
-             oferece uma pessoa, não pede um texto. O responsável aparece
-             desabilitado — a bola do portão vai para quem examina, e a tela
-             não deve oferecer a escolha que o motor vai recusar. --}}
+             oferece uma pessoa, não pede um texto. O responsável entra na
+             lista como qualquer um — apontá-lo é o "dev valida" de sempre:
+             quem move o card de outra pessoa devolve a bola para ela, e o
+             sino avisa. `py-0` sem mexer no padding horizontal, como os
+             outros selects do app: sobrescrevê-lo tirava o espaço da seta e
+             o nome aparecia cortado embaixo dela. --}}
         <template x-if="pendente.pessoa">
             <div class="mt-2">
                 <label class="block mb-[5px] font-mono text-[9.5px] uppercase tracking-[0.08em] text-ink-faint"
                        x-text="pendente.pessoa"></label>
                 <select name="interlocutor_id"
-                        class="block w-full h-[30px] px-[9px] rounded-[5px] bg-input text-ink text-[12px] focus:ring-0"
+                        class="block w-full h-[30px] py-0 rounded-[5px] bg-input text-ink text-[12px]"
                         :style="`border: 1px solid rgb(var(--${pendente.cor}) / 0.4)`">
-                    <option value="">— sem apontar · a coluna é a fila —</option>
+                    <option value="">— sem apontar —</option>
                     @foreach ($usuarios as $usuario)
-                        <option value="{{ $usuario->id }}"
-                                :disabled="pendente.responsavel === {{ $usuario->id }}">{{ $usuario->name }}</option>
+                        <option value="{{ $usuario->id }}">{{ $usuario->name }}</option>
                     @endforeach
                 </select>
             </div>
