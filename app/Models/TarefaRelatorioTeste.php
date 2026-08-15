@@ -10,7 +10,7 @@ class TarefaRelatorioTeste extends Model
     protected $table = 'tarefa_relatorios_teste';
 
     protected $fillable = [
-        'tarefa_id', 'tarefa_evento_id', 'aprovado', 'notas',
+        'tarefa_id', 'user_id', 'tarefa_evento_id', 'aprovado', 'notas',
     ];
 
     protected function casts(): array
@@ -51,6 +51,16 @@ class TarefaRelatorioTeste extends Model
     public function tarefa(): BelongsTo
     {
         return $this->belongsTo(Tarefa::class);
+    }
+
+    /**
+     * Quem testou. `autor`, como no evento (`eventos.autor`): é a mesma
+     * pergunta — quem assinou este registro — e dois nomes para ela fariam a
+     * view errar exatamente onde a informação importa.
+     */
+    public function autor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /** A passagem por Em testes de que este relatório é a prova. */
