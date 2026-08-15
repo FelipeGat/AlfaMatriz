@@ -1,0 +1,16 @@
+<b>📋 AlfaMatriz — Changelog 14/08/2026</b>
+<i>A sincronização confirmada de ponta a ponta — inclusive no caso que a correção da tarde não cobria</i>
+
+A mensagem anterior contou que a sincronização parava de hora em hora ao tentar recriar uma revenda excluída. Aquela correção reconhecia a excluída pelo documento — e valeu para a revenda com CNPJ. A primeira rodada em produção mostrou o caso que faltava: uma segunda revenda excluída, SEM CNPJ, invisível para a busca por documento. O ciclo criava uma cópia dela e caía logo adiante, no vínculo com o sistema de origem — que continua, corretamente, apontando para a excluída.
+
+<b>🔧 O que mudou</b>
+
+• <b>A excluída passa a ser reconhecida pelo vínculo com o sistema de origem</b> — a identidade primária, que existe com ou sem documento. Reconhecida, ela é pulada como as demais: não volta, não ganha cópia, e o ciclo segue até o fim.
+
+• <b>A cópia criada pelo defeito foi removida.</b> Nasceu às 22h de hoje, na única rodada que passou pela correção anterior; foi conferido que nada apontava para ela antes de remover.
+
+<b>✅ Confirmado em produção</b>
+
+• A rodada das 23h fechou limpa: zero erros no registro, zero cópias novas — e a auditoria voltou a gravar "sincronizou AlfaGym" e "sincronizou AlfaControl", o que não acontecia desde 12/08. Os dois sistemas voltaram a ser espelhados de ponta a ponta, de hora em hora.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
