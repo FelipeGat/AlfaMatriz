@@ -6,9 +6,14 @@ use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\ContaFinanceira;
 use App\Models\ContaPagar;
+use App\Models\MetaComercial;
 use App\Models\Revenda;
 use App\Models\Sistema;
+use App\Models\User;
 use App\Services\IndicadoresService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class PainelController extends Controller
 {
@@ -20,21 +25,31 @@ class PainelController extends Controller
      */
     public function __construct(private readonly IndicadoresService $indicadores) {}
 
-    public function index()
+    public function index(Request $request)
     {
         $this->bloquearVisaoDaMatriz();
+
+        // O mês que os cinco cards do topo mostram. Livre para navegar — "?
+        // competencia=2026-03" volta a tela para março —, e não só o mês
+        // corrente como era antes: sem isso não havia como olhar um mês
+        // fechado sem sair da tela.
+        $competencia = $this->competenciaSelecionada($request);
+        $mesSelecionado = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
 
         // A MESMA regra do Centro de Controle, vinda da mesma origem: faturado
         // quando o fechamento rodou, contratado enquanto não rodou. Enquanto
         // esta tela somava só cobrança gerada, as duas mostravam números
         // diferentes sob o rótulo "Receita recorrente" no mesmo dia.
-        $mrr = $this->indicadores->mrrDaCompetencia();
-        $mrrContratado = $this->indicadores->mrrEhContratado();
+        $mrr = $this->indicadores->mrrDaCompetencia($competencia);
+        $mrrContratado = $this->indicadores->mrrEhContratado($competencia);
         $arr = $mrr * 12;
 
-        $saldoTotal = $this->indicadores->saldoEmCaixa();
-        $entradasMes = $this->indicadores->entradasDoMes();
-        $saidasMes = $this->indicadores->saidasDoMes();
+        // `saldoAoFimDe()` e não `saldoEmCaixa()`: no mês corrente os dois
+        // devolvem o mesmo número, mas navegar para um mês fechado precisa do
+        // saldo QUE A CONTA TINHA naquele fim de mês, não o saldo de hoje.
+        $saldoTotal = $this->indicadores->saldoAoFimDe($mesSelecionado);
+        $entradasMes = $this->indicadores->entradasDoMes($mesSelecionado);
+        $saidasMes = $this->indicadores->saidasDoMes($mesSelecionado);
 
         $receitasPendentes = Cobranca::where('status', 'pendente')
             ->orderBy('data_vencimento')
@@ -48,19 +63,38 @@ class PainelController extends Controller
             ->limit(5)
             ->get();
 
+        // Base instalada continua a foto de HOJE, não da competência
+        // navegada: "quantos clientes eu atendo" é pergunta do presente, e
+        // reconstituir esse número mês a mês é outra tela (ver
+        // `serieDeClientesAtivos()`, que não é o que os cards aqui usam.
         $totalRevendas = $this->indicadores->revendasAtivas();
         $totalClientes = $this->indicadores->clientesAtivos();
         $clientesDiretos = $this->indicadores->clientesDiretos();
 
-        $historico = $this->historicoSeisMeses();
+        [$graficoInicio, $graficoFim] = $this->periodoDoGrafico($request);
+        $historico = $this->indicadores->serieDeCaixaEntre($graficoInicio, $graficoFim);
+
+        $rotuloGrafico = $graficoInicio->equalTo($graficoFim)
+            ? ucfirst($graficoInicio->translatedFormat('M/Y'))
+            : ucfirst($graficoInicio->translatedFormat('M/Y')).' – '.ucfirst($graficoFim->translatedFormat('M/Y'));
 
         return view('dashboard', compact(
             'mrr', 'arr', 'mrrContratado', 'saldoTotal', 'entradasMes', 'saidasMes',
             'receitasPendentes', 'despesasPendentes',
             'totalRevendas', 'totalClientes', 'clientesDiretos', 'historico'
         ) + [
+            'competencia' => $competencia,
+            'competenciaAnterior' => $mesSelecionado->copy()->subMonth()->format('Y-m'),
+            'competenciaProxima' => $mesSelecionado->copy()->addMonth()->format('Y-m'),
+            'competenciaEhAtual' => $competencia === now()->format('Y-m'),
+            'filtroGrafico' => $this->filtroGraficoSelecionado($request),
+            'graficoDe' => $graficoInicio->format('Y-m'),
+            'graficoAte' => $graficoFim->format('Y-m'),
+            'rotuloGrafico' => $rotuloGrafico,
             // As curvas saem do serviço, e voltam vazias quando não têm o que
             // dizer — o card se cala em vez de desenhar uma reta no zero.
+            // Continuam sempre "últimos 6 meses até hoje": são a tendência
+            // recente do card, não a competência que o topo está navegando.
             'serieMrr' => $this->indicadores->serieDoMrr(6),
             'serieSaldo' => $this->indicadores->serieDoSaldo(6),
             'serieEntradas' => $this->indicadores->serieDeEntradas(6),
@@ -68,9 +102,99 @@ class PainelController extends Controller
         ]);
     }
 
+    /**
+     * A competência dos cinco cards do topo — "AAAA-MM" validado, ou o mês
+     * corrente quando a URL não pede um em especial ou pede algo malformado.
+     */
+    private function competenciaSelecionada(Request $request): string
+    {
+        $valor = $request->query('competencia');
+
+        if (is_string($valor) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $valor)) {
+            return $valor;
+        }
+
+        return now()->format('Y-m');
+    }
+
+    /**
+     * As opções rápidas do filtro do gráfico — mês anterior, mês atual ou
+     * próximo mês são só o rótulo de um período de UM mês; o personalizado é
+     * quem de fato abre o intervalo. Sem opção reconhecida na URL, o padrão é
+     * o ano inteiro (AC pedido: "por padrão... os 12 meses do ano, de Janeiro
+     * a Dezembro do ano vigente") — e não mais os "últimos 6 meses" fixos.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function periodoDoGrafico(Request $request): array
+    {
+        return match ($this->filtroGraficoSelecionado($request)) {
+            'mes_anterior' => [now()->startOfMonth()->subMonth(), now()->startOfMonth()->subMonth()],
+            'mes_atual' => [now()->startOfMonth(), now()->startOfMonth()],
+            'proximo_mes' => [now()->startOfMonth()->addMonth(), now()->startOfMonth()->addMonth()],
+            'personalizado' => $this->periodoPersonalizado($request),
+            default => [now()->startOfYear(), now()->startOfYear()->addMonths(11)],
+        };
+    }
+
+    private function filtroGraficoSelecionado(Request $request): string
+    {
+        $valor = $request->query('grafico');
+
+        return in_array($valor, ['mes_anterior', 'mes_atual', 'proximo_mes', 'personalizado'], true)
+            ? $valor
+            : 'ano_atual';
+    }
+
+    /**
+     * O intervalo do "Período personalizado". `grafico_ate` antes de
+     * `grafico_de` é trocado, e não erro de validação — quem está escolhendo
+     * duas caixas de mês digita fora de ordem sem perceber, e a tela corrige
+     * em vez de reclamar.
+     *
+     * Limitado a 36 meses: sem teto, um intervalo digitado errado (ex.: "de
+     * 2020 até 2026") desenharia um gráfico de centenas de barras.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function periodoPersonalizado(Request $request): array
+    {
+        $de = $request->query('grafico_de');
+        $ate = $request->query('grafico_ate');
+
+        $inicio = (is_string($de) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $de))
+            ? Carbon::createFromFormat('Y-m', $de)->startOfMonth()
+            : now()->startOfYear();
+
+        $fim = (is_string($ate) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $ate))
+            ? Carbon::createFromFormat('Y-m', $ate)->startOfMonth()
+            : now()->startOfMonth();
+
+        if ($fim->lessThan($inicio)) {
+            [$inicio, $fim] = [$fim, $inicio];
+        }
+
+        if ($inicio->diffInMonths($fim) > 36) {
+            $fim = $inicio->copy()->addMonths(36);
+        }
+
+        return [$inicio, $fim];
+    }
+
     public function comercial()
     {
         $this->bloquearVisaoDaMatriz();
+
+        $usuario = auth()->user();
+
+        // Vendedor sem `dashboard`: painel PRÓPRIO, não o da empresa inteira
+        // — a mesma régua de `LeadController::index()`. As duas telas usam
+        // `temEscopoComercial()` porque é a mesma pergunta de acesso feita
+        // duas vezes, e perguntas repetidas que divergem é como elas nascem
+        // de ler `revenda_id` e `perfil->slug` em vez do método único.
+        if ($usuario->temEscopoComercial()) {
+            return $this->comercialDoVendedor($usuario);
+        }
 
         // O ranking também vem do serviço: ele aparece aqui e na tela de
         // Sistemas, e é o valor de atacado — o número mais fácil de as duas
@@ -137,10 +261,26 @@ class PainelController extends Controller
         // uma vez", que é o que sairia de `created_at` numa base importada.
         $novosClientes = $this->indicadores->novosClientesNoMes();
 
+        // As três seções pedidas em 15/08/2026, do lado do FUNIL — eixo
+        // diferente do resto da tela, que é sobre o PORTFÓLIO instalado.
+        $competencia = now()->format('Y-m');
+        $funilPorEstagio = $this->indicadores->funilPorEstagio();
+        $rankingFunil = $this->ranking(
+            collect($funilPorEstagio)->map(fn ($e) => ['nome' => $e['label'], 'valor' => (float) $e['quantidade']]),
+            'brand'
+        );
+        $vendasPorVendedor = $this->indicadores->vendasPorVendedor($competencia);
+        $rankingVendedores = $this->ranking(
+            $vendasPorVendedor->map(fn ($v) => ['nome' => $v['nome'], 'valor' => $v['valor']]),
+            'good'
+        );
+        $metas = $this->metasDaCompetencia($competencia, $vendasPorVendedor);
+
         return view('dashboard-comercial', compact(
             'totalClientesAtivos', 'totalSistemasAtivos', 'totalRevendasAtivas',
             'mrrEstimado', 'novosClientes',
-            'rankingClientes', 'rankingValor', 'rankingRevendas', 'rankingCategorias'
+            'rankingClientes', 'rankingValor', 'rankingRevendas', 'rankingCategorias',
+            'competencia', 'rankingFunil', 'rankingVendedores', 'metas'
         ) + [
             'serieClientes' => $this->indicadores->serieDeClientesAtivos(6),
             'serieSistemas' => $this->indicadores->serieDeSistemasAtivos(6),
@@ -185,30 +325,89 @@ class PainelController extends Controller
     }
 
     /**
-     * O gráfico de entradas x saídas.
-     *
-     * Os valores saem do serviço, não de uma consulta própria: o último mês do
-     * gráfico é o mesmo número dos cards "Entradas do mês" e "Saídas do mês"
-     * logo acima dele. Enquanto este método tinha a própria cópia da conta,
-     * eram duas implementações do mesmo valor esperando divergir — e nenhuma
-     * das duas lia o livro-caixa.
+     * O Dashboard Comercial de quem NÃO tem `dashboard` — só o próprio funil,
+     * nunca o dinheiro da casa nem a carteira de outro vendedor. Sem
+     * ranking por sistema/revenda/categoria de propósito: aquilo é o
+     * portfólio da empresa inteira, e essa não é a pergunta de quem só
+     * enxerga a própria mesa.
      */
-    private function historicoSeisMeses(): array
+    private function comercialDoVendedor(User $usuario)
     {
-        return collect(range(5, 0))
-            // `startOfMonth()` antes do `subMonths()` — ver IndicadoresService:
-            // subtrair a partir do dia 31 transborda e desalinha a janela.
-            ->map(fn ($i) => now()->startOfMonth()->subMonths($i))
-            ->map(fn ($mes) => [
-                'label' => ucfirst($mes->translatedFormat('M/y')),
-                // As mesmas somas dos cards e das curvas, e agora sem repetir a
-                // ida ao banco: o serviço carrega o livro-caixa da janela numa
-                // consulta e responde os doze pedidos daí. Antes eram doze
-                // consultas aqui, sobre exatamente os mesmos meses que
-                // `serieDeEntradas`/`serieDeSaidas` já tinham somado.
-                'entradas' => $this->indicadores->entradasDoMes($mes),
-                'saidas' => $this->indicadores->saidasDoMes($mes),
-            ])
-            ->all();
+        $competencia = now()->format('Y-m');
+
+        $kpis = $this->indicadores->funilKpis($usuario->id);
+        $funilPorEstagio = $this->indicadores->funilPorEstagio($usuario->id);
+        $rankingFunil = $this->ranking(
+            collect($funilPorEstagio)->map(fn ($e) => ['nome' => $e['label'], 'valor' => (float) $e['quantidade']]),
+            'brand'
+        );
+
+        $meta = MetaComercial::where('vendedor_id', $usuario->id)->where('competencia', $competencia)->first();
+        $vendaDoMes = $this->indicadores->vendasPorVendedor($competencia)->firstWhere('vendedor_id', $usuario->id);
+        $realizado = (float) ($vendaDoMes['valor'] ?? 0.0);
+
+        return view('dashboard-comercial-vendedor', [
+            'competencia' => $competencia,
+            'kpis' => $kpis,
+            'rankingFunil' => $rankingFunil,
+            'meta' => $meta?->valor_meta,
+            'realizado' => $realizado,
+        ]);
+    }
+
+    /**
+     * A meta de cada vendedor cruzada com o realizado da competência — o
+     * card "Metas" do gestor. Lista quem TEM meta lançada ou TEM venda no
+     * mês: um vendedor sem as duas coisas não tem o que essa tabela diga
+     * sobre ele.
+     *
+     * @return list<array{vendedor_id: int, nome: string, meta: ?float, realizado: float, atingido: ?float}>
+     */
+    private function metasDaCompetencia(string $competencia, Collection $vendasPorVendedor): array
+    {
+        $metas = MetaComercial::where('competencia', $competencia)->with('vendedor')->get()->keyBy('vendedor_id');
+
+        $vendedorIds = $metas->keys()->merge($vendasPorVendedor->pluck('vendedor_id'))->unique();
+
+        return $vendedorIds->map(function ($vendedorId) use ($metas, $vendasPorVendedor) {
+            $meta = $metas[$vendedorId] ?? null;
+            $venda = $vendasPorVendedor->firstWhere('vendedor_id', $vendedorId);
+            $realizado = (float) ($venda['valor'] ?? 0);
+            $valorMeta = $meta ? (float) $meta->valor_meta : null;
+
+            return [
+                'vendedor_id' => (int) $vendedorId,
+                'nome' => $meta?->vendedor?->name ?? $venda['nome'] ?? 'Vendedor removido',
+                'meta' => $valorMeta,
+                'realizado' => $realizado,
+                'atingido' => $valorMeta > 0 ? ($realizado / $valorMeta) * 100 : null,
+            ];
+        })->sortByDesc('realizado')->values()->all();
+    }
+
+    /**
+     * Grava (ou edita) a meta de um vendedor numa competência.
+     *
+     * Só quem vê o Dashboard Comercial da empresa inteira (`dashboard`)
+     * define meta de outra pessoa — a rota já garante isso
+     * (`permissao:dashboard,editar`), e não `dashboard_comercial`: essa é a
+     * permissão de quem só vê a própria mesa.
+     */
+    public function salvarMeta(Request $request)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $data = $request->validate([
+            'vendedor_id' => 'required|exists:users,id',
+            'competencia' => 'required|regex:/^\d{4}-\d{2}$/',
+            'valor_meta' => 'required|numeric|min:0',
+        ]);
+
+        MetaComercial::updateOrCreate(
+            ['vendedor_id' => $data['vendedor_id'], 'competencia' => $data['competencia']],
+            ['valor_meta' => $data['valor_meta']]
+        );
+
+        return redirect()->route('comercial')->with('status', 'Meta salva.');
     }
 }

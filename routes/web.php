@@ -86,8 +86,18 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware('permissao:dashboard');
     Route::get('/dashboard', [PainelController::class, 'index'])->name('dashboard')
         ->middleware('permissao:dashboard');
+    // `dashboard_comercial`, e não `dashboard`: aquele fala do dinheiro da
+    // casa (saldo em caixa, MRR de atacado) e este é só o funil — separação
+    // de 15/08/2026 para dar painel ao perfil Comercial sem dar visão do
+    // caixa da empresa. O CONTROLLER decide, dentro da própria permissão
+    // liberada, se a pessoa vê a empresa inteira ou só a própria mesa
+    // (`User::temEscopoComercial()`).
     Route::get('/comercial', [PainelController::class, 'comercial'])->name('comercial')
-        ->middleware('permissao:dashboard');
+        ->middleware('permissao:dashboard_comercial');
+    // Definir a meta de OUTRA pessoa é gestão, não vendas — por isso
+    // `dashboard` (o painel da empresa inteira) e não `dashboard_comercial`.
+    Route::post('/comercial/metas', [PainelController::class, 'salvarMeta'])->name('comercial.metas.salvar')
+        ->middleware('permissao:dashboard,editar');
 
     Route::get('produtos', [ProdutoController::class, 'index'])->name('produtos.index')
         ->middleware('permissao:sistemas');
@@ -106,6 +116,18 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware('permissao:leads,editar');
     Route::delete('leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy')
         ->middleware('permissao:leads');
+
+    // O painel de detalhamento do lead: histórico da conversa e provas
+    // (print de e-mail/WhatsApp) — o mesmo par comentário+anexo que a Tarefa
+    // já tem, para o lead deixar de ser só um card com nome e valor.
+    Route::post('leads/{lead}/comentarios', [LeadController::class, 'comentar'])->name('leads.comentarios.store')
+        ->middleware('permissao:leads,editar');
+    Route::post('leads/{lead}/anexos', [LeadController::class, 'anexarArquivo'])->name('leads.anexos.store')
+        ->middleware('permissao:leads,editar');
+    Route::get('lead-anexos/{anexo}', [LeadController::class, 'verAnexo'])->name('leads.anexos.ver')
+        ->middleware('permissao:leads');
+    Route::delete('lead-anexos/{anexo}', [LeadController::class, 'excluirAnexo'])->name('leads.anexos.destroy')
+        ->middleware('permissao:leads,editar');
 
     Route::get('tarefas', [TarefaController::class, 'index'])->name('tarefas.index')
         ->middleware('permissao:tarefas');

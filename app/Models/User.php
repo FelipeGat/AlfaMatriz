@@ -87,6 +87,12 @@ class User extends Authenticatable
         return $this->hasMany(Tarefa::class, 'interlocutor_id');
     }
 
+    /** Os leads onde esta conta é a vendedora — o funil que `temEscopoComercial()` restringe. */
+    public function leadsComoVendedor(): HasMany
+    {
+        return $this->hasMany(Lead::class, 'vendedor_id');
+    }
+
     /**
      * A conta é `name`, e não `nome`: é o único modelo do painel que herda o
      * vocabulário do Laravel em vez do nosso. Sem este método, toda linha de
@@ -105,6 +111,24 @@ class User extends Authenticatable
     public function temEscopoDeRevenda(): bool
     {
         return $this->revenda_id !== null;
+    }
+
+    /**
+     * Vendedor sem visão gerencial: só os PRÓPRIOS leads no funil, e só o
+     * PRÓPRIO desempenho no Dashboard Comercial — não o da empresa inteira.
+     *
+     * A pergunta não é "tem o perfil Comercial?" — é "não tem `dashboard`?".
+     * Escopo de PESSOA e escopo de REVENDA são eixos diferentes: quem tem
+     * `dashboard` (admin, financeiro, operação) vê o funil de todo mundo
+     * mesmo se por acaso também tivesse o perfil comercial: a checagem por
+     * PERFIL exigiria excluir esse caso à mão, e cresceria a cada perfil novo
+     * que combinasse os dois. Checando a AUSÊNCIA de `dashboard`, quem já não
+     * vê o dinheiro da casa também não vê o funil de quem não é ele — é a
+     * mesma régua, perguntada uma vez só.
+     */
+    public function temEscopoComercial(): bool
+    {
+        return ! $this->temEscopoDeRevenda() && ! $this->canPermissao('dashboard', 'ler');
     }
 
     /**
@@ -243,11 +267,18 @@ class User extends Authenticatable
         $telas = [
             'dashboard' => 'centro-controle',
             'tarefas' => 'tarefas.index',
-            // O funil vem ANTES de clientes: quem vende e não tem painel — o
-            // perfil `comercial` — cairia na carteira já formada, e não na fila
-            // que ele trabalha o dia inteiro. Não muda a casa de ninguém mais:
-            // os outros perfis com `leads` também têm `dashboard`, e param na
-            // primeira linha.
+            // O painel PRÓPRIO do perfil `comercial` (15/08/2026) — antes ele
+            // não tinha painel nenhum e caía direto no funil (comentário
+            // antigo abaixo de `leads`, ainda válido para quem só tem `leads`
+            // sem `dashboard_comercial`, caso raro hoje). Fica ANTES de
+            // `leads` pela mesma razão de `dashboard` vir primeiro: é a casa
+            // de quem a tem, não uma parada no caminho para outra tela.
+            'dashboard_comercial' => 'comercial',
+            // O funil vem ANTES de clientes: quem vende e não tem painel —
+            // hoje só um `leads` avulso sem `dashboard_comercial` — cairia na
+            // carteira já formada, e não na fila que trabalha o dia inteiro.
+            // Não muda a casa de ninguém mais: os outros perfis com `leads`
+            // também têm `dashboard`, e param na primeira linha.
             'leads' => 'leads.index',
             'clientes' => 'clientes.index',
             'revendas' => 'revendas.index',

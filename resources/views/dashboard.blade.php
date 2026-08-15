@@ -1,8 +1,40 @@
 <x-app-layout>
     <x-slot name="titulo">Painel Financeiro</x-slot>
-    <x-slot name="contexto">competência {{ now()->format('m/Y') }}</x-slot>
+    <x-slot name="contexto">competência {{ \Illuminate\Support\Carbon::createFromFormat('Y-m', $competencia)->format('m/Y') }}</x-slot>
 
     <div class="space-y-4">
+        {{-- Navegação de competência: os cinco cards do topo são desta
+             competência, não sempre "hoje" — sem isto não havia como olhar um
+             mês fechado sem trocar de tela. Anterior/próximo e o seletor
+             preservam o filtro do gráfico logo abaixo, que é independente
+             deste. --}}
+        <div class="flex items-center gap-2">
+            <a href="{{ route('dashboard', array_merge(request()->except('competencia'), ['competencia' => $competenciaAnterior])) }}"
+               class="flex h-8 w-8 items-center justify-center rounded-control border border-line text-ink-mute hover:border-brand hover:text-brand transition"
+               aria-label="Competência anterior">
+                <span class="h-3.5 w-3.5"><x-nav-icon name="chevron-left" :peso="1.8" /></span>
+            </a>
+
+            <form method="GET" class="flex items-center">
+                @foreach (request()->except(['competencia']) as $chave => $valor)
+                    <input type="hidden" name="{{ $chave }}" value="{{ $valor }}">
+                @endforeach
+                <input type="month" name="competencia" value="{{ $competencia }}" onchange="this.form.submit()"
+                       class="h-8 py-0 text-[13px] rounded-control bg-input border-line text-ink">
+            </form>
+
+            <a href="{{ route('dashboard', array_merge(request()->except('competencia'), ['competencia' => $competenciaProxima])) }}"
+               class="flex h-8 w-8 items-center justify-center rounded-control border border-line text-ink-mute hover:border-brand hover:text-brand transition"
+               aria-label="Próxima competência">
+                <span class="h-3.5 w-3.5"><x-nav-icon name="chevron-right" :peso="1.8" /></span>
+            </a>
+
+            @unless ($competenciaEhAtual)
+                <a href="{{ route('dashboard', request()->except('competencia')) }}"
+                   class="font-mono text-[10.5px] uppercase tracking-caps text-brand-text hover:underline ml-1">Hoje</a>
+            @endunless
+        </div>
+
         {{-- Os cinco números do mês --}}
         <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
             {{-- O mesmo número, a mesma marca e a mesma curva do Centro de
@@ -31,8 +63,50 @@
         </p>
 
         <div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
-            <x-painel titulo="Entradas x saídas" sub="últimos 6 meses" style="grid-column: span 1">
+            <x-painel titulo="Entradas x saídas" style="grid-column: span 1">
+                {{-- Linha própria para o filtro, fora da faixa de 38px do
+                     cabeçalho: com dois inputs de mês e o rótulo do período
+                     ela não cabia ali sem cortar texto (AC pedido em
+                     15/08/2026). Quebra livre em telas estreitas. --}}
+                <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-3">
+                    <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">{{ $rotuloGrafico }}</span>
+
+                    {{-- Mesma altura/tipografia do seletor de competência do
+                         Faturamento (`h-9`, `text-[13px]`, sem uppercase): a
+                         combinação anterior (h-7 + 10.5px + uppercase +
+                         tracking-caps) espremia demais o `<select>` nativo e
+                         corrompia a renderização do texto/seta. --}}
+                    <form method="GET" class="flex flex-wrap items-center gap-1.5">
+                        @foreach (request()->except(['grafico', 'grafico_de', 'grafico_ate']) as $chave => $valor)
+                            <input type="hidden" name="{{ $chave }}" value="{{ $valor }}">
+                        @endforeach
+                        <select name="grafico" onchange="this.form.submit()"
+                                class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
+                            <option value="ano_atual" {{ $filtroGrafico === 'ano_atual' ? 'selected' : '' }}>Ano vigente</option>
+                            <option value="mes_anterior" {{ $filtroGrafico === 'mes_anterior' ? 'selected' : '' }}>Mês anterior</option>
+                            <option value="mes_atual" {{ $filtroGrafico === 'mes_atual' ? 'selected' : '' }}>Mês atual</option>
+                            <option value="proximo_mes" {{ $filtroGrafico === 'proximo_mes' ? 'selected' : '' }}>Próximo mês</option>
+                            <option value="personalizado" {{ $filtroGrafico === 'personalizado' ? 'selected' : '' }}>Período personalizado</option>
+                        </select>
+
+                        @if ($filtroGrafico === 'personalizado')
+                            <input type="month" name="grafico_de" value="{{ $graficoDe }}" onchange="this.form.submit()"
+                                   class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink w-[128px]">
+                            <span class="font-mono text-[10.5px] text-ink-faint">até</span>
+                            <input type="month" name="grafico_ate" value="{{ $graficoAte }}" onchange="this.form.submit()"
+                                   class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink w-[128px]">
+                        @endif
+                    </form>
+                </div>
+
                 <x-bar-chart :data="$historico" />
+
+                @if (collect($historico)->contains('previsto', true))
+                    <p class="mt-2 text-[11px] text-ink-faint">
+                        Barra mais clara e tracejada = <strong>previsto</strong> (receita contratada e despesa fixa
+                        projetada) — meses que ainda não aconteceram não têm caixa movimentado para mostrar.
+                    </p>
+                @endif
             </x-painel>
 
             <x-painel titulo="Base instalada">

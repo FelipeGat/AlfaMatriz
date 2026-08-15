@@ -5,12 +5,15 @@ namespace App\Services;
 use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\ContaFinanceira;
+use App\Models\ContaFixaPagar;
 use App\Models\ContaPagar;
 use App\Models\FaturamentoSnapshot;
+use App\Models\Lead;
 use App\Models\MovimentacaoFinanceira;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Origem única dos indicadores que aparecem em mais de uma tela.
@@ -506,6 +509,95 @@ class IndicadoresService
     }
 
     /**
+     * O saldo que a conta tinha ao FIM de um mês — não existe foto histórica
+     * do saldo (ver `serieDoSaldo()`), então ele é recomposto de trás para
+     * frente: o saldo de hoje menos tudo que se movimentou depois daquele mês.
+     *
+     * Serve para o Painel Financeiro mostrar o saldo da competência que a
+     * pessoa está navegando, e não sempre o saldo de hoje — mês corrente
+     * devolve o mesmo valor de `saldoEmCaixa()`.
+     */
+    public function saldoAoFimDe(Carbon $mes): float
+    {
+        $this->carregarCaixa($mes);
+
+        return $this->saldoEmCaixa() - $this->movimentadoDepoisDe($mes);
+    }
+
+    /**
+     * O livro-caixa mês a mês, de `$inicio` a `$fim`, os dois inclusive —
+     * REALIZADO até o mês corrente, PREVISTO dali em diante.
+     *
+     * Generaliza `historicoSeisMeses()` do Painel Financeiro para um período
+     * escolhido: mês avulso (`$inicio` == `$fim`), janela de meses ou o ano
+     * inteiro.
+     *
+     * Mês passado ou corrente é o que de fato se moveu no caixa
+     * (`entradasDoMes`/`saidasDoMes`, do livro-caixa). Mês FUTURO não tem
+     * caixa nenhum lançado ainda — mostrar zero ali diria "nada esperado",
+     * quando o que há é "nada aconteceu ainda". Por isso ele entra com a
+     * PREVISÃO: `mrrDaCompetencia()` do lado da receita (a mesma conta do
+     * card "Receita recorrente") e `despesaPrevistaDaCompetencia()` do lado
+     * da saída — pedido explícito em 15/08/2026 ("não está me apresentando o
+     * que tem previsto para os próximos meses").
+     *
+     * @return list<array{label: string, entradas: float, saidas: float, previsto: bool}>
+     */
+    public function serieDeCaixaEntre(Carbon $inicio, Carbon $fim): array
+    {
+        $inicio = $inicio->copy()->startOfMonth();
+        $fim = $fim->copy()->startOfMonth();
+
+        $this->carregarCaixa($inicio);
+
+        $mesAtual = now()->startOfMonth();
+
+        $meses = [];
+        for ($mes = $inicio->copy(); $mes->lessThanOrEqualTo($fim); $mes->addMonth()) {
+            $meses[] = $mes->copy();
+        }
+
+        return collect($meses)->map(function (Carbon $mes) use ($mesAtual) {
+            $futuro = $mes->greaterThan($mesAtual);
+            $competencia = $mes->format('Y-m');
+
+            return [
+                'label' => ucfirst($mes->translatedFormat('M/y')),
+                'entradas' => $futuro ? $this->mrrDaCompetencia($competencia) : $this->entradasDoMes($mes),
+                'saidas' => $futuro ? $this->despesaPrevistaDaCompetencia($competencia) : $this->saidasDoMes($mes),
+                'previsto' => $futuro,
+            ];
+        })->all();
+    }
+
+    /**
+     * A despesa esperada de uma competência: o que já foi lançado em Contas a
+     * Pagar quando existe, ou — mês que ainda não gerou nada — a soma das
+     * despesas fixas ativas que valeriam naquele mês.
+     *
+     * A mesma dualidade "faturado ou contratado" de `mrrDaCompetencia()`, do
+     * outro lado do livro-caixa: mês com `ContaPagar` gerada usa o que foi
+     * de fato lançado (pode ter conta avulsa, fora do fixo); mês sem nada
+     * gerado ainda projeta pelas recorrentes — é a melhor previsão possível
+     * antes de `DespesaFixaService::gerarParaCompetencia()` rodar para ele.
+     */
+    public function despesaPrevistaDaCompetencia(string $competencia): float
+    {
+        $gerada = ContaPagar::where('competencia', $competencia)->where('status', '!=', 'cancelado');
+
+        if ($gerada->exists()) {
+            return (float) $gerada->sum('valor');
+        }
+
+        $mes = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
+
+        return (float) ContaFixaPagar::where('ativo', true)
+            ->whereDate('data_inicio', '<=', $mes->copy()->endOfMonth())
+            ->where(fn ($q) => $q->whereNull('data_fim')->orWhereDate('data_fim', '>=', $mes->copy()->startOfMonth()))
+            ->sum('valor');
+    }
+
+    /**
      * O que ENTROU no caixa no mês, pelo livro-caixa.
      *
      * Antes somava cobrança baixada, que é outra coisa: o livro tem também
@@ -543,7 +635,10 @@ class IndicadoresService
             $this->carregarCaixa($mes);
         }
 
-        return $this->caixaPorMes[$chave];
+        // Mês além de hoje fica de fora do preenchimento de `carregarCaixa()`
+        // (que só cobre até "agora"): "próximo mês" sem nada lançado ainda é
+        // zero, não ausência — sem o padrão aqui, pedir esse mês estourava.
+        return $this->caixaPorMes[$chave] ?? ['entradas' => 0.0, 'saidas' => 0.0];
     }
 
     /**
@@ -614,5 +709,93 @@ class IndicadoresService
                 ARRAY_FILTER_USE_KEY
             )
         ));
+    }
+
+    /**
+     * Os mesmos quatro números do topo do Funil de Vendas, reaproveitados
+     * pelo Dashboard Comercial — `$vendedorId` restringe ao funil de UMA
+     * pessoa, a mesma pergunta que `LeadController::index()` já faz para
+     * montar os KPIs do quadro.
+     *
+     * @return array{total: int, abertos: int, fechados: int, perdidos: int, taxa_conversao: float, pipeline_valor: float, ticket_medio: float}
+     */
+    public function funilKpis(?int $vendedorId = null): array
+    {
+        $leads = Lead::query()->when($vendedorId, fn ($q) => $q->where('vendedor_id', $vendedorId))->get();
+
+        $abertos = $leads->whereNotIn('estagio', Lead::ESTAGIOS_TERMINAIS);
+        $fechados = $leads->where('estagio', 'cliente_ativo');
+        $perdidos = $leads->where('estagio', 'perdido');
+        $total = $leads->count();
+
+        return [
+            'total' => $total,
+            'abertos' => $abertos->count(),
+            'fechados' => $fechados->count(),
+            'perdidos' => $perdidos->count(),
+            'taxa_conversao' => $total > 0 ? ($fechados->count() / $total) * 100 : 0,
+            'pipeline_valor' => (float) $abertos->sum('valor_estimado'),
+            'ticket_medio' => $fechados->count() > 0 ? (float) $fechados->sum('valor_estimado') / $fechados->count() : 0,
+        ];
+    }
+
+    /**
+     * Quantos leads existem em cada estágio agora, e quanto valem — o
+     * "avanço do funil" do Dashboard Comercial.
+     *
+     * `$vendedorId` restringe ao funil de UMA pessoa: é o mesmo recorte que
+     * `Lead::vendedor_id` e `User::temEscopoComercial()` já aplicam no quadro
+     * do Funil de Vendas — aqui, para o card de avanço.
+     *
+     * Devolve as sete etapas SEMPRE, mesmo as vazias: o card desenha um funil
+     * com degrau em cada uma, e uma etapa ausente quebraria o desenho, não
+     * apareceria como zero.
+     *
+     * @return list<array{estagio: string, label: string, quantidade: int, valor: float}>
+     */
+    public function funilPorEstagio(?int $vendedorId = null): array
+    {
+        $porEstagio = Lead::query()
+            ->when($vendedorId, fn ($q) => $q->where('vendedor_id', $vendedorId))
+            ->selectRaw('estagio, COUNT(*) as quantidade, COALESCE(SUM(valor_estimado), 0) as valor')
+            ->groupBy('estagio')
+            ->get()
+            ->keyBy('estagio');
+
+        return collect(Lead::ESTAGIOS)->map(fn ($label, $estagio) => [
+            'estagio' => $estagio,
+            'label' => $label,
+            'quantidade' => (int) ($porEstagio[$estagio]->quantidade ?? 0),
+            'valor' => (float) ($porEstagio[$estagio]->valor ?? 0),
+        ])->values()->all();
+    }
+
+    /**
+     * O fechado de cada vendedor numa competência — quem venceu o lead
+     * (`estagio = cliente_ativo`) naquele mês, pela data em que o estágio
+     * mudou. É a pergunta que "Vendas por vendedor" faz no Dashboard
+     * Comercial, e a base do "realizado" que a Meta compara.
+     *
+     * @return Collection<int, array{vendedor_id: int, nome: string, valor: float, quantidade: int}>
+     */
+    public function vendasPorVendedor(string $competencia): Collection
+    {
+        $inicio = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
+        $fim = $inicio->copy()->endOfMonth();
+
+        return Lead::query()
+            ->where('estagio', 'cliente_ativo')
+            ->whereBetween('estagio_atualizado_em', [$inicio, $fim])
+            ->whereNotNull('vendedor_id')
+            ->with('vendedor')
+            ->get()
+            ->groupBy('vendedor_id')
+            ->map(fn ($leads, $vendedorId) => [
+                'vendedor_id' => (int) $vendedorId,
+                'nome' => $leads->first()->vendedor?->name ?? 'Vendedor removido',
+                'valor' => (float) $leads->sum('valor_estimado'),
+                'quantidade' => $leads->count(),
+            ])
+            ->values();
     }
 }

@@ -3,16 +3,32 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lead;
+use App\Models\LeadAnexo;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class LeadController extends Controller
 {
     public function index(Request $request)
     {
-        $leads = Lead::with(['revenda', 'sistema', 'vendedor'])
-            ->when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('revenda_id', auth()->user()->revenda_id))
+        // Sem filtro de período por padrão: o quadro é a FILA de trabalho de
+        // hoje, não um relatório de um recorte de tempo — um lead aberto há
+        // seis meses ainda precisa aparecer. O filtro é para quem quer
+        // examinar só o que ENTROU num período (ex.: leva da campanha de
+        // julho), não para restringir o quadro do dia a dia.
+        [$periodoDe, $periodoAte] = $this->periodoSelecionado($request);
+
+        $usuario = auth()->user();
+
+        $leads = Lead::with(['revenda', 'sistema', 'vendedor', 'comentarios.autor', 'anexos.autor'])
+            ->when($usuario->temEscopoDeRevenda(), fn ($q) => $q->where('revenda_id', $usuario->revenda_id))
+            // Vendedor sem `dashboard`: só o que é da própria carteira — a
+            // mesma régua de `temEscopoComercial()`, aqui aplicada ao quadro.
+            ->when($usuario->temEscopoComercial(), fn ($q) => $q->where('vendedor_id', $usuario->id))
+            ->when($periodoDe, fn ($q) => $q->whereDate('created_at', '>=', $periodoDe->toDateString()))
+            ->when($periodoAte, fn ($q) => $q->whereDate('created_at', '<=', $periodoAte->toDateString()))
             ->orderByDesc('created_at')
             ->get();
 
@@ -43,7 +59,76 @@ class LeadController extends Controller
 
         $estagios = $this->estagios($colunas);
 
-        return view('leads.index', compact('colunas', 'kpis', 'revendas', 'sistemas', 'estagios'));
+        $filtroPeriodo = $this->filtroPeriodoSelecionado($request);
+
+        return view('leads.index', compact('colunas', 'kpis', 'revendas', 'sistemas', 'estagios', 'filtroPeriodo') + [
+            'periodoDe' => $periodoDe?->format('Y-m-d'),
+            'periodoAte' => $periodoAte?->format('Y-m-d'),
+        ]);
+    }
+
+    /**
+     * As opções rápidas do filtro de período: mês anterior/atual/próximo
+     * (relativos a HOJE, não ao lead) ou um intervalo personalizado. Sem
+     * filtro reconhecido na URL, `todos` — o quadro mostra tudo, e as duas
+     * datas voltam nulas para o `when()` de `index()` não restringir nada.
+     *
+     * @return array{0: ?Carbon, 1: ?Carbon}
+     */
+    private function periodoSelecionado(Request $request): array
+    {
+        return match ($this->filtroPeriodoSelecionado($request)) {
+            'mes_anterior' => [now()->startOfMonth()->subMonth(), now()->startOfMonth()->subMonth()->endOfMonth()],
+            'mes_atual' => [now()->startOfMonth(), now()->endOfMonth()],
+            'proximo_mes' => [now()->startOfMonth()->addMonth(), now()->startOfMonth()->addMonth()->endOfMonth()],
+            'personalizado' => $this->periodoPersonalizado($request),
+            default => [null, null],
+        };
+    }
+
+    private function filtroPeriodoSelecionado(Request $request): string
+    {
+        $valor = $request->query('periodo');
+
+        return in_array($valor, ['mes_anterior', 'mes_atual', 'proximo_mes', 'personalizado'], true)
+            ? $valor
+            : 'todos';
+    }
+
+    /**
+     * O intervalo do "Período personalizado" — `periodo_ate` antes de
+     * `periodo_de` é trocado, pelo mesmo motivo do Painel Financeiro: quem
+     * preenche duas datas fora de ordem não quer um erro, quer o intervalo
+     * corrigido.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function periodoPersonalizado(Request $request): array
+    {
+        $de = $request->query('periodo_de');
+        $ate = $request->query('periodo_ate');
+
+        $inicio = $this->dataValida($de) ?? now()->startOfMonth();
+        $fim = $this->dataValida($ate) ?? now();
+
+        if ($fim->lessThan($inicio)) {
+            [$inicio, $fim] = [$fim, $inicio];
+        }
+
+        return [$inicio->startOfDay(), $fim->endOfDay()];
+    }
+
+    private function dataValida(mixed $valor): ?Carbon
+    {
+        if (! is_string($valor) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor)) {
+            return null;
+        }
+
+        try {
+            return Carbon::createFromFormat('Y-m-d', $valor);
+        } catch (\Exception) {
+            return null;
+        }
     }
 
     /**
@@ -96,6 +181,7 @@ class LeadController extends Controller
             'origem' => 'nullable|string|max:255',
             'valor_estimado' => 'nullable|numeric|min:0',
             'observacoes' => 'nullable|string',
+            'proximo_passo' => 'nullable|string',
         ]);
 
         $data['estagio'] = 'lead';
@@ -126,6 +212,7 @@ class LeadController extends Controller
             'origem' => 'nullable|string|max:255',
             'valor_estimado' => 'nullable|numeric|min:0',
             'observacoes' => 'nullable|string',
+            'proximo_passo' => 'nullable|string',
         ]);
 
         if (auth()->user()->temEscopoDeRevenda()) {
@@ -134,7 +221,85 @@ class LeadController extends Controller
 
         $lead->update($data);
 
-        return redirect()->route('leads.index')->with('status', 'Lead atualizado.');
+        return redirect()->route('leads.index', ['lead' => $lead->id])->with('status', 'Lead atualizado.');
+    }
+
+    /**
+     * Uma linha na conversa do lead — data da ligação, o que ficou
+     * combinado, o que falta. `?lead=` na volta reabre o painel de onde o
+     * comentário saiu; sem ele a página recarregava e o card fechava sozinho.
+     */
+    public function comentar(Request $request, Lead $lead)
+    {
+        $this->autorizarAcesso($lead);
+
+        $data = $request->validate(['texto' => 'required|string|max:2000']);
+
+        $lead->comentarios()->create(['autor_id' => auth()->id(), 'texto' => $data['texto']]);
+
+        return redirect()->route('leads.index', ['lead' => $lead->id])->with('status', 'Comentário adicionado.');
+    }
+
+    /** As regras do arquivo, iguais nas duas telas que anexam (ver `TarefaController`). */
+    private function regrasDeAnexoLead(): array
+    {
+        return [
+            'anexos' => 'required|array|min:1|max:3',
+            'anexos.*' => 'required|file|mimes:'.implode(',', LeadAnexo::EXTENSOES_VALIDADAS).'|max:12288',
+        ];
+    }
+
+    public function anexarArquivo(Request $request, Lead $lead)
+    {
+        $this->autorizarAcesso($lead);
+
+        $request->validate($this->regrasDeAnexoLead(), [
+            'anexos.*.mimes' => 'O lead aceita imagem, PDF, texto, CSV e planilha do Excel.',
+            'anexos.*.max' => 'Cada arquivo precisa ter até 12 MB.',
+            'anexos.max' => 'Até três arquivos por vez.',
+        ]);
+
+        foreach ($request->file('anexos') as $arquivo) {
+            // Extensão deduzida do CONTEÚDO, nunca do nome enviado — mesmo
+            // motivo do `TarefaController::gravarAnexos()`: o nome no disco
+            // não pode depender do que quem envia escreveu no navegador.
+            $extensao = $arquivo->guessExtension() ?: 'bin';
+            $nomeArquivo = \Illuminate\Support\Str::random(40).'.'.$extensao;
+            $caminho = $arquivo->storeAs('lead-anexos', $nomeArquivo, 'public');
+
+            $lead->anexos()->create([
+                'autor_id' => auth()->id(),
+                'nome_original' => $arquivo->getClientOriginalName(),
+                'nome_arquivo' => $nomeArquivo,
+                'mime' => $arquivo->getMimeType(),
+                'caminho' => $caminho,
+                'tamanho' => $arquivo->getSize(),
+            ]);
+        }
+
+        return redirect()->route('leads.index', ['lead' => $lead->id])->with('status', 'Anexo adicionado.');
+    }
+
+    public function excluirAnexo(LeadAnexo $anexo)
+    {
+        $this->autorizarAcesso($anexo->lead);
+
+        $leadId = $anexo->lead_id;
+        $anexo->delete();
+
+        return redirect()->route('leads.index', ['lead' => $leadId])->with('status', 'Anexo removido.');
+    }
+
+    public function verAnexo(LeadAnexo $anexo)
+    {
+        $this->autorizarAcesso($anexo->lead);
+
+        abort_unless(\Illuminate\Support\Facades\Storage::disk('public')->exists($anexo->caminho), 404, 'Anexo não encontrado no servidor.');
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->response($anexo->caminho, $anexo->nome_original, [
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Type' => $anexo->mime ?: 'application/octet-stream',
+        ]);
     }
 
     public function mover(Request $request, Lead $lead)
@@ -172,6 +337,10 @@ class LeadController extends Controller
 
         if ($user->temEscopoDeRevenda() && $lead->revenda_id !== $user->revenda_id) {
             abort(403, 'Você só pode acessar os leads da sua revenda.');
+        }
+
+        if ($user->temEscopoComercial() && $lead->vendedor_id !== $user->id) {
+            abort(403, 'Você só pode acessar os próprios leads.');
         }
     }
 }
