@@ -132,10 +132,10 @@ fez, para que a linha do tempo responda "quem" além de "o quê e quando".
 
 | ID | Suposição | Status | Resolução |
 |---|---|---|---|
-| ASM-072 | O modal reaproveita os componentes e tokens que já existem (`x-modal`, `x-badge`, `corDaEtapa`, `duracaoCurta`); nenhum valor visual novo é inventado. O pacote de design não desenha esta tela — se um valor faltar, a regra do CLAUDE.md manda parar e perguntar. | aberta | — |
-| ASM-073 | O nome do autor NÃO é congelado no evento (diferente de `auditorias.usuario_nome`): segue o padrão de `tarefas.responsavel_id` — FK com `nullOnDelete`, conta excluída aparece sem autor. O histórico de tarefa não é o rastro legal do sistema; o rastro legal já é a auditoria. | aberta | — |
-| ASM-074 | Sem endpoint novo: o modal nasce renderizado com a página, um por linha, como os modais que já existem no histórico. O controller já carrega `eventos`, `comentarios`, `itens` e `anexos`; acrescenta-se `relatoriosTeste` e o autor dos eventos ao mesmo `with()`. | aberta | — |
-| ASM-075 | O resumo "N comentários · N anexos" continua na linha como texto informativo, sem ser botão — a linha inteira já abre o modal completo. | aberta | — |
+| ASM-072 | O modal reaproveita os componentes e tokens que já existem (`x-modal`, `x-badge`, `corDaEtapa`, `duracaoCurta`); nenhum valor visual novo é inventado. O pacote de design não desenha esta tela — se um valor faltar, a regra do CLAUDE.md manda parar e perguntar. | confirmada | Confirmado pelo dono do produto em 2026-08-15, com a feature implementada assim. |
+| ASM-073 | O nome do autor NÃO é congelado no evento (diferente de `auditorias.usuario_nome`): segue o padrão de `tarefas.responsavel_id` — FK com `nullOnDelete`, conta excluída aparece sem autor. O histórico de tarefa não é o rastro legal do sistema; o rastro legal já é a auditoria. | confirmada | Confirmado pelo dono do produto em 2026-08-15; há teste cobrindo a conta excluída (`AutorDoEventoTest`). |
+| ASM-074 | Sem endpoint novo: o modal nasce renderizado com a página, um por linha, como os modais que já existem no histórico. O controller já carrega `eventos`, `comentarios`, `itens` e `anexos`; acrescenta-se `relatoriosTeste` e o autor dos eventos ao mesmo `with()`. | confirmada | Confirmado pelo dono do produto em 2026-08-15, com a feature implementada assim. |
+| ASM-075 | O resumo "N comentários · N anexos" continua na linha como texto informativo, sem ser botão — a linha inteira já abre o modal completo. | confirmada | Confirmado pelo dono do produto em 2026-08-15, com a feature implementada assim. |
 
 ## Perguntas em aberto
 
