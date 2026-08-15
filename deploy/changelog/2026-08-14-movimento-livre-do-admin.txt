@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 14/08/2026</b>
+<i>Administrador move os cards livremente</i>
+
+<b>🆕 Novidades</b>
+
+• <b>Quem faz triagem agora move qualquer card para qualquer etapa.</b> O fluxo do quadro existe para quem executa: ele impede que uma tarefa pule etapa ou seja dada como pronta sem passar pelos portões. Mas quem organiza o quadro é quem o conserta quando ele e a realidade divergem — o card que ficou para trás, o que pulou etapa por engano, o encerrado na coluna errada — e para esse gesto o mapa só atrapalhava. O menu "Mover ▾", o arrasto e o teclado passam a oferecer ao administrador todas as etapas, menos aquela em que o card já está.
+
+• <b>As regras de chegada continuam valendo para todos.</b> Cancelar segue pedindo o motivo, concluir segue pedindo a versão que subiu para produção, e liberar para produção segue exigindo a validação do staging. O movimento livre é sobre a ordem das etapas — não sobre as informações que o histórico registra.
+
+• <b>Para quem não faz triagem, nada muda.</b> O quadro continua oferecendo só os destinos do fluxo, e a tarefa operacional continua sem entrar nas colunas de revisão e staging — elas examinam código, e um telefonema ali faria a coluna mentir.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
