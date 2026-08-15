@@ -1,0 +1,31 @@
+<b>📋 AlfaMatriz — Changelog 15/08/2026</b>
+<i>O quadro aprendeu o fluxo real do time: quem testa registra, quem bloqueia avisa, quem move aponta</i>
+
+<b>🆕 Novidades</b>
+
+• <b>Quem testa o staging agora registra o próprio teste.</b> A tarefa em Em staging ganhou uma tarja no painel com os botões Aprovar e Reprovar: quem valida registra o veredito direto no card, sem precisar mover a tarefa — mover continua sendo gesto de quem move, agora apoiado no teste de quem testou. Reprovar exige dizer o que falhou, para o desenvolvedor não abrir o staging e ter que adivinhar.
+
+• <b>O veredito fica assinado, e o responsável fica sabendo.</b> O relatório de teste passa a gravar quem testou — a tarja diz "aprovado por" ou "reprovado por", o histórico mostra a assinatura ao lado de cada veredito, e o sino avisa o responsável na hora. Com o teste aprovado registrado, a ida para Pronta p/ produção passa sem pedir a validação de novo; tarefa devolvida que volta ao staging continua precisando de teste novo, como antes.
+
+• <b>Bloquear uma tarefa agora avisa no sino.</b> O responsável e os administradores recebem o aviso com o motivo na hora — menos quem bloqueou, que já sabe o que fez. Antes, a tarja âmbar só aparecia para quem abrisse o quadro, e "staging quebrou" não pode esperar alguém abrir.
+
+• <b>O portão do deploy passa a falar com o quadro.</b> Quando o deploy do staging reprova na suíte de testes, as tarefas em Em staging se bloqueiam sozinhas com o motivo do portão — o código delas não chegou ao staging, e o card deixa de dizer o contrário. Quando um deploy seguinte passa, elas se destravam sozinhas. Bloqueio feito por gente fica intacto, nos dois sentidos.
+
+---
+<b>📋 AlfaMatriz — Changelog 15/08/2026 · parte 2</b>
+
+• <b>Ao mover para a revisão ou para o staging, dá para apontar quem fica com a bola.</b> O painel do movimento pergunta "Quem revisa?" / "Quem testa?" — escolha opcional, por tarefa, porque o papel roda: às vezes um revisa, às vezes outro testa. O apontado recebe no sino que a tarefa está com ele, o card mostra "Revisão com Fulano" / "Teste com Fulano", e a tarja do staging diz de quem se espera o teste. Sem apontar, a coluna segue como fila, como sempre foi.
+
+• <b>Cada portão recomeça a conversa.</b> Entrar na revisão ou no staging esquece o interlocutor da etapa anterior e zera a contagem de rodadas: a pergunta do staging não aponta mais para o revisor de ontem, e o alerta de 3ª rodada fala só do impasse atual.
+
+<b>🔧 Lapidados no primeiro dia de uso</b>
+
+• <b>Apontar o próprio responsável vale.</b> É o "dev valida" de sempre: quem move o card de outra pessoa pode devolver a bola para ela — "seu card chegou ao staging, o teste é seu". A primeira versão recusava; o uso real desmentiu no mesmo dia.
+
+• <b>O arrasto também pergunta.</b> A primeira versão só oferecia o apontamento pelo menu Mover, e arrastar para a revisão passava reto — arrasto que passa reto se lê como recurso que não existe.
+
+• <b>Nomes inteiros no seletor de pessoas.</b> O texto entrava embaixo da seta do campo e aparecia cortado.
+
+• <b>Selo que não cabe no card some inteiro — e botão, nunca mais pela metade.</b> No pior caso de selos (tempo, checklist, conversa e anexos de dois dígitos), o rodapé estourava e cortava o botão Mover. Agora as contagens caem por inteiro quando falta largura, na ordem inversa da importância — o tempo na etapa, que é sinal de envelhecimento, é o último a sair. Tudo continua completo dentro da tarefa.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
