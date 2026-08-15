@@ -688,10 +688,14 @@ class TarefaController extends Controller
         }
 
         try {
+            // Quem faz triagem move livre (US-079): o mapa do fluxo não o
+            // recusa. As exigências de chegada continuam no motor, valendo
+            // para todos — livre é sobre a ordem das etapas, não sobre a
+            // informação que cada chegada registra.
             $fluxo->mover($tarefa, $data['status'], [
                 'motivo' => $data['motivo'] ?? null,
                 'versao_producao' => $data['versao_producao'] ?? null,
-            ]);
+            ], livre: (bool) $request->user()?->podeTriarTarefas());
         } catch (\RuntimeException $e) {
             return $this->voltarParaOQuadro($request, $e->getMessage(), 'critico');
         }
@@ -1116,9 +1120,7 @@ class TarefaController extends Controller
             if ($tarefa && $dados['tarefas']->contains('id', $tarefa->id)) {
                 $pedacos["card-{$tarefa->id}"] = view('tarefas._card', [
                     'tarefa' => $tarefa,
-                    'transicoes' => $tarefa->motivoParaNaoMover(auth()->user())
-                        ? []
-                        : FluxoTarefaService::transicoesDe($tarefa),
+                    'transicoes' => $tarefa->destinosPara(auth()->user()),
                 ])->render();
             }
         }

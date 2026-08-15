@@ -90,8 +90,9 @@
         @forelse ($cards as $tarefa)
             @php
                 /**
-                 * Os destinos são do CARD, não do status: o fluxo depende do
-                 * tipo da tarefa.
+                 * Os destinos são do CARD e de QUEM OLHA: o fluxo depende do
+                 * tipo da tarefa, e quem faz triagem recebe o quadro inteiro
+                 * (US-079).
                  *
                  * E quem não pode mover ESTA tarefa não recebe destino nenhum —
                  * o card não arrasta e não mostra o chevron. Oferecer e recusar
@@ -100,7 +101,7 @@
                  * `title`, e a rota continua recusando com a frase.
                  */
                 $impedimento = $tarefa->motivoParaNaoMover(auth()->user());
-                $transicoes = $impedimento ? [] : \App\Services\FluxoTarefaService::transicoesDe($tarefa);
+                $transicoes = $tarefa->destinosPara(auth()->user());
             @endphp
 
             <div x-data="{ menuAberto: false, destino: '{{ $transicoes[0] ?? '' }}' }"

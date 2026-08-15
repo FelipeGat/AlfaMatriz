@@ -30,13 +30,15 @@ class MoverTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-085 Movimento fora do fluxo é recusado: Backlog não vai direto para Concluída.
+     * @spec:AC-085 Movimento fora do fluxo é recusado: Backlog não vai direto para
+     * Concluída. O mapa manda em quem executa — por isso o ator é um membro com a
+     * tarefa em mãos; o movimento livre de quem triaga é o AC-281
+     * (`MovimentoLivreTest`).
      */
     public function test_movimento_fora_do_fluxo_e_recusado(): void
     {
-        $usuario = User::factory()->create();
-        $responsavel = User::factory()->create();
-        $tarefa = $this->criarTarefa(['responsavel_id' => $responsavel->id]);
+        $usuario = User::factory()->membro()->create();
+        $tarefa = $this->criarTarefa(['responsavel_id' => $usuario->id]);
         $this->assertSame('backlog', $tarefa->status);
 
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
@@ -203,12 +205,14 @@ class MoverTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-090 Tarefa concluída pode ser reaberta para desenvolvimento; cancelada não sai de lugar nenhum.
+     * @spec:AC-090 Tarefa concluída pode ser reaberta para desenvolvimento; cancelada
+     * não sai de lugar nenhum — para quem executa. Quem triaga tira a cancelada de
+     * onde quiser (AC-281), então quem fixa esta recusa é um membro dono da tarefa.
      */
     public function test_tarefa_concluida_pode_ser_reaberta_e_cancelada_nao_tem_saida(): void
     {
-        $usuario = User::factory()->create();
-        $tarefa = $this->criarTarefa(['status' => 'concluida']);
+        $usuario = User::factory()->membro()->create();
+        $tarefa = $this->criarTarefa(['status' => 'concluida', 'responsavel_id' => $usuario->id]);
 
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
             'status' => 'em_desenvolvimento',
@@ -217,7 +221,7 @@ class MoverTarefaTest extends TestCase
         $resposta->assertSessionMissing('erro');
         $this->assertSame('em_desenvolvimento', $tarefa->fresh()->status);
 
-        $cancelada = $this->criarTarefa(['status' => 'cancelada']);
+        $cancelada = $this->criarTarefa(['status' => 'cancelada', 'responsavel_id' => $usuario->id]);
 
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $cancelada), [
             'status' => 'em_desenvolvimento',
@@ -241,8 +245,10 @@ class MoverTarefaTest extends TestCase
      */
     public function test_menu_mover_oferece_so_os_destinos_permitidos(): void
     {
-        $usuario = User::factory()->create();
-        $this->criarTarefa(['titulo' => 'Tarefa em revisão', 'status' => 'em_revisao']);
+        // Membro com a tarefa em mãos: é para quem executa que o menu é a
+        // lista do fluxo. Quem triaga vê o quadro inteiro (AC-283).
+        $usuario = User::factory()->membro()->create();
+        $this->criarTarefa(['titulo' => 'Tarefa em revisão', 'status' => 'em_revisao', 'responsavel_id' => $usuario->id]);
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
@@ -262,9 +268,10 @@ class MoverTarefaTest extends TestCase
 
         $this->assertStringNotContainsString("abrirPendente({$id}, 'em_staging'", $card);
         $this->assertMatchesRegularExpression(
-            '/name="status" value="em_staging">\s*<input type="hidden" name="de_status" value="em_revisao"/u',
+            '/name="de_status" value="em_revisao">.*<button type="submit" name="status" value="em_staging"/su',
             $card,
-            'Destino sem motivo move na hora, e leva o de_status da guarda de concorrência.'
+            'Destino sem motivo move na hora: o status viaja no botão que enviou, '
+                .'e o de_status da guarda de concorrência no formulário único do menu.'
         );
 
         $this->assertStringContainsString('Mover para', $card);
@@ -333,13 +340,15 @@ class MoverTarefaTest extends TestCase
      */
     public function test_o_quadro_apaga_a_coluna_que_nao_aceita_o_card_arrastado(): void
     {
-        $usuario = User::factory()->create();
+        // Membro dono do card: os destinos que ele entrega no `pegar` são a
+        // lista do fluxo. Para quem triaga a lista é o quadro inteiro (AC-283).
+        $usuario = User::factory()->membro()->create();
 
         // Operacional em Em andamento: ela NUNCA passa por testes, e era
         // exatamente esse arrasto que terminava em "transição inválida".
         $this->criarTarefa([
             'titulo' => 'Falar com o fabricante', 'tipo' => 'operacional',
-            'status' => 'em_desenvolvimento',
+            'status' => 'em_desenvolvimento', 'responsavel_id' => $usuario->id,
         ]);
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
@@ -418,9 +427,11 @@ class MoverTarefaTest extends TestCase
      */
     public function test_concluir_e_botao_do_card_e_so_onde_o_fluxo_permite(): void
     {
-        $usuario = User::factory()->create();
-        $pronta = $this->criarTarefa(['status' => 'pronta_producao', 'titulo' => 'Já validada']);
-        $emRevisao = $this->criarTarefa(['status' => 'em_revisao', 'titulo' => 'Ainda em leitura']);
+        // Membro dono dos cards: para quem triaga o fluxo permite concluir de
+        // qualquer lugar (AC-281), e o botão apareceria nos dois.
+        $usuario = User::factory()->membro()->create();
+        $pronta = $this->criarTarefa(['status' => 'pronta_producao', 'titulo' => 'Já validada', 'responsavel_id' => $usuario->id]);
+        $emRevisao = $this->criarTarefa(['status' => 'em_revisao', 'titulo' => 'Ainda em leitura', 'responsavel_id' => $usuario->id]);
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 

@@ -32,6 +32,25 @@
         @if (! empty($transicoes))
             <p class="mb-0.5 font-mono text-[9.5px] uppercase tracking-[0.1em] text-ink-faint">Mover para</p>
 
+            {{--
+                UM formulário para o menu inteiro, e não um por destino: entre
+                os destinos que movem na hora só muda o `status`, e ele viaja
+                no `value` do botão que enviou. Cada `<form>` pagava cabeçalho,
+                CSRF e `de_status` próprios — com o movimento livre (US-079)
+                listando o quadro inteiro no menu de quem triaga, essa
+                repetição em 120 cards estourava sozinha o orçamento de peso
+                do quadro (`QuadroLeveTest`).
+
+                `contents` porque o layout é do pai: os botões continuam
+                filhos do flex-col, para o `gap` valer entre eles.
+            --}}
+            <form method="POST" action="{{ route('tarefas.mover', $tarefa) }}" class="contents">
+                @csrf
+                {{-- A etapa que o card tinha quando a tela foi montada: se
+                     alguém moveu enquanto o menu estava aberto, o envio é
+                     recusado em vez de sobrescrever (AC-208). --}}
+                <input type="hidden" name="de_status" value="{{ $tarefa->status }}">
+
             @foreach ($transicoes as $destino)
                 @php
                     /**
@@ -80,13 +99,14 @@
                 @endphp
 
                 {{--
-                    Destino que NÃO abre painel move na hora.
+                    Destino que NÃO abre painel move na hora — é o `submit` do
+                    formulário único, levando o próprio destino no `value`.
 
                     Antes todos chamavam `abrirPendente`, e para os que não têm
                     receita — Em staging, Backlog, Aberta, Em revisão — ele saía
                     pelo `if (! receita) return`: o clique não fazia nada, em
-                    silêncio. Estes são um POST direto, com o `de_status` que a
-                    guarda de concorrência exige.
+                    silêncio. O que abre painel é `type="button"` DENTRO do
+                    mesmo formulário, justamente para não enviá-lo.
                 --}}
                 @if ($abrePainel)
                     <button type="button" class="{{ $linha }}"
@@ -101,23 +121,15 @@
                         </span>
                     </button>
                 @else
-                    <form method="POST" action="{{ route('tarefas.mover', $tarefa) }}" class="w-full">
-                        @csrf
-                        {{-- A etapa que o card tinha quando a tela foi montada:
-                             se alguém moveu enquanto o menu estava aberto, o
-                             envio é recusado em vez de sobrescrever (AC-208). --}}
-                        <input type="hidden" name="status" value="{{ $destino }}">
-                        <input type="hidden" name="de_status" value="{{ $tarefa->status }}">
+                    <button type="submit" name="status" value="{{ $destino }}" class="{{ $linha }}">
+                        <span class="h-[7px] w-[7px] shrink-0 rounded-full"
+                              style="background: rgb(var(--{{ \App\Models\Tarefa::corDaEtapa($destino) }}))"></span>
 
-                        <button type="submit" class="{{ $linha }}">
-                            <span class="h-[7px] w-[7px] shrink-0 rounded-full"
-                                  style="background: rgb(var(--{{ \App\Models\Tarefa::corDaEtapa($destino) }}))"></span>
-
-                            <span class="flex-1 min-w-0 truncate">{{ $rotulo }}</span>
-                        </button>
-                    </form>
+                        <span class="flex-1 min-w-0 truncate">{{ $rotulo }}</span>
+                    </button>
                 @endif
             @endforeach
+            </form>
         @endif
 
         {{--

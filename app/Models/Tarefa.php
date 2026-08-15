@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\Auditavel;
+use App\Services\FluxoTarefaService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -313,6 +314,33 @@ class Tarefa extends Model
 
         return 'Esta tarefa está com '.($this->responsavel?->name ?? 'outra pessoa')
             .'. Só quem faz triagem move o trabalho de outra pessoa.';
+    }
+
+    /**
+     * Os destinos que o quadro oferece a ESTA pessoa para ESTA tarefa.
+     *
+     * A pergunta que o card, a linha da tabela de raias e o card devolvido
+     * pelas ações parciais fazem — e por isso mora aqui, ao lado do
+     * impedimento, em vez de cada tela combinar as duas respostas por conta
+     * própria e divergir na primeira mexida.
+     *
+     * Quem faz triagem recebe o quadro inteiro (US-079): o mapa do fluxo
+     * educa quem executa, e quem organiza precisa justamente do movimento que
+     * o mapa recusa — devolver à coluna certa o card que a realidade já
+     * desmentiu. Quem não pode mover não recebe destino nenhum: oferecer e
+     * recusar depois é o vício que o quadro perdeu.
+     *
+     * @return list<string>
+     */
+    public function destinosPara(?User $usuario): array
+    {
+        if ($this->motivoParaNaoMover($usuario)) {
+            return [];
+        }
+
+        return $usuario?->podeTriarTarefas()
+            ? FluxoTarefaService::transicoesLivres($this)
+            : FluxoTarefaService::transicoesDe($this);
     }
 
     /** Há quanto tempo está travada, na régua curta do quadro ("3h", "2d"). */

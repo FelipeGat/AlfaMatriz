@@ -106,7 +106,13 @@ class PainelDoMotivoTest extends TestCase
         $bytes = strlen($this->actingAs($usuario)
             ->get(route('tarefas.index'))->assertOk()->getContent());
 
-        $this->assertLessThan(1_450_000, $bytes, sprintf(
+        // Recalibrado em 14/08/2026: o movimento livre (US-079) fez o menu
+        // "Mover ▾" de quem triaga — que é quem este teste loga — listar o
+        // quadro inteiro, e o mesmo quadro passou a ~1,74 MB. Crescimento de
+        // menu, não volta do formulário por card. O teto continua pegando a
+        // regressão que este teste vigia: ela custava +479 KB, que a partir
+        // daqui estoura qualquer valor até ~2,2 MB.
+        $this->assertLessThan(1_850_000, $bytes, sprintf(
             'O quadro com 120 tarefas pesa %.1f MB — o formulário de motivo '.
             'voltou a ser impresso por card.', $bytes / 1_048_576
         ));

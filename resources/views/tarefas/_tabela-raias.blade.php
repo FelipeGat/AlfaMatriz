@@ -62,7 +62,7 @@
                     @foreach (collect($faixa['colunas'])->flatten() as $tarefa)
                         @php
                             $impedimento = $tarefa->motivoParaNaoMover(auth()->user());
-                            $transicoes = $impedimento ? [] : \App\Services\FluxoTarefaService::transicoesDe($tarefa);
+                            $transicoes = $tarefa->destinosPara(auth()->user());
                             $eventoAberto = $tarefa->eventos->firstWhere('saiu_em', null);
                             $progresso = $tarefa->progressoDoChecklist();
                         @endphp

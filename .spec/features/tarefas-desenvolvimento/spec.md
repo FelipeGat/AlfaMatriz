@@ -145,6 +145,10 @@ fluxo, para que nada seja dado como concluído sem ter passado por teste.
 - **Então** o movimento é recusado com aviso de transição inválida e a tarefa
   continua no Backlog
 
+> **Revisto em 14/08/2026 (US-079).** O mapa manda em quem executa. Quem tem a
+> capacidade de triagem move livre (AC-281), e as exigências de chegada
+> continuam valendo para todos (AC-282).
+
 #### AC-086 — Direcionar para o Backlog exige responsável
 
 - **Dado** uma tarefa na coluna Aberta, sem responsável
@@ -203,6 +207,11 @@ fluxo, para que nada seja dado como concluído sem ter passado por teste.
 
 > **Revisto em 11/08/2026.** Os destinos passaram a depender do TIPO da tarefa
 > (AC-177), e os dois novos são recuos (US-056).
+
+> **Revisto em 14/08/2026 (US-079).** "Os destinos permitidos" passou a
+> depender também de QUEM olha: para quem triaga, o menu oferece todas as
+> etapas menos a atual (AC-283); a lista do fluxo é o que o quadro oferece a
+> quem não triaga.
 
 #### AC-124 — Devolver do Backlog para Aberta solta o responsável
 
@@ -1045,6 +1054,51 @@ gesto, que se deixa para depois.
   `private`, nunca `public`: o anexo está atrás de `auth`, e um cache
   compartilhado no caminho passaria a servir print e log de cliente a quem não
   tem sessão
+
+### US-079 — Movimento livre de quem triaga
+
+Como administrador, quero mover qualquer card para qualquer etapa, para
+consertar o quadro quando ele e a realidade divergem — o card que pulou etapa
+por engano, o que ficou para trás, o encerrado na coluna errada.
+
+Pedido do dono do produto em 14/08/2026. O mapa do fluxo (US-037) educa quem
+executa, e continua mandando para quem executa; quem organiza precisa
+justamente do movimento que o mapa recusa, senão a correção vai de recusa em
+recusa, arrastando o card por etapas que ninguém fez — que é a mentira que o
+mapa existe para impedir. A capacidade é a mesma da triagem
+(`tarefas_triagem`), como todo poder de organização do quadro: mover o alheio,
+priorizar, posicionar, excluir.
+
+#### AC-281 — Quem triaga move o card para qualquer etapa
+
+- **Dado** que tenho a capacidade de triagem
+- **Quando** movo uma tarefa para uma etapa que o fluxo do tipo dela não
+  oferece — pular etapa ou recuar de onde não há recuo
+- **Então** o movimento acontece, com o evento de etapa registrado como em
+  qualquer movimento; para quem não triaga, o mapa continua recusando
+  (AC-085). A tarefa operacional continua sem entrar nos portões, mesmo
+  livre: eles examinam código, e um telefonema em "Em revisão · PR" faria a
+  coluna mentir
+
+#### AC-282 — O movimento livre não afrouxa as exigências de chegada
+
+- **Dado** que tenho a capacidade de triagem
+- **Quando** o movimento livre chega numa etapa que exige informação —
+  cancelar exige motivo, concluir a de desenvolvimento exige a versão,
+  liberar para produção exige a validação do staging, Backlog exige
+  responsável, devolver de um portão exige o que corrigir
+- **Então** a exigência vale igual: livre é sobre a ordem das etapas, não
+  sobre a informação que cada chegada registra — um cancelamento sem motivo
+  mente igual venha de quem vier
+
+#### AC-283 — O quadro oferece a quem triaga o que vai aceitar
+
+- **Dado** o quadro visto por quem triaga
+- **Quando** olho o menu "Mover ▾" de um card, arrasto-o ou o movo pelo
+  teclado
+- **Então** os destinos são todas as etapas menos a atual (sem os portões,
+  se a tarefa é operacional), com o mesmo painel de motivo onde a chegada
+  pede texto; quem não triaga continua vendo a lista do fluxo (AC-122)
 
 ## Fora de escopo
 

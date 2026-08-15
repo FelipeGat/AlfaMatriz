@@ -22,6 +22,11 @@ use Illuminate\Support\Facades\DB;
  * é arrastado por uma etapa que ninguém fez, só para chegar onde a realidade já
  * está. E como cada etapa é cronometrada, a mentira não fica na tela — ela
  * contamina o número.
+ *
+ * O mapa manda em quem EXECUTA. Quem faz triagem move livre (US-079): quem
+ * organiza o quadro é quem o conserta quando ele e a realidade divergem, e a
+ * correção não pode depender de arrastar o card por etapas que ninguém fez.
+ * Só o mapa afrouxa — as exigências de chegada valem para todos.
  */
 class FluxoTarefaService
 {
@@ -86,16 +91,49 @@ class FluxoTarefaService
     }
 
     /**
+     * Os destinos do movimento LIVRE: o quadro inteiro, menos onde o card está.
+     *
+     * É o que quem faz triagem enxerga (US-079). O mapa educa quem executa;
+     * quem organiza precisa exatamente do movimento que o mapa recusa —
+     * devolver à coluna certa o card que a realidade já desmentiu. De quebra,
+     * é a saída da tarefa parada numa etapa aposentada, que não está em mapa
+     * nenhum e para todo mundo mais não tem destino algum.
+     *
+     * A operacional continua sem entrar nos portões, mesmo livre: eles
+     * examinam código, e um telefonema numa coluna chamada "Em revisão · PR"
+     * faria a coluna mentir. Livre é sobre a ordem das etapas, não sobre o
+     * vocabulário do tipo.
+     *
+     * @return list<string>
+     */
+    public static function transicoesLivres(Tarefa $tarefa): array
+    {
+        $etapas = array_keys(Tarefa::STATUS);
+
+        if ($tarefa->tipo === 'operacional') {
+            $etapas = array_diff($etapas, Tarefa::PORTOES);
+        }
+
+        return array_values(array_diff($etapas, [$tarefa->status]));
+    }
+
+    /**
      * Move a tarefa para o novo status, recusando transições fora do fluxo e
      * cobrando o que cada uma exige, e registra a mudança de etapa.
      *
+     * `$livre` troca o mapa do tipo pelo quadro inteiro (`transicoesLivres`) —
+     * o movimento de quem faz triagem (US-079). Só o mapa afrouxa: as
+     * exigências de chegada continuam, porque elas não guardam a ordem das
+     * etapas — guardam a informação que cada chegada registra, e um
+     * cancelamento sem motivo mente igual venha de quem vier.
+     *
      * @param  array{motivo?: ?string}  $dados
      */
-    public function mover(Tarefa $tarefa, string $novoStatus, array $dados = []): Tarefa
+    public function mover(Tarefa $tarefa, string $novoStatus, array $dados = [], bool $livre = false): Tarefa
     {
         $statusAtual = $tarefa->status;
 
-        $this->assertTransicaoPermitida($tarefa, $novoStatus);
+        $this->assertTransicaoPermitida($tarefa, $novoStatus, $livre);
         $this->assertExigenciasAtendidas($tarefa, $novoStatus, $dados);
 
         $ehRetorno = $this->ehRetornoDePortao($statusAtual, $novoStatus);
@@ -401,9 +439,11 @@ class FluxoTarefaService
         return $tarefa->refresh();
     }
 
-    private function assertTransicaoPermitida(Tarefa $tarefa, string $novoStatus): void
+    private function assertTransicaoPermitida(Tarefa $tarefa, string $novoStatus, bool $livre): void
     {
-        if (! in_array($novoStatus, self::transicoesDe($tarefa), true)) {
+        $permitidas = $livre ? self::transicoesLivres($tarefa) : self::transicoesDe($tarefa);
+
+        if (! in_array($novoStatus, $permitidas, true)) {
             // `rotuloDaEtapa` e não `STATUS`: a tarefa parada numa etapa
             // aposentada é justamente a que mais recebe esta recusa, e dizer
             // "não é possível mover de em_testes" devolveria a chave crua a
