@@ -106,20 +106,20 @@
 
     {{-- O campo de novo item é a última linha da lista, e não um botão que
          abre um campo: a diferença é um clique por item numa tela em que se
-         escrevem vários seguidos. --}}
-    <div class="mt-1.5 flex items-center gap-2 px-1">
-        <span class="shrink-0 font-mono text-[11px] text-ink-faint select-none" aria-hidden="true">+</span>
-        {{-- O `id` é o que devolve o cursor a este campo depois do envio: a
-             lista é redesenhada pelo servidor, e sem ele escrever cinco itens
-             seguidos custaria um clique a cada Enter (ver `guardarFoco`, no
-             `index`). --}}
-        <input type="text" id="novo-item-campo-{{ $tarefa->id }}"
-               name="texto" form="novo-item-{{ $tarefa->id }}" maxlength="255"
-               placeholder="Novo item — Enter para incluir"
-               class="flex-1 min-w-0 px-0 py-0.5 text-[12.5px] text-ink placeholder-ink-faint transition
-                      !bg-transparent !rounded-none !border-x-0 !border-t-0 !border-b !border-transparent
-                      focus:!border-brand">
-    </div>
+         escrevem vários seguidos. Ao contrário da edição no lugar, ele tem
+         moldura tracejada: sem ela, nada distingue "adicionar" de um item que
+         já existe. Os `!` são pela mesma razão dos itens acima — o estilo
+         global de `input[type=text]` vence a classe por especificidade. --}}
+    {{-- O `id` é o que devolve o cursor a este campo depois do envio: a
+         lista é redesenhada pelo servidor, e sem ele escrever cinco itens
+         seguidos custaria um clique a cada Enter (ver `guardarFoco`, no
+         `index`). --}}
+    <input type="text" id="novo-item-campo-{{ $tarefa->id }}"
+           name="texto" form="novo-item-{{ $tarefa->id }}" maxlength="255"
+           placeholder="+ item · Enter para adicionar"
+           class="mt-2 block w-full h-8 px-2.5 text-[12.5px] text-ink placeholder-ink-faint transition
+                  bg-input border border-dashed !border-btn-line !rounded-ctl
+                  focus:!border-brand">
 
     {{-- A nota existe para não precisarem perguntar. Sem ela, "checklist" e
          "subtarefa" viram sinônimos, e a primeira pergunta de quem usa é em que
