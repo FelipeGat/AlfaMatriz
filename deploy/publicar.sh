@@ -322,12 +322,18 @@ etapa "Recarregando caches"
 # 14/08 teve de ser diagnosticado às cegas. A cópia volta para www-data antes
 # de ir ao ar; o handler de erro do Laravel falha em silêncio quando não pode
 # escrever, então nada no deploy nem na tela denuncia o problema.
-# Só como root e onde www-data existe: a suíte roda este script num sandbox
-# sem nenhum dos dois, e ali não há PHP-FPM para proteger — abortar a
-# publicação por causa do chown inverteria o remédio.
+# Só como root e onde www-data existe: no Mac de desenvolvimento não há
+# nenhum dos dois, e ali não há PHP-FPM para proteger. E pasta por pasta,
+# pulando a que não existir: o portão do staging roda esta suíte DENTRO do
+# container — como root, com www-data —, e o app de mentira dos testes de
+# deploy não tem storage/. Abortar a publicação por causa do chown inverteria
+# o remédio; foi o que derrubou a esteira em 14/08.
 if [[ "${EUID:-$(id -u)}" -eq 0 ]] && id -u www-data >/dev/null 2>&1; then
     etapa "Devolvendo storage ao usuário do PHP-FPM"
-    chown -R www-data:www-data "$ALVO/storage" "$ALVO/bootstrap/cache" || falhar "devolver storage ao www-data"
+    for PASTA in "$ALVO/storage" "$ALVO/bootstrap/cache"; do
+        [[ -d "$PASTA" ]] || continue
+        chown -R www-data:www-data "$PASTA" || falhar "devolver storage ao www-data"
+    done
 fi
 
 # ------------------------------------------------------------------- ensaio
