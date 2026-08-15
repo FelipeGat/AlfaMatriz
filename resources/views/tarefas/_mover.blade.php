@@ -84,10 +84,17 @@
                         default => false,
                     };
 
+                    // A volta para a revisão vinda de mais adiante — só quem
+                    // triaga a vê no menu — é reprovação, como a devolução
+                    // para a bancada: o painel cobra o motivo, e item e painel
+                    // precisam concordar sobre isso.
+                    $devolveParaRevisao = $destino === 'em_revisao'
+                        && in_array($tarefa->status, ['em_staging', 'pronta_producao', 'concluida'], true);
+
                     // O aviso à direita do item diz o que o painel vai pedir —
                     // e apontar não é motivo: nos portões de exame ele oferece
                     // uma escolha opcional, não cobra um texto.
-                    $dica = in_array($destino, \App\Models\Tarefa::PORTOES_DE_EXAME, true)
+                    $dica = in_array($destino, \App\Models\Tarefa::PORTOES_DE_EXAME, true) && ! $devolveParaRevisao
                         ? 'apontar quem'
                         : 'pede motivo';
 
@@ -99,12 +106,15 @@
                      * está sendo REPROVADA e devolvida. Um menu que chama as
                      * duas coisas pelo mesmo nome esconde a única que tem
                      * consequência — e o card do outro lado vai amanhecer com
-                     * uma tarja que ninguém acha que pediu.
+                     * uma tarja que ninguém acha que pediu. A volta para a
+                     * revisão é a mesma exceção, um portão antes.
                      */
-                    $rotulo = $destino === 'em_desenvolvimento'
-                            && in_array($tarefa->status, \App\Models\Tarefa::PORTOES, true)
-                        ? 'Devolver para correção'
-                        : \App\Models\Tarefa::rotuloDaEtapa($destino);
+                    $rotulo = match (true) {
+                        $destino === 'em_desenvolvimento'
+                            && in_array($tarefa->status, \App\Models\Tarefa::PORTOES, true) => 'Devolver para correção',
+                        $devolveParaRevisao => 'Devolver para revisão',
+                        default => \App\Models\Tarefa::rotuloDaEtapa($destino),
+                    };
 
                     $linha = 'flex items-center gap-2 w-full h-[30px] px-2 rounded-tile border border-btn-line'
                         .' bg-transparent text-ink text-[12.5px] text-left transition hover:border-brand/50';

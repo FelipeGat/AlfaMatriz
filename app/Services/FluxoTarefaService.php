@@ -140,7 +140,7 @@ class FluxoTarefaService
         $this->assertTransicaoPermitida($tarefa, $novoStatus, $livre);
         $this->assertExigenciasAtendidas($tarefa, $novoStatus, $dados);
 
-        $ehRetorno = $this->ehRetornoParaBancada($statusAtual, $novoStatus);
+        $ehRetorno = $this->ehRetorno($statusAtual, $novoStatus);
 
         return DB::transaction(function () use ($tarefa, $statusAtual, $novoStatus, $dados, $ehRetorno) {
             $agora = now();
@@ -199,7 +199,12 @@ class FluxoTarefaService
                     'tipo' => 'retorno',
                     'nivel' => 'atencao',
                     'icone' => 'arrow-uturn-left',
-                    'titulo' => '"'.$tarefa->titulo.'" voltou para correção',
+                    // "Correção" é a bancada; a volta para a revisão devolve o
+                    // PR ao exame, e anunciá-la como correção mandaria o dev
+                    // reabrir um código que ninguém devolveu a ele.
+                    'titulo' => '"'.$tarefa->titulo.'"'.($novoStatus === 'em_desenvolvimento'
+                        ? ' voltou para correção'
+                        : ' voltou para revisão'),
                     'meta' => $tarefa->rotuloDoRetornoVindoDe($statusAtual),
                     'rota' => route('tarefas.index'),
                     'tarefa_id' => $tarefa->id,
@@ -223,18 +228,35 @@ class FluxoTarefaService
     }
 
     /**
-     * Voltar para a bancada vindo de um portão — ou de Concluída — é
+     * Voltar de mais adiante — para a bancada ou para a revisão — é
      * reprovação, e não recuo qualquer.
      *
      * A reabertura entra na mesma regra porque é o exame mais duro dos
      * quatro: quem reprova aqui é quem usou o que subiu. Ela já foi volta
      * livre, e o card aterrissava em Em andamento indistinguível de trabalho
      * novo — quem o recebia não tinha como saber POR QUE a tarefa voltou.
+     *
+     * A volta para a REVISÃO só existe no movimento livre (US-079), e foi por
+     * ele que escapou da regra: o admin devolvia do staging ou da produção
+     * para o exame sem dizer por quê, e o card chegava ao revisor
+     * indistinguível de um PR novo. A exigência de chegada vale para todos —
+     * inclusive na chegada que só quem triaga alcança.
      */
-    private function ehRetornoParaBancada(string $statusAtual, string $novoStatus): bool
+    private function ehRetorno(string $statusAtual, string $novoStatus): bool
     {
-        return $novoStatus === 'em_desenvolvimento'
-            && ($statusAtual === 'concluida' || in_array($statusAtual, Tarefa::PORTOES, true));
+        if ($novoStatus === 'em_desenvolvimento') {
+            return $statusAtual === 'concluida' || in_array($statusAtual, Tarefa::PORTOES, true);
+        }
+
+        // Só as etapas À FRENTE da revisão devolvem para ela. A tarefa
+        // resgatada de uma etapa aposentada (`em_testes`) fica de fora: ela
+        // não está voltando de exame nenhum, está sendo devolvida ao quadro.
+        if ($novoStatus === 'em_revisao') {
+            return $statusAtual === 'concluida'
+                || in_array($statusAtual, ['em_staging', 'pronta_producao'], true);
+        }
+
+        return false;
     }
 
     /**
@@ -625,10 +647,10 @@ class FluxoTarefaService
         }
 
         // Reprovar sem dizer o que reprovou manda a pessoa que recebe o card
-        // abrir o PR e adivinhar. Só o retorno de portão ou de Concluída cobra
-        // o texto: Backlog → Em andamento é só começar a trabalhar, e não tem
+        // abrir o PR e adivinhar. Só o retorno vindo de mais adiante cobra o
+        // texto: Backlog → Em andamento é só começar a trabalhar, e não tem
         // motivo a dar.
-        if ($this->ehRetornoParaBancada($tarefa->status, $novoStatus) && ! $this->motivoPreenchido($dados)) {
+        if ($this->ehRetorno($tarefa->status, $novoStatus) && ! $this->motivoPreenchido($dados)) {
             throw new \RuntimeException('É preciso dizer o que precisa ser corrigido.');
         }
 

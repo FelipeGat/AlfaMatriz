@@ -1091,6 +1091,15 @@ priorizar, posicionar, excluir.
   sobre a informação que cada chegada registra — um cancelamento sem motivo
   mente igual venha de quem vier
 
+> **Revisto em 15/08/2026.** A volta para a Em revisão vinda de mais adiante
+> (staging, fila da produção ou concluída) — recuo que só o movimento livre
+> oferece — é reprovação como a devolução para a bancada: cobra o motivo e
+> carimba o retorno (`retorno_de`/`retorno_motivo`), com a tarja nomeando de
+> onde a tarefa voltou. Sem isso, o admin devolvia do staging em silêncio e o
+> card chegava ao revisor indistinguível de um PR novo. O resgate da etapa
+> aposentada (`em_testes` → Em revisão) fica de fora: não é volta de exame,
+> é devolução ao quadro.
+
 #### AC-283 — O quadro oferece a quem triaga o que vai aceitar
 
 - **Dado** o quadro visto por quem triaga

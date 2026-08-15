@@ -122,6 +122,75 @@ class MovimentoLivreTest extends TestCase
     }
 
     /**
+     * @spec:AC-282 A volta para a revisão vinda de mais adiante — o recuo que
+     * só o livre oferece — é reprovação como a devolução para a bancada: cobra
+     * o motivo e carimba de onde a tarefa voltou. Sem isso, o admin devolvia
+     * do staging em silêncio e o card chegava ao revisor como um PR novo.
+     */
+    public function test_devolver_para_a_revisao_vindo_de_mais_adiante_cobra_motivo(): void
+    {
+        $admin = User::factory()->create();
+        $camila = User::factory()->create(['name' => 'Camila Reis']);
+        $tarefa = $this->criarTarefa(['status' => 'em_staging', 'responsavel_id' => $camila->id]);
+
+        $this->actingAs($admin)->post(route('tarefas.mover', $tarefa), ['status' => 'em_revisao'])
+            ->assertSessionHas('erro');
+        $this->assertStringContainsString('o que precisa ser corrigido', session('erro'));
+        $this->assertSame('em_staging', $tarefa->fresh()->status);
+
+        $this->actingAs($admin)->post(route('tarefas.mover', $tarefa), [
+            'status' => 'em_revisao', 'motivo' => 'O teste do staging desmentiu a revisão.',
+        ])->assertSessionMissing('erro');
+
+        $devolvida = $tarefa->fresh();
+
+        $this->assertSame('em_revisao', $devolvida->status);
+        $this->assertSame('em_staging', $devolvida->retorno_de);
+        $this->assertSame('Voltou do staging', $devolvida->rotuloDoRetorno());
+        $this->assertSame('O teste do staging desmentiu a revisão.', $devolvida->retorno_motivo);
+
+        // A responsável fica sabendo pelo sino — e a volta é anunciada como o
+        // que é: o PR voltou ao exame, não à bancada dela.
+        $this->assertDatabaseHas('notificacoes', [
+            'destinatario_id' => $camila->id,
+            'tipo' => 'retorno',
+            'titulo' => '"Tarefa de teste" voltou para revisão',
+        ]);
+    }
+
+    /**
+     * @spec:AC-282 A fila da produção e a própria produção devolvem para a
+     * revisão sob a mesma regra — e a reabertura solta a versão, como a volta
+     * para a bancada: guardada, a reconclusão passava apoiada no ciclo
+     * anterior.
+     */
+    public function test_a_volta_da_producao_para_a_revisao_tambem_e_reprovacao(): void
+    {
+        $admin = User::factory()->create();
+
+        $daFila = $this->criarTarefa(['status' => 'pronta_producao']);
+
+        $this->actingAs($admin)->post(route('tarefas.mover', $daFila), ['status' => 'em_revisao'])
+            ->assertSessionHas('erro');
+        $this->assertStringContainsString('o que precisa ser corrigido', session('erro'));
+        $this->assertSame('pronta_producao', $daFila->fresh()->status);
+
+        $concluida = $this->criarTarefa(['status' => 'concluida']);
+        $concluida->forceFill(['versao_producao' => 'v1.4.2'])->save();
+
+        $this->actingAs($admin)->post(route('tarefas.mover', $concluida), [
+            'status' => 'em_revisao', 'motivo' => 'Saiu errado no cliente; reexaminar o PR.',
+        ])->assertSessionMissing('erro');
+
+        $reaberta = $concluida->fresh();
+
+        $this->assertSame('em_revisao', $reaberta->status);
+        $this->assertSame('concluida', $reaberta->retorno_de);
+        $this->assertSame('Voltou da produção', $reaberta->rotuloDoRetorno());
+        $this->assertNull($reaberta->versao_producao);
+    }
+
+    /**
      * @spec:AC-283 O quadro oferece a quem triaga o que vai aceitar: o card
      * entrega ao arrasto todas as etapas menos a atual — é a mesma lista que
      * acende as colunas, alimenta o menu "Mover ▾" e o teclado.

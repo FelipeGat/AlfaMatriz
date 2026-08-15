@@ -1,0 +1,8 @@
+<b>📋 AlfaMatriz — Changelog 15/08/2026</b>
+<i>Devolver para a revisão agora diz por quê</i>
+
+<b>🔧 Correções</b>
+
+• <b>Voltar de Staging ou Produção para Em revisão agora pede o motivo.</b> O movimento livre do admin permitia devolver um card do staging, da fila de produção ou de uma tarefa concluída direto para a revisão sem escrever nada — e o PR chegava ao revisor indistinguível de um PR novo. Agora essa volta é tratada como as outras reprovações: o painel cobra o texto, o card chega em Em revisão com a tarja dizendo de onde voltou ("Voltou do staging", "Voltou da porta da produção", "Voltou da produção") e o motivo escrito nela, e o responsável é avisado pelo sino. No menu Mover, o destino passa a se chamar "Devolver para revisão", anunciando que pede motivo antes do clique. Reabrir direto na revisão também limpa a versão registrada, como a reabertura para a bancada. O resgate de tarefa presa na antiga etapa "Em testes" continua livre — ali não há exame de onde voltar.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

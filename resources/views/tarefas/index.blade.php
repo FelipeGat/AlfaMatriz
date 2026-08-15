@@ -1165,7 +1165,24 @@
                         // o arrasto que passava reto se lia como feature que
                         // não existe). Opcional de propósito: sem escolha, a
                         // coluna segue como fila.
-                        em_revisao: {
+                        //
+                        // A volta vinda de MAIS ADIANTE — só o movimento livre
+                        // a oferece — é outra conversa: reprovação, como a
+                        // devolução para a bancada, e o motor recusa sem o
+                        // motivo. O apontamento continua junto, porque a
+                        // tarefa está reentrando no exame.
+                        em_revisao: ['em_staging', 'pronta_producao', 'concluida'].includes(this.statusArrastado) ? {
+                            verbo: 'Devolvendo para', label: 'Em revisão',
+                            porque: {
+                                em_staging: 'Voltando do staging para o exame — o código JÁ está na main. Diga por que o PR precisa ser reexaminado.',
+                                pronta_producao: 'Saindo da fila da produção de volta para o exame. Diga o que apareceu antes de subir.',
+                                concluida: 'Reabrindo direto na revisão — a versão que subiu continua no ar. Diga o que precisa ser reexaminado.',
+                            }[this.statusArrastado],
+                            placeholder: 'Por que está voltando para a revisão…',
+                            acaoRotulo: 'Devolver para revisão',
+                            cor: 'warn', campo: 'motivo', obrigatorio: true, pedeAprovacao: false,
+                            pessoa: 'Quem revisa?',
+                        } : {
                             verbo: 'Enviando para', label: 'Em revisão',
                             porque: 'O PR vai para exame. Aponte quem revisa e o sino avisa a pessoa na hora — sem apontar, a coluna fica como fila.',
                             acaoRotulo: 'Enviar para revisão',
