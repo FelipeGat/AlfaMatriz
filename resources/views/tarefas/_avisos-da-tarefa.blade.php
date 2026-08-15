@@ -87,3 +87,80 @@
         </button>
     </div>
 @endif
+
+{{--
+    O quarto banner: o teste do staging (US-084). Aparece na coluna que espera
+    validação e responde "o que falta para esta tarefa andar" — aguardando
+    teste, aprovado por alguém, reprovado por alguém. Os botões registram o
+    veredito sem mover o card, pelos envios de `_checklist-envios`.
+
+    Some quando bloqueada: travada, o teste não é o assunto — e o banner do
+    bloqueio já está dizendo o que é.
+--}}
+@if ($tarefa->tipo === 'desenvolvimento' && $tarefa->status === 'em_staging' && ! $tarefa->estaBloqueada())
+    @php
+        $testeDaPassagem = $tarefa->testeDestaPassagem();
+        $tomDoTeste = $testeDaPassagem === null ? 'brand' : ($testeDaPassagem->aprovado ? 'good' : 'warn');
+    @endphp
+
+    <div x-data="{ reprovando: false }" class="px-[11px] py-[9px] rounded-[5px] border border-l-2"
+         style="background: {{ ['brand' => 'rgb(var(--brand) / 0.085)', 'good' => 'var(--good-tint)', 'warn' => 'var(--warn-tint)'][$tomDoTeste] }};
+                border-color: {{ ['brand' => 'rgb(var(--brand) / 0.4)', 'good' => 'var(--good-line)', 'warn' => 'var(--warn-line)'][$tomDoTeste] }};
+                border-left-color: rgb(var(--{{ $tomDoTeste }}))">
+        <div class="flex items-center gap-2.5">
+            <span class="h-3.5 w-3.5 shrink-0" style="color: rgb(var(--{{ $tomDoTeste }}))">
+                <x-nav-icon :name="$testeDaPassagem?->aprovado ? 'check-circle' : 'alert-triangle'" :peso="1.8" />
+            </span>
+            <span class="flex-1 min-w-0 text-[12.5px] font-medium text-ink">
+                @if ($testeDaPassagem === null)
+                    Na main, aguardando o teste do staging
+                @else
+                    Staging {{ $testeDaPassagem->aprovado ? 'aprovado' : 'reprovado' }}
+                    por {{ $testeDaPassagem->autor?->name ?? 'alguém' }}
+                @endif
+            </span>
+            @if ($testeDaPassagem !== null)
+                <span class="shrink-0 font-mono text-[10.5px] font-semibold whitespace-nowrap"
+                      style="color: rgb(var(--{{ $tomDoTeste }}))">
+                    {{ \App\Models\Tarefa::duracaoCurta((int) $testeDaPassagem->created_at->diffInSeconds(now())) }}
+                </span>
+            @endif
+
+            <button type="submit" form="testar-aprovar-{{ $tarefa->id }}"
+                    class="shrink-0 h-6 px-2.5 rounded-tile border text-[11.5px] font-semibold transition hover:bg-chip"
+                    style="border-color: var(--good-line); color: rgb(var(--good))">
+                Aprovar
+            </button>
+            <button type="button" @click="reprovando = ! reprovando"
+                    class="shrink-0 h-6 px-2.5 rounded-tile border text-[11.5px] font-semibold transition hover:bg-chip"
+                    style="border-color: var(--warn-line); color: rgb(var(--warn))">
+                Reprovar
+            </button>
+        </div>
+
+        {{-- As notas da reprovação registrada, por extenso, como o motivo do
+             retorno: é aqui que o dev vem LER o que falhou. --}}
+        @if ($testeDaPassagem !== null && ! $testeDaPassagem->aprovado && filled($testeDaPassagem->notas))
+            <p class="mt-1.5 text-[12.5px] leading-[1.45] text-ink whitespace-pre-wrap">{{ $testeDaPassagem->notas }}</p>
+        @endif
+
+        {{-- Reprovar exige dizer o quê (o motor recusa sem notas): o botão
+             revela o campo em vez de enviar, como o bloqueio do rodapé. --}}
+        <div x-show="reprovando" x-cloak class="mt-2 flex items-end gap-2">
+            <div class="flex-1 min-w-0">
+                <label for="teste-notas-{{ $tarefa->id }}" class="block mb-[5px] text-[12px] font-medium text-ink-dim">
+                    O que reprovou?
+                </label>
+                <textarea id="teste-notas-{{ $tarefa->id }}" name="notas" form="testar-reprovar-{{ $tarefa->id }}"
+                          rows="2" required placeholder="O que falhou no staging…"
+                          class="block w-full px-2.5 py-2 rounded-control bg-input border-line text-ink
+                                 text-[12.5px] leading-[1.45] resize-y"></textarea>
+            </div>
+            <button type="submit" form="testar-reprovar-{{ $tarefa->id }}"
+                    class="shrink-0 h-[34px] px-3 rounded-control border text-[12.5px] font-semibold transition hover:bg-chip"
+                    style="border-color: var(--warn-line); color: rgb(var(--warn))">
+                Reprovar teste
+            </button>
+        </div>
+    </div>
+@endif

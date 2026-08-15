@@ -45,6 +45,24 @@
     </form>
 @endif
 
+{{-- O teste do staging: DOIS envios, um por veredito, porque o veredito viaja
+     como campo fixo — o caminho parcial monta `new FormData(form)` sem o
+     submitter, e o value do botão que enviou se perderia. Sem gate de perfil,
+     como o bloqueio do card: quem testa normalmente não é quem move. --}}
+@if ($tarefa->tipo === 'desenvolvimento' && $tarefa->status === 'em_staging')
+    <form id="testar-aprovar-{{ $tarefa->id }}" method="POST" data-parcial
+          action="{{ route('tarefas.testar', $tarefa) }}" class="hidden">
+        @csrf
+        <input type="hidden" name="aprovado" value="1">
+    </form>
+
+    <form id="testar-reprovar-{{ $tarefa->id }}" method="POST" data-parcial
+          action="{{ route('tarefas.testar', $tarefa) }}" class="hidden">
+        @csrf
+        <input type="hidden" name="aprovado" value="0">
+    </form>
+@endif
+
 <form id="ordenar-checklist-{{ $tarefa->id }}" method="POST" data-parcial
       action="{{ route('tarefas.itens.ordenar', $tarefa) }}" class="hidden">
     @csrf

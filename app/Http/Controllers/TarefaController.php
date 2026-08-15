@@ -1536,7 +1536,7 @@ class TarefaController extends Controller
         // histórico completo (US-082): a linha do tempo assina cada movimento
         // e a criação, e os relatórios contam as aprovações. Tudo no mesmo
         // `with()` — o modal nasce com a página, sem consulta por linha.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos.autor', 'criadoPor', 'comentarios.autor', 'itens', 'anexos.autor', 'relatoriosTeste'])
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos.autor', 'criadoPor', 'comentarios.autor', 'itens', 'anexos.autor', 'relatoriosTeste.autor'])
             ->whereIn('status', $filtros['desfecho'] !== '' ? [$filtros['desfecho']] : Tarefa::STATUS_TERMINAIS)
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('updated_at')

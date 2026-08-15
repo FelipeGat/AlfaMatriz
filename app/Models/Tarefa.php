@@ -608,6 +608,30 @@ class Tarefa extends Model
     }
 
     /**
+     * O relatório de teste DESTA passagem pela etapa atual — ou null.
+     *
+     * "Desta passagem" é o recorte que impede o aprovado antigo de valer de
+     * novo: o relatório se prende ao evento aberto, e a tarefa que reentra no
+     * staging não herda o carimbo da volta anterior. O recorte é o EVENTO, não
+     * a data — por data, reabrir e reconcluir no mesmo segundo deixava o
+     * relatório velho passar. Tarefa que nunca se moveu compara nulo com nulo:
+     * também é uma passagem, a primeira.
+     *
+     * Mora aqui porque o portão (`FluxoTarefaService::aprovadaNestaPassagem`)
+     * e a tarja do teste na tela fazem a MESMA pergunta — e duas cópias do
+     * recorte divergiriam na primeira mexida.
+     */
+    public function testeDestaPassagem(): ?TarefaRelatorioTeste
+    {
+        $eventoAberto = $this->eventos()->whereNull('saiu_em')->latest('entrou_em')->value('id');
+
+        return $this->relatoriosTeste()
+            ->where('tarefa_evento_id', $eventoAberto)
+            ->latest('id')
+            ->first();
+    }
+
+    /**
      * O checklist da tarefa, na ordem escolhida por quem escreveu.
      *
      * A ordem vive na relação, e não em cada tela, pelo mesmo motivo dos

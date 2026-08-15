@@ -606,29 +606,14 @@ class FluxoTarefaService
      *
      * "Desta passagem" é a correção de um vazamento: a checagem lia o último
      * relatório da tarefa INTEIRA, então uma tarefa concluída, reaberta,
-     * remexida e reconcluída passava pelo portão apoiada no "aprovado" do ciclo
-     * anterior — o teste que provava o código de antes valia como prova do
-     * código de depois. O mesmo vale para a tarefa devolvida para correção: ela
-     * reentra no staging sem herdar o carimbo da volta anterior.
-     *
-     * O recorte é o EVENTO da etapa atual, não a data dele. Por data, reabrir e
-     * reconcluir dentro do mesmo segundo — o caso comum de quem está corrigindo
-     * algo pequeno — deixava o relatório antigo passar de novo, porque
-     * "criado depois da entrada na etapa" era verdade para os dois.
-     *
-     * Tarefa sem evento nenhum (nunca se moveu) compara nulo com nulo: também é
-     * uma passagem, a primeira, e ela não tem de que se aproveitar.
+     * remexida e reconcluída passava pelo portão apoiada no "aprovado" do
+     * ciclo anterior. O recorte vive no modelo (`testeDestaPassagem`), porque
+     * a tarja do teste na tela faz a mesma pergunta — aqui só se lê o
+     * veredito.
      */
     private function aprovadaNestaPassagem(Tarefa $tarefa): bool
     {
-        $etapaAtual = $tarefa->eventos()->whereNull('saiu_em')->latest('entrou_em')->value('id');
-
-        $ultimo = $tarefa->relatoriosTeste()
-            ->where('tarefa_evento_id', $etapaAtual)
-            ->latest('id')
-            ->first();
-
-        return (bool) $ultimo?->aprovado;
+        return (bool) $tarefa->testeDestaPassagem()?->aprovado;
     }
 
     private function fecharEventoAberto(Tarefa $tarefa, \DateTimeInterface $agora): void

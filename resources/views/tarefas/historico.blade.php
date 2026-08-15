@@ -226,6 +226,11 @@
                                         <x-badge :tom="$relatorio->aprovado ? 'bom' : 'critico'">
                                             {{ $relatorio->aprovado ? 'Aprovado' : 'Reprovado' }}
                                         </x-badge>
+                                        {{-- Quem testou é a assinatura do veredito (AC-304).
+                                             Relatório antigo não tem autor — e não inventa um. --}}
+                                        @if ($relatorio->autor)
+                                            <span class="text-[11.5px] text-ink-mute">por {{ $relatorio->autor->name }}</span>
+                                        @endif
                                         <span class="font-mono text-[11.5px] text-ink-faint">{{ $relatorio->created_at->format('d/m/Y H:i') }}</span>
                                     </p>
                                     @if (filled($relatorio->notas))

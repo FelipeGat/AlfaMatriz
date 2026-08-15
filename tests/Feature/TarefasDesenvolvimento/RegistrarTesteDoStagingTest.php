@@ -99,6 +99,34 @@ class RegistrarTesteDoStagingTest extends TestCase
     }
 
     /**
+     * @spec:AC-304 O relatório diz quem testou: a assinatura viaja com o registro e
+     * o histórico da tarefa mostra o nome ao lado do veredito.
+     */
+    public function test_o_historico_mostra_quem_testou_ao_lado_do_veredito(): void
+    {
+        [$tarefa, $dev] = $this->emStaging();
+        $testador = User::factory()->membro()->create(['name' => 'Alexandre Souza']);
+
+        $this->actingAs($testador)->post(route('tarefas.testar', $tarefa), [
+            'aprovado' => '1',
+        ]);
+
+        // A tarefa encerra o ciclo — é no histórico que o veredito vira acervo.
+        $this->actingAs($dev)->post(route('tarefas.mover', $tarefa), [
+            'status' => 'pronta_producao', 'de_status' => 'em_staging',
+        ]);
+        $this->actingAs($dev)->post(route('tarefas.mover', $tarefa->fresh()), [
+            'status' => 'concluida', 'de_status' => 'pronta_producao', 'versao_producao' => 'v9.9.9',
+        ]);
+
+        $this->assertSame('concluida', $tarefa->fresh()->status);
+
+        $this->actingAs($dev)->get(route('tarefas.historico'))
+            ->assertSee('Aprovado')
+            ->assertSee('por Alexandre Souza');
+    }
+
+    /**
      * @spec:AC-306 Reprovar exige dizer o que falhou: reprovação sem notas manda o
      * dev abrir o staging e adivinhar — a mesma regra do retorno de portão.
      */
