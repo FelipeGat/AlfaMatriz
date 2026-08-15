@@ -557,6 +557,18 @@ class IndicadoresService
             $meses[] = $mes->copy();
         }
 
+        // As previsões dos meses futuros, de uma vez: perguntar mês a mês
+        // custava até quatro consultas por mês — em janeiro, com onze meses
+        // pela frente, era o painel voltando aos 76 de antes de AC-244.
+        $futuras = collect($meses)
+            ->filter(fn (Carbon $mes) => $mes->greaterThan($mesAtual))
+            ->map(fn (Carbon $mes) => $mes->format('Y-m'))
+            ->values()
+            ->all();
+
+        $this->carregarMrrDe($futuras);
+        $this->carregarDespesaPrevistaDe($futuras);
+
         return collect($meses)->map(function (Carbon $mes) use ($mesAtual) {
             $futuro = $mes->greaterThan($mesAtual);
             $competencia = $mes->format('Y-m');
@@ -583,18 +595,53 @@ class IndicadoresService
      */
     public function despesaPrevistaDaCompetencia(string $competencia): float
     {
-        $gerada = ContaPagar::where('competencia', $competencia)->where('status', '!=', 'cancelado');
+        $this->carregarDespesaPrevistaDe([$competencia]);
 
-        if ($gerada->exists()) {
-            return (float) $gerada->sum('valor');
+        return $this->memo["despesaPrevista:{$competencia}"];
+    }
+
+    /**
+     * A despesa prevista de várias competências de uma vez — o mesmo desenho
+     * de `carregarMrrDe()`: uma competência que aparece no agrupamento é uma
+     * competência com `ContaPagar` gerada, mesmo que a soma dê zero; as que
+     * não aparecem projetam pelas fixas, decididas em memória pela MESMA
+     * régua da tela (`ContaFixaPagar::vigenteNaCompetencia()`).
+     *
+     * @param  list<string>  $competencias
+     */
+    private function carregarDespesaPrevistaDe(array $competencias): void
+    {
+        $faltando = array_values(array_filter(
+            $competencias,
+            fn (string $competencia) => ! array_key_exists("despesaPrevista:{$competencia}", $this->memo)
+        ));
+
+        if ($faltando === []) {
+            return;
         }
 
-        $mes = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
+        $geradas = ContaPagar::whereIn('competencia', $faltando)
+            ->where('status', '!=', 'cancelado')
+            ->selectRaw('competencia, COALESCE(SUM(valor), 0) as total')
+            ->groupBy('competencia')
+            ->get()
+            ->mapWithKeys(fn ($linha) => [$linha->competencia => (float) $linha->total]);
 
-        return (float) ContaFixaPagar::where('ativo', true)
-            ->whereDate('data_inicio', '<=', $mes->copy()->endOfMonth())
-            ->where(fn ($q) => $q->whereNull('data_fim')->orWhereDate('data_fim', '>=', $mes->copy()->startOfMonth()))
-            ->sum('valor');
+        $fixas = null;
+
+        foreach ($faltando as $competencia) {
+            if ($geradas->has($competencia)) {
+                $this->memo["despesaPrevista:{$competencia}"] = $geradas[$competencia];
+
+                continue;
+            }
+
+            $fixas ??= ContaFixaPagar::where('ativo', true)->get();
+
+            $this->memo["despesaPrevista:{$competencia}"] = (float) $fixas
+                ->filter(fn (ContaFixaPagar $fixa) => $fixa->vigenteNaCompetencia($competencia))
+                ->sum('valor');
+        }
     }
 
     /**

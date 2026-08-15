@@ -94,6 +94,15 @@ class PaineisTest extends TestCase
      */
     public function test_painel_financeiro_cabe_em_trinta_consultas(): void
     {
+        // Janeiro, de propósito: desde que o gráfico mostra o ano inteiro,
+        // cada mês FUTURO pergunta a previsão de receita e de despesa — e em
+        // janeiro são onze, o pior caso. Perguntar mês a mês já estourou o
+        // orçamento uma vez (60 consultas, quase os 76 de antes de AC-244);
+        // hoje `serieDeCaixaEntre()` carrega as previsões de uma vez, e este
+        // congelamento garante que a suíte mede sempre o pior caso, e não o
+        // mês em que ela rodou.
+        $this->travelTo(now()->startOfYear()->addDays(14));
+
         $usuario = User::factory()->create();
         $this->semearCaixa();
 
