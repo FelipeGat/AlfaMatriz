@@ -1,0 +1,14 @@
+<b>📋 AlfaMatriz — Changelog 15/08/2026</b>
+<i>Clicar numa tarefa do histórico abre a história completa dela</i>
+
+<b>🆕 Novidades</b>
+
+• <b>A tarefa encerrada agora conta o caminho, não só o desfecho.</b> Na aba de histórico, clicar em qualquer ponto da linha abre a tarefa inteira num painel: a linha do tempo de etapas, a conversa, os anexos, o checklist e os relatórios de teste — tudo em modo leitura, sem sair da listagem. Antes só dava para ver os comentários, e apenas nas tarefas que os tinham.
+
+• <b>A linha do tempo mostra cada passo: quando, quanto tempo e por quê.</b> Da criação ao encerramento, cada etapa aparece com a data de entrada, quanto tempo a tarefa ficou nela e o motivo, quando houve — o bloqueio, o cancelamento, a volta para correção. Etapas que já saíram do fluxo aparecem pelo nome, como eram na época.
+
+• <b>Cada movimento passa a registrar quem o fez.</b> Daqui pra frente, mover, concluir, cancelar e reabrir ficam assinados, e a linha do tempo mostra o autor ao lado da data. Os movimentos antigos aparecem sem assinatura — esse registro não existia, e o histórico mostra o que se sabe, sem inventar.
+
+• <b>O Reabrir continua no mesmo lugar, funcionando como antes.</b> A linha virou o alvo do clique, mas o botão segura o gesto para si: clicar nele reabre a tarefa sem abrir o painel.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
