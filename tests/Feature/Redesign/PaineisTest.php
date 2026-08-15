@@ -98,11 +98,14 @@ class PaineisTest extends TestCase
         );
         $resposta->assertSee('não considera sazonalidade', escape: false);
 
-        // O histórico tem um ponto por mês da janela, com entradas e saídas.
+        // O histórico tem um ponto por mês da janela — por padrão o ano
+        // inteiro, janeiro a dezembro, com o realizado até o mês corrente e o
+        // previsto dali em diante. O ponto do mês corrente é o que se moveu de
+        // fato no caixa.
         $historico = $resposta->viewData('historico');
-        $this->assertCount(6, $historico);
-        $this->assertEqualsWithDelta(5000.0, $historico[5]['entradas'], 0.01);
-        $this->assertEqualsWithDelta(3200.0, $historico[5]['saidas'], 0.01);
+        $this->assertCount(12, $historico);
+        $this->assertEqualsWithDelta(5000.0, $historico[now()->month - 1]['entradas'], 0.01);
+        $this->assertEqualsWithDelta(3200.0, $historico[now()->month - 1]['saidas'], 0.01);
 
         // As duas listas de pendência, cada uma com o caminho da tela cheia.
         $this->assertCount(1, $resposta->viewData('receitasPendentes'));

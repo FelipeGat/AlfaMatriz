@@ -164,11 +164,13 @@ class FinanceiroKpisTest extends TestCase
     }
 
     /**
-     * @spec:AC-042 O último ponto do gráfico é o número dos cards. Enquanto o
-     * gráfico tinha a própria cópia da conta, eram duas implementações do
-     * mesmo valor esperando divergir.
+     * @spec:AC-042 O ponto do mês corrente no gráfico é o número dos cards.
+     * Enquanto o gráfico tinha a própria cópia da conta, eram duas
+     * implementações do mesmo valor esperando divergir. Deixou de ser o
+     * ÚLTIMO ponto quando o gráfico passou a mostrar o ano inteiro: dali em
+     * diante os pontos são previsão, não caixa.
      */
-    public function test_o_ultimo_ponto_do_grafico_e_o_card(): void
+    public function test_o_ponto_do_mes_corrente_no_grafico_e_o_card(): void
     {
         $conta = $this->conta(2000.00, 'mes passado');
 
@@ -181,9 +183,9 @@ class FinanceiroKpisTest extends TestCase
         $resposta = $this->actingAs($this->operador())->get(route('dashboard'));
         $historico = $resposta->viewData('historico');
 
-        $this->assertCount(6, $historico);
-        $this->assertEqualsWithDelta((float) $resposta->viewData('entradasMes'), $historico[5]['entradas'], 0.01);
-        $this->assertEqualsWithDelta((float) $resposta->viewData('saidasMes'), $historico[5]['saidas'], 0.01);
+        $this->assertCount(12, $historico);
+        $this->assertEqualsWithDelta((float) $resposta->viewData('entradasMes'), $historico[now()->month - 1]['entradas'], 0.01);
+        $this->assertEqualsWithDelta((float) $resposta->viewData('saidasMes'), $historico[now()->month - 1]['saidas'], 0.01);
     }
 
     /**

@@ -157,8 +157,9 @@ e não só números soltos, para entender de onde vem o dinheiro sem exportar na
 - **Dado** o painel Financeiro aberto
 - **Quando** a pessoa olha a tela
 - **Então** vê os cinco números do mês (receita recorrente, projeção anual,
-  saldo em caixa, entradas e saídas), o gráfico de entradas contra saídas dos
-  últimos seis meses, e as duas listas do que está pendente de receber e de
+  saldo em caixa, entradas e saídas), o gráfico de entradas contra saídas do
+  ano corrente — realizado até o mês de hoje, previsto dali em diante, com
+  filtro de período —, e as duas listas do que está pendente de receber e de
   pagar — cada lista com atalho para a tela cheia
 
 #### AC-043 — O painel Comercial ranqueia os produtos com grandeza comparável
