@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 15/08/2026</b>
+<i>O quadro de tarefas ganhou a legenda da esteira</i>
+
+<b>✨ Novidades</b>
+
+• <b>O quadro agora explica o próprio fluxo.</b> Ao lado do título "Quadro de tarefas" há um ícone de interrogação que abre a legenda "Como a esteira funciona": as sete paradas na ordem em que a tarefa passa por elas — de Aberta a Concluída, cada uma com a cor da própria coluna e o que ela examina — e as regras que andam por fora da linha: a devolução dos portões, o bloqueio que não tira a tarefa do lugar (mas tira da conta de WIP), a pergunta que passa a bola sem mover o card, o desvio da tarefa operacional e o cancelamento. Quem chegou ontem não precisa mais perguntar o que cada coluna significa; quem já sabe não paga nada, porque a legenda só aparece quando chamada — Esc ou um clique fora fecham.
+
+<b>🔧 Correções</b>
+
+• <b>A interrogação aparecia sem o ponto em alguns aparelhos.</b> O desenho original do ícone fazia o ponto com um truque que nem todo navegador desenha — no iPhone a interrogação virava um gancho solto dentro do círculo. O ponto agora é um círculo de verdade, que nenhum navegador tem como pular, e o mesmo conserto valeu para o furo da etiqueta e o ponto da exclamação dos avisos, que usavam o mesmo truque.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
