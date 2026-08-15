@@ -471,9 +471,14 @@ class CentroControleController extends Controller
     {
         $limite = $hoje->copy()->addDays(7);
 
+        // `toBase()` antes do `map()`, nas duas listas: o `map()` da collection
+        // de Eloquent só rebaixa para collection comum quando HÁ itens — vazia,
+        // ela continua Eloquent, e o `merge()` dela monta um dicionário chamando
+        // `getKey()` em cada item da outra lista, que aqui é array. Uma semana
+        // sem receita a vencer (com despesa a pagar) derrubava a tela inteira.
         $receitas = Cobranca::where('status', 'pendente')
             ->whereBetween('data_vencimento', [$hoje, $limite])
-            ->orderBy('data_vencimento')->get()
+            ->orderBy('data_vencimento')->get()->toBase()
             ->map(fn (Cobranca $c) => [
                 'sinal' => 'entrada',
                 'descricao' => $c->descricao,
@@ -484,7 +489,7 @@ class CentroControleController extends Controller
 
         $despesas = ContaPagar::where('status', 'em_aberto')
             ->whereBetween('data_vencimento', [$hoje, $limite])
-            ->orderBy('data_vencimento')->get()
+            ->orderBy('data_vencimento')->get()->toBase()
             ->map(fn (ContaPagar $c) => [
                 'sinal' => 'saida',
                 'descricao' => $c->descricao,
