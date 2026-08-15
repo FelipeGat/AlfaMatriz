@@ -700,9 +700,13 @@ class TarefaController extends Controller
         // ligado, mover um card devolvia o quadro inteiro e o recorte se
         // perdia a cada arrasto. O mesmo vale para o "Reabrir" do histórico,
         // que agora não abandona a página nem a busca em que se estava.
+        //
+        // Sem aviso no sucesso: o card aparecendo na coluna nova já é a
+        // confirmação, e o toast só repetia o que a tela acabou de mostrar,
+        // a cada arrasto. As recusas continuam falando — são elas que
+        // explicam o card que NÃO andou.
         return $this->voltarParaOQuadro(
             $request,
-            'Tarefa movida.',
             mudouOConjunto: in_array($data['status'], Tarefa::STATUS_TERMINAIS, true),
         );
     }
