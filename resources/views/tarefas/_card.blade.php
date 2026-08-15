@@ -238,6 +238,24 @@
         </div>
     @endif
 
+    {{-- A bola do portão: quem foi apontado para examinar (US-087). Sem esta
+         linha o apontamento não deixava rastro NO CARD — a pessoa escolhia no
+         seletor, olhava o quadro e concluía que não tinha gravado. Uma linha
+         só, na cor da marca como a pergunta: apontado não é problema. --}}
+    @if ($tarefa->interlocutor_id
+        && in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_EXAME, true))
+        <div class="mt-2 flex items-center gap-1.5 px-[9px] py-[7px] rounded-tile border-l-2"
+             style="background: rgb(var(--brand) / 0.085); border-color: rgb(var(--brand))">
+            <span class="h-3 w-3 shrink-0 text-brand-text"><x-nav-icon name="eye" :peso="1.9" /></span>
+            <span class="shrink-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] text-brand-text whitespace-nowrap">
+                {{ $tarefa->status === 'em_revisao' ? 'Revisão com' : 'Teste com' }}
+            </span>
+            <span class="flex-1 min-w-0 text-[12px] font-semibold text-ink truncate">
+                {{ $tarefa->interlocutor?->name ?? 'alguém' }}
+            </span>
+        </div>
+    @endif
+
     {{-- A tarja de retorno nomeia o PORTÃO que reprovou: "Voltou da revisão" e
          "Voltou do staging" descrevem recuperações diferentes, e era esse
          detalhe que a coluna única de Ajustes achatava. --}}

@@ -1,7 +1,7 @@
 {
   "feature": "quem-revisa-e-quem-testa",
-  "timestamp": "2026-08-15T17:38:05.793Z",
-  "gitRev": "fb8f96e",
+  "timestamp": "2026-08-15T17:51:20.215Z",
+  "gitRev": "9913669",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,

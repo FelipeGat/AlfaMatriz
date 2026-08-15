@@ -90,6 +90,13 @@ class QuemRevisaEQuemTestaTest extends TestCase
         $this->assertNotNull($aviso, 'O apontado precisa saber que a bola chegou nele.');
         $this->assertSame($revisor->id, $aviso->destinatario_id);
         $this->assertSame($tarefa->id, $aviso->tarefa_id);
+
+        // E o CARD mostra a bola: apontar sem rastro no quadro se lê como
+        // apontamento que não gravou.
+        $quadro = $this->actingAs($dono)->get(route('tarefas.index'));
+
+        $quadro->assertSee('Revisão com');
+        $quadro->assertSee('Felipe Torres');
     }
 
     /**

@@ -87,7 +87,7 @@ class TarefaController extends Controller
         // e ele saiu daqui — agora é buscado no clique, com o próprio eager
         // load (ver `modal()`). Carregá-los aqui era trazer duas relações
         // inteiras por card para não imprimir nenhuma delas.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios', 'itens', 'perguntaPara', 'anexos'])
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'eventos', 'comentarios', 'itens', 'perguntaPara', 'anexos'])
             ->whereIn('status', $emCurso->keys())
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('created_at')
@@ -284,7 +284,7 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $tarefa = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
+        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
             ->findOrFail($tarefa->id);
 
         return response()->view('tarefas._modais', [
@@ -1112,7 +1112,7 @@ class TarefaController extends Controller
             // Recarregado do banco com as relações que as partials leem: o
             // model que chegou pelo route binding traz o estado de ANTES da
             // ação, e a conversa recém-publicada não estaria nele.
-            $tarefa = Tarefa::with(['sistema', 'responsavel', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
+            $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
                 ->find($tarefa->id);
         }
 

@@ -47,8 +47,10 @@ hora — sem depender de cargo fixo, porque o papel muda de tarefa para tarefa.
 
 - **Dado** uma tarefa de desenvolvimento com responsável
 - **Quando** ela é movida para Em revisão ou Em staging com alguém apontado
-- **Então** o apontado vira o interlocutor da tarefa e recebe aviso no sino
-  dizendo que a tarefa entrou no portão e está com ele
+- **Então** o apontado vira o interlocutor da tarefa, recebe aviso no sino
+  dizendo que a tarefa entrou no portão e está com ele, e o card mostra a
+  bola ("Revisão com Fulano" / "Teste com Fulano") — apontar sem rastro no
+  card se lê como apontamento que não gravou
 
 #### AC-317 — A pergunta seguinte já aponta para a pessoa certa
 
