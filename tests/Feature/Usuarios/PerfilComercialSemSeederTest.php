@@ -29,17 +29,21 @@ class PerfilComercialSemSeederTest extends TestCase
 
         $this->assertNotNull($comercial, 'A migração é quem leva o perfil a produção.');
         $this->assertSame('Comercial', $comercial->nome);
-        $this->assertSame(3, $comercial->permissoes()->count());
+
+        // Quatro: funil, clientes, revendas e o painel próprio — este último
+        // por `2026_08_15_130000_permissao_dashboard_comercial.php`, porque a
+        // rota `/comercial` deixou de aceitar `dashboard`.
+        $this->assertSame(4, $comercial->permissoes()->count());
     }
 
-    public function test_e_quem_o_recebe_alcanca_as_tres_telas(): void
+    public function test_e_quem_o_recebe_alcanca_as_quatro_telas(): void
     {
         $this->withoutVite();
 
         $vendedor = User::factory()->semPerfil()->create();
         $vendedor->perfis()->attach(Perfil::where('slug', 'comercial')->value('id'));
 
-        foreach (['leads.index', 'clientes.index', 'revendas.index'] as $rota) {
+        foreach (['comercial', 'leads.index', 'clientes.index', 'revendas.index'] as $rota) {
             $this->actingAs($vendedor)->get(route($rota))->assertOk();
         }
 

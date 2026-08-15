@@ -22,7 +22,10 @@
         'Painéis' => [
             ['route' => 'centro-controle', 'recurso' => 'dashboard', 'pattern' => 'centro-controle', 'label' => 'Centro de Controle', 'icon' => 'bolt', 'matriz' => true],
             ['route' => 'dashboard', 'recurso' => 'dashboard', 'pattern' => 'dashboard', 'label' => 'Financeiro', 'icon' => 'trending-up', 'matriz' => true],
-            ['route' => 'comercial', 'recurso' => 'dashboard', 'pattern' => 'comercial', 'label' => 'Comercial', 'icon' => 'clipboard', 'matriz' => true],
+            // `dashboard_comercial`, como a rota: gateado por `dashboard`, o
+            // perfil comercial tinha o painel como casa e nenhuma porta no
+            // menu levando até ela.
+            ['route' => 'comercial', 'recurso' => 'dashboard_comercial', 'pattern' => 'comercial', 'label' => 'Comercial', 'icon' => 'clipboard', 'matriz' => true],
         ],
         'Comercial' => [
             ['route' => 'leads.index', 'recurso' => 'leads', 'pattern' => 'leads.*', 'label' => 'Funil de Vendas', 'icon' => 'view-grid'],

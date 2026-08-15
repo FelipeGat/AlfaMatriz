@@ -11,10 +11,12 @@ use Tests\TestCase;
 /**
  * O perfil de quem vende.
  *
- * Curto de propósito: funil, clientes e revendas. O perfil mais próximo era
- * `operacao`, que traz junto sistemas, preço de atacado, faturamento, receitas,
- * despesas e os painéis — e o Centro de Controle abre com "Saldo em caixa" na
- * primeira fileira.
+ * Curto de propósito: funil, clientes, revendas e o painel PRÓPRIO
+ * (`dashboard_comercial`, 15/08/2026). O perfil mais próximo era `operacao`,
+ * que traz junto sistemas, preço de atacado, faturamento, receitas, despesas
+ * e os painéis de dinheiro da casa — e o Centro de Controle abre com "Saldo
+ * em caixa" na primeira fileira. O painel dele fala só do funil, e
+ * `User::temEscopoComercial()` ainda o restringe ao próprio desempenho.
  */
 class PerfilComercialTest extends TestCase
 {
@@ -50,10 +52,11 @@ class PerfilComercialTest extends TestCase
     {
         $vendedor = $this->vendedor();
 
-        // O Centro de Controle é o motivo de este perfil não ter painel: ele
-        // abre com saldo em caixa e receita recorrente.
+        // O Comercial saiu desta lista quando ganhou porta própria
+        // (`dashboard_comercial`): o que fala de dinheiro da casa — saldo em
+        // caixa, receita recorrente — continua todo aqui.
         foreach ([
-            'centro-controle', 'dashboard', 'comercial',
+            'centro-controle', 'dashboard',
             'cobrancas.index', 'contas-pagar.index', 'contas-financeiras.index',
             'faturamento.index', 'produtos.index', 'tarefas.index', 'usuarios.index',
         ] as $rota) {
@@ -73,24 +76,31 @@ class PerfilComercialTest extends TestCase
         $this->assertFalse($vendedor->canPermissao('revendas', 'excluir'));
     }
 
-    public function test_a_casa_dele_e_o_funil_e_nao_a_carteira_ja_formada(): void
+    public function test_a_casa_dele_e_o_painel_proprio_e_a_porta_abre(): void
     {
-        $this->assertSame(route('leads.index', absolute: false), $this->vendedor()->telaInicial());
+        // Era o funil, enquanto painel nenhum falava do desempenho DELE. Com o
+        // `dashboard_comercial`, a casa é o painel — e o funil fica a um
+        // clique, como para todo mundo que tem os dois.
+        $vendedor = $this->vendedor();
+
+        $this->assertSame(route('comercial', absolute: false), $vendedor->telaInicial());
+        $this->actingAs($vendedor)->get(route('comercial'))->assertOk();
     }
 
     public function test_o_menu_dele_nao_oferece_porta_que_nao_abre(): void
     {
         $resposta = $this->actingAs($this->vendedor())->get(route('leads.index'))->assertOk();
 
-        foreach (['centro-controle', 'dashboard', 'comercial', 'produtos.index',
+        foreach (['centro-controle', 'dashboard', 'produtos.index',
             'cobrancas.index', 'contas-pagar.index', 'contas-financeiras.index',
             'faturamento.index', 'tarefas.index', 'usuarios.index'] as $rota) {
             $resposta->assertDontSee(route($rota), escape: false);
         }
 
         // Clientes não tem item próprio: eles moram na aba de "Revendas e
-        // clientes". O que o menu tem de oferecer são estes dois.
-        foreach (['leads.index', 'revendas.index'] as $rota) {
+        // clientes". O que o menu tem de oferecer são estes três — o painel
+        // próprio incluído, senão a casa dele não teria porta no menu.
+        foreach (['comercial', 'leads.index', 'revendas.index'] as $rota) {
             $resposta->assertSee(route($rota), escape: false);
         }
     }
@@ -99,10 +109,11 @@ class PerfilComercialTest extends TestCase
     {
         // Digitar o endereço do painel — o caminho mais natural de todos —
         // levava a raiz a redirecioná-lo para o Centro de Controle, e ele
-        // batia num 403 sem nunca ter clicado em nada.
+        // batia num 403 sem nunca ter clicado em nada. A casa mudou do funil
+        // para o painel próprio; a regra continua a mesma.
         $this->actingAs($this->vendedor())
             ->get('/')
-            ->assertRedirect(route('leads.index', absolute: false));
+            ->assertRedirect(route('comercial', absolute: false));
     }
 
     public function test_a_marca_no_topo_leva_para_casa_e_nao_para_um_403(): void
@@ -111,7 +122,7 @@ class PerfilComercialTest extends TestCase
         // fosse revenda — clicar nele era o caminho mais curto para um 403.
         $resposta = $this->actingAs($this->vendedor())->get(route('leads.index'))->assertOk();
 
-        $resposta->assertSee('href="'.route('leads.index', absolute: false).'"', escape: false);
+        $resposta->assertSee('href="'.route('comercial', absolute: false).'"', escape: false);
     }
 
     public function test_a_migracao_leva_o_perfil_a_producao_e_o_seeder_nao_o_duplica(): void
@@ -122,8 +133,10 @@ class PerfilComercialTest extends TestCase
 
         (new PerfilPermissaoSeeder)->run();
 
+        // Quatro: funil, clientes, revendas e o painel próprio — este último
+        // levado por `2026_08_15_130000_permissao_dashboard_comercial.php`.
         $this->assertSame(1, Perfil::where('slug', 'comercial')->count());
-        $this->assertSame(3, Perfil::where('slug', 'comercial')->firstOrFail()->permissoes()->count());
+        $this->assertSame(4, Perfil::where('slug', 'comercial')->firstOrFail()->permissoes()->count());
     }
 
     public function test_a_tela_de_usuarios_oferece_o_perfil_novo(): void
