@@ -186,6 +186,10 @@ class FluxoTarefaService
 
             TarefaEvento::create([
                 'tarefa_id' => $tarefa->id,
+                // Quem moveu (AC-301). Nulo quando não há ninguém logado — a
+                // rotina que mover tarefa sem sessão registra movimento sem
+                // autor, que é o que de fato aconteceu.
+                'user_id' => auth()->id(),
                 'de_status' => $statusAtual,
                 'para_status' => $novoStatus,
                 'motivo' => $dados['motivo'] ?? null,
