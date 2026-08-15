@@ -346,46 +346,63 @@
             {{ $nomeCurto ?? 'Sem responsável' }}
         </span>
 
-        <span title="Na etapa há {{ $tempoNaEtapa }}"
-              class="shrink-0 px-1.5 py-0.5 rounded-badge font-mono text-[10px] font-semibold"
-              style="{{ $tomEsquecida
-                  ? 'background: rgb(var(--'.$tomEsquecida.') / var(--tint-alpha)); color: rgb(var(--'.$tomEsquecida.'))'
-                  : 'background: var(--chip); color: rgb(var(--ink-mute))' }}">
-            {{ $tempoNaEtapa }}
-        </span>
+        {{--
+            Os selos informativos, num contêiner que DERRUBA selo inteiro
+            quando falta largura (armadilha 19: selo ou aparece inteiro ou não
+            aparece). O rodapé é `nowrap` com piso de 56px no nome e botões
+            intocáveis — no pior caso ("31m" + checklist + conversa + "11"
+            anexos, e o Concluir que quem triaga vê em todo card), a soma
+            passava da linha e o estouro cortava o ÚLTIMO BOTÃO pela metade.
 
-        @if ($progresso)
-            <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px]"
-                  title="{{ $progresso['feitos'] }} de {{ $progresso['total'] }} itens concluídos"
-                  style="color: {{ $progresso['feitos'] === $progresso['total'] ? 'rgb(var(--good))' : 'rgb(var(--ink-mute))' }}">
-                <span class="h-[11px] w-[11px]"><x-nav-icon name="check-circle" :peso="1.9" /></span>
-                {{ $progresso['feitos'] }}/{{ $progresso['total'] }}
+            O truque: `flex-wrap` + `overflow-hidden` + altura de UMA linha —
+            o selo que não coube quebra para uma segunda linha que não existe,
+            sumindo por inteiro. Os 19px são a altura do próprio selo
+            (py-0.5 + fonte mono de 10px). A ordem é a prioridade: o tempo na
+            etapa é SINAL (envelhecimento) e cai por último; as contagens
+            moram completas dentro da tarefa.
+        --}}
+        <div class="min-w-0 shrink h-[19px] flex flex-wrap items-center gap-[7px] overflow-hidden">
+            <span title="Na etapa há {{ $tempoNaEtapa }}"
+                  class="shrink-0 px-1.5 py-0.5 rounded-badge font-mono text-[10px] font-semibold"
+                  style="{{ $tomEsquecida
+                      ? 'background: rgb(var(--'.$tomEsquecida.') / var(--tint-alpha)); color: rgb(var(--'.$tomEsquecida.'))'
+                      : 'background: var(--chip); color: rgb(var(--ink-mute))' }}">
+                {{ $tempoNaEtapa }}
             </span>
-        @endif
 
-        @if ($totalComentarios > 0)
-            <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px] text-ink-mute"
-                  title="{{ $totalComentarios }} comentário{{ $totalComentarios === 1 ? '' : 's' }}">
-                <span class="h-[11px] w-[11px]"><x-nav-icon name="balao" :peso="1.8" /></span>
-                {{ $totalComentarios }}
-            </span>
-        @endif
+            @if ($progresso)
+                <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px]"
+                      title="{{ $progresso['feitos'] }} de {{ $progresso['total'] }} itens concluídos"
+                      style="color: {{ $progresso['feitos'] === $progresso['total'] ? 'rgb(var(--good))' : 'rgb(var(--ink-mute))' }}">
+                    <span class="h-[11px] w-[11px]"><x-nav-icon name="check-circle" :peso="1.9" /></span>
+                    {{ $progresso['feitos'] }}/{{ $progresso['total'] }}
+                </span>
+            @endif
 
-        {{-- Contagem, e não miniatura (US-064): a faixa com o primeiro print
-             deixaria o card ~46px mais alto, e a coluna cabe menos cards por
-             tela justamente na etapa em que mais se anexa arquivo. O selo diz
-             que há o que ver; ver é dentro da tarefa.
+            @if ($totalComentarios > 0)
+                <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px] text-ink-mute"
+                      title="{{ $totalComentarios }} comentário{{ $totalComentarios === 1 ? '' : 's' }}">
+                    <span class="h-[11px] w-[11px]"><x-nav-icon name="balao" :peso="1.8" /></span>
+                    {{ $totalComentarios }}
+                </span>
+            @endif
 
-             Um selo só para print, log e planilha: separá-los daria três
-             contagens numa linha que já carrega checklist, conversa e três
-             botões — e a distinção entre eles não muda nada de fora do card. --}}
-        @if ($totalAnexos > 0)
-            <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px] text-ink-mute"
-                  title="{{ $totalAnexos }} {{ $totalAnexos === 1 ? 'anexo' : 'anexos' }}">
-                <span class="h-[11px] w-[11px]"><x-nav-icon name="paperclip" :peso="1.8" /></span>
-                {{ $totalAnexos }}
-            </span>
-        @endif
+            {{-- Contagem, e não miniatura (US-064): a faixa com o primeiro print
+                 deixaria o card ~46px mais alto, e a coluna cabe menos cards por
+                 tela justamente na etapa em que mais se anexa arquivo. O selo diz
+                 que há o que ver; ver é dentro da tarefa.
+
+                 Um selo só para print, log e planilha: separá-los daria três
+                 contagens numa linha que já carrega checklist, conversa e três
+                 botões — e a distinção entre eles não muda nada de fora do card. --}}
+            @if ($totalAnexos > 0)
+                <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px] text-ink-mute"
+                      title="{{ $totalAnexos }} {{ $totalAnexos === 1 ? 'anexo' : 'anexos' }}">
+                    <span class="h-[11px] w-[11px]"><x-nav-icon name="paperclip" :peso="1.8" /></span>
+                    {{ $totalAnexos }}
+                </span>
+            @endif
+        </div>
 
         {{--
             Os três botões. Bloquear é SEMPRE válido — travar não é mover, e não
