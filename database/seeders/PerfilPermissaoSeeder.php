@@ -38,6 +38,15 @@ class PerfilPermissaoSeeder extends Seeder
             'contas_pagar' => 'Despesas / contas a pagar',
             'financeiro' => 'Caixa / contas financeiras',
             'dashboard' => 'Dashboard',
+
+            // Recurso PRÓPRIO, e não uma aba de `dashboard`: aquele fala do
+            // dinheiro da casa (Centro de Controle abre com saldo em caixa,
+            // Comercial mostra MRR de atacado) — dado que o perfil `comercial`
+            // não deveria ver. Este é só o funil: metas, avanço por estágio e
+            // venda por vendedor. Separar os dois é o que permite dar painel a
+            // quem vende sem dar visão do caixa da empresa (15/08/2026).
+            'dashboard_comercial' => 'Dashboard Comercial (funil, metas, vendas por vendedor)',
+
             'leads' => 'Funil de vendas / leads',
             'faturamento' => 'Faturamento',
             'tarefas' => 'Tarefas de desenvolvimento',
@@ -75,7 +84,7 @@ class PerfilPermissaoSeeder extends Seeder
             ]);
         }
 
-        foreach (['cobrancas', 'contas_pagar', 'financeiro', 'dashboard'] as $recurso) {
+        foreach (['cobrancas', 'contas_pagar', 'financeiro', 'dashboard', 'dashboard_comercial'] as $recurso) {
             $financeiro->permissoes()->syncWithoutDetaching([
                 $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
             ]);
@@ -86,7 +95,7 @@ class PerfilPermissaoSeeder extends Seeder
             ]);
         }
 
-        foreach (['revendas', 'clientes', 'sistemas', 'dashboard'] as $recurso) {
+        foreach (['revendas', 'clientes', 'sistemas', 'dashboard', 'dashboard_comercial'] as $recurso) {
             $operacao->permissoes()->syncWithoutDetaching([
                 $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
             ]);
@@ -123,12 +132,16 @@ class PerfilPermissaoSeeder extends Seeder
 
         // Quem vende não é quem opera. O perfil mais próximo era `operacao`, e
         // ele traz junto o negócio da Alfa: sistemas e preço de atacado,
-        // faturamento, receitas, despesas e os painéis.
+        // faturamento, receitas, despesas e os painéis de dinheiro da casa.
         //
-        // Sem painel nenhum, e não por esquecimento: os dois que existem falam
-        // de dinheiro da casa — o Centro de Controle abre com "Saldo em caixa"
-        // e o Comercial mostra o MRR de atacado. Por isso `telaInicial()`
-        // conhece o funil: sem painel, é lá que este perfil tem casa.
+        // Ganhou painel em 15/08/2026 — mas o PRÓPRIO (`dashboard_comercial`),
+        // não o `dashboard` do Centro de Controle/Comercial: aquele mostra
+        // saldo em caixa e MRR de atacado, dado que este perfil não deveria
+        // ver. `User::temEscopoComercial()` é quem decide, na hora de montar
+        // a tela, se a conta vê o funil da empresa inteira (tem `dashboard`)
+        // ou só o próprio (só tem `dashboard_comercial`) — e é essa mesma
+        // pergunta que faz o `leads.index` restringir o quadro aos leads onde
+        // ela é a vendedora.
         //
         // Espelha `2026_08_12_180000_criar_perfil_comercial.php`, que é quem
         // leva isto a produção — aqui é só o estado inicial de quem semeia.
@@ -139,6 +152,10 @@ class PerfilPermissaoSeeder extends Seeder
                 $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
             ]);
         }
+
+        $comercial->permissoes()->syncWithoutDetaching([
+            $todasPermissoes['dashboard_comercial'] => ['ler' => true, 'incluir' => false, 'editar' => false, 'imprimir' => true, 'excluir' => false],
+        ]);
 
         // A revenda entra no MESMO painel da Alfa, então o perfil dela precisa
         // ser curto de propósito: só revendas e clientes. Reusar `operacao`

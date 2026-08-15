@@ -86,8 +86,18 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware('permissao:dashboard');
     Route::get('/dashboard', [PainelController::class, 'index'])->name('dashboard')
         ->middleware('permissao:dashboard');
+    // `dashboard_comercial`, e não `dashboard`: aquele fala do dinheiro da
+    // casa (saldo em caixa, MRR de atacado) e este é só o funil — separação
+    // de 15/08/2026 para dar painel ao perfil Comercial sem dar visão do
+    // caixa da empresa. O CONTROLLER decide, dentro da própria permissão
+    // liberada, se a pessoa vê a empresa inteira ou só a própria mesa
+    // (`User::temEscopoComercial()`).
     Route::get('/comercial', [PainelController::class, 'comercial'])->name('comercial')
-        ->middleware('permissao:dashboard');
+        ->middleware('permissao:dashboard_comercial');
+    // Definir a meta de OUTRA pessoa é gestão, não vendas — por isso
+    // `dashboard` (o painel da empresa inteira) e não `dashboard_comercial`.
+    Route::post('/comercial/metas', [PainelController::class, 'salvarMeta'])->name('comercial.metas.salvar')
+        ->middleware('permissao:dashboard,editar');
 
     Route::get('produtos', [ProdutoController::class, 'index'])->name('produtos.index')
         ->middleware('permissao:sistemas');

@@ -6,11 +6,14 @@ use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\ContaFinanceira;
 use App\Models\ContaPagar;
+use App\Models\MetaComercial;
 use App\Models\Revenda;
 use App\Models\Sistema;
+use App\Models\User;
 use App\Services\IndicadoresService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class PainelController extends Controller
 {
@@ -182,6 +185,17 @@ class PainelController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
+        $usuario = auth()->user();
+
+        // Vendedor sem `dashboard`: painel PRÓPRIO, não o da empresa inteira
+        // — a mesma régua de `LeadController::index()`. As duas telas usam
+        // `temEscopoComercial()` porque é a mesma pergunta de acesso feita
+        // duas vezes, e perguntas repetidas que divergem é como elas nascem
+        // de ler `revenda_id` e `perfil->slug` em vez do método único.
+        if ($usuario->temEscopoComercial()) {
+            return $this->comercialDoVendedor($usuario);
+        }
+
         // O ranking também vem do serviço: ele aparece aqui e na tela de
         // Sistemas, e é o valor de atacado — o número mais fácil de as duas
         // telas passarem a discordar se cada uma calcular por conta própria.
@@ -247,10 +261,26 @@ class PainelController extends Controller
         // uma vez", que é o que sairia de `created_at` numa base importada.
         $novosClientes = $this->indicadores->novosClientesNoMes();
 
+        // As três seções pedidas em 15/08/2026, do lado do FUNIL — eixo
+        // diferente do resto da tela, que é sobre o PORTFÓLIO instalado.
+        $competencia = now()->format('Y-m');
+        $funilPorEstagio = $this->indicadores->funilPorEstagio();
+        $rankingFunil = $this->ranking(
+            collect($funilPorEstagio)->map(fn ($e) => ['nome' => $e['label'], 'valor' => (float) $e['quantidade']]),
+            'brand'
+        );
+        $vendasPorVendedor = $this->indicadores->vendasPorVendedor($competencia);
+        $rankingVendedores = $this->ranking(
+            $vendasPorVendedor->map(fn ($v) => ['nome' => $v['nome'], 'valor' => $v['valor']]),
+            'good'
+        );
+        $metas = $this->metasDaCompetencia($competencia, $vendasPorVendedor);
+
         return view('dashboard-comercial', compact(
             'totalClientesAtivos', 'totalSistemasAtivos', 'totalRevendasAtivas',
             'mrrEstimado', 'novosClientes',
-            'rankingClientes', 'rankingValor', 'rankingRevendas', 'rankingCategorias'
+            'rankingClientes', 'rankingValor', 'rankingRevendas', 'rankingCategorias',
+            'competencia', 'rankingFunil', 'rankingVendedores', 'metas'
         ) + [
             'serieClientes' => $this->indicadores->serieDeClientesAtivos(6),
             'serieSistemas' => $this->indicadores->serieDeSistemasAtivos(6),
@@ -294,4 +324,90 @@ class PainelController extends Controller
         ];
     }
 
+    /**
+     * O Dashboard Comercial de quem NÃO tem `dashboard` — só o próprio funil,
+     * nunca o dinheiro da casa nem a carteira de outro vendedor. Sem
+     * ranking por sistema/revenda/categoria de propósito: aquilo é o
+     * portfólio da empresa inteira, e essa não é a pergunta de quem só
+     * enxerga a própria mesa.
+     */
+    private function comercialDoVendedor(User $usuario)
+    {
+        $competencia = now()->format('Y-m');
+
+        $kpis = $this->indicadores->funilKpis($usuario->id);
+        $funilPorEstagio = $this->indicadores->funilPorEstagio($usuario->id);
+        $rankingFunil = $this->ranking(
+            collect($funilPorEstagio)->map(fn ($e) => ['nome' => $e['label'], 'valor' => (float) $e['quantidade']]),
+            'brand'
+        );
+
+        $meta = MetaComercial::where('vendedor_id', $usuario->id)->where('competencia', $competencia)->first();
+        $vendaDoMes = $this->indicadores->vendasPorVendedor($competencia)->firstWhere('vendedor_id', $usuario->id);
+        $realizado = (float) ($vendaDoMes['valor'] ?? 0.0);
+
+        return view('dashboard-comercial-vendedor', [
+            'competencia' => $competencia,
+            'kpis' => $kpis,
+            'rankingFunil' => $rankingFunil,
+            'meta' => $meta?->valor_meta,
+            'realizado' => $realizado,
+        ]);
+    }
+
+    /**
+     * A meta de cada vendedor cruzada com o realizado da competência — o
+     * card "Metas" do gestor. Lista quem TEM meta lançada ou TEM venda no
+     * mês: um vendedor sem as duas coisas não tem o que essa tabela diga
+     * sobre ele.
+     *
+     * @return list<array{vendedor_id: int, nome: string, meta: ?float, realizado: float, atingido: ?float}>
+     */
+    private function metasDaCompetencia(string $competencia, Collection $vendasPorVendedor): array
+    {
+        $metas = MetaComercial::where('competencia', $competencia)->with('vendedor')->get()->keyBy('vendedor_id');
+
+        $vendedorIds = $metas->keys()->merge($vendasPorVendedor->pluck('vendedor_id'))->unique();
+
+        return $vendedorIds->map(function ($vendedorId) use ($metas, $vendasPorVendedor) {
+            $meta = $metas[$vendedorId] ?? null;
+            $venda = $vendasPorVendedor->firstWhere('vendedor_id', $vendedorId);
+            $realizado = (float) ($venda['valor'] ?? 0);
+            $valorMeta = $meta ? (float) $meta->valor_meta : null;
+
+            return [
+                'vendedor_id' => (int) $vendedorId,
+                'nome' => $meta?->vendedor?->name ?? $venda['nome'] ?? 'Vendedor removido',
+                'meta' => $valorMeta,
+                'realizado' => $realizado,
+                'atingido' => $valorMeta > 0 ? ($realizado / $valorMeta) * 100 : null,
+            ];
+        })->sortByDesc('realizado')->values()->all();
+    }
+
+    /**
+     * Grava (ou edita) a meta de um vendedor numa competência.
+     *
+     * Só quem vê o Dashboard Comercial da empresa inteira (`dashboard`)
+     * define meta de outra pessoa — a rota já garante isso
+     * (`permissao:dashboard,editar`), e não `dashboard_comercial`: essa é a
+     * permissão de quem só vê a própria mesa.
+     */
+    public function salvarMeta(Request $request)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $data = $request->validate([
+            'vendedor_id' => 'required|exists:users,id',
+            'competencia' => 'required|regex:/^\d{4}-\d{2}$/',
+            'valor_meta' => 'required|numeric|min:0',
+        ]);
+
+        MetaComercial::updateOrCreate(
+            ['vendedor_id' => $data['vendedor_id'], 'competencia' => $data['competencia']],
+            ['valor_meta' => $data['valor_meta']]
+        );
+
+        return redirect()->route('comercial')->with('status', 'Meta salva.');
+    }
 }

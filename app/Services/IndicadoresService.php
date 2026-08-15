@@ -8,10 +8,12 @@ use App\Models\ContaFinanceira;
 use App\Models\ContaFixaPagar;
 use App\Models\ContaPagar;
 use App\Models\FaturamentoSnapshot;
+use App\Models\Lead;
 use App\Models\MovimentacaoFinanceira;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Origem única dos indicadores que aparecem em mais de uma tela.
@@ -707,5 +709,93 @@ class IndicadoresService
                 ARRAY_FILTER_USE_KEY
             )
         ));
+    }
+
+    /**
+     * Os mesmos quatro números do topo do Funil de Vendas, reaproveitados
+     * pelo Dashboard Comercial — `$vendedorId` restringe ao funil de UMA
+     * pessoa, a mesma pergunta que `LeadController::index()` já faz para
+     * montar os KPIs do quadro.
+     *
+     * @return array{total: int, abertos: int, fechados: int, perdidos: int, taxa_conversao: float, pipeline_valor: float, ticket_medio: float}
+     */
+    public function funilKpis(?int $vendedorId = null): array
+    {
+        $leads = Lead::query()->when($vendedorId, fn ($q) => $q->where('vendedor_id', $vendedorId))->get();
+
+        $abertos = $leads->whereNotIn('estagio', Lead::ESTAGIOS_TERMINAIS);
+        $fechados = $leads->where('estagio', 'cliente_ativo');
+        $perdidos = $leads->where('estagio', 'perdido');
+        $total = $leads->count();
+
+        return [
+            'total' => $total,
+            'abertos' => $abertos->count(),
+            'fechados' => $fechados->count(),
+            'perdidos' => $perdidos->count(),
+            'taxa_conversao' => $total > 0 ? ($fechados->count() / $total) * 100 : 0,
+            'pipeline_valor' => (float) $abertos->sum('valor_estimado'),
+            'ticket_medio' => $fechados->count() > 0 ? (float) $fechados->sum('valor_estimado') / $fechados->count() : 0,
+        ];
+    }
+
+    /**
+     * Quantos leads existem em cada estágio agora, e quanto valem — o
+     * "avanço do funil" do Dashboard Comercial.
+     *
+     * `$vendedorId` restringe ao funil de UMA pessoa: é o mesmo recorte que
+     * `Lead::vendedor_id` e `User::temEscopoComercial()` já aplicam no quadro
+     * do Funil de Vendas — aqui, para o card de avanço.
+     *
+     * Devolve as sete etapas SEMPRE, mesmo as vazias: o card desenha um funil
+     * com degrau em cada uma, e uma etapa ausente quebraria o desenho, não
+     * apareceria como zero.
+     *
+     * @return list<array{estagio: string, label: string, quantidade: int, valor: float}>
+     */
+    public function funilPorEstagio(?int $vendedorId = null): array
+    {
+        $porEstagio = Lead::query()
+            ->when($vendedorId, fn ($q) => $q->where('vendedor_id', $vendedorId))
+            ->selectRaw('estagio, COUNT(*) as quantidade, COALESCE(SUM(valor_estimado), 0) as valor')
+            ->groupBy('estagio')
+            ->get()
+            ->keyBy('estagio');
+
+        return collect(Lead::ESTAGIOS)->map(fn ($label, $estagio) => [
+            'estagio' => $estagio,
+            'label' => $label,
+            'quantidade' => (int) ($porEstagio[$estagio]->quantidade ?? 0),
+            'valor' => (float) ($porEstagio[$estagio]->valor ?? 0),
+        ])->values()->all();
+    }
+
+    /**
+     * O fechado de cada vendedor numa competência — quem venceu o lead
+     * (`estagio = cliente_ativo`) naquele mês, pela data em que o estágio
+     * mudou. É a pergunta que "Vendas por vendedor" faz no Dashboard
+     * Comercial, e a base do "realizado" que a Meta compara.
+     *
+     * @return Collection<int, array{vendedor_id: int, nome: string, valor: float, quantidade: int}>
+     */
+    public function vendasPorVendedor(string $competencia): Collection
+    {
+        $inicio = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
+        $fim = $inicio->copy()->endOfMonth();
+
+        return Lead::query()
+            ->where('estagio', 'cliente_ativo')
+            ->whereBetween('estagio_atualizado_em', [$inicio, $fim])
+            ->whereNotNull('vendedor_id')
+            ->with('vendedor')
+            ->get()
+            ->groupBy('vendedor_id')
+            ->map(fn ($leads, $vendedorId) => [
+                'vendedor_id' => (int) $vendedorId,
+                'nome' => $leads->first()->vendedor?->name ?? 'Vendedor removido',
+                'valor' => (float) $leads->sum('valor_estimado'),
+                'quantidade' => $leads->count(),
+            ])
+            ->values();
     }
 }

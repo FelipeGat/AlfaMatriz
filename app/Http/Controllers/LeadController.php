@@ -20,8 +20,13 @@ class LeadController extends Controller
         // julho), não para restringir o quadro do dia a dia.
         [$periodoDe, $periodoAte] = $this->periodoSelecionado($request);
 
+        $usuario = auth()->user();
+
         $leads = Lead::with(['revenda', 'sistema', 'vendedor', 'comentarios.autor', 'anexos.autor'])
-            ->when(auth()->user()->temEscopoDeRevenda(), fn ($q) => $q->where('revenda_id', auth()->user()->revenda_id))
+            ->when($usuario->temEscopoDeRevenda(), fn ($q) => $q->where('revenda_id', $usuario->revenda_id))
+            // Vendedor sem `dashboard`: só o que é da própria carteira — a
+            // mesma régua de `temEscopoComercial()`, aqui aplicada ao quadro.
+            ->when($usuario->temEscopoComercial(), fn ($q) => $q->where('vendedor_id', $usuario->id))
             ->when($periodoDe, fn ($q) => $q->whereDate('created_at', '>=', $periodoDe->toDateString()))
             ->when($periodoAte, fn ($q) => $q->whereDate('created_at', '<=', $periodoAte->toDateString()))
             ->orderByDesc('created_at')
@@ -332,6 +337,10 @@ class LeadController extends Controller
 
         if ($user->temEscopoDeRevenda() && $lead->revenda_id !== $user->revenda_id) {
             abort(403, 'Você só pode acessar os leads da sua revenda.');
+        }
+
+        if ($user->temEscopoComercial() && $lead->vendedor_id !== $user->id) {
+            abort(403, 'Você só pode acessar os próprios leads.');
         }
     }
 }
