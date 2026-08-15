@@ -1,0 +1,18 @@
+<b>📋 AlfaMatriz — Changelog 14/08/2026</b>
+<i>O Centro de Controle voltou, a sincronização voltou, e produção parou de errar em silêncio</i>
+
+Três defeitos com o mesmo hábito: nenhum deles avisava. A tela caía para quem abria, a sincronização parava sem tirar nada do ar, e o diário de erros — que existe para contar essas coisas — era justamente o que estava mudo.
+
+<b>🔧 Correções</b>
+
+• <b>O Centro de Controle respondia erro 500.</b> O painel "Próximos 7 dias" junta o que há para receber com o que há para pagar. Numa semana SEM cobrança a vencer — e com contas a pagar dentro da janela — a junção quebrava, e a tela inteira caía junto. Era exatamente a semana de produção: nenhuma receita a vencer, quatro despesas. O staging seguiu funcionando porque lá havia receitas na janela — por isso o defeito só apareceu em produção. Já corrigido e no ar.
+
+• <b>A sincronização com os sistemas parava de hora em hora desde 12/08.</b> Uma revenda foi excluída na Matriz — decisão legítima —, mas o ciclo seguinte não a enxergava e tentava recriá-la; o cadastro recusava por CNPJ repetido e derrubava o ciclo INTEIRO, levando junto clientes, licenças e módulos. Agora a excluída é reconhecida e pulada: não ressuscita, não vira gêmea, e o resto sincroniza até o fim. Excluir foi decisão de gente, e o sincronizador não desfaz decisão de gente.
+
+<b>🛡️ E o mais sério: produção estava cega</b>
+
+• <b>Nenhum erro de tela era registrado desde 12/08.</b> O novo formato de publicação (azul/verde) preparava as pastas como administrador, e o sistema — que roda com outro usuário — não conseguia escrever o próprio diário de erros. Falha assim é silenciosa por natureza: não há onde anotar "não consegui anotar". Foi por isso que o 500 de hoje teve de ser diagnosticado às cegas.
+
+• <b>Corrigido nos dois tempos:</b> as pastas de produção já foram devolvidas ao usuário certo — o registro voltou na hora — e a publicação passou a fazer isso sozinha a cada versão, para o defeito não voltar na próxima.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
