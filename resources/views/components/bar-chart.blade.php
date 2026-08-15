@@ -52,11 +52,17 @@
                 $hSaidas = $paraAltura($mes['saidas']);
                 $yEntradas = $recuoTopo + $areaAltura - $hEntradas;
                 $ySaidas = $recuoTopo + $areaAltura - $hSaidas;
+                // Mês que ainda não aconteceu: barra mais clara e tracejada,
+                // para não se confundir com o que já é fato no caixa.
+                $previsto = $mes['previsto'] ?? false;
+                $sufixo = $previsto ? ' (previsto)' : '';
             @endphp
 
             <rect x="{{ $xEntradas }}" y="{{ $yEntradas }}" width="{{ $larguraBarra }}"
-                  height="{{ max($hEntradas, 1) }}" fill="rgb(var(--brand))">
-                <title>{{ $mes['label'] }} · Entradas: {{ $emReais($mes['entradas']) }}</title>
+                  height="{{ max($hEntradas, 1) }}" fill="rgb(var(--brand))"
+                  fill-opacity="{{ $previsto ? 0.45 : 1 }}"
+                  @if ($previsto) stroke="rgb(var(--brand))" stroke-width="1" stroke-dasharray="3 2" @endif>
+                <title>{{ $mes['label'] }} · Entradas{{ $sufixo }}: {{ $emReais($mes['entradas']) }}</title>
             </rect>
             @if ($mes['entradas'] > 0)
                 <text x="{{ $xEntradas + $larguraBarra / 2 }}" y="{{ $yEntradas - 6 }}" text-anchor="middle"
@@ -64,8 +70,10 @@
             @endif
 
             <rect x="{{ $xSaidas }}" y="{{ $ySaidas }}" width="{{ $larguraBarra }}"
-                  height="{{ max($hSaidas, 1) }}" fill="rgb(var(--chart-out))">
-                <title>{{ $mes['label'] }} · Saídas: {{ $emReais($mes['saidas']) }}</title>
+                  height="{{ max($hSaidas, 1) }}" fill="rgb(var(--chart-out))"
+                  fill-opacity="{{ $previsto ? 0.45 : 1 }}"
+                  @if ($previsto) stroke="rgb(var(--chart-out))" stroke-width="1" stroke-dasharray="3 2" @endif>
+                <title>{{ $mes['label'] }} · Saídas{{ $sufixo }}: {{ $emReais($mes['saidas']) }}</title>
             </rect>
             @if ($mes['saidas'] > 0)
                 <text x="{{ $xSaidas + $larguraBarra / 2 }}" y="{{ $ySaidas - 6 }}" text-anchor="middle"

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\ContaFinanceira;
+use App\Models\ContaFixaPagar;
 use App\Models\ContaPagar;
 use App\Models\FaturamentoSnapshot;
 use App\Models\MovimentacaoFinanceira;
@@ -506,6 +507,95 @@ class IndicadoresService
     }
 
     /**
+     * O saldo que a conta tinha ao FIM de um mês — não existe foto histórica
+     * do saldo (ver `serieDoSaldo()`), então ele é recomposto de trás para
+     * frente: o saldo de hoje menos tudo que se movimentou depois daquele mês.
+     *
+     * Serve para o Painel Financeiro mostrar o saldo da competência que a
+     * pessoa está navegando, e não sempre o saldo de hoje — mês corrente
+     * devolve o mesmo valor de `saldoEmCaixa()`.
+     */
+    public function saldoAoFimDe(Carbon $mes): float
+    {
+        $this->carregarCaixa($mes);
+
+        return $this->saldoEmCaixa() - $this->movimentadoDepoisDe($mes);
+    }
+
+    /**
+     * O livro-caixa mês a mês, de `$inicio` a `$fim`, os dois inclusive —
+     * REALIZADO até o mês corrente, PREVISTO dali em diante.
+     *
+     * Generaliza `historicoSeisMeses()` do Painel Financeiro para um período
+     * escolhido: mês avulso (`$inicio` == `$fim`), janela de meses ou o ano
+     * inteiro.
+     *
+     * Mês passado ou corrente é o que de fato se moveu no caixa
+     * (`entradasDoMes`/`saidasDoMes`, do livro-caixa). Mês FUTURO não tem
+     * caixa nenhum lançado ainda — mostrar zero ali diria "nada esperado",
+     * quando o que há é "nada aconteceu ainda". Por isso ele entra com a
+     * PREVISÃO: `mrrDaCompetencia()` do lado da receita (a mesma conta do
+     * card "Receita recorrente") e `despesaPrevistaDaCompetencia()` do lado
+     * da saída — pedido explícito em 15/08/2026 ("não está me apresentando o
+     * que tem previsto para os próximos meses").
+     *
+     * @return list<array{label: string, entradas: float, saidas: float, previsto: bool}>
+     */
+    public function serieDeCaixaEntre(Carbon $inicio, Carbon $fim): array
+    {
+        $inicio = $inicio->copy()->startOfMonth();
+        $fim = $fim->copy()->startOfMonth();
+
+        $this->carregarCaixa($inicio);
+
+        $mesAtual = now()->startOfMonth();
+
+        $meses = [];
+        for ($mes = $inicio->copy(); $mes->lessThanOrEqualTo($fim); $mes->addMonth()) {
+            $meses[] = $mes->copy();
+        }
+
+        return collect($meses)->map(function (Carbon $mes) use ($mesAtual) {
+            $futuro = $mes->greaterThan($mesAtual);
+            $competencia = $mes->format('Y-m');
+
+            return [
+                'label' => ucfirst($mes->translatedFormat('M/y')),
+                'entradas' => $futuro ? $this->mrrDaCompetencia($competencia) : $this->entradasDoMes($mes),
+                'saidas' => $futuro ? $this->despesaPrevistaDaCompetencia($competencia) : $this->saidasDoMes($mes),
+                'previsto' => $futuro,
+            ];
+        })->all();
+    }
+
+    /**
+     * A despesa esperada de uma competência: o que já foi lançado em Contas a
+     * Pagar quando existe, ou — mês que ainda não gerou nada — a soma das
+     * despesas fixas ativas que valeriam naquele mês.
+     *
+     * A mesma dualidade "faturado ou contratado" de `mrrDaCompetencia()`, do
+     * outro lado do livro-caixa: mês com `ContaPagar` gerada usa o que foi
+     * de fato lançado (pode ter conta avulsa, fora do fixo); mês sem nada
+     * gerado ainda projeta pelas recorrentes — é a melhor previsão possível
+     * antes de `DespesaFixaService::gerarParaCompetencia()` rodar para ele.
+     */
+    public function despesaPrevistaDaCompetencia(string $competencia): float
+    {
+        $gerada = ContaPagar::where('competencia', $competencia)->where('status', '!=', 'cancelado');
+
+        if ($gerada->exists()) {
+            return (float) $gerada->sum('valor');
+        }
+
+        $mes = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
+
+        return (float) ContaFixaPagar::where('ativo', true)
+            ->whereDate('data_inicio', '<=', $mes->copy()->endOfMonth())
+            ->where(fn ($q) => $q->whereNull('data_fim')->orWhereDate('data_fim', '>=', $mes->copy()->startOfMonth()))
+            ->sum('valor');
+    }
+
+    /**
      * O que ENTROU no caixa no mês, pelo livro-caixa.
      *
      * Antes somava cobrança baixada, que é outra coisa: o livro tem também
@@ -543,7 +633,10 @@ class IndicadoresService
             $this->carregarCaixa($mes);
         }
 
-        return $this->caixaPorMes[$chave];
+        // Mês além de hoje fica de fora do preenchimento de `carregarCaixa()`
+        // (que só cobre até "agora"): "próximo mês" sem nada lançado ainda é
+        // zero, não ausência — sem o padrão aqui, pedir esse mês estourava.
+        return $this->caixaPorMes[$chave] ?? ['entradas' => 0.0, 'saidas' => 0.0];
     }
 
     /**
