@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 15/08/2026</b>
+<i>Reabrir tarefa agora diz por quê</i>
+
+<b>✨ Novidades</b>
+
+• <b>Reabrir uma tarefa concluída agora pede o motivo.</b> No histórico, o botão Reabrir abre um pedido de texto em vez de mandar a tarefa de volta em silêncio. O card chega em Em andamento com a tarja "Voltou da produção" e o motivo escrito nela — quem recebe sabe o que aconteceu sem precisar perguntar — e o responsável é avisado pelo sino, como nas devoluções da revisão e do staging. Na tarefa operacional a tarja diz "Reaberta", porque telefonema não tem produção de onde voltar. A cancelada continua voltando num clique: ela volta para a fila, sem reprovar ninguém.
+
+<b>🔧 Correções</b>
+
+• <b>A versão de produção agora vale só para o ciclo que subiu.</b> Reabrir limpa a versão registrada na tarefa: antes, uma tarefa reaberta podia ser reconcluída aproveitando a versão do ciclo anterior, e "concluída" apontava para uma tag que não continha a correção nova. Agora a reconclusão exige registrar a versão que subiu de novo — a mesma regra que já valia para o teste do staging.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
