@@ -32,6 +32,12 @@ DIR=/var/www/alfamatriz
 LOCAL=0
 LOG=${LOG:-/var/log/deploy-staging-alfamatriz.log}
 
+# O quadro de tarefas que o time usa mora na PRODUÇÃO — bloquear tarefa no
+# banco do staging seria invisível para todo mundo. `atual/` é o symlink da
+# versão azul/verde no ar, o único caminho que sobrevive à troca de cor.
+QUADRO_LXC=${QUADRO_LXC:-115}
+QUADRO_DIR=${QUADRO_DIR:-/var/www/alfamatriz/atual}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --lxc) LXC="$2"; shift 2 ;;
@@ -160,9 +166,23 @@ log "portão: rodando a suíte na cópia em preparo e publicando se ela passar"
 if ! no_container "deploy/publicar.sh --dir $DIR --ref origin/main --portao 'php artisan test'"; then
     log "portão REPROVOU ou a publicação falhou — staging fica em ${LOCAL_SHA:0:7}"
     veredito reprovado "$REMOTO_SHA" "suite de testes reprovou ou a publicacao falhou"
+    # O quadro conta a verdade sozinho: cada tarefa em Em staging "pensa que
+    # está no staging e não está" (design/README.md §16.6) — o comando bloqueia
+    # a coluna com o motivo padrão, e o bloqueio avisa no sino. Best-effort de
+    # propósito: o quadro é espelho do deploy, não portão dele — painel fora do
+    # ar não pode mudar o desfecho da publicação. No --local não há produção a
+    # alcançar, e o teste deste script roda sem pct.
+    [[ "$LOCAL" -eq 1 ]] || pct exec "$QUADRO_LXC" -- bash -lc "cd $QUADRO_DIR && php artisan alfa:portao-staging reprovou" >/dev/null 2>&1 \
+        || log "não consegui bloquear as tarefas em Em staging no quadro"
     exit 1
 fi
 
 veredito ok "$REMOTO_SHA" "suite aprovou"
+
+# O espelho do outro veredito: o portão passou, então o que ELE travou deixa
+# de valer — o comando destrava só as tarefas com o motivo padrão do portão;
+# bloqueio de gente fica como está.
+[[ "$LOCAL" -eq 1 ]] || pct exec "$QUADRO_LXC" -- bash -lc "cd $QUADRO_DIR && php artisan alfa:portao-staging passou" >/dev/null 2>&1 \
+    || log "não consegui destravar no quadro o que o portão havia travado"
 
 log "staging atualizado para ${REMOTO_SHA:0:7}"
