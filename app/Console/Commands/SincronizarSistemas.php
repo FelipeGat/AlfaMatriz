@@ -119,5 +119,6 @@ class SincronizarSistemas extends Command
             $resumo['clientes']['atualizados']
         ));
         $this->info(sprintf('  Licenças: %d aplicadas.', $resumo['licencas']['atualizadas']));
+        $this->info(sprintf('  Uso: %d clientes medidos.', $resumo['uso']['medidos']));
     }
 }

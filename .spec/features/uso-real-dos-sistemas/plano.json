@@ -1,0 +1,86 @@
+{
+  "runId": "AlfaMatriz-uso-real-dos-sistemas-msv256h4",
+  "feature": "uso-real-dos-sistemas",
+  "agent": "claude",
+  "modo": "sequencial",
+  "paralelizar": null,
+  "modeloForcado": null,
+  "esforcoForcado": null,
+  "geradoEm": "2026-08-16 00:19",
+  "branchTrabalho": "spec/uso-real-dos-sistemas",
+  "baseDir": ".spec/features/uso-real-dos-sistemas",
+  "specDir": ".spec",
+  "repoName": "AlfaMatriz",
+  "logsDir": "../onp-worktrees/AlfaMatriz-uso-real-dos-sistemas-logs",
+  "ondas": [],
+  "faixas": [],
+  "sequenciais": [
+    {
+      "id": "T-130",
+      "titulo": "Colunas de uso no vínculo cliente_sistema",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "database/migrations/2026_08_15_100000_retrato_de_uso_no_vinculo.php"
+      ],
+      "refs": [
+        "AC-321"
+      ]
+    },
+    {
+      "id": "T-131",
+      "titulo": "Capacidade sincroniza_uso nos sistemas",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "database/migrations/2026_08_15_101000_capacidade_de_sincronizar_uso.php",
+        "database/seeders/SistemasPrecosSeeder.php",
+        "database/factories/SistemaFactory.php"
+      ],
+      "refs": [
+        "AC-322",
+        "AC-326"
+      ]
+    },
+    {
+      "id": "T-132",
+      "titulo": "O sincronizador lê /uso e espelha no vínculo",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "app/Services/SincronizadorSistemaService.php",
+        "app/Console/Commands/SincronizarSistemas.php",
+        "app/Models/Sistema.php",
+        "app/Models/ClienteSistema.php"
+      ],
+      "refs": [
+        "AC-321",
+        "AC-322",
+        "AC-323",
+        "AC-324",
+        "AC-325"
+      ]
+    },
+    {
+      "id": "T-133",
+      "titulo": "Provas dos critérios de aceite",
+      "modelo": "claude-sonnet-5",
+      "esforco": "medium",
+      "arquivos": [
+        "tests/Feature/IntegracaoMultiSistema/UsoRealDoSistemaTest.php"
+      ],
+      "refs": [
+        "US-088",
+        "US-089",
+        "AC-321",
+        "AC-322",
+        "AC-323",
+        "AC-324",
+        "AC-325",
+        "AC-326"
+      ]
+    }
+  ],
+  "concluidas": [],
+  "avisos": []
+}

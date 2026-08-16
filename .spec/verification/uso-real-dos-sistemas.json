@@ -1,0 +1,42 @@
+{
+  "feature": "uso-real-dos-sistemas",
+  "timestamp": "2026-08-16T00:34:32.113Z",
+  "gitRev": "07d36f8",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 882,
+  "results": {
+    "AC-321": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\IntegracaoMultiSistema\\UsoRealDoSistemaTest::test_o_uso_do_cliente_e_gravado_no_vinculo @spec:AC-321",
+      "method": "tap"
+    },
+    "AC-322": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\IntegracaoMultiSistema\\UsoRealDoSistemaTest::test_sistema_sem_a_capacidade_nao_e_perguntado_sobre_uso @spec:AC-322",
+      "method": "tap"
+    },
+    "AC-323": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\IntegracaoMultiSistema\\UsoRealDoSistemaTest::test_desligar_a_capacidade_limpa_o_retrato_de_uso @spec:AC-323",
+      "method": "tap"
+    },
+    "AC-324": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\IntegracaoMultiSistema\\UsoRealDoSistemaTest::test_uso_de_cliente_desconhecido_e_pulado_sem_derrubar_o_ciclo @spec:AC-324",
+      "method": "tap"
+    },
+    "AC-325": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\IntegracaoMultiSistema\\UsoRealDoSistemaTest::test_o_relatorio_e_a_auditoria_contam_o_uso_medido @spec:AC-325",
+      "method": "tap"
+    },
+    "AC-326": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\IntegracaoMultiSistema\\UsoRealDoSistemaTest::test_alfajornada_configurado_entra_no_ciclo_como_os_demais @spec:AC-326",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

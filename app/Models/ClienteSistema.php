@@ -80,6 +80,22 @@ class ClienteSistema extends Pivot
         return $fimDoDia->lte($hoje->copy()->addDays(self::DIAS_VENCENDO)) ? 'vencendo' : 'ativa';
     }
 
+    /**
+     * As métricas de uso que a origem informou pelo `/uso` do contrato, como
+     * mapa contador => inteiro (`funcionarios_ativos`, `dispositivos_ativos`,
+     * `cnpjs_ativos`...). O JSON cru mora em `uso_metricas`; decodificar aqui
+     * segue a mesma decisão dos casts logo acima — o pivô entrega o que o
+     * banco guarda, e quem precisa do tipo pede pelo método.
+     *
+     * @return array<string, int>
+     */
+    public function metricasDeUso(): array
+    {
+        $decodificado = json_decode((string) $this->uso_metricas, true);
+
+        return is_array($decodificado) ? $decodificado : [];
+    }
+
     /** Já existe licença emitida lá — é o que renovar e suspender precisam. */
     public function temLicenca(): bool
     {

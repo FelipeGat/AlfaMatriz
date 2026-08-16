@@ -53,7 +53,7 @@ class SistemasPrecosSeeder extends Seeder
                 // licenças ativas em vez de substituir a anterior, e espelhar
                 // esse retrato faria a Matriz faturar em cima do defeito.
                 // Ligar quando a origem estiver corrigida.
-                'capacidades' => ['sincroniza', 'sincroniza_modulos'],
+                'capacidades' => ['sincroniza', 'sincroniza_modulos', 'sincroniza_uso'],
                 'tiers' => [
                     ['nome' => 'Start', 'preco_base' => 99.00, 'unidades_inclusas' => 5, 'limite_unidades' => 5, 'ordem' => 1],
                     ['nome' => 'Growth', 'preco_base' => 299.00, 'unidades_inclusas' => 20, 'limite_unidades' => 20, 'ordem' => 2],
@@ -79,6 +79,10 @@ class SistemasPrecosSeeder extends Seeder
             [
                 'nome' => 'AlfaJornada', 'slug' => 'alfajornada', 'categoria' => 'saas',
                 'unidade_cobranca' => 'funcionário ativo',
+                // Metrado: a unidade é o funcionário ativo, que só a origem
+                // sabe contar — daí o `sincroniza_uso` valer mais aqui do que
+                // em qualquer outro sistema.
+                'capacidades' => ['sincroniza', 'sincroniza_uso'],
                 'tiers' => [
                     ['nome' => 'Único', 'preco_base' => 0, 'unidades_inclusas' => 0, 'valor_excedente_unidade' => 2.50, 'limite_unidades' => null, 'ordem' => 1],
                 ],

@@ -1,0 +1,16 @@
+<b>📋 AlfaMatriz — Changelog 15/08/2026</b>
+<i>O uso real de cada cliente chega à Matriz</i>
+
+<b>✨ Novidades</b>
+
+• <b>A sincronização agora lê quantas unidades cada cliente realmente usa.</b> O contrato dos sistemas integrados ganhou a coleção de uso: funcionários, pessoas e alunos ativos, dispositivos e CNPJs, contados na origem e espelhados no vínculo do cliente a cada ciclo. É o número que a cobrança metrada precisa — o AlfaJornada fatura por funcionário ativo, e até hoje esse número só existia dentro dele.
+
+• <b>AlfaControl passou a servir o uso real.</b> Cada condomínio informa pessoas ativas (com o recorte de funcionários e alunos), leitores/dispositivos ativos e os CNPJs das empresas cadastradas.
+
+• <b>AlfaJornada entrou no contrato da Matriz.</b> Primeiro sistema novo a entrar depois da generalização: com endereço e chave configurados na tela de Sistemas, revendas, clientes e uso passam a aparecer na Matriz no mesmo ciclo horário dos demais — sem código novo por sistema. A API dele nasce desligada e só liga com a chave configurada no servidor.
+
+<b>🔒 Segurança</b>
+
+• A API nova do AlfaJornada segue o padrão dos irmãos: chave guardada só como hash no servidor, comparação em tempo constante, limite de requisições por minuto e resposta idêntica para chave errada e chave ausente.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

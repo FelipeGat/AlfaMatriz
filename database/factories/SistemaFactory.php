@@ -66,7 +66,22 @@ class SistemaFactory extends Factory
             'slug' => 'alfacontrol',
             'unidade_cobranca' => 'condomínio ativo',
             'base_url' => 'https://control.alfasolucoes.cloud',
-            'capacidades' => ['sincroniza', 'sincroniza_modulos'],
+            'capacidades' => ['sincroniza', 'sincroniza_modulos', 'sincroniza_uso'],
+        ]);
+    }
+
+    /**
+     * O AlfaJornada: metrado por funcionário ativo, que só a origem sabe
+     * contar — o uso real é a razão de ele entrar no ciclo.
+     */
+    public function alfajornada(): static
+    {
+        return $this->state([
+            'nome' => 'AlfaJornada',
+            'slug' => 'alfajornada',
+            'unidade_cobranca' => 'funcionário ativo',
+            'base_url' => 'https://jornada.alfasolucoes.cloud',
+            'capacidades' => ['sincroniza', 'sincroniza_uso'],
         ]);
     }
 

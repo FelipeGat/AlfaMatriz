@@ -44,6 +44,7 @@ class SincronizadorSistemaService
                 'clientes' => $this->sincronizarClientes(),
                 'licencas' => $this->sincronizarLicencas(),
                 'modulos' => $this->sincronizarModulos(),
+                'uso' => $this->sincronizarUso(),
             ];
 
             $this->registrarCiclo($resumo);
@@ -348,6 +349,73 @@ class SincronizadorSistemaService
                 'licenca_inicio_em' => null,
                 'licenca_fim_em' => null,
                 'licenca_id_externo' => null,
+            ]);
+    }
+
+    /**
+     * O retrato de uso — quantas unidades cada cliente realmente usa, medido
+     * na origem via `/uso`.
+     *
+     * É o que a cobrança metrada precisa: o AlfaJornada fatura por funcionário
+     * ativo, e esse número só existe dentro dele. Só para quem declara
+     * `sincroniza_uso` — perguntar `/uso` a quem não o serve daria 404 a cada
+     * ciclo, como já valia para módulos.
+     */
+    private function sincronizarUso(): array
+    {
+        if (! $this->sistema->suporta('sincroniza_uso')) {
+            // Mesmo raciocínio do retrato de licença: sem a capacidade, o que
+            // sobrou de uma leitura anterior ficaria congelado para sempre num
+            // número que a Matriz não consegue mais confirmar. Apagar é o
+            // honesto — é dado derivado, e volta inteiro no primeiro ciclo
+            // depois de religar.
+            return ['ignorado' => true, 'medidos' => 0, 'limpos' => $this->limparRetratoDeUso()];
+        }
+
+        $medidos = 0;
+
+        foreach ($this->todasPaginas('/uso') as $item) {
+            $cliente = Cliente::porOrigemExterna($this->sistema, (string) ($item['cliente_id_externo'] ?? ''));
+
+            // Sem cliente ancorado não há onde pendurar o uso — mesma postura
+            // do sync de licenças: pula o item, o ciclo continua.
+            if (! $cliente) {
+                continue;
+            }
+
+            $cliente->sistemas()->syncWithoutDetaching([$this->sistema->id => [
+                'uso_unidades' => $item['unidades_ativas'] ?? null,
+                // `json_encode` explícito: o pivô não tem casts, de propósito,
+                // e o sync escreve pelo construtor de consulta.
+                'uso_metricas' => isset($item['metricas']) ? json_encode($item['metricas']) : null,
+                // A hora do ciclo, não a da origem: o retrato é sempre o da
+                // última leitura bem-sucedida, e é isso que a coluna conta.
+                'uso_medido_em' => now(),
+            ]]);
+
+            $medidos++;
+        }
+
+        return ['medidos' => $medidos];
+    }
+
+    /**
+     * Zera o retrato de uso deste sistema nos vínculos.
+     *
+     * Só mexe em quem tem algo gravado, para não escrever à toa a cada ciclo.
+     */
+    private function limparRetratoDeUso(): int
+    {
+        return \Illuminate\Support\Facades\DB::table('cliente_sistema')
+            ->where('sistema_id', $this->sistema->id)
+            ->where(fn ($q) => $q
+                ->whereNotNull('uso_unidades')
+                ->orWhereNotNull('uso_metricas')
+                ->orWhereNotNull('uso_medido_em'))
+            ->update([
+                'uso_unidades' => null,
+                'uso_metricas' => null,
+                'uso_medido_em' => null,
             ]);
     }
 
