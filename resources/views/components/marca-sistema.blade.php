@@ -58,7 +58,18 @@
         // no repositório para o mesmo slug.
         foreach (['png', 'webp', 'jpg'] as $extensao) {
             if (Storage::disk('public')->exists('marcas/'.$slug.'.'.$extensao)) {
-                $icone = Storage::disk('public')->url('marcas/'.$slug.'.'.$extensao);
+                $arquivo = 'marcas/'.$slug.'.'.$extensao;
+
+                // O mtime na query porque o NOME não muda quando a marca muda:
+                // ele é o slug, e produção fica atrás do Cloudflare, que cacheia
+                // a imagem na borda. Sem a versão, trocar o ícone pela tela não
+                // mudava nada visível — a borda seguia servindo o anterior até o
+                // TTL vencer, e a troca parecia não ter salvado (16/08/2026).
+                // Com ela, cada versão do arquivo é uma URL nova: a troca
+                // aparece no primeiro recarregamento, e o cache pode continuar
+                // agressivo.
+                $icone = Storage::disk('public')->url($arquivo)
+                    .'?v='.Storage::disk('public')->lastModified($arquivo);
                 break;
             }
         }
