@@ -221,6 +221,18 @@
         @apply bg-input text-ink placeholder-ink-faint border-line rounded-control focus:border-brand focus:ring-brand;
     }
 
+    /**
+     * A caixa de busca embrulha o input num <label> que já pinta `bg-input`,
+     * e o input interno declara `bg-transparent` para não pintar de novo.
+     * Só que a regra geral acima vence essa utility — seletor de atributo
+     * contra classe — e o véu saía DOBRADO: no tema escuro o miolo da caixa
+     * ficava um degrau mais claro que a moldura, com uma emenda visível onde
+     * o input começa. Aqui a palavra final volta para o markup.
+     */
+    input.bg-transparent {
+        background-color: transparent;
+    }
+
     /* A seta do plugin de formulários é substituída pela nossa, que segue o
        tema. `background-size` menor que o padrão (1.5em) porque a seta nova é
        um chevron fino, não uma seta cheia. */

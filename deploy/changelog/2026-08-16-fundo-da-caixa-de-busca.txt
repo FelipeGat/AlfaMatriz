@@ -1,0 +1,8 @@
+<b>📋 AlfaMatriz — Changelog 16/08/2026</b>
+<i>Visual: o fundo da caixa de busca fica uniforme no tema escuro</i>
+
+<b>🎨 Ajuste visual</b>
+
+• <b>A caixa de busca deixou de ter o miolo mais claro que a borda no tema escuro.</b> O campo de digitar pintava o próprio fundo por cima do fundo da caixa, e a camada dobrada deixava uma emenda visível onde o texto começa — diferente dos filtros ao lado. O acerto vale para todas as buscas do painel: a busca global do topo e as das telas de Usuários, Clientes, Revendas, Cobranças, Contas a pagar, Auditoria e Tarefas.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
