@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Auditoria;
+use App\Models\Notificacao;
 use App\Models\Perfil;
 use App\Models\Permissao;
 use App\Models\Revenda;
@@ -155,6 +156,21 @@ class UsuarioController extends Controller
                 descricao: $usuario->email,
             );
 
+            // A recusa segurou a porta, mas a tentativa é a notícia: alguém
+            // com a permissão `usuarios` tentou trocar a chave da conta de um
+            // admin. A auditoria guarda; o sino é o que faz alguém LER — e o
+            // alvo, que é admin, recebe junto.
+            foreach (User::idsDeAdminsAtivos() as $adminId) {
+                Notificacao::avisar($adminId, $request->user()->id, [
+                    'tipo' => 'seguranca',
+                    'nivel' => 'critico',
+                    'icone' => 'alert-triangle',
+                    'titulo' => $request->user()->name.' tentou redefinir a senha de '.$usuario->name,
+                    'meta' => 'Recusado · só admin redefine senha de admin',
+                    'rota' => route('usuarios.index'),
+                ]);
+            }
+
             return back()->with('erro', 'Só um administrador redefine a senha de outro administrador.');
         }
 
@@ -179,6 +195,19 @@ class UsuarioController extends Controller
             descricao: $usuario->email,
         );
 
+        // O dono da conta fica sabendo que a chave dele mudou de mão. No caso
+        // normal ele mesmo pediu e o aviso só confirma; no anormal — alguém
+        // trocou a senha dele sem pedido — este aviso é a única chance de ele
+        // descobrir antes de ser trancado do lado de fora.
+        Notificacao::avisar($usuario->id, $request->user()->id, [
+            'tipo' => 'senha',
+            'nivel' => 'atencao',
+            'icone' => 'key',
+            'titulo' => $request->user()->name.' redefiniu a sua senha',
+            'meta' => 'Se você não pediu, avise um administrador',
+            'rota' => route('profile.edit'),
+        ]);
+
         return back()->with('senha_gerada', ['nome' => $usuario->name, 'email' => $usuario->email, 'senha' => $senha]);
     }
 
@@ -189,6 +218,20 @@ class UsuarioController extends Controller
         }
 
         $usuario->update(['ativo' => ! $usuario->ativo]);
+
+        // Tirar (ou devolver) o acesso de alguém é notícia para quem responde
+        // pelo painel. Depois do `update` de propósito: a conta recém-desativada
+        // já sai da lista de destinatários — o sino dela ninguém vai mais ler.
+        foreach (User::idsDeAdminsAtivos() as $adminId) {
+            Notificacao::avisar($adminId, $request->user()->id, [
+                'tipo' => 'conta',
+                'nivel' => $usuario->ativo ? 'marca' : 'atencao',
+                'icone' => 'users',
+                'titulo' => $usuario->name.($usuario->ativo ? ' voltou a ter acesso' : ' não entra mais no painel'),
+                'meta' => 'Por '.$request->user()->name,
+                'rota' => route('usuarios.index'),
+            ]);
+        }
 
         return back()->with('status', $usuario->ativo
             ? "{$usuario->name} voltou a ter acesso."
@@ -202,6 +245,18 @@ class UsuarioController extends Controller
         }
 
         $usuario->delete();
+
+        // Mesma régua da desativação, para o gesto mais definitivo dos dois.
+        foreach (User::idsDeAdminsAtivos() as $adminId) {
+            Notificacao::avisar($adminId, $request->user()->id, [
+                'tipo' => 'conta',
+                'nivel' => 'atencao',
+                'icone' => 'trash',
+                'titulo' => 'Conta de '.$usuario->name.' excluída',
+                'meta' => 'Por '.$request->user()->name,
+                'rota' => route('usuarios.index'),
+            ]);
+        }
 
         return back()->with('status', "Conta de {$usuario->name} excluída.");
     }
@@ -223,6 +278,8 @@ class UsuarioController extends Controller
      */
     private function sincronizarPerfis(User $usuario, array $perfis): void
     {
+        $eraAdmin = $usuario->perfis()->where('slug', 'admin')->exists();
+
         $antes = $usuario->perfis()->orderBy('nome')->pluck('nome')->all();
 
         $usuario->perfis()->sync($perfis);
@@ -247,6 +304,25 @@ class UsuarioController extends Controller
                 'para' => $depois ? implode(', ', $depois) : 'nenhum',
             ]],
         );
+
+        // De todas as trocas de perfil, uma é sobre a posse do sistema: quem
+        // entra ou sai do papel de administrador. Os demais admins ficam
+        // sabendo na hora — inclusive quem acabou de entrar, que é como ele
+        // descobre o que ganhou. Troca entre perfis comuns fica na auditoria.
+        $ehAdmin = $usuario->perfis()->where('slug', 'admin')->exists();
+
+        if ($eraAdmin !== $ehAdmin) {
+            foreach (User::idsDeAdminsAtivos() as $adminId) {
+                Notificacao::avisar($adminId, auth()->id(), [
+                    'tipo' => 'perfil',
+                    'nivel' => 'atencao',
+                    'icone' => 'users',
+                    'titulo' => $usuario->name.($ehAdmin ? ' virou administrador' : ' deixou de ser administrador'),
+                    'meta' => 'Por '.auth()->user()->name,
+                    'rota' => route('usuarios.index'),
+                ]);
+            }
+        }
     }
 
     /**

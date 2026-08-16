@@ -211,6 +211,15 @@ class FluxoTarefaService
                 ]);
             }
 
+            // Encerrar fala com quem PEDIU e com quem FEZ: o criador quer saber
+            // que a tarefa chegou — ou que não vai chegar —, e o responsável,
+            // quando outra pessoa encerra o trabalho dele. É o par que falta no
+            // ciclo: a devolução já avisa, e sem isto a notícia boa era a única
+            // que dependia de abrir o quadro.
+            if (in_array($novoStatus, Tarefa::STATUS_TERMINAIS, true)) {
+                $this->avisarEncerramento($tarefa, $novoStatus, $dados);
+            }
+
             TarefaEvento::create([
                 'tarefa_id' => $tarefa->id,
                 // Quem moveu (AC-301). Nulo quando não há ninguém logado — a
@@ -257,6 +266,39 @@ class FluxoTarefaService
         }
 
         return false;
+    }
+
+    /**
+     * O aviso da chegada a uma etapa terminal — concluída ou cancelada.
+     *
+     * `avisar` cala para quem moveu, e o `unique` cobre o criador que também é
+     * o responsável. A meta carrega a informação que cada encerramento tem de
+     * único: a versão que subiu, no caso da conclusão; o motivo, no do
+     * cancelamento — que o motor já cobrou na chegada.
+     *
+     * @param  array{motivo?: ?string}  $dados
+     */
+    private function avisarEncerramento(Tarefa $tarefa, string $novoStatus, array $dados): void
+    {
+        $concluiu = $novoStatus === 'concluida';
+
+        $destinatarios = collect([$tarefa->criado_por_id, $tarefa->responsavel_id])
+            ->filter()
+            ->unique();
+
+        foreach ($destinatarios as $destinatarioId) {
+            Notificacao::avisar((int) $destinatarioId, auth()->id(), [
+                'tipo' => $concluiu ? 'conclusao' : 'cancelamento',
+                'nivel' => $concluiu ? 'marca' : 'atencao',
+                'icone' => $concluiu ? 'check-circle' : 'x-mark',
+                'titulo' => '«'.$tarefa->titulo.'» foi '.($concluiu ? 'concluída' : 'cancelada'),
+                'meta' => $concluiu
+                    ? ($tarefa->versao_producao ? 'Em produção · '.$tarefa->versao_producao : null)
+                    : Str::limit(trim((string) ($dados['motivo'] ?? '')), 120),
+                'rota' => route('tarefas.index'),
+                'tarefa_id' => $tarefa->id,
+            ]);
+        }
     }
 
     /**
@@ -525,9 +567,25 @@ class FluxoTarefaService
             'notas' => trim((string) $notas) !== '' ? trim((string) $notas) : null,
         ]);
 
-        // O responsável é quem age sobre o veredito — segue para a fila da
-        // produção ou volta para a bancada — e não deveria descobri-lo por
-        // acaso. `avisar` já cala quando quem testou é o próprio responsável.
+        $this->avisarTesteRegistrado($tarefa, $quemTestou, $aprovado);
+
+        return $relatorio;
+    }
+
+    /**
+     * O responsável fica sabendo do veredito do teste do staging.
+     *
+     * Ele é quem age sobre o veredito — segue para a fila da produção ou volta
+     * para a bancada — e não deveria descobri-lo por acaso. `avisar` já cala
+     * quando quem testou é o próprio responsável.
+     *
+     * Público porque o relatório tem DUAS portas: o botão de testar
+     * (`registrarTesteDoStaging`) e o carimbo do painel de mover, que grava o
+     * relatório no controller. O aviso é o mesmo fato pelas duas — e uma cópia
+     * do texto no controller divergiria na primeira mexida.
+     */
+    public function avisarTesteRegistrado(Tarefa $tarefa, User $quemTestou, bool $aprovado): void
+    {
         Notificacao::avisar($tarefa->responsavel_id, $quemTestou->id, [
             'tipo' => 'teste_staging',
             'nivel' => $aprovado ? 'marca' : 'atencao',
@@ -537,8 +595,6 @@ class FluxoTarefaService
             'rota' => route('tarefas.index'),
             'tarefa_id' => $tarefa->id,
         ]);
-
-        return $relatorio;
     }
 
     /**

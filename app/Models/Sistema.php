@@ -45,6 +45,11 @@ class Sistema extends Model
             'token' => 'encrypted',
             'capacidades' => 'array',
             'data_cadastro' => 'date',
+            // Fora do `$fillable`, como o bloqueio da tarefa: a queda de
+            // sincronização é marca com regra própria (o sincronizador a
+            // escreve na transição), e o formulário de cadastro não deveria
+            // conseguir derrubar ou levantar um sistema de passagem.
+            'sincronizacao_caiu_em' => 'datetime',
         ];
     }
 

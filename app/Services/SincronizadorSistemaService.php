@@ -6,11 +6,14 @@ use App\Models\Auditoria;
 use App\Models\Cliente;
 use App\Models\ClienteModulo;
 use App\Models\Modulo;
+use App\Models\Notificacao;
 use App\Models\Revenda;
 use App\Models\Sistema;
+use App\Models\User;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Str;
 
 /**
  * Puxa o retrato de um sistema integrado pelo contrato /api/matriz/v1 e
@@ -34,6 +37,10 @@ class SincronizadorSistemaService
      */
     public function sincronizar(): array
     {
+        // Sem marca de queda aqui: sistema sem endereço ou sem chave é o
+        // estado normal entre publicar a integração e configurá-la — dizer que
+        // ele "parou de sincronizar" anunciaria a queda de algo que nunca
+        // esteve de pé. A queda é sobre quem SINCRONIZAVA e falhou.
         if (! $this->contrato->configurado()) {
             return ['ok' => false, 'motivo' => 'Sistema sem endereço ou sem chave configurada.'];
         }
@@ -48,12 +55,81 @@ class SincronizadorSistemaService
             ];
 
             $this->registrarCiclo($resumo);
+            $this->sincronizacaoVoltou();
 
             return ['ok' => true, 'resumo' => $resumo];
         } catch (RequestException $e) {
-            return ['ok' => false, 'motivo' => $this->contrato->mensagemDeLeitura($e)];
+            return $this->falhou($this->contrato->mensagemDeLeitura($e));
         } catch (ConnectionException) {
-            return ['ok' => false, 'motivo' => $this->contrato->mensagemDeConexao()];
+            return $this->falhou($this->contrato->mensagemDeConexao());
+        }
+    }
+
+    /**
+     * A falha vira marca no sistema — e aviso, mas só na TRANSIÇÃO.
+     *
+     * O ciclo é horário: avisar toda falha seria 24 linhas idênticas por dia,
+     * uma condição disfarçada de evento — o mesmo raciocínio que faz
+     * `registrarCiclo` calar no ciclo vazio. A marca é o que sabe se esta
+     * falha é a primeira; enquanto ela existir, as seguintes ficam no stdout
+     * do cron, onde sempre estiveram.
+     *
+     * O destinatário é o administrador porque a causa mora na infra (endereço,
+     * chave, o sistema fora do ar), e a rota leva ao cadastro do sistema, que
+     * é onde endereço e chave se corrigem.
+     *
+     * @return array{ok: false, motivo: string}
+     */
+    private function falhou(string $motivo): array
+    {
+        if ($this->sistema->sincronizacao_caiu_em === null) {
+            $this->sistema->forceFill([
+                'sincronizacao_caiu_em' => now(),
+                'sincronizacao_motivo' => $motivo,
+            ])->save();
+
+            foreach (User::idsDeAdminsAtivos() as $adminId) {
+                Notificacao::avisar($adminId, auth()->id(), [
+                    'tipo' => 'sincronizacao',
+                    'nivel' => 'critico',
+                    'icone' => 'alert-triangle',
+                    'titulo' => $this->sistema->nome.' parou de sincronizar',
+                    'meta' => Str::limit($motivo, 120),
+                    'rota' => route('sistemas.edit', $this->sistema),
+                ]);
+            }
+        }
+
+        return ['ok' => false, 'motivo' => $motivo];
+    }
+
+    /**
+     * O primeiro ciclo bom depois da queda fecha o incidente — marca apagada e
+     * a notícia de que voltou, com quanto tempo ficou fora. Sem queda aberta,
+     * não faz nada: é o caso de todo ciclo saudável.
+     */
+    private function sincronizacaoVoltou(): void
+    {
+        $caiuEm = $this->sistema->sincronizacao_caiu_em;
+
+        if ($caiuEm === null) {
+            return;
+        }
+
+        $this->sistema->forceFill([
+            'sincronizacao_caiu_em' => null,
+            'sincronizacao_motivo' => null,
+        ])->save();
+
+        foreach (User::idsDeAdminsAtivos() as $adminId) {
+            Notificacao::avisar($adminId, auth()->id(), [
+                'tipo' => 'sincronizacao',
+                'nivel' => 'marca',
+                'icone' => 'check-circle',
+                'titulo' => $this->sistema->nome.' voltou a sincronizar',
+                'meta' => 'Fora do ciclo desde '.$caiuEm->format('d/m H:i'),
+                'rota' => route('sistemas.edit', $this->sistema),
+            ]);
         }
     }
 

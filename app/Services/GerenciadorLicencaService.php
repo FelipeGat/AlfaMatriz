@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Auditoria;
 use App\Models\Cliente;
+use App\Models\Notificacao;
 use App\Models\Sistema;
+use App\Models\User;
 
 /**
  * Gerencia a licença de um cliente num sistema integrado pelo contrato
@@ -175,7 +177,53 @@ class GerenciadorLicencaService
             alteracoes: $mudou,
         );
 
+        $this->avisarRevenda($cliente, $acao);
+
         return $resultado;
+    }
+
+    /**
+     * A revenda fica sabendo o que a Alfa decidiu sobre a licença dela.
+     *
+     * É a volta do eixo do pedido pendente: a revenda cadastrou e pediu, a
+     * matriz decidiu — e sem o aviso a decisão só aparecia se alguém da revenda
+     * fosse conferir a lista. No MESMO ponto da auditoria, pelo mesmo motivo
+     * dela: toda mudança de licença passa por aqui, e avisos nos quatro métodos
+     * do controller seriam quatro cópias esperando a quinta operação nascer sem
+     * a sua.
+     *
+     * A rota é a lista de clientes porque é a tela que o perfil de revenda
+     * alcança — apontar para cobrança ou faturamento entregaria um 403.
+     */
+    private function avisarRevenda(Cliente $cliente, string $acao): void
+    {
+        if ($cliente->revenda_id === null) {
+            return;
+        }
+
+        [$nivel, $icone, $titulo] = match ($acao) {
+            'liberar' => ['marca', 'check-circle', 'Licença de '.$cliente->nome.' liberada'],
+            'renovar' => ['marca', 'repeat', 'Licença de '.$cliente->nome.' renovada'],
+            'bloquear' => ['atencao', 'cadeado-fechado', 'Acesso de '.$cliente->nome.' bloqueado'],
+            'desbloquear' => ['marca', 'cadeado-aberto', 'Acesso de '.$cliente->nome.' desbloqueado'],
+            default => ['marca', 'bell', 'Licença de '.$cliente->nome.' alterada'],
+        };
+
+        $destinatarios = User::query()
+            ->where('ativo', true)
+            ->where('revenda_id', $cliente->revenda_id)
+            ->pluck('id');
+
+        foreach ($destinatarios as $destinatarioId) {
+            Notificacao::avisar($destinatarioId, auth()->id(), [
+                'tipo' => 'licenca',
+                'nivel' => $nivel,
+                'icone' => $icone,
+                'titulo' => $titulo,
+                'meta' => $this->sistema->nome,
+                'rota' => route('clientes.index'),
+            ]);
+        }
     }
 
     /**

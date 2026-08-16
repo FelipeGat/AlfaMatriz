@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Lead;
 use App\Models\LeadAnexo;
+use App\Models\Notificacao;
 use App\Models\Revenda;
 use App\Models\Sistema;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -313,6 +315,21 @@ class LeadController extends Controller
 
         if ($data['estagio'] === 'cliente_ativo') {
             $lead->converterParaCliente();
+
+            // A conversão é a conclusão do funil — o evento que quem acompanha
+            // o comercial quer saber sem estar com o quadro aberto. A condição
+            // "N leads parados" continua na fila de ação; aqui é a notícia boa,
+            // pontual e com dono. `avisar` cala para o vendedor que converteu.
+            foreach (User::idsDeQuemVe('dashboard_comercial', 'ler') as $destinatarioId) {
+                Notificacao::avisar($destinatarioId, auth()->id(), [
+                    'tipo' => 'lead_convertido',
+                    'nivel' => 'marca',
+                    'icone' => 'trending-up',
+                    'titulo' => $lead->nome.' virou cliente',
+                    'meta' => 'Fechado por '.auth()->user()->name,
+                    'rota' => route('clientes.index'),
+                ]);
+            }
 
             return redirect()->route('leads.index')->with('status', "{$lead->nome} convertido em cliente!");
         }

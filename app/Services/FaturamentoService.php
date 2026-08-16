@@ -6,8 +6,10 @@ use App\Models\ClienteModulo;
 use App\Models\Cobranca;
 use App\Models\FaturamentoSnapshot;
 use App\Models\Modulo;
+use App\Models\Notificacao;
 use App\Models\Revenda;
 use App\Models\Sistema;
+use App\Models\User;
 use Carbon\Carbon;
 
 class FaturamentoService
@@ -143,7 +145,47 @@ class FaturamentoService
             $resultado[$revenda->nome] = ['cobranca_id' => $cobranca->id, 'total' => $totalRevenda, 'detalhamento' => $breakdown];
         }
 
+        $this->avisarGeracao($competencia, $resultado);
+
         return $resultado;
+    }
+
+    /**
+     * O fechamento do ciclo avisa quem vê faturamento (§17: "geração de
+     * faturamento" é fonte do sino).
+     *
+     * AQUI, e não nos dois chamadores, porque a geração tem duas portas — o
+     * botão da tela e o fechamento automático do último dia do mês — e a do
+     * cron era justamente a invisível: a saída ia para o stdout de um
+     * agendamento que ninguém está olhando. `avisar` cala para quem apertou o
+     * botão; no cron não há autor, e todo mundo recebe — ninguém ali agiu.
+     *
+     * Só quando ALGO foi gerado: reapertar o botão de uma competência já
+     * fechada gera zero cobrança, e avisar "nada aconteceu" ensinaria a
+     * dispensar o sino.
+     *
+     * @param  array<string, mixed>  $resultado
+     */
+    private function avisarGeracao(string $competencia, array $resultado): void
+    {
+        $cobrancas = collect($resultado)->filter(fn ($linha) => isset($linha['cobranca_id']));
+
+        if ($cobrancas->isEmpty()) {
+            return;
+        }
+
+        $total = 'R$ '.number_format($cobrancas->sum('total'), 2, ',', '.');
+
+        foreach (User::idsDeQuemVe('faturamento', 'ler') as $destinatarioId) {
+            Notificacao::avisar($destinatarioId, auth()->id(), [
+                'tipo' => 'faturamento',
+                'nivel' => 'marca',
+                'icone' => 'banknotes',
+                'titulo' => 'Faturamento de '.$competencia.' gerado: '.$cobrancas->count().' cobrança(s)',
+                'meta' => $total.' em licenciamento',
+                'rota' => route('faturamento.index', ['competencia' => $competencia]),
+            ]);
+        }
     }
 
     /**

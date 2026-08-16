@@ -1,0 +1,40 @@
+<b>📋 AlfaMatriz — Changelog 15/08/2026</b>
+<i>O sino de notificações passa a cobrir o sistema inteiro</i>
+
+<b>✨ Tarefas — o quadro avisa do começo ao fim</b>
+
+• <b>Tarefa direcionada avisa quem a recebeu.</b> Na criação já com responsável ou na troca de responsável pela edição, o novo dono recebe o aviso com a etapa em que o card ficou e quem direcionou. Quem direciona a si mesmo não ouve eco.
+
+• <b>Tarefa sem dono avisa quem faz triagem.</b> O card que cai na fila de Aberta chega ao sino de quem prioriza e direciona — menos de quem o criou.
+
+• <b>Concluir e cancelar avisam o criador e o responsável.</b> A conclusão leva a versão que subiu para produção; o cancelamento leva o motivo. Quem moveu não recebe, e quem criou e executa recebe uma vez só.
+
+• <b>Excluir avisa antes de sumir.</b> O único gesto do quadro sem desfazer agora deixa aviso para o criador e o responsável — e o aviso sobrevive à exclusão.
+
+• <b>O carimbo de validação do painel de mover avisa como o botão de testar.</b> O veredito do staging é um fato só, venha por onde vier, e o responsável fica sabendo pelos dois caminhos.
+
+<b>💰 Financeiro e comercial</b>
+
+• <b>Faturamento gerado avisa quem vê faturamento.</b> Pelo botão da tela ou pelo fechamento automático do último dia do mês — que até hoje anunciava o resultado no terminal de um agendamento que ninguém lê. O aviso traz competência, contagem de cobranças e total.
+
+• <b>Lead convertido em cliente avisa quem acompanha o painel comercial.</b> A conclusão do funil deixa de depender de estar com o quadro aberto.
+
+<b>🤝 Revendas e licenças</b>
+
+• <b>Cliente aguardando licença avisa a matriz na hora.</b> O cadastro feito pela revenda deixava o pedido esperando alguém varrer a lista; agora quem libera é avisado no momento em que o pedido nasce.
+
+• <b>Toda decisão de licença avisa a revenda dona do cliente.</b> Liberada, renovada, bloqueada ou desbloqueada — a revenda fica sabendo o que a Alfa decidiu, sem conferir a lista.
+
+<b>🔒 Segurança de conta</b>
+
+• <b>Senha redefinida avisa o dono da conta.</b> No caso normal, confirma o que ele pediu; no anormal, é como ele descobre antes de ser trancado do lado de fora.
+
+• <b>Tentativa recusada de redefinir a senha de um administrador acorda todos os administradores</b>, em nível crítico — o alvo entre eles.
+
+• <b>Entrar ou sair do papel de administrador, desativar, reativar e excluir conta</b> agora avisam os demais administradores, com quem fez.
+
+<b>🔄 Integrações</b>
+
+• <b>Sistema que para de sincronizar deixa marca e faz barulho uma vez.</b> A primeira falha depois de um sucesso avisa os administradores em nível crítico e fica registrada no banco; as falhas seguintes não repetem o aviso. O primeiro ciclo bom apaga a marca e avisa que voltou, dizendo desde quando estava fora. Antes, um sistema fora do ar por um dia inteiro não deixava rastro nenhum.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Cliente;
+use App\Models\Notificacao;
 use App\Models\Sistema;
+use App\Models\User;
 
 /**
  * Cria o cliente num sistema integrado pelo contrato /api/matriz/v1/clientes.
@@ -74,6 +76,36 @@ class ProvisionadorClienteService
             'bloqueia_acesso' => 0,
         ]]);
 
+        $this->avisarPedidoDeLicenca($cliente, $dados['status'] ?? 'pendente');
+
         return $dados;
+    }
+
+    /**
+     * O cliente pendente é um pedido da revenda esperando a Alfa — e quem
+     * decide não deveria descobri-lo varrendo a lista de clientes.
+     *
+     * É o análogo comercial da pergunta aguardando resposta: alguém agiu, a
+     * bola está com outro lado, e o outro lado não está olhando. O destinatário
+     * é quem EDITA clientes na matriz — a mesma capacidade da tela onde a
+     * licença se libera. `avisar` cala para o autor: o admin da matriz que
+     * cadastra direto não pede licença a si mesmo por sino.
+     */
+    private function avisarPedidoDeLicenca(Cliente $cliente, string $status): void
+    {
+        if ($status !== 'pendente') {
+            return;
+        }
+
+        foreach (User::idsDeQuemVe('clientes', 'editar') as $destinatarioId) {
+            Notificacao::avisar($destinatarioId, auth()->id(), [
+                'tipo' => 'licenca_pendente',
+                'nivel' => 'atencao',
+                'icone' => 'clock',
+                'titulo' => $cliente->nome.' aguarda liberação de licença',
+                'meta' => $this->sistema->nome.($cliente->revenda ? ' · pedido de '.$cliente->revenda->nome : ''),
+                'rota' => route('clientes.index'),
+            ]);
+        }
     }
 }

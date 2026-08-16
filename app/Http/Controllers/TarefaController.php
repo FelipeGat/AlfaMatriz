@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Notificacao;
 use App\Models\Sistema;
 use App\Models\Tarefa;
 use App\Models\TarefaAnexo;
@@ -351,8 +352,13 @@ class TarefaController extends Controller
         // Os arquivos entram DENTRO do mesmo `if`, e não ao lado: no clique
         // duplo os dois envios carregam os mesmos anexos, e gravá-los fora daqui
         // deixaria o print duplicado na tarefa que a trava acabou de preservar.
+        // O aviso também: a trava que impede o segundo card impede o segundo
+        // sino tocando pelo mesmo fato.
         if (! $this->reenvioDaMesmaTarefa($data)) {
-            $this->gravarAnexos($arquivos, Tarefa::create($data));
+            $tarefa = Tarefa::create($data);
+
+            $this->gravarAnexos($arquivos, $tarefa);
+            $this->avisarNascimento($tarefa);
         }
 
         return $this->voltarParaOQuadro($request, 'Tarefa criada.', fecharModal: 'nova-tarefa', mudouOConjunto: true, limparModal: true);
@@ -505,6 +511,58 @@ class TarefaController extends Controller
             ->exists();
     }
 
+    /**
+     * A tarefa nova avisa quem vai agir sobre ela.
+     *
+     * Com responsável, o fato é o direcionamento, e o aviso vai para ele. Sem,
+     * a tarefa caiu na fila de triagem, e quem triaga é quem decide o que fazer
+     * com ela — é o evento pontual por trás da condição "N aguardando triagem",
+     * que continua sendo recalculada onde condição vive. `avisar` cala para o
+     * autor: quem cria tarefa para si mesmo não ouve eco.
+     */
+    private function avisarNascimento(Tarefa $tarefa): void
+    {
+        if ($tarefa->responsavel_id !== null) {
+            $this->avisarDirecionamento($tarefa);
+
+            return;
+        }
+
+        foreach (User::idsDeQuemTriaTarefas() as $destinatarioId) {
+            Notificacao::avisar($destinatarioId, auth()->id(), [
+                'tipo' => 'triagem',
+                'nivel' => 'marca',
+                'icone' => 'clipboard',
+                'titulo' => '«'.$tarefa->titulo.'» aguarda triagem',
+                'meta' => 'Aberta por '.auth()->user()->name.' · sem responsável',
+                'rota' => route('tarefas.index'),
+                'tarefa_id' => $tarefa->id,
+            ]);
+        }
+    }
+
+    /**
+     * A tarefa foi posta nas mãos de alguém — e esse alguém fica sabendo.
+     *
+     * Vale para a criação já com dono e para a troca de responsável na edição:
+     * dos dois jeitos, o quadro de uma pessoa acabou de ganhar trabalho que ela
+     * não pediu, e descobrir isso só ao abrir o quadro é descobrir tarde. É o
+     * irmão do apontamento do portão de exame — lá a bola chega pelo movimento,
+     * aqui pelo cadastro.
+     */
+    private function avisarDirecionamento(Tarefa $tarefa): void
+    {
+        Notificacao::avisar($tarefa->responsavel_id, auth()->id(), [
+            'tipo' => 'direcionamento',
+            'nivel' => 'atencao',
+            'icone' => 'user-plus',
+            'titulo' => '«'.$tarefa->titulo.'» foi direcionada a você',
+            'meta' => 'Em '.Tarefa::rotuloDaEtapa($tarefa->status).' · por '.auth()->user()->name,
+            'rota' => route('tarefas.index'),
+            'tarefa_id' => $tarefa->id,
+        ]);
+    }
+
     public function update(Request $request, Tarefa $tarefa, FluxoTarefaService $fluxo)
     {
         $this->bloquearVisaoDaMatriz();
@@ -545,9 +603,19 @@ class TarefaController extends Controller
         $comentario = trim($data['comentario'] ?? '');
         unset($data['comentario']);
 
+        $responsavelAntes = $tarefa->responsavel_id;
+
         $tarefa->update($data);
 
         $etapaNova = $this->seguirOResponsavel($tarefa, $fluxo);
+
+        // Ganhar a tarefa pela edição é o mesmo fato que ganhá-la na criação, e
+        // o aviso é o mesmo. Depois de `seguirOResponsavel`, para a meta dizer
+        // a etapa em que o card de fato ficou — direcionar da fila já o leva ao
+        // Backlog no mesmo gesto.
+        if ($tarefa->responsavel_id !== null && $tarefa->responsavel_id !== $responsavelAntes) {
+            $this->avisarDirecionamento($tarefa);
+        }
 
         if ($comentario !== '' && ! $this->reenvioDoMesmoComentario($tarefa, $comentario)) {
             $tarefa->comentarios()->create([
@@ -694,6 +762,11 @@ class TarefaController extends Controller
                 'aprovado' => $request->boolean('relatorio_aprovado'),
                 'notas' => $data['relatorio_notas'] ?? null,
             ]);
+
+            // O mesmo aviso do botão de testar (AC-307): o veredito é o mesmo
+            // fato pelas duas portas, e o responsável não deveria descobri-lo
+            // só quando ele entra pela outra.
+            $fluxo->avisarTesteRegistrado($tarefa, $request->user(), $request->boolean('relatorio_aprovado'));
         }
 
         try {
@@ -848,6 +921,21 @@ class TarefaController extends Controller
 
         if (! auth()->user()?->podeTriarTarefas()) {
             return $this->voltarParaOQuadro($request, 'Só quem faz triagem exclui tarefa. Para encerrar sem apagar, cancele.', 'critico');
+        }
+
+        // O aviso sai ANTES do forceDelete e SEM `tarefa_id`: a coluna apaga em
+        // cascata junto com a tarefa, e um aviso preso a ela morreria no mesmo
+        // instante em que nasce — logo o aviso do único gesto sem desfazer.
+        // Criador e responsável são quem sente a falta do card.
+        foreach (collect([$tarefa->criado_por_id, $tarefa->responsavel_id])->filter()->unique() as $destinatarioId) {
+            Notificacao::avisar((int) $destinatarioId, auth()->id(), [
+                'tipo' => 'exclusao',
+                'nivel' => 'atencao',
+                'icone' => 'trash',
+                'titulo' => '«'.$tarefa->titulo.'» foi excluída do quadro',
+                'meta' => 'Por '.auth()->user()->name.' · sem desfazer',
+                'rota' => route('tarefas.index'),
+            ]);
         }
 
         // `forceDelete` porque excluir aqui QUER dizer sumir: a tarefa usa

@@ -348,4 +348,54 @@ class User extends Authenticatable
                 ->where('perfil_permissao.incluir', true))
             ->pluck('id');
     }
+
+    /**
+     * Quem, NA MATRIZ, alcança este recurso — os destinatários de um aviso.
+     *
+     * A generalização de `idsDeQuemTriaTarefas` para os eventos fora do quadro:
+     * o faturamento gerado é notícia para quem VÊ faturamento, o cliente
+     * aguardando licença para quem EDITA clientes — a mesma capacidade que abre
+     * a tela decide quem é avisado, e duas respostas divergiriam.
+     *
+     * Sempre sem escopo de revenda, porque os eventos que perguntam isto são da
+     * matriz: a conta de revenda pode até carregar a permissão no perfil, mas o
+     * menu barra a tela antes de olhar permissão — e um aviso apontando para um
+     * endereço que responde 403 ensinaria a ignorar o sino. Aviso PARA revenda
+     * escolhe os destinatários pela revenda, não por capacidade.
+     *
+     * A consulta por capacidade, e não por slug de perfil, é de propósito: o
+     * dia em que o financeiro ganhar `faturamento` no perfil próprio, ele entra
+     * nos avisos sem ninguém lembrar de mexer aqui.
+     *
+     * @return Collection<int, int>
+     */
+    public static function idsDeQuemVe(string $recurso, string $acao): Collection
+    {
+        return self::query()
+            ->where('ativo', true)
+            ->whereNull('revenda_id')
+            ->whereHas('perfis.permissoes', fn ($query) => $query
+                ->where('recurso', $recurso)
+                ->where("perfil_permissao.{$acao}", true))
+            ->pluck('id');
+    }
+
+    /**
+     * Os administradores ativos — destinatários dos avisos que são sobre o
+     * SISTEMA, não sobre uma tela: conta mexida, sincronização caída.
+     *
+     * Por slug, e não por capacidade, porque "administrador" aqui é o papel, e
+     * não um recurso: o evento interessa a quem responde pelo painel inteiro.
+     * Desativado fica de fora pelo mesmo motivo de `idsDeQuemTriaTarefas` — um
+     * sino que ninguém pode ler não avisa, acumula.
+     *
+     * @return Collection<int, int>
+     */
+    public static function idsDeAdminsAtivos(): Collection
+    {
+        return self::query()
+            ->where('ativo', true)
+            ->whereHas('perfis', fn ($query) => $query->where('slug', 'admin'))
+            ->pluck('id');
+    }
 }
