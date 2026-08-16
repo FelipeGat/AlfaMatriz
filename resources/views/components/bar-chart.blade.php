@@ -30,7 +30,11 @@
 @endphp
 
 <div class="w-full min-w-0 overflow-x-auto">
-    <svg viewBox="0 0 {{ $largura }} {{ $altura }}" class="w-full h-auto min-w-[560px]"
+    {{-- O teto de 720px é o próprio viewBox: os rótulos são desenhados em
+         10/11px NESSA escala, e deixar o SVG esticar com o painel multiplica
+         a fonte junto — num painel de largura inteira o "38,2k" saía em ~16px.
+         Abaixo de 720 ele continua encolhendo como sempre encolheu. --}}
+    <svg viewBox="0 0 {{ $largura }} {{ $altura }}" class="w-full h-auto min-w-[560px] max-w-[720px]"
          role="img" aria-label="Entradas e saídas dos últimos {{ $series->count() }} meses">
         {{-- Quatro linhas de grade: o suficiente para estimar altura sem virar papel milimetrado. --}}
         @for ($i = 0; $i <= 3; $i++)

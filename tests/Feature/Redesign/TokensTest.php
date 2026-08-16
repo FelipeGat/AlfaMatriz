@@ -158,7 +158,10 @@ class TokensTest extends TestCase
         );
 
         // As telas consomem token, não hexadecimal. (welcome.blade.php é a
-        // página padrão do Laravel, fora do painel e fora do redesign.)
+        // página padrão do Laravel, fora do painel e fora do redesign; o
+        // documento dos Relatórios — prévia/PDF/impressão — é papel, que
+        // circula impresso fora do tema: lá o hexadecimal é o meio, não fuga
+        // do token.)
         $cruas = [];
         foreach ($this->viewsDoPainel() as $view) {
             if (preg_match_all('/#[0-9a-fA-F]{6}\b/', file_get_contents($view), $achados)) {
@@ -274,7 +277,8 @@ class TokensTest extends TestCase
         foreach ($iterador as $arquivo) {
             if ($arquivo->isFile()
                 && str_ends_with($arquivo->getFilename(), '.blade.php')
-                && $arquivo->getFilename() !== 'welcome.blade.php') {
+                && $arquivo->getFilename() !== 'welcome.blade.php'
+                && ! str_ends_with($arquivo->getPathname(), 'relatorios/documento.blade.php')) {
                 $views[] = $arquivo->getPathname();
             }
         }

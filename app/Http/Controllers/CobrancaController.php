@@ -227,38 +227,8 @@ class CobrancaController extends Controller
         });
     }
 
-    /**
-     * Distribui o total em aberto nas quatro faixas de vencimento do
-     * desenho: a vencer, 1 a 15 dias de atraso, 16 a 30, e mais de 30.
-     *
-     * @param  \Illuminate\Support\Collection<int, Cobranca>  $pendentes
-     * @return array<string, array{rotulo: string, valor: float}>
-     */
-    private function faixasDeAging($pendentes, \Carbon\Carbon $hoje): array
-    {
-        $faixas = [
-            'a_vencer' => ['rotulo' => 'A vencer', 'valor' => 0.0],
-            '1_15' => ['rotulo' => '1 a 15 dias', 'valor' => 0.0],
-            '16_30' => ['rotulo' => '16 a 30 dias', 'valor' => 0.0],
-            'mais_30' => ['rotulo' => '+30 dias', 'valor' => 0.0],
-        ];
-
-        foreach ($pendentes as $cobranca) {
-            $diasParaVencer = $hoje->diffInDays($cobranca->data_vencimento, false);
-            $diasDeAtraso = $diasParaVencer < 0 ? abs($diasParaVencer) : 0;
-
-            $chave = match (true) {
-                $diasDeAtraso === 0 => 'a_vencer',
-                $diasDeAtraso <= 15 => '1_15',
-                $diasDeAtraso <= 30 => '16_30',
-                default => 'mais_30',
-            };
-
-            $faixas[$chave]['valor'] += (float) $cobranca->valor;
-        }
-
-        return $faixas;
-    }
+    // `faixasDeAging()` subiu para o Controller base quando os Relatórios
+    // passaram a repartir o mesmo em-aberto pelas mesmas quatro faixas.
 
     public function show(Cobranca $cobranca)
     {

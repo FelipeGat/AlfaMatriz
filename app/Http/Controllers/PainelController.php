@@ -102,20 +102,8 @@ class PainelController extends Controller
         ]);
     }
 
-    /**
-     * A competência dos cinco cards do topo — "AAAA-MM" validado, ou o mês
-     * corrente quando a URL não pede um em especial ou pede algo malformado.
-     */
-    private function competenciaSelecionada(Request $request): string
-    {
-        $valor = $request->query('competencia');
-
-        if (is_string($valor) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $valor)) {
-            return $valor;
-        }
-
-        return now()->format('Y-m');
-    }
+    // `competenciaSelecionada()` subiu para o Controller base quando os
+    // Relatórios passaram a navegar por competência com a mesma URL.
 
     /**
      * As opções rápidas do filtro do gráfico — mês anterior, mês atual ou
@@ -289,40 +277,8 @@ class PainelController extends Controller
         ]);
     }
 
-    /**
-     * Monta um ranking comparável a partir de uma lista de `nome`/`valor`.
-     *
-     * `share` é a fatia do total (o que a faixa segmentada desenha) e
-     * `largura` é o tamanho relativo AO LÍDER (o que a barra da linha
-     * desenha). São duas perguntas diferentes — "quanto disso é meu?" e
-     * "quão longe estou do primeiro?" — e usar uma no lugar da outra achata
-     * o ranking inteiro.
-     *
-     * @param  \Illuminate\Support\Collection<int, array{nome: string, valor: float}>  $itens
-     */
-    private function ranking(\Illuminate\Support\Collection $itens, string $cor): array
-    {
-        $itens = $itens->filter(fn ($i) => $i['valor'] > 0)->sortByDesc('valor')->values();
-
-        $total = (float) $itens->sum('valor');
-        $lider = $itens->first();
-        $maior = (float) ($lider['valor'] ?? 0);
-
-        return [
-            'cor' => $cor,
-            'total' => $total,
-            'lider' => $lider ? [
-                'nome' => $lider['nome'],
-                'valor' => $lider['valor'],
-                'share' => $total > 0 ? $lider['valor'] / $total : 0,
-            ] : null,
-            'itens' => $itens->map(fn ($item, $i) => $item + [
-                'posicao' => str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT),
-                'share' => $total > 0 ? $item['valor'] / $total : 0,
-                'largura' => $maior > 0 ? $item['valor'] / $maior : 0,
-            ])->all(),
-        ];
-    }
+    // `ranking()` subiu para o Controller base quando os Relatórios passaram
+    // a falar a mesma gramática de três camadas do `<x-ranking>`.
 
     /**
      * O Dashboard Comercial de quem NÃO tem `dashboard` — só o próprio funil,

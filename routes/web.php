@@ -21,6 +21,7 @@ use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PrecoAtacadoController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\RevendaController;
 use App\Http\Controllers\SaudeController;
 use App\Http\Controllers\SistemaController;
@@ -98,6 +99,20 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // `dashboard` (o painel da empresa inteira) e não `dashboard_comercial`.
     Route::post('/comercial/metas', [PainelController::class, 'salvarMeta'])->name('comercial.metas.salvar')
         ->middleware('permissao:dashboard,editar');
+    // `relatorios` é recurso próprio (ver `PerfilPermissaoSeeder`): a tela
+    // atravessa as quatro áreas e mostra o dinheiro da casa, então a porta não
+    // podia pegar carona em nenhuma permissão de área. A seção vai na query
+    // (`?secao=financeiro`), não na rota — é a mesma tela com outro recorte,
+    // como o `?aba=` de Produtos e Usuários.
+    Route::get('/relatorios', [RelatorioController::class, 'index'])->name('relatorios.index')
+        ->middleware('permissao:relatorios');
+    // Exportar pede `imprimir`, como o download de anexos das telas
+    // financeiras: levar o dado embora é mais que ler a tela. A prévia pede o
+    // mesmo — ela é o próprio documento, só que aberto no navegador.
+    Route::get('/relatorios/exportar', [RelatorioController::class, 'exportar'])->name('relatorios.exportar')
+        ->middleware('permissao:relatorios,imprimir');
+    Route::get('/relatorios/exportar/previa', [RelatorioController::class, 'previa'])->name('relatorios.previa')
+        ->middleware('permissao:relatorios,imprimir');
 
     Route::get('produtos', [ProdutoController::class, 'index'])->name('produtos.index')
         ->middleware('permissao:sistemas');

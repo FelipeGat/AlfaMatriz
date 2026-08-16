@@ -87,6 +87,14 @@ class ComponentesTest extends TestCase
                 continue;
             }
 
+            // O documento dos Relatórios (prévia/PDF/impressão) monta <table>
+            // na mão porque o dompdf não renderiza componente Blade com
+            // flex/grid: é papel — não tem janela estreita nem coluna de
+            // ações para proteger.
+            if ($tela === 'relatorios/documento.blade.php') {
+                continue;
+            }
+
             if (str_contains($this->conteudo($tela), '<table')) {
                 $foraDoComponente[] = $tela;
             }

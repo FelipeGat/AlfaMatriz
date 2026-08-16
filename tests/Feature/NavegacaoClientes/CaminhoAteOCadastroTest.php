@@ -131,11 +131,22 @@ class CaminhoAteOCadastroTest extends TestCase
             foreach ([$doMenu, ...$this->linksDaPagina($pagina->getContent())] as $candidato) {
                 $destino = $this->actingAs($admin)->get($candidato);
 
+                // Download não é página: a exportação dos Relatórios responde
+                // em stream (CSV) ou binário (PDF), sem HTML para navegar — e
+                // o stream nem tem `status()` para perguntar.
+                if ($destino->baseResponse instanceof \Symfony\Component\HttpFoundation\StreamedResponse) {
+                    continue;
+                }
+
                 if ($destino->status() !== 200) {
                     continue;
                 }
 
                 $html = $destino->getContent();
+
+                if (! is_string($html)) {
+                    continue;
+                }
 
                 if (str_contains($html, 'Academia Corpo em Movimento')
                     && str_contains($html, self::CAMPO_DO_FORMULARIO)

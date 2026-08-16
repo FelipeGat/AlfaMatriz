@@ -186,39 +186,8 @@ class ContaPagarController extends Controller
         });
     }
 
-    /**
-     * Distribui o total em aberto nas quatro faixas de vencimento — a mesma
-     * gramática das Receitas, porque a pergunta é a mesma: onde o dinheiro
-     * está travado.
-     *
-     * @param  \Illuminate\Support\Collection<int, ContaPagar>  $emAberto
-     * @return array<string, array{rotulo: string, valor: float}>
-     */
-    private function faixasDeAging($emAberto, \Illuminate\Support\Carbon $hoje): array
-    {
-        $faixas = [
-            'a_vencer' => ['rotulo' => 'A vencer', 'valor' => 0.0],
-            '1_15' => ['rotulo' => '1 a 15 dias', 'valor' => 0.0],
-            '16_30' => ['rotulo' => '16 a 30 dias', 'valor' => 0.0],
-            'mais_30' => ['rotulo' => '+30 dias', 'valor' => 0.0],
-        ];
-
-        foreach ($emAberto as $conta) {
-            $paraVencer = $hoje->diffInDays(\Illuminate\Support\Carbon::parse($conta->data_vencimento), false);
-            $atraso = $paraVencer < 0 ? (int) abs($paraVencer) : 0;
-
-            $chave = match (true) {
-                $atraso === 0 => 'a_vencer',
-                $atraso <= 15 => '1_15',
-                $atraso <= 30 => '16_30',
-                default => 'mais_30',
-            };
-
-            $faixas[$chave]['valor'] += (float) $conta->valor;
-        }
-
-        return $faixas;
-    }
+    // `faixasDeAging()` subiu para o Controller base: Receitas, Despesas e
+    // Relatórios repartem o mesmo em-aberto pelas mesmas quatro faixas.
 
     public function create()
     {

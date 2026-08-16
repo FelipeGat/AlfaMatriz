@@ -834,9 +834,9 @@ class IndicadoresService
      *
      * @return array{total: int, abertos: int, fechados: int, perdidos: int, taxa_conversao: float, pipeline_valor: float, ticket_medio: float}
      */
-    public function funilKpis(?int $vendedorId = null): array
+    public function funilKpis(?int $vendedorId = null, array $filtros = []): array
     {
-        $leads = Lead::query()->when($vendedorId, fn ($q) => $q->where('vendedor_id', $vendedorId))->get();
+        $leads = $this->leadsFiltrados($vendedorId, $filtros)->get();
 
         $abertos = $leads->whereNotIn('estagio', Lead::ESTAGIOS_TERMINAIS);
         $fechados = $leads->where('estagio', 'cliente_ativo');
@@ -868,10 +868,9 @@ class IndicadoresService
      *
      * @return list<array{estagio: string, label: string, quantidade: int, valor: float}>
      */
-    public function funilPorEstagio(?int $vendedorId = null): array
+    public function funilPorEstagio(?int $vendedorId = null, array $filtros = []): array
     {
-        $porEstagio = Lead::query()
-            ->when($vendedorId, fn ($q) => $q->where('vendedor_id', $vendedorId))
+        $porEstagio = $this->leadsFiltrados($vendedorId, $filtros)
             ->selectRaw('estagio, COUNT(*) as quantidade, COALESCE(SUM(valor_estimado), 0) as valor')
             ->groupBy('estagio')
             ->get()
@@ -893,12 +892,12 @@ class IndicadoresService
      *
      * @return Collection<int, array{vendedor_id: int, nome: string, valor: float, quantidade: int}>
      */
-    public function vendasPorVendedor(string $competencia): Collection
+    public function vendasPorVendedor(string $competencia, array $filtros = []): Collection
     {
         $inicio = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
         $fim = $inicio->copy()->endOfMonth();
 
-        return Lead::query()
+        return $this->leadsFiltrados(null, $filtros)
             ->where('estagio', 'cliente_ativo')
             ->whereBetween('estagio_atualizado_em', [$inicio, $fim])
             ->whereNotNull('vendedor_id')
@@ -912,5 +911,28 @@ class IndicadoresService
                 'quantidade' => $leads->count(),
             ])
             ->values();
+    }
+
+    /**
+     * O recorte de lead que os três métodos do funil compartilham — vendedor,
+     * origem e sistema, os eixos que os Relatórios filtram. Um lugar só, pela
+     * mesma razão de o serviço existir: três métodos aplicando o recorte por
+     * conta própria é como "origem = Site" passa a significar três coisas.
+     *
+     * `$vendedorId` continua como parâmetro próprio porque o Dashboard
+     * Comercial já o passa assim; `$filtros['vendedor_id']` cobre quem chega
+     * com o recorte inteiro num array (ver `vendasPorVendedor()`, onde o
+     * vendedor é filtro e não identidade da linha).
+     *
+     * @param  array{vendedor_id?: ?int, origem?: ?string, sistema_id?: ?int}  $filtros
+     */
+    private function leadsFiltrados(?int $vendedorId, array $filtros = [])
+    {
+        $vendedorId ??= $filtros['vendedor_id'] ?? null;
+
+        return Lead::query()
+            ->when($vendedorId, fn ($q) => $q->where('vendedor_id', $vendedorId))
+            ->when($filtros['origem'] ?? null, fn ($q, $origem) => $q->where('origem', $origem))
+            ->when($filtros['sistema_id'] ?? null, fn ($q, $sistemaId) => $q->where('sistema_id', $sistemaId));
     }
 }

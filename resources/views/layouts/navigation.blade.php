@@ -26,6 +26,10 @@
             // perfil comercial tinha o painel como casa e nenhuma porta no
             // menu levando até ela.
             ['route' => 'comercial', 'recurso' => 'dashboard_comercial', 'pattern' => 'comercial', 'label' => 'Comercial', 'icon' => 'clipboard', 'matriz' => true],
+            // Nos Painéis, e não num grupo próprio: relatório é leitura de
+            // gestão, mesma família das três telas acima. As quatro seções
+            // moram dentro da tela (`?secao=`), não no menu.
+            ['route' => 'relatorios.index', 'recurso' => 'relatorios', 'pattern' => 'relatorios.*', 'label' => 'Relatórios', 'icon' => 'chart-bar', 'matriz' => true],
         ],
         'Comercial' => [
             ['route' => 'leads.index', 'recurso' => 'leads', 'pattern' => 'leads.*', 'label' => 'Funil de Vendas', 'icon' => 'view-grid'],

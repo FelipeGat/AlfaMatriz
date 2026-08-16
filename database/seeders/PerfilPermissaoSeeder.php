@@ -58,6 +58,16 @@ class PerfilPermissaoSeeder extends Seeder
             // juntas por acidente, como vinham.
             'tarefas_triagem' => 'Triagem de tarefas (priorizar e direcionar)',
 
+            // A aba de Relatórios atravessa as quatro áreas — funil, caixa,
+            // quadro de tarefas e administração — e a seção financeira mostra
+            // o dinheiro da casa. Por isso recurso PRÓPRIO, e não carona em
+            // `dashboard`: pendurar ali obrigaria todo relatório futuro a
+            // carregar junto a visão do caixa, e um recurso só se separa sem
+            // dor enquanto ninguém depende do acoplamento. Espelha
+            // `2026_08_16_120000_permissao_de_relatorios.php`, que é quem leva
+            // isto a produção; aqui é só o estado inicial de quem semeia.
+            'relatorios' => 'Relatórios (comercial, financeiro, desenvolvimento e sistema)',
+
             // Recurso próprio, e não uma aba de `usuarios`: o rastro atravessa
             // as áreas — a mesma tela mostra receita, cliente, salário em
             // despesa e mudança de permissão. Pendurá-lo em qualquer permissão
@@ -113,6 +123,16 @@ class PerfilPermissaoSeeder extends Seeder
         foreach (['leads', 'faturamento'] as $recurso) {
             $financeiro->permissoes()->syncWithoutDetaching([
                 $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => false, 'editar' => false, 'imprimir' => true, 'excluir' => false],
+            ]);
+        }
+
+        // Relatórios é tela de LEITURA — não existe o que incluir ou editar
+        // nela, então as duas ações já nascem negadas em vez de ficarem como
+        // promessa vazia na grade. O estado inicial acompanha quem já vê os
+        // painéis da casa (`dashboard`): financeiro e operação.
+        foreach ([$financeiro, $operacao] as $perfil) {
+            $perfil->permissoes()->syncWithoutDetaching([
+                $todasPermissoes['relatorios'] => ['ler' => true, 'incluir' => false, 'editar' => false, 'imprimir' => true, 'excluir' => false],
             ]);
         }
 
