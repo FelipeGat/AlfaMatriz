@@ -1,0 +1,10 @@
+<b>📋 AlfaMatriz — Changelog 16/08/2026</b>
+<i>A busca de Tarefas passa a alcançar qualquer texto ou número da tarefa</i>
+
+<b>🔎 Tarefas — busca por qualquer texto ou número</b>
+
+• <b>A busca do histórico (e do quadro) agora varre a tarefa inteira.</b> Além de título, resumo, detalhes, comentários, sistema, responsável e número do card, ela alcança o checklist, os motivos de bloqueio e de retorno, os motivos registrados na linha do tempo, as notas dos relatórios de teste, o nome dos anexos e a versão de produção. Qualquer palavra ou número que tenha sido escrito na tarefa agora a encontra — um número de chamado anotado no checklist, o nome de um arquivo anexado ou "o que saiu na 9.4.2".
+
+• <b>O campo de busca anuncia o alcance novo.</b> Em vez de enumerar uma lista de campos, o texto de ajuda agora diz o que vale: buscar por qualquer texto ou número da tarefa.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

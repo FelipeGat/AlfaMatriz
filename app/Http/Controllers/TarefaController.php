@@ -1699,13 +1699,14 @@ class TarefaController extends Controller
     /**
      * Aplica o recorte comum às duas abas.
      *
-     * A busca varre título, resumo, detalhes E os comentários: quem procura
-     * uma tarefa pelo número do chamado ou pelo nome do cliente costuma ter
-     * escrito isso no corpo, não no título — e desde que a tarefa tem
-     * conversa, o corpo mais provável é justamente o comentário, que é onde o
-     * assunto continua depois de a tarefa nascer. As condições vão dentro de
-     * um `where` aninhado — soltas, o `orWhere` escaparia do `whereIn` de
-     * status e o quadro passaria a mostrar tarefa concluída.
+     * A busca varre TODO texto ou número gravado na tarefa: título, resumo,
+     * detalhes, comentários, checklist, motivos (de bloqueio, de retorno e os
+     * da linha do tempo), notas de relatório de teste, nome de anexo e versão
+     * de produção. Quem procura uma tarefa lembra de UMA palavra que viu nela
+     * — e não de em qual campo estava; cada campo fora do alcance é uma tela
+     * vazia para uma palavra que está escrita na tarefa. As condições vão
+     * dentro de um `where` aninhado — soltas, o `orWhere` escaparia do
+     * `whereIn` de status e o quadro passaria a mostrar tarefa concluída.
      *
      * "Sem sistema" e "Sem responsável" são filtro de verdade, não enfeite: a
      * coluna Aberta é a fila de triagem, e achar o que ainda não tem dono é
@@ -1739,6 +1740,22 @@ class TarefaController extends Controller
                     ->where('nome', 'like', '%'.$filtros['busca'].'%'))
                 ->orWhereHas('responsavel', fn ($pessoa) => $pessoa
                     ->where('name', 'like', '%'.$filtros['busca'].'%'))
+                ->orWhereHas('itens', fn ($item) => $item
+                    ->where('texto', 'like', '%'.$filtros['busca'].'%'))
+                // Os motivos da linha do tempo E as marcas na tarefa: a
+                // devolução antiga só existe no evento, e o bloqueio/retorno
+                // vigente só na marca — cobrir um dos dois deixaria a mesma
+                // frase ora achável, ora não, conforme a idade dela.
+                ->orWhereHas('eventos', fn ($evento) => $evento
+                    ->where('motivo', 'like', '%'.$filtros['busca'].'%'))
+                ->orWhere('bloqueio_motivo', 'like', '%'.$filtros['busca'].'%')
+                ->orWhere('retorno_motivo', 'like', '%'.$filtros['busca'].'%')
+                ->orWhereHas('relatoriosTeste', fn ($relatorio) => $relatorio
+                    ->where('notas', 'like', '%'.$filtros['busca'].'%'))
+                // Só o NOME do anexo — o conteúdo do arquivo não está no banco.
+                ->orWhereHas('anexos', fn ($anexo) => $anexo
+                    ->where('nome_original', 'like', '%'.$filtros['busca'].'%'))
+                ->orWhere('versao_producao', 'like', '%'.$filtros['busca'].'%')
                 // No FIM da cadeia de propósito: como primeira condição do
                 // grupo, o `or` seria descartado na compilação e o `and` do
                 // título grudaria neste — a busca por texto passaria a valer

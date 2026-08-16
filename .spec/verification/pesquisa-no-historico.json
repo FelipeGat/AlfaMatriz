@@ -1,0 +1,52 @@
+{
+  "feature": "pesquisa-no-historico",
+  "timestamp": "2026-08-16T11:45:13.984Z",
+  "gitRev": "fb4067f",
+  "command": "php tools/onp-spec-tap.php",
+  "reporter": "tap",
+  "exitCode": 0,
+  "testsParsed": 920,
+  "results": {
+    "AC-343": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FiltrosTarefasTest::test_busca_do_historico_varre_o_checklist @spec:AC-343",
+      "method": "tap"
+    },
+    "AC-344": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FiltrosTarefasTest::test_busca_do_historico_varre_o_motivo_da_linha_do_tempo @spec:AC-344",
+      "method": "tap"
+    },
+    "AC-345": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FiltrosTarefasTest::test_busca_varre_os_motivos_de_bloqueio_e_de_retorno @spec:AC-345",
+      "method": "tap"
+    },
+    "AC-346": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FiltrosTarefasTest::test_busca_do_historico_varre_as_notas_do_relatorio_de_teste @spec:AC-346",
+      "method": "tap"
+    },
+    "AC-347": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FiltrosTarefasTest::test_busca_do_historico_varre_o_nome_do_anexo @spec:AC-347",
+      "method": "tap"
+    },
+    "AC-348": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FiltrosTarefasTest::test_busca_do_historico_varre_a_versao_de_producao @spec:AC-348",
+      "method": "tap"
+    },
+    "AC-349": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FiltrosTarefasTest::test_alcance_novo_nao_traz_tarefa_encerrada_ao_quadro @spec:AC-349",
+      "method": "tap"
+    },
+    "AC-350": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\FiltrosTarefasTest::test_campo_de_busca_anuncia_o_alcance_novo @spec:AC-350",
+      "method": "tap"
+    }
+  },
+  "principles": {}
+}

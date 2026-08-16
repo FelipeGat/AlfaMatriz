@@ -5,6 +5,8 @@ namespace Tests\Feature\TarefasDesenvolvimento;
 use App\Http\Controllers\Controller;
 use App\Models\Sistema;
 use App\Models\Tarefa;
+use App\Models\TarefaEvento;
+use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -432,6 +434,225 @@ class FiltrosTarefasTest extends TestCase
         sort($esperadas);
 
         $this->assertSame($esperadas, $encontradas);
+    }
+
+    /**
+     * Uma tarefa encerrada com texto neutro em todos os campos que a busca já
+     * varria — o que os testes de alcance novo medem é o campo satélite, e
+     * qualquer termo no corpo responderia por ele.
+     */
+    private function encerradaNeutra(User $criador, array $sobrescreve = []): Tarefa
+    {
+        return Tarefa::factory()->create($sobrescreve + [
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Encerrada sem o termo procurado',
+            'resumo' => 'Sem relacao com o termo procurado',
+            'detalhes' => 'Sem relacao com o termo procurado',
+            'status' => 'concluida',
+        ]);
+    }
+
+    /**
+     * @spec:AC-343 A busca do histórico acha a tarefa pelo item do checklist —
+     * o combinado costuma estar escrito lá, não no título.
+     */
+    public function test_busca_do_historico_varre_o_checklist(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $alvo = $this->encerradaNeutra($criador, ['titulo' => 'Com checklist']);
+        $this->encerradaNeutra($criador, ['titulo' => 'Sem checklist']);
+
+        $alvo->itens()->create(['texto' => 'Conferir o chamado QX-77341']);
+
+        $resposta = $this->actingAs($usuario)
+            ->get(route('tarefas.historico', ['busca' => 'QX-77341']))
+            ->assertOk();
+
+        $this->assertSame(['Com checklist'], $resposta->viewData('tarefas')->pluck('titulo')->all());
+    }
+
+    /**
+     * @spec:AC-344 A busca do histórico acha a tarefa pelo motivo registrado
+     * na linha do tempo — a devolução explica a tarefa melhor que o título.
+     */
+    public function test_busca_do_historico_varre_o_motivo_da_linha_do_tempo(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $alvo = $this->encerradaNeutra($criador, ['titulo' => 'Com devolucao']);
+        $this->encerradaNeutra($criador, ['titulo' => 'Sem devolucao']);
+
+        TarefaEvento::create([
+            'tarefa_id' => $alvo->id,
+            'de_status' => 'em_revisao',
+            'para_status' => 'em_desenvolvimento',
+            'motivo' => 'Voltou porque o calculo do rateio saiu errado',
+            'entrou_em' => '2026-08-10 10:00',
+        ]);
+
+        $resposta = $this->actingAs($usuario)
+            ->get(route('tarefas.historico', ['busca' => 'rateio']))
+            ->assertOk();
+
+        $this->assertSame(['Com devolucao'], $resposta->viewData('tarefas')->pluck('titulo')->all());
+    }
+
+    /**
+     * @spec:AC-345 A busca acha a tarefa pelo motivo de bloqueio ou de
+     * retorno — as marcas vivem na própria tarefa, não na linha do tempo.
+     */
+    public function test_busca_varre_os_motivos_de_bloqueio_e_de_retorno(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Travada esperando terceiro',
+            'resumo' => 'Sem relacao com o termo procurado',
+            'detalhes' => 'Sem relacao com o termo procurado',
+            'status' => 'em_desenvolvimento',
+            'bloqueado_em' => now(),
+            'bloqueio_motivo' => 'Esperando a homologacao do gateway',
+        ]);
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Devolvida para ajuste',
+            'resumo' => 'Sem relacao com o termo procurado',
+            'detalhes' => 'Sem relacao com o termo procurado',
+            'status' => 'em_desenvolvimento',
+            'retorno_de' => 'em_revisao',
+            'retorno_motivo' => 'Faltou tratar o arredondamento do desconto',
+        ]);
+
+        foreach (['homologacao do gateway' => 'Travada esperando terceiro',
+            'arredondamento' => 'Devolvida para ajuste'] as $termo => $titulo) {
+            $resposta = $this->actingAs($usuario)
+                ->get(route('tarefas.index', ['busca' => $termo]))
+                ->assertOk();
+
+            $this->assertSame([$titulo], $resposta->viewData('tarefas')->pluck('titulo')->all(),
+                "Buscar por \"{$termo}\" precisa achar \"{$titulo}\".");
+        }
+    }
+
+    /**
+     * @spec:AC-346 A busca do histórico acha a tarefa pelas notas do relatório
+     * de teste — é onde ficou escrito o que quebrou e o que se conferiu.
+     */
+    public function test_busca_do_historico_varre_as_notas_do_relatorio_de_teste(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $alvo = $this->encerradaNeutra($criador, ['titulo' => 'Com relatorio']);
+        $this->encerradaNeutra($criador, ['titulo' => 'Sem relatorio']);
+
+        TarefaRelatorioTeste::create([
+            'tarefa_id' => $alvo->id,
+            'aprovado' => false,
+            'notas' => 'Falhou no cenario de CPF duplicado',
+        ]);
+
+        $resposta = $this->actingAs($usuario)
+            ->get(route('tarefas.historico', ['busca' => 'CPF duplicado']))
+            ->assertOk();
+
+        $this->assertSame(['Com relatorio'], $resposta->viewData('tarefas')->pluck('titulo')->all());
+    }
+
+    /**
+     * @spec:AC-347 A busca do histórico acha a tarefa pelo nome do anexo —
+     * "aquela do contrato" é o nome do arquivo, não o título da tarefa.
+     */
+    public function test_busca_do_historico_varre_o_nome_do_anexo(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $alvo = $this->encerradaNeutra($criador, ['titulo' => 'Com anexo']);
+        $this->encerradaNeutra($criador, ['titulo' => 'Sem anexo']);
+
+        $alvo->anexos()->create([
+            'autor_id' => $criador->id,
+            'nome_original' => 'contrato-renovacao.pdf',
+            'nome_arquivo' => 'a1b2c3.pdf',
+            'mime' => 'application/pdf',
+            'caminho' => 'tarefas/a1b2c3.pdf',
+            'tamanho' => 1234,
+        ]);
+
+        $resposta = $this->actingAs($usuario)
+            ->get(route('tarefas.historico', ['busca' => 'contrato-renovacao']))
+            ->assertOk();
+
+        $this->assertSame(['Com anexo'], $resposta->viewData('tarefas')->pluck('titulo')->all());
+    }
+
+    /**
+     * @spec:AC-348 A busca do histórico acha a tarefa pela versão de produção
+     * — "o que saiu na 9.4.2?" é uma pergunta que o acervo precisa responder.
+     */
+    public function test_busca_do_historico_varre_a_versao_de_producao(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $this->encerradaNeutra($criador, ['titulo' => 'Da versao procurada', 'versao_producao' => 'v9.4.2']);
+        $this->encerradaNeutra($criador, ['titulo' => 'De outra versao', 'versao_producao' => 'v9.4.1']);
+
+        $resposta = $this->actingAs($usuario)
+            ->get(route('tarefas.historico', ['busca' => '9.4.2']))
+            ->assertOk();
+
+        $this->assertSame(['Da versao procurada'], $resposta->viewData('tarefas')->pluck('titulo')->all());
+    }
+
+    /**
+     * @spec:AC-349 O alcance novo não vaza tarefa encerrada para o quadro: as
+     * condições novas moram no mesmo grupo aninhado da busca — soltas, o
+     * `orWhere` escaparia do recorte de status.
+     */
+    public function test_alcance_novo_nao_traz_tarefa_encerrada_ao_quadro(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $emCurso = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id,
+            'titulo' => 'Em curso com o termo',
+            'resumo' => 'Sem relacao com o termo procurado',
+            'detalhes' => 'Sem relacao com o termo procurado',
+            'status' => 'em_desenvolvimento',
+        ]);
+        $encerrada = $this->encerradaNeutra($criador, ['titulo' => 'Encerrada com o termo']);
+
+        foreach ([$emCurso, $encerrada] as $tarefa) {
+            $tarefa->itens()->create(['texto' => 'Conferir o boleto-fantasma']);
+        }
+
+        $resposta = $this->actingAs($usuario)
+            ->get(route('tarefas.index', ['busca' => 'boleto-fantasma']))
+            ->assertOk();
+
+        $this->assertSame(['Em curso com o termo'], $resposta->viewData('tarefas')->pluck('titulo')->all());
+    }
+
+    /**
+     * @spec:AC-350 O campo de busca anuncia o alcance novo: "qualquer texto ou
+     * número da tarefa", em vez de enumerar uma lista de campos incompleta.
+     */
+    public function test_campo_de_busca_anuncia_o_alcance_novo(): void
+    {
+        $usuario = User::factory()->create();
+
+        $this->actingAs($usuario)
+            ->get(route('tarefas.historico'))
+            ->assertOk()
+            ->assertSee('Buscar por qualquer texto ou número da tarefa…', false);
     }
 
     private static function porPagina(): int

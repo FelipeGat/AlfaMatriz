@@ -23,8 +23,11 @@
     <label class="flex items-center gap-2 h-[34px] flex-1 min-w-[220px] max-w-[380px] px-3
                   rounded-control bg-input border border-line text-ink-faint focus-within:border-brand transition">
         <span class="h-4 w-4 shrink-0"><x-nav-icon name="search" /></span>
+        {{-- "Qualquer texto ou número" em vez de enumerar campos: a lista já
+             ficou incompleta uma vez, e o alcance agora é a tarefa inteira —
+             checklist, motivos, relatórios, anexos e versão inclusos. --}}
         <input type="search" name="busca" value="{{ $filtros['busca'] }}"
-               placeholder="Buscar título, resumo, sistema, responsável ou comentário…"
+               placeholder="Buscar por qualquer texto ou número da tarefa…"
                class="flex-1 min-w-0 bg-transparent border-0 p-0 text-[13px] text-ink placeholder-ink-faint focus:ring-0">
     </label>
 
