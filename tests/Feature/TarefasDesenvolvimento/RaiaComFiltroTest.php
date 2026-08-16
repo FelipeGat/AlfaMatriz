@@ -138,6 +138,124 @@ class RaiaComFiltroTest extends TestCase
     }
 
     /**
+     * @spec:AC-353 O filtro que fixa a dimensão da própria raia devolve o
+     * quadro plano: a única seção possível repetiria o que o filtro acabou de
+     * dizer. A escolha de raias fica guardada para quando o recorte abrir.
+     */
+    public function test_filtro_na_dimensao_da_propria_raia_devolve_o_quadro_plano(): void
+    {
+        [$dono, $sistema] = $this->baseComDuasPessoas();
+
+        foreach ([
+            ['raias' => 'responsavel', 'responsavel' => $dono->id],
+            ['raias' => 'sistema', 'sistema' => $sistema->id],
+        ] as $consulta) {
+            $html = $this->actingAs($dono)->get(route('tarefas.index', $consulta))
+                ->assertOk()->getContent();
+
+            // Nem tabela, nem grade empilhada com a barra fixa de etapas: o
+            // quadro plano de sempre. A âncora da barra é o fundo composto
+            // dela, como no teste do AC-252.
+            $this->assertStringContainsString('data-quadro', $html);
+            $this->assertStringNotContainsString('data-tabela-raias', $html);
+            $this->assertStringNotContainsString('background: linear-gradient(var(--board), var(--board)), rgb(var(--canvas))', $html);
+
+            // Só o recorte na tela — pelo TÍTULO das tarefas, porque os nomes
+            // de pessoa e de sistema continuam nos selects do filtro.
+            $this->assertStringContainsString('Tarefa do Rafael no AlfaGym', $html);
+            $this->assertStringNotContainsString('Tarefa da Camila no AlfaPet', $html);
+
+            // A escolha de raias sobrevive ao recorte: continua no campo
+            // escondido do formulário, pronta para agrupar de novo.
+            $this->assertStringContainsString('name="raias" value="'.$consulta['raias'].'"', $html);
+
+            // E a VOLTA está à vista: a pílula do recorte nomeia o filtro
+            // fixado e o ✕ dela tira só ele — não a query inteira, senão as
+            // raias iriam junto.
+            $this->assertStringContainsString('data-tirar-filtro="'.$consulta['raias'].'"', $html);
+            $this->assertStringContainsString($consulta['raias'] === 'responsavel' ? 'Rafael Lima' : 'AlfaGym', $html);
+        }
+    }
+
+    /**
+     * @spec:AC-355 O recorte ativo se anuncia: cada filtro ligado vira uma
+     * pílula no cabeçalho do quadro, e o ✕ de cada uma tira só o próprio
+     * filtro — com pessoa+sistema ligados, os dois aparecem nomeados.
+     */
+    public function test_os_filtros_ativos_aparecem_como_pilulas(): void
+    {
+        [$dono, $sistema] = $this->baseComDuasPessoas();
+
+        // Pessoa+sistema: as duas pílulas, cada uma tirando só o seu filtro.
+        $html = $this->actingAs($dono)->get(route('tarefas.index', [
+            'raias' => 'responsavel', 'responsavel' => $dono->id, 'sistema' => $sistema->id,
+        ]))->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-tirar-filtro="responsavel"', $html);
+        $this->assertStringContainsString('data-tirar-filtro="sistema"', $html);
+        $this->assertStringContainsString('Rafael Lima', $html);
+        $this->assertStringContainsString('AlfaGym', $html);
+
+        // O ✕ da pílula deixa os OUTROS filtros: o endereço dela ainda carrega
+        // o sistema quando tira a pessoa.
+        $posicao = strpos($html, 'data-tirar-filtro="responsavel"');
+        $linkDaPessoa = substr($html, strrpos(substr($html, 0, $posicao), '<a '), 400);
+        $this->assertStringContainsString('sistema='.$sistema->id, $linkDaPessoa);
+        $this->assertStringNotContainsString('responsavel='.$dono->id, $linkDaPessoa);
+
+        // A tabela agrupada também anuncia: o recorte de sistema aparece
+        // nomeado por cima das seções.
+        $tabela = $this->actingAs($dono)->get(route('tarefas.index', [
+            'raias' => 'responsavel', 'sistema' => $sistema->id,
+        ]))->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-tirar-filtro="sistema"', $tabela);
+
+        // Situação não vira pílula: os chips de contagem já acendem por ela.
+        $situacao = $this->actingAs($dono)->get(route('tarefas.index', [
+            'situacao' => 'travadas',
+        ]))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('data-tirar-filtro', $situacao);
+    }
+
+    /**
+     * @spec:AC-354 A faixa é uma porta: o "ver só estas" do cabeçalho aplica o
+     * filtro da mesma dimensão e leva ao quadro plano daquela pessoa/sistema.
+     */
+    public function test_o_cabecalho_da_faixa_leva_ao_quadro_so_dela(): void
+    {
+        [$dono, $sistema] = $this->baseComDuasPessoas();
+
+        // Na GRADE (raia sem filtro): cada faixa oferece a porta, apontando o
+        // filtro de responsável para a pessoa da faixa.
+        $grade = $this->actingAs($dono)->get(route('tarefas.index', [
+            'raias' => 'responsavel',
+        ]))->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-ver-so-a-faixa', $grade);
+        $this->assertStringContainsString('responsavel='.$dono->id, $grade);
+
+        // Na TABELA (raia com filtro cruzado): a mesma porta, somando o filtro
+        // da seção ao recorte que já está ligado.
+        $tabela = $this->actingAs($dono)->get(route('tarefas.index', [
+            'raias' => 'responsavel', 'sistema' => $sistema->id,
+        ]))->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-ver-so-a-faixa', $tabela);
+        $this->assertStringContainsString('responsavel='.$dono->id, $tabela);
+
+        // E a porta chega onde promete: o endereço dela é o cenário do AC-353,
+        // o quadro plano só com as tarefas da faixa.
+        $destino = $this->actingAs($dono)->get(route('tarefas.index', [
+            'raias' => 'responsavel', 'responsavel' => $dono->id,
+        ]))->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-quadro', $destino);
+        $this->assertStringNotContainsString('data-ver-so-a-faixa', $destino);
+    }
+
+    /**
      * @spec:AC-256 A porta de volta fica à vista, e não desfaz o filtro.
      */
     public function test_a_volta_para_a_grade_mantem_o_filtro(): void

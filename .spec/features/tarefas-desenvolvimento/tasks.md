@@ -466,3 +466,56 @@
   (classe `invisible`, aplicada um quadro após o dragstart para o navegador
   fotografar o fantasma antes) e o vão fica vazio de verdade; `largar()`
   devolve a visibilidade onde quer que o card tenha parado.
+
+## T-147 — O filtro que fixa a dimensão da própria raia devolve o quadro plano [concluida]
+- Refs: US-070, AC-353
+- Arquivos: app/Http/Controllers/TarefaController.php, resources/views/tarefas/_quadro.blade.php, tests/Feature/TarefasDesenvolvimento/RaiaComFiltroTest.php
+- Esforço: baixo
+- Notas: pedido do dono em 16/08/2026 — filtrar por um responsável (ou sistema)
+  com a raia da mesma dimensão ligada mostrava uma seção única cujo cabeçalho
+  repetia o filtro. `raias()` ganha o boolean `agrupado`: falso quando o modo é
+  `nenhuma` OU quando o filtro fixa a dimensão da raia (`sem` inclusive), e é
+  ele — não o modo — que a tela lê para empilhar faixas (`$comRaias`) e que o
+  `raiaViraTabela` exige para trocar a grade pela tabela. O MODO fica intacto de
+  propósito: o controle segmentado continua marcado e o campo escondido do
+  formulário o preserva, então limpar o recorte devolve as faixas sem a pessoa
+  reescolher. Os casos cruzados (raia por responsável + filtro de sistema)
+  continuam virando tabela, como AC-252 manda.
+
+## T-148 — A faixa da raia vira porta para o quadro só dela [concluida]
+- Refs: US-063, AC-354
+- Arquivos: app/Http/Controllers/TarefaController.php, resources/views/tarefas/_quadro.blade.php, resources/views/tarefas/_tabela-raias.blade.php, tests/Feature/TarefasDesenvolvimento/RaiaComFiltroTest.php
+- Esforço: baixo
+- Notas: o pedido real do dono por trás do T-147 (destrinchado em 16/08/2026):
+  quem liga a raia por Responsável quer ESCOLHER uma pessoa ali e ver só as
+  tarefas dela — a raia mostrando todo mundo era o incômodo, e o caminho pelo
+  select de filtro não era percebido. Cada faixa ganha `filtro` (o id — ou
+  `sem` — que o select da mesma dimensão usa) e o cabeçalho, na grade e na
+  tabela, ganha o link "ver só estas", que aplica esse filtro por URL e cai no
+  quadro plano do AC-353. T-147 e T-148 são as duas metades do mesmo gesto:
+  a porta e o destino.
+  Na primeira olhada do dono, dois acertos: (1) o link estava DESALINHADO —
+  texto menor ao lado do nome centrado por caixa flutua acima da linha de
+  base e lê como sobrescrito; os cabeçalhos de faixa passaram a
+  `items-baseline`; (2) faltava a VOLTA — o cabeçalho do quadro fixado ganhou
+  o chip "só X · ver tudo" (`data-ver-tudo-de-novo`), que tira só o filtro da
+  dimensão da raia. "Limpar recorte" não servia de volta: apaga a query
+  inteira, raias junto. O rótulo vem por `rotuloDoRecorte()`, buscado pelo id
+  porque a lista de tarefas pode estar vazia.
+
+## T-149 — O recorte ativo se anuncia em pílulas no cabeçalho do quadro [concluida]
+- Refs: US-070, AC-355
+- Arquivos: app/Http/Controllers/TarefaController.php, resources/views/tarefas/_quadro.blade.php, resources/views/tarefas/index.blade.php, tests/Feature/TarefasDesenvolvimento/RaiaComFiltroTest.php
+- Esforço: baixo
+- Notas: terceiro acerto da mesma conversa de 16/08/2026 — com pessoa+sistema
+  ligados, nada anunciava o recorte: os selects guardam o valor mas não o
+  mostram de longe, e a tela só contava "X de Y". `filtrosAtivos()` nomeia
+  cada filtro ligado (busca entre aspas, nomes por id porque o recorte pode
+  estar vazio) e o cabeçalho desenha uma pílula por filtro, cada ✕ tirando só
+  o seu — o chip único "só X · ver tudo" do T-148 foi ABSORVIDO por elas, e a
+  volta às faixas continua sendo tirar a pílula da dimensão fixada. `situacao`
+  não vira pílula: os chips de contagem já acendem quando ela liga. De
+  carona, um defeito latente: o `data-pedaco="chips-do-quadro"` era o
+  contêiner inteiro do cabeçalho, e a troca parcial (innerHTML = só `_chips`)
+  engolia o "ver como quadro" — o pedaço agora embrulha exatamente o que a
+  partial devolve.

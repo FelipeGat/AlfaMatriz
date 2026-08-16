@@ -14,7 +14,7 @@
      * teclado sobrevivem à troca — o componente Alpine não é recriado, só o
      * conteúdo dele.
      *
-     * Espera: $chips, $etapas, $raias, $filtros.
+     * Espera: $chips, $etapas, $raias, $filtros, $recortes.
      */
 @endphp
 
@@ -66,7 +66,32 @@
         também é notícia. Ver `chipsDoQuadro` para o porquê da
         divergência com o protótipo.
     --}}
-    <div class="ml-auto min-w-0 flex items-center gap-2 overflow-x-auto" data-pedaco="chips-do-quadro">
+    {{-- O `data-pedaco` NÃO é este contêiner: as ações parciais trocam o
+         innerHTML do pedaço por SÓ os chips de contagem (`_chips`), e tudo o
+         mais que morasse dentro dele — as pílulas, o "ver como quadro" —
+         sumiria no primeiro clique num checklist. O pedaço é o embrulho
+         estreito lá embaixo, com exatamente o que a partial devolve. --}}
+    <div class="ml-auto min-w-0 flex items-center gap-2 overflow-x-auto">
+        {{-- O recorte ativo, nomeado (AC-355): o select guarda o valor mas
+             não o anuncia — com pessoa+sistema ligados a tela só contava
+             "X de Y tarefas". Uma pílula por filtro, e cada ✕ tira só o seu:
+             no quadro fixado da raia (AC-353), tirar a pílula da pessoa É a
+             volta às faixas. `situacao` não vira pílula — os chips de
+             contagem ao lado já acendem quando ela liga. --}}
+        @if ($recortes)
+            <span class="shrink-0 font-mono text-[10px] uppercase tracking-caps text-ink-faint">Recorte</span>
+            @foreach ($recortes as $recorte)
+                <a href="{{ request()->fullUrlWithQuery([$recorte['parametro'] => null]) }}"
+                   data-tirar-filtro="{{ $recorte['parametro'] }}"
+                   title="Tirar este filtro do recorte"
+                   class="shrink-0 h-[26px] px-2.5 rounded-badge border border-line flex items-center gap-1.5
+                          text-[12px] text-ink-dim hover:text-ink transition">
+                    <span class="h-3 w-3"><x-nav-icon name="x-mark" :peso="1.8" /></span>
+                    {{ $recorte['rotulo'] }}
+                </a>
+            @endforeach
+        @endif
+
         {{-- A porta de volta para a grade, SEM tirar o filtro (AC-256): trocar o
              layout de alguém e não deixar como voltar é decidir por ela. Só
              aparece quando a troca aconteceu — link para o estado em que já se
@@ -82,14 +107,19 @@
             </a>
         @endif
 
-        @include('tarefas._chips', ['chips' => $chips])
+        <div class="shrink-0 flex items-center gap-2" data-pedaco="chips-do-quadro">
+            @include('tarefas._chips', ['chips' => $chips])
+        </div>
     </div>
 </div>
 
 @php
     // Sem raias o quadro é uma faixa só, que ocupa a altura toda.
     // Com raias ele empilha, e a rolagem passa a ser vertical.
-    $comRaias = $raias['modo'] !== 'nenhuma';
+    // `agrupado`, e não o modo: com o filtro fixando a dimensão da própria
+    // raia (AC-353) o modo continua escolhido, mas a faixa é uma só — e o
+    // que se desenha é o quadro plano.
+    $comRaias = $raias['agrupado'];
 @endphp
 
 {{--
@@ -228,8 +258,26 @@
 
     @foreach ($raias['faixas'] as $faixa)
         @if ($faixa['titulo'])
-            <header class="shrink-0 flex items-center gap-2 pt-1">
+            {{-- `items-baseline`, não `items-center`: o link e o selo são
+                 texto MENOR ao lado do nome, e centrar caixas de alturas
+                 diferentes deixa o texto pequeno flutuando acima da linha do
+                 nome — lia como sobrescrito. Texto ao lado de texto alinha
+                 pela linha de base. --}}
+            <header class="shrink-0 flex items-baseline gap-2 pt-1">
                 <h3 class="font-display text-[13.5px] font-semibold text-ink">{{ $faixa['titulo'] }}</h3>
+
+                {{-- A faixa é uma PORTA, não só um título (AC-354): quem
+                     agrupou por pessoa quer, no passo seguinte, olhar UMA
+                     pessoa — e sem este link o caminho era descobrir que o
+                     select de filtro faz isso. Link, e não botão, pelo mesmo
+                     motivo do controle de raias: cada recorte é um endereço.
+                     O estilo é o do "Limpar recorte", que já é o par dele. --}}
+                <a href="{{ request()->fullUrlWithQuery([$raias['modo'] => $faixa['filtro']]) }}"
+                   data-ver-so-a-faixa
+                   title="Aplicar o filtro e ver o quadro só com estas tarefas"
+                   class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
+                    ver só estas
+                </a>
 
                 {{--
                     Mais de duas em andamento: o selo não é elogio

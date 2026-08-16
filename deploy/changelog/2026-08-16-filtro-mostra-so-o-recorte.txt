@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 16/08/2026</b>
+<i>Quadro de tarefas: das raias agora se escolhe UMA pessoa ou UM sistema e se vê só o quadro dele</i>
+
+<b>🧭 Quadro de tarefas</b>
+
+• <b>Cada faixa da visão em raias ganhou o link "ver só estas".</b> Agrupar por Responsável ou por Sistema mostrava todo mundo em seções — e não havia caminho evidente para o passo seguinte, que é olhar UMA pessoa ou UM sistema. O clique aplica o filtro daquela faixa e abre o quadro normal, só com as tarefas dela. Funciona também nas seções "Sem responsável" e "Sem sistema".
+
+• <b>Filtrar pela mesma dimensão da raia ligada devolve o quadro plano.</b> Antes, escolher um responsável no filtro com a raia por responsável ligada mostrava uma seção única, cujo cabeçalho repetia o que o filtro acabou de dizer. Agora vem o quadro limpo, só com o recorte — e a escolha de raias não se perde.
+
+• <b>O recorte ativo agora se anuncia.</b> Cada filtro ligado vira uma pílula nomeada no cabeçalho do quadro — "Camila Reis", "Serna S.A.", a busca entre aspas — e o ✕ de cada uma tira só aquele filtro, deixando os demais. Antes, com pessoa+sistema filtrados, a tela só contava "X de Y tarefas" e descobrir o quê estava filtrado exigia conferir os selects um a um. No quadro recortado pela raia, tirar a pílula da pessoa é também a volta às seções.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

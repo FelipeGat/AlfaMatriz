@@ -143,15 +143,17 @@ class TarefaController extends Controller
             ->esperandoRespostaDe(auth()->id())
             ->count();
 
-        $raias = $this->raias($request, $tarefas, $emCurso);
+        $raias = $this->raias($request, $tarefas, $emCurso, $filtros);
 
         $chips = $this->chipsDoQuadro($emCurso, $filtros, $esperandoVoce);
 
         $comoTabela = $this->raiaViraTabela($request, $raias, $filtros);
 
+        $recortes = $this->filtrosAtivos($filtros);
+
         return compact(
             'tarefas', 'colunas', 'etapas', 'filtros', 'totalNoQuadro', 'totalBloqueadas',
-            'esperandoVoce', 'chips', 'raias', 'comoTabela',
+            'esperandoVoce', 'chips', 'raias', 'comoTabela', 'recortes',
         ) + $this->listasDeFiltro();
     }
 
@@ -374,11 +376,14 @@ class TarefaController extends Controller
      *
      * `nenhuma` devolve uma faixa só, sem título: é o quadro de sempre, e a
      * tela não precisa perguntar se há raias para saber o que desenhar dentro
-     * de cada coluna.
+     * de cada coluna. `agrupado` é o que a tela lê para decidir entre empilhar
+     * faixas e desenhar o quadro plano — ele é falso também quando o filtro
+     * fixa a dimensão da própria raia (AC-353), com o `modo` preservado.
      *
      * @param  Collection<int, Tarefa>  $tarefas
      * @param  Collection<string, string>  $emCurso
-     * @return array{modo: string, faixas: array<int, array<string, mixed>>}
+     * @param  array<string, string>  $filtros
+     * @return array{modo: string, agrupado: bool, faixas: array<int, array<string, mixed>>}
      */
     /**
      * A raia com filtro deixa de ser grade e vira tabela.
@@ -400,7 +405,10 @@ class TarefaController extends Controller
      */
     private function raiaViraTabela(Request $request, array $raias, array $filtros): bool
     {
-        if ($raias['modo'] === 'nenhuma') {
+        // Raia que o filtro esvaziou (`agrupado` falso) também não vira tabela:
+        // a tabela existe para tirar a dimensão a mais, e ali ela já saiu — o
+        // que se desenha é o quadro plano de sempre (AC-353).
+        if (! $raias['agrupado']) {
             return false;
         }
 
@@ -413,13 +421,26 @@ class TarefaController extends Controller
         return collect($filtros)->contains(fn ($valor) => $valor !== '');
     }
 
-    private function raias(Request $request, $tarefas, $emCurso): array
+    private function raias(Request $request, $tarefas, $emCurso, array $filtros): array
     {
         $modo = $this->textoDaQuery($request, 'raias');
         $modo = in_array($modo, ['responsavel', 'sistema'], true) ? $modo : 'nenhuma';
 
-        if ($modo === 'nenhuma') {
-            return ['modo' => $modo, 'faixas' => [[
+        // O filtro que aponta a dimensão da PRÓPRIA raia esvazia o agrupamento:
+        // com um responsável escolhido, a raia por responsável teria uma faixa
+        // só, cujo cabeçalho repetiria o que o filtro acabou de dizer (AC-353).
+        // Nesse caso o quadro volta a ser plano — mas o MODO fica: é ele que
+        // mantém o controle segmentado marcado e viaja no campo escondido do
+        // formulário, para as faixas voltarem quando o recorte abrir de novo.
+        // "Nenhum" (`sem`) também fixa: a faixa única seria "Sem responsável".
+        $fixadaPeloFiltro = ($modo === 'responsavel' && $filtros['responsavel'] !== '')
+            || ($modo === 'sistema' && $filtros['sistema'] !== '');
+
+        if ($modo === 'nenhuma' || $fixadaPeloFiltro) {
+            // A VOLTA do quadro fixado é a pílula do recorte (AC-355): tirar
+            // a da pessoa/do sistema devolve as faixas. Por isso não há campo
+            // próprio aqui — quem anuncia e desmonta o recorte é uma coisa só.
+            return ['modo' => $modo, 'agrupado' => false, 'faixas' => [[
                 'chave' => 'todas',
                 'titulo' => null,
                 'colunas' => $emCurso->mapWithKeys(fn ($label, $status) => [
@@ -445,6 +466,13 @@ class TarefaController extends Controller
             return [
                 'chave' => $titulo,
                 'titulo' => ltrim($titulo, "\u{FFFF}"),
+                // O endereço da faixa: o valor que o filtro da MESMA dimensão
+                // recebe para mostrar só ela. É o que faz do cabeçalho uma
+                // porta — clicar nele aplica o filtro e cai no quadro plano do
+                // AC-353. `sem` é o mesmo "Nenhum" que o select de filtro usa.
+                'filtro' => (string) ($modo === 'responsavel'
+                    ? ($daFaixa->first()->responsavel_id ?? 'sem')
+                    : ($daFaixa->first()->sistema_id ?? 'sem')),
                 'colunas' => $colunas,
                 // Mais de duas em andamento é o selo de quem pegou trabalho
                 // demais. Vale só nas raias de pessoa: sistema com cinco
@@ -454,7 +482,48 @@ class TarefaController extends Controller
             ];
         })->values()->all();
 
-        return ['modo' => $modo, 'faixas' => $faixas];
+        return ['modo' => $modo, 'agrupado' => true, 'faixas' => $faixas];
+    }
+
+    /**
+     * Os filtros ligados, nomeados — as pílulas do cabeçalho do quadro.
+     *
+     * O select guarda o valor, mas não o ANUNCIA: com pessoa+sistema ligados
+     * a tela só contava "X de Y tarefas", e descobrir O QUÊ exigia correr os
+     * selects um a um (pedido do dono em 16/08/2026). Cada pílula tira só o
+     * próprio filtro — no quadro fixado da raia (AC-353), tirar a pílula da
+     * pessoa É a volta às faixas.
+     *
+     * `situacao` fica de fora: os chips de contagem do cabeçalho já são o
+     * estado dela — acendem quando ligada — e uma pílula repetiria o aviso.
+     *
+     * Os nomes vêm por id, não da lista de tarefas: o recorte pode estar
+     * VAZIO e ainda assim precisa ser nomeado. O fallback cobre id inventado
+     * na URL — o filtro não acha nada, mas a pílula continua oferecendo a
+     * saída.
+     *
+     * @param  array<string, string>  $filtros
+     * @return list<array{parametro: string, rotulo: string}>
+     */
+    private function filtrosAtivos(array $filtros): array
+    {
+        $rotulos = [
+            'busca' => fn (string $valor) => '“'.$valor.'”',
+            'sistema' => fn (string $valor) => $valor === 'sem'
+                ? 'Sem sistema'
+                : (Sistema::find($valor)?->nome ?? 'este sistema'),
+            'responsavel' => fn (string $valor) => $valor === 'sem'
+                ? 'Sem responsável'
+                : (User::find($valor)?->name ?? 'este responsável'),
+            'tipo' => fn (string $valor) => Tarefa::TIPOS[$valor] ?? $valor,
+            'prioridade' => fn (string $valor) => 'Prioridade '.mb_strtolower(Tarefa::PRIORIDADES[$valor] ?? $valor),
+        ];
+
+        return collect($rotulos)
+            ->filter(fn ($rotulo, $campo) => ($filtros[$campo] ?? '') !== '')
+            ->map(fn ($rotulo, $campo) => ['parametro' => $campo, 'rotulo' => $rotulo($filtros[$campo])])
+            ->values()
+            ->all();
     }
 
     /**

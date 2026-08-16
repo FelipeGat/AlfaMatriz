@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-16T13:10:58.716Z",
-  "gitRev": "1fe8dbb",
+  "timestamp": "2026-08-16T17:43:02.284Z",
+  "gitRev": "d5905cd",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 922,
+  "testsParsed": 926,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -352,6 +352,11 @@
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_as_raias_sao_um_segmented_control @spec:AC-213",
       "method": "tap"
     },
+    "AC-354": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RaiaComFiltroTest::test_o_cabecalho_da_faixa_leva_ao_quadro_so_dela @spec:AC-354",
+      "method": "tap"
+    },
     "AC-251": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CabecalhoFixoEmRaiasTest::test_o_cabecalho_fixo_das_raias_e_opaco @spec:AC-251",
@@ -410,6 +415,16 @@
     "AC-256": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RaiaComFiltroTest::test_a_volta_para_a_grade_mantem_o_filtro @spec:AC-256",
+      "method": "tap"
+    },
+    "AC-353": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RaiaComFiltroTest::test_filtro_na_dimensao_da_propria_raia_devolve_o_quadro_plano @spec:AC-353",
+      "method": "tap"
+    },
+    "AC-355": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\RaiaComFiltroTest::test_os_filtros_ativos_aparecem_como_pilulas @spec:AC-355",
       "method": "tap"
     },
     "AC-223": {

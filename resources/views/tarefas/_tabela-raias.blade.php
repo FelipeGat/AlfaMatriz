@@ -30,7 +30,10 @@
         <section class="mb-4 last:mb-0">
             {{-- O nome do grupo é o cabeçalho da seção: é ele que dispensa a
                  coluna repetida em cada linha. --}}
-            <header class="flex items-center gap-2 mb-1.5">
+            {{-- `items-baseline` pelo mesmo motivo do cabeçalho da faixa na
+                 grade: texto menor ao lado do nome alinha pela linha de base,
+                 não pelo centro da caixa. --}}
+            <header class="flex items-baseline gap-2 mb-1.5">
                 <h3 class="font-display text-[13.5px] font-semibold text-ink">
                     {{ $faixa['titulo'] ?? 'Todas' }}
                 </h3>
@@ -38,6 +41,16 @@
                 <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
                     {{ collect($faixa['colunas'])->flatten()->count() }}
                 </span>
+
+                {{-- A mesma porta da grade (AC-354): daqui o clique soma o
+                     filtro desta seção ao recorte que já está ligado, e o
+                     conjunto cai no quadro plano do AC-353. --}}
+                <a href="{{ request()->fullUrlWithQuery([$raias['modo'] => $faixa['filtro']]) }}"
+                   data-ver-so-a-faixa
+                   title="Aplicar o filtro e ver o quadro só com estas tarefas"
+                   class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
+                    ver só estas
+                </a>
 
                 @if ($faixa['sobrecarga'])
                     <x-badge tom="atencao" title="Mais de duas tarefas em andamento ao mesmo tempo">

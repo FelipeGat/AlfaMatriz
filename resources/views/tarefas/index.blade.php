@@ -95,6 +95,7 @@
                 'etapas' => $etapas,
                 'raias' => $raias,
                 'filtros' => $filtros,
+                'recortes' => $recortes,
             ])
         </div>
     </div>

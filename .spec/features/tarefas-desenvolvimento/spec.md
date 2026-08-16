@@ -740,6 +740,17 @@ para que a tela sirva à pergunta do momento e ao aparelho que estiver na mão.
   topo, e nada é escondido — filtro esconde, raia separa. "Sem responsável" é a
   última faixa: é uma pergunta em aberto, não um grupo
 
+#### AC-354 — A faixa é uma porta: escolher uma raia mostra só as dela
+
+- **Dado** o quadro em raias por responsável (ou por sistema)
+- **Quando** clico em "ver só estas" no cabeçalho de uma faixa
+- **Então** o filtro da mesma dimensão é aplicado com aquela pessoa ou sistema —
+  "Sem responsável"/"Sem sistema" incluso — e vem o quadro plano só com as
+  tarefas da faixa (AC-353). O link existe na grade e na tabela agrupada.
+  Pedido do dono em 16/08/2026: quem agrupa por pessoa quer, no passo
+  seguinte, olhar UMA pessoa — e o caminho até aqui era descobrir sozinho que
+  o select de filtro faz isso
+
 #### AC-251 — O cabeçalho fixo das raias esconde o que passa por baixo
 
 - **Dado** o quadro em raias, no tema ESCURO, com cards suficientes para rolar
@@ -826,7 +837,9 @@ mais, não a largura dela.
 
 #### AC-252 — Raia com filtro vira tabela agrupada
 
-- **Dado** o quadro em raias (por responsável ou por sistema) com um filtro aplicado
+- **Dado** o quadro em raias (por responsável ou por sistema) com um filtro
+  aplicado que não fixa a dimensão da própria raia (essa vira quadro plano —
+  AC-353)
 - **Quando** a tela é carregada
 - **Então** no lugar da grade vem uma tabela: uma seção por raia, uma linha por
   tarefa, e a etapa como coluna do registro em vez de posição no espaço
@@ -860,6 +873,32 @@ mais, não a largura dela.
 - **Quando** quero o quadro mesmo assim
 - **Então** um link no cabeçalho devolve a grade sem tirar o filtro — trocar o
   layout de alguém sem deixar como voltar é decidir por ela
+
+#### AC-353 — O filtro que fixa a dimensão da própria raia devolve o quadro plano
+
+- **Dado** o quadro em raias por responsável com um responsável escolhido no
+  filtro (inclusive "Nenhum") — ou em raias por sistema com um sistema escolhido
+- **Quando** a tela é carregada
+- **Então** vem o quadro plano, só com as tarefas do recorte: a única seção
+  possível repetiria no cabeçalho o que o filtro acabou de dizer, então nem
+  tabela nem faixa. A escolha de raias não se perde — o controle continua
+  marcado, e as faixas voltam quando o recorte abrir de novo. Pedido do dono em
+  16/08/2026: quem filtra por uma pessoa ou um sistema quer VER O QUADRO dessa
+  pessoa ou sistema, não uma seção que a separa de ninguém. A volta está nas
+  pílulas do recorte (AC-355): tirar a da pessoa devolve as faixas — "Limpar
+  recorte" não serve de volta, porque apaga a query inteira, raias junto
+
+#### AC-355 — O recorte ativo se anuncia, e se desmonta por partes
+
+- **Dado** o quadro com qualquer filtro de busca, sistema, responsável, tipo ou
+  prioridade ligado
+- **Quando** olho o cabeçalho do quadro
+- **Então** cada filtro ligado vira uma pílula nomeada no cabeçalho ("Camila
+  Reis", "Serna S.A.", a busca entre aspas), e o ✕ de cada uma tira só o
+  próprio filtro, deixando os demais. A situação fica de fora: os chips de
+  contagem ao lado já acendem quando ela liga. Pedido do dono em 16/08/2026:
+  com pessoa+sistema ligados a tela só contava "X de Y tarefas", e descobrir
+  O QUÊ estava filtrado exigia correr os selects um a um
 
 ### US-064 — Anexo na tarefa
 
