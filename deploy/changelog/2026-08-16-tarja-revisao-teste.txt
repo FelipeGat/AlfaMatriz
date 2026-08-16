@@ -1,0 +1,8 @@
+<b>📋 AlfaMatriz — Changelog 16/08/2026</b>
+<i>Acabamento no card do quadro: a linha que diz com quem está a revisão ou o teste</i>
+
+<b>🎨 Tarefas — o card</b>
+
+• <b>"Revisão com Fulano" agora se lê como uma frase.</b> Na tarja que mostra com quem a tarefa está no portão, o nome sentava desalinhado do rótulo ao lado, e os dois falavam em ritmos diferentes — o rótulo espaçado em caixa alta, o nome em texto corrido. A linha inteira passou a ser escrita num corpo só, na mesma linha de base, com o nome destacado pelo peso.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
