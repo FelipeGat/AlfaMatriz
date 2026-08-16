@@ -111,6 +111,17 @@ aberto, em desenvolvimento, em teste e concluído.
 - **Então** a crítica aparece acima da baixa; e entre duas tarefas de mesma
   prioridade, a que está parada há mais tempo na etapa aparece primeiro
 
+#### AC-351 — O retrabalho fura a fila da própria prioridade
+
+- **Dado** a bancada com duas tarefas de mesma prioridade: uma parada há dias
+  e uma que acabou de voltar de um portão, com a tarja de retorno no card
+- **Quando** olho a coluna
+- **Então** a devolvida aparece acima da parada. O chip dela, recém-zerado
+  pela volta, a mandaria para o fim da faixa como se fosse trabalho novo —
+  mas ela carrega revisão ou teste já investidos, e há alguém do outro lado
+  esperando a segunda passagem. A gravidade segue mandando acima de tudo, e
+  entre duas devolvidas volta a valer o mais parado primeiro
+
 #### AC-129 — O resumo da tarefa aparece no card
 
 - **Dado** uma tarefa cujo resumo foi preenchido
@@ -1157,6 +1168,7 @@ priorizar, posicionar, excluir.
 | ASM-053 | O teto por arquivo e por envio é limite de INFRAESTRUTURA, não decisão de produto. | confirmada | Eram os padrões do Debian (`upload_max_filesize` 2M, `post_max_size` 8M) que o `deploy/provisionar.sh` não alterava — o nginx já aceitava 20M, quem barrava era o PHP. Os 2M cabiam enquanto só entrava imagem, que o navegador encolhe (AC-224); log, planilha e PDF não podem ser encolhidos, e por isso o provisionamento passou a escrever **12M/16M** num `conf.d` em 13/08/2026. **Pendência de operação:** o `provisionar.sh` não alcança máquina já provisionada — o `.ini` precisa ser aplicado à mão na produção atual, senão a validação aceita 12M e o PHP continua cortando em 2M. De quebra, é o que faz cobrança e conta a pagar pararem de prometer 10M (`CobrancaController:213`, `ContaPagarController:167`) e entregar 2M. |
 | ASM-054 | O disco de upload não é servido pelo nginx; todo arquivo sai por rota com `auth`. | confirmada | O código sempre disse isso, e até 13/08/2026 não era verdade: o symlink `public/storage`, recriado por toda publicação, deixava qualquer anexo de tarefa, cobrança e conta a pagar legível por quem adivinhasse o nome — e o nome é `uniqid()` mais `time()`, que são o relógio, não segredo. O `location ^~ /storage/ { deny all; }` fecha isso (AC-233). Conferido no mesmo dia que nenhuma tela do sistema monta URL de `/storage`. **Rever se alguma feature futura precisar de arquivo público de verdade** (logo de revenda em e-mail, por exemplo): aí o caminho é um disco à parte, e não reabrir este. |
 | ASM-035 | Os dados do alfadev não são migrados: o quadro do AlfaMatriz nasce vazio e o alfadev é desligado depois, manualmente. | aberta | **Decisão pendente do dono do produto.** Enquanto o alfadev seguir em uso, os dois bancos divergem. Migrar o histórico do Supabase é feature própria; desligar o alfadev sem migrar descarta o histórico dele. |
+| ASM-091 | Uma régua automática só serve às seis colunas do quadro — gravidade, depois o retrabalho (AC-351), depois o mais parado, com "A definir" no fim (AC-194) — e nenhuma coluna ganha régua própria. | aberta | Análise de 2026-08-16, a pedido do dono ("a melhor forma de ordenar cada coluna"): em Aberta a régua É a fila de triagem; no Backlog ela é só o fallback do arrumar à mão (AC-209), e a coluna nem envelhece; nos portões ela é fila com furo por gravidade — o FIFO puro, analisado e rejeitado, faria uma crítica esperar atrás de tudo. Concluída e Cancelada não têm coluna (AC-082). O desempate pelo tempo na etapa é o mesmo instante do chip do card: régua própria por coluna quebraria essa leitura sem comprar clareza. **Confirmar com o dono do produto.** |
 
 ## Perguntas em aberto
 

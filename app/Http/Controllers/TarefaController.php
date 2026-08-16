@@ -951,8 +951,9 @@ class TarefaController extends Controller
      * Regrava a ordem dos cards de UMA coluna, a partir da sequência recebida.
      *
      * Posicionar card é organizar o trabalho — decidir o que se pega primeiro —,
-     * então segue a mesma capacidade que priorizar e direcionar. Quem não triaga
-     * não recebe a alça de arraste (`_card.blade.php`), e aqui a rota confirma.
+     * então segue a mesma capacidade que priorizar e direcionar. Para quem não
+     * triaga, o arraste sobre card nem vira reordenação (`ehReordenacao`, em
+     * `index.blade.php`) — e aqui a rota confirma.
      *
      * Só posiciona quem está na coluna informada: a lista de ids vem do
      * navegador, e um id de outra coluna reordenaria o que não estava à vista.
@@ -1829,8 +1830,9 @@ class TarefaController extends Controller
     }
 
     /**
-     * Ordem dos cards dentro de uma coluna: gravidade primeiro, e no empate a
-     * tarefa mais parada na etapa (AC-128).
+     * Ordem dos cards dentro de uma coluna: gravidade primeiro, o retrabalho
+     * fura a fila da própria faixa, e no empate a tarefa mais parada na etapa
+     * (AC-128, AC-351).
      *
      * Antes a ordem era só `created_at desc`, o que fazia uma crítica antiga
      * afundar embaixo de tarefas baixas recentes — a prioridade ficava
@@ -1872,7 +1874,8 @@ class TarefaController extends Controller
     }
 
     /**
-     * A régua automática: gravidade primeiro, e no empate o mais parado.
+     * A régua automática: gravidade primeiro, o retrabalho fura a fila da
+     * própria faixa, e no empate o mais parado.
      *
      * @return string
      */
@@ -1884,12 +1887,20 @@ class TarefaController extends Controller
         // crítica. Quem procura o que triar tem o contador no cabeçalho.
         $gravidade = array_flip(['critica', 'alta', 'media', 'baixa', 'nao_definida']);
 
+        // A devolvida vem antes das outras da mesma prioridade (AC-351): a
+        // volta de um portão zera o tempo na etapa, e pelo desempate ela caía
+        // no fim da faixa como se fosse trabalho novo — sendo que carrega
+        // revisão ou teste já investidos e há alguém esperando a segunda
+        // passagem. A tarja de retorno é o que mantém a coluna legível: quem
+        // lê de cima para baixo vê por que aquele card subiu.
+        //
         // Chave composta em vez de `sortBy([closure, closure])`: essa forma
         // NÃO ordena por múltiplas chaves — ela considera só a última, e a
         // gravidade era silenciosamente ignorada.
         return sprintf(
-            '%d-%020d',
+            '%d-%d-%020d',
             $gravidade[$tarefa->prioridade] ?? count($gravidade),
+            $tarefa->temRetorno() ? 0 : 1,
             $this->entrouNaEtapaEm($tarefa)->getTimestamp(),
         );
     }

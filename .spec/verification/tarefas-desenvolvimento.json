@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-14T20:32:55.546Z",
-  "gitRev": "1459c54",
+  "timestamp": "2026-08-16T12:24:45.740Z",
+  "gitRev": "51d273a",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 783,
+  "testsParsed": 921,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -50,6 +50,11 @@
     "AC-128": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_coluna_ordena_por_prioridade_e_depois_pelo_mais_parado @spec:AC-128",
+      "method": "tap"
+    },
+    "AC-351": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_a_devolvida_fura_a_fila_da_propria_prioridade @spec:AC-351",
       "method": "tap"
     },
     "AC-129": {
@@ -465,6 +470,21 @@
     "AC-235": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AnexosDaTarefaTest::test_a_figura_grande_ganha_miniatura_e_a_grade_aponta_para_ela @spec:AC-235",
+      "method": "tap"
+    },
+    "AC-281": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\MovimentoLivreTest::test_quem_triaga_move_para_qualquer_etapa @spec:AC-281",
+      "method": "tap"
+    },
+    "AC-282": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\MovimentoLivreTest::test_o_movimento_livre_nao_afrouxa_as_exigencias_de_chegada @spec:AC-282",
+      "method": "tap"
+    },
+    "AC-283": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\MovimentoLivreTest::test_o_quadro_oferece_o_quadro_inteiro_a_quem_triaga @spec:AC-283",
       "method": "tap"
     }
   },

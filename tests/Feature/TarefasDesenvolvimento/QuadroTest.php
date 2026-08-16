@@ -269,6 +269,73 @@ class QuadroTest extends TestCase
     }
 
     /**
+     * @spec:AC-351 A devolvida por um portão fura a fila da própria prioridade: a
+     * volta zera o chip de tempo, e pelo desempate de AC-128 ela cairia no fim da
+     * faixa como se fosse trabalho novo — com revisor ou teste esperando a segunda
+     * passagem. A gravidade segue mandando acima de tudo, e entre duas devolvidas
+     * volta a valer o mais parado primeiro.
+     */
+    public function test_a_devolvida_fura_a_fila_da_propria_prioridade(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        Carbon::setTestNow(Carbon::parse('2026-08-16 12:00:00'));
+
+        $nascidaEm = function (Tarefa $tarefa, $quando) {
+            return $tarefa->forceFill(['created_at' => $quando])->save() ? $tarefa : $tarefa;
+        };
+
+        // `retorno_de` fica fora do fillable de propósito (a marca nasce da
+        // recusa num portão) — o forceFill aqui faz o papel do portão.
+        $voltouDe = function (Tarefa $tarefa, string $portao) {
+            return $tarefa->forceFill(['retorno_de' => $portao, 'retorno_motivo' => 'Reprovada no exame.'])->save() ? $tarefa : $tarefa;
+        };
+
+        // A alta mais parada da bancada, SEM retorno: só pelo desempate de
+        // AC-128, nenhuma alta recém-chegada passaria na frente dela.
+        $altaParada = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'em_desenvolvimento',
+            'prioridade' => 'alta', 'titulo' => 'Alta parada há dias',
+        ]);
+        $nascidaEm($altaParada, now()->subDays(9));
+
+        // Devolvida há pouco: o chip quase zerado a jogaria para o fim da faixa.
+        $devolvidaRecente = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'em_desenvolvimento',
+            'prioridade' => 'alta', 'titulo' => 'Alta devolvida agora',
+        ]);
+        $nascidaEm($devolvidaRecente, now()->subHours(20));
+        $voltouDe($devolvidaRecente, 'em_revisao');
+
+        // Devolvida há mais tempo: entre devolvidas, o mais parado volta a valer.
+        $devolvidaParada = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'em_desenvolvimento',
+            'prioridade' => 'alta', 'titulo' => 'Alta devolvida parada',
+        ]);
+        $nascidaEm($devolvidaParada, now()->subDays(3));
+        $voltouDe($devolvidaParada, 'em_staging');
+
+        // Crítica recém-chegada, sem retorno: a gravidade fica acima do furo.
+        $criticaNova = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'em_desenvolvimento',
+            'prioridade' => 'critica', 'titulo' => 'Crítica nova',
+        ]);
+        $nascidaEm($criticaNova, now()->subMinutes(10));
+
+        $resposta = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk();
+        $ordem = $resposta->viewData('colunas')['em_desenvolvimento']->pluck('id')->all();
+
+        $this->assertSame(
+            [$criticaNova->id, $devolvidaParada->id, $devolvidaRecente->id, $altaParada->id],
+            $ordem,
+            'A gravidade manda; dentro da faixa a devolvida vem antes, e entre devolvidas o mais parado primeiro.'
+        );
+
+        Carbon::setTestNow();
+    }
+
+    /**
      * @spec:AC-132 As colunas dividem a largura disponível em vez de largura fixa —
      * com cinco colunas numa tela larga sobrava faixa vazia à direita do quadro —
      * e o `min-width` segura a largura de leitura quando a tela aperta.

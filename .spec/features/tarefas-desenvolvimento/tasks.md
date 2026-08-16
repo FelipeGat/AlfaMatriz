@@ -252,7 +252,7 @@
 
 ## T-085 — Um botão só no modal: o comentário vai junto no Salvar [concluida]
 - Refs: US-049, AC-134, AC-136
-- Arquivos: app/Http/Controllers/TarefaController.php, routes/web.php, resources/views/tarefas/_form.blade.php, resources/views/tarefas/_comentarios.blade.php, resources/views/tarefas/_comentarios-remocao.blade.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/historico.blade.php, tests/Feature/TarefasDesenvolvimento/ComentariosTarefaTest.php
+- Arquivos: app/Http/Controllers/TarefaController.php, routes/web.php, resources/views/tarefas/_form.blade.php, resources/views/tarefas/_comentarios.blade.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/historico.blade.php, tests/Feature/TarefasDesenvolvimento/ComentariosTarefaTest.php
 - Notas: o modal tinha dois botões de envio — "Salvar" no meio da tela e
   "Comentar" embaixo — porque a conversa era um formulário separado, montado
   DEPOIS do formulário da tarefa. Para quem edita, é uma passada só na tarefa:
@@ -419,3 +419,29 @@
   consertos errados depois, o defeito só apareceu ao abrir a tela e ler o estilo
   computado — `getComputedStyle(barra).backgroundColor`.
   **Lição:** correção visual sem olhar a tela é chute com teste verde por cima.
+
+## T-144 — Duas mãos no mesmo quadro: registro da concorrência e da ordem à mão [concluida]
+
+- Refs: US-062, AC-208, AC-209, AC-210, AC-211
+- Arquivos: app/Http/Controllers/TarefaController.php, app/Services/FluxoTarefaService.php, database/migrations/2026_08_12_090000_ordem_manual_da_tarefa_na_coluna.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/_coluna.blade.php, resources/views/tarefas/_quadro.blade.php, tests/Feature/TarefasDesenvolvimento/OrdemEConcorrenciaTest.php
+- Esforço: medio
+- Notas: registro retroativo — o trabalho saiu no fechamento do handoff
+  (commit 4905831) sem ganhar tarefa aqui, e o audit passou a acusar os
+  critérios de US-062 como "sem tarefa" a cada rodada. Nada de código foi
+  feito agora. O que existe: `posicionarNaColuna()` regrava a ordem da coluna
+  inteira lida do DOM (AC-231) e ignora id de fora da coluna; o `de_status`
+  guarda o `mover()` contra movimento sobre movimento alheio; mudar de etapa
+  apaga a posição (`FluxoTarefaService`); e posicionar/excluir seguem a
+  capacidade `tarefas_triagem` — que hoje, no seeder e no banco de produção
+  (conferido em 2026-08-16), só o perfil admin tem.
+
+## T-145 — A devolvida fura a fila da própria prioridade na bancada [concluida]
+- Refs: US-036, US-062, AC-351
+- Arquivos: app/Http/Controllers/TarefaController.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php
+- Esforço: baixo
+- Notas: a régua de AC-128 desempata pelo tempo na etapa, e a volta de um
+  portão zera esse tempo — a devolvida caía no fim da faixa da própria
+  prioridade, atrás de trabalho novo, justamente quando há revisor ou teste
+  esperando a segunda passagem. O furo é DENTRO da faixa: gravidade continua
+  mandando acima de tudo, e a tarja de retorno no card mantém a coluna
+  legível de cima para baixo — quem lê vê por que aquele card subiu.

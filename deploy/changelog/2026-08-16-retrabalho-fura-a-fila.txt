@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 16/08/2026</b>
+<i>A ordem das colunas do quadro foi revisada — e a devolvida por um portão deixou de se esconder</i>
+
+<b>✨ Tarefas — a régua da coluna</b>
+
+• <b>A tarefa devolvida fura a fila da própria prioridade.</b> Quando a revisão ou o staging devolvem uma tarefa para a bancada, o tempo dela na etapa zera — e, pela régua antiga, ela caía no fim da faixa como se fosse trabalho novo, justamente com alguém do outro lado esperando a segunda passagem. Agora ela sobe para o topo da própria prioridade, com a tarja de retorno dizendo por quê. A gravidade continua mandando acima de tudo, e entre duas devolvidas segue valendo a mais parada primeiro.
+
+• <b>A régua de cada coluna foi analisada, uma a uma.</b> Aberta, Backlog, Em andamento e os três portões: a conclusão é que uma régua só — mais grave primeiro, retrabalho na frente da faixa, mais parada no desempate, "A definir" no fim — serve às seis. Régua própria por coluna quebraria a leitura do chip de tempo sem comprar clareza.
+
+• <b>Reordenar à mão continua sendo só de quem faz triagem</b> — hoje, o perfil administrador. A coluna arrumada à mão fica como foi arrumada; a intocada segue a régua automática.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
