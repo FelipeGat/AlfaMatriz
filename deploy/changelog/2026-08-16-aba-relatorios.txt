@@ -1,0 +1,38 @@
+<b>📋 AlfaMatriz — Changelog 16/08/2026</b>
+<i>Nova aba de Relatórios: as quatro áreas da casa em números, com filtros, exportação e impressão</i>
+
+<b>📊 Aba nova: Relatórios</b>
+
+• <b>O grupo Painéis ganhou a aba Relatórios</b>, dividida em quatro seções — Comercial, Financeiro, Desenvolvimento e Sistema — navegando por competência como o Painel Financeiro (setas, seletor de mês e "Hoje"). Todos os números saem da mesma origem dos painéis, então relatório e dashboard nunca discordam sob o mesmo rótulo.
+
+• <b>Comercial:</b> pipeline em aberto, fechados e perdidos na competência, novos clientes e taxa de conversão; leads por temperatura (quente, esfriando, frio — quem precisa de ligação hoje), avanço do funil, origem do pipeline, vendas por vendedor, perdas por motivo e a mesa dos dez maiores negócios em aberto com a idade de cada um.
+
+• <b>Financeiro:</b> receita recorrente, entradas, saídas, resultado do mês e saldo ao fim da competência (com as curvas de tendência); gráfico entradas x saídas do ano navegado; receita da competência por tipo; a receber e a pagar em aberto com o vencido em destaque; a receber por faixa de vencimento (as mesmas quatro faixas da tela de Receitas); despesa por centro de custo; e a mesa dos dez maiores títulos vencidos.
+
+• <b>Desenvolvimento:</b> concluídas na competência com o ciclo médio, criadas, devolvidas de portão (a medida de retrabalho), quadro por etapa, permanência média em cada etapa, concluídas por sistema e por responsável, e o diário de entregas do mês.
+
+• <b>Sistema:</b> sistemas, clientes, revendas e usuários ativos; base instalada por sistema; clientes por UF; usuários por perfil; e a auditoria da competência por recurso, por ação e com as últimas linhas do rastro.
+
+<b>🔍 Filtros que respeitam cada seção</b>
+
+• Cada seção oferece só os filtros dos eixos que os painéis dela honram — vendedor, origem e sistema no Comercial; tipo de receita e centro de custo no Financeiro; sistema, responsável, prioridade e tipo no Desenvolvimento; perfil, recurso e usuário no Sistema.
+
+• Todo filtro ligado vira uma pílula nomeada, e o ✕ de cada uma tira só o seu. No Financeiro, a tela avisa que o caixa é da casa inteira e responde só à competência — o recorte vale para os painéis de títulos.
+
+<b>📄 Exportar, com prévia — e imprimir</b>
+
+• <b>Exportar abre a prévia do documento</b>: uma folha limpa, com a marca no cabeçalho, os indicadores em cards e as tabelas do relatório — exatamente o que vai sair. É ali que se escolhe o formato: <b>CSV</b> (para planilha) ou <b>PDF</b>, sempre com a competência e o recorte anunciados no arquivo.
+
+• <b>Botão Imprimir</b>, ao lado do Exportar: abre a mesma prévia já disparando a impressão — sai a folha branca do documento, não a tela escura do painel.
+
+• Exportar e imprimir ficam atrás da permissão de imprimir de Relatórios; quem só lê nem vê os botões.
+
+<b>🔐 Quem vê</b>
+
+• Relatórios é uma permissão própria na grade de perfis. Quem já lia o Dashboard ganhou a porta automaticamente; financeiro e operação já entram lendo e exportando.
+
+<b>🛠 Correção de quebra</b>
+
+• O gráfico de Entradas x Saídas esticava junto com painéis largos e as fontes dos rótulos saíam gigantes — agora ele respeita o tamanho de desenho em qualquer tela.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
