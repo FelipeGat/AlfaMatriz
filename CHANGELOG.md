@@ -1,5 +1,39 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 16/08/2026 — A licença de sistema por cliente vira contrato recorrente
+
+Cobrar um cliente final pelo uso de um sistema (AlfaGym, AlfaControl,
+AlfaJornada) exigia lançar a cobrança à mão todo mês. Não tinha como
+esquecer sem que a revenda deixasse de ser cobrada.
+
+### Novidades
+
+- **`ClienteContrato`: a licença de sistema por cliente vira contrato de
+  verdade**, com vigência (início/fim) — o fechamento mensal já existente
+  passa a gerar a cobrança sozinho, uma por cliente, com a mesma trava de
+  idempotência do fechamento por revenda.
+- **A primeira cobrança respeita o dia do fechamento.** Cliente fechado até
+  o dia 20 paga a primeira ainda dentro do próprio mês (vence no fim do
+  mês); fechado do dia 21 em diante, a primeira cobrança rola pro mês
+  seguinte.
+- **Receita Recorrente e a projeção do Painel Financeiro somam os
+  contratos por cliente.** O gráfico de Entradas x Saídas agora projeta
+  meses futuros (não só o mês corrente) enquanto o fechamento ainda não
+  rodou para eles.
+
+### Correções
+
+- **O motor de faturamento por revenda não cobra duas vezes o mesmo
+  cliente.** Quem já tem `ClienteContrato` ativo sai da contagem agregada
+  por volume — sem isso, a revenda pagaria pelo cliente duas vezes: uma no
+  agregado, outra na cobrança individual dele.
+- **Os filtros de período de Receitas e Despesas trocavam de mês só na
+  aparência.** Clicar em "Mês anterior" ou "Próximo mês" sempre devolvia o
+  mesmo período que já estava selecionado — o link usava a forma errada de
+  combinar os filtros. O rótulo do período agora também mostra a data por
+  trás (ex: "Este mês (16/08 – 31/08)"), pra ficar claro qual recorte está
+  na tela sem precisar abrir o filtro.
+
 ## AlfaMatriz — 16/08/2026 — Receitas e Despesas ganham a gramática do Gestor.Alfa
 
 As duas telas mostravam um total só, sem dizer onde o dinheiro estava
