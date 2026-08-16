@@ -56,6 +56,7 @@ class CobrancaController extends Controller
         ];
         $contagensTipo = [
             'locacao_sistema' => (clone $base)->where('tipo', 'locacao_sistema')->count(),
+            'locacao_cliente' => (clone $base)->where('tipo', 'locacao_cliente')->count(),
             'avulsa' => (clone $base)->where('tipo', 'avulsa')->count(),
             'direta' => (clone $base)->where('tipo', 'direta')->count(),
         ];
@@ -441,7 +442,7 @@ class CobrancaController extends Controller
             'descricao' => 'required|string|max:255',
             'valor' => 'required|numeric|min:0',
             'data_vencimento' => 'required|date',
-            'tipo' => 'required|in:locacao_sistema,avulsa,direta',
+            'tipo' => 'required|in:locacao_sistema,locacao_cliente,avulsa,direta',
             'competencia' => 'nullable|string|max:7',
             'forma_pagamento' => 'nullable|string|max:255',
         ]);

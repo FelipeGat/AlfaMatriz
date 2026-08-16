@@ -35,6 +35,16 @@ class FecharCompetenciaMensal extends Command
         }
 
         $this->line('');
+        $this->line('== Contratos de clientes ==');
+        $contratos = $faturamentoService->gerarCobrancasDeClientesParaCompetencia($competencia);
+        $gerados = collect($contratos)->where('status', 'gerado');
+        $existentes = collect($contratos)->where('status', 'cobranca_ja_existe')->count();
+        foreach ($gerados as $item) {
+            $this->line("  {$item['sistema']} — {$item['cliente']} ({$item['plano']}): R$ ".number_format($item['valor'], 2, ',', '.'));
+        }
+        $this->line("  ({$existentes} já existiam para esta competência)");
+
+        $this->line('');
         $this->line('== Despesas fixas ==');
         $despesas = $despesaFixaService->gerarParaCompetencia($competencia);
         $gerados = collect($despesas)->where('status', 'gerado');

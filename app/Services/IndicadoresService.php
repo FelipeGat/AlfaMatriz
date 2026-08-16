@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Cliente;
+use App\Models\ClienteContrato;
 use App\Models\Cobranca;
 use App\Models\ContaFinanceira;
 use App\Models\ContaFixaPagar;
@@ -62,6 +63,10 @@ class IndicadoresService
      * @var array<string, mixed>
      */
     private array $memo = [];
+
+    private ?Collection $contratosDeClientesMemo = null;
+
+    private ?FaturamentoService $faturamentoServiceMemo = null;
 
     public function clientesAtivos(): int
     {
@@ -209,7 +214,7 @@ class IndicadoresService
             return;
         }
 
-        $somas = Cobranca::whereIn('tipo', ['locacao_sistema', 'direta'])
+        $somas = Cobranca::whereIn('tipo', ['locacao_sistema', 'locacao_cliente', 'direta'])
             ->whereIn('competencia', $faltando)
             ->where('status', '!=', 'cancelado')
             ->selectRaw('competencia, COALESCE(SUM(valor), 0) as total')
@@ -327,7 +332,7 @@ class IndicadoresService
     {
         $competencia ??= now()->format('Y-m');
 
-        return $this->memo["mrr:{$competencia}"] ??= (float) Cobranca::whereIn('tipo', ['locacao_sistema', 'direta'])
+        return $this->memo["mrr:{$competencia}"] ??= (float) Cobranca::whereIn('tipo', ['locacao_sistema', 'locacao_cliente', 'direta'])
             ->where('competencia', $competencia)
             ->where('status', '!=', 'cancelado')
             ->sum('valor');
@@ -344,7 +349,7 @@ class IndicadoresService
     {
         // A pergunta mais repetida dos dois painéis: onze vezes no Centro de
         // Controle, sempre sobre a mesma competência.
-        return $this->memo["faturada:{$competencia}"] ??= Cobranca::whereIn('tipo', ['locacao_sistema', 'direta'])
+        return $this->memo["faturada:{$competencia}"] ??= Cobranca::whereIn('tipo', ['locacao_sistema', 'locacao_cliente', 'direta'])
             ->where('competencia', $competencia)
             ->where('status', '!=', 'cancelado')
             ->exists();
@@ -383,7 +388,47 @@ class IndicadoresService
      */
     public function mrrContratado(?string $competencia = null): float
     {
-        return $this->previsao($competencia)['total'] + $this->contratosDiretos();
+        $competencia ??= now()->format('Y-m');
+
+        return $this->previsao($competencia)['total'] + $this->contratosDiretos()
+            + $this->contratosDeClientesNaCompetencia($competencia);
+    }
+
+    /**
+     * O que os `ClienteContrato` vigentes valeriam nesta competência — a
+     * licença de sistema por cliente final, cobrada por
+     * `FaturamentoService::gerarCobrancasDeClientesParaCompetencia()`.
+     *
+     * Ao contrário de `contratosDiretos()` (foto de HOJE), este respeita
+     * `data_inicio`/`data_fim` do contrato para a competência pedida — é o
+     * que permite o Painel Financeiro projetar meses futuros onde o
+     * fechamento ainda não rodou (AC-XXX, 16/08/2026: "não está mostrando o
+     * previsto para os próximos meses" depois que a licença por cliente virou
+     * contrato recorrente de verdade).
+     */
+    public function contratosDeClientesNaCompetencia(string $competencia): float
+    {
+        if (! array_key_exists("contratosClientes:{$competencia}", $this->memo)) {
+            $inicioDoMes = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
+
+            $this->memo["contratosClientes:{$competencia}"] = (float) $this->contratosDeClientesAtivos()
+                ->filter(fn (ClienteContrato $c) => $c->vigenteEm($inicioDoMes))
+                ->sum('valor_mensal');
+        }
+
+        return $this->memo["contratosClientes:{$competencia}"];
+    }
+
+    /**
+     * Os `ClienteContrato` ativos, buscados uma única vez — `serieDeCaixaEntre()`
+     * chama `contratosDeClientesNaCompetencia()` uma vez por mês futuro, e sem
+     * este cache cada mês reabriria a mesma consulta (era exatamente o que
+     * `carregarMrrDe()`/`carregarDespesaPrevistaDe()` já evitavam do outro
+     * lado da conta).
+     */
+    private function contratosDeClientesAtivos(): Collection
+    {
+        return $this->contratosDeClientesMemo ??= ClienteContrato::where('status', 'ativo')->get();
     }
 
     /**
@@ -395,14 +440,21 @@ class IndicadoresService
      * Controle, as duas telas mostraram números diferentes sob o mesmo rótulo
      * — R$ 99,00 numa e R$ 0,00 na outra, no mesmo dia e na mesma competência.
      *
-     * A troca vale só para o mês corrente: o contratado é a foto de HOJE, e
-     * aplicá-lo a um mês passado inventaria histórico que não houve.
+     * A troca vale para o mês corrente e para a FRENTE: o contratado é a
+     * melhor previsão antes do fechamento rodar naquele mês — é o que faz o
+     * gráfico de Entradas x Saídas do Painel Financeiro projetar
+     * set/out/nov/dez em vez de mostrar zero em todo mês futuro (AC-XXX,
+     * 16/08/2026). Só para TRÁS o contratado não vale: um mês passado sem
+     * fechamento é histórico que de fato não aconteceu, não uma previsão —
+     * aplicar `mrrContratado()` ali inventaria receita que nunca foi cobrada.
+     * A comparação de string funciona porque `Y-m` é zero-padded e ordena
+     * igual à ordem cronológica.
      */
     public function mrrDaCompetencia(?string $competencia = null): float
     {
         $competencia ??= now()->format('Y-m');
 
-        if ($this->competenciaFoiFaturada($competencia) || $competencia !== now()->format('Y-m')) {
+        if ($this->competenciaFoiFaturada($competencia) || $competencia < now()->format('Y-m')) {
             return $this->mrr($competencia);
         }
 
@@ -425,7 +477,23 @@ class IndicadoresService
     {
         $chave = $competencia ?? now()->format('Y-m');
 
-        return $this->previsaoMemo[$chave] ??= app(FaturamentoService::class)->previsaoDaCompetencia($chave);
+        // A MESMA instância em todas as chamadas: `FaturamentoService` agora
+        // guarda seu próprio catálogo em cache por instância, e resolver uma
+        // nova a cada competência (`app()` de novo) jogaria fora esse cache —
+        // era exatamente o que fazia o gráfico de Entradas x Saídas repetir a
+        // mesma consulta uma vez por mês futuro.
+        return $this->previsaoMemo[$chave] ??= $this->faturamentoService()->previsaoDaCompetencia($chave);
+    }
+
+    /**
+     * Resolvido aqui dentro, e não no construtor, pelo mesmo motivo de
+     * `previsao()`: os testes trocam `FaturamentoService` por uma classe
+     * anônima sem argumentos, e exigir a dependência no construtor quebraria
+     * todos eles.
+     */
+    private function faturamentoService(): FaturamentoService
+    {
+        return $this->faturamentoServiceMemo ??= app(FaturamentoService::class);
     }
 
     /**

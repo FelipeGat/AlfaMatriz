@@ -10,7 +10,7 @@
     <div>
         <x-input-label for="tipo" value="Tipo" />
         <select id="tipo" name="tipo" class="mt-1 block w-full rounded-control border-line bg-input text-ink">
-            @foreach (['locacao_sistema' => 'Locação de sistema (revenda)', 'direta' => 'Venda direta', 'avulsa' => 'Avulsa'] as $value => $label)
+            @foreach (['locacao_sistema' => 'Locação de sistema (revenda)', 'locacao_cliente' => 'Locação de sistema (cliente)', 'direta' => 'Venda direta', 'avulsa' => 'Avulsa'] as $value => $label)
                 <option value="{{ $value }}" {{ old('tipo', $cobranca->tipo ?? 'avulsa') === $value ? 'selected' : '' }}>{{ $label }}</option>
             @endforeach
         </select>

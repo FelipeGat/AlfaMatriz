@@ -38,19 +38,30 @@
                 'status_filtro' => $filtroStatus !== 'todos' ? $filtroStatus : null,
                 'tipo_filtro' => $filtroTipo,
             ]);
-            $pillPeriodo = fn ($chave) => route('contas-pagar.index', $baseQuery + ['periodo' => $chave]);
+            $pillPeriodo = fn ($chave) => route('contas-pagar.index', \Illuminate\Support\Arr::except($baseQuery, ['periodo', 'periodo_de', 'periodo_ate']) + ['periodo' => $chave]);
+
+            // O nome sozinho ("Este mês") não diz QUAL mês — a data por trás
+            // tira a ambiguidade sem obrigar a abrir o filtro pra conferir.
+            $faixaPeriodo = fn () => $periodoDe && $periodoAte
+                ? ($periodoDe === $periodoAte
+                    ? \Illuminate\Support\Carbon::parse($periodoDe)->format('d/m/Y')
+                    : \Illuminate\Support\Carbon::parse($periodoDe)->format('d/m').' – '.\Illuminate\Support\Carbon::parse($periodoAte)->format('d/m/Y'))
+                : null;
             $rotuloPeriodo = [
                 'mes_anterior' => 'Mês anterior', 'mes_atual' => 'Este mês', 'proximo_mes' => 'Próximo mês',
                 'ontem' => 'Ontem', 'hoje' => 'Hoje', 'amanha' => 'Amanhã',
                 'todos' => 'Todos os períodos', 'personalizado' => \Illuminate\Support\Carbon::parse($periodoDe)->format('d/m/Y').' até '.\Illuminate\Support\Carbon::parse($periodoAte)->format('d/m/Y'),
             ];
+            $rotuloPeriodoComData = $filtroPeriodo !== 'todos' && $filtroPeriodo !== 'personalizado' && $faixaPeriodo()
+                ? $rotuloPeriodo[$filtroPeriodo].' ('.$faixaPeriodo().')'
+                : $rotuloPeriodo[$filtroPeriodo];
             $statusPills = ['todos' => 'Todos', 'em_aberto' => 'Em aberto', 'vencido' => 'Vencido', 'pago' => 'Pago', 'cancelado' => 'Cancelado'];
             $tipoPills = ['avulsa' => 'Pontual', 'fixa' => 'Recorrente'];
 
             // Mesma régua das Receitas: cada filtro fora do padrão vira chip,
             // com o link que o remove sozinho. Período sempre aparece.
             $chips = collect([
-                ['rotulo' => 'Período: '.$rotuloPeriodo[$filtroPeriodo], 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['periodo', 'periodo_de', 'periodo_ate'])],
+                ['rotulo' => 'Período: '.$rotuloPeriodoComData, 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['periodo', 'periodo_de', 'periodo_ate'])],
                 $busca ? ['rotulo' => 'Busca: "'.$busca.'"', 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['busca'])] : null,
                 $centroCustoId ? ['rotulo' => 'Centro de custo: '.($centrosCusto->firstWhere('id', (int) $centroCustoId)->nome ?? '—'), 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['centro_custo_id'])] : null,
                 $filtroStatus !== 'todos' ? ['rotulo' => 'Status: '.$statusPills[$filtroStatus], 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['status_filtro'])] : null,

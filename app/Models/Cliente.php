@@ -79,6 +79,12 @@ class Cliente extends Model
         return $this->hasMany(ClienteModulo::class);
     }
 
+    /** As licenças de sistema que este cliente tem contratadas — o que o fechamento mensal cobra por ele. */
+    public function contratos(): HasMany
+    {
+        return $this->hasMany(ClienteContrato::class);
+    }
+
     public function cobrancas(): HasMany
     {
         return $this->hasMany(Cobranca::class);

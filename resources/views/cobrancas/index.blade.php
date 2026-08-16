@@ -34,14 +34,26 @@
             'status_filtro' => $filtroStatus !== 'todos' ? $filtroStatus : null,
             'tipo_filtro' => $filtroTipo,
         ]);
-        $pillPeriodo = fn ($chave) => route('cobrancas.index', $baseQuery + ['periodo' => $chave]);
+        $pillPeriodo = fn ($chave) => route('cobrancas.index', \Illuminate\Support\Arr::except($baseQuery, ['periodo', 'periodo_de', 'periodo_ate']) + ['periodo' => $chave]);
+
+        // O nome sozinho ("Este mês") não diz QUAL mês — quem olha em
+        // setembro e em outubro vê o mesmo rótulo. A data por trás tira a
+        // ambiguidade sem obrigar a abrir o filtro pra conferir.
+        $faixaPeriodo = fn () => $periodoDe && $periodoAte
+            ? ($periodoDe === $periodoAte
+                ? \Illuminate\Support\Carbon::parse($periodoDe)->format('d/m/Y')
+                : \Illuminate\Support\Carbon::parse($periodoDe)->format('d/m').' – '.\Illuminate\Support\Carbon::parse($periodoAte)->format('d/m/Y'))
+            : null;
         $rotuloPeriodo = [
             'mes_anterior' => 'Mês anterior', 'mes_atual' => 'Este mês', 'proximo_mes' => 'Próximo mês',
             'ontem' => 'Ontem', 'hoje' => 'Hoje', 'amanha' => 'Amanhã',
             'todos' => 'Todos os períodos', 'personalizado' => \Illuminate\Support\Carbon::parse($periodoDe)->format('d/m/Y').' até '.\Illuminate\Support\Carbon::parse($periodoAte)->format('d/m/Y'),
         ];
+        $rotuloPeriodoComData = $filtroPeriodo !== 'todos' && $filtroPeriodo !== 'personalizado' && $faixaPeriodo()
+            ? $rotuloPeriodo[$filtroPeriodo].' ('.$faixaPeriodo().')'
+            : $rotuloPeriodo[$filtroPeriodo];
         $statusPills = ['todos' => 'Todos', 'pendente' => 'Pendente', 'vencido' => 'Vencido', 'pago' => 'Pago', 'cancelado' => 'Cancelado'];
-        $tipoPills = ['locacao_sistema' => 'Recorrente', 'avulsa' => 'Avulsa', 'direta' => 'Direta'];
+        $tipoPills = ['locacao_sistema' => 'Recorrente · revenda', 'locacao_cliente' => 'Recorrente · cliente', 'avulsa' => 'Avulsa', 'direta' => 'Direta'];
 
         // Cada filtro que NÃO está no estado padrão vira um chip, com o link
         // que o remove sozinho (volta o resto do estado do jeito que
@@ -50,7 +62,7 @@
         // o padrão faria quem abriu a tela sem mexer em nada não saber que
         // já existe um recorte por trás dos números.
         $chips = collect([
-            ['rotulo' => 'Período: '.$rotuloPeriodo[$filtroPeriodo], 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['periodo', 'periodo_de', 'periodo_ate'])],
+            ['rotulo' => 'Período: '.$rotuloPeriodoComData, 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['periodo', 'periodo_de', 'periodo_ate'])],
             $busca ? ['rotulo' => 'Busca: "'.$busca.'"', 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['busca'])] : null,
             $revendaId ? ['rotulo' => 'Revenda: '.($revendas->firstWhere('id', (int) $revendaId)->nome ?? '—'), 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['revenda_id'])] : null,
             $filtroStatus !== 'todos' ? ['rotulo' => 'Status: '.$statusPills[$filtroStatus], 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['status_filtro'])] : null,
@@ -321,7 +333,7 @@
                                 : ($diasParaVencer === 0 ? 'vence hoje' : 'em '.$diasParaVencer.'d');
                         }
 
-                        $tipoRotulo = ['locacao_sistema' => 'Recorrente', 'avulsa' => 'Avulsa', 'direta' => 'Direta'][$cobranca->tipo] ?? ucfirst($cobranca->tipo);
+                        $tipoRotulo = ['locacao_sistema' => 'Recorrente · revenda', 'locacao_cliente' => 'Recorrente · cliente', 'avulsa' => 'Avulsa', 'direta' => 'Direta'][$cobranca->tipo] ?? ucfirst($cobranca->tipo);
                         $cnpjCpf = $cobranca->revenda->cnpj ?? $cobranca->cliente->cpf_cnpj ?? null;
                     @endphp
                     <tr class="border-b border-rule hover:bg-chip transition

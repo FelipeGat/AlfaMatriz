@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Cliente;
+use App\Models\ClienteContrato;
 use App\Models\ClienteModulo;
 use App\Models\Cobranca;
 use App\Models\FaturamentoSnapshot;
@@ -14,6 +16,19 @@ use Carbon\Carbon;
 
 class FaturamentoService
 {
+    /**
+     * Cache de `previsaoDaCompetencia()` por instância — o Painel Financeiro
+     * chama essa função uma vez por mês futuro do gráfico (AC-XXX,
+     * 16/08/2026), e o catálogo (sistemas, clientes, tiers, módulos) não
+     * muda de uma competência pra outra dentro do mesmo pedido: só a parte de
+     * módulos vigentes depende da competência, e essa já era filtrada em
+     * memória. Sem isto, cinco meses de gráfico refaziam a mesma consulta
+     * cinco vezes.
+     */
+    private ?\Illuminate\Support\Collection $sistemasParaPrevisaoMemo = null;
+
+    private ?\Illuminate\Support\Collection $revendasAtivasMemo = null;
+
     /**
      * Gera o faturamento mensal: para cada revenda, soma o custo de licenciamento
      * de todos os sistemas que ela usa (baseado na contagem de clientes ativos
@@ -52,13 +67,26 @@ class FaturamentoService
                     continue;
                 }
 
+                // Cliente com `ClienteContrato` ativo para este sistema já é
+                // cobrado individualmente por `gerarCobrancasDeClientesParaCompetencia()`
+                // — contá-lo aqui de novo cobraria a revenda duas vezes pelo
+                // mesmo cliente: uma vez no agregado, outra na cobrança dele.
                 $clientesAtivos = $sistema->clientes()
                     ->where('revenda_id', $revenda->id)
                     ->where('clientes.ativo', true)
                     ->where('cliente_sistema.ativo', true)
+                    ->whereDoesntHave('contratos', fn ($q) => $q->where('sistema_id', $sistema->id)->where('status', 'ativo'))
                     ->get(['clientes.id', 'clientes.nome']);
 
                 $qtd = $clientesAtivos->count();
+
+                if ($qtd === 0) {
+                    $breakdown[] = [
+                        'sistema' => $sistema->nome, 'status' => 'sem_cliente_agregado',
+                    ];
+
+                    continue;
+                }
 
                 $tier = $sistema->tierParaVolume($qtd, $revenda->id);
 
@@ -151,6 +179,86 @@ class FaturamentoService
     }
 
     /**
+     * Gera, por cliente final, a `Cobranca` de cada `ClienteContrato` vigente
+     * na competência — uma linha por cliente, `tipo='locacao_cliente'`.
+     *
+     * Irmã de `gerarParaCompetencia()`, não substituta: aquela consolida por
+     * REVENDA (contagem agregada de clientes contra o tier de atacado); esta
+     * cobra o cliente final individualmente, pelo plano que ele contratou. As
+     * duas nunca colidem porque cada uma usa seu próprio `tipo` de `Cobranca`
+     * na trava de idempotência.
+     *
+     * Cliente sem revenda (`revenda_id` nulo) ainda assim gera cobrança — a
+     * trava não exige revenda, só cliente+sistema+competência+tipo.
+     *
+     * Vence DENTRO da própria competência (fim do mês), não no mês seguinte
+     * como `gerarParaCompetencia()` — regra do fechamento, 16/08/2026: "a
+     * revenda paga a primeira dentro ainda do mês". É por isso que
+     * `ClienteContrato::competenciaInicialPara()` já resolve o corte do dia 20
+     * na entrada do contrato: uma vez decidida a competência inicial certa,
+     * o vencimento de toda cobrança dela — a primeira e as seguintes — é
+     * sempre o fim do próprio mês.
+     */
+    public function gerarCobrancasDeClientesParaCompetencia(string $competencia): array
+    {
+        $mes = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
+        $vencimento = $mes->copy()->endOfMonth();
+
+        $resultado = [];
+
+        $sistemas = Sistema::produtos()->where('ativo', true)->get();
+
+        foreach ($sistemas as $sistema) {
+            $contratos = ClienteContrato::vigentesNaCompetencia($sistema->id, $competencia);
+
+            foreach ($contratos as $contrato) {
+                $cliente = $contrato->cliente;
+
+                $cobrancaExistente = Cobranca::where('cliente_id', $contrato->cliente_id)
+                    ->where('sistema_id', $sistema->id)
+                    ->where('competencia', $competencia)
+                    ->where('tipo', 'locacao_cliente')
+                    ->first();
+
+                if ($cobrancaExistente) {
+                    $resultado[] = [
+                        'status' => 'cobranca_ja_existe',
+                        'cliente' => $cliente->nome,
+                        'sistema' => $sistema->nome,
+                        'cobranca_id' => $cobrancaExistente->id,
+                    ];
+
+                    continue;
+                }
+
+                $cobranca = Cobranca::create([
+                    'revenda_id' => $cliente->revenda_id,
+                    'cliente_id' => $cliente->id,
+                    'sistema_id' => $sistema->id,
+                    'descricao' => "{$sistema->nome} — {$cliente->nome} ({$contrato->plano})",
+                    'valor' => $contrato->valor_mensal,
+                    'data_vencimento' => $vencimento->toDateString(),
+                    'status' => 'pendente',
+                    'tipo' => 'locacao_cliente',
+                    'competencia' => $competencia,
+                    'detalhamento' => $contrato->detalhamento,
+                ]);
+
+                $resultado[] = [
+                    'status' => 'gerado',
+                    'cliente' => $cliente->nome,
+                    'sistema' => $sistema->nome,
+                    'plano' => $contrato->plano,
+                    'valor' => (float) $contrato->valor_mensal,
+                    'cobranca_id' => $cobranca->id,
+                ];
+            }
+        }
+
+        return $resultado;
+    }
+
+    /**
      * O fechamento do ciclo avisa quem vê faturamento (§17: "geração de
      * faturamento" é fonte do sino).
      *
@@ -218,16 +326,22 @@ class FaturamentoService
         // por sistema de cada revenda —, então o custo crescia com revendas ×
         // sistemas. A conta é a mesma; o que mudou é que ela passou a ser feita
         // sobre dado já na memória.
-        $sistemas = Sistema::produtos()->where('ativo', true)
-            ->with(['clientes', 'precosAtacado', 'modulos.contratacoes'])
+        $sistemas = $this->sistemasParaPrevisaoMemo ??= Sistema::produtos()->where('ativo', true)
+            ->with(['clientes.contratos', 'precosAtacado', 'modulos.contratacoes'])
             ->get();
 
-        foreach (Revenda::where('ativo', true)->get() as $revenda) {
+        foreach ($this->revendasAtivasMemo ??= Revenda::where('ativo', true)->get() as $revenda) {
             $total = 0.0;
 
             foreach ($sistemas as $sistema) {
+                // Mesma exclusão de `gerarParaCompetencia()`: cliente com
+                // `ClienteContrato` ativo já entra na conta pela cobrança
+                // individual dele, não pelo agregado da revenda.
                 $clientesAtivos = $sistema->clientesComVinculoAtivo()
                     ->where('revenda_id', $revenda->id)
+                    ->reject(fn (Cliente $c) => $c->contratos->contains(
+                        fn (ClienteContrato $ct) => $ct->sistema_id === $sistema->id && $ct->status === 'ativo'
+                    ))
                     ->values();
 
                 // Fazia o papel do `whereHas` que escolhia os sistemas desta
