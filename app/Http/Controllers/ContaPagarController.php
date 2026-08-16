@@ -10,6 +10,7 @@ use App\Models\ContaPagar;
 use App\Models\ContaPagarAnexo;
 use App\Models\Fornecedor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 class ContaPagarController extends Controller
@@ -19,41 +20,170 @@ class ContaPagarController extends Controller
         $this->bloquearVisaoDaMatriz();
     }
 
+    /**
+     * Mesmos filtros das Receitas (16/08/2026, pedido de replicar) — período
+     * por vencimento, busca ampla, pills de status/tipo com contador. A
+     * diferença de modelo é só o que substitui "revenda": aqui é centro de
+     * custo, porque despesa não nasce de revenda nenhuma.
+     */
     public function index(Request $request)
     {
-        $contasPagar = ContaPagar::with(['centroCusto', 'conta.subcategoria.categoria', 'fornecedor', 'contaFixaPagar'])
+        $hoje = now()->startOfDay();
+
+        [$periodoDe, $periodoAte] = $this->periodoSelecionado($request);
+        $busca = trim((string) $request->query('busca', ''));
+        $centroCustoId = $request->query('centro_custo_id');
+
+        $base = ContaPagar::query()
+            ->when($centroCustoId, fn ($q) => $q->where('centro_custo_id', $centroCustoId))
+            ->when($periodoDe, fn ($q) => $q->whereDate('data_vencimento', '>=', $periodoDe->toDateString()))
+            ->when($periodoAte, fn ($q) => $q->whereDate('data_vencimento', '<=', $periodoAte->toDateString()))
+            ->when($busca !== '', fn ($q) => $this->aplicarBusca($q, $busca));
+
+        $contagens = [
+            'todos' => (clone $base)->count(),
+            'em_aberto' => (clone $base)->where('status', 'em_aberto')->count(),
+            'vencido' => (clone $base)->where('status', 'em_aberto')->whereDate('data_vencimento', '<', $hoje)->count(),
+            'pago' => (clone $base)->where('status', 'pago')->count(),
+            'cancelado' => (clone $base)->where('status', 'cancelado')->count(),
+        ];
+        $contagensTipo = [
+            'avulsa' => (clone $base)->where('tipo', 'avulsa')->count(),
+            'fixa' => (clone $base)->where('tipo', 'fixa')->count(),
+        ];
+
+        $filtroStatus = $this->filtroStatusSelecionado($request);
+        $filtroTipo = $this->filtroTipoSelecionado($request);
+
+        $contasPagar = (clone $base)
+            ->with(['centroCusto', 'conta.subcategoria.categoria', 'fornecedor', 'contaFixaPagar'])
             ->withCount('anexos')
-            ->when($request->status, fn ($q) => $q->where('status', $request->status))
-            ->when($request->tipo, fn ($q) => $q->where('tipo', $request->tipo))
+            ->when($filtroStatus === 'em_aberto', fn ($q) => $q->where('status', 'em_aberto'))
+            ->when($filtroStatus === 'vencido', fn ($q) => $q->where('status', 'em_aberto')->whereDate('data_vencimento', '<', $hoje))
+            ->when($filtroStatus === 'pago', fn ($q) => $q->where('status', 'pago'))
+            ->when($filtroStatus === 'cancelado', fn ($q) => $q->where('status', 'cancelado'))
+            ->when($filtroTipo, fn ($q) => $q->where('tipo', $filtroTipo))
             ->orderByDesc('data_vencimento')
             ->paginate(20)
             ->withQueryString();
 
-        $hoje = now()->startOfDay();
-
-        $emAberto = ContaPagar::where('status', 'em_aberto')->get(['id', 'valor', 'data_vencimento']);
-        $atrasadas = $emAberto->filter(fn ($c) => \Illuminate\Support\Carbon::parse($c->data_vencimento)->lt($hoje));
-
+        // Os quatro cards — mesma régua das Receitas: sempre sobre o recorte
+        // de período/busca/centro de custo ativo, nunca um total fixo.
         $kpis = [
-            'a_pagar' => (float) $emAberto->sum('valor'),
-            'a_pagar_titulos' => $emAberto->count(),
-            'vence_em_7_dias' => (float) $emAberto->filter(
-                fn ($c) => \Illuminate\Support\Carbon::parse($c->data_vencimento)->between($hoje, $hoje->copy()->addDays(7))
-            )->sum('valor'),
-            'pago_mes' => (float) ContaPagar::where('status', 'pago')
-                ->whereYear('data_pagamento', $hoje->year)
-                ->whereMonth('data_pagamento', $hoje->month)
-                ->sum('valor_pago'),
-            'atrasado' => (float) $atrasadas->sum('valor'),
-            'atrasado_titulos' => $atrasadas->count(),
+            'a_pagar' => (float) (clone $base)->where('status', '!=', 'pago')->whereDate('data_vencimento', '>=', $hoje)->sum('valor'),
+            'pago' => (float) (clone $base)->where('status', 'pago')->sum('valor_pago'),
+            'vencido' => (float) (clone $base)->where('status', '!=', 'pago')->whereDate('data_vencimento', '<', $hoje)->sum('valor'),
+            'vence_hoje' => (float) (clone $base)->where('status', '!=', 'pago')->whereDate('data_vencimento', $hoje)->sum('valor'),
         ];
 
-        $faixas = $this->faixasDeAging($emAberto, $hoje);
+        // Aging continua GLOBAL, sem período/busca — exposição total, não a
+        // fatia do mês navegado (mesma escolha das Receitas).
+        $emAbertoGlobal = ContaPagar::where('status', 'em_aberto')->get(['id', 'valor', 'data_vencimento']);
+        $faixas = $this->faixasDeAging($emAbertoGlobal, $hoje);
+        $totalEmAbertoGlobal = (float) $emAbertoGlobal->sum('valor');
 
         return view('contas-pagar.index', array_merge(
             $this->formData(),
-            compact('contasPagar', 'kpis', 'faixas', 'hoje')
+            compact('contasPagar', 'kpis', 'faixas', 'hoje', 'totalEmAbertoGlobal', 'contagens', 'contagensTipo'),
+            [
+                'filtroPeriodo' => $this->filtroPeriodoSelecionado($request),
+                'periodoDe' => $periodoDe?->format('Y-m-d'),
+                'periodoAte' => $periodoAte?->format('Y-m-d'),
+                'busca' => $busca,
+                'centroCustoId' => $centroCustoId,
+                'filtroStatus' => $filtroStatus,
+                'filtroTipo' => $filtroTipo,
+            ]
         ));
+    }
+
+    /** @return array{0: ?Carbon, 1: ?Carbon} */
+    private function periodoSelecionado(Request $request): array
+    {
+        return match ($this->filtroPeriodoSelecionado($request)) {
+            'mes_anterior' => [now()->startOfMonth()->subMonth(), now()->startOfMonth()->subMonth()->endOfMonth()],
+            'proximo_mes' => [now()->startOfMonth()->addMonth(), now()->startOfMonth()->addMonth()->endOfMonth()],
+            'ontem' => [now()->subDay()->startOfDay(), now()->subDay()->startOfDay()],
+            'hoje' => [now()->startOfDay(), now()->startOfDay()],
+            'amanha' => [now()->addDay()->startOfDay(), now()->addDay()->startOfDay()],
+            'personalizado' => $this->periodoPersonalizado($request),
+            'todos' => [null, null],
+            default => [now()->startOfMonth(), now()->endOfMonth()],
+        };
+    }
+
+    private function filtroPeriodoSelecionado(Request $request): string
+    {
+        $valor = $request->query('periodo');
+
+        return in_array($valor, ['mes_anterior', 'proximo_mes', 'ontem', 'hoje', 'amanha', 'personalizado', 'todos'], true)
+            ? $valor
+            : 'mes_atual';
+    }
+
+    /** @return array{0: Carbon, 1: Carbon} */
+    private function periodoPersonalizado(Request $request): array
+    {
+        $de = $request->query('periodo_de');
+        $ate = $request->query('periodo_ate');
+
+        $inicio = $this->dataValida($de) ?? now()->startOfMonth();
+        $fim = $this->dataValida($ate) ?? now()->endOfMonth();
+
+        if ($fim->lessThan($inicio)) {
+            [$inicio, $fim] = [$fim, $inicio];
+        }
+
+        return [$inicio, $fim];
+    }
+
+    private function dataValida(mixed $valor): ?Carbon
+    {
+        if (! is_string($valor) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor)) {
+            return null;
+        }
+
+        try {
+            return Carbon::createFromFormat('Y-m-d', $valor);
+        } catch (\Exception) {
+            return null;
+        }
+    }
+
+    private function filtroStatusSelecionado(Request $request): string
+    {
+        $valor = $request->query('status_filtro');
+
+        return in_array($valor, ['em_aberto', 'vencido', 'pago', 'cancelado'], true) ? $valor : 'todos';
+    }
+
+    private function filtroTipoSelecionado(Request $request): ?string
+    {
+        $valor = $request->query('tipo_filtro');
+
+        return in_array($valor, ['avulsa', 'fixa'], true) ? $valor : null;
+    }
+
+    /**
+     * Mesma ideia da busca de Receitas: fornecedor (nome, fantasia, CNPJ/CPF
+     * sem máscara), descrição e valor (aceita vírgula ou ponto decimal).
+     */
+    private function aplicarBusca($query, string $busca)
+    {
+        $digitos = preg_replace('/\D/', '', $busca);
+        $valorBusca = str_replace(',', '.', $busca);
+
+        return $query->where(function ($qq) use ($busca, $digitos, $valorBusca) {
+            $qq->where('descricao', 'like', "%{$busca}%")
+                ->orWhere('valor', 'like', "%{$valorBusca}%")
+                ->orWhereHas('fornecedor', function ($f) use ($busca, $digitos) {
+                    $f->where('razao_social', 'like', "%{$busca}%")
+                        ->orWhere('nome_fantasia', 'like', "%{$busca}%");
+                    if ($digitos !== '') {
+                        $f->orWhere('cpf_cnpj', 'like', "%{$digitos}%");
+                    }
+                });
+        });
     }
 
     /**

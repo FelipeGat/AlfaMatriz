@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="titulo">Despesas</x-slot>
-    <x-slot name="contexto">contas a pagar · {{ $kpis['a_pagar_titulos'] }} em aberto</x-slot>
+    <x-slot name="contexto">contas a pagar · {{ $contasPagar->total() }} título(s)</x-slot>
     <x-slot name="acoes">
         <button type="button" x-data @click="$dispatch('open-modal', 'nova-despesa')"
                 class="h-[34px] px-3 rounded-control bg-brand text-on-brand font-semibold text-[12.5px]
@@ -20,31 +20,226 @@
             </div>
         @endif
 
-        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
-            <x-kpi-card rotulo="A pagar" :valor="'R$ '.number_format($kpis['a_pagar'], 2, ',', '.')"
-                        :delta="$kpis['a_pagar_titulos'].' '.($kpis['a_pagar_titulos'] === 1 ? 'título' : 'títulos')"
-                        acento="warn" icone="trending-down" />
-            <x-kpi-card rotulo="Vence em 7 dias" :valor="'R$ '.number_format($kpis['vence_em_7_dias'], 2, ',', '.')"
-                        acento="amber" icone="clock" />
-            <x-kpi-card rotulo="Pago no mês" :valor="'R$ '.number_format($kpis['pago_mes'], 2, ',', '.')"
-                        acento="good" icone="check-circle" sinal="bom" />
-            <x-kpi-card rotulo="Atrasado" :valor="'R$ '.number_format($kpis['atrasado'], 2, ',', '.')"
-                        :delta="$kpis['atrasado_titulos'] > 0 ? $kpis['atrasado_titulos'].' '.($kpis['atrasado_titulos'] === 1 ? 'título' : 'títulos') : 'nada em atraso'"
-                        :sinal="$kpis['atrasado_titulos'] > 0 ? 'ruim' : 'bom'"
-                        acento="crit" icone="alert-triangle" />
+        {{--
+            Filtros — mesmo padrão das Receitas (16/08/2026): recolhido em
+            todo carregamento, trilha de "filtrando por" sempre visível
+            mesmo fechado, período por vencimento, busca ampla (fornecedor,
+            descrição, valor) e pills de status/tipo com contador. O que
+            substitui "revenda" aqui é Centro de Custo — despesa não nasce
+            de revenda nenhuma.
+        --}}
+        @php
+            $baseQuery = array_filter([
+                'periodo' => $filtroPeriodo,
+                'periodo_de' => $filtroPeriodo === 'personalizado' ? $periodoDe : null,
+                'periodo_ate' => $filtroPeriodo === 'personalizado' ? $periodoAte : null,
+                'busca' => $busca ?: null,
+                'centro_custo_id' => $centroCustoId,
+                'status_filtro' => $filtroStatus !== 'todos' ? $filtroStatus : null,
+                'tipo_filtro' => $filtroTipo,
+            ]);
+            $pillPeriodo = fn ($chave) => route('contas-pagar.index', $baseQuery + ['periodo' => $chave]);
+            $rotuloPeriodo = [
+                'mes_anterior' => 'Mês anterior', 'mes_atual' => 'Este mês', 'proximo_mes' => 'Próximo mês',
+                'ontem' => 'Ontem', 'hoje' => 'Hoje', 'amanha' => 'Amanhã',
+                'todos' => 'Todos os períodos', 'personalizado' => \Illuminate\Support\Carbon::parse($periodoDe)->format('d/m/Y').' até '.\Illuminate\Support\Carbon::parse($periodoAte)->format('d/m/Y'),
+            ];
+            $statusPills = ['todos' => 'Todos', 'em_aberto' => 'Em aberto', 'vencido' => 'Vencido', 'pago' => 'Pago', 'cancelado' => 'Cancelado'];
+            $tipoPills = ['avulsa' => 'Pontual', 'fixa' => 'Recorrente'];
+
+            // Mesma régua das Receitas: cada filtro fora do padrão vira chip,
+            // com o link que o remove sozinho. Período sempre aparece.
+            $chips = collect([
+                ['rotulo' => 'Período: '.$rotuloPeriodo[$filtroPeriodo], 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['periodo', 'periodo_de', 'periodo_ate'])],
+                $busca ? ['rotulo' => 'Busca: "'.$busca.'"', 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['busca'])] : null,
+                $centroCustoId ? ['rotulo' => 'Centro de custo: '.($centrosCusto->firstWhere('id', (int) $centroCustoId)->nome ?? '—'), 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['centro_custo_id'])] : null,
+                $filtroStatus !== 'todos' ? ['rotulo' => 'Status: '.$statusPills[$filtroStatus], 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['status_filtro'])] : null,
+                $filtroTipo ? ['rotulo' => 'Tipo: '.$tipoPills[$filtroTipo], 'remover' => \Illuminate\Support\Arr::except($baseQuery, ['tipo_filtro'])] : null,
+            ])->filter()->values();
+        @endphp
+
+        <div x-data="{ filtrosAbertos: false }">
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+                <button type="button" @click="filtrosAbertos = ! filtrosAbertos"
+                        class="h-8 px-3 inline-flex items-center gap-2 rounded-control border border-line text-[12.5px] text-ink-dim hover:border-brand hover:text-brand transition">
+                    <span class="h-3 w-3 transition-transform" :class="filtrosAbertos && 'rotate-180'">
+                        <x-nav-icon name="chevron-down" :peso="1.8" />
+                    </span>
+                    Filtros
+                </button>
+
+                <span class="font-mono text-[10px] uppercase tracking-caps text-ink-faint">Filtrando por:</span>
+                @foreach ($chips as $chip)
+                    <a href="{{ route('contas-pagar.index', $chip['remover']) }}"
+                       class="h-7 pl-2.5 pr-1.5 inline-flex items-center gap-1.5 rounded-badge border border-line bg-chip text-[11.5px] text-ink-dim hover:border-brand hover:text-brand transition">
+                        {{ $chip['rotulo'] }}
+                        <span class="h-3.5 w-3.5 rounded-full flex items-center justify-center text-ink-faint">✕</span>
+                    </a>
+                @endforeach
+                @if ($chips->count() > 1)
+                    <a href="{{ route('contas-pagar.index') }}" class="font-mono text-[10.5px] uppercase tracking-caps text-brand-text hover:underline">Limpar tudo</a>
+                @endif
+            </div>
+
+            <div x-show="filtrosAbertos" x-cloak x-transition
+                 class="rounded-panel border border-line bg-subtle p-4 space-y-4">
+                {{-- Período --}}
+                <div>
+                    <p class="mb-2 font-mono text-[10px] uppercase tracking-caps text-ink-faint">Período (por vencimento)</p>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <div class="flex items-center gap-1.5">
+                            @foreach (['mes_anterior', 'mes_atual', 'proximo_mes'] as $chave)
+                                <a href="{{ $pillPeriodo($chave) }}"
+                                   class="h-9 px-3 inline-flex items-center rounded-control border text-[12.5px] transition
+                                          {{ $filtroPeriodo === $chave ? 'border-brand bg-brand/[0.08] text-brand-text' : 'border-line text-ink-mute hover:border-brand hover:text-brand' }}">
+                                    {{ $rotuloPeriodo[$chave] }}
+                                </a>
+                            @endforeach
+                        </div>
+
+                        <span class="mx-1 h-5 w-px bg-line shrink-0"></span>
+
+                        <div class="flex items-center gap-1.5">
+                            @foreach (['ontem', 'hoje', 'amanha'] as $chave)
+                                <a href="{{ $pillPeriodo($chave) }}"
+                                   class="h-9 px-3 inline-flex items-center rounded-control border text-[12.5px] transition
+                                          {{ $filtroPeriodo === $chave ? 'border-brand bg-brand/[0.08] text-brand-text' : 'border-line text-ink-mute hover:border-brand hover:text-brand' }}">
+                                    {{ $rotuloPeriodo[$chave] }}
+                                </a>
+                            @endforeach
+                        </div>
+
+                        <span class="mx-1 h-5 w-px bg-line shrink-0"></span>
+
+                        <a href="{{ $pillPeriodo('todos') }}"
+                           class="h-9 px-3 inline-flex items-center rounded-control border text-[12.5px] transition
+                                  {{ $filtroPeriodo === 'todos' ? 'border-brand bg-brand/[0.08] text-brand-text' : 'border-line text-ink-mute hover:border-brand hover:text-brand' }}">
+                            Todos os períodos
+                        </a>
+
+                        <form method="GET" class="flex items-center gap-1.5">
+                            @foreach (\Illuminate\Support\Arr::except($baseQuery, ['periodo', 'periodo_de', 'periodo_ate']) as $chave => $valor)
+                                <input type="hidden" name="{{ $chave }}" value="{{ $valor }}">
+                            @endforeach
+                            <input type="hidden" name="periodo" value="personalizado">
+
+                            <button type="{{ $filtroPeriodo === 'personalizado' ? 'button' : 'submit' }}"
+                                    class="h-9 px-3 inline-flex items-center rounded-control border text-[12.5px] transition
+                                           {{ $filtroPeriodo === 'personalizado' ? 'border-brand bg-brand/[0.08] text-brand-text' : 'border-line text-ink-mute hover:border-brand hover:text-brand' }}">
+                                Período personalizado
+                            </button>
+
+                            @if ($filtroPeriodo === 'personalizado')
+                                <input type="date" name="periodo_de" value="{{ $periodoDe }}"
+                                       class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
+                                <span class="font-mono text-[10.5px] text-ink-faint">até</span>
+                                <input type="date" name="periodo_ate" value="{{ $periodoAte }}"
+                                       class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
+                                <x-secondary-button type="submit">Aplicar</x-secondary-button>
+                            @endif
+                        </form>
+                    </div>
+                </div>
+
+                <div class="h-px bg-line"></div>
+
+                {{-- Busca + centro de custo --}}
+                <form method="GET" class="flex flex-wrap items-end gap-3">
+                    <input type="hidden" name="periodo" value="{{ $filtroPeriodo }}">
+                    @if ($filtroPeriodo === 'personalizado')
+                        <input type="hidden" name="periodo_de" value="{{ $periodoDe }}">
+                        <input type="hidden" name="periodo_ate" value="{{ $periodoAte }}">
+                    @endif
+                    @if ($filtroStatus !== 'todos') <input type="hidden" name="status_filtro" value="{{ $filtroStatus }}"> @endif
+                    @if ($filtroTipo) <input type="hidden" name="tipo_filtro" value="{{ $filtroTipo }}"> @endif
+
+                    <div class="flex-1 min-w-[220px] max-w-[380px]">
+                        <p class="mb-1.5 font-mono text-[10px] uppercase tracking-caps text-ink-faint">Buscar</p>
+                        <label class="flex items-center gap-2 h-9 px-3 rounded-control bg-input border border-line text-ink-faint focus-within:border-brand transition">
+                            <span class="h-4 w-4 shrink-0"><x-nav-icon name="search" /></span>
+                            <input type="search" name="busca" value="{{ $busca }}"
+                                   placeholder="Fornecedor, CNPJ/CPF ou descrição…"
+                                   class="flex-1 min-w-0 bg-transparent border-0 p-0 text-[13px] text-ink placeholder-ink-faint focus:ring-0">
+                        </label>
+                    </div>
+
+                    <div>
+                        <p class="mb-1.5 font-mono text-[10px] uppercase tracking-caps text-ink-faint">Centro de custo</p>
+                        <select name="centro_custo_id" onchange="this.form.submit()"
+                                class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
+                            <option value="">Todos os centros</option>
+                            @foreach ($centrosCusto as $centro)
+                                <option value="{{ $centro->id }}" {{ (string) $centroCustoId === (string) $centro->id ? 'selected' : '' }}>{{ $centro->nome }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <x-secondary-button type="submit">Buscar</x-secondary-button>
+                    @if ($busca || $centroCustoId)
+                        <a href="{{ route('contas-pagar.index', \Illuminate\Support\Arr::except($baseQuery, ['busca', 'centro_custo_id'])) }}"
+                           class="h-9 inline-flex items-center font-mono text-[10.5px] uppercase tracking-caps text-brand-text hover:underline">Limpar</a>
+                    @endif
+                </form>
+
+                <div class="h-px bg-line"></div>
+
+                {{-- Status e tipo --}}
+                <div class="flex flex-col gap-3">
+                    <div>
+                        <p class="mb-2 font-mono text-[10px] uppercase tracking-caps text-ink-faint">Status</p>
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            @foreach ($statusPills as $chave => $rotulo)
+                                <a href="{{ route('contas-pagar.index', \Illuminate\Support\Arr::except($baseQuery, ['status_filtro']) + ($chave !== 'todos' ? ['status_filtro' => $chave] : [])) }}"
+                                   class="h-8 px-3 inline-flex items-center gap-1.5 rounded-control border text-[12px] transition
+                                          {{ $filtroStatus === $chave ? 'border-brand bg-brand/[0.08] text-brand-text' : 'border-line text-ink-mute hover:border-brand hover:text-brand' }}">
+                                    {{ $rotulo }}
+                                    <span class="font-mono text-[10.5px] tabular">{{ $chave === 'todos' ? $contagens['todos'] : $contagens[$chave] }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="mb-2 font-mono text-[10px] uppercase tracking-caps text-ink-faint">Tipo</p>
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            @foreach ($tipoPills as $chave => $rotulo)
+                                <a href="{{ route('contas-pagar.index', \Illuminate\Support\Arr::except($baseQuery, ['tipo_filtro']) + ($filtroTipo !== $chave ? ['tipo_filtro' => $chave] : [])) }}"
+                                   class="h-8 px-3 inline-flex items-center gap-1.5 rounded-control border text-[12px] transition
+                                          {{ $filtroTipo === $chave ? 'border-brand bg-brand/[0.08] text-brand-text' : 'border-line text-ink-mute hover:border-brand hover:text-brand' }}">
+                                    {{ $rotulo }}
+                                    <span class="font-mono text-[10.5px] tabular">{{ $contagensTipo[$chave] }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        {{-- Faixa de atraso: onde o dinheiro está travado ------------------- --}}
+        {{-- Os quatro cards — mesma régua das Receitas, sempre sobre o
+             recorte de período/busca/centro de custo ativo. --}}
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+            <x-kpi-card rotulo="A pagar no período" :valor="'R$ '.number_format($kpis['a_pagar'], 2, ',', '.')"
+                        acento="warn" icone="trending-down" />
+            <x-kpi-card rotulo="Pago no período" :valor="'R$ '.number_format($kpis['pago'], 2, ',', '.')"
+                        acento="good" icone="check-circle" sinal="bom" />
+            <x-kpi-card rotulo="Vencido no período" :valor="'R$ '.number_format($kpis['vencido'], 2, ',', '.')"
+                        acento="crit" icone="alert-triangle" />
+            <x-kpi-card rotulo="Vence hoje" :valor="'R$ '.number_format($kpis['vence_hoje'], 2, ',', '.')"
+                        acento="amber" icone="clock" />
+        </div>
+
+        {{-- Faixa de atraso: onde o dinheiro está travado — GLOBAL, não o
+             recorte de período (mesma escolha das Receitas). ------------- --}}
         @php
-            $totalEmAberto = collect($faixas)->sum('valor');
             $coresFaixa = ['a_vencer' => 'accent', '1_15' => 'warn', '16_30' => 'amber', 'mais_30' => 'crit'];
         @endphp
 
-        @if ($totalEmAberto > 0)
+        @if ($totalEmAbertoGlobal > 0)
             <section class="rounded-panel border border-line bg-card-grad p-4">
                 <div class="flex flex-wrap items-baseline justify-between gap-3">
                     <h2 class="font-display text-[15px] font-semibold text-ink">Em aberto por faixa de vencimento</h2>
-                    <span class="font-mono text-[13px] text-ink-dim whitespace-nowrap">R$ {{ number_format($totalEmAberto, 2, ',', '.') }}</span>
+                    <span class="font-mono text-[13px] text-ink-dim whitespace-nowrap">R$ {{ number_format($totalEmAbertoGlobal, 2, ',', '.') }}</span>
                 </div>
 
                 <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -62,30 +257,13 @@
                         @continue($faixa['valor'] <= 0)
                         <span class="block h-full shrink-0"
                               data-faixa="{{ $chave }}"
-                              style="width: {{ round(($faixa['valor'] / $totalEmAberto) * 100, 3) }}%; min-width: 3px;
+                              style="width: {{ round(($faixa['valor'] / $totalEmAbertoGlobal) * 100, 3) }}%; min-width: 3px;
                                      background: rgb(var(--{{ $coresFaixa[$chave] }}))"
                               title="{{ $faixa['rotulo'] }} · R$ {{ number_format($faixa['valor'], 2, ',', '.') }}"></span>
                     @endforeach
                 </div>
             </section>
         @endif
-
-        <form method="GET" class="flex flex-wrap items-center gap-2">
-            <select name="status" onchange="this.form.submit()"
-                    class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
-                <option value="">Todos os status</option>
-                <option value="em_aberto" @selected(request('status') === 'em_aberto')>Em aberto</option>
-                <option value="pago" @selected(request('status') === 'pago')>Pago</option>
-                <option value="cancelado" @selected(request('status') === 'cancelado')>Cancelado</option>
-            </select>
-
-            <select name="tipo" onchange="this.form.submit()"
-                    class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
-                <option value="">Pontuais e recorrentes</option>
-                <option value="avulsa" @selected(request('tipo') === 'avulsa')>Pontuais</option>
-                <option value="fixa" @selected(request('tipo') === 'fixa')>Recorrentes</option>
-            </select>
-        </form>
 
         <div x-data="{ selecionados: [], valores: {} }">
             <form id="bulk-baixa-despesas" action="{{ route('contas-pagar.baixarEmMassa') }}" method="POST" class="hidden">
