@@ -981,7 +981,7 @@ class TarefaController extends Controller
         }
 
         // Sem o quadro: o navegador já reordenou a coluna ANTES de enviar — é
-        // dele que a ordem sai, lida do DOM (`soltarSobreCard`). Redesenhar
+        // dele que a ordem sai, lida do DOM (`confirmarVao`). Redesenhar
         // 900 KB para confirmar o que já está na tela é o gasto mais fácil de
         // não fazer.
         return $this->voltarParaOQuadro($request, comQuadro: false);

@@ -204,7 +204,7 @@ class MovimentoLivreTest extends TestCase
         $numaLinha = preg_replace('/\s+/', ' ', $html);
 
         $this->assertStringContainsString(
-            'pegar( '.Tarefa::first()->id.', '
+            'pegar( $el, '.Tarefa::first()->id.', '
                 .Js::from(['aberta', 'backlog', 'em_desenvolvimento', 'em_staging', 'pronta_producao', 'concluida', 'cancelada'])->toHtml()
                 .", 'desenvolvimento', false, 'em_revisao' )",
             $numaLinha,

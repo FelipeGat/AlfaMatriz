@@ -690,6 +690,21 @@ seja o que está acontecendo.
   Mudar de etapa apaga a posição, que é sempre dentro de UMA coluna. Posicionar
   é organizar trabalho alheio, então pede a mesma capacidade de triagem
 
+#### AC-352 — A reordenação abre o vão ao vivo
+
+- **Dado** um card na mão, sobre a própria coluna
+- **Quando** o ponteiro cruza a metade de um vizinho — metade de cima, o pouso
+  é antes dele; metade de baixo, depois
+- **Então** os cards deslizam e abre um espaço VAZIO onde ele vai cair: o card
+  na mão vive só no fantasma sob o cursor, e a prévia é a coluna já arrumada,
+  sem linha de inserção. Soltar em qualquer ponto da coluna confirma o que a
+  tela mostra; desistir (Esc, soltar fora) desliza tudo de volta à vaga
+  original. Decisão do dono em 16/08/2026, revista duas vezes no mesmo dia:
+  primeiro saiu a linha de inserção do design aprovado — que, além do gosto,
+  mentia no arrasto para baixo, mostrando o pouso acima do vizinho e pousando
+  abaixo —; depois saiu a cópia meio apagada que ocupava o vão, que lia como
+  um segundo card em vez de espaço vazio
+
 #### AC-210 — Excluir apaga; cancelar encerra
 
 - **Dado** uma tarefa aberta por engano

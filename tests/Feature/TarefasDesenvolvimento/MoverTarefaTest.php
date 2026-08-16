@@ -381,7 +381,7 @@ class MoverTarefaTest extends TestCase
         $numaLinha = preg_replace('/\s+/', ' ', $html);
 
         $this->assertStringContainsString(
-            'pegar( '.Tarefa::first()->id.', '.Js::from(['concluida', 'backlog', 'cancelada'])->toHtml()
+            'pegar( $el, '.Tarefa::first()->id.', '.Js::from(['concluida', 'backlog', 'cancelada'])->toHtml()
                 .", 'operacional', false, 'em_desenvolvimento' )",
             $numaLinha,
             'O card precisa levar destinos, tipo e situação de bloqueio para o quadro no dragstart.'

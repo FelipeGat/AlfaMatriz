@@ -632,8 +632,18 @@
                  */
                 recolhidas: [],
 
-                /** Sobre qual card o arrasto está pairando, para a linha de inserção. */
-                sobreCard: null,
+                /**
+                 * O elemento do card na mão e a vaga de onde ele saiu.
+                 *
+                 * A reordenação é ao vivo: o próprio card, meio apagado, abre o
+                 * vão onde vai cair (decisão do dono em 16/08/2026, revendo a
+                 * linha de inserção do design). Se o gesto morrer — Esc, soltar
+                 * fora — a vaga original é o caminho de volta; `ordemEnviada`
+                 * distingue o arrasto confirmado do abandonado.
+                 */
+                cardEmMovimento: null,
+                vagaOriginal: null,
+                ordemEnviada: false,
 
                 init() {
                     try {
@@ -759,7 +769,7 @@
                         && this.statusArrastado === status;
                 },
 
-                permitirSobreCard(evento, status, id) {
+                permitirSobreCard(evento, alvo, status, id) {
                     if (! this.ehReordenacao(status)) {
                         return;
                     }
@@ -767,10 +777,63 @@
                     evento.preventDefault();
                     evento.stopPropagation();
 
-                    // A linha aparece acima do card sob o ponteiro — menos no
-                    // próprio card arrastado, onde ela só piscaria embaixo do
-                    // que já está na mão.
-                    this.sobreCard = id === this.arrastando ? null : id;
+                    // Sobre o próprio card na mão não há o que abrir: o vão é
+                    // ele mesmo, meio apagado, já ocupando o lugar do pouso.
+                    if (id === this.arrastando) {
+                        return;
+                    }
+
+                    // A lista é a do card SOB o ponteiro: com raias ligadas, a
+                    // mesma etapa aparece uma vez por raia, e reordenar não
+                    // atravessa raia — quem mora noutra lista fica onde está.
+                    const arrastado = this.cardEmMovimento;
+
+                    if (! arrastado || arrastado.parentElement !== alvo.parentElement) {
+                        return;
+                    }
+
+                    // A metade do vizinho decide o lado, como no protótipo:
+                    // metade de cima, o card cai antes dele; de baixo, depois.
+                    const r = alvo.getBoundingClientRect();
+                    const referencia = evento.clientY < r.top + r.height / 2 ? alvo : alvo.nextElementSibling;
+
+                    // Já está no vão: mover de novo só faria a coluna tremer.
+                    if (referencia === arrastado || referencia === arrastado.nextElementSibling) {
+                        return;
+                    }
+
+                    this.abrirVao(alvo.parentElement, arrastado, referencia);
+                },
+
+                /**
+                 * Move o card na lista com os vizinhos deslizando (FLIP): cada
+                 * um é fotografado, movido no DOM, devolvido por transform à
+                 * posição antiga e solto para a transição levá-lo à nova. Sem
+                 * isso o vão abre num salto — e o salto lê como falha, não
+                 * como prévia.
+                 */
+                abrirVao(lista, arrastado, referencia) {
+                    const antes = new Map();
+
+                    [...lista.children].forEach((el) => antes.set(el, el.getBoundingClientRect().top));
+
+                    lista.insertBefore(arrastado, referencia);
+
+                    [...lista.children].forEach((el) => {
+                        const salto = (antes.get(el) ?? el.getBoundingClientRect().top) - el.getBoundingClientRect().top;
+
+                        if (! salto) {
+                            return;
+                        }
+
+                        el.style.transition = 'none';
+                        el.style.transform = `translateY(${salto}px)`;
+
+                        requestAnimationFrame(() => {
+                            el.style.transition = 'transform 150ms ease';
+                            el.style.transform = '';
+                        });
+                    });
                 },
 
                 soltarSobreCard(evento, alvo, status, chaveDaLista) {
@@ -781,29 +844,31 @@
                     evento.preventDefault();
                     evento.stopPropagation();
 
-                    // A lista é a da FAIXA, não a do status: com raias ligadas,
-                    // a mesma etapa aparece uma vez por raia, e reordenar
-                    // pegaria a primeira delas em vez daquela onde se soltou.
-                    this.sobreCard = null;
+                    this.confirmarVao();
+                },
 
-                    const lista = document.querySelector(`[data-cards="${chaveDaLista}"]`);
-                    const arrastado = lista.querySelector(`[data-tarefa="${this.arrastando}"]`);
+                /**
+                 * Soltar confirma o que a tela já mostra: o vão aberto durante
+                 * o arrasto É a prévia, e a coluna inteira vai no envio, lida
+                 * do DOM — mandar só "X foi para N" faria o servidor recalcular
+                 * o que o navegador já sabe, e divergir no segundo arrasto.
+                 * Nada mudou de lugar? Nada a enviar.
+                 */
+                confirmarVao() {
+                    const arrastado = this.cardEmMovimento;
+                    const lista = arrastado?.closest('[data-cards]');
+                    const status = this.statusArrastado;
 
-                    this.largar();
+                    const ficouOndeEstava = ! arrastado || ! lista
+                        || (arrastado.parentElement === this.vagaOriginal?.lista
+                            && arrastado.nextElementSibling === this.vagaOriginal?.proximo);
 
-                    if (! arrastado || arrastado === alvo) {
+                    if (ficouOndeEstava) {
+                        this.largar();
+
                         return;
                     }
 
-                    const linhas = [...lista.children];
-                    const destino = linhas.indexOf(alvo);
-                    const origem = linhas.indexOf(arrastado);
-
-                    lista.insertBefore(arrastado, origem < destino ? alvo.nextSibling : alvo);
-
-                    // A coluna inteira vai no envio, lida do DOM: mandar só "X
-                    // foi para N" faria o servidor recalcular o que o navegador
-                    // já sabe, e divergir no segundo arrasto.
                     const envio = this.$refs.formPosicionar;
                     envio.querySelectorAll('input[data-ordem]').forEach((campo) => campo.remove());
                     this.$refs.statusPosicionar.value = status;
@@ -818,6 +883,8 @@
                     });
 
                     envio.requestSubmit();
+                    this.ordemEnviada = true;
+                    this.largar();
                 },
 
                 /**
@@ -1085,13 +1152,27 @@
                     return this.arrastando === null || this.destinos.includes(status);
                 },
 
-                pegar(tarefa, destinos, tipo, bloqueada, status) {
+                pegar(el, tarefa, destinos, tipo, bloqueada, status) {
                     this.arrastando = tarefa;
                     // Bloquear é destino de quem ainda não está travado; para
                     // quem já está, a saída é o botão da própria tarja.
                     this.destinos = bloqueada ? destinos : [...destinos, 'bloqueio'];
                     this.tipoArrastado = tipo;
                     this.statusArrastado = status;
+                    this.cardEmMovimento = el;
+                    this.vagaOriginal = { lista: el.parentElement, proximo: el.nextElementSibling };
+                    this.ordemEnviada = false;
+
+                    // Um quadro DEPOIS do dragstart: esconder no próprio evento
+                    // faria o navegador fotografar um card invisível, e o
+                    // fantasma sob o cursor nasceria em branco. Escondido, o
+                    // vão do pouso fica vazio de verdade — o card vive só no
+                    // fantasma até o gesto terminar.
+                    requestAnimationFrame(() => {
+                        if (this.arrastando === tarefa) {
+                            el.classList.add('invisible');
+                        }
+                    });
                 },
 
                 largar() {
@@ -1099,8 +1180,26 @@
                         this.fimDoArrasto = Date.now();
                     }
 
+                    // Gesto que morreu no meio desfaz o vão: o card volta
+                    // deslizando para a vaga de onde saiu. Só quando ele ainda
+                    // está na lista de origem — se um movimento de etapa já o
+                    // levou embora, não há o que devolver.
+                    const arrastado = this.cardEmMovimento;
+
+                    if (arrastado && ! this.ordemEnviada && this.vagaOriginal
+                        && arrastado.parentElement === this.vagaOriginal.lista
+                        && arrastado.nextElementSibling !== this.vagaOriginal.proximo) {
+                        this.abrirVao(this.vagaOriginal.lista, arrastado, this.vagaOriginal.proximo);
+                    }
+
+                    // O fim do gesto devolve o card à tela, onde quer que ele
+                    // tenha parado — confirmado, desfeito ou levado de etapa.
+                    arrastado?.classList.remove('invisible');
+
+                    this.cardEmMovimento = null;
+                    this.vagaOriginal = null;
+                    this.ordemEnviada = false;
                     this.arrastando = null;
-                    this.sobreCard = null;
                     this.destinos = [];
                     this.tipoArrastado = null;
                     this.statusArrastado = null;
@@ -1333,6 +1432,16 @@
                 },
 
                 soltar(status, exigeTexto) {
+                    // Soltar na própria coluna — no vão entre cards, no
+                    // cabeçalho, no pé — confirma a reordenação que a tela já
+                    // mostra: exigir pontaria num card seria desfazer o gesto
+                    // por dez pixels de margem.
+                    if (this.ehReordenacao(status)) {
+                        this.confirmarVao();
+
+                        return;
+                    }
+
                     const tarefa = this.arrastando;
                     const permitido = this.aceita(status);
                     const tipo = this.tipoArrastado;

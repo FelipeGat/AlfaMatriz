@@ -637,7 +637,11 @@ que apodrece é a de Em andamento parada há 3 dias.
 **Raias** por Responsável ou Sistema, com cabeçalho de coluna fixo. Em raias por responsável, quem tem mais
 de 2 em andamento ganha um selo.
 
-**Reordenar dentro da coluna:** arrastar sobre um card mostra linha de inserção na posição.
+**Reordenar dentro da coluna:** o vão abre ao vivo — a metade do vizinho decide o lado, os cards deslizam e
+fica um espaço VAZIO no lugar do pouso (o card na mão vive só no fantasma sob o cursor); soltar em qualquer
+ponto da coluna confirma, e desistir devolve tudo ao lugar. *(Revisão de 16/08/2026, decisão do dono, em dois
+tempos: saiu a linha de inserção original — que além do gosto mentia no arrasto para baixo — e depois saiu a
+cópia meio apagada no vão, que lia como um segundo card. O checklist do modal mantém a linha.)*
 
 **Teclado:** `↑↓` seleção na coluna · `←→` entre colunas · `⇧+←/→` move a tarefa de etapa recusando
 transição fora do fluxo · `B` bloqueia/destrava · `M` menu · `Enter` detalhe · `C` criação rápida ·

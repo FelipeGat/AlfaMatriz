@@ -58,7 +58,7 @@ Cada um destes tem que ser visível na tela. Se o seed não produz o estado, cri
 
 - [ ] Arraste entre colunas respeitando o fluxo; colunas inválidas apagam durante o gesto
 - [ ] Tentativa inválida recusada **com o motivo dito**
-- [ ] Reordenar dentro da coluna, com linha de inserção na posição
+- [ ] Reordenar dentro da coluna abre o vão ao vivo e VAZIO (metade do vizinho decide o lado; o card vive só no fantasma sob o cursor; soltar em qualquer ponto confirma; desistir devolve) — revisão de 16/08/2026, sem linha de inserção e sem cópia apagada no vão
 - [ ] Menu **Mover ▾** com os destinos válidos, marcando os que pedem motivo
 - [ ] Botão de bloquear/destravar no rodapé do card (sempre)
 - [ ] Botão de concluir **só onde o fluxo permite**

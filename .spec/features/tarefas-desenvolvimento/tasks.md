@@ -445,3 +445,24 @@
   esperando a segunda passagem. O furo é DENTRO da faixa: gravidade continua
   mandando acima de tudo, e a tarja de retorno no card mantém a coluna
   legível de cima para baixo — quem lê vê por que aquele card subiu.
+
+## T-146 — O vão ao vivo no lugar da linha de inserção [concluida]
+- Refs: US-062, AC-352
+- Arquivos: resources/views/tarefas/index.blade.php, resources/views/tarefas/_coluna.blade.php, app/Http/Controllers/TarefaController.php, design/README.md, design/CHECKLIST-TAREFAS.md, tests/Feature/TarefasDesenvolvimento/OrdemEConcorrenciaTest.php
+- Esforço: medio
+- Notas: o dono não gostou do efeito da reordenação — e a apuração achou um
+  defeito por baixo do gosto: a linha aparecia sempre ACIMA do card sob o
+  ponteiro, mas o soltar (`origem < destino ? alvo.nextSibling : alvo`)
+  pousava ABAIXO dele no arrasto para baixo. A linha mentia. Escolhida a
+  prévia ao vivo (estilo Trello) entre três alternativas apresentadas: o card
+  na mão muda de lugar na lista durante o arrasto (a meia-altura do vizinho
+  decide, como o protótipo já fazia), os vizinhos deslizam por FLIP, soltar
+  em qualquer ponto da coluna confirma o que a tela mostra, e o gesto
+  abandonado devolve o card à vaga original. O README do design e o checklist
+  foram revistos juntos, para o handoff não reintroduzir a linha.
+  Segunda revisão no mesmo dia, testada pelo dono na tailnet: a cópia meio
+  apagada que ocupava o vão lia como um segundo card ("como se não estivesse
+  movendo para um espaço vazio"). O card agora SOME da lista durante o gesto
+  (classe `invisible`, aplicada um quadro após o dragstart para o navegador
+  fotografar o fantasma antes) e o vão fica vazio de verdade; `largar()`
+  devolve a visibilidade onde quer que o card tenha parado.

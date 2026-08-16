@@ -9,4 +9,6 @@
 
 • <b>Reordenar à mão continua sendo só de quem faz triagem</b> — hoje, o perfil administrador. A coluna arrumada à mão fica como foi arrumada; a intocada segue a régua automática.
 
+• <b>O arraste agora abre o vão ao vivo.</b> A linha de inserção saiu de cena — e ela mentia no arrasto para baixo, mostrando o pouso num lugar e pousando noutro. Agora os cards se afastam durante o gesto e fica um espaço vazio no lugar onde o card vai cair, enquanto ele segue no fantasma sob o cursor: a prévia é a coluna já arrumada. Soltar em qualquer ponto da coluna confirma; desistir desliza tudo de volta.
+
 <i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

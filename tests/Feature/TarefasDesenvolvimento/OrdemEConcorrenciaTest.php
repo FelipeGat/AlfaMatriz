@@ -230,6 +230,45 @@ class OrdemEConcorrenciaTest extends TestCase
     }
 
     /**
+     * @spec:AC-352 A reordenação abre o vão ao vivo: a metade do vizinho decide o lado,
+     * os vizinhos deslizam em vez de saltar, o vão é espaço VAZIO (o card na mão vive
+     * só no fantasma sob o cursor), soltar em qualquer ponto da coluna confirma o que a
+     * tela mostra, e o gesto abandonado devolve o card à vaga original. A linha de
+     * inserção saiu — ela mentia no arrasto para baixo — e a cópia meio apagada no vão
+     * saiu depois: lia como um segundo card.
+     */
+    public function test_a_reordenacao_abre_o_vao_ao_vivo_e_sem_linha(): void
+    {
+        $usuario = User::factory()->create();
+        $this->criarTarefa();
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // O arraste entrega o elemento do card, e a metade do vizinho decide o lado.
+        $this->assertStringContainsString('permitirSobreCard($event, $el', $html);
+        $this->assertStringContainsString('r.top + r.height / 2', $html);
+
+        // O vão abre deslizando (FLIP), e soltar confirma a prévia — em
+        // qualquer ponto da coluna, não só sobre um card.
+        $this->assertStringContainsString('abrirVao(', $html);
+        $this->assertStringContainsString("transition = 'transform 150ms ease'", $html);
+        $this->assertStringContainsString('this.confirmarVao();', $html);
+
+        // O gesto que morre no meio tem caminho de volta.
+        $this->assertStringContainsString('vagaOriginal', $html);
+
+        // O vão é vazio: o card some da lista um quadro após o dragstart (para
+        // o fantasma ser fotografado antes) e volta quando o gesto termina.
+        $this->assertStringContainsString("el.classList.add('invisible')", $html);
+        $this->assertStringContainsString("classList.remove('invisible')", $html);
+        $this->assertStringNotContainsString('opacity-50 shadow-card-arrasto', $html);
+
+        // A linha de inserção saiu de cena (o estado dela era `sobreCard`).
+        $this->assertStringNotContainsString('sobreCard:', $html);
+        $this->assertStringNotContainsString('this.sobreCard', $html);
+    }
+
+    /**
      * @spec:AC-212 A criação rápida vive no pé da coluna Aberta, e só nela: tarefa sem
      * responsável nasce lá, e o mesmo campo no pé do Backlog entregaria um card que
      * aparece na coluna ao lado.

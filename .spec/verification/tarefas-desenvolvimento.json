@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-16T12:24:45.740Z",
-  "gitRev": "51d273a",
+  "timestamp": "2026-08-16T13:10:58.716Z",
+  "gitRev": "1fe8dbb",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 921,
+  "testsParsed": 922,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -325,6 +325,11 @@
     "AC-209": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\OrdemEConcorrenciaTest::test_coluna_arrumada_a_mao_manda_e_a_intocada_segue_a_regua @spec:AC-209",
+      "method": "tap"
+    },
+    "AC-352": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\OrdemEConcorrenciaTest::test_a_reordenacao_abre_o_vao_ao_vivo_e_sem_linha @spec:AC-352",
       "method": "tap"
     },
     "AC-210": {

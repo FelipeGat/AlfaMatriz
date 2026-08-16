@@ -118,6 +118,7 @@
                  {{-- O card entrega os próprios destinos ao pegar: é assim que
                       o quadro sabe quais colunas apagar durante o arrasto. --}}
                  @dragstart="pegar(
+                     $el,
                      {{ $tarefa->id }},
                      {{ Illuminate\Support\Js::from($transicoes) }},
                      '{{ $tarefa->tipo }}',
@@ -125,10 +126,11 @@
                      '{{ $tarefa->status }}'
                  )"
                  @dragend="largar()"
-                 {{-- Soltar um card SOBRE outro da mesma coluna reordena; de
-                      coluna diferente, o evento segue subindo e a coluna
-                      resolve como movimento de etapa. --}}
-                 @dragover="permitirSobreCard($event, '{{ $etapa['chave'] }}', {{ $tarefa->id }})"
+                 {{-- Arrastar SOBRE um vizinho da mesma coluna abre o vão ao
+                      vivo — o card na mão muda de lugar na lista, com os
+                      outros deslizando. De coluna diferente, o evento segue
+                      subindo e a coluna resolve como movimento de etapa. --}}
+                 @dragover="permitirSobreCard($event, $el, '{{ $etapa['chave'] }}', {{ $tarefa->id }})"
                  @drop="soltarSobreCard($event, $el, '{{ $etapa['chave'] }}', '{{ $alvo }}')"
                  {{-- O card faz as duas coisas: abre no clique e arrasta. Sem o
                       limiar, um arrasto curto — o começo de qualquer arrasto, na
@@ -139,20 +141,16 @@
                       `abrirTarefa` no script do quadro. --}}
                  @click="if (foiClique($event)) $dispatch('abrir-tarefa', {{ $tarefa->id }})"
                  class="rounded-ctl {{ $impedimento ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing' }}"
-                 {{-- Na mão: meio apagado e com a sombra maior. A opacidade diz
-                      "isto saiu do lugar" e a sombra diz "está por cima" — uma
-                      só das duas deixa o card ambíguo entre arrastado e
-                      desabilitado. --}}
+                 {{-- Na mão o card SOME da lista (classe `invisible`, que o
+                      `pegar` aplica um quadro depois do dragstart, para o
+                      navegador fotografar o fantasma antes): o vão do pouso é
+                      um espaço vazio de verdade. A cópia meio apagada que
+                      ficava aqui lia como um segundo card — "como se não
+                      estivesse movendo para um espaço vazio" (dono,
+                      16/08/2026). --}}
                  :class="{
-                     'opacity-50 shadow-card-arrasto': arrastando === {{ $tarefa->id }},
                      'ring-1 ring-brand': selecionado === {{ $tarefa->id }},
                  }">
-                {{-- A linha de inserção: 2px na cor da marca, onde o card vai
-                     cair. Sem ela, reordenar é soltar e torcer — o gesto não
-                     diz onde vai parar até já ter parado. --}}
-                <div x-show="sobreCard === {{ $tarefa->id }}" x-cloak aria-hidden="true"
-                     class="h-0.5 rounded-sm mb-[10px]" style="background: rgb(var(--brand))"></div>
-
                 {{-- Alvo nomeado: marcar um item do checklist muda o "3/5" DESTE
                      card e mais nada. Redesenhar o quadro para isso mandava
                      906 KB; o card sozinho tem ~15 KB. --}}
