@@ -637,14 +637,20 @@ class RelatorioController extends Controller
             ->limit(12)
             ->get(['usuario_nome', 'recurso', 'acao', 'descricao', 'created_at']);
 
-        // `groupByRaw` da MESMA expressão do select: agrupar pela coluna crua
-        // separaria NULL de string vazia e o ranking mostraria dois "Sem UF".
+        // Agrupa pela COLUNA no SQL e junta NULL com '' em "Sem UF" no PHP.
+        // A primeira versão agrupava pela expressão (`COALESCE(NULLIF(...))`)
+        // no próprio SQL — e o ONLY_FULL_GROUP_BY do MySQL do staging não
+        // reconhece a expressão do SELECT como a mesma do GROUP BY: erro 1055
+        // e a seção inteira caía. São no máximo 27 linhas + duas vazias; o
+        // reagrupamento em PHP custa nada e roda igual em qualquer sql_mode.
         $rankingUfs = $this->ranking(
             Cliente::where('ativo', true)
-                ->selectRaw("COALESCE(NULLIF(uf, ''), 'Sem UF') as regiao, COUNT(*) as qtd")
-                ->groupByRaw("COALESCE(NULLIF(uf, ''), 'Sem UF')")
+                ->selectRaw('uf, COUNT(*) as qtd')
+                ->groupBy('uf')
                 ->get()
-                ->map(fn ($linha) => ['nome' => $linha->regiao, 'valor' => (float) $linha->qtd]),
+                ->groupBy(fn ($linha) => $linha->uf ?: 'Sem UF')
+                ->map(fn ($linhas, $regiao) => ['nome' => $regiao, 'valor' => (float) $linhas->sum('qtd')])
+                ->values(),
             'amber'
         );
 

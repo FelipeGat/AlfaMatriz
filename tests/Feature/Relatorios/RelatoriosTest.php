@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Relatorios;
 
+use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\ContaPagar;
 use App\Models\Lead;
@@ -258,6 +259,28 @@ class RelatoriosTest extends TestCase
         $this->assertSame(1, $resposta->viewData('devolvidasQtd'));
         $permanencia = collect($resposta->viewData('tempoPorEtapa'))->firstWhere('status', 'em_revisao');
         $this->assertEqualsWithDelta(2.0, $permanencia['dias'], 0.01);
+    }
+
+    /**
+     * O agrupamento por UF acontece na coluna crua + PHP, não numa expressão
+     * SQL: o ONLY_FULL_GROUP_BY do MySQL do staging derrubava a seção inteira
+     * (erro 1055) com o GROUP BY por expressão. NULL e vazio são o MESMO
+     * "Sem UF" — dois buckets seria o ranking mentindo sobre o buraco.
+     */
+    public function test_clientes_sem_uf_viram_um_bucket_so_no_ranking_de_ufs(): void
+    {
+        Cliente::create(['nome' => 'Sem UF nula', 'ativo' => true, 'uf' => null]);
+        Cliente::create(['nome' => 'Sem UF vazia', 'ativo' => true, 'uf' => '']);
+        Cliente::create(['nome' => 'Mineiro', 'ativo' => true, 'uf' => 'MG']);
+
+        $resposta = $this->actingAs(User::factory()->create())
+            ->get(route('relatorios.index', ['secao' => 'sistema']));
+
+        $resposta->assertOk();
+        $ufs = collect($resposta->viewData('rankingUfs')['itens'])->pluck('valor', 'nome');
+        $this->assertEquals(2.0, $ufs['Sem UF']);
+        $this->assertEquals(1.0, $ufs['MG']);
+        $this->assertCount(2, $ufs);
     }
 
     public function test_a_secao_sistema_lista_os_perfis_com_contas_ativas(): void
