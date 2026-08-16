@@ -105,4 +105,4 @@ Matriz — sem código novo por sistema.
 | ID | Pergunta | Status | Resposta |
 |---|---|---|---|
 | Q-040 | O fechamento mensal do AlfaJornada deve passar a cobrar por `uso_unidades` (funcionários ativos medidos) em vez de clientes ativos? Hoje o tier metrado dele multiplicaria R$ 2,50 pelo nº de clientes, que não é a unidade anunciada. | aberta | — |
-| Q-041 | A linha `alfajornada` existe na tabela `sistemas` de produção? A migração de capacidade só atualiza linha existente (mesmo padrão das capacidades anteriores); se não existir, é preciso cadastrá-lo pela tela de Sistemas antes de configurar endereço e chave. | aberta | — |
+| Q-041 | A linha `alfajornada` existe na tabela `sistemas` de produção? A migração de capacidade só atualiza linha existente (mesmo padrão das capacidades anteriores); se não existir, é preciso cadastrá-lo pela tela de Sistemas antes de configurar endereço e chave. | respondida | Existia. A migração aplicou as capacidades em 15/08/2026; endereço e chave foram configurados no mesmo dia e a primeira carga entrou (2 revendas, 2 clientes, uso de 2 clientes medido). O AlfaJornada está no ciclo horário. |
