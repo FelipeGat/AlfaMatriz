@@ -1144,6 +1144,12 @@
 
                     if (destino) {
                         destino.prepend(card);
+
+                        // A vista acompanha o card: a célula de destino pode
+                        // estar noutro ponto da rolagem, e sem isto o solto
+                        // fazia o card sumir — movimento certo lendo como
+                        // card perdido.
+                        card.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
                     }
                 },
 
@@ -1422,7 +1428,22 @@
                     // abre certo e o cursor não vai para o campo. Enquanto o
                     // formulário morava direto no card não havia raiz no meio, e
                     // por isso o `$refs` funcionava.
-                    this.$nextTick(() => lugar.querySelector('textarea')?.focus());
+                    this.$nextTick(() => {
+                        // O gesto que pediu o painel pode ter terminado longe
+                        // dele: o arrasto acaba na coluna de DESTINO, e o
+                        // painel abre no card de ORIGEM — encoberto pela
+                        // rolagem, ele lia como bug ("soltei e nada
+                        // aconteceu"), com o formulário esperando fora da
+                        // vista. `nearest` move o mínimo: quem já está vendo o
+                        // card não é levado a passeio.
+                        lugar.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+
+                        // `textarea, select`, e não só `textarea`: os portões
+                        // de exame perguntam QUEM, num select — sem o reserva,
+                        // o cursor não ia a lugar nenhum. `preventScroll` para
+                        // o foco não atropelar a rolagem suave logo acima.
+                        lugar.querySelector('textarea, select')?.focus({ preventScroll: true });
+                    });
                 },
 
                 permitir(status) {
@@ -1483,6 +1504,12 @@
                     this.adiantarMovimento(tarefa, status);
 
                     this.$refs.formMover.action = this.rotaMover.replace('__ID__', tarefa);
+                    // A resposta redesenha o quadro e devolve a rolagem de
+                    // ANTES do gesto — `data-acompanha` é o que faz a tela
+                    // terminar no card, onde quer que o destino esteja. Vale
+                    // também para a recusa: o quadro volta com o card na
+                    // origem, e é para lá que a vista vai, junto da frase.
+                    this.$refs.formMover.dataset.acompanha = tarefa;
                     this.$refs.statusMover.value = status;
                     this.$refs.deStatusMover.value = de ?? '';
                     this.tipoArrastado = null;
@@ -1757,16 +1784,26 @@
                 restaurarFoco();
             };
 
-            const enviar = async (form) => {
+            const enviar = async (form, quemEnviou) => {
                 const meuEnvio = ++ultimoEnvio;
+
+                // Lido ANTES da viagem: a resposta redesenha o quadro e leva o
+                // formulário junto — depois dela o atributo já não existe.
+                const acompanhar = form.dataset.acompanha;
 
                 // A query string vai junto porque o quadro que volta é o quadro
                 // FILTRADO: sem ela, marcar um item dentro de um recorte
                 // devolveria o quadro inteiro e desfaria o filtro na tela.
+                //
+                // O botão que enviou vai no FormData: o menu "Mover ▾" é UM
+                // formulário com um submit por destino, e o destino viaja no
+                // `name`/`value` do botão clicado — que `new FormData(form)`
+                // sozinho NÃO inclui. O envio nativo incluía, e foi assim que
+                // a falta passaria despercebida até o primeiro clique.
                 const resposta = await fetch(form.action + location.search, {
                     method: 'POST',
                     headers: { 'Accept': 'application/json' },
-                    body: new FormData(form),
+                    body: quemEnviou ? new FormData(form, quemEnviou) : new FormData(form),
                 });
 
                 if (! resposta.ok) {
@@ -1791,6 +1828,17 @@
                 // agora seria voltar a tela para um estado anterior.
                 if (meuEnvio === ultimoEnvio) {
                     aplicar(dados);
+
+                    // O foco acompanha o card movido. `aplicar` devolve as
+                    // rolagens a onde ESTAVAM — certo para quem marcou um item,
+                    // errado para quem moveu: o card acabou de trocar de
+                    // coluna, e a coluna pode estar noutro ponto da tela. Só
+                    // quando o quadro voltou redesenhado: sem ele, o card não
+                    // saiu do lugar e não há o que perseguir.
+                    if (acompanhar && dados.quadro) {
+                        document.querySelector(`[data-tarefa="${acompanhar}"]`)
+                            ?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+                    }
                 }
 
                 // O campo que o envio esvaziou. Perguntar publica o que está
@@ -1819,7 +1867,7 @@
                 // imprime. Remontar o `x-aviso` em JavaScript significaria
                 // copiar os tokens de cor para cá, e a cópia divergiria do
                 // componente na primeira mudança de tema.
-                enviar(form).catch((erro) => {
+                enviar(form, evento.submitter).catch((erro) => {
                     const escapado = document.createElement('div');
                     escapado.textContent = erro.message;
 

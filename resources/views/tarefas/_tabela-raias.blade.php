@@ -68,8 +68,13 @@
                         @endphp
 
                         {{-- O `x-data` da linha é o mesmo do card: o menu "Mover ▾"
-                             lê `menuAberto` dali. --}}
+                             lê `menuAberto` dali. `data-tarefa` idem — é por ele
+                             que o acompanhamento pós-movimento acha a linha, que
+                             nesta vista é o card. O teclado do quadro não se
+                             confunde: ele só procura dentro de
+                             `section[data-status]`, que a tabela não tem. --}}
                         <tr x-data="{ menuAberto: false, destino: '{{ $transicoes[0] ?? '' }}' }"
+                            data-tarefa="{{ $tarefa->id }}"
                             class="border-b border-rule hover:bg-chip transition cursor-pointer"
                             @click="$dispatch('abrir-tarefa', {{ $tarefa->id }})">
 

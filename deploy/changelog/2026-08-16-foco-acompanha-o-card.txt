@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 16/08/2026</b>
+<i>Quadro de tarefas: a tela acompanha o card movido</i>
+
+<b>🧭 Tarefas — o quadro</b>
+
+• <b>Mover um card não o perde mais de vista.</b> Quando o destino ficava noutro ponto da rolagem — outra coluna, outra raia — o card ia certo e a tela ficava para trás: o movimento parecia sumiço. Agora a vista rola junto e termina no card, onde quer que ele tenha caído. Vale também para a recusa: se alguém já tinha movido a tarefa, a tela volta ao card na origem, junto da frase que explica.
+
+• <b>O pedido de motivo (ou de responsável) abre à vista e com o cursor pronto.</b> Ao mover para revisão, staging ou numa devolução, o painel abria dentro do card de origem — que podia estar fora da tela depois do arrasto, dando a impressão de bug. Agora a tela rola até o painel e o cursor já cai no primeiro campo, seja o texto do motivo, seja a escolha de quem revisa ou quem testa.
+
+• <b>Mover pelo menu ficou como o arrasto.</b> O menu "Mover ▾" recarregava a página inteira e devolvia todas as colunas ao começo. Agora ele move sem recarregar, preservando filtros e rolagem — e acompanhando o card, inclusive na vista de raias.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

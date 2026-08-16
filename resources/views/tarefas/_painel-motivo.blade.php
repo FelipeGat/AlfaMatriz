@@ -31,13 +31,15 @@
         === {id}">` de dentro do card fazia quando o formulário morava lá.
     --}}
     <template x-if="pendente">
-    {{-- `data-parcial` só no bloqueio. Travar não tira a tarefa da etapa —
-         quem travou continua olhando para o mesmo card, e recarregar ali
-         custa a rolagem da coluna. Os outros destinos MOVEM a tarefa: o
-         card sai de onde estava, e a recarga é o que confirma o movimento
-         de corpo inteiro, com a guarda de concorrência do `de_status`
-         respondendo pelo caminho de sempre. --}}
+    {{-- `data-parcial` para todos os destinos: a resposta redesenha o quadro
+         e devolve as rolagens a onde estavam — e `data-acompanha` completa o
+         movimento, rolando até o card no destino (ver `enviar()` no script do
+         quadro). Sem isso o card confirmado aparecia fora da vista, e o
+         painel que acabou de ser respondido lia como resposta perdida. No
+         bloqueio o atributo sai: travar não tira a tarefa da etapa, e quem
+         travou continua olhando para o mesmo card. --}}
     <form method="POST" :action="pendente.acao" @submit="enviandoPendente = true" @click.stop data-parcial
+          :data-acompanha="pendente.status ? pendente.id : false"
           class="mt-[10px] p-[10px] rounded-[5px] border border-l-2"
           :style="`background: rgb(var(--${pendente.cor}) / calc(var(--tint-alpha) / 2));
                    border-color: rgb(var(--${pendente.cor}) / 0.4);

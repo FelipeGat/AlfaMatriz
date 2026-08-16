@@ -43,8 +43,16 @@
 
                 `contents` porque o layout é do pai: os botões continuam
                 filhos do flex-col, para o `gap` valer entre eles.
+
+                `data-parcial` como no arrasto: mover pelo menu recarregava a
+                página inteira, e a recarga zerava TODAS as rolagens — o card
+                reaparecia numa coluna ou raia fora da vista e o movimento lia
+                como sumiço. `data-acompanha` é a outra metade: depois de o
+                quadro voltar redesenhado, a tela rola até o card no destino
+                (ver `enviar()` no script do quadro).
             --}}
-            <form method="POST" action="{{ route('tarefas.mover', $tarefa) }}" class="contents">
+            <form method="POST" action="{{ route('tarefas.mover', $tarefa) }}" class="contents"
+                  data-parcial data-acompanha="{{ $tarefa->id }}">
                 @csrf
                 {{-- A etapa que o card tinha quando a tela foi montada: se
                      alguém moveu enquanto o menu estava aberto, o envio é
