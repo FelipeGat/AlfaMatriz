@@ -155,7 +155,13 @@ class ReceitasTest extends TestCase
             'data_vencimento' => now()->addDays(4)->toDateString(),
         ]);
 
-        $resposta = $this->actingAs($this->operador())->get(route('cobrancas.index'));
+        // `periodo=todos` porque a tela passou a navegar por vencimento, com o
+        // mês atual como padrão — e 26 dias de atraso caem sempre no mês
+        // anterior. O que este teste guarda é a DISTINÇÃO VISUAL das linhas,
+        // não o recorte padrão da tela; sem o parâmetro, ele quebraria de novo
+        // a cada mudança de período, dizendo que a tarja sumiu quando o que
+        // saiu de cena foi a linha.
+        $resposta = $this->actingAs($this->operador())->get(route('cobrancas.index', ['periodo' => 'todos']));
         $resposta->assertOk();
 
         $html = $resposta->getContent();

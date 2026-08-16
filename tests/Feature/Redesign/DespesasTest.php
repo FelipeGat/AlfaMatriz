@@ -126,7 +126,11 @@ class DespesasTest extends TestCase
         $this->despesa('Servidores', 1800.00, 2);
         $this->despesa('Aluguel', 4500.00, 20);
 
-        $resposta = $this->actingAs($this->operador())->get(route('contas-pagar.index'));
+        // `periodo=todos` porque a tela passou a navegar por vencimento, com o
+        // mês atual como padrão — o atraso de 26 dias cai no mês anterior e o
+        // vencimento a 20 dias pode cair no próximo. O que este teste guarda é
+        // a distinção visual das linhas, não o recorte padrão da tela.
+        $resposta = $this->actingAs($this->operador())->get(route('contas-pagar.index', ['periodo' => 'todos']));
         $resposta->assertOk();
 
         $html = $resposta->getContent();

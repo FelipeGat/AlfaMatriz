@@ -144,7 +144,14 @@ class EscopoDeRevendaTest extends TestCase
         $resposta->assertOk();
         $descricoes = $resposta->viewData('cobrancas')->pluck('descricao')->all();
         $this->assertSame(['Mensalidade Alpha'], $descricoes);
-        $this->assertSame(100.0, $resposta->viewData('kpis')['em_aberto']);
+
+        // A tela trocou o KPI único por quatro cards recortados por período
+        // mais o total global de exposição. O que este teste guarda é que TODOS
+        // respeitam o escopo — em especial o global, que sai numa consulta
+        // PRÓPRIA no controller (fora do `$base` já escopado): é ali que um
+        // vazamento entre revendas nasceria sem derrubar nenhuma outra asserção.
+        $this->assertSame(100.0, $resposta->viewData('kpis')['a_receber']);
+        $this->assertSame(100.0, $resposta->viewData('emAbertoGlobal'));
     }
 
     /**
