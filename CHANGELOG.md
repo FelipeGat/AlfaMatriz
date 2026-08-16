@@ -1,5 +1,28 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 16/08/2026 — Receitas e Despesas ganham a gramática do Gestor.Alfa
+
+As duas telas mostravam um total só, sem dizer onde o dinheiro estava
+travado. E os filtros ficavam sempre abertos, competindo por espaço com a
+própria lista que deveriam recortar.
+
+### Novidades
+
+- **Faixa de atraso por vencimento.** O que está em aberto se reparte em
+  quatro faixas — a vencer, 1 a 15, 16 a 30 e mais de 30 dias — cada uma com
+  barra proporcional ao total, em Receitas e em Despesas.
+- **Seleção múltipla com baixa em massa.** Marcar vários títulos mostra a
+  soma do que foi marcado e conclui todos com um clique só.
+- **Atrasado e a vencer se distinguem à primeira vista**, com o prazo real
+  (`atraso 26d`, `em 4d`) ao lado da data, sem precisar fazer a conta.
+- **Filtro recolhível.** O painel de filtros nasce fechado a cada carga da
+  tela — mais lista visível, menos formulário no caminho — e uma fileira de
+  chips mostra sempre o que está realmente filtrado, com atalho para tirar
+  cada um.
+- **Busca ampla.** O campo Buscar agora alcança nome, CPF/CNPJ (mascarado ou
+  não), razão social, valor e descrição de uma vez, tanto em Receitas quanto
+  em Despesas.
+
 ## AlfaMatriz — 14/08/2026 — As miniaturas eram baixadas de novo a cada abertura
 
 Abrir uma tarefa com prints anexados demorava — e demorava toda vez, não só na
