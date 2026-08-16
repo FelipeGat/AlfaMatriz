@@ -669,10 +669,41 @@ class FluxoTarefaService
         }
     }
 
-    /** Tira a marca de travada. A etapa não muda porque ela nunca mudou. */
+    /**
+     * Tira a marca de travada. A etapa não muda porque ela nunca mudou.
+     *
+     * O destravamento passou a avisar em 16/08/2026, revendo a decisão de
+     * 15/08 ("o destravamento aparece no quadro"): com o quadro virando o
+     * planejamento do time, o responsável cuja tarefa foi destravada por OUTRA
+     * pessoa — ou pelo portão do staging que passou, que roda sem autor — só
+     * descobria que podia retomar ao abrir o quadro. `avisar` cala no caso
+     * comum, que é o próprio responsável destravar o que esperava.
+     *
+     * A tarefa que destrava DE PASSAGEM, num movimento de etapa, continua sem
+     * aviso: aquele caminho não passa por aqui de propósito — quem moveu agiu,
+     * e o movimento já é o sinal.
+     */
     public function destravar(Tarefa $tarefa): Tarefa
     {
+        if (! $tarefa->estaBloqueada()) {
+            return $tarefa->refresh();
+        }
+
+        $motivo = (string) $tarefa->bloqueio_motivo;
+
         $tarefa->forceFill(['bloqueado_em' => null, 'bloqueio_motivo' => null])->save();
+
+        Notificacao::avisar($tarefa->responsavel_id, auth()->id(), [
+            'tipo' => 'destravamento',
+            'nivel' => 'marca',
+            'icone' => 'cadeado-aberto',
+            'titulo' => '«'.$tarefa->titulo.'» foi destravada',
+            // O que travava é o que diz se dá para retomar: "Resolvido: staging
+            // não subiu" conta a história inteira na régua curta da meta.
+            'meta' => Str::limit('Resolvido: '.$motivo, 120),
+            'rota' => route('tarefas.index'),
+            'tarefa_id' => $tarefa->id,
+        ]);
 
         return $tarefa->refresh();
     }

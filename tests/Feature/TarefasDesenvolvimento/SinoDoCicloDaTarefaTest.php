@@ -226,6 +226,112 @@ class SinoDoCicloDaTarefaTest extends TestCase
     }
 
     /**
+     * @spec:AC-342 Destravada por outra pessoa, a tarefa avisa o responsável —
+     * é como ele descobre que pode retomar sem abrir o quadro.
+     */
+    public function test_destravar_por_outra_pessoa_avisa_o_responsavel(): void
+    {
+        $dev = User::factory()->membro()->create(['name' => 'Rafael Lima']);
+        $admin = User::factory()->create(['name' => 'Camila Reis']);
+
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $dev->id,
+            'responsavel_id' => $dev->id,
+            'status' => 'em_desenvolvimento',
+            'titulo' => 'Webhook de pagamento',
+        ]);
+
+        $tarefa->forceFill([
+            'bloqueado_em' => now()->subDay(),
+            'bloqueio_motivo' => 'Esperando a credencial do financeiro.',
+        ])->save();
+
+        $this->actingAs($admin)->post(route('tarefas.bloquear', $tarefa));
+
+        $aviso = Notificacao::where('tipo', 'destravamento')->sole();
+
+        $this->assertSame($dev->id, $aviso->destinatario_id);
+        $this->assertSame('marca', $aviso->nivel);
+        $this->assertStringContainsString('foi destravada', $aviso->titulo);
+        $this->assertStringContainsString('Resolvido: Esperando a credencial', $aviso->meta);
+    }
+
+    /** @spec:AC-342 Destravar a própria tarefa é o caso comum, e não ecoa. */
+    public function test_destravar_a_propria_tarefa_nao_ecoa(): void
+    {
+        $dev = User::factory()->membro()->create();
+
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $dev->id,
+            'responsavel_id' => $dev->id,
+            'status' => 'em_desenvolvimento',
+        ]);
+
+        $tarefa->forceFill(['bloqueado_em' => now(), 'bloqueio_motivo' => 'Aguardando o cliente.'])->save();
+
+        $this->actingAs($dev)->post(route('tarefas.bloquear', $tarefa));
+
+        $this->assertFalse($tarefa->fresh()->estaBloqueada());
+        $this->assertSame(0, Notificacao::where('tipo', 'destravamento')->count());
+    }
+
+    /**
+     * @spec:AC-342 O portão do staging que passa destrava sem autor — e o
+     * responsável fica sabendo que o staging voltou, simétrico ao bloqueio
+     * automático que já avisava.
+     */
+    public function test_portao_que_passa_avisa_o_responsavel_sem_autor(): void
+    {
+        $dev = User::factory()->membro()->create(['name' => 'Rafael Lima']);
+
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $dev->id,
+            'responsavel_id' => $dev->id,
+            'tipo' => 'desenvolvimento',
+            'status' => 'em_staging',
+        ]);
+
+        $tarefa->forceFill([
+            'bloqueado_em' => now()->subHour(),
+            'bloqueio_motivo' => \App\Console\Commands\PortaoDoStaging::MOTIVO,
+        ])->save();
+
+        $this->artisan('alfa:portao-staging', ['veredito' => 'passou'])->assertSuccessful();
+
+        $aviso = Notificacao::where('tipo', 'destravamento')->sole();
+
+        $this->assertSame($dev->id, $aviso->destinatario_id);
+        $this->assertStringContainsString('foi destravada', $aviso->titulo);
+    }
+
+    /**
+     * @spec:AC-342 A tarefa bloqueada que muda de etapa destrava DE PASSAGEM, e
+     * essa passagem segue calada: quem moveu agiu, e o movimento já é o sinal.
+     */
+    public function test_mover_tarefa_bloqueada_nao_avisa_destravamento(): void
+    {
+        $dev = User::factory()->membro()->create();
+        $admin = User::factory()->create();
+
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $dev->id,
+            'responsavel_id' => $dev->id,
+            'tipo' => 'desenvolvimento',
+            'status' => 'em_desenvolvimento',
+        ]);
+
+        $tarefa->forceFill(['bloqueado_em' => now(), 'bloqueio_motivo' => 'Aguardando o cliente.'])->save();
+
+        $this->actingAs($admin)->post(route('tarefas.mover', $tarefa), [
+            'status' => 'em_revisao',
+            'de_status' => 'em_desenvolvimento',
+        ]);
+
+        $this->assertFalse($tarefa->fresh()->estaBloqueada());
+        $this->assertSame(0, Notificacao::where('tipo', 'destravamento')->count());
+    }
+
+    /**
      * @spec:AC-331 O carimbo do painel de mover avisa o responsável como o botão
      * de testar (AC-307): o veredito é um fato só, venha por onde vier.
      */

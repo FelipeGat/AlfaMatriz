@@ -56,6 +56,14 @@
   do bloqueio da tarefa); aviso só na transição, nos dois sentidos; sistema
   sem configuração nunca marca queda.
 
+## T-142 — Destravar avisa o responsável [concluida]
+- Refs: AC-342
+- Arquivos: app/Services/FluxoTarefaService.php, tests/Feature/TarefasDesenvolvimento/SinoDoCicloDaTarefaTest.php
+- Notas: reversão pedida pelo dono em 16/08/2026 da decisão de 15/08. O aviso
+  mora em `destravar()`, então o portão do staging que passa (e chama o mesmo
+  método, sem autor) avisa junto — simétrico ao bloqueio automático. O
+  destravamento de passagem no `mover` segue calado de propósito.
+
 ## T-141 — Testes de cobertura do sino [concluida]
 - Refs: US-090, US-091, US-092, US-093, US-094, US-095
 - Arquivos: tests/Feature/TarefasDesenvolvimento/SinoDoCicloDaTarefaTest.php, tests/Feature/SinoForaDoQuadro/FaturamentoAvisaTest.php, tests/Feature/SinoForaDoQuadro/LicencaAvisaTest.php, tests/Feature/SinoForaDoQuadro/ContaAvisaTest.php, tests/Feature/SinoForaDoQuadro/LeadConvertidoAvisaTest.php, tests/Feature/SinoForaDoQuadro/SincronizacaoCaiuTest.php

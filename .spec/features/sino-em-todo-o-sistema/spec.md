@@ -77,6 +77,16 @@ sem precisar vigiar o quadro.
   linha do sino nasce SEM `tarefa_id`, porque presa à tarefa ela apagaria em
   cascata no mesmo instante
 
+#### AC-342 — Destravar avisa o responsável — quando não foi ele
+
+- **Dado** uma tarefa bloqueada com responsável
+- **Quando** outra pessoa a destrava, ou o portão do staging que passa a
+  destrava sem autor
+- **Então** o responsável recebe "«título» foi destravada" com o motivo
+  resolvido na meta; quem destrava a própria tarefa não recebe nada, e a
+  tarefa destravada de passagem por um movimento de etapa continua sem aviso
+  — quem moveu agiu, e o movimento já é o sinal
+
 #### AC-331 — O carimbo do painel de mover avisa como o botão de testar
 
 - **Dado** a confirmação de Em staging → Pronta p/ produção com o carimbo de
@@ -197,9 +207,9 @@ estiver fora.
   dono em 11/08/2026) continua valendo: "a conversa não notifica ninguém; quem
   acompanha a tarefa a abre". O canal que notifica é a pergunta/resposta, que
   já existe. Reverter isso é decisão do dono, não desta feature.
-- **Destravar não notifica** — decisão registrada na feature
-  teste-do-staging-e-aviso-de-bloqueio: o sino avisa o bloqueio; o
-  destravamento aparece no quadro.
+- ~~Destravar não notifica~~ — **revisto pelo dono em 16/08/2026**: o
+  destravamento passou a avisar o responsável (AC-342). A decisão original de
+  15/08 está anotada na feature teste-do-staging-e-aviso-de-bloqueio.
 - Checklist marcado por terceiro, mudança de prioridade e reordenação: ruído
   em relação ao valor; o card já mostra.
 - Criação de usuário (a senha nasce na tela de quem criou; o novo usuário

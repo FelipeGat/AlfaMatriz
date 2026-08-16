@@ -151,7 +151,9 @@ código nunca chegou lá.
 - O painel de mover Em staging → Pronta p/ produção continua com o carimbo
   próprio — registrar pelo card é um caminho a mais, não substituto.
 - Aviso no destravar (manual ou automático): o sino avisa o bloqueio; o
-  destravamento aparece no quadro.
+  destravamento aparece no quadro. **Revisto pelo dono em 16/08/2026**, com o
+  quadro virando o planejamento do time: o destravar passou a avisar o
+  responsável — ver AC-342 (feature sino-em-todo-o-sistema).
 - A cópia do script atualizado para o host do Proxmox é passo de deploy manual
   (os scripts do host não se instalam sozinhos).
 

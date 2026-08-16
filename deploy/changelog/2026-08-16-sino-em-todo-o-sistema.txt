@@ -1,4 +1,4 @@
-<b>📋 AlfaMatriz — Changelog 15/08/2026</b>
+<b>📋 AlfaMatriz — Changelog 16/08/2026</b>
 <i>O sino de notificações passa a cobrir o sistema inteiro</i>
 
 <b>✨ Tarefas — o quadro avisa do começo ao fim</b>
@@ -10,6 +10,8 @@
 • <b>Concluir e cancelar avisam o criador e o responsável.</b> A conclusão leva a versão que subiu para produção; o cancelamento leva o motivo. Quem moveu não recebe, e quem criou e executa recebe uma vez só.
 
 • <b>Excluir avisa antes de sumir.</b> O único gesto do quadro sem desfazer agora deixa aviso para o criador e o responsável — e o aviso sobrevive à exclusão.
+
+• <b>Destravar avisa o responsável.</b> Quando outra pessoa — ou o portão do staging que voltou a passar — destrava a tarefa, quem responde por ela fica sabendo que pode retomar, com o impedimento resolvido no aviso. Quem destrava a própria tarefa não ouve eco.
 
 • <b>O carimbo de validação do painel de mover avisa como o botão de testar.</b> O veredito do staging é um fato só, venha por onde vier, e o responsável fica sabendo pelos dois caminhos.
 
