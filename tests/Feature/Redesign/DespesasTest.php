@@ -126,7 +126,11 @@ class DespesasTest extends TestCase
         $this->despesa('Servidores', 1800.00, 2);
         $this->despesa('Aluguel', 4500.00, 20);
 
-        $resposta = $this->actingAs($this->operador())->get(route('contas-pagar.index'));
+        // `periodo=todos`: o teste verifica a distinção visual atrasado/a
+        // vencer, não o filtro de período — sem isto, os vencimentos de
+        // -26/+20 dias podem cair fora do mês corrente (16/08/2026) e
+        // desaparecer da tabela antes mesmo da asserção rodar.
+        $resposta = $this->actingAs($this->operador())->get(route('contas-pagar.index', ['periodo' => 'todos']));
         $resposta->assertOk();
 
         $html = $resposta->getContent();

@@ -144,7 +144,10 @@ class EscopoDeRevendaTest extends TestCase
         $resposta->assertOk();
         $descricoes = $resposta->viewData('cobrancas')->pluck('descricao')->all();
         $this->assertSame(['Mensalidade Alpha'], $descricoes);
-        $this->assertSame(100.0, $resposta->viewData('kpis')['em_aberto']);
+        // `a_receber` — renomeado de `em_aberto` na reformulação da tela
+        // (16/08/2026), quando os quatro cards passaram a acompanhar o
+        // recorte de período (ver `CobrancaController::index`).
+        $this->assertSame(100.0, $resposta->viewData('kpis')['a_receber']);
     }
 
     /**

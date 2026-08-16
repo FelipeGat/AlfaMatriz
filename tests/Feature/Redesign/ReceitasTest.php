@@ -155,7 +155,10 @@ class ReceitasTest extends TestCase
             'data_vencimento' => now()->addDays(4)->toDateString(),
         ]);
 
-        $resposta = $this->actingAs($this->operador())->get(route('cobrancas.index'));
+        // `periodo=todos`: o teste verifica a distinção visual atrasado/a
+        // vencer, não o filtro de período — sem isto, o vencimento de -26
+        // dias pode cair fora do mês corrente e desaparecer da tabela.
+        $resposta = $this->actingAs($this->operador())->get(route('cobrancas.index', ['periodo' => 'todos']));
         $resposta->assertOk();
 
         $html = $resposta->getContent();
