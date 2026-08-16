@@ -1,0 +1,8 @@
+<b>📋 AlfaMatriz — Changelog 16/08/2026</b>
+<i>Sistemas: trocar o ícone passa a valer na hora</i>
+
+<b>🖼 Cadastro de sistemas</b>
+
+• <b>Trocar o ícone do sistema agora aparece na hora.</b> O ícone novo era gravado certo, mas a tela seguia mostrando o anterior: o arquivo tem sempre o mesmo nome, e a rede de cache na frente do sistema continuava entregando a versão antiga até o prazo dela vencer — com cara de "não salvou". Agora cada versão do ícone tem endereço próprio, e a troca aparece no primeiro recarregamento, no formulário, nas listas e no card de tarefa.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

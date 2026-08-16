@@ -93,6 +93,36 @@ class MarcaDoSistemaTest extends TestCase
             ->assertSee("marcas/{$sistema->slug}.png", escape: false);
     }
 
+    public function test_a_url_da_marca_carrega_a_versao_do_arquivo(): void
+    {
+        $usuario = User::factory()->create();
+
+        $this->actingAs($usuario)->post(route('sistemas.store'), $this->campos([
+            'marca' => UploadedFile::fake()->image('logo.png', 64, 64),
+        ]));
+
+        $sistema = Sistema::sole();
+
+        Tarefa::factory()->create([
+            'criado_por_id' => $usuario->id,
+            'status' => 'backlog',
+            'sistema_id' => $sistema->id,
+            'titulo' => 'Tarefa do sistema interno',
+        ]);
+
+        // O nome do arquivo é o slug e não muda quando a marca muda — e
+        // produção fica atrás do Cloudflare, que cacheia a imagem na borda.
+        // Sem o mtime na URL, trocar o ícone pela tela não mudava nada
+        // visível: a borda seguia servindo o anterior até o TTL vencer, e a
+        // troca parecia não ter salvado. A versão amarrada ao ARQUIVO (e não a
+        // um aleatório) é o que deixa o cache continuar valendo entre trocas.
+        $versao = Storage::disk('public')->lastModified("marcas/{$sistema->slug}.png");
+
+        $this->actingAs($usuario)->get(route('tarefas.index'))
+            ->assertOk()
+            ->assertSee("marcas/{$sistema->slug}.png?v={$versao}", escape: false);
+    }
+
     public function test_trocar_a_marca_nao_deixa_a_anterior_para_tras(): void
     {
         $usuario = User::factory()->create();
