@@ -67,8 +67,17 @@
                                 <x-badge class="ml-1 align-middle">Operacional</x-badge>
                             @endif
                         </p>
+                        {{-- Duas linhas, como as tarjas do card: o resumo vai
+                             a 500 caracteres, e sem corte uma tarefa de resumo
+                             longo faria a linha da tabela ter três vezes a
+                             altura da vizinha — numa tela que existe para
+                             varrer o histórico de cima a baixo. O `title`
+                             entrega o resto sem custar altura, e o texto
+                             inteiro está a um clique, no modal que esta linha
+                             abre. --}}
                         @if (filled($tarefa->resumo))
-                            <p class="mt-0.5 text-[12px] leading-snug text-ink-mute">{{ $tarefa->resumo }}</p>
+                            <p class="mt-0.5 text-[12px] leading-snug text-ink-mute line-clamp-2"
+                               title="{{ $tarefa->resumo }}">{{ $tarefa->resumo }}</p>
                         @endif
 
                         @php
