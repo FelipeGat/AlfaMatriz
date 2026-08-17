@@ -31,6 +31,11 @@ class TokensTest extends TestCase
         // sinal
         'good', 'warn', 'crit', 'amber', 'chart-out',
         'good-tint', 'good-line', 'warn-tint', 'warn-line', 'crit-tint',
+        // as notícias do card — uma cor por notícia (AC-358)
+        'pergunta', 'exame', 'bloqueio', 'retorno', 'triagem',
+        'pergunta-tint', 'pergunta-line', 'exame-tint', 'exame-line',
+        'bloqueio-tint', 'bloqueio-line', 'retorno-tint', 'retorno-line',
+        'triagem-tint', 'triagem-line',
         'tint-alpha', 'grid-line',
     ];
 

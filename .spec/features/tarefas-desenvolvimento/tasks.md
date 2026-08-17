@@ -519,3 +519,87 @@
   contêiner inteiro do cabeçalho, e a troca parcial (innerHTML = só `_chips`)
   engolia o "ver como quadro" — o pedaço agora embrulha exatamente o que a
   partial devolve.
+
+## T-150 — A borda do card passa a ser a prioridade, em 2px [concluida]
+- Refs: US-036, AC-127, AC-356, AC-357, AC-358
+- Arquivos: resources/css/app.css, tailwind.config.js, design/README.md, resources/views/components/badge.blade.php, resources/views/tarefas/_card.blade.php, resources/views/tarefas/_avisos-da-tarefa.blade.php, resources/views/tarefas/_tabela-raias.blade.php, tests/Feature/TarefasDesenvolvimento/CardTarefaTest.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php, tests/Feature/TarefasDesenvolvimento/PerguntaNaRevisaoTest.php, tests/Feature/Redesign/TokensTest.php
+- Esforço: baixo
+- Notas: pedido do dono em 17/08/2026, olhando o quadro rodando — "a borda
+  está muito discreta" e "deve seguir a prioridade". Eram dois problemas
+  somados: 1px com alfa 0.4 sobre o fundo recuado do quadro é uma borda que
+  existe e não informa nada. Vira 2px em cor cheia. E o T-077 tinha decidido
+  que a borda continuava sendo o canal do aviso de esquecida (AC-093) — o que
+  deixou de valer: bloqueio, retorno e pergunta desenham TARJA dentro do card,
+  com ícone, rótulo e motivo, e o envelhecimento tinge o selo de tempo no
+  rodapé e marca `data-esquecida`. Os quatro sinais tinham eco; a prioridade
+  não tinha, vivia num selo mono de 9,5px que só se lê parando em cima. A
+  precedência inteira sai do `$corDaBorda` — Baixa fica em `line`, senão todo
+  card teria borda colorida e nenhuma se destacaria. O AC-093 não muda de
+  teste: ele sempre foi verificado por `data-esquecida`, não pela borda.
+  **Segunda volta, no mesmo dia:** com a borda grossa ficou visível que Alta,
+  Crítica e "A definir" são a MESMA família quente — no tema claro #b06a12,
+  #c02b2b e #b57500 —, e de relance viravam a mesma borda. Não há tom frio
+  livre na paleta (`brand` é a Média, `good` é o verde de sucesso) e inventar
+  hex fora dos tokens está fora de questão, então a separação veio da forma,
+  escolhida pelo dono: "A definir" tracejada (é triagem que falta, não
+  gravidade — e o tracejado já é o idioma da lacuna, no círculo sem sistema do
+  rodapé) e Crítica com o corpo tingido de `--crit-tint`, que a tira da
+  comparação de tons. O tinte é `background-image` sobre `bg-card-quadro`: o
+  token é translúcido e precisa do fundo opaco do card por baixo — trocado, ele
+  cairia sobre o board e daria outra cor.
+  **Terceira volta:** a prioridade na borda comeu a paleta de sinal inteira, e
+  as TARJAS ficaram repetindo o tom da moldura — pergunta em `brand` dentro de
+  card Média, bloqueio em `warn` dentro de card "A definir". Não havia matiz
+  livre (`good` é o verde de pronto e `accent` é idêntico a `brand` no tema
+  claro), então o dono aprovou UM token novo: `conversa`, roxo, para a pergunta,
+  o portão de exame e a espera do staging — as três são a mesma notícia, a bola
+  está com uma pessoa. O bloqueio subiu para `crit`, o que de quebra o separa do
+  retorno: os dois eram o mesmo âmbar e não são a mesma notícia. Sobra de
+  propósito uma sobreposição, card Crítico com tarja de bloqueio, os dois
+  vermelhos — ali as duas coisas dizem urgente. Entraram junto `--crit-line` e
+  `--conversa-tint`/`--conversa-line`, seguindo o par tint/line que `good` e
+  `warn` já tinham. Roxo calibrado em 6,5:1 (escuro) e 7,1:1 (claro) sobre o
+  card — acima do que `crit` e `warn` alcançam nos temas em que são tarja.
+  **Quarta volta, e a regra que faltava:** o dono viu bloqueio com a cor da
+  Crítica e revisão com a cor da pergunta, e disse o princípio — "as cores não
+  podem se repetir, precisam ser únicas". Fui medir em vez de escolher a olho, e
+  a conta apontou um culpado que ninguém tinha visto: Alta × "A definir", ΔE 8
+  no tema claro, ou seja a MESMA cor desde sempre — o tracejado do T-150 estava
+  tapando um buraco de tom. Rearranjo inteiro, com ΔE (Lab) como régua: cada uma
+  das nove notícias coloridas do card ganhou matiz próprio e o pior par ficou em
+  27. "A definir" saiu do âmbar e foi para o ardósia (`triagem`), que diz melhor
+  o que ela é; pergunta ficou no roxo, portão de exame virou azul (`exame`),
+  bloqueio virou rosa (`bloqueio`) e retorno virou fúcsia (`retorno`). O
+  `conversa` foi renomeado para `pergunta` — ele cobria pergunta e exame, que
+  agora são notícias separadas. Dois degraus da mesma notícia passam a se
+  escalar por PREENCHIMENTO, não por matiz emprestado: o selo de tempo
+  envelhecido (dourado tingido → dourado chapado, largando o vermelho que virou
+  a Crítica) e o selo de rodada empacada (roxo chapado, mesma razão). Alcançou
+  também o modal (`_avisos-da-tarefa`), a vista de raias, os chips do cabeçalho
+  e o `x-badge`. **Fora do alcance de propósito:** as cores das COLUNAS (etapa)
+  continuam como estão — elas vivem no outro plano que o AC-127 separou, e não
+  há matiz sobrando para dar seis únicos a elas também.
+
+## T-151 — Tela cheia do quadro [concluida]
+- Refs: US-036, AC-359
+- Arquivos: resources/css/app.css, resources/views/components/nav-icon.blade.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/_quadro.blade.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php
+- Esforço: baixo
+- Notas: pergunta do dono em 17/08/2026 — "faz sentido um botão para o quadro
+  cobrir o lado direito inteiro?". Fui medir antes de responder, e a medida
+  mudou o desenho: o gargalo NÃO era horizontal. Recolher o menu, que já
+  existia, devolvia 228px e mesmo assim faltavam outros 228 para as seis
+  colunas; o desperdício grande era vertical — as colunas começavam a **321px**
+  do topo numa janela de 1000, um terço da altura gasto em cabeçalho da página,
+  abas, filtros e raias antes do primeiro card. Daí a tela cheia em vez de só
+  largura: coluna de 613px para **909px** e faixa de 1286 para 1572 (área 1,8×).
+  O estado mora num atributo no `<html>` escrito por script ANTES da primeira
+  pintura, como o tema já faz — ligado pelo Alpine, o quadro nascia pequeno e
+  pulava de tamanho à vista. Dois defeitos encontrados na tela rodando, os dois
+  agora com asserção: (1) `--board` é VÉU translúcido, e cobrindo a janela ele
+  deixava menu e topbar aparecerem por baixo das colunas — precisa de fundo
+  opaco embaixo; (2) o `Esc` fechava o modal E saía da tela cheia no mesmo
+  toque, porque o `x-modal` guarda o próprio estado e não avisa ninguém — a
+  conta de "algo aberto" passou a olhar `[data-modal]` no DOM. O atributo se
+  chama `data-tela-cheia`, e não `data-quadro-cheio`, porque já existe um
+  `data-quadro` sem relação nenhuma (o contêiner de rolagem) — o nome parecido
+  derrubou um teste de raias que assertava a ausência dele.

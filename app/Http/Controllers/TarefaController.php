@@ -187,17 +187,17 @@ class TarefaController extends Controller
             // saber que há uma pergunta dependia de olhar a coluna certa.
             [
                 'chave' => 'esperando_mim', 'total' => $esperandoVoce,
-                'label' => $esperandoVoce.' p/ você', 'icone' => 'duvida', 'cor' => 'brand-text',
+                'label' => $esperandoVoce.' p/ você', 'icone' => 'duvida', 'cor' => 'pergunta',
                 'title' => 'Perguntas esperando resposta sua',
-                'fundo' => 'rgb(var(--brand) / 0.12)', 'fundoAtivo' => 'rgb(var(--brand) / 0.26)',
-                'borda' => 'rgb(var(--brand) / 0.45)',
+                'fundo' => 'rgb(var(--pergunta) / 0.12)', 'fundoAtivo' => 'rgb(var(--pergunta) / 0.26)',
+                'borda' => 'rgb(var(--pergunta) / 0.45)',
             ],
             [
                 'chave' => 'travadas', 'total' => $noQuadro()->whereNotNull('bloqueado_em')->count(),
-                'label' => null, 'icone' => 'cadeado-fechado', 'cor' => 'warn',
+                'label' => null, 'icone' => 'cadeado-fechado', 'cor' => 'bloqueio',
                 'title' => 'Tarefas travadas esperando alguém',
-                'fundo' => 'var(--warn-tint)', 'fundoAtivo' => 'rgb(var(--warn) / 0.24)',
-                'borda' => 'var(--warn-line)',
+                'fundo' => 'var(--bloqueio-tint)', 'fundoAtivo' => 'rgb(var(--bloqueio) / 0.24)',
+                'borda' => 'var(--bloqueio-line)',
             ],
             [
                 'chave' => 'prontas', 'total' => $noQuadro()->where('status', 'pronta_producao')->count(),

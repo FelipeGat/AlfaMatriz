@@ -87,6 +87,17 @@ novos (`rule`, `chip`, `card-grad`, `board`).
 | `goodTint` / `goodBorder` | `rgba(12,163,12,0.09)` / `rgba(12,163,12,0.25)` | faixa de status positivo |
 | `warnTint` / `warnBorder` | `rgba(250,178,25,0.09)` / `rgba(250,178,25,0.28)` | faixa de pendência |
 | `critTint` | `rgba(208,59,59,0.12)` | hover de ação destrutiva |
+| `pergunta` | `#a78bfa` | aguardando resposta |
+| `exame` | `#60a5fa` | revisão/teste com alguém |
+| `bloqueio` | `#f472b6` | tarefa travada |
+| `retorno` | `#e879f9` | voltou de um portão |
+| `triagem` | `#94a3b8` | prioridade a definir |
+
+> **As cinco últimas são as notícias do card de Tarefas, e cada uma tem um matiz só seu.** Desde que a borda
+> do card virou a prioridade, todo tom de sinal já quer dizer um grau — tarja emprestada pintaria duas coisas
+> com a mesma cor dentro do mesmo card. Os matizes foram escolhidos por MEDIDA: a distância ΔE (Lab) entre
+> quaisquer duas das nove notícias coloridas fica acima de 27 nos dois temas, e o teste do AC-358 recalcula a
+> cada execução. Cada uma tem também `…Tint` (fundo da tarja) e `…Border` (borda), no padrão de `good`/`warn`.
 | `tintAlpha` | `0.13` | alpha padrão dos fundos de badge |
 
 ### Cores — tema claro
@@ -118,6 +129,9 @@ novos (`rule`, `chip`, `card-grad`, `board`).
 | `goodTint` / `goodBorder` | `rgba(10,122,10,0.07)` / `rgba(10,122,10,0.22)` |
 | `warnTint` / `warnBorder` | `rgba(181,117,0,0.08)` / `rgba(181,117,0,0.26)` |
 | `critTint` | `rgba(192,43,43,0.10)` |
+| `pergunta` / `exame` | `#6d28d9` / `#1d4ed8` |
+| `bloqueio` / `retorno` | `#be185d` / `#a21caf` |
+| `triagem` | `#475569` |
 | `tintAlpha` | `0.10` |
 
 > **`brand` (#029caf) é o mesmo nos dois temas.** O que muda é `brandText`, porque `#5be3ef` não tem

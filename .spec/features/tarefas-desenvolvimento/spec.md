@@ -100,8 +100,53 @@ aberto, em desenvolvimento, em teste e concluído.
 - **Quando** corro o olho pelas colunas
 - **Então** cada etapa tem uma faixa de cor no topo da sua coluna e o contador
   tingido no mesmo tom, como no Funil de Vendas — e a cor da etapa não é
-  repetida na borda dos cards, que continua reservada ao aviso de tarefa
-  esquecida
+  repetida na borda dos cards, que segue a prioridade da tarefa (AC-356)
+
+#### AC-356 — A borda do card é a prioridade da tarefa
+
+- **Dado** o quadro aberto, com tarefas de prioridades diferentes na mesma
+  coluna
+- **Quando** corro o olho pela coluna, sem parar em nenhum card
+- **Então** a borda de cada card é do tom da prioridade dele, grossa o bastante
+  para ser lida de relance — e ela **não muda** quando a tarefa está travada,
+  voltou de um portão, tem pergunta em aberto ou envelheceu; a Baixa, que não
+  tem tom próprio na escala (AC-126), fica na borda neutra
+
+#### AC-357 — A forma reforça as duas pontas da escala
+
+- **Dado** uma tarefa "A definir" e uma Crítica na mesma coluna
+- **Quando** corro o olho por elas, no tema claro ou no escuro
+- **Então** as duas se anunciam sem depender de eu comparar tons: a **"A
+  definir" tem a borda tracejada** — ela não é um grau de gravidade, é a triagem
+  que ainda não aconteceu (AC-194) — e a **Crítica tinge o corpo do card**,
+  virando outra coisa na coluna em vez de um vizinho de moldura diferente
+
+#### AC-359 — O quadro abre em tela cheia, e o caminho de volta fica à vista
+
+- **Dado** o quadro aberto, com o menu, o cabeçalho da página, as abas e os
+  filtros ocupando o topo da tela
+- **Quando** clico em expandir
+- **Então** o quadro cobre a janela inteira e passa a ter fundo próprio — nada
+  do que ficou embaixo aparece através dele —, a escolha vale na próxima visita
+  **sem o quadro nascer pequeno e pular de tamanho**, e a volta continua à mão:
+  o botão no cabeçalho do quadro, que é o único cabeçalho que sobrevive ao modo,
+  e o `Esc`
+- **E** a tarefa aberta e os avisos continuam **por cima** do quadro expandido;
+  o `Esc` fecha primeiro o que está por cima, e sair da tela cheia é a última
+  camada a ceder — fechar uma tarefa não pode derrubar o modo junto
+
+#### AC-358 — No card, nenhuma cor diz duas coisas
+
+- **Dado** o quadro com cards de cada prioridade e com tarefas em pergunta, em
+  exame, travadas e devolvidas de um portão
+- **Quando** comparo as cores que o card usa
+- **Então** cada notícia tem um matiz só seu e nenhum se repete — os cinco graus
+  de prioridade na borda, mais pergunta, portão de exame, bloqueio e retorno nas
+  tarjas —, e a distância entre quaisquer duas delas passa de **ΔE 25** nos dois
+  temas, que é o limiar abaixo do qual duas cores se confundem de relance
+- **E** onde uma notícia precisa de dois degraus — o tempo que envelhece, a
+  conversa que empaca —, o segundo degrau é o **mesmo matiz preenchido**, e não
+  um matiz emprestado de outra notícia
 
 #### AC-128 — Dentro da coluna, o que é mais grave e o que está mais parado sobem
 

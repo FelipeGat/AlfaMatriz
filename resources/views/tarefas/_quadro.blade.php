@@ -111,6 +111,27 @@
             @include('tarefas._chips', ['chips' => $chips])
         </div>
     </div>
+
+    {{--
+        A porta da tela cheia.
+
+        FORA do contêiner rolável dos chips, e não dentro: aquele bloco tem
+        `overflow-x-auto`, e num recorte com três pílulas ligadas a saída da
+        tela cheia rolaria para fora da vista — quem entrou no modo ficaria sem
+        o caminho de volta à mão. Aqui ela é irmã dele e não cede largura.
+
+        Fica no cabeçalho DO QUADRO porque é o único cabeçalho que sobrevive ao
+        modo: no da página ela desapareceria junto com o que esconde.
+    --}}
+    <button type="button" @click="alternarTelaCheia()"
+            :title="telaCheia ? 'Sair da tela cheia · Esc' : 'Expandir o quadro para a tela inteira'"
+            :aria-label="telaCheia ? 'Sair da tela cheia' : 'Expandir o quadro para a tela inteira'"
+            :aria-pressed="telaCheia.toString()"
+            class="shrink-0 ml-2 h-[26px] w-[26px] rounded-badge border border-btn-line flex items-center justify-center
+                   text-ink-mute transition hover:text-brand hover:border-brand">
+        <span class="h-[13px] w-[13px]" x-show="! telaCheia"><x-nav-icon name="expandir" :peso="1.8" /></span>
+        <span class="h-[13px] w-[13px]" x-show="telaCheia" x-cloak><x-nav-icon name="encolher" :peso="1.8" /></span>
+    </button>
 </div>
 
 @php

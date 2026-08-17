@@ -259,6 +259,237 @@ class CardTarefaTest extends TestCase
     }
 
     /**
+     * @spec:AC-356 A borda do card é a prioridade — e continua sendo mesmo quando a
+     * tarefa está travada, voltou de um portão, tem pergunta ou envelheceu.
+     *
+     * A borda já foi a precedência de sinais do protótipo. Ela repetia: os quatro
+     * sinais desenham tarja própria dentro do card, ou tingem o selo de tempo do
+     * rodapé. A prioridade era a única sem eco — vivia num selo mono de 9,5px que
+     * só se lê parando em cima do card, e o quadro é olhado de relance.
+     */
+    public function test_a_borda_do_card_segue_a_prioridade(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $cards = [];
+        foreach (array_keys(Tarefa::PRIORIDADES) as $prioridade) {
+            $cards[$prioridade] = Tarefa::factory()->create([
+                'criado_por_id' => $criador->id,
+                'prioridade' => $prioridade,
+            ])->id;
+        }
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // Por referência: o segundo trecho do teste recarrega o quadro, e a
+        // closure precisa ler o HTML novo, não o da primeira visita.
+        $bordaDe = function (int $id) use (&$html) {
+            // Até o `;`: na Crítica o mesmo atributo carrega o tinte do corpo
+            // (AC-357), que não é a borda e não entra na comparação.
+            preg_match('/<article data-tarefa="'.$id.'"[^>]*style="border-color: ([^";]+)/s', $html, $m);
+
+            return $m[1] ?? 'sem-borda';
+        };
+
+        $bordas = array_map($bordaDe, $cards);
+
+        // Nenhum par de prioridades divide borda: é o mesmo requisito do selo
+        // (AC-126), agora na moldura do card.
+        $this->assertCount(count($bordas), array_unique($bordas),
+            'Cada prioridade precisa de uma borda própria — repetidas: '.json_encode($bordas, JSON_UNESCAPED_UNICODE));
+
+        // Baixa não tem tom na escala e fica na linha neutra: se todo card
+        // tivesse borda colorida, nenhuma se destacaria.
+        $this->assertSame('var(--line)', $bordas['baixa']);
+        $this->assertStringContainsString('--crit', $bordas['critica']);
+
+        // E os sinais não tomam a borda de volta: uma crítica travada, com
+        // pergunta em aberto, devolvida do staging e parada há uma semana
+        // continua com a borda da prioridade dela.
+        $tarefa = Tarefa::find($cards['critica']);
+        $tarefa->forceFill([
+            'status' => 'em_desenvolvimento',
+            'bloqueado_em' => now()->subWeek(),
+            'bloqueio_motivo' => 'Esperando a credencial do gateway.',
+            'retorno_de' => 'em_staging',
+            'retorno_motivo' => 'O boleto saiu sem o nosso número.',
+            'pergunta_em' => now()->subDay(),
+            'pergunta_de_id' => $criador->id,
+            'pergunta_para_id' => $usuario->id,
+        ])->save();
+
+        Carbon::setTestNow(Carbon::now()->addWeek());
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('--crit', $bordaDe($cards['critica']),
+            'Travada, devolvida, com pergunta e envelhecida, a borda continua sendo a da prioridade.');
+    }
+
+    /**
+     * @spec:AC-357 As duas pontas da escala não dependem só do tom.
+     *
+     * "A definir" tracejada porque ela não é um grau: é a triagem que falta, e o
+     * tracejado já é o idioma da casa para lacuna — o círculo sem sistema, no
+     * rodapé deste mesmo card. A Crítica tinge o corpo porque uma coluna cheia se
+     * lê pela mancha antes de se ler pela moldura.
+     */
+    public function test_a_forma_reforca_a_triagem_que_falta_e_a_critica(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $cards = [];
+        foreach (array_keys(Tarefa::PRIORIDADES) as $prioridade) {
+            $cards[$prioridade] = Tarefa::factory()->create([
+                'criado_por_id' => $criador->id,
+                'prioridade' => $prioridade,
+            ])->id;
+        }
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        $aberturaDe = function (int $id) use ($html) {
+            preg_match('/<article data-tarefa="'.$id.'"[^>]*>/s', $html, $m);
+
+            return $m[0] ?? '';
+        };
+
+        foreach ($cards as $prioridade => $id) {
+            $card = $aberturaDe($id);
+
+            // "A definir" tracejada: ela não é um grau de gravidade, é a
+            // triagem que ainda não aconteceu (AC-194).
+            $this->assertSame($prioridade === 'nao_definida', str_contains($card, 'border-dashed'),
+                "A borda tracejada é de 'A definir' e só dela — {$prioridade} não confere.");
+
+            // A Crítica tinge o corpo, e assim para de depender do tom da
+            // borda para se destacar na coluna.
+            $this->assertSame($prioridade === 'critica', str_contains($card, '--crit-tint'),
+                "O corpo tingido é da Crítica e só dela — {$prioridade} não confere.");
+        }
+
+        // O tinte entra POR CIMA do fundo do card, não no lugar dele: o token é
+        // translúcido, e sem o fundo opaco embaixo ele cairia sobre o board.
+        $this->assertStringContainsString('bg-card-quadro', $aberturaDe($cards['critica']));
+    }
+
+    /**
+     * @spec:AC-358 No card, nenhuma cor diz duas coisas.
+     *
+     * As tarjas emprestavam tom da família de sinal — pergunta no teal da marca,
+     * bloqueio e retorno no mesmo âmbar. Funcionava enquanto a borda do card era
+     * o aviso de esquecida; desde que ela virou a prioridade (AC-356), todo tom
+     * de sinal já quer dizer um grau, e a tarja passou a pintar duas coisas com
+     * a mesma cor DENTRO DO MESMO CARD: bloqueio lia como Crítica, pergunta como
+     * Média. Cada notícia ganhou matiz próprio, e a prova é medida, não opinião.
+     */
+    public function test_no_card_nenhuma_cor_diz_duas_coisas(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $comPergunta = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'em_revisao', 'prioridade' => 'media',
+            'pergunta_em' => now(), 'pergunta_de_id' => $criador->id, 'pergunta_para_id' => $usuario->id,
+        ]);
+        $emExame = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'em_revisao', 'interlocutor_id' => $usuario->id,
+        ]);
+        $travada = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'prioridade' => 'nao_definida',
+            'bloqueado_em' => now(), 'bloqueio_motivo' => 'Esperando a credencial do gateway.',
+        ]);
+        $devolvida = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'em_desenvolvimento',
+            'retorno_de' => 'em_staging', 'retorno_motivo' => 'O boleto saiu sem o nosso número.',
+        ]);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        $card = function (Tarefa $tarefa) use ($html) {
+            $inicio = strpos($html, 'data-tarefa="'.$tarefa->id.'"');
+            $this->assertNotFalse($inicio, "A tarefa {$tarefa->id} não apareceu no quadro.");
+
+            return substr($html, $inicio, strpos($html, '</article>', $inicio) - $inicio);
+        };
+
+        // Cada tarja fala pelo seu token, e por nenhum outro. A conferência é
+        // pelos dois lados: a cor certa presente E as das outras notícias
+        // ausentes — só a primeira metade deixaria passar uma tarja que
+        // acumulasse tons.
+        $tarjas = [
+            'pergunta' => $card($comPergunta),
+            'exame' => $card($emExame),
+            'bloqueio' => $card($travada),
+            'retorno' => $card($devolvida),
+        ];
+
+        foreach ($tarjas as $noticia => $trecho) {
+            $this->assertStringContainsString("var(--{$noticia}-tint)", $trecho,
+                "A tarja de {$noticia} precisa usar o tom próprio dela.");
+
+            foreach (array_keys($tarjas) as $outra) {
+                if ($outra !== $noticia) {
+                    $this->assertStringNotContainsString("var(--{$outra}-tint)", $trecho,
+                        "O card de {$noticia} não pode pintar nada com o tom de {$outra}.");
+                }
+            }
+        }
+
+        // E a prova de fundo: as nove notícias coloridas do card ficam a mais de
+        // ΔE 25 umas das outras, NOS DOIS TEMAS. Abaixo disso duas cores se
+        // confundem de relance, que é como o quadro é olhado — foi o que
+        // aconteceu com Alta e "A definir", ΔE 8 no claro, os dois âmbares.
+        $css = file_get_contents(base_path('resources/css/app.css'));
+
+        $canais = function (string $token, string $tema) use ($css): array {
+            $bloco = $tema === 'escuro'
+                ? substr($css, strpos($css, ':root {'), strpos($css, '.theme-light {') - strpos($css, ':root {'))
+                : substr($css, strpos($css, '.theme-light {'));
+
+            preg_match('/--'.$token.':\s*(\d+)\s+(\d+)\s+(\d+);/', $bloco, $m);
+            $this->assertNotEmpty($m, "O tema {$tema} não declara `--{$token}` em canais R G B.");
+
+            return [(int) $m[1], (int) $m[2], (int) $m[3]];
+        };
+
+        // ΔE76 no espaço Lab — a mesma régua que escolheu estes matizes.
+        $lab = function (array $rgb): array {
+            [$r, $g, $b] = array_map(function (int $c): float {
+                $v = $c / 255;
+
+                return $v <= 0.04045 ? $v / 12.92 : (($v + 0.055) / 1.055) ** 2.4;
+            }, $rgb);
+
+            $f = fn (float $t): float => $t > 0.008856 ? $t ** (1 / 3) : (7.787 * $t) + 16 / 116;
+            $x = $f((0.4124 * $r + 0.3576 * $g + 0.1805 * $b) / 0.95047);
+            $y = $f(0.2126 * $r + 0.7152 * $g + 0.0722 * $b);
+            $z = $f((0.0193 * $r + 0.1192 * $g + 0.9505 * $b) / 1.08883);
+
+            return [116 * $y - 16, 500 * ($x - $y), 200 * ($y - $z)];
+        };
+
+        $noticias = ['brand', 'amber', 'triagem', 'crit', 'pergunta', 'exame', 'bloqueio', 'retorno'];
+
+        foreach (['escuro', 'claro'] as $tema) {
+            foreach ($noticias as $i => $uma) {
+                foreach (array_slice($noticias, $i + 1) as $outra) {
+                    [$l1, $a1, $b1] = $lab($canais($uma, $tema));
+                    [$l2, $a2, $b2] = $lab($canais($outra, $tema));
+                    $distancia = sqrt(($l1 - $l2) ** 2 + ($a1 - $a2) ** 2 + ($b1 - $b2) ** 2);
+
+                    $this->assertGreaterThan(25, $distancia, sprintf(
+                        'No tema %s, `%s` e `%s` estão a ΔE %.1f — abaixo de 25 as duas se confundem de relance.',
+                        $tema, $uma, $outra, $distancia
+                    ));
+                }
+            }
+        }
+    }
+
+    /**
      * @spec:AC-129 O resumo é lido no próprio card; card sem resumo não reserva espaço vazio.
      */
     public function test_card_mostra_o_resumo_e_omite_a_linha_quando_nao_ha(): void

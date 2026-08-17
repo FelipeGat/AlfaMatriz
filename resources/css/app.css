@@ -82,6 +82,40 @@
     --warn-line: rgba(250, 178, 25, 0.28);
     --crit-tint: rgba(208, 59, 59, 0.12);
 
+    /* ---- as notícias do card ----
+
+       UMA COR POR NOTÍCIA, sem repetir. Enquanto a borda do card era o aviso de
+       esquecida, as tarjas podiam emprestar os tons de sinal; desde que a borda
+       virou a prioridade (AC-356), cada tom de sinal já quer dizer um grau, e
+       tarja emprestada pinta duas coisas diferentes da mesma cor dentro do mesmo
+       card. Bloqueio de vermelho lia como Crítica; pergunta de teal, como Média.
+
+       Os matizes abaixo foram ESCOLHIDOS POR MEDIDA, não por gosto: a distância
+       ΔE (Lab) entre cada par das nove notícias coloridas do card — cinco graus
+       de prioridade, pergunta, exame, bloqueio e retorno — fica acima de 27 nos
+       dois temas. Abaixo de ~25 duas cores se confundem de relance, que é como
+       o quadro é olhado.
+
+       É por medida também que "A definir" saiu do âmbar de alerta: contra a
+       Alta ele dava ΔE 8 no tema claro — a mesma cor, na prática. O ardósia
+       resolve e ainda diz melhor o que ela é: falta de triagem não é um grau de
+       gravidade, é a ausência de um. */
+    --pergunta: 167 139 250;        /* #a78bfa — aguardando resposta */
+    --pergunta-tint: rgba(167, 139, 250, 0.09);
+    --pergunta-line: rgba(167, 139, 250, 0.28);
+    --exame: 96 165 250;            /* #60a5fa — revisão/teste com alguém */
+    --exame-tint: rgba(96, 165, 250, 0.09);
+    --exame-line: rgba(96, 165, 250, 0.28);
+    --bloqueio: 244 114 182;        /* #f472b6 — travada */
+    --bloqueio-tint: rgba(244, 114, 182, 0.10);
+    --bloqueio-line: rgba(244, 114, 182, 0.28);
+    --retorno: 232 121 249;         /* #e879f9 — voltou de um portão */
+    --retorno-tint: rgba(232, 121, 249, 0.09);
+    --retorno-line: rgba(232, 121, 249, 0.28);
+    --triagem: 148 163 184;         /* #94a3b8 — prioridade a definir */
+    --triagem-tint: rgba(148, 163, 184, 0.10);
+    --triagem-line: rgba(148, 163, 184, 0.30);
+
     /* alpha padrão do fundo de badge */
     --tint-alpha: 0.13;
 
@@ -170,6 +204,25 @@
     --warn-line: rgba(181, 117, 0, 0.26);
     --crit-tint: rgba(192, 43, 43, 0.10);
 
+    /* As notícias do card descem no claro pelo mesmo motivo de `brandText`: os
+       tons do escuro sobre branco ficam em 2:1 e somem. Estes ficam entre 6:1 e
+       9:1, e a distância entre eles continua acima de ΔE 27. */
+    --pergunta: 109 40 217;         /* #6d28d9 */
+    --pergunta-tint: rgba(109, 40, 217, 0.08);
+    --pergunta-line: rgba(109, 40, 217, 0.26);
+    --exame: 29 78 216;             /* #1d4ed8 */
+    --exame-tint: rgba(29, 78, 216, 0.08);
+    --exame-line: rgba(29, 78, 216, 0.26);
+    --bloqueio: 190 24 93;          /* #be185d */
+    --bloqueio-tint: rgba(190, 24, 93, 0.09);
+    --bloqueio-line: rgba(190, 24, 93, 0.26);
+    --retorno: 162 28 175;          /* #a21caf */
+    --retorno-tint: rgba(162, 28, 175, 0.08);
+    --retorno-line: rgba(162, 28, 175, 0.26);
+    --triagem: 71 85 105;           /* #475569 */
+    --triagem-tint: rgba(71, 85, 105, 0.08);
+    --triagem-line: rgba(71, 85, 105, 0.28);
+
     --tint-alpha: 0.10;
 
     /* No claro a sombra é bem mais fraca: o card já se separa do board pelo
@@ -189,6 +242,49 @@
 
     --scroll-thumb: rgba(93, 110, 117, 0.34);
     --scroll-thumb-hover: rgba(2, 156, 175, 0.75);
+}
+
+/**
+ * Tela cheia do quadro de tarefas.
+ *
+ * O quadro sai do fluxo e cobre a janela: menu, topbar, abas e filtros ficam
+ * embaixo. O ganho é sobretudo VERTICAL — as colunas começavam a 321px do topo
+ * numa tela de 1000px, ou seja um terço da altura gasto antes do primeiro card.
+ *
+ * O nome NÃO é `data-quadro-cheio`: o quadro já tem um `data-quadro` — o
+ * contêiner de rolagem das colunas —, e um atributo que começa igual mas não
+ * tem relação nenhuma com ele confunde quem procura por um e acha os dois.
+ *
+ * É atributo no <html>, e não classe ligada pelo Alpine, pela mesma razão do
+ * tema: o estado é lido do `localStorage` ANTES da primeira pintura. Ligado
+ * depois, o quadro nasceria pequeno e pularia para o cheio à vista de quem
+ * abriu a tela.
+ *
+ * `z-40` é escolhido, não arbitrário: fica acima da topbar (z-20) e do véu da
+ * gaveta (z-30), e ABAIXO do modal da tarefa (z-50) e da pilha de avisos
+ * (z-60) — a tarefa aberta e a confirmação de uma ação continuam por cima.
+ */
+[data-tela-cheia] {
+    /* A página atrás não rola: o quadro cobre tudo e tem a própria rolagem,
+       e uma barra fantasma na direita denunciaria um conteúdo inalcançável. */
+    overflow: hidden;
+}
+
+[data-tela-cheia] [data-corpo-do-quadro] {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    border: 0;
+    border-radius: 0;
+
+    /* O fundo do quadro é um VÉU (`--board` é preto a 28% no tema escuro):
+       encaixado na página ele escurece o canvas que está atrás, mas cobrindo a
+       janela inteira ele deixava o menu e a topbar aparecerem POR BAIXO das
+       colunas — o título da página lido por cima do cabeçalho do quadro. O véu
+       continua sendo o véu; o que muda é ganhar um fundo opaco embaixo dele,
+       que é o mesmo canvas que ele cobriria na página. */
+    background-color: rgb(var(--canvas));
+    background-image: linear-gradient(var(--board), var(--board));
 }
 
 @layer base {

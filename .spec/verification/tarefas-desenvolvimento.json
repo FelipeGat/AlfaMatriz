@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-16T17:43:02.284Z",
-  "gitRev": "d5905cd",
+  "timestamp": "2026-08-17T22:13:33.916Z",
+  "gitRev": "b314a77",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 926,
+  "testsParsed": 967,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -45,6 +45,26 @@
     "AC-127": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_cada_etapa_tem_cor_propria_na_coluna_e_nao_no_card @spec:AC-127",
+      "method": "tap"
+    },
+    "AC-356": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_a_borda_do_card_segue_a_prioridade @spec:AC-356",
+      "method": "tap"
+    },
+    "AC-357": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_a_forma_reforca_a_triagem_que_falta_e_a_critica @spec:AC-357",
+      "method": "tap"
+    },
+    "AC-359": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_o_quadro_expande_para_a_tela_inteira_e_volta @spec:AC-359",
+      "method": "tap"
+    },
+    "AC-358": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_no_card_nenhuma_cor_diz_duas_coisas @spec:AC-358",
       "method": "tap"
     },
     "AC-128": {

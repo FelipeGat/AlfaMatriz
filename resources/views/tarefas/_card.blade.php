@@ -31,34 +31,76 @@
             default => null,
         };
     }
-    $tomEsquecida = ['atencao' => 'warn', 'critico' => 'crit'][$nivelEsquecida] ?? null;
+    /**
+     * O selo de tempo, quando a tarefa envelhece.
+     *
+     * Os dois degraus são o MESMO dourado, e o que muda é o preenchimento —
+     * tingido na atenção, chapado no crítico. O vermelho seria o segundo degrau
+     * natural, e era o que estava aqui, mas ele virou a prioridade Crítica na
+     * borda (AC-356): o selo passaria a repetir a cor de outra notícia, e no
+     * card nenhuma cor diz duas coisas (AC-358). O dourado não é de mais
+     * ninguém desde que "A definir" saiu dele.
+     */
+    $estiloDoTempo = match ($nivelEsquecida) {
+        'atencao' => 'background: rgb(var(--warn) / var(--tint-alpha)); color: rgb(var(--warn))',
+        'critico' => 'background: rgb(var(--warn)); color: rgb(var(--on-brand))',
+        default => 'background: var(--chip); color: rgb(var(--ink-mute))',
+    };
 
     $bloqueada = $tarefa->estaBloqueada();
     $temPergunta = $tarefa->temPergunta();
     $temRetorno = $tarefa->temRetorno();
-
-    /**
-     * A cor da borda, na precedência do protótipo.
-     *
-     * A ordem não é estética: ela responde "qual notícia manda". Bloqueio e
-     * retorno vencem o envelhecimento porque tarefa travada não está
-     * abandonada — está esperando, com o porquê escrito; e pergunta vence a
-     * régua de tempo pelo mesmo motivo. Seleção pelo teclado entra entre as
-     * duas: ela é onde a pessoa ESTÁ, e some assim que ela sai.
-     */
-    $corDaBorda = match (true) {
-        $bloqueada || $temRetorno => 'rgb(var(--warn) / 0.4)',
-        $temPergunta => 'rgb(var(--brand) / 0.4)',
-        (bool) $tomEsquecida => 'rgb(var(--'.$tomEsquecida.') / 0.4)',
-        default => 'var(--line)',
-    };
 
     // Um tom por nível de prioridade, sem repetir (AC-126). "A definir" fica
     // fora da escala, no âmbar de alerta: não é um grau de gravidade, é a
     // triagem que ainda não aconteceu.
     $tomPrioridade = \App\Models\Tarefa::TOM_DA_PRIORIDADE[$tarefa->prioridade] ?? 'neutro';
     $corPrioridade = ['neutro' => null, 'marca' => 'brand', 'ambar' => 'amber',
-                      'atencao' => 'warn', 'critico' => 'crit'][$tomPrioridade] ?? null;
+                      'triagem' => 'triagem', 'critico' => 'crit'][$tomPrioridade] ?? null;
+
+    /**
+     * A borda do card é a PRIORIDADE — 2px, cor cheia.
+     *
+     * Ela já foi a precedência de sinais do protótipo (bloqueio e retorno em
+     * âmbar, pergunta na marca, envelhecimento no tom do nível). Saiu porque
+     * repetia: bloqueio, retorno e pergunta desenham tarja própria dentro do
+     * card, com ícone, rótulo e motivo, e o envelhecimento pinta o selo de
+     * tempo no rodapé. A prioridade era o único dado sem eco — vivia num selo
+     * de 9,5px que só se lê parando em cima. Na borda ela se lê de relance,
+     * com a coluna inteira na vista, que é como o quadro é olhado.
+     *
+     * 2px e sem o alfa 0.4 do protótipo porque 1px lavado sobre o fundo
+     * recuado do quadro não se via: a borda existia e não informava nada.
+     *
+     * Prioridade Baixa não tem cor (tom neutro) e fica em `line` — se todo
+     * card tivesse borda colorida, nenhuma se destacaria.
+     */
+    $corDaBorda = $corPrioridade ? 'rgb(var(--'.$corPrioridade.'))' : 'var(--line)';
+
+    /**
+     * Duas prioridades não se separam pelo tom — se separam pela FORMA.
+     *
+     * A paleta tem uma família quente só, e as três prioridades mais graves
+     * moram nela: `amber` na Alta, `warn` em "A definir", `crit` na Crítica. No
+     * tema claro os três descem para o mesmo marrom-alaranjado escuro e, de
+     * relance na coluna, viram a mesma borda. Tom frio não sobra — `brand` é a
+     * Média e `good` é o verde de sucesso —, e inventar cor fora dos tokens é o
+     * que o redesign não faz. Então:
+     *
+     * - **"A definir" é tracejada.** Que é o que ela é: triagem que ainda não
+     *   aconteceu, não um grau de gravidade (AC-126). O tracejado já é o idioma
+     *   da casa para lacuna — o círculo sem sistema, no rodapé deste card.
+     * - **A Crítica tinge o corpo.** Ela para de depender do tom da borda para
+     *   se destacar: na coluna ela é outra COISA, e não um vizinho mais escuro.
+     *
+     * O tinte é `background-image` POR CIMA da classe `bg-card-quadro`, e não
+     * uma cor no lugar dela: `--crit-tint` é translúcido, e embaixo dele tem de
+     * ficar o fundo opaco do card. Trocado, ele cairia sobre o fundo recuado do
+     * quadro e daria outra cor. Duas cores de fundo não se empilham em CSS —
+     * degradê de uma cor só é como se pinta uma camada chapada sobre a outra.
+     */
+    $semTriagem = $tarefa->prioridade === 'nao_definida';
+    $critica = $tarefa->prioridade === 'critica';
 
     // A pergunta em aberto e o comentário que a abriu, da coleção já carregada:
     // o quadro renderiza dezenas de cards, e uma consulta em cada um é o N+1
@@ -97,8 +139,8 @@
 <article data-tarefa="{{ $tarefa->id }}"
          @if ($nivelEsquecida && ! $bloqueada) data-esquecida="{{ $nivelEsquecida }}" @endif
          @if ($bloqueada) data-bloqueada="1" @endif
-         class="rounded-[5px] border p-[10px] bg-card-quadro shadow-card"
-         style="border-color: {{ $corDaBorda }}">
+         class="rounded-[5px] border-2 p-[10px] bg-card-quadro shadow-card {{ $semTriagem ? 'border-dashed' : '' }}"
+         style="border-color: {{ $corDaBorda }}{{ $critica ? '; background-image: linear-gradient(var(--crit-tint), var(--crit-tint))' : '' }}">
 
     {{-- Linha 1: título e selos. `flex-start` porque o título quebra em duas
          linhas e os selos ficam alinhados com a primeira. --}}
@@ -152,8 +194,14 @@
         A tarja de pergunta.
 
         Dúvida na revisão não é impedimento: o PR continua aberto, a tarefa
-        continua no WIP, e a tarja é da cor da MARCA — de âmbar, junto do
+        continua no WIP, e a tarja é da cor da CONVERSA — de âmbar, junto do
         bloqueio, ela ensinaria que perguntar é problema.
+
+        O roxo é dela e do portão de exame, e de mais ninguém. Enquanto a borda
+        do card era o aviso de esquecida, a tarja podia usar o teal da marca;
+        agora a borda é a prioridade (AC-356), e o teal ali quer dizer "Média" —
+        uma tarja de pergunta da mesma cor pintava duas coisas diferentes com o
+        mesmo tom, dentro do mesmo card.
 
         O NOME OCUPA LINHA PRÓPRIA. Na primeira linha cabem o rótulo e o tempo;
         "Aguardando resposta de Camila" ali dentro seria truncado justamente na
@@ -161,10 +209,10 @@
     --}}
     @if ($temPergunta)
         <div class="mt-2 px-[9px] py-[7px] rounded-tile border-l-2"
-             style="background: rgb(var(--brand) / 0.085); border-color: rgb(var(--brand))">
+             style="background: var(--pergunta-tint); border-color: rgb(var(--pergunta))">
             <div class="flex items-center gap-1.5">
-                <span class="h-3 w-3 shrink-0 text-brand-text"><x-nav-icon name="duvida" :peso="1.9" /></span>
-                <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] text-brand-text whitespace-nowrap">
+                <span class="h-3 w-3 shrink-0 text-pergunta"><x-nav-icon name="duvida" :peso="1.9" /></span>
+                <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] text-pergunta whitespace-nowrap">
                     Aguardando resposta
                 </span>
                 <span class="shrink-0 font-mono text-[9.5px] text-ink-mute">{{ $perguntaHa }}</span>
@@ -175,8 +223,12 @@
                     {{ $tarefa->perguntaPara?->name ?? 'alguém' }}
                 </span>
                 <span class="shrink-0 px-[5px] py-px rounded-badge font-mono text-[9px] font-semibold whitespace-nowrap"
+                      {{-- Empacada, o selo CHAPA no próprio roxo da pergunta em vez
+                           de acender em vermelho: o vermelho é a prioridade Crítica
+                           (AC-356), e a terceira rodada de uma conversa não é isso.
+                           A escalada acontece dentro da cor da notícia. --}}
                       style="{{ $tarefa->conversaEmpacada()
-                          ? 'background: rgb(var(--crit) / var(--tint-alpha)); color: rgb(var(--crit))'
+                          ? 'background: rgb(var(--pergunta)); color: rgb(var(--on-brand))'
                           : 'background: var(--chip); color: rgb(var(--ink-mute))' }}">
                     {{ max(1, $tarefa->rodadas) }}ª rodada
                 </span>
@@ -191,7 +243,7 @@
                  tarefa foi mal especificada — e aí perguntar de novo não é o
                  que resolve. --}}
             @if ($tarefa->conversaEmpacada())
-                <p class="mt-[5px] font-mono text-[9px] uppercase tracking-[0.06em]" style="color: rgb(var(--crit))">
+                <p class="mt-[5px] font-mono text-[9px] uppercase tracking-[0.06em]" style="color: rgb(var(--pergunta))">
                     considere devolver para correção
                 </p>
             @endif
@@ -203,8 +255,8 @@
                 <div x-data="{ respondendo: false }" @click.stop>
                     <button type="button" x-show="! respondendo"
                             @click="respondendo = true; $nextTick(() => $refs.resposta.focus())"
-                            class="mt-[7px] w-full h-[26px] rounded-tile border border-brand bg-transparent
-                                   text-brand-text text-[11.5px] font-semibold transition hover:bg-brand/10">
+                            class="mt-[7px] w-full h-[26px] rounded-tile border border-pergunta bg-transparent
+                                   text-pergunta text-[11.5px] font-semibold transition hover:bg-pergunta/10">
                         Responder
                     </button>
 
@@ -218,7 +270,7 @@
                         @csrf
                         <textarea x-ref="resposta" name="corpo" rows="2" required placeholder="Sua resposta…"
                                   @keydown.escape.stop="respondendo = false"
-                                  class="block w-full px-[9px] py-[7px] rounded-tile bg-input border border-brand
+                                  class="block w-full px-[9px] py-[7px] rounded-tile bg-input border border-pergunta
                                          text-ink text-[12px] leading-[1.45] resize-y focus:ring-0"></textarea>
                         <div class="mt-1.5 flex gap-1.5">
                             <button type="button" @click="respondendo = false"
@@ -227,8 +279,8 @@
                                 Cancelar
                             </button>
                             <button type="submit"
-                                    class="flex-1 h-[26px] rounded-tile bg-brand text-on-brand
-                                           text-[11.5px] font-semibold transition hover:bg-brand-bright">
+                                    class="flex-1 h-[26px] rounded-tile bg-pergunta text-on-brand
+                                           text-[11.5px] font-semibold transition hover:opacity-90">
                                 Enviar resposta
                             </button>
                         </div>
@@ -241,7 +293,8 @@
     {{-- A bola do portão: quem foi apontado para examinar (US-087). Sem esta
          linha o apontamento não deixava rastro NO CARD — a pessoa escolhia no
          seletor, olhava o quadro e concluía que não tinha gravado. Uma linha
-         só, na cor da marca como a pergunta: apontado não é problema.
+         só, no roxo da conversa como a pergunta: apontado não é problema, e as
+         duas tarjas falam da mesma coisa — a bola está com uma pessoa.
 
          A frase inteira é PROSA, num corpo só, como o detalhe já diz "Na main,
          aguardando o teste de Fulano": o microlabel (mono, caixa alta,
@@ -252,10 +305,10 @@
     @if ($tarefa->interlocutor_id
         && in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_EXAME, true))
         <div class="mt-2 flex items-center gap-1.5 px-[9px] py-[7px] rounded-tile border-l-2"
-             style="background: rgb(var(--brand) / 0.085); border-color: rgb(var(--brand))">
-            <span class="h-3 w-3 shrink-0 text-brand-text"><x-nav-icon name="eye" :peso="1.9" /></span>
+             style="background: var(--exame-tint); border-color: rgb(var(--exame))">
+            <span class="h-3 w-3 shrink-0 text-exame"><x-nav-icon name="eye" :peso="1.9" /></span>
             <p class="flex-1 min-w-0 text-[12px] leading-[1.4] truncate">
-                <span class="text-brand-text">{{ $tarefa->status === 'em_revisao' ? 'Revisão com' : 'Teste com' }}</span>
+                <span class="text-exame">{{ $tarefa->status === 'em_revisao' ? 'Revisão com' : 'Teste com' }}</span>
                 <span class="font-semibold text-ink">{{ $tarefa->interlocutor?->name ?? 'alguém' }}</span>
             </p>
         </div>
@@ -266,11 +319,11 @@
          detalhe que a coluna única de Ajustes achatava. --}}
     @if ($temRetorno)
         <div class="mt-2 px-[9px] py-[7px] rounded-tile border-l-2"
-             style="background: var(--warn-tint); border-color: rgb(var(--warn))">
+             style="background: var(--retorno-tint); border-color: rgb(var(--retorno))">
             <div class="flex items-center gap-1.5">
-                <span class="h-3 w-3 shrink-0" style="color: rgb(var(--warn))"><x-nav-icon name="arrow-uturn-left" :peso="1.9" /></span>
+                <span class="h-3 w-3 shrink-0" style="color: rgb(var(--retorno))"><x-nav-icon name="arrow-uturn-left" :peso="1.9" /></span>
                 <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] truncate"
-                      style="color: rgb(var(--warn))">{{ $tarefa->rotuloDoRetorno() }}</span>
+                      style="color: rgb(var(--retorno))">{{ $tarefa->rotuloDoRetorno() }}</span>
             </div>
 
             @if (filled($tarefa->retorno_motivo))
@@ -288,20 +341,26 @@
         "porquê" só existiria no tooltip — fora do relance, que é onde o quadro
         opera. Etapa e tempo sobem para o cabeçalho da tarja, e o Destravar é
         ícone.
+
+        VERMELHA, e não âmbar como o retorno. As duas dividiam o mesmo tom e não
+        são a mesma notícia: quem voltou de um portão está andando — para trás,
+        mas andando —, e quem está travada não está fazendo nada. O âmbar também
+        era a cor da borda de "A definir", e a tarja dentro daquele card pintava
+        o impedimento com o tom da falta de triagem.
     --}}
     @if ($bloqueada)
         <div class="mt-2 px-[9px] py-[7px] rounded-tile border-l-2"
-             style="background: var(--warn-tint); border-color: rgb(var(--warn))">
+             style="background: var(--bloqueio-tint); border-color: rgb(var(--bloqueio))">
             <div class="flex items-center gap-1.5">
-                <span class="h-3 w-3 shrink-0" style="color: rgb(var(--warn))"><x-nav-icon name="cadeado-fechado" :peso="1.8" /></span>
+                <span class="h-3 w-3 shrink-0" style="color: rgb(var(--bloqueio))"><x-nav-icon name="cadeado-fechado" :peso="1.8" /></span>
                 <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] truncate"
-                      style="color: rgb(var(--warn))">{{ $tarefa->rotuloDoBloqueio() }}</span>
+                      style="color: rgb(var(--bloqueio))">{{ $tarefa->rotuloDoBloqueio() }}</span>
 
                 <form method="POST" data-parcial action="{{ route('tarefas.bloquear', $tarefa) }}" @click.stop>
                     @csrf
                     <button type="submit" title="Destravar tarefa" aria-label="Destravar tarefa"
                             class="shrink-0 h-5 w-5 rounded-badge border flex items-center justify-center transition hover:bg-chip"
-                            style="border-color: var(--warn-line); color: rgb(var(--warn))">
+                            style="border-color: var(--bloqueio-line); color: rgb(var(--bloqueio))">
                         <span class="h-[11px] w-[11px]"><x-nav-icon name="cadeado-aberto" :peso="1.9" /></span>
                     </button>
                 </form>
@@ -369,9 +428,7 @@
         <div class="min-w-0 shrink h-[19px] flex flex-wrap items-center gap-[7px] overflow-hidden">
             <span title="Na etapa há {{ $tempoNaEtapa }}"
                   class="shrink-0 px-1.5 py-0.5 rounded-badge font-mono text-[10px] font-semibold"
-                  style="{{ $tomEsquecida
-                      ? 'background: rgb(var(--'.$tomEsquecida.') / var(--tint-alpha)); color: rgb(var(--'.$tomEsquecida.'))'
-                      : 'background: var(--chip); color: rgb(var(--ink-mute))' }}">
+                  style="{{ $estiloDoTempo }}">
                 {{ $tempoNaEtapa }}
             </span>
 
@@ -422,7 +479,7 @@
                 <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, 'bloqueio', '{{ $tarefa->status }}', '{{ $tarefa->tipo }}')"
                         title="Bloquear tarefa" aria-label="Bloquear tarefa"
                         class="h-5 w-5 rounded-badge border border-line flex items-center justify-center
-                               text-ink-mute transition hover:text-warn hover:border-warn-line">
+                               text-ink-mute transition hover:text-bloqueio hover:border-bloqueio-line">
                     <span class="h-[11px] w-[11px]"><x-nav-icon name="cadeado-fechado" :peso="1.9" /></span>
                 </button>
             @endunless

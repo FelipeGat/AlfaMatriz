@@ -1,5 +1,6 @@
 @props([
     'tom' => 'neutro',   // bom | ambar | atencao | critico | marca | neutro
+                         // …e as notícias do card: pergunta | exame | bloqueio | retorno | triagem
     'ponto' => false,    // ponto de status antes do texto
 ])
 
@@ -17,6 +18,14 @@
         'atencao' => 'warn',
         'critico' => 'crit',
         'marca' => 'brand-text',
+        // As notícias do card têm cada uma o seu matiz, sem repetir (AC-358):
+        // desde que a borda virou a prioridade, todo tom de sinal já quer dizer
+        // um grau, e tarja emprestada pinta duas coisas com a mesma cor.
+        'pergunta' => 'pergunta',
+        'exame' => 'exame',
+        'bloqueio' => 'bloqueio',
+        'retorno' => 'retorno',
+        'triagem' => 'triagem',
         default => null,
     };
 

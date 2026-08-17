@@ -256,7 +256,7 @@ class Tarefa extends Model
         'media' => 'marca',
         'alta' => 'ambar',
         'critica' => 'critico',
-        'nao_definida' => 'atencao',
+        'nao_definida' => 'triagem',
     ];
 
     protected $fillable = [

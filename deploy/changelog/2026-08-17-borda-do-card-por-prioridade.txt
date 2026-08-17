@@ -1,0 +1,30 @@
+<b>📋 AlfaMatriz — Changelog 17/08/2026</b>
+<i>Complemento: as cores do card de tarefa</i>
+
+<b>🎨 Quadro de tarefas — a moldura do card vira sinal</b>
+
+• <b>A borda de cada card agora é da cor da prioridade dele</b>: vermelha na Crítica, âmbar na Alta, azul-marca na Média e neutra na Baixa. Antes a prioridade só existia num selo miúdo no canto do card, que só se lia parando em cima — e o quadro é olhado de relance, com a coluna inteira na vista.
+
+• <b>A borda dobrou de espessura e perdeu a transparência</b>. A anterior tinha 1 pixel esmaecido sobre o fundo do quadro: existia, mas não informava nada.
+
+• <b>Tarefa sem triagem tem a borda tracejada, em cinza-azulado.</b> "A definir" não é um grau de gravidade — é a fila que ainda não foi olhada —, e o traço interrompido diz isso. É o mesmo desenho que o card já usa no círculo de sistema quando não há sistema escolhido.
+
+• <b>A tarefa crítica acende o card inteiro</b>, com um fundo levemente avermelhado além da borda. Ela deixa de depender do tom da moldura para se destacar: na coluna, uma crítica é outra coisa, não um vizinho de cor parecida.
+
+<b>🌈 Uma cor por notícia, sem repetir</b>
+
+• <b>Cada aviso do card passou a ter um tom só dele</b>: pergunta em roxo, "Revisão/Teste com Fulano" em azul, tarefa travada em rosa, devolvida de um portão em magenta. Antes as tarjas emprestavam cor da escala de prioridade, e o mesmo card mostrava duas coisas diferentes pintadas igual — bloqueio parecia crítica, pergunta parecia média.
+
+• <b>As cores foram escolhidas por medida, não a olho.</b> A distância entre quaisquer duas das nove cores do card é conferida a cada execução dos testes, e precisa ficar acima do limiar em que duas cores se confundem de relance. Foi essa conta que denunciou um caso antigo que ninguém tinha notado: no tema claro, "Alta" e "A definir" eram praticamente a mesma cor.
+
+• <b>Quando um aviso tem dois níveis, o segundo é a mesma cor preenchida</b> — o selo de tempo de uma tarefa esquecida e o selo de rodada de uma conversa que empacou. Nenhum deles pega emprestada a cor de outro aviso para dizer "agora é sério".
+
+<b>🖥 Tela cheia do quadro</b>
+
+• <b>Um botão no cabeçalho do quadro expande ele para a janela inteira</b> — menu, cabeçalho da página, abas e filtros saem da frente. A área do quadro quase dobra, e o ganho maior é em ALTURA: cada coluna passa a mostrar cerca de metade mais cards sem rolar. A volta é o mesmo botão ou a tecla Esc.
+
+• <b>A escolha fica guardada</b>: quem trabalha o dia inteiro no quadro não precisa reativar a cada visita, e a tela abre já expandida sem piscar no tamanho antigo.
+
+• <b>A tarefa aberta continua por cima</b>, e o Esc fecha uma coisa de cada vez: primeiro a tarefa, depois a tela cheia — fechar um card não derruba o modo junto.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
