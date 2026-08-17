@@ -324,6 +324,14 @@ class TarefaController extends Controller
             // criar direto em Em revisão pularia o trabalho.
             'status' => 'nullable|in:aberta,backlog',
 
+            // O checklist entra JUNTO com a tarefa, pelo mesmo argumento dos
+            // anexos logo abaixo: os passos costumam estar na cabeça de quem
+            // abre a tarefa, e "salve primeiro, liste depois" é o segundo
+            // gesto que se deixa para depois. `nullable` no item porque o
+            // campo de novo item viaja no array mesmo vazio.
+            'itens' => 'nullable|array',
+            'itens.*' => 'nullable|string|max:255',
+
             // A prova entra JUNTO com a tarefa (AC-234). Até aqui ela só entrava
             // depois, com a tarefa aberta — e quem abre uma tarefa a partir de
             // um print acabava descrevendo por escrito o que já tinha na tela,
@@ -336,6 +344,10 @@ class TarefaController extends Controller
         // o que fazer com um arquivo — o primeiro compararia `UploadedFile` com
         // coluna e o segundo tentaria gravá-lo numa tarefa.
         $arquivos = Arr::pull($data, 'anexos', []);
+
+        // O checklist sai pelo mesmo motivo: item não é coluna de `tarefas`, e
+        // tanto o `where()` do reenvio quanto o `create()` tropeçariam no array.
+        $itens = Arr::pull($data, 'itens', []);
 
         // O padrão é resolvido AQUI, e não só no modelo, por causa da linha
         // abaixo: a busca por reenvio compara o formulário inteiro, e um `tipo`
@@ -354,10 +366,20 @@ class TarefaController extends Controller
         // Os arquivos entram DENTRO do mesmo `if`, e não ao lado: no clique
         // duplo os dois envios carregam os mesmos anexos, e gravá-los fora daqui
         // deixaria o print duplicado na tarefa que a trava acabou de preservar.
-        // O aviso também: a trava que impede o segundo card impede o segundo
-        // sino tocando pelo mesmo fato.
+        // O checklist e o aviso também: a trava que impede o segundo card
+        // impede a lista dobrada e o segundo sino tocando pelo mesmo fato.
         if (! $this->reenvioDaMesmaTarefa($data)) {
             $tarefa = Tarefa::create($data);
+
+            // Em branco não vira item: o campo de novo item do formulário
+            // viaja como o último `itens[]` mesmo sem texto — é ele que salva
+            // o item digitado e não confirmado com Enter, e quando não há
+            // nada ali, não há nada a gravar.
+            foreach ($itens as $texto) {
+                if (trim((string) $texto) !== '') {
+                    $tarefa->itens()->create(['texto' => trim((string) $texto)]);
+                }
+            }
 
             $this->gravarAnexos($arquivos, $tarefa);
             $this->avisarNascimento($tarefa);

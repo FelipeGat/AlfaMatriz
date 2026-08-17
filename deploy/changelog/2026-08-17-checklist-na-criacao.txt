@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 17/08/2026</b>
+<i>O checklist entra junto com a tarefa</i>
+
+<b>✅ Checklist na criação da tarefa</b>
+
+• <b>O modal de nova tarefa ganhou a seção Checklist</b> — os passos que já estão na cabeça de quem abre a tarefa entram na hora, sem precisar salvar primeiro para listar depois.
+
+• <b>Enter acrescenta o item e o cursor fica no campo</b>, pronto para o próximo. E o que ficou digitado sem Enter entra mesmo assim ao salvar, em vez de se perder na tela.
+
+• <b>O card já nasce com o selo de progresso</b> (0/2, 0/5…), e a lista segue como sempre na tarefa aberta: marcar, corrigir, reordenar e remover.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

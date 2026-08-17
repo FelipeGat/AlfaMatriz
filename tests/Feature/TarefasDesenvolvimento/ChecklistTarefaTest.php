@@ -161,6 +161,69 @@ class ChecklistTarefaTest extends TestCase
     }
 
     /**
+     * O checklist entra JUNTO com a tarefa, pelo formulário de criação: os
+     * passos costumam estar na cabeça de quem a abre, e "salve primeiro, liste
+     * depois" é o segundo gesto que se deixa para depois — o mesmo argumento
+     * dos anexos (AC-234). Em branco não vira item, porque o campo de novo
+     * item viaja no array mesmo vazio.
+     */
+    public function test_a_tarefa_nasce_com_o_checklist_do_formulario(): void
+    {
+        $usuario = User::factory()->create();
+
+        $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'titulo' => 'Renovar certificado',
+            'itens' => ['Conferir o boleto', '  Avisar a revenda  ', ''],
+        ])->assertSessionHasNoErrors();
+
+        $tarefa = Tarefa::where('titulo', 'Renovar certificado')->sole();
+
+        $this->assertSame(
+            ['Conferir o boleto', 'Avisar a revenda'],
+            $tarefa->itens->pluck('texto')->all()
+        );
+        $this->assertSame(['feitos' => 0, 'total' => 2], $tarefa->progressoDoChecklist(),
+            'Item de tarefa recém-criada nasce pendente.');
+    }
+
+    /**
+     * A trava do duplo clique (AC-137) cobre o checklist: os itens são gravados
+     * DENTRO da mesma janela que impede o segundo card, senão a tarefa que a
+     * trava preservou ganharia a lista dobrada.
+     */
+    public function test_clique_duplo_no_salvar_nao_dobra_o_checklist(): void
+    {
+        $usuario = User::factory()->create();
+
+        $envio = [
+            'titulo' => 'Renovar certificado',
+            'itens' => ['Conferir o boleto', 'Avisar a revenda'],
+        ];
+
+        $this->actingAs($usuario)->post(route('tarefas.store'), $envio);
+        $this->actingAs($usuario)->post(route('tarefas.store'), $envio);
+
+        $tarefa = Tarefa::where('titulo', 'Renovar certificado')->sole();
+        $this->assertSame(2, $tarefa->itens()->count());
+    }
+
+    /**
+     * O item acima do limite da coluna é recusado na validação, e a recusa não
+     * deixa meia tarefa para trás: ou o formulário entra inteiro, ou nada entra.
+     */
+    public function test_item_acima_do_limite_recusa_o_envio_inteiro(): void
+    {
+        $usuario = User::factory()->create();
+
+        $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'titulo' => 'Renovar certificado',
+            'itens' => [str_repeat('a', 256)],
+        ])->assertSessionHasErrors('itens.0');
+
+        $this->assertDatabaseMissing('tarefas', ['titulo' => 'Renovar certificado']);
+    }
+
+    /**
      * @spec:AC-201 Revenda não alcança o checklist: as rotas dele seguem a mesma trava
      * do quadro (AC-095), senão o backlog interno vazaria por uma porta lateral.
      */
