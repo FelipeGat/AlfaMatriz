@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 17/08/2026</b>
+<i>O resumo da tarefa cabe em 500 caracteres</i>
+
+<b>✍️ Resumo com espaço para a frase inteira</b>
+
+• <b>O campo Resumo passou de 255 para 500 caracteres</b> — o antigo obrigava a cortar o contexto no meio para caber, e o que sobrava virava um segundo título. Agora cabem duas ou três frases dizendo o que precisa acontecer.
+
+• <b>A caixa cresce junto com o texto</b>, em vez de rolar por dentro: não é mais preciso arrastar o canto para reler o que se escreveu, e a tarefa com resumo longo já abre mostrando ele inteiro. Vazia, ela continua do mesmo tamanho de sempre.
+
+• <b>Os resumos já escritos continuam como estão</b>, e o card segue mostrando uma linha só, com o texto completo ao passar o mouse. Quem quiser o detalhe longo continua usando o campo Detalhes.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
