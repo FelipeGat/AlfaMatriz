@@ -1,0 +1,10 @@
+<b>📋 AlfaMatriz — Changelog 17/08/2026</b>
+<i>Complemento: o resumo maior na tela de Histórico</i>
+
+<b>📜 Histórico com linhas do mesmo tamanho</b>
+
+• <b>Na tabela do Histórico o resumo agora corta em duas linhas</b>, como as tarjas do card. Com 500 caracteres liberados, uma única tarefa de resumo longo esticava a linha até três vezes a altura das vizinhas, e varrer a lista virava rolagem.
+
+• <b>O texto inteiro continua a um clique</b>: passar o mouse mostra o resumo completo, e abrir a tarefa traz ele sem corte nenhum, junto da linha do tempo, dos relatórios e da conversa.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
