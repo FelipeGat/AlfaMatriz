@@ -1,0 +1,20 @@
+<b>📋 AlfaMatriz — Changelog 17/08/2026</b>
+<i>Complemento: a vista rola sozinha enquanto o card está na mão, e o teclado do quadro volta a funcionar</i>
+
+<b>🖱️ Reordenar sem largar o card no meio do caminho</b>
+
+• <b>Perto da borda, a vista anda sozinha.</b> A coluna desce até o último card e o quadro caminha para as etapas que estão fora da tela. Durante um arrasto o navegador trava a barra de rolagem e a roda do mouse, então levar um card ao pé de uma fila longa era soltar, rolar e pegar de novo — e a cada volta a posição já escolhida se perdia.
+
+• <b>A velocidade segue a mão</b>: encostado na borda anda rápido, na entrada anda devagar, e no miolo da coluna nada se mexe.
+
+• <b>O vão acompanha a rolagem.</b> Enquanto a coluna desce, o espaço vazio segue quem passa por baixo do cursor — soltar deixa o card exatamente onde a tela mostrou.
+
+• <b>Vale igual no quadro agrupado</b>: o pé do quadro desce as faixas e a beirada direita traz as etapas seguintes.
+
+<b>⌨️ O teclado do quadro voltou</b>
+
+• <b>⇧← e ⇧→ movem a tarefa de etapa outra vez</b>, e o <b>B</b> abre o pedido de motivo dentro do próprio card. As duas teclas estavam paradas: não moviam nada e ainda deixavam erro no console a cada toque.
+
+• <b>Cancelar com Esc devolve o quadro ao normal.</b> Antes, fechar o pedido de motivo deixava as colunas apagadas na tela, como se ainda houvesse um card na mão.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
