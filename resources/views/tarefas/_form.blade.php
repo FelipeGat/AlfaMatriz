@@ -21,6 +21,15 @@
     // interno veria "Produto" acima da lista de sempre, sem nada a distinguir.
     $agruparSistemas = $sistemas->pluck('natureza')->unique()->count() > 1;
 
+    // O checklist da criação renasce do `old()` quando a validação devolve a
+    // página inteira — sem isto, um título em falta apagaria a lista já
+    // digitada. Filtrado porque o campo de novo item viaja no array mesmo
+    // vazio, e um envio devolvido não pode transformá-lo num item em branco.
+    $itensIniciais = $edicao ? [] : array_values(array_filter(
+        array_map(fn ($item) => trim((string) $item), (array) old('itens', [])),
+        fn ($item) => $item !== ''
+    ));
+
     if ($edicao) {
         // O subtítulo diz ONDE a tarefa está e HÁ QUANTO TEMPO — a mesma
         // pergunta que o chip do card responde, e a primeira que se faz ao
@@ -245,21 +254,24 @@
         @endunless
 
         {{--
-            Checklist e conversa só na edição: tarefa que ainda não existe não
-            tem nenhuma das duas, e o modal de criação não teria onde pendurar o
-            comentário nem sobre o que combinar um item.
+            Só a conversa fica para a edição: tarefa que ainda não existe não
+            tem onde pendurar um comentário. O checklist não espera mais — os
+            passos costumam estar na cabeça de quem abre a tarefa, e "salve
+            primeiro, liste depois" é o mesmo segundo gesto que os anexos já
+            recusaram (AC-234). Na criação ele é outro mecanismo de propósito:
+            não há tarefa, logo não há rota de item nem pedaço a redesenhar —
+            os itens são campos `itens[]` do próprio formulário, e viajam no
+            POST que cria a tarefa.
 
-            Os anexos são o caso à parte, e por isso o include está fora do `@if`
-            — quem abre uma tarefa quase sempre está olhando para o print que a
-            motivou (AC-234). Pedir para salvar primeiro e anexar depois é pedir
-            um segundo gesto que se deixa para depois, e aí a tarefa nasce
-            descrevendo por escrito o que já estava na tela.
+            Os anexos têm o include fora do `@if` — quem abre uma tarefa quase
+            sempre está olhando para o print que a motivou (AC-234), e a tarefa
+            nasceria descrevendo por escrito o que já estava na tela.
 
-            Ele fica ENTRE o checklist e a conversa de propósito: os anexos são
-            prova do que a tarefa é, e a conversa é o que se diz sobre isso.
-            Depois da conversa, virariam rodapé de uma lista que já rola por
-            dentro. Na criação, onde as outras duas não existem, ele é o fim do
-            corpo — e a ordem entre os três continua a mesma.
+            Eles ficam ENTRE o checklist e a conversa de propósito: os anexos
+            são prova do que a tarefa é, e a conversa é o que se diz sobre
+            isso. Depois da conversa, virariam rodapé de uma lista que já rola
+            por dentro. Na criação a conversa não existe, e a ordem entre os
+            três continua a mesma.
         --}}
         {{-- Checklist e conversa vêm embrulhados num `data-pedaco`: são as duas
              regiões que o servidor redesenha e troca no lugar depois de marcar
@@ -272,6 +284,63 @@
         @if ($edicao)
             <div class="contents" data-pedaco="checklist-{{ $tarefa->id }}">
                 @include('tarefas._checklist', ['tarefa' => $tarefa])
+            </div>
+        @else
+            {{-- O campo de novo item também é um `itens[]`: o texto digitado e
+                 não confirmado com Enter entra no envio mesmo assim, em vez de
+                 morrer na tela junto com o clique no Salvar. O Enter só o
+                 promove a linha da lista — e com ele `.prevent` em todos os
+                 campos daqui, porque Enter num input dispararia o formulário
+                 inteiro. Sem JavaScript sobra um campo, um item: degrada, não
+                 quebra. --}}
+            {{-- `@reset.window` pelo mesmo motivo dos anexos: o quadro chama
+                 `form.reset()` depois de a tarefa nascer, e o evento sobe do
+                 `<form>`, que é o PAI desta caixa. O `reset` limpa os campos,
+                 mas não a lista do Alpine que os reescreve — sem o ouvinte, a
+                 PRÓXIMA tarefa nasceria com o checklist da anterior. --}}
+            {{-- E limpa num `$nextTick`, não na hora: o `x-model` do Alpine
+                 também ouve o `reset` e devolve o campo zerado ao modelo num
+                 `nextTick` seu — que roda DEPOIS de um `itens = []` síncrono e
+                 ressuscitava a lista como uma linha em branco. O ouvinte dele
+                 fica no `<form>` e enfileira antes; este entra depois na mesma
+                 fila, e a palavra final é o vazio. --}}
+            <div class="pt-4 border-t border-rule"
+                 x-data="{ itens: @js($itensIniciais) }"
+                 @reset.window="if ($event.target.contains($el)) $nextTick(() => itens = [])">
+                <h4 class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Checklist</h4>
+
+                <ul class="mt-2 space-y-1">
+                    <template x-for="(item, i) in itens" :key="i">
+                        <li class="group flex items-center gap-2 rounded-control px-1 py-0.5 hover:bg-chip transition">
+                            {{-- Os `!` pela mesma razão do checklist da edição:
+                                 o estilo global de `input[type=text]` vence a
+                                 classe utilitária por especificidade, e cada
+                                 item viraria uma caixa de formulário. --}}
+                            <input type="text" name="itens[]" x-model="itens[i]" maxlength="255"
+                                   @keydown.enter.prevent
+                                   class="flex-1 min-w-0 px-0 py-0.5 text-[12.5px] text-ink transition
+                                          !bg-transparent !rounded-none !border-x-0 !border-t-0 !border-b !border-transparent
+                                          focus:!border-brand">
+
+                            <button type="button" @click="itens.splice(i, 1)"
+                                    title="Remover item" aria-label="Remover item"
+                                    class="shrink-0 h-5 w-5 rounded-control text-ink-faint opacity-0 group-hover:opacity-100
+                                           focus:opacity-100 hover:text-crit transition">✕</button>
+                        </li>
+                    </template>
+                </ul>
+
+                <input type="text" name="itens[]" maxlength="255"
+                       placeholder="+ item · Enter para adicionar"
+                       @keydown.enter.prevent="if ($el.value.trim()) { itens.push($el.value.trim()); $el.value = '' }"
+                       class="mt-2 block w-full h-8 px-2.5 text-[12.5px] text-ink placeholder-ink-faint transition
+                              bg-input border border-dashed !border-btn-line !rounded-ctl
+                              focus:!border-brand">
+
+                <p class="mt-1.5 px-1 text-[11px] leading-[1.45] text-ink-faint">
+                    Checklist não é subtarefa: não tem responsável nem etapa, e não entra na conta de trabalho em curso.
+                    O que precisa de dono próprio vira tarefa.
+                </p>
             </div>
         @endif
 
