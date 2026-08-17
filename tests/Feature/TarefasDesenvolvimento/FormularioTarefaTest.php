@@ -198,6 +198,44 @@ class FormularioTarefaTest extends TestCase
     }
 
     /**
+     * @spec:AC-216 O resumo cabe em 500 caracteres, e o 501º é recusado.
+     *
+     * 255 era o padrão do `string()`, não uma decisão, e obrigava a cortar o
+     * contexto no meio da frase. O teto novo vale nas duas rotas: `store` e
+     * `update` validam o mesmo campo, e já houve o caso de uma regra existir
+     * só na criação (AC-216) — a edição precisa ser exercitada à parte.
+     *
+     * O que se prova aqui é a REGRA, não a largura da coluna: a suíte roda em
+     * sqlite, onde `varchar` não tem teto. O `varchar(500)` do MySQL é
+     * assunto do ensaio de migração.
+     */
+    public function test_o_resumo_aceita_500_caracteres_e_recusa_o_501(): void
+    {
+        $usuario = User::factory()->create();
+        $quinhentos = str_repeat('a', 500);
+
+        $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'titulo' => 'Resumo longo',
+            'resumo' => $quinhentos,
+            'prioridade' => 'alta',
+        ]);
+
+        $tarefa = Tarefa::where('titulo', 'Resumo longo')->sole();
+        $this->assertSame($quinhentos, $tarefa->resumo, 'O resumo de 500 chega inteiro ao banco.');
+
+        $this->actingAs($usuario)
+            ->put(route('tarefas.update', $tarefa), [
+                'titulo' => $tarefa->titulo,
+                'resumo' => str_repeat('b', 501),
+                'prioridade' => $tarefa->prioridade,
+            ])
+            ->assertSessionHasErrors('resumo');
+
+        $this->assertSame($quinhentos, $tarefa->fresh()->resumo,
+            'Envio recusado não pode ter gravado nada por cima.');
+    }
+
+    /**
      * @spec:AC-084 Editar uma tarefa existente troca o sistema vinculado, e o card passa a mostrar o novo sistema.
      */
     public function test_editar_tarefa_troca_o_sistema_vinculado(): void

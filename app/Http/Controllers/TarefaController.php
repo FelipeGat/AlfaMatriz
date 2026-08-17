@@ -303,9 +303,9 @@ class TarefaController extends Controller
             'titulo' => 'required|string|max:255',
             // Sem regra aqui, o resumo digitado no modal era descartado em
             // silêncio: `validate()` devolve só o que validou, e o que não tem
-            // regra não chega ao `create`. `max:255` acompanha a coluna, que é
-            // `string` — e o `maxlength` do textarea.
-            'resumo' => 'nullable|string|max:255',
+            // regra não chega ao `create`. `max:500` acompanha a coluna, que é
+            // `varchar(500)` — e o `maxlength` do textarea.
+            'resumo' => 'nullable|string|max:500',
             // `nullable` e não `required`: o tipo tem padrão no modelo, e um
             // envio sem ele (formulário antigo em cache, integração futura) vale
             // como tarefa de desenvolvimento em vez de virar erro de validação.
@@ -664,7 +664,7 @@ class TarefaController extends Controller
             // qualquer formulário que não tenha o campo); chave presente e
             // vazia o apaga, que é o que quem limpou o textarea pediu — o
             // `ConvertEmptyStringsToNull` faz o '' virar null antes daqui.
-            'resumo' => 'nullable|string|max:255',
+            'resumo' => 'nullable|string|max:500',
             'tipo' => 'nullable|in:'.implode(',', array_keys(Tarefa::TIPOS)),
             'sistema_id' => 'nullable|exists:sistemas,id',
             'responsavel_id' => 'nullable|exists:users,id',
