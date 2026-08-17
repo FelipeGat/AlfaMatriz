@@ -1,0 +1,16 @@
+<b>📋 AlfaMatriz — Changelog 17/08/2026</b>
+<i>A devolução para correção agora leva o print junto</i>
+
+<b>🖼️ Imagens na devolução para correção</b>
+
+• <b>O painel "Devolver para correção" agora aceita imagens</b> — até três por devolução, escolhidas no seletor ou coladas com Ctrl+V, com prévia e remoção antes de enviar. O print viaja no mesmo envio que devolve o card: se a devolução for recusada, nada fica gravado.
+
+• <b>Quem recebe a tarefa de volta vê o print ao lado do motivo</b>, no aviso "Voltou da revisão / do staging" dentro da tarefa — "o botão saiu do lugar" deixa de depender de descrição por escrito.
+
+• <b>As imagens ficam no acervo da tarefa:</b> quando ela volta a andar, o aviso sai de cena, mas os prints continuam na seção de anexos, como prova do que foi corrigido.
+
+<b>🔧 Ajuste de bastidor</b>
+
+• Corrigida a política de segurança que bloqueava, em silêncio, a prévia de imagem ainda não enviada — inclusive na criação de tarefa com anexo, onde a miniatura só aparecia depois do salvar.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
