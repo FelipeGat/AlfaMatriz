@@ -810,6 +810,18 @@ class TarefaController extends Controller
             // Quem revisa / quem testa (US-087): opcional, e só as entradas
             // nos portões de exame o usam — o motor ignora no resto.
             'interlocutor_id' => 'nullable|exists:users,id',
+            // As imagens da devolução para correção. SÓ figura, ao contrário
+            // do anexo da tarefa aberta: o painel pede o print do que
+            // reprovou, e log e planilha continuam entrando pela tarefa, onde
+            // há espaço para dizer do que se trata. Os tetos são os mesmos
+            // dos anexos (`regrasDeAnexo`) — quem manda neles é o PHP de
+            // produção, não o formulário.
+            'anexos' => 'nullable|array|max:3',
+            'anexos.*' => 'required|file|mimes:'.implode(',', TarefaAnexo::EXTENSOES_DE_IMAGEM).'|max:12288',
+        ], [
+            'anexos.*.mimes' => 'A devolução aceita imagem — JPG, PNG, GIF ou WebP.',
+            'anexos.*.max' => 'Cada imagem precisa ter até 12 MB.',
+            'anexos.max' => 'Até três imagens por devolução.',
         ]);
 
         // A confirmação de "Em staging → Pronta p/ produção" carrega o carimbo
@@ -850,6 +862,22 @@ class TarefaController extends Controller
             ], livre: (bool) $request->user()?->podeTriarTarefas());
         } catch (\RuntimeException $e) {
             return $this->voltarParaOQuadro($request, $e->getMessage(), 'critico');
+        }
+
+        // A imagem da devolução só toca o disco DEPOIS de o motor aceitar o
+        // movimento: gravada antes, a recusa — transição inválida, motivo
+        // vazio — deixaria no disco o print de uma devolução que não
+        // aconteceu, e anexo órfão não dá erro nenhum até virar disco cheio.
+        if ($request->hasFile('anexos')) {
+            $anexados = $this->gravarAnexos($request->file('anexos'), $tarefa);
+
+            // O vínculo é o que faz o banner de retorno mostrar ESTAS imagens
+            // ao lado do motivo. Só quando o movimento carimbou retorno: num
+            // movimento comum não há tarja a que prendê-las, e elas ficam o
+            // que já são — anexos da tarefa.
+            if ($tarefa->temRetorno()) {
+                $tarefa->forceFill(['retorno_anexo_ids' => $anexados->pluck('id')->all()])->save();
+            }
         }
 
         // Volta para a tela de onde veio, e não para o quadro cru: com filtro

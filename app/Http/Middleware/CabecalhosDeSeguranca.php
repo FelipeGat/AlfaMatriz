@@ -16,7 +16,11 @@ use Symfony\Component\HttpFoundation\Response;
  * `new Function`, e sem os dois o quadro de tarefas para de funcionar
  * (ASM-061). O que ela DE FATO fecha é o destino — carregamento e envio de
  * dado presos a `'self'` — não a execução de script inline injetado.
- * `img-src` inclui `data:` pelas miniaturas de anexo e ícones embutidos.
+ * `img-src` inclui `data:` pelas miniaturas de anexo e ícones embutidos, e
+ * `blob:` pelas PRÉVIAS de imagem que ainda não foram enviadas — a criação de
+ * tarefa e o painel de devolução mostram o arquivo local por
+ * `URL.createObjectURL` antes de o servidor vê-lo. `blob:` aqui não abre
+ * destino nenhum: só deixa desenhar o que a própria página criou.
  *
  * `Strict-Transport-Security` só sai em produção: fora dela (HTTP local, CI)
  * prometer HTTPS pra sempre pelo navegador quebraria o próprio acesso ao
@@ -37,7 +41,7 @@ class CabecalhosDeSeguranca
             "frame-ancestors 'none'",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
             "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data:",
+            "img-src 'self' data: blob:",
         ]));
 
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');

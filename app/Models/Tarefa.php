@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\Auditavel;
 use App\Services\FluxoTarefaService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -270,6 +271,7 @@ class Tarefa extends Model
             'bloqueado_em' => 'datetime',
             'pergunta_em' => 'datetime',
             'rodadas' => 'integer',
+            'retorno_anexo_ids' => 'array',
         ];
     }
 
@@ -425,6 +427,30 @@ class Tarefa extends Model
 
         return self::RETORNO_POR_ORIGEM[$origem]
             ?? 'Voltou de '.self::rotuloDaEtapa($origem);
+    }
+
+    /**
+     * As imagens que vieram com a devolução ATUAL — a metade do motivo que não
+     * é texto.
+     *
+     * Elas são anexos comuns da tarefa; o que esta lista responde é QUAIS deles
+     * chegaram junto com a tarja de retorno, para o banner mostrá-los ao lado
+     * do motivo. Filtra a coleção já carregada em vez de consultar por id: o
+     * modal imprime a seção de anexos da mesma tarefa, e a relação serve às
+     * duas leituras com uma consulta só.
+     *
+     * O anexo que o autor removeu depois da devolução simplesmente sai do
+     * filtro — o id órfão na lista não aponta para nada e não quebra nada.
+     *
+     * @return Collection<int, TarefaAnexo>
+     */
+    public function retornoAnexos(): Collection
+    {
+        if (! $this->temRetorno() || empty($this->retorno_anexo_ids)) {
+            return new Collection;
+        }
+
+        return $this->anexos->whereIn('id', $this->retorno_anexo_ids)->values();
     }
 
     /** Há uma pergunta esperando resposta? */

@@ -88,7 +88,8 @@
              ele recebesse obrigaria a clicar no fundo antes de a primeira seta
              funcionar. Quem filtra o que não deve disparar é o próprio
              `aoTeclar` (campo em foco, tecla com modificador). --}}
-        <div x-data="quadroTarefas" @keydown.window="aoTeclar($event)" data-corpo-do-quadro
+        <div x-data="quadroTarefas" @keydown.window="aoTeclar($event)"
+             @paste.window="colarImagens($event)" data-corpo-do-quadro
              class="relative flex-1 min-h-0 flex flex-col rounded-panel border border-line bg-board overflow-hidden">
             @include('tarefas._quadro', [
                 'chips' => $chips,
@@ -730,6 +731,15 @@
                 textoPendente: '',
                 enviandoPendente: false,
 
+                // As imagens escolhidas para a devolução, antes do envio: o
+                // File para reescrever a carga do input e o `blob:` para a
+                // prévia. O input do clone é guardado porque o `$refs` do
+                // quadro não o alcança — o clone é iniciado com raiz própria
+                // (ver `sincronizarPainelDoMotivo`).
+                imagensPendentes: [],
+                avisoDeImagens: '',
+                entradaDeImagens: null,
+
                 // Modelo de rota com marcador: o id só é conhecido no solto.
                 rotaMover: @json(route('tarefas.mover', ['tarefa' => '__ID__'])),
                 rotaBloquear: @json(route('tarefas.bloquear', ['tarefa' => '__ID__'])),
@@ -1251,6 +1261,11 @@
                             }[this.statusArrastado] ?? 'O que precisa ser corrigido…',
                             acaoRotulo: 'Devolver para correção',
                             cor: 'warn', campo: 'motivo', obrigatorio: true, pedeAprovacao: false,
+                            // Só a devolução para correção oferece imagem: é o
+                            // painel em que "o botão saiu do lugar" mais
+                            // precisa do print que a frase não carrega. As
+                            // imagens viajam no MESMO envio que move o card.
+                            imagens: true,
                         },
                         // O carimbo do staging: é aqui que o dev afirma ter
                         // validado, e é essa nota que o admin lê antes de
@@ -1355,6 +1370,7 @@
 
                     this.textoPendente = '';
                     this.enviandoPendente = false;
+                    this.limparImagens();
                     this.pendente = {
                         ...receita,
                         destino,
@@ -1373,6 +1389,142 @@
                 fecharPendente() {
                     this.pendente = null;
                     this.textoPendente = '';
+                    this.limparImagens();
+                },
+
+                escolherImagens(evento) {
+                    this.acrescentarImagens([...evento.target.files]);
+                },
+
+                /**
+                 * Colar da área de transferência, com o painel aberto.
+                 *
+                 * O ouvinte é de `window` pelo mesmo motivo do modal: ninguém
+                 * dá foco ao painel antes de colar. As guardas respondem, na
+                 * ordem, "há painel de devolução aberto?" e "o Ctrl+V é mesmo
+                 * dele?" — com um modal aberto POR CIMA, quem cola está
+                 * colando no modal, e tratar aqui também poria a mesma imagem
+                 * duas vezes: uma no acervo, outra na devolução. O modal
+                 * fechado fica com `display:none` no próprio `[data-modal]`
+                 * (`x-show`), e é isso que a segunda guarda lê — `offsetParent`
+                 * não serve aqui porque o modal é `position:fixed`, que devolve
+                 * null até visível.
+                 */
+                colarImagens(evento) {
+                    if (! this.pendente || ! this.pendente.imagens || this.enviandoPendente) {
+                        return;
+                    }
+
+                    if ([...document.querySelectorAll('[data-modal]')]
+                        .some((modal) => modal.style.display !== 'none')) {
+                        return;
+                    }
+
+                    const arquivos = [...(evento.clipboardData?.items ?? [])]
+                        .filter((item) => item.kind === 'file')
+                        .map((item) => item.getAsFile())
+                        .filter(Boolean);
+
+                    if (! arquivos.length) {
+                        return;
+                    }
+
+                    evento.preventDefault();
+                    this.acrescentarImagens(arquivos);
+                },
+
+                /**
+                 * As imagens da devolução, das duas portas — seletor e Ctrl+V
+                 * — para a carga do envio.
+                 *
+                 * O mesmo funil do `anexosDaTarefa`, na mesma ordem — figura,
+                 * três por devolução, 12 MB cada, 15 MB a soma do lote — e
+                 * pelos mesmos tetos: os do PHP de produção (ver o comentário
+                 * dos tetos lá). O que não passa fica de fora COM a frase
+                 * dizendo qual e por quê; o print grande não é encolhido aqui
+                 * como o modal encolhe — a frase aponta a tarefa aberta, onde
+                 * o redutor mora.
+                 */
+                acrescentarImagens(candidatos) {
+                    this.avisoDeImagens = '';
+
+                    let arquivos = candidatos
+                        .filter((arquivo) => arquivo.type.startsWith('image/'));
+
+                    if (arquivos.length < candidatos.length) {
+                        this.avisoDeImagens = 'A devolução aceita só imagem — o resto entra pela tarefa aberta.';
+                    }
+
+                    const lugares = 3 - this.imagensPendentes.length;
+
+                    if (arquivos.length > lugares) {
+                        this.avisoDeImagens = 'Até três imagens por devolução — as demais ficaram de fora.';
+                        arquivos = arquivos.slice(0, Math.max(lugares, 0));
+                    }
+
+                    for (const arquivo of arquivos) {
+                        if (arquivo.size > 12 * 1024 * 1024) {
+                            this.avisoDeImagens = 'Cada imagem precisa ter até 12 MB — "'
+                                + arquivo.name + '" ficou de fora; pela tarefa aberta ela é reduzida e entra.';
+
+                            continue;
+                        }
+
+                        const soma = this.imagensPendentes
+                            .reduce((total, imagem) => total + imagem.arquivo.size, 0);
+
+                        if (soma + arquivo.size > 15 * 1024 * 1024) {
+                            this.avisoDeImagens = 'As imagens passam de 15 MB juntas — "'
+                                + arquivo.name + '" ficou de fora; ela entra depois, pela tarefa aberta.';
+
+                            continue;
+                        }
+
+                        // `blob:` do próprio navegador para a prévia, como na
+                        // criação da tarefa: o servidor ainda não viu nada.
+                        this.imagensPendentes.push({ arquivo, url: URL.createObjectURL(arquivo) });
+                    }
+
+                    this.sincronizarImagens();
+                },
+
+                removerImagem(indice) {
+                    const [imagem] = this.imagensPendentes.splice(indice, 1);
+
+                    if (imagem) {
+                        URL.revokeObjectURL(imagem.url);
+                    }
+
+                    this.avisoDeImagens = '';
+                    this.sincronizarImagens();
+                },
+
+                /**
+                 * Reescreve a carga do input com o que a prévia mostra.
+                 *
+                 * A carga viaja NO input do clone, dentro do próprio envio do
+                 * painel — e um input não sabe tirar um arquivo da própria
+                 * lista. Sem a reescrita, remover uma prévia deixaria o
+                 * arquivo removido viajando escondido no POST.
+                 */
+                sincronizarImagens() {
+                    if (! this.entradaDeImagens) {
+                        return;
+                    }
+
+                    const carga = new DataTransfer();
+                    this.imagensPendentes.forEach((imagem) => carga.items.add(imagem.arquivo));
+                    this.entradaDeImagens.files = carga.files;
+                },
+
+                // Os `blob:` são devolvidos ao navegador: o painel abre e
+                // fecha dezenas de vezes por dia, e cada prévia esquecida é
+                // memória que só se devolve fechando a aba.
+                limparImagens() {
+                    this.imagensPendentes.forEach((imagem) => URL.revokeObjectURL(imagem.url));
+                    this.imagensPendentes = [];
+                    this.avisoDeImagens = '';
+                    this.entradaDeImagens = null;
                 },
 
                 /**
@@ -1444,6 +1596,14 @@
                         // o cursor não ia a lugar nenhum. `preventScroll` para
                         // o foco não atropelar a rolagem suave logo acima.
                         lugar.querySelector('textarea, select')?.focus({ preventScroll: true });
+
+                        // O input de imagens do clone, guardado AQUI e não no
+                        // `escolher`: o Ctrl+V precisa dele antes de qualquer
+                        // clique no seletor, e o `$refs` do quadro não alcança
+                        // o clone (ver o comentário acima). Nulo quando a
+                        // receita não oferece imagem — e aí o colar nem chega
+                        // a procurá-lo, barrado em `pendente.imagens`.
+                        this.entradaDeImagens = lugar.querySelector('input[type=file]');
                     });
                 },
 
@@ -1759,6 +1919,10 @@
                     estado.pendente = null;
                     estado.textoPendente = '';
                     estado.enviandoPendente = false;
+                    // As prévias da devolução que acabou de ser enviada — sem
+                    // isto, o próximo painel abriria com as imagens da
+                    // anterior, e os `blob:` ficariam presos até o F5.
+                    estado.limparImagens();
                 }
 
                 // O rodapé do modal decide entre travar e destravar por um
