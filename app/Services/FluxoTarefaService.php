@@ -339,6 +339,12 @@ class FluxoTarefaService
             $marcas['retorno_de'] = $statusAtual;
             $marcas['retorno_motivo'] = trim((string) ($dados['motivo'] ?? ''));
 
+            // As imagens DESTA devolução entram depois, pelo controller — o
+            // arquivo só toca o disco com o movimento já aceito. O que se
+            // apaga aqui é a lista da devolução anterior, que falava de outra
+            // reprovação e ficaria colada no motivo novo.
+            $marcas['retorno_anexo_ids'] = null;
+
             // A conversa que empacou foi resolvida pela própria devolução — é
             // exatamente o que o alerta de terceira rodada sugere fazer. Manter
             // a contagem deixaria o card vermelho para sempre, avisando sobre
@@ -355,9 +361,12 @@ class FluxoTarefaService
         } else {
             // Andar para frente apaga a tarja: ela descreve de onde a tarefa
             // voltou da última vez, e uma tarefa que já saiu da bancada não
-            // está mais voltando de lugar nenhum.
+            // está mais voltando de lugar nenhum. A lista de imagens sai
+            // junto — os ANEXOS ficam, porque são prova da tarefa; o que
+            // morre é só o vínculo com a tarja que acabou de morrer.
             $marcas['retorno_de'] = null;
             $marcas['retorno_motivo'] = null;
+            $marcas['retorno_anexo_ids'] = null;
         }
 
         // A pergunta é sobre o trabalho de uma etapa, como o bloqueio: uma

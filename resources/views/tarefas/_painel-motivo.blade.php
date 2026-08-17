@@ -38,7 +38,11 @@
          painel que acabou de ser respondido lia como resposta perdida. No
          bloqueio o atributo sai: travar não tira a tarefa da etapa, e quem
          travou continua olhando para o mesmo card. --}}
-    <form method="POST" :action="pendente.acao" @submit="enviandoPendente = true" @click.stop data-parcial
+    {{-- `enctype` pelas imagens da devolução: o envio normal é interceptado e
+         vai como `FormData`, que já é multipart — o atributo é o reserva do
+         envio nativo, que sem ele descartaria os arquivos em silêncio. --}}
+    <form method="POST" enctype="multipart/form-data"
+          :action="pendente.acao" @submit="enviandoPendente = true" @click.stop data-parcial
           :data-acompanha="pendente.status ? pendente.id : false"
           class="mt-[10px] p-[10px] rounded-[5px] border border-l-2"
           :style="`background: rgb(var(--${pendente.cor}) / calc(var(--tint-alpha) / 2));
@@ -77,6 +81,62 @@
                       class="mt-2 block w-full px-[9px] py-[7px] rounded-[5px] bg-input text-ink
                              text-[12px] leading-[1.45] resize-y focus:ring-0"
                       :style="`border: 1px solid rgb(var(--${pendente.cor}) / 0.4)`"></textarea>
+        </template>
+
+        {{-- As imagens da devolução: o print do que reprovou viaja no MESMO
+             envio que move o card — junto do motivo de que ele é a metade que
+             o texto não carrega. Só na devolução para correção (`imagens` na
+             receita). Duas portas, seletor e Ctrl+V, e um funil só: quem
+             filtra e reescreve a carga é o quadro (`acrescentarImagens`),
+             porque o `$refs` do clone não chega lá. A prévia usa a mesma
+             grade dos anexos do modal (`_anexos`). --}}
+        <template x-if="pendente.imagens">
+            <div class="mt-2">
+                <div x-show="imagensPendentes.length" x-cloak class="mb-1.5 grid grid-cols-4 gap-1.5">
+                    <template x-for="(imagem, indice) in imagensPendentes" :key="imagem.url">
+                        <div class="group relative aspect-[4/3] rounded-[5px] border border-line bg-surface overflow-hidden">
+                            <img :src="imagem.url" :alt="imagem.arquivo.name" class="h-full w-full object-cover">
+
+                            {{-- Tirar da devolução antes de enviar. Sempre
+                                 visível, ao contrário da lixeira do modal: a
+                                 prévia é rascunho, não acervo — aqui desfazer
+                                 É o gesto esperado, e são no máximo três. --}}
+                            <button type="button" @click.stop="removerImagem(indice)"
+                                    title="Tirar da devolução" aria-label="Tirar da devolução"
+                                    class="absolute top-1 right-1 h-5 w-5 rounded-badge flex items-center justify-center
+                                           text-white transition hover:brightness-125"
+                                    style="background: rgb(0 0 0 / 0.55)">
+                                <span class="block h-[11px] w-[11px]"><x-nav-icon name="x-mark" :peso="1.9" /></span>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+
+                <label class="inline-flex h-[26px] px-2.5 rounded-control border border-btn-line items-center gap-1.5
+                              text-[12px] font-medium text-ink-dim cursor-pointer transition hover:text-ink">
+                    <span class="h-[13px] w-[13px]"><x-nav-icon name="paperclip" :peso="1.8" /></span>
+                    Anexar imagens
+                    <input type="file" name="anexos[]" multiple class="sr-only"
+                           accept="{{ \App\Models\TarefaAnexo::ACEITE_DE_IMAGENS }}"
+                           @change="escolherImagens($event)">
+                </label>
+
+                {{-- A outra porta é dita, como na seção de anexos — o colar
+                     que ninguém anuncia é feature que não existe. EMBAIXO do
+                     botão, e não ao lado: o painel vive num card de coluna de
+                     272px, e na linha do botão sobravam ~85px — o texto saía
+                     num filete de cinco linhas. É a armadilha do texto de
+                     ajuda: ou aparece inteiro, ou não aparece. --}}
+                <p class="mt-1.5 text-[11.5px] leading-[1.45] text-ink-faint">
+                    Print cola com <strong class="font-semibold text-ink-mute">Ctrl+V</strong>, aqui mesmo.
+                </p>
+
+                {{-- A recusa é dita inteira ou não é dita, como nos anexos do
+                     modal: frase pela metade manda tentar de novo sem saber o
+                     que mudar. --}}
+                <p x-show="avisoDeImagens" x-cloak x-text="avisoDeImagens"
+                   class="mt-1.5 text-[11.5px] leading-[1.45] text-crit"></p>
+            </div>
         </template>
 
         {{-- Quem revisa / quem testa (US-087): nos portões de exame o painel

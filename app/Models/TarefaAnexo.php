@@ -47,6 +47,18 @@ class TarefaAnexo extends Model
      */
     public const ACEITE_DO_SELETOR = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.log,.csv,.xls,.xlsx';
 
+    /**
+     * O recorte SÓ DE FIGURA das duas listas acima — o que a devolução aceita.
+     *
+     * O painel de devolução pede o print do que reprovou, e nada mais: log e
+     * planilha continuam entrando pela tarefa aberta, onde há espaço para
+     * dizer do que se trata. Recorte das listas gerais, e não lista própria,
+     * para um formato novo de imagem entrar nos dois lugares com uma mexida.
+     */
+    public const EXTENSOES_DE_IMAGEM = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+    public const ACEITE_DE_IMAGENS = '.jpg,.jpeg,.png,.gif,.webp';
+
     protected $fillable = ['tarefa_id', 'autor_id', 'nome_original', 'nome_arquivo', 'mime', 'caminho', 'caminho_miniatura', 'tamanho'];
 
     /**

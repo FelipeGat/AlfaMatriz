@@ -879,9 +879,13 @@ class AnexosDaTarefaTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        // Uma vez cada: o modal de criação é único, e o de edição — que existe
-        // um por card — não pode ter nenhum dos dois.
-        $this->assertSame(1, substr_count($html, 'name="anexos[]"'));
-        $this->assertSame(1, substr_count($html, 'enctype="multipart/form-data"'));
+        // Duas vezes cada, e as duas com dono: o modal de criação, que é
+        // único, e o molde do painel de devolução (`_painel-motivo`) — um só
+        // para o quadro inteiro, inerte dentro de `<template>` até ser
+        // clonado. O modal de edição — que existe um por card — continua sem
+        // nenhum dos dois: a contagem fixa em 2 é o que acusa o dia em que
+        // ele ganhar um.
+        $this->assertSame(2, substr_count($html, 'name="anexos[]"'));
+        $this->assertSame(2, substr_count($html, 'enctype="multipart/form-data"'));
     }
 }

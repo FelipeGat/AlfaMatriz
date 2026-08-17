@@ -63,6 +63,25 @@
         @if (filled($tarefa->retorno_motivo))
             <p class="mt-1.5 text-[12.5px] leading-[1.45] text-ink whitespace-pre-wrap">{{ $tarefa->retorno_motivo }}</p>
         @endif
+
+        {{-- As imagens que vieram COM esta devolução — a metade do motivo que
+             o texto não carrega. Elas também estão na seção de anexos, mas lá
+             misturadas ao acervo inteiro da tarefa; aqui o banner responde
+             "o que reprovou" com o print ao lado da frase. Mesma grade e
+             mesmo par miniatura/original dos anexos (`_anexos`). --}}
+        @if ($tarefa->retornoAnexos()->isNotEmpty())
+            <div class="mt-2 grid grid-cols-4 gap-1.5">
+                @foreach ($tarefa->retornoAnexos() as $imagem)
+                    <a href="{{ $imagem->url }}" target="_blank" rel="noopener"
+                       title="{{ $imagem->nome_original }} · {{ $imagem->tamanho_formatado }} · {{ $imagem->autor_nome }}"
+                       class="block aspect-[4/3] rounded-[5px] border border-line bg-surface overflow-hidden
+                              transition hover:border-brand">
+                        <img src="{{ $imagem->url_miniatura }}" alt="{{ $imagem->nome_original }}"
+                             loading="lazy" class="h-full w-full object-cover">
+                    </a>
+                @endforeach
+            </div>
+        @endif
     </div>
 @endif
 
