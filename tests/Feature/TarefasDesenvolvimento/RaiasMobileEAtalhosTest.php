@@ -164,4 +164,40 @@ class RaiasMobileEAtalhosTest extends TestCase
         $this->assertStringContainsString('Atalhos do quadro', $html);
         $this->assertStringContainsString('Move a tarefa de etapa', $html);
     }
+
+    /**
+     * @spec:AC-361 O teclado segura o card pela MESMA porta do arrasto, e com o elemento
+     * junto. Quando o `pegar` ganhou o elemento na frente, o teclado ficou chamando com
+     * cinco argumentos numa função de seis: a lista de destinos virava o id, `destinos`
+     * virava a string do tipo, ⇧← ⇧→ não moviam nada e cada tecla deixava um TypeError
+     * no console. Sumir com o card, porém, é só do arrasto — o B abre o painel de motivo
+     * DENTRO do card, e escondê-lo levaria o painel junto.
+     */
+    public function test_o_teclado_segura_o_card_com_o_elemento_e_sem_sumir_com_ele(): void
+    {
+        $usuario = User::factory()->create();
+        $this->criarTarefa();
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // O estado é um só, e o elemento vai na frente nas duas portas.
+        $this->assertStringContainsString('segurar(el, tarefa, destinos, tipo, bloqueada, status)', $html);
+        $this->assertStringContainsString('this.segurar(el, tarefa, destinos, tipo, bloqueada, status);', $html);
+        $this->assertStringContainsString("this.segurar(\n                        alvo,\n                        Number(alvo.dataset.tarefa),", $html);
+
+        // Sumir é só do arrasto: o `pegar` esconde, o `segurar` não.
+        $posSegurar = strpos($html, 'segurar(el, tarefa, destinos, tipo, bloqueada, status) {');
+        $posPegar = strpos($html, 'pegar(el, tarefa, destinos, tipo, bloqueada, status) {');
+        $posInvisivel = strpos($html, "el.classList.add('invisible')");
+
+        $this->assertNotFalse($posSegurar);
+        $this->assertNotFalse($posPegar);
+        $this->assertGreaterThan($posPegar, $posInvisivel,
+            'O esconder do card saiu do `pegar` — pelo teclado ele leva junto o painel de motivo.');
+
+        // E o gesto do teclado termina quando o painel fecha: sem isso o quadro
+        // fica com as colunas fora do fluxo apagadas depois de um Esc.
+        $this->assertStringContainsString("this.limparImagens();\n                    this.largar();", $html);
+        $this->assertStringContainsString('estado.largar();', $html);
+    }
 }

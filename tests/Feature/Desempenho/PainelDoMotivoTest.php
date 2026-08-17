@@ -112,7 +112,14 @@ class PainelDoMotivoTest extends TestCase
         // menu, não volta do formulário por card. O teto continua pegando a
         // regressão que este teste vigia: ela custava +479 KB, que a partir
         // daqui estoura qualquer valor até ~2,2 MB.
-        $this->assertLessThan(1_850_000, $bytes, sprintf(
+        //
+        // Recalibrado de novo em 17/08/2026, e pelo mesmo critério: a rolagem
+        // automática do arrasto (AC-360) são ~7 KB no <script> do quadro, que
+        // é UM por página — 120 tarefas custam os mesmos 7 KB que uma. O antigo
+        // teto estava a 1,7 KB do valor medido, perto demais para distinguir o
+        // que ele vigia de qualquer linha nova. Com 1,9 MB sobram 44 KB de
+        // folga e a regressão de +479 KB continua estourando.
+        $this->assertLessThan(1_900_000, $bytes, sprintf(
             'O quadro com 120 tarefas pesa %.1f MB — o formulário de motivo '.
             'voltou a ser impresso por card.', $bytes / 1_048_576
         ));

@@ -269,6 +269,55 @@ class OrdemEConcorrenciaTest extends TestCase
     }
 
     /**
+     * @spec:AC-360 Com o card na mão, a vista rola sozinha perto das bordas. Durante um
+     * arrasto o navegador engole os eventos de ponteiro — a barra de rolagem não se pega
+     * e a roda não anda —, e sem isto a reordenação valia só para o trecho visível da
+     * coluna: levar um card ao pé de uma fila longa era soltar, rolar e pegar de novo,
+     * desfazendo o vão a cada volta.
+     */
+    public function test_a_vista_rola_sozinha_com_o_card_na_mao(): void
+    {
+        $usuario = User::factory()->create();
+        $this->criarTarefa();
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // O ouvinte é do documento e na CAPTURA: `permitirSobreCard` corta a
+        // propagação do `dragover` sobre o card, que é onde o ponteiro passa a
+        // maior parte do tempo numa coluna cheia.
+        $this->assertStringContainsString("document.addEventListener('dragover'", $html);
+        $this->assertStringContainsString('this.acompanharPonteiro(evento), true)', $html);
+
+        // O laço se mantém sozinho: parado na borda, a rolagem segue.
+        $this->assertStringContainsString('requestAnimationFrame(() => this.rolarNoArrasto())', $html);
+
+        // E morre no primeiro quadro sem card na mão — o Esc não passa pelo
+        // `dragend`, e um laço que dependesse dele ficaria girando.
+        $this->assertStringContainsString('if (this.arrastando === null || ! this.ponteiroDoArrasto)', $html);
+
+        // Empurra e confere: quem chegou ao fim do curso passa a vez ao pai, e
+        // é assim que a coluna rola até o último card e o quadro assume dali.
+        $this->assertStringContainsString("empurrar(alvo, 'scrollTop', quanto)", $html);
+        $this->assertStringContainsString("empurrar(alvo, 'scrollLeft', quanto)", $html);
+        $this->assertStringContainsString('return el[eixo] !== antes;', $html);
+
+        // Só quem rola de verdade: `overflow: hidden` anda quando empurrado por
+        // script, e o título cortado do card roubava o eixo horizontal — o
+        // quadro ficava parado e o texto saía do lugar.
+        $this->assertStringContainsString("como === 'auto' || como === 'scroll'", $html);
+
+        // A vista andou embaixo do ponteiro: o vão é remirado ali mesmo, porque
+        // o navegador não repete o `dragover` com a mão parada. Sem isso a
+        // coluna desce com a prévia congelada e soltar não reordena nada.
+        $this->assertStringContainsString('this.remirarVao(x, y)', $html);
+        $this->assertStringContainsString("closest('[data-cards] > [data-tarefa]')", $html);
+
+        // E a mira é a MESMA do arrasto sobre o card, não uma segunda cópia.
+        $this->assertStringContainsString('this.mirarVao(alvo, evento.clientY)', $html);
+        $this->assertStringContainsString('this.mirarVao(vizinho, y)', $html);
+    }
+
+    /**
      * @spec:AC-212 A criação rápida vive no pé da coluna Aberta, e só nela: tarefa sem
      * responsável nasce lá, e o mesmo campo no pé do Backlog entregaria um card que
      * aparece na coluna ao lado.

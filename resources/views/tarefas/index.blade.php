@@ -686,6 +686,12 @@
 
                     this.telaCheia = document.documentElement.hasAttribute('data-tela-cheia');
 
+                    // A rolagem durante o arrasto: um ouvinte só, no documento
+                    // e na captura. O porquê dos dois está em
+                    // `acompanharPonteiro` — sem eles, o card na mão não vê
+                    // metade do quadro.
+                    document.addEventListener('dragover', (evento) => this.acompanharPonteiro(evento), true);
+
                     // Um ponto só decide onde o pedido de motivo aparece, e é
                     // este. `pendente` é zerado de quatro lugares — o cancelar,
                     // o Esc, o atalho e a resposta parcial lá do `aplicar()`, que
@@ -814,6 +820,204 @@
                 },
 
                 /**
+                 * A rolagem com o card na mão.
+                 *
+                 * Durante um arrasto o navegador engole os eventos de ponteiro:
+                 * a barra de rolagem não se pega, a roda do mouse não anda e o
+                 * teclado não chega. Numa coluna com mais cards do que cabem na
+                 * tela, isso reduzia a reordenação ao trecho visível — para
+                 * levar um card ao pé da fila era preciso soltar, rolar e pegar
+                 * de novo, e a cada volta o vão aberto se desfazia. Vale igual
+                 * para a etapa que está fora da vista, à direita.
+                 *
+                 * `dragover` é o único sinal que continua chegando, e ele traz a
+                 * posição do ponteiro. O resto é conta: perto de uma borda, o
+                 * contêiner sob o ponteiro anda sozinho.
+                 */
+                ponteiroDoArrasto: null,
+                rolagemDoArrasto: null,
+
+                /**
+                 * O ouvinte é do DOCUMENTO, e na CAPTURA.
+                 *
+                 * Na captura porque `permitirSobreCard` corta a propagação do
+                 * `dragover` justamente quando o ponteiro está sobre um card —
+                 * ou seja, na maior parte de uma coluna cheia, que é a que
+                 * precisa rolar. Quem espera o evento subir nunca o veria ali.
+                 *
+                 * No documento porque a coluna que RECUSA o card não é alvo de
+                 * solto, mas continua sendo lugar de onde se rola para procurar
+                 * onde soltar — e porque o vão entre colunas, o cabeçalho e o pé
+                 * também contam.
+                 */
+                acompanharPonteiro(evento) {
+                    if (this.arrastando === null) {
+                        return;
+                    }
+
+                    this.ponteiroDoArrasto = { x: evento.clientX, y: evento.clientY };
+
+                    if (this.rolagemDoArrasto === null) {
+                        this.rolagemDoArrasto = requestAnimationFrame(() => this.rolarNoArrasto());
+                    }
+                },
+
+                /**
+                 * Um quadro de rolagem, e o próximo enquanto o gesto durar.
+                 *
+                 * O laço se mantém sozinho em vez de andar a cada `dragover`:
+                 * parado na borda a rolagem SEGUE, que é como se desce uma
+                 * coluna longa sem sacudir o mouse. E ele morre no primeiro
+                 * quadro sem card na mão, sem depender de o `dragend` lembrar
+                 * de desligá-lo — arrasto cancelado com Esc não passa por lá.
+                 */
+                rolarNoArrasto() {
+                    this.rolagemDoArrasto = null;
+
+                    if (this.arrastando === null || ! this.ponteiroDoArrasto) {
+                        this.ponteiroDoArrasto = null;
+
+                        return;
+                    }
+
+                    const { x, y } = this.ponteiroDoArrasto;
+
+                    if (this.rolarPertoDaBorda(x, y)) {
+                        this.remirarVao(x, y);
+                    }
+
+                    this.rolagemDoArrasto = requestAnimationFrame(() => this.rolarNoArrasto());
+                },
+
+                /**
+                 * Refaz a mira do vão depois que a vista andou.
+                 *
+                 * Com a mão parada o navegador NÃO repete o `dragover`: os
+                 * cards deslizam por baixo do cursor e a prévia fica congelada
+                 * no vizinho onde a mão parou. Soltar ali não reordena nada —
+                 * `confirmarVao` compara com a vaga original, vê que ninguém
+                 * mudou de lugar e não manda envio nenhum. Sem esta linha a
+                 * rolagem anda mas não serve para aquilo que ela existe.
+                 */
+                remirarVao(x, y) {
+                    if (! this.podeTriar || this.arrastando === null) {
+                        return;
+                    }
+
+                    // O ITEM da lista, não o <article> de dentro: os dois
+                    // carregam `data-tarefa`, e o de dentro não é irmão do card
+                    // na mão — a mira cairia fora na primeira conferência.
+                    const vizinho = document.elementFromPoint(x, y)?.closest('[data-cards] > [data-tarefa]');
+
+                    if (vizinho && Number(vizinho.dataset.tarefa) !== this.arrastando) {
+                        this.mirarVao(vizinho, y);
+                    }
+                },
+
+                /**
+                 * Rola o contêiner sob o ponteiro, do mais interno ao mais
+                 * externo, e diz se ALGUMA coisa andou.
+                 *
+                 * Empurrar e conferir, em vez de perguntar ao CSS quem rola:
+                 * quem chegou ao fim do próprio curso não se mexe, e o
+                 * `scrollTop` que não mudou é o sinal de que a vez é do pai. É
+                 * assim que, na beirada direita, a coluna — que não rola na
+                 * horizontal — entrega o eixo ao quadro, sem uma lista de quem
+                 * rola que ficaria desatualizada na primeira caixa nova.
+                 *
+                 * Cada caixa é medida pela PRÓPRIA borda. Em raias, onde a
+                 * célula acaba no meio da tela, chegar ao pé dela não arrasta o
+                 * quadro junto: para descer as faixas o ponteiro vai ao pé DO
+                 * QUADRO, que é onde a rolagem daquela caixa mora.
+                 */
+                rolarPertoDaBorda(x, y) {
+                    // A faixa onde a rolagem começa e o passo por quadro
+                    // encostado na borda. A faixa é grossa o bastante para ser
+                    // acertada sem pontaria e fina o bastante para sobrar
+                    // miolo: a menor caixa do quadro é a célula de raia, de
+                    // 180px de altura, onde duas faixas de 56px ainda deixam
+                    // 68px de repouso no meio. O passo é proporcional à
+                    // distância — encostado anda os 18px, na entrada da faixa
+                    // quase não anda — porque velocidade única tem só dois
+                    // estados, parada e disparada.
+                    const FAIXA = 56;
+                    const PASSO = 18;
+
+                    const passoNaBorda = (distancia) => Math.ceil(PASSO * (1 - distancia / FAIXA));
+
+                    // A borda MAIS PERTO decide o sentido: numa caixa mais
+                    // baixa que duas faixas as duas valem ao mesmo tempo, e sem
+                    // isto a de cima ganharia sempre, rolando para trás quem
+                    // está descendo.
+                    const quantoAndar = (antes, depois) => {
+                        if (Math.min(antes, depois) >= FAIXA) {
+                            return 0;
+                        }
+
+                        return antes < depois ? -passoNaBorda(antes) : passoNaBorda(depois);
+                    };
+
+                    // Empurra e devolve se ANDOU: é o que passa a vez ao pai.
+                    //
+                    // Mas só em quem rola de VERDADE. `overflow: hidden` também
+                    // anda quando empurrado por script, e a primeira vítima
+                    // disso foi o `truncate` do título do card: o eixo
+                    // horizontal morria dentro de um texto cortado — que saía
+                    // do lugar, ainda por cima — e o quadro não andava. A raiz
+                    // da página entra à parte: ela rola sem dizer nada no
+                    // `overflow`.
+                    const rolaMesmo = (el, eixo) => {
+                        if (el === document.scrollingElement) {
+                            return true;
+                        }
+
+                        const como = getComputedStyle(el)[eixo === 'scrollTop' ? 'overflowY' : 'overflowX'];
+
+                        return como === 'auto' || como === 'scroll' || como === 'overlay';
+                    };
+
+                    const empurrar = (el, eixo, quanto) => {
+                        if (! rolaMesmo(el, eixo)) {
+                            return false;
+                        }
+
+                        const antes = el[eixo];
+                        el[eixo] += quanto;
+
+                        return el[eixo] !== antes;
+                    };
+
+                    let alvo = document.elementFromPoint(x, y);
+                    let rolouY = false;
+                    let rolouX = false;
+
+                    while (alvo && ! (rolouY && rolouX)) {
+                        const r = alvo.getBoundingClientRect();
+
+                        // Só quem tem o ponteiro DENTRO da própria caixa: um
+                        // ancestral que não corta o conteúdo pode estar longe
+                        // do ponto, e ali "perto da borda" não quer dizer nada.
+                        const dentro = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+
+                        if (dentro && ! rolouY) {
+                            const quanto = quantoAndar(y - r.top, r.bottom - y);
+
+                            rolouY = quanto !== 0 && empurrar(alvo, 'scrollTop', quanto);
+                        }
+
+                        if (dentro && ! rolouX) {
+                            const quanto = quantoAndar(x - r.left, r.right - x);
+
+                            rolouX = quanto !== 0 && empurrar(alvo, 'scrollLeft', quanto);
+                        }
+
+                        alvo = alvo.parentElement;
+                    }
+
+                    return rolouY || rolouX;
+                },
+
+                /**
                  * Reordenar dentro da coluna, quando o card é solto sobre outro
                  * card da MESMA etapa.
                  *
@@ -846,6 +1050,16 @@
                         return;
                     }
 
+                    this.mirarVao(alvo, evento.clientY);
+                },
+
+                /**
+                 * Onde o vão abre, dado o vizinho sob o ponteiro.
+                 *
+                 * Separado do `dragover` porque a rolagem automática precisa da
+                 * mesma mira sem ter evento nenhum na mão (ver `remirarVao`).
+                 */
+                mirarVao(alvo, ondeY) {
                     // A lista é a do card SOB o ponteiro: com raias ligadas, a
                     // mesma etapa aparece uma vez por raia, e reordenar não
                     // atravessa raia — quem mora noutra lista fica onde está.
@@ -858,7 +1072,7 @@
                     // A metade do vizinho decide o lado, como no protótipo:
                     // metade de cima, o card cai antes dele; de baixo, depois.
                     const r = alvo.getBoundingClientRect();
-                    const referencia = evento.clientY < r.top + r.height / 2 ? alvo : alvo.nextElementSibling;
+                    const referencia = ondeY < r.top + r.height / 2 ? alvo : alvo.nextElementSibling;
 
                     // Já está no vão: mover de novo só faria a coluna tremer.
                     if (referencia === arrastado || referencia === arrastado.nextElementSibling) {
@@ -1122,9 +1336,19 @@
                     this.abrirPendente(this.selecionado, 'bloqueio');
                 },
 
-                /** Põe o card selecionado no mesmo estado que um `dragstart` põe. */
+                /**
+                 * Põe o card selecionado no mesmo estado que um `dragstart` põe.
+                 *
+                 * `segurar` e não `pegar`: o elemento vai junto — sem ele o
+                 * teclado empurrava tudo uma casa para a esquerda e o quadro
+                 * ficava com a LISTA de destinos no lugar do id, `destinos`
+                 * virava a string do tipo e ⇧← ⇧→ não moviam nada, com um erro
+                 * no console a cada tecla. E `pegar` esconderia o card,
+                 * levando junto o painel de motivo que o B abre dentro dele.
+                 */
                 prepararTeclado(alvo) {
-                    this.pegar(
+                    this.segurar(
+                        alvo,
                         Number(alvo.dataset.tarefa),
                         JSON.parse(alvo.dataset.destinos || '[]'),
                         alvo.dataset.tipo,
@@ -1246,7 +1470,15 @@
                     return this.arrastando === null || this.destinos.includes(status);
                 },
 
-                pegar(el, tarefa, destinos, tipo, bloqueada, status) {
+                /**
+                 * O card na mão, do jeito que o quadro inteiro lê — o mesmo
+                 * estado para o arrasto e para o teclado.
+                 *
+                 * O ELEMENTO entra junto do id: é dele que saem a vaga de
+                 * origem, para o gesto abandonado ter caminho de volta, e a
+                 * lista onde o vão abre.
+                 */
+                segurar(el, tarefa, destinos, tipo, bloqueada, status) {
                     this.arrastando = tarefa;
                     // Bloquear é destino de quem ainda não está travado; para
                     // quem já está, a saída é o botão da própria tarja.
@@ -1256,6 +1488,18 @@
                     this.cardEmMovimento = el;
                     this.vagaOriginal = { lista: el.parentElement, proximo: el.nextElementSibling };
                     this.ordemEnviada = false;
+                },
+
+                /**
+                 * `dragstart`: segura o card e o SOME da lista.
+                 *
+                 * Sumir é do arrasto, não do estado — por isso mora aqui e não
+                 * no `segurar`. Pelo teclado o card continua na tela: o B abre o
+                 * painel de motivo DENTRO dele, e um card invisível levaria o
+                 * painel junto.
+                 */
+                pegar(el, tarefa, destinos, tipo, bloqueada, status) {
+                    this.segurar(el, tarefa, destinos, tipo, bloqueada, status);
 
                     // Um quadro DEPOIS do dragstart: esconder no próprio evento
                     // faria o navegador fotografar um card invisível, e o
@@ -1463,10 +1707,20 @@
 
                 },
 
+                /**
+                 * Fechar o painel encerra o GESTO, não só o painel.
+                 *
+                 * Pelo mouse o gesto já acabou quando o painel abre (`soltar`
+                 * larga antes de perguntar). Pelo teclado não: o B segura o
+                 * card para saber de onde ele vem, e sem largar aqui o quadro
+                 * ficava com as colunas fora do fluxo apagadas depois de um Esc
+                 * — a tela contando um arrasto que ninguém está fazendo.
+                 */
                 fecharPendente() {
                     this.pendente = null;
                     this.textoPendente = '';
                     this.limparImagens();
+                    this.largar();
                 },
 
                 escolherImagens(evento) {
@@ -2000,6 +2254,11 @@
                     // isto, o próximo painel abriria com as imagens da
                     // anterior, e os `blob:` ficariam presos até o F5.
                     estado.limparImagens();
+                    // E o gesto que abriu o painel: pelo teclado ele continua
+                    // de pé até aqui, e o quadro redesenhado voltaria com as
+                    // colunas fora do fluxo apagadas. Pelo mouse já não há
+                    // gesto nenhum, e largar de novo não faz nada.
+                    estado.largar();
                 }
 
                 // O rodapé do modal decide entre travar e destravar por um
