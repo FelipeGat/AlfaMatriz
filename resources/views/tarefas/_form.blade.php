@@ -154,7 +154,39 @@
              o campo, a única forma de preenchê-lo era pelo banco. --}}
         <div>
             <label for="resumo-{{ $sufixo }}" class="block mb-[5px] text-[12px] font-medium text-ink-dim">Resumo</label>
-            <textarea id="resumo-{{ $sufixo }}" name="resumo" rows="2" maxlength="255"
+            {{-- A caixa acompanha o texto em vez de rolar por dentro. Com 500
+                 caracteres cabendo no resumo, duas linhas fixas escondiam o
+                 começo do que a pessoa acabou de escrever, e reler exigia
+                 arrastar o canto — trabalho manual para ver o que já estava
+                 lá. Vazia, ela continua com as duas linhas do desenho: quem
+                 escreve uma frase não paga o espaço de quem escreve cinco.
+
+                 O reajuste também escuta `open-modal` porque textarea
+                 escondido mede `scrollHeight` zero — sem isso, a tarefa com
+                 resumo longo abriria para edição com a caixa pequena de novo,
+                 que é justamente o caso em que o espaço faz falta. --}}
+            <textarea id="resumo-{{ $sufixo }}" name="resumo" rows="2" maxlength="500"
+                      x-data="{
+                          acompanharOTexto() {
+                              if (! this.$el.offsetParent) return
+
+                              this.$el.style.height = 'auto'
+
+                              // `scrollHeight` não conta a borda, e o campo é
+                              // `border-box`: sem somá-la de volta, a caixa
+                              // fica 2px curta e a última linha continua
+                              // rolando por dentro — o problema inteiro, só
+                              // que pequeno demais para se ver e grande o
+                              // bastante para incomodar.
+                              const traco = getComputedStyle(this.$el)
+                              const bordas = parseFloat(traco.borderTopWidth) + parseFloat(traco.borderBottomWidth)
+
+                              this.$el.style.height = (this.$el.scrollHeight + bordas) + 'px'
+                          }
+                      }"
+                      x-init="$nextTick(() => acompanharOTexto())"
+                      x-on:input="acompanharOTexto()"
+                      x-on:open-modal.window="$nextTick(() => acompanharOTexto())"
                       placeholder="Uma linha do que precisa acontecer…"
                       class="block w-full px-2.5 py-2 rounded-control bg-input border-line text-ink
                              text-[13px] leading-[1.45] resize-y">{{ old('resumo', $tarefa->resumo ?? '') }}</textarea>
