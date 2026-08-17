@@ -88,6 +88,18 @@
              ele recebesse obrigaria a clicar no fundo antes de a primeira seta
              funcionar. Quem filtra o que não deve disparar é o próprio
              `aoTeclar` (campo em foco, tecla com modificador). --}}
+        {{-- Antes da primeira pintura, como o tema faz no layout: sem isto o
+             quadro nasceria na moldura e pularia para a tela cheia à vista de
+             quem abriu a página. Falha em silêncio na navegação anônima — o
+             modo simplesmente não vem ligado, que é o padrão. --}}
+        <script>
+            try {
+                if (localStorage.getItem('alfamatriz:quadro-tela-cheia') === '1') {
+                    document.documentElement.setAttribute('data-tela-cheia', '');
+                }
+            } catch (erro) {}
+        </script>
+
         <div x-data="quadroTarefas" @keydown.window="aoTeclar($event)"
              @paste.window="colarImagens($event)" data-corpo-do-quadro
              class="relative flex-1 min-h-0 flex flex-col rounded-panel border border-line bg-board overflow-hidden">
@@ -635,6 +647,22 @@
                 recolhidas: [],
 
                 /**
+                 * A tela cheia do quadro, guardada entre visitas.
+                 *
+                 * Quem trabalha no quadro fica nele o dia inteiro, e reativar o
+                 * modo a cada visita seria o mesmo gesto repetido todo dia —
+                 * a razão pela qual as colunas recolhidas também persistem.
+                 *
+                 * O que LIGA o modo é o atributo `data-tela-cheia` no <html>,
+                 * escrito antes da primeira pintura (ver o script logo acima do
+                 * quadro); esta propriedade só espelha o estado para o botão
+                 * saber que cara ter. Fossem duas fontes de verdade, o botão
+                 * mostraria "expandir" num quadro já expandido no primeiro
+                 * carregamento.
+                 */
+                telaCheia: false,
+
+                /**
                  * O elemento do card na mão e a vaga de onde ele saiu.
                  *
                  * A reordenação é ao vivo: o próprio card, meio apagado, abre o
@@ -656,12 +684,36 @@
                         this.recolhidas = [];
                     }
 
+                    this.telaCheia = document.documentElement.hasAttribute('data-tela-cheia');
+
                     // Um ponto só decide onde o pedido de motivo aparece, e é
                     // este. `pendente` é zerado de quatro lugares — o cancelar,
                     // o Esc, o atalho e a resposta parcial lá do `aplicar()`, que
                     // mexe no estado de fora — e um caminho esquecido deixaria o
                     // painel aberto num card que já mudou de lugar.
                     this.$watch('pendente', (valor) => this.sincronizarPainelDoMotivo(valor));
+                },
+
+                /**
+                 * Liga e desliga a tela cheia.
+                 *
+                 * O atributo vai no <html> e a regra que move o quadro mora no
+                 * CSS (`app.css`): é o que permite o estado valer já na primeira
+                 * pintura, sem o quadro pular de tamanho depois que o Alpine
+                 * acorda.
+                 */
+                alternarTelaCheia() {
+                    this.telaCheia = ! this.telaCheia;
+
+                    document.documentElement.toggleAttribute('data-tela-cheia', this.telaCheia);
+
+                    try {
+                        localStorage.setItem('alfamatriz:quadro-tela-cheia', this.telaCheia ? '1' : '0');
+                    } catch (erro) {
+                        // Navegação anônima ou cota cheia: vale para esta
+                        // sessão e não sobrevive, o que não justifica quebrar
+                        // o quadro.
+                    }
                 },
 
                 alternarColuna(chave) {
@@ -915,9 +967,34 @@
                     const tecla = evento.key;
 
                     if (tecla === 'Escape') {
+                        /**
+                         * Esc fecha o que estiver POR CIMA, de dentro para fora.
+                         *
+                         * A tela cheia é a última camada a ceder: sair dela no
+                         * meio de um pedido de motivo levaria junto o texto já
+                         * digitado, e quem apertou Esc queria fechar o painel.
+                         *
+                         * O modal entra na conta pelo DOM, e não por uma
+                         * propriedade daqui, porque ele não é nosso: o
+                         * `x-modal` guarda o próprio `show` e fecha sozinho no
+                         * Esc, pela janela, sem avisar ninguém. Sem esta linha,
+                         * fechar uma tarefa aberta derrubava a tela cheia junto
+                         * — um Esc, duas coisas, e a de fora era a que ninguém
+                         * pediu. `[data-modal]` é atributo que o componente já
+                         * põe no DOM, e `x-show` escreve o display inline.
+                         */
+                        const modalAberto = [...document.querySelectorAll('[data-modal]')]
+                            .some((el) => el.style.display !== 'none');
+
+                        const algoAberto = modalAberto || this.pendente || this.atalhosAbertos || this.fluxoAberto;
+
                         this.fecharPendente();
                         this.atalhosAbertos = false;
                         this.fluxoAberto = false;
+
+                        if (! algoAberto && this.telaCheia) {
+                            this.alternarTelaCheia();
+                        }
 
                         return;
                     }

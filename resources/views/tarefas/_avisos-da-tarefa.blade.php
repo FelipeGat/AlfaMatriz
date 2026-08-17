@@ -19,14 +19,14 @@
 
 @if ($tarefa->temPergunta())
     <div class="px-[11px] py-[9px] rounded-[5px] border border-l-2"
-         style="background: rgb(var(--brand) / 0.085); border-color: rgb(var(--brand) / 0.4);
-                border-left-color: rgb(var(--brand))">
+         style="background: var(--pergunta-tint); border-color: var(--pergunta-line);
+                border-left-color: rgb(var(--pergunta))">
         <div class="flex items-center gap-2.5">
-            <span class="h-3.5 w-3.5 shrink-0 text-brand-text"><x-nav-icon name="duvida" :peso="1.8" /></span>
+            <span class="h-3.5 w-3.5 shrink-0 text-pergunta"><x-nav-icon name="duvida" :peso="1.8" /></span>
             <span class="flex-1 min-w-0 text-[12.5px] font-medium text-ink">
                 Aguardando resposta de {{ $tarefa->perguntaPara?->name ?? 'alguém' }}
             </span>
-            <span class="shrink-0 font-mono text-[10.5px] whitespace-nowrap text-brand-text">
+            <span class="shrink-0 font-mono text-[10.5px] whitespace-nowrap text-pergunta">
                 {{ max(1, $tarefa->rodadas) }}ª rodada
             </span>
         </div>
@@ -50,14 +50,14 @@
 --}}
 @if ($tarefa->temRetorno())
     <div class="px-[11px] py-[9px] rounded-[5px] border border-l-2"
-         style="background: var(--warn-tint); border-color: var(--warn-line);
-                border-left-color: rgb(var(--warn))">
+         style="background: var(--retorno-tint); border-color: var(--retorno-line);
+                border-left-color: rgb(var(--retorno))">
         <div class="flex items-center gap-2.5">
-            <span class="h-3.5 w-3.5 shrink-0" style="color: rgb(var(--warn))">
+            <span class="h-3.5 w-3.5 shrink-0" style="color: rgb(var(--retorno))">
                 <x-nav-icon name="arrow-uturn-left" :peso="1.8" />
             </span>
             <span class="flex-1 min-w-0 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em]"
-                  style="color: rgb(var(--warn))">{{ $tarefa->rotuloDoRetorno() }}</span>
+                  style="color: rgb(var(--retorno))">{{ $tarefa->rotuloDoRetorno() }}</span>
         </div>
 
         @if (filled($tarefa->retorno_motivo))
@@ -87,21 +87,21 @@
 
 @if ($tarefa->estaBloqueada())
     <div class="flex items-center gap-2.5 px-[11px] py-[9px] rounded-[5px] border border-l-2"
-         style="background: var(--warn-tint); border-color: var(--warn-line);
-                border-left-color: rgb(var(--warn))">
-        <span class="h-3.5 w-3.5 shrink-0" style="color: rgb(var(--warn))">
+         style="background: var(--bloqueio-tint); border-color: var(--bloqueio-line);
+                border-left-color: rgb(var(--bloqueio))">
+        <span class="h-3.5 w-3.5 shrink-0" style="color: rgb(var(--bloqueio))">
             <x-nav-icon name="cadeado-fechado" :peso="1.8" />
         </span>
         <span class="flex-1 min-w-0 text-[12.5px] text-ink">{{ $tarefa->bloqueio_motivo }}</span>
         <span class="shrink-0 font-mono text-[10.5px] font-semibold whitespace-nowrap"
-              style="color: rgb(var(--warn))">{{ $tarefa->bloqueadaHa() }}</span>
+              style="color: rgb(var(--bloqueio))">{{ $tarefa->bloqueadaHa() }}</span>
 
         {{-- Destravar é envio próprio, e o formulário da tarefa não pode aninhar
              outro: o `form` aponta para fora, como o corrigir e o apagar da
              conversa. --}}
         <button type="submit" form="bloquear-tarefa-{{ $tarefa->id }}"
                 class="shrink-0 h-6 px-2.5 rounded-tile border text-[11.5px] font-semibold transition hover:bg-chip"
-                style="border-color: var(--warn-line); color: rgb(var(--warn))">
+                style="border-color: var(--bloqueio-line); color: rgb(var(--bloqueio))">
             Destravar
         </button>
     </div>
@@ -119,12 +119,16 @@
 @if ($tarefa->tipo === 'desenvolvimento' && $tarefa->status === 'em_staging' && ! $tarefa->estaBloqueada())
     @php
         $testeDaPassagem = $tarefa->testeDestaPassagem();
-        $tomDoTeste = $testeDaPassagem === null ? 'brand' : ($testeDaPassagem->aprovado ? 'good' : 'warn');
+        // A espera é o PORTÃO DE EXAME — a mesma notícia da faixa "Teste com
+        // Fulano" do card, e por isso a mesma cor. Reprovado usa a cor do
+        // RETORNO, porque é exatamente o que a reprovação produz: a tarefa
+        // volta. Nenhum dos três empresta tom de outra notícia (AC-358).
+        $tomDoTeste = $testeDaPassagem === null ? 'exame' : ($testeDaPassagem->aprovado ? 'good' : 'retorno');
     @endphp
 
     <div x-data="{ reprovando: false }" class="px-[11px] py-[9px] rounded-[5px] border border-l-2"
-         style="background: {{ ['brand' => 'rgb(var(--brand) / 0.085)', 'good' => 'var(--good-tint)', 'warn' => 'var(--warn-tint)'][$tomDoTeste] }};
-                border-color: {{ ['brand' => 'rgb(var(--brand) / 0.4)', 'good' => 'var(--good-line)', 'warn' => 'var(--warn-line)'][$tomDoTeste] }};
+         style="background: var(--{{ $tomDoTeste }}-tint);
+                border-color: var(--{{ $tomDoTeste }}-line);
                 border-left-color: rgb(var(--{{ $tomDoTeste }}))">
         <div class="flex items-center gap-2.5">
             <span class="h-3.5 w-3.5 shrink-0" style="color: rgb(var(--{{ $tomDoTeste }}))">
@@ -161,7 +165,7 @@
             </button>
             <button type="button" @click="reprovando = ! reprovando"
                     class="shrink-0 h-6 px-2.5 rounded-tile border text-[11.5px] font-semibold transition hover:bg-chip"
-                    style="border-color: var(--warn-line); color: rgb(var(--warn))">
+                    style="border-color: var(--retorno-line); color: rgb(var(--retorno))">
                 Reprovar
             </button>
         </div>
@@ -186,7 +190,7 @@
             </div>
             <button type="submit" form="testar-reprovar-{{ $tarefa->id }}"
                     class="shrink-0 h-[34px] px-3 rounded-control border text-[12.5px] font-semibold transition hover:bg-chip"
-                    style="border-color: var(--warn-line); color: rgb(var(--warn))">
+                    style="border-color: var(--retorno-line); color: rgb(var(--retorno))">
                 Reprovar teste
             </button>
         </div>

@@ -126,6 +126,23 @@ export default {
                 'warn-tint': veu('warn-tint'),
                 'warn-line': veu('warn-line'),
                 'crit-tint': veu('crit-tint'),
+
+                // ---- as notícias do card: uma cor por notícia, sem repetir ----
+                pergunta: cheia('pergunta'),   // aguardando resposta
+                exame: cheia('exame'),         // revisão/teste com alguém
+                bloqueio: cheia('bloqueio'),   // travada
+                retorno: cheia('retorno'),     // voltou de um portão
+                triagem: cheia('triagem'),     // prioridade a definir
+                'pergunta-tint': veu('pergunta-tint'),
+                'pergunta-line': veu('pergunta-line'),
+                'exame-tint': veu('exame-tint'),
+                'exame-line': veu('exame-line'),
+                'bloqueio-tint': veu('bloqueio-tint'),
+                'bloqueio-line': veu('bloqueio-line'),
+                'retorno-tint': veu('retorno-tint'),
+                'retorno-line': veu('retorno-line'),
+                'triagem-tint': veu('triagem-tint'),
+                'triagem-line': veu('triagem-line'),
             },
 
             backgroundImage: {

@@ -200,14 +200,106 @@ class QuadroTest extends TestCase
             );
         }
 
-        // E NÃO no card: o <article> do card não pinta borda com token de etapa.
-        preg_match_all('/<article[^>]*style="border-color:([^"]*)"/', $html, $bordas);
-        foreach ($bordas[1] as $borda) {
-            foreach (['accent', 'brand', 'good'] as $tokenDeEtapa) {
-                $this->assertStringNotContainsString('--'.$tokenDeEtapa.')', $borda,
-                    'A borda do card não pode carregar a cor da etapa — ela é do aviso de esquecida.');
-            }
-        }
+        // E NÃO no card: a borda do <article> é a prioridade (AC-356), e por
+        // isso não muda quando a MESMA tarefa troca de etapa. Comparar tokens
+        // não serve mais de prova — `brand` é cor de etapa e é também o tom da
+        // prioridade Média —, então a prova é a invariância: mesma tarefa,
+        // etapas diferentes, borda igual.
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'aberta', 'prioridade' => 'media',
+        ]);
+
+        $bordaDe = function (string $status) use ($usuario, $tarefa) {
+            $tarefa->forceFill(['status' => $status])->save();
+            $html = $this->actingAs($usuario)->get(route('tarefas.index'))->getContent();
+            preg_match('/<article data-tarefa="'.$tarefa->id.'"[^>]*style="border-color: ([^"]+)"/s', $html, $m);
+
+            return $m[1] ?? 'sem-borda';
+        };
+
+        $this->assertSame(
+            $bordaDe('aberta'),
+            $bordaDe('em_desenvolvimento'),
+            'A borda do card não pode carregar a cor da etapa — ela é da prioridade da tarefa.'
+        );
+    }
+
+    /**
+     * @spec:AC-359 O quadro abre em tela cheia — e o caminho de volta fica à vista.
+     *
+     * O ganho medido é sobretudo VERTICAL: as colunas começavam a 321px do topo
+     * numa janela de 1000px, ou seja um terço da altura gasto em cabeçalho, abas
+     * e filtros antes do primeiro card. Expandido, elas começam a 66px.
+     *
+     * Este teste guarda o CONTRATO que o modo depende, e que é fácil quebrar sem
+     * perceber, porque metade dele vive no CSS: o gancho que a regra procura, a
+     * ordem de empilhamento contra o modal e o fundo opaco.
+     */
+    public function test_o_quadro_expande_para_a_tela_inteira_e_volta(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        Tarefa::factory()->create(['criado_por_id' => $criador->id]);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // A porta e a volta são o MESMO botão, no cabeçalho do quadro: é o
+        // único cabeçalho que sobrevive ao modo.
+        $this->assertStringContainsString('alternarTelaCheia()', $html);
+        $this->assertStringContainsString('Expandir o quadro para a tela inteira', $html);
+        $this->assertStringContainsString('Sair da tela cheia', $html);
+
+        // O gancho do CSS. Se o atributo for renomeado na view, a regra do
+        // `app.css` para de casar e o botão vira um clique sem efeito — falha
+        // silenciosa, que é o motivo de este teste existir.
+        $this->assertStringContainsString('data-corpo-do-quadro', $html);
+
+        // O estado é aplicado ANTES da primeira pintura, como o tema: ligado
+        // depois, o quadro nasceria na moldura e pularia para o cheio à vista.
+        $posicaoDoScript = strpos($html, 'alfamatriz:quadro-tela-cheia');
+        $this->assertNotFalse($posicaoDoScript, 'Falta o script que lê a escolha antes de pintar.');
+        $this->assertLessThan(
+            strpos($html, 'data-corpo-do-quadro'),
+            $posicaoDoScript,
+            'O script precisa vir ANTES do quadro, senão o modo é ligado com a tela já desenhada.'
+        );
+
+        // Esc fecha de dentro para fora: com uma tarefa aberta, ele fecha o
+        // modal e NÃO derruba a tela cheia junto. O modal entra na conta pelo
+        // DOM porque guarda o próprio estado — foi assim que o defeito
+        // apareceu, um Esc fechando duas coisas.
+        $this->assertStringContainsString("querySelectorAll('[data-modal]')", $html);
+
+        $css = file_get_contents(base_path('resources/css/app.css'));
+        $this->assertMatchesRegularExpression(
+            '/\[data-tela-cheia\]\s*\[data-corpo-do-quadro\]\s*\{[^}]*position:\s*fixed/',
+            $css,
+            'A regra que joga o quadro para a janela inteira sumiu do app.css.'
+        );
+
+        // O fundo do quadro é um VÉU translúcido: sem um opaco embaixo, o menu
+        // e a topbar apareciam POR BAIXO das colunas, com o título da página
+        // lido por cima do cabeçalho do quadro.
+        $this->assertMatchesRegularExpression(
+            '/\[data-tela-cheia\]\s*\[data-corpo-do-quadro\]\s*\{[^}]*background-color:\s*rgb\(var\(--canvas\)\)/',
+            $css,
+            'O quadro em tela cheia precisa de fundo opaco — o `--board` é véu e deixa a página aparecer.'
+        );
+
+        // A ordem de empilhamento, conferida contra a fonte e não de memória:
+        // a tarefa aberta e os avisos continuam por cima do quadro expandido.
+        preg_match('/\[data-tela-cheia\]\s*\[data-corpo-do-quadro\]\s*\{[^}]*z-index:\s*(\d+)/', $css, $doQuadro);
+        $this->assertNotEmpty($doQuadro, 'A regra da tela cheia precisa declarar o empilhamento.');
+
+        $modal = file_get_contents(base_path('resources/views/components/modal.blade.php'));
+        preg_match('/z-(\d+)/', $modal, $doModal);
+
+        $this->assertLessThan(
+            (int) $doModal[1],
+            (int) $doQuadro[1],
+            'O quadro em tela cheia precisa ficar ABAIXO do modal — a tarefa aberta some por baixo dele.'
+        );
     }
 
     /**

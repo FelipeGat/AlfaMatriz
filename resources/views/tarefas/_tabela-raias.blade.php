@@ -106,10 +106,10 @@
                                      tarefa não andar. --}}
                                 <div class="mt-1 flex items-center gap-2">
                                     @if ($tarefa->estaBloqueada())
-                                        <x-badge tom="atencao" title="{{ $tarefa->bloqueio_motivo }}">travada</x-badge>
+                                        <x-badge tom="bloqueio" title="{{ $tarefa->bloqueio_motivo }}">travada</x-badge>
                                     @endif
                                     @if ($tarefa->pergunta_em)
-                                        <x-badge title="Aguardando resposta de {{ $tarefa->perguntaPara?->name ?? 'alguém' }}">
+                                        <x-badge tom="pergunta" title="Aguardando resposta de {{ $tarefa->perguntaPara?->name ?? 'alguém' }}">
                                             pergunta
                                         </x-badge>
                                     @endif

@@ -317,15 +317,25 @@ class PerguntaNaRevisaoTest extends TestCase
         $this->assertStringContainsString('Esse retorno vazio acontece em produção?', $card);
         $this->assertStringContainsString('1ª rodada', $card);
 
-        // A tarja é da cor da marca, e não do alerta: perguntar não é problema,
-        // e pintá-la de âmbar junto do bloqueio ensinaria que é.
-        $this->assertStringContainsString('border-color: rgb(var(--brand))', $card);
+        // A tarja tem o tom da PERGUNTA, e nenhum outro: perguntar não é
+        // problema, e pintá-la de âmbar junto do bloqueio ensinaria que é.
+        //
+        // O roxo é só dela; era o teal da marca até a borda do card virar a
+        // prioridade (AC-356), quando teal passou a querer dizer "Média" ali
+        // dentro. E é por isso que a asserção não pode voltar a `--brand`: numa
+        // tarefa de prioridade Média ela casaria com a MOLDURA do card e
+        // passaria sem a tarja ter cor nenhuma.
+        $this->assertStringContainsString('border-color: rgb(var(--pergunta))', $card);
     }
 
     /**
-     * @spec:AC-197 Na terceira rodada o selo vira crítico — é o quadro dizendo que a
+     * @spec:AC-197 Na terceira rodada o selo acende — é o quadro dizendo que a
      * conversa deixou de ser conversa.
-     */
+     *
+     * O selo já foi vermelho. Deixou de ser quando o vermelho virou a prioridade
+     * Crítica na borda do card (AC-356): acender em vermelho faria a terceira
+     * rodada se parecer com gravidade, que é outra notícia. A escalada acontece
+     * DENTRO da cor da pergunta — o mesmo roxo, agora chapado (AC-358).
     public function test_o_selo_de_rodada_acende_na_terceira(): void
     {
         [$tarefa, $dev, $revisor] = $this->emRevisao();
@@ -346,7 +356,11 @@ class PerguntaNaRevisaoTest extends TestCase
         );
 
         $this->assertStringContainsString('3ª rodada', $cardAceso);
-        $this->assertStringContainsString('color: rgb(var(--crit))', $cardAceso);
+
+        // `background:` no prefixo porque a tarja inteira já é desenhada com
+        // `rgb(var(--pergunta))` na borda — o que muda no selo empacado é o
+        // PREENCHIMENTO, e é isso que a asserção precisa pegar.
+        $this->assertStringContainsString('background: rgb(var(--pergunta))', $cardAceso);
         $this->assertStringContainsString('devolver para correção', $cardAceso);
     }
 
