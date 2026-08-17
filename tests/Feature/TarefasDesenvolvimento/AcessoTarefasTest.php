@@ -31,7 +31,12 @@ class AcessoTarefasTest extends TestCase
 
         $quadro = $this->actingAs($usuario)->get(route('tarefas.index'));
         $quadro->assertForbidden();
-        $quadro->assertDontSee('Aberta');
+        // Rótulos de coluna como proxy de "conteúdo do quadro". 'Aberta' saiu
+        // da lista quando o 403 ganhou a moldura do painel: ele é substring de
+        // `gavetaAberta`, o estado da gaveta do menu no shell — acusava o
+        // layout, não o quadro. 'Em andamento' confere a mesma coisa sem
+        // colidir com identificador do shell.
+        $quadro->assertDontSee('Em andamento');
         $quadro->assertDontSee('Backlog');
         $quadro->assertDontSee($tarefa->titulo);
 
