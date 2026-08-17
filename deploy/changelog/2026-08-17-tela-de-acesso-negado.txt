@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 17/08/2026</b>
+<i>A recusa de permissão ganha uma tela do sistema</i>
+
+<b>🔒 Acesso negado sem sair do painel</b>
+
+• <b>Quem tenta abrir uma tela que a conta não alcança agora vê uma página do próprio AlfaMatriz</b>, no lugar da página de erro do framework em inglês. A moldura do painel continua de pé — a sessão não caiu, só aquela porta não abre.
+
+• <b>A tela diz o motivo exato da recusa</b> — "só os leads da sua revenda", "esta tela é exclusiva da matriz" — em vez de um "proibido" genérico.
+
+• <b>Sempre há um caminho de volta:</b> o botão Voltar e um atalho para a tela inicial da própria conta, que ela garante enxergar. E o lembrete: precisando do acesso, é com um administrador.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
