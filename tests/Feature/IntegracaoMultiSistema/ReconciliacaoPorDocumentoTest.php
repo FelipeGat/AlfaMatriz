@@ -95,6 +95,26 @@ class ReconciliacaoPorDocumentoTest extends TestCase
     }
 
     /**
+     * @spec:AC-137 O "tenant zero" de fábrica de um produto multi-tenant —
+     * raiz de CNPJ toda zero, como um sistema recém-instalado costuma trazer
+     * pra si mesmo — não vira Revenda na Matriz. Sincronizado, ele criaria um
+     * reseller fantasma (16/08/2026: aconteceu de verdade com o AlfaJornada,
+     * "AlfaJornada" CNPJ 00.000.000/0001-00, e atraiu cliente de verdade pra
+     * ele em vez da revenda real).
+     */
+    public function test_revenda_com_raiz_de_cnpj_placeholder_e_ignorada(): void
+    {
+        $this->fakeDoControl(revendas: [[
+            'id_externo' => '1', 'nome' => 'AlfaControl',
+            'cnpj' => '00.000.000/0001-00', 'email' => null, 'telefone' => null, 'ativo' => true,
+        ]]);
+
+        $this->assertTrue($this->sincronizarControl()['ok']);
+
+        $this->assertSame(0, Revenda::count(), 'CNPJ com raiz toda zero não é reseller de verdade.');
+    }
+
+    /**
      * @spec:AC-137 O mesmo vale para clientes.
      */
     public function test_cliente_existente_e_ancorado_e_nao_duplicado(): void

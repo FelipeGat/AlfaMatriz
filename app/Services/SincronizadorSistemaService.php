@@ -187,6 +187,24 @@ class SincronizadorSistemaService
         $criadas = $atualizadas = $ignoradas = 0;
 
         foreach ($this->todasPaginas('/revendas') as $item) {
+            $cnpj = $this->normalizarDocumento($item['cnpj'] ?? null);
+
+            // Todo produto que já nasce multi-tenant carrega uma revenda de
+            // fábrica pra si mesmo — no AlfaJornada, por exemplo, uma linha
+            // chamada "AlfaJornada", CNPJ 00.000.000/0001-00, sem nenhum
+            // cliente de verdade. Não é reseller: é o "tenant zero" do
+            // produto. Sincronizar isso criava uma Revenda fantasma na
+            // Matriz e, pior, atraía pra ela cliente de verdade que o
+            // produto tivesse deixado vinculado ao tenant zero por engano
+            // (16/08/2026: NonaLu e um cliente de teste chegaram a cair
+            // aqui em vez de na Invest). Raiz de CNPJ toda zero não existe
+            // na Receita — é sinal seguro de que a linha é sintética.
+            if ($this->ehRaizDeCnpjPlaceholder($cnpj)) {
+                $ignoradas++;
+
+                continue;
+            }
+
             // Com os excluídos: a âncora é a identidade primária, e uma
             // revenda excluída SEM documento só é reconhecível por ela — a
             // reconciliação lá embaixo não tem documento por onde achá-la.
@@ -194,7 +212,7 @@ class SincronizadorSistemaService
 
             $dados = [
                 'nome' => $item['nome'] ?? 'Sem nome',
-                'cnpj' => $this->normalizarDocumento($item['cnpj'] ?? null),
+                'cnpj' => $cnpj,
                 'contato_email' => $item['email'] ?? null,
                 'contato_telefone' => $item['telefone'] ?? null,
                 'ativo' => $item['ativo'] ?? true,
@@ -663,5 +681,20 @@ class SincronizadorSistemaService
         $soDigitos = preg_replace('/\D/', '', $documento);
 
         return $soDigitos === '' ? null : $soDigitos;
+    }
+
+    /**
+     * A raiz do CNPJ (os 8 primeiros dígitos, o identificador da empresa —
+     * filial e dígitos verificadores vêm depois) é toda zero. A Receita
+     * nunca atribui raiz 00000000 a empresa nenhuma: é a marca de um CNPJ
+     * sintético de seeder, não de um reseller real.
+     */
+    private function ehRaizDeCnpjPlaceholder(?string $cnpjNormalizado): bool
+    {
+        if ($cnpjNormalizado === null || strlen($cnpjNormalizado) < 8) {
+            return false;
+        }
+
+        return substr($cnpjNormalizado, 0, 8) === '00000000';
     }
 }

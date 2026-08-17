@@ -1,5 +1,20 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 16/08/2026 — O "tenant zero" de um produto parava de ser revenda fantasma
+
+Sistema multi-tenant recém-instalado costuma nascer com uma revenda de
+fábrica pra si mesmo — no AlfaJornada, uma linha chamada "AlfaJornada", CNPJ
+`00.000.000/0001-00`. O sincronizador levava essa linha pra Matriz como se
+fosse um reseller de verdade, e cliente real que o produto tivesse deixado
+preso nesse tenant zero (por engano, na origem) chegava até aqui vinculado a
+ela em vez da revenda de verdade.
+
+### Correções
+
+- **Revenda com raiz de CNPJ toda zero não é mais sincronizada.** A Receita
+  nunca atribui a raiz `00000000` a empresa nenhuma — é a marca segura de um
+  documento sintético de seeder, não de reseller real.
+
 ## AlfaMatriz — 16/08/2026 — A licença de sistema por cliente vira contrato recorrente
 
 Cobrar um cliente final pelo uso de um sistema (AlfaGym, AlfaControl,
