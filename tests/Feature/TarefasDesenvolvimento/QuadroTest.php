@@ -303,6 +303,71 @@ class QuadroTest extends TestCase
     }
 
     /**
+     * @spec:AC-365 A tela cheia não esconde criar, buscar e filtrar.
+     *
+     * Cobrindo a janela, o quadro levava embaixo dele a topbar com o "+ Nova tarefa" e a
+     * barra de busca e filtros: não havia como criar nem procurar sem sair do modo. O
+     * cabeçalho do quadro não ganha altura — quem cede os ~190px é a identidade —, e a
+     * barra que aparece é A DA PÁGINA, flutuando: uma segunda cópia dos selects custaria
+     * ~4 KB por visita (AC-240) e ficaria para trás no primeiro filtro novo.
+     */
+    public function test_a_tela_cheia_mantem_criar_buscar_e_filtrar_a_mao(): void
+    {
+        $usuario = User::factory()->create();
+
+        Tarefa::factory()->create(['criado_por_id' => User::factory()]);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // Os dois controles que entram, no cabeçalho do quadro.
+        $this->assertStringContainsString('data-so-na-tela-cheia', $html);
+        $this->assertStringContainsString('Buscar e filtrar', $html);
+        $this->assertStringContainsString("alternarFiltros()", $html);
+
+        // E a identidade que sai para dar lugar a eles: a altura do cabeçalho
+        // não muda, o inquilino é que muda.
+        $this->assertStringContainsString('data-fora-da-tela-cheia', $html);
+
+        // Uma barra só: o botão marca a que já existe na página, em vez de o
+        // quadro imprimir os mesmos seis selects outra vez.
+        $this->assertStringContainsString('data-barra-de-filtros', $html);
+        $this->assertSame(1, substr_count($html, 'Todas as prioridades'),
+            'A barra de filtros não pode ser impressa duas vezes — é ~4 KB por visita e a cópia que fica para trás.');
+
+        // O Esc fecha a barra ANTES de sair do modo, na ordem de dentro para
+        // fora do AC-359, e o `/` a traz junto em vez de focar um campo que
+        // está embaixo do quadro.
+        $this->assertStringContainsString('this.alternarFiltros(false)', $html);
+        $this->assertStringContainsString('this.alternarFiltros(true)', $html);
+
+        // Metade da regra vive no CSS, como o próprio modo: sem o gancho, o
+        // botão vira clique sem efeito — falha silenciosa.
+        $css = file_get_contents(base_path('resources/css/app.css'));
+
+        $this->assertMatchesRegularExpression(
+            '/\[data-tela-cheia\]\s*\[data-fora-da-tela-cheia\]\s*\{[^}]*display:\s*none/',
+            $css,
+            'A identidade do quadro precisa sair do cabeçalho na tela cheia — é o espaço dos dois controles.'
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/\[data-tela-cheia\]\s*\[data-barra-de-filtros\]\[data-aberta\]\s*\{[^}]*position:\s*fixed/',
+            $css,
+            'A barra de filtros precisa flutuar POR CIMA do quadro expandido, senão ela fica embaixo dele.'
+        );
+
+        // Acima do quadro (z-40) e abaixo do modal da tarefa, conferido contra a
+        // fonte e não de memória.
+        preg_match('/\[data-tela-cheia\]\s*\[data-barra-de-filtros\]\[data-aberta\]\s*\{[^}]*z-index:\s*(\d+)/', $css, $daBarra);
+        preg_match('/\[data-tela-cheia\]\s*\[data-corpo-do-quadro\]\s*\{[^}]*z-index:\s*(\d+)/', $css, $doQuadro);
+        preg_match('/z-(\d+)/', file_get_contents(base_path('resources/views/components/modal.blade.php')), $doModal);
+
+        $this->assertNotEmpty($daBarra, 'A barra flutuante precisa declarar o empilhamento.');
+        $this->assertGreaterThan((int) $doQuadro[1], (int) $daBarra[1]);
+        $this->assertLessThan((int) $doModal[1], (int) $daBarra[1]);
+    }
+
+    /**
      * @spec:AC-128 Dentro da coluna, a gravidade manda: uma crítica antiga fica acima
      * de uma baixa recente. No empate de prioridade, quem está parado há mais tempo
      * na etapa sobe — o mesmo instante que o card mostra no chip de tempo.

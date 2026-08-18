@@ -650,3 +650,51 @@
   são o que está gravado. O teste assere as DUAS metades — a marca no formulário
   e o seletor no `x-modal` —, porque renomear um lado sem o outro não quebra nada
   na tela, só devolve o rascunho, em silêncio.
+
+## T-154 — Posicionar o card ao mudar de coluna [concluida]
+- Refs: US-062, AC-364
+- Arquivos: app/Http/Controllers/TarefaController.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/_coluna.blade.php, resources/views/tarefas/_painel-motivo.blade.php, tests/Feature/TarefasDesenvolvimento/OrdemEConcorrenciaTest.php
+- Esforço: médio
+- Notas: defeito relatado pelo dono em 17/08/2026 — "não é possível mover um card
+  a partir de outra raia para uma posição específica". A leitura confirmada com
+  ele foi entre COLUNAS: o vão só abria entre irmãos da mesma lista
+  (`mirarVao` desistia quando os pais diferiam), então mudar de etapa entregava
+  o card onde a régua automática mandasse. Entre RAIAS o gesto continua sem
+  mover — a faixa é o responsável (ou o sistema) da tarefa, e trocá-lo é campo
+  de formulário —, mas a recusa passou a ser VISÍVEL: a célula da outra faixa
+  apaga junto com as colunas fora do fluxo, onde antes acendia, aceitava o solto
+  e não acontecia nada. Três armadilhas encontradas ao escrever: (1) o
+  `confirmarVao` lia a lista do DOM e o status do estado — com o vão aberto
+  noutra coluna e o solto na de origem, gravaria a ordem do destino sob o nome da
+  origem; (2) `referencia === arrastado.nextElementSibling` se satisfazia por
+  acaso quando os dois eram `null` (card no fim de uma lista, alvo no fim da
+  outra), cancelando justamente o pouso no pé da coluna de destino; (3) o
+  `largar` só devolvia o card dentro da lista de origem, porque o vão nunca saía
+  dela — daí o `desfazerVao`. A ordem viaja no mesmo envio do movimento e é
+  gravada depois de o motor aceitar: dois envios fariam o quadro assentar na
+  ordem automática antes de pular para a escolhida, e uma recusa deixaria a
+  coluna reordenada por um movimento que não houve. De quebra, a coluna de ORIGEM
+  parou de apagar durante o arrasto (`aceita` não listava a etapa atual, que é
+  onde a reordenação acontece).
+
+## T-155 — A tela cheia recupera criar, buscar e filtrar [concluida]
+- Refs: US-036, AC-365
+- Arquivos: resources/css/app.css, resources/views/components/nav-icon.blade.php, resources/views/tarefas/index.blade.php, resources/views/tarefas/_quadro.blade.php, tests/Feature/TarefasDesenvolvimento/QuadroTest.php
+- Esforço: baixo
+- Notas: segunda metade do relato de 17/08/2026 — "no modo tela cheia não tem
+  nenhum botão de criar tarefa visível e nem barra de pesquisa e filtros", com a
+  restrição dita junto: sem ocupar mais espaço do que já se tem. O cabeçalho do
+  quadro tem 52px e nenhuma folga, então a troca é de INQUILINO: sai a identidade
+  ("Quadro de tarefas · 6 etapas"), que numa tela ocupada só pelo quadro não
+  informa nada, e entram dois controles de 26px. A primeira versão levava a barra
+  de filtros inteira para dentro do cabeçalho, num painel próprio — e ela custava
+  ~7 KB de HTML em toda visita, contra o teto do AC-240, além de virar a segunda
+  cópia dos mesmos selects. A versão que ficou não copia nada: o botão põe
+  `data-aberta` na barra QUE JÁ EXISTE na página, e o CSS a faz flutuar por cima
+  do quadro (z-41, entre o quadro e o modal). Duas coisas vieram de brinde: o `/`
+  passou a trazer a barra junto em vez de focar um campo invisível embaixo do
+  quadro, e o `Esc` fecha a barra antes de sair do modo, na ordem de dentro para
+  fora do AC-359. O peso: aproveitei para tirar do card o que era repetição — a
+  etapa e o endereço da lista nos dois manipuladores de arrasto, que o
+  `data-cards` já diz, e a indentação de seis linhas do `@dragstart` — e o quadro
+  de 120 tarefas ficou 10 KB MAIS LEVE do que antes das duas correções.

@@ -287,6 +287,62 @@
     background-image: linear-gradient(var(--board), var(--board));
 }
 
+/**
+ * A troca do cabeçalho do quadro na tela cheia.
+ *
+ * Cobrindo a janela, o quadro leva embaixo dele a topbar com o "+ Nova tarefa"
+ * e a barra de busca e filtros — e não havia como criar nem procurar sem sair
+ * do modo (relato do dono, 17/08/2026). O cabeçalho do quadro é o único que
+ * sobrevive, e ele não tem 400px sobrando: quem cede o lugar é a identidade
+ * ("Quadro de tarefas · 6 etapas"), que numa tela ocupada só pelo quadro não
+ * informa nada que a própria tela não diga.
+ *
+ * A troca é CSS, e não `x-show`, pela mesma razão do bloco acima: o atributo
+ * está no <html> antes da primeira pintura, e o Alpine só acorda depois — pelo
+ * estado do componente o título piscaria na tela de quem abriu já expandido.
+ */
+[data-tela-cheia] [data-fora-da-tela-cheia] {
+    display: none;
+}
+
+[data-so-na-tela-cheia] {
+    display: none;
+}
+
+[data-tela-cheia] [data-so-na-tela-cheia] {
+    display: flex;
+}
+
+/**
+ * A barra de busca e filtros na tela cheia: a MESMA, flutuando.
+ *
+ * Ela continua onde sempre esteve na página — o que muda é que, com o quadro
+ * cobrindo tudo, ela passa a aparecer por cima dele e só quando pedida. Uma
+ * segunda cópia dos selects dentro do cabeçalho custaria ~4 KB de HTML em toda
+ * visita ao quadro e seria a cópia que fica para trás no primeiro filtro novo.
+ *
+ * `z-41` é um a mais que o quadro (z-40) e continua abaixo do modal (z-50).
+ * `data-aberta` é escrito pelo `alternarFiltros`, como o `data-tela-cheia` é
+ * escrito no <html>: fechada é o estado inicial, então não há o que piscar.
+ */
+[data-tela-cheia] [data-barra-de-filtros] {
+    display: none;
+}
+
+[data-tela-cheia] [data-barra-de-filtros][data-aberta] {
+    display: block;
+    position: fixed;
+    top: 60px;
+    left: 14px;
+    right: 14px;
+    z-index: 41;
+    max-width: 920px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background-color: rgb(var(--panel));
+}
+
 @layer base {
     html,
     body {

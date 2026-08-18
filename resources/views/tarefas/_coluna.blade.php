@@ -37,6 +37,14 @@
              ? 'flex: 0 0 42px; min-width: 42px; border-top: {{ $comCabecalho ? '3px solid rgb(var(--'.$etapa['cor'].'))' : '1px solid var(--line)' }}'
              : 'flex: 1 1 272px; min-width: 272px; border-top: {{ $comCabecalho ? '3px solid rgb(var(--'.$etapa['cor'].'))' : '1px solid var(--line)' }}'"
          data-status="{{ $etapa['chave'] }}"
+         {{-- A coluna anuncia a PRÓPRIA faixa quando o card entra nela: com
+              raias ligadas a mesma etapa aparece uma vez por raia, e sem este
+              aviso o quadro não tinha como saber que o solto estava
+              acontecendo na faixa de outra pessoa. Vai pelo `dragenter`, e não
+              por um argumento do `soltar`, porque o nome da faixa é nome de
+              gente — não tem por que atravessar o Blade dentro de uma string
+              de JavaScript. --}}
+         @dragenter="faixaSobOPonteiro = @js($faixa)"
          @dragover.prevent="permitir('{{ $etapa['chave'] }}')"
          @dragleave="sobre = null"
          {{-- Quem decide se abre painel é o `pedeTexto`, e não uma lista fixa
@@ -50,9 +58,14 @@
               caminho não existia. O realce SEGUE enquanto o painel de motivo
               está aberto — o card ainda não chegou, e a coluna apagando junto
               com o solto faria o painel parecer desligado do gesto. --}}
+         {{-- A célula de OUTRA faixa apaga junto com as colunas fora do fluxo,
+              e pelo mesmo motivo: soltar ali não move nada — a raia é o
+              responsável (ou o sistema) da tarefa, e trocá-lo é campo do
+              formulário, não gesto de arrastar. Antes ela acendia, aceitava o
+              solto e não acontecia nada. --}}
          :class="{
              'ring-1 ring-brand': sobre === '{{ $etapa['chave'] }}' || pendente?.destino === '{{ $etapa['chave'] }}',
-             'opacity-25': ! aceita('{{ $etapa['chave'] }}'),
+             'opacity-25': ! aceita('{{ $etapa['chave'] }}') || ! naFaixaDoArrasto(@js($faixa)),
          }">
 
     {{-- Em raias o cabeçalho é um só, fixo no topo do quadro: repetido faixa a
@@ -116,22 +129,27 @@
                  data-tipo="{{ $tarefa->tipo }}"
                  data-bloqueada="{{ $tarefa->estaBloqueada() ? '1' : '' }}"
                  {{-- O card entrega os próprios destinos ao pegar: é assim que
-                      o quadro sabe quais colunas apagar durante o arrasto. --}}
-                 @dragstart="pegar(
-                     $el,
-                     {{ $tarefa->id }},
-                     {{ Illuminate\Support\Js::from($transicoes) }},
-                     '{{ $tarefa->tipo }}',
-                     {{ $tarefa->estaBloqueada() ? 'true' : 'false' }},
-                     '{{ $tarefa->status }}'
-                 )"
+                      o quadro sabe quais colunas apagar durante o arrasto.
+
+                      NUMA LINHA SÓ, e isso não é descuido de formatação: o
+                      atributo se repete uma vez por card, e quebrado em seis
+                      linhas de argumento ele mandava ~130 bytes de indentação
+                      por card — 15 KB num quadro de 120, contra o teto de peso
+                      do AC-240 (`QuadroLeveTest`). Reindentar aqui é gastar
+                      esse orçamento sem trocar nada por ele. --}}
+                 @dragstart="pegar( $el, {{ $tarefa->id }}, {{ Illuminate\Support\Js::from($transicoes) }}, '{{ $tarefa->tipo }}', {{ $tarefa->estaBloqueada() ? 'true' : 'false' }}, '{{ $tarefa->status }}' )"
                  @dragend="largar()"
-                 {{-- Arrastar SOBRE um vizinho da mesma coluna abre o vão ao
-                      vivo — o card na mão muda de lugar na lista, com os
-                      outros deslizando. De coluna diferente, o evento segue
-                      subindo e a coluna resolve como movimento de etapa. --}}
-                 @dragover="permitirSobreCard($event, $el, '{{ $etapa['chave'] }}', {{ $tarefa->id }})"
-                 @drop="soltarSobreCard($event, $el, '{{ $etapa['chave'] }}', '{{ $alvo }}')"
+                 {{-- Arrastar SOBRE um vizinho abre o vão ao vivo — o card na
+                      mão muda de lugar na lista, com os outros deslizando. Vale
+                      entre COLUNAS também: quem escolhe o lugar na fila de
+                      destino não deveria precisar mover duas vezes.
+
+                      A etapa e o endereço da lista NÃO viajam aqui: os dois
+                      saem do `data-cards` da lista sob o ponteiro, e repetidos
+                      em cada card eles custavam ~10 KB num quadro de 120 —
+                      o mesmo fato escrito três vezes por card. --}}
+                 @dragover="permitirSobreCard($event, $el, {{ $tarefa->id }})"
+                 @drop="soltarSobreCard($event, $el)"
                  {{-- O card faz as duas coisas: abre no clique e arrasta. Sem o
                       limiar, um arrasto curto — o começo de qualquer arrasto, na
                       prática — terminava com o modal aberto por cima do gesto. --}}

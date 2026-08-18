@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-17T22:13:33.916Z",
-  "gitRev": "b314a77",
+  "timestamp": "2026-08-18T01:49:08.753Z",
+  "gitRev": "9cb9a0c",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 967,
+  "testsParsed": 982,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -60,6 +60,11 @@
     "AC-359": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_o_quadro_expande_para_a_tela_inteira_e_volta @spec:AC-359",
+      "method": "tap"
+    },
+    "AC-365": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\QuadroTest::test_a_tela_cheia_mantem_criar_buscar_e_filtrar_a_mao @spec:AC-365",
       "method": "tap"
     },
     "AC-358": {
@@ -342,6 +347,11 @@
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\OrdemEConcorrenciaTest::test_mover_sobre_movimento_alheio_e_recusado @spec:AC-208",
       "method": "tap"
     },
+    "AC-362": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AtualizacaoAutomaticaTest::test_a_pergunta_sem_novidade_nao_devolve_o_quadro @spec:AC-362",
+      "method": "tap"
+    },
     "AC-209": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\OrdemEConcorrenciaTest::test_coluna_arrumada_a_mao_manda_e_a_intocada_segue_a_regua @spec:AC-209",
@@ -365,6 +375,11 @@
     "AC-212": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\OrdemEConcorrenciaTest::test_criacao_rapida_existe_em_aberta_e_backlog_e_declara_a_coluna @spec:AC-212",
+      "method": "tap"
+    },
+    "AC-364": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\OrdemEConcorrenciaTest::test_mover_entre_colunas_entrega_o_card_na_posicao_mirada @spec:AC-364",
       "method": "tap"
     },
     "AC-213": {
@@ -485,6 +500,11 @@
     "AC-230": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\AcoesSemRecarregarTest::test_mover_sobre_movimento_alheio_volta_como_aviso @spec:AC-230",
+      "method": "tap"
+    },
+    "AC-363": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\ModalDaTarefaTest::test_a_criacao_se_esvazia_ao_reabrir_e_a_edicao_nao @spec:AC-363",
       "method": "tap"
     },
     "AC-231": {
