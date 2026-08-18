@@ -37,6 +37,8 @@ class TarefaController extends Controller
      */
     private const PEDACOS_DO_CHECKLIST = ['checklist', 'checklist-envios'];
 
+    private const PEDACOS_DOS_VINCULOS = ['vinculos', 'vinculos-envios'];
+
     private const PEDACOS_DA_CONVERSA = ['conversa', 'conversa-envios'];
 
     private const PEDACOS_DA_VEZ = ['avisos', 'conversa', 'conversa-envios'];
@@ -144,7 +146,11 @@ class TarefaController extends Controller
 
         $marcas = [$this->marcasDe($doQuadro())];
 
-        foreach (['tarefa_itens', 'tarefa_comentarios', 'tarefa_anexos', 'tarefa_eventos'] as $tabela) {
+        // `tarefa_vinculos` entra na lista porque vincular NÃO toca a linha da
+        // tarefa: o par mora numa tabela à parte, e sem ele o quadro aberto de
+        // outra pessoa nunca descobriria o selo novo — a assinatura continuaria
+        // a mesma. A coluna que amarra é `tarefa_id`, como nas outras quatro.
+        foreach (['tarefa_itens', 'tarefa_comentarios', 'tarefa_anexos', 'tarefa_eventos', 'tarefa_vinculos'] as $tabela) {
             $marcas[] = $this->marcasDe(
                 DB::table($tabela)->whereIn('tarefa_id', $doQuadro()->select('id'))
             );
@@ -209,7 +215,7 @@ class TarefaController extends Controller
         // e ele saiu daqui — agora é buscado no clique, com o próprio eager
         // load (ver `modal()`). Carregá-los aqui era trazer duas relações
         // inteiras por card para não imprimir nenhuma delas.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios', 'itens', 'perguntaPara', 'anexos'])
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios', 'itens', 'perguntaPara', 'anexos', 'vinculadas'])
             ->whereIn('status', $emCurso->keys())
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('created_at')
@@ -408,7 +414,7 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
+        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'vinculadas'])
             ->findOrFail($tarefa->id);
 
         return response()->view('tarefas._modais', [
@@ -453,6 +459,21 @@ class TarefaController extends Controller
             'itens' => 'nullable|array',
             'itens.*' => 'nullable|string|max:255',
 
+            // O vínculo entra JUNTO pelo mesmo argumento do checklist e dos
+            // anexos: quase toda tarefa nasce ao lado de outra — o defeito que
+            // voltou, o pedido que se desdobrou —, e a tarefa irmã está na
+            // cabeça de quem abre, não de quem reabre meia hora depois.
+            //
+            // `string` e não `exists:tarefas,id` porque o que chega é o que se
+            // digitou ("#412", "412 — Corrigir importação"): quem extrai o
+            // número é `idDaTarefaDigitada`, e a tarefa inexistente é ignorada
+            // em silêncio aqui — recusar a CRIAÇÃO inteira por causa de um
+            // número errado custaria o título, o checklist e os anexos já
+            // preenchidos, que é caro demais para um vínculo que a pessoa pode
+            // refazer com a tarefa aberta.
+            'vinculadas' => 'nullable|array',
+            'vinculadas.*' => 'nullable|string|max:255',
+
             // A prova entra JUNTO com a tarefa (AC-234). Até aqui ela só entrava
             // depois, com a tarefa aberta — e quem abre uma tarefa a partir de
             // um print acabava descrevendo por escrito o que já tinha na tela,
@@ -469,6 +490,9 @@ class TarefaController extends Controller
         // O checklist sai pelo mesmo motivo: item não é coluna de `tarefas`, e
         // tanto o `where()` do reenvio quanto o `create()` tropeçariam no array.
         $itens = Arr::pull($data, 'itens', []);
+
+        // E os vínculos pelo mesmo motivo dos dois acima.
+        $vinculadas = Arr::pull($data, 'vinculadas', []);
 
         // O padrão é resolvido AQUI, e não só no modelo, por causa da linha
         // abaixo: a busca por reenvio compara o formulário inteiro, e um `tipo`
@@ -499,6 +523,18 @@ class TarefaController extends Controller
             foreach ($itens as $texto) {
                 if (trim((string) $texto) !== '') {
                     $tarefa->itens()->create(['texto' => trim((string) $texto)]);
+                }
+            }
+
+            // Dentro do mesmo `if` que a trava de reenvio guarda, como o
+            // checklist e os anexos: no clique duplo os dois envios carregam a
+            // mesma lista, e ligá-la fora daqui penduraria os vínculos na
+            // tarefa que a trava acabou de preservar.
+            foreach ($vinculadas as $digitado) {
+                $outra = Tarefa::find($this->idDaTarefaDigitada($digitado));
+
+                if ($outra) {
+                    $tarefa->vincularCom($outra, auth()->id());
                 }
             }
 
@@ -1372,6 +1408,114 @@ class TarefaController extends Controller
     }
 
     /**
+     * Liga esta tarefa a outra que já existe.
+     *
+     * O que chega é o que se DIGITOU, e não um id de `<select>`: o campo aceita
+     * "412", "#412" e a linha inteira que a lista de sugestão preenche
+     * ("#412 — Corrigir importação"). A escolha não é de gosto — é a única que
+     * não tem beco sem saída. Um `<select>` teria de decidir quais tarefas
+     * caber nele, e qualquer recorte (só as do quadro, só as dos últimos 30
+     * dias) deixaria sem caminho quem quer apontar para a tarefa antiga que
+     * explica esta. O número é justamente o que o modal manda copiar.
+     *
+     * Sem `permissao:tarefas,editar` na rota, como o bloqueio e a conversa:
+     * ligar duas tarefas não move nem encerra nada — é dizer que elas se
+     * conversam, e quem lê o quadro sabe disso tanto quanto quem o move.
+     */
+    public function vincular(Request $request, Tarefa $tarefa)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $data = $request->validate(['tarefa' => 'required|string|max:255']);
+
+        $outra = Tarefa::find($this->idDaTarefaDigitada($data['tarefa']));
+
+        // As três recusas voltam pelo caminho parcial, com o modal aberto: a
+        // frase que explica é o que a pessoa precisa ler sem perder de vista o
+        // campo onde acabou de errar o número.
+        if (! $outra) {
+            return $this->voltarParaATarefa(
+                $request,
+                $tarefa->id,
+                self::PEDACOS_DOS_VINCULOS,
+                'Não existe tarefa com esse número.',
+                'critico',
+            );
+        }
+
+        if ($outra->id === $tarefa->id) {
+            return $this->voltarParaATarefa(
+                $request,
+                $tarefa->id,
+                self::PEDACOS_DOS_VINCULOS,
+                'Uma tarefa não se vincula a si mesma.',
+                'critico',
+            );
+        }
+
+        // O aviso muda conforme JÁ estava ligada, e não é preciosismo: sem
+        // ele, quem vinculasse a mesma dupla duas vezes veria "Tarefas
+        // vinculadas." e uma lista que não cresceu — e ficaria procurando o
+        // que deu errado numa gravação que não tinha o que fazer.
+        $jaEstava = $tarefa->vinculadas()->whereKey($outra->id)->exists();
+
+        $tarefa->vincularCom($outra, auth()->id());
+
+        return $this->voltarParaATarefa(
+            $request,
+            $tarefa->id,
+            self::PEDACOS_DOS_VINCULOS,
+            $jaEstava
+                ? "A tarefa {$outra->codigo()} já estava vinculada."
+                : "Vinculada à tarefa {$outra->codigo()}.",
+            tambemOCardDe: $outra->id,
+        );
+    }
+
+    /**
+     * Desfaz a ligação. Sempre nos dois sentidos — ver `desvincularDe`.
+     *
+     * Sem confirmação em dois passos, ao contrário do excluir: desvincular não
+     * apaga nada, e refazer o vínculo é digitar o número de novo.
+     */
+    public function desvincular(Request $request, Tarefa $tarefa, Tarefa $outra)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $tarefa->desvincularDe($outra);
+
+        return $this->voltarParaATarefa(
+            $request,
+            $tarefa->id,
+            self::PEDACOS_DOS_VINCULOS,
+            "Vínculo com a tarefa {$outra->codigo()} desfeito.",
+            tambemOCardDe: $outra->id,
+        );
+    }
+
+    /**
+     * O número da tarefa dentro do que a pessoa digitou.
+     *
+     * O primeiro número da frase, com ou sem `#` na frente. É essa tolerância
+     * que deixa o mesmo campo aceitar as três formas que aparecem na prática: o
+     * número copiado do modal (`#412`), o número dito de cabeça (`412`) e a
+     * linha inteira que a lista de sugestão do navegador preenche
+     * (`#412 — Corrigir importação`).
+     *
+     * Ancorado no COMEÇO de propósito. Sem a âncora, "corrigir o importador da
+     * v2" viraria a tarefa 2 — um vínculo silenciosamente errado é pior que um
+     * "não existe tarefa com esse número", porque ninguém vai conferir.
+     */
+    private function idDaTarefaDigitada(?string $texto): ?int
+    {
+        if (! preg_match('/^\s*#?\s*(\d+)/', (string) $texto, $achado)) {
+            return null;
+        }
+
+        return (int) $achado[1];
+    }
+
+    /**
      * O retorno de quem mexeu na tarefa sem sair de dentro dela.
      *
      * Dois caminhos para o mesmo fim: com JavaScript no ar, a tela nem chega a
@@ -1383,10 +1527,10 @@ class TarefaController extends Controller
      * formulário puro, que é como estas ações continuam funcionando quando o
      * `fetch` falha e o navegador envia o `<form>` por conta.
      */
-    private function voltarParaATarefa(Request $request, int $tarefaId, array $regioes = [], ?string $aviso = null, string $tom = 'bom')
+    private function voltarParaATarefa(Request $request, int $tarefaId, array $regioes = [], ?string $aviso = null, string $tom = 'bom', ?int $tambemOCardDe = null)
     {
         if ($request->expectsJson()) {
-            return $this->respostaParcial($request, Tarefa::find($tarefaId), $regioes, $aviso, $tom);
+            return $this->respostaParcial($request, Tarefa::find($tarefaId), $regioes, $aviso, $tom, tambemOCardDe: $tambemOCardDe);
         }
 
         return redirect()->back(fallback: route('tarefas.index'))
@@ -1486,6 +1630,7 @@ class TarefaController extends Controller
         ?string $fecharModal = null,
         bool $comQuadro = false,
         bool $limparModal = false,
+        ?int $tambemOCardDe = null,
     ) {
         $pedacos = [];
 
@@ -1493,7 +1638,7 @@ class TarefaController extends Controller
             // Recarregado do banco com as relações que as partials leem: o
             // model que chegou pelo route binding traz o estado de ANTES da
             // ação, e a conversa recém-publicada não estaria nele.
-            $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
+            $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'vinculadas'])
                 ->find($tarefa->id);
         }
 
@@ -1506,6 +1651,8 @@ class TarefaController extends Controller
                 'checklist-envios' => 'tarefas._checklist-envios',
                 'conversa' => 'tarefas._comentarios',
                 'conversa-envios' => 'tarefas._comentarios-envios',
+                'vinculos' => 'tarefas._vinculos',
+                'vinculos-envios' => 'tarefas._vinculos-envios',
                 'formulario' => 'tarefas._form',
             ];
 
@@ -1545,11 +1692,22 @@ class TarefaController extends Controller
 
             $pedacos['chips-do-quadro'] = view('tarefas._chips', ['chips' => $dados['chips']])->render();
 
-            if ($tarefa && $dados['tarefas']->contains('id', $tarefa->id)) {
-                $pedacos["card-{$tarefa->id}"] = view('tarefas._card', [
-                    'tarefa' => $tarefa,
-                    'transicoes' => $tarefa->destinosPara(auth()->user()),
-                ])->render();
+            // Um card por tarefa AFETADA, e não só a da ação. Até o vínculo,
+            // toda ação parcial mexia numa tarefa só, e o card dela bastava. O
+            // vínculo mexe em duas ao mesmo tempo — é simétrico —, e sem a
+            // segunda o selo da tarefa irmã continuava contando o vínculo que
+            // acabou de ser desfeito, no card ao lado, à vista de quem desfez.
+            $afetadas = collect([$tarefa?->id, $tambemOCardDe])->filter()->unique();
+
+            foreach ($afetadas as $id) {
+                $daVez = $dados['tarefas']->firstWhere('id', $id);
+
+                if ($daVez) {
+                    $pedacos["card-{$id}"] = view('tarefas._card', [
+                        'tarefa' => $daVez,
+                        'transicoes' => $daVez->destinosPara(auth()->user()),
+                    ])->render();
+                }
             }
         }
 
@@ -1932,7 +2090,7 @@ class TarefaController extends Controller
         // histórico completo (US-082): a linha do tempo assina cada movimento
         // e a criação, e os relatórios contam as aprovações. Tudo no mesmo
         // `with()` — o modal nasce com a página, sem consulta por linha.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos.autor', 'criadoPor', 'comentarios.autor', 'itens', 'anexos.autor', 'relatoriosTeste.autor'])
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos.autor', 'criadoPor', 'comentarios.autor', 'itens', 'anexos.autor', 'relatoriosTeste.autor', 'vinculadas'])
             ->whereIn('status', $filtros['desfecho'] !== '' ? [$filtros['desfecho']] : Tarefa::STATUS_TERMINAIS)
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('updated_at')

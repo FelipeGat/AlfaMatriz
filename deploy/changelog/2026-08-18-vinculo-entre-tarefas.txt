@@ -1,0 +1,32 @@
+<b>📋 AlfaMatriz — Changelog 18/08/2026</b>
+<i>Uma tarefa agora pode apontar para a outra</i>
+
+<b>🔗 Tarefas vinculadas</b>
+
+• <b>Dentro de qualquer tarefa há um campo novo, "Tarefas vinculadas".</b> Digite o número da outra tarefa — o <b>#412</b> que aparece no canto de todo card — e aperte Enter. Pronto: as duas passam a apontar uma para a outra.
+
+• <b>O vínculo vale nos dois sentidos.</b> Você liga a #412 à #388 e, ao abrir a #388, a #412 já está lá — ninguém precisa repetir o vínculo do outro lado. Desfazer também vale nos dois: o ✕ some a ligação de uma vez.
+
+• <b>Da lista se navega.</b> Clicar na tarefa vinculada abre ela na hora, no lugar da que estava aberta. E o pontinho colorido ao lado diz em que etapa ela está, sem precisar abrir.
+
+• <b>Dá para vincular já na criação.</b> O modal de Nova tarefa tem o mesmo campo: a tarefa nasce ligada às irmãs, em vez de exigir salvar, reabrir e vincular depois. Errou o número? Ele é ignorado e a tarefa é criada do mesmo jeito — o título, o checklist e os anexos que você digitou não se perdem.
+
+• <b>O card avisa.</b> Um selo de elo com a contagem aparece <b>ao lado do número da tarefa</b>, na primeira linha do card — o mesmo número que se digita do outro lado.
+
+<b>🧭 O que o vínculo NÃO faz</b>
+
+• <b>Vincular não prende.</b> As duas tarefas continuam com etapa, responsável e prazo próprios: mover, bloquear, concluir ou cancelar uma não mexe na outra, e o vínculo não entra na conta de trabalho em curso de nenhuma coluna.
+
+• <b>Não é subtarefa.</b> Não existe tarefa "mãe" nem "filha" — as duas são irmãs, e nenhuma manda na outra. Para passos dentro de uma tarefa só, o Checklist continua sendo o lugar.
+
+<b>💡 Onde isso ajuda</b>
+
+• O defeito que voltou, e a tarefa antiga que o explica.
+• O pedido que se desdobrou em três tarefas.
+• A tarefa que só faz sentido junto com outra, sem que uma dependa da outra para andar.
+
+<b>🔧 De quebra: selo que sumia do card</b>
+
+• <b>O selo de conversa voltou a aparecer.</b> No rodapé do card, o segundo selo passava 2px da largura disponível e era cortado por inteiro — sem aviso: o card dizia que não havia conversa nenhuma. Apareceu ao medir o selo novo, e valia para 2 dos 17 cards do quadro de teste.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

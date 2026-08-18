@@ -218,6 +218,17 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('tarefas.itens.destroy')
         ->middleware('permissao:tarefas');
 
+    // Vínculo entre tarefas: as DUAS rotas pendem das duas pontas, porque o
+    // vínculo é simétrico e não tem lado dono. Desvincular nomeia a outra
+    // tarefa na URL em vez de um id de linha da tabela: não há uma linha, há
+    // duas — uma por sentido —, e apagar "o vínculo 37" deixaria a de volta.
+    Route::post('tarefas/{tarefa}/vinculos', [TarefaController::class, 'vincular'])
+        ->name('tarefas.vinculos.store')
+        ->middleware('permissao:tarefas');
+    Route::delete('tarefas/{tarefa}/vinculos/{outra}', [TarefaController::class, 'desvincular'])
+        ->name('tarefas.vinculos.destroy')
+        ->middleware('permissao:tarefas');
+
     // Anexos: anexar pende da tarefa (é ela que ganha o arquivo); ver e
     // remover pendem do anexo, que já sabe de quem é — mesma divisão do
     // checklist, pelo mesmo motivo.

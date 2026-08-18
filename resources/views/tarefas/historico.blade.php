@@ -287,6 +287,28 @@
                     </div>
                 @endif
 
+                {{-- Listagem própria pelo mesmo motivo do checklist acima: a
+                     `_vinculos` é o modo de edição — campo de vincular, ✕ de
+                     desvincular — e aqui o vínculo é registro. O número e o
+                     título bastam: o ponto da etapa contaria em que pé está uma
+                     tarefa que talvez já tenha encerrado também. --}}
+                @if ($tarefa->vinculadas->isNotEmpty())
+                    <div>
+                        <div class="flex items-center gap-2 mb-2.5">
+                            <h4 class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Tarefas vinculadas</h4>
+                            <span class="font-mono text-[10.5px] text-ink-mute">{{ $tarefa->vinculadas->count() }}</span>
+                        </div>
+                        <ul class="flex flex-col gap-1.5">
+                            @foreach ($tarefa->vinculadas as $vinculada)
+                                <li class="flex items-start gap-2 text-[12.5px]">
+                                    <span class="shrink-0 font-mono text-[11px] text-ink-mute">{{ $vinculada->codigo() }}</span>
+                                    <span class="min-w-0 text-ink">{{ $vinculada->titulo }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 @if ($tarefa->anexos->isNotEmpty())
                     @include('tarefas._anexos', ['tarefa' => $tarefa, 'somenteLeitura' => true])
                 @endif

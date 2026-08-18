@@ -698,3 +698,34 @@
   etapa e o endereço da lista nos dois manipuladores de arrasto, que o
   `data-cards` já diz, e a indentação de seis linhas do `@dragstart` — e o quadro
   de 120 tarefas ficou 10 KB MAIS LEVE do que antes das duas correções.
+
+## T-156 — Vínculo simétrico entre tarefas [concluida]
+- Refs: US-097, AC-366, AC-367, AC-368, AC-369, AC-370, AC-371
+- Arquivos: database/migrations/2026_08_18_120000_vincular_tarefas_entre_si.php, app/Models/Tarefa.php, app/Http/Controllers/TarefaController.php, routes/web.php, resources/views/components/nav-icon.blade.php, resources/views/tarefas/_vinculos.blade.php, resources/views/tarefas/_vinculos-envios.blade.php, resources/views/tarefas/_form.blade.php, resources/views/tarefas/_modais.blade.php, resources/views/tarefas/_card.blade.php, resources/views/tarefas/historico.blade.php, tests/Feature/TarefasDesenvolvimento/VinculoEntreTarefasTest.php
+- Esforço: medio
+- Notas: pedido do dono em 18/08/2026 — "vincular nova tarefa ou qualquer tarefa
+  a uma tarefa já existente". O tipo de vínculo foi escolhido por ele no mesmo
+  dia, entre simétrico, mãe/subtarefa e depende/bloqueia: ficou o simétrico, pelo
+  argumento que já tinha tirado a subtarefa do escopo quando o checklist entrou.
+  Duas linhas por vínculo, uma por sentido, e não um par canônico: `belongsToMany`
+  não sabe ler par canônico, e cada leitura viraria união de duas consultas —
+  inclusive a do quadro, que carrega o vínculo de sessenta cards de uma vez. Quem
+  mantém o par são `vincularCom` e `desvincularDe`, no modelo.
+  A escolha da tarefa é por NÚMERO digitado, e não por `<select>`: todo recorte
+  possível para uma lista fechada deixa sem caminho quem aponta para a tarefa
+  antiga que explica esta. Duas coisas mudaram durante a implementação: a lista
+  de sugestão saiu do modal de nova tarefa — ele é desenhado junto com o quadro,
+  e a sugestão levava para dentro dele o título de toda tarefa aberta, inclusive
+  os que o filtro tinha acabado de esconder (foi o `RaiaComFiltroTest` que
+  pegou); e o selo do card SAIU do rodapé.
+  O selo é a segunda correção que a medição impôs. Ele nasceu por último na tira
+  do rodapé, pelo argumento de que era o único selo que não falava do trabalho da
+  própria tarefa — e simplesmente não aparecia: a tira recebe 49px e a soma dava
+  51 (tempo 24 + vão 7 + elo 20), então ele quebrava para a segunda linha que o
+  `overflow-hidden` corta. Foi para a linha do número, onde sobram 141px e onde
+  faz mais sentido: o número é a moeda do vínculo. De quebra, a medição revelou
+  um defeito ANTERIOR — o selo de conversa sumia do mesmo jeito, em 2 dos 17
+  cards do quadro de teste. O vão entre selos caiu para 4px (o mesmo do grupo de
+  botões; os 7px da spec separam os BLOCOS do rodapé, não os selos de dentro de
+  um bloco), e nenhum selo é mais cortado (AC-371).
+
