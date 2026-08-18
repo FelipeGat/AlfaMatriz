@@ -224,6 +224,78 @@ class FiltrosTarefasTest extends TestCase
         }
     }
 
+    /**
+     * A prioridade aceita MAIS DE UMA ao mesmo tempo (pedido do dono em
+     * 18/08/2026): "as altas e as críticas" é uma pergunta só, e o campo de
+     * valor único obrigava a fazê-la em duas viagens. O formato do formulário
+     * (array) e o digitável (vírgula) respondem igual, porque a URL é
+     * compartilhável e ninguém deveria adivinhar qual dos dois cola.
+     */
+    public function test_filtro_de_prioridade_aceita_mais_de_uma_ao_mesmo_tempo(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        $critica = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'prioridade' => 'critica', 'status' => 'backlog',
+        ]);
+        $alta = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'prioridade' => 'alta', 'status' => 'backlog',
+        ]);
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'prioridade' => 'baixa', 'status' => 'backlog',
+        ]);
+
+        foreach ([
+            ['prioridade' => ['critica', 'alta']],
+            ['prioridade' => 'critica,alta'],
+        ] as $consulta) {
+            $resposta = $this->actingAs($usuario)->get(route('tarefas.index', $consulta))->assertOk();
+
+            $this->assertEqualsCanonicalizing(
+                [$critica->id, $alta->id],
+                $resposta->viewData('tarefas')->pluck('id')->all(),
+                'As duas prioridades pedidas precisam responder juntas.'
+            );
+        }
+    }
+
+    /**
+     * Cada prioridade ligada vira pílula própria no cabeçalho, e o ✕ de cada
+     * uma tira SÓ ela: `valor` é o que sobra do campo depois do clique — nulo
+     * quando não sobra nada, para o parâmetro sair da URL em vez de ficar
+     * vazio. É o "remover separadamente" do pedido; o "todos de uma vez" é o
+     * limpar do próprio dropdown mais o Limpar recorte, que já existiam.
+     */
+    public function test_cada_prioridade_ligada_vira_pilula_que_tira_so_ela(): void
+    {
+        $usuario = User::factory()->create();
+        Tarefa::factory()->create([
+            'criado_por_id' => User::factory(), 'status' => 'backlog',
+        ]);
+
+        $resposta = $this->actingAs($usuario)
+            ->get(route('tarefas.index', ['prioridade' => ['critica', 'alta']]))
+            ->assertOk();
+
+        $pilulas = collect($resposta->viewData('recortes'))
+            ->where('parametro', 'prioridade')->values();
+
+        $this->assertSame(['Prioridade crítica', 'Prioridade alta'], $pilulas->pluck('rotulo')->all());
+        $this->assertSame([['alta'], ['critica']], $pilulas->pluck('valor')->all(),
+            'O ✕ de uma pílula deixa a outra prioridade valendo.');
+
+        // Com uma só, o clique tira o parâmetro inteiro — como os demais campos.
+        $sozinha = $this->actingAs($usuario)
+            ->get(route('tarefas.index', ['prioridade' => ['critica']]))
+            ->assertOk();
+
+        $this->assertSame(
+            [null],
+            collect($sozinha->viewData('recortes'))->where('parametro', 'prioridade')->pluck('valor')->all()
+        );
+    }
+
     public function test_filtro_acha_o_que_nao_tem_dono(): void
     {
         $usuario = User::factory()->create();
@@ -265,7 +337,15 @@ class FiltrosTarefasTest extends TestCase
             ->assertOk();
 
         $this->assertCount(2, $resposta->viewData('tarefas'));
-        $this->assertSame('', $resposta->viewData('filtros')['prioridade']);
+        $this->assertSame([], $resposta->viewData('filtros')['prioridade']);
+
+        // O mesmo vale no formato de lista: o valor inventado sai e o válido
+        // fica — a URL não pode quebrar o recorte inteiro por um item errado.
+        $misturada = $this->actingAs($usuario)
+            ->get(route('tarefas.index', ['prioridade' => ['urgentissima', 'baixa']]))
+            ->assertOk();
+
+        $this->assertSame(['baixa'], $misturada->viewData('filtros')['prioridade']);
     }
 
     public function test_filtro_em_array_na_url_nao_quebra_a_tela(): void

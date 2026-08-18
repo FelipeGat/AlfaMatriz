@@ -521,6 +521,67 @@ class CardTarefaTest extends TestCase
     }
 
     /**
+     * O card diz quem ABRIU a tarefa, e QUANDO (pedidos do dono em
+     * 18/08/2026): o rodapé nomeia com quem ela está, mas quem a pediu só
+     * existia dentro do detalhe — e "de quem veio este pedido?" é pergunta
+     * que se faz olhando o quadro. Dito por extenso ("Criada por"), porque um
+     * segundo nome solto no card se leria como outro responsável; a régua do
+     * nome é a do rodapé — primeiro e último, com o inteiro no `title`. A
+     * data entra porque o card só tinha tempo relativo ("17h"), que obriga a
+     * conta de cabeça.
+     */
+    public function test_o_card_diz_quem_criou_a_tarefa_e_quando(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create(['name' => 'Ana Souza Lima']);
+
+        Carbon::setTestNow(Carbon::parse('2026-08-15 14:32:00'));
+        Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'titulo' => 'Pedida pela Ana', 'status' => 'backlog',
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-08-18 09:00:00'));
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // O `title` carrega tudo; na linha, nome e data são spans separados —
+        // o nome trunca quando falta largura, a data aparece sempre inteira.
+        $this->assertStringContainsString('title="Criada por Ana Souza Lima em 15/08/2026 14:32"', $html);
+        $this->assertMatchesRegularExpression('/>\s*Criada por Ana Lima\s*<\/span>/u', $html);
+        $this->assertMatchesRegularExpression('/>\s*15\/08\/2026 14:32\s*<\/span>/u', $html);
+
+        Carbon::setTestNow();
+    }
+
+    /**
+     * O selo de tempo continua curto ("17h") — é o sinal de envelhecimento —,
+     * mas o `title` dele passa a dizer o INSTANTE em que a tarefa entrou na
+     * etapa: "desde quando" sem custar a largura do rodapé.
+     */
+    public function test_o_selo_de_tempo_diz_desde_quando_no_title(): void
+    {
+        $usuario = User::factory()->create();
+        $criador = User::factory()->create();
+
+        Carbon::setTestNow(Carbon::parse('2026-08-10 06:00:00'));
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $criador->id, 'status' => 'em_desenvolvimento',
+        ]);
+        TarefaEvento::create([
+            'tarefa_id' => $tarefa->id,
+            'de_status' => 'backlog',
+            'para_status' => 'em_desenvolvimento',
+            'entrou_em' => now(),
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-08-10 09:00:00'));
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Na etapa desde 10/08/2026 06:00 · há 3h', $html);
+
+        Carbon::setTestNow();
+    }
+
+    /**
      * @spec:AC-130 A falta de responsável é dita no card, não deduzida da ausência do nome.
      */
     public function test_card_sem_responsavel_diz_que_nao_tem(): void

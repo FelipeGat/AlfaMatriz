@@ -202,13 +202,14 @@ class TarefaController extends Controller
         // conversa; `anexos` porque ele conta os anexos; `itens` pelo "3/5".
         // `perguntaPara` entra porque a tarja de pergunta nomeia quem deve a
         // resposta — sem ele, cada card com conversa aberta faz a própria
-        // consulta pelo nome.
+        // consulta pelo nome. `criadoPor` pela linha "Criada por" do card,
+        // pela mesma conta.
         //
         // Sem os AUTORES de comentário e de anexo: quem os nomeava era o modal,
         // e ele saiu daqui — agora é buscado no clique, com o próprio eager
         // load (ver `modal()`). Carregá-los aqui era trazer duas relações
         // inteiras por card para não imprimir nenhuma delas.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'eventos', 'comentarios', 'itens', 'perguntaPara', 'anexos'])
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios', 'itens', 'perguntaPara', 'anexos'])
             ->whereIn('status', $emCurso->keys())
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('created_at')
@@ -407,7 +408,7 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
+        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
             ->findOrFail($tarefa->id);
 
         return response()->view('tarefas._modais', [
@@ -559,8 +560,9 @@ class TarefaController extends Controller
         }
 
         // Qualquer recorte conta, inclusive a busca: procurar uma tarefa
-        // específica é justamente quando a grade mais atrapalha.
-        return collect($filtros)->contains(fn ($valor) => $valor !== '');
+        // específica é justamente quando a grade mais atrapalha. Prioridade é
+        // lista, e lista vazia é a mesma coisa que o texto vazio dos demais.
+        return collect($filtros)->contains(fn ($valor) => $valor !== '' && $valor !== []);
     }
 
     private function raias(Request $request, $tarefas, $emCurso, array $filtros): array
@@ -644,8 +646,8 @@ class TarefaController extends Controller
      * na URL — o filtro não acha nada, mas a pílula continua oferecendo a
      * saída.
      *
-     * @param  array<string, string>  $filtros
-     * @return list<array{parametro: string, rotulo: string}>
+     * @param  array<string, string|list<string>>  $filtros
+     * @return list<array{parametro: string, rotulo: string, valor?: ?list<string>}>
      */
     private function filtrosAtivos(array $filtros): array
     {
@@ -658,14 +660,28 @@ class TarefaController extends Controller
                 ? 'Sem responsável'
                 : (User::find($valor)?->name ?? 'este responsável'),
             'tipo' => fn (string $valor) => Tarefa::TIPOS[$valor] ?? $valor,
-            'prioridade' => fn (string $valor) => 'Prioridade '.mb_strtolower(Tarefa::PRIORIDADES[$valor] ?? $valor),
         ];
 
-        return collect($rotulos)
+        $pilulas = collect($rotulos)
             ->filter(fn ($rotulo, $campo) => ($filtros[$campo] ?? '') !== '')
             ->map(fn ($rotulo, $campo) => ['parametro' => $campo, 'rotulo' => $rotulo($filtros[$campo])])
-            ->values()
-            ->all();
+            ->values();
+
+        // Prioridade aceita mais de uma ao mesmo tempo, então é uma pílula POR
+        // PRIORIDADE ligada, e não uma para o campo: o ✕ de cada uma tira só
+        // ela. `valor` é o que sobra do campo depois do clique — nulo quando
+        // não sobra nada, para o parâmetro sair da URL em vez de ficar vazio.
+        foreach ($filtros['prioridade'] as $valor) {
+            $restantes = array_values(array_diff($filtros['prioridade'], [$valor]));
+
+            $pilulas->push([
+                'parametro' => 'prioridade',
+                'rotulo' => 'Prioridade '.mb_strtolower(Tarefa::PRIORIDADES[$valor] ?? $valor),
+                'valor' => $restantes === [] ? null : $restantes,
+            ]);
+        }
+
+        return $pilulas->all();
     }
 
     /**
@@ -1477,7 +1493,7 @@ class TarefaController extends Controller
             // Recarregado do banco com as relações que as partials leem: o
             // model que chegou pelo route binding traz o estado de ANTES da
             // ação, e a conversa recém-publicada não estaria nele.
-            $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
+            $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
                 ->find($tarefa->id);
         }
 
@@ -1943,11 +1959,10 @@ class TarefaController extends Controller
      * Prioridade e desfecho passam por lista branca: valor inventado na URL
      * vira "sem filtro" em vez de devolver uma tela vazia sem explicação.
      *
-     * @return array<string, string>
+     * @return array<string, string|list<string>>
      */
     private function filtros(Request $request): array
     {
-        $prioridade = $this->textoDaQuery($request, 'prioridade');
         $desfecho = $this->textoDaQuery($request, 'desfecho');
         $tipo = $this->textoDaQuery($request, 'tipo');
         $situacao = $this->textoDaQuery($request, 'situacao');
@@ -1956,7 +1971,7 @@ class TarefaController extends Controller
             'busca' => $this->textoDaQuery($request, 'busca'),
             'sistema' => $this->textoDaQuery($request, 'sistema'),
             'responsavel' => $this->textoDaQuery($request, 'responsavel'),
-            'prioridade' => array_key_exists($prioridade, Tarefa::PRIORIDADES) ? $prioridade : '',
+            'prioridade' => $this->prioridadesDaQuery($request),
             // Com os dois tipos no mesmo quadro, "quero ver só o
             // desenvolvimento" passou a ser uma pergunta que a tela recebe.
             'tipo' => array_key_exists($tipo, Tarefa::TIPOS) ? $tipo : '',
@@ -1982,6 +1997,42 @@ class TarefaController extends Controller
         $valor = $request->query($campo, '');
 
         return is_string($valor) ? trim($valor) : '';
+    }
+
+    /**
+     * As prioridades pedidas na query string, como LISTA.
+     *
+     * Mais de uma pode vir ligada ao mesmo tempo (pedido do dono em
+     * 18/08/2026): "as altas e as críticas" é uma pergunta só, e o campo de
+     * valor único obrigava a fazê-la em duas viagens. Aceita o formato do
+     * formulário (`?prioridade[]=alta&prioridade[]=critica`) e o de quem
+     * digita a URL (`?prioridade=alta,critica` ou um valor só).
+     *
+     * A mesma lista branca do resto do recorte: valor inventado simplesmente
+     * não filtra, e a URL continua digitável por qualquer um — inclusive o
+     * item que não for string dentro do array.
+     *
+     * @return list<string>
+     */
+    private function prioridadesDaQuery(Request $request): array
+    {
+        $valores = $request->query('prioridade', []);
+
+        if (is_string($valores)) {
+            $valores = explode(',', $valores);
+        }
+
+        if (! is_array($valores)) {
+            return [];
+        }
+
+        return collect($valores)
+            ->filter(fn ($valor) => is_string($valor))
+            ->map(fn (string $valor) => trim($valor))
+            ->filter(fn (string $valor) => array_key_exists($valor, Tarefa::PRIORIDADES))
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
@@ -2056,7 +2107,7 @@ class TarefaController extends Controller
             ->when($filtros['responsavel'] === 'sem', fn ($q) => $q->whereNull('responsavel_id'))
             ->when($filtros['responsavel'] !== '' && $filtros['responsavel'] !== 'sem',
                 fn ($q) => $q->where('responsavel_id', $filtros['responsavel']))
-            ->when($filtros['prioridade'] !== '', fn ($q) => $q->where('prioridade', $filtros['prioridade']))
+            ->when($filtros['prioridade'] !== [], fn ($q) => $q->whereIn('prioridade', $filtros['prioridade']))
             ->when($filtros['tipo'] !== '', fn ($q) => $q->where('tipo', $filtros['tipo']))
             ->when(($filtros['situacao'] ?? '') === 'esperando_mim',
                 fn ($q) => $q->esperandoRespostaDe(auth()->id()))

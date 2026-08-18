@@ -119,9 +119,12 @@
                      pedir a tarefa a alguém — e `truncate` no lugar do
                      `whitespace-nowrap`: com um item a mais, a linha que não
                      coubesse passaria a pintar por cima do botão de fechar em
-                     vez de cortar. --}}
+                     vez de cortar. O "desde" é o instante absoluto do "há 17h"
+                     (pedido do dono em 18/08/2026), como no title do selo do
+                     card — e vem por ÚLTIMO de propósito: numa tela estreita o
+                     truncate corta a data e preserva o número e a etapa. --}}
                 <p class="mt-px font-mono text-[10px] uppercase tracking-[0.12em] text-ink-faint truncate">
-                    {{ $tarefa->codigo() }} · {{ \App\Models\Tarefa::rotuloDaEtapa($tarefa->status) }} · há {{ $tempoNaEtapa }}
+                    {{ $tarefa->codigo() }} · {{ \App\Models\Tarefa::rotuloDaEtapa($tarefa->status) }} · há {{ $tempoNaEtapa }} · desde {{ $entrouEm->format('d/m/Y H:i') }}
                 </p>
             @endif
         </div>
@@ -149,6 +152,14 @@
             <div class="contents" data-pedaco="avisos-{{ $tarefa->id }}">
                 @include('tarefas._avisos-da-tarefa', ['tarefa' => $tarefa])
             </div>
+
+            {{-- Quem abriu a tarefa e quando (pedido do dono em 18/08/2026),
+                 como no card — aqui há largura, então o nome vai inteiro e a
+                 linha é prosa. ABAIXO dos avisos de propósito: pergunta,
+                 retorno e bloqueio são notícia; a origem é contexto. --}}
+            <p class="text-[11.5px] leading-[1.4] text-ink-faint">
+                Criada {{ $tarefa->criadoPor ? 'por '.$tarefa->criadoPor->name.' ' : '' }}em {{ $tarefa->created_at->format('d/m/Y H:i') }}
+            </p>
         @endif
 
         <div>

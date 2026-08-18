@@ -44,12 +44,19 @@ class QuadroLeveTest extends TestCase
 
     /**
      * @spec:AC-240 O HTML do quadro para de crescer com o volume: com 120
-     * tarefas a tela fica abaixo de 2 MB, onde antes passava de 5 MB.
+     * tarefas a tela fica abaixo de 2,1 MB, onde antes passava de 5 MB.
      *
-     * O teto é 2 MB e não 1,5 MB porque o que sobra depois dos modais é card:
-     * ~16 KB cada, e cento e vinte deles dão 1,9 MB. Cortar mais exige mexer
-     * em onde o painel de motivo aparece — está em Q-019, e é decisão de
-     * produto.
+     * O teto foi 2 MB e não 1,5 MB porque o que sobra depois dos modais é
+     * card: ~16 KB cada, e cento e vinte deles dão 1,9 MB. Cortar mais exige
+     * mexer em onde o painel de motivo aparece — está em Q-019, e é decisão
+     * de produto.
+     *
+     * Recalibrado para 2,1 MB em 18/08/2026, pelo mesmo critério do teto do
+     * `PainelDoMotivoTest`: o card ganhou a linha "Criada por" (pedido do
+     * dono em 18/08/2026), ~180 bytes × 120 cards, e o teto antigo estava a
+     * 8 KB do valor medido — perto demais para distinguir a regressão vigiada
+     * (os modais de volta, +3,5 MB) de qualquer linha que o card ganhe de
+     * propósito. Sobram ~86 KB de folga, e a regressão continua estourando.
      */
     public function test_o_html_do_quadro_para_de_crescer_com_o_volume(): void
     {
@@ -59,7 +66,7 @@ class QuadroLeveTest extends TestCase
         $bytes = strlen($this->actingAs($usuario)
             ->get(route('tarefas.index'))->assertOk()->getContent());
 
-        $this->assertLessThan(2_000_000, $bytes, sprintf(
+        $this->assertLessThan(2_100_000, $bytes, sprintf(
             'O quadro com 120 tarefas voltou a pesar %.1f MB — o modal de cada '.
             'tarefa voltou para o HTML da tela.', $bytes / 1_048_576
         ));

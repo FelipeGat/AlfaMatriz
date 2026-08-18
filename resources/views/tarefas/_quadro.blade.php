@@ -128,7 +128,11 @@
         @if ($recortes)
             <span class="shrink-0 font-mono text-[10px] uppercase tracking-caps text-ink-faint">Recorte</span>
             @foreach ($recortes as $recorte)
-                <a href="{{ request()->fullUrlWithQuery([$recorte['parametro'] => null]) }}"
+                {{-- `valor` é o que SOBRA do campo depois do ✕ — a prioridade
+                     aceita várias ao mesmo tempo, e a pílula de uma não pode
+                     levar as outras junto. Nos campos de valor único ele não
+                     vem, e o clique tira o parâmetro inteiro como sempre. --}}
+                <a href="{{ request()->fullUrlWithQuery([$recorte['parametro'] => $recorte['valor'] ?? null]) }}"
                    data-tirar-filtro="{{ $recorte['parametro'] }}"
                    title="Tirar este filtro do recorte"
                    class="shrink-0 h-[26px] px-2.5 rounded-badge border border-line flex items-center gap-1.5

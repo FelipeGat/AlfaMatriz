@@ -4,9 +4,11 @@ namespace Tests\Feature\TarefasDesenvolvimento;
 
 use App\Models\Sistema;
 use App\Models\Tarefa;
+use App\Models\TarefaEvento;
 use App\Models\User;
 use App\Services\FluxoTarefaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
@@ -71,6 +73,39 @@ class ModalDaTarefaTest extends TestCase
 
         // O ponto de 7px na cor da etapa, como no cabeçalho da coluna.
         $this->assertStringContainsString('h-[7px] w-[7px] shrink-0 rounded-full', $modal);
+    }
+
+    /**
+     * O modal também diz QUEM abriu a tarefa e QUANDO, e o instante absoluto
+     * do "há Xh" do cabeçalho (pedidos do dono em 18/08/2026) — as mesmas
+     * informações que o card ganhou, para a resposta não morar só no quadro.
+     */
+    public function test_o_modal_diz_quem_criou_quando_e_desde_quando_na_etapa(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-15 14:32:00'));
+        [$tarefa, $dono] = $this->tarefaCompleta();
+
+        // A etapa atual começa em outro instante que não a criação, para a
+        // asserção do "desde" provar que ele vem do evento aberto — e não de
+        // um `created_at` repetido.
+        Carbon::setTestNow(Carbon::parse('2026-08-17 10:00:00'));
+        TarefaEvento::create([
+            'tarefa_id' => $tarefa->id,
+            'de_status' => 'em_desenvolvimento',
+            'para_status' => 'em_revisao',
+            'entrou_em' => now(),
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-08-18 09:00:00'));
+        $modal = $this->modalDe($tarefa, $dono);
+
+        // A linha de origem, em prosa e com o nome inteiro — no modal há largura.
+        $this->assertStringContainsString('Criada por Camila Reis em 15/08/2026 14:32', $modal);
+
+        // O cabeçalho ancora o "há Xh" no instante em que a etapa começou.
+        $this->assertStringContainsString('desde 17/08/2026 10:00', $modal);
+
+        Carbon::setTestNow();
     }
 
     /**

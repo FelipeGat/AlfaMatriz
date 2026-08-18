@@ -111,20 +111,23 @@
         : null;
 
     /**
-     * Primeiro e último nome do responsável.
+     * Primeiro e último nome — a régua vale para o responsável e o criador.
      *
-     * O nome inteiro não cabe no rodapé, e o pedaço que sobra tem de ser o que
+     * O nome inteiro não cabe no card, e o pedaço que sobra tem de ser o que
      * distingue: só o primeiro nome empata duas Julianas do time, e o `title`
      * com o nome completo continua a um passe de mouse. Nome único fica como
      * está — repeti-lo em vez de acusar a falta do sobrenome seria pior.
      */
+    $primeiroEUltimo = function (?string $nome): ?string {
+        $partes = \Illuminate\Support\Str::of((string) $nome)->squish()->explode(' ')->filter()->values();
+
+        return $partes->count() > 1
+            ? $partes->first().' '.$partes->last()
+            : $partes->first();
+    };
     $responsavel = $tarefa->responsavel;
-    $partesDoNome = $responsavel
-        ? \Illuminate\Support\Str::of($responsavel->name)->squish()->explode(' ')->filter()->values()
-        : collect();
-    $nomeCurto = $partesDoNome->count() > 1
-        ? $partesDoNome->first().' '.$partesDoNome->last()
-        : $partesDoNome->first();
+    $nomeCurto = $primeiroEUltimo($responsavel?->name);
+    $criadorCurto = $primeiroEUltimo($tarefa->criadoPor?->name);
 
     $progresso = $tarefa->progressoDoChecklist();
     $totalComentarios = $tarefa->comentarios->count();
@@ -189,6 +192,32 @@
         <p class="mt-[5px] text-[12px] leading-[1.4] text-ink-mute truncate"
            title="{{ $tarefa->resumo }}">{{ $tarefa->resumo }}</p>
     @endif
+
+    {{-- Quem ABRIU a tarefa, e QUANDO (pedidos do dono em 18/08/2026). O
+         rodapé nomeia com quem ela está, mas quem a pediu só existia dentro
+         do detalhe — e "de quem veio este pedido?" é pergunta que se faz
+         olhando o quadro, sobretudo na fila de triagem. Dito por extenso
+         ("Criada por") porque um segundo nome solto no card se leria como
+         outro responsável. A data vai por extenso pelo mesmo motivo do
+         timestamp: o card só tinha tempo RELATIVO ("17h"), que obriga a conta
+         de cabeça — a data diz de uma vez. `d/m/Y H:i` é o formato da linha
+         do tempo e do histórico. Sem criador a linha continua, só com a data:
+         o "quando" não depende do "quem". --}}
+    {{-- Nome e data em flex, como o rodapé: quem cede é o NOME, que trunca
+         com o inteiro no `title`; a data é `shrink-0` e aparece sempre
+         inteira — truncada no meio ("14/08/2026 00…") ela era exatamente a
+         metade de timestamp que a armadilha 19 manda não mostrar.
+         `items-baseline` porque texto ao lado de texto alinha pela linha de
+         base. --}}
+    <p class="mt-[5px] flex items-baseline gap-2 text-[11.5px] leading-[1.4] text-ink-faint"
+       title="Criada {{ $tarefa->criadoPor ? 'por '.$tarefa->criadoPor->name.' ' : '' }}em {{ $tarefa->created_at->format('d/m/Y H:i') }}">
+        @if ($tarefa->criadoPor)
+            <span class="min-w-0 flex-1 truncate">Criada por {{ $criadorCurto }}</span>
+            <span class="shrink-0">{{ $tarefa->created_at->format('d/m/Y H:i') }}</span>
+        @else
+            <span class="min-w-0 flex-1 truncate">Criada em {{ $tarefa->created_at->format('d/m/Y H:i') }}</span>
+        @endif
+    </p>
 
     {{--
         A tarja de pergunta.
@@ -426,7 +455,11 @@
             moram completas dentro da tarefa.
         --}}
         <div class="min-w-0 shrink h-[19px] flex flex-wrap items-center gap-[7px] overflow-hidden">
-            <span title="Na etapa há {{ $tempoNaEtapa }}"
+            {{-- O selo continua curto ("17h") — é o sinal de envelhecimento,
+                 e data completa ali estouraria a linha (armadilha 19). O
+                 INSTANTE absoluto vai no title: quem quer saber "desde
+                 quando" para o mouse em cima, sem custar largura. --}}
+            <span title="Na etapa desde {{ $entrouNaEtapaEm->format('d/m/Y H:i') }} · há {{ $tempoNaEtapa }}"
                   class="shrink-0 px-1.5 py-0.5 rounded-badge font-mono text-[10px] font-semibold"
                   style="{{ $estiloDoTempo }}">
                 {{ $tempoNaEtapa }}
