@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class TarefaController extends Controller
@@ -48,7 +49,126 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        return view('tarefas.index', $this->dadosDoQuadro($request));
+        // A assinatura é lida ANTES do quadro, e a ordem é o que importa: se
+        // alguém gravar entre as duas leituras, a página nasce com a assinatura
+        // velha e a primeira pergunta traz o quadro de novo. Ao contrário, ela
+        // nasceria afirmando já ter o que não tem — e a mudança só apareceria
+        // na gravação seguinte.
+        $assinatura = $this->assinaturaDoQuadro();
+
+        return view('tarefas.index', $this->dadosDoQuadro($request) + compact('assinatura'));
+    }
+
+    /**
+     * O quadro que mudou na mão de OUTRA pessoa.
+     *
+     * O quadro é de time: a mesma tarefa passa por três pessoas no mesmo dia, e
+     * até aqui a tela só via o que a PRÓPRIA pessoa fazia. Quem a deixava
+     * aberta trabalhava sobre o retrato do momento em que abriu — movia um card
+     * que já tinha sido movido e recebia "Alguém já moveu esta tarefa", que é a
+     * recusa certa dita tarde demais (ver `mover`).
+     *
+     * O que viaja na pergunta é a ASSINATURA, não o quadro. Sem esse atalho,
+     * perguntar de trinta em trinta segundos significaria montar e mandar os
+     * ~900 KB do quadro por pessoa e por pergunta — o mesmo peso que fez as
+     * ações do modal pararem de devolver o quadro inteiro (ver
+     * `respostaParcial`). Com ele, o caso comum — nada mudou — são cinco
+     * contagens e duas chaves de resposta.
+     *
+     * Só leitura, e por isso `permissao:tarefas` sem `editar`: quem enxerga o
+     * quadro pode vê-lo atualizar.
+     */
+    public function atualizacoes(Request $request)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $assinatura = $this->assinaturaDoQuadro();
+
+        if ($assinatura === $this->textoDaQuery($request, 'assinatura')) {
+            return response()->json(['quadro' => null, 'assinatura' => $assinatura]);
+        }
+
+        // O quadro do RECORTE de quem pergunta: a query string viaja junto no
+        // `fetch`, como já acontece nas ações parciais. Sem ela, a atualização
+        // automática desfaria sozinha o filtro que estava na tela.
+        //
+        // A assinatura devolvida é a de cima, lida antes do quadro, pela mesma
+        // razão do `index`: quem grava no meio da montagem tem de aparecer na
+        // pergunta seguinte, não ser dado como já visto.
+        return response()->json([
+            'quadro' => view('tarefas._quadro', $this->dadosDoQuadro($request))->render(),
+            'assinatura' => $assinatura,
+        ]);
+    }
+
+    /**
+     * A impressão digital do quadro em curso.
+     *
+     * Ela existe para "mudou alguma coisa?" custar cinco contagens em vez do
+     * quadro inteiro. Cada tabela entra com três marcas, e as três são
+     * necessárias: `count` vê o que foi apagado, `max(id)` vê o que nasceu,
+     * `max(updated_at)` vê o que foi editado no lugar — um comentário corrigido
+     * não muda nem a contagem nem o maior id, e a tarja de pergunta do card é
+     * justamente texto de comentário.
+     *
+     * Os filhos entram porque nenhum deles carimba a tarefa (nenhum declara
+     * `$touches`): o "3/5" do checklist, a contagem de anexos e a conversa
+     * mudam com a linha de `tarefas` intacta.
+     *
+     * Ela mede o quadro INTEIRO, sem os filtros de quem pergunta, porque os
+     * chips do cabeçalho e o "X de Y" também medem o quadro inteiro — mudança
+     * fora do recorte muda o que está na tela. O preço é um redesenho a mais
+     * quando a mudança não aparece em card nenhum.
+     *
+     * Fica de fora o que muda com o RELÓGIO e não com o dado: o chip de tempo
+     * na etapa envelhece sozinho e não é motivo para redesenhar. Ele acerta na
+     * primeira mudança de verdade, e é o mesmo acerto de quem recarrega.
+     *
+     * Limite conhecido: `updated_at` tem precisão de segundo, então duas
+     * gravações no MESMO segundo — com a leitura caindo exatamente entre elas —
+     * dão a mesma marca. A janela é de fração de segundo e se corrige sozinha:
+     * qualquer mudança seguinte, de qualquer tipo, muda a assinatura.
+     */
+    private function assinaturaDoQuadro(): string
+    {
+        $emCurso = collect(Tarefa::STATUS)->reject(
+            fn ($label, $status) => in_array($status, Tarefa::STATUS_TERMINAIS, true)
+        )->keys();
+
+        // `toBase()` e não `DB::table('tarefas')`: a tarefa é apagada em modo
+        // suave, e a consulta crua contaria as excluídas — o quadro voltaria a
+        // mudar de assinatura para sempre depois da primeira exclusão. O
+        // `toBase` aplica os escopos e só então desce ao construtor de consulta,
+        // que é o que permite as três agregações numa viagem só.
+        $doQuadro = fn () => Tarefa::whereIn('status', $emCurso)->toBase();
+
+        $marcas = [$this->marcasDe($doQuadro())];
+
+        foreach (['tarefa_itens', 'tarefa_comentarios', 'tarefa_anexos', 'tarefa_eventos'] as $tabela) {
+            $marcas[] = $this->marcasDe(
+                DB::table($tabela)->whereIn('tarefa_id', $doQuadro()->select('id'))
+            );
+        }
+
+        return md5(implode('|', $marcas));
+    }
+
+    /**
+     * As três marcas de uma tabela, numa consulta só.
+     *
+     * Agregação pura, sem `GROUP BY`: é o que a mantém válida no MySQL do
+     * staging, que roda com `ONLY_FULL_GROUP_BY`.
+     *
+     * `max()` de tabela vazia volta nulo, e o nulo faz parte da assinatura —
+     * quadro sem tarefa nenhuma tem impressão digital como qualquer outro.
+     */
+    private function marcasDe(\Illuminate\Database\Query\Builder $consulta): string
+    {
+        $linha = $consulta
+            ->selectRaw('count(*) as quantas, max(id) as maior, max(updated_at) as ultima')
+            ->first();
+
+        return $linha->quantas.':'.$linha->maior.':'.$linha->ultima;
     }
 
     /**
@@ -1346,6 +1466,11 @@ class TarefaController extends Controller
             }
         }
 
+        // Antes do quadro, pela mesma razão do `index`: quem gravar entre as
+        // duas leituras precisa aparecer na pergunta seguinte da atualização
+        // automática, e não ser dado como já visto.
+        $assinatura = $this->assinaturaDoQuadro();
+
         $dados = $this->dadosDoQuadro($request);
 
         /**
@@ -1406,6 +1531,12 @@ class TarefaController extends Controller
             // o botão que alterna entre travar e destravar.
             'bloqueada' => (bool) $tarefa?->estaBloqueada(),
             'aviso' => $aviso ? view('tarefas._aviso', ['texto' => $aviso, 'tom' => $tom])->render() : null,
+            // A assinatura volta em TODA ação parcial, inclusive nas que não
+            // devolvem o quadro. Sem isso, marcar um item do checklist deixaria
+            // a tela com a assinatura de antes, e a atualização automática
+            // pediria o quadro inteiro trinta segundos depois — desfazendo em
+            // segundo plano a economia que os `pedacos` acabaram de fazer.
+            'assinatura' => $assinatura,
         ]);
     }
 

@@ -603,3 +603,29 @@
   chama `data-tela-cheia`, e não `data-quadro-cheio`, porque já existe um
   `data-quadro` sem relação nenhuma (o contêiner de rolagem) — o nome parecido
   derrubou um teste de raias que assertava a ausência dele.
+
+## T-152 — O quadro se atualiza sozinho [concluida]
+- Refs: US-062, AC-362
+- Arquivos: app/Http/Controllers/TarefaController.php, routes/web.php, resources/views/tarefas/index.blade.php, tests/Feature/TarefasDesenvolvimento/AtualizacaoAutomaticaTest.php
+- Esforço: médio
+- Notas: o quadro é de time e só via o que a PRÓPRIA pessoa fazia — a recusa de
+  movimento sobre movimento alheio (AC-208) chegava certa e tarde. A parte
+  difícil não é perguntar de tempos em tempos, é o PESO: o quadro custa ~900 KB,
+  e foi por isso que as ações do modal pararam de devolvê-lo (AC-229) — pedi-lo
+  de meio em meio minuto por pessoa traria o problema de volta pela porta dos
+  fundos. Daí a assinatura: cinco agregações (`count`, `max(id)`,
+  `max(updated_at)`) sobre `tarefas` e sobre os quatro filhos, e o quadro só
+  volta quando ela muda. As três marcas são todas necessárias — `count` vê o que
+  foi apagado, `max(id)` o que nasceu, `max(updated_at)` o que foi editado no
+  lugar, e comentário corrigido é justamente o caso que não mexe nas duas
+  primeiras. Os filhos entram porque nenhum carimba a tarefa (`$touches`): o
+  "3/5" do checklist e a contagem de anexos mudam com a linha de `tarefas`
+  intacta. Duas ordens importam: a assinatura é lida ANTES do quadro (o
+  contrário afirmaria já ter o que não tem) e ela volta em TODA resposta
+  parcial, inclusive nas que só trocam pedaços. Redesenhar reusa o `aplicar()`
+  das ações parciais, que é o que devolve rolagem, foco e rascunho ao lugar;
+  quatro portas fecham a atualização — aba escondida, envio no ar, card na mão e
+  painel de motivo aberto —, porque HTML novo por baixo de gesto em curso desfaz
+  o gesto. Limite conhecido e documentado: `updated_at` tem precisão de segundo,
+  então duas gravações no mesmo segundo com a leitura entre elas dão a mesma
+  marca — janela de fração de segundo, que qualquer mudança seguinte corrige.

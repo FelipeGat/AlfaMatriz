@@ -148,6 +148,12 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware('permissao:tarefas');
     Route::get('tarefas/historico', [TarefaController::class, 'historico'])->name('tarefas.historico')
         ->middleware('permissao:tarefas');
+    // A pergunta da atualização automática: "mudou alguma coisa desde a
+    // assinatura que eu tenho?". Literal, e por isso antes do `{tarefa}`.
+    // Só leitura — `permissao:tarefas` sem `editar`, como o próprio quadro.
+    Route::get('tarefas/atualizacoes', [TarefaController::class, 'atualizacoes'])
+        ->name('tarefas.atualizacoes')
+        ->middleware('permissao:tarefas');
     // O modal de uma tarefa, buscado no clique. Antes do `{tarefa}` genérico
     // não haveria conflito — `historico` é que precisa vir antes, por ser
     // literal —, mas fica junto do quadro porque é dele que ele é servido.
