@@ -1086,6 +1086,31 @@ gesto, que se deixa para depois.
   tarefa mostrava "Salvando…" num botão morto. Na recusa é pior: ela deixa o
   modal aberto, e era justamente ali que faltava o botão para tentar de novo
 
+#### AC-363 — Desistir de uma tarefa não deixa rascunho para a próxima
+
+- **Dado** que abri "Nova tarefa", digitei o título — e talvez o checklist e um
+  print — e fechei sem salvar
+- **Quando** clico em "Nova tarefa" outra vez
+- **Então** o formulário está vazio. Fechar um modal só o ESCONDE, e o "nova
+  tarefa" é o único que o servidor nunca redesenha: o que foi abandonado
+  continuava de pé no HTML e reaparecia na abertura seguinte como se fosse da
+  tarefa nova — pronto para nascer com o título de outra. A recarga fazia essa
+  limpeza de graça, e foi ela que saiu de cena com o envio parcial (AC-230); o
+  esvaziar depois de gravar já existia, e é o mesmo gesto que faltava para quem
+  desiste
+- **E** quem esvazia é o modal, ao ABRIR: a saída tem transição e o modal
+  continua na tela durante ela, então esvaziar ao fechar seria VISTO, como um
+  piscar do formulário no meio do fecha. E só quando ele estava fechado — com o
+  modal aberto e o foco fora de um campo, a tecla `n` do quadro apagaria o que
+  está sendo digitado
+- **E** o modal de EDIÇÃO não é esvaziado: ali os campos já são o que está
+  gravado, e o mesmo `reset()` desfaria na tela a edição que acabou de gravar. É
+  a razão de `limparModal` ser pedido à parte de `fecharModal`, e por isso a
+  marca é do formulário, não do modal
+- **E** o esvaziar alcança o que o `reset()` do navegador não conhece: o
+  checklist e os anexos da criação vivem em estado do Alpine, e os dois já ouvem
+  o evento `reset` desde que criar deixou de recarregar a página
+
 #### AC-231 — Cada ação manda só o que ela mudou
 
 - **Dado** um quadro com sessenta tarefas

@@ -266,4 +266,40 @@ class ModalDaTarefaTest extends TestCase
 
         $this->assertStringContainsString('#'.$tarefa->id.' · Em revisão', $modal);
     }
+
+    /**
+     * @spec:AC-363 Desistir de uma tarefa não deixa rascunho para a próxima: o "nova
+     * tarefa" é o único modal que o servidor nunca redesenha, e o que foi digitado e
+     * abandonado continuava de pé no HTML até a abertura seguinte.
+     */
+    public function test_a_criacao_se_esvazia_ao_reabrir_e_a_edicao_nao(): void
+    {
+        [$tarefa, $dono] = $this->tarefaCompleta();
+
+        $quadro = $this->actingAs($dono)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // A marca é do FORMULÁRIO — `[^>]*` não atravessa o `>`, então o que
+        // casa aqui é um atributo da própria tag, e não o seletor que o
+        // `x-modal` imprime logo acima dela.
+        $this->assertMatchesRegularExpression('/<form[^>]*data-esvazia-ao-abrir/', $quadro,
+            'O formulário de nova tarefa não pede para ser esvaziado.');
+
+        // A outra metade do contrato, e a razão de o teste existir: renomear um
+        // lado sem o outro não quebra nada na tela — volta o rascunho, em
+        // silêncio. `! show` entra na asserção porque é o que impede a tecla `n`
+        // de apagar o que está sendo digitado num modal já aberto.
+        $this->assertMatchesRegularExpression(
+            '/open-modal\.window="if \([^"]*! show\)[^"]*form\[data-esvazia-ao-abrir\]/',
+            $quadro,
+            'O esvaziar não está preso à abertura de um modal que estava fechado.'
+        );
+
+        // A edição fica fora: ali os campos JÁ são o que está gravado, e o mesmo
+        // `reset()` desfaria na tela a edição que acabou de ser salva.
+        $this->assertDoesNotMatchRegularExpression(
+            '/<form[^>]*data-esvazia-ao-abrir/',
+            $this->modalDe($tarefa, $dono),
+            'O formulário de edição não pode ser esvaziado ao abrir.'
+        );
+    }
 }

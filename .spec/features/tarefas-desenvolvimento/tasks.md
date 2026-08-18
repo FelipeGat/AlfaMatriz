@@ -629,3 +629,24 @@
   o gesto. Limite conhecido e documentado: `updated_at` tem precisão de segundo,
   então duas gravações no mesmo segundo com a leitura entre elas dão a mesma
   marca — janela de fração de segundo, que qualquer mudança seguinte corrige.
+
+## T-153 — Desistir de uma tarefa não deixa rascunho [concluida]
+- Refs: US-064, AC-363
+- Arquivos: resources/views/components/modal.blade.php, resources/views/tarefas/_form.blade.php, tests/Feature/TarefasDesenvolvimento/ModalDaTarefaTest.php
+- Esforço: pequeno
+- Notas: defeito relatado por quem usa — começar uma tarefa, desistir e clicar em
+  "Nova tarefa" de novo reencontrava o título, o checklist e os anexos da
+  tentativa anterior. Fechar um modal só o esconde, e o "nova tarefa" é o único
+  que o servidor nunca redesenha (AC-231): era a recarga que o devolvia limpo, e
+  ela saiu com o envio parcial (AC-230). O esvaziar depois de GRAVAR já existia
+  (`limparModal`); faltava o de quem desiste. Ao ABRIR, e não ao fechar, porque a
+  saída tem transição de 150ms e o modal continua na tela durante ela — esvaziar
+  ali seria visto como um piscar. E só quando estava fechado, senão a tecla `n`
+  com o modal aberto apagaria o que está sendo digitado. `reset()` em vez de
+  campo a campo: ele devolve cada campo ao que o servidor imprimiu e dispara o
+  evento `reset`, de que dependem as listas em Alpine do checklist e dos anexos
+  da criação. É opt-in por atributo no formulário (`data-esvazia-ao-abrir`) e não
+  comportamento do `x-modal`: a edição não pode ser esvaziada, ali os campos já
+  são o que está gravado. O teste assere as DUAS metades — a marca no formulário
+  e o seletor no `x-modal` —, porque renomear um lado sem o outro não quebra nada
+  na tela, só devolve o rascunho, em silêncio.

@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 17/08/2026</b>
+<i>Correção: começar uma tarefa e desistir não deixa rascunho para a próxima</i>
+
+<b>🧹 Nova tarefa abre em branco</b>
+
+• <b>Desistir de uma tarefa não contamina a seguinte.</b> Quem abria "Nova tarefa", digitava e fechava sem salvar reencontrava tudo lá na abertura seguinte — o título, os itens do checklist e os anexos da tentativa anterior, prontos para nascerem como tarefa errada. Agora o formulário abre limpo.
+
+• <b>O que você está digitando continua seguro.</b> A limpeza acontece ao ABRIR, e só quando o formulário estava fechado: com a tarefa nova aberta, nada apaga o que está na tela — nem o atalho de teclado que abre esse mesmo formulário.
+
+• <b>Editar uma tarefa não muda em nada.</b> Ali os campos são o que está gravado, e continuam sendo: salvar uma edição não é desfeito na tela, e o modal da tarefa segue abrindo com o estado atual dela.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
