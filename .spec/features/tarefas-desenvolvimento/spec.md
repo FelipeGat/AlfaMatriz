@@ -1309,6 +1309,94 @@ priorizar, posicionar, excluir.
   se a tarefa é operacional), com o mesmo painel de motivo onde a chegada
   pede texto; quem não triaga continua vendo a lista do fluxo (AC-122)
 
+### US-097 — Tarefa vinculada a tarefa
+
+Como pessoa do time da Alfa, quero ligar uma tarefa a outra que já existe,
+para que quem abrir qualquer uma das duas descubra a outra sem depender de
+alguém ter escrito o número no resumo.
+
+> **Vínculo simétrico, e não hierarquia.** Escolhido pelo dono do produto em
+> 18/08/2026 entre "relacionada a", "mãe/subtarefa" e "depende de/bloqueia".
+> A pergunta que se faz ao vínculo é *com o que mais isto tem a ver* — e
+> hierarquia obrigaria a responder quatro perguntas que ninguém fez: se a mãe
+> conclui com filha aberta, se a filha conta no WIP, de quem é o responsável
+> dela e o que acontece quando a mãe é cancelada. São as mesmas quatro que
+> tiraram a subtarefa do escopo quando o checklist entrou (US-059). Dependência
+> custaria mais ainda: mexeria no `FluxoTarefaService` e em toda transição.
+
+#### AC-366 — O vínculo vale nos dois sentidos
+
+- **Dado** que abro a tarefa A e a vinculo à tarefa B
+- **Quando** abro a tarefa B
+- **Então** a tarefa A aparece na lista de tarefas vinculadas dela, sem que
+  ninguém tenha repetido o vínculo lá — e desfazê-lo de qualquer um dos dois
+  lados o desfaz nos dois
+
+#### AC-367 — Vincula-se pelo NÚMERO da tarefa, não por uma lista fechada
+
+- **Dado** o campo de vínculo, no modal da tarefa ou no de nova tarefa
+- **Quando** digito `412`, `#412` ou a linha inteira que a sugestão preenche
+  (`#412 — Corrigir importação`)
+- **Então** as três formas vinculam a mesma tarefa, e um número que não existe
+  é recusado com "Não existe tarefa com esse número" em vez de vincular outra
+  coisa — a sugestão oferece as tarefas em curso, mas o campo aceita qualquer
+  número, inclusive o de uma tarefa concluída há um ano
+
+> **A lista de sugestão só existe no modal de EDIÇÃO.** O de nova tarefa é
+> desenhado junto com o quadro, em toda carga da página, e a sugestão levaria
+> para dentro dele o título de toda tarefa aberta — inclusive os que o filtro
+> acabou de esconder, esvaziando o recorte que a barra de filtros promete
+> (AC-252 e seguintes). Perde-se pouco: quem cria está olhando para o quadro, e
+> cada card mostra o próprio número; quem edita está com o modal por cima dele,
+> sem nenhum número à vista.
+
+#### AC-368 — O vínculo nasce junto com a tarefa
+
+- **Dado** o modal de nova tarefa
+- **Quando** informo tarefas vinculadas antes de salvar
+- **Então** elas já nascem ligadas à tarefa criada, pelo mesmo argumento do
+  checklist e dos anexos (AC-234): a tarefa irmã está na cabeça de quem abre,
+  não na de quem reabre meia hora depois — e um número inválido no meio da
+  lista é ignorado sem derrubar a criação, porque recusá-la custaria o título,
+  o checklist e os anexos já preenchidos
+
+#### AC-369 — O card avisa que a tarefa tem irmã, na linha do número
+
+- **Dado** uma tarefa com tarefas vinculadas
+- **Quando** olho o card no quadro
+- **Então** vejo o elo com a contagem ao lado do `#412`, e não no rodapé com os
+  outros selos — o número é a moeda do vínculo (é ele que se digita do outro
+  lado), e os selos do rodapé falam do trabalho DESTA tarefa, não de outra
+
+> **Nasceu no rodapé e não aparecia.** Medido no quadro em 18/08/2026: a tira
+> de selos recebe 49px e a soma dava 51 (tempo 24 + vão 7 + elo 20), então o
+> elo quebrava para a segunda linha que o `overflow-hidden` corta e sumia por
+> inteiro (armadilha 19). O rodapé de quem faz triagem não tem os 2px — o grupo
+> de botões leva 68px porque o Concluir aparece, e o nome trava no `min-width`
+> de 56px. Na linha do número sobram 141px.
+
+#### AC-371 — O rodapé não engole o segundo selo em silêncio
+
+- **Dado** um card com o tempo na etapa e mais um selo (conversa, checklist ou
+  anexo)
+- **Quando** olho o quadro
+- **Então** os dois aparecem: o vão ENTRE SELOS é de 4px — o mesmo do grupo de
+  botões — e não os 7px que separam os BLOCOS do rodapé; com 7px a soma passava
+  2px da tira e o segundo selo era cortado sem aviso nenhum
+
+> **Defeito anterior ao vínculo, achado ao medi-lo.** Quem sumia era o selo de
+> conversa, em 2 dos 17 cards do quadro de teste. Três selos continuam caindo, e
+> isso segue certo: aí a queda é o comportamento que a armadilha 19 pede, não um
+> acidente de 2px.
+
+#### AC-370 — Vincular não prende nem move nada
+
+- **Dado** duas tarefas vinculadas
+- **Quando** movo, bloqueio, concluo ou cancelo qualquer uma delas
+- **Então** a outra não é afetada: o vínculo não entra no fluxo, não conta no
+  WIP e não impede transição nenhuma — e a própria tela diz isso, para não
+  precisarem perguntar
+
 ## Fora de escopo
 
 > O handoff de design de 11/08/2026 foi entregue por inteiro. O que segue

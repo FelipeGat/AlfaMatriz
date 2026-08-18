@@ -30,6 +30,14 @@
         fn ($item) => $item !== ''
     ));
 
+    // E os vínculos digitados, pelo mesmo motivo: um título em falta devolve a
+    // página inteira, e sem isto a lista de tarefas irmãs que a pessoa acabou
+    // de montar sumiria junto com a validação.
+    $vinculadasIniciais = $edicao ? [] : array_values(array_filter(
+        array_map(fn ($v) => trim((string) $v), (array) old('vinculadas', [])),
+        fn ($v) => $v !== ''
+    ));
+
     if ($edicao) {
         // O subtítulo diz ONDE a tarefa está e HÁ QUANTO TEMPO — a mesma
         // pergunta que o chip do card responde, e a primeira que se faz ao
@@ -391,6 +399,89 @@
                 <p class="mt-1.5 px-1 text-[11px] leading-[1.45] text-ink-faint">
                     Checklist não é subtarefa: não tem responsável nem etapa, e não entra na conta de trabalho em curso.
                     O que precisa de dono próprio vira tarefa.
+                </p>
+            </div>
+        @endif
+
+        {{--
+            As tarefas irmãs. Ficam entre o checklist e os anexos porque a
+            ordem do modal é uma escada: o checklist é o que se faz DENTRO
+            desta tarefa, o vínculo é o que existe FORA dela, os anexos são a
+            prova do que ela é e a conversa é o que se diz sobre isso.
+
+            Na criação o mecanismo é outro, como o do checklist: não há tarefa,
+            logo não há rota de vínculo nem pedaço a redesenhar — o que se
+            digita vira campo `vinculadas[]` do próprio formulário e viaja no
+            POST que cria a tarefa. E entra na criação pelo mesmo argumento do
+            checklist e dos anexos (AC-234): quase toda tarefa nasce ao lado de
+            outra, e a irmã está na cabeça de quem abre — não na de quem
+            reabre meia hora depois.
+        --}}
+        @if ($edicao)
+            <div class="contents" data-pedaco="vinculos-{{ $tarefa->id }}">
+                @include('tarefas._vinculos', ['tarefa' => $tarefa])
+            </div>
+        @else
+            {{-- Sem lista de sugestão aqui, e COM ela no modal de edição.
+
+                 A assimetria não é descuido — é onde cada modal mora. Este é
+                 desenhado junto com o quadro, em toda carga da página: a lista
+                 de sugestão traria para dentro dele o título de toda tarefa
+                 aberta, inclusive os que o filtro acabou de esconder, e o
+                 recorte que a barra de filtros promete (AC-252 e seguintes)
+                 passaria a valer só para os cards. O de edição é buscado uma
+                 tarefa por vez, no clique, e não carrega promessa nenhuma
+                 sobre recorte.
+
+                 E o que se perde aqui se perde pouco: quem cria uma tarefa
+                 está OLHANDO para o quadro, e cada card mostra o próprio
+                 número. Quem edita está com o modal por cima dele, sem nenhum
+                 número à vista — é lá que procurar pelo título vale a viagem. --}}
+            {{-- `@reset.window` e o `$nextTick` pela mesma razão do checklist:
+                 o quadro chama `form.reset()` depois de a tarefa nascer, o
+                 evento sobe do `<form>` que é o pai desta caixa, e o `x-model`
+                 do Alpine devolve o campo zerado ao modelo num `nextTick` seu
+                 — que roda DEPOIS de um `vinculadas = []` síncrono e
+                 ressuscitaria a lista como uma linha em branco. --}}
+            <div class="pt-4 border-t border-rule"
+                 x-data="{ vinculadas: @js($vinculadasIniciais) }"
+                 @reset.window="if ($event.target.contains($el)) $nextTick(() => vinculadas = [])">
+                <h4 class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Tarefas vinculadas</h4>
+
+                <ul class="mt-2 space-y-1">
+                    <template x-for="(vinculada, i) in vinculadas" :key="i">
+                        <li class="group flex items-center gap-2 rounded-control px-1 py-1 hover:bg-chip transition">
+                            {{-- Escondido, e não um campo editável como o item
+                                 do checklist: o que se digitou aqui é um
+                                 PONTEIRO para outra tarefa, e corrigi-lo letra
+                                 a letra na lista só produziria número inválido.
+                                 Errou, remove e digita de novo. --}}
+                            <input type="hidden" name="vinculadas[]" :value="vinculada">
+                            <span class="min-w-0 flex-1 truncate text-[12.5px] text-ink" x-text="vinculada"></span>
+
+                            <button type="button" @click="vinculadas.splice(i, 1)"
+                                    title="Remover vínculo" aria-label="Remover vínculo"
+                                    class="shrink-0 h-5 w-5 rounded-control text-ink-faint opacity-0 group-hover:opacity-100
+                                           focus:opacity-100 hover:text-crit transition">✕</button>
+                        </li>
+                    </template>
+                </ul>
+
+                {{-- O campo também é um `vinculadas[]`, como o de novo item do
+                     checklist: o número digitado e não confirmado com Enter
+                     entra no envio mesmo assim, em vez de morrer na tela junto
+                     com o clique no Salvar. Sem JavaScript sobra um campo, um
+                     vínculo: degrada, não quebra. --}}
+                <input type="text" name="vinculadas[]" maxlength="255" autocomplete="off"
+                       placeholder="+ número da tarefa (o #412 do card) · Enter para adicionar"
+                       @keydown.enter.prevent="if ($el.value.trim()) { vinculadas.push($el.value.trim()); $el.value = '' }"
+                       class="mt-2 block w-full h-8 px-2.5 text-[12.5px] text-ink placeholder-ink-faint transition
+                              bg-input border border-dashed !border-btn-line !rounded-ctl
+                              focus:!border-brand">
+
+                <p class="mt-1.5 px-1 text-[11px] leading-[1.45] text-ink-faint">
+                    Vincular não prende: as duas tarefas continuam com etapa, responsável e prazo próprios.
+                    O vínculo vale nos dois sentidos.
                 </p>
             </div>
         @endif

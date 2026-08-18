@@ -1,11 +1,11 @@
 {
   "feature": "tarefas-desenvolvimento",
-  "timestamp": "2026-08-18T01:49:08.753Z",
-  "gitRev": "9cb9a0c",
+  "timestamp": "2026-08-18T22:32:34.184Z",
+  "gitRev": "9b9b9bc",
   "command": "php tools/onp-spec-tap.php",
   "reporter": "tap",
   "exitCode": 0,
-  "testsParsed": 982,
+  "testsParsed": 999,
   "results": {
     "AC-081": {
       "status": "pass",
@@ -545,6 +545,36 @@
     "AC-283": {
       "status": "pass",
       "testName": "Tests\\Feature\\TarefasDesenvolvimento\\MovimentoLivreTest::test_o_quadro_oferece_o_quadro_inteiro_a_quem_triaga @spec:AC-283",
+      "method": "tap"
+    },
+    "AC-366": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\VinculoEntreTarefasTest::test_vinculo_aparece_nos_dois_lados_e_some_dos_dois @spec:AC-366",
+      "method": "tap"
+    },
+    "AC-367": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\VinculoEntreTarefasTest::test_as_tres_formas_de_digitar_o_numero_vinculam_a_mesma_tarefa @spec:AC-367",
+      "method": "tap"
+    },
+    "AC-368": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\VinculoEntreTarefasTest::test_tarefa_nasce_ja_vinculada_e_numero_invalido_nao_derruba_a_criacao @spec:AC-368",
+      "method": "tap"
+    },
+    "AC-369": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\VinculoEntreTarefasTest::test_o_card_da_irma_tambem_volta_e_a_assinatura_muda @spec:AC-369",
+      "method": "tap"
+    },
+    "AC-371": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\CardTarefaTest::test_o_rodape_cabe_o_tempo_mais_um_segundo_selo @spec:AC-371",
+      "method": "tap"
+    },
+    "AC-370": {
+      "status": "pass",
+      "testName": "Tests\\Feature\\TarefasDesenvolvimento\\VinculoEntreTarefasTest::test_mover_e_encerrar_uma_nao_mexe_na_outra @spec:AC-370",
       "method": "tap"
     }
   },

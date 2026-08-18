@@ -8,8 +8,10 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class Tarefa extends Model
@@ -720,5 +722,91 @@ class Tarefa extends Model
         }
 
         return ['feitos' => $this->itens->where('feito', true)->count(), 'total' => $total];
+    }
+
+    /**
+     * As tarefas ligadas a esta — vínculo simétrico, sem hierarquia.
+     *
+     * Uma tarefa ligada aparece nas DUAS, porque o par é gravado nos dois
+     * sentidos (ver a migração). É isso que separa o vínculo do número escrito
+     * no resumo: quem abre a outra tarefa descobre a ligação sem que ninguém
+     * tenha de repeti-la lá.
+     *
+     * Ordenada por id, que é o `#412` do card: é o número que se lê e se copia,
+     * e ordenar pela data do vínculo faria a lista se reorganizar sozinha toda
+     * vez que alguém acrescentasse uma ponta.
+     */
+    public function vinculadas(): BelongsToMany
+    {
+        return $this->belongsToMany(self::class, 'tarefa_vinculos', 'tarefa_id', 'vinculada_id')
+            ->withPivot('criado_por_id')
+            ->withTimestamps()
+            ->orderBy('tarefas.id');
+    }
+
+    /**
+     * O que a lista de sugestão do campo de vínculo oferece.
+     *
+     * As tarefas EM CURSO, que são as mesmas do quadro — e a lista é sugestão,
+     * não cardápio: o campo aceita qualquer número, inclusive o de uma tarefa
+     * concluída há um ano. Por isso o recorte pode ser estreito sem prender
+     * ninguém; o que ele resolve é a mão que não lembra o número da tarefa que
+     * está a três colunas de distância.
+     *
+     * Sem as encerradas de propósito. Elas são a maioria com o tempo, e
+     * empurrariam para o fim da lista justamente as que estão acontecendo —
+     * que são as que se vincula todo dia.
+     *
+     * @return Collection<int, Tarefa>
+     */
+    public static function sugestoesDeVinculo(?self $tarefa = null): Collection
+    {
+        return static::query()
+            ->whereNotIn('status', self::STATUS_TERMINAIS)
+            ->when($tarefa?->exists, fn ($q) => $q
+                ->whereKeyNot($tarefa->id)
+                ->whereDoesntHave('vinculadas', fn ($v) => $v->whereKey($tarefa->id)))
+            ->orderByDesc('id')
+            ->get(['id', 'titulo']);
+    }
+
+    /**
+     * Liga esta tarefa à outra, nos dois sentidos.
+     *
+     * `syncWithoutDetaching` e não `attach`: vincular a mesma dupla duas vezes
+     * é gesto comum — duas pessoas ligam o mesmo par no mesmo dia — e um
+     * `attach` cru derrubaria o segundo com violação de chave única, que chega
+     * à tela como erro de banco em vez de "já estava vinculada".
+     *
+     * A transação existe porque o par é o dado: meia ligação gravada é pior que
+     * nenhuma — a tarefa A mostraria a B, e a B não saberia de nada.
+     */
+    public function vincularCom(self $outra, ?int $porQuem = null): void
+    {
+        // Vínculo consigo mesma não é vínculo, é uma linha que o modal
+        // desenharia apontando para a tarefa que já está aberta.
+        if ($outra->id === $this->id) {
+            return;
+        }
+
+        DB::transaction(function () use ($outra, $porQuem): void {
+            $this->vinculadas()->syncWithoutDetaching([$outra->id => ['criado_por_id' => $porQuem]]);
+            $outra->vinculadas()->syncWithoutDetaching([$this->id => ['criado_por_id' => $porQuem]]);
+        });
+    }
+
+    /**
+     * Desfaz a ligação nos dois sentidos.
+     *
+     * Desligar de um lado só deixaria a outra tarefa mostrando um vínculo que
+     * não existe mais — e ninguém iria procurá-lo lá, justamente porque quem
+     * desfez estava do lado que já limpou.
+     */
+    public function desvincularDe(self $outra): void
+    {
+        DB::transaction(function () use ($outra): void {
+            $this->vinculadas()->detach($outra->id);
+            $outra->vinculadas()->detach($this->id);
+        });
     }
 }

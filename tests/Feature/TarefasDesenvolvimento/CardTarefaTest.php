@@ -706,4 +706,33 @@ class CardTarefaTest extends TestCase
             'O número precisa vir colado ao título, dentro do parágrafo dele.'
         );
     }
+
+    /**
+     * @spec:AC-371 O rodapé não engole o segundo selo em silêncio. O vão entre selos é
+     * de 4px — o mesmo do grupo de botões — e não os 7px que separam os BLOCOS do
+     * rodapé: medido no quadro, a tira recebe 49px, e com 7px a soma de tempo + um selo
+     * dava 51. O segundo caía para a segunda linha que o `overflow-hidden` corta e sumia
+     * inteiro, sem aviso. Era assim antes do vínculo — quem sumia era o selo de conversa.
+     */
+    public function test_o_rodape_cabe_o_tempo_mais_um_segundo_selo(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => User::factory(),
+            'status' => 'em_desenvolvimento',
+        ]);
+
+        $tarefa->comentarios()->create(['autor_id' => $usuario->id, 'corpo' => 'Primeira mensagem']);
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // O selo de conversa está lá...
+        $this->assertStringContainsString('1 comentário', $html);
+
+        // ...e a tira em que ele mora tem o vão que o deixa caber. O número é
+        // o que trava a decisão: com `gap-[7px]` ele voltaria a ser cortado, e
+        // o corte não aparece em nenhuma asserção de conteúdo — o HTML continua
+        // dizendo "1 comentário" enquanto a tela não mostra nada.
+        $this->assertStringContainsString('flex flex-wrap items-center gap-[4px] overflow-hidden', $html);
+    }
 }

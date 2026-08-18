@@ -132,6 +132,7 @@
     $progresso = $tarefa->progressoDoChecklist();
     $totalComentarios = $tarefa->comentarios->count();
     $totalAnexos = $tarefa->anexos->count();
+    $totalVinculos = $tarefa->vinculadas->count();
 @endphp
 
 {{--
@@ -170,6 +171,35 @@
         --}}
         <p class="min-w-0 flex-1 text-[13.5px] font-medium leading-[1.35] text-ink">
             <span class="font-mono text-[11.5px] font-semibold text-ink-dim">{{ $tarefa->codigo() }}</span>
+
+            {{--
+                O elo mora AQUI, e não no rodapé com os outros selos.
+
+                Ele nasceu lá e não aparecia: medido no quadro, a tira recebe
+                49px e precisava de 51 (tempo 24 + vão 7 + elo 20), então o elo
+                quebrava para uma segunda linha que o `overflow-hidden` corta —
+                sumia por inteiro, como manda a armadilha 19. O rodapé de quem
+                faz triagem não tem os 2px: o grupo de botões leva 68px porque o
+                Concluir aparece, e o nome trava no `min-width` de 56px.
+
+                Nesta linha sobram 141px. E o lugar é melhor por conta própria:
+                o elo diz que a tarefa aponta para OUTRA tarefa, e o número ao
+                lado é justamente a moeda desse vínculo — é ele que se digita no
+                campo do outro lado. Os selos do rodapé falam do trabalho DESTA
+                tarefa (quanto tempo, quantos passos, quantas mensagens); o elo
+                nunca foi da mesma família.
+
+                Mono de 10px e `ink-mute`, que são a receita dos selos do rodapé:
+                o elo mudou de lugar, não de peso — e destacá-lo mais que o
+                número faria a linha anunciar o vizinho antes da tarefa.
+            --}}
+            @if ($totalVinculos > 0)
+                <span class="inline-flex items-center gap-[3px] align-middle font-mono text-[10px] text-ink-mute"
+                      title="{{ $totalVinculos }} {{ $totalVinculos === 1 ? 'tarefa vinculada' : 'tarefas vinculadas' }}">
+                    <span class="h-[11px] w-[11px]"><x-nav-icon name="link" :peso="1.8" /></span>{{ $totalVinculos }}
+                </span>
+            @endif
+
             {{ $tarefa->titulo }}
         </p>
 
@@ -454,7 +484,27 @@
             etapa é SINAL (envelhecimento) e cai por último; as contagens
             moram completas dentro da tarefa.
         --}}
-        <div class="min-w-0 shrink h-[19px] flex flex-wrap items-center gap-[7px] overflow-hidden">
+        {{--
+            O vão entre selos é de 4px, e não os 7px do rodapé.
+
+            Com 7px o segundo selo NUNCA cabia. Medido no quadro: a tira recebe
+            49px e a soma dava 51 (tempo 24 + vão 7 + selo 20), então o segundo
+            quebrava para a segunda linha que este `overflow-hidden` corta. O
+            defeito é anterior ao vínculo — quem sumia era o selo de conversa, e
+            some em silêncio, que é o pior jeito de sumir. Com 4px a soma dá 48
+            e a tira nem precisa encolher.
+
+            4px não é valor novo: é o vão do grupo de botões, dois elementos à
+            direita nesta mesma linha (`TAREFAS-SPEC.md`, "Rodapé"). O que a
+            spec fixa em 7px é o vão ENTRE OS BLOCOS do rodapé — ícone, nome,
+            selos, botões —, e esse continua 7px. Este é o vão de dentro de um
+            bloco, que a spec não tinha porque desenhou os selos soltos na
+            linha.
+
+            Três selos ainda não cabem, e isso continua certo: aí a queda é o
+            comportamento que a armadilha 19 pede, não um acidente de 2px.
+        --}}
+        <div class="min-w-0 shrink h-[19px] flex flex-wrap items-center gap-[4px] overflow-hidden">
             {{-- O selo continua curto ("17h") — é o sinal de envelhecimento,
                  e data completa ali estouraria a linha (armadilha 19). O
                  INSTANTE absoluto vai no title: quem quer saber "desde
@@ -497,6 +547,7 @@
                     {{ $totalAnexos }}
                 </span>
             @endif
+
         </div>
 
         {{--
