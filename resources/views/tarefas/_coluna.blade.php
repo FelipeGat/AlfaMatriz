@@ -12,8 +12,9 @@
     $alvo = $faixa.'::'.$etapa['chave'];
 
     // Um conjunto só define "há recorte", usado pelo texto de coluna vazia e
-    // pelo botão Limpar. Separados, os dois se contradiziam.
-    $temRecorte = collect($filtros ?? [])->contains(fn ($valor) => $valor !== '');
+    // pelo botão Limpar. Separados, os dois se contradiziam. Prioridade é
+    // lista, e lista vazia é o mesmo "nada pedido" do texto vazio.
+    $temRecorte = collect($filtros ?? [])->contains(fn ($valor) => $valor !== '' && $valor !== []);
 @endphp
 
 <section class="flex flex-col min-h-0 rounded-control bg-panel border border-line overflow-hidden transition-opacity"

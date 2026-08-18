@@ -15,8 +15,9 @@
 
 @php
     // Se nada foi pedido, não há o que limpar — e um botão "Limpar" aceso
-    // sobre uma tela sem filtro só ensina que ele não faz nada.
-    $temFiltro = collect($filtros)->contains(fn ($valor) => $valor !== '');
+    // sobre uma tela sem filtro só ensina que ele não faz nada. Prioridade é
+    // lista, e lista vazia também é "nada pedido".
+    $temFiltro = collect($filtros)->contains(fn ($valor) => $valor !== '' && $valor !== []);
 @endphp
 
 <form method="GET" class="shrink-0 flex flex-wrap items-center gap-2">
@@ -70,12 +71,77 @@
         @endforeach
     </select>
 
-    <select name="prioridade" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
-        <option value="">Todas as prioridades</option>
-        @foreach (\App\Models\Tarefa::PRIORIDADES as $chave => $rotulo)
-            <option value="{{ $chave }}" @selected($filtros['prioridade'] === $chave)>{{ $rotulo }}</option>
-        @endforeach
-    </select>
+    {{--
+        Prioridade aceita MAIS DE UMA ao mesmo tempo (pedido do dono em
+        18/08/2026): "as altas e as críticas" é uma pergunta só, e o select de
+        valor único obrigava a fazê-la em duas viagens. Caixas num dropdown, e
+        não um `<select multiple>` — segurar Ctrl para somar opções não é gesto
+        que ninguém descobre. Diferente da situação, logo abaixo, as
+        prioridades NÃO são mutuamente exclusivas: somá-las é a pergunta.
+
+        Cada prioridade ligada vira pílula própria no cabeçalho do quadro, com
+        o ✕ que tira só ela; o "limpar" aqui dentro zera só este campo, e o
+        "Limpar recorte" no fim da barra continua zerando tudo.
+    --}}
+    <div class="relative"
+         x-data="{
+             aberto: false,
+             prioridades: @js($filtros['prioridade']),
+             rotulos: @js(\App\Models\Tarefa::PRIORIDADES),
+         }"
+         @click.outside="aberto = false" @keydown.escape.stop="aberto = false">
+        {{-- O rótulo NOMEIA as ligadas, na ordem da escala e não na do clique:
+             "Alta, Crítica" diz o recorte; "2 prioridades" obrigaria a abrir
+             para saber quais. --}}
+        {{-- Largura FIXA, a mesma do painel. O rótulo muda de tamanho a cada
+             caixa marcada, e com largura automática o botão trocava de linha
+             do `flex-wrap` DEBAIXO do painel aberto — o menu fugia do cursor
+             no meio do gesto. Fixa, nada se move; e o painel, com a largura
+             do próprio botão, nunca passa da borda da tela. --}}
+        <button type="button" @click="aberto = ! aberto" :aria-expanded="aberto.toString()"
+                title="Filtrar por prioridade — mais de uma pode ficar ligada"
+                class="h-[34px] px-3 w-[220px] rounded-control bg-input border border-line
+                       flex items-center gap-2 text-[13px] text-ink-dim transition"
+                :class="aberto && 'border-brand'">
+            <span class="flex-1 min-w-0 truncate text-left"
+                  x-text="prioridades.length
+                      ? Object.entries(rotulos).filter(([chave]) => prioridades.includes(chave)).map(([, rotulo]) => rotulo).join(', ')
+                      : 'Todas as prioridades'"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 class="h-[11px] w-[11px] shrink-0 transition-transform duration-150"
+                 :class="aberto && 'rotate-180'">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+        </button>
+
+        <div x-show="aberto" x-cloak
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 -translate-y-1"
+             class="absolute left-0 top-full z-30 mt-1 w-[220px] rounded-control border border-line
+                    bg-panel p-1.5 shadow-xl flex flex-col gap-1">
+            @foreach (\App\Models\Tarefa::PRIORIDADES as $chave => $rotulo)
+                <label class="flex items-center gap-2.5 h-[30px] px-2 rounded-tile cursor-pointer hover:bg-chip transition">
+                    {{-- Sem `bg-input`, como nos perfis de acesso: classe de
+                         fundo vence o `:checked` do plugin de forms, e a caixa
+                         marcada fica branca sobre branca no tema claro. --}}
+                    <input type="checkbox" name="prioridade[]" value="{{ $chave }}" x-model="prioridades"
+                           class="h-4 w-4 rounded border-btn-line text-brand focus:ring-brand">
+                    <span class="text-[13px] text-ink-dim">{{ $rotulo }}</span>
+                </label>
+            @endforeach
+
+            {{-- Zera SÓ as prioridades, de uma vez — desmarcar cinco caixas
+                 uma a uma não é "limpar". Some sem nada ligado, como o
+                 "Limpar recorte": botão sobre campo vazio ensina que ele não
+                 faz nada. Não envia o formulário: como nos selects vizinhos,
+                 o recorte só muda no "Filtrar". --}}
+            <button type="button" x-show="prioridades.length" @click="prioridades = []"
+                    class="h-[26px] px-2 text-left rounded-tile
+                           font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
+                Limpar prioridades
+            </button>
+        </div>
+    </div>
 
     {{--
         "Só as que esperam por você" é o mesmo recorte do chip do cabeçalho,

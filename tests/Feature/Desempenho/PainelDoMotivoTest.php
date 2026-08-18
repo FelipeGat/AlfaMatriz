@@ -119,7 +119,13 @@ class PainelDoMotivoTest extends TestCase
         // teto estava a 1,7 KB do valor medido, perto demais para distinguir o
         // que ele vigia de qualquer linha nova. Com 1,9 MB sobram 44 KB de
         // folga e a regressão de +479 KB continua estourando.
-        $this->assertLessThan(1_900_000, $bytes, sprintf(
+        //
+        // Recalibrado em 18/08/2026: o card ganhou a linha "Criada por" com o
+        // timestamp de criação e o instante absoluto no title do selo de tempo
+        // (pedidos do dono em 18/08/2026) — ~290 bytes × 120 cards, que
+        // comeram a folga. Com 1,95 MB voltam ~42 KB de folga, e a regressão
+        // de +479 KB continua estourando qualquer valor até ~2,38 MB.
+        $this->assertLessThan(1_950_000, $bytes, sprintf(
             'O quadro com 120 tarefas pesa %.1f MB — o formulário de motivo '.
             'voltou a ser impresso por card.', $bytes / 1_048_576
         ));

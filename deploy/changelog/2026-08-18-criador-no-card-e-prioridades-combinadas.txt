@@ -1,0 +1,24 @@
+<b>📋 AlfaMatriz — Changelog 18/08/2026</b>
+<i>O card diz quem abriu a tarefa e quando, e o filtro de prioridade aceita mais de uma ao mesmo tempo</i>
+
+<b>👤 Quem pediu esta tarefa — e quando?</b>
+
+• <b>O card do quadro agora diz quem criou a tarefa e a data</b> — "Criada por Camila Reis · 14/08/2026 22:01", logo abaixo do resumo. O rodapé continua nomeando com quem a tarefa ESTÁ; quem a pediu só existia dentro do detalhe, e é pergunta que se faz olhando o quadro, sobretudo na fila de triagem.
+
+• <b>A data aparece sempre inteira.</b> Quando falta largura, quem encurta é o nome — e o nome completo continua no passe de mouse, na mesma régua do responsável: primeiro e último nome.
+
+• <b>O selo de tempo ("17h") ganhou o desde quando.</b> Ele continua curto, que é como o envelhecimento se lê de relance — mas o passe de mouse agora diz o instante em que a tarefa entrou na etapa: "Na etapa desde 17/08/2026 18:01 · há 17h". Antes, saber a data exigia fazer a conta de cabeça.
+
+• <b>Dentro da tarefa, as mesmas respostas.</b> O modal agora abre com "Criada por Camila Reis em 12/08/2026 20:01" acima do título, e o cabeçalho diz o instante em que a etapa começou: "#203 · Em andamento · há 5d · desde 13/08/2026 02:01".
+
+<b>🎚️ Prioridades se somam no filtro</b>
+
+• <b>"As altas e as críticas" virou uma pergunta só.</b> O campo de prioridade deixou de ser lista de escolha única e virou um menu de caixas: marque quantas quiser e clique em Filtrar. Antes era preciso olhar uma prioridade de cada vez.
+
+• <b>Cada prioridade ligada vira uma pílula própria no cabeçalho do quadro</b>, e o ✕ de cada uma tira só ela — as outras continuam valendo.
+
+• <b>"Limpar prioridades"</b>, dentro do próprio menu, zera o campo de uma vez; o <b>"Limpar recorte"</b> continua zerando todos os filtros, como sempre.
+
+• O recorte segue na URL: dá para <b>compartilhar por link</b> um quadro filtrado por duas ou três prioridades, e ele sobrevive ao F5 — no quadro e no histórico.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

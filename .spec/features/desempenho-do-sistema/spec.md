@@ -94,8 +94,8 @@ que o quadro não demore mais a abrir a cada tarefa que o time cria.
 
 - **Dado** um quadro com 120 tarefas, cada uma com comentário e checklist
 - **Quando** a tela do quadro é carregada
-- **Então** a resposta fica abaixo de 2 MB (hoje são 5,5 MB), porque o modal de
-  edição deixa de ser impresso para todas as tarefas de uma vez
+- **Então** a resposta fica abaixo de 2,1 MB (hoje são 5,5 MB), porque o modal
+  de edição deixa de ser impresso para todas as tarefas de uma vez
 
 > **O limite deste critério foi corrigido durante a implementação, de 1,5 MB
 > para 2 MB.** O 1,5 MB era estimativa feita antes de medir o card sozinho: eu
@@ -103,6 +103,13 @@ que o quadro não demore mais a abrir a cada tarefa que o time cria.
 > 1,9 MB (−65%); os 1,9 MB restantes são card, não modal. O que ainda sobra
 > está em Q-019 — e não foi cortado aqui porque envolve mudar onde um painel
 > aparece na tela, que é decisão de produto e não de desempenho.
+>
+> **Recalibrado para 2,1 MB em 18/08/2026**, pelo mesmo critério do AC-250: o
+> card ganhou a linha "Criada por" (pedido do dono em 18/08/2026), ~180 bytes ×
+> 120 cards, e o teto antigo estava a 8 KB do valor medido — perto demais para
+> distinguir a regressão vigiada (os modais de volta, +3,5 MB) de qualquer
+> linha nova que o card ganhe de propósito. Com 2,1 MB sobram ~86 KB de folga
+> e a regressão continua estourando o teto com margem.
 
 #### AC-241 — Clicar no card abre a tarefa inteira
 
