@@ -2041,6 +2041,29 @@
              */
             let ultimoEnvio = 0;
 
+            /**
+             * Quantos envios estão no ar AGORA.
+             *
+             * `ultimoEnvio` responde "qual é o mais novo", não "ainda tem algum
+             * viajando" — e é a segunda pergunta que a atualização automática
+             * faz antes de redesenhar. Perguntar pelo quadro no meio de uma
+             * gravação traria o quadro de ANTES dela, e pintá-lo desfaria na
+             * tela o que a pessoa acabou de fazer.
+             */
+            let enviosEmVoo = 0;
+
+            /**
+             * A impressão digital do quadro que está na tela.
+             *
+             * É ela que viaja na pergunta da atualização automática, e é por
+             * ela que o servidor responde "nada mudou" sem montar o quadro
+             * inteiro (ver `TarefaController::assinaturaDoQuadro`). Toda
+             * resposta parcial traz a assinatura nova junto — inclusive as que
+             * só trocam pedaços —, senão a própria ação da pessoa deixaria a
+             * tela desatualizada aos olhos da pergunta seguinte.
+             */
+            let assinaturaDoQuadro = @json($assinatura);
+
             const quadro = () => document.querySelector('[data-corpo-do-quadro]');
 
             /**
@@ -2197,6 +2220,12 @@
             };
 
             const aplicar = (dados) => {
+                // Antes de qualquer troca: o que a resposta trouxe é o retrato
+                // de agora, e é ele que a próxima pergunta compara.
+                if (dados.assinatura) {
+                    assinaturaDoQuadro = dados.assinatura;
+                }
+
                 const restaurarFoco = guardarFoco();
                 const restaurarRolagem = guardarRolagem();
                 const restaurarRascunhos = guardarRascunhos();
@@ -2363,6 +2392,11 @@
 
                 evento.preventDefault();
 
+                // Aqui, e não dentro de `enviar`: o contador precisa subir
+                // ANTES do primeiro `await`, senão sobra uma fresta em que a
+                // atualização automática ainda se acha livre para redesenhar.
+                enviosEmVoo++;
+
                 // A recusa que veio sem passar pelo controlador — validação,
                 // permissão — é dita pelo molde de aviso que a própria tela
                 // imprime. Remontar o `x-aviso` em JavaScript significaria
@@ -2378,6 +2412,8 @@
                             .replace('__FRASE__', escapado.innerHTML),
                     );
                 }).finally(() => {
+                    enviosEmVoo--;
+
                     /*
                      * A viagem acabou — quem se trancou no clique precisa saber.
                      *
@@ -2402,6 +2438,118 @@
                      */
                     form.dispatchEvent(new CustomEvent('envio-terminou'));
                 });
+            });
+
+            /*
+             * A atualização automática: o quadro que mudou na mão de OUTRA
+             * pessoa.
+             *
+             * O quadro é de time — a mesma tarefa passa por três pessoas no
+             * mesmo dia —, mas a tela só via o que a própria pessoa fazia. Quem
+             * a deixava aberta trabalhava sobre o retrato do momento em que
+             * abriu: movia um card que já tinha sido movido e recebia "Alguém
+             * já moveu esta tarefa", que é a recusa certa dita tarde demais.
+             *
+             * O que sai daqui é a ASSINATURA, não um pedido de quadro. A
+             * resposta de "nada mudou" são duas chaves, e é isso que permite
+             * perguntar de trinta em trinta segundos sem mandar ~900 KB por
+             * pessoa e por pergunta (ver `TarefaController::atualizacoes`).
+             *
+             * Redesenhar é `aplicar()`, o mesmo caminho das ações parciais: a
+             * rolagem do quadro e de cada coluna, o foco e o que está escrito e
+             * não foi enviado voltam para onde estavam. Sem ele, o quadro
+             * mudando sozinho jogaria a vista para o começo a cada trinta
+             * segundos, que é pior do que estar desatualizado.
+             */
+            const INTERVALO_DA_ATUALIZACAO = 30000;
+
+            /*
+             * Quando NÃO perguntar — e são todos casos de gesto em curso, não
+             * de economia. O quadro que volta é HTML novo, e trocá-lo por baixo
+             * de um gesto o desfaz:
+             *
+             * - com um card na mão, o arrasto perde o elemento arrastado;
+             * - com o painel de motivo aberto, some o texto sendo escrito nele;
+             * - com um envio no ar, o quadro desta viagem pode ser o de ANTES
+             *   da ação, e pintá-lo desfaria na tela o que acabou de ser feito.
+             *
+             * A aba escondida não pergunta pelo mesmo motivo do renovador de
+             * token do login: ninguém está olhando, e quem volta pergunta na
+             * hora.
+             */
+            const podeAtualizar = () => {
+                if (document.visibilityState !== 'visible' || enviosEmVoo > 0) {
+                    return false;
+                }
+
+                const corpo = quadro();
+                // O Alpine pode ainda não ter percorrido a página: este script
+                // roda na análise do HTML, e o primeiro intervalo é só daqui a
+                // trinta segundos — mas a volta à aba dispara antes disso.
+                const estado = corpo ? Alpine.$data(corpo) : null;
+
+                return !! estado && ! estado.arrastando && ! estado.cardEmMovimento && ! estado.pendente;
+            };
+
+            const atualizar = async () => {
+                if (! podeAtualizar()) {
+                    return;
+                }
+
+                const marca = ultimoEnvio;
+
+                // A query string vai junto porque o quadro que volta é o quadro
+                // FILTRADO, pela mesma razão de `enviar()`: sem ela, a
+                // atualização automática desfaria sozinha o recorte da tela.
+                const busca = new URLSearchParams(location.search);
+                busca.set('assinatura', assinaturaDoQuadro);
+
+                try {
+                    const resposta = await fetch('{{ route('tarefas.atualizacoes') }}?' + busca, {
+                        headers: { 'Accept': 'application/json' },
+                    });
+
+                    if (! resposta.ok) {
+                        return;
+                    }
+
+                    const dados = await resposta.json();
+
+                    // Alguém agiu, ou pegou um card, enquanto a viagem
+                    // acontecia. Nada se perde ao desistir: a assinatura só é
+                    // guardada quando a resposta é aplicada, então a pergunta
+                    // seguinte traz a mesma novidade de novo.
+                    if (ultimoEnvio !== marca || ! podeAtualizar()) {
+                        return;
+                    }
+
+                    // Sem quadro é o caso comum — nada mudou. Guardar a
+                    // assinatura ainda assim é de graça e mantém as duas pontas
+                    // falando do mesmo retrato.
+                    if (dados.quadro) {
+                        aplicar(dados);
+                    } else {
+                        assinaturaDoQuadro = dados.assinatura;
+                    }
+                } catch (erro) {
+                    // Sem rede, ou sessão vencida: fica quieto e tenta no
+                    // intervalo seguinte. Recarregar por conta — como `enviar()`
+                    // faz — é decisão grande demais para algo que acontece
+                    // sozinho, e levaria junto o que estiver escrito num modal
+                    // aberto.
+                }
+            };
+
+            setInterval(atualizar, INTERVALO_DA_ATUALIZACAO);
+
+            // Voltar para a aba é quando a defasagem é maior e mais visível:
+            // quem passou dez minutos noutra janela reencontra o quadro de dez
+            // minutos atrás. Mesmo par `setInterval` + `visibilitychange` do
+            // renovador de token do login.
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    atualizar();
+                }
             });
         })();
     </script>

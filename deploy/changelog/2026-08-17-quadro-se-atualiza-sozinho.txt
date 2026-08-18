@@ -1,0 +1,16 @@
+<b>📋 AlfaMatriz — Changelog 17/08/2026</b>
+<i>Complemento: o quadro de tarefas passa a se atualizar sozinho</i>
+
+<b>🔄 O que está na tela é o que está acontecendo</b>
+
+• <b>O quadro se atualiza sozinho, a cada meio minuto.</b> O que outra pessoa move, responde ou marca aparece na sua tela sem F5. Até agora a tela só mostrava o que você mesmo fazia: quem a deixava aberta trabalhava sobre o retrato do momento em que abriu, e só descobria o movimento alheio ao tentar mover por cima dele — "Alguém já moveu esta tarefa" chegava certo e tarde.
+
+• <b>Voltar para a aba atualiza na hora.</b> Quem passou dez minutos em outra janela não reencontra mais o quadro de dez minutos atrás. E a aba escondida não fica perguntando nada.
+
+• <b>Você não perde o seu lugar.</b> A rolagem do quadro e a de cada coluna, o campo em que você estava e o texto ainda não enviado continuam onde estavam — a atualização não joga a vista para o começo.
+
+• <b>Nada é redesenhado por baixo do seu gesto.</b> Com um card na mão, com o pedido de motivo aberto ou com uma gravação em curso, a atualização espera a sua vez terminar.
+
+• <b>Sem peso a mais na rede.</b> A tela não pede o quadro de meio em meio minuto: ela pergunta se algo mudou, e a resposta de "nada mudou" — que é o caso comum — não carrega card nenhum. O quadro só viaja quando há mesmo novidade.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

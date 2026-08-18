@@ -726,6 +726,27 @@ seja o que está acontecendo.
 - **Então** ele é recusado dizendo para onde a tarefa já foi. Antes o segundo
   envio ganhava em silêncio, e quem moveu primeiro só descobria ao recarregar
 
+#### AC-362 — O quadro se atualiza sozinho
+
+- **Dado** o quadro aberto na minha tela enquanto outra pessoa move um card,
+  responde uma pergunta ou marca um item da lista
+- **Quando** passa meio minuto, ou eu volto para a aba depois de ter saído dela
+- **Então** o que está na tela passa a ser o que está acontecendo, sem eu
+  recarregar — e sem perder o meu lugar: a rolagem do quadro e a de cada coluna,
+  o foco e o que eu estava escrevendo e ainda não enviei continuam onde estavam.
+  Antes, "Alguém já moveu esta tarefa" (AC-208) era a recusa certa dita tarde
+  demais: quem deixava a tela aberta trabalhava sobre o retrato do momento em
+  que abriu
+- **E** nada é redesenhado por baixo de um gesto em curso — com um card na mão,
+  com o pedido de motivo aberto ou com um envio no ar a atualização espera, e a
+  aba escondida não pergunta coisa nenhuma
+- **E** o que viaja na pergunta é uma **assinatura** do quadro, não um pedido do
+  quadro: a resposta de "nada mudou", que é o caso comum, não monta os ~900 KB
+  das colunas — a mesma razão pela qual as ações do modal deixaram de devolver o
+  quadro inteiro (AC-229). Toda ação parcial devolve a assinatura nova junto,
+  senão a própria ação de quem está na tela pediria o quadro inteiro meio minuto
+  depois, desfazendo em segundo plano a economia que os pedaços acabaram de fazer
+
 #### AC-209 — A coluna arrumada à mão fica como foi arrumada
 
 - **Dado** uma coluna cuja ordem alguém escolheu arrastando
