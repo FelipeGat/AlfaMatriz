@@ -70,6 +70,14 @@
            deixa o conteúdo para trás sem avisar. Na edição o anexo vai por
            `fetch` próprio, e o `enctype` aqui só engordaria todo Salvar. --}}
       @unless ($edicao) enctype="multipart/form-data" @endunless
+      {{-- Começar uma tarefa e desistir não deixa rascunho para a próxima: o
+           "nova tarefa" é o único modal que o servidor não redesenha, e sem isto
+           ele guardava o título, o checklist e os anexos abandonados até a
+           abertura seguinte. Quem esvazia é o `x-modal` — só ele sabe que o
+           modal reabriu, porque Esc e o clique no fundo não passam pelo
+           Cancelar. Na edição não vale: ali os campos são o que está gravado, e
+           o modal já vem buscado de novo a cada abertura. --}}
+      @unless ($edicao) data-esvazia-ao-abrir @endunless
       action="{{ $edicao ? route('tarefas.update', $tarefa) : route('tarefas.store') }}"
       class="flex flex-col"
       {{-- `bloqueada` é estado de tela, não do servidor, porque travar e

@@ -47,7 +47,35 @@ $maxWidth = [
          formulário de "nova tarefa" depois de gravar, porque esse modal não é
          redesenhado e guardaria o que acabou de ser salvo. --}}
     data-modal="{{ $name }}"
-    x-on:open-modal.window="$event.detail == '{{ $name }}' ? show = true : null"
+    {{--
+        Abrir esvazia o formulário que pediu — `data-esvazia-ao-abrir`.
+
+        Fechar um modal só o ESCONDE: o HTML fica de pé, com o que estava
+        digitado dentro. Para o "nova tarefa", que o servidor nunca redesenha,
+        isso virava rascunho involuntário — quem começava uma tarefa, desistia e
+        clicava em "Nova tarefa" de novo reencontrava o título, o checklist e os
+        anexos da tentativa anterior, prontos para nascerem como tarefa errada.
+
+        É opt-in porque o modal de EDIÇÃO não pode ser esvaziado: lá os campos
+        JÁ são o que está gravado, e um `reset()` desfaria na tela a edição que
+        acabou de ser salva — o mesmo motivo que separa `limparModal` de
+        `fecharModal` no quadro.
+
+        Ao ABRIR, e não ao fechar: a saída tem transição de 150ms e o modal
+        continua na tela durante ela, então esvaziar ali seria VISTO, como um
+        piscar do formulário no meio do fecha. E só quando ele estava fechado:
+        com o modal aberto e o foco fora de um campo, um segundo `open-modal` —
+        a tecla `n` do quadro — apagaria o que está sendo digitado.
+
+        `reset()` e não campo a campo: ele devolve cada um ao valor que o
+        servidor imprimiu (o `old()`, quando a validação devolveu a página
+        inteira) e dispara o evento `reset`, de que dependem as listas em Alpine
+        do checklist e dos anexos da criação.
+    --}}
+    x-on:open-modal.window="if ($event.detail == '{{ $name }}' && ! show) {
+        $el.querySelectorAll('form[data-esvazia-ao-abrir]').forEach((form) => form.reset());
+        show = true;
+    }"
     x-on:close-modal.window="$event.detail == '{{ $name }}' ? show = false : null"
     x-on:close.stop="show = false"
     x-on:keydown.escape.window="show = false"

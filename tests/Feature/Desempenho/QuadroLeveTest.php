@@ -121,11 +121,20 @@ class QuadroLeveTest extends TestCase
 
         // O modal dela, não. A âncora é o marcador do `x-modal`, e não o nome
         // solto: `editar-tarefa-1` continua aparecendo no `@click` do card.
-        $this->assertStringNotContainsString(
-            'open-modal.window="$event.detail == \'editar-tarefa-'.$tarefa->id.'\'',
-            $html,
-            'O modal da tarefa voltou para o HTML do quadro.'
-        );
+        $ancora = 'open-modal.window="if ($event.detail == \'editar-tarefa-'.$tarefa->id.'\'';
+
+        // A âncora é conferida CONTRA a rota do modal antes de servir de prova de
+        // ausência: `assertStringNotContainsString` passa de graça quando o texto
+        // procurado deixa de existir em qualquer lugar, e foi o que aconteceu ao
+        // `x-modal` ganhar o esvaziar ao abrir (AC-363) — a frase mudou de forma
+        // e a asserção continuou verde sem olhar mais para nada.
+        $doModal = $this->actingAs($usuario)->get(route('tarefas.modal', $tarefa))->getContent();
+
+        $this->assertStringContainsString($ancora, $doModal,
+            'A âncora não é mais a do `x-modal`: a ausência abaixo não prova nada.');
+
+        $this->assertStringNotContainsString($ancora, $html,
+            'O modal da tarefa voltou para o HTML do quadro.');
     }
 
     /**
