@@ -135,6 +135,28 @@ aberto, em desenvolvimento, em teste e concluído.
   o `Esc` fecha primeiro o que está por cima, e sair da tela cheia é a última
   camada a ceder — fechar uma tarefa não pode derrubar o modo junto
 
+#### AC-365 — A tela cheia não esconde criar, buscar e filtrar
+
+- **Dado** o quadro expandido para a tela inteira (AC-359)
+- **Quando** preciso criar uma tarefa ou recortar o quadro
+- **Então** o cabeçalho do quadro traz "+ Nova tarefa" e "Buscar e filtrar", que
+  é a barra de busca e filtros DA PÁGINA vindo para cima do quadro. Expandido, o
+  quadro cobria a topbar e a barra, e não havia como criar nem procurar sem sair
+  do modo — sair do modo para criar uma tarefa é o gesto que faz ninguém usar o
+  modo
+- **E** a altura do cabeçalho não muda: quem cede os ~190px é a identidade
+  ("Quadro de tarefas · 6 etapas"), que numa tela ocupada só pelo quadro não
+  informa nada que a tela não diga. A troca é CSS pendurado no `data-tela-cheia`,
+  como o próprio modo, para valer antes da primeira pintura
+- **E** os selects NÃO se repetem: uma segunda cópia da barra custaria ~4 KB de
+  HTML em toda visita ao quadro (AC-240) e seria a cópia que fica para trás no
+  primeiro filtro novo
+- **E** o botão conta quantos recortes estão ligados: com a barra fechada, um
+  quadro recortado é indistinguível de um quadro vazio
+- **E** o `/` continua indo para a busca, trazendo a barra junto; o Esc fecha a
+  barra ANTES de sair da tela cheia, na mesma ordem de dentro para fora do
+  AC-359
+
 #### AC-358 — No card, nenhuma cor diz duas coisas
 
 - **Dado** o quadro com cards de cada prioridade e com tarefas em pergunta, em
@@ -792,6 +814,28 @@ seja o que está acontecendo.
 - **Quando** escrevo no campo do pé da coluna e dou Enter
 - **Então** a tarefa é criada com esse título; o campo existe só em Aberta,
   porque é lá que a tarefa sem responsável nasce
+
+#### AC-364 — Mudar de coluna e escolher o lugar são um gesto só
+
+- **Dado** que arrasto um card do Backlog para Em andamento, e que faço triagem
+- **Quando** paro sobre o terceiro card da coluna de destino
+- **Então** o vão abre ali, como já abria dentro da própria coluna (AC-352), e
+  soltar entrega o card naquele lugar. Antes o vão só existia entre irmãos da
+  MESMA lista: quem mudava de coluna via o card cair onde a régua automática
+  mandasse e tinha de arrastá-lo de novo para posicionar — dois gestos para uma
+  intenção
+- **E** a posição viaja no MESMO envio que move o card, e é gravada só depois de
+  o motor aceitar a transição: dois envios fariam o quadro assentar na ordem
+  automática e só depois pular para a escolhida, e uma transição recusada
+  deixaria a coluna reordenada por um movimento que não aconteceu
+- **E** onde a chegada pede texto a mira sobrevive à espera: ela viaja
+  no formulário do painel de motivo, senão responder ao painel entregaria o card
+  no fim da coluna, desfazendo o que o gesto havia escolhido
+- **E** a coluna de ORIGEM para de apagar durante o arrasto: soltar nela é
+  reordenar, e ela ficava a 25% anunciando recusa justamente onde o gesto mais
+  acontece
+- **E** posicionar segue sendo de quem triaga, como pela rota própria (AC-209):
+  para os demais o arrasto entre colunas continua sendo só movimento
 
 ### US-063 — O mesmo quadro em três leituras
 

@@ -32,7 +32,11 @@
     {{-- `flex:0 0 auto` no título e `flex:0 1 auto` nos chips: quem
          cede espaço primeiro são os chips, não o nome do quadro. É
          a mesma prioridade de encolhimento da topbar. --}}
-    <div class="shrink-0">
+    {{-- A identidade é o que CEDE o lugar na tela cheia: ali o quadro é a tela
+         inteira, e dizer que ele é o quadro repete o que já se está vendo. Os
+         ~190px que ela ocupa são o orçamento da barra que entra logo abaixo.
+         Quem esconde é o CSS, antes da primeira pintura (ver `app.css`). --}}
+    <div class="shrink-0" data-fora-da-tela-cheia>
         <h2 class="font-display text-[15px] font-semibold text-ink leading-tight whitespace-nowrap">Quadro de tarefas</h2>
         <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint whitespace-nowrap">
             {{ count($etapas) }} etapas · concluída = em produção
@@ -51,6 +55,49 @@
                    text-ink-mute hover:text-brand transition">
         <span class="h-[18px] w-[18px]"><x-nav-icon name="duvida" :peso="1.7" /></span>
     </button>
+
+    {{--
+        O que a tela cheia levava embaixo dela, de volta — e no lugar que a
+        identidade do quadro desocupou.
+
+        Expandido, o quadro cobre a topbar (onde mora o "+ Nova tarefa") e a
+        barra de busca e filtros: não havia como criar nem procurar sem sair do
+        modo, e sair do modo para criar uma tarefa é o gesto que faz ninguém
+        usar o modo. A altura do cabeçalho não muda — 52px antes e depois; o
+        que muda é quem ocupa os ~190px do título.
+
+        Dois controles, e não a barra inteira: o botão TRAZ a barra de verdade
+        para cima do quadro (ver `alternarFiltros` e a regra do `app.css`). Uma
+        segunda cópia dos selects aqui seria a cópia que fica para trás no
+        primeiro filtro novo — e ~4 KB de HTML em toda visita ao quadro.
+    --}}
+    <div data-so-na-tela-cheia class="shrink-0 items-center gap-2">
+        <button type="button" @click.stop="alternarFiltros()"
+                :aria-expanded="filtrosAbertos.toString()"
+                title="Buscar, filtrar e agrupar em raias · /"
+                class="shrink-0 h-[26px] px-2.5 rounded-badge border flex items-center gap-1.5
+                       text-[12px] transition"
+                :class="filtrosAbertos
+                    ? 'border-brand text-brand-text'
+                    : 'border-btn-line text-ink-dim hover:text-brand hover:border-brand'">
+            <span class="h-3 w-3"><x-nav-icon name="funil" :peso="1.8" /></span>
+            Buscar e filtrar
+            {{-- Quantos recortes estão ligados. Sem o número, a barra fechada
+                 esconde que o quadro está recortado — e quadro recortado é
+                 indistinguível de quadro vazio. --}}
+            @if ($recortes)
+                <span class="font-mono text-[10px] text-brand-text">{{ count($recortes) }}</span>
+            @endif
+        </button>
+
+        {{-- A porta de criar, que era da topbar. Preenchida na cor da marca
+             porque aqui ela é a única ação primária da tela. --}}
+        <button type="button" @click="$dispatch('open-modal', 'nova-tarefa')"
+                class="shrink-0 h-[26px] px-2.5 rounded-control bg-brand text-on-brand
+                       font-semibold text-[12px] whitespace-nowrap hover:bg-brand-bright transition">
+            + Nova tarefa
+        </button>
+    </div>
 
     {{--
         Os chips do quadro.

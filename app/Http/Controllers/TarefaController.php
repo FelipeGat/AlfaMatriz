@@ -952,6 +952,16 @@ class TarefaController extends Controller
             // Quem revisa / quem testa (US-087): opcional, e só as entradas
             // nos portões de exame o usam — o motor ignora no resto.
             'interlocutor_id' => 'nullable|exists:users,id',
+            // A coluna de destino inteira, quando o arrasto mirou um lugar
+            // nela (`ordemDoVao`, no quadro). Mudar de etapa e escolher o
+            // lugar na fila eram dois gestos, e o segundo só existia DENTRO da
+            // coluna: quem arrastava do Backlog para o terceiro lugar de Em
+            // andamento via o card cair onde a régua automática mandasse.
+            // Viaja no mesmo envio do movimento porque é o mesmo gesto — dois
+            // envios fariam o quadro assentar na ordem automática e só depois
+            // pular para a escolhida.
+            'ordem' => 'nullable|array',
+            'ordem.*' => 'integer',
             // As imagens da devolução para correção. SÓ figura, ao contrário
             // do anexo da tarefa aberta: o painel pede o print do que
             // reprovou, e log e planilha continuam entrando pela tarefa, onde
@@ -1004,6 +1014,18 @@ class TarefaController extends Controller
             ], livre: (bool) $request->user()?->podeTriarTarefas());
         } catch (\RuntimeException $e) {
             return $this->voltarParaOQuadro($request, $e->getMessage(), 'critico');
+        }
+
+        // A posição na coluna de destino, DEPOIS de o motor aceitar: gravada
+        // antes, uma transição recusada deixaria a coluna reordenada por um
+        // movimento que não aconteceu. O motor zera a `ordem` de quem muda de
+        // etapa (`FluxoTarefaService::mover`), então o que se grava aqui é a
+        // primeira posição que este card tem na coluna nova.
+        //
+        // A capacidade é a mesma de posicionar pela rota própria: mover é de
+        // quem toca a tarefa, mas ORGANIZAR a fila alheia é de quem triaga.
+        if (! empty($data['ordem']) && auth()->user()?->podeTriarTarefas()) {
+            $this->regravarOrdemDaColuna($data['status'], $data['ordem']);
         }
 
         // A imagem da devolução só toca o disco DEPOIS de o motor aceitar o
@@ -1191,11 +1213,13 @@ class TarefaController extends Controller
      *
      * Posicionar card é organizar o trabalho — decidir o que se pega primeiro —,
      * então segue a mesma capacidade que priorizar e direcionar. Para quem não
-     * triaga, o arraste sobre card nem vira reordenação (`ehReordenacao`, em
+     * triaga, o arraste sobre card nem vira reordenação (`listaAceita`, em
      * `index.blade.php`) — e aqui a rota confirma.
      *
-     * Só posiciona quem está na coluna informada: a lista de ids vem do
-     * navegador, e um id de outra coluna reordenaria o que não estava à vista.
+     * Esta rota é a do card que ficou na PRÓPRIA coluna. Mudando de coluna, a
+     * mesma sequência viaja no envio do movimento (`mover`): é um gesto só, e
+     * dois envios fariam o quadro assentar na ordem automática antes de pular
+     * para a escolhida.
      */
     public function posicionarNaColuna(Request $request)
     {
@@ -1211,19 +1235,32 @@ class TarefaController extends Controller
             'ordem.*' => 'integer',
         ]);
 
-        $daColuna = Tarefa::where('status', $data['status'])->pluck('id')->all();
-
-        foreach ($data['ordem'] as $posicao => $id) {
-            if (in_array((int) $id, $daColuna, true)) {
-                Tarefa::where('id', $id)->update(['ordem' => $posicao + 1]);
-            }
-        }
+        $this->regravarOrdemDaColuna($data['status'], $data['ordem']);
 
         // Sem o quadro: o navegador já reordenou a coluna ANTES de enviar — é
         // dele que a ordem sai, lida do DOM (`confirmarVao`). Redesenhar
         // 900 KB para confirmar o que já está na tela é o gasto mais fácil de
         // não fazer.
         return $this->voltarParaOQuadro($request, comQuadro: false);
+    }
+
+    /**
+     * Grava a sequência recebida como a ordem da coluna.
+     *
+     * Só posiciona quem está na coluna informada: a lista de ids vem do
+     * navegador, e um id de outra coluna reordenaria o que não estava à vista.
+     *
+     * @param  array<int, int|string>  $ids
+     */
+    private function regravarOrdemDaColuna(string $status, array $ids): void
+    {
+        $daColuna = Tarefa::where('status', $status)->pluck('id')->all();
+
+        foreach ($ids as $posicao => $id) {
+            if (in_array((int) $id, $daColuna, true)) {
+                Tarefa::where('id', $id)->update(['ordem' => $posicao + 1]);
+            }
+        }
     }
 
     /** Acrescenta um item ao checklist, no fim da lista. */

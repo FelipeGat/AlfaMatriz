@@ -116,6 +116,115 @@ class OrdemEConcorrenciaTest extends TestCase
     }
 
     /**
+     * @spec:AC-364 Mudar de coluna e escolher o lugar viraram um gesto só: a posição
+     * mirada viaja no MESMO envio que move o card. Antes o vão só abria entre irmãos da
+     * própria coluna, e quem mudava de etapa via o card cair onde a régua automática
+     * mandasse — dois arrastos para uma intenção.
+     */
+    public function test_mover_entre_colunas_entrega_o_card_na_posicao_mirada(): void
+    {
+        $usuario = User::factory()->create();
+
+        $primeira = $this->criarTarefa(['titulo' => 'Primeira', 'prioridade' => 'critica', 'status' => 'em_revisao']);
+        $segunda = $this->criarTarefa(['titulo' => 'Segunda', 'prioridade' => 'critica', 'status' => 'em_revisao']);
+        $viajante = $this->criarTarefa(['titulo' => 'Viajante', 'prioridade' => 'baixa']);
+
+        $this->actingAs($usuario)->post(route('tarefas.mover', $viajante), [
+            'status' => 'em_revisao',
+            'de_status' => 'em_desenvolvimento',
+            'ordem' => [$primeira->id, $viajante->id, $segunda->id],
+        ])->assertSessionMissing('erro');
+
+        $coluna = $this->actingAs($usuario)->get(route('tarefas.index'))
+            ->viewData('colunas')['em_revisao']->pluck('titulo')->all();
+
+        // No MEIO de duas críticas: é um lugar que a régua automática jamais
+        // daria a uma tarefa de prioridade baixa, e por isso ele prova que
+        // quem mandou foi a mira do gesto.
+        $this->assertSame(['Primeira', 'Viajante', 'Segunda'], $coluna);
+    }
+
+    /**
+     * @spec:AC-364 A posição só é gravada DEPOIS de o motor aceitar a transição: gravada
+     * antes, um movimento recusado deixaria a coluna reordenada por algo que não
+     * aconteceu.
+     */
+    public function test_movimento_recusado_nao_reordena_a_coluna_de_destino(): void
+    {
+        $usuario = User::factory()->create();
+
+        $primeira = $this->criarTarefa(['titulo' => 'Primeira', 'status' => 'em_revisao']);
+        $segunda = $this->criarTarefa(['titulo' => 'Segunda', 'status' => 'em_revisao']);
+        $viajante = $this->criarTarefa(['titulo' => 'Viajante']);
+
+        // Alguém já moveu o card enquanto ele estava na mão do outro (AC-208).
+        $viajante->update(['status' => 'backlog']);
+
+        $this->actingAs($usuario)->post(route('tarefas.mover', $viajante), [
+            'status' => 'em_revisao',
+            'de_status' => 'em_desenvolvimento',
+            'ordem' => [$viajante->id, $primeira->id, $segunda->id],
+        ])->assertSessionHas('erro');
+
+        $this->assertSame('backlog', $viajante->fresh()->status);
+        $this->assertNull($primeira->fresh()->ordem);
+        $this->assertNull($segunda->fresh()->ordem);
+    }
+
+    /**
+     * @spec:AC-364 Mover é de quem toca a tarefa; ORGANIZAR a fila alheia segue sendo de
+     * quem triaga (AC-209). Quem não triaga move o card e a coluna não se reordena.
+     */
+    public function test_quem_nao_triaga_move_mas_nao_posiciona(): void
+    {
+        $membro = User::factory()->membro()->create();
+
+        $daFila = $this->criarTarefa(['titulo' => 'Da fila', 'status' => 'em_revisao']);
+        $sua = $this->criarTarefa(['titulo' => 'Sua', 'responsavel_id' => $membro->id]);
+
+        $this->actingAs($membro)->post(route('tarefas.mover', $sua), [
+            'status' => 'em_revisao',
+            'de_status' => 'em_desenvolvimento',
+            'ordem' => [$sua->id, $daFila->id],
+        ])->assertSessionMissing('erro');
+
+        $this->assertSame('em_revisao', $sua->fresh()->status);
+        $this->assertNull($sua->fresh()->ordem);
+        $this->assertNull($daFila->fresh()->ordem);
+    }
+
+    /**
+     * @spec:AC-364 O vão passa a abrir também na coluna de DESTINO, e a célula de outra
+     * RAIA apaga em vez de aceitar um solto que não move nada — antes ela acendia,
+     * recebia o card e o gesto morria em silêncio.
+     */
+    public function test_o_vao_atravessa_colunas_e_a_outra_raia_apaga(): void
+    {
+        $usuario = User::factory()->create();
+        $this->criarTarefa();
+
+        $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // Quem decide onde o vão abre é a LISTA sob o ponteiro, e não mais a
+        // igualdade de etapa entre o card na mão e o alvo.
+        $this->assertStringContainsString('listaAceita(alvo.parentElement)', $html);
+        $this->assertStringContainsString('naFaixaDoArrasto(faixa) && this.aceita(status)', $html);
+
+        // A coluna anuncia a própria faixa ao receber o card, e apaga quando ela
+        // não é a de onde ele saiu.
+        $this->assertStringContainsString('faixaSobOPonteiro = ', $html);
+        $this->assertStringContainsString('! naFaixaDoArrasto(', $html);
+
+        // A coluna de ORIGEM deixou de apagar: soltar nela é reordenar.
+        $this->assertStringContainsString('status === this.statusArrastado', $html);
+
+        // A ordem mirada viaja no envio do movimento e no painel de motivo.
+        $this->assertStringContainsString('escreverOrdem(this.$refs.formMover, ordem)', $html);
+        $this->assertStringContainsString('this.pendente.ordem = ordem', $html);
+        $this->assertStringContainsString('pendente.ordem ?? []', $html);
+    }
+
+    /**
      * @spec:AC-209 Posicionar é organizar trabalho alheio, então segue a mesma capacidade
      * de priorizar e direcionar — e não alcança card de outra coluna, porque a lista de
      * ids vem do navegador.

@@ -1,0 +1,34 @@
+<b>📋 AlfaMatriz — Changelog 18/08/2026</b>
+<i>Escolher o lugar do card ao mudar de coluna, e a tela cheia devolve criar, buscar e filtrar</i>
+
+<b>🖱️ Mudar de coluna e escolher o lugar viraram um gesto só</b>
+
+• <b>O vão agora abre também na coluna de destino.</b> Arraste um card do Backlog para o terceiro lugar de Em andamento e é ali que ele fica. Antes o espaço só se abria entre cards da MESMA coluna: quem mudava de etapa via o card cair onde a ordenação automática mandasse e precisava arrastá-lo outra vez para posicionar — dois gestos para uma intenção.
+
+• <b>Onde a etapa pede motivo, a posição espera junto.</b> Mandar para revisão, para o staging ou devolver para correção continua abrindo o pedido de texto, e o lugar escolhido no arrasto vale quando você confirma.
+
+• <b>A coluna de onde o card saiu parou de apagar.</b> Ela ficava esmaecida no instante em que se pegava um card dela, anunciando recusa justamente onde a reordenação acontece.
+
+• <b>Posicionar segue sendo de quem faz triagem</b>, como já era pelo arrasto dentro da coluna. Para os demais, arrastar entre colunas continua movendo a tarefa de etapa.
+
+<b>🏊 Entre raias, o quadro agora diz não</b>
+
+• Com o quadro agrupado por responsável ou por sistema, <b>a faixa das outras pessoas fica esmaecida enquanto o card está na mão</b> — como já acontece com as colunas fora do fluxo. Antes ela acendia, aceitava o card e nada acontecia: o gesto morria em silêncio.
+
+• Trocar quem cuida da tarefa continua sendo pelo campo <b>Responsável</b>, dentro da tarefa.
+
+<b>⛶ A tela cheia deixou de esconder o que se usa</b>
+
+• <b>"+ Nova tarefa" e "Buscar e filtrar" agora ficam no cabeçalho do quadro</b> quando ele está expandido. Antes o quadro cobria a barra de cima e não havia como criar nem procurar sem sair do modo.
+
+• <b>Sem gastar altura nenhuma.</b> O cabeçalho continua com a mesma medida — quem cedeu o lugar foi o título "Quadro de tarefas", que numa tela ocupada só pelo quadro não dizia nada de novo.
+
+• <b>É a barra de filtros de sempre</b>, que aparece flutuando por cima do quadro e some quando você clica fora ou aperta Esc. O botão mostra quantos recortes estão ligados, para um quadro filtrado não se confundir com um quadro vazio.
+
+• A tecla <b>/</b> continua indo direto para a busca, e traz a barra junto.
+
+<b>⚡ De quebra, o quadro ficou mais leve</b>
+
+• Um quadro cheio, de 120 tarefas, passou a mandar <b>10 KB a menos</b> de página: cada card repetia três vezes informações que a própria coluna já carregava.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

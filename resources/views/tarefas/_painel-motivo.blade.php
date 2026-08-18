@@ -52,6 +52,15 @@
         <input type="hidden" name="status" :value="pendente.status">
         <input type="hidden" name="de_status" :value="pendente.de">
 
+        {{-- A posição mirada no arrasto, quando o solto pediu texto. O card só
+             anda depois do motivo, e sem ela ele chegaria no fim da coluna,
+             desfazendo a única coisa que o gesto escolheu além da etapa. Vazia
+             quando o painel foi aberto pelo menu ou pelos botões do card, onde
+             não houve mira nenhuma. --}}
+        <template x-for="id in (pendente.ordem ?? [])" :key="id">
+            <input type="hidden" name="ordem[]" :value="id">
+        </template>
+
         {{-- "Devolvendo para Em andamento": o verbo diz o que está
              acontecendo e o destino vem em negrito, na cor dele.
              "Confirmar" sozinho é o que se aperta sem ler. --}}
