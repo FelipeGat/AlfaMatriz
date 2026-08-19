@@ -56,9 +56,10 @@
     // Desabilitado não é link, é <span>: cinza mais fraco e sem cursor de mão.
     $inerte = $rotulo.' text-ink-faint cursor-default';
 
-    // Número tabular vai em mono — é a regra de tipografia do sistema, e de
-    // quebra impede o botão de mudar de largura entre a página 9 e a 10.
-    $numero = $base.' min-w-[26px] font-mono';
+    // `tabular` é o que impede o botão de mudar de largura entre a página 9 e
+    // a 10: iguala o avanço dos dígitos sem precisar de uma família mono, que
+    // fazia o mesmo serviço ocupando mais espaço.
+    $numero = $base.' min-w-[26px] font-sans tabular';
 @endphp
 
 @if ($paginator->hasPages())
@@ -80,7 +81,7 @@
         {{-- Números --}}
         @foreach ($elements as $element)
             @if (is_string($element))
-                <span class="hidden px-1 font-mono text-[11.5px] tracking-normal text-ink-faint sm:inline" aria-hidden="true">{{ $element }}</span>
+                <span class="hidden px-1 font-sans tabular text-[11.5px] tracking-normal text-ink-faint sm:inline" aria-hidden="true">{{ $element }}</span>
             @endif
 
             @if (is_array($element))

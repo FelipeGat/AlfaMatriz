@@ -86,8 +86,8 @@
         @forelse ($registros as $registro)
             <tr class="border-b border-rule hover:bg-chip transition">
                 <td class="px-4 py-3 whitespace-nowrap">
-                    <p class="font-mono text-[12px] text-ink-dim">{{ $registro->created_at->format('d/m/Y') }}</p>
-                    <p class="font-mono text-[11px] text-ink-faint">{{ $registro->created_at->format('H:i:s') }}</p>
+                    <p class="font-sans tabular text-[12px] text-ink-dim">{{ $registro->created_at->format('d/m/Y') }}</p>
+                    <p class="font-sans tabular text-[11px] text-ink-faint">{{ $registro->created_at->format('H:i:s') }}</p>
                 </td>
 
                 <td class="px-4 py-3">

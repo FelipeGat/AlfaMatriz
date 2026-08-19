@@ -51,7 +51,7 @@
                 @if ($filtroPeriodo === 'personalizado')
                     <input type="date" name="periodo_de" value="{{ $periodoDe }}" onchange="this.form.submit()"
                            class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
-                    <span class="font-mono text-[10.5px] text-ink-faint">até</span>
+                    <span class="font-sans tabular text-[10.5px] text-ink-faint">até</span>
                     <input type="date" name="periodo_ate" value="{{ $periodoAte }}" onchange="this.form.submit()"
                            class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
                 @endif
@@ -124,7 +124,7 @@
                                 <span class="h-[7px] w-[7px] shrink-0 rounded-full"
                                       style="background: rgb(var(--{{ $estagio['cor'] }}))"></span>
                                 <h3 class="min-w-0 truncate font-display text-[14px] font-semibold text-ink">{{ $estagio['label'] }}</h3>
-                                <span class="ml-auto shrink-0 h-5 min-w-[20px] px-1.5 rounded-full font-mono text-[10px] font-semibold leading-5 text-center"
+                                <span class="ml-auto shrink-0 h-5 min-w-[20px] px-1.5 rounded-full font-sans tabular text-[10px] font-semibold leading-5 text-center"
                                       style="background: rgb(var(--{{ $estagio['cor'] }}) / var(--tint-alpha)); color: rgb(var(--{{ $estagio['cor'] }}))">
                                     {{ $estagio['quantidade'] }}
                                 </span>
@@ -170,7 +170,7 @@
                                     </p>
 
                                     <div class="mt-2 pt-2 border-t border-rule flex items-center gap-2">
-                                        <span class="font-mono text-[12px] text-brand-text whitespace-nowrap">
+                                        <span class="font-sans tabular text-[12px] text-brand-text whitespace-nowrap">
                                             R$ {{ number_format($lead->valor_estimado ?? 0, 0, ',', '.') }}
                                         </span>
                                         <span class="min-w-0 flex-1 truncate text-right text-[11px] text-ink-faint">
@@ -549,7 +549,7 @@
                                         <a href="{{ $anexo->url }}" target="_blank" class="min-w-0 flex-1 truncate text-[12.5px] text-ink hover:text-brand-text">
                                             {{ $anexo->nome_original }}
                                         </a>
-                                        <span class="shrink-0 font-mono text-[10.5px] text-ink-faint">{{ $anexo->tamanho_formatado }}</span>
+                                        <span class="shrink-0 font-sans tabular text-[10.5px] text-ink-faint">{{ $anexo->tamanho_formatado }}</span>
                                         <form method="POST" action="{{ route('leads.anexos.destroy', $anexo) }}"
                                               onsubmit="return confirm('Remover este anexo?')">
                                             @csrf @method('DELETE')

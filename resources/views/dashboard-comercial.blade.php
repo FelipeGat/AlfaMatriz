@@ -105,7 +105,7 @@
                         @csrf
                         <input type="hidden" name="vendedor_id" value="{{ $linha['vendedor_id'] }}">
                         <input type="hidden" name="competencia" value="{{ $competencia }}">
-                        <span class="font-mono text-[10.5px] text-ink-faint">meta R$</span>
+                        <span class="font-sans tabular text-[10.5px] text-ink-faint">meta R$</span>
                         <input type="number" name="valor_meta" step="0.01" min="0"
                                value="{{ $linha['meta'] }}" placeholder="0,00"
                                class="h-8 w-[110px] py-0 text-[12.5px] rounded-control bg-input border-line text-ink">

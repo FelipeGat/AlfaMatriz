@@ -162,8 +162,8 @@
 
                             <td class="px-4 py-3">
                                 <div class="flex items-baseline gap-2">
-                                    <span class="font-mono text-[13.5px] text-ink whitespace-nowrap">R$ {{ number_format($produto['mrr'], 2, ',', '.') }}</span>
-                                    <span class="font-mono text-[11px] text-ink-faint">{{ number_format($produto['share'] * 100, 0) }}%</span>
+                                    <span class="font-sans tabular text-[13.5px] text-ink whitespace-nowrap">R$ {{ number_format($produto['mrr'], 2, ',', '.') }}</span>
+                                    <span class="font-sans tabular text-[11px] text-ink-faint">{{ number_format($produto['share'] * 100, 0) }}%</span>
                                 </div>
                                 <span class="mt-1.5 block h-1.5 w-full max-w-[140px] rounded-badge bg-bar-track overflow-hidden">
                                     <span class="block h-full rounded-badge" data-barra="{{ $sistema->nome }}"
@@ -171,12 +171,12 @@
                                 </span>
                             </td>
 
-                            <td class="px-4 py-3 font-mono text-[13px] text-ink-dim whitespace-nowrap">
+                            <td class="px-4 py-3 font-sans tabular text-[13px] text-ink-dim whitespace-nowrap">
                                 R$ {{ number_format($produto['arr'], 2, ',', '.') }}
                             </td>
 
                             <td class="px-4 py-3">
-                                <span class="block font-mono text-[13.5px] text-ink tabular">{{ number_format($produto['clientes_ativos'], 0, ',', '.') }}</span>
+                                <span class="block font-sans text-[13.5px] text-ink tabular">{{ number_format($produto['clientes_ativos'], 0, ',', '.') }}</span>
                                 {{-- A unidade real de cobrança: academias, condomínios,
                                      vidas agregadas. "Clientes" esconde o que se cobra. --}}
                                 <span class="block font-mono text-[11px] uppercase tracking-caps text-ink-faint truncate">
@@ -184,15 +184,15 @@
                                 </span>
                             </td>
 
-                            <td class="px-4 py-3 font-mono text-[13px] text-ink-dim whitespace-nowrap">
+                            <td class="px-4 py-3 font-sans tabular text-[13px] text-ink-dim whitespace-nowrap">
                                 R$ {{ number_format($produto['ticket_medio'], 2, ',', '.') }}
                             </td>
 
                             <td class="px-4 py-3">
-                                <span class="block font-mono text-[13px] whitespace-nowrap {{ $churnAlto ? 'text-crit' : 'text-ink-dim' }}">
+                                <span class="block font-sans tabular text-[13px] whitespace-nowrap {{ $churnAlto ? 'text-crit' : 'text-ink-dim' }}">
                                     {{ number_format($produto['taxa_cancelamento'], 1, ',', '.') }}%
                                 </span>
-                                <span class="block font-mono text-[11px] text-ink-faint whitespace-nowrap">
+                                <span class="block font-sans tabular text-[11px] text-ink-faint whitespace-nowrap">
                                     {{ $produto['clientes_cancelados'] }} cancel.
                                 </span>
                             </td>
@@ -273,16 +273,16 @@
                     <p class="mt-3 font-display text-[22px] font-semibold leading-none text-ink tabular whitespace-nowrap">
                         R$ {{ number_format($produto['mrr'], 2, ',', '.') }}
                     </p>
-                    <p class="mt-1 font-mono text-[11px] text-ink-faint">{{ number_format($produto['share'] * 100, 0) }}% do MRR total</p>
+                    <p class="mt-1 font-sans tabular text-[11px] text-ink-faint">{{ number_format($produto['share'] * 100, 0) }}% do MRR total</p>
 
                     <dl class="mt-3 pt-3 border-t border-rule space-y-1.5">
                         <div class="flex items-center justify-between gap-2">
                             <dt class="text-[12px] text-ink-mute">Base ativa</dt>
-                            <dd class="font-mono text-[12.5px] text-ink-dim">{{ number_format($produto['clientes_ativos'], 0, ',', '.') }}</dd>
+                            <dd class="font-sans tabular text-[12.5px] text-ink-dim">{{ number_format($produto['clientes_ativos'], 0, ',', '.') }}</dd>
                         </div>
                         <div class="flex items-center justify-between gap-2">
                             <dt class="text-[12px] text-ink-mute">Ticket médio</dt>
-                            <dd class="font-mono text-[12.5px] text-ink-dim">R$ {{ number_format($produto['ticket_medio'], 2, ',', '.') }}</dd>
+                            <dd class="font-sans tabular text-[12.5px] text-ink-dim">R$ {{ number_format($produto['ticket_medio'], 2, ',', '.') }}</dd>
                         </div>
                         @if ($produto['modulos_ativos'] > 0)
                             {{-- Módulos são cobrados à parte da licença: sem
@@ -291,14 +291,14 @@
                                 <dt class="text-[12px] text-ink-mute">
                                     Módulos <span class="text-ink-faint">({{ $produto['modulos_ativos'] }})</span>
                                 </dt>
-                                <dd class="font-mono text-[12.5px] text-ink-dim">
+                                <dd class="font-sans tabular text-[12.5px] text-ink-dim">
                                     R$ {{ number_format($produto['mrr_modulos'], 2, ',', '.') }}
                                 </dd>
                             </div>
                         @endif
                         <div class="flex items-center justify-between gap-2">
                             <dt class="text-[12px] text-ink-mute">Churn</dt>
-                            <dd class="font-mono text-[12.5px] {{ $produto['taxa_cancelamento'] > 10 ? 'text-crit' : 'text-ink-dim' }}">
+                            <dd class="font-sans tabular text-[12.5px] {{ $produto['taxa_cancelamento'] > 10 ? 'text-crit' : 'text-ink-dim' }}">
                                 {{ number_format($produto['taxa_cancelamento'], 1, ',', '.') }}%
                             </dd>
                         </div>

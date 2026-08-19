@@ -141,9 +141,9 @@ gap:7px`:
 ```
 [ícone do sistema 21×21px redondo]       flex-shrink:0
 [responsável 11.5px inkMute]             flex:1; min-width:56px  ← o min-width evita "Joa…"
-[tempo na etapa  selo mono 10px/600]     flex-shrink:0
-[selo checklist  3/5  mono 10px]         flex-shrink:0, só se houver
-[selo comentários  mono 10px]            flex-shrink:0, só se houver
+[tempo na etapa  selo 10px/600 tabular]  flex-shrink:0
+[selo checklist  3/5  10px tabular]      flex-shrink:0, só se houver
+[selo comentários  10px tabular]         flex-shrink:0, só se houver
 [grupo de 3 botões]                      margin-left:auto; gap:4px
 ```
 

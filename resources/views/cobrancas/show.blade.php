@@ -18,7 +18,7 @@
                 </div>
                 <div>
                     <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Vencimento</p>
-                    <p class="mt-1 font-mono text-[13px] text-ink">{{ $cobranca->data_vencimento->format('d/m/Y') }}</p>
+                    <p class="mt-1 font-sans tabular text-[13px] text-ink">{{ $cobranca->data_vencimento->format('d/m/Y') }}</p>
                 </div>
                 <div>
                     <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Status</p>
@@ -54,7 +54,7 @@
                                     <div class="text-[11.5px] text-ink-mute mt-1 text-left">{{ collect($linha['clientes'] ?? [])->join(', ') }}</div>
                                 </details>
                             </td>
-                            <td class="px-4 py-[13px] text-right font-mono text-[13px] text-ink tabular whitespace-nowrap">R$ {{ number_format($linha['valor'] ?? 0, 2, ',', '.') }}</td>
+                            <td class="px-4 py-[13px] text-right font-sans text-[13px] text-ink tabular whitespace-nowrap">R$ {{ number_format($linha['valor'] ?? 0, 2, ',', '.') }}</td>
                         </tr>
                     @endforeach
                 </tbody>

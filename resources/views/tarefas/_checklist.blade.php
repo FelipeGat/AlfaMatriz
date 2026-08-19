@@ -24,7 +24,7 @@
         {{-- O progresso só existe quando há lista: "0 de 0" anunciaria como
              pendência uma tarefa que simplesmente não tem checklist. --}}
         @if ($progresso)
-            <span class="font-mono text-[10.5px] text-ink-mute">
+            <span class="font-sans tabular text-[10.5px] text-ink-mute">
                 {{ $progresso['feitos'] }}/{{ $progresso['total'] }}
             </span>
             <div class="flex-1 h-1 rounded-full overflow-hidden" style="background: rgb(var(--line))">

@@ -60,7 +60,7 @@ export default {
                 // Título de tela e de painel, e todo número grande de destaque.
                 display: ['"Space Grotesk"', ...defaultTheme.fontFamily.sans],
                 // Caixa alta, número tabular, data, delta, eixo, atalho.
-                mono: ['"Geist Mono"', '"JetBrains Mono"', ...defaultTheme.fontFamily.mono],
+                mono: ['"Geist Mono"', ...defaultTheme.fontFamily.mono],
             },
 
             colors: {

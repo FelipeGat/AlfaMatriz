@@ -194,7 +194,7 @@
                 número faria a linha anunciar o vizinho antes da tarefa.
             --}}
             @if ($totalVinculos > 0)
-                <span class="inline-flex items-center gap-[3px] align-middle font-mono text-[10px] text-ink-mute"
+                <span class="inline-flex items-center gap-[3px] align-middle font-sans tabular text-[10px] text-ink-mute"
                       title="{{ $totalVinculos }} {{ $totalVinculos === 1 ? 'tarefa vinculada' : 'tarefas vinculadas' }}">
                     <span class="h-[11px] w-[11px]"><x-nav-icon name="link" :peso="1.8" /></span>{{ $totalVinculos }}
                 </span>
@@ -274,14 +274,14 @@
                 <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] text-pergunta whitespace-nowrap">
                     Aguardando resposta
                 </span>
-                <span class="shrink-0 font-mono text-[9.5px] text-ink-mute">{{ $perguntaHa }}</span>
+                <span class="shrink-0 font-sans tabular text-[9.5px] text-ink-mute">{{ $perguntaHa }}</span>
             </div>
 
             <div class="mt-1 flex items-center gap-1.5">
                 <span class="flex-1 min-w-0 text-[12px] font-semibold text-ink truncate">
                     {{ $tarefa->perguntaPara?->name ?? 'alguém' }}
                 </span>
-                <span class="shrink-0 px-[5px] py-px rounded-badge font-mono text-[9px] font-semibold whitespace-nowrap"
+                <span class="shrink-0 px-[5px] py-px rounded-badge font-sans tabular text-[9px] font-semibold whitespace-nowrap"
                       {{-- Empacada, o selo CHAPA no próprio roxo da pergunta em vez
                            de acender em vermelho: o vermelho é a prioridade Crítica
                            (AC-356), e a terceira rodada de uma conversa não é isso.
@@ -510,13 +510,13 @@
                  INSTANTE absoluto vai no title: quem quer saber "desde
                  quando" para o mouse em cima, sem custar largura. --}}
             <span title="Na etapa desde {{ $entrouNaEtapaEm->format('d/m/Y H:i') }} · há {{ $tempoNaEtapa }}"
-                  class="shrink-0 px-1.5 py-0.5 rounded-badge font-mono text-[10px] font-semibold"
+                  class="shrink-0 px-1.5 py-0.5 rounded-badge font-sans tabular text-[10px] font-semibold"
                   style="{{ $estiloDoTempo }}">
                 {{ $tempoNaEtapa }}
             </span>
 
             @if ($progresso)
-                <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px]"
+                <span class="shrink-0 flex items-center gap-[3px] font-sans tabular text-[10px]"
                       title="{{ $progresso['feitos'] }} de {{ $progresso['total'] }} itens concluídos"
                       style="color: {{ $progresso['feitos'] === $progresso['total'] ? 'rgb(var(--good))' : 'rgb(var(--ink-mute))' }}">
                     <span class="h-[11px] w-[11px]"><x-nav-icon name="check-circle" :peso="1.9" /></span>
@@ -525,7 +525,7 @@
             @endif
 
             @if ($totalComentarios > 0)
-                <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px] text-ink-mute"
+                <span class="shrink-0 flex items-center gap-[3px] font-sans tabular text-[10px] text-ink-mute"
                       title="{{ $totalComentarios }} comentário{{ $totalComentarios === 1 ? '' : 's' }}">
                     <span class="h-[11px] w-[11px]"><x-nav-icon name="balao" :peso="1.8" /></span>
                     {{ $totalComentarios }}
@@ -541,7 +541,7 @@
                  contagens numa linha que já carrega checklist, conversa e três
                  botões — e a distinção entre eles não muda nada de fora do card. --}}
             @if ($totalAnexos > 0)
-                <span class="shrink-0 flex items-center gap-[3px] font-mono text-[10px] text-ink-mute"
+                <span class="shrink-0 flex items-center gap-[3px] font-sans tabular text-[10px] text-ink-mute"
                       title="{{ $totalAnexos }} {{ $totalAnexos === 1 ? 'anexo' : 'anexos' }}">
                     <span class="h-[11px] w-[11px]"><x-nav-icon name="paperclip" :peso="1.8" /></span>
                     {{ $totalAnexos }}

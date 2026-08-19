@@ -26,7 +26,7 @@
             <span class="flex-1 min-w-0 text-[12.5px] font-medium text-ink">
                 Aguardando resposta de {{ $tarefa->perguntaPara?->name ?? 'alguém' }}
             </span>
-            <span class="shrink-0 font-mono text-[10.5px] whitespace-nowrap text-pergunta">
+            <span class="shrink-0 font-sans tabular text-[10.5px] whitespace-nowrap text-pergunta">
                 {{ max(1, $tarefa->rodadas) }}ª rodada
             </span>
         </div>
@@ -93,7 +93,7 @@
             <x-nav-icon name="cadeado-fechado" :peso="1.8" />
         </span>
         <span class="flex-1 min-w-0 text-[12.5px] text-ink">{{ $tarefa->bloqueio_motivo }}</span>
-        <span class="shrink-0 font-mono text-[10.5px] font-semibold whitespace-nowrap"
+        <span class="shrink-0 font-sans tabular text-[10.5px] font-semibold whitespace-nowrap"
               style="color: rgb(var(--bloqueio))">{{ $tarefa->bloqueadaHa() }}</span>
 
         {{-- Destravar é envio próprio, e o formulário da tarefa não pode aninhar
@@ -152,7 +152,7 @@
                 @endif
             </span>
             @if ($testeDaPassagem !== null)
-                <span class="shrink-0 font-mono text-[10.5px] font-semibold whitespace-nowrap"
+                <span class="shrink-0 font-sans tabular text-[10.5px] font-semibold whitespace-nowrap"
                       style="color: rgb(var(--{{ $tomDoTeste }}))">
                     {{ \App\Models\Tarefa::duracaoCurta((int) $testeDaPassagem->created_at->diffInSeconds(now())) }}
                 </span>

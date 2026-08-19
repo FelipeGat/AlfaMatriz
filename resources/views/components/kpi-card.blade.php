@@ -45,7 +45,7 @@
 
     @if ($delta !== null || count($serie) > 1)
         <div class="mt-3 flex items-end justify-between gap-3">
-            <p class="font-mono text-[11px] {{ $corDoDelta }} truncate">{{ $delta }}</p>
+            <p class="font-sans tabular text-[11px] {{ $corDoDelta }} truncate">{{ $delta }}</p>
             <x-sparkline :pontos="$serie" :cor="$acento" />
         </div>
     @endif

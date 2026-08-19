@@ -40,7 +40,7 @@
                 <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] text-brand-text">
                     Aguardando resposta de {{ $tarefa->perguntaPara?->name ?? 'alguém' }}
                 </span>
-                <span class="shrink-0 px-[5px] py-px rounded-badge font-mono text-[9px] font-semibold"
+                <span class="shrink-0 px-[5px] py-px rounded-badge font-sans tabular text-[9px] font-semibold"
                       style="{{ $empacada
                           ? 'background: rgb(var(--crit) / var(--tint-alpha)); color: rgb(var(--crit))'
                           : 'background: var(--chip); color: rgb(var(--ink-mute))' }}">
@@ -61,7 +61,7 @@
          descreveria um mural, onde ninguém deve nada a ninguém. --}}
     <div class="flex items-center gap-2 mb-2.5">
         <p class="flex-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-mute">Conversa</p>
-        <span class="font-mono text-[10.5px] text-ink-faint">{{ $comentarios->count() }}</span>
+        <span class="font-sans tabular text-[10.5px] text-ink-faint">{{ $comentarios->count() }}</span>
     </div>
 
     {{-- Altura limitada com rolagem própria: uma tarefa velha pode ter trinta
@@ -92,7 +92,7 @@
                         {{ $autor?->name ?? 'Autor removido' }}
                     </span>
 
-                    <span class="min-w-0 truncate font-mono text-[10px] text-ink-faint">
+                    <span class="min-w-0 truncate font-sans tabular text-[10px] text-ink-faint">
                         {{ $comentario->created_at->diffForHumans(short: true) }}
                         {{-- A correção é dita: quem leu a versão anterior
                              precisa saber que ela mudou. --}}

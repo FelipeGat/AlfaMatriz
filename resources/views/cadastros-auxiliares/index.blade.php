@@ -24,7 +24,7 @@
                                 <span class="h-[14px] w-[14px]"><x-nav-icon name="clipboard" /></span>
                             </span>
                             <span class="flex-1 min-w-0 text-[13.5px] text-ink truncate">{{ $centro->nome }}</span>
-                            <span class="shrink-0 font-mono text-[11px] text-ink-mute whitespace-nowrap">{{ $centro->contas_pagar_count }} lançamento(s)</span>
+                            <span class="shrink-0 font-sans tabular text-[11px] text-ink-mute whitespace-nowrap">{{ $centro->contas_pagar_count }} lançamento(s)</span>
                             <x-confirmar :action="route('centros-custo.destroy', $centro)" method="DELETE"
                                          icone="trash" destrutivo confirmar="Remover"
                                          titulo="Remover este centro de custo?"
@@ -54,7 +54,7 @@
                                 <span class="h-[14px] w-[14px]"><x-nav-icon name="building" /></span>
                             </span>
                             <span class="flex-1 min-w-0 text-[13.5px] text-ink truncate">{{ $fornecedor->razao_social }}</span>
-                            <span class="shrink-0 font-mono text-[11px] text-ink-mute whitespace-nowrap">{{ $fornecedor->contas_pagar_count }} lançamento(s)</span>
+                            <span class="shrink-0 font-sans tabular text-[11px] text-ink-mute whitespace-nowrap">{{ $fornecedor->contas_pagar_count }} lançamento(s)</span>
                             <x-confirmar :action="route('fornecedores.destroy', $fornecedor)" method="DELETE"
                                          icone="trash" destrutivo confirmar="Remover"
                                          titulo="Remover este fornecedor?"
@@ -103,7 +103,7 @@
                         <div class="flex items-center gap-2.5 px-3.5 py-2.5 bg-head">
                             <span class="font-display text-[14px] font-semibold text-ink">{{ $categoria->nome }}</span>
                             <x-badge :tom="$receita ? 'bom' : 'critico'">{{ ucfirst($categoria->tipo) }}</x-badge>
-                            <span class="ml-auto font-mono text-[10.5px] text-ink-mute whitespace-nowrap">
+                            <span class="ml-auto font-sans tabular text-[10.5px] text-ink-mute whitespace-nowrap">
                                 {{ $categoria->subcategorias->count() }} sub · {{ $categoria->subcategorias->sum(fn ($s) => $s->contas->count()) }} contas
                             </span>
                             <x-confirmar :action="route('categorias.destroy', $categoria)" method="DELETE"

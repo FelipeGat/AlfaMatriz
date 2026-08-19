@@ -69,11 +69,11 @@
                         <td class="px-4 py-3 text-[13px] text-ink-dim truncate">{{ $fixa->conta?->nome ?? '—' }}</td>
                         <td class="px-4 py-3 text-[13px] text-ink-dim truncate">{{ $fixa->fornecedor?->razao_social ?? '—' }}</td>
 
-                        <td class="px-4 py-3 text-right font-mono text-[13.5px] text-ink whitespace-nowrap">
+                        <td class="px-4 py-3 text-right font-sans tabular text-[13.5px] text-ink whitespace-nowrap">
                             R$ {{ number_format($fixa->valor, 2, ',', '.') }}
                         </td>
 
-                        <td class="px-4 py-3 font-mono text-[12px] text-ink-dim whitespace-nowrap">
+                        <td class="px-4 py-3 font-sans tabular text-[12px] text-ink-dim whitespace-nowrap">
                             {{ $fixa->data_inicio->format('m/Y') }} → {{ $fixa->data_fim?->format('m/Y') ?? 'indeterminado' }}
                         </td>
 

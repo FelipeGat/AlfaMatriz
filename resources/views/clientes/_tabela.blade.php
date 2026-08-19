@@ -164,9 +164,9 @@
                         $totalLicenca = $comValor->sum(fn ($s) => $s->pivot->valorDaLicenca());
                     @endphp
                     @if ($comValor->isEmpty())
-                        <span class="font-mono text-[12.5px] text-ink-faint">—</span>
+                        <span class="font-sans tabular text-[12.5px] text-ink-faint">—</span>
                     @else
-                        <span class="block font-mono text-[13px] text-ink whitespace-nowrap"
+                        <span class="block font-sans tabular text-[13px] text-ink whitespace-nowrap"
                               title="{{ $comValor->map(fn ($s) => $s->nome.': R$ '.number_format($s->pivot->valorDaLicenca(), 2, ',', '.'))->implode(' · ') }}">
                             R$ {{ number_format($totalLicenca, 2, ',', '.') }}
                         </span>
@@ -179,7 +179,7 @@
                 </td>
 
                 <td class="px-4 py-3">
-                    <span class="block font-mono text-[13px] text-ink whitespace-nowrap">
+                    <span class="block font-sans tabular text-[13px] text-ink whitespace-nowrap">
                         R$ {{ number_format($cliente->valor_mensal ?? 0, 2, ',', '.') }}
                     </span>
                     <span class="block font-mono text-[11px] uppercase tracking-caps text-ink-faint whitespace-nowrap">

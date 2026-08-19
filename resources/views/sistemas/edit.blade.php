@@ -66,10 +66,10 @@
                                 <tr class="border-b border-rule last:border-0 hover:bg-chip transition">
                                     <td class="px-3 py-2.5 text-[13.5px] text-ink">{{ $tier->nome }}</td>
                                     <td class="px-3 py-2.5 text-[13px] text-ink-dim">{{ $tier->revenda->nome ?? 'Padrão (todas)' }}</td>
-                                    <td class="px-3 py-2.5 text-right font-mono text-[13px] text-ink whitespace-nowrap">R$ {{ number_format($tier->preco_base, 2, ',', '.') }}</td>
-                                    <td class="px-3 py-2.5 text-right font-mono text-[13px] text-ink-dim">{{ $tier->unidades_inclusas ?? '—' }}</td>
-                                    <td class="px-3 py-2.5 text-right font-mono text-[13px] text-ink-dim whitespace-nowrap">{{ $tier->valor_excedente_unidade ? 'R$ '.number_format($tier->valor_excedente_unidade, 2, ',', '.') : '—' }}</td>
-                                    <td class="px-3 py-2.5 text-right font-mono text-[13px] text-ink-dim whitespace-nowrap">{{ $tier->limite_unidades ?? 'ilimitado' }}</td>
+                                    <td class="px-3 py-2.5 text-right font-sans tabular text-[13px] text-ink whitespace-nowrap">R$ {{ number_format($tier->preco_base, 2, ',', '.') }}</td>
+                                    <td class="px-3 py-2.5 text-right font-sans tabular text-[13px] text-ink-dim">{{ $tier->unidades_inclusas ?? '—' }}</td>
+                                    <td class="px-3 py-2.5 text-right font-sans tabular text-[13px] text-ink-dim whitespace-nowrap">{{ $tier->valor_excedente_unidade ? 'R$ '.number_format($tier->valor_excedente_unidade, 2, ',', '.') : '—' }}</td>
+                                    <td class="px-3 py-2.5 text-right font-sans tabular text-[13px] text-ink-dim whitespace-nowrap">{{ $tier->limite_unidades ?? 'ilimitado' }}</td>
                                     <td class="px-3 py-2.5">
                                         <div class="flex items-center justify-end">
                                             <x-confirmar :action="route('precos.destroy', $tier)" method="DELETE"

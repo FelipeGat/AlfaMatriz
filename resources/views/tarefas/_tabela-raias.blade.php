@@ -114,7 +114,7 @@
                                         </x-badge>
                                     @endif
                                     @if ($progresso)
-                                        <span class="font-mono text-[10.5px] text-ink-faint"
+                                        <span class="font-sans tabular text-[10.5px] text-ink-faint"
                                               title="{{ $progresso['feitos'] }} de {{ $progresso['total'] }} itens concluídos">
                                             {{ $progresso['feitos'] }}/{{ $progresso['total'] }}
                                         </span>
@@ -142,7 +142,7 @@
                                 </span>
                             </td>
 
-                            <td class="px-3 py-2.5 text-right font-mono text-[11px] text-ink-faint whitespace-nowrap">
+                            <td class="px-3 py-2.5 text-right font-sans tabular text-[11px] text-ink-faint whitespace-nowrap">
                                 {{ $eventoAberto?->entrou_em?->diffForHumans(null, true) ?? '—' }}
                             </td>
 

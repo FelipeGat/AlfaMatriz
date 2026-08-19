@@ -42,7 +42,7 @@
                      coluna em que o número é o único sinal de vida, um zero
                      destacado disputa o olho com as linhas que têm trabalho. --}}
                 <td class="px-4 py-3">
-                    <span class="font-mono text-[13.5px] tabular {{ $interno->tarefas_count > 0 ? 'text-ink' : 'text-ink-faint' }}">
+                    <span class="font-sans text-[13.5px] tabular {{ $interno->tarefas_count > 0 ? 'text-ink' : 'text-ink-faint' }}">
                         {{ $interno->tarefas_count }}
                     </span>
                 </td>

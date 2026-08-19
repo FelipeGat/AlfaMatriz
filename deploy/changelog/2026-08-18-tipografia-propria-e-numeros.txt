@@ -1,0 +1,18 @@
+<b>📋 AlfaMatriz — Changelog 18/08/2026</b>
+<i>A tipografia parou de depender de fora, e número em tabela ficou mais legível</i>
+
+<b>🔤 As fontes voltaram a aparecer</b>
+
+• <b>Em alguns computadores o sistema abria com a fonte errada — e sem avisar.</b> As três fontes do painel vinham de servidores externos. Qualquer bloqueador de rastreio, DNS filtrado ou proxy de empresa derrubava as três de uma vez, e a tela caía na fonte padrão do sistema operacional. Como falha de fonte não gera erro em lugar nenhum, ninguém recebia aviso: a tela só ficava "estranha", e quem tivesse por acaso uma fonte parecida instalada nem percebia.
+
+• <b>Agora as fontes vêm do próprio AlfaMatriz.</b> Nada é buscado fora na hora de abrir a tela — funciona com internet ruim, atrás de proxy e com bloqueador ligado. De quebra o painel abre um pouco mais rápido, com duas conexões externas a menos, e o IP de quem usa o sistema deixa de passar por um terceiro a cada acesso.
+
+<b>🔢 Número em tabela ficou mais legível</b>
+
+• <b>Os números saíram da fonte de código.</b> Valores de tabela, contadores, datas, prazos, percentuais, deltas e os selos de tempo dos cards de tarefa passaram a usar a fonte do texto, com dígitos de largura fixa. As colunas continuam alinhadas <b>exatamente</b> como antes — o que muda é que o número ocupa 20% menos espaço e lê melhor no tamanho em que aparece.
+
+• <b>Onde havia aperto, sobrou espaço.</b> As linhas de total e as colunas estreitas eram justamente onde o número mais espremia o resto da linha. Agora cabem com folga.
+
+• <b>O que continua na fonte de código.</b> CNPJ, CPF, e-mail, IP, versão de sistema, código de tarefa e atalhos de teclado — ali a largura fixa de cada caractere é o que ajuda a conferir dígito por dígito e a não trocar 0 por O.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

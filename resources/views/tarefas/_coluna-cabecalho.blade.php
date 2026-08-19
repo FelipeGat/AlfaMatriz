@@ -41,7 +41,7 @@
         title="Expandir {{ $etapa['label'] }}" aria-label="Expandir {{ $etapa['label'] }}"
         class="w-full py-2.5 flex flex-col items-center gap-2.5">
     <span class="h-[19px] min-w-[19px] px-[5px] rounded-full flex items-center justify-center
-                 font-mono text-[10px] font-semibold"
+                 font-sans tabular text-[10px] font-semibold"
           style="background: rgb(var(--{{ $corDoContador }}) / var(--tint-alpha)); color: rgb(var(--{{ $corDoContador }}))">
         {{ $etapa['limite'] ? $etapa['andando'].'/'.$etapa['limite'] : $etapa['quantidade'] }}
     </span>
@@ -66,7 +66,7 @@
             quem contou os cards na tela.
         --}}
         <span class="shrink-0 h-[19px] px-1.5 rounded-full flex items-center justify-center
-                     font-mono text-[10px] font-semibold"
+                     font-sans tabular text-[10px] font-semibold"
               style="background: rgb(var(--{{ $corDoContador }}) / var(--tint-alpha)); color: rgb(var(--{{ $corDoContador }}))"
               title="{{ $etapa['limite']
                   ? $etapa['andando'].' em curso de um limite de '.$etapa['limite']

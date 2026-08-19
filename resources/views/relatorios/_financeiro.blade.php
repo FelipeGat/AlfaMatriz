@@ -62,17 +62,17 @@
         <dl class="divide-y divide-rule">
             <div class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                 <dt class="text-[13px] text-ink-dim">Total em aberto</dt>
-                <dd class="font-mono text-[13.5px] text-ink tabular">R$ {{ number_format($aReceber->total, 2, ',', '.') }}</dd>
+                <dd class="font-sans text-[13.5px] text-ink tabular">R$ {{ number_format($aReceber->total, 2, ',', '.') }}</dd>
             </div>
             <div class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                 <dt class="text-[13px] text-ink-dim">Vencido</dt>
-                <dd class="font-mono text-[13.5px] tabular {{ $aReceber->vencido > 0 ? 'text-crit' : 'text-ink' }}">
+                <dd class="font-sans text-[13.5px] tabular {{ $aReceber->vencido > 0 ? 'text-crit' : 'text-ink' }}">
                     R$ {{ number_format($aReceber->vencido, 2, ',', '.') }}
                 </dd>
             </div>
             <div class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                 <dt class="text-[13px] text-ink-dim">Títulos</dt>
-                <dd class="font-mono text-[13.5px] text-ink tabular">{{ number_format($aReceber->qtd, 0, ',', '.') }}</dd>
+                <dd class="font-sans text-[13.5px] text-ink tabular">{{ number_format($aReceber->qtd, 0, ',', '.') }}</dd>
             </div>
         </dl>
     </x-painel>
@@ -88,7 +88,7 @@
                     <span class="h-2.5 w-2.5 rounded-badge shrink-0"
                           style="background: rgb(var(--warn) / {{ $alphasFaixa[$i] ?? end($alphasFaixa) }})"></span>
                     <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-mute">{{ $faixa['rotulo'] }}</span>
-                    <span class="font-mono text-[12px] text-ink tabular">R$ {{ number_format($faixa['valor'], 2, ',', '.') }}</span>
+                    <span class="font-sans text-[12px] text-ink tabular">R$ {{ number_format($faixa['valor'], 2, ',', '.') }}</span>
                 </div>
             @endforeach
         </div>
@@ -101,17 +101,17 @@
         <dl class="divide-y divide-rule">
             <div class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                 <dt class="text-[13px] text-ink-dim">Total em aberto</dt>
-                <dd class="font-mono text-[13.5px] text-ink tabular">R$ {{ number_format($aPagar->total, 2, ',', '.') }}</dd>
+                <dd class="font-sans text-[13.5px] text-ink tabular">R$ {{ number_format($aPagar->total, 2, ',', '.') }}</dd>
             </div>
             <div class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                 <dt class="text-[13px] text-ink-dim">Vencido</dt>
-                <dd class="font-mono text-[13.5px] tabular {{ $aPagar->vencido > 0 ? 'text-crit' : 'text-ink' }}">
+                <dd class="font-sans text-[13.5px] tabular {{ $aPagar->vencido > 0 ? 'text-crit' : 'text-ink' }}">
                     R$ {{ number_format($aPagar->vencido, 2, ',', '.') }}
                 </dd>
             </div>
             <div class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                 <dt class="text-[13px] text-ink-dim">Títulos</dt>
-                <dd class="font-mono text-[13.5px] text-ink tabular">{{ number_format($aPagar->qtd, 0, ',', '.') }}</dd>
+                <dd class="font-sans text-[13.5px] text-ink tabular">{{ number_format($aPagar->qtd, 0, ',', '.') }}</dd>
             </div>
         </dl>
     </x-painel>
@@ -142,13 +142,13 @@
             <tr class="border-b border-rule hover:bg-chip transition">
                 <td class="px-4 py-3 text-[13.5px] text-ink">{{ $cobranca->descricao }}</td>
                 <td class="px-4 py-3 text-[13px] text-ink-dim">{{ $cobranca->revenda?->nome ?? $cobranca->cliente?->nome_exibicao ?? 'Sem origem' }}</td>
-                <td class="px-4 py-3 font-mono text-[13px] text-ink-dim whitespace-nowrap">
+                <td class="px-4 py-3 font-sans tabular text-[13px] text-ink-dim whitespace-nowrap">
                     {{ \Illuminate\Support\Carbon::parse($cobranca->data_vencimento)->format('d/m/Y') }}
                 </td>
-                <td class="px-4 py-3 font-mono text-[13px] text-crit tabular text-right">
+                <td class="px-4 py-3 font-sans text-[13px] text-crit tabular text-right">
                     {{ number_format(abs(now()->startOfDay()->diffInDays(\Illuminate\Support\Carbon::parse($cobranca->data_vencimento))), 0, ',', '.') }}
                 </td>
-                <td class="px-4 py-3 font-mono text-[13px] text-ink tabular text-right whitespace-nowrap">
+                <td class="px-4 py-3 font-sans text-[13px] text-ink tabular text-right whitespace-nowrap">
                     R$ {{ number_format($cobranca->valor, 2, ',', '.') }}
                 </td>
             </tr>
