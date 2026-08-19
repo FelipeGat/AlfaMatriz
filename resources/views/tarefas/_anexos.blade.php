@@ -44,7 +44,7 @@
         <div class="pt-4 border-t border-rule">
             <div class="flex items-center gap-2 mb-2.5">
                 <h4 class="flex-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Anexos</h4>
-                <span class="font-mono text-[10.5px] text-ink-mute">{{ $anexos->count() }}</span>
+                <span class="font-sans tabular text-[10.5px] text-ink-mute">{{ $anexos->count() }}</span>
             </div>
 
             @if ($imagens->isNotEmpty())
@@ -78,7 +78,7 @@
                                  longo não corta, ele empurra o tamanho para
                                  fora da linha. --}}
                             <span class="min-w-0 flex-1 truncate text-[12px] text-ink-dim">{{ $arquivo->nome_original }}</span>
-                            <span class="shrink-0 font-mono text-[10.5px] text-ink-faint">{{ $arquivo->tamanho_formatado }}</span>
+                            <span class="shrink-0 font-sans tabular text-[10.5px] text-ink-faint">{{ $arquivo->tamanho_formatado }}</span>
                         </a>
                     @endforeach
                 </div>
@@ -110,7 +110,7 @@
                  checklist: um "0" anunciaria como lacuna uma tarefa que
                  simplesmente não precisa de anexo nenhum. --}}
             <span x-show="anexos.length" x-cloak x-text="anexos.length"
-                  class="font-mono text-[10.5px] text-ink-mute"></span>
+                  class="font-sans tabular text-[10.5px] text-ink-mute"></span>
         </div>
 
         <div x-show="imagens.length" x-cloak class="grid grid-cols-4 gap-1.5">
@@ -163,7 +163,7 @@
                        class="min-w-0 flex-1 truncate text-[12px] text-ink-dim transition hover:text-ink"
                        x-text="anexo.nome_original"></a>
 
-                    <span class="shrink-0 font-mono text-[10.5px] text-ink-faint" x-text="anexo.tamanho_formatado"></span>
+                    <span class="shrink-0 font-sans tabular text-[10.5px] text-ink-faint" x-text="anexo.tamanho_formatado"></span>
 
                     {{-- A lixeira ocupa o lugar mesmo invisível (`invisible`, e
                          não `hidden`): aparecendo só no hover ela empurraria o

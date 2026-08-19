@@ -28,7 +28,7 @@
                 @php $entrada = $movimentacao->tipo === 'entrada'; @endphp
 
                 <tr class="border-b border-rule hover:bg-chip transition">
-                    <td class="px-4 py-3 font-mono text-[13px] text-ink-dim whitespace-nowrap">
+                    <td class="px-4 py-3 font-sans tabular text-[13px] text-ink-dim whitespace-nowrap">
                         {{ \Illuminate\Support\Carbon::parse($movimentacao->data)->format('d/m/Y') }}
                     </td>
 
@@ -44,14 +44,14 @@
 
                     {{-- O valor traz o sinal: sem ele, entrada e saída viram a
                          mesma coisa numa varredura rápida da coluna. --}}
-                    <td class="px-4 py-3 text-right font-mono text-[13.5px] whitespace-nowrap"
+                    <td class="px-4 py-3 text-right font-sans tabular text-[13.5px] whitespace-nowrap"
                         style="color: rgb(var(--{{ $entrada ? 'good' : 'chart-out' }}))">
                         {{ $entrada ? '+' : '−' }}R$ {{ number_format($movimentacao->valor, 2, ',', '.') }}
                     </td>
 
                     {{-- O saldo depois do lançamento é o que permite conferir a
                          conta linha a linha, sem somar de cabeça. --}}
-                    <td class="px-4 py-3 text-right font-mono text-[13.5px] whitespace-nowrap
+                    <td class="px-4 py-3 text-right font-sans tabular text-[13.5px] whitespace-nowrap
                                {{ $movimentacao->saldo_resultante < 0 ? 'text-crit' : 'text-ink' }}">
                         R$ {{ number_format($movimentacao->saldo_resultante, 2, ',', '.') }}
                     </td>

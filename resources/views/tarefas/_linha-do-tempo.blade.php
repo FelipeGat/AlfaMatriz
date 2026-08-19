@@ -35,7 +35,7 @@
                     <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-dim">Criada</span>
                     <span class="text-ink-mute">em {{ \App\Models\Tarefa::rotuloDaEtapa($etapaInicial) }}</span>
                 </p>
-                <p class="font-mono text-[11.5px] text-ink-faint">
+                <p class="font-sans tabular text-[11.5px] text-ink-faint">
                     {{ $tarefa->created_at->format('d/m/Y H:i') }}
                     @if ($tarefa->criadoPor)
                         · por {{ $tarefa->criadoPor->name }}
@@ -52,7 +52,7 @@
                     <p class="text-[12.5px] text-ink">
                         <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-dim">{{ \App\Models\Tarefa::rotuloDaEtapa($evento->para_status) }}</span>
                     </p>
-                    <p class="font-mono text-[11.5px] text-ink-faint">
+                    <p class="font-sans tabular text-[11.5px] text-ink-faint">
                         {{ $evento->entrou_em->format('d/m/Y H:i') }}
                         {{-- O autor só existe daqui pra frente (AC-302):
                              evento anterior à coluna aparece sem ele, e a

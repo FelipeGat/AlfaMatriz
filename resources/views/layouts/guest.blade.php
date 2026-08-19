@@ -11,8 +11,6 @@
         <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
         {{-- Mesmo tema da porta de dentro: quem usa o claro não pode levar um
              flash escuro na cara ao abrir a tela de entrada. --}}

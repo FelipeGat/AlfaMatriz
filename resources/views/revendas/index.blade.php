@@ -156,8 +156,8 @@
 
                         <td class="px-4 py-3">
                             <div class="flex items-baseline gap-2">
-                                <span class="font-mono text-[13.5px] text-ink tabular">{{ number_format($linha['clientes'], 0, ',', '.') }}</span>
-                                <span class="font-mono text-[11px] text-ink-faint">{{ number_format($linha['share'] * 100, 0) }}% da base</span>
+                                <span class="font-sans text-[13.5px] text-ink tabular">{{ number_format($linha['clientes'], 0, ',', '.') }}</span>
+                                <span class="font-sans tabular text-[11px] text-ink-faint">{{ number_format($linha['share'] * 100, 0) }}% da base</span>
                             </div>
                             <span class="mt-1.5 block h-1.5 w-full max-w-[140px] rounded-badge bg-bar-track overflow-hidden">
                                 <span class="block h-full rounded-badge"
@@ -167,9 +167,9 @@
                         </td>
 
                         <td class="px-4 py-3">
-                            <span class="block font-mono text-[13.5px] text-ink whitespace-nowrap">R$ {{ number_format($linha['mrr'], 2, ',', '.') }}</span>
+                            <span class="block font-sans tabular text-[13.5px] text-ink whitespace-nowrap">R$ {{ number_format($linha['mrr'], 2, ',', '.') }}</span>
                             @if ($linha['delta'])
-                                <span class="block font-mono text-[11px] text-ink-faint">{{ $linha['delta'] }} vs mês anterior</span>
+                                <span class="block font-sans tabular text-[11px] text-ink-faint">{{ $linha['delta'] }} vs mês anterior</span>
                             @endif
                         </td>
 

@@ -147,11 +147,17 @@ Três famílias, cada uma com um papel fixo:
 | Família | Pesos | Papel |
 |---|---|---|
 | **Space Grotesk** | 500, 600, 700 | títulos de tela e de painel, **todos os números grandes de destaque** (KPIs, saldos, totais). É a voz que dialoga com o wordmark. |
-| **Geist** | 400, 500, 600, 700 | corpo, rótulos de formulário, texto de tabela, botões |
-| **Geist Mono** | 400, 500, 600 | rótulos em caixa alta, números tabulares em tabela, datas, deltas, eixos de gráfico, atalhos de teclado |
+| **Geist** | 400, 500, 600, 700 | corpo, rótulos de formulário, texto de tabela, botões, e **todo número de tabela, contador, delta e data** — sempre com a classe `.tabular` |
+| **Geist Mono** | 400, 500, 600 | rótulos em caixa alta e identificador: CNPJ/CPF, e-mail, IP, slug, versão, código de tarefa, atalho de teclado. **Número não vem mais em mono** — `.tabular` na Geist alinha os dígitos exatamente igual (81,00px nos três testes) e ocupa 20% menos em número formatado (81,05 contra 97,20 em `1.234.567,89` a 13,5px), porque a mono dá largura cheia ao ponto e à vírgula. |
 
-Fontes: Space Grotesk via `fonts.bunny.net` (já usado no projeto); Geist e Geist Mono via Google Fonts.
-Fallback do mono: `'Geist Mono', 'JetBrains Mono', monospace`.
+Fontes: as três são servidas pelo próprio projeto, de `resources/fonts` — arquivos `.woff2` do Google
+Fonts, subsets `latin` e `latin-ext`, 6 arquivos e 121 KB. Vinham de CDN e isso derrubava a tipografia
+inteira em silêncio para quem tem bloqueador de rastreio, DNS filtrado ou proxy; as três são variáveis,
+então um arquivo por subset cobre a faixa de pesos e o `font-weight` da `@font-face` é um intervalo.
+Fallback do mono: `'Geist Mono', monospace`. A JetBrains Mono saiu da segunda posição: o stack padrão
+do Tailwind (`ui-monospace`, `SFMono-Regular`, `Menlo`…) já cobre a queda sem depender de uma fonte
+instalada na máquina de quem abre — e o x-height alto dela, desenhado para código em 13–14px, engrossava
+os rótulos em caixa alta de 9,5px com `letter-spacing` 0.16em quando chegava a valer.
 
 Escala em uso:
 
@@ -167,8 +173,9 @@ Escala em uso:
 | Rótulo de KPI | Geist | 11px / 400 | `uppercase`, `letter-spacing:0.10em` |
 | Corpo de tabela | Geist | 13,5px / 400–500 | — |
 | Subtítulo de célula | Geist | 11,5px / 400 | cor `inkMute` |
-| Valor em tabela | Geist Mono | 13–13,5px / 500 | — |
+| Valor em tabela | Geist | 13–13,5px / 500 | `.tabular` |
 | Badge / chip | Geist Mono | 10px / 600 | `uppercase`, `letter-spacing:0.08em` |
+| Selo numérico (tempo, checklist) | Geist | 10px / 600 | `.tabular`, sem caixa alta |
 | Botão | Geist | 12,5–13px / 600 | — |
 | Meta do topbar | Geist Mono | 11px / 400 | `uppercase`, `letter-spacing:0.14em` |
 
@@ -802,7 +809,7 @@ Desktop primeiro, mobile funcional (é a orientação do cliente).
 | `assets/icon-matriz-solid.svg` | **criado neste projeto** | variante sólida do ícone: disco cheio em `#029caf` com o desenho **vazado** (transparente, via `<mask>`), sem borda. Para favicon, app icon, avatar e qualquer uso sobre fundo claro ou fotografia. Duas restrições geométricas que precisam ser mantidas se o ícone for redesenhado: o desenho é recuado do aro (nós externos a 9,4 do centro, disco a 16) para a silhueta circular não ser mordida; e o nó central é um **anel** vazado (furo r=4,1 com núcleo opaco r=1,9) com os raios começando em 5,8 — se tudo for vazado de uma vez, o miolo funde com os raios num único furo e o ícone perde a leitura de hub |
 | `assets/logo-tile.svg` | `public/logo-tile.svg` do repositório | referência do ícone anterior |
 | Ícones de UI | traçados de `resources/views/components/nav-icon.blade.php` (família Heroicons outline, `stroke-width` 1.6–1.8) | menu, ações, tiles. **Continue usando o componente `<x-nav-icon>`** || Ícone de recolher painel | novo, padrão "panel-left" | retângulo com divisória vertical à esquerda |
-| Fontes | Space Grotesk (fonts.bunny.net), Geist + Geist Mono (Google Fonts) | ver Tipografia |
+| Fontes | Space Grotesk, Geist e Geist Mono — `.woff2` OFL-1.1 em `resources/fonts` | ver Tipografia |
 
 Nenhum asset de terceiros licenciado foi usado. Não há imagens de conteúdo — a interface é toda tipografia,
 ícone e dado.

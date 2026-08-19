@@ -20,7 +20,7 @@
         {{-- A contagem só aparece quando há o que contar, como o "3/5" do
              checklist: "0" anunciaria como ausência algo que é só o normal. --}}
         @if ($tarefa->vinculadas->isNotEmpty())
-            <span class="font-mono text-[10.5px] text-ink-mute">{{ $tarefa->vinculadas->count() }}</span>
+            <span class="font-sans tabular text-[10.5px] text-ink-mute">{{ $tarefa->vinculadas->count() }}</span>
         @endif
     </div>
 

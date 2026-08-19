@@ -50,7 +50,7 @@
             <tr class="border-b border-rule hover:bg-chip transition {{ $usuario->ativo ? '' : 'opacity-[0.62]' }}">
                 <td class="px-4 py-3">
                     <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="h-[30px] w-[30px] shrink-0 rounded-full bg-brand/20 text-brand-text flex items-center justify-center font-mono text-[11.5px] font-semibold">
+                        <span class="h-[30px] w-[30px] shrink-0 rounded-full bg-brand/20 text-brand-text flex items-center justify-center font-sans tabular text-[11.5px] font-semibold">
                             {{ Str::of($usuario->name)->substr(0, 1)->upper() }}
                         </span>
                         <div class="min-w-0">

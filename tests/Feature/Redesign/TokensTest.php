@@ -231,18 +231,48 @@ class TokensTest extends TestCase
     {
         $css = $this->css();
 
-        foreach (['space-grotesk', 'Geist', 'Geist+Mono'] as $familia) {
-            $this->assertStringContainsString(
-                $familia,
+        // Procurar a URL do CDN no CSS dava verde mesmo com a fonte inalcançável:
+        // bloqueador de rastreio, DNS filtrado ou proxy derrubava as três de uma
+        // vez, a tela caía em `system-ui` e o teste continuava passando. Falha em
+        // fonte não gera erro visível, então o defeito só aparecia como "ficou
+        // estranho". Disponível agora quer dizer: declarada e presente no repo.
+        $familias = [
+            'Geist' => 'geist-latin.woff2',
+            'Geist Mono' => 'geist-mono-latin.woff2',
+            'Space Grotesk' => 'space-grotesk-latin.woff2',
+        ];
+
+        foreach ($familias as $familia => $arquivo) {
+            $this->assertMatchesRegularExpression(
+                "/@font-face\s*\{[^}]*font-family:\s*'".preg_quote($familia, '/')."'/s",
                 $css,
-                "A família {$familia} não é carregada em resources/css/app.css."
+                "A família {$familia} precisa de uma @font-face em resources/css/app.css."
+            );
+
+            $this->assertFileExists(
+                resource_path('fonts/'.$arquivo),
+                "O arquivo da família {$familia} precisa estar versionado em resources/fonts."
+            );
+        }
+
+        // Sem os comentários: o texto que explica por que os CDNs saíram cita os
+        // três pelo nome, e citar não é depender.
+        $semComentarios = preg_replace('#/\*.*?\*/#s', '', $css);
+
+        foreach (['fonts.googleapis.com', 'fonts.bunny.net', 'fonts.gstatic.com'] as $cdn) {
+            $this->assertStringNotContainsString(
+                $cdn,
+                $semComentarios,
+                "A tipografia voltou a depender de {$cdn}. As três famílias são "
+                .'servidas pelo próprio projeto justamente para não caírem juntas.'
             );
         }
 
         $tailwind = $this->tailwind();
 
         // O papel de cada família é o que amarra o desenho: `font-sans` é
-        // corpo, `font-display` é destaque, `font-mono` é dado tabular.
+        // corpo e número (com `.tabular`), `font-display` é destaque, e
+        // `font-mono` ficou com caixa alta e identificador.
         $papeis = [
             'sans' => 'Geist',
             'display' => 'Space Grotesk',

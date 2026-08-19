@@ -71,7 +71,7 @@
                                 </span>
 
                                 @if ($item['valor'])
-                                    <span class="shrink-0 font-mono text-[13px] text-ink-dim whitespace-nowrap">{{ $item['valor'] }}</span>
+                                    <span class="shrink-0 font-sans tabular text-[13px] text-ink-dim whitespace-nowrap">{{ $item['valor'] }}</span>
                                 @endif
 
                                 <a href="{{ $item['rota'] }}"
@@ -124,8 +124,8 @@
                                         </div>
 
                                         <div class="shrink-0 text-right" style="width: 84px">
-                                            <p class="font-mono text-[12.5px] text-ink whitespace-nowrap">{{ 'R$ '.number_format($linha['valor'], 0, ',', '.') }}</p>
-                                            <p class="font-mono text-[10px] text-ink-faint whitespace-nowrap">{{ $linha['delta'] }}</p>
+                                            <p class="font-sans tabular text-[12.5px] text-ink whitespace-nowrap">{{ 'R$ '.number_format($linha['valor'], 0, ',', '.') }}</p>
+                                            <p class="font-sans tabular text-[10px] text-ink-faint whitespace-nowrap">{{ $linha['delta'] }}</p>
                                         </div>
                                     </div>
                                 @endforeach
@@ -134,7 +134,7 @@
                             {{-- Eixo ao pé: sem ele a régua vira barra decorativa. --}}
                             <div class="mt-3 flex items-center gap-3">
                                 <div style="flex: 0 0 38%"></div>
-                                <div class="relative flex-1 min-w-0 h-4 font-mono text-[10px] text-ink-faint">
+                                <div class="relative flex-1 min-w-0 h-4 font-sans tabular text-[10px] text-ink-faint">
                                     <span class="absolute left-0">0</span>
                                     @foreach ($origemMrr['guias'] as $guia)
                                         @continue($guia >= $origemMrr['escala'])
@@ -158,7 +158,7 @@
                                       style="background: rgb(var(--{{ $token }}))"></span>
                                 <span class="shrink-0 font-mono text-[11px] uppercase tracking-caps text-ink-faint">{{ $item['data']->format('d/m') }}</span>
                                 <span class="min-w-0 flex-1 truncate text-[13px] text-ink-dim">{{ $item['descricao'] }}</span>
-                                <span class="shrink-0 font-mono text-[12.5px] whitespace-nowrap"
+                                <span class="shrink-0 font-sans tabular text-[12.5px] whitespace-nowrap"
                                       style="color: rgb(var(--{{ $token }}))">
                                     {{ $item['sinal'] === 'entrada' ? '+' : '−' }}{{ number_format($item['valor'], 2, ',', '.') }}
                                 </span>
@@ -184,13 +184,13 @@
                         @forelse ($entraram as $cliente)
                             <a href="{{ route('clientes.edit', $cliente) }}"
                                class="flex items-center gap-3 px-4 py-3 border-b border-rule last:border-0 hover:bg-chip transition">
-                                <span class="h-7 w-7 shrink-0 rounded-full bg-brand/20 text-brand-text flex items-center justify-center font-mono text-[11px] font-semibold">
+                                <span class="h-7 w-7 shrink-0 rounded-full bg-brand/20 text-brand-text flex items-center justify-center font-sans tabular text-[11px] font-semibold">
                                     {{ Str::of($cliente->nome_exibicao)->substr(0, 1)->upper() }}
                                 </span>
                                 <span class="min-w-0 flex-1 truncate text-[13px] text-ink-dim">{{ $cliente->nome_exibicao }}</span>
                                 {{-- A data de entrada, a mesma que filtrou a lista. `created_at`
                                      aqui mostrava o dia da importação, e não o do cadastro. --}}
-                                <span class="shrink-0 font-mono text-[11px] text-ink-faint">{{ $cliente->data_entrada?->format('d/m') }}</span>
+                                <span class="shrink-0 font-sans tabular text-[11px] text-ink-faint">{{ $cliente->data_entrada?->format('d/m') }}</span>
                             </a>
                         @empty
                             <p class="px-4 py-6 text-[13px] text-ink-mute">Nenhum cliente novo nos últimos 7 dias.</p>

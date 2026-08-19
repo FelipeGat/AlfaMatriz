@@ -50,7 +50,7 @@
                         </p>
 
                         <div class="mt-3 flex items-end justify-between gap-3">
-                            <p class="min-w-0 font-mono text-[11px] text-ink-faint truncate">
+                            <p class="min-w-0 font-sans tabular text-[11px] text-ink-faint truncate">
                                 {{ $cartao['variacao'] ?? 'sem histórico' }} · {{ number_format($cartao['share'] * 100, 0) }}% do caixa
                             </p>
                             <x-sparkline :pontos="$cartao['serie']" :cor="$conta->saldo < 0 ? 'crit' : 'accent'" />
@@ -87,7 +87,7 @@
                     <div class="py-2 first:pt-0 last:pb-0">
                         <div class="flex items-baseline justify-between gap-3">
                             <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">{{ $rotulo }}</span>
-                            <span class="font-mono text-[13px] whitespace-nowrap" style="color: rgb(var(--{{ $token }}))">
+                            <span class="font-sans tabular text-[13px] whitespace-nowrap" style="color: rgb(var(--{{ $token }}))">
                                 R$ {{ number_format($valor, 2, ',', '.') }}
                             </span>
                         </div>
@@ -112,7 +112,7 @@
                         <span class="h-6 w-[2px] shrink-0 rounded-badge"
                               style="background: rgb(var(--{{ $entrada ? 'good' : 'chart-out' }}))"></span>
                         <span class="min-w-0 flex-1 truncate text-[13px] text-ink-dim">{{ $movimentacao->descricao }}</span>
-                        <span class="shrink-0 font-mono text-[12.5px] whitespace-nowrap"
+                        <span class="shrink-0 font-sans tabular text-[12.5px] whitespace-nowrap"
                               style="color: rgb(var(--{{ $entrada ? 'good' : 'chart-out' }}))">
                             {{ $entrada ? '+' : '−' }}{{ number_format($movimentacao->valor, 2, ',', '.') }}
                         </span>

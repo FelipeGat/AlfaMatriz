@@ -186,7 +186,7 @@
                     :aria-expanded="menuConta.toString()"
                     aria-haspopup="menu"
                     title="Conta de {{ Auth::user()->name }}">
-                <span class="h-[30px] w-[30px] shrink-0 rounded-full bg-brand/20 text-brand-text flex items-center justify-center font-mono text-[11.5px] font-semibold">
+                <span class="h-[30px] w-[30px] shrink-0 rounded-full bg-brand/20 text-brand-text flex items-center justify-center font-sans tabular text-[11.5px] font-semibold">
                     {{ Str::of(Auth::user()->name)->substr(0, 1)->upper() }}
                 </span>
                 <span class="min-w-0 truncate text-[12.5px] text-ink-dim group-hover:text-ink transition rail:lg:hidden">
@@ -246,7 +246,7 @@
             <span class="h-[18px] w-[18px]"><x-nav-icon name="bell" :peso="1.7" /></span>
             @if (($naoLidas ?? 0) > 0)
                 <span class="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-crit text-white
-                             font-mono text-[9px] font-semibold leading-[15px] text-center">{{ $naoLidas }}</span>
+                             font-sans tabular text-[9px] font-semibold leading-[15px] text-center">{{ $naoLidas }}</span>
             @endif
         </button>
 

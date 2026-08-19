@@ -30,7 +30,7 @@
             @foreach ($quadroPorEtapa as $etapa)
                 <div class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                     <dt class="text-[13px] text-ink-dim">{{ $etapa['rotulo'] }}</dt>
-                    <dd class="font-mono text-[13.5px] text-ink tabular">{{ number_format($etapa['quantidade'], 0, ',', '.') }}</dd>
+                    <dd class="font-sans text-[13.5px] text-ink tabular">{{ number_format($etapa['quantidade'], 0, ',', '.') }}</dd>
                 </div>
             @endforeach
         </dl>
@@ -44,7 +44,7 @@
             @foreach ($tempoPorEtapa as $etapa)
                 <div class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                     <dt class="text-[13px] text-ink-dim">{{ $etapa['rotulo'] }}</dt>
-                    <dd class="font-mono text-[13.5px] tabular {{ $etapa['dias'] !== null ? 'text-ink' : 'text-ink-faint' }}">
+                    <dd class="font-sans text-[13.5px] tabular {{ $etapa['dias'] !== null ? 'text-ink' : 'text-ink-faint' }}">
                         @if ($etapa['dias'] === null)
                             sem registro
                         @elseif ($etapa['dias'] < 1)
@@ -89,8 +89,8 @@
                 <td class="px-4 py-3 text-[13px] text-ink-dim">{{ $evento->tarefa?->sistema?->nome ?? 'Sem sistema' }}</td>
                 <td class="px-4 py-3 text-[13px] text-ink-dim">{{ $evento->tarefa?->responsavel?->name ?? 'Sem responsável' }}</td>
                 <td class="px-4 py-3 text-[13px] text-ink-dim">{{ \App\Models\Tarefa::PRIORIDADES[$evento->tarefa?->prioridade] ?? '—' }}</td>
-                <td class="px-4 py-3 font-mono text-[13px] text-ink-dim whitespace-nowrap">{{ $evento->entrou_em->format('d/m/Y') }}</td>
-                <td class="px-4 py-3 font-mono text-[13px] text-ink tabular text-right">
+                <td class="px-4 py-3 font-sans tabular text-[13px] text-ink-dim whitespace-nowrap">{{ $evento->entrou_em->format('d/m/Y') }}</td>
+                <td class="px-4 py-3 font-sans text-[13px] text-ink tabular text-right">
                     @if ($evento->tarefa !== null)
                         {{ number_format(abs($evento->entrou_em->diffInDays($evento->tarefa->iniciada_em ?? $evento->tarefa->created_at)), 0, ',', '.') }}
                     @else

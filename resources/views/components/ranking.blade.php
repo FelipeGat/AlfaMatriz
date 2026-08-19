@@ -65,7 +65,7 @@
         <div class="px-4 py-2">
             @foreach ($ranking['itens'] as $item)
                 <div class="flex items-center gap-3 h-10">
-                    <span class="shrink-0 font-mono text-[11px] text-ink-faint">{{ $item['posicao'] }}</span>
+                    <span class="shrink-0 font-sans tabular text-[11px] text-ink-faint">{{ $item['posicao'] }}</span>
 
                     <span class="min-w-0 truncate text-[13px] {{ $loop->first ? 'font-semibold text-ink' : 'text-ink-dim' }}"
                           style="flex: 0 0 30%">{{ $item['nome'] }}</span>
@@ -80,10 +80,10 @@
                               style="left: calc({{ round($item['largura'] * 100, 3) }}% - 2px); background: rgb(var(--{{ $cor }}))"></span>
                     </span>
 
-                    <span class="shrink-0 text-right font-mono text-[12.5px] text-ink whitespace-nowrap" style="width: 80px">
+                    <span class="shrink-0 text-right font-sans tabular text-[12.5px] text-ink whitespace-nowrap" style="width: 80px">
                         {{ $formatar($item['valor']) }}
                     </span>
-                    <span class="shrink-0 text-right font-mono text-[11px] text-ink-faint whitespace-nowrap" style="width: 38px">
+                    <span class="shrink-0 text-right font-sans tabular text-[11px] text-ink-faint whitespace-nowrap" style="width: 38px">
                         {{ number_format($item['share'] * 100, 0) }}%
                     </span>
                 </div>

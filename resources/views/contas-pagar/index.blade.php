@@ -143,7 +143,7 @@
                             @if ($filtroPeriodo === 'personalizado')
                                 <input type="date" name="periodo_de" value="{{ $periodoDe }}"
                                        class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
-                                <span class="font-mono text-[10.5px] text-ink-faint">até</span>
+                                <span class="font-sans tabular text-[10.5px] text-ink-faint">até</span>
                                 <input type="date" name="periodo_ate" value="{{ $periodoAte }}"
                                        class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
                                 <x-secondary-button type="submit">Aplicar</x-secondary-button>
@@ -204,7 +204,7 @@
                                    class="h-8 px-3 inline-flex items-center gap-1.5 rounded-control border text-[12px] transition
                                           {{ $filtroStatus === $chave ? 'border-brand bg-brand/[0.08] text-brand-text' : 'border-line text-ink-mute hover:border-brand hover:text-brand' }}">
                                     {{ $rotulo }}
-                                    <span class="font-mono text-[10.5px] tabular">{{ $chave === 'todos' ? $contagens['todos'] : $contagens[$chave] }}</span>
+                                    <span class="font-sans text-[10.5px] tabular">{{ $chave === 'todos' ? $contagens['todos'] : $contagens[$chave] }}</span>
                                 </a>
                             @endforeach
                         </div>
@@ -218,7 +218,7 @@
                                    class="h-8 px-3 inline-flex items-center gap-1.5 rounded-control border text-[12px] transition
                                           {{ $filtroTipo === $chave ? 'border-brand bg-brand/[0.08] text-brand-text' : 'border-line text-ink-mute hover:border-brand hover:text-brand' }}">
                                     {{ $rotulo }}
-                                    <span class="font-mono text-[10.5px] tabular">{{ $contagensTipo[$chave] }}</span>
+                                    <span class="font-sans text-[10.5px] tabular">{{ $contagensTipo[$chave] }}</span>
                                 </a>
                             @endforeach
                         </div>
@@ -250,7 +250,7 @@
             <section class="rounded-panel border border-line bg-card-grad p-4">
                 <div class="flex flex-wrap items-baseline justify-between gap-3">
                     <h2 class="font-display text-[15px] font-semibold text-ink">Em aberto por faixa de vencimento</h2>
-                    <span class="font-mono text-[13px] text-ink-dim whitespace-nowrap">R$ {{ number_format($totalEmAbertoGlobal, 2, ',', '.') }}</span>
+                    <span class="font-sans tabular text-[13px] text-ink-dim whitespace-nowrap">R$ {{ number_format($totalEmAbertoGlobal, 2, ',', '.') }}</span>
                 </div>
 
                 <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -258,7 +258,7 @@
                         <span class="flex items-center gap-2 min-w-0">
                             <span class="h-2.5 w-2.5 shrink-0 rounded-badge" style="background: rgb(var(--{{ $coresFaixa[$chave] }}))"></span>
                             <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint whitespace-nowrap">{{ $faixa['rotulo'] }}</span>
-                            <span class="font-mono text-[12.5px] text-ink whitespace-nowrap">R$ {{ number_format($faixa['valor'], 2, ',', '.') }}</span>
+                            <span class="font-sans tabular text-[12.5px] text-ink whitespace-nowrap">R$ {{ number_format($faixa['valor'], 2, ',', '.') }}</span>
                         </span>
                     @endforeach
                 </div>
@@ -377,16 +377,16 @@
                             </td>
 
                             <td class="px-4 py-3">
-                                <span class="block font-mono text-[13px] text-ink whitespace-nowrap">{{ $vencimento->format('d/m/Y') }}</span>
+                                <span class="block font-sans tabular text-[13px] text-ink whitespace-nowrap">{{ $vencimento->format('d/m/Y') }}</span>
                                 @if ($emAberto)
-                                    <span class="block font-mono text-[11px] whitespace-nowrap"
+                                    <span class="block font-sans tabular text-[11px] whitespace-nowrap"
                                           style="color: rgb(var(--{{ $atrasada ? 'crit' : ($vencendo ? 'warn' : 'ink-faint') }}))">
                                         {{ $atrasada ? 'atraso '.abs($dias).'d' : 'em '.$dias.'d' }}
                                     </span>
                                 @endif
                             </td>
 
-                            <td class="px-4 py-3 text-right font-mono text-[13.5px] text-ink whitespace-nowrap">
+                            <td class="px-4 py-3 text-right font-sans tabular text-[13.5px] text-ink whitespace-nowrap">
                                 R$ {{ number_format($contaPagar->valor, 2, ',', '.') }}
                             </td>
 
@@ -407,7 +407,7 @@
                                             class="relative inline-flex h-7 w-7 items-center justify-center rounded-tile text-ink-mute hover:text-brand hover:bg-chip transition">
                                         <span class="h-[15px] w-[15px]"><x-nav-icon name="paperclip" /></span>
                                         @if ($contaPagar->anexos_count > 0)
-                                            <span class="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-brand text-on-brand font-mono text-[9px] leading-[14px] font-semibold text-center">{{ $contaPagar->anexos_count }}</span>
+                                            <span class="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-brand text-on-brand font-sans tabular text-[9px] leading-[14px] font-semibold text-center">{{ $contaPagar->anexos_count }}</span>
                                         @endif
                                     </button>
 

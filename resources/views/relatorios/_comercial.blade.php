@@ -39,8 +39,8 @@
                         </x-badge>
                     </dt>
                     <dd class="flex items-baseline gap-3">
-                        <span class="font-mono text-[13.5px] text-ink tabular">{{ number_format($temperatura['quantidade'], 0, ',', '.') }}</span>
-                        <span class="font-mono text-[11px] text-ink-faint tabular">R$ {{ number_format($temperatura['valor'], 2, ',', '.') }}</span>
+                        <span class="font-sans text-[13.5px] text-ink tabular">{{ number_format($temperatura['quantidade'], 0, ',', '.') }}</span>
+                        <span class="font-sans text-[11px] text-ink-faint tabular">R$ {{ number_format($temperatura['valor'], 2, ',', '.') }}</span>
                     </dd>
                 </div>
             @endforeach
@@ -97,7 +97,7 @@
                 <td class="px-4 py-3 text-[13.5px] text-ink">{{ $lead->nome }}</td>
                 <td class="px-4 py-3 text-[13px] text-ink-dim">{{ \App\Models\Lead::ESTAGIOS[$lead->estagio] ?? $lead->estagio }}</td>
                 <td class="px-4 py-3 text-[13px] text-ink-dim">{{ $lead->vendedor?->name ?? 'Sem vendedor' }}</td>
-                <td class="px-4 py-3 font-mono text-[13px] text-ink tabular text-right">{{ number_format($lead->diasNoEstagio(), 0, ',', '.') }}</td>
+                <td class="px-4 py-3 font-sans text-[13px] text-ink tabular text-right">{{ number_format($lead->diasNoEstagio(), 0, ',', '.') }}</td>
                 <td class="px-4 py-3">
                     @php $temperatura = $lead->temperatura(); @endphp
                     @if ($temperatura)
@@ -106,7 +106,7 @@
                         </x-badge>
                     @endif
                 </td>
-                <td class="px-4 py-3 font-mono text-[13px] text-ink tabular text-right whitespace-nowrap">
+                <td class="px-4 py-3 font-sans text-[13px] text-ink tabular text-right whitespace-nowrap">
                     R$ {{ number_format($lead->valor_estimado, 2, ',', '.') }}
                 </td>
             </tr>

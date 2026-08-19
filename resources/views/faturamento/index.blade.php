@@ -164,17 +164,17 @@
                                 </td>
 
                                 <td class="px-4 py-2.5">
-                                    <span class="font-mono text-[13px] text-ink tabular">{{ number_format($linha['unidades'], 0, ',', '.') }}</span>
-                                    <span class="ml-1.5 font-mono text-[11px] text-ink-faint">{{ Str::plural($linha['unidade_cobranca'], $linha['unidades']) }}</span>
+                                    <span class="font-sans text-[13px] text-ink tabular">{{ number_format($linha['unidades'], 0, ',', '.') }}</span>
+                                    <span class="ml-1.5 font-sans tabular text-[11px] text-ink-faint">{{ Str::plural($linha['unidade_cobranca'], $linha['unidades']) }}</span>
                                 </td>
 
                                 {{-- A conta que gerou o valor, escrita por extenso:
                                      é ela que permite conferir antes de gerar. --}}
-                                <td class="px-4 py-2.5 font-mono text-[12.5px] text-ink-dim whitespace-nowrap">
+                                <td class="px-4 py-2.5 font-sans tabular text-[12.5px] text-ink-dim whitespace-nowrap">
                                     {{ $linha['calculo'] ?? '—' }}
                                 </td>
 
-                                <td class="px-4 py-2.5 text-right font-mono text-[13.5px] whitespace-nowrap
+                                <td class="px-4 py-2.5 text-right font-sans tabular text-[13.5px] whitespace-nowrap
                                            {{ $linha['sem_tier'] ? 'text-ink-faint' : 'text-ink' }}">
                                     {{ $linha['sem_tier'] ? '—' : 'R$ '.number_format($linha['valor'], 2, ',', '.') }}
                                 </td>
@@ -218,7 +218,7 @@
                         <span class="min-w-0 flex-1 truncate text-[13px] text-ink-dim">
                             {{ $cobranca->revenda?->nome ?? 'sem revenda' }} · {{ $cobranca->descricao }}
                         </span>
-                        <span class="shrink-0 font-mono text-[13px] text-ink whitespace-nowrap">
+                        <span class="shrink-0 font-sans tabular text-[13px] text-ink whitespace-nowrap">
                             R$ {{ number_format($cobranca->valor, 2, ',', '.') }}
                         </span>
                     </a>

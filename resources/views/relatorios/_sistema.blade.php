@@ -65,7 +65,7 @@
     <tbody>
         @forelse ($ultimasAcoes as $acao)
             <tr class="border-b border-rule hover:bg-chip transition">
-                <td class="px-4 py-3 font-mono text-[13px] text-ink-dim whitespace-nowrap">{{ $acao->created_at->format('d/m/Y H:i') }}</td>
+                <td class="px-4 py-3 font-sans tabular text-[13px] text-ink-dim whitespace-nowrap">{{ $acao->created_at->format('d/m/Y H:i') }}</td>
                 <td class="px-4 py-3 text-[13px] text-ink">{{ $acao->usuario_nome ?? 'Sistema' }}</td>
                 <td class="px-4 py-3 text-[13px] text-ink-dim">{{ ucfirst($acao->acao) }}</td>
                 <td class="px-4 py-3 font-mono text-[12.5px] text-ink-dim">{{ $acao->recurso }}</td>

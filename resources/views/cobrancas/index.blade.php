@@ -146,7 +146,7 @@
                     @if ($filtroPeriodo === 'personalizado')
                         <input type="date" name="periodo_de" value="{{ $periodoDe }}"
                                class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
-                        <span class="font-mono text-[10.5px] text-ink-faint">até</span>
+                        <span class="font-sans tabular text-[10.5px] text-ink-faint">até</span>
                         <input type="date" name="periodo_ate" value="{{ $periodoAte }}"
                                class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">
                         <x-secondary-button type="submit">Aplicar</x-secondary-button>
@@ -211,7 +211,7 @@
                            class="h-8 px-3 inline-flex items-center gap-1.5 rounded-control border text-[12px] transition
                                   {{ $filtroStatus === $chave ? 'border-brand bg-brand/[0.08] text-brand-text' : 'border-line text-ink-mute hover:border-brand hover:text-brand' }}">
                             {{ $rotulo }}
-                            <span class="font-mono text-[10.5px] tabular">{{ $chave === 'todos' ? $contagens['todos'] : $contagens[$chave] }}</span>
+                            <span class="font-sans text-[10.5px] tabular">{{ $chave === 'todos' ? $contagens['todos'] : $contagens[$chave] }}</span>
                         </a>
                     @endforeach
                 </div>
@@ -225,7 +225,7 @@
                            class="h-8 px-3 inline-flex items-center gap-1.5 rounded-control border text-[12px] transition
                                   {{ $filtroTipo === $chave ? 'border-brand bg-brand/[0.08] text-brand-text' : 'border-line text-ink-mute hover:border-brand hover:text-brand' }}">
                             {{ $rotulo }}
-                            <span class="font-mono text-[10.5px] tabular">{{ $contagensTipo[$chave] }}</span>
+                            <span class="font-sans text-[10.5px] tabular">{{ $contagensTipo[$chave] }}</span>
                         </a>
                     @endforeach
                 </div>
@@ -262,7 +262,7 @@
                     <span class="h-2.5 w-2.5 rounded-badge shrink-0"
                           style="background: rgb(var(--warn) / {{ $alphasFaixa[$i] ?? end($alphasFaixa) }})"></span>
                     <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-mute">{{ $faixa['rotulo'] }}</span>
-                    <span class="font-mono text-[12px] text-ink tabular">R$ {{ number_format($faixa['valor'], 2, ',', '.') }}</span>
+                    <span class="font-sans text-[12px] text-ink tabular">R$ {{ number_format($faixa['valor'], 2, ',', '.') }}</span>
                 </div>
             @endforeach
         </div>
@@ -292,7 +292,7 @@
 
         <div x-show="selecionados.length > 0" x-cloak
              class="mb-3 flex items-center gap-3 rounded-control border border-brand bg-brand/[0.08] px-4 py-2.5">
-            <span class="font-mono text-[12.5px] text-ink">
+            <span class="font-sans tabular text-[12.5px] text-ink">
                 <span x-text="selecionados.length"></span> selecionada(s) ·
                 <span x-text="'R$ ' + soma.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })"></span>
             </span>
@@ -345,9 +345,9 @@
                             @endif
                         </td>
                         <td class="px-4 py-[13px]">
-                            <p class="font-mono text-[13px] text-ink">{{ $cobranca->data_vencimento->format('d/m/Y') }}</p>
+                            <p class="font-sans tabular text-[13px] text-ink">{{ $cobranca->data_vencimento->format('d/m/Y') }}</p>
                             @if ($prazo)
-                                <p class="font-mono text-[11px] {{ $atrasada ? 'text-crit' : 'text-warn' }}">{{ $prazo }}</p>
+                                <p class="font-sans tabular text-[11px] {{ $atrasada ? 'text-crit' : 'text-warn' }}">{{ $prazo }}</p>
                             @endif
                         </td>
                         <td class="px-4 py-[13px]">
@@ -361,7 +361,7 @@
                         <td class="px-4 py-[13px]">
                             <x-badge tom="neutro">{{ $tipoRotulo }}</x-badge>
                         </td>
-                        <td class="px-4 py-[13px] text-right font-mono text-[13px] text-ink tabular whitespace-nowrap">R$ {{ number_format($cobranca->valor, 2, ',', '.') }}</td>
+                        <td class="px-4 py-[13px] text-right font-sans text-[13px] text-ink tabular whitespace-nowrap">R$ {{ number_format($cobranca->valor, 2, ',', '.') }}</td>
                         <td class="px-4 py-[13px]">
                             <x-badge :tom="['pago' => 'bom', 'cancelado' => 'neutro'][$cobranca->status] ?? 'atencao'" ponto>
                                 {{ $atrasada ? 'Vencido' : ucfirst($cobranca->status) }}

@@ -131,11 +131,11 @@
                     </td>
                     {{-- O número que justifica cronometrar cada etapa: quanto a
                          tarefa levou da criação até encerrar (AC-133). --}}
-                    <td class="px-4 py-3 text-right font-mono text-[13px] text-ink-dim whitespace-nowrap"
+                    <td class="px-4 py-3 text-right font-sans tabular text-[13px] text-ink-dim whitespace-nowrap"
                         title="Da criação em {{ $tarefa->created_at->format('d/m/Y H:i') }} até o encerramento">
                         {{ ($ciclo = $tarefa->duracaoDoCiclo()) === null ? '—' : \App\Models\Tarefa::duracaoCurta($ciclo) }}
                     </td>
-                    <td class="px-4 py-3 font-mono text-[13px] text-ink-dim whitespace-nowrap">
+                    <td class="px-4 py-3 font-sans tabular text-[13px] text-ink-dim whitespace-nowrap">
                         {{ $tarefa->updated_at->format('d/m/Y') }}
                         <span class="text-ink-faint">{{ $tarefa->updated_at->format('H:i') }}</span>
                     </td>
@@ -252,7 +252,7 @@
                                         @if ($relatorio->autor)
                                             <span class="text-[11.5px] text-ink-mute">por {{ $relatorio->autor->name }}</span>
                                         @endif
-                                        <span class="font-mono text-[11.5px] text-ink-faint">{{ $relatorio->created_at->format('d/m/Y H:i') }}</span>
+                                        <span class="font-sans tabular text-[11.5px] text-ink-faint">{{ $relatorio->created_at->format('d/m/Y H:i') }}</span>
                                     </p>
                                     @if (filled($relatorio->notas))
                                         <p class="mt-0.5 text-[12px] leading-snug text-ink-mute">{{ $relatorio->notas }}</p>
@@ -271,7 +271,7 @@
                     <div>
                         <div class="flex items-center gap-2 mb-2.5">
                             <h4 class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Checklist</h4>
-                            <span class="font-mono text-[10.5px] text-ink-mute">
+                            <span class="font-sans tabular text-[10.5px] text-ink-mute">
                                 {{ $progresso['feitos'] }}/{{ $progresso['total'] }}
                             </span>
                         </div>
@@ -296,7 +296,7 @@
                     <div>
                         <div class="flex items-center gap-2 mb-2.5">
                             <h4 class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Tarefas vinculadas</h4>
-                            <span class="font-mono text-[10.5px] text-ink-mute">{{ $tarefa->vinculadas->count() }}</span>
+                            <span class="font-sans tabular text-[10.5px] text-ink-mute">{{ $tarefa->vinculadas->count() }}</span>
                         </div>
                         <ul class="flex flex-col gap-1.5">
                             @foreach ($tarefa->vinculadas as $vinculada)

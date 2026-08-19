@@ -86,7 +86,7 @@
                  esconde que o quadro está recortado — e quadro recortado é
                  indistinguível de quadro vazio. --}}
             @if ($recortes)
-                <span class="font-mono text-[10px] text-brand-text">{{ count($recortes) }}</span>
+                <span class="font-sans tabular text-[10px] text-brand-text">{{ count($recortes) }}</span>
             @endif
         </button>
 
@@ -214,7 +214,7 @@
                     ? 'border-brand text-ink font-semibold bg-chip'
                     : 'border-line text-ink-mute'">
             {{ $etapa['label'] }}
-            <span class="ml-1 font-mono text-[11px]"
+            <span class="ml-1 font-sans tabular text-[11px]"
                   style="color: rgb(var(--{{ $etapa['acimaDoLimite'] ? 'warn' : $etapa['cor'] }}))">
                 @if ($etapa['limite'])
                     {{ $etapa['andando'] }}/{{ $etapa['limite'] }}

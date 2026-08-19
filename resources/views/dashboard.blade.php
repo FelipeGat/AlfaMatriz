@@ -92,7 +92,7 @@
                         @if ($filtroGrafico === 'personalizado')
                             <input type="month" name="grafico_de" value="{{ $graficoDe }}" onchange="this.form.submit()"
                                    class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink w-[128px]">
-                            <span class="font-mono text-[10.5px] text-ink-faint">até</span>
+                            <span class="font-sans tabular text-[10.5px] text-ink-faint">até</span>
                             <input type="month" name="grafico_ate" value="{{ $graficoAte }}" onchange="this.form.submit()"
                                    class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink w-[128px]">
                         @endif
@@ -118,7 +118,7 @@
                     ] as [$rotulo, $valor])
                         <div class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                             <dt class="text-[13px] text-ink-dim">{{ $rotulo }}</dt>
-                            <dd class="font-mono text-[13.5px] text-ink tabular">{{ number_format($valor, 0, ',', '.') }}</dd>
+                            <dd class="font-sans text-[13.5px] text-ink tabular">{{ number_format($valor, 0, ',', '.') }}</dd>
                         </div>
                     @endforeach
                 </dl>
@@ -143,7 +143,7 @@
                                 · vence {{ \Illuminate\Support\Carbon::parse($receita->data_vencimento)->format('d/m') }}
                             </span>
                         </span>
-                        <span class="shrink-0 font-mono text-[13px] text-ink whitespace-nowrap">
+                        <span class="shrink-0 font-sans tabular text-[13px] text-ink whitespace-nowrap">
                             R$ {{ number_format($receita->valor, 2, ',', '.') }}
                         </span>
                     </a>
@@ -168,7 +168,7 @@
                                 · vence {{ \Illuminate\Support\Carbon::parse($despesa->data_vencimento)->format('d/m') }}
                             </span>
                         </span>
-                        <span class="shrink-0 font-mono text-[13px] text-ink whitespace-nowrap">
+                        <span class="shrink-0 font-sans tabular text-[13px] text-ink whitespace-nowrap">
                             R$ {{ number_format($despesa->valor, 2, ',', '.') }}
                         </span>
                     </a>
