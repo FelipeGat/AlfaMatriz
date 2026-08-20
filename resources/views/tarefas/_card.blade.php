@@ -503,6 +503,109 @@
     @endif
 
     {{--
+        O veredito do portão, direto no card.
+
+        Ele já existia no detalhe da tarefa — e só lá. Quem revisa uma coluna de
+        cards em staging tinha de abrir cada tarefa para carimbar aprovado, e
+        abrir-fechar-abrir por um veredito de um clique é o atrito que faz o
+        teste ficar sem registro (e o portão seguinte recusar a passagem sem
+        ninguém entender por quê).
+
+        Mesmo padrão do Responder da tarja de pergunta: a ação mora no card, e
+        o Reprovar abre o campo ali mesmo — o motor recusa reprovação sem notas,
+        e mandar a pessoa ao detalhe para escrevê-las devolveria o atrito pela
+        outra ponta.
+
+        Some quando bloqueada, como o banner do detalhe: travada, o teste não é
+        o assunto.
+    --}}
+    @php
+        $noPortaoDeVeredito = $tarefa->tipo === 'desenvolvimento'
+            && in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_VEREDITO, true)
+            && ! $bloqueada;
+
+        $veredito = $noPortaoDeVeredito ? $tarefa->testeDestaPassagem() : null;
+        // A concordância do ambiente: "Produção" é feminino e "Staging" não, e
+        // um `aprovado` fixo escrevia "Produção reprovado" no card. `$noAr` vem
+        // do bloco da faixa de exame, mais acima — a mesma pergunta respondida
+        // duas vezes é a que diverge quando alguém mexer numa só.
+        $ambiente = $noAr ? 'Produção' : 'Staging';
+    @endphp
+
+    @if ($noPortaoDeVeredito)
+        @if ($veredito)
+            {{-- Registrado: o card diz o veredito e quem assinou, e os botões
+                 saem. Refazer é no detalhe — carimbar de novo por engano, num
+                 card que se rola, é fácil demais. --}}
+            <div class="mt-2 flex items-center gap-1.5 px-[9px] py-[7px] rounded-tile border-l-2"
+                 style="background: var(--{{ $veredito->aprovado ? 'good' : 'retorno' }}-tint);
+                        border-color: rgb(var(--{{ $veredito->aprovado ? 'good' : 'retorno' }}))">
+                <span class="h-3 w-3 shrink-0" style="color: rgb(var(--{{ $veredito->aprovado ? 'good' : 'retorno' }}))">
+                    <x-nav-icon :name="$veredito->aprovado ? 'check-circle' : 'alert-triangle'" :peso="1.9" />
+                </span>
+                <p class="flex-1 min-w-0 text-[12px] leading-[1.4] truncate">
+                    <span style="color: rgb(var(--{{ $veredito->aprovado ? 'good' : 'retorno' }}))">
+                        {{ $ambiente }} {{ ($veredito->aprovado ? 'aprovad' : 'reprovad').($noAr ? 'a' : 'o') }}
+                    </span>
+                    <span class="text-ink-mute">por {{ $veredito->autor?->name ?? 'alguém' }}</span>
+                </p>
+            </div>
+        @else
+            {{-- `@click.stop` no invólucro inteiro: o card abre a tarefa no
+                 clique, e sem isso carimbar abriria o modal por cima do gesto.
+                 `data-parcial` redesenha o quadro no lugar, mantendo a rolagem
+                 da coluna — o mesmo motivo do Responder. --}}
+            <div x-data="{ reprovando: false }" @click.stop class="mt-2">
+                <div x-show="! reprovando" class="flex gap-1.5">
+                    <form method="POST" data-parcial action="{{ route('tarefas.testar', $tarefa) }}" class="flex-1">
+                        @csrf
+                        <input type="hidden" name="aprovado" value="1">
+                        <button type="submit"
+                                class="w-full h-[26px] rounded-tile border text-[11.5px] font-semibold transition hover:bg-chip"
+                                style="border-color: var(--good-line); color: rgb(var(--good))">
+                            Aprovar {{ $noAr ? 'no ar' : 'staging' }}
+                        </button>
+                    </form>
+
+                    <button type="button"
+                            @click="reprovando = true; $nextTick(() => $refs.notas.focus())"
+                            class="shrink-0 h-[26px] px-2.5 rounded-tile border text-[11.5px] font-semibold transition hover:bg-chip"
+                            style="border-color: var(--retorno-line); color: rgb(var(--retorno))">
+                        Reprovar
+                    </button>
+                </div>
+
+                {{-- Reprovar sem dizer o quê manda quem recebe abrir o ambiente
+                     e adivinhar — o motor recusa, e o campo é o que evita a
+                     recusa em vez de explicá-la depois. --}}
+                <form x-show="reprovando" x-cloak method="POST" data-parcial
+                      action="{{ route('tarefas.testar', $tarefa) }}">
+                    @csrf
+                    <input type="hidden" name="aprovado" value="0">
+                    <textarea x-ref="notas" name="notas" rows="2" required
+                              placeholder="O que falhou {{ $noAr ? 'em produção' : 'no staging' }}…"
+                              @keydown.escape.stop="reprovando = false"
+                              class="block w-full px-[9px] py-[7px] rounded-tile bg-input border text-ink
+                                     text-[12px] leading-[1.45] resize-y focus:ring-0"
+                              style="border-color: var(--retorno-line)"></textarea>
+                    <div class="mt-1.5 flex gap-1.5">
+                        <button type="button" @click="reprovando = false"
+                                class="shrink-0 h-[26px] px-2.5 rounded-tile border border-btn-line
+                                       text-ink-dim text-[11.5px] font-semibold transition hover:bg-chip">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                                class="flex-1 h-[26px] rounded-tile text-on-brand text-[11.5px] font-semibold transition hover:opacity-90"
+                                style="background: rgb(var(--retorno))">
+                            Reprovar {{ $noAr ? 'no ar' : 'staging' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        @endif
+    @endif
+
+    {{--
         O rodapé.
 
         As duas vagas trocaram de dono: o SISTEMA fica no círculo e o

@@ -132,6 +132,75 @@ class RegistrarTesteDoStagingTest extends TestCase
     }
 
     /**
+     * O veredito também mora no CARD, e não só no detalhe.
+     *
+     * Quem revisa uma coluna de cards em staging tinha de abrir cada tarefa
+     * para carimbar aprovado. Abrir-fechar-abrir por um veredito de um clique é
+     * o atrito que faz o teste ficar sem registro — e o portão seguinte recusar
+     * a passagem sem ninguém entender por quê.
+     */
+    public function test_o_card_carimba_o_veredito_sem_abrir_a_tarefa(): void
+    {
+        [$tarefa, $dev] = $this->emStaging();
+
+        $html = $this->actingAs($dev)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Aprovar staging', $html);
+        $this->assertStringContainsString('Reprovar', $html);
+
+        // E o botão do card usa a MESMA rota do detalhe.
+        $this->actingAs($dev)->post(route('tarefas.testar', $tarefa), ['aprovado' => '1'])
+            ->assertSessionMissing('erro');
+
+        $html = $this->actingAs($dev)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        // Carimbado, o card diz o veredito e some com os botões: recarimbar por
+        // engano num card que se rola é fácil demais, e refazer é no detalhe.
+        $this->assertStringContainsString('Staging aprovado', $html);
+        $this->assertStringNotContainsString('Aprovar staging', $html);
+    }
+
+    /**
+     * Em produção o card fala de produção, e concorda com ela: "Produção" é
+     * feminino, e um `aprovado` fixo escrevia "Produção reprovado".
+     */
+    public function test_no_ar_o_card_fala_de_producao_e_concorda(): void
+    {
+        $dev = User::factory()->create();
+
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $dev->id, 'responsavel_id' => $dev->id, 'status' => 'em_producao',
+        ]);
+        $tarefa->forceFill(['versao_producao' => 'v1.4.2'])->save();
+
+        $html = $this->actingAs($dev)->get(route('tarefas.index'))->assertOk()->getContent();
+        $this->assertStringContainsString('Aprovar no ar', $html);
+
+        $this->actingAs($dev)->post(route('tarefas.testar', $tarefa), [
+            'aprovado' => '0', 'notas' => 'Boleto sai sem o código.',
+        ])->assertSessionMissing('erro');
+
+        $html = $this->actingAs($dev)->get(route('tarefas.index'))->assertOk()->getContent();
+        $this->assertStringContainsString('Produção reprovada', $html);
+        $this->assertStringNotContainsString('Produção reprovado ', $html);
+    }
+
+    /**
+     * Travada, o teste não é o assunto: o card esconde os botões como o banner
+     * do detalhe já fazia — e o da tarja de bloqueio é que fica dizendo o que é.
+     */
+    public function test_tarefa_travada_nao_oferece_o_veredito_no_card(): void
+    {
+        [$tarefa, $dev] = $this->emStaging();
+
+        $tarefa->forceFill(['bloqueado_em' => now(), 'bloqueio_motivo' => 'Staging fora do ar.'])->save();
+
+        $html = $this->actingAs($dev)->get(route('tarefas.index'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('Aprovar staging', $html);
+    }
+
+    /**
      * @spec:AC-306 Reprovar exige dizer o que falhou: reprovação sem notas manda o
      * dev abrir o staging e adivinhar — a mesma regra do retorno de portão.
      */

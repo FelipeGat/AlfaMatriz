@@ -13,6 +13,8 @@
 
 • <b>Sem veredito aprovado, ninguém encerra.</b> Nem quem faz triagem. É o mesmo portão que já existia para liberar o staging, um passo adiante. E encerrar tarefa de desenvolvimento passou a ser de quem faz triagem: quem confere registra, quem organiza o quadro dá por entregue.
 
+• <b>Aprovar e reprovar são um clique no próprio card.</b> Não precisa abrir a tarefa: quem revisa uma coluna inteira carimba de lá mesmo, e o Reprovar abre o campo do motivo no card. Carimbado, o card passa a dizer o veredito e quem assinou — refazer é no detalhe. Vale para o staging também.
+
 • <b>Reprovou no ar? Dois caminhos.</b> Volta para Em andamento, quando o defeito é do código, ou volta para o staging, quando a subida é que deu errado e a tag vai ser revertida ou refeita. Os dois cobram o motivo, e o card chega marcado com "Reprovou em produção".
 
 ---
