@@ -482,8 +482,8 @@
         ['chave' => 'em_desenvolvimento', 'nota' => 'a bancada de quem executa'],
         ['chave' => 'em_revisao', 'nota' => \App\Models\Tarefa::PORTAO_DA_ETAPA['em_revisao']],
         ['chave' => 'em_staging', 'nota' => \App\Models\Tarefa::PORTAO_DA_ETAPA['em_staging']],
-        ['chave' => 'pronta_producao', 'nota' => \App\Models\Tarefa::PORTAO_DA_ETAPA['pronta_producao']],
-        ['chave' => 'concluida', 'nota' => 'em produção · a versão diz desde quando'],
+        ['chave' => 'em_producao', 'nota' => \App\Models\Tarefa::PORTAO_DA_ETAPA['em_producao']],
+        ['chave' => 'concluida', 'nota' => 'no ar e conferido · a versão diz desde quando'],
     ];
 @endphp
 <div x-show="fluxoAberto" x-cloak x-transition.opacity.duration.150ms

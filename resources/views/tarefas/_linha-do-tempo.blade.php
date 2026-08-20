@@ -23,7 +23,7 @@
 
 <div>
     <div class="flex items-center gap-2 mb-2.5">
-        <h4 class="flex-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Linha do tempo</h4>
+        <h4 class="flex-1 font-mono text-[11.5px] font-semibold uppercase tracking-caps-wide text-ink">Linha do tempo</h4>
     </div>
 
     <ol class="flex flex-col gap-2.5">

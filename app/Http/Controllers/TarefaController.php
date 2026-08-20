@@ -37,8 +37,6 @@ class TarefaController extends Controller
      */
     private const PEDACOS_DO_CHECKLIST = ['checklist', 'checklist-envios'];
 
-    private const PEDACOS_DOS_VINCULOS = ['vinculos', 'vinculos-envios'];
-
     private const PEDACOS_DA_CONVERSA = ['conversa', 'conversa-envios'];
 
     private const PEDACOS_DA_VEZ = ['avisos', 'conversa', 'conversa-envios'];
@@ -146,11 +144,11 @@ class TarefaController extends Controller
 
         $marcas = [$this->marcasDe($doQuadro())];
 
-        // `tarefa_vinculos` entra na lista porque vincular NÃO toca a linha da
+        // A assinatura olha as tabelas que mudam SEM tocar a linha da
         // tarefa: o par mora numa tabela à parte, e sem ele o quadro aberto de
         // outra pessoa nunca descobriria o selo novo — a assinatura continuaria
         // a mesma. A coluna que amarra é `tarefa_id`, como nas outras quatro.
-        foreach (['tarefa_itens', 'tarefa_comentarios', 'tarefa_anexos', 'tarefa_eventos', 'tarefa_vinculos'] as $tabela) {
+        foreach (['tarefa_itens', 'tarefa_comentarios', 'tarefa_anexos', 'tarefa_eventos'] as $tabela) {
             $marcas[] = $this->marcasDe(
                 DB::table($tabela)->whereIn('tarefa_id', $doQuadro()->select('id'))
             );
@@ -192,10 +190,14 @@ class TarefaController extends Controller
     private function dadosDoQuadro(Request $request): array
     {
         // O quadro é o trabalho EM CURSO: concluída e cancelada não têm coluna
-        // (AC-082, AC-096). Sete colunas não cabiam na tela e as duas terminais
-        // eram as de menor valor no dia a dia — encerrou, sai do quadro e passa
-        // a viver no histórico (`historico()`), de onde também se reabre.
-        // Isso aposenta o antigo recorte de 30 dias: não há mais o que recortar.
+        // (AC-082, AC-096) — encerrou, sai do quadro e passa a viver no
+        // histórico (`historico()`), de onde também se reabre. Isso aposenta o
+        // antigo recorte de 30 dias: não há mais o que recortar.
+        //
+        // A largura é o argumento mais fraco dos dois, e ficou mais fraco ainda
+        // com a chegada de Em produção: as etapas em curso já são sete. O que
+        // sustenta a regra é o outro — uma coluna existe para dizer quem está
+        // segurando a tarefa, e ninguém segura o que já acabou.
         $emCurso = collect(Tarefa::STATUS)->reject(
             fn ($label, $status) => in_array($status, Tarefa::STATUS_TERMINAIS, true)
         );
@@ -215,7 +217,15 @@ class TarefaController extends Controller
         // e ele saiu daqui — agora é buscado no clique, com o próprio eager
         // load (ver `modal()`). Carregá-los aqui era trazer duas relações
         // inteiras por card para não imprimir nenhuma delas.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios', 'itens', 'perguntaPara', 'anexos', 'vinculadas'])
+        // `subtarefas` entra com SELECT curto: o card só precisa contar quantas
+        // são e quantas encerraram, e trazer título e detalhes de cada filha
+        // multiplicaria o peso do quadro pela árvore inteira.
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios', 'itens', 'perguntaPara', 'anexos',
+            'subtarefas:id,tarefa_pai_id,status',
+            // A mãe entra com SELECT curto: o card da filha só imprime o número
+            // e o título dela, e trazer a linha inteira multiplicaria o peso do
+            // quadro pela árvore.
+            'pai:id,titulo'])
             ->whereIn('status', $emCurso->keys())
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('created_at')
@@ -327,7 +337,11 @@ class TarefaController extends Controller
                 'borda' => 'var(--bloqueio-line)',
             ],
             [
-                'chave' => 'prontas', 'total' => $noQuadro()->where('status', 'pronta_producao')->count(),
+                // Já não é uma coluna, é um recorte de Em staging: a fila do
+                // admin virou "quem já passou no teste e espera a tag"
+                // (`scopeValidadaNoStaging`). O chip é o que sobrou dela como
+                // sinal, e continua respondendo a mesma pergunta.
+                'chave' => 'prontas', 'total' => $noQuadro()->validadaNoStaging()->count(),
                 'label' => null, 'icone' => 'seta-cima', 'cor' => 'good',
                 'title' => 'Fila do admin: validadas no staging, esperando a tag subir',
                 'fundo' => 'var(--good-tint)', 'fundoAtivo' => 'rgb(var(--good) / 0.24)',
@@ -414,7 +428,7 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'vinculadas'])
+        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'subtarefas', 'pai'])
             ->findOrFail($tarefa->id);
 
         return response()->view('tarefas._modais', [
@@ -471,8 +485,10 @@ class TarefaController extends Controller
             // número errado custaria o título, o checklist e os anexos já
             // preenchidos, que é caro demais para um vínculo que a pessoa pode
             // refazer com a tarefa aberta.
-            'vinculadas' => 'nullable|array',
-            'vinculadas.*' => 'nullable|string|max:255',
+            // A mãe da subtarefa, quando o formulário veio da seção de uma
+            // tarefa. `exists` e não só `integer`: o campo é escondido, e
+            // escondido não quer dizer confiável.
+            'tarefa_pai_id' => 'nullable|exists:tarefas,id',
 
             // A prova entra JUNTO com a tarefa (AC-234). Até aqui ela só entrava
             // depois, com a tarefa aberta — e quem abre uma tarefa a partir de
@@ -491,8 +507,11 @@ class TarefaController extends Controller
         // tanto o `where()` do reenvio quanto o `create()` tropeçariam no array.
         $itens = Arr::pull($data, 'itens', []);
 
-        // E os vínculos pelo mesmo motivo dos dois acima.
-        $vinculadas = Arr::pull($data, 'vinculadas', []);
+        // A mãe sai do `$data` pelo mesmo motivo, e por mais um: ela não é
+        // `fillable`. Ficasse ali, o `create()` a ignoraria em silêncio e a
+        // subtarefa nasceria solta — e a trava de reenvio compararia uma coluna
+        // que o formulário comum nem manda.
+        $paiId = Arr::pull($data, 'tarefa_pai_id');
 
         // O padrão é resolvido AQUI, e não só no modelo, por causa da linha
         // abaixo: a busca por reenvio compara o formulário inteiro, e um `tipo`
@@ -513,8 +532,23 @@ class TarefaController extends Controller
         // deixaria o print duplicado na tarefa que a trava acabou de preservar.
         // O checklist e o aviso também: a trava que impede o segundo card
         // impede a lista dobrada e o segundo sino tocando pelo mesmo fato.
+        // A mãe é conferida no servidor, e não no campo escondido que a
+        // sugeriu: um nível só, e mãe encerrada não recebe. Se ela não serve, a
+        // tarefa nasce SOLTA em vez de não nascer — o texto e os prints já
+        // foram digitados, e recusar o envio inteiro por causa do vínculo
+        // jogaria fora o trabalho para consertar a parte menor dele.
+        $pai = $paiId ? Tarefa::find($paiId) : null;
+
+        if ($pai && ! $pai->podeReceberSubtarefa()) {
+            $pai = null;
+        }
+
         if (! $this->reenvioDaMesmaTarefa($data)) {
             $tarefa = Tarefa::create($data);
+
+            if ($pai) {
+                $tarefa->forceFill(['tarefa_pai_id' => $pai->id])->save();
+            }
 
             // Em branco não vira item: o campo de novo item do formulário
             // viaja como o último `itens[]` mesmo sem texto — é ele que salva
@@ -523,18 +557,6 @@ class TarefaController extends Controller
             foreach ($itens as $texto) {
                 if (trim((string) $texto) !== '') {
                     $tarefa->itens()->create(['texto' => trim((string) $texto)]);
-                }
-            }
-
-            // Dentro do mesmo `if` que a trava de reenvio guarda, como o
-            // checklist e os anexos: no clique duplo os dois envios carregam a
-            // mesma lista, e ligá-la fora daqui penduraria os vínculos na
-            // tarefa que a trava acabou de preservar.
-            foreach ($vinculadas as $digitado) {
-                $outra = Tarefa::find($this->idDaTarefaDigitada($digitado));
-
-                if ($outra) {
-                    $tarefa->vincularCom($outra, auth()->id());
                 }
             }
 
@@ -1028,15 +1050,36 @@ class TarefaController extends Controller
             'anexos.max' => 'Até três imagens por devolução.',
         ]);
 
-        // A confirmação de "Em staging → Pronta p/ produção" carrega o carimbo
-        // da validação (ASM-033): registra o relatório antes de checar a
-        // transição, para que a validação feita agora já libere o mesmo
-        // movimento. O relatório se prende sozinho ao evento AINDA ABERTO, que
-        // neste instante é o do staging — é dessa passagem que ele fala.
+        // Encerrar deixou de ser a mesma permissão que mover: quem confere no
+        // ar registra o veredito, e quem organiza o quadro é que dá a tarefa por
+        // entregue. A frase mora no modelo, ao lado do impedimento de mover,
+        // porque o menu do card já deixa de OFERECER o destino com base nela —
+        // e as duas respostas não podem divergir.
         //
-        // O texto é opcional e o carimbo não: o que o admin precisa saber antes
-        // de subir a tag é que alguém validou, e a nota é o detalhe de como.
-        if ($data['status'] === 'pronta_producao' && $request->has('relatorio_aprovado')) {
+        // Depois do `validate()` porque depende do destino pedido, e não da
+        // tarefa: mover esta tarefa continua permitido, encerrá-la é que não.
+        //
+        // O MAPA responde primeiro. Quem tenta encerrar de uma etapa que não
+        // chega a Concluída está errando o caminho, não a permissão, e ouvir
+        // "só quem faz triagem encerra" no lugar de "transição inválida"
+        // mandaria a pessoa pedir um acesso que não resolveria nada.
+        if ($data['status'] === 'concluida'
+            && in_array('concluida', FluxoTarefaService::transicoesDe($tarefa), true)
+            && ($impedimento = $tarefa->motivoParaNaoConcluir(auth()->user()))) {
+            return $this->voltarParaOQuadro($request, $impedimento, 'critico');
+        }
+
+        // A confirmação de "Em staging → Em produção" carrega o carimbo da
+        // validação (ASM-033): registra o relatório antes de checar a transição,
+        // para que a validação feita agora já libere o mesmo movimento. O
+        // relatório se prende sozinho ao evento AINDA ABERTO, que neste instante
+        // é o do staging — é dessa passagem que ele fala.
+        //
+        // Mudou de destino junto com o portão: ele guardava a entrada na fila do
+        // admin, e agora guarda a subida da tag. O texto é opcional e o carimbo
+        // não — o que precisa estar registrado antes de o código ir para o ar é
+        // que alguém validou, e a nota é o detalhe de como.
+        if ($data['status'] === 'em_producao' && $request->has('relatorio_aprovado')) {
             TarefaRelatorioTeste::create([
                 'tarefa_id' => $tarefa->id,
                 // Quem carimbou. O carimbo do painel é a validação de quem
@@ -1112,13 +1155,16 @@ class TarefaController extends Controller
     }
 
     /**
-     * Registra o veredito do teste do staging, sem mover o card.
+     * Registra o veredito de um portão de exame — staging ou produção — sem
+     * mover o card.
      *
      * Não passa por `motivoParaNaoMover` de propósito, como perguntar e
-     * bloquear: quem testa em staging normalmente NÃO é o responsável pela
-     * tarefa, e travar o registro não impediria o teste — impediria de
-     * REGISTRÁ-LO, e o quadro passaria a depender de quem move relatar o
-     * teste dos outros.
+     * bloquear: quem testa normalmente NÃO é o responsável pela tarefa, e
+     * travar o registro não impediria o teste — impediria de REGISTRÁ-LO, e o
+     * quadro passaria a depender de quem move relatar o teste dos outros.
+     *
+     * É por aqui, e só por aqui, que o carimbo da produção entra: o painel da
+     * conclusão não o oferece, senão quem encerra carimbaria por si mesmo.
      */
     public function testar(Request $request, Tarefa $tarefa, FluxoTarefaService $fluxo)
     {
@@ -1130,7 +1176,7 @@ class TarefaController extends Controller
         ]);
 
         try {
-            $fluxo->registrarTesteDoStaging(
+            $fluxo->registrarVeredito(
                 $tarefa,
                 $request->user(),
                 $request->boolean('aprovado'),
@@ -1140,7 +1186,8 @@ class TarefaController extends Controller
             return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DO_TESTE, $e->getMessage(), 'critico');
         }
 
-        return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DO_TESTE, 'Teste do staging registrado.');
+        return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DO_TESTE,
+            $tarefa->status === 'em_producao' ? 'Validação em produção registrada.' : 'Teste do staging registrado.');
     }
 
     /**
@@ -1236,6 +1283,13 @@ class TarefaController extends Controller
             return $this->voltarParaOQuadro($request, 'Só quem faz triagem exclui tarefa. Para encerrar sem apagar, cancele.', 'critico');
         }
 
+        // A terceira porta de saída, guardada como as outras duas: excluir a
+        // mãe com filha aberta soltaria oito bugs sem mãe de uma vez, e o
+        // gesto que faz isso é o único do quadro sem desfazer.
+        if ($impedimento = $tarefa->motivoParaNaoEncerrar()) {
+            return $this->voltarParaOQuadro($request, $impedimento, 'critico');
+        }
+
         // O aviso sai ANTES do forceDelete e SEM `tarefa_id`: a coluna apaga em
         // cascata junto com a tarefa, e um aviso preso a ela morreria no mesmo
         // instante em que nasce — logo o aviso do único gesto sem desfazer.
@@ -1316,6 +1370,29 @@ class TarefaController extends Controller
     }
 
     /** Acrescenta um item ao checklist, no fim da lista. */
+    /**
+     * O formulário INTEIRO de subtarefa, com a mãe já amarrada.
+     *
+     * O campo de uma linha da seção resolve o despejo — oito bugs em oito
+     * Enters —, e este resolve o resto: quem acha um bug quer descrevê-lo e
+     * colar o print ali, não abrir de novo depois. São as duas portas do mesmo
+     * gesto, como o veredito do teste tem a do botão e a do painel de mover.
+     *
+     * Buscado do servidor a cada clique, como o modal de edição: o modal de
+     * nova tarefa da página é UM só, e guardar a mãe nele faria a próxima
+     * tarefa comum nascer pendurada na revisão de ontem.
+     */
+    public function formularioDeSubtarefa(Request $request, Tarefa $tarefa)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        abort_unless($tarefa->podeReceberSubtarefa(), 404);
+
+        return response()->view('tarefas._modal-subtarefa', [
+            'pai' => $tarefa,
+        ] + $this->listasDeFiltro());
+    }
+
     public function criarItem(Request $request, Tarefa $tarefa)
     {
         $this->bloquearVisaoDaMatriz();
@@ -1407,113 +1484,6 @@ class TarefaController extends Controller
         return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DO_CHECKLIST);
     }
 
-    /**
-     * Liga esta tarefa a outra que já existe.
-     *
-     * O que chega é o que se DIGITOU, e não um id de `<select>`: o campo aceita
-     * "412", "#412" e a linha inteira que a lista de sugestão preenche
-     * ("#412 — Corrigir importação"). A escolha não é de gosto — é a única que
-     * não tem beco sem saída. Um `<select>` teria de decidir quais tarefas
-     * caber nele, e qualquer recorte (só as do quadro, só as dos últimos 30
-     * dias) deixaria sem caminho quem quer apontar para a tarefa antiga que
-     * explica esta. O número é justamente o que o modal manda copiar.
-     *
-     * Sem `permissao:tarefas,editar` na rota, como o bloqueio e a conversa:
-     * ligar duas tarefas não move nem encerra nada — é dizer que elas se
-     * conversam, e quem lê o quadro sabe disso tanto quanto quem o move.
-     */
-    public function vincular(Request $request, Tarefa $tarefa)
-    {
-        $this->bloquearVisaoDaMatriz();
-
-        $data = $request->validate(['tarefa' => 'required|string|max:255']);
-
-        $outra = Tarefa::find($this->idDaTarefaDigitada($data['tarefa']));
-
-        // As três recusas voltam pelo caminho parcial, com o modal aberto: a
-        // frase que explica é o que a pessoa precisa ler sem perder de vista o
-        // campo onde acabou de errar o número.
-        if (! $outra) {
-            return $this->voltarParaATarefa(
-                $request,
-                $tarefa->id,
-                self::PEDACOS_DOS_VINCULOS,
-                'Não existe tarefa com esse número.',
-                'critico',
-            );
-        }
-
-        if ($outra->id === $tarefa->id) {
-            return $this->voltarParaATarefa(
-                $request,
-                $tarefa->id,
-                self::PEDACOS_DOS_VINCULOS,
-                'Uma tarefa não se vincula a si mesma.',
-                'critico',
-            );
-        }
-
-        // O aviso muda conforme JÁ estava ligada, e não é preciosismo: sem
-        // ele, quem vinculasse a mesma dupla duas vezes veria "Tarefas
-        // vinculadas." e uma lista que não cresceu — e ficaria procurando o
-        // que deu errado numa gravação que não tinha o que fazer.
-        $jaEstava = $tarefa->vinculadas()->whereKey($outra->id)->exists();
-
-        $tarefa->vincularCom($outra, auth()->id());
-
-        return $this->voltarParaATarefa(
-            $request,
-            $tarefa->id,
-            self::PEDACOS_DOS_VINCULOS,
-            $jaEstava
-                ? "A tarefa {$outra->codigo()} já estava vinculada."
-                : "Vinculada à tarefa {$outra->codigo()}.",
-            tambemOCardDe: $outra->id,
-        );
-    }
-
-    /**
-     * Desfaz a ligação. Sempre nos dois sentidos — ver `desvincularDe`.
-     *
-     * Sem confirmação em dois passos, ao contrário do excluir: desvincular não
-     * apaga nada, e refazer o vínculo é digitar o número de novo.
-     */
-    public function desvincular(Request $request, Tarefa $tarefa, Tarefa $outra)
-    {
-        $this->bloquearVisaoDaMatriz();
-
-        $tarefa->desvincularDe($outra);
-
-        return $this->voltarParaATarefa(
-            $request,
-            $tarefa->id,
-            self::PEDACOS_DOS_VINCULOS,
-            "Vínculo com a tarefa {$outra->codigo()} desfeito.",
-            tambemOCardDe: $outra->id,
-        );
-    }
-
-    /**
-     * O número da tarefa dentro do que a pessoa digitou.
-     *
-     * O primeiro número da frase, com ou sem `#` na frente. É essa tolerância
-     * que deixa o mesmo campo aceitar as três formas que aparecem na prática: o
-     * número copiado do modal (`#412`), o número dito de cabeça (`412`) e a
-     * linha inteira que a lista de sugestão do navegador preenche
-     * (`#412 — Corrigir importação`).
-     *
-     * Ancorado no COMEÇO de propósito. Sem a âncora, "corrigir o importador da
-     * v2" viraria a tarefa 2 — um vínculo silenciosamente errado é pior que um
-     * "não existe tarefa com esse número", porque ninguém vai conferir.
-     */
-    private function idDaTarefaDigitada(?string $texto): ?int
-    {
-        if (! preg_match('/^\s*#?\s*(\d+)/', (string) $texto, $achado)) {
-            return null;
-        }
-
-        return (int) $achado[1];
-    }
 
     /**
      * O retorno de quem mexeu na tarefa sem sair de dentro dela.
@@ -1638,7 +1608,7 @@ class TarefaController extends Controller
             // Recarregado do banco com as relações que as partials leem: o
             // model que chegou pelo route binding traz o estado de ANTES da
             // ação, e a conversa recém-publicada não estaria nele.
-            $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'vinculadas'])
+            $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
                 ->find($tarefa->id);
         }
 
@@ -1651,8 +1621,6 @@ class TarefaController extends Controller
                 'checklist-envios' => 'tarefas._checklist-envios',
                 'conversa' => 'tarefas._comentarios',
                 'conversa-envios' => 'tarefas._comentarios-envios',
-                'vinculos' => 'tarefas._vinculos',
-                'vinculos-envios' => 'tarefas._vinculos-envios',
                 'formulario' => 'tarefas._form',
             ];
 
@@ -2030,6 +1998,40 @@ class TarefaController extends Controller
      * teria como saber que ela mudou. Editar o comentário alheio continua fora
      * de questão — a regra é a mesma do apagar.
      */
+    /**
+     * Publica um comentário, e só isso.
+     *
+     * O texto continua sendo um campo do formulário da tarefa — o `Salvar`
+     * também o publica, e continua publicando, como rede para quem escrever e
+     * salvar de uma vez. O que esta rota acrescenta é o botão: sem ele, a ação
+     * mais comum da conversa dependia de apertar um botão chamado "Salvar", no
+     * rodapé, longe do campo e com outro nome.
+     *
+     * A trava de reenvio é a mesma do `update` (AC-137): duplo clique não
+     * publica a frase duas vezes.
+     */
+    public function comentar(Request $request, Tarefa $tarefa)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $data = $request->validate(['corpo' => 'required|string|max:4000']);
+        $corpo = trim($data['corpo']);
+
+        if ($corpo !== '' && ! $this->reenvioDoMesmoComentario($tarefa, $corpo)) {
+            $tarefa->comentarios()->create([
+                'autor_id' => auth()->id(),
+                'corpo' => $corpo,
+            ]);
+        }
+
+        return $this->voltarParaATarefa(
+            $request,
+            $tarefa->id,
+            self::PEDACOS_DA_CONVERSA,
+            'Comentário publicado.',
+        );
+    }
+
     public function editarComentario(Request $request, TarefaComentario $comentario)
     {
         $this->bloquearVisaoDaMatriz();
@@ -2090,7 +2092,7 @@ class TarefaController extends Controller
         // histórico completo (US-082): a linha do tempo assina cada movimento
         // e a criação, e os relatórios contam as aprovações. Tudo no mesmo
         // `with()` — o modal nasce com a página, sem consulta por linha.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos.autor', 'criadoPor', 'comentarios.autor', 'itens', 'anexos.autor', 'relatoriosTeste.autor', 'vinculadas'])
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos.autor', 'criadoPor', 'comentarios.autor', 'itens', 'anexos.autor', 'relatoriosTeste.autor'])
             ->whereIn('status', $filtros['desfecho'] !== '' ? [$filtros['desfecho']] : Tarefa::STATUS_TERMINAIS)
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('updated_at')
@@ -2277,7 +2279,7 @@ class TarefaController extends Controller
             ->when(($filtros['situacao'] ?? '') === 'em_curso',
                 fn ($q) => $q->whereNull('bloqueado_em'))
             ->when(($filtros['situacao'] ?? '') === 'prontas',
-                fn ($q) => $q->where('status', 'pronta_producao'));
+                fn ($q) => $q->validadaNoStaging());
     }
 
     /**
@@ -2369,12 +2371,6 @@ class TarefaController extends Controller
         return $tarefas->sortBy(fn (Tarefa $tarefa) => $this->chaveAutomatica($tarefa))->values();
     }
 
-    /**
-     * A régua automática: gravidade primeiro, o retrabalho fura a fila da
-     * própria faixa, e no empate o mais parado.
-     *
-     * @return string
-     */
     private function chaveAutomatica(Tarefa $tarefa)
     {
         // "A definir" fecha a lista: ela não é o grau mais baixo da escala, é a

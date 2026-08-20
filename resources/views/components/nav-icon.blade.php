@@ -71,7 +71,13 @@
         // Distinto do `paperclip`, que é anexo — os dois moram no mesmo rodapé
         // de card, e um clipe para as duas coisas faria "tem arquivo" e "tem
         // tarefa irmã" contarem a mesma história.
-        'link' => 'M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244',
+        // A seta que desce e vira à direita (`arrow-turn-down-right`): é o que
+        // a faixa do card da subtarefa mostra antes do nome da mãe.
+        //
+        // Havia um 'link' aqui, do vínculo simétrico entre tarefas. Saiu junto
+        // com ele em 20/08/2026: ícone que ninguém desenha é peso que só se
+        // descobre inútil quando alguém vai procurar onde ele aparece.
+        'subtarefa' => 'M5.25 4.5v7.5a3 3 0 003 3h10.5m0 0l-3.75-3.75M18.75 15L15 18.75',
         'paperclip' => 'M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13',
         'upload' => 'M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 7.5L12 3m0 0l4.5 4.5M12 3v13.5',
         // Moldura com montanha e sol. Nasceu como o selo de imagens do card, na

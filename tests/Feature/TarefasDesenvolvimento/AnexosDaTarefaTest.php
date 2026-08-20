@@ -650,7 +650,11 @@ class AnexosDaTarefaTest extends TestCase
     public function test_o_historico_abre_os_anexos_em_leitura(): void
     {
         $usuario = User::factory()->create();
-        $tarefa = $this->criarTarefa(['titulo' => 'Erro no fechamento', 'status' => 'pronta_producao']);
+        $tarefa = $this->criarTarefa(['titulo' => 'Erro no fechamento', 'status' => 'em_staging']);
+
+        \App\Models\TarefaRelatorioTeste::create([
+            'tarefa_id' => $tarefa->id, 'aprovado' => true, 'notas' => 'Staging conferido.',
+        ]);
 
         // A figura vai GRANDE aqui de propósito: é o que faz nascer miniatura, e
         // sem ela a conferência lá embaixo passaria por acaso.
@@ -661,10 +665,16 @@ class AnexosDaTarefaTest extends TestCase
             ],
         ])->assertOk();
 
-        // Encerra pelo caminho da tela, que é o que manda a tarefa ao histórico.
+        // Encerra pelo caminho da tela, que é o que manda a tarefa ao histórico
+        // — passando pela conferência no ar, que é o portão da entrega.
         $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'concluida',
-            'versao_producao' => 'v1.4.2',
+            'status' => 'em_producao', 'versao_producao' => 'v1.4.2',
+        ])->assertSessionMissing('erro');
+
+        $this->actingAs($usuario)->post(route('tarefas.testar', $tarefa->fresh()), ['aprovado' => '1']);
+
+        $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa->fresh()), [
+            'status' => 'concluida', 'de_status' => 'em_producao',
         ])->assertSessionMissing('erro');
 
         $html = $this->actingAs($usuario)->get(route('tarefas.historico'))->assertOk()->getContent();

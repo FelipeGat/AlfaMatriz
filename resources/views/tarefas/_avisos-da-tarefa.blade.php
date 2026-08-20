@@ -108,22 +108,48 @@
 @endif
 
 {{--
-    O quarto banner: o teste do staging (US-084). Aparece na coluna que espera
-    validação e responde "o que falta para esta tarefa andar" — aguardando
-    teste, aprovado por alguém, reprovado por alguém. Os botões registram o
-    veredito sem mover o card, pelos envios de `_checklist-envios`.
+    O quarto banner: o veredito do portão (US-084). Aparece nas duas colunas
+    que esperam validação — staging e produção — e responde "o que falta para
+    esta tarefa andar": aguardando, aprovado por alguém, reprovado por alguém.
+    Os botões registram o veredito sem mover o card, pelos envios de
+    `_checklist-envios`.
+
+    O texto troca de ambiente porque os dois não são a mesma notícia: reprovar
+    no staging atrasa a entrega, reprovar em produção significa que o defeito
+    está com o cliente agora — e uma frase só para os dois faria a segunda ser
+    lida como a primeira.
 
     Some quando bloqueada: travada, o teste não é o assunto — e o banner do
     bloqueio já está dizendo o que é.
 --}}
-@if ($tarefa->tipo === 'desenvolvimento' && $tarefa->status === 'em_staging' && ! $tarefa->estaBloqueada())
+@if ($tarefa->tipo === 'desenvolvimento'
+    && in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_VEREDITO, true)
+    && ! $tarefa->estaBloqueada())
     @php
+        $noAr = $tarefa->status === 'em_producao';
         $testeDaPassagem = $tarefa->testeDestaPassagem();
         // A espera é o PORTÃO DE EXAME — a mesma notícia da faixa "Teste com
         // Fulano" do card, e por isso a mesma cor. Reprovado usa a cor do
         // RETORNO, porque é exatamente o que a reprovação produz: a tarefa
         // volta. Nenhum dos três empresta tom de outra notícia (AC-358).
         $tomDoTeste = $testeDaPassagem === null ? 'exame' : ($testeDaPassagem->aprovado ? 'good' : 'retorno');
+
+        // As frases nascem aqui, inteiras, e não montadas no meio do HTML: a
+        // linha quebra em duas no card, e um `@if` no meio dela entregaria à
+        // busca por texto (e ao leitor de tela) duas metades de frase.
+        $emQueVersao = $tarefa->versao_producao ? ' em '.$tarefa->versao_producao : '';
+
+        $esperando = $noAr
+            ? ($tarefa->interlocutor
+                ? 'No ar'.$emQueVersao.', aguardando a conferência de '.$tarefa->interlocutor->name
+                : 'No ar'.$emQueVersao.', aguardando alguém conferir')
+            : ($tarefa->interlocutor
+                ? 'Na main, aguardando o teste de '.$tarefa->interlocutor->name
+                : 'Na main, aguardando o teste do staging');
+
+        $veredito = $noAr
+            ? 'Produção '.($testeDaPassagem?->aprovado ? 'aprovada' : 'reprovada')
+            : 'Staging '.($testeDaPassagem?->aprovado ? 'aprovado' : 'reprovado');
     @endphp
 
     <div x-data="{ reprovando: false }" class="px-[11px] py-[9px] rounded-[5px] border border-l-2"
@@ -136,19 +162,16 @@
             </span>
             <span class="flex-1 min-w-0 text-[12.5px] font-medium text-ink">
                 @if ($testeDaPassagem === null)
-                    {{-- O testador apontado no movimento (US-087) dá nome à
-                         espera: "aguardando o teste de Fulano" diz quem o
+                    {{-- O examinador apontado no movimento (US-087) dá nome à
+                         espera: "aguardando a conferência de Fulano" diz quem o
                          quadro está esperando — sem apontado, a coluna é fila
                          e a espera é de quem chegar primeiro. Um eco só: a
                          frase quebrada em duas linhas rende com quebra no
                          meio, e a busca por texto (e o leitor de tela) veem
                          duas metades. --}}
-                    {{ $tarefa->interlocutor
-                        ? 'Na main, aguardando o teste de '.$tarefa->interlocutor->name
-                        : 'Na main, aguardando o teste do staging' }}
+                    {{ $esperando }}
                 @else
-                    Staging {{ $testeDaPassagem->aprovado ? 'aprovado' : 'reprovado' }}
-                    por {{ $testeDaPassagem->autor?->name ?? 'alguém' }}
+                    {{ $veredito }} por {{ $testeDaPassagem->autor?->name ?? 'alguém' }}
                 @endif
             </span>
             @if ($testeDaPassagem !== null)
@@ -184,7 +207,7 @@
                     O que reprovou?
                 </label>
                 <textarea id="teste-notas-{{ $tarefa->id }}" name="notas" form="testar-reprovar-{{ $tarefa->id }}"
-                          rows="2" required placeholder="O que falhou no staging…"
+                          rows="2" required placeholder="{{ $noAr ? 'O que falhou em produção…' : 'O que falhou no staging…' }}"
                           class="block w-full px-2.5 py-2 rounded-control bg-input border-line text-ink
                                  text-[12.5px] leading-[1.45] resize-y"></textarea>
             </div>

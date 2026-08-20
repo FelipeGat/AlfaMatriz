@@ -29,13 +29,10 @@
 
         {{-- Os envios escondidos também são trocados: um item novo no checklist
              precisa dos formulários de corrigir e apagar DELE, um vínculo novo
-             precisa do de desvincular DELE, e um comentário apagado deixa para
-             trás um par que aponta para um id que já não existe. --}}
+             e um comentário apagado deixa para trás um par de formulários que
+             aponta para um id que já não existe. --}}
         <div data-pedaco="checklist-envios-{{ $tarefa->id }}">
             @include('tarefas._checklist-envios', ['tarefa' => $tarefa])
-        </div>
-        <div data-pedaco="vinculos-envios-{{ $tarefa->id }}">
-            @include('tarefas._vinculos-envios', ['tarefa' => $tarefa])
         </div>
         <div data-pedaco="conversa-envios-{{ $tarefa->id }}">
             @include('tarefas._comentarios-envios', ['tarefa' => $tarefa])

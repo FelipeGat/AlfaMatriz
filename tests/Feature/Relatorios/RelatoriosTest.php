@@ -152,7 +152,7 @@ class RelatoriosTest extends TestCase
         ]);
         TarefaEvento::create([
             'tarefa_id' => $concluida->id,
-            'de_status' => 'pronta_producao', 'para_status' => 'concluida',
+            'de_status' => 'em_producao', 'para_status' => 'concluida',
             'entrou_em' => now(),
         ]);
         Tarefa::factory()->create(['status' => 'em_desenvolvimento']);
@@ -164,7 +164,7 @@ class RelatoriosTest extends TestCase
         $resposta->assertSee('ciclo médio de 10 dia(s)');
         // O quadro lista as seis etapas em curso mesmo vazias — etapa ausente
         // se leria como etapa que não existe.
-        foreach (['Aberta', 'Backlog', 'Em andamento', 'Em revisão', 'Em staging', 'Pronta p/ produção'] as $rotulo) {
+        foreach (['Aberta', 'Backlog', 'Em andamento', 'Em revisão', 'Em staging', 'Em produção'] as $rotulo) {
             $resposta->assertSee($rotulo);
         }
     }

@@ -4,6 +4,7 @@ namespace Tests\Feature\TarefasDesenvolvimento;
 
 use App\Models\Notificacao;
 use App\Models\Tarefa;
+use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use App\Services\FluxoTarefaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -158,11 +159,19 @@ class SinoDoCicloDaTarefaTest extends TestCase
             'criado_por_id' => $criador->id,
             'responsavel_id' => $criador->id,
             'tipo' => 'desenvolvimento',
-            'status' => 'pronta_producao',
+            'status' => 'em_producao',
         ]);
 
+        $tarefa->forceFill(['versao_producao' => 'v2.4.0'])->save();
+
         $this->actingAs($admin);
-        (new FluxoTarefaService)->mover($tarefa, 'concluida', ['versao_producao' => 'v2.4.0']);
+        $fluxo = new FluxoTarefaService;
+
+        TarefaRelatorioTeste::create([
+            'tarefa_id' => $tarefa->id, 'aprovado' => true, 'notas' => 'Conferido no ar.',
+        ]);
+
+        $fluxo->mover($tarefa->fresh(), 'concluida');
 
         $aviso = Notificacao::where('tipo', 'conclusao')->sole();
 
@@ -349,12 +358,13 @@ class SinoDoCicloDaTarefaTest extends TestCase
         ]);
 
         $this->actingAs($admin)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'pronta_producao',
+            'status' => 'em_producao',
             'de_status' => 'em_staging',
+            'versao_producao' => 'v1.4.2',
             'relatorio_aprovado' => '1',
         ]);
 
-        $this->assertSame('pronta_producao', $tarefa->fresh()->status);
+        $this->assertSame('em_producao', $tarefa->fresh()->status);
 
         $aviso = Notificacao::where('tipo', 'teste_staging')->sole();
 

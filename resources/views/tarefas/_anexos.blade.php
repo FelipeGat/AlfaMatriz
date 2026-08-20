@@ -41,9 +41,9 @@
 
 @if ($somenteLeitura)
     @if ($anexos->isNotEmpty())
-        <div class="pt-4 border-t border-rule">
+        <div class="pt-4 border-t border-rule-strong">
             <div class="flex items-center gap-2 mb-2.5">
-                <h4 class="flex-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Anexos</h4>
+                <h4 class="flex-1 font-mono text-[11.5px] font-semibold uppercase tracking-caps-wide text-ink">Anexos</h4>
                 <span class="font-sans tabular text-[10.5px] text-ink-mute">{{ $anexos->count() }}</span>
             </div>
 
@@ -98,13 +98,13 @@
          chama depois de criar a tarefa; sem ele, a lista da tela sobreviveria à
          tarefa que acabou de nascer e a próxima começaria com os anexos da
          anterior. --}}
-    <div class="pt-4 border-t border-rule"
+    <div class="pt-4 border-t border-rule-strong"
          x-data="anexosDaTarefa({{ $tarefa?->id ?? 'null' }}, @js($anexos))"
          @paste.window="colar($event)"
          @reset.window="esvaziar($event)">
 
         <div class="flex items-center gap-2 mb-2.5">
-            <h4 class="flex-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Anexos</h4>
+            <h4 class="flex-1 font-mono text-[11.5px] font-semibold uppercase tracking-caps-wide text-ink">Anexos</h4>
 
             {{-- A contagem só existe quando há o que contar, como o progresso do
                  checklist: um "0" anunciaria como lacuna uma tarefa que

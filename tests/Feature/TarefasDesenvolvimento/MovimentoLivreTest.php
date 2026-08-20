@@ -3,6 +3,7 @@
 namespace Tests\Feature\TarefasDesenvolvimento;
 
 use App\Models\Tarefa;
+use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use App\Services\FluxoTarefaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -96,18 +97,27 @@ class MovimentoLivreTest extends TestCase
         $this->assertStringContainsString('motivo do cancelamento', session('erro'));
         $this->assertSame('concluida', $concluida->fresh()->status);
 
-        // O portão da produção não se fura por ser livre: sem a validação do
-        // staging carimbada, a fila do admin não recebe.
+        // O portão da subida não se fura por ser livre: sem a validação do
+        // staging carimbada, o código não vai para o ar.
         $aberta = $this->criarTarefa(['status' => 'aberta']);
 
-        $this->actingAs($admin)->post(route('tarefas.mover', $aberta), ['status' => 'pronta_producao'])
-            ->assertSessionHas('erro');
+        $this->actingAs($admin)->post(route('tarefas.mover', $aberta), [
+            'status' => 'em_producao', 'versao_producao' => 'v1.4.2',
+        ])->assertSessionHas('erro');
         $this->assertStringContainsString('validar o staging', session('erro'));
         $this->assertSame('aberta', $aberta->fresh()->status);
 
-        // Concluir a de desenvolvimento cobra a versão — e, com ela, o salto
-        // inteiro passa.
+        // Concluir a de desenvolvimento cobra DUAS coisas, e o salto do livre
+        // não dispensa nenhuma: o veredito de quem conferiu no ar e a versão.
         $backlog = $this->criarTarefa(['responsavel_id' => $admin->id]);
+
+        $this->actingAs($admin)->post(route('tarefas.mover', $backlog), ['status' => 'concluida'])
+            ->assertSessionHas('erro');
+        $this->assertStringContainsString('validar em produção', session('erro'));
+
+        TarefaRelatorioTeste::create([
+            'tarefa_id' => $backlog->id, 'aprovado' => true, 'notas' => 'Conferido no ar.',
+        ]);
 
         $this->actingAs($admin)->post(route('tarefas.mover', $backlog), ['status' => 'concluida'])
             ->assertSessionHas('erro');
@@ -168,12 +178,12 @@ class MovimentoLivreTest extends TestCase
     {
         $admin = User::factory()->create();
 
-        $daFila = $this->criarTarefa(['status' => 'pronta_producao']);
+        $doAr = $this->criarTarefa(['status' => 'em_producao']);
 
-        $this->actingAs($admin)->post(route('tarefas.mover', $daFila), ['status' => 'em_revisao'])
+        $this->actingAs($admin)->post(route('tarefas.mover', $doAr), ['status' => 'em_revisao'])
             ->assertSessionHas('erro');
         $this->assertStringContainsString('o que precisa ser corrigido', session('erro'));
-        $this->assertSame('pronta_producao', $daFila->fresh()->status);
+        $this->assertSame('em_producao', $doAr->fresh()->status);
 
         $concluida = $this->criarTarefa(['status' => 'concluida']);
         $concluida->forceFill(['versao_producao' => 'v1.4.2'])->save();
@@ -205,7 +215,7 @@ class MovimentoLivreTest extends TestCase
 
         $this->assertStringContainsString(
             'pegar( $el, '.Tarefa::first()->id.', '
-                .Js::from(['aberta', 'backlog', 'em_desenvolvimento', 'em_staging', 'pronta_producao', 'concluida', 'cancelada'])->toHtml()
+                .Js::from(['aberta', 'backlog', 'em_desenvolvimento', 'em_staging', 'em_producao', 'concluida', 'cancelada'])->toHtml()
                 .", 'desenvolvimento', false, 'em_revisao' )",
             $numaLinha,
             'Para quem triaga, o card precisa entregar todas as etapas menos a atual.'

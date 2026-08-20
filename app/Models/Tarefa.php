@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
@@ -50,6 +49,20 @@ class Tarefa extends Model
      * coluna mentir. A CHAVE continua `em_desenvolvimento` de propósito: ela
      * está gravada em milhares de linhas de `tarefa_eventos`, e renomear o dado
      * para arrumar um rótulo de tela reescreveria histórico.
+     *
+     * `em_producao` é a etapa em que a tag JÁ subiu e ninguém conferiu no ar
+     * ainda. Sem ela a tarefa era dada como concluída no instante do deploy, e o
+     * time faz TRÊS testes, não dois: local (que não entra no quadro), staging e
+     * produção. O terceiro não tinha onde acontecer — quem esperava alguém
+     * validar no ar só tinha o bloqueio para registrar a espera, e ele é a marca
+     * errada: tira a tarefa do WIP e não guarda veredito nem quem validou.
+     * Concluída passou a significar no ar E CONFERIDO.
+     *
+     * As duas metades de cada ambiente andam JUNTAS, e é o que dá simetria ao
+     * quadro: em Em staging o código sobe e é testado; em Em produção, a mesma
+     * coisa. A antiga "Pronta p/ produção" separava a subida do teste só de um
+     * dos lados — o staging nunca teve uma fila equivalente —, e duas colunas
+     * com "produção" no nome diziam coisas opostas sobre estar no ar.
      */
     public const STATUS = [
         'aberta' => 'Aberta',
@@ -57,7 +70,7 @@ class Tarefa extends Model
         'em_desenvolvimento' => 'Em andamento',
         'em_revisao' => 'Em revisão',
         'em_staging' => 'Em staging',
-        'pronta_producao' => 'Pronta p/ produção',
+        'em_producao' => 'Em produção',
         'concluida' => 'Concluída',
         'cancelada' => 'Cancelada',
     ];
@@ -69,8 +82,12 @@ class Tarefa extends Model
      * portão ela voltou. É essa distinção que a coluna única de Ajustes
      * achatava: reprovar um PR, quebrar em staging e ser barrada na porta da
      * produção chegavam todas ao mesmo lugar, sem dizer de onde vinham.
+     *
+     * `em_producao` é o terceiro, e o único em que o defeito está NO AR enquanto
+     * o card volta — a reprovação dele custa mais que a dos outros dois, e por
+     * isso é a que menos podia continuar sem lugar no quadro.
      */
-    public const PORTOES = ['em_revisao', 'em_staging', 'pronta_producao'];
+    public const PORTOES = ['em_revisao', 'em_staging', 'em_producao'];
 
     /**
      * Os portões onde a bola muda de mão para EXAME — revisão e staging.
@@ -78,10 +95,29 @@ class Tarefa extends Model
      * É neles que o painel do movimento oferece apontar quem revisa ou quem
      * testa, e é neles que a conversa recomeça a cada entrada (Q-037): quem
      * chega fala com o examinador DESTA passagem, não com o da etapa
-     * anterior. Pronta p/ produção fica de fora — lá a fila é do admin
-     * inteiro, e apontar uma pessoa não acrescentaria lado nenhum.
+     * anterior.
+     *
+     * Em produção é o terceiro, e o que mais depende do apontamento: quem
+     * confere no ar NEM SEMPRE é quem testou no staging. Às vezes é a mesma
+     * pessoa, às vezes não — e é justamente por variar que o nome precisa estar
+     * no card: sem ele a coluna deixa de responder quem o quadro está
+     * esperando, que é a única pergunta que uma coluna existe para responder.
      */
-    public const PORTOES_DE_EXAME = ['em_revisao', 'em_staging'];
+    public const PORTOES_DE_EXAME = ['em_revisao', 'em_staging', 'em_producao'];
+
+    /**
+     * Os portões em que alguém registra um VEREDITO — aprovado ou reprovado.
+     *
+     * Staging e produção: nos dois alguém roda o sistema e diz se passou, e o
+     * relatório nasce assinado e preso ao evento da passagem. Em revisão fica
+     * de fora — lá se lê um PR, e chamar as duas coisas de "aprovado" daria o
+     * mesmo nome a exames que falham de formas diferentes.
+     *
+     * É esta lista que faz um botão só servir às duas etapas. E o botão existe
+     * separado do movimento porque quem valida nem sempre é quem move: travar o
+     * registro não impediria o teste, impediria de REGISTRÁ-LO.
+     */
+    public const PORTOES_DE_VEREDITO = ['em_staging', 'em_producao'];
 
     /**
      * O que cada portão examina, dito no cabeçalho da própria coluna.
@@ -93,8 +129,8 @@ class Tarefa extends Model
      */
     public const PORTAO_DA_ETAPA = [
         'em_revisao' => 'PR · admin analisa',
-        'em_staging' => 'na main · dev valida',
-        'pronta_producao' => 'fila do admin · tag v*',
+        'em_staging' => 'na main · dev valida, e espera a tag',
+        'em_producao' => 'no ar · aguardando validação',
     ];
 
     /**
@@ -111,7 +147,7 @@ class Tarefa extends Model
         'em_desenvolvimento' => 'Ninguém tocando nada',
         'em_revisao' => 'Nenhum PR aberto',
         'em_staging' => 'Nada em staging',
-        'pronta_producao' => 'Nada para subir',
+        'em_producao' => 'Nada no ar esperando conferência',
     ];
 
     /**
@@ -126,11 +162,22 @@ class Tarefa extends Model
      * da produção" é a mais grave das quatro — o defeito está no ar enquanto
      * o card volta. É o rótulo do tipo desenvolvimento; a operacional tem o
      * dela em `rotuloDoRetornoVindoDe`.
+     *
+     * `pronta_producao` continua aqui mesmo tendo saído do fluxo: a tarja diz de
+     * onde a tarefa VOLTOU, e as que voltaram da fila da tag voltaram de lá
+     * mesmo. É o mesmo princípio de `ETAPAS_APOSENTADAS` — a etapa sai do fluxo,
+     * não do vocabulário.
+     *
+     * `em_producao` e `concluida` acontecem as duas com o código no ar e mesmo
+     * assim não dividem rótulo: reprovar na conferência é o portão fazendo o
+     * trabalho dele — a tarefa nunca chegou a ser dada por entregue —, e reabrir
+     * é o defeito aparecendo depois de todo mundo ter dado por pronto.
      */
     public const RETORNO_POR_ORIGEM = [
         'em_revisao' => 'Voltou da revisão',
         'em_staging' => 'Voltou do staging',
         'pronta_producao' => 'Voltou da porta da produção',
+        'em_producao' => 'Reprovou em produção',
         'concluida' => 'Voltou da produção',
     ];
 
@@ -144,6 +191,9 @@ class Tarefa extends Model
      *
      * `em_testes` guardava dois portões (a leitura do PR e a validação rodando)
      * e se abriu em três etapas; `ajustes_necessarios` virou a marca de retorno.
+     * `pronta_producao` foi a fila do admin entre o staging e a tag, e saiu
+     * quando subir e testar viraram uma etapa só dos dois lados — a espera pela
+     * tag passou a acontecer dentro de Em staging.
      * Os dois saem do FLUXO, não do vocabulário: as tarefas encerradas antes da
      * mudança passaram por eles de verdade, e o histórico delas continua tendo
      * de saber pronunciar esses nomes.
@@ -152,6 +202,7 @@ class Tarefa extends Model
         'bloqueada' => 'Bloqueada',
         'em_testes' => 'Em testes',
         'ajustes_necessarios' => 'Ajustes necessários',
+        'pronta_producao' => 'Pronta p/ produção',
     ];
 
     /**
@@ -162,17 +213,19 @@ class Tarefa extends Model
      * privado no controller, e a view que precisava da mesma resposta teria de
      * repetir a escala: escala copiada é escala que diverge.
      *
-     * `pronta_producao` compartilha o tom de `concluida` porque, do ponto de
-     * vista de quem olha o quadro, o que está ali já passou por tudo que havia
-     * para passar. `cancelada` fica neutra: é terminal sem valor, e não disputa
+     * A escala ficou simples quando a fila da tag saiu do quadro: o tom da marca
+     * é o trabalho em curso, e o verde é o fim. `em_producao` fica com os
+     * portões — o código está no ar, mas o exame ainda não aconteceu, e pintá-la
+     * de verde anunciaria fim de linha bem na coluna de onde o card ainda pode
+     * voltar. `cancelada` fica neutra: é terminal sem valor, e não disputa
      * atenção com as outras.
      */
     public static function corDaEtapa(string $status): string
     {
         return match ($status) {
             'aberta', 'backlog' => 'accent',
-            'em_desenvolvimento', 'em_revisao', 'em_staging' => 'brand',
-            'pronta_producao', 'concluida' => 'good',
+            'em_desenvolvimento', 'em_revisao', 'em_staging', 'em_producao' => 'brand',
+            'concluida' => 'good',
             default => 'line',
         };
     }
@@ -226,7 +279,7 @@ class Tarefa extends Model
         'em_desenvolvimento' => 72,
         'em_revisao' => 24,
         'em_staging' => 24,
-        'pronta_producao' => 24,
+        'em_producao' => 24,
     ];
 
     /**
@@ -337,6 +390,141 @@ class Tarefa extends Model
             .'. Só quem faz triagem move o trabalho de outra pessoa.';
     }
 
+    /** A tarefa de quem esta é subtarefa — ou null, se ela é de primeiro nível. */
+    public function pai(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'tarefa_pai_id');
+    }
+
+    /**
+     * As subtarefas desta, da mais antiga para a mais nova.
+     *
+     * Ordem de criação, e não de etapa nem de prioridade: quem reporta oito
+     * bugs seguidos os escreve numa ordem que quer dizer alguma coisa — e uma
+     * lista que se reorganiza sozinha a cada card que anda faz reler tudo para
+     * achar o que se acabou de digitar.
+     */
+    public function subtarefas(): HasMany
+    {
+        return $this->hasMany(self::class, 'tarefa_pai_id')->orderBy('id');
+    }
+
+    public function ehSubtarefa(): bool
+    {
+        return $this->tarefa_pai_id !== null;
+    }
+
+    /**
+     * Esta tarefa pode receber subtarefa?
+     *
+     * Um nível só, e a razão está na migração: profundidade livre multiplicaria
+     * por quantos níveis alguém criar as quatro perguntas que a hierarquia
+     * obriga a responder — e nenhuma delas foi respondida para "avó".
+     *
+     * Encerrada também não recebe: pendurar trabalho novo numa tarefa que já
+     * saiu do quadro criaria uma filha que ninguém vê e uma mãe que a recusa
+     * do encerramento não alcança mais.
+     */
+    public function podeReceberSubtarefa(): bool
+    {
+        return ! $this->ehSubtarefa()
+            && ! in_array($this->status, self::STATUS_TERMINAIS, true);
+    }
+
+    /**
+     * O placar das subtarefas — encerradas sobre o total, ou null se não há.
+     *
+     * "Encerrada" inclui a CANCELADA de propósito: ela é a saída para o bug que
+     * não vai ser corrigido, e contá-la como pendente prenderia a mãe a uma
+     * decisão que já foi tomada. Espelha `progressoDoChecklist`, inclusive no
+     * null — "0/0" anunciaria como ausência o que é só o normal.
+     *
+     * @return array{feitas: int, total: int}|null
+     */
+    public function progressoDasSubtarefas(): ?array
+    {
+        $total = $this->subtarefas->count();
+
+        if ($total === 0) {
+            return null;
+        }
+
+        return [
+            'feitas' => $this->subtarefas->whereIn('status', self::STATUS_TERMINAIS)->count(),
+            'total' => $total,
+        ];
+    }
+
+    /**
+     * Por que esta tarefa não pode sair do quadro agora — ou null, se pode.
+     *
+     * A mãe é guarda-chuva: enquanto houver filha aberta ela não conclui, não
+     * cancela e não é excluída. É a resposta à primeira das quatro perguntas
+     * que a hierarquia obriga a responder, e vale para as três portas de saída
+     * pelo mesmo motivo — todas tiram do quadro a tarefa que ainda responde
+     * por trabalho de outras.
+     *
+     * Cancelar a filha é a saída: ela sai da conta sem ser feita, que é o
+     * destino honesto do bug que o time decidiu não corrigir.
+     *
+     * Devolve a FRASE, como os outros impedimentos: ela é dita no motor, na
+     * recusa da exclusão e no `title` do botão que não funciona.
+     */
+    public function motivoParaNaoEncerrar(): ?string
+    {
+        $abertas = $this->subtarefas->whereNotIn('status', self::STATUS_TERMINAIS)->count();
+
+        if ($abertas === 0) {
+            return null;
+        }
+
+        return $abertas === 1
+            ? 'Esta tarefa tem 1 subtarefa em aberto. Encerre ou cancele ela antes.'
+            : 'Esta tarefa tem '.$abertas.' subtarefas em aberto. Encerre ou cancele cada uma antes.';
+    }
+
+    /**
+     * Concluída é destino do FLUXO a partir da etapa em que a tarefa está?
+     *
+     * O botão de concluir do card pergunta isto ALÉM de `destinosPara`, porque
+     * para quem faz triagem os dois divergem: o movimento livre oferece
+     * Concluída de qualquer etapa, e um botão de concluir num card que está em
+     * Em andamento abriria um painel que o portão da entrega recusa. O menu
+     * "Mover ▾" continua listando o quadro inteiro — lá o destino é uma escolha
+     * declarada, e não um atalho de um clique.
+     */
+    public function concluirCabeNestaEtapa(): bool
+    {
+        return in_array('concluida', FluxoTarefaService::transicoesDe($this), true);
+    }
+
+    /**
+     * Por que esta pessoa não pode ENCERRAR esta tarefa — ou null, se pode.
+     *
+     * Mover e encerrar deixaram de ser a mesma permissão. Quem confere no ar
+     * registra o veredito; quem organiza o quadro é que dá a tarefa por
+     * entregue. Sem essa separação, o mesmo dev que subiu o código assinaria
+     * sozinho que ele funciona, e o portão da produção viraria uma caixinha que
+     * quem tem pressa marca em si mesmo.
+     *
+     * Só a tarefa de DESENVOLVIMENTO. A operacional não tem PR, staging nem
+     * tag: exigir um admin para encerrar um telefonema tiraria de quem executa o
+     * registro do próprio trabalho, sem nada a proteger em troca.
+     *
+     * Devolve a FRASE pelo mesmo motivo de `motivoParaNaoMover`: ela é dita em
+     * dois lugares — a recusa da rota e o destino que o menu deixa de oferecer —
+     * e uma frase escrita duas vezes é uma frase que diverge.
+     */
+    public function motivoParaNaoConcluir(?User $usuario): ?string
+    {
+        if ($this->tipo !== 'desenvolvimento' || ! $usuario || $usuario->podeTriarTarefas()) {
+            return null;
+        }
+
+        return 'Só quem faz triagem encerra uma tarefa de desenvolvimento. '
+            .'Registre o veredito da validação em produção — é ele que libera o encerramento.';
+    }
+
     /**
      * Os destinos que o quadro oferece a ESTA pessoa para ESTA tarefa.
      *
@@ -351,6 +539,11 @@ class Tarefa extends Model
      * desmentiu. Quem não pode mover não recebe destino nenhum: oferecer e
      * recusar depois é o vício que o quadro perdeu.
      *
+     * Encerrar sai da lista pela mesma razão, e não por regra de fluxo: o mapa
+     * responde por onde a TAREFA pode andar, e quem encerra é pergunta sobre a
+     * PESSOA. Deixar "Concluída" no menu de quem não pode usá-la seria montar a
+     * recusa dentro do próprio menu.
+     *
      * @return list<string>
      */
     public function destinosPara(?User $usuario): array
@@ -359,9 +552,15 @@ class Tarefa extends Model
             return [];
         }
 
-        return $usuario?->podeTriarTarefas()
+        $destinos = $usuario?->podeTriarTarefas()
             ? FluxoTarefaService::transicoesLivres($this)
             : FluxoTarefaService::transicoesDe($this);
+
+        if ($this->motivoParaNaoConcluir($usuario)) {
+            $destinos = array_values(array_diff($destinos, ['concluida']));
+        }
+
+        return $destinos;
     }
 
     /** Há quanto tempo está travada, na régua curta do quadro ("3h", "2d"). */
@@ -517,6 +716,38 @@ class Tarefa extends Model
     }
 
     /** As tarefas cuja bola está com esta pessoa. */
+    /**
+     * As que já passaram no staging e esperam a tag subir.
+     *
+     * Era uma coluna (`pronta_producao`), e virou um recorte de Em staging: a
+     * espera pela tag acontece DENTRO da etapa, como a espera pelo merge
+     * acontece dentro de Em revisão. O chip do cabeçalho e o filtro de situação
+     * fazem a mesma pergunta, e por isso ela mora aqui — dois lugares montando
+     * a consulta por conta própria divergiriam na primeira mexida.
+     *
+     * "Aprovada" é o veredito MAIS NOVO da passagem atual, e não qualquer
+     * aprovado: reprovar depois de aprovar tira a tarefa da fila, e um
+     * `whereHas` simples a deixaria lá. Sem agregação de propósito — o MySQL do
+     * staging roda com `ONLY_FULL_GROUP_BY`, e `not exists` mais novo responde
+     * a mesma pergunta sem `GROUP BY`.
+     */
+    public function scopeValidadaNoStaging($query)
+    {
+        return $query->where('status', 'em_staging')
+            ->whereExists(fn ($sub) => $sub
+                ->selectRaw(1)
+                ->from('tarefa_relatorios_teste as r')
+                ->join('tarefa_eventos as e', 'e.id', '=', 'r.tarefa_evento_id')
+                ->whereColumn('r.tarefa_id', 'tarefas.id')
+                ->whereNull('e.saiu_em')
+                ->where('r.aprovado', true)
+                ->whereNotExists(fn ($mais) => $mais
+                    ->selectRaw(1)
+                    ->from('tarefa_relatorios_teste as r2')
+                    ->whereColumn('r2.tarefa_evento_id', 'r.tarefa_evento_id')
+                    ->whereColumn('r2.id', '>', 'r.id')));
+    }
+
     public function scopeEsperandoRespostaDe($query, ?int $usuarioId)
     {
         return $query->whereNotNull('pergunta_em')->where('pergunta_para_id', $usuarioId);
@@ -724,89 +955,4 @@ class Tarefa extends Model
         return ['feitos' => $this->itens->where('feito', true)->count(), 'total' => $total];
     }
 
-    /**
-     * As tarefas ligadas a esta — vínculo simétrico, sem hierarquia.
-     *
-     * Uma tarefa ligada aparece nas DUAS, porque o par é gravado nos dois
-     * sentidos (ver a migração). É isso que separa o vínculo do número escrito
-     * no resumo: quem abre a outra tarefa descobre a ligação sem que ninguém
-     * tenha de repeti-la lá.
-     *
-     * Ordenada por id, que é o `#412` do card: é o número que se lê e se copia,
-     * e ordenar pela data do vínculo faria a lista se reorganizar sozinha toda
-     * vez que alguém acrescentasse uma ponta.
-     */
-    public function vinculadas(): BelongsToMany
-    {
-        return $this->belongsToMany(self::class, 'tarefa_vinculos', 'tarefa_id', 'vinculada_id')
-            ->withPivot('criado_por_id')
-            ->withTimestamps()
-            ->orderBy('tarefas.id');
-    }
-
-    /**
-     * O que a lista de sugestão do campo de vínculo oferece.
-     *
-     * As tarefas EM CURSO, que são as mesmas do quadro — e a lista é sugestão,
-     * não cardápio: o campo aceita qualquer número, inclusive o de uma tarefa
-     * concluída há um ano. Por isso o recorte pode ser estreito sem prender
-     * ninguém; o que ele resolve é a mão que não lembra o número da tarefa que
-     * está a três colunas de distância.
-     *
-     * Sem as encerradas de propósito. Elas são a maioria com o tempo, e
-     * empurrariam para o fim da lista justamente as que estão acontecendo —
-     * que são as que se vincula todo dia.
-     *
-     * @return Collection<int, Tarefa>
-     */
-    public static function sugestoesDeVinculo(?self $tarefa = null): Collection
-    {
-        return static::query()
-            ->whereNotIn('status', self::STATUS_TERMINAIS)
-            ->when($tarefa?->exists, fn ($q) => $q
-                ->whereKeyNot($tarefa->id)
-                ->whereDoesntHave('vinculadas', fn ($v) => $v->whereKey($tarefa->id)))
-            ->orderByDesc('id')
-            ->get(['id', 'titulo']);
-    }
-
-    /**
-     * Liga esta tarefa à outra, nos dois sentidos.
-     *
-     * `syncWithoutDetaching` e não `attach`: vincular a mesma dupla duas vezes
-     * é gesto comum — duas pessoas ligam o mesmo par no mesmo dia — e um
-     * `attach` cru derrubaria o segundo com violação de chave única, que chega
-     * à tela como erro de banco em vez de "já estava vinculada".
-     *
-     * A transação existe porque o par é o dado: meia ligação gravada é pior que
-     * nenhuma — a tarefa A mostraria a B, e a B não saberia de nada.
-     */
-    public function vincularCom(self $outra, ?int $porQuem = null): void
-    {
-        // Vínculo consigo mesma não é vínculo, é uma linha que o modal
-        // desenharia apontando para a tarefa que já está aberta.
-        if ($outra->id === $this->id) {
-            return;
-        }
-
-        DB::transaction(function () use ($outra, $porQuem): void {
-            $this->vinculadas()->syncWithoutDetaching([$outra->id => ['criado_por_id' => $porQuem]]);
-            $outra->vinculadas()->syncWithoutDetaching([$this->id => ['criado_por_id' => $porQuem]]);
-        });
-    }
-
-    /**
-     * Desfaz a ligação nos dois sentidos.
-     *
-     * Desligar de um lado só deixaria a outra tarefa mostrando um vínculo que
-     * não existe mais — e ninguém iria procurá-lo lá, justamente porque quem
-     * desfez estava do lado que já limpou.
-     */
-    public function desvincularDe(self $outra): void
-    {
-        DB::transaction(function () use ($outra): void {
-            $this->vinculadas()->detach($outra->id);
-            $outra->vinculadas()->detach($this->id);
-        });
-    }
 }

@@ -134,13 +134,13 @@ class MoverTarefaTest extends TestCase
      * @spec:AC-089 Liberar para a produção exige a validação do staging; carimbá-la no
      * próprio movimento libera a passagem.
      */
-    public function test_liberar_para_producao_exige_validacao_do_staging(): void
+    public function test_subir_para_producao_exige_validacao_do_staging(): void
     {
         $usuario = User::factory()->create();
         $tarefa = $this->criarTarefa(['status' => 'em_staging']);
 
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'pronta_producao',
+            'status' => 'em_producao', 'versao_producao' => 'v1.4.2',
         ]);
 
         $resposta->assertSessionHas('erro');
@@ -149,7 +149,7 @@ class MoverTarefaTest extends TestCase
 
         // Desmarcar o "Validado no staging" no próprio movimento continua recusando.
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'pronta_producao',
+            'status' => 'em_producao', 'versao_producao' => 'v1.4.2',
             'relatorio_aprovado' => '0',
             'relatorio_notas' => 'Falhou no cenário de CPF duplicado.',
         ]);
@@ -165,12 +165,12 @@ class MoverTarefaTest extends TestCase
 
         // O carimbo é o que importa; a nota é opcional.
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'pronta_producao',
+            'status' => 'em_producao', 'versao_producao' => 'v1.4.2',
             'relatorio_aprovado' => '1',
         ]);
 
         $resposta->assertSessionMissing('erro');
-        $this->assertSame('pronta_producao', $tarefa->fresh()->status);
+        $this->assertSame('em_producao', $tarefa->fresh()->status);
         $this->assertDatabaseHas('tarefa_relatorios_teste', [
             'tarefa_id' => $tarefa->id,
             'aprovado' => true,
@@ -184,22 +184,37 @@ class MoverTarefaTest extends TestCase
     public function test_concluir_pede_a_versao_que_subiu(): void
     {
         $usuario = User::factory()->create();
-        $tarefa = $this->criarTarefa(['status' => 'pronta_producao']);
+        $tarefa = $this->criarTarefa(['status' => 'em_staging']);
 
+        \App\Models\TarefaRelatorioTeste::create([
+            'tarefa_id' => $tarefa->id, 'aprovado' => true, 'notas' => 'Staging conferido.',
+        ]);
+
+        // A versão é pedida na subida da tag, que é o gesto que a produz.
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'concluida',
+            'status' => 'em_producao',
         ]);
 
         $resposta->assertSessionHas('erro');
         $this->assertStringContainsString('versão que subiu', session('erro'));
-        $this->assertSame('pronta_producao', $tarefa->fresh()->status);
+        $this->assertSame('em_staging', $tarefa->fresh()->status);
 
         $resposta = $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'concluida',
+            'status' => 'em_producao',
             'versao_producao' => 'v1.4.2',
         ]);
 
         $resposta->assertSessionMissing('erro');
+        $this->assertSame('em_producao', $tarefa->fresh()->status);
+        $this->assertSame('v1.4.2', $tarefa->fresh()->versao_producao);
+
+        // E ela viaja com a tarefa até o encerramento: é a versão que o
+        // histórico exibe como desfecho.
+        $this->actingAs($usuario)->post(route('tarefas.testar', $tarefa->fresh()), ['aprovado' => '1']);
+        $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa->fresh()), [
+            'status' => 'concluida', 'de_status' => 'em_producao',
+        ])->assertSessionMissing('erro');
+
         $this->assertSame('concluida', $tarefa->fresh()->status);
         $this->assertSame('v1.4.2', $tarefa->fresh()->versao_producao);
     }
@@ -324,7 +339,7 @@ class MoverTarefaTest extends TestCase
         $usuario = User::factory()->create();
         $responsavel = User::factory()->create();
 
-        foreach (['em_revisao', 'em_staging', 'pronta_producao'] as $portao) {
+        foreach (['em_revisao', 'em_staging', 'em_producao'] as $portao) {
             $tarefa = $this->criarTarefa(['status' => $portao, 'titulo' => 'No portão '.$portao]);
 
             $card = $this->trechoDoCard(
@@ -388,7 +403,7 @@ class MoverTarefaTest extends TestCase
         );
 
         // E cada coluna do quadro se pergunta se aceita o que está na mão.
-        foreach (['aberta', 'backlog', 'em_desenvolvimento', 'em_revisao', 'em_staging', 'pronta_producao'] as $etapa) {
+        foreach (['aberta', 'backlog', 'em_desenvolvimento', 'em_revisao', 'em_staging', 'em_producao'] as $etapa) {
             $this->assertStringContainsString("aceita('".$etapa."')", $html,
                 "A coluna {$etapa} precisa consultar se aceita o card arrastado.");
         }
@@ -447,23 +462,43 @@ class MoverTarefaTest extends TestCase
      */
     public function test_concluir_e_botao_do_card_e_so_onde_o_fluxo_permite(): void
     {
-        // Membro dono dos cards: para quem triaga o fluxo permite concluir de
-        // qualquer lugar (AC-281), e o botão apareceria nos dois.
-        $usuario = User::factory()->membro()->create();
-        $pronta = $this->criarTarefa(['status' => 'pronta_producao', 'titulo' => 'Já validada', 'responsavel_id' => $usuario->id]);
+        // Quem triaga, porque encerrar tarefa de desenvolvimento é dele. Para
+        // ele o movimento livre oferece Concluída de QUALQUER etapa, e é
+        // justamente por isso que o botão não pode se guiar por essa lista: ele
+        // pergunta ao mapa (`concluirCabeNestaEtapa`), senão apareceria em todo
+        // card só para o portão da entrega recusar em seguida.
+        $usuario = User::factory()->create();
+        $noAr = $this->criarTarefa(['status' => 'em_producao', 'titulo' => 'Já no ar', 'responsavel_id' => $usuario->id]);
         $emRevisao = $this->criarTarefa(['status' => 'em_revisao', 'titulo' => 'Ainda em leitura', 'responsavel_id' => $usuario->id]);
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
+        // A mira é o BOTÃO, e não o destino: para quem triaga o menu "Mover ▾"
+        // lista Concluída em todo card (movimento livre), e procurar pelo
+        // destino confundiria as duas coisas. O `title` só existe no botão.
         $this->assertStringContainsString(
-            "abrirPendente({$pronta->id}, 'concluida'",
-            $this->trechoDoCard($html, $pronta->id),
-            'De Pronta p/ produção o fluxo permite concluir: o botão precisa estar no card.'
+            'title="Concluir tarefa"',
+            $this->trechoDoCard($html, $noAr->id),
+            'De Em produção o fluxo permite concluir: o botão precisa estar no card.'
         );
         $this->assertStringNotContainsString(
-            "abrirPendente({$emRevisao->id}, 'concluida'",
+            'title="Concluir tarefa"',
             $this->trechoDoCard($html, $emRevisao->id),
             'De Em revisão não se conclui: o botão não pode aparecer só para recusar depois.'
+        );
+
+        // E para quem NÃO encerra ele não aparece em lugar nenhum — nem na
+        // etapa em que o fluxo chegaria lá.
+        $membro = User::factory()->membro()->create();
+        $doMembro = $this->criarTarefa(['status' => 'em_producao', 'titulo' => 'No ar do membro', 'responsavel_id' => $membro->id]);
+
+        $this->assertStringNotContainsString(
+            'title="Concluir tarefa"',
+            $this->trechoDoCard(
+                $this->actingAs($membro)->get(route('tarefas.index'))->assertOk()->getContent(),
+                $doMembro->id,
+            ),
+            'Encerrar é de quem faz triagem: o card do membro não oferece o botão.'
         );
 
         // As faixas verticais saíram junto: elas custavam largura numa tela de

@@ -1,0 +1,68 @@
+<b>📋 AlfaMatriz — Changelog 20/08/2026</b>
+<i>O quadro passou a cobrir o teste em produção e ganhou subtarefas</i>
+
+<b>🚀 O teste em produção agora tem lugar no quadro</b>
+
+• <b>Antes, subir a tag e entregar eram o mesmo gesto.</b> No instante em que a versão ia para o ar, a tarefa era dada como concluída e sumia do quadro. Quem precisasse esperar alguém conferir em produção antes de encerrar não tinha onde registrar essa espera — sobrava marcar a tarefa como bloqueada, que tira a tarefa da conta de trabalho em curso e não guarda quem conferiu nem o que foi conferido.
+
+• <b>Agora existe a etapa "Em produção".</b> Ela fica entre a subida da tag e o encerramento, e quer dizer: <b>está no ar e ainda não foi conferido</b>. O card mostra a versão que subiu e o nome de quem vai validar.
+
+• <b>Quem valida é apontado na hora de subir a tag.</b> Ao mover para Em produção, o painel pede a versão e oferece escolher a pessoa. Ela recebe aviso no sino, e o card do quadro passa a dizer "Validação com Fulano" — porque quem confere em produção nem sempre é quem testou no staging.
+
+• <b>Quem valida não precisa poder mover o card.</b> O veredito (aprovado ou reprovado) é registrado por um botão dentro da tarefa, assinado por quem conferiu. Reprovar exige dizer o que falhou.
+
+• <b>Sem veredito aprovado, ninguém encerra.</b> Nem quem faz triagem. É o mesmo portão que já existia para liberar o staging, um passo adiante. E encerrar tarefa de desenvolvimento passou a ser de quem faz triagem: quem confere registra, quem organiza o quadro dá por entregue.
+
+• <b>Reprovou no ar? Dois caminhos.</b> Volta para Em andamento, quando o defeito é do código, ou volta para o staging, quando a subida é que deu errado e a tag vai ser revertida ou refeita. Os dois cobram o motivo, e o card chega marcado com "Reprovou em produção".
+
+---
+
+<b>🔀 "Pronta p/ produção" saiu do quadro</b>
+
+• <b>Eram duas colunas com "produção" no nome, dizendo coisas opostas.</b> Uma queria dizer "ainda não subiu" e a outra "já subiu". Além disso, a fila do admin existia só de um lado: o staging nunca teve uma "Pronta p/ staging" equivalente.
+
+• <b>Agora subir e testar acontecem na mesma etapa, dos dois lados.</b> Em staging o código sobe, é testado e espera a tag ali mesmo. Em produção, a mesma coisa. O quadro voltou a ter seis colunas.
+
+• <b>A espera pela tag não sumiu, mudou de lugar.</b> O chip "N p/ subir" no topo do quadro passou a contar exatamente quem já passou no teste do staging e aguarda a subida — e o filtro "Só as prontas p/ produção" continua funcionando.
+
+• <b>Nada se perdeu.</b> As tarefas que estavam na fila voltaram para Em staging sem zerar o relógio, e o histórico continua sabendo o nome da etapa antiga.
+
+---
+
+<b>🧩 Subtarefas</b>
+
+• <b>Para o caso de revisar uma atualização e achar vários bugs.</b> Cada bug vira uma tarefa inteira, com etapa, responsável, prioridade e anexos próprios — o que o checklist não dá, porque item de checklist não tem dono nem etapa.
+
+• <b>Nasce do detalhe da tarefa principal.</b> Botão "Nova subtarefa" abre o formulário completo, já amarrado à tarefa de origem e com o sistema dela preenchido. Você descreve o bug e cola o print ali mesmo.
+
+• <b>A tarefa principal vira guarda-chuva.</b> Ela não sai do quadro — nem concluindo, nem cancelando, nem sendo excluída — enquanto houver subtarefa em aberto. Cancelar uma subtarefa a tira da conta: é a saída para o bug que o time decidiu não corrigir.
+
+• <b>O card mostra os dois lados.</b> A principal ganha um placar (por exemplo <b>2/8</b>), em âmbar enquanto prende e verde quando fecha. A subtarefa mostra de que trabalho maior ela é pedaço, com o nome da tarefa de origem — então numa coluna cheia dá para ver quais cards vieram da mesma revisão.
+
+• <b>A subtarefa conta no trabalho em curso.</b> Se uma revisão gera oito bugs, o quadro passa a mostrar oito trabalhos. Se isso estoura o limite da coluna, é o quadro dizendo a verdade sobre o que o time acabou de receber.
+
+• <b>Um nível só.</b> Subtarefa não recebe subtarefa.
+
+---
+
+<b>💬 A conversa da tarefa ficou mais clara</b>
+
+• <b>Comentar ganhou botão próprio.</b> Antes, o campo se chamava "Novo comentário" e o único botão ao lado dizia "Perguntar" — para só comentar era preciso apertar "Salvar", no rodapé, que é o botão de gravar título e prioridade. A ação mais comum não tinha botão; a mais rara tinha.
+
+• <b>Agora são dois botões ao lado do campo.</b> <b>Comentar</b> publica e não move nada. <b>Perguntar</b> publica e passa a vez para o outro lado, com aviso no sino. Um campo só, porque a decisão "isso é pergunta?" vem depois de escrever.
+
+• <b>Comentar aparece sempre.</b> Antes, quando a resposta estava com você, os dois botões sumiam e sobrava um aviso dizendo que o texto entraria ao salvar.
+
+<b>🔎 Os títulos das seções do detalhe ficaram legíveis</b>
+
+• <b>Era difícil achar onde uma seção terminava e a outra começava.</b> "Checklist", "Anexos", "Conversa" apareciam menores e mais apagados do que os rótulos dos campos que eles agrupam.
+
+• <b>Agora eles pesam mais que os campos.</b> Maiores, em contraste cheio, com a divisória acima mais visível. Vale para o detalhe da tarefa e para o histórico.
+
+<b>🔗 O vínculo entre tarefas foi removido</b>
+
+• <b>Ele foi anunciado no dia 18 e saiu agora.</b> Com a subtarefa na mesa, o vínculo virou a segunda lista de tarefas irmãs no mesmo detalhe — parecida com a primeira e com o efeito oposto: uma prende a tarefa principal, a outra não prende ninguém. Duas seções que se parecem e se comportam ao contrário custam uma decisão a cada uso.
+
+• <b>O que se perde, e a decisão foi tomada sabendo:</b> apontar para uma tarefa já encerrada, ligar duas tarefas em que nenhuma é a principal, e pendurar a mesma tarefa em mais de um contexto. Se algum desses casos voltar a aparecer no dia a dia, o vínculo pode voltar.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

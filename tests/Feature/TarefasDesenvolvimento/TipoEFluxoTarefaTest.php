@@ -325,8 +325,15 @@ class TipoEFluxoTarefaTest extends TestCase
             'tarefa_id' => $tarefa->id, 'aprovado' => true, 'notas' => 'Ciclo 1 aprovado.',
         ]);
 
-        $this->fluxo->mover($tarefa->fresh(), 'pronta_producao');
-        $this->fluxo->mover($tarefa->fresh(), 'concluida', ['versao_producao' => 'v1.4.2']);
+        $this->fluxo->mover($tarefa->fresh(), 'em_producao', ['versao_producao' => 'v1.4.2']);
+
+        // O ciclo 1 também passa pela conferência no ar: o carimbo do staging
+        // ficou preso à passagem dele, e o portão da entrega lê o desta.
+        TarefaRelatorioTeste::create([
+            'tarefa_id' => $tarefa->id, 'aprovado' => true, 'notas' => 'Ciclo 1 conferido no ar.',
+        ]);
+
+        $this->fluxo->mover($tarefa->fresh(), 'concluida');
         $this->assertSame('concluida', $tarefa->fresh()->status);
 
         // Ciclo 2: o aprovado lá de trás não vale como prova do código novo.
@@ -335,7 +342,7 @@ class TipoEFluxoTarefaTest extends TestCase
         $this->fluxo->mover($tarefa->fresh(), 'em_staging');
 
         try {
-            $this->fluxo->mover($tarefa->fresh(), 'pronta_producao');
+            $this->fluxo->mover($tarefa->fresh(), 'em_producao', ['versao_producao' => 'v1.5.0']);
             $this->fail('Esperava recusa: a validação aprovada é do ciclo anterior.');
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString('validar o staging', $e->getMessage());
@@ -347,7 +354,10 @@ class TipoEFluxoTarefaTest extends TestCase
             'tarefa_id' => $tarefa->id, 'aprovado' => true, 'notas' => 'Ciclo 2 aprovado.',
         ]);
 
-        $this->assertSame('pronta_producao', $this->fluxo->mover($tarefa->fresh(), 'pronta_producao')->status);
+        $this->assertSame(
+            'em_producao',
+            $this->fluxo->mover($tarefa->fresh(), 'em_producao', ['versao_producao' => 'v1.5.0'])->status,
+        );
     }
 
     /**
@@ -372,16 +382,21 @@ class TipoEFluxoTarefaTest extends TestCase
             'tarefa_id' => $tarefa->id, 'aprovado' => true, 'notas' => 'Reteste aprovado.',
         ]);
 
-        $this->fluxo->mover($tarefa->fresh(), 'pronta_producao');
-
+        // A versão é cobrada onde a tag SOBE — na entrada de Em produção.
         try {
-            $this->fluxo->mover($tarefa->fresh(), 'concluida');
+            $this->fluxo->mover($tarefa->fresh(), 'em_producao');
             $this->fail('Esperava recusa: a versão registrada era do ciclo anterior.');
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString('versão que subiu', $e->getMessage());
         }
 
-        $movida = $this->fluxo->mover($tarefa->fresh(), 'concluida', ['versao_producao' => 'v1.5.0']);
+        $this->fluxo->mover($tarefa->fresh(), 'em_producao', ['versao_producao' => 'v1.5.0']);
+
+        TarefaRelatorioTeste::create([
+            'tarefa_id' => $tarefa->id, 'aprovado' => true, 'notas' => 'Conferido no ar.',
+        ]);
+
+        $movida = $this->fluxo->mover($tarefa->fresh(), 'concluida');
 
         $this->assertSame('v1.5.0', $movida->versao_producao);
     }
@@ -420,18 +435,35 @@ class TipoEFluxoTarefaTest extends TestCase
      */
     public function test_concluir_exige_a_versao_que_subiu(): void
     {
-        $tarefa = $this->criarTarefa(['status' => 'pronta_producao']);
+        $tarefa = $this->criarTarefa(['status' => 'em_staging']);
 
+        TarefaRelatorioTeste::create([
+            'tarefa_id' => $tarefa->id, 'aprovado' => true, 'notas' => 'Staging conferido.',
+        ]);
+
+        // A cobrança mudou de porta junto com o fluxo: a versão é pedida onde a
+        // tag SOBE. Pedida só no encerramento, a coluna da conferência não
+        // dizia o que estava no ar — que é a primeira coisa que quem vai
+        // conferir precisa saber.
         try {
-            $this->fluxo->mover($tarefa, 'concluida');
+            $this->fluxo->mover($tarefa, 'em_producao');
             $this->fail('Esperava recusa por falta da versão.');
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString('versão que subiu', $e->getMessage());
         }
 
-        $this->assertSame('pronta_producao', $tarefa->fresh()->status);
+        $this->assertSame('em_staging', $tarefa->fresh()->status);
 
-        $movida = $this->fluxo->mover($tarefa, 'concluida', ['versao_producao' => 'v1.4.2']);
+        $noAr = $this->fluxo->mover($tarefa, 'em_producao', ['versao_producao' => 'v1.4.2']);
+
+        $this->assertSame('em_producao', $noAr->status);
+        $this->assertSame('v1.4.2', $noAr->versao_producao);
+
+        TarefaRelatorioTeste::create([
+            'tarefa_id' => $tarefa->id, 'aprovado' => true, 'notas' => 'Conferido no ar.',
+        ]);
+
+        $movida = $this->fluxo->mover($tarefa->fresh(), 'concluida');
 
         $this->assertSame('concluida', $movida->status);
         $this->assertSame('v1.4.2', $movida->versao_producao);

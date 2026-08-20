@@ -52,7 +52,7 @@ class RelatoriosFiltrosEExportacaoTest extends TestCase
             $tarefa = Tarefa::factory()->create(['status' => 'concluida', 'sistema_id' => $sistema->id]);
             TarefaEvento::create([
                 'tarefa_id' => $tarefa->id,
-                'de_status' => 'pronta_producao', 'para_status' => 'concluida',
+                'de_status' => 'em_producao', 'para_status' => 'concluida',
                 'entrou_em' => now(),
             ]);
         }

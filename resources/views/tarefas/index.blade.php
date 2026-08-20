@@ -13,7 +13,7 @@
      * esperando a pergunta — arrasto que passa reto se lê como feature que não
      * existe. O painel deles não cobra texto: oferece uma pessoa, opcional.
      */
-    $etapasComTexto = ['em_desenvolvimento', 'em_revisao', 'em_staging', 'cancelada', 'concluida', 'pronta_producao'];
+    $etapasComTexto = ['em_desenvolvimento', 'em_revisao', 'em_staging', 'cancelada', 'concluida', 'em_producao'];
 @endphp
 
 <x-app-layout>
@@ -1779,12 +1779,12 @@
                             porque: {
                                 em_revisao: 'Diga o que precisa ser corrigido no PR. Sem isso, quem recebe abre o card sem saber o que reprovou.',
                                 em_staging: 'Falhou em staging — o código JÁ está na main. Diga o que quebrou e se precisa voltar a versão (deploy/voltar.sh) ou dá para corrigir seguindo em frente.',
-                                pronta_producao: 'Reprovada antes de a tag subir. Diga o que apareceu.',
+                                em_producao: 'Reprovou NO AR: o defeito está com o cliente enquanto o card volta. Diga o que apareceu e se a tag precisa ser revertida (deploy/voltar.sh).',
                             }[this.statusArrastado] ?? 'Diga o que precisa ser corrigido.',
                             placeholder: {
                                 em_revisao: 'O que precisa ser corrigido no PR…',
                                 em_staging: 'O que quebrou no staging · voltar ou corrigir em frente…',
-                                pronta_producao: 'O que apareceu antes de subir…',
+                                em_producao: 'O que apareceu no ar · reverter ou corrigir em frente…',
                             }[this.statusArrastado] ?? 'O que precisa ser corrigido…',
                             acaoRotulo: 'Devolver para correção',
                             cor: 'warn', campo: 'motivo', obrigatorio: true, pedeAprovacao: false,
@@ -1793,19 +1793,6 @@
                             // precisa do print que a frase não carrega. As
                             // imagens viajam no MESMO envio que move o card.
                             imagens: true,
-                        },
-                        // O carimbo do staging: é aqui que o dev afirma ter
-                        // validado, e é essa nota que o admin lê antes de
-                        // taggear. Texto opcional; o que importa é o carimbo.
-                        pronta_producao: {
-                            verbo: 'Liberando para', label: 'Pronta p/ produção',
-                            porque: 'Vai para a fila do admin, que sobe a tag. Diga o que você conferiu no staging — é o que ele lê antes de subir.',
-                            placeholder: 'O que foi conferido no staging…',
-                            acaoRotulo: 'Liberar para o admin subir',
-                            cor: 'good',
-                            campo: ehDev ? 'relatorio_notas' : null,
-                            obrigatorio: false,
-                            pedeAprovacao: ehDev,
                         },
                         // Quem revisa / quem testa (US-087): o apontamento mora
                         // no gesto de mover — menu, arrasto e teclado abrem o
@@ -1819,11 +1806,11 @@
                         // devolução para a bancada, e o motor recusa sem o
                         // motivo. O apontamento continua junto, porque a
                         // tarefa está reentrando no exame.
-                        em_revisao: ['em_staging', 'pronta_producao', 'concluida'].includes(this.statusArrastado) ? {
+                        em_revisao: ['em_staging', 'em_producao', 'concluida'].includes(this.statusArrastado) ? {
                             verbo: 'Devolvendo para', label: 'Em revisão',
                             porque: {
                                 em_staging: 'Voltando do staging para o exame — o código JÁ está na main. Diga por que o PR precisa ser reexaminado.',
-                                pronta_producao: 'Saindo da fila da produção de volta para o exame. Diga o que apareceu antes de subir.',
+                                em_producao: 'Voltando da conferência direto para o exame — a versão que subiu continua no ar. Diga o que precisa ser reexaminado.',
                                 concluida: 'Reabrindo direto na revisão — a versão que subiu continua no ar. Diga o que precisa ser reexaminado.',
                             }[this.statusArrastado],
                             placeholder: 'Por que está voltando para a revisão…',
@@ -1837,7 +1824,36 @@
                             cor: 'brand', campo: null, obrigatorio: false, pedeAprovacao: false,
                             pessoa: 'Quem revisa?',
                         },
-                        em_staging: {
+                        // A tag subiu: daqui em diante o código está com o
+                        // cliente, e a bola passa do admin para quem confere no
+                        // ar — que nem sempre é quem testou no staging. O painel
+                        // pede as duas coisas que só existem neste instante: a
+                        // versão que subiu e o nome de quem valida.
+                        em_producao: {
+                            verbo: 'Subindo para', label: 'Em produção',
+                            porque: 'A tag subiu e o vigia aplicou. Registre a versão — é ela que responde "desde quando o cliente tem isso" — e aponte quem confere no ar; sem apontar, a coluna fica como fila.',
+                            placeholder: 'v1.4.2',
+                            acaoRotulo: 'Subiu para produção',
+                            cor: 'brand', campo: 'versao_producao', obrigatorio: true,
+                            // O carimbo do staging viajava no movimento para a
+                            // fila do admin; a fila saiu, e ele veio junto com o
+                            // portão — é aqui que se afirma ter validado antes
+                            // de o código ir para o ar.
+                            pedeAprovacao: ehDev,
+                            pessoa: 'Quem valida no ar?',
+                        },
+                        // Em staging recebe por dois caminhos opostos, e só um
+                        // deles é avançar: vindo do ar, o card está voltando
+                        // para a tag ser revertida ou refeita. Chamar os dois de
+                        // "Enviando para" esconderia o que tem consequência.
+                        em_staging: this.statusArrastado === 'em_producao' ? {
+                            verbo: 'Devolvendo para', label: 'Em staging',
+                            porque: 'Reprovou no ar sem que o defeito seja do código: a tag sai do staging, e é para lá que o card volta para ela ser revertida (deploy/voltar.sh) ou refeita. Diga o que apareceu — é o que quem mexer na tag lê antes.',
+                            placeholder: 'O que apareceu no ar · reverter ou subir outra tag…',
+                            acaoRotulo: 'Devolver para o staging',
+                            cor: 'warn', campo: 'motivo', obrigatorio: true, pedeAprovacao: false,
+                            pessoa: 'Quem testa?',
+                        } : {
                             verbo: 'Enviando para', label: 'Em staging',
                             porque: 'O código vai rodar no staging. Aponte quem testa e o sino avisa a pessoa na hora — sem apontar, a coluna fica como fila.',
                             acaoRotulo: 'Enviar para staging',
@@ -1851,16 +1867,38 @@
                             acaoRotulo: 'Cancelar tarefa',
                             cor: 'crit', campo: 'motivo', obrigatorio: true, pedeAprovacao: false,
                         },
-                        concluida: {
+                        // Vindo de Em produção não há mais o que preencher: a
+                        // versão foi registrada na subida da tag e o veredito
+                        // foi assinado por quem conferiu. Encerrar é só dar a
+                        // tarefa por entregue — e um campo pedido de novo aqui
+                        // faria a pessoa achar que o registro anterior se perdeu.
+                        //
+                        // O outro ramo é o salto do movimento livre, que alcança
+                        // Concluída de qualquer etapa. Ele continua pedindo a
+                        // versão, e o texto avisa do carimbo que o motor vai
+                        // cobrar — em vez de deixar a recusa ser a explicação.
+                        concluida: (ehDev && this.statusArrastado !== 'em_producao') ? {
                             verbo: 'Encerrando como', label: 'Concluída',
+                            porque: 'Concluída significa no ar E CONFERIDO. Sem o veredito de quem validou em produção o encerramento é recusado — o caminho é subir para Em produção e apontar quem confere.',
+                            placeholder: 'v1.4.2',
+                            acaoRotulo: 'Subiu para produção',
+                            cor: 'good', campo: 'versao_producao', obrigatorio: true, pedeAprovacao: false,
+                        } : {
+                            verbo: 'Encerrando como', label: 'Concluída',
+                            // Declara a EXIGÊNCIA, e não que ela já foi
+                            // cumprida: o painel roda no navegador e não tem
+                            // como saber se o veredito existe. Afirmar que a
+                            // conferência foi aprovada seria mentir bem no
+                            // card em que ela ainda não aconteceu — e a recusa
+                            // logo depois ensinaria a não ler o texto.
                             porque: ehDev
-                                ? 'Concluída significa EM PRODUÇÃO: a tag subiu e o vigia aplicou. Registre a versão — é ela que responde "desde quando o cliente tem isso".'
+                                ? 'A versão já foi registrada na subida da tag. Encerrar dá a tarefa por entregue, e só passa com o veredito de quem conferiu no ar.'
                                 : 'Tarefa operacional não passa por PR nem por tag. Registre o que foi feito — é o que sobra como prova depois.',
-                            placeholder: ehDev ? 'v1.4.2' : 'O que foi feito…',
-                            acaoRotulo: ehDev ? 'Subiu para produção' : 'Encerrar tarefa',
+                            placeholder: ehDev ? null : 'O que foi feito…',
+                            acaoRotulo: ehDev ? 'Dar por entregue' : 'Encerrar tarefa',
                             cor: 'good',
-                            campo: ehDev ? 'versao_producao' : 'relatorio_notas',
-                            obrigatorio: ehDev,
+                            campo: ehDev ? null : 'relatorio_notas',
+                            obrigatorio: false,
                             pedeAprovacao: false,
                         },
                     };
@@ -2386,6 +2424,40 @@
             // moram em três lugares que não se enxergam — a partial da coluna,
             // o componente Alpine do quadro e um script solto no fim da página.
             window.addEventListener('abrir-tarefa', (evento) => abrirTarefa(evento.detail));
+
+            /**
+             * O formulário INTEIRO de subtarefa, com a mãe amarrada.
+             *
+             * Mesma viagem do modal de edição, e pelo mesmo motivo: o modal de
+             * nova tarefa da página é UM só e guardaria a mãe de uma abertura
+             * para a seguinte. Buscado, cada abertura traz a sua.
+             *
+             * Trocar o bloco fecha o modal da mãe — que é o certo: são dois
+             * formulários inteiros, e empilhá-los deixaria dois Esc e dois
+             * Cancelar disputando qual fecha o quê. Salvar devolve o quadro
+             * redesenhado, com a filha já no lugar dela.
+             */
+            const abrirNovaSubtarefa = async (id) => {
+                try {
+                    const resposta = await fetch('{{ url('tarefas') }}/' + id + '/subtarefas/nova', {
+                        headers: { 'Accept': 'text/html' },
+                    });
+
+                    if (! resposta.ok) {
+                        location.reload();
+
+                        return;
+                    }
+
+                    trocar(document.querySelector('[data-modais]'), await resposta.text());
+
+                    window.dispatchEvent(new CustomEvent('open-modal', { detail: 'nova-subtarefa-' + id }));
+                } catch (erro) {
+                    location.reload();
+                }
+            };
+
+            window.addEventListener('nova-subtarefa', (evento) => abrirNovaSubtarefa(evento.detail));
 
             /**
              * Devolve o foco a quem o tinha, se ele sobreviveu à troca.

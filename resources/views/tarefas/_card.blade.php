@@ -132,7 +132,7 @@
     $progresso = $tarefa->progressoDoChecklist();
     $totalComentarios = $tarefa->comentarios->count();
     $totalAnexos = $tarefa->anexos->count();
-    $totalVinculos = $tarefa->vinculadas->count();
+    $progressoSubtarefas = $tarefa->progressoDasSubtarefas();
 @endphp
 
 {{--
@@ -173,30 +173,27 @@
             <span class="font-mono text-[11.5px] font-semibold text-ink-dim">{{ $tarefa->codigo() }}</span>
 
             {{--
-                O elo mora AQUI, e não no rodapé com os outros selos.
+                O placar das subtarefas mora AQUI, e não no rodapé com os
+                outros selos: ele fala da VIZINHANÇA da tarefa, e o número ao
+                lado é a moeda desse apontamento. Os selos do rodapé falam do
+                trabalho desta tarefa — quanto tempo, quantos passos, quantas
+                mensagens. Nesta linha sobram 141px; lá o selo cairia para uma
+                segunda linha que o `overflow-hidden` corta, sumindo por inteiro
+                (armadilha 19).
 
-                Ele nasceu lá e não aparecia: medido no quadro, a tira recebe
-                49px e precisava de 51 (tempo 24 + vão 7 + elo 20), então o elo
-                quebrava para uma segunda linha que o `overflow-hidden` corta —
-                sumia por inteiro, como manda a armadilha 19. O rodapé de quem
-                faz triagem não tem os 2px: o grupo de botões leva 68px porque o
-                Concluir aparece, e o nome trava no `min-width` de 56px.
-
-                Nesta linha sobram 141px. E o lugar é melhor por conta própria:
-                o elo diz que a tarefa aponta para OUTRA tarefa, e o número ao
-                lado é justamente a moeda desse vínculo — é ele que se digita no
-                campo do outro lado. Os selos do rodapé falam do trabalho DESTA
-                tarefa (quanto tempo, quantos passos, quantas mensagens); o elo
-                nunca foi da mesma família.
-
-                Mono de 10px e `ink-mute`, que são a receita dos selos do rodapé:
-                o elo mudou de lugar, não de peso — e destacá-lo mais que o
-                número faria a linha anunciar o vizinho antes da tarefa.
+                Ele fica ÂMBAR enquanto há filha aberta: é ele que
+                explica por que o botão de concluir vai recusar, e descobrir isso
+                só no clique é a recusa sem aviso que o quadro evita em todo o
+                resto. Verde quando fecha, porque aí ele destrava.
             --}}
-            @if ($totalVinculos > 0)
-                <span class="inline-flex items-center gap-[3px] align-middle font-sans tabular text-[10px] text-ink-mute"
-                      title="{{ $totalVinculos }} {{ $totalVinculos === 1 ? 'tarefa vinculada' : 'tarefas vinculadas' }}">
-                    <span class="h-[11px] w-[11px]"><x-nav-icon name="link" :peso="1.8" /></span>{{ $totalVinculos }}
+            @if ($progressoSubtarefas)
+                @php
+                    $fechou = $progressoSubtarefas['feitas'] === $progressoSubtarefas['total'];
+                @endphp
+                <span class="inline-flex items-center gap-[3px] align-middle font-sans tabular text-[10px]"
+                      style="color: rgb(var(--{{ $fechou ? 'good' : 'warn' }}))"
+                      title="{{ $progressoSubtarefas['feitas'] }} de {{ $progressoSubtarefas['total'] }} subtarefas encerradas{{ $fechou ? '' : ' · esta tarefa não encerra antes' }}">
+                    <span class="h-[11px] w-[11px]"><x-nav-icon name="view-list" :peso="1.8" /></span>{{ $progressoSubtarefas['feitas'] }}/{{ $progressoSubtarefas['total'] }}
                 </span>
             @endif
 
@@ -361,15 +358,89 @@
          letras dos dois descasa e a linha se lê como remendo. Rótulo e nome no
          mesmo bloco de texto, na mesma fonte e corpo; o nome se destaca pelo
          peso, que não mexe no espaçamento. --}}
-    @if ($tarefa->interlocutor_id
-        && in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_EXAME, true))
-        <div class="mt-2 flex items-center gap-1.5 px-[9px] py-[7px] rounded-tile border-l-2"
-             style="background: var(--exame-tint); border-color: rgb(var(--exame))">
-            <span class="h-3 w-3 shrink-0 text-exame"><x-nav-icon name="eye" :peso="1.9" /></span>
-            <p class="flex-1 min-w-0 text-[12px] leading-[1.4] truncate">
-                <span class="text-exame">{{ $tarefa->status === 'em_revisao' ? 'Revisão com' : 'Teste com' }}</span>
-                <span class="font-semibold text-ink">{{ $tarefa->interlocutor?->name ?? 'alguém' }}</span>
+    {{--
+        De que trabalho maior este card é pedaço.
+
+        Nasceu como um selo de `#226` na linha do número, ao lado do elo. Não
+        servia: numa coluna com três subtarefas de revisões diferentes, três
+        números pequenos em mono não dizem que são três famílias — quem lê a
+        coluna de cima para baixo não percebe agrupamento nenhum. Com o TÍTULO
+        da mãe repetido, as irmãs se reconhecem pela leitura, em qualquer
+        coluna.
+
+        Chegou a existir também um recuo do card sob a mãe. Saiu: ele só ligava
+        quando as duas calhavam de estar na mesma coluna — 2 vezes em 11, na
+        massa real — e para conseguir isso obrigava a filha a furar a régua da
+        coluna, passando na frente de tarefas mais graves. A faixa vale sempre e
+        não mexe em ordem nenhuma.
+
+        Tom NEUTRO, ao contrário das outras tarjas: de onde o card veio não é
+        notícia. Âmbar é "travada", roxo é "tem pergunta" — dar cor a esta linha
+        faria a proveniência gritar no mesmo volume de um impedimento.
+    --}}
+    @if ($tarefa->ehSubtarefa())
+        <div class="mt-2 flex items-center gap-1.5 px-[9px] py-[7px] rounded-tile border-l-2 bg-chip"
+             style="border-color: var(--line)">
+            <span class="h-3 w-3 shrink-0 text-ink-faint"><x-nav-icon name="subtarefa" :peso="1.9" /></span>
+
+            {{-- `truncate` e não `nowrap` solto: o título longo da mãe pararia
+                 de pintar por cima do que vem depois só com o corte
+                 (armadilha 1). O número vem junto porque é o que se copia
+                 daqui para falar da mãe com alguém. --}}
+            <p class="flex-1 min-w-0 text-[12px] leading-[1.4] truncate"
+               title="Subtarefa de #{{ $tarefa->tarefa_pai_id }}{{ $tarefa->pai ? ' · '.$tarefa->pai->titulo : '' }}">
+                <span class="font-mono text-[11px] text-ink-faint">#{{ $tarefa->tarefa_pai_id }}</span>
+                <span class="text-ink-mute">{{ $tarefa->pai?->titulo }}</span>
             </p>
+        </div>
+    @endif
+
+    @php
+        $noAr = $tarefa->status === 'em_producao';
+
+        // Em produção a faixa aparece SEMPRE, com ou sem apontado: a versão é o
+        // que a coluna tem de dizer — "o que está no ar" é a primeira pergunta
+        // de quem vai conferir —, e o motor a cobra na entrada, então ela nunca
+        // falta. Nos outros dois portões a faixa continua presa ao apontamento,
+        // que é a única notícia que eles têm.
+        $mostraOExame = in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_EXAME, true)
+            && ($tarefa->interlocutor_id || $noAr);
+    @endphp
+
+    @if ($mostraOExame)
+        <div class="mt-2 px-[9px] py-[7px] rounded-tile border-l-2"
+             style="background: var(--exame-tint); border-color: rgb(var(--exame))">
+            <div class="flex items-center gap-1.5">
+                <span class="h-3 w-3 shrink-0 text-exame"><x-nav-icon name="eye" :peso="1.9" /></span>
+                <p class="flex-1 min-w-0 text-[12px] leading-[1.4] truncate">
+                    @if ($tarefa->interlocutor_id)
+                        <span class="text-exame">{{ match ($tarefa->status) {
+                            'em_revisao' => 'Revisão com',
+                            'em_staging' => 'Teste com',
+                            default => 'Validação com',
+                        } }}</span>
+                        <span class="font-semibold text-ink">{{ $tarefa->interlocutor?->name ?? 'alguém' }}</span>
+                    @else
+                        <span class="text-exame">No ar, sem validador apontado</span>
+                    @endif
+                </p>
+            </div>
+
+            {{-- A VERSÃO OCUPA LINHA PRÓPRIA, como o nome na tarja de pergunta
+                 e pelo mesmo motivo. Ao lado do rótulo ela deixava 148px para o
+                 texto, e "Validação com Camila Reis" mede 151 — o nome ia para
+                 a reticência por 3px, e quem está segurando a tarefa é a
+                 informação inteira desta faixa. Os outros dois portões não
+                 ganham a linha: só o que está no ar tem versão.
+
+                 O rótulo continua nomeando o ATO, como "Revisão com" e "Teste
+                 com". Chegou a ser "No ar com" enquanto a versão dividia a
+                 linha — mas aquilo nomeava o lugar, e a faixa passava a
+                 responder outra pergunta que não a dela. --}}
+            @if ($noAr && $tarefa->versao_producao)
+                <p class="mt-1 font-mono text-[9.5px] text-ink-mute truncate"
+                   title="Versão que subiu para produção">{{ $tarefa->versao_producao }}</p>
+            @endif
         </div>
     @endif
 
@@ -568,7 +639,7 @@
                 </button>
             @endunless
 
-            @if (in_array('concluida', $transicoes ?? [], true))
+            @if (in_array('concluida', $transicoes ?? [], true) && $tarefa->concluirCabeNestaEtapa())
                 <button type="button" @click.stop="abrirPendente({{ $tarefa->id }}, 'concluida', '{{ $tarefa->status }}', '{{ $tarefa->tipo }}')"
                         title="Concluir tarefa" aria-label="Concluir tarefa"
                         class="h-5 w-5 rounded-badge border flex items-center justify-center transition"

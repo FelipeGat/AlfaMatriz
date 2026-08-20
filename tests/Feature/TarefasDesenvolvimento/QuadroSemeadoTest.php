@@ -107,6 +107,47 @@ class QuadroSemeadoTest extends TestCase
     }
 
     /**
+     * @spec:AC-204 A coluna do ar precisa nascer com os três estados dela: quem
+     * espera conferência, quem já foi reprovado no ar e quem voltou de lá para a
+     * fila da tag. Semeada só com o estado calmo, ela testaria a única coisa que
+     * já se sabia estar certa — e o defeito que ela existe para mostrar é
+     * justamente o que aparece depois que a tag subiu.
+     */
+    public function test_a_coluna_do_ar_nasce_com_os_estados_dela(): void
+    {
+        $noAr = Tarefa::where('status', 'em_producao')->with('eventos')->get();
+
+        $this->assertGreaterThanOrEqual(3, $noAr->count(), 'A coluna do ar precisa de volume para valer.');
+
+        // A versão é o que o card e o banner dizem estar no ar: sem ela a
+        // coluna não responde a pergunta que quem vai conferir faz primeiro.
+        $this->assertEmpty(
+            $noAr->whereNull('versao_producao'),
+            'Toda tarefa no ar tem versão: o motor a cobra na entrada.'
+        );
+
+        // E ao menos uma tem validador DIFERENTE do responsável: quem confere
+        // no ar nem sempre é quem fez, e a massa precisa cobrir esse caso —
+        // quando é a mesma pessoa, o card já se parece com o do staging.
+        $apontadas = $noAr->filter(
+            fn (Tarefa $tarefa) => $tarefa->interlocutor_id
+                && $tarefa->interlocutor_id !== $tarefa->responsavel_id
+        );
+
+        $this->assertNotEmpty($apontadas, 'Sem validador apontado, o card não diz quem o quadro espera.');
+
+        $this->assertNotEmpty(
+            $noAr->filter(fn (Tarefa $tarefa) => $tarefa->testeDestaPassagem()?->aprovado === false),
+            'Falta a reprovada no ar: é o estado do banner que não aparece em quadro calmo.'
+        );
+
+        $this->assertNotEmpty(
+            Tarefa::where('retorno_de', 'em_producao')->get(),
+            'Falta a que voltou do ar para a fila da tag: a tarja nova fica sem prova.'
+        );
+    }
+
+    /**
      * @spec:AC-204 A fila de triagem também precisa existir: sem tarefa "a definir",
      * o cabeçalho da coluna Aberta e o KPI de triagem ficam sem prova.
      */

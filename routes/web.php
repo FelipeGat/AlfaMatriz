@@ -218,15 +218,18 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('tarefas.itens.destroy')
         ->middleware('permissao:tarefas');
 
-    // Vínculo entre tarefas: as DUAS rotas pendem das duas pontas, porque o
-    // vínculo é simétrico e não tem lado dono. Desvincular nomeia a outra
-    // tarefa na URL em vez de um id de linha da tabela: não há uma linha, há
-    // duas — uma por sentido —, e apagar "o vínculo 37" deixaria a de volta.
-    Route::post('tarefas/{tarefa}/vinculos', [TarefaController::class, 'vincular'])
-        ->name('tarefas.vinculos.store')
-        ->middleware('permissao:tarefas');
-    Route::delete('tarefas/{tarefa}/vinculos/{outra}', [TarefaController::class, 'desvincular'])
-        ->name('tarefas.vinculos.destroy')
+    // Subtarefa: uma rota só, e ela apenas ABRE o formulário — quem cria é o
+    // `tarefas.store` de sempre, com a mãe num campo escondido. Houve um POST
+    // próprio aqui, para um campo de uma linha que criava só o título; ele saiu
+    // junto com o campo, porque criar sem poder descrever nem anexar obrigava a
+    // reabrir a tarefa em seguida.
+    //
+    // Soltar a filha também não tem rota, e de propósito: o vínculo mãe-filha é
+    // o que faz a recusa do encerramento existir, e desfazê-lo por um ✕ na lista
+    // devolveria pelo lado de fora a saída em massa que o guarda-chuva recusa.
+    // Quem não quer mais a filha cancela a filha.
+    Route::get('tarefas/{tarefa}/subtarefas/nova', [TarefaController::class, 'formularioDeSubtarefa'])
+        ->name('tarefas.subtarefas.form')
         ->middleware('permissao:tarefas');
 
     // Anexos: anexar pende da tarefa (é ela que ganha o arquivo); ver e
@@ -248,6 +251,18 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('tarefas.anexos.destroy')
         ->middleware('permissao:tarefas');
 
+    // Comentar tem rota PRÓPRIA, e não é detalhe de arquitetura: o campo é um
+    // campo do formulário da tarefa, então por muito tempo quem publicava o
+    // comentário era o "Salvar" do rodapé — o botão que grava título e
+    // prioridade. A ação mais comum da conversa não tinha botão, e a mais rara
+    // (Perguntar) tinha. Com rota própria, cada botão passa a significar uma
+    // coisa só.
+    //
+    // Sem `permissao:tarefas,editar`, como perguntar e bloquear: comentar não
+    // move nem encerra nada.
+    Route::post('tarefas/{tarefa}/comentarios', [TarefaController::class, 'comentar'])
+        ->name('tarefas.comentarios.store')
+        ->middleware('permissao:tarefas');
     Route::put('tarefas/comentarios/{comentario}', [TarefaController::class, 'editarComentario'])
         ->name('tarefas.comentarios.update')
         ->middleware('permissao:tarefas');
