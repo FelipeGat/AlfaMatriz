@@ -7,7 +7,21 @@
      * 14px, rodapé 12px/16px sobre `head`. `$tarefa` nulo é criação; o `$sufixo`
      * evita ids duplicados, porque o modal de edição se repete uma vez por card.
      */
-    $sufixo = $tarefa?->id ?? 'nova';
+    /**
+     * `$pai` só chega no formulário de SUBTAREFA, buscado do servidor com a mãe
+     * já amarrada (`tarefas.subtarefas.form`). Ele não vem por Alpine de
+     * propósito: o modal de nova tarefa é um só na página, e guardar a mãe num
+     * estado que sobrevive ao fechar faria a próxima tarefa comum nascer
+     * pendurada na revisão de ontem. Buscado do servidor, cada abertura traz a
+     * sua — e nenhuma sobra para a seguinte.
+     */
+    $pai = $pai ?? null;
+
+    // O sufixo carrega a mãe porque os DOIS formulários de criação podem estar
+    // na página ao mesmo tempo: o de nova tarefa nasce com ela e o de subtarefa
+    // chega depois, no `[data-modais]`. Com 'nova' nos dois, o `for` de cada
+    // rótulo apontaria para o campo do outro.
+    $sufixo = $tarefa?->id ?? ($pai ? 'nova-de-'.$pai->id : 'nova');
     $edicao = (bool) $tarefa;
 
     // Prioridade e responsável são decisões de triagem. Para quem não a tem,
@@ -32,11 +46,6 @@
 
     // E os vínculos digitados, pelo mesmo motivo: um título em falta devolve a
     // página inteira, e sem isto a lista de tarefas irmãs que a pessoa acabou
-    // de montar sumiria junto com a validação.
-    $vinculadasIniciais = $edicao ? [] : array_values(array_filter(
-        array_map(fn ($v) => trim((string) $v), (array) old('vinculadas', [])),
-        fn ($v) => $v !== ''
-    ));
 
     if ($edicao) {
         // O subtítulo diz ONDE a tarefa está e HÁ QUANTO TEMPO — a mesma
@@ -101,6 +110,15 @@
       @submit="enviando = true"
       @envio-terminou="enviando = false">
     @csrf
+
+    {{-- A mãe viaja escondida, e o `reset()` do `data-esvazia-ao-abrir` não a
+         perde: ele devolve os valores PADRÃO do HTML, e o dela está no
+         atributo. Quem confere se esta mãe pode receber é o servidor — o campo
+         escondido é sugestão de tela, e tela não guarda regra. --}}
+    @if ($pai)
+        <input type="hidden" name="tarefa_pai_id" value="{{ $pai->id }}">
+    @endif
+
     @if ($edicao)
         @method('PUT')
     @endif
@@ -119,8 +137,19 @@
 
         <div class="min-w-0 flex-1">
             <h3 class="font-display text-[15px] font-semibold text-ink truncate">
-                {{ $edicao ? 'Editar tarefa' : 'Nova tarefa' }}
+                {{ $edicao ? 'Editar tarefa' : ($pai ? 'Nova subtarefa' : 'Nova tarefa') }}
             </h3>
+
+            {{-- A mãe é dita no cabeçalho, e não só no campo escondido: quem
+                 abre este formulário a partir de uma revisão precisa ver onde o
+                 bug vai ser pendurado ANTES de escrever — e não descobrir
+                 depois de salvar, quando o card já nasceu no lugar errado. --}}
+            @if ($pai)
+                <p class="mt-0.5 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate"
+                   title="{{ $pai->titulo }}">
+                    de {{ $pai->codigo() }} · {{ $pai->titulo }}
+                </p>
+            @endif
 
             @if ($edicao)
                 {{-- O número abre a linha porque é o que se copia daqui para
@@ -228,7 +257,10 @@
                 <select id="tipo-{{ $sufixo }}" name="tipo"
                         class="block w-full h-9 py-0 rounded-control bg-input border-line text-ink text-[13px]">
                     @foreach (\App\Models\Tarefa::TIPOS as $chave => $label)
-                        <option value="{{ $chave }}" @selected(old('tipo', $tarefa->tipo ?? 'desenvolvimento') === $chave)>
+                        {{-- A mãe adianta o tipo: um bug achado revisando código
+                             é do mesmo ramo que a revisão. Continua trocável — o
+                             que ela dá é o palpite, não a decisão. --}}
+                        <option value="{{ $chave }}" @selected(old('tipo', $tarefa->tipo ?? $pai?->tipo ?? 'desenvolvimento') === $chave)>
                             {{ $label }}
                         </option>
                     @endforeach
@@ -266,7 +298,11 @@
                     @foreach ($sistemas->groupBy('natureza') as $natureza => $doGrupo)
                         @if ($agruparSistemas) <optgroup label="{{ \App\Models\Sistema::NATUREZAS[$natureza] ?? $natureza }}"> @endif
                         @foreach ($doGrupo as $sistema)
-                            <option value="{{ $sistema->id }}" @selected(old('sistema_id', $tarefa->sistema_id ?? '') == $sistema->id)>
+                            {{-- E o sistema pelo mesmo motivo: o bug da revisão
+                                 do AlfaGym é do AlfaGym. Era o único campo que a
+                                 criação rápida herdava, e ele não se perdeu com
+                                 ela. --}}
+                            <option value="{{ $sistema->id }}" @selected(old('sistema_id', $tarefa->sistema_id ?? $pai?->sistema_id ?? '') == $sistema->id)>
                                 {{ $sistema->nome }}
                             </option>
                         @endforeach
@@ -363,10 +399,10 @@
                  ressuscitava a lista como uma linha em branco. O ouvinte dele
                  fica no `<form>` e enfileira antes; este entra depois na mesma
                  fila, e a palavra final é o vazio. --}}
-            <div class="pt-4 border-t border-rule"
+            <div class="pt-4 border-t border-rule-strong"
                  x-data="{ itens: @js($itensIniciais) }"
                  @reset.window="if ($event.target.contains($el)) $nextTick(() => itens = [])">
-                <h4 class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Checklist</h4>
+                <h4 class="font-mono text-[11.5px] font-semibold uppercase tracking-caps-wide text-ink">Checklist</h4>
 
                 <ul class="mt-2 space-y-1">
                     <template x-for="(item, i) in itens" :key="i">
@@ -404,86 +440,30 @@
         @endif
 
         {{--
-            As tarefas irmãs. Ficam entre o checklist e os anexos porque a
-            ordem do modal é uma escada: o checklist é o que se faz DENTRO
-            desta tarefa, o vínculo é o que existe FORA dela, os anexos são a
-            prova do que ela é e a conversa é o que se diz sobre isso.
+            As subtarefas, entre o checklist e os anexos: a ordem do modal é uma
+            escada. O checklist é o que se faz DENTRO desta tarefa, a subtarefa
+            é o trabalho que NASCEU dela e tem vida própria, os anexos são a
+            prova do que ela é, e a conversa é o que se diz sobre isso.
 
-            Na criação o mecanismo é outro, como o do checklist: não há tarefa,
-            logo não há rota de vínculo nem pedaço a redesenhar — o que se
-            digita vira campo `vinculadas[]` do próprio formulário e viaja no
-            POST que cria a tarefa. E entra na criação pelo mesmo argumento do
-            checklist e dos anexos (AC-234): quase toda tarefa nasce ao lado de
-            outra, e a irmã está na cabeça de quem abre — não na de quem
-            reabre meia hora depois.
+            Só na EDIÇÃO, ao contrário do checklist. A mãe precisa existir para a
+            filha apontar para ela, e o formulário de criação ainda não tem
+            número para dar. Guardar as linhas digitadas e criá-las depois do
+            `store` traria de volta o problema que a trava de reenvio resolve —
+            no clique duplo, oito bugs viram dezesseis cards que alguém cancela
+            na mão.
+
+            E não se perde nada: subtarefa nasce de tarefa que JÁ EXISTE, que é
+            o pedido inteiro ("agrupar a partir de uma tarefa já existente").
+
+            Aqui houve também uma seção de TAREFAS VINCULADAS, simétrica e sem
+            lado dono. Saiu em 20/08/2026: com a subtarefa na mesa, ela virou a
+            segunda lista de tarefas irmãs no mesmo modal, parecida com a
+            primeira e com o efeito oposto — uma prende a mãe, a outra não
+            prende ninguém. Duas seções que se parecem e se comportam ao
+            contrário custam uma decisão a cada uso.
         --}}
         @if ($edicao)
-            <div class="contents" data-pedaco="vinculos-{{ $tarefa->id }}">
-                @include('tarefas._vinculos', ['tarefa' => $tarefa])
-            </div>
-        @else
-            {{-- Sem lista de sugestão aqui, e COM ela no modal de edição.
-
-                 A assimetria não é descuido — é onde cada modal mora. Este é
-                 desenhado junto com o quadro, em toda carga da página: a lista
-                 de sugestão traria para dentro dele o título de toda tarefa
-                 aberta, inclusive os que o filtro acabou de esconder, e o
-                 recorte que a barra de filtros promete (AC-252 e seguintes)
-                 passaria a valer só para os cards. O de edição é buscado uma
-                 tarefa por vez, no clique, e não carrega promessa nenhuma
-                 sobre recorte.
-
-                 E o que se perde aqui se perde pouco: quem cria uma tarefa
-                 está OLHANDO para o quadro, e cada card mostra o próprio
-                 número. Quem edita está com o modal por cima dele, sem nenhum
-                 número à vista — é lá que procurar pelo título vale a viagem. --}}
-            {{-- `@reset.window` e o `$nextTick` pela mesma razão do checklist:
-                 o quadro chama `form.reset()` depois de a tarefa nascer, o
-                 evento sobe do `<form>` que é o pai desta caixa, e o `x-model`
-                 do Alpine devolve o campo zerado ao modelo num `nextTick` seu
-                 — que roda DEPOIS de um `vinculadas = []` síncrono e
-                 ressuscitaria a lista como uma linha em branco. --}}
-            <div class="pt-4 border-t border-rule"
-                 x-data="{ vinculadas: @js($vinculadasIniciais) }"
-                 @reset.window="if ($event.target.contains($el)) $nextTick(() => vinculadas = [])">
-                <h4 class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Tarefas vinculadas</h4>
-
-                <ul class="mt-2 space-y-1">
-                    <template x-for="(vinculada, i) in vinculadas" :key="i">
-                        <li class="group flex items-center gap-2 rounded-control px-1 py-1 hover:bg-chip transition">
-                            {{-- Escondido, e não um campo editável como o item
-                                 do checklist: o que se digitou aqui é um
-                                 PONTEIRO para outra tarefa, e corrigi-lo letra
-                                 a letra na lista só produziria número inválido.
-                                 Errou, remove e digita de novo. --}}
-                            <input type="hidden" name="vinculadas[]" :value="vinculada">
-                            <span class="min-w-0 flex-1 truncate text-[12.5px] text-ink" x-text="vinculada"></span>
-
-                            <button type="button" @click="vinculadas.splice(i, 1)"
-                                    title="Remover vínculo" aria-label="Remover vínculo"
-                                    class="shrink-0 h-5 w-5 rounded-control text-ink-faint opacity-0 group-hover:opacity-100
-                                           focus:opacity-100 hover:text-crit transition">✕</button>
-                        </li>
-                    </template>
-                </ul>
-
-                {{-- O campo também é um `vinculadas[]`, como o de novo item do
-                     checklist: o número digitado e não confirmado com Enter
-                     entra no envio mesmo assim, em vez de morrer na tela junto
-                     com o clique no Salvar. Sem JavaScript sobra um campo, um
-                     vínculo: degrada, não quebra. --}}
-                <input type="text" name="vinculadas[]" maxlength="255" autocomplete="off"
-                       placeholder="+ número da tarefa (o #412 do card) · Enter para adicionar"
-                       @keydown.enter.prevent="if ($el.value.trim()) { vinculadas.push($el.value.trim()); $el.value = '' }"
-                       class="mt-2 block w-full h-8 px-2.5 text-[12.5px] text-ink placeholder-ink-faint transition
-                              bg-input border border-dashed !border-btn-line !rounded-ctl
-                              focus:!border-brand">
-
-                <p class="mt-1.5 px-1 text-[11px] leading-[1.45] text-ink-faint">
-                    Vincular não prende: as duas tarefas continuam com etapa, responsável e prazo próprios.
-                    O vínculo vale nos dois sentidos.
-                </p>
-            </div>
+            @include('tarefas._subtarefas', ['tarefa' => $tarefa])
         @endif
 
         @include('tarefas._anexos', ['tarefa' => $tarefa])

@@ -164,14 +164,18 @@ class FluxoTarefaTest extends TestCase
     }
 
     /**
-     * @spec:AC-089 Liberar para a fila da produção exige a validação do staging.
+     * @spec:AC-089 Subir para produção exige a validação do staging.
+     *
+     * O portão mudou de porta quando a fila do admin saiu do quadro: ele
+     * guardava a entrada nela, e agora guarda a própria subida da tag. O lugar
+     * é outro, o que ele protege é o mesmo — código não validado não vai ao ar.
      */
-    public function test_liberar_para_producao_exige_validacao_do_staging(): void
+    public function test_subir_para_producao_exige_validacao_do_staging(): void
     {
         $tarefa = $this->criarTarefa(['status' => 'em_staging']);
 
         try {
-            $this->fluxo->mover($tarefa, 'pronta_producao');
+            $this->fluxo->mover($tarefa, 'em_producao', ['versao_producao' => 'v1.4.2']);
             $this->fail('Esperava recusa por falta de validação.');
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString('validar o staging', $e->getMessage());
@@ -184,7 +188,7 @@ class FluxoTarefaTest extends TestCase
         ]);
 
         try {
-            $this->fluxo->mover($tarefa, 'pronta_producao');
+            $this->fluxo->mover($tarefa, 'em_producao', ['versao_producao' => 'v1.4.2']);
             $this->fail('Esperava recusa: a última validação está reprovada.');
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString('validar o staging', $e->getMessage());
@@ -198,9 +202,9 @@ class FluxoTarefaTest extends TestCase
             'notas' => 'Tudo certo no reteste.',
         ]);
 
-        $movida = $this->fluxo->mover($tarefa, 'pronta_producao');
+        $movida = $this->fluxo->mover($tarefa, 'em_producao', ['versao_producao' => 'v1.4.2']);
 
-        $this->assertSame('pronta_producao', $movida->status);
+        $this->assertSame('em_producao', $movida->status);
     }
 
     /**

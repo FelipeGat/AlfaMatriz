@@ -12,7 +12,7 @@ use Tests\TestCase;
  * O teste do staging registrado por quem testa (US-084).
  *
  * No processo do time, quem valida o staging não é o responsável pela tarefa —
- * e o carimbo que só viajava no movimento para Pronta p/ produção deixava esse
+ * e o carimbo que só viajava no movimento que sobe a tag deixava esse
  * teste sem onde existir. A rota própria registra o veredito sem mover o card,
  * assina o relatório e avisa o responsável; o portão da produção passa a se
  * apoiar no teste de quem de fato testou.
@@ -66,18 +66,18 @@ class RegistrarTesteDoStagingTest extends TestCase
     }
 
     /**
-     * @spec:AC-305 O teste aprovado registrado pelo card libera a ida para Pronta p/
-     * produção sem carimbar de novo no painel de mover — e sem relatório nenhum a
+     * @spec:AC-305 O teste aprovado registrado pelo card libera a subida da tag
+     * sem carimbar de novo no painel de mover — e sem relatório nenhum a
      * passagem continua recusada, como hoje.
      */
-    public function test_teste_aprovado_registrado_libera_a_ida_para_pronta_producao(): void
+    public function test_teste_aprovado_registrado_libera_a_subida_da_tag(): void
     {
         [$tarefa, $dev] = $this->emStaging();
         $testador = User::factory()->membro()->create();
 
         // Sem teste registrado, o portão recusa — nada mudou aqui.
         $this->actingAs($dev)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'pronta_producao',
+            'status' => 'em_producao', 'versao_producao' => 'v1.4.2',
             'de_status' => 'em_staging',
         ]);
 
@@ -91,11 +91,11 @@ class RegistrarTesteDoStagingTest extends TestCase
 
         // ...e o mesmo movimento passa, sem o carimbo do painel.
         $this->actingAs($dev)->post(route('tarefas.mover', $tarefa->fresh()), [
-            'status' => 'pronta_producao',
+            'status' => 'em_producao', 'versao_producao' => 'v1.4.2',
             'de_status' => 'em_staging',
         ]);
 
-        $this->assertSame('pronta_producao', $tarefa->fresh()->status);
+        $this->assertSame('em_producao', $tarefa->fresh()->status);
     }
 
     /**
@@ -113,10 +113,15 @@ class RegistrarTesteDoStagingTest extends TestCase
 
         // A tarefa encerra o ciclo — é no histórico que o veredito vira acervo.
         $this->actingAs($dev)->post(route('tarefas.mover', $tarefa), [
-            'status' => 'pronta_producao', 'de_status' => 'em_staging',
+            'status' => 'em_producao', 'de_status' => 'em_staging', 'versao_producao' => 'v9.9.9',
         ]);
+
+        // A conferência no ar assina como a do staging, e é a DESTA passagem
+        // que o portão da entrega lê.
+        $this->actingAs($testador)->post(route('tarefas.testar', $tarefa->fresh()), ['aprovado' => '1']);
+
         $this->actingAs($dev)->post(route('tarefas.mover', $tarefa->fresh()), [
-            'status' => 'concluida', 'de_status' => 'pronta_producao', 'versao_producao' => 'v9.9.9',
+            'status' => 'concluida', 'de_status' => 'em_producao',
         ]);
 
         $this->assertSame('concluida', $tarefa->fresh()->status);

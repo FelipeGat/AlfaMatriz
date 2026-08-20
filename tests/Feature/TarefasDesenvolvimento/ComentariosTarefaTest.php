@@ -83,6 +83,84 @@ class ComentariosTarefaTest extends TestCase
      * @spec:AC-134 Campo em branco não publica nada: quem abriu o modal só
      * para trocar o responsável não ganha um comentário vazio na tarefa.
      */
+    /**
+     * Comentar tem BOTÃO próprio, e ele publica só o comentário.
+     *
+     * O campo se chamava "Novo comentário" e o único botão ao lado dizia
+     * "Perguntar" — para só comentar era preciso apertar "Salvar", no rodapé do
+     * modal, que é o botão que grava título e prioridade. A ação mais comum da
+     * conversa não tinha botão; a mais rara tinha.
+     */
+    public function test_comentar_tem_botao_proprio_e_publica_so_o_comentario(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = Tarefa::factory()->create(['criado_por_id' => $usuario->id, 'titulo' => 'Título de antes']);
+
+        $this->actingAs($usuario)->post(route('tarefas.comentarios.store', $tarefa), [
+            'corpo' => 'O cliente ligou de novo.',
+        ])->assertSessionMissing('erro');
+
+        $this->assertSame('O cliente ligou de novo.', $tarefa->comentarios()->sole()->corpo);
+        $this->assertSame($usuario->id, $tarefa->comentarios()->sole()->autor_id);
+
+        // Publicar não é salvar: os campos da tarefa não vão junto.
+        $this->assertSame('Título de antes', $tarefa->fresh()->titulo);
+
+        // E a mesma trava de reenvio do Salvar (AC-137).
+        $this->actingAs($usuario)->post(route('tarefas.comentarios.store', $tarefa), [
+            'corpo' => 'O cliente ligou de novo.',
+        ]);
+
+        $this->assertSame(1, $tarefa->comentarios()->count(), 'Duplo clique não publica duas vezes.');
+    }
+
+    /** Em branco não publica, como o campo do Salvar. */
+    public function test_comentar_em_branco_e_recusado(): void
+    {
+        $usuario = User::factory()->create();
+        $tarefa = Tarefa::factory()->create(['criado_por_id' => $usuario->id]);
+
+        $this->actingAs($usuario)->post(route('tarefas.comentarios.store', $tarefa), ['corpo' => '  '])
+            ->assertSessionHasErrors('corpo');
+
+        $this->assertSame(0, $tarefa->comentarios()->count());
+    }
+
+    /**
+     * O botão Comentar aparece SEMPRE; o Perguntar, só onde há vez a passar.
+     *
+     * Quem já deve a resposta responde pela tarja, e não abre rodada nova — mas
+     * continua podendo comentar, que era o estado em que a tela antes só dizia
+     * "entra na tarefa quando você salvar".
+     */
+    public function test_comentar_aparece_sempre_e_perguntar_so_quando_ha_vez_a_passar(): void
+    {
+        $dev = User::factory()->create();
+        $revisor = User::factory()->create();
+
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => $dev->id, 'responsavel_id' => $dev->id, 'status' => 'em_revisao',
+        ]);
+
+        // O `form=` do botão, e não o texto dele: o rótulo quebra em linha no
+        // Blade, e o atributo é o que liga o botão ao envio de verdade.
+        $html = $this->actingAs($dev)->get(route('tarefas.modal', $tarefa))->assertOk()->getContent();
+        $this->assertStringContainsString('form="comentar-'.$tarefa->id.'"', $html);
+        $this->assertStringContainsString('form="perguntar-'.$tarefa->id.'"', $html);
+
+        // Agora a bola está com o dev: ele responde pela tarja, mas comenta igual.
+        $tarefa->forceFill([
+            'pergunta_de_id' => $revisor->id,
+            'pergunta_para_id' => $dev->id,
+            'pergunta_em' => now(),
+        ])->save();
+
+        $html = $this->actingAs($dev)->get(route('tarefas.modal', $tarefa->fresh()))->assertOk()->getContent();
+        $this->assertStringContainsString('form="comentar-'.$tarefa->id.'"', $html);
+        $this->assertStringNotContainsString('form="perguntar-'.$tarefa->id.'"', $html);
+        $this->assertStringNotContainsString('Entra na tarefa quando você salvar', $html);
+    }
+
     public function test_salvar_sem_comentario_nao_publica_nada(): void
     {
         $usuario = User::factory()->create();

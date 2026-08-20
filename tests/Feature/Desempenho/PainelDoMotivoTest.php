@@ -125,7 +125,16 @@ class PainelDoMotivoTest extends TestCase
         // (pedidos do dono em 18/08/2026) — ~290 bytes × 120 cards, que
         // comeram a folga. Com 1,95 MB voltam ~42 KB de folga, e a regressão
         // de +479 KB continua estourando qualquer valor até ~2,38 MB.
-        $this->assertLessThan(1_950_000, $bytes, sprintf(
+        //
+        // Recalibrado em 19/08/2026, pelo mesmo motivo da primeira vez: a
+        // etapa Em produção entrou no quadro, e para quem triaga o menu
+        // "Mover ▾" lista o quadro INTEIRO — uma etapa a mais é um item a mais
+        // por card. O item pesa ~757 bytes (ele abre painel, então carrega o
+        // `abrirPendente` e a dica), e 120 cards levaram o quadro a 1,99 MB.
+        // Crescimento de menu, como em 14/08, e não volta do formulário por
+        // card. Com 2,035 MB voltam ~45 KB de folga, e a regressão vigiada
+        // continua estourando qualquer valor até ~2,47 MB.
+        $this->assertLessThan(2_035_000, $bytes, sprintf(
             'O quadro com 120 tarefas pesa %.1f MB — o formulário de motivo '.
             'voltou a ser impresso por card.', $bytes / 1_048_576
         ));

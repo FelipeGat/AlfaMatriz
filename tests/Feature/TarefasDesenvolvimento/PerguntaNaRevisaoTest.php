@@ -220,15 +220,17 @@ class PerguntaNaRevisaoTest extends TestCase
         $this->assertNull($movida->pergunta_para_id);
         $this->assertNull($movida->interlocutor_id);
 
-        // Fora dos portões de exame, o interlocutor sobrevive: a conversa do
-        // staging continua sendo a referência na fila da produção.
+        // Fora dos portões de exame, o interlocutor sobrevive: quem devolve o
+        // card para a bancada continua sendo o outro lado da conversa, e é a
+        // ele que a próxima pergunta do dev vai.
         $this->fluxo->perguntar($movida, $revisor, 'Validou o fluxo do boleto?');
-        $this->fluxo->registrarTesteDoStaging($movida->fresh(), $revisor, true, null);
 
-        $naFila = $this->fluxo->mover($movida->fresh(), 'pronta_producao');
+        $naBancada = $this->fluxo->mover($movida->fresh(), 'em_desenvolvimento', [
+            'motivo' => 'Quebrou o boleto no staging.',
+        ]);
 
-        $this->assertNull($naFila->pergunta_em);
-        $this->assertSame($dev->id, $naFila->interlocutor_id);
+        $this->assertNull($naBancada->pergunta_em);
+        $this->assertSame($dev->id, $naBancada->interlocutor_id);
     }
 
     /**

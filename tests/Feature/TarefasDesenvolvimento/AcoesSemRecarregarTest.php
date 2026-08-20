@@ -73,7 +73,7 @@ class AcoesSemRecarregarTest extends TestCase
             'etapa-em_desenvolvimento',
             'etapa-em_revisao',
             'etapa-em_staging',
-            'etapa-pronta_producao',
+            'etapa-em_producao',
             'chips-do-quadro',
             "card-{$tarefa->id}",
         ], array_keys($pedacos));

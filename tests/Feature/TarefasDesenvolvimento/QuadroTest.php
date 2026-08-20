@@ -45,7 +45,7 @@ class QuadroTest extends TestCase
         Tarefa::factory()->create(['criado_por_id' => $criador->id, 'status' => 'em_desenvolvimento']);
         Tarefa::factory()->count(3)->create(['criado_por_id' => $criador->id, 'status' => 'em_revisao']);
         Tarefa::factory()->create(['criado_por_id' => $criador->id, 'status' => 'em_staging']);
-        Tarefa::factory()->count(2)->create(['criado_por_id' => $criador->id, 'status' => 'pronta_producao']);
+        Tarefa::factory()->count(2)->create(['criado_por_id' => $criador->id, 'status' => 'em_producao']);
         Tarefa::factory()->create(['criado_por_id' => $criador->id, 'status' => 'concluida']);
         Tarefa::factory()->create(['criado_por_id' => $criador->id, 'status' => 'cancelada']);
 
@@ -60,7 +60,7 @@ class QuadroTest extends TestCase
         // sem tirar a tarefa do lugar. Em testes, por outro lado, se ABRIU —
         // guardava dois portões com revisor e modo de falha diferentes.
         $this->assertSame(
-            ['aberta', 'backlog', 'em_desenvolvimento', 'em_revisao', 'em_staging', 'pronta_producao'],
+            ['aberta', 'backlog', 'em_desenvolvimento', 'em_revisao', 'em_staging', 'em_producao'],
             array_column($etapas, 'chave'),
             'O quadro é o trabalho em curso: concluída e cancelada não têm coluna, e nem bloqueio nem retorno são etapa.'
         );
@@ -71,7 +71,7 @@ class QuadroTest extends TestCase
         $this->assertSame(1, $quantidades['em_desenvolvimento']);
         $this->assertSame(3, $quantidades['em_revisao']);
         $this->assertSame(1, $quantidades['em_staging']);
-        $this->assertSame(2, $quantidades['pronta_producao']);
+        $this->assertSame(2, $quantidades['em_producao']);
         $this->assertArrayNotHasKey('concluida', $quantidades);
         $this->assertArrayNotHasKey('cancelada', $quantidades);
 
@@ -79,7 +79,7 @@ class QuadroTest extends TestCase
         $conteudo = $resposta->getContent();
         // "Em andamento" e não mais "Em desenvolvimento": a coluna passou a
         // receber também tarefa operacional, que não é desenvolvida (US-054).
-        $rotulos = ['Aberta', 'Backlog', 'Em andamento', 'Em revisão', 'Em staging', 'Pronta p/ produção'];
+        $rotulos = ['Aberta', 'Backlog', 'Em andamento', 'Em revisão', 'Em staging', 'Em produção'];
         $posicoes = collect($rotulos)->map(fn ($rotulo) => strpos($conteudo, $rotulo));
 
         $this->assertTrue($posicoes->every(fn ($p) => $p !== false));
@@ -526,7 +526,7 @@ class QuadroTest extends TestCase
 
         $this->assertStringContainsString('PR · admin analisa', $html);
         $this->assertStringContainsString('na main · dev valida', $html);
-        $this->assertStringContainsString('fila do admin · tag v*', $html);
+        $this->assertStringContainsString('no ar · aguardando validação', $html);
 
         // Estourando o WIP, a notícia de agora toma o lugar da descrição fixa.
         Tarefa::factory()->count(4)->create(['criado_por_id' => $criador->id, 'status' => 'em_revisao']);
@@ -571,7 +571,7 @@ class QuadroTest extends TestCase
         $legenda = substr($html, $inicio);
         $posicoes = array_map(
             fn (string $rotulo) => strpos($legenda, $rotulo),
-            ['Aberta', 'Backlog', 'Em andamento', 'Em revisão', 'Em staging', 'Pronta p/ produção', 'Concluída'],
+            ['Aberta', 'Backlog', 'Em andamento', 'Em revisão', 'Em staging', 'Em produção', 'Concluída'],
         );
 
         $this->assertNotContains(false, $posicoes, 'Toda parada da esteira aparece na legenda.');
@@ -599,7 +599,7 @@ class QuadroTest extends TestCase
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
         foreach (['Fila de triagem vazia', 'Nada priorizado', 'Ninguém tocando nada',
-            'Nenhum PR aberto', 'Nada em staging', 'Nada para subir'] as $frase) {
+            'Nenhum PR aberto', 'Nada em staging', 'Nada no ar esperando conferência'] as $frase) {
             $this->assertStringContainsString($frase, $html);
         }
 

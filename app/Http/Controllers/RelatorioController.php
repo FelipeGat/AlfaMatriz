@@ -570,7 +570,7 @@ class RelatorioController extends Controller
             'conclusoes' => $conclusoes,
             'cicloMedioDias' => $cicloMedioDias,
             'criadasQtd' => Tarefa::whereBetween('created_at', [$mes, $fim])->where($restringirTarefa)->count(),
-            'emAndamentoQtd' => Tarefa::whereIn('status', ['em_desenvolvimento', 'em_revisao', 'em_staging', 'pronta_producao'])
+            'emAndamentoQtd' => Tarefa::whereIn('status', ['em_desenvolvimento', 'em_revisao', 'em_staging', 'em_producao'])
                 ->where($restringirTarefa)->count(),
             'naFilaQtd' => Tarefa::whereIn('status', ['aberta', 'backlog'])->where($restringirTarefa)->count(),
             'quadroPorEtapa' => $quadroPorEtapa,

@@ -20,6 +20,22 @@
 @endphp
 
 {{--
+    O envio de COMENTAR. Fora do formulário da tarefa pelo mesmo motivo dos
+    outros, e com o `corpo` num campo escondido porque o textarea que a pessoa
+    preenche pertence àquele formulário — o botão copia o texto para cá no
+    clique, como o de perguntar.
+
+    `data-limpa` esvazia o campo depois do envio: sem isso o texto continuaria
+    na tela e o Salvar seguinte publicaria a mesma frase de novo.
+--}}
+<form id="comentar-{{ $tarefa->id }}" method="POST" data-parcial
+      data-limpa="#comentario-{{ $tarefa->id }}"
+      action="{{ route('tarefas.comentarios.store', $tarefa) }}" class="hidden">
+    @csrf
+    <input type="hidden" id="comentario-corpo-{{ $tarefa->id }}" name="corpo" value="">
+</form>
+
+{{--
     O envio de PERGUNTAR, irmão dos de cima e fora do formulário pelo mesmo
     motivo. O `corpo` vai num campo escondido porque o textarea que a pessoa
     preenche pertence ao formulário da tarefa — o botão copia o texto para cá

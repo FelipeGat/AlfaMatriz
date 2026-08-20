@@ -55,8 +55,24 @@ class FluxoTarefaService
             // respondeu à pergunta que uma coluna existe para responder — quem
             // está segurando a tarefa.
             'em_revisao' => ['em_staging', 'em_desenvolvimento', 'cancelada'],
-            'em_staging' => ['pronta_producao', 'em_desenvolvimento', 'cancelada'],
-            'pronta_producao' => ['concluida', 'em_staging', 'em_desenvolvimento', 'cancelada'],
+            // Em staging faz as duas coisas, como Em produção faz do outro
+            // lado: o código sobe, é testado, e espera a tag ali mesmo. A fila
+            // do admin já foi coluna própria e saiu — ela separava a subida do
+            // teste só de um dos lados, e punha duas colunas com "produção" no
+            // nome dizendo coisas opostas sobre estar no ar.
+            'em_staging' => ['em_producao', 'em_desenvolvimento', 'cancelada'],
+            // Concluída não vem daqui. Subir a tag não é entregar: entre o
+            // deploy e a entrega existe alguém conferindo no ar, e enquanto esse
+            // passo não tinha coluna a tarefa era dada por pronta no instante em
+            // que o vigia aplicou — quem esperava a conferência não tinha onde
+            // registrar a espera, e o quadro afirmava uma entrega que ninguém
+            // tinha checado.
+            //
+            // Reprovar no ar tem DOIS destinos, e eles são fatos diferentes: o
+            // defeito é do código (volta para a bancada) ou a subida é que deu
+            // errado (volta para o staging, que é de onde a tag sai). Um destino
+            // só obrigaria a mentir num dos dois casos.
+            'em_producao' => ['concluida', 'em_staging', 'em_desenvolvimento', 'cancelada'],
             // Reabrir é reprovação de quem usou o que subiu: cobra motivo e
             // carimba o retorno, como os portões (`ehRetornoParaBancada`).
             'concluida' => ['em_desenvolvimento'],
@@ -73,7 +89,7 @@ class FluxoTarefaService
             // preso numa coluna sem nenhum caminho de volta.
             'em_revisao' => ['em_desenvolvimento', 'concluida', 'cancelada'],
             'em_staging' => ['em_desenvolvimento', 'concluida', 'cancelada'],
-            'pronta_producao' => ['em_desenvolvimento', 'concluida', 'cancelada'],
+            'em_producao' => ['em_desenvolvimento', 'concluida', 'cancelada'],
             'concluida' => ['em_desenvolvimento'],
             'cancelada' => ['aberta'],
         ],
@@ -201,10 +217,15 @@ class FluxoTarefaService
                     'icone' => 'arrow-uturn-left',
                     // "Correção" é a bancada; a volta para a revisão devolve o
                     // PR ao exame, e anunciá-la como correção mandaria o dev
-                    // reabrir um código que ninguém devolveu a ele.
-                    'titulo' => '"'.$tarefa->titulo.'"'.($novoStatus === 'em_desenvolvimento'
-                        ? ' voltou para correção'
-                        : ' voltou para revisão'),
+                    // reabrir um código que ninguém devolveu a ele. A terceira é
+                    // o rollback, em que ninguém precisa tocar no código: dizer
+                    // "correção" ali mandaria o dev procurar um defeito que pode
+                    // não existir.
+                    'titulo' => '"'.$tarefa->titulo.'"'.match ($novoStatus) {
+                        'em_desenvolvimento' => ' voltou para correção',
+                        'em_staging' => ' voltou para o staging',
+                        default => ' voltou para revisão',
+                    },
                     'meta' => $tarefa->rotuloDoRetornoVindoDe($statusAtual),
                     'rota' => route('tarefas.index'),
                     'tarefa_id' => $tarefa->id,
@@ -237,11 +258,11 @@ class FluxoTarefaService
     }
 
     /**
-     * Voltar de mais adiante — para a bancada ou para a revisão — é
-     * reprovação, e não recuo qualquer.
+     * Voltar de mais adiante — para a bancada, para a revisão ou para a fila
+     * da produção — é reprovação, e não recuo qualquer.
      *
      * A reabertura entra na mesma regra porque é o exame mais duro dos
-     * quatro: quem reprova aqui é quem usou o que subiu. Ela já foi volta
+     * cinco: quem reprova aqui é quem usou o que subiu. Ela já foi volta
      * livre, e o card aterrissava em Em andamento indistinguível de trabalho
      * novo — quem o recebia não tinha como saber POR QUE a tarefa voltou.
      *
@@ -262,7 +283,20 @@ class FluxoTarefaService
         // não está voltando de exame nenhum, está sendo devolvida ao quadro.
         if ($novoStatus === 'em_revisao') {
             return $statusAtual === 'concluida'
-                || in_array($statusAtual, ['em_staging', 'pronta_producao'], true);
+                || in_array($statusAtual, ['em_staging', 'em_producao'], true);
+        }
+
+        // A volta de Em produção para o staging é o rollback: reverter ou
+        // refazer a tag. Não é a bancada, e mesmo assim é reprovação — quem vai
+        // mexer na tag precisa saber o que apareceu no ar tanto quanto o dev que
+        // recebe o card de volta. Sem esta linha, o único recuo do fluxo que
+        // muda o que está EM PRODUÇÃO seria também o único que não pede
+        // explicação nenhuma.
+        //
+        // A checagem é sobre a ORIGEM, e não sobre o destino: Em revisão →
+        // Em staging é o avanço normal e continua sem cobrar motivo.
+        if ($novoStatus === 'em_staging') {
+            return $statusAtual === 'em_producao';
         }
 
         return false;
@@ -351,11 +385,17 @@ class FluxoTarefaService
             // um impasse que já foi tratado.
             $marcas['rodadas'] = 0;
 
-            // A reabertura devolve o trabalho, não a versão: com ela guardada,
-            // a reconclusão passava no portão apoiada na versão do ciclo
-            // anterior — o mesmo vazamento que `testeDestaPassagem` fechou
-            // para o relatório de teste.
-            if ($statusAtual === 'concluida') {
+            // Sair do ar para trás devolve o trabalho, não a versão: com ela
+            // guardada, a próxima subida passava no portão apoiada na tag do
+            // ciclo anterior — o mesmo vazamento que `testeDestaPassagem`
+            // fechou para o relatório de teste.
+            //
+            // Vale para as DUAS saídas do ar, e não só para a reabertura: o
+            // card reprovado em Em produção volta para a bancada ou para a fila
+            // da tag, e nos dois casos a tag vai ser revertida ou refeita. A
+            // versão velha sobrevivendo faria a coluna anunciar como no ar uma
+            // tag que já não está.
+            if (in_array($statusAtual, ['concluida', 'em_producao'], true)) {
                 $marcas['versao_producao'] = null;
             }
         } else {
@@ -537,33 +577,41 @@ class FluxoTarefaService
     }
 
     /**
-     * Registra o veredito do teste do staging, sem mover a tarefa.
+     * Registra o veredito de um portão de exame — staging ou produção — sem
+     * mover a tarefa.
      *
      * Quem testa não é necessariamente quem move: no processo do time, o
      * testador não é o responsável pela tarefa — e enquanto o carimbo da
      * validação só viajava no movimento para Pronta p/ produção, o teste dele
      * não tinha onde existir. Aqui o relatório nasce assinado e preso ao
-     * evento aberto (a passagem atual pelo staging), que é exatamente o que o
-     * portão da produção lê depois (`aprovadaNestaPassagem`).
+     * evento aberto (a passagem atual), que é exatamente o que o portão
+     * seguinte lê depois (`aprovadaNestaPassagem`).
+     *
+     * Serve às DUAS etapas porque o problema é o mesmo dos dois lados: quem
+     * confere no ar nem sempre é o responsável, e nem sempre é quem testou no
+     * staging. Amarrar o registro a quem pode mover o card faria o quadro
+     * depender de o validador pedir a alguém que anote o veredito dele.
      *
      * A tarefa NÃO sai do lugar: registrar o teste é sobre o trabalho da
      * etapa, como a pergunta e o bloqueio — mover continua sendo gesto de quem
      * move, apoiado no veredito registrado.
      */
-    public function registrarTesteDoStaging(
+    public function registrarVeredito(
         Tarefa $tarefa,
         User $quemTestou,
         bool $aprovado,
         ?string $notas,
     ): TarefaRelatorioTeste {
-        // Só a tarefa de desenvolvimento em Em staging tem staging para
-        // testar. Registrar veredito fora daí criaria um relatório solto que a
-        // etapa seguinte poderia ler como prova do que ninguém validou.
-        if ($tarefa->tipo !== 'desenvolvimento' || $tarefa->status !== 'em_staging') {
-            throw new \RuntimeException('Só a tarefa em Em staging tem teste do staging para registrar.');
+        // Só a tarefa de desenvolvimento, e só nas etapas em que há algo
+        // rodando para conferir. Registrar veredito fora daí criaria um
+        // relatório solto que a etapa seguinte poderia ler como prova do que
+        // ninguém validou.
+        if ($tarefa->tipo !== 'desenvolvimento'
+            || ! in_array($tarefa->status, Tarefa::PORTOES_DE_VEREDITO, true)) {
+            throw new \RuntimeException('Só a tarefa em Em staging ou Em produção tem veredito para registrar.');
         }
 
-        // Reprovar sem dizer o quê manda o dev abrir o staging e adivinhar —
+        // Reprovar sem dizer o quê manda o dev abrir o ambiente e adivinhar —
         // a mesma regra do retorno de portão. Aprovar dispensa o texto: o
         // veredito é a informação inteira.
         if (! $aprovado && trim((string) $notas) === '') {
@@ -588,19 +636,34 @@ class FluxoTarefaService
      * para a bancada — e não deveria descobri-lo por acaso. `avisar` já cala
      * quando quem testou é o próprio responsável.
      *
-     * Público porque o relatório tem DUAS portas: o botão de testar
-     * (`registrarTesteDoStaging`) e o carimbo do painel de mover, que grava o
+     * Público porque o relatório tem DUAS portas: o botão de validar
+     * (`registrarVeredito`) e o carimbo do painel de mover, que grava o
      * relatório no controller. O aviso é o mesmo fato pelas duas — e uma cópia
      * do texto no controller divergiria na primeira mexida.
      */
     public function avisarTesteRegistrado(Tarefa $tarefa, User $quemTestou, bool $aprovado): void
     {
+        // A conferência em produção não é o teste do staging: aprovar no ar
+        // libera o encerramento, e reprovar significa que o defeito está com o
+        // cliente agora. Dizer "staging" nas duas faria o responsável ler a
+        // notícia mais grave do ciclo como a rotina de sempre.
+        $naProducao = $tarefa->status === 'em_producao';
+
         Notificacao::avisar($tarefa->responsavel_id, $quemTestou->id, [
+            // A CHAVE continua `teste_staging` de propósito: ela está gravada
+            // nas notificações já enviadas, e renomeá-la para arrumar um rótulo
+            // de tela reescreveria o que as pessoas já receberam.
             'tipo' => 'teste_staging',
             'nivel' => $aprovado ? 'marca' : 'atencao',
             'icone' => $aprovado ? 'check-circle' : 'alert-triangle',
-            'titulo' => $quemTestou->name.($aprovado ? ' aprovou' : ' reprovou').' o staging de «'.$tarefa->titulo.'»',
-            'meta' => $aprovado ? 'Staging validado · pronta para seguir' : 'Reprovada no teste do staging',
+            'titulo' => $quemTestou->name.($aprovado ? ' aprovou' : ' reprovou')
+                .($naProducao ? ' a produção de «' : ' o staging de «').$tarefa->titulo.'»',
+            'meta' => match (true) {
+                $naProducao && $aprovado => 'Validada no ar · pronta para encerrar',
+                $naProducao => 'Reprovada na conferência em produção',
+                $aprovado => 'Staging validado · pronta para seguir',
+                default => 'Reprovada no teste do staging',
+            },
             'rota' => route('tarefas.index'),
             'tarefa_id' => $tarefa->id,
         ]);
@@ -742,6 +805,18 @@ class FluxoTarefaService
             throw new \RuntimeException('É preciso direcionar a tarefa para alguém antes de mover para o Backlog.');
         }
 
+        // A mãe é guarda-chuva, e a recusa vem ANTES das outras: com filha
+        // aberta, "falta a versão" mandaria preencher um campo que não é o
+        // problema. Vale para as DUAS saídas do quadro — concluir afirma que o
+        // trabalho acabou e cancelar afirma que ele não vai acontecer, e com
+        // filha aberta as duas afirmações são falsas sobre parte do que esta
+        // tarefa carrega. Cancelar a filha é a saída: ela sai da conta sem ser
+        // feita, que é o destino honesto do bug que ninguém vai corrigir.
+        if (in_array($novoStatus, Tarefa::STATUS_TERMINAIS, true)
+            && ($impedimento = $tarefa->motivoParaNaoEncerrar())) {
+            throw new \RuntimeException($impedimento);
+        }
+
         // Reprovar sem dizer o que reprovou manda a pessoa que recebe o card
         // abrir o PR e adivinhar. Só o retorno vindo de mais adiante cobra o
         // texto: Backlog → Em andamento é só começar a trabalhar, e não tem
@@ -754,21 +829,48 @@ class FluxoTarefaService
             throw new \RuntimeException('O motivo do cancelamento é obrigatório.');
         }
 
-        // O portão do teste mudou de lugar junto com as etapas: ele guardava a
-        // saída do antigo Em testes, e agora guarda a entrada na fila da
-        // produção. É aqui que o dev afirma ter validado o staging, e é essa
-        // nota que o admin lê antes de subir a tag — depois deste ponto não há
-        // mais quem confira.
-        if ($novoStatus === 'pronta_producao'
+        // O portão do staging mudou de porta junto com as etapas: ele guardava
+        // a entrada na fila do admin, e agora guarda a SUBIDA DA TAG. O lugar é
+        // outro, o que ele protege é o mesmo — código não validado não vai para
+        // o ar. Antes havia uma coluna entre uma coisa e outra; agora o gesto é
+        // um só, e o portão foi junto com ele.
+        if ($novoStatus === 'em_producao'
             && $tarefa->tipo === 'desenvolvimento'
             && ! $this->aprovadaNestaPassagem($tarefa)) {
-            throw new \RuntimeException('Só é possível liberar para produção depois de validar o staging.');
+            throw new \RuntimeException('Só é possível subir para produção depois de validar o staging.');
         }
 
-        // Concluída passou a significar EM PRODUÇÃO, e a versão é o que liga a
-        // tarefa à tag que subiu — sem ela, "concluída" volta a ser uma
-        // afirmação que ninguém consegue conferir depois.
+        // O portão da ENTREGA, espelhando o do staging um passo adiante: quem
+        // confere no ar carimba o veredito (`registrarVeredito`), e sem carimbo
+        // aprovado desta passagem ninguém encerra — nem quem faz triagem. É o
+        // que separa "a tag subiu" de "alguém conferiu que subiu funcionando",
+        // e era exatamente o passo que o fluxo pulava: Concluída vinha direto da
+        // fila do admin, então o deploy e a entrega eram o mesmo gesto.
+        //
+        // O carimbo entra SÓ pelo botão de validar, assinado por quem conferiu.
+        // Se o painel da conclusão também o oferecesse, quem encerra carimbaria
+        // por si mesmo e o portão viraria uma caixinha marcada por quem tem
+        // pressa — que é o que ele existe para impedir.
+        //
+        // `aprovadaNestaPassagem` serve aos dois portões sem ambiguidade: lê o
+        // relatório preso ao evento ABERTO, que aqui é o de Em produção. O
+        // carimbo do staging ficou preso ao evento de Em staging e não vaza.
         if ($novoStatus === 'concluida'
+            && $tarefa->tipo === 'desenvolvimento'
+            && ! $this->aprovadaNestaPassagem($tarefa)) {
+            throw new \RuntimeException('Só é possível concluir depois de validar em produção.');
+        }
+
+        // A versão é o que liga a tarefa à tag que subiu, e passou a ser cobrada
+        // onde a tag SOBE: na entrada de Em produção. Cobrada só na conclusão,
+        // ela deixava a coluna da conferência sem dizer o que está no ar — que é
+        // a primeira coisa que quem vai conferir precisa saber.
+        //
+        // A conclusão continua cobrando. No caminho normal o valor já está
+        // gravado e a guarda passa sozinha; ela existe pelo movimento livre, que
+        // alcança Concluída direto de qualquer etapa e sem ela encerraria sem
+        // versão nenhuma.
+        if (in_array($novoStatus, ['em_producao', 'concluida'], true)
             && $tarefa->tipo === 'desenvolvimento'
             && trim((string) ($dados['versao_producao'] ?? $tarefa->versao_producao ?? '')) === '') {
             throw new \RuntimeException('É preciso registrar a versão que subiu para produção.');
@@ -784,7 +886,7 @@ class FluxoTarefaService
     }
 
     /**
-     * A validação desta passagem pelo staging foi aprovada?
+     * A validação desta passagem — pelo staging ou pela produção — foi aprovada?
      *
      * "Desta passagem" é a correção de um vazamento: a checagem lia o último
      * relatório da tarefa INTEIRA, então uma tarefa concluída, reaberta,

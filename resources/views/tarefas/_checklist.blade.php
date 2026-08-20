@@ -17,9 +17,9 @@
     recebe JavaScript truncado e o bloco inteiro morre em silêncio — a lista
     aparece na tela e nada nela responde.
 --}}
-<div class="pt-4 border-t border-rule" x-data="checklist({{ $tarefa->id }})">
+<div class="pt-4 border-t border-rule-strong" x-data="checklist({{ $tarefa->id }})">
     <div class="flex items-center gap-2">
-        <h4 class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Checklist</h4>
+        <h4 class="font-mono text-[11.5px] font-semibold uppercase tracking-caps-wide text-ink">Checklist</h4>
 
         {{-- O progresso só existe quando há lista: "0 de 0" anunciaria como
              pendência uma tarefa que simplesmente não tem checklist. --}}
@@ -127,6 +127,6 @@
          checklist não responde por não ser nenhuma das duas coisas. --}}
     <p class="mt-1.5 px-1 text-[11px] leading-[1.45] text-ink-faint">
         Checklist não é subtarefa: não tem responsável nem etapa, e não entra na conta de trabalho em curso.
-        O que precisa de dono próprio vira tarefa.
+        O que precisa de dono próprio vira subtarefa, logo abaixo.
     </p>
 </div>

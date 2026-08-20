@@ -76,19 +76,22 @@
                      * Backlog é literalmente começar a trabalhar, e um painel
                      * ali pediria justificativa para pegar a própria tarefa.
                      *
-                     * `pronta_producao` entra mesmo com o texto OPCIONAL: o
-                     * painel dela carrega o "Validado no staging", e sem esse
-                     * carimbo o motor recusa a passagem. Mover na hora daria
-                     * uma recusa que a tela nunca deu chance de evitar.
+                     * `em_producao` entra por três motivos ao mesmo tempo: ele
+                     * cobra a versão da tag, oferece apontar quem valida no ar e
+                     * carrega o "Validado no staging" — sem esse carimbo o motor
+                     * recusa a passagem, e mover na hora daria uma recusa que a
+                     * tela nunca deu chance de evitar.
                      */
                     $abrePainel = match ($destino) {
                         'em_desenvolvimento' => in_array($tarefa->status, \App\Models\Tarefa::PORTOES, true),
-                        'cancelada', 'concluida', 'pronta_producao' => true,
+                        'cancelada', 'concluida' => true,
                         // Os portões de exame abrem painel para oferecer o
-                        // "quem revisa / quem testa" (US-087) — aqui e no
-                        // arrasto (`etapasComTexto`), que na primeira versão
-                        // passava reto e se lia como feature que não existe.
-                        'em_revisao', 'em_staging' => $tarefa->tipo === 'desenvolvimento',
+                        // "quem revisa / quem testa / quem valida no ar"
+                        // (US-087) — aqui e no arrasto (`etapasComTexto`), que
+                        // na primeira versão passava reto e se lia como feature
+                        // que não existe. Em produção abre por dois motivos ao
+                        // mesmo tempo: aponta a pessoa E cobra a versão da tag.
+                        'em_revisao', 'em_staging', 'em_producao' => $tarefa->tipo === 'desenvolvimento',
                         default => false,
                     };
 
@@ -97,14 +100,39 @@
                     // para a bancada: o painel cobra o motivo, e item e painel
                     // precisam concordar sobre isso.
                     $devolveParaRevisao = $destino === 'em_revisao'
-                        && in_array($tarefa->status, ['em_staging', 'pronta_producao', 'concluida'], true);
+                        && in_array($tarefa->status, ['em_staging', 'em_producao', 'concluida'], true);
+
+                    // Em staging recebe por dois caminhos opostos, e só um deles
+                    // é avançar: vindo do ar, o card está voltando para a tag ser
+                    // revertida ou refeita. Chamar os dois de "Em staging"
+                    // esconderia o que tem consequência.
+                    $devolveParaStaging = $destino === 'em_staging'
+                        && $tarefa->status === 'em_producao';
 
                     // O aviso à direita do item diz o que o painel vai pedir —
                     // e apontar não é motivo: nos portões de exame ele oferece
                     // uma escolha opcional, não cobra um texto.
-                    $dica = in_array($destino, \App\Models\Tarefa::PORTOES_DE_EXAME, true) && ! $devolveParaRevisao
-                        ? 'apontar quem'
-                        : 'pede motivo';
+                    /**
+                     * O aviso à direita diz o que o painel vai pedir — e ele
+                     * precisa dizer a verdade, senão ensina a não ler o rótulo.
+                     *
+                     * Em produção fica fora do "apontar quem" mesmo sendo
+                     * portão de exame: lá a pessoa é opcional e a VERSÃO não é,
+                     * e anunciar o campo opcional esconderia o obrigatório.
+                     *
+                     * Encerrar vindo do ar não pede NADA: a versão foi
+                     * registrada na subida da tag e o veredito foi assinado por
+                     * quem conferiu. Aviso nenhum é a informação certa — e é
+                     * por isso que a dica é anulável, e não uma terceira frase.
+                     */
+                    $dica = match (true) {
+                        $destino === 'em_producao' => 'pede versão',
+                        $destino === 'concluida' && $tarefa->tipo === 'desenvolvimento'
+                            => $tarefa->status === 'em_producao' ? null : 'pede versão',
+                        $devolveParaRevisao, $devolveParaStaging => 'pede motivo',
+                        in_array($destino, \App\Models\Tarefa::PORTOES_DE_EXAME, true) => 'apontar quem',
+                        default => 'pede motivo',
+                    };
 
                     /**
                      * O nome do destino, e a exceção que o protótipo faz.
@@ -121,6 +149,7 @@
                         $destino === 'em_desenvolvimento'
                             && in_array($tarefa->status, \App\Models\Tarefa::PORTOES, true) => 'Devolver para correção',
                         $devolveParaRevisao => 'Devolver para revisão',
+                        $devolveParaStaging => 'Devolver para o staging',
                         default => \App\Models\Tarefa::rotuloDaEtapa($destino),
                     };
 
@@ -146,9 +175,11 @@
 
                         <span class="flex-1 min-w-0 truncate">{{ $rotulo }}</span>
 
-                        <span class="shrink-0 font-mono text-[9px] uppercase tracking-[0.06em] text-ink-faint">
-                            {{ $dica }}
-                        </span>
+                        @if ($dica)
+                            <span class="shrink-0 font-mono text-[9px] uppercase tracking-[0.06em] text-ink-faint">
+                                {{ $dica }}
+                            </span>
+                        @endif
                     </button>
                 @else
                     <button type="submit" name="status" value="{{ $destino }}" class="{{ $linha }}">

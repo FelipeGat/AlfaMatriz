@@ -21,7 +21,7 @@
     $comentarios = $tarefa->comentarios;
 @endphp
 
-<div @class(['border-t border-rule pt-4' => ! $somenteLeitura])>
+<div @class(['border-t border-rule-strong pt-4' => ! $somenteLeitura])>
     {{--
         O banner de pergunta em aberto.
 
@@ -60,7 +60,7 @@
          vez definida — perguntar passa a bola, responder devolve. "Comentários"
          descreveria um mural, onde ninguém deve nada a ninguém. --}}
     <div class="flex items-center gap-2 mb-2.5">
-        <p class="flex-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-mute">Conversa</p>
+        <p class="flex-1 font-mono text-[11.5px] font-semibold uppercase tracking-caps-wide text-ink">Conversa</p>
         <span class="font-sans tabular text-[10.5px] text-ink-faint">{{ $comentarios->count() }}</span>
     </div>
 
@@ -164,7 +164,11 @@
 
     @unless ($somenteLeitura)
         <div class="mt-4">
-            <x-input-label for="comentario-{{ $tarefa->id }}" value="Novo comentário" />
+            {{-- O rótulo nomeia o CAMPO, e os botões nomeiam os dois destinos.
+                 Dizia "Novo comentário", e ficava torto justamente quando o
+                 destino era Perguntar — o campo anunciava um dos dois caminhos
+                 como se fosse o único. --}}
+            <x-input-label for="comentario-{{ $tarefa->id }}" value="Escrever na conversa" />
 
             {{-- O campo não formata nada: o que se digita é o que fica gravado
                  e o que aparece na tela, quebras de linha inclusive. --}}
@@ -184,29 +188,59 @@
                 Duas saídas para o mesmo campo, e a diferença entre elas é de
                 quem fica a vez.
 
-                Salvar publica um comentário e não move nada. PERGUNTAR publica
-                e passa a bola: a tarja aparece no card do outro lado, o sino o
-                avisa e a rodada anda se ela estava com quem perguntou. É o
-                mesmo texto — o que muda é se alguém está sendo cobrado por ele.
+                COMENTAR publica e não move nada. PERGUNTAR publica e passa a
+                bola: a tarja aparece no card do outro lado, o sino o avisa e a
+                rodada anda se ela estava com quem perguntou. É o mesmo texto —
+                o que muda é se alguém está sendo cobrado por ele.
 
-                O botão vive fora do formulário da tarefa pelo atributo `form`,
+                O Comentar nasceu depois, e por queixa: o campo se chamava "Novo
+                comentário" e o único botão ao lado dele dizia "Perguntar". Para
+                só comentar era preciso apertar "Salvar", no rodapé do modal, que
+                é o botão que grava título e prioridade. A ação mais comum da
+                conversa não tinha botão; a mais rara tinha. Uma frase embaixo
+                explicava isso — e explicação sob um controle é sinal de que o
+                controle não se explica.
+
+                Os dois vivem fora do formulário da tarefa pelo atributo `form`,
                 como o corrigir e o apagar: formulário aninhado é HTML inválido.
-                E ele copia o `corpo` para o campo escondido no clique, porque o
-                textarea pertence ao outro formulário — sem isso, perguntar
-                mandaria vazio.
-            --}}
-            @if (! in_array($tarefa->status, \App\Models\Tarefa::STATUS_TERMINAIS, true)
-                    && ! $tarefa->esperaRespostaDe(auth()->user()))
-                @php
-                    // Quem recebe a pergunta, quando o quadro sabe sozinho. Nulo
-                    // aqui não é impedimento: é uma pergunta a mais a fazer.
-                    $outroLado = $tarefa->outroLadoDe(auth()->user());
-                    $candidatos = $outroLado
-                        ? collect()
-                        : collect($usuarios ?? [])->reject(fn ($u) => $u->id === auth()->id());
-                @endphp
+                E cada um copia o `corpo` para o campo escondido do SEU envio no
+                clique, porque o textarea pertence ao formulário da tarefa — sem
+                isso, os dois mandariam vazio.
 
-                <div class="mt-2 flex flex-wrap items-center gap-2">
+                O Salvar continua publicando o comentário, e isso não é
+                duplicidade esquecida: é a rede de quem escreve e salva de uma
+                vez. O que mudou é que ele deixou de ser o CAMINHO, e por isso
+                saiu do texto de ajuda.
+            --}}
+            @php
+                // Perguntar só existe onde há vez a passar: tarefa encerrada não
+                // tem conversa em aberto, e quem JÁ deve a resposta responde pela
+                // tarja, não abre uma rodada nova.
+                $podePerguntar = ! in_array($tarefa->status, \App\Models\Tarefa::STATUS_TERMINAIS, true)
+                    && ! $tarefa->esperaRespostaDe(auth()->user());
+
+                // Quem recebe a pergunta, quando o quadro sabe sozinho. Nulo
+                // aqui não é impedimento: é uma pergunta a mais a fazer.
+                $outroLado = $podePerguntar ? $tarefa->outroLadoDe(auth()->user()) : null;
+                $candidatos = ($podePerguntar && ! $outroLado)
+                    ? collect($usuarios ?? [])->reject(fn ($u) => $u->id === auth()->id())
+                    : collect();
+            @endphp
+
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+                {{-- Comentar vem PRIMEIRO, cheio, e SEM condição: comentar vale
+                     sempre, inclusive quando a bola está com você. Perguntar
+                     fica ao lado, contornado — ele cobra resposta de alguém, e
+                     não é gesto de todo dia. --}}
+                <button type="submit" form="comentar-{{ $tarefa->id }}"
+                        onclick="document.getElementById('comentario-corpo-{{ $tarefa->id }}').value =
+                                 document.getElementById('comentario-{{ $tarefa->id }}').value"
+                        class="shrink-0 h-[28px] px-3 rounded-control text-[12px] font-semibold
+                               text-on-brand bg-brand transition hover:opacity-90">
+                    Comentar
+                </button>
+
+                @if ($podePerguntar)
                     <button type="submit" form="perguntar-{{ $tarefa->id }}"
                             onclick="document.getElementById('pergunta-corpo-{{ $tarefa->id }}').value =
                                      document.getElementById('comentario-{{ $tarefa->id }}').value"
@@ -239,23 +273,15 @@
                     @endif
 
                     <p class="min-w-0 flex-1 text-[11.5px] text-ink-faint">
-                        Salvar publica o comentário.
                         <strong class="font-semibold">Perguntar</strong>
                         @if ($outroLado === null)
-                            publica e passa a vez para quem você escolher — esta tarefa ainda não tem outro lado.
+                            passa a vez para quem você escolher — esta tarefa ainda não tem outro lado.
                         @else
-                            publica e passa a vez para o outro lado.
+                            passa a vez para o outro lado, e o sino avisa.
                         @endif
                     </p>
-                </div>
-            @else
-                {{-- Sem botão próprio, o campo precisa dizer quando é publicado:
-                     caixa de texto que não anuncia o próprio envio é caixa que se
-                     preenche e se perde ao fechar o modal. --}}
-                <p class="mt-1 text-[11.5px] text-ink-faint">
-                    Entra na tarefa quando você salvar. Em branco, nada é publicado.
-                </p>
-            @endif
+                @endif
+            </div>
         </div>
     @endunless
 </div>

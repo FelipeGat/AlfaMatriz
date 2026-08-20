@@ -6,6 +6,7 @@ use App\Models\Sistema;
 use App\Models\Tarefa;
 use App\Models\TarefaComentario;
 use App\Models\TarefaEvento;
+use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -129,8 +130,41 @@ class QuadroDeTarefasSeeder extends Seeder
             ['titulo' => 'Selo de checklist no card', 'status' => 'em_staging', 'horas' => 8,
                 'prioridade' => 'baixa', 'dono' => 'Camila Reis'],
 
-            ['titulo' => 'Aging de receitas por faixa', 'status' => 'pronta_producao', 'horas' => 28,
-                'prioridade' => 'alta', 'dono' => 'Diego Prado'],
+            // Staging aprovado e ainda no staging: é a espera pela tag, que
+            // deixou de ser coluna própria. Sem ela na massa, o chip "N p/
+            // subir" nasce zerado e o recorte que substituiu a fila do admin
+            // fica sem prova.
+            ['titulo' => 'Aging de receitas por faixa', 'status' => 'em_staging', 'horas' => 28,
+                'prioridade' => 'alta', 'dono' => 'Diego Prado',
+                'veredito' => ['por' => 'Camila Reis', 'aprovado' => true,
+                    'notas' => 'Conferido no staging: faixas batem com o extrato.']],
+            // Voltou do ar sem que o defeito fosse do código: a tag é que subiu
+            // errada, e quem for mexer nela de novo precisa saber disso.
+            ['titulo' => 'Rateio de despesa entre filiais', 'status' => 'em_staging', 'horas' => 9,
+                'prioridade' => 'media', 'dono' => 'Rafael Lima',
+                'resumo' => 'Divisão proporcional ao faturamento de cada filial.',
+                'retorno' => ['de' => 'em_producao', 'motivo' => 'A tag subiu sem a migração; revertida com deploy/voltar.sh.']],
+
+            // No ar, esperando conferência. O validador aqui é outra pessoa
+            // que não o dono — é o caso que a massa precisa cobrir, porque o
+            // outro (mesma pessoa) já se parece com o staging. As três idades
+            // cercam o limiar de 24h: dentro do prazo, acima dele e no dobro.
+            ['titulo' => 'Consolidado de mensalidades por turma', 'status' => 'em_producao', 'horas' => 6,
+                'prioridade' => 'alta', 'dono' => 'Marina Alves', 'versao' => 'v1.4.2',
+                'resumo' => 'Fecha o mês por turma, e não por aluno.',
+                'validador' => 'Camila Reis'],
+            ['titulo' => 'Fechamento de caixa por operador', 'status' => 'em_producao', 'horas' => 30,
+                'prioridade' => 'media', 'dono' => 'Rafael Lima', 'versao' => 'v1.4.1',
+                'validador' => 'Diego Prado'],
+            // Reprovada no ar e ainda parada: o veredito já existe e o card
+            // espera alguém decidir se volta para a bancada ou para a tag. É o
+            // terceiro estado do banner, o que não aparece em quadro calmo.
+            ['titulo' => 'Boleto com desconto por antecipação', 'status' => 'em_producao', 'horas' => 58,
+                'prioridade' => 'critica', 'dono' => 'Marina Alves', 'versao' => 'v1.4.0',
+                'resumo' => 'Desconto proporcional aos dias de antecipação.',
+                'validador' => 'Camila Reis',
+                'veredito' => ['por' => 'Camila Reis', 'aprovado' => false,
+                    'notas' => 'O desconto sai dobrado quando a antecipação passa de 30 dias.']],
 
             ['titulo' => 'Renovar certificado do domínio', 'status' => 'em_desenvolvimento', 'horas' => 5,
                 'prioridade' => 'media', 'dono' => 'Marina Alves', 'tipo' => 'operacional'],
@@ -189,6 +223,30 @@ class QuadroDeTarefasSeeder extends Seeder
         if (isset($receita['retorno'])) {
             $marcas['retorno_de'] = $receita['retorno']['de'];
             $marcas['retorno_motivo'] = $receita['retorno']['motivo'];
+        }
+
+        // A versão que subiu: sem ela o card em Em produção não diz O QUE está
+        // no ar, que é a primeira coisa que quem vai conferir precisa saber.
+        if (isset($receita['versao'])) {
+            $marcas['versao_producao'] = $receita['versao'];
+        }
+
+        // Quem confere no ar. Ocupa o mesmo `interlocutor_id` da pergunta
+        // porque é a mesma pergunta — com quem está a bola —, e nenhuma receita
+        // pede as duas coisas: a conversa recomeça a cada portão.
+        if (isset($receita['validador'])) {
+            $marcas['interlocutor_id'] = $pessoas[$receita['validador']]->id;
+        }
+
+        // O veredito já registrado: o relatório se prende sozinho ao evento
+        // aberto (`TarefaRelatorioTeste::booted`), que é a passagem desta etapa.
+        if (isset($receita['veredito'])) {
+            TarefaRelatorioTeste::create([
+                'tarefa_id' => $tarefa->id,
+                'user_id' => $pessoas[$receita['veredito']['por']]->id,
+                'aprovado' => $receita['veredito']['aprovado'],
+                'notas' => $receita['veredito']['notas'] ?? null,
+            ]);
         }
 
         if (isset($receita['pergunta'])) {
