@@ -92,11 +92,13 @@
 
         {{-- A porta de criar, que era da topbar. Preenchida na cor da marca
              porque aqui ela é a única ação primária da tela. --}}
+        @if (auth()->user()?->canPermissao('tarefas', 'incluir'))
         <button type="button" @click="$dispatch('open-modal', 'nova-tarefa')"
                 class="shrink-0 h-[26px] px-2.5 rounded-control bg-brand text-on-brand
                        font-semibold text-[12px] whitespace-nowrap hover:bg-brand-bright transition">
             + Nova tarefa
         </button>
+        @endif
     </div>
 
     {{--

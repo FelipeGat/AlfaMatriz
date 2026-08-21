@@ -146,6 +146,26 @@ class PerfilPermissaoSeeder extends Seeder
         // passa a mentir sobre o que está acontecendo.
         $membro = Perfil::updateOrCreate(['slug' => 'membro'], ['nome' => 'Membro do time']);
 
+        // O painel de parede: a conta que fica exposta o dia todo num monitor
+        // da sala. Só LER o quadro — nem incluir, nem editar, nem imprimir,
+        // porque monitor não escreve, e o que ele não pode fazer é o que sobra
+        // de garantia quando alguém encosta no teclado dele.
+        //
+        // `nao_expira_por_ociosidade` é o que a distingue: nela o relógio de
+        // ociosidade não roda. A isenção é da CONTA e não da tela justamente
+        // porque a sessão não tem tela — ver
+        // `2026_08_21_150000_perfil_de_exibicao_para_painel_de_parede.php`,
+        // que é quem leva isto a produção; aqui é só o estado inicial de quem
+        // semeia.
+        $exibicao = Perfil::updateOrCreate(
+            ['slug' => 'exibicao'],
+            ['nome' => 'Exibição', 'nao_expira_por_ociosidade' => true],
+        );
+
+        $exibicao->permissoes()->syncWithoutDetaching([
+            $todasPermissoes['tarefas'] => ['ler' => true, 'incluir' => false, 'editar' => false, 'imprimir' => false, 'excluir' => false],
+        ]);
+
         $membro->permissoes()->syncWithoutDetaching([
             $todasPermissoes['tarefas'] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
         ]);

@@ -9,7 +9,9 @@ class Perfil extends Model
 {
     protected $table = 'perfis';
 
-    protected $fillable = ['nome', 'slug'];
+    protected $fillable = ['nome', 'slug', 'nao_expira_por_ociosidade'];
+
+    protected $casts = ['nao_expira_por_ociosidade' => 'boolean'];
 
     public function users(): BelongsToMany
     {

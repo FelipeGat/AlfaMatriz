@@ -308,6 +308,27 @@ class User extends Authenticatable
     }
 
     /**
+     * Esta conta é um painel de parede — daqueles que ficam abertos o dia todo?
+     *
+     * A pergunta existe por causa do relógio de ociosidade
+     * (`resources/views/layouts/sessao.blade.php`): num monitor da sala
+     * ninguém toca no mouse, e ele derrubaria a exibição a cada meia hora.
+     *
+     * A isenção é da CONTA e não da tela, e a diferença é o ponto. Isentar o
+     * quadro de tarefas isentaria a sessão inteira: dele a barra lateral leva
+     * a Caixa, Faturamento e Usuários e permissões em um clique. A conta de
+     * exibição só enxerga o quadro, então deixá-la aberta o dia todo expõe o
+     * quadro — e nada além.
+     *
+     * Lê pela relação já carregada, como `ehAdmin`: a pergunta é feita uma vez
+     * por página, na moldura.
+     */
+    public function ehContaDeExibicao(): bool
+    {
+        return $this->perfis->contains(fn ($perfil) => (bool) $perfil->nao_expira_por_ociosidade);
+    }
+
+    /**
      * Pode organizar o trabalho dos outros no quadro de tarefas?
      *
      * Triagem é decidir a prioridade e escolher quem faz — e, por consequência,
