@@ -309,6 +309,26 @@
 
         window.addEventListener('sessao-sair', encerrar);
 
+        /*
+         * Com o aviso na tela, o teclado é dele e de mais ninguém.
+         *
+         * O véu segura o mouse — um clique num card atinge o aviso, não o card
+         * —, mas não seguraria a tecla: o Esc atravessava e fechava o modal de
+         * tarefa que estava ATRÁS, porque o `x-modal` escuta `escape` na
+         * janela. Quem via isso via o aviso mandar embora o que ele acabara de
+         * prometer que só se perderia sem salvar.
+         *
+         * Na CAPTURA, e não na subida: os ouvintes do `x-modal` moram na
+         * janela e disparam por último, então parar aqui é a única forma de
+         * chegar antes deles.
+         */
+        window.addEventListener('keydown', (evento) => {
+            if (avisando && evento.key === 'Escape') {
+                evento.stopImmediatePropagation();
+                evento.preventDefault();
+            }
+        }, { capture: true });
+
         setInterval(tique, 1000);
 
         // Voltar para a aba é quando a defasagem é maior: quem passou duas
