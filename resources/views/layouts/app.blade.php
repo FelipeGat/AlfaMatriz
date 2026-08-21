@@ -140,5 +140,10 @@
         <div id="pilha-avisos"
              class="fixed top-topbar left-1/2 -translate-x-1/2 z-[60] pt-3 px-4 w-full
                     flex flex-col items-center gap-2 pointer-events-none"></div>
+
+        {{-- O relógio da sessão: o aviso antes de derrubar e a volta ao login.
+             Só na moldura de dentro — do lado de fora não há sessão a perder,
+             e o login já tem o próprio renovador de token. --}}
+        @include('layouts.sessao')
     </body>
 </html>

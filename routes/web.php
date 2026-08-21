@@ -24,6 +24,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\RevendaController;
 use App\Http\Controllers\SaudeController;
+use App\Http\Controllers\SessaoController;
 use App\Http\Controllers\SistemaController;
 use App\Http\Controllers\SubcategoriaController;
 use App\Http\Controllers\TarefaController;
@@ -52,6 +53,15 @@ Route::get('/healthz', SaudeController::class)->name('healthz');
 Route::get('/csrf-token', fn () => response()->json(['token' => csrf_token()]))
     ->middleware('guest')
     ->name('csrf-token');
+
+// A sessão vista de dentro do painel. Fora do grupo grande de propósito: as
+// duas valem mesmo para quem o `conta-ativa` ou o `senha-em-dia` desviaria da
+// tela que pediu — saber que o prazo está acabando, e sair, não dependem de a
+// conta estar em dia. Ver `SessaoController`.
+Route::middleware('auth')->group(function () {
+    Route::get('sessao', [SessaoController::class, 'estado'])->name('sessao.estado');
+    Route::post('sessao/encerrar', [SessaoController::class, 'encerrar'])->name('sessao.encerrar');
+});
 
 // `conta-ativa` e `senha-em-dia` no grupo inteiro, e não rota a rota: as duas
 // regras valem para TUDO que está atrás do login, e uma lista de rotas seria
