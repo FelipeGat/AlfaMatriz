@@ -211,7 +211,8 @@
         E só na faixa sem raia: com o quadro agrupado, um campo por faixa
         prometeria criar a tarefa DENTRO daquela raia, o que ele não faz.
     --}}
-    @if (in_array($etapa['chave'], ['aberta', 'backlog'], true) && $faixa === 'todas')
+    @if (in_array($etapa['chave'], ['aberta', 'backlog'], true) && $faixa === 'todas'
+        && auth()->user()?->canPermissao('tarefas', 'incluir'))
         <form method="POST" action="{{ route('tarefas.store') }}" data-parcial
               x-show="! recolhidas.includes('{{ $etapa['chave'] }}')"
               class="shrink-0 px-[10px] py-2 border-t border-rule">

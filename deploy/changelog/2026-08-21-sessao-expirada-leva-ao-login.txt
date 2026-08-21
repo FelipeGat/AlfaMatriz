@@ -21,4 +21,16 @@
 
 • <b>E o prazo passou de duas horas para trinta minutos.</b> As duas horas eram o padrão de fábrica do Laravel, que veio no primeiro commit e nunca foi decidido — e enquanto nada avisava, ninguém tinha por que reparar. Trinta minutos é o intervalo usual de ERP com dado financeiro, e conta <b>inatividade</b>: quem está trabalhando nunca é derrubado, porque a própria atividade renova a sessão. Meia hora sem tocar em nada quer dizer que a pessoa saiu da mesa.
 
+---
+
+<b>📺 E um perfil para o quadro que fica na parede</b>
+
+• <b>O problema que o prazo criou.</b> O quadro de tarefas é a tela que mais fica aberta o dia inteiro num monitor da sala. Com o relógio novo, ele seria derrubado a cada meia hora — e ninguém mexe no mouse de um monitor de parede.
+
+• <b>A saída óbvia não servia.</b> Isentar a TELA de tarefas do relógio isentaria a CONTA: do quadro, a barra lateral leva a Caixa, Faturamento, Auditoria e Usuários e permissões em um clique. Quem sentasse na máquina teria o painel todo, inclusive dar permissão a si mesmo — o único estrago que sobrevive a fechar a aba.
+
+• <b>Agora existe o perfil "Exibição".</b> Ele só enxerga o quadro, e <b>só para ler</b>: sem criar, sem editar, sem excluir. A sessão dele não expira por inatividade, porque o que fica exposto na parede é uma conta que não alcança nada além do quadro. É o mesmo desenho do modo quiosque do Grafana e do wallboard do Jira.
+
+• <b>Como usar:</b> cadastre uma conta em Usuários e permissões, dê a ela o perfil Exibição, e deixe-a aberta no monitor da sala. Ela entra direto no quadro, o menu dela tem duas linhas, e os botões de criar tarefa nem aparecem.
+
 <i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

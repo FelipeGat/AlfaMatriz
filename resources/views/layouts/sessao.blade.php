@@ -34,6 +34,16 @@
     // gente mexendo, uma ida ao servidor a cada dez minutos mantém a sessão de
     // pé sem transformar o painel em máquina de bater ponto.
     $margemEmMinutos = max(1, min(10, intdiv($vidaEmMinutos, 4)));
+
+    // O painel de parede: conta que só enxerga o quadro e fica aberta o dia
+    // todo num monitor da sala. Nela o relógio não roda — ninguém toca no
+    // mouse de um monitor, e ele derrubaria a exibição a cada meia hora.
+    //
+    // A CAMADA 1 continua valendo mesmo aqui: se a sessão morrer por outro
+    // motivo (o servidor reiniciou, alguém limpou as sessões), o monitor tem
+    // de mostrar a tela de entrada e não um quadro parado com cara de vivo —
+    // que é justamente o defeito que tudo isto veio consertar.
+    $contaDeExibicao = auth()->user()?->ehContaDeExibicao() ?? false;
 @endphp
 
 {{-- O encerramento é envio de formulário, e não `fetch`: o navegador segue o
@@ -43,6 +53,7 @@
     @csrf
 </form>
 
+@unless ($contaDeExibicao)
 {{-- O aviso. Mesma moldura do <x-confirmar> — nenhum valor novo aqui.
 
      Ele NÃO é um <x-modal>: aquele fecha no Esc e no clique fora, e um aviso
@@ -107,11 +118,17 @@
         </div>
     </div>
 </div>
+@endunless
 
 <script>
     (function () {
         const VIDA_MS = {{ $vidaEmMinutos }} * 60 * 1000;
 
+        let prazoDoServidor = Date.now() + VIDA_MS;
+        let encerrando = false;
+        let avisando = false;
+
+        @unless ($contaDeExibicao)
         // O limite da PESSOA: quanto tempo sem tocar em nada até ser
         // desconectada. Sai da vida da sessão menos a margem — não é número
         // inventado aqui, muda junto com `SESSION_LIFETIME`.
@@ -131,11 +148,10 @@
 
         let atividadeLocal = Date.now();
         let ultimaGravacao = 0;
-        let prazoDoServidor = Date.now() + VIDA_MS;
         let ultimoPedido = Date.now();
-        let avisando = false;
-        let encerrando = false;
+        @endunless
 
+        @unless ($contaDeExibicao)
         const lerAtividade = () => {
             try {
                 const guardada = Number(localStorage.getItem(CHAVE_ATIVIDADE));
@@ -171,6 +187,8 @@
                 // ver `lerAtividade`
             }
         };
+
+        @endunless
 
         const encerrar = () => {
             if (encerrando) {
@@ -223,6 +241,7 @@
             return resposta;
         };
 
+        @unless ($contaDeExibicao)
         const renovar = async () => {
             // Marcado ANTES da viagem: sem isso, os tiques que passam enquanto
             // ela acontece disparariam um pedido cada.
@@ -340,5 +359,6 @@
                 tique();
             }
         });
+        @endunless
     })();
 </script>

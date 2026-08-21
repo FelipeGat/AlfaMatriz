@@ -26,11 +26,17 @@
             : $tarefas->count().' tarefas no quadro' }}
     </x-slot>
     <x-slot name="acoes">
+        {{-- Só para quem pode criar. O menu já segue essa regra ("item que leva
+             a 403 é pior que item ausente", ver layouts/navigation) e o botão
+             não seguia — o que só apareceu quando nasceu o primeiro perfil de
+             LEITURA, o painel de parede. --}}
+        @if (auth()->user()?->canPermissao('tarefas', 'incluir'))
         <button type="button" x-data @click="$dispatch('open-modal', 'nova-tarefa')"
                 class="h-[34px] px-3 rounded-control bg-brand text-on-brand font-semibold text-[12.5px]
                        hover:bg-brand-bright transition whitespace-nowrap">
             + Nova tarefa
         </button>
+        @endif
     </x-slot>
 
     {{--
