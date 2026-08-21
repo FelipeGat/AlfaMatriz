@@ -108,6 +108,14 @@ class SessaoExpiradaTest extends TestCase
         $this->actingAs($usuario)->get('/profile')
             ->assertSee('const LIMITE_MS = 110 * 60 * 1000;', false);
 
+        // O valor ESCOLHIDO para o AlfaMatriz (21/08/2026): meia hora parado.
+        // Quarenta e não trinta porque a margem sai de dentro — é ela que faz
+        // o aviso aparecer com a sessão ainda viva. Quem trocar um dos dois
+        // números sem o outro quebra este teste, que é o ponto dele.
+        config(['session.lifetime' => 40]);
+        $this->actingAs($usuario)->get('/profile')
+            ->assertSee('const LIMITE_MS = 30 * 60 * 1000;', false);
+
         // Sessão curta: a margem de dez minutos não cabe, e encolhe para um
         // quarto da vida em vez de zerar o limite — ou negativá-lo.
         config(['session.lifetime' => 20]);
