@@ -19,6 +19,6 @@
 
 • <b>Duas abas abertas não brigam.</b> A aba parada não derruba a que está sendo usada — as duas enxergam a mesma atividade.
 
-• <b>O prazo continua o de sempre: duas horas.</b> O aviso nasce dele, não de um número escolhido à parte; mudando o prazo, os dois andam juntos.
+• <b>E o prazo passou de duas horas para trinta minutos.</b> As duas horas eram o padrão de fábrica do Laravel, que veio no primeiro commit e nunca foi decidido — e enquanto nada avisava, ninguém tinha por que reparar. Trinta minutos é o intervalo usual de ERP com dado financeiro, e conta <b>inatividade</b>: quem está trabalhando nunca é derrubado, porque a própria atividade renova a sessão. Meia hora sem tocar em nada quer dizer que a pessoa saiu da mesa.
 
 <i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
