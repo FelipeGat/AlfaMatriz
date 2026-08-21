@@ -808,6 +808,14 @@
                 // segue a mesma capacidade de priorizar e direcionar.
                 podeTriar: {{ auth()->user()?->podeTriarTarefas() ? 'true' : 'false' }},
 
+                // Quem só LÊ o quadro — o painel de parede. Aqui, e não em
+                // cada atalho: `aoTeclar` decide seis teclas com esta resposta,
+                // e uma condicional de Blade por tecla deixaria o mapa
+                // ilegível. (Sem escrever a diretiva por extenso neste
+                // comentário: o Blade a compila mesmo dentro de comentário de
+                // JavaScript, e o resultado é um erro de sintaxe em PHP.)
+                podeMexer: {{ auth()->user()?->podeMexerNoQuadro() ? 'true' : 'false' }},
+
                 // A etapa que o celular está mostrando. No quadro largo ela não
                 // faz nada: quem esconde as outras é o CSS, por media query.
                 etapaMobile: @json($etapas[0]['chave'] ?? 'aberta'),
@@ -1391,15 +1399,26 @@
                             document.querySelector('input[name="busca"]')?.focus();
                         },
                         '?': () => (this.atalhosAbertos = ! this.atalhosAbertos),
-                        n: () => this.$dispatch('open-modal', 'nova-tarefa'),
-                        c: () => document.querySelector('[data-criacao-rapida]')?.focus(),
                         ArrowUp: () => this.andarNaColuna(-1),
                         ArrowDown: () => this.andarNaColuna(1),
-                        ArrowLeft: () => (evento.shiftKey ? this.moverUmaEtapa(-1) : this.andarEntreColunas(-1)),
-                        ArrowRight: () => (evento.shiftKey ? this.moverUmaEtapa(1) : this.andarEntreColunas(1)),
+
+                        // Navegar entre colunas é leitura; com Shift é MOVER, e
+                        // aí depende da capacidade. O painel de parede anda
+                        // pelo quadro e não o remexe.
+                        ArrowLeft: () => (evento.shiftKey && this.podeMexer ? this.moverUmaEtapa(-1) : this.andarEntreColunas(-1)),
+                        ArrowRight: () => (evento.shiftKey && this.podeMexer ? this.moverUmaEtapa(1) : this.andarEntreColunas(1)),
+
+                        // As teclas que escrevem só existem para quem escreve.
+                        // Fora do mapa pelo SERVIDOR, e não desligadas por uma
+                        // condição no cliente: o painel de parede não precisa
+                        // nem receber o código que ele não pode executar.
+                        @if (auth()->user()?->podeMexerNoQuadro())
+                        n: () => this.$dispatch('open-modal', 'nova-tarefa'),
+                        c: () => document.querySelector('[data-criacao-rapida]')?.focus(),
                         Enter: () => this.abrirSelecionado(),
                         m: () => this.abrirMenuDoSelecionado(),
                         b: () => this.travarSelecionado(),
+                        @endif
                     };
 
                     const acao = acoes[tecla] ?? acoes[tecla.toLowerCase?.()];
@@ -2429,7 +2448,23 @@
             // teclado e a reabertura depois de comentar pedem a mesma coisa, e
             // moram em três lugares que não se enxergam — a partial da coluna,
             // o componente Alpine do quadro e um script solto no fim da página.
+            /*
+             * A porta do detalhe — e o único lugar onde ela se tranca.
+             *
+             * Três lugares dispensam `abrir-tarefa` (o card, a tabela de raias
+             * e a lista de subtarefas) e todos passam por aqui. Trancar no
+             * ouvinte, e não em cada um deles, é o que garante que o quarto
+             * lugar a nascer já venha trancado.
+             *
+             * Trancado para quem só LÊ o quadro, porque o detalhe é um
+             * FORMULÁRIO DE EDIÇÃO: dez campos, comentários, checklist, anexos
+             * e subtarefas. Não existe versão dele em que os controles estejam
+             * escondidos — existiria uma OUTRA tela, e ela não foi pedida. No
+             * painel de parede o card é o que se lê, e é o que basta.
+             */
+            @if (auth()->user()?->podeMexerNoQuadro())
             window.addEventListener('abrir-tarefa', (evento) => abrirTarefa(evento.detail));
+            @endif
 
             /**
              * O formulário INTEIRO de subtarefa, com a mãe amarrada.

@@ -10,6 +10,10 @@
      * A etapa atual é o evento de `tarefa_eventos` ainda sem saída; tarefa que
      * nunca se moveu (sem evento nenhum) conta a partir da criação.
      */
+    // O painel de parede vê o card e não mexe nele. Uma pergunta por card, e
+    // o cache de permissão da requisição responde às 62 sem ir ao banco.
+    $podeMexer = auth()->user()?->podeMexerNoQuadro() ?? false;
+
     $eventoAberto = $tarefa->eventos->firstWhere('saiu_em', null);
     $entrouNaEtapaEm = $eventoAberto?->entrou_em ?? $tarefa->created_at;
     $segundosNaEtapa = $entrouNaEtapaEm->diffInSeconds(now());
@@ -307,7 +311,7 @@
             {{-- Responder abre o campo NO CARD: a resposta de uma dúvida é
                  curta, e obrigar a abrir a tarefa para escrever duas linhas é o
                  atrito que faz a pergunta ficar sem resposta. --}}
-            @if ($tarefa->esperaRespostaDe(auth()->user()))
+            @if ($podeMexer && $tarefa->esperaRespostaDe(auth()->user()))
                 <div x-data="{ respondendo: false }" @click.stop>
                     <button type="button" x-show="! respondendo"
                             @click="respondendo = true; $nextTick(() => $refs.resposta.focus())"
@@ -486,6 +490,7 @@
                 <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] truncate"
                       style="color: rgb(var(--bloqueio))">{{ $tarefa->rotuloDoBloqueio() }}</span>
 
+                @if ($podeMexer)
                 <form method="POST" data-parcial action="{{ route('tarefas.bloquear', $tarefa) }}" @click.stop>
                     @csrf
                     <button type="submit" title="Destravar tarefa" aria-label="Destravar tarefa"
@@ -494,6 +499,7 @@
                         <span class="h-[11px] w-[11px]"><x-nav-icon name="cadeado-aberto" :peso="1.9" /></span>
                     </button>
                 </form>
+                @endif
             </div>
 
             <p class="mt-1 text-[11.5px] leading-[1.4] text-ink line-clamp-2" title="{{ $tarefa->bloqueio_motivo }}">
@@ -555,6 +561,7 @@
                  clique, e sem isso carimbar abriria o modal por cima do gesto.
                  `data-parcial` redesenha o quadro no lugar, mantendo a rolagem
                  da coluna — o mesmo motivo do Responder. --}}
+            @if ($podeMexer)
             <div x-data="{ reprovando: false }" @click.stop class="mt-2">
                 <div x-show="! reprovando" class="flex gap-1.5">
                     <form method="POST" data-parcial action="{{ route('tarefas.testar', $tarefa) }}" class="flex-1">
@@ -602,6 +609,7 @@
                     </div>
                 </form>
             </div>
+            @endif
         @endif
     @endif
 
@@ -731,6 +739,7 @@
             quase nunca funciona ensina a não clicar em nenhum.
         --}}
         <div class="shrink-0 ml-auto flex items-center gap-1">
+            @if ($podeMexer)
             @unless ($bloqueada)
                 {{-- Abre o painel em vez de enviar: travar exige o motivo, e um
                      POST daqui seria recusado com uma frase que ninguém pediu. --}}
@@ -764,6 +773,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                     </svg>
                 </button>
+            @endif
             @endif
         </div>
     </div>
