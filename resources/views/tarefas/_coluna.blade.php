@@ -119,7 +119,8 @@
             @endphp
 
             <div x-data="{ menuAberto: false, destino: '{{ $transicoes[0] ?? '' }}' }"
-                 draggable="{{ $impedimento ? 'false' : 'true' }}"
+                 {{-- O painel de parede olha e não arrasta. --}}
+                 draggable="{{ $impedimento || ! auth()->user()?->podeMexerNoQuadro() ? 'false' : 'true' }}"
                  @if ($impedimento) title="{{ $impedimento }}" @endif
                  data-tarefa="{{ $tarefa->id }}"
                  {{-- Os mesmos dados do arraste, legíveis pelo teclado: quem

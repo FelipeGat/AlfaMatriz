@@ -441,19 +441,26 @@
         </div>
 
         <dl class="mt-3 space-y-1.5">
-            @foreach ([
+            {{-- A legenda acompanha o teclado: as seis teclas que escrevem
+                 saem daqui para quem só lê o quadro, pelo mesmo motivo que
+                 saem do mapa de ações. Uma lista que promete tecla que não
+                 responde é pior do que lista curta — ensina que o teclado
+                 quebrou. --}}
+            @foreach (array_merge([
                 '↑ ↓' => 'Anda pelos cards da coluna',
                 '← →' => 'Troca de coluna',
+            ], auth()->user()?->podeMexerNoQuadro() ? [
                 '⇧ ← →' => 'Move a tarefa de etapa',
                 'B' => 'Bloqueia ou destrava',
                 'M' => 'Abre o menu de mover',
                 'Enter' => 'Abre a tarefa',
                 'C' => 'Criação rápida',
                 'N' => 'Nova tarefa (formulário)',
+            ] : [], [
                 '/' => 'Busca',
                 'Esc' => 'Fecha o que estiver aberto',
                 '?' => 'Mostra esta lista',
-            ] as $tecla => $oQueFaz)
+            ]) as $tecla => $oQueFaz)
                 <div class="flex items-center gap-3">
                     <dt class="shrink-0 w-[72px] font-mono text-[11px] text-ink-dim">{{ $tecla }}</dt>
                     <dd class="text-[12.5px] text-ink-mute">{{ $oQueFaz }}</dd>

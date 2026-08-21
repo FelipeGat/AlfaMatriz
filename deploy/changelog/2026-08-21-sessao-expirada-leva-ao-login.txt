@@ -31,6 +31,8 @@
 
 • <b>Agora existe o perfil "Exibição".</b> Ele só enxerga o quadro, e <b>só para ler</b>: sem criar, sem editar, sem excluir. A sessão dele não expira por inatividade, porque o que fica exposto na parede é uma conta que não alcança nada além do quadro. É o mesmo desenho do modo quiosque do Grafana e do wallboard do Jira.
 
-• <b>Como usar:</b> cadastre uma conta em Usuários e permissões, dê a ela o perfil Exibição, e deixe-a aberta no monitor da sala. Ela entra direto no quadro, o menu dela tem duas linhas, e os botões de criar tarefa nem aparecem.
+• <b>O quadro dela é de leitura, e leitura inteira.</b> Nenhum card arrasta, nenhum botão de bloquear, concluir, mover ou carimbar veredito aparece, a criação rápida some das colunas, os atalhos que escrevem saem do teclado e da legenda do <code>?</code>, e clicar num card não abre nada — o detalhe é um formulário de edição, e no monitor da sala não há por que oferecê-lo. Fica o quadro: número, título, prioridade, responsável, idade e as tarjas.
+
+• <b>Como usar:</b> cadastre uma conta em Usuários e permissões, dê a ela o perfil Exibição, e deixe-a aberta no monitor da sala. Ela entra direto no quadro e o menu dela tem duas linhas.
 
 <i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

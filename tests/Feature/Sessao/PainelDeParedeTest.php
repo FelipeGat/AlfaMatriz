@@ -3,6 +3,7 @@
 namespace Tests\Feature\Sessao;
 
 use App\Models\Perfil;
+use App\Models\Tarefa;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -95,6 +96,63 @@ class PainelDeParedeTest extends TestCase
 
         $comum->assertSee('+ Nova tarefa');
         $comum->assertSee('+ nova tarefa · Enter para criar');
+    }
+
+    /**
+     * O quadro dela é de LEITURA — nenhum gesto de escrita chega à tela.
+     *
+     * Com uma tarefa de verdade no quadro: sem card, as asserções passariam
+     * por vacuidade e o teste diria "trancado" sobre uma tela vazia.
+     */
+    public function test_o_card_dela_nao_tem_nenhum_gesto_de_escrita(): void
+    {
+        Tarefa::factory()->create(['status' => 'aberta']);
+
+        $exibicao = $this->actingAs($this->contaDeExibicao())->get('/tarefas');
+
+        $exibicao->assertOk();
+        $exibicao->assertSee('Quadro de tarefas');
+
+        // Os botões do card — pelo `aria-label`, e não pelo texto solto: o
+        // rótulo "Bloquear tarefa" também vive num objeto de JavaScript do
+        // painel de motivo, que ela não tem como abrir. Asserção frouxa ali
+        // reprovaria por um dado que não é botão.
+        $exibicao->assertDontSee('aria-label="Bloquear tarefa"', false);
+        $exibicao->assertDontSee('aria-label="Concluir tarefa"', false);
+        $exibicao->assertDontSee('aria-label="Mover de etapa"', false);
+
+        // O arraste.
+        $exibicao->assertDontSee('draggable="true"', false);
+
+        // A porta do detalhe — o modal é um formulário de EDIÇÃO, e o ouvinte
+        // é o único caminho até ele.
+        $exibicao->assertDontSee("addEventListener('abrir-tarefa'", false);
+
+        // Os atalhos que escrevem — o VÍNCULO da tecla, não a existência do
+        // método: ele continua definido no componente, e é só a tecla que
+        // deixa de chamá-lo.
+        $exibicao->assertDontSee('b: () => this.travarSelecionado()', false);
+        $exibicao->assertDontSee('m: () => this.abrirMenuDoSelecionado()', false);
+        $exibicao->assertDontSee("n: () => this.\$dispatch('open-modal', 'nova-tarefa')", false);
+
+        // E a legenda do `?` acompanha: lista que promete tecla morta ensina
+        // que o teclado quebrou.
+        $exibicao->assertDontSee('Bloqueia ou destrava');
+    }
+
+    /** O portão é a permissão — quem pode mexer continua com tudo. */
+    public function test_e_quem_pode_mexer_continua_com_tudo(): void
+    {
+        Tarefa::factory()->create(['status' => 'aberta']);
+
+        $comum = $this->actingAs(User::factory()->create())->get('/tarefas');
+
+        $comum->assertSee('aria-label="Bloquear tarefa"', false);
+        $comum->assertSee('aria-label="Mover de etapa"', false);
+        $comum->assertSee('draggable="true"', false);
+        $comum->assertSee("addEventListener('abrir-tarefa'", false);
+        $comum->assertSee('b: () => this.travarSelecionado()', false);
+        $comum->assertSee('Bloqueia ou destrava');
     }
 
     public function test_o_relogio_de_ociosidade_nao_roda_nela(): void

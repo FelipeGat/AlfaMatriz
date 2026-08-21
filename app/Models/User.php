@@ -323,6 +323,25 @@ class User extends Authenticatable
      * Lê pela relação já carregada, como `ehAdmin`: a pergunta é feita uma vez
      * por página, na moldura.
      */
+    /**
+     * Pode MEXER no quadro — ou só olhar?
+     *
+     * A pergunta nasceu com o perfil de exibição, o primeiro de LEITURA do
+     * sistema: até ele, todo mundo que enxergava o quadro podia escrever nele,
+     * e por isso nenhum botão precisava perguntar. Um método nomeado, e não um
+     * `canPermissao` copiado por aí, porque a resposta decide arraste, abertura
+     * do detalhe, veredito, resposta de pergunta e destrave — seis lugares, e
+     * um esquecido é um botão que a rota vai recusar.
+     *
+     * `editar` e não `incluir`: mover card, responder e carimbar veredito mexem
+     * no que já existe. Criar tarefa é outra pergunta, e ela é feita com
+     * `incluir` onde a porta de criar aparece.
+     */
+    public function podeMexerNoQuadro(): bool
+    {
+        return $this->canPermissao('tarefas', 'editar');
+    }
+
     public function ehContaDeExibicao(): bool
     {
         return $this->perfis->contains(fn ($perfil) => (bool) $perfil->nao_expira_por_ociosidade);
