@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\SessaoController;
 use App\Http\Middleware\CabecalhosDeSeguranca;
 use App\Http\Middleware\ChecarPermissao;
 use App\Http\Middleware\ContaAtiva;
@@ -65,6 +66,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return redirect()->route('login')
                 ->withInput($request->except('password', '_token'))
-                ->withErrors(['sessao' => 'Sua sessão expirou por inatividade. Entre novamente.']);
+                ->withErrors(['sessao' => SessaoController::AVISO_DE_EXPIRACAO]);
         });
     })->create();

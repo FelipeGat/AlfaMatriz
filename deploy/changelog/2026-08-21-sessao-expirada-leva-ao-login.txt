@@ -1,0 +1,24 @@
+<b>📋 AlfaMatriz — Changelog 21/08/2026</b>
+<i>A sessão vencida deixou de ser um beco: agora ela avisa antes e leva ao login sozinha</i>
+
+<b>🔐 O painel aberto que já não estava mais logado</b>
+
+• <b>O problema.</b> A página é desenhada uma vez e fica aberta; a sessão, não — ela continua correndo no servidor e vence sozinha. Quando isso acontecia, a tela não sabia de nada: os botões continuavam ali, o quadro de Tarefas continuava mostrando cards, tudo com cara de funcionando. O primeiro clique é que devolvia uma faixa vermelha pedindo para atualizar a página — e a atualização era na mão.
+
+• <b>Agora qualquer ação que esbarre na sessão vencida leva direto ao login</b>, já dizendo por quê: <i>"Sua sessão expirou por inatividade. Entre novamente."</i> Sem faixa de erro, sem F5. Vale para tudo — mover um card, marcar um item do checklist, comentar, anexar arquivo, abrir uma tarefa.
+
+• <b>No quadro de Tarefas isso é automático de verdade.</b> Ele pergunta ao servidor a cada trinta segundos por conta própria, então a volta ao login sai em até meio minuto — ou na hora, ao voltar para a aba. Ninguém precisa clicar em nada para descobrir.
+
+<b>⏱️ O aviso antes de derrubar</b>
+
+• <b>Um minuto antes de encerrar, aparece um aviso</b> com a contagem regressiva e dois botões: <b>Continuar conectado</b>, que renova a sessão sem sair da tela e sem perder nada do que está aberto, e <b>Sair agora</b>. Sem resposta, a tela vai para o login por conta própria — isso passou a valer em <b>qualquer tela</b>, não só nas que conversam com o servidor.
+
+• <b>O relógio conta a inatividade da PESSOA</b>, mouse e teclado, não requisição. A diferença importa: o quadro de Tarefas se atualiza sozinho a cada trinta segundos e, se valesse a requisição, ele seguraria a sessão de pé para sempre numa tela esquecida aberta — que é justamente o caso em que o prazo existe.
+
+• <b>Com o aviso na tela, mexer o mouse não conta.</b> Só o clique. É o único momento em que "ainda estou aqui" precisa ser deliberado: um esbarrão na mesa não pode segurar de pé a sessão de uma máquina abandonada.
+
+• <b>Duas abas abertas não brigam.</b> A aba parada não derruba a que está sendo usada — as duas enxergam a mesma atividade.
+
+• <b>O prazo continua o de sempre: duas horas.</b> O aviso nasce dele, não de um número escolhido à parte; mudando o prazo, os dois andam juntos.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
