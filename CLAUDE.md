@@ -145,11 +145,19 @@ antes de escrever CSS**. As quatro que mais se repetiram:
 
 ## Publicar o changelog
 
-O procedimento vale para todos os sistemas Alfa, mas mora num repo só:
-**`~/dev/AlfaControl/CLAUDE.md`, seção do Telegram.** Lá estão o token do bot, o `chat_id` do grupo
-"Alfa Solucoes Alertas" e o formato — HTML com `<b>`/`<i>`, primeira linha
+O procedimento vale para todos os sistemas Alfa. O formato é HTML do Telegram com `<b>`/`<i>`, primeira linha
 `<b>📋 AlfaMatriz — Changelog DD/MM/AAAA</b>`, emojis por seção, assinatura no fim, e divisão em
-partes autocontidas acima de ~4096 caracteres. Não duplique o token aqui.
+partes autocontidas acima de ~4096 caracteres.
+
+**O token mora no chaveiro do macOS** (`alfa-telegram-bot` / `changelog`) desde 21/08/2026, e o
+`chat_id` está no próprio script. Não duplique o token aqui. Para saber de onde ele está saindo — e
+se ainda funciona — rode `deploy/publicar-changelog.sh --fonte`; para movê-lo de outra fonte para o
+chaveiro, `--guardar`.
+
+Ele já morou só no `CLAUDE.md` do AlfaControl, que é ignorado pelo git: um `git rm` em 17/07/2026 o
+levou junto e a publicação parou de funcionar sem avisar ninguém — só se descobriu em 21/08, no dia
+em que alguém tentou publicar. O script ainda lê aquele arquivo como último recurso, e avisa quando
+o usa.
 
 Procurar neste repo, nos servidores ou nos containers **não acha nada**: o `.spec` lista o envio como
 trabalho futuro, e os únicos Telegram que aparecem na infra são canais de alerta de backup e de LGPD,
@@ -162,8 +170,9 @@ de outros sistemas.
   `deploy/changelog/AAAA-MM-DD-assunto.txt` — HTML do Telegram, partes separadas por uma linha com
   apenas `---` — e rode `deploy/publicar-changelog.sh --conferir <arquivo>` para ver sem enviar, ou
   sem o `--conferir` para enviar. O script já confere o limite de 4096 ANTES de mandar qualquer
-  parte, confere `"ok":true` no corpo da resposta, e extrai o token do AlfaControl na hora de rodar,
-  em vez de guardá-lo. Remontar o `curl` significa reescolher o chat, reescrever a checagem de erro e
+  parte, confere `"ok":true` no corpo da resposta, e busca o token em quatro lugares na ordem
+  (`$ALFA_TELEGRAM_TOKEN`, chaveiro, `~/.config/alfa/telegram.env`, AlfaControl), dizendo em voz
+  alta qual deles usou. Remontar o `curl` significa reescolher o chat, reescrever a checagem de erro e
   redescobrir o limite — três coisas que só se erram uma vez em produção.
 - **O envio sai direto daqui.** Esta seção já mandou pedir `! bash <script>` ao dono do produto,
   dizendo que o classificador recusava. Em 13/08/2026 o envio saiu sem recusa nenhuma, e a orientação
