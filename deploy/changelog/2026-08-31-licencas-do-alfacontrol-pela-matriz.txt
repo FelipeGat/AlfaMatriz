@@ -1,0 +1,18 @@
+<b>📋 AlfaMatriz — Changelog 31/08/2026</b>
+<i>A licença do AlfaControl agora se opera da Matriz — liberar, renovar, suspender e reativar, com trava contra o clique em dado velho</i>
+
+<b>🔑 Licenças do AlfaControl no painel da Matriz</b>
+
+• <b>O que mudou.</b> Até aqui a Matriz só ENXERGAVA as licenças do AlfaControl — o espelho roda de hora em hora; operar era só no painel dele. Agora os quatro botões que já existiam para o AlfaGym valem também para o AlfaControl: <b>liberar</b>, <b>renovar</b>, <b>suspender</b> e <b>reativar</b>, direto no cadastro do cliente.
+
+• <b>Mesma licença, mesmo lugar.</b> A licença liberada pela Matriz não é "outra": cai na mesma tabela, com as mesmas regras do painel do AlfaControl — inclusive as credenciais do agente AlfaSync, geradas na hora se ainda não existirem.
+
+• <b>Suspender é imediato e reversível.</b> Suspender congela o cliente no AlfaControl: o login de todos os usuários do condomínio para de funcionar na hora, e a vigência contratada continua correndo. Reativar desfaz. Cada operação fica na auditoria e a revenda do cliente é avisada — como já era no AlfaGym.
+
+<b>🛡️ A trava contra o clique em dado velho</b>
+
+• <b>O risco que existia.</b> A tela da Matriz mostra o retrato do último ciclo — até uma hora atrás. Se alguém renovasse no painel do AlfaControl e, minutos depois, um admin da Matriz renovasse de novo olhando o dado velho, o cliente ganharia DOIS períodos e duas cobranças.
+
+• <b>Agora o AlfaControl recusa.</b> Renovar uma licença que já não é a vigente volta com o aviso de qual é a atual, sem executar nada. O mesmo vale para suspender quem não está ativo e para reativar quem não está suspenso: operação sobre dado velho é recusada com o motivo, nunca executada por cima.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

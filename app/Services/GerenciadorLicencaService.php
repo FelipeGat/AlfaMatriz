@@ -41,7 +41,7 @@ class GerenciadorLicencaService
         $idExterno = $cliente->idExternoNoSistema($this->sistema);
 
         if ($idExterno === null) {
-            throw new \RuntimeException('Cliente não está ancorado no AlfaGym; não há licença para liberar.');
+            throw new \RuntimeException("Cliente não está ancorado no {$this->sistema->nome}; não há licença para liberar.");
         }
 
         return $this->auditando($cliente, 'liberar', function () use ($idExterno, $dados, $cliente) {
@@ -69,7 +69,7 @@ class GerenciadorLicencaService
         $idExternoLicenca = $this->idExternoLicenca($cliente);
 
         if ($idExternoLicenca === null) {
-            throw new \RuntimeException('Cliente não possui licença no AlfaGym para renovar.');
+            throw new \RuntimeException("Cliente não possui licença no {$this->sistema->nome} para renovar.");
         }
 
         return $this->auditando($cliente, 'renovar', function () use ($idExternoLicenca, $dados, $cliente) {
@@ -113,7 +113,7 @@ class GerenciadorLicencaService
         $idExternoLicenca = $this->idExternoLicenca($cliente);
 
         if ($idExternoLicenca === null) {
-            throw new \RuntimeException('Cliente não possui licença no AlfaGym para '.$acao.'.');
+            throw new \RuntimeException("Cliente não possui licença no {$this->sistema->nome} para {$acao}.");
         }
 
         return $this->auditando($cliente, $acao, function () use ($idExternoLicenca, $acao, $cliente) {
