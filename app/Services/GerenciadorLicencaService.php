@@ -48,7 +48,9 @@ class GerenciadorLicencaService
             $resposta = $this->post('/licencas', [
                 'cliente_id_externo' => $idExterno,
                 'tipo' => $dados['tipo'],
-                'valor' => $dados['valor'],
+                // `nullable` validado some do array quando o campo não vem no
+                // request — sem o ?? seria um 500 por chave ausente.
+                'valor' => $dados['valor'] ?? null,
                 'obs' => $dados['obs'] ?? null,
             ]);
 
@@ -75,7 +77,7 @@ class GerenciadorLicencaService
         return $this->auditando($cliente, 'renovar', function () use ($idExternoLicenca, $dados, $cliente) {
             $resposta = $this->post("/licencas/{$idExternoLicenca}/renovar", [
                 'tipo' => $dados['tipo'],
-                'valor' => $dados['valor'],
+                'valor' => $dados['valor'] ?? null,
                 'obs' => $dados['obs'] ?? null,
             ]);
 

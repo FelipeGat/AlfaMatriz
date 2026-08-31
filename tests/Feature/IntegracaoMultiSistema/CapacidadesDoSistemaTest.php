@@ -78,17 +78,19 @@ class CapacidadesDoSistemaTest extends TestCase
     }
 
     /**
-     * @spec:AC-157 Na Fase 1 o AlfaControl só lê: quem opera revenda, cliente
-     * e licença continua sendo o painel dele.
+     * @spec:AC-157 O AlfaControl saiu da fase só-leitura em 31/08/2026: lê e
+     * gerencia licença pela Matriz. Cadastro (revenda/cliente) continua sendo
+     * do painel dele — provisionar segue fora.
      */
-    public function test_alfacontrol_na_fase_1_so_le(): void
+    public function test_alfacontrol_gerencia_licenca_mas_nao_provisiona(): void
     {
         $alfacontrol = Sistema::factory()->alfacontrol()->create();
 
         $this->assertTrue($alfacontrol->suporta('sincroniza'));
         $this->assertTrue($alfacontrol->suporta('sincroniza_modulos'));
+        $this->assertTrue($alfacontrol->suporta('sincroniza_licencas'));
+        $this->assertTrue($alfacontrol->suporta('gerencia_licenca'));
 
-        $this->assertFalse($alfacontrol->suporta('gerencia_licenca'));
         $this->assertFalse($alfacontrol->suporta('provisiona_revenda'));
         $this->assertFalse($alfacontrol->suporta('provisiona_cliente'));
         $this->assertFalse($alfacontrol->suporta('exige_admin_no_cliente'));
@@ -110,8 +112,13 @@ class CapacidadesDoSistemaTest extends TestCase
         );
 
         $this->assertSame(
+            ['alfacontrol', 'alfagym'],
+            Sistema::comCapacidade('gerencia_licenca')->pluck('slug')->sort()->values()->all()
+        );
+
+        $this->assertSame(
             ['alfagym'],
-            Sistema::comCapacidade('gerencia_licenca')->pluck('slug')->all()
+            Sistema::comCapacidade('provisiona_cliente')->pluck('slug')->all()
         );
     }
 
