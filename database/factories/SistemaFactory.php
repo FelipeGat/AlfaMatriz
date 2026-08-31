@@ -56,8 +56,10 @@ class SistemaFactory extends Factory
     }
 
     /**
-     * O AlfaControl na Fase 1: só leitura. Quem opera revenda, cliente,
-     * licença e módulo continua sendo o painel dele.
+     * O AlfaControl como está em produção desde 31/08/2026: espelho de licença
+     * ligado (a renovação que encadeava ativas foi corrigida na origem) e
+     * gerenciamento pela Matriz. Teste que precisa de um sistema SEM essas
+     * capacidades deve dizê-lo explicitamente, não contar com este estado.
      */
     public function alfacontrol(): static
     {
@@ -66,7 +68,10 @@ class SistemaFactory extends Factory
             'slug' => 'alfacontrol',
             'unidade_cobranca' => 'condomínio ativo',
             'base_url' => 'https://control.alfasolucoes.cloud',
-            'capacidades' => ['sincroniza', 'sincroniza_modulos', 'sincroniza_uso'],
+            'capacidades' => [
+                'sincroniza', 'sincroniza_modulos', 'sincroniza_uso',
+                'sincroniza_licencas', 'gerencia_licenca',
+            ],
         ]);
     }
 

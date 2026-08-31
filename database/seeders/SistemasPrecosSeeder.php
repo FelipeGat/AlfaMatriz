@@ -46,14 +46,16 @@ class SistemasPrecosSeeder extends Seeder
             [
                 'nome' => 'AlfaControl', 'slug' => 'alfacontrol', 'categoria' => 'saas',
                 'unidade_cobranca' => 'condomínio ativo',
-                // Fase 1 da implantação: a Matriz só lê. Revenda, cliente,
-                // licença e módulo continuam sendo operados no painel do AlfaControl.
-                //
-                // Sem `sincroniza_licencas`: renovar no AlfaControl encadeia
-                // licenças ativas em vez de substituir a anterior, e espelhar
-                // esse retrato faria a Matriz faturar em cima do defeito.
-                // Ligar quando a origem estiver corrigida.
-                'capacidades' => ['sincroniza', 'sincroniza_modulos', 'sincroniza_uso'],
+                // A implantação venceu a fase só-leitura: a renovação que
+                // encadeava licenças ativas foi corrigida na origem (o
+                // `expirarAtivasDoCliente` de lá garante uma vigente só), o
+                // espelho de licenças ligou em produção, e a escrita do
+                // contrato entrou em 31/08/2026 — o mesmo conjunto que as
+                // migrações de 31/08 gravam num banco já semeado.
+                'capacidades' => [
+                    'sincroniza', 'sincroniza_modulos', 'sincroniza_uso',
+                    'sincroniza_licencas', 'gerencia_licenca',
+                ],
                 'tiers' => [
                     ['nome' => 'Start', 'preco_base' => 99.00, 'unidades_inclusas' => 5, 'limite_unidades' => 5, 'ordem' => 1],
                     ['nome' => 'Growth', 'preco_base' => 299.00, 'unidades_inclusas' => 20, 'limite_unidades' => 20, 'ordem' => 2],

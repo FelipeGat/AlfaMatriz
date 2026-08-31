@@ -30,7 +30,14 @@ class LicencaPorSistemaTest extends TestCase
         parent::setUp();
 
         $this->gym = Sistema::factory()->alfagym()->create(['token' => 'chave-gym']);
-        $this->control = Sistema::factory()->alfacontrol()->create(['token' => 'chave-control']);
+
+        // O fixture modela a CONDIÇÃO de implantação (Matriz lê, não opera) —
+        // que o AlfaControl real já venceu. Por isso as capacidades são ditas
+        // aqui, em vez de herdar o estado de fábrica, que hoje gerencia.
+        $this->control = Sistema::factory()->alfacontrol()->create([
+            'token' => 'chave-control',
+            'capacidades' => ['sincroniza', 'sincroniza_modulos', 'sincroniza_uso'],
+        ]);
 
         $revenda = Revenda::create(['nome' => 'Invest Soluções', 'ativo' => true]);
 

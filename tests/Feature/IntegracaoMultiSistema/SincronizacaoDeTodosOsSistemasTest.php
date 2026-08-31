@@ -142,14 +142,19 @@ class SincronizacaoDeTodosOsSistemasTest extends TestCase
      * @spec:AC-164 Sistema sem `sincroniza_licencas` tem revenda e cliente
      * sincronizados, mas a licença não é lida.
      *
-     * O AlfaControl está nesse estado: renovar lá encadeia licenças ativas em
-     * vez de substituir a anterior. Espelhar esse retrato faria a Matriz herdar
-     * o defeito e — pior — faturar em cima dele. O cliente aparece na lista sem
-     * estado de licença, que é honesto, em vez de aparecer com um estado errado.
+     * Era o estado do AlfaControl na implantação (a renovação de lá encadeava
+     * licenças ativas, e espelhar o retrato faria a Matriz faturar em cima do
+     * defeito). A origem foi corrigida e a capacidade ligou em 31/08/2026 —
+     * mas o critério é sobre a CAPACIDADE, não sobre o produto: um sistema
+     * novo entra só-leitura de novo, então o fixture diz isso explicitamente
+     * em vez de contar com o estado de fábrica de alguém.
      */
     public function test_licenca_nao_e_lida_sem_a_capacidade(): void
     {
-        $control = Sistema::factory()->alfacontrol()->create(['token' => 'chave-control']);
+        $control = Sistema::factory()->alfacontrol()->create([
+            'token' => 'chave-control',
+            'capacidades' => ['sincroniza', 'sincroniza_modulos', 'sincroniza_uso'],
+        ]);
 
         $this->assertFalse($control->suporta('sincroniza_licencas'));
 
@@ -190,7 +195,11 @@ class SincronizacaoDeTodosOsSistemasTest extends TestCase
      */
     public function test_desligar_a_leitura_apaga_o_retrato_que_sobrou(): void
     {
-        $control = Sistema::factory()->alfacontrol()->create(['token' => 'chave-control']);
+        // "Desligada" dita explicitamente: o estado de fábrica hoje LÊ licença.
+        $control = Sistema::factory()->alfacontrol()->create([
+            'token' => 'chave-control',
+            'capacidades' => ['sincroniza', 'sincroniza_modulos', 'sincroniza_uso'],
+        ]);
 
         $cliente = \App\Models\Cliente::create(['nome' => 'Condomínio', 'ativo' => true]);
         $cliente->sistemas()->attach($control->id, [
