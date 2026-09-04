@@ -236,6 +236,21 @@ no_host "pct push $VMID /tmp/php-alfamatriz.ini /etc/php/8.2/fpm/conf.d/99-alfam
 no_host "pct push $VMID /tmp/php-alfamatriz.ini /etc/php/8.2/cli/conf.d/99-alfamatriz.ini"
 no_container "systemctl reload php8.2-fpm"
 
+# A unit do pacote não tem Restart=: se a subida estourar o tempo (aconteceu
+# em 03/09/2026, com o host reiniciando os 14 containers de uma vez), o
+# php-fpm fica morto até alguém entrar à mão, com nginx e banco de pé. O
+# porquê dos valores está no próprio arquivo. `daemon-reload` basta: o
+# override vale na próxima subida e não mexe no serviço que está no ar.
+info "instalando override do systemd para o php-fpm (folga na subida + retentativa)"
+if [[ "$LOCAL" -eq 1 ]]; then
+    cp "$(dirname "$0")/php8.2-fpm-override.conf" /tmp/php8.2-fpm-override.conf
+else
+    scp -o BatchMode=yes "$(dirname "$0")/php8.2-fpm-override.conf" "$HOST:/tmp/php8.2-fpm-override.conf"
+fi
+no_container "mkdir -p /etc/systemd/system/php8.2-fpm.service.d"
+no_host "pct push $VMID /tmp/php8.2-fpm-override.conf /etc/systemd/system/php8.2-fpm.service.d/override.conf"
+no_container "systemctl daemon-reload"
+
 # -------------------------------------------------------------------- nginx
 
 info "instalando configuração do Nginx"
