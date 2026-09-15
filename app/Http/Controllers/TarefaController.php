@@ -282,16 +282,47 @@ class TarefaController extends Controller
 
         $raias = $this->raias($request, $tarefas, $emCurso, $filtros);
 
-        $chips = $this->chipsDoQuadro($emCurso, $filtros, $esperandoVoce);
+        $chips = $this->chipsDoQuadro($request, $emCurso, $filtros, $esperandoVoce);
 
         $comoTabela = $this->raiaViraTabela($request, $raias, $filtros);
 
         $recortes = $this->filtrosAtivos($filtros);
 
+        // Os endereços do cabeçalho do quadro saem daqui, e não de
+        // `request()->fullUrlWithQuery()` dentro da partial (ver `linkDoQuadro`).
+        $linkDoQuadro = fn (array $trocas) => $this->linkDoQuadro($request, $trocas);
+
         return compact(
             'tarefas', 'colunas', 'etapas', 'filtros', 'totalNoQuadro', 'totalBloqueadas',
-            'esperandoVoce', 'chips', 'raias', 'comoTabela', 'recortes',
+            'esperandoVoce', 'chips', 'raias', 'comoTabela', 'recortes', 'linkDoQuadro',
         ) + $this->listasDeFiltro();
+    }
+
+    /**
+     * O endereço do QUADRO com o recorte trocado.
+     *
+     * `request()->fullUrlWithQuery()` é o natural para isto e estava errado
+     * aqui: ele parte da URL da REQUISIÇÃO CORRENTE, e o `_quadro` é desenhado
+     * em três requisições diferentes. Ao abrir a tela ela é o próprio quadro e
+     * tudo funciona; na resposta parcial de uma ação ela é a rota da AÇÃO, e o
+     * ✕ da pílula de recorte nascia apontando para `/tarefas/5/mover` — clicar
+     * depois de mover um card devolvia 405, porque a rota só aceita POST. Na
+     * atualização automática ela é `/tarefas/atualizacoes`, e o mesmo clique
+     * despejava o JSON do endpoint na tela.
+     *
+     * A base passa a ser a tela; o recorte continua viajando na query string,
+     * que é o que chega no `fetch` das ações (`form.action + location.search`).
+     * A `assinatura` fica de fora: ela é do transporte da atualização
+     * automática, não do recorte, e seguiria colada em todo link do cabeçalho.
+     *
+     * @param  array<string, mixed>  $trocas
+     */
+    private function linkDoQuadro(Request $request, array $trocas): string
+    {
+        return route('tarefas.index', array_merge(
+            Arr::except($request->query(), 'assinatura'),
+            $trocas,
+        ));
     }
 
     /**
@@ -315,7 +346,7 @@ class TarefaController extends Controller
      * @param  array<string, string>  $filtros
      * @return list<array<string, string>>
      */
-    private function chipsDoQuadro($emCurso, array $filtros, int $esperandoVoce): array
+    private function chipsDoQuadro(Request $request, $emCurso, array $filtros, int $esperandoVoce): array
     {
         $noQuadro = fn () => Tarefa::whereIn('status', $emCurso->keys());
 
@@ -360,7 +391,7 @@ class TarefaController extends Controller
             ],
         ];
 
-        $chips = array_map(function (array $chip) use ($filtros) {
+        $chips = array_map(function (array $chip) use ($request, $filtros) {
             $ligado = ($filtros['situacao'] ?? '') === $chip['chave'];
 
             return [
@@ -377,7 +408,7 @@ class TarefaController extends Controller
                 'total' => $chip['total'],
                 'href' => ($chip['rota'] ?? null) === 'historico'
                     ? route('tarefas.historico')
-                    : request()->fullUrlWithQuery(['situacao' => $ligado ? null : $chip['chave']]),
+                    : $this->linkDoQuadro($request, ['situacao' => $ligado ? null : $chip['chave']]),
             ];
         }, $chips);
 
