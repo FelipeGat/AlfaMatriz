@@ -134,7 +134,11 @@
                      aceita várias ao mesmo tempo, e a pílula de uma não pode
                      levar as outras junto. Nos campos de valor único ele não
                      vem, e o clique tira o parâmetro inteiro como sempre. --}}
-                <a href="{{ request()->fullUrlWithQuery([$recorte['parametro'] => $recorte['valor'] ?? null]) }}"
+                {{-- `$linkDoQuadro` e não `fullUrlWithQuery`: esta partial
+                     também volta em resposta a POST e ao endpoint da
+                     atualização automática, e ali a URL corrente é a da AÇÃO —
+                     o ✕ apontava para `/tarefas/5/mover` e dava 405. --}}
+                <a href="{{ $linkDoQuadro([$recorte['parametro'] => $recorte['valor'] ?? null]) }}"
                    data-tirar-filtro="{{ $recorte['parametro'] }}"
                    title="Tirar este filtro do recorte"
                    class="shrink-0 h-[26px] px-2.5 rounded-badge border border-line flex items-center gap-1.5
@@ -150,7 +154,7 @@
              aparece quando a troca aconteceu — link para o estado em que já se
              está é ruído. --}}
         @if ($comoTabela ?? false)
-            <a href="{{ request()->fullUrlWithQuery(['vista' => 'quadro']) }}"
+            <a href="{{ $linkDoQuadro(['vista' => 'quadro']) }}"
                data-voltar-ao-quadro
                title="Ver como quadro, mantendo o filtro"
                class="shrink-0 h-[26px] px-2.5 rounded-badge border border-line flex items-center gap-1.5
@@ -346,7 +350,7 @@
                      select de filtro faz isso. Link, e não botão, pelo mesmo
                      motivo do controle de raias: cada recorte é um endereço.
                      O estilo é o do "Limpar recorte", que já é o par dele. --}}
-                <a href="{{ request()->fullUrlWithQuery([$raias['modo'] => $faixa['filtro']]) }}"
+                <a href="{{ $linkDoQuadro([$raias['modo'] => $faixa['filtro']]) }}"
                    data-ver-so-a-faixa
                    title="Aplicar o filtro e ver o quadro só com estas tarefas"
                    class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">

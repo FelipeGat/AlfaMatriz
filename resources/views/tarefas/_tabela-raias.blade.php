@@ -45,7 +45,7 @@
                 {{-- A mesma porta da grade (AC-354): daqui o clique soma o
                      filtro desta seção ao recorte que já está ligado, e o
                      conjunto cai no quadro plano do AC-353. --}}
-                <a href="{{ request()->fullUrlWithQuery([$raias['modo'] => $faixa['filtro']]) }}"
+                <a href="{{ $linkDoQuadro([$raias['modo'] => $faixa['filtro']]) }}"
                    data-ver-so-a-faixa
                    title="Aplicar o filtro e ver o quadro só com estas tarefas"
                    class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">

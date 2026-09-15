@@ -1,0 +1,16 @@
+<b>📋 AlfaMatriz — Changelog 15/09/2026</b>
+<i>Tirar um filtro do quadro de Tarefas dava erro 405 — os links do cabeçalho passavam a apontar para o lugar errado depois de qualquer ação</i>
+
+<b>🐛 O ✕ da pílula de recorte que devolvia "405 Method Not Allowed"</b>
+
+• <b>O problema.</b> Com um filtro ligado no quadro de Tarefas — um sistema, uma pessoa, uma prioridade —, cada filtro vira uma pílula no cabeçalho, e o ✕ dela tira só aquele. Clicar nesse ✕ podia devolver uma página de erro do servidor: <i>"Oops! An Error Occurred — The server returned a 405 Method Not Allowed"</i>. Sem aviso, sem recorte, sem quadro: a tela inteira trocada por uma página de erro, e a volta era o botão de voltar do navegador.
+
+• <b>Por que só às vezes.</b> Recém-aberta, a tela funcionava. O erro aparecia depois de <b>mexer em alguma coisa</b> — mover um card, salvar uma tarefa, marcar um item do checklist, comentar — ou simplesmente depois de <b>trinta segundos parado</b>, que é o intervalo em que o quadro se atualiza sozinho. Quem filtrava e clicava no ✕ na sequência não via nada; quem trabalhava um pouco antes de desfazer o recorte, via.
+
+• <b>A causa.</b> O quadro deixou de recarregar a página a cada ação: o que volta do servidor é o quadro redesenhado, trocado no lugar. Só que o cabeçalho montava os endereços dos próprios links a partir do endereço da <b>última conversa com o servidor</b> — que, depois de mover um card, é o endereço da AÇÃO de mover, e não o da tela. O ✕ passava a apontar para "mover a tarefa 5", um endereço que só aceita ser acionado por um formulário; pedi-lo com um clique é justamente o 405.
+
+• <b>Agora os links do cabeçalho apontam sempre para o quadro</b>, levando o recorte junto, tenha o quadro sido desenhado ao abrir a tela, depois de uma ação ou pela atualização automática.
+
+• <b>O mesmo defeito atingia os vizinhos, e os três foram junto:</b> os chips de contagem do cabeçalho (<i>travadas</i>, <i>p/ subir</i>, <i>esperando por você</i>), que são também atalhos de recorte e voltam a cada ação — inclusive ao marcar um item de checklist; o <b>ver como quadro</b>, que devolve a grade sem desfazer o filtro; e o <b>ver só estas</b> de cada faixa, quando as tarefas estão agrupadas em raias.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
