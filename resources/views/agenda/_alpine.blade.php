@@ -14,6 +14,7 @@
             compromissos: inicial.compromissos,
             podeReagendar: inicial.podeReagendar,
             usuarioId: inicial.usuarioId,
+            tarefas: inicial.tarefas,
             hoje: inicial.hoje,
 
             arrastando: null,
@@ -33,6 +34,7 @@
                 data_fim: inicial.hoje, hora_fim: '10:00',
                 duracao_modo: true, duracao_horas: 1,
                 tarefa_id: '', participantes: [],
+                vinculoBusca: '', vinculoAberto: false,
                 conflitos: [], carga: {},
             },
 
@@ -140,6 +142,7 @@
                     data_fim: this.hoje, hora_fim: '10:00',
                     duracao_modo: true, duracao_horas: 1,
                     tarefa_id: '', participantes: [],
+                    vinculoBusca: '', vinculoAberto: false,
                     conflitos: [], carga: {},
                 };
             },
@@ -228,6 +231,45 @@
                 return this.modal.data_fim && this.modal.data_fim !== this.modal.data
                     ? ' (dia seguinte)'
                     : '';
+            },
+
+            /* ---------- vincular tarefa (busca) ---------- */
+
+            /**
+             * As tarefas que batem com a busca — por # ou por nome.
+             *
+             * A lista inteira já veio na página, então o filtro é no navegador,
+             * sem ida ao servidor: digitar responde na hora. O teto de 50 é só
+             * contra desenhar mil linhas de uma vez — ninguém rola até a
+             * milésima; quem tem muita tarefa refina a busca.
+             */
+            tarefasFiltradas() {
+                const q = this.modal.vinculoBusca.trim().toLowerCase();
+                const casa = q === ''
+                    ? this.tarefas
+                    : this.tarefas.filter((t) =>
+                        ('#' + t.id).includes(q) || t.titulo.toLowerCase().includes(q));
+
+                return casa.slice(0, 50);
+            },
+
+            /** "#12 — Corrigir importação", ou '' quando nada está vinculado. */
+            rotuloTarefa(id) {
+                const t = this.tarefas.find((x) => x.id === Number(id));
+
+                return t ? `#${t.id} — ${t.titulo}` : '';
+            },
+
+            escolherTarefa(t) {
+                this.modal.tarefa_id = t.id;
+                this.modal.vinculoBusca = '';
+                this.modal.vinculoAberto = false;
+            },
+
+            limparVinculo() {
+                this.modal.tarefa_id = '';
+                this.modal.vinculoBusca = '';
+                this.modal.vinculoAberto = false;
             },
 
             alternarParticipante(id) {

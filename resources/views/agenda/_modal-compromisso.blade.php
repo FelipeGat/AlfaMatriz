@@ -105,13 +105,54 @@
                  padding em cima e embaixo, que somados à entrelinha passam dos
                  32px da caixa — e o texto da opção saía cortado por baixo. A
                  altura é a do desenho; quem cede é o padding. --}}
-            <select x-model="modal.tarefa_id" :disabled="modal.somenteLeitura"
-                    class="h-8 w-full rounded-control border border-btn-line bg-input px-2 py-0 text-[12px] text-ink focus:border-brand focus:ring-0 disabled:opacity-60">
-                <option value="">Nenhuma</option>
-                @foreach ($tarefasVinculaveis as $tarefa)
-                    <option value="{{ $tarefa->id }}">#{{ $tarefa->id }} — {{ $tarefa->titulo }}</option>
-                @endforeach
-            </select>
+            {{--
+                Busca em vez de <select>: com muitas tarefas, rolar uma lista de
+                centenas de opções é inviável — aqui digita-se o # ou o nome e a
+                lista filtra ao vivo. Os dados já vieram na página, então o
+                filtro é no navegador, sem requisição.
+
+                O campo mostra a tarefa vinculada como PLACEHOLDER quando fechado
+                (você vê o que escolheu) e vira busca ao focar. `@click.outside`
+                fecha a lista; o × limpa o vínculo.
+            --}}
+            <div class="relative" @click.outside="modal.vinculoAberto = false">
+                <input type="text" x-model="modal.vinculoBusca"
+                       @focus="modal.vinculoAberto = true" @click="modal.vinculoAberto = true"
+                       :disabled="modal.somenteLeitura"
+                       :placeholder="modal.tarefa_id ? rotuloTarefa(modal.tarefa_id) : 'Buscar tarefa por # ou nome…'"
+                       :class="modal.tarefa_id && !modal.vinculoBusca ? 'placeholder:text-ink' : 'placeholder:text-ink-faint'"
+                       class="h-8 w-full rounded-control border border-btn-line bg-input pl-2.5 pr-7 text-[12px] text-ink focus:border-brand focus:ring-0 disabled:opacity-60">
+
+                {{-- Limpar o vínculo. Só aparece com algo vinculado. --}}
+                <button type="button" x-show="modal.tarefa_id && ! modal.somenteLeitura" x-cloak
+                        @click="limparVinculo()"
+                        class="absolute right-1.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-badge text-ink-faint hover:text-ink transition flex items-center justify-center"
+                        aria-label="Desvincular tarefa">
+                    <span class="h-3 w-3"><x-nav-icon name="x-mark" :peso="1.8" /></span>
+                </button>
+
+                {{-- A lista filtrada. Rola por dentro; teto de altura para não
+                     empurrar o rodapé do modal quando há muitos resultados. --}}
+                <div x-show="modal.vinculoAberto && ! modal.somenteLeitura" x-cloak
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 -translate-y-1"
+                     class="absolute z-10 mt-1 w-full max-h-52 overflow-y-auto rounded-control border border-line bg-panel shadow-[0_12px_28px_-12px_rgba(0,0,0,0.5)]">
+                    <button type="button" @click="limparVinculo()"
+                            class="block w-full px-2.5 py-1.5 text-left text-[12px] text-ink-mute hover:bg-chip transition">
+                        Nenhuma
+                    </button>
+
+                    <template x-for="t in tarefasFiltradas()" :key="t.id">
+                        <button type="button" @click="escolherTarefa(t)"
+                                class="block w-full truncate px-2.5 py-1.5 text-left text-[12px] transition hover:bg-chip"
+                                :class="modal.tarefa_id === t.id ? 'text-brand-text font-semibold' : 'text-ink'"
+                                x-text="`#${t.id} — ${t.titulo}`"></button>
+                    </template>
+
+                    <p x-show="! tarefasFiltradas().length"
+                       class="px-2.5 py-2 text-[11.5px] text-ink-faint">Nenhuma tarefa encontrada</p>
+                </div>
+            </div>
 
             <template x-if="modal.somenteLeitura">
                 <p class="mt-2 text-[11.5px] text-warn">

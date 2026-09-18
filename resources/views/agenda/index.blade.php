@@ -25,6 +25,7 @@
             equipe: @js($equipe),
             podeReagendar: @js($podeReagendar),
             usuarioId: @js($usuarioId),
+            tarefas: @js($tarefasVinculaveis),
          })"
          class="flex flex-col gap-3.5"
          style="height: calc(100vh - 120px)">
