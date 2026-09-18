@@ -116,12 +116,21 @@
                 fecha a lista; o × limpa o vínculo.
             --}}
             <div class="relative" @click.outside="modal.vinculoAberto = false">
-                <input type="text" x-model="modal.vinculoBusca"
-                       @focus="modal.vinculoAberto = true" @click="modal.vinculoAberto = true"
+                {{-- O `:value` mostra a tarefa vinculada como TEXTO de verdade
+                     quando o campo está fechado — tinta cheia, e não o cinza de
+                     placeholder que fazia a seleção parecer um palpite. Ao
+                     focar, o campo esvazia para a busca; ao fechar sem escolher,
+                     volta a exibir o que estava vinculado. Por isso `:value` +
+                     `@input`, e não `x-model`: o valor exibido não é sempre o
+                     que se digita. --}}
+                <input type="text"
+                       :value="modal.vinculoAberto ? modal.vinculoBusca : (modal.tarefa_id ? rotuloTarefa(modal.tarefa_id) : '')"
+                       @input="modal.vinculoBusca = $event.target.value"
+                       @focus="modal.vinculoBusca = ''; modal.vinculoAberto = true"
+                       @click="modal.vinculoAberto = true"
                        :disabled="modal.somenteLeitura"
-                       :placeholder="modal.tarefa_id ? rotuloTarefa(modal.tarefa_id) : 'Buscar tarefa por # ou nome…'"
-                       :class="modal.tarefa_id && !modal.vinculoBusca ? 'placeholder:text-ink' : 'placeholder:text-ink-faint'"
-                       class="h-8 w-full rounded-control border border-btn-line bg-input pl-2.5 pr-7 text-[12px] text-ink focus:border-brand focus:ring-0 disabled:opacity-60">
+                       placeholder="Buscar tarefa por # ou nome…"
+                       class="h-8 w-full rounded-control border border-btn-line bg-input pl-2.5 pr-7 text-[12px] text-ink placeholder:text-ink-faint focus:border-brand focus:ring-0 disabled:opacity-60">
 
                 {{-- Limpar o vínculo. Só aparece com algo vinculado. --}}
                 <button type="button" x-show="modal.tarefa_id && ! modal.somenteLeitura" x-cloak
