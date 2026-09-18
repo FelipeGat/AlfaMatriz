@@ -42,7 +42,11 @@ repositório.
    dois lá** — não apague os rótulos. Hoje eles aparecem em 14 arquivos, 10 deles de teste.
 5. **Comentários no código:** o repositório documenta o *porquê* das decisões, não o *o quê*. Siga esse
    padrão — as justificativas estão no README, use-as.
-6. **Não rode `db:seed` em produção.** O deploy roda só `migrate --force`; dado que precisa valer em
+6. **A tela chama-se Agenda, não Calendário** — rota, menu, título e testes. A terceira visão dentro dela
+   chama-se **Lista**; "Agenda" dentro da Agenda confunde.
+7. **Nota é privada, sem exceção de admin.** Toda consulta escopada em `auth()->id()`. Admin ver nota de
+   membro mata o recurso na primeira vez que alguém descobre. (Tela ainda NÃO implementada — §18.)
+8. **Não rode `db:seed` em produção.** O deploy roda só `migrate --force`; dado que precisa valer em
    produção vai em migração, como o próprio repositório já faz.
 
 ## Plano de implementação
@@ -57,18 +61,24 @@ fase seguinte com a anterior vermelha** — é o mesmo portão que o `deploy/dep
 | # | Item | Estado |
 |---|---|---|
 | 1 | `bloqueada` vira marca + backfill | **Feito** — `2026_08_11_140000_bloqueio_vira_marca_na_tarefa.php` |
-| 2 | `retorno_de`, `retorno_motivo` | **Falta** |
-| 3 | `em_revisao`, `em_staging`, `pronta_producao` | **Falta** |
-| 4 | Conversa (`rodadas`, interlocutor, pergunta) | **Falta** |
+| 2 | `retorno_de`, `retorno_motivo` | **Feito** — `2026_08_12_100000_retorno_vira_marca_na_tarefa.php` |
+| 3 | `em_revisao`, `em_staging`, `pronta_producao` | **Feito** — `2026_08_12_110000_etapas_de_revisao_staging_e_producao.php` (a fila de tag saiu depois, em `2026_08_20_090000`) |
+| 4 | Conversa (`rodadas`, interlocutor, pergunta) | **Feito** — `2026_08_12_120000_conversa_de_pergunta_na_tarefa.php` |
 | 5 | `nao_definida` em `PRIORIDADES` | **Feito** — `2026_08_11_150000_adicionar_prioridade_a_definir.php` |
 | 6 | `ordem` em `tarefas` | **Feito** — `2026_08_12_090000_ordem_manual_da_tarefa_na_coluna.php` |
-| 7 | `versao_producao` em `tarefas` | **Falta** |
+| 7 | `versao_producao` em `tarefas` | **Feito** — `2026_08_12_130000_versao_de_producao_na_tarefa.php` |
+| 8 | `prazo` (date, nullable) em `tarefas` | **Feito** — `2026_09_18_090000_prazo_da_tarefa.php` |
+| 9 | `notas` | **Falta** — §18, a única tela do pacote ainda não implementada |
+| 10 | `compromissos` + `compromisso_participantes` | **Feito** — `2026_09_18_091000_criar_compromissos.php` |
 | — | `tarefa_itens` (checklist) | **Feito** — `2026_08_11_160000_criar_itens_de_tarefa.php` |
 
 Escrever um segundo backfill em cima de dado já migrado é o pior erro possível aqui. **Rode
 `grep -r` pelos identificadores antes de criar a migração.**
 
-Sobram quatro — 2, 3, 4 e 7. Só a **2** tem backfill:
+**Estado em 18/09/2026: só a 9 (`notas`, §18) continua faltando.** Os itens 2, 3, 4 e 7 entraram entre
+agosto e setembro; a Agenda (8 e 10) entrou em 18/09/2026. O que segue abaixo é o registro de como cada um
+foi feito — útil para espelhar, não para refazer. **Rode `grep -r` pelos identificadores antes de criar
+qualquer migração.**
 
 - **2.** `retorno_de`, `retorno_motivo`. Tarefas em `ajustes_necessarios` vão para `em_desenvolvimento` com
   `retorno_de` = `de_status` do último evento. Espelhe a migração do bloqueio (item 1): ela já resolveu
@@ -100,6 +110,23 @@ incrementa quando a bola estava com quem pergunta.
 Comece por `resources/views/tarefas/` (a tela que mais mudou) — e para essa leia **`TAREFAS-SPEC.md`**, que
 tem os valores exatos de coluna, card, tarjas e rodapé, mais a lista de estados a conferir um por um. Depois
 as 13 restantes na ordem do README.
+
+**A Agenda (§19) entrou em 18/09/2026** — `resources/views/agenda/`, `AgendaController`,
+`CompromissoController`, `AgendaService` e `tests/Feature/Agenda/`. Três notas para quem mexer nela:
+
+- Ela mora em **Desenvolvimento**, logo abaixo de Tarefas, e **não** no grupo “Pessoal” que o §19
+  previa — decisão do dono do produto em 18/09/2026. O grupo Pessoal não existe; quando as Notas (§18)
+  entrarem, o lugar delas é decisão em aberto. O recurso de permissão segue próprio (`agenda`, e não
+  `tarefas`).
+
+- A armadilha do `color-scheme` nos `input[type=date|time]` **já estava resolvida**: o `app.css` declara
+  `color-scheme` no `:root` e no `.theme-light`, e os ícones nativos acompanham o tema sozinhos. Não repita
+  a declaração no elemento — cópia local é o que deixa de virar quando o tema vira.
+- Toda consulta por faixa de data usa `whereDate`, e não `whereBetween` com as datas cruas: o cast `date`
+  grava `Y-m-d H:i:s`, que o MySQL trunca na coluna DATE e o SQLite **não**. Comparar texto com texto acerta
+  em produção e erra nos testes — é a mesma escolha que o `CentroControleController` já fazia.
+
+**Falta a tela de Notas (§18)**, que veio no mesmo pacote de design.
 O layout (`layouts/app.blade.php`, `layouts/navigation.blade.php`) muda em conjunto: sidebar expansível,
 tema claro/escuro, sino.
 

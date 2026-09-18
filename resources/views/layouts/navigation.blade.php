@@ -44,6 +44,17 @@
         ],
         'Desenvolvimento' => [
             ['route' => 'tarefas.index', 'recurso' => 'tarefas', 'pattern' => 'tarefas.*', 'label' => 'Tarefas', 'icon' => 'view-grid', 'matriz' => true],
+            // Logo abaixo de Tarefas, e não num grupo "Pessoal" próprio: o
+            // desenho (§19) previa o grupo pessoal, com Agenda e Notas. Decisão
+            // do dono do produto em 18/09/2026 é que a Agenda mora aqui — o que
+            // ela mostra é o prazo do quadro e a hora marcada para tocá-lo, e
+            // quem abre uma pensa na outra.
+            //
+            // `recurso` PRÓPRIO mesmo assim (`agenda`, e não `tarefas`): a tela
+            // mostra nome, horário e pauta de reunião do time, e o perfil de
+            // exibição — o monitor da parede — lê o quadro sem nunca ter
+            // negociado isso. Estar no mesmo grupo não é estar na mesma porta.
+            ['route' => 'agenda.index', 'recurso' => 'agenda', 'pattern' => 'agenda.*', 'label' => 'Agenda', 'icon' => 'calendar', 'matriz' => true],
             // Ao lado de Tarefas porque é dali que o conteúdo vai nascer: o
             // quadro produz a versão, a aba anuncia. `matriz` como o resto do
             // grupo — o AC-094 fixa que revenda não vê Desenvolvimento no

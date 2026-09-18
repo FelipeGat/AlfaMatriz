@@ -489,6 +489,11 @@ class TarefaController extends Controller
             // coluna, que manda só o título. Exigi-la aqui faria a tela
             // funcionar e a rota dizer não.
             'prioridade' => 'nullable|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
+            // Prazo é campo de TRIAGEM, como os dois acima: quem não triaga não
+            // o recebe no formulário, e `semTriagemDeQuemNaoTriaga` o descarta
+            // de qualquer envio forjado. `nullable` porque apagar o prazo é uma
+            // decisão legítima — a data combinada pode simplesmente cair.
+            'prazo' => 'nullable|date',
             // A criação rápida do pé da coluna DECLARA onde nasce. Sem isso, o
             // `booted` decidia pela presença de responsável e o card criado no
             // Backlog aparecia em Aberta — o controle prometia um lugar e
@@ -801,6 +806,10 @@ class TarefaController extends Controller
         $dados['prioridade'] = $tarefa?->prioridade ?? 'nao_definida';
         $dados['responsavel_id'] = $tarefa?->responsavel_id;
 
+        // O prazo acompanha os dois acima: combinar data é decidir sobre o
+        // trabalho, e é a mesma capacidade que a Agenda exige para arrastar.
+        $dados['prazo'] = $tarefa?->prazo;
+
         // E a coluna declarada também cai: Backlog é "priorizado e com dono", e
         // quem não triaga não pode dar nenhum dos dois. Deixar passar criaria
         // no Backlog um card sem responsável, que é a contradição que a coluna
@@ -898,6 +907,11 @@ class TarefaController extends Controller
             // coluna, que manda só o título. Exigi-la aqui faria a tela
             // funcionar e a rota dizer não.
             'prioridade' => 'nullable|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
+            // Prazo é campo de TRIAGEM, como os dois acima: quem não triaga não
+            // o recebe no formulário, e `semTriagemDeQuemNaoTriaga` o descarta
+            // de qualquer envio forjado. `nullable` porque apagar o prazo é uma
+            // decisão legítima — a data combinada pode simplesmente cair.
+            'prazo' => 'nullable|date',
             'comentario' => 'nullable|string|max:4000',
         ]);
 

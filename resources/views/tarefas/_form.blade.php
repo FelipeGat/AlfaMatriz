@@ -324,6 +324,31 @@
                         @endforeach
                     </select>
                 </div>
+
+                {{--
+                    O prazo entra AQUI, no bloco de triagem, pelos dois motivos
+                    que puseram prioridade e responsável nele: combinar data é
+                    decidir sobre o trabalho, e a Agenda usa a mesma régua
+                    (`podeTriarTarefas`) para deixar arrastar o card.
+
+                    E ele precisa existir neste formulário, não só na Agenda: lá
+                    só aparece tarefa que JÁ tem prazo, então sem este campo não
+                    haveria por onde dar o primeiro — o arraste remarca, não
+                    marca.
+
+                    Vazio é o normal e a linha abaixo diz isso, porque um campo
+                    de data em branco no meio de selects preenchidos se lê como
+                    pendência.
+                --}}
+                <div>
+                    <label for="prazo-{{ $sufixo }}" class="block mb-[5px] text-[12px] font-medium text-ink-dim">Prazo</label>
+                    <input type="date" id="prazo-{{ $sufixo }}" name="prazo"
+                           value="{{ old('prazo', $tarefa?->prazo?->format('Y-m-d') ?? '') }}"
+                           class="block w-full h-9 py-0 rounded-control bg-input border-line text-ink text-[13px]">
+                    <p class="mt-1 text-[11px] leading-[1.4] text-ink-faint">
+                        Opcional. Com prazo, a tarefa aparece na Agenda.
+                    </p>
+                </div>
             @endif
         </div>
 
@@ -339,11 +364,11 @@
             <p class="px-[11px] py-[9px] rounded-[5px] border text-[11.5px] leading-[1.5] text-ink-dim"
                style="background: var(--warn-tint); border-color: var(--warn-line)">
                 @if ($edicao)
-                    A prioridade e o responsável desta tarefa são definidos na triagem — por isso não aparecem
-                    aqui. O resto do formulário é seu.
+                    A prioridade, o responsável e o prazo desta tarefa são definidos na triagem — por isso não
+                    aparecem aqui. O resto do formulário é seu.
                 @else
-                    A tarefa entra como <strong class="text-ink">A definir</strong> e sem responsável:
-                    priorizar e direcionar são decisões da triagem.
+                    A tarefa entra como <strong class="text-ink">A definir</strong>, sem responsável e sem prazo:
+                    priorizar, direcionar e combinar data são decisões da triagem.
                 @endif
             </p>
         @endunless

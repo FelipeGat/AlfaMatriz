@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AgendaController;
 use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\Auth\PrimeiroAcessoController;
 use App\Http\Controllers\CadastroAuxiliarController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\CentroControleController;
 use App\Http\Controllers\CentroCustoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CobrancaController;
+use App\Http\Controllers\CompromissoController;
 use App\Http\Controllers\ContaController;
 use App\Http\Controllers\ContaFinanceiraController;
 use App\Http\Controllers\ContaFixaPagarController;
@@ -153,6 +155,53 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware('permissao:leads');
     Route::delete('lead-anexos/{anexo}', [LeadController::class, 'excluirAnexo'])->name('leads.anexos.destroy')
         ->middleware('permissao:leads,editar');
+
+    /*
+     * Agenda — prazos de tarefas e compromissos do time (§19 do redesign).
+     *
+     * `permissao:agenda` e não `permissao:tarefas`: a tela mostra nome, horário
+     * e pauta de reunião, e o perfil de exibição — o monitor da parede — lê o
+     * quadro sem nunca ter negociado isso. Ver
+     * `2026_09_18_092000_permissao_de_agenda.php`.
+     */
+    Route::get('agenda', [AgendaController::class, 'index'])->name('agenda.index')
+        ->middleware('permissao:agenda');
+    Route::get('agenda/dia/{data}', [AgendaController::class, 'dia'])->name('agenda.dia')
+        ->middleware('permissao:agenda')
+        ->where('data', '\\d{4}-\\d{2}-\\d{2}');
+    Route::get('agenda/tarefas/{tarefa}', [AgendaController::class, 'tarefa'])->name('agenda.tarefa')
+        ->middleware('permissao:agenda');
+
+    // Remarcar prazo é TRIAGEM, e a rota confere isso por dentro — o
+    // middleware `editar` deixaria passar o membro, que edita a agenda dele
+    // mas não decide a data do trabalho dos outros.
+    Route::post('agenda/tarefas/{tarefa}/reagendar', [AgendaController::class, 'reagendar'])
+        ->name('agenda.reagendar')
+        ->middleware('permissao:agenda,editar');
+
+    // Reservar tempo pende da TAREFA (é ela que ganha a hora) e só devolve o
+    // rascunho: quem cria é o `compromissos.store` de sempre. Ver o controller.
+    Route::get('agenda/tarefas/{tarefa}/reservar', [CompromissoController::class, 'reservarTempo'])
+        ->name('agenda.reservar')
+        ->middleware('permissao:agenda,incluir');
+
+    Route::post('compromissos', [CompromissoController::class, 'store'])->name('compromissos.store')
+        ->middleware('permissao:agenda,incluir');
+    Route::get('compromissos/conflitos', [CompromissoController::class, 'conflitos'])
+        ->name('compromissos.conflitos')
+        ->middleware('permissao:agenda');
+    Route::put('compromissos/{compromisso}', [CompromissoController::class, 'update'])
+        ->name('compromissos.update')
+        ->middleware('permissao:agenda,editar');
+    Route::delete('compromissos/{compromisso}', [CompromissoController::class, 'destroy'])
+        ->name('compromissos.destroy')
+        ->middleware('permissao:agenda,editar');
+
+    // Virar tarefa cria card no QUADRO, então pede a porta do quadro também:
+    // quem só tem agenda não ganha por aqui um caminho para criar tarefa.
+    Route::post('compromissos/{compromisso}/virar-tarefa', [CompromissoController::class, 'virarTarefa'])
+        ->name('compromissos.virar-tarefa')
+        ->middleware(['permissao:agenda,editar', 'permissao:tarefas,incluir']);
 
     Route::get('tarefas', [TarefaController::class, 'index'])->name('tarefas.index')
         ->middleware('permissao:tarefas');

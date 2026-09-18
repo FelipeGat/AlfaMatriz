@@ -58,6 +58,15 @@ class PerfilPermissaoSeeder extends Seeder
             // juntas por acidente, como vinham.
             'tarefas_triagem' => 'Triagem de tarefas (priorizar e direcionar)',
 
+            // Recurso próprio, e não uma aba de `tarefas`: a Agenda mostra o
+            // prazo E o compromisso — nome, horário e pauta de reunião do time
+            // inteiro. Pendurá-la em `tarefas` daria essa visão a todo perfil
+            // que lê o quadro, inclusive o de exibição, que é um monitor na
+            // parede da sala. Espelha
+            // `2026_09_18_092000_permissao_de_agenda.php`, que é quem leva isto
+            // a produção; aqui é só o estado inicial de quem semeia.
+            'agenda' => 'Agenda (prazos de tarefas e compromissos do time)',
+
             // A aba de Relatórios atravessa as quatro áreas — funil, caixa,
             // quadro de tarefas e administração — e a seção financeira mostra
             // o dinheiro da casa. Por isso recurso PRÓPRIO, e não carona em
@@ -168,6 +177,14 @@ class PerfilPermissaoSeeder extends Seeder
 
         $membro->permissoes()->syncWithoutDetaching([
             $todasPermissoes['tarefas'] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
+        ]);
+
+        // A Agenda acompanha quem EDITA o quadro, e o membro é o caso central:
+        // é ele quem combina prazo e marca reunião sobre o próprio trabalho.
+        // A migração de produção usa a mesma régua — quem tem `tarefas.editar`
+        // —, e por isso o perfil de exibição fica de fora nos dois lugares.
+        $membro->permissoes()->syncWithoutDetaching([
+            $todasPermissoes['agenda'] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
         ]);
 
         // Quem vende não é quem opera. O perfil mais próximo era `operacao`, e

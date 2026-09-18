@@ -1,0 +1,54 @@
+<b>📋 AlfaMatriz — Changelog 18/09/2026</b>
+<i>Aba nova: Agenda — os prazos das tarefas e os compromissos do time na mesma tela, em Desenvolvimento, logo abaixo de Tarefas</i>
+
+<b>📅 O que a Agenda responde</b>
+
+• <b>A pergunta que faltava.</b> O quadro sempre soube <b>onde</b> cada tarefa está e <b>há quanto tempo</b> — nunca soube <b>para quando</b>. "O que vence esta semana" não tinha onde ser perguntado, e a resposta vivia espalhada entre a cabeça de cada um e conversas de corredor.
+
+• <b>Duas fontes, nunca misturadas.</b> Cada item da tela diz de onde veio: <b>Tarefa</b> é o prazo combinado, <b>Compromisso</b> é a hora marcada com outras pessoas. São coisas diferentes — uma é quando precisa estar pronto, a outra é quando as pessoas se encontram — e por isso nunca se confundem no cartão.
+
+• <b>Três visões.</b> <b>Semana</b> (sete colunas, cada uma rolando por dentro), <b>Mês</b> (a grade do mês inteiro) e <b>Lista</b> (os próximos 21 dias agrupados por dia, com <b>Atrasadas</b> em vermelho no topo quando houver). Um filtro por pessoa, em chips, recorta as três.
+
+• <b>Clicar num dia abre o dia.</b> O painel lateral mostra tudo o que há nele e, quando há mais de uma pessoa envolvida, <b>quanto cada uma já tem naquele dia</b> — contando prazo e reunião juntos. É o número que nenhuma outra tela mostra: um prazo mais duas reuniões pesa tanto quanto três prazos. Três ou mais no mesmo dia fica em âmbar.
+
+<b>🔗 O que muda no quadro de Tarefas</b>
+
+• <b>Tarefa agora tem Prazo.</b> Campo novo e <b>opcional</b> no formulário, ao lado de Prioridade e Responsável — e, como esses dois, é decisão de <b>triagem</b>. Tarefa com prazo aparece na Agenda; sem prazo, segue a vida no quadro como sempre.
+
+• <b>Remarcar é arrastar.</b> Quem faz triagem arrasta o prazo de um dia para outro direto na Agenda. Se outra pessoa remarcou enquanto a sua tela estava aberta, o sistema recusa e avisa em vez de sobrescrever em silêncio.
+
+• <b>Reservar tempo.</b> No detalhe de uma tarefa, um clique abre um compromisso já preenchido: título, data do prazo, e o responsável mais quem está reservando como participantes. Falta só escolher a hora.
+
+• <b>Virar tarefa.</b> O caminho inverso: um compromisso que virou trabalho cria a tarefa já com prazo na data da reunião e vinculada a ela.
+
+• <b>Estado manda na cor.</b> Tarefa <b>bloqueada</b> ou <b>em retorno</b> aparece marcada na Agenda como aparece no quadro, com o motivo dito no rótulo. Nenhum dado conta uma história na Agenda e outra no quadro.
+
+• <b>Prazo apertado sem reunião vira aviso.</b> Prazo em até 48 horas e nenhuma reunião marcada fica em âmbar com <i>"sem reunião marcada"</i>. Tarefa já travada ou em retorno fica de fora: ali o problema já tem nome, e um segundo aviso só disputaria atenção com o primeiro.
+
+---
+
+<b>📋 AlfaMatriz — Changelog 18/09/2026 (2/2)</b>
+
+<b>🕐 O compromisso: duração ou horário livre</b>
+
+• <b>Dois jeitos de dizer quando termina</b>, e o compromisso lembra qual você usou. Em <b>Duração</b>, você digita as horas (aceita fração — 0,5, 0,75, 1,5) e o término é calculado na hora: <i>"1,5 horas · termina às 11:30"</i>. Mudou o início, o término vai junto. Em <b>Horário livre</b>, você digita data e hora de término, e eles ficam onde estão.
+
+• <b>Vira o dia sem mentir.</b> Uma janela de deploy das 23h com duas horas termina à 01:00 <b>do dia seguinte</b>, e a tela diz isso.
+
+• <b>Os participantes avisam o que já têm.</b> Cada pessoa no chip mostra quanto já tem marcado naquele dia, e fica <b>em âmbar com "conflito"</b> quando já tem outro compromisso <b>sobreposto</b> àquele horário. Reunião que termina às 10h e outra que começa às 10h se encostam — isso não é conflito, e não avisa.
+
+• <b>Quem marcou é quem edita</b> — ou quem faz triagem. Participar de uma reunião não dá o poder de remarcá-la para os outros quatro convidados.
+
+• <b>Quem participa é avisado no sino</b> ao ser marcado, remarcado ou desmarcado.
+
+<b>🔒 Quem entra</b>
+
+• A Agenda abre para <b>quem já trabalha no quadro de Tarefas</b>. A permissão é própria e configurável na tela de Usuários e permissões, e não vem junto com a de Tarefas de propósito: a Agenda mostra nome, horário e pauta de reunião do time.
+
+• O <b>painel de parede</b> — aquela conta que fica o dia todo aberta no monitor da sala — continua vendo só o quadro. Ele nunca negociou ter a agenda do time exposta ali.
+
+<b>🚫 O que a Agenda de propósito NÃO faz</b>
+
+• <b>Chegar a hora do compromisso não move a tarefa para "Em andamento".</b> Reunião acontecer não é trabalho começar: a conversa pode ser só alinhamento, e a pessoa pode nem ter aberto o editor. A automação é a inversa, e é ela que o botão <b>Reservar tempo</b> faz.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
