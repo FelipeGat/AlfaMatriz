@@ -52,7 +52,21 @@ Alpine.data('shell', () => ({
      * não deve gastar poll no monitor da parede.
      */
     naoLidas: (window.__sino && window.__sino.naoLidas) || 0,
-    sinoUltimoId: (window.__sino && window.__sino.ultimoId) || 0,
+
+    // `sinoBaseline` é o maior id que a pessoa JÁ VIU — guardado no navegador
+    // (localStorage), então sobrevive a recarga e a troca de página. É ele que
+    // decide o alerta: se o servidor tem id maior que o baseline, há coisa não
+    // vista, e o sino pulsa E o card aparece — mesmo que a notificação tenha
+    // chegado enquanto a pessoa estava fora, ou antes de a página abrir. Sem
+    // isso, o alerta só valia para o que chegava com a tela aberta, e lembrete
+    // que caísse na ausência virava só a bolinha discreta — o problema que o
+    // recurso existe para não ter.
+    //
+    // `sinoServidorId` é o último id que o servidor conhece (atualizado a cada
+    // poll); `sinoListaId`, o maior que o PAINEL já desenhou (para saber quando
+    // buscar a lista fresca ao abrir).
+    sinoBaseline: 0,
+    sinoServidorId: (window.__sino && window.__sino.ultimoId) || 0,
     sinoNovas: 0,
     sinoAviso: false,
     sinoUltima: null,
@@ -73,6 +87,7 @@ Alpine.data('shell', () => ({
     },
 
     init() {
+        this.sinoBaseline = this.lerSinoVisto();
         this.vigiarSino();
     },
 
@@ -116,12 +131,14 @@ Alpine.data('shell', () => ({
 
             const dados = await resposta.json();
             this.naoLidas = dados.nao_lidas;
+            this.sinoServidorId = dados.ultimo_id;
 
-            // Id maior do que esta página conhecia = chegou coisa nova. O card
-            // aparece e o sino pulsa; o número no card é o de não lidas, que é
-            // o que está esperando a pessoa.
-            if (dados.ultimo_id > this.sinoUltimoId) {
-                this.sinoUltimoId = dados.ultimo_id;
+            // Id maior que o BASELINE = há coisa que a pessoa ainda não viu. O
+            // card aparece e o sino pulsa; o número no card é o de não lidas.
+            // Não mexe no baseline aqui: ele só avança quando a pessoa
+            // reconhece (abre o sino ou dispensa o card) — senão o alerta se
+            // apagaria sozinho no poll seguinte, sem ninguém ter olhado.
+            if (dados.ultimo_id > this.sinoBaseline) {
                 this.sinoNovas = dados.nao_lidas;
                 this.sinoUltima = dados.ultima;
                 this.sinoAviso = true;
@@ -140,7 +157,7 @@ Alpine.data('shell', () => ({
      * troca só o miolo; a marca da linha mora no Blade, um lugar só.
      */
     async abrirSino() {
-        if (window.__sino && this.sinoUltimoId > this.sinoListaId) {
+        if (window.__sino && this.sinoServidorId > this.sinoListaId) {
             try {
                 const resposta = await fetch(window.__sino.urlLista, {
                     headers: { Accept: 'text/html' },
@@ -150,7 +167,7 @@ Alpine.data('shell', () => ({
                     const alvo = document.getElementById('sino-lista');
                     if (alvo) {
                         alvo.innerHTML = await resposta.text();
-                        this.sinoListaId = this.sinoUltimoId;
+                        this.sinoListaId = this.sinoServidorId;
                     }
                 }
             } catch (erro) {
@@ -160,11 +177,36 @@ Alpine.data('shell', () => ({
         }
 
         this.sinoAberto = true;
-        this.sinoAviso = false;
+        this.reconhecerSino();
     },
 
     dispensarAvisoSino() {
+        this.reconhecerSino();
+    },
+
+    /**
+     * Reconhecer o que chegou: some o card, para o pulso, e AVANÇA o baseline
+     * até o que o servidor tem — gravado no navegador, para a recarga seguinte
+     * já nascer sabendo que isto foi visto. É o que impede o mesmo lembrete de
+     * alertar de novo a cada página, sem apagar a bolinha: o número continua
+     * sendo as não lidas de verdade, que só somem quando a pessoa marca lidas.
+     */
+    reconhecerSino() {
+        this.sinoBaseline = this.sinoServidorId;
         this.sinoAviso = false;
+        this.lembrar('alfamatriz:sino-visto', String(this.sinoBaseline));
+    },
+
+    /** Até que id o sino já foi visto — 0 na primeira visita (alerta o que
+     *  houver), depois o que ficou guardado. */
+    lerSinoVisto() {
+        try {
+            const guardado = parseInt(localStorage.getItem('alfamatriz:sino-visto'), 10);
+
+            return Number.isFinite(guardado) ? guardado : 0;
+        } catch (erro) {
+            return 0;
+        }
     },
 
     /** Navegação anônima e cotas cheias derrubam o localStorage — e nada disso
