@@ -1,0 +1,20 @@
+<b>📋 AlfaMatriz — Changelog 18/09/2026</b>
+<i>Os lembretes chegam ao resto do sistema: o sino agora avisa, na véspera, o que vai vencer — despesa, receita, licença e lead — antes de virar problema</i>
+
+<b>⏰ Avisos antecipatórios no sino</b>
+
+O quadro de Tarefas ganhou lembretes de prazo; agora o mesmo cuidado chega às outras áreas. Todo começo de dia, o sino passa a avisar <b>o que está para vencer</b> — não o que já venceu (isso continua na fila de ação do Centro de Controle). Cada aviso sai <b>uma vez</b>, pela véspera.
+
+• <b>Despesa a pagar vencendo.</b> Na véspera do vencimento, quem cuida das Despesas recebe "Vencem amanhã: N despesas", com a prévia dos itens e o total. Evita pagar com juros por esquecimento.
+
+• <b>Receita a receber vencendo.</b> Na véspera, quem cuida das Receitas é lembrado do que vence — para cobrar antes de virar atraso.
+
+• <b>Licença de cliente expirando.</b> Sete dias antes de uma licença expirar, quem cuida de Clientes recebe "Licença expira em 7 dias: Cliente (Sistema)". Tempo de renovar antes de o cliente ficar sem o sistema.
+
+• <b>Lead esfriando.</b> Quando um lead do funil fica <b>7 dias parado</b> sem avançar, o <b>vendedor dono</b> é avisado — bem antes do alarme de "parado há 30 dias" que o painel já mostra. Chega direto para quem toca aquele lead, não para todo mundo.
+
+<b>🔔 De brinde: o sino inteiro ficou mais vivo</b>
+
+Essas novidades entram no sino que acabou de melhorar — então valem para <b>toda</b> notificação do sistema, não só as novas: contador ao vivo, pulso e aviso no canto da tela quando há algo que você ainda não viu, inclusive o que chegou enquanto você estava fora.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

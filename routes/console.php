@@ -37,3 +37,11 @@ Schedule::command('agenda:lembrar-prazos')
     ->dailyAt('08:00')
     ->withoutOverlapping()
     ->onOneServer();
+
+// Avisos antecipatórios do dia: o que VAI vencer (despesa/receita amanhã,
+// licença em 7 dias) e o lead parando. Antes das condições da fila de ação,
+// não em vez delas — ver o docblock do comando. De manhã, como os prazos.
+Schedule::command('avisos:do-dia')
+    ->dailyAt('08:00')
+    ->withoutOverlapping()
+    ->onOneServer();

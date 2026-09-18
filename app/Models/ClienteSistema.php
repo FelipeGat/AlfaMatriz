@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 /**
@@ -28,6 +29,16 @@ class ClienteSistema extends Pivot
      * mudar comportamento e estrutura na mesma tacada — o jeito de transformar
      * um refactor em caça a bug. Quem precisa de data usa `fimEm()`.
      */
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(Cliente::class);
+    }
+
+    public function sistema(): BelongsTo
+    {
+        return $this->belongsTo(Sistema::class);
+    }
+
     public function fimEm(): ?\Illuminate\Support\Carbon
     {
         return filled($this->licenca_fim_em)
