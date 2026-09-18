@@ -24,6 +24,7 @@
             compromissos: @js($compromissos),
             equipe: @js($equipe),
             podeReagendar: @js($podeReagendar),
+            usuarioId: @js($usuarioId),
          })"
          class="flex flex-col gap-3.5"
          style="height: calc(100vh - 120px)">
