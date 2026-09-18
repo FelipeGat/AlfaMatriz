@@ -119,6 +119,13 @@ as 13 restantes na ordem do README.
   entrarem, o lugar delas é decisão em aberto. O recurso de permissão segue próprio (`agenda`, e não
   `tarefas`).
 
+- **Lembretes e sino ao vivo entraram em 18/09/2026** (pedido do dono depois da Agenda no ar): dois comandos
+  agendados — `agenda:lembrar-compromissos` (a cada 5 min, ~30 min antes; dedup por
+  `compromissos.lembrete_enviado_em`, que zera ao remarcar) e `agenda:lembrar-prazos` (`dailyAt('08:00')`,
+  agrupado por responsável). Dependem do `schedule:run` do cron do host (já ativo). O sino ganhou poll leve
+  (`notificacoes.resumo`/`lista`), pulso e card flutuante que fica até fechar — tudo no `shell` (`app.js`) e
+  em `layouts/notificacoes.blade.php`. A lista do painel virou o partial `layouts/_notificacoes-lista`, usado
+  pela tela E pelo endpoint, para a linha não divergir.
 - A armadilha do `color-scheme` nos `input[type=date|time]` **já estava resolvida**: o `app.css` declara
   `color-scheme` no `:root` e no `.theme-light`, e os ícones nativos acompanham o tema sozinhos. Não repita
   a declaração no elemento — cópia local é o que deixa de virar quando o tema vira.

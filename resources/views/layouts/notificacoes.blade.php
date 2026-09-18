@@ -66,47 +66,15 @@
         @endif
     </header>
 
-    <div class="min-h-0 flex-1 max-h-[min(420px,60vh)] overflow-y-auto">
-        @forelse ($notificacoes ?? [] as $aviso)
-            @php
-                // O mesmo vocabulário de gravidade da fila de ação: o aviso não
-                // pode mudar de cor conforme a tela em que aparece.
-                $tom = ['critico' => 'crit', 'atencao' => 'warn', 'marca' => 'brand'][$aviso->nivel] ?? 'brand';
-            @endphp
-
-            {{--
-                Não lida = barra de 2px na cor do tipo + um degrau de superfície.
-                Só o fundo não bastaria: num painel de doze linhas, um cinza
-                levemente mais claro sem a barra se lê como zebra de tabela, e
-                não como "isto é novo".
-            --}}
-            <a href="{{ $aviso->rota ?? url()->current() }}"
-               @class([
-                   'flex items-start gap-2.5 px-4 py-2.5 border-b border-rule last:border-b-0 border-l-2 transition hover:bg-chip',
-                   'bg-chip' => $aviso->naoLida(),
-                   'border-l-transparent' => ! $aviso->naoLida(),
-               ])
-               @if ($aviso->naoLida()) style="border-left-color: rgb(var(--{{ $tom }}))" @endif>
-                <span class="shrink-0 mt-px h-6 w-6 rounded-tile flex items-center justify-center"
-                      style="background: rgb(var(--{{ $tom }}) / var(--tint-alpha)); color: rgb(var(--{{ $tom }}))">
-                    <span class="h-[13px] w-[13px]"><x-nav-icon :name="$aviso->icone" :peso="1.8" /></span>
-                </span>
-
-                <span class="min-w-0 flex-1">
-                    {{-- Uma linha e truncado: o painel é relance. O título
-                         inteiro vai no `title`, que entrega o resto sem custar
-                         altura — e ou aparece inteiro, ou não aparece. --}}
-                    <span class="block truncate text-[12.5px] leading-snug text-ink" title="{{ $aviso->titulo }}">
-                        {{ $aviso->titulo }}
-                    </span>
-                    <span class="block truncate font-mono text-[10px] uppercase tracking-caps text-ink-faint">
-                        {{ $aviso->meta ? $aviso->meta.' · ' : '' }}{{ $aviso->created_at->diffForHumans(short: true) }}
-                    </span>
-                </span>
-            </a>
-        @empty
-            <p class="px-4 py-6 text-center text-[12.5px] text-ink-faint">Nada de novo por aqui.</p>
-        @endforelse
+    {{--
+        O id `sino-lista` é onde o poll injeta a lista fresca quando algo chega
+        durante a sessão: sem isso, abrir o sino depois de um aviso novo
+        mostraria a lista da carga da página — o contador subiria, mas o painel
+        continuaria velho. A marcação da linha mora no partial, uma só, usada
+        aqui e no endpoint que o poll busca.
+    --}}
+    <div id="sino-lista" class="min-h-0 flex-1 max-h-[min(420px,60vh)] overflow-y-auto">
+        @include('layouts._notificacoes-lista', ['notificacoes' => $notificacoes ?? collect()])
     </div>
 
     {{--
@@ -124,3 +92,66 @@
         </footer>
     @endif
 </div>
+
+{{--
+    O aviso flutuante e a configuração do poll vivem aqui, fora do painel do
+    sino mas dentro do `x-data="shell"` da moldura — o card lê `sinoAviso` e
+    `sinoNovas`, que o poll do shell move.
+
+    `window.__sino` é injetado por um <script> CLÁSSICO no corpo, e não por um
+    módulo: o script clássico roda durante a análise do HTML, ANTES do módulo do
+    Vite (que é adiado), então o baseline já está em pé quando o Alpine lê. É
+    nulo para a conta de exibição — o monitor da parede não recebe aviso e não
+    deve gastar poll — e some junto com a sessão.
+--}}
+@auth
+    @unless (auth()->user()->ehContaDeExibicao())
+        <script>
+            window.__sino = {
+                url: @json(route('notificacoes.resumo')),
+                urlLista: @json(route('notificacoes.lista')),
+                naoLidas: {{ (int) ($naoLidas ?? 0) }},
+                ultimoId: {{ (int) (($notificacoes ?? collect())->max('id') ?? 0) }},
+            };
+        </script>
+
+        {{--
+            O card fica até a pessoa fechar — nada de relógio. Quem levantou da
+            mesa e voltou dez minutos depois ainda o encontra ali; um toast que
+            some sozinho recriaria a discrição que o sino já tinha. Clicar no
+            corpo abre o sino (e reconhece o aviso); o × dispensa sem abrir.
+
+            Canto inferior direito, longe da pilha de \"salvo\" (topo, centro) e
+            do painel do sino (inferior esquerdo): três coisas flutuantes, três
+            cantos, nenhuma por cima da outra.
+        --}}
+        <div x-show="sinoAviso" x-cloak
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 translate-y-2"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-end="opacity-0"
+             class="fixed bottom-4 right-4 z-[65] w-[280px] max-w-[calc(100vw-32px)]">
+            <div role="button" tabindex="0"
+                 @click="abrirSino()" @keydown.enter="abrirSino()"
+                 class="flex items-center gap-3 rounded-panel border border-line bg-panel p-3 text-left
+                        shadow-[0_12px_32px_rgb(0_0_0_/_0.32)] cursor-pointer transition hover:bg-chip">
+                <span class="shrink-0 h-8 w-8 rounded-tile flex items-center justify-center"
+                      style="background: rgb(var(--crit) / var(--tint-alpha)); color: rgb(var(--crit))">
+                    <span class="h-[16px] w-[16px]"><x-nav-icon name="bell" :peso="1.8" /></span>
+                </span>
+
+                <span class="min-w-0 flex-1">
+                    <span class="block text-[13px] font-semibold text-ink"
+                          x-text="sinoNovas === 1 ? '1 nova notificação' : sinoNovas + ' novas notificações'"></span>
+                    <span class="block text-[11.5px] text-ink-mute">Clique para ver</span>
+                </span>
+
+                <button type="button" @click.stop="dispensarAvisoSino()"
+                        class="shrink-0 h-6 w-6 rounded-badge text-ink-faint hover:text-ink transition flex items-center justify-center"
+                        aria-label="Dispensar">
+                    <span class="h-3.5 w-3.5"><x-nav-icon name="x-mark" :peso="1.7" /></span>
+                </button>
+            </div>
+        </div>
+    @endunless
+@endauth
