@@ -165,6 +165,27 @@ class VisoesDaAgendaTest extends TestCase
         );
     }
 
+    /**
+     * O select "Vincular a uma tarefa" lista por # CRESCENTE.
+     *
+     * O rótulo é "#<id> — título", então ordenar por título embaralhava os
+     * números; quem procura ali procura pelo código.
+     */
+    public function test_tarefas_vinculaveis_saem_por_id_crescente(): void
+    {
+        $usuario = User::factory()->create();
+
+        // Criadas fora de ordem de título de propósito.
+        $z = Tarefa::factory()->create(['criado_por_id' => $usuario->id, 'status' => 'em_desenvolvimento', 'titulo' => 'Zebra']);
+        $a = Tarefa::factory()->create(['criado_por_id' => $usuario->id, 'status' => 'em_desenvolvimento', 'titulo' => 'Abacaxi']);
+
+        $resposta = $this->actingAs($usuario)->get(route('agenda.index'));
+        $resposta->assertOk();
+
+        $ids = $resposta->viewData('tarefasVinculaveis')->pluck('id')->all();
+        $this->assertSame([$z->id, $a->id], $ids); // ordem de criação = id crescente, não alfabética
+    }
+
     /* ---------- drawer do dia ---------- */
 
     /**
