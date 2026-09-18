@@ -15,7 +15,7 @@
 
 • <b>O problema.</b> Até agora o sino só mudava o número quando você recarregava a página. Chegava uma notificação e nada na tela mudava — você só descobria clicando no sino, no palpite. Discreto demais.
 
-• <b>Agora ele avisa sozinho.</b> O contador se atualiza sem recarregar nada, o sino <b>pulsa</b> quando algo acaba de chegar, e aparece um <b>aviso no canto da tela</b> dizendo quantas novas você tem.
+• <b>Agora ele avisa sozinho.</b> O contador se atualiza sem recarregar nada, o sino <b>pulsa</b> e aparece um <b>aviso no canto da tela</b> quando há algo que você ainda não viu — inclusive o que chegou <b>enquanto você estava fora</b> ou antes de abrir a tela, não só o que cai ao vivo. Depois que você abre o sino ou dispensa o aviso, ele para de insistir, mesmo que você recarregue a página.
 
 • <b>O aviso mostra o que chegou.</b> O card já traz a notificação mais recente — título e prévia da mensagem —, e não só um número: às vezes você resolve sem nem abrir o sino. O ícone é tingido pela gravidade do aviso.
 
