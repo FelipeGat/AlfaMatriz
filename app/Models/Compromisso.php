@@ -32,6 +32,7 @@ class Compromisso extends Model
     protected $fillable = [
         'titulo', 'descricao', 'data', 'hora', 'data_fim', 'hora_fim',
         'duracao_modo', 'duracao_horas', 'criado_por_id', 'tarefa_id',
+        'lembrete_enviado_em',
     ];
 
     protected function casts(): array
@@ -41,6 +42,7 @@ class Compromisso extends Model
             'data_fim' => 'date',
             'duracao_modo' => 'boolean',
             'duracao_horas' => 'decimal:2',
+            'lembrete_enviado_em' => 'datetime',
         ];
     }
 
@@ -52,6 +54,18 @@ class Compromisso extends Model
      * visão consegue desenhar e nenhuma sobreposição consegue detectar.
      */
     public const DURACAO_MINIMA = 0.25;
+
+    /**
+     * Quantos minutos antes do início o lembrete é enviado.
+     *
+     * Trinta: perto o bastante para ser "já vai começar", longe o bastante
+     * para dar tempo de fechar o que se está fazendo e abrir a chamada. O
+     * comando que varre a agenda roda a cada cinco minutos, então o aviso real
+     * cai entre 25 e 30 minutos antes — a janela é maior que o passo do
+     * agendador de propósito, senão um compromisso escaparia entre duas
+     * passadas.
+     */
+    public const LEMBRETE_MINUTOS = 30;
 
     public function criadoPor(): BelongsTo
     {
@@ -178,6 +192,26 @@ class Compromisso extends Model
                 ->whereColumn('compromisso_participantes.compromisso_id', 'compromissos.id')
                 ->whereIn('compromisso_participantes.user_id', $ids)
         );
+    }
+
+    /**
+     * Os compromissos que estão para começar e ainda não avisaram.
+     *
+     * A janela é [agora, agora + LEMBRETE_MINUTOS], e o início tem de ser no
+     * futuro: um compromisso criado depois de já ter começado não manda
+     * "começa em -3 min". `lembrete_enviado_em` nulo é o que evita a repetição
+     * — quem já avisou não entra de novo.
+     *
+     * O filtro de janela é por `data` (que tem índice) antes da comparação fina
+     * do instante em PHP, pelo mesmo motivo de `AgendaService::conflitos`: o
+     * início mora em duas colunas, e recompô-lo em SQL custaria o índice.
+     */
+    public function scopeALembrar(Builder $query, Carbon $agora): Builder
+    {
+        return $query
+            ->whereNull('lembrete_enviado_em')
+            ->whereDate('data', '>=', $agora->toDateString())
+            ->whereDate('data', '<=', $agora->copy()->addMinutes(self::LEMBRETE_MINUTOS)->toDateString());
     }
 
     /**

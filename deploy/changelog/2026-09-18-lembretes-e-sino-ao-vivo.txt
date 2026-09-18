@@ -1,0 +1,24 @@
+<b>📋 AlfaMatriz — Changelog 18/09/2026</b>
+<i>A Agenda passa a lembrar você a tempo, e o sino deixa de ser mudo: agora ele te alerta quando algo chega, sem você precisar clicar</i>
+
+<b>⏰ Lembretes da Agenda</b>
+
+• <b>Antes de cada compromisso.</b> Cerca de 30 minutos antes de uma reunião começar, cada participante recebe um aviso no sino — inclusive quem marcou, porque quem marca também quer ser lembrado. Remarcou a reunião para outro horário? O lembrete se rearma sozinho e avisa de novo, no horário novo.
+
+• <b>Prazo de tarefa, na manhã do dia.</b> Quem é responsável por uma tarefa que vence hoje recebe um aviso no começo do dia. Se várias vencem no mesmo dia, vem um aviso só ("Vencem hoje: 3 tarefas"), não três.
+
+• <b>Sem repetição.</b> O lembrete de reunião sai uma vez, não a cada poucos minutos; o de prazo, uma vez por dia. Você é avisado, não bombardeado.
+
+<b>🔔 O sino agora te alerta</b>
+
+• <b>O problema.</b> Até agora o sino só mudava o número quando você recarregava a página. Chegava uma notificação e nada na tela mudava — você só descobria clicando no sino, no palpite. Discreto demais.
+
+• <b>Agora ele avisa sozinho.</b> O contador se atualiza sem recarregar nada, o sino <b>pulsa</b> quando algo acaba de chegar, e aparece um <b>aviso no canto da tela</b> dizendo quantas novas você tem.
+
+• <b>O aviso fica até você fechar.</b> Nada de sumir sozinho em alguns segundos: se você levantou da mesa e voltou dez minutos depois, o aviso ainda está lá esperando. Clicar nele abre o sino já com a lista atualizada; o × dispensa.
+
+• <b>Várias viram uma.</b> Chegaram cinco coisas enquanto você estava fora? Um card só, "5 novas notificações", em vez de uma pilha cobrindo a tela.
+
+• <b>Sem exagero.</b> O sino pulsa quando algo <b>novo</b> chega — não fica piscando para sempre só porque há coisa não lida que você já viu. E quem pediu menos animação no sistema vê o sino aceso e o número, sem o pulso.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

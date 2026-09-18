@@ -250,15 +250,26 @@
 
             O estado é o `sinoAberto` do `shell`, que é ancestral dos dois.
         --}}
-        <button type="button" @click="sinoAberto = ! sinoAberto"
+        {{-- Abrir o sino RECONHECE o que chegou (`abrirSino` apaga o card e o
+             pulso); fechar é só fechar. O `naoLidas` e o pulso são reativos: o
+             poll do shell os move sem recarregar a página. --}}
+        <button type="button" @click="sinoAberto ? (sinoAberto = false) : abrirSino()"
                 class="relative h-[30px] w-[30px] shrink-0 rounded-ctl text-ink-mute hover:text-ink hover:bg-chip transition flex items-center justify-center"
-                :class="sinoAberto && 'bg-chip text-ink'"
+                :class="(sinoAberto || sinoAviso) && 'bg-chip text-ink'"
                 aria-label="Notificações">
-            <span class="h-[18px] w-[18px]"><x-nav-icon name="bell" :peso="1.7" /></span>
-            @if (($naoLidas ?? 0) > 0)
-                <span class="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-crit text-white
-                             font-sans tabular text-[9px] font-semibold leading-[15px] text-center">{{ $naoLidas }}</span>
-            @endif
+            {{-- O anel que pulsa quando algo acabou de chegar. `animate-ping`
+                 escala e some em laço — puxa o olho sem piscar a tela toda. Só
+                 com movimento permitido: quem pediu menos animação vê o sino
+                 tingido e a bolinha, sem o pulso. --}}
+            <span x-show="sinoAviso" x-cloak
+                  class="pointer-events-none absolute inset-0 rounded-ctl ring-2 ring-crit/70 motion-safe:animate-ping"></span>
+
+            <span class="relative h-[18px] w-[18px]" :class="sinoAviso && 'text-crit'"><x-nav-icon name="bell" :peso="1.7" /></span>
+
+            <span x-show="naoLidas > 0" x-cloak x-text="naoLidas"
+                  aria-live="polite"
+                  class="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-crit text-white
+                         font-sans tabular text-[9px] font-semibold leading-[15px] text-center"></span>
         </button>
 
         <button type="button" @click="alternarTema()"

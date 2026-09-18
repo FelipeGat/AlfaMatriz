@@ -23,3 +23,17 @@ Schedule::command('alfa:sincronizar-sistemas')
     ->hourly()
     ->withoutOverlapping()
     ->onOneServer();
+
+// Lembretes da Agenda. O compromisso avisa perto da hora (a cada cinco
+// minutos, uma janela de 30 min — ver `Compromisso::LEMBRETE_MINUTOS`); o
+// prazo avisa de manhã, no dia do vencimento. Os dois escrevem no sino, e o
+// carimbo `lembrete_enviado_em` é quem impede o compromisso de repetir.
+Schedule::command('agenda:lembrar-compromissos')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command('agenda:lembrar-prazos')
+    ->dailyAt('08:00')
+    ->withoutOverlapping()
+    ->onOneServer();

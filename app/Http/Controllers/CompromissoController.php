@@ -66,12 +66,21 @@ class CompromissoController extends Controller
         $dados = $this->validar($request);
 
         DB::transaction(function () use ($compromisso, $dados, $request) {
+            $campos = $this->camposDoIntervalo($dados);
+
+            // Remarcar rearma o lembrete: se o início mudou, quem foi avisado do
+            // horário antigo precisa do novo, e o `lembrete_enviado_em` volta a
+            // null para o comando avisar de novo. Editar só o título ou a pauta
+            // não mexe nisso — o início é que manda.
+            $comecoMudou = $campos['data'] !== Carbon::parse($compromisso->data)->toDateString()
+                || $campos['hora'] !== Carbon::parse($compromisso->hora)->format('H:i');
+
             $compromisso->update(
-                $this->camposDoIntervalo($dados) + [
+                $campos + [
                     'titulo' => $dados['titulo'],
                     'descricao' => $dados['descricao'] ?? null,
                     'tarefa_id' => $dados['tarefa_id'] ?? null,
-                ]
+                ] + ($comecoMudou ? ['lembrete_enviado_em' => null] : [])
             );
 
             // Depois do `update`: a data que os participantes repetem é a nova,

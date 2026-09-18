@@ -92,6 +92,10 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
 
     // O sino não tem tela: o painel viaja com a sidebar, em todas as telas.
     // A única ação que chega ao servidor é dar por lido.
+    Route::get('notificacoes/resumo', [NotificacaoController::class, 'resumo'])
+        ->name('notificacoes.resumo');
+    Route::get('notificacoes/lista', [NotificacaoController::class, 'lista'])
+        ->name('notificacoes.lista');
     Route::post('notificacoes/lidas', [NotificacaoController::class, 'marcarLidas'])
         ->name('notificacoes.lidas');
 
