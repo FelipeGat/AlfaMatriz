@@ -349,6 +349,9 @@ class CompromissoController extends Controller
 
     private function recusar(Request $request, string $mensagem)
     {
+        // Sem flash no caminho JSON: as recusas do modal (permissão, vínculo)
+        // são mostradas INLINE por `modal.erro`, e a tela não recarrega — um
+        // flash aqui só apareceria, velho, na próxima navegação da pessoa.
         if ($request->expectsJson()) {
             return response()->json(['erro' => $mensagem], 422);
         }
@@ -358,6 +361,12 @@ class CompromissoController extends Controller
 
     private function voltar(Request $request, string $mensagem)
     {
+        // Flash SEMPRE, mesmo no caminho JSON: a tela salva por fetch e depois
+        // recarrega, e a mensagem só no corpo do JSON morria no reload — quem
+        // marcava um compromisso não via confirmação nenhuma. Flashada na
+        // sessão, ela sobrevive à recarga e o `<x-aviso>` da tela a mostra.
+        $request->session()->flash('status', $mensagem);
+
         if ($request->expectsJson()) {
             return response()->json(['status' => $mensagem]);
         }

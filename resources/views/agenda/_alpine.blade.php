@@ -13,6 +13,7 @@
             equipe: inicial.equipe,
             compromissos: inicial.compromissos,
             podeReagendar: inicial.podeReagendar,
+            usuarioId: inicial.usuarioId,
             hoje: inicial.hoje,
 
             arrastando: null,
@@ -118,13 +119,14 @@
                     de_prazo: dePrazo,
                 });
 
-                // Recarrega em vez de mexer no DOM: mover o prazo muda o rótulo
-                // ("sem reunião marcada" aparece ou some), a ordem do dia e o
-                // grupo de atrasadas. Remendar tudo isso na mão seria reescrever
-                // o `AgendaService` em JavaScript.
-                if (resposta.ok) {
-                    window.location.reload();
-                }
+                // Recarrega em qualquer caso: no acerto, porque mover o prazo
+                // muda o rótulo ("sem reunião marcada" aparece ou some), a ordem
+                // do dia e o grupo de atrasadas — remendar tudo na mão seria
+                // reescrever o `AgendaService` em JavaScript. Na recusa, porque a
+                // razão foi flashada na sessão ("Alguém já remarcou..."), e é o
+                // reload que a traz para a tela — o arraste não tem modal onde
+                // mostrar o erro inline.
+                window.location.reload();
             },
 
             /* ---------- modal de compromisso ---------- */
@@ -148,6 +150,16 @@
 
                 this.modal = { ...this.modalVazio(), aberto: true, data: data ?? this.hoje };
                 this.modal.data_fim = this.modal.data;
+
+                // Quem marca já entra como participante — é o padrão de agenda
+                // de mercado (o organizador é um convidado), e é o que faz o
+                // lembrete chegar a quem criou a reunião. Removível no chip, para
+                // quem está marcando para outros. Sem isso, marcar a própria
+                // reunião não lembrava ninguém de nada.
+                if (this.usuarioId) {
+                    this.modal.participantes = [this.usuarioId];
+                }
+
                 this.recalcular();
             },
 

@@ -72,6 +72,7 @@ class AgendaController extends Controller
             'faixaLabel' => $this->faixaLabel($visao, $em, $faixa),
             'equipe' => $this->equipe(),
             'podeReagendar' => $request->user()?->podeTriarTarefas() ?? false,
+            'usuarioId' => $request->user()->id,
 
             // O que o modal precisa para ABRIR um compromisso já salvo, pelos
             // ids que os itens da tela carregam. Vai junto com a página, e não
@@ -278,6 +279,10 @@ class AgendaController extends Controller
 
     private function recusar(Request $request, string $mensagem)
     {
+        // A recusa também flasha: o arraste que bate em remarcação alheia
+        // recarrega, e sem o flash a tela voltava sem dizer por que não mexeu.
+        $request->session()->flash('erro', $mensagem);
+
         if ($request->expectsJson()) {
             return response()->json(['erro' => $mensagem], 422);
         }
@@ -287,6 +292,12 @@ class AgendaController extends Controller
 
     private function voltar(Request $request, string $mensagem)
     {
+        // Flash SEMPRE, mesmo no caminho JSON: a tela salva por fetch e depois
+        // recarrega, e a mensagem só no corpo do JSON morria no reload — quem
+        // marcava um compromisso não via confirmação nenhuma. Flashada na
+        // sessão, ela sobrevive à recarga e o `<x-aviso>` da tela a mostra.
+        $request->session()->flash('status', $mensagem);
+
         if ($request->expectsJson()) {
             return response()->json(['status' => $mensagem]);
         }

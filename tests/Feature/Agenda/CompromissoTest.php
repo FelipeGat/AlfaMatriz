@@ -189,6 +189,28 @@ class CompromissoTest extends TestCase
         ]);
     }
 
+    /**
+     * Salvar por JSON deixa a confirmação na sessão — a tela recarrega e o
+     * toast aparece.
+     *
+     * Antes a mensagem ia só no corpo do JSON, que o reload jogava fora: quem
+     * marcava um compromisso não via confirmação nenhuma ("marquei e não vi
+     * nada").
+     */
+    public function test_salvar_deixa_a_confirmacao_flashada_para_o_reload(): void
+    {
+        $usuario = User::factory()->create();
+
+        $this->actingAs($usuario)->postJson(route('compromissos.store'), [
+            'titulo' => 'Alinhamento',
+            'data' => '2026-10-12', 'hora' => '10:00',
+            'duracao_modo' => true, 'duracao_horas' => 1,
+        ])->assertOk();
+
+        $this->assertNotNull(session('status'));
+        $this->assertStringContainsString('Compromisso marcado', session('status'));
+    }
+
     public function test_participantes_sao_avisados_no_sino_menos_quem_marcou(): void
     {
         $autor = User::factory()->create();

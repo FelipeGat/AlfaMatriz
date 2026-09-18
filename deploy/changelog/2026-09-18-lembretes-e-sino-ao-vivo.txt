@@ -7,6 +7,8 @@
 
 • <b>Prazo de tarefa, na manhã do dia.</b> Quem é responsável por uma tarefa que vence hoje recebe um aviso no começo do dia. Se várias vencem no mesmo dia, vem um aviso só ("Vencem hoje: 3 tarefas"), não três.
 
+• <b>Quem marca já entra na reunião.</b> Ao criar um compromisso, você já vem marcado como participante (dá para tirar, se estiver agendando para outros) — então recebe o próprio lembrete. E marcar mostra na hora a confirmação "Compromisso marcado para...".
+
 • <b>Sem repetição.</b> O lembrete de reunião sai uma vez, não a cada poucos minutos; o de prazo, uma vez por dia. Você é avisado, não bombardeado.
 
 <b>🔔 O sino agora te alerta</b>
