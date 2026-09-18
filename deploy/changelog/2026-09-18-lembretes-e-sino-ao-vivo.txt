@@ -17,9 +17,11 @@
 
 • <b>Agora ele avisa sozinho.</b> O contador se atualiza sem recarregar nada, o sino <b>pulsa</b> quando algo acaba de chegar, e aparece um <b>aviso no canto da tela</b> dizendo quantas novas você tem.
 
-• <b>O aviso fica até você fechar.</b> Nada de sumir sozinho em alguns segundos: se você levantou da mesa e voltou dez minutos depois, o aviso ainda está lá esperando. Clicar nele abre o sino já com a lista atualizada; o × dispensa.
+• <b>O aviso mostra o que chegou.</b> O card já traz a notificação mais recente — título e prévia da mensagem —, e não só um número: às vezes você resolve sem nem abrir o sino. O ícone é tingido pela gravidade do aviso.
 
-• <b>Várias viram uma.</b> Chegaram cinco coisas enquanto você estava fora? Um card só, "5 novas notificações", em vez de uma pilha cobrindo a tela.
+• <b>Fica até você fechar.</b> Nada de sumir sozinho em alguns segundos: se você levantou da mesa e voltou dez minutos depois, o aviso ainda está lá esperando. Clicar nele abre o sino já com a lista atualizada; o × dispensa.
+
+• <b>Chegaram várias?</b> Quando há mais de três não lidas, o card ganha um "Ver todas · N" que abre o sino — sem virar uma pilha de cards cobrindo a tela.
 
 • <b>Sem exagero.</b> O sino pulsa quando algo <b>novo</b> chega — não fica piscando para sempre só porque há coisa não lida que você já viu. E quem pediu menos animação no sistema vê o sino aceso e o número, sem o pulso.
 

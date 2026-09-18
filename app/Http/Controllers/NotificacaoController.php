@@ -40,10 +40,20 @@ class NotificacaoController extends Controller
     public function resumo(Request $request)
     {
         $id = $request->user()->id;
+        $ultima = Notificacao::where('destinatario_id', $id)->latest('id')->first();
 
         return response()->json([
             'nao_lidas' => Notificacao::naoLidasDe($id)->count(),
-            'ultimo_id' => (int) Notificacao::where('destinatario_id', $id)->max('id'),
+            'ultimo_id' => (int) ($ultima?->id ?? 0),
+            // A mais recente, já pronta para o card flutuante mostrar título e
+            // prévia — em vez de só "N novas". O `tom` sai do mesmo mapa do
+            // painel (`_notificacoes-lista`), para o card não pintar o aviso de
+            // uma cor e a lista de outra.
+            'ultima' => $ultima ? [
+                'titulo' => $ultima->titulo,
+                'meta' => $ultima->meta,
+                'tom' => ['critico' => 'crit', 'atencao' => 'warn', 'marca' => 'brand'][$ultima->nivel] ?? 'brand',
+            ] : null,
         ]);
     }
 
