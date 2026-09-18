@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 18/09/2026</b>
+<i>Agenda: vincular uma tarefa a um compromisso agora é por busca, não mais uma lista sem fim</i>
+
+<b>🔎 Busca no lugar da lista</b>
+
+• No modal de <b>Novo compromisso</b>, o campo <b>"Vincular a uma tarefa"</b> deixou de ser uma lista rolável de todas as tarefas — que, com o tempo, viraria centenas de linhas para rolar. Agora é um <b>campo de busca</b>: digite o <b>número</b> (#199) ou parte do <b>nome</b> e a lista filtra na hora.
+
+• A resposta é <b>instantânea</b>, sem espera: a filtragem acontece na própria tela.
+
+• A tarefa escolhida fica visível no campo, em texto normal (antes aparecia apagada, parecendo um espaço vazio). O <b>×</b> desvincula, e <b>"Nenhuma"</b> no topo da lista também.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
