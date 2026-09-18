@@ -85,9 +85,12 @@ class AgendaController extends Controller
             // Os dois selects do modal. Carregados aqui, e não por requisição
             // ao abrir, porque o modal nasce junto com a tela: uma consulta na
             // abertura faria o formulário piscar vazio antes de se preencher.
+            // Por id crescente, e não por título: o select mostra "#12 — …",
+            // então ordenar por nome embaralhava os números. O código da tarefa
+            // é o que a pessoa procura ali, e ele cresce com o id.
             'tarefasVinculaveis' => Tarefa::query()
                 ->whereNotIn('status', Tarefa::STATUS_TERMINAIS)
-                ->orderBy('titulo')
+                ->orderBy('id')
                 ->get(['id', 'titulo']),
             'sistemas' => Sistema::orderBy('nome')->get(['id', 'nome']),
         ]);
