@@ -23,6 +23,12 @@
         'cube-outline' => 'M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9',
         'bell' => 'M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0',
         'clock' => 'M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z',
+        // O `calendar-days` do Heroicons, e não o `calendar` liso: a Agenda
+        // mostra DIAS, e os pontinhos da grade são o que distingue o ícone do
+        // `clipboard` num rail de 60px — lá os dois viram um retângulo com uma
+        // aba em cima. Os seis pontos são círculos de verdade, como o furo da
+        // etiqueta em 'tag', pelo mesmo motivo que está anotado lá.
+        'calendar' => 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5 M7.9 13.5a.6.6 0 101.2 0 .6.6 0 10-1.2 0z M11.4 13.5a.6.6 0 101.2 0 .6.6 0 10-1.2 0z M14.9 13.5a.6.6 0 101.2 0 .6.6 0 10-1.2 0z M7.9 16.5a.6.6 0 101.2 0 .6.6 0 10-1.2 0z M11.4 16.5a.6.6 0 101.2 0 .6.6 0 10-1.2 0z M14.9 16.5a.6.6 0 101.2 0 .6.6 0 10-1.2 0z',
         // Os dois estados do cadeado. Fechado é a AÇÃO de travar; aberto é a
         // de soltar — o ícone mostra o que o clique faz, não o estado atual,
         // que já é dito pela tarja e pela cor do botão.

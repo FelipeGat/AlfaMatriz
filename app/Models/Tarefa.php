@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -316,13 +317,16 @@ class Tarefa extends Model
 
     protected $fillable = [
         'titulo', 'resumo', 'detalhes', 'tipo', 'sistema_id', 'responsavel_id',
-        'criado_por_id', 'prioridade', 'status', 'ordem', 'iniciada_em',
+        'criado_por_id', 'prioridade', 'status', 'ordem', 'iniciada_em', 'prazo',
     ];
 
     protected function casts(): array
     {
         return [
             'iniciada_em' => 'datetime',
+            // `date` e não `datetime`: prazo é o DIA combinado, e a hora
+            // pertence ao compromisso. Ver a migração que criou a coluna.
+            'prazo' => 'date',
             'bloqueado_em' => 'datetime',
             'pergunta_em' => 'datetime',
             'rodadas' => 'integer',
@@ -953,6 +957,86 @@ class Tarefa extends Model
         }
 
         return ['feitos' => $this->itens->where('feito', true)->count(), 'total' => $total];
+    }
+
+    /**
+     * As reuniões marcadas por causa desta tarefa.
+     *
+     * Aparecem no detalhe que a Agenda abre, com o intervalo completo, e são o
+     * outro lado de "Reservar tempo". Ordenadas pelo instante e não pelo id: o
+     * que a pessoa quer saber é o que vem primeiro, e a ordem de cadastro não
+     * tem relação nenhuma com isso.
+     */
+    public function compromissos(): HasMany
+    {
+        return $this->hasMany(Compromisso::class)->orderBy('data')->orderBy('hora');
+    }
+
+    /**
+     * A tarefa tem prazo apertado e nenhuma reunião marcada?
+     *
+     * É o risco que a Agenda pinta de âmbar com "· sem reunião marcada". A
+     * janela é de 48 horas porque é o menor prazo em que ainda dá para marcar
+     * alguma coisa: avisar no dia não deixa tempo de reagir, e avisar na semana
+     * anterior transformaria o aviso em ruído de fundo para o quadro inteiro.
+     *
+     * Tarefa travada ou em retorno fica de FORA, e a exclusão é o ponto: nos
+     * dois casos o problema já tem nome e dono, e um segundo aviso dizendo que
+     * também falta reunião só disputaria atenção com o primeiro. A cor já está
+     * âmbar por outro motivo — ver `marcaDaAgenda`.
+     *
+     * Espera `compromissos` carregada: a Agenda monta a tela inteira de uma vez
+     * e perguntar por tarefa aqui seria o N+1 da tela.
+     */
+    public function prazoSemReuniao(?Carbon $hoje = null): bool
+    {
+        if ($this->prazo === null || $this->estaBloqueada() || $this->temRetorno()) {
+            return false;
+        }
+
+        if ($this->compromissos->isNotEmpty()) {
+            return false;
+        }
+
+        $hoje = $hoje ? $hoje->copy()->startOfDay() : now()->startOfDay();
+
+        // Inclusivo nas duas pontas: hoje, amanhã e depois de amanhã. Prazo
+        // vencido continua dentro — atrasada sem reunião é o caso mais agudo,
+        // não um que já passou do ponto de avisar.
+        return $this->prazo->startOfDay()->lte($hoje->copy()->addDays(2));
+    }
+
+    /**
+     * A marca que a Agenda pinta sobre o prazo desta tarefa — ou null.
+     *
+     * É aqui que mora a regra "estado manda na cor, não a prioridade". No
+     * quadro a borda do card já é a prioridade; na Agenda a prioridade não
+     * disputa com nada, mas os ESTADOS precisam sobreviver à mudança de tela —
+     * uma tarefa travada tem de parecer travada nas duas, senão o mesmo dado
+     * conta histórias diferentes conforme onde se olha.
+     *
+     * A ordem das três respostas é a ordem de gravidade, e cada tarefa recebe
+     * uma só: travada vence retorno, e os dois vencem a falta de reunião, que é
+     * o risco mais brando. Ver `prazoSemReuniao`, que já se cala nos dois
+     * primeiros casos.
+     *
+     * @return array{sufixo: string, tom: string}|null
+     */
+    public function marcaDaAgenda(?Carbon $hoje = null): ?array
+    {
+        if ($this->estaBloqueada()) {
+            return ['sufixo' => 'Bloqueada', 'tom' => 'bloqueio'];
+        }
+
+        if ($this->temRetorno()) {
+            return ['sufixo' => 'Em retorno', 'tom' => 'retorno'];
+        }
+
+        if ($this->prazoSemReuniao($hoje)) {
+            return ['sufixo' => 'sem reunião marcada', 'tom' => 'warn'];
+        }
+
+        return null;
     }
 
 }

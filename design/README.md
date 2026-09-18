@@ -729,6 +729,169 @@ header.
 
 ---
 
+### 18. Notas — espaço pessoal (`/notas`)
+
+Grupo **Pessoal** na sidebar — mas veja a nota do §19: o grupo não foi criado, e o lugar das Notas fica
+em aberto até elas serem implementadas. Bloco de notas privado por conta, no espírito do app Notas do
+macOS: **sem
+pasta, sem tag, sem compartilhar**. É rascunho de trabalho, não registro do sistema — por isso não tem
+responsável, prioridade, etapa nem histórico, e nunca aparece no quadro, no sino ou na Agenda.
+
+**Privacidade é a regra estruturante:** toda consulta é escopada em `user_id = auth()->id()`. Admin **não**
+vê nota de ninguém — sem isso o recurso deixa de servir ao propósito (anotação franca) na primeira vez que
+alguém descobre que o chefe lê.
+
+**Layout — duas colunas, altura `calc(100vh - 120px)`:**
+
+| Coluna | Largura | Conteúdo |
+|---|---|---|
+| Lista | `flex:0 0 272px` | Botão **+ Nova nota** (cheio, marca), busca, e um cartão por nota |
+| Editor | `flex:1;min-width:0` | Faixa de meta + barra de formatação, título e corpo |
+
+**Cartão da lista:** título (ou “Sem título” em `inkFaint` quando vazio), e uma linha `data · trecho` com o
+primeiro texto do corpo, truncado em 64 caracteres. Nota ativa leva `navActiveBg` + barra esquerda de 2px na
+marca. O trecho vem do **texto** do corpo (`textContent`), nunca do HTML cru — senão a lista mostra `<div>`.
+
+**Faixa do editor:** à esquerda `EDITADO HÁ 2H` em mono 11px; à direita a barra de formatação. Ela fica no
+topo fixo, **não entre o título e o corpo** — ali ela empurrava o texto a cada linha nova.
+
+**Barra de formatação** (12 botões de 26px, separadores de 1px entre grupos):
+
+1. `T` título · `B` negrito · `I` itálico · `S` sublinhado
+2. `•` lista · `1.` lista numerada · `☑` checklist
+3. `A` pequeno · `A` normal · `A` grande (o próprio botão usa o tamanho que aplica)
+4. 4 bolinhas de 18px: padrão, marca, âmbar, vermelho
+
+**Checklist é texto (`☐`/`☑`), não `<input>`.** O botão insere `☐ `; clicar no glifo alterna o caractere sob o
+ponteiro (`caretRangeFromPoint`). Com input real a caixa não sobreviveria ao `innerHTML` salvo, e marcar
+exigiria apagar e redigitar o símbolo à mão.
+
+**O corpo é `contentEditable`, não controlado pelo framework.** É a armadilha central: reimpor o HTML a cada
+tecla **reposiciona o cursor no início**. O conteúdo só é reimposto quando a nota **atual troca** (troca de
+nota ou volta à tela), nunca durante a digitação — no protótipo, um `editorNotaId` guarda qual nota está no
+editor e compara antes de escrever. O placeholder é um parágrafo `position:absolute` com
+`pointer-events:none` por cima, mostrado quando o texto está vazio (`contentEditable` não tem `placeholder`).
+
+**Salvar é implícito**, a cada alteração (`debounce` de ~500ms no backend). Não existe botão Salvar — como no
+app de referência. `atualizado` volta para “agora”.
+
+**Excluir tem confirmação inline no próprio cartão** (não modal): o botão de lixeira dá lugar a **Excluir** em
+vermelho + `×` para desistir. Ao excluir a nota aberta, a seleção cai na primeira da lista; sem nenhuma,
+o editor mostra o estado vazio (ícone 36px + “Nenhuma nota selecionada”).
+
+**Busca** filtra título + corpo, sem distinção de caixa. Sem resultado: “Nada encontrado”; lista vazia de
+verdade: “Nenhuma nota ainda” — mensagens diferentes, porque o problema é diferente.
+
+**Banco:** `notas (id, user_id, titulo, corpo /* HTML */, created_at, updated_at)`, índice em
+`(user_id, updated_at desc)`. O corpo é HTML de um editor — **sanitize na escrita** (allowlist: `b, i, u,
+strong, em, div, br, ul, ol, li, font[color], span[style]`), senão o campo é XSS armazenado.
+
+### 19. Agenda (`/agenda`)
+
+**A tela chama-se Agenda**, não Calendário — o nome que o time usa. Subtítulo: “Prazos de tarefas e
+compromissos do time”.
+
+> **Implementado em 18/09/2026, com uma divergência deliberada.** O desenho a punha num grupo **Pessoal**
+> na sidebar, acima de Notas. Decisão do dono do produto: ela mora em **Desenvolvimento**, logo abaixo de
+> Tarefas — o que ela mostra é o prazo do quadro e a hora marcada para tocá-lo. O grupo Pessoal não
+> chegou a existir; quando as Notas (§18) entrarem, o lugar delas é decisão em aberto. O recurso de
+> permissão continua próprio (`agenda`, e não `tarefas`): estar no mesmo grupo não é estar na mesma porta.
+
+Cuidado com o nome interno: a terceira visão chamava-se “Agenda” e virou **Lista**, para não haver visão
+Agenda dentro da tela Agenda. Mantenha `Semana · Mês · Lista`.
+
+**Duas fontes de item, nunca misturadas visualmente:**
+
+| | Prazo de tarefa | Compromisso |
+|---|---|---|
+| Origem | `tarefas.prazo` (campo novo) | tabela `compromissos` |
+| Rótulo | `Tarefa` + sufixo de estado | `Compromisso` |
+| Meta | `sistema · responsável` | `09:00–10:00 · participantes` |
+| Clique | detalhe da tarefa | modal de edição |
+| Arraste | reagenda o prazo (admin) | — |
+
+**Barra superior:** seletor de visão (`Semana / Mês / Lista`), navegação `‹ ›` + **Hoje** (oculta na Lista,
+que é sempre “Próximos 21 dias”), filtro de pessoas em chips, e **+ Novo compromisso**.
+
+**Visão Semana** — 7 colunas `flex:1 1 0;min-width:150px`, cada uma rolando por dentro; cabeçalho clicável
+abre o dia. **Mês** — grade `repeat(7,1fr) × repeat(6,1fr)`, 42 células fixas. **Lista** — agrupada por dia,
+com **Atrasadas · N** em vermelho no topo quando houver.
+
+**Escopo e perfis:**
+- Todos veem a agenda do **time inteiro**, com filtro por pessoa
+- **Membro cria só os próprios** compromissos e só edita o que criou (`somenteLeitura` no modal)
+- **Reagendar por arraste é só admin** — mudar prazo é triagem, mesma regra de prioridade e responsável
+
+**Modal de compromisso — início, término e duração.** É a parte mais detalhada:
+
+- **Início:** data + hora
+- **Término:** alterna entre dois modos por um botão-pílula
+  - **Duração** (padrão): campo de horas (aceita fração, `step=0.25`, mínimo `0.25`) e o término é **calculado
+    e exibido** — “1,5 horas · termina às 11:30”. Cruzando a meia-noite, acrescenta “(dia seguinte)”
+  - **Horário livre:** data + hora de término editáveis, independentes
+- Mudar o início ou as horas **no modo Duração sempre recalcula o término** — é o contrato do recurso
+- Validação ao salvar: término depois do início, senão “O término precisa ser depois do início.”
+- **Detalhes** (textarea): pauta, link da chamada, contexto
+- **Participantes** em chips; cada chip mostra a carga daquela pessoa no dia (`· 2 no dia`) e fica **âmbar com
+  `· conflito`** quando ela já tem outro compromisso sobreposto naquele intervalo
+- **Vincular a uma tarefa** (select) e, num compromisso já salvo sem vínculo, o botão **Virar tarefa**
+- Botão de salvar existe e é explícito (ao contrário de Notas): compromisso envolve outras pessoas
+
+**Inputs de data e hora precisam de `color-scheme: dark|light`** conforme o tema. Sem isso os ícones nativos
+de calendário e relógio ficam escuros sobre fundo escuro — invisíveis no tema escuro.
+
+**Drawer do dia** (clique num dia): lista de tudo naquele dia e, quando há mais de uma pessoa envolvida,
+uma tira de chips de **carga por pessoa** — tarefa conta para o responsável, compromisso conta para cada
+participante; 3+ no mesmo dia fica âmbar. É o dado que nem o card nem o dia isolado mostram: 1 prazo + 2
+reuniões pesa tanto quanto 3 prazos.
+
+**Detalhe da tarefa** (a partir da Agenda): prioridade, sistema, responsável, prazo, **Reuniões vinculadas**
+(com intervalo completo), e três ações — **Reservar tempo** (linha inteira), depois Fechar / **Ver no
+quadro**.
+
+**As seis integrações com Tarefas:**
+
+1. **Prazo aparece sozinho** — tarefa com prazo não precisa de compromisso manual
+2. **Reuniões vinculadas** no detalhe da tarefa, com intervalo `14:00–15:00`
+3. **Bloqueio e retorno alertam no sino** — esses estados **não têm data**: a tarefa trava *hoje*, não no dia
+   do prazo, então o alerta se repete todo dia enquanto o estado persistir (como o quadro faz)
+4. **Dois caminhos de conversão**, um em cada direção: **Virar tarefa** (do compromisso, cria tarefa com
+   prazo na mesma data e vincula) e **Reservar tempo** (da tarefa, abre compromisso pré-preenchido — título,
+   responsável + quem reservou como participantes, data, já vinculado)
+5. **Carga por pessoa** no drawer do dia
+6. **Estado manda na cor, não a prioridade** — bloqueada/em retorno fica âmbar em toda visão, com sufixo
+   `· Bloqueada` / `· Em retorno`. Senão o mesmo dado conta histórias diferentes nas duas telas
+
+**Risco “prazo sem reunião”:** prazo em ≤48h e **nenhum** compromisso vinculado → âmbar com `· sem reunião
+marcada` em toda visão, mais alerta no sino. Exclui tarefa bloqueada ou em retorno: ali o problema já está
+identificado e o aviso seria ruído.
+
+**O que deliberadamente NÃO se automatiza:** chegar o horário do compromisso **não** move a tarefa para “Em
+andamento”. Reunião acontecer não é trabalho começar — a call pode ser só alinhamento, ou a pessoa nem abriu
+o editor. Linear e Jira mantêm os dois desacoplados pelo mesmo motivo; a automação que existe no mercado é a
+inversa (mover para Em andamento sugere reservar agenda), e é ela que o desenho implementa em **Reservar
+tempo**. Se o time pedir o contrário depois, que seja opt-in por pessoa.
+
+**Banco:**
+
+```
+compromissos (id, titulo, descricao, data, hora, data_fim, hora_fim,
+              duracao_modo /* bool */, duracao_horas /* decimal(4,2) */,
+              criado_por_id, tarefa_id /* null */, created_at, updated_at)
+compromisso_participantes (compromisso_id, user_id)
+tarefas.prazo /* date, nullable — campo NOVO */
+```
+
+`duracao_modo` e `duracao_horas` são persistidos de propósito: reabrir o compromisso deve devolver o **modo
+em que ele foi criado**. Derivar as horas de `hora_fim - hora` perde a informação de qual campo é a fonte da
+verdade quando o usuário editar o início.
+
+Índices: `(data)`, `(tarefa_id)`, e `(user_id, data)` na tabela de participantes — as três consultas da tela.
+
+---
+
+---
+
 ## Gráficos
 
 Todos em SVG inline, sem biblioteca. Reaproveite/evolua `components/bar-chart.blade.php`.
