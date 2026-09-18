@@ -1,0 +1,8 @@
+<b>📋 AlfaMatriz — Changelog 18/09/2026</b>
+<i>Ajuste na Agenda: ao vincular uma tarefa a um compromisso, a lista volta a fazer sentido</i>
+
+<b>🔢 Tarefas na ordem do número</b>
+
+• No modal de <b>Novo compromisso</b>, o campo <b>"Vincular a uma tarefa"</b> mostra cada tarefa como "#número — título". A lista vinha ordenada pelo título, então os números apareciam embaralhados (#131, #12, #5…). Agora ela sai em <b>ordem crescente de #</b> — que é o código pelo qual a gente procura a tarefa.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
