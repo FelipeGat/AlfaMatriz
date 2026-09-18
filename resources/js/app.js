@@ -55,6 +55,7 @@ Alpine.data('shell', () => ({
     sinoUltimoId: (window.__sino && window.__sino.ultimoId) || 0,
     sinoNovas: 0,
     sinoAviso: false,
+    sinoUltima: null,
     sinoListaId: (window.__sino && window.__sino.ultimoId) || 0,
 
     tema: document.documentElement.classList.contains('theme-light') ? 'claro' : 'escuro',
@@ -122,6 +123,7 @@ Alpine.data('shell', () => ({
             if (dados.ultimo_id > this.sinoUltimoId) {
                 this.sinoUltimoId = dados.ultimo_id;
                 this.sinoNovas = dados.nao_lidas;
+                this.sinoUltima = dados.ultima;
                 this.sinoAviso = true;
             }
         } catch (erro) {

@@ -130,20 +130,34 @@
              x-transition:enter-start="opacity-0 translate-y-2"
              x-transition:leave="transition ease-in duration-150"
              x-transition:leave-end="opacity-0"
-             class="fixed bottom-4 right-4 z-[65] w-[280px] max-w-[calc(100vw-32px)]">
+             class="fixed bottom-4 right-4 z-[65] w-[300px] max-w-[calc(100vw-32px)]
+                    rounded-panel border border-line bg-panel overflow-hidden
+                    shadow-[0_12px_32px_rgb(0_0_0_/_0.32)]">
+            {{--
+                O card mostra a notificação MAIS RECENTE — título e prévia —, e
+                não só "N novas": um contador diz que há algo, o conteúdo diz o
+                QUE é, e às vezes já resolve sem abrir o painel. O ícone é
+                tingido pelo tom do aviso (o mesmo mapa do painel), para a
+                gravidade se ler de relance.
+            --}}
             <div role="button" tabindex="0"
                  @click="abrirSino()" @keydown.enter="abrirSino()"
-                 class="flex items-center gap-3 rounded-panel border border-line bg-panel p-3 text-left
-                        shadow-[0_12px_32px_rgb(0_0_0_/_0.32)] cursor-pointer transition hover:bg-chip">
-                <span class="shrink-0 h-8 w-8 rounded-tile flex items-center justify-center"
-                      style="background: rgb(var(--crit) / var(--tint-alpha)); color: rgb(var(--crit))">
+                 class="flex items-start gap-3 p-3 text-left cursor-pointer transition hover:bg-chip">
+                <span class="shrink-0 mt-px h-8 w-8 rounded-tile flex items-center justify-center"
+                      :style="sinoUltima
+                          ? `background: rgb(var(--${sinoUltima.tom}) / var(--tint-alpha)); color: rgb(var(--${sinoUltima.tom}))`
+                          : 'background: rgb(var(--brand) / var(--tint-alpha)); color: rgb(var(--brand))'">
                     <span class="h-[16px] w-[16px]"><x-nav-icon name="bell" :peso="1.8" /></span>
                 </span>
 
                 <span class="min-w-0 flex-1">
-                    <span class="block text-[13px] font-semibold text-ink"
-                          x-text="sinoNovas === 1 ? '1 nova notificação' : sinoNovas + ' novas notificações'"></span>
-                    <span class="block text-[11.5px] text-ink-mute">Clique para ver</span>
+                    {{-- Título numa linha, truncado; a prévia (o meta do aviso)
+                         embaixo, também truncada — o card é relance, o resto
+                         está no painel a um clique. --}}
+                    <span class="block truncate text-[13px] font-semibold text-ink"
+                          x-text="sinoUltima ? sinoUltima.titulo : 'Nova notificação'"></span>
+                    <span class="block truncate text-[11.5px] text-ink-mute"
+                          x-text="sinoUltima && sinoUltima.meta ? sinoUltima.meta : 'Clique para ver'"></span>
                 </span>
 
                 <button type="button" @click.stop="dispensarAvisoSino()"
@@ -152,6 +166,16 @@
                     <span class="h-3.5 w-3.5"><x-nav-icon name="x-mark" :peso="1.7" /></span>
                 </button>
             </div>
+
+            {{-- "Ver todas" só quando há mais de três: com uma ou duas, o card
+                 mais o número no sino já bastam, e a linha extra seria ruído. --}}
+            <template x-if="naoLidas > 3">
+                <button type="button" @click="abrirSino()"
+                        class="w-full border-t border-rule px-3 py-2 text-left
+                               font-mono text-[10px] uppercase tracking-caps text-brand hover:text-brand-bright transition">
+                    Ver todas · <span x-text="naoLidas"></span> não lidas
+                </button>
+            </template>
         </div>
     @endunless
 @endauth

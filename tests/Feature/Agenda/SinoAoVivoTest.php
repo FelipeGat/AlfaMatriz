@@ -48,7 +48,12 @@ class SinoAoVivoTest extends TestCase
         $this->actingAs($ana)
             ->getJson(route('notificacoes.resumo'))
             ->assertOk()
-            ->assertJson(['nao_lidas' => 2, 'ultimo_id' => $ultima->id]);
+            ->assertJson([
+                'nao_lidas' => 2,
+                'ultimo_id' => $ultima->id,
+                // A última vem pronta para o card mostrar título e prévia.
+                'ultima' => ['titulo' => 'Um aviso'],
+            ]);
     }
 
     /** O resumo é de CADA um: o contador de uma pessoa não conta o da outra. */
