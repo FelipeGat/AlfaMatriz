@@ -54,10 +54,18 @@
                 </div>
 
                 @foreach ($grade['dias'] as $d)
+                    {{-- Cada dia é zona de solta: arrastar um prazo para cá chama
+                         `soltarEm`, que remarca a tarefa para este dia. Igual às
+                         células do Mês. --}}
                     <div class="flex flex-1 basis-0 min-w-[104px] flex-col gap-0.5 border-l border-line p-1
-                                {{ $d['ehHoje'] ? 'bg-brand/[0.04]' : '' }}">
+                                {{ $d['ehHoje'] ? 'bg-brand/[0.04]' : '' }}"
+                         @drop.prevent="soltarEm('{{ $d['data'] }}')"
+                         @dragover.prevent>
                         @foreach ($d['inteiroDia'] as $item)
-                            <x-agenda-item :item="$item" variante="chip" />
+                            {{-- Arrasta quem faz triagem OU o responsável da tarefa
+                                 (o prazo carrega o responsável em `pessoas`). --}}
+                            <x-agenda-item :item="$item" variante="chip"
+                                           :arrastavel="$item['tipo'] === 'tarefa' && ($podeReagendar || in_array(auth()->id(), $item['pessoas']))" />
                         @endforeach
                     </div>
                 @endforeach

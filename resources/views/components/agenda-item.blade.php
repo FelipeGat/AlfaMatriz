@@ -59,7 +59,13 @@
          cor, ninguém sabia que aquilo era prazo. A cor do ícone e da barra é a
          da prioridade/estado da tarefa; o tom do vencimento continua ali. --}}
     <button type="button" @click="{{ $aoClicar }}"
-            class="flex w-full items-center gap-1 rounded-badge px-1.5 py-0.5 text-left transition hover:brightness-110"
+            @if ($arrastavel)
+                draggable="true"
+                @dragstart.stop="arrastar($event, {{ $item['id'] }}, '{{ $item['data'] }}')"
+                @dragend="arrastando = null"
+            @endif
+            class="flex w-full items-center gap-1 rounded-badge px-1.5 py-0.5 text-left transition hover:brightness-110
+                   @if ($arrastavel) cursor-grab active:cursor-grabbing @endif"
             style="background: {{ $tinte }}; border-left: 2px solid {{ $barra }}; color: rgb(var(--ink))"
             title="{{ $item['rotulo'] }} · {{ $item['titulo'] }}">
         @if ($item['tipo'] === 'tarefa')
@@ -72,8 +78,19 @@
     {{-- A célula do Mês: só o ponto e o título, porque a célula tem 1/42 da
          grade. O resto do dia mora no drawer, que é o que o clique na célula
          abre — e é por isso que o ponto não tem clique próprio: dois alvos de
-         clique numa caixa de 11px acertariam o errado. --}}
-    <div class="flex shrink-0 items-center gap-1 overflow-hidden">
+         clique numa caixa de 11px acertariam o errado.
+
+         `arrastavel` liga o arraste do prazo: pega ESTE item e solta em outra
+         célula, cujo `@drop` chama `soltarEm`. `draggable` fica no item, não na
+         célula, para mover um prazo e não o dia inteiro; `.stop` no dragstart
+         impede que o arraste dispare o `@click` que abre o drawer. --}}
+    <div class="flex shrink-0 items-center gap-1 overflow-hidden
+                @if ($arrastavel) cursor-grab active:cursor-grabbing @endif"
+         @if ($arrastavel)
+             draggable="true"
+             @dragstart.stop="arrastar($event, {{ $item['id'] }}, '{{ $item['data'] }}')"
+             @dragend="arrastando = null"
+         @endif>
         <span class="h-[5px] w-[5px] shrink-0 rounded-full" style="background: {{ $cor }}"></span>
         <span class="min-w-0 truncate text-[10px] text-ink-dim">{{ $item['titulo'] }}</span>
     </div>
