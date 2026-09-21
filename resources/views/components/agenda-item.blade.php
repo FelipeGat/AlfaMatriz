@@ -32,6 +32,9 @@
         'retorno' => 'retorno',
         'exame' => 'exame',
         'warn' => 'warn',
+        // As cores das categorias de compromisso já chegam como o nome do token.
+        'good' => 'good',
+        'pergunta' => 'pergunta',
         default => null,
     };
 

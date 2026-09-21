@@ -37,6 +37,23 @@
                    class="h-9 w-full rounded-control border border-btn-line bg-input px-2.5 text-[13.5px] text-ink
                           placeholder:text-ink-faint focus:border-brand focus:ring-0 disabled:opacity-60">
 
+            {{-- Categoria: a cor do compromisso. Cada chip tem o pontinho do tom
+                 (o mesmo que pinta o bloco na grade), e o escolhido ganha a
+                 borda na cor. Os tons saem de `Compromisso::CATEGORIAS`, um
+                 lugar só, para a legenda e a grade não divergirem. --}}
+            <p class="mb-1.5 mt-3 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-faint">Categoria</p>
+            <div class="flex flex-wrap gap-1.5">
+                @foreach (\App\Models\Compromisso::CATEGORIAS as $chave => $cat)
+                    <button type="button" @click="modal.categoria = '{{ $chave }}'" :disabled="modal.somenteLeitura"
+                            class="flex h-[26px] items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-medium transition disabled:opacity-60"
+                            :class="modal.categoria === '{{ $chave }}' ? 'text-ink bg-chip' : 'border-btn-line text-ink-mute hover:text-ink'"
+                            :style="modal.categoria === '{{ $chave }}' ? 'border-color: rgb(var(--{{ $cat['tom'] }}))' : ''">
+                        <span class="h-2 w-2 shrink-0 rounded-full" style="background: rgb(var(--{{ $cat['tom'] }}))"></span>
+                        {{ $cat['rotulo'] }}
+                    </button>
+                @endforeach
+            </div>
+
             <p class="mb-1.5 mt-3 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-faint">Início</p>
             <div class="flex gap-2">
                 <input type="date" x-model="modal.data" @change="recalcular()" :disabled="modal.somenteLeitura"

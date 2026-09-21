@@ -32,6 +32,8 @@
 
         @include('agenda._barra')
 
+        @include('agenda._legenda')
+
         @if ($visao === 'semana')
             @include('agenda._semana')
         @elseif ($visao === 'mes')

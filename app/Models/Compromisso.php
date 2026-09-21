@@ -30,7 +30,7 @@ class Compromisso extends Model
     protected $table = 'compromissos';
 
     protected $fillable = [
-        'titulo', 'descricao', 'data', 'hora', 'data_fim', 'hora_fim',
+        'titulo', 'descricao', 'categoria', 'data', 'hora', 'data_fim', 'hora_fim',
         'duracao_modo', 'duracao_horas', 'criado_por_id', 'tarefa_id',
         'lembrete_enviado_em',
     ];
@@ -66,6 +66,36 @@ class Compromisso extends Model
      * passadas.
      */
     public const LEMBRETE_MINUTOS = 30;
+
+    /**
+     * As categorias do compromisso — e a cor de cada uma.
+     *
+     * A chave é o que fica no banco; `rotulo` é o nome na tela; `tom` é o TOKEN
+     * de cor do sistema (não um valor cru: `exame`, `good`, `warn`, `pergunta`,
+     * `triagem` já existem no `app.css`, com distância perceptual medida). Cor
+     * inventada é proibida por regra do repo — daí reusar a paleta.
+     *
+     * `interna` é a primeira porque é o padrão (o azul de hoje): compromisso sem
+     * categoria escolhida, ou de antes desta mudança, é reunião interna.
+     */
+    public const CATEGORIAS = [
+        'interna' => ['rotulo' => 'Reunião interna', 'tom' => 'exame'],
+        'cliente' => ['rotulo' => 'Com cliente', 'tom' => 'good'],
+        'deploy' => ['rotulo' => 'Deploy / manutenção', 'tom' => 'warn'],
+        'externo' => ['rotulo' => 'Externo / evento', 'tom' => 'pergunta'],
+        'foco' => ['rotulo' => 'Foco / pessoal', 'tom' => 'triagem'],
+    ];
+
+    /**
+     * O token de cor deste compromisso — o nome da variável CSS, direto.
+     *
+     * Categoria desconhecida (dado antigo, chave removida) cai no `exame`, o
+     * padrão: a tela nunca fica sem cor por causa de um valor que saiu do mapa.
+     */
+    public function corToken(): string
+    {
+        return self::CATEGORIAS[$this->categoria]['tom'] ?? 'exame';
+    }
 
     public function criadoPor(): BelongsTo
     {

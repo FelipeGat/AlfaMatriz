@@ -108,8 +108,8 @@
                                        min-height: 16px;
                                        left: calc({{ $b['col'] }} * (100% - 4px) / {{ $b['cols'] }} + 2px);
                                        width: calc((100% - 4px) / {{ $b['cols'] }} - 2px);
-                                       background: linear-gradient(rgb(var(--exame) / var(--tint-alpha)), rgb(var(--exame) / var(--tint-alpha))), rgb(var(--panel));
-                                       border-left: 2px solid rgb(var(--exame))">
+                                       background: linear-gradient(rgb(var(--{{ $b['token'] }}) / var(--tint-alpha)), rgb(var(--{{ $b['token'] }}) / var(--tint-alpha))), rgb(var(--panel));
+                                       border-left: 2px solid rgb(var(--{{ $b['token'] }}))">
                             <span class="block truncate text-[10.5px] font-semibold leading-tight text-ink">{{ $b['titulo'] }}</span>
                             <span class="block truncate text-[9.5px] leading-tight text-ink-mute">{{ $b['meta'] }}</span>
                         </button>

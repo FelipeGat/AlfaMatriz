@@ -40,6 +40,7 @@ class CompromissoController extends Controller
                 $this->camposDoIntervalo($dados) + [
                     'titulo' => $dados['titulo'],
                     'descricao' => $dados['descricao'] ?? null,
+                    'categoria' => $dados['categoria'] ?? 'interna',
                     'criado_por_id' => $request->user()->id,
                     'tarefa_id' => $dados['tarefa_id'] ?? null,
                 ]
@@ -79,6 +80,7 @@ class CompromissoController extends Controller
                 $campos + [
                     'titulo' => $dados['titulo'],
                     'descricao' => $dados['descricao'] ?? null,
+                    'categoria' => $dados['categoria'] ?? 'interna',
                     'tarefa_id' => $dados['tarefa_id'] ?? null,
                 ] + ($comecoMudou ? ['lembrete_enviado_em' => null] : [])
             );
@@ -245,6 +247,7 @@ class CompromissoController extends Controller
         $dados = $request->validate([
             'titulo' => 'required|string|max:255',
             'descricao' => 'nullable|string|max:2000',
+            'categoria' => 'nullable|in:'.implode(',', array_keys(Compromisso::CATEGORIAS)),
             'data' => 'required|date',
             'hora' => 'required|date_format:H:i',
 
