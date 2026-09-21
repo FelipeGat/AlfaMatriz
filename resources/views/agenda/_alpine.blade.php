@@ -101,6 +101,13 @@
 
             arrastar(evento, id, dePrazo) {
                 this.arrastando = { id, dePrazo };
+
+                // `setData` não é decoração: sem ele o arraste HTML5 nem começa
+                // no Firefox e o `drop` não dispara no Chrome — clicar e puxar
+                // não faz nada, que é o sintoma. O valor em si não é lido na
+                // volta (quem carrega o id é `this.arrastando`); é a presença do
+                // dado que autoriza o navegador a iniciar o arraste.
+                evento.dataTransfer.setData('text/plain', String(id));
                 evento.dataTransfer.effectAllowed = 'move';
             },
 
