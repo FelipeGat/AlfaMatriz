@@ -239,6 +239,59 @@ class VisoesDaAgendaTest extends TestCase
             ->assertJsonPath('carga', []);
     }
 
+    /* ---------- compromisso de vários dias ---------- */
+
+    /**
+     * Um compromisso que dura vários dias aparece em TODOS os dias que ocupa.
+     *
+     * Antes só saía na coluna do dia de início; um evento de três dias sumia do
+     * meio e do fim. Cada dia mostra que fatia do intervalo cai ali.
+     */
+    public function test_compromisso_de_varios_dias_aparece_em_cada_dia(): void
+    {
+        $usuario = User::factory()->create();
+
+        // De 14/09 09:00 a 16/09 16:00 — três dias.
+        Compromisso::create([
+            'titulo' => 'Feirão de vendas',
+            'data' => '2026-09-14', 'hora' => '09:00',
+            'data_fim' => '2026-09-16', 'hora_fim' => '16:00',
+            'duracao_modo' => false, 'criado_por_id' => $usuario->id,
+        ]);
+
+        $svc = new AgendaService;
+        $itensPorDia = $svc->itens(
+            Carbon::parse('2026-09-13'), Carbon::parse('2026-09-19')
+        )->groupBy('data');
+
+        // Aparece nos três dias, com o tempo certo em cada um.
+        $this->assertStringContainsString('começa às 09:00', $itensPorDia['2026-09-14']->firstWhere('tipo', 'compromisso')['meta']);
+        $this->assertStringContainsString('o dia todo', $itensPorDia['2026-09-15']->firstWhere('tipo', 'compromisso')['meta']);
+        $this->assertStringContainsString('até 16:00', $itensPorDia['2026-09-16']->firstWhere('tipo', 'compromisso')['meta']);
+        // Não vaza para fora do intervalo.
+        $this->assertFalse($itensPorDia->has('2026-09-13'));
+        $this->assertFalse($itensPorDia->has('2026-09-17'));
+    }
+
+    /** Um compromisso que começa ANTES da faixa e termina dentro dela aparece. */
+    public function test_compromisso_que_comeca_antes_da_faixa_ainda_aparece(): void
+    {
+        $usuario = User::factory()->create();
+
+        Compromisso::create([
+            'titulo' => 'Semana de imersão',
+            'data' => '2026-09-10', 'hora' => '09:00',
+            'data_fim' => '2026-09-15', 'hora_fim' => '18:00',
+            'duracao_modo' => false, 'criado_por_id' => $usuario->id,
+        ]);
+
+        // A faixa começa em 13/09, depois do início do compromisso.
+        $itens = (new AgendaService)->itens(Carbon::parse('2026-09-13'), Carbon::parse('2026-09-19'));
+
+        $this->assertGreaterThan(0, $itens->where('tipo', 'compromisso')->count());
+        $this->assertTrue($itens->groupBy('data')->has('2026-09-13'));
+    }
+
     /* ---------- conflitos ---------- */
 
     public function test_conflito_aponta_quem_ja_tem_compromisso_sobreposto(): void

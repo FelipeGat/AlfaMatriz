@@ -136,21 +136,68 @@ class AgendaService
             ->naFaixa($de, $ate)
             ->deParticipantes($pessoas)
             ->get()
-            ->map(fn (Compromisso $compromisso) => [
+            // `flatMap` e não `map`: um compromisso que dura vários dias vira UM
+            // item POR DIA que ocupa dentro da faixa — antes ele só aparecia na
+            // coluna do dia em que começava. Cada segmento diz que parte do
+            // intervalo é aquele dia (começa às…, o dia todo, até…).
+            ->flatMap(fn (Compromisso $c) => $this->segmentosDoCompromisso($c, $de, $ate));
+    }
+
+    /**
+     * Um compromisso vira um item por dia que ele cobre dentro da faixa.
+     *
+     * O de um dia só é o caso comum e sai igual a antes. O de vários dias se
+     * reparte: a coluna do início mostra o horário de começo, as do meio "o dia
+     * todo", e a do fim "até" a hora de término — cada coluna diz honestamente
+     * que fatia daquele intervalo cai ali.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function segmentosDoCompromisso(Compromisso $compromisso, Carbon $de, Carbon $ate): Collection
+    {
+        $inicio = $compromisso->comecaEm()->copy()->startOfDay();
+        $fim = $compromisso->terminaEm()->copy()->startOfDay();
+
+        // Só os dias do compromisso que caem dentro da janela pedida.
+        $primeiro = $inicio->greaterThan($de) ? $inicio : $de->copy()->startOfDay();
+        $ultimo = $fim->lessThan($ate) ? $fim : $ate->copy()->startOfDay();
+
+        $participantes = $compromisso->participantes->pluck('name')->implode(', ') ?: null;
+        $ids = $compromisso->participantes->pluck('id')->all();
+
+        $itens = collect();
+
+        // `daysUntil` INCLUI a data final — sem `addDay`, ao contrário do que o
+        // hábito pede.
+        foreach ($primeiro->daysUntil($ultimo) as $dia) {
+            $ehInicio = $dia->isSameDay($compromisso->comecaEm());
+            $ehFim = $dia->isSameDay($compromisso->terminaEm());
+            $umDiaSo = $compromisso->comecaEm()->isSameDay($compromisso->terminaEm());
+
+            $tempo = match (true) {
+                $umDiaSo => $compromisso->intervalo(),
+                $ehInicio => 'começa às '.$compromisso->comecaEm()->format('H:i'),
+                $ehFim => 'até '.$compromisso->terminaEm()->format('H:i'),
+                default => 'o dia todo',
+            };
+
+            $itens->push([
                 'tipo' => 'compromisso',
                 'id' => $compromisso->id,
-                'data' => Carbon::parse($compromisso->data)->toDateString(),
-                'ordenacao' => $compromisso->comecaEm()->format('H:i'),
+                'data' => $dia->toDateString(),
+                // No dia de início, a hora de começo; nos dias seguintes o
+                // compromisso ocupa desde 00:00, então ordena no topo do dia.
+                'ordenacao' => $ehInicio ? $compromisso->comecaEm()->format('H:i') : '00:00',
                 'titulo' => $compromisso->titulo,
                 'rotulo' => 'Compromisso',
                 'tom' => 'exame',
-                'meta' => collect([
-                    $compromisso->intervalo(),
-                    $compromisso->participantes->pluck('name')->implode(', ') ?: null,
-                ])->filter()->implode(' · '),
+                'meta' => collect([$tempo, $participantes])->filter()->implode(' · '),
                 'atrasada' => false,
-                'pessoas' => $compromisso->participantes->pluck('id')->all(),
+                'pessoas' => $ids,
             ]);
+        }
+
+        return $itens;
     }
 
     /**

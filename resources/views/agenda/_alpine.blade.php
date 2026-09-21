@@ -185,6 +185,30 @@
                 this.conferirConflitos();
             },
 
+            /**
+             * Duplicar: transforma o que está aberto numa CÓPIA nova.
+             *
+             * `id: null` faz o formulário virar "Novo compromisso", então
+             * Salvar cria outro em vez de editar este — mantendo título,
+             * detalhes, duração, participantes e vínculo. Nada é salvo aqui: a
+             * pessoa ajusta o dia/hora e confirma. Zera as marcas transitórias
+             * (leitura, exclusão pendente) para a cópia nascer editável.
+             */
+            duplicarCompromisso() {
+                this.modal = {
+                    ...this.modal,
+                    id: null,
+                    salvando: false,
+                    erro: null,
+                    confirmandoExclusao: false,
+                    somenteLeitura: false,
+                    vinculoBusca: '',
+                    vinculoAberto: false,
+                };
+
+                this.recalcular();
+            },
+
             fecharModal() {
                 this.modal.aberto = false;
                 this.modal.confirmandoExclusao = false;

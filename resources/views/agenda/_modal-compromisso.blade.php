@@ -16,8 +16,22 @@
         <div @click.stop
              class="w-[400px] max-w-full rounded-panel border border-line bg-panel p-5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)]">
 
-            <p class="mb-3.5 font-display text-[16px] font-semibold text-ink"
-               x-text="modal.id ? (modal.somenteLeitura ? 'Compromisso' : 'Editar compromisso') : 'Novo compromisso'"></p>
+            <div class="mb-3.5 flex items-center justify-between gap-2">
+                <p class="font-display text-[16px] font-semibold text-ink"
+                   x-text="modal.id ? (modal.somenteLeitura ? 'Compromisso' : 'Editar compromisso') : 'Novo compromisso'"></p>
+
+                {{-- Duplicar: só ao editar um compromisso salvo e editável. Abre
+                     uma CÓPIA como compromisso novo (mesmo título, detalhes,
+                     duração, participantes e vínculo), sem salvar nada — a
+                     pessoa muda o dia/hora e confirma. Repetir uma reunião
+                     semanal deixa de ser redigitar tudo. --}}
+                <template x-if="modal.id && ! modal.somenteLeitura">
+                    <button type="button" @click="duplicarCompromisso()"
+                            class="h-[22px] shrink-0 rounded-full border border-btn-line px-2.5 text-[10.5px] font-semibold text-ink-mute transition hover:text-ink hover:bg-chip">
+                        Duplicar
+                    </button>
+                </template>
+            </div>
 
             <input type="text" x-model="modal.titulo" :disabled="modal.somenteLeitura" placeholder="Título"
                    class="h-9 w-full rounded-control border border-btn-line bg-input px-2.5 text-[13.5px] text-ink
