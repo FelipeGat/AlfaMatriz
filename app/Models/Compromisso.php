@@ -172,11 +172,17 @@ class Compromisso extends Model
      */
     public function scopeNaFaixa(Builder $query, Carbon $de, Carbon $ate): Builder
     {
+        // SOBREPOSIÇÃO, não "começa na faixa": um compromisso que começa antes
+        // da faixa e termina dentro dela precisa aparecer — senão o que dura
+        // vários dias some do meio e do fim, e só a coluna do início o mostra.
+        // O intervalo [data, data_fim] cruza [de, ate] quando começa até `ate` e
+        // termina em `de` ou depois.
+        //
         // `whereDate` pelo mesmo motivo do `AgendaService::prazos`: o cast
         // `date` grava `Y-m-d H:i:s`, que o MySQL trunca e o SQLite não.
         return $query
-            ->whereDate('data', '>=', $de->toDateString())
-            ->whereDate('data', '<=', $ate->toDateString());
+            ->whereDate('data', '<=', $ate->toDateString())
+            ->whereDate('data_fim', '>=', $de->toDateString());
     }
 
     /** Só os compromissos de que estas pessoas participam — o filtro de chips. */
