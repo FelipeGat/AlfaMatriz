@@ -39,6 +39,7 @@ class CategoriaCompromissoTest extends TestCase
         $esperado = [
             'interna' => 'exame',
             'cliente' => 'good',
+            'desenvolvimento' => 'retorno',
             'deploy' => 'warn',
             'externo' => 'pergunta',
             'foco' => 'triagem',

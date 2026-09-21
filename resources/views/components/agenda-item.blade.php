@@ -53,13 +53,20 @@
 @endphp
 
 @if ($variante === 'chip')
-    {{-- A faixa "dia inteiro" da grade da Semana: uma linha compacta e
-         clicável, com a barra de cor à esquerda. É o que não cabe num horário
-         — prazo ou compromisso de vários dias. --}}
+    {{-- A faixa de PRAZOS da grade da Semana: uma linha compacta e clicável. É
+         o prazo de tarefa, que não tem hora e não cabe na grade. O relógio na
+         frente diz que é um vencimento — sem ele, com só o título e a barra de
+         cor, ninguém sabia que aquilo era prazo. A cor do ícone e da barra é a
+         da prioridade/estado da tarefa; o tom do vencimento continua ali. --}}
     <button type="button" @click="{{ $aoClicar }}"
-            class="block w-full truncate rounded-badge px-1.5 py-0.5 text-left text-[10.5px] font-medium leading-tight transition hover:brightness-110"
+            class="flex w-full items-center gap-1 rounded-badge px-1.5 py-0.5 text-left transition hover:brightness-110"
             style="background: {{ $tinte }}; border-left: 2px solid {{ $barra }}; color: rgb(var(--ink))"
-            title="{{ $item['titulo'] }}">{{ $item['titulo'] }}</button>
+            title="{{ $item['rotulo'] }} · {{ $item['titulo'] }}">
+        @if ($item['tipo'] === 'tarefa')
+            <span class="h-3 w-3 shrink-0" style="color: {{ $cor }}"><x-nav-icon name="clock" :peso="1.9" /></span>
+        @endif
+        <span class="min-w-0 flex-1 truncate text-[10.5px] font-medium leading-tight">{{ $item['titulo'] }}</span>
+    </button>
 
 @elseif ($variante === 'ponto')
     {{-- A célula do Mês: só o ponto e o título, porque a célula tem 1/42 da
