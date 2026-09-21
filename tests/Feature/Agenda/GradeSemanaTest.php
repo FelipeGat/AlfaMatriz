@@ -101,8 +101,12 @@ class GradeSemanaTest extends TestCase
         $this->assertSame('Entregar NF', $dia['inteiroDia']->firstWhere('tipo', 'tarefa')['titulo']);
     }
 
-    /** Compromisso de vários dias também é dia inteiro, um chip por dia. */
-    public function test_compromisso_de_varios_dias_vai_para_o_dia_inteiro(): void
+    /**
+     * Compromisso de vários dias vira bloco na régua REPETINDO a janela de hora
+     * em cada dia — um Feirão 09–16 pinta 09–16 no dia 14 E no dia 15, sem
+     * esticar até a meia-noite e sem cair na faixa de dia inteiro.
+     */
+    public function test_compromisso_de_varios_dias_repete_a_janela_na_regua(): void
     {
         $u = User::factory()->create();
         Compromisso::create([
@@ -113,10 +117,41 @@ class GradeSemanaTest extends TestCase
 
         $g = $this->grade('2026-09-13', '2026-09-19');
 
-        // Nos dois dias, na faixa de dia inteiro, e em bloco nenhum.
-        $this->assertCount(0, $g['2026-09-14']['blocos']);
-        $this->assertNotNull($g['2026-09-14']['inteiroDia']->firstWhere('titulo', 'Feirão'));
-        $this->assertNotNull($g['2026-09-15']['inteiroDia']->firstWhere('titulo', 'Feirão'));
+        foreach (['2026-09-14', '2026-09-15'] as $dia) {
+            $bloco = $g[$dia]['blocos']->firstWhere('titulo', 'Feirão');
+
+            // Bloco na régua, 09h (540/1440) de topo e 7h (420/1440) de altura.
+            $this->assertNotNull($bloco, "sem bloco em {$dia}");
+            $this->assertEqualsWithDelta(37.5, $bloco['topPct'], 0.01);
+            $this->assertEqualsWithDelta(29.167, $bloco['altPct'], 0.01);
+
+            // E fora da faixa de dia inteiro.
+            $this->assertNull($g[$dia]['inteiroDia']->firstWhere('titulo', 'Feirão'));
+        }
+    }
+
+    /**
+     * Quem vira o dia de verdade (22h–02h) NÃO repete a janela: divide em dois
+     * blocos — 22h→24h no primeiro dia e 0h→02h no segundo.
+     */
+    public function test_compromisso_que_vira_o_dia_se_divide_na_regua(): void
+    {
+        $u = User::factory()->create();
+        Compromisso::create([
+            'titulo' => 'Virada', 'data' => '2026-09-14', 'hora' => '22:00',
+            'data_fim' => '2026-09-15', 'hora_fim' => '02:00',
+            'duracao_modo' => false, 'criado_por_id' => $u->id,
+        ]);
+
+        $g = $this->grade('2026-09-13', '2026-09-19');
+
+        $primeiro = $g['2026-09-14']['blocos']->firstWhere('titulo', 'Virada');
+        $this->assertEqualsWithDelta(91.667, $primeiro['topPct'], 0.01); // 22h
+        $this->assertEqualsWithDelta(100.0, $primeiro['topPct'] + $primeiro['altPct'], 0.01); // até 24h
+
+        $segundo = $g['2026-09-15']['blocos']->firstWhere('titulo', 'Virada');
+        $this->assertEqualsWithDelta(0.0, $segundo['topPct'], 0.01); // 0h
+        $this->assertEqualsWithDelta(8.333, $segundo['altPct'], 0.01); // até 02h
     }
 
     public function test_linha_do_agora_so_aparece_quando_hoje_esta_na_semana(): void

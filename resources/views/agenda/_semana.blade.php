@@ -85,7 +85,7 @@
 
                     {{-- Linhas de hora: o gabarito de fundo. --}}
                     @for ($h = 1; $h < 24; $h++)
-                        <div class="pointer-events-none absolute inset-x-0 border-t border-rule/60"
+                        <div class="pointer-events-none absolute inset-x-0 border-t border-rule"
                              style="top: {{ $h * $alturaHora }}px"></div>
                     @endfor
 
@@ -108,10 +108,11 @@
                                        min-height: 16px;
                                        left: calc({{ $b['col'] }} * (100% - 4px) / {{ $b['cols'] }} + 2px);
                                        width: calc((100% - 4px) / {{ $b['cols'] }} - 2px);
-                                       background: linear-gradient(rgb(var(--{{ $b['token'] }}) / var(--tint-alpha)), rgb(var(--{{ $b['token'] }}) / var(--tint-alpha))), rgb(var(--panel));
-                                       border-left: 2px solid rgb(var(--{{ $b['token'] }}))">
+                                       background: linear-gradient(rgb(var(--{{ $b['token'] }}) / var(--agenda-bloco-alpha)), rgb(var(--{{ $b['token'] }}) / var(--agenda-bloco-alpha))), rgb(var(--panel));
+                                       border: 1px solid rgb(var(--{{ $b['token'] }}) / 0.5);
+                                       border-left: 3px solid rgb(var(--{{ $b['token'] }}))">
                             <span class="block truncate text-[10.5px] font-semibold leading-tight text-ink">{{ $b['titulo'] }}</span>
-                            <span class="block truncate text-[9.5px] leading-tight text-ink-mute">{{ $b['meta'] }}</span>
+                            <span class="block truncate text-[9.5px] leading-tight text-ink-dim">{{ $b['meta'] }}</span>
                         </button>
                     @endforeach
                 </div>
