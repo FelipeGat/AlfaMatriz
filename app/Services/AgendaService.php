@@ -201,6 +201,180 @@ class AgendaService
     }
 
     /**
+     * A semana como GRADE DE HORÁRIOS, no estilo Google Agenda.
+     *
+     * Cada dia ganha duas partes: a faixa "dia inteiro" no topo (prazos de
+     * tarefa e compromissos de vários dias — o que não cabe num horário) e os
+     * blocos posicionados na régua de horas, com altura proporcional à duração.
+     *
+     * As posições saem em PORCENTAGEM do dia (24h = 100%), não em pixels: a
+     * grade pode ter qualquer altura na tela e continuar certa, e o CSS não
+     * precisa saber quantos pixels vale uma hora. Sobreposições viram colunas
+     * lado a lado — ver `posicionarBlocos`.
+     *
+     * @param  array<int, int>  $pessoas
+     * @return array{dias: Collection<int, array<string, mixed>>, hojeIso: string, agoraPct: float|null}
+     */
+    public function gradeSemana(Carbon $de, Carbon $ate, array $pessoas = []): array
+    {
+        // O AGORA de verdade, com hora — é o que posiciona a linha vermelha. Não
+        // vem por parâmetro de propósito: o controller passa a data zerada em
+        // meia-noite para o resto da tela, e usá-la aqui prenderia a linha às
+        // 00:00. `now()` respeita o `Carbon::setTestNow` dos testes.
+        $agora = now();
+        $inicioDia = $de->copy()->startOfDay();
+        $fimDia = $ate->copy()->startOfDay();
+
+        // Prazos e compromissos de vários dias vão para a faixa "dia inteiro".
+        $inteiroPorDia = $this->prazos($inicioDia, $fimDia, $pessoas, $agora->copy()->startOfDay())
+            ->groupBy('data');
+
+        $blocosPorDia = [];
+        $chipsMultiDia = [];
+
+        $compromissos = Compromisso::query()
+            ->with('participantes')
+            ->naFaixa($de, $ate)
+            ->deParticipantes($pessoas)
+            ->get();
+
+        foreach ($compromissos as $c) {
+            // Compromisso de UM dia vira bloco na régua; de vários dias não tem
+            // "um horário" — cai na faixa de dia inteiro, um chip por dia.
+            if ($c->comecaEm()->isSameDay($c->terminaEm())) {
+                $ini = $c->comecaEm()->hour * 60 + $c->comecaEm()->minute;
+                $fim = $c->terminaEm()->hour * 60 + $c->terminaEm()->minute;
+                $fim = max($fim, $ini + 15); // salvaguarda: nunca altura zero
+
+                $blocosPorDia[$c->comecaEm()->toDateString()][] = [
+                    'id' => $c->id,
+                    'titulo' => $c->titulo,
+                    'meta' => collect([
+                        $c->intervalo(),
+                        $c->participantes->pluck('name')->implode(', ') ?: null,
+                    ])->filter()->implode(' · '),
+                    'ini' => $ini,
+                    'fim' => $fim,
+                ];
+
+                continue;
+            }
+
+            foreach ($this->segmentosDoCompromisso($c, $de, $ate) as $seg) {
+                $chipsMultiDia[$seg['data']] = ($chipsMultiDia[$seg['data']] ?? collect())->push($seg);
+            }
+        }
+
+        $dias = collect();
+
+        foreach ($de->daysUntil($ate) as $dia) {
+            $iso = $dia->toDateString();
+
+            $dias->push([
+                'data' => $iso,
+                'nome' => $dia->translatedFormat('D'),
+                'numero' => $dia->format('j'),
+                'ehHoje' => $iso === $agora->toDateString(),
+                'inteiroDia' => ($inteiroPorDia[$iso] ?? collect())
+                    ->concat($chipsMultiDia[$iso] ?? collect())
+                    ->values(),
+                'blocos' => $this->posicionarBlocos($blocosPorDia[$iso] ?? []),
+            ]);
+        }
+
+        return [
+            'dias' => $dias,
+            'hojeIso' => $agora->toDateString(),
+            // A linha do "agora" só existe se hoje está na semana à vista.
+            'agoraPct' => $agora->betweenIncluded($inicioDia, $fimDia->copy()->endOfDay())
+                ? round(($agora->hour * 60 + $agora->minute) / 1440 * 100, 3)
+                : null,
+        ];
+    }
+
+    /**
+     * Dá a cada bloco top/altura (em % do dia) e reparte os que se sobrepõem em
+     * colunas lado a lado.
+     *
+     * O algoritmo é o clássico de agenda: agrupa os blocos em CLUSTERS que se
+     * encadeiam por sobreposição, e dentro de cada cluster distribui em "faixas"
+     * (a primeira faixa livre onde o bloco não bate no anterior). A largura de
+     * cada bloco é 1/faixas do seu cluster — dois eventos ao mesmo tempo ficam
+     * meia coluna cada, três ficam um terço, e assim por diante.
+     *
+     * @param  array<int, array<string, mixed>>  $blocos
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function posicionarBlocos(array $blocos): Collection
+    {
+        if ($blocos === []) {
+            return collect();
+        }
+
+        usort($blocos, fn ($a, $b) => [$a['ini'], $a['fim']] <=> [$b['ini'], $b['fim']]);
+
+        $clusters = [];
+        $atual = [];
+        $maiorFim = -1;
+
+        foreach ($blocos as $b) {
+            // Começou depois do fim mais tardio do cluster: abre cluster novo.
+            if ($atual !== [] && $b['ini'] >= $maiorFim) {
+                $clusters[] = $atual;
+                $atual = [];
+                $maiorFim = -1;
+            }
+
+            $atual[] = $b;
+            $maiorFim = max($maiorFim, $b['fim']);
+        }
+
+        if ($atual !== []) {
+            $clusters[] = $atual;
+        }
+
+        $saida = collect();
+
+        foreach ($clusters as $grupo) {
+            $faixas = []; // índice da faixa => fim do último bloco nela
+
+            foreach ($grupo as $i => $b) {
+                $col = null;
+                foreach ($faixas as $f => $fimDaFaixa) {
+                    if ($b['ini'] >= $fimDaFaixa) {
+                        $col = $f;
+                        $faixas[$f] = $b['fim'];
+                        break;
+                    }
+                }
+
+                if ($col === null) {
+                    $col = count($faixas);
+                    $faixas[] = $b['fim'];
+                }
+
+                $grupo[$i]['col'] = $col;
+            }
+
+            $cols = count($faixas);
+
+            foreach ($grupo as $b) {
+                $saida->push([
+                    'id' => $b['id'],
+                    'titulo' => $b['titulo'],
+                    'meta' => $b['meta'],
+                    'topPct' => round($b['ini'] / 1440 * 100, 3),
+                    'altPct' => round(($b['fim'] - $b['ini']) / 1440 * 100, 3),
+                    'col' => $b['col'],
+                    'cols' => $cols,
+                ]);
+            }
+        }
+
+        return $saida;
+    }
+
+    /**
      * A carga de cada pessoa num dia — o dado do drawer.
      *
      * É o número que nem o card nem o dia isolado mostram: um prazo mais duas

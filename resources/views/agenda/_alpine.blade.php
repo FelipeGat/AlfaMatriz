@@ -166,6 +166,28 @@
                 this.recalcular();
             },
 
+            /**
+             * Clicar num ponto vazio da grade de horas abre um compromisso novo
+             * JÁ NAQUELE HORÁRIO — o gesto que a grade do Google ensina.
+             *
+             * A hora sai da posição Y do clique dentro da coluna (0 no topo, o
+             * dia inteiro na altura), arredondada para 30 min. `currentTarget` é
+             * a coluna do dia; o clique nos blocos não chega aqui porque eles
+             * têm `@click.stop`.
+             */
+            novoNoHorario(data, evento) {
+                const coluna = evento.currentTarget;
+                const y = evento.clientY - coluna.getBoundingClientRect().top;
+                const totalMin = Math.min(1439, Math.max(0, Math.round(y / coluna.offsetHeight * 1440)));
+                const min = Math.round(totalMin / 30) * 30;
+                const hh = String(Math.floor(min / 60)).padStart(2, '0');
+                const mm = String(min % 60).padStart(2, '0');
+
+                this.novoCompromisso(data);
+                this.modal.hora = `${hh}:${mm}`;
+                this.recalcular();
+            },
+
             abrirCompromisso(id) {
                 const guardado = this.compromissos[id];
                 if (! guardado) {

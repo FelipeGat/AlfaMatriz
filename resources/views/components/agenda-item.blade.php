@@ -1,6 +1,6 @@
 @props([
     'item',                    // o array que o AgendaService monta
-    'variante' => 'coluna',    // coluna | linha | ponto
+    'variante' => 'coluna',    // coluna | linha | ponto | chip
     'arrastavel' => false,     // só o prazo, e só para quem faz triagem
 ])
 
@@ -49,7 +49,16 @@
         : "abrirCompromisso({$item['id']})";
 @endphp
 
-@if ($variante === 'ponto')
+@if ($variante === 'chip')
+    {{-- A faixa "dia inteiro" da grade da Semana: uma linha compacta e
+         clicável, com a barra de cor à esquerda. É o que não cabe num horário
+         — prazo ou compromisso de vários dias. --}}
+    <button type="button" @click="{{ $aoClicar }}"
+            class="block w-full truncate rounded-badge px-1.5 py-0.5 text-left text-[10.5px] font-medium leading-tight transition hover:brightness-110"
+            style="background: {{ $tinte }}; border-left: 2px solid {{ $barra }}; color: rgb(var(--ink))"
+            title="{{ $item['titulo'] }}">{{ $item['titulo'] }}</button>
+
+@elseif ($variante === 'ponto')
     {{-- A célula do Mês: só o ponto e o título, porque a célula tem 1/42 da
          grade. O resto do dia mora no drawer, que é o que o clique na célula
          abre — e é por isso que o ponto não tem clique próprio: dois alvos de
