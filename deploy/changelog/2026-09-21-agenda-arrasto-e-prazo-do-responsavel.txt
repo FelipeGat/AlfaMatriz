@@ -1,0 +1,18 @@
+<b>📋 AlfaMatriz — Changelog 21/09/2026</b>
+<i>Dá para arrastar o prazo de uma tarefa na Agenda, e o responsável passa a combinar a própria data de entrega</i>
+
+<b>🖱️ Arrastar o prazo na Agenda</b>
+
+• Agora dá para <b>arrastar um prazo</b> de um dia para outro, direto na Agenda — na <b>Semana</b> (faixa "Prazos") e no <b>Mês</b>. Solta no dia novo e a tarefa é remarcada na hora. Só o prazo de tarefa arrasta; compromisso tem horário e continua sendo editado pelo card.
+
+• Se outra pessoa remarcou a mesma tarefa enquanto você arrastava, o sistema avisa em vez de sobrescrever em silêncio — a mesma proteção que o quadro já tem.
+
+<b>📅 O responsável combina o próprio prazo</b>
+
+• Até agora, definir prazo era só da triagem. Passa a valer também para o <b>responsável da tarefa</b>: quem toca o trabalho combina a própria data de entrega.
+
+• Na prática, o responsável pode <b>arrastar o prazo da própria tarefa</b> na Agenda e ver o <b>campo Prazo no formulário</b> da tarefa dele. Prioridade e responsável seguem decisões da triagem — mudou só o prazo.
+
+• Continua valendo para os outros: ninguém mexe no prazo de tarefa que não é sua (a não ser quem faz triagem, que mexe em tudo).
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

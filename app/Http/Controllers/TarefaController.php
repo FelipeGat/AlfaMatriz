@@ -489,10 +489,10 @@ class TarefaController extends Controller
             // coluna, que manda só o título. Exigi-la aqui faria a tela
             // funcionar e a rota dizer não.
             'prioridade' => 'nullable|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
-            // Prazo é campo de TRIAGEM, como os dois acima: quem não triaga não
-            // o recebe no formulário, e `semTriagemDeQuemNaoTriaga` o descarta
-            // de qualquer envio forjado. `nullable` porque apagar o prazo é uma
-            // decisão legítima — a data combinada pode simplesmente cair.
+            // Prazo: da triagem OU do RESPONSÁVEL da tarefa, que combina a
+            // própria data de entrega. `semTriagemDeQuemNaoTriaga` descarta o de
+            // quem não é nenhum dos dois, mesmo em envio forjado. `nullable`
+            // porque apagar o prazo é legítimo — a data combinada pode cair.
             'prazo' => 'nullable|date',
             // A criação rápida do pé da coluna DECLARA onde nasce. Sem isso, o
             // `booted` decidia pela presença de responsável e o card criado no
@@ -806,9 +806,13 @@ class TarefaController extends Controller
         $dados['prioridade'] = $tarefa?->prioridade ?? 'nao_definida';
         $dados['responsavel_id'] = $tarefa?->responsavel_id;
 
-        // O prazo acompanha os dois acima: combinar data é decidir sobre o
-        // trabalho, e é a mesma capacidade que a Agenda exige para arrastar.
-        $dados['prazo'] = $tarefa?->prazo;
+        // O prazo é a exceção aos dois acima: o RESPONSÁVEL combina a própria
+        // data de entrega, então o dele passa. Só cai o de quem não é o
+        // responsável — e na criação ($tarefa null) nunca é ele, porque a
+        // tarefa nasce sem dono. Mesma régua da Agenda (`prazoPodeSerDefinidoPor`).
+        if (! ($tarefa?->prazoPodeSerDefinidoPor(auth()->user()) ?? false)) {
+            $dados['prazo'] = $tarefa?->prazo;
+        }
 
         // E a coluna declarada também cai: Backlog é "priorizado e com dono", e
         // quem não triaga não pode dar nenhum dos dois. Deixar passar criaria
@@ -907,10 +911,10 @@ class TarefaController extends Controller
             // coluna, que manda só o título. Exigi-la aqui faria a tela
             // funcionar e a rota dizer não.
             'prioridade' => 'nullable|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
-            // Prazo é campo de TRIAGEM, como os dois acima: quem não triaga não
-            // o recebe no formulário, e `semTriagemDeQuemNaoTriaga` o descarta
-            // de qualquer envio forjado. `nullable` porque apagar o prazo é uma
-            // decisão legítima — a data combinada pode simplesmente cair.
+            // Prazo: da triagem OU do RESPONSÁVEL da tarefa, que combina a
+            // própria data de entrega. `semTriagemDeQuemNaoTriaga` descarta o de
+            // quem não é nenhum dos dois, mesmo em envio forjado. `nullable`
+            // porque apagar o prazo é legítimo — a data combinada pode cair.
             'prazo' => 'nullable|date',
             'comentario' => 'nullable|string|max:4000',
         ]);

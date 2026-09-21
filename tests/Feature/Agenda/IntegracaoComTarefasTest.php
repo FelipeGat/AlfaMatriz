@@ -169,6 +169,24 @@ class IntegracaoComTarefasTest extends TestCase
         $this->assertNull($tarefa->prazo);
     }
 
+    /** O RESPONSÁVEL define o prazo da própria tarefa pelo formulário do quadro. */
+    public function test_responsavel_define_o_proprio_prazo_no_quadro(): void
+    {
+        $membro = User::factory()->membro()->create();
+        $tarefa = Tarefa::factory()->create([
+            'criado_por_id' => User::factory(),
+            'responsavel_id' => $membro->id,
+            'status' => 'em_desenvolvimento',
+        ]);
+
+        $this->actingAs($membro)->put(route('tarefas.update', $tarefa), [
+            'titulo' => $tarefa->titulo,
+            'prazo' => '2026-10-30',
+        ]);
+
+        $this->assertSame('2026-10-30', Carbon::parse($tarefa->fresh()->prazo)->toDateString());
+    }
+
     /* ---------- reagendar por arraste ---------- */
 
     public function test_quem_faz_triagem_reagenda_o_prazo(): void
@@ -184,11 +202,12 @@ class IntegracaoComTarefasTest extends TestCase
         $this->assertSame('2026-10-15', Carbon::parse($tarefa->fresh()->prazo)->toDateString());
     }
 
-    /** Mudar prazo é triagem, mesma regra de prioridade e responsável. */
-    public function test_membro_nao_reagenda_o_prazo(): void
+    /** Remarcar prazo de tarefa ALHEIA segue sendo só da triagem. */
+    public function test_membro_nao_reagenda_prazo_de_tarefa_alheia(): void
     {
         $membro = User::factory()->membro()->create();
-        $tarefa = $this->tarefaComPrazo('2026-10-12');
+        $outro = User::factory()->create();
+        $tarefa = $this->tarefaComPrazo('2026-10-12', ['responsavel_id' => $outro->id]);
 
         $this->actingAs($membro)->postJson(route('agenda.reagendar', $tarefa), [
             'prazo' => '2026-10-15',
@@ -196,6 +215,20 @@ class IntegracaoComTarefasTest extends TestCase
         ])->assertStatus(422);
 
         $this->assertSame('2026-10-12', Carbon::parse($tarefa->fresh()->prazo)->toDateString());
+    }
+
+    /** O RESPONSÁVEL remarca o prazo da PRÓPRIA tarefa, mesmo sem triagem. */
+    public function test_responsavel_reagenda_o_proprio_prazo(): void
+    {
+        $membro = User::factory()->membro()->create();
+        $tarefa = $this->tarefaComPrazo('2026-10-12', ['responsavel_id' => $membro->id]);
+
+        $this->actingAs($membro)->postJson(route('agenda.reagendar', $tarefa), [
+            'prazo' => '2026-10-15',
+            'de_prazo' => '2026-10-12',
+        ])->assertOk();
+
+        $this->assertSame('2026-10-15', Carbon::parse($tarefa->fresh()->prazo)->toDateString());
     }
 
     /**

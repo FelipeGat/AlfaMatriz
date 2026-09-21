@@ -30,6 +30,12 @@
     // conversar sobre uma permissão em vez de sobre a tarefa.
     $podeTriar = auth()->user()?->podeTriarTarefas() ?? false;
 
+    // O prazo é a exceção da triagem: o RESPONSÁVEL combina a própria data de
+    // entrega, então o campo aparece para ele também — não só para quem triaga.
+    // Prioridade e responsável seguem só da triagem. Na criação ($tarefa null)
+    // ninguém é dono ainda, então cai em `$podeTriar`. Mesma régua do servidor.
+    $podePrazo = $tarefa?->prazoPodeSerDefinidoPor(auth()->user()) ?? $podeTriar;
+
     // O `optgroup` só entra quando há as duas famílias. Rótulo de grupo sobre
     // um grupo só é moldura, e a casa que ainda não cadastrou nenhum sistema
     // interno veria "Produto" acima da lista de sempre, sem nada a distinguir.
@@ -324,22 +330,22 @@
                         @endforeach
                     </select>
                 </div>
+            @endif
 
-                {{--
-                    O prazo entra AQUI, no bloco de triagem, pelos dois motivos
-                    que puseram prioridade e responsável nele: combinar data é
-                    decidir sobre o trabalho, e a Agenda usa a mesma régua
-                    (`podeTriarTarefas`) para deixar arrastar o card.
+            {{--
+                O prazo saiu do bloco de triagem: prioridade e responsável seguem
+                só de quem triaga, mas a DATA de entrega o responsável combina
+                sozinho (`$podePrazo` = triagem OU responsável) — a mesma régua
+                que a Agenda usa para deixar arrastar o card.
 
-                    E ele precisa existir neste formulário, não só na Agenda: lá
-                    só aparece tarefa que JÁ tem prazo, então sem este campo não
-                    haveria por onde dar o primeiro — o arraste remarca, não
-                    marca.
+                E ele precisa existir neste formulário, não só na Agenda: lá só
+                aparece tarefa que JÁ tem prazo, então sem este campo não haveria
+                por onde dar o primeiro — o arraste remarca, não marca.
 
-                    Vazio é o normal e a linha abaixo diz isso, porque um campo
-                    de data em branco no meio de selects preenchidos se lê como
-                    pendência.
-                --}}
+                Vazio é o normal e a linha abaixo diz isso, porque um campo de
+                data em branco no meio de selects preenchidos se lê como pendência.
+            --}}
+            @if ($podePrazo)
                 <div>
                     <label for="prazo-{{ $sufixo }}" class="block mb-[5px] text-[12px] font-medium text-ink-dim">Prazo</label>
                     <input type="date" id="prazo-{{ $sufixo }}" name="prazo"
@@ -363,7 +369,10 @@
         @unless ($podeTriar)
             <p class="px-[11px] py-[9px] rounded-[5px] border text-[11.5px] leading-[1.5] text-ink-dim"
                style="background: var(--warn-tint); border-color: var(--warn-line)">
-                @if ($edicao)
+                @if ($edicao && $podePrazo)
+                    A prioridade e o responsável desta tarefa são definidos na triagem — por isso não
+                    aparecem aqui. O <strong class="text-ink">prazo é seu</strong>: como responsável, você combina a data de entrega.
+                @elseif ($edicao)
                     A prioridade, o responsável e o prazo desta tarefa são definidos na triagem — por isso não
                     aparecem aqui. O resto do formulário é seu.
                 @else

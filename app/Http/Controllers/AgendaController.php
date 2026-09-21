@@ -193,8 +193,8 @@ class AgendaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        if (! $request->user()?->podeTriarTarefas()) {
-            return $this->recusar($request, 'Só quem faz triagem remarca o prazo de uma tarefa.');
+        if (! $tarefa->prazoPodeSerDefinidoPor($request->user())) {
+            return $this->recusar($request, 'Só o responsável pela tarefa — ou quem faz triagem — remarca o prazo dela.');
         }
 
         $dados = $request->validate([

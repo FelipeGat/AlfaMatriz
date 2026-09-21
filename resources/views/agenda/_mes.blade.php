@@ -35,7 +35,11 @@
             </span>
 
             @foreach ($visiveis as $item)
-                <x-agenda-item :item="$item" variante="ponto" />
+                {{-- Só o prazo de tarefa arrasta (compromisso tem hora, não se
+                     remarca por dia), e só para quem pode reagendar: quem faz
+                     triagem OU o responsável da tarefa (que vem em `pessoas`). --}}
+                <x-agenda-item :item="$item" variante="ponto"
+                               :arrastavel="$item['tipo'] === 'tarefa' && ($podeReagendar || in_array(auth()->id(), $item['pessoas']))" />
             @endforeach
 
             @if ($restantes > 0)

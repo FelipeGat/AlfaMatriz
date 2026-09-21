@@ -394,6 +394,22 @@ class Tarefa extends Model
             .'. Só quem faz triagem move o trabalho de outra pessoa.';
     }
 
+    /**
+     * Quem pode definir ou remarcar o prazo desta tarefa.
+     *
+     * O prazo era decisão só de triagem, como prioridade e responsável. Passou
+     * a valer também para o RESPONSÁVEL, que combina a própria data de entrega
+     * (decisão do dono do produto). É a mesma régua de "própria tarefa" do
+     * `motivoParaNaoMover` — responsável OU quem triaga —, num método só para o
+     * formulário, o `store`, o `update` e o `reagendar` da Agenda não
+     * divergirem. Na criação não há dono ainda, então o não-triador nunca é ele.
+     */
+    public function prazoPodeSerDefinidoPor(?User $usuario): bool
+    {
+        return $usuario !== null
+            && ($usuario->podeTriarTarefas() || $this->responsavel_id === $usuario->id);
+    }
+
     /** A tarefa de quem esta é subtarefa — ou null, se ela é de primeiro nível. */
     public function pai(): BelongsTo
     {
