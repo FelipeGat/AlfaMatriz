@@ -29,7 +29,7 @@
             modal: {
                 aberto: false, salvando: false, erro: null, confirmandoExclusao: false,
                 somenteLeitura: false,
-                id: null, titulo: '', descricao: '',
+                id: null, titulo: '', descricao: '', categoria: 'interna',
                 data: inicial.hoje, hora: '09:00',
                 data_fim: inicial.hoje, hora_fim: '10:00',
                 duracao_modo: true, duracao_horas: 1,
@@ -52,6 +52,7 @@
                 return ({
                     marca: 'brand', ambar: 'amber', triagem: 'triagem', critico: 'crit',
                     bloqueio: 'bloqueio', retorno: 'retorno', exame: 'exame', warn: 'warn',
+                    good: 'good', pergunta: 'pergunta',
                 })[tom] ?? null;
             },
 
@@ -137,7 +138,7 @@
                 return {
                     aberto: false, salvando: false, erro: null, confirmandoExclusao: false,
                     somenteLeitura: false,
-                    id: null, titulo: '', descricao: '',
+                    id: null, titulo: '', descricao: '', categoria: 'interna',
                     data: this.hoje, hora: '09:00',
                     data_fim: this.hoje, hora_fim: '10:00',
                     duracao_modo: true, duracao_horas: 1,
@@ -401,6 +402,7 @@
                 const resposta = await this.enviar(destino, this.modal.id ? 'PUT' : 'POST', {
                     titulo: this.modal.titulo,
                     descricao: this.modal.descricao,
+                    categoria: this.modal.categoria,
                     data: this.modal.data,
                     hora: this.modal.hora,
                     data_fim: this.modal.data_fim,

@@ -237,6 +237,7 @@ class AgendaController extends Controller
                 'id' => $c->id,
                 'titulo' => $c->titulo,
                 'descricao' => $c->descricao,
+                'categoria' => $c->categoria,
                 'data' => Carbon::parse($c->data)->toDateString(),
                 'hora' => Carbon::parse($c->hora)->format('H:i'),
                 'data_fim' => Carbon::parse($c->data_fim)->toDateString(),

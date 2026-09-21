@@ -164,6 +164,7 @@ class AgendaService
 
         $participantes = $compromisso->participantes->pluck('name')->implode(', ') ?: null;
         $ids = $compromisso->participantes->pluck('id')->all();
+        $tom = $compromisso->corToken();
 
         $itens = collect();
 
@@ -190,7 +191,7 @@ class AgendaService
                 'ordenacao' => $ehInicio ? $compromisso->comecaEm()->format('H:i') : '00:00',
                 'titulo' => $compromisso->titulo,
                 'rotulo' => 'Compromisso',
-                'tom' => 'exame',
+                'tom' => $tom,
                 'meta' => collect([$tempo, $participantes])->filter()->implode(' · '),
                 'atrasada' => false,
                 'pessoas' => $ids,
@@ -249,6 +250,7 @@ class AgendaService
                 $blocosPorDia[$c->comecaEm()->toDateString()][] = [
                     'id' => $c->id,
                     'titulo' => $c->titulo,
+                    'token' => $c->corToken(),
                     'meta' => collect([
                         $c->intervalo(),
                         $c->participantes->pluck('name')->implode(', ') ?: null,
@@ -362,6 +364,7 @@ class AgendaService
                 $saida->push([
                     'id' => $b['id'],
                     'titulo' => $b['titulo'],
+                    'token' => $b['token'],
                     'meta' => $b['meta'],
                     'topPct' => round($b['ini'] / 1440 * 100, 3),
                     'altPct' => round(($b['fim'] - $b['ini']) / 1440 * 100, 3),
