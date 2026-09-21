@@ -69,6 +69,14 @@ class AgendaController extends Controller
             'pessoas' => $pessoas,
             'itens' => $itens,
             'itensPorDia' => $itens->groupBy('data'),
+
+            // Só a Semana é grade de horários (estilo Google): régua de horas à
+            // esquerda e blocos com altura pela duração. Mês e Lista seguem como
+            // estão. Montada só quando é a visão à vista, para as outras não
+            // pagarem a consulta.
+            'grade' => $visao === 'semana'
+                ? $this->agenda->gradeSemana($faixa['de'], $faixa['ate'], $pessoas)
+                : null,
             'faixaLabel' => $this->faixaLabel($visao, $em, $faixa),
             'equipe' => $this->equipe(),
             'podeReagendar' => $request->user()?->podeTriarTarefas() ?? false,
