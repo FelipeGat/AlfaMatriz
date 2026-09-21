@@ -1,0 +1,28 @@
+<b>📋 AlfaMatriz — Changelog 21/09/2026</b>
+<i>A Semana da Agenda virou uma grade de horários no estilo Google: cada compromisso ocupa exatamente a faixa de tempo que dura, com cor por categoria e leitura boa no claro e no escuro</i>
+
+<b>🗓️ A Semana agora é uma grade de horários</b>
+
+• <b>Cada compromisso no seu horário.</b> A coluna do dia ganhou uma régua de horas à esquerda, e cada compromisso vira um bloco que começa e termina na hora certa — uma reunião de 1h ocupa a altura de 1h, uma de 3h ocupa o triplo. Bateu o olho, viu quanto tempo cada coisa toma.
+
+• <b>Sobrepostos lado a lado.</b> Dois compromissos no mesmo horário dividem a largura da coluna, um ao lado do outro, em vez de um cobrir o outro.
+
+• <b>A linha do agora.</b> Uma linha vermelha marca o horário atual na coluna de hoje, para você achar "onde estou" na hora.
+
+• <b>Clicar para marcar.</b> Um clique num espaço vazio da grade já abre o "novo compromisso" naquele dia e horário.
+
+<b>🎨 Cor por categoria</b>
+
+• Cada compromisso tem uma categoria — reunião interna, com cliente, deploy/manutenção, externo/evento ou foco/pessoal — e a categoria decide a cor do bloco. A cor passa a carregar informação: você reconhece o tipo do compromisso antes de ler o título. Uma legenda no topo diz qual cor é qual.
+
+<b>📆 Eventos de vários dias na régua</b>
+
+• <b>Antes,</b> um compromisso que durava mais de um dia só aparecia como uma tarjinha no topo, sem horário. <b>Agora</b> ele aparece na grade, no horário certo, em cada dia que ocupa: um treinamento das 08h às 18h em dois dias pinta 08h–18h nos dois dias — não estica até a meia-noite.
+
+• Quem de fato vira a noite (por exemplo 22h de um dia às 02h do seguinte) é dividido com honestidade: vai até a meia-noite no primeiro dia e recomeça à meia-noite no outro.
+
+<b>🌙 Leitura boa no claro e no escuro</b>
+
+• Os blocos foram ajustados para o tema escuro: antes ficavam quase invisíveis sobre o fundo escuro, com contraste ruim. Agora são cartões coloridos nítidos, com contorno e texto legível — e o tema claro continua limpo como antes.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

@@ -226,12 +226,12 @@ class AgendaService
         $inicioDia = $de->copy()->startOfDay();
         $fimDia = $ate->copy()->startOfDay();
 
-        // Prazos e compromissos de vários dias vão para a faixa "dia inteiro".
+        // Só os prazos de tarefa vão para a faixa "dia inteiro" — compromisso
+        // com horário, mesmo de vários dias, mora na régua (ver abaixo).
         $inteiroPorDia = $this->prazos($inicioDia, $fimDia, $pessoas, $agora->copy()->startOfDay())
             ->groupBy('data');
 
         $blocosPorDia = [];
-        $chipsMultiDia = [];
 
         $compromissos = Compromisso::query()
             ->with('participantes')
@@ -240,30 +240,42 @@ class AgendaService
             ->get();
 
         foreach ($compromissos as $c) {
-            // Compromisso de UM dia vira bloco na régua; de vários dias não tem
-            // "um horário" — cai na faixa de dia inteiro, um chip por dia.
-            if ($c->comecaEm()->isSameDay($c->terminaEm())) {
-                $ini = $c->comecaEm()->hour * 60 + $c->comecaEm()->minute;
-                $fim = $c->terminaEm()->hour * 60 + $c->terminaEm()->minute;
-                $fim = max($fim, $ini + 15); // salvaguarda: nunca altura zero
+            $ini = $c->comecaEm()->hour * 60 + $c->comecaEm()->minute;
+            $fim = $c->terminaEm()->hour * 60 + $c->terminaEm()->minute;
+            $umDia = $c->comecaEm()->isSameDay($c->terminaEm());
 
-                $blocosPorDia[$c->comecaEm()->toDateString()][] = [
+            $meta = collect([
+                $c->intervalo(),
+                $c->participantes->pluck('name')->implode(', ') ?: null,
+            ])->filter()->implode(' · ');
+
+            // Todo compromisso vira bloco na régua, inclusive o de vários dias.
+            // A janela [hora → hora_fim] se REPETE em cada dia coberto — um curso
+            // 08–18 pinta 08–18 no dia 1 E no dia 2, não estica até a meia-noite.
+            // Só o que vira o dia de verdade (hora_fim <= hora, ex.: 23h–01h) é
+            // que se divide: vai até 24h no primeiro dia e começa em 0h no último.
+            $primeiro = $c->comecaEm()->copy()->startOfDay()->max($inicioDia);
+            $ultimo = $c->terminaEm()->copy()->startOfDay()->min($fimDia);
+
+            foreach ($primeiro->daysUntil($ultimo) as $dia) {
+                if ($umDia || $fim > $ini) {
+                    $bIni = $ini;
+                    $bFim = max($fim, $ini + 15); // salvaguarda: nunca altura zero
+                } else {
+                    // Vira o dia: primeiro dia até 24h, último a partir de 0h,
+                    // dias do meio ocupam o dia inteiro.
+                    $bIni = $dia->isSameDay($c->comecaEm()) ? $ini : 0;
+                    $bFim = $dia->isSameDay($c->terminaEm()) ? max($fim, $bIni + 15) : 1440;
+                }
+
+                $blocosPorDia[$dia->toDateString()][] = [
                     'id' => $c->id,
                     'titulo' => $c->titulo,
                     'token' => $c->corToken(),
-                    'meta' => collect([
-                        $c->intervalo(),
-                        $c->participantes->pluck('name')->implode(', ') ?: null,
-                    ])->filter()->implode(' · '),
-                    'ini' => $ini,
-                    'fim' => $fim,
+                    'meta' => $meta,
+                    'ini' => $bIni,
+                    'fim' => $bFim,
                 ];
-
-                continue;
-            }
-
-            foreach ($this->segmentosDoCompromisso($c, $de, $ate) as $seg) {
-                $chipsMultiDia[$seg['data']] = ($chipsMultiDia[$seg['data']] ?? collect())->push($seg);
             }
         }
 
@@ -277,9 +289,7 @@ class AgendaService
                 'nome' => $dia->translatedFormat('D'),
                 'numero' => $dia->format('j'),
                 'ehHoje' => $iso === $agora->toDateString(),
-                'inteiroDia' => ($inteiroPorDia[$iso] ?? collect())
-                    ->concat($chipsMultiDia[$iso] ?? collect())
-                    ->values(),
+                'inteiroDia' => ($inteiroPorDia[$iso] ?? collect())->values(),
                 'blocos' => $this->posicionarBlocos($blocosPorDia[$iso] ?? []),
             ]);
         }

@@ -188,6 +188,12 @@
     /* alpha padrão do fundo de badge */
     --tint-alpha: 0.13;
 
+    /* O bloco da grade da Agenda precisa de MAIS tinta que um badge: ele é o
+       único elemento colorido sobre o quadro quase-preto, sem borda ao redor
+       nem texto escuro que o segure. A 0.13 do badge ele some no fundo; a 0.34
+       vira uma superfície claramente colorida, e o texto claro ainda contrasta. */
+    --agenda-bloco-alpha: 0.34;
+
     /* A sombra do card do quadro — a única do sistema (ver tailwind.config). */
     --sombra-card: 0 1px 2px rgba(0, 0, 0, 0.35);
     --sombra-card-arrasto: 0 6px 16px -6px rgba(0, 0, 0, 0.6);
@@ -293,6 +299,10 @@
     --triagem-line: rgba(71, 85, 105, 0.28);
 
     --tint-alpha: 0.10;
+
+    /* No claro o painel é branco: pouca tinta já pinta um bloco legível com
+       texto escuro por cima. Mais que isto satura sem necessidade. */
+    --agenda-bloco-alpha: 0.16;
 
     /* No claro a sombra é bem mais fraca: o card já se separa do board pelo
        branco contra o cinza, e a sombra do escuro aqui vira sujeira. */
