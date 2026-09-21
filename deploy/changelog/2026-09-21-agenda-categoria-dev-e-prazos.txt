@@ -1,0 +1,14 @@
+<b>📋 AlfaMatriz — Changelog 21/09/2026</b>
+<i>A Agenda ganhou a categoria Desenvolvimento, e a faixa do topo da Semana deixou de ser um mistério</i>
+
+<b>🎨 Categoria "Desenvolvimento"</b>
+
+• Os compromissos agora podem ser da categoria <b>Desenvolvimento</b>, junto com reunião interna, com cliente, deploy/manutenção, externo e foco. Ela tem cor própria (fúcsia), distinta das demais, e entra na legenda e no seletor de categoria do compromisso.
+
+<b>🕒 A faixa "dia inteiro" virou "Prazos"</b>
+
+• A faixa no topo da Semana confundia: chamava-se "dia inteiro" e mostrava só o título, sem dizer que ali ficam os <b>prazos de tarefa</b> — tarefas que vencem naquele dia e que, por não terem hora marcada, não cabem na grade de horários.
+
+• Agora ela se chama <b>"Prazos"</b> e cada item aparece com um <b>ícone de relógio</b>: dá para ver de relance que é um vencimento, e não um compromisso. A cor continua sendo a da prioridade ou do estado da tarefa.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

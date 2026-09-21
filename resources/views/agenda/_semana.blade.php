@@ -42,11 +42,15 @@
                 @endforeach
             </div>
 
-            {{-- Faixa "dia inteiro": prazos e compromissos de vários dias. --}}
+            {{-- Faixa de PRAZOS: tarefas cujo vencimento cai no dia. Antes era a
+                 "dia inteiro" e guardava também compromisso de vários dias — mas
+                 esses foram para a régua (têm hora), então sobrou só o prazo, que
+                 não tem hora e não cabe na grade. O rótulo diz o que é: sem ele,
+                 a faixa parecia sobra e ninguém sabia para que servia. --}}
             <div class="flex border-b border-line">
                 <div class="sticky left-0 z-10 flex shrink-0 items-center justify-end bg-board pr-1.5"
                      style="width: {{ $larguraRegua }}px">
-                    <span class="font-mono text-[8.5px] uppercase leading-tight tracking-[0.06em] text-ink-faint">dia<br>inteiro</span>
+                    <span class="font-mono text-[9px] uppercase leading-tight tracking-[0.04em] text-ink-faint">Prazos</span>
                 </div>
 
                 @foreach ($grade['dias'] as $d)

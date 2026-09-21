@@ -72,8 +72,14 @@ class Compromisso extends Model
      *
      * A chave é o que fica no banco; `rotulo` é o nome na tela; `tom` é o TOKEN
      * de cor do sistema (não um valor cru: `exame`, `good`, `warn`, `pergunta`,
-     * `triagem` já existem no `app.css`, com distância perceptual medida). Cor
-     * inventada é proibida por regra do repo — daí reusar a paleta.
+     * `triagem`, `retorno` já existem no `app.css`, com distância perceptual
+     * medida). Cor inventada é proibida por regra do repo — daí reusar a paleta.
+     *
+     * `desenvolvimento` empresta o HUE de `retorno` (fúcsia), não o significado:
+     * é um dos nove matizes com ΔE ≥ 27 entre si, e o único fora dos cinco já
+     * usados que não esbarra em nenhum deles (âmbar bateria no `warn`, teal no
+     * `exame`). Reusar a cor de um estado de tarefa não colide: a tela separa
+     * compromisso de prazo pelo rótulo, e o compromisso nunca vira prazo.
      *
      * `interna` é a primeira porque é o padrão (o azul de hoje): compromisso sem
      * categoria escolhida, ou de antes desta mudança, é reunião interna.
@@ -81,6 +87,7 @@ class Compromisso extends Model
     public const CATEGORIAS = [
         'interna' => ['rotulo' => 'Reunião interna', 'tom' => 'exame'],
         'cliente' => ['rotulo' => 'Com cliente', 'tom' => 'good'],
+        'desenvolvimento' => ['rotulo' => 'Desenvolvimento', 'tom' => 'retorno'],
         'deploy' => ['rotulo' => 'Deploy / manutenção', 'tom' => 'warn'],
         'externo' => ['rotulo' => 'Externo / evento', 'tom' => 'pergunta'],
         'foco' => ['rotulo' => 'Foco / pessoal', 'tom' => 'triagem'],
