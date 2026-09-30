@@ -1,0 +1,20 @@
+<b>📋 AlfaMatriz — Changelog 30/09/2026</b>
+<i>O AlfaMatriz passa a conversar com o Claude: dá para dizer "abre uma tarefa para o Rafael" ou "marca reunião com a Camila quinta às 10" e a tarefa ou o compromisso nascem no sistema, com as mesmas regras da tela</i>
+
+<b>🤖 O quadro e a agenda viraram ferramentas para o agente</b>
+
+• <b>Nove ações pela conversa.</b> Listar e ver tarefas, criar tarefa (com checklist, sistema, responsável, prazo e subtarefa), mover de etapa, perguntar/responder, comentar, ver a agenda de uma faixa de dias e marcar compromisso. Tudo o que o Claude faz por aí aparece no quadro e no sino como se tivesse sido feito na tela.
+
+• <b>As regras são as mesmas.</b> Quem não faz triagem continua não escolhendo prioridade nem responsável — a tarefa cai na fila e o agente é avisado do que ficou para a triagem. Mover exige dizer em que etapa a tarefa estava: se alguém já moveu, o agente é recusado em vez de sobrescrever. Cancelar e devolver para correção continuam pedindo motivo, com a mesma frase da tela.
+
+• <b>Em nome de quem comanda.</b> O agente age em nome de uma pessoa do time, e é o nome dela que fica no histórico, na conversa e nos avisos. Conta desativada e conta de revenda não entram — as mesmas portas da tela.
+
+• <b>Duas portas.</b> Na máquina de quem desenvolve o servidor roda como processo local. No sistema no ar ele atende por uma rota protegida por token pessoal, só pela rede interna — é assim que o agente do servidor e o Claude de outra máquina alcançam o quadro de verdade. O token é emitido por comando, em nome de uma pessoa, e pode ser revogado a qualquer momento.
+
+• <b>Nomes, não códigos.</b> Pessoas, sistemas e etapas são ditos pelo nome. Nome que bate com duas pessoas é recusado em vez de escolhido por conta própria.
+
+<b>🧭 O que vem depois</b>
+
+• Esta é a primeira de três partes. As próximas: o agente trabalhando nas tarefas atribuídas a ele e testando no staging, e a subida para produção só depois de autorizada.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

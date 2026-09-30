@@ -13,11 +13,16 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use Auditavel, HasFactory, Notifiable, SoftDeletes;
+    // `HasApiTokens` é só para o servidor MCP por HTTP (`routes/ai.php`): o
+    // painel continua entrando por sessão, e nenhuma rota do painel aceita
+    // token. O token é a identidade do agente quando ele fala de fora —
+    // autorizado pelo dono do produto em 30/09/2026.
+    use Auditavel, HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected string $recursoAuditoria = 'usuarios';
 

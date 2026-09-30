@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Compromisso;
-use App\Models\Notificacao;
 use App\Models\Tarefa;
 use App\Services\AgendaService;
 use Illuminate\Http\Request;
@@ -35,22 +34,10 @@ class CompromissoController extends Controller
 
         $dados = $this->validar($request);
 
-        $compromisso = DB::transaction(function () use ($dados, $request) {
-            $compromisso = Compromisso::create(
-                $this->camposDoIntervalo($dados) + [
-                    'titulo' => $dados['titulo'],
-                    'descricao' => $dados['descricao'] ?? null,
-                    'categoria' => $dados['categoria'] ?? 'interna',
-                    'criado_por_id' => $request->user()->id,
-                    'tarefa_id' => $dados['tarefa_id'] ?? null,
-                ]
-            );
-
-            $compromisso->sincronizarParticipantes($dados['participantes'] ?? []);
-            $this->avisarParticipantes($compromisso, $request->user()->id, 'marcou');
-
-            return $compromisso;
-        });
+        // A marcação em si mora no `AgendaService`: o compromisso também nasce
+        // pelo servidor MCP, e as duas portas precisam gravar o mesmo intervalo
+        // e avisar as mesmas pessoas.
+        $compromisso = $this->agenda->marcar($dados, $request->user());
 
         return $this->voltar($request, 'Compromisso marcado para '
             .Carbon::parse($compromisso->data)->translatedFormat('d/m').', '.$compromisso->intervalo().'.');
@@ -67,7 +54,7 @@ class CompromissoController extends Controller
         $dados = $this->validar($request);
 
         DB::transaction(function () use ($compromisso, $dados, $request) {
-            $campos = $this->camposDoIntervalo($dados);
+            $campos = $this->agenda->camposDoIntervalo($dados);
 
             // Remarcar rearma o lembrete: se o início mudou, quem foi avisado do
             // horário antigo precisa do novo, e o `lembrete_enviado_em` volta a
@@ -88,7 +75,7 @@ class CompromissoController extends Controller
             // Depois do `update`: a data que os participantes repetem é a nova,
             // e sincronizar antes gravaria a carga no dia antigo.
             $compromisso->sincronizarParticipantes($dados['participantes'] ?? []);
-            $this->avisarParticipantes($compromisso, $request->user()->id, 'remarcou');
+            $this->agenda->avisarParticipantes($compromisso, $request->user()->id, 'remarcou');
         });
 
         return $this->voltar($request, 'Compromisso atualizado.');
@@ -104,7 +91,7 @@ class CompromissoController extends Controller
 
         // O aviso sai ANTES da exclusão: depois dela não há mais de onde ler
         // título, data e participantes para escrever a frase.
-        $this->avisarParticipantes($compromisso, $request->user()->id, 'desmarcou');
+        $this->agenda->avisarParticipantes($compromisso, $request->user()->id, 'desmarcou');
         $compromisso->delete();
 
         return $this->voltar($request, 'Compromisso desmarcado.');
@@ -244,111 +231,17 @@ class CompromissoController extends Controller
      */
     private function validar(Request $request): array
     {
-        $dados = $request->validate([
-            'titulo' => 'required|string|max:255',
-            'descricao' => 'nullable|string|max:2000',
-            'categoria' => 'nullable|in:'.implode(',', array_keys(Compromisso::CATEGORIAS)),
-            'data' => 'required|date',
-            'hora' => 'required|date_format:H:i',
+        $dados = $request->validate(AgendaService::regrasDoCompromisso());
 
-            // `duracao_modo` chega como booleano do botão-pílula. Quando é
-            // verdadeiro, as horas mandam e o término é ignorado; quando é
-            // falso, é o contrário. Por isso os dois grupos são `nullable`
-            // aqui e cobrados em `camposDoIntervalo`, que sabe qual é qual.
-            'duracao_modo' => 'nullable|boolean',
-            'duracao_horas' => 'nullable|numeric|min:'.Compromisso::DURACAO_MINIMA.'|max:24',
-            'data_fim' => 'nullable|date',
-            'hora_fim' => 'nullable|date_format:H:i',
-
-            'tarefa_id' => 'nullable|exists:tarefas,id',
-            'participantes' => 'nullable|array',
-            'participantes.*' => 'exists:users,id',
-        ]);
-
-        $intervalo = $this->camposDoIntervalo($dados);
-
-        $inicio = Carbon::parse($intervalo['data'].' '.$intervalo['hora']);
-        $fim = Carbon::parse($intervalo['data_fim'].' '.$intervalo['hora_fim']);
-
-        if ($fim->lte($inicio)) {
-            abort(response()->json(['erro' => 'O término precisa ser depois do início.'], 422));
+        try {
+            $this->agenda->assertIntervaloValido($this->agenda->camposDoIntervalo($dados));
+        } catch (\RuntimeException $e) {
+            abort(response()->json(['erro' => $e->getMessage()], 422));
         }
 
         return $dados;
     }
 
-    /**
-     * Resolve os quatro campos do intervalo a partir do modo escolhido.
-     *
-     * Um lugar só, porque os dois modos precisam produzir as MESMAS quatro
-     * colunas: o banco guarda sempre `data`/`hora`/`data_fim`/`hora_fim`, e é
-     * `duracao_modo` que diz qual dos dois lados foi digitado. Espalhar essa
-     * decisão entre `store` e `update` faria os dois divergirem na primeira
-     * correção.
-     *
-     * @return array<string, mixed>
-     */
-    private function camposDoIntervalo(array $dados): array
-    {
-        $data = Carbon::parse($dados['data'])->toDateString();
-        $modoDuracao = (bool) ($dados['duracao_modo'] ?? true);
-
-        if ($modoDuracao) {
-            $horas = (float) ($dados['duracao_horas'] ?? 1);
-            $termino = Compromisso::terminoPorDuracao($data, $dados['hora'], $horas);
-
-            return [
-                'data' => $data,
-                'hora' => $dados['hora'],
-                'data_fim' => $termino->toDateString(),
-                'hora_fim' => $termino->format('H:i'),
-                'duracao_modo' => true,
-                'duracao_horas' => $horas,
-            ];
-        }
-
-        return [
-            'data' => $data,
-            'hora' => $dados['hora'],
-            // Término livre sem data cai no mesmo dia: é o que quem digita só a
-            // hora quer dizer, e exigir a data repetiria o campo em 95% dos
-            // casos para cobrir a virada de meia-noite.
-            'data_fim' => Carbon::parse($dados['data_fim'] ?? $data)->toDateString(),
-            'hora_fim' => $dados['hora_fim'] ?? $dados['hora'],
-            'duracao_modo' => false,
-            // Nulo de propósito: no modo livre não houve duração digitada, e
-            // gravar a subtração aqui reintroduziria a ambiguidade que a
-            // coluna existe para resolver (ver a migração).
-            'duracao_horas' => null,
-        ];
-    }
-
-    /**
-     * Avisa quem participa — menos quem mexeu.
-     *
-     * Compromisso é EVENTO: aconteceu num instante e tem destinatário certo, que
-     * é a definição do que o sino guarda. As condições da Agenda — prazo perto
-     * sem reunião, tarefa travada — são outra coisa e não passam por aqui; elas
-     * são recalculadas e pintadas na própria tela, porque valem enquanto
-     * durarem e gravá-las viraria uma linha nova por dia repetindo o mesmo
-     * aviso (ver `Notificacao`).
-     */
-    private function avisarParticipantes(Compromisso $compromisso, int $autorId, string $verbo): void
-    {
-        $quando = Carbon::parse($compromisso->data)->translatedFormat('d/m').' · '.$compromisso->intervalo();
-
-        foreach ($compromisso->participantes as $participante) {
-            Notificacao::avisar($participante->id, $autorId, [
-                'tipo' => 'compromisso',
-                'nivel' => 'neutro',
-                'icone' => 'calendar',
-                'titulo' => 'Alguém '.$verbo.' "'.$compromisso->titulo.'"',
-                'meta' => $quando,
-                'rota' => route('agenda.index', ['em' => Carbon::parse($compromisso->data)->toDateString()]),
-                'tarefa_id' => $compromisso->tarefa_id,
-            ]);
-        }
-    }
 
     private function recusar(Request $request, string $mensagem)
     {
