@@ -205,7 +205,9 @@ async function proximo() {
 
 // ---------- comandos ----------
 
-const VERSAO = /^v\d+\.\d+\.\d+$/;
+// O formato das tags deste repositório: vAAAA.MM.DD, com um .N quando há mais
+// de uma publicação no dia (v2026.09.21.5). É o que o vigia de produção lê.
+const VERSAO = /^v\d{4}\.\d{2}\.\d{2}(\.\d+)?$/;
 
 async function comando(chatId, texto) {
     const [nome, ...resto] = texto.trim().split(/\s+/);
@@ -218,7 +220,7 @@ async function comando(chatId, texto) {
                 'Sou o agente do AlfaMatriz. Mande um pedido em texto e eu trabalho no repositório ou no quadro.',
                 '',
                 '/status — branch, últimos commits e o que está rodando',
-                '/publicar vX.Y.Z — cria e envia a tag de produção (a partir da main)',
+                '/publicar v2026.09.30.1 — cria e envia a tag de produção (a partir da main)',
                 '/agendar HH:MM pedido — roda o pedido hoje nesse horário (ou AAAA-MM-DD HH:MM pedido)',
                 '/agendados — o que está marcado · /cancelar N — desmarca',
                 '/parar — interrompe o que estiver rodando',
@@ -240,7 +242,7 @@ async function comando(chatId, texto) {
 
         case '/publicar': {
             if (!VERSAO.test(argumento)) {
-                return responder(chatId, 'Diga a versão no formato vX.Y.Z, por exemplo /publicar v1.12.0.');
+                return responder(chatId, 'Diga a versão no formato vAAAA.MM.DD ou vAAAA.MM.DD.N, por exemplo /publicar v2026.09.30.1.');
             }
             // A tag nasce da main remota, e não do que está no clone: o clone é
             // a bancada do agente, e o que vai para o ar é o que a esteira já
