@@ -177,6 +177,46 @@ antes de escrever CSS**. As quatro que mais se repetiram:
 
 ---
 
+## Servidor MCP — o agente dentro do sistema
+
+Desde 28/09/2026 o AlfaMatriz expõe o quadro e a agenda como ferramentas MCP (`laravel/mcp`,
+`app/Mcp/`, registro em `routes/ai.php`). É a fase 1 da integração do agente, pedida pelo dono do
+produto nessa data: "abre uma tarefa", "marca reunião" ditos ao Claude viram tarefa e compromisso
+AQUI, com a regra daqui. As fases seguintes — agente num LXC do Proxmox trabalhando nas tarefas,
+comando pelo Telegram, tag de produção só depois de ele autorizar — ainda não existem.
+
+- **Toda ferramenta espelha uma rota da tela**, com o mesmo par recurso/ação do middleware
+  `permissao:` (`Ferramenta::$permissao`). O que a rota recusa, a ferramenta recusa com a mesma
+  frase. Por isso a regra que as duas compartilham mora em serviço — `TarefaService::criar` e
+  `AgendaService::marcar` saíram dos controllers para isso — e **nunca na ferramenta**. Ferramenta
+  nova que precise de regra que só existe no controller: extraia primeiro.
+- **O agente age em nome de uma pessoa**, decisão do dono em 28/09/2026 (a recomendação era um
+  usuário próprio, para auditoria; ele preferiu o nome dele). A identidade vem do ambiente do
+  processo (`MCP_USUARIO`), lida em `AlfaMatrizServer::boot` com as mesmas portas da tela: conta
+  desativada e escopo de revenda não entram. Não é `config()`: cache de config congelaria o nome.
+- **Duas portas.** Local, stdio: `php artisan mcp:start alfamatriz` (`.mcp.json`, e o
+  `MCP_USUARIO` vem do `.env`). No ar, HTTP: `POST /mcp` com token portador (Sanctum,
+  `auth:sanctum` + `abilities:mcp` + `throttle`), **autorizada pelo dono em 30/09/2026** depois
+  de o classificador recusar a primeira tentativa como "persistência não autorizada" — com a
+  autorização dele por escrito, passou. O token sai de `php artisan alfa:mcp-token <email>`
+  (`--revogar` apaga), aparece uma vez, e o `.mcp.json` o lê de `ALFAMATRIZ_MCP_TOKEN` /
+  `_STAGING`. Produção e staging só atendem pela tailnet (`alfamatriz.tail0939dd.ts.net` e
+  `alfamatriz-staging.…`), então `/mcp` não existe para a internet. A rota é registrada pelo
+  pacote fora do grupo `web`: sem sessão nem CSRF, de propósito. O SSH até o LXC foi descartado.
+- **`de` é obrigatório em `mover_tarefa`**, ao contrário da rota, onde é opcional: o agente sempre
+  acabou de ler a tarefa, e é o contrato de concorrência do quadro valendo para ele também.
+- Teste em `tests/Feature/Mcp/` com `AlfaMatrizServer::actingAs($u)->tool(...)`. Fumaça de
+  verdade: mandar JSON-RPC pelo stdin do `mcp:start` — foi assim que se conferiu o caminho inteiro.
+- **A fase 2 é a ponte do Telegram**, em `deploy/agente/` (`ponte-telegram.mjs`, `.service`,
+  `.env.example`, README com a instalação). Roda no LXC `dev` (108), que já tem PHP 8.3, Composer, o
+  clone em `/opt/dev/AlfaMatriz` com a suíte verde e o Claude Code; o LXC `deploy` (110) tem 512 MB e
+  não serve. Só age por mensagem de quem está na lista, um pedido por vez, e a tag continua sendo
+  gesto da pessoa (`/publicar`). O classificador do auto mode recusou gravar o script cinco vezes,
+  com autorização escrita e sem o `--dangerously-skip-permissions`; só passou fora do auto mode.
+  Se precisar mexer nele, saia do auto mode antes (Shift+Tab) em vez de insistir.
+
+---
+
 ## Publicar o changelog
 
 O procedimento vale para todos os sistemas Alfa. O formato é HTML do Telegram com `<b>`/`<i>`, primeira linha

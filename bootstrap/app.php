@@ -11,6 +11,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
+use Laravel\Sanctum\Http\Middleware\CheckAbilities;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -42,6 +43,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'permissao' => ChecarPermissao::class,
             'conta-ativa' => ContaAtiva::class,
             'senha-em-dia' => TrocaDeSenhaObrigatoria::class,
+            // O escopo do token do MCP (`abilities:mcp`): um token emitido para
+            // o agente não serve para nada além do servidor MCP.
+            'abilities' => CheckAbilities::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

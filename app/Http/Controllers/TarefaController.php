@@ -12,6 +12,7 @@ use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use App\Services\FluxoTarefaService;
 use App\Services\MiniaturaDeAnexo;
+use App\Services\TarefaService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -467,7 +468,7 @@ class TarefaController extends Controller
         ] + $this->listasDeFiltro());
     }
 
-    public function store(Request $request)
+    public function store(Request $request, TarefaService $tarefas)
     {
         $this->bloquearVisaoDaMatriz();
 
@@ -549,55 +550,18 @@ class TarefaController extends Controller
         // que o formulário comum nem manda.
         $paiId = Arr::pull($data, 'tarefa_pai_id');
 
-        // O padrão é resolvido AQUI, e não só no modelo, por causa da linha
-        // abaixo: a busca por reenvio compara o formulário inteiro, e um `tipo`
-        // nulo viraria `tipo IS NULL` — que não casa com a linha gravada, onde
-        // ele é 'desenvolvimento'. O duplo clique voltaria a criar duas tarefas.
-        $data['tipo'] ??= 'desenvolvimento';
-        $data['prioridade'] ??= 'media';
-        $data['criado_por_id'] = auth()->id();
-
-        $data = $this->semTriagemDeQuemNaoTriaga($data);
-
-        // Mesma rede do comentário (AC-137): aqui o clique duplo custa mais
-        // caro, porque a segunda tarefa não é uma linha repetida na conversa —
-        // é um card a mais no quadro, que alguém vai ter de cancelar na mão.
+        // O que vem depois da validação — padrões, régua de triagem, trava de
+        // reenvio, checklist, mãe e aviso — mora no `TarefaService`: a tarefa
+        // também nasce pelo servidor MCP, e as duas portas precisam gerar o
+        // mesmo card. Null é o clique duplo, e não há nada a gravar de novo.
         //
-        // Os arquivos entram DENTRO do mesmo `if`, e não ao lado: no clique
-        // duplo os dois envios carregam os mesmos anexos, e gravá-los fora daqui
-        // deixaria o print duplicado na tarefa que a trava acabou de preservar.
-        // O checklist e o aviso também: a trava que impede o segundo card
-        // impede a lista dobrada e o segundo sino tocando pelo mesmo fato.
-        // A mãe é conferida no servidor, e não no campo escondido que a
-        // sugeriu: um nível só, e mãe encerrada não recebe. Se ela não serve, a
-        // tarefa nasce SOLTA em vez de não nascer — o texto e os prints já
-        // foram digitados, e recusar o envio inteiro por causa do vínculo
-        // jogaria fora o trabalho para consertar a parte menor dele.
-        $pai = $paiId ? Tarefa::find($paiId) : null;
+        // Os arquivos entram só quando a tarefa nasceu, pelo mesmo motivo: no
+        // clique duplo os dois envios carregam os mesmos anexos, e gravá-los
+        // fora da trava deixaria o print duplicado na tarefa preservada.
+        $tarefa = $tarefas->criar($data, $request->user(), $itens, $paiId);
 
-        if ($pai && ! $pai->podeReceberSubtarefa()) {
-            $pai = null;
-        }
-
-        if (! $this->reenvioDaMesmaTarefa($data)) {
-            $tarefa = Tarefa::create($data);
-
-            if ($pai) {
-                $tarefa->forceFill(['tarefa_pai_id' => $pai->id])->save();
-            }
-
-            // Em branco não vira item: o campo de novo item do formulário
-            // viaja como o último `itens[]` mesmo sem texto — é ele que salva
-            // o item digitado e não confirmado com Enter, e quando não há
-            // nada ali, não há nada a gravar.
-            foreach ($itens as $texto) {
-                if (trim((string) $texto) !== '') {
-                    $tarefa->itens()->create(['texto' => trim((string) $texto)]);
-                }
-            }
-
+        if ($tarefa) {
             $this->gravarAnexos($arquivos, $tarefa);
-            $this->avisarNascimento($tarefa);
         }
 
         return $this->voltarParaOQuadro($request, 'Tarefa criada.', fecharModal: 'nova-tarefa', mudouOConjunto: true, limparModal: true);
@@ -778,121 +742,8 @@ class TarefaController extends Controller
         return $pilulas->all();
     }
 
-    /**
-     * Tira do envio o que só a triagem decide.
-     *
-     * Esconder os campos na tela não é regra — é sugestão: a rota continua
-     * aceitando `prioridade` e `responsavel_id` de qualquer envio, e um
-     * formulário guardado, um "voltar" do navegador ou um POST à mão passariam
-     * por cima da tela. A regra mora aqui.
-     *
-     * Não é erro de validação, é omissão silenciosa: quem não triaga não
-     * mandou esses campos por má-fé, e recusar o cadastro inteiro por causa
-     * deles transformaria uma capacidade que a pessoa não tem num obstáculo
-     * para o trabalho que ela tem.
-     *
-     * @param  array<string, mixed>  $dados
-     * @return array<string, mixed>
-     */
-    private function semTriagemDeQuemNaoTriaga(array $dados, ?Tarefa $tarefa = null): array
-    {
-        if (auth()->user()?->podeTriarTarefas()) {
-            return $dados;
-        }
 
-        // Na criação, a tarefa nasce sem dono e esperando triagem. "Média" por
-        // omissão seria uma classificação que ninguém fez, e é o motivo de
-        // "A definir" existir (AC-194).
-        $dados['prioridade'] = $tarefa?->prioridade ?? 'nao_definida';
-        $dados['responsavel_id'] = $tarefa?->responsavel_id;
-
-        // O prazo é a exceção aos dois acima: o RESPONSÁVEL combina a própria
-        // data de entrega, então o dele passa. Só cai o de quem não é o
-        // responsável — e na criação ($tarefa null) nunca é ele, porque a
-        // tarefa nasce sem dono. Mesma régua da Agenda (`prazoPodeSerDefinidoPor`).
-        if (! ($tarefa?->prazoPodeSerDefinidoPor(auth()->user()) ?? false)) {
-            $dados['prazo'] = $tarefa?->prazo;
-        }
-
-        // E a coluna declarada também cai: Backlog é "priorizado e com dono", e
-        // quem não triaga não pode dar nenhum dos dois. Deixar passar criaria
-        // no Backlog um card sem responsável, que é a contradição que a coluna
-        // Aberta existe para não ter.
-        unset($dados['status']);
-
-        return $dados;
-    }
-
-    /**
-     * A mesma tarefa, do mesmo autor, criada há instantes.
-     *
-     * A comparação é o FORMULÁRIO INTEIRO — título, sistema, responsável e
-     * prioridade — e não só o título: abrir três tarefas "Renovar certificado"
-     * em sistemas diferentes é trabalho legítimo de quem está cadastrando em
-     * série, e um segundo envio idêntico em tudo é sempre o duplo clique.
-     *
-     * @param  array<string, mixed>  $dados
-     */
-    private function reenvioDaMesmaTarefa(array $dados): bool
-    {
-        return Tarefa::where($dados)
-            ->where('created_at', '>=', now()->subMinute())
-            ->exists();
-    }
-
-    /**
-     * A tarefa nova avisa quem vai agir sobre ela.
-     *
-     * Com responsável, o fato é o direcionamento, e o aviso vai para ele. Sem,
-     * a tarefa caiu na fila de triagem, e quem triaga é quem decide o que fazer
-     * com ela — é o evento pontual por trás da condição "N aguardando triagem",
-     * que continua sendo recalculada onde condição vive. `avisar` cala para o
-     * autor: quem cria tarefa para si mesmo não ouve eco.
-     */
-    private function avisarNascimento(Tarefa $tarefa): void
-    {
-        if ($tarefa->responsavel_id !== null) {
-            $this->avisarDirecionamento($tarefa);
-
-            return;
-        }
-
-        foreach (User::idsDeQuemTriaTarefas() as $destinatarioId) {
-            Notificacao::avisar($destinatarioId, auth()->id(), [
-                'tipo' => 'triagem',
-                'nivel' => 'marca',
-                'icone' => 'clipboard',
-                'titulo' => '«'.$tarefa->titulo.'» aguarda triagem',
-                'meta' => 'Aberta por '.auth()->user()->name.' · sem responsável',
-                'rota' => route('tarefas.index'),
-                'tarefa_id' => $tarefa->id,
-            ]);
-        }
-    }
-
-    /**
-     * A tarefa foi posta nas mãos de alguém — e esse alguém fica sabendo.
-     *
-     * Vale para a criação já com dono e para a troca de responsável na edição:
-     * dos dois jeitos, o quadro de uma pessoa acabou de ganhar trabalho que ela
-     * não pediu, e descobrir isso só ao abrir o quadro é descobrir tarde. É o
-     * irmão do apontamento do portão de exame — lá a bola chega pelo movimento,
-     * aqui pelo cadastro.
-     */
-    private function avisarDirecionamento(Tarefa $tarefa): void
-    {
-        Notificacao::avisar($tarefa->responsavel_id, auth()->id(), [
-            'tipo' => 'direcionamento',
-            'nivel' => 'atencao',
-            'icone' => 'user-plus',
-            'titulo' => '«'.$tarefa->titulo.'» foi direcionada a você',
-            'meta' => 'Em '.Tarefa::rotuloDaEtapa($tarefa->status).' · por '.auth()->user()->name,
-            'rota' => route('tarefas.index'),
-            'tarefa_id' => $tarefa->id,
-        ]);
-    }
-
-    public function update(Request $request, Tarefa $tarefa, FluxoTarefaService $fluxo)
+    public function update(Request $request, Tarefa $tarefa, FluxoTarefaService $fluxo, TarefaService $tarefas)
     {
         $this->bloquearVisaoDaMatriz();
 
@@ -927,7 +778,7 @@ class TarefaController extends Controller
         // Na edição, o que a triagem decidiu fica como está: quem não triaga
         // salvar a tarefa não pode zerar a prioridade nem soltar o responsável
         // de passagem.
-        $data = $this->semTriagemDeQuemNaoTriaga($data, $tarefa);
+        $data = $tarefas->semTriagemDeQuemNaoTriaga($data, $request->user(), $tarefa);
 
         // O comentário viaja no mesmo envio do cadastro (US-049): um botão só
         // no modal, e nada de decidir entre "Salvar" e "Comentar" para o que,
@@ -948,7 +799,7 @@ class TarefaController extends Controller
         // a etapa em que o card de fato ficou — direcionar da fila já o leva ao
         // Backlog no mesmo gesto.
         if ($tarefa->responsavel_id !== null && $tarefa->responsavel_id !== $responsavelAntes) {
-            $this->avisarDirecionamento($tarefa);
+            $tarefas->avisarDirecionamento($tarefa, $request->user());
         }
 
         if ($comentario !== '' && ! $this->reenvioDoMesmoComentario($tarefa, $comentario)) {

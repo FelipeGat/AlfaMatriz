@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\Models\Compromisso;
+use App\Models\Notificacao;
 use App\Models\Tarefa;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Quem monta a Agenda — as três visões, o drawer do dia e a carga por pessoa.
@@ -542,5 +544,162 @@ class AgendaService
             'de' => $hoje->copy()->subYear(),
             'ate' => $hoje->copy()->addDays(self::DIAS_DA_LISTA),
         ];
+    }
+
+    /**
+     * As regras do compromisso — do formulário e da ferramenta MCP.
+     *
+     * Moram aqui, e não no controller, porque o compromisso entra por duas
+     * portas e as duas precisam recusar o mesmo envio pelo mesmo motivo.
+     *
+     * `duracao_modo` chega como booleano do botão-pílula. Quando é verdadeiro,
+     * as horas mandam e o término é ignorado; quando é falso, é o contrário.
+     * Por isso os dois grupos são `nullable` aqui e cobrados em
+     * `camposDoIntervalo`, que sabe qual é qual.
+     *
+     * @return array<string, string>
+     */
+    public static function regrasDoCompromisso(): array
+    {
+        return [
+            'titulo' => 'required|string|max:255',
+            'descricao' => 'nullable|string|max:2000',
+            'categoria' => 'nullable|in:'.implode(',', array_keys(Compromisso::CATEGORIAS)),
+            'data' => 'required|date',
+            'hora' => 'required|date_format:H:i',
+            'duracao_modo' => 'nullable|boolean',
+            'duracao_horas' => 'nullable|numeric|min:'.Compromisso::DURACAO_MINIMA.'|max:24',
+            'data_fim' => 'nullable|date',
+            'hora_fim' => 'nullable|date_format:H:i',
+            'tarefa_id' => 'nullable|exists:tarefas,id',
+            'participantes' => 'nullable|array',
+            'participantes.*' => 'exists:users,id',
+        ];
+    }
+
+    /**
+     * Marca o compromisso e avisa quem participa.
+     *
+     * Saiu do `CompromissoController::store` em 28/09/2026, quando o compromisso
+     * ganhou a segunda porta (o servidor MCP): gravar o intervalo, sincronizar
+     * os participantes e avisar são um gesto só, e duas cópias dele
+     * divergiriam na primeira correção.
+     *
+     * @param  array<string, mixed>  $dados  os campos já validados por `regrasDoCompromisso`
+     */
+    public function marcar(array $dados, User $autor): Compromisso
+    {
+        $campos = $this->camposDoIntervalo($dados);
+        $this->assertIntervaloValido($campos);
+
+        return DB::transaction(function () use ($campos, $dados, $autor) {
+            $compromisso = Compromisso::create($campos + [
+                'titulo' => $dados['titulo'],
+                'descricao' => $dados['descricao'] ?? null,
+                'categoria' => $dados['categoria'] ?? 'interna',
+                'criado_por_id' => $autor->id,
+                'tarefa_id' => $dados['tarefa_id'] ?? null,
+            ]);
+
+            $compromisso->sincronizarParticipantes($dados['participantes'] ?? []);
+            $this->avisarParticipantes($compromisso, $autor->id, 'marcou');
+
+            return $compromisso;
+        });
+    }
+
+    /**
+     * A única validação do compromisso que não é de formato.
+     *
+     * "O término precisa ser depois do início" é checada DEPOIS de o intervalo
+     * ser montado, e não por um `after:` no campo, porque no modo Duração o
+     * término não é um campo: ele é calculado. Um `after:hora` recusaria o que
+     * o usuário nem digitou, e deixaria passar a meia-noite — que é o caso em
+     * que o término é, legitimamente, uma hora "menor" que o início.
+     *
+     * @param  array<string, mixed>  $campos  o resultado de `camposDoIntervalo`
+     */
+    public function assertIntervaloValido(array $campos): void
+    {
+        $inicio = Carbon::parse($campos['data'].' '.$campos['hora']);
+        $fim = Carbon::parse($campos['data_fim'].' '.$campos['hora_fim']);
+
+        if ($fim->lte($inicio)) {
+            throw new \RuntimeException('O término precisa ser depois do início.');
+        }
+    }
+
+    /**
+     * Resolve os quatro campos do intervalo a partir do modo escolhido.
+     *
+     * Um lugar só, porque os dois modos precisam produzir as MESMAS quatro
+     * colunas: o banco guarda sempre `data`/`hora`/`data_fim`/`hora_fim`, e é
+     * `duracao_modo` que diz qual dos dois lados foi digitado. Espalhar essa
+     * decisão entre criar e editar faria os dois divergirem na primeira
+     * correção.
+     *
+     * @param  array<string, mixed>  $dados
+     * @return array<string, mixed>
+     */
+    public function camposDoIntervalo(array $dados): array
+    {
+        $data = Carbon::parse($dados['data'])->toDateString();
+        $modoDuracao = (bool) ($dados['duracao_modo'] ?? true);
+
+        if ($modoDuracao) {
+            $horas = (float) ($dados['duracao_horas'] ?? 1);
+            $termino = Compromisso::terminoPorDuracao($data, $dados['hora'], $horas);
+
+            return [
+                'data' => $data,
+                'hora' => $dados['hora'],
+                'data_fim' => $termino->toDateString(),
+                'hora_fim' => $termino->format('H:i'),
+                'duracao_modo' => true,
+                'duracao_horas' => $horas,
+            ];
+        }
+
+        return [
+            'data' => $data,
+            'hora' => $dados['hora'],
+            // Término livre sem data cai no mesmo dia: é o que quem digita só a
+            // hora quer dizer, e exigir a data repetiria o campo em 95% dos
+            // casos para cobrir a virada de meia-noite.
+            'data_fim' => Carbon::parse($dados['data_fim'] ?? $data)->toDateString(),
+            'hora_fim' => $dados['hora_fim'] ?? $dados['hora'],
+            'duracao_modo' => false,
+            // Nulo de propósito: no modo livre não houve duração digitada, e
+            // gravar a subtração aqui reintroduziria a ambiguidade que a
+            // coluna existe para resolver (ver a migração).
+            'duracao_horas' => null,
+        ];
+    }
+
+    /**
+     * Avisa quem participa — menos quem mexeu.
+     *
+     * Compromisso é EVENTO: aconteceu num instante e tem destinatário certo, que
+     * é a definição do que o sino guarda. As condições da Agenda — prazo perto
+     * sem reunião, tarefa travada — são outra coisa e não passam por aqui; elas
+     * são recalculadas e pintadas na própria tela, porque valem enquanto
+     * durarem e gravá-las viraria uma linha nova por dia repetindo o mesmo
+     * aviso (ver `Notificacao`).
+     */
+    public function avisarParticipantes(Compromisso $compromisso, int $autorId, string $verbo): void
+    {
+        $quando = Carbon::parse($compromisso->data)->translatedFormat('d/m').' · '.$compromisso->intervalo();
+
+        foreach ($compromisso->participantes as $participante) {
+            Notificacao::avisar($participante->id, $autorId, [
+                'tipo' => 'compromisso',
+                'nivel' => 'neutro',
+                'icone' => 'calendar',
+                'titulo' => 'Alguém '.$verbo.' "'.$compromisso->titulo.'"',
+                'meta' => $quando,
+                'rota' => route('agenda.index', ['em' => Carbon::parse($compromisso->data)->toDateString()]),
+                'tarefa_id' => $compromisso->tarefa_id,
+            ]);
+        }
     }
 }

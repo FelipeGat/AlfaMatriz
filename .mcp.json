@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "alfamatriz": {
+      "command": "php",
+      "args": ["artisan", "mcp:start", "alfamatriz"]
+    },
+    "alfamatriz-producao": {
+      "type": "http",
+      "url": "https://alfamatriz.tail0939dd.ts.net/mcp",
+      "headers": {
+        "Authorization": "Bearer ${ALFAMATRIZ_MCP_TOKEN}"
+      }
+    },
+    "alfamatriz-staging": {
+      "type": "http",
+      "url": "https://alfamatriz-staging.tail0939dd.ts.net/mcp",
+      "headers": {
+        "Authorization": "Bearer ${ALFAMATRIZ_MCP_TOKEN_STAGING}"
+      }
+    }
+  }
+}
