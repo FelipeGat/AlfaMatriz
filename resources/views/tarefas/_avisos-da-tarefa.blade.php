@@ -139,12 +139,17 @@
         // busca por texto (e ao leitor de tela) duas metades de frase.
         $emQueVersao = $tarefa->versao_producao ? ' em '.$tarefa->versao_producao : '';
 
+        // O apontado da passagem, e não o interlocutor que a conversa
+        // reescreve — o mesmo nome que a faixa do card mostra.
+        $examinador = $tarefa->apontadoDestaPassagem() ?? $tarefa->interlocutor;
+        $podeValidar = $tarefa->motivoParaNaoValidar(auth()->user()) === null;
+
         $esperando = $noAr
-            ? ($tarefa->interlocutor
-                ? 'No ar'.$emQueVersao.', aguardando a conferência de '.$tarefa->interlocutor->name
+            ? ($examinador
+                ? 'No ar'.$emQueVersao.', aguardando a conferência de '.$examinador->name
                 : 'No ar'.$emQueVersao.', aguardando alguém conferir')
-            : ($tarefa->interlocutor
-                ? 'Na main, aguardando o teste de '.$tarefa->interlocutor->name
+            : ($examinador
+                ? 'Na main, aguardando o teste de '.$examinador->name
                 : 'Na main, aguardando o teste do staging');
 
         $veredito = $noAr
@@ -181,6 +186,9 @@
                 </span>
             @endif
 
+            {{-- Só o apontado vê os botões; os outros leem a espera com o
+                 nome dele, na frase ao lado. --}}
+            @if ($podeValidar)
             <button type="submit" form="testar-aprovar-{{ $tarefa->id }}"
                     class="shrink-0 h-6 px-2.5 rounded-tile border text-[11.5px] font-semibold transition hover:bg-chip"
                     style="border-color: var(--good-line); color: rgb(var(--good))">
@@ -191,6 +199,7 @@
                     style="border-color: var(--retorno-line); color: rgb(var(--retorno))">
                 Reprovar
             </button>
+            @endif
         </div>
 
         {{-- As notas da reprovação registrada, por extenso, como o motivo do
@@ -201,6 +210,7 @@
 
         {{-- Reprovar exige dizer o quê (o motor recusa sem notas): o botão
              revela o campo em vez de enviar, como o bloqueio do rodapé. --}}
+        @if ($podeValidar)
         <div x-show="reprovando" x-cloak class="mt-2 flex items-end gap-2">
             <div class="flex-1 min-w-0">
                 <label for="teste-notas-{{ $tarefa->id }}" class="block mb-[5px] text-[12px] font-medium text-ink-dim">
@@ -217,5 +227,6 @@
                 Reprovar teste
             </button>
         </div>
+        @endif
     </div>
 @endif

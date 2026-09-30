@@ -944,6 +944,58 @@ class Tarefa extends Model
     }
 
     /**
+     * Quem foi apontado para examinar a passagem atual — ou null, quando o
+     * movimento não apontou ninguém e a coluna é fila.
+     *
+     * Lê o EVENTO aberto, e não `interlocutor_id`: o interlocutor é de quem
+     * está a bola na conversa e muda a cada pergunta e resposta, e uma trava
+     * apoiada nele passaria para o responsável na primeira dúvida respondida.
+     * Usa os eventos já carregados quando o quadro os trouxe, para o card não
+     * custar uma consulta a mais cada um.
+     */
+    public function apontadoDestaPassagem(): ?User
+    {
+        $aberto = $this->relationLoaded('eventos')
+            ? $this->eventos->whereNull('saiu_em')->sortByDesc('entrou_em')->first()
+            : $this->eventos()->whereNull('saiu_em')->latest('entrou_em')->first();
+
+        return $aberto?->apontado_id ? $aberto->apontado : null;
+    }
+
+    /**
+     * Por que esta pessoa não pode registrar o veredito desta passagem — ou
+     * null, quando pode.
+     *
+     * Apontar alguém para validar é pedir o exame DELE: se qualquer um
+     * pudesse carimbar, o apontamento seria só um aviso, e o "aprovado" no
+     * card diria que a conferência pedida aconteceu quando foi outra pessoa
+     * que olhou. O admin é a exceção, decisão do dono em 30/09/2026: ele tem
+     * autorização para tudo, e é também a saída quando o apontado não pode
+     * validar. Quem faz triagem sem ser admin continua travado — organizar o
+     * quadro não é conferir o trabalho. Sem apontado, a coluna continua fila
+     * e qualquer um examina.
+     *
+     * Devolve a frase pelo mesmo motivo de `motivoParaNaoConcluir`: a recusa
+     * da rota e o botão que a tela deixa de mostrar fazem a mesma pergunta.
+     */
+    public function motivoParaNaoValidar(?User $usuario): ?string
+    {
+        // O apontado da REVISÃO lê o PR, não carimba teste: a trava é só dos
+        // portões que têm veredito.
+        if (! in_array($this->status, self::PORTOES_DE_VEREDITO, true)) {
+            return null;
+        }
+
+        $apontado = $this->apontadoDestaPassagem();
+
+        if (! $apontado || $apontado->id === $usuario?->id || $usuario?->ehAdmin()) {
+            return null;
+        }
+
+        return 'Esta validação foi apontada para '.$apontado->name.' — só quem foi apontado registra o veredito.';
+    }
+
+    /**
      * O checklist da tarefa, na ordem escolhida por quem escreveu.
      *
      * A ordem vive na relação, e não em cada tela, pelo mesmo motivo dos

@@ -407,8 +407,17 @@
         // de quem vai conferir —, e o motor a cobra na entrada, então ela nunca
         // falta. Nos outros dois portões a faixa continua presa ao apontamento,
         // que é a única notícia que eles têm.
+        //
+        // O nome da faixa é o APONTADO desta passagem quando houver: o
+        // interlocutor muda com a conversa, e depois de uma pergunta
+        // respondida a faixa passava a dizer "Validação com" o próprio dev.
+        // O interlocutor fica como reserva das passagens anteriores à coluna.
+        $examinador = in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_EXAME, true)
+            ? ($tarefa->apontadoDestaPassagem() ?? $tarefa->interlocutor)
+            : null;
+
         $mostraOExame = in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_EXAME, true)
-            && ($tarefa->interlocutor_id || $noAr);
+            && ($examinador || $noAr);
     @endphp
 
     @if ($mostraOExame)
@@ -417,13 +426,13 @@
             <div class="flex items-center gap-1.5">
                 <span class="h-3 w-3 shrink-0 text-exame"><x-nav-icon name="eye" :peso="1.9" /></span>
                 <p class="flex-1 min-w-0 text-[12px] leading-[1.4] truncate">
-                    @if ($tarefa->interlocutor_id)
+                    @if ($examinador)
                         <span class="text-exame">{{ match ($tarefa->status) {
                             'em_revisao' => 'Revisão com',
                             'em_staging' => 'Teste com',
                             default => 'Validação com',
                         } }}</span>
-                        <span class="font-semibold text-ink">{{ $tarefa->interlocutor?->name ?? 'alguém' }}</span>
+                        <span class="font-semibold text-ink">{{ $examinador->name }}</span>
                     @else
                         <span class="text-exame">No ar, sem validador apontado</span>
                     @endif
@@ -561,7 +570,10 @@
                  clique, e sem isso carimbar abriria o modal por cima do gesto.
                  `data-parcial` redesenha o quadro no lugar, mantendo a rolagem
                  da coluna — o mesmo motivo do Responder. --}}
-            @if ($podeMexer)
+            {{-- Com examinador apontado, os botões são só dele: para os
+                 outros, a faixa "Validação com Fulano" acima já diz de quem
+                 o card está esperando. --}}
+            @if ($podeMexer && ! $tarefa->motivoParaNaoValidar(auth()->user()))
             <div x-data="{ reprovando: false }" @click.stop class="mt-2">
                 <div x-show="! reprovando" class="flex gap-1.5">
                     <form method="POST" data-parcial action="{{ route('tarefas.testar', $tarefa) }}" class="flex-1">

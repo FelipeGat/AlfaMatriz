@@ -220,7 +220,7 @@ class TarefaController extends Controller
         // `subtarefas` entra com SELECT curto: o card só precisa contar quantas
         // são e quantas encerraram, e trazer título e detalhes de cada filha
         // multiplicaria o peso do quadro pela árvore inteira.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios', 'itens', 'perguntaPara', 'anexos',
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos.apontado', 'comentarios', 'itens', 'perguntaPara', 'anexos',
             'subtarefas:id,tarefa_pai_id,status',
             // A mãe entra com SELECT curto: o card da filha só imprime o número
             // e o título dela, e trazer a linha inteira multiplicaria o peso do
@@ -459,7 +459,7 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'subtarefas', 'pai'])
+        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos.apontado', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'subtarefas', 'pai'])
             ->findOrFail($tarefa->id);
 
         return response()->view('tarefas._modais', [
@@ -1128,7 +1128,21 @@ class TarefaController extends Controller
         // admin, e agora guarda a subida da tag. O texto é opcional e o carimbo
         // não — o que precisa estar registrado antes de o código ir para o ar é
         // que alguém validou, e a nota é o detalhe de como.
-        if ($data['status'] === 'em_producao' && $request->has('relatorio_aprovado')) {
+        //
+        // Com testador apontado no staging, o carimbo de quem move não entra:
+        // é o veredito DELE que libera a subida. Se ele já aprovou pelo botão,
+        // o movimento segue sem o carimbo — gravá-lo passaria por cima do
+        // veredito dele, porque vale o relatório mais recente. Se não aprovou,
+        // a recusa diz quem falta, em vez do genérico "valide o staging".
+        $carimboDeOutro = $data['status'] === 'em_producao' && $request->has('relatorio_aprovado')
+            ? $tarefa->motivoParaNaoValidar($request->user())
+            : null;
+
+        if ($carimboDeOutro && ! $tarefa->testeDestaPassagem()?->aprovado) {
+            return $this->voltarParaOQuadro($request, $carimboDeOutro, 'critico');
+        }
+
+        if ($data['status'] === 'em_producao' && $request->has('relatorio_aprovado') && ! $carimboDeOutro) {
             TarefaRelatorioTeste::create([
                 'tarefa_id' => $tarefa->id,
                 // Quem carimbou. O carimbo do painel é a validação de quem
@@ -1657,7 +1671,7 @@ class TarefaController extends Controller
             // Recarregado do banco com as relações que as partials leem: o
             // model que chegou pelo route binding traz o estado de ANTES da
             // ação, e a conversa recém-publicada não estaria nele.
-            $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
+            $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos.apontado', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
                 ->find($tarefa->id);
         }
 
