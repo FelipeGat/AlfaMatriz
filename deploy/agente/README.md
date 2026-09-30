@@ -31,7 +31,7 @@ Texto livre é um pedido ao Claude, que continua a conversa entre mensagens. Com
 | Comando | O que faz |
 |---|---|
 | `/status` | branch, últimos commits, se há algo rodando |
-| `/publicar vX.Y.Z` | cria a tag na `main` remota e envia; o vigia publica em até 5 min |
+| `/publicar v2026.09.30.1` | cria a tag na `main` remota e envia; o vigia publica em até 5 min |
 | `/agendar 22:00 pedido` | roda o pedido hoje às 22h (ou `AAAA-MM-DD HH:MM pedido`) |
 | `/agendados`, `/cancelar N` | lista e desmarca |
 | `/parar` | interrompe o que estiver rodando |
