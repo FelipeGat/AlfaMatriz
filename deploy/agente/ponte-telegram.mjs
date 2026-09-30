@@ -44,6 +44,11 @@ const PERMITIDOS = new Set(
 const REPO = process.env.AGENTE_REPO ?? '/opt/dev/AlfaMatriz';
 const ESTADO = process.env.AGENTE_ESTADO ?? '/var/lib/alfa-agente/estado.json';
 const CLAUDE = process.env.AGENTE_CLAUDE ?? 'claude';
+// Um `.mcp.json` só desta máquina, quando o do repositório não serve: o do
+// repositório aponta para a produção pela tailnet, e o LXC não alcança a
+// produção por ela (o Tailscale nega esse par) — só pela rede interna do
+// Proxmox. Com o arquivo definido, o Claude usa SÓ ele (`--strict-mcp-config`).
+const MCP_CONFIG = process.env.AGENTE_MCP_CONFIG ?? '';
 // Quatro horas: uma tarefa de código com suíte pode levar muito, mas nada
 // legítimo passa disso. Depois, o processo é derrubado e o chat fica sabendo.
 const TEMPO_MAXIMO_MS = Number(process.env.AGENTE_TEMPO_MAXIMO_MIN ?? 240) * 60_000;
@@ -148,6 +153,7 @@ async function rodarClaude(chatId, pedido) {
         // regras do quadro, e pela tag, que ele não pode criar.
         '--dangerously-skip-permissions',
     ];
+    if (MCP_CONFIG) args.push('--mcp-config', MCP_CONFIG, '--strict-mcp-config');
     const sessao = estado.sessoes[chatId];
     if (sessao) args.push('--resume', sessao);
 
