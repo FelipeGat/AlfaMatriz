@@ -1,0 +1,22 @@
+[Unit]
+Description=Agente do AlfaMatriz — ponte Telegram → Claude Code
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Root porque o login do Claude Code no LXC 108 é do root (~/.claude), e é o
+# clone em /opt/dev que ele edita. O LXC é de desenvolvimento; produção só se
+# alcança pelo MCP com token e pela tag.
+User=root
+WorkingDirectory=/opt/dev/AlfaMatriz
+EnvironmentFile=/etc/alfa-agente.env
+ExecStart=/usr/bin/node /opt/dev/AlfaMatriz/deploy/agente/ponte-telegram.mjs
+Restart=always
+RestartSec=10
+# Uma rodada do agente não pode disputar o disco com os stagings do host.
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target
