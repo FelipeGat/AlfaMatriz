@@ -247,6 +247,12 @@ class FluxoTarefaService
                 // rotina que mover tarefa sem sessão registra movimento sem
                 // autor, que é o que de fato aconteceu.
                 'user_id' => auth()->id(),
+                // O apontado vive na PASSAGEM, e não só no `interlocutor_id`,
+                // que a conversa reescreve: é daqui que a trava do veredito
+                // lê quem pode validar (`Tarefa::motivoParaNaoValidar`).
+                'apontado_id' => $this->entradaEmPortaoDeExame($tarefa, $novoStatus, $statusAtual)
+                    ? ($dados['interlocutor_id'] ?? null)
+                    : null,
                 'de_status' => $statusAtual,
                 'para_status' => $novoStatus,
                 'motivo' => $dados['motivo'] ?? null,
@@ -609,6 +615,13 @@ class FluxoTarefaService
         if ($tarefa->tipo !== 'desenvolvimento'
             || ! in_array($tarefa->status, Tarefa::PORTOES_DE_VEREDITO, true)) {
             throw new \RuntimeException('Só a tarefa em Em staging ou Em produção tem veredito para registrar.');
+        }
+
+        // A passagem com examinador apontado é dele (e do admin): o carimbo
+        // de outra pessoa diria que a conferência pedida aconteceu sem ela
+        // acontecer.
+        if ($impedimento = $tarefa->motivoParaNaoValidar($quemTestou)) {
+            throw new \RuntimeException($impedimento);
         }
 
         // Reprovar sem dizer o quê manda o dev abrir o ambiente e adivinhar —

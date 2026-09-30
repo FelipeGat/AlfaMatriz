@@ -1,0 +1,20 @@
+<b>📋 AlfaMatriz — Changelog 30/09/2026</b>
+<i>Quem é apontado para validar uma tarefa passa a ser, de fato, quem valida: o carimbo de aprovado no card agora diz que a conferência pedida aconteceu</i>
+
+<b>✅ A validação é de quem foi apontado</b>
+
+• <b>Antes,</b> apontar alguém para testar o staging ou conferir em produção só mandava um aviso no sino. Qualquer pessoa podia apertar Aprovar no lugar dela, e o card passava a dizer "aprovada" sem que o apontado tivesse olhado.
+
+• <b>Agora,</b> quando a tarefa entra em Em staging ou Em produção com alguém apontado, só essa pessoa registra o veredito — pelo botão do card, pelo detalhe da tarefa ou pela caixa "Validado no staging" do painel de mover. Quem tentar no lugar dela recebe a mensagem dizendo para quem a validação foi apontada.
+
+• <b>O administrador continua podendo validar qualquer tarefa.</b> Ele tem autorização para tudo e é também a saída quando o apontado não puder conferir.
+
+• <b>Sem ninguém apontado, nada muda:</b> a coluna segue como fila e qualquer pessoa do quadro valida.
+
+<b>👀 O card mostra quem está validando</b>
+
+• Os botões Aprovar e Reprovar só aparecem para o apontado e para o administrador. Para os demais, o card mostra "Validação com Fulano" — de quem a tarefa está esperando.
+
+• O nome na faixa não troca mais sozinho no meio da conversa. Antes, depois de uma pergunta respondida, a faixa podia passar a mostrar o próprio desenvolvedor como validador.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

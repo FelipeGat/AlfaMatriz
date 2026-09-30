@@ -85,6 +85,23 @@ direto na tarefa, para que meu teste vire a prova que o portão da produção l�
 - **Então** o registro é recusado com a frase que explica — o teste do staging
   é sobre o trabalho da etapa Em staging
 
+#### AC-372 — Com examinador apontado, só ele registra o veredito
+
+Acrescentado em 30/09/2026, a pedido do dono do produto: uma tarefa enviada
+para produção com validador apontado podia ser validada por qualquer pessoa, e
+o card dizia "aprovada" sem a conferência pedida ter acontecido. Estreita o
+AC-303 só quando há apontado — sem apontado, a coluna continua fila. O admin
+fica fora da trava: tem autorização para tudo (decisão do dono, mesma data).
+
+- **Dado** uma tarefa de desenvolvimento em Em staging ou Em produção cujo
+  movimento de entrada apontou quem valida
+- **Quando** outra pessoa que não é admin — inclusive quem faz triagem —
+  tenta registrar o veredito, pelo botão ou pelo carimbo do painel de mover
+- **Então** o registro é recusado com a frase que nomeia o apontado, os botões
+  de veredito não aparecem para ela, e o apontado e o admin continuam
+  registrando normalmente; o apontado vale para a passagem e não muda com a
+  conversa
+
 ### US-085 — Ser avisado quando uma tarefa trava
 
 Como responsável ou admin, quero ser avisado no sino quando uma tarefa é
