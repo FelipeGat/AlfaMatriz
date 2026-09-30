@@ -19,6 +19,10 @@ com a suíte verde, e o Claude Code em `/root/.local/bin/claude`.
    `TELEGRAM_TOKEN` (chaveiro do macOS, `alfa-telegram-bot`) e `ALFAMATRIZ_MCP_TOKEN` (emitido em
    produção com `php artisan alfa:mcp-token <email> --nome=lxc-dev`). Deixe `TELEGRAM_PERMITIDOS`
    vazio na primeira subida.
+   O LXC não alcança a produção pela tailnet (o Tailscale nega o par), só pela rede interna: por isso
+   `AGENTE_MCP_CONFIG` aponta para um `/etc/alfa-agente-mcp.json` com `http://10.0.3.115/mcp` e o
+   token, que substitui o `.mcp.json` do repositório nas rodadas do agente. Não faça `source` do
+   `.env`: o token tem `|` e vira pipe no shell — o systemd lê o arquivo sem shell.
 3. **Serviço**: `cp deploy/agente/alfa-agente.service /etc/systemd/system/ && systemctl daemon-reload
    && systemctl enable --now alfa-agente`.
 4. Mande qualquer mensagem ao bot: ele responde "Não conheço você. Seu id é N." Ponha o N em
