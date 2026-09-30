@@ -21,6 +21,19 @@ class ReceitasTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * O relógio no meio do mês corrente. As telas listam o mês, e os dados
+     * daqui vencem em "hoje ± alguns dias": nos últimos dias do mês o
+     * vencimento caía no mês seguinte, fora da lista, e a suíte ficava
+     * vermelha só por causa da data — travando a esteira do staging junto.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->travelTo(now()->startOfMonth()->addDays(14)->setTime(10, 0));
+    }
+
     private function operador(): User
     {
         return User::factory()->create();
