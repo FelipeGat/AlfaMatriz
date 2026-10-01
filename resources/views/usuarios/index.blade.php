@@ -30,11 +30,11 @@
         @endif
 
         <x-abas>
-            <x-abas.item href="{{ route('usuarios.index', ['aba' => 'usuarios']) }}"
+            <x-abas.item :href="route('usuarios.index', ['aba' => 'usuarios'])"
                          :ativo="$aba === 'usuarios'" icone="users">
                 Contas
             </x-abas.item>
-            <x-abas.item href="{{ route('usuarios.index', ['aba' => 'perfis']) }}"
+            <x-abas.item :href="route('usuarios.index', ['aba' => 'perfis'])"
                          :ativo="$aba === 'perfis'" icone="cadeado-fechado">
                 Perfis e permissões
             </x-abas.item>
