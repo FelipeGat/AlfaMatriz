@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Models\Compromisso;
 use App\Models\Sistema;
 use App\Models\Tarefa;
 use App\Models\User;
@@ -68,6 +69,38 @@ abstract class Ferramenta extends Tool
         $id = (int) ltrim(trim((string) $codigo), '#');
 
         return $id > 0 ? Tarefa::find($id) : null;
+    }
+
+    /** O compromisso pelo número como a agenda o mostra — "#7" ou "7". */
+    protected function compromissoPeloNumero(int|string $numero): ?Compromisso
+    {
+        $id = (int) ltrim(trim((string) $numero), '#');
+
+        return $id > 0 ? Compromisso::with(['participantes', 'criadoPor', 'tarefa'])->find($id) : null;
+    }
+
+    /**
+     * O compromisso por extenso — o mesmo texto para quem abre, marca e altera,
+     * para o agente conferir o que gravou lendo sempre a mesma ficha.
+     */
+    protected function fichaDoCompromisso(Compromisso $compromisso, User $usuario): string
+    {
+        $inicio = $compromisso->comecaEm();
+        $termino = $compromisso->terminaEm();
+
+        return implode("\n", array_filter([
+            'Compromisso #'.$compromisso->id.': '.$compromisso->titulo,
+            'Quando: '.$inicio->format('d/m/Y H:i').' até '
+                .($compromisso->viraODia() ? $termino->format('d/m/Y H:i').' (vira o dia)' : $termino->format('H:i')),
+            'Categoria: '.(Compromisso::CATEGORIAS[$compromisso->categoria]['rotulo'] ?? $compromisso->categoria),
+            'Participantes: '.($compromisso->participantes->pluck('name')->implode(', ') ?: 'ninguém'),
+            'Marcado por: '.($compromisso->criadoPor?->name ?? '?'),
+            $compromisso->tarefa ? 'Tarefa vinculada: '.$compromisso->tarefa->codigo().' · '.$compromisso->tarefa->titulo : null,
+            filled($compromisso->descricao) ? 'Pauta: '.$compromisso->descricao : null,
+            $compromisso->podeSerEditadoPor($usuario)
+                ? 'Você pode alterar ou desmarcar este compromisso.'
+                : 'Você não pode alterá-lo: só quem marcou, ou quem faz triagem.',
+        ]));
     }
 
     /**

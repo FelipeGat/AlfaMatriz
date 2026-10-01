@@ -6,12 +6,15 @@ use App\Mcp\Servers\AlfaMatrizServer;
 use App\Mcp\Tools\ComentarTarefa;
 use App\Mcp\Tools\ConversarNaTarefa;
 use App\Mcp\Tools\CriarTarefa;
+use App\Mcp\Tools\DesmarcarCompromisso;
 use App\Mcp\Tools\ListarTarefas;
 use App\Mcp\Tools\MarcarCompromisso;
 use App\Mcp\Tools\MoverTarefa;
 use App\Mcp\Tools\Referencias;
+use App\Mcp\Tools\RemarcarCompromisso;
 use App\Mcp\Tools\VerAgenda;
 use App\Mcp\Tools\VerAnexo;
+use App\Mcp\Tools\VerCompromisso;
 use App\Mcp\Tools\VerTarefa;
 use App\Models\Compromisso;
 use App\Models\Notificacao;
@@ -34,13 +37,14 @@ class ServidorAlfaMatrizTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_o_servidor_publica_as_dez_ferramentas(): void
+    public function test_o_servidor_publica_todas_as_ferramentas(): void
     {
         AlfaMatrizServer::actingAs(User::factory()->create())
             ->tools()
             ->assertRegistered([
                 Referencias::class, ListarTarefas::class, VerTarefa::class, VerAnexo::class, CriarTarefa::class, MoverTarefa::class,
-                ConversarNaTarefa::class, ComentarTarefa::class, VerAgenda::class, MarcarCompromisso::class,
+                ConversarNaTarefa::class, ComentarTarefa::class, VerAgenda::class, VerCompromisso::class,
+                MarcarCompromisso::class, RemarcarCompromisso::class, DesmarcarCompromisso::class,
             ]);
     }
 

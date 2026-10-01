@@ -5,12 +5,15 @@ namespace App\Mcp\Servers;
 use App\Mcp\Tools\ComentarTarefa;
 use App\Mcp\Tools\ConversarNaTarefa;
 use App\Mcp\Tools\CriarTarefa;
+use App\Mcp\Tools\DesmarcarCompromisso;
 use App\Mcp\Tools\ListarTarefas;
 use App\Mcp\Tools\MarcarCompromisso;
 use App\Mcp\Tools\MoverTarefa;
 use App\Mcp\Tools\Referencias;
+use App\Mcp\Tools\RemarcarCompromisso;
 use App\Mcp\Tools\VerAgenda;
 use App\Mcp\Tools\VerAnexo;
+use App\Mcp\Tools\VerCompromisso;
 use App\Mcp\Tools\VerTarefa;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -68,7 +71,10 @@ class AlfaMatrizServer extends Server
         ConversarNaTarefa::class,
         ComentarTarefa::class,
         VerAgenda::class,
+        VerCompromisso::class,
         MarcarCompromisso::class,
+        RemarcarCompromisso::class,
+        DesmarcarCompromisso::class,
     ];
 
     /**

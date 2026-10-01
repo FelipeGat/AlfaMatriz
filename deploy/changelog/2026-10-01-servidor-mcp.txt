@@ -3,7 +3,7 @@
 
 <b>🤖 O quadro e a agenda viraram ferramentas para o agente</b>
 
-• <b>Dez ações pela conversa.</b> Listar e ver tarefas, abrir anexos, criar tarefa (com checklist, sistema, responsável, prazo e subtarefa), mover de etapa, perguntar/responder, comentar, ver a agenda de uma faixa de dias e marcar compromisso. Tudo o que o Claude faz por aí aparece no quadro e no sino como se tivesse sido feito na tela.
+• <b>Treze ações pela conversa.</b> Listar e ver tarefas, abrir anexos, criar tarefa (com checklist, sistema, responsável, prazo e subtarefa), mover de etapa, perguntar/responder, comentar, ver a agenda de uma faixa de dias e marcar, conferir, alterar e desmarcar compromisso. Tudo o que o Claude faz por aí aparece no quadro e no sino como se tivesse sido feito na tela.
 
 • <b>As regras são as mesmas.</b> Quem não faz triagem continua não escolhendo prioridade nem responsável — a tarefa cai na fila e o agente é avisado do que ficou para a triagem. Mover exige dizer em que etapa a tarefa estava: se alguém já moveu, o agente é recusado em vez de sobrescrever. Cancelar e devolver para correção continuam pedindo motivo, com a mesma frase da tela.
 
