@@ -64,8 +64,7 @@ def decodificar(caminho: str) -> np.ndarray:
 
 # Os nomes que o Whisper não tem como adivinhar. Sem isto, "AlfaGym" virou
 # "Alphagene" e "Alphagin" no mesmo áudio de teste — e é o nome do sistema que
-# decide em que quadro a tarefa cai. O `initial_prompt` não é instrução: é só
-# texto que o modelo trata como "o que veio antes", e por isso puxa a grafia.
+# decide em que quadro a tarefa cai. Entra como `hotwords`, uma dica de grafia.
 VOCABULARIO = os.environ.get(
     "WHISPER_VOCABULARIO",
     "AlfaMatriz, AlfaGym, AlfaControl, AlfaHome, AlfaJornada, AlfaMed, AlfaMonitor, "
@@ -78,11 +77,31 @@ def carregar() -> WhisperModel:
 
 
 def ouvir(modelo: WhisperModel, caminho: str) -> str:
-    # `vad_filter` corta os silêncios do começo e do fim, que num áudio de
-    # Telegram são a maior parte do que o Whisper tende a alucinar ("Legendas
-    # pela comunidade Amara.org" e afins).
+    # O PIOR CASO é o que estes parâmetros limitam. Em 01/10/2026 um áudio real
+    # de 5 s levou perto de dois minutos: quando o Whisper desconfia do próprio
+    # resultado, ele tenta de novo com outra temperatura — até seis vezes —, e
+    # numa repetição em laço cada tentativa gera texto até o teto. Voz
+    # sintética nunca dispara isso; voz de celular, sim.
+    #
+    # - `temperature=0.0`: uma tentativa só, sem a cascata.
+    # - `max_new_tokens`: um pedido falado não tem 400 palavras por janela.
+    # - `condition_on_previous_text=False`: o trecho anterior não puxa o
+    #   seguinte para o mesmo laço.
+    # - `hotwords` no lugar de `initial_prompt`: o vocabulário entra como
+    #   dica de grafia, e não como "texto que veio antes", que o modelo tende
+    #   a continuar quando não entende o áudio.
+    # - `vad_filter` corta os silêncios, que são o que ele mais alucina
+    #   ("Legendas pela comunidade Amara.org" e afins).
     segmentos, _ = modelo.transcribe(
-        decodificar(caminho), language="pt", beam_size=5, vad_filter=True, initial_prompt=VOCABULARIO,
+        decodificar(caminho),
+        language="pt",
+        beam_size=2,
+        vad_filter=True,
+        hotwords=VOCABULARIO,
+        temperature=0.0,
+        condition_on_previous_text=False,
+        without_timestamps=True,
+        max_new_tokens=160,
     )
 
     return " ".join(s.text.strip() for s in segmentos).strip()

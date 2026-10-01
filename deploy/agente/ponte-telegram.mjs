@@ -91,6 +91,9 @@ const RESIDENTE_MAX_PARADO_MS = 30 * 60_000;
 // O transcritor também pode ficar aberto, com o modelo do Whisper na memória
 // (~1 GB). Vale no Mac; no LXC de 4 GB, não.
 const TRANSCRITOR_RESIDENTE = process.env.AGENTE_TRANSCRITOR_RESIDENTE === '1';
+// Um pedido falado se transcreve em um ou dois segundos. Passou disto, o
+// Whisper entrou em laço: melhor dizer "não consegui" do que segurar a pessoa.
+const TEMPO_DA_TRANSCRICAO_MS = 45_000;
 // Até quando a resposta substitui a mensagem de andamento em vez de chegar como
 // mensagem nova (ver `naFaixa`).
 const RESPOSTA_NO_LUGAR_ATE_MS = 45_000;
@@ -600,6 +603,8 @@ function naFaixa(nome, chatId, pedido) {
         const andamento = await criarAndamento(chatId, nome === 'quadro' ? 'Vendo no quadro' : 'Trabalhando no código');
         const resposta = await rodarClaude(chatId, pedido, nome, andamento.passo);
 
+        console.log(`faixa ${nome}: pedido de ${pedido.length} caracteres respondido em ${duracao(andamento.decorrido())}`);
+
         if (nome === 'quadro' && resposta.includes(MARCADOR_DE_CODIGO)) {
             await andamento.fim(faixas.codigo.ocupado
                 ? 'Isso é trabalho de código. Entrou na fila, atrás do que já está rodando.'
@@ -646,7 +651,7 @@ async function transcrever(mensagem) {
     try {
         if (TRANSCRITOR_RESIDENTE) return await transcreverNoResidente(caminho);
 
-        const r = await executar(TRANSCRITOR, [caminho], { tempoMs: 10 * 60_000 });
+        const r = await executar(TRANSCRITOR, [caminho], { tempoMs: TEMPO_DA_TRANSCRICAO_MS });
         if (r.codigo !== 0) throw new Error((r.erro || r.saida).trim().slice(-400) || `código ${r.codigo}`);
         return r.saida.trim();
     } finally {
@@ -698,7 +703,12 @@ function transcreverNoResidente(caminho) {
     const vez = filaDoTranscritor.then(() => new Promise((resolve, reject) => {
         transcritor ??= abrirTranscritor();
         const t = transcritor;
-        const relogio = setTimeout(() => t.filho.kill('SIGTERM'), 10 * 60_000);
+        // Matar o processo é o que destrava: ele fecha, o `close` rejeita este
+        // áudio, e o próximo abre um transcritor novo.
+        const relogio = setTimeout(() => {
+            t.erro = 'a transcrição passou do tempo';
+            t.filho.kill('SIGKILL');
+        }, TEMPO_DA_TRANSCRICAO_MS);
 
         t.esperando = (dito) => {
             clearTimeout(relogio);
@@ -898,8 +908,12 @@ async function tratar(mensagem) {
             try {
                 ditado = await transcrever(mensagem);
             } catch (e) {
-                return andamento.fim(`Não consegui transcrever o áudio: ${e.message}`);
+                console.log(`áudio de ${(mensagem.voice ?? mensagem.audio).duration ?? '?'}s: falhou em ${duracao(andamento.decorrido())} (${e.message})`);
+                return andamento.fim(`Não consegui transcrever o áudio: ${e.message}. Tente de novo ou escreva.`);
             }
+
+            // Só tempos e tamanhos no log — nunca o que foi dito.
+            console.log(`áudio de ${(mensagem.voice ?? mensagem.audio).duration ?? '?'}s: transcrito em ${duracao(andamento.decorrido())}, ${ditado.length} caracteres`);
 
             await andamento.fim(`Entendi: "${ditado}"`);
 
