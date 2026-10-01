@@ -43,7 +43,7 @@
  * (`transcrever.py`, Whisper local) e o texto entendido é mostrado antes de
  * virar pedido. Decisão do dono em 30/09/2026: transcrição local, sem conta nova.
  *
- * Sem dependência de npm, de propósito: `fetch` e `child_process` bastam, e um
+ * Sem dependência de npm, de propósito: `https` e `child_process` bastam, e um
  * `npm install` a menos é um `npm install` a menos para quebrar numa máquina
  * que ninguém está olhando.
  *
@@ -56,6 +56,7 @@
 
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import https from 'node:https';
 import { basename, dirname } from 'node:path';
 
 const TOKEN = obrigatorio('TELEGRAM_TOKEN');
@@ -164,16 +165,65 @@ const estado = lerEstado();
 
 // ---------- Telegram ----------
 
-async function telegram(metodo, corpo) {
-    const resposta = await fetch(`${API}/${metodo}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(corpo),
+/**
+ * Duas conexões com o Telegram, e NUNCA uma só.
+ *
+ * A escuta (`getUpdates`) é uma chamada que fica aberta até 50 s esperando
+ * mensagem. Com o `fetch` do Node 26, todas as outras chamadas ao mesmo
+ * endereço entravam em fila ATRÁS dela: cada "Trabalhando…", cada resposta e
+ * cada download de áudio esperava a escuta terminar. Foi a causa de toda a
+ * lentidão de 01/10/2026 — respostas prontas em 3 s chegando em 55 s, um
+ * áudio de 5 s "transcrito" em um minuto —, e não aparecia em ensaio nenhum,
+ * porque ensaio não tem escuta rodando. Medido isolado: duas chamadas
+ * triviais feitas durante uma escuta de 20 s só voltaram aos 21 s; com a
+ * escuta em conexão própria, voltam em menos de 1 s.
+ *
+ * Por isso `node:https` com dois agentes, em vez de `fetch`: é o jeito de
+ * garantir, sem dependência, que a escuta não divide a conexão com ninguém.
+ */
+const conexaoComum = new https.Agent({ keepAlive: true });
+const conexaoDaEscuta = new https.Agent({ keepAlive: true, maxSockets: 1 });
+
+function pedirHttps(url, { corpo = null, agent = conexaoComum, tempoMs = 30_000 } = {}) {
+    return new Promise((resolve, reject) => {
+        const dados = corpo === null ? null : JSON.stringify(corpo);
+        const req = https.request(url, {
+            method: dados === null ? 'GET' : 'POST',
+            agent,
+            headers: dados === null ? {} : { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(dados) },
+        }, (res) => {
+            const pedacos = [];
+            res.on('data', (d) => pedacos.push(d));
+            res.on('end', () => resolve({ status: res.statusCode, conteudo: Buffer.concat(pedacos) }));
+        });
+
+        req.setTimeout(tempoMs, () => req.destroy(new Error('o Telegram não respondeu a tempo')));
+        req.on('error', reject);
+        req.end(dados ?? undefined);
     });
-    const json = await resposta.json();
-    if (!json.ok) {
-        throw new Error(`Telegram ${metodo}: ${json.description ?? resposta.status}`);
+}
+
+async function telegram(metodo, corpo) {
+    const daEscuta = metodo === 'getUpdates';
+
+    const { status, conteudo } = await pedirHttps(`${API}/${metodo}`, {
+        corpo,
+        agent: daEscuta ? conexaoDaEscuta : conexaoComum,
+        // A escuta dura até `timeout` segundos por desenho; o limite fica acima.
+        tempoMs: daEscuta ? ((corpo?.timeout ?? 0) + 20) * 1000 : 30_000,
+    });
+
+    let json;
+    try {
+        json = JSON.parse(conteudo.toString('utf8'));
+    } catch {
+        throw new Error(`Telegram ${metodo}: resposta ilegível (${status})`);
     }
+
+    if (!json.ok) {
+        throw new Error(`Telegram ${metodo}: ${json.description ?? status}`);
+    }
+
     return json.result;
 }
 
@@ -641,12 +691,12 @@ function naFaixa(nome, chatId, pedido) {
 async function transcrever(mensagem) {
     const arquivo = mensagem.voice ?? mensagem.audio;
     const info = await telegram('getFile', { file_id: arquivo.file_id });
-    const resposta = await fetch(`https://api.telegram.org/file/bot${TOKEN}/${info.file_path}`);
-    if (!resposta.ok) throw new Error(`download do áudio: ${resposta.status}`);
+    const baixado = await pedirHttps(`https://api.telegram.org/file/bot${TOKEN}/${info.file_path}`, { tempoMs: 60_000 });
+    if (baixado.status !== 200) throw new Error(`download do áudio: ${baixado.status}`);
 
     mkdirSync(PASTA_DE_AUDIO, { recursive: true });
     const caminho = `${PASTA_DE_AUDIO}/${arquivo.file_unique_id}.ogg`;
-    writeFileSync(caminho, Buffer.from(await resposta.arrayBuffer()));
+    writeFileSync(caminho, baixado.conteudo);
 
     try {
         if (TRANSCRITOR_RESIDENTE) return await transcreverNoResidente(caminho);
