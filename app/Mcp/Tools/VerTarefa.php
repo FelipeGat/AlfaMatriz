@@ -99,7 +99,7 @@ class VerTarefa extends Ferramenta
 
         if ($tarefa->itens->isNotEmpty()) {
             $blocos[] = "Checklist:\n".$tarefa->itens
-                ->map(fn (TarefaItem $item) => ($item->feito ? '- [x] ' : '- [ ] ').$item->texto)
+                ->map(fn (TarefaItem $item) => $this->linhaDoItem($item))
                 ->implode("\n");
         }
 

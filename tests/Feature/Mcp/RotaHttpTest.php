@@ -70,7 +70,7 @@ class RotaHttpTest extends TestCase
             ->json('result.tools.*.name');
 
         $this->assertContains('criar_tarefa', $lista);
-        $this->assertCount(13, $lista);
+        $this->assertCount(21, $lista);
 
         $this->withToken($token)
             ->postJson('/mcp', $this->chamada('tools/call', [
