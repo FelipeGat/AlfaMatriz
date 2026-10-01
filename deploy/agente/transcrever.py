@@ -1,4 +1,4 @@
-#!/opt/whisper/bin/python
+#!/usr/bin/env python3
 """
 Transcreve um áudio do Telegram para texto, em português, na própria máquina.
 
@@ -17,12 +17,45 @@ seguraria ~1 GB de RAM o dia inteiro para transcrever três áudios. Carregar
 custa uns segundos, e são segundos que só se pagam quando alguém fala.
 """
 
+import os
 import sys
 
+import av
+import numpy as np
 from faster_whisper import WhisperModel
 
 MODELO = "small"
-PASTA_DOS_MODELOS = "/opt/whisper/modelos"
+# Onde o modelo já está baixado. Muda de máquina para máquina (LXC: /opt/whisper;
+# Mac: a casa do usuário do agente), e o serviço diz qual pelo ambiente. O
+# `python3` do shebang também vem do ambiente: quem inicia a ponte põe o `bin`
+# do virtualenv na frente do PATH, e é esse python que tem o faster-whisper.
+PASTA_DOS_MODELOS = os.environ.get("WHISPER_MODELOS", "/opt/whisper/modelos")
+
+
+def decodificar(caminho: str) -> np.ndarray:
+    """
+    O áudio como o Whisper o quer: mono, 16 kHz, float32 entre -1 e 1.
+
+    Feito aqui, e não pelo decodificador do faster-whisper, porque o dele chama
+    `av.open(..., metadata_errors=...)`, argumento que o PyAV 15+ removeu — e o
+    `pip` instala o PyAV mais novo. Fixar a versão resolveu no LXC e não
+    resolveu no Mac, onde o Python 3.14 só tem pacote pronto do PyAV 15 em
+    diante. Decodificando por conta própria, a versão deixa de importar.
+    """
+    reamostrador = av.AudioResampler(format="s16", layout="mono", rate=16000)
+    pedacos = []
+
+    with av.open(caminho) as arquivo:
+        for quadro in arquivo.decode(audio=0):
+            pedacos.extend(r.to_ndarray().reshape(-1) for r in reamostrador.resample(quadro))
+
+        # O reamostrador segura o fim do áudio até ser esvaziado.
+        pedacos.extend(r.to_ndarray().reshape(-1) for r in reamostrador.resample(None))
+
+    if not pedacos:
+        return np.zeros(0, dtype=np.float32)
+
+    return np.concatenate(pedacos).astype(np.float32) / 32768.0
 
 
 def main() -> int:
@@ -35,7 +68,7 @@ def main() -> int:
     # `vad_filter` corta os silêncios do começo e do fim, que num áudio de
     # Telegram são a maior parte do que o Whisper tende a alucinar ("Legendas
     # pela comunidade Amara.org" e afins).
-    segmentos, _ = modelo.transcribe(sys.argv[1], language="pt", beam_size=5, vad_filter=True)
+    segmentos, _ = modelo.transcribe(decodificar(sys.argv[1]), language="pt", beam_size=5, vad_filter=True)
 
     texto = " ".join(s.text.strip() for s in segmentos).strip()
 
