@@ -41,6 +41,23 @@ Texto livre é um pedido ao Claude, que continua a conversa entre mensagens. Com
 | `/parar` | interrompe o que estiver rodando |
 | `/novo` | conversa nova com o Claude |
 
+## Áudio
+
+Mensagem de voz vira texto na própria máquina, com o Whisper (`faster-whisper`, modelo `small`
+em int8, português), e a ponte mostra "Entendi: …" antes de mandar ao Claude — quem ditou vê o que
+ele vai ler. Nada sai da infra e não há conta em serviço externo. Instalação, uma vez:
+
+```
+apt-get install -y python3-venv && python3 -m venv /opt/whisper && /opt/whisper/bin/pip install --upgrade pip
+/opt/whisper/bin/pip install --only-binary=:all: faster-whisper "av>=11,<15"
+/opt/whisper/bin/python -c 'from faster_whisper import WhisperModel; WhisperModel("small", device="cpu", compute_type="int8", download_root="/opt/whisper/modelos")'
+```
+
+e `AGENTE_TRANSCRITOR=/opt/dev/AlfaMatriz/deploy/agente/transcrever.py` no `/etc/alfa-agente.env`.
+Conta uns 30 a 60 segundos por minuto de áudio nos 4 núcleos do LXC. O `av<15` é obrigatório: o
+`faster-whisper` 1.2 ainda chama um argumento que o PyAV 15+ removeu, e o `pip` sozinho instala o 19.
+`--only-binary` porque sem pacote pronto o `pip` tenta compilar o PyAV, e o LXC não tem como.
+
 ## Atualizar
 
 `git -C /opt/dev/AlfaMatriz pull && systemctl restart alfa-agente`. O estado (offset do Telegram,
