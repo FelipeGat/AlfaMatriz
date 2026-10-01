@@ -68,6 +68,13 @@ echo "Regra de sudoers em ${REGRA}."
 
 # ---------- 3. o serviço ----------
 
+# `ProcessType Interactive`, e não `Background`: como Background, o macOS joga o
+# serviço e tudo o que ele inicia para os núcleos de economia, com prioridade
+# mínima de CPU e de disco. Medido em 01/10/2026 num M1: o Whisper levou 1 minuto
+# para um áudio de 5 s dentro do serviço e 2 s fora dele, e o agente do quadro
+# 55 s em vez de 3. Quem manda uma mensagem está ESPERANDO a resposta — isto é
+# trabalho interativo, só que sem janela.
+
 cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -88,7 +95,7 @@ cat > "$PLIST" <<EOF
     <key>RunAtLoad</key><true/>
     <key>KeepAlive</key><true/>
     <key>ThrottleInterval</key><integer>10</integer>
-    <key>ProcessType</key><string>Background</string>
+    <key>ProcessType</key><string>Interactive</string>
     <key>StandardOutPath</key><string>${CASA}/alfa-agente/ponte.log</string>
     <key>StandardErrorPath</key><string>${CASA}/alfa-agente/ponte.log</string>
 </dict>
