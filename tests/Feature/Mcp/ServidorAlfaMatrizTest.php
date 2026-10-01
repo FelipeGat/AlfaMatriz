@@ -3,15 +3,23 @@
 namespace Tests\Feature\Mcp;
 
 use App\Mcp\Servers\AlfaMatrizServer;
+use App\Mcp\Tools\AdicionarItens;
+use App\Mcp\Tools\AtualizarItem;
+use App\Mcp\Tools\BloquearTarefa;
 use App\Mcp\Tools\ComentarTarefa;
 use App\Mcp\Tools\ConversarNaTarefa;
 use App\Mcp\Tools\CriarTarefa;
 use App\Mcp\Tools\DesmarcarCompromisso;
+use App\Mcp\Tools\DestravarTarefa;
+use App\Mcp\Tools\EditarTarefa;
+use App\Mcp\Tools\ExcluirTarefa;
 use App\Mcp\Tools\ListarTarefas;
 use App\Mcp\Tools\MarcarCompromisso;
 use App\Mcp\Tools\MoverTarefa;
 use App\Mcp\Tools\Referencias;
+use App\Mcp\Tools\RegistrarVeredito;
 use App\Mcp\Tools\RemarcarCompromisso;
+use App\Mcp\Tools\RemoverItem;
 use App\Mcp\Tools\VerAgenda;
 use App\Mcp\Tools\VerAnexo;
 use App\Mcp\Tools\VerCompromisso;
@@ -42,9 +50,11 @@ class ServidorAlfaMatrizTest extends TestCase
         AlfaMatrizServer::actingAs(User::factory()->create())
             ->tools()
             ->assertRegistered([
-                Referencias::class, ListarTarefas::class, VerTarefa::class, VerAnexo::class, CriarTarefa::class, MoverTarefa::class,
-                ConversarNaTarefa::class, ComentarTarefa::class, VerAgenda::class, VerCompromisso::class,
-                MarcarCompromisso::class, RemarcarCompromisso::class, DesmarcarCompromisso::class,
+                Referencias::class, ListarTarefas::class, VerTarefa::class, VerAnexo::class, CriarTarefa::class,
+                EditarTarefa::class, MoverTarefa::class, BloquearTarefa::class, DestravarTarefa::class,
+                RegistrarVeredito::class, ConversarNaTarefa::class, ComentarTarefa::class, AdicionarItens::class,
+                AtualizarItem::class, RemoverItem::class, ExcluirTarefa::class, VerAgenda::class,
+                VerCompromisso::class, MarcarCompromisso::class, RemarcarCompromisso::class, DesmarcarCompromisso::class,
             ]);
     }
 
@@ -214,8 +224,8 @@ class ServidorAlfaMatrizTest extends TestCase
             ->tool(VerTarefa::class, ['tarefa' => '#'.$tarefa->id])
             ->assertOk()
             ->assertSee('Trocar o logotipo')
-            ->assertSee('[x] Exportar o SVG')
-            ->assertSee('[ ] Trocar no layout')
+            ->assertSee(': Exportar o SVG')
+            ->assertSee(': Trocar no layout')
             ->assertSee('Já tenho o arquivo.')
             ->assertSee('Você pode mover para')
             ->assertSee('em_revisao');

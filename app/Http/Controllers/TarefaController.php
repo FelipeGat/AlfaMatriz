@@ -743,7 +743,7 @@ class TarefaController extends Controller
     }
 
 
-    public function update(Request $request, Tarefa $tarefa, FluxoTarefaService $fluxo, TarefaService $tarefas)
+    public function update(Request $request, Tarefa $tarefa, TarefaService $tarefas)
     {
         $this->bloquearVisaoDaMatriz();
 
@@ -770,16 +770,6 @@ class TarefaController extends Controller
             'comentario' => 'nullable|string|max:4000',
         ]);
 
-        // Envio sem o campo mantém o tipo que a tarefa já tem: `null` aqui
-        // apagaria a coluna, porque o padrão do modelo só vale na criação.
-        $data['tipo'] ??= $tarefa->tipo;
-        $data['prioridade'] ??= $tarefa->prioridade;
-
-        // Na edição, o que a triagem decidiu fica como está: quem não triaga
-        // salvar a tarefa não pode zerar a prioridade nem soltar o responsável
-        // de passagem.
-        $data = $tarefas->semTriagemDeQuemNaoTriaga($data, $request->user(), $tarefa);
-
         // O comentário viaja no mesmo envio do cadastro (US-049): um botão só
         // no modal, e nada de decidir entre "Salvar" e "Comentar" para o que,
         // para quem edita, é uma passada só na tarefa. Campo em branco não
@@ -788,19 +778,11 @@ class TarefaController extends Controller
         $comentario = trim($data['comentario'] ?? '');
         unset($data['comentario']);
 
-        $responsavelAntes = $tarefa->responsavel_id;
-
-        $tarefa->update($data);
-
-        $etapaNova = $this->seguirOResponsavel($tarefa, $fluxo);
-
-        // Ganhar a tarefa pela edição é o mesmo fato que ganhá-la na criação, e
-        // o aviso é o mesmo. Depois de `seguirOResponsavel`, para a meta dizer
-        // a etapa em que o card de fato ficou — direcionar da fila já o leva ao
-        // Backlog no mesmo gesto.
-        if ($tarefa->responsavel_id !== null && $tarefa->responsavel_id !== $responsavelAntes) {
-            $tarefas->avisarDirecionamento($tarefa, $request->user());
-        }
+        // O que a edição FAZ — manter o que a triagem decidiu, gravar, mover
+        // junto com o responsável e avisar quem ganhou a tarefa — mora no
+        // `TarefaService`: o servidor MCP também edita, e as duas portas
+        // precisam dar no mesmo card.
+        $etapaNova = $tarefas->atualizar($tarefa, $data, $request->user());
 
         if ($comentario !== '' && ! $this->reenvioDoMesmoComentario($tarefa, $comentario)) {
             $tarefa->comentarios()->create([
@@ -829,36 +811,6 @@ class TarefaController extends Controller
             // de ser gravada.
             regioes: self::PEDACOS_DA_VEZ,
         );
-    }
-
-    /**
-     * Direcionar move a tarefa; tirar o dono a devolve para a fila.
-     *
-     * Na criação, escolher responsável já fazia a tarefa nascer no Backlog
-     * (`Tarefa::booted`) — mas na edição o mesmo gesto a deixava em Aberta, e
-     * quem direcionava tinha de arrastar o card em seguida. Era o mesmo fato
-     * com dois comportamentos, e dois passos para uma intenção só.
-     *
-     * O movimento passa pelo motor do fluxo, e não por um `update` direto, para
-     * o cronômetro da etapa continuar honesto: um card que troca de coluna sem
-     * evento seria tempo de Aberta contado como tempo de Backlog.
-     *
-     * Só vale entre Aberta e Backlog. Trocar o responsável de uma tarefa que já
-     * está em andamento é trocar quem faz, não recomeçar o fluxo dela.
-     */
-    private function seguirOResponsavel(Tarefa $tarefa, FluxoTarefaService $fluxo): ?string
-    {
-        $destino = match (true) {
-            $tarefa->status === 'aberta' && $tarefa->responsavel_id !== null => 'backlog',
-            $tarefa->status === 'backlog' && $tarefa->responsavel_id === null => 'aberta',
-            default => null,
-        };
-
-        if ($destino) {
-            $fluxo->mover($tarefa, $destino);
-        }
-
-        return $destino;
     }
 
     /**
@@ -1189,41 +1141,17 @@ class TarefaController extends Controller
      * Só de quem triaga, e mesmo assim atrás de dois passos na tela: é a única
      * ação do quadro que não tem desfazer.
      */
-    public function destroy(Request $request, Tarefa $tarefa)
+    public function destroy(Request $request, Tarefa $tarefa, TarefaService $tarefas)
     {
         $this->bloquearVisaoDaMatriz();
 
-        if (! auth()->user()?->podeTriarTarefas()) {
-            return $this->voltarParaOQuadro($request, 'Só quem faz triagem exclui tarefa. Para encerrar sem apagar, cancele.', 'critico');
+        // Quem pode, o que impede e quem é avisado moram no `TarefaService`,
+        // junto das outras regras que o servidor MCP também usa.
+        try {
+            $tarefas->excluir($tarefa, $request->user());
+        } catch (\RuntimeException $e) {
+            return $this->voltarParaOQuadro($request, $e->getMessage(), 'critico');
         }
-
-        // A terceira porta de saída, guardada como as outras duas: excluir a
-        // mãe com filha aberta soltaria oito bugs sem mãe de uma vez, e o
-        // gesto que faz isso é o único do quadro sem desfazer.
-        if ($impedimento = $tarefa->motivoParaNaoEncerrar()) {
-            return $this->voltarParaOQuadro($request, $impedimento, 'critico');
-        }
-
-        // O aviso sai ANTES do forceDelete e SEM `tarefa_id`: a coluna apaga em
-        // cascata junto com a tarefa, e um aviso preso a ela morreria no mesmo
-        // instante em que nasce — logo o aviso do único gesto sem desfazer.
-        // Criador e responsável são quem sente a falta do card.
-        foreach (collect([$tarefa->criado_por_id, $tarefa->responsavel_id])->filter()->unique() as $destinatarioId) {
-            Notificacao::avisar((int) $destinatarioId, auth()->id(), [
-                'tipo' => 'exclusao',
-                'nivel' => 'atencao',
-                'icone' => 'trash',
-                'titulo' => '«'.$tarefa->titulo.'» foi excluída do quadro',
-                'meta' => 'Por '.auth()->user()->name.' · sem desfazer',
-                'rota' => route('tarefas.index'),
-            ]);
-        }
-
-        // `forceDelete` porque excluir aqui QUER dizer sumir: a tarefa usa
-        // SoftDeletes, e um `delete()` deixaria a linha no banco sem aparecer
-        // em lugar nenhum — nem no quadro, nem no histórico, nem para quem
-        // fosse auditar. Excluir pela metade é o pior dos dois mundos.
-        $tarefa->forceDelete();
 
         return $this->voltarParaOQuadro($request, 'Tarefa excluída.', mudouOConjunto: true);
     }

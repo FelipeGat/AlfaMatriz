@@ -205,12 +205,14 @@ comando pelo Telegram, tag de produção só depois de ele autorizar — ainda n
   pacote fora do grupo `web`: sem sessão nem CSRF, de propósito. O SSH até o LXC foi descartado.
 - **`de` é obrigatório em `mover_tarefa`**, ao contrário da rota, onde é opcional: o agente sempre
   acabou de ler a tarefa, e é o contrato de concorrência do quadro valendo para ele também.
-- **Treze ferramentas em 01/10/2026.** As nove iniciais, mais `ver_anexo` e as três da agenda que
-  faltavam (`ver_compromisso`, `remarcar_compromisso`, `desmarcar_compromisso`) — o agente marcava e
-  não conseguia reler nem corrigir. `remarcar` é PARCIAL (só o que muda; o resto do compromisso é
-  completado e passa pelas mesmas regras do formulário), e mudar só o início mantém a duração.
-  **Ainda sem porta:** editar os campos da tarefa, bloquear/destravar, checklist, veredito de teste
-  e excluir. Cada uma pede extrair a regra do `TarefaController` antes.
+- **Vinte e uma ferramentas em 01/10/2026**, e o quadro inteiro passa pela porta: às nove iniciais
+  somaram-se `ver_anexo`, as três da agenda que faltavam (`ver_compromisso`, `remarcar_compromisso`,
+  `desmarcar_compromisso`) e as oito do quadro (`editar_tarefa`, `bloquear_tarefa`,
+  `destravar_tarefa`, `registrar_veredito`, `excluir_tarefa`, `adicionar_itens`, `atualizar_item`,
+  `remover_item`). Editar e remarcar são PARCIAIS: só o que muda, e o conjunto passa pelas regras do
+  formulário. `excluir_tarefa` exige o título exato como confirmação. O servidor lista todas numa
+  página só (`defaultPaginationLength = 50`): o padrão do pacote é 15, e cliente que não segue o
+  cursor não veria as últimas. Sem porta, de propósito: anexar arquivo e reordenar o checklist.
 - Teste em `tests/Feature/Mcp/` com `AlfaMatrizServer::actingAs($u)->tool(...)`. Fumaça de
   verdade: mandar JSON-RPC pelo stdin do `mcp:start` — foi assim que se conferiu o caminho inteiro.
 - **A fase 2 é a ponte do Telegram**, em `deploy/agente/` (`ponte-telegram.mjs`, README com a

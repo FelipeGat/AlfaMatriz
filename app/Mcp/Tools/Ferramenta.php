@@ -5,6 +5,7 @@ namespace App\Mcp\Tools;
 use App\Models\Compromisso;
 use App\Models\Sistema;
 use App\Models\Tarefa;
+use App\Models\TarefaItem;
 use App\Models\User;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -69,6 +70,20 @@ abstract class Ferramenta extends Tool
         $id = (int) ltrim(trim((string) $codigo), '#');
 
         return $id > 0 ? Tarefa::find($id) : null;
+    }
+
+    /** O item de checklist pelo número que `ver_tarefa` mostra. */
+    protected function itemPeloNumero(int|string $numero): ?TarefaItem
+    {
+        $id = (int) $numero;
+
+        return $id > 0 ? TarefaItem::find($id) : null;
+    }
+
+    /** O item como o checklist o escreve — com o número, que é como o agente o aponta depois. */
+    protected function linhaDoItem(TarefaItem $item): string
+    {
+        return ($item->feito ? '- [x] ' : '- [ ] ').'item '.$item->id.': '.$item->texto;
     }
 
     /** O compromisso pelo número como a agenda o mostra — "#7" ou "7". */

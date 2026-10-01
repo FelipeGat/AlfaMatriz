@@ -2,15 +2,23 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\AdicionarItens;
+use App\Mcp\Tools\AtualizarItem;
+use App\Mcp\Tools\BloquearTarefa;
 use App\Mcp\Tools\ComentarTarefa;
 use App\Mcp\Tools\ConversarNaTarefa;
 use App\Mcp\Tools\CriarTarefa;
 use App\Mcp\Tools\DesmarcarCompromisso;
+use App\Mcp\Tools\DestravarTarefa;
+use App\Mcp\Tools\EditarTarefa;
+use App\Mcp\Tools\ExcluirTarefa;
 use App\Mcp\Tools\ListarTarefas;
 use App\Mcp\Tools\MarcarCompromisso;
 use App\Mcp\Tools\MoverTarefa;
 use App\Mcp\Tools\Referencias;
+use App\Mcp\Tools\RegistrarVeredito;
 use App\Mcp\Tools\RemarcarCompromisso;
+use App\Mcp\Tools\RemoverItem;
 use App\Mcp\Tools\VerAgenda;
 use App\Mcp\Tools\VerAnexo;
 use App\Mcp\Tools\VerCompromisso;
@@ -43,6 +51,16 @@ class AlfaMatrizServer extends Server
 
     protected string $version = '1.0.0';
 
+    /**
+     * Todas as ferramentas numa página só.
+     *
+     * O padrão do pacote é listar de 15 em 15. Passou de quinze em 01/10/2026,
+     * e um cliente que não siga o cursor da segunda página simplesmente não
+     * veria as últimas — sem erro nenhum, só um agente dizendo "não tenho
+     * ferramenta para isso". Cinquenta é o teto do pacote.
+     */
+    public int $defaultPaginationLength = 50;
+
     protected string $instructions = <<<'MARKDOWN'
         Quadro de tarefas e agenda do time da AlfaTecnologia. Você age EM NOME do
         usuário identificado neste processo: tudo o que criar, mover ou responder
@@ -67,9 +85,17 @@ class AlfaMatrizServer extends Server
         VerTarefa::class,
         VerAnexo::class,
         CriarTarefa::class,
+        EditarTarefa::class,
         MoverTarefa::class,
+        BloquearTarefa::class,
+        DestravarTarefa::class,
+        RegistrarVeredito::class,
         ConversarNaTarefa::class,
         ComentarTarefa::class,
+        AdicionarItens::class,
+        AtualizarItem::class,
+        RemoverItem::class,
+        ExcluirTarefa::class,
         VerAgenda::class,
         VerCompromisso::class,
         MarcarCompromisso::class,
