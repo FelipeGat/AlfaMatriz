@@ -53,6 +53,21 @@ de quem trabalha na máquina — o isolamento que o LXC dava, sem o disco do LXC
 O Telegram aceita **um** ouvinte por bot: com o Mac ligado, o serviço do LXC fica desligado
 (`systemctl disable --now alfa-agente`).
 
+## A oficina — todos os sistemas
+
+O quadro tem tarefas de dez sistemas, e o agente precisa do código de todos para executá-las. A
+oficina é uma pasta com um clone por sistema (`/Users/agente/sistemas`, em `AGENTE_OFICINA`), cada
+um na sua branch de trabalho, e um `CLAUDE.md` na raiz — cópia de `oficina-CLAUDE.md` — que diz qual
+pasta é de qual sistema, como testar cada tipo de projeto e o que a máquina não tem (Docker, banco
+de produção, SSH). A faixa de código roda com a oficina como pasta de trabalho; o agente entra no
+repositório da tarefa e lê o `CLAUDE.md` de lá.
+
+Para acrescentar um sistema: `git clone` na oficina, uma linha na tabela do `oficina-CLAUDE.md`, e
+copiar o arquivo de novo para a raiz da oficina.
+
+`/publicar` sem nome de sistema publica o AlfaMatriz; `/publicar alfagym v2026.10.01` publica outro.
+Só publica por tag o repositório que já tem tags de versão — ele se recusa a criar a primeira.
+
 ## Usar
 
 Texto livre (ou áudio) é um pedido ao Claude, que continua a conversa entre mensagens.
@@ -78,8 +93,8 @@ Comandos:
 
 | Comando | O que faz |
 |---|---|
-| `/status` | branch, últimos commits, se há algo rodando |
-| `/publicar v2026.09.30.1` | cria a tag na `main` remota e envia; o vigia publica em até 5 min |
+| `/status` | o que está rodando e, por repositório, a branch e o que está sem commit |
+| `/publicar [sistema] v2026.10.01` | cria a tag na branch principal remota e envia; o vigia publica em minutos |
 | `/agendar 22:00 pedido` | roda o pedido hoje às 22h (ou `AAAA-MM-DD HH:MM pedido`) |
 | `/agendados`, `/cancelar N` | lista e desmarca |
 | `/parar` | interrompe o que estiver rodando nas duas faixas e esvazia as filas |

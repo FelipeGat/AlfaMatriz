@@ -55,7 +55,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import https from 'node:https';
 import { basename, dirname } from 'node:path';
 
@@ -64,6 +64,12 @@ const PERMITIDOS = new Set(
     (process.env.TELEGRAM_PERMITIDOS ?? '').split(',').map((s) => s.trim()).filter(Boolean),
 );
 const REPO = process.env.AGENTE_REPO ?? '/opt/dev/AlfaMatriz';
+// A oficina: uma pasta com um clone POR SISTEMA (AlfaMatriz, AlfaControl,
+// AlfaGym…), onde o agente de código trabalha. O quadro tem tarefas de dez
+// sistemas, e com um clone só ele executava as de um (01/10/2026). O
+// `CLAUDE.md` da oficina — cópia de `oficina-CLAUDE.md` — diz qual pasta é de
+// qual sistema. Vazia, o agente trabalha só no `REPO`, como no começo.
+const OFICINA = process.env.AGENTE_OFICINA ?? '';
 const ESTADO = process.env.AGENTE_ESTADO ?? '/var/lib/alfa-agente/estado.json';
 const CLAUDE = process.env.AGENTE_CLAUDE ?? 'claude';
 // Um `.mcp.json` só desta máquina, quando o do repositório não serve (no LXC a
@@ -115,7 +121,10 @@ Você está rodando como o agente do AlfaMatriz num servidor, comandado pelo Tel
 - Para mexer no quadro e na agenda do sistema NO AR, use o servidor MCP "${SERVIDOR_MCP}": ver_tarefa mostra a tarefa e os números dos anexos, e ver_anexo abre imagem e texto anexados. O "alfamatriz" local é só do banco de desenvolvimento deste clone.
 - Você NÃO tem acesso ao banco de dados de produção, só ao quadro e à agenda pelo MCP. Se pedirem algo que dependa do banco, diga isso em vez de procurar credencial ou conexão.
 - O pedido pode vir com um bloco "[Contexto passado pelo assistente do quadro…]": é a conversa que a pessoa estava tendo com o outro agente. Use-o para saber de que tarefa se fala.
-- Trabalhe na branch Rossini. Antes de dizer que algo está pronto, rode a suíte (php artisan test) e diga o resultado. Commit e push só quando pedidos.
+${OFICINA
+        ? '- Você está na OFICINA: uma pasta com um clone por sistema. O CLAUDE.md dela diz qual pasta é de qual sistema e como trabalhar em cada uma; siga-o, e leia o CLAUDE.md do repositório antes de mexer nele.'
+        : '- Trabalhe na branch Rossini.'}
+- Antes de dizer que algo está pronto, rode os testes do sistema e diga o resultado com os números. Commit e push só quando pedidos.
 - NUNCA crie tag nem faça deploy. Quando algo estiver pronto para produção, diga qual versão publicar e pare: quem publica é a pessoa, com /publicar.
 - Se precisar de uma decisão que é dela, pergunte e pare em vez de escolher.
 `.trim();
@@ -439,7 +448,7 @@ async function rodarClaude(chatId, pedido, nomeDaFaixa, aCadaPasso) {
     let resultado = null;
 
     const { codigo, saida, erro } = await executar(CLAUDE, args, {
-        cwd: REPO,
+        cwd: OFICINA || REPO,
         tempoMs: TEMPO_MAXIMO_MS,
         faixa: faixas[nomeDaFaixa],
         aCadaLinha(linha) {
@@ -793,6 +802,21 @@ function transcreverNoResidente(caminho) {
 // de uma publicação no dia (v2026.09.21.5). É o que o vigia de produção lê.
 const VERSAO = /^v\d{4}\.\d{2}\.\d{2}(\.\d+)?$/;
 
+/**
+ * Os sistemas que esta máquina tem: nome → pasta. Na oficina, cada pasta com
+ * um `.git`; sem oficina, só o repositório da ponte.
+ */
+function sistemas() {
+    if (!OFICINA) return { AlfaMatriz: REPO };
+
+    return Object.fromEntries(
+        readdirSync(OFICINA, { withFileTypes: true })
+            .filter((d) => d.isDirectory() && existsSync(`${OFICINA}/${d.name}/.git`))
+            .map((d) => [d.name, `${OFICINA}/${d.name}`])
+            .sort(([a], [b]) => a.localeCompare(b)),
+    );
+}
+
 function situacaoDaFaixa(nome, rotulo) {
     const faixa = faixas[nome];
     const fila = faixa.fila.length ? `, ${faixa.fila.length} na fila` : '';
@@ -811,8 +835,8 @@ async function comando(chatId, texto) {
                 'Sou o agente do AlfaMatriz. Mande um pedido em texto ou em áudio.',
                 'Pedidos do quadro e da agenda saem em segundos, mesmo com uma tarefa de código rodando.',
                 '',
-                '/status — o que está rodando, a branch e os últimos commits',
-                '/publicar v2026.09.30.1 — cria e envia a tag de produção (a partir da main)',
+                '/status — o que está rodando e a situação de cada repositório',
+                '/publicar v2026.10.01 — publica o AlfaMatriz; /publicar alfagym v2026.10.01 publica outro sistema',
                 '/agendar HH:MM pedido — roda o pedido hoje nesse horário (ou AAAA-MM-DD HH:MM pedido)',
                 '/agendados — o que está marcado · /cancelar N — desmarca',
                 '/parar — interrompe o que estiver rodando',
@@ -820,37 +844,78 @@ async function comando(chatId, texto) {
             ].join('\n'));
 
         case '/status': {
-            const git = await executar('git', ['-c', 'color.ui=never', 'status', '-sb'], { tempoMs: 30_000 });
-            const log = await executar('git', ['log', '--oneline', '-5'], { tempoMs: 30_000 });
-            return responder(chatId, [
-                situacaoDaFaixa('quadro', 'Quadro'),
-                situacaoDaFaixa('codigo', 'Código'),
-                '',
-                git.saida.trim(),
-                '',
-                log.saida.trim(),
-            ].join('\n'));
+            const linhas = [situacaoDaFaixa('quadro', 'Quadro'), situacaoDaFaixa('codigo', 'Código'), ''];
+
+            // Um repositório por linha: a branch e, se houver, quantos
+            // arquivos estão mexidos e ainda sem commit.
+            for (const [nomeDoSistema, pasta] of Object.entries(sistemas())) {
+                const git = await executar('git', ['status', '--porcelain', '-b'], { cwd: pasta, tempoMs: 30_000 });
+                const [cabeca, ...mexidos] = git.saida.trim().split('\n');
+                const branch = cabeca.replace(/^## /, '').replace(/\.\.\..*$/, '');
+                const adiante = /\[(.+)\]/.exec(cabeca)?.[1];
+
+                linhas.push(`${nomeDoSistema}: ${branch}`
+                    + (mexidos.length ? ` · ${mexidos.length} arquivo(s) sem commit` : '')
+                    + (adiante ? ` · ${adiante.replace('ahead', 'à frente').replace('behind', 'atrás')}` : ''));
+            }
+
+            return responder(chatId, linhas.join('\n'));
         }
 
         case '/publicar': {
-            if (!VERSAO.test(argumento)) {
-                return responder(chatId, 'Diga a versão no formato vAAAA.MM.DD ou vAAAA.MM.DD.N, por exemplo /publicar v2026.09.30.1.');
+            // "/publicar v2026.10.01" é o AlfaMatriz, como sempre foi;
+            // "/publicar alfagym v2026.10.01" é o sistema dito.
+            const versao = resto.at(-1) ?? '';
+            const pedido = resto.length > 1 ? resto.slice(0, -1).join(' ') : 'AlfaMatriz';
+
+            if (!VERSAO.test(versao)) {
+                return responder(chatId, 'Diga a versão no formato vAAAA.MM.DD ou vAAAA.MM.DD.N: /publicar v2026.10.01, ou /publicar alfagym v2026.10.01 para outro sistema.');
             }
-            // A tag nasce da main remota, e não do que está no clone: o clone é
-            // a bancada do agente, e o que vai para o ar é o que a esteira já
-            // levou ao staging.
-            const passos = [
-                ['git', ['fetch', '--tags', 'origin', 'main']],
-                ['git', ['tag', '-a', argumento, '-m', `Publicado pelo Telegram em ${new Date().toISOString()}`, 'origin/main']],
-                ['git', ['push', 'origin', argumento]],
-            ];
-            for (const [cmd, args] of passos) {
-                const r = await executar(cmd, args, { tempoMs: 120_000 });
+
+            const todos = sistemas();
+            const nomeDoSistema = Object.keys(todos).find((n) => n.toLowerCase() === pedido.toLowerCase());
+
+            if (!nomeDoSistema) {
+                return responder(chatId, `Não conheço o sistema "${pedido}". Tenho: ${Object.keys(todos).join(', ')}.`);
+            }
+
+            const cwd = todos[nomeDoSistema];
+            const git = (args) => executar('git', args, { cwd, tempoMs: 120_000 });
+
+            const busca = await git(['fetch', '--tags', 'origin']);
+            if (busca.codigo !== 0) {
+                return responder(chatId, `Não consegui falar com o GitHub do ${nomeDoSistema}:\n${(busca.erro || busca.saida).trim().slice(-800)}`);
+            }
+
+            // Só publica por tag quem JÁ publica por tag. Criar a primeira
+            // "v…" num repositório que vai ao ar por outro caminho não publica
+            // nada — e deixa uma tag que parece uma versão no ar.
+            if (!(await git(['tag', '-l', 'v20*'])).saida.trim()) {
+                return responder(chatId, `O ${nomeDoSistema} não tem nenhuma tag de versão: não sei como ele vai ao ar, e não vou criar a primeira.`);
+            }
+
+            if ((await git(['tag', '-l', versao])).saida.trim()) {
+                return responder(chatId, `A tag ${versao} já existe no ${nomeDoSistema}. Use ${versao.split('.').length > 3 ? 'o próximo número' : `${versao}.1`}.`);
+            }
+
+            // A tag nasce da branch principal REMOTA, e não do que está no
+            // clone: o clone é a bancada do agente, e o que vai para o ar é o
+            // que a esteira já levou ao staging.
+            const principal = (await git(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])).saida.trim() || 'origin/main';
+
+            for (const args of [
+                ['tag', '-a', versao, '-m', `Publicado pelo Telegram em ${new Date().toISOString()}`, principal],
+                ['push', 'origin', versao],
+            ]) {
+                const r = await git(args);
                 if (r.codigo !== 0) {
-                    return responder(chatId, `Falhou em "${cmd} ${args.join(' ')}":\n${(r.erro || r.saida).trim().slice(-1200)}`);
+                    return responder(chatId, `Falhou em "git ${args.join(' ')}":\n${(r.erro || r.saida).trim().slice(-1200)}`);
                 }
             }
-            return responder(chatId, `Tag ${argumento} criada na main e enviada. O vigia de produção publica em até 5 minutos.`);
+
+            const ultimo = (await git(['log', '--oneline', '-1', principal])).saida.trim();
+
+            return responder(chatId, `${nomeDoSistema}: tag ${versao} criada em ${principal.replace('origin/', '')} e enviada.\nVai ao ar: ${ultimo}\nO vigia de produção publica em alguns minutos.`);
         }
 
         case '/parar': {
