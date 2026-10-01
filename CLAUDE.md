@@ -207,11 +207,14 @@ comando pelo Telegram, tag de produção só depois de ele autorizar — ainda n
   acabou de ler a tarefa, e é o contrato de concorrência do quadro valendo para ele também.
 - Teste em `tests/Feature/Mcp/` com `AlfaMatrizServer::actingAs($u)->tool(...)`. Fumaça de
   verdade: mandar JSON-RPC pelo stdin do `mcp:start` — foi assim que se conferiu o caminho inteiro.
-- **A fase 2 é a ponte do Telegram**, em `deploy/agente/` (`ponte-telegram.mjs`, `.service`,
-  `.env.example`, README com a instalação). Roda no LXC `dev` (108), que já tem PHP 8.3, Composer, o
-  clone em `/opt/dev/AlfaMatriz` com a suíte verde e o Claude Code; o LXC `deploy` (110) tem 512 MB e
-  não serve. Só age por mensagem de quem está na lista, um pedido por vez, e a tag continua sendo
-  gesto da pessoa (`/publicar`). O classificador do auto mode recusou gravar o script cinco vezes,
+- **A fase 2 é a ponte do Telegram**, em `deploy/agente/` (`ponte-telegram.mjs`, README com a
+  instalação), bot `@alfamatriz_agente_bot`. **Roda no Mac mini desde 01/10/2026**, num usuário do
+  macOS separado (`agente`, sem a chave SSH do Proxmox nem o chaveiro de quem trabalha na máquina),
+  como LaunchDaemon `br.com.alfa.agente`; ambiente em `~agente/alfa-agente/`. Começou no LXC `dev`
+  (108), que ficou preparado e desligado: o disco do Proxmox saturou (RAID1 com um disco só) e o
+  mesmo pedido levava o dobro. O Telegram aceita um ouvinte por bot — nunca os dois ligados. Áudio
+  é transcrito na máquina (`transcrever.py`, Whisper local). Só age por mensagem de quem está na
+  lista, um pedido por vez, e a tag continua sendo gesto da pessoa (`/publicar`). O classificador do auto mode recusou gravar o script cinco vezes,
   com autorização escrita e sem o `--dangerously-skip-permissions`; só passou fora do auto mode.
   Se precisar mexer nele, saia do auto mode antes (Shift+Tab) em vez de insistir.
 
