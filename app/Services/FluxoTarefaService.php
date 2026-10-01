@@ -105,7 +105,13 @@ class FluxoTarefaService
      */
     public static function transicoesDe(Tarefa $tarefa): array
     {
-        $fluxo = self::FLUXOS[$tarefa->tipo] ?? self::FLUXOS['desenvolvimento'];
+        // O Defeito anda pelo mapa do desenvolvimento (`Tarefa::TIPOS_COM_PORTOES`):
+        // corrigir é escrever código, e o código passa pelos mesmos portões.
+        // Dito aqui, e não só pelo `??`, para que um terceiro tipo não caia no
+        // mapa dos portões por acidente de fallback sem ninguém ter decidido.
+        $fluxo = $tarefa->passaPelosPortoes()
+            ? self::FLUXOS['desenvolvimento']
+            : self::FLUXOS[$tarefa->tipo] ?? self::FLUXOS['desenvolvimento'];
 
         return $fluxo[$tarefa->status] ?? [];
     }
@@ -179,6 +185,13 @@ class FluxoTarefaService
             }
 
             $tarefa->update($atualizacao);
+
+            // Reabrir a duplicada desfaz a duplicidade (#205): quem a devolve
+            // ao quadro decidiu que ela NÃO era o mesmo pedido, e a original
+            // continuaria listando como sua cópia uma tarefa viva.
+            if ($statusAtual === 'cancelada' && $tarefa->duplicada_de_id !== null) {
+                $tarefa->forceFill(['duplicada_de_id' => null])->save();
+            }
 
             // Mudar de etapa destrava. O bloqueio é sempre sobre o trabalho de
             // uma etapa — "esperando o cliente validar" é uma frase sobre a
@@ -351,7 +364,7 @@ class FluxoTarefaService
      */
     private function entradaEmPortaoDeExame(Tarefa $tarefa, string $novoStatus, string $statusAtual): bool
     {
-        return $tarefa->tipo === 'desenvolvimento'
+        return $tarefa->passaPelosPortoes()
             && $novoStatus !== $statusAtual
             && in_array($novoStatus, Tarefa::PORTOES_DE_EXAME, true);
     }
@@ -612,7 +625,7 @@ class FluxoTarefaService
         // rodando para conferir. Registrar veredito fora daí criaria um
         // relatório solto que a etapa seguinte poderia ler como prova do que
         // ninguém validou.
-        if ($tarefa->tipo !== 'desenvolvimento'
+        if (! $tarefa->passaPelosPortoes()
             || ! in_array($tarefa->status, Tarefa::PORTOES_DE_VEREDITO, true)) {
             throw new \RuntimeException('Só a tarefa em Em staging ou Em produção tem veredito para registrar.');
         }
@@ -848,7 +861,7 @@ class FluxoTarefaService
         // o ar. Antes havia uma coluna entre uma coisa e outra; agora o gesto é
         // um só, e o portão foi junto com ele.
         if ($novoStatus === 'em_producao'
-            && $tarefa->tipo === 'desenvolvimento'
+            && $tarefa->passaPelosPortoes()
             && ! $this->aprovadaNestaPassagem($tarefa)) {
             throw new \RuntimeException('Só é possível subir para produção depois de validar o staging.');
         }
@@ -869,7 +882,7 @@ class FluxoTarefaService
         // relatório preso ao evento ABERTO, que aqui é o de Em produção. O
         // carimbo do staging ficou preso ao evento de Em staging e não vaza.
         if ($novoStatus === 'concluida'
-            && $tarefa->tipo === 'desenvolvimento'
+            && $tarefa->passaPelosPortoes()
             && ! $this->aprovadaNestaPassagem($tarefa)) {
             throw new \RuntimeException('Só é possível concluir depois de validar em produção.');
         }
@@ -884,7 +897,7 @@ class FluxoTarefaService
         // alcança Concluída direto de qualquer etapa e sem ela encerraria sem
         // versão nenhuma.
         if (in_array($novoStatus, ['em_producao', 'concluida'], true)
-            && $tarefa->tipo === 'desenvolvimento'
+            && $tarefa->passaPelosPortoes()
             && trim((string) ($dados['versao_producao'] ?? $tarefa->versao_producao ?? '')) === '') {
             throw new \RuntimeException('É preciso registrar a versão que subiu para produção.');
         }

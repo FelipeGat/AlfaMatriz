@@ -48,12 +48,12 @@ class PortaoDoStaging extends Command
 
     private function bloquearAColuna(FluxoTarefaService $fluxo): int
     {
-        // Só as de desenvolvimento: uma operacional encalhada num portão (o
+        // Só as que passam pelos portões (desenvolvimento e defeito): uma operacional encalhada num portão (o
         // caso de emergência da troca de tipo) não tem código esperando deploy,
         // e o motivo do portão seria mentira nela. E a já bloqueada fica como
         // está — o motivo dela é de gente, e vale mais que o do robô.
         $tarefas = Tarefa::where('status', 'em_staging')
-            ->where('tipo', 'desenvolvimento')
+            ->whereIn('tipo', Tarefa::TIPOS_COM_PORTOES)
             ->whereNull('bloqueado_em')
             ->get();
 

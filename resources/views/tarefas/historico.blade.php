@@ -324,14 +324,14 @@
                              pessoa escreve qualquer coisa para passar, como no
                              painel de motivo do quadro. --}}
                         <p class="mt-1 text-[12.5px] leading-snug text-ink-mute">
-                            {{ $tarefa->tipo === 'desenvolvimento'
+                            {{ $tarefa->passaPelosPortoes()
                                 ? 'O código desta tarefa está em produção. Diga o que apareceu — é o que quem recebe o card lê antes de mexer, e a tarefa refaz revisão e staging antes de subir de novo.'
                                 : 'Diga por que ela está voltando — sem isso, o card chega em Em andamento sem ninguém saber o que reabriu.' }}
                         </p>
                     </div>
 
                     <textarea name="motivo" rows="3" x-model="motivo"
-                              placeholder="{{ $tarefa->tipo === 'desenvolvimento' ? 'O que apareceu em produção…' : 'Por que está voltando…' }}"
+                              placeholder="{{ $tarefa->passaPelosPortoes() ? 'O que apareceu em produção…' : 'Por que está voltando…' }}"
                               class="block w-full px-[9px] py-[7px] rounded-[5px] bg-input text-ink
                                      text-[12px] leading-[1.45] resize-y focus:ring-0"
                               style="border: 1px solid rgb(var(--warn) / 0.4)"></textarea>

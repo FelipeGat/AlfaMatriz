@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Models\Tarefa;
 use App\Models\User;
+use App\Services\DuplicidadeDeTarefas;
 use App\Services\TarefaService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Arr;
@@ -16,6 +17,8 @@ use Laravel\Mcp\Response;
  */
 class CriarTarefa extends Ferramenta
 {
+    use RelatoDoDefeito;
+
     protected string $name = 'criar_tarefa';
 
     protected string $title = 'Criar tarefa';
@@ -35,7 +38,7 @@ class CriarTarefa extends Ferramenta
             'resumo' => $schema->string()->max(500)
                 ->description('O contexto: o que é e por quê. Até 500 caracteres.'),
             'tipo' => $schema->string()->enum(array_keys(Tarefa::TIPOS))
-                ->description('"desenvolvimento" (padrão) passa por revisão, staging e produção; "operacional" fecha direto de Em andamento.'),
+                ->description('"desenvolvimento" (padrão) passa por revisão, staging e produção; "defeito" é o mesmo fluxo, para algo que quebrou, e exige quem e quando; "operacional" fecha direto de Em andamento.'),
             'sistema' => $schema->string()
                 ->description('Nome do sistema a que a tarefa pertence (ver referencias).'),
             'responsavel' => $schema->string()
@@ -48,6 +51,7 @@ class CriarTarefa extends Ferramenta
                 ->description('Checklist: um passo por item.'),
             'tarefa_pai' => $schema->string()
                 ->description('Código da tarefa-mãe ("#128"), para esta nascer como subtarefa dela.'),
+            ...self::esquemaDoRelato($schema),
         ];
     }
 
@@ -64,7 +68,12 @@ class CriarTarefa extends Ferramenta
             'itens' => 'nullable|array',
             'itens.*' => 'nullable|string|max:255',
             'tarefa_pai' => 'nullable|string|max:20',
+            ...self::regrasDoRelato(),
         ]);
+
+        if ($recusa = self::relatoForaDoDefeito($dados, $dados['tipo'] ?? 'desenvolvimento')) {
+            return Response::error($recusa);
+        }
 
         if (filled($dados['sistema'] ?? null)) {
             $sistema = $this->sistema($dados['sistema']);
@@ -99,7 +108,8 @@ class CriarTarefa extends Ferramenta
         }
 
         $tarefa = app(TarefaService::class)->criar(
-            Arr::only($dados, ['titulo', 'resumo', 'tipo', 'sistema_id', 'responsavel_id', 'prioridade', 'prazo']),
+            Arr::only($dados, ['titulo', 'resumo', 'tipo', 'sistema_id', 'responsavel_id', 'prioridade', 'prazo'])
+                + self::relatoDoEnvio($dados),
             $usuario,
             $dados['itens'] ?? [],
             $paiId,
@@ -124,6 +134,27 @@ class CriarTarefa extends Ferramenta
             $avisos[] = 'A tarefa '.$dados['tarefa_pai'].' não pode receber subtarefa (está encerrada ou já é subtarefa); esta nasceu solta.';
         }
 
-        return Response::text(implode(' ', $avisos)."\n".$this->linhaDaTarefa($tarefa));
+        return Response::text(implode(' ', $avisos)."\n".$this->linhaDaTarefa($tarefa).$this->parecidasEmCurso($tarefa));
+    }
+
+    /**
+     * O aviso de parecidas da tela, dito na resposta (#205).
+     *
+     * Depois de criar, e não antes: a tela avisa enquanto se digita e não
+     * barra o Salvar, e o agente não tem "enquanto se digita". Recusar a
+     * criação seria a trava que a tela não tem; avisar na resposta deixa o
+     * agente — e quem o comanda — decidir se marca a nova como duplicada.
+     */
+    private function parecidasEmCurso(Tarefa $tarefa): string
+    {
+        $parecidas = app(DuplicidadeDeTarefas::class)
+            ->parecidas($tarefa->titulo, $tarefa->resumo, $tarefa->sistema_id, ignorarId: $tarefa->id);
+
+        if ($parecidas->isEmpty()) {
+            return '';
+        }
+
+        return "\n\nAtenção: já existem tarefas parecidas em curso. Se for o mesmo pedido, use marcar_duplicada.\n"
+            .$parecidas->map(fn (Tarefa $parecida) => '- '.$this->linhaDaTarefa($parecida))->implode("\n");
     }
 }

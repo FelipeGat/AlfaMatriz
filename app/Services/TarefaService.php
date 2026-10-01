@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Notificacao;
 use App\Models\Tarefa;
 use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 /**
  * O que acontece com a tarefa DEPOIS de o envio ser validado: nascer, ganhar
@@ -24,6 +26,17 @@ use App\Models\User;
  */
 class TarefaService
 {
+    /**
+     * O formato do relato do Defeito, para as duas portas validarem igual. O
+     * que é OBRIGATÓRIO não está aqui: ver `comORelatoDoDefeito`.
+     */
+    public const REGRAS_DO_RELATO = [
+        'defeito_quem' => 'nullable|string|max:255',
+        'defeito_quando' => 'nullable|date',
+        'defeito_esperado' => 'nullable|string|max:2000',
+        'defeito_ocorrido' => 'nullable|string|max:2000',
+    ];
+
     public function __construct(private readonly FluxoTarefaService $fluxo) {}
 
     /**
@@ -45,6 +58,8 @@ class TarefaService
         $dados['tipo'] ??= 'desenvolvimento';
         $dados['prioridade'] ??= 'media';
         $dados['criado_por_id'] = $autor->id;
+
+        $dados = $this->comORelatoDoDefeito($dados);
 
         $dados = $this->semTriagemDeQuemNaoTriaga($dados, $autor);
 
@@ -107,6 +122,8 @@ class TarefaService
         // apagaria a coluna, porque o padrão do modelo só vale na criação.
         $dados['tipo'] ??= $tarefa->tipo;
         $dados['prioridade'] ??= $tarefa->prioridade;
+
+        $dados = $this->comORelatoDoDefeito($dados, $tarefa);
 
         // Na edição, o que a triagem decidiu fica como está: quem não triaga
         // salvar a tarefa não pode zerar a prioridade nem soltar o responsável
@@ -197,6 +214,68 @@ class TarefaService
         // em lugar nenhum — nem no quadro, nem no histórico, nem para quem
         // fosse auditar. Excluir pela metade é o pior dos dois mundos.
         $tarefa->forceDelete();
+    }
+
+    /**
+     * O relato do defeito: exigido para o Defeito, descartado dos outros tipos.
+     *
+     * "Quem" e "quando" são o mínimo (tarefa #204): as #185 e #191 chegaram só
+     * com o sintoma, e defeito que afeta uma pessoa só não se investiga sem
+     * saber QUAL pessoa e EM QUE minuto procurar no log. O esperado e o
+     * ocorrido ficam opcionais — o resumo muitas vezes já os diz.
+     *
+     * A exigência mora aqui, e não na validação de cada porta, porque a tela e
+     * o `criar_tarefa`/`editar_tarefa` do MCP precisam recusar com a MESMA
+     * frase. Vale também na edição: trocar o tipo para Defeito sem o relato
+     * seria a porta dos fundos da exigência. Na edição parcial (MCP) o que não
+     * veio é o que já está gravado.
+     *
+     * Nos outros tipos os campos saem do envio em vez de serem gravados: o
+     * formulário os carrega escondidos, e quem escolheu Defeito, preencheu e
+     * voltou para Desenvolvimento não pediu para gravar um relato — e na
+     * edição, trocar de tipo não apaga o relato que já existia.
+     *
+     * O `quando` vira data aqui pela trava de reenvio: ela compara o envio com
+     * a linha gravada, e o "2026-09-30T14:20" do campo não casa com o
+     * "2026-09-30 14:20:00" da coluna — o clique duplo criaria dois defeitos.
+     *
+     * @param  array<string, mixed>  $dados
+     * @return array<string, mixed>
+     */
+    private function comORelatoDoDefeito(array $dados, ?Tarefa $tarefa = null): array
+    {
+        $campos = ['defeito_quem', 'defeito_quando', 'defeito_esperado', 'defeito_ocorrido'];
+
+        if ($dados['tipo'] !== 'defeito') {
+            return array_diff_key($dados, array_flip($campos));
+        }
+
+        foreach ($campos as $campo) {
+            if (array_key_exists($campo, $dados)) {
+                $dados[$campo] = filled($dados[$campo]) ? trim((string) $dados[$campo]) : null;
+            }
+        }
+
+        $valor = fn (string $campo) => array_key_exists($campo, $dados) ? $dados[$campo] : $tarefa?->{$campo};
+
+        $faltas = array_filter([
+            'defeito_quem' => blank($valor('defeito_quem'))
+                ? 'Defeito precisa dizer quem foi afetado: o cliente, o aluno ou a academia.'
+                : null,
+            'defeito_quando' => blank($valor('defeito_quando'))
+                ? 'Defeito precisa dizer quando aconteceu: o dia e a hora.'
+                : null,
+        ]);
+
+        if ($faltas !== []) {
+            throw ValidationException::withMessages($faltas);
+        }
+
+        if (filled($dados['defeito_quando'] ?? null)) {
+            $dados['defeito_quando'] = Carbon::parse($dados['defeito_quando'])->startOfMinute();
+        }
+
+        return $dados;
     }
 
     /**

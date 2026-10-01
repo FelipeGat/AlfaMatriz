@@ -1785,7 +1785,8 @@
                  * castigo em vez de conversa.
                  */
                 receita(destino) {
-                    const ehDev = this.tipoArrastado === 'desenvolvimento';
+                    // Defeito anda pelos mesmos portões (`Tarefa::TIPOS_COM_PORTOES`).
+                    const ehDev = @js(\App\Models\Tarefa::TIPOS_COM_PORTOES).includes(this.tipoArrastado);
 
                     const receitas = {
                         bloqueio: {

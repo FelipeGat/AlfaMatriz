@@ -260,6 +260,16 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('tarefas.destroy')
         ->middleware('permissao:tarefas');
 
+    // Duplicidade (#205): o aviso de parecidas enquanto se cria, e o
+    // cancelamento que grava de QUAL tarefa esta é cópia. Marcar é cancelar,
+    // e por isso pede a mesma permissão de mover.
+    Route::get('tarefas/parecidas', [TarefaController::class, 'parecidas'])
+        ->name('tarefas.parecidas')
+        ->middleware('permissao:tarefas');
+    Route::post('tarefas/{tarefa}/duplicada', [TarefaController::class, 'marcarDuplicada'])
+        ->name('tarefas.duplicada')
+        ->middleware('permissao:tarefas,editar');
+
     // Posicionar card dentro da coluna. Sem id na rota: o envio traz a coluna
     // inteira, porque arrastar reordena a lista toda na tela.
     Route::post('tarefas/posicionar', [TarefaController::class, 'posicionarNaColuna'])

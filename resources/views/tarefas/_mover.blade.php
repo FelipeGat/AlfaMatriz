@@ -91,7 +91,7 @@
                         // na primeira versão passava reto e se lia como feature
                         // que não existe. Em produção abre por dois motivos ao
                         // mesmo tempo: aponta a pessoa E cobra a versão da tag.
-                        'em_revisao', 'em_staging', 'em_producao' => $tarefa->tipo === 'desenvolvimento',
+                        'em_revisao', 'em_staging', 'em_producao' => $tarefa->passaPelosPortoes(),
                         default => false,
                     };
 
@@ -127,7 +127,7 @@
                      */
                     $dica = match (true) {
                         $destino === 'em_producao' => 'pede versão',
-                        $destino === 'concluida' && $tarefa->tipo === 'desenvolvimento'
+                        $destino === 'concluida' && $tarefa->passaPelosPortoes()
                             => $tarefa->status === 'em_producao' ? null : 'pede versão',
                         $devolveParaRevisao, $devolveParaStaging => 'pede motivo',
                         in_array($destino, \App\Models\Tarefa::PORTOES_DE_EXAME, true) => 'apontar quem',

@@ -205,11 +205,13 @@ comando pelo Telegram, tag de produção só depois de ele autorizar — ainda n
   pacote fora do grupo `web`: sem sessão nem CSRF, de propósito. O SSH até o LXC foi descartado.
 - **`de` é obrigatório em `mover_tarefa`**, ao contrário da rota, onde é opcional: o agente sempre
   acabou de ler a tarefa, e é o contrato de concorrência do quadro valendo para ele também.
-- **Vinte e uma ferramentas em 01/10/2026**, e o quadro inteiro passa pela porta: às nove iniciais
+- **Vinte e duas ferramentas em 01/10/2026**, e o quadro inteiro passa pela porta: às nove iniciais
   somaram-se `ver_anexo`, as três da agenda que faltavam (`ver_compromisso`, `remarcar_compromisso`,
   `desmarcar_compromisso`) e as oito do quadro (`editar_tarefa`, `bloquear_tarefa`,
   `destravar_tarefa`, `registrar_veredito`, `excluir_tarefa`, `adicionar_itens`, `atualizar_item`,
-  `remover_item`). Editar e remarcar são PARCIAIS: só o que muda, e o conjunto passa pelas regras do
+  `remover_item`). A 22ª, `marcar_duplicada` (#205), cancela a tarefa com vínculo para a original;
+  `criar_tarefa` também avisa as parecidas em curso e aceita o relato do tipo `defeito` (#204).
+  Editar e remarcar são PARCIAIS: só o que muda, e o conjunto passa pelas regras do
   formulário. `excluir_tarefa` exige o título exato como confirmação. O servidor lista todas numa
   página só (`defaultPaginationLength = 50`): o padrão do pacote é 15, e cliente que não segue o
   cursor não veria as últimas. Sem porta, de propósito: anexar arquivo e reordenar o checklist.

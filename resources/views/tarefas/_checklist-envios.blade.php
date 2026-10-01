@@ -50,7 +50,7 @@
      `new FormData(form)` sem o submitter, e o value do botão que enviou se
      perderia. Sem gate de perfil, como o bloqueio do card: quem testa nem
      sempre é quem move. --}}
-@if ($tarefa->tipo === 'desenvolvimento'
+@if ($tarefa->passaPelosPortoes()
     && in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_VEREDITO, true))
     <form id="testar-aprovar-{{ $tarefa->id }}" method="POST" data-parcial
           action="{{ route('tarefas.testar', $tarefa) }}" class="hidden">

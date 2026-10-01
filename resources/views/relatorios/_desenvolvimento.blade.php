@@ -67,6 +67,13 @@
                titulo="Concluídas por responsável"
                nota="na competência"
                compacto />
+
+    {{-- Onde as coisas quebram (tarefa #204): defeitos pela data de abertura,
+         que é quando apareceram — não quando foram corrigidos. --}}
+    <x-ranking :ranking="$rankingDefeitos"
+               titulo="Defeitos por sistema"
+               nota="abertos na competência"
+               compacto />
 </div>
 
 {{-- O diário de entrega do mês: cada conclusão com o ciclo dela — é o que se

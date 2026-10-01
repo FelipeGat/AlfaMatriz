@@ -209,6 +209,15 @@
                          font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em]">Oper.</span>
         @endif
 
+        {{-- O Defeito também se anuncia (tarefa #204), no mesmo selo neutro da
+             operacional: o tom forte já é da prioridade, logo ao lado, e um
+             vermelho aqui disputaria com "Crítica" — gravidade continua sendo
+             gravidade, e o tipo só diz de onde a tarefa veio. --}}
+        @if ($tarefa->tipo === 'defeito')
+            <span class="shrink-0 px-1.5 py-0.5 rounded-badge bg-chip text-ink-mute
+                         font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em]">Defeito</span>
+        @endif
+
         <span class="shrink-0 px-1.5 py-0.5 rounded-badge font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em]"
               style="{{ $corPrioridade
                   ? 'background: rgb(var(--'.$corPrioridade.') / var(--tint-alpha)); color: rgb(var(--'.$corPrioridade.'))'
@@ -535,7 +544,7 @@
         o assunto.
     --}}
     @php
-        $noPortaoDeVeredito = $tarefa->tipo === 'desenvolvimento'
+        $noPortaoDeVeredito = $tarefa->passaPelosPortoes()
             && in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_VEREDITO, true)
             && ! $bloqueada;
 
