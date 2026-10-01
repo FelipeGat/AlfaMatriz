@@ -10,6 +10,7 @@ use App\Mcp\Tools\MarcarCompromisso;
 use App\Mcp\Tools\MoverTarefa;
 use App\Mcp\Tools\Referencias;
 use App\Mcp\Tools\VerAgenda;
+use App\Mcp\Tools\VerAnexo;
 use App\Mcp\Tools\VerTarefa;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -61,6 +62,7 @@ class AlfaMatrizServer extends Server
         Referencias::class,
         ListarTarefas::class,
         VerTarefa::class,
+        VerAnexo::class,
         CriarTarefa::class,
         MoverTarefa::class,
         ConversarNaTarefa::class,
