@@ -82,6 +82,9 @@ const PASTA_DO_QUADRO = MCP_CONFIG ? (process.env.AGENTE_QUADRO ?? `${dirname(ES
 // legítimo passa disso. Depois, o processo é derrubado e o chat fica sabendo.
 const TEMPO_MAXIMO_MS = Number(process.env.AGENTE_TEMPO_MAXIMO_MIN ?? 240) * 60_000;
 const TEMPO_DO_QUADRO_MS = 10 * 60_000;
+// Até quando a resposta substitui a mensagem de andamento em vez de chegar como
+// mensagem nova (ver `naFaixa`).
+const RESPOSTA_NO_LUGAR_ATE_MS = 45_000;
 const API = `https://api.telegram.org/bot${TOKEN}`;
 const DONO = process.env.AGENTE_DONO ?? 'o dono do produto';
 const SERVIDOR_MCP = 'alfamatriz-producao';
@@ -198,13 +201,16 @@ async function criarAndamento(chatId, titulo) {
     }
 
     const editar = async (texto) => {
-        if (mensagemId === null) return;
+        if (mensagemId === null) return false;
         ultimaEdicao = Date.now();
         try {
             await telegram('editMessageText', { chat_id: chatId, message_id: mensagemId, text: texto });
+            return true;
         } catch {
             // "message is not modified" e limites de frequência: o andamento é
-            // cortesia, e não pode derrubar o pedido.
+            // cortesia, e não pode derrubar o pedido. Quem chama decide o que
+            // fazer quando a edição não pegou.
+            return false;
         }
     };
 
@@ -219,10 +225,14 @@ async function criarAndamento(chatId, titulo) {
                 if (!encerrado && pendente) editar(pendente);
             }, espera);
         },
+        decorrido() {
+            return Date.now() - inicio;
+        },
+        /** Encerra o andamento com um texto final. Devolve se a edição pegou. */
         async fim(texto) {
             encerrado = true;
             clearTimeout(relogio);
-            await editar(texto ?? `Concluído em ${duracao(Date.now() - inicio)}.`);
+            return editar(texto ?? `Concluído em ${duracao(Date.now() - inicio)}.`);
         },
     };
 }
@@ -369,6 +379,11 @@ async function rodarClaude(chatId, pedido, nomeDaFaixa, aCadaPasso) {
 
     let resultado = null;
 
+    // A pasta da faixa do quadro precisa existir antes do `spawn`: com um `cwd`
+    // que não existe, o erro que volta é "spawn … ENOENT", que parece dizer
+    // que o Claude sumiu.
+    if (doQuadro) mkdirSync(PASTA_DO_QUADRO, { recursive: true });
+
     const { codigo, saida, erro } = await executar(CLAUDE, args, {
         cwd: doQuadro ? PASTA_DO_QUADRO : REPO,
         tempoMs: doQuadro ? TEMPO_DO_QUADRO_MS : TEMPO_MAXIMO_MS,
@@ -444,11 +459,20 @@ function naFaixa(nome, chatId, pedido) {
             return naFaixa('codigo', chatId, pedido);
         }
 
-        await andamento.fim();
-
         estado.ultimaFaixa[chatId] = nome;
         gravarEstado();
 
+        // Pedido rápido: a própria mensagem de andamento VIRA a resposta. Quem
+        // perguntou ainda está olhando o chat, e "Concluído em 11s." seguido da
+        // resposta em outra mensagem fez a resposta passar despercebida duas
+        // vezes (01/10/2026). Pedido demorado: a resposta chega como mensagem
+        // NOVA, porque edição não notifica — e depois de dez minutos de suíte
+        // a pessoa já saiu do chat e precisa do aviso no celular.
+        const rapido = andamento.decorrido() < RESPOSTA_NO_LUGAR_ATE_MS && resposta.trim().length <= 4000;
+
+        if (rapido && await andamento.fim(resposta.trim() || '(sem resposta)')) return;
+
+        await andamento.fim();
         await responder(chatId, resposta);
     });
 }
@@ -685,8 +709,6 @@ async function tratar(mensagem) {
 }
 
 async function ouvir() {
-    if (MCP_CONFIG) mkdirSync(PASTA_DO_QUADRO, { recursive: true });
-
     console.log(`ponte no ar; repo ${REPO}; permitidos: ${[...PERMITIDOS].join(', ') || 'ninguém (ainda)'}`);
 
     for (;;) {

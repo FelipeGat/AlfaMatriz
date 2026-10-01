@@ -64,7 +64,9 @@ faixa: o agente do quadro recebe primeiro e, se o pedido não é dele, devolve u
 passa adiante. A exceção é a conversa de código em curso com a faixa livre, que segue direto.
 
 **Andamento.** Uma mensagem só, editada a cada passo ("rodando a suíte de testes", "editando
-TarefaService.php"), em vez de silêncio até o fim ou de uma notificação por passo.
+TarefaService.php"), em vez de silêncio até o fim ou de uma notificação por passo. Em pedido rápido (até
+45 s) essa mesma mensagem vira a resposta; em pedido demorado a resposta chega como mensagem nova,
+porque edição não notifica o celular.
 
 Comandos:
 
