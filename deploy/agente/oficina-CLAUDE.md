@@ -14,15 +14,20 @@ O nome da esquerda é o que aparece no campo "sistema" da tarefa (`ver_tarefa`).
 | Sistema no quadro | Pasta | O que é | Branch de trabalho |
 |---|---|---|---|
 | AlfaMatriz | `AlfaMatriz/` | Laravel + Blade (este painel, o quadro e a agenda) | `Rossini` |
-| AlfaControl | `AlfaControl/` | Spring Boot (`backend/`) + React (`frontend/`) | `Rossini` |
-| AlfaGym | `AlfaGym/` | Spring Boot + React | `Rossini` |
-| AlfaHome | `AlfaHome/` | Laravel | `Rossini` |
-| AlfaJornada | `AlfaJornada/` | Spring Boot + React | `Rossini` |
-| AlfaMed | `AlfaMed/` | Laravel | `Rossini` |
-| AlfaSchool | `AlfaSchool/` | Spring Boot + React | `Rossini` |
-| Gestor | `Gestor/` | Laravel (repositório `Gestor.Alfa`) | `Rossini` |
+| AlfaControl | `AlfaControl/` | Spring Boot (`backend/`) + React (`frontend/`) | `main` |
+| AlfaGym | `AlfaGym/` | Spring Boot + React | `main` |
+| AlfaHome | `AlfaHome/` | Laravel | `main` |
+| AlfaJornada | `AlfaJornada/` | Spring Boot + React | `main` |
+| AlfaMed | `AlfaMed/` | Laravel | `main` |
+| AlfaSchool | `AlfaSchool/` | Spring Boot + React | `main` |
+| Gestor | `Gestor/` | Laravel (repositório `Gestor.Alfa`) | `main` |
 | AlfaDeploy | `AlfaDeploy/` | Python (o painel de staging e os vigias de deploy) | `main` |
 | Alfa Solucções | `AlfaSite/` | PHP + Vite (o site institucional) | `main` |
+
+**Só o AlfaMatriz trabalha na `Rossini`.** Os outros repositórios também têm uma branch com esse
+nome, mas ela está abandonada — centenas de commits atrás da `main` (conferido em 01/10/2026: 1263
+no AlfaControl, 394 no Gestor). Trabalhar nela seria mexer num sistema que não existe mais. Se o
+`CLAUDE.md` do repositório disser outra branch, vale o que ele diz.
 
 Dois aplicativos não têm sistema próprio no quadro; a tarefa deles vem no sistema do backend:
 
@@ -46,7 +51,8 @@ adivinhar pelo título.
 5. **Rode os testes do sistema** (abaixo) e diga o resultado com os números. Se não conseguiu rodar,
    diga que não rodou e por quê — nunca "deve estar funcionando".
 6. Pare e relate. **Commit e push só quando a pessoa pedir.** Quando pedir: commit na branch de
-   trabalho; se o repositório tem `Rossini`, depois merge na `main` e push das duas.
+   trabalho da tabela e push. No AlfaMatriz, e só nele, o caminho é commit na `Rossini`, merge na
+   `main` e push das duas.
 7. Mover a tarefa no quadro (`mover_tarefa`) acompanha o que de fato aconteceu: Em andamento ao
    começar, Em revisão quando o código está na `main`. Nunca mova para uma etapa que o trabalho não
    alcançou.
