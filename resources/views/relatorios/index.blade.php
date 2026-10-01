@@ -8,13 +8,13 @@
              vale para uma parte. Quebra livre em telas estreitas. --}}
         <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <x-abas>
-                <x-abas.item href="{{ route('relatorios.index', array_merge(request()->query(), ['secao' => 'comercial'])) }}"
+                <x-abas.item :href="route('relatorios.index', array_merge(request()->query(), ['secao' => 'comercial']))"
                              :ativo="$secao === 'comercial'" icone="clipboard">Comercial</x-abas.item>
-                <x-abas.item href="{{ route('relatorios.index', array_merge(request()->query(), ['secao' => 'financeiro'])) }}"
+                <x-abas.item :href="route('relatorios.index', array_merge(request()->query(), ['secao' => 'financeiro']))"
                              :ativo="$secao === 'financeiro'" icone="banknotes">Financeiro</x-abas.item>
-                <x-abas.item href="{{ route('relatorios.index', array_merge(request()->query(), ['secao' => 'desenvolvimento'])) }}"
+                <x-abas.item :href="route('relatorios.index', array_merge(request()->query(), ['secao' => 'desenvolvimento']))"
                              :ativo="$secao === 'desenvolvimento'" icone="view-grid">Desenvolvimento</x-abas.item>
-                <x-abas.item href="{{ route('relatorios.index', array_merge(request()->query(), ['secao' => 'sistema'])) }}"
+                <x-abas.item :href="route('relatorios.index', array_merge(request()->query(), ['secao' => 'sistema']))"
                              :ativo="$secao === 'sistema'" icone="settings">Sistema</x-abas.item>
             </x-abas>
 

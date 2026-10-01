@@ -1,6 +1,10 @@
 {{--
     Um item do <x-abas>. `ativo` liga o fundo de marca; o resto fica em tinta
     neutra e ganha chip no hover. `icone` opcional usa o <x-nav-icon>.
+
+    Passe o link como `:href="route(...)"`, nunca `href="{{ route(...) }}"`:
+    o `{{ }}` no atributo já escapa, este arquivo escapa de novo, e com dois
+    parâmetros o `&` vira `&amp;amp;` e a aba perde o filtro (#207).
 --}}
 @props([
     'href' => '#',

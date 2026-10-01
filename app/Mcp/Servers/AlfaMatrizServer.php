@@ -14,6 +14,7 @@ use App\Mcp\Tools\EditarTarefa;
 use App\Mcp\Tools\ExcluirTarefa;
 use App\Mcp\Tools\ListarTarefas;
 use App\Mcp\Tools\MarcarCompromisso;
+use App\Mcp\Tools\MarcarDuplicada;
 use App\Mcp\Tools\MoverTarefa;
 use App\Mcp\Tools\Referencias;
 use App\Mcp\Tools\RegistrarVeredito;
@@ -95,6 +96,7 @@ class AlfaMatrizServer extends Server
         AdicionarItens::class,
         AtualizarItem::class,
         RemoverItem::class,
+        MarcarDuplicada::class,
         ExcluirTarefa::class,
         VerAgenda::class,
         VerCompromisso::class,

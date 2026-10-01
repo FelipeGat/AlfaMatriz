@@ -53,7 +53,7 @@ class VerTarefa extends Ferramenta
 
         $tarefa->load([
             'responsavel', 'sistema', 'criadoPor', 'interlocutor', 'perguntaDe', 'perguntaPara',
-            'pai', 'subtarefas', 'itens', 'comentarios.autor', 'eventos.autor', 'anexos',
+            'pai', 'subtarefas', 'duplicadaDe', 'duplicadas', 'itens', 'comentarios.autor', 'eventos.autor', 'anexos',
         ]);
 
         $blocos = [$this->linhaDaTarefa($tarefa)];
@@ -73,8 +73,31 @@ class VerTarefa extends Ferramenta
             $blocos[] = 'Detalhes: '.$tarefa->detalhes;
         }
 
+        // O relato do Defeito (#204) é o caso concreto — quem e em que minuto
+        // procurar no log —, e é a primeira coisa de que o agente precisa para
+        // investigar. Sem ele, o print nos anexos seria a única pista.
+        if ($tarefa->tipo === 'defeito') {
+            $blocos[] = "Relato do defeito:\n".implode("\n", [
+                '- Quem: '.($tarefa->defeito_quem ?: 'não informado'),
+                '- Quando: '.($tarefa->defeito_quando?->format('d/m/Y H:i') ?? 'não informado'),
+                '- Esperado: '.($tarefa->defeito_esperado ?: 'não informado'),
+                '- Ocorrido: '.($tarefa->defeito_ocorrido ?: 'não informado'),
+            ]);
+        }
+
         if ($tarefa->pai) {
             $blocos[] = 'Subtarefa de '.$tarefa->pai->codigo().' · '.$tarefa->pai->titulo;
+        }
+
+        // As duas pontas da duplicidade (#205): quem lê a cancelada chega à
+        // original, e quem lê a original sabe que o pedido se repetiu.
+        if ($tarefa->duplicadaDe) {
+            $blocos[] = 'Cancelada como duplicada de '.$tarefa->duplicadaDe->codigo().' · '.$tarefa->duplicadaDe->titulo;
+        }
+
+        if ($tarefa->duplicadas->isNotEmpty()) {
+            $blocos[] = 'Pedida de novo (canceladas como duplicadas desta): '.$tarefa->duplicadas
+                ->map(fn (Tarefa $copia) => $copia->codigo())->implode(', ');
         }
 
         if ($tarefa->subtarefas->isNotEmpty()) {

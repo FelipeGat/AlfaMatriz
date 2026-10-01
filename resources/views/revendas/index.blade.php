@@ -47,11 +47,11 @@
 
         {{-- Abas: a gestão de clientes mora aqui, dentro do contexto de revenda. --}}
         <x-abas>
-            <x-abas.item href="{{ route('revendas.index', array_merge(request()->query(), ['aba' => 'revendas'])) }}"
+            <x-abas.item :href="route('revendas.index', array_merge(request()->query(), ['aba' => 'revendas']))"
                          :ativo="($aba ?? 'revendas') === 'revendas'" icone="building">
                 Revendas
             </x-abas.item>
-            <x-abas.item href="{{ route('revendas.index', array_merge(request()->query(), ['aba' => 'clientes'])) }}"
+            <x-abas.item :href="route('revendas.index', array_merge(request()->query(), ['aba' => 'clientes']))"
                          :ativo="($aba ?? 'revendas') === 'clientes'" icone="users">
                 Clientes · {{ $clientesCadastrados }}
             </x-abas.item>

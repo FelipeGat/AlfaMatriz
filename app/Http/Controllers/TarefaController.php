@@ -10,6 +10,7 @@ use App\Models\TarefaComentario;
 use App\Models\TarefaItem;
 use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
+use App\Services\DuplicidadeDeTarefas;
 use App\Services\FluxoTarefaService;
 use App\Services\MiniaturaDeAnexo;
 use App\Services\TarefaService;
@@ -483,6 +484,9 @@ class TarefaController extends Controller
             // envio sem ele (formulário antigo em cache, integração futura) vale
             // como tarefa de desenvolvimento em vez de virar erro de validação.
             'tipo' => 'nullable|in:'.implode(',', array_keys(Tarefa::TIPOS)),
+            // O relato do Defeito (#204). Só o formato aqui: quem e quando são
+            // exigidos pelo `TarefaService`, que fala a mesma frase para o MCP.
+            ...TarefaService::REGRAS_DO_RELATO,
             'sistema_id' => 'nullable|exists:sistemas,id',
             'responsavel_id' => 'nullable|exists:users,id',
             // Nunca obrigatória. Ela falta em dois envios legítimos: o de quem
@@ -755,6 +759,9 @@ class TarefaController extends Controller
             // `ConvertEmptyStringsToNull` faz o '' virar null antes daqui.
             'resumo' => 'nullable|string|max:500',
             'tipo' => 'nullable|in:'.implode(',', array_keys(Tarefa::TIPOS)),
+            // O relato do Defeito (#204). Só o formato aqui: quem e quando são
+            // exigidos pelo `TarefaService`, que fala a mesma frase para o MCP.
+            ...TarefaService::REGRAS_DO_RELATO,
             'sistema_id' => 'nullable|exists:sistemas,id',
             'responsavel_id' => 'nullable|exists:users,id',
             // Nunca obrigatória. Ela falta em dois envios legítimos: o de quem
@@ -1154,6 +1161,65 @@ class TarefaController extends Controller
         }
 
         return $this->voltarParaOQuadro($request, 'Tarefa excluída.', mudouOConjunto: true);
+    }
+
+    /**
+     * As tarefas em curso parecidas com o que se está digitando (#205).
+     *
+     * Devolve o aviso já desenhado, e não JSON: é a mesma partial que a tela
+     * mostra, e montar a frase no JavaScript seria um segundo molde a manter.
+     * Vazio quando não há nada parecido — e aí o aviso some.
+     */
+    public function parecidas(Request $request, DuplicidadeDeTarefas $duplicidade)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $dados = $request->validate([
+            'titulo' => 'nullable|string|max:255',
+            'resumo' => 'nullable|string|max:500',
+            'sistema_id' => 'nullable|integer',
+        ]);
+
+        return response()->view('tarefas._parecidas-ao-criar-lista', [
+            'parecidas' => $duplicidade->parecidas(
+                (string) ($dados['titulo'] ?? ''),
+                $dados['resumo'] ?? null,
+                isset($dados['sistema_id']) ? (int) $dados['sistema_id'] : null,
+            ),
+        ]);
+    }
+
+    /**
+     * Cancela a tarefa como duplicada de outra, com o vínculo gravado (#205).
+     *
+     * Rota própria, e não um destino de `mover`: o cancelamento comum pede um
+     * motivo em texto livre, e aqui o motivo É o número da original — que
+     * precisa virar vínculo, não frase.
+     */
+    public function marcarDuplicada(Request $request, Tarefa $tarefa, DuplicidadeDeTarefas $duplicidade)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $dados = $request->validate(['original' => 'required|string|max:20']);
+
+        $original = Tarefa::find((int) ltrim(trim($dados['original']), '#'));
+
+        try {
+            if (! $original) {
+                throw new \RuntimeException('Não há tarefa '.$dados['original'].'.');
+            }
+
+            $duplicidade->marcar($tarefa, $original, $request->user());
+        } catch (\RuntimeException $e) {
+            return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DA_VEZ, $e->getMessage(), 'critico');
+        }
+
+        return $this->voltarParaOQuadro(
+            $request,
+            'Tarefa cancelada como duplicada de '.$original->codigo().'.',
+            fecharModal: 'editar-tarefa-'.$tarefa->id,
+            mudouOConjunto: true,
+        );
     }
 
     /**

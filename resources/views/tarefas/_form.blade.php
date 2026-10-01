@@ -112,6 +112,9 @@
           confirmandoExclusao: false,
           travando: false,
           bloqueada: {{ $edicao && $tarefa->estaBloqueada() ? 'true' : 'false' }},
+          {{-- O tipo escolhido, para o relato de defeito aparecer e sumir com o
+               select (`_relato-defeito`). --}}
+          tipo: @js(old('tipo', $tarefa->tipo ?? $pai?->tipo ?? 'desenvolvimento')),
       }"
       @submit="enviando = true"
       @envio-terminou="enviando = false">
@@ -203,6 +206,10 @@
             <p class="text-[11.5px] leading-[1.4] text-ink-faint">
                 Criada {{ $tarefa->criadoPor ? 'por '.$tarefa->criadoPor->name.' ' : '' }}em {{ $tarefa->created_at->format('d/m/Y H:i') }}
             </p>
+
+            {{-- Duplicidade (#205): de quem esta é cópia, quem a copiou, e o
+                 lembrete da triagem. --}}
+            @include('tarefas._duplicidade', ['tarefa' => $tarefa])
         @endif
 
         <div>
@@ -254,13 +261,18 @@
                              text-[13px] leading-[1.45] resize-y">{{ old('resumo', $tarefa->resumo ?? '') }}</textarea>
         </div>
 
+        {{-- Tarefas parecidas em curso, logo abaixo do texto que as encontra (#205). --}}
+        @unless ($edicao)
+            @include('tarefas._parecidas-ao-criar')
+        @endunless
+
         {{-- Grade 2×2. O tipo vem primeiro porque é ele que decide o resto: a
              tarefa de desenvolvimento passa pelos portões e só fecha com o
              staging validado; a operacional fecha direto de Em andamento. --}}
         <div class="grid grid-cols-2 gap-3">
             <div>
                 <label for="tipo-{{ $sufixo }}" class="block mb-[5px] text-[12px] font-medium text-ink-dim">Tipo</label>
-                <select id="tipo-{{ $sufixo }}" name="tipo"
+                <select id="tipo-{{ $sufixo }}" name="tipo" x-model="tipo"
                         class="block w-full h-9 py-0 rounded-control bg-input border-line text-ink text-[13px]">
                     @foreach (\App\Models\Tarefa::TIPOS as $chave => $label)
                         {{-- A mãe adianta o tipo: um bug achado revisando código
@@ -357,6 +369,8 @@
                 </div>
             @endif
         </div>
+
+        @include('tarefas._relato-defeito')
 
         {{--
             A ausência dita UMA vez, e no lugar onde os campos estariam.

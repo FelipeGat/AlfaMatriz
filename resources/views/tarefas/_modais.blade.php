@@ -37,5 +37,12 @@
         <div data-pedaco="conversa-envios-{{ $tarefa->id }}">
             @include('tarefas._comentarios-envios', ['tarefa' => $tarefa])
         </div>
+
+        {{-- Marcar como duplicada (#205): o campo mora em `_duplicidade`, dentro
+             do formulário da tarefa, e aponta para cá pelo atributo `form`. --}}
+        <form id="duplicada-{{ $tarefa->id }}" method="POST" data-parcial
+              action="{{ route('tarefas.duplicada', $tarefa) }}" class="hidden">
+            @csrf
+        </form>
     </x-modal>
 @endforeach

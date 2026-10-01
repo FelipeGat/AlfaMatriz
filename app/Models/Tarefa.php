@@ -247,8 +247,30 @@ class Tarefa extends Model
      */
     public const TIPOS = [
         'desenvolvimento' => 'Desenvolvimento',
+        'defeito' => 'Defeito',
         'operacional' => 'Operacional',
     ];
+
+    /**
+     * Os tipos que passam pelos portões — revisão, staging e produção.
+     *
+     * Defeito entrou em 01/10/2026 (tarefa #204) com o fluxo inteiro do
+     * desenvolvimento: corrigir um defeito é escrever código, e o código passa
+     * pelo mesmo PR, pelo mesmo staging e pela mesma tag. O que muda é a
+     * ENTRADA — ele nasce com o relato de quem, quando, o que se esperava e o
+     * que aconteceu (`defeito_*`) — e a contagem por sistema nos relatórios.
+     *
+     * Uma lista, e não `tipo === 'desenvolvimento'` espalhado: com dois tipos
+     * no mesmo caminho, cada comparação esquecida seria um portão que o
+     * defeito pularia sem ninguém ver.
+     */
+    public const TIPOS_COM_PORTOES = ['desenvolvimento', 'defeito'];
+
+    /** Esta tarefa anda pelo ciclo de desenvolvimento (portões, veredito, versão)? */
+    public function passaPelosPortoes(): bool
+    {
+        return in_array($this->tipo, self::TIPOS_COM_PORTOES, true);
+    }
 
     public const STATUS_TERMINAIS = ['concluida', 'cancelada'];
 
@@ -318,6 +340,7 @@ class Tarefa extends Model
     protected $fillable = [
         'titulo', 'resumo', 'detalhes', 'tipo', 'sistema_id', 'responsavel_id',
         'criado_por_id', 'prioridade', 'status', 'ordem', 'iniciada_em', 'prazo',
+        'defeito_quem', 'defeito_quando', 'defeito_esperado', 'defeito_ocorrido',
     ];
 
     protected function casts(): array
@@ -327,6 +350,7 @@ class Tarefa extends Model
             // `date` e não `datetime`: prazo é o DIA combinado, e a hora
             // pertence ao compromisso. Ver a migração que criou a coluna.
             'prazo' => 'date',
+            'defeito_quando' => 'datetime',
             'bloqueado_em' => 'datetime',
             'pergunta_em' => 'datetime',
             'rodadas' => 'integer',
@@ -435,6 +459,25 @@ class Tarefa extends Model
     }
 
     /**
+     * A tarefa de que esta é o mesmo pedido (#205) — ou null.
+     *
+     * Fora do `fillable`, como a mãe: marcar duplicada CANCELA a tarefa, e
+     * quem faz isso passa por `DuplicidadeDeTarefas::marcar`, que cobra a
+     * permissão e registra o motivo. Um `update` de formulário não deveria
+     * conseguir tirar um card do quadro de passagem.
+     */
+    public function duplicadaDe(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'duplicada_de_id');
+    }
+
+    /** As tarefas canceladas por serem o mesmo pedido desta — o lado da original. */
+    public function duplicadas(): HasMany
+    {
+        return $this->hasMany(self::class, 'duplicada_de_id')->orderBy('id');
+    }
+
+    /**
      * Esta tarefa pode receber subtarefa?
      *
      * Um nível só, e a razão está na migração: profundidade livre multiplicaria
@@ -537,7 +580,7 @@ class Tarefa extends Model
      */
     public function motivoParaNaoConcluir(?User $usuario): ?string
     {
-        if ($this->tipo !== 'desenvolvimento' || ! $usuario || $usuario->podeTriarTarefas()) {
+        if (! $this->passaPelosPortoes() || ! $usuario || $usuario->podeTriarTarefas()) {
             return null;
         }
 
@@ -642,7 +685,7 @@ class Tarefa extends Model
      */
     public function rotuloDoRetornoVindoDe(string $origem): string
     {
-        if ($origem === 'concluida' && $this->tipo !== 'desenvolvimento') {
+        if ($origem === 'concluida' && ! $this->passaPelosPortoes()) {
             return 'Reaberta';
         }
 

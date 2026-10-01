@@ -122,7 +122,7 @@
     Some quando bloqueada: travada, o teste não é o assunto — e o banner do
     bloqueio já está dizendo o que é.
 --}}
-@if ($tarefa->tipo === 'desenvolvimento'
+@if ($tarefa->passaPelosPortoes()
     && in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_VEREDITO, true)
     && ! $tarefa->estaBloqueada())
     @php

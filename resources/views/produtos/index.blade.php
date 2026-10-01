@@ -46,11 +46,11 @@
             zero de quem parou de vender.
         --}}
         <x-abas>
-            <x-abas.item href="{{ route('produtos.index', array_merge(request()->query(), ['aba' => 'produtos'])) }}"
+            <x-abas.item :href="route('produtos.index', array_merge(request()->query(), ['aba' => 'produtos']))"
                          :ativo="$aba === 'produtos'" icone="cube-outline">
                 Produtos · {{ $contagens['sistemas'] }}
             </x-abas.item>
-            <x-abas.item href="{{ route('produtos.index', array_merge(request()->query(), ['aba' => 'internos'])) }}"
+            <x-abas.item :href="route('produtos.index', array_merge(request()->query(), ['aba' => 'internos']))"
                          :ativo="$aba === 'internos'" icone="settings">
                 {{-- "Internos" sozinho é adjetivo sem substantivo: internos o
                      quê? Ao lado de "Produtos", que é um substantivo inteiro, a
