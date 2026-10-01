@@ -112,7 +112,9 @@ const MARCADOR_DE_CODIGO = '[[CODIGO]]';
 const REGRAS_DO_CODIGO = `
 Você está rodando como o agente do AlfaMatriz num servidor, comandado pelo Telegram por ${DONO}.
 - Responda em português, texto puro (sem Markdown), curto: o Telegram é um chat, não um relatório. Até uns 2500 caracteres.
-- Para mexer no quadro e na agenda do sistema NO AR, use o servidor MCP "${SERVIDOR_MCP}". O "alfamatriz" local é só do banco de desenvolvimento deste clone.
+- Para mexer no quadro e na agenda do sistema NO AR, use o servidor MCP "${SERVIDOR_MCP}": ver_tarefa mostra a tarefa e os números dos anexos, e ver_anexo abre imagem e texto anexados. O "alfamatriz" local é só do banco de desenvolvimento deste clone.
+- Você NÃO tem acesso ao banco de dados de produção, só ao quadro e à agenda pelo MCP. Se pedirem algo que dependa do banco, diga isso em vez de procurar credencial ou conexão.
+- O pedido pode vir com um bloco "[Contexto passado pelo assistente do quadro…]": é a conversa que a pessoa estava tendo com o outro agente. Use-o para saber de que tarefa se fala.
 - Trabalhe na branch Rossini. Antes de dizer que algo está pronto, rode a suíte (php artisan test) e diga o resultado. Commit e push só quando pedidos.
 - NUNCA crie tag nem faça deploy. Quando algo estiver pronto para produção, diga qual versão publicar e pare: quem publica é a pessoa, com /publicar.
 - Se precisar de uma decisão que é dela, pergunte e pare em vez de escolher.
@@ -121,7 +123,8 @@ Você está rodando como o agente do AlfaMatriz num servidor, comandado pelo Tel
 const REGRAS_DO_QUADRO = `
 Você é o assistente do quadro de tarefas e da agenda do AlfaMatriz, comandado pelo Telegram por ${DONO}.
 - Você só tem as ferramentas do servidor MCP "${SERVIDOR_MCP}": listar, ver, criar e mover tarefas, perguntar, responder, comentar, ver agenda e marcar compromisso. Não tem arquivos, terminal nem git.
-- Se o pedido exigir editar código, rodar comandos, testes, git, commit ou deploy — ou se parecer a continuação de uma conversa que você não tem —, responda EXATAMENTE ${MARCADOR_DE_CODIGO} e nada mais. Outro agente, com acesso ao código, assume.
+- Você só tem as ferramentas listadas acima; entre elas, ver_anexo abre imagem e texto anexados a uma tarefa.
+- Se o pedido exigir editar código, rodar comandos, testes, git, commit, deploy, ou olhar algo fora do quadro — ou se parecer a continuação de uma conversa que você não tem —, não tente: outro agente, com acesso ao repositório, assume. Responda ${MARCADOR_DE_CODIGO} na primeira linha e, abaixo, em até seis linhas, o que ele precisa saber DESTA conversa para continuar: o código e o título da tarefa em discussão, o que a pessoa quer, e o que você já apurou (inclusive os números dos anexos, se houver). Só isso — sem se dirigir à pessoa.
 - Fora isso, resolva você: responda em português, texto puro (sem Markdown), curto. Até uns 2500 caracteres.
 - Se precisar de uma decisão que é da pessoa, pergunte e pare em vez de escolher.
 `.trim();
@@ -660,7 +663,16 @@ function naFaixa(nome, chatId, pedido) {
                 ? 'Isso é trabalho de código. Entrou na fila, atrás do que já está rodando.'
                 : 'Isso é trabalho de código. Passando para o agente do repositório.');
 
-            return naFaixa('codigo', chatId, pedido);
+            // O pedido vai com o CONTEXTO que o agente do quadro escreveu
+            // depois do marcador. São dois agentes com duas conversas: sem
+            // isto, "analise então os anexos" chegava ao segundo sem tarefa
+            // nenhuma, e ele respondia que não tinha recebido anexo — ou
+            // chutava uma (01/10/2026).
+            const contexto = resposta.slice(resposta.indexOf(MARCADOR_DE_CODIGO) + MARCADOR_DE_CODIGO.length).trim();
+
+            return naFaixa('codigo', chatId, contexto
+                ? `${pedido}\n\n[Contexto passado pelo assistente do quadro, com quem a pessoa estava falando]\n${contexto}`
+                : pedido);
         }
 
         estado.ultimaFaixa[chatId] = nome;

@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Models\Tarefa;
+use App\Models\TarefaAnexo;
 use App\Models\TarefaComentario;
 use App\Models\TarefaEvento;
 use App\Models\TarefaItem;
@@ -103,7 +104,12 @@ class VerTarefa extends Ferramenta
         }
 
         if ($tarefa->anexos->isNotEmpty()) {
-            $blocos[] = 'Anexos: '.$tarefa->anexos->count().' ('.$tarefa->anexos->pluck('nome_original')->implode(', ').')';
+            // Com o número de cada um: é ele que `ver_anexo` recebe. Só o nome
+            // dizia ao agente que havia uma prova, sem dar como olhar para ela.
+            $blocos[] = "Anexos (abra com ver_anexo):\n".$tarefa->anexos
+                ->map(fn (TarefaAnexo $anexo) => '- anexo '.$anexo->id.': '.$anexo->nome_original
+                    .' · '.($anexo->eh_imagem ? 'imagem' : 'arquivo').' · '.$anexo->tamanho_formatado)
+                ->implode("\n");
         }
 
         if ($tarefa->comentarios->isNotEmpty()) {

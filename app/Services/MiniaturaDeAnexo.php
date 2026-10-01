@@ -99,6 +99,36 @@ class MiniaturaDeAnexo
     }
 
     /**
+     * A figura reduzida a um lado máximo, em bytes de JPEG — sem gravar nada.
+     *
+     * Para quem precisa LER a figura e não só reconhecê-la: a miniatura da
+     * grade tem 320 px, onde o texto de um print de tela já não se lê. O
+     * servidor MCP entrega o anexo ao agente por aqui (`ver_anexo`), num lado
+     * em que a captura continua legível sem mandar os 12 MB do original.
+     *
+     * Devolve null quando não há o que reduzir (a figura já cabe no lado
+     * pedido), quando o arquivo não é figura, ou quando ela não cabe na
+     * memória — a mesma pergunta que `gerar` faz antes de tocar no GD, pelo
+     * mesmo motivo. Quem chama decide o que fazer com o null.
+     */
+    public static function reduzida(string $caminho, int $lado): ?string
+    {
+        $disco = Storage::disk('public');
+
+        $medidas = @getimagesize($disco->path($caminho));
+
+        if (! $medidas || max($medidas[0], $medidas[1]) <= $lado) {
+            return null;
+        }
+
+        if (! self::cabeNaMemoria($medidas[0], $medidas[1])) {
+            return null;
+        }
+
+        return self::redesenhar($disco->get($caminho), $medidas[0], $medidas[1], $lado);
+    }
+
+    /**
      * Gera as que faltam, para os anexos que já estavam no disco.
      *
      * Aqui e não dentro da migração — que é quem chama — para que a suíte
@@ -208,7 +238,7 @@ class MiniaturaDeAnexo
      * essa otimização. É a mesma conclusão a que o `reduzir()` do navegador
      * chegou.
      */
-    private static function redesenhar(string $conteudo, int $largura, int $altura): ?string
+    private static function redesenhar(string $conteudo, int $largura, int $altura, int $lado = self::LADO): ?string
     {
         $origem = @imagecreatefromstring($conteudo);
 
@@ -216,7 +246,7 @@ class MiniaturaDeAnexo
             return null;
         }
 
-        $escala = self::LADO / max($largura, $altura);
+        $escala = $lado / max($largura, $altura);
         $destino = imagecreatetruecolor((int) round($largura * $escala), (int) round($altura * $escala));
 
         // Fundo branco antes de desenhar: JPEG não tem transparência, e sem
