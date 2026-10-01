@@ -42,7 +42,11 @@ de quem trabalha na máquina — o isolamento que o LXC dava, sem o disco do LXC
 3. `~/alfa-agente/agente.env` (chmod 600) com as mesmas variáveis do exemplo, mais
    `WHISPER_MODELOS=/Users/agente/whisper/modelos`; e `~/alfa-agente/iniciar.sh` copiado de
    `iniciar-mac.sh`.
-4. Login do Claude Code nesse usuário: `sudo -u agente -H /Users/agente/.local/bin/claude`, `/login`.
+4. Login do Claude Code: `bash deploy/agente/guardar-token-claude.sh`, rodado pelo dono no usuário
+   dele. O `agente` não tem chaveiro (nunca entrou pela tela), então o `/login` comum não fica
+   gravado para um serviço; o script gera o token de longa duração (`claude setup-token`), confere
+   com a Anthropic e o guarda no chaveiro do dono, de onde vai para `CLAUDE_CODE_OAUTH_TOKEN` no
+   `agente.env`. Copiar o token à mão perdeu um caractere na quebra de linha do Terminal.
 5. `sudo launchctl bootstrap system /Library/LaunchDaemons/br.com.alfa.agente.plist`. Reiniciar:
    `sudo launchctl kickstart -k system/br.com.alfa.agente`. Log em `~agente/alfa-agente/ponte.log`.
 
