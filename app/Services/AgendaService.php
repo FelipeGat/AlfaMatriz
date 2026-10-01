@@ -608,6 +608,68 @@ class AgendaService
         });
     }
 
+    /** As duas recusas de quem não marcou — ditas igual pela tela e pelo servidor MCP. */
+    public const RECUSA_AO_ALTERAR = 'Só quem marcou este compromisso — ou quem faz triagem — pode alterá-lo.';
+
+    public const RECUSA_AO_DESMARCAR = 'Só quem marcou este compromisso — ou quem faz triagem — pode desmarcá-lo.';
+
+    /**
+     * Altera o compromisso — horário, pauta, participantes — e avisa quem participa.
+     *
+     * Saiu do `CompromissoController::update` em 01/10/2026: o agente marcava
+     * um compromisso pelo servidor MCP e não tinha como corrigi-lo depois, nem
+     * sendo ele quem tinha marcado. A porta nova usa esta mesma função.
+     *
+     * @param  array<string, mixed>  $dados  os campos já validados por `regrasDoCompromisso`
+     */
+    public function remarcar(Compromisso $compromisso, array $dados, User $autor): Compromisso
+    {
+        if (! $compromisso->podeSerEditadoPor($autor)) {
+            throw new \RuntimeException(self::RECUSA_AO_ALTERAR);
+        }
+
+        $campos = $this->camposDoIntervalo($dados);
+        $this->assertIntervaloValido($campos);
+
+        return DB::transaction(function () use ($compromisso, $campos, $dados, $autor) {
+            // Remarcar rearma o lembrete: se o início mudou, quem foi avisado do
+            // horário antigo precisa do novo, e o `lembrete_enviado_em` volta a
+            // null para o comando avisar de novo. Editar só o título ou a pauta
+            // não mexe nisso — o início é que manda.
+            $comecoMudou = $campos['data'] !== Carbon::parse($compromisso->data)->toDateString()
+                || $campos['hora'] !== Carbon::parse($compromisso->hora)->format('H:i');
+
+            $compromisso->update(
+                $campos + [
+                    'titulo' => $dados['titulo'],
+                    'descricao' => $dados['descricao'] ?? null,
+                    'categoria' => $dados['categoria'] ?? 'interna',
+                    'tarefa_id' => $dados['tarefa_id'] ?? null,
+                ] + ($comecoMudou ? ['lembrete_enviado_em' => null] : [])
+            );
+
+            // Depois do `update`: a data que os participantes repetem é a nova,
+            // e sincronizar antes gravaria a carga no dia antigo.
+            $compromisso->sincronizarParticipantes($dados['participantes'] ?? []);
+            $this->avisarParticipantes($compromisso, $autor->id, 'remarcou');
+
+            return $compromisso;
+        });
+    }
+
+    /** Desmarca o compromisso e avisa quem participava. */
+    public function desmarcar(Compromisso $compromisso, User $autor): void
+    {
+        if (! $compromisso->podeSerEditadoPor($autor)) {
+            throw new \RuntimeException(self::RECUSA_AO_DESMARCAR);
+        }
+
+        // O aviso sai ANTES da exclusão: depois dela não há mais de onde ler
+        // título, data e participantes para escrever a frase.
+        $this->avisarParticipantes($compromisso, $autor->id, 'desmarcou');
+        $compromisso->delete();
+    }
+
     /**
      * A única validação do compromisso que não é de formato.
      *

@@ -47,36 +47,17 @@ class CompromissoController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
+        // A recusa de quem não pode editar é conferida ANTES da validação, como
+        // sempre foi: quem não pode mexer não precisa ouvir que o horário está
+        // errado. O serviço confere de novo — ele não confia em quem o chama.
         if (! $compromisso->podeSerEditadoPor($request->user())) {
-            return $this->recusar($request, 'Só quem marcou este compromisso — ou quem faz triagem — pode alterá-lo.');
+            return $this->recusar($request, AgendaService::RECUSA_AO_ALTERAR);
         }
 
-        $dados = $this->validar($request);
-
-        DB::transaction(function () use ($compromisso, $dados, $request) {
-            $campos = $this->agenda->camposDoIntervalo($dados);
-
-            // Remarcar rearma o lembrete: se o início mudou, quem foi avisado do
-            // horário antigo precisa do novo, e o `lembrete_enviado_em` volta a
-            // null para o comando avisar de novo. Editar só o título ou a pauta
-            // não mexe nisso — o início é que manda.
-            $comecoMudou = $campos['data'] !== Carbon::parse($compromisso->data)->toDateString()
-                || $campos['hora'] !== Carbon::parse($compromisso->hora)->format('H:i');
-
-            $compromisso->update(
-                $campos + [
-                    'titulo' => $dados['titulo'],
-                    'descricao' => $dados['descricao'] ?? null,
-                    'categoria' => $dados['categoria'] ?? 'interna',
-                    'tarefa_id' => $dados['tarefa_id'] ?? null,
-                ] + ($comecoMudou ? ['lembrete_enviado_em' => null] : [])
-            );
-
-            // Depois do `update`: a data que os participantes repetem é a nova,
-            // e sincronizar antes gravaria a carga no dia antigo.
-            $compromisso->sincronizarParticipantes($dados['participantes'] ?? []);
-            $this->agenda->avisarParticipantes($compromisso, $request->user()->id, 'remarcou');
-        });
+        // Remarcar mora no `AgendaService` pelo mesmo motivo de marcar: o
+        // servidor MCP também remarca, e as duas portas precisam rearmar o
+        // mesmo lembrete e avisar as mesmas pessoas.
+        $this->agenda->remarcar($compromisso, $this->validar($request), $request->user());
 
         return $this->voltar($request, 'Compromisso atualizado.');
     }
@@ -85,14 +66,11 @@ class CompromissoController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        if (! $compromisso->podeSerEditadoPor($request->user())) {
-            return $this->recusar($request, 'Só quem marcou este compromisso — ou quem faz triagem — pode desmarcá-lo.');
+        try {
+            $this->agenda->desmarcar($compromisso, $request->user());
+        } catch (\RuntimeException $e) {
+            return $this->recusar($request, $e->getMessage());
         }
-
-        // O aviso sai ANTES da exclusão: depois dela não há mais de onde ler
-        // título, data e participantes para escrever a frase.
-        $this->agenda->avisarParticipantes($compromisso, $request->user()->id, 'desmarcou');
-        $compromisso->delete();
 
         return $this->voltar($request, 'Compromisso desmarcado.');
     }
