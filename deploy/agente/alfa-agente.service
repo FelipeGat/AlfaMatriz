@@ -11,6 +11,8 @@ Type=simple
 User=root
 WorkingDirectory=/opt/dev/AlfaMatriz
 EnvironmentFile=/etc/alfa-agente.env
+# O virtualenv do Whisper na frente: é o `python3` que o transcrever.py encontra.
+Environment=PATH=/opt/whisper/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=/usr/bin/node /opt/dev/AlfaMatriz/deploy/agente/ponte-telegram.mjs
 Restart=always
 RestartSec=10
