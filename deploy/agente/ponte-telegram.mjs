@@ -23,6 +23,10 @@
  *   deste LXC divide disco e memória com os stagings (ver o CLAUDE.md do LXC),
  *   e dois agentes rodando a suíte em paralelo é o jeito de derrubar tudo.
  *
+ * Áudio também entra: a mensagem de voz é transcrita na própria máquina
+ * (`transcrever.py`, Whisper local) e o texto entendido é mostrado antes de
+ * virar pedido. Decisão do dono em 30/09/2026: transcrição local, sem conta nova.
+ *
  * Sem dependência de npm, de propósito: `fetch` e `child_process` bastam, e um
  * `npm install` a menos é um `npm install` a menos para quebrar numa máquina
  * que ninguém está olhando.
@@ -34,7 +38,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const TOKEN = obrigatorio('TELEGRAM_TOKEN');
@@ -49,6 +53,10 @@ const CLAUDE = process.env.AGENTE_CLAUDE ?? 'claude';
 // produção por ela (o Tailscale nega esse par) — só pela rede interna do
 // Proxmox. Com o arquivo definido, o Claude usa SÓ ele (`--strict-mcp-config`).
 const MCP_CONFIG = process.env.AGENTE_MCP_CONFIG ?? '';
+// O programa que transforma um áudio do Telegram em texto (`transcrever.py`,
+// Whisper local). Vazio, a ponte diz que não entende áudio em vez de fingir.
+const TRANSCRITOR = process.env.AGENTE_TRANSCRITOR ?? '';
+const PASTA_DE_AUDIO = process.env.AGENTE_AUDIO ?? '/var/lib/alfa-agente/audio';
 // Quatro horas: uma tarefa de código com suíte pode levar muito, mas nada
 // legítimo passa disso. Depois, o processo é derrubado e o chat fica sabendo.
 const TEMPO_MAXIMO_MS = Number(process.env.AGENTE_TEMPO_MAXIMO_MIN ?? 240) * 60_000;
@@ -182,6 +190,34 @@ async function rodarClaude(chatId, pedido) {
     }
 
     return resultado?.result ?? saida;
+}
+
+// ---------- áudio: baixar e transcrever ----------
+
+/**
+ * Um áudio vira texto antes de virar pedido. O texto entendido é mostrado de
+ * volta ("Entendi: …") de propósito: quem ditou precisa ver o que o Claude vai
+ * ler, porque um "228" ouvido como "duzentos e vinte e oito" ou "228" ouvido
+ * como "238" muda a tarefa que ele vai pegar.
+ */
+async function transcrever(mensagem) {
+    const arquivo = mensagem.voice ?? mensagem.audio;
+    const info = await telegram('getFile', { file_id: arquivo.file_id });
+    const resposta = await fetch(`https://api.telegram.org/file/bot${TOKEN}/${info.file_path}`);
+    if (!resposta.ok) throw new Error(`download do áudio: ${resposta.status}`);
+
+    mkdirSync(PASTA_DE_AUDIO, { recursive: true });
+    const caminho = `${PASTA_DE_AUDIO}/${arquivo.file_unique_id}.ogg`;
+    writeFileSync(caminho, Buffer.from(await resposta.arrayBuffer()));
+
+    try {
+        const r = await executar(TRANSCRITOR, [caminho], { tempoMs: 10 * 60_000 });
+        if (r.codigo !== 0) throw new Error((r.erro || r.saida).trim().slice(-400) || `código ${r.codigo}`);
+        return r.saida.trim();
+    } finally {
+        // O áudio não fica no disco: já virou texto, e voz é dado pessoal.
+        rmSync(caminho, { force: true });
+    }
 }
 
 // ---------- fila: um pedido por vez ----------
@@ -354,6 +390,35 @@ async function tratar(mensagem) {
         // número para pôr em TELEGRAM_PERMITIDOS na primeira vez.
         console.warn(`mensagem de ${de} (${mensagem.from?.username ?? '?'}) ignorada`);
         return responder(chatId, `Não conheço você. Seu id é ${de}.`);
+    }
+
+    if (mensagem.voice || mensagem.audio) {
+        if (!TRANSCRITOR) {
+            return responder(chatId, 'Ainda não entendo áudio aqui. Escreva o pedido.');
+        }
+
+        // Na mesma fila dos pedidos: transcrever come CPU, e o host deste LXC
+        // não é lugar de rodar o Whisper ao lado de uma suíte de testes.
+        const esperando = ocupado;
+        enfileirar(async () => {
+            await responder(chatId, esperando ? 'Chegou a sua vez. Ouvindo…' : 'Ouvindo…');
+
+            let ditado;
+            try {
+                ditado = await transcrever(mensagem);
+            } catch (e) {
+                return responder(chatId, `Não consegui transcrever o áudio: ${e.message}`);
+            }
+
+            await responder(chatId, `Entendi: "${ditado}"`);
+
+            if (ditado.startsWith('/')) return comando(chatId, ditado);
+
+            await responder(chatId, 'Trabalhando…');
+            await responder(chatId, await rodarClaude(chatId, ditado));
+        });
+        if (esperando) await responder(chatId, 'Na fila. Aviso quando começar.');
+        return;
     }
 
     if (!texto) return;
