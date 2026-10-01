@@ -68,6 +68,12 @@ TarefaService.php"), em vez de silêncio até o fim ou de uma notificação por 
 45 s) essa mesma mensagem vira a resposta; em pedido demorado a resposta chega como mensagem nova,
 porque edição não notifica o celular.
 
+**Velocidade.** O agente do quadro e o transcritor ficam ABERTOS entre os pedidos, em vez de um
+processo novo por mensagem: a mesma consulta caiu de ~9 s para 2,5 a 4 s, e um áudio curto de 3 s
+para 1 s. Medido em 01/10/2026 — trocar de modelo não mudou nada (Opus, Sonnet e Haiku deram todos
+8 a 10 s); o tempo estava no arranque do Claude Code e na conexão com o MCP. O agente do quadro é
+renovado a cada 25 pedidos ou 30 min parado, para a conversa acumulada não pesar.
+
 Comandos:
 
 | Comando | O que faz |

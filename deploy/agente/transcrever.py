@@ -12,11 +12,15 @@ Chamado pela ponte (`ponte-telegram.mjs`) com o caminho do arquivo; imprime só
 o texto. Qualquer erro vai para stderr e o código de saída diz que falhou —
 a ponte mostra a frase e não manda nada ao Claude.
 
-O modelo é carregado a cada chamada, de propósito: um processo residente
-seguraria ~1 GB de RAM o dia inteiro para transcrever três áudios. Carregar
-custa uns segundos, e são segundos que só se pagam quando alguém fala.
+Dois modos. Com um caminho, transcreve e sai — o modelo é carregado a cada
+chamada, que é o certo onde a memória é curta (o LXC de 4 GB): um processo
+residente seguraria ~1 GB o dia inteiro para transcrever três áudios. Com
+`--servidor`, fica aberto com o modelo na memória e atende um caminho por
+linha — o certo onde há memória (o Mac), porque carregar o modelo é mais da
+metade do tempo de um áudio curto.
 """
 
+import json
 import os
 import sys
 
@@ -58,19 +62,64 @@ def decodificar(caminho: str) -> np.ndarray:
     return np.concatenate(pedacos).astype(np.float32) / 32768.0
 
 
-def main() -> int:
-    if len(sys.argv) != 2:
-        print("uso: transcrever.py <arquivo de áudio>", file=sys.stderr)
-        return 2
+# Os nomes que o Whisper não tem como adivinhar. Sem isto, "AlfaGym" virou
+# "Alphagene" e "Alphagin" no mesmo áudio de teste — e é o nome do sistema que
+# decide em que quadro a tarefa cai. O `initial_prompt` não é instrução: é só
+# texto que o modelo trata como "o que veio antes", e por isso puxa a grafia.
+VOCABULARIO = os.environ.get(
+    "WHISPER_VOCABULARIO",
+    "AlfaMatriz, AlfaGym, AlfaControl, AlfaHome, AlfaJornada, AlfaMed, AlfaMonitor, "
+    "Gestor Alfa, AlfaMobi. Tarefa, quadro, agenda, triagem, backlog, staging, produção, deploy.",
+)
 
-    modelo = WhisperModel(MODELO, device="cpu", compute_type="int8", download_root=PASTA_DOS_MODELOS)
 
+def carregar() -> WhisperModel:
+    return WhisperModel(MODELO, device="cpu", compute_type="int8", download_root=PASTA_DOS_MODELOS)
+
+
+def ouvir(modelo: WhisperModel, caminho: str) -> str:
     # `vad_filter` corta os silêncios do começo e do fim, que num áudio de
     # Telegram são a maior parte do que o Whisper tende a alucinar ("Legendas
     # pela comunidade Amara.org" e afins).
-    segmentos, _ = modelo.transcribe(decodificar(sys.argv[1]), language="pt", beam_size=5, vad_filter=True)
+    segmentos, _ = modelo.transcribe(
+        decodificar(caminho), language="pt", beam_size=5, vad_filter=True, initial_prompt=VOCABULARIO,
+    )
 
-    texto = " ".join(s.text.strip() for s in segmentos).strip()
+    return " ".join(s.text.strip() for s in segmentos).strip()
+
+
+def servir() -> int:
+    """
+    O modo residente: o modelo carrega uma vez, e cada linha da entrada é um
+    caminho de áudio. Uma linha de JSON por resposta. A ponte o usa onde há
+    memória para manter ~1 GB ocupado (o Mac); a carga do modelo, que é mais
+    da metade do tempo de um áudio curto, deixa de se repetir a cada mensagem.
+    """
+    modelo = carregar()
+    print(json.dumps({"pronto": True}), flush=True)
+
+    for linha in sys.stdin:
+        caminho = linha.strip()
+        if not caminho:
+            continue
+        try:
+            texto = ouvir(modelo, caminho)
+            print(json.dumps({"texto": texto} if texto else {"erro": "não entendi nada no áudio"}), flush=True)
+        except Exception as e:  # noqa: BLE001 — um áudio ruim não pode derrubar o servidor
+            print(json.dumps({"erro": str(e)}), flush=True)
+
+    return 0
+
+
+def main() -> int:
+    if len(sys.argv) != 2:
+        print("uso: transcrever.py <arquivo de áudio> | --servidor", file=sys.stderr)
+        return 2
+
+    if sys.argv[1] == "--servidor":
+        return servir()
+
+    texto = ouvir(carregar(), sys.argv[1])
 
     if not texto:
         print("não entendi nada no áudio", file=sys.stderr)

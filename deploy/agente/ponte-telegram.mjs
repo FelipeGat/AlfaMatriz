@@ -82,6 +82,15 @@ const PASTA_DO_QUADRO = MCP_CONFIG ? (process.env.AGENTE_QUADRO ?? `${dirname(ES
 // legítimo passa disso. Depois, o processo é derrubado e o chat fica sabendo.
 const TEMPO_MAXIMO_MS = Number(process.env.AGENTE_TEMPO_MAXIMO_MIN ?? 240) * 60_000;
 const TEMPO_DO_QUADRO_MS = 10 * 60_000;
+// O agente do quadro fica ABERTO entre um pedido e outro (ver `pedirAoResidente`).
+// Depois de tantos pedidos, ou de tanto tempo parado, ele é trocado por um novo:
+// a conversa acumulada encarece e atrasa cada resposta, e "o que está travado?"
+// de amanhã não precisa lembrar do de hoje.
+const RESIDENTE_MAX_PEDIDOS = 25;
+const RESIDENTE_MAX_PARADO_MS = 30 * 60_000;
+// O transcritor também pode ficar aberto, com o modelo do Whisper na memória
+// (~1 GB). Vale no Mac; no LXC de 4 GB, não.
+const TRANSCRITOR_RESIDENTE = process.env.AGENTE_TRANSCRITOR_RESIDENTE === '1';
 // Até quando a resposta substitui a mensagem de andamento em vez de chegar como
 // mensagem nova (ver `naFaixa`).
 const RESPOSTA_NO_LUGAR_ATE_MS = 45_000;
@@ -350,27 +359,21 @@ function executar(comando, args, { cwd = REPO, tempoMs = TEMPO_MAXIMO_MS, aCadaL
 async function rodarClaude(chatId, pedido, nomeDaFaixa, aCadaPasso) {
     const doQuadro = nomeDaFaixa === 'quadro';
 
+    if (doQuadro) return pedirAoResidente(chatId, pedido, aCadaPasso);
+
     const args = [
         '-p', pedido,
         // `stream-json` em vez de `json`: os eventos chegam enquanto ele
         // trabalha, e é deles que sai o andamento. Exige `--verbose`.
         '--output-format', 'stream-json',
         '--verbose',
-        '--append-system-prompt', doQuadro ? REGRAS_DO_QUADRO : REGRAS_DO_CODIGO,
-    ];
-
-    if (doQuadro) {
-        // Só as ferramentas do MCP. Tudo o mais o modo headless recusa sozinho:
-        // esta faixa não edita nem executa nada, e por isso não precisa — nem
-        // deve — pular as permissões.
-        args.push('--allowedTools', `mcp__${SERVIDOR_MCP}`);
-    } else {
+        '--append-system-prompt', REGRAS_DO_CODIGO,
         // O agente de código precisa editar arquivos e rodar a suíte sem
         // ninguém para clicar em "permitir". Roda num ambiente isolado, e o
         // dano possível é o do próprio clone — produção só se alcança pelo MCP,
         // que tem as regras do quadro, e pela tag, que ele não pode criar.
-        args.push('--dangerously-skip-permissions');
-    }
+        '--dangerously-skip-permissions',
+    ];
 
     if (MCP_CONFIG) args.push('--mcp-config', MCP_CONFIG, '--strict-mcp-config');
 
@@ -379,14 +382,9 @@ async function rodarClaude(chatId, pedido, nomeDaFaixa, aCadaPasso) {
 
     let resultado = null;
 
-    // A pasta da faixa do quadro precisa existir antes do `spawn`: com um `cwd`
-    // que não existe, o erro que volta é "spawn … ENOENT", que parece dizer
-    // que o Claude sumiu.
-    if (doQuadro) mkdirSync(PASTA_DO_QUADRO, { recursive: true });
-
     const { codigo, saida, erro } = await executar(CLAUDE, args, {
-        cwd: doQuadro ? PASTA_DO_QUADRO : REPO,
-        tempoMs: doQuadro ? TEMPO_DO_QUADRO_MS : TEMPO_MAXIMO_MS,
+        cwd: REPO,
+        tempoMs: TEMPO_MAXIMO_MS,
         faixa: faixas[nomeDaFaixa],
         aCadaLinha(linha) {
             let evento;
@@ -428,6 +426,157 @@ async function rodarClaude(chatId, pedido, nomeDaFaixa, aCadaPasso) {
     }
 
     return resultado.result;
+}
+
+// ---------- o agente do quadro, residente ----------
+
+/**
+ * O agente do quadro não é um processo por pedido: é um processo que fica
+ * aberto, recebendo um pedido por linha (`--input-format stream-json`).
+ *
+ * Medido em 01/10/2026: a mesma consulta levava ~9 s abrindo um Claude Code
+ * novo a cada mensagem e 2,5 a 4 s com ele já aberto. Trocar de modelo não
+ * mudava nada (Opus, Sonnet e Haiku deram todos 8 a 10 s) — o tempo estava no
+ * arranque do processo e na conexão com o MCP, não em quem pensa.
+ *
+ * Só o quadro é residente. A faixa de código continua um processo por pedido:
+ * lá o arranque é ruído perto de uma suíte de dois minutos, e um processo de
+ * vida longa com permissão de editar e executar é exatamente o que não se quer
+ * deixar aberto.
+ *
+ * @type {Map<number, {filho: import('node:child_process').ChildProcess, pendente: object|null, pedidos: number, ultimoUso: number, resto: string, erro: string, retomou: boolean}>}
+ */
+const residentes = new Map();
+
+function abrirResidente(chatId) {
+    const args = [
+        '-p',
+        '--input-format', 'stream-json',
+        '--output-format', 'stream-json',
+        '--verbose',
+        '--append-system-prompt', REGRAS_DO_QUADRO,
+        // Só as ferramentas do MCP. Tudo o mais o modo headless recusa sozinho:
+        // este agente não edita nem executa nada, e por isso não precisa — nem
+        // deve — pular as permissões.
+        '--allowedTools', `mcp__${SERVIDOR_MCP}`,
+    ];
+
+    if (MCP_CONFIG) args.push('--mcp-config', MCP_CONFIG, '--strict-mcp-config');
+
+    const sessao = estado.sessoes[chatId]?.quadro;
+    if (sessao) args.push('--resume', sessao);
+
+    // Com um `cwd` que não existe, o erro que volta é "spawn … ENOENT", que
+    // parece dizer que o Claude sumiu.
+    mkdirSync(PASTA_DO_QUADRO, { recursive: true });
+
+    const filho = spawn(CLAUDE, args, {
+        cwd: PASTA_DO_QUADRO,
+        // As nove ferramentas do MCP carregadas de saída: com a busca de
+        // ferramentas ligada, o primeiro pedido gasta uma ida e volta só para
+        // descobrir que `ver_tarefa` existe.
+        env: { ...process.env, ENABLE_TOOL_SEARCH: 'false' },
+        stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    const residente = { filho, pendente: null, pedidos: 0, ultimoUso: Date.now(), resto: '', erro: '', retomou: Boolean(sessao) };
+
+    filho.stdout.on('data', (d) => {
+        const linhas = (residente.resto + d).split('\n');
+        residente.resto = linhas.pop();
+
+        for (const linha of linhas) {
+            let evento;
+            try {
+                evento = JSON.parse(linha);
+            } catch {
+                continue;
+            }
+
+            if (evento.session_id && estado.sessoes[chatId]?.quadro !== evento.session_id) {
+                estado.sessoes[chatId] = { ...estado.sessoes[chatId], quadro: evento.session_id };
+                gravarEstado();
+            }
+
+            if (evento.type === 'assistant') {
+                for (const bloco of evento.message?.content ?? []) {
+                    if (bloco.type === 'tool_use') residente.pendente?.aCadaPasso?.(descreverPasso(bloco.name, bloco.input));
+                }
+            }
+
+            if (evento.type === 'result') concluir(residente, { resposta: evento.result ?? '' });
+        }
+    });
+
+    filho.stderr.on('data', (d) => (residente.erro = (residente.erro + d).slice(-2000)));
+    filho.on('error', (e) => (residente.erro += e.message));
+    filho.on('close', (codigo) => {
+        if (residentes.get(chatId) === residente) residentes.delete(chatId);
+        if (faixas.quadro.filho === filho) faixas.quadro.filho = null;
+        concluir(residente, { morreu: true, codigo });
+    });
+
+    residentes.set(chatId, residente);
+
+    return residente;
+}
+
+function concluir(residente, desfecho) {
+    const pendente = residente.pendente;
+    if (!pendente) return;
+    residente.pendente = null;
+    clearTimeout(pendente.relogio);
+    pendente.resolve(desfecho);
+}
+
+function fecharResidente(chatId) {
+    const residente = residentes.get(chatId);
+    if (!residente) return;
+    residentes.delete(chatId);
+    // Fechar a entrada é o jeito educado: ele termina o que tem e sai sozinho.
+    residente.filho.stdin.end();
+}
+
+async function pedirAoResidente(chatId, pedido, aCadaPasso, tentativa = 1) {
+    let residente = residentes.get(chatId);
+
+    if (residente && (residente.pedidos >= RESIDENTE_MAX_PEDIDOS || Date.now() - residente.ultimoUso > RESIDENTE_MAX_PARADO_MS)) {
+        fecharResidente(chatId);
+        // Conversa nova de propósito: é a conversa acumulada que se quer largar.
+        if (estado.sessoes[chatId]) delete estado.sessoes[chatId].quadro;
+        residente = null;
+    }
+
+    residente ??= abrirResidente(chatId);
+    residente.pedidos += 1;
+    residente.ultimoUso = Date.now();
+    faixas.quadro.filho = residente.filho;
+
+    const desfecho = await new Promise((resolve) => {
+        residente.pendente = {
+            resolve,
+            aCadaPasso,
+            relogio: setTimeout(() => residente.filho.kill('SIGTERM'), TEMPO_DO_QUADRO_MS),
+        };
+
+        residente.filho.stdin.write(`${JSON.stringify({ type: 'user', message: { role: 'user', content: pedido } })}\n`);
+    });
+
+    if (!desfecho.morreu) return desfecho.resposta;
+
+    // Morreu antes de responder. Se ele tinha sido aberto retomando uma sessão,
+    // o mais provável é a sessão não existir mais (o Claude atualizou, a pasta
+    // mudou): tenta UMA vez do zero antes de devolver o erro.
+    if (residente.retomou && tentativa === 1 && desfecho.codigo !== null && desfecho.codigo !== 143) {
+        if (estado.sessoes[chatId]) delete estado.sessoes[chatId].quadro;
+        gravarEstado();
+
+        return pedirAoResidente(chatId, pedido, aCadaPasso, 2);
+    }
+
+    if (desfecho.codigo === null || desfecho.codigo === 143) return 'Interrompido antes de terminar.';
+
+    return `O Claude não respondeu (código ${desfecho.codigo}).\n${residente.erro.trim().slice(-1500)}`;
 }
 
 /**
@@ -495,6 +644,8 @@ async function transcrever(mensagem) {
     writeFileSync(caminho, Buffer.from(await resposta.arrayBuffer()));
 
     try {
+        if (TRANSCRITOR_RESIDENTE) return await transcreverNoResidente(caminho);
+
         const r = await executar(TRANSCRITOR, [caminho], { tempoMs: 10 * 60_000 });
         if (r.codigo !== 0) throw new Error((r.erro || r.saida).trim().slice(-400) || `código ${r.codigo}`);
         return r.saida.trim();
@@ -502,6 +653,66 @@ async function transcrever(mensagem) {
         // O áudio não fica no disco: já virou texto, e voz é dado pessoal.
         rmSync(caminho, { force: true });
     }
+}
+
+/**
+ * O transcritor aberto, com o modelo já na memória: um caminho por linha na
+ * entrada, um JSON por linha na saída. Poupa a carga do modelo a cada áudio.
+ * Um áudio por vez — a corrente de promessas é a fila.
+ */
+let transcritor = null;
+let filaDoTranscritor = Promise.resolve();
+
+function abrirTranscritor() {
+    const filho = spawn(TRANSCRITOR, ['--servidor'], { env: process.env, stdio: ['pipe', 'pipe', 'pipe'] });
+    const t = { filho, resto: '', esperando: null, erro: '' };
+
+    filho.stdout.on('data', (d) => {
+        const linhas = (t.resto + d).split('\n');
+        t.resto = linhas.pop();
+        for (const linha of linhas) {
+            let dito;
+            try {
+                dito = JSON.parse(linha);
+            } catch {
+                continue;
+            }
+            // A primeira linha é só o aviso de que o modelo carregou.
+            if (dito.pronto) continue;
+            t.esperando?.(dito);
+            t.esperando = null;
+        }
+    });
+    filho.stderr.on('data', (d) => (t.erro = (t.erro + d).slice(-600)));
+    filho.on('error', (e) => (t.erro += e.message));
+    filho.on('close', () => {
+        if (transcritor === t) transcritor = null;
+        t.esperando?.({ erro: t.erro.trim() || 'o transcritor fechou' });
+        t.esperando = null;
+    });
+
+    return t;
+}
+
+function transcreverNoResidente(caminho) {
+    const vez = filaDoTranscritor.then(() => new Promise((resolve, reject) => {
+        transcritor ??= abrirTranscritor();
+        const t = transcritor;
+        const relogio = setTimeout(() => t.filho.kill('SIGTERM'), 10 * 60_000);
+
+        t.esperando = (dito) => {
+            clearTimeout(relogio);
+            if (dito.erro) reject(new Error(dito.erro));
+            else resolve(dito.texto);
+        };
+
+        t.filho.stdin.write(`${caminho}\n`);
+    }));
+
+    // A fila segue mesmo que este áudio tenha falhado.
+    filaDoTranscritor = vez.catch(() => {});
+
+    return vez;
 }
 
 // ---------- comandos ----------
@@ -587,6 +798,7 @@ async function comando(chatId, texto) {
         }
 
         case '/novo':
+            fecharResidente(chatId);
             delete estado.sessoes[chatId];
             delete estado.ultimaFaixa[chatId];
             gravarEstado();
@@ -710,6 +922,13 @@ async function tratar(mensagem) {
 
 async function ouvir() {
     console.log(`ponte no ar; repo ${REPO}; permitidos: ${[...PERMITIDOS].join(', ') || 'ninguém (ainda)'}`);
+
+    // Aquecer: o agente do quadro de quem pode comandar e o transcritor já
+    // sobem abertos, para o PRIMEIRO pedido do dia não pagar o arranque. Abrir
+    // não gasta nada — nenhum dos dois faz coisa alguma até receber uma linha.
+    // (Num chat privado, o id do chat é o id da pessoa.)
+    for (const id of PERMITIDOS) abrirResidente(Number(id));
+    if (TRANSCRITOR && TRANSCRITOR_RESIDENTE) transcritor = abrirTranscritor();
 
     for (;;) {
         try {
