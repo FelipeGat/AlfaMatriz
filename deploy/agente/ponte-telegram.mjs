@@ -1,10 +1,30 @@
 #!/usr/bin/env node
 /**
- * A ponte entre o Telegram e o Claude Code do LXC — o agente do AlfaMatriz.
+ * A ponte entre o Telegram e o Claude Code — o agente do AlfaMatriz.
  *
- * O que ela faz: fica ouvindo o bot (@rossini_server_bot, o mesmo do changelog),
- * e cada mensagem de quem pode comandar vira uma rodada do Claude Code em modo
- * headless dentro do clone do repositório. A resposta volta pelo mesmo chat.
+ * O que ela faz: fica ouvindo o bot do agente (@alfamatriz_agente_bot), e cada
+ * mensagem de quem pode comandar vira uma rodada do Claude Code em modo
+ * headless. A resposta volta pelo mesmo chat, e enquanto ele trabalha uma
+ * mensagem de andamento diz o que está sendo feito.
+ *
+ * DUAS FAIXAS (01/10/2026). Um pedido pode ser de dois tipos, e eles não
+ * disputam o mesmo recurso:
+ *
+ * - QUADRO: abrir tarefa, marcar reunião, ver o que está travado. Só usa as
+ *   ferramentas do servidor MCP do AlfaMatriz, não toca no repositório e
+ *   termina em segundos.
+ * - CÓDIGO: trabalhar numa tarefa — editar, rodar a suíte, commitar. Usa o
+ *   clone, e pode levar muitos minutos.
+ *
+ * Com uma fila só, "abre uma tarefa" esperava a suíte de outro pedido terminar.
+ * Com duas, o quadro anda enquanto o código trabalha. Dentro de cada faixa
+ * continua sendo um pedido por vez: dois agentes editando o mesmo clone é
+ * conflito, e duas suítes ao mesmo tempo é a máquina de joelhos.
+ *
+ * Quem decide a faixa é o próprio Claude da faixa do quadro, que não tem como
+ * mexer em código: se o pedido não cabe nas ferramentas dele, responde um
+ * marcador e a ponte passa o pedido adiante. Uma palavra-chave no começo da
+ * mensagem obrigaria a pessoa a classificar o próprio pedido — e por áudio.
  *
  * O que ela deliberadamente NÃO faz:
  *
@@ -19,10 +39,6 @@
  *   Telegram. O texto do agente pode DIZER "pronto para publicar"; a tag sai da
  *   mão dele.
  *
- * - Não roda duas coisas ao mesmo tempo. Uma fila, um Claude por vez: o host
- *   deste LXC divide disco e memória com os stagings (ver o CLAUDE.md do LXC),
- *   e dois agentes rodando a suíte em paralelo é o jeito de derrubar tudo.
- *
  * Áudio também entra: a mensagem de voz é transcrita na própria máquina
  * (`transcrever.py`, Whisper local) e o texto entendido é mostrado antes de
  * virar pedido. Decisão do dono em 30/09/2026: transcrição local, sem conta nova.
@@ -32,14 +48,15 @@
  * que ninguém está olhando.
  *
  * Autorizada pelo dono do produto em 30/09/2026, inclusive o modo sem
- * confirmação de permissões dentro do LXC de desenvolvimento.
+ * confirmação de permissões na faixa de código, num ambiente isolado (LXC de
+ * desenvolvimento; depois, um usuário próprio no Mac).
  *
  * Configuração pelo ambiente (ver `alfa-agente.env.example`).
  */
 
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { basename, dirname } from 'node:path';
 
 const TOKEN = obrigatorio('TELEGRAM_TOKEN');
 const PERMITIDOS = new Set(
@@ -48,31 +65,49 @@ const PERMITIDOS = new Set(
 const REPO = process.env.AGENTE_REPO ?? '/opt/dev/AlfaMatriz';
 const ESTADO = process.env.AGENTE_ESTADO ?? '/var/lib/alfa-agente/estado.json';
 const CLAUDE = process.env.AGENTE_CLAUDE ?? 'claude';
-// Um `.mcp.json` só desta máquina, quando o do repositório não serve: o do
-// repositório aponta para a produção pela tailnet, e o LXC não alcança a
-// produção por ela (o Tailscale nega esse par) — só pela rede interna do
-// Proxmox. Com o arquivo definido, o Claude usa SÓ ele (`--strict-mcp-config`).
+// Um `.mcp.json` só desta máquina, quando o do repositório não serve (no LXC a
+// produção só responde pela rede interna). Com o arquivo definido, o Claude usa
+// SÓ ele (`--strict-mcp-config`).
 const MCP_CONFIG = process.env.AGENTE_MCP_CONFIG ?? '';
 // O programa que transforma um áudio do Telegram em texto (`transcrever.py`,
 // Whisper local). Vazio, a ponte diz que não entende áudio em vez de fingir.
 const TRANSCRITOR = process.env.AGENTE_TRANSCRITOR ?? '';
-const PASTA_DE_AUDIO = process.env.AGENTE_AUDIO ?? '/var/lib/alfa-agente/audio';
+const PASTA_DE_AUDIO = process.env.AGENTE_AUDIO ?? `${dirname(ESTADO)}/audio`;
+// Onde a faixa do quadro roda. Fora do clone de propósito: ela não precisa do
+// repositório, e sem ele o Claude não carrega o CLAUDE.md do projeto a cada
+// "abre uma tarefa". Só vale com um MCP_CONFIG próprio — sem ele, o servidor
+// MCP vem do `.mcp.json` do repositório, e a faixa precisa rodar lá dentro.
+const PASTA_DO_QUADRO = MCP_CONFIG ? (process.env.AGENTE_QUADRO ?? `${dirname(ESTADO)}/quadro`) : REPO;
 // Quatro horas: uma tarefa de código com suíte pode levar muito, mas nada
 // legítimo passa disso. Depois, o processo é derrubado e o chat fica sabendo.
 const TEMPO_MAXIMO_MS = Number(process.env.AGENTE_TEMPO_MAXIMO_MIN ?? 240) * 60_000;
+const TEMPO_DO_QUADRO_MS = 10 * 60_000;
 const API = `https://api.telegram.org/bot${TOKEN}`;
+const DONO = process.env.AGENTE_DONO ?? 'o dono do produto';
+const SERVIDOR_MCP = 'alfamatriz-producao';
+
+// O que a faixa do quadro responde quando o pedido não é dela.
+const MARCADOR_DE_CODIGO = '[[CODIGO]]';
 
 /**
  * O que o agente precisa saber além do CLAUDE.md do repositório, que ele lê
  * sozinho: que está falando por Telegram, e o que nunca pode fazer daqui.
  */
-const REGRAS_DO_AGENTE = `
-Você está rodando como o agente do AlfaMatriz num servidor, comandado pelo Telegram por ${process.env.AGENTE_DONO ?? 'o dono do produto'}.
+const REGRAS_DO_CODIGO = `
+Você está rodando como o agente do AlfaMatriz num servidor, comandado pelo Telegram por ${DONO}.
 - Responda em português, texto puro (sem Markdown), curto: o Telegram é um chat, não um relatório. Até uns 2500 caracteres.
-- Para mexer no quadro e na agenda do sistema NO AR, use o servidor MCP "alfamatriz-producao". O "alfamatriz" local é só do banco de desenvolvimento deste clone.
+- Para mexer no quadro e na agenda do sistema NO AR, use o servidor MCP "${SERVIDOR_MCP}". O "alfamatriz" local é só do banco de desenvolvimento deste clone.
 - Trabalhe na branch Rossini. Antes de dizer que algo está pronto, rode a suíte (php artisan test) e diga o resultado. Commit e push só quando pedidos.
 - NUNCA crie tag nem faça deploy. Quando algo estiver pronto para produção, diga qual versão publicar e pare: quem publica é a pessoa, com /publicar.
 - Se precisar de uma decisão que é dela, pergunte e pare em vez de escolher.
+`.trim();
+
+const REGRAS_DO_QUADRO = `
+Você é o assistente do quadro de tarefas e da agenda do AlfaMatriz, comandado pelo Telegram por ${DONO}.
+- Você só tem as ferramentas do servidor MCP "${SERVIDOR_MCP}": listar, ver, criar e mover tarefas, perguntar, responder, comentar, ver agenda e marcar compromisso. Não tem arquivos, terminal nem git.
+- Se o pedido exigir editar código, rodar comandos, testes, git, commit ou deploy — ou se parecer a continuação de uma conversa que você não tem —, responda EXATAMENTE ${MARCADOR_DE_CODIGO} e nada mais. Outro agente, com acesso ao código, assume.
+- Fora isso, resolva você: responda em português, texto puro (sem Markdown), curto. Até uns 2500 caracteres.
+- Se precisar de uma decisão que é da pessoa, pergunte e pare em vez de escolher.
 `.trim();
 
 function obrigatorio(nome) {
@@ -84,17 +119,28 @@ function obrigatorio(nome) {
     return valor;
 }
 
-// ---------- estado em disco: offset do Telegram, sessão por chat, agendamentos ----------
+// ---------- estado em disco: offset do Telegram, sessões por chat, agendamentos ----------
 
 function lerEstado() {
+    let lido = {};
     try {
-        return { offset: 0, sessoes: {}, agendados: [], ...JSON.parse(readFileSync(ESTADO, 'utf8')) };
+        lido = JSON.parse(readFileSync(ESTADO, 'utf8'));
     } catch {
-        return { offset: 0, sessoes: {}, agendados: [] };
+        // primeira subida, ou arquivo ilegível: começa do zero
     }
+
+    const estado = { offset: 0, sessoes: {}, ultimaFaixa: {}, agendados: [], ...lido };
+
+    // Até 01/10/2026 havia uma sessão só por chat, guardada como texto. Ela era
+    // a da faixa de código.
+    for (const [chat, sessao] of Object.entries(estado.sessoes)) {
+        if (typeof sessao === 'string') estado.sessoes[chat] = { codigo: sessao };
+    }
+
+    return estado;
 }
 
-function gravarEstado(estado) {
+function gravarEstado() {
     mkdirSync(dirname(ESTADO), { recursive: true });
     writeFileSync(ESTADO, JSON.stringify(estado, null, 2));
 }
@@ -124,72 +170,287 @@ async function responder(chatId, texto) {
     }
 }
 
+function duracao(ms) {
+    const s = Math.round(ms / 1000);
+    return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m${String(s % 60).padStart(2, '0')}s`;
+}
+
+/**
+ * A mensagem de andamento: UMA mensagem, editada a cada passo, em vez de uma
+ * mensagem nova por passo. Um pedido de código passa por dezenas de passos, e
+ * dezenas de notificações no celular é o jeito de a pessoa silenciar o bot.
+ *
+ * As edições são espaçadas (o Telegram limita a frequência) e a última sempre
+ * sai — o que fica na tela ao final é o que de fato aconteceu por último.
+ */
+async function criarAndamento(chatId, titulo) {
+    const inicio = Date.now();
+    let mensagemId = null;
+    let ultimaEdicao = 0;
+    let pendente = null;
+    let relogio = null;
+    let encerrado = false;
+
+    try {
+        mensagemId = (await telegram('sendMessage', { chat_id: chatId, text: `${titulo}…` })).message_id;
+    } catch (e) {
+        console.error(e.message);
+    }
+
+    const editar = async (texto) => {
+        if (mensagemId === null) return;
+        ultimaEdicao = Date.now();
+        try {
+            await telegram('editMessageText', { chat_id: chatId, message_id: mensagemId, text: texto });
+        } catch {
+            // "message is not modified" e limites de frequência: o andamento é
+            // cortesia, e não pode derrubar o pedido.
+        }
+    };
+
+    return {
+        passo(texto) {
+            if (encerrado || !texto) return;
+            pendente = `${titulo}… (${duracao(Date.now() - inicio)})\n• ${texto}`;
+            if (relogio) return;
+            const espera = Math.max(0, 2500 - (Date.now() - ultimaEdicao));
+            relogio = setTimeout(() => {
+                relogio = null;
+                if (!encerrado && pendente) editar(pendente);
+            }, espera);
+        },
+        async fim(texto) {
+            encerrado = true;
+            clearTimeout(relogio);
+            await editar(texto ?? `Concluído em ${duracao(Date.now() - inicio)}.`);
+        },
+    };
+}
+
+/** O passo, em palavras de gente. Null quando não vale uma linha na tela. */
+function descreverPasso(ferramenta, entrada = {}) {
+    if (ferramenta.startsWith(`mcp__${SERVIDOR_MCP}__`)) {
+        return `quadro: ${ferramenta.split('__').pop().replaceAll('_', ' ')}`;
+    }
+
+    switch (ferramenta) {
+        case 'Bash': {
+            const comando = String(entrada.command ?? '');
+            if (/artisan test|phpunit|pest/.test(comando)) return 'rodando a suíte de testes';
+            if (/^git (commit|push)/.test(comando.trim())) return comando.trim().startsWith('git push') ? 'enviando ao GitHub' : 'fazendo o commit';
+            return entrada.description ? String(entrada.description).slice(0, 90) : `rodando: ${comando.slice(0, 70)}`;
+        }
+        case 'Read':
+            return `lendo ${basename(String(entrada.file_path ?? 'um arquivo'))}`;
+        case 'Edit':
+        case 'Write':
+        case 'NotebookEdit':
+            return `editando ${basename(String(entrada.file_path ?? 'um arquivo'))}`;
+        case 'Grep':
+        case 'Glob':
+            return 'procurando no código';
+        case 'Agent':
+        case 'Task':
+            return 'delegando parte do trabalho';
+        case 'WebFetch':
+        case 'WebSearch':
+            return 'consultando a web';
+        case 'TodoWrite':
+        case 'ToolSearch':
+            return null;
+        default:
+            return ferramenta;
+    }
+}
+
+// ---------- as duas faixas ----------
+
+const faixas = {
+    quadro: { fila: [], ocupado: false, filho: null },
+    codigo: { fila: [], ocupado: false, filho: null },
+};
+
+function enfileirar(nome, tarefa) {
+    const faixa = faixas[nome];
+    faixa.fila.push(tarefa);
+    if (!faixa.ocupado) proximo(nome);
+}
+
+async function proximo(nome) {
+    const faixa = faixas[nome];
+    const tarefa = faixa.fila.shift();
+    if (!tarefa) {
+        faixa.ocupado = false;
+        return;
+    }
+    faixa.ocupado = true;
+    try {
+        await tarefa();
+    } catch (e) {
+        console.error(e);
+    }
+    proximo(nome);
+}
+
 // ---------- executar coisas ----------
 
-let emExecucao = null;
-
-function executar(comando, args, { cwd = REPO, tempoMs = TEMPO_MAXIMO_MS } = {}) {
+/**
+ * Roda um programa e devolve o que ele disse. `aCadaLinha` recebe a saída
+ * linha a linha enquanto ele roda — é por onde o andamento do Claude chega.
+ * `faixa` é quem responde por ele no `/parar`.
+ */
+function executar(comando, args, { cwd = REPO, tempoMs = TEMPO_MAXIMO_MS, aCadaLinha = null, faixa = null } = {}) {
     return new Promise((resolve) => {
         const filho = spawn(comando, args, { cwd, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
         let saida = '';
         let erro = '';
+        let resto = '';
         const relogio = setTimeout(() => filho.kill('SIGTERM'), tempoMs);
-        filho.stdout.on('data', (d) => (saida += d));
+
+        filho.stdout.on('data', (d) => {
+            saida += d;
+            if (!aCadaLinha) return;
+            const linhas = (resto + d).split('\n');
+            resto = linhas.pop();
+            linhas.forEach(aCadaLinha);
+        });
         filho.stderr.on('data', (d) => (erro += d));
+        filho.on('error', (e) => {
+            clearTimeout(relogio);
+            if (faixa && faixa.filho === filho) faixa.filho = null;
+            resolve({ codigo: -1, saida, erro: `${erro}${e.message}` });
+        });
         filho.on('close', (codigo) => {
             clearTimeout(relogio);
-            if (emExecucao === filho) emExecucao = null;
+            if (resto && aCadaLinha) aCadaLinha(resto);
+            if (faixa && faixa.filho === filho) faixa.filho = null;
             resolve({ codigo, saida, erro });
         });
-        emExecucao = filho;
+
+        if (faixa) faixa.filho = filho;
     });
 }
 
 /**
- * Uma rodada do Claude Code. A sessão continua de uma mensagem para a outra
- * (`--resume`), como uma conversa: "agora faz o mesmo no AlfaGym" precisa
- * saber o que foi "o mesmo". `/novo` recomeça.
+ * Uma rodada do Claude Code numa das faixas. A sessão continua de uma mensagem
+ * para a outra (`--resume`), como uma conversa: "agora faz o mesmo na #230"
+ * precisa saber o que foi "o mesmo". Cada faixa tem a sua sessão, porque cada
+ * uma é um agente diferente, com ferramentas diferentes. `/novo` recomeça as duas.
  */
-async function rodarClaude(chatId, pedido) {
+async function rodarClaude(chatId, pedido, nomeDaFaixa, aCadaPasso) {
+    const doQuadro = nomeDaFaixa === 'quadro';
+
     const args = [
         '-p', pedido,
-        '--output-format', 'json',
-        '--append-system-prompt', REGRAS_DO_AGENTE,
-        // O agente precisa editar arquivos e rodar a suíte sem ninguém para
-        // clicar em "permitir". Este LXC é de desenvolvimento e o dano possível
-        // é o do próprio clone — produção só se alcança pelo MCP, que tem as
-        // regras do quadro, e pela tag, que ele não pode criar.
-        '--dangerously-skip-permissions',
+        // `stream-json` em vez de `json`: os eventos chegam enquanto ele
+        // trabalha, e é deles que sai o andamento. Exige `--verbose`.
+        '--output-format', 'stream-json',
+        '--verbose',
+        '--append-system-prompt', doQuadro ? REGRAS_DO_QUADRO : REGRAS_DO_CODIGO,
     ];
+
+    if (doQuadro) {
+        // Só as ferramentas do MCP. Tudo o mais o modo headless recusa sozinho:
+        // esta faixa não edita nem executa nada, e por isso não precisa — nem
+        // deve — pular as permissões.
+        args.push('--allowedTools', `mcp__${SERVIDOR_MCP}`);
+    } else {
+        // O agente de código precisa editar arquivos e rodar a suíte sem
+        // ninguém para clicar em "permitir". Roda num ambiente isolado, e o
+        // dano possível é o do próprio clone — produção só se alcança pelo MCP,
+        // que tem as regras do quadro, e pela tag, que ele não pode criar.
+        args.push('--dangerously-skip-permissions');
+    }
+
     if (MCP_CONFIG) args.push('--mcp-config', MCP_CONFIG, '--strict-mcp-config');
-    const sessao = estado.sessoes[chatId];
+
+    const sessao = estado.sessoes[chatId]?.[nomeDaFaixa];
     if (sessao) args.push('--resume', sessao);
 
-    const { codigo, saida, erro } = await executar(CLAUDE, args);
-
     let resultado = null;
-    try {
-        resultado = JSON.parse(saida);
-    } catch {
-        // saída não é JSON: erro antes de o Claude começar
-    }
+
+    const { codigo, saida, erro } = await executar(CLAUDE, args, {
+        cwd: doQuadro ? PASTA_DO_QUADRO : REPO,
+        tempoMs: doQuadro ? TEMPO_DO_QUADRO_MS : TEMPO_MAXIMO_MS,
+        faixa: faixas[nomeDaFaixa],
+        aCadaLinha(linha) {
+            let evento;
+            try {
+                evento = JSON.parse(linha);
+            } catch {
+                return;
+            }
+
+            if (evento.type === 'result') {
+                resultado = evento;
+                return;
+            }
+
+            if (evento.type !== 'assistant') return;
+
+            for (const bloco of evento.message?.content ?? []) {
+                if (bloco.type === 'tool_use') aCadaPasso?.(descreverPasso(bloco.name, bloco.input));
+            }
+        },
+    });
 
     if (resultado?.session_id) {
-        estado.sessoes[chatId] = resultado.session_id;
-        gravarEstado(estado);
+        estado.sessoes[chatId] = { ...estado.sessoes[chatId], [nomeDaFaixa]: resultado.session_id };
+        gravarEstado();
     }
 
-    if (codigo !== 0 && !resultado?.result) {
-        // Sessão perdida (o LXC reiniciou, o Claude atualizou): recomeça na
+    if (!resultado?.result) {
+        // Sessão perdida (a máquina reiniciou, o Claude atualizou): recomeça na
         // próxima em vez de falhar para sempre com o mesmo id.
-        if (/session|resume/i.test(erro + saida)) {
-            delete estado.sessoes[chatId];
-            gravarEstado(estado);
+        if (/session|resume/i.test(erro + saida) && estado.sessoes[chatId]) {
+            delete estado.sessoes[chatId][nomeDaFaixa];
+            gravarEstado();
         }
+
+        if (codigo === null || codigo === 143) return 'Interrompido antes de terminar.';
+
         return `O Claude não respondeu (código ${codigo}).\n${(erro || saida).trim().slice(-1500)}`;
     }
 
-    return resultado?.result ?? saida;
+    return resultado.result;
+}
+
+/**
+ * Para onde vai um pedido.
+ *
+ * Primeiro o quadro, que responde em segundos e sabe dizer "isto não é
+ * comigo". A exceção é a conversa de código em curso: se a última resposta
+ * veio de lá e a faixa está livre, o pedido vai direto — "sim, pode commitar"
+ * é continuação, e o agente do quadro não saberia do que se está falando.
+ * Com a faixa de código OCUPADA, o quadro atende primeiro mesmo assim: é
+ * exatamente o caso que as duas faixas existem para resolver.
+ */
+function encaminhar(chatId, pedido) {
+    const direto = estado.ultimaFaixa[chatId] === 'codigo' && !faixas.codigo.ocupado;
+
+    naFaixa(direto ? 'codigo' : 'quadro', chatId, pedido);
+}
+
+function naFaixa(nome, chatId, pedido) {
+    enfileirar(nome, async () => {
+        const andamento = await criarAndamento(chatId, nome === 'quadro' ? 'Vendo no quadro' : 'Trabalhando no código');
+        const resposta = await rodarClaude(chatId, pedido, nome, andamento.passo);
+
+        if (nome === 'quadro' && resposta.includes(MARCADOR_DE_CODIGO)) {
+            await andamento.fim(faixas.codigo.ocupado
+                ? 'Isso é trabalho de código. Entrou na fila, atrás do que já está rodando.'
+                : 'Isso é trabalho de código. Passando para o agente do repositório.');
+
+            return naFaixa('codigo', chatId, pedido);
+        }
+
+        await andamento.fim();
+
+        estado.ultimaFaixa[chatId] = nome;
+        gravarEstado();
+
+        await responder(chatId, resposta);
+    });
 }
 
 // ---------- áudio: baixar e transcrever ----------
@@ -197,8 +458,7 @@ async function rodarClaude(chatId, pedido) {
 /**
  * Um áudio vira texto antes de virar pedido. O texto entendido é mostrado de
  * volta ("Entendi: …") de propósito: quem ditou precisa ver o que o Claude vai
- * ler, porque um "228" ouvido como "duzentos e vinte e oito" ou "228" ouvido
- * como "238" muda a tarefa que ele vai pegar.
+ * ler, porque um "228" ouvido como "238" muda a tarefa que ele vai pegar.
  */
 async function transcrever(mensagem) {
     const arquivo = mensagem.voice ?? mensagem.audio;
@@ -220,36 +480,18 @@ async function transcrever(mensagem) {
     }
 }
 
-// ---------- fila: um pedido por vez ----------
-
-const fila = [];
-let ocupado = false;
-
-function enfileirar(tarefa) {
-    fila.push(tarefa);
-    if (!ocupado) proximo();
-}
-
-async function proximo() {
-    const tarefa = fila.shift();
-    if (!tarefa) {
-        ocupado = false;
-        return;
-    }
-    ocupado = true;
-    try {
-        await tarefa();
-    } catch (e) {
-        console.error(e);
-    }
-    proximo();
-}
-
 // ---------- comandos ----------
 
 // O formato das tags deste repositório: vAAAA.MM.DD, com um .N quando há mais
 // de uma publicação no dia (v2026.09.21.5). É o que o vigia de produção lê.
 const VERSAO = /^v\d{4}\.\d{2}\.\d{2}(\.\d+)?$/;
+
+function situacaoDaFaixa(nome, rotulo) {
+    const faixa = faixas[nome];
+    const fila = faixa.fila.length ? `, ${faixa.fila.length} na fila` : '';
+
+    return `${rotulo}: ${faixa.ocupado ? 'trabalhando' : 'livre'}${fila}`;
+}
 
 async function comando(chatId, texto) {
     const [nome, ...resto] = texto.trim().split(/\s+/);
@@ -259,9 +501,10 @@ async function comando(chatId, texto) {
         case '/start':
         case '/ajuda':
             return responder(chatId, [
-                'Sou o agente do AlfaMatriz. Mande um pedido em texto e eu trabalho no repositório ou no quadro.',
+                'Sou o agente do AlfaMatriz. Mande um pedido em texto ou em áudio.',
+                'Pedidos do quadro e da agenda saem em segundos, mesmo com uma tarefa de código rodando.',
                 '',
-                '/status — branch, últimos commits e o que está rodando',
+                '/status — o que está rodando, a branch e os últimos commits',
                 '/publicar v2026.09.30.1 — cria e envia a tag de produção (a partir da main)',
                 '/agendar HH:MM pedido — roda o pedido hoje nesse horário (ou AAAA-MM-DD HH:MM pedido)',
                 '/agendados — o que está marcado · /cancelar N — desmarca',
@@ -273,13 +516,13 @@ async function comando(chatId, texto) {
             const git = await executar('git', ['-c', 'color.ui=never', 'status', '-sb'], { tempoMs: 30_000 });
             const log = await executar('git', ['log', '--oneline', '-5'], { tempoMs: 30_000 });
             return responder(chatId, [
-                ocupado ? 'Rodando um pedido agora.' : 'Ocioso.',
-                fila.length ? `${fila.length} pedido(s) na fila.` : '',
+                situacaoDaFaixa('quadro', 'Quadro'),
+                situacaoDaFaixa('codigo', 'Código'),
                 '',
                 git.saida.trim(),
                 '',
                 log.saida.trim(),
-            ].join('\n').replace(/\n{3,}/g, '\n\n'));
+            ].join('\n'));
         }
 
         case '/publicar': {
@@ -303,16 +546,26 @@ async function comando(chatId, texto) {
             return responder(chatId, `Tag ${argumento} criada na main e enviada. O vigia de produção publica em até 5 minutos.`);
         }
 
-        case '/parar':
-            if (emExecucao) {
-                emExecucao.kill('SIGTERM');
-                return responder(chatId, 'Interrompido.');
-            }
-            return responder(chatId, 'Nada rodando.');
+        case '/parar': {
+            // Para o que está RODANDO, nas duas faixas, e esvazia as filas: quem
+            // manda parar quer silêncio, não o próximo pedido começando sozinho.
+            const rodando = Object.values(faixas).filter((f) => f.filho);
+            const naFila = Object.values(faixas).reduce((total, f) => total + f.fila.length, 0);
+
+            Object.values(faixas).forEach((f) => {
+                f.fila.length = 0;
+                f.filho?.kill('SIGTERM');
+            });
+
+            if (!rodando.length && !naFila) return responder(chatId, 'Nada rodando.');
+
+            return responder(chatId, `Interrompido.${naFila ? ` ${naFila} pedido(s) da fila descartado(s).` : ''}`);
+        }
 
         case '/novo':
             delete estado.sessoes[chatId];
-            gravarEstado(estado);
+            delete estado.ultimaFaixa[chatId];
+            gravarEstado();
             return responder(chatId, 'Conversa nova. O próximo pedido começa do zero.');
 
         case '/agendar': {
@@ -321,7 +574,7 @@ async function comando(chatId, texto) {
                 return responder(chatId, 'Use /agendar HH:MM pedido, ou /agendar AAAA-MM-DD HH:MM pedido.');
             }
             estado.agendados.push({ id: Date.now(), chatId, em: quando.em.toISOString(), pedido: quando.pedido });
-            gravarEstado(estado);
+            gravarEstado();
             return responder(chatId, `Marcado para ${formatar(quando.em)}: ${quando.pedido}`);
         }
 
@@ -334,7 +587,7 @@ async function comando(chatId, texto) {
         case '/cancelar': {
             const indice = Number(argumento) - 1;
             const [removido] = indice >= 0 ? estado.agendados.splice(indice, 1) : [];
-            gravarEstado(estado);
+            gravarEstado();
             return responder(chatId, removido ? `Desmarcado: ${removido.pedido}` : 'Não achei esse número. Veja /agendados.');
         }
 
@@ -364,17 +617,19 @@ function formatar(data) {
 
 // ---------- o que ele marcou: conferido a cada meio minuto ----------
 
-setInterval(() => {
+setInterval(async () => {
     const agora = new Date();
     const vencidos = estado.agendados.filter((a) => new Date(a.em) <= agora);
     if (!vencidos.length) return;
     estado.agendados = estado.agendados.filter((a) => !vencidos.includes(a));
-    gravarEstado(estado);
+    gravarEstado();
     for (const a of vencidos) {
-        enfileirar(async () => {
+        try {
             await responder(a.chatId, `Está na hora do que você marcou: ${a.pedido}`);
-            await responder(a.chatId, await rodarClaude(a.chatId, a.pedido));
-        });
+        } catch (e) {
+            console.error(e.message);
+        }
+        encaminhar(a.chatId, a.pedido);
     }
 }, 30_000);
 
@@ -397,27 +652,26 @@ async function tratar(mensagem) {
             return responder(chatId, 'Ainda não entendo áudio aqui. Escreva o pedido.');
         }
 
-        // Na mesma fila dos pedidos: transcrever come CPU, e o host deste LXC
-        // não é lugar de rodar o Whisper ao lado de uma suíte de testes.
-        const esperando = ocupado;
-        enfileirar(async () => {
-            await responder(chatId, esperando ? 'Chegou a sua vez. Ouvindo…' : 'Ouvindo…');
+        // Fora das faixas: transcrever leva segundos, e o áudio não deveria
+        // esperar a suíte de outro pedido para ser ouvido. Sem `await` — o
+        // laço principal precisa seguir livre para ouvir um `/parar`.
+        (async () => {
+            const andamento = await criarAndamento(chatId, 'Ouvindo');
 
             let ditado;
             try {
                 ditado = await transcrever(mensagem);
             } catch (e) {
-                return responder(chatId, `Não consegui transcrever o áudio: ${e.message}`);
+                return andamento.fim(`Não consegui transcrever o áudio: ${e.message}`);
             }
 
-            await responder(chatId, `Entendi: "${ditado}"`);
+            await andamento.fim(`Entendi: "${ditado}"`);
 
             if (ditado.startsWith('/')) return comando(chatId, ditado);
 
-            await responder(chatId, 'Trabalhando…');
-            await responder(chatId, await rodarClaude(chatId, ditado));
-        });
-        if (esperando) await responder(chatId, 'Na fila. Aviso quando começar.');
+            encaminhar(chatId, ditado);
+        })().catch((e) => console.error(e));
+
         return;
     }
 
@@ -427,23 +681,22 @@ async function tratar(mensagem) {
         return comando(chatId, texto);
     }
 
-    const esperando = ocupado;
-    enfileirar(async () => {
-        await responder(chatId, esperando ? 'Chegou a sua vez. Trabalhando…' : 'Recebido. Trabalhando…');
-        await responder(chatId, await rodarClaude(chatId, texto));
-    });
-    if (esperando) await responder(chatId, 'Na fila. Aviso quando começar.');
+    encaminhar(chatId, texto);
 }
 
 async function ouvir() {
+    if (MCP_CONFIG) mkdirSync(PASTA_DO_QUADRO, { recursive: true });
+
     console.log(`ponte no ar; repo ${REPO}; permitidos: ${[...PERMITIDOS].join(', ') || 'ninguém (ainda)'}`);
+
     for (;;) {
         try {
             const atualizacoes = await telegram('getUpdates', { offset: estado.offset, timeout: 50, allowed_updates: ['message'] });
             for (const u of atualizacoes) {
                 estado.offset = u.update_id + 1;
-                gravarEstado(estado);
-                if (u.message) await tratar(u.message);
+                gravarEstado();
+                // Um erro ao tratar UMA mensagem não pode travar as seguintes.
+                if (u.message) await tratar(u.message).catch((e) => console.error(e));
             }
         } catch (e) {
             console.error(e.message);

@@ -55,7 +55,18 @@ O Telegram aceita **um** ouvinte por bot: com o Mac ligado, o serviço do LXC fi
 
 ## Usar
 
-Texto livre é um pedido ao Claude, que continua a conversa entre mensagens. Comandos:
+Texto livre (ou áudio) é um pedido ao Claude, que continua a conversa entre mensagens.
+
+**Duas faixas.** Pedido de quadro e agenda ("abre uma tarefa", "o que está travado") roda num agente
+que só tem as ferramentas do MCP e responde em segundos — mesmo com uma tarefa de código em
+andamento. Pedido de código (editar, suíte, commit) roda no clone, um por vez. Ninguém escolhe a
+faixa: o agente do quadro recebe primeiro e, se o pedido não é dele, devolve um marcador e a ponte
+passa adiante. A exceção é a conversa de código em curso com a faixa livre, que segue direto.
+
+**Andamento.** Uma mensagem só, editada a cada passo ("rodando a suíte de testes", "editando
+TarefaService.php"), em vez de silêncio até o fim ou de uma notificação por passo.
+
+Comandos:
 
 | Comando | O que faz |
 |---|---|
@@ -63,7 +74,7 @@ Texto livre é um pedido ao Claude, que continua a conversa entre mensagens. Com
 | `/publicar v2026.09.30.1` | cria a tag na `main` remota e envia; o vigia publica em até 5 min |
 | `/agendar 22:00 pedido` | roda o pedido hoje às 22h (ou `AAAA-MM-DD HH:MM pedido`) |
 | `/agendados`, `/cancelar N` | lista e desmarca |
-| `/parar` | interrompe o que estiver rodando |
+| `/parar` | interrompe o que estiver rodando nas duas faixas e esvazia as filas |
 | `/novo` | conversa nova com o Claude |
 
 ## Áudio
