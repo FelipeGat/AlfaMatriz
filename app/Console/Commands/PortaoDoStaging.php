@@ -55,6 +55,8 @@ class PortaoDoStaging extends Command
         $tarefas = Tarefa::where('status', 'em_staging')
             ->whereIn('tipo', Tarefa::TIPOS_COM_PORTOES)
             ->whereNull('bloqueado_em')
+            // A arquivada (#208) não espera deploy: ninguém está com ela.
+            ->foraDoArquivo()
             ->get();
 
         foreach ($tarefas as $tarefa) {

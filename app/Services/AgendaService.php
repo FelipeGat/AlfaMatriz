@@ -95,8 +95,10 @@ class AgendaService
             ->whereDate('prazo', '<=', $ate->toDateString())
             // Tarefa encerrada sai da Agenda: o prazo dela já não é uma
             // combinação, é história. Quem quer o que foi entregue vai ao
-            // histórico do quadro, que é onde isso mora.
-            ->whereNotIn('status', Tarefa::STATUS_TERMINAIS);
+            // histórico do quadro, que é onde isso mora. A arquivada (#208)
+            // também: "agora não" não tem data combinada para cobrar.
+            ->whereNotIn('status', Tarefa::STATUS_TERMINAIS)
+            ->foraDoArquivo();
 
         if ($pessoas !== []) {
             $consulta->whereIn('responsavel_id', $pessoas);

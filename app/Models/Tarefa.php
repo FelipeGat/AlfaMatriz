@@ -357,6 +357,7 @@ class Tarefa extends Model
             'prazo' => 'date',
             'defeito_quando' => 'datetime',
             'bloqueado_em' => 'datetime',
+            'arquivada_em' => 'datetime',
             'pergunta_em' => 'datetime',
             'rodadas' => 'integer',
             'retorno_anexo_ids' => 'array',
@@ -397,6 +398,115 @@ class Tarefa extends Model
     }
 
     /**
+     * Por que se arquiva uma tarefa (#208).
+     *
+     * Lista fechada, e não texto livre: daqui a seis meses, "arquivada" sem
+     * motivo não diz se era ideia para depois ou pedido abandonado — e é isso
+     * que decide se vale reabrir. A nota livre continua existindo ao lado.
+     *
+     * "Duplicada" ficou de fora de propósito: ela já tem caminho próprio
+     * (#205), que CANCELA e grava o vínculo com a original. Duplicada não é
+     * "agora não" — é "já existe".
+     */
+    public const MOTIVOS_DE_ARQUIVAMENTO = [
+        'depois' => 'Fica para depois',
+        'sem_retorno' => 'Sem retorno',
+        'nao_confirmado' => 'Não confirmado',
+    ];
+
+    /**
+     * Depois de quantos dias sem movimento a tarefa vira candidata a arquivar.
+     *
+     * Duas réguas (decisão do dono do produto em 02/10/2026): a tarefa
+     * travada ou esperando resposta já está dizendo que depende de alguém, e
+     * quinze dias sem esse alguém é o sinal; a tarefa parada sem marca nenhuma
+     * ganha o mês inteiro, porque fila longa é normal no Backlog.
+     *
+     * É sugestão para a triagem, e nunca arquivamento automático: arquivar
+     * sozinho esconderia uma tarefa importante sem ninguém perceber.
+     */
+    public const DIAS_ATE_SUGERIR_ARQUIVO = 30;
+
+    public const DIAS_ATE_SUGERIR_ARQUIVO_SE_ESPERANDO = 15;
+
+    /**
+     * A tarefa está arquivada (#208)?
+     *
+     * Marca, como o bloqueio: a etapa continua a de antes, e é `arquivada_em`
+     * que tira a tarefa do quadro. Fora do `fillable` pelo mesmo motivo — quem
+     * arquiva passa por `ArquivoDeTarefas`, que exige o motivo e avisa quem
+     * abriu.
+     */
+    public function estaArquivada(): bool
+    {
+        return $this->arquivada_em !== null;
+    }
+
+    public function rotuloDoArquivamento(): ?string
+    {
+        if (! $this->estaArquivada()) {
+            return null;
+        }
+
+        return self::MOTIVOS_DE_ARQUIVAMENTO[$this->arquivamento_motivo] ?? 'Arquivada';
+    }
+
+    /** Quem arquivou — para a tarja dizer de quem foi a decisão. */
+    public function arquivadaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'arquivada_por_id');
+    }
+
+    /**
+     * O que está FORA do arquivo — o trabalho que o quadro mostra.
+     *
+     * Escopo explícito, e não global: o aviso de parecidas (#205) PRECISA
+     * enxergar as arquivadas — o pedido novo igual a um "fica para depois" é
+     * exatamente o caso em que vale lembrar dele —, e um escopo global também
+     * esconderia a tarefa de quem chega a ela pelo comentário, pelo anexo ou
+     * pelo item do checklist. Quem lista trabalho em curso diz que quer este.
+     */
+    public function scopeForaDoArquivo($query)
+    {
+        return $query->whereNull('tarefas.arquivada_em');
+    }
+
+    public function scopeArquivadas($query)
+    {
+        return $query->whereNotNull('tarefas.arquivada_em');
+    }
+
+    /**
+     * As candidatas a arquivar: em curso, fora do arquivo, e paradas.
+     *
+     * "Parada" é sem mudar de etapa, sem conversa e sem edição desde o
+     * limite — os três juntos, porque cada um sozinho mentiria: a tarefa
+     * comentada ontem não está esquecida, mesmo há dois meses no Backlog.
+     * Travada ou esperando resposta usa a régua curta
+     * (`DIAS_ATE_SUGERIR_ARQUIVO_SE_ESPERANDO`).
+     */
+    public function scopeCandidatasAoArquivo($query, ?Carbon $agora = null)
+    {
+        $agora ??= now();
+
+        $paradaDesde = fn ($consulta, Carbon $limite) => $consulta
+            ->where('tarefas.updated_at', '<', $limite)
+            ->whereDoesntHave('eventos', fn ($evento) => $evento->where('entrou_em', '>=', $limite))
+            ->whereDoesntHave('comentarios', fn ($comentario) => $comentario->where('created_at', '>=', $limite));
+
+        return $query
+            ->foraDoArquivo()
+            ->whereNotIn('tarefas.status', self::STATUS_TERMINAIS)
+            ->where(fn ($ou) => $ou
+                ->where(fn ($longa) => $paradaDesde($longa, $agora->copy()->subDays(self::DIAS_ATE_SUGERIR_ARQUIVO)))
+                ->orWhere(fn ($curta) => $curta
+                    ->where(fn ($esperando) => $esperando
+                        ->whereNotNull('tarefas.bloqueado_em')
+                        ->orWhereNotNull('tarefas.pergunta_em'))
+                    ->where(fn ($parada) => $paradaDesde($parada, $agora->copy()->subDays(self::DIAS_ATE_SUGERIR_ARQUIVO_SE_ESPERANDO)))));
+    }
+
+    /**
      * Por que esta pessoa não pode mover esta tarefa — ou null, se pode.
      *
      * Devolve a FRASE, e não um booleano, porque a recusa precisa dizer o
@@ -411,6 +521,13 @@ class Tarefa extends Model
      */
     public function motivoParaNaoMover(?User $usuario): ?string
     {
+        // Antes da permissão: nem quem triaga move a arquivada sem desarquivar.
+        // Movida no arquivo, ela voltaria para outra coluna que não a que
+        // guardou — e o card some do quadro num lugar e reaparece em outro.
+        if ($this->estaArquivada()) {
+            return 'Esta tarefa está arquivada. Desarquive antes de mover.';
+        }
+
         if (! $usuario || $usuario->podeTriarTarefas() || $this->responsavel_id === $usuario->id) {
             return null;
         }

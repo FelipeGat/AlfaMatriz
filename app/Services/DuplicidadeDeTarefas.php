@@ -68,6 +68,10 @@ class DuplicidadeDeTarefas
      * não, o que faria a suíte aprovar uma régua diferente da que roda no ar.
      * Normalizada no PHP, "integração" e "integracao" casam nos dois.
      *
+     * As ARQUIVADAS entram (#208), de propósito: o pedido novo igual a um
+     * "fica para depois" é exatamente o caso em que vale lembrar dele — e a
+     * lista as marca, para ninguém procurá-las no quadro.
+     *
      * @return Collection<int, Tarefa> cada uma com `sistema` carregado
      */
     public function parecidas(string $titulo, ?string $resumo = null, ?int $sistemaId = null, ?int $ignorarId = null, int $limite = 5): Collection

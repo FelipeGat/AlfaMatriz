@@ -210,6 +210,7 @@ abstract class Ferramenta extends Tool
         ]);
 
         $marcas = array_filter([
+            $tarefa->estaArquivada() ? 'ARQUIVADA: '.$tarefa->rotuloDoArquivamento() : null,
             $tarefa->estaBloqueada() ? 'BLOQUEADA' : null,
             $tarefa->temRetorno() ? 'RETORNO' : null,
             $tarefa->temPergunta() ? 'PERGUNTA para '.($tarefa->perguntaPara?->name ?? '?') : null,

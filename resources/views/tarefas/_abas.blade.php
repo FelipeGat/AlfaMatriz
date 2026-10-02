@@ -23,5 +23,12 @@
         <x-abas.item :href="route('tarefas.historico')" :ativo="$ativa === 'historico'" icone="clock">
             Histórico
         </x-abas.item>
+        {{-- O arquivo (#208) é o próprio quadro com outro conjunto — cada card
+             na coluna de onde saiu —, e por isso aponta para a mesma rota com
+             o recorte, e não para uma rota nova: o modal, a conversa e os
+             filtros do quadro valem lá sem uma segunda tela para manter. --}}
+        <x-abas.item :href="route('tarefas.index', ['situacao' => 'arquivadas'])" :ativo="$ativa === 'arquivadas'" icone="arquivo">
+            Arquivadas
+        </x-abas.item>
     </x-abas>
 </div>

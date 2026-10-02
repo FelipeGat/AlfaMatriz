@@ -268,6 +268,16 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('tarefas.duplicada')
         ->middleware('permissao:tarefas,editar');
 
+    // Arquivo (#208): tirar do quadro o que não anda agora, sem encerrar.
+    // Rota própria, como o bloqueio — a etapa não muda. Quem pode é decidido
+    // no `ArquivoDeTarefas` (só triagem), que o MCP também usa.
+    Route::post('tarefas/{tarefa}/arquivar', [TarefaController::class, 'arquivar'])
+        ->name('tarefas.arquivar')
+        ->middleware('permissao:tarefas,editar');
+    Route::post('tarefas/{tarefa}/desarquivar', [TarefaController::class, 'desarquivar'])
+        ->name('tarefas.desarquivar')
+        ->middleware('permissao:tarefas,editar');
+
     // Posicionar card dentro da coluna. Sem id na rota: o envio traz a coluna
     // inteira, porque arrastar reordena a lista toda na tela.
     Route::post('tarefas/posicionar', [TarefaController::class, 'posicionarNaColuna'])

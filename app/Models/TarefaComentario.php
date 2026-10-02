@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\Auditavel;
+use App\Services\ArquivoDeTarefas;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -41,6 +42,21 @@ class TarefaComentario extends Model
             'editado_em' => 'datetime',
             'pergunta' => 'boolean',
         ];
+    }
+
+    /**
+     * O comentário de quem abriu uma tarefa arquivada a traz de volta (#208).
+     *
+     * No evento do modelo, e não em quem comenta: são cinco caminhos que
+     * escrevem comentário (a rota, o salvar, perguntar, responder e o MCP), e
+     * a promessa do aviso — "responda aqui que ela volta" — não pode valer
+     * por um e falhar por outro.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (TarefaComentario $comentario): void {
+            app(ArquivoDeTarefas::class)->reabrirSeQuemAbriuRespondeu($comentario);
+        });
     }
 
     public function tarefa(): BelongsTo

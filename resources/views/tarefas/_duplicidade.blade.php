@@ -87,7 +87,7 @@
                                             <span class="font-mono text-ink">{{ $parecida->codigo() }}</span>
                                             · {{ $parecida->titulo }}
                                             <span class="text-ink-faint">
-                                                — {{ \App\Models\Tarefa::rotuloDaEtapa($parecida->status) }}
+                                                — {{ \App\Models\Tarefa::rotuloDaEtapa($parecida->status) }}{{ $parecida->estaArquivada() ? ' (arquivada)' : '' }}
                                                 · {{ $parecida->sistema?->nome ?? 'sem sistema' }}
                                             </span>
                                         </span>

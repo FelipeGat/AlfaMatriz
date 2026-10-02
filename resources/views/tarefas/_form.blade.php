@@ -280,6 +280,9 @@
             {{-- Duplicidade (#205): de quem esta é cópia, quem a copiou, e o
                  lembrete da triagem. --}}
             @include('tarefas._duplicidade', ['tarefa' => $tarefa])
+
+            {{-- Arquivo (#208): o gesto de arquivar, para a triagem. --}}
+            @include('tarefas._arquivo', ['tarefa' => $tarefa])
         @endif
 
         <div>

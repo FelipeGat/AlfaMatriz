@@ -71,7 +71,8 @@ class RotaHttpTest extends TestCase
 
         $this->assertContains('criar_tarefa', $lista);
         $this->assertContains('marcar_duplicada', $lista);
-        $this->assertCount(22, $lista);
+        $this->assertContains('arquivar_tarefa', $lista);
+        $this->assertCount(24, $lista);
 
         $this->withToken($token)
             ->postJson('/mcp', $this->chamada('tools/call', [

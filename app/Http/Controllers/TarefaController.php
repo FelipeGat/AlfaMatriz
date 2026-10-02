@@ -11,6 +11,7 @@ use App\Models\TarefaComentario;
 use App\Models\TarefaItem;
 use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
+use App\Services\ArquivoDeTarefas;
 use App\Services\DuplicidadeDeTarefas;
 use App\Services\FluxoTarefaService;
 use App\Services\MiniaturaDeAnexo;
@@ -280,6 +281,13 @@ class TarefaController extends Controller
             // quadro pela árvore.
             'pai:id,titulo'])
             ->whereIn('status', $emCurso->keys())
+            // A aba Arquivadas (#208) é este mesmo quadro com o arquivo no
+            // lugar do trabalho em curso: cada card na coluna de onde saiu, e
+            // o modal, a conversa e os filtros de sempre — sem uma segunda
+            // tela para manter igual a esta.
+            ->when($filtros['situacao'] === 'arquivadas',
+                fn ($q) => $q->arquivadas(),
+                fn ($q) => $q->foraDoArquivo())
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('created_at')
             ->get();
@@ -291,14 +299,16 @@ class TarefaController extends Controller
         // A contagem da coluna é a do RECORTE, não a do quadro inteiro: com
         // filtro ligado, um selo dizendo 12 sobre três cards visíveis mediria
         // outra coisa que não o que está na tela.
-        $etapas = $emCurso->map(function ($label, $status) use ($colunas) {
+        $etapas = $emCurso->map(function ($label, $status) use ($colunas, $filtros) {
             $daEtapa = $colunas[$status];
 
             // O WIP conta só o que ANDA: vaga ocupada por tarefa travada não é
             // trabalho em curso, e somá-la faria o limite acusar excesso
             // justamente quando o time está impedido de produzir.
             $andando = $daEtapa->reject->estaBloqueada()->count();
-            $limite = Tarefa::LIMITE_DE_WIP[$status] ?? null;
+            // No arquivo não há trabalho andando: o limite ali acusaria
+            // excesso de um time que nem está mexendo nessas tarefas.
+            $limite = $filtros['situacao'] === 'arquivadas' ? null : (Tarefa::LIMITE_DE_WIP[$status] ?? null);
 
             return [
                 'chave' => $status,
@@ -317,7 +327,11 @@ class TarefaController extends Controller
 
         // Quantas tarefas o quadro teria sem filtro nenhum: é o denominador do
         // "X de Y" do cabeçalho, o aviso de que há trabalho fora do recorte.
-        $totalNoQuadro = Tarefa::whereIn('status', $emCurso->keys())->count();
+        $totalNoQuadro = Tarefa::whereIn('status', $emCurso->keys())
+            ->when($filtros['situacao'] === 'arquivadas',
+                fn ($q) => $q->arquivadas(),
+                fn ($q) => $q->foraDoArquivo())
+            ->count();
 
         // O contador da faixa de bloqueio. Ele mede o RECORTE, como os das
         // colunas: com filtro ligado, um número falando do quadro inteiro
@@ -330,6 +344,7 @@ class TarefaController extends Controller
         // ligado deixa de ser caixa de entrada. É também por isso que clicar
         // nele filtra em vez de rolar até o card.
         $esperandoVoce = Tarefa::whereIn('status', $emCurso->keys())
+            ->foraDoArquivo()
             ->esperandoRespostaDe(auth()->id())
             ->count();
 
@@ -401,7 +416,7 @@ class TarefaController extends Controller
      */
     private function chipsDoQuadro(Request $request, $emCurso, array $filtros, int $esperandoVoce): array
     {
-        $noQuadro = fn () => Tarefa::whereIn('status', $emCurso->keys());
+        $noQuadro = fn () => Tarefa::whereIn('status', $emCurso->keys())->foraDoArquivo();
 
         $chips = [
             // Primeiro e em destaque: é a caixa de entrada da pessoa. Sem ele,
@@ -431,6 +446,18 @@ class TarefaController extends Controller
                 'fundo' => 'var(--good-tint)', 'fundoAtivo' => 'rgb(var(--good) / 0.24)',
                 'borda' => 'var(--good-line)',
             ],
+            // As candidatas a arquivar (#208): paradas há um mês, ou há quinze
+            // dias travadas ou esperando resposta. Só para quem triaga, que é
+            // quem arquiva — e é sugestão, nunca arquivamento automático.
+            // Neutro de propósito: não é alarme, é arrumação.
+            ...(auth()->user()?->podeTriarTarefas() ? [[
+                'chave' => 'para_arquivar', 'total' => Tarefa::candidatasAoArquivo()->count(),
+                'label' => null, 'icone' => 'arquivo', 'cor' => 'ink-mute',
+                'title' => 'Paradas há '.Tarefa::DIAS_ATE_SUGERIR_ARQUIVO.' dias (ou '
+                    .Tarefa::DIAS_ATE_SUGERIR_ARQUIVO_SE_ESPERANDO.' travadas ou esperando resposta): candidatas a arquivar',
+                'fundo' => 'var(--chip)', 'fundoAtivo' => 'var(--line)',
+                'borda' => 'var(--btn-line)',
+            ]] : []),
             // O único que não filtra o quadro: o que foi concluído hoje já saiu
             // dele. Ele leva ao Histórico, que é onde essas tarefas passaram a
             // viver — e por isso não tem estado "ligado".
@@ -451,6 +478,7 @@ class TarefaController extends Controller
                 'label' => $chip['label'] ?? $chip['total'].' '.match ($chip['chave']) {
                     'travadas' => 'travadas',
                     'prontas' => 'p/ subir',
+                    'para_arquivar' => 'p/ arquivar',
                     'hoje' => 'hoje',
                 },
                 'icone' => $chip['icone'],
@@ -465,7 +493,7 @@ class TarefaController extends Controller
             ];
         }, $chips);
 
-        // Os quatro aparecem SEMPRE, inclusive zerados.
+        // Todos aparecem SEMPRE, inclusive zerados (o de arquivar, para quem triaga).
         //
         // O protótipo esconde o chip em zero (`filter(k => !k.label.startsWith('0 '))`)
         // e a razão é boa: "0 travadas" permanente ensina a não ler a fila. Mas
@@ -512,7 +540,7 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos.apontado', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'subtarefas', 'pai'])
+        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos.apontado', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'subtarefas', 'pai', 'arquivadaPor'])
             ->findOrFail($tarefa->id);
 
         return response()->view('tarefas._modais', [
@@ -1284,6 +1312,58 @@ class TarefaController extends Controller
         return $this->voltarParaOQuadro(
             $request,
             'Tarefa cancelada como duplicada de '.$original->codigo().'.',
+            fecharModal: 'editar-tarefa-'.$tarefa->id,
+            mudouOConjunto: true,
+        );
+    }
+
+    /**
+     * Arquiva a tarefa (#208): sai do quadro com o motivo, guardando a etapa.
+     *
+     * Rota própria, e não um destino de `mover`, pelo mesmo motivo do
+     * bloqueio: arquivar não muda a etapa. Fecha o modal e redesenha o quadro
+     * — o card sai da tela, como quando a tarefa encerra.
+     */
+    public function arquivar(Request $request, Tarefa $tarefa, ArquivoDeTarefas $arquivo)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        $dados = $request->validate([
+            'motivo' => 'nullable|string|max:20',
+            'nota' => 'nullable|string|max:2000',
+        ]);
+
+        try {
+            $arquivo->arquivar($tarefa, $dados['motivo'] ?? null, $dados['nota'] ?? null, $request->user());
+        } catch (\RuntimeException $e) {
+            return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DA_VEZ, $e->getMessage(), 'critico');
+        }
+
+        return $this->voltarParaOQuadro(
+            $request,
+            'Tarefa arquivada.',
+            fecharModal: 'editar-tarefa-'.$tarefa->id,
+            mudouOConjunto: true,
+        );
+    }
+
+    /**
+     * Devolve a arquivada ao quadro, na coluna de onde saiu. Pedida de dentro
+     * da aba Arquivadas, onde o card também sai da tela.
+     */
+    public function desarquivar(Request $request, Tarefa $tarefa, ArquivoDeTarefas $arquivo)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        try {
+            $arquivo->desarquivar($tarefa, $request->user());
+        } catch (\RuntimeException $e) {
+            return $this->voltarParaATarefa($request, $tarefa->id, self::PEDACOS_DA_VEZ, $e->getMessage(), 'critico');
+        }
+
+        return $this->voltarParaOQuadro(
+            $request,
+            'Tarefa desarquivada: voltou para '.Tarefa::rotuloDaEtapa($tarefa->status).'.',
             fecharModal: 'editar-tarefa-'.$tarefa->id,
             mudouOConjunto: true,
         );
@@ -2116,7 +2196,13 @@ class TarefaController extends Controller
             // um booleano por chip: eles são mutuamente exclusivos — ninguém
             // pergunta "as travadas que também esperam por mim" —, e três
             // booleanos permitiriam justamente essa combinação sem sentido.
-            'situacao' => in_array($situacao, ['esperando_mim', 'travadas', 'em_curso', 'prontas'], true) ? $situacao : '',
+            //
+            // `para_arquivar` é o chip da triagem (#208); `arquivadas` é a aba
+            // do arquivo, que troca o conjunto inteiro em vez de recortá-lo.
+            'situacao' => in_array($situacao, ['esperando_mim', 'travadas', 'em_curso', 'prontas', 'para_arquivar', 'arquivadas'], true) ? $situacao : '',
+            // Por que foi arquivada — só a aba do arquivo usa.
+            'motivo' => array_key_exists($this->textoDaQuery($request, 'motivo'), Tarefa::MOTIVOS_DE_ARQUIVAMENTO)
+                ? $this->textoDaQuery($request, 'motivo') : '',
         ];
     }
 
@@ -2224,6 +2310,7 @@ class TarefaController extends Controller
                     ->where('motivo', 'like', '%'.$filtros['busca'].'%'))
                 ->orWhere('bloqueio_motivo', 'like', '%'.$filtros['busca'].'%')
                 ->orWhere('retorno_motivo', 'like', '%'.$filtros['busca'].'%')
+                ->orWhere('arquivamento_nota', 'like', '%'.$filtros['busca'].'%')
                 ->orWhereHas('relatoriosTeste', fn ($relatorio) => $relatorio
                     ->where('notas', 'like', '%'.$filtros['busca'].'%'))
                 // Só o NOME do anexo — o conteúdo do arquivo não está no banco.
@@ -2254,7 +2341,11 @@ class TarefaController extends Controller
             ->when(($filtros['situacao'] ?? '') === 'em_curso',
                 fn ($q) => $q->whereNull('bloqueado_em'))
             ->when(($filtros['situacao'] ?? '') === 'prontas',
-                fn ($q) => $q->validadaNoStaging());
+                fn ($q) => $q->validadaNoStaging())
+            ->when(($filtros['situacao'] ?? '') === 'para_arquivar',
+                fn ($q) => $q->candidatasAoArquivo())
+            ->when(($filtros['motivo'] ?? '') !== '',
+                fn ($q) => $q->where('arquivamento_motivo', $filtros['motivo']));
     }
 
     /**

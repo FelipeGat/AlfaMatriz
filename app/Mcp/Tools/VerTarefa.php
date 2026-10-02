@@ -27,7 +27,7 @@ class VerTarefa extends Ferramenta
 
     protected string $title = 'Ver tarefa';
 
-    protected string $description = 'Tudo sobre uma tarefa: resumo, detalhes, responsável, marcas (bloqueio, retorno, pergunta), checklist, conversa, histórico de etapas e para onde VOCÊ pode movê-la. Leia antes de mover ou responder.';
+    protected string $description = 'Tudo sobre uma tarefa: resumo, detalhes, responsável, marcas (arquivo, bloqueio, retorno, pergunta), checklist, conversa, histórico de etapas e para onde VOCÊ pode movê-la. Leia antes de mover ou responder.';
 
     protected array $permissao = ['tarefas', 'ler'];
 
@@ -53,7 +53,7 @@ class VerTarefa extends Ferramenta
 
         $tarefa->load([
             'responsavel', 'sistema', 'criadoPor', 'interlocutor', 'perguntaDe', 'perguntaPara',
-            'pai', 'subtarefas', 'duplicadaDe', 'duplicadas', 'itens', 'comentarios.autor', 'eventos.autor', 'anexos',
+            'pai', 'subtarefas', 'duplicadaDe', 'duplicadas', 'arquivadaPor', 'itens', 'comentarios.autor', 'eventos.autor', 'anexos',
         ]);
 
         $blocos = [$this->linhaDaTarefa($tarefa)];
@@ -106,6 +106,14 @@ class VerTarefa extends Ferramenta
         }
 
         $marcas = array_filter([
+            // Primeiro: é ela que explica por que a tarefa não está no quadro
+            // e por que não se move (#208).
+            $tarefa->estaArquivada()
+                ? 'Arquivada ('.$tarefa->rotuloDoArquivamento().') por '.($tarefa->arquivadaPor?->name ?? '?')
+                    .' em '.$tarefa->arquivada_em->format('d/m/Y')
+                    .($tarefa->arquivamento_nota ? ': '.$tarefa->arquivamento_nota : '')
+                    .'. Fora do quadro; desarquivar_tarefa a devolve para '.Tarefa::rotuloDaEtapa($tarefa->status).'.'
+                : null,
             $tarefa->estaBloqueada() ? $tarefa->rotuloDoBloqueio().': '.$tarefa->bloqueio_motivo : null,
             $tarefa->temRetorno() ? $tarefa->rotuloDoRetorno().($tarefa->retorno_motivo ? ': '.$tarefa->retorno_motivo : '') : null,
             $tarefa->temPergunta()

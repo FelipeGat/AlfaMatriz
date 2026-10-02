@@ -485,6 +485,26 @@
         </div>
     @endif
 
+    {{-- A tarja do arquivo (#208). Só aparece na aba Arquivadas — fora dela a
+         tarefa arquivada nem está no quadro. Neutra: arquivo não é alarme, é
+         "agora não". Quem e quando ficam no modal; aqui, o porquê. --}}
+    @if ($tarefa->estaArquivada())
+        <div class="mt-2 px-[9px] py-[7px] rounded-tile border-l-2"
+             style="background: var(--chip); border-color: rgb(var(--ink-mute))">
+            <div class="flex items-center gap-1.5">
+                <span class="h-3 w-3 shrink-0 text-ink-mute"><x-nav-icon name="arquivo" :peso="1.8" /></span>
+                <span class="flex-1 min-w-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] truncate text-ink-mute">
+                    Arquivada · {{ $tarefa->rotuloDoArquivamento() }}</span>
+            </div>
+
+            @if (filled($tarefa->arquivamento_nota))
+                <p class="mt-1 text-[11.5px] leading-[1.4] text-ink line-clamp-2" title="{{ $tarefa->arquivamento_nota }}">
+                    {{ $tarefa->arquivamento_nota }}
+                </p>
+            @endif
+        </div>
+    @endif
+
     {{--
         A tarja de bloqueio.
 

@@ -33,12 +33,14 @@ class LembrarPrazos extends Command
         $hoje = now()->startOfDay();
 
         // Tarefa encerrada não vence: o prazo dela virou história, como na
-        // Agenda. Sem responsável não há a quem avisar.
+        // Agenda. Sem responsável não há a quem avisar. A arquivada (#208)
+        // saiu da frente de propósito, e o lembrete a traria de volta.
         $porResponsavel = Tarefa::query()
             ->whereNotNull('prazo')
             ->whereNotNull('responsavel_id')
             ->whereDate('prazo', $hoje->toDateString())
             ->whereNotIn('status', Tarefa::STATUS_TERMINAIS)
+            ->foraDoArquivo()
             ->get()
             ->groupBy('responsavel_id');
 
