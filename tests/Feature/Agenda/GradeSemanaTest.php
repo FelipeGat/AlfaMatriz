@@ -167,4 +167,28 @@ class GradeSemanaTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    /**
+     * A grade abre no "agora" e a linha anda sozinha (T-217): com hoje à vista,
+     * a rolagem inicial parte da posição do agora, e não mais das 7h fixas; sem
+     * hoje, continua nas 7h. A linha passa a ser movida pelo Alpine.
+     */
+    public function test_a_grade_abre_no_agora_e_a_linha_anda(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-14 19:00'));
+        $u = User::factory()->create();
+
+        $html = $this->actingAs($u)->get(route('agenda.index', ['visao' => 'semana', 'em' => '2026-09-14']))
+            ->assertOk()->getContent();
+
+        $this->assertStringContainsString('agoraPct: 79.167', $html); // 19:00 = 1140 min
+        $this->assertStringContainsString('base / 100 * this.alturaGrade - this.$el.clientHeight / 3', $html);
+        $this->assertStringContainsString(":style=\"'top: ' + agoraPct + '%'\"", $html);
+
+        $semHoje = $this->actingAs($u)->get(route('agenda.index', ['visao' => 'semana', 'em' => '2026-10-20']))
+            ->assertOk()->getContent();
+        $this->assertStringContainsString('agoraPct: null', $semHoje);
+
+        Carbon::setTestNow();
+    }
 }
