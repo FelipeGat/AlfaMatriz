@@ -21,9 +21,10 @@
     {{-- Com filtro ligado o cabeçalho diz "X de Y": sem o denominador, um
          quadro recortado é indistinguível de um quadro vazio. --}}
     <x-slot name="contexto">
+        @php($ondeEstao = $filtros['situacao'] === 'arquivadas' ? 'arquivadas' : 'no quadro')
         {{ $tarefas->count() < $totalNoQuadro
-            ? $tarefas->count().' de '.$totalNoQuadro.' tarefas no quadro'
-            : $tarefas->count().' tarefas no quadro' }}
+            ? $tarefas->count().' de '.$totalNoQuadro.' tarefas '.$ondeEstao
+            : $tarefas->count().' tarefas '.$ondeEstao }}
     </x-slot>
     <x-slot name="acoes">
         {{-- Só para quem pode criar. O menu já segue essa regra ("item que leva
@@ -48,7 +49,7 @@
         {{-- O chip "N p/ você" NÃO vive aqui: ele é o primeiro dos chips do
              cabeçalho do quadro, junto das outras duas contagens. Solto acima
              das abas, ele seria a única contagem fora do quadro que conta. --}}
-        @include('tarefas._abas', ['ativa' => 'quadro'])
+        @include('tarefas._abas', ['ativa' => $filtros['situacao'] === 'arquivadas' ? 'arquivadas' : 'quadro'])
 
         {{--
             NÃO há faixa de KPI aqui, e isso é decisão, não esquecimento.

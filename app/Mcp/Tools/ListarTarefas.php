@@ -25,8 +25,8 @@ class ListarTarefas extends Ferramenta
     {
         return [
             'situacao' => $schema->string()
-                ->enum(array_merge(['abertas', 'todas'], array_keys(Tarefa::STATUS)))
-                ->description('"abertas" (padrão) é tudo o que não está concluído nem cancelado; "todas" inclui as encerradas; ou a chave de uma etapa.'),
+                ->enum(array_merge(['abertas', 'todas', 'arquivadas', 'para_arquivar'], array_keys(Tarefa::STATUS)))
+                ->description('"abertas" (padrão) é o quadro: nem encerradas nem arquivadas; "todas" inclui encerradas e arquivadas; "arquivadas" é só o arquivo; "para_arquivar" são as paradas há muito tempo (sugestão para a triagem); ou a chave de uma etapa (fora do arquivo).'),
             'responsavel' => $schema->string()
                 ->description('Nome de uma pessoa, "eu", ou "ninguém" para as que estão sem responsável.'),
             'texto' => $schema->string()
@@ -39,7 +39,7 @@ class ListarTarefas extends Ferramenta
     protected function executar(Request $request, User $usuario): Response
     {
         $dados = $request->validate([
-            'situacao' => 'nullable|in:'.implode(',', array_merge(['abertas', 'todas'], array_keys(Tarefa::STATUS))),
+            'situacao' => 'nullable|in:'.implode(',', array_merge(['abertas', 'todas', 'arquivadas', 'para_arquivar'], array_keys(Tarefa::STATUS))),
             'responsavel' => 'nullable|string|max:255',
             'texto' => 'nullable|string|max:255',
             'limite' => 'nullable|integer|min:1|max:100',
@@ -50,9 +50,11 @@ class ListarTarefas extends Ferramenta
         $situacao = $dados['situacao'] ?? 'abertas';
 
         match ($situacao) {
-            'abertas' => $consulta->whereNotIn('status', Tarefa::STATUS_TERMINAIS),
+            'abertas' => $consulta->whereNotIn('status', Tarefa::STATUS_TERMINAIS)->foraDoArquivo(),
             'todas' => null,
-            default => $consulta->where('status', $situacao),
+            'arquivadas' => $consulta->arquivadas(),
+            'para_arquivar' => $consulta->candidatasAoArquivo(),
+            default => $consulta->where('status', $situacao)->foraDoArquivo(),
         };
 
         if (filled($dados['responsavel'] ?? null)) {

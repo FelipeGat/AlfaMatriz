@@ -17,6 +17,44 @@
      */
 @endphp
 
+{{-- O arquivo (#208) vem antes dos outros três: é ele que explica por que a
+     tarefa não está no quadro e por que o "Mover" sumiu. Desarquivar é envio
+     próprio (`desarquivar-{id}`, em `_modais`), como o Destravar. --}}
+@if ($tarefa->estaArquivada())
+    <div class="px-[11px] py-[9px] rounded-[5px] border border-line border-l-2"
+         style="background: var(--chip); border-left-color: rgb(var(--ink-mute))">
+        <div class="flex items-center gap-2.5">
+            <span class="h-3.5 w-3.5 shrink-0 text-ink-mute"><x-nav-icon name="arquivo" :peso="1.8" /></span>
+            <span class="flex-1 min-w-0 text-[12.5px] text-ink">
+                Arquivada · <span class="font-medium">{{ $tarefa->rotuloDoArquivamento() }}</span>
+                <span class="text-ink-faint">
+                    — {{ $tarefa->arquivadaPor ? 'por '.$tarefa->arquivadaPor->name.' ' : '' }}em {{ $tarefa->arquivada_em->format('d/m/Y') }}
+                </span>
+            </span>
+
+            @if (auth()->user()?->podeTriarTarefas())
+                <button type="submit" form="desarquivar-{{ $tarefa->id }}"
+                        title="Volta para {{ \App\Models\Tarefa::rotuloDaEtapa($tarefa->status) }}"
+                        class="shrink-0 h-6 px-2.5 rounded-tile border border-btn-line text-[11.5px] font-semibold
+                               text-ink-dim transition hover:text-ink hover:bg-chip">
+                    Desarquivar
+                </button>
+            @endif
+        </div>
+
+        @if (filled($tarefa->arquivamento_nota))
+            <p class="mt-1.5 text-[12.5px] leading-[1.45] text-ink whitespace-pre-wrap">{{ $tarefa->arquivamento_nota }}</p>
+        @endif
+
+        <p class="mt-1.5 text-[11.5px] leading-[1.45] text-ink-faint">
+            Fora do quadro, em {{ \App\Models\Tarefa::rotuloDaEtapa($tarefa->status) }}.
+            @if ($tarefa->criadoPor)
+                Um comentário de {{ $tarefa->criadoPor->name }} a traz de volta.
+            @endif
+        </p>
+    </div>
+@endif
+
 @if ($tarefa->temPergunta())
     <div class="px-[11px] py-[9px] rounded-[5px] border border-l-2"
          style="background: var(--pergunta-tint); border-color: var(--pergunta-line);

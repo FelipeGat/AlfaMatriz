@@ -17,7 +17,12 @@
     // Se nada foi pedido, não há o que limpar — e um botão "Limpar" aceso
     // sobre uma tela sem filtro só ensina que ele não faz nada. Prioridade é
     // lista, e lista vazia também é "nada pedido".
-    $temFiltro = collect($filtros)->contains(fn ($valor) => $valor !== '' && $valor !== []);
+    //
+    // Na aba Arquivadas (#208) a situação é a própria aba, e não recorte:
+    // ela não conta como filtro, e limpar volta para o arquivo inteiro.
+    $noArquivo = ($filtros['situacao'] ?? '') === 'arquivadas';
+    $temFiltro = collect($noArquivo ? \Illuminate\Support\Arr::except($filtros, 'situacao') : $filtros)
+        ->contains(fn ($valor) => $valor !== '' && $valor !== []);
 @endphp
 
 <form method="GET" class="shrink-0 flex flex-wrap items-center gap-2">
@@ -149,7 +154,17 @@
         descobrir que o atalho existe lá em cima. Fora do histórico, porque
         tarefa encerrada não tem conversa em aberto.
     --}}
-    @unless ($comDesfecho)
+    @if ($noArquivo)
+        {{-- No arquivo, o recorte que importa é o PORQUÊ: "o que ficou para
+             depois" é a lista de ideias; "sem retorno" é a de quem cobrar. --}}
+        <input type="hidden" name="situacao" value="arquivadas">
+        <select name="motivo" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
+            <option value="">Qualquer motivo</option>
+            @foreach (\App\Models\Tarefa::MOTIVOS_DE_ARQUIVAMENTO as $chave => $rotulo)
+                <option value="{{ $chave }}" @selected(($filtros['motivo'] ?? '') === $chave)>{{ $rotulo }}</option>
+            @endforeach
+        </select>
+    @elseif (! $comDesfecho)
         {{-- A situação é UM campo com quatro respostas, e não quatro caixas:
              elas são mutuamente exclusivas — ninguém pergunta "as travadas que
              também esperam por mim" — e caixas independentes permitiriam
@@ -162,11 +177,14 @@
                 'travadas' => 'Só as travadas',
                 'em_curso' => 'Só as em curso',
                 'prontas' => 'Só as prontas p/ subir',
+                // O chip da triagem (#208), também aqui para quem chega pelos
+                // filtros.
+                ...(auth()->user()?->podeTriarTarefas() ? ['para_arquivar' => 'Só as paradas (p/ arquivar)'] : []),
             ] as $chave => $rotulo)
                 <option value="{{ $chave }}" @selected(($filtros['situacao'] ?? '') === $chave)>{{ $rotulo }}</option>
             @endforeach
         </select>
-    @endunless
+    @endif
 
     @if ($comDesfecho)
         <select name="desfecho" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
@@ -224,7 +242,7 @@
 
     @if ($temFiltro)
         {{-- Link e não botão: limpar é ir para a mesma tela sem query nenhuma. --}}
-        <a href="{{ url()->current() }}"
+        <a href="{{ $noArquivo ? url()->current().'?situacao=arquivadas' : url()->current() }}"
            class="h-[34px] px-3 inline-flex items-center rounded-control
                   font-mono text-[10.5px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
             Limpar recorte

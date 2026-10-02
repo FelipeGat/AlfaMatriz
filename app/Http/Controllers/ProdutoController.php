@@ -85,7 +85,7 @@ class ProdutoController extends Controller
         // dentro de casa é de punhado, e um paginador aqui dividiria o `page`
         // com a outra aba.
         $internos = Sistema::internos()
-            ->withCount(['tarefas' => fn ($q) => $q->whereNotIn('status', Tarefa::STATUS_TERMINAIS)])
+            ->withCount(['tarefas' => fn ($q) => $q->whereNotIn('status', Tarefa::STATUS_TERMINAIS)->foraDoArquivo()])
             ->orderBy('nome')
             ->get();
 

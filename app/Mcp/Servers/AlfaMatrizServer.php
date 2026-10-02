@@ -3,12 +3,14 @@
 namespace App\Mcp\Servers;
 
 use App\Mcp\Tools\AdicionarItens;
+use App\Mcp\Tools\ArquivarTarefa;
 use App\Mcp\Tools\AtualizarItem;
 use App\Mcp\Tools\BloquearTarefa;
 use App\Mcp\Tools\ComentarTarefa;
 use App\Mcp\Tools\ConversarNaTarefa;
 use App\Mcp\Tools\CriarTarefa;
 use App\Mcp\Tools\DesmarcarCompromisso;
+use App\Mcp\Tools\DesarquivarTarefa;
 use App\Mcp\Tools\DestravarTarefa;
 use App\Mcp\Tools\EditarTarefa;
 use App\Mcp\Tools\ExcluirTarefa;
@@ -97,6 +99,8 @@ class AlfaMatrizServer extends Server
         AtualizarItem::class,
         RemoverItem::class,
         MarcarDuplicada::class,
+        ArquivarTarefa::class,
+        DesarquivarTarefa::class,
         ExcluirTarefa::class,
         VerAgenda::class,
         VerCompromisso::class,

@@ -502,7 +502,11 @@ class RelatorioController extends Controller
                 ->diffInDays($evento->tarefa->iniciada_em ?? $evento->tarefa->created_at)))
             ->avg();
 
+        // O arquivo (#208) fica fora das três contagens do quadro: tarefa
+        // arquivada não é fila nem trabalho em curso — contá-la faria o
+        // relatório dizer que o time tem mais na mesa do que o quadro mostra.
         $porEtapa = Tarefa::whereNotIn('status', Tarefa::STATUS_TERMINAIS)
+            ->foraDoArquivo()
             ->where($restringirTarefa)
             ->selectRaw('status, COUNT(*) as qtd')
             ->groupBy('status')
@@ -591,8 +595,8 @@ class RelatorioController extends Controller
             'cicloMedioDias' => $cicloMedioDias,
             'criadasQtd' => Tarefa::whereBetween('created_at', [$mes, $fim])->where($restringirTarefa)->count(),
             'emAndamentoQtd' => Tarefa::whereIn('status', ['em_desenvolvimento', 'em_revisao', 'em_staging', 'em_producao'])
-                ->where($restringirTarefa)->count(),
-            'naFilaQtd' => Tarefa::whereIn('status', ['aberta', 'backlog'])->where($restringirTarefa)->count(),
+                ->foraDoArquivo()->where($restringirTarefa)->count(),
+            'naFilaQtd' => Tarefa::whereIn('status', ['aberta', 'backlog'])->foraDoArquivo()->where($restringirTarefa)->count(),
             'quadroPorEtapa' => $quadroPorEtapa,
             'rankingSistemas' => $rankingSistemas,
             'rankingResponsaveis' => $rankingResponsaveis,

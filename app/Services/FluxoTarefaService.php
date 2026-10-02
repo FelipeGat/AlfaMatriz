@@ -159,6 +159,13 @@ class FluxoTarefaService
     {
         $statusAtual = $tarefa->status;
 
+        // No motor, e não só na permissão de quem move: o portão do deploy
+        // move sem autor, e não pode andar com o card que alguém tirou do
+        // quadro (#208).
+        if ($tarefa->estaArquivada()) {
+            throw new \RuntimeException('A tarefa '.$tarefa->codigo().' está arquivada. Desarquive antes de mover.');
+        }
+
         $this->assertTransicaoPermitida($tarefa, $novoStatus, $livre);
         $this->assertExigenciasAtendidas($tarefa, $novoStatus, $dados);
 

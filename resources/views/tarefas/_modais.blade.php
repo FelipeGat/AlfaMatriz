@@ -44,5 +44,16 @@
               action="{{ route('tarefas.duplicada', $tarefa) }}" class="hidden">
             @csrf
         </form>
+
+        {{-- Arquivo (#208): arquivar recebe os campos de `_arquivo`; o
+             desarquivar é o botão da tarja em `_avisos-da-tarefa`. --}}
+        <form id="arquivar-{{ $tarefa->id }}" method="POST" data-parcial
+              action="{{ route('tarefas.arquivar', $tarefa) }}" class="hidden">
+            @csrf
+        </form>
+        <form id="desarquivar-{{ $tarefa->id }}" method="POST" data-parcial
+              action="{{ route('tarefas.desarquivar', $tarefa) }}" class="hidden">
+            @csrf
+        </form>
     </x-modal>
 @endforeach

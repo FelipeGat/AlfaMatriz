@@ -611,6 +611,8 @@ class QuadroTest extends TestCase
      * sumir: o cabeçalho não muda de forma conforme o dia, e "0 travadas" também é
      * notícia. Todos filtram, menos o de hoje — o que foi concluído já saiu do quadro,
      * e ele leva ao Histórico.
+     *
+     * Quem faz triagem vê um quinto, o das candidatas a arquivar (#208).
      */
     public function test_os_quatro_chips_do_cabecalho_aparecem_sempre_e_filtram(): void
     {
@@ -618,10 +620,10 @@ class QuadroTest extends TestCase
 
         $chips = collect($this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->viewData('chips'));
 
-        $this->assertCount(4, $chips, 'Zerado o chip fica apagado, não some.');
+        $this->assertCount(5, $chips, 'Zerado o chip fica apagado, não some.');
 
         $this->assertSame(
-            ['0 p/ você', '0 travadas', '0 p/ subir', '0 hoje'],
+            ['0 p/ você', '0 travadas', '0 p/ subir', '0 p/ arquivar', '0 hoje'],
             $chips->pluck('label')->all()
         );
 
@@ -629,8 +631,16 @@ class QuadroTest extends TestCase
         $this->assertStringContainsString('situacao=esperando_mim', $recortes[0]);
         $this->assertStringContainsString('situacao=travadas', $recortes[1]);
         $this->assertStringContainsString('situacao=prontas', $recortes[2]);
-        $this->assertSame(route('tarefas.historico'), $recortes[3],
+        $this->assertStringContainsString('situacao=para_arquivar', $recortes[3]);
+        $this->assertSame(route('tarefas.historico'), $recortes[4],
             'O de hoje não filtra o quadro: o que foi concluído já saiu dele.');
+
+        // Quem não faz triagem não arquiva, e não vê a sugestão.
+        $membro = User::factory()->membro()->create();
+        $this->assertSame(
+            ['0 p/ você', '0 travadas', '0 p/ subir', '0 hoje'],
+            collect($this->actingAs($membro)->get(route('tarefas.index'))->viewData('chips'))->pluck('label')->all()
+        );
     }
 
     /**

@@ -98,6 +98,7 @@ class AgendaController extends Controller
             // é o que a pessoa procura ali, e ele cresce com o id.
             'tarefasVinculaveis' => Tarefa::query()
                 ->whereNotIn('status', Tarefa::STATUS_TERMINAIS)
+                ->foraDoArquivo()
                 ->orderBy('id')
                 ->get(['id', 'titulo']),
             'sistemas' => Sistema::orderBy('nome')->get(['id', 'nome']),
