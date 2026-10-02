@@ -1108,6 +1108,50 @@ class Tarefa extends Model
             ->first();
     }
 
+    /** As entregas para a revisão (#210), da primeira à mais recente. */
+    public function entregas(): HasMany
+    {
+        return $this->hasMany(TarefaEntrega::class)->orderBy('numero');
+    }
+
+    /**
+     * A entrega que vale para o código que está nos portões agora — ou null.
+     *
+     * É a mais recente, desde que NENHUMA devolução à bancada tenha vindo
+     * depois dela: a tarefa que voltou para correção e foi empurrada adiante
+     * sem passar pela revisão (o movimento livre permite) está com código que
+     * a entrega antiga não descreve, e mostrá-la ali mentiria para quem testa.
+     * As voltas DENTRO dos portões (staging → revisão, produção → staging) não
+     * cortam: o código é o mesmo que foi entregue.
+     *
+     * O corte é pelo id do evento, e não pela data, pelo mesmo motivo do
+     * `testeDestaPassagem`: no mesmo segundo, a data empata e o id não.
+     *
+     * Só fora da bancada: em Em andamento a última entrega fala do código que
+     * a revisão já devolveu.
+     */
+    public function entregaAtual(): ?TarefaEntrega
+    {
+        if (! $this->passaPelosPortoes() || ! in_array($this->status, self::PORTOES, true)) {
+            return null;
+        }
+
+        $entregas = $this->relationLoaded('entregas') ? $this->entregas : $this->entregas()->get();
+        $ultima = $entregas->sortByDesc('numero')->first();
+
+        if (! $ultima) {
+            return null;
+        }
+
+        $ultimaVoltaABancada = $this->relationLoaded('eventos')
+            ? $this->eventos->where('para_status', 'em_desenvolvimento')->max('id')
+            : $this->eventos()->where('para_status', 'em_desenvolvimento')->max('id');
+
+        return $ultimaVoltaABancada === null || (int) $ultima->tarefa_evento_id > (int) $ultimaVoltaABancada
+            ? $ultima
+            : null;
+    }
+
     /**
      * Quem foi apontado para examinar a passagem atual — ou null, quando o
      * movimento não apontou ninguém e a coluna é fila.

@@ -233,6 +233,15 @@ comando pelo Telegram, tag de produção só depois de ele autorizar — ainda n
   aba Arquivadas é o próprio quadro com `?situacao=arquivadas`; o chip "p/ arquivar" (só triagem) é
   `scopeCandidatasAoArquivo` — 30 dias parada, 15 se travada ou esperando resposta. Sugere, nunca
   arquiva sozinho.
+- **Entrega para a revisão (#210, 02/10/2026).** De Em andamento para Em revisão, a tarefa de
+  Desenvolvimento ou Bug leva a ENTREGA: o que foi feito e como testar (obrigatórios) e PR/commits
+  (opcional). Quem cobra é o motor (`FluxoTarefaService::assertExigenciasAtendidas`), para valer igual
+  na tela, no `mover_tarefa` (parâmetros `o_que_foi_feito`, `como_testar`, `pr_commits`) e no
+  movimento livre. É registro por passagem, em `tarefa_entregas` (`TarefaEntrega`, presa ao evento
+  da chegada), e não colunas: voltou para correção e subiu de novo, nasce a 2ª, e a 1ª fica.
+  `Tarefa::entregaAtual()` é a que vale nos portões — a mais recente, se nenhuma volta à bancada
+  veio depois. Sem backfill: quem já estava nos portões não tem entrega. O modal a mostra no topo
+  (`_entrega`), o histórico lista todas, a busca acha o texto e o `ver_tarefa` a traz.
 - Teste em `tests/Feature/Mcp/` com `AlfaMatrizServer::actingAs($u)->tool(...)`. Fumaça de
   verdade: mandar JSON-RPC pelo stdin do `mcp:start` — foi assim que se conferiu o caminho inteiro.
 - **A fase 2 é a ponte do Telegram**, em `deploy/agente/` (`ponte-telegram.mjs`, README com a

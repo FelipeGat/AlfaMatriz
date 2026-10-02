@@ -850,6 +850,11 @@
                 textoPendente: '',
                 enviandoPendente: false,
 
+                // A entrega da ida para a revisão (#210): três campos, e não o
+                // `textoPendente` de sempre, porque são três perguntas — e
+                // duas delas obrigatórias.
+                entregaPendente: { feito: '', testar: '', pr: '' },
+
                 // As imagens escolhidas para a devolução, antes do envio: o
                 // File para reescrever a carga do input e o `blob:` para a
                 // prévia. O input do clone é guardado porque o `$refs` do
@@ -1846,9 +1851,18 @@
                             pessoa: 'Quem revisa?',
                         } : {
                             verbo: 'Enviando para', label: 'Em revisão',
-                            porque: 'O PR vai para exame. Aponte quem revisa e o sino avisa a pessoa na hora — sem apontar, a coluna fica como fila.',
+                            // Toda chegada que não é volta pede a ENTREGA
+                            // (#210) — o motor recusa sem ela, inclusive no
+                            // atalho da triagem vindo da fila. As voltas
+                            // caem no ramo de cima, que pede motivo.
+                            porque: ehDev && ! ['em_testes', 'pronta_producao'].includes(this.statusArrastado)
+                                ? 'O PR vai para exame. Diga o que foi feito e como testar no staging — é o que quem revisa e quem testa leem primeiro. Aponte quem revisa e o sino avisa a pessoa.'
+                                : 'O PR vai para exame. Aponte quem revisa e o sino avisa a pessoa na hora — sem apontar, a coluna fica como fila.',
                             acaoRotulo: 'Enviar para revisão',
                             cor: 'brand', campo: null, obrigatorio: false, pedeAprovacao: false,
+                            // As aposentadas de depois da revisão já entregaram o código:
+                            // o motor não cobra.
+                            entrega: ehDev && ! ['em_testes', 'pronta_producao'].includes(this.statusArrastado),
                             pessoa: 'Quem revisa?',
                         },
                         // A tag subiu: daqui em diante o código está com o
@@ -1961,6 +1975,7 @@
                     const ehBloqueio = destino === 'bloqueio';
 
                     this.textoPendente = '';
+                    this.entregaPendente = { feito: '', testar: '', pr: '' };
                     this.enviandoPendente = false;
                     this.limparImagens();
                     this.pendente = {
@@ -1995,8 +2010,29 @@
                 fecharPendente() {
                     this.pendente = null;
                     this.textoPendente = '';
+                    this.entregaPendente = { feito: '', testar: '', pr: '' };
                     this.limparImagens();
                     this.largar();
+                },
+
+                /**
+                 * Falta algo que o motor vai cobrar?
+                 *
+                 * Uma pergunta só para o rótulo e para o botão: os dois
+                 * precisam concordar, e com a entrega (#210) a resposta deixou
+                 * de caber no `textoPendente` sozinho.
+                 */
+                faltaPreencher() {
+                    if (! this.pendente) {
+                        return false;
+                    }
+
+                    if (this.pendente.entrega
+                        && (! this.entregaPendente.feito.trim() || ! this.entregaPendente.testar.trim())) {
+                        return true;
+                    }
+
+                    return this.pendente.obrigatorio && ! this.textoPendente.trim();
                 },
 
                 escolherImagens(evento) {

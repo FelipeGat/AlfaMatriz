@@ -1,7 +1,7 @@
 @php
     /**
-     * Os três banners do topo do modal, na ordem do card: pergunta, retorno,
-     * bloqueio.
+     * Os banners do topo do modal, na ordem do card: pergunta, retorno,
+     * bloqueio — e, nos portões, a entrega (#210) e o veredito.
      *
      * Eles respondem "por que esta tarefa está parada" antes de qualquer campo.
      * Enterrados no meio do formulário, seriam lidos depois de a pessoa já ter
@@ -144,6 +144,11 @@
         </button>
     </div>
 @endif
+
+{{-- A entrega (#210) logo antes do veredito: quem vai aprovar ou reprovar lê
+     primeiro o que foi feito e como testar. Mora nos avisos, e não solta no
+     formulário, porque muda com o modal aberto do mesmo jeito que eles. --}}
+@include('tarefas._entrega', ['tarefa' => $tarefa])
 
 {{--
     O quarto banner: o veredito do portão (US-084). Aparece nas duas colunas

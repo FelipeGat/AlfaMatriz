@@ -235,6 +235,31 @@
 
                 @include('tarefas._linha-do-tempo', ['tarefa' => $tarefa])
 
+                {{-- As entregas para a revisão (#210), todas: no histórico
+                     a tarefa já saiu dos portões, e o que interessa é o
+                     registro inteiro — o que foi entregue a cada subida. --}}
+                @if ($tarefa->entregas->isNotEmpty())
+                    <div>
+                        <div class="flex items-center gap-2 mb-2.5">
+                            <h4 class="flex-1 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Entregas para a revisão</h4>
+                        </div>
+                        <ul class="flex flex-col gap-2.5">
+                            @foreach ($tarefa->entregas as $entrega)
+                                <li>
+                                    <p class="flex items-center gap-2">
+                                        <span class="font-mono text-[11.5px] font-semibold text-ink-dim">{{ $entrega->numero }}ª</span>
+                                        @if ($entrega->autor)
+                                            <span class="text-[11.5px] text-ink-mute">por {{ $entrega->autor->name }}</span>
+                                        @endif
+                                        <span class="font-sans tabular text-[11.5px] text-ink-faint">{{ $entrega->created_at->format('d/m/Y H:i') }}</span>
+                                    </p>
+                                    @include('tarefas._entrega-campos', ['entrega' => $entrega])
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 @if ($tarefa->relatoriosTeste->isNotEmpty())
                     <div>
                         <div class="flex items-center gap-2 mb-2.5">

@@ -318,7 +318,7 @@ class TipoEFluxoTarefaTest extends TestCase
         ]);
 
         $this->fluxo->mover($tarefa, 'em_desenvolvimento');
-        $this->fluxo->mover($tarefa, 'em_revisao');
+        $this->fluxo->mover($tarefa, 'em_revisao', ['o_que_foi_feito' => 'Ajustei a tela.', 'como_testar' => 'Abrir a tela no staging.']);
         $this->fluxo->mover($tarefa->fresh(), 'em_staging');
 
         TarefaRelatorioTeste::create([
@@ -338,7 +338,7 @@ class TipoEFluxoTarefaTest extends TestCase
 
         // Ciclo 2: o aprovado lá de trás não vale como prova do código novo.
         $this->fluxo->mover($tarefa->fresh(), 'em_desenvolvimento', ['motivo' => 'Erro apareceu em produção.']);
-        $this->fluxo->mover($tarefa->fresh(), 'em_revisao');
+        $this->fluxo->mover($tarefa->fresh(), 'em_revisao', ['o_que_foi_feito' => 'Ajustei a tela.', 'como_testar' => 'Abrir a tela no staging.']);
         $this->fluxo->mover($tarefa->fresh(), 'em_staging');
 
         try {
@@ -375,7 +375,7 @@ class TipoEFluxoTarefaTest extends TestCase
 
         $this->assertNull($tarefa->fresh()->versao_producao);
 
-        $this->fluxo->mover($tarefa->fresh(), 'em_revisao');
+        $this->fluxo->mover($tarefa->fresh(), 'em_revisao', ['o_que_foi_feito' => 'Ajustei a tela.', 'como_testar' => 'Abrir a tela no staging.']);
         $this->fluxo->mover($tarefa->fresh(), 'em_staging');
 
         TarefaRelatorioTeste::create([
