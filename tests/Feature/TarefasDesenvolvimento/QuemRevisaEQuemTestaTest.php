@@ -76,6 +76,9 @@ class QuemRevisaEQuemTestaTest extends TestCase
 
         $this->actingAs($dono)->post(route('tarefas.mover', $tarefa), [
             'status' => 'em_revisao',
+            // A entrega (#210) que a ida para a revisão cobra.
+            'o_que_foi_feito' => 'Ajustei a tela.',
+            'como_testar' => 'Abrir a tela no staging.',
             'de_status' => 'em_desenvolvimento',
             'interlocutor_id' => $revisor->id,
         ]);
@@ -112,6 +115,7 @@ class QuemRevisaEQuemTestaTest extends TestCase
         // Revisão com o Felipe; staging apontando o Alexandre.
         $this->actingAs($dono)->post(route('tarefas.mover', $tarefa), [
             'status' => 'em_revisao', 'interlocutor_id' => $revisor->id,
+            'o_que_foi_feito' => 'Ajustei a tela.', 'como_testar' => 'Abrir a tela no staging.',
         ]);
         $this->actingAs($dono)->post(route('tarefas.mover', $tarefa->fresh()), [
             'status' => 'em_staging', 'interlocutor_id' => $testador->id,
@@ -136,6 +140,7 @@ class QuemRevisaEQuemTestaTest extends TestCase
 
         $this->actingAs($dono)->post(route('tarefas.mover', $tarefa), [
             'status' => 'em_revisao', 'interlocutor_id' => $revisor->id,
+            'o_que_foi_feito' => 'Ajustei a tela.', 'como_testar' => 'Abrir a tela no staging.',
         ]);
 
         // Uma conversa que andou: rodadas acumuladas na revisão.
@@ -166,6 +171,9 @@ class QuemRevisaEQuemTestaTest extends TestCase
 
         $this->actingAs($dono)->post(route('tarefas.mover', $tarefa), [
             'status' => 'em_revisao',
+            // A entrega (#210) que a ida para a revisão cobra.
+            'o_que_foi_feito' => 'Ajustei a tela.',
+            'como_testar' => 'Abrir a tela no staging.',
         ]);
         $this->actingAs($dono)->post(route('tarefas.mover', $tarefa->fresh()), [
             'status' => 'em_staging', 'interlocutor_id' => $testador->id,

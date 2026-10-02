@@ -92,6 +92,33 @@
                       :style="`border: 1px solid rgb(var(--${pendente.cor}) / 0.4)`"></textarea>
         </template>
 
+        {{-- A entrega (#210): o que foi feito, como testar, PR e commits.
+             Três campos, e não um texto só, porque são três leitores — quem
+             revisa lê o que mudou e o PR; quem testa, os passos. Com um campo
+             só, cada um escrevia na ordem que quisesse e o "como testar"
+             sumia no meio. --}}
+        <template x-if="pendente.entrega">
+            <div class="mt-2 flex flex-col gap-2">
+                @foreach ([
+                    ['feito', 'o_que_foi_feito', 'O que foi feito', 'obrigatório', 'O que mudou, para quem vai testar…', 3],
+                    ['testar', 'como_testar', 'Como testar', 'obrigatório', 'Os passos no staging…', 3],
+                    ['pr', 'pr_commits', 'PR e commits', 'opcional', 'Link do PR, hashes…', 2],
+                ] as [$chave, $nome, $rotulo, $exigencia, $exemplo, $linhas])
+                    <div>
+                        <label class="flex items-baseline gap-2 mb-[5px] font-mono text-[9.5px] uppercase tracking-[0.08em] text-ink-faint">
+                            <span class="flex-1 min-w-0 truncate">{{ $rotulo }}</span>
+                            <span class="shrink-0">{{ $exigencia }}</span>
+                        </label>
+                        <textarea name="{{ $nome }}" rows="{{ $linhas }}" placeholder="{{ $exemplo }}"
+                                  x-model="entregaPendente.{{ $chave }}"
+                                  class="block w-full px-[9px] py-[7px] rounded-[5px] bg-input text-ink
+                                         text-[12px] leading-[1.45] resize-y focus:ring-0"
+                                  :style="`border: 1px solid rgb(var(--${pendente.cor}) / 0.4)`"></textarea>
+                    </div>
+                @endforeach
+            </div>
+        </template>
+
         {{-- As imagens da devolução: o print do que reprovou viaja no MESMO
              envio que move o card — junto do motivo de que ele é a metade que
              o texto não carrega. Só na devolução para correção (`imagens` na
@@ -184,16 +211,18 @@
              era espremido a ~110px e "Liberar para o admin subir" virava
              "Liberar para o a…" — desistir é o × do cabeçalho ou Esc. --}}
         <div class="mt-2 flex flex-col gap-[7px]">
-            <p class="font-mono text-[9.5px] uppercase tracking-[0.08em] truncate"
-               :style="`color: ${(pendente.obrigatorio && ! textoPendente.trim())
-                   ? 'rgb(var(--warn))' : 'rgb(var(--ink-faint))'}`"
+            {{-- Com a entrega, cada campo já diz se é obrigatório no próprio
+                 rótulo; o aviso do pé repetiria "opcional" sobre um painel
+                 que tem dois campos obrigatórios. --}}
+            <p x-show="! pendente.entrega" class="font-mono text-[9.5px] uppercase tracking-[0.08em] truncate"
+               :style="`color: ${faltaPreencher() ? 'rgb(var(--warn))' : 'rgb(var(--ink-faint))'}`"
                x-text="pendente.obrigatorio ? 'obrigatório' : 'opcional'"></p>
 
             <button type="submit"
-                    :disabled="(pendente.obrigatorio && ! textoPendente.trim()) || enviandoPendente"
+                    :disabled="faltaPreencher() || enviandoPendente"
                     class="w-full h-[30px] px-2.5 rounded-[5px] text-[12px] font-semibold whitespace-nowrap
                            transition disabled:cursor-not-allowed"
-                    :style="(pendente.obrigatorio && ! textoPendente.trim()) || enviandoPendente
+                    :style="faltaPreencher() || enviandoPendente
                         ? 'background: rgb(var(--line)); color: rgb(var(--ink-faint))'
                         : `background: rgb(var(--${pendente.cor})); color: rgb(var(--on-brand))`"
                     x-text="enviandoPendente ? 'Enviando…' : pendente.acaoRotulo"></button>

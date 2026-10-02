@@ -25,7 +25,7 @@ class MoverTarefa extends Ferramenta
 
     protected string $title = 'Mover tarefa';
 
-    protected string $description = 'Move uma tarefa de etapa com as regras do quadro. Passe em "de" a etapa em que você a viu: se alguém já moveu, a ferramenta recusa. Devolver para Em andamento e cancelar exigem motivo. O veredito de teste (Em staging → Em produção) é registrado pela tela, não por aqui.';
+    protected string $description = 'Move uma tarefa de etapa com as regras do quadro. Passe em "de" a etapa em que você a viu: se alguém já moveu, a ferramenta recusa. Devolver para Em andamento e cancelar exigem motivo. De Em andamento para Em revisão (Desenvolvimento e Bug) exige a entrega: "o_que_foi_feito" e "como_testar" (os passos no staging), e "pr_commits" se houver. O veredito de teste (Em staging → Em produção) é registrado pela tela, não por aqui.';
 
     protected array $permissao = ['tarefas', 'editar'];
 
@@ -47,6 +47,12 @@ class MoverTarefa extends Ferramenta
                 ->description('Ao entrar em produção: a tag ou versão publicada.'),
             'interlocutor' => $schema->string()
                 ->description('Quem revisa ou testa, nos portões de exame. Opcional.'),
+            'o_que_foi_feito' => $schema->string()->max(5000)
+                ->description('Obrigatório de Em andamento para Em revisão: o que foi feito, em português para quem testa.'),
+            'como_testar' => $schema->string()->max(5000)
+                ->description('Obrigatório de Em andamento para Em revisão: os passos para testar no staging.'),
+            'pr_commits' => $schema->string()->max(2000)
+                ->description('Opcional, na ida para Em revisão: link(s) do PR e/ou hashes de commit.'),
         ];
     }
 
@@ -59,6 +65,9 @@ class MoverTarefa extends Ferramenta
             'motivo' => 'nullable|string|max:2000',
             'versao_producao' => 'nullable|string|max:60',
             'interlocutor' => 'nullable|string|max:255',
+            'o_que_foi_feito' => 'nullable|string|max:5000',
+            'como_testar' => 'nullable|string|max:5000',
+            'pr_commits' => 'nullable|string|max:2000',
         ]);
 
         $tarefa = $this->tarefaPeloCodigo($dados['tarefa']);
@@ -100,6 +109,11 @@ class MoverTarefa extends Ferramenta
             'motivo' => $dados['motivo'] ?? null,
             'versao_producao' => $dados['versao_producao'] ?? null,
             'interlocutor_id' => $interlocutorId,
+            // A entrega (#210) vai crua para o motor, que é quem a cobra — a
+            // mesma frase de recusa da tela chega ao agente.
+            'o_que_foi_feito' => $dados['o_que_foi_feito'] ?? null,
+            'como_testar' => $dados['como_testar'] ?? null,
+            'pr_commits' => $dados['pr_commits'] ?? null,
         ], livre: $usuario->podeTriarTarefas());
 
         $tarefa->refresh()->load(['responsavel', 'sistema', 'perguntaPara']);

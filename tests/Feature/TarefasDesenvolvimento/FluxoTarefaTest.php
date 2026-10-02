@@ -136,7 +136,7 @@ class FluxoTarefaTest extends TestCase
         $devolvida = $this->fluxo->mover($tarefa, 'em_desenvolvimento', ['motivo' => 'Quebrou ao subir.']);
         $this->assertSame('em_staging', $devolvida->retorno_de);
 
-        $seguinte = $this->fluxo->mover($devolvida, 'em_revisao');
+        $seguinte = $this->fluxo->mover($devolvida, 'em_revisao', ['o_que_foi_feito' => 'Ajustei a tela.', 'como_testar' => 'Abrir a tela no staging.']);
 
         $this->assertNull($seguinte->retorno_de);
         $this->assertNull($seguinte->retorno_motivo);
@@ -270,7 +270,7 @@ class FluxoTarefaTest extends TestCase
         $this->fluxo->mover($tarefa, 'em_desenvolvimento');
 
         Carbon::setTestNow(Carbon::parse('2026-08-10 11:30:00'));
-        $this->fluxo->mover($tarefa, 'em_revisao');
+        $this->fluxo->mover($tarefa, 'em_revisao', ['o_que_foi_feito' => 'Ajustei a tela.', 'como_testar' => 'Abrir a tela no staging.']);
         Carbon::setTestNow();
 
         $eventos = $tarefa->eventos()->orderBy('id')->get();

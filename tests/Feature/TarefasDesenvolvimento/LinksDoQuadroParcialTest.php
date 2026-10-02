@@ -58,6 +58,9 @@ class LinksDoQuadroParcialTest extends TestCase
             ->postJson(route('tarefas.mover', $tarefa).'?sistema='.$sistema->id.'&responsavel='.$dono->id, [
                 'de_status' => 'em_desenvolvimento',
                 'status' => 'em_revisao',
+                // A entrega (#210) que a ida para a revisão cobra.
+                'o_que_foi_feito' => 'Ajustei a tela.',
+                'como_testar' => 'Abrir a tela no staging.',
             ])
             ->assertOk()
             ->json('quadro');

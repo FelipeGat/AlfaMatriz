@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 /**
  * O motor do fluxo do quadro: só deixa a tarefa se mover entre etapas que o
  * fluxo DO TIPO DELA permite, cobra o que cada transição exige (responsável,
- * motivo, relatório de teste aprovado) e fecha o evento de etapa aberto e abre
+ * motivo, entrega para a revisão, relatório de teste aprovado) e fecha o evento de etapa aberto e abre
  * o próximo a cada mudança — é o tempo por etapa (US-038) sendo registrado.
  *
  * O princípio dos mapas abaixo: **restringir o avanço, liberar o recuo**.
@@ -153,7 +153,7 @@ class FluxoTarefaService
      * etapas — guardam a informação que cada chegada registra, e um
      * cancelamento sem motivo mente igual venha de quem vier.
      *
-     * @param  array{motivo?: ?string, versao_producao?: ?string, interlocutor_id?: int|string|null}  $dados
+     * @param  array{motivo?: ?string, versao_producao?: ?string, interlocutor_id?: int|string|null, o_que_foi_feito?: ?string, como_testar?: ?string, pr_commits?: ?string}  $dados
      */
     public function mover(Tarefa $tarefa, string $novoStatus, array $dados = [], bool $livre = false): Tarefa
     {
@@ -261,7 +261,7 @@ class FluxoTarefaService
                 $this->avisarEncerramento($tarefa, $novoStatus, $dados);
             }
 
-            TarefaEvento::create([
+            $evento = TarefaEvento::create([
                 'tarefa_id' => $tarefa->id,
                 // Quem moveu (AC-301). Nulo quando não há ninguém logado — a
                 // rotina que mover tarefa sem sessão registra movimento sem
@@ -278,6 +278,22 @@ class FluxoTarefaService
                 'motivo' => $dados['motivo'] ?? null,
                 'entrou_em' => $agora,
             ]);
+
+            // A entrega nasce presa ao evento que ACABOU de abrir — o da
+            // chegada à revisão —, dentro da mesma transação: um movimento sem
+            // a entrega, ou uma entrega sem o movimento, seria o quadro
+            // afirmando metade do que aconteceu.
+            if ($this->chegadaComEntrega($tarefa, $statusAtual, $novoStatus)) {
+                $tarefa->entregas()->create([
+                    'user_id' => auth()->id(),
+                    'tarefa_evento_id' => $evento->id,
+                    'o_que_foi_feito' => trim((string) $dados['o_que_foi_feito']),
+                    'como_testar' => trim((string) $dados['como_testar']),
+                    'pr_commits' => filled(trim((string) ($dados['pr_commits'] ?? '')))
+                        ? trim((string) $dados['pr_commits'])
+                        : null,
+                ]);
+            }
 
             return $tarefa->refresh();
         });
@@ -359,6 +375,30 @@ class FluxoTarefaService
                 'tarefa_id' => $tarefa->id,
             ]);
         }
+    }
+
+    /**
+     * Esta passagem leva o código da bancada para a revisão — e por isso
+     * carrega a entrega (#210)?
+     *
+     * Toda chegada à revisão vinda de ANTES dela — a saída de Em andamento e
+     * também o atalho da triagem a partir da fila (decisão do dono do produto
+     * em 02/10/2026: ninguém pula a entrega, nem quem organiza o quadro). As
+     * voltas de mais adiante (staging, produção ou a reabertura da concluída
+     * → revisão) são reexame do MESMO código, já entregue, e cobram motivo,
+     * não entrega. A operacional
+     * não passa pelos portões, e não tem o que entregar a eles.
+     */
+    // As aposentadas de depois da revisão (`em_testes`, `pronta_producao`)
+    // também: o código de quem está presa nelas já foi entregue.
+    private const VOLTAS_PARA_A_REVISAO = ['em_staging', 'em_producao', 'concluida', 'em_testes', 'pronta_producao'];
+
+    private function chegadaComEntrega(Tarefa $tarefa, string $statusAtual, string $novoStatus): bool
+    {
+        return $tarefa->passaPelosPortoes()
+            && $novoStatus === 'em_revisao'
+            && $statusAtual !== 'em_revisao'
+            && ! in_array($statusAtual, self::VOLTAS_PARA_A_REVISAO, true);
     }
 
     /**
@@ -860,6 +900,18 @@ class FluxoTarefaService
 
         if ($novoStatus === 'cancelada' && ! $this->motivoPreenchido($dados)) {
             throw new \RuntimeException('O motivo do cancelamento é obrigatório.');
+        }
+
+        // A entrega (#210) é exigência de CHEGADA, e por isso mora aqui e vale
+        // para todos — a tela, o agente e quem faz triagem no movimento livre.
+        // Quem revisa e quem testa no staging abria o card sem saber o que
+        // mudou nem como conferir: o hash ficava no resumo, o PR no motivo de
+        // um bloqueio, e os passos de teste em lugar nenhum. O PR é opcional
+        // porque nem toda entrega tem um — o texto para quem testa, não.
+        if ($this->chegadaComEntrega($tarefa, $tarefa->status, $novoStatus)
+            && (trim((string) ($dados['o_que_foi_feito'] ?? '')) === ''
+                || trim((string) ($dados['como_testar'] ?? '')) === '')) {
+            throw new \RuntimeException('Para mandar para revisão, diga o que foi feito e como testar.');
         }
 
         // O portão do staging mudou de porta junto com as etapas: ele guardava

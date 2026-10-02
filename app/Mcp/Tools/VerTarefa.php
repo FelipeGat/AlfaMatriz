@@ -27,7 +27,7 @@ class VerTarefa extends Ferramenta
 
     protected string $title = 'Ver tarefa';
 
-    protected string $description = 'Tudo sobre uma tarefa: resumo, detalhes, responsável, marcas (arquivo, bloqueio, retorno, pergunta), checklist, conversa, histórico de etapas e para onde VOCÊ pode movê-la. Leia antes de mover ou responder.';
+    protected string $description = 'Tudo sobre uma tarefa: resumo, detalhes, responsável, marcas (arquivo, bloqueio, retorno, pergunta), a entrega para a revisão (o que foi feito, como testar, PR e commits), checklist, conversa, histórico de etapas e para onde VOCÊ pode movê-la. Leia antes de mover ou responder.';
 
     protected array $permissao = ['tarefas', 'ler'];
 
@@ -53,7 +53,7 @@ class VerTarefa extends Ferramenta
 
         $tarefa->load([
             'responsavel', 'sistema', 'criadoPor', 'interlocutor', 'perguntaDe', 'perguntaPara',
-            'pai', 'subtarefas', 'duplicadaDe', 'duplicadas', 'arquivadaPor', 'itens', 'comentarios.autor', 'eventos.autor', 'anexos',
+            'pai', 'subtarefas', 'duplicadaDe', 'duplicadas', 'arquivadaPor', 'itens', 'comentarios.autor', 'eventos.autor', 'anexos', 'entregas.autor',
         ]);
 
         $blocos = [$this->linhaDaTarefa($tarefa)];
@@ -125,6 +125,20 @@ class VerTarefa extends Ferramenta
 
         if ($marcas !== []) {
             $blocos[] = "Marcas:\n- ".implode("\n- ", $marcas);
+        }
+
+        // A entrega (#210) vem antes do checklist e da conversa: é o que o
+        // agente que revisa ou testa precisa ler primeiro — e, no Em
+        // andamento, o número diz que a próxima subida já será a 2ª.
+        if ($entrega = $tarefa->entregaAtual()) {
+            $blocos[] = 'Entrega para a revisão ('.$entrega->numero.'ª de '.$tarefa->entregas->count().')'
+                .' por '.($entrega->autor?->name ?? '?').' em '.$entrega->created_at->format('d/m/Y H:i').":\n"
+                .'- O que foi feito: '.$entrega->o_que_foi_feito."\n"
+                .'- Como testar: '.$entrega->como_testar
+                .($entrega->pr_commits ? "\n- PR e commits: ".$entrega->pr_commits : '');
+        } elseif ($tarefa->entregas->isNotEmpty()) {
+            $blocos[] = 'Entregas anteriores para a revisão: '.$tarefa->entregas->count()
+                .' (a última, de '.$tarefa->entregas->last()->created_at->format('d/m/Y').', não vale para o código de agora).';
         }
 
         if ($tarefa->itens->isNotEmpty()) {

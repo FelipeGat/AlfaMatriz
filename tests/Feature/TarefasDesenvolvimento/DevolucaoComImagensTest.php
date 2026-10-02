@@ -175,6 +175,9 @@ class DevolucaoComImagensTest extends TestCase
 
         $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa->fresh()), [
             'status' => 'em_revisao',
+            // A entrega (#210) que a ida para a revisão cobra.
+            'o_que_foi_feito' => 'Ajustei a tela.',
+            'como_testar' => 'Abrir a tela no staging.',
         ])->assertSessionMissing('erro');
 
         // A tarja morreu e levou o vínculo; o anexo fica — ele é prova da
@@ -199,6 +202,9 @@ class DevolucaoComImagensTest extends TestCase
 
         $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa->fresh()), [
             'status' => 'em_revisao',
+            // A entrega (#210) que a ida para a revisão cobra.
+            'o_que_foi_feito' => 'Ajustei a tela.',
+            'como_testar' => 'Abrir a tela no staging.',
         ])->assertSessionMissing('erro');
 
         $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa->fresh()), [
@@ -226,6 +232,9 @@ class DevolucaoComImagensTest extends TestCase
         // carimbar uma tarja que o movimento não criou.
         $this->actingAs($usuario)->post(route('tarefas.mover', $tarefa), [
             'status' => 'em_revisao',
+            // A entrega (#210) que a ida para a revisão cobra.
+            'o_que_foi_feito' => 'Ajustei a tela.',
+            'como_testar' => 'Abrir a tela no staging.',
             'anexos' => [UploadedFile::fake()->image('print-avulso.png')],
         ])->assertSessionMissing('erro');
 

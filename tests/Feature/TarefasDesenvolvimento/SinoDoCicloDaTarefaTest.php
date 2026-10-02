@@ -336,6 +336,9 @@ class SinoDoCicloDaTarefaTest extends TestCase
 
         $this->actingAs($admin)->post(route('tarefas.mover', $tarefa), [
             'status' => 'em_revisao',
+            // A entrega (#210) que a ida para a revisão cobra.
+            'o_que_foi_feito' => 'Ajustei a tela.',
+            'como_testar' => 'Abrir a tela no staging.',
             'de_status' => 'em_desenvolvimento',
         ]);
 

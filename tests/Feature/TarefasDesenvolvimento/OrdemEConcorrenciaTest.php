@@ -110,7 +110,7 @@ class OrdemEConcorrenciaTest extends TestCase
         $this->assertSame(['Primeira', 'Segunda', 'Recém-chegada'], $coluna);
 
         // E a posição não viaja com o card para outra coluna.
-        $this->actingAs($usuario)->post(route('tarefas.mover', $primeira), ['status' => 'em_revisao']);
+        $this->actingAs($usuario)->post(route('tarefas.mover', $primeira), ['status' => 'em_revisao', 'o_que_foi_feito' => 'Ajustei a tela.', 'como_testar' => 'Abrir a tela no staging.']);
 
         $this->assertNull($primeira->fresh()->ordem);
     }
@@ -131,6 +131,9 @@ class OrdemEConcorrenciaTest extends TestCase
 
         $this->actingAs($usuario)->post(route('tarefas.mover', $viajante), [
             'status' => 'em_revisao',
+            // A entrega (#210) que a ida para a revisão cobra.
+            'o_que_foi_feito' => 'Ajustei a tela.',
+            'como_testar' => 'Abrir a tela no staging.',
             'de_status' => 'em_desenvolvimento',
             'ordem' => [$primeira->id, $viajante->id, $segunda->id],
         ])->assertSessionMissing('erro');
@@ -162,6 +165,9 @@ class OrdemEConcorrenciaTest extends TestCase
 
         $this->actingAs($usuario)->post(route('tarefas.mover', $viajante), [
             'status' => 'em_revisao',
+            // A entrega (#210) que a ida para a revisão cobra.
+            'o_que_foi_feito' => 'Ajustei a tela.',
+            'como_testar' => 'Abrir a tela no staging.',
             'de_status' => 'em_desenvolvimento',
             'ordem' => [$viajante->id, $primeira->id, $segunda->id],
         ])->assertSessionHas('erro');
@@ -184,6 +190,9 @@ class OrdemEConcorrenciaTest extends TestCase
 
         $this->actingAs($membro)->post(route('tarefas.mover', $sua), [
             'status' => 'em_revisao',
+            // A entrega (#210) que a ida para a revisão cobra.
+            'o_que_foi_feito' => 'Ajustei a tela.',
+            'como_testar' => 'Abrir a tela no staging.',
             'de_status' => 'em_desenvolvimento',
             'ordem' => [$sua->id, $daFila->id],
         ])->assertSessionMissing('erro');

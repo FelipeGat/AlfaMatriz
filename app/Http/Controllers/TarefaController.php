@@ -540,7 +540,7 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos.apontado', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'subtarefas', 'pai', 'arquivadaPor'])
+        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos.apontado', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'subtarefas', 'pai', 'arquivadaPor', 'entregas.autor'])
             ->findOrFail($tarefa->id);
 
         return response()->view('tarefas._modais', [
@@ -980,6 +980,12 @@ class TarefaController extends Controller
             // Quem revisa / quem testa (US-087): opcional, e só as entradas
             // nos portões de exame o usam — o motor ignora no resto.
             'interlocutor_id' => 'nullable|exists:users,id',
+            // A entrega para a revisão (#210). Opcionais AQUI pelo mesmo
+            // motivo das notas: quem cobra é o motor, com a frase que diz o
+            // que falta — e só na passagem da bancada para a revisão.
+            'o_que_foi_feito' => 'nullable|string|max:5000',
+            'como_testar' => 'nullable|string|max:5000',
+            'pr_commits' => 'nullable|string|max:2000',
             // A coluna de destino inteira, quando o arrasto mirou um lugar
             // nela (`ordemDoVao`, no quadro). Mudar de etapa e escolher o
             // lugar na fila eram dois gestos, e o segundo só existia DENTRO da
@@ -1074,6 +1080,9 @@ class TarefaController extends Controller
                 'motivo' => $data['motivo'] ?? null,
                 'versao_producao' => $data['versao_producao'] ?? null,
                 'interlocutor_id' => $data['interlocutor_id'] ?? null,
+                'o_que_foi_feito' => $data['o_que_foi_feito'] ?? null,
+                'como_testar' => $data['como_testar'] ?? null,
+                'pr_commits' => $data['pr_commits'] ?? null,
             ], livre: (bool) $request->user()?->podeTriarTarefas());
         } catch (\RuntimeException $e) {
             return $this->voltarParaOQuadro($request, $e->getMessage(), 'critico');
@@ -1663,7 +1672,7 @@ class TarefaController extends Controller
             // Recarregado do banco com as relações que as partials leem: o
             // model que chegou pelo route binding traz o estado de ANTES da
             // ação, e a conversa recém-publicada não estaria nele.
-            $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos.apontado', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor'])
+            $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos.apontado', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'entregas.autor'])
                 ->find($tarefa->id);
         }
 
@@ -2147,7 +2156,7 @@ class TarefaController extends Controller
         // histórico completo (US-082): a linha do tempo assina cada movimento
         // e a criação, e os relatórios contam as aprovações. Tudo no mesmo
         // `with()` — o modal nasce com a página, sem consulta por linha.
-        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos.autor', 'criadoPor', 'comentarios.autor', 'itens', 'anexos.autor', 'relatoriosTeste.autor'])
+        $tarefas = Tarefa::with(['sistema', 'responsavel', 'eventos.autor', 'criadoPor', 'comentarios.autor', 'itens', 'anexos.autor', 'relatoriosTeste.autor', 'entregas.autor'])
             ->whereIn('status', $filtros['desfecho'] !== '' ? [$filtros['desfecho']] : Tarefa::STATUS_TERMINAIS)
             ->tap(fn ($q) => $this->aplicarFiltros($q, $filtros))
             ->orderByDesc('updated_at')
@@ -2261,8 +2270,9 @@ class TarefaController extends Controller
      *
      * A busca varre TODO texto ou número gravado na tarefa: título, resumo,
      * detalhes, comentários, checklist, motivos (de bloqueio, de retorno e os
-     * da linha do tempo), notas de relatório de teste, nome de anexo e versão
-     * de produção. Quem procura uma tarefa lembra de UMA palavra que viu nela
+     * da linha do tempo), notas de relatório de teste, entregas para a revisão
+     * (o que foi feito, como testar, PR e commits), nome de anexo e versão de
+     * produção. Quem procura uma tarefa lembra de UMA palavra que viu nela
      * — e não de em qual campo estava; cada campo fora do alcance é uma tela
      * vazia para uma palavra que está escrita na tarefa. As condições vão
      * dentro de um `where` aninhado — soltas, o `orWhere` escaparia do
@@ -2313,6 +2323,13 @@ class TarefaController extends Controller
                 ->orWhere('arquivamento_nota', 'like', '%'.$filtros['busca'].'%')
                 ->orWhereHas('relatoriosTeste', fn ($relatorio) => $relatorio
                     ->where('notas', 'like', '%'.$filtros['busca'].'%'))
+                // A entrega (#210), TODAS as passagens: o PR e o hash são
+                // justamente o que se cola na busca para achar a tarefa de um
+                // commit — e o de uma entrega anterior continua sendo dela.
+                ->orWhereHas('entregas', fn ($entrega) => $entrega
+                    ->where('o_que_foi_feito', 'like', '%'.$filtros['busca'].'%')
+                    ->orWhere('como_testar', 'like', '%'.$filtros['busca'].'%')
+                    ->orWhere('pr_commits', 'like', '%'.$filtros['busca'].'%'))
                 // Só o NOME do anexo — o conteúdo do arquivo não está no banco.
                 ->orWhereHas('anexos', fn ($anexo) => $anexo
                     ->where('nome_original', 'like', '%'.$filtros['busca'].'%'))

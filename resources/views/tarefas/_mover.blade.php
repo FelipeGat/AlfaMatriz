@@ -130,6 +130,10 @@
                         $destino === 'concluida' && $tarefa->passaPelosPortoes()
                             => $tarefa->status === 'em_producao' ? null : 'pede versão',
                         $devolveParaRevisao, $devolveParaStaging => 'pede motivo',
+                        // Toda chegada à revisão que não é volta cobra a
+                        // entrega (#210): o que foi feito e como testar.
+                        $destino === 'em_revisao' && $tarefa->passaPelosPortoes()
+                            && ! in_array($tarefa->status, ['em_staging', 'em_producao', 'concluida', 'em_testes', 'pronta_producao'], true) => 'pede entrega',
                         in_array($destino, \App\Models\Tarefa::PORTOES_DE_EXAME, true) => 'apontar quem',
                         default => 'pede motivo',
                     };

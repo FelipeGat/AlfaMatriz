@@ -122,6 +122,9 @@ class AcoesSemRecarregarTest extends TestCase
         $quadro = $this->actingAs($usuario)
             ->postJson(route('tarefas.mover', $tarefa).'?busca=boleto', [
                 'status' => 'em_revisao',
+                // A entrega (#210) que a ida para a revisão cobra.
+                'o_que_foi_feito' => 'Ajustei a tela.',
+                'como_testar' => 'Abrir a tela no staging.',
                 'de_status' => 'em_desenvolvimento',
             ])
             ->assertOk()
@@ -269,6 +272,9 @@ class AcoesSemRecarregarTest extends TestCase
 
         $resposta = $this->actingAs($usuario)->postJson(route('tarefas.mover', $tarefa), [
             'status' => 'em_revisao',
+            // A entrega (#210) que a ida para a revisão cobra.
+            'o_que_foi_feito' => 'Ajustei a tela.',
+            'como_testar' => 'Abrir a tela no staging.',
             'de_status' => 'em_desenvolvimento',
         ]);
 
