@@ -7,6 +7,7 @@ use App\Models\TarefaAnexo;
 use App\Models\TarefaComentario;
 use App\Models\TarefaEvento;
 use App\Models\TarefaItem;
+use App\Models\TarefaReferenciaGit;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -27,7 +28,7 @@ class VerTarefa extends Ferramenta
 
     protected string $title = 'Ver tarefa';
 
-    protected string $description = 'Tudo sobre uma tarefa: resumo, detalhes, responsável, marcas (arquivo, bloqueio, retorno, pergunta), a entrega para a revisão (o que foi feito, como testar, PR e commits), checklist, conversa, histórico de etapas e para onde VOCÊ pode movê-la. Leia antes de mover ou responder.';
+    protected string $description = 'Tudo sobre uma tarefa: resumo, detalhes, responsável, marcas (arquivo, bloqueio, retorno, pergunta), a entrega para a revisão (o que foi feito, como testar, PR e commits), o código ligado pelo GitHub (PRs e commits que citam T-N), checklist, conversa, histórico de etapas e para onde VOCÊ pode movê-la. Leia antes de mover ou responder.';
 
     protected array $permissao = ['tarefas', 'ler'];
 
@@ -53,7 +54,7 @@ class VerTarefa extends Ferramenta
 
         $tarefa->load([
             'responsavel', 'sistema', 'criadoPor', 'interlocutor', 'perguntaDe', 'perguntaPara',
-            'pai', 'subtarefas', 'duplicadaDe', 'duplicadas', 'arquivadaPor', 'itens', 'comentarios.autor', 'eventos.autor', 'anexos', 'entregas.autor',
+            'pai', 'subtarefas', 'duplicadaDe', 'duplicadas', 'arquivadaPor', 'itens', 'comentarios.autor', 'eventos.autor', 'anexos', 'entregas.autor', 'referenciasGit',
         ]);
 
         $blocos = [$this->linhaDaTarefa($tarefa)];
@@ -139,6 +140,26 @@ class VerTarefa extends Ferramenta
         } elseif ($tarefa->entregas->isNotEmpty()) {
             $blocos[] = 'Entregas anteriores para a revisão: '.$tarefa->entregas->count()
                 .' (a última, de '.$tarefa->entregas->last()->created_at->format('d/m/Y').', não vale para o código de agora).';
+        }
+
+        // O código que o GitHub ligou (#211), logo depois da entrega: o agente
+        // que vai mandar para a revisão monta o "pr_commits" daqui, e o que
+        // revisa acha o PR sem perguntar a ninguém. Os mais recentes primeiro,
+        // com teto — tarefa longa junta dezenas de commits.
+        if ($tarefa->referenciasGit->isNotEmpty()) {
+            $prs = $tarefa->referenciasGit->filter->ehPr();
+            $commits = $tarefa->referenciasGit->reject->ehPr();
+            $omitidos = max(0, $commits->count() - self::ULTIMOS);
+
+            $blocos[] = "Código (GitHub, marca T-{$tarefa->id}):\n".$prs
+                ->map(fn (TarefaReferenciaGit $pr) => '- PR #'.$pr->numero.' ('.$pr->rotuloDoEstado().') '.$pr->repositorio
+                    .' · '.$pr->titulo.($pr->autor_github ? ' · '.$pr->autor_github : '').' · '.$pr->url)
+                ->concat($commits->take(self::ULTIMOS)
+                    ->map(fn (TarefaReferenciaGit $c) => '- commit '.$c->shaCurto().' '.$c->repositorio
+                        .($c->branch ? ' ('.$c->branch.')' : '').' · '.$c->titulo
+                        .($c->autor_github ? ' · '.$c->autor_github : '')))
+                ->implode("\n")
+                .($omitidos ? "\n- e mais {$omitidos} commit(s) anteriores" : '');
         }
 
         if ($tarefa->itens->isNotEmpty()) {

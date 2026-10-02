@@ -601,6 +601,10 @@
         --}}
         @if ($edicao)
             @include('tarefas._subtarefas', ['tarefa' => $tarefa])
+
+            {{-- O código (#211) logo depois das subtarefas: é o trabalho
+                 feito, e vem antes da prova (anexos) e da conversa. --}}
+            @include('tarefas._codigo', ['tarefa' => $tarefa])
         @endif
 
         @include('tarefas._anexos', ['tarefa' => $tarefa])

@@ -867,6 +867,7 @@
                 // Modelo de rota com marcador: o id só é conhecido no solto.
                 rotaMover: @json(route('tarefas.mover', ['tarefa' => '__ID__'])),
                 rotaBloquear: @json(route('tarefas.bloquear', ['tarefa' => '__ID__'])),
+                rotaPrCommits: @json(route('tarefas.pr-commits', ['tarefa' => '__ID__'])),
 
                 // Rótulos das etapas para o select do menu "Mover ▾": montados
                 // no cliente (x-text), não em Blade — se saíssem como
@@ -1996,6 +1997,40 @@
                         acao: (ehBloqueio ? this.rotaBloquear : this.rotaMover).replace('__ID__', tarefa),
                     };
 
+                    if (this.pendente.entrega) {
+                        this.preencherPrCommits(this.pendente);
+                    }
+                },
+
+                /**
+                 * O "PR e commits" da entrega já escrito com o que o GitHub
+                 * ligou à tarefa (#211).
+                 *
+                 * Aqui, e não no Blade, porque `abrirPendente` é a porta única
+                 * do painel — arrasto, menu do card e modal passam por ela. O
+                 * campo abre vazio e é preenchido quando a resposta chega, e só
+                 * se continuar vazio e o painel for o mesmo: o que o dev já
+                 * começou a escrever não é atropelado. Falhou a viagem, fica o
+                 * campo vazio de antes — a sugestão é cortesia, não portão.
+                 */
+                async preencherPrCommits(pendente) {
+                    try {
+                        const resposta = await fetch(this.rotaPrCommits.replace('__ID__', pendente.id), {
+                            headers: { 'Accept': 'application/json' },
+                        });
+
+                        if (! resposta.ok) {
+                            return;
+                        }
+
+                        const { texto } = await resposta.json();
+
+                        if (texto && this.pendente === pendente && ! this.entregaPendente.pr.trim()) {
+                            this.entregaPendente.pr = texto;
+                        }
+                    } catch (erro) {
+                        // Sem rede, sem sugestão: o dev escreve como antes.
+                    }
                 },
 
                 /**
