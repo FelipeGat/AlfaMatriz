@@ -105,7 +105,7 @@ class FluxoTarefaService
      */
     public static function transicoesDe(Tarefa $tarefa): array
     {
-        // O Defeito anda pelo mapa do desenvolvimento (`Tarefa::TIPOS_COM_PORTOES`):
+        // O Bug anda pelo mapa do desenvolvimento (`Tarefa::TIPOS_COM_PORTOES`):
         // corrigir é escrever código, e o código passa pelos mesmos portões.
         // Dito aqui, e não só pelo `??`, para que um terceiro tipo não caia no
         // mapa dos portões por acidente de fallback sem ninguém ter decidido.

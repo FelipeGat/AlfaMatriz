@@ -33,7 +33,7 @@ class DuplicidadePeloAgenteTest extends TestCase
         $original = $this->tarefa('Wellhub não registra check-in');
 
         AlfaMatrizServer::actingAs($admin)
-            ->tool(CriarTarefa::class, ['titulo' => 'Check-in do Wellhub falhando'])
+            ->tool(CriarTarefa::class, ['tipo' => 'desenvolvimento', 'titulo' => 'Check-in do Wellhub falhando'])
             ->assertOk()
             ->assertSee('criada')
             ->assertSee('já existem tarefas parecidas em curso')
@@ -49,7 +49,7 @@ class DuplicidadePeloAgenteTest extends TestCase
         $this->tarefa('Exportar planilha de alunos');
 
         AlfaMatrizServer::actingAs($admin)
-            ->tool(CriarTarefa::class, ['titulo' => 'Wellhub não registra check-in'])
+            ->tool(CriarTarefa::class, ['tipo' => 'desenvolvimento', 'titulo' => 'Wellhub não registra check-in'])
             ->assertOk()
             ->assertDontSee('parecidas');
     }

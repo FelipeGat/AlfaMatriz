@@ -59,7 +59,7 @@ class Referencias extends Ferramenta
             'Etapas (chave = nome): '.$vocabulario(Tarefa::STATUS),
             'Prioridades: '.$vocabulario(Tarefa::PRIORIDADES),
             'Tipos de tarefa: '.$vocabulario(Tarefa::TIPOS),
-            'Defeito segue o fluxo do desenvolvimento e exige o relato: quem (cliente, aluno ou academia) e quando (dia e hora); esperado e ocorrido são opcionais.',
+            'O tipo é obrigatório ao criar. Bug segue o fluxo do desenvolvimento e exige o relato: quem (cliente, aluno ou academia) e quando (dia e hora); o que aconteceu vai no resumo.',
             'Categorias de compromisso: '.$vocabulario(Compromisso::CATEGORIAS),
         ]));
     }

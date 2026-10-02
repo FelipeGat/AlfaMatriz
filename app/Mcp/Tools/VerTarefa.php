@@ -66,22 +66,21 @@ class VerTarefa extends Ferramenta
         ]));
 
         if (filled($tarefa->resumo)) {
-            $blocos[] = 'Resumo: '.$tarefa->resumo;
+            // No Bug o resumo é "O que aconteceu" (#204), como na tela.
+            $blocos[] = ($tarefa->tipo === 'bug' ? 'O que aconteceu: ' : 'Resumo: ').$tarefa->resumo;
         }
 
         if (filled($tarefa->detalhes)) {
             $blocos[] = 'Detalhes: '.$tarefa->detalhes;
         }
 
-        // O relato do Defeito (#204) é o caso concreto — quem e em que minuto
+        // O relato do Bug (#204) é o caso concreto — quem e em que minuto
         // procurar no log —, e é a primeira coisa de que o agente precisa para
         // investigar. Sem ele, o print nos anexos seria a única pista.
-        if ($tarefa->tipo === 'defeito') {
-            $blocos[] = "Relato do defeito:\n".implode("\n", [
+        if ($tarefa->tipo === 'bug') {
+            $blocos[] = "Relato do bug:\n".implode("\n", [
                 '- Quem: '.($tarefa->defeito_quem ?: 'não informado'),
                 '- Quando: '.($tarefa->defeito_quando?->format('d/m/Y H:i') ?? 'não informado'),
-                '- Esperado: '.($tarefa->defeito_esperado ?: 'não informado'),
-                '- Ocorrido: '.($tarefa->defeito_ocorrido ?: 'não informado'),
             ]);
         }
 

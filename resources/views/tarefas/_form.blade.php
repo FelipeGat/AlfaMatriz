@@ -53,6 +53,20 @@
     // E os vínculos digitados, pelo mesmo motivo: um título em falta devolve a
     // página inteira, e sem isto a lista de tarefas irmãs que a pessoa acabou
 
+    // O tipo com que o formulário abre. Na edição, o gravado. Na criação, NADA
+    // (#204, segundo ajuste, pedido do dono do produto em 01/10/2026): com
+    // "Desenvolvimento" já marcado, bug era aberto como desenvolvimento por
+    // omissão e sumia da contagem de bugs — escolher passou a ser obrigatório,
+    // e o servidor recusa o envio sem tipo (`TarefaService::criar`).
+    //
+    // A subtarefa é a exceção, e de propósito: ela abre a partir da mãe, e o
+    // tipo da mãe é o palpite certo quase sempre — o bug achado revisando
+    // código é do mesmo ramo que a revisão. Continua visível e trocável no
+    // select; o que se evita é o padrão que ninguém olhou, e este a pessoa vê
+    // ao lado do "de #N" no cabeçalho.
+    $tipoInicial = old('tipo', $tarefa->tipo ?? $pai?->tipo ?? '');
+    $exemploDoBug = 'Descreva o que aconteceu, o que deveria ter acontecido e a mensagem de erro, se houve…';
+
     if ($edicao) {
         // O subtítulo diz ONDE a tarefa está e HÁ QUANTO TEMPO — a mesma
         // pergunta que o chip do card responde, e a primeira que se faz ao
@@ -112,12 +126,63 @@
           confirmandoExclusao: false,
           travando: false,
           bloqueada: {{ $edicao && $tarefa->estaBloqueada() ? 'true' : 'false' }},
-          {{-- O tipo escolhido, para o relato de defeito aparecer e sumir com o
-               select (`_relato-defeito`). --}}
-          tipo: @js(old('tipo', $tarefa->tipo ?? $pai?->tipo ?? 'desenvolvimento')),
+          {{-- O tipo escolhido, para o relato de bug aparecer e sumir com o
+               select (`_relato-bug`) e o Resumo virar "O que aconteceu". --}}
+          tipo: @js($tipoInicial),
+          @unless ($edicao || $pai)
+              {{-- A coluna de onde veio a criação rápida (`_coluna`), que só
+                   preenche o título e abre este formulário (#204): o tipo
+                   passou a ser obrigatório, e o campo de uma linha não tinha
+                   onde escolhê-lo. A coluna viaja no `status` escondido, como
+                   viajava no formulário de uma linha. --}}
+              etapa: '',
+              {{-- O compromisso da Agenda que esta tarefa converte, quando o
+                   formulário veio do "Virar tarefa" (#204). Ele manda também o
+                   resumo e o prazo; o tipo, como na criação rápida, fica para
+                   a pessoa escolher. --}}
+              compromisso: '',
+              comTitulo(detalhe) {
+                  const campos = this.$root.elements
+                  const titulo = campos['titulo']
+
+                  this.etapa = detalhe.etapa ?? ''
+                  this.compromisso = detalhe.compromisso ?? ''
+                  titulo.value = detalhe.titulo ?? ''
+                  if (detalhe.resumo && campos['resumo']) {
+                      campos['resumo'].value = detalhe.resumo
+                      campos['resumo'].dispatchEvent(new Event('input', { bubbles: true }))
+                  }
+                  // O prazo só existe para quem pode dá-lo; sem o campo, a
+                  // data do compromisso fica de fora, como ficaria digitando.
+                  if (detalhe.prazo && campos['prazo']) {
+                      campos['prazo'].value = detalhe.prazo
+                  }
+                  // O aviso de parecidas (#205) escuta a digitação, e valor
+                  // escrito por código não digita: sem o evento, a criação
+                  // rápida pularia justamente o aviso.
+                  titulo.dispatchEvent(new Event('input', { bubbles: true }))
+
+                  // O que falta é o tipo, então é nele que o cursor cai. Depois
+                  // da transição de abertura: campo escondido não recebe foco.
+                  setTimeout(() => this.$root.elements['tipo']?.focus(), 160)
+              },
+          @endunless
       }"
       @submit="enviando = true"
-      @envio-terminou="enviando = false">
+      @envio-terminou="enviando = false"
+      @unless ($edicao)
+          {{-- O `reset()` do formulário (ao abrir, e depois de criar) devolve o
+               select ao valor impresso, mas não avisa o Alpine — sem isto o
+               relato do bug e o "O que aconteceu" continuariam à mostra com o
+               select de volta em "escolha o tipo". O `reset` dispara ANTES de
+               os campos voltarem, daí o `setTimeout`; a coluna, ao contrário,
+               zera na hora, porque a criação rápida a escreve logo depois do
+               reset e um zero atrasado apagaria o que ela escreveu. --}}
+          @reset="@unless ($pai) etapa = ''; compromisso = ''; @endunless setTimeout(() => tipo = $el.elements['tipo'].value)"
+      @endunless
+      @unless ($edicao || $pai)
+          x-on:nova-tarefa-rapida.window="comTitulo($event.detail)"
+      @endunless>
     @csrf
 
     {{-- A mãe viaja escondida, e o `reset()` do `data-esvazia-ao-abrir` não a
@@ -131,6 +196,11 @@
     @if ($edicao)
         @method('PUT')
     @endif
+
+    @unless ($edicao || $pai)
+        <input type="hidden" name="status" :value="etapa">
+        <input type="hidden" name="compromisso_id" :value="compromisso">
+    @endunless
 
     {{--
         Cabeçalho fixo. `sticky` e não `fixed` porque quem rola é o modal
@@ -222,7 +292,15 @@
         {{-- O resumo faltava, e é ele que o card mostra embaixo do título: sem
              o campo, a única forma de preenchê-lo era pelo banco. --}}
         <div>
-            <label for="resumo-{{ $sufixo }}" class="block mb-[5px] text-[12px] font-medium text-ink-dim">Resumo</label>
+            {{-- No Bug, o resumo é o relato do que aconteceu (#204, segundo
+                 ajuste): os campos "o que esperava" e "o que aconteceu" do
+                 relato repetiam o resumo, e saíram. O rótulo e o exemplo
+                 mudam com o select; o campo é o mesmo, e o card continua
+                 mostrando o que se escreveu aqui. Impressos também no HTML
+                 para a primeira pintura — a edição de um bug já abre certa. --}}
+            <label for="resumo-{{ $sufixo }}" class="block mb-[5px] text-[12px] font-medium text-ink-dim"
+                   data-rotulo-resumo
+                   x-text="tipo === 'bug' ? 'O que aconteceu' : 'Resumo'">{{ $tipoInicial === 'bug' ? 'O que aconteceu' : 'Resumo' }}</label>
             {{-- A caixa acompanha o texto em vez de rolar por dentro. Com 500
                  caracteres cabendo no resumo, duas linhas fixas escondiam o
                  começo do que a pessoa acabou de escrever, e reler exigia
@@ -256,7 +334,8 @@
                       x-init="$nextTick(() => acompanharOTexto())"
                       x-on:input="acompanharOTexto()"
                       x-on:open-modal.window="$nextTick(() => acompanharOTexto())"
-                      placeholder="Uma linha do que precisa acontecer…"
+                      placeholder="{{ $tipoInicial === 'bug' ? $exemploDoBug : 'Uma linha do que precisa acontecer…' }}"
+                      :placeholder="tipo === 'bug' ? @js($exemploDoBug) : 'Uma linha do que precisa acontecer…'"
                       class="block w-full px-2.5 py-2 rounded-control bg-input border-line text-ink
                              text-[13px] leading-[1.45] resize-y">{{ old('resumo', $tarefa->resumo ?? '') }}</textarea>
         </div>
@@ -272,13 +351,20 @@
         <div class="grid grid-cols-2 gap-3">
             <div>
                 <label for="tipo-{{ $sufixo }}" class="block mb-[5px] text-[12px] font-medium text-ink-dim">Tipo</label>
-                <select id="tipo-{{ $sufixo }}" name="tipo" x-model="tipo"
+                {{-- `required` com a primeira opção vazia: é o que faz o
+                     navegador barrar o Salvar sem tipo antes do servidor. Sem
+                     `disabled` nela, de propósito — opção desabilitada não é
+                     escolhida pelo `reset()`, e o formulário reaberto mostraria
+                     "Desenvolvimento" de novo. Na edição a opção vazia não
+                     existe: tarefa gravada sempre tem tipo. --}}
+                <select id="tipo-{{ $sufixo }}" name="tipo" x-model="tipo" required
                         class="block w-full h-9 py-0 rounded-control bg-input border-line text-ink text-[13px]">
+                    @unless ($edicao)
+                        <option value="" @selected($tipoInicial === '')>— escolha o tipo —</option>
+                    @endunless
                     @foreach (\App\Models\Tarefa::TIPOS as $chave => $label)
-                        {{-- A mãe adianta o tipo: um bug achado revisando código
-                             é do mesmo ramo que a revisão. Continua trocável — o
-                             que ela dá é o palpite, não a decisão. --}}
-                        <option value="{{ $chave }}" @selected(old('tipo', $tarefa->tipo ?? $pai?->tipo ?? 'desenvolvimento') === $chave)>
+                        {{-- A mãe adianta o tipo (ver `$tipoInicial`). --}}
+                        <option value="{{ $chave }}" @selected($tipoInicial === $chave)>
                             {{ $label }}
                         </option>
                     @endforeach
@@ -370,7 +456,7 @@
             @endif
         </div>
 
-        @include('tarefas._relato-defeito')
+        @include('tarefas._relato-bug')
 
         {{--
             A ausência dita UMA vez, e no lugar onde os campos estariam.

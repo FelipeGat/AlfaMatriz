@@ -1785,7 +1785,7 @@
                  * castigo em vez de conversa.
                  */
                 receita(destino) {
-                    // Defeito anda pelos mesmos portões (`Tarefa::TIPOS_COM_PORTOES`).
+                    // Bug anda pelos mesmos portões (`Tarefa::TIPOS_COM_PORTOES`).
                     const ehDev = @js(\App\Models\Tarefa::TIPOS_COM_PORTOES).includes(this.tipoArrastado);
 
                     const receitas = {
@@ -2925,6 +2925,17 @@
     <x-modal name="nova-tarefa" maxWidth="tarefa">
         @include('tarefas._form', ['tarefa' => null, 'sistemas' => $sistemas, 'usuarios' => $usuarios])
     </x-modal>
+
+    {{-- Veio do "Virar tarefa" da Agenda (#204): abre a Nova tarefa já escrita
+         com o compromisso, pelo mesmo caminho da criação rápida. O `$nextTick`
+         espera o formulário existir para ouvir o evento. --}}
+    @if ($rascunhoDoCompromisso ?? null)
+        <div x-data data-rascunho-do-compromisso
+             x-init="$nextTick(() => {
+                 $dispatch('open-modal', 'nova-tarefa');
+                 $dispatch('nova-tarefa-rapida', @js($rascunhoDoCompromisso));
+             })"></div>
+    @endif
 
     {{-- Modal: editar tarefa — VAZIO ao abrir a tela.
 

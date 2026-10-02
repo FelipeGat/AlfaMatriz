@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Compromisso;
 use App\Models\Notificacao;
 use App\Models\Sistema;
 use App\Models\Tarefa;
@@ -14,6 +15,7 @@ use App\Services\DuplicidadeDeTarefas;
 use App\Services\FluxoTarefaService;
 use App\Services\MiniaturaDeAnexo;
 use App\Services\TarefaService;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -21,6 +23,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class TarefaController extends Controller
 {
@@ -58,7 +61,55 @@ class TarefaController extends Controller
         // na gravação seguinte.
         $assinatura = $this->assinaturaDoQuadro();
 
-        return view('tarefas.index', $this->dadosDoQuadro($request) + compact('assinatura'));
+        $rascunhoDoCompromisso = $this->rascunhoDoCompromisso($request);
+
+        return view('tarefas.index', $this->dadosDoQuadro($request) + compact('assinatura', 'rascunhoDoCompromisso'));
+    }
+
+    /**
+     * O "Virar tarefa" da Agenda chega aqui (`?de_compromisso=ID`) e abre o
+     * formulário de Nova tarefa já escrito com o compromisso (#204).
+     *
+     * Antes o botão criava direto, com tipo Desenvolvimento por omissão. Com o
+     * tipo obrigatório, quem converte precisa escolher — e, se for Bug, dar o
+     * relato —, e isso é o formulário inteiro, não um select a mais na Agenda.
+     * O vínculo viaja no `compromisso_id` escondido e é gravado no `store`.
+     *
+     * Compromisso já vinculado não abre nada: o vínculo é de um para um, e o
+     * formulário prometeria uma conversão que o `store` não faria.
+     */
+    /**
+     * As duas portas que a rota antiga da Agenda pedia: mexer na agenda (o
+     * vínculo grava no compromisso) e incluir no quadro (nasce um card).
+     */
+    private function podeVirarCompromisso(Request $request): bool
+    {
+        $usuario = $request->user();
+
+        return (bool) $usuario?->canPermissao('tarefas', 'incluir')
+            && $usuario->canPermissao('agenda', 'editar');
+    }
+
+    private function rascunhoDoCompromisso(Request $request): ?array
+    {
+        $id = $request->integer('de_compromisso');
+
+        if ($id <= 0 || ! $this->podeVirarCompromisso($request)) {
+            return null;
+        }
+
+        $compromisso = Compromisso::whereNull('tarefa_id')->find($id);
+
+        if (! $compromisso) {
+            return null;
+        }
+
+        return [
+            'compromisso' => $compromisso->id,
+            'titulo' => $compromisso->titulo,
+            'resumo' => Str::limit((string) $compromisso->descricao, 500, ''),
+            'prazo' => Carbon::parse($compromisso->data)->toDateString(),
+        ];
     }
 
     /**
@@ -480,26 +531,28 @@ class TarefaController extends Controller
             // regra não chega ao `create`. `max:500` acompanha a coluna, que é
             // `varchar(500)` — e o `maxlength` do textarea.
             'resumo' => 'nullable|string|max:500',
-            // `nullable` e não `required`: o tipo tem padrão no modelo, e um
-            // envio sem ele (formulário antigo em cache, integração futura) vale
-            // como tarefa de desenvolvimento em vez de virar erro de validação.
+            // Obrigatório desde o segundo ajuste da #204 — mas a recusa é do
+            // `TarefaService`, e não um `required` aqui: o `criar_tarefa` do MCP
+            // precisa dizer a mesma frase, e a mensagem padrão do Laravel ("The
+            // tipo field is required") não diz quais tipos existem.
             'tipo' => 'nullable|in:'.implode(',', array_keys(Tarefa::TIPOS)),
-            // O relato do Defeito (#204). Só o formato aqui: quem e quando são
+            // O relato do Bug (#204). Só o formato aqui: quem e quando são
             // exigidos pelo `TarefaService`, que fala a mesma frase para o MCP.
             ...TarefaService::REGRAS_DO_RELATO,
             'sistema_id' => 'nullable|exists:sistemas,id',
             'responsavel_id' => 'nullable|exists:users,id',
-            // Nunca obrigatória. Ela falta em dois envios legítimos: o de quem
-            // não triaga, que não tem o campo, e o da criação rápida do pé da
-            // coluna, que manda só o título. Exigi-la aqui faria a tela
-            // funcionar e a rota dizer não.
+            // Nunca obrigatória: quem não triaga não tem o campo, e exigi-la
+            // aqui faria a tela funcionar e a rota dizer não. (A criação rápida
+            // do pé da coluna também não a mandava; hoje ela só abre este
+            // formulário com o título preenchido — #204.)
             'prioridade' => 'nullable|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
             // Prazo: da triagem OU do RESPONSÁVEL da tarefa, que combina a
             // própria data de entrega. `semTriagemDeQuemNaoTriaga` descarta o de
             // quem não é nenhum dos dois, mesmo em envio forjado. `nullable`
             // porque apagar o prazo é legítimo — a data combinada pode cair.
             'prazo' => 'nullable|date',
-            // A criação rápida do pé da coluna DECLARA onde nasce. Sem isso, o
+            // A criação rápida do pé da coluna DECLARA onde nasce — hoje pelo
+            // campo escondido do formulário completo, que ela abre. Sem isso, o
             // `booted` decidia pela presença de responsável e o card criado no
             // Backlog aparecia em Aberta — o controle prometia um lugar e
             // entregava outro. Só as duas colunas de fila são destino válido:
@@ -531,6 +584,10 @@ class TarefaController extends Controller
             // escondido não quer dizer confiável.
             'tarefa_pai_id' => 'nullable|exists:tarefas,id',
 
+            // O compromisso da Agenda que esta tarefa converte (#204): o
+            // "Virar tarefa" abre este formulário em vez de criar direto.
+            'compromisso_id' => 'nullable|exists:compromissos,id',
+
             // A prova entra JUNTO com a tarefa (AC-234). Até aqui ela só entrava
             // depois, com a tarefa aberta — e quem abre uma tarefa a partir de
             // um print acabava descrevendo por escrito o que já tinha na tela,
@@ -554,6 +611,9 @@ class TarefaController extends Controller
         // que o formulário comum nem manda.
         $paiId = Arr::pull($data, 'tarefa_pai_id');
 
+        // O compromisso também não é coluna de `tarefas`: o vínculo mora nele.
+        $compromissoId = Arr::pull($data, 'compromisso_id');
+
         // O que vem depois da validação — padrões, régua de triagem, trava de
         // reenvio, checklist, mãe e aviso — mora no `TarefaService`: a tarefa
         // também nasce pelo servidor MCP, e as duas portas precisam gerar o
@@ -566,6 +626,13 @@ class TarefaController extends Controller
 
         if ($tarefa) {
             $this->gravarAnexos($arquivos, $tarefa);
+
+            // Só o compromisso ainda solto: se outra conversão chegou antes, o
+            // vínculo de um para um fica com ela, e esta tarefa nasce sem ele.
+            if ($compromissoId && $this->podeVirarCompromisso($request)) {
+                Compromisso::whereKey($compromissoId)->whereNull('tarefa_id')
+                    ->update(['tarefa_id' => $tarefa->id]);
+            }
         }
 
         return $this->voltarParaOQuadro($request, 'Tarefa criada.', fecharModal: 'nova-tarefa', mudouOConjunto: true, limparModal: true);
@@ -759,15 +826,15 @@ class TarefaController extends Controller
             // `ConvertEmptyStringsToNull` faz o '' virar null antes daqui.
             'resumo' => 'nullable|string|max:500',
             'tipo' => 'nullable|in:'.implode(',', array_keys(Tarefa::TIPOS)),
-            // O relato do Defeito (#204). Só o formato aqui: quem e quando são
+            // O relato do Bug (#204). Só o formato aqui: quem e quando são
             // exigidos pelo `TarefaService`, que fala a mesma frase para o MCP.
             ...TarefaService::REGRAS_DO_RELATO,
             'sistema_id' => 'nullable|exists:sistemas,id',
             'responsavel_id' => 'nullable|exists:users,id',
-            // Nunca obrigatória. Ela falta em dois envios legítimos: o de quem
-            // não triaga, que não tem o campo, e o da criação rápida do pé da
-            // coluna, que manda só o título. Exigi-la aqui faria a tela
-            // funcionar e a rota dizer não.
+            // Nunca obrigatória: quem não triaga não tem o campo, e exigi-la
+            // aqui faria a tela funcionar e a rota dizer não. (A criação rápida
+            // do pé da coluna também não a mandava; hoje ela só abre este
+            // formulário com o título preenchido — #204.)
             'prioridade' => 'nullable|in:'.implode(',', array_keys(Tarefa::PRIORIDADES)),
             // Prazo: da triagem OU do RESPONSÁVEL da tarefa, que combina a
             // própria data de entrega. `semTriagemDeQuemNaoTriaga` descarta o de

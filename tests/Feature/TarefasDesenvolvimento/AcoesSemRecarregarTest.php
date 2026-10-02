@@ -317,7 +317,7 @@ class AcoesSemRecarregarTest extends TestCase
         $usuario = User::factory()->create();
 
         $resposta = $this->actingAs($usuario)
-            ->postJson(route('tarefas.store'), ['titulo' => 'Nascida sem recarregar', 'status' => 'aberta']);
+            ->postJson(route('tarefas.store'), ['tipo' => 'desenvolvimento', 'titulo' => 'Nascida sem recarregar', 'status' => 'aberta']);
 
         $resposta->assertOk();
 

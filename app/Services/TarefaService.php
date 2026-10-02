@@ -27,14 +27,15 @@ use Illuminate\Validation\ValidationException;
 class TarefaService
 {
     /**
-     * O formato do relato do Defeito, para as duas portas validarem igual. O
-     * que é OBRIGATÓRIO não está aqui: ver `comORelatoDoDefeito`.
+     * O formato do relato do Bug, para as duas portas validarem igual. O que é
+     * OBRIGATÓRIO não está aqui: ver `comORelatoDoBug`.
+     *
+     * "O que esperava" e "o que aconteceu" saíram no segundo ajuste da #204:
+     * repetiam o resumo, que no Bug passou a se chamar "O que aconteceu".
      */
     public const REGRAS_DO_RELATO = [
         'defeito_quem' => 'nullable|string|max:255',
         'defeito_quando' => 'nullable|date',
-        'defeito_esperado' => 'nullable|string|max:2000',
-        'defeito_ocorrido' => 'nullable|string|max:2000',
     ];
 
     public function __construct(private readonly FluxoTarefaService $fluxo) {}
@@ -51,15 +52,19 @@ class TarefaService
      */
     public function criar(array $dados, User $autor, array $itens = [], ?int $paiId = null): ?Tarefa
     {
-        // O padrão é resolvido AQUI, e não só no modelo, por causa da trava de
-        // reenvio logo abaixo: ela compara o envio inteiro, e um `tipo` nulo
-        // viraria `tipo IS NULL` — que não casa com a linha gravada, onde ele
-        // é 'desenvolvimento'. O duplo clique voltaria a criar duas tarefas.
-        $dados['tipo'] ??= 'desenvolvimento';
+        // O tipo é escolha de quem abre, e não tem mais padrão (#204, pedido do
+        // dono do produto em 01/10/2026): com "Desenvolvimento" vindo marcado,
+        // bug era aberto como desenvolvimento por omissão e sumia da contagem
+        // de bugs por sistema. A recusa mora AQUI para a tela e o
+        // `criar_tarefa` dizerem a mesma frase.
+        if (blank($dados['tipo'] ?? null)) {
+            throw ValidationException::withMessages(['tipo' => self::recusaSemTipo()]);
+        }
+
         $dados['prioridade'] ??= 'media';
         $dados['criado_por_id'] = $autor->id;
 
-        $dados = $this->comORelatoDoDefeito($dados);
+        $dados = $this->comORelatoDoBug($dados);
 
         $dados = $this->semTriagemDeQuemNaoTriaga($dados, $autor);
 
@@ -123,7 +128,7 @@ class TarefaService
         $dados['tipo'] ??= $tarefa->tipo;
         $dados['prioridade'] ??= $tarefa->prioridade;
 
-        $dados = $this->comORelatoDoDefeito($dados, $tarefa);
+        $dados = $this->comORelatoDoBug($dados, $tarefa);
 
         // Na edição, o que a triagem decidiu fica como está: quem não triaga
         // salvar a tarefa não pode zerar a prioridade nem soltar o responsável
@@ -217,36 +222,48 @@ class TarefaService
     }
 
     /**
-     * O relato do defeito: exigido para o Defeito, descartado dos outros tipos.
+     * A frase de quem tenta abrir tarefa sem dizer o tipo — com os tipos, para
+     * quem lê (pessoa ou agente) não precisar ir procurar.
+     */
+    public static function recusaSemTipo(): string
+    {
+        $tipos = array_values(Tarefa::TIPOS);
+        $ultimo = array_pop($tipos);
+
+        return 'Escolha o tipo da tarefa: '.implode(', ', $tipos).' ou '.$ultimo.'.';
+    }
+
+    /**
+     * O relato do bug: exigido para o Bug, descartado dos outros tipos.
      *
      * "Quem" e "quando" são o mínimo (tarefa #204): as #185 e #191 chegaram só
-     * com o sintoma, e defeito que afeta uma pessoa só não se investiga sem
-     * saber QUAL pessoa e EM QUE minuto procurar no log. O esperado e o
-     * ocorrido ficam opcionais — o resumo muitas vezes já os diz.
+     * com o sintoma, e bug que afeta uma pessoa só não se investiga sem saber
+     * QUAL pessoa e EM QUE minuto procurar no log. O que aconteceu vai no
+     * resumo, que no Bug muda de nome na tela para dizer isso.
      *
      * A exigência mora aqui, e não na validação de cada porta, porque a tela e
      * o `criar_tarefa`/`editar_tarefa` do MCP precisam recusar com a MESMA
-     * frase. Vale também na edição: trocar o tipo para Defeito sem o relato
-     * seria a porta dos fundos da exigência. Na edição parcial (MCP) o que não
-     * veio é o que já está gravado.
+     * frase. Vale também na edição: trocar o tipo para Bug sem o relato seria
+     * a porta dos fundos da exigência. Na edição parcial (MCP) o que não veio
+     * é o que já está gravado.
      *
      * Nos outros tipos os campos saem do envio em vez de serem gravados: o
-     * formulário os carrega escondidos, e quem escolheu Defeito, preencheu e
+     * formulário os carrega escondidos, e quem escolheu Bug, preencheu e
      * voltou para Desenvolvimento não pediu para gravar um relato — e na
      * edição, trocar de tipo não apaga o relato que já existia.
      *
      * O `quando` vira data aqui pela trava de reenvio: ela compara o envio com
      * a linha gravada, e o "2026-09-30T14:20" do campo não casa com o
-     * "2026-09-30 14:20:00" da coluna — o clique duplo criaria dois defeitos.
+     * "2026-09-30 14:20:00" da coluna — o clique duplo criaria dois bugs.
      *
      * @param  array<string, mixed>  $dados
      * @return array<string, mixed>
      */
-    private function comORelatoDoDefeito(array $dados, ?Tarefa $tarefa = null): array
+    private function comORelatoDoBug(array $dados, ?Tarefa $tarefa = null): array
     {
-        $campos = ['defeito_quem', 'defeito_quando', 'defeito_esperado', 'defeito_ocorrido'];
+        $campos = array_keys(self::REGRAS_DO_RELATO);
 
-        if ($dados['tipo'] !== 'defeito') {
+        if ($dados['tipo'] !== 'bug') {
             return array_diff_key($dados, array_flip($campos));
         }
 
@@ -260,10 +277,10 @@ class TarefaService
 
         $faltas = array_filter([
             'defeito_quem' => blank($valor('defeito_quem'))
-                ? 'Defeito precisa dizer quem foi afetado: o cliente, o aluno ou a academia.'
+                ? 'Bug precisa dizer quem foi afetado: o cliente, o aluno ou a academia.'
                 : null,
             'defeito_quando' => blank($valor('defeito_quando'))
-                ? 'Defeito precisa dizer quando aconteceu: o dia e a hora.'
+                ? 'Bug precisa dizer quando aconteceu: o dia e a hora.'
                 : null,
         ]);
 

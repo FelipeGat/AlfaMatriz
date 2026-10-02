@@ -73,6 +73,7 @@ class SubtarefasTest extends TestCase
         $this->actingAs($membro)->get(route('tarefas.subtarefas.form', $mae))->assertOk();
 
         $this->actingAs($membro)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Extrato duplica a linha do estorno',
             'tarefa_pai_id' => $mae->id,
             // Mesmo mandando os dois, quem não triaga não os define.
@@ -337,7 +338,7 @@ class SubtarefasTest extends TestCase
 
         $this->assertStringContainsString('Subtarefas', $html);
         $this->assertStringContainsString('Nova subtarefa', $html, 'A porta é uma só, e é o formulário.');
-        $this->assertStringNotContainsString('Enter para criar', $html, 'O campo de uma linha saiu.');
+        $this->assertStringNotContainsString('Enter abre o formulário', $html, 'O campo de uma linha saiu.');
         $this->assertStringContainsString('Boleto sem código', $html);
         $this->assertStringContainsString('só encerra depois que todas forem concluídas ou canceladas', $html);
         $this->assertStringContainsString('1 subtarefa em aberto', $html);
@@ -377,6 +378,7 @@ class SubtarefasTest extends TestCase
         $mae = $this->criarTarefa();
 
         $this->actingAs($admin)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Boleto sai sem o código de barras',
             'resumo' => 'Só nos boletos com desconto.',
             'prioridade' => 'critica',
@@ -426,6 +428,7 @@ class SubtarefasTest extends TestCase
 
         // Pendurar na FILHA seria um segundo nível, que não existe.
         $this->actingAs($admin)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Neta que não pode existir',
             'tarefa_pai_id' => $filha->id,
         ])->assertSessionMissing('erro');

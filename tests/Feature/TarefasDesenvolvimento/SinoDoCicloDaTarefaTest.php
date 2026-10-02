@@ -30,6 +30,7 @@ class SinoDoCicloDaTarefaTest extends TestCase
         $dev = User::factory()->membro()->create(['name' => 'Rafael Lima']);
 
         $this->actingAs($admin)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Webhook de pagamento',
             'responsavel_id' => $dev->id,
         ]);
@@ -49,6 +50,7 @@ class SinoDoCicloDaTarefaTest extends TestCase
         $admin = User::factory()->create();
 
         $this->actingAs($admin)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Tarefa minha',
             'responsavel_id' => $admin->id,
         ]);
@@ -67,6 +69,7 @@ class SinoDoCicloDaTarefaTest extends TestCase
         $membro = User::factory()->membro()->create(['name' => 'Rafael Lima']);
 
         $this->actingAs($adminA)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Renovar o certificado',
         ]);
 

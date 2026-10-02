@@ -130,6 +130,7 @@ class IntegracaoComTarefasTest extends TestCase
         $admin = User::factory()->create();
 
         $this->actingAs($admin)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Tarefa com prazo combinado',
             'prazo' => '2026-10-30',
         ]);
@@ -159,6 +160,7 @@ class IntegracaoComTarefasTest extends TestCase
         $membro = User::factory()->membro()->create();
 
         $this->actingAs($membro)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Tarefa que tentou trazer prazo',
             'prazo' => '2026-10-30',
         ]);
@@ -274,26 +276,56 @@ class IntegracaoComTarefasTest extends TestCase
 
     /* ---------- as duas conversões ---------- */
 
-    public function test_virar_tarefa_cria_card_com_prazo_e_vincula(): void
+    /**
+     * "Virar tarefa" abre a Nova tarefa escrita com o compromisso (#204): o
+     * tipo é obrigatório, então o botão não cria mais direto — leva ao quadro
+     * com título, resumo e prazo preenchidos, e a pessoa escolhe o tipo.
+     */
+    public function test_virar_tarefa_abre_a_nova_tarefa_escrita_com_o_compromisso(): void
     {
         $admin = User::factory()->create();
         $compromisso = Compromisso::factory()->em('2026-10-12', '14:00')->create([
             'criado_por_id' => $admin->id,
             'titulo' => 'Revisar contrato da revenda',
+            'descricao' => 'Cláusula de reajuste',
         ]);
 
-        $this->actingAs($admin)
-            ->postJson(route('compromissos.virar-tarefa', $compromisso))
-            ->assertOk();
+        $resposta = $this->actingAs($admin)
+            ->get(route('tarefas.index', ['de_compromisso' => $compromisso->id]))
+            ->assertOk()
+            ->assertSee('data-rascunho-do-compromisso', false);
+
+        $this->assertSame([
+            'compromisso' => $compromisso->id,
+            'titulo' => 'Revisar contrato da revenda',
+            'resumo' => 'Cláusula de reajuste',
+            'prazo' => '2026-10-12',
+        ], $resposta->viewData('rascunhoDoCompromisso'));
+        $this->assertSame(0, Tarefa::count());
+    }
+
+    /** Salvar a Nova tarefa que veio da Agenda grava o vínculo no compromisso. */
+    public function test_salvar_a_tarefa_vinda_da_agenda_vincula_o_compromisso(): void
+    {
+        $admin = User::factory()->create();
+        $compromisso = Compromisso::factory()->create(['criado_por_id' => $admin->id]);
+
+        $this->actingAs($admin)->post(route('tarefas.store'), [
+            'titulo' => 'Revisar contrato da revenda',
+            'tipo' => 'desenvolvimento',
+            'compromisso_id' => $compromisso->id,
+        ])->assertRedirect();
 
         $tarefa = Tarefa::where('titulo', 'Revisar contrato da revenda')->first();
 
         $this->assertNotNull($tarefa);
-        $this->assertSame('2026-10-12', Carbon::parse($tarefa->prazo)->toDateString());
         $this->assertSame($tarefa->id, $compromisso->fresh()->tarefa_id);
     }
 
-    /** O vínculo é de um para um: o segundo clique geraria duplicata. */
+    /**
+     * O vínculo é de um para um: compromisso já vinculado não abre rascunho,
+     * e uma segunda tarefa salva com ele nasce sem roubar o vínculo.
+     */
     public function test_compromisso_ja_vinculado_nao_vira_tarefa_de_novo(): void
     {
         $admin = User::factory()->create();
@@ -303,30 +335,25 @@ class IntegracaoComTarefasTest extends TestCase
             'tarefa_id' => $tarefa->id,
         ]);
 
-        $this->actingAs($admin)
-            ->postJson(route('compromissos.virar-tarefa', $compromisso))
-            ->assertStatus(422);
+        $resposta = $this->actingAs($admin)
+            ->get(route('tarefas.index', ['de_compromisso' => $compromisso->id]))
+            ->assertOk()
+            ->assertDontSee('data-rascunho-do-compromisso', false);
+        $this->assertNull($resposta->viewData('rascunhoDoCompromisso'));
 
-        $this->assertSame(1, Tarefa::count());
+        $this->actingAs($admin)->post(route('tarefas.store'), [
+            'titulo' => 'Outra conversão',
+            'tipo' => 'desenvolvimento',
+            'compromisso_id' => $compromisso->id,
+        ])->assertRedirect();
+
+        $this->assertSame($tarefa->id, $compromisso->fresh()->tarefa_id);
     }
 
-    /** Quem não triaga converte, e o card cai na fila — como toda criação. */
-    public function test_membro_que_vira_tarefa_cai_na_fila_de_triagem(): void
+    /** A rota que criava direto, sem tipo, não existe mais. */
+    public function test_nao_ha_mais_rota_que_cria_tarefa_direto_da_agenda(): void
     {
-        $membro = User::factory()->membro()->create();
-        $compromisso = Compromisso::factory()->create([
-            'criado_por_id' => $membro->id,
-            'titulo' => 'Conversa sobre o módulo novo',
-        ]);
-
-        $this->actingAs($membro)
-            ->postJson(route('compromissos.virar-tarefa', $compromisso))
-            ->assertOk();
-
-        $tarefa = Tarefa::where('titulo', 'Conversa sobre o módulo novo')->first();
-
-        $this->assertSame('nao_definida', $tarefa->prioridade);
-        $this->assertNull($tarefa->responsavel_id);
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('compromissos.virar-tarefa'));
     }
 
     /**

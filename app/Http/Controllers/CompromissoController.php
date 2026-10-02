@@ -7,7 +7,6 @@ use App\Models\Tarefa;
 use App\Services\AgendaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Criar, editar e desmarcar compromisso — e as duas conversões entre agenda e
@@ -73,60 +72,6 @@ class CompromissoController extends Controller
         }
 
         return $this->voltar($request, 'Compromisso desmarcado.');
-    }
-
-    /**
-     * Virar tarefa — do compromisso para o quadro.
-     *
-     * A tarefa nasce com PRAZO na data do compromisso e já vinculada a ele: o
-     * que se combinou numa reunião tem a data da reunião como referência, e
-     * deixar o prazo em branco obrigaria a reabrir a tarefa para digitar a data
-     * que estava na tela.
-     *
-     * Cai na fila de triagem quando quem converte não triaga, exatamente como
-     * toda criação de tarefa (`semTriagemDeQuemNaoTriaga` no quadro): a porta
-     * nova não pode ser o desvio que entrega card priorizado por quem não pode
-     * priorizar.
-     *
-     * Recusa o segundo clique porque o vínculo é de um para um: um compromisso
-     * que já virou tarefa geraria duplicata a cada nova conversão, e a tela
-     * esconde o botão — mas a rota é quem garante.
-     */
-    public function virarTarefa(Request $request, Compromisso $compromisso)
-    {
-        $this->bloquearVisaoDaMatriz();
-
-        if ($compromisso->tarefa_id !== null) {
-            return $this->recusar($request, 'Este compromisso já está vinculado a uma tarefa.');
-        }
-
-        $dados = $request->validate([
-            'sistema_id' => 'nullable|exists:sistemas,id',
-            'tipo' => 'nullable|in:'.implode(',', array_keys(Tarefa::TIPOS)),
-        ]);
-
-        $triaga = $request->user()?->podeTriarTarefas() ?? false;
-
-        $tarefa = DB::transaction(function () use ($compromisso, $dados, $request, $triaga) {
-            $tarefa = Tarefa::create([
-                'titulo' => $compromisso->titulo,
-                'resumo' => $compromisso->descricao,
-                'tipo' => $dados['tipo'] ?? 'desenvolvimento',
-                'sistema_id' => $dados['sistema_id'] ?? null,
-                'criado_por_id' => $request->user()->id,
-                'prazo' => Carbon::parse($compromisso->data)->toDateString(),
-                // A mesma régua da criação no quadro: quem não triaga não
-                // escolhe prioridade nem dono, e o card cai na fila.
-                'prioridade' => $triaga ? 'media' : 'nao_definida',
-                'responsavel_id' => $triaga ? $request->user()->id : null,
-            ]);
-
-            $compromisso->update(['tarefa_id' => $tarefa->id]);
-
-            return $tarefa;
-        });
-
-        return $this->voltar($request, 'Tarefa '.$tarefa->codigo().' criada a partir do compromisso.');
     }
 
     /**

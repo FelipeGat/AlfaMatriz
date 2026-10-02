@@ -117,7 +117,7 @@ class DuplicidadeDeTarefasTest extends TestCase
         $admin = User::factory()->create();
         $this->tarefa(['titulo' => 'Wellhub não registra check-in']);
 
-        $this->actingAs($admin)->post(route('tarefas.store'), ['titulo' => 'Wellhub não registra check-in no AlfaGym'])
+        $this->actingAs($admin)->post(route('tarefas.store'), ['tipo' => 'desenvolvimento', 'titulo' => 'Wellhub não registra check-in no AlfaGym'])
             ->assertSessionMissing('erro');
 
         $this->assertSame(2, Tarefa::where('titulo', 'like', 'Wellhub%')->count());

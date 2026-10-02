@@ -534,13 +534,13 @@ class RelatorioController extends Controller
             'good'
         );
 
-        // Defeitos por sistema (tarefa #204): onde as coisas quebram, pela
-        // data em que o defeito foi ABERTO na competência — é quando ele
+        // Bugs por sistema (tarefa #204): onde as coisas quebram, pela
+        // data em que o bug foi ABERTO na competência — é quando ele
         // apareceu, e não quando foi corrigido, que diz qual sistema está
         // dando trabalho. Os outros recortes valem; o de tipo também, e
         // escolher outro tipo zera o painel em vez de mentir sobre ele.
-        $rankingDefeitos = $this->ranking(
-            Tarefa::where('tipo', 'defeito')
+        $rankingBugs = $this->ranking(
+            Tarefa::where('tipo', 'bug')
                 // A duplicada é a mesma reclamação pedida de novo (#205): já
                 // contou na original, e contar as duas inflaria o sistema.
                 ->whereNull('duplicada_de_id')
@@ -596,7 +596,7 @@ class RelatorioController extends Controller
             'quadroPorEtapa' => $quadroPorEtapa,
             'rankingSistemas' => $rankingSistemas,
             'rankingResponsaveis' => $rankingResponsaveis,
-            'rankingDefeitos' => $rankingDefeitos,
+            'rankingBugs' => $rankingBugs,
         ];
     }
 
@@ -823,7 +823,7 @@ class RelatorioController extends Controller
                     ],
                     $this->blocoDeRanking('Concluídas por sistema (na competência)', $dados['rankingSistemas'], 'Sistema'),
                     $this->blocoDeRanking('Concluídas por responsável (na competência)', $dados['rankingResponsaveis'], 'Responsável'),
-                    $this->blocoDeRanking('Defeitos abertos por sistema (na competência)', $dados['rankingDefeitos'], 'Sistema'),
+                    $this->blocoDeRanking('Bugs abertos por sistema (na competência)', $dados['rankingBugs'], 'Sistema'),
                     [
                         'titulo' => 'Concluídas na competência',
                         'colunas' => ['Tarefa', 'Sistema', 'Responsável', 'Concluída em', 'Ciclo (dias)'],
