@@ -173,7 +173,7 @@ class ArquivoDeTarefas
      */
     private function avisoDoArquivamento(Tarefa $tarefa, string $motivo, ?string $nota, User $autor): string
     {
-        $linha = 'Arquivada · '.Tarefa::MOTIVOS_DE_ARQUIVAMENTO[$motivo].($nota ? ': '.$nota : '.');
+        $linha = 'Arquivada · '.Tarefa::MOTIVOS_DE_ARQUIVAMENTO[$motivo].($nota ? ': '.rtrim($nota, '.').'.' : '.');
 
         $quemAbriu = $tarefa->criadoPor;
 
