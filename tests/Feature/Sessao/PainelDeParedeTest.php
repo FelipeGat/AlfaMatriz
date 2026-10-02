@@ -88,14 +88,14 @@ class PainelDeParedeTest extends TestCase
         $exibicao = $this->actingAs($this->contaDeExibicao())->get('/tarefas');
 
         $exibicao->assertDontSee('+ Nova tarefa');
-        $exibicao->assertDontSee('+ nova tarefa · Enter para criar');
+        $exibicao->assertDontSee('+ nova tarefa · Enter abre o formulário');
 
         // E quem PODE criar continua vendo os dois — o portão é a permissão,
         // não a existência do perfil de exibição.
         $comum = $this->actingAs(User::factory()->create())->get('/tarefas');
 
         $comum->assertSee('+ Nova tarefa');
-        $comum->assertSee('+ nova tarefa · Enter para criar');
+        $comum->assertSee('+ nova tarefa · Enter abre o formulário');
     }
 
     /**

@@ -437,17 +437,19 @@ class OrdemEConcorrenciaTest extends TestCase
 
         $html = $this->actingAs($usuario)->get(route('tarefas.index'))->assertOk()->getContent();
 
-        // Duas colunas de fila, dois campos: Aberta e Backlog.
-        $this->assertSame(2, substr_count($html, 'Enter para criar'));
+        // Duas colunas de fila, dois campos: Aberta e Backlog. Desde a #204 o
+        // Enter abre o formulário completo com o título (ver `BugTest`), que
+        // manda o tipo junto — o que segue é o envio desse formulário.
+        $this->assertSame(2, substr_count($html, 'Enter abre o formulário'));
 
         Carbon::setTestNow(now());
 
-        $this->actingAs($usuario)->post(route('tarefas.store'), ['titulo' => 'Conferir o boleto da Orbe'])
+        $this->actingAs($usuario)->post(route('tarefas.store'), ['tipo' => 'desenvolvimento', 'titulo' => 'Conferir o boleto da Orbe'])
             ->assertSessionHasNoErrors();
 
         $tarefa = Tarefa::firstWhere('titulo', 'Conferir o boleto da Orbe');
 
-        $this->assertNotNull($tarefa, 'A criação rápida manda só o título — exigir prioridade a quebraria.');
+        $this->assertNotNull($tarefa, 'Sem prioridade no envio a tarefa nasce — exigi-la quebraria quem não triaga.');
         $this->assertSame('aberta', $tarefa->status);
         $this->assertSame('media', $tarefa->prioridade);
 
@@ -455,6 +457,7 @@ class OrdemEConcorrenciaTest extends TestCase
         // pelo responsável e o card nasceria em Aberta — um controle que
         // promete um lugar e entrega outro.
         $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Priorizada direto', 'status' => 'backlog',
         ])->assertSessionHasNoErrors();
 
@@ -463,6 +466,7 @@ class OrdemEConcorrenciaTest extends TestCase
         // E só as duas colunas de fila são destino: criar direto em Em revisão
         // pularia o trabalho que a etapa existe para examinar.
         $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Pulando o fluxo', 'status' => 'em_revisao',
         ])->assertSessionHasErrors('status');
     }

@@ -172,6 +172,7 @@ class ChecklistTarefaTest extends TestCase
         $usuario = User::factory()->create();
 
         $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Renovar certificado',
             'itens' => ['Conferir o boleto', '  Avisar a revenda  ', ''],
         ])->assertSessionHasNoErrors();
@@ -197,6 +198,7 @@ class ChecklistTarefaTest extends TestCase
 
         $envio = [
             'titulo' => 'Renovar certificado',
+            'tipo' => 'operacional',
             'itens' => ['Conferir o boleto', 'Avisar a revenda'],
         ];
 
@@ -216,6 +218,7 @@ class ChecklistTarefaTest extends TestCase
         $usuario = User::factory()->create();
 
         $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Renovar certificado',
             'itens' => [str_repeat('a', 256)],
         ])->assertSessionHasErrors('itens.0');

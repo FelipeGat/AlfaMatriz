@@ -24,6 +24,7 @@ class FormularioTarefaTest extends TestCase
         $usuario = User::factory()->create();
 
         $resposta = $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Ajustar relatório de vendas',
             'prioridade' => 'media',
         ]);
@@ -45,6 +46,7 @@ class FormularioTarefaTest extends TestCase
         $responsavel = User::factory()->create();
 
         $resposta = $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Corrigir tela de login',
             'responsavel_id' => $responsavel->id,
             'prioridade' => 'alta',
@@ -67,6 +69,7 @@ class FormularioTarefaTest extends TestCase
         $sistema = Sistema::factory()->create(['nome' => 'AlfaControl', 'ativo' => true]);
 
         $resposta = $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Integrar boleto',
             'sistema_id' => $sistema->id,
             'prioridade' => 'baixa',
@@ -102,7 +105,7 @@ class FormularioTarefaTest extends TestCase
     {
         $usuario = User::factory()->create();
 
-        $envio = ['titulo' => 'Renovar certificado', 'prioridade' => 'alta'];
+        $envio = ['titulo' => 'Renovar certificado', 'tipo' => 'operacional', 'prioridade' => 'alta'];
 
         $this->actingAs($usuario)->post(route('tarefas.store'), $envio);
         $this->actingAs($usuario)->post(route('tarefas.store'), $envio);
@@ -128,9 +131,11 @@ class FormularioTarefaTest extends TestCase
         $control = Sistema::factory()->create(['nome' => 'AlfaControl', 'slug' => 'alfacontrol']);
 
         $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Renovar certificado', 'prioridade' => 'alta', 'sistema_id' => $gym->id,
         ]);
         $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Renovar certificado', 'prioridade' => 'alta', 'sistema_id' => $control->id,
         ]);
 
@@ -148,6 +153,7 @@ class FormularioTarefaTest extends TestCase
         $usuario = User::factory()->create();
 
         $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Exportar frequência',
             'resumo' => 'Academia reclamou que o export não traz linhas.',
             'prioridade' => 'alta',
@@ -215,6 +221,7 @@ class FormularioTarefaTest extends TestCase
         $quinhentos = str_repeat('a', 500);
 
         $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Resumo longo',
             'resumo' => $quinhentos,
             'prioridade' => 'alta',

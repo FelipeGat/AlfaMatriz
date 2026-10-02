@@ -209,13 +209,13 @@
                          font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em]">Oper.</span>
         @endif
 
-        {{-- O Defeito também se anuncia (tarefa #204), no mesmo selo neutro da
+        {{-- O Bug também se anuncia (tarefa #204), no mesmo selo neutro da
              operacional: o tom forte já é da prioridade, logo ao lado, e um
              vermelho aqui disputaria com "Crítica" — gravidade continua sendo
              gravidade, e o tipo só diz de onde a tarefa veio. --}}
-        @if ($tarefa->tipo === 'defeito')
+        @if ($tarefa->tipo === 'bug')
             <span class="shrink-0 px-1.5 py-0.5 rounded-badge bg-chip text-ink-mute
-                         font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em]">Defeito</span>
+                         font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em]">Bug</span>
         @endif
 
         <span class="shrink-0 px-1.5 py-0.5 rounded-badge font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em]"

@@ -21,7 +21,7 @@ use Laravel\Mcp\Response;
  */
 class EditarTarefa extends Ferramenta
 {
-    use RelatoDoDefeito;
+    use RelatoDoBug;
 
     private const SEM_VALOR = ['', 'sem', 'nenhum', 'nenhuma', 'ninguém', 'ninguem', 'remover'];
 
@@ -29,7 +29,7 @@ class EditarTarefa extends Ferramenta
 
     protected string $title = 'Editar tarefa';
 
-    protected string $description = 'Altera os campos de uma tarefa: título, resumo, tipo, sistema, responsável, prioridade, prazo ou o relato do defeito (quem, quando, esperado, ocorrido). Informe só o que muda. Para limpar o responsável ou o prazo, passe "nenhum". Dar ou tirar o responsável move a tarefa entre Aberta e Backlog. Quem não faz triagem não muda prioridade nem responsável — a resposta diz o que ficou como estava. Para mudar de etapa use mover_tarefa.';
+    protected string $description = 'Altera os campos de uma tarefa: título, resumo, tipo, sistema, responsável, prioridade, prazo ou o relato do bug (quem, quando). Informe só o que muda. Para limpar o responsável ou o prazo, passe "nenhum". Dar ou tirar o responsável move a tarefa entre Aberta e Backlog. Quem não faz triagem não muda prioridade nem responsável — a resposta diz o que ficou como estava. Para mudar de etapa use mover_tarefa.';
 
     // A rota de editar é `permissao:tarefas` num PUT, que o middleware lê como `editar`.
     protected array $permissao = ['tarefas', 'editar'];
@@ -43,7 +43,7 @@ class EditarTarefa extends Ferramenta
             'tarefa' => $schema->string()->required()->description('O código, como "#128".'),
             'titulo' => $schema->string()->max(255)->description('Novo título.'),
             'resumo' => $schema->string()->max(500)->description('Novo resumo (até 500 caracteres). Vazio apaga.'),
-            'tipo' => $schema->string()->enum(array_keys(Tarefa::TIPOS))->description('desenvolvimento, defeito ou operacional. Virar defeito exige quem e quando (os já gravados valem).'),
+            'tipo' => $schema->string()->enum(array_keys(Tarefa::TIPOS))->description('desenvolvimento, bug ou operacional. Virar bug exige quem e quando (os já gravados valem).'),
             'sistema' => $schema->string()->description('Nome do sistema (ver referencias), ou "nenhum".'),
             'responsavel' => $schema->string()->description('Nome de quem vai fazer, "eu", ou "nenhum" para devolver à fila.'),
             'prioridade' => $schema->string()->enum(array_keys(Tarefa::PRIORIDADES))->description('baixa, media, alta, critica ou nao_definida.'),
@@ -72,7 +72,7 @@ class EditarTarefa extends Ferramenta
             return Response::error('Não há tarefa '.$entrada['tarefa'].'.');
         }
 
-        if ($recusa = self::relatoForaDoDefeito($entrada, $entrada['tipo'] ?? $tarefa->tipo)) {
+        if ($recusa = self::relatoForaDoBug($entrada, $entrada['tipo'] ?? $tarefa->tipo)) {
             return Response::error($recusa);
         }
 
@@ -124,7 +124,7 @@ class EditarTarefa extends Ferramenta
         }
 
         if ($dados === []) {
-            return Response::error('Diga o que muda: título, resumo, tipo, sistema, responsável, prioridade, prazo ou o relato do defeito.');
+            return Response::error('Diga o que muda: título, resumo, tipo, sistema, responsável, prioridade, prazo ou o relato do bug.');
         }
 
         $etapaNova = app(TarefaService::class)->atualizar($tarefa, $dados, $usuario);

@@ -201,26 +201,42 @@
 
         Abrir tarefa pelo botão do topo custa: modal, cinco campos e um Salvar.
         Metade do que se abre no dia a dia é uma frase — "conferir o boleto da
-        Orbe" — e para essa frase o formulário completo é uma cerimônia que faz
-        a pessoa deixar para depois, ou anotar em outro lugar.
+        Orbe" — e para essa frase começar pelo formulário é uma cerimônia que
+        faz a pessoa deixar para depois, ou anotar em outro lugar.
+
+        Ela não cria mais direto (#204, segundo ajuste, pedido do dono do
+        produto em 01/10/2026): o tipo passou a ser obrigatório, e um campo de
+        uma linha não tem onde escolhê-lo. O Enter abre o formulário completo
+        de Nova tarefa com o título já escrito e a coluna guardada — a frase
+        continua sendo o começo, e o que falta é um select.
 
         Em Aberta e no Backlog. O Backlog só entrou depois de o formulário
         passar a DECLARAR a coluna de destino: `Tarefa::booted` decide a etapa
         pelo responsável, e sem o campo o card criado no pé do Backlog nascia em
-        Aberta — um controle que promete um lugar e entrega outro.
+        Aberta — um controle que promete um lugar e entrega outro. A coluna vai
+        no evento e o formulário completo a manda no `status` escondido.
 
         E só na faixa sem raia: com o quadro agrupado, um campo por faixa
         prometeria criar a tarefa DENTRO daquela raia, o que ele não faz.
+
+        `form` sem `action`: o Enter dentro do campo vira `submit`, que o
+        Alpine intercepta. Sem JavaScript não há modal para abrir, e um POST
+        sem tipo seria recusado de qualquer jeito.
     --}}
     @if (in_array($etapa['chave'], ['aberta', 'backlog'], true) && $faixa === 'todas'
         && auth()->user()?->canPermissao('tarefas', 'incluir'))
-        <form method="POST" action="{{ route('tarefas.store') }}" data-parcial
+        <form data-criacao-rapida-form
               x-show="! recolhidas.includes('{{ $etapa['chave'] }}')"
+              @submit.prevent="
+                  const titulo = $el.elements['titulo'].value.trim();
+                  if (titulo === '') return;
+                  $dispatch('open-modal', 'nova-tarefa');
+                  $dispatch('nova-tarefa-rapida', { titulo, etapa: @js($etapa['chave']) });
+                  $el.reset();
+              "
               class="shrink-0 px-[10px] py-2 border-t border-rule">
-            @csrf
-            <input type="hidden" name="status" value="{{ $etapa['chave'] }}">
             <input type="text" name="titulo" maxlength="255" required data-criacao-rapida
-                   placeholder="+ nova tarefa · Enter para criar"
+                   placeholder="+ nova tarefa · Enter abre o formulário"
                    class="w-full min-h-[34px] px-2 py-1 text-[12.5px] text-ink placeholder-ink-faint
                           !bg-transparent !rounded-control !border !border-transparent
                           hover:!border-line focus:!border-brand transition">

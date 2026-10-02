@@ -76,7 +76,7 @@ class RotaHttpTest extends TestCase
         $this->withToken($token)
             ->postJson('/mcp', $this->chamada('tools/call', [
                 'name' => 'criar_tarefa',
-                'arguments' => ['titulo' => 'Aberta pela porta HTTP'],
+                'arguments' => ['titulo' => 'Aberta pela porta HTTP', 'tipo' => 'desenvolvimento'],
             ]), $this->cabecalhos())
             ->assertOk()
             ->assertJsonPath('result.isError', false);

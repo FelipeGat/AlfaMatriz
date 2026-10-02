@@ -189,7 +189,7 @@
         <p x-show="! anexos.length" x-cloak
            class="px-3 py-3 rounded-[5px] border border-dashed border-line text-center text-[12px] text-ink-faint">
             @if ($criacao)
-                Nenhum anexo ainda — o print do defeito ou o log do erro pode entrar já aqui, e vai junto ao salvar.
+                Nenhum anexo ainda — o print do bug ou o log do erro pode entrar já aqui, e vai junto ao salvar.
             @else
                 Nenhum anexo ainda — na revisão, um print ou o log do erro costuma encerrar a dúvida que três respostas não encerram.
             @endif

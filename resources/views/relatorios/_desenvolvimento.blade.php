@@ -68,10 +68,10 @@
                nota="na competência"
                compacto />
 
-    {{-- Onde as coisas quebram (tarefa #204): defeitos pela data de abertura,
+    {{-- Onde as coisas quebram (tarefa #204): bugs pela data de abertura,
          que é quando apareceram — não quando foram corrigidos. --}}
-    <x-ranking :ranking="$rankingDefeitos"
-               titulo="Defeitos por sistema"
+    <x-ranking :ranking="$rankingBugs"
+               titulo="Bugs por sistema"
                nota="abertos na competência"
                compacto />
 </div>

@@ -41,7 +41,7 @@ class AcessoTarefasTest extends TestCase
         $quadro->assertDontSee($tarefa->titulo);
 
         $this->actingAs($usuario)
-            ->post(route('tarefas.store'), ['titulo' => 'Tentativa de criação por revenda'])
+            ->post(route('tarefas.store'), ['tipo' => 'desenvolvimento', 'titulo' => 'Tentativa de criação por revenda'])
             ->assertForbidden();
         $this->assertDatabaseMissing('tarefas', ['titulo' => 'Tentativa de criação por revenda']);
 

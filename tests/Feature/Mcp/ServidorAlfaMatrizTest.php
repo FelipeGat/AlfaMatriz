@@ -66,6 +66,7 @@ class ServidorAlfaMatrizTest extends TestCase
 
         AlfaMatrizServer::actingAs($admin)
             ->tool(CriarTarefa::class, [
+                'tipo' => 'desenvolvimento',
                 'titulo' => 'Corrigir importação de alunos',
                 'resumo' => 'O CSV com acento quebra.',
                 'sistema' => 'alfagym',
@@ -99,6 +100,7 @@ class ServidorAlfaMatrizTest extends TestCase
 
         AlfaMatrizServer::actingAs($membro)
             ->tool(CriarTarefa::class, [
+                'tipo' => 'desenvolvimento',
                 'titulo' => 'Renovar certificado',
                 'responsavel' => 'Outra Pessoa',
                 'prioridade' => 'critica',
@@ -121,7 +123,7 @@ class ServidorAlfaMatrizTest extends TestCase
         User::factory()->create(['name' => 'Ana Souza']);
 
         AlfaMatrizServer::actingAs($admin)
-            ->tool(CriarTarefa::class, ['titulo' => 'Qualquer', 'responsavel' => 'Ana'])
+            ->tool(CriarTarefa::class, ['tipo' => 'desenvolvimento', 'titulo' => 'Qualquer', 'responsavel' => 'Ana'])
             ->assertHasErrors()
             ->assertSee('mais de uma pessoa');
 

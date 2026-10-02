@@ -40,6 +40,7 @@ class PerfisDoQuadroTest extends TestCase
         // não mostra. Exigi-los na rota faria a tela funcionar e o salvar dizer
         // não a um campo que a pessoa não tem como preencher.
         $this->actingAs($membro)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Corrigir o boleto vencido',
         ])->assertSessionHasNoErrors();
 
@@ -53,6 +54,7 @@ class PerfisDoQuadroTest extends TestCase
         // E o envio FORJADO — formulário guardado, "voltar" do navegador, POST
         // à mão — não passa por cima da regra.
         $this->actingAs($membro)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Tentativa de triagem',
             'prioridade' => 'critica',
             'responsavel_id' => $outra->id,

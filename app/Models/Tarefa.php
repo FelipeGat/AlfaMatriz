@@ -247,24 +247,26 @@ class Tarefa extends Model
      */
     public const TIPOS = [
         'desenvolvimento' => 'Desenvolvimento',
-        'defeito' => 'Defeito',
+        'bug' => 'Bug',
         'operacional' => 'Operacional',
     ];
 
     /**
      * Os tipos que passam pelos portões — revisão, staging e produção.
      *
-     * Defeito entrou em 01/10/2026 (tarefa #204) com o fluxo inteiro do
-     * desenvolvimento: corrigir um defeito é escrever código, e o código passa
-     * pelo mesmo PR, pelo mesmo staging e pela mesma tag. O que muda é a
-     * ENTRADA — ele nasce com o relato de quem, quando, o que se esperava e o
-     * que aconteceu (`defeito_*`) — e a contagem por sistema nos relatórios.
+     * Bug entrou em 01/10/2026 (tarefa #204, primeiro com o nome "Defeito" e a
+     * chave `defeito`, trocados no mesmo dia a pedido do dono do produto) com o
+     * fluxo inteiro do desenvolvimento: corrigir um bug é escrever código, e o
+     * código passa pelo mesmo PR, pelo mesmo staging e pela mesma tag. O que
+     * muda é a ENTRADA — ele nasce com o relato de quem e quando (`defeito_quem`,
+     * `defeito_quando`; as colunas guardaram o nome antigo) — e a contagem por
+     * sistema nos relatórios.
      *
      * Uma lista, e não `tipo === 'desenvolvimento'` espalhado: com dois tipos
      * no mesmo caminho, cada comparação esquecida seria um portão que o
-     * defeito pularia sem ninguém ver.
+     * bug pularia sem ninguém ver.
      */
-    public const TIPOS_COM_PORTOES = ['desenvolvimento', 'defeito'];
+    public const TIPOS_COM_PORTOES = ['desenvolvimento', 'bug'];
 
     /** Esta tarefa anda pelo ciclo de desenvolvimento (portões, veredito, versão)? */
     public function passaPelosPortoes(): bool
@@ -340,7 +342,10 @@ class Tarefa extends Model
     protected $fillable = [
         'titulo', 'resumo', 'detalhes', 'tipo', 'sistema_id', 'responsavel_id',
         'criado_por_id', 'prioridade', 'status', 'ordem', 'iniciada_em', 'prazo',
-        'defeito_quem', 'defeito_quando', 'defeito_esperado', 'defeito_ocorrido',
+        // `defeito_esperado` e `defeito_ocorrido` saíram (#204, segundo ajuste):
+        // o relato do bug ficou quem + quando, e o resto vai no resumo. As
+        // colunas continuam no banco até a publicação seguinte — ver CLAUDE.md.
+        'defeito_quem', 'defeito_quando',
     ];
 
     protected function casts(): array

@@ -437,14 +437,15 @@
                 }
             },
 
-            async virarTarefa() {
-                const resposta = await this.enviar(
-                    `{{ url('compromissos') }}/${this.modal.id}/virar-tarefa`, 'POST', {}
-                );
-
-                if (resposta.ok) {
-                    window.location.reload();
-                }
+            /**
+             * Leva ao quadro com a Nova tarefa já escrita (#204).
+             *
+             * Não cria mais direto: o tipo passou a ser obrigatório, e um Bug
+             * pede quem e quando. O formulário completo é quem pergunta, e o
+             * vínculo com o compromisso é gravado quando a tarefa é salva.
+             */
+            virarTarefa() {
+                window.location.href = `{{ route('tarefas.index') }}?de_compromisso=${this.modal.id}`;
             },
 
             /** Reservar tempo: abre o modal PRÉ-PREENCHIDO, sem criar nada. */

@@ -210,11 +210,18 @@ comando pelo Telegram, tag de produção só depois de ele autorizar — ainda n
   `desmarcar_compromisso`) e as oito do quadro (`editar_tarefa`, `bloquear_tarefa`,
   `destravar_tarefa`, `registrar_veredito`, `excluir_tarefa`, `adicionar_itens`, `atualizar_item`,
   `remover_item`). A 22ª, `marcar_duplicada` (#205), cancela a tarefa com vínculo para a original;
-  `criar_tarefa` também avisa as parecidas em curso e aceita o relato do tipo `defeito` (#204).
+  `criar_tarefa` também avisa as parecidas em curso, exige o `tipo` (sem padrão, como a tela) e
+  aceita o relato do tipo `bug` — quem e quando; o que aconteceu vai no resumo (#204).
   Editar e remarcar são PARCIAIS: só o que muda, e o conjunto passa pelas regras do
   formulário. `excluir_tarefa` exige o título exato como confirmação. O servidor lista todas numa
   página só (`defaultPaginationLength = 50`): o padrão do pacote é 15, e cliente que não segue o
   cursor não veria as últimas. Sem porta, de propósito: anexar arquivo e reordenar o checklist.
+- **O tipo "Bug" (#204) nasceu "Defeito"** e foi renomeado no mesmo dia — chave `bug`, convertida
+  pela migração `2026_10_02_090000`. As colunas do relato continuam `defeito_*` de propósito (nome de
+  coluna ninguém vê, e renomear quebra a cor antiga na troca azul/verde). **Pendente:** remover
+  `defeito_esperado` e `defeito_ocorrido` de `tarefas` numa publicação POSTERIOR à que levou o
+  "Bug" — o código já não as usa, mas a migração roda antes da troca, e a cor da v2026.10.01.2
+  ainda grava nelas: tirá-las na mesma publicação derrubaria a criação de bug durante a janela.
 - Teste em `tests/Feature/Mcp/` com `AlfaMatrizServer::actingAs($u)->tool(...)`. Fumaça de
   verdade: mandar JSON-RPC pelo stdin do `mcp:start` — foi assim que se conferiu o caminho inteiro.
 - **A fase 2 é a ponte do Telegram**, em `deploy/agente/` (`ponte-telegram.mjs`, README com a

@@ -41,6 +41,7 @@ class PrioridadeCriticaTest extends TestCase
         $usuario = User::factory()->create();
 
         $resposta = $this->actingAs($usuario)->post(route('tarefas.store'), [
+            'tipo' => 'desenvolvimento',
             'titulo' => 'Corrigir vazamento de dados em produção',
             'prioridade' => 'critica',
         ]);

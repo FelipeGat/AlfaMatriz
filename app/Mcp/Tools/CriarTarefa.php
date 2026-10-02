@@ -17,13 +17,13 @@ use Laravel\Mcp\Response;
  */
 class CriarTarefa extends Ferramenta
 {
-    use RelatoDoDefeito;
+    use RelatoDoBug;
 
     protected string $name = 'criar_tarefa';
 
     protected string $title = 'Criar tarefa';
 
-    protected string $description = 'Abre uma tarefa no quadro em seu nome. Só o título é obrigatório. Com responsável ela nasce no Backlog; sem, na fila Aberta. Quem não faz triagem não define prioridade nem responsável — a resposta diz o que ficou para a triagem.';
+    protected string $description = 'Abre uma tarefa no quadro em seu nome. Título e tipo são obrigatórios. Com responsável ela nasce no Backlog; sem, na fila Aberta. Quem não faz triagem não define prioridade nem responsável — a resposta diz o que ficou para a triagem.';
 
     protected array $permissao = ['tarefas', 'incluir'];
 
@@ -36,9 +36,11 @@ class CriarTarefa extends Ferramenta
             'titulo' => $schema->string()->required()->max(255)
                 ->description('O que precisa ser feito, em uma linha.'),
             'resumo' => $schema->string()->max(500)
-                ->description('O contexto: o que é e por quê. Até 500 caracteres.'),
-            'tipo' => $schema->string()->enum(array_keys(Tarefa::TIPOS))
-                ->description('"desenvolvimento" (padrão) passa por revisão, staging e produção; "defeito" é o mesmo fluxo, para algo que quebrou, e exige quem e quando; "operacional" fecha direto de Em andamento.'),
+                ->description('O contexto: o que é e por quê. Num bug, o que aconteceu, o que deveria ter acontecido e a mensagem de erro, se houve. Até 500 caracteres.'),
+            // Obrigatório e sem padrão desde o segundo ajuste da #204, como na
+            // tela: com padrão, o bug ditado às pressas nascia desenvolvimento.
+            'tipo' => $schema->string()->required()->enum(array_keys(Tarefa::TIPOS))
+                ->description('Obrigatório. "desenvolvimento" passa por revisão, staging e produção; "bug" é o mesmo fluxo, para algo que quebrou, e exige quem e quando — o que aconteceu vai no resumo; "operacional" fecha direto de Em andamento.'),
             'sistema' => $schema->string()
                 ->description('Nome do sistema a que a tarefa pertence (ver referencias).'),
             'responsavel' => $schema->string()
@@ -71,7 +73,9 @@ class CriarTarefa extends Ferramenta
             ...self::regrasDoRelato(),
         ]);
 
-        if ($recusa = self::relatoForaDoDefeito($dados, $dados['tipo'] ?? 'desenvolvimento')) {
+        // `nullable` acima, e não `required`: a recusa sem tipo é do
+        // `TarefaService`, com a frase que lista os tipos — a mesma da tela.
+        if ($recusa = self::relatoForaDoBug($dados, $dados['tipo'] ?? null)) {
             return Response::error($recusa);
         }
 

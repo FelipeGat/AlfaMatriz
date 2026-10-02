@@ -6,22 +6,24 @@ use App\Services\TarefaService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 
 /**
- * O relato do Defeito (tarefa #204) nas portas do agente — `criar_tarefa` e
+ * O relato do Bug (tarefa #204) nas portas do agente — `criar_tarefa` e
  * `editar_tarefa`.
  *
- * Os argumentos têm nome curto (`quem`, `quando`, `esperado`, `ocorrido`)
- * porque é assim que quem dita fala; as colunas são `defeito_*`. A tradução
- * mora aqui para as duas ferramentas dizerem o mesmo, e a exigência de quem e
- * quando NÃO mora aqui: é do `TarefaService`, que recusa com a frase da tela.
+ * Os argumentos têm nome curto (`quem`, `quando`) porque é assim que quem dita
+ * fala; as colunas são `defeito_*`, do nome que o tipo teve no primeiro dia. A
+ * tradução mora aqui para as duas ferramentas dizerem o mesmo, e a exigência
+ * de quem e quando NÃO mora aqui: é do `TarefaService`, que recusa com a frase
+ * da tela.
+ *
+ * "Esperado" e "ocorrido" saíram no segundo ajuste da #204: o que aconteceu vai
+ * no `resumo`, como na tela.
  */
-trait RelatoDoDefeito
+trait RelatoDoBug
 {
     /** Argumento da ferramenta => coluna da tarefa. */
     private const CAMPOS_DO_RELATO = [
         'quem' => 'defeito_quem',
         'quando' => 'defeito_quando',
-        'esperado' => 'defeito_esperado',
-        'ocorrido' => 'defeito_ocorrido',
     ];
 
     /**
@@ -31,13 +33,9 @@ trait RelatoDoDefeito
     {
         return [
             'quem' => $schema->string()->max(255)
-                ->description('Só para defeito (obrigatório nele): quem foi afetado — o cliente, o aluno ou a academia, pelo nome que se procura no sistema.'),
+                ->description('Só para bug (obrigatório nele): quem foi afetado — o cliente, o aluno ou a academia, pelo nome que se procura no sistema.'),
             'quando' => $schema->string()
-                ->description('Só para defeito (obrigatório nele): quando aconteceu, AAAA-MM-DD HH:MM.'),
-            'esperado' => $schema->string()->max(2000)
-                ->description('Só para defeito: o que deveria ter acontecido.'),
-            'ocorrido' => $schema->string()->max(2000)
-                ->description('Só para defeito: o que aconteceu de fato, com a mensagem de erro se houve. O print vai depois, como anexo pela tela.'),
+                ->description('Só para bug (obrigatório nele): quando aconteceu, AAAA-MM-DD HH:MM.'),
         ];
     }
 
@@ -78,7 +76,7 @@ trait RelatoDoDefeito
     }
 
     /**
-     * O relato mandado para tarefa que não é Defeito — ou null, se está certo.
+     * O relato mandado para tarefa que não é Bug — ou null, se está certo.
      *
      * A tela esconde os campos fora do tipo e o serviço os descarta em
      * silêncio; o agente não tem tela, e sem a frase acharia que gravou o
@@ -86,12 +84,12 @@ trait RelatoDoDefeito
      *
      * @param  array<string, mixed>  $entrada
      */
-    private static function relatoForaDoDefeito(array $entrada, ?string $tipo): ?string
+    private static function relatoForaDoBug(array $entrada, ?string $tipo): ?string
     {
-        if ($tipo === 'defeito' || self::relatoDoEnvio($entrada) === []) {
+        if ($tipo === 'bug' || self::relatoDoEnvio($entrada) === []) {
             return null;
         }
 
-        return 'Quem, quando, esperado e ocorrido são o relato de um defeito. Passe tipo "defeito" para abrir a tarefa como defeito, ou tire esses campos.';
+        return 'Quem e quando são o relato de um bug. Passe tipo "bug" para abrir a tarefa como bug, ou tire esses campos.';
     }
 }

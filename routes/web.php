@@ -201,11 +201,9 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('compromissos.destroy')
         ->middleware('permissao:agenda,editar');
 
-    // Virar tarefa cria card no QUADRO, então pede a porta do quadro também:
-    // quem só tem agenda não ganha por aqui um caminho para criar tarefa.
-    Route::post('compromissos/{compromisso}/virar-tarefa', [CompromissoController::class, 'virarTarefa'])
-        ->name('compromissos.virar-tarefa')
-        ->middleware(['permissao:agenda,editar', 'permissao:tarefas,incluir']);
+    // "Virar tarefa" não tem rota própria desde a #204: o botão da Agenda abre
+    // a Nova tarefa do quadro (`tarefas.index?de_compromisso=`), e o vínculo é
+    // gravado no `tarefas.store` — que pede a porta do quadro, como pedia aqui.
 
     Route::get('tarefas', [TarefaController::class, 'index'])->name('tarefas.index')
         ->middleware('permissao:tarefas');

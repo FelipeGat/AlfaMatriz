@@ -776,6 +776,7 @@ class AnexosDaTarefaTest extends TestCase
 
         $this->actingAs($usuario)
             ->post(route('tarefas.store'), [
+                'tipo' => 'desenvolvimento',
                 'titulo' => 'Botão de salvar saiu do lugar no Chrome',
                 'anexos' => [
                     UploadedFile::fake()->image('tela-do-erro.png', 800, 600),
@@ -811,6 +812,7 @@ class AnexosDaTarefaTest extends TestCase
 
         $this->actingAs($usuario)
             ->post(route('tarefas.store'), [
+                'tipo' => 'desenvolvimento',
                 'titulo' => 'Erro no fechamento do mês',
                 'anexos' => [new UploadedFile($png->getPathname(), 'payload.php', 'image/png', null, true)],
             ])
@@ -829,6 +831,7 @@ class AnexosDaTarefaTest extends TestCase
     {
         $this->actingAs(User::factory()->create())
             ->post(route('tarefas.store'), [
+                'tipo' => 'desenvolvimento',
                 'titulo' => 'Migrar o relatório antigo',
                 'anexos' => [
                     UploadedFile::fake()->image('um.png'),
@@ -852,7 +855,7 @@ class AnexosDaTarefaTest extends TestCase
     public function test_clique_duplo_na_criacao_nao_duplica_o_anexo(): void
     {
         $usuario = User::factory()->create();
-        $envio = ['titulo' => 'Corrigir o boleto vencido', 'prioridade' => 'media'];
+        $envio = ['titulo' => 'Corrigir o boleto vencido', 'tipo' => 'desenvolvimento', 'prioridade' => 'media'];
 
         // Arquivos novos no segundo envio, e não os mesmos objetos: o navegador
         // manda o conteúdo de novo, e o `UploadedFile` do primeiro já foi movido
