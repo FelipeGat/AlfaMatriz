@@ -42,7 +42,9 @@ class ArquivarTarefa extends Ferramenta
     {
         $dados = $request->validate([
             'tarefa' => 'required|string|max:20',
-            'motivo' => 'required|string|in:'.implode(',', array_keys(Tarefa::MOTIVOS_DE_ARQUIVAMENTO)),
+            // Sem `in:` aqui: a recusa do motivo é do `ArquivoDeTarefas`, que
+            // diz em português quais existem — a do validador sai em inglês.
+            'motivo' => 'required|string|max:20',
             'nota' => 'nullable|string|max:2000',
         ]);
 

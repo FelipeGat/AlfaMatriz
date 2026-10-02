@@ -85,6 +85,11 @@ class ArquivoPeloAgenteTest extends TestCase
             ->tool(DesarquivarTarefa::class, ['tarefa' => $tarefa->codigo()])
             ->assertHasErrors(['A tarefa '.$tarefa->codigo().' não está arquivada.']);
 
+        // A recusa do motivo é a do serviço, em português e com a lista.
+        AlfaMatrizServer::actingAs($admin)
+            ->tool(ArquivarTarefa::class, ['tarefa' => $tarefa->codigo(), 'motivo' => 'duplicada'])
+            ->assertHasErrors(['Diga por que está arquivando: depois (Fica para depois), sem_retorno (Sem retorno), nao_confirmado (Não confirmado).']);
+
         AlfaMatrizServer::actingAs($admin)
             ->tool(ArquivarTarefa::class, ['tarefa' => '#999999', 'motivo' => 'depois'])
             ->assertHasErrors(['Não há tarefa #999999.']);

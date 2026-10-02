@@ -111,7 +111,7 @@ class VerTarefa extends Ferramenta
             $tarefa->estaArquivada()
                 ? 'Arquivada ('.$tarefa->rotuloDoArquivamento().') por '.($tarefa->arquivadaPor?->name ?? '?')
                     .' em '.$tarefa->arquivada_em->format('d/m/Y')
-                    .($tarefa->arquivamento_nota ? ': '.$tarefa->arquivamento_nota : '')
+                    .($tarefa->arquivamento_nota ? ': '.rtrim($tarefa->arquivamento_nota, '.') : '')
                     .'. Fora do quadro; desarquivar_tarefa a devolve para '.Tarefa::rotuloDaEtapa($tarefa->status).'.'
                 : null,
             $tarefa->estaBloqueada() ? $tarefa->rotuloDoBloqueio().': '.$tarefa->bloqueio_motivo : null,
