@@ -221,6 +221,11 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::get('tarefas/{tarefa}/modal', [TarefaController::class, 'modal'])
         ->name('tarefas.modal')
         ->middleware('permissao:tarefas');
+    // O "PR e commits" que o GitHub já ligou à tarefa (#211), para o painel de
+    // envio à revisão abrir com o campo escrito. Só leitura, como o modal.
+    Route::get('tarefas/{tarefa}/pr-commits', [TarefaController::class, 'prCommitsSugeridos'])
+        ->name('tarefas.pr-commits')
+        ->middleware('permissao:tarefas');
     Route::post('tarefas', [TarefaController::class, 'store'])->name('tarefas.store')
         ->middleware('permissao:tarefas');
     Route::put('tarefas/{tarefa}', [TarefaController::class, 'update'])->name('tarefas.update')

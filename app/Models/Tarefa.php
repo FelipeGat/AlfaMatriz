@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Tarefa extends Model
 {
@@ -1150,6 +1151,56 @@ class Tarefa extends Model
         return $ultimaVoltaABancada === null || (int) $ultima->tarefa_evento_id > (int) $ultimaVoltaABancada
             ? $ultima
             : null;
+    }
+
+    /**
+     * Os commits e PRs que o GitHub ligou a esta tarefa (#211), mais recentes
+     * primeiro — a ordem em que o modal os lista.
+     */
+    public function referenciasGit(): HasMany
+    {
+        return $this->hasMany(TarefaReferenciaGit::class)->orderByDesc('updated_at')->orderByDesc('id');
+    }
+
+    /** Teto do pré-preenchimento: o campo `pr_commits` da entrega aceita 2000. */
+    private const LIMITE_DA_SUGESTAO = 2000;
+
+    /**
+     * O "PR e commits" que o painel de envio para a revisão já traz escrito
+     * (#211): o que o GitHub ligou à tarefa DESDE a última entrega — ou desde
+     * sempre, se nunca houve uma. Vazio quando nada chegou.
+     *
+     * Desde a última entrega, e não tudo: na 2ª subida o que interessa a quem
+     * revisa é o que mudou depois da reprovação; o que a 1ª levou continua
+     * escrito nela. O PR entra se se MEXEU depois do corte (cada evento dele
+     * toca o `updated_at`, inclusive o `synchronize` dos commits novos) — o PR
+     * de sempre que recebeu a correção é justamente o link que o revisor quer.
+     * PR fechado sem mesclar fica de fora: é código abandonado.
+     *
+     * Texto, e não estrutura, porque o campo é texto livre que o dev edita: a
+     * sugestão é só o começo dele.
+     */
+    public function sugestaoDePrCommits(): string
+    {
+        $corte = $this->entregas()->reorder()->latest('id')->value('created_at');
+
+        $referencias = $this->referenciasGit()->reorder()->orderBy('id')
+            ->when($corte, fn ($q) => $q->where('updated_at', '>=', $corte))
+            ->get();
+
+        $prs = $referencias->filter(fn (TarefaReferenciaGit $r) => $r->ehPr() && $r->estado !== 'fechado')
+            ->map(fn (TarefaReferenciaGit $r) => $r->urlSegura() ?? $r->chave);
+
+        $commits = $referencias->reject(fn (TarefaReferenciaGit $r) => $r->ehPr())
+            ->map(fn (TarefaReferenciaGit $r) => $r->shaCurto());
+
+        $linhas = $prs->values()->all();
+
+        if ($commits->isNotEmpty()) {
+            $linhas[] = 'Commits: '.$commits->implode(', ');
+        }
+
+        return Str::limit(implode("\n", $linhas), self::LIMITE_DA_SUGESTAO - 3);
     }
 
     /**

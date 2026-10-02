@@ -540,12 +540,28 @@ class TarefaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos.apontado', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'subtarefas', 'pai', 'arquivadaPor', 'entregas.autor'])
+        $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos.apontado', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'subtarefas', 'pai', 'arquivadaPor', 'entregas.autor', 'referenciasGit'])
             ->findOrFail($tarefa->id);
 
         return response()->view('tarefas._modais', [
             'tarefas' => collect([$tarefa]),
         ] + $this->listasDeFiltro());
+    }
+
+    /**
+     * O texto que o painel de envio à revisão põe no "PR e commits" (#211).
+     *
+     * Uma viagem ao servidor quando o painel abre, e não um atributo em cada
+     * card: o painel nasce do arrasto, do menu do card e do modal, e só a
+     * rota serve os três pelo mesmo caminho. Embutir no card pediria carregar
+     * as referências de TODAS as tarefas do quadro para usar a de uma, numa
+     * tela que já foi medida e emagrecida (ver `modal`).
+     */
+    public function prCommitsSugeridos(Tarefa $tarefa)
+    {
+        $this->bloquearVisaoDaMatriz();
+
+        return response()->json(['texto' => $tarefa->sugestaoDePrCommits()]);
     }
 
     public function store(Request $request, TarefaService $tarefas)
@@ -1672,7 +1688,7 @@ class TarefaController extends Controller
             // Recarregado do banco com as relações que as partials leem: o
             // model que chegou pelo route binding traz o estado de ANTES da
             // ação, e a conversa recém-publicada não estaria nele.
-            $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos.apontado', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'entregas.autor'])
+            $tarefa = Tarefa::with(['sistema', 'responsavel', 'interlocutor', 'criadoPor', 'eventos.apontado', 'comentarios.autor', 'itens', 'perguntaPara', 'anexos.autor', 'entregas.autor', 'referenciasGit'])
                 ->find($tarefa->id);
         }
 

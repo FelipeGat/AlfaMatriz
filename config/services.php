@@ -28,6 +28,12 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // O segredo do webhook do GitHub (#211): o mesmo valor configurado em cada
+    // repositório. Vazio, a rota recusa tudo — ver `GitHubWebhookController`.
+    'github' => [
+        'webhook_secret' => env('GITHUB_WEBHOOK_SECRET'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

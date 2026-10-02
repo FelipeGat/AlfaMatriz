@@ -242,6 +242,22 @@ comando pelo Telegram, tag de produção só depois de ele autorizar — ainda n
   `Tarefa::entregaAtual()` é a que vale nos portões — a mais recente, se nenhuma volta à bancada
   veio depois. Sem backfill: quem já estava nos portões não tem entrega. O modal a mostra no topo
   (`_entrega`), o histórico lista todas, a busca acha o texto e o `ver_tarefa` a traz.
+- **O GitHub alimenta o quadro (#211, 02/10/2026).** Commit ou PR que cita **`T-N`** (ou `t-N`,
+  com fronteira de palavra) liga-se à tarefa N — decisão do dono: `#N` NÃO, porque nos repositórios
+  `#N` já é PR/issue do GitHub. A porta é `POST /github/webhook` (`routes/github.php`, fora do grupo
+  `web`: sem sessão nem CSRF), que só aceita corpo assinado (`X-Hub-Signature-256`, HMAC com
+  `GITHUB_WEBHOOK_SECRET`; sem segredo, recusa tudo). Trata `ping`, `push` (só branch; um registro
+  por tarefa+sha, então merge e reentrega não duplicam) e `pull_request` (aberto/mesclado/fechado,
+  um por tarefa+repo+número). Mora em `tarefa_referencias_git` (`TarefaReferenciaGit`), e não em
+  comentário. Abrir PR NÃO move a tarefa: só avisa o responsável pelo sino, se ela está em Em
+  andamento. Tarefa encerrada, apagada ou inexistente é ignorada sem erro. O modal mostra a seção
+  "Código" (`_codigo`), o `ver_tarefa` lista as referências, e o painel de envio à revisão busca
+  `tarefas.pr-commits` ao abrir e pré-preenche o "PR e commits" com o que chegou desde a última
+  entrega (`Tarefa::sugestaoDePrCommits`). **Pendente, do dono:** expor SÓ esta rota à internet
+  (produção e staging só atendem pela tailnet; há o modelo `deploy/cloudflared-alfamatriz.yml`),
+  pôr o segredo no `.env` de produção e configurar o webhook (eventos `push` e `pull_request`,
+  JSON, o mesmo segredo) em cada repositório — FelipeGat/* (AlfaGym, AlfaControl, …),
+  rossini06/AlfaSchool e rossini06/alfa-deploy. Até lá, nada chega e nada quebra.
 - Teste em `tests/Feature/Mcp/` com `AlfaMatrizServer::actingAs($u)->tool(...)`. Fumaça de
   verdade: mandar JSON-RPC pelo stdin do `mcp:start` — foi assim que se conferiu o caminho inteiro.
 - **A fase 2 é a ponte do Telegram**, em `deploy/agente/` (`ponte-telegram.mjs`, README com a

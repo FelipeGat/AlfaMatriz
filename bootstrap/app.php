@@ -11,6 +11,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
+use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\CheckAbilities;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -19,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        // O webhook do GitHub (#211) fora do grupo `web`: ver `routes/github.php`.
+        then: fn () => Route::group([], base_path('routes/github.php')),
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // O Tailscale Funnel termina o TLS e entrega a requisição em HTTP
