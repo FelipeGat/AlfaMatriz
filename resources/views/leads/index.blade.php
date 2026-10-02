@@ -34,8 +34,13 @@
 
         {{-- Filtro de período: por quando o lead ENTROU, não uma janela que
              esconde lead antigo do quadro — por isso o padrão é "todos" e o
-             filtro é sempre uma escolha explícita de quem está olhando. --}}
-        <div class="shrink-0 flex flex-wrap items-center gap-2">
+             filtro é sempre uma escolha explícita de quem está olhando.
+
+             `data-barra-de-filtros` é a mesma marca do quadro de tarefas
+             (#215): na tela cheia esta barra fica embaixo do quadro, e o botão
+             "Período" do cabeçalho a traz flutuando por cima (regra no
+             `app.css`), em vez de uma segunda cópia do select. --}}
+        <div data-barra-de-filtros class="shrink-0 flex flex-wrap items-center gap-2">
             <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Período de entrada</span>
 
             <form method="GET" class="flex flex-wrap items-center gap-1.5">
@@ -64,7 +69,27 @@
         </div>
 
         {{-- Quadro ---------------------------------------------------------- --}}
-        <div x-data="funil" class="relative flex-1 min-h-0 flex flex-col rounded-panel border border-line bg-board overflow-hidden">
+        {{-- A tela cheia (#215) é a do quadro de tarefas: o atributo
+             `data-tela-cheia` no <html> e as regras do `app.css`, que agem
+             pelas marcas `data-corpo-do-quadro`, `data-barra-de-filtros` e
+             `data-so-na-tela-cheia`. Lido antes da primeira pintura, pelo
+             mesmo motivo de lá: ligado depois, o quadro nasceria na moldura e
+             pularia para a tela inteira à vista de quem abriu. A chave é
+             PRÓPRIA — quem expande o funil não quer o quadro de tarefas
+             expandido, e vice-versa. --}}
+        <script>
+            try {
+                if (localStorage.getItem('alfamatriz:funil-tela-cheia') === '1') {
+                    document.documentElement.setAttribute('data-tela-cheia', '');
+                }
+            } catch (erro) {}
+        </script>
+
+        {{-- Clicar no quadro fecha a barra flutuante do período: ela cobre a
+             primeira coluna, e a saída não pode ser só o botão que a abriu. --}}
+        <div x-data="funil" data-corpo-do-quadro @keydown.window.escape="aoEsc()"
+             @click="filtrosAbertos && alternarFiltros(false)"
+             class="relative flex-1 min-h-0 flex flex-col rounded-panel border border-line bg-board overflow-hidden">
             {{-- Sombras nas bordas: quando o quadro não cabe, elas são a única
                  pista de que há mais coluna. Barra de rolagem fina em tema
                  escuro passa despercebida, e o corte seco de uma coluna na
@@ -85,9 +110,42 @@
                         {{ count($estagios) }} estágios · {{ $kpis['abertos'] }} leads abertos
                     </p>
                 </div>
-                <p class="ml-auto shrink-0 hidden sm:block font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
-                    arraste o card para mover de estágio
-                </p>
+                <div data-fora-da-tela-cheia class="ml-auto shrink-0 hidden sm:block">
+                    <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                        arraste o card para mover de estágio
+                    </p>
+                </div>
+
+                {{-- Na tela cheia o quadro cobre a topbar com o "+ Novo lead" e
+                     o filtro de período: os dois voltam aqui, no único
+                     cabeçalho que sobrevive ao modo. `@click.stop` no período
+                     porque o clique no quadro fecha a barra — sem ele, abrir e
+                     fechar aconteceriam no mesmo clique. --}}
+                <div data-so-na-tela-cheia class="ml-auto shrink-0 items-center gap-2">
+                    <button type="button" @click.stop="alternarFiltros()"
+                            :aria-pressed="filtrosAbertos.toString()"
+                            class="h-[26px] px-2.5 rounded-badge border border-btn-line font-mono text-[10.5px] uppercase tracking-caps
+                                   text-ink-mute transition hover:text-brand hover:border-brand"
+                            :class="filtrosAbertos && 'text-brand border-brand'">
+                        Período{{ $filtroPeriodo === 'todos' ? '' : ' · filtrado' }}
+                    </button>
+                    <button type="button" @click="$dispatch('open-modal', 'novo-lead')"
+                            class="h-[26px] px-2.5 rounded-badge bg-brand text-on-brand font-semibold text-[12px]
+                                   hover:bg-brand-bright transition whitespace-nowrap">
+                        + Novo lead
+                    </button>
+                </div>
+
+                {{-- A porta da tela cheia, como a do quadro de tarefas. --}}
+                <button type="button" @click="alternarTelaCheia()"
+                        :title="telaCheia ? 'Sair da tela cheia · Esc' : 'Expandir o funil para a tela inteira'"
+                        :aria-label="telaCheia ? 'Sair da tela cheia' : 'Expandir o funil para a tela inteira'"
+                        :aria-pressed="telaCheia.toString()"
+                        class="shrink-0 h-[26px] w-[26px] rounded-badge border border-btn-line flex items-center justify-center
+                               text-ink-mute transition hover:text-brand hover:border-brand">
+                    <span class="h-[13px] w-[13px]" x-show="! telaCheia"><x-nav-icon name="expandir" :peso="1.8" /></span>
+                    <span class="h-[13px] w-[13px]" x-show="telaCheia" x-cloak><x-nav-icon name="encolher" :peso="1.8" /></span>
+                </button>
             </div>
 
             {{-- `items-stretch` + `min-h-0` é o que faz todas as colunas terem
@@ -298,6 +356,57 @@
             Alpine.data('funil', () => ({
                 arrastando: null,
                 sobre: null,
+
+                // A tela cheia (#215): o atributo no <html> é a fonte de
+                // verdade, escrito antes da primeira pintura; esta propriedade
+                // só espelha o estado para o botão saber que cara ter.
+                telaCheia: document.documentElement.hasAttribute('data-tela-cheia'),
+                filtrosAbertos: false,
+
+                alternarTelaCheia() {
+                    this.telaCheia = ! this.telaCheia;
+                    document.documentElement.toggleAttribute('data-tela-cheia', this.telaCheia);
+
+                    if (! this.telaCheia) {
+                        this.alternarFiltros(false);
+                    }
+
+                    try {
+                        localStorage.setItem('alfamatriz:funil-tela-cheia', this.telaCheia ? '1' : '0');
+                    } catch (erro) {
+                        // Navegação anônima: vale para esta visita e não
+                        // sobrevive, o que não justifica quebrar o funil.
+                    }
+                },
+
+                // A barra mora FORA deste componente (é irmã do quadro): quem
+                // desenha é o CSS, e o estado só escreve a marca nela.
+                alternarFiltros(abrir = ! this.filtrosAbertos) {
+                    this.filtrosAbertos = abrir;
+                    document.querySelector('[data-barra-de-filtros]')?.toggleAttribute('data-aberta', abrir);
+                },
+
+                // Esc fecha o que estiver POR CIMA, de dentro para fora: o
+                // modal do lead fecha sozinho (é do `x-modal`), a barra do
+                // período fecha aqui, e só sem nada aberto a tela cheia cede.
+                aoEsc() {
+                    const modalAberto = [...document.querySelectorAll('[data-modal]')]
+                        .some((el) => el.style.display !== 'none');
+
+                    if (modalAberto) {
+                        return;
+                    }
+
+                    if (this.filtrosAbertos) {
+                        this.alternarFiltros(false);
+
+                        return;
+                    }
+
+                    if (this.telaCheia) {
+                        this.alternarTelaCheia();
+                    }
+                },
 
                 // Modelo de rota com marcador: o id só é conhecido no solto.
                 rotaMover: @json(route('leads.mover', ['lead' => '__ID__'])),

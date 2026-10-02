@@ -185,4 +185,28 @@ class FunilTest extends TestCase
         $this->assertStringContainsString('Mover ▾', $html);
         $this->assertStringContainsString('Motivo da perda', $html);
     }
+
+    /**
+     * A tela cheia do funil (#215) é a do quadro de tarefas: as mesmas marcas
+     * que o `app.css` lê, o botão no cabeçalho do quadro, a escolha lida antes
+     * da primeira pintura numa chave PRÓPRIA, e o "+ Novo lead" e o período
+     * voltando ao cabeçalho, porque na tela cheia a topbar fica embaixo.
+     */
+    public function test_o_funil_tem_tela_cheia_como_o_quadro_de_tarefas(): void
+    {
+        $this->lead();
+
+        $html = $this->actingAs($this->operador())->get(route('leads.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-corpo-do-quadro', $html);
+        $this->assertStringContainsString('data-barra-de-filtros', $html);
+        $this->assertStringContainsString('@click="alternarTelaCheia()"', $html);
+        $this->assertStringContainsString("localStorage.getItem('alfamatriz:funil-tela-cheia')", $html);
+        $this->assertStringNotContainsString('alfamatriz:quadro-tela-cheia', $html,
+            'A chave é própria: expandir o funil não expande o quadro de tarefas.');
+
+        $soNaTelaCheia = substr($html, strpos($html, 'data-so-na-tela-cheia'), 1500);
+        $this->assertStringContainsString('+ Novo lead', $soNaTelaCheia);
+        $this->assertStringContainsString('Período', $soNaTelaCheia);
+    }
 }
