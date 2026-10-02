@@ -17,9 +17,37 @@
     $larguraRegua = 52;         // px da coluna de horas
 @endphp
 
+{{--
+    Onde a grade abre, e a linha do "agora" (T-217).
+
+    Ela abria sempre nas 7h, qualquer que fosse a hora: às 19h a tela mostrava
+    a manhã, e o agora ficava no rodapé ou fora dela. Agora, com hoje na semana
+    à vista, a grade abre com o agora a um terço do topo, como o Google Agenda
+    — perto do fim do dia o navegador encosta a rolagem nas 24h sozinho, e o
+    que se vê às 19h é a tarde e a noite. Semana sem hoje continua abrindo nas
+    7h: ali não há "agora" para seguir.
+
+    A linha anda sozinha. A posição vem do servidor (o fuso é o dele, não o do
+    navegador) e avança pelo tempo decorrido desde que a página abriu; passou
+    da meia-noite, some — o "hoje" desta página já não é hoje.
+--}}
 <div class="min-h-0 flex-1 overflow-auto rounded-panel border border-line bg-board"
-     x-data="{ inicioGrade: {{ $alturaHora * 7 }} }"
-     x-init="$el.scrollTop = inicioGrade">
+     x-data="{
+         alturaGrade: {{ $alturaGrade }},
+         agoraPct: {{ $grade['agoraPct'] ?? 'null' }},
+         init() {
+             const base = this.agoraPct;
+             const abriu = Date.now();
+             this.$el.scrollTop = base === null
+                 ? {{ $alturaHora * 7 }}
+                 : Math.max(0, base / 100 * this.alturaGrade - this.$el.clientHeight / 3);
+             if (base === null) return;
+             setInterval(() => {
+                 const pct = base + (Date.now() - abriu) / 60000 / 1440 * 100;
+                 this.agoraPct = pct <= 100 ? pct : null;
+             }, 30000);
+         },
+     }">
 
     {{-- min-w garante que as sete colunas não colapsem: abaixo disso, rolagem
          horizontal em vez de coluna de uma letra por linha. --}}
@@ -101,10 +129,13 @@
                              style="top: {{ $h * $alturaHora }}px"></div>
                     @endfor
 
-                    {{-- A linha do "agora", só na coluna de hoje. --}}
+                    {{-- A linha do "agora", só na coluna de hoje. A posição
+                         impressa vale para a primeira pintura; depois quem a
+                         move é o `agoraPct` do Alpine, lá em cima. --}}
                     @if ($d['ehHoje'] && $grade['agoraPct'] !== null)
                         <div class="pointer-events-none absolute inset-x-0 border-t-2 border-crit"
-                             style="top: {{ $grade['agoraPct'] }}%">
+                             style="top: {{ $grade['agoraPct'] }}%"
+                             x-show="agoraPct !== null" :style="'top: ' + agoraPct + '%'">
                             <span class="absolute -left-1 -top-[3px] h-1.5 w-1.5 rounded-full bg-crit"></span>
                         </div>
                     @endif
