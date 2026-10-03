@@ -27,6 +27,20 @@ class User extends Authenticatable
     protected string $recursoAuditoria = 'usuarios';
 
     /**
+     * A conta que assina as tarefas abertas pelo vigia de logs (#219).
+     *
+     * Criada pela migração `2026_10_03_090000_vigia_de_logs`, desativada e sem
+     * perfil: não entra em tela nenhuma, só aparece como "aberta por".
+     */
+    public const EMAIL_DO_VIGIA = 'vigia-de-logs@alfamatriz.interno';
+
+    /** A conta do vigia — mesmo se alguém a excluir pela tela (soft delete). */
+    public static function vigiaDeLogs(): self
+    {
+        return self::withTrashed()->where('email', self::EMAIL_DO_VIGIA)->firstOrFail();
+    }
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>

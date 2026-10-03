@@ -258,6 +258,17 @@ comando pelo Telegram, tag de produção só depois de ele autorizar — ainda n
   pôr o segredo no `.env` de produção e configurar o webhook (eventos `push` e `pull_request`,
   JSON, o mesmo segredo) em cada repositório — FelipeGat/* (AlfaGym, AlfaControl, …),
   rossini06/AlfaSchool e rossini06/alfa-deploy. Até lá, nada chega e nada quebra.
+- **Vigia de logs (#219, 03/10/2026).** Nasceu do Wellhub (#191), que passou semanas como WARN
+  no log. Cada servidor roda `deploy/vigia-logs/enviar-erros.sh` no cron (README ao lado) e manda
+  os erros novos para `POST /api/vigia/erros` (`routes/vigia.php`, fora do grupo `web` como o
+  GitHub), com o token DO SISTEMA (`alfa:vigia-token <sistema>`, só o hash em
+  `sistemas.vigia_token_hash`). A regra mora em `App\Services\Vigia\VigiaDeLogs`: agrupa por
+  assinatura (`AssinaturaDeErro`: números, ids, datas fora; classe + primeiro quadro da
+  aplicação dentro), erro novo vira Bug pelo `TarefaService::criar` em nome da conta "Vigia de
+  logs" (criada por migração, desativada, sem perfil), repetido comenta no máximo 1×/dia,
+  voltou depois de encerrada abre tarefa nova, pico (10× a média de 24h, mínimo 20) avisa no
+  máximo a cada 6h. `alfa:vigia-ignorar` cuida da lista do que só conta. O Telegram sai do
+  `.env` (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID_ALERTAS`); sem eles, só registra no log.
 - Teste em `tests/Feature/Mcp/` com `AlfaMatrizServer::actingAs($u)->tool(...)`. Fumaça de
   verdade: mandar JSON-RPC pelo stdin do `mcp:start` — foi assim que se conferiu o caminho inteiro.
 - **A fase 2 é a ponte do Telegram**, em `deploy/agente/` (`ponte-telegram.mjs`, README com a

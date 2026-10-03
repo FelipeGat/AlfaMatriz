@@ -38,6 +38,23 @@ class Sistema extends Model
         'capacidades', 'versao', 'responsavel', 'data_cadastro',
     ];
 
+    /**
+     * O hash do token do vigia de logs (#219). Fora do `$fillable` — só o
+     * `alfa:vigia-token` o grava — e fora de toda serialização: hash de token
+     * não tem por que sair numa resposta de tela.
+     */
+    protected $hidden = ['vigia_token_hash'];
+
+    /**
+     * Trocar o token do vigia aparece na auditoria, mas sem o valor.
+     *
+     * @return array<int, string>
+     */
+    public function camposOcultosNaAuditoria(): array
+    {
+        return ['password', 'vigia_token_hash'];
+    }
+
     protected function casts(): array
     {
         return [
