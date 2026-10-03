@@ -67,6 +67,25 @@ class Atualizacao extends Model
         return $this->tarefas->concat($doQuadro)->unique('id')->sortBy('id')->values();
     }
 
+    /**
+     * A hora do envio ao Telegram, quando ela é conhecida (#235).
+     *
+     * O script registra logo depois de o Telegram aceitar, então a hora do
+     * registro É a hora do envio — desde que ele tenha acontecido no mesmo dia
+     * do changelog. O importado (`--importar`) só tem a data do arquivo: a hora
+     * dele seria a da importação, e mostrá-la inventaria um horário que nunca
+     * existiu. O mesmo vale para o registro feito em outro dia (`--so-registrar`
+     * de um changelog antigo).
+     */
+    public function horaDoEnvio(): ?\Illuminate\Support\Carbon
+    {
+        if ($this->origem !== 'script' || ! $this->created_at || ! $this->created_at->isSameDay($this->data)) {
+            return null;
+        }
+
+        return $this->created_at;
+    }
+
     /** As partes como foram ao Telegram — separadas por uma linha `---`. */
     public function partes(): array
     {

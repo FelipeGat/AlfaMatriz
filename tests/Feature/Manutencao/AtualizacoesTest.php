@@ -9,6 +9,7 @@ use App\Models\Tarefa;
 use App\Models\User;
 use Database\Seeders\PerfilPermissaoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -170,5 +171,47 @@ class AtualizacoesTest extends TestCase
 
         $this->artisan('alfa:changelog-token', ['email' => 'rossini@exemplo.com', '--revogar' => true])->assertSuccessful();
         $this->assertSame([['mcp']], $usuario->tokens()->pluck('abilities')->all());
+    }
+
+    /**
+     * O horário do envio (#235): o que o script registrou no dia aparece com
+     * a hora; o importado só tem a data, e a tela diz que não há horário em vez
+     * de mostrar a hora da importação como se fosse a do envio.
+     */
+    public function test_o_card_mostra_a_hora_do_envio_e_o_importado_so_a_data(): void
+    {
+        $token = $this->tokenDe(User::factory()->create(['name' => 'Rossini Santos']));
+
+        Carbon::setTestNow(Carbon::parse('2026-10-03 21:24:00'));
+        $this->registrar($token, ['texto' => self::CHANGELOG])->assertCreated();
+
+        $antigo = "<b>📋 AlfaMatriz — Changelog 12/08/2026</b>\n<i>Usuários e permissões</i>\n\n• Item.";
+        $this->registrar($token, ['texto' => $antigo, 'origem' => 'importado', 'arquivo' => '2026-08-12-usuarios.txt'])->assertCreated();
+
+        $resposta = $this->actingAs(User::factory()->create())
+            ->get(route('manutencao.index', ['aba' => 'atualizacoes']));
+
+        $resposta->assertOk()
+            ->assertSee('03/10/2026 às 21:24')
+            ->assertSee('Enviado em 03/10/2026 às 21:24 por Rossini Santos')
+            ->assertSee('12/08/2026')
+            ->assertDontSee('12/08/2026 às')
+            ->assertSee('Importado de 2026-08-12-usuarios.txt · publicado em 12/08/2026, sem horário guardado');
+
+        Carbon::setTestNow();
+    }
+
+    /** Registrado noutro dia (`--so-registrar` de um changelog antigo): a hora não é a do envio. */
+    public function test_registro_em_outro_dia_nao_vira_hora_do_envio(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-05 09:00:00'));
+        $this->registrar($this->tokenDe(User::factory()->create()), ['texto' => self::CHANGELOG])->assertCreated();
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('manutencao.index', ['aba' => 'atualizacoes']))
+            ->assertDontSee('03/10/2026 às')
+            ->assertSee('Publicado em 03/10/2026 · registrado em 05/10/2026 às 09:00');
+
+        Carbon::setTestNow();
     }
 }

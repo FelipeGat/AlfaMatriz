@@ -34,7 +34,9 @@
             <div class="min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <p class="text-[13.5px] font-semibold text-ink">{{ $atualizacao->sistema->nome }}</p>
-                    <span class="font-sans tabular text-[12.5px] text-ink-mute">{{ $atualizacao->data->format('d/m/Y') }}</span>
+                    <span class="font-sans tabular text-[12.5px] text-ink-mute">
+                        {{ $atualizacao->data->format('d/m/Y').($atualizacao->horaDoEnvio() ? ' às '.$atualizacao->horaDoEnvio()->format('H:i') : '') }}
+                    </span>
                     @if ($atualizacao->versao)
                         <x-badge tom="marca">{{ $atualizacao->versao }}</x-badge>
                     @endif
@@ -65,6 +67,18 @@
         </div>
 
         <div x-show="aberto" x-cloak class="border-t border-rule">
+            {{-- De onde veio e quando: o importado diz que não tem hora, em vez
+                 de mostrar a da importação como se fosse a do envio. --}}
+            <p class="px-5 pt-3 font-mono text-[11px] text-ink-faint">
+                @if ($atualizacao->horaDoEnvio())
+                    Enviado em {{ $atualizacao->horaDoEnvio()->format('d/m/Y').' às '.$atualizacao->horaDoEnvio()->format('H:i') }}{{ $atualizacao->registradoPor ? ' por '.$atualizacao->registradoPor->name : '' }}
+                @elseif ($atualizacao->origem === 'importado')
+                    Importado{{ $atualizacao->arquivo ? ' de '.$atualizacao->arquivo : '' }} · publicado em {{ $atualizacao->data->format('d/m/Y') }}, sem horário guardado
+                @else
+                    Publicado em {{ $atualizacao->data->format('d/m/Y') }} · registrado em {{ $atualizacao->created_at->format('d/m/Y').' às '.$atualizacao->created_at->format('H:i') }}
+                @endif
+            </p>
+
             @foreach ($atualizacao->partes() as $parte)
                 <div class="px-5 py-4 text-[13px] leading-relaxed text-ink-dim [&_b]:text-ink [&_b]:font-semibold {{ $loop->first ? '' : 'border-t border-rule' }}">
                     {{ \App\Models\Atualizacao::htmlSeguro($parte) }}
