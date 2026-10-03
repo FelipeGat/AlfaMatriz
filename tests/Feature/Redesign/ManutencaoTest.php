@@ -48,4 +48,27 @@ class ManutencaoTest extends TestCase
         $resposta->assertOk();
         $resposta->assertSee('Manutenção e atualizações');
     }
+
+    /**
+     * Atualizar (#235): toda aba tem o botão e a hora do dado; só a de Erros
+     * se atualiza sozinha — é a que muda com o lote do vigia.
+     */
+    public function test_o_botao_atualizar_e_a_atualizacao_automatica_so_na_aba_erros(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::parse('2026-10-03 18:42:00'));
+        $this->actingAs(User::factory()->create());
+
+        $this->get(route('manutencao.index'))
+            ->assertSee('Atualizar')
+            ->assertSee('data-gerado-em="18:42"', false)
+            ->assertSee("manutencaoTela({ automatico: true })", false);
+
+        foreach (['atualizacoes', 'programadas'] as $aba) {
+            $this->get(route('manutencao.index', ['aba' => $aba]))
+                ->assertSee('Atualizar')
+                ->assertSee("manutencaoTela({ automatico: false })", false);
+        }
+
+        \Illuminate\Support\Carbon::setTestNow();
+    }
 }
