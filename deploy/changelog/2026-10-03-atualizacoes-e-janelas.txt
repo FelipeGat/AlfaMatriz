@@ -1,0 +1,14 @@
+<b>📋 AlfaMatriz — Changelog 03/10/2026</b>
+<i>O que cada versão mudou e quando vem a próxima manutenção, num lugar só</i>
+
+<b>🛠️ Manutenção e atualizações</b>
+
+• <b>Aba Atualizações.</b> Os changelogs como este, que até hoje só existiam aqui no grupo, passam a ficar guardados no AlfaMatriz, por sistema e data. Cada um mostra a versão em que saiu e as tarefas do quadro que entraram nela, com o texto completo a um clique. Os changelogs já publicados também vão para lá.
+
+• <b>Aba Programadas.</b> Mostra as próximas janelas de manutenção de cada sistema, com data, horário e quem participa. Uma janela em andamento aparece como "acontecendo agora".
+
+<b>📅 Agenda</b>
+
+• <b>Janela de manutenção com sistema.</b> Ao marcar um compromisso na categoria Deploy / manutenção, aparece o campo <b>Sistema</b>. É por ele que a janela entra na aba Programadas, no lugar certo. Se o compromisso estiver ligado a uma tarefa, vale o sistema dela.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
