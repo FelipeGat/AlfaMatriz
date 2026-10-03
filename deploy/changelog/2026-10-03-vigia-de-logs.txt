@@ -1,0 +1,14 @@
+<b>📋 AlfaMatriz — Changelog 03/10/2026</b>
+<i>O AlfaMatriz passa a vigiar os erros dos sistemas e abrir a tarefa sozinho</i>
+
+<b>🔎 Vigia de logs</b>
+
+• <b>Erros que ninguém via agora viram tarefa.</b> De hora em hora, o vigia lê os erros novos que o sistema registra e, quando aparece um problema que ainda não existia, abre sozinho uma tarefa de Bug no quadro, na fila de triagem, com o trecho do erro, quantas vezes aconteceu e desde quando. Foi assim que o problema do Wellhub ficou semanas escondido: o erro estava registrado, mas ninguém olhava.
+
+• <b>Sem tarefa repetida.</b> O mesmo erro acontecendo várias vezes vira uma tarefa só, e as novas ocorrências apenas somam na contagem. Se o erro voltar depois de a tarefa ser encerrada, abre-se uma nova, citando a anterior.
+
+• <b>Começa pelo AlfaMatriz.</b> O vigia já está ligado no próprio AlfaMatriz. Os outros sistemas entram um por vez, começando pelo AlfaGym.
+
+• <b>Ensaio já achou um problema real.</b> No teste, ele encontrou uma falha na sincronização entre os sistemas que se repetia havia semanas sem ninguém perceber.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

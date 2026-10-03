@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 02/10/2026 (4)</b>
+<i>A Agenda abre no horário de agora, como o Google Agenda</i>
+
+<b>📅 Agenda</b>
+
+• <b>Abre no horário atual.</b> Na visão Semana, a grade de horários já abre mostrando a hora em que você está, com a linha vermelha do "agora" à vista, sem precisar rolar. Antes ela abria sempre às 7h, e no fim da tarde era preciso descer para encontrar o horário atual.
+
+• <b>A linha do agora acompanha o relógio.</b> Com a Agenda aberta, a linha vermelha desce sozinha conforme o tempo passa, sem recarregar a página.
+
+• <b>Outras semanas não mudam.</b> Ao olhar uma semana que não é a atual, a grade continua abrindo às 7h.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

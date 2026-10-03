@@ -1,0 +1,14 @@
+<b>📋 AlfaMatriz — Changelog 02/10/2026 (3)</b>
+<i>O Funil de Vendas ganha o modo tela cheia, como o quadro de tarefas</i>
+
+<b>🖥️ Funil de Vendas em tela cheia</b>
+
+• <b>Botão de expandir.</b> No canto direito do cabeçalho do "Quadro do funil", o botão de expandir faz o funil ocupar a tela inteira, sem o menu e sem os indicadores. Mais colunas e mais cards cabem de uma vez.
+
+• <b>Novo lead e período à mão.</b> Em tela cheia, o cabeçalho do quadro traz o "+ Novo lead" e o botão "Período", que mostra o filtro de período por cima do quadro.
+
+• <b>Esc para sair.</b> O Esc fecha primeiro o que estiver aberto (um lead, o novo lead ou o filtro) e, sem nada aberto, sai da tela cheia. O mesmo botão do cabeçalho também volta ao normal.
+
+• <b>Fica lembrado.</b> Quem deixa o funil em tela cheia o encontra assim na próxima visita. A escolha é separada da tela de Tarefas: expandir uma não expande a outra.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
