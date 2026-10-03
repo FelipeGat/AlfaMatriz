@@ -20,8 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
-        // O webhook do GitHub (#211) fora do grupo `web`: ver `routes/github.php`.
-        then: fn () => Route::group([], base_path('routes/github.php')),
+        // O webhook do GitHub (#211) e o vigia de logs (#219) fora do grupo
+        // `web`: ver `routes/github.php` e `routes/vigia.php`.
+        then: function () {
+            Route::group([], base_path('routes/github.php'));
+            Route::group([], base_path('routes/vigia.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // O Tailscale Funnel termina o TLS e entrega a requisição em HTTP
