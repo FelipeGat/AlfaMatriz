@@ -148,6 +148,30 @@ LOG;
         $this->assertNull($erros[1]['trecho']);
     }
 
+    /**
+     * O log do Spring em JSON (AlfaGym, achado na instalação da T-220): o
+     * extrator só conhecia texto, e lia zero erros de um log com mais de mil.
+     */
+    public function test_docker_le_o_log_do_spring_em_json(): void
+    {
+        file_put_contents($this->dir.'/.env', "VIGIA_CONTAINERS=alfagym-json\nVIGIA_ESTADO={$this->dir}/estado\nVIGIA_ORIGEM=vps-teste\n");
+
+        $erros = $this->lotes($this->rodar(['--imprimir', '--desde-o-inicio']))[0]['erros'];
+
+        // INFO e WARN sem stack ficam de fora; ERROR sempre; WARN com stack_trace entra.
+        $this->assertCount(2, $erros);
+
+        $this->assertSame('ERROR', $erros[0]['nivel']);
+        $this->assertSame('2026-10-02T14:10:26.854-03:00', $erros[0]['quando']);
+        $this->assertSame('Falha ao validar check-in Wellhub 652 em background', $erros[0]['mensagem']);
+        $this->assertSame('org.springframework.dao.InvalidDataAccessApiUsageException', $erros[0]['excecao']);
+        $this->assertStringContainsString('SharedEntityManagerCreator.invoke', $erros[0]['trecho']);
+
+        $this->assertSame('WARN', $erros[1]['nivel']);
+        $this->assertSame('Aviso com "aspas" e stack', $erros[1]['mensagem']);
+        $this->assertSame('java.lang.IllegalStateException', $erros[1]['excecao']);
+    }
+
     public function test_primeira_rodada_nao_manda_o_passado_e_depois_so_o_novo(): void
     {
         $primeira = $this->rodar();
@@ -229,6 +253,19 @@ SH);
     {
         $this->escreverExecutavel('docker', <<<'SH'
 #!/usr/bin/env bash
+# Container com "json" no nome: o log do Spring em JSON, no formato real do
+# backend do AlfaGym (T-220) — uma linha por evento, stack em texto em seguida.
+case "$*" in *json*)
+cat <<'LOG'
+2026-10-02T17:10:20.000000000Z {"timestamp":"2026-10-02T14:10:20.000-03:00","level":"INFO","thread":"main","logger":"c.a.App","message":"Started"}
+2026-10-02T17:10:26.855000000Z {"timestamp":"2026-10-02T14:10:26.854-03:00","level":"ERROR","thread":"task-80","logger":"c.a.p.service.WellhubAcessoService","message":"Falha ao validar check-in Wellhub 652 em background"}
+2026-10-02T17:10:26.856000000Z org.springframework.dao.InvalidDataAccessApiUsageException: No EntityManager with actual transaction available for current thread
+2026-10-02T17:10:26.857000000Z 	at org.springframework.orm.jpa.SharedEntityManagerCreator.invoke(SharedEntityManagerCreator.java:303)
+2026-10-02T17:10:27.000000000Z {"timestamp":"2026-10-02T14:10:27.000-03:00","level":"WARN","thread":"main","logger":"c.a.Cache","message":"Lento"}
+2026-10-02T17:10:28.000000000Z {"timestamp":"2026-10-02T14:10:28.000-03:00","level":"WARN","thread":"main","logger":"c.a.X","message":"Aviso com \"aspas\" e stack","stack_trace":"java.lang.IllegalStateException: estado ruim\n\tat c.a.X.y(X.java:10)"}
+LOG
+exit 0 ;;
+esac
 cat <<'LOG'
 2026-10-03T17:00:00.123456789Z 2026-10-03T14:00:00.120-03:00  INFO 1 --- [alfagym] [main] b.c.a.App : Started
 2026-10-03T17:00:01.000000001Z 2026-10-03T14:00:01.000-03:00  WARN 1 --- [alfagym] [nio-8080-exec-1] b.c.a.wellhub.WellhubService : Falha ao validar check-in Wellhub

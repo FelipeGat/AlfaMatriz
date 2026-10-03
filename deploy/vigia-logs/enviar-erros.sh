@@ -250,6 +250,39 @@ function abrir(l, carimbo,    p, resto, k, ctx) {
     if (mensagem == "") mensagem = (excecao != "" ? excecao : "(sem mensagem)")
     if (l ~ /Exception|Error:/) tem_excecao = 1
 }
+# Spring com log em JSON, uma linha por evento (o AlfaGym, achado na
+# instalação da T-220): {"timestamp":"…","level":"ERROR","logger":"…","message":"…"}.
+# O stack vem nas linhas de texto seguintes — que o `continuar` já junta — ou,
+# em alguns encoders, num campo "stack_trace" do próprio JSON.
+function campo(l, nome,    k, s, r, i, c) {
+    k = index(l, "\"" nome "\":\"")
+    if (k == 0) return ""
+    s = substr(l, k + length(nome) + 4)
+    r = ""
+    for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1)
+        if (c == "\\") { r = r substr(s, i, 2); i++; continue }
+        if (c == "\"") break
+        r = r c
+    }
+    return desescapar(r)
+}
+function abrir_json(l, carimbo,    st, partes, n, i) {
+    aberto = 1
+    nivel = ""; mensagem = ""; excecao = ""; trecho = ""; linhas_trecho = 0; tem_excecao = 0; laravel = 0
+    nivel = toupper(campo(l, "level"))
+    if (nivel !~ /^(ERROR|WARN|WARNING|FATAL|SEVERE|CRITICAL)$/) { nivel = ""; return }
+    quando = campo(l, "timestamp")
+    if (quando == "") quando = carimbo
+    if (quando != "" && !tem_fuso(quando)) quando = quando fuso
+    mensagem = campo(l, "message")
+    if (mensagem == "") mensagem = "(sem mensagem)"
+    st = campo(l, "stack_trace")
+    if (st != "") {
+        n = split(st, partes, /\\n/)
+        for (i = 1; i <= n; i++) continuar(partes[i])
+    }
+}
 function juntar_trecho(s) {
     if (linhas_trecho >= max_trecho) return
     if (length(s) > 300) s = substr(s, 1, 299) "…"
@@ -279,7 +312,10 @@ function continuar(l,    t, c) {
         # Nanossegundos: o PHP lê até micro, e o segundo basta para a hora.
         sub(/\.[0-9]+Z$/, "Z", carimbo)
     }
-    if (eh_inicio(l)) {
+    if (l ~ /^\{/ && index(l, "\"level\":") > 0) {
+        fechar()
+        abrir_json(l, carimbo)
+    } else if (eh_inicio(l)) {
         fechar()
         abrir(l, carimbo)
     } else {
