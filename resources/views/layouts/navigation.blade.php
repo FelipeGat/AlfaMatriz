@@ -55,15 +55,13 @@
             // exibição — o monitor da parede — lê o quadro sem nunca ter
             // negociado isso. Estar no mesmo grupo não é estar na mesma porta.
             ['route' => 'agenda.index', 'recurso' => 'agenda', 'pattern' => 'agenda.*', 'label' => 'Agenda', 'icon' => 'calendar', 'matriz' => true],
-            // Ao lado de Tarefas porque é dali que o conteúdo vai nascer: o
-            // quadro produz a versão, a aba anuncia. `matriz` como o resto do
-            // grupo — o AC-094 fixa que revenda não vê Desenvolvimento no
-            // menu, e um item solto aqui faria o grupo reaparecer para ela.
-            // Sem `recurso`: é informativa, qualquer perfil da matriz entra.
-            // Se a agenda de manutenção um dia falar com a revenda, a porta
-            // dela se decide junto com a integração — mudando a spec, não
-            // driblando o teste.
-            ['route' => 'manutencao.index', 'pattern' => 'manutencao.*', 'label' => 'Manutenção e atualizações', 'icon' => 'wrench', 'matriz' => true],
+            // Ao lado de Tarefas porque é dali que o conteúdo nasce: o quadro
+            // produz a versão, a aba anuncia; o vigia abre Bug, a aba mostra o
+            // erro. `matriz` como o resto do grupo — o AC-094 fixa que revenda
+            // não vê Desenvolvimento no menu. `recurso` próprio desde a aba
+            // Erros (#224): a tela mostra o log cru dos sistemas, e o perfil de
+            // exibição não o lê — a mesma régua da Agenda.
+            ['route' => 'manutencao.index', 'recurso' => 'manutencao', 'pattern' => 'manutencao.*', 'label' => 'Manutenção e atualizações', 'icon' => 'wrench', 'matriz' => true],
         ],
         'Sistema' => [
             ['route' => 'cadastros-auxiliares.index', 'recurso' => 'financeiro', 'pattern' => ['cadastros-auxiliares.*', 'centros-custo.*', 'fornecedores.*', 'categorias.*', 'subcategorias.*', 'contas.*'], 'label' => 'Cadastros', 'icon' => 'tag', 'matriz' => true],

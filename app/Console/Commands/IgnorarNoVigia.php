@@ -3,7 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\VigiaIgnorado;
+use App\Services\Vigia\IgnoradosDoVigia;
 use Illuminate\Console\Command;
+use InvalidArgumentException;
 
 /**
  * A lista do que o vigia de logs não acompanha (#219).
@@ -15,8 +17,8 @@ use Illuminate\Console\Command;
  *
  * Texto casa por trecho, sem diferença de maiúsculas; entre barras é
  * expressão regular. O erro ignorado continua CONTADO — só não abre tarefa
- * nem avisa. Sem tela de administração por enquanto (decisão da #219): a
- * lista é curta e quem mexe nela é quem administra o servidor.
+ * nem avisa. A mesma lista se mexe pela aba Erros da tela de Manutenção
+ * (#224); a regra das duas portas mora em `IgnoradosDoVigia`.
  */
 class IgnorarNoVigia extends Command
 {
@@ -47,25 +49,23 @@ class IgnorarNoVigia extends Command
             return $this->listar();
         }
 
+        $lista = app(IgnoradosDoVigia::class);
+
         if ($this->option('remover')) {
-            $quantos = VigiaIgnorado::where('padrao', $padrao)->where('sistema_id', $sistema?->id)->delete();
+            $quantos = $lista->remover($padrao, $sistema);
             $this->info($quantos > 0 ? 'Padrão removido da lista.' : 'Esse padrão não estava na lista'.($sistema ? " de {$sistema->nome}" : ' global').'.');
 
             return self::SUCCESS;
         }
 
-        $item = new VigiaIgnorado(['padrao' => $padrao, 'sistema_id' => $sistema?->id]);
-
-        // A regex é testada na entrada: inválida, ela nunca casaria, e o erro
-        // que alguém quis calar continuaria abrindo tarefa sem ninguém saber
-        // por quê.
-        if ($item->ehRegex() && @preg_match($padrao.'iu', '') === false) {
-            $this->error('Expressão regular inválida: '.$padrao);
+        try {
+            $item = $lista->ignorar($padrao, $sistema);
+        } catch (InvalidArgumentException $e) {
+            $this->error($e->getMessage());
 
             return self::FAILURE;
         }
 
-        $item->save();
         $this->info('Ignorando '.($item->ehRegex() ? 'a regex ' : 'o texto ').'«'.$padrao.'» '.($sistema ? "no {$sistema->nome}" : 'em todos os sistemas').'.');
 
         return self::SUCCESS;

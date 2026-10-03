@@ -85,6 +85,15 @@ class PerfilPermissaoSeeder extends Seeder
             // `2026_08_13_110000_permissao_de_auditoria.php`, que é quem leva
             // isto a produção; aqui é só o estado inicial de quem semeia.
             'auditoria' => 'Auditoria (rastro de quem fez o quê)',
+
+            // A tela de Manutenção deixou de ser só promessa com a aba Erros
+            // (#224): ela mostra a mensagem crua do log dos sistemas e cala
+            // erro do vigia. Recurso próprio pela mesma razão da Agenda — o
+            // perfil de exibição lê o quadro, e o log no monitor da parede é o
+            // que ninguém negociou. Espelha
+            // `2026_10_03_150000_permissao_de_manutencao.php`, que é quem leva
+            // isto a produção; aqui é só o estado inicial de quem semeia.
+            'manutencao' => 'Manutenção e atualizações (erros dos sistemas, changelog e janelas)',
         ];
 
         foreach ($recursos as $slug => $descricao) {
@@ -185,6 +194,13 @@ class PerfilPermissaoSeeder extends Seeder
         // —, e por isso o perfil de exibição fica de fora nos dois lugares.
         $membro->permissoes()->syncWithoutDetaching([
             $todasPermissoes['agenda'] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
+        ]);
+
+        // A Manutenção acompanha a mesma régua da Agenda — quem edita o quadro
+        // é quem conserta o erro que o vigia mostra, e quem calibra o que ele
+        // ignora. A migração de produção usa a mesma régua.
+        $membro->permissoes()->syncWithoutDetaching([
+            $todasPermissoes['manutencao'] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
         ]);
 
         // Quem vende não é quem opera. O perfil mais próximo era `operacao`, e
