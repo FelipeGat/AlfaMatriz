@@ -1,0 +1,30 @@
+<b>📋 AlfaMatriz — Changelog 02/10/2026 (2)</b>
+<i>Quem termina uma tarefa agora diz o que fez e como testar, e o código do GitHub aparece sozinho no quadro</i>
+
+<b>📦 Entrega ao mandar para revisão</b>
+
+• <b>Três campos ao mandar para Em revisão.</b> Ao mover uma tarefa de Desenvolvimento ou Bug para Em revisão, o quadro pede <b>O que foi feito</b>, <b>Como testar</b> no staging e <b>PR e commits</b> (opcional). Sem os dois primeiros, a tarefa não anda. Vale para todo mundo, inclusive para quem faz triagem e pula etapas.
+
+• <b>Fica no topo da tarefa.</b> Durante revisão, staging e produção, a entrega aparece no começo do detalhe da tarefa, com autor, data e os links clicáveis. É a primeira coisa que quem revisa e quem testa leem.
+
+• <b>Histórico das voltas.</b> Se a tarefa volta para correção e sobe de novo, nasce a 2ª entrega, e a anterior continua guardada. As entregas também aparecem no Histórico, e a busca do quadro acha a tarefa pelo hash do commit ou pelo link do PR.
+
+<b>🔗 GitHub ligado ao quadro</b>
+
+• <b>Marca T-173 no commit.</b> Todo commit enviado ao GitHub, em qualquer branch, com o número da tarefa no formato <b>T-173</b> na mensagem, aparece sozinho na tarefa 173. Não precisa de PR: o commit isolado por tarefa é o caso mais simples, e cada tarefa passa a mostrar o próprio commit. O "#173" não serve, porque no GitHub ele é número de PR.
+
+• <b>Seção Código.</b> O detalhe da tarefa ganhou a seção "Código", com os commits ligados a ela (hash clicável) e, quando houver, os PRs com o estado: aberto, mesclado ou fechado.
+
+• <b>Entrega já preenchida.</b> Ao mandar para revisão, o campo PR e commits já vem com o que chegou do GitHub.
+
+• <b>Quem usa PR</b> também é atendido: o PR com T-173 no título ou na descrição aparece na tarefa, e o responsável recebe no sino o lembrete de mandar para revisão. A tarefa não se move sozinha.
+
+• <b>Todos os repositórios.</b> AlfaMatriz, AlfaControl, AlfaGym, AlfaHome, AlfaJornada, AlfaMed, Gestor, site, app e AlfaSchool já estão ligados.
+
+<b>👨‍💻 Para quem desenvolve</b>
+
+• Coloque <b>T-</b> e o número da tarefa na mensagem do commit, por exemplo "fix(alunos): busca por CPF no check-in T-190".
+
+• Terminou? Mova você mesmo a tarefa para Em revisão e preencha a entrega.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

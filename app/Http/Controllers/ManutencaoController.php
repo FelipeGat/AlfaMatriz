@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Atualizacao;
+use App\Models\Compromisso;
 use App\Models\Sistema;
 use App\Models\VigiaErro;
 use App\Models\VigiaErroHora;
@@ -25,6 +27,10 @@ use InvalidArgumentException;
  * quando, se teve pico, o que está calado — só se via no banco, e calibrar o
  * ruído exigia SSH até o servidor para rodar o `alfa:vigia-ignorar`. Aqui as
  * duas coisas viram tela.
+ *
+ * As abas Atualizações e Programadas (#225) são a vitrine de duas coisas que
+ * nascem em outro lugar: o changelog que o `publicar-changelog.sh` manda ao
+ * Telegram (e registra aqui) e a janela de manutenção marcada na Agenda.
  */
 class ManutencaoController extends Controller
 {
@@ -40,6 +46,8 @@ class ManutencaoController extends Controller
      */
     public const LIMITE_DE_ERROS = 200;
 
+    public const ATUALIZACOES_POR_PAGINA = 15;
+
     /** Os dias da coluna "Semana": hoje e os seis anteriores. */
     public const DIAS_DA_SEMANA = 7;
 
@@ -51,7 +59,13 @@ class ManutencaoController extends Controller
 
         $aba = in_array($request->query('aba'), self::ABAS, true) ? $request->query('aba') : 'erros';
 
-        return view('manutencao.index', ['aba' => $aba] + ($aba === 'erros' ? $this->abaErros($request) : []));
+        $dados = match ($aba) {
+            'atualizacoes' => $this->abaAtualizacoes($request),
+            'programadas' => $this->abaProgramadas(),
+            default => $this->abaErros($request),
+        };
+
+        return view('manutencao.index', ['aba' => $aba] + $dados);
     }
 
     /** O botão "Ignorar" da linha: o padrão do erro, só no sistema dele. */
@@ -170,6 +184,70 @@ class ManutencaoController extends Controller
                 'picos' => VigiaErro::where('pico_avisado_em', '>=', now()->subDays(self::DIAS_DA_SEMANA)->format('Y-m-d H:i:s'))->count(),
                 'ignorados' => VigiaErro::where('ignorado', true)->count(),
             ],
+        ];
+    }
+
+    /**
+     * Os changelogs publicados (#225), do mais recente para o mais antigo.
+     *
+     * @return array<string, mixed>
+     */
+    private function abaAtualizacoes(Request $request): array
+    {
+        $sistemaId = (int) $request->query('sistema', 0);
+
+        return [
+            'filtros' => ['sistema' => $sistemaId],
+            // Só os sistemas que já têm changelog: filtrar por um que nunca
+            // publicou nada daria sempre a mesma tela vazia.
+            'sistemas' => Sistema::query()
+                ->whereIn('id', Atualizacao::query()->select('sistema_id'))
+                ->orderBy('nome')
+                ->get(['id', 'nome', 'slug']),
+            'atualizacoes' => Atualizacao::query()
+                ->with(['sistema', 'tarefas', 'registradoPor'])
+                ->when($sistemaId, fn ($q, $id) => $q->where('sistema_id', $id))
+                ->orderByDesc('data')
+                ->orderByDesc('id')
+                ->paginate(self::ATUALIZACOES_POR_PAGINA)
+                ->withQueryString(),
+        ];
+    }
+
+    /**
+     * As próximas janelas de manutenção (#225): os compromissos da Agenda na
+     * categoria Deploy / manutenção que ainda não terminaram, por sistema.
+     *
+     * A Agenda continua sendo o lugar de marcar; aqui é só a vitrine. Uma
+     * segunda tela de cadastro para a mesma coisa faria a janela existir em
+     * dois lugares, e um deles ficaria para trás.
+     *
+     * @return array<string, mixed>
+     */
+    private function abaProgramadas(): array
+    {
+        $janelas = Compromisso::query()
+            ->with(['sistema', 'tarefa.sistema', 'participantes'])
+            ->where('categoria', 'deploy')
+            // `whereDate`, e não comparação crua: ver a nota da Agenda no
+            // CLAUDE.md (o SQLite dos testes não trunca a coluna DATE).
+            ->whereDate('data_fim', '>=', now()->toDateString())
+            ->orderBy('data')
+            ->orderBy('hora')
+            ->get()
+            // A que já terminou hoje sai: "próxima" é o que ainda vai
+            // acontecer ou está acontecendo.
+            ->filter(fn (Compromisso $c) => $c->terminaEm()->gte(now()))
+            ->values();
+
+        return [
+            'porSistema' => $janelas
+                ->groupBy(fn (Compromisso $c) => $c->sistemaDaJanela()?->nome ?? '')
+                ->sortKeys()
+                // "Sem sistema" por último: é o que precisa de alguém dizer de
+                // qual sistema é, não o que abre a lista.
+                ->sortBy(fn ($grupo, $nome) => $nome === '' ? 1 : 0),
+            'quantas' => $janelas->count(),
         ];
     }
 

@@ -79,6 +79,9 @@ class AgendaController extends Controller
                 : null,
             'faixaLabel' => $this->faixaLabel($visao, $em, $faixa),
             'equipe' => $this->equipe(),
+            // O seletor de sistema da janela de manutenção (#225): o modal o
+            // mostra quando a categoria é Deploy / manutenção.
+            'sistemas' => Sistema::query()->where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'podeReagendar' => $request->user()?->podeTriarTarefas() ?? false,
             'usuarioId' => $request->user()->id,
 
@@ -246,6 +249,7 @@ class AgendaController extends Controller
                 'duracao_modo' => $c->duracao_modo,
                 'duracao_horas' => $c->duracao_horas ? (float) $c->duracao_horas : 1.0,
                 'tarefa_id' => $c->tarefa_id,
+                'sistema_id' => $c->sistema_id,
                 'participantes' => $c->participantes->pluck('id')->all(),
                 'criado_por_id' => $c->criado_por_id,
                 'somenteLeitura' => ! $c->podeSerEditadoPor($request->user()),

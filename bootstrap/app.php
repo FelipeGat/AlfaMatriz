@@ -20,11 +20,13 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
-        // O webhook do GitHub (#211) e o vigia de logs (#219) fora do grupo
-        // `web`: ver `routes/github.php` e `routes/vigia.php`.
+        // O webhook do GitHub (#211), o vigia de logs (#219) e o registro do
+        // changelog (#225) fora do grupo `web`: ver `routes/github.php`,
+        // `routes/vigia.php` e `routes/atualizacoes.php`.
         then: function () {
             Route::group([], base_path('routes/github.php'));
             Route::group([], base_path('routes/vigia.php'));
+            Route::group([], base_path('routes/atualizacoes.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {

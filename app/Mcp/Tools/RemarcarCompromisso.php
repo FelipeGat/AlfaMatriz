@@ -47,6 +47,8 @@ class RemarcarCompromisso extends Ferramenta
             'participantes' => $schema->array()->items($schema->string())
                 ->description('A lista COMPLETA das outras pessoas, pelo nome — substitui a atual. Você continua nela.'),
             'tarefa' => $schema->string()->description('Código da tarefa a vincular ("#128").'),
+            'sistema' => $schema->string()
+                ->description('Na categoria deploy: o sistema da janela de manutenção (ver referencias). Em outra categoria é ignorado.'),
         ];
     }
 
@@ -92,6 +94,19 @@ class RemarcarCompromisso extends Ferramenta
             $tarefaId = $tarefa->id;
         }
 
+        $categoria = $request->get('categoria') ?? $compromisso->categoria;
+        $sistemaId = $categoria === 'deploy' ? $compromisso->sistema_id : null;
+
+        if (filled($request->get('sistema')) && $categoria === 'deploy') {
+            $sistema = $this->sistema((string) $request->get('sistema'));
+
+            if (is_string($sistema)) {
+                return Response::error($sistema);
+            }
+
+            $sistemaId = $sistema->id;
+        }
+
         $dados = $request->merge(
             $this->intervalo($compromisso, $request) + [
                 'titulo' => $request->get('titulo') ?? $compromisso->titulo,
@@ -99,6 +114,7 @@ class RemarcarCompromisso extends Ferramenta
                 'categoria' => $request->get('categoria') ?? $compromisso->categoria,
                 'participantes' => array_values(array_unique($participantes)),
                 'tarefa_id' => $tarefaId,
+                'sistema_id' => $sistemaId,
             ]
         )->validate(AgendaService::regrasDoCompromisso());
 

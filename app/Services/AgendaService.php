@@ -574,6 +574,7 @@ class AgendaService
             'data_fim' => 'nullable|date',
             'hora_fim' => 'nullable|date_format:H:i',
             'tarefa_id' => 'nullable|exists:tarefas,id',
+            'sistema_id' => 'nullable|exists:sistemas,id',
             'participantes' => 'nullable|array',
             'participantes.*' => 'exists:users,id',
         ];
@@ -601,6 +602,7 @@ class AgendaService
                 'categoria' => $dados['categoria'] ?? 'interna',
                 'criado_por_id' => $autor->id,
                 'tarefa_id' => $dados['tarefa_id'] ?? null,
+                'sistema_id' => self::sistemaDaJanela($dados),
             ]);
 
             $compromisso->sincronizarParticipantes($dados['participantes'] ?? []);
@@ -608,6 +610,20 @@ class AgendaService
 
             return $compromisso;
         });
+    }
+
+    /**
+     * Só a janela de manutenção é de um sistema (#225). Fica aqui, e não só no
+     * modal, para a tela e o servidor MCP gravarem igual: trocar a categoria
+     * de uma janela para reunião solta o sistema dela.
+     *
+     * @param  array<string, mixed>  $dados
+     */
+    private static function sistemaDaJanela(array $dados): ?int
+    {
+        return ($dados['categoria'] ?? 'interna') === 'deploy' && filled($dados['sistema_id'] ?? null)
+            ? (int) $dados['sistema_id']
+            : null;
     }
 
     /** As duas recusas de quem não marcou — ditas igual pela tela e pelo servidor MCP. */
@@ -647,6 +663,7 @@ class AgendaService
                     'descricao' => $dados['descricao'] ?? null,
                     'categoria' => $dados['categoria'] ?? 'interna',
                     'tarefa_id' => $dados['tarefa_id'] ?? null,
+                    'sistema_id' => self::sistemaDaJanela($dados),
                 ] + ($comecoMudou ? ['lembrete_enviado_em' => null] : [])
             );
 

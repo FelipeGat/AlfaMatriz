@@ -1,0 +1,38 @@
+<b>📋 AlfaMatriz — Changelog 01/10/2026</b>
+<i>O quadro passa a separar o que é Bug, pede o caso concreto de quem foi afetado e avisa quando a tarefa que está sendo aberta já existe</i>
+
+<b>🐞 Novo tipo: Bug</b>
+
+• <b>Tipo próprio para o que quebrou.</b> Além de Desenvolvimento e Operacional, agora existe o tipo Bug, com o mesmo caminho do desenvolvimento: revisão, staging e produção. O card ganha o selo "Bug".
+
+• <b>O caso concreto é obrigatório.</b> Ao escolher Bug, o formulário pede <b>Quem</b> foi afetado (cliente, aluno ou academia) e <b>Quando</b> aconteceu (dia e hora). Sem os dois, a tarefa não é salva. O print vai em Anexos, no mesmo formulário.
+
+• <b>O resumo vira "O que aconteceu".</b> No Bug, o campo de resumo muda de nome e sugere o que escrever: o que aconteceu, o que deveria ter acontecido e a mensagem de erro, se houve.
+
+• <b>Bugs por sistema.</b> Em Relatórios › Desenvolvimento, um painel novo conta os bugs abertos no mês por sistema — também na exportação. Bug marcado como duplicado não conta duas vezes.
+
+<b>📝 O tipo agora é sempre escolhido</b>
+
+• <b>Começa vazio.</b> Na Nova tarefa, o Tipo vem em "escolha o tipo" e é obrigatório — quem abre a tarefa vê as três opções e decide.
+
+• <b>Criação rápida abre o formulário.</b> O "+ nova tarefa" no pé das colunas Aberta e Backlog agora abre a Nova tarefa com o título já escrito e o cursor no Tipo.
+
+• <b>Da Agenda para o quadro.</b> O "Virar tarefa" de um compromisso abre a Nova tarefa já preenchida com título, descrição e prazo do compromisso. Ao salvar, o compromisso fica vinculado à tarefa.
+
+<b>🔁 Tarefas repetidas</b>
+
+• <b>Aviso de parecidas.</b> Enquanto o título é digitado, a Nova tarefa mostra as tarefas em curso que parecem ser o mesmo pedido, com etapa, sistema e prioridade. É só um aviso: se for outra coisa, basta salvar.
+
+• <b>Marcar como duplicada.</b> Uma tarefa pode ser cancelada como duplicada de outra. As duas mostram o vínculo: "Cancelada como duplicada de #N" numa, "Pedida de novo em #N" na outra.
+
+• <b>Lembrete da triagem.</b> Nas tarefas da fila Aberta, quem faz triagem vê "Antes de direcionar": o sistema confere? Existe duplicada? A prioridade está coerente com as parecidas? Cada parecida tem o botão "É esta", que já prepara a marcação de duplicada.
+
+<b>🔧 Correção</b>
+
+• <b>Abas com filtro.</b> Em Relatórios, Revendas e Produtos, trocar de aba com um filtro escolhido não abria a aba certa ou perdia o filtro. Agora o filtro vai junto.
+
+<b>🤖 Pela conversa com o Claude</b>
+
+• Criar tarefa agora exige dizer o tipo, e um Bug exige quem e quando — as mesmas regras da tela. Ao criar, o agente também é avisado das tarefas parecidas, e ganhou a ação de marcar uma tarefa como duplicada.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

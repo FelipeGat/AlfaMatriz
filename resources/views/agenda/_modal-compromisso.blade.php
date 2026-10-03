@@ -54,6 +54,20 @@
                 @endforeach
             </div>
 
+            {{-- A janela de manutenção é DE um sistema (#225): é por ele que a
+                 aba Programadas da tela de Manutenção a lista. Só aparece na
+                 categoria Deploy / manutenção — reunião não é de sistema. --}}
+            <div x-show="modal.categoria === 'deploy'" x-cloak>
+                <p class="mb-1.5 mt-3 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-faint">Sistema</p>
+                <select x-model="modal.sistema_id" :disabled="modal.somenteLeitura"
+                        class="h-9 w-full rounded-control border border-btn-line bg-input py-0 px-2.5 text-[12.5px] text-ink focus:border-brand focus:ring-0 disabled:opacity-60">
+                    <option value="">Nenhum sistema</option>
+                    @foreach ($sistemas as $sistema)
+                        <option value="{{ $sistema->id }}">{{ $sistema->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             <p class="mb-1.5 mt-3 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-faint">Início</p>
             <div class="flex gap-2">
                 <input type="date" x-model="modal.data" @change="recalcular()" :disabled="modal.somenteLeitura"

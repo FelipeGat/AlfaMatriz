@@ -108,6 +108,7 @@ abstract class Ferramenta extends Tool
             'Quando: '.$inicio->format('d/m/Y H:i').' até '
                 .($compromisso->viraODia() ? $termino->format('d/m/Y H:i').' (vira o dia)' : $termino->format('H:i')),
             'Categoria: '.(Compromisso::CATEGORIAS[$compromisso->categoria]['rotulo'] ?? $compromisso->categoria),
+            $compromisso->sistema ? 'Sistema: '.$compromisso->sistema->nome : null,
             'Participantes: '.($compromisso->participantes->pluck('name')->implode(', ') ?: 'ninguém'),
             'Marcado por: '.($compromisso->criadoPor?->name ?? '?'),
             $compromisso->tarefa ? 'Tarefa vinculada: '.$compromisso->tarefa->codigo().' · '.$compromisso->tarefa->titulo : null,

@@ -33,7 +33,7 @@
                 data: inicial.hoje, hora: '09:00',
                 data_fim: inicial.hoje, hora_fim: '10:00',
                 duracao_modo: true, duracao_horas: 1,
-                tarefa_id: '', participantes: [],
+                tarefa_id: '', sistema_id: '', participantes: [],
                 vinculoBusca: '', vinculoAberto: false,
                 conflitos: [], carga: {},
             },
@@ -149,7 +149,7 @@
                     data: this.hoje, hora: '09:00',
                     data_fim: this.hoje, hora_fim: '10:00',
                     duracao_modo: true, duracao_horas: 1,
-                    tarefa_id: '', participantes: [],
+                    tarefa_id: '', sistema_id: '', participantes: [],
                     vinculoBusca: '', vinculoAberto: false,
                     conflitos: [], carga: {},
                 };
@@ -210,6 +210,7 @@
                     ...guardado,
                     aberto: true,
                     tarefa_id: guardado.tarefa_id ?? '',
+                    sistema_id: guardado.sistema_id ?? '',
                 };
 
                 this.conferirConflitos();
@@ -417,6 +418,9 @@
                     duracao_modo: this.modal.duracao_modo,
                     duracao_horas: this.modal.duracao_horas,
                     tarefa_id: this.modal.tarefa_id || null,
+                    // Só a janela de manutenção é de um sistema: trocar a
+                    // categoria depois de escolher não deixa o sistema pendurado.
+                    sistema_id: this.modal.categoria === 'deploy' ? (this.modal.sistema_id || null) : null,
                     participantes: this.modal.participantes,
                 });
 

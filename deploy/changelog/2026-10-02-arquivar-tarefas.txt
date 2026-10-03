@@ -1,0 +1,34 @@
+<b>📋 AlfaMatriz — Changelog 02/10/2026</b>
+<i>O quadro ganha um arquivo: o que não vai andar agora sai da frente sem ser cancelado, e volta para o mesmo lugar quando precisar</i>
+
+<b>🗄️ Arquivar tarefa</b>
+
+• <b>Para o "agora não" e o "não sabemos".</b> No detalhe da tarefa, quem faz triagem tem "Não vai andar agora? Arquivar". Serve para a ideia boa que fica para depois, o pedido sem retorno de quem abriu e o problema que talvez já esteja resolvido.
+
+• <b>Motivo obrigatório.</b> Ao arquivar, escolhe-se o porquê: <b>Fica para depois</b>, <b>Sem retorno</b> ou <b>Não confirmado</b>, com uma nota opcional para quem reabrir.
+
+• <b>Nada se perde.</b> A tarefa sai do quadro, mas guarda a coluna, o responsável, a conversa e os anexos. Quem abriu e o responsável recebem o aviso no sino, e o arquivamento fica registrado na conversa.
+
+• <b>Arquivar não é cancelar.</b> Cancelar continua sendo "não vamos fazer". Arquivar é "agora não", e a tarefa pode voltar. Tarefa repetida continua com o "Marcar como duplicada".
+
+<b>📂 Aba Arquivadas</b>
+
+• <b>Ao lado de Quadro e Histórico.</b> Mostra as arquivadas na coluna de onde saíram, com a tarja do motivo no card, e pode ser filtrada por motivo, sistema, responsável e busca.
+
+• <b>Desarquivar.</b> No detalhe da tarefa arquivada, o botão "Desarquivar" a devolve para a mesma coluna, com o mesmo responsável.
+
+<b>↩️ Volta sozinha</b>
+
+• <b>Quem abriu responde, a tarefa volta.</b> Se a pessoa que abriu a tarefa comentar nela depois de arquivada, a tarefa volta para o quadro sozinha, e a triagem e o responsável são avisados.
+
+<b>🧹 Sugestões para a triagem</b>
+
+• <b>Chip "p/ arquivar".</b> Quem faz triagem vê no cabeçalho do quadro quantas tarefas estão paradas há 30 dias, ou há 15 dias se estiverem travadas ou esperando resposta. Clicar mostra só elas. É sugestão: nada é arquivado sozinho.
+
+• <b>Fora das contas do dia a dia.</b> Tarefa arquivada não entra nos relatórios do quadro, na Agenda, no lembrete de prazo e não pode ser movida sem antes ser desarquivada. Ela continua aparecendo no aviso de tarefas parecidas ao criar uma nova.
+
+<b>🤖 Pela conversa com o Claude</b>
+
+• O agente agora arquiva e desarquiva tarefas, com as mesmas regras da tela, e consegue listar as arquivadas e as paradas que valem arquivar.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

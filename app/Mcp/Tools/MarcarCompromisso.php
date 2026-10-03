@@ -43,6 +43,8 @@ class MarcarCompromisso extends Ferramenta
             'participantes' => $schema->array()->items($schema->string())
                 ->description('Nomes das outras pessoas. Você já entra.'),
             'tarefa' => $schema->string()->description('Código da tarefa a que a reunião se refere ("#128"), se houver.'),
+            'sistema' => $schema->string()
+                ->description('Na categoria deploy: o sistema da janela de manutenção (ver referencias). Em outra categoria é ignorado.'),
         ];
     }
 
@@ -72,12 +74,27 @@ class MarcarCompromisso extends Ferramenta
             $tarefaId = $tarefa->id;
         }
 
+        $sistemaId = null;
+
+        // Só a janela de manutenção é de sistema — a mesma regra do modal da
+        // Agenda, que só oferece o campo nessa categoria.
+        if (filled($request->get('sistema')) && $request->get('categoria') === 'deploy') {
+            $sistema = $this->sistema((string) $request->get('sistema'));
+
+            if (is_string($sistema)) {
+                return Response::error($sistema);
+            }
+
+            $sistemaId = $sistema->id;
+        }
+
         // Os nomes resolvidos entram no lugar dos digitados, e o resto passa
         // pelas MESMAS regras do formulário (`regrasDoCompromisso`): a
         // ferramenta não valida por conta própria.
         $dados = $request->merge([
             'participantes' => array_values(array_unique($ids)),
             'tarefa_id' => $tarefaId,
+            'sistema_id' => $sistemaId,
             'duracao_modo' => blank($request->get('hora_fim')),
         ])->validate(AgendaService::regrasDoCompromisso());
 
