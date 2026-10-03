@@ -1,0 +1,18 @@
+<b>📋 AlfaMatriz — Changelog 03/10/2026</b>
+<i>Os erros que o vigia encontra agora aparecem numa tela, e dá para calar o que não é problema</i>
+
+<b>🛠️ Manutenção e atualizações</b>
+
+• <b>A tela saiu do "Em breve".</b> Em Desenvolvimento → Manutenção e atualizações, a nova aba <b>Erros</b> mostra, sistema por sistema, cada erro que o vigia de logs encontrou: quantas vezes aconteceu, quando apareceu pela primeira e pela última vez, e a tarefa que ele abriu no quadro.
+
+• <b>A semana de cada erro.</b> Um pequeno gráfico mostra os últimos sete dias, com a hora em que o erro mais se repetiu, e a marca <b>pico</b> quando ele disparou o aviso no Telegram.
+
+• <b>Ignorar pela tela.</b> Erro que não precisa de conserto pode ser ignorado num clique: ele continua sendo contado, mas deixa de abrir tarefa e de avisar. A lista do que está ignorado fica logo abaixo, e dá para voltar a vigiar a qualquer momento. Quem ignorou fica registrado na Auditoria.
+
+• <b>Quem vê a tela.</b> Ela mostra o registro de erros dos sistemas, por isso passou a ter permissão própria: entra quem trabalha no quadro de tarefas. O monitor da sala e as revendas não veem.
+
+<b>🔎 Vigia de logs</b>
+
+• <b>O AlfaGym entrou.</b> O vigia passa a ler também os erros do AlfaGym, que registra o log num formato diferente do AlfaMatriz.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
