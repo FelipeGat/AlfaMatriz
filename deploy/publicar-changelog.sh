@@ -209,17 +209,27 @@ registrar() {
     tarefas=""
     [[ -n "$versao" ]] && tarefas=$(tarefas_da_versao "$versao")
 
-    resposta=$(curl -s -m 30 -w $'\n%{http_code}' -X POST "$URL_ALFAMATRIZ/api/atualizacoes" \
-        -H "Authorization: Bearer $token" \
-        -H "Accept: application/json" \
-        --data-urlencode "texto@$arquivo" \
-        --data-urlencode "versao=$versao" \
-        --data-urlencode "tarefas=$tarefas" \
-        --data-urlencode "origem=$origem" \
-        --data-urlencode "arquivo=$(basename "$arquivo")" || true)
+    # 429 é o freio da rota (120 por minuto): uma importação grande passa
+    # dele. Esperar e tentar de novo é o que a pessoa faria à mão — três vezes,
+    # e depois desiste com a frase.
+    local tentativa
+    for tentativa in 1 2 3 4; do
+        resposta=$(curl -s -m 30 -w $'\n%{http_code}' -X POST "$URL_ALFAMATRIZ/api/atualizacoes" \
+            -H "Authorization: Bearer $token" \
+            -H "Accept: application/json" \
+            --data-urlencode "texto@$arquivo" \
+            --data-urlencode "versao=$versao" \
+            --data-urlencode "tarefas=$tarefas" \
+            --data-urlencode "origem=$origem" \
+            --data-urlencode "arquivo=$(basename "$arquivo")" || true)
 
-    codigo="${resposta##*$'\n'}"
-    corpo="${resposta%$'\n'*}"
+        codigo="${resposta##*$'\n'}"
+        corpo="${resposta%$'\n'*}"
+
+        [[ "$codigo" == "429" && "$tentativa" -lt 4 ]] || break
+        echo "  … limite de registros por minuto; esperando 30 s para continuar" >&2
+        sleep 30
+    done
 
     if [[ "$codigo" == "201" || "$codigo" == "200" ]]; then
         echo "  ✓ $(basename "$arquivo"): $(printf '%s' "$corpo" | sed -n 's/.*"message":"\([^"]*\)".*/\1/p') no AlfaMatriz${versao:+ ($versao)}${tarefas:+ · tarefas: $tarefas}"
@@ -232,8 +242,6 @@ registrar() {
     motivo=$(printf '%s' "$corpo" | sed -n 's/.*"message": *"\([^"]*\)".*/\1/p' | head -1)
     echo "  ✗ $(basename "$arquivo"): o AlfaMatriz respondeu ${codigo:-sem resposta}: ${motivo:-$(printf '%s' "$corpo" | head -c 300)}" >&2
 
-    # 429: o freio da rota. Vale dizer o que fazer em vez de só o código.
-    [[ "$codigo" == "429" ]] && echo "    (muitos registros seguidos — espere um minuto e rode de novo; o que já entrou não duplica)" >&2
     return 1
 }
 
