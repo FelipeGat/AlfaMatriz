@@ -407,6 +407,22 @@ class RecebimentoDoVigiaTest extends TestCase
         Http::assertNothingSent();
     }
 
+    /**
+     * O aviso de Telegram desligado não pode virar erro no log (ensaio da
+     * T-219 no staging): como `warning` com o texto do alerta, o script do
+     * vigia o lia como erro novo e abria tarefa sobre o próprio aviso.
+     */
+    public function test_telegram_desligado_nao_escreve_aviso_que_o_vigia_leria(): void
+    {
+        config(['services.telegram.bot_token' => null, 'services.telegram.chat_id_alertas' => null]);
+        \Illuminate\Support\Facades\Log::spy();
+
+        $this->enviar([$this->erro()])->assertOk();
+
+        \Illuminate\Support\Facades\Log::shouldNotHaveReceived('warning');
+        \Illuminate\Support\Facades\Log::shouldNotHaveReceived('error');
+    }
+
     public function test_telegram_fora_do_ar_nao_derruba_o_recebimento(): void
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Bad Request'], 400)]);

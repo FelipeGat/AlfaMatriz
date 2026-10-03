@@ -31,10 +31,13 @@ class AvisoNoTelegram
     /** @param  string  $html  HTML do Telegram (`<b>`, `<i>`, `<code>`, `<a>`), já escapado */
     public function enviar(string $html): bool
     {
+        // Telegram desligado é DECISÃO (o dono deixou os avisos de fora no
+        // ensaio da T-219), não problema: `info`, que o vigia não lê, e sem o
+        // texto do alerta. Como `warning` com o alerta junto, ele citava a
+        // exceção do erro original — o script do vigia o lia como erro novo e
+        // abria tarefa sobre o próprio aviso, uma por erro, num ciclo sem fim.
         if (! $this->configurado()) {
-            Log::warning('Aviso do Telegram não enviado: falta TELEGRAM_BOT_TOKEN ou TELEGRAM_CHAT_ID_ALERTAS no .env.', [
-                'mensagem' => mb_substr(strip_tags($html), 0, 300),
-            ]);
+            Log::info('Aviso do Telegram não enviado: Telegram não configurado.');
 
             return false;
         }
@@ -57,7 +60,10 @@ class AvisoNoTelegram
                 ],
             );
         } catch (\Throwable $e) {
-            Log::warning('Aviso do Telegram falhou: '.$e->getMessage());
+            // Falha real continua aviso — mas só com o tipo do erro, sem a
+            // mensagem: ela pode carregar o texto do alerta, e o vigia leria
+            // de novo o erro que ele mesmo estava avisando.
+            Log::warning('Aviso do Telegram falhou.', ['tipo' => $e::class]);
 
             return false;
         }
