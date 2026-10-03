@@ -17,6 +17,7 @@ use App\Http\Controllers\ContaPagarController;
 use App\Http\Controllers\FaturamentoController;
 use App\Http\Controllers\FornecedorController;
 use App\Http\Controllers\LeadController;
+use App\Http\Controllers\ManutencaoController;
 use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\PainelController;
 use App\Http\Controllers\PerfilController;
@@ -493,14 +494,22 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // escrita seria a única porta capaz de fazê-la mentir.
     Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index')
         ->middleware('permissao:auditoria');
-    // Manutenção e atualizações: por enquanto só a promessa — a tela conta o
-    // que vai morar aqui (agenda de manutenção por sistema e histórico com o
-    // changelog) sem integrar nada. Sem `permissao:` de propósito: é
-    // informativa e ainda não tem dado. No menu o item é da matriz (AC-094:
-    // revenda não vê o grupo Desenvolvimento); se a agenda um dia falar com
-    // a revenda, a porta dela se decide junto com a integração. `Route::view`
-    // porque ainda não existe dado para um controller buscar.
-    Route::view('manutencao', 'manutencao.index')->name('manutencao.index');
+    // Manutenção e atualizações. Com a aba Erros (#224) a tela passou a ter
+    // dado — a mensagem crua do log dos sistemas — e ganhou porta própria,
+    // `manutencao`, na régua da Agenda (ver a migração da permissão). No menu
+    // continua da matriz (AC-094: revenda não vê o grupo Desenvolvimento).
+    //
+    // Ignorar e voltar a vigiar fixam `editar`, e não o que o verbo diria:
+    // calibrar a lista do vigia não cria nem apaga registro de ninguém — o
+    // erro continua contado —, e quem pode ignorar tem de poder desfazer.
+    Route::get('manutencao', [ManutencaoController::class, 'index'])->name('manutencao.index')
+        ->middleware('permissao:manutencao');
+    Route::post('manutencao/erros/{erro}/ignorar', [ManutencaoController::class, 'ignorarErro'])->name('manutencao.erros.ignorar')
+        ->middleware('permissao:manutencao,editar');
+    Route::post('manutencao/ignorados', [ManutencaoController::class, 'ignorar'])->name('manutencao.ignorados.store')
+        ->middleware('permissao:manutencao,editar');
+    Route::delete('manutencao/ignorados/{ignorado}', [ManutencaoController::class, 'deixarDeIgnorar'])->name('manutencao.ignorados.destroy')
+        ->middleware('permissao:manutencao,editar');
     Route::resource('centros-custo', CentroCustoController::class)->only(['store', 'destroy'])
         ->parameters(['centros-custo' => 'centro_custo'])
         ->middleware('permissao:financeiro');

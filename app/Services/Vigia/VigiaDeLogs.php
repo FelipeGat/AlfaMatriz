@@ -322,9 +322,7 @@ class VigiaDeLogs
     /** @param  Collection<int, VigiaIgnorado>  $ignorados */
     private function casaComIgnorado(VigiaErro $erro, Collection $ignorados): bool
     {
-        $texto = trim(($erro->excecao ? $erro->excecao.': ' : '').$erro->mensagem);
-
-        return $ignorados->contains(fn (VigiaIgnorado $padrao) => $padrao->casaCom($texto) || $padrao->casaCom($erro->padrao));
+        return $ignorados->contains(fn (VigiaIgnorado $padrao) => IgnoradosDoVigia::cobre($padrao, $erro));
     }
 
     /**

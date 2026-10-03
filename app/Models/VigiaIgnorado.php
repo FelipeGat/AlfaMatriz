@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -12,9 +13,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * (`/Connection reset.*Redis/`) é expressão regular. Sem sistema, vale para
  * todos. O erro que casa continua sendo CONTADO — se um dia ele explodir, o
  * número está lá —, só não abre tarefa nem avisa.
+ *
+ * Auditado desde que a tela ganhou o botão (#224): calar um erro é decisão
+ * de alguém, e quando ele voltar a fazer falta a pergunta vai ser quem o
+ * calou e quando.
  */
 class VigiaIgnorado extends Model
 {
+    use Auditavel;
+
+    protected string $recursoAuditoria = 'manutencao';
+
     protected $table = 'vigia_ignorados';
 
     protected $fillable = ['sistema_id', 'padrao'];
@@ -22,6 +31,11 @@ class VigiaIgnorado extends Model
     public function sistema(): BelongsTo
     {
         return $this->belongsTo(Sistema::class);
+    }
+
+    public function descricaoDeAuditoria(): string
+    {
+        return 'Vigia ignora «'.$this->padrao.'»'.($this->sistema ? ' no '.$this->sistema->nome : ' em todos os sistemas');
     }
 
     public function ehRegex(): bool
