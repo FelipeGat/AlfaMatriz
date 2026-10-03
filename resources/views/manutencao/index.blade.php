@@ -1,12 +1,16 @@
 <x-app-layout>
     <x-slot name="titulo">Manutenção e atualizações</x-slot>
 
-    @if ($aba === 'erros')
-        <x-slot name="contexto">
+    <x-slot name="contexto">
+        @if ($aba === 'erros')
             {{ $kpis['vigiados'] }} {{ $kpis['vigiados'] === 1 ? 'erro vigiado' : 'erros vigiados' }}
             em {{ $sistemas->count() }} {{ $sistemas->count() === 1 ? 'sistema' : 'sistemas' }}
-        </x-slot>
-    @endif
+        @elseif ($aba === 'atualizacoes')
+            {{ $atualizacoes->total() }} {{ $atualizacoes->total() === 1 ? 'atualização publicada' : 'atualizações publicadas' }}
+        @else
+            {{ $quantas }} {{ $quantas === 1 ? 'janela marcada' : 'janelas marcadas' }}
+        @endif
+    </x-slot>
 
     <div class="space-y-4">
         @if (session('status'))
@@ -34,10 +38,6 @@
             </x-abas.item>
         </x-abas>
 
-        @if ($aba === 'erros')
-            @include('manutencao._erros')
-        @else
-            @include('manutencao._em-breve')
-        @endif
+        @include('manutencao._'.$aba)
     </div>
 </x-app-layout>

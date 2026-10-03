@@ -39,6 +39,29 @@
 #
 # O `--guardar` nunca imprime o token nem o passa por argumento de comando — o
 # `security` o recebe pela entrada padrão, para ele não aparecer num `ps`.
+#
+# REGISTRO NO ALFAMATRIZ (#225)
+# -----------------------------
+# Depois de o Telegram aceitar todas as partes, o mesmo texto é registrado na
+# aba Atualizações da tela de Manutenção, com a versão e as tarefas (`T-N`)
+# que entraram nela. O registro é do changelog, não do envio: se ele falhar, o
+# grupo já recebeu a mensagem, e o script avisa como registrar de novo.
+#
+#   deploy/publicar-changelog.sh --versao=v2026.10.03.1 mensagem.txt
+#   deploy/publicar-changelog.sh --so-registrar --versao=v2026.10.03.1 mensagem.txt
+#   deploy/publicar-changelog.sh --importar deploy/changelog/*.txt
+#   deploy/publicar-changelog.sh --sem-registro mensagem.txt
+#
+# Com `--versao`, as tarefas são os `T-N` das mensagens de commit entre a tag
+# anterior e essa. Registrar duas vezes o mesmo texto não duplica: só acrescenta
+# a versão e as tarefas que faltavam (o changelog costuma sair antes da tag).
+#
+# O token é PESSOAL e só registra changelog (`php artisan alfa:changelog-token
+# <email>` no servidor). Ele mora no chaveiro do macOS, como o do Telegram:
+#
+#   ALFAMATRIZ_CHANGELOG_TOKEN=<token> deploy/publicar-changelog.sh --guardar-registro
+#
+# O endereço é o de produção pela tailnet; `ALFAMATRIZ_URL` troca (staging).
 set -euo pipefail
 
 CHAT_ID="${ALFA_TELEGRAM_CHAT_ID:--5176787387}"
@@ -48,6 +71,11 @@ SERVICO_CHAVEIRO="alfa-telegram-bot"
 CONTA_CHAVEIRO="changelog"
 ARQUIVO_DE_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/alfa/telegram.env"
 FONTE_LEGADA="${ALFA_TELEGRAM_FONTE:-$HOME/dev/AlfaControl/CLAUDE.md}"
+
+SERVICO_REGISTRO="alfamatriz-changelog"
+CONTA_REGISTRO="producao"
+URL_ALFAMATRIZ="${ALFAMATRIZ_URL:-https://alfamatriz.tail0939dd.ts.net}"
+RAIZ_DO_REPO="$(cd "$(dirname "$0")/.." && pwd)"
 
 TOKEN=""
 FONTE_USADA=""
@@ -127,20 +155,144 @@ precisa existir para publicar.
 AJUDA
 }
 
+# O token do registro no AlfaMatriz: variável de ambiente ou chaveiro. Sem
+# arquivo de configuração de propósito — é um segredo novo, e nasce no lugar
+# certo.
+token_do_registro() {
+    if [[ -n "${ALFAMATRIZ_CHANGELOG_TOKEN:-}" ]]; then
+        printf '%s' "$ALFAMATRIZ_CHANGELOG_TOKEN"
+        return 0
+    fi
+
+    if command -v security >/dev/null 2>&1; then
+        security find-generic-password -w -s "$SERVICO_REGISTRO" -a "$CONTA_REGISTRO" 2>/dev/null && return 0
+    fi
+
+    return 1
+}
+
+# As tarefas da versão: os `T-N` das mensagens de commit entre a tag anterior
+# e a da versão. Sem a tag no clone local, nenhuma — e o aviso diz por quê,
+# porque "registrou sem tarefas" calado parece que a versão não tinha nenhuma.
+tarefas_da_versao() {
+    local versao="$1" anterior
+
+    if ! git -C "$RAIZ_DO_REPO" rev-parse -q --verify "refs/tags/$versao" >/dev/null; then
+        git -C "$RAIZ_DO_REPO" fetch -q --tags origin 2>/dev/null || true
+    fi
+
+    if ! git -C "$RAIZ_DO_REPO" rev-parse -q --verify "refs/tags/$versao" >/dev/null; then
+        echo "  aviso: a tag $versao não existe aqui; registrando sem as tarefas dos commits." >&2
+        return 0
+    fi
+
+    anterior=$(git -C "$RAIZ_DO_REPO" describe --tags --abbrev=0 --match 'v*' "$versao^" 2>/dev/null || true)
+    local faixa="$versao"
+    [[ -n "$anterior" ]] && faixa="$anterior..$versao"
+
+    # `|| true`: versão sem nenhum `T-N` é resposta válida (vazia), e o grep
+    # sem achar nada derrubaria o script pelo `pipefail`.
+    { git -C "$RAIZ_DO_REPO" log --format=%B "$faixa" \
+        | grep -oE '(^|[^A-Za-z0-9])[Tt]-[0-9]+' | grep -oE '[0-9]+' | sort -un | tr '\n' ' '; } || true
+}
+
+# Registra UM arquivo no AlfaMatriz. Devolve 0 se registrou (ou já estava).
+registrar() {
+    local arquivo="$1" versao="$2" origem="$3" token tarefas resposta codigo corpo
+
+    if ! token=$(token_do_registro); then
+        echo "  ✗ sem o token do AlfaMatriz (ALFAMATRIZ_CHANGELOG_TOKEN ou chaveiro $SERVICO_REGISTRO)." >&2
+        echo "    No servidor: php artisan alfa:changelog-token <seu-email>; depois $0 --guardar-registro" >&2
+        return 1
+    fi
+
+    tarefas=""
+    [[ -n "$versao" ]] && tarefas=$(tarefas_da_versao "$versao")
+
+    resposta=$(curl -s -m 30 -w $'\n%{http_code}' -X POST "$URL_ALFAMATRIZ/api/atualizacoes" \
+        -H "Authorization: Bearer $token" \
+        -H "Accept: application/json" \
+        --data-urlencode "texto@$arquivo" \
+        --data-urlencode "versao=$versao" \
+        --data-urlencode "tarefas=$tarefas" \
+        --data-urlencode "origem=$origem" \
+        --data-urlencode "arquivo=$(basename "$arquivo")" || true)
+
+    codigo="${resposta##*$'\n'}"
+    corpo="${resposta%$'\n'*}"
+
+    if [[ "$codigo" == "201" || "$codigo" == "200" ]]; then
+        echo "  ✓ $(basename "$arquivo"): $(printf '%s' "$corpo" | sed -n 's/.*"message":"\([^"]*\)".*/\1/p') no AlfaMatriz${versao:+ ($versao)}${tarefas:+ · tarefas: $tarefas}"
+        return 0
+    fi
+
+    # Só a frase: com o modo de depuração ligado (local, staging) o corpo
+    # traz o rastro inteiro da exceção, e cem linhas de pilha escondem o motivo.
+    local motivo
+    motivo=$(printf '%s' "$corpo" | sed -n 's/.*"message": *"\([^"]*\)".*/\1/p' | head -1)
+    echo "  ✗ $(basename "$arquivo"): o AlfaMatriz respondeu ${codigo:-sem resposta}: ${motivo:-$(printf '%s' "$corpo" | head -c 300)}" >&2
+
+    # 429: o freio da rota. Vale dizer o que fazer em vez de só o código.
+    [[ "$codigo" == "429" ]] && echo "    (muitos registros seguidos — espere um minuto e rode de novo; o que já entrou não duplica)" >&2
+    return 1
+}
+
 conferir_apenas=false
 so_a_fonte=false
 guardar=false
+guardar_registro=false
+so_registrar=false
+importar=false
+sem_registro=false
+versao=""
 arquivo=""
+arquivos=()
 
 for argumento in "$@"; do
     case "$argumento" in
         --conferir|--dry-run) conferir_apenas=true ;;
         --fonte) so_a_fonte=true ;;
         --guardar) guardar=true ;;
+        --guardar-registro) guardar_registro=true ;;
+        --so-registrar) so_registrar=true ;;
+        --importar) importar=true ;;
+        --sem-registro) sem_registro=true ;;
+        --versao=*) versao="${argumento#--versao=}" ;;
         -*) echo "Opção desconhecida: $argumento" >&2; exit 2 ;;
-        *) arquivo="$argumento" ;;
+        *) arquivo="$argumento"; arquivos+=("$argumento") ;;
     esac
 done
+
+if [[ "$guardar_registro" == true ]]; then
+    if [[ -z "${ALFAMATRIZ_CHANGELOG_TOKEN:-}" ]]; then
+        echo "Passe o token na variável: ALFAMATRIZ_CHANGELOG_TOKEN=<token> $0 --guardar-registro" >&2
+        exit 2
+    fi
+
+    # Pela entrada padrão, como o do Telegram: argumento apareceria num `ps`.
+    printf '%s\n%s\n' "$ALFAMATRIZ_CHANGELOG_TOKEN" "$ALFAMATRIZ_CHANGELOG_TOKEN" \
+        | security add-generic-password -U -s "$SERVICO_REGISTRO" -a "$CONTA_REGISTRO" -w >/dev/null
+    echo "Token do AlfaMatriz guardado no chaveiro ($SERVICO_REGISTRO / $CONTA_REGISTRO)."
+    exit 0
+fi
+
+# Só registrar: o reenvio de um registro que falhou (`--so-registrar`) ou a
+# importação dos changelogs de antes da tela (`--importar`, vários arquivos).
+# Nenhum dos dois manda nada ao Telegram.
+if [[ "$so_registrar" == true || "$importar" == true ]]; then
+    if [[ ${#arquivos[@]} -eq 0 ]]; then
+        echo "Diga o(s) arquivo(s) a registrar." >&2
+        exit 2
+    fi
+
+    falhas=0
+    for um in "${arquivos[@]}"; do
+        registrar "$um" "$versao" "$([[ "$importar" == true ]] && echo importado || echo script)" || falhas=$((falhas + 1))
+    done
+
+    [[ "$falhas" -eq 0 ]] || { echo "$falhas arquivo(s) não registrado(s)." >&2; exit 1; }
+    exit 0
+fi
 
 # As duas perguntas sobre o TOKEN vêm antes de qualquer coisa sobre a mensagem:
 # elas não têm mensagem para publicar, e exigir um arquivo aqui obrigaria a
@@ -207,9 +359,12 @@ if [[ "$guardar" == true ]]; then
 fi
 
 if [[ -z "$arquivo" ]]; then
-    echo "Uso: $0 [--conferir] <arquivo-com-a-mensagem>" >&2
+    echo "Uso: $0 [--conferir] [--versao=vX] [--sem-registro] <arquivo-com-a-mensagem>" >&2
+    echo "     $0 --so-registrar [--versao=vX] <arquivo>   # só registra no AlfaMatriz" >&2
+    echo "     $0 --importar deploy/changelog/*.txt        # registra os antigos, sem enviar" >&2
     echo "     $0 --fonte      # diz de onde sairia o token" >&2
     echo "     $0 --guardar    # move o token para o chaveiro do macOS" >&2
+    echo "     $0 --guardar-registro   # guarda o token do AlfaMatriz no chaveiro" >&2
     exit 2
 fi
 
@@ -314,3 +469,15 @@ done
 
 echo
 echo "Changelog publicado no grupo Alfa Solucoes Alertas."
+
+if [[ "$sem_registro" == true ]]; then
+    exit 0
+fi
+
+echo "→ registrando no AlfaMatriz…"
+if ! registrar "$arquivo" "$versao" script; then
+    # O Telegram já recebeu: falhar aqui com erro faria parecer que a
+    # publicação não saiu, e alguém a mandaria de novo ao grupo.
+    echo "  O grupo JÁ recebeu o changelog. Para registrar depois, sem reenviar:" >&2
+    echo "    $0 --so-registrar${versao:+ --versao=$versao} $arquivo" >&2
+fi

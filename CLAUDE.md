@@ -269,6 +269,20 @@ comando pelo Telegram, tag de produção só depois de ele autorizar — ainda n
   voltou depois de encerrada abre tarefa nova, pico (10× a média de 24h, mínimo 20) avisa no
   máximo a cada 6h. `alfa:vigia-ignorar` cuida da lista do que só conta. O Telegram sai do
   `.env` (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID_ALERTAS`); sem eles, só registra no log.
+- **Tela de Manutenção (#224, #225, 03/10/2026).** Deixou de ser "Em breve" e tem recurso de
+  permissão próprio, `manutencao` (régua da Agenda: quem edita tarefas; o perfil de exibição não).
+  Três abas: **Erros** (o que o vigia agrupou, por sistema; o Ignorar da tela e o
+  `alfa:vigia-ignorar` passam pelo mesmo `IgnoradosDoVigia`, que acerta a marca `ignorado` na
+  hora), **Atualizações** (o changelog do Telegram guardado em `atualizacoes`, com versão e
+  tarefas) e **Programadas** (compromissos da Agenda na categoria `deploy`, que ganharam
+  `sistema_id` — no modal, só nessa categoria — e caem no sistema da tarefa vinculada se não
+  tiverem um). O changelog entra pelo `publicar-changelog.sh`, que depois do Telegram faz
+  `POST /api/atualizacoes` (`routes/atualizacoes.php`, fora do grupo `web`) com um token
+  Sanctum pessoal de capacidade `changelog` e mais nenhuma (`alfa:changelog-token <email>`),
+  guardado no chaveiro do Mac (`--guardar-registro`). Sistema e data saem do cabeçalho do
+  changelog; o mesmo texto registrado de novo não duplica, só acrescenta versão e tarefas.
+  Com `--versao=vX`, as tarefas são os `T-N` dos commits entre a tag anterior e essa.
+  `--importar deploy/changelog/*.txt` registra os antigos sem enviar nada.
 - Teste em `tests/Feature/Mcp/` com `AlfaMatrizServer::actingAs($u)->tool(...)`. Fumaça de
   verdade: mandar JSON-RPC pelo stdin do `mcp:start` — foi assim que se conferiu o caminho inteiro.
 - **A fase 2 é a ponte do Telegram**, em `deploy/agente/` (`ponte-telegram.mjs`, README com a
@@ -315,6 +329,10 @@ de outros sistemas.
   (`$ALFA_TELEGRAM_TOKEN`, chaveiro, `~/.config/alfa/telegram.env`, AlfaControl), dizendo em voz
   alta qual deles usou. Remontar o `curl` significa reescolher o chat, reescrever a checagem de erro e
   redescobrir o limite — três coisas que só se erram uma vez em produção.
+- **Ele também registra no AlfaMatriz** (#225): depois do envio, o mesmo texto vai para a aba
+  Atualizações da tela de Manutenção. Passe `--versao=<tag>` quando a tag já existir (senão,
+  registre depois com `--so-registrar --versao=<tag> <arquivo>` — não duplica). Falha no registro
+  não desfaz o envio: o script avisa e diz o comando para registrar depois.
 - **O envio sai direto daqui.** Esta seção já mandou pedir `! bash <script>` ao dono do produto,
   dizendo que o classificador recusava. Em 13/08/2026 o envio saiu sem recusa nenhuma, e a orientação
   antiga custava uma volta inteira: eu entregava o comando e ele rodava o que eu podia rodar. Se a

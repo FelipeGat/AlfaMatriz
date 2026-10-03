@@ -31,7 +31,7 @@ class Compromisso extends Model
 
     protected $fillable = [
         'titulo', 'descricao', 'categoria', 'data', 'hora', 'data_fim', 'hora_fim',
-        'duracao_modo', 'duracao_horas', 'criado_por_id', 'tarefa_id',
+        'duracao_modo', 'duracao_horas', 'criado_por_id', 'tarefa_id', 'sistema_id',
         'lembrete_enviado_em',
     ];
 
@@ -112,6 +112,25 @@ class Compromisso extends Model
     public function tarefa(): BelongsTo
     {
         return $this->belongsTo(Tarefa::class);
+    }
+
+    /**
+     * O sistema da janela de manutenção (#225). Opcional: reunião interna não
+     * é de sistema nenhum.
+     */
+    public function sistema(): BelongsTo
+    {
+        return $this->belongsTo(Sistema::class);
+    }
+
+    /**
+     * O sistema a que o compromisso se refere: o escolhido, ou o da tarefa
+     * vinculada. A janela marcada antes do campo existir — ou por quem só
+     * vinculou a tarefa — ainda cai no sistema certo na aba Programadas.
+     */
+    public function sistemaDaJanela(): ?Sistema
+    {
+        return $this->sistema ?? $this->tarefa?->sistema;
     }
 
     public function participantes(): BelongsToMany

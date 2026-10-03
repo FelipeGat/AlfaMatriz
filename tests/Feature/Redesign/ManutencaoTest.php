@@ -7,10 +7,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * A tela de Manutenção e atualizações: a aba Erros (#224) tem dado; as abas
- * Atualizações e Programadas ainda dizem "Em breve" nomeando o que vem, em
- * vez de fingir conteúdo. A porta continua no menu da matriz (para revenda o
- * grupo segue invisível: AC-094, provado no MenuDesenvolvimentoTest).
+ * A tela de Manutenção e atualizações: as abas Erros (#224), Atualizações e
+ * Programadas (#225). Vazias, elas dizem de onde o conteúdo vem em vez de
+ * fingi-lo. A porta continua no menu da matriz (para revenda o grupo segue
+ * invisível: AC-094, provado no MenuDesenvolvimentoTest).
  */
 class ManutencaoTest extends TestCase
 {
@@ -28,15 +28,15 @@ class ManutencaoTest extends TestCase
         $resposta->assertSee('O que o vigia ignora');
     }
 
-    public function test_as_abas_ainda_reservadas_nomeiam_o_que_vai_morar_nelas(): void
+    public function test_as_outras_abas_abrem_vazias_dizendo_de_onde_o_conteudo_vem(): void
     {
         $this->actingAs(User::factory()->create());
 
         $this->get(route('manutencao.index', ['aba' => 'atualizacoes']))
-            ->assertOk()->assertSee('Em breve')->assertSee('Histórico de atualizações')->assertSee('changelog');
+            ->assertOk()->assertSee('Nenhuma atualização registrada ainda.')->assertSee('publicar-changelog.sh');
 
         $this->get(route('manutencao.index', ['aba' => 'programadas']))
-            ->assertOk()->assertSee('Em breve')->assertSee('Atualizações programadas');
+            ->assertOk()->assertSee('Nenhuma janela de manutenção marcada.')->assertSee('Deploy / manutenção');
     }
 
     public function test_o_menu_oferece_a_porta_nas_outras_telas(): void
