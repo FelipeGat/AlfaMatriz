@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 03/10/2026</b>
+<i>A tela de Manutenção se atualiza sozinha e mostra a hora de cada changelog</i>
+
+<b>🛠️ Manutenção e atualizações</b>
+
+• <b>Botão Atualizar.</b> No alto da tela, ao lado de "atualizado às", um clique traz os dados novos sem recarregar a página e sem perder a aba e os filtros escolhidos.
+
+• <b>Erros se atualizam sozinhos.</b> Com a aba Erros aberta, a tela busca o que o vigia trouxe a cada 5 minutos. Se o navegador estiver em outra aba, ela espera e atualiza assim que você volta. Uma confirmação aberta, como a de Ignorar, nunca é fechada no meio.
+
+• <b>Hora de cada changelog.</b> Na aba Atualizações, o título de cada changelog mostra também a hora em que ele foi enviado ao grupo. Os changelogs antigos, que foram importados, aparecem só com a data, porque o horário deles não foi guardado.
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
