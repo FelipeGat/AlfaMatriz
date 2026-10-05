@@ -248,7 +248,12 @@ function abrir(l, carimbo,    p, resto, k, ctx) {
     }
     mensagem = resto
     if (mensagem == "") mensagem = (excecao != "" ? excecao : "(sem mensagem)")
-    if (l ~ /Exception|Error:/) tem_excecao = 1
+    # Só a MENSAGEM, e não a linha inteira: no Spring a linha traz a classe que
+    # gravou o log, e a `GlobalExceptionHandler` do AlfaControl (T-226) fazia
+    # todo WARN dela — "Acesso negado", 404 — parecer exceção. E com os dois
+    # pontos: "XException: motivo" é exceção citada; "XException [404]" do
+    # handler é só o nome de quem já a tratou.
+    if (resto ~ /(Exception|Error):/) tem_excecao = 1
 }
 # Spring com log em JSON, uma linha por evento (o AlfaGym, achado na
 # instalação da T-220): {"timestamp":"…","level":"ERROR","logger":"…","message":"…"}.

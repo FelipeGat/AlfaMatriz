@@ -172,6 +172,21 @@ LOG;
         $this->assertSame('java.lang.IllegalStateException', $erros[1]['excecao']);
     }
 
+    /**
+     * WARN sem stack só entra quando a MENSAGEM cita uma exceção. No Spring a
+     * linha traz a classe que gravou, e a `GlobalExceptionHandler` do
+     * AlfaControl (T-226) fazia todo aviso dela passar por exceção.
+     */
+    public function test_warn_nao_vira_excecao_pelo_nome_da_classe_que_grava(): void
+    {
+        file_put_contents($this->dir.'/.env', "VIGIA_CONTAINERS=alfacontrol-handler\nVIGIA_ESTADO={$this->dir}/estado\nVIGIA_ORIGEM=vps-teste\n");
+
+        $erros = $this->lotes($this->rodar(['--imprimir', '--desde-o-inicio']))[0]['erros'];
+
+        $this->assertCount(1, $erros);
+        $this->assertSame('Falha ao ler: java.net.SocketTimeoutException: Read timed out', $erros[0]['mensagem']);
+    }
+
     public function test_primeira_rodada_nao_manda_o_passado_e_depois_so_o_novo(): void
     {
         $primeira = $this->rodar();
@@ -263,6 +278,14 @@ cat <<'LOG'
 2026-10-02T17:10:26.857000000Z 	at org.springframework.orm.jpa.SharedEntityManagerCreator.invoke(SharedEntityManagerCreator.java:303)
 2026-10-02T17:10:27.000000000Z {"timestamp":"2026-10-02T14:10:27.000-03:00","level":"WARN","thread":"main","logger":"c.a.Cache","message":"Lento"}
 2026-10-02T17:10:28.000000000Z {"timestamp":"2026-10-02T14:10:28.000-03:00","level":"WARN","thread":"main","logger":"c.a.X","message":"Aviso com \"aspas\" e stack","stack_trace":"java.lang.IllegalStateException: estado ruim\n\tat c.a.X.y(X.java:10)"}
+LOG
+exit 0 ;;
+*handler*)
+# O AlfaControl (T-226): a classe que grava o log tem "Exception" no nome.
+cat <<'LOG'
+2026-10-05T16:56:58.708000000Z 2026-10-05T13:56:58.708-03:00  WARN 1 --- [nio-8080-exec-4] c.a.common.GlobalExceptionHandler        : Acesso negado: Access Denied
+2026-10-05T16:56:59.000000000Z 2026-10-05T13:56:59.000-03:00  WARN 1 --- [nio-8080-exec-5] c.a.common.GlobalExceptionHandler        : ResponseStatusException [404]: Pessoa não encontrada
+2026-10-05T16:57:00.000000000Z 2026-10-05T13:57:00.000-03:00  WARN 1 --- [nio-8080-exec-6] c.a.cliente.LeitorDeCliente              : Falha ao ler: java.net.SocketTimeoutException: Read timed out
 LOG
 exit 0 ;;
 esac
