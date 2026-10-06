@@ -281,7 +281,11 @@ comando pelo Telegram, tag de produção só depois de ele autorizar — ainda n
   Sanctum pessoal de capacidade `changelog` e mais nenhuma (`alfa:changelog-token <email>`),
   guardado no chaveiro do Mac (`--guardar-registro`). Sistema e data saem do cabeçalho do
   changelog; o mesmo texto registrado de novo não duplica, só acrescenta versão e tarefas.
-  Com `--versao=vX`, as tarefas são os `T-N` dos commits entre a tag anterior e essa.
+  Com `--versao=vX`, as tarefas são os `T-N` dos commits entre a tag anterior e essa — no
+  repositório do SISTEMA: changelog de outro sistema leva `--repo=~/dev/<pasta>` ou
+  `--tarefas="N N"` (que vence o git). Sem os dois, o git daqui só vale para cabeçalho do
+  AlfaMatriz; o de outro registra sem tarefas e avisa (#252: uma tag de mesmo nome aqui daria as
+  tarefas erradas).
   `--importar deploy/changelog/*.txt` registra os antigos sem enviar nada.
 - Teste em `tests/Feature/Mcp/` com `AlfaMatrizServer::actingAs($u)->tool(...)`. Fumaça de
   verdade: mandar JSON-RPC pelo stdin do `mcp:start` — foi assim que se conferiu o caminho inteiro.
@@ -311,8 +315,8 @@ chaveiro, `--guardar`.
 
 Ele já morou só no `CLAUDE.md` do AlfaControl, que é ignorado pelo git: um `git rm` em 17/07/2026 o
 levou junto e a publicação parou de funcionar sem avisar ninguém — só se descobriu em 21/08, no dia
-em que alguém tentou publicar. O script ainda lê aquele arquivo como último recurso, e avisa quando
-o usa.
+em que alguém tentou publicar. O script o leu como último recurso até 05/10/2026 (#252), quando
+essa fonte saiu de vez.
 
 Procurar neste repo, nos servidores ou nos containers **não acha nada**: o `.spec` lista o envio como
 trabalho futuro, e os únicos Telegram que aparecem na infra são canais de alerta de backup e de LGPD,
@@ -325,8 +329,8 @@ de outros sistemas.
   `deploy/changelog/AAAA-MM-DD-assunto.txt` — HTML do Telegram, partes separadas por uma linha com
   apenas `---` — e rode `deploy/publicar-changelog.sh --conferir <arquivo>` para ver sem enviar, ou
   sem o `--conferir` para enviar. O script já confere o limite de 4096 ANTES de mandar qualquer
-  parte, confere `"ok":true` no corpo da resposta, e busca o token em quatro lugares na ordem
-  (`$ALFA_TELEGRAM_TOKEN`, chaveiro, `~/.config/alfa/telegram.env`, AlfaControl), dizendo em voz
+  parte, confere `"ok":true` no corpo da resposta, e busca o token em três lugares na ordem
+  (`$ALFA_TELEGRAM_TOKEN`, chaveiro, `~/.config/alfa/telegram.env`), dizendo em voz
   alta qual deles usou. Remontar o `curl` significa reescolher o chat, reescrever a checagem de erro e
   redescobrir o limite — três coisas que só se erram uma vez em produção.
 - **Ele também registra no AlfaMatriz** (#225): depois do envio, o mesmo texto vai para a aba
