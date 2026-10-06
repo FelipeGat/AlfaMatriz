@@ -17,22 +17,22 @@
 # o chat, reescrever a checagem de erro e redescobrir o limite de caracteres —
 # três coisas que só se erra uma vez em produção. Aqui elas estão escritas.
 #
-# SÓ TELEGRAM. O CLAUDE.md do AlfaControl manda enviar ao Discord em seguida;
-# no AlfaMatriz, não — decisão do dono do produto em 12/08/2026.
+# SÓ TELEGRAM, para todos os sistemas: no AlfaMatriz desde 12/08/2026, e nos
+# outros desde 05/10/2026, quando este script virou o caminho oficial de
+# changelog de todos (decisão do dono do produto). O Discord não recebe mais.
 #
 # O TOKEN NÃO MORA AQUI, e é de propósito: este arquivo é versionado. Ele é
-# procurado em quatro lugares, na ordem, e o primeiro que responder ganha:
+# procurado em três lugares, na ordem, e o primeiro que responder ganha:
 #
 #   1. $ALFA_TELEGRAM_TOKEN          — para esteira, servidor e uso de uma vez
 #   2. chaveiro do macOS             — o lugar recomendado nesta máquina
 #   3. ~/.config/alfa/telegram.env   — o equivalente onde não há chaveiro
-#   4. CLAUDE.md do AlfaControl      — LEGADO, e só para não quebrar hoje
 #
-# A quarta existia sozinha e era um ponto único de falha silencioso: aquele
-# arquivo é ignorado pelo git e vive só no disco de uma máquina. Em 17/07/2026
-# um `git rm` o levou junto, e a publicação parou de funcionar sem que nada
-# avisasse — só se descobriu no dia em que alguém tentou publicar (21/08/2026).
-# Ela continua na lista para quem ainda a tem, mas avisa que está de saída.
+# Havia um quarto, o CLAUDE.md do AlfaControl, e ele foi o único por meses: um
+# arquivo ignorado pelo git, no disco de uma máquina. Em 17/07/2026 um `git rm`
+# o levou junto, e a publicação parou sem que nada avisasse — só se descobriu
+# em 21/08/2026, no dia em que alguém tentou publicar. Saiu da lista em
+# 05/10/2026 (#252), com o chaveiro já configurado na máquina que publica.
 #
 #   deploy/publicar-changelog.sh --fonte     # diz de onde sairia o token
 #   deploy/publicar-changelog.sh --guardar   # move o token para o chaveiro
@@ -56,6 +56,16 @@
 # anterior e essa. Registrar duas vezes o mesmo texto não duplica: só acrescenta
 # a versão e as tarefas que faltavam (o changelog costuma sair antes da tag).
 #
+# O script publica o changelog de TODOS os sistemas, e a tag é do repositório
+# do sistema, não deste (#252: o AlfaControl v2026.10.05 entrou sem tarefas):
+#
+#   deploy/publicar-changelog.sh --versao=v2026.10.05 --repo=~/dev/AlfaControl mensagem.txt
+#   deploy/publicar-changelog.sh --versao=v2026.10.05 --tarefas="226 248" mensagem.txt
+#
+# `--tarefas` vence o git. Sem nenhum dos dois, o git daqui só é lido se o
+# cabeçalho for do AlfaMatriz: uma tag de mesmo nome aqui daria as tarefas
+# de outro sistema, e registrar errado é pior do que registrar sem.
+#
 # O token é PESSOAL e só registra changelog (`php artisan alfa:changelog-token
 # <email>` no servidor). Ele mora no chaveiro do macOS, como o do Telegram:
 #
@@ -70,7 +80,6 @@ LIMITE=4096
 SERVICO_CHAVEIRO="alfa-telegram-bot"
 CONTA_CHAVEIRO="changelog"
 ARQUIVO_DE_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/alfa/telegram.env"
-FONTE_LEGADA="${ALFA_TELEGRAM_FONTE:-$HOME/dev/AlfaControl/CLAUDE.md}"
 
 SERVICO_REGISTRO="alfamatriz-changelog"
 CONTA_REGISTRO="producao"
@@ -123,17 +132,6 @@ resolver_token() {
         fi
     fi
 
-    if [[ -f "$FONTE_LEGADA" ]]; then
-        local do_legado
-        do_legado=$(grep -om1 'bot[0-9]\{6,\}:[A-Za-z0-9_-]\{30,\}' "$FONTE_LEGADA" | sed 's/^bot//' || true)
-
-        if [[ -n "$do_legado" ]]; then
-            TOKEN="$do_legado"
-            FONTE_USADA="LEGADO — $FONTE_LEGADA"
-            return 0
-        fi
-    fi
-
     return 1
 }
 
@@ -144,7 +142,6 @@ Não achei o token do bot em nenhum dos lugares conhecidos:
   1. variável ALFA_TELEGRAM_TOKEN     (não definida)
   2. chaveiro do macOS                ($SERVICO_CHAVEIRO / $CONTA_CHAVEIRO)
   3. $ARQUIVO_DE_CONFIG
-  4. $FONTE_LEGADA  (legado)
 
 Para resolver de uma vez, com o token em mãos:
 
@@ -171,28 +168,52 @@ token_do_registro() {
     return 1
 }
 
-# As tarefas da versão: os `T-N` das mensagens de commit entre a tag anterior
-# e a da versão. Sem a tag no clone local, nenhuma — e o aviso diz por quê,
-# porque "registrou sem tarefas" calado parece que a versão não tinha nenhuma.
+# O sistema do cabeçalho ("📋 AlfaControl — Changelog 05/10/2026"), em
+# minúsculas e sem espaço, para comparar com "alfamatriz".
+sistema_do_changelog() {
+    sed -n '1{s/<[^>]*>//g;p;}' "$1" | sed -n 's/.*📋 *\(.*[^ ]\) *— *Changelog.*/\1/p' \
+        | tr '[:upper:]' '[:lower:]' | tr -d ' '
+}
+
+# As tarefas da versão: as de `--tarefas`, se vieram; senão, os `T-N` das
+# mensagens de commit entre a tag anterior e a da versão, no repositório do
+# sistema. Sem a tag lá, nenhuma — e o aviso diz por quê, porque "registrou
+# sem tarefas" calado parece que a versão não tinha nenhuma.
 tarefas_da_versao() {
-    local versao="$1" anterior
+    local versao="$1" arquivo="$2" repo="$REPO_DAS_TAREFAS" anterior
 
-    if ! git -C "$RAIZ_DO_REPO" rev-parse -q --verify "refs/tags/$versao" >/dev/null; then
-        git -C "$RAIZ_DO_REPO" fetch -q --tags origin 2>/dev/null || true
-    fi
-
-    if ! git -C "$RAIZ_DO_REPO" rev-parse -q --verify "refs/tags/$versao" >/dev/null; then
-        echo "  aviso: a tag $versao não existe aqui; registrando sem as tarefas dos commits." >&2
+    if [[ -n "$tarefas_explicitas" ]]; then
+        printf '%s' "$tarefas_explicitas"
         return 0
     fi
 
-    anterior=$(git -C "$RAIZ_DO_REPO" describe --tags --abbrev=0 --match 'v*' "$versao^" 2>/dev/null || true)
+    if [[ -z "$repo" ]]; then
+        local sistema
+        sistema=$(sistema_do_changelog "$arquivo")
+        if [[ "$sistema" != "alfamatriz" ]]; then
+            echo "  aviso: o changelog é de ${sistema:-sistema desconhecido}, e a tag é do repositório dele;" >&2
+            echo "         registrando sem tarefas. Passe --repo=<pasta do sistema> ou --tarefas=\"N N\"." >&2
+            return 0
+        fi
+        repo="$RAIZ_DO_REPO"
+    fi
+
+    if ! git -C "$repo" rev-parse -q --verify "refs/tags/$versao" >/dev/null 2>&1; then
+        git -C "$repo" fetch -q --tags origin 2>/dev/null || true
+    fi
+
+    if ! git -C "$repo" rev-parse -q --verify "refs/tags/$versao" >/dev/null 2>&1; then
+        echo "  aviso: a tag $versao não existe em $repo; registrando sem as tarefas dos commits." >&2
+        return 0
+    fi
+
+    anterior=$(git -C "$repo" describe --tags --abbrev=0 --match 'v*' "$versao^" 2>/dev/null || true)
     local faixa="$versao"
     [[ -n "$anterior" ]] && faixa="$anterior..$versao"
 
     # `|| true`: versão sem nenhum `T-N` é resposta válida (vazia), e o grep
     # sem achar nada derrubaria o script pelo `pipefail`.
-    { git -C "$RAIZ_DO_REPO" log --format=%B "$faixa" \
+    { git -C "$repo" log --format=%B "$faixa" \
         | grep -oE '(^|[^A-Za-z0-9])[Tt]-[0-9]+' | grep -oE '[0-9]+' | sort -un | tr '\n' ' '; } || true
 }
 
@@ -206,8 +227,8 @@ registrar() {
         return 1
     fi
 
-    tarefas=""
-    [[ -n "$versao" ]] && tarefas=$(tarefas_da_versao "$versao")
+    tarefas="$tarefas_explicitas"
+    [[ -n "$versao" ]] && tarefas=$(tarefas_da_versao "$versao" "$arquivo")
 
     # 429 é o freio da rota (120 por minuto): uma importação grande passa
     # dele. Esperar e tentar de novo é o que a pessoa faria à mão — três vezes,
@@ -253,6 +274,8 @@ so_registrar=false
 importar=false
 sem_registro=false
 versao=""
+tarefas_explicitas=""
+REPO_DAS_TAREFAS=""
 arquivo=""
 arquivos=()
 
@@ -266,10 +289,18 @@ for argumento in "$@"; do
         --importar) importar=true ;;
         --sem-registro) sem_registro=true ;;
         --versao=*) versao="${argumento#--versao=}" ;;
+        --repo=*) REPO_DAS_TAREFAS="${argumento#--repo=}"; REPO_DAS_TAREFAS="${REPO_DAS_TAREFAS/#\~/$HOME}" ;;
+        # "226 248", "T-226,T-248", "#226": só os números, separados por espaço.
+        --tarefas=*) tarefas_explicitas=$({ printf '%s' "${argumento#--tarefas=}" | grep -oE '[0-9]+' | sort -un | tr '\n' ' '; } || true) ;;
         -*) echo "Opção desconhecida: $argumento" >&2; exit 2 ;;
         *) arquivo="$argumento"; arquivos+=("$argumento") ;;
     esac
 done
+
+if [[ -n "$REPO_DAS_TAREFAS" ]] && ! git -C "$REPO_DAS_TAREFAS" rev-parse --git-dir >/dev/null 2>&1; then
+    echo "--repo=$REPO_DAS_TAREFAS não é um repositório git." >&2
+    exit 2
+fi
 
 if [[ "$guardar_registro" == true ]]; then
     if [[ -z "${ALFAMATRIZ_CHANGELOG_TOKEN:-}" ]]; then
@@ -327,12 +358,6 @@ if [[ "$so_a_fonte" == true ]]; then
         exit 1
     fi
 
-    if [[ "$FONTE_USADA" == LEGADO* ]]; then
-        echo
-        echo "Essa fonte é um arquivo ignorado pelo git, que já sumiu uma vez."
-        echo "Rode \`$0 --guardar\` para movê-lo para o chaveiro."
-    fi
-
     exit 0
 fi
 
@@ -367,8 +392,8 @@ if [[ "$guardar" == true ]]; then
 fi
 
 if [[ -z "$arquivo" ]]; then
-    echo "Uso: $0 [--conferir] [--versao=vX] [--sem-registro] <arquivo-com-a-mensagem>" >&2
-    echo "     $0 --so-registrar [--versao=vX] <arquivo>   # só registra no AlfaMatriz" >&2
+    echo "Uso: $0 [--conferir] [--versao=vX] [--repo=<pasta>|--tarefas=\"N N\"] [--sem-registro] <arquivo>" >&2
+    echo "     $0 --so-registrar [--versao=vX] [--repo=<pasta>|--tarefas=\"N N\"] <arquivo>" >&2
     echo "     $0 --importar deploy/changelog/*.txt        # registra os antigos, sem enviar" >&2
     echo "     $0 --fonte      # diz de onde sairia o token" >&2
     echo "     $0 --guardar    # move o token para o chaveiro do macOS" >&2
@@ -447,11 +472,6 @@ fi
 
 echo "  token: $FONTE_USADA"
 
-if [[ "$FONTE_USADA" == LEGADO* ]]; then
-    echo "  aviso: essa fonte é um arquivo ignorado pelo git, que já sumiu uma vez." >&2
-    echo "         Rode \`$0 --guardar\` para mover o token para o chaveiro." >&2
-fi
-
 for indice in "${!partes[@]}"; do
     numero=$((indice + 1))
     echo "→ enviando parte $numero de ${#partes[@]}…"
@@ -487,5 +507,5 @@ if ! registrar "$arquivo" "$versao" script; then
     # O Telegram já recebeu: falhar aqui com erro faria parecer que a
     # publicação não saiu, e alguém a mandaria de novo ao grupo.
     echo "  O grupo JÁ recebeu o changelog. Para registrar depois, sem reenviar:" >&2
-    echo "    $0 --so-registrar${versao:+ --versao=$versao} $arquivo" >&2
+    echo "    $0 --so-registrar${versao:+ --versao=$versao}${REPO_DAS_TAREFAS:+ --repo=$REPO_DAS_TAREFAS}${tarefas_explicitas:+ --tarefas=\"${tarefas_explicitas% }\"} $arquivo" >&2
 fi
