@@ -26,6 +26,9 @@ class AssinaturaDeErroTest extends TestCase
             ['Lote de 2026-10-03 14:00:01 falhou', 'Lote de 2026-09-28T09:12:44-03:00 falhou'],
             ["Check-in '8812' recusado", "Check-in '77' recusado"],
             ['Timeout após 30012ms em 10.0.0.12', 'Timeout após 512ms em 192.168.1.5'],
+            // O código de ocorrência do AlfaControl: 8 hexadecimais, às vezes só dígitos.
+            ['Erro interno [4cfbd08e]: Could not open JPA EntityManager for transaction', 'Erro interno [ab4da4f7]: Could not open JPA EntityManager for transaction'],
+            ['Erro interno [4cfbd08e]: Could not open JPA EntityManager for transaction', 'Erro interno [12345678]: Could not open JPA EntityManager for transaction'],
         ];
 
         foreach ($pares as [$a, $b]) {
@@ -39,6 +42,8 @@ class AssinaturaDeErroTest extends TestCase
         $this->assertNotSame($this->hash("Coluna 'email' não existe"), $this->hash("Coluna 'cpf' não existe"));
         // Mesma frase, exceção diferente.
         $this->assertNotSame($this->hash('Falhou', 'QueryException'), $this->hash('Falhou', 'TypeError'));
+        // Palavra só com letras de "a" a "f" não é id: fica.
+        $this->assertNotSame($this->hash('Falha em deadbeef'), $this->hash('Falha em facade'));
     }
 
     public function test_o_quadro_da_aplicacao_entra_e_o_numero_da_linha_nao(): void

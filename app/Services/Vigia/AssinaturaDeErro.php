@@ -65,6 +65,12 @@ class AssinaturaDeErro
             // Hash: hexadecimal longo COM pelo menos um dígito — "deadbeefcafe"
             // sem dígito é palavra, e palavra fica.
             '/\b(0x)?(?=[0-9a-f]*\d)[0-9a-f]{16,}\b/i' => '{hash}',
+            // Id curto em hexadecimal, com letra E dígito: o "Erro interno
+            // [4cfbd08e]" do AlfaControl, um código por ocorrência. Sem isto o
+            // `{n}` o picotava em "{n}cfbd{n}e", e cada vez virou uma tarefa
+            // (31 numa noite, 06/10/2026). Vira `{n}` e não `{hash}` porque é
+            // um número em base 16: o mesmo id às vezes sai só com dígitos.
+            '/\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{8,15}\b/i' => '{n}',
             // Entre aspas, só o que tem dígito: o id de alguém, não o nome de
             // uma coluna ou de uma rota.
             '/\'[^\'\s]*\d[^\'\s]*\'/' => "'{valor}'",
