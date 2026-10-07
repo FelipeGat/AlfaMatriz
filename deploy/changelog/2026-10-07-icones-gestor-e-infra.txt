@@ -1,0 +1,12 @@
+<b>📋 AlfaMatriz — Changelog 07/10/2026</b>
+<i>Ícone novo do Gestor e o sistema interno Infra</i>
+
+<b>🎨 Ícones</b>
+
+• <b>Gestor.</b> Ganhou o ícone novo, o mesmo que já está no próprio Gestor.
+
+• <b>Infra.</b> O servidor agora aparece como o sistema interno "Infra", com ícone próprio.
+
+<i>Versão v2026.10.07</i>
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
