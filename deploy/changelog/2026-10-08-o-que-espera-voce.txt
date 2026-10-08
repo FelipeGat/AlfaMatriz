@@ -1,0 +1,22 @@
+<b>📋 AlfaMatriz — Changelog 08/10/2026</b>
+<i>O que espera você no quadro</i>
+
+<b>🔔 O que espera você</b>
+
+• Ao entrar, um aviso mostra só o que está parado esperando por você: pergunta para responder, tarefa para revisar ou validar, tarefa que voltou para corrigir e prazo vencido ou vencendo.
+
+• "Ok, vi" esconde o aviso até o fim do dia; "Lembrar mais tarde" adia 2 horas.
+
+• Centro de Controle com os painéis "O que espera você" e "Minhas tarefas" (etapa e há quanto tempo cada uma está parada).
+
+• No quadro, o botão "O que espera você" abre as mesmas listas, e cada linha leva direto à tarefa.
+
+<b>👁 Quem valida</b>
+
+• Vale quem foi indicado ao mover a tarefa — não muda quando alguém faz uma pergunta.
+
+• Tarefa em revisão, staging ou produção sem ninguém indicado mostra "Ninguém apontado" no card e aparece para a triagem com o botão "Apontar".
+
+<i>Versão v2026.10.08.1</i>
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
