@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\Notificacao;
 use App\Models\Tarefa;
+use App\Models\TarefaComentario;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -332,6 +334,50 @@ class TarefaService
         unset($dados['status']);
 
         return $dados;
+    }
+
+    /**
+     * Publica um comentário comum e avisa quem a tarefa envolve (#312).
+     *
+     * Envolve = o responsável, quem foi apontado para validar a passagem atual
+     * e quem abriu — menos quem comentou (`avisar` já cala o autor, e com isso
+     * o agente que comenta em nome de alguém não avisa a própria pessoa). O som
+     * é só para os dois de quem o trabalho DEPENDE: quem abriu acompanha a
+     * conversa pelo sino, mas não é interrompido por ela.
+     *
+     * Mora aqui, e não num evento do modelo, de propósito: pergunta e resposta
+     * já têm aviso próprio (avisar de novo seria eco), e o arquivamento e o
+     * vigia de logs escrevem comentário de registro, que não é conversa. Quem
+     * publica conversa — a rota, o salvar com comentário e o MCP — passa por
+     * aqui. A trava de reenvio fica em quem chama, como já estava.
+     */
+    public function comentar(Tarefa $tarefa, string $corpo, User $autor): TarefaComentario
+    {
+        $comentario = $tarefa->comentarios()->create([
+            'autor_id' => $autor->id,
+            'corpo' => $corpo,
+        ]);
+
+        $validadorId = $tarefa->apontadoDestaPassagem()?->id;
+
+        $envolvidos = collect([$tarefa->responsavel_id, $validadorId, $tarefa->criado_por_id])
+            ->filter()
+            ->unique();
+
+        foreach ($envolvidos as $destinatarioId) {
+            Notificacao::avisar((int) $destinatarioId, $autor->id, [
+                'tipo' => 'comentario',
+                'nivel' => 'marca',
+                'sonora' => in_array((int) $destinatarioId, [(int) $tarefa->responsavel_id, (int) $validadorId], true),
+                'icone' => 'chat',
+                'titulo' => $autor->name.' comentou em «'.$tarefa->titulo.'»',
+                'meta' => Str::limit(preg_replace('/\s+/', ' ', $corpo), 90),
+                'rota' => route('tarefas.index'),
+                'tarefa_id' => $tarefa->id,
+            ]);
+        }
+
+        return $comentario;
     }
 
     /**

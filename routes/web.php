@@ -99,6 +99,8 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('notificacoes.lista');
     Route::post('notificacoes/lidas', [NotificacaoController::class, 'marcarLidas'])
         ->name('notificacoes.lidas');
+    Route::post('notificacoes/som', [NotificacaoController::class, 'som'])
+        ->name('notificacoes.som');
 
     Route::get('/centro-controle', [CentroControleController::class, 'index'])->name('centro-controle')
         ->middleware('permissao:dashboard');

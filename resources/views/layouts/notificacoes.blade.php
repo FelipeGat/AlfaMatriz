@@ -55,15 +55,28 @@
     <header class="h-[38px] shrink-0 flex items-center gap-2 px-4 border-b border-line bg-head">
         <h2 class="font-display text-[13.5px] font-semibold text-ink">Notificações</h2>
 
-        @if (($naoLidas ?? 0) > 0)
-            <form method="POST" action="{{ route('notificacoes.lidas') }}" class="ml-auto">
-                @csrf
-                <button type="submit"
-                        class="font-mono text-[10px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
-                    Marcar lidas
-                </button>
-            </form>
-        @endif
+        <div class="ml-auto flex items-center gap-2">
+            @if (($naoLidas ?? 0) > 0)
+                <form method="POST" action="{{ route('notificacoes.lidas') }}">
+                    @csrf
+                    <button type="submit"
+                            class="font-mono text-[10px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
+                        Marcar lidas
+                    </button>
+                </form>
+            @endif
+
+            {{-- O som do sino (#312), da conta. Mesmo botão de ícone do ×
+                 do card; o título diz o que o clique FAZ, não o estado. --}}
+            <button type="button" @click="alternarSomDoSino()"
+                    class="shrink-0 h-6 w-6 rounded-badge text-ink-faint hover:text-ink transition flex items-center justify-center"
+                    :title="sinoSom ? 'Desligar o som dos avisos' : 'Ligar o som dos avisos'"
+                    :aria-label="sinoSom ? 'Desligar o som dos avisos' : 'Ligar o som dos avisos'"
+                    :aria-pressed="sinoSom ? 'true' : 'false'">
+                <span x-show="sinoSom" class="h-3.5 w-3.5"><x-nav-icon name="speaker-wave" :peso="1.7" /></span>
+                <span x-show="! sinoSom" x-cloak class="h-3.5 w-3.5"><x-nav-icon name="speaker-x-mark" :peso="1.7" /></span>
+            </button>
+        </div>
     </header>
 
     {{--
@@ -112,6 +125,8 @@
                 urlLista: @json(route('notificacoes.lista')),
                 naoLidas: {{ (int) ($naoLidas ?? 0) }},
                 ultimoId: {{ (int) (($notificacoes ?? collect())->max('id') ?? 0) }},
+                urlSom: @json(route('notificacoes.som')),
+                som: @json((bool) (auth()->user()->aviso_sonoro ?? true)),
             };
         </script>
 

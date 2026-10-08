@@ -903,10 +903,7 @@ class TarefaController extends Controller
         $etapaNova = $tarefas->atualizar($tarefa, $data, $request->user());
 
         if ($comentario !== '' && ! $this->reenvioDoMesmoComentario($tarefa, $comentario)) {
-            $tarefa->comentarios()->create([
-                'autor_id' => auth()->id(),
-                'corpo' => $comentario,
-            ]);
+            $tarefas->comentar($tarefa, $comentario, $request->user());
         }
 
         $aviso = ['Tarefa atualizada.'];
@@ -2090,7 +2087,7 @@ class TarefaController extends Controller
      * A trava de reenvio é a mesma do `update` (AC-137): duplo clique não
      * publica a frase duas vezes.
      */
-    public function comentar(Request $request, Tarefa $tarefa)
+    public function comentar(Request $request, Tarefa $tarefa, TarefaService $tarefas)
     {
         $this->bloquearVisaoDaMatriz();
 
@@ -2098,10 +2095,7 @@ class TarefaController extends Controller
         $corpo = trim($data['corpo']);
 
         if ($corpo !== '' && ! $this->reenvioDoMesmoComentario($tarefa, $corpo)) {
-            $tarefa->comentarios()->create([
-                'autor_id' => auth()->id(),
-                'corpo' => $corpo,
-            ]);
+            $tarefas->comentar($tarefa, $corpo, $request->user());
         }
 
         return $this->voltarParaATarefa(

@@ -49,6 +49,10 @@ class LembrarCompromissos extends Command
                     'destinatario_id' => $participante->id,
                     'tipo' => 'lembrete',
                     'nivel' => 'atencao',
+                    // O lembrete 30 min antes é o único `lembrete` que toca
+                    // (#312): é ele que tira a pessoa do que está fazendo. Os
+                    // de prazo e os do dia chegam de manhã e cabem no sino.
+                    'sonora' => true,
                     'icone' => 'clock',
                     'titulo' => 'Começa às '.$compromisso->comecaEm()->format('H:i').': '.$compromisso->titulo,
                     'meta' => 'Em '.$minutos.' min · '.$compromisso->intervalo(),

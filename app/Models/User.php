@@ -77,6 +77,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'primeiro_acesso' => 'boolean',
             'ativo' => 'boolean',
+            'aviso_sonoro' => 'boolean',
         ];
     }
 

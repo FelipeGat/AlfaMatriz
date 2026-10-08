@@ -728,6 +728,9 @@ class FluxoTarefaService
             // de tela reescreveria o que as pessoas já receberam.
             'tipo' => 'teste_staging',
             'nivel' => $aprovado ? 'marca' : 'atencao',
+            // Só a reprovação toca (#312): ela devolve trabalho ao
+            // responsável; a aprovação é notícia boa que pode esperar o sino.
+            'sonora' => ! $aprovado,
             'icone' => $aprovado ? 'check-circle' : 'alert-triangle',
             'titulo' => $quemTestou->name.($aprovado ? ' aprovou' : ' reprovou')
                 .($naProducao ? ' a produção de «' : ' o staging de «').$tarefa->titulo.'»',

@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Models\User;
+use App\Services\TarefaService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -59,10 +60,8 @@ class ComentarTarefa extends Ferramenta
             return Response::text('Este comentário acabou de ser publicado em '.$tarefa->codigo().'; não repeti.');
         }
 
-        $tarefa->comentarios()->create([
-            'autor_id' => $usuario->id,
-            'corpo' => $corpo,
-        ]);
+        // Pelo serviço, como a tela: é ele que avisa quem a tarefa envolve.
+        app(TarefaService::class)->comentar($tarefa, $corpo, $usuario);
 
         return Response::text('Comentário publicado em '.$tarefa->codigo().'.');
     }

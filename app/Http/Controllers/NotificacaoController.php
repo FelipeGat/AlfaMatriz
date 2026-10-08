@@ -25,7 +25,7 @@ class NotificacaoController extends Controller
     /**
      * O contador do sino e o id da notificação mais recente — em JSON, leve.
      *
-     * É o que o poll do shell busca a cada ~45s para o sino se atualizar sozinho
+     * É o que o poll do shell busca a cada ~15s (60s com a aba escondida) para o sino se atualizar sozinho
      * sem recarregar a página. Duas coisas, e as duas importam: `nao_lidas` é o
      * número da bolinha; `ultimo_id` é como o navegador percebe que CHEGOU algo
      * novo — quando ele passa do que a página conhecia, o sino pulsa e o aviso
@@ -35,7 +35,7 @@ class NotificacaoController extends Controller
      *
      * Duas contagens rasas por chamada, sem carregar linha nenhuma: o poll é
      * frequente, e trazer as notificações aqui seria pagar o painel inteiro a
-     * cada 45 segundos por uma bolinha.
+     * cada 15 segundos por uma bolinha.
      */
     public function resumo(Request $request)
     {
@@ -45,6 +45,10 @@ class NotificacaoController extends Controller
         return response()->json([
             'nao_lidas' => Notificacao::naoLidasDe($id)->count(),
             'ultimo_id' => (int) ($ultima?->id ?? 0),
+            // O maior id que toca som (#312). Separado do `ultimo_id` porque o
+            // aviso mudo que chega DEPOIS de um sonoro não pode engolir o som:
+            // o navegador toca quando ESTE passa do que a aba já conhecia.
+            'ultimo_sonoro_id' => (int) Notificacao::where('destinatario_id', $id)->where('sonora', true)->max('id'),
             // A mais recente, já pronta para o card flutuante mostrar título e
             // prévia — em vez de só "N novas". O `tom` sai do mesmo mapa do
             // painel (`_notificacoes-lista`), para o card não pintar o aviso de
@@ -55,6 +59,22 @@ class NotificacaoController extends Controller
                 'tom' => ['critico' => 'crit', 'atencao' => 'warn', 'marca' => 'brand'][$ultima->nivel] ?? 'brand',
             ] : null,
         ]);
+    }
+
+    /**
+     * Liga ou desliga o som do sino — da CONTA, não do navegador (#312).
+     *
+     * Quem desliga no notebook não quer o som voltando no computador do
+     * escritório. JSON porque o botão mora no painel do sino e não recarrega a
+     * página: o shell já trocou o ícone e só precisa que o servidor guarde.
+     */
+    public function som(Request $request)
+    {
+        $dados = $request->validate(['ligado' => 'required|boolean']);
+
+        $request->user()->forceFill(['aviso_sonoro' => (bool) $dados['ligado']])->save();
+
+        return response()->json(['ligado' => (bool) $request->user()->aviso_sonoro]);
     }
 
     /**

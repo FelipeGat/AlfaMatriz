@@ -23,12 +23,44 @@ class Notificacao extends Model
     protected $table = 'notificacoes';
 
     protected $fillable = [
-        'destinatario_id', 'tipo', 'nivel', 'icone', 'titulo', 'meta', 'rota', 'tarefa_id',
+        'destinatario_id', 'tipo', 'nivel', 'sonora', 'icone', 'titulo', 'meta', 'rota', 'tarefa_id',
+    ];
+
+    /**
+     * Os avisos que tocam som: o que DEPENDE de quem recebe (#312).
+     *
+     * Ganhou a tarefa, tem de validar, recebeu pergunta ou a resposta à sua,
+     * a tarefa voltou para corrigir ou travou, o compromisso marcado com ela.
+     * Fica de fora o que é só notícia (concluiu, arquivou, PR aberto, triagem):
+     * o som que toca para tudo ensina a desligá-lo, e aí ele não toca para o
+     * que importa. A triagem fica muda de propósito também por causa do vigia
+     * de logs: uma rajada de erros viraria sirene para quem triaga.
+     *
+     * É o PADRÃO por tipo; quem avisa pode decidir caso a caso passando
+     * `sonora` — o veredito só toca quando reprova, o comentário só para o
+     * responsável e o validador.
+     */
+    public const TIPOS_SONOROS = [
+        'direcionamento', 'apontamento', 'pergunta', 'resposta', 'retorno',
+        'bloqueio', 'destravamento', 'compromisso',
     ];
 
     protected function casts(): array
     {
-        return ['lida_em' => 'datetime'];
+        return ['lida_em' => 'datetime', 'sonora' => 'boolean'];
+    }
+
+    /**
+     * O padrão do som entra no `creating`, e não só em `avisar`: os lembretes
+     * do sistema gravam por `create` direto, e o tipo deles tem de valer igual.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Notificacao $notificacao): void {
+            if ($notificacao->sonora === null) {
+                $notificacao->sonora = in_array($notificacao->tipo, self::TIPOS_SONOROS, true);
+            }
+        });
     }
 
     public function destinatario(): BelongsTo

@@ -72,6 +72,16 @@ Alpine.data('shell', () => ({
     sinoUltima: null,
     sinoListaId: (window.__sino && window.__sino.ultimoId) || 0,
 
+    // O som (#312). `sinoSomId` é o maior id SONORO que esta aba já conhece.
+    // Nasce nulo e a PRIMEIRA consulta (feita ao abrir a página) só o
+    // preenche, sem tocar: o som é de quem está com a tela aberta quando a
+    // coisa chega, não do que já estava lá. Não vem no HTML da página para não
+    // somar uma terceira consulta ao sino em toda tela (AC-243). `sinoSom` é a
+    // preferência da conta.
+    sinoSomId: null,
+    sinoSom: !! (window.__sino && window.__sino.som),
+    sinoAudio: null,
+
     tema: document.documentElement.classList.contains('theme-light') ? 'claro' : 'escuro',
 
     alternarRail() {
@@ -92,12 +102,25 @@ Alpine.data('shell', () => ({
     },
 
     /**
-     * O poll do sino: a cada ~45s pergunta ao servidor o contador e o último id.
+     * O poll do sino: pergunta ao servidor o contador e o último id — a cada
+     * 15s com a aba à vista, a cada 60s com ela escondida (#312).
      *
-     * Pausa com a aba escondida (o `setInterval` continua, mas a viagem é
-     * pulada) e dispara na hora em que a aba volta ao foco — quem estava noutra
-     * janela vê o número certo assim que volta, sem esperar o próximo tique. Um
-     * erro de rede não quebra nada: o tique seguinte tenta de novo.
+     * Já foi 45s e PARAVA com a aba escondida: quem trabalhava noutra aba só
+     * ficava sabendo ao voltar, e o "na hora" do pedido não existia. Escondida,
+     * o som é o único jeito de a notícia chegar, então o poll segue, mais
+     * espaçado — o navegador já limita timers de aba de fundo a ~1/min, e
+     * pedir menos que isso seria pedir o que ele não entrega. O tique é
+     * curto e rearmado a cada volta, para a troca de ritmo valer na hora.
+     *
+     * Conexão aberta (SSE) e websocket ficaram de fora de propósito: cada
+     * conexão aberta prende um worker do php-fpm, e o container tem cinco; o
+     * Reverb seria um processo a mais para cair junto com o host. Duas
+     * contagens rasas a cada 15s, para um time pequeno, é menos de uma
+     * requisição por segundo.
+     *
+     * Volta ao foco dispara na hora — quem estava noutra janela vê o número
+     * certo assim que volta. Erro de rede não quebra nada: o tique seguinte
+     * tenta de novo.
      */
     vigiarSino() {
         if (! window.__sino) {
@@ -105,15 +128,22 @@ Alpine.data('shell', () => ({
         }
 
         this.checarSino();
+        this.destravarSomNoPrimeiroGesto();
+
+        let ultimaVez = Date.now();
 
         setInterval(() => {
-            if (document.visibilityState === 'visible') {
+            const intervalo = document.visibilityState === 'visible' ? 15000 : 60000;
+
+            if (Date.now() - ultimaVez >= intervalo - 1000) {
+                ultimaVez = Date.now();
                 this.checarSino();
             }
-        }, 45000);
+        }, 5000);
 
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
+                ultimaVez = Date.now();
                 this.checarSino();
             }
         });
@@ -142,6 +172,14 @@ Alpine.data('shell', () => ({
                 this.sinoNovas = dados.nao_lidas;
                 this.sinoUltima = dados.ultima;
                 this.sinoAviso = true;
+            }
+
+            // Som só para o que DEPENDE da pessoa e chegou com a aba aberta.
+            if (this.sinoSomId === null) {
+                this.sinoSomId = dados.ultimo_sonoro_id;
+            } else if (dados.ultimo_sonoro_id > this.sinoSomId) {
+                this.sinoSomId = dados.ultimo_sonoro_id;
+                this.tocarSino(dados.ultimo_sonoro_id);
             }
         } catch (erro) {
             // Sem rede: o número fica o que era e o próximo tique tenta de novo.
@@ -182,6 +220,133 @@ Alpine.data('shell', () => ({
 
     dispensarAvisoSino() {
         this.reconhecerSino();
+    },
+
+    /**
+     * Toca o aviso — uma vez por notificação, por mais abas que estejam
+     * abertas: quem tem o quadro e a agenda abertos ouviria o mesmo aviso
+     * duas vezes. A primeira aba que vê o id o reivindica no localStorage; as
+     * outras encontram o id já tocado e ficam quietas.
+     */
+    tocarSino(id) {
+        if (! this.sinoSom) {
+            return;
+        }
+
+        try {
+            const tocado = parseInt(localStorage.getItem('alfamatriz:sino-tocado'), 10);
+
+            if (Number.isFinite(tocado) && tocado >= id) {
+                return;
+            }
+
+            localStorage.setItem('alfamatriz:sino-tocado', String(id));
+        } catch (erro) {
+            // Sem localStorage cada aba toca por si; melhor duas vezes que nenhuma.
+        }
+
+        this.bipe();
+    },
+
+    /**
+     * Dois toques curtos e baixos, subindo — gerados pelo Web Audio, sem
+     * arquivo de som para servir, versionar e esperar carregar. Curto e
+     * discreto de propósito: é aviso de trabalho num escritório, não alarme.
+     */
+    bipe() {
+        const contexto = this.contextoDeAudio();
+
+        if (! contexto || contexto.state !== 'running') {
+            return; // ainda sem gesto na página: fica o pulso e o card.
+        }
+
+        const agora = contexto.currentTime;
+
+        [[880, 0], [1320, 0.12]].forEach(([frequencia, atraso]) => {
+            const oscilador = contexto.createOscillator();
+            const volume = contexto.createGain();
+
+            oscilador.type = 'sine';
+            oscilador.frequency.value = frequencia;
+            volume.gain.setValueAtTime(0.0001, agora + atraso);
+            volume.gain.exponentialRampToValueAtTime(0.08, agora + atraso + 0.01);
+            volume.gain.exponentialRampToValueAtTime(0.0001, agora + atraso + 0.1);
+
+            oscilador.connect(volume).connect(contexto.destination);
+            oscilador.start(agora + atraso);
+            oscilador.stop(agora + atraso + 0.11);
+        });
+    },
+
+    contextoDeAudio() {
+        if (! this.sinoAudio) {
+            const Contexto = window.AudioContext || window.webkitAudioContext;
+
+            if (! Contexto) {
+                return null;
+            }
+
+            this.sinoAudio = new Contexto();
+        }
+
+        return this.sinoAudio;
+    },
+
+    /**
+     * O navegador só deixa tocar som depois de a pessoa interagir com a
+     * página. O primeiro clique ou tecla destrava o áudio; antes disso, um
+     * aviso que chegue fica no pulso e no card — e, como o quadro se usa no
+     * clique, na prática isso já aconteceu quando alguma coisa chega.
+     */
+    destravarSomNoPrimeiroGesto() {
+        const destravar = () => {
+            const contexto = this.contextoDeAudio();
+
+            if (contexto && contexto.state === 'suspended') {
+                contexto.resume();
+            }
+
+            window.removeEventListener('pointerdown', destravar);
+            window.removeEventListener('keydown', destravar);
+        };
+
+        window.addEventListener('pointerdown', destravar);
+        window.addEventListener('keydown', destravar);
+    },
+
+    /**
+     * Liga ou desliga o som. O ícone troca na hora; o servidor guarda na conta.
+     * Ao LIGAR, toca uma vez — é a prova de que o som funciona nesta máquina, e
+     * o clique é o gesto que o navegador exige.
+     */
+    async alternarSomDoSino() {
+        this.sinoSom = ! this.sinoSom;
+
+        if (this.sinoSom) {
+            const contexto = this.contextoDeAudio();
+
+            if (contexto && contexto.state === 'suspended') {
+                await contexto.resume();
+            }
+
+            this.bipe();
+        }
+
+        try {
+            const token = document.querySelector('meta[name="csrf-token"]');
+
+            await fetch(window.__sino.urlSom, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token ? token.content : '',
+                },
+                body: JSON.stringify({ ligado: this.sinoSom }),
+            });
+        } catch (erro) {
+            // Sem rede: vale nesta página; a preferência é regravada no próximo clique.
+        }
     },
 
     /**
