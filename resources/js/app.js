@@ -249,9 +249,10 @@ Alpine.data('shell', () => ({
     },
 
     /**
-     * Dois toques curtos e baixos, subindo — gerados pelo Web Audio, sem
-     * arquivo de som para servir, versionar e esperar carregar. Curto e
-     * discreto de propósito: é aviso de trabalho num escritório, não alarme.
+     * Dois toques curtos, subindo — gerados pelo Web Audio, sem
+     * arquivo de som para servir, versionar e esperar carregar. Curto de
+     * propósito — é aviso de trabalho num escritório, não alarme —, mas alto o
+     * bastante para ser ouvido com a cabeça em outra coisa.
      */
     bipe() {
         const contexto = this.contextoDeAudio();
@@ -262,19 +263,22 @@ Alpine.data('shell', () => ({
 
         const agora = contexto.currentTime;
 
-        [[880, 0], [1320, 0.12]].forEach(([frequencia, atraso]) => {
+        // 0,18 s a 35% do volume, cada toque. Saiu a 0,1 s e 8%, e o dono
+        // conferiu em produção: "muito discreta" — passava despercebido, que
+        // é justamente o que o som existe para não deixar acontecer.
+        [[880, 0], [1320, 0.2]].forEach(([frequencia, atraso]) => {
             const oscilador = contexto.createOscillator();
             const volume = contexto.createGain();
 
             oscilador.type = 'sine';
             oscilador.frequency.value = frequencia;
             volume.gain.setValueAtTime(0.0001, agora + atraso);
-            volume.gain.exponentialRampToValueAtTime(0.08, agora + atraso + 0.01);
-            volume.gain.exponentialRampToValueAtTime(0.0001, agora + atraso + 0.1);
+            volume.gain.exponentialRampToValueAtTime(0.35, agora + atraso + 0.01);
+            volume.gain.exponentialRampToValueAtTime(0.0001, agora + atraso + 0.18);
 
             oscilador.connect(volume).connect(contexto.destination);
             oscilador.start(agora + atraso);
-            oscilador.stop(agora + atraso + 0.11);
+            oscilador.stop(agora + atraso + 0.19);
         });
     },
 
