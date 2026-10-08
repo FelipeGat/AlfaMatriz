@@ -411,25 +411,34 @@
     @php
         $noAr = $tarefa->status === 'em_producao';
 
-        // Em produção a faixa aparece SEMPRE, com ou sem apontado: a versão é o
-        // que a coluna tem de dizer — "o que está no ar" é a primeira pergunta
-        // de quem vai conferir —, e o motor a cobra na entrada, então ela nunca
-        // falta. Nos outros dois portões a faixa continua presa ao apontamento,
-        // que é a única notícia que eles têm.
+        // Nos três portões a faixa aparece SEMPRE. Com apontado, ela diz quem
+        // examina; sem, ela diz que ninguém foi apontado — a mesma frase do
+        // "O que espera você" (T-300), para o card e o painel não discordarem.
         //
-        // O nome da faixa é o APONTADO desta passagem quando houver: o
-        // interlocutor muda com a conversa, e depois de uma pergunta
-        // respondida a faixa passava a dizer "Validação com" o próprio dev.
-        // O interlocutor fica como reserva das passagens anteriores à coluna.
-        $examinador = in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_EXAME, true)
-            ? ($tarefa->apontadoDestaPassagem() ?? $tarefa->interlocutor)
-            : null;
-
-        $mostraOExame = in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_EXAME, true)
-            && ($examinador || $noAr);
+        // O nome da faixa é SÓ o apontado desta passagem. O interlocutor era
+        // reserva para as passagens anteriores à coluna, mas ele é de quem está
+        // a vez na CONVERSA: o card mostrava "Revisão com" a pessoa da conversa
+        // — às vezes o próprio dev — enquanto o painel cobrava dos admins que
+        // apontassem alguém. Decisão do dono, 08/10/2026: valer só o apontado.
+        $noPortao = in_array($tarefa->status, \App\Models\Tarefa::PORTOES_DE_EXAME, true);
+        $examinador = $noPortao ? $tarefa->apontadoDestaPassagem() : null;
+        $mostraOExame = $noPortao;
     @endphp
 
-    @if ($mostraOExame)
+    {{-- Revisão ou staging sem apontado: a faixa diz que falta alguém, em tom
+         NEUTRO. O tom de exame é de exame acontecendo (AC-358: nenhuma cor diz
+         duas coisas), e aqui não há exame — há uma vaga. --}}
+    @if ($mostraOExame && ! $examinador && ! $noAr)
+        <div class="mt-2 px-[9px] py-[7px] rounded-tile border-l-2 bg-chip" data-sem-apontado
+             style="border-color: rgb(var(--ink-faint))">
+            <div class="flex items-center gap-1.5">
+                <span class="h-3 w-3 shrink-0 text-ink-faint"><x-nav-icon name="user-plus" :peso="1.9" /></span>
+                <p class="flex-1 min-w-0 text-[12px] leading-[1.4] truncate text-ink-mute">
+                    Ninguém apontado para {{ $tarefa->status === 'em_revisao' ? 'revisar' : 'validar' }}
+                </p>
+            </div>
+        </div>
+    @elseif ($mostraOExame)
         <div class="mt-2 px-[9px] py-[7px] rounded-tile border-l-2"
              style="background: var(--exame-tint); border-color: rgb(var(--exame))">
             <div class="flex items-center gap-1.5">
@@ -443,7 +452,7 @@
                         } }}</span>
                         <span class="font-semibold text-ink">{{ $examinador->name }}</span>
                     @else
-                        <span class="text-exame">No ar, sem validador apontado</span>
+                        <span class="text-exame">No ar, ninguém apontado para validar</span>
                     @endif
                 </p>
             </div>

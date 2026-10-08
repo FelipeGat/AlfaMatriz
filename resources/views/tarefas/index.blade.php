@@ -27,6 +27,26 @@
             : $tarefas->count().' tarefas '.$ondeEstao }}
     </x-slot>
     <x-slot name="acoes">
+        {{-- "O que espera você" (#300) no topo, e não numa faixa acima do
+             quadro: a altura aqui é das colunas (a mesma razão de não haver
+             faixa de KPI, logo abaixo). O botão abre as duas listas do Centro
+             de Controle num modal — para quem, como o membro, entra direto no
+             quadro e nunca passa por lá. --}}
+        @if ($espera ?? null)
+            @php($pendentes = $espera['pendentes'])
+            <button type="button" x-data @click="$dispatch('open-modal', 'o-que-espera-voce')" data-botao-espera
+                    title="O que está parado esperando você no quadro"
+                    @class([
+                        'h-[34px] px-3 rounded-control border inline-flex items-center gap-1.5 text-[12.5px] transition whitespace-nowrap',
+                        'border-btn-line text-ink-mute hover:text-brand hover:border-brand' => $pendentes === 0,
+                        'font-semibold text-warn hover:bg-chip' => $pendentes > 0,
+                    ])
+                    @if ($pendentes > 0) style="border-color: var(--warn-line)" @endif>
+                <span class="h-[15px] w-[15px] shrink-0"><x-nav-icon name="bell" /></span>
+                O que espera você · {{ $pendentes }}
+            </button>
+        @endif
+
         {{-- Só para quem pode criar. O menu já segue essa regra ("item que leva
              a 403 é pior que item ausente", ver layouts/navigation) e o botão
              não seguia — o que só apareceu quando nasceu o primeiro perfil de
@@ -3045,5 +3065,36 @@
                 }));
             });
         </script>
+    @elseif ($abrirTarefa ?? null)
+        {{-- `?tarefa=N` (#300): o link chega com o detalhe aberto. O parâmetro
+             sai do endereço antes de abrir, para que recarregar — inclusive o
+             recarregar que o próprio modal faz quando falha — não reabra o
+             detalhe em ciclo. --}}
+        <script>
+            document.addEventListener('alpine:initialized', () => {
+                const endereco = new URL(location.href);
+                endereco.searchParams.delete('tarefa');
+                history.replaceState(null, '', endereco);
+
+                window.dispatchEvent(new CustomEvent('abrir-tarefa', { detail: {{ (int) $abrirTarefa }} }));
+            });
+        </script>
+    @endif
+
+    @if ($espera ?? null)
+        <x-modal name="o-que-espera-voce" maxWidth="xl">
+            {{-- Vazio até o primeiro clique: as listas chegam de `espera.listas`
+                 (ver o controlador). Buscadas de novo a cada abertura, para o
+                 que acabou de ser respondido não continuar na lista. --}}
+            <div class="p-4 space-y-4"
+                 x-data
+                 x-on:open-modal.window="if ($event.detail === 'o-que-espera-voce') {
+                     fetch('{{ route('espera.listas') }}', { headers: { 'Accept': 'text/html' } })
+                         .then((resposta) => resposta.ok ? resposta.text() : '')
+                         .then((html) => { if (html) $el.innerHTML = html; });
+                 }">
+                <p class="px-4 py-6 text-[13px] text-ink-mute">Carregando…</p>
+            </div>
+        </x-modal>
     @endif
 </x-app-layout>

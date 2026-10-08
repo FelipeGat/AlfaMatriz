@@ -11,6 +11,7 @@ use App\Models\MovimentacaoFinanceira;
 use App\Models\Revenda;
 use App\Models\Sistema;
 use App\Services\IndicadoresService;
+use App\Services\OQueEsperaVoce;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -42,8 +43,15 @@ class CentroControleController extends Controller
         $this->bloquearVisaoDaMatriz();
 
         $hoje = now()->startOfDay();
+        $espera = app(OQueEsperaVoce::class);
+        $usuario = auth()->user();
 
         return view('centro-controle.index', [
+            // Null para quem não vê o quadro: a tela é do financeiro também.
+            'espera' => $espera->podeVer($usuario) ? [
+                'pendencias' => $espera->pendencias($usuario),
+                'minhas' => $espera->minhas($usuario),
+            ] : null,
             'saudacao' => $this->saudacao(),
             'cards' => $this->cards($hoje),
             'fila' => $this->filaDeAcao($hoje),

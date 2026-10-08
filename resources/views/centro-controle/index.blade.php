@@ -38,6 +38,15 @@
                 @endforeach
             </div>
 
+            {{-- O que espera você (#300) --------------------------------------
+                 Antes da fila de ação: ela fala da empresa, esta fala da
+                 pessoa — e é a pergunta que o título da tela promete. --}}
+            @if ($espera)
+                <div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+                    @include('o-que-espera._listas', ['espera' => $espera])
+                </div>
+            @endif
+
             {{-- Corpo ---------------------------------------------------------- --}}
             <div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
                 <div class="space-y-4" style="grid-column: span 1; min-width: 0">

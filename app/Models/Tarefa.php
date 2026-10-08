@@ -901,7 +901,6 @@ class Tarefa extends Model
         return $this->interlocutor_id !== $quemPergunta->id ? $this->interlocutor_id : null;
     }
 
-    /** As tarefas cuja bola está com esta pessoa. */
     /**
      * As que já passaram no staging e esperam a tag subir.
      *
@@ -919,7 +918,20 @@ class Tarefa extends Model
      */
     public function scopeValidadaNoStaging($query)
     {
-        return $query->where('status', 'em_staging')
+        return $query->where('status', 'em_staging')->aprovadaNestaPassagem();
+    }
+
+    /**
+     * O veredito mais novo da passagem ATUAL é aprovado — em qualquer portão.
+     *
+     * Saiu de dentro de `validadaNoStaging` quando o "O que espera você" (#300)
+     * precisou da mesma pergunta sem a etapa: a tarefa já aprovada não espera
+     * mais o exame de ninguém, espera a tag ou a conclusão. Duas cópias da
+     * consulta divergiriam na primeira correção de uma delas.
+     */
+    public function scopeAprovadaNestaPassagem($query)
+    {
+        return $query
             ->whereExists(fn ($sub) => $sub
                 ->selectRaw(1)
                 ->from('tarefa_relatorios_teste as r')
@@ -934,9 +946,39 @@ class Tarefa extends Model
                     ->whereColumn('r2.id', '>', 'r.id')));
     }
 
+    /** As tarefas cuja bola está com esta pessoa. */
     public function scopeEsperandoRespostaDe($query, ?int $usuarioId)
     {
         return $query->whereNotNull('pergunta_em')->where('pergunta_para_id', $usuarioId);
+    }
+
+    /**
+     * A passagem atual foi apontada para esta pessoa examinar.
+     *
+     * É a consulta de `apontadoDestaPassagem`, feita em lote: lê o EVENTO
+     * aberto, e não `interlocutor_id`, que a conversa reescreve a cada pergunta.
+     * Uma pergunta feita no meio da validação não pode tirar a tarefa da lista
+     * de quem valida (#300).
+     */
+    public function scopeApontadaPara($query, int $usuarioId)
+    {
+        return $query->whereExists(fn ($sub) => $sub
+            ->selectRaw(1)
+            ->from('tarefa_eventos as e')
+            ->whereColumn('e.tarefa_id', 'tarefas.id')
+            ->whereNull('e.saiu_em')
+            ->where('e.apontado_id', $usuarioId));
+    }
+
+    /** A passagem atual não tem ninguém apontado para examinar. */
+    public function scopeSemApontado($query)
+    {
+        return $query->whereNotExists(fn ($sub) => $sub
+            ->selectRaw(1)
+            ->from('tarefa_eventos as e')
+            ->whereColumn('e.tarefa_id', 'tarefas.id')
+            ->whereNull('e.saiu_em')
+            ->whereNotNull('e.apontado_id'));
     }
 
     protected static function booted(): void

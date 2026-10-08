@@ -15,6 +15,7 @@ use App\Services\ArquivoDeTarefas;
 use App\Services\DuplicidadeDeTarefas;
 use App\Services\FluxoTarefaService;
 use App\Services\MiniaturaDeAnexo;
+use App\Services\OQueEsperaVoce;
 use App\Services\TarefaService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -64,7 +65,26 @@ class TarefaController extends Controller
 
         $rascunhoDoCompromisso = $this->rascunhoDoCompromisso($request);
 
-        return view('tarefas.index', $this->dadosDoQuadro($request) + compact('assinatura', 'rascunhoDoCompromisso'));
+        // O botão "O que espera você" do topo (#300): aqui só a CONTAGEM. As
+        // listas vêm de `espera.listas` ao clicar — embutidas, "Minhas
+        // tarefas" poria na página títulos que o filtro do quadro escondeu.
+        // Só na tela, e não no `dadosDoQuadro`: a atualização automática não
+        // redesenha o topo.
+        $servicoDeEspera = app(OQueEsperaVoce::class);
+        $espera = $servicoDeEspera->podeVer($request->user())
+            ? ['pendentes' => $servicoDeEspera->pendencias($request->user())->count()]
+            : null;
+
+        // `?tarefa=N` chega com o detalhe aberto — o link do "O que espera
+        // você" e o "ver no quadro" da Agenda. Só tarefa que existe: o modal
+        // que falha recarrega a página, e um id inválido recarregaria para
+        // sempre.
+        $abrirTarefa = $request->user()->podeMexerNoQuadro() && $request->integer('tarefa') > 0
+            ? Tarefa::whereKey($request->integer('tarefa'))->value('id')
+            : null;
+
+        return view('tarefas.index', $this->dadosDoQuadro($request)
+            + compact('assinatura', 'rascunhoDoCompromisso', 'espera', 'abrirTarefa'));
     }
 
     /**

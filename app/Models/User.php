@@ -78,6 +78,8 @@ class User extends Authenticatable
             'primeiro_acesso' => 'boolean',
             'ativo' => 'boolean',
             'aviso_sonoro' => 'boolean',
+            // Fora do `fillable`: só os dois botões do aviso (#300) gravam aqui.
+            'espera_silenciada_ate' => 'datetime',
         ];
     }
 

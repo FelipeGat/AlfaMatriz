@@ -19,6 +19,7 @@ use App\Http\Controllers\FornecedorController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\ManutencaoController;
 use App\Http\Controllers\NotificacaoController;
+use App\Http\Controllers\OQueEsperaVoceController;
 use App\Http\Controllers\PainelController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PrecoAtacadoController;
@@ -101,6 +102,19 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('notificacoes.lidas');
     Route::post('notificacoes/som', [NotificacaoController::class, 'som'])
         ->name('notificacoes.som');
+
+    // O aviso "O que espera você" (#300): a moldura o busca depois de a tela
+    // carregar. `ler` também no POST: "Ok, vi" grava na própria conta, não
+    // mexe em tarefa nenhuma.
+    Route::get('o-que-espera-voce/aviso', [OQueEsperaVoceController::class, 'aviso'])
+        ->name('espera.aviso')
+        ->middleware('permissao:tarefas,ler');
+    Route::get('o-que-espera-voce/listas', [OQueEsperaVoceController::class, 'listas'])
+        ->name('espera.listas')
+        ->middleware('permissao:tarefas,ler');
+    Route::post('o-que-espera-voce/visto',[OQueEsperaVoceController::class, 'visto'])
+        ->name('espera.visto')
+        ->middleware('permissao:tarefas,ler');
 
     Route::get('/centro-controle', [CentroControleController::class, 'index'])->name('centro-controle')
         ->middleware('permissao:dashboard');

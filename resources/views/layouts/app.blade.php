@@ -145,5 +145,30 @@
              Só na moldura de dentro — do lado de fora não há sessão a perder,
              e o login já tem o próprio renovador de token. --}}
         @include('layouts.sessao')
+
+        {{--
+            O aviso "O que espera você" (#300), buscado depois da página.
+
+            A pergunta de entrada é só a coluna da própria conta — silenciou?
+            —, que não custa consulta. As listas são calculadas no servidor só
+            quando o aviso pode aparecer, e ele responde 204 quando não há nada.
+            O Alpine inicializa sozinho o modal que entra no DOM.
+        --}}
+        @if (app(\App\Services\OQueEsperaVoce::class)->avisaAoEntrar(auth()->user()))
+            <div data-aviso-espera></div>
+            <script>
+                document.addEventListener('DOMContentLoaded', async () => {
+                    try {
+                        const resposta = await fetch('{{ route('espera.aviso') }}', { headers: { 'Accept': 'text/html' } });
+
+                        if (resposta.status === 200) {
+                            document.querySelector('[data-aviso-espera]').innerHTML = await resposta.text();
+                        }
+                    } catch (erro) {
+                        // sem aviso desta vez: o painel continua mostrando tudo
+                    }
+                });
+            </script>
+        @endif
     </body>
 </html>

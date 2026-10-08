@@ -397,6 +397,12 @@ class CardTarefaTest extends TestCase
         $emExame = Tarefa::factory()->create([
             'criado_por_id' => $criador->id, 'status' => 'em_revisao', 'interlocutor_id' => $usuario->id,
         ]);
+        // O examinador é o APONTADO da passagem, e não o interlocutor — o card
+        // deixou de cair na pessoa da conversa como reserva (T-300).
+        \App\Models\TarefaEvento::create([
+            'tarefa_id' => $emExame->id, 'apontado_id' => $usuario->id,
+            'de_status' => 'em_desenvolvimento', 'para_status' => 'em_revisao', 'entrou_em' => now(),
+        ]);
         $travada = Tarefa::factory()->create([
             'criado_por_id' => $criador->id, 'prioridade' => 'nao_definida',
             'bloqueado_em' => now(), 'bloqueio_motivo' => 'Esperando a credencial do gateway.',
