@@ -1,0 +1,16 @@
+<b>📋 AlfaMatriz — Changelog 08/10/2026</b>
+<i>Aviso na hora, com som</i>
+
+<b>🔔 Notificações</b>
+
+• <b>Na hora.</b> O sino confere os avisos a cada 15 segundos, e continua conferindo mesmo com o AlfaMatriz em outra aba.
+
+• <b>Com som.</b> Dois toques curtos quando chega algo que depende de você: tarefa direcionada a você, tarefa para você validar, pergunta para você ou resposta à sua, tarefa que voltou para correção, bloqueio da sua tarefa, convite de compromisso e o lembrete 30 minutos antes.
+
+• <b>Comentários.</b> Comentário numa tarefa agora avisa o responsável, quem valida e quem abriu.
+
+• <b>Desligar o som.</b> No alto-falante do painel do sino. A escolha vale para a sua conta, em qualquer computador.
+
+<i>Versão v2026.10.08.2</i>
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

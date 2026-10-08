@@ -1,5 +1,20 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 08/10/2026 — Aviso na hora, com som (v2026.10.08.2, T-312)
+
+### Novidades
+
+- **Na hora.** O sino confere os avisos a cada 15 segundos, e continua
+  conferindo mesmo com o AlfaMatriz em outra aba.
+- **Com som.** Dois toques curtos quando chega algo que depende de você:
+  tarefa direcionada a você, tarefa para você validar, pergunta para você ou
+  resposta à sua, tarefa que voltou para correção, bloqueio da sua tarefa,
+  convite de compromisso e o lembrete 30 minutos antes.
+- **Comentários.** Comentário numa tarefa agora avisa o responsável, quem
+  valida e quem abriu.
+- **Desligar o som.** No alto-falante do painel do sino. A escolha vale para
+  a sua conta, em qualquer computador.
+
 ## AlfaMatriz — 16/08/2026 — O "tenant zero" de um produto parava de ser revenda fantasma
 
 Sistema multi-tenant recém-instalado costuma nascer com uma revenda de
