@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -45,9 +46,46 @@ class Notificacao extends Model
         'bloqueio', 'destravamento', 'compromisso',
     ];
 
+    /**
+     * Quanto cabe em `titulo` e `meta` — as duas são `string` (255) na tabela.
+     *
+     * Quem avisa junta nomes numa linha só ("os títulos das tarefas", "as
+     * receitas de amanhã"), e um dia com muitos itens passava do limite: o
+     * insert falhava e o comando agendado parava no meio, sem avisar ninguém
+     * daquele dia (#331). O sino mostra uma linha só e corta o resto na tela,
+     * então TEXT não ganharia nada; cortar aqui, antes de gravar, protege
+     * todos os caminhos que avisam, inclusive os que ainda vão nascer.
+     */
+    public const LIMITE_TEXTO = 255;
+
     protected function casts(): array
     {
         return ['lida_em' => 'datetime', 'sonora' => 'boolean'];
+    }
+
+    /**
+     * O texto cortado para caber em `$limite` caracteres, com "…" no fim.
+     *
+     * Conta caracteres, e não bytes (mb_): o MySQL mede o `varchar` em
+     * caracteres, e cortar no meio de um acento gravaria um byte inválido.
+     */
+    public static function caber(?string $texto, int $limite = self::LIMITE_TEXTO): ?string
+    {
+        if ($texto === null || mb_strlen($texto) <= $limite) {
+            return $texto;
+        }
+
+        return rtrim(mb_substr($texto, 0, max(0, $limite - 1))).'…';
+    }
+
+    protected function titulo(): Attribute
+    {
+        return Attribute::make(set: fn (?string $valor) => self::caber($valor));
+    }
+
+    protected function meta(): Attribute
+    {
+        return Attribute::make(set: fn (?string $valor) => self::caber($valor));
     }
 
     /**

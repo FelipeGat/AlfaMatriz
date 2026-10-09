@@ -202,6 +202,79 @@ class AvisosDoDiaTest extends TestCase
     }
 
     /** Roda uma vez por dia: a mesma passada não duplica dentro do dia. */
+    /* ---------- texto longo (#331) ---------- */
+
+    /**
+     * O dia de 29/09/2026: 12 receitas para amanhã, e os nomes juntos passaram
+     * dos 255 de `notificacoes.meta`. No MySQL o insert falhava e ninguém era
+     * avisado; o SQLite dos testes não mede o `varchar`, por isso o tamanho é
+     * conferido aqui à mão.
+     */
+    public function test_muitas_receitas_cortam_as_descricoes_e_mantem_o_total(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-12 08:00'));
+        $this->admin();
+
+        foreach (range(1, 12) as $i) {
+            Cobranca::create([
+                'descricao' => "AlfaControl — COLÉGIO DUQUE DE CAXIAS Nº {$i} (Premium (institucional))",
+                'valor' => 87.5, 'data_vencimento' => '2026-10-13', 'status' => 'pendente',
+            ]);
+        }
+
+        $this->artisan('avisos:do-dia')->assertSuccessful();
+
+        $meta = Notificacao::sole()->meta;
+        $this->assertLessThanOrEqual(Notificacao::LIMITE_TEXTO, mb_strlen($meta));
+        $this->assertStringEndsWith('… · R$ 1.050,00', $meta);
+        $this->assertStringStartsWith('AlfaControl — COLÉGIO DUQUE DE CAXIAS Nº 1 ', $meta);
+        $this->assertTrue(mb_check_encoding($meta, 'UTF-8'));
+    }
+
+    public function test_muitos_leads_parados_cortam_a_lista_com_reticencias(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-12 08:00'));
+        $vendedor = User::factory()->create();
+
+        foreach (range(1, 20) as $i) {
+            Lead::create([
+                'nome' => "Padaria do João Ângelo {$i}", 'estagio' => 'contato',
+                'estagio_atualizado_em' => '2026-10-05 08:00', 'vendedor_id' => $vendedor->id,
+            ]);
+        }
+
+        $this->artisan('avisos:do-dia')->assertSuccessful();
+
+        $meta = Notificacao::where('destinatario_id', $vendedor->id)->sole()->meta;
+        $this->assertLessThanOrEqual(Notificacao::LIMITE_TEXTO, mb_strlen($meta));
+        $this->assertStringEndsWith('…', $meta);
+        $this->assertTrue(mb_check_encoding($meta, 'UTF-8'));
+    }
+
+    /** O corte mora no modelo: vale para todo caminho que avisa, não só este comando. */
+    public function test_notificacao_corta_titulo_e_meta_longos_em_qualquer_caminho(): void
+    {
+        $user = User::factory()->create();
+
+        $n = Notificacao::create([
+            'destinatario_id' => $user->id, 'tipo' => 'lembrete',
+            'titulo' => 'Vence hoje: '.str_repeat('ação ', 80),
+            'meta' => str_repeat('é', 300),
+        ])->fresh();
+
+        $this->assertSame(Notificacao::LIMITE_TEXTO, mb_strlen($n->titulo));
+        $this->assertSame(Notificacao::LIMITE_TEXTO, mb_strlen($n->meta));
+        $this->assertStringEndsWith('…', $n->titulo);
+        $this->assertStringEndsWith('é…', $n->meta);
+
+        // O que cabe passa intacto, e meta vazio continua vazio.
+        $curta = Notificacao::create([
+            'destinatario_id' => $user->id, 'tipo' => 'lembrete', 'titulo' => 'Curto', 'meta' => null,
+        ])->fresh();
+        $this->assertSame('Curto', $curta->titulo);
+        $this->assertNull($curta->meta);
+    }
+
     public function test_dia_sem_nada_a_vencer_nao_avisa(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-10-12 08:00'));

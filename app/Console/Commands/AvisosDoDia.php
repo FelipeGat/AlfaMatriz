@@ -210,12 +210,18 @@ class AvisosDoDia extends Command
             : $plural.': '.$qtd.' '.$substPlur;
     }
 
-    /** Os itens numa linha, com o total em reais no fim. */
+    /**
+     * Os itens numa linha, com o total em reais no fim.
+     *
+     * Quando não cabe, quem cede são as descrições, e não o total: o corte
+     * genérico do modelo levaria justamente o valor, que é o que se lê primeiro
+     * (#331 — 12 receitas num dia passaram dos 255 e derrubaram o aviso).
+     */
     private function metaComTotal(Collection $itens, string $campo): string
     {
-        $total = (float) $itens->sum('valor');
+        $total = ' · R$ '.number_format((float) $itens->sum('valor'), 2, ',', '.');
+        $nomes = $itens->pluck($campo)->filter()->implode(' · ');
 
-        return $itens->pluck($campo)->filter()->implode(' · ')
-            .' · R$ '.number_format($total, 2, ',', '.');
+        return Notificacao::caber($nomes, Notificacao::LIMITE_TEXTO - mb_strlen($total)).$total;
     }
 }
