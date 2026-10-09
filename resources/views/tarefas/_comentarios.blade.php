@@ -219,12 +219,24 @@
                 $podePerguntar = ! in_array($tarefa->status, \App\Models\Tarefa::STATUS_TERMINAIS, true)
                     && ! $tarefa->esperaRespostaDe(auth()->user());
 
-                // Quem recebe a pergunta, quando o quadro sabe sozinho. Nulo
-                // aqui não é impedimento: é uma pergunta a mais a fazer.
+                // Quem recebe a pergunta se ninguém escolher — vem marcado no
+                // select (T-323). Nulo não é impedimento: é uma escolha a fazer.
                 $outroLado = $podePerguntar ? $tarefa->outroLadoDe(auth()->user()) : null;
-                $candidatos = ($podePerguntar && ! $outroLado)
-                    ? collect($usuarios ?? [])->reject(fn ($u) => $u->id === auth()->id())
+
+                // Só contas ativas: a lista de filtro guarda também quem saiu
+                // mas tem tarefa, e a pergunta a essa pessoa ficaria sem dono.
+                // O outro lado entra mesmo assim, para a sugestão nunca sumir
+                // do select que a pré-seleciona.
+                $candidatos = $podePerguntar
+                    ? collect($usuarios ?? [])
+                        ->reject(fn ($u) => $u->id === auth()->id())
+                        ->filter(fn ($u) => $u->ativo || $u->id === $outroLado)
                     : collect();
+
+                if ($outroLado && ! $candidatos->contains('id', $outroLado)) {
+                    $candidatos->prepend(\App\Models\User::find($outroLado));
+                    $candidatos = $candidatos->filter();
+                }
             @endphp
 
             <div class="mt-2 flex flex-wrap items-center gap-2">
@@ -250,34 +262,37 @@
                     </button>
 
                     {{--
-                        Sem outro lado, a tela PERGUNTA a quem passar a vez.
+                        A tela SEMPRE deixa escolher a quem passar a vez, com o
+                        outro lado já marcado (T-323, 09/10/2026).
 
-                        O caso é comum e não é erro: a tarefa é sua e ninguém
-                        entrou na conversa ainda. Antes o botão aparecia e o
-                        envio morria com "não há outro lado" — uma recusa que
-                        culpa a pessoa por uma informação que a tela nunca pediu.
-                        Botão que some seria pior ainda: some sem dizer por quê,
-                        e some justamente de quem só tem esse caminho.
+                        Antes o select só aparecia sem outro lado, e com lado
+                        a pergunta ia para ele sem volta — na #194 a dúvida
+                        era para quem abriu a tarefa e caiu no interlocutor.
+                        Quem não mexe no select tem o comportamento de sempre.
+                        Sem outro lado, a primeira opção vazia obriga a
+                        escolher, em vez de o envio morrer com uma recusa por
+                        uma informação que a tela não pediu.
 
                         O `form` liga o select ao envio escondido, como o botão.
                     --}}
-                    @if ($outroLado === null)
-                        <select name="pergunta_para_id" form="perguntar-{{ $tarefa->id }}" required
-                                class="shrink-0 h-[28px] py-0 max-w-[200px] text-[12px] rounded-control
-                                       bg-input border-line text-ink-dim">
+                    <select name="pergunta_para_id" form="perguntar-{{ $tarefa->id }}" required
+                            aria-label="Para quem vai a pergunta"
+                            class="shrink-0 h-[28px] py-0 max-w-[200px] text-[12px] rounded-control
+                                   bg-input border-line text-ink-dim">
+                        @if ($outroLado === null)
                             <option value="">Perguntar a quem…</option>
-                            @foreach ($candidatos as $candidato)
-                                <option value="{{ $candidato->id }}">{{ $candidato->name }}</option>
-                            @endforeach
-                        </select>
-                    @endif
+                        @endif
+                        @foreach ($candidatos as $candidato)
+                            <option value="{{ $candidato->id }}" @selected($candidato->id === $outroLado)>{{ $candidato->name }}</option>
+                        @endforeach
+                    </select>
 
                     <p class="min-w-0 flex-1 text-[11.5px] text-ink-faint">
                         <strong class="font-semibold">Perguntar</strong>
                         @if ($outroLado === null)
                             passa a vez para quem você escolher — esta tarefa ainda não tem outro lado.
                         @else
-                            passa a vez para o outro lado, e o sino avisa.
+                            passa a vez para quem estiver marcado — o outro lado vem sugerido —, e o sino avisa.
                         @endif
                     </p>
                 @endif

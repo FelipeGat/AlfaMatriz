@@ -209,6 +209,50 @@ class ServidorAlfaMatrizTest extends TestCase
         $this->assertSame(2, $tarefa->comentarios()->count());
     }
 
+    /**
+     * O "para" vence o outro lado (T-323): na #194 a pergunta era para quem
+     * abriu a tarefa e a ferramenta a mandou ao interlocutor, ignorando o nome.
+     */
+    public function test_o_para_vence_o_outro_lado_e_o_sino_avisa_quem_foi_escolhido(): void
+    {
+        $eu = User::factory()->create(['name' => 'Rossini Santos']);
+        $interlocutor = User::factory()->create(['name' => 'Administrador Alfa']);
+        $quemAbriu = User::factory()->membro()->create(['name' => 'Alexandre Blank']);
+        $tarefa = Tarefa::factory()->create([
+            'status' => 'em_desenvolvimento',
+            'responsavel_id' => $eu->id,
+            'interlocutor_id' => $interlocutor->id,
+            'criado_por_id' => $quemAbriu->id,
+        ]);
+
+        AlfaMatrizServer::actingAs($eu)
+            ->tool(ConversarNaTarefa::class, [
+                'tarefa' => '#'.$tarefa->id,
+                'mensagem' => 'Qual versão do AlfaSync está aí?',
+                'para' => 'Alexandre Blank',
+            ])
+            ->assertOk()
+            ->assertSee('para Alexandre Blank');
+
+        $tarefa->refresh();
+        $this->assertSame($quemAbriu->id, $tarefa->pergunta_para_id);
+        $this->assertSame($quemAbriu->id, $tarefa->interlocutor_id);
+        $this->assertTrue(Notificacao::where('destinatario_id', $quemAbriu->id)->where('tipo', 'pergunta')->exists());
+        $this->assertFalse(Notificacao::where('destinatario_id', $interlocutor->id)->where('tipo', 'pergunta')->exists());
+
+        // Sem "para", o outro lado de sempre: quem foi perguntado por último.
+        $outra = Tarefa::factory()->create([
+            'status' => 'em_desenvolvimento',
+            'responsavel_id' => $eu->id,
+            'interlocutor_id' => $interlocutor->id,
+        ]);
+
+        AlfaMatrizServer::actingAs($eu)
+            ->tool(ConversarNaTarefa::class, ['tarefa' => '#'.$outra->id, 'mensagem' => 'Dúvida.'])
+            ->assertOk()
+            ->assertSee('para Administrador Alfa');
+    }
+
     public function test_ver_tarefa_mostra_o_que_o_modal_mostra_e_os_destinos_da_pessoa(): void
     {
         $admin = User::factory()->create(['name' => 'Rossini']);

@@ -11,7 +11,9 @@ use Laravel\Mcp\Response;
 /**
  * A mesma decisão do `TarefaController::conversar`: se a bola está com quem
  * fala, a mensagem é resposta; senão é pergunta. A ferramenta não escolhe —
- * o quadro sabe de quem é a vez.
+ * o quadro sabe de quem é a vez. O "para" só traduz o nome: quem decide
+ * que a escolha vence o outro lado (T-323) é o `FluxoTarefaService::perguntar`,
+ * o mesmo motor da tela.
  */
 class ConversarNaTarefa extends Ferramenta
 {
@@ -19,7 +21,7 @@ class ConversarNaTarefa extends Ferramenta
 
     protected string $title = 'Perguntar ou responder';
 
-    protected string $description = 'Pergunta ou responde na conversa da tarefa. Se há uma pergunta esperando por você, a mensagem é a resposta e devolve a vez; senão é uma pergunta e passa a vez ao outro lado — o responsável, ou quem você indicar em "para" quando a tarefa é sua e ninguém entrou na conversa ainda.';
+    protected string $description = 'Pergunta ou responde na conversa da tarefa. Se há uma pergunta esperando por você, a mensagem é a resposta e devolve a vez; senão é uma pergunta e passa a vez a quem você indicar em "para" ou, sem "para", ao outro lado (o responsável, ou quem já conversou com você aqui).';
 
     protected array $permissao = ['tarefas', 'editar'];
 
@@ -34,7 +36,7 @@ class ConversarNaTarefa extends Ferramenta
             'mensagem' => $schema->string()->required()->max(2000)
                 ->description('A pergunta ou a resposta.'),
             'para' => $schema->string()
-                ->description('Nome de quem deve responder, só quando a tarefa é sua e ainda não há outro lado.'),
+                ->description('Nome de quem deve responder. Vence o outro lado, em qualquer etapa; sem ele, a pergunta vai ao outro lado. Obrigatório quando a tarefa é sua e ninguém entrou na conversa ainda.'),
         ];
     }
 

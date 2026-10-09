@@ -1251,9 +1251,8 @@ class TarefaController extends Controller
 
         $data = $request->validate([
             'corpo' => 'nullable|string|max:2000',
-            // Só chega preenchido quando a tarefa ainda não tem outro lado: aí
-            // a tela pergunta a quem passar a vez em vez de esconder o botão.
-            // Quando há lado, o motor ignora este campo.
+            // A escolha de a quem passar a vez; vazio, o motor usa o outro
+            // lado. Desde a T-323 a escolha vence o lado em qualquer etapa.
             'pergunta_para_id' => 'nullable|exists:users,id',
         ]);
 

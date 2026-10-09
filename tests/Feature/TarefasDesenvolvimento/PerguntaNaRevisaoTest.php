@@ -517,27 +517,80 @@ class PerguntaNaRevisaoTest extends TestCase
     }
 
     /**
-     * @spec:AC-206 Com outro lado, o quadro aponta SOZINHO: numa revisão só há dois
-     * lados, e oferecer escolha onde não há escolha abriria a porta para mandar a
-     * pergunta a quem não está na conversa.
+     * @spec:AC-206 Com outro lado, a tela deixa escolher e já traz o lado MARCADO
+     * (T-323, 09/10/2026): quem não mexe no select tem o comportamento de sempre.
      */
-    public function test_com_outro_lado_nao_ha_escolha_e_a_escolhida_e_ignorada(): void
+    public function test_com_outro_lado_a_tela_deixa_escolher_com_o_lado_sugerido(): void
     {
         [$tarefa, $dev, $revisor] = $this->emRevisao();
-        $estranho = User::factory()->create(['name' => 'Quem passava por ali']);
+        User::factory()->create(['name' => 'Quem abriu o chamado']);
+        User::factory()->desativado()->create(['name' => 'Quem saiu da empresa']);
 
         $html = $this->actingAs($revisor)->get(route('tarefas.modal', $tarefa))->assertOk()->getContent();
 
-        $this->assertStringNotContainsString('Perguntar a quem…', $html);
-        $this->assertStringContainsString('passa a vez para o outro lado', $html);
+        $this->assertStringNotContainsString('Perguntar a quem…', $html, 'Com sugestão, não há opção vazia.');
+        $this->assertStringContainsString('o outro lado vem sugerido', $html);
+        $this->assertMatchesRegularExpression('/<option value="'.$dev->id.'"\s+selected[^>]*>Rafael Lima</', $html);
+        $this->assertStringContainsString('Quem abriu o chamado', $html);
+        $this->assertStringNotContainsString('Quem saiu da empresa', $html);
+    }
 
-        // Mesmo mandando um destinatário à mão, o lado conhecido manda.
+    /**
+     * @spec:AC-206 A escolha VENCE o outro lado, em qualquer etapa (T-323): na #194 a
+     * pergunta era para quem abriu a tarefa e caiu no interlocutor. Rodada e sino
+     * seguem a pessoa escolhida.
+     */
+    public function test_a_escolha_vence_o_outro_lado_com_rodada_e_sino_de_quem_foi_escolhido(): void
+    {
+        [$tarefa, $dev, $revisor] = $this->emRevisao();
+        $terceiro = User::factory()->create(['name' => 'Alexandre Blank']);
+
         $this->actingAs($revisor)->post(route('tarefas.conversar', $tarefa), [
-            'corpo' => 'Dúvida.',
-            'pergunta_para_id' => $estranho->id,
+            'corpo' => 'Era isso que o cliente pediu?',
+            'pergunta_para_id' => $terceiro->id,
         ])->assertSessionMissing('erro');
 
+        $tarefa->refresh();
+
+        $this->assertSame($terceiro->id, $tarefa->pergunta_para_id);
+        $this->assertSame($terceiro->id, $tarefa->interlocutor_id);
+        $this->assertSame(1, $tarefa->rodadas);
+        $this->assertTrue($tarefa->esperaRespostaDe($terceiro));
+        $this->assertFalse($tarefa->esperaRespostaDe($dev));
+
+        $this->assertSame(1, \App\Models\Notificacao::where('destinatario_id', $terceiro->id)->where('tipo', 'pergunta')->count());
+        $this->assertSame(0, \App\Models\Notificacao::where('destinatario_id', $dev->id)->where('tipo', 'pergunta')->count());
+
+        // Insistir com o mesmo escolhido antes da resposta é a mesma rodada.
+        $this->fluxo->perguntar($tarefa->fresh(), $revisor, 'E o prazo?', $terceiro->id);
+        $this->assertSame(1, $tarefa->fresh()->rodadas);
+
+        // Ele responde e a bola volta a quem perguntou; a pergunta seguinte
+        // abre a 2ª rodada e, sem escolha, volta ao outro lado de sempre.
+        $this->fluxo->responder($tarefa->fresh(), $terceiro, 'Era, sim.');
+        $this->assertSame($revisor->id, $tarefa->fresh()->interlocutor_id);
+
+        $this->fluxo->perguntar($tarefa->fresh(), $revisor, 'Então ajusta o texto do botão?');
         $this->assertSame($dev->id, $tarefa->fresh()->pergunta_para_id);
+        $this->assertSame(2, $tarefa->fresh()->rodadas);
+    }
+
+    /**
+     * @spec:AC-206 Escolha livre não manda a pergunta a quem não entra mais no
+     * sistema — a bola ficaria com ninguém.
+     */
+    public function test_escolher_conta_desativada_e_recusado(): void
+    {
+        [$tarefa, , $revisor] = $this->emRevisao();
+        $saiu = User::factory()->desativado()->create();
+
+        $this->actingAs($revisor)->post(route('tarefas.conversar', $tarefa), [
+            'corpo' => 'Dúvida.',
+            'pergunta_para_id' => $saiu->id,
+        ])->assertSessionHas('erro');
+
+        $this->assertStringContainsString('não está ativa', session('erro'));
+        $this->assertFalse($tarefa->fresh()->temPergunta());
     }
 
     /**

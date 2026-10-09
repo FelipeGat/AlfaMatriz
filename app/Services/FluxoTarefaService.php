@@ -505,10 +505,17 @@ class FluxoTarefaService
     }
 
     /**
-     * Registra uma pergunta e passa a bola para o outro lado.
+     * Registra uma pergunta e passa a bola para quem foi escolhido — ou, sem
+     * escolha, para o outro lado.
      *
-     * Numa revisão só há dois lados, então não se escolhe destinatário: quem
-     * pergunta é de um lado, e a pergunta vai para o outro.
+     * A escolha VENCE o outro lado, em qualquer etapa (decisão do dono em
+     * 09/10/2026, T-323). Antes era o contrário, sob a ideia de que "numa
+     * revisão só há dois lados" — e a pergunta da #194, que era para quem
+     * abriu a tarefa, foi parar no interlocutor e precisou ser corrigida no
+     * banco. A conversa tem mais gente que os dois lados: quem abriu, quem
+     * conhece o cliente. E perguntar a um terceiro no portão não troca quem
+     * valida: o validador é o apontado da passagem (`apontadoDestaPassagem`),
+     * e não o interlocutor que esta pergunta reescreve.
      *
      * A tarefa NÃO sai da etapa e NÃO sai do WIP — responder é rápido, e fingir
      * que ela saiu de circulação seria mentira. Também não conta como travada:
@@ -528,10 +535,9 @@ class FluxoTarefaService
             throw new \RuntimeException('Tarefa encerrada não tem conversa em aberto.');
         }
 
-        // O lado que o quadro sabe sozinho MANDA sobre a escolha: numa revisão
-        // só há dois lados, e deixar escolher onde não há escolha abriria a
-        // porta para mandar a pergunta a quem não está na conversa.
-        $paraId = $tarefa->outroLadoDe($quemPergunta) ?? $paraEscolhido;
+        // O outro lado é só a SUGESTÃO: vale quando ninguém escolheu.
+        $outroLado = $tarefa->outroLadoDe($quemPergunta);
+        $paraId = $paraEscolhido ?? $outroLado;
 
         if ($paraId === null) {
             throw new \RuntimeException('Escolha para quem vai a pergunta.');
@@ -539,6 +545,15 @@ class FluxoTarefaService
 
         if ($paraId === $quemPergunta->id) {
             throw new \RuntimeException('A pergunta precisa ir para outra pessoa.');
+        }
+
+        // Escolha livre abre a porta a quem não pode responder: conta
+        // desativada não entra no sistema, e a bola ficaria com ninguém. O
+        // outro lado fica de fora da conferência — ele já recebia antes da
+        // T-323, e a tela o manda marcado; recusá-lo agora faria a pergunta
+        // de sempre parar de funcionar.
+        if ($paraId !== $outroLado && ! User::whereKey($paraId)->where('ativo', true)->exists()) {
+            throw new \RuntimeException('Essa pessoa não está ativa no sistema; escolha outra.');
         }
 
         return DB::transaction(function () use ($tarefa, $quemPergunta, $corpo, $paraId) {

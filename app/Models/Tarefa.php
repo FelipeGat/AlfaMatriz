@@ -873,19 +873,18 @@ class Tarefa extends Model
     }
 
     /**
-     * Para quem a pergunta desta pessoa vai, quando o quadro sabe sozinho.
+     * Para quem a pergunta desta pessoa vai quando ela não escolhe.
      *
-     * Numa revisão só há dois lados, e por isso não se escolhe destinatário: o
-     * outro lado é o responsável, ou o interlocutor de quem já conversou aqui.
+     * O outro lado é o responsável, ou o interlocutor de quem já conversou
+     * aqui. É SUGESTÃO, e não trava, desde a T-323 (09/10/2026): quem pergunta
+     * pode mandar a outra pessoa, e a escolha vence (`FluxoTarefaService::perguntar`).
      *
      * Devolve null quando NÃO há segundo lado — a tarefa é de quem está
      * perguntando e ninguém entrou na conversa ainda. Isso não é um impedimento,
-     * é uma pergunta a mais a fazer: a tela oferece a escolha em vez de esconder
-     * o botão, porque não ter com quem falar ainda é diferente de não poder
-     * perguntar.
+     * é uma pergunta a mais a fazer: a tela pede a escolha sem sugestão.
      *
      * Mora aqui, e não no serviço, porque a VIEW precisa da mesma resposta para
-     * decidir se mostra o select — duas cópias da regra divergiriam na primeira
+     * pré-selecionar o select — duas cópias da regra divergiriam na primeira
      * vez que alguém mexesse numa delas.
      */
     public function outroLadoDe(?User $quemPergunta): ?int
