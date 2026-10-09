@@ -1,5 +1,16 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 09/10/2026 — Pergunta para quem você escolher (v2026.10.09, T-323)
+
+### Novidades
+
+- **Pergunta para quem você escolher.** Na conversa da tarefa, ao lado do
+  botão Perguntar, agora aparece sempre a escolha de para quem vai a
+  pergunta, já marcada com a pessoa de sempre (o responsável, ou quem
+  conversou com você por último). Dá para trocar por qualquer pessoa do time,
+  em qualquer etapa, e o aviso do sino vai para quem você escolheu.
+- Quem não mexer na escolha continua mandando para a mesma pessoa de antes.
+
 ## AlfaMatriz — 08/10/2026 — Aviso na hora, com som (v2026.10.08.2, T-312)
 
 ### Novidades
