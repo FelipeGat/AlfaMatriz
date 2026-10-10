@@ -155,9 +155,18 @@ class CentralIaRunnerController extends Controller
         ] : null;
         $cota = $c['cota_codex'] ?? null;
 
+        $claude = $c['limites_claude'] ?? null;
+        $janelasClaude = is_array($claude) ? collect((array) ($claude['janelas'] ?? []))->filter(fn ($j) => is_array($j))->take(6)->map(fn ($j) => [
+            'rotulo' => $texto($j['rotulo'] ?? null, 60),
+            'usado_pct' => is_numeric($j['usado_pct'] ?? null) ? (float) $j['usado_pct'] : null,
+            'renova' => $texto($j['renova'] ?? null, 80),
+        ])->values()->all() : [];
+
         return [
             'linhas' => $linhas,
             'cota_codex' => is_array($cota) ? ['em' => $texto($cota['em'] ?? null, 40), 'primaria' => $janela($cota['primaria'] ?? null), 'semanal' => $janela($cota['semanal'] ?? null)] : null,
+            'limites_claude' => $janelasClaude ? ['janelas' => $janelasClaude, 'em' => $texto($claude['em'] ?? null, 40)] : null,
+            'copilot_premium_mes' => is_numeric($c['copilot_premium_mes'] ?? null) ? round((float) $c['copilot_premium_mes'], 2) : null,
             'coletado_em' => $texto($c['coletado_em'] ?? null, 40),
         ];
     }

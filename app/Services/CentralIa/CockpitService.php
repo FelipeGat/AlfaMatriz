@@ -24,14 +24,16 @@ class CockpitService
     public function montar(User $user): array
     {
         $maquina = $this->agentes->disponiveis($user);
-        $fixados = CentralIaProjeto::where('user_id', $user->id)->orderBy('ordem')->orderBy('projeto')->pluck('projeto')->all();
+        $linhasFixadas = CentralIaProjeto::where('user_id', $user->id)->orderBy('ordem')->orderBy('projeto')->get();
+        $fixados = $linhasFixadas->pluck('projeto')->all();
+        $grupoDe = $linhasFixadas->pluck('grupo_id', 'projeto');
         $tarefas = CentralIaTarefa::de($user)->emCurso()->orderByDesc('ultima_atividade_em')->get()->groupBy('projeto');
         $recentes = CentralIaExecucao::where('user_id', $user->id)->where('created_at', '>=', now()->subDay())->distinct()->pluck('projeto')->all();
 
         // '' é a conversa Geral: tem tarefas, mas não é projeto da barra.
         $nomes = array_values(array_filter(array_unique(array_merge($fixados, $tarefas->keys()->all(), $recentes)), fn ($n) => $n !== ''));
 
-        $projetos = array_map(function (string $nome) use ($user, $fixados, $tarefas, $maquina) {
+        $projetos = array_map(function (string $nome) use ($user, $fixados, $tarefas, $maquina, $grupoDe) {
             $emCurso = $tarefas->get($nome, collect());
             $ultimaMensagem = CentralIaMensagem::de($user)->where('projeto', $nome)->max('created_at');
             $ultimaAtividade = collect([$emCurso->max('ultima_atividade_em'), $ultimaMensagem ? Carbon::parse($ultimaMensagem) : null])->filter()->max();
@@ -49,6 +51,7 @@ class CockpitService
             return [
                 'nome' => $nome,
                 'fixado' => in_array($nome, $fixados, true),
+                'grupo_id' => $grupoDe[$nome] ?? null,
                 'na_maquina' => in_array($nome, $maquina['projetos'], true),
                 'estado' => $estado,
                 'atencao' => in_array($estado, ['aguardando_voce', 'falhou'], true),
@@ -61,6 +64,7 @@ class CockpitService
 
         return [
             'projetos' => $projetos,
+            'grupos' => \App\Models\CentralIaGrupo::where('user_id', $user->id)->orderBy('ordem')->orderBy('nome')->get(['id', 'nome', 'ordem'])->toArray(),
             'atividade' => $this->atividade($user),
             'recentes' => $this->recentes($maquina, $nomes),
             'consumo' => $this->consumo($user),
@@ -117,8 +121,40 @@ class CockpitService
         }
 
         $cota = $runners->pluck('consumo')->filter()->pluck('cota_codex')->filter()->sortByDesc('em')->first();
+        $ultimo = $runners->pluck('consumo')->filter()->sortByDesc('coletado_em')->first() ?? [];
+
+        // Série diária (7 dias) por IA, para o gráfico: tokens de entrada e
+        // saída, sem cache — o cache é barato e inflaria tudo por 100x.
+        $dias = collect(range(6, 0))->map(fn ($n) => now()->subDays($n)->toDateString());
+        $serie = $dias->map(fn ($d) => ['dia' => $d] + collect(array_keys(CentralIaExecucao::AGENTES))
+            ->mapWithKeys(fn ($a) => [$a => (int) $linhas->where('dia', $d)->where('agente', $a)->sum(fn ($l) => $l['entrada'] + $l['saida'])])->all())->all();
+
+        // A janela do Codex que já renovou não está mais "usada": o número
+        // gravado é do último uso, e sem uso novo ele não se atualiza.
+        $janelaCodex = function ($j) {
+            if (! $j) {
+                return null;
+            }
+            $renova = isset($j['renova_em']) ? \Illuminate\Support\Carbon::parse($j['renova_em']) : null;
+
+            return $renova && $renova->isPast() ? ['usado_pct' => 0.0, 'renova_em' => null, 'renovou' => true] + $j : $j + ['renovou' => false];
+        };
+
+        $pedidosHoje = CentralIaExecucao::where('user_id', $user->id)->where('created_at', '>=', now()->startOfDay())->count();
+
+        $limites = [
+            'central' => ['usados' => $pedidosHoje, 'limite' => (int) config('central_ia.agentes.limite_diario')],
+            'claude' => $ultimo['limites_claude'] ?? null,
+            'codex' => $cota ? ['primaria' => $janelaCodex($cota['primaria'] ?? null), 'semanal' => $janelaCodex($cota['semanal'] ?? null), 'em' => $cota['em'] ?? null] : null,
+            'copilot' => ['premium_mes' => $ultimo['copilot_premium_mes'] ?? null, 'franquia' => config('central_ia.agentes.copilot_premium_mes')],
+            'esgotados' => $this->agentes->esgotados($runners),
+            'por_agente_central' => CentralIaExecucao::where('user_id', $user->id)->where('created_at', '>=', now()->startOfDay())
+                ->selectRaw('agente, count(*) as n')->groupBy('agente')->pluck('n', 'agente')->all(),
+        ];
 
         return [
+            'serie' => $serie,
+            'limites' => $limites,
             'por_agente' => $porAgente,
             'projetos_hoje' => $linhas->where('dia', $hoje)->groupBy('projeto')
                 ->map(fn ($g, $p) => ['projeto' => $p, 'tokens' => $g->sum('entrada') + $g->sum('saida'),

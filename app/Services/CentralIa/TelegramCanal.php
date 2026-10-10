@@ -124,7 +124,9 @@ class TelegramCanal
         } catch (ValidationException $e) {
             // Pedido recusado (projeto que a máquina não tem, limite do dia):
             // a resposta vai só para o chat, e o pedido não entra na conversa.
-            $this->responder($chatId, collect($e->errors())->flatten()->first());
+            $motivo = collect($e->errors())->flatten()->first();
+            Eventos::registrar($user, 'recusado', 'Pelo Telegram: '.$motivo.' — mensagem: '.\Illuminate\Support\Str::limit($texto, 120), ['origem' => 'telegram'], 'aviso');
+            $this->responder($chatId, $motivo);
         } catch (UniqueConstraintViolationException) {
             // Reentrega de um update que já entrou: o cursor se perdeu, a
             // mensagem não.

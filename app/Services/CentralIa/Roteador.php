@@ -19,6 +19,8 @@ use Illuminate\Support\Str;
  */
 class Roteador
 {
+    private array $esgotados = [];
+
     /**
      * Ordem importa: a primeira categoria que casa decide. Implementar vem
      * antes de revisar porque "corrija o que a revisão achou" é implementação.
@@ -63,8 +65,12 @@ class Roteador
             || collect(self::ANALITICO)->contains(fn ($p) => preg_match('/(^|[^\pL])'.preg_quote($p, '/').'($|[^\pL])/u', $t));
     }
 
-    public function decidir(string $instrucao, array $disponiveis, ?CentralIaTarefa $tarefa = null): array
+    public function decidir(string $instrucao, array $disponiveis, ?CentralIaTarefa $tarefa = null, array $esgotados = []): array
     {
+        // Quem está no limite da assinatura sai da escolha automática, e o
+        // motivo vai junto (ver AgentesService::esgotados).
+        $this->esgotados = $esgotados;
+        $disponiveis = array_values(array_diff($disponiveis, array_keys($esgotados)));
         $texto = Str::lower(Str::squish($instrucao));
         $categoria = 'investigacao';
         $palavra = null;
@@ -108,7 +114,9 @@ class Roteador
 
         foreach ($preferidos as $i => $agente) {
             if (in_array($agente, $disponiveis, true)) {
-                return $this->resultado($agente, $modo, $categoria, $palavra, $i > 0 ? "{$preferidos[0]} não está disponível na máquina" : null);
+                $obs = $i > 0 ? ($this->esgotados[$preferidos[0]] ?? "{$preferidos[0]} não está disponível na máquina") : null;
+
+                return $this->resultado($agente, $modo, $categoria, $palavra, $obs);
             }
         }
 

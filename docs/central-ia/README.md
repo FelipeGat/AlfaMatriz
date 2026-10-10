@@ -200,6 +200,37 @@ resumo da agenda de hoje" não pode trazer uma resposta por IA.
   todo pedido recebe recibo na hora (agente, modo, motivo, fonte).
 - Testes: `tests/Feature/CentralIa/RespostasConsistentesTest.php`.
 
+### Abas, grupos, consumo, acesso total e log (10/10/2026)
+
+- Tela sem rolagem de página (altura da janela), em abas: **Projetos**
+  (busca + grupos à esquerda; sub-abas Conversa, Tarefas, Contexto, VS Code),
+  **Atividade** (log de eventos + execuções), **Consumo**, **Ajustes**.
+- **Grupos** de projetos por conta (`central_ia_grupos`; criados VixCard,
+  Grupo Soluções e Pessoal). Pôr num grupo também fixa.
+- **Consumo**: limites por IA — Central (pedidos do dia), Claude (`/usage`
+  local, zero tokens, a cada 10 min: sessão 5 h e semanas), Codex (cota 5 h e
+  semana, dos registros), Copilot (premium no mês; franquia em
+  `CENTRAL_IA_COPILOT_PREMIUM_MES`) — e tokens por dia por IA (gráfico de
+  barras em HTML: o Alpine não roda `<template x-for>` dentro de `<svg>`).
+- A IA automática desvia do Claude só com a SESSÃO de 5 h em 100% (com a
+  semana em 100% ele ainda rodou); do Codex, com qualquer janela em 100%.
+- **Acesso total** (dono: "permita tudo"): `CENTRAL_IA_ACESSO=total` —
+  Claude `bypassPermissions`, Codex `danger-full-access`, Copilot `--allow-all`;
+  implementar DIRETO na pasta (`CENTRAL_IA_IMPLEMENTAR_NA_PASTA`), uma
+  implementação por projeto de cada vez; memória do dono no prompt de todos;
+  Geral roda na raiz `~/projetos`. Commit/push/deploy só quando o pedido
+  disser (instrução no prompt).
+- **Log de eventos** (`central_ia_eventos`, só acrescenta): pedido, início,
+  conclusão, falha (com o erro), sem resposta, troca de agente, recusa,
+  conversa do VS Code continuada — com quem, agente, projeto e origem.
+- **Outra IA assume a conversa do VS Code**: se a IA da conversa estiver no
+  limite, o Codex assume e recebe o histórico de texto dela (fim do arquivo,
+  sem conteúdo de ferramentas).
+- Análise nunca encerra a tarefa; só implementação com `tarefa_concluida`.
+- Boot do Windows: `subir-stacks.sh` sobe o stack `alfamatriz-dev`, e o
+  `vixcard-boot.ps1` mantém uma sessão `wsl --exec sleep infinity` para o
+  Ubuntu (runner, painéis) não desligar sem ninguém conectado.
+
 ## Ambiente local
 
 - `http://localhost:8096` (Windows) / `http://home:8096` (Mac). O stack Docker
@@ -222,7 +253,7 @@ Isolados, sem rede, código somente leitura, SQLite em memória:
 python3 tools/central-ia/run-tests.py --central-root /home/duque_de_caxias/projetos/central-agentes
 ```
 
-Em 10/10/2026, depois das fontes oficiais: **1.449 testes, verde**
+Em 10/10/2026, depois das abas e do acesso total: **1.455 testes, verde**
 (duas depreciações do PHPUnit, preexistentes). O runner esconde o `.env` do
 checkout, que agora existe porque ele serve a porta 8096.
 

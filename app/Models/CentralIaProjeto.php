@@ -12,5 +12,5 @@ class CentralIaProjeto extends Model
 {
     protected $table = 'central_ia_projetos';
 
-    protected $fillable = ['user_id', 'projeto', 'ordem'];
+    protected $fillable = ['user_id', 'projeto', 'grupo_id', 'ordem'];
 }

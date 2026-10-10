@@ -12,7 +12,7 @@
  * ~/.config/alfa/central-ia-runner.env — ver deploy/central-ia/README.md.
  */
 import { spawn, execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from 'node:fs';
 import { homedir, hostname, tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { usoLocal } from './uso-local.mjs';
@@ -170,6 +170,28 @@ function uso() {
     return usoCache.valor;
 }
 
+/**
+ * Limites da assinatura do Claude, pelo `/usage` — comando local da CLI, sem
+ * chamada ao modelo (zero tokens) e sem gravar sessão. De 10 em 10 min.
+ */
+let limitesClaude = { em: 0, valor: null };
+function limitesDoClaude() {
+    if (!agentes.claude || Date.now() - limitesClaude.em < 600_000) return limitesClaude.valor;
+    limitesClaude.em = Date.now();
+    try {
+        const saida = execFileSync(agentes.claude, ['-p', '/usage', '--output-format', 'json', '--no-session-persistence'],
+            { cwd: pastaGeral(), encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'] });
+        const texto = JSON.parse(saida).result || '';
+        const rotulos = { 'Current session': 'Sessão (5 h)', 'Current week (all models)': 'Semana (todos os modelos)' };
+        const janelas = [];
+        for (const m of texto.matchAll(/^(Current [^:]+):\s*(\d+(?:\.\d+)?)% used(?:\s*·\s*resets\s+(.+))?$/gm)) {
+            janelas.push({ rotulo: rotulos[m[1]] || m[1].replace('Current week', 'Semana'), usado_pct: Number(m[2]), renova: m[3]?.trim() || null });
+        }
+        limitesClaude.valor = janelas.length ? { janelas, em: new Date().toISOString() } : null;
+    } catch (e) { log('limites do Claude indisponíveis:', String(e.message).split('\n')[0]); }
+    return limitesClaude.valor;
+}
+
 async function batida() {
     agentes = localizarAgentes();
     const projetos = listarProjetos();
@@ -179,7 +201,7 @@ async function batida() {
         agentes: Object.keys(agentes).filter(k => agentes[k]),
         projetos,
         estado: estadoDosProjetos(projetos),
-        ...(u ? { consumo: u.consumo, sessoes: u.sessoes } : {}),
+        ...(u ? { consumo: { ...u.consumo, limites_claude: limitesDoClaude() }, sessoes: u.sessoes } : {}),
     });
     if (r.status !== 200) log('batida recusada', r.status, r.json?.message || '');
 }
@@ -274,13 +296,16 @@ function instrucoes(job, branch) {
         job.projeto
             ? `Projeto: ${job.projeto}. Siga as instruções do próprio projeto (CLAUDE.md, AGENTS.md, README).`
             : 'Pedido da conversa Geral, fora de projeto: responda com os dados oficiais abaixo (se houver) e o que a pergunta pede.',
+        // Regra global do dono, que vale mesmo com acesso total.
+        'Commit, push, merge, deploy e qualquer alteração em produção: SÓ se o pedido disser isso explicitamente. Na dúvida, pergunte (campo "duvida").',
     ];
     if (job.modo === 'implementar') {
-        base.push(`Você está numa worktree própria, na branch ${branch}. Faça as alterações pedidas aqui e rode os testes que fizerem sentido.`,
-            'NÃO faça commit, push, merge, reset nem checkout; não mexa em pastas fora desta; não rode deploy nem toque em produção.',
+        base.push(branch
+            ? `Você está numa worktree própria, na branch ${branch}. Faça as alterações pedidas aqui e rode os testes que fizerem sentido.`
+            : 'Você trabalha DIRETO na pasta do projeto, como no VS Code. Antes de alterar, veja o `git status`: alterações que já estavam lá são de outra sessão — preserve-as.',
             'No fim, resuma o que mudou, por quê e como testar.');
     } else {
-        base.push('Modo ANALISAR: só leia e responda. Não altere nenhum arquivo nem rode comandos que mudem estado.',
+        base.push('Modo ANALISAR: não altere arquivos. Pode rodar comandos de leitura (git, logs, consultas, docker ps/logs) para responder.',
             // A mesma régua para qualquer agente: o dono pediu que resumo,
             // análise e relatório tenham a mesma qualidade venha de quem vier.
             'Responda de forma completa e organizada: comece pelo essencial, use listas curtas, diga de onde veio cada informação',
@@ -289,14 +314,73 @@ function instrucoes(job, branch) {
     return base.join('\n');
 }
 
+/**
+ * A memória do dono (o índice das notas que o Claude guarda em ~/projetos):
+ * entregue a qualquer agente. Sem isso, cada um começava sem saber das
+ * portas, das pontes e das decisões já tomadas.
+ */
+function memoria() {
+    const arq = process.env.CENTRAL_IA_MEMORIA || join(HOME, '.claude/projects/-home-duque-de-caxias-projetos/memory/MEMORY.md');
+    try {
+        const texto = readFileSync(arq, 'utf8').trim();
+        return texto ? `## Memória do dono (índice — os arquivos ficam em ${arq.replace(/\/MEMORY\.md$/, '')}; leia o que for relevante)\n${texto.slice(0, 12000)}` : null;
+    } catch { return null; }
+}
+
+/**
+ * O histórico de uma conversa de OUTRA IA, para quem a assume (ex.: o Claude
+ * no limite da semana e o Codex segue a conversa do gestor). Só texto — o que
+ * a pessoa escreveu e o que a IA respondeu —, sem o conteúdo das ferramentas.
+ * Lido do fim do arquivo (a sessão do gestor passa de 100 MB).
+ */
+function historicoDaSessao(imp) {
+    if (!imp || imp.agente !== 'claude') return null;
+    const base = join(HOME, '.claude/projects');
+    let arq = null;
+    try {
+        for (const d of readdirSync(base)) {
+            const c = join(base, d, `${imp.sessao}.jsonl`);
+            if (existsSync(c)) { arq = c; break; }
+        }
+    } catch {}
+    if (!arq) return null;
+    const tam = statSync(arq).size;
+    const ler = Math.min(tam, 6 * 1024 * 1024);
+    const fd = openSync(arq, 'r');
+    const buf = Buffer.alloc(ler);
+    readSync(fd, buf, 0, ler, tam - ler);
+    closeSync(fd);
+    const turnos = [];
+    for (const l of buf.toString('utf8').split('\n').slice(1)) {
+        let j; try { j = JSON.parse(l); } catch { continue; }
+        if (j.isSidechain || j.isMeta) continue;
+        const c = j.message?.content;
+        const texto = typeof c === 'string' ? c : Array.isArray(c) ? c.filter(x => x?.type === 'text').map(x => x.text).join('\n') : '';
+        if (!texto.trim() || (j.type !== 'user' && j.type !== 'assistant')) continue;
+        if (j.type === 'user' && Array.isArray(c) && c.some(x => x?.type === 'tool_result')) continue;
+        turnos.push(`${j.type === 'user' ? 'PESSOA' : 'CLAUDE'}: ${texto.trim().slice(0, 2500)}`);
+    }
+    let corpo = turnos.slice(-40).join('\n\n');
+    if (corpo.length > 45000) corpo = corpo.slice(-45000);
+    return `## Histórico da conversa que você está ASSUMINDO (sessão de Claude no VS Code, últimos turnos)\n`
+        + 'Era o Claude quem conduzia. Continue de onde ele parou. Antes de alterar, confira o estado real (git status/diff) contra o que a conversa diz.\n\n'
+        + corpo;
+}
+
 const NEGADOS_NO_SHELL = ['git push', 'git commit', 'git reset', 'git checkout', 'git switch', 'git rebase', 'git merge', 'rm -rf', 'sudo', 'docker', 'ssh'];
 
 function comando(job, cwd, branch, saida) {
     // A sessão interna do agente só é retomada na MESMA pasta: o Claude guarda
     // as sessões por diretório, e retomar noutra falha.
     const sessao = job.continuar?.sessao && job.continuar.cwd === cwd ? job.continuar.sessao : null;
-    const prompt = [instrucoes(job, branch), job.dadosOficiais, job.contexto, `Pedido:\n${job.instrucao}`, job.bloco].filter(Boolean).join('\n\n');
+    const prompt = [instrucoes(job, branch), memoria(), job.dadosOficiais, historicoDaSessao(job.importar), job.contexto,
+        `Pedido:\n${job.instrucao}`, job.bloco].filter(Boolean).join('\n\n');
     const escreve = job.modo === 'implementar';
+    // Acesso total (dono, 10/10/2026: "lá tem que ter acesso total igual
+    // aqui, senão fico travado"): sem caixa de areia e sem lista de comandos
+    // negados. O que segura commit/push/deploy é a instrução acima e a regra
+    // global de cada agente; e cada passo fica no log de eventos da Central.
+    const total = job.acesso === 'total';
 
     if (job.agente === 'claude') {
         const args = ['-p', prompt, '--output-format', 'json'];
@@ -304,7 +388,9 @@ function comando(job, cwd, branch, saida) {
         // Continuação de sessão do VS Code: uma cópia, para a original ficar
         // intacta lá.
         if (sessao && job.continuar?.fork) args.push('--fork-session');
-        if (escreve) {
+        if (total) {
+            args.push('--permission-mode', 'bypassPermissions', '--add-dir', cfg.projetos);
+        } else if (escreve) {
             args.push('--permission-mode', 'acceptEdits', '--allowedTools', 'Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash',
                 '--disallowedTools', ...NEGADOS_NO_SHELL.map(c => `Bash(${c}:*)`));
         } else {
@@ -315,7 +401,7 @@ function comando(job, cwd, branch, saida) {
     }
 
     if (job.agente === 'codex') {
-        const sandbox = `sandbox_mode="${escreve ? 'workspace-write' : 'read-only'}"`;
+        const sandbox = `sandbox_mode="${total ? 'danger-full-access' : (escreve ? 'workspace-write' : 'read-only')}"`;
         const comum = ['--json', '-o', saida, '--skip-git-repo-check', '-c', sandbox, '-c', 'approval_policy="never"'];
         return [agentes.codex, sessao ? ['exec', 'resume', sessao, ...comum, prompt] : ['exec', ...comum, prompt]];
     }
@@ -323,9 +409,13 @@ function comando(job, cwd, branch, saida) {
     // Copilot: no modo não interativo ele exige --allow-all-tools; o controle
     // fica no --deny-tool. A sessão leva um nome para ser retomada por ele.
     const nome = sessao || `central-ia-${job.id}`;
-    const args = ['-s', '--no-color', '--allow-all-tools', '--add-dir', cwd];
-    if (escreve) for (const c of NEGADOS_NO_SHELL) args.push('--deny-tool', `shell(${c})`);
-    else args.push('--deny-tool', 'write', '--deny-tool', 'shell');
+    const args = ['-s', '--no-color', '--add-dir', cwd];
+    if (total) args.push('--allow-all');
+    else {
+        args.push('--allow-all-tools');
+        if (escreve) for (const c of NEGADOS_NO_SHELL) args.push('--deny-tool', `shell(${c})`);
+        else args.push('--deny-tool', 'write', '--deny-tool', 'shell');
+    }
     args.push(...(sessao ? ['--resume', sessao] : ['-n', nome]), '-p', prompt);
     return [agentes.copilot, args, nome];
 }
@@ -390,7 +480,9 @@ async function executar(job) {
     try {
         if (!agentes[job.agente]) throw new Error(`${job.agente} não está instalado nesta máquina`);
         // Pedido da conversa Geral (sem projeto): roda numa pasta neutra, só leitura.
-        const dir = job.projeto === '' ? pastaGeral() : realpathSync(resolve(cfg.projetos, job.projeto));
+        // Pedido da conversa Geral: com acesso total, na raiz dos projetos
+        // (como este chat do VS Code); senão, numa pasta neutra.
+        const dir = job.projeto === '' ? (job.acesso === 'total' ? realpathSync(cfg.projetos) : pastaGeral()) : realpathSync(resolve(cfg.projetos, job.projeto));
         if (job.projeto !== '' && !dir.startsWith(realpathSync(cfg.projetos) + sep)) throw new Error('projeto fora da pasta de projetos');
         job.dadosOficiais = dadosOficiais(job.fontes || []);
 
@@ -400,7 +492,7 @@ async function executar(job) {
         let cwd = dir, branch = null, criada = null;
         if (job.tarefa?.worktree && existsSync(job.tarefa.worktree)) {
             cwd = job.tarefa.worktree; branch = job.tarefa.branch;
-        } else if (job.modo === 'implementar') {
+        } else if (job.modo === 'implementar' && !job.na_pasta) {
             criada = prepararWorktree(job.projeto, dir, job.tarefa || { id: `e${job.id}` });
             ({ cwd, branch } = criada);
         }

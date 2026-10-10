@@ -16,6 +16,18 @@ return [
         // e ~7 GB na WSL: cinco projetos À VISTA, dois rodando (dono, 10/10).
         // Uma mesma tarefa nunca roda duas vezes ao mesmo tempo.
         'paralelo' => (int) env('CENTRAL_IA_PARALELO', 2),
+        // Acesso dos agentes. `total` (dono, 10/10/2026: "permita tudo"): sem
+        // caixa de areia nem comandos negados — igual ao VS Code. `restrito`
+        // volta às regras de antes (só leitura ao analisar, worktree ao
+        // implementar, sem docker/ssh/push).
+        'acesso' => env('CENTRAL_IA_ACESSO', 'total'),
+        // Implementar direto na pasta do projeto (como no VS Code), e não numa
+        // worktree. Com isso, um projeto só tem uma implementação por vez.
+        'implementar_na_pasta' => (bool) env('CENTRAL_IA_IMPLEMENTAR_NA_PASTA', true),
+        // Franquia mensal de requisições premium do plano do Copilot (Pro: 300,
+        // Pro+: 1500). Sem ela, a tela mostra só o usado — não há como ler o
+        // plano da máquina.
+        'copilot_premium_mes' => env('CENTRAL_IA_COPILOT_PREMIUM_MES') !== null ? (int) env('CENTRAL_IA_COPILOT_PREMIUM_MES') : null,
     ],
 
     // Preferência por tipo de pedido no modo automático, na ordem: o primeiro

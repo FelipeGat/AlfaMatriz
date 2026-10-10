@@ -2,6 +2,12 @@
     <x-slot name="titulo">Central de IA</x-slot>
     <x-slot name="contexto">Cockpit de projetos</x-slot>
 
+    {{--
+        Sem rolagem de página (pedido do dono, 10/10/2026): o cockpit ocupa a
+        altura da janela — 100dvh menos a topbar (56px) e o respiro do <main>
+        (24 + 40) — e só as LISTAS rolam por dentro. O conteúdo é separado em
+        abas para caber.
+    --}}
     <section x-data="centralIa({
                 painel: '{{ route('central-ia.painel') }}',
                 historico: '{{ route('central-ia.mensagens') }}',
@@ -10,149 +16,250 @@
                 fixar: '{{ route('central-ia.fixar', '__P__') }}',
                 statusTarefa: '{{ url('central-ia/tarefas/__T__/status') }}',
                 continuar: '{{ route('central-ia.sessoes.continuar') }}',
+                grupos: '{{ route('central-ia.grupos.criar') }}',
+                grupo: '{{ url('central-ia/grupos/__G__') }}',
+                grupoDoProjeto: '{{ route('central-ia.projetos.grupo', '__P__') }}',
                 telegramCodigo: '{{ route('central-ia.telegram.codigo') }}',
                 telegramDesvincular: '{{ route('central-ia.telegram.desvincular') }}',
                 podeEnviar: {{ $podeEnviar ? 'true' : 'false' }},
              })"
-             data-central-ia class="mx-auto max-w-[1600px] space-y-3">
+             data-central-ia class="mx-auto flex h-[calc(100dvh-7.5rem)] max-w-[1600px] flex-col gap-3">
 
-        {{-- Faixa de estado: máquina, agentes, fila, Telegram --}}
-        <div class="flex flex-wrap items-center gap-2 text-xs">
+        {{-- ===== Faixa: abas + estado ===== --}}
+        <div class="flex flex-none flex-wrap items-center gap-2 text-xs">
+            <nav class="flex rounded-control border border-line bg-panel p-0.5" aria-label="Seções da Central">
+                @foreach (['projetos' => 'Projetos', 'atividade' => 'Atividade', 'consumo' => 'Consumo', 'ajustes' => 'Ajustes'] as $chave => $rotulo)
+                    <button type="button" @click="irPara('{{ $chave }}')" class="rounded-ctl px-3 py-1.5 font-semibold"
+                            :class="tela === '{{ $chave }}' ? 'bg-nav-active text-ink' : 'text-ink-mute hover:text-ink'">
+                        {{ $rotulo }}
+                        @if ($chave === 'atividade')
+                            <span x-show="emExecucao + naFila" class="ml-1 rounded-badge bg-brand px-1 text-on-brand" x-text="emExecucao + naFila"></span>
+                            <span x-show="eventos.some(e => e.nivel === 'erro' && Date.now() - new Date(e.em) < 3600000)" class="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-crit"></span>
+                        @endif
+                    </button>
+                @endforeach
+            </nav>
             <span class="inline-flex items-center gap-1.5 rounded-badge border px-2 py-1"
                   :class="maquina.online ? 'border-good-line bg-good-tint text-good' : 'border-crit bg-crit-tint text-crit'">
                 <span class="h-1.5 w-1.5 rounded-full" :class="maquina.online ? 'bg-good' : 'bg-crit'"></span>
-                <span x-text="maquina.online ? 'Máquina online' : 'Máquina fora do ar — pedidos ficam na fila'"></span>
+                <span x-text="maquina.online ? 'Máquina online' : 'Máquina fora do ar'"></span>
             </span>
             @foreach ($agentes as $chave => $nome)
-                <span class="rounded-badge border border-line px-2 py-1"
-                      :class="maquina.agentes.includes('{{ $chave }}') ? 'text-ink-dim' : 'text-ink-faint line-through'">{{ $nome }}</span>
+                <span class="rounded-badge border px-2 py-1"
+                      :class="consumo.limites?.esgotados?.['{{ $chave }}'] ? 'border-warn-line text-warn' : (maquina.agentes.includes('{{ $chave }}') ? 'border-line text-ink-dim' : 'border-line text-ink-faint line-through')"
+                      :title="consumo.limites?.esgotados?.['{{ $chave }}'] || ''">{{ $nome }}<span x-show="consumo.limites?.esgotados?.['{{ $chave }}']"> · no limite</span></span>
             @endforeach
             <span class="rounded-badge border border-line px-2 py-1 text-ink-mute"
                   x-text="emExecucao + ' de ' + paralelo + ' rodando' + (naFila ? ' · ' + naFila + ' na fila' : '')"></span>
-            <span class="rounded-badge border border-line px-2 py-1 text-ink-mute" x-text="telegram.vinculado ? 'Telegram vinculado' : 'Telegram não vinculado'"></span>
+            <span class="rounded-badge border border-line px-2 py-1 text-ink-mute"
+                  x-show="consumo.limites" x-text="(consumo.limites?.central.usados ?? 0) + ' de ' + (consumo.limites?.central.limite ?? 0) + ' pedidos hoje'"></span>
             <span role="status" aria-live="polite" class="ml-auto rounded-badge border border-line px-2 py-1 text-ink-mute" x-text="rotuloConexao"></span>
         </div>
 
-        <div x-show="aviso" x-cloak role="alert" class="rounded-panel border border-warn-line bg-warn-tint px-4 py-2 text-sm text-ink">
+        <div x-show="aviso" x-cloak role="alert" class="flex-none rounded-panel border border-warn-line bg-warn-tint px-4 py-2 text-sm text-ink">
             <span x-text="aviso"></span>
-            <button type="button" @click="reconectar()" x-show="!bloqueado" class="ml-2 font-semibold text-brand-text">Tentar de novo</button>
+            <button type="button" @click="aviso = ''" x-show="!bloqueado" class="ml-2 font-semibold text-brand-text">Fechar</button>
             <a href="{{ route('login') }}" x-show="bloqueado" class="ml-2 font-semibold text-brand-text">Entrar de novo</a>
         </div>
 
-        <div class="grid grid-cols-1 gap-3 lg:grid-cols-[250px_minmax(0,1fr)] 2xl:grid-cols-[250px_minmax(0,1fr)_300px]">
+        {{-- ================= PROJETOS ================= --}}
+        <div x-show="tela === 'projetos'" class="relative grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[260px_minmax(0,1fr)]">
 
-            {{-- ===== Projetos ===== --}}
-            <aside aria-label="Projetos" class="min-w-0">
-                <button type="button" @click="menuProjetosMovel = !menuProjetosMovel"
-                        class="flex w-full items-center justify-between rounded-control border border-line bg-panel px-3 py-2 text-sm text-ink lg:hidden">
-                    <span class="font-semibold" x-text="atual || 'Geral'"></span>
-                    <span class="text-xs text-ink-mute" x-text="projetos.filter(p => p.atencao).length ? projetos.filter(p => p.atencao).length + ' pedem atenção' : 'Trocar projeto'"></span>
-                </button>
-
-                <nav class="mt-2 space-y-1.5 lg:mt-0 lg:!block" :class="menuProjetosMovel ? 'block' : 'hidden'">
-                    <button type="button" @click="abrir('')"
-                            class="flex w-full items-center gap-2 rounded-panel border px-3 py-2 text-left text-sm"
-                            :class="atual === '' ? 'border-brand-mute bg-nav-active text-ink' : 'border-line bg-panel text-ink-dim hover:bg-chip'">
-                        <span class="flex h-7 w-7 flex-none items-center justify-center rounded-tile bg-chip text-brand-text"><span class="h-4 w-4"><x-nav-icon name="chat" /></span></span>
-                        <span class="min-w-0">
-                            <span class="block font-semibold">Geral</span>
-                            <span class="block text-xs text-ink-faint">Conversa fora de projeto</span>
-                        </span>
-                    </button>
-
-                    <template x-for="p in projetos" :key="p.nome">
-                        <button type="button" @click="abrir(p.nome)"
-                                class="relative w-full rounded-panel border px-3 py-2 text-left"
-                                :class="atual === p.nome ? 'border-brand-mute bg-nav-active' : 'border-line bg-panel hover:bg-chip'">
-                            <span x-show="p.atencao" class="absolute right-2 top-2 h-2 w-2 rounded-full"
-                                  :class="p.estado === 'falhou' ? 'bg-crit' : 'bg-pergunta'" :title="estado(p.estado)"></span>
-                            <span class="flex items-center gap-2">
-                                <span class="flex h-7 w-7 flex-none items-center justify-center rounded-tile bg-chip font-mono text-[11px] font-semibold text-ink-dim" x-text="iniciais(p.nome)"></span>
-                                <span class="min-w-0 flex-1">
-                                    <span class="block overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-ink" x-text="p.nome"></span>
-                                    <span class="block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-ink-faint"
-                                          x-text="(p.agente || 'sem agente') + ' · ' + haQuanto(p.ultima_atividade)"></span>
-                                </span>
-                            </span>
-                            <span class="mt-1.5 flex flex-wrap items-center gap-1 text-[11px]">
-                                <span class="rounded-badge border px-1.5 py-0.5" :class="corDoEstado(p.estado)" x-text="estado(p.estado)"></span>
-                                <span x-show="p.tarefas_em_curso" class="rounded-badge border border-line px-1.5 py-0.5 text-ink-mute"
-                                      x-text="p.tarefas_em_curso + (p.tarefas_em_curso > 1 ? ' tarefas' : ' tarefa')"></span>
-                                <span x-show="p.git?.pendentes" class="rounded-badge border border-warn-line px-1.5 py-0.5 text-warn"
-                                      title="Alterações não commitadas na pasta do projeto" x-text="p.git?.pendentes + ' pendentes'"></span>
-                                <span x-show="p.git?.sessoes?.length" class="rounded-badge border border-exame-line px-1.5 py-0.5 text-exame"
-                                      title="Sessão de agente aberta nesta pasta">sessão aberta</span>
-                            </span>
-                        </button>
-                    </template>
-
-                    <div class="rounded-panel border border-dashed border-line p-2" x-show="projetosParaFixar.length">
-                        <label for="central-fixar" class="sr-only">Fixar projeto</label>
-                        <div class="flex gap-1.5">
-                            <select id="central-fixar" x-model="fixarEscolha" class="min-w-0 flex-1 rounded-control border-line bg-input py-1 text-xs text-ink focus:border-brand focus:ring-brand">
-                                <option value="">Fixar projeto…</option>
-                                <template x-for="p in projetosParaFixar" :key="p"><option :value="p" x-text="p"></option></template>
-                            </select>
-                            <button type="button" @click="fixar(fixarEscolha)" :disabled="!fixarEscolha"
-                                    class="rounded-control border border-btn-line px-2 text-xs font-semibold text-ink disabled:opacity-50">Fixar</button>
-                        </div>
-                    </div>
-                </nav>
-            </aside>
-
-            {{-- ===== Projeto aberto ===== --}}
-            <main class="min-w-0 space-y-3">
-                <div class="rounded-panel border border-line bg-panel px-4 py-3" x-show="atual" x-cloak>
-                    <div class="flex flex-wrap items-start justify-between gap-2">
-                        <div class="min-w-0">
-                            <h2 class="font-display text-lg font-semibold text-ink" x-text="atual"></h2>
-                            <p class="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-mute">
-                                <span x-show="projetoAtual?.git?.branch" x-text="'branch ' + projetoAtual?.git?.branch"></span>
-                                <span x-show="projetoAtual?.git?.git" x-text="(projetoAtual?.git?.pendentes || 0) + ' alterações pendentes na pasta'"></span>
-                                <span x-show="projetoAtual?.git?.ultimo_commit" :title="projetoAtual?.git?.ultimo_commit_msg" x-text="'último commit ' + haQuanto(projetoAtual?.git?.ultimo_commit)"></span>
-                                <span x-show="projetoAtual?.git?.fase" x-text="'fase: ' + projetoAtual?.git?.fase"></span>
-                                <span x-show="projetoAtual?.git?.atividade" x-text="'ritmo: ' + projetoAtual?.git?.atividade"></span>
-                            </p>
-                        </div>
-                        <button type="button" @click="fixar(atual)" class="text-xs font-semibold text-brand-text"
-                                x-text="projetoAtual?.fixado ? 'Desafixar' : 'Fixar no cockpit'"></button>
-                    </div>
-                    <div x-show="sessoesDoProjeto.length" class="mt-2 space-y-1">
-                        <p class="font-mono text-[11px] uppercase tracking-caps text-ink-faint">Conversas deste projeto no VS Code</p>
-                        <template x-for="s in sessoesDoProjeto.slice(0, 4)" :key="s.agente + s.id">
-                            <div class="flex flex-wrap items-center justify-between gap-2 rounded-control border border-line px-3 py-1.5 text-xs">
-                                <span class="text-ink-dim" x-text="s.nome + ' · ' + s.mensagens + ' mensagens suas · ' + haQuanto(s.ultima_atividade)"></span>
-                                @if ($podeAcionar)
-                                    <button type="button" @click="continuarSessao(s)" :disabled="s.ativa_agora"
-                                            class="font-semibold text-brand-text disabled:text-ink-faint"
-                                            :title="s.ativa_agora ? 'Em uso no VS Code agora — pare por lá antes' : 'Continua de onde parou, numa cópia da conversa'"
-                                            x-text="s.ativa_agora ? 'em uso no VS Code' : 'Continuar daqui'"></button>
-                                @endif
-                            </div>
-                        </template>
-                    </div>
-                    <p x-show="projetoAtual?.git?.sessoes?.length" class="mt-2 rounded-control border border-exame-line bg-exame-tint px-3 py-1.5 text-xs text-ink">
-                        <span x-text="'Há sessão aberta de ' + (projetoAtual?.git?.sessoes || []).join(', ') + ' nesta pasta.'"></span>
-                        Pedidos de implementar trabalham numa worktree separada e não mexem nela.
-                    </p>
+            {{-- Barra de projetos: busca + grupos (no celular, gaveta sobre o conteúdo) --}}
+            <aside aria-label="Projetos"
+                   class="min-h-0 flex-col gap-2 overflow-hidden rounded-panel border border-line bg-panel p-2 lg:flex"
+                   :class="menuProjetosMovel ? 'absolute inset-0 z-10 flex' : 'hidden'">
+                <div class="flex flex-none gap-1.5">
+                    <label class="sr-only" for="central-busca">Buscar projeto</label>
+                    <input id="central-busca" type="search" x-model="busca" placeholder="Buscar projeto…" autocomplete="off"
+                           class="min-w-0 flex-1 rounded-control border-line bg-input py-1.5 text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand">
+                    <button type="button" @click="menuProjetosMovel = false" class="rounded-control border border-line px-2 text-xs text-ink-mute lg:hidden">Fechar</button>
                 </div>
 
-                {{-- Tarefas do projeto --}}
-                <div class="rounded-panel border border-line bg-panel" x-show="atual" x-cloak>
-                    <div class="flex items-center justify-between border-b border-line px-4 py-2">
-                        <h3 class="text-sm font-semibold text-ink">Tarefas</h3>
-                        <button type="button" x-show="verTarefa" @click="selecionarTarefa(null)" class="text-xs font-semibold text-brand-text">Ver o projeto todo</button>
+                <div class="min-h-0 flex-1 space-y-2 overflow-y-auto pr-0.5">
+                    <button type="button" @click="abrir('')" x-show="!busca"
+                            class="flex w-full items-center gap-2 rounded-control border px-2.5 py-1.5 text-left text-sm"
+                            :class="atual === '' ? 'border-brand-mute bg-nav-active text-ink' : 'border-line text-ink-dim hover:bg-chip'">
+                        <span class="h-4 w-4 flex-none text-brand-text"><x-nav-icon name="chat" /></span>
+                        <span class="font-semibold">Geral</span>
+                        <span class="ml-auto text-[11px] text-ink-faint">fora de projeto</span>
+                    </button>
+
+                    <template x-for="sec in secoes" :key="sec.id">
+                        <div>
+                            <button type="button" @click="recolher(sec.id)" class="flex w-full min-w-0 items-center gap-1 px-1 py-1 text-left font-mono text-[11px] uppercase tracking-caps text-ink-faint hover:text-ink">
+                                <span x-text="recolhidos.includes(sec.id) && !busca ? '▸' : '▾'"></span>
+                                <span class="overflow-hidden text-ellipsis whitespace-nowrap" x-text="sec.nome"></span>
+                                <span x-text="'(' + sec.projetos.length + ')'"></span>
+                                <span x-show="sec.projetos.some(p => p.atencao)" class="h-1.5 w-1.5 rounded-full bg-pergunta"></span>
+                            </button>
+                            <div class="space-y-1" x-show="!recolhidos.includes(sec.id) || busca">
+                                <p x-show="!sec.projetos.length" class="px-2 py-1 text-xs text-ink-faint">Vazio — escolha o grupo no cabeçalho de um projeto.</p>
+                                <template x-for="p in sec.projetos" :key="p.nome">
+                                    <button type="button" @click="abrir(p.nome)"
+                                            class="relative w-full rounded-control border px-2.5 py-1.5 text-left"
+                                            :class="atual === p.nome ? 'border-brand-mute bg-nav-active' : 'border-line hover:bg-chip'">
+                                        <span x-show="p.atencao" class="absolute right-2 top-2 h-2 w-2 rounded-full" :class="p.estado === 'falhou' ? 'bg-crit' : 'bg-pergunta'"></span>
+                                        <span class="block overflow-hidden text-ellipsis whitespace-nowrap pr-3 text-sm font-semibold text-ink" x-text="p.nome"></span>
+                                        <span class="mt-0.5 flex flex-wrap items-center gap-1 text-[11px]">
+                                            <span class="rounded-badge border px-1 py-px" :class="corDoEstado(p.estado)" x-text="estado(p.estado)"></span>
+                                            <span class="text-ink-faint" x-text="(p.agente ? p.agente + ' · ' : '') + haQuanto(p.ultima_atividade)"></span>
+                                            <span x-show="p.git?.pendentes" class="text-warn" x-text="p.git?.pendentes + ' pend.'"></span>
+                                        </span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div x-show="achadosNaMaquina.length" class="space-y-1">
+                        <p class="px-1 font-mono text-[11px] uppercase tracking-caps text-ink-faint">Na máquina, fora do cockpit</p>
+                        <template x-for="p in achadosNaMaquina" :key="p">
+                            <button type="button" @click="abrir(p)" class="w-full rounded-control border border-dashed border-line px-2.5 py-1.5 text-left text-sm text-ink-dim hover:bg-chip" x-text="p"></button>
+                        </template>
                     </div>
-                    <p x-show="!tarefas.length" class="px-4 py-3 text-sm text-ink-faint">Nenhuma tarefa ainda. Escreva um pedido abaixo — ele abre a primeira.</p>
-                    <ul class="flex gap-2 overflow-x-auto px-3 py-2" x-show="tarefas.length">
+                    <p x-show="busca && !secoes.length && !achadosNaMaquina.length" class="px-2 py-2 text-xs text-ink-faint">Nenhum projeto com esse nome.</p>
+                </div>
+            </aside>
+
+            {{-- Projeto aberto --}}
+            <main class="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-panel border border-line bg-panel">
+                <div class="flex flex-none flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2">
+                    <button type="button" @click="menuProjetosMovel = true" class="rounded-control border border-line px-2 py-1 text-xs text-ink-mute lg:hidden">Projetos</button>
+                    <h2 class="font-display text-base font-semibold text-ink" x-text="atual || 'Geral'"></h2>
+                    <template x-if="atual">
+                        <p class="flex min-w-0 flex-1 flex-wrap gap-x-3 text-xs text-ink-mute">
+                            <span x-show="projetoAtual?.git?.branch" x-text="projetoAtual?.git?.branch"></span>
+                            <span x-show="projetoAtual?.git?.git" :class="projetoAtual?.git?.pendentes ? 'text-warn' : ''" x-text="(projetoAtual?.git?.pendentes || 0) + ' pendentes'"></span>
+                            <span x-show="projetoAtual?.git?.ultimo_commit" :title="projetoAtual?.git?.ultimo_commit_msg" x-text="'commit ' + haQuanto(projetoAtual?.git?.ultimo_commit)"></span>
+                            <span x-show="projetoAtual?.git?.fase" x-text="projetoAtual?.git?.fase"></span>
+                            <span x-show="projetoAtual?.git?.sessoes?.length" class="text-exame" x-text="'sessão aberta: ' + (projetoAtual?.git?.sessoes || []).join(', ')"></span>
+                        </p>
+                    </template>
+                    <template x-if="atual">
+                        <div class="ml-auto flex items-center gap-2 text-xs">
+                            <label class="sr-only" for="central-grupo">Grupo do projeto</label>
+                            <select id="central-grupo" @change="moverParaGrupo(atual, $event.target.value || null)"
+                                    class="rounded-control border-line bg-input py-1 text-xs text-ink focus:border-brand focus:ring-brand">
+                                <option value="" :selected="!projetoAtual?.grupo_id">Sem grupo</option>
+                                <template x-for="g in grupos" :key="g.id"><option :value="g.id" x-text="g.nome" :selected="projetoAtual?.grupo_id === g.id"></option></template>
+                                <option value="novo">+ Novo grupo…</option>
+                            </select>
+                            <button type="button" @click="fixar(atual)" class="font-semibold text-brand-text" x-text="projetoAtual?.fixado ? 'Desafixar' : 'Fixar'"></button>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="flex flex-none gap-1 border-b border-line px-3 text-xs" x-show="atual">
+                    <template x-for="[chave, rotulo] in [['conversa', 'Conversa'], ['tarefas', 'Tarefas'], ['contexto', 'Contexto'], ['vscode', 'VS Code']]" :key="chave">
+                        <button type="button" @click="sub = chave" class="-mb-px border-b-2 px-2.5 py-2 font-semibold"
+                                :class="sub === chave ? 'border-brand text-ink' : 'border-transparent text-ink-mute hover:text-ink'">
+                            <span x-text="rotulo"></span>
+                            <span x-show="chave === 'tarefas' && tarefasEmCurso.length" class="ml-0.5 text-ink-faint" x-text="'(' + tarefasEmCurso.length + ')'"></span>
+                            <span x-show="chave === 'vscode' && sessoesDoProjeto.length" class="ml-0.5 text-ink-faint" x-text="'(' + sessoesDoProjeto.length + ')'"></span>
+                            <span x-show="chave === 'contexto' && tarefaVista?.duvida" class="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-pergunta"></span>
+                        </button>
+                    </template>
+                </div>
+
+                {{-- Conversa --}}
+                <div class="flex min-h-0 flex-1 flex-col" x-show="!atual || sub === 'conversa'">
+                    <div class="flex flex-none items-center justify-between px-4 pt-2 text-xs text-ink-faint" x-show="verTarefa">
+                        <span x-text="'Só a tarefa #' + verTarefa"></span>
+                        <button type="button" @click="selecionarTarefa(null)" class="font-semibold text-brand-text">Ver o projeto todo</button>
+                    </div>
+                    <div x-ref="feed" class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3" role="log" aria-label="Histórico da conversa" aria-live="polite" aria-relevant="additions">
+                        <div class="mb-3 text-center" x-show="aba.haAnteriores && !verTarefa">
+                            <button type="button" @click="anteriores()" :disabled="ocupado || bloqueado" class="text-xs font-semibold text-brand-text disabled:opacity-50">Carregar mensagens anteriores</button>
+                        </div>
+                        <p x-show="!aba.carregado" class="py-6 text-center text-sm text-ink-faint">Carregando…</p>
+                        <div x-show="aba.carregado && !mensagensVisiveis.length && !bloqueado" class="flex h-full flex-col items-center justify-center gap-2 text-center">
+                            <h3 class="font-display text-base font-semibold text-ink" x-text="atual ? 'Nada ainda em ' + atual : 'Conversa geral'"></h3>
+                            <p class="max-w-sm text-sm text-ink-mute" x-text="atual ? 'Escreva o pedido abaixo. Em automático, a Central escolhe o agente e mostra o porquê.' : 'Perguntas e pedidos de resumo, relatório ou agenda vão a um agente; o resto fica anotado.'"></p>
+                        </div>
+                        <div class="space-y-3">
+                            <template x-for="m in mensagensVisiveis" :key="m.id">
+                                <article class="min-w-0 rounded-control border px-4 py-2.5"
+                                         :class="m.autor_tipo === 'usuario' ? 'border-line bg-input' : (m.autor_tipo === 'sistema' ? 'border-warn-line bg-warn-tint' : 'border-line bg-canvas')" data-mensagem>
+                                    <div class="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                                        <span class="font-semibold text-ink" x-text="autor(m)"></span>
+                                        <span class="text-ink-faint" x-show="m.origem !== 'agente'" x-text="canal(m.origem)"></span>
+                                        <button type="button" class="text-ink-faint hover:text-brand-text" x-show="m.tarefa_id && !verTarefa" @click="selecionarTarefa(m.tarefa_id)" x-text="'tarefa #' + m.tarefa_id"></button>
+                                        <time class="text-ink-faint" :datetime="m.criada_em" x-text="data(m.criada_em)"></time>
+                                    </div>
+                                    <p class="mb-1 text-xs" x-show="m.pedido">
+                                        <span class="font-semibold" :class="corDaExecucao(m.pedido?.status)"
+                                              x-text="m.pedido && ('Para ' + m.pedido.agente + ' · ' + m.pedido.modo + ' — ' + execucao(m.pedido.status))"></span>
+                                        <span class="text-ink-faint" x-show="m.pedido?.handoff_de" x-text="' · assumiu de ' + m.pedido?.handoff_de"></span>
+                                        <span class="text-ink-faint" x-text="m.pedido?.motivo ? ' · ' + m.pedido.motivo : ''"></span>
+                                    </p>
+                                    <p class="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink" x-text="m.conteudo"></p>
+                                    <p class="mt-1 text-xs text-ink-faint" x-show="m.entrega" x-text="entrega(m.entrega)"></p>
+                                </article>
+                            </template>
+                            <article x-show="aba.pendente" x-cloak class="rounded-control border border-line bg-input px-4 py-2.5" data-pendente>
+                                <p class="mb-1 text-xs font-semibold text-ink-mute">Você · aguardando confirmação</p>
+                                <p class="whitespace-pre-wrap break-words text-sm text-ink" x-text="aba.pendente?.conteudo"></p>
+                            </article>
+                        </div>
+                    </div>
+
+                    {{-- Compositor, sempre visível --}}
+                    <form @submit.prevent="enviar()" class="flex-none space-y-2 border-t border-line p-3" aria-label="Enviar mensagem">
+                        @if ($podeAcionar)
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
+                                <label class="sr-only" for="central-tarefa">Tarefa</label>
+                                <select id="central-tarefa" x-model="aba.tarefa" x-show="atual" :disabled="!!aba.pendente"
+                                        class="max-w-[16rem] rounded-control border-line bg-input py-1 text-xs text-ink focus:border-brand focus:ring-brand">
+                                    <option value="nova">Nova tarefa</option>
+                                    <template x-for="t in tarefasEmCurso" :key="t.id"><option :value="t.id" x-text="'#' + t.id + ' ' + t.titulo"></option></template>
+                                </select>
+                                <label class="sr-only" for="central-agente">Agente</label>
+                                <select id="central-agente" x-model="aba.agente" :disabled="!!aba.pendente"
+                                        class="rounded-control border-line bg-input py-1 text-xs text-ink focus:border-brand focus:ring-brand">
+                                    <option value="auto">IA automática</option>
+                                    @foreach ($agentes as $chave => $nome)
+                                        <option value="{{ $chave }}" :disabled="!maquina.agentes.includes('{{ $chave }}')">{{ $nome }}</option>
+                                    @endforeach
+                                    <option value="nota">Só anotar (sem agente)</option>
+                                </select>
+                                <label class="sr-only" for="central-modo">Modo</label>
+                                <select id="central-modo" x-model="aba.modo" x-show="atual" :disabled="!!aba.pendente || aba.agente === 'nota'"
+                                        class="rounded-control border-line bg-input py-1 text-xs text-ink focus:border-brand focus:ring-brand">
+                                    <option value="auto">Modo automático</option>
+                                    @foreach ($modos as $chave => $nome)
+                                        <option value="{{ $chave }}">{{ $nome }}</option>
+                                    @endforeach
+                                </select>
+                                <span class="text-warn" x-show="aba.agente !== 'auto' && aba.agente !== 'nota' && consumo.limites?.esgotados?.[aba.agente]"
+                                      x-text="'⚠ ' + (consumo.limites?.esgotados?.[aba.agente] || '')"></span>
+                            </div>
+                        @endif
+                        <div class="flex items-end gap-2">
+                            <label for="central-rascunho" class="sr-only">Sua mensagem</label>
+                            <textarea id="central-rascunho" x-model="aba.rascunho" maxlength="{{ config('central_ia.max_texto') }}" rows="2"
+                                      :readonly="!!aba.pendente" :disabled="bloqueado || !podeEnviar"
+                                      @keydown.enter="if (!$event.shiftKey && !$event.isComposing && !window.matchMedia('(pointer: coarse)').matches) { $event.preventDefault(); enviar(); }"
+                                      :placeholder="atual ? 'Peça algo para ' + atual + '… (Enter envia, Shift+Enter quebra linha)' : 'Pergunte ou anote… (Enter envia)'"
+                                      class="min-w-0 flex-1 resize-none rounded-control border-line bg-input text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand disabled:opacity-50"></textarea>
+                            <button type="submit" :disabled="aba.enviando || bloqueado || !podeEnviar || (!aba.pendente && !aba.rascunho.trim())"
+                                    class="flex-none rounded-control bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition hover:bg-brand-bright disabled:opacity-50"
+                                    x-text="aba.enviando ? 'Enviando…' : (aba.pendente ? 'Reenviar' : 'Enviar')"></button>
+                        </div>
+                    </form>
+                </div>
+
+                {{-- Tarefas --}}
+                <div class="min-h-0 flex-1 overflow-y-auto p-3" x-show="atual && sub === 'tarefas'" x-cloak>
+                    <p x-show="!tarefas.length" class="px-1 py-2 text-sm text-ink-faint">Nenhuma tarefa ainda. Um pedido na Conversa abre a primeira.</p>
+                    <ul class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                         <template x-for="t in tarefas" :key="t.id">
-                            <li class="w-64 flex-none">
-                                <button type="button" @click="selecionarTarefa(t.id)"
-                                        class="h-full w-full rounded-control border px-3 py-2 text-left"
-                                        :class="verTarefa === t.id ? 'border-brand-mute bg-nav-active' : 'border-line hover:bg-chip'">
+                            <li>
+                                <button type="button" @click="selecionarTarefa(t.id, true)" class="h-full w-full rounded-control border border-line px-3 py-2 text-left hover:bg-chip">
                                     <span class="flex items-center gap-1.5 text-[11px]">
                                         <span class="rounded-badge border px-1.5 py-0.5" :class="corDoEstado(t.status)" x-text="estado(t.status)"></span>
                                         <span class="text-ink-faint" x-text="'#' + t.id"></span>
+                                        <span x-show="t.duvida" class="text-pergunta">● dúvida</span>
                                     </span>
                                     <span class="mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-sm text-ink" x-text="t.titulo"></span>
                                     <span class="mt-0.5 block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-ink-faint"
@@ -161,36 +268,35 @@
                             </li>
                         </template>
                     </ul>
+                </div>
 
-                    {{-- Dossiê da tarefa selecionada --}}
+                {{-- Contexto (dossiê) --}}
+                <div class="min-h-0 flex-1 overflow-y-auto p-4 text-sm" x-show="atual && sub === 'contexto'" x-cloak>
+                    <p x-show="!tarefaVista" class="text-ink-faint">Escolha uma tarefa (aba Tarefas, ou o "tarefa #" de uma mensagem) para ver o contexto dela.</p>
                     <template x-if="tarefaVista">
-                        <div class="border-t border-line px-4 py-3 text-sm">
+                        <div class="space-y-3">
                             <div class="flex flex-wrap items-start justify-between gap-2">
                                 <div class="min-w-0">
-                                    <p class="font-semibold text-ink" x-text="tarefaVista.titulo"></p>
-                                    <p class="mt-0.5 text-xs text-ink-mute"
-                                       x-text="'Agente atual: ' + (tarefaVista.agente || '—') + (tarefaVista.agentes.length > 1 ? ' · já passaram: ' + tarefaVista.agentes.join(', ') : '')"></p>
-                                    <p class="mt-0.5 text-xs text-ink-faint" x-show="tarefaVista.ultima_execucao?.motivo" x-text="tarefaVista.ultima_execucao?.motivo"></p>
+                                    <p class="font-semibold text-ink" x-text="'#' + tarefaVista.id + ' ' + tarefaVista.titulo"></p>
+                                    <p class="text-xs text-ink-mute" x-text="'Agente atual: ' + (tarefaVista.agente || '—') + (tarefaVista.agentes.length > 1 ? ' · já passaram: ' + tarefaVista.agentes.join(', ') : '')"></p>
+                                    <p class="text-xs text-ink-faint" x-show="tarefaVista.ultima_execucao?.motivo" x-text="tarefaVista.ultima_execucao?.motivo"></p>
                                 </div>
                                 <div class="flex gap-3 text-xs">
-                                    <button type="button" @click="detalheAberto = !detalheAberto" class="font-semibold text-brand-text" x-text="detalheAberto ? 'Recolher' : 'Ver contexto'"></button>
                                     <button type="button" x-show="tarefaVista.status !== 'concluida'" @click="mudarTarefa(tarefaVista.id, 'concluida')" class="font-semibold text-good">Concluir</button>
                                     <button type="button" x-show="!['pausada','concluida'].includes(tarefaVista.status)" @click="mudarTarefa(tarefaVista.id, 'pausada')" class="font-semibold text-ink-mute">Pausar</button>
                                     <button type="button" x-show="['pausada','concluida','falhou'].includes(tarefaVista.status)" @click="mudarTarefa(tarefaVista.id, 'aberta')" class="font-semibold text-ink-mute">Reabrir</button>
                                 </div>
                             </div>
-
-                            <p x-show="tarefaVista.duvida" class="mt-2 rounded-control border border-pergunta-line bg-pergunta-tint px-3 py-2 text-ink">
+                            <p x-show="tarefaVista.duvida" class="rounded-control border border-pergunta-line bg-pergunta-tint px-3 py-2 text-ink">
                                 <span class="font-semibold text-pergunta">O agente precisa de você: </span><span x-text="tarefaVista.duvida"></span>
                             </p>
-
-                            <div x-show="detalheAberto" class="mt-3 grid gap-3 text-xs md:grid-cols-2">
+                            <div class="grid gap-3 text-xs md:grid-cols-2">
                                 <div class="space-y-1">
                                     <p class="font-mono uppercase tracking-caps text-ink-faint">Git</p>
-                                    <p class="text-ink-dim" x-text="tarefaVista.branch ? 'Branch ' + tarefaVista.branch : 'Sem worktree (só análises até agora)'"></p>
+                                    <p class="text-ink-dim" x-text="tarefaVista.branch ? 'Branch ' + tarefaVista.branch : (tarefaVista.worktree ? 'Na pasta da sessão do VS Code' : 'Na pasta do projeto')"></p>
                                     <p class="break-all text-ink-faint" x-show="tarefaVista.worktree" x-text="tarefaVista.worktree"></p>
-                                    <p class="text-ink-faint" x-show="tarefaVista.commit_base" x-text="'Base ' + (tarefaVista.commit_base || '').slice(0, 10) + (tarefaVista.git?.head ? ' · HEAD ' + tarefaVista.git.head : '')"></p>
-                                    <p class="text-ink-dim" x-show="tarefaVista.git?.arquivos?.length" x-text="(tarefaVista.git?.arquivos || []).length + ' arquivo(s) alterado(s): ' + (tarefaVista.git?.arquivos || []).slice(0, 8).join(', ')"></p>
+                                    <p class="text-ink-faint" x-show="tarefaVista.commit_base || tarefaVista.git?.head" x-text="(tarefaVista.commit_base ? 'Base ' + tarefaVista.commit_base.slice(0, 10) + ' · ' : '') + (tarefaVista.git?.head ? 'HEAD ' + tarefaVista.git.head : '')"></p>
+                                    <p class="text-ink-dim" x-show="tarefaVista.git?.arquivos?.length" x-text="(tarefaVista.git?.arquivos || []).length + ' arquivo(s) alterado(s): ' + (tarefaVista.git?.arquivos || []).slice(0, 10).join(', ')"></p>
                                 </div>
                                 <div class="space-y-1">
                                     <p class="font-mono uppercase tracking-caps text-ink-faint">Testes</p>
@@ -225,199 +331,267 @@
                     </template>
                 </div>
 
-                {{-- Conversa --}}
-                <div class="overflow-hidden rounded-panel border border-line bg-panel">
-                    <div class="flex items-center gap-2 border-b border-line px-4 py-2 text-sm font-semibold text-ink">
-                        <span class="h-4 w-4 text-brand-text"><x-nav-icon name="chat" /></span>
-                        <span x-text="verTarefa ? 'Conversa da tarefa #' + verTarefa : (atual ? 'Conversa de ' + atual : 'Conversa geral')"></span>
-                    </div>
-
-                    <div x-ref="feed" class="h-[55vh] min-h-[320px] overflow-y-auto overscroll-contain p-4" role="log" aria-label="Histórico da conversa" aria-live="polite" aria-relevant="additions">
-                        <div class="mb-4 text-center" x-show="aba.haAnteriores && !verTarefa">
-                            <button type="button" @click="anteriores()" :disabled="ocupado || bloqueado" class="text-xs font-semibold text-brand-text disabled:opacity-50">Carregar mensagens anteriores</button>
+                {{-- Conversas do VS Code --}}
+                <div class="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 text-sm" x-show="atual && sub === 'vscode'" x-cloak>
+                    <p x-show="!sessoesDoProjeto.length" class="px-1 text-ink-faint">Nenhuma conversa recente deste projeto no VS Code.</p>
+                    <template x-for="s in sessoesDoProjeto" :key="s.agente + s.id">
+                        <div class="flex flex-wrap items-center justify-between gap-2 rounded-control border border-line px-3 py-2">
+                            <span class="text-ink-dim" x-text="s.nome + ' · ' + s.mensagens + ' mensagens suas · ' + haQuanto(s.ultima_atividade)"></span>
+                            @if ($podeAcionar)
+                                <button type="button" @click="continuarSessao(s)" :disabled="s.ativa_agora"
+                                        class="text-xs font-semibold text-brand-text disabled:text-ink-faint"
+                                        :title="s.ativa_agora ? 'Em uso no VS Code agora — pare por lá antes' : 'Continua de onde parou'"
+                                        x-text="s.ativa_agora ? 'em uso no VS Code' : (consumo.limites?.esgotados?.[s.agente] ? 'Continuar (GPT assume — ' + s.nome + ' no limite)' : 'Continuar daqui')"></button>
+                            @endif
                         </div>
-                        <p x-show="!aba.carregado" class="py-6 text-center text-sm text-ink-faint">Carregando…</p>
-                        <div x-show="aba.carregado && !mensagensVisiveis.length && !bloqueado" class="flex h-full flex-col items-center justify-center gap-2 text-center">
-                            <h3 class="font-display text-base font-semibold text-ink" x-text="atual ? 'Nada ainda em ' + atual : 'Sua conversa geral'"></h3>
-                            <p class="max-w-sm text-sm text-ink-mute" x-text="atual ? 'Escreva o pedido abaixo. Em automático, a Central escolhe o agente e mostra o porquê.' : 'Ideias e decisões fora de projeto. Para trabalhar num projeto, escolha-o à esquerda.'"></p>
-                        </div>
-                        <div class="space-y-3">
-                            <template x-for="m in mensagensVisiveis" :key="m.id">
-                                <article class="min-w-0 rounded-control border px-4 py-3"
-                                         :class="m.autor_tipo === 'usuario' ? 'border-line bg-input' : (m.autor_tipo === 'sistema' ? 'border-warn-line bg-warn-tint' : 'border-line bg-canvas')" data-mensagem>
-                                    <div class="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                                        <span class="font-semibold text-ink" x-text="autor(m)"></span>
-                                        <span class="text-ink-faint" x-show="m.origem !== 'agente'" x-text="canal(m.origem)"></span>
-                                        <button type="button" class="text-ink-faint hover:text-brand-text" x-show="m.tarefa_id && !verTarefa" @click="selecionarTarefa(m.tarefa_id)" x-text="'tarefa #' + m.tarefa_id"></button>
-                                        <time class="text-ink-faint" :datetime="m.criada_em" x-text="data(m.criada_em)"></time>
-                                    </div>
-                                    <p class="mb-1.5 text-xs" x-show="m.pedido">
-                                        <span class="font-semibold" :class="corDaExecucao(m.pedido?.status)"
-                                              x-text="m.pedido && ('Para ' + m.pedido.agente + ' · ' + m.pedido.modo + ' — ' + execucao(m.pedido.status))"></span>
-                                        <span class="text-ink-faint" x-show="m.pedido?.handoff_de" x-text="' · assumiu de ' + m.pedido?.handoff_de"></span>
-                                        <span class="block text-ink-faint" x-text="m.pedido?.motivo"></span>
-                                    </p>
-                                    <p class="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink" x-text="m.conteudo"></p>
-                                    <p class="mt-1.5 text-xs text-ink-faint" x-show="m.entrega" x-text="entrega(m.entrega)"></p>
-                                </article>
-                            </template>
-                            <article x-show="aba.pendente" x-cloak class="rounded-control border border-line bg-input px-4 py-3" data-pendente>
-                                <p class="mb-1 text-xs font-semibold text-ink-mute">Você · aguardando confirmação</p>
-                                <p class="whitespace-pre-wrap break-words text-sm text-ink" x-text="aba.pendente?.conteudo"></p>
-                            </article>
-                        </div>
-                    </div>
-
-                    {{-- Compositor --}}
-                    <form @submit.prevent="enviar()" class="space-y-2 border-t border-line bg-panel p-3" aria-label="Enviar mensagem">
-                        @if ($podeAcionar)
-                            <div class="flex flex-wrap items-center gap-2 text-xs">
-                                <label class="sr-only" for="central-tarefa">Tarefa</label>
-                                <select id="central-tarefa" x-model="aba.tarefa" x-show="atual" :disabled="!!aba.pendente"
-                                        class="max-w-[16rem] rounded-control border-line bg-input py-1.5 text-xs text-ink focus:border-brand focus:ring-brand">
-                                    <option value="nova">Nova tarefa</option>
-                                    <template x-for="t in tarefasEmCurso" :key="t.id"><option :value="t.id" x-text="'#' + t.id + ' ' + t.titulo"></option></template>
-                                </select>
-                                <label class="sr-only" for="central-agente">Agente</label>
-                                <select id="central-agente" x-model="aba.agente" :disabled="!!aba.pendente"
-                                        class="rounded-control border-line bg-input py-1.5 text-xs text-ink focus:border-brand focus:ring-brand">
-                                    <option value="auto">IA automática</option>
-                                    @foreach ($agentes as $chave => $nome)
-                                        <option value="{{ $chave }}" :disabled="!maquina.agentes.includes('{{ $chave }}')">{{ $nome }}</option>
-                                    @endforeach
-                                    <option value="nota">Só anotar (sem agente)</option>
-                                </select>
-                                <label class="sr-only" for="central-modo">Modo</label>
-                                <select id="central-modo" x-model="aba.modo" x-show="atual" :disabled="!!aba.pendente || aba.agente === 'nota'"
-                                        class="rounded-control border-line bg-input py-1.5 text-xs text-ink focus:border-brand focus:ring-brand">
-                                    <option value="auto">Modo automático</option>
-                                    @foreach ($modos as $chave => $nome)
-                                        <option value="{{ $chave }}">{{ $nome }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        @endif
-                        <label for="central-rascunho" class="sr-only">Sua mensagem</label>
-                        <textarea id="central-rascunho" x-model="aba.rascunho" maxlength="{{ config('central_ia.max_texto') }}" rows="3"
-                                  :readonly="!!aba.pendente" :disabled="bloqueado || !podeEnviar"
-                                  @keydown.enter="if (!$event.shiftKey && !$event.isComposing && !window.matchMedia('(pointer: coarse)').matches) { $event.preventDefault(); enviar(); }"
-                                  :placeholder="atual ? 'Peça algo para ' + atual + '…' : 'Escreva na conversa geral… (ou /auto projeto pedido)'"
-                                  class="w-full resize-y rounded-control border-line bg-input text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand disabled:opacity-50"></textarea>
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <p class="text-xs text-ink-faint" x-text="atual ? 'Enter envia · Shift + Enter quebra linha. Trocar o agente numa tarefa passa o contexto dela ao novo, que confere o estado antes de alterar.' : 'Na Geral, em automático, perguntas e pedidos de resumo, relatório ou agenda vão a um agente; o resto fica anotado.'"></p>
-                            <button type="submit" :disabled="aba.enviando || bloqueado || !podeEnviar || (!aba.pendente && !aba.rascunho.trim())"
-                                    class="rounded-control bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition hover:bg-brand-bright disabled:opacity-50"
-                                    x-text="aba.enviando ? 'Enviando…' : (aba.pendente ? 'Reenviar com segurança' : 'Enviar')"></button>
-                        </div>
-                    </form>
+                    </template>
+                    <p class="px-1 text-xs text-ink-faint">Continuar abre uma tarefa na pasta da sessão. Com o Claude disponível, ele segue numa cópia da conversa (a do VS Code fica intacta); se ele estiver no limite, o GPT (Codex) assume com o histórico dela.</p>
                 </div>
             </main>
+        </div>
 
-            {{-- ===== Atividade de todos os projetos ===== --}}
-            <aside aria-label="Atividade" class="min-w-0 space-y-3 lg:col-span-2 2xl:col-span-1">
-                <div class="rounded-panel border border-line bg-panel">
-                    <h3 class="border-b border-line px-4 py-2 text-sm font-semibold text-ink">Atividade de todos os projetos</h3>
-                    <p x-show="!atividade.length" class="px-4 py-3 text-sm text-ink-faint">Nenhum pedido a agente ainda.</p>
-                    <ul class="max-h-[60vh] divide-y divide-rule overflow-y-auto">
-                        <template x-for="a in atividade" :key="a.id">
-                            <li>
-                                <button type="button" @click="abrir(a.projeto, a.tarefa_id)" class="w-full px-4 py-2 text-left hover:bg-chip">
-                                    <span class="flex items-center justify-between gap-2 text-xs">
-                                        <span class="font-semibold text-ink" x-text="a.projeto"></span>
-                                        <span class="font-semibold" :class="corDaExecucao(a.status)" x-text="execucao(a.status)"></span>
-                                    </span>
-                                    <span class="mt-0.5 block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-ink-dim" x-text="a.tarefa || ('pedido #' + a.id)"></span>
-                                    <span class="mt-0.5 block text-[11px] text-ink-faint"
-                                          x-text="a.agente + ' · ' + a.modo + (a.handoff_de ? ' · assumiu de ' + a.handoff_de : '') + (duracao(a) ? ' · ' + duracao(a) : ' · ' + haQuanto(a.criada_em))"></span>
-                                </button>
-                            </li>
-                        </template>
-                    </ul>
+        {{-- ================= ATIVIDADE ================= --}}
+        <div x-show="tela === 'atividade'" x-cloak class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border border-line bg-panel">
+            <div class="flex flex-none flex-wrap items-center gap-2 border-b border-line px-3 py-2 text-xs">
+                <button type="button" @click="vistaAtividade = 'log'" class="rounded-ctl px-2.5 py-1 font-semibold" :class="vistaAtividade === 'log' ? 'bg-nav-active text-ink' : 'text-ink-mute'">Log de eventos</button>
+                <button type="button" @click="vistaAtividade = 'execucoes'" class="rounded-ctl px-2.5 py-1 font-semibold" :class="vistaAtividade === 'execucoes' ? 'bg-nav-active text-ink' : 'text-ink-mute'">Execuções</button>
+                <span class="mx-1 h-4 w-px bg-line"></span>
+                <label class="flex items-center gap-1 text-ink-dim" x-show="vistaAtividade === 'log'">
+                    <input type="checkbox" x-model="soProblemas" class="rounded border-line bg-input text-brand focus:ring-brand"> só problemas
+                </label>
+                <select x-model="projetoLog" x-show="vistaAtividade === 'log'" class="rounded-control border-line bg-input py-0.5 text-xs text-ink focus:border-brand focus:ring-brand">
+                    <option value="">Todos os projetos</option>
+                    <template x-for="p in projetosDoLog" :key="p"><option :value="p" x-text="p"></option></template>
+                </select>
+            </div>
+
+            {{-- Log: quando, o quê, onde, qual agente, o que aconteceu --}}
+            <ul x-show="vistaAtividade === 'log'" class="min-h-0 flex-1 divide-y divide-rule overflow-y-auto">
+                <li x-show="!eventosFiltrados.length" class="px-4 py-3 text-sm text-ink-faint">Nenhum evento.</li>
+                <template x-for="e in eventosFiltrados" :key="e.id">
+                    <li class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 px-4 py-1.5 text-xs md:grid-cols-[6.5rem_7.5rem_9rem_8rem_minmax(0,1fr)]">
+                        <time class="text-ink-faint" :datetime="e.em" x-text="data(e.em)"></time>
+                        <span class="font-semibold" :class="corDoNivel(e.nivel)" x-text="rotuloEvento(e.tipo)"></span>
+                        <button type="button" class="overflow-hidden text-ellipsis whitespace-nowrap text-left text-ink hover:text-brand-text" x-text="e.projeto || '—'"
+                                @click="e.projeto && e.projeto !== 'Geral' ? abrir(e.projeto, e.tarefa_id) : abrir('')"></button>
+                        <span class="text-ink-dim" x-text="(e.agente || '—') + (e.origem ? ' · ' + e.origem : '')"></span>
+                        <span class="col-span-2 break-words md:col-span-1" :class="e.nivel === 'erro' ? 'text-crit' : 'text-ink-dim'" x-text="e.descricao"></span>
+                    </li>
+                </template>
+            </ul>
+
+            <ul x-show="vistaAtividade === 'execucoes'" class="min-h-0 flex-1 divide-y divide-rule overflow-y-auto">
+                <li x-show="!atividade.length" class="px-4 py-3 text-sm text-ink-faint">Nenhum pedido a agente ainda.</li>
+                <template x-for="a in atividade" :key="a.id">
+                    <li>
+                        <button type="button" @click="abrir(a.projeto, a.tarefa_id)" class="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-3 px-4 py-2 text-left hover:bg-chip md:grid-cols-[10rem_minmax(0,1fr)_14rem_7rem]">
+                            <span class="text-xs font-semibold text-ink" x-text="a.projeto || 'Geral'"></span>
+                            <span class="order-3 col-span-2 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-ink-dim md:order-none md:col-span-1" x-text="a.tarefa || ('pedido #' + a.id)"></span>
+                            <span class="order-4 col-span-2 text-xs text-ink-faint md:order-none md:col-span-1"
+                                  x-text="a.agente + ' · ' + a.modo + (a.handoff_de ? ' · assumiu de ' + a.handoff_de : '') + (duracao(a) ? ' · ' + duracao(a) : ' · ' + haQuanto(a.criada_em))"></span>
+                            <span class="text-right text-xs font-semibold" :class="corDaExecucao(a.status)" x-text="execucao(a.status)"></span>
+                        </button>
+                    </li>
+                </template>
+            </ul>
+        </div>
+
+        {{-- ================= CONSUMO ================= --}}
+        <div x-show="tela === 'consumo'" x-cloak class="min-h-0 flex-1 overflow-y-auto">
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {{-- Limites: medidores, não gráfico --}}
+                <div class="rounded-panel border border-line bg-panel p-4">
+                    <p class="text-sm font-semibold text-ink">Central de IA</p>
+                    <p class="text-xs text-ink-mute">Pedidos a agentes hoje</p>
+                    <p class="mt-2 font-display text-2xl font-semibold text-ink" x-text="(consumo.limites?.central.usados ?? 0) + ' / ' + (consumo.limites?.central.limite ?? 0)"></p>
+                    <div class="mt-1 h-1.5 rounded-full bg-bar-track"><div class="h-1.5 rounded-full" :class="corPct(100 * (consumo.limites?.central.usados ?? 0) / Math.max(1, consumo.limites?.central.limite ?? 1))" :style="'width:' + Math.min(100, 100 * (consumo.limites?.central.usados ?? 0) / Math.max(1, consumo.limites?.central.limite ?? 1)) + '%'"></div></div>
+                    <p class="mt-1 text-xs text-ink-faint" x-text="'Restam ' + Math.max(0, (consumo.limites?.central.limite ?? 0) - (consumo.limites?.central.usados ?? 0)) + ' hoje'"></p>
+                    <p class="text-xs text-ink-faint" x-text="Object.entries(consumo.limites?.por_agente_central || {}).map(([a, n]) => n + ' ' + a).join(' · ')"></p>
                 </div>
 
-                {{-- Consumo das três IAs, lido dos registros locais de cada uma --}}
-                <div class="rounded-panel border border-line bg-panel">
-                    <div class="flex items-center justify-between border-b border-line px-4 py-2">
-                        <h3 class="text-sm font-semibold text-ink">Consumo de IA</h3>
-                        <div class="flex gap-2 text-xs">
+                <div class="rounded-panel border border-line bg-panel p-4">
+                    <p class="flex items-center gap-1.5 text-sm font-semibold text-ink"><span class="h-2.5 w-2.5 rounded-sm" style="background:#029caf"></span>Claude</p>
+                    <p class="text-xs text-ink-mute">Assinatura (pelo /usage)</p>
+                    <p x-show="!consumo.limites?.claude" class="mt-2 text-xs text-ink-faint">Aguardando a primeira leitura do runner.</p>
+                    <template x-for="j in consumo.limites?.claude?.janelas || []" :key="j.rotulo">
+                        <div class="mt-2">
+                            <div class="flex justify-between text-xs"><span class="text-ink-dim" x-text="j.rotulo"></span><span class="font-semibold text-ink" x-text="j.usado_pct + '%'"></span></div>
+                            <div class="mt-0.5 h-1.5 rounded-full bg-bar-track"><div class="h-1.5 rounded-full" :class="corPct(j.usado_pct)" :style="'width:' + Math.min(100, j.usado_pct) + '%'"></div></div>
+                            <p class="text-[11px] text-ink-faint" x-text="(j.usado_pct >= 100 ? 'esgotado' : 'resta ' + Math.max(0, 100 - j.usado_pct) + '%') + (j.renova ? ' · renova ' + j.renova : '')"></p>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="rounded-panel border border-line bg-panel p-4">
+                    <p class="flex items-center gap-1.5 text-sm font-semibold text-ink"><span class="h-2.5 w-2.5 rounded-sm bg-chart-out"></span>GPT (Codex)</p>
+                    <p class="text-xs text-ink-mute">Cota do ChatGPT</p>
+                    <p x-show="!consumo.limites?.codex" class="mt-2 text-xs text-ink-faint">Sem leitura ainda — aparece depois do primeiro uso do Codex.</p>
+                    <template x-for="[rotulo, j] in [['Janela de 5 h', consumo.limites?.codex?.primaria], ['Semana', consumo.limites?.codex?.semanal]]" :key="rotulo">
+                        <div class="mt-2" x-show="j">
+                            <div class="flex justify-between text-xs"><span class="text-ink-dim" x-text="rotulo"></span><span class="font-semibold text-ink" x-text="(j?.usado_pct ?? 0) + '%'"></span></div>
+                            <div class="mt-0.5 h-1.5 rounded-full bg-bar-track"><div class="h-1.5 rounded-full" :class="corPct(j?.usado_pct ?? 0)" :style="'width:' + Math.min(100, j?.usado_pct ?? 0) + '%'"></div></div>
+                            <p class="text-[11px] text-ink-faint" x-text="j?.renovou ? 'renovou desde o último uso' : ('resta ' + Math.max(0, 100 - (j?.usado_pct ?? 0)) + '%' + (j?.renova_em ? ' · renova ' + data(j.renova_em) : ''))"></p>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="rounded-panel border border-line bg-panel p-4">
+                    <p class="flex items-center gap-1.5 text-sm font-semibold text-ink"><span class="h-2.5 w-2.5 rounded-sm" style="background:#a21caf"></span>Copilot</p>
+                    <p class="text-xs text-ink-mute">Requisições premium no mês</p>
+                    <p class="mt-2 font-display text-2xl font-semibold text-ink"
+                       x-text="(consumo.limites?.copilot?.premium_mes ?? '—') + (consumo.limites?.copilot?.franquia ? ' / ' + consumo.limites.copilot.franquia : '')"></p>
+                    <template x-if="consumo.limites?.copilot?.franquia">
+                        <div class="mt-1 h-1.5 rounded-full bg-bar-track"><div class="h-1.5 rounded-full" :class="corPct(100 * consumo.limites.copilot.premium_mes / consumo.limites.copilot.franquia)" :style="'width:' + Math.min(100, 100 * consumo.limites.copilot.premium_mes / consumo.limites.copilot.franquia) + '%'"></div></div>
+                    </template>
+                    <p class="mt-1 text-xs text-ink-faint" x-text="consumo.limites?.copilot?.franquia ? 'Restam ' + Math.max(0, consumo.limites.copilot.franquia - consumo.limites.copilot.premium_mes) + ' no mês' : 'Franquia do plano ainda não informada.'"></p>
+                </div>
+            </div>
+
+            <div class="mt-3 grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                {{-- Tokens por dia, por IA: barras empilhadas --}}
+                <div class="rounded-panel border border-line bg-panel p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-sm font-semibold text-ink">Tokens por dia — últimos 7 dias</p>
+                        <div class="flex items-center gap-3 text-xs text-ink-dim">
+                            <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm" style="background:#029caf"></span>Claude</span>
+                            <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm bg-chart-out"></span>GPT (Codex)</span>
+                            <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm" style="background:#a21caf"></span>Copilot</span>
+                            <button type="button" @click="mostrarTabela = !mostrarTabela" class="font-semibold text-brand-text" x-text="mostrarTabela ? 'Ver gráfico' : 'Ver tabela'"></button>
+                        </div>
+                    </div>
+
+                    <div x-show="!mostrarTabela" class="relative mt-3">
+                        {{-- HTML e não SVG: o Alpine não suporta <template x-for> dentro de <svg>. --}}
+                        <div class="flex h-56 items-end gap-2 border-b border-rule pb-1" role="img" aria-label="Tokens de entrada e saída por dia e por IA, últimos 7 dias">
+                            <template x-for="(d, i) in consumo.serie" :key="d.dia">
+                                <div class="flex h-full flex-1 flex-col items-center justify-end" @mouseenter="barraHover = i" @mouseleave="barraHover = null">
+                                    <span class="mb-1 text-[10px] text-ink-dim" x-show="barraHover === i || i === consumo.serie.length - 1" x-text="tokens(d.claude + d.codex + d.copilot)"></span>
+                                    <div class="flex w-9 flex-col-reverse gap-[2px]">
+                                        {{-- col-reverse: o primeiro fica embaixo — Claude, Codex, Copilot, na ordem da legenda --}}
+                                        <div class="rounded-[2px]" :style="'background:#029caf;height:' + altura(d.claude) + 'px'" x-show="d.claude"></div>
+                                        <div class="rounded-[2px] bg-chart-out" :style="'height:' + altura(d.codex) + 'px'" x-show="d.codex"></div>
+                                        <div class="rounded-[2px]" :style="'background:#a21caf;height:' + altura(d.copilot) + 'px'" x-show="d.copilot"></div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="mt-1 flex gap-2">
+                            <template x-for="d in consumo.serie" :key="'r' + d.dia">
+                                <span class="flex-1 text-center text-[11px] text-ink-faint" x-text="diaCurto(d.dia)"></span>
+                            </template>
+                        </div>
+                        <div x-show="barraHover !== null" x-cloak class="pointer-events-none absolute top-0 rounded-control border border-line bg-panel px-3 py-2 text-xs shadow"
+                             :style="'left:' + Math.min(70, (barraHover ?? 0) * 14.3) + '%'">
+                            <template x-if="barraHover !== null && consumo.serie[barraHover]">
+                                <div>
+                                    <p class="font-semibold text-ink" x-text="diaCurto(consumo.serie[barraHover].dia)"></p>
+                                    <p class="text-ink-dim" x-text="'Claude: ' + tokens(consumo.serie[barraHover].claude)"></p>
+                                    <p class="text-ink-dim" x-text="'GPT (Codex): ' + tokens(consumo.serie[barraHover].codex)"></p>
+                                    <p class="text-ink-dim" x-text="'Copilot: ' + tokens(consumo.serie[barraHover].copilot)"></p>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <table x-show="mostrarTabela" x-cloak class="mt-3 w-full text-left text-xs">
+                        <thead class="text-ink-faint"><tr><th class="py-1">Dia</th><th>Claude</th><th>GPT (Codex)</th><th>Copilot</th><th>Total</th></tr></thead>
+                        <tbody class="divide-y divide-rule text-ink-dim">
+                            <template x-for="d in consumo.serie" :key="'t' + d.dia">
+                                <tr><td class="py-1" x-text="diaCurto(d.dia)"></td><td x-text="tokens(d.claude)"></td><td x-text="tokens(d.codex)"></td><td x-text="tokens(d.copilot)"></td><td class="text-ink" x-text="tokens(d.claude + d.codex + d.copilot)"></td></tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <p class="mt-2 text-[11px] text-ink-faint">Tokens de entrada e saída, sem cache, lidos dos registros das IAs nesta máquina (inclui o uso no VS Code, não só a Central).</p>
+                </div>
+
+                <div class="rounded-panel border border-line bg-panel p-4 text-xs">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-semibold text-ink">Por IA</p>
+                        <div class="flex gap-2">
                             <button type="button" @click="periodo = 'hoje'" :class="periodo === 'hoje' ? 'font-semibold text-brand-text' : 'text-ink-mute'">Hoje</button>
                             <button type="button" @click="periodo = 'semana'" :class="periodo === 'semana' ? 'font-semibold text-brand-text' : 'text-ink-mute'">7 dias</button>
                         </div>
                     </div>
-                    <div class="space-y-2 px-4 py-3 text-xs">
-                        <template x-for="a in consumo.por_agente" :key="a.agente">
-                            <div class="flex items-baseline justify-between gap-2">
-                                <span class="font-semibold text-ink" x-text="a.nome"></span>
-                                <span class="text-right text-ink-dim">
-                                    <span x-text="tokens(a[periodo].entrada + a[periodo].saida) + ' tokens'"></span>
-                                    <span class="text-ink-faint" x-text="' · ' + tokens(a[periodo].cache_leitura) + ' em cache'"></span>
-                                    <span class="block text-ink-faint" x-show="a.agente === 'copilot'" x-text="a[periodo].premium + ' requisições premium'"></span>
-                                </span>
-                            </div>
-                        </template>
-                        <template x-if="consumo.cota_codex">
-                            <div class="space-y-1 border-t border-rule pt-2">
-                                <p class="text-ink-mute">Cota do Codex (ChatGPT)</p>
-                                <template x-for="[rotulo, j] in [['janela de 5 h', consumo.cota_codex.primaria], ['semana', consumo.cota_codex.semanal]]" :key="rotulo">
-                                    <div x-show="j">
-                                        <div class="flex justify-between text-ink-faint"><span x-text="rotulo"></span><span x-text="(j?.usado_pct ?? 0) + '% usado'"></span></div>
-                                        <div class="mt-0.5 h-1.5 rounded-full bg-bar-track"><div class="h-1.5 rounded-full" :class="(j?.usado_pct ?? 0) >= 80 ? 'bg-crit' : ((j?.usado_pct ?? 0) >= 50 ? 'bg-warn' : 'bg-good')" :style="'width:' + Math.min(100, j?.usado_pct ?? 0) + '%'"></div></div>
-                                    </div>
-                                </template>
-                            </div>
-                        </template>
-                        <div x-show="consumo.projetos_hoje.length" class="space-y-0.5 border-t border-rule pt-2">
-                            <p class="text-ink-mute">Projetos que mais gastaram hoje</p>
-                            <template x-for="p in consumo.projetos_hoje" :key="p.projeto">
-                                <div class="flex justify-between text-ink-faint"><span x-text="p.projeto"></span><span x-text="tokens(p.tokens)"></span></div>
-                            </template>
+                    <template x-for="a in consumo.por_agente" :key="a.agente">
+                        <div class="mt-2 flex items-baseline justify-between gap-2">
+                            <span class="font-semibold text-ink" x-text="a.nome"></span>
+                            <span class="text-right text-ink-dim">
+                                <span x-text="tokens(a[periodo].entrada + a[periodo].saida) + ' tokens'"></span>
+                                <span class="block text-ink-faint" x-text="tokens(a[periodo].cache_leitura) + ' em cache' + (a.agente === 'copilot' ? ' · ' + a[periodo].premium + ' premium' : '')"></span>
+                            </span>
                         </div>
-                        <p class="text-[11px] text-ink-faint">Tokens de entrada e saída, sem o cache. Medido dos registros das IAs nesta máquina.</p>
+                    </template>
+                    <div x-show="consumo.projetos_hoje.length" class="mt-3 space-y-0.5 border-t border-rule pt-2">
+                        <p class="text-ink-mute">Projetos que mais gastaram hoje</p>
+                        <template x-for="p in consumo.projetos_hoje" :key="p.projeto">
+                            <div class="flex justify-between text-ink-faint"><span x-text="p.projeto"></span><span x-text="tokens(p.tokens)"></span></div>
+                        </template>
+                    </div>
+                    <div x-show="recentes.length" class="mt-3 space-y-0.5 border-t border-rule pt-2">
+                        <p class="text-ink-mute">Recentes no git</p>
+                        <template x-for="r in recentes.slice(0, 8)" :key="'g' + r.nome">
+                            <button type="button" @click="abrir(r.nome)" class="flex w-full justify-between text-left text-ink-faint hover:text-ink">
+                                <span x-text="r.nome"></span><span x-text="haQuanto(r.ultimo_commit)"></span>
+                            </button>
+                        </template>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                {{-- Últimos projetos mexidos no git --}}
-                <div class="rounded-panel border border-line bg-panel">
-                    <h3 class="border-b border-line px-4 py-2 text-sm font-semibold text-ink">Recentes no git</h3>
-                    <ul class="divide-y divide-rule">
-                        <template x-for="r in recentes" :key="r.nome">
-                            <li class="flex items-center justify-between gap-2 px-4 py-1.5 text-xs">
-                                <button type="button" @click="abrir(r.nome)" class="min-w-0 text-left">
-                                    <span class="block font-semibold text-ink" x-text="r.nome"></span>
-                                    <span class="block overflow-hidden text-ellipsis whitespace-nowrap text-ink-faint" :title="r.ultimo_commit_msg"
-                                          x-text="haQuanto(r.ultimo_commit) + ' · ' + (r.branch || '?') + (r.pendentes ? ' · ' + r.pendentes + ' pendentes' : '') + (r.fase ? ' · ' + r.fase : '')"></span>
-                                </button>
-                                <button type="button" x-show="!r.no_cockpit" @click="fixar(r.nome)" class="flex-none font-semibold text-brand-text">Fixar</button>
-                            </li>
-                        </template>
-                    </ul>
+        {{-- ================= AJUSTES ================= --}}
+        <div x-show="tela === 'ajustes'" x-cloak class="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto lg:grid-cols-2">
+            <div class="rounded-panel border border-line bg-panel p-4 text-sm">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-ink">Grupos de projetos</h3>
+                    <button type="button" @click="criarGrupo()" class="rounded-control border border-btn-line px-3 py-1 text-xs font-semibold text-ink">+ Novo grupo</button>
                 </div>
+                <p x-show="!grupos.length" class="mt-2 text-ink-faint">Nenhum grupo ainda.</p>
+                <ul class="mt-2 divide-y divide-rule">
+                    <template x-for="g in grupos" :key="g.id">
+                        <li class="flex items-center justify-between py-1.5">
+                            <span class="text-ink" x-text="g.nome + ' (' + projetos.filter(p => p.grupo_id === g.id).length + ')'"></span>
+                            <span class="flex gap-3 text-xs">
+                                <button type="button" @click="renomearGrupo(g)" class="font-semibold text-brand-text">Renomear</button>
+                                <button type="button" @click="apagarGrupo(g)" class="font-semibold text-crit">Apagar</button>
+                            </span>
+                        </li>
+                    </template>
+                </ul>
+                <p class="mt-2 text-xs text-ink-faint">Para pôr um projeto num grupo, abra o projeto e escolha o grupo no cabeçalho dele.</p>
+            </div>
 
-                <div class="rounded-panel border border-line bg-panel p-4 text-sm">
-                    <h3 class="font-semibold text-ink">Telegram</h3>
-                    <template x-if="telegram.vinculado">
-                        <div class="mt-1 space-y-1 text-ink-mute">
-                            <p>A conversa também está no seu Telegram<span x-show="telegram.usuario" x-text="' (@' + telegram.usuario + ')'"></span>; cada mensagem diz o projeto.</p>
-                            @if ($podeParear)
-                                <button type="button" @click="desvincularTelegram()" class="text-xs font-semibold text-brand-text">Desvincular</button>
-                            @endif
-                        </div>
-                    </template>
-                    <template x-if="!telegram.vinculado">
-                        <div class="mt-1 space-y-2 text-ink-mute">
-                            <p>Converse pelo celular com <span class="font-semibold text-ink">{{ '@'.config('central_ia.telegram.bot') }}</span>.</p>
-                            @if ($podeParear)
-                                <button type="button" x-show="!pareamento" @click="parearTelegram()" class="rounded-control border border-btn-line px-3 py-1.5 text-xs font-semibold text-ink">Vincular Telegram</button>
-                                <div x-show="pareamento" x-cloak class="space-y-1">
-                                    <a :href="pareamento?.link" target="_blank" rel="noopener" class="inline-block rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand">Abrir no Telegram</a>
-                                    <p class="text-xs">Ou envie: <code class="break-all font-mono text-ink" x-text="pareamento?.comando"></code></p>
-                                </div>
-                            @endif
-                        </div>
-                    </template>
-                    <p class="mt-2 text-xs text-ink-faint">No Telegram: <code class="font-mono">/auto projeto pedido</code>, <code class="font-mono">/claude</code>, <code class="font-mono">/gpt</code>, <code class="font-mono">/copilot</code> — com <code class="font-mono">!</code> para implementar. <code class="font-mono">/continuar gestor</code> segue a conversa do VS Code.</p>
-                </div>
-            </aside>
+            <div class="rounded-panel border border-line bg-panel p-4 text-sm">
+                <h3 class="font-semibold text-ink">Telegram</h3>
+                <template x-if="telegram.vinculado">
+                    <div class="mt-1 space-y-1 text-ink-mute">
+                        <p>A conversa também está no seu Telegram<span x-show="telegram.usuario" x-text="' (@' + telegram.usuario + ')'"></span>; cada mensagem diz o projeto.</p>
+                        @if ($podeParear)
+                            <button type="button" @click="desvincularTelegram()" class="text-xs font-semibold text-brand-text">Desvincular</button>
+                        @endif
+                    </div>
+                </template>
+                <template x-if="!telegram.vinculado">
+                    <div class="mt-1 space-y-2 text-ink-mute">
+                        <p>Converse pelo celular com <span class="font-semibold text-ink">{{ '@'.config('central_ia.telegram.bot') }}</span>.</p>
+                        @if ($podeParear)
+                            <button type="button" x-show="!pareamento" @click="parearTelegram()" class="rounded-control border border-btn-line px-3 py-1.5 text-xs font-semibold text-ink">Vincular Telegram</button>
+                            <div x-show="pareamento" x-cloak class="space-y-1">
+                                <a :href="pareamento?.link" target="_blank" rel="noopener" class="inline-block rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand">Abrir no Telegram</a>
+                                <p class="text-xs">Ou envie: <code class="break-all font-mono text-ink" x-text="pareamento?.comando"></code></p>
+                            </div>
+                        @endif
+                    </div>
+                </template>
+                <p class="mt-3 text-xs text-ink-faint">Comandos: <code class="font-mono">/projetos</code>, <code class="font-mono">/status</code>, <code class="font-mono">/usar gestor</code>, <code class="font-mono">/continuar gestor</code>, <code class="font-mono">/nova</code>, <code class="font-mono">/geral</code>, <code class="font-mono">/trocar codex</code>, <code class="font-mono">/claude</code> · <code class="font-mono">/gpt</code> · <code class="font-mono">/copilot</code> · <code class="font-mono">/auto</code>. Também vale escrever "continuar gestor de onde paramos".</p>
+            </div>
+
+            <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
+                <h3 class="font-semibold text-ink">Acesso e limites</h3>
+                <p class="mt-1 text-ink-mute" x-text="'Pedidos a agentes por dia: ' + (consumo.limites?.central.limite ?? '—') + ' · ao mesmo tempo: ' + paralelo + ' · teto por execução: 15 min.'"></p>
+                <p class="mt-1 text-ink-mute">Acesso dos agentes: <span class="font-semibold text-ink">total</span> — como no VS Code (pasta do projeto, git, docker, ssh, OneDrive). Commit, push e deploy só quando o pedido disser; tudo fica no Log de eventos.</p>
+                <p class="mt-1 text-xs text-ink-faint">A franquia mensal do Copilot (Pro: 300, Pro+: 1500) é configurada no servidor (<code class="font-mono">CENTRAL_IA_COPILOT_PREMIUM_MES</code>) — o plano não pode ser lido da máquina.</p>
+            </div>
         </div>
     </section>
 </x-app-layout>

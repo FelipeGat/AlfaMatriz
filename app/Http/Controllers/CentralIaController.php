@@ -52,6 +52,7 @@ class CentralIaController extends Controller
 
         return $this->semCache($this->cockpit->montar($request->user()) + [
             'telegram' => ['vinculado' => (bool) $vinculo, 'usuario' => $vinculo?->telegram_usuario],
+            'eventos' => \App\Services\CentralIa\Eventos::recentes($request->user()),
         ]);
     }
 
@@ -166,6 +167,53 @@ class CentralIaController extends Controller
         $tarefa = $this->agentes->continuarSessao($request->user(), $dados['agente'], $dados['sessao']);
 
         return $this->semCache(['tarefa_id' => $tarefa->id, 'projeto' => $tarefa->projeto]);
+    }
+
+    public function criarGrupo(Request $request): JsonResponse
+    {
+        $dados = $request->validate(['nome' => ['required', 'string', 'max:60',
+            Rule::unique('central_ia_grupos', 'nome')->where('user_id', $request->user()->id)]]);
+
+        $grupo = \App\Models\CentralIaGrupo::create(['user_id' => $request->user()->id, 'nome' => trim($dados['nome']),
+            'ordem' => (int) \App\Models\CentralIaGrupo::where('user_id', $request->user()->id)->max('ordem') + 1]);
+
+        return $this->semCache(['id' => $grupo->id, 'nome' => $grupo->nome], 201);
+    }
+
+    public function renomearGrupo(Request $request, int $grupo): JsonResponse
+    {
+        $g = \App\Models\CentralIaGrupo::where('user_id', $request->user()->id)->findOrFail($grupo);
+        $dados = $request->validate(['nome' => ['required', 'string', 'max:60',
+            Rule::unique('central_ia_grupos', 'nome')->where('user_id', $request->user()->id)->ignore($g->id)]]);
+        $g->update(['nome' => trim($dados['nome'])]);
+
+        return $this->semCache(['id' => $g->id, 'nome' => $g->nome]);
+    }
+
+    /** Apagar o grupo não apaga projeto: eles ficam "sem grupo" (nullOnDelete). */
+    public function apagarGrupo(Request $request, int $grupo): JsonResponse
+    {
+        \App\Models\CentralIaGrupo::where('user_id', $request->user()->id)->findOrFail($grupo)->delete();
+
+        return $this->semCache(['ok' => true]);
+    }
+
+    /**
+     * Põe o projeto num grupo (ou tira). Pôr num grupo também o fixa: estar
+     * num grupo é querer vê-lo sempre.
+     */
+    public function grupoDoProjeto(Request $request, string $projeto): JsonResponse
+    {
+        $user = $request->user();
+        $dados = $request->validate(['grupo_id' => ['nullable', 'integer']]);
+        $grupoId = $dados['grupo_id'] ?? null;
+        abort_if($grupoId && ! \App\Models\CentralIaGrupo::where('user_id', $user->id)->whereKey($grupoId)->exists(), 404);
+        abort_unless(in_array($projeto, $this->agentes->disponiveis($user)['projetos'], true)
+            || CentralIaTarefa::de($user)->where('projeto', $projeto)->exists(), 404);
+
+        CentralIaProjeto::updateOrCreate(['user_id' => $user->id, 'projeto' => $projeto], ['grupo_id' => $grupoId]);
+
+        return $this->semCache(['projeto' => $projeto, 'grupo_id' => $grupoId]);
     }
 
     /**

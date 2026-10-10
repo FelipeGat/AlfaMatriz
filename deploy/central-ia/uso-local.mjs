@@ -30,9 +30,9 @@ function dia(ts) {
     return d.toLocaleDateString('sv-SE');
 }
 
-function arquivos(raiz, filtro, profundidade = 4) {
+function arquivos(raiz, filtro, profundidade = 4, dias = DIAS) {
     const achados = [];
-    const limite = Date.now() - DIAS * 86400_000;
+    const limite = Date.now() - dias * 86400_000;
     const andar = (dir, nivel) => {
         let itens;
         try { itens = readdirSync(dir, { withFileTypes: true }); } catch { return; }
@@ -154,7 +154,9 @@ function lerCodex(raiz) {
 }
 
 function lerCopilot(raiz) {
-    return arquivos(join(HOME, '.copilot/session-state'), n => n === 'events.jsonl', 1).map(arq => {
+    // 40 dias, e não 8: a franquia do Copilot é mensal, e o "usado no mês"
+    // precisa das sessões desde o dia 1.
+    return arquivos(join(HOME, '.copilot/session-state'), n => n === 'events.jsonl', 1, 40).map(arq => {
         const e = novasLinhas(arq, (j, linha, e) => {
             const d = j.data || {};
             if (j.timestamp) e.ultima = j.timestamp;
@@ -213,5 +215,13 @@ export function usoLocal(raiz) {
         .sort((a, b) => b.ultima_atividade.localeCompare(a.ultima_atividade))
         .slice(0, 40);
 
-    return { consumo: { linhas: Object.values(linhas), cota_codex: cotaCodex, coletado_em: new Date().toISOString() }, sessoes };
+    const inicioDoMes = new Date().toLocaleDateString('sv-SE').slice(0, 8) + '01';
+    const premiumMes = todas.filter(s => s.agente === 'copilot')
+        .flatMap(s => Object.values(s.uso)).filter(u => u.dia >= inicioDoMes)
+        .reduce((t, u) => t + u.premium, 0);
+
+    return {
+        consumo: { linhas: Object.values(linhas), cota_codex: cotaCodex, copilot_premium_mes: Math.round(premiumMes * 100) / 100, coletado_em: new Date().toISOString() },
+        sessoes,
+    };
 }

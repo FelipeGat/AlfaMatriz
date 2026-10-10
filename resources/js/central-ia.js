@@ -37,7 +37,9 @@ export function centralIa(config) {
     return {
         // Painel (todos os projetos)
         projetos: [], atividade: [], maquina: { online: false, agentes: [], projetos: [] }, paralelo: 2,
-        recentes: [], consumo: { por_agente: [], projetos_hoje: [], cota_codex: null }, sessoes: [], periodo: 'hoje',
+        recentes: [], consumo: { por_agente: [], projetos_hoje: [], cota_codex: null, serie: [], limites: null }, sessoes: [], periodo: 'hoje',
+        grupos: [], busca: '', recolhidos: [], tela: 'projetos', sub: 'conversa',
+        eventos: [], vistaAtividade: 'log', soProblemas: false, projetoLog: '', barraAberta: false, barraHover: null, mostrarTabela: false,
         telegram: { vinculado: false, usuario: null }, pareamento: null,
         // Projeto aberto
         atual: GERAL, abas: {}, tarefas: [], verTarefa: null, detalheAberto: true,
@@ -64,6 +66,73 @@ export function centralIa(config) {
         get rotuloConexao() {
             return { conectando: 'Conectando…', online: 'Atualizado', offline: 'Reconectando…', bloqueado: 'Acesso interrompido' }[this.conexao];
         },
+        get eventosFiltrados() {
+            return this.eventos.filter(e => (!this.soProblemas || e.nivel !== 'info') && (!this.projetoLog || e.projeto === this.projetoLog));
+        },
+        get projetosDoLog() { return [...new Set(this.eventos.map(e => e.projeto).filter(Boolean))].sort(); },
+        corDoNivel(n) { return { erro: 'text-crit', aviso: 'text-warn' }[n] || 'text-ink-faint'; },
+        rotuloEvento(t) {
+            return { pedido: 'pedido', inicio: 'início', concluida: 'concluído', falhou: 'FALHOU', expirada: 'SEM RESPOSTA', troca_de_agente: 'troca de agente',
+                recusado: 'recusado', sessao_continuada: 'conversa do VS Code' }[t] || t;
+        },
+
+        /** A barra de projetos agrupada, já filtrada pela busca. */
+        get secoes() {
+            const termo = this.busca.trim().toLowerCase();
+            const casa = p => !termo || p.nome.toLowerCase().includes(termo);
+            const lista = this.projetos.filter(casa);
+            const secoes = this.grupos.map(g => ({ id: g.id, nome: g.nome, projetos: lista.filter(p => p.grupo_id === g.id) }));
+            secoes.push({ id: 0, nome: 'Sem grupo', projetos: lista.filter(p => !p.grupo_id || !this.grupos.some(g => g.id === p.grupo_id)) });
+            return secoes.filter(sec => sec.projetos.length || (!termo && sec.id !== 0));
+        },
+        /** Na busca, os projetos da máquina que ainda não estão no cockpit. */
+        get achadosNaMaquina() {
+            const termo = this.busca.trim().toLowerCase();
+            if (!termo) return [];
+            const vistos = new Set(this.projetos.map(p => p.nome));
+            return this.maquina.projetos.filter(p => !vistos.has(p) && p.toLowerCase().includes(termo)).slice(0, 12);
+        },
+        recolher(id) {
+            this.recolhidos = this.recolhidos.includes(id) ? this.recolhidos.filter(x => x !== id) : [...this.recolhidos, id];
+            guardar('central-ia:recolhidos', JSON.stringify(this.recolhidos));
+        },
+        irPara(tela) { this.tela = tela; guardar('central-ia:tela', tela); if (tela === 'projetos') this.$nextTick(() => { const f = this.$refs.feed; if (f) f.scrollTop = f.scrollHeight; }); },
+
+        async criarGrupo() {
+            const nome = prompt('Nome do grupo (ex.: VixCard, Grupo Soluções, Pessoal):');
+            if (!nome?.trim()) return;
+            try { await this.pedir(config.grupos, 'POST', { nome: nome.trim() }); this.reconectar(); } catch (erro) { this.falhou(erro); }
+        },
+        async renomearGrupo(g) {
+            const nome = prompt('Novo nome do grupo:', g.nome);
+            if (!nome?.trim() || nome.trim() === g.nome) return;
+            try { await this.pedir(config.grupo.replace('__G__', g.id), 'PUT', { nome: nome.trim() }); this.reconectar(); } catch (erro) { this.falhou(erro); }
+        },
+        async apagarGrupo(g) {
+            if (!confirm(`Apagar o grupo "${g.nome}"? Os projetos dele ficam sem grupo.`)) return;
+            try { await this.pedir(config.grupo.replace('__G__', g.id), 'DELETE'); this.reconectar(); } catch (erro) { this.falhou(erro); }
+        },
+        async moverParaGrupo(projeto, grupoId) {
+            if (grupoId === 'novo') {
+                const nome = prompt('Nome do novo grupo:');
+                if (!nome?.trim()) return;
+                try { grupoId = (await this.pedir(config.grupos, 'POST', { nome: nome.trim() })).id; } catch (erro) { this.falhou(erro); return; }
+            }
+            try {
+                await this.pedir(config.grupoDoProjeto.replace('__P__', encodeURIComponent(projeto)), 'POST', { grupo_id: grupoId ? Number(grupoId) : null });
+                this.reconectar();
+            } catch (erro) { this.falhou(erro); }
+        },
+
+        /* ---------- gráfico de consumo ---------- */
+        get maxSerie() {
+            return Math.max(1, ...this.consumo.serie.map(d => d.claude + d.codex + d.copilot));
+        },
+        // Escala com 15% de folga: a barra mais alta não encosta no teto.
+        altura(v) { return (v / (this.maxSerie * 1.15)) * 180; },
+        diaCurto(d) { return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }); },
+        corPct(p) { return p >= 90 ? 'bg-crit' : (p >= 70 ? 'bg-warn' : 'bg-good'); },
+
         get sessoesDoProjeto() { return this.sessoes.filter(s => s.projeto === this.atual); },
         get emExecucao() { return this.atividade.filter(a => a.status === 'executando').length; },
         get naFila() { return this.atividade.filter(a => a.status === 'pendente').length; },
@@ -78,6 +147,8 @@ export function centralIa(config) {
         init() {
             const url = new URLSearchParams(location.search).get('projeto');
             this.abaVazia = this.novaAba();
+            this.tela = ler('central-ia:tela') || 'projetos';
+            try { this.recolhidos = JSON.parse(ler('central-ia:recolhidos') || '[]'); } catch { this.recolhidos = []; }
             this.atual = url ?? ler('central-ia:projeto') ?? GERAL;
             this.garantirAba();
             this.aoVoltarRede = () => this.reconectar();
@@ -157,7 +228,7 @@ export function centralIa(config) {
                 const painel = await this.pedir(config.painel);
                 this.projetos = painel.projetos; this.atividade = painel.atividade; this.maquina = painel.maquina;
                 this.paralelo = painel.paralelo; this.telegram = painel.telegram;
-                this.recentes = painel.recentes; this.consumo = painel.consumo; this.sessoes = painel.sessoes;
+                this.recentes = painel.recentes; this.consumo = painel.consumo; this.sessoes = painel.sessoes; this.grupos = painel.grupos || []; this.eventos = painel.eventos || [];
                 if (this.telegram.vinculado) this.pareamento = null;
 
                 const projeto = this.atual, aba = this.aba;
@@ -223,6 +294,7 @@ export function centralIa(config) {
             if (tarefa) this.aba.tarefa = tarefa;
             this.tarefas = [];
             this.menuProjetosMovel = false;
+            if (this.tela !== 'projetos') this.irPara('projetos');
             guardar('central-ia:projeto', this.atual);
             const q = new URLSearchParams(location.search);
             this.atual ? q.set('projeto', this.atual) : q.delete('projeto');
@@ -234,8 +306,9 @@ export function centralIa(config) {
             this.reconectar();
         },
 
-        selecionarTarefa(id) {
-            this.verTarefa = this.verTarefa === id ? null : id;
+        selecionarTarefa(id, irParaConversa = false) {
+            this.verTarefa = this.verTarefa === id && !irParaConversa ? null : id;
+            if (irParaConversa) this.sub = 'conversa';
             if (this.verTarefa) this.aba.tarefa = id;
             this.$nextTick(() => { const f = this.$refs.feed; if (f) f.scrollTop = f.scrollHeight; });
         },

@@ -68,7 +68,42 @@ class AgentesService
             'projetos' => $runners->pluck('projetos')->flatten()->unique()->sort()->values()->all(),
             // A batida mais recente vence (ordenado por visto_em).
             'estado' => $runners->reduce(fn (array $acc, CentralIaRunner $r) => array_merge($acc, $r->estado ?? []), []),
+            'esgotados' => $this->esgotados($runners),
         ];
+    }
+
+    /**
+     * Agentes no limite da assinatura agora, com o motivo — o roteador não os
+     * escolhe (escolha manual ainda pode). Em 10/10/2026 a semana do Claude
+     * estava em 100%: mandar implementação para ele seria pedido que falha.
+     *
+     * @return array<string, string>
+     */
+    public function esgotados(\Illuminate\Support\Collection $runners): array
+    {
+        $consumo = $runners->pluck('consumo')->filter()->sortByDesc('coletado_em')->first() ?? [];
+        $fora = [];
+
+        // Só a janela de 5 h corta de fato: em 10/10/2026, com a semana em
+        // 100%, o Claude ainda rodou 4 min sem erro (a continuação do gestor).
+        // A semana cheia vira aviso na tela, não desvio.
+        foreach ($consumo['limites_claude']['janelas'] ?? [] as $j) {
+            if (($j['usado_pct'] ?? 0) >= 100 && str_starts_with((string) ($j['rotulo'] ?? ''), 'Sessão')) {
+                $fora['claude'] = "Claude no limite: {$j['rotulo']} em 100%".($j['renova'] ? " até {$j['renova']}" : '');
+                break;
+            }
+        }
+
+        foreach (['primaria' => 'janela de 5 h', 'semanal' => 'semana'] as $chave => $rotulo) {
+            $j = $consumo['cota_codex'][$chave] ?? null;
+            $renova = isset($j['renova_em']) ? \Illuminate\Support\Carbon::parse($j['renova_em']) : null;
+            if ($j && ($j['usado_pct'] ?? 0) >= 100 && (! $renova || $renova->isFuture())) {
+                $fora['codex'] = "Codex no limite da {$rotulo}".($renova ? ' até '.$renova->timezone(config('app.timezone'))->format('d/m H:i') : '');
+                break;
+            }
+        }
+
+        return $fora;
     }
 
     /**
@@ -124,14 +159,20 @@ class AgentesService
         }
 
         $sessaoDoVsCode = $tarefa?->dossie['origem'] ?? null;
-        $rota = $agente === 'auto' && $sessaoDoVsCode && in_array($sessaoDoVsCode['agente'], $disponivel['agentes'], true)
+        $origemEsgotada = $sessaoDoVsCode && isset($disponivel['esgotados'][$sessaoDoVsCode['agente']]);
+        $rota = $agente === 'auto' && $sessaoDoVsCode && ! $origemEsgotada && in_array($sessaoDoVsCode['agente'], $disponivel['agentes'], true)
             // Continuação de sessão do VS Code: em automático, quem segue é o
             // agente daquela conversa — é ele que tem o histórico.
             ? ['agente' => $sessaoDoVsCode['agente'], 'modo' => 'implementar', 'categoria' => 'implementacao', 'manual' => false,
                 'motivo' => 'Automático: continuação da sessão do VS Code']
+            : ($agente === 'auto' && $origemEsgotada && in_array('codex', $disponivel['agentes'], true)
+            // A IA da conversa está no limite: o Codex assume, com o
+            // histórico dela importado (ver `proxima()`).
+            ? ['agente' => 'codex', 'modo' => 'implementar', 'categoria' => 'implementacao', 'manual' => false,
+                'motivo' => 'Automático: '.$disponivel['esgotados'][$sessaoDoVsCode['agente']].'; o GPT (Codex) assume a conversa com o histórico dela']
             : ($agente === 'auto'
-            ? $this->roteador->decidir($pedido['instrucao'], $disponivel['agentes'], $tarefa)
-            : ['agente' => $agente, 'modo' => null, 'categoria' => null, 'manual' => true, 'motivo' => 'Escolha manual']);
+            ? $this->roteador->decidir($pedido['instrucao'], $disponivel['agentes'], $tarefa, $disponivel['esgotados'])
+            : ['agente' => $agente, 'modo' => null, 'categoria' => null, 'manual' => true, 'motivo' => 'Escolha manual']));
 
         if ($modo === 'auto') {
             $modo = $rota['modo'] ?? $this->roteador->decidir($pedido['instrucao'], [], $tarefa)['modo'];
@@ -185,7 +226,7 @@ class AgentesService
                 'ultima_atividade_em' => now(),
             ]);
 
-            return CentralIaExecucao::create([
+            $execucao = CentralIaExecucao::create([
                 'user_id' => $user->id,
                 'pedido_id' => $mensagem->id,
                 'tarefa_id' => $tarefa->id,
@@ -195,6 +236,15 @@ class AgentesService
                 'roteamento' => $rota,
                 'instrucao' => $pedido['instrucao'],
             ]);
+
+            Eventos::registrar($user, 'pedido', "{$user->name} pediu ({$execucao->modo}): ".Str::limit($pedido['instrucao'], 200).' — '.($rota['motivo'] ?? ''),
+                Eventos::da($execucao) + ['origem' => $origem]);
+            if (isset($rota['handoff_de'])) {
+                Eventos::registrar($user, 'troca_de_agente', 'Tarefa #'.$tarefa->id.' passa de '.(CentralIaExecucao::AGENTES[$rota['handoff_de']] ?? $rota['handoff_de']).' para '.$execucao->nomeDoAgente(),
+                    Eventos::da($execucao) + ['origem' => $origem], 'aviso');
+            }
+
+            return $execucao;
         });
     }
 
@@ -241,6 +291,9 @@ class AgentesService
         $dossie['origem'] = ['agente' => $agente, 'sessao' => $sessaoId, 'cwd' => $sessao['cwd'], 'mensagens' => $sessao['mensagens']];
         $dossie['lacunas'][] = "O histórico anterior está na sessão do VS Code ({$sessao['mensagens']} mensagens), não neste dossiê. Outro agente que assumir só vê o que acontecer daqui em diante.";
 
+        Eventos::registrar($user, 'sessao_continuada', "Conversa de {$nome} do VS Code ({$sessao['mensagens']} mensagens) passa a seguir pela Central",
+            ['agente' => $agente, 'projeto' => $sessao['projeto']]);
+
         return CentralIaTarefa::create([
             'user_id' => $user->id,
             'projeto' => $sessao['projeto'],
@@ -281,6 +334,11 @@ class AgentesService
                 return null;
             }
 
+            // Implementando direto na pasta, dois agentes no mesmo projeto
+            // escreveriam um por cima do outro: um por projeto.
+            $projetosOcupados = config('central_ia.agentes.implementar_na_pasta')
+                ? (clone $rodando)->where('modo', 'implementar')->pluck('projeto')->all() : [];
+
             $execucao = CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::PENDENTE)
                 ->whereIn('agente', $runner->agentes)
                 ->where(fn ($q) => $q->whereIn('projeto', $runner->projetos)->orWhere('projeto', ''))
@@ -288,6 +346,7 @@ class AgentesService
                 // ao cockpit) entra pelo `whereNull`.
                 ->where(fn ($q) => $q->whereNull('tarefa_id')
                     ->orWhereNotIn('tarefa_id', (clone $rodando)->whereNotNull('tarefa_id')->select('tarefa_id')))
+                ->where(fn ($q) => $q->where('modo', '!=', 'implementar')->orWhereNotIn('projeto', $projetosOcupados ?: ['']))
                 ->orderBy('id')->lockForUpdate()->first();
 
             if ($execucao) {
@@ -302,6 +361,7 @@ class AgentesService
             return null;
         }
 
+        Eventos::registrar($user, 'inicio', "{$execucao->nomeDoAgente()} começou ({$execucao->modo}) na máquina {$runner->maquina}", Eventos::da($execucao) + ['origem' => 'runner']);
         $tarefa = $execucao->tarefa;
         // A sessão interna do agente só continua com o MESMO agente na mesma
         // tarefa; entre agentes diferentes, quem leva o contexto é o dossiê.
@@ -336,6 +396,13 @@ class AgentesService
             'bloco' => Dossie::instrucaoDoBloco(),
             'fontes' => $execucao->roteamento['fontes'] ?? [],
             'continuar' => $continuar,
+            'acesso' => config('central_ia.agentes.acesso'),
+            'na_pasta' => (bool) config('central_ia.agentes.implementar_na_pasta'),
+            // Outro agente assumindo uma conversa do VS Code: o runner lê o
+            // histórico dela e põe no prompt (só texto, sem ferramentas).
+            'importar' => ! $continuar && $sessaoDoVsCode && $sessaoDoVsCode['agente'] !== $execucao->agente
+                && ! CentralIaExecucao::where('tarefa_id', $tarefa?->id)->where('agente', $execucao->agente)->where('id', '<', $execucao->id)->exists()
+                ? $sessaoDoVsCode : null,
         ];
     }
 
@@ -370,12 +437,20 @@ class AgentesService
                 'concluida_em' => now(),
             ]);
 
+            $ok
+                ? Eventos::registrar($user, 'concluida', "{$execucao->nomeDoAgente()} concluiu em ".$execucao->iniciada_em?->diffForHumans(now(), true).($bloco ? '' : ' (sem bloco de contexto)')
+                    .(filled($bloco['duvida'] ?? null) ? ' — com dúvida para você' : ''), Eventos::da($execucao) + ['origem' => 'runner'], filled($bloco['duvida'] ?? null) ? 'aviso' : 'info')
+                : Eventos::registrar($user, 'falhou', "{$execucao->nomeDoAgente()} falhou: ".($dados['erro'] ?? 'erro desconhecido'), Eventos::da($execucao) + ['origem' => 'runner'], 'erro');
+
             if ($tarefa) {
                 $dossie = Dossie::aplicarConclusao($tarefa->dossie ?? Dossie::inicial($tarefa->objetivo), $execucao, $bloco, $checkpoint);
                 $status = match (true) {
                     ! $ok => CentralIaTarefa::FALHOU,
                     filled($dossie['duvida']) => CentralIaTarefa::AGUARDANDO_VOCE,
-                    (bool) ($bloco['tarefa_concluida'] ?? false) => CentralIaTarefa::CONCLUIDA,
+                    // Só implementação encerra a tarefa: numa análise ("me diga
+                    // onde paramos") o agente marcava concluída a tarefa inteira
+                    // porque aquela pergunta tinha sido respondida.
+                    $execucao->modo === 'implementar' && (bool) ($bloco['tarefa_concluida'] ?? false) => CentralIaTarefa::CONCLUIDA,
                     default => CentralIaTarefa::ABERTA,
                 };
                 // Ainda há pedido desta tarefa na fila: ela continua em curso.
@@ -412,6 +487,7 @@ class AgentesService
             ->each(function (CentralIaExecucao $e) use ($user) {
                 $aviso = $this->conversas->registrarDoAgente($user, 'Central', "{$e->nomeDoAgente()} não respondeu a tempo em {$e->projeto}; o pedido foi encerrado.", CentralIaMensagem::AUTOR_SISTEMA, $e->projeto ?: null, $e->tarefa_id);
                 $e->update(['status' => CentralIaExecucao::EXPIRADA, 'resposta_id' => $aviso->id, 'concluida_em' => now()]);
+                Eventos::registrar($user, 'expirada', "{$e->nomeDoAgente()} ficou sem dar notícia além do teto; pedido encerrado", Eventos::da($e) + ['origem' => 'central'], 'erro');
                 $e->tarefa?->update(['status' => CentralIaTarefa::FALHOU, 'ultima_atividade_em' => now()]);
             });
     }
