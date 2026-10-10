@@ -410,7 +410,7 @@
                 </div>
 
                 <div class="rounded-panel border border-line bg-panel p-4">
-                    <p class="flex items-center gap-1.5 text-sm font-semibold text-ink"><span class="h-2.5 w-2.5 rounded-sm" style="background:#029caf"></span>Claude</p>
+                    <p class="flex items-center gap-1.5 text-sm font-semibold text-ink"><span class="h-2.5 w-2.5 rounded-sm bg-brand"></span>Claude</p>
                     <p class="text-xs text-ink-mute">Assinatura (pelo /usage)</p>
                     <p x-show="!consumo.limites?.claude" class="mt-2 text-xs text-ink-faint">Aguardando a primeira leitura do runner.</p>
                     <template x-for="j in consumo.limites?.claude?.janelas || []" :key="j.rotulo">
@@ -436,7 +436,7 @@
                 </div>
 
                 <div class="rounded-panel border border-line bg-panel p-4">
-                    <p class="flex items-center gap-1.5 text-sm font-semibold text-ink"><span class="h-2.5 w-2.5 rounded-sm" style="background:#a21caf"></span>Copilot</p>
+                    <p class="flex items-center gap-1.5 text-sm font-semibold text-ink"><span class="h-2.5 w-2.5 rounded-sm bg-retorno"></span>Copilot</p>
                     <p class="text-xs text-ink-mute">Requisições premium no mês</p>
                     <p class="mt-2 font-display text-2xl font-semibold text-ink"
                        x-text="(consumo.limites?.copilot?.premium_mes ?? '—') + (consumo.limites?.copilot?.franquia ? ' / ' + consumo.limites.copilot.franquia : '')"></p>
@@ -453,9 +453,9 @@
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <p class="text-sm font-semibold text-ink">Tokens por dia — últimos 7 dias</p>
                         <div class="flex items-center gap-3 text-xs text-ink-dim">
-                            <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm" style="background:#029caf"></span>Claude</span>
+                            <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm bg-brand"></span>Claude</span>
                             <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm bg-chart-out"></span>GPT (Codex)</span>
-                            <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm" style="background:#a21caf"></span>Copilot</span>
+                            <span class="flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-sm bg-retorno"></span>Copilot</span>
                             <button type="button" @click="mostrarTabela = !mostrarTabela" class="font-semibold text-brand-text" x-text="mostrarTabela ? 'Ver gráfico' : 'Ver tabela'"></button>
                         </div>
                     </div>
@@ -468,9 +468,9 @@
                                     <span class="mb-1 text-[10px] text-ink-dim" x-show="barraHover === i || i === consumo.serie.length - 1" x-text="tokens(d.claude + d.codex + d.copilot)"></span>
                                     <div class="flex w-9 flex-col-reverse gap-[2px]">
                                         {{-- col-reverse: o primeiro fica embaixo — Claude, Codex, Copilot, na ordem da legenda --}}
-                                        <div class="rounded-[2px]" :style="'background:#029caf;height:' + altura(d.claude) + 'px'" x-show="d.claude"></div>
+                                        <div class="rounded-[2px] bg-brand" :style="'height:' + altura(d.claude) + 'px'" x-show="d.claude"></div>
                                         <div class="rounded-[2px] bg-chart-out" :style="'height:' + altura(d.codex) + 'px'" x-show="d.codex"></div>
-                                        <div class="rounded-[2px]" :style="'background:#a21caf;height:' + altura(d.copilot) + 'px'" x-show="d.copilot"></div>
+                                        <div class="rounded-[2px] bg-retorno" :style="'height:' + altura(d.copilot) + 'px'" x-show="d.copilot"></div>
                                     </div>
                                 </div>
                             </template>
@@ -493,14 +493,15 @@
                         </div>
                     </div>
 
-                    <table x-show="mostrarTabela" x-cloak class="mt-3 w-full text-left text-xs">
-                        <thead class="text-ink-faint"><tr><th class="py-1">Dia</th><th>Claude</th><th>GPT (Codex)</th><th>Copilot</th><th>Total</th></tr></thead>
-                        <tbody class="divide-y divide-rule text-ink-dim">
-                            <template x-for="d in consumo.serie" :key="'t' + d.dia">
-                                <tr><td class="py-1" x-text="diaCurto(d.dia)"></td><td x-text="tokens(d.claude)"></td><td x-text="tokens(d.codex)"></td><td x-text="tokens(d.copilot)"></td><td class="text-ink" x-text="tokens(d.claude + d.codex + d.copilot)"></td></tr>
-                            </template>
-                        </tbody>
-                    </table>
+                    {{-- Grade de div: a regra do redesign reserva tabela de verdade ao componente x-tabela. --}}
+                    <div x-show="mostrarTabela" x-cloak class="mt-3 text-xs" role="table" aria-label="Tokens por dia e por IA">
+                        <div class="grid grid-cols-5 py-1 text-ink-faint" role="row"><span>Dia</span><span>Claude</span><span>GPT (Codex)</span><span>Copilot</span><span>Total</span></div>
+                        <template x-for="d in consumo.serie" :key="'t' + d.dia">
+                            <div class="grid grid-cols-5 border-t border-rule py-1 text-ink-dim" role="row">
+                                <span x-text="diaCurto(d.dia)"></span><span x-text="tokens(d.claude)"></span><span x-text="tokens(d.codex)"></span><span x-text="tokens(d.copilot)"></span><span class="text-ink" x-text="tokens(d.claude + d.codex + d.copilot)"></span>
+                            </div>
+                        </template>
+                    </div>
                     <p class="mt-2 text-[11px] text-ink-faint">Tokens de entrada e saída, sem cache, lidos dos registros das IAs nesta máquina (inclui o uso no VS Code, não só a Central).</p>
                 </div>
 
