@@ -3,6 +3,7 @@
 import argparse
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[2]
@@ -17,10 +18,15 @@ if not (vendor / 'autoload.php').is_file() or not node:
 gitdir = subprocess.check_output(['git', '-C', str(root), 'rev-parse', '--path-format=absolute', '--git-common-dir'], text=True).strip()
 for name in ['vendor', 'storage', 'bootstrap/cache']:
     (root / name).mkdir(parents=True, exist_ok=True)
+# O checkout também serve a porta 8096 e tem `.env` de verdade (APP_URL,
+# raiz de anexos em /var/www). Sem esconder, ele vaza para os testes e
+# derruba ~60 deles por motivo de ambiente, não de código.
+empty_env = Path(tempfile.mkdtemp()) / '.env'
+empty_env.write_text('')
 command = ['docker', '--config', str(central / '.docker'), 'run', '--rm', '--pull=never',
            '--network', 'none', '--user', '1000:1000', '--read-only', '--cap-drop', 'ALL',
            '--security-opt', 'no-new-privileges:true', '--workdir', '/var/www/html']
-for source, target in [(root, '/var/www/html'), (vendor, '/var/www/html/vendor'),
+for source, target in [(root, '/var/www/html'), (vendor, '/var/www/html/vendor'), (empty_env, '/var/www/html/.env'),
                        (root / 'tools/central-ia/testing/TestCase.php', '/var/www/html/tests/TestCase.php'),
                        (Path(gitdir), gitdir), (Path(node), '/usr/local/bin/node')]:
     command += ['--mount', 'type=bind,src=' + str(source) + ',dst=' + target + ',readonly']

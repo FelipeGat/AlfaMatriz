@@ -1,3 +1,6 @@
+> **Histórico.** Este documento descreve a primeira versão (aplicação separada).
+> Em 10/10/2026 o dono decidiu outro caminho — ver [README.md](README.md).
+
 # Revisão aprovada: um banco no AlfaMatriz local
 
 Decisão de 10/10/2026: o módulo nativo terá o banco MariaDB do AlfaMatriz

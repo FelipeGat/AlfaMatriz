@@ -1,3 +1,6 @@
+> **Histórico.** Este documento descreve a primeira versão (aplicação separada).
+> Em 10/10/2026 o dono decidiu outro caminho — ver [README.md](README.md).
+
 # AlfaMatriz / Central — identidade validada em desenvolvimento
 
 Data: 10/10/2026. Nenhuma ativação, migração, vinculação ou alteração de dados reais.

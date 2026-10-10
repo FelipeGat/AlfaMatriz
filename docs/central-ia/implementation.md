@@ -1,3 +1,6 @@
+> **Histórico.** Este documento descreve a primeira versão (aplicação separada).
+> Em 10/10/2026 o dono decidiu outro caminho — ver [README.md](README.md).
+
 # Identidade multiusuário — primeira etapa
 
 ## Escopo implementado em desenvolvimento

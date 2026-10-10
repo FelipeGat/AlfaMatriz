@@ -5,6 +5,7 @@ use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\Auth\PrimeiroAcessoController;
 use App\Http\Controllers\CadastroAuxiliarController;
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\CentralIaController;
 use App\Http\Controllers\CentroControleController;
 use App\Http\Controllers\CentroCustoController;
 use App\Http\Controllers\ClienteController;
@@ -187,6 +188,15 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
      */
     Route::get('agenda', [AgendaController::class, 'index'])->name('agenda.index')
         ->middleware('permissao:agenda');
+
+    // Central de IA. Sem id de conversa na rota: é sempre a da conta logada.
+    // O poll da tela bate a cada 5 s, daí o teto de leitura folgado.
+    Route::get('central-ia', [CentralIaController::class, 'index'])->name('central-ia.index')
+        ->middleware('permissao:central_ia');
+    Route::get('central-ia/mensagens', [CentralIaController::class, 'mensagens'])->name('central-ia.mensagens')
+        ->middleware(['permissao:central_ia', 'throttle:60,1']);
+    Route::post('central-ia/mensagens', [CentralIaController::class, 'enviar'])->name('central-ia.enviar')
+        ->middleware(['permissao:central_ia,incluir', 'throttle:20,1']);
     Route::get('agenda/dia/{data}', [AgendaController::class, 'dia'])->name('agenda.dia')
         ->middleware('permissao:agenda')
         ->where('data', '\\d{4}-\\d{2}-\\d{2}');

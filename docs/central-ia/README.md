@@ -1,103 +1,81 @@
-# Central de IA — entrega local na branch Felipe
+# Central de IA no AlfaMatriz
 
-Para continuidade no Claude Code, leia [HANDOFF-CLAUDE.md](HANDOFF-CLAUDE.md).
+Estado em 10/10/2026, branch local `Felipe`. Os demais documentos desta pasta
+(`HANDOFF-CLAUDE.md`, `single-database.md`, `identity-integration.md`, …) são
+o histórico da primeira versão, feita como aplicação separada. Onde divergirem
+deste README, vale este.
 
-## Estado desta entrega
+## Decisões do dono (Felipe, 10/10/2026)
 
-Este checkout registra o candidato já implementado, seus testes e a revisão
-arquitetural aprovada. O AlfaMatriz em uso continua na `main`, porta 8096.
-Nenhum serviço foi ativado, banco migrado, usuário real vinculado, consumidor
-Telegram trocado ou chamada de IA executada por esta entrega.
-O checkout separado está na branch local `Felipe`, que recebeu por
-fast-forward os 200 commits da `main` local até `1e2bbb9` antes desta entrega.
-A referência remota não foi atualizada nem houve push; isso não comprova
-sincronização com alterações posteriores no GitHub.
+1. **Um sistema só.** A Central roda dentro do AlfaMatriz, no mesmo banco, em
+   tabelas `central_ia_*`. Não há segunda aplicação, nem PostgreSQL, nem
+   tickets entre aplicações — o vaivém Matriz → Central → Matriz foi o que
+   gerou o 503 com o PHP sem worker livre.
+2. **Cada pessoa com as suas IAs e a sua máquina.** O Rossini tem o login dele
+   nas IAs e a WSL dele; o Felipe, os seus; e assim para todos. O AlfaMatriz
+   guarda a conversa e coordena; quem executa é um *runner* na WSL de cada um,
+   com a credencial de IA daquela pessoa. Nenhuma credencial de IA entra no
+   banco, no navegador ou no Git.
+3. **Começar limpo.** Nada é importado do banco da `central-agentes`; o
+   Telegram é pareado de novo.
+4. **Acesso por perfil.** O perfil "Central de IA" é dado conta a conta na
+   tela de usuários. O Administrador NÃO o recebe de fábrica (o Rossini também
+   é admin). A conversa de cada um é só dele, sem exceção para administrador.
+5. **Homologação local de uma semana**; depois, deploy — começando limpo em
+   produção. A especificação (`.spec`) é escrita ao fim dos testes, antes do deploy.
+6. **Tudo na branch `Felipe`.**
 
-**A arquitetura de destino usa um único banco MariaDB do AlfaMatriz.** Leia
-[single-database.md](single-database.md): é a decisão atual. O transporte
-`CentralBackend`, tickets e a referência `tools/central-ia/reference/backend`
-são o candidato anterior, preservado para reaproveitamento e rastreabilidade.
-Não representam a implementação concluída do banco único e não devem ser
-ativados como solução final. As flags da interface e integração permanecem
-desabilitadas por padrão; ausência de política válida nega o acesso.
+## Etapas
 
-## Conteúdo registrado
+| # | Etapa | Estado |
+|---|---|---|
+| 1 | Conversa na tela: histórico, envio idempotente, privacidade por dono | **Feita** |
+| 2 | Telegram (`@GrupoSolucoesAgentBot`): pareamento, as duas mãos, um consumidor só | Próxima — exige desligar o consumidor da `central-agentes` |
+| 3 | Runner por usuário: projetos, Claude Code / Codex com a credencial da pessoa | Depois — primeira execução real só com aprovação |
+| 4 | Homologação de uma semana, ajustes e `.spec` | Depois |
 
-- Módulo nativo Blade/Alpine: menu, conversa, histórico paginado, autoria,
-  reconexão e envio com chave de idempotência.
-- Autoridade de identidade e política exclusiva por ID estável e UUID,
-  conta ativa e permissão específica; sem exceção de administrador.
-- Testes de identidade, autorização, revogação e isolamento com fixtures.
-- Snapshot do backend anterior, incluindo Telegram, propriedade, deduplicação,
-  limites e testes, em `tools/central-ia/reference/backend`. É referência de
-  código, não outro serviço a instalar ou publicar. Não contém dependências,
-  credenciais, sessões, bancos, volumes ou runtime.
-- Ferramenta do ensaio autorizado de backup real; os artefatos cifrados e
-  as chaves ficam fora desta entrega. Relatórios contêm apenas metadados.
+## O que existe (etapa 1)
 
-## Operação e restrições
+- `central_ia_conversas` e `central_ia_mensagens` (migração
+  `2026_10_10_200000_criar_central_ia.php`), que também cria o recurso
+  `central_ia` e o perfil "Central de IA" (ler, incluir, editar).
+- `App\Services\CentralIa\ConversaService`: a regra de gravar e ler, para as
+  três portas que vão escrever (tela, Telegram, runner).
+- `CentralIaController` + rotas `central-ia.*` no grupo autenticado do
+  `routes/web.php` — sem id de conversa ou de usuário na rota.
+- Tela `resources/views/central-ia/index.blade.php` + `resources/js/central-ia.js`
+  (poll de 5 s, reenvio seguro com o mesmo `client_id`, reconexão).
+- Testes: `tests/Feature/CentralIa/ConversaTest.php`.
 
-Windows: `http://localhost:8096`. Mac na rede atual: `http://home:8096`.
-Docker/WSL e computador ligado são necessários; VS Code aberto não é.
-O serviço existente e o consumidor do bot permanecem independentes deste
-checkout. Não abrir segundo consumidor nem rodar o scheduler/filas genéricas
-do AlfaMatriz local: o banco é uma cópia com integrações reais.
+## Ambiente local
 
-**Não publicar esta branch nem executar suas migrações em produção.** Mesmo
-com flags desabilitadas, `migrate` criaria as novas tabelas de identidade.
-Migrações reais, alterações no bot e reinícios continuam sujeitos a aprovação.
-O `down()` da migração de identidade recusa exclusão destrutiva deliberadamente.
+- `http://localhost:8096` (Windows) / `http://home:8096` (Mac). O stack Docker
+  `alfamatriz-dev` passou a montar ESTE checkout (`alfamatriz-felipe-central-ia`),
+  e não mais o de `main`. Sobe com
+  `docker compose -p alfamatriz-dev -f docker-compose.local.yml up -d` daqui.
+  O compose, `docker/local/`, `backups/` e o `.env` ficam fora do Git.
+- O banco é uma cópia da produção com integrações reais: não rodar o scheduler
+  nem `queue:work` genérico. Os hosts dos sistemas e o `api.telegram.org`
+  estão bloqueados no container `app`.
+- **Atualizar a cópia de produção apaga a Central** (tabelas `central_ia_*` e a
+  conta local do Felipe, id 5, que não existe em produção). Antes de atualizar,
+  salvar essas tabelas; depois, rodar `migrate` e devolver o perfil.
 
-## Documentação e evidências
+## Testes
 
-- [Plano de banco único](single-database.md): trabalho ainda pendente.
-- [Ativação local e rollback](real-local-activation.md): histórico do plano
-  de dois bancos; adaptá-lo à decisão de banco único antes de ativar.
-- [Transição local e HTTP 503](local-transition.md): testes com fixtures.
-- [Identidade](identity-integration.md) e [interface](interface-integration.md):
-  evolução histórica e mecanismos testados.
-- `evidencias/real-backup-validation.json`: restauração real isolada aprovada,
-  59 tabelas/20.699 registros AlfaMatriz e 19 tabelas/32 registros Central.
-- `evidencias/local-persistence.json`: persistência do candidato fictício.
-- `evidencias/local-503-diagnostic.json`: reprodução com worker único;
-  não comprova a causa exata do incidente histórico.
-
-## Reprodução segura dos testes
-
-`tools/central-ia/testing/TestCase.php` é o bootstrap de laboratório usado
-na validação: exige SQLite em memória, impede HTTP não simulado e desativa
-Vite nos testes PHP. Não substitui o TestCase padrão no código da aplicação.
-O laboratório usa PHP 8.2.30, vendor conforme `composer.lock`, filesystem
-somente leitura, sem rede e storage/cache temporários. Dependências não
-foram instaladas nem copiadas para o Git nesta entrega.
-O `/tmp` desse contêiner de testes precisa de `exec`: os testes antigos de
-deploy executam scripts simulados nesse local. Storage e cache mantêm
-`noexec`. Essa configuração de teste não muda os executores de IA.
-
-Com a imagem e dependências do laboratório já disponíveis:
+Isolados, sem rede, código somente leitura, SQLite em memória:
 
 ```bash
-python3 tools/central-ia/run-tests.py \
-  --central-root /home/duque_de_caxias/projetos/central-agentes
+python3 tools/central-ia/run-tests.py --central-root /home/duque_de_caxias/projetos/central-agentes
 ```
 
-A ferramenta de backup preservada exige `cryptography` já disponível e o
-diretório original como contexto explícito:
+Em 10/10/2026, depois da etapa 1: **1.386 testes, 8.409 asserções, verde**
+(duas depreciações do PHPUnit, preexistentes). O runner esconde o `.env` do
+checkout, que agora existe porque ele serve a porta 8096.
 
-```bash
-CENTRAL_BACKUP_ROOT=/home/duque_de_caxias/projetos/central-agentes \
-  python3 tools/central-ia/run-real-backup-validation.py
-```
+## A remover antes do deploy
 
-Esse comando acessa os bancos reais de desenvolvimento e cria um novo backup:
-não é teste sintético e só deve ser repetido com autorização adequada. Não
-executá-lo como rotina automática. Não faz migração ou vínculo real.
-
-## Próximos passos
-
-Implementar e ensaiar o domínio `central_ia_*` no MariaDB descartável, adaptar
-consultas/envio ao banco único, transferir legado idempotentemente e testar
-propriedade, cursor, entregas e quotas. Confirmar a identidade pelo login
-nativo antes da vinculação. Apresentar o ensaio e aprovar ativação local.
-Manter PostgreSQL antigo e backups até recuperação comprovada. Inferência
-e executores reais continuam uma etapa separada.
+- `tools/central-ia/reference/backend` — código da aplicação separada, mantido
+  só como consulta para o Telegram e o runner.
+- `tools/central-ia/run-real-backup-validation.py` — feito para o PostgreSQL
+  da aplicação separada.

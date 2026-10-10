@@ -8,10 +8,8 @@ use App\Models\Perfil;
 use App\Models\Permissao;
 use App\Models\Revenda;
 use App\Models\User;
-use App\Services\CentralIdentityEpochs;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -284,12 +282,7 @@ class UsuarioController extends Controller
 
         $antes = $usuario->perfis()->orderBy('nome')->pluck('nome')->all();
 
-        DB::transaction(function () use ($usuario, $perfis) {
-            $changes = $usuario->perfis()->sync($perfis);
-            if ($changes['attached'] !== [] || $changes['detached'] !== []) {
-                app(CentralIdentityEpochs::class)->user($usuario->id);
-            }
-        });
+        $usuario->perfis()->sync($perfis);
 
         $depois = $usuario->perfis()->orderBy('nome')->pluck('nome')->all();
 

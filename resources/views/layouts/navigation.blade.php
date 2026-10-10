@@ -43,7 +43,9 @@
             ['route' => 'contas-financeiras.index', 'recurso' => 'financeiro', 'pattern' => 'contas-financeiras.*', 'label' => 'Caixa', 'icon' => 'banknotes', 'matriz' => true],
         ],
         'Desenvolvimento' => [
-            ['route' => 'central-ia.index', 'recurso' => 'central_ia', 'pattern' => 'central-ia.*', 'label' => 'Central de IA', 'icon' => 'chat', 'central' => true],
+            // Só por permissão: quem tem o perfil "Central de IA" vê; o
+            // Administrador não o recebe de fábrica.
+            ['route' => 'central-ia.index', 'recurso' => 'central_ia', 'pattern' => 'central-ia.*', 'label' => 'Central de IA', 'icon' => 'chat', 'matriz' => true],
             ['route' => 'tarefas.index', 'recurso' => 'tarefas', 'pattern' => 'tarefas.*', 'label' => 'Tarefas', 'icon' => 'view-grid', 'matriz' => true],
             // Logo abaixo de Tarefas, e não num grupo "Pessoal" próprio: o
             // desenho (§19) previa o grupo pessoal, com Agenda e Notas. Decisão
@@ -83,7 +85,6 @@
     $usuario = Auth::user();
     $grupos = collect($grupos)
         ->map(fn ($links) => collect($links)
-            ->filter(fn ($link) => empty($link['central']) || (config('central_ia.enabled') && config('central_ia.ui_enabled') && app(\App\Services\CentralOwnerPolicy::class)->allows($usuario)))
             ->filter(fn ($link) => ! $escopo || empty($link['matriz']))
             ->filter(fn ($link) => empty($link['recurso'])
                 || $usuario?->canPermissao($link['recurso'], 'ler'))

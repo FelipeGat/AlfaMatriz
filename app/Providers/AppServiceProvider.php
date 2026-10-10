@@ -4,8 +4,6 @@ namespace App\Providers;
 
 use App\Listeners\RegistrarAcesso;
 use App\Models\Notificacao;
-use App\Models\User;
-use App\Services\CentralIdentityEpochs;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
@@ -13,7 +11,6 @@ use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -34,19 +31,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Event::listen(Logout::class, function ($event) {
-            if (config('central_ia.enabled') && $event->user) {
-                DB::table('central_ia_subjects')->where('user_id', $event->user->id)->increment('session_epoch');
-            }
-        });
-        User::updated(function ($user) {
-            if (config('central_ia.enabled') && $user->wasChanged(['password', 'ativo', 'primeiro_acesso'])) {
-                DB::table('central_ia_subjects')->where('user_id', $user->id)->increment('session_epoch');
-            }
-        });
-        foreach (['deleted', 'restored'] as $event) {
-            User::$event(fn ($user) => app(CentralIdentityEpochs::class)->user($user->id));
-        }
         // A paginação do painel é nossa, e não a do framework: a do Laravel
         // resolve o tema com variantes `dark:`, que sem `darkMode` no
         // `tailwind.config.js` seguem o sistema operacional em vez da classe

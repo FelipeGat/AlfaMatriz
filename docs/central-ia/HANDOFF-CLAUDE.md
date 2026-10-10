@@ -1,3 +1,6 @@
+> **Histórico.** Este documento descreve a primeira versão (aplicação separada).
+> Em 10/10/2026 o dono decidiu outro caminho — ver [README.md](README.md).
+
 # Transferência para Claude Code — Central de IA no AlfaMatriz local
 
 Data: 10/10/2026. Proprietário: Felipe. Este documento é o roteiro para

@@ -1,3 +1,6 @@
+> **Histórico.** Este documento descreve a primeira versão (aplicação separada).
+> Em 10/10/2026 o dono decidiu outro caminho — ver [README.md](README.md).
+
 # Interface nativa da Central de IA — desenvolvimento
 
 Data: 10/10/2026. Base AlfaMatriz: main `1e2bbb97fc5f4398129b42eeeec20d170fac2add`.

@@ -5,10 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Auditoria;
 use App\Models\Perfil;
 use App\Models\Permissao;
-use App\Services\CentralIdentityEpochs;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 /**
  * A grade de permissões de um perfil.
@@ -62,14 +60,9 @@ class PerfilController extends Controller
 
         $antes = $this->gradeAtual($perfil);
 
-        DB::transaction(function () use ($perfil, $grade, $antes) {
-            $perfil->permissoes()->sync($grade->all());
-            $depois = $this->gradeAtual($perfil->fresh());
-            if ($antes !== $depois) {
-                app(CentralIdentityEpochs::class)->profile($perfil->id);
-            }
-            $this->registrarMudancaDeGrade($perfil, $antes, $depois);
-        });
+        $perfil->permissoes()->sync($grade->all());
+
+        $this->registrarMudancaDeGrade($perfil, $antes, $this->gradeAtual($perfil->fresh()));
 
         return back()->with('status', "Permissões do perfil {$perfil->nome} salvas.");
     }

@@ -2,70 +2,85 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\CentralBackend;
+use App\Models\CentralIaMensagem;
+use App\Services\CentralIa\ConversaService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpKernel\Exception\HttpException;
+use Illuminate\View\View;
 
+/**
+ * A tela da Central de IA e as duas chamadas que ela faz: buscar e enviar.
+ *
+ * Tudo é da conta logada — não há id de conversa nem de usuário na rota, de
+ * propósito: o que não chega pela requisição não pode ser trocado por outro.
+ */
 class CentralIaController extends Controller
 {
-    public function index(Request $request)
-    {
-        abort_unless(config('central_ia.ui_enabled') && config('central_ia.enabled'), 404);
+    public function __construct(private readonly ConversaService $conversas) {}
 
-        // Render the shell locally even if Central or every executor is offline.
-        return response()->view('central-ia.index', ['canSend' => $request->user()->canPermissao('central_ia', 'incluir')])
-            ->header('Cache-Control', 'no-store, private');
+    public function index(Request $request): View
+    {
+        return view('central-ia.index', [
+            'podeEnviar' => $request->user()->canPermissao('central_ia', 'incluir'),
+        ]);
     }
 
-    public function messages(Request $request, CentralBackend $backend)
+    public function mensagens(Request $request): JsonResponse
     {
-        return $this->respond(function () use ($request, $backend) {
-            $this->only($request, ['before', 'after']);
-            $data = $request->validate(['before' => 'nullable|integer|min:1', 'after' => 'nullable|integer|min:0']);
-            abort_if(isset($data['before'], $data['after']), 422);
-            $result = $backend->call($request, 'history', $data);
-            // Only public message fields: never forward account/session/technical metadata.
-            abort_unless(is_array($result['messages'] ?? null) && is_array($result['deliveries'] ?? null)
-                && is_bool($result['has_more'] ?? null) && is_bool($result['telegram_paired'] ?? null), 503);
-            $fields = array_flip(['id', 'client_id', 'actor_type', 'actor_name', 'kind', 'origin', 'content', 'created_at', 'delivery_status']);
+        $dados = $request->validate([
+            'antes' => ['nullable', 'integer', 'min:1', 'prohibits:depois'],
+            'depois' => ['nullable', 'integer', 'min:0'],
+        ]);
 
-            return [
-                'messages' => array_map(fn ($message) => array_intersect_key($message, $fields), $result['messages']),
-                'deliveries' => array_map(fn ($delivery) => array_intersect_key($delivery, array_flip(['id', 'status'])), $result['deliveries']),
-                'has_more' => $result['has_more'], 'telegram_paired' => $result['telegram_paired'],
-            ];
-        });
+        [$mensagens, $haMais] = $this->conversas->historico(
+            $request->user(),
+            isset($dados['antes']) ? (int) $dados['antes'] : null,
+            isset($dados['depois']) ? (int) $dados['depois'] : null,
+        );
+
+        return $this->semCache([
+            'mensagens' => $mensagens->map(fn (CentralIaMensagem $m) => $this->publica($m))->all(),
+            'ha_mais' => $haMais,
+            'telegram_vinculado' => false,
+        ]);
     }
 
-    public function send(Request $request, CentralBackend $backend)
+    public function enviar(Request $request): JsonResponse
     {
-        return $this->respond(function () use ($request, $backend) {
-            $this->only($request, ['content', 'client_id']);
-            $data = $request->validate(['content' => 'required|string|max:3000', 'client_id' => 'required|uuid']);
-            abort_if(trim($data['content']) === '', 422);
-            $result = $backend->call($request, 'send', $data);
+        $dados = $request->validate([
+            'conteudo' => ['required', 'string', 'max:'.config('central_ia.max_texto')],
+            'client_id' => ['required', 'uuid'],
+        ]);
 
-            return ['id' => $result['id']];
-        }, 201);
+        $mensagem = $this->conversas->registrarDoUsuario(
+            $request->user(), $dados['conteudo'], CentralIaMensagem::ORIGEM_WEB, $dados['client_id'],
+        );
+
+        return $this->semCache(['id' => $mensagem->id], $mensagem->wasRecentlyCreated ? 201 : 200);
     }
 
-    private function only(Request $request, array $fields): void
+    /**
+     * Só o que a tela mostra. `user_id`, `conversa_id` e o id do Telegram
+     * ficam no servidor.
+     */
+    private function publica(CentralIaMensagem $m): array
     {
-        abort_unless(config('central_ia.ui_enabled') && config('central_ia.enabled'), 404);
-        abort_if(array_diff(array_keys($request->except('_token')), $fields) !== [], 422);
+        return [
+            'id' => $m->id,
+            'client_id' => $m->client_id,
+            'autor_tipo' => $m->autor_tipo,
+            'autor_nome' => $m->autor_nome,
+            'origem' => $m->origem,
+            'conteudo' => $m->conteudo,
+            'criada_em' => $m->created_at->toIso8601String(),
+        ];
     }
 
-    private function respond(callable $operation, int $status = 200)
+    /**
+     * Conversa privada não vai para cache de navegador nem de proxy.
+     */
+    private function semCache(array $dados, int $status = 200): JsonResponse
     {
-        try {
-            return response()->json($operation(), $status)->header('Cache-Control', 'no-store, private');
-        } catch (HttpException $e) {
-            $messages = [401 => 'Sua sessão precisa ser renovada.', 403 => 'Seu acesso à Central não está autorizado.',
-                404 => 'A Central não está habilitada para esta conta.', 422 => 'Confira os dados da mensagem.',
-                429 => 'Limite temporário atingido. Aguarde antes de tentar novamente.'];
-
-            return response()->json(['message' => $messages[$e->getStatusCode()] ?? 'A Central está temporariamente indisponível. Sua mensagem pode ser reenviada com segurança.'], $e->getStatusCode())
-                ->header('Cache-Control', 'no-store, private');
-        }
+        return response()->json($dados, $status)->header('Cache-Control', 'no-store, private');
     }
 }
