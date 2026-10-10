@@ -2,7 +2,7 @@
     <x-slot name="titulo">Central de IA</x-slot>
     <x-slot name="contexto">Seu espaço de trabalho</x-slot>
 
-    <section x-data="centralIa({ historico: '{{ route('central-ia.mensagens') }}', enviar: '{{ route('central-ia.enviar') }}', podeEnviar: {{ $podeEnviar ? 'true' : 'false' }} })"
+    <section x-data="centralIa({ historico: '{{ route('central-ia.mensagens') }}', enviar: '{{ route('central-ia.enviar') }}', telegramCodigo: '{{ route('central-ia.telegram.codigo') }}', telegramDesvincular: '{{ route('central-ia.telegram.desvincular') }}', podeEnviar: {{ $podeEnviar ? 'true' : 'false' }} })"
              data-central-ia class="mx-auto max-w-7xl space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -17,7 +17,7 @@
             <div class="min-w-0 overflow-hidden rounded-card border border-line bg-panel xl:col-span-3">
                 <div class="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
                     <span class="flex items-center gap-2 text-sm font-semibold text-ink"><span class="h-4 w-4 text-brand"><x-nav-icon name="chat" /></span>Conversa central</span>
-                    <span class="text-xs text-ink-faint" x-text="telegramVinculado ? 'Telegram vinculado' : 'Telegram não vinculado'"></span>
+                    <span class="text-xs text-ink-faint" x-text="telegram.vinculado ? 'Telegram vinculado' : 'Telegram não vinculado'"></span>
                 </div>
 
                 <div x-show="aviso" x-cloak role="alert" class="border-b border-line px-4 py-3 text-sm text-ink-mute">
@@ -46,6 +46,7 @@
                                     <time class="text-ink-faint" :datetime="m.criada_em" x-text="data(m.criada_em)"></time>
                                 </div>
                                 <p class="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink" x-text="m.conteudo"></p>
+                                <p class="mt-2 text-xs text-ink-faint" x-show="m.entrega" x-text="entrega(m.entrega)"></p>
                             </article>
                         </template>
                         <article x-show="pendente" x-cloak class="rounded-control border border-line bg-input px-4 py-3" data-pendente>
@@ -75,6 +76,30 @@
                 <div class="rounded-card border border-line bg-panel p-4">
                     <h3 class="text-sm font-semibold text-ink">Seu contexto, preservado</h3>
                     <p class="mt-2 text-sm leading-relaxed text-ink-mute">O histórico é só seu. Nenhum outro usuário o vê — nem quem administra o sistema.</p>
+                </div>
+                <div class="rounded-card border border-line bg-panel p-4">
+                    <h3 class="text-sm font-semibold text-ink">Telegram</h3>
+                    <template x-if="telegram.vinculado">
+                        <div class="mt-2 space-y-2 text-sm text-ink-mute">
+                            <p>Esta conversa também está no seu Telegram<span x-show="telegram.usuario" x-text="' (@' + telegram.usuario + ')'"></span>. O que você escreve lá aparece aqui, e o contrário também.</p>
+                            @if ($podeParear)
+                                <button type="button" @click="desvincularTelegram()" class="text-xs font-semibold text-brand">Desvincular</button>
+                            @endif
+                        </div>
+                    </template>
+                    <template x-if="!telegram.vinculado">
+                        <div class="mt-2 space-y-2 text-sm text-ink-mute">
+                            <p>Converse pelo celular com <span class="font-semibold text-ink">{{ '@'.config('central_ia.telegram.bot') }}</span>, na mesma conversa.</p>
+                            @if ($podeParear)
+                                <button type="button" x-show="!pareamento" @click="parearTelegram()" class="rounded-control border border-line px-3 py-1.5 text-xs font-semibold text-ink hover:border-brand">Vincular Telegram</button>
+                                <div x-show="pareamento" x-cloak class="space-y-2">
+                                    <a :href="pareamento?.link" target="_blank" rel="noopener" class="inline-block rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand">Abrir no Telegram</a>
+                                    <p class="text-xs">Ou envie ao bot: <code class="break-all font-mono text-ink" x-text="pareamento?.comando"></code></p>
+                                    <p class="text-xs text-ink-faint" x-text="'O código vale ' + pareamento?.minutos + ' minutos e só uma vez.'"></p>
+                                </div>
+                            @endif
+                        </div>
+                    </template>
                 </div>
                 <div class="rounded-card border border-line bg-panel p-4">
                     <h3 class="text-sm font-semibold text-ink">Agentes</h3>

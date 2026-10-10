@@ -10,7 +10,7 @@
 export function centralIa(config) {
     return {
         mensagens: [], rascunho: '', pendente: null, enviando: false, carregando: true,
-        ocupado: false, haAnteriores: false, telegramVinculado: false, bloqueado: false,
+        ocupado: false, haAnteriores: false, telegram: { vinculado: false, usuario: null }, pareamento: null, bloqueado: false,
         aviso: '', conexao: 'conectando', falhas: 0, timer: null, encerrado: false,
         podeEnviar: config.podeEnviar,
 
@@ -86,7 +86,12 @@ export function centralIa(config) {
                 this.juntar(r.mensagens);
                 if (!ultima) this.haAnteriores = r.ha_mais;
                 alcancando = !!ultima && r.ha_mais;
-                this.telegramVinculado = r.telegram_vinculado;
+                for (const e of r.entregas || []) {
+                    const m = this.mensagens.find(x => x.id === e.id);
+                    if (m) m.entrega = e.status;
+                }
+                this.telegram = r.telegram;
+                if (this.telegram.vinculado) this.pareamento = null;
                 this.conexao = 'online'; this.aviso = ''; this.falhas = 0;
                 if (noFim || this.carregando) this.$nextTick(() => { feed.scrollTop = feed.scrollHeight; });
             } catch (erro) { this.falhou(erro); }
@@ -125,6 +130,24 @@ export function centralIa(config) {
                 await this.atualizar();
             } catch (erro) { this.falhou(erro); }
             finally { this.enviando = false; }
+        },
+
+        // O código vale minutos e aparece uma vez; some sozinho quando o
+        // poll vê o vínculo feito.
+        async parearTelegram() {
+            try { this.pareamento = await this.pedir(config.telegramCodigo, 'POST', {}); this.aviso = ''; }
+            catch (erro) { this.falhou(erro); }
+        },
+
+        async desvincularTelegram() {
+            if (!confirm('Desvincular o Telegram desta conversa?')) return;
+            try { await this.pedir(config.telegramDesvincular, 'DELETE'); this.telegram = { vinculado: false, usuario: null }; }
+            catch (erro) { this.falhou(erro); }
+        },
+
+        entrega(status) {
+            return { pendente: 'Indo para o Telegram…', enviando: 'Indo para o Telegram…', entregue: 'Entregue no Telegram',
+                incerta: 'Entrega no Telegram não confirmada', falhou: 'Não foi para o Telegram' }[status] || '';
         },
 
         autor(m) { return m.autor_nome || { usuario: 'Você', agente: 'Agente', sistema: 'Sistema' }[m.autor_tipo] || 'Sistema'; },

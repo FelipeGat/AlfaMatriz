@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class CentralIaMensagem extends Model
 {
@@ -30,6 +31,11 @@ class CentralIaMensagem extends Model
     public function conversa(): BelongsTo
     {
         return $this->belongsTo(CentralIaConversa::class, 'conversa_id');
+    }
+
+    public function entrega(): HasOne
+    {
+        return $this->hasOne(CentralIaEntrega::class, 'mensagem_id');
     }
 
     /**

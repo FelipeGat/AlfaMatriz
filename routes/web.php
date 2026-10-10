@@ -197,6 +197,11 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware(['permissao:central_ia', 'throttle:60,1']);
     Route::post('central-ia/mensagens', [CentralIaController::class, 'enviar'])->name('central-ia.enviar')
         ->middleware(['permissao:central_ia,incluir', 'throttle:20,1']);
+    // Parear e desparear o Telegram mexem no canal, não criam conversa: `editar`.
+    Route::post('central-ia/telegram/codigo', [CentralIaController::class, 'codigoTelegram'])->name('central-ia.telegram.codigo')
+        ->middleware(['permissao:central_ia,editar', 'throttle:6,1']);
+    Route::delete('central-ia/telegram', [CentralIaController::class, 'desvincularTelegram'])->name('central-ia.telegram.desvincular')
+        ->middleware('permissao:central_ia,editar');
     Route::get('agenda/dia/{data}', [AgendaController::class, 'dia'])->name('agenda.dia')
         ->middleware('permissao:agenda')
         ->where('data', '\\d{4}-\\d{2}-\\d{2}');

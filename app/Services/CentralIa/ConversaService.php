@@ -3,9 +3,12 @@
 namespace App\Services\CentralIa;
 
 use App\Models\CentralIaConversa;
+use App\Models\CentralIaEntrega;
 use App\Models\CentralIaMensagem;
+use App\Models\CentralIaTelegramVinculo;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -70,9 +73,7 @@ class ConversaService
         }
 
         try {
-            return CentralIaMensagem::create([
-                'conversa_id' => $this->conversaDe($user)->id,
-                'user_id' => $user->id,
+            return $this->gravar($user, [
                 'client_id' => $clientId,
                 'autor_tipo' => CentralIaMensagem::AUTOR_USUARIO,
                 'autor_nome' => $user->name,
@@ -91,6 +92,35 @@ class ConversaService
 
             return $this->mesmaMensagemOuRecusa($existente, $conteudo);
         }
+    }
+
+    /**
+     * A mensagem e a sua ida ao Telegram nascem juntas, na mesma transação:
+     * sem isso, uma queda entre as duas deixaria a mensagem na tela e
+     * ausente no celular, sem nada que avisasse.
+     *
+     * O que veio do próprio Telegram não volta para ele.
+     */
+    private function gravar(User $user, array $dados): CentralIaMensagem
+    {
+        return DB::transaction(function () use ($user, $dados) {
+            $mensagem = CentralIaMensagem::create($dados + [
+                'conversa_id' => $this->conversaDe($user)->id,
+                'user_id' => $user->id,
+            ]);
+
+            $vinculo = CentralIaTelegramVinculo::where('user_id', $user->id)->first();
+
+            if ($vinculo && $mensagem->origem !== CentralIaMensagem::ORIGEM_TELEGRAM) {
+                CentralIaEntrega::create([
+                    'mensagem_id' => $mensagem->id,
+                    'user_id' => $user->id,
+                    'chat_id' => $vinculo->chat_id,
+                ]);
+            }
+
+            return $mensagem;
+        });
     }
 
     private function porClientId(User $user, string $clientId): ?CentralIaMensagem
