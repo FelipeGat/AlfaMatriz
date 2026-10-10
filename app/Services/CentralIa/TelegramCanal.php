@@ -143,7 +143,20 @@ class TelegramCanal
     {
         // O atalho completo (`/claude projeto pedido`) vale sempre.
         if ($pedido = $this->agentes->interpretar($texto)) {
-            $this->agentes->pedir($user, $texto, $pedido, CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId);
+            $this->confirmar($chatId, $this->agentes->pedir($user, $texto, $pedido, CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId));
+
+            return;
+        }
+
+        // Sem barra e sem projeto em uso, a frase pode ser a intenção dita
+        // com palavras: "continuar gestor de onde paramos", "usar o alfahome".
+        // Foi assim que o dono escreveu na primeira tentativa (10/10/2026), e
+        // a mensagem virou anotação calada.
+        if (! str_starts_with($texto, '/') && blank($vinculo->projeto_atual) && ($intencao = $this->intencao($user, $texto))) {
+            [$verbo, $projeto] = $intencao;
+            $verbo === 'continuar'
+                ? $this->continuar($user, $vinculo, $chatId, $projeto, pedidoInicial: $texto, updateId: $updateId)
+                : $this->usar($user, $vinculo, $chatId, $projeto);
 
             return;
         }
@@ -167,8 +180,53 @@ class TelegramCanal
             $comando === '/continuar' => $this->continuar($user, $vinculo, $chatId, trim($resto)),
             $comando !== null => $this->responder($chatId, $this->ajuda()),
             filled($vinculo->projeto_atual) => $this->pedirNoProjeto($user, $vinculo, $chatId, $texto, $texto, $updateId),
-            default => $this->conversas->registrarDoUsuario($user, $texto, CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId),
+            default => $this->anotar($user, $chatId, $texto, $updateId),
         };
+    }
+
+    /**
+     * Mensagem sem projeto em uso: fica anotada na conversa Geral — e o bot
+     * DIZ isso. Calado, parecia que a mensagem tinha se perdido.
+     */
+    private function anotar(User $user, int $chatId, string $texto, int $updateId): void
+    {
+        $this->conversas->registrarDoUsuario($user, $texto, CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId);
+        $this->responder($chatId, 'Anotado na conversa Geral (nenhum agente acionado). Para trabalhar num projeto: /usar gestor, '
+            .'ou /continuar gestor para seguir a conversa do VS Code. /projetos lista os do cockpit.');
+    }
+
+    /**
+     * "continuar|retomar|seguir … <projeto>" ou "usar|trabalhar|abrir … <projeto>",
+     * com o nome de um projeto que a máquina informou.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    private function intencao(User $user, string $texto): ?array
+    {
+        $minusculo = mb_strtolower($texto);
+        $verbo = match (true) {
+            (bool) preg_match('/^\s*(continu|retom|segui|sig[ao])/u', $minusculo) => 'continuar',
+            (bool) preg_match('/^\s*(us[ae]|usar|trabalh|abr[ae]|mud[ae] para)/u', $minusculo) => 'usar',
+            default => null,
+        };
+        if (! $verbo) {
+            return null;
+        }
+
+        // O nome mais longo que aparece inteiro vence ("gestor_alfa_mobile" antes de "gestor").
+        $projetos = collect($this->agentes->disponiveis($user)['projetos'])->sortByDesc(fn ($p) => mb_strlen($p));
+        $projeto = $projetos->first(fn ($p) => preg_match('/(^|[^a-z0-9_.-])'.preg_quote(mb_strtolower($p), '/').'($|[^a-z0-9_.-])/u', $minusculo));
+
+        return $projeto ? [$verbo, $projeto] : null;
+    }
+
+    /** Recibo do pedido, na hora: quem vai fazer, por quê e se já está rodando. */
+    private function confirmar(int $chatId, CentralIaExecucao $e): void
+    {
+        $modo = $e->modo === 'implementar' ? 'implementar' : 'analisar';
+        $handoff = isset($e->roteamento['handoff_de']) ? ' Assume a tarefa no lugar de '.(CentralIaExecucao::AGENTES[$e->roteamento['handoff_de']] ?? '?').', com o contexto dela.' : '';
+        $this->responder($chatId, "Recebido em {$e->projeto}: {$e->nomeDoAgente()} vai {$modo} (tarefa #{$e->tarefa_id}). "
+            .($e->roteamento['motivo'] ?? '').".{$handoff} A resposta chega aqui quando terminar.");
     }
 
     private function definir(CentralIaTelegramVinculo $vinculo, int $chatId, array $dados, string $resposta): void
@@ -205,13 +263,13 @@ class TelegramCanal
         $tarefa = $novaTarefa ? null : CentralIaTarefa::de($user)->where('projeto', $vinculo->projeto_atual)->emCurso()
             ->orderByDesc('ultima_atividade_em')->value('id');
 
-        $this->agentes->pedir($user, $texto, [
+        $this->confirmar($chatId, $this->agentes->pedir($user, $texto, [
             'projeto' => $vinculo->projeto_atual,
             'agente' => $agente ?? $vinculo->agente_atual ?? 'auto',
             'modo' => 'auto',
             'instrucao' => $instrucao,
             'tarefa_id' => $tarefa,
-        ], CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId);
+        ], CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId));
     }
 
     /**
@@ -246,7 +304,7 @@ class TelegramCanal
      * recente do projeto e passa a usar o projeto aqui, na tarefa que continua
      * aquela conversa.
      */
-    private function continuar(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $resto): void
+    private function continuar(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $resto, ?string $pedidoInicial = null, ?int $updateId = null): void
     {
         [$projeto, $nome] = array_pad(preg_split('/\s+/', $resto, 2), 2, '');
         $agente = ['claude' => 'claude', 'gpt' => 'codex', 'codex' => 'codex', 'copilot' => 'copilot'][strtolower($nome)] ?? null;
@@ -265,7 +323,14 @@ class TelegramCanal
 
         $quando = \Illuminate\Support\Carbon::parse($sessao['ultima_atividade'])->timezone(config('app.timezone'))->format('d/m H:i');
         $this->responder($chatId, 'Continuando a sessão de '.CentralIaExecucao::AGENTES[$sessao['agente']]." em {$projeto} (última atividade {$quando}, {$sessao['mensagens']} mensagens suas), na tarefa #{$tarefa->id}. "
-            .'Mande o próximo pedido. A sessão do VS Code fica como está; daqui em diante as duas seguem separadas.');
+            .($pedidoInicial ? 'Sua mensagem já foi como primeiro pedido. ' : 'Mande o próximo pedido. ')
+            .'A sessão do VS Code fica como está; daqui em diante as duas seguem separadas.');
+
+        // Dito com palavras ("continuar gestor de onde paramos"), a frase já é
+        // o pedido: segue na hora, sem pedir outra mensagem.
+        if ($pedidoInicial && $updateId) {
+            $this->pedirNoProjeto($user, $vinculo->refresh(), $chatId, $pedidoInicial, $pedidoInicial, $updateId);
+        }
     }
 
     private function textoProjetos(User $user, CentralIaTelegramVinculo $vinculo): string

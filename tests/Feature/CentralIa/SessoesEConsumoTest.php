@@ -157,6 +157,31 @@ class SessoesEConsumoTest extends TestCase
         $this->assertSame([], $this->actingAs($outro)->getJson(route('central-ia.painel'))->json('sessoes'));
     }
 
+    /**
+     * O que o dono escreveu de fato: sem barra, com o projeto no meio da
+     * frase. Uma mensagem só continua a sessão e já vira o primeiro pedido.
+     */
+    public function test_continuar_dito_com_palavras_ja_manda_o_pedido(): void
+    {
+        config(['central_ia.telegram.token' => 'token-de-teste']);
+        Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]])]);
+        $user = $this->comCentral();
+        $this->batida($user);
+        $canal = app(TelegramCanal::class);
+        $msg = fn ($id, $t) => ['update_id' => $id, 'message' => ['text' => $t, 'chat' => ['id' => 77, 'type' => 'private'], 'from' => ['id' => 77, 'is_bot' => false]]];
+        $canal->receber($msg(1, '/start '.$canal->gerarCodigo($user)));
+
+        $canal->receber($msg(2, 'Continuar gestor de onde paramos'));
+
+        $tarefa = CentralIaTarefa::firstOrFail();
+        $execucao = CentralIaExecucao::firstOrFail();
+        $this->assertSame(self::SESSAO, $tarefa->dossie['origem']['sessao']);
+        $this->assertSame(['claude', 'Continuar gestor de onde paramos', $tarefa->id], [$execucao->agente, $execucao->instrucao, $execucao->tarefa_id]);
+        $respostas = collect(Http::recorded())->map(fn ($p) => $p[0]['text'] ?? '')->filter()->values();
+        $this->assertStringContainsString('Sua mensagem já foi como primeiro pedido', $respostas[1]);
+        $this->assertStringContainsString('Recebido em gestor: Claude', $respostas[2]);
+    }
+
     public function test_continuar_pelo_telegram(): void
     {
         config(['central_ia.telegram.token' => 'token-de-teste']);

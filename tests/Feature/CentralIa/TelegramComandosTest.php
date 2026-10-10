@@ -6,6 +6,7 @@ use App\Models\CentralIaExecucao;
 use App\Models\CentralIaMensagem;
 use App\Models\CentralIaRunner;
 use App\Models\CentralIaTarefa;
+use App\Models\CentralIaTelegramVinculo;
 use App\Models\Perfil;
 use App\Models\User;
 use App\Services\CentralIa\TelegramCanal;
@@ -103,6 +104,29 @@ class TelegramComandosTest extends TestCase
         $this->assertStringContainsString('alfahome', $this->enviar('/status'));
         $this->assertStringContainsString('/usar', $this->enviar('/naoexiste'));
         $this->assertStringContainsString('Não achei', $this->enviar('/usar inventado'));
+    }
+
+    /**
+     * Calado, parecia que a mensagem tinha se perdido (10/10/2026).
+     */
+    public function test_mensagem_solta_e_anotada_e_o_bot_avisa(): void
+    {
+        $this->assertStringContainsString('Anotado na conversa Geral', $this->enviar('uma ideia solta para depois'));
+    }
+
+    public function test_intencao_com_palavras_usa_o_projeto(): void
+    {
+        $this->assertStringContainsString('Usando alfahome', $this->enviar('usar o alfahome'));
+        $this->assertSame('alfahome', CentralIaTelegramVinculo::value('projeto_atual'));
+
+        $recibo = $this->enviar('Implemente o filtro de obras');
+        $this->assertStringContainsString('Recebido em alfahome: Claude vai implementar', $recibo);
+    }
+
+    public function test_frase_sem_projeto_conhecido_nao_vira_comando(): void
+    {
+        $this->assertStringContainsString('Anotado', $this->enviar('continuar amanhã com calma'));
+        $this->assertNull(CentralIaTelegramVinculo::value('projeto_atual'));
     }
 
     public function test_tarefa_esperando_voce_aparece_no_status(): void
