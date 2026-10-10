@@ -1,0 +1,38 @@
+{
+  "before": {
+    "alfamatriz": {
+      "users": 4,
+      "identity_hash": "7595532e28ee8961a71a6a0447274be1720b361cc0a293910b9d7760315525e8",
+      "subjects": 3,
+      "storage_marker": true
+    },
+    "central": {
+      "users": 3,
+      "messages": 4,
+      "message_hash": "80eb4ea212cc4ace532f4357d3b01d32fbdd22bead676a513a3f34fa4dfd552f",
+      "pairings": 0,
+      "agent_runs": 0,
+      "redis_marker": true
+    }
+  },
+  "after": {
+    "alfamatriz": {
+      "users": 4,
+      "identity_hash": "7595532e28ee8961a71a6a0447274be1720b361cc0a293910b9d7760315525e8",
+      "subjects": 3,
+      "storage_marker": true
+    },
+    "central": {
+      "users": 3,
+      "messages": 4,
+      "message_hash": "80eb4ea212cc4ace532f4357d3b01d32fbdd22bead676a513a3f34fa4dfd552f",
+      "pairings": 0,
+      "agent_runs": 0,
+      "redis_marker": true
+    }
+  },
+  "records_preserved": true,
+  "containers_restarted": true,
+  "real_data_used": false,
+  "old_services_restarted": false
+}

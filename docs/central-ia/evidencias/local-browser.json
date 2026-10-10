@@ -1,0 +1,15 @@
+{
+  "checks": [
+    "other_users_denied_even_explicit_admin",
+    "owner_only_native_conversation",
+    "private_endpoints_not_publicly_routed",
+    "message_persisted_without_executor",
+    "load_fpm_no_503"
+  ],
+  "requests": 30,
+  "real_accounts": false,
+  "real_inference": false,
+  "last_history_status": 200,
+  "p95_ms": 2452,
+  "checks_passed": 5
+}

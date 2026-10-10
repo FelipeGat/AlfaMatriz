@@ -24,12 +24,15 @@ return Application::configure(basePath: dirname(__DIR__))
         // changelog (#225) fora do grupo `web`: ver `routes/github.php`,
         // `routes/vigia.php` e `routes/atualizacoes.php`.
         then: function () {
+            Route::middleware('web')->group(__DIR__.'/../routes/central-ia.php');
             Route::group([], base_path('routes/github.php'));
             Route::group([], base_path('routes/vigia.php'));
             Route::group([], base_path('routes/atualizacoes.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Dedicated machine bearer authentication; user sessions cannot authenticate these endpoints.
+        $middleware->validateCsrfTokens(except: ['internal/central-ia/inspect', 'internal/central-ia/redeem']);
         // O Tailscale Funnel termina o TLS e entrega a requisição em HTTP
         // pela interface local. Sem confiar nesse proxy, o Laravel enxerga
         // "http" e devolve links e cookie de sessão inseguros — o login
@@ -58,6 +61,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash(['password', 'password_confirmation', 'ticket', 'flow']);
         // Tela parada tempo demais envelhece a sessão, e com ela o token do
         // formulário: o envio chega com um token que não vale mais e o Laravel
         // devolve a página "419 Page Expired", de onde não se sai — foi preciso

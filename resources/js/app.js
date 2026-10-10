@@ -1,6 +1,8 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import { centralIa } from './central-ia';
+Alpine.data('centralIa', centralIa);
 
 /**
  * Estado da moldura: menu recolhido e tema.
