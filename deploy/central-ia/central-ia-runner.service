@@ -1,0 +1,16 @@
+# Runner da Central de IA como serviço do usuário (systemd --user).
+# Instalação: deploy/central-ia/README.md. Roda com o HOME, os logins de IA e
+# os projetos da própria pessoa — nunca como root, nunca em container.
+[Unit]
+Description=Runner da Central de IA (AlfaMatriz)
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/env node %h/.local/share/alfa/central-ia-runner.mjs
+Restart=always
+RestartSec=10
+# O PATH do systemd não traz o ~/.local/bin (onde o Copilot se instala).
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target

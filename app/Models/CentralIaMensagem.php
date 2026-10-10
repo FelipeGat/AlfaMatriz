@@ -33,6 +33,12 @@ class CentralIaMensagem extends Model
         return $this->belongsTo(CentralIaConversa::class, 'conversa_id');
     }
 
+    /** Quando a mensagem é um pedido a agente. */
+    public function execucao(): HasOne
+    {
+        return $this->hasOne(CentralIaExecucao::class, 'pedido_id');
+    }
+
     public function entrega(): HasOne
     {
         return $this->hasOne(CentralIaEntrega::class, 'mensagem_id');

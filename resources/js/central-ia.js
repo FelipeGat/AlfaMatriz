@@ -26,6 +26,7 @@ export function centralIa(config) {
     return {
         mensagens: [], rascunho: '', pendente: null, enviando: false, carregando: true,
         ocupado: false, haAnteriores: false, telegram: { vinculado: false, usuario: null }, pareamento: null, bloqueado: false,
+        maquina: { online: false, agentes: [], projetos: [] }, agente: '', projeto: '', modo: 'analisar',
         aviso: '', conexao: 'conectando', falhas: 0, timer: null, encerrado: false,
         podeEnviar: config.podeEnviar,
 
@@ -62,7 +63,12 @@ export function centralIa(config) {
                     headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
                     body: corpo === undefined ? undefined : JSON.stringify(corpo),
                 });
-                if (!resposta.ok) { const erro = new Error('falhou'); erro.status = resposta.status; throw erro; }
+                if (!resposta.ok) {
+                    const erro = new Error('falhou'); erro.status = resposta.status;
+                    // A recusa de pedido a agente explica o motivo (projeto, limite do dia).
+                    if (resposta.status === 422) { try { erro.detalhe = (await resposta.json()).message; } catch {} }
+                    throw erro;
+                }
                 return await resposta.json();
             } finally { clearTimeout(prazo); }
         },
@@ -75,7 +81,7 @@ export function centralIa(config) {
             } else {
                 this.conexao = 'offline';
                 this.aviso = erro.status === 429 ? 'Muitas mensagens em pouco tempo. Aguarde um instante.'
-                    : erro.status === 422 ? 'Confira a mensagem: ela não pôde ser registrada.'
+                    : erro.status === 422 ? (erro.detalhe || 'Confira a mensagem: ela não pôde ser registrada.')
                     : 'Não foi possível falar com o servidor. Sua mensagem continua aqui para reenviar com segurança.';
             }
         },
@@ -101,11 +107,14 @@ export function centralIa(config) {
                 this.juntar(r.mensagens);
                 if (!ultima) this.haAnteriores = r.ha_mais;
                 alcancando = !!ultima && r.ha_mais;
-                for (const e of r.entregas || []) {
+                for (const e of r.recentes || []) {
                     const m = this.mensagens.find(x => x.id === e.id);
-                    if (m) m.entrega = e.status;
+                    if (m) { m.entrega = e.entrega; m.pedido = e.pedido; }
                 }
                 this.telegram = r.telegram;
+                this.maquina = r.agentes;
+                if (this.agente && !this.maquina.agentes.includes(this.agente)) this.agente = '';
+                if (this.projeto && !this.maquina.projetos.includes(this.projeto)) this.projeto = '';
                 if (this.telegram.vinculado) this.pareamento = null;
                 this.conexao = 'online'; this.aviso = ''; this.falhas = 0;
                 if (noFim || this.carregando) this.$nextTick(() => { feed.scrollTop = feed.scrollHeight; });
@@ -137,7 +146,8 @@ export function centralIa(config) {
 
         async enviar() {
             if (this.enviando || this.bloqueado || !this.podeEnviar || (!this.pendente && !this.rascunho.trim())) return;
-            if (!this.pendente) this.pendente = { client_id: novoId(), conteudo: this.rascunho };
+            if (this.agente && !this.projeto) { this.aviso = 'Escolha o projeto para o agente.'; return; }
+            if (!this.pendente) this.pendente = { client_id: novoId(), conteudo: this.rascunho, agente: this.agente || null, projeto: this.projeto || null, modo: this.modo };
             this.enviando = true;
             try {
                 await this.pedir(config.enviar, 'POST', this.pendente);
@@ -158,6 +168,10 @@ export function centralIa(config) {
             if (!confirm('Desvincular o Telegram desta conversa?')) return;
             try { await this.pedir(config.telegramDesvincular, 'DELETE'); this.telegram = { vinculado: false, usuario: null }; }
             catch (erro) { this.falhou(erro); }
+        },
+
+        estadoDoPedido(p) {
+            return { pendente: 'na fila', executando: 'trabalhando…', concluida: 'concluído', falhou: 'falhou', expirada: 'sem resposta' }[p.status] || p.status;
         },
 
         entrega(status) {

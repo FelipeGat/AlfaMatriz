@@ -67,7 +67,14 @@ class CentralIaTelegram extends Command
      */
     private function ciclo(TelegramApi $api, TelegramCanal $canal): ?int
     {
-        $trava = Cache::lock('central-ia:telegram', 300);
+        // Dono ESTÁVEL (o hostname do container): no SIGTERM o Symfony sai
+        // com exit() de dentro do handler do sinal e o `finally` não roda, e a
+        // trava ficava presa — o bot passou 5 minutos mudo depois de um
+        // restart. Com o mesmo dono, o processo que volta retoma a trava na
+        // hora; um segundo consumidor, em outra máquina ou container, continua
+        // barrado. 60 s: um ciclo cabe nisso (leitura de até 20 s + entregas
+        // com prazo de 20 s).
+        $trava = Cache::lock('central-ia:telegram', 60, config('central_ia.telegram.dono') ?: gethostname());
 
         if (! $trava->get()) {
             $this->warn('Outro processo do bot está ativo. Aguardando.');

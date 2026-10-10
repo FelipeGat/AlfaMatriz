@@ -45,7 +45,9 @@
                                     <span class="text-ink-faint" x-show="m.origem !== 'agente'" x-text="canal(m.origem)"></span>
                                     <time class="text-ink-faint" :datetime="m.criada_em" x-text="data(m.criada_em)"></time>
                                 </div>
+                                <p class="mb-2 text-xs font-semibold text-brand" x-show="m.pedido" x-text="m.pedido && ('Para ' + m.pedido.agente + ' · ' + m.pedido.projeto + ' · ' + (m.pedido.modo === 'implementar' ? 'implementar' : 'analisar') + ' — ' + estadoDoPedido(m.pedido))"></p>
                                 <p class="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink" x-text="m.conteudo"></p>
+                                <p class="mt-2 text-xs text-ink-faint" x-show="m.pedido?.branch" x-text="'Branch: ' + m.pedido?.branch"></p>
                                 <p class="mt-2 text-xs text-ink-faint" x-show="m.entrega" x-text="entrega(m.entrega)"></p>
                             </article>
                         </template>
@@ -58,6 +60,32 @@
                 </div>
 
                 <form @submit.prevent="enviar()" class="space-y-3 border-t border-line bg-panel p-4" aria-label="Enviar mensagem">
+                    @if ($podeAcionar)
+                        <div class="flex flex-wrap items-center gap-2 text-xs">
+                            <label class="sr-only" for="central-agente">Agente</label>
+                            <select id="central-agente" x-model="agente" :disabled="!!pendente" class="rounded-control border-line bg-input py-1.5 text-xs text-ink focus:border-brand focus:ring-brand">
+                                <option value="">Só conversa</option>
+                                @foreach ($agentes as $chave => $nome)
+                                    <option value="{{ $chave }}" :disabled="!maquina.agentes.includes('{{ $chave }}')">{{ $nome }}</option>
+                                @endforeach
+                            </select>
+                            <template x-if="agente">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <label class="sr-only" for="central-projeto">Projeto</label>
+                                    <select id="central-projeto" x-model="projeto" :disabled="!!pendente" class="rounded-control border-line bg-input py-1.5 text-xs text-ink focus:border-brand focus:ring-brand">
+                                        <option value="">Projeto…</option>
+                                        <template x-for="p in maquina.projetos" :key="p"><option :value="p" x-text="p"></option></template>
+                                    </select>
+                                    <label class="sr-only" for="central-modo">Modo</label>
+                                    <select id="central-modo" x-model="modo" :disabled="!!pendente" class="rounded-control border-line bg-input py-1.5 text-xs text-ink focus:border-brand focus:ring-brand">
+                                        @foreach ($modos as $chave => $nome)
+                                            <option value="{{ $chave }}">{{ $nome }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </template>
+                        </div>
+                    @endif
                     <label for="central-rascunho" class="sr-only">Sua mensagem</label>
                     <textarea id="central-rascunho" x-model="rascunho" maxlength="{{ config('central_ia.max_texto') }}" rows="3"
                               :readonly="!!pendente" :disabled="bloqueado || !podeEnviar" @keydown.enter="if (!$event.shiftKey && !$event.isComposing && !window.matchMedia('(pointer: coarse)').matches) { $event.preventDefault(); enviar(); }"
@@ -103,7 +131,14 @@
                 </div>
                 <div class="rounded-card border border-line bg-panel p-4">
                     <h3 class="text-sm font-semibold text-ink">Agentes</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-ink-mute">Os agentes ainda não estão ligados. Você já pode registrar mensagens e decisões.</p>
+                    <p class="mt-2 text-sm leading-relaxed text-ink-mute" x-show="maquina.online">Sua máquina está online. Escolha o agente e o projeto acima da mensagem.</p>
+                    <p class="mt-2 text-sm leading-relaxed text-ink-mute" x-show="!maquina.online">Sua máquina não está respondendo. Os pedidos ficam na fila até o runner voltar.</p>
+                    <ul class="mt-2 space-y-1 text-xs text-ink-faint">
+                        @foreach ($agentes as $chave => $nome)
+                            <li x-text="'{{ $nome }}: ' + (maquina.agentes.includes('{{ $chave }}') ? 'disponível' : 'não encontrado na máquina')"></li>
+                        @endforeach
+                    </ul>
+                    <p class="mt-3 text-xs text-ink-faint">Pelo Telegram: <code class="font-mono">/claude projeto pedido</code> — com <code class="font-mono">!</code> (<code class="font-mono">/claude!</code>) para implementar. Também <code class="font-mono">/gpt</code> e <code class="font-mono">/copilot</code>.</p>
                 </div>
             </aside>
         </div>

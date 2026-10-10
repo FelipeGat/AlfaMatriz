@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 
 /**
  * O Telegram como segundo canal da conversa: parear, receber e entregar.
@@ -22,6 +23,7 @@ class TelegramCanal
     public function __construct(
         private readonly TelegramApi $api,
         private readonly ConversaService $conversas,
+        private readonly AgentesService $agentes,
     ) {}
 
     public function vinculoDe(User $user): ?CentralIaTelegramVinculo
@@ -115,7 +117,15 @@ class TelegramCanal
         }
 
         try {
-            $this->conversas->registrarDoUsuario($user, $texto, CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId);
+            if ($pedido = $this->agentes->interpretar($texto)) {
+                $this->agentes->pedir($user, $texto, $pedido, CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId);
+            } else {
+                $this->conversas->registrarDoUsuario($user, $texto, CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId);
+            }
+        } catch (ValidationException $e) {
+            // Pedido recusado (projeto que a máquina não tem, limite do dia):
+            // a resposta vai só para o chat, e o pedido não entra na conversa.
+            $this->responder($chatId, collect($e->errors())->flatten()->first());
         } catch (UniqueConstraintViolationException) {
             // Reentrega de um update que já entrou: o cursor se perdeu, a
             // mensagem não.
@@ -168,9 +178,12 @@ class TelegramCanal
             ->update(['status' => CentralIaEntrega::INCERTA, 'erro' => 'interrompida']);
 
         $ids = CentralIaEntrega::where('status', CentralIaEntrega::PENDENTE)->orderBy('id')->limit($limite)->pluck('id');
+        // Prazo por rodada: o ciclo do bot precisa caber na trava dele. O que
+        // sobrar sai na próxima volta, segundos depois.
+        $ate = microtime(true) + 20;
 
         foreach ($ids as $id) {
-            if (! $this->entregar($id)) {
+            if (! $this->entregar($id) || microtime(true) > $ate) {
                 return;
             }
         }
@@ -206,9 +219,17 @@ class TelegramCanal
         }
 
         $mensagem = $entrega->mensagem;
+        $texto = $mensagem->conteudo;
+
+        // O Telegram recusa acima de 4096. Resposta de agente passa disso
+        // fácil; no celular vai o começo, e a íntegra fica na tela.
+        if (mb_strlen($texto) > 3800) {
+            $texto = mb_substr($texto, 0, 3800)."\n\n… (continua na Central de IA do AlfaMatriz)";
+        }
+
         $resultado = $this->api->chamar('sendMessage', [
             'chat_id' => $entrega->chat_id,
-            'text' => $this->cabecalho($mensagem)."\n".$mensagem->conteudo,
+            'text' => $this->cabecalho($mensagem)."\n".$texto,
         ]);
 
         if ($resultado['ok']) {

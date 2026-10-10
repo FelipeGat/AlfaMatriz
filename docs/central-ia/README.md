@@ -31,7 +31,7 @@ deste README, vale este.
 |---|---|---|
 | 1 | Conversa na tela: histórico, envio idempotente, privacidade por dono | **Feita** |
 | 2 | Telegram (`@GrupoSolucoesAgentBot`): pareamento, as duas mãos, um consumidor só | **Feita** — consumidor trocado em 10/10/2026 |
-| 3 | Runner por usuário: projetos, Claude Code / Codex com a credencial da pessoa | Próxima — primeira execução real só com aprovação |
+| 3 | Agentes (Claude, GPT/Codex, Copilot) pelo runner de cada pessoa, nos projetos dela | **Feita** — testada com os três em 10/10/2026 |
 | 4 | Homologação de uma semana, ajustes e `.spec` | Depois |
 
 ## O que existe (etapa 1)
@@ -74,6 +74,42 @@ Nunca os dois ligados — o novo avisa no log ("Outro consumidor… 409") e recu
 Ainda ligados na `central-agentes`: web 8100, fila, agentes. A fila antiga
 ainda pode mandar ao bot o que alguém escrever na tela 8100; ninguém deve usá-la.
 
+## O que existe (etapa 3)
+
+- `central_ia_runners` (o que cada máquina informou: agentes e projetos) e
+  `central_ia_execucoes` (pedido, agente, projeto, modo, estado, sessão do
+  agente, branch) — migração `2026_10_11_090000_agentes_da_central_ia.php`,
+  que também cria a permissão `central_ia_agentes` (acionar agentes, separada
+  de conversar) e a dá ao perfil "Central de IA".
+- `AgentesService`: atalho `/claude projeto pedido` (`!` = implementar; `/gpt`
+  = Codex), permissão, projeto informado pela máquina, limite diário, um por
+  vez, conclusão idempotente, expiração de quem não responde, continuidade da
+  sessão. Resposta de agente nunca vira pedido.
+- Porta do runner: `routes/central-ia.php` (`api/central-ia/runner/*`, token
+  Sanctum de capacidade `central-ia-runner` — `alfa:central-ia-token`).
+- O runner: `deploy/central-ia/runner.mjs` + README de instalação. Analisar é
+  só leitura na pasta do projeto; implementar é numa worktree e branch
+  `central-ia/<n>`, sem commit nem push.
+- Na tela: seletor de agente, projeto e modo; estado de cada pedido; card de
+  Agentes com a máquina online/offline.
+- Testes: `tests/Feature/CentralIa/AgentesTest.php`.
+
+Na máquina do Felipe (10/10/2026): serviço `systemctl --user` `central-ia-runner`,
+com linger ligado (roda com o VS Code fechado), configuração em
+`~/.config/alfa/central-ia-runner.env` (0600). Teste real: um pedido de
+análise a cada agente no `alfahome` — os três responderam em ~15 s.
+
+### Operação
+
+- O bot e o runner são processos longos: código novo só vale depois de
+  `docker restart alfamatriz-dev-telegram` e, para o runner, copiar o
+  `runner.mjs` de novo e `systemctl --user restart central-ia-runner`.
+- A trava do bot tem dono fixo (o hostname do container,
+  `alfamatriz-dev-telegram`): reiniciar ou recriar o container retoma na hora.
+  No SIGTERM o Symfony sai de dentro do handler e a trava não é solta — por
+  isso o dono fixo, e por isso `stop_signal: SIGTERM` (a imagem do php-fpm
+  para com SIGQUIT, que o artisan não trata).
+
 ## Ambiente local
 
 - `http://localhost:8096` (Windows) / `http://home:8096` (Mac). O stack Docker
@@ -96,7 +132,7 @@ Isolados, sem rede, código somente leitura, SQLite em memória:
 python3 tools/central-ia/run-tests.py --central-root /home/duque_de_caxias/projetos/central-agentes
 ```
 
-Em 10/10/2026, depois da etapa 2: **1.401 testes, 8.453 asserções, verde**
+Em 10/10/2026, depois da etapa 3: **1.414 testes, 8.521 asserções, verde**
 (duas depreciações do PHPUnit, preexistentes). O runner esconde o `.env` do
 checkout, que agora existe porque ele serve a porta 8096.
 

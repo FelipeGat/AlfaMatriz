@@ -95,6 +95,22 @@ class ConversaService
     }
 
     /**
+     * A resposta de um agente (ou um aviso da própria Central) na conversa
+     * da pessoa. Não passa por `AgentesService::pedir()` — resposta de agente
+     * nunca dispara outro agente.
+     */
+    public function registrarDoAgente(User $user, string $autor, string $conteudo, string $tipo = CentralIaMensagem::AUTOR_AGENTE): CentralIaMensagem
+    {
+        return $this->gravar($user, [
+            'autor_tipo' => $tipo,
+            'autor_nome' => $autor,
+            'origem' => CentralIaMensagem::ORIGEM_AGENTE,
+            // MEDIUMTEXT guarda 16 MB; isto é folga para o que uma tela lê.
+            'conteudo' => mb_strcut($conteudo, 0, 1_000_000) ?: '(resposta vazia)',
+        ]);
+    }
+
+    /**
      * A mensagem e a sua ida ao Telegram nascem juntas, na mesma transação:
      * sem isso, uma queda entre as duas deixaria a mensagem na tela e
      * ausente no celular, sem nada que avisasse.
