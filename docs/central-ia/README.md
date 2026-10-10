@@ -30,8 +30,8 @@ deste README, vale este.
 | # | Etapa | Estado |
 |---|---|---|
 | 1 | Conversa na tela: histórico, envio idempotente, privacidade por dono | **Feita** |
-| 2 | Telegram (`@GrupoSolucoesAgentBot`): pareamento, as duas mãos, um consumidor só | Próxima — exige desligar o consumidor da `central-agentes` |
-| 3 | Runner por usuário: projetos, Claude Code / Codex com a credencial da pessoa | Depois — primeira execução real só com aprovação |
+| 2 | Telegram (`@GrupoSolucoesAgentBot`): pareamento, as duas mãos, um consumidor só | **Feita** — consumidor trocado em 10/10/2026 |
+| 3 | Runner por usuário: projetos, Claude Code / Codex com a credencial da pessoa | Próxima — primeira execução real só com aprovação |
 | 4 | Homologação de uma semana, ajustes e `.spec` | Depois |
 
 ## O que existe (etapa 1)
@@ -46,6 +46,33 @@ deste README, vale este.
 - Tela `resources/views/central-ia/index.blade.php` + `resources/js/central-ia.js`
   (poll de 5 s, reenvio seguro com o mesmo `client_id`, reconexão).
 - Testes: `tests/Feature/CentralIa/ConversaTest.php`.
+
+## O que existe (etapa 2)
+
+- `central_ia_telegram_vinculos` (um chat por conta, uma conta por chat),
+  `central_ia_telegram_codigos` (só o hash), `central_ia_telegram_cursor` e
+  `central_ia_entregas` (migração `2026_10_10_210000_telegram_da_central_ia.php`).
+- `TelegramApi` (único ponto que fala com o bot; o token nunca vai para log),
+  `TelegramCanal` (parear, receber, entregar) e o comando `central-ia:telegram`.
+- Na tela: "Vincular Telegram" gera um link `t.me/...?start=<código>` de uso
+  único (10 min); cada mensagem mostra se foi entregue no Telegram.
+- Mensagem da tela vai ao Telegram; mensagem do Telegram aparece na tela e
+  não volta para ele. Entrega `incerta` (5xx, queda) não é reenviada sozinha.
+- Testes: `tests/Feature/CentralIa/TelegramTest.php`.
+
+### Troca do consumidor (10/10/2026)
+
+O Telegram aceita UM leitor por bot. O consumidor antigo,
+`central-agentes-telegram-1`, foi PARADO (não removido) e o novo,
+`alfamatriz-dev-telegram`, subiu no lugar. O token saiu do ambiente do
+container antigo direto para `docker/local/telegram.env` (0600, fora do Git);
+só o container do bot o recebe e só ele alcança o `api.telegram.org`.
+
+Voltar ao antigo: `docker stop alfamatriz-dev-telegram && docker start central-agentes-telegram-1`.
+Nunca os dois ligados — o novo avisa no log ("Outro consumidor… 409") e recua.
+
+Ainda ligados na `central-agentes`: web 8100, fila, agentes. A fila antiga
+ainda pode mandar ao bot o que alguém escrever na tela 8100; ninguém deve usá-la.
 
 ## Ambiente local
 
@@ -69,7 +96,7 @@ Isolados, sem rede, código somente leitura, SQLite em memória:
 python3 tools/central-ia/run-tests.py --central-root /home/duque_de_caxias/projetos/central-agentes
 ```
 
-Em 10/10/2026, depois da etapa 1: **1.386 testes, 8.409 asserções, verde**
+Em 10/10/2026, depois da etapa 2: **1.401 testes, 8.453 asserções, verde**
 (duas depreciações do PHPUnit, preexistentes). O runner esconde o `.env` do
 checkout, que agora existe porque ele serve a porta 8096.
 
