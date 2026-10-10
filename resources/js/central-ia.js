@@ -7,6 +7,21 @@
  * timeout reenvia o mesmo id e o mesmo texto, e o servidor devolve a mensagem
  * que já tinha entrado em vez de gravar outra.
  */
+/**
+ * UUID v4 para o `client_id`.
+ *
+ * Não é `crypto.randomUUID()`: ele só existe em contexto seguro (HTTPS ou
+ * localhost), e o Mac abre o sistema em http://home:8096 — o envio morria
+ * ali, sem erro na tela. `getRandomValues` existe em qualquer contexto.
+ */
+function novoId() {
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
 export function centralIa(config) {
     return {
         mensagens: [], rascunho: '', pendente: null, enviando: false, carregando: true,
@@ -122,7 +137,7 @@ export function centralIa(config) {
 
         async enviar() {
             if (this.enviando || this.bloqueado || !this.podeEnviar || (!this.pendente && !this.rascunho.trim())) return;
-            if (!this.pendente) this.pendente = { client_id: crypto.randomUUID(), conteudo: this.rascunho };
+            if (!this.pendente) this.pendente = { client_id: novoId(), conteudo: this.rascunho };
             this.enviando = true;
             try {
                 await this.pedir(config.enviar, 'POST', this.pendente);
