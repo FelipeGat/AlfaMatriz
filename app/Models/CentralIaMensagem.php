@@ -24,7 +24,7 @@ class CentralIaMensagem extends Model
     public const ORIGEM_AGENTE = 'agente';
 
     protected $fillable = [
-        'conversa_id', 'user_id', 'client_id', 'autor_tipo', 'autor_nome',
+        'conversa_id', 'projeto', 'tarefa_id', 'user_id', 'client_id', 'autor_tipo', 'autor_nome',
         'origem', 'conteudo', 'telegram_update_id',
     ];
 

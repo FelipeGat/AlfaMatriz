@@ -32,7 +32,8 @@ deste README, vale este.
 | 1 | Conversa na tela: histórico, envio idempotente, privacidade por dono | **Feita** |
 | 2 | Telegram (`@GrupoSolucoesAgentBot`): pareamento, as duas mãos, um consumidor só | **Feita** — consumidor trocado em 10/10/2026 |
 | 3 | Agentes (Claude, GPT/Codex, Copilot) pelo runner de cada pessoa, nos projetos dela | **Feita** — testada com os três em 10/10/2026 |
-| 4 | Homologação de uma semana, ajustes e `.spec` | Depois |
+| 4 | Cockpit multiprojetos: tarefas com dossiê, troca de agente com handoff, IA automática, 2 em paralelo, comandos do Telegram | **Feita** em 10/10/2026 |
+| 5 | Homologação de uma semana, ajustes e cstk (briefing, constitution, spec) | Agora |
 
 ## O que existe (etapa 1)
 
@@ -110,6 +111,48 @@ análise a cada agente no `alfahome` — os três responderam em ~15 s.
   isso o dono fixo, e por isso `stop_signal: SIGTERM` (a imagem do php-fpm
   para com SIGQUIT, que o artisan não trata).
 
+## O que existe (etapa 4 — cockpit)
+
+Pedido do dono em 10/10/2026: trabalhar em até ~5 projetos ao mesmo tempo, ver
+cada um, e a IA escolhida automaticamente sem perder o contexto quando ele
+troca de agente no meio. Decisões dele: "aguardando você" só para deploy ou
+dúvida do agente; 2 execuções em paralelo; cstk depois da validação.
+
+- **Tarefa** (`central_ia_tarefas`): a unidade de trabalho de um projeto. Junta
+  pedidos, respostas e execuções; tem worktree e branch PRÓPRIAS (não mais
+  uma por execução) e o **dossiê** — objetivo, pedidos, decisões, agentes,
+  resumos, git medido, testes, próximos passos, pendências, riscos, dúvida,
+  lacunas. Migração `2026_10_11_100000_cockpit_da_central_ia.php`.
+- **Dossiê** (`App\Services\CentralIa\Dossie`): o agente termina a resposta
+  com um bloco `<<<CENTRAL-IA {json} CENTRAL-IA>>>`; o bloco sai do texto e
+  vai para o dossiê. O git vem do RUNNER (fato), não do agente. Sem bloco, o
+  dossiê registra a lacuna. `duvida` põe a tarefa em "aguardando você".
+- **Troca de agente / handoff**: uma execução por tarefa por vez (a anterior
+  termina antes); o novo agente trabalha na mesma worktree, recebe o dossiê
+  com instrução de conferir o estado real antes de alterar, e não herda a
+  sessão interna do anterior. Testado de verdade: Claude implementou, Codex
+  assumiu, conferiu o git contra o dossiê e confirmou.
+- **IA automática** (`Roteador`): regras fixas, sem chamada a modelo (perguntar
+  ao GPT custaria uma execução da cota e 10–15 s por pedido). Implementar →
+  Claude; revisar/planejar/investigar → Codex; apoio rápido → Copilot.
+  Preferências em `config/central_ia.php` (`roteamento`). O motivo aparece em
+  cada pedido; a escolha manual vence. Continuidade só no mesmo tipo de pedido.
+- **Paralelismo**: `paralelo` = 2 por pessoa (`CENTRAL_IA_PARALELO`), nunca duas
+  na mesma tarefa; o runner também roda até 2.
+- **Cockpit** (`CockpitService`, rota `central-ia.painel`): projetos fixados +
+  com tarefa em curso + com atividade em 24 h; estado, agente, tarefas,
+  última atividade, atenção; git de cada projeto (branch, pendências, último
+  commit, sessão de agente aberta na pasta, fase e ritmo do painel-avanco),
+  medido pelo runner a cada minuto. Conversa por projeto (`projeto` nulo =
+  Geral). Painel de atividade de todos os projetos.
+- **Telegram**: `/projetos`, `/status`, `/usar <projeto>`, `/nova`, `/geral`,
+  `/auto|/claude|/gpt|/copilot` (sem argumento escolhe o agente),
+  `/trocar <agente> [pedido]`. Sem projeto em uso, mensagem comum só anota.
+- **Runner**: worktree por tarefa, checkpoint do git ao fim de toda execução
+  (também na falha), sessão retomada só na mesma pasta, parada limpa (encerra
+  os agentes e reporta "interrompida" com o git medido).
+- Testes: `tests/Feature/CentralIa/{CockpitTest,TelegramComandosTest}.php`.
+
 ## Ambiente local
 
 - `http://localhost:8096` (Windows) / `http://home:8096` (Mac). O stack Docker
@@ -132,7 +175,7 @@ Isolados, sem rede, código somente leitura, SQLite em memória:
 python3 tools/central-ia/run-tests.py --central-root /home/duque_de_caxias/projetos/central-agentes
 ```
 
-Em 10/10/2026, depois da etapa 3: **1.414 testes, 8.521 asserções, verde**
+Em 10/10/2026, depois do cockpit: **1.433 testes, 8.631 asserções, verde**
 (duas depreciações do PHPUnit, preexistentes). O runner esconde o `.env` do
 checkout, que agora existe porque ele serve a porta 8096.
 

@@ -33,11 +33,17 @@ class CentralIaRunnerController extends Controller
             'agentes.*' => ['string', 'in:'.implode(',', array_keys(CentralIaExecucao::AGENTES))],
             'projetos' => ['present', 'array', 'max:300'],
             'projetos.*' => ['string', 'max:128', 'regex:/^[A-Za-z0-9._-]+$/'],
+            'estado' => ['nullable', 'array', 'max:300'],
         ]);
 
         CentralIaRunner::updateOrCreate(
             ['user_id' => $user->id, 'maquina' => $dados['maquina']],
-            ['agentes' => array_values(array_unique($dados['agentes'])), 'projetos' => array_values(array_unique($dados['projetos'])), 'visto_em' => now()],
+            [
+                'agentes' => array_values(array_unique($dados['agentes'])),
+                'projetos' => array_values(array_unique($dados['projetos'])),
+                'estado' => $this->estado($dados['estado'] ?? [], $dados['projetos']),
+                'visto_em' => now(),
+            ],
         );
 
         return response()->json(['ok' => true]);
@@ -65,11 +71,53 @@ class CentralIaRunnerController extends Controller
             'erro' => ['nullable', 'string', 'max:2000'],
             'sessao_agente' => ['nullable', 'string', 'max:128'],
             'branch' => ['nullable', 'string', 'max:128'],
+            'worktree' => ['nullable', 'string', 'max:255'],
+            'commit_base' => ['nullable', 'string', 'max:64'],
+            // O estado do git medido pelo runner ao fim — fato, não relato.
+            'checkpoint' => ['nullable', 'array'],
+            'checkpoint.cwd' => ['nullable', 'string', 'max:255'],
+            'checkpoint.branch' => ['nullable', 'string', 'max:128'],
+            'checkpoint.head' => ['nullable', 'string', 'max:64'],
+            'checkpoint.arquivos' => ['nullable', 'array', 'max:500'],
+            'checkpoint.arquivos.*' => ['string', 'max:300'],
+            'checkpoint.status' => ['nullable', 'array', 'max:500'],
+            'checkpoint.status.*' => ['string', 'max:320'],
+            'checkpoint.diff_stat' => ['nullable', 'string', 'max:300'],
         ]);
+        $dados['checkpoint'] = isset($dados['checkpoint'])
+            ? array_intersect_key($dados['checkpoint'], array_flip(['cwd', 'branch', 'head', 'arquivos', 'status', 'diff_stat']))
+            : null;
 
         $resultado = $this->agentes->concluir($user, $execucao, $dados);
 
         return response()->json(['id' => $resultado->id, 'status' => $resultado->status]);
+    }
+
+    /**
+     * O estado de cada projeto, como o runner mediu — só os campos que a tela
+     * mostra, com tamanho limitado, e só de projetos que a máquina informou.
+     */
+    private function estado(array $estado, array $projetos): array
+    {
+        $limpo = [];
+
+        foreach (array_intersect_key($estado, array_flip($projetos)) as $projeto => $e) {
+            if (! is_array($e)) {
+                continue;
+            }
+            $limpo[$projeto] = [
+                'git' => (bool) ($e['git'] ?? false),
+                'branch' => is_string($e['branch'] ?? null) ? mb_substr($e['branch'], 0, 128) : null,
+                'pendentes' => is_int($e['pendentes'] ?? null) ? $e['pendentes'] : null,
+                'ultimo_commit' => is_string($e['ultimo_commit'] ?? null) ? mb_substr($e['ultimo_commit'], 0, 40) : null,
+                'ultimo_commit_msg' => is_string($e['ultimo_commit_msg'] ?? null) ? mb_substr($e['ultimo_commit_msg'], 0, 120) : null,
+                'sessoes' => is_array($e['sessoes'] ?? null) ? array_values(array_intersect($e['sessoes'], ['claude', 'codex', 'copilot'])) : [],
+                'fase' => is_string($e['fase'] ?? null) ? mb_substr($e['fase'], 0, 40) : null,
+                'atividade' => is_string($e['atividade'] ?? null) ? mb_substr($e['atividade'], 0, 40) : null,
+            ];
+        }
+
+        return $limpo;
     }
 
     private function conta(Request $request): User

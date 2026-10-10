@@ -12,6 +12,20 @@ return [
         // Teto de uma execução no runner. Quem passa disso é encerrado lá; aqui,
         // a execução sem notícia depois do teto + 5 min vira `expirada`.
         'timeout_minutos' => (int) env('CENTRAL_IA_TIMEOUT_MINUTOS', 15),
+        // Execuções ao mesmo tempo por pessoa. A máquina do Felipe tem 6 CPUs
+        // e ~7 GB na WSL: cinco projetos À VISTA, dois rodando (dono, 10/10).
+        // Uma mesma tarefa nunca roda duas vezes ao mesmo tempo.
+        'paralelo' => (int) env('CENTRAL_IA_PARALELO', 2),
+    ],
+
+    // Preferência por tipo de pedido no modo automático, na ordem: o primeiro
+    // disponível na máquina leva. Ver App\Services\CentralIa\Roteador.
+    'roteamento' => [
+        'implementacao' => ['claude', 'codex', 'copilot'],
+        'revisao' => ['codex', 'claude', 'copilot'],
+        'planejamento' => ['codex', 'claude', 'copilot'],
+        'investigacao' => ['codex', 'claude', 'copilot'],
+        'apoio' => ['copilot', 'codex', 'claude'],
     ],
 
     'telegram' => [

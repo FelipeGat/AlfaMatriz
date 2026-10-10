@@ -35,11 +35,16 @@ class ConversaService
      * `after` é a pergunta do poll ("chegou algo depois do que já tenho?") e
      * `before` a de quem rola para cima. Sem nenhum dos dois, as últimas.
      *
+     * Cada projeto tem a sua conversa; `projeto` nulo é a "Geral" — onde
+     * ficou tudo o que existia antes do cockpit e o que não é de projeto.
+     *
      * @return array{0: Collection<int, CentralIaMensagem>, 1: bool}
      */
-    public function historico(User $user, ?int $antesDe = null, ?int $depoisDe = null): array
+    public function historico(User $user, ?int $antesDe = null, ?int $depoisDe = null, ?string $projeto = null, ?int $tarefaId = null): array
     {
-        $consulta = CentralIaMensagem::de($user);
+        $consulta = CentralIaMensagem::de($user)
+            ->when($projeto === null, fn ($q) => $q->whereNull('projeto'), fn ($q) => $q->where('projeto', $projeto))
+            ->when($tarefaId, fn ($q) => $q->where('tarefa_id', $tarefaId));
 
         if ($depoisDe !== null) {
             $linhas = $consulta->where('id', '>', $depoisDe)->orderBy('id')->limit(self::POR_PAGINA + 1)->get();
@@ -66,7 +71,7 @@ class ConversaService
      * chegou, e gravar de novo dobraria a mensagem — e, mais adiante, o
      * pedido ao agente. Mesmo id com OUTRO texto não é reenvio, é erro.
      */
-    public function registrarDoUsuario(User $user, string $conteudo, string $origem, ?string $clientId = null, ?int $telegramUpdateId = null): CentralIaMensagem
+    public function registrarDoUsuario(User $user, string $conteudo, string $origem, ?string $clientId = null, ?int $telegramUpdateId = null, ?string $projeto = null, ?int $tarefaId = null): CentralIaMensagem
     {
         if ($clientId !== null && ($existente = $this->porClientId($user, $clientId))) {
             return $this->mesmaMensagemOuRecusa($existente, $conteudo);
@@ -74,6 +79,8 @@ class ConversaService
 
         try {
             return $this->gravar($user, [
+                'projeto' => $projeto,
+                'tarefa_id' => $tarefaId,
                 'client_id' => $clientId,
                 'autor_tipo' => CentralIaMensagem::AUTOR_USUARIO,
                 'autor_nome' => $user->name,
@@ -99,9 +106,11 @@ class ConversaService
      * da pessoa. Não passa por `AgentesService::pedir()` — resposta de agente
      * nunca dispara outro agente.
      */
-    public function registrarDoAgente(User $user, string $autor, string $conteudo, string $tipo = CentralIaMensagem::AUTOR_AGENTE): CentralIaMensagem
+    public function registrarDoAgente(User $user, string $autor, string $conteudo, string $tipo = CentralIaMensagem::AUTOR_AGENTE, ?string $projeto = null, ?int $tarefaId = null): CentralIaMensagem
     {
         return $this->gravar($user, [
+            'projeto' => $projeto,
+            'tarefa_id' => $tarefaId,
             'autor_tipo' => $tipo,
             'autor_nome' => $autor,
             'origem' => CentralIaMensagem::ORIGEM_AGENTE,

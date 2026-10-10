@@ -5,8 +5,10 @@ namespace App\Services\CentralIa;
 use App\Models\CentralIaExecucao;
 use App\Models\CentralIaMensagem;
 use App\Models\CentralIaRunner;
+use App\Models\CentralIaTarefa;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -16,50 +18,65 @@ use Illuminate\Validation\ValidationException;
  * MESMA pessoa (o runner só enxerga os pedidos de quem é dono do token) e
  * grava a resposta. A resposta de agente nunca vira pedido novo: não existe
  * caminho de uma mensagem de agente até `pedir()`.
+ *
+ * Todo pedido pertence a uma TAREFA de um projeto. Uma tarefa roda uma
+ * execução por vez — é o que impede dois agentes de escreverem na mesma
+ * worktree —, e tarefas diferentes rodam em paralelo até o teto da pessoa.
  */
 class AgentesService
 {
-    public function __construct(private readonly ConversaService $conversas) {}
+    public function __construct(
+        private readonly ConversaService $conversas,
+        private readonly Roteador $roteador,
+    ) {}
 
     /**
      * O atalho de texto, para o Telegram e para quem prefere digitar:
      * `/claude alfacontrol analise os erros` — e com `!` para implementar,
-     * `/claude! alfacontrol corrija o filtro`. `/gpt` e `/codex` são o mesmo.
+     * `/claude! alfacontrol corrija o filtro`. `/gpt` e `/codex` são o mesmo;
+     * `/auto` deixa o roteador escolher.
      *
      * @return array{agente: string, modo: string, projeto: string, instrucao: string}|null
      */
     public function interpretar(string $texto): ?array
     {
-        if (! preg_match('/^\/(claude|gpt|codex|copilot)(!?)(?:@\w+)?\s+([A-Za-z0-9._-]+)\s+(.+)$/su', trim($texto), $m)) {
+        if (! preg_match('/^\/(claude|gpt|codex|copilot|auto)(!?)(?:@\w+)?\s+([A-Za-z0-9._-]+)\s+(.+)$/su', trim($texto), $m)) {
             return null;
         }
 
         return [
             'agente' => $m[1] === 'gpt' ? 'codex' : $m[1],
-            'modo' => $m[2] === '!' ? 'implementar' : 'analisar',
+            'modo' => $m[2] === '!' ? 'implementar' : ($m[1] === 'auto' ? 'auto' : 'analisar'),
             'projeto' => $m[3],
             'instrucao' => trim($m[4]),
         ];
     }
 
     /**
-     * O que a pessoa pode pedir agora: agentes e projetos das máquinas dela.
+     * O que a pessoa pode pedir agora: agentes e projetos das máquinas dela,
+     * e o estado de cada projeto que o runner mediu.
      *
-     * @return array{online: bool, agentes: list<string>, projetos: list<string>}
+     * @return array{online: bool, agentes: list<string>, projetos: list<string>, estado: array<string, array>}
      */
     public function disponiveis(User $user): array
     {
-        $runners = CentralIaRunner::where('user_id', $user->id)->get();
+        $runners = CentralIaRunner::where('user_id', $user->id)->orderBy('visto_em')->get();
 
         return [
             'online' => $runners->contains(fn (CentralIaRunner $r) => $r->online()),
             'agentes' => $runners->pluck('agentes')->flatten()->unique()->intersect(array_keys(CentralIaExecucao::AGENTES))->values()->all(),
             'projetos' => $runners->pluck('projetos')->flatten()->unique()->sort()->values()->all(),
+            // A batida mais recente vence (ordenado por visto_em).
+            'estado' => $runners->reduce(fn (array $acc, CentralIaRunner $r) => array_merge($acc, $r->estado ?? []), []),
         ];
     }
 
     /**
-     * Grava o pedido (a mensagem da pessoa) e a execução, juntos.
+     * Grava o pedido (a mensagem da pessoa), a tarefa (se nova) e a
+     * execução, juntos.
+     *
+     * `$pedido`: projeto, instrucao, agente (`auto` ou um dos agentes), modo
+     * (`auto`, `analisar` ou `implementar`) e, opcional, `tarefa_id`.
      *
      * Reenvio com o mesmo `client_id` devolve a mesma execução — o pedido ao
      * agente não dobra, como a mensagem não dobra.
@@ -72,22 +89,51 @@ class AgentesService
             throw ValidationException::withMessages(['agente' => 'Sua conta não pode acionar agentes.']);
         }
 
-        if (! array_key_exists($pedido['agente'], CentralIaExecucao::AGENTES) || ! array_key_exists($pedido['modo'], CentralIaExecucao::MODOS)) {
+        $agente = $pedido['agente'] ?? 'auto';
+        $modo = $pedido['modo'] ?? 'auto';
+
+        if (($agente !== 'auto' && ! array_key_exists($agente, CentralIaExecucao::AGENTES))
+            || ($modo !== 'auto' && ! array_key_exists($modo, CentralIaExecucao::MODOS))) {
             throw ValidationException::withMessages(['agente' => 'Agente ou modo desconhecido.']);
         }
 
         $disponivel = $this->disponiveis($user);
+        $projeto = (string) ($pedido['projeto'] ?? '');
 
-        if (! in_array($pedido['projeto'], $disponivel['projetos'], true)) {
-            throw ValidationException::withMessages(['projeto' => "O projeto {$pedido['projeto']} não está entre os que a sua máquina informou."]);
+        if (! in_array($projeto, $disponivel['projetos'], true)) {
+            throw ValidationException::withMessages(['projeto' => "O projeto {$projeto} não está entre os que a sua máquina informou."]);
         }
 
-        if (blank($pedido['instrucao'])) {
+        if (blank($pedido['instrucao'] ?? null)) {
             throw ValidationException::withMessages(['conteudo' => 'Diga ao agente o que fazer.']);
         }
 
-        return DB::transaction(function () use ($user, $texto, $pedido, $origem, $clientId, $telegramUpdateId) {
-            $mensagem = $this->conversas->registrarDoUsuario($user, $texto, $origem, $clientId, $telegramUpdateId);
+        $tarefa = null;
+        if (filled($pedido['tarefa_id'] ?? null)) {
+            $tarefa = CentralIaTarefa::de($user)->where('projeto', $projeto)->find($pedido['tarefa_id']);
+            if (! $tarefa) {
+                throw ValidationException::withMessages(['tarefa_id' => 'Tarefa não encontrada neste projeto.']);
+            }
+        }
+
+        $rota = $agente === 'auto'
+            ? $this->roteador->decidir($pedido['instrucao'], $disponivel['agentes'], $tarefa)
+            : ['agente' => $agente, 'modo' => null, 'categoria' => null, 'manual' => true, 'motivo' => 'Escolha manual'];
+
+        if ($modo === 'auto') {
+            $modo = $rota['modo'] ?? $this->roteador->decidir($pedido['instrucao'], [], $tarefa)['modo'];
+        }
+        $rota['modo'] = $modo;
+        $rota['categoria'] ??= $modo === 'implementar' ? 'implementacao' : 'investigacao';
+
+        if (! $rota['agente']) {
+            throw ValidationException::withMessages(['agente' => 'Nenhum agente disponível na sua máquina agora.']);
+        }
+
+        return DB::transaction(function () use ($user, $texto, $pedido, $origem, $clientId, $telegramUpdateId, $projeto, $tarefa, $rota) {
+            // A mensagem primeiro, sem tarefa: o reenvio idempotente precisa
+            // achá-la antes de criar qualquer coisa.
+            $mensagem = $this->conversas->registrarDoUsuario($user, $texto, $origem, $clientId, $telegramUpdateId, $projeto, $tarefa?->id);
 
             if ($existente = CentralIaExecucao::where('pedido_id', $mensagem->id)->first()) {
                 return $existente;
@@ -102,22 +148,48 @@ class AgentesService
                 throw ValidationException::withMessages(['agente' => 'Limite de '.config('central_ia.agentes.limite_diario').' pedidos a agentes por dia atingido.']);
             }
 
+            $tarefa ??= CentralIaTarefa::create([
+                'user_id' => $user->id,
+                'projeto' => $projeto,
+                'titulo' => Str::limit(Str::squish(strtok($pedido['instrucao'], "\n")), 90),
+                'objetivo' => $pedido['instrucao'],
+                'dossie' => Dossie::inicial($pedido['instrucao']),
+            ]);
+
+            // Quem assume uma tarefa que estava com outro agente recebe o
+            // dossiê com instrução de handoff (ver `proxima()`); o registro
+            // da troca fica aqui, junto do motivo.
+            if ($tarefa->agente_atual && $tarefa->agente_atual !== $rota['agente']) {
+                $rota['handoff_de'] = $tarefa->agente_atual;
+            }
+
+            $mensagem->update(['tarefa_id' => $tarefa->id]);
+            $tarefa->update([
+                'dossie' => Dossie::registrarPedido($tarefa->dossie ?? Dossie::inicial($tarefa->objetivo), $pedido['instrucao']),
+                'status' => $tarefa->status === CentralIaTarefa::EXECUTANDO ? CentralIaTarefa::EXECUTANDO : CentralIaTarefa::ABERTA,
+                'ultima_atividade_em' => now(),
+            ]);
+
             return CentralIaExecucao::create([
                 'user_id' => $user->id,
                 'pedido_id' => $mensagem->id,
-                'agente' => $pedido['agente'],
-                'projeto' => $pedido['projeto'],
-                'modo' => $pedido['modo'],
+                'tarefa_id' => $tarefa->id,
+                'agente' => $rota['agente'],
+                'projeto' => $projeto,
+                'modo' => $rota['modo'],
+                'roteamento' => $rota,
                 'instrucao' => $pedido['instrucao'],
             ]);
         });
     }
 
     /**
-     * A próxima execução para esta máquina — uma por pessoa de cada vez.
+     * A próxima execução para esta máquina.
      *
-     * Leva junto a sessão do agente no último pedido igual (mesmo agente,
-     * projeto e modo), para a conversa com ele continuar de onde parou.
+     * Até `paralelo` ao mesmo tempo por pessoa, e nunca duas da MESMA tarefa:
+     * a segunda espera a primeira terminar — é isso que garante que só um
+     * agente escreve na worktree da tarefa por vez, e que o handoff começa
+     * com a execução anterior já encerrada.
      */
     public function proxima(User $user, CentralIaRunner $runner): ?array
     {
@@ -126,15 +198,23 @@ class AgentesService
         $execucao = DB::transaction(function () use ($user, $runner) {
             User::whereKey($user->id)->lockForUpdate()->first();
 
-            if (CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::EXECUTANDO)->exists()) {
+            $rodando = CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::EXECUTANDO);
+            if ((clone $rodando)->count() >= max(1, (int) config('central_ia.agentes.paralelo'))) {
                 return null;
             }
 
             $execucao = CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::PENDENTE)
                 ->whereIn('agente', $runner->agentes)->whereIn('projeto', $runner->projetos)
+                // `NOT IN` com nulo nunca casa: o pedido sem tarefa (anterior
+                // ao cockpit) entra pelo `whereNull`.
+                ->where(fn ($q) => $q->whereNull('tarefa_id')
+                    ->orWhereNotIn('tarefa_id', (clone $rodando)->whereNotNull('tarefa_id')->select('tarefa_id')))
                 ->orderBy('id')->lockForUpdate()->first();
 
-            $execucao?->update(['status' => CentralIaExecucao::EXECUTANDO, 'runner_id' => $runner->id, 'iniciada_em' => now()]);
+            if ($execucao) {
+                $execucao->update(['status' => CentralIaExecucao::EXECUTANDO, 'runner_id' => $runner->id, 'iniciada_em' => now()]);
+                $execucao->tarefa?->update(['status' => CentralIaTarefa::EXECUTANDO, 'agente_atual' => $execucao->agente, 'ultima_atividade_em' => now()]);
+            }
 
             return $execucao;
         });
@@ -143,10 +223,13 @@ class AgentesService
             return null;
         }
 
-        $anterior = CentralIaExecucao::where('user_id', $user->id)->where('id', '<', $execucao->id)
-            ->where('agente', $execucao->agente)->where('projeto', $execucao->projeto)->where('modo', $execucao->modo)
-            ->where('status', CentralIaExecucao::CONCLUIDA)->whereNotNull('sessao_agente')
+        $tarefa = $execucao->tarefa;
+        // A sessão interna do agente só continua com o MESMO agente na mesma
+        // tarefa; entre agentes diferentes, quem leva o contexto é o dossiê.
+        $anterior = CentralIaExecucao::where('tarefa_id', $tarefa?->id)->where('id', '<', $execucao->id)
+            ->whereIn('status', [CentralIaExecucao::CONCLUIDA, CentralIaExecucao::FALHOU])
             ->orderByDesc('id')->first();
+        $mesmoAgente = $anterior && $anterior->agente === $execucao->agente && $anterior->sessao_agente;
 
         return [
             'id' => $execucao->id,
@@ -155,7 +238,16 @@ class AgentesService
             'modo' => $execucao->modo,
             'instrucao' => $execucao->instrucao,
             'timeout_minutos' => config('central_ia.agentes.timeout_minutos'),
-            'continuar' => $anterior ? ['sessao' => $anterior->sessao_agente, 'branch' => $anterior->branch] : null,
+            'tarefa' => $tarefa ? [
+                'id' => $tarefa->id,
+                'titulo' => $tarefa->titulo,
+                'worktree' => $tarefa->worktree,
+                'branch' => $tarefa->branch,
+                'commit_base' => $tarefa->commit_base,
+            ] : null,
+            'contexto' => $tarefa && $anterior ? Dossie::paraPrompt($tarefa, $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null) : null,
+            'bloco' => Dossie::instrucaoDoBloco(),
+            'continuar' => $mesmoAgente ? ['sessao' => $anterior->sessao_agente, 'cwd' => $anterior->checkpoint['cwd'] ?? null] : null,
         ];
     }
 
@@ -174,18 +266,46 @@ class AgentesService
             }
 
             $ok = $dados['status'] === CentralIaExecucao::CONCLUIDA;
-            $texto = $ok ? $dados['resposta'] : 'Não consegui concluir: '.($dados['erro'] ?? 'erro desconhecido').'.';
+            [$texto, $bloco] = $ok ? Dossie::extrair($dados['resposta'] ?? '') : ['Não consegui concluir: '.($dados['erro'] ?? 'erro desconhecido').'.', null];
+            $tarefa = $execucao->tarefa;
 
-            $resposta = $this->conversas->registrarDoAgente($user, $execucao->nomeDoAgente(), $texto);
+            $resposta = $this->conversas->registrarDoAgente($user, $execucao->nomeDoAgente(), $texto ?: '(resposta vazia)', CentralIaMensagem::AUTOR_AGENTE, $execucao->projeto, $tarefa?->id);
+            $checkpoint = is_array($dados['checkpoint'] ?? null) ? $dados['checkpoint'] : null;
 
             $execucao->update([
                 'status' => $ok ? CentralIaExecucao::CONCLUIDA : CentralIaExecucao::FALHOU,
                 'resposta_id' => $resposta->id,
                 'sessao_agente' => $dados['sessao_agente'] ?? null,
                 'branch' => $dados['branch'] ?? null,
+                'checkpoint' => $checkpoint,
                 'erro' => $ok ? null : mb_substr((string) ($dados['erro'] ?? ''), 0, 255),
                 'concluida_em' => now(),
             ]);
+
+            if ($tarefa) {
+                $dossie = Dossie::aplicarConclusao($tarefa->dossie ?? Dossie::inicial($tarefa->objetivo), $execucao, $bloco, $checkpoint);
+                $status = match (true) {
+                    ! $ok => CentralIaTarefa::FALHOU,
+                    filled($dossie['duvida']) => CentralIaTarefa::AGUARDANDO_VOCE,
+                    (bool) ($bloco['tarefa_concluida'] ?? false) => CentralIaTarefa::CONCLUIDA,
+                    default => CentralIaTarefa::ABERTA,
+                };
+                // Ainda há pedido desta tarefa na fila: ela continua em curso.
+                if ($status !== CentralIaTarefa::AGUARDANDO_VOCE && $tarefa->execucoes()->where('status', CentralIaExecucao::PENDENTE)->exists()) {
+                    $status = CentralIaTarefa::ABERTA;
+                }
+
+                $tarefa->update(array_filter([
+                    'dossie' => $dossie,
+                    'status' => $status,
+                    'ultima_atividade_em' => now(),
+                    // A worktree nasce na primeira execução de implementar e é
+                    // da tarefa daí em diante — quem assume continua nela.
+                    'worktree' => $dados['worktree'] ?? null,
+                    'branch' => $dados['branch'] ?? null,
+                    'commit_base' => $dados['commit_base'] ?? null,
+                ], fn ($v) => $v !== null));
+            }
 
             return $execucao;
         });
@@ -202,8 +322,9 @@ class AgentesService
         CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::EXECUTANDO)
             ->where('iniciada_em', '<', $limite)->get()
             ->each(function (CentralIaExecucao $e) use ($user) {
-                $aviso = $this->conversas->registrarDoAgente($user, 'Central', "{$e->nomeDoAgente()} não respondeu a tempo em {$e->projeto}; o pedido foi encerrado.", CentralIaMensagem::AUTOR_SISTEMA);
+                $aviso = $this->conversas->registrarDoAgente($user, 'Central', "{$e->nomeDoAgente()} não respondeu a tempo em {$e->projeto}; o pedido foi encerrado.", CentralIaMensagem::AUTOR_SISTEMA, $e->projeto, $e->tarefa_id);
                 $e->update(['status' => CentralIaExecucao::EXPIRADA, 'resposta_id' => $aviso->id, 'concluida_em' => now()]);
+                $e->tarefa?->update(['status' => CentralIaTarefa::FALHOU, 'ultima_atividade_em' => now()]);
             });
     }
 }

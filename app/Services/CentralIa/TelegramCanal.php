@@ -3,7 +3,9 @@
 namespace App\Services\CentralIa;
 
 use App\Models\CentralIaEntrega;
+use App\Models\CentralIaExecucao;
 use App\Models\CentralIaMensagem;
+use App\Models\CentralIaTarefa;
 use App\Models\CentralIaTelegramVinculo;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -24,6 +26,7 @@ class TelegramCanal
         private readonly TelegramApi $api,
         private readonly ConversaService $conversas,
         private readonly AgentesService $agentes,
+        private readonly CockpitService $cockpit,
     ) {}
 
     public function vinculoDe(User $user): ?CentralIaTelegramVinculo
@@ -117,11 +120,7 @@ class TelegramCanal
         }
 
         try {
-            if ($pedido = $this->agentes->interpretar($texto)) {
-                $this->agentes->pedir($user, $texto, $pedido, CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId);
-            } else {
-                $this->conversas->registrarDoUsuario($user, $texto, CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId);
-            }
+            $this->tratar($user, $vinculo, $chatId, trim($texto), $updateId);
         } catch (ValidationException $e) {
             // Pedido recusado (projeto que a máquina não tem, limite do dia):
             // a resposta vai só para o chat, e o pedido não entra na conversa.
@@ -130,6 +129,150 @@ class TelegramCanal
             // Reentrega de um update que já entrou: o cursor se perdeu, a
             // mensagem não.
         }
+    }
+
+    /**
+     * Comandos do chat e mensagens comuns.
+     *
+     * Com `/usar <projeto>`, a mensagem comum vira pedido no projeto — na
+     * tarefa mais recente em curso, com o agente escolhido (`/auto` por
+     * padrão). Sem projeto em uso, ela é só anotação na conversa Geral: nada
+     * dispara agente sem a pessoa ter escolhido um projeto.
+     */
+    private function tratar(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $texto, int $updateId): void
+    {
+        // O atalho completo (`/claude projeto pedido`) vale sempre.
+        if ($pedido = $this->agentes->interpretar($texto)) {
+            $this->agentes->pedir($user, $texto, $pedido, CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId);
+
+            return;
+        }
+
+        [$comando, $resto] = str_starts_with($texto, '/')
+            ? array_pad(preg_split('/\s+/', preg_replace('/^(\/\w+)@\w+/', '$1', $texto), 2), 2, '')
+            : [null, $texto];
+        $agentes = ['/auto' => null, '/claude' => 'claude', '/gpt' => 'codex', '/codex' => 'codex', '/copilot' => 'copilot'];
+
+        match (true) {
+            $comando === '/projetos' => $this->responder($chatId, $this->textoProjetos($user, $vinculo)),
+            $comando === '/status' => $this->responder($chatId, $this->textoStatus($user)),
+            $comando === '/usar' => $this->usar($user, $vinculo, $chatId, trim($resto)),
+            $comando === '/geral' => $this->definir($vinculo, $chatId, ['projeto_atual' => null], 'Mensagens voltam para a conversa Geral, sem acionar agente.'),
+            $comando !== null && array_key_exists($comando, $agentes) && trim($resto) === '' => $this->definir(
+                $vinculo, $chatId, ['agente_atual' => $agentes[$comando]],
+                'Próximos pedidos: '.($agentes[$comando] ? CentralIaExecucao::AGENTES[$agentes[$comando]] : 'IA automática').'.'
+            ),
+            $comando === '/nova' => $this->pedirNoProjeto($user, $vinculo, $chatId, trim($resto), $texto, $updateId, novaTarefa: true),
+            $comando === '/trocar' => $this->trocar($user, $vinculo, $chatId, trim($resto), $texto, $updateId),
+            $comando !== null => $this->responder($chatId, $this->ajuda()),
+            filled($vinculo->projeto_atual) => $this->pedirNoProjeto($user, $vinculo, $chatId, $texto, $texto, $updateId),
+            default => $this->conversas->registrarDoUsuario($user, $texto, CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId),
+        };
+    }
+
+    private function definir(CentralIaTelegramVinculo $vinculo, int $chatId, array $dados, string $resposta): void
+    {
+        $vinculo->update($dados);
+        $this->responder($chatId, $resposta);
+    }
+
+    private function usar(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $projeto): void
+    {
+        if (! in_array($projeto, $this->agentes->disponiveis($user)['projetos'], true)) {
+            $this->responder($chatId, $projeto === '' ? 'Diga o projeto: /usar alfahome' : "Não achei {$projeto} entre os projetos da sua máquina. /projetos mostra os do cockpit.");
+
+            return;
+        }
+
+        $this->definir($vinculo, $chatId, ['projeto_atual' => $projeto],
+            "Usando {$projeto}. Suas mensagens agora são pedidos nele (continuam a tarefa mais recente; /nova abre outra). /geral sai.");
+    }
+
+    private function pedirNoProjeto(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $instrucao, string $texto, int $updateId, bool $novaTarefa = false, ?string $agente = null): void
+    {
+        if (blank($vinculo->projeto_atual)) {
+            $this->responder($chatId, 'Escolha o projeto antes: /usar alfahome');
+
+            return;
+        }
+        if ($instrucao === '') {
+            $this->responder($chatId, 'Diga o que fazer depois do comando.');
+
+            return;
+        }
+
+        $tarefa = $novaTarefa ? null : CentralIaTarefa::de($user)->where('projeto', $vinculo->projeto_atual)->emCurso()
+            ->orderByDesc('ultima_atividade_em')->value('id');
+
+        $this->agentes->pedir($user, $texto, [
+            'projeto' => $vinculo->projeto_atual,
+            'agente' => $agente ?? $vinculo->agente_atual ?? 'auto',
+            'modo' => 'auto',
+            'instrucao' => $instrucao,
+            'tarefa_id' => $tarefa,
+        ], CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId);
+    }
+
+    /**
+     * `/trocar codex [pedido]`: a tarefa atual passa para outro agente. O
+     * handoff acontece no próximo pedido — o novo agente recebe o dossiê e
+     * confere o estado antes de alterar.
+     */
+    private function trocar(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $resto, string $texto, int $updateId): void
+    {
+        [$nome, $pedido] = array_pad(preg_split('/\s+/', $resto, 2), 2, '');
+        $agente = ['claude' => 'claude', 'gpt' => 'codex', 'codex' => 'codex', 'copilot' => 'copilot'][strtolower($nome)] ?? null;
+
+        if (! $agente) {
+            $this->responder($chatId, 'Para qual agente? /trocar claude, /trocar gpt ou /trocar copilot.');
+
+            return;
+        }
+
+        $vinculo->update(['agente_atual' => $agente]);
+
+        if (trim($pedido) !== '') {
+            $this->pedirNoProjeto($user, $vinculo, $chatId, trim($pedido), $texto, $updateId, agente: $agente);
+
+            return;
+        }
+
+        $this->responder($chatId, CentralIaExecucao::AGENTES[$agente].' assume a tarefa no próximo pedido, com o contexto dela.');
+    }
+
+    private function textoProjetos(User $user, CentralIaTelegramVinculo $vinculo): string
+    {
+        $projetos = $this->cockpit->montar($user)['projetos'];
+        if (! $projetos) {
+            return 'Nenhum projeto no cockpit ainda. Fixe projetos na Central de IA ou use /usar <projeto>.';
+        }
+        $rotulos = ['executando' => 'executando', 'aguardando_voce' => '⚠ aguardando você', 'falhou' => '⚠ falhou', 'aberta' => 'aberta',
+            'pausada' => 'pausado', 'ocioso' => 'sem tarefa'];
+        $linhas = array_map(fn ($p) => ($p['nome'] === $vinculo->projeto_atual ? '▶ ' : '• ').$p['nome'].' — '.($rotulos[$p['estado']] ?? $p['estado'])
+            .($p['agente'] ? " ({$p['agente']})" : '').($p['tarefas_em_curso'] ? " · {$p['tarefas_em_curso']} tarefa(s)" : ''), $projetos);
+
+        return "Projetos:\n".implode("\n", $linhas)."\n\nAgente: ".($vinculo->agente_atual ? CentralIaExecucao::AGENTES[$vinculo->agente_atual] : 'automático');
+    }
+
+    private function textoStatus(User $user): string
+    {
+        $atividade = collect($this->cockpit->montar($user)['atividade']);
+        $ativas = $atividade->whereIn('status', ['executando', 'pendente']);
+        $esperando = CentralIaTarefa::de($user)->where('status', CentralIaTarefa::AGUARDANDO_VOCE)->get();
+
+        $linhas = $ativas->map(fn ($a) => ($a['status'] === 'executando' ? '⏳ ' : '🕒 ')."{$a['projeto']} — {$a['agente']}: ".($a['tarefa'] ?? "pedido #{$a['id']}"))->all();
+        foreach ($esperando as $t) {
+            $linhas[] = "⚠ {$t->projeto} — tarefa #{$t->id} espera você: ".\Illuminate\Support\Str::limit($t->dossie['duvida'] ?? $t->titulo, 160);
+        }
+
+        return $linhas ? implode("\n", $linhas) : 'Nada rodando nem esperando você.';
+    }
+
+    private function ajuda(): string
+    {
+        return "Comandos:\n/projetos — projetos do cockpit\n/status — o que roda e o que espera você\n/usar <projeto> — mensagens viram pedidos nele\n"
+            ."/nova <pedido> — tarefa nova no projeto em uso\n/geral — sai do projeto\n/auto, /claude, /gpt, /copilot — agente dos próximos pedidos\n"
+            ."/trocar <agente> [pedido] — passa a tarefa atual para outro agente\n/claude <projeto> <pedido> — pedido direto (com ! para implementar)";
     }
 
     private function parear(int $chatId, string $codigo, ?string $usuarioTelegram): void
@@ -255,7 +398,10 @@ class TelegramCanal
 
     private function cabecalho(CentralIaMensagem $m): string
     {
-        return match ($m->autor_tipo) {
+        // Vários projetos no mesmo chat: cada mensagem diz de qual é.
+        $projeto = $m->projeto ? "[{$m->projeto}] " : '';
+
+        return $projeto.match ($m->autor_tipo) {
             CentralIaMensagem::AUTOR_USUARIO => '🖥 Você, pelo AlfaMatriz:',
             CentralIaMensagem::AUTOR_AGENTE => '🤖 '.($m->autor_nome ?: 'Agente').':',
             default => 'ℹ️ Central:',

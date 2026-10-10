@@ -45,16 +45,20 @@ e `systemctl --user restart central-ia-runner`.
 
 | | Analisar | Implementar |
 |---|---|---|
-| Onde | pasta do projeto | worktree própria em `~/projetos/.central-ia/worktrees`, branch `central-ia/<n>` |
+| Onde | pasta do projeto (ou a worktree da tarefa, se ela já tem uma) | worktree DA TAREFA em `~/projetos/.central-ia/worktrees/<projeto>-t<n>`, branch `central-ia/t<n>` |
 | Claude | só leitura (Read, Grep, Glob, web) | edita e roda comandos, exceto git push/commit/reset/checkout/merge/rebase, rm -rf, sudo, docker, ssh |
 | Codex | sandbox `read-only` | sandbox `workspace-write` (só a worktree) |
 | Copilot | sem escrita e sem shell | tudo, exceto os mesmos comandos negados |
 
 - Nenhum agente faz commit nem push. A resposta de implementar traz a branch e
   os arquivos alterados; revisar e integrar é com a pessoa.
-- Pedido seguinte ao mesmo agente, projeto e modo continua a sessão anterior
-  (e, em implementar, a mesma branch, enquanto a worktree existir).
-- Uma execução por vez; 15 minutos de teto (`CENTRAL_IA_TIMEOUT_MINUTOS`);
+- A tarefa tem uma worktree só: outro agente que assuma continua nela, com o
+  dossiê da tarefa no prompt. A sessão interna do agente só é retomada pelo
+  MESMO agente na mesma pasta.
+- Na batida (30 s) o runner manda o estado de cada projeto: branch, pendências,
+  último commit, sessões de agente abertas na pasta (`/proc`) e fase/ritmo do
+  `painel-avanco/retrato.json`, se existir.
+- Até 2 execuções ao mesmo tempo (`CENTRAL_IA_PARALELO`); 15 minutos de teto (`CENTRAL_IA_TIMEOUT_MINUTOS`);
   20 pedidos por dia por pessoa (`CENTRAL_IA_LIMITE_DIARIO`) — no `.env` do AlfaMatriz.
 - Os hooks e instruções de cada agente (`~/.claude`, `CLAUDE.md` do projeto…)
   valem normalmente: o agente roda como a pessoa rodaria.

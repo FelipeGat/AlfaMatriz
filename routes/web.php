@@ -193,8 +193,17 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // O poll da tela bate a cada 5 s, daí o teto de leitura folgado.
     Route::get('central-ia', [CentralIaController::class, 'index'])->name('central-ia.index')
         ->middleware('permissao:central_ia');
+    // O cockpit faz dois polls (painel e conversa) a cada 5 s: 60/min cada.
+    Route::get('central-ia/painel', [CentralIaController::class, 'painel'])->name('central-ia.painel')
+        ->middleware(['permissao:central_ia', 'throttle:90,1']);
     Route::get('central-ia/mensagens', [CentralIaController::class, 'mensagens'])->name('central-ia.mensagens')
-        ->middleware(['permissao:central_ia', 'throttle:60,1']);
+        ->middleware(['permissao:central_ia', 'throttle:90,1']);
+    Route::get('central-ia/projetos/{projeto}/tarefas', [CentralIaController::class, 'tarefas'])->name('central-ia.tarefas')
+        ->middleware(['permissao:central_ia', 'throttle:90,1'])->where('projeto', '[A-Za-z0-9._-]+');
+    Route::post('central-ia/projetos/{projeto}/fixar', [CentralIaController::class, 'fixar'])->name('central-ia.fixar')
+        ->middleware('permissao:central_ia,editar')->where('projeto', '[A-Za-z0-9._-]+');
+    Route::post('central-ia/tarefas/{tarefa}/status', [CentralIaController::class, 'statusDaTarefa'])->name('central-ia.tarefas.status')
+        ->middleware('permissao:central_ia,editar')->whereNumber('tarefa');
     Route::post('central-ia/mensagens', [CentralIaController::class, 'enviar'])->name('central-ia.enviar')
         ->middleware(['permissao:central_ia,incluir', 'throttle:20,1']);
     // Parear e desparear o Telegram mexem no canal, não criam conversa: `editar`.

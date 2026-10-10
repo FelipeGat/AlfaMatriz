@@ -40,11 +40,13 @@ class CentralIaExecucao extends Model
     public const EXPIRADA = 'expirada';
 
     protected $fillable = [
-        'user_id', 'pedido_id', 'resposta_id', 'runner_id', 'agente', 'projeto', 'modo', 'instrucao',
+        'user_id', 'pedido_id', 'resposta_id', 'runner_id', 'tarefa_id', 'agente', 'projeto', 'modo', 'roteamento', 'checkpoint', 'instrucao',
         'status', 'sessao_agente', 'branch', 'erro', 'iniciada_em', 'concluida_em',
     ];
 
     protected $casts = [
+        'roteamento' => 'array',
+        'checkpoint' => 'array',
         'iniciada_em' => 'datetime',
         'concluida_em' => 'datetime',
     ];
@@ -52,6 +54,11 @@ class CentralIaExecucao extends Model
     public function pedido(): BelongsTo
     {
         return $this->belongsTo(CentralIaMensagem::class, 'pedido_id');
+    }
+
+    public function tarefa(): BelongsTo
+    {
+        return $this->belongsTo(CentralIaTarefa::class, 'tarefa_id');
     }
 
     public function nomeDoAgente(): string

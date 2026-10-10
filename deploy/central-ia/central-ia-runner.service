@@ -9,6 +9,10 @@ After=network-online.target
 ExecStart=/usr/bin/env node %h/.local/share/alfa/central-ia-runner.mjs
 Restart=always
 RestartSec=10
+# Na parada o runner encerra os agentes e reporta "interrompida" ao
+# AlfaMatriz; isso leva segundos, não o teto de 15 min da execução.
+TimeoutStopSec=60
+KillMode=mixed
 # O PATH do systemd não traz o ~/.local/bin (onde o Copilot se instala).
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 

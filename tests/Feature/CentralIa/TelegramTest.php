@@ -142,8 +142,8 @@ class TelegramTest extends TestCase
         $this->assertSame(0, CentralIaEntrega::count(), 'O que veio do Telegram não volta para ele.');
 
         $this->actingAs($user)->getJson(route('central-ia.mensagens'))
-            ->assertJsonPath('mensagens.0.conteudo', 'Resuma o dia')
-            ->assertJsonPath('telegram.vinculado', true);
+            ->assertJsonPath('mensagens.0.conteudo', 'Resuma o dia');
+        $this->actingAs($user)->getJson(route('central-ia.painel'))->assertJsonPath('telegram.vinculado', true);
     }
 
     public function test_grupo_remetente_diferente_e_chat_desconhecido_nao_entram(): void
@@ -237,7 +237,7 @@ class TelegramTest extends TestCase
 
         $this->assertSame(0, CentralIaTelegramVinculo::count());
         $this->assertSame(CentralIaEntrega::FALHOU, CentralIaEntrega::value('status'));
-        $this->actingAs($user)->getJson(route('central-ia.mensagens'))->assertJsonPath('telegram.vinculado', false);
+        $this->actingAs($user)->getJson(route('central-ia.painel'))->assertJsonPath('telegram.vinculado', false);
     }
 
     public function test_o_bot_le_os_updates_e_o_cursor_anda(): void

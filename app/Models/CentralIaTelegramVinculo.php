@@ -9,7 +9,7 @@ class CentralIaTelegramVinculo extends Model
 {
     protected $table = 'central_ia_telegram_vinculos';
 
-    protected $fillable = ['user_id', 'chat_id', 'telegram_usuario'];
+    protected $fillable = ['user_id', 'chat_id', 'telegram_usuario', 'projeto_atual', 'agente_atual'];
 
     protected $casts = ['chat_id' => 'integer'];
 

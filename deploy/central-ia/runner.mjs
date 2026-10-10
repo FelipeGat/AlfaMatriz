@@ -96,12 +96,76 @@ async function api(caminho, corpo) {
 
 let agentes = {};
 
+/**
+ * Sessões de agente abertas agora, por projeto: o processo do Claude, do
+ * Codex ou do Copilot cuja pasta de trabalho está dentro de um projeto. O
+ * cockpit avisa — mexer na pasta onde alguém está trabalhando é o que a
+ * worktree evita, e a pessoa precisa saber que há outra sessão ali.
+ */
+function sessoesAbertas() {
+    const raiz = realpathSync(cfg.projetos) + sep;
+    const porProjeto = {};
+    for (const pid of readdirSync('/proc').filter(p => /^\d+$/.test(p))) {
+        try {
+            const cmd = readFileSync(`/proc/${pid}/cmdline`, 'utf8');
+            const agente = /native-binary\/claude|\/claude\0/.test(cmd) ? 'claude'
+                : /\/codex\0/.test(cmd) ? 'codex' : /copilot/.test(cmd) ? 'copilot' : null;
+            if (!agente) continue;
+            const cwd = realpathSync(`/proc/${pid}/cwd`);
+            if (!cwd.startsWith(raiz)) continue;
+            const projeto = cwd.slice(raiz.length).split(sep)[0];
+            // As worktrees da própria Central não contam como sessão de alguém.
+            if (projeto.startsWith('.')) continue;
+            (porProjeto[projeto] ??= new Set()).add(agente);
+        } catch {}
+    }
+    return porProjeto;
+}
+
+// Fase e atividade lidas do painel-avanco (porta 8089), quando ele existe —
+// só leitura do retrato que ele já gera, sem coletar de novo.
+function retratoDoPainel() {
+    const arquivo = join(cfg.projetos, 'painel-avanco', 'retrato.json');
+    try {
+        const r = JSON.parse(readFileSync(arquivo, 'utf8'));
+        return Object.fromEntries((r.projetos || []).map(p => [p.nome, { fase: p.fase_inferida?.rotulo ?? p.fase_inferida ?? null, atividade: p.status_atividade?.rotulo ?? p.status_atividade ?? null }]));
+    } catch { return {}; }
+}
+
+let estadoCache = { em: 0, valor: {} };
+
+function estadoDosProjetos(projetos) {
+    if (Date.now() - estadoCache.em < 60_000) return estadoCache.valor;
+    const sessoes = sessoesAbertas();
+    const painel = retratoDoPainel();
+    const valor = {};
+    for (const p of projetos) {
+        const dir = join(cfg.projetos, p);
+        const e = { git: false, sessoes: [...(sessoes[p] || [])] };
+        try {
+            e.branch = git(dir, 'branch', '--show-current') || null;
+            e.git = true;
+            e.pendentes = git(dir, 'status', '--porcelain').split('\n').filter(Boolean).length;
+            const [quando, msg] = git(dir, 'log', '-1', '--format=%cI%x09%s').split('\t');
+            e.ultimo_commit = quando || null;
+            e.ultimo_commit_msg = msg || null;
+        } catch {}
+        const f = painel[p];
+        if (f) { e.fase = typeof f.fase === 'string' ? f.fase : null; e.atividade = typeof f.atividade === 'string' ? f.atividade : null; }
+        valor[p] = e;
+    }
+    estadoCache = { em: Date.now(), valor };
+    return valor;
+}
+
 async function batida() {
     agentes = localizarAgentes();
+    const projetos = listarProjetos();
     const r = await api('batida', {
         maquina: cfg.maquina,
         agentes: Object.keys(agentes).filter(k => agentes[k]),
-        projetos: listarProjetos(),
+        projetos,
+        estado: estadoDosProjetos(projetos),
     });
     if (r.status !== 200) log('batida recusada', r.status, r.json?.message || '');
 }
@@ -113,22 +177,38 @@ function git(cwd, ...args) {
 }
 
 /**
- * Implementar trabalha numa worktree com branch própria: o que já está
- * pendente na pasta do projeto, e qualquer sessão aberta nela, não é tocado.
- * Pedido seguinte ao mesmo agente continua na mesma branch, se ela existe.
+ * A worktree é da TAREFA, não da execução: nasce na primeira vez que alguém
+ * implementa e é onde todo agente seguinte trabalha — inclusive outro agente
+ * depois de uma troca. O que já está pendente na pasta do projeto, e qualquer
+ * sessão aberta nela, não é tocado.
  */
-function prepararWorktree(projeto, dir, job) {
+function prepararWorktree(projeto, dir, tarefa) {
     if (git(dir, 'rev-parse', '--is-inside-work-tree') !== 'true') throw new Error('o projeto não é um repositório git; implementar exige git');
-    const anterior = job.continuar?.branch;
-    if (anterior) {
-        const wt = join(cfg.worktrees, `${projeto}-${anterior.split('/').pop()}`);
-        if (existsSync(wt)) return { cwd: wt, branch: anterior };
-    }
     mkdirSync(cfg.worktrees, { recursive: true });
-    const branch = `central-ia/${job.id}`;
-    const wt = join(cfg.worktrees, `${projeto}-${job.id}`);
-    git(dir, 'worktree', 'add', '-b', branch, wt, 'HEAD');
-    return { cwd: wt, branch };
+    const branch = tarefa.branch || `central-ia/t${tarefa.id}`;
+    const wt = tarefa.worktree || join(cfg.worktrees, `${projeto}-t${tarefa.id}`);
+    if (existsSync(wt)) return { cwd: wt, branch, worktree: wt, commit_base: tarefa.commit_base };
+    let existe = false;
+    try { git(dir, 'rev-parse', '--verify', '--quiet', `refs/heads/${branch}`); existe = true; } catch {}
+    const base = git(dir, 'rev-parse', 'HEAD');
+    // A branch sobrevive à worktree removida: recria a pasta em cima dela.
+    if (existe) git(dir, 'worktree', 'add', wt, branch);
+    else git(dir, 'worktree', 'add', '-b', branch, wt, 'HEAD');
+    return { cwd: wt, branch, worktree: wt, commit_base: tarefa.commit_base || base };
+}
+
+/** O estado real do git ao fim da execução — medido aqui, não relatado. */
+function checkpoint(cwd) {
+    const c = { cwd };
+    try {
+        c.branch = git(cwd, 'branch', '--show-current') || null;
+        c.head = git(cwd, 'rev-parse', '--short', 'HEAD');
+        const linhas = git(cwd, 'status', '--porcelain').split('\n').filter(Boolean);
+        c.status = linhas.slice(0, 200).map(l => l.slice(0, 300));
+        c.arquivos = linhas.slice(0, 200).map(l => l.slice(3).slice(0, 290));
+        c.diff_stat = (git(cwd, 'diff', '--stat').split('\n').at(-1) || '').slice(0, 290);
+    } catch {}
+    return c;
 }
 
 function instrucoes(job, branch) {
@@ -149,8 +229,10 @@ function instrucoes(job, branch) {
 const NEGADOS_NO_SHELL = ['git push', 'git commit', 'git reset', 'git checkout', 'git switch', 'git rebase', 'git merge', 'rm -rf', 'sudo', 'docker', 'ssh'];
 
 function comando(job, cwd, branch, saida) {
-    const sessao = job.continuar?.sessao || null;
-    const prompt = `${instrucoes(job, branch)}\n\nPedido:\n${job.instrucao}`;
+    // A sessão interna do agente só é retomada na MESMA pasta: o Claude guarda
+    // as sessões por diretório, e retomar noutra falha.
+    const sessao = job.continuar?.sessao && job.continuar.cwd === cwd ? job.continuar.sessao : null;
+    const prompt = [instrucoes(job, branch), job.contexto, `Pedido:\n${job.instrucao}`, job.bloco].filter(Boolean).join('\n\n');
     const escreve = job.modo === 'implementar';
 
     if (job.agente === 'claude') {
@@ -182,11 +264,16 @@ function comando(job, cwd, branch, saida) {
     return [agentes.copilot, args, nome];
 }
 
+// Processos de agente em andamento, para a parada do serviço encerrá-los.
+const filhos = new Set();
+let parar = false;
+
 function rodar(bin, args, cwd, minutos) {
     return new Promise(resolvePromise => {
         const env = { ...process.env };
         delete env.ALFAMATRIZ_RUNNER_TOKEN;
         const filho = spawn(bin, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+        filhos.add(filho);
         let out = '', err = '', estourou = false;
         filho.stdout.on('data', d => { out += d; if (out.length > 4_000_000) out = out.slice(-4_000_000); });
         filho.stderr.on('data', d => { err += d; if (err.length > 200_000) err = err.slice(-200_000); });
@@ -195,8 +282,8 @@ function rodar(bin, args, cwd, minutos) {
             try { process.kill(-filho.pid, 'SIGTERM'); } catch {}
             setTimeout(() => { try { process.kill(-filho.pid, 'SIGKILL'); } catch {} }, 10000);
         }, minutos * 60_000);
-        filho.on('error', e => { clearTimeout(prazo); resolvePromise({ codigo: -1, out, err: String(e.message), estourou }); });
-        filho.on('close', codigo => { clearTimeout(prazo); resolvePromise({ codigo, out, err, estourou }); });
+        filho.on('error', e => { clearTimeout(prazo); filhos.delete(filho); resolvePromise({ codigo: -1, out, err: String(e.message), estourou }); });
+        filho.on('close', codigo => { clearTimeout(prazo); filhos.delete(filho); resolvePromise({ codigo, out, err, estourou }); });
     });
 }
 
@@ -239,13 +326,22 @@ async function executar(job) {
         const dir = realpathSync(resolve(cfg.projetos, job.projeto));
         if (!dir.startsWith(realpathSync(cfg.projetos) + sep)) throw new Error('projeto fora da pasta de projetos');
 
-        let cwd = dir, branch = null;
-        if (job.modo === 'implementar') ({ cwd, branch } = prepararWorktree(job.projeto, dir, job));
+        // Onde trabalhar: na worktree da tarefa, se ela já tem uma (analisar
+        // também — revisar o que foi feito é olhar a worktree); senão, na
+        // pasta do projeto para analisar, e numa worktree nova para implementar.
+        let cwd = dir, branch = null, criada = null;
+        if (job.tarefa?.worktree && existsSync(job.tarefa.worktree)) {
+            cwd = job.tarefa.worktree; branch = job.tarefa.branch;
+        } else if (job.modo === 'implementar') {
+            criada = prepararWorktree(job.projeto, dir, job.tarefa || { id: `e${job.id}` });
+            ({ cwd, branch } = criada);
+        }
 
         const saida = join(tmp, 'ultima.txt');
         const [bin, args, nomeCopilot] = comando(job, cwd, branch, saida);
         const r = await rodar(bin, args, cwd, job.timeout_minutos);
         if (r.estourou) throw new Error(`passou de ${job.timeout_minutos} minutos e foi encerrado`);
+        if (parar) throw new Error('interrompida porque o runner foi parado ou reiniciado; o estado do git ficou registrado e a tarefa pode ser retomada');
 
         const { resposta, sessao } = interpretar(job, r, saida, nomeCopilot);
         resultado = {
@@ -253,9 +349,15 @@ async function executar(job) {
             resposta: (resposta || '(o agente não escreveu resposta)') + (branch ? resumoDaBranch(cwd, branch) : ''),
             sessao_agente: sessao || null,
             branch,
+            worktree: criada?.worktree ?? null,
+            commit_base: criada?.commit_base ?? null,
+            checkpoint: checkpoint(cwd),
         };
     } catch (e) {
         resultado = { status: 'falhou', erro: String(e.message || e).slice(0, 1900) };
+        // Mesmo na falha o estado do git interessa: é dele que parte quem
+        // assumir a tarefa depois.
+        if (job.tarefa?.worktree && existsSync(job.tarefa.worktree)) resultado.checkpoint = checkpoint(job.tarefa.worktree);
     } finally {
         rmSync(tmp, { recursive: true, force: true });
     }
@@ -276,9 +378,16 @@ async function executar(job) {
 
 /* ---------- laço ---------- */
 
-let parar = false;
-process.on('SIGTERM', () => { parar = true; });
-process.on('SIGINT', () => { parar = true; });
+// Parada do serviço: encerra os agentes em andamento e deixa cada execução
+// reportar "interrompida" com o checkpoint do git — a tarefa não fica presa
+// em "executando" até expirar, e quem assumir parte do estado real.
+function encerrar() {
+    if (parar) return;
+    parar = true;
+    for (const f of filhos) { try { process.kill(-f.pid, 'SIGTERM'); } catch {} }
+}
+process.on('SIGTERM', encerrar);
+process.on('SIGINT', encerrar);
 
 log(`runner ${cfg.maquina} → ${cfg.url}, projetos em ${cfg.projetos}`);
 // A batida corre à parte do laço: durante uma execução longa a máquina
@@ -286,15 +395,27 @@ log(`runner ${cfg.maquina} → ${cfg.url}, projetos em ${cfg.projetos}`);
 const batendo = () => batida().catch(e => log('batida falhou:', e.message));
 await batendo();
 const relogio = setInterval(batendo, 30_000);
+// Até PARALELO execuções ao mesmo tempo. O AlfaMatriz também limita (por
+// pessoa, e uma por tarefa); aqui é a máquina que se protege.
+const PARALELO = Math.max(1, Number(process.env.CENTRAL_IA_PARALELO || 2));
+const rodando = new Set();
 while (!parar) {
     try {
-        const r = await api('proxima', { maquina: cfg.maquina });
-        if (r.status === 200 && r.json?.id) { await executar(r.json); continue; }
-        if (r.status === 401 || r.status === 403) log('token recusado ou conta sem permissão', r.status);
+        if (rodando.size < PARALELO) {
+            const r = await api('proxima', { maquina: cfg.maquina });
+            if (r.status === 200 && r.json?.id) {
+                const p = executar(r.json).catch(e => log(`#${r.json.id} erro no runner:`, e.message)).finally(() => rodando.delete(p));
+                rodando.add(p);
+                continue;
+            }
+            if (r.status === 401 || r.status === 403) log('token recusado ou conta sem permissão', r.status);
+        }
     } catch (e) {
         log('AlfaMatriz indisponível:', e.message);
     }
     await new Promise(r => setTimeout(r, 3000));
 }
+// Parada pedida: espera o que está rodando terminar e devolver a resposta.
+await Promise.allSettled([...rodando]);
 clearInterval(relogio);
 log('runner encerrado');

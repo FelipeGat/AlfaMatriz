@@ -78,11 +78,14 @@ class AgentesTest extends TestCase
         $execucao = CentralIaExecucao::first();
         $this->assertSame(['claude', 'alfacontrol', 'analisar', 'pendente'], [$execucao->agente, $execucao->projeto, $execucao->modo, $execucao->status]);
 
-        $this->actingAs($user)->getJson(route('central-ia.mensagens'))
+        $this->actingAs($user)->getJson(route('central-ia.mensagens', ['projeto' => 'alfacontrol']))
             ->assertJsonPath('mensagens.0.pedido.agente', 'Claude')
             ->assertJsonPath('mensagens.0.pedido.status', 'pendente')
-            ->assertJsonPath('agentes.online', true)
-            ->assertJsonPath('agentes.projetos', ['alfacontrol', 'alfahome']);
+            ->assertJsonPath('mensagens.0.pedido.motivo', 'Escolha manual');
+        $this->actingAs($user)->getJson(route('central-ia.painel'))
+            ->assertJsonPath('maquina.online', true)
+            ->assertJsonPath('maquina.projetos', ['alfacontrol', 'alfahome']);
+        $this->actingAs($user)->getJson(route('central-ia.mensagens'))->assertJsonCount(0, 'mensagens');
     }
 
     public function test_atalho_digitado_na_tela_tambem_pede(): void
@@ -140,14 +143,16 @@ class AgentesTest extends TestCase
         $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->assertNoContent();
 
         $this->pedirPelaTela($user);
-        $this->pedirPelaTela($user, ['conteudo' => 'segundo']);
+        $tarefa = CentralIaExecucao::value('tarefa_id');
+        // Segundo pedido na MESMA tarefa: espera o primeiro, mesmo com vaga.
+        $this->pedirPelaTela($user, ['conteudo' => 'segundo', 'tarefa_id' => $tarefa]);
         Sanctum::actingAs($user, ['central-ia-runner']);
 
         $trabalho = $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->assertOk()
             ->assertJsonPath('agente', 'claude')->assertJsonPath('projeto', 'alfacontrol')
+            ->assertJsonPath('tarefa.id', $tarefa)
             ->assertJsonPath('continuar', null)->json();
 
-        // Um por vez: com o primeiro em andamento, o segundo espera.
         $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->assertNoContent();
 
         $corpo = ['status' => 'concluida', 'resposta' => 'Achei 3 problemas.', 'sessao_agente' => 'sess-1'];
