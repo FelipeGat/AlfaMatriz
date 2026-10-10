@@ -1,5 +1,16 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 10/10/2026 — Avisos do dia sem falha em dia cheio (v2026.10.09.1, T-331)
+
+### Correções
+
+- **Aviso do dia garantido.** Em dia com muitas despesas, receitas ou leads
+  parados, o aviso das 08:00 podia falhar, e ninguém recebia os lembretes
+  daquele dia. Agora a lista longa é encurtada com "…", e o total em reais
+  continua aparecendo no fim.
+- **Vale para todos os avisos do sino.** O mesmo cuidado protege os outros
+  lembretes, como o de prazos das tarefas.
+
 ## AlfaMatriz — 09/10/2026 — Pergunta para quem você escolher (v2026.10.09, T-323)
 
 ### Novidades
