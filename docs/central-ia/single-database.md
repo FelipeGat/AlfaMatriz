@@ -56,7 +56,12 @@ Em caso de falha, impedir novas escritas, preservar mensagens posteriores e
 reconciliar antes de retomar o consumidor anterior. Não executar `down`
 destrutivo ou restaurar snapshot antigo sobre mensagens novas.
 
-## Git em 10/10/2026
+## Git em 10/10/2026 — registro anterior ao commit da entrega
+
+O parágrafo abaixo registra o estado antes da autorização de commits.
+Depois, a entrega foi registrada no checkout separado da branch local
+`Felipe`, commit `96d7be6`, sem push. Consulte README e HANDOFF-CLAUDE
+para o estado atual; o checkout servido na porta 8096 continua preservado.
 
 O repositório local `/home/duque_de_caxias/projetos/alfamatriz` está na
 branch `main`, commit `1e2bbb9`. O trabalho candidato e a documentação estão

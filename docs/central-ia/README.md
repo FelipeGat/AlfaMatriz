@@ -1,5 +1,7 @@
 # Central de IA — entrega local na branch Felipe
 
+Para continuidade no Claude Code, leia [HANDOFF-CLAUDE.md](HANDOFF-CLAUDE.md).
+
 ## Estado desta entrega
 
 Este checkout registra o candidato já implementado, seus testes e a revisão
