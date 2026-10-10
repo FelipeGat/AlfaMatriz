@@ -37,6 +37,7 @@ export function centralIa(config) {
     return {
         // Painel (todos os projetos)
         projetos: [], atividade: [], maquina: { online: false, agentes: [], projetos: [] }, paralelo: 2,
+        recentes: [], consumo: { por_agente: [], projetos_hoje: [], cota_codex: null }, sessoes: [], periodo: 'hoje',
         telegram: { vinculado: false, usuario: null }, pareamento: null,
         // Projeto aberto
         atual: GERAL, abas: {}, tarefas: [], verTarefa: null, detalheAberto: true,
@@ -63,6 +64,7 @@ export function centralIa(config) {
         get rotuloConexao() {
             return { conectando: 'Conectando…', online: 'Atualizado', offline: 'Reconectando…', bloqueado: 'Acesso interrompido' }[this.conexao];
         },
+        get sessoesDoProjeto() { return this.sessoes.filter(s => s.projeto === this.atual); },
         get emExecucao() { return this.atividade.filter(a => a.status === 'executando').length; },
         get naFila() { return this.atividade.filter(a => a.status === 'pendente').length; },
 
@@ -155,6 +157,7 @@ export function centralIa(config) {
                 const painel = await this.pedir(config.painel);
                 this.projetos = painel.projetos; this.atividade = painel.atividade; this.maquina = painel.maquina;
                 this.paralelo = painel.paralelo; this.telegram = painel.telegram;
+                this.recentes = painel.recentes; this.consumo = painel.consumo; this.sessoes = painel.sessoes;
                 if (this.telegram.vinculado) this.pareamento = null;
 
                 const projeto = this.atual, aba = this.aba;
@@ -270,6 +273,16 @@ export function centralIa(config) {
             catch (erro) { this.falhou(erro); }
         },
 
+        /** Abre a tarefa que continua a sessão do VS Code e põe o foco no pedido. */
+        async continuarSessao(s) {
+            try {
+                const r = await this.pedir(config.continuar, 'POST', { agente: s.agente, sessao: s.id });
+                this.abrir(r.projeto, r.tarefa_id);
+                this.aba.tarefa = r.tarefa_id; this.aba.agente = 'auto'; this.aba.modo = 'auto';
+                this.$nextTick(() => document.getElementById('central-rascunho')?.focus());
+            } catch (erro) { this.falhou(erro); }
+        },
+
         async mudarTarefa(id, status) {
             try { await this.pedir(config.statusTarefa.replace('__T__', id), 'POST', { status }); this.reconectar(); }
             catch (erro) { this.falhou(erro); }
@@ -314,6 +327,10 @@ export function centralIa(config) {
         autor(m) { return m.autor_nome || { usuario: 'Você', agente: 'Agente', sistema: 'Sistema' }[m.autor_tipo] || 'Sistema'; },
         canal(origem) { return { web: 'AlfaMatriz', telegram: 'Telegram', agente: 'Agente' }[origem] || 'Central'; },
         data(valor) { return valor ? new Date(valor).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''; },
+        tokens(n) {
+            n = Number(n) || 0;
+            return n >= 1e9 ? (n / 1e9).toFixed(1) + ' bi' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' mi' : n >= 1e3 ? Math.round(n / 1e3) + ' mil' : String(n);
+        },
         haQuanto(valor) {
             if (!valor) return '—';
             const s = Math.max(0, (Date.now() - new Date(valor)) / 1000);

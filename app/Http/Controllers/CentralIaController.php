@@ -144,6 +144,23 @@ class CentralIaController extends Controller
     }
 
     /**
+     * Continua aqui uma conversa do VS Code: abre (ou reabre) a tarefa que
+     * aponta para ela. O pedido em si vem depois, pelo compositor.
+     */
+    public function continuarSessao(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->canPermissao('central_ia_agentes', 'incluir'), 403, 'Sua conta não pode acionar agentes.');
+        $dados = $request->validate([
+            'agente' => ['required', Rule::in(array_keys(CentralIaExecucao::AGENTES))],
+            'sessao' => ['required', 'string', 'max:80'],
+        ]);
+
+        $tarefa = $this->agentes->continuarSessao($request->user(), $dados['agente'], $dados['sessao']);
+
+        return $this->semCache(['tarefa_id' => $tarefa->id, 'projeto' => $tarefa->projeto]);
+    }
+
+    /**
      * Fixa ou solta um projeto da barra. Só projetos que a máquina informou,
      * ou que já aparecem por ter tarefa.
      */

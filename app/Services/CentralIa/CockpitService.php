@@ -61,6 +61,9 @@ class CockpitService
         return [
             'projetos' => $projetos,
             'atividade' => $this->atividade($user),
+            'recentes' => $this->recentes($maquina, $nomes),
+            'consumo' => $this->consumo($user),
+            'sessoes' => $this->sessoes($user),
             'maquina' => [
                 'online' => $maquina['online'],
                 'agentes' => $maquina['agentes'],
@@ -68,6 +71,69 @@ class CockpitService
             ],
             'paralelo' => (int) config('central_ia.agentes.paralelo'),
         ];
+    }
+
+    /**
+     * Todos os projetos da máquina pelo último commit — os que mexeram por
+     * último no git, estejam ou não no cockpit.
+     */
+    private function recentes(array $maquina, array $noCockpit): array
+    {
+        return collect($maquina['estado'])
+            ->filter(fn ($e) => filled($e['ultimo_commit'] ?? null))
+            ->sortByDesc('ultimo_commit')->take(12)
+            ->map(fn ($e, $nome) => [
+                'nome' => $nome, 'branch' => $e['branch'] ?? null, 'pendentes' => $e['pendentes'] ?? null,
+                'ultimo_commit' => $e['ultimo_commit'], 'ultimo_commit_msg' => $e['ultimo_commit_msg'] ?? null,
+                'fase' => $e['fase'] ?? null, 'atividade' => $e['atividade'] ?? null,
+                'no_cockpit' => in_array($nome, $noCockpit, true),
+            ])->values()->all();
+    }
+
+    /**
+     * Tokens por IA (hoje e últimos 7 dias), os projetos que mais gastaram
+     * hoje, a cota do Codex e as requisições premium do Copilot — somados das
+     * máquinas da pessoa, como cada runner leu dos registros locais.
+     */
+    private function consumo(User $user): array
+    {
+        $runners = \App\Models\CentralIaRunner::where('user_id', $user->id)->get();
+        $linhas = $runners->pluck('consumo')->filter()->pluck('linhas')->flatten(1);
+        $hoje = now()->toDateString();
+        $semana = now()->subDays(6)->toDateString();
+
+        $somar = fn ($grupo) => [
+            'entrada' => $grupo->sum('entrada'), 'saida' => $grupo->sum('saida'),
+            'cache_leitura' => $grupo->sum('cache_leitura'), 'cache_escrita' => $grupo->sum('cache_escrita'),
+            'premium' => round($grupo->sum('premium'), 1),
+        ];
+
+        $porAgente = [];
+        foreach (array_keys(CentralIaExecucao::AGENTES) as $a) {
+            $doAgente = $linhas->where('agente', $a);
+            $porAgente[] = ['agente' => $a, 'nome' => CentralIaExecucao::AGENTES[$a],
+                'hoje' => $somar($doAgente->where('dia', $hoje)), 'semana' => $somar($doAgente->where('dia', '>=', $semana))];
+        }
+
+        $cota = $runners->pluck('consumo')->filter()->pluck('cota_codex')->filter()->sortByDesc('em')->first();
+
+        return [
+            'por_agente' => $porAgente,
+            'projetos_hoje' => $linhas->where('dia', $hoje)->groupBy('projeto')
+                ->map(fn ($g, $p) => ['projeto' => $p, 'tokens' => $g->sum('entrada') + $g->sum('saida'),
+                    'por_agente' => $g->groupBy('agente')->map(fn ($x) => $x->sum('entrada') + $x->sum('saida'))->all()])
+                ->sortByDesc('tokens')->take(6)->values()->all(),
+            'cota_codex' => $cota,
+            'coletado_em' => $runners->pluck('consumo')->filter()->pluck('coletado_em')->filter()->max(),
+        ];
+    }
+
+    private function sessoes(User $user): array
+    {
+        return $this->agentes->sessoes($user)->take(25)->map(fn ($s) => $s + [
+            'nome' => CentralIaExecucao::AGENTES[$s['agente']] ?? $s['agente'],
+            'ativa_agora' => $s['ultima_atividade'] && Carbon::parse($s['ultima_atividade'])->greaterThan(now()->subMinutes(AgentesService::PARADA_MINUTOS)),
+        ])->all();
     }
 
     /**

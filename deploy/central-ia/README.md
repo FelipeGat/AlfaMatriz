@@ -30,6 +30,7 @@ Codex dentro das extensões do VS Code (`~/.vscode-server/extensions`).
    ```bash
    mkdir -p ~/.local/share/alfa ~/.config/systemd/user
    cp deploy/central-ia/runner.mjs ~/.local/share/alfa/central-ia-runner.mjs
+   cp deploy/central-ia/uso-local.mjs ~/.local/share/alfa/uso-local.mjs
    cp deploy/central-ia/central-ia-runner.service ~/.config/systemd/user/
    systemctl --user daemon-reload
    systemctl --user enable --now central-ia-runner

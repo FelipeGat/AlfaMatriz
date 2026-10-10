@@ -164,6 +164,7 @@ class TelegramCanal
             ),
             $comando === '/nova' => $this->pedirNoProjeto($user, $vinculo, $chatId, trim($resto), $texto, $updateId, novaTarefa: true),
             $comando === '/trocar' => $this->trocar($user, $vinculo, $chatId, trim($resto), $texto, $updateId),
+            $comando === '/continuar' => $this->continuar($user, $vinculo, $chatId, trim($resto)),
             $comando !== null => $this->responder($chatId, $this->ajuda()),
             filled($vinculo->projeto_atual) => $this->pedirNoProjeto($user, $vinculo, $chatId, $texto, $texto, $updateId),
             default => $this->conversas->registrarDoUsuario($user, $texto, CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId),
@@ -240,6 +241,33 @@ class TelegramCanal
         $this->responder($chatId, CentralIaExecucao::AGENTES[$agente].' assume a tarefa no próximo pedido, com o contexto dela.');
     }
 
+    /**
+     * `/continuar gestor [claude|gpt|copilot]`: pega a sessão do VS Code mais
+     * recente do projeto e passa a usar o projeto aqui, na tarefa que continua
+     * aquela conversa.
+     */
+    private function continuar(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $resto): void
+    {
+        [$projeto, $nome] = array_pad(preg_split('/\s+/', $resto, 2), 2, '');
+        $agente = ['claude' => 'claude', 'gpt' => 'codex', 'codex' => 'codex', 'copilot' => 'copilot'][strtolower($nome)] ?? null;
+
+        $sessao = $this->agentes->sessoes($user)
+            ->first(fn ($s) => $s['projeto'] === $projeto && (! $agente || $s['agente'] === $agente));
+
+        if (! $sessao) {
+            $this->responder($chatId, $projeto === '' ? 'Diga o projeto: /continuar gestor' : "Não achei sessão recente do VS Code em {$projeto}.");
+
+            return;
+        }
+
+        $tarefa = $this->agentes->continuarSessao($user, $sessao['agente'], $sessao['id']);
+        $vinculo->update(['projeto_atual' => $projeto, 'agente_atual' => null]);
+
+        $quando = \Illuminate\Support\Carbon::parse($sessao['ultima_atividade'])->timezone(config('app.timezone'))->format('d/m H:i');
+        $this->responder($chatId, 'Continuando a sessão de '.CentralIaExecucao::AGENTES[$sessao['agente']]." em {$projeto} (última atividade {$quando}, {$sessao['mensagens']} mensagens suas), na tarefa #{$tarefa->id}. "
+            .'Mande o próximo pedido. A sessão do VS Code fica como está; daqui em diante as duas seguem separadas.');
+    }
+
     private function textoProjetos(User $user, CentralIaTelegramVinculo $vinculo): string
     {
         $projetos = $this->cockpit->montar($user)['projetos'];
@@ -272,7 +300,7 @@ class TelegramCanal
     {
         return "Comandos:\n/projetos — projetos do cockpit\n/status — o que roda e o que espera você\n/usar <projeto> — mensagens viram pedidos nele\n"
             ."/nova <pedido> — tarefa nova no projeto em uso\n/geral — sai do projeto\n/auto, /claude, /gpt, /copilot — agente dos próximos pedidos\n"
-            ."/trocar <agente> [pedido] — passa a tarefa atual para outro agente\n/claude <projeto> <pedido> — pedido direto (com ! para implementar)";
+            ."/trocar <agente> [pedido] — passa a tarefa atual para outro agente\n/continuar <projeto> [agente] — segue a conversa do VS Code daquele projeto\n/claude <projeto> <pedido> — pedido direto (com ! para implementar)";
     }
 
     private function parear(int $chatId, string $codigo, ?string $usuarioTelegram): void

@@ -153,6 +153,29 @@ dúvida do agente; 2 execuções em paralelo; cstk depois da validação.
   os agentes e reporta "interrompida" com o git medido).
 - Testes: `tests/Feature/CentralIa/{CockpitTest,TelegramComandosTest}.php`.
 
+### Consumo, recentes e continuar sessão do VS Code (10/10/2026)
+
+- O runner lê os registros locais das três IAs (`deploy/central-ia/uso-local.mjs`):
+  Claude `~/.claude/projects`, Codex `~/.codex/sessions` (com a cota da
+  janela de 5 h e da semana), Copilot `~/.copilot/session-state` (com as
+  requisições premium). Só contagens e metadados — nunca o texto. Leitura
+  incremental: a primeira leva ~16 s (a sessão do gestor tem 115 MB), as
+  seguintes milissegundos. Vai na batida, a cada 2 min.
+- Cockpit: card "Consumo de IA" (hoje / 7 dias por IA, cota do Codex,
+  projetos que mais gastaram) e "Recentes no git" (todos os projetos da
+  máquina pelo último commit, com Fixar).
+- **Continuar sessão do VS Code**: o runner lista as sessões que a PESSOA
+  abriu (`claude-vscode`, `codex_vscode`, Copilot), com o projeto (pela pasta
+  ou, na raiz `~/projetos`, pelo projeto mais citado nos caminhos). "Continuar
+  daqui" (ou `/continuar gestor` no Telegram) abre uma tarefa que trabalha NA
+  PASTA da sessão — não em worktree, porque o trabalho sem commit está lá — e
+  cuja primeira execução retoma a sessão: no Claude uma CÓPIA
+  (`--fork-session`), a do VS Code fica intacta; Codex e Copilot retomam a
+  própria. Recusado se a sessão foi usada há menos de 5 min. Daí em diante as
+  duas seguem separadas.
+- Migração `2026_10_11_110000_consumo_e_sessoes_da_central_ia.php`; testes em
+  `tests/Feature/CentralIa/SessoesEConsumoTest.php`.
+
 ## Ambiente local
 
 - `http://localhost:8096` (Windows) / `http://home:8096` (Mac). O stack Docker
@@ -175,7 +198,7 @@ Isolados, sem rede, código somente leitura, SQLite em memória:
 python3 tools/central-ia/run-tests.py --central-root /home/duque_de_caxias/projetos/central-agentes
 ```
 
-Em 10/10/2026, depois do cockpit: **1.433 testes, 8.631 asserções, verde**
+Em 10/10/2026, depois de consumo e sessões: **1.439 testes, verde**
 (duas depreciações do PHPUnit, preexistentes). O runner esconde o `.env` do
 checkout, que agora existe porque ele serve a porta 8096.
 

@@ -14,12 +14,14 @@ class CentralIaRunner extends Model
     /** Sem batida há mais que isto, a máquina está fora do ar. */
     public const ONLINE_SEGUNDOS = 90;
 
-    protected $fillable = ['user_id', 'maquina', 'agentes', 'projetos', 'estado', 'visto_em'];
+    protected $fillable = ['user_id', 'maquina', 'agentes', 'projetos', 'estado', 'consumo', 'sessoes', 'visto_em'];
 
     protected $casts = [
         'agentes' => 'array',
         'projetos' => 'array',
         'estado' => 'array',
+        'consumo' => 'array',
+        'sessoes' => 'array',
         'visto_em' => 'datetime',
     ];
 

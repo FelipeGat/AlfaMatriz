@@ -116,9 +116,15 @@ class AgentesService
             }
         }
 
-        $rota = $agente === 'auto'
+        $sessaoDoVsCode = $tarefa?->dossie['origem'] ?? null;
+        $rota = $agente === 'auto' && $sessaoDoVsCode && in_array($sessaoDoVsCode['agente'], $disponivel['agentes'], true)
+            // Continuação de sessão do VS Code: em automático, quem segue é o
+            // agente daquela conversa — é ele que tem o histórico.
+            ? ['agente' => $sessaoDoVsCode['agente'], 'modo' => 'implementar', 'categoria' => 'implementacao', 'manual' => false,
+                'motivo' => 'Automático: continuação da sessão do VS Code']
+            : ($agente === 'auto'
             ? $this->roteador->decidir($pedido['instrucao'], $disponivel['agentes'], $tarefa)
-            : ['agente' => $agente, 'modo' => null, 'categoria' => null, 'manual' => true, 'motivo' => 'Escolha manual'];
+            : ['agente' => $agente, 'modo' => null, 'categoria' => null, 'manual' => true, 'motivo' => 'Escolha manual']);
 
         if ($modo === 'auto') {
             $modo = $rota['modo'] ?? $this->roteador->decidir($pedido['instrucao'], [], $tarefa)['modo'];
@@ -184,6 +190,69 @@ class AgentesService
     }
 
     /**
+     * Continua aqui uma conversa começada no VS Code.
+     *
+     * A tarefa nasce apontando para a sessão de origem e trabalha NA PASTA
+     * dela, não numa worktree: a conversa do VS Code mexeu na pasta real, e o
+     * que ela deixou sem commit só existe ali. No Claude o primeiro pedido
+     * retoma uma CÓPIA da sessão (`--fork-session`) — a do VS Code fica
+     * intacta; Codex e Copilot não têm cópia e retomam a própria sessão.
+     *
+     * Sessão mexida há menos de `PARADA_MINUTOS` é recusada: dois lados
+     * escrevendo na mesma pasta ao mesmo tempo é o que a Central evita.
+     */
+    public const PARADA_MINUTOS = 5;
+
+    public function continuarSessao(User $user, string $agente, string $sessaoId): CentralIaTarefa
+    {
+        $user->esquecerPermissoes();
+        if (! $user->canPermissao('central_ia_agentes', 'incluir')) {
+            throw ValidationException::withMessages(['agente' => 'Sua conta não pode acionar agentes.']);
+        }
+
+        $sessao = $this->sessoes($user)->first(fn ($s) => $s['agente'] === $agente && $s['id'] === $sessaoId);
+        if (! $sessao) {
+            throw ValidationException::withMessages(['sessao' => 'Sessão não encontrada entre as que a sua máquina informou.']);
+        }
+
+        $parada = $sessao['ultima_atividade'] ? now()->diffInMinutes(\Illuminate\Support\Carbon::parse($sessao['ultima_atividade']), true) : 999;
+        if ($parada < self::PARADA_MINUTOS) {
+            throw ValidationException::withMessages(['sessao' => 'Essa sessão foi usada no VS Code há '.(int) $parada.' min. Pare por lá (ou espere '.self::PARADA_MINUTOS.' min) para continuar aqui sem os dois mexendo na mesma pasta.']);
+        }
+
+        // Já existe tarefa em curso continuando esta sessão: volta para ela.
+        $existente = CentralIaTarefa::de($user)->emCurso()->where('projeto', $sessao['projeto'])->get()
+            ->first(fn (CentralIaTarefa $t) => ($t->dossie['origem']['sessao'] ?? null) === $sessaoId);
+        if ($existente) {
+            return $existente;
+        }
+
+        $nome = CentralIaExecucao::AGENTES[$agente];
+        $dossie = Dossie::inicial("Continuar a conversa de {$nome} iniciada no VS Code.");
+        $dossie['origem'] = ['agente' => $agente, 'sessao' => $sessaoId, 'cwd' => $sessao['cwd'], 'mensagens' => $sessao['mensagens']];
+        $dossie['lacunas'][] = "O histórico anterior está na sessão do VS Code ({$sessao['mensagens']} mensagens), não neste dossiê. Outro agente que assumir só vê o que acontecer daqui em diante.";
+
+        return CentralIaTarefa::create([
+            'user_id' => $user->id,
+            'projeto' => $sessao['projeto'],
+            'titulo' => "Continuação da sessão de {$nome} no VS Code",
+            'objetivo' => $dossie['objetivo'],
+            'agente_atual' => $agente,
+            // A pasta da sessão, e não uma worktree: é onde está o trabalho.
+            'worktree' => $sessao['cwd'],
+            'dossie' => $dossie,
+            'ultima_atividade_em' => now(),
+        ]);
+    }
+
+    /** Sessões do VS Code que as máquinas da pessoa informaram. */
+    public function sessoes(User $user): \Illuminate\Support\Collection
+    {
+        return CentralIaRunner::where('user_id', $user->id)->get()->pluck('sessoes')->filter()->flatten(1)
+            ->sortByDesc('ultima_atividade')->values();
+    }
+
+    /**
      * A próxima execução para esta máquina.
      *
      * Até `paralelo` ao mesmo tempo por pessoa, e nunca duas da MESMA tarefa:
@@ -230,6 +299,14 @@ class AgentesService
             ->whereIn('status', [CentralIaExecucao::CONCLUIDA, CentralIaExecucao::FALHOU])
             ->orderByDesc('id')->first();
         $mesmoAgente = $anterior && $anterior->agente === $execucao->agente && $anterior->sessao_agente;
+        $sessaoDoVsCode = $tarefa?->dossie['origem'] ?? null;
+        // Primeira execução da continuação: retoma a sessão do VS Code (no
+        // Claude, uma cópia dela). Depois, a sessão já é a desta tarefa.
+        $continuar = $mesmoAgente
+            ? ['sessao' => $anterior->sessao_agente, 'cwd' => $anterior->checkpoint['cwd'] ?? null, 'fork' => false]
+            : (! $anterior && $sessaoDoVsCode && $sessaoDoVsCode['agente'] === $execucao->agente
+                ? ['sessao' => $sessaoDoVsCode['sessao'], 'cwd' => $sessaoDoVsCode['cwd'], 'fork' => $execucao->agente === 'claude']
+                : null);
 
         return [
             'id' => $execucao->id,
@@ -247,7 +324,7 @@ class AgentesService
             ] : null,
             'contexto' => $tarefa && $anterior ? Dossie::paraPrompt($tarefa, $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null) : null,
             'bloco' => Dossie::instrucaoDoBloco(),
-            'continuar' => $mesmoAgente ? ['sessao' => $anterior->sessao_agente, 'cwd' => $anterior->checkpoint['cwd'] ?? null] : null,
+            'continuar' => $continuar,
         ];
     }
 

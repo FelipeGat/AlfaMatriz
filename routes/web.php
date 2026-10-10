@@ -202,6 +202,8 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware(['permissao:central_ia', 'throttle:90,1'])->where('projeto', '[A-Za-z0-9._-]+');
     Route::post('central-ia/projetos/{projeto}/fixar', [CentralIaController::class, 'fixar'])->name('central-ia.fixar')
         ->middleware('permissao:central_ia,editar')->where('projeto', '[A-Za-z0-9._-]+');
+    Route::post('central-ia/sessoes/continuar', [CentralIaController::class, 'continuarSessao'])->name('central-ia.sessoes.continuar')
+        ->middleware(['permissao:central_ia,incluir', 'throttle:20,1']);
     Route::post('central-ia/tarefas/{tarefa}/status', [CentralIaController::class, 'statusDaTarefa'])->name('central-ia.tarefas.status')
         ->middleware('permissao:central_ia,editar')->whereNumber('tarefa');
     Route::post('central-ia/mensagens', [CentralIaController::class, 'enviar'])->name('central-ia.enviar')

@@ -9,6 +9,7 @@
                 tarefas: '{{ route('central-ia.tarefas', '__P__') }}',
                 fixar: '{{ route('central-ia.fixar', '__P__') }}',
                 statusTarefa: '{{ url('central-ia/tarefas/__T__/status') }}',
+                continuar: '{{ route('central-ia.sessoes.continuar') }}',
                 telegramCodigo: '{{ route('central-ia.telegram.codigo') }}',
                 telegramDesvincular: '{{ route('central-ia.telegram.desvincular') }}',
                 podeEnviar: {{ $podeEnviar ? 'true' : 'false' }},
@@ -115,6 +116,20 @@
                         </div>
                         <button type="button" @click="fixar(atual)" class="text-xs font-semibold text-brand-text"
                                 x-text="projetoAtual?.fixado ? 'Desafixar' : 'Fixar no cockpit'"></button>
+                    </div>
+                    <div x-show="sessoesDoProjeto.length" class="mt-2 space-y-1">
+                        <p class="font-mono text-[11px] uppercase tracking-caps text-ink-faint">Conversas deste projeto no VS Code</p>
+                        <template x-for="s in sessoesDoProjeto.slice(0, 4)" :key="s.agente + s.id">
+                            <div class="flex flex-wrap items-center justify-between gap-2 rounded-control border border-line px-3 py-1.5 text-xs">
+                                <span class="text-ink-dim" x-text="s.nome + ' · ' + s.mensagens + ' mensagens suas · ' + haQuanto(s.ultima_atividade)"></span>
+                                @if ($podeAcionar)
+                                    <button type="button" @click="continuarSessao(s)" :disabled="s.ativa_agora"
+                                            class="font-semibold text-brand-text disabled:text-ink-faint"
+                                            :title="s.ativa_agora ? 'Em uso no VS Code agora — pare por lá antes' : 'Continua de onde parou, numa cópia da conversa'"
+                                            x-text="s.ativa_agora ? 'em uso no VS Code' : 'Continuar daqui'"></button>
+                                @endif
+                            </div>
+                        </template>
                     </div>
                     <p x-show="projetoAtual?.git?.sessoes?.length" class="mt-2 rounded-control border border-exame-line bg-exame-tint px-3 py-1.5 text-xs text-ink">
                         <span x-text="'Há sessão aberta de ' + (projetoAtual?.git?.sessoes || []).join(', ') + ' nesta pasta.'"></span>
@@ -320,6 +335,64 @@
                     </ul>
                 </div>
 
+                {{-- Consumo das três IAs, lido dos registros locais de cada uma --}}
+                <div class="rounded-panel border border-line bg-panel">
+                    <div class="flex items-center justify-between border-b border-line px-4 py-2">
+                        <h3 class="text-sm font-semibold text-ink">Consumo de IA</h3>
+                        <div class="flex gap-2 text-xs">
+                            <button type="button" @click="periodo = 'hoje'" :class="periodo === 'hoje' ? 'font-semibold text-brand-text' : 'text-ink-mute'">Hoje</button>
+                            <button type="button" @click="periodo = 'semana'" :class="periodo === 'semana' ? 'font-semibold text-brand-text' : 'text-ink-mute'">7 dias</button>
+                        </div>
+                    </div>
+                    <div class="space-y-2 px-4 py-3 text-xs">
+                        <template x-for="a in consumo.por_agente" :key="a.agente">
+                            <div class="flex items-baseline justify-between gap-2">
+                                <span class="font-semibold text-ink" x-text="a.nome"></span>
+                                <span class="text-right text-ink-dim">
+                                    <span x-text="tokens(a[periodo].entrada + a[periodo].saida) + ' tokens'"></span>
+                                    <span class="text-ink-faint" x-text="' · ' + tokens(a[periodo].cache_leitura) + ' em cache'"></span>
+                                    <span class="block text-ink-faint" x-show="a.agente === 'copilot'" x-text="a[periodo].premium + ' requisições premium'"></span>
+                                </span>
+                            </div>
+                        </template>
+                        <template x-if="consumo.cota_codex">
+                            <div class="space-y-1 border-t border-rule pt-2">
+                                <p class="text-ink-mute">Cota do Codex (ChatGPT)</p>
+                                <template x-for="[rotulo, j] in [['janela de 5 h', consumo.cota_codex.primaria], ['semana', consumo.cota_codex.semanal]]" :key="rotulo">
+                                    <div x-show="j">
+                                        <div class="flex justify-between text-ink-faint"><span x-text="rotulo"></span><span x-text="(j?.usado_pct ?? 0) + '% usado'"></span></div>
+                                        <div class="mt-0.5 h-1.5 rounded-full bg-bar-track"><div class="h-1.5 rounded-full" :class="(j?.usado_pct ?? 0) >= 80 ? 'bg-crit' : ((j?.usado_pct ?? 0) >= 50 ? 'bg-warn' : 'bg-good')" :style="'width:' + Math.min(100, j?.usado_pct ?? 0) + '%'"></div></div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                        <div x-show="consumo.projetos_hoje.length" class="space-y-0.5 border-t border-rule pt-2">
+                            <p class="text-ink-mute">Projetos que mais gastaram hoje</p>
+                            <template x-for="p in consumo.projetos_hoje" :key="p.projeto">
+                                <div class="flex justify-between text-ink-faint"><span x-text="p.projeto"></span><span x-text="tokens(p.tokens)"></span></div>
+                            </template>
+                        </div>
+                        <p class="text-[11px] text-ink-faint">Tokens de entrada e saída, sem o cache. Medido dos registros das IAs nesta máquina.</p>
+                    </div>
+                </div>
+
+                {{-- Últimos projetos mexidos no git --}}
+                <div class="rounded-panel border border-line bg-panel">
+                    <h3 class="border-b border-line px-4 py-2 text-sm font-semibold text-ink">Recentes no git</h3>
+                    <ul class="divide-y divide-rule">
+                        <template x-for="r in recentes" :key="r.nome">
+                            <li class="flex items-center justify-between gap-2 px-4 py-1.5 text-xs">
+                                <button type="button" @click="abrir(r.nome)" class="min-w-0 text-left">
+                                    <span class="block font-semibold text-ink" x-text="r.nome"></span>
+                                    <span class="block overflow-hidden text-ellipsis whitespace-nowrap text-ink-faint" :title="r.ultimo_commit_msg"
+                                          x-text="haQuanto(r.ultimo_commit) + ' · ' + (r.branch || '?') + (r.pendentes ? ' · ' + r.pendentes + ' pendentes' : '') + (r.fase ? ' · ' + r.fase : '')"></span>
+                                </button>
+                                <button type="button" x-show="!r.no_cockpit" @click="fixar(r.nome)" class="flex-none font-semibold text-brand-text">Fixar</button>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+
                 <div class="rounded-panel border border-line bg-panel p-4 text-sm">
                     <h3 class="font-semibold text-ink">Telegram</h3>
                     <template x-if="telegram.vinculado">
@@ -342,7 +415,7 @@
                             @endif
                         </div>
                     </template>
-                    <p class="mt-2 text-xs text-ink-faint">No Telegram: <code class="font-mono">/auto projeto pedido</code>, <code class="font-mono">/claude</code>, <code class="font-mono">/gpt</code>, <code class="font-mono">/copilot</code> — com <code class="font-mono">!</code> para implementar.</p>
+                    <p class="mt-2 text-xs text-ink-faint">No Telegram: <code class="font-mono">/auto projeto pedido</code>, <code class="font-mono">/claude</code>, <code class="font-mono">/gpt</code>, <code class="font-mono">/copilot</code> — com <code class="font-mono">!</code> para implementar. <code class="font-mono">/continuar gestor</code> segue a conversa do VS Code.</p>
                 </div>
             </aside>
         </div>

@@ -15,6 +15,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from 'node:fs';
 import { homedir, hostname, tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
+import { usoLocal } from './uso-local.mjs';
 
 const HOME = homedir();
 const CONFIG = process.env.CENTRAL_IA_RUNNER_CONFIG || join(HOME, '.config/alfa/central-ia-runner.env');
@@ -158,14 +159,27 @@ function estadoDosProjetos(projetos) {
     return valor;
 }
 
+// Consumo e sessões vêm dos registros locais das IAs; relidos a cada 2 min
+// (a leitura é incremental — só o que cresceu desde a última vez).
+let usoCache = { em: 0, valor: null };
+function uso() {
+    if (Date.now() - usoCache.em > 120_000) {
+        try { usoCache = { em: Date.now(), valor: usoLocal(realpathSync(cfg.projetos)) }; }
+        catch (e) { log('leitura de consumo falhou:', e.message); usoCache.em = Date.now(); }
+    }
+    return usoCache.valor;
+}
+
 async function batida() {
     agentes = localizarAgentes();
     const projetos = listarProjetos();
+    const u = uso();
     const r = await api('batida', {
         maquina: cfg.maquina,
         agentes: Object.keys(agentes).filter(k => agentes[k]),
         projetos,
         estado: estadoDosProjetos(projetos),
+        ...(u ? { consumo: u.consumo, sessoes: u.sessoes } : {}),
     });
     if (r.status !== 200) log('batida recusada', r.status, r.json?.message || '');
 }
@@ -197,17 +211,24 @@ function prepararWorktree(projeto, dir, tarefa) {
     return { cwd: wt, branch, worktree: wt, commit_base: tarefa.commit_base || base };
 }
 
-/** O estado real do git ao fim da execução — medido aqui, não relatado. */
-function checkpoint(cwd) {
+/**
+ * O estado real do git ao fim da execução — medido aqui, não relatado. A
+ * continuação de uma sessão do VS Code roda na RAIZ ~/projetos, que não é
+ * repositório: aí o git medido é o da pasta do projeto.
+ */
+function checkpoint(cwd, projetoDir = null) {
     const c = { cwd };
-    try {
-        c.branch = git(cwd, 'branch', '--show-current') || null;
-        c.head = git(cwd, 'rev-parse', '--short', 'HEAD');
-        const linhas = git(cwd, 'status', '--porcelain').split('\n').filter(Boolean);
-        c.status = linhas.slice(0, 200).map(l => l.slice(0, 300));
-        c.arquivos = linhas.slice(0, 200).map(l => l.slice(3).slice(0, 290));
-        c.diff_stat = (git(cwd, 'diff', '--stat').split('\n').at(-1) || '').slice(0, 290);
-    } catch {}
+    for (const dir of [cwd, projetoDir].filter(Boolean)) {
+        try {
+            c.branch = git(dir, 'branch', '--show-current') || null;
+            c.head = git(dir, 'rev-parse', '--short', 'HEAD');
+            const linhas = git(dir, 'status', '--porcelain').split('\n').filter(Boolean);
+            c.status = linhas.slice(0, 200).map(l => l.slice(0, 300));
+            c.arquivos = linhas.slice(0, 200).map(l => l.slice(3).slice(0, 290));
+            c.diff_stat = (git(dir, 'diff', '--stat').split('\n').at(-1) || '').slice(0, 290);
+            break;
+        } catch {}
+    }
     return c;
 }
 
@@ -238,6 +259,9 @@ function comando(job, cwd, branch, saida) {
     if (job.agente === 'claude') {
         const args = ['-p', prompt, '--output-format', 'json'];
         if (sessao) args.push('--resume', sessao);
+        // Continuação de sessão do VS Code: uma cópia, para a original ficar
+        // intacta lá.
+        if (sessao && job.continuar?.fork) args.push('--fork-session');
         if (escreve) {
             args.push('--permission-mode', 'acceptEdits', '--allowedTools', 'Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash',
                 '--disallowedTools', ...NEGADOS_NO_SHELL.map(c => `Bash(${c}:*)`));
@@ -351,13 +375,13 @@ async function executar(job) {
             branch,
             worktree: criada?.worktree ?? null,
             commit_base: criada?.commit_base ?? null,
-            checkpoint: checkpoint(cwd),
+            checkpoint: checkpoint(cwd, dir),
         };
     } catch (e) {
         resultado = { status: 'falhou', erro: String(e.message || e).slice(0, 1900) };
         // Mesmo na falha o estado do git interessa: é dele que parte quem
         // assumir a tarefa depois.
-        if (job.tarefa?.worktree && existsSync(job.tarefa.worktree)) resultado.checkpoint = checkpoint(job.tarefa.worktree);
+        if (job.tarefa?.worktree && existsSync(job.tarefa.worktree)) resultado.checkpoint = checkpoint(job.tarefa.worktree, join(cfg.projetos, job.projeto));
     } finally {
         rmSync(tmp, { recursive: true, force: true });
     }

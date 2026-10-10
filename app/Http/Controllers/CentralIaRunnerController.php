@@ -34,6 +34,8 @@ class CentralIaRunnerController extends Controller
             'projetos' => ['present', 'array', 'max:300'],
             'projetos.*' => ['string', 'max:128', 'regex:/^[A-Za-z0-9._-]+$/'],
             'estado' => ['nullable', 'array', 'max:300'],
+            'consumo' => ['nullable', 'array'],
+            'sessoes' => ['nullable', 'array', 'max:60'],
         ]);
 
         CentralIaRunner::updateOrCreate(
@@ -42,6 +44,10 @@ class CentralIaRunnerController extends Controller
                 'agentes' => array_values(array_unique($dados['agentes'])),
                 'projetos' => array_values(array_unique($dados['projetos'])),
                 'estado' => $this->estado($dados['estado'] ?? [], $dados['projetos']),
+                // Ausente na batida = runner antigo ou leitura ainda não feita:
+                // mantém o último valor em vez de apagar o card.
+                ...(array_key_exists('consumo', $dados) ? ['consumo' => $this->consumo($dados['consumo'] ?? [])] : []),
+                ...(array_key_exists('sessoes', $dados) ? ['sessoes' => $this->sessoes($dados['sessoes'] ?? [], $dados['projetos'])] : []),
                 'visto_em' => now(),
             ],
         );
@@ -118,6 +124,66 @@ class CentralIaRunnerController extends Controller
         }
 
         return $limpo;
+    }
+
+    /**
+     * Só números, dia, agente, projeto e modelo — o formato que o runner
+     * manda. Qualquer outro campo é descartado.
+     */
+    private function consumo(array $c): array
+    {
+        $numero = fn ($v) => is_numeric($v) ? max(0, (int) $v) : 0;
+        $texto = fn ($v, $n) => is_string($v) ? mb_substr($v, 0, $n) : null;
+        $linhas = [];
+
+        foreach (array_slice((array) ($c['linhas'] ?? []), 0, 2000) as $l) {
+            if (! is_array($l) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($l['dia'] ?? '')) || ! in_array($l['agente'] ?? null, ['claude', 'codex', 'copilot'], true)) {
+                continue;
+            }
+            $linhas[] = [
+                'dia' => $l['dia'], 'agente' => $l['agente'], 'projeto' => $texto($l['projeto'] ?? null, 128), 'modelo' => $texto($l['modelo'] ?? null, 80),
+                'entrada' => $numero($l['entrada'] ?? 0), 'saida' => $numero($l['saida'] ?? 0),
+                'cache_leitura' => $numero($l['cache_leitura'] ?? 0), 'cache_escrita' => $numero($l['cache_escrita'] ?? 0),
+                'premium' => is_numeric($l['premium'] ?? null) ? round((float) $l['premium'], 2) : 0,
+            ];
+        }
+
+        $janela = fn ($j) => is_array($j) ? [
+            'usado_pct' => is_numeric($j['usado_pct'] ?? null) ? (float) $j['usado_pct'] : null,
+            'janela_min' => is_numeric($j['janela_min'] ?? null) ? (int) $j['janela_min'] : null,
+            'renova_em' => $texto($j['renova_em'] ?? null, 40),
+        ] : null;
+        $cota = $c['cota_codex'] ?? null;
+
+        return [
+            'linhas' => $linhas,
+            'cota_codex' => is_array($cota) ? ['em' => $texto($cota['em'] ?? null, 40), 'primaria' => $janela($cota['primaria'] ?? null), 'semanal' => $janela($cota['semanal'] ?? null)] : null,
+            'coletado_em' => $texto($c['coletado_em'] ?? null, 40),
+        ];
+    }
+
+    /**
+     * Sessões abertas pela pessoa no VS Code. O id é o que o agente usa para
+     * retomar; a pasta precisa estar dentro dos projetos da máquina.
+     */
+    private function sessoes(array $sessoes, array $projetos): array
+    {
+        $limpas = [];
+
+        foreach ($sessoes as $s) {
+            if (! is_array($s) || ! in_array($s['agente'] ?? null, ['claude', 'codex', 'copilot'], true)
+                || ! is_string($s['id'] ?? null) || ! preg_match('/^[A-Za-z0-9-]{8,80}$/', $s['id'])
+                || ! in_array($s['projeto'] ?? null, $projetos, true) || ! is_string($s['cwd'] ?? null)) {
+                continue;
+            }
+            $limpas[] = [
+                'agente' => $s['agente'], 'id' => $s['id'], 'projeto' => $s['projeto'], 'cwd' => mb_substr($s['cwd'], 0, 255),
+                'ultima_atividade' => is_string($s['ultima_atividade'] ?? null) ? mb_substr($s['ultima_atividade'], 0, 40) : null,
+                'mensagens' => is_int($s['mensagens'] ?? null) ? $s['mensagens'] : 0,
+            ];
+        }
+
+        return $limpas;
     }
 
     private function conta(Request $request): User
