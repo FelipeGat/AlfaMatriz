@@ -176,6 +176,30 @@ dúvida do agente; 2 execuções em paralelo; cstk depois da validação.
 - Migração `2026_10_11_110000_consumo_e_sessoes_da_central_ia.php`; testes em
   `tests/Feature/CentralIa/SessoesEConsumoTest.php`.
 
+### Respostas consistentes e fontes oficiais (10/10/2026)
+
+Pedido do dono: resumo, análise e relatório vão ao Codex, e "me faça um
+resumo da agenda de hoje" não pode trazer uma resposta por IA.
+
+- Roteador: termos que pedem RESPOSTA (resumo, relatório, análise, status,
+  agenda, "quais…", "o que…") vencem verbos genéricos ("faça", "crie",
+  "escreva"); só implemente/corrija/conserte/refatore/migre forçam
+  implementação. "Me faça um resumo" ia ao Claude pelo "faça".
+- `FontesDeDados`: pedido sobre agenda/compromisso/reunião ganha a fonte
+  oficial e o período (hoje, amanhã, semana, próxima semana, mês). O runner lê
+  o Google Agenda pela ponte `C:\tmp\gcal\gcal.py list --inicio … --dias …`
+  (opção `--inicio` acrescentada em 10/10; sem ela o `list` começava "agora")
+  e entrega no prompt com a regra de usar só aquilo. Era a causa das respostas
+  diferentes: cada IA procurava a agenda num lugar, e o Codex isolado nem
+  alcança a ponte. Testado: Codex e Claude responderam a mesma coisa.
+- Conversa Geral aceita pedido (só analisar, pasta neutra
+  `~/.local/share/alfa/central-ia-geral`): em automático, só quando a
+  mensagem pede resposta; o resto continua anotação, sem gastar cota.
+- Telegram: intenção dita com palavras ("continuar gestor de onde paramos",
+  "usar o alfahome") vale como comando; mensagem só anotada recebe aviso;
+  todo pedido recebe recibo na hora (agente, modo, motivo, fonte).
+- Testes: `tests/Feature/CentralIa/RespostasConsistentesTest.php`.
+
 ## Ambiente local
 
 - `http://localhost:8096` (Windows) / `http://home:8096` (Mac). O stack Docker
@@ -198,7 +222,7 @@ Isolados, sem rede, código somente leitura, SQLite em memória:
 python3 tools/central-ia/run-tests.py --central-root /home/duque_de_caxias/projetos/central-agentes
 ```
 
-Em 10/10/2026, depois de consumo e sessões: **1.439 testes, verde**
+Em 10/10/2026, depois das fontes oficiais: **1.449 testes, verde**
 (duas depreciações do PHPUnit, preexistentes). O runner esconde o `.env` do
 checkout, que agora existe porque ele serve a porta 8096.
 

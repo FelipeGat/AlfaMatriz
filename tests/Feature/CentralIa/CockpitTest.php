@@ -68,7 +68,7 @@ class CockpitTest extends TestCase
         $this->assertSame('codex', $r->decidir('Planeje a arquitetura do módulo', $todos)['agente']);
         $this->assertSame('copilot', $r->decidir('Qual comando para listar as rotas?', $todos)['agente']);
 
-        $padrao = $r->decidir('O que acha deste projeto?', $todos);
+        $padrao = $r->decidir('Dê uma olhada no módulo de obras', $todos);
         $this->assertSame(['codex', 'analisar'], [$padrao['agente'], $padrao['modo']]);
         $this->assertStringContainsString('padrão', $padrao['motivo']);
 

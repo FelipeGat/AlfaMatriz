@@ -180,6 +180,11 @@ class TelegramCanal
             $comando === '/continuar' => $this->continuar($user, $vinculo, $chatId, trim($resto)),
             $comando !== null => $this->responder($chatId, $this->ajuda()),
             filled($vinculo->projeto_atual) => $this->pedirNoProjeto($user, $vinculo, $chatId, $texto, $texto, $updateId),
+            // Sem projeto, mas é um pedido de resposta ("resumo da minha
+            // agenda de hoje"): vai a um agente na conversa Geral.
+            app(Roteador::class)->pedeResposta($texto) => $this->confirmar($chatId, $this->agentes->pedir($user, $texto, [
+                'projeto' => '', 'agente' => $vinculo->agente_atual ?? 'auto', 'modo' => 'analisar', 'instrucao' => $texto,
+            ], CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId)),
             default => $this->anotar($user, $chatId, $texto, $updateId),
         };
     }
@@ -225,7 +230,10 @@ class TelegramCanal
     {
         $modo = $e->modo === 'implementar' ? 'implementar' : 'analisar';
         $handoff = isset($e->roteamento['handoff_de']) ? ' Assume a tarefa no lugar de '.(CentralIaExecucao::AGENTES[$e->roteamento['handoff_de']] ?? '?').', com o contexto dela.' : '';
-        $this->responder($chatId, "Recebido em {$e->projeto}: {$e->nomeDoAgente()} vai {$modo} (tarefa #{$e->tarefa_id}). "
+        $onde = $e->projeto !== '' ? $e->projeto : 'Geral';
+        $fontes = collect($e->roteamento['fontes'] ?? [])->map(fn ($f) => $f['tipo'] === 'agenda' ? "Google Agenda ({$f['rotulo']})" : $f['tipo'])->implode(', ');
+        $this->responder($chatId, "Recebido em {$onde}: {$e->nomeDoAgente()} vai {$modo} (tarefa #{$e->tarefa_id}). "
+            .($fontes ? "Dados oficiais: {$fontes}. " : '')
             .($e->roteamento['motivo'] ?? '').".{$handoff} A resposta chega aqui quando terminar.");
     }
 

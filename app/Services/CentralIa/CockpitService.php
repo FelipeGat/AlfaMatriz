@@ -28,7 +28,8 @@ class CockpitService
         $tarefas = CentralIaTarefa::de($user)->emCurso()->orderByDesc('ultima_atividade_em')->get()->groupBy('projeto');
         $recentes = CentralIaExecucao::where('user_id', $user->id)->where('created_at', '>=', now()->subDay())->distinct()->pluck('projeto')->all();
 
-        $nomes = array_values(array_unique(array_merge($fixados, $tarefas->keys()->all(), $recentes)));
+        // '' é a conversa Geral: tem tarefas, mas não é projeto da barra.
+        $nomes = array_values(array_filter(array_unique(array_merge($fixados, $tarefas->keys()->all(), $recentes)), fn ($n) => $n !== ''));
 
         $projetos = array_map(function (string $nome) use ($user, $fixados, $tarefas, $maquina) {
             $emCurso = $tarefas->get($nome, collect());

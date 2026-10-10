@@ -132,8 +132,8 @@ class TelegramTest extends TestCase
         $user = $this->comCentral();
         $this->parear($user);
 
-        app(TelegramCanal::class)->receber($this->update(10, 'Resuma o dia'));
-        app(TelegramCanal::class)->receber($this->update(10, 'Resuma o dia'));
+        app(TelegramCanal::class)->receber($this->update(10, 'Anotação: rever o contrato'));
+        app(TelegramCanal::class)->receber($this->update(10, 'Anotação: rever o contrato'));
 
         $this->assertSame(1, CentralIaMensagem::count());
         $mensagem = CentralIaMensagem::first();
@@ -142,7 +142,7 @@ class TelegramTest extends TestCase
         $this->assertSame(0, CentralIaEntrega::count(), 'O que veio do Telegram não volta para ele.');
 
         $this->actingAs($user)->getJson(route('central-ia.mensagens'))
-            ->assertJsonPath('mensagens.0.conteudo', 'Resuma o dia');
+            ->assertJsonPath('mensagens.0.conteudo', 'Anotação: rever o contrato');
         $this->actingAs($user)->getJson(route('central-ia.painel'))->assertJsonPath('telegram.vinculado', true);
     }
 

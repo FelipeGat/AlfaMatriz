@@ -247,7 +247,7 @@ export function centralIa(config) {
                 aba.pendente = {
                     client_id: novoId(), conteudo: aba.rascunho, projeto: this.atual || null,
                     tarefa_id: this.atual && aba.tarefa !== 'nova' ? Number(aba.tarefa) : null,
-                    agente: this.atual && aba.agente !== 'nota' ? aba.agente : null,
+                    agente: aba.agente !== 'nota' ? aba.agente : null,
                     modo: aba.modo,
                 };
             }

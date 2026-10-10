@@ -26,19 +26,58 @@ class Roteador
     private const CATEGORIAS = [
         'implementacao' => ['implemente', 'implementar', 'corrija', 'corrigir', 'conserte', 'crie', 'criar', 'adicione', 'adicionar',
             'altere', 'alterar', 'ajuste', 'ajustar', 'refatore', 'refatorar', 'remova', 'mude', 'mudar', 'troque', 'escreva', 'faça', 'faca',
-            'aplique', 'migre', 'atualize', 'inclua', 'resolva'],
+            'aplique', 'migre', 'atualize', 'inclua', 'resolva', 'gere', 'monte'],
         'revisao' => ['revise', 'revisar', 'revisão', 'revisao', 'review', 'audite', 'auditar', 'confira', 'valide', 'validar', 'avalie o código'],
         'planejamento' => ['planeje', 'planejar', 'plano', 'arquitetura', 'arquitete', 'desenhe', 'proponha', 'estratégia', 'estrategia', 'roadmap'],
-        'investigacao' => ['analise', 'analisar', 'análise', 'investigue', 'investigar', 'descubra', 'por que', 'porque', 'entenda', 'diagnostique',
-            'mapeie', 'liste', 'resuma', 'explique o projeto'],
+        'investigacao' => ['investigue', 'investigar', 'descubra', 'por que', 'porque', 'entenda', 'diagnostique', 'mapeie'],
         'apoio' => ['como faço', 'como faco', 'qual comando', 'sintaxe', 'me lembre', 'exemplo de'],
     ];
+
+    /**
+     * O que pede uma RESPOSTA, e não uma mudança no código: resumo, análise,
+     * relatório… Vence os verbos genéricos — "me faça um resumo da agenda"
+     * caía em implementação pelo "faça" e ia para o Claude (dono, 10/10/2026:
+     * resumo, análise e relatório são do Codex, com a mesma qualidade).
+     */
+    private const ANALITICO = ['resumo', 'resuma', 'resumir', 'relatório', 'relatorio', 'análise', 'analise', 'analisar', 'levantamento',
+        'panorama', 'status', 'situação', 'situacao', 'agenda', 'compromisso', 'compromissos', 'reunião', 'reuniao', 'reuniões', 'reunioes',
+        'diagnóstico', 'diagnostico', 'explique', 'explicação', 'explicacao', 'compare', 'comparação', 'comparacao', 'lista', 'liste',
+        'quais', 'quantos', 'quantas', 'o que', 'como está', 'como esta', 'balanço', 'balanco', 'visão geral', 'visao geral', 'sugestões', 'sugestoes'];
+
+    /** Só estes fazem implementação mesmo com um termo analítico no texto. */
+    private const IMPLEMENTA_DE_VERDADE = ['implemente', 'implementar', 'corrija', 'corrigir', 'conserte', 'refatore', 'refatorar', 'migre'];
+
+    /** Genéricos: só contam como implementação quando nada analítico aparece. */
+    private const VERBOS_GENERICOS = ['faça', 'faca', 'crie', 'criar', 'escreva', 'gere', 'monte'];
+
+    /**
+     * A mensagem pede uma RESPOSTA? Na conversa Geral é o que separa um
+     * pedido ("resumo da minha agenda", "quais tarefas estão atrasadas?") de
+     * uma anotação ("ideia para depois") — anotação não gasta cota de IA.
+     */
+    public function pedeResposta(string $texto): bool
+    {
+        $t = Str::lower(Str::squish($texto));
+
+        return str_ends_with($t, '?')
+            || collect(self::ANALITICO)->contains(fn ($p) => preg_match('/(^|[^\pL])'.preg_quote($p, '/').'($|[^\pL])/u', $t));
+    }
 
     public function decidir(string $instrucao, array $disponiveis, ?CentralIaTarefa $tarefa = null): array
     {
         $texto = Str::lower(Str::squish($instrucao));
         $categoria = 'investigacao';
         $palavra = null;
+        $tem = fn (array $termos) => collect($termos)->first(fn ($t) => preg_match('/(^|[^\pL])'.preg_quote($t, '/').'($|[^\pL])/u', $texto));
+
+        $analitico = $tem(self::ANALITICO);
+        if ($analitico && ! $tem(self::IMPLEMENTA_DE_VERDADE)) {
+            $revisao = $tem(self::CATEGORIAS['revisao']);
+            $planejamento = $tem(self::CATEGORIAS['planejamento']);
+            [$categoria, $palavra] = $revisao ? ['revisao', $revisao] : ($planejamento ? ['planejamento', $planejamento] : ['investigacao', $analitico]);
+
+            return $this->escolher($categoria, $palavra, $disponiveis, $tarefa);
+        }
 
         foreach (self::CATEGORIAS as $nome => $termos) {
             foreach ($termos as $termo) {
@@ -49,6 +88,11 @@ class Roteador
             }
         }
 
+        return $this->escolher($categoria, $palavra, $disponiveis, $tarefa);
+    }
+
+    private function escolher(string $categoria, ?string $palavra, array $disponiveis, ?CentralIaTarefa $tarefa): array
+    {
         $modo = $categoria === 'implementacao' ? 'implementar' : 'analisar';
         $preferidos = config('central_ia.roteamento.'.$categoria, ['codex', 'claude', 'copilot']);
 

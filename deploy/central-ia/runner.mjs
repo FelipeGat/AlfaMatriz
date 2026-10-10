@@ -232,17 +232,59 @@ function checkpoint(cwd, projetoDir = null) {
     return c;
 }
 
+function pastaGeral() {
+    const dir = join(HOME, '.local/share/alfa/central-ia-geral');
+    mkdirSync(dir, { recursive: true });
+    return dir;
+}
+
+/**
+ * Dados oficiais pedidos pela Central (ver FontesDeDados no AlfaMatriz): lidos
+ * AQUI, do mesmo jeito para qualquer agente, e entregues no prompt com a
+ * regra de usar só eles. Era o que fazia cada IA trazer uma agenda diferente:
+ * cada uma procurava num lugar, e o Codex, isolado, nem alcança a ponte.
+ */
+function dadosOficiais(fontes) {
+    const blocos = [];
+    for (const f of fontes) {
+        if (f.tipo !== 'agenda') continue;
+        const [python, script] = (process.env.CENTRAL_IA_AGENDA || '/mnt/c/Python314/python.exe|C:\\tmp\\gcal\\gcal.py').split('|');
+        let texto;
+        try {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(f.inicio) || !Number.isInteger(f.dias)) throw new Error('período inválido');
+            texto = execFileSync(python, [script, 'list', '--inicio', f.inicio, '--dias', String(f.dias)],
+                { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+        } catch (e) {
+            texto = `(NÃO FOI POSSÍVEL LER A AGENDA: ${String(e.message).split('\n')[0].slice(0, 200)}. Diga isso na resposta; não procure em outro lugar nem invente.)`;
+        }
+        blocos.push([
+            `## Dados oficiais — Google Agenda de todas as agendas da pessoa, lido agora pela Central`,
+            `Período: ${f.rotulo} (a partir de ${f.inicio}, ${f.dias} dia(s)). Formato: data hora [agenda] título.`,
+            texto || 'Nenhum evento no período.',
+            'Regras: para a agenda, use SOMENTE estes dados. Não procure agenda em arquivos, repositórios ou outros sistemas.',
+            'Inclua todos os eventos do período, em ordem de horário, com a agenda de cada um. Se não houver eventos, diga isso.',
+        ].join('\n'));
+    }
+    return blocos.join('\n\n') || null;
+}
+
 function instrucoes(job, branch) {
     const base = [
         'Você está atendendo um pedido feito pela Central de IA do AlfaMatriz. Responda em português do Brasil.',
-        `Projeto: ${job.projeto}. Siga as instruções do próprio projeto (CLAUDE.md, AGENTS.md, README).`,
+        job.projeto
+            ? `Projeto: ${job.projeto}. Siga as instruções do próprio projeto (CLAUDE.md, AGENTS.md, README).`
+            : 'Pedido da conversa Geral, fora de projeto: responda com os dados oficiais abaixo (se houver) e o que a pergunta pede.',
     ];
     if (job.modo === 'implementar') {
         base.push(`Você está numa worktree própria, na branch ${branch}. Faça as alterações pedidas aqui e rode os testes que fizerem sentido.`,
             'NÃO faça commit, push, merge, reset nem checkout; não mexa em pastas fora desta; não rode deploy nem toque em produção.',
             'No fim, resuma o que mudou, por quê e como testar.');
     } else {
-        base.push('Modo ANALISAR: só leia e responda. Não altere nenhum arquivo nem rode comandos que mudem estado.');
+        base.push('Modo ANALISAR: só leia e responda. Não altere nenhum arquivo nem rode comandos que mudem estado.',
+            // A mesma régua para qualquer agente: o dono pediu que resumo,
+            // análise e relatório tenham a mesma qualidade venha de quem vier.
+            'Responda de forma completa e organizada: comece pelo essencial, use listas curtas, diga de onde veio cada informação',
+            'e não invente nada que não esteja nos dados oficiais abaixo, no código ou nos arquivos que você leu. Se faltar dado, diga o que falta.');
     }
     return base.join('\n');
 }
@@ -253,7 +295,7 @@ function comando(job, cwd, branch, saida) {
     // A sessão interna do agente só é retomada na MESMA pasta: o Claude guarda
     // as sessões por diretório, e retomar noutra falha.
     const sessao = job.continuar?.sessao && job.continuar.cwd === cwd ? job.continuar.sessao : null;
-    const prompt = [instrucoes(job, branch), job.contexto, `Pedido:\n${job.instrucao}`, job.bloco].filter(Boolean).join('\n\n');
+    const prompt = [instrucoes(job, branch), job.dadosOficiais, job.contexto, `Pedido:\n${job.instrucao}`, job.bloco].filter(Boolean).join('\n\n');
     const escreve = job.modo === 'implementar';
 
     if (job.agente === 'claude') {
@@ -347,8 +389,10 @@ async function executar(job) {
     const tmp = mkdtempSync(join(tmpdir(), 'central-ia-'));
     try {
         if (!agentes[job.agente]) throw new Error(`${job.agente} não está instalado nesta máquina`);
-        const dir = realpathSync(resolve(cfg.projetos, job.projeto));
-        if (!dir.startsWith(realpathSync(cfg.projetos) + sep)) throw new Error('projeto fora da pasta de projetos');
+        // Pedido da conversa Geral (sem projeto): roda numa pasta neutra, só leitura.
+        const dir = job.projeto === '' ? pastaGeral() : realpathSync(resolve(cfg.projetos, job.projeto));
+        if (job.projeto !== '' && !dir.startsWith(realpathSync(cfg.projetos) + sep)) throw new Error('projeto fora da pasta de projetos');
+        job.dadosOficiais = dadosOficiais(job.fontes || []);
 
         // Onde trabalhar: na worktree da tarefa, se ela já tem uma (analisar
         // também — revisar o que foi feito é olhar a worktree); senão, na

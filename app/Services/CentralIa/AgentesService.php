@@ -100,7 +100,14 @@ class AgentesService
         $disponivel = $this->disponiveis($user);
         $projeto = (string) ($pedido['projeto'] ?? '');
 
-        if (! in_array($projeto, $disponivel['projetos'], true)) {
+        // Projeto vazio é a conversa Geral: pergunta que não é de projeto
+        // nenhum ("resumo da minha agenda"). Só análise — sem pasta, não há
+        // onde implementar.
+        if ($projeto === '' && ($pedido['modo'] ?? 'auto') === 'implementar') {
+            throw ValidationException::withMessages(['projeto' => 'Para implementar, escolha um projeto.']);
+        }
+
+        if ($projeto !== '' && ! in_array($projeto, $disponivel['projetos'], true)) {
             throw ValidationException::withMessages(['projeto' => "O projeto {$projeto} não está entre os que a sua máquina informou."]);
         }
 
@@ -129,8 +136,10 @@ class AgentesService
         if ($modo === 'auto') {
             $modo = $rota['modo'] ?? $this->roteador->decidir($pedido['instrucao'], [], $tarefa)['modo'];
         }
-        $rota['modo'] = $modo;
-        $rota['categoria'] ??= $modo === 'implementar' ? 'implementacao' : 'investigacao';
+        $rota['modo'] = $projeto === '' ? 'analisar' : $modo;
+        $rota['categoria'] ??= $rota['modo'] === 'implementar' ? 'implementacao' : 'investigacao';
+        // Dados oficiais que o runner lê e entrega ao agente (ver FontesDeDados).
+        $rota['fontes'] = app(FontesDeDados::class)->detectar($pedido['instrucao']);
 
         if (! $rota['agente']) {
             throw ValidationException::withMessages(['agente' => 'Nenhum agente disponível na sua máquina agora.']);
@@ -139,7 +148,7 @@ class AgentesService
         return DB::transaction(function () use ($user, $texto, $pedido, $origem, $clientId, $telegramUpdateId, $projeto, $tarefa, $rota) {
             // A mensagem primeiro, sem tarefa: o reenvio idempotente precisa
             // achá-la antes de criar qualquer coisa.
-            $mensagem = $this->conversas->registrarDoUsuario($user, $texto, $origem, $clientId, $telegramUpdateId, $projeto, $tarefa?->id);
+            $mensagem = $this->conversas->registrarDoUsuario($user, $texto, $origem, $clientId, $telegramUpdateId, $projeto ?: null, $tarefa?->id);
 
             if ($existente = CentralIaExecucao::where('pedido_id', $mensagem->id)->first()) {
                 return $existente;
@@ -273,7 +282,8 @@ class AgentesService
             }
 
             $execucao = CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::PENDENTE)
-                ->whereIn('agente', $runner->agentes)->whereIn('projeto', $runner->projetos)
+                ->whereIn('agente', $runner->agentes)
+                ->where(fn ($q) => $q->whereIn('projeto', $runner->projetos)->orWhere('projeto', ''))
                 // `NOT IN` com nulo nunca casa: o pedido sem tarefa (anterior
                 // ao cockpit) entra pelo `whereNull`.
                 ->where(fn ($q) => $q->whereNull('tarefa_id')
@@ -324,6 +334,7 @@ class AgentesService
             ] : null,
             'contexto' => $tarefa && $anterior ? Dossie::paraPrompt($tarefa, $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null) : null,
             'bloco' => Dossie::instrucaoDoBloco(),
+            'fontes' => $execucao->roteamento['fontes'] ?? [],
             'continuar' => $continuar,
         ];
     }
@@ -346,7 +357,7 @@ class AgentesService
             [$texto, $bloco] = $ok ? Dossie::extrair($dados['resposta'] ?? '') : ['Não consegui concluir: '.($dados['erro'] ?? 'erro desconhecido').'.', null];
             $tarefa = $execucao->tarefa;
 
-            $resposta = $this->conversas->registrarDoAgente($user, $execucao->nomeDoAgente(), $texto ?: '(resposta vazia)', CentralIaMensagem::AUTOR_AGENTE, $execucao->projeto, $tarefa?->id);
+            $resposta = $this->conversas->registrarDoAgente($user, $execucao->nomeDoAgente(), $texto ?: '(resposta vazia)', CentralIaMensagem::AUTOR_AGENTE, $execucao->projeto ?: null, $tarefa?->id);
             $checkpoint = is_array($dados['checkpoint'] ?? null) ? $dados['checkpoint'] : null;
 
             $execucao->update([
@@ -399,7 +410,7 @@ class AgentesService
         CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::EXECUTANDO)
             ->where('iniciada_em', '<', $limite)->get()
             ->each(function (CentralIaExecucao $e) use ($user) {
-                $aviso = $this->conversas->registrarDoAgente($user, 'Central', "{$e->nomeDoAgente()} não respondeu a tempo em {$e->projeto}; o pedido foi encerrado.", CentralIaMensagem::AUTOR_SISTEMA, $e->projeto, $e->tarefa_id);
+                $aviso = $this->conversas->registrarDoAgente($user, 'Central', "{$e->nomeDoAgente()} não respondeu a tempo em {$e->projeto}; o pedido foi encerrado.", CentralIaMensagem::AUTOR_SISTEMA, $e->projeto ?: null, $e->tarefa_id);
                 $e->update(['status' => CentralIaExecucao::EXPIRADA, 'resposta_id' => $aviso->id, 'concluida_em' => now()]);
                 $e->tarefa?->update(['status' => CentralIaTarefa::FALHOU, 'ultima_atividade_em' => now()]);
             });

@@ -111,6 +111,14 @@ class CentralIaController extends Controller
         // O atalho digitado (`/claude projeto …`) vale em qualquer conversa.
         $pedido = $this->agentes->interpretar($dados['conteudo']);
 
+        // Na Geral, "automático" só aciona agente quando a mensagem pede uma
+        // resposta; o resto é anotação (não gasta cota). Agente escolhido
+        // explicitamente aciona sempre.
+        $geralAuto = blank($dados['projeto'] ?? null) && ($dados['agente'] ?? null) === 'auto';
+        if ($geralAuto && ! app(\App\Services\CentralIa\Roteador::class)->pedeResposta($dados['conteudo'])) {
+            $dados['agente'] = null;
+        }
+
         if (! $pedido && filled($dados['agente'] ?? null)) {
             $pedido = [
                 'agente' => $dados['agente'],

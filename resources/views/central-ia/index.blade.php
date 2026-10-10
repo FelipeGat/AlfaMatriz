@@ -271,9 +271,9 @@
                     {{-- Compositor --}}
                     <form @submit.prevent="enviar()" class="space-y-2 border-t border-line bg-panel p-3" aria-label="Enviar mensagem">
                         @if ($podeAcionar)
-                            <div class="flex flex-wrap items-center gap-2 text-xs" x-show="atual" x-cloak>
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
                                 <label class="sr-only" for="central-tarefa">Tarefa</label>
-                                <select id="central-tarefa" x-model="aba.tarefa" :disabled="!!aba.pendente"
+                                <select id="central-tarefa" x-model="aba.tarefa" x-show="atual" :disabled="!!aba.pendente"
                                         class="max-w-[16rem] rounded-control border-line bg-input py-1.5 text-xs text-ink focus:border-brand focus:ring-brand">
                                     <option value="nova">Nova tarefa</option>
                                     <template x-for="t in tarefasEmCurso" :key="t.id"><option :value="t.id" x-text="'#' + t.id + ' ' + t.titulo"></option></template>
@@ -288,7 +288,7 @@
                                     <option value="nota">Só anotar (sem agente)</option>
                                 </select>
                                 <label class="sr-only" for="central-modo">Modo</label>
-                                <select id="central-modo" x-model="aba.modo" :disabled="!!aba.pendente || aba.agente === 'nota'"
+                                <select id="central-modo" x-model="aba.modo" x-show="atual" :disabled="!!aba.pendente || aba.agente === 'nota'"
                                         class="rounded-control border-line bg-input py-1.5 text-xs text-ink focus:border-brand focus:ring-brand">
                                     <option value="auto">Modo automático</option>
                                     @foreach ($modos as $chave => $nome)
@@ -304,7 +304,7 @@
                                   :placeholder="atual ? 'Peça algo para ' + atual + '…' : 'Escreva na conversa geral… (ou /auto projeto pedido)'"
                                   class="w-full resize-y rounded-control border-line bg-input text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand disabled:opacity-50"></textarea>
                         <div class="flex flex-wrap items-center justify-between gap-2">
-                            <p class="text-xs text-ink-faint">Enter envia · Shift + Enter quebra linha. Trocar o agente numa tarefa passa o contexto dela ao novo, que confere o estado antes de alterar.</p>
+                            <p class="text-xs text-ink-faint" x-text="atual ? 'Enter envia · Shift + Enter quebra linha. Trocar o agente numa tarefa passa o contexto dela ao novo, que confere o estado antes de alterar.' : 'Na Geral, em automático, perguntas e pedidos de resumo, relatório ou agenda vão a um agente; o resto fica anotado.'"></p>
                             <button type="submit" :disabled="aba.enviando || bloqueado || !podeEnviar || (!aba.pendente && !aba.rascunho.trim())"
                                     class="rounded-control bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition hover:bg-brand-bright disabled:opacity-50"
                                     x-text="aba.enviando ? 'Enviando…' : (aba.pendente ? 'Reenviar com segurança' : 'Enviar')"></button>
