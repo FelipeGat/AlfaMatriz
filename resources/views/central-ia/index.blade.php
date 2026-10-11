@@ -96,10 +96,10 @@
             <p class="text-sm text-ink-mute">Todos os projetos disponíveis para sua conta. Abra um projeto para escolher ou iniciar um assunto.</p>
             <template x-for="g in secoes" :key="g.id"><section class="space-y-2">
                 <h3 class="font-semibold text-ink" x-text="g.nome + ' (' + g.projetos.length + ')'"></h3>
-                <div :class="modoProjetos === 'cards' ? 'grid gap-3 sm:grid-cols-2 xl:grid-cols-3' : 'flex flex-col gap-2'">
-                    <template x-for="p in g.projetos" :key="p.nome"><article class="rounded-panel border border-line bg-panel p-4" :class="modoProjetos === 'lista' ? 'flex flex-wrap items-center justify-between gap-3' : 'space-y-3'">
-                        <button @click="abrirProjetoCatalogo(p)" class="text-left"><strong class="block text-ink" x-text="p.nome"></strong><span class="text-xs text-ink-mute" x-text="(p.git?.branch || 'Sem informação Git') + ' · ' + p.tarefas_em_curso + ' assuntos em curso'"></span></button>
-                        <div class="flex gap-3"><select :value="p.grupo_id || ''" @change="moverParaGrupo(p.nome, $event.target.value)" :aria-label="'Grupo de ' + p.nome" class="rounded-control border-line bg-input text-sm text-ink"><option value="">Sem grupo</option><template x-for="grupo in grupos" :key="grupo.id"><option :value="grupo.id" x-text="grupo.nome"></option></template></select><button @click="abrirProjetoCatalogo(p)" class="text-sm text-brand-text">Abrir</button></div>
+                <div :class="modoProjetos === 'cards' ? 'grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5' : 'flex flex-col gap-2'">
+                    <template x-for="p in g.projetos" :key="p.nome"><article class="min-w-0 rounded-panel border border-line bg-panel p-3" :class="modoProjetos === 'lista' ? 'flex flex-wrap items-center justify-between gap-3' : 'space-y-2'">
+                        <button @click="abrirProjetoCatalogo(p)" class="block w-full min-w-0 text-left" :title="p.nome"><strong class="block truncate text-sm text-ink" x-text="p.nome"></strong><span class="block truncate text-xs text-ink-mute" :title="p.git?.branch || 'Sem informação Git'" x-text="(p.git?.branch || 'Sem informação Git') + ' · ' + p.tarefas_em_curso + ' assuntos em curso'"></span></button>
+                        <div class="flex min-w-0 items-center gap-2"><select :value="p.grupo_id || ''" @change="moverParaGrupo(p.nome, $event.target.value)" :aria-label="'Grupo de ' + p.nome" class="min-w-0 flex-1 rounded-control border-line bg-input py-1 text-xs text-ink"><option value="">Sem grupo</option><template x-for="grupo in grupos" :key="grupo.id"><option :value="grupo.id" x-text="grupo.nome"></option></template></select><button @click="abrirProjetoCatalogo(p)" class="shrink-0 text-xs text-brand-text">Abrir</button></div>
                     </article></template>
                 </div>
             </section></template>
