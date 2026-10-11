@@ -513,14 +513,14 @@
 
         {{-- ================= CONSUMO ================= --}}
         <div x-show="tela === 'consumo'" x-cloak class="min-h-0 flex-1 overflow-y-auto">
-            <div class="mb-4 rounded-panel border border-line bg-panel p-4 space-y-3">
-                <div class="flex flex-wrap gap-3 text-sm">
-                    <label>De <input type="date" x-model="inicioConsumo" @change="carregarRelatorio('consumo')" class="rounded-control border-line bg-input"></label>
-                    <label>Até <input type="date" x-model="fimConsumo" @change="carregarRelatorio('consumo')" class="rounded-control border-line bg-input"></label>
-                    <label x-show="administracao.permitida">Usuário <select x-model="usuarioConsumo" @change="carregarRelatorio('consumo')" class="rounded-control border-line bg-input"><option value="">Meu consumo</option><template x-for="u in administracao.usuarios" :key="u.id"><option :value="u.id" x-text="u.nome"></option></template></select></label>
-                    <label>IA <select x-model="iaConsumo" @change="carregarRelatorio('consumo')" class="rounded-control border-line bg-input"><option value="">Todas</option><option value="claude">Claude</option><option value="codex">Codex</option><option value="copilot">Copilot</option></select></label>
+            <div class="mb-3 rounded-panel border border-line bg-panel px-3 py-2 space-y-2">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-ink-mute">
+                    <label class="inline-flex items-center gap-1.5">De <input type="date" x-model="inicioConsumo" @change="carregarRelatorio('consumo')" class="h-7 rounded-control border-line bg-input px-2 py-0 text-xs text-ink"></label>
+                    <label class="inline-flex items-center gap-1.5">Até <input type="date" x-model="fimConsumo" @change="carregarRelatorio('consumo')" class="h-7 rounded-control border-line bg-input px-2 py-0 text-xs text-ink"></label>
+                    <label x-show="administracao.permitida" class="inline-flex items-center gap-1.5">Usuário <select x-model="usuarioConsumo" @change="carregarRelatorio('consumo')" class="h-7 rounded-control border-line bg-input px-2 py-0 text-xs text-ink"><option value="">Meu consumo</option><template x-for="u in administracao.usuarios" :key="u.id"><option :value="u.id" x-text="u.nome"></option></template></select></label>
+                    <label class="inline-flex items-center gap-1.5">IA <select x-model="iaConsumo" @change="carregarRelatorio('consumo')" class="h-7 rounded-control border-line bg-input px-2 py-0 text-xs text-ink"><option value="">Todas</option><option value="claude">Claude</option><option value="codex">Codex</option><option value="copilot">Copilot</option></select></label>
                 </div>
-                <p class="text-xs text-ink-mute">Consumo informado pelos runners no período. Ausência de registros não comprova consumo zero; dados antigos podem não estar disponíveis.</p>
+                <p class="text-[11px] leading-4 text-ink-faint">Consumo informado pelos runners no período. Ausência de registros não comprova consumo zero; dados antigos podem não estar disponíveis.</p>
                 <div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr><th>Dia</th><th>IA</th><th>Entrada + saída</th><th>Cache</th><th>Premium</th></tr></thead><tbody><template x-for="l in relatorioConsumo.consumo" :key="l.dia + l.agente"><tr class="border-t border-rule"><td x-text="l.dia"></td><td x-text="l.agente"></td><td x-text="tokens(l.entrada + l.saida)"></td><td x-text="tokens(l.cache)"></td><td x-text="l.premium"></td></tr></template></tbody></table></div>
                 <p x-show="!relatorioConsumo.consumo.length" class="text-ink-mute">Sem registros para esses filtros.</p>
             </div>
