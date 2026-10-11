@@ -20,6 +20,19 @@ class FontesDeDados
 {
     private const AGENDA = ['agenda', 'compromisso', 'compromissos', 'reunião', 'reuniao', 'reuniões', 'reunioes', 'evento', 'eventos', 'calendário', 'calendario'];
 
+    public function exigirPeriodo(string $texto): void
+    {
+        $t = Str::lower(Str::ascii($texto));
+        $dados = preg_match('/\b(?:agenda|compromissos?|financeiro|financeira|receber|pagar|receitas|despesas|faturamento|fluxo de caixa|balanco)\b/', $t);
+        $codigo = preg_match('/\b(?:codigo|backend|frontend|controller|migration|bug|refatorar)\b/', $t);
+        $periodo = preg_match('/\b(?:hoje|ontem|amanha|semana|mes|ano|diario|mensal|anual|desde|ate|periodo todo|todos os periodos)\b|\b\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b|\b\d+ dias\b/', $t);
+        if ($dados && !$codigo && !$periodo) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'instrucao' => 'Qual período você deseja analisar? Informe as datas inicial e final ou um período como esta semana. Nenhuma IA foi acionada.',
+            ]);
+        }
+    }
+
     /**
      * @return list<array{tipo: string, inicio: string, dias: int, rotulo: string}>
      */

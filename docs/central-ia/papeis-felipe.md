@@ -19,3 +19,13 @@ Cada pedido ao coordenador consome a cota Codex. Se indisponível, registrar e a
 O código atual exibe consumo premium recebido do runner e um teto global opcional de configuração. Esse teto não é uma consulta autenticada ao plano do proprietário. O coletor e a tela precisam distinguir créditos GitHub AI, requisições premium legadas e dados de consumo não confirmados. Confirmar produto, conta GitHub autenticada, plano e unidade antes de apresentar saldo.
 
 A conexão Microsoft/OneDrive não comprova assinatura GitHub Copilot nem transfere credenciais para o runner. Não ler tokens ou reutilizar autenticação OneDrive para essa validação. A integração futura deve usar mecanismos oficiais e credenciais individuais, sem cobrança extra automática.
+
+## Etapa de coordenação preparada, ainda não ativada
+
+Preferência individual `coordenador_codex` inicia cada pedido pela coordenação Codex, modo analisar, preservando destino/modo sugeridos. Se indisponível, o pedido é interrompido; fallback não substitui silenciosamente o coordenador. Não habilitada por padrão, nem gravada em conta real. Não altera autenticação.
+
+Esta etapa propõe a distribuição no histórico, mas ainda não dispara automaticamente os executores. Antes de ativar: testes simulados, restrição efetiva de ferramentas na execução do coordenador (a instrução textual isolada não basta), transições persistentes de delegação/QA com idempotência e aprovações. O runner instalado e o versionado devem ser conciliados sem perder sessões.
+
+Pedidos financeiros/agenda sem período pedem esclarecimento antes da fila. Análise de código usa preferência de desenvolvimento, modo analisar; dados financeiros usam investigação. A detecção atual é lexical e precisa de cobertura para ambiguidades. Regras de evidência proíbem inventar valores e exigem fontes autorizadas; não substituem validação estruturada dos dados.
+
+A revisão automática de aprovação bloqueou o teste Docker por limite de uso do mecanismo de revisão. Não foi decisão de insegurança, mas o comando não foi executado. Não tentar contornar esse controle. Nesta versão não houve teste dos novos caminhos, inferência, ativação real ou reinício. `git diff --check` passou. Validar antes de habilitar a preferência.

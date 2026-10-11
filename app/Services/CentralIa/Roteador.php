@@ -87,6 +87,15 @@ class Roteador
         $tem = fn (array $termos) => collect($termos)->first(fn ($t) => preg_match('/(^|[^\pL])'.preg_quote($t, '/').'($|[^\pL])/u', $texto));
 
         $analitico = $tem(self::ANALITICO);
+        if ($analitico && $tem(['código', 'codigo', 'backend', 'frontend', 'controller', 'migration', 'refatoração', 'refatoracao']) && ! $tem(self::IMPLEMENTA_DE_VERDADE)) {
+            $rota = $this->escolher('implementacao', 'análise de código', $disponiveis, $tarefa);
+            $rota['modo'] = 'analisar';
+            $rota['categoria'] = 'codigo';
+            return $rota;
+        }
+        if ($analitico && $tem(['financeiro', 'financeira', 'pagar', 'receber', 'receitas', 'despesas', 'dados']) && ! $tem(self::IMPLEMENTA_DE_VERDADE)) {
+            return $this->escolher('investigacao', 'análise de dados do sistema', $disponiveis, $tarefa);
+        }
         if ($preferencias && $tem(['relatório', 'relatorio', 'balanço', 'balanco']) && ! $tem(self::IMPLEMENTA_DE_VERDADE)) {
             return $this->escolher('relatorio', $analitico, $disponiveis, $tarefa);
         }

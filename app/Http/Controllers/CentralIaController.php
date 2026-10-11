@@ -59,6 +59,7 @@ class CentralIaController extends Controller
             'limite_total' => ['nullable', 'integer', 'min:0', 'max:30000'],
             'paralelo' => ['required', 'integer', 'min:1', 'max:'.max(1, (int) config('central_ia.agentes.paralelo'))],
             'fallback' => ['required', 'boolean'],
+            'coordenador_codex' => ['sometimes', 'boolean'],
         ]);
         foreach (array_keys($servico->ler($request->user())['padroes']) as $c) abort_unless(array_key_exists($c, $dados['padroes']), 422);
         foreach (array_keys(CentralIaExecucao::AGENTES) as $a) {

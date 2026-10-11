@@ -19,6 +19,7 @@ class Preferencias
         $salvas = $this->pronta() ? CentralIaPreferencia::where('user_id', $user->id)->value('regras') : null;
         $regras = array_replace_recursive([
             'revisao_config' => 0,
+            'coordenador_codex' => false,
             'padroes' => ['implementacao' => 'claude', 'investigacao' => 'codex', 'revisao' => 'codex', 'planejamento' => 'codex', 'relatorio' => 'copilot', 'apoio' => 'copilot'],
             'habilitados' => ['claude' => true, 'codex' => true, 'copilot' => true],
             'pedidos_dia' => ['claude' => null, 'codex' => null, 'copilot' => null],

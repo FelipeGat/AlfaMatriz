@@ -159,6 +159,8 @@ class AgentesService
         $disponivel = $this->disponiveis($user);
         $preferencias = app(Preferencias::class);
         $ordens = collect(array_keys($preferencias->ler($user)['padroes']))->mapWithKeys(fn ($c) => [$c => $preferencias->ordem($user, $c)])->all();
+        app(FontesDeDados::class)->exigirPeriodo($pedido['instrucao']);
+
         $disponivel['agentes'] = array_values(array_filter($disponivel['agentes'], fn ($a) => $preferencias->pode($user, $a)));
         $projeto = (string) ($pedido['projeto'] ?? '');
         if ($origem === CentralIaMensagem::ORIGEM_TELEGRAM && app(CanalAtivo::class)->pronto()) {
@@ -220,6 +222,15 @@ class AgentesService
         $rota['categoria'] ??= $rota['modo'] === 'implementar' ? 'implementacao' : 'investigacao';
         // Dados oficiais que o runner lê e entrega ao agente (ver FontesDeDados).
         $rota['fontes'] = app(FontesDeDados::class)->detectar($pedido['instrucao']);
+        if (app(Preferencias::class)->ler($user)['coordenador_codex']) {
+            if (! in_array('codex', $disponivel['agentes'], true) || isset($disponivel['esgotados']['codex'])) {
+                throw ValidationException::withMessages(['agente' => 'O coordenador Codex não está disponível ou atingiu seu limite. Pedido não executado; nenhum outro provedor assumirá a coordenação silenciosamente.']);
+            }
+            $rota = ['agente' => 'codex', 'modo' => 'analisar', 'categoria' => 'planejamento', 'manual' => false,
+                'motivo' => 'Codex coordenador: planejar e propor distribuição antes da execução',
+                'coordenador' => true, 'destino_sugerido' => $rota['agente'], 'modo_sugerido' => $rota['modo'], 'fontes' => $rota['fontes']];
+        }
+
 
         if (! $rota['agente']) {
             throw ValidationException::withMessages(['agente' => 'Nenhum agente disponível na sua máquina agora.']);
@@ -445,7 +456,7 @@ class AgentesService
                 'commit_base' => $tarefa->commit_base,
             ] : null,
             'contexto' => $tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null) : null,
-            'bloco' => Dossie::instrucaoDoBloco(),
+            'bloco' => (($execucao->roteamento['coordenador'] ?? false) ? "Você atua como coordenador deste pedido. Nesta etapa apenas responda, planeje e proponha quem deve fazer o trabalho; não implemente, não execute ferramentas ou comandos e não altere arquivos. Claude faz análise de código e desenvolvimento; Codex faz análise de dados; Copilot faz Git e QA. Identifique fontes disponíveis e impedimentos, não invente números. Delegação automática ainda não está habilitada: descreva a próxima etapa, sem afirmar que outro agente executou algo.\n" : '').Dossie::instrucaoDoBloco()."\nRegras de evidência: nunca invente dados, valores, fontes ou consultas. Relatórios de dados exigem período explícito e fonte autorizada identificada, data da consulta e critérios dos totais. Sem acesso à fonte, informe a limitação e solicite os dados; código, exemplos e testes não comprovam saldos reais. Para esta semana, confirme no texto as datas usadas. Se o período for ambíguo, peça esclarecimento antes de consultar. Claude só deve apoiar análise de dados quando houver impedimento técnico identificado; não troque de agente apenas para tentar obter números ausentes.",
             'fontes' => $execucao->roteamento['fontes'] ?? [],
             'continuar' => $continuar,
             'acesso' => config('central_ia.agentes.acesso'),
@@ -556,6 +567,10 @@ class AgentesService
         // Uma instrução nova já aguardando vence a repetição do pedido antigo.
         if ($tarefa->execucoes()->where('status', CentralIaExecucao::PENDENTE)->exists()) {
             Eventos::registrar($user, 'fallback_adiado', 'Troca automática não repete uma instrução que já tem continuação na fila.', Eventos::da($anterior));
+            return;
+        }
+        if ($anterior->roteamento['coordenador'] ?? false) {
+            Eventos::registrar($user, 'coordenador_indisponivel', 'Coordenação Codex interrompida; não delegada silenciosamente.', Eventos::da($anterior), 'aviso');
             return;
         }
         $historico = $anterior->roteamento['fallback'] ?? [];
