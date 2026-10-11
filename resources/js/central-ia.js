@@ -29,6 +29,7 @@ function novoId() {
 }
 
 const GERAL = '';
+const diaLocal = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
 function guardar(chave, valor) { try { localStorage.setItem(chave, valor); } catch {} }
 function ler(chave) { try { return localStorage.getItem(chave); } catch { return null; } }
@@ -36,6 +37,8 @@ function ler(chave) { try { return localStorage.getItem(chave); } catch { return
 export function centralIa(config) {
     return {
         // Painel (todos os projetos)
+        inicioAtividade: diaLocal(), fimAtividade: diaLocal(), inicioConsumo: diaLocal(), fimConsumo: diaLocal(), usuarioConsumo: '', iaConsumo: '',
+        relatorioAtividade: { eventos: [], execucoes: [] }, relatorioConsumo: { consumo: [] }, modoProjetos: ler('central-ia:modo-projetos') || 'cards',
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
@@ -120,7 +123,7 @@ export function centralIa(config) {
         get eventosFiltrados() {
             return this.eventos.filter(e => (!this.soProblemas || e.nivel !== 'info') && (!this.projetoLog || e.projeto === this.projetoLog));
         },
-        get projetosDoLog() { return [...new Set(this.eventos.map(e => e.projeto).filter(Boolean))].sort(); },
+        get projetosDoLog() { return [...new Set(this.relatorioAtividade.eventos.map(e => e.projeto).filter(Boolean))].sort(); },
         corDoNivel(n) { return { erro: 'text-crit', aviso: 'text-warn' }[n] || 'text-ink-faint'; },
         rotuloEvento(t) {
             return { pedido: 'pedido', inicio: 'início', concluida: 'concluído', falhou: 'FALHOU', expirada: 'SEM RESPOSTA', troca_de_agente: 'troca de agente',
@@ -147,7 +150,7 @@ export function centralIa(config) {
             this.recolhidos = this.recolhidos.includes(id) ? this.recolhidos.filter(x => x !== id) : [...this.recolhidos, id];
             guardar('central-ia:recolhidos', JSON.stringify(this.recolhidos));
         },
-        irPara(tela) { this.tela = tela; guardar('central-ia:tela', tela); if (tela === 'projetos') this.$nextTick(() => { const f = this.$refs.feed; if (f) f.scrollTop = f.scrollHeight; }); },
+        irPara(tela) { this.tela = tela; if (['atividade', 'consumo'].includes(tela)) this.carregarRelatorio(tela); guardar('central-ia:tela', tela); if (tela === 'projetos') this.$nextTick(() => { const f = this.$refs.feed; if (f) f.scrollTop = f.scrollHeight; }); },
 
         async criarGrupo() {
             const nome = prompt('Nome do grupo (ex.: VixCard, Grupo Soluções, Pessoal):');
@@ -265,8 +268,8 @@ export function centralIa(config) {
         falhou(erro) {
             this.falhas++;
             if ([401, 403, 419].includes(erro.status)) {
-                this.administracao = { permitida: false, usuarios: [] };
-                this.usuarioAtividade = ''; this.resumoUsuario = null; this.politicaUsuario = null;
+                this.administracao = { permitida: false, usuarios: [] }; this.consultaAtividade = null; this.consultaConsumo = null;
+                this.usuarioAtividade = ''; this.usuarioConsumo = ''; this.relatorioAtividade = { eventos: [], execucoes: [] }; this.relatorioConsumo = { consumo: [] }; this.resumoUsuario = null; this.politicaUsuario = null;
             }
             if ([401, 419].includes(erro.status) || (erro.status === 403 && !erro.detalhe)) {
                 this.bloqueado = true; this.conexao = 'bloqueado'; this.abas = {}; this.garantirAba();
@@ -305,7 +308,7 @@ export function centralIa(config) {
                 this.chats = painel.chats || [];
                 this.preferencias = painel.preferencias || null;
                 this.administracao = painel.administracao || { permitida: false, usuarios: [] };
-                if (!this.administracao.permitida) { this.usuarioAtividade = ''; this.resumoUsuario = null; this.politicaUsuario = null; }
+                if (!this.administracao.permitida) { this.usuarioAtividade = ''; this.usuarioConsumo = ''; this.relatorioAtividade = { eventos: [], execucoes: [] }; this.relatorioConsumo = { consumo: [] }; this.resumoUsuario = null; this.politicaUsuario = null; }
                 else if (this.usuarioAtividade) this.carregarUsuario(false);
                 if (!this.ajustesAlterados && this.preferencias) this.ajustes = JSON.parse(JSON.stringify(this.preferencias.regras));
                 this.projetos = painel.projetos; this.atividade = painel.atividade; this.maquina = painel.maquina;
@@ -316,6 +319,7 @@ export function centralIa(config) {
                     if ((!this.atendimento.disponivel || this.atendimento.ativo === 'telegram') && this.telegram.vinculado && !this.aba.rascunho && !this.aba.arquivos.length && !this.aba.pendente) this.abrirTelegram();
                 }
                 this.recentes = painel.recentes; this.consumo = painel.consumo; this.sessoes = painel.sessoes; this.grupos = painel.grupos || []; this.eventos = painel.eventos || [];
+                if (['atividade', 'consumo'].includes(this.tela)) this.carregarRelatorio(this.tela);
                 if (this.telegram.vinculado) this.pareamento = null;
 
                 const projeto = this.atual, aba = this.aba, chave = this.chaveAba, tarefa = this.chatAtual;
@@ -494,6 +498,32 @@ export function centralIa(config) {
             finally { this.salvandoAjustes = false; }
         },
 
+        diaHoje() { return diaLocal(); },
+        async carregarRelatorio(tela) {
+            if (!config.relatorio) return;
+            const atividade = tela === 'atividade';
+            const params = { inicio: atividade ? this.inicioAtividade : this.inicioConsumo,
+                fim: atividade ? this.fimAtividade : this.fimConsumo,
+                usuario: (atividade ? this.usuarioAtividade : this.usuarioConsumo) || undefined,
+                agente: atividade ? undefined : (this.iaConsumo || undefined) };
+            const chave = JSON.stringify(params);
+            const slot = atividade ? 'consultaAtividade' : 'consultaConsumo';
+            if (this[slot] !== chave) {
+                if (atividade) this.relatorioAtividade = { eventos: [], execucoes: [] }; else this.relatorioConsumo = { consumo: [] };
+            }
+            this[slot] = chave;
+            try {
+                const r = await this.pedir(this.url(config.relatorio, params));
+                if (this[slot] !== chave) return;
+                if (atividade) this.relatorioAtividade = r; else this.relatorioConsumo = r;
+            } catch (e) {
+                if (this[slot] !== chave) return;
+                if (atividade) this.relatorioAtividade = { eventos: [], execucoes: [] }; else this.relatorioConsumo = { consumo: [] };
+                this.falhou(e);
+            }
+        },
+        abrirProjetoCatalogo(p) { this.abrir(p.nome); this.irPara('chats'); this.sub = 'conversa'; },
+        definirModoProjetos(modo) { this.modoProjetos = modo; guardar('central-ia:modo-projetos', modo); },
         async carregarUsuario(trocou = true) {
             if (trocou) { this.resumoUsuario = null; this.politicaUsuario = null; this.politicaAlterada = false; }
             if (!this.usuarioAtividade || !this.administracao.permitida) return;

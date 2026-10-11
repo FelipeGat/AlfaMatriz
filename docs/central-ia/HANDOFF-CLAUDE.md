@@ -325,3 +325,7 @@ segura e verificável para a ativação local de Felipe, preservando seus dados.
 ## Governança administrativa por usuário — 11/10/2026
 
 Filtro de metadados em Atividade e cotas por conta em Ajustes implementados. Consulte `governanca-usuarios.md`. Não habilitar Alexandre com o runner amplo atual: execução de contas não administrativas bloqueada no backend até comprovar isolamento individual. Não confundir preferências de provedores com permissão de deploy/OneDrive. Nenhuma política real foi gravada automaticamente nesta etapa.
+
+### Filtros e catálogo
+
+Consulte `filtros-e-catalogo.md`: Atividade por período (hoje padrão), Consumo por data/usuário/IA, sliders em Ajustes e catálogo completo de Projetos em Cards/Lista. Não confundir cartões de cota atual com histórico filtrado. Snapshot do runner pode não conter registros antigos. Manter autorização administrativa e omissão de conteúdo privado nos relatórios.

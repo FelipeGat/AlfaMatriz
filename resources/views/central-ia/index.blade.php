@@ -10,6 +10,7 @@
     --}}
     <section x-data="centralIa({
                 painel: '{{ route('central-ia.painel') }}',
+                relatorio: '{{ route('central-ia.relatorio') }}',
                 historico: '{{ route('central-ia.mensagens') }}',
                 enviar: '{{ route('central-ia.enviar') }}',
                 anexar: '{{ route('central-ia.anexos.criar') }}',
@@ -87,8 +88,25 @@
             </div>
         </div>
 
+        <div x-show="tela === 'projetos'" x-cloak class="min-h-0 flex-1 overflow-y-auto space-y-4">
+            <div class="flex flex-wrap gap-3"><input x-model="busca" placeholder="Buscar projeto…" aria-label="Buscar projeto" class="rounded-control border-line bg-input text-ink">
+                <button @click="definirModoProjetos('cards')" :aria-pressed="modoProjetos === 'cards'" class="rounded-control border border-line px-3 py-2">Cards</button>
+                <button @click="definirModoProjetos('lista')" :aria-pressed="modoProjetos === 'lista'" class="rounded-control border border-line px-3 py-2">Lista</button>
+                <button @click="criarGrupo()" class="text-brand-text">Novo grupo</button></div>
+            <p class="text-sm text-ink-mute">Todos os projetos disponíveis para sua conta. Abra um projeto para escolher ou iniciar um assunto.</p>
+            <template x-for="g in secoes" :key="g.id"><section class="space-y-2">
+                <h3 class="font-semibold text-ink" x-text="g.nome + ' (' + g.projetos.length + ')'"></h3>
+                <div :class="modoProjetos === 'cards' ? 'grid gap-3 sm:grid-cols-2 xl:grid-cols-3' : 'flex flex-col gap-2'">
+                    <template x-for="p in g.projetos" :key="p.nome"><article class="rounded-panel border border-line bg-panel p-4" :class="modoProjetos === 'lista' ? 'flex flex-wrap items-center justify-between gap-3' : 'space-y-3'">
+                        <button @click="abrirProjetoCatalogo(p)" class="text-left"><strong class="block text-ink" x-text="p.nome"></strong><span class="text-xs text-ink-mute" x-text="(p.git?.branch || 'Sem informação Git') + ' · ' + p.tarefas_em_curso + ' assuntos em curso'"></span></button>
+                        <div class="flex gap-3"><select :value="p.grupo_id || ''" @change="moverParaGrupo(p.nome, $event.target.value)" :aria-label="'Grupo de ' + p.nome" class="rounded-control border-line bg-input text-sm text-ink"><option value="">Sem grupo</option><template x-for="grupo in grupos" :key="grupo.id"><option :value="grupo.id" x-text="grupo.nome"></option></template></select><button @click="abrirProjetoCatalogo(p)" class="text-sm text-brand-text">Abrir</button></div>
+                    </article></template>
+                </div>
+            </section></template>
+            <p x-show="!projetos.length" class="text-ink-mute">Nenhum projeto informado para sua conta. Verifique a conexão da máquina.</p>
+        </div>
         {{-- ================= PROJETOS ================= --}}
-        <div x-show="['chats', 'projetos'].includes(tela)" class="relative grid min-h-0 flex-1 grid-cols-1 gap-3"
+        <div x-show="tela === 'chats'" class="relative grid min-h-0 flex-1 grid-cols-1 gap-3"
              :class="projetosRecolhidos ? 'lg:grid-cols-1' : 'lg:grid-cols-[260px_minmax(0,1fr)]'">
 
             {{-- Barra de projetos: busca + grupos (no celular, gaveta sobre o conteúdo) --}}
@@ -236,12 +254,12 @@
                     </template>
                 </div>
 
-                <div x-show="tela === 'chats' && !chatAtual" class="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm text-ink-mute">
+                <div x-show="tela === 'chats' && !chatAtual && !atual" class="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm text-ink-mute">
                     <p>Selecione um chat para continuar o assunto com seu próprio histórico.</p>
                     <button type="button" @click="irPara('projetos')" class="font-semibold text-brand-text">Escolher projeto para iniciar outro assunto</button>
                 </div>
                 {{-- Conversa --}}
-                <div class="flex min-h-0 flex-1 flex-col" x-show="(tela !== 'chats' || chatAtual) && (!atual || sub === 'conversa')">
+                <div class="flex min-h-0 flex-1 flex-col" x-show="(chatAtual || atual) && (!atual || sub === 'conversa')">
                     <div class="flex flex-none items-center justify-between px-4 pt-2 text-xs text-ink-faint" x-show="verTarefa">
                         <span x-text="'Só a tarefa #' + verTarefa"></span>
                         <button type="button" @click="selecionarTarefa(null)" class="font-semibold text-brand-text">Ver o projeto todo</button>
@@ -464,7 +482,7 @@
                 <button type="button" @click="vistaAtividade = 'execucoes'" class="rounded-ctl px-2.5 py-1 font-semibold" :class="vistaAtividade === 'execucoes' ? 'bg-nav-active text-ink' : 'text-ink-mute'">Execuções</button>
                 <span class="mx-1 h-4 w-px bg-line"></span>
                 <label x-show="administracao.permitida" class="flex items-center gap-2">Usuário
-                    <select x-model="usuarioAtividade" @change="carregarUsuario()" class="rounded-control border-line bg-input py-0.5 text-xs text-ink">
+                    <select x-model="usuarioAtividade" @change="carregarRelatorio('atividade')" class="rounded-control border-line bg-input py-0.5 text-xs text-ink">
                         <option value="">Minha atividade</option>
                         <template x-for="u in administracao.usuarios" :key="u.id"><option :value="u.id" x-text="u.nome + (u.ativo ? '' : ' (inativo)')"></option></template>
                     </select>
@@ -478,55 +496,37 @@
                 </select>
             </div>
 
-            {{-- Log: quando, o quê, onde, qual agente, o que aconteceu --}}
-            <ul x-show="vistaAtividade === 'log' && !usuarioAtividade" class="min-h-0 flex-1 divide-y divide-rule overflow-y-auto">
-                <li x-show="!eventosFiltrados.length" class="px-4 py-3 text-sm text-ink-faint">Nenhum evento.</li>
-                <template x-for="e in eventosFiltrados" :key="e.id">
-                    <li class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 px-4 py-1.5 text-xs md:grid-cols-[6.5rem_7.5rem_9rem_8rem_minmax(0,1fr)]">
-                        <time class="text-ink-faint" :datetime="e.em" x-text="data(e.em)"></time>
-                        <span class="font-semibold" :class="corDoNivel(e.nivel)" x-text="rotuloEvento(e.tipo)"></span>
-                        <button type="button" class="overflow-hidden text-ellipsis whitespace-nowrap text-left text-ink hover:text-brand-text" x-text="e.projeto || '—'"
-                                @click="e.projeto && e.projeto !== 'Geral' ? abrir(e.projeto, e.tarefa_id) : abrir('')"></button>
-                        <span class="text-ink-dim" x-text="(e.agente || '—') + (e.origem ? ' · ' + e.origem : '')"></span>
-                        <span class="col-span-2 break-words md:col-span-1" :class="e.nivel === 'erro' ? 'text-crit' : 'text-ink-dim'" x-text="e.descricao"></span>
-                    </li>
-                </template>
-            </ul>
-
-            <div x-show="usuarioAtividade && administracao.permitida" class="min-h-0 flex-1 overflow-y-auto p-4 text-sm">
-                <p class="text-ink-mute">Visão administrativa: uso, estado e tipo de operação. Conversas, instruções, arquivos e credenciais permanecem privados.</p>
-                <p x-show="carregandoUsuario" class="mt-2 text-ink-faint">Atualizando…</p>
-                <template x-if="resumoUsuario">
-                    <div class="mt-3 space-y-3">
-                        <h3 class="font-semibold text-ink" x-text="resumoUsuario.usuario.nome"></h3>
-                        <p class="text-ink-mute" x-text="'Solicitações hoje: Claude ' + resumoUsuario.uso_hoje.claude + ' · Codex ' + resumoUsuario.uso_hoje.codex + ' · Copilot ' + resumoUsuario.uso_hoje.copilot"></p>
-                        <ul x-show="vistaAtividade === 'execucoes'" class="divide-y divide-rule">
-                            <template x-for="e in resumoUsuario.execucoes" :key="e.id"><li class="flex flex-wrap gap-3 py-2 text-xs text-ink-mute"><span x-text="data(e.em)"></span><span x-text="e.agente"></span><span x-text="e.modo"></span><span x-text="execucao(e.status)"></span></li></template>
-                        </ul>
-                        <ul x-show="vistaAtividade === 'log' && !usuarioAtividade" class="divide-y divide-rule">
-                            <template x-for="e in resumoUsuario.eventos" :key="e.id"><li class="flex flex-wrap gap-3 py-2 text-xs text-ink-mute"><span x-text="data(e.em)"></span><span x-text="rotuloEvento(e.tipo)"></span><span x-text="e.nivel"></span></li></template>
-                        </ul>
-                    </div>
-                </template>
+            <div class="flex flex-wrap gap-3 border-b border-line p-3 text-sm">
+                <label>De <input type="date" x-model="inicioAtividade" @change="carregarRelatorio('atividade')" class="rounded-control border-line bg-input"></label>
+                <label>Até <input type="date" x-model="fimAtividade" @change="carregarRelatorio('atividade')" class="rounded-control border-line bg-input"></label>
+                <button @click="inicioAtividade = fimAtividade = diaHoje(); carregarRelatorio('atividade')" class="text-brand-text">Hoje</button>
             </div>
-            <ul x-show="vistaAtividade === 'execucoes' && !usuarioAtividade" class="min-h-0 flex-1 divide-y divide-rule overflow-y-auto">
-                <li x-show="!atividade.length" class="px-4 py-3 text-sm text-ink-faint">Nenhum pedido a agente ainda.</li>
-                <template x-for="a in atividade" :key="a.id">
-                    <li>
-                        <button type="button" @click="abrir(a.projeto, a.tarefa_id)" class="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-3 px-4 py-2 text-left hover:bg-chip md:grid-cols-[10rem_minmax(0,1fr)_14rem_7rem]">
-                            <span class="text-xs font-semibold text-ink" x-text="a.projeto || 'Geral'"></span>
-                            <span class="order-3 col-span-2 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-ink-dim md:order-none md:col-span-1" x-text="a.tarefa || ('pedido #' + a.id)"></span>
-                            <span class="order-4 col-span-2 text-xs text-ink-faint md:order-none md:col-span-1"
-                                  x-text="a.agente + ' · ' + a.modo + (a.handoff_de ? ' · assumiu de ' + a.handoff_de : '') + (duracao(a) ? ' · ' + duracao(a) : ' · ' + haQuanto(a.criada_em))"></span>
-                            <span class="text-right text-xs font-semibold" :class="corDaExecucao(a.status)" x-text="execucao(a.status)"></span>
-                        </button>
-                    </li>
+            <div class="min-h-0 flex-1 overflow-y-auto p-3 text-sm">
+                <p x-show="usuarioAtividade" class="text-ink-mute">Visão administrativa sem conteúdo privado.</p>
+                <p x-show="relatorioAtividade.truncado" class="text-warn">Limite de 1.000 registros. Reduza o período.</p>
+                <template x-for="e in (vistaAtividade === 'log' ? relatorioAtividade.eventos.filter(e => (!soProblemas || e.nivel !== 'info') && (!projetoLog || e.projeto === projetoLog)) : relatorioAtividade.execucoes)" :key="e.id">
+                    <div class="flex flex-wrap gap-3 border-b border-rule py-3"><span x-text="data(e.em || e.criada_em)"></span><strong x-text="e.tipo ? rotuloEvento(e.tipo) : execucao(e.status)"></strong><span x-text="e.agente"></span><span x-text="e.projeto"></span><span x-text="e.descricao || e.modo"></span></div>
                 </template>
-            </ul>
+                <p x-show="!(vistaAtividade === 'log' ? relatorioAtividade.eventos : relatorioAtividade.execucoes).length" class="text-ink-mute">Nenhuma atividade no período selecionado.</p>
+            </div>
         </div>
 
         {{-- ================= CONSUMO ================= --}}
         <div x-show="tela === 'consumo'" x-cloak class="min-h-0 flex-1 overflow-y-auto">
+            <div class="mb-4 rounded-panel border border-line bg-panel p-4 space-y-3">
+                <div class="flex flex-wrap gap-3 text-sm">
+                    <label>De <input type="date" x-model="inicioConsumo" @change="carregarRelatorio('consumo')" class="rounded-control border-line bg-input"></label>
+                    <label>Até <input type="date" x-model="fimConsumo" @change="carregarRelatorio('consumo')" class="rounded-control border-line bg-input"></label>
+                    <label x-show="administracao.permitida">Usuário <select x-model="usuarioConsumo" @change="carregarRelatorio('consumo')" class="rounded-control border-line bg-input"><option value="">Meu consumo</option><template x-for="u in administracao.usuarios" :key="u.id"><option :value="u.id" x-text="u.nome"></option></template></select></label>
+                    <label>IA <select x-model="iaConsumo" @change="carregarRelatorio('consumo')" class="rounded-control border-line bg-input"><option value="">Todas</option><option value="claude">Claude</option><option value="codex">Codex</option><option value="copilot">Copilot</option></select></label>
+                </div>
+                <p class="text-xs text-ink-mute">Consumo informado pelos runners no período. Ausência de registros não comprova consumo zero; dados antigos podem não estar disponíveis.</p>
+                <div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr><th>Dia</th><th>IA</th><th>Entrada + saída</th><th>Cache</th><th>Premium</th></tr></thead><tbody><template x-for="l in relatorioConsumo.consumo" :key="l.dia + l.agente"><tr class="border-t border-rule"><td x-text="l.dia"></td><td x-text="l.agente"></td><td x-text="tokens(l.entrada + l.saida)"></td><td x-text="tokens(l.cache)"></td><td x-text="l.premium"></td></tr></template></tbody></table></div>
+                <p x-show="!relatorioConsumo.consumo.length" class="text-ink-mute">Sem registros para esses filtros.</p>
+            </div>
+            <h3 class="mb-3 font-semibold text-ink">Minha assinatura: situação atual e últimos sete dias (independente do filtro acima)</h3>
+            <div x-show="!usuarioConsumo && !iaConsumo">
+
             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {{-- Limites: medidores, não gráfico --}}
                 <div class="rounded-panel border border-line bg-panel p-4">
@@ -667,6 +667,7 @@
                     </div>
                 </div>
             </div>
+            </div>
         </div>
 
         {{-- ================= AJUSTES ================= --}}
@@ -685,12 +686,12 @@
                         <div class="grid gap-3 sm:grid-cols-3">
                             <template x-for="(nome, a) in {claude:'Claude', codex:'Codex', copilot:'Copilot'}" :key="a">
                                 <div class="rounded-control border border-line p-3 space-y-2"><label class="flex gap-2"><input type="checkbox" x-model="politicaUsuario.habilitados[a]" class="rounded border-line text-brand"><span x-text="nome"></span></label>
-                                    <label class="block text-ink-mute">Máximo por dia<input type="number" min="0" max="10000" x-model.number="politicaUsuario.pedidos_dia[a]" placeholder="Sem teto administrativo" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink"></label>
+                                    <label class="block text-ink-mute">Máximo por dia<span class="block font-semibold text-ink" x-text="politicaUsuario.pedidos_dia[a] == null ? 'Sem teto interno' : politicaUsuario.pedidos_dia[a]"></span><input type="range" min="0" max="10000" step="1" :value="politicaUsuario.pedidos_dia[a] ?? 0" @input="politicaUsuario.pedidos_dia[a] = Number($event.target.value)" :disabled="politicaUsuario.pedidos_dia[a] == null" class="mt-2 w-full accent-brand"><span class="flex items-center gap-2 text-xs"><input type="checkbox" :checked="politicaUsuario.pedidos_dia[a] == null" @change="politicaUsuario.pedidos_dia[a] = $event.target.checked ? null : 20">Sem teto interno</span></label>
                                 </div>
                             </template>
                         </div>
-                        <div class="grid gap-3 sm:grid-cols-2"><label class="text-ink-mute">Máximo total diário<input type="number" min="0" max="30000" x-model.number="politicaUsuario.limite_total" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink"></label>
-                            <label class="text-ink-mute">Simultâneas<input type="number" min="1" max="{{ max(1, (int) config('central_ia.agentes.paralelo')) }}" x-model.number="politicaUsuario.paralelo" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink"></label></div>
+                        <div class="grid gap-3 sm:grid-cols-2"><label class="text-ink-mute">Máximo total diário<span class="block font-semibold text-ink" x-text="politicaUsuario.limite_total == null ? 'Sem teto interno' : politicaUsuario.limite_total"></span><input type="range" min="0" max="30000" step="1" :value="politicaUsuario.limite_total ?? 0" @input="politicaUsuario.limite_total = Number($event.target.value)" :disabled="politicaUsuario.limite_total == null" class="mt-2 w-full accent-brand"><span class="flex items-center gap-2 text-xs"><input type="checkbox" :checked="politicaUsuario.limite_total == null" @change="politicaUsuario.limite_total = $event.target.checked ? null : 20">Sem teto interno</span></label>
+                            <label class="text-ink-mute">Simultâneas<span class="block font-semibold text-ink" x-text="politicaUsuario.paralelo == null ? 'Sem teto interno' : politicaUsuario.paralelo"></span><input type="range" min="1" max="{{ max(1, (int) config('central_ia.agentes.paralelo')) }}" step="1" :value="politicaUsuario.paralelo ?? 0" @input="politicaUsuario.paralelo = Number($event.target.value)"  class="mt-2 w-full accent-brand"></label></div>
                         <button type="button" @click="salvarPolitica()" class="rounded-control bg-brand px-3 py-2 font-semibold text-on-brand">Salvar política administrativa</button>
                     </fieldset>
                 </template>
@@ -715,16 +716,16 @@
                             <template x-for="(nome, agente) in {claude:'Claude', codex:'GPT (Codex)', copilot:'Copilot'}" :key="agente">
                                 <div class="rounded-control border border-line p-3 space-y-2">
                                     <label class="flex gap-2 items-center"><input type="checkbox" x-model="ajustes.habilitados[agente]" class="rounded border-line text-brand"><span x-text="nome"></span></label>
-                                    <label class="block text-ink-mute">Solicitações por dia<input type="number" min="0" max="10000" x-model.number="ajustes.pedidos_dia[agente]" placeholder="Sem teto interno" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink"></label>
+                                    <label class="block text-ink-mute">Solicitações por dia<span class="block font-semibold text-ink" x-text="ajustes.pedidos_dia[agente] == null ? 'Sem teto interno' : ajustes.pedidos_dia[agente]"></span><input type="range" min="0" max="10000" step="1" :value="ajustes.pedidos_dia[agente] ?? 0" @input="ajustes.pedidos_dia[agente] = Number($event.target.value)" :disabled="ajustes.pedidos_dia[agente] == null" class="mt-2 w-full accent-brand"><span class="flex items-center gap-2 text-xs"><input type="checkbox" :checked="ajustes.pedidos_dia[agente] == null" @change="ajustes.pedidos_dia[agente] = $event.target.checked ? null : 20">Sem teto interno</span></label>
                                 </div>
                             </template>
                         </div>
                         <div class="grid gap-3 sm:grid-cols-2">
-                            <label class="text-ink-mute">Limite total diário<input type="number" min="0" max="30000" x-model.number="ajustes.limite_total" placeholder="Sem teto interno" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink"></label>
-                            <label class="text-ink-mute">Execuções simultâneas<input type="number" min="1" max="{{ max(1, (int) config('central_ia.agentes.paralelo')) }}" x-model.number="ajustes.paralelo" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink"></label>
+                            <label class="text-ink-mute">Limite total diário<span class="block font-semibold text-ink" x-text="ajustes.limite_total == null ? 'Sem teto interno' : ajustes.limite_total"></span><input type="range" min="0" max="30000" step="1" :value="ajustes.limite_total ?? 0" @input="ajustes.limite_total = Number($event.target.value)" :disabled="ajustes.limite_total == null" class="mt-2 w-full accent-brand"><span class="flex items-center gap-2 text-xs"><input type="checkbox" :checked="ajustes.limite_total == null" @change="ajustes.limite_total = $event.target.checked ? null : 20">Sem teto interno</span></label>
+                            <label class="text-ink-mute">Execuções simultâneas<span class="block font-semibold text-ink" x-text="ajustes.paralelo == null ? 'Sem teto interno' : ajustes.paralelo"></span><input type="range" min="1" max="{{ max(1, (int) config('central_ia.agentes.paralelo')) }}" step="1" :value="ajustes.paralelo ?? 0" @input="ajustes.paralelo = Number($event.target.value)"  class="mt-2 w-full accent-brand"></label>
                         </div>
                         <label class="flex gap-2 items-center"><input type="checkbox" x-model="ajustes.fallback" class="rounded border-line text-brand">Tentar outra IA habilitada quando o provedor estiver indisponível ou no limite</label>
-                        <p class="text-xs text-ink-faint">Em branco: sem teto administrativo. Zero: bloqueia novos pedidos. Tentativas alternativas contam nos limites. As franquias reais continuam sendo as de cada assinatura. Nenhum adaptador de API paga foi adicionado; a autenticação do executor precisa de validação própria. Desabilitar suspende novos pedidos e a fila dessa IA, sem interromper processos já iniciados.</p>
+                        <p class="text-xs text-ink-faint">Sem teto interno: sem limite administrativo. Zero: bloqueia novos pedidos. Tentativas alternativas contam nos limites. As franquias reais continuam sendo as de cada assinatura. Nenhum adaptador de API paga foi adicionado; a autenticação do executor precisa de validação própria. Desabilitar suspende novos pedidos e a fila dessa IA, sem interromper processos já iniciados.</p>
                         @if ($podeParear)
                             <button type="button" @click="salvarAjustes()" :disabled="salvandoAjustes || !preferencias?.disponivel" class="rounded-control bg-brand px-3 py-2 font-semibold text-on-brand disabled:opacity-50">Salvar meus ajustes</button>
                         @endif
