@@ -41,6 +41,7 @@ export function centralIa(config) {
         grupos: [], busca: '', recolhidos: [], tela: 'projetos', sub: 'conversa',
         eventos: [], vistaAtividade: 'log', soProblemas: false, projetoLog: '', barraAberta: false, barraHover: null, mostrarTabela: false,
         telegram: { vinculado: false, usuario: null }, pareamento: null, contaNome: '', escolherConversaInicial: false,
+        atendimento: { disponivel: false, ativo: 'web', projeto: null, tarefa_id: null }, transferindoCanal: false,
         // Projeto aberto
         atual: GERAL, abas: {}, tarefas: [], verTarefa: null, detalheAberto: true,
         historicosAbertos: {}, fixarEscolha: '', menuProjetosMovel: false,
@@ -277,10 +278,11 @@ export function centralIa(config) {
             try {
                 const painel = await this.pedir(config.painel);
                 this.projetos = painel.projetos; this.atividade = painel.atividade; this.maquina = painel.maquina;
+                this.atendimento = painel.canal || { disponivel: false, ativo: 'web' };
                 this.paralelo = painel.paralelo; this.telegram = painel.telegram; this.contaNome = painel.conta_nome || '';
                 if (this.escolherConversaInicial) {
                     this.escolherConversaInicial = false;
-                    if (this.telegram.vinculado && !this.aba.rascunho && !this.aba.arquivos.length && !this.aba.pendente) this.abrirTelegram();
+                    if ((!this.atendimento.disponivel || this.atendimento.ativo === 'telegram') && this.telegram.vinculado && !this.aba.rascunho && !this.aba.arquivos.length && !this.aba.pendente) this.abrirTelegram();
                 }
                 this.recentes = painel.recentes; this.consumo = painel.consumo; this.sessoes = painel.sessoes; this.grupos = painel.grupos || []; this.eventos = painel.eventos || [];
                 if (this.telegram.vinculado) this.pareamento = null;
@@ -380,9 +382,29 @@ export function centralIa(config) {
             this.$nextTick(() => { const f = this.$refs.feed; if (f) f.scrollTop = f.scrollHeight; });
         },
 
+        async transferirCanal(destino) {
+            if (this.transferindoCanal || this.aba.enviando || this.aba.pendente) return;
+            this.transferindoCanal = true;
+            const anterior = { ...this.atendimento };
+            try {
+                const tarefa = this.verTarefa || (this.aba.tarefa !== 'nova' ? this.aba.tarefa : null);
+                const resultado = await this.pedir(config.canal, 'POST', {
+                    canal: destino, projeto: destino === 'telegram' ? (this.atual || null) : null,
+                    tarefa_id: destino === 'telegram' ? tarefa : null,
+                });
+                this.atendimento = { ...resultado, disponivel: true };
+                if (destino === 'web' && anterior.ativo === 'telegram') this.abrir(anterior.projeto || GERAL, anterior.tarefa_id);
+                this.aviso = destino === 'telegram'
+                    ? 'Continue no Telegram. Seu rascunho fica guardado aqui; ele não foi enviado.'
+                    : 'Conversa retomada no AlfaMatriz.';
+                this.reconectar();
+            } catch (e) { this.aviso = e.detalhe || 'Não foi possível trocar o canal. Tente novamente; o canal anterior permanece ativo.'; }
+            finally { this.transferindoCanal = false; }
+        },
+
         async enviar() {
             const aba = this.aba;
-            if (aba.enviando || this.bloqueado || !this.podeEnviar || (!aba.pendente && !aba.rascunho.trim() && !aba.arquivos.length)) return;
+            if ((this.atendimento.disponivel && this.atendimento.ativo !== 'web') || this.transferindoCanal || aba.enviando || this.bloqueado || !this.podeEnviar || (!aba.pendente && !aba.rascunho.trim() && !aba.arquivos.length)) return;
             // Vendo uma tarefa (o filtro "Só a tarefa #N"), o pedido vai para ela
             // — e não abre uma tarefa nova sem o contexto da que está na tela.
             if (!aba.pendente && this.verTarefa && aba.tarefa === 'nova') aba.tarefa = this.verTarefa;

@@ -319,3 +319,8 @@ cópia instalada do runner; ativação controlada continua pendente.
 [Implementação, testes, revisão Claude e demandas pendentes](tarefa-10-continuidade-provedores.md).
 Timeout completo, checkpoint em falhas, sessões/forks e desligamento do legado
 foram explicitamente deixados para próximas entregas.
+
+
+### Atendimento por um canal por vez
+
+Ver [fluxo, implementação e ativação controlada](canal-ativo.md). Preparado e testado em laboratório; banco existente ainda sem a migração de canal ativo.

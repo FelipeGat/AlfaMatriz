@@ -14,3 +14,13 @@ reais; teto interno opcional. Leia
 não commitada. Não reiniciar serviços, executar inferência ou realizar commits
 automaticamente. Demandas de timeout/checkpoint/sessões/legado ficaram pendentes
 por determinação do dono. O acesso amplo permanece autorizado.
+
+
+## Atendimento por canal ativo — 11/10/2026
+
+Proprietário aprovou substituir o espelhamento permanente por transferência explícita
+AlfaMatriz ↔ Telegram, mantendo histórico único. Implementação, testes simulados e
+plano de ativação/rollback em [canal-ativo.md](central-ia/canal-ativo.md).
+Migração aditiva preparada; NÃO aplicada ao banco existente. Consumidor NÃO reiniciado.
+Código compatível com schema anterior enquanto aguarda ativação específica aprovada.
+Commits locais autorizados; nenhum push autorizado nesta etapa.

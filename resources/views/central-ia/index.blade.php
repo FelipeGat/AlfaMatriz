@@ -21,6 +21,7 @@
                 grupos: '{{ route('central-ia.grupos.criar') }}',
                 grupo: '{{ url('central-ia/grupos/__G__') }}',
                 grupoDoProjeto: '{{ route('central-ia.projetos.grupo', '__P__') }}',
+                canal: '{{ route('central-ia.canal') }}',
                 telegramCodigo: '{{ route('central-ia.telegram.codigo') }}',
                 telegramDesvincular: '{{ route('central-ia.telegram.desvincular') }}',
                 podeEnviar: {{ $podeEnviar ? 'true' : 'false' }},
@@ -71,9 +72,15 @@
 
         <div class="flex flex-none flex-wrap items-center justify-between gap-2 px-1 text-xs text-ink-mute">
             <span x-show="contaNome" x-text="'Conversa privada de ' + contaNome"></span>
-            <button type="button" @click="abrirTelegram()" x-show="telegram.vinculado" x-cloak
-                    class="font-semibold text-brand-text"
-                    x-text="'Abrir conversa do Telegram · ' + (telegram.projeto || 'Geral')"></button>
+            <div x-show="atendimento.disponivel" x-cloak class="flex flex-wrap items-center gap-2">
+                <span x-text="atendimento.ativo === 'telegram' ? 'Atendimento no Telegram · ' + (atendimento.projeto || 'Geral') : 'Atendimento no AlfaMatriz'"></span>
+                <button type="button" @click="transferirCanal(atendimento.ativo === 'telegram' ? 'web' : 'telegram')"
+                        :disabled="transferindoCanal || aba.enviando || !!aba.pendente || !podeEnviar"
+                        x-show="telegram.vinculado || atendimento.ativo === 'telegram'"
+                        class="rounded-control border border-line px-3 py-2 font-semibold text-brand-text disabled:opacity-50"
+                        x-text="transferindoCanal ? 'Transferindo…' : (atendimento.ativo === 'telegram' ? 'Retomar no AlfaMatriz' : 'Continuar pelo Telegram')"></button>
+                <button type="button" x-show="!telegram.vinculado" @click="irPara('ajustes')" class="font-semibold text-brand-text">Vincular Telegram</button>
+            </div>
         </div>
 
         {{-- ================= PROJETOS ================= --}}
@@ -249,8 +256,12 @@
                             <p class="flex items-center gap-2 text-brand-text"><span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand"></span><span x-text="andamento(a)"></span></p>
                         </template>
                     </div>
+                    <div x-show="atendimento.disponivel && atendimento.ativo === 'telegram'" x-cloak class="flex-none border-t border-line px-4 py-3 text-sm text-ink-mute">
+                        A conversa está sendo conduzida pelo Telegram. O histórico continua disponível aqui.
+                        <button type="button" @click="transferirCanal('web')" :disabled="transferindoCanal" class="ml-2 font-semibold text-brand-text">Retomar no AlfaMatriz</button>
+                    </div>
                     {{-- Compositor, sempre visível --}}
-                    <form @submit.prevent="enviar()" @dragover.prevent @drop.prevent="escolherArquivos($event.dataTransfer.files)" class="flex-none space-y-2 border-t border-line p-3" aria-label="Enviar mensagem">
+                    <form x-show="!atendimento.disponivel || atendimento.ativo === 'web'" @submit.prevent="enviar()" @dragover.prevent @drop.prevent="escolherArquivos($event.dataTransfer.files)" class="flex-none space-y-2 border-t border-line p-3" aria-label="Enviar mensagem">
                         @if ($podeAcionar)
                             <div class="flex flex-wrap items-center gap-2 text-xs">
                                 <label class="sr-only" for="central-tarefa">Tarefa</label>
