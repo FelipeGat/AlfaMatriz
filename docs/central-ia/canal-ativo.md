@@ -34,10 +34,12 @@ Desvincular retorna à web; revogar permissão bloqueia acesso e entrega.
 
 ## Publicação do código sem ativação do banco
 
-**Nesta etapa o banco local existente não foi migrado e o consumidor não foi reiniciado.**
+**Status atual: ativado no AlfaMatriz local em 11/10/2026, após autorização específica.**
+
+Durante a implementação inicial, o banco e o consumidor foram preservados; a ativação descrita abaixo foi executada posteriormente.
 A detecção de schema mantém o comportamento anterior até aplicar a migração. Os novos
 botões aparecem somente com schema disponível. Isso evita falha de SQL durante a preparação,
-mas significa que o espelhamento antigo ainda funciona até a ativação.
+e preservou o espelhamento antigo até a ativação. Agora o schema está presente e a exclusividade está habilitada.
 
 Os testes de compatibilidade usam `central_ia.canal_exclusivo=false` somente em laboratório.
 O caminho novo é habilitado por padrão com schema presente. Não foi criado um controle
@@ -91,3 +93,29 @@ no desktop e celular. O teste unitário não substitui ensaio concorrente na ver
 
 Commits anteriores consolidados nesta rodada: `1e52f29` (funcionalidades anteriores e menu),
 `29caf74` (schema anterior de anexos/progresso). Backend da troca de canal: `935b517`.
+
+
+## Ativação executada em 11/10/2026
+
+Autorização do proprietário: ambiente de teste; permitido aplicar a ativação e reiniciar serviços necessários.
+
+- Backup cifrado AES-GCM apenas do banco `alfamatriz-dev-db`; chave separada, arquivos 0600 e diretórios privados, fora do Git.
+- Script reproduzível: `tools/central-ia/backup-canal-local.py`. Não usa o script antigo de dois bancos.
+- Ensaio: `canal-20261011T185612Z-499969`, relatório privado em `central-agentes/development/runtime/real-backup/artifacts/`.
+- Restauração validada por hash dos INSERTs do snapshot único; 72 tabelas e contagens preservadas após a migração ensaiada.
+- Primeira tentativa descartável foi interrompida por lentidão dos commits individuais. O script foi corrigido para restaurar em transações por tabela; a segunda tentativa passou. Ambos os bancos temporários foram removidos.
+- Consumidor `alfamatriz-dev-telegram` parado durante a migração específica e iniciado após a verificação. App, banco, nginx, runner e outros projetos não foram reiniciados.
+- Hash conjunto de mensagens e pareamento antes/depois da migração idêntico. 88 mensagens e 1 pareamento preservados.
+- Schema pronto; todas as conversas iniciaram com canal web. Nenhuma transferência real ou mensagem de teste ao bot foi enviada pela ferramenta.
+- Consumidor iniciado, sem encerramento seguro detectado nos logs resumidos; aquisição de segunda trava recusada.
+- HTTP local: `/login` = 200; `/central-ia/painel` sem sessão = 401.
+- Backup mantido; relatório atualizado com a comprovação da ativação. Nenhuma chave ou conteúdo de mensagens no Git.
+- Sem inferência, API paga, push ou alteração de produção.
+
+### Validação pelo proprietário
+
+Atualizar a página do AlfaMatriz local (`http://localhost:8096` no Windows ou `http://home:8096` no Mac),
+abrir a Central, escolher projeto/tarefa e tocar em **Continuar pelo Telegram**.
+Conferir a confirmação curta no bot e retornar por `/matriz` ou **Retomar no AlfaMatriz**.
+Essa confirmação e o retorno são operações da Central, sem inferência. Mensagens de trabalho
+enviadas depois pelo usuário seguem a configuração normal dos agentes.

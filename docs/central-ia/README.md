@@ -323,4 +323,4 @@ foram explicitamente deixados para próximas entregas.
 
 ### Atendimento por um canal por vez
 
-Ver [fluxo, implementação e ativação controlada](canal-ativo.md). Preparado e testado em laboratório; banco existente ainda sem a migração de canal ativo.
+Ver [fluxo, implementação e ativação controlada](canal-ativo.md). Ativado no AlfaMatriz local em 11/10/2026, com backup cifrado, restauração ensaiada e consumidor Telegram reiniciado.

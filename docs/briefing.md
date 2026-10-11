@@ -24,3 +24,12 @@ plano de ativação/rollback em [canal-ativo.md](central-ia/canal-ativo.md).
 Migração aditiva preparada; NÃO aplicada ao banco existente. Consumidor NÃO reiniciado.
 Código compatível com schema anterior enquanto aguarda ativação específica aprovada.
 Commits locais autorizados; nenhum push autorizado nesta etapa.
+
+
+### Atualização: canal ativo habilitado localmente
+
+Após nova autorização específica, migração 160000 aplicada somente no AlfaMatriz local;
+consumidor Telegram parado/iniciado na janela controlada. Backup de banco único cifrado
+e ensaio de restauração/migração aprovados. Histórico (88 mensagens) e pareamento (1)
+preservados por hash; canal inicial web. Sem inferência, push ou produção. Detalhes e
+validação manual pendente no documento `central-ia/canal-ativo.md`.
