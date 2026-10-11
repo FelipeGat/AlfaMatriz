@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
  * O runner pergunta por trabalho a cada poucos segundos; 120/min é folga.
  */
 Route::prefix('api/central-ia/runner')
-    ->middleware(['auth:sanctum', 'abilities:central-ia-runner', 'throttle:120,1'])
+    ->middleware(['auth:sanctum', 'abilities:central-ia-runner', 'throttle:120,1,central-ia-runner'])
     ->group(function () {
         Route::post('batida', [CentralIaRunnerController::class, 'batida'])->name('central-ia.runner.batida');
         Route::post('proxima', [CentralIaRunnerController::class, 'proxima'])->name('central-ia.runner.proxima');

@@ -93,6 +93,29 @@ class ConversaTest extends TestCase
         $this->assertSame(1, CentralIaMensagem::count());
     }
 
+    /**
+     * Os polls da tela e o runner usam a mesma conta. Com o `throttle` num
+     * balde só, eles esgotavam o limite do envio e a mensagem do dono ficou
+     * em "aguardando confirmação" com 429 (10/10/2026).
+     */
+    public function test_polls_e_runner_nao_esgotam_o_limite_do_envio(): void
+    {
+        $user = $this->comCentral();
+        \App\Models\CentralIaRunner::create(['user_id' => $user->id, 'maquina' => 'wsl', 'agentes' => [], 'projetos' => [], 'visto_em' => now()]);
+
+        for ($i = 0; $i < 30; $i++) {
+            $this->actingAs($user)->getJson(route('central-ia.painel'))->assertOk();
+            $this->actingAs($user)->getJson(route('central-ia.mensagens'))->assertOk();
+        }
+        \Laravel\Sanctum\Sanctum::actingAs($user, ['central-ia-runner']);
+        for ($i = 0; $i < 25; $i++) {
+            $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->assertNoContent();
+        }
+
+        $this->actingAs($user)->postJson(route('central-ia.enviar'), ['conteudo' => 'continuar', 'client_id' => (string) Str::uuid()])
+            ->assertCreated();
+    }
+
     public function test_mesmo_id_com_outro_texto_e_recusado(): void
     {
         $user = $this->comCentral();

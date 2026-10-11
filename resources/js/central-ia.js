@@ -316,6 +316,9 @@ export function centralIa(config) {
         async enviar() {
             const aba = this.aba;
             if (aba.enviando || this.bloqueado || !this.podeEnviar || (!aba.pendente && !aba.rascunho.trim())) return;
+            // Vendo uma tarefa (o filtro "Só a tarefa #N"), o pedido vai para ela
+            // — e não abre uma tarefa nova sem o contexto da que está na tela.
+            if (!aba.pendente && this.verTarefa && aba.tarefa === 'nova') aba.tarefa = this.verTarefa;
             if (!aba.pendente) {
                 aba.pendente = {
                     client_id: novoId(), conteudo: aba.rascunho, projeto: this.atual || null,

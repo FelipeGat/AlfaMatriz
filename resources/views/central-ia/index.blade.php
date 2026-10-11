@@ -211,8 +211,9 @@
                                 <label class="sr-only" for="central-tarefa">Tarefa</label>
                                 <select id="central-tarefa" x-model="aba.tarefa" x-show="atual" :disabled="!!aba.pendente"
                                         class="max-w-[16rem] rounded-control border-line bg-input py-1 text-xs text-ink focus:border-brand focus:ring-brand">
-                                    <option value="nova">Nova tarefa</option>
-                                    <template x-for="t in tarefasEmCurso" :key="t.id"><option :value="t.id" x-text="'#' + t.id + ' ' + t.titulo"></option></template>
+                                    <option value="nova" :selected="aba.tarefa === 'nova'">Nova tarefa</option>
+                                    {{-- :selected em cada opção: as tarefas chegam DEPOIS do seletor, e só o x-model perdia a escolha --}}
+                                    <template x-for="t in tarefasEmCurso" :key="t.id"><option :value="t.id" :selected="String(aba.tarefa) === String(t.id)" x-text="'#' + t.id + ' ' + t.titulo"></option></template>
                                 </select>
                                 <label class="sr-only" for="central-agente">Agente</label>
                                 <select id="central-agente" x-model="aba.agente" :disabled="!!aba.pendente"

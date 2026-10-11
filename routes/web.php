@@ -193,13 +193,19 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // O poll da tela bate a cada 5 s, daí o teto de leitura folgado.
     Route::get('central-ia', [CentralIaController::class, 'index'])->name('central-ia.index')
         ->middleware('permissao:central_ia');
-    // O cockpit faz dois polls (painel e conversa) a cada 5 s: 60/min cada.
+    // O cockpit faz três polls (painel, conversa, tarefas) a cada 5 s.
+    //
+    // Cada `throttle` leva um PREFIXO próprio: sem ele, o Laravel conta todas
+    // as rotas da mesma conta num balde só — e os polls da tela, somados ao
+    // runner (que usa a mesma conta, a cada 3 s), estouravam o limite de 20
+    // do envio: a mensagem ficava em "aguardando confirmação" com 429.
+    // Aconteceu com o dono em 10/10/2026.
     Route::get('central-ia/painel', [CentralIaController::class, 'painel'])->name('central-ia.painel')
-        ->middleware(['permissao:central_ia', 'throttle:90,1']);
+        ->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-painel']);
     Route::get('central-ia/mensagens', [CentralIaController::class, 'mensagens'])->name('central-ia.mensagens')
-        ->middleware(['permissao:central_ia', 'throttle:90,1']);
+        ->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-mensagens']);
     Route::get('central-ia/projetos/{projeto}/tarefas', [CentralIaController::class, 'tarefas'])->name('central-ia.tarefas')
-        ->middleware(['permissao:central_ia', 'throttle:90,1'])->where('projeto', '[A-Za-z0-9._-]+');
+        ->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-tarefas'])->where('projeto', '[A-Za-z0-9._-]+');
     Route::post('central-ia/projetos/{projeto}/fixar', [CentralIaController::class, 'fixar'])->name('central-ia.fixar')
         ->middleware('permissao:central_ia,editar')->where('projeto', '[A-Za-z0-9._-]+');
     Route::post('central-ia/grupos', [CentralIaController::class, 'criarGrupo'])->name('central-ia.grupos.criar')
@@ -211,14 +217,14 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::post('central-ia/projetos/{projeto}/grupo', [CentralIaController::class, 'grupoDoProjeto'])->name('central-ia.projetos.grupo')
         ->middleware('permissao:central_ia,editar')->where('projeto', '[A-Za-z0-9._-]+');
     Route::post('central-ia/sessoes/continuar', [CentralIaController::class, 'continuarSessao'])->name('central-ia.sessoes.continuar')
-        ->middleware(['permissao:central_ia,incluir', 'throttle:20,1']);
+        ->middleware(['permissao:central_ia,incluir', 'throttle:20,1,central-ia-continuar']);
     Route::post('central-ia/tarefas/{tarefa}/status', [CentralIaController::class, 'statusDaTarefa'])->name('central-ia.tarefas.status')
         ->middleware('permissao:central_ia,editar')->whereNumber('tarefa');
     Route::post('central-ia/mensagens', [CentralIaController::class, 'enviar'])->name('central-ia.enviar')
-        ->middleware(['permissao:central_ia,incluir', 'throttle:20,1']);
+        ->middleware(['permissao:central_ia,incluir', 'throttle:20,1,central-ia-enviar']);
     // Parear e desparear o Telegram mexem no canal, não criam conversa: `editar`.
     Route::post('central-ia/telegram/codigo', [CentralIaController::class, 'codigoTelegram'])->name('central-ia.telegram.codigo')
-        ->middleware(['permissao:central_ia,editar', 'throttle:6,1']);
+        ->middleware(['permissao:central_ia,editar', 'throttle:6,1,central-ia-telegram']);
     Route::delete('central-ia/telegram', [CentralIaController::class, 'desvincularTelegram'])->name('central-ia.telegram.desvincular')
         ->middleware('permissao:central_ia,editar');
     Route::get('agenda/dia/{data}', [AgendaController::class, 'dia'])->name('agenda.dia')
