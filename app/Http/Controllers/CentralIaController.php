@@ -42,6 +42,59 @@ class CentralIaController extends Controller
         ]);
     }
 
+    public function preferencias(Request $request): JsonResponse
+    {
+        $servico = app(\App\Services\CentralIa\Preferencias::class);
+        abort_unless($servico->pronta(), 503, 'A migração local dos Ajustes ainda não foi aplicada.');
+        $categorias = implode(',', array_keys($servico->ler($request->user())['padroes']));
+        $dados = $request->validate([
+            'user_id' => ['prohibited'],
+            'revisao_config' => ['required', 'integer', 'min:0'],
+            'padroes' => ['required', 'array:'.$categorias],
+            'padroes.*' => ['required', Rule::in(array_keys(CentralIaExecucao::AGENTES))],
+            'habilitados' => ['required', 'array:claude,codex,copilot'],
+            'habilitados.*' => ['required', 'boolean'],
+            'pedidos_dia' => ['required', 'array:claude,codex,copilot'],
+            'pedidos_dia.*' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'limite_total' => ['nullable', 'integer', 'min:0', 'max:30000'],
+            'paralelo' => ['required', 'integer', 'min:1', 'max:'.max(1, (int) config('central_ia.agentes.paralelo'))],
+            'fallback' => ['required', 'boolean'],
+        ]);
+        foreach (array_keys($servico->ler($request->user())['padroes']) as $c) abort_unless(array_key_exists($c, $dados['padroes']), 422);
+        foreach (array_keys(CentralIaExecucao::AGENTES) as $a) {
+            abort_unless(array_key_exists($a, $dados['habilitados']) && array_key_exists($a, $dados['pedidos_dia']), 422);
+        }
+        $regras = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $dados, $servico) {
+            \App\Models\User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
+            abort_unless($servico->ler($request->user())['revisao_config'] === $dados['revisao_config'], 409, 'Ajustes alterados em outra janela. Recarregue antes de salvar.');
+            $dados['revisao_config']++;
+            \App\Models\CentralIaPreferencia::updateOrCreate(['user_id' => $request->user()->id], ['regras' => $dados]);
+            \App\Services\CentralIa\Eventos::registrar($request->user(), 'ajustes', 'Preferências individuais de roteamento e limites atualizadas.');
+            return $servico->ler($request->user());
+        });
+        return $this->semCache(['regras' => $regras]);
+    }
+
+    /** Arquivar oculta a lista e suspende a fila; não apaga histórico nem interrompe agentes. */
+    public function arquivarChats(Request $request): JsonResponse
+    {
+        $dados = $request->validate(['ids' => ['required', 'array', 'min:1', 'max:300'], 'ids.*' => ['integer', 'min:1', 'distinct']]);
+        $resultado = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $dados) {
+            \App\Models\User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
+            $tarefas = CentralIaTarefa::de($request->user())->whereIn('id', $dados['ids'])->lockForUpdate()->get();
+            abort_unless($tarefas->count() === count($dados['ids']), 404);
+            $arquivadas = []; $rodando = [];
+            foreach ($tarefas as $t) {
+                if ($t->execucoes()->where('status', CentralIaExecucao::EXECUTANDO)->exists()) { $rodando[] = $t->id; continue; }
+                $t->update(['status' => CentralIaTarefa::ARQUIVADA]);
+                $arquivadas[] = $t->id;
+            }
+            \App\Services\CentralIa\Eventos::registrar($request->user(), 'chats_arquivados', count($arquivadas).' chats arquivados sem excluir histórico.');
+            return ['arquivadas' => $arquivadas, 'rodando' => $rodando];
+        });
+        return $this->semCache($resultado);
+    }
+
     /**
      * Projetos, atividade de todos eles, máquina e Telegram — o poll do
      * cockpit, que corre mesmo quando se olha um projeto só.
@@ -63,6 +116,8 @@ class CentralIaController extends Controller
                 'projeto' => $ultimaTelegram ? $ultimaTelegram->projeto : $vinculo?->projeto_atual,
                 'tarefa_id' => $ultimaTelegram?->tarefa_id, 'mensagem_id' => $ultimaTelegram?->id],
             'eventos' => \App\Services\CentralIa\Eventos::recentes($request->user()),
+            'preferencias' => ['disponivel' => app(\App\Services\CentralIa\Preferencias::class)->pronta(),
+                'regras' => app(\App\Services\CentralIa\Preferencias::class)->ler($request->user())],
         ]);
     }
 

@@ -26,6 +26,7 @@ class CentralIaTarefa extends Model
     public const CONCLUIDA = 'concluida';
 
     public const PAUSADA = 'pausada';
+    public const ARQUIVADA = 'arquivada';
 
     /** As que aparecem no cockpit como trabalho em curso. */
     public const EM_CURSO = [self::ABERTA, self::EXECUTANDO, self::AGUARDANDO_VOCE, self::FALHOU, self::PAUSADA];

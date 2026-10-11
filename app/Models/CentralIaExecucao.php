@@ -25,8 +25,8 @@ class CentralIaExecucao extends Model
      * com o que já está pendente no projeto nem com outra sessão aberta.
      */
     public const MODOS = [
-        'analisar' => 'Analisar (só leitura)',
-        'implementar' => 'Implementar (branch própria)',
+        'analisar' => 'Analisar / responder',
+        'implementar' => 'Implementar',
     ];
 
     public const PENDENTE = 'pendente';

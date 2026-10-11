@@ -140,6 +140,14 @@ class AgentesService
             throw ValidationException::withMessages(['agente' => 'Sua conta não pode acionar agentes.']);
         }
 
+        // Confirmar um envio já recebido não consome outro lugar da cota,
+        // mesmo que a IA tenha sido desabilitada ou atingido o teto depois.
+        if ($clientId && ($m = CentralIaMensagem::de($user)->where('client_id', $clientId)->first()) && ($e = $m->execucao)) {
+            $this->conversas->registrarDoUsuario($user, $texto, $origem, $clientId);
+            app(AnexosService::class)->associar($user, $m, $pedido['anexos'] ?? []);
+            return $e;
+        }
+
         $agente = $pedido['agente'] ?? 'auto';
         $modo = $pedido['modo'] ?? 'auto';
 
@@ -149,6 +157,9 @@ class AgentesService
         }
 
         $disponivel = $this->disponiveis($user);
+        $preferencias = app(Preferencias::class);
+        $ordens = collect(array_keys($preferencias->ler($user)['padroes']))->mapWithKeys(fn ($c) => [$c => $preferencias->ordem($user, $c)])->all();
+        $disponivel['agentes'] = array_values(array_filter($disponivel['agentes'], fn ($a) => $preferencias->pode($user, $a)));
         $projeto = (string) ($pedido['projeto'] ?? '');
         if ($origem === CentralIaMensagem::ORIGEM_TELEGRAM && app(CanalAtivo::class)->pronto()) {
             app(CanalAtivo::class)->exigir($user, 'telegram');
@@ -181,6 +192,9 @@ class AgentesService
             if (! $tarefa) {
                 throw ValidationException::withMessages(['tarefa_id' => 'Tarefa não encontrada neste projeto.']);
             }
+            if ($tarefa->status === CentralIaTarefa::ARQUIVADA) {
+                throw ValidationException::withMessages(['tarefa_id' => 'Reabra o chat arquivado antes de enviar outra solicitação.']);
+            }
         }
 
         $sessaoDoVsCode = $tarefa?->dossie['origem'] ?? null;
@@ -196,7 +210,7 @@ class AgentesService
             ? ['agente' => 'codex', 'modo' => 'implementar', 'categoria' => 'implementacao', 'manual' => false,
                 'motivo' => 'Automático: '.$disponivel['esgotados'][$sessaoDoVsCode['agente']].'; o GPT (Codex) assume a conversa com o histórico dela']
             : ($agente === 'auto'
-            ? $this->roteador->decidir($pedido['instrucao'], $disponivel['agentes'], $tarefa, $disponivel['esgotados'])
+            ? $this->roteador->decidir($pedido['instrucao'], $disponivel['agentes'], $tarefa, $disponivel['esgotados'], $ordens)
             : ['agente' => $agente, 'modo' => null, 'categoria' => null, 'manual' => true, 'motivo' => 'Escolha manual']));
 
         if ($modo === 'auto') {
@@ -225,13 +239,7 @@ class AgentesService
             // Contado dentro da transação, com a trava na conta: dois pedidos
             // simultâneos não passam juntos pelo último lugar do dia.
             User::whereKey($user->id)->lockForUpdate()->first();
-            $hoje = CentralIaExecucao::where('user_id', $user->id)->where('created_at', '>=', now()->startOfDay())
-                ->whereHas('pedido', fn ($q) => $q->where('autor_tipo', CentralIaMensagem::AUTOR_USUARIO))->count();
-
-            if (config('central_ia.agentes.limite_diario_ativo') && $hoje >= config('central_ia.agentes.limite_diario')) {
-                throw ValidationException::withMessages(['agente' => 'Limite de '.config('central_ia.agentes.limite_diario').' pedidos a agentes por dia atingido.']);
-            }
-
+            app(Preferencias::class)->exigir($user, $rota['agente']);
             $tarefa ??= CentralIaTarefa::create([
                 'user_id' => $user->id,
                 'projeto' => $projeto,
@@ -358,7 +366,7 @@ class AgentesService
             User::whereKey($user->id)->lockForUpdate()->first();
 
             $rodando = CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::EXECUTANDO);
-            if ((clone $rodando)->count() >= max(1, (int) config('central_ia.agentes.paralelo'))) {
+            if ((clone $rodando)->count() >= min(max(1, (int) config('central_ia.agentes.paralelo')), app(Preferencias::class)->ler($user)['paralelo'])) {
                 return null;
             }
 
@@ -369,6 +377,8 @@ class AgentesService
 
             $execucao = CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::PENDENTE)
                 ->whereIn('agente', $runner->agentes)
+                ->whereIn('agente', array_keys(array_filter(app(Preferencias::class)->ler($user)['habilitados'])))
+                ->where(fn ($q) => $q->whereNull('tarefa_id')->orWhereHas('tarefa', fn ($t) => $t->where('status', '!=', CentralIaTarefa::ARQUIVADA)))
                 ->where(fn ($q) => $q->whereIn('projeto', $runner->projetos)->orWhere('projeto', ''))
                 // `NOT IN` com nulo nunca casa: o pedido sem tarefa (anterior
                 // ao cockpit) entra pelo `whereNull`.
@@ -455,6 +465,7 @@ class AgentesService
     public function concluir(User $user, int $id, array $dados): CentralIaExecucao
     {
         return DB::transaction(function () use ($user, $id, $dados) {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             $execucao = CentralIaExecucao::where('user_id', $user->id)->whereKey($id)->lockForUpdate()->firstOrFail();
 
             if ($execucao->status !== CentralIaExecucao::EXECUTANDO) {
@@ -533,7 +544,7 @@ class AgentesService
     private function tentarOutroProvedor(User $user, CentralIaExecucao $anterior, string $erro): void
     {
         $tipo = FalhaDeProvedor::tipo($erro);
-        if (! config('central_ia.agentes.fallback_automatico') || ! $tipo || ! $anterior->tarefa_id) {
+        if (! app(Preferencias::class)->ler($user)['fallback'] || ! $tipo || ! $anterior->tarefa_id) {
             return;
         }
         $user->esquecerPermissoes();
@@ -552,9 +563,10 @@ class AgentesService
         $online = CentralIaRunner::where('user_id', $user->id)->get()
             ->filter(fn ($r) => $r->online() && ($anterior->projeto === '' || in_array($anterior->projeto, $r->projetos, true)))
             ->pluck('agentes')->flatten()->unique()->all();
-        $preferidos = config('central_ia.roteamento.'.($anterior->roteamento['categoria'] ?? ($anterior->modo === 'implementar' ? 'implementacao' : 'investigacao')), []);
+        if ($tarefa->status === CentralIaTarefa::ARQUIVADA) return;
+        $preferidos = app(Preferencias::class)->ordem($user, $anterior->roteamento['categoria'] ?? ($anterior->modo === 'implementar' ? 'implementacao' : 'investigacao'));
         $agente = collect($preferidos)->first(fn ($a) => in_array($a, $online, true)
-            && ! in_array($a, $tentados, true) && ! isset($disponivel['esgotados'][$a]));
+            && ! in_array($a, $tentados, true) && ! isset($disponivel['esgotados'][$a]) && app(Preferencias::class)->pode($user, $a));
         if (! $agente) {
             $this->conversas->registrarDoAgente($user, 'Central', 'Não há outro provedor disponível para este pedido. A tarefa e o histórico foram preservados; nenhuma API paga será acionada.', CentralIaMensagem::AUTOR_SISTEMA, $anterior->projeto ?: null, $tarefa->id);
             Eventos::registrar($user, 'fallback_esgotado', 'Alternativas disponíveis esgotadas; tarefa preservada.', Eventos::da($anterior), 'aviso');

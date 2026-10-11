@@ -20,6 +20,7 @@ use Illuminate\Support\Str;
 class Roteador
 {
     private array $esgotados = [];
+    private array $preferencias = [];
 
     /**
      * Ordem importa: a primeira categoria que casa decide. Implementar vem
@@ -65,11 +66,12 @@ class Roteador
             || collect(self::ANALITICO)->contains(fn ($p) => preg_match('/(^|[^\pL])'.preg_quote($p, '/').'($|[^\pL])/u', $t));
     }
 
-    public function decidir(string $instrucao, array $disponiveis, ?CentralIaTarefa $tarefa = null, array $esgotados = []): array
+    public function decidir(string $instrucao, array $disponiveis, ?CentralIaTarefa $tarefa = null, array $esgotados = [], array $preferencias = []): array
     {
         // Quem está no limite da assinatura sai da escolha automática, e o
         // motivo vai junto (ver AgentesService::esgotados).
         $this->esgotados = $esgotados;
+        $this->preferencias = $preferencias;
         $disponiveis = array_values(array_diff($disponiveis, array_keys($esgotados)));
         $texto = Str::lower(Str::squish($instrucao));
         // “Análise da implantação” continua só leitura. O substantivo indica
@@ -85,6 +87,9 @@ class Roteador
         $tem = fn (array $termos) => collect($termos)->first(fn ($t) => preg_match('/(^|[^\pL])'.preg_quote($t, '/').'($|[^\pL])/u', $texto));
 
         $analitico = $tem(self::ANALITICO);
+        if ($preferencias && $tem(['relatório', 'relatorio', 'balanço', 'balanco']) && ! $tem(self::IMPLEMENTA_DE_VERDADE)) {
+            return $this->escolher('relatorio', $analitico, $disponiveis, $tarefa);
+        }
         if ($analitico && ! $tem(self::IMPLEMENTA_DE_VERDADE)) {
             $revisao = $tem(self::CATEGORIAS['revisao']);
             $planejamento = $tem(self::CATEGORIAS['planejamento']);
@@ -108,7 +113,8 @@ class Roteador
     private function escolher(string $categoria, ?string $palavra, array $disponiveis, ?CentralIaTarefa $tarefa): array
     {
         $modo = $categoria === 'implementacao' ? 'implementar' : 'analisar';
-        $preferidos = config('central_ia.roteamento.'.$categoria, ['codex', 'claude', 'copilot']);
+        $preferidos = $this->preferencias[$categoria] ?? config('central_ia.roteamento.'.$categoria, ['codex', 'claude', 'copilot']);
+        if (! $preferidos) return $this->resultado(null, $modo, $categoria, $palavra, 'nenhum agente autorizado');
 
         // Continuidade só no MESMO tipo de pedido: implementar depois de
         // implementar fica com quem já está (trocar à toa custa um handoff);
@@ -135,7 +141,7 @@ class Roteador
     {
         $rotulos = [
             'implementacao' => 'implementação', 'revisao' => 'revisão', 'planejamento' => 'planejamento',
-            'investigacao' => 'investigação', 'apoio' => 'apoio técnico',
+            'investigacao' => 'investigação', 'apoio' => 'apoio técnico', 'relatorio' => 'relatório',
         ];
         $motivo = 'Automático: '.$rotulos[$categoria].($palavra ? " (\"{$palavra}\")" : ' (padrão)');
 

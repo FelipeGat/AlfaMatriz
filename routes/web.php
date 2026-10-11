@@ -202,6 +202,10 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // Aconteceu com o dono em 10/10/2026.
     Route::get('central-ia/painel', [CentralIaController::class, 'painel'])->name('central-ia.painel')
         ->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-painel']);
+    Route::put('central-ia/preferencias', [CentralIaController::class, 'preferencias'])->name('central-ia.preferencias')
+        ->middleware(['permissao:central_ia,editar', 'throttle:20,1,central-ia-preferencias']);
+    Route::post('central-ia/chats/arquivar', [CentralIaController::class, 'arquivarChats'])->name('central-ia.chats.arquivar')
+        ->middleware(['permissao:central_ia,editar', 'throttle:20,1,central-ia-arquivar']);
     Route::get('central-ia/mensagens', [CentralIaController::class, 'mensagens'])->name('central-ia.mensagens')
         ->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-mensagens']);
     Route::get('central-ia/projetos/{projeto}/tarefas', [CentralIaController::class, 'tarefas'])->name('central-ia.tarefas')

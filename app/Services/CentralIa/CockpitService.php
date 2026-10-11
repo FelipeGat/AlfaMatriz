@@ -75,7 +75,7 @@ class CockpitService
                 'agentes' => $maquina['agentes'],
                 'projetos' => $maquina['projetos'],
             ],
-            'paralelo' => (int) config('central_ia.agentes.paralelo'),
+            'paralelo' => min((int) config('central_ia.agentes.paralelo'), app(Preferencias::class)->ler($user)['paralelo']),
         ];
     }
 
@@ -158,7 +158,7 @@ class CockpitService
             ->whereHas('pedido', fn ($q) => $q->where('autor_tipo', CentralIaMensagem::AUTOR_USUARIO))->count();
 
         $limites = [
-            'central' => ['usados' => $pedidosHoje, 'limite' => config('central_ia.agentes.limite_diario_ativo') ? (int) config('central_ia.agentes.limite_diario') : null],
+            'central' => ['usados' => app(Preferencias::class)->usados($user), 'limite' => app(Preferencias::class)->ler($user)['limite_total']],
             'claude' => $ultimo['limites_claude'] ?? null,
             'codex' => $cota ? ['primaria' => $janelaCodex($cota['primaria'] ?? null), 'semanal' => $janelaCodex($cota['semanal'] ?? null), 'em' => $cota['em'] ?? null] : null,
             'copilot' => ['premium_mes' => $ultimo['copilot_premium_mes'] ?? null, 'franquia' => config('central_ia.agentes.copilot_premium_mes')],
