@@ -496,16 +496,16 @@
                 </select>
             </div>
 
-            <div class="flex flex-wrap gap-3 border-b border-line p-3 text-sm">
-                <label>De <input type="date" x-model="inicioAtividade" @change="carregarRelatorio('atividade')" class="rounded-control border-line bg-input"></label>
-                <label>Até <input type="date" x-model="fimAtividade" @change="carregarRelatorio('atividade')" class="rounded-control border-line bg-input"></label>
+            <div class="flex flex-wrap gap-2 border-b border-line px-3 py-2 text-xs">
+                <label>De <input type="date" x-model="inicioAtividade" @change="carregarRelatorio('atividade')" class="rounded-control border-line bg-input px-2 py-1 text-xs"></label>
+                <label>Até <input type="date" x-model="fimAtividade" @change="carregarRelatorio('atividade')" class="rounded-control border-line bg-input px-2 py-1 text-xs"></label>
                 <button @click="inicioAtividade = fimAtividade = diaHoje(); carregarRelatorio('atividade')" class="text-brand-text">Hoje</button>
             </div>
-            <div class="min-h-0 flex-1 overflow-y-auto p-3 text-sm">
+            <div class="min-h-0 flex-1 overflow-y-auto px-3 py-2 text-xs leading-5">
                 <p x-show="usuarioAtividade" class="text-ink-mute">Visão administrativa sem conteúdo privado.</p>
                 <p x-show="relatorioAtividade.truncado" class="text-warn">Limite de 1.000 registros. Reduza o período.</p>
                 <template x-for="e in (vistaAtividade === 'log' ? relatorioAtividade.eventos.filter(e => (!soProblemas || e.nivel !== 'info') && (!projetoLog || e.projeto === projetoLog)) : relatorioAtividade.execucoes)" :key="e.id">
-                    <div class="flex flex-wrap gap-3 border-b border-rule py-3"><span x-text="data(e.em || e.criada_em)"></span><strong x-text="e.tipo ? rotuloEvento(e.tipo) : execucao(e.status)"></strong><span x-text="e.agente"></span><span x-text="e.projeto"></span><span x-text="e.descricao || e.modo"></span></div>
+                    <div class="flex flex-wrap gap-x-3 gap-y-1 border-b border-rule py-2"><span x-text="data(e.em || e.criada_em)"></span><strong x-text="e.tipo ? rotuloEvento(e.tipo) : execucao(e.status)"></strong><span x-text="e.agente"></span><span x-text="e.projeto"></span><span x-text="e.descricao || e.modo"></span></div>
                 </template>
                 <p x-show="!(vistaAtividade === 'log' ? relatorioAtividade.eventos : relatorioAtividade.execucoes).length" class="text-ink-mute">Nenhuma atividade no período selecionado.</p>
             </div>
