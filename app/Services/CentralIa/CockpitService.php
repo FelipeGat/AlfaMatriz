@@ -235,6 +235,7 @@ class CockpitService
                     'duvida' => $d['duvida'] ?? null,
                     'lacunas' => $d['lacunas'] ?? [],
                     'resumo' => collect($d['resumos'] ?? [])->last()['texto'] ?? null,
+                    'ponto' => isset($d['ponto']) ? ['em' => $d['ponto']['em'], 'agente' => $d['ponto']['agente']] : null,
                 ];
             })->all();
     }

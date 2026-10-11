@@ -15,6 +15,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from 'node:fs';
 import { homedir, hostname, tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { usoLocal } from './uso-local.mjs';
 
 const HOME = homedir();
@@ -388,6 +389,11 @@ function comando(job, cwd, branch, saida) {
         // Continuação de sessão do VS Code: uma cópia, para a original ficar
         // intacta lá.
         if (sessao && job.continuar?.fork) args.push('--fork-session');
+        // O id da sessão é escolhido AQUI, antes de rodar (sessão nova ou
+        // cópia): se a execução for cortada no meio, a Central ainda sabe qual
+        // sessão retomar. Retomada simples mantém o mesmo id.
+        job.sessaoPrevista = sessao && !job.continuar?.fork ? sessao : randomUUID();
+        if (!sessao || job.continuar?.fork) args.push('--session-id', job.sessaoPrevista);
         if (total) {
             args.push('--permission-mode', 'bypassPermissions', '--add-dir', cfg.projetos);
         } else if (escreve) {
@@ -514,7 +520,7 @@ async function executar(job) {
             checkpoint: checkpoint(cwd, dir),
         };
     } catch (e) {
-        resultado = { status: 'falhou', erro: String(e.message || e).slice(0, 1900) };
+        resultado = { status: 'falhou', erro: String(e.message || e).slice(0, 1900), sessao_agente: job.sessaoPrevista || null };
         // Mesmo na falha o estado do git interessa: é dele que parte quem
         // assumir a tarefa depois.
         if (job.tarefa?.worktree && existsSync(job.tarefa.worktree)) resultado.checkpoint = checkpoint(job.tarefa.worktree, join(cfg.projetos, job.projeto));

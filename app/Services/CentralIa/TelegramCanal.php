@@ -180,6 +180,7 @@ class TelegramCanal
             $comando === '/nova' => $this->pedirNoProjeto($user, $vinculo, $chatId, trim($resto), $texto, $updateId, novaTarefa: true),
             $comando === '/trocar' => $this->trocar($user, $vinculo, $chatId, trim($resto), $texto, $updateId),
             $comando === '/continuar' => $this->continuar($user, $vinculo, $chatId, trim($resto)),
+            $comando === '/salvar' => $this->salvar($user, $vinculo, $chatId),
             $comando !== null => $this->responder($chatId, $this->ajuda()),
             filled($vinculo->projeto_atual) => $this->pedirNoProjeto($user, $vinculo, $chatId, $texto, $texto, $updateId),
             // Sem projeto, mas é um pedido de resposta ("resumo da minha
@@ -343,6 +344,20 @@ class TelegramCanal
         }
     }
 
+    /** `/salvar`: ponto na tarefa mais recente do projeto em uso. */
+    private function salvar(User $user, CentralIaTelegramVinculo $vinculo, int $chatId): void
+    {
+        $tarefa = blank($vinculo->projeto_atual) ? null : CentralIaTarefa::de($user)->where('projeto', $vinculo->projeto_atual)
+            ->emCurso()->orderByDesc('ultima_atividade_em')->first();
+        if (! $tarefa) {
+            $this->responder($chatId, 'Sem tarefa em curso para salvar. Use /usar <projeto> antes.');
+
+            return;
+        }
+        $this->agentes->salvarPonto($user, $tarefa, CentralIaMensagem::ORIGEM_TELEGRAM);
+        $this->responder($chatId, "Salvando ponto da tarefa #{$tarefa->id} em {$tarefa->projeto}: o agente vai resumir o estado, e os próximos pedidos começam enxutos a partir do resumo.");
+    }
+
     private function textoProjetos(User $user, CentralIaTelegramVinculo $vinculo): string
     {
         $projetos = $this->cockpit->montar($user)['projetos'];
@@ -375,7 +390,7 @@ class TelegramCanal
     {
         return "Comandos:\n/projetos — projetos do cockpit\n/status — o que roda e o que espera você\n/usar <projeto> — mensagens viram pedidos nele\n"
             ."/nova <pedido> — tarefa nova no projeto em uso\n/geral — sai do projeto\n/auto, /claude, /gpt, /copilot — agente dos próximos pedidos\n"
-            ."/trocar <agente> [pedido] — passa a tarefa atual para outro agente\n/continuar <projeto> [agente] — segue a conversa do VS Code daquele projeto\n/claude <projeto> <pedido> — pedido direto (com ! para implementar)";
+            ."/trocar <agente> [pedido] — passa a tarefa atual para outro agente\n/continuar <projeto> [agente] — segue a conversa do VS Code daquele projeto\n/salvar — salva um ponto na tarefa atual (a conversa recomeça enxuta)\n/claude <projeto> <pedido> — pedido direto (com ! para implementar)";
     }
 
     private function parear(int $chatId, string $codigo, ?string $usuarioTelegram): void

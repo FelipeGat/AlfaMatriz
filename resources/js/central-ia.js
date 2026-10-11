@@ -73,7 +73,7 @@ export function centralIa(config) {
         corDoNivel(n) { return { erro: 'text-crit', aviso: 'text-warn' }[n] || 'text-ink-faint'; },
         rotuloEvento(t) {
             return { pedido: 'pedido', inicio: 'início', concluida: 'concluído', falhou: 'FALHOU', expirada: 'SEM RESPOSTA', troca_de_agente: 'troca de agente',
-                recusado: 'recusado', sessao_continuada: 'conversa do VS Code' }[t] || t;
+                recusado: 'recusado', sessao_continuada: 'conversa do VS Code', ponto_salvo: 'ponto salvo' }[t] || t;
         },
 
         /** A barra de projetos agrupada, já filtrada pela busca. */
@@ -357,6 +357,12 @@ export function centralIa(config) {
                 this.aba.tarefa = r.tarefa_id; this.aba.agente = 'auto'; this.aba.modo = 'auto';
                 this.$nextTick(() => document.getElementById('central-rascunho')?.focus());
             } catch (erro) { this.falhou(erro); }
+        },
+
+        async salvarPonto(t) {
+            if (!confirm(`Salvar ponto da tarefa #${t.id}? O agente resume o estado e os próximos pedidos começam enxutos a partir do resumo.`)) return;
+            try { await this.pedir(config.ponto.replace('__T__', t.id), 'POST', {}); this.sub = 'conversa'; this.reconectar(); }
+            catch (erro) { this.falhou(erro); }
         },
 
         async mudarTarefa(id, status) {

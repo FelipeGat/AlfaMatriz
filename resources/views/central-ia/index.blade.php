@@ -15,6 +15,7 @@
                 tarefas: '{{ route('central-ia.tarefas', '__P__') }}',
                 fixar: '{{ route('central-ia.fixar', '__P__') }}',
                 statusTarefa: '{{ url('central-ia/tarefas/__T__/status') }}',
+                ponto: '{{ url('central-ia/tarefas/__T__/ponto') }}',
                 continuar: '{{ route('central-ia.sessoes.continuar') }}',
                 grupos: '{{ route('central-ia.grupos.criar') }}',
                 grupo: '{{ url('central-ia/grupos/__G__') }}',
@@ -281,8 +282,11 @@
                                     <p class="font-semibold text-ink" x-text="'#' + tarefaVista.id + ' ' + tarefaVista.titulo"></p>
                                     <p class="text-xs text-ink-mute" x-text="'Agente atual: ' + (tarefaVista.agente || '—') + (tarefaVista.agentes.length > 1 ? ' · já passaram: ' + tarefaVista.agentes.join(', ') : '')"></p>
                                     <p class="text-xs text-ink-faint" x-show="tarefaVista.ultima_execucao?.motivo" x-text="tarefaVista.ultima_execucao?.motivo"></p>
+                                    <p class="text-xs text-ink-faint" x-show="tarefaVista.ponto" x-text="'💾 Ponto salvo ' + haQuanto(tarefaVista.ponto?.em) + ' por ' + tarefaVista.ponto?.agente + ' — a conversa segue enxuta a partir dele'"></p>
                                 </div>
-                                <div class="flex gap-3 text-xs">
+                                <div class="flex flex-wrap gap-3 text-xs">
+                                    <button type="button" @click="salvarPonto(tarefaVista)" class="font-semibold text-brand-text"
+                                            title="O agente resume o estado da tarefa; os próximos pedidos começam uma conversa nova, enxuta, a partir do resumo">💾 Salvar ponto</button>
                                     <button type="button" x-show="tarefaVista.status !== 'concluida'" @click="mudarTarefa(tarefaVista.id, 'concluida')" class="font-semibold text-good">Concluir</button>
                                     <button type="button" x-show="!['pausada','concluida'].includes(tarefaVista.status)" @click="mudarTarefa(tarefaVista.id, 'pausada')" class="font-semibold text-ink-mute">Pausar</button>
                                     <button type="button" x-show="['pausada','concluida','falhou'].includes(tarefaVista.status)" @click="mudarTarefa(tarefaVista.id, 'aberta')" class="font-semibold text-ink-mute">Reabrir</button>
@@ -585,7 +589,7 @@
                         @endif
                     </div>
                 </template>
-                <p class="mt-3 text-xs text-ink-faint">Comandos: <code class="font-mono">/projetos</code>, <code class="font-mono">/status</code>, <code class="font-mono">/usar gestor</code>, <code class="font-mono">/continuar gestor</code>, <code class="font-mono">/nova</code>, <code class="font-mono">/geral</code>, <code class="font-mono">/trocar codex</code>, <code class="font-mono">/claude</code> · <code class="font-mono">/gpt</code> · <code class="font-mono">/copilot</code> · <code class="font-mono">/auto</code>. Também vale escrever "continuar gestor de onde paramos".</p>
+                <p class="mt-3 text-xs text-ink-faint">Comandos: <code class="font-mono">/projetos</code>, <code class="font-mono">/status</code>, <code class="font-mono">/usar gestor</code>, <code class="font-mono">/continuar gestor</code>, <code class="font-mono">/nova</code>, <code class="font-mono">/geral</code>, <code class="font-mono">/trocar codex</code>, <code class="font-mono">/salvar</code>, <code class="font-mono">/claude</code> · <code class="font-mono">/gpt</code> · <code class="font-mono">/copilot</code> · <code class="font-mono">/auto</code>. Também vale escrever "continuar gestor de onde paramos".</p>
             </div>
 
             <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">

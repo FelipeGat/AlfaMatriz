@@ -165,6 +165,11 @@ class Dossie
             }
         };
 
+        if ($p = $d['ponto'] ?? null) {
+            $l[] = "\n### PONTO SALVO em {$p['em']} por {$p['agente']} — é daqui que você continua";
+            $l[] = $p['resumo'];
+        }
+
         $secao('Pedidos da pessoa (mais recentes por último)', array_map(fn ($p) => $p['texto'], array_slice($d['pedidos'], -8)));
         $secao('Decisões já tomadas', array_map(fn ($x) => "{$x['texto']} ({$x['agente']})", array_slice($d['decisoes'], -12)));
         $secao('O que cada agente fez', array_map(fn ($x) => "{$x['agente']}, execução #{$x['execucao']}: {$x['texto']}", array_slice($d['resumos'], -6)));
@@ -187,6 +192,6 @@ class Dossie
             $l[] = 'Se bater, siga com o pedido. Se não bater, ou faltar contexto para continuar com segurança, NÃO altere nada: explique a divergência e use o campo "duvida" do bloco final.';
         }
 
-        return Str::limit(implode("\n", $l), 12000);
+        return Str::limit(implode("\n", $l), 24000);
     }
 }

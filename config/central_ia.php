@@ -12,6 +12,9 @@ return [
         // Teto de uma execução no runner. Quem passa disso é encerrado lá; aqui,
         // a execução sem notícia depois do teto + 5 min vira `expirada`.
         'timeout_minutos' => (int) env('CENTRAL_IA_TIMEOUT_MINUTOS', 15),
+        // Implementar leva mais: a rodada de QA do gestor (10/10/2026) não
+        // coube em 15 min e foi cortada no meio.
+        'timeout_implementar_minutos' => (int) env('CENTRAL_IA_TIMEOUT_IMPLEMENTAR_MINUTOS', 60),
         // Execuções ao mesmo tempo por pessoa. A máquina do Felipe tem 6 CPUs
         // e ~7 GB na WSL: cinco projetos À VISTA, dois rodando (dono, 10/10).
         // Uma mesma tarefa nunca roda duas vezes ao mesmo tempo.

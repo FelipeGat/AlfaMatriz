@@ -139,6 +139,66 @@ class GruposEventosLimitesTest extends TestCase
         $this->assertSame('/home/x/projetos', $job['tarefa']['worktree']);
     }
 
+    /**
+     * O "continuar" do gestor foi cortado aos 15 min sem devolver a sessão
+     * (10/10/2026). O pedido seguinte precisa retomar a última sessão
+     * CONHECIDA, e não começar uma conversa nova sem histórico.
+     */
+    public function test_depois_de_execucao_cortada_retoma_a_ultima_sessao_conhecida(): void
+    {
+        $user = $this->comCentral();
+        $tarefa = $this->pedir($user, 'Implemente o filtro', ['agente' => 'claude'])->json('tarefa_id');
+        Sanctum::actingAs($user, ['central-ia-runner']);
+        $j1 = $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->json();
+        $this->assertSame(60, $j1['timeout_minutos'], 'Implementar tem 60 min.');
+        $this->postJson(route('central-ia.runner.concluir', $j1['id']), ['status' => 'concluida', 'resposta' => 'ok',
+            'sessao_agente' => 'sessao-boa', 'checkpoint' => ['cwd' => '/p/gestor']])->assertOk();
+
+        $this->pedir($user, 'continuar', ['agente' => 'claude', 'tarefa_id' => $tarefa]);
+        Sanctum::actingAs($user, ['central-ia-runner']);
+        $j2 = $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->json();
+        $this->postJson(route('central-ia.runner.concluir', $j2['id']), ['status' => 'falhou', 'erro' => 'passou de 60 minutos'])->assertOk();
+
+        $this->pedir($user, 'continuar de novo', ['agente' => 'claude', 'tarefa_id' => $tarefa]);
+        Sanctum::actingAs($user, ['central-ia-runner']);
+        $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])
+            ->assertJsonPath('continuar.sessao', 'sessao-boa')
+            ->assertJsonPath('continuar.cwd', '/p/gestor');
+
+        $this->pedir($user, 'Analise o desempenho', ['agente' => 'codex', 'modo' => 'analisar', 'projeto' => 'alfahome']);
+        Sanctum::actingAs($user, ['central-ia-runner']);
+        $this->assertSame(15, $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->json('timeout_minutos'));
+    }
+
+    /**
+     * "Armazenar quando quisermos" (dono, 10/10/2026): o ponto é escrito pela
+     * sessão que tem o contexto, e depois dele a conversa recomeça enxuta.
+     */
+    public function test_ponto_salvo_resume_e_a_conversa_recomeca_enxuta(): void
+    {
+        $user = $this->comCentral();
+        $tarefa = $this->pedir($user, 'Implemente o filtro', ['agente' => 'claude'])->json('tarefa_id');
+        Sanctum::actingAs($user, ['central-ia-runner']);
+        $j = $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->json();
+        $this->postJson(route('central-ia.runner.concluir', $j['id']), ['status' => 'concluida', 'resposta' => 'feito', 'sessao_agente' => 'longa', 'checkpoint' => ['cwd' => '/p']]);
+
+        $this->actingAs($user)->postJson(route('central-ia.tarefas.ponto', $tarefa))->assertCreated();
+        Sanctum::actingAs($user, ['central-ia-runner']);
+        $p = $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->assertJsonPath('continuar.sessao', 'longa')->json();
+        $this->assertSame('analisar', $p['modo']);
+        $this->postJson(route('central-ia.runner.concluir', $p['id']), ['status' => 'concluida', 'resposta' => 'RESUMO: filtro pronto, falta o teste X.', 'sessao_agente' => 'longa', 'checkpoint' => ['cwd' => '/p']]);
+
+        $this->pedir($user, 'continuar', ['agente' => 'claude', 'tarefa_id' => $tarefa]);
+        Sanctum::actingAs($user, ['central-ia-runner']);
+        $depois = $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->json();
+
+        $this->assertNull($depois['continuar'], 'Depois do ponto, sessão nova.');
+        $this->assertStringContainsString('PONTO SALVO', $depois['contexto']);
+        $this->assertStringContainsString('falta o teste X', $depois['contexto']);
+        $this->actingAs($user)->getJson(route('central-ia.tarefas', 'gestor'))->assertJsonPath('tarefas.0.ponto.agente', 'Claude');
+        $this->assertSame(1, DB::table('central_ia_eventos')->where('tipo', 'ponto_salvo')->count());
+    }
+
     public function test_acesso_total_e_uma_implementacao_por_projeto(): void
     {
         $user = $this->comCentral();

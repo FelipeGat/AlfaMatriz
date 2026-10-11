@@ -368,13 +368,21 @@ class AgentesService
         $anterior = CentralIaExecucao::where('tarefa_id', $tarefa?->id)->where('id', '<', $execucao->id)
             ->whereIn('status', [CentralIaExecucao::CONCLUIDA, CentralIaExecucao::FALHOU])
             ->orderByDesc('id')->first();
-        $mesmoAgente = $anterior && $anterior->agente === $execucao->agente && $anterior->sessao_agente;
+        // A última sessão CONHECIDA deste agente na tarefa — não a da última
+        // execução: uma execução cortada no meio (teto de tempo) pode não ter
+        // devolvido a sessão, e retomar "do nada" perderia a conversa inteira.
+        // Depois de um ponto salvo, nada de antes dele é retomado: começa
+        // sessão nova, com o resumo do ponto no contexto.
+        $corte = (int) ($tarefa?->dossie['ponto']['execucao'] ?? 0);
+        $sessaoConhecida = CentralIaExecucao::where('tarefa_id', $tarefa?->id)->where('id', '<', $execucao->id)->where('id', '>', $corte)
+            ->where('agente', $execucao->agente)->whereNotNull('sessao_agente')->orderByDesc('id')->first();
+        $mesmoAgente = $anterior && $anterior->agente === $execucao->agente && $sessaoConhecida;
         $sessaoDoVsCode = $tarefa?->dossie['origem'] ?? null;
         // Primeira execução da continuação: retoma a sessão do VS Code (no
         // Claude, uma cópia dela). Depois, a sessão já é a desta tarefa.
         $continuar = $mesmoAgente
-            ? ['sessao' => $anterior->sessao_agente, 'cwd' => $anterior->checkpoint['cwd'] ?? null, 'fork' => false]
-            : (! $anterior && $sessaoDoVsCode && $sessaoDoVsCode['agente'] === $execucao->agente
+            ? ['sessao' => $sessaoConhecida->sessao_agente, 'cwd' => $sessaoConhecida->checkpoint['cwd'] ?? null, 'fork' => false]
+            : (! $anterior && ! $corte && $sessaoDoVsCode && $sessaoDoVsCode['agente'] === $execucao->agente
                 ? ['sessao' => $sessaoDoVsCode['sessao'], 'cwd' => $sessaoDoVsCode['cwd'], 'fork' => $execucao->agente === 'claude']
                 : null);
 
@@ -384,7 +392,7 @@ class AgentesService
             'projeto' => $execucao->projeto,
             'modo' => $execucao->modo,
             'instrucao' => $execucao->instrucao,
-            'timeout_minutos' => config('central_ia.agentes.timeout_minutos'),
+            'timeout_minutos' => $this->teto($execucao),
             'tarefa' => $tarefa ? [
                 'id' => $tarefa->id,
                 'titulo' => $tarefa->titulo,
@@ -392,7 +400,7 @@ class AgentesService
                 'branch' => $tarefa->branch,
                 'commit_base' => $tarefa->commit_base,
             ] : null,
-            'contexto' => $tarefa && $anterior ? Dossie::paraPrompt($tarefa, $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null) : null,
+            'contexto' => $tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null) : null,
             'bloco' => Dossie::instrucaoDoBloco(),
             'fontes' => $execucao->roteamento['fontes'] ?? [],
             'continuar' => $continuar,
@@ -400,7 +408,7 @@ class AgentesService
             'na_pasta' => (bool) config('central_ia.agentes.implementar_na_pasta'),
             // Outro agente assumindo uma conversa do VS Code: o runner lê o
             // histórico dela e põe no prompt (só texto, sem ferramentas).
-            'importar' => ! $continuar && $sessaoDoVsCode && $sessaoDoVsCode['agente'] !== $execucao->agente
+            'importar' => ! $continuar && ! $corte && $sessaoDoVsCode && $sessaoDoVsCode['agente'] !== $execucao->agente
                 && ! CentralIaExecucao::where('tarefa_id', $tarefa?->id)->where('agente', $execucao->agente)->where('id', '<', $execucao->id)->exists()
                 ? $sessaoDoVsCode : null,
         ];
@@ -444,6 +452,12 @@ class AgentesService
 
             if ($tarefa) {
                 $dossie = Dossie::aplicarConclusao($tarefa->dossie ?? Dossie::inicial($tarefa->objetivo), $execucao, $bloco, $checkpoint);
+                if ($ok && ($execucao->roteamento['tipo'] ?? null) === 'ponto') {
+                    $dossie['ponto'] = ['execucao' => $execucao->id, 'agente' => $execucao->nomeDoAgente(), 'em' => now()->toIso8601String(),
+                        'resumo' => \Illuminate\Support\Str::limit($texto, 12000)];
+                    Eventos::registrar($user, 'ponto_salvo', "Ponto salvo na tarefa #{$tarefa->id} por {$execucao->nomeDoAgente()}: os próximos pedidos começam sessão nova com o resumo",
+                        Eventos::da($execucao) + ['origem' => 'runner']);
+                }
                 $status = match (true) {
                     ! $ok => CentralIaTarefa::FALHOU,
                     filled($dossie['duvida']) => CentralIaTarefa::AGUARDANDO_VOCE,
@@ -474,16 +488,46 @@ class AgentesService
         });
     }
 
+    public const INSTRUCAO_DO_PONTO = 'PONTO DE SALVAMENTO desta tarefa. Não altere nada. Escreva um resumo completo para que uma '
+        .'sessão NOVA continue só com ele, sem o histórico desta conversa: objetivo, o que já está pronto, o que está em andamento, '
+        .'decisões tomadas (e por quê), arquivos alterados, testes e resultados, estado do git, pendências, riscos e o próximo passo exato. '
+        .'Seja específico (caminhos, comandos, nomes). Preencha também o bloco final.';
+
+    /**
+     * "Armazenar" a conversa num ponto (pedido do dono em 10/10/2026: "para
+     * não ficar um chat enorme no contexto"). O agente que conduz a tarefa
+     * escreve o resumo; a partir dele, os pedidos começam sessão NOVA com o
+     * resumo e o dossiê, em vez de arrastar o histórico inteiro.
+     */
+    public function salvarPonto(User $user, CentralIaTarefa $tarefa, string $origem): CentralIaExecucao
+    {
+        $agente = $tarefa->agente_atual ?: 'auto';
+        $execucao = $this->pedir($user, '💾 Salvar ponto da tarefa #'.$tarefa->id, [
+            'projeto' => $tarefa->projeto, 'agente' => $agente, 'modo' => 'analisar',
+            'instrucao' => self::INSTRUCAO_DO_PONTO, 'tarefa_id' => $tarefa->id,
+        ], $origem);
+        $execucao->update(['roteamento' => ['tipo' => 'ponto'] + ($execucao->roteamento ?? [])]);
+
+        return $execucao;
+    }
+
+    /** Teto de uma execução no runner: implementar tem mais tempo que analisar. */
+    public function teto(CentralIaExecucao $e): int
+    {
+        return $e->modo === 'implementar'
+            ? (int) config('central_ia.agentes.timeout_implementar_minutos')
+            : (int) config('central_ia.agentes.timeout_minutos');
+    }
+
     /**
      * Execução sem notícia além do teto: o runner caiu ou a máquina desligou.
      * Vira `expirada` com aviso na conversa, e a fila da pessoa anda.
      */
     public function expirarPresas(User $user): void
     {
-        $limite = now()->subMinutes(config('central_ia.agentes.timeout_minutos') + 5);
-
         CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::EXECUTANDO)
-            ->where('iniciada_em', '<', $limite)->get()
+            ->where('iniciada_em', '<', now()->subMinutes(config('central_ia.agentes.timeout_minutos') + 5))->get()
+            ->filter(fn (CentralIaExecucao $e) => $e->iniciada_em->lt(now()->subMinutes($this->teto($e) + 5)))
             ->each(function (CentralIaExecucao $e) use ($user) {
                 $aviso = $this->conversas->registrarDoAgente($user, 'Central', "{$e->nomeDoAgente()} não respondeu a tempo em {$e->projeto}; o pedido foi encerrado.", CentralIaMensagem::AUTOR_SISTEMA, $e->projeto ?: null, $e->tarefa_id);
                 $e->update(['status' => CentralIaExecucao::EXPIRADA, 'resposta_id' => $aviso->id, 'concluida_em' => now()]);

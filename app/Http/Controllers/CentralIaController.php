@@ -253,6 +253,16 @@ class CentralIaController extends Controller
         return $this->semCache(['status' => $t->status]);
     }
 
+    /** Salva um ponto na tarefa: o agente resume, e a conversa recomeça enxuta. */
+    public function salvarPonto(Request $request, int $tarefa): JsonResponse
+    {
+        abort_unless($request->user()->canPermissao('central_ia_agentes', 'incluir'), 403, 'Sua conta não pode acionar agentes.');
+        $t = CentralIaTarefa::de($request->user())->findOrFail($tarefa);
+        $execucao = $this->agentes->salvarPonto($request->user(), $t, CentralIaMensagem::ORIGEM_WEB);
+
+        return $this->semCache(['id' => $execucao->id], 201);
+    }
+
     public function codigoTelegram(Request $request): JsonResponse
     {
         $codigo = $this->telegram->gerarCodigo($request->user());
