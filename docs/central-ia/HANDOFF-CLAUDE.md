@@ -321,3 +321,7 @@ deploy, inferência, migração real ou reinício existente como passo implícit
 validar o candidato em laboratório e preparar a adaptação para banco único.
 O objetivo imediato não é ligar o módulo a qualquer custo: é tornar a entrega
 segura e verificável para a ativação local de Felipe, preservando seus dados.
+
+## Governança administrativa por usuário — 11/10/2026
+
+Filtro de metadados em Atividade e cotas por conta em Ajustes implementados. Consulte `governanca-usuarios.md`. Não habilitar Alexandre com o runner amplo atual: execução de contas não administrativas bloqueada no backend até comprovar isolamento individual. Não confundir preferências de provedores com permissão de deploy/OneDrive. Nenhuma política real foi gravada automaticamente nesta etapa.

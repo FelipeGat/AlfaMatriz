@@ -38,6 +38,8 @@ export function centralIa(config) {
         // Painel (todos os projetos)
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
+        administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
+        politicaUsuario: null, politicaAlterada: false, salvandoPolitica: false, carregandoUsuario: false,
         projetos: [], atividade: [], maquina: { online: false, agentes: [], projetos: [] }, paralelo: 2,
         recentes: [], consumo: { por_agente: [], projetos_hoje: [], cota_codex: null, serie: [], limites: null }, sessoes: [], periodo: 'hoje',
         grupos: [], busca: '', recolhidos: [], tela: 'projetos', sub: 'conversa',
@@ -262,6 +264,10 @@ export function centralIa(config) {
 
         falhou(erro) {
             this.falhas++;
+            if ([401, 403, 419].includes(erro.status)) {
+                this.administracao = { permitida: false, usuarios: [] };
+                this.usuarioAtividade = ''; this.resumoUsuario = null; this.politicaUsuario = null;
+            }
             if ([401, 419].includes(erro.status) || (erro.status === 403 && !erro.detalhe)) {
                 this.bloqueado = true; this.conexao = 'bloqueado'; this.abas = {}; this.garantirAba();
                 this.aviso = 'Sua sessão ou permissão mudou. Entre novamente no AlfaMatriz para continuar.';
@@ -298,6 +304,9 @@ export function centralIa(config) {
                 const painel = await this.pedir(config.painel);
                 this.chats = painel.chats || [];
                 this.preferencias = painel.preferencias || null;
+                this.administracao = painel.administracao || { permitida: false, usuarios: [] };
+                if (!this.administracao.permitida) { this.usuarioAtividade = ''; this.resumoUsuario = null; this.politicaUsuario = null; }
+                else if (this.usuarioAtividade) this.carregarUsuario(false);
                 if (!this.ajustesAlterados && this.preferencias) this.ajustes = JSON.parse(JSON.stringify(this.preferencias.regras));
                 this.projetos = painel.projetos; this.atividade = painel.atividade; this.maquina = painel.maquina;
                 this.atendimento = painel.canal || { disponivel: false, ativo: 'web' };
@@ -483,6 +492,35 @@ export function centralIa(config) {
                 this.reconectar();
             } catch (e) { this.aviso = e.detalhe || 'Não foi possível salvar seus ajustes.'; }
             finally { this.salvandoAjustes = false; }
+        },
+
+        async carregarUsuario(trocou = true) {
+            if (trocou) { this.resumoUsuario = null; this.politicaUsuario = null; this.politicaAlterada = false; }
+            if (!this.usuarioAtividade || !this.administracao.permitida) return;
+            const id = String(this.usuarioAtividade);
+            this.carregandoUsuario = true;
+            try {
+                const r = await this.pedir(this.url(config.administracao, { usuario: id }));
+                if (id !== String(this.usuarioAtividade) || !this.administracao.permitida) return;
+                this.resumoUsuario = r;
+                if (!this.politicaAlterada && !this.salvandoPolitica) this.politicaUsuario = JSON.parse(JSON.stringify(r.politica));
+            } catch (e) {
+                if (id === String(this.usuarioAtividade)) { this.resumoUsuario = null; this.politicaUsuario = null; this.aviso = e.detalhe || 'Não foi possível consultar o uso administrativo.'; if ([401, 403, 419].includes(e.status)) this.falhou(e); }
+            } finally { if (id === String(this.usuarioAtividade)) this.carregandoUsuario = false; }
+        },
+
+        async salvarPolitica() {
+            if (!this.politicaUsuario || this.salvandoPolitica || !this.administracao.permitida) return;
+            const id = String(this.usuarioAtividade);
+            const { revisao, habilitados, pedidos_dia, limite_total, paralelo } = this.politicaUsuario;
+            this.salvandoPolitica = true;
+            try {
+                const r = await this.pedir(config.politicaUsuario.replace('__U__', id), 'PUT', { revisao, habilitados, pedidos_dia, limite_total, paralelo });
+                if (id !== String(this.usuarioAtividade) || !this.administracao.permitida) return;
+                this.resumoUsuario = r; this.politicaUsuario = r.politica; this.politicaAlterada = false;
+                this.aviso = 'Política salva. Execução continua bloqueada até validar o executor isolado; deploy e OneDrive não foram liberados.';
+            } catch (e) { if (id === String(this.usuarioAtividade)) { this.aviso = e.detalhe || 'Não foi possível salvar a política.'; if ([401, 403, 419].includes(e.status)) this.falhou(e); } }
+            finally { this.salvandoPolitica = false; }
         },
 
         async arquivarChats() {

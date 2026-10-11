@@ -24,6 +24,8 @@
                 canal: '{{ route('central-ia.canal') }}',
                 preferencias: '{{ route('central-ia.preferencias') }}',
                 arquivarChats: '{{ route('central-ia.chats.arquivar') }}',
+                administracao: '{{ route('central-ia.administracao') }}',
+                politicaUsuario: '{{ url('central-ia/usuarios/__U__/politica') }}',
                 telegramCodigo: '{{ route('central-ia.telegram.codigo') }}',
                 telegramDesvincular: '{{ route('central-ia.telegram.desvincular') }}',
                 podeEnviar: {{ $podeEnviar ? 'true' : 'false' }},
@@ -461,17 +463,23 @@
                 <button type="button" @click="vistaAtividade = 'log'" class="rounded-ctl px-2.5 py-1 font-semibold" :class="vistaAtividade === 'log' ? 'bg-nav-active text-ink' : 'text-ink-mute'">Log de eventos</button>
                 <button type="button" @click="vistaAtividade = 'execucoes'" class="rounded-ctl px-2.5 py-1 font-semibold" :class="vistaAtividade === 'execucoes' ? 'bg-nav-active text-ink' : 'text-ink-mute'">Execuções</button>
                 <span class="mx-1 h-4 w-px bg-line"></span>
-                <label class="flex items-center gap-1 text-ink-dim" x-show="vistaAtividade === 'log'">
+                <label x-show="administracao.permitida" class="flex items-center gap-2">Usuário
+                    <select x-model="usuarioAtividade" @change="carregarUsuario()" class="rounded-control border-line bg-input py-0.5 text-xs text-ink">
+                        <option value="">Minha atividade</option>
+                        <template x-for="u in administracao.usuarios" :key="u.id"><option :value="u.id" x-text="u.nome + (u.ativo ? '' : ' (inativo)')"></option></template>
+                    </select>
+                </label>
+                <label class="flex items-center gap-1 text-ink-dim" x-show="vistaAtividade === 'log' && !usuarioAtividade">
                     <input type="checkbox" x-model="soProblemas" class="rounded border-line bg-input text-brand focus:ring-brand"> só problemas
                 </label>
-                <select x-model="projetoLog" x-show="vistaAtividade === 'log'" class="rounded-control border-line bg-input py-0.5 text-xs text-ink focus:border-brand focus:ring-brand">
+                <select x-model="projetoLog" x-show="vistaAtividade === 'log' && !usuarioAtividade" class="rounded-control border-line bg-input py-0.5 text-xs text-ink focus:border-brand focus:ring-brand">
                     <option value="">Todos os projetos</option>
                     <template x-for="p in projetosDoLog" :key="p"><option :value="p" x-text="p"></option></template>
                 </select>
             </div>
 
             {{-- Log: quando, o quê, onde, qual agente, o que aconteceu --}}
-            <ul x-show="vistaAtividade === 'log'" class="min-h-0 flex-1 divide-y divide-rule overflow-y-auto">
+            <ul x-show="vistaAtividade === 'log' && !usuarioAtividade" class="min-h-0 flex-1 divide-y divide-rule overflow-y-auto">
                 <li x-show="!eventosFiltrados.length" class="px-4 py-3 text-sm text-ink-faint">Nenhum evento.</li>
                 <template x-for="e in eventosFiltrados" :key="e.id">
                     <li class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 px-4 py-1.5 text-xs md:grid-cols-[6.5rem_7.5rem_9rem_8rem_minmax(0,1fr)]">
@@ -485,7 +493,23 @@
                 </template>
             </ul>
 
-            <ul x-show="vistaAtividade === 'execucoes'" class="min-h-0 flex-1 divide-y divide-rule overflow-y-auto">
+            <div x-show="usuarioAtividade && administracao.permitida" class="min-h-0 flex-1 overflow-y-auto p-4 text-sm">
+                <p class="text-ink-mute">Visão administrativa: uso, estado e tipo de operação. Conversas, instruções, arquivos e credenciais permanecem privados.</p>
+                <p x-show="carregandoUsuario" class="mt-2 text-ink-faint">Atualizando…</p>
+                <template x-if="resumoUsuario">
+                    <div class="mt-3 space-y-3">
+                        <h3 class="font-semibold text-ink" x-text="resumoUsuario.usuario.nome"></h3>
+                        <p class="text-ink-mute" x-text="'Solicitações hoje: Claude ' + resumoUsuario.uso_hoje.claude + ' · Codex ' + resumoUsuario.uso_hoje.codex + ' · Copilot ' + resumoUsuario.uso_hoje.copilot"></p>
+                        <ul x-show="vistaAtividade === 'execucoes'" class="divide-y divide-rule">
+                            <template x-for="e in resumoUsuario.execucoes" :key="e.id"><li class="flex flex-wrap gap-3 py-2 text-xs text-ink-mute"><span x-text="data(e.em)"></span><span x-text="e.agente"></span><span x-text="e.modo"></span><span x-text="execucao(e.status)"></span></li></template>
+                        </ul>
+                        <ul x-show="vistaAtividade === 'log' && !usuarioAtividade" class="divide-y divide-rule">
+                            <template x-for="e in resumoUsuario.eventos" :key="e.id"><li class="flex flex-wrap gap-3 py-2 text-xs text-ink-mute"><span x-text="data(e.em)"></span><span x-text="rotuloEvento(e.tipo)"></span><span x-text="e.nivel"></span></li></template>
+                        </ul>
+                    </div>
+                </template>
+            </div>
+            <ul x-show="vistaAtividade === 'execucoes' && !usuarioAtividade" class="min-h-0 flex-1 divide-y divide-rule overflow-y-auto">
                 <li x-show="!atividade.length" class="px-4 py-3 text-sm text-ink-faint">Nenhum pedido a agente ainda.</li>
                 <template x-for="a in atividade" :key="a.id">
                     <li>
@@ -647,9 +671,34 @@
 
         {{-- ================= AJUSTES ================= --}}
         <div x-show="tela === 'ajustes'" x-cloak class="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto lg:grid-cols-2">
+            <div x-show="administracao.permitida" class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
+                <h3 class="font-semibold text-ink">Administração de uso por usuário</h3>
+                <label class="mt-2 block text-ink-mute">Usuário
+                    <select x-model="usuarioAtividade" @change="carregarUsuario()" :disabled="salvandoPolitica" class="mt-1 rounded-control border-line bg-input text-sm text-ink">
+                        <option value="">Selecione outra conta</option>
+                        <template x-for="u in administracao.usuarios" :key="u.id"><option :value="u.id" x-text="u.nome + ' · #' + u.id"></option></template>
+                    </select>
+                </label>
+                <template x-if="politicaUsuario && resumoUsuario">
+                    <fieldset :disabled="salvandoPolitica" @input="politicaAlterada = true" @change="politicaAlterada = true" class="mt-3 space-y-3">
+                        <p class="text-warn">Deploy e OneDrive bloqueados. A execução desta conta permanece suspensa até validar um executor isolado com credenciais próprias. Ajustar os limites não libera acesso a arquivos ou serviços.</p>
+                        <div class="grid gap-3 sm:grid-cols-3">
+                            <template x-for="(nome, a) in {claude:'Claude', codex:'Codex', copilot:'Copilot'}" :key="a">
+                                <div class="rounded-control border border-line p-3 space-y-2"><label class="flex gap-2"><input type="checkbox" x-model="politicaUsuario.habilitados[a]" class="rounded border-line text-brand"><span x-text="nome"></span></label>
+                                    <label class="block text-ink-mute">Máximo por dia<input type="number" min="0" max="10000" x-model.number="politicaUsuario.pedidos_dia[a]" placeholder="Sem teto administrativo" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink"></label>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="grid gap-3 sm:grid-cols-2"><label class="text-ink-mute">Máximo total diário<input type="number" min="0" max="30000" x-model.number="politicaUsuario.limite_total" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink"></label>
+                            <label class="text-ink-mute">Simultâneas<input type="number" min="1" max="{{ max(1, (int) config('central_ia.agentes.paralelo')) }}" x-model.number="politicaUsuario.paralelo" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink"></label></div>
+                        <button type="button" @click="salvarPolitica()" class="rounded-control bg-brand px-3 py-2 font-semibold text-on-brand">Salvar política administrativa</button>
+                    </fieldset>
+                </template>
+            </div>
             <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
                 <h3 class="font-semibold text-ink">Minhas IAs e regras de uso</h3>
                 <p class="mt-1 text-ink-mute">Escolha manual vence o padrão. Automático usa regras locais e informa o motivo, sem gastar uma chamada ao GPT para decidir.</p>
+                <p x-show="ajustes?.execucao_bloqueada" class="mt-2 text-warn">Execução bloqueada para esta conta até validar o executor isolado. Seus ajustes não podem remover restrições administrativas.</p>
                 <p x-show="!preferencias?.disponivel" class="mt-2 text-warn">A ativação local destes ajustes está pendente. Não foram salvos nem aplicados.</p>
                 <template x-if="ajustes">
                     <fieldset :disabled="salvandoAjustes || !preferencias?.disponivel" class="mt-3 space-y-3" @input="ajustesAlterados = true" @change="ajustesAlterados = true">
