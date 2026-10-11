@@ -17,6 +17,8 @@ import { homedir, hostname, tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { usoLocal } from './uso-local.mjs';
+import { prepararAnexos } from './anexos.mjs';
+import { acompanharProgresso } from './progresso.mjs';
 
 const HOME = homedir();
 const CONFIG = process.env.CENTRAL_IA_RUNNER_CONFIG || join(HOME, '.config/alfa/central-ia-runner.env');
@@ -374,7 +376,7 @@ function comando(job, cwd, branch, saida) {
     // A sessão interna do agente só é retomada na MESMA pasta: o Claude guarda
     // as sessões por diretório, e retomar noutra falha.
     const sessao = job.continuar?.sessao && job.continuar.cwd === cwd ? job.continuar.sessao : null;
-    const prompt = [instrucoes(job, branch), memoria(), job.dadosOficiais, historicoDaSessao(job.importar), job.contexto,
+    const prompt = [instrucoes(job, branch), memoria(), job.dadosOficiais, historicoDaSessao(job.importar), job.contexto, job.contextoAnexos,
         `Pedido:\n${job.instrucao}`, job.bloco].filter(Boolean).join('\n\n');
     const escreve = job.modo === 'implementar';
     // Acesso total (dono, 10/10/2026: "lá tem que ter acesso total igual
@@ -408,7 +410,7 @@ function comando(job, cwd, branch, saida) {
 
     if (job.agente === 'codex') {
         const sandbox = `sandbox_mode="${total ? 'danger-full-access' : (escreve ? 'workspace-write' : 'read-only')}"`;
-        const comum = ['--json', '-o', saida, '--skip-git-repo-check', '-c', sandbox, '-c', 'approval_policy="never"'];
+        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', '-c', sandbox, '-c', 'approval_policy="never"', '-c', 'forced_login_method="chatgpt"'];
         return [agentes.codex, sessao ? ['exec', 'resume', sessao, ...comum, prompt] : ['exec', ...comum, prompt]];
     }
 
@@ -430,30 +432,53 @@ function comando(job, cwd, branch, saida) {
 const filhos = new Set();
 let parar = false;
 
-function rodar(bin, args, cwd, minutos) {
+function rodar(bin, args, cwd, minutos, progresso) {
     return new Promise(resolvePromise => {
         const env = { ...process.env };
         delete env.ALFAMATRIZ_RUNNER_TOKEN;
+        // A troca de CLI não habilita cobrança por chave de API herdada.
+        for (const chave of ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN']) delete env[chave];
         const filho = spawn(bin, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
         filhos.add(filho);
+        progresso?.processo(true);
         let out = '', err = '', estourou = false;
-        filho.stdout.on('data', d => { out += d; if (out.length > 4_000_000) out = out.slice(-4_000_000); });
-        filho.stderr.on('data', d => { err += d; if (err.length > 200_000) err = err.slice(-200_000); });
+        filho.stdout.on('data', d => { progresso?.saida(d); out += d; if (out.length > 4_000_000) out = out.slice(-4_000_000); });
+        filho.stderr.on('data', d => { progresso?.saida(d); err += d; if (err.length > 200_000) err = err.slice(-200_000); });
         const prazo = setTimeout(() => {
             estourou = true;
             try { process.kill(-filho.pid, 'SIGTERM'); } catch {}
             setTimeout(() => { try { process.kill(-filho.pid, 'SIGKILL'); } catch {} }, 10000);
         }, minutos * 60_000);
-        filho.on('error', e => { clearTimeout(prazo); filhos.delete(filho); resolvePromise({ codigo: -1, out, err: String(e.message), estourou }); });
-        filho.on('close', codigo => { clearTimeout(prazo); filhos.delete(filho); resolvePromise({ codigo, out, err, estourou }); });
+        filho.on('error', e => { clearTimeout(prazo); progresso?.processo(false); filhos.delete(filho); resolvePromise({ codigo: -1, out, err: String(e.message), estourou }); });
+        filho.on('close', codigo => { clearTimeout(prazo); progresso?.processo(false); filhos.delete(filho); resolvePromise({ codigo, out, err, estourou }); });
     });
+}
+
+function erroDoProcesso(r) {
+    const mensagens = [];
+    for (const linha of r.out.split('\n')) {
+        try {
+            const e = JSON.parse(linha);
+            if (e.type === 'error' || e.type === 'turn.failed') {
+                const mensagem = e.error?.message || e.message;
+                if (typeof mensagem === 'string') mensagens.push(mensagem);
+            }
+        } catch {}
+    }
+    const linhas = [...mensagens, ...r.err.split('\n'), ...r.out.split('\n')].filter(l => l.trim() && !l.trim().startsWith('{'));
+    const limite = linhas.find(l => /(?:hit|reached|exceeded|exhausted).{0,60}(?:limit|quota)|(?:usage|weekly|rate|premium).{0,30}limit|too many requests|overloaded|service unavailable/i.test(l));
+    return (limite || mensagens.at(-1) || r.err.trim().split('\n').at(-1) || `saiu com código ${r.codigo}`)
+        .replace(/\bBearer\s+\S+/gi, 'Bearer [REDACTED]')
+        .replace(/\bsk-[A-Za-z0-9_-]+/g, '[REDACTED]')
+        .replace(/\/bot\d+:[A-Za-z0-9_-]+/g, '/bot[REDACTED]')
+        .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED]');
 }
 
 function interpretar(job, r, saida, nomeCopilot) {
     if (job.agente === 'claude') {
         const linha = r.out.trim().split('\n').reverse().find(l => l.startsWith('{'));
         const j = linha ? JSON.parse(linha) : null;
-        if (!j || j.is_error) throw new Error(j?.result || r.err.trim().split('\n').at(-1) || `saiu com código ${r.codigo}`);
+        if (!j || j.is_error || r.codigo !== 0) throw new Error(erroDoProcesso({ ...r, err: j?.result || r.err }));
         return { resposta: j.result, sessao: j.session_id };
     }
     if (job.agente === 'codex') {
@@ -462,10 +487,11 @@ function interpretar(job, r, saida, nomeCopilot) {
             try { const e = JSON.parse(l); if (e.type === 'thread.started' && e.thread_id) sessao = e.thread_id; } catch {}
         }
         const resposta = existsSync(saida) ? readFileSync(saida, 'utf8').trim() : '';
-        if (r.codigo !== 0 && !resposta) throw new Error(r.err.trim().split('\n').at(-1) || `saiu com código ${r.codigo}`);
+        // Saída parcial não transforma erro de franquia em conclusão bem-sucedida.
+        if (r.codigo !== 0) throw new Error(erroDoProcesso(r));
         return { resposta, sessao };
     }
-    if (r.codigo !== 0 && !r.out.trim()) throw new Error(r.err.trim().split('\n').at(-1) || `saiu com código ${r.codigo}`);
+    if (r.codigo !== 0) throw new Error(erroDoProcesso(r));
     return { resposta: r.out.trim(), sessao: nomeCopilot };
 }
 
@@ -482,6 +508,19 @@ async function executar(job) {
     const inicio = Date.now();
     log(`#${job.id} ${job.agente} ${job.projeto} ${job.modo}`);
     let resultado;
+    const progresso = acompanharProgresso();
+    let publicando = false;
+    const informar = async () => {
+        if (publicando) return;
+        publicando = true;
+        try {
+            const r = await api(`execucoes/${job.id}/progresso`, { maquina: cfg.maquina, ...progresso.retrato() });
+            if (r.status !== 200) log(`#${job.id} progresso recusado`, r.status);
+        } catch (e) { log(`#${job.id} progresso indisponível:`, e.message); }
+        finally { publicando = false; }
+    };
+    await informar();
+    const avisos = setInterval(informar, 30_000);
     const tmp = mkdtempSync(join(tmpdir(), 'central-ia-'));
     try {
         if (!agentes[job.agente]) throw new Error(`${job.agente} não está instalado nesta máquina`);
@@ -503,9 +542,14 @@ async function executar(job) {
             ({ cwd, branch } = criada);
         }
 
+        progresso.etapa('anexos');
+        await informar();
+        const midias = await prepararAnexos(job.anexos || [], cfg, tmp);
+        job.imagens = midias.imagens; job.contextoAnexos = midias.contexto;
         const saida = join(tmp, 'ultima.txt');
         const [bin, args, nomeCopilot] = comando(job, cwd, branch, saida);
-        const r = await rodar(bin, args, cwd, job.timeout_minutos);
+        progresso.etapa('agente');
+        const r = await rodar(bin, args, cwd, job.timeout_minutos, progresso);
         if (r.estourou) throw new Error(`passou de ${job.timeout_minutos} minutos e foi encerrado`);
         if (parar) throw new Error('interrompida porque o runner foi parado ou reiniciado; o estado do git ficou registrado e a tarefa pode ser retomada');
 
@@ -525,6 +569,9 @@ async function executar(job) {
         // assumir a tarefa depois.
         if (job.tarefa?.worktree && existsSync(job.tarefa.worktree)) resultado.checkpoint = checkpoint(job.tarefa.worktree, join(cfg.projetos, job.projeto));
     } finally {
+        clearInterval(avisos);
+        progresso.etapa('finalizando');
+        await informar();
         rmSync(tmp, { recursive: true, force: true });
     }
 

@@ -263,3 +263,59 @@ checkout, que agora existe porque ele serve a porta 8096.
   só como consulta para o Telegram e o runner.
 - `tools/central-ia/run-real-backup-validation.py` — feito para o PostgreSQL
   da aplicação separada.
+
+### Ajustes locais após a retomada pelo Codex
+
+- Salvar ponto também na Conversa: após conclusão bem-sucedida, o ID da
+  resposta marca o início visível da tarefa. Ver histórico salvo reabre as
+  mensagens anteriores sem apagar registros; a escolha de exibição é temporária.
+- A aba VS Code saiu do cockpit; as sessões já continuadas permanecem intactas.
+- Abas principais à esquerda, indicadores agrupados à direita.
+- Conta financeira Sicoob fictícia cadastrada somente na cópia local, sem seed
+  nem migração de dados para produção.
+
+### Tarefa 9 — anexos e atividade (Codex, 11/10/2026)
+
+- Web: Anexar, colar captura ou arrastar; JPG/PNG/WebP/PDF/MP4/WebM/MOV, até cinco arquivos de 20 MB cada, upload sequencial e reenvio com UUID.
+- Arquivos no disco `local`, privados por dono, inclusive no download pelo runner. Vinculação transacional à mensagem e hash SHA-256.
+- Telegram recebe foto/documento/vídeo com legenda opcional, confirma o download e renova `typing` com leitura curta (3 s). Um consumidor continua obrigatório.
+- Tela distingue fila, execução e máquina offline, com tempo decorrido. Isso dá feedback durante a espera; não garante resposta completa mais rápida do modelo.
+- Runner precisa de `anexos.mjs` ao lado do `central-ia-runner.mjs` e da imagem `alfamatriz-central-media:local` (Dockerfile em `deploy/central-ia/media`).
+- PDF: texto até 50 mil caracteres por arquivo e imagens das primeiras oito páginas. Vídeo: até doze quadros distribuídos pela duração; sem transcrição do áudio. Codex recebe as imagens via `--image`, inclusive ao retomar sessão.
+- Conversores rodam sem rede, sem privilégios e com memória/CPU limitadas. Mídias temporárias são removidas ao fim da execução.
+- Teste: `node tools/central-ia/test-anexos.mjs`; testes PHP em `tests/Feature/CentralIa/AnexosTest.php`. Especificação em `docs/specs/central-ia-interacao-anexos/`.
+
+### Tarefa 9 — avisos de status a cada 90 segundos
+
+- Mensagens da Central informam fila, etapa técnica observada, última saída e confirmação por execução, sem percentuais. São compartilhadas na tela e no Telegram pelo mesmo mecanismo de entregas; lock por execução impede duplicidade entre bot, runner e poll web.
+- O bot publica mesmo enquanto o runner está offline. Sem confirmação de progresso por 90 s, o texto informa que não é possível confirmar atividade; máquina online sozinha não prova progresso.
+- `/status`, “como estamos?” e “travou?” consultam diretamente o banco, sem executar uma IA. Pedidos de status de negócio continuam no fluxo de IA; anexos não são ignorados como consulta operacional.
+- `inplementar` é reconhecido como implementar. “Pode seguir ... implantação” autoriza escrita; “análise do plano de implantação” permanece análise. Escolha explícita de só análise é preservada. A execução recebe o timeout correspondente ao modo.
+- Runner: copiar também `progresso.mjs` ao lado de `central-ia-runner.mjs`. Mudança requer reinício em ociosidade. Não reiniciar enquanto houver agentes filhos.
+- Validação isolada: `python3 tools/central-ia/run-tests.py --central-root ~/projetos/central-agentes --filter CentralIa` e `node tools/central-ia/test-progresso.mjs`. Teste visual real opcional: `CENTRAL_IA_TEST_CODEX=/caminho/do/codex node tools/central-ia/test-anexos.mjs` (mídias sintéticas; usa o login local da pessoa).
+
+### Histórico compartilhado do Telegram (11/10/2026)
+
+- A tela identifica a conta logada e oferece “Abrir conversa do Telegram · <projeto>”, usando a última mensagem do Telegram da própria conta. Não copia nem move mensagens; Geral e projetos diferentes continuam separados.
+- O atalho abre a aba Conversa, libera filtro de outra tarefa e reabre o histórico salvo da tarefa da conversa. Primeira visita sem projeto escolhido acompanha esse contexto; URL/projeto já escolhido e rascunhos são preservados.
+- “Carregar mensagens anteriores” funciona também com tarefa selecionada. O poll continua acrescentando mensagens automaticamente.
+- O navegador e o Telegram precisam pertencer à mesma conta no mesmo ambiente. Nesta homologação: conta Felipe no ambiente local `home:8096` / `localhost:8096`.
+- Testes: `node tools/central-ia/test-historico.mjs` e `HistoricoCompartilhadoTest.php`. No navegador local foram exibidos pedidos e respostas reais da tarefa 9, e um novo aviso apareceu sem recarregar nem enviar mensagens artificiais.
+
+
+### Continuidade de provedores e trava Telegram — 11/10/2026
+
+Decisão atual do dono: aproveitar as assinaturas com troca automática, mantendo
+o acesso amplo autorizado. O teto interno de 20 pedidos passa a ser opcional
+(`CENTRAL_IA_LIMITE_DIARIO_ATIVO`, padrão desligado); não é a franquia de tokens.
+A falha reconhecida de um provedor gera uma tentativa por alternativa, na mesma
+tarefa e conta, preservando instrução, anexos e dossiê. Não há compra de créditos
+ou novo adaptador de API. GPT (Codex) e Codex são um executor nesta aplicação.
+
+O consumidor usa exclusividade por conexão MariaDB, sem TTL nem proprietário
+compartilhado por hostname. Atualizar o código não reinicia o consumidor nem a
+cópia instalada do runner; ativação controlada continua pendente.
+
+[Implementação, testes, revisão Claude e demandas pendentes](tarefa-10-continuidade-provedores.md).
+Timeout completo, checkpoint em falhas, sessões/forks e desligamento do legado
+foram explicitamente deixados para próximas entregas.

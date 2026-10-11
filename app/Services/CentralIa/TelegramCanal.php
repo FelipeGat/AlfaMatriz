@@ -78,12 +78,16 @@ class TelegramCanal
         // grupo escrever na conversa de quem pareou.
         if (! is_int($updateId) || ! is_array($m) || ($m['chat']['type'] ?? null) !== 'private'
             || ($m['from']['is_bot'] ?? true) || ! isset($m['from']['id'], $m['chat']['id'])
-            || $m['from']['id'] !== $m['chat']['id'] || ! is_string($m['text'] ?? null)) {
+            || $m['from']['id'] !== $m['chat']['id']) {
             return;
         }
 
         $chatId = (int) $m['chat']['id'];
-        $texto = $m['text'];
+        $midia = $m['document'] ?? $m['video'] ?? (isset($m['photo']) ? last($m['photo']) : null);
+        $texto = $m['text'] ?? $m['caption'] ?? ($midia ? 'Analise os arquivos anexados.' : '');
+        if (! is_string($texto)) {
+            return;
+        }
 
         if (RateLimiter::tooManyAttempts('central-ia:telegram:'.$chatId, 30)) {
             return;
@@ -120,7 +124,14 @@ class TelegramCanal
         }
 
         try {
-            $this->tratar($user, $vinculo, $chatId, trim($texto), $updateId);
+            if (CentralIaMensagem::where('telegram_update_id', $updateId)->exists()) {
+                return;
+            }
+            if ($midia) {
+                $this->receberMidia($user, $vinculo, $chatId, trim($texto), $updateId, $midia);
+            } else {
+                $this->tratar($user, $vinculo, $chatId, trim($texto), $updateId);
+            }
         } catch (ValidationException $e) {
             // Pedido recusado (projeto que a máquina não tem, limite do dia):
             // a resposta vai só para o chat, e o pedido não entra na conversa.
@@ -130,6 +141,59 @@ class TelegramCanal
         } catch (UniqueConstraintViolationException) {
             // Reentrega de um update que já entrou: o cursor se perdeu, a
             // mensagem não.
+        }
+    }
+
+    private function receberMidia(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $texto, int $updateId, array $midia): void
+    {
+        if (($midia['file_size'] ?? 0) > AnexosService::MAX_BYTES || ! is_string($midia['file_id'] ?? null)) {
+            throw ValidationException::withMessages(['arquivo' => 'O arquivo deve ter até 20 MB.']);
+        }
+        $this->responder($chatId, 'Arquivo recebido. Estou baixando para analisar…');
+        $tmp = tempnam(sys_get_temp_dir(), 'central-ia-');
+        try {
+            if (! $this->api->baixar($midia['file_id'], $tmp)) {
+                throw ValidationException::withMessages(['arquivo' => 'Não consegui baixar o arquivo. Reenvie um arquivo de até 20 MB.']);
+            }
+            $this->api->verificarConsumidor();
+            $anexo = app(AnexosService::class)->guardar($user,
+                new \Illuminate\Http\UploadedFile($tmp, $midia['file_name'] ?? 'foto.jpg', null, null, true), (string) \Illuminate\Support\Str::uuid());
+            try {
+                DB::transaction(function () use ($user, $vinculo, $chatId, $texto, $updateId, $anexo) {
+                    // Só fica visível ao runner depois de o arquivo estar ligado.
+                    $pedido = $this->agentes->interpretar($texto);
+                    if (! $pedido && str_starts_with($texto, '/')) {
+                        throw ValidationException::withMessages(['arquivo' => 'Envie uma legenda descrevendo o pedido, sem comandos de navegação.']);
+                    }
+                    $pedido ??= ['projeto' => $vinculo->projeto_atual ?? '', 'agente' => $vinculo->agente_atual ?? 'auto',
+                        'modo' => 'analisar', 'instrucao' => $texto,
+                        'tarefa_id' => filled($vinculo->projeto_atual) ? CentralIaTarefa::de($user)->where('projeto', $vinculo->projeto_atual)
+                            ->emCurso()->orderByDesc('ultima_atividade_em')->value('id') : null];
+                    $pedido['anexos'] = [$anexo->id];
+                    $this->confirmar($chatId, $this->agentes->pedir($user, $texto, $pedido,
+                        CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId));
+                });
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Storage::disk('local')->delete($anexo->caminho);
+                $anexo->delete();
+                throw $e;
+            }
+        } finally {
+            if (is_file($tmp)) {
+                unlink($tmp);
+            }
+        }
+    }
+
+    public function sinalizarAtividade(): void
+    {
+        $users = CentralIaExecucao::whereIn('status', [CentralIaExecucao::PENDENTE, CentralIaExecucao::EXECUTANDO])
+            ->where('created_at', '>', now()->subMinutes((int) config('central_ia.agentes.timeout_implementar_minutos') + 5))
+            ->distinct()->pluck('user_id');
+        foreach (CentralIaTelegramVinculo::whereIn('user_id', $users)->get() as $vinculo) {
+            if (($user = User::find($vinculo->user_id)) && $this->podeEscrever($user) && $this->agentes->disponiveis($user)['online']) {
+                $this->api->chamar('sendChatAction', ['chat_id' => $vinculo->chat_id, 'action' => 'typing'], 3);
+            }
         }
     }
 
@@ -143,6 +207,20 @@ class TelegramCanal
      */
     private function tratar(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $texto, int $updateId): void
     {
+        if (app(ProgressoService::class)->consulta($texto)) {
+            DB::transaction(function () use ($user, $vinculo, $texto, $updateId) {
+                User::whereKey($user->id)->lockForUpdate()->first();
+                if (CentralIaMensagem::where('telegram_update_id', $updateId)->exists()) return;
+                $projeto = $texto === '/status' ? null : $vinculo->projeto_atual;
+                $this->conversas->registrarDoUsuario($user, $texto, CentralIaMensagem::ORIGEM_TELEGRAM,
+                    telegramUpdateId: $updateId, projeto: $projeto);
+                $this->conversas->registrarDoAgente($user, 'Central de IA', app(ProgressoService::class)->resumo($user, $projeto),
+                    CentralIaMensagem::AUTOR_SISTEMA, $projeto);
+            });
+            $this->entregarPendentes();
+            return;
+        }
+
         // O atalho completo (`/claude projeto pedido`) vale sempre.
         if ($pedido = $this->agentes->interpretar($texto)) {
             $this->confirmar($chatId, $this->agentes->pedir($user, $texto, $pedido, CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId));
@@ -374,16 +452,7 @@ class TelegramCanal
 
     private function textoStatus(User $user): string
     {
-        $atividade = collect($this->cockpit->montar($user)['atividade']);
-        $ativas = $atividade->whereIn('status', ['executando', 'pendente']);
-        $esperando = CentralIaTarefa::de($user)->where('status', CentralIaTarefa::AGUARDANDO_VOCE)->get();
-
-        $linhas = $ativas->map(fn ($a) => ($a['status'] === 'executando' ? '⏳ ' : '🕒 ')."{$a['projeto']} — {$a['agente']}: ".($a['tarefa'] ?? "pedido #{$a['id']}"))->all();
-        foreach ($esperando as $t) {
-            $linhas[] = "⚠ {$t->projeto} — tarefa #{$t->id} espera você: ".\Illuminate\Support\Str::limit($t->dossie['duvida'] ?? $t->titulo, 160);
-        }
-
-        return $linhas ? implode("\n", $linhas) : 'Nada rodando nem esperando você.';
+        return app(ProgressoService::class)->resumo($user);
     }
 
     private function ajuda(): string

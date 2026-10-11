@@ -26,7 +26,7 @@ class Roteador
      * antes de revisar porque "corrija o que a revisão achou" é implementação.
      */
     private const CATEGORIAS = [
-        'implementacao' => ['implemente', 'implementar', 'corrija', 'corrigir', 'conserte', 'crie', 'criar', 'adicione', 'adicionar',
+        'implementacao' => ['implemente', 'implementar', 'inplementar', 'inplemente', 'implante', 'implantar', 'corrija', 'corrigir', 'conserte', 'crie', 'criar', 'adicione', 'adicionar',
             'altere', 'alterar', 'ajuste', 'ajustar', 'refatore', 'refatorar', 'remova', 'mude', 'mudar', 'troque', 'escreva', 'faça', 'faca',
             'aplique', 'migre', 'atualize', 'inclua', 'resolva', 'gere', 'monte'],
         'revisao' => ['revise', 'revisar', 'revisão', 'revisao', 'review', 'audite', 'auditar', 'confira', 'valide', 'validar', 'avalie o código'],
@@ -47,7 +47,7 @@ class Roteador
         'quais', 'quantos', 'quantas', 'o que', 'como está', 'como esta', 'balanço', 'balanco', 'visão geral', 'visao geral', 'sugestões', 'sugestoes'];
 
     /** Só estes fazem implementação mesmo com um termo analítico no texto. */
-    private const IMPLEMENTA_DE_VERDADE = ['implemente', 'implementar', 'corrija', 'corrigir', 'conserte', 'refatore', 'refatorar', 'migre'];
+    private const IMPLEMENTA_DE_VERDADE = ['implemente', 'implementar', 'inplementar', 'inplemente', 'implante', 'implantar', 'corrija', 'corrigir', 'conserte', 'refatore', 'refatorar', 'migre'];
 
     /** Genéricos: só contam como implementação quando nada analítico aparece. */
     private const VERBOS_GENERICOS = ['faça', 'faca', 'crie', 'criar', 'escreva', 'gere', 'monte'];
@@ -72,6 +72,14 @@ class Roteador
         $this->esgotados = $esgotados;
         $disponiveis = array_values(array_diff($disponiveis, array_keys($esgotados)));
         $texto = Str::lower(Str::squish($instrucao));
+        // “Análise da implantação” continua só leitura. O substantivo indica
+        // escrita apenas quando acompanha autorização explícita do dono.
+        $semAcento = Str::ascii($texto);
+        if (preg_match('/\b(?:pode|siga|vamos|autorizo)\b.*\b(?:implementacao|implantacao)\b/u', $semAcento)
+            || preg_match('/\banalise\s+com\s+implementacao\b/u', $semAcento)) {
+            $texto .= ' implementar';
+        }
+
         $categoria = 'investigacao';
         $palavra = null;
         $tem = fn (array $termos) => collect($termos)->first(fn ($t) => preg_match('/(^|[^\pL])'.preg_quote($t, '/').'($|[^\pL])/u', $texto));

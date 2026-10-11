@@ -65,3 +65,31 @@ e `systemctl --user restart central-ia-runner`.
   valem normalmente: o agente roda como a pessoa rodaria.
 
 Limpar uma worktree já revisada: `git -C ~/projetos/<projeto> worktree remove <caminho>`.
+
+## Anexos (tarefa 9)
+
+Copiar também `anexos.mjs` para a pasta do runner. Construir a imagem local:
+`docker build -t alfamatriz-central-media:local deploy/central-ia/media`.
+Ela contém Poppler e FFmpeg para PDFs e vídeos; o runner usa containers
+transitórios sem rede e com limites de recursos. Teste independente:
+`node tools/central-ia/test-anexos.mjs`.
+
+O download é autenticado pela conta do runner e confere SHA-256. PDFs têm
+texto limitado e até oito páginas renderizadas; vídeos, até doze quadros,
+sem transcrição de áudio. O contexto agregado tem limite de 60 mil caracteres.
+Atualizar o runner somente quando não houver agentes em execução; reiniciar
+durante uma tarefa interrompe o agente que está atendendo a pessoa.
+
+Progresso por execução (tarefa 9): instalar também `progresso.mjs` ao lado do runner.
+O runner envia enums e timestamps a cada 30 s; a Central publica avisos por execução a cada 90 s.
+Não transmite texto bruto do agente nem comandos. Sem confirmação recente, informa ausência de confirmação,
+mesmo que outra execução ou a máquina esteja online. O reinício deve aguardar os agentes filhos terminarem.
+
+
+## Continuidade de provedores e consumidor exclusivo (11/10/2026)
+
+Ver [tarefa 10](../../docs/central-ia/tarefa-10-continuidade-provedores.md) antes
+de ativar: consumidor com named lock MariaDB por conexão, teto diário interno
+opcional e recuperação limitada por provedor. Copiar o runner e reiniciar os
+processos exige autorização controlada; não iniciar segundo consumidor e não
+executar teste real de IA automaticamente. Não há migração adicional nesta entrega.

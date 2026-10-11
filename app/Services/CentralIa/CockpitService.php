@@ -140,14 +140,15 @@ class CockpitService
             return $renova && $renova->isPast() ? ['usado_pct' => 0.0, 'renova_em' => null, 'renovou' => true] + $j : $j + ['renovou' => false];
         };
 
-        $pedidosHoje = CentralIaExecucao::where('user_id', $user->id)->where('created_at', '>=', now()->startOfDay())->count();
+        $pedidosHoje = CentralIaExecucao::where('user_id', $user->id)->where('created_at', '>=', now()->startOfDay())
+            ->whereHas('pedido', fn ($q) => $q->where('autor_tipo', CentralIaMensagem::AUTOR_USUARIO))->count();
 
         $limites = [
-            'central' => ['usados' => $pedidosHoje, 'limite' => (int) config('central_ia.agentes.limite_diario')],
+            'central' => ['usados' => $pedidosHoje, 'limite' => config('central_ia.agentes.limite_diario_ativo') ? (int) config('central_ia.agentes.limite_diario') : null],
             'claude' => $ultimo['limites_claude'] ?? null,
             'codex' => $cota ? ['primaria' => $janelaCodex($cota['primaria'] ?? null), 'semanal' => $janelaCodex($cota['semanal'] ?? null), 'em' => $cota['em'] ?? null] : null,
             'copilot' => ['premium_mes' => $ultimo['copilot_premium_mes'] ?? null, 'franquia' => config('central_ia.agentes.copilot_premium_mes')],
-            'esgotados' => $this->agentes->esgotados($runners),
+            'esgotados' => $this->agentes->esgotados($runners) + $this->agentes->falhasRecentes($user),
             'por_agente_central' => CentralIaExecucao::where('user_id', $user->id)->where('created_at', '>=', now()->startOfDay())
                 ->selectRaw('agente, count(*) as n')->groupBy('agente')->pluck('n', 'agente')->all(),
         ];
@@ -196,6 +197,8 @@ class CockpitService
             'status' => $e->status,
             'motivo' => $e->roteamento['motivo'] ?? null,
             'handoff_de' => isset($e->roteamento['handoff_de']) ? (CentralIaExecucao::AGENTES[$e->roteamento['handoff_de']] ?? null) : null,
+            'progresso' => $e->progresso,
+            'progresso_em' => $e->progresso_em?->toIso8601String(),
             'criada_em' => $e->created_at->toIso8601String(),
             'iniciada_em' => $e->iniciada_em?->toIso8601String(),
             'concluida_em' => $e->concluida_em?->toIso8601String(),
@@ -235,7 +238,7 @@ class CockpitService
                     'duvida' => $d['duvida'] ?? null,
                     'lacunas' => $d['lacunas'] ?? [],
                     'resumo' => collect($d['resumos'] ?? [])->last()['texto'] ?? null,
-                    'ponto' => isset($d['ponto']) ? ['em' => $d['ponto']['em'], 'agente' => $d['ponto']['agente']] : null,
+                    'ponto' => isset($d['ponto']) ? ['em' => $d['ponto']['em'], 'agente' => $d['ponto']['agente'], 'mensagem_id' => $d['ponto']['mensagem_id'] ?? null] : null,
                 ];
             })->all();
     }

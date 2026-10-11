@@ -9,6 +9,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[2]
 parser = argparse.ArgumentParser()
 parser.add_argument('--central-root', type=Path, required=True)
+parser.add_argument('--filter', help='Filtro PHPUnit opcional; mantém isolamento do laboratório')
 args = parser.parse_args()
 central = args.central_root.resolve()
 vendor = central / 'development/runtime/alfamatriz-vendor'
@@ -42,4 +43,6 @@ for value in ['APP_ENV=testing', 'APP_DEBUG=false', 'APP_LOCALE=pt_BR',
 command += ['central-alfamatriz-php82:development', 'sh', '-c',
             'mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs; '
             'exec php -d memory_limit=512M vendor/bin/phpunit --configuration phpunit.xml --do-not-cache-result']
+if args.filter:
+    command[-1] += ' --filter ' + __import__('shlex').quote(args.filter)
 raise SystemExit(subprocess.run(command).returncode)

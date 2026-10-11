@@ -68,7 +68,7 @@ class AgentesService
             'projetos' => $runners->pluck('projetos')->flatten()->unique()->sort()->values()->all(),
             // A batida mais recente vence (ordenado por visto_em).
             'estado' => $runners->reduce(fn (array $acc, CentralIaRunner $r) => array_merge($acc, $r->estado ?? []), []),
-            'esgotados' => $this->esgotados($runners),
+            'esgotados' => $this->esgotados($runners) + $this->falhasRecentes($user),
         ];
     }
 
@@ -103,6 +103,22 @@ class AgentesService
             }
         }
 
+        return $fora;
+    }
+
+    /** Falhas reais valem mesmo quando o painel de franquia está atrasado. */
+    public function falhasRecentes(User $user): array
+    {
+        $fora = [];
+        foreach (array_keys(CentralIaExecucao::AGENTES) as $agente) {
+            $ultima = CentralIaExecucao::where('user_id', $user->id)->where('agente', $agente)
+                ->whereIn('status', [CentralIaExecucao::CONCLUIDA, CentralIaExecucao::FALHOU])
+                ->orderByDesc('concluida_em')->orderByDesc('id')->first();
+            $tipo = $ultima?->status === CentralIaExecucao::FALHOU ? FalhaDeProvedor::tipo($ultima->erro ?? '') : null;
+            if ($tipo && $ultima->concluida_em?->gt(now()->subMinutes((int) config('central_ia.agentes.fallback_pausa_'.$tipo.'_minutos')))) {
+                $fora[$agente] = CentralIaExecucao::AGENTES[$agente].' temporariamente fora da seleção: '.($tipo === 'limite' ? 'franquia atingida' : 'provedor indisponível');
+            }
+        }
         return $fora;
     }
 
@@ -165,7 +181,7 @@ class AgentesService
             // agente daquela conversa — é ele que tem o histórico.
             ? ['agente' => $sessaoDoVsCode['agente'], 'modo' => 'implementar', 'categoria' => 'implementacao', 'manual' => false,
                 'motivo' => 'Automático: continuação da sessão do VS Code']
-            : ($agente === 'auto' && $origemEsgotada && in_array('codex', $disponivel['agentes'], true)
+            : ($agente === 'auto' && $origemEsgotada && in_array('codex', $disponivel['agentes'], true) && ! isset($disponivel['esgotados']['codex'])
             // A IA da conversa está no limite: o Codex assume, com o
             // histórico dela importado (ver `proxima()`).
             ? ['agente' => 'codex', 'modo' => 'implementar', 'categoria' => 'implementacao', 'manual' => false,
@@ -191,6 +207,8 @@ class AgentesService
             // achá-la antes de criar qualquer coisa.
             $mensagem = $this->conversas->registrarDoUsuario($user, $texto, $origem, $clientId, $telegramUpdateId, $projeto ?: null, $tarefa?->id);
 
+            app(AnexosService::class)->associar($user, $mensagem, $pedido['anexos'] ?? []);
+
             if ($existente = CentralIaExecucao::where('pedido_id', $mensagem->id)->first()) {
                 return $existente;
             }
@@ -198,9 +216,10 @@ class AgentesService
             // Contado dentro da transação, com a trava na conta: dois pedidos
             // simultâneos não passam juntos pelo último lugar do dia.
             User::whereKey($user->id)->lockForUpdate()->first();
-            $hoje = CentralIaExecucao::where('user_id', $user->id)->where('created_at', '>=', now()->startOfDay())->count();
+            $hoje = CentralIaExecucao::where('user_id', $user->id)->where('created_at', '>=', now()->startOfDay())
+                ->whereHas('pedido', fn ($q) => $q->where('autor_tipo', CentralIaMensagem::AUTOR_USUARIO))->count();
 
-            if ($hoje >= config('central_ia.agentes.limite_diario')) {
+            if (config('central_ia.agentes.limite_diario_ativo') && $hoje >= config('central_ia.agentes.limite_diario')) {
                 throw ValidationException::withMessages(['agente' => 'Limite de '.config('central_ia.agentes.limite_diario').' pedidos a agentes por dia atingido.']);
             }
 
@@ -392,6 +411,11 @@ class AgentesService
             'projeto' => $execucao->projeto,
             'modo' => $execucao->modo,
             'instrucao' => $execucao->instrucao,
+            // O handoff não move nem duplica arquivos: lê os anexos do pedido
+            // original, sempre dentro da conta dona da execução.
+            'anexos' => CentralIaMensagem::where('user_id', $user->id)
+                ->findOrFail($execucao->roteamento['fallback']['pedido_original'] ?? $execucao->pedido_id)
+                ->anexos->map(fn ($a) => $a->publico())->all(),
             'timeout_minutos' => $this->teto($execucao),
             'tarefa' => $tarefa ? [
                 'id' => $tarefa->id,
@@ -453,7 +477,7 @@ class AgentesService
             if ($tarefa) {
                 $dossie = Dossie::aplicarConclusao($tarefa->dossie ?? Dossie::inicial($tarefa->objetivo), $execucao, $bloco, $checkpoint);
                 if ($ok && ($execucao->roteamento['tipo'] ?? null) === 'ponto') {
-                    $dossie['ponto'] = ['execucao' => $execucao->id, 'agente' => $execucao->nomeDoAgente(), 'em' => now()->toIso8601String(),
+                    $dossie['ponto'] = ['mensagem_id' => $resposta->id, 'execucao' => $execucao->id, 'agente' => $execucao->nomeDoAgente(), 'em' => now()->toIso8601String(),
                         'resumo' => \Illuminate\Support\Str::limit($texto, 12000)];
                     Eventos::registrar($user, 'ponto_salvo', "Ponto salvo na tarefa #{$tarefa->id} por {$execucao->nomeDoAgente()}: os próximos pedidos começam sessão nova com o resumo",
                         Eventos::da($execucao) + ['origem' => 'runner']);
@@ -484,8 +508,64 @@ class AgentesService
                 ], fn ($v) => $v !== null));
             }
 
+            if (! $ok) {
+                $this->tentarOutroProvedor($user, $execucao, $dados['erro'] ?? '');
+            }
+
             return $execucao;
         });
+    }
+
+    /**
+     * Uma tentativa por provedor, sem repetir o mesmo agente nem criar loop.
+     * IDs distintos tornam idempotente a conclusão reenviada do runner anterior.
+     * O pedido de sistema só nasce aqui; mensagens de agentes não são roteadas.
+     */
+    private function tentarOutroProvedor(User $user, CentralIaExecucao $anterior, string $erro): void
+    {
+        $tipo = FalhaDeProvedor::tipo($erro);
+        if (! config('central_ia.agentes.fallback_automatico') || ! $tipo || ! $anterior->tarefa_id) {
+            return;
+        }
+        $user->esquecerPermissoes();
+        if (! $user->ativo || ! $user->canPermissao('central_ia_agentes', 'incluir')) {
+            return;
+        }
+        $tarefa = CentralIaTarefa::de($user)->whereKey($anterior->tarefa_id)->lockForUpdate()->firstOrFail();
+        // Uma instrução nova já aguardando vence a repetição do pedido antigo.
+        if ($tarefa->execucoes()->where('status', CentralIaExecucao::PENDENTE)->exists()) {
+            Eventos::registrar($user, 'fallback_adiado', 'Troca automática não repete uma instrução que já tem continuação na fila.', Eventos::da($anterior));
+            return;
+        }
+        $historico = $anterior->roteamento['fallback'] ?? [];
+        $tentados = array_values(array_unique([...($historico['tentados'] ?? []), $anterior->agente]));
+        $disponivel = $this->disponiveis($user);
+        $online = CentralIaRunner::where('user_id', $user->id)->get()
+            ->filter(fn ($r) => $r->online() && ($anterior->projeto === '' || in_array($anterior->projeto, $r->projetos, true)))
+            ->pluck('agentes')->flatten()->unique()->all();
+        $preferidos = config('central_ia.roteamento.'.($anterior->roteamento['categoria'] ?? ($anterior->modo === 'implementar' ? 'implementacao' : 'investigacao')), []);
+        $agente = collect($preferidos)->first(fn ($a) => in_array($a, $online, true)
+            && ! in_array($a, $tentados, true) && ! isset($disponivel['esgotados'][$a]));
+        if (! $agente) {
+            $this->conversas->registrarDoAgente($user, 'Central', 'Não há outro provedor disponível para este pedido. A tarefa e o histórico foram preservados; nenhuma API paga será acionada.', CentralIaMensagem::AUTOR_SISTEMA, $anterior->projeto ?: null, $tarefa->id);
+            Eventos::registrar($user, 'fallback_esgotado', 'Alternativas disponíveis esgotadas; tarefa preservada.', Eventos::da($anterior), 'aviso');
+            return;
+        }
+        $nome = CentralIaExecucao::AGENTES[$agente];
+        $aviso = $this->conversas->registrarDoAgente($user, 'Central', $anterior->nomeDoAgente().' atingiu um limite ou ficou indisponível. '.$nome.' assumirá a mesma tarefa, com objetivo, instrução, anexos e dossiê. Antes de continuar, deve conferir o estado atual dos arquivos e os testes.', CentralIaMensagem::AUTOR_SISTEMA, $anterior->projeto ?: null, $tarefa->id);
+        $rota = $anterior->roteamento;
+        $rota['agente'] = $agente;
+        $rota['manual'] = false;
+        $rota['handoff_de'] = $anterior->agente;
+        $rota['motivo'] = 'Troca automática após '.($tipo === 'limite' ? 'limite de franquia' : 'indisponibilidade').' do '.$anterior->nomeDoAgente();
+        $rota['fallback'] = ['raiz' => $historico['raiz'] ?? $anterior->id,
+            'pedido_original' => $historico['pedido_original'] ?? $anterior->pedido_id,
+            'tentados' => $tentados, 'anterior' => $anterior->id, 'tipo' => $tipo];
+        $nova = CentralIaExecucao::create(['user_id' => $user->id, 'pedido_id' => $aviso->id, 'tarefa_id' => $tarefa->id,
+            'agente' => $agente, 'projeto' => $anterior->projeto, 'modo' => $anterior->modo,
+            'instrucao' => $anterior->instrucao, 'roteamento' => $rota]);
+        $tarefa->update(['status' => CentralIaTarefa::ABERTA, 'ultima_atividade_em' => now()]);
+        Eventos::registrar($user, 'troca_de_agente', $rota['motivo'].'; '.$nome.' assume a tarefa #'.$tarefa->id, Eventos::da($nova) + ['origem' => 'central'], 'aviso');
     }
 
     public const INSTRUCAO_DO_PONTO = 'PONTO DE SALVAMENTO desta tarefa. Não altere nada. Escreva um resumo completo para que uma '

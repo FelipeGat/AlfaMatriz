@@ -28,6 +28,11 @@ class CentralIaMensagem extends Model
         'origem', 'conteudo', 'telegram_update_id',
     ];
 
+    public function anexos(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CentralIaAnexo::class, 'mensagem_id');
+    }
+
     public function conversa(): BelongsTo
     {
         return $this->belongsTo(CentralIaConversa::class, 'conversa_id');

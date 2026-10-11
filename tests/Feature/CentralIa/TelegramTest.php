@@ -32,6 +32,12 @@ class TelegramTest extends TestCase
     {
         parent::setUp();
         config(['central_ia.telegram.token' => 'token-de-teste']);
+        // A suíte usa SQLite; a trava real MariaDB tem testes próprios.
+        $this->mock(\App\Services\CentralIa\TelegramConsumerLock::class, function ($mock) {
+            $mock->shouldReceive('acquire')->andReturn(true);
+            $mock->shouldReceive('assertOwned')->andReturnNull();
+            $mock->shouldReceive('release')->andReturnNull();
+        });
     }
 
     private function comCentral(): User
@@ -276,5 +282,16 @@ class TelegramTest extends TestCase
         config(['central_ia.telegram.token' => null]);
 
         $this->artisan('central-ia:telegram', ['--uma-vez' => true])->assertFailed();
+    }
+
+    public function test_trava_recusada_nao_faz_nem_a_primeira_chamada_http(): void
+    {
+        $this->fakeTelegram();
+        $this->mock(\App\Services\CentralIa\TelegramConsumerLock::class, function ($mock) {
+            $mock->shouldReceive('acquire')->once()->andReturn(false);
+            $mock->shouldReceive('release')->once()->andReturnNull();
+        });
+        $this->artisan('central-ia:telegram', ['--uma-vez' => true])->assertFailed();
+        Http::assertNothingSent();
     }
 }

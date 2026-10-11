@@ -48,10 +48,16 @@ class CentralIaController extends Controller
      */
     public function painel(Request $request): JsonResponse
     {
+        app(\App\Services\CentralIa\ProgressoService::class)->publicar($request->user());
         $vinculo = $this->telegram->vinculoDe($request->user());
+        $ultimaTelegram = $vinculo ? CentralIaMensagem::de($request->user())
+            ->where('origem', CentralIaMensagem::ORIGEM_TELEGRAM)->latest('id')->first(['id', 'projeto', 'tarefa_id']) : null;
 
         return $this->semCache($this->cockpit->montar($request->user()) + [
-            'telegram' => ['vinculado' => (bool) $vinculo, 'usuario' => $vinculo?->telegram_usuario],
+            'conta_nome' => $request->user()->name,
+            'telegram' => ['vinculado' => (bool) $vinculo, 'usuario' => $vinculo?->telegram_usuario,
+                'projeto' => $ultimaTelegram ? $ultimaTelegram->projeto : $vinculo?->projeto_atual,
+                'tarefa_id' => $ultimaTelegram?->tarefa_id, 'mensagem_id' => $ultimaTelegram?->id],
             'eventos' => \App\Services\CentralIa\Eventos::recentes($request->user()),
         ]);
     }
@@ -73,7 +79,7 @@ class CentralIaController extends Controller
             $projeto,
             isset($dados['tarefa']) ? (int) $dados['tarefa'] : null,
         );
-        $mensagens->load('entrega', 'execucao');
+        $mensagens->load('entrega', 'execucao', 'anexos');
 
         // Entrega e execução mudam DEPOIS de a mensagem já estar na tela: o
         // poll pede só o que veio depois da última, então as recentes voltam
@@ -100,7 +106,9 @@ class CentralIaController extends Controller
     public function enviar(Request $request): JsonResponse
     {
         $dados = $request->validate([
-            'conteudo' => ['required', 'string', 'max:'.config('central_ia.max_texto')],
+            'conteudo' => ['required_without:anexos', 'nullable', 'string', 'max:'.config('central_ia.max_texto')],
+            'anexos' => ['sometimes', 'array', 'max:5'],
+            'anexos.*' => ['required', 'uuid', 'distinct'],
             'client_id' => ['required', 'uuid'],
             'projeto' => ['nullable', 'string', 'max:128'],
             'tarefa_id' => ['nullable', 'integer'],
@@ -108,6 +116,27 @@ class CentralIaController extends Controller
             'agente' => ['nullable', 'string'],
             'modo' => ['nullable', 'string'],
         ]);
+
+        $dados['conteudo'] = $dados['conteudo'] ?? 'Analise os arquivos anexados.';
+
+        // Consulta operacional não espera na fila da IA, mesmo durante execução.
+        if (empty($dados['anexos']) && app(\App\Services\CentralIa\ProgressoService::class)->consulta($dados['conteudo'])) {
+            $mensagem = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $dados) {
+                $user = $request->user();
+                \App\Models\User::whereKey($user->id)->lockForUpdate()->first();
+                $tarefa = filled($dados['tarefa_id'] ?? null) ? CentralIaTarefa::de($user)
+                    ->where('projeto', $dados['projeto'] ?? '')->findOrFail($dados['tarefa_id']) : null;
+                $m = $this->conversas->registrarDoUsuario($user, $dados['conteudo'], CentralIaMensagem::ORIGEM_WEB,
+                    $dados['client_id'], projeto: $dados['projeto'] ?? null, tarefaId: $tarefa?->id);
+                if ($m->wasRecentlyCreated) {
+                    $this->conversas->registrarDoAgente($user, 'Central de IA',
+                        app(\App\Services\CentralIa\ProgressoService::class)->resumo($user, $dados['projeto'] ?? null, $tarefa?->id),
+                        CentralIaMensagem::AUTOR_SISTEMA, $dados['projeto'] ?? null, $tarefa?->id);
+                }
+                return $m;
+            });
+            return $this->semCache(['id' => $mensagem->id, 'status_direto' => true], $mensagem->wasRecentlyCreated ? 201 : 200);
+        }
 
         // O atalho digitado (`/claude projeto …`) vale em qualquer conversa.
         $pedido = $this->agentes->interpretar($dados['conteudo']);
@@ -131,6 +160,7 @@ class CentralIaController extends Controller
         }
 
         if ($pedido) {
+            $pedido['anexos'] = $dados['anexos'] ?? [];
             abort_unless($request->user()->canPermissao('central_ia_agentes', 'incluir'), 403, 'Sua conta não pode acionar agentes.');
             $execucao = $this->agentes->pedir($request->user(), $dados['conteudo'], $pedido, CentralIaMensagem::ORIGEM_WEB, $dados['client_id']);
 
@@ -144,10 +174,14 @@ class CentralIaController extends Controller
             abort_unless($tarefaId, 404);
         }
 
-        $mensagem = $this->conversas->registrarDoUsuario(
-            $request->user(), $dados['conteudo'], CentralIaMensagem::ORIGEM_WEB, $dados['client_id'],
-            projeto: $dados['projeto'] ?? null, tarefaId: $tarefaId,
-        );
+        $mensagem = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $dados, $tarefaId) {
+            $mensagem = $this->conversas->registrarDoUsuario(
+                $request->user(), $dados['conteudo'], CentralIaMensagem::ORIGEM_WEB, $dados['client_id'],
+                projeto: $dados['projeto'] ?? null, tarefaId: $tarefaId,
+            );
+            app(\App\Services\CentralIa\AnexosService::class)->associar($request->user(), $mensagem, $dados['anexos'] ?? []);
+            return $mensagem;
+        });
 
         return $this->semCache(['id' => $mensagem->id], $mensagem->wasRecentlyCreated ? 201 : 200);
     }
@@ -263,6 +297,18 @@ class CentralIaController extends Controller
         return $this->semCache(['id' => $execucao->id], 201);
     }
 
+    public function anexar(Request $request): JsonResponse
+    {
+        $dados = $request->validate(['arquivo' => ['required', 'file', 'max:20480'], 'client_id' => ['required', 'uuid']]);
+        $anexo = app(\App\Services\CentralIa\AnexosService::class)->guardar($request->user(), $dados['arquivo'], $dados['client_id']);
+        return $this->semCache($anexo->publico(), $anexo->wasRecentlyCreated ? 201 : 200);
+    }
+
+    public function baixarAnexo(Request $request, string $anexo): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        return app(\App\Services\CentralIa\AnexosService::class)->baixar($request->user(), $anexo);
+    }
+
     public function codigoTelegram(Request $request): JsonResponse
     {
         $codigo = $this->telegram->gerarCodigo($request->user());
@@ -295,6 +341,7 @@ class CentralIaController extends Controller
             'autor_nome' => $m->autor_nome,
             'origem' => $m->origem,
             'conteudo' => $m->conteudo,
+            'anexos' => $m->anexos->map(fn ($a) => $a->publico())->all(),
             'criada_em' => $m->created_at->toIso8601String(),
             'entrega' => $m->entrega?->status,
             'pedido' => $this->pedido($m),

@@ -122,7 +122,7 @@ class AgentesTest extends TestCase
 
     public function test_limite_diario(): void
     {
-        config(['central_ia.agentes.limite_diario' => 2]);
+        config(['central_ia.agentes.limite_diario' => 2, 'central_ia.agentes.limite_diario_ativo' => true]);
         $user = $this->comCentral();
         $this->maquina($user);
 

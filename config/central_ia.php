@@ -9,6 +9,12 @@ return [
         // Pedidos por pessoa por dia, contando todos os agentes. Cada pedido
         // gasta a assinatura de IA de quem pediu.
         'limite_diario' => (int) env('CENTRAL_IA_LIMITE_DIARIO', 20),
+        // A franquia real é do provedor; o teto administrativo só bloqueia
+        // quando explicitamente ligado. Fallback não conta como novo pedido.
+        'limite_diario_ativo' => (bool) env('CENTRAL_IA_LIMITE_DIARIO_ATIVO', false),
+        'fallback_automatico' => true,
+        'fallback_pausa_limite_minutos' => 360,
+        'fallback_pausa_indisponivel_minutos' => 5,
         // Teto de uma execução no runner. Quem passa disso é encerrado lá; aqui,
         // a execução sem notícia depois do teto + 5 min vira `expirada`.
         'timeout_minutos' => (int) env('CENTRAL_IA_TIMEOUT_MINUTOS', 15),
@@ -49,9 +55,6 @@ return [
         // do bot é quem a leva.
         'token' => env('CENTRAL_IA_TELEGRAM_TOKEN'),
         'bot' => env('CENTRAL_IA_TELEGRAM_BOT', 'GrupoSolucoesAgentBot'),
-        // Quem segura a trava do bot. Padrão: o hostname (estável num restart
-        // do container). Defina só se dois processos legítimos dividirem o host.
-        'dono' => env('CENTRAL_IA_TELEGRAM_DONO'),
         'codigo_minutos' => 10,
         // Quanto o getUpdates espera por novidade. É também o atraso máximo
         // de uma mensagem da tela até o celular, porque a entrega sai entre

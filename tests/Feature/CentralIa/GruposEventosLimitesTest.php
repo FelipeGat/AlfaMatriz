@@ -197,6 +197,9 @@ class GruposEventosLimitesTest extends TestCase
         $this->assertStringContainsString('falta o teste X', $depois['contexto']);
         $this->actingAs($user)->getJson(route('central-ia.tarefas', 'gestor'))->assertJsonPath('tarefas.0.ponto.agente', 'Claude');
         $this->assertSame(1, DB::table('central_ia_eventos')->where('tipo', 'ponto_salvo')->count());
+        $ponto = $this->getJson(route('central-ia.tarefas', 'gestor'))->json('tarefas.0.ponto');
+        $this->assertSame((int) DB::table('central_ia_execucoes')->where('id', $p['id'])->value('resposta_id'), $ponto['mensagem_id']);
+        $this->assertTrue(DB::table('central_ia_mensagens')->where('tarefa_id', $tarefa)->where('id', '<', $ponto['mensagem_id'])->exists(), 'Salvar ponto preserva as mensagens anteriores.');
     }
 
     public function test_acesso_total_e_uma_implementacao_por_projeto(): void

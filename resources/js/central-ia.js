@@ -40,13 +40,24 @@ export function centralIa(config) {
         recentes: [], consumo: { por_agente: [], projetos_hoje: [], cota_codex: null, serie: [], limites: null }, sessoes: [], periodo: 'hoje',
         grupos: [], busca: '', recolhidos: [], tela: 'projetos', sub: 'conversa',
         eventos: [], vistaAtividade: 'log', soProblemas: false, projetoLog: '', barraAberta: false, barraHover: null, mostrarTabela: false,
-        telegram: { vinculado: false, usuario: null }, pareamento: null,
+        telegram: { vinculado: false, usuario: null }, pareamento: null, contaNome: '', escolherConversaInicial: false,
         // Projeto aberto
         atual: GERAL, abas: {}, tarefas: [], verTarefa: null, detalheAberto: true,
-        fixarEscolha: '', menuProjetosMovel: false,
+        historicosAbertos: {}, fixarEscolha: '', menuProjetosMovel: false,
+        projetosRecolhidos: ler('central-ia:projetos-recolhidos') === 'sim',
+        indicadoresRecolhidos: ler('central-ia:indicadores-recolhidos') === 'sim',
+        alternarProjetos() {
+            this.projetosRecolhidos = !this.projetosRecolhidos;
+            guardar('central-ia:projetos-recolhidos', this.projetosRecolhidos ? 'sim' : 'nao');
+        },
+        alternarIndicadores() {
+            this.indicadoresRecolhidos = !this.indicadoresRecolhidos;
+            guardar('central-ia:indicadores-recolhidos', this.indicadoresRecolhidos ? 'sim' : 'nao');
+        },
+
         // Conexão
         bloqueado: false, aviso: '', conexao: 'conectando', falhas: 0, timer: null, encerrado: false, ocupado: false,
-        podeEnviar: config.podeEnviar,
+        podeEnviar: config.podeEnviar, agora: Date.now(), relogio: null,
 
         // A aba é criada em `garantirAba()`, fora da renderização: criar dentro
         // do getter faria o Alpine escrever enquanto desenha.
@@ -57,7 +68,41 @@ export function centralIa(config) {
         get tarefaVista() { return this.tarefas.find(t => t.id === this.verTarefa) || null; },
         get tarefasEmCurso() { return this.tarefas.filter(t => !['concluida'].includes(t.status)); },
         get mensagensVisiveis() {
-            return this.verTarefa ? this.aba.mensagens.filter(m => m.tarefa_id === this.verTarefa) : this.aba.mensagens;
+            return this.aba.mensagens.filter(m => {
+                if (this.verTarefa && m.tarefa_id !== this.verTarefa) return false;
+                const ponto = this.tarefas.find(t => t.id === m.tarefa_id)?.ponto;
+                return !ponto?.mensagem_id || this.historicosAbertos[m.tarefa_id] || m.id >= ponto.mensagem_id;
+            });
+        },
+        get pedidosAtivos() {
+            return this.atividade.filter(a => a.projeto === this.atual && ['pendente', 'executando'].includes(a.status)
+                && (!this.verTarefa || a.tarefa_id === this.verTarefa));
+        },
+        andamento(a) {
+            const segundos = Math.max(0, Math.floor((this.agora - new Date(a.iniciada_em || a.criada_em)) / 1000));
+            const tempo = segundos < 60 ? segundos + ' s' : Math.floor(segundos / 60) + ' min ' + segundos % 60 + ' s';
+            const etapas = { preparando: 'Preparando a execução', anexos: 'Preparando os anexos', agente: 'Aguardando resposta do agente',
+                comando: 'Executando uma ferramenta ou comando', resposta: 'Recebendo saída do agente', finalizando: 'Registrando o resultado' };
+            const recente = a.progresso_em && this.agora - new Date(a.progresso_em).getTime() < 90000;
+            const estado = a.status === 'pendente'
+                ? (this.maquina.online ? 'Na fila — aguardando o agente' : 'Máquina desconectada — aguardando reconexão')
+                : !recente ? 'Sem confirmação recente desta execução'
+                : etapas[a.progresso?.etapa] || 'Aguardando informação do runner';
+            return a.agente + ' · ' + estado + ' · ' + tempo;
+        },
+        escolherArquivos(lista) {
+            if (this.aba.pendente) return;
+            for (const file of lista) {
+                if (this.aba.arquivos.length >= 5) { this.aviso = 'Envie até cinco arquivos por mensagem.'; break; }
+                if (file.size > 20 * 1024 * 1024 || !['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) {
+                    this.aviso = 'Use JPG, PNG, WebP, PDF, MP4, WebM ou MOV de até 20 MB.'; continue;
+                }
+                this.aba.arquivos.push({ file, id: novoId(), enviado: false });
+            }
+        },
+        colar(event) {
+            const arquivos = [...(event.clipboardData?.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
+            if (arquivos.length) { event.preventDefault(); this.escolherArquivos(arquivos); }
         },
         get projetosParaFixar() {
             const vistos = new Set(this.projetos.map(p => p.nome));
@@ -140,7 +185,7 @@ export function centralIa(config) {
         garantirAba() { if (!this.abas[this.atual]) this.abas[this.atual] = this.novaAba(); },
 
         novaAba() {
-            return { mensagens: [], carregado: false, haAnteriores: false, rascunho: '', pendente: null, enviando: false,
+            return { mensagens: [], carregado: false, haAnteriores: false, rascunho: '', pendente: null, enviando: false, arquivos: [], progresso: '', recibo: '',
                 tarefa: 'nova', agente: 'auto', modo: 'auto', verTarefa: null, scroll: null };
         },
 
@@ -149,23 +194,26 @@ export function centralIa(config) {
             this.abaVazia = this.novaAba();
             this.tela = ler('central-ia:tela') || 'projetos';
             try { this.recolhidos = JSON.parse(ler('central-ia:recolhidos') || '[]'); } catch { this.recolhidos = []; }
-            this.atual = url ?? ler('central-ia:projeto') ?? GERAL;
+            const salvo = ler('central-ia:projeto');
+            this.escolherConversaInicial = url === null && salvo === null;
+            this.atual = url ?? salvo ?? GERAL;
             this.garantirAba();
             this.aoVoltarRede = () => this.reconectar();
             this.aoPerderRede = () => { this.conexao = 'offline'; this.aviso = 'Sem conexão. Sua mensagem continua aqui para reenviar.'; };
             this.aoMostrar = () => { if (!document.hidden) this.reconectar(); };
             this.aoSair = e => {
-                if (Object.values(this.abas).some(a => a.pendente || a.rascunho.trim())) { e.preventDefault(); e.returnValue = ''; }
+                if (Object.values(this.abas).some(a => a.pendente || a.rascunho.trim() || a.arquivos.length)) { e.preventDefault(); e.returnValue = ''; }
             };
             window.addEventListener('online', this.aoVoltarRede);
             window.addEventListener('offline', this.aoPerderRede);
             document.addEventListener('visibilitychange', this.aoMostrar);
             window.addEventListener('beforeunload', this.aoSair);
+            this.relogio = setInterval(() => { this.agora = Date.now(); }, 1000);
             this.atualizar();
         },
 
         destroy() {
-            this.encerrado = true; clearTimeout(this.timer);
+            this.encerrado = true; clearTimeout(this.timer); clearInterval(this.relogio);
             window.removeEventListener('online', this.aoVoltarRede);
             window.removeEventListener('offline', this.aoPerderRede);
             document.removeEventListener('visibilitychange', this.aoMostrar);
@@ -174,17 +222,18 @@ export function centralIa(config) {
 
         async pedir(url, method = 'GET', corpo = undefined) {
             const abortar = new AbortController();
-            const prazo = setTimeout(() => abortar.abort(), 12000);
+            const multipart = corpo instanceof FormData;
+            const prazo = setTimeout(() => abortar.abort(), multipart ? 120000 : 12000);
             try {
                 const resposta = await fetch(url, {
                     method, credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: abortar.signal,
-                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
-                    body: corpo === undefined ? undefined : JSON.stringify(corpo),
+                    headers: { Accept: 'application/json', ...(multipart ? {} : { 'Content-Type': 'application/json' }), 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                    body: corpo === undefined ? undefined : multipart ? corpo : JSON.stringify(corpo),
                 });
                 if (!resposta.ok) {
                     const erro = new Error('falhou'); erro.status = resposta.status;
                     // A recusa explica o motivo (projeto, limite do dia, tarefa ocupada).
-                    if ([422, 403].includes(resposta.status)) { try { erro.detalhe = (await resposta.json()).message; } catch {} }
+                    if ([422, 403, 413].includes(resposta.status)) { try { erro.detalhe = (await resposta.json()).message; } catch {} }
                     throw erro;
                 }
                 return await resposta.json();
@@ -196,8 +245,8 @@ export function centralIa(config) {
             if ([401, 419].includes(erro.status) || (erro.status === 403 && !erro.detalhe)) {
                 this.bloqueado = true; this.conexao = 'bloqueado'; this.abas = {}; this.garantirAba();
                 this.aviso = 'Sua sessão ou permissão mudou. Entre novamente no AlfaMatriz para continuar.';
-            } else if ([422, 403].includes(erro.status)) {
-                this.aviso = erro.detalhe || 'Confira a mensagem: ela não pôde ser registrada.';
+            } else if ([422, 403, 413].includes(erro.status)) {
+                this.aviso = erro.status === 413 ? 'Arquivo maior que o limite do servidor (20 MB).' : erro.detalhe || 'Confira a mensagem: ela não pôde ser registrada.';
             } else {
                 this.conexao = 'offline';
                 this.aviso = erro.status === 429 ? 'Muitas requisições em pouco tempo. Aguarde um instante.'
@@ -214,7 +263,8 @@ export function centralIa(config) {
             const porId = new Map(aba.mensagens.map(m => [m.id, m]));
             for (const item of itens) {
                 porId.set(item.id, item);
-                if (aba.pendente?.client_id === item.client_id) { aba.pendente = null; aba.rascunho = ''; }
+                if (item.origem === 'agente') aba.recibo = '';
+                if (aba.pendente?.client_id === item.client_id) { aba.pendente = null; aba.rascunho = ''; aba.arquivos = []; }
             }
             aba.mensagens = [...porId.values()].sort((a, b) => a.id - b.id);
         },
@@ -227,7 +277,11 @@ export function centralIa(config) {
             try {
                 const painel = await this.pedir(config.painel);
                 this.projetos = painel.projetos; this.atividade = painel.atividade; this.maquina = painel.maquina;
-                this.paralelo = painel.paralelo; this.telegram = painel.telegram;
+                this.paralelo = painel.paralelo; this.telegram = painel.telegram; this.contaNome = painel.conta_nome || '';
+                if (this.escolherConversaInicial) {
+                    this.escolherConversaInicial = false;
+                    if (this.telegram.vinculado && !this.aba.rascunho && !this.aba.arquivos.length && !this.aba.pendente) this.abrirTelegram();
+                }
                 this.recentes = painel.recentes; this.consumo = painel.consumo; this.sessoes = painel.sessoes; this.grupos = painel.grupos || []; this.eventos = painel.eventos || [];
                 if (this.telegram.vinculado) this.pareamento = null;
 
@@ -254,7 +308,7 @@ export function centralIa(config) {
 
                 const primeira = !aba.carregado;
                 aba.carregado = true;
-                this.conexao = 'online'; if (this.aviso && !this.aviso.startsWith('Confira')) this.aviso = ''; this.falhas = 0;
+                if (this.conexao === 'offline') this.aviso = ''; this.conexao = 'online'; this.falhas = 0;
                 if (noFim || primeira) this.$nextTick(() => { const f = this.$refs.feed; if (f) f.scrollTop = f.scrollHeight; });
             } catch (erro) { this.falhou(erro); }
             finally {
@@ -285,6 +339,7 @@ export function centralIa(config) {
 
         /** Alterna de projeto guardando o lugar de onde se saiu. */
         abrir(projeto, tarefa = null) {
+            this.escolherConversaInicial = false;
             const feed = this.$refs.feed;
             if (feed) this.aba.scroll = feed.scrollTop;
             this.aba.verTarefa = this.verTarefa;
@@ -306,6 +361,18 @@ export function centralIa(config) {
             this.reconectar();
         },
 
+        abrirTelegram() {
+            if (!this.telegram.vinculado) return;
+            this.abrir(this.telegram.projeto || GERAL);
+            // Um filtro de outra tarefa fazia uma conversa gravada parecer ausente.
+            this.verTarefa = null; this.aba.verTarefa = null;
+            if (this.telegram.tarefa_id) {
+                this.historicosAbertos[this.telegram.tarefa_id] = true;
+            }
+            if (!this.aba.pendente && !this.aba.rascunho.trim() && !this.aba.arquivos.length) this.aba.tarefa = this.telegram.tarefa_id || 'nova';
+            this.sub = 'conversa';
+        },
+
         selecionarTarefa(id, irParaConversa = false) {
             this.verTarefa = this.verTarefa === id && !irParaConversa ? null : id;
             if (irParaConversa) this.sub = 'conversa';
@@ -315,13 +382,13 @@ export function centralIa(config) {
 
         async enviar() {
             const aba = this.aba;
-            if (aba.enviando || this.bloqueado || !this.podeEnviar || (!aba.pendente && !aba.rascunho.trim())) return;
+            if (aba.enviando || this.bloqueado || !this.podeEnviar || (!aba.pendente && !aba.rascunho.trim() && !aba.arquivos.length)) return;
             // Vendo uma tarefa (o filtro "Só a tarefa #N"), o pedido vai para ela
             // — e não abre uma tarefa nova sem o contexto da que está na tela.
             if (!aba.pendente && this.verTarefa && aba.tarefa === 'nova') aba.tarefa = this.verTarefa;
             if (!aba.pendente) {
                 aba.pendente = {
-                    client_id: novoId(), conteudo: aba.rascunho, projeto: this.atual || null,
+                    client_id: novoId(), conteudo: aba.rascunho.trim() || 'Analise os arquivos anexados.', anexos: aba.arquivos.map(a => a.id), projeto: this.atual || null,
                     tarefa_id: this.atual && aba.tarefa !== 'nova' ? Number(aba.tarefa) : null,
                     agente: aba.agente !== 'nota' ? aba.agente : null,
                     modo: aba.modo,
@@ -329,8 +396,16 @@ export function centralIa(config) {
             }
             aba.enviando = true;
             try {
+                for (const [i, anexo] of aba.arquivos.entries()) {
+                    if (anexo.enviado) continue;
+                    aba.progresso = 'Enviando arquivo ' + (i + 1) + ' de ' + aba.arquivos.length + ': ' + anexo.file.name;
+                    const form = new FormData(); form.append('arquivo', anexo.file); form.append('client_id', anexo.id);
+                    await this.pedir(config.anexar, 'POST', form); anexo.enviado = true;
+                }
+                aba.progresso = 'Confirmando mensagem…';
                 const r = await this.pedir(config.enviar, 'POST', aba.pendente);
-                aba.pendente = null; aba.rascunho = ''; this.aviso = '';
+                aba.recibo = aba.pendente.agente ? 'Pedido recebido. Acompanhe o andamento abaixo.' : 'Mensagem registrada.';
+                aba.pendente = null; aba.rascunho = ''; aba.arquivos = []; this.aviso = '';
                 // Pedido que abriu tarefa nova: o compositor passa a seguir nela.
                 if (r.tarefa_id && aba.tarefa === 'nova') { aba.tarefa = r.tarefa_id; this.verTarefa = null; }
                 await this.atualizar();
@@ -338,9 +413,9 @@ export function centralIa(config) {
                 this.falhou(erro);
                 // Recusa definitiva (projeto, limite): o texto volta ao rascunho
                 // para corrigir, e o próximo envio ganha id novo.
-                if ([422, 403].includes(erro.status)) { aba.rascunho = aba.pendente.conteudo; aba.pendente = null; }
+                if ([422, 403, 413].includes(erro.status) && aba.pendente) { aba.rascunho = aba.pendente.conteudo; aba.pendente = null; }
             }
-            finally { aba.enviando = false; }
+            finally { aba.enviando = false; aba.progresso = ''; }
         },
 
         async fixar(projeto) {

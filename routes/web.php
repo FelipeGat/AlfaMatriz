@@ -222,6 +222,10 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware(['permissao:central_ia,incluir', 'throttle:10,1,central-ia-ponto'])->whereNumber('tarefa');
     Route::post('central-ia/tarefas/{tarefa}/status', [CentralIaController::class, 'statusDaTarefa'])->name('central-ia.tarefas.status')
         ->middleware('permissao:central_ia,editar')->whereNumber('tarefa');
+    Route::post('central-ia/anexos', [CentralIaController::class, 'anexar'])->name('central-ia.anexos.criar')
+        ->middleware(['permissao:central_ia,incluir', 'throttle:30,1,central-ia-anexos']);
+    Route::get('central-ia/anexos/{anexo}', [CentralIaController::class, 'baixarAnexo'])->name('central-ia.anexos.baixar')
+        ->middleware('permissao:central_ia')->whereUuid('anexo');
     Route::post('central-ia/mensagens', [CentralIaController::class, 'enviar'])->name('central-ia.enviar')
         ->middleware(['permissao:central_ia,incluir', 'throttle:20,1,central-ia-enviar']);
     // Parear e desparear o Telegram mexem no canal, não criam conversa: `editar`.

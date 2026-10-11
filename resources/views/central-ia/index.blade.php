@@ -12,6 +12,7 @@
                 painel: '{{ route('central-ia.painel') }}',
                 historico: '{{ route('central-ia.mensagens') }}',
                 enviar: '{{ route('central-ia.enviar') }}',
+                anexar: '{{ route('central-ia.anexos.criar') }}',
                 tarefas: '{{ route('central-ia.tarefas', '__P__') }}',
                 fixar: '{{ route('central-ia.fixar', '__P__') }}',
                 statusTarefa: '{{ url('central-ia/tarefas/__T__/status') }}',
@@ -40,6 +41,10 @@
                     </button>
                 @endforeach
             </nav>
+            <button type="button" @click="alternarIndicadores()" :aria-expanded="(!indicadoresRecolhidos).toString()" aria-controls="central-indicadores"
+                    class="rounded-control border border-line px-3 py-2 text-ink-mute hover:text-ink"
+                    x-text="indicadoresRecolhidos ? 'Mostrar indicadores' : 'Recolher indicadores'"></button>
+            <div id="central-indicadores" x-show="!indicadoresRecolhidos" class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
             <span class="inline-flex items-center gap-1.5 rounded-badge border px-2 py-1"
                   :class="maquina.online ? 'border-good-line bg-good-tint text-good' : 'border-crit bg-crit-tint text-crit'">
                 <span class="h-1.5 w-1.5 rounded-full" :class="maquina.online ? 'bg-good' : 'bg-crit'"></span>
@@ -53,8 +58,9 @@
             <span class="rounded-badge border border-line px-2 py-1 text-ink-mute"
                   x-text="emExecucao + ' de ' + paralelo + ' rodando' + (naFila ? ' · ' + naFila + ' na fila' : '')"></span>
             <span class="rounded-badge border border-line px-2 py-1 text-ink-mute"
-                  x-show="consumo.limites" x-text="(consumo.limites?.central.usados ?? 0) + ' de ' + (consumo.limites?.central.limite ?? 0) + ' pedidos hoje'"></span>
+                  x-show="consumo.limites" x-text="(consumo.limites?.central.usados ?? 0) + (consumo.limites?.central.limite == null ? ' pedidos hoje · sem teto interno' : ' de ' + consumo.limites.central.limite + ' pedidos hoje')"></span>
             <span role="status" aria-live="polite" class="ml-auto rounded-badge border border-line px-2 py-1 text-ink-mute" x-text="rotuloConexao"></span>
+            </div>
         </div>
 
         <div x-show="aviso" x-cloak role="alert" class="flex-none rounded-panel border border-warn-line bg-warn-tint px-4 py-2 text-sm text-ink">
@@ -63,13 +69,21 @@
             <a href="{{ route('login') }}" x-show="bloqueado" class="ml-2 font-semibold text-brand-text">Entrar de novo</a>
         </div>
 
+        <div class="flex flex-none flex-wrap items-center justify-between gap-2 px-1 text-xs text-ink-mute">
+            <span x-show="contaNome" x-text="'Conversa privada de ' + contaNome"></span>
+            <button type="button" @click="abrirTelegram()" x-show="telegram.vinculado" x-cloak
+                    class="font-semibold text-brand-text"
+                    x-text="'Abrir conversa do Telegram · ' + (telegram.projeto || 'Geral')"></button>
+        </div>
+
         {{-- ================= PROJETOS ================= --}}
-        <div x-show="tela === 'projetos'" class="relative grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div x-show="tela === 'projetos'" class="relative grid min-h-0 flex-1 grid-cols-1 gap-3"
+             :class="projetosRecolhidos ? 'lg:grid-cols-1' : 'lg:grid-cols-[260px_minmax(0,1fr)]'">
 
             {{-- Barra de projetos: busca + grupos (no celular, gaveta sobre o conteúdo) --}}
-            <aside aria-label="Projetos"
-                   class="min-h-0 flex-col gap-2 overflow-hidden rounded-panel border border-line bg-panel p-2 lg:flex"
-                   :class="menuProjetosMovel ? 'absolute inset-0 z-10 flex' : 'hidden'">
+            <aside id="central-projetos" aria-label="Projetos"
+                   class="min-h-0 flex-col gap-2 overflow-hidden rounded-panel border border-line bg-panel p-2"
+                   :class="menuProjetosMovel ? 'absolute inset-0 z-10 flex' : (projetosRecolhidos ? 'hidden' : 'hidden lg:flex')">
                 <div class="flex flex-none gap-1.5">
                     <label class="sr-only" for="central-busca">Buscar projeto</label>
                     <input id="central-busca" type="search" x-model="busca" placeholder="Buscar projeto…" autocomplete="off"
@@ -126,6 +140,12 @@
             {{-- Projeto aberto --}}
             <main class="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-panel border border-line bg-panel">
                 <div class="flex flex-none flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2">
+                    <button type="button" @click="alternarProjetos()" :aria-expanded="(!projetosRecolhidos).toString()" aria-controls="central-projetos"
+                            class="hidden lg:flex items-center gap-2 rounded-control border border-line px-2 py-1 text-xs text-ink-mute hover:text-ink"
+                            :title="projetosRecolhidos ? 'Mostrar lista de projetos' : 'Recolher lista de projetos'">
+                        <span class="h-4 w-4"><x-nav-icon name="panel-left" /></span>
+                        <span x-text="projetosRecolhidos ? 'Mostrar projetos' : 'Recolher projetos'"></span>
+                    </button>
                     <button type="button" @click="menuProjetosMovel = true" class="rounded-control border border-line px-2 py-1 text-xs text-ink-mute lg:hidden">Projetos</button>
                     <h2 class="font-display text-base font-semibold text-ink" x-text="atual || 'Geral'"></h2>
                     <template x-if="atual">
@@ -152,12 +172,11 @@
                 </div>
 
                 <div class="flex flex-none gap-1 border-b border-line px-3 text-xs" x-show="atual">
-                    <template x-for="[chave, rotulo] in [['conversa', 'Conversa'], ['tarefas', 'Tarefas'], ['contexto', 'Contexto'], ['vscode', 'VS Code']]" :key="chave">
+                    <template x-for="[chave, rotulo] in [['conversa', 'Conversa'], ['tarefas', 'Tarefas'], ['contexto', 'Contexto']]" :key="chave">
                         <button type="button" @click="sub = chave" class="-mb-px border-b-2 px-2.5 py-2 font-semibold"
                                 :class="sub === chave ? 'border-brand text-ink' : 'border-transparent text-ink-mute hover:text-ink'">
                             <span x-text="rotulo"></span>
                             <span x-show="chave === 'tarefas' && tarefasEmCurso.length" class="ml-0.5 text-ink-faint" x-text="'(' + tarefasEmCurso.length + ')'"></span>
-                            <span x-show="chave === 'vscode' && sessoesDoProjeto.length" class="ml-0.5 text-ink-faint" x-text="'(' + sessoesDoProjeto.length + ')'"></span>
                             <span x-show="chave === 'contexto' && tarefaVista?.duvida" class="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-pergunta"></span>
                         </button>
                     </template>
@@ -169,8 +188,22 @@
                         <span x-text="'Só a tarefa #' + verTarefa"></span>
                         <button type="button" @click="selecionarTarefa(null)" class="font-semibold text-brand-text">Ver o projeto todo</button>
                     </div>
+                    <div class="flex flex-none flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs" x-show="atual">
+                        @if ($podeAcionar)
+                            <button type="button" @click="salvarPonto(tarefaVista || tarefas.find(t => t.id === aba.tarefa))"
+                                    :disabled="!(tarefaVista || tarefas.find(t => t.id === aba.tarefa)) || ocupado"
+                                    class="font-semibold text-brand-text disabled:opacity-50">💾 Salvar ponto</button>
+                        @endif
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="t in tarefas.filter(t => t.ponto?.mensagem_id && (!verTarefa || t.id === verTarefa))" :key="t.id">
+                                <button type="button" @click="historicosAbertos[t.id] = !historicosAbertos[t.id]"
+                                        class="font-semibold text-brand-text"
+                                        x-text="(historicosAbertos[t.id] ? 'Ocultar histórico' : 'Ver histórico salvo') + ' · tarefa #' + t.id"></button>
+                            </template>
+                        </div>
+                    </div>
                     <div x-ref="feed" class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3" role="log" aria-label="Histórico da conversa" aria-live="polite" aria-relevant="additions">
-                        <div class="mb-3 text-center" x-show="aba.haAnteriores && !verTarefa">
+                        <div class="mb-3 text-center" x-show="aba.haAnteriores">
                             <button type="button" @click="anteriores()" :disabled="ocupado || bloqueado" class="text-xs font-semibold text-brand-text disabled:opacity-50">Carregar mensagens anteriores</button>
                         </div>
                         <p x-show="!aba.carregado" class="py-6 text-center text-sm text-ink-faint">Carregando…</p>
@@ -195,6 +228,11 @@
                                         <span class="text-ink-faint" x-text="m.pedido?.motivo ? ' · ' + m.pedido.motivo : ''"></span>
                                     </p>
                                     <p class="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink" x-text="m.conteudo"></p>
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        <template x-for="a in m.anexos || []" :key="a.id">
+                                            <a :href="a.url" class="text-xs font-semibold text-brand-text" x-text="'📎 ' + a.nome" download></a>
+                                        </template>
+                                    </div>
                                     <p class="mt-1 text-xs text-ink-faint" x-show="m.entrega" x-text="entrega(m.entrega)"></p>
                                 </article>
                             </template>
@@ -205,8 +243,14 @@
                         </div>
                     </div>
 
+                    <div class="flex-none space-y-1 border-t border-line px-4 py-2 text-xs" role="status" aria-live="polite" x-show="pedidosAtivos.length || aba.recibo">
+                        <p x-show="aba.recibo && !pedidosAtivos.length" x-text="aba.recibo" class="text-ink-mute"></p>
+                        <template x-for="a in pedidosAtivos" :key="a.id">
+                            <p class="flex items-center gap-2 text-brand-text"><span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand"></span><span x-text="andamento(a)"></span></p>
+                        </template>
+                    </div>
                     {{-- Compositor, sempre visível --}}
-                    <form @submit.prevent="enviar()" class="flex-none space-y-2 border-t border-line p-3" aria-label="Enviar mensagem">
+                    <form @submit.prevent="enviar()" @dragover.prevent @drop.prevent="escolherArquivos($event.dataTransfer.files)" class="flex-none space-y-2 border-t border-line p-3" aria-label="Enviar mensagem">
                         @if ($podeAcionar)
                             <div class="flex flex-wrap items-center gap-2 text-xs">
                                 <label class="sr-only" for="central-tarefa">Tarefa</label>
@@ -237,14 +281,25 @@
                                       x-text="'⚠ ' + (consumo.limites?.esgotados?.[aba.agente] || '')"></span>
                             </div>
                         @endif
+                        <div class="flex flex-wrap items-center gap-2 text-xs">
+                            <label class="cursor-pointer font-semibold text-brand-text">📎 Anexar
+                                <input type="file" class="sr-only" multiple accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/webm,video/quicktime"
+                                       :disabled="!!aba.pendente || bloqueado || !podeEnviar" @change="escolherArquivos($event.target.files); $event.target.value = ''">
+                            </label>
+                            <span class="text-ink-faint">Até 20 MB por arquivo · cole ou arraste uma captura</span>
+                            <template x-for="(a, i) in aba.arquivos" :key="a.id">
+                                <button type="button" :disabled="!!aba.pendente" @click="aba.arquivos.splice(i, 1)" class="text-ink-mute" :aria-label="'Remover ' + a.file.name" x-text="a.file.name + ' ×'"></button>
+                            </template>
+                            <span role="status" x-text="aba.progresso" class="text-brand-text"></span>
+                        </div>
                         <div class="flex items-end gap-2">
                             <label for="central-rascunho" class="sr-only">Sua mensagem</label>
-                            <textarea id="central-rascunho" x-model="aba.rascunho" maxlength="{{ config('central_ia.max_texto') }}" rows="2"
+                            <textarea @paste="colar($event)" id="central-rascunho" x-model="aba.rascunho" maxlength="{{ config('central_ia.max_texto') }}" rows="2"
                                       :readonly="!!aba.pendente" :disabled="bloqueado || !podeEnviar"
                                       @keydown.enter="if (!$event.shiftKey && !$event.isComposing && !window.matchMedia('(pointer: coarse)').matches) { $event.preventDefault(); enviar(); }"
                                       :placeholder="atual ? 'Peça algo para ' + atual + '… (Enter envia, Shift+Enter quebra linha)' : 'Pergunte ou anote… (Enter envia)'"
                                       class="min-w-0 flex-1 resize-none rounded-control border-line bg-input text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand disabled:opacity-50"></textarea>
-                            <button type="submit" :disabled="aba.enviando || bloqueado || !podeEnviar || (!aba.pendente && !aba.rascunho.trim())"
+                            <button type="submit" :disabled="aba.enviando || bloqueado || !podeEnviar || (!aba.pendente && !aba.rascunho.trim() && !aba.arquivos.length)"
                                     class="flex-none rounded-control bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition hover:bg-brand-bright disabled:opacity-50"
                                     x-text="aba.enviando ? 'Enviando…' : (aba.pendente ? 'Reenviar' : 'Enviar')"></button>
                         </div>
@@ -336,22 +391,6 @@
                     </template>
                 </div>
 
-                {{-- Conversas do VS Code --}}
-                <div class="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 text-sm" x-show="atual && sub === 'vscode'" x-cloak>
-                    <p x-show="!sessoesDoProjeto.length" class="px-1 text-ink-faint">Nenhuma conversa recente deste projeto no VS Code.</p>
-                    <template x-for="s in sessoesDoProjeto" :key="s.agente + s.id">
-                        <div class="flex flex-wrap items-center justify-between gap-2 rounded-control border border-line px-3 py-2">
-                            <span class="text-ink-dim" x-text="s.nome + ' · ' + s.mensagens + ' mensagens suas · ' + haQuanto(s.ultima_atividade)"></span>
-                            @if ($podeAcionar)
-                                <button type="button" @click="continuarSessao(s)" :disabled="s.ativa_agora"
-                                        class="text-xs font-semibold text-brand-text disabled:text-ink-faint"
-                                        :title="s.ativa_agora ? 'Em uso no VS Code agora — pare por lá antes' : 'Continua de onde parou'"
-                                        x-text="s.ativa_agora ? 'em uso no VS Code' : (consumo.limites?.esgotados?.[s.agente] ? 'Continuar (GPT assume — ' + s.nome + ' no limite)' : 'Continuar daqui')"></button>
-                            @endif
-                        </div>
-                    </template>
-                    <p class="px-1 text-xs text-ink-faint">Continuar abre uma tarefa na pasta da sessão. Com o Claude disponível, ele segue numa cópia da conversa (a do VS Code fica intacta); se ele estiver no limite, o GPT (Codex) assume com o histórico dela.</p>
-                </div>
             </main>
         </div>
 
@@ -408,9 +447,9 @@
                 <div class="rounded-panel border border-line bg-panel p-4">
                     <p class="text-sm font-semibold text-ink">Central de IA</p>
                     <p class="text-xs text-ink-mute">Pedidos a agentes hoje</p>
-                    <p class="mt-2 font-display text-2xl font-semibold text-ink" x-text="(consumo.limites?.central.usados ?? 0) + ' / ' + (consumo.limites?.central.limite ?? 0)"></p>
-                    <div class="mt-1 h-1.5 rounded-full bg-bar-track"><div class="h-1.5 rounded-full" :class="corPct(100 * (consumo.limites?.central.usados ?? 0) / Math.max(1, consumo.limites?.central.limite ?? 1))" :style="'width:' + Math.min(100, 100 * (consumo.limites?.central.usados ?? 0) / Math.max(1, consumo.limites?.central.limite ?? 1)) + '%'"></div></div>
-                    <p class="mt-1 text-xs text-ink-faint" x-text="'Restam ' + Math.max(0, (consumo.limites?.central.limite ?? 0) - (consumo.limites?.central.usados ?? 0)) + ' hoje'"></p>
+                    <p class="mt-2 font-display text-2xl font-semibold text-ink" x-text="(consumo.limites?.central.usados ?? 0) + (consumo.limites?.central.limite == null ? '' : ' / ' + consumo.limites.central.limite)"></p>
+                    <div x-show="consumo.limites?.central.limite != null" class="mt-1 h-1.5 rounded-full bg-bar-track"><div class="h-1.5 rounded-full" :class="corPct(100 * (consumo.limites?.central.usados ?? 0) / Math.max(1, consumo.limites?.central.limite ?? 1))" :style="'width:' + Math.min(100, 100 * (consumo.limites?.central.usados ?? 0) / Math.max(1, consumo.limites?.central.limite ?? 1)) + '%'"></div></div>
+                    <p class="mt-1 text-xs text-ink-faint" x-text="consumo.limites?.central.limite == null ? 'Sem teto interno; franquias dos provedores continuam valendo.' : 'Restam ' + Math.max(0, consumo.limites.central.limite - (consumo.limites?.central.usados ?? 0)) + ' hoje'"></p>
                     <p class="text-xs text-ink-faint" x-text="Object.entries(consumo.limites?.por_agente_central || {}).map(([a, n]) => n + ' ' + a).join(' · ')"></p>
                 </div>
 
@@ -594,7 +633,7 @@
 
             <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
                 <h3 class="font-semibold text-ink">Acesso e limites</h3>
-                <p class="mt-1 text-ink-mute" x-text="'Pedidos a agentes por dia: ' + (consumo.limites?.central.limite ?? '—') + ' · ao mesmo tempo: ' + paralelo + ' · teto por execução: 15 min.'"></p>
+                <p class="mt-1 text-ink-mute" x-text="'Pedidos a agentes por dia: ' + (consumo.limites?.central.limite ?? 'sem teto interno') + ' · ao mesmo tempo: ' + paralelo + ' · teto por execução: 15 min.'"></p>
                 <p class="mt-1 text-ink-mute">Acesso dos agentes: <span class="font-semibold text-ink">total</span> — como no VS Code (pasta do projeto, git, docker, ssh, OneDrive). Commit, push e deploy só quando o pedido disser; tudo fica no Log de eventos.</p>
                 <p class="mt-1 text-xs text-ink-faint">A franquia mensal do Copilot (Pro: 300, Pro+: 1500) é configurada no servidor (<code class="font-mono">CENTRAL_IA_COPILOT_PREMIUM_MES</code>) — o plano não pode ser lido da máquina.</p>
             </div>

@@ -19,6 +19,57 @@ use Illuminate\Support\Facades\Http;
  */
 class TelegramApi
 {
+    private ?\Closure $verificarConsumidor = null;
+
+    public function protegerConsumidor(callable $verificar): void
+    {
+        $this->verificarConsumidor = \Closure::fromCallable($verificar);
+    }
+
+    public function verificarConsumidor(): void
+    {
+        if ($this->verificarConsumidor) {
+            ($this->verificarConsumidor)();
+        }
+    }
+
+    /** Só o consumidor usa esta URL; exceções nunca expõem o token. */
+    public function baixar(string $fileId, string $destino): bool
+    {
+        $info = $this->chamar('getFile', ['file_id' => $fileId]);
+        $caminho = $info['resultado']['file_path'] ?? null;
+        if (! $info['ok'] || ! is_string($caminho) || ! preg_match('#^[A-Za-z0-9_./-]+$#', $caminho)
+            || str_contains($caminho, '..') || ($info['resultado']['file_size'] ?? 0) > AnexosService::MAX_BYTES) {
+            return false;
+        }
+        try {
+            $r = Http::connectTimeout(5)->timeout(45)->withOptions(['stream' => true])
+                ->get('https://api.telegram.org/file/bot'.config('central_ia.telegram.token').'/'.$caminho);
+            if (! $r->successful()) {
+                return false;
+            }
+            $body = $r->toPsrResponse()->getBody();
+            $saida = fopen($destino, 'wb');
+            $tamanho = 0;
+            try {
+                while (! $body->eof()) {
+                    $parte = $body->read(65536);
+                    $tamanho += strlen($parte);
+                    if ($tamanho > AnexosService::MAX_BYTES) {
+                        return false;
+                    }
+                    fwrite($saida, $parte);
+                }
+            } finally {
+                fclose($saida);
+                $body->close();
+            }
+            return $tamanho > 0;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     public function configurado(): bool
     {
         return filled(config('central_ia.telegram.token'));
@@ -29,6 +80,7 @@ class TelegramApi
      */
     public function chamar(string $metodo, array $dados = [], int $timeout = 15): array
     {
+        $this->verificarConsumidor();
         if (! $this->configurado()) {
             return ['ok' => false, 'erro' => 'nao_configurado'];
         }

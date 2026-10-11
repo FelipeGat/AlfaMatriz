@@ -24,6 +24,13 @@ class CentralIaRunnerController extends Controller
 {
     public function __construct(private readonly AgentesService $agentes) {}
 
+    public function baixarAnexo(Request $request, string $anexo): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $user = $this->conta($request);
+        abort_unless(\App\Models\CentralIaAnexo::where('user_id', $user->id)->whereKey($anexo)->whereNotNull('mensagem_id')->exists(), 404);
+        return app(\App\Services\CentralIa\AnexosService::class)->baixar($user, $anexo);
+    }
+
     public function batida(Request $request): JsonResponse
     {
         $user = $this->conta($request);
@@ -52,6 +59,8 @@ class CentralIaRunnerController extends Controller
             ],
         );
 
+        app(\App\Services\CentralIa\ProgressoService::class)->publicar($user);
+
         return response()->json(['ok' => true]);
     }
 
@@ -66,6 +75,20 @@ class CentralIaRunnerController extends Controller
         $execucao = $this->agentes->proxima($user, $runner);
 
         return $execucao ? response()->json($execucao) : response()->noContent();
+    }
+
+    public function progresso(Request $request, int $execucao): JsonResponse
+    {
+        $user = $this->conta($request);
+        $dados = $request->validate([
+            'maquina' => ['required', 'string', 'max:64'],
+            'sequencia' => ['required', 'integer', 'min:1'],
+            'etapa' => ['required', 'in:'.implode(',', array_keys(\App\Services\CentralIa\ProgressoService::ETAPAS))],
+            'atividade_em' => ['nullable', 'date', 'before_or_equal:'.now()->addSeconds(5)->toIso8601String()],
+            'processo_ativo' => ['present', 'nullable', 'boolean'],
+        ]);
+        app(\App\Services\CentralIa\ProgressoService::class)->registrar($user, $dados['maquina'], $execucao, $dados);
+        return response()->json(['ok' => true]);
     }
 
     public function concluir(Request $request, int $execucao): JsonResponse

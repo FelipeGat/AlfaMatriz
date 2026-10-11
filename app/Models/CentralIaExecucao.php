@@ -41,12 +41,15 @@ class CentralIaExecucao extends Model
 
     protected $fillable = [
         'user_id', 'pedido_id', 'resposta_id', 'runner_id', 'tarefa_id', 'agente', 'projeto', 'modo', 'roteamento', 'checkpoint', 'instrucao',
-        'status', 'sessao_agente', 'branch', 'erro', 'iniciada_em', 'concluida_em',
+        'progresso', 'progresso_em', 'status_avisado_em', 'status', 'sessao_agente', 'branch', 'erro', 'iniciada_em', 'concluida_em',
     ];
 
     protected $casts = [
         'roteamento' => 'array',
         'checkpoint' => 'array',
+        'progresso' => 'array',
+        'progresso_em' => 'datetime',
+        'status_avisado_em' => 'datetime',
         'iniciada_em' => 'datetime',
         'concluida_em' => 'datetime',
     ];

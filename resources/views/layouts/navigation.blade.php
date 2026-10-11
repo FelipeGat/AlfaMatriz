@@ -115,10 +115,18 @@
              quem não tem `dashboard` — o perfil comercial — clicava no logo
              para tomar 403. `telaInicial()` é quem sabe a resposta, e já a dava
              ao login e ao desvio de quem entra. --}}
-        <a href="{{ Auth::user()->telaInicial() }}" class="flex items-center gap-2.5 min-w-0">
+        <a href="{{ Auth::user()->telaInicial() }}" class="flex items-center gap-2.5 min-w-0 rail:lg:hidden">
             <img src="/icon-matriz-solid.svg" alt="" class="h-7 w-7 shrink-0">
             <img src="/alfamatriz.png" alt="AlfaMatriz" class="h-[15px] w-auto shrink-0 rail:lg:hidden">
         </a>
+
+        <button type="button" @click="alternarRail()"
+                class="ml-auto hidden lg:flex h-7 w-7 shrink-0 items-center justify-center rounded-ctl text-ink-mute hover:bg-chip hover:text-ink rail:lg:ml-0"
+                :aria-label="railAberto ? 'Recolher menu lateral' : 'Expandir menu lateral'"
+                :aria-expanded="railAberto.toString()" aria-controls="menu-principal"
+                :title="railAberto ? 'Recolher menu' : 'Expandir menu'">
+            <span class="h-4 w-4"><x-nav-icon name="panel-left" /></span>
+        </button>
 
         <button type="button" @click="gavetaAberta = false"
                 class="ml-auto lg:hidden h-7 w-7 text-ink-mute hover:text-ink transition"
@@ -141,8 +149,15 @@
 
             {{-- O rótulo do grupo ganha um respiro maior acima que abaixo: ele
                  pertence ao que vem depois, não ao que veio antes. --}}
-            <p class="px-[14px] pt-3 pb-1 first:pt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-caps-max text-ink-faint
-                      rail:lg:hidden">{{ $nomeGrupo }}</p>
+            <button type="button" @click="alternarGrupoMenu(@js($nomeGrupo))"
+                    :aria-expanded="((!railAberto && !gavetaAberta) || !gruposMenuFechados.includes(@js($nomeGrupo))).toString()"
+                    aria-controls="menu-grupo-{{ $loop->index }}"
+                    class="flex w-full items-center justify-between px-[14px] pt-3 pb-1 font-mono text-[9.5px] font-semibold uppercase tracking-caps-max text-ink-faint hover:text-ink rail:lg:hidden">
+                <span>{{ $nomeGrupo }}</span>
+                <span class="h-3 w-3 transition-transform" :class="gruposMenuFechados.includes(@js($nomeGrupo)) && '-rotate-90'"><x-nav-icon name="chevron-down" /></span>
+            </button>
+            <div id="menu-grupo-{{ $loop->index }}"
+                 :class="gruposMenuFechados.includes(@js($nomeGrupo)) && 'hidden rail:lg:block'">
 
             @foreach ($links as $link)
                 @php $ativo = request()->routeIs(...(array) $link['pattern']); @endphp
@@ -178,6 +193,7 @@
                     <span class="truncate rail:lg:hidden">{{ $link['label'] }}</span>
                 </a>
             @endforeach
+            </div>
         @endforeach
     </nav>
 

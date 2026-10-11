@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use App\Services\CentralIa\TelegramApi;
 use App\Services\CentralIa\TelegramCanal;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Cache;
+use App\Services\CentralIa\TelegramConsumerLock;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -27,7 +27,7 @@ class CentralIaTelegram extends Command
 
     private bool $parar = false;
 
-    public function handle(TelegramApi $api, TelegramCanal $canal): int
+    public function handle(TelegramApi $api, TelegramCanal $canal, TelegramConsumerLock $lock): int
     {
         if (! $api->configurado()) {
             $this->error('CENTRAL_IA_TELEGRAM_TOKEN não configurado.');
@@ -35,60 +35,61 @@ class CentralIaTelegram extends Command
             return self::FAILURE;
         }
 
-        // Com webhook ligado o getUpdates não funciona, e apagar o webhook de
-        // alguém é mexer na configuração do bot sem pedir.
-        $webhook = $api->chamar('getWebhookInfo');
-        if (! $webhook['ok'] || filled($webhook['resultado']['url'] ?? null)) {
-            $this->error('O bot tem webhook configurado (ou não respondeu). Nada foi alterado.');
+        try {
+            if (! $lock->acquire()) {
+                $this->warn('Outro consumidor da Central está ativo. Nada foi lido.');
+                return self::FAILURE;
+            }
 
+            $api->protegerConsumidor(fn () => $lock->assertOwned());
+
+            // A exclusividade começa antes de qualquer chamada ao Telegram.
+            $webhook = $api->chamar('getWebhookInfo');
+            if (! $webhook['ok'] || filled($webhook['resultado']['url'] ?? null)) {
+                $this->error('O bot tem webhook configurado (ou não respondeu). Nada foi alterado.');
+                return self::FAILURE;
+            }
+
+            $this->trap([SIGTERM, SIGINT], fn () => $this->parar = true);
+            $this->info('Ouvindo @'.config('central_ia.telegram.bot').'.');
+            do {
+                $lock->assertOwned();
+                $pausa = $this->ciclo($api, $canal, $lock);
+                if ($this->option('uma-vez')) {
+                    return $pausa === null ? self::SUCCESS : self::FAILURE;
+                }
+                if ($pausa) {
+                    sleep($pausa);
+                }
+            } while (! $this->parar);
+            return self::SUCCESS;
+        } catch (\Throwable $e) {
+            $this->error('Consumidor encerrado com segurança ('.class_basename($e).').');
             return self::FAILURE;
+        } finally {
+            try {
+                $lock->release();
+            } catch (\Throwable $e) {
+                $this->warn('Conexão da trava encerrada ('.class_basename($e).').');
+            }
         }
-
-        $this->trap([SIGTERM, SIGINT], fn () => $this->parar = true);
-        $this->info('Ouvindo @'.config('central_ia.telegram.bot').'.');
-
-        do {
-            $pausa = $this->ciclo($api, $canal);
-
-            if ($this->option('uma-vez')) {
-                return $pausa === null ? self::SUCCESS : self::FAILURE;
-            }
-
-            if ($pausa) {
-                sleep($pausa);
-            }
-        } while (! $this->parar);
-
-        return self::SUCCESS;
     }
 
     /**
      * @return int|null segundos de pausa antes do próximo ciclo; null = segue direto
      */
-    private function ciclo(TelegramApi $api, TelegramCanal $canal): ?int
+    private function ciclo(TelegramApi $api, TelegramCanal $canal, TelegramConsumerLock $lock): ?int
     {
-        // Dono ESTÁVEL (o hostname do container): no SIGTERM o Symfony sai
-        // com exit() de dentro do handler do sinal e o `finally` não roda, e a
-        // trava ficava presa — o bot passou 5 minutos mudo depois de um
-        // restart. Com o mesmo dono, o processo que volta retoma a trava na
-        // hora; um segundo consumidor, em outra máquina ou container, continua
-        // barrado. 60 s: um ciclo cabe nisso (leitura de até 20 s + entregas
-        // com prazo de 20 s).
-        $trava = Cache::lock('central-ia:telegram', 60, config('central_ia.telegram.dono') ?: gethostname());
-
-        if (! $trava->get()) {
-            $this->warn('Outro processo do bot está ativo. Aguardando.');
-
-            return 30;
-        }
-
         try {
+            app(\App\Services\CentralIa\ProgressoService::class)->publicar();
+            $lock->assertOwned();
             $canal->entregarPendentes();
+            $canal->sinalizarAtividade();
 
             $proximo = (int) DB::table('central_ia_telegram_cursor')->value('proximo_update_id');
             $leitura = $api->chamar('getUpdates', [
                 'offset' => $proximo,
-                'timeout' => $this->option('uma-vez') ? 0 : config('central_ia.telegram.espera_segundos'),
+                'timeout' => $this->option('uma-vez') ? 0 : min(3, config('central_ia.telegram.espera_segundos')),
                 'allowed_updates' => ['message'],
             ], config('central_ia.telegram.espera_segundos') + 10);
 
@@ -105,12 +106,15 @@ class CentralIaTelegram extends Command
             $updates = collect($leitura['resultado'])->filter(fn ($u) => is_int($u['update_id'] ?? null))->sortBy('update_id');
 
             foreach ($updates as $update) {
+                $lock->assertOwned();
                 $canal->receber($update);
+                $lock->assertOwned();
                 // O cursor anda update a update: uma queda no meio relê só o
                 // que faltou, e o único do update_id segura a repetição.
                 $this->salvarCursor($update['update_id'] + 1);
             }
 
+            $lock->assertOwned();
             $canal->entregarPendentes();
 
             return null;
@@ -119,8 +123,6 @@ class CentralIaTelegram extends Command
             $this->warn('Falha no ciclo do bot ('.class_basename($e).'). O cursor foi preservado.');
 
             return 5;
-        } finally {
-            $trava->release();
         }
     }
 

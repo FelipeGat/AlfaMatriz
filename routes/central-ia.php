@@ -14,8 +14,10 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('api/central-ia/runner')
     ->middleware(['auth:sanctum', 'abilities:central-ia-runner', 'throttle:120,1,central-ia-runner'])
     ->group(function () {
+        Route::get('anexos/{anexo}', [CentralIaRunnerController::class, 'baixarAnexo'])->whereUuid('anexo')->name('central-ia.runner.anexo');
         Route::post('batida', [CentralIaRunnerController::class, 'batida'])->name('central-ia.runner.batida');
         Route::post('proxima', [CentralIaRunnerController::class, 'proxima'])->name('central-ia.runner.proxima');
+        Route::post('execucoes/{execucao}/progresso', [CentralIaRunnerController::class, 'progresso'])->whereNumber('execucao')->name('central-ia.runner.progresso');
         Route::post('execucoes/{execucao}/conclusao', [CentralIaRunnerController::class, 'concluir'])
             ->whereNumber('execucao')->name('central-ia.runner.concluir');
     });
