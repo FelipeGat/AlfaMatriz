@@ -90,6 +90,7 @@ class CentralIaController extends Controller
         // aqui com o estado atual, para "entregue" e "concluído" aparecerem.
         $recentes = CentralIaMensagem::de($request->user())
             ->when($projeto === null, fn ($q) => $q->whereNull('projeto'), fn ($q) => $q->where('projeto', $projeto))
+            ->when(isset($dados['tarefa']), fn ($q) => $q->where('tarefa_id', $dados['tarefa']))
             ->where(fn ($q) => $q->whereHas('entrega')->orWhereHas('execucao'))
             ->with('entrega', 'execucao')->orderByDesc('id')->limit(20)->get();
 

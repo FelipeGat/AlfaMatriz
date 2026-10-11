@@ -64,6 +64,7 @@ class CockpitService
 
         return [
             'projetos' => $projetos,
+            'chats' => $this->chats($user),
             'grupos' => \App\Models\CentralIaGrupo::where('user_id', $user->id)->orderBy('ordem')->orderBy('nome')->get(['id', 'nome', 'ordem'])->toArray(),
             'atividade' => $this->atividade($user),
             'recentes' => $this->recentes($maquina, $nomes),
@@ -76,6 +77,19 @@ class CockpitService
             ],
             'paralelo' => (int) config('central_ia.agentes.paralelo'),
         ];
+    }
+
+    /** Chats da Central são assuntos/tarefas; sessões externas não são importadas aqui. */
+    public function chats(User $user): array
+    {
+        return CentralIaTarefa::de($user)->emCurso()
+            ->orderByDesc('ultima_atividade_em')->orderByDesc('id')
+            ->get(['id', 'projeto', 'titulo', 'status', 'agente_atual', 'ultima_atividade_em', 'created_at'])
+            ->map(fn (CentralIaTarefa $t) => [
+                'id' => $t->id, 'projeto' => $t->projeto, 'titulo' => $t->titulo, 'status' => $t->status,
+                'agente' => CentralIaExecucao::AGENTES[$t->agente_atual] ?? null,
+                'ultima_atividade' => ($t->ultima_atividade_em ?? $t->created_at)?->toIso8601String(),
+            ])->all();
     }
 
     /**
