@@ -364,6 +364,7 @@ class AgentesService
 
         $execucao = DB::transaction(function () use ($user, $runner) {
             User::whereKey($user->id)->lockForUpdate()->first();
+            if (app(Preferencias::class)->ler($user)['execucao_bloqueada']) return null;
 
             $rodando = CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::EXECUTANDO);
             if ((clone $rodando)->count() >= min(max(1, (int) config('central_ia.agentes.paralelo')), app(Preferencias::class)->ler($user)['paralelo'])) {

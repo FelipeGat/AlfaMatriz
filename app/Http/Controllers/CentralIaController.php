@@ -68,6 +68,9 @@ class CentralIaController extends Controller
             \App\Models\User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
             abort_unless($servico->ler($request->user())['revisao_config'] === $dados['revisao_config'], 409, 'Ajustes alterados em outra janela. Recarregue antes de salvar.');
             $dados['revisao_config']++;
+            // O dono da conta não pode remover uma restrição administrativa
+            // omitindo-a no PUT ou enviando uma versão adulterada dela.
+            if ($g = app(\App\Services\CentralIa\Governanca::class)->politica($request->user())) $dados['governanca'] = $g;
             \App\Models\CentralIaPreferencia::updateOrCreate(['user_id' => $request->user()->id], ['regras' => $dados]);
             \App\Services\CentralIa\Eventos::registrar($request->user(), 'ajustes', 'Preferências individuais de roteamento e limites atualizadas.');
             return $servico->ler($request->user());
@@ -95,6 +98,46 @@ class CentralIaController extends Controller
         return $this->semCache($resultado);
     }
 
+    public function administracao(Request $request): JsonResponse
+    {
+        $g = app(\App\Services\CentralIa\Governanca::class);
+        abort_unless($g->administra($request->user()), 403);
+        $dados = $request->validate(['usuario' => ['required', 'integer', 'min:1']]);
+        $alvo = \App\Models\User::findOrFail($dados['usuario']);
+        return $this->semCache($g->resumo($request->user(), $alvo));
+    }
+
+    public function politicaUsuario(Request $request, int $usuario): JsonResponse
+    {
+        $g = app(\App\Services\CentralIa\Governanca::class);
+        abort_unless($g->administra($request->user()), 403);
+        abort_if($usuario === $request->user()->id, 422, 'Use seus próprios Ajustes para esta conta.');
+        abort_unless(app(\App\Services\CentralIa\Preferencias::class)->pronta(), 503);
+        $alvo = \App\Models\User::findOrFail($usuario);
+        $dados = $request->validate([
+            'revisao' => ['required', 'integer', 'min:0'],
+            'habilitados' => ['required', 'array:claude,codex,copilot'], 'habilitados.*' => ['required', 'boolean'],
+            'pedidos_dia' => ['required', 'array:claude,codex,copilot'], 'pedidos_dia.*' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'limite_total' => ['nullable', 'integer', 'min:0', 'max:30000'],
+            'paralelo' => ['required', 'integer', 'min:1', 'max:'.max(1, (int) config('central_ia.agentes.paralelo'))],
+            'execucao_bloqueada' => ['prohibited'], 'deploy' => ['prohibited'], 'onedrive' => ['prohibited'],
+        ]);
+        foreach (array_keys(CentralIaExecucao::AGENTES) as $a) abort_unless(isset($dados['habilitados'][$a]) && array_key_exists($a, $dados['pedidos_dia']), 422);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($alvo, $dados, $g, $request) {
+            \App\Models\User::whereKey($alvo->id)->lockForUpdate()->firstOrFail();
+            $politica = $g->politica($alvo) ?? $g->padrao();
+            abort_unless($politica['revisao'] === $dados['revisao'], 409, 'Política alterada em outra janela. Recarregue.');
+            $dados['revisao']++;
+            $dados += ['execucao_bloqueada' => true, 'deploy' => false, 'onedrive' => false];
+            $registro = \App\Models\CentralIaPreferencia::where('user_id', $alvo->id)->first();
+            $regras = $registro?->regras ?? app(\App\Services\CentralIa\Preferencias::class)->ler($alvo);
+            $regras['governanca'] = $dados; $regras['revisao_config']++;
+            \App\Models\CentralIaPreferencia::updateOrCreate(['user_id' => $alvo->id], ['regras' => $regras]);
+            \App\Services\CentralIa\Eventos::registrar($request->user(), 'politica_usuario', 'Política administrativa atualizada para conta #'.$alvo->id.'. Execução bloqueada até isolamento.');
+        });
+        return $this->semCache($g->resumo($request->user(), $alvo));
+    }
+
     /**
      * Projetos, atividade de todos eles, máquina e Telegram — o poll do
      * cockpit, que corre mesmo quando se olha um projeto só.
@@ -118,6 +161,8 @@ class CentralIaController extends Controller
             'eventos' => \App\Services\CentralIa\Eventos::recentes($request->user()),
             'preferencias' => ['disponivel' => app(\App\Services\CentralIa\Preferencias::class)->pronta(),
                 'regras' => app(\App\Services\CentralIa\Preferencias::class)->ler($request->user())],
+            'administracao' => ['permitida' => app(\App\Services\CentralIa\Governanca::class)->administra($request->user()),
+                'usuarios' => app(\App\Services\CentralIa\Governanca::class)->usuarios($request->user())],
         ]);
     }
 

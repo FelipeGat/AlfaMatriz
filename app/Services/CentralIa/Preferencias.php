@@ -17,7 +17,7 @@ class Preferencias
     public function ler(User $user): array
     {
         $salvas = $this->pronta() ? CentralIaPreferencia::where('user_id', $user->id)->value('regras') : null;
-        return array_replace_recursive([
+        $regras = array_replace_recursive([
             'revisao_config' => 0,
             'padroes' => ['implementacao' => 'claude', 'investigacao' => 'codex', 'revisao' => 'codex', 'planejamento' => 'codex', 'relatorio' => 'copilot', 'apoio' => 'copilot'],
             'habilitados' => ['claude' => true, 'codex' => true, 'copilot' => true],
@@ -26,11 +26,27 @@ class Preferencias
             'paralelo' => max(1, (int) config('central_ia.agentes.paralelo')),
             'fallback' => (bool) config('central_ia.agentes.fallback_automatico'),
         ], is_array($salvas) ? $salvas : []);
+        $regras['execucao_bloqueada'] = app(Governanca::class)->execucaoBloqueada($user, $salvas['governanca'] ?? null);
+        if ($g = $salvas['governanca'] ?? null) {
+            foreach (array_keys(CentralIaExecucao::AGENTES) as $a) {
+                $regras['habilitados'][$a] = $regras['habilitados'][$a] && ($g['habilitados'][$a] ?? false);
+                $regras['pedidos_dia'][$a] = $this->menor($regras['pedidos_dia'][$a], array_key_exists($a, $g['pedidos_dia'] ?? []) ? $g['pedidos_dia'][$a] : 0);
+            }
+            $regras['limite_total'] = $this->menor($regras['limite_total'], array_key_exists('limite_total', $g) ? $g['limite_total'] : 0);
+            $regras['paralelo'] = min($regras['paralelo'], $g['paralelo'] ?? 1);
+        }
+        return $regras;
+    }
+
+    private function menor(?int $a, ?int $b): ?int
+    {
+        return $a === null ? $b : ($b === null ? $a : min($a, $b));
     }
 
     public function ordem(User $user, string $categoria): array
     {
         $r = $this->ler($user);
+        if ($r['execucao_bloqueada']) return [];
         $primeiro = $r['padroes'][$categoria] ?? 'codex';
         return array_values(array_filter(array_unique([$primeiro, ...config('central_ia.roteamento.'.$categoria, ['codex', 'claude', 'copilot'])]), fn ($a) => $r['habilitados'][$a] ?? false));
     }
@@ -49,6 +65,7 @@ class Preferencias
     public function pode(User $user, string $agente): bool
     {
         $r = $this->ler($user);
+        if ($r['execucao_bloqueada']) return false;
         $limite = $r['pedidos_dia'][$agente] ?? null;
         return ($r['habilitados'][$agente] ?? false) && ($limite === null || $this->usados($user, $agente) < $limite)
             && ($r['limite_total'] === null || $this->usados($user) < $r['limite_total']);
