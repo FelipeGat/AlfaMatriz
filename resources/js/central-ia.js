@@ -37,6 +37,7 @@ export function centralIa(config) {
     return {
         // Painel (todos os projetos)
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
+        preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         projetos: [], atividade: [], maquina: { online: false, agentes: [], projetos: [] }, paralelo: 2,
         recentes: [], consumo: { por_agente: [], projetos_hoje: [], cota_codex: null, serie: [], limites: null }, sessoes: [], periodo: 'hoje',
         grupos: [], busca: '', recolhidos: [], tela: 'projetos', sub: 'conversa',
@@ -296,6 +297,8 @@ export function centralIa(config) {
             try {
                 const painel = await this.pedir(config.painel);
                 this.chats = painel.chats || [];
+                this.preferencias = painel.preferencias || null;
+                if (!this.ajustesAlterados && this.preferencias) this.ajustes = JSON.parse(JSON.stringify(this.preferencias.regras));
                 this.projetos = painel.projetos; this.atividade = painel.atividade; this.maquina = painel.maquina;
                 this.atendimento = painel.canal || { disponivel: false, ativo: 'web' };
                 this.paralelo = painel.paralelo; this.telegram = painel.telegram; this.contaNome = painel.conta_nome || '';
@@ -470,6 +473,31 @@ export function centralIa(config) {
             finally { aba.enviando = false; aba.progresso = ''; }
         },
 
+        async salvarAjustes() {
+            if (!this.ajustes || this.salvandoAjustes || !this.preferencias?.disponivel) return;
+            this.salvandoAjustes = true;
+            try {
+                const r = await this.pedir(config.preferencias, 'PUT', this.ajustes);
+                this.ajustes = r.regras; this.ajustesAlterados = false;
+                this.aviso = 'Seus ajustes foram salvos. Execuções já iniciadas não são interrompidas.';
+                this.reconectar();
+            } catch (e) { this.aviso = e.detalhe || 'Não foi possível salvar seus ajustes.'; }
+            finally { this.salvandoAjustes = false; }
+        },
+
+        async arquivarChats() {
+            if (this.arquivando || !this.chats.length || !confirm('Arquivar os chats listados? O histórico será preservado e pedidos na fila ficarão suspensos. Execuções em andamento não serão interrompidas.')) return;
+            this.arquivando = true;
+            try {
+                const r = await this.pedir(config.arquivarChats, 'POST', { ids: this.chats.map(c => c.id) });
+                this.chats = this.chats.filter(c => !r.arquivadas.includes(c.id));
+                if (r.arquivadas.includes(this.chatAtual)) { this.abrir(this.atual); this.irPara('chats'); }
+                this.aviso = r.arquivadas.length + ' chats arquivados. ' + (r.rodando.length ? r.rodando.length + ' continuam executando.' : 'Histórico preservado.');
+                this.reconectar();
+            } catch (e) { this.aviso = e.detalhe || 'Não foi possível arquivar os chats.'; }
+            finally { this.arquivando = false; }
+        },
+
         async fixar(projeto) {
             if (!projeto) return;
             try { await this.pedir(config.fixar.replace('__P__', encodeURIComponent(projeto)), 'POST', {}); this.fixarEscolha = ''; this.reconectar(); }
@@ -516,7 +544,7 @@ export function centralIa(config) {
         },
         estado(e) {
             return { executando: 'Executando', aguardando_voce: 'Aguardando você', falhou: 'Falhou', aberta: 'Na fila / aberta',
-                pausada: 'Pausado', concluida: 'Concluída', ocioso: 'Sem tarefa' }[e] || e;
+                pausada: 'Pausado', arquivada: 'Arquivado', concluida: 'Concluída', ocioso: 'Sem tarefa' }[e] || e;
         },
         corDoEstado(e) {
             return { executando: 'text-brand-text border-brand-mute', aguardando_voce: 'text-pergunta border-pergunta-line bg-pergunta-tint',

@@ -328,3 +328,9 @@ Ver [fluxo, implementação e ativação controlada](canal-ativo.md). Ativado no
 ### Chats separados por assunto
 
 Ver [Chats Ativos: uso, isolamento, testes e rollback](chats-ativos.md).
+
+### Regras individuais e arquivamento
+
+Ver [auditoria, Ajustes por conta e próximos controles](ajustes-individuais.md).
+As preferências de roteamento, habilitação e limites são individuais. Acesso por
+pasta/ferramenta e orçamento exato de tokens ainda não são controles comprovados.

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Backup cifrado de UM banco local e ensaio sem portas, rede externa ou IA."""
 import hashlib
+import argparse
 import json
 import os
 import secrets
@@ -18,7 +19,12 @@ ART = CENTRAL / 'development/runtime/real-backup/artifacts' / ('canal-' + STAMP)
 KEYS = CENTRAL / 'development/runtime/real-backup/keys'
 NAME = 'central-canal-restore-' + STAMP.lower()
 NET = NAME + '-net'
-MIGRATION = 'database/migrations/2026_10_11_160000_canal_ativo_da_central_ia.php'
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--migration', choices=['canal', 'preferencias'], default='canal')
+args = parser.parse_args()
+MIGRATION = 'database/migrations/' + (
+    '2026_10_11_180000_preferencias_individuais_central_ia.php' if args.migration == 'preferencias'
+    else '2026_10_11_160000_canal_ativo_da_central_ia.php')
 
 
 def call(args, payload=None, timeout=180):
@@ -102,10 +108,15 @@ def main():
         after = counts(NAME)
         changed = {t for t in before if before[t] != after[t]}
         if changed - {'migrations'}: raise RuntimeError('Quantidade de registros mudou no ensaio.')
-        schema = query(NAME, "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='central_ia_conversas' AND column_name IN ('canal_ativo','projeto_canal','tarefa_canal','canal_desde_id');").strip()
-        if schema != b'4': raise RuntimeError('Schema do canal ativo não confirmado.')
-        if query(NAME, "SELECT COUNT(*) FROM central_ia_conversas WHERE canal_ativo <> 'web';").strip() != b'0': raise RuntimeError('Estado inicial diferente de web.')
-        report.update({'restore_integrity': True, 'migration_rehearsal': True, 'tables_verified': len(before), 'row_counts_preserved': True, 'default_channel_web': True})
+        if args.migration == 'preferencias':
+            schema = query(NAME, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='central_ia_preferencias';").strip()
+            if schema != b'1': raise RuntimeError('Schema de preferências não confirmado.')
+            if query(NAME, 'SELECT COUNT(*) FROM central_ia_preferencias;').strip() != b'0': raise RuntimeError('Preferências reais inesperadas no ensaio.')
+        else:
+            schema = query(NAME, "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='central_ia_conversas' AND column_name IN ('canal_ativo','projeto_canal','tarefa_canal','canal_desde_id');").strip()
+            if schema != b'4': raise RuntimeError('Schema do canal ativo não confirmado.')
+            if query(NAME, "SELECT COUNT(*) FROM central_ia_conversas WHERE canal_ativo <> 'web';").strip() != b'0': raise RuntimeError('Estado inicial diferente de web.')
+        report.update({'restore_integrity': True, 'migration_rehearsal': True, 'tables_verified': len(before), 'row_counts_preserved': True, 'migration': args.migration, 'artifact_directory': str(ART)})
         print(json.dumps(report, ensure_ascii=False))
     finally:
         if created: call(['rm', '-f', '-v', NAME])

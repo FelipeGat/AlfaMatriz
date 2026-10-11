@@ -33,3 +33,17 @@ consumidor Telegram parado/iniciado na janela controlada. Backup de banco único
 e ensaio de restauração/migração aprovados. Histórico (88 mensagens) e pareamento (1)
 preservados por hash; canal inicial web. Sem inferência, push ou produção. Detalhes e
 validação manual pendente no documento `central-ia/canal-ativo.md`.
+
+### Atualização: Ajustes individuais e arquivamento — 11/10/2026
+
+Regras de escolha, habilitação, fallback e limites de solicitações passaram a ser
+configuráveis por usuário. Migração 180000 autorizada e aplicada só no dev local,
+após backup AES-GCM e ensaio MariaDB isolado. Contagens: 88 mensagens, 9 tarefas,
+36 execuções e 1 vínculo Telegram preservados. Nenhum serviço reiniciado ou IA
+executada. Arquivamento reversível exige ação na sessão autenticada e suspende
+fila sem apagar mensagens ou interromper processos. Ver `central-ia/ajustes-individuais.md`.
+
+Autorização mais recente: acesso amplo inicial às IAs do Felipe. Não habilitar
+Rossini/Alexandre com o mesmo HOME/credenciais. Roteador automático atual usa
+regras locais, não consulta GPT. Isolamento de executores, concessões por recurso
+e limites exatos de tokens continuam pendentes; não afirmar que a tela os garante.

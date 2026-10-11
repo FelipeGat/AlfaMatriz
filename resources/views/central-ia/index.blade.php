@@ -22,6 +22,8 @@
                 grupo: '{{ url('central-ia/grupos/__G__') }}',
                 grupoDoProjeto: '{{ route('central-ia.projetos.grupo', '__P__') }}',
                 canal: '{{ route('central-ia.canal') }}',
+                preferencias: '{{ route('central-ia.preferencias') }}',
+                arquivarChats: '{{ route('central-ia.chats.arquivar') }}',
                 telegramCodigo: '{{ route('central-ia.telegram.codigo') }}',
                 telegramDesvincular: '{{ route('central-ia.telegram.desvincular') }}',
                 podeEnviar: {{ $podeEnviar ? 'true' : 'false' }},
@@ -152,6 +154,9 @@
                     <button type="button" @click="menuProjetosMovel = false" class="text-xs text-ink-mute lg:hidden">Fechar</button>
                 </div>
                 <label class="sr-only" for="central-busca-chats">Buscar assunto ou projeto</label>
+                @if ($podeParear)
+                    <button type="button" @click="arquivarChats()" :disabled="arquivando || !chats.length" class="rounded-control border border-btn-line px-3 py-1.5 text-xs font-semibold text-ink disabled:opacity-50">Arquivar chats antigos</button>
+                @endif
                 <input id="central-busca-chats" type="search" x-model="buscaChats" placeholder="Buscar assunto ou projeto…" autocomplete="off"
                        class="rounded-control border-line bg-input py-1.5 text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand">
                 <label class="sr-only" for="central-filtro-chat-projeto">Projeto dos chats</label>
@@ -377,6 +382,7 @@
                                     <span class="mt-0.5 block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-ink-faint"
                                           x-text="(t.agente || 'sem agente') + (t.branch ? ' · ' + t.branch : '') + ' · ' + haQuanto(t.ultima_atividade)"></span>
                                 </button>
+                                <button type="button" x-show="t.status === 'arquivada'" @click="mudarTarefa(t.id, 'aberta')" class="mt-1 text-xs font-semibold text-brand-text">Reabrir chat e liberar pedidos suspensos</button>
                             </li>
                         </template>
                     </ul>
@@ -641,6 +647,41 @@
 
         {{-- ================= AJUSTES ================= --}}
         <div x-show="tela === 'ajustes'" x-cloak class="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto lg:grid-cols-2">
+            <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
+                <h3 class="font-semibold text-ink">Minhas IAs e regras de uso</h3>
+                <p class="mt-1 text-ink-mute">Escolha manual vence o padrão. Automático usa regras locais e informa o motivo, sem gastar uma chamada ao GPT para decidir.</p>
+                <p x-show="!preferencias?.disponivel" class="mt-2 text-warn">A ativação local destes ajustes está pendente. Não foram salvos nem aplicados.</p>
+                <template x-if="ajustes">
+                    <fieldset :disabled="salvandoAjustes || !preferencias?.disponivel" class="mt-3 space-y-3" @input="ajustesAlterados = true" @change="ajustesAlterados = true">
+                        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            <template x-for="(rotulo, categoria) in {implementacao:'Desenvolvimento', investigacao:'Análise', revisao:'Revisão', planejamento:'Planejamento', relatorio:'Relatórios', apoio:'Rotinas e apoio'}" :key="categoria">
+                                <label class="space-y-1"><span class="block text-ink-mute" x-text="rotulo"></span>
+                                    <select x-model="ajustes.padroes[categoria]" class="w-full rounded-control border-line bg-input text-sm text-ink">
+                                        <option value="claude">Claude</option><option value="codex">GPT (Codex)</option><option value="copilot">Copilot</option>
+                                    </select>
+                                </label>
+                            </template>
+                        </div>
+                        <div class="grid gap-3 sm:grid-cols-3">
+                            <template x-for="(nome, agente) in {claude:'Claude', codex:'GPT (Codex)', copilot:'Copilot'}" :key="agente">
+                                <div class="rounded-control border border-line p-3 space-y-2">
+                                    <label class="flex gap-2 items-center"><input type="checkbox" x-model="ajustes.habilitados[agente]" class="rounded border-line text-brand"><span x-text="nome"></span></label>
+                                    <label class="block text-ink-mute">Solicitações por dia<input type="number" min="0" max="10000" x-model.number="ajustes.pedidos_dia[agente]" placeholder="Sem teto interno" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink"></label>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <label class="text-ink-mute">Limite total diário<input type="number" min="0" max="30000" x-model.number="ajustes.limite_total" placeholder="Sem teto interno" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink"></label>
+                            <label class="text-ink-mute">Execuções simultâneas<input type="number" min="1" max="{{ max(1, (int) config('central_ia.agentes.paralelo')) }}" x-model.number="ajustes.paralelo" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink"></label>
+                        </div>
+                        <label class="flex gap-2 items-center"><input type="checkbox" x-model="ajustes.fallback" class="rounded border-line text-brand">Tentar outra IA habilitada quando o provedor estiver indisponível ou no limite</label>
+                        <p class="text-xs text-ink-faint">Em branco: sem teto administrativo. Zero: bloqueia novos pedidos. Tentativas alternativas contam nos limites. As franquias reais continuam sendo as de cada assinatura. Nenhum adaptador de API paga foi adicionado; a autenticação do executor precisa de validação própria. Desabilitar suspende novos pedidos e a fila dessa IA, sem interromper processos já iniciados.</p>
+                        @if ($podeParear)
+                            <button type="button" @click="salvarAjustes()" :disabled="salvandoAjustes || !preferencias?.disponivel" class="rounded-control bg-brand px-3 py-2 font-semibold text-on-brand disabled:opacity-50">Salvar meus ajustes</button>
+                        @endif
+                    </fieldset>
+                </template>
+            </div>
             <div class="rounded-panel border border-line bg-panel p-4 text-sm">
                 <div class="flex items-center justify-between">
                     <h3 class="font-semibold text-ink">Grupos de projetos</h3>
@@ -688,8 +729,10 @@
 
             <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
                 <h3 class="font-semibold text-ink">Acesso e limites</h3>
-                <p class="mt-1 text-ink-mute" x-text="'Pedidos a agentes por dia: ' + (consumo.limites?.central.limite ?? 'sem teto interno') + ' · ao mesmo tempo: ' + paralelo + ' · teto por execução: 15 min.'"></p>
-                <p class="mt-1 text-ink-mute">Acesso dos agentes: <span class="font-semibold text-ink">total</span> — como no VS Code (pasta do projeto, git, docker, ssh, OneDrive). Commit, push e deploy só quando o pedido disser; tudo fica no Log de eventos.</p>
+                <p class="mt-1 text-ink-mute" x-text="'Pedidos a agentes por dia: ' + (consumo.limites?.central.limite ?? 'sem teto interno') + ' · ao mesmo tempo: ' + paralelo"></p>
+                <p class="mt-1 text-ink-mute">Acesso amplo inicial autorizado pelo dono. O executor atual usa o usuário Linux e suas conexões locais. Selecionar uma pasta não impede tecnicamente acesso a outras pastas.</p>
+                <p class="mt-2 text-warn">Permissões por pasta, ferramentas, agenda e credenciais isoladas exigem um executor separado por usuário. Não habilite outro usuário no mesmo executor ou HOME. O bloqueio técnico de commit, push e deploy ainda não está comprovado; instruções ao agente não substituem esse bloqueio.</p>
+                <p class="mt-2 text-ink-mute">Tokens e franquias aparecem em Consumo quando informados pelo provedor. Um teto exato por execução não está implementado; solicitações não equivalem a tokens.</p>
                 <p class="mt-1 text-xs text-ink-faint">A franquia mensal do Copilot (Pro: 300, Pro+: 1500) é configurada no servidor (<code class="font-mono">CENTRAL_IA_COPILOT_PREMIUM_MES</code>) — o plano não pode ser lido da máquina.</p>
             </div>
         </div>
