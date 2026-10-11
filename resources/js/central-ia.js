@@ -36,6 +36,7 @@ function ler(chave) { try { return localStorage.getItem(chave); } catch { return
 export function centralIa(config) {
     return {
         // Painel (todos os projetos)
+        chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         projetos: [], atividade: [], maquina: { online: false, agentes: [], projetos: [] }, paralelo: 2,
         recentes: [], consumo: { por_agente: [], projetos_hoje: [], cota_codex: null, serie: [], limites: null }, sessoes: [], periodo: 'hoje',
         grupos: [], busca: '', recolhidos: [], tela: 'projetos', sub: 'conversa',
@@ -62,7 +63,8 @@ export function centralIa(config) {
 
         // A aba é criada em `garantirAba()`, fora da renderização: criar dentro
         // do getter faria o Alpine escrever enquanto desenha.
-        get aba() { return this.abas[this.atual] || this.abaVazia; },
+        get chaveAba() { return this.chatAtual ? 'chat:' + JSON.stringify([this.atual, this.chatAtual]) : this.atual; },
+        get aba() { return this.abas[this.chaveAba] || this.abaVazia; },
         abaVazia: null,
         get mensagens() { return this.aba.mensagens; },
         get projetoAtual() { return this.projetos.find(p => p.nome === this.atual) || null; },
@@ -179,11 +181,23 @@ export function centralIa(config) {
         diaCurto(d) { return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }); },
         corPct(p) { return p >= 90 ? 'bg-crit' : (p >= 70 ? 'bg-warn' : 'bg-good'); },
 
+        get projetosDosChats() { return [...new Set(this.chats.map(c => c.projeto))].sort(); },
+        get chatsFiltrados() {
+            const termo = this.buscaChats.trim().toLocaleLowerCase('pt-BR');
+            return this.chats.filter(c => (!this.filtroChatProjeto || c.projeto === this.filtroChatProjeto)
+                && (this.filtroChatEstado === 'todos' || (this.filtroChatEstado === 'ativos' ? c.status !== 'pausada' : c.status === this.filtroChatEstado))
+                && (!termo || [c.titulo, c.projeto, c.agente, '#' + c.id].join(' ').toLocaleLowerCase('pt-BR').includes(termo)));
+        },
+        abrirChat(chat) {
+            this.abrir(chat.projeto || GERAL, chat.id);
+            this.irPara('chats'); this.sub = 'conversa';
+        },
+
         get sessoesDoProjeto() { return this.sessoes.filter(s => s.projeto === this.atual); },
         get emExecucao() { return this.atividade.filter(a => a.status === 'executando').length; },
         get naFila() { return this.atividade.filter(a => a.status === 'pendente').length; },
 
-        garantirAba() { if (!this.abas[this.atual]) this.abas[this.atual] = this.novaAba(); },
+        garantirAba() { if (!this.abas[this.chaveAba]) this.abas[this.chaveAba] = this.novaAba(); },
 
         novaAba() {
             return { mensagens: [], carregado: false, haAnteriores: false, rascunho: '', pendente: null, enviando: false, arquivos: [], progresso: '', recibo: '',
@@ -193,12 +207,16 @@ export function centralIa(config) {
         init() {
             const url = new URLSearchParams(location.search).get('projeto');
             this.abaVazia = this.novaAba();
-            this.tela = ler('central-ia:tela') || 'projetos';
+            this.tela = ler('central-ia:tela') || 'chats';
             try { this.recolhidos = JSON.parse(ler('central-ia:recolhidos') || '[]'); } catch { this.recolhidos = []; }
             const salvo = ler('central-ia:projeto');
             this.escolherConversaInicial = url === null && salvo === null;
             this.atual = url ?? salvo ?? GERAL;
+            const tarefaUrl = Number(new URLSearchParams(location.search).get('tarefa'));
+            this.chatAtual = Number.isSafeInteger(tarefaUrl) && tarefaUrl > 0 ? tarefaUrl : null;
+            this.verTarefa = this.chatAtual;
             this.garantirAba();
+            if (this.chatAtual) this.aba.tarefa = this.chatAtual;
             this.aoVoltarRede = () => this.reconectar();
             this.aoPerderRede = () => { this.conexao = 'offline'; this.aviso = 'Sem conexão. Sua mensagem continua aqui para reenviar.'; };
             this.aoMostrar = () => { if (!document.hidden) this.reconectar(); };
@@ -277,6 +295,7 @@ export function centralIa(config) {
             let alcancando = false;
             try {
                 const painel = await this.pedir(config.painel);
+                this.chats = painel.chats || [];
                 this.projetos = painel.projetos; this.atividade = painel.atividade; this.maquina = painel.maquina;
                 this.atendimento = painel.canal || { disponivel: false, ativo: 'web' };
                 this.paralelo = painel.paralelo; this.telegram = painel.telegram; this.contaNome = painel.conta_nome || '';
@@ -287,12 +306,12 @@ export function centralIa(config) {
                 this.recentes = painel.recentes; this.consumo = painel.consumo; this.sessoes = painel.sessoes; this.grupos = painel.grupos || []; this.eventos = painel.eventos || [];
                 if (this.telegram.vinculado) this.pareamento = null;
 
-                const projeto = this.atual, aba = this.aba;
+                const projeto = this.atual, aba = this.aba, chave = this.chaveAba, tarefa = this.chatAtual;
                 const feed = this.$refs.feed;
                 const noFim = !feed || feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
                 const ultima = aba.mensagens.at(-1)?.id;
-                const r = await this.pedir(this.url(config.historico, { projeto, depois: ultima }));
-                if (projeto !== this.atual) return;
+                const r = await this.pedir(this.url(config.historico, { projeto, tarefa: tarefa || undefined, depois: ultima }));
+                if (chave !== this.chaveAba) return;
                 this.juntar(aba, r.mensagens);
                 for (const e of r.recentes || []) {
                     const m = aba.mensagens.find(x => x.id === e.id);
@@ -303,7 +322,7 @@ export function centralIa(config) {
 
                 if (projeto) {
                     const t = await this.pedir(config.tarefas.replace('__P__', encodeURIComponent(projeto)));
-                    if (projeto === this.atual) this.tarefas = t.tarefas;
+                    if (chave === this.chaveAba) this.tarefas = t.tarefas;
                 } else {
                     this.tarefas = [];
                 }
@@ -325,12 +344,13 @@ export function centralIa(config) {
         },
 
         async anteriores() {
-            const aba = this.aba;
+            const aba = this.aba, chave = this.chaveAba;
             if (this.ocupado || this.bloqueado || !aba.mensagens.length) return;
             clearTimeout(this.timer); this.ocupado = true;
             const feed = this.$refs.feed; const altura = feed.scrollHeight;
             try {
-                const r = await this.pedir(this.url(config.historico, { projeto: this.atual, antes: aba.mensagens[0].id }));
+                const r = await this.pedir(this.url(config.historico, { projeto: this.atual, tarefa: this.chatAtual || undefined, antes: aba.mensagens[0].id }));
+                if (chave !== this.chaveAba) return;
                 this.juntar(aba, r.mensagens); aba.haAnteriores = r.ha_mais;
                 this.$nextTick(() => { feed.scrollTop += feed.scrollHeight - altura; });
             } catch (erro) { this.falhou(erro); }
@@ -346,15 +366,17 @@ export function centralIa(config) {
             if (feed) this.aba.scroll = feed.scrollTop;
             this.aba.verTarefa = this.verTarefa;
             this.atual = projeto ?? GERAL;
+            this.chatAtual = tarefa || null;
             this.garantirAba();
             this.verTarefa = tarefa ?? this.aba.verTarefa;
             if (tarefa) this.aba.tarefa = tarefa;
             this.tarefas = [];
             this.menuProjetosMovel = false;
-            if (this.tela !== 'projetos') this.irPara('projetos');
+            if (!['projetos', 'chats'].includes(this.tela)) this.irPara('projetos');
             guardar('central-ia:projeto', this.atual);
             const q = new URLSearchParams(location.search);
             this.atual ? q.set('projeto', this.atual) : q.delete('projeto');
+            if (this.chatAtual) { q.set('projeto', this.atual); q.set('tarefa', this.chatAtual); } else q.delete('tarefa');
             history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : ''));
             this.$nextTick(() => {
                 const f = this.$refs.feed;
@@ -376,6 +398,10 @@ export function centralIa(config) {
         },
 
         selecionarTarefa(id, irParaConversa = false) {
+            if (id && (irParaConversa || this.chatAtual)) {
+                this.abrirChat({ projeto: this.atual, id }); return;
+            }
+            if (!id && this.chatAtual) { this.abrir(this.atual); this.verTarefa = null; return; }
             this.verTarefa = this.verTarefa === id && !irParaConversa ? null : id;
             if (irParaConversa) this.sub = 'conversa';
             if (this.verTarefa) this.aba.tarefa = id;
@@ -403,15 +429,16 @@ export function centralIa(config) {
         },
 
         async enviar() {
-            const aba = this.aba;
+            const aba = this.aba, chave = this.chaveAba, projetoEnviado = this.atual;
             if ((this.atendimento.disponivel && this.atendimento.ativo !== 'web') || this.transferindoCanal || aba.enviando || this.bloqueado || !this.podeEnviar || (!aba.pendente && !aba.rascunho.trim() && !aba.arquivos.length)) return;
+            if (!aba.pendente && this.chatAtual) aba.tarefa = this.chatAtual;
             // Vendo uma tarefa (o filtro "Só a tarefa #N"), o pedido vai para ela
             // — e não abre uma tarefa nova sem o contexto da que está na tela.
             if (!aba.pendente && this.verTarefa && aba.tarefa === 'nova') aba.tarefa = this.verTarefa;
             if (!aba.pendente) {
                 aba.pendente = {
                     client_id: novoId(), conteudo: aba.rascunho.trim() || 'Analise os arquivos anexados.', anexos: aba.arquivos.map(a => a.id), projeto: this.atual || null,
-                    tarefa_id: this.atual && aba.tarefa !== 'nova' ? Number(aba.tarefa) : null,
+                    tarefa_id: (this.chatAtual || this.atual) && aba.tarefa !== 'nova' ? Number(aba.tarefa) : null,
                     agente: aba.agente !== 'nota' ? aba.agente : null,
                     modo: aba.modo,
                 };
@@ -429,7 +456,10 @@ export function centralIa(config) {
                 aba.recibo = aba.pendente.agente ? 'Pedido recebido. Acompanhe o andamento abaixo.' : 'Mensagem registrada.';
                 aba.pendente = null; aba.rascunho = ''; aba.arquivos = []; this.aviso = '';
                 // Pedido que abriu tarefa nova: o compositor passa a seguir nela.
-                if (r.tarefa_id && aba.tarefa === 'nova') { aba.tarefa = r.tarefa_id; this.verTarefa = null; }
+                if (r.tarefa_id && aba.tarefa === 'nova') {
+                    aba.tarefa = r.tarefa_id;
+                    if (chave === this.chaveAba) this.abrirChat({ projeto: projetoEnviado, id: r.tarefa_id });
+                }
                 await this.atualizar();
             } catch (erro) {
                 this.falhou(erro);

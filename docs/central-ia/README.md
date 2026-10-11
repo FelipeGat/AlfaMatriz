@@ -324,3 +324,7 @@ foram explicitamente deixados para próximas entregas.
 ### Atendimento por um canal por vez
 
 Ver [fluxo, implementação e ativação controlada](canal-ativo.md). Ativado no AlfaMatriz local em 11/10/2026, com backup cifrado, restauração ensaiada e consumidor Telegram reiniciado.
+
+### Chats separados por assunto
+
+Ver [Chats Ativos: uso, isolamento, testes e rollback](chats-ativos.md).

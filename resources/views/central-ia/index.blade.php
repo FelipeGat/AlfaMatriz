@@ -31,7 +31,7 @@
         {{-- ===== Faixa: abas + estado ===== --}}
         <div class="flex flex-none flex-wrap items-center gap-2 text-xs">
             <nav class="flex rounded-control border border-line bg-panel p-0.5" aria-label="Seções da Central">
-                @foreach (['projetos' => 'Projetos', 'atividade' => 'Atividade', 'consumo' => 'Consumo', 'ajustes' => 'Ajustes'] as $chave => $rotulo)
+                @foreach (['chats' => 'Chats Ativos', 'projetos' => 'Projetos', 'atividade' => 'Atividade', 'consumo' => 'Consumo', 'ajustes' => 'Ajustes'] as $chave => $rotulo)
                     <button type="button" @click="irPara('{{ $chave }}')" class="rounded-ctl px-3 py-1.5 font-semibold"
                             :class="tela === '{{ $chave }}' ? 'bg-nav-active text-ink' : 'text-ink-mute hover:text-ink'">
                         {{ $rotulo }}
@@ -84,11 +84,11 @@
         </div>
 
         {{-- ================= PROJETOS ================= --}}
-        <div x-show="tela === 'projetos'" class="relative grid min-h-0 flex-1 grid-cols-1 gap-3"
+        <div x-show="['chats', 'projetos'].includes(tela)" class="relative grid min-h-0 flex-1 grid-cols-1 gap-3"
              :class="projetosRecolhidos ? 'lg:grid-cols-1' : 'lg:grid-cols-[260px_minmax(0,1fr)]'">
 
             {{-- Barra de projetos: busca + grupos (no celular, gaveta sobre o conteúdo) --}}
-            <aside id="central-projetos" aria-label="Projetos"
+            <aside id="central-projetos" x-show="tela === 'projetos'" aria-label="Projetos"
                    class="min-h-0 flex-col gap-2 overflow-hidden rounded-panel border border-line bg-panel p-2"
                    :class="menuProjetosMovel ? 'absolute inset-0 z-10 flex' : (projetosRecolhidos ? 'hidden' : 'hidden lg:flex')">
                 <div class="flex flex-none gap-1.5">
@@ -144,16 +144,54 @@
                 </div>
             </aside>
 
+            <aside id="central-chats" x-show="tela === 'chats'" x-cloak aria-label="Chats ativos"
+                   class="min-h-0 flex-col gap-2 overflow-hidden rounded-panel border border-line bg-panel p-2"
+                   :class="menuProjetosMovel ? 'absolute inset-0 z-10 flex' : (projetosRecolhidos ? 'hidden' : 'hidden lg:flex')">
+                <div class="flex items-center justify-between gap-2 px-1 text-sm font-semibold text-ink">
+                    <span>Chats Ativos <span class="text-ink-mute" x-text="'(' + chatsFiltrados.length + ')'"></span></span>
+                    <button type="button" @click="menuProjetosMovel = false" class="text-xs text-ink-mute lg:hidden">Fechar</button>
+                </div>
+                <label class="sr-only" for="central-busca-chats">Buscar assunto ou projeto</label>
+                <input id="central-busca-chats" type="search" x-model="buscaChats" placeholder="Buscar assunto ou projeto…" autocomplete="off"
+                       class="rounded-control border-line bg-input py-1.5 text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand">
+                <label class="sr-only" for="central-filtro-chat-projeto">Projeto dos chats</label>
+                <select id="central-filtro-chat-projeto" x-model="filtroChatProjeto" class="rounded-control border-line bg-input py-1.5 text-xs text-ink">
+                    <option value="">Todos os projetos</option>
+                    <template x-for="p in projetosDosChats" :key="p"><option :value="p" x-text="p || 'Geral'"></option></template>
+                </select>
+                <label class="sr-only" for="central-filtro-chat-estado">Estado dos chats</label>
+                <select id="central-filtro-chat-estado" x-model="filtroChatEstado" class="rounded-control border-line bg-input py-1.5 text-xs text-ink">
+                    <option value="ativos">Em andamento</option><option value="executando">Executando</option>
+                    <option value="aguardando_voce">Aguardando você</option><option value="falhou">Com falha</option>
+                    <option value="aberta">Abertos / na fila</option><option value="pausada">Pausados</option><option value="todos">Todos, incluindo pausados</option>
+                </select>
+                <div class="min-h-0 flex-1 space-y-2 overflow-y-auto">
+                    <p x-show="!chatsFiltrados.length" class="p-2 text-xs text-ink-mute">Nenhum chat corresponde ao filtro. Inicie outro assunto pela aba Projetos.</p>
+                    <template x-for="c in chatsFiltrados" :key="c.id">
+                        <button type="button" @click="abrirChat(c)" :aria-pressed="(chatAtual === c.id).toString()"
+                                class="w-full rounded-control border px-3 py-2 text-left hover:bg-chip"
+                                :class="chatAtual === c.id ? 'border-brand-mute bg-nav-active' : 'border-line'">
+                            <span class="block text-[11px] text-ink-mute" x-text="(c.projeto || 'Geral') + ' · #' + c.id"></span>
+                            <span class="mt-1 block break-words text-sm font-semibold text-ink" x-text="c.titulo"></span>
+                            <span class="mt-1 flex flex-wrap gap-1 text-[11px]">
+                                <span class="rounded-badge border px-1" :class="corDoEstado(c.status)" x-text="estado(c.status)"></span>
+                                <span class="text-ink-mute" x-text="(c.agente || 'Sem agente') + ' · ' + haQuanto(c.ultima_atividade)"></span>
+                            </span>
+                        </button>
+                    </template>
+                </div>
+            </aside>
+
             {{-- Projeto aberto --}}
             <main class="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-panel border border-line bg-panel">
                 <div class="flex flex-none flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2">
-                    <button type="button" @click="alternarProjetos()" :aria-expanded="(!projetosRecolhidos).toString()" aria-controls="central-projetos"
+                    <button type="button" @click="alternarProjetos()" :aria-expanded="(!projetosRecolhidos).toString()" :aria-controls="tela === 'chats' ? 'central-chats' : 'central-projetos'"
                             class="hidden lg:flex items-center gap-2 rounded-control border border-line px-2 py-1 text-xs text-ink-mute hover:text-ink"
-                            :title="projetosRecolhidos ? 'Mostrar lista de projetos' : 'Recolher lista de projetos'">
+                            :title="projetosRecolhidos ? 'Mostrar lista' : 'Recolher lista'">
                         <span class="h-4 w-4"><x-nav-icon name="panel-left" /></span>
-                        <span x-text="projetosRecolhidos ? 'Mostrar projetos' : 'Recolher projetos'"></span>
+                        <span x-text="projetosRecolhidos ? 'Mostrar lista' : 'Recolher lista'"></span>
                     </button>
-                    <button type="button" @click="menuProjetosMovel = true" class="rounded-control border border-line px-2 py-1 text-xs text-ink-mute lg:hidden">Projetos</button>
+                    <button type="button" @click="menuProjetosMovel = true" class="rounded-control border border-line px-2 py-1 text-xs text-ink-mute lg:hidden" x-text="tela === 'chats' ? 'Chats' : 'Projetos'"></button>
                     <h2 class="font-display text-base font-semibold text-ink" x-text="atual || 'Geral'"></h2>
                     <template x-if="atual">
                         <p class="flex min-w-0 flex-1 flex-wrap gap-x-3 text-xs text-ink-mute">
@@ -178,8 +216,10 @@
                     </template>
                 </div>
 
+                <p x-show="chatAtual" class="flex-none border-b border-line px-4 py-2 text-sm font-semibold text-ink"
+                   x-text="'#' + chatAtual + ' · ' + (chats.find(c => c.id === chatAtual)?.titulo || tarefaVista?.titulo || 'Chat da tarefa')"></p>
                 <div class="flex flex-none gap-1 border-b border-line px-3 text-xs" x-show="atual">
-                    <template x-for="[chave, rotulo] in [['conversa', 'Conversa'], ['tarefas', 'Tarefas'], ['contexto', 'Contexto']]" :key="chave">
+                    <template x-for="[chave, rotulo] in [['conversa', 'Chat'], ['tarefas', 'Tarefas'], ['contexto', 'Contexto']]" :key="chave">
                         <button type="button" @click="sub = chave" class="-mb-px border-b-2 px-2.5 py-2 font-semibold"
                                 :class="sub === chave ? 'border-brand text-ink' : 'border-transparent text-ink-mute hover:text-ink'">
                             <span x-text="rotulo"></span>
@@ -189,8 +229,12 @@
                     </template>
                 </div>
 
+                <div x-show="tela === 'chats' && !chatAtual" class="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm text-ink-mute">
+                    <p>Selecione um chat para continuar o assunto com seu próprio histórico.</p>
+                    <button type="button" @click="irPara('projetos')" class="font-semibold text-brand-text">Escolher projeto para iniciar outro assunto</button>
+                </div>
                 {{-- Conversa --}}
-                <div class="flex min-h-0 flex-1 flex-col" x-show="!atual || sub === 'conversa'">
+                <div class="flex min-h-0 flex-1 flex-col" x-show="(tela !== 'chats' || chatAtual) && (!atual || sub === 'conversa')">
                     <div class="flex flex-none items-center justify-between px-4 pt-2 text-xs text-ink-faint" x-show="verTarefa">
                         <span x-text="'Só a tarefa #' + verTarefa"></span>
                         <button type="button" @click="selecionarTarefa(null)" class="font-semibold text-brand-text">Ver o projeto todo</button>
@@ -265,7 +309,7 @@
                         @if ($podeAcionar)
                             <div class="flex flex-wrap items-center gap-2 text-xs">
                                 <label class="sr-only" for="central-tarefa">Tarefa</label>
-                                <select id="central-tarefa" x-model="aba.tarefa" x-show="atual" :disabled="!!aba.pendente"
+                                <select id="central-tarefa" x-model="aba.tarefa" x-show="atual" :disabled="!!aba.pendente || !!chatAtual"
                                         class="max-w-[16rem] rounded-control border-line bg-input py-1 text-xs text-ink focus:border-brand focus:ring-brand">
                                     <option value="nova" :selected="aba.tarefa === 'nova'">Nova tarefa</option>
                                     {{-- :selected em cada opção: as tarefas chegam DEPOIS do seletor, e só o x-model perdia a escolha --}}
