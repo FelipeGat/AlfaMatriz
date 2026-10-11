@@ -566,13 +566,11 @@
 
                 <div class="rounded-panel border border-line bg-panel p-4">
                     <p class="flex items-center gap-1.5 text-sm font-semibold text-ink"><span class="h-2.5 w-2.5 rounded-sm bg-retorno"></span>Copilot</p>
-                    <p class="text-xs text-ink-mute">Requisições premium no mês</p>
-                    <p class="mt-2 font-display text-2xl font-semibold text-ink"
-                       x-text="(consumo.limites?.copilot?.premium_mes ?? '—') + (consumo.limites?.copilot?.franquia ? ' / ' + consumo.limites.copilot.franquia : '')"></p>
-                    <template x-if="consumo.limites?.copilot?.franquia">
-                        <div class="mt-1 h-1.5 rounded-full bg-bar-track"><div class="h-1.5 rounded-full" :class="corPct(100 * consumo.limites.copilot.premium_mes / consumo.limites.copilot.franquia)" :style="'width:' + Math.min(100, 100 * consumo.limites.copilot.premium_mes / consumo.limites.copilot.franquia) + '%'"></div></div>
-                    </template>
-                    <p class="mt-1 text-xs text-ink-faint" x-text="consumo.limites?.copilot?.franquia ? 'Restam ' + Math.max(0, consumo.limites.copilot.franquia - consumo.limites.copilot.premium_mes) + ' no mês' : 'Franquia do plano ainda não informada.'"></p>
+                    <p class="text-xs text-ink-mute">Saldo oficial ainda não verificado</p>
+                    <p class="mt-2 text-sm font-semibold text-ink">Confirmar conta, plano e créditos no GitHub</p>
+                    <p class="mt-2 text-xs text-ink-faint" x-text="'Soma de custo nos registros locais deste mês: ' + (consumo.limites?.copilot?.premium_mes ?? '—')"></p>
+                    <p class="mt-1 text-xs text-ink-faint">Esse total não representa créditos disponíveis nem confirma a franquia da assinatura.</p>
+                    <a href="https://github.com/settings/copilot" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-xs font-semibold text-brand-text">Conferir plano e uso no GitHub</a>
                 </div>
             </div>
 
