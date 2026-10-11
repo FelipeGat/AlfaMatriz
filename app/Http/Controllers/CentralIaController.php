@@ -55,6 +55,10 @@ class CentralIaController extends Controller
 
         return $this->semCache($this->cockpit->montar($request->user()) + [
             'conta_nome' => $request->user()->name,
+            'canal' => ['disponivel' => app(\App\Services\CentralIa\CanalAtivo::class)->pronto(),
+                'ativo' => app(\App\Services\CentralIa\CanalAtivo::class)->ativo($request->user()),
+                'projeto' => app(\App\Services\CentralIa\CanalAtivo::class)->estado($request->user())?->projeto_canal,
+                'tarefa_id' => app(\App\Services\CentralIa\CanalAtivo::class)->estado($request->user())?->tarefa_canal],
             'telegram' => ['vinculado' => (bool) $vinculo, 'usuario' => $vinculo?->telegram_usuario,
                 'projeto' => $ultimaTelegram ? $ultimaTelegram->projeto : $vinculo?->projeto_atual,
                 'tarefa_id' => $ultimaTelegram?->tarefa_id, 'mensagem_id' => $ultimaTelegram?->id],
@@ -103,8 +107,21 @@ class CentralIaController extends Controller
         return $this->semCache(['tarefas' => $this->cockpit->tarefas($request->user(), $projeto)]);
     }
 
+    public function canal(Request $request): JsonResponse
+    {
+        $dados = $request->validate([
+            'canal' => ['required', 'in:web,telegram'],
+            'projeto' => ['nullable', 'string', 'max:128', 'regex:/^[A-Za-z0-9._-]+$/'],
+            'tarefa_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+        $c = app(\App\Services\CentralIa\CanalAtivo::class)->transferir($request->user(), $dados['canal'],
+            $dados['projeto'] ?? null, $dados['tarefa_id'] ?? null);
+        return $this->semCache(['ativo' => $c->canal_ativo, 'projeto' => $c->projeto_canal, 'tarefa_id' => $c->tarefa_canal]);
+    }
+
     public function enviar(Request $request): JsonResponse
     {
+        app(\App\Services\CentralIa\CanalAtivo::class)->exigir($request->user(), 'web');
         $dados = $request->validate([
             'conteudo' => ['required_without:anexos', 'nullable', 'string', 'max:'.config('central_ia.max_texto')],
             'anexos' => ['sometimes', 'array', 'max:5'],
@@ -299,6 +316,7 @@ class CentralIaController extends Controller
 
     public function anexar(Request $request): JsonResponse
     {
+        app(\App\Services\CentralIa\CanalAtivo::class)->exigir($request->user(), 'web');
         $dados = $request->validate(['arquivo' => ['required', 'file', 'max:20480'], 'client_id' => ['required', 'uuid']]);
         $anexo = app(\App\Services\CentralIa\AnexosService::class)->guardar($request->user(), $dados['arquivo'], $dados['client_id']);
         return $this->semCache($anexo->publico(), $anexo->wasRecentlyCreated ? 201 : 200);

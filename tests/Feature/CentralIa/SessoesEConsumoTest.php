@@ -22,6 +22,12 @@ use Tests\TestCase;
 class SessoesEConsumoTest extends TestCase
 {
     use RefreshDatabase;
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['central_ia.canal_exclusivo' => false]); // Protocolo anterior à ativação da troca de canal.
+    }
+
 
     private const SESSAO = 'bc6adf44-a516-40dd-a659-e28fc190d90d';
 

@@ -31,6 +31,7 @@ class TelegramTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['central_ia.canal_exclusivo' => false]); // Compatibilidade antes da ativação.
         config(['central_ia.telegram.token' => 'token-de-teste']);
         // A suíte usa SQLite; a trava real MariaDB tem testes próprios.
         $this->mock(\App\Services\CentralIa\TelegramConsumerLock::class, function ($mock) {

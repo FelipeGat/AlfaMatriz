@@ -18,6 +18,8 @@ class CentralIaConversa extends Model
 
     protected $fillable = ['user_id', 'titulo'];
 
+    protected $casts = ['tarefa_canal' => 'integer', 'canal_desde_id' => 'integer'];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

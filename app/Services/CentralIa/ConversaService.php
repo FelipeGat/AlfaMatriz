@@ -129,6 +129,10 @@ class ConversaService
     private function gravar(User $user, array $dados): CentralIaMensagem
     {
         return DB::transaction(function () use ($user, $dados) {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            if (($dados['autor_tipo'] ?? null) === CentralIaMensagem::AUTOR_USUARIO) {
+                app(CanalAtivo::class)->exigir($user, $dados['origem']);
+            }
             $mensagem = CentralIaMensagem::create($dados + [
                 'conversa_id' => $this->conversaDe($user)->id,
                 'user_id' => $user->id,
@@ -136,7 +140,8 @@ class ConversaService
 
             $vinculo = CentralIaTelegramVinculo::where('user_id', $user->id)->first();
 
-            if ($vinculo && $mensagem->origem !== CentralIaMensagem::ORIGEM_TELEGRAM) {
+            if ($vinculo && $mensagem->origem !== CentralIaMensagem::ORIGEM_TELEGRAM
+                && app(CanalAtivo::class)->entregaPermitida($user, $mensagem)) {
                 CentralIaEntrega::create([
                     'mensagem_id' => $mensagem->id,
                     'user_id' => $user->id,

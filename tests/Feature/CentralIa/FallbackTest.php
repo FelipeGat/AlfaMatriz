@@ -20,6 +20,12 @@ use Tests\TestCase;
 class FallbackTest extends TestCase
 {
     use RefreshDatabase;
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['central_ia.canal_exclusivo' => false]); // Protocolo anterior à ativação da troca de canal.
+    }
+
 
     private function conta(array $agentes = ['claude', 'codex', 'copilot']): array
     {

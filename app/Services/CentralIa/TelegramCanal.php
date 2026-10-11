@@ -58,6 +58,8 @@ class TelegramCanal
     public function desvincular(User $user): void
     {
         DB::transaction(function () use ($user) {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            if (app(CanalAtivo::class)->pronto()) app(CanalAtivo::class)->transferir($user, 'web');
             CentralIaTelegramVinculo::where('user_id', $user->id)->delete();
             // O que ainda ia para aquele chat não vai mais.
             CentralIaEntrega::where('user_id', $user->id)->where('status', CentralIaEntrega::PENDENTE)
@@ -117,6 +119,28 @@ class TelegramCanal
             return;
         }
 
+        if (CentralIaMensagem::where('telegram_update_id', $updateId)->exists()) return;
+        $controle = app(CanalAtivo::class);
+        if ($controle->pronto()) {
+            if (trim($texto) === '/matriz') {
+                if ($controle->ativo($user) === 'telegram') {
+                    DB::transaction(function () use ($user, $texto, $updateId, $controle) {
+                        User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+                        if ($controle->ativo($user) !== 'telegram' || CentralIaMensagem::where('telegram_update_id', $updateId)->exists()) return;
+                        $this->conversas->registrarDoUsuario($user, $texto, 'telegram', telegramUpdateId: $updateId,
+                            projeto: $controle->estado($user)?->projeto_canal);
+                        $controle->transferir($user, 'web');
+                    });
+                }
+                $this->responder($chatId, 'Conversa retomada no AlfaMatriz. Continue pelo sistema.');
+                return;
+            }
+            if ($controle->ativo($user) !== 'telegram') {
+                $this->responder($chatId, 'A conversa está no AlfaMatriz. Toque em Continuar pelo Telegram no sistema para ativar este canal.');
+                return;
+            }
+        }
+
         if (trim($texto) === '' || mb_strlen($texto) > config('central_ia.max_texto')) {
             $this->responder($chatId, 'Mensagem vazia ou longa demais (até '.config('central_ia.max_texto').' caracteres).');
 
@@ -127,11 +151,15 @@ class TelegramCanal
             if (CentralIaMensagem::where('telegram_update_id', $updateId)->exists()) {
                 return;
             }
-            if ($midia) {
-                $this->receberMidia($user, $vinculo, $chatId, trim($texto), $updateId, $midia);
-            } else {
-                $this->tratar($user, $vinculo, $chatId, trim($texto), $updateId);
-            }
+            DB::transaction(function () use ($user, $vinculo, $chatId, $texto, $updateId, $midia) {
+                User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+                app(CanalAtivo::class)->exigir($user, 'telegram');
+                if ($midia) {
+                    $this->receberMidia($user, $vinculo, $chatId, trim($texto), $updateId, $midia);
+                } else {
+                    $this->tratar($user, $vinculo, $chatId, trim($texto), $updateId);
+                }
+            });
         } catch (ValidationException $e) {
             // Pedido recusado (projeto que a máquina não tem, limite do dia):
             // a resposta vai só para o chat, e o pedido não entra na conversa.
@@ -191,7 +219,7 @@ class TelegramCanal
             ->where('created_at', '>', now()->subMinutes((int) config('central_ia.agentes.timeout_implementar_minutos') + 5))
             ->distinct()->pluck('user_id');
         foreach (CentralIaTelegramVinculo::whereIn('user_id', $users)->get() as $vinculo) {
-            if (($user = User::find($vinculo->user_id)) && $this->podeEscrever($user) && $this->agentes->disponiveis($user)['online']) {
+            if (($user = User::find($vinculo->user_id)) && $this->podeEscrever($user) && (! app(CanalAtivo::class)->pronto() || app(CanalAtivo::class)->ativo($user) === 'telegram') && $this->agentes->disponiveis($user)['online']) {
                 $this->api->chamar('sendChatAction', ['chat_id' => $vinculo->chat_id, 'action' => 'typing'], 3);
             }
         }
@@ -320,6 +348,9 @@ class TelegramCanal
 
     private function definir(CentralIaTelegramVinculo $vinculo, int $chatId, array $dados, string $resposta): void
     {
+        if (array_key_exists('projeto_atual', $dados) && app(CanalAtivo::class)->pronto()) {
+            app(CanalAtivo::class)->transferir($vinculo->user, 'telegram', $dados['projeto_atual']);
+        }
         $vinculo->update($dados);
         $this->responder($chatId, $resposta);
     }
@@ -349,8 +380,11 @@ class TelegramCanal
             return;
         }
 
-        $tarefa = $novaTarefa ? null : CentralIaTarefa::de($user)->where('projeto', $vinculo->projeto_atual)->emCurso()
-            ->orderByDesc('ultima_atividade_em')->value('id');
+        if ($novaTarefa && app(CanalAtivo::class)->pronto()) app(CanalAtivo::class)->transferir($user, 'telegram', $vinculo->projeto_atual);
+        $contexto = app(CanalAtivo::class)->estado($user);
+        $tarefa = ! $novaTarefa && $contexto?->canal_ativo === 'telegram' && $contexto->projeto_canal === $vinculo->projeto_atual && $contexto->tarefa_canal
+            ? $contexto->tarefa_canal : ($novaTarefa ? null : CentralIaTarefa::de($user)->where('projeto', $vinculo->projeto_atual)->emCurso()
+            ->orderByDesc('ultima_atividade_em')->value('id'));
 
         $this->confirmar($chatId, $this->agentes->pedir($user, $texto, [
             'projeto' => $vinculo->projeto_atual,
@@ -408,6 +442,7 @@ class TelegramCanal
         }
 
         $tarefa = $this->agentes->continuarSessao($user, $sessao['agente'], $sessao['id']);
+        if (app(CanalAtivo::class)->pronto()) app(CanalAtivo::class)->transferir($user, 'telegram', $projeto, $tarefa->id);
         $vinculo->update(['projeto_atual' => $projeto, 'agente_atual' => null]);
 
         $quando = \Illuminate\Support\Carbon::parse($sessao['ultima_atividade'])->timezone(config('app.timezone'))->format('d/m H:i');
@@ -524,6 +559,17 @@ class TelegramCanal
      */
     private function entregar(int $id): bool
     {
+        $dono = CentralIaEntrega::whereKey($id)->value('user_id');
+        return DB::transaction(function () use ($id, $dono) {
+            if ($dono) User::whereKey($dono)->lockForUpdate()->first();
+            // A troca de canal espera terminar o envio em curso; após retornar,
+            // nenhuma nova entrega pode escapar pelo canal anterior.
+            return $this->entregarInterno($id);
+        });
+    }
+
+    private function entregarInterno(int $id): bool
+    {
         $entrega = DB::transaction(function () use ($id) {
             $entrega = CentralIaEntrega::whereKey($id)->lockForUpdate()->first();
 
@@ -536,6 +582,11 @@ class TelegramCanal
             if (! $vinculo || $vinculo->chat_id !== $entrega->chat_id || ! $this->podeLer(User::find($entrega->user_id))) {
                 $entrega->update(['status' => CentralIaEntrega::FALHOU, 'erro' => 'sem_acesso']);
 
+                return null;
+            }
+
+            if (! app(CanalAtivo::class)->entregaPermitida(User::findOrFail($entrega->user_id), $entrega->mensagem)) {
+                $entrega->update(['status' => CentralIaEntrega::FALHOU, 'erro' => 'canal_inativo']);
                 return null;
             }
 

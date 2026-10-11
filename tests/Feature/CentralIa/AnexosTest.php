@@ -27,6 +27,7 @@ class AnexosTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['central_ia.canal_exclusivo' => false]); // Compatibilidade antes da ativação.
         Storage::fake('local');
     }
 

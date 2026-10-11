@@ -150,6 +150,15 @@ class AgentesService
 
         $disponivel = $this->disponiveis($user);
         $projeto = (string) ($pedido['projeto'] ?? '');
+        if ($origem === CentralIaMensagem::ORIGEM_TELEGRAM && app(CanalAtivo::class)->pronto()) {
+            app(CanalAtivo::class)->exigir($user, 'telegram');
+            $contexto = app(CanalAtivo::class)->estado($user);
+            if (($contexto?->projeto_canal ?? '') !== $projeto) {
+                throw ValidationException::withMessages(['canal' => 'Este projeto não é o da conversa ativa. Use /usar projeto para mudar antes de pedir ao agente.']);
+            }
+            if ($contexto?->tarefa_canal) $pedido['tarefa_id'] = $contexto->tarefa_canal;
+        }
+
 
         // Projeto vazio é a conversa Geral: pergunta que não é de projeto
         // nenhum ("resumo da minha agenda"). Só análise — sem pasta, não há

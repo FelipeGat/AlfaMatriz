@@ -27,6 +27,12 @@ use Tests\TestCase;
 class AgentesTest extends TestCase
 {
     use RefreshDatabase;
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['central_ia.canal_exclusivo' => false]); // Protocolo anterior à ativação da troca de canal.
+    }
+
 
     private function comCentral(): User
     {

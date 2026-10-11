@@ -30,6 +30,7 @@ class TelegramComandosTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['central_ia.canal_exclusivo' => false]); // Compatibilidade antes da ativação.
         config(['central_ia.telegram.token' => 'token-de-teste']);
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]])]);
 

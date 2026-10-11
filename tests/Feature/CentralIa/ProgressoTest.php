@@ -14,6 +14,13 @@ class ProgressoTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['central_ia.canal_exclusivo' => false]); // Compatibilidade antes da ativação.
+    }
+
+
     private function pessoa(): User
     {
         $u = User::factory()->create();
