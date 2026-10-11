@@ -250,6 +250,7 @@ class CockpitService
                     'pendencias' => $d['pendencias'] ?? [],
                     'riscos' => $d['riscos'] ?? [],
                     'duvida' => $d['duvida'] ?? null,
+                    'opcoes_duvida' => $d['opcoes_duvida'] ?? [],
                     'lacunas' => $d['lacunas'] ?? [],
                     'resumo' => collect($d['resumos'] ?? [])->last()['texto'] ?? null,
                     'ponto' => isset($d['ponto']) ? ['em' => $d['ponto']['em'], 'agente' => $d['ponto']['agente'], 'mensagem_id' => $d['ponto']['mensagem_id'] ?? null] : null,

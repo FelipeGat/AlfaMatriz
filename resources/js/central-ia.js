@@ -39,6 +39,7 @@ export function centralIa(config) {
         // Painel (todos os projetos)
         inicioAtividade: diaLocal(), fimAtividade: diaLocal(), inicioConsumo: diaLocal(), fimConsumo: diaLocal(), usuarioConsumo: '', iaConsumo: '',
         relatorioAtividade: { eventos: [], execucoes: [] }, relatorioConsumo: { consumo: [] }, modoProjetos: ler('central-ia:modo-projetos') || 'cards',
+        perguntaAberta: null, respostaPergunta: '', detalhesChat: false,
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
@@ -444,6 +445,29 @@ export function centralIa(config) {
             finally { this.transferindoCanal = false; }
         },
 
+        get perguntaPendente() {
+            const t = this.tarefaVista || this.tarefas.find(t => t.id === Number(this.aba.tarefa));
+            return t?.duvida ? t : null;
+        },
+        abrirPergunta(texto, opcoes = []) {
+            this.perguntaAberta = { texto, opcoes, chave: this.chaveAba };
+            this.respostaPergunta = '';
+            this.$nextTick(() => this.$refs.respostaPergunta?.focus());
+        },
+        conterFocoPergunta(event) {
+            const controles = [...(this.$refs.dialogoPergunta?.querySelectorAll('button:not([disabled]), textarea') || [])];
+            const primeiro = controles[0], ultimo = controles.at(-1);
+            if (event.shiftKey && document.activeElement === primeiro) { event.preventDefault(); ultimo?.focus(); }
+            else if (!event.shiftKey && document.activeElement === ultimo) { event.preventDefault(); primeiro?.focus(); }
+        },
+        responderPergunta() {
+            if (!this.perguntaAberta || !this.respostaPergunta.trim() || this.perguntaAberta.chave !== this.chaveAba) return;
+            if (this.aba.pendente || this.aba.enviando) { this.aviso = 'Aguarde a confirmação da mensagem anterior.'; return; }
+            if (this.aba.rascunho.trim()) { this.aviso = 'Envie ou guarde seu rascunho antes de responder à pergunta.'; return; }
+            this.aba.rascunho = 'Esclarecimento da pergunta: ' + this.perguntaAberta.texto + '\nMinha resposta: ' + this.respostaPergunta.trim();
+            this.perguntaAberta = null;
+            this.enviar();
+        },
         async enviar() {
             const aba = this.aba, chave = this.chaveAba, projetoEnviado = this.atual;
             if ((this.atendimento.disponivel && this.atendimento.ativo !== 'web') || this.transferindoCanal || aba.enviando || this.bloqueado || !this.podeEnviar || (!aba.pendente && !aba.rascunho.trim() && !aba.arquivos.length)) return;

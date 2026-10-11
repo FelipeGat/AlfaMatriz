@@ -57,6 +57,7 @@ class Dossie
             .'"proximos_passos": ["..."], "pendencias": ["..."], "riscos": ["..."], '
             .'"duvida": null, "tarefa_concluida": false}'."\n"
             .self::FIM."\n"
+            .'Quando precisar perguntar, escreva a pergunta em duvida e opções curtas em opcoes_duvida (lista de até 6 textos). Não esconda a pergunta no meio do relatório; na resposta diga apenas que aguarda esclarecimento. Opções não autorizam deploy, produção ou ações críticas. '
             .'Use "duvida" (texto) SÓ quando não puder seguir sem uma resposta da pessoa — ela será avisada. '
             .'"tarefa_concluida": true só quando o objetivo inteiro estiver atendido.';
     }
@@ -90,6 +91,7 @@ class Dossie
         $d['pedidos'][] = ['texto' => Str::limit($texto, 1500), 'em' => now()->toIso8601String()];
         $d['pedidos'] = array_slice($d['pedidos'], -15);
         $d['duvida'] = null;
+        $d['opcoes_duvida'] = [];
 
         return $d;
     }
@@ -144,6 +146,7 @@ class Dossie
             }
         }
         $d['duvida'] = is_string($bloco['duvida'] ?? null) && trim($bloco['duvida']) !== '' ? Str::limit($bloco['duvida'], 1500) : null;
+        $d['opcoes_duvida'] = $d['duvida'] ? array_slice(array_values(array_filter(array_map(fn ($o) => is_string($o) ? Str::limit(trim($o), 250) : '', is_array($bloco['opcoes_duvida'] ?? null) ? $bloco['opcoes_duvida'] : []))), 0, 6) : [];
 
         return $d;
     }
