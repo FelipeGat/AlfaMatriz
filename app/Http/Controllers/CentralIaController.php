@@ -98,6 +98,46 @@ class CentralIaController extends Controller
         return $this->semCache($resultado);
     }
 
+    public function relatorio(Request $request): JsonResponse
+    {
+        $dados = $request->validate([
+            'inicio' => ['required', 'date_format:Y-m-d'],
+            'fim' => ['required', 'date_format:Y-m-d', 'after_or_equal:inicio'],
+            'usuario' => ['nullable', 'integer', 'min:1'],
+            'agente' => ['nullable', Rule::in(array_keys(CentralIaExecucao::AGENTES))],
+        ]);
+        $inicio = \Illuminate\Support\Carbon::parse($dados['inicio'])->startOfDay();
+        $fim = \Illuminate\Support\Carbon::parse($dados['fim'])->endOfDay();
+        abort_if($inicio->diffInDays($fim) > 366, 422, 'Selecione até um ano.');
+        $user = $request->user();
+        if (!empty($dados['usuario']) && (int) $dados['usuario'] !== $user->id) {
+            abort_unless(app(\App\Services\CentralIa\Governanca::class)->administra($user), 403);
+            $user = \App\Models\User::findOrFail($dados['usuario']);
+        }
+        $privado = $user->id === $request->user()->id;
+        $agente = $dados['agente'] ?? null;
+        $execucoes = CentralIaExecucao::where('user_id', $user->id)->whereBetween('created_at', [$inicio, $fim])
+            ->when($agente, fn ($q) => $q->where('agente', $agente))->latest('id')->limit(1000)->get()
+            ->map(fn ($e) => ['id' => $e->id, 'agente' => $e->nomeDoAgente(), 'modo' => $e->modo,
+                'status' => $e->status, 'criada_em' => $e->created_at->toIso8601String(),
+                'projeto' => $privado ? $e->projeto : null])->all();
+        $eventos = \Illuminate\Support\Facades\DB::table('central_ia_eventos')->where('user_id', $user->id)
+            ->whereBetween('created_at', [$inicio, $fim])->when($agente, fn ($q) => $q->where('agente', $agente))
+            ->latest('id')->limit(1000)->get()->map(fn ($e) => ['id' => $e->id, 'tipo' => $e->tipo, 'nivel' => $e->nivel,
+                'em' => \Illuminate\Support\Carbon::parse($e->created_at)->toIso8601String(),
+                'descricao' => $privado ? $e->descricao : '', 'projeto' => $privado ? $e->projeto : null,
+                'agente' => $e->agente, 'origem' => $privado ? $e->origem : null])->all();
+        $linhas = \App\Models\CentralIaRunner::where('user_id', $user->id)->get()->pluck('consumo')->filter()->pluck('linhas')->flatten(1)
+            ->filter(fn ($l) => ($l['dia'] ?? '') >= $dados['inicio'] && ($l['dia'] ?? '') <= $dados['fim'] && (!$agente || ($l['agente'] ?? '') === $agente));
+        $consumo = $linhas->groupBy(fn ($l) => $l['dia'].'|'.$l['agente'])->map(fn ($g) => [
+            'dia' => $g->first()['dia'], 'agente' => $g->first()['agente'],
+            'entrada' => $g->sum('entrada'), 'saida' => $g->sum('saida'),
+            'cache' => $g->sum('cache_leitura') + $g->sum('cache_escrita'), 'premium' => $g->sum('premium'),
+        ])->sortByDesc('dia')->values()->all();
+        return $this->semCache(['eventos' => $eventos, 'execucoes' => $execucoes, 'consumo' => $consumo,
+            'truncado' => count($eventos) === 1000 || count($execucoes) === 1000]);
+    }
+
     public function administracao(Request $request): JsonResponse
     {
         $g = app(\App\Services\CentralIa\Governanca::class);

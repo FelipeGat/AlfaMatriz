@@ -206,6 +206,7 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware(['permissao:central_ia,editar', 'throttle:20,1,central-ia-preferencias']);
     Route::post('central-ia/chats/arquivar', [CentralIaController::class, 'arquivarChats'])->name('central-ia.chats.arquivar')
         ->middleware(['permissao:central_ia,editar', 'throttle:20,1,central-ia-arquivar']);
+    Route::get('central-ia/relatorio', [CentralIaController::class, 'relatorio'])->name('central-ia.relatorio')->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-relatorio']);
     Route::get('central-ia/administracao', [CentralIaController::class, 'administracao'])->name('central-ia.administracao')
         ->middleware(['permissao:central_ia', 'permissao:usuarios,editar', 'throttle:90,1,central-ia-admin']);
     Route::put('central-ia/usuarios/{usuario}/politica', [CentralIaController::class, 'politicaUsuario'])->whereNumber('usuario')->name('central-ia.usuarios.politica')

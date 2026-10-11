@@ -91,4 +91,25 @@ class GovernancaTest extends TestCase
         $this->assertNull(app(AgentesService::class)->proxima($membro, $r));
         $this->assertFalse(app(Preferencias::class)->pode($membro, 'claude'));
     }
+    public function test_relatorio_filtra_periodo_ia_e_protege_consumo_de_outra_conta(): void
+    {
+        $admin = $this->pessoa(true); $membro = $this->pessoa();
+        CentralIaRunner::create(['user_id' => $membro->id, 'maquina' => 'teste', 'agentes' => ['claude'], 'projetos' => ['PRIVADO'], 'visto_em' => now(),
+            'consumo' => ['linhas' => [
+                ['dia' => '2026-10-10', 'agente' => 'claude', 'projeto' => 'PRIVADO', 'entrada' => 5, 'saida' => 2],
+                ['dia' => '2026-10-11', 'agente' => 'claude', 'projeto' => 'PRIVADO', 'entrada' => 9, 'saida' => 3],
+                ['dia' => '2026-10-11', 'agente' => 'codex', 'projeto' => 'PRIVADO', 'entrada' => 99, 'saida' => 3],
+            ]]]);
+        Eventos::registrar($membro, 'pedido', 'SEGREDO');
+        $f = ['inicio' => '2026-10-11', 'fim' => '2026-10-11', 'usuario' => $membro->id, 'agente' => 'claude'];
+        $r = $this->actingAs($admin)->getJson(route('central-ia.relatorio', $f))->assertOk()->assertJsonCount(1, 'consumo')->assertJsonPath('consumo.0.entrada', 9);
+        $this->assertStringNotContainsString('PRIVADO', $r->getContent());
+        $this->assertStringNotContainsString('SEGREDO', $r->getContent());
+        $this->actingAs($membro)->getJson(route('central-ia.relatorio', $f + []))->assertOk();
+        $f['usuario'] = $admin->id;
+        $this->getJson(route('central-ia.relatorio', $f))->assertForbidden();
+        $f['usuario'] = $membro->id; $f['fim'] = '2026-10-09';
+        $this->getJson(route('central-ia.relatorio', $f))->assertUnprocessable();
+    }
+
 }

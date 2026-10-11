@@ -234,7 +234,7 @@ class CockpitTest extends TestCase
         $painel = $this->actingAs($user)->getJson(route('central-ia.painel'))->assertOk()->json();
         $nomes = array_column($painel['projetos'], 'nome');
 
-        $this->assertEqualsCanonicalizing(['alfahome', 'gestor'], $nomes);
+        $this->assertEqualsCanonicalizing(['alfacontrol', 'alfagym', 'alfahome', 'gestor', 'vixcard'], $nomes);
         $alfahome = collect($painel['projetos'])->firstWhere('nome', 'alfahome');
         $this->assertSame([3, ['claude']], [$alfahome['git']['pendentes'], $alfahome['git']['sessoes']]);
         $this->assertSame(['gestor'], array_column($painel['atividade'], 'projeto'));
