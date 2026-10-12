@@ -133,19 +133,31 @@
                     <button type="button" @click="definirModoProjetos('lista')" :aria-pressed="(modoProjetos === 'lista').toString()" class="rounded-ctl px-2.5 py-1 font-semibold" :class="modoProjetos === 'lista' ? 'bg-nav-active text-ink' : 'text-ink-mute'">Lista</button>
                 </div>
                 <button type="button" @click="criarGrupo()" class="font-semibold text-brand-text">+ Novo grupo</button>
-                <span class="text-ink-faint">Clique num projeto para conversar sobre ele. O grupo muda no cabeçalho do projeto aberto.</span>
+                <span class="text-ink-faint">Clique num projeto para conversar sobre ele; o grupo muda no rodapé do card.</span>
             </div>
             <template x-for="g in secoes" :key="g.id"><section class="space-y-2">
                 <h3 class="font-semibold text-ink" x-text="g.nome + ' (' + g.projetos.length + ')'"></h3>
                 <div :class="modoProjetos === 'cards' ? 'grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5' : 'flex flex-col gap-2'">
                     <template x-for="p in g.projetos" :key="p.nome">
-                        <button type="button" @click="abrirProjetoCatalogo(p)" :title="p.nome"
-                                class="min-w-0 rounded-panel border border-line bg-panel px-3 py-2.5 text-left hover:border-brand-mute hover:bg-chip"
-                                :class="modoProjetos === 'lista' ? 'flex items-center justify-between gap-3' : 'block'">
-                            <strong class="block truncate text-sm text-ink" x-text="p.nome"></strong>
-                            <span class="block truncate text-xs" :class="p.tarefas_em_curso ? 'text-brand-text' : 'text-ink-faint'"
-                                  x-text="(p.tarefas_em_curso ? p.tarefas_em_curso + ' em curso' : 'nada em curso') + ' · ' + (p.git?.branch || 'sem git')"></span>
-                        </button>
+                        {{-- O grupo muda no próprio card: escondido no cabeçalho do
+                             projeto aberto, ninguém achava (dono, 12/10/2026). --}}
+                        <div class="min-w-0 rounded-panel border border-line bg-panel hover:border-brand-mute"
+                             :class="modoProjetos === 'lista' ? 'flex items-center justify-between gap-3 pr-2' : ''">
+                            <button type="button" @click="abrirProjetoCatalogo(p)" :title="'Abrir ' + p.nome" class="block w-full min-w-0 px-3 pt-2.5 text-left" :class="modoProjetos === 'lista' ? 'pb-2.5' : 'pb-1'">
+                                <strong class="block truncate text-sm text-ink" x-text="p.nome"></strong>
+                                <span class="block truncate text-xs" :class="p.tarefas_em_curso ? 'text-brand-text' : 'text-ink-faint'"
+                                      x-text="(p.tarefas_em_curso ? p.tarefas_em_curso + ' em curso' : 'nada em curso') + ' · ' + (p.git?.branch || 'sem git')"></span>
+                            </button>
+                            <label class="flex flex-none items-center gap-1 px-3 pb-2 text-[11px] text-ink-faint" :class="modoProjetos === 'lista' ? 'pb-0 px-0' : ''">
+                                <span>Grupo</span>
+                                <select :value="p.grupo_id || ''" @change="moverParaGrupo(p.nome, $event.target.value || null)" :aria-label="'Grupo de ' + p.nome"
+                                        class="min-w-0 flex-1 cursor-pointer rounded-control border-transparent bg-transparent py-0 pl-1 pr-6 text-[11px] text-ink-dim hover:border-line focus:border-brand focus:ring-brand">
+                                    <option value="">Sem grupo</option>
+                                    <template x-for="gr in grupos" :key="gr.id"><option :value="gr.id" :selected="p.grupo_id === gr.id" x-text="gr.nome"></option></template>
+                                    <option value="novo">+ Novo grupo…</option>
+                                </select>
+                            </label>
+                        </div>
                     </template>
                 </div>
             </section></template>
@@ -862,7 +874,7 @@
                         </li>
                     </template>
                 </ul>
-                <p class="mt-2 text-xs text-ink-faint">Para pôr um projeto num grupo, abra o projeto e escolha o grupo no cabeçalho dele.</p>
+                <p class="mt-2 text-xs text-ink-faint">Para pôr um projeto num grupo, use o seletor "Grupo" no card dele, na aba Projetos.</p>
             </div>
 
             <div class="rounded-panel border border-line bg-panel p-4 text-sm">
