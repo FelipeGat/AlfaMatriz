@@ -600,7 +600,7 @@ class TelegramCanal
         }
 
         $mensagem = $entrega->mensagem;
-        $texto = $mensagem->conteudo;
+        $texto = RespostaVisual::telegram($mensagem->conteudo);
 
         // O Telegram recusa acima de 4096. Resposta de agente passa disso
         // fácil; no celular vai o começo, e a íntegra fica na tela.

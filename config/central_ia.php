@@ -1,6 +1,11 @@
 <?php
 
 return [
+    // O dono da Central (e-mail): o único que administra os limites de outras
+    // contas, e cuja conta ninguém mais altera (dono, 12/10/2026: "admin virar
+    // você não pode ocorrer"). Sem valor, ninguém administra ninguém.
+    'dono' => env('CENTRAL_IA_DONO'),
+
     // Teto de uma mensagem. O Telegram corta em 4096; abaixo disso, a mesma
     // mensagem cabe nos dois canais sem ser partida.
     'max_texto' => 3000,

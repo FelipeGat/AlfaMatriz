@@ -11,12 +11,37 @@ class GovernancaTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function pessoa(bool $admin = false): User
+    /** `$dono`: o dono da Central (`CENTRAL_IA_DONO`), único que administra os demais. */
+    private function pessoa(bool $dono = false): User
     {
         $u = User::factory()->create();
         $u->perfis()->sync([Perfil::where('slug', 'central_ia')->value('id')]);
-        if ($admin) $u->perfis()->attach(Perfil::where('slug', 'admin')->value('id'));
+        if ($dono) config(['central_ia.dono' => $u->email]);
         return $u;
+    }
+
+    public function test_admin_do_sistema_que_nao_e_o_dono_nao_administra_nem_ve_ninguem(): void
+    {
+        $dono = $this->pessoa(true);
+        $rossini = $this->pessoa();
+        $rossini->perfis()->attach(Perfil::where('slug', 'admin')->value('id'));
+        $alexandre = $this->pessoa();
+        $this->actingAs($rossini)->getJson(route('central-ia.administracao', ['usuario' => $dono->id]))->assertForbidden();
+        $this->getJson(route('central-ia.administracao', ['usuario' => $alexandre->id]))->assertForbidden();
+        $this->putJson(route('central-ia.usuarios.politica', $alexandre->id), $this->politica())->assertForbidden();
+        $this->getJson(route('central-ia.relatorio', ['inicio' => now()->toDateString(), 'fim' => now()->toDateString(), 'usuario' => $dono->id]))->assertForbidden();
+        // O dono não aparece na lista que ele mesmo administra, e ninguém o administra.
+        $this->actingAs($dono)->getJson(route('central-ia.painel'))->assertOk()->assertJsonMissing(['id' => $dono->id, 'nome' => $dono->name]);
+        $this->assertFalse(app(Preferencias::class)->ler($dono)['execucao_bloqueada']);
+    }
+
+    public function test_dono_libera_a_execucao_de_outra_conta(): void
+    {
+        $dono = $this->pessoa(true); $membro = $this->pessoa();
+        $this->assertTrue(app(Preferencias::class)->ler($membro)['execucao_bloqueada']);
+        $this->actingAs($dono)->putJson(route('central-ia.usuarios.politica', $membro->id), $this->politica() + ['execucao_bloqueada' => false])
+            ->assertOk()->assertJsonPath('politica.execucao_bloqueada', false);
+        $this->assertFalse(app(Preferencias::class)->ler($membro)['execucao_bloqueada']);
     }
 
     private function politica(): array
@@ -76,13 +101,13 @@ class GovernancaTest extends TestCase
         $admin = $this->pessoa(true); $membro = $this->pessoa(); $r = $this->politica();
         $this->actingAs($admin)->putJson(route('central-ia.usuarios.politica', $membro->id), $r + ['deploy' => true])->assertUnprocessable();
         $this->putJson(route('central-ia.usuarios.politica', $membro->id), $r + ['onedrive' => true])->assertUnprocessable();
-        $this->putJson(route('central-ia.usuarios.politica', $membro->id), $r + ['execucao_bloqueada' => false])->assertUnprocessable();
         $this->putJson(route('central-ia.usuarios.politica', $membro->id), $r)->assertOk();
         $this->putJson(route('central-ia.usuarios.politica', $membro->id), $r)->assertConflict();
     }
 
     public function test_membro_sem_politica_nao_recebe_trabalho_no_executor_legado(): void
     {
+        $this->pessoa(true);
         $membro = $this->pessoa();
         $t = CentralIaTarefa::create(['user_id' => $membro->id, 'projeto' => 'teste', 'titulo' => 'Teste', 'objetivo' => 'Teste']);
         $m = app(ConversaService::class)->registrarDoAgente($membro, 'Central', 'Teste', projeto: 'teste', tarefaId: $t->id);
@@ -107,6 +132,7 @@ class GovernancaTest extends TestCase
         $this->assertStringNotContainsString('SEGREDO', $r->getContent());
         $this->actingAs($membro)->getJson(route('central-ia.relatorio', $f + []))->assertOk();
         $f['usuario'] = $admin->id;
+        // O membro não vê o relatório do dono (nem de ninguém).
         $this->getJson(route('central-ia.relatorio', $f))->assertForbidden();
         $f['usuario'] = $membro->id; $f['fim'] = '2026-10-09';
         $this->getJson(route('central-ia.relatorio', $f))->assertUnprocessable();

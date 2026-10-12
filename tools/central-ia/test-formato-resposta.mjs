@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { centralIa } from '../../resources/js/central-ia.js';
+globalThis.localStorage = { getItem:()=>null, setItem(){} };
+globalThis.location = {search:'',pathname:'/central-ia'};
+const u = centralIa({}); u.$refs={}; u.$nextTick=f=>f(); u.garantirAba();
+assert.equal(u.pedeFormatoResposta('Faça um levantamento financeiro'), true);
+assert.equal(u.pedeFormatoResposta('Faça uma análise do que tenho a pagar'), true);
+for (const t of ['Olá', 'Corrija o controller', 'Faça um relatório resumido', 'Quero resposta rápida', 'Continue']) assert.equal(u.pedeFormatoResposta(t),false,t);
+u.aba.rascunho='Faça um relatório financeiro';
+u.abrirPergunta('Formato?', ['Rápida','Elaborada']); u.perguntaAberta.tipo='formato'; u.perguntaAberta.rascunho=u.aba.rascunho;
+u.respostaPergunta='Rápida'; let enviados=0; u.enviar=()=>enviados++; u.responderPergunta();
+assert.equal(enviados,1); assert.equal(u.formatoSelecionado.valor,'Rápida'); assert.equal(u.aba.rascunho,'Faça um relatório financeiro');
+u.abrirPergunta('Formato?'); u.perguntaAberta.tipo='formato'; u.perguntaAberta.rascunho=u.aba.rascunho; u.respostaPergunta='Elaborada';
+u.aba.rascunho='Outro pedido'; u.responderPergunta(); assert.equal(enviados,1,'não enviar rascunho alterado');
+console.log('PASSOU: formato apenas em resultados, escolha preserva rascunho e bloqueia pedido alterado.');

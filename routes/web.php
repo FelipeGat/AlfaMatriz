@@ -208,9 +208,9 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware(['permissao:central_ia,editar', 'throttle:20,1,central-ia-arquivar']);
     Route::get('central-ia/relatorio', [CentralIaController::class, 'relatorio'])->name('central-ia.relatorio')->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-relatorio']);
     Route::get('central-ia/administracao', [CentralIaController::class, 'administracao'])->name('central-ia.administracao')
-        ->middleware(['permissao:central_ia', 'permissao:usuarios,editar', 'throttle:90,1,central-ia-admin']);
+        ->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-admin']);
     Route::put('central-ia/usuarios/{usuario}/politica', [CentralIaController::class, 'politicaUsuario'])->whereNumber('usuario')->name('central-ia.usuarios.politica')
-        ->middleware(['permissao:central_ia', 'permissao:usuarios,editar', 'throttle:20,1,central-ia-politica']);
+        ->middleware(['permissao:central_ia', 'throttle:20,1,central-ia-politica']);
     Route::get('central-ia/mensagens', [CentralIaController::class, 'mensagens'])->name('central-ia.mensagens')
         ->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-mensagens']);
     Route::get('central-ia/projetos/{projeto}/tarefas', [CentralIaController::class, 'tarefas'])->name('central-ia.tarefas')

@@ -456,7 +456,7 @@ class AgentesService
                 'commit_base' => $tarefa->commit_base,
             ] : null,
             'contexto' => $tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null) : null,
-            'bloco' => (($execucao->roteamento['coordenador'] ?? false) ? "Você atua como coordenador deste pedido. Nesta etapa apenas responda, planeje e proponha quem deve fazer o trabalho; não implemente, não execute ferramentas ou comandos e não altere arquivos. Claude faz análise de código e desenvolvimento; Codex faz análise de dados; Copilot faz Git e QA. Identifique fontes disponíveis e impedimentos, não invente números. Delegação automática ainda não está habilitada: descreva a próxima etapa, sem afirmar que outro agente executou algo.\n" : '').Dossie::instrucaoDoBloco()."\nRegras de evidência: nunca invente dados, valores, fontes ou consultas. Relatórios de dados exigem período explícito e fonte autorizada identificada, data da consulta e critérios dos totais. Sem acesso à fonte, informe a limitação e solicite os dados; código, exemplos e testes não comprovam saldos reais. Para esta semana, confirme no texto as datas usadas. Se o período for ambíguo, peça esclarecimento antes de consultar. Claude só deve apoiar análise de dados quando houver impedimento técnico identificado; não troque de agente apenas para tentar obter números ausentes.",
+            'bloco' => (($execucao->roteamento['coordenador'] ?? false) ? "Você atua como coordenador deste pedido. Nesta etapa apenas responda, planeje e proponha quem deve fazer o trabalho; não implemente, não execute ferramentas ou comandos e não altere arquivos. Claude faz análise de código e desenvolvimento; Codex faz análise de dados; Copilot faz Git e QA. Identifique fontes disponíveis e impedimentos, não invente números. Delegação automática ainda não está habilitada: descreva a próxima etapa, sem afirmar que outro agente executou algo.\n" : '').Dossie::instrucaoDoBloco()."\nRegras de evidência: nunca invente dados, valores, fontes ou consultas. Relatórios de dados exigem período explícito e fonte autorizada identificada, data da consulta e critérios dos totais. Sem acesso à fonte, informe a limitação e solicite os dados; código, exemplos e testes não comprovam saldos reais. Para esta semana, confirme no texto as datas usadas. Para pedidos executivos com esta semana, use segunda-feira até hoje no fuso local e explicite as datas; para esta semana útil, segunda a sexta (até hoje se ainda estiver em curso). Pergunte somente se a ambiguidade alterar materialmente a decisão ou tornar a consulta insegura. Sem período informado, mantenha o pedido de esclarecimento. Claude só deve apoiar análise de dados quando houver impedimento técnico identificado; não troque de agente apenas para tentar obter números ausentes.",
             'fontes' => $execucao->roteamento['fontes'] ?? [],
             'continuar' => $continuar,
             'acesso' => config('central_ia.agentes.acesso'),
@@ -476,6 +476,12 @@ class AgentesService
      */
     public function concluir(User $user, int $id, array $dados): CentralIaExecucao
     {
+        // Só o erro e o git medido são mascarados aqui. A resposta é mascarada
+        // DEPOIS de separar o bloco do dossiê (ver abaixo): mascarar antes
+        // podia quebrar o JSON do bloco.
+        foreach (['erro', 'checkpoint'] as $campo) {
+            if (isset($dados[$campo])) $dados[$campo] = ProtecaoDeSegredos::dados($dados[$campo]);
+        }
         return DB::transaction(function () use ($user, $id, $dados) {
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             $execucao = CentralIaExecucao::where('user_id', $user->id)->whereKey($id)->lockForUpdate()->firstOrFail();
@@ -486,6 +492,7 @@ class AgentesService
 
             $ok = $dados['status'] === CentralIaExecucao::CONCLUIDA;
             [$texto, $bloco] = $ok ? Dossie::extrair($dados['resposta'] ?? '') : ['Não consegui concluir: '.($dados['erro'] ?? 'erro desconhecido').'.', null];
+            $bloco = $bloco === null ? null : ProtecaoDeSegredos::dados($bloco);
             $tarefa = $execucao->tarefa;
 
             $resposta = $this->conversas->registrarDoAgente($user, $execucao->nomeDoAgente(), $texto ?: '(resposta vazia)', CentralIaMensagem::AUTOR_AGENTE, $execucao->projeto ?: null, $tarefa?->id);

@@ -115,7 +115,7 @@ class ConversaService
             'autor_nome' => $autor,
             'origem' => CentralIaMensagem::ORIGEM_AGENTE,
             // MEDIUMTEXT guarda 16 MB; isto é folga para o que uma tela lê.
-            'conteudo' => mb_strcut($conteudo, 0, 1_000_000) ?: '(resposta vazia)',
+            'conteudo' => mb_strcut(ProtecaoDeSegredos::texto($conteudo), 0, 1_000_000) ?: '(resposta vazia)',
         ]);
     }
 

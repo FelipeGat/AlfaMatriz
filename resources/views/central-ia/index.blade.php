@@ -307,7 +307,43 @@
                                         <span class="text-ink-faint" x-show="m.pedido?.handoff_de" x-text="' · assumiu de ' + m.pedido?.handoff_de"></span>
                                         <span class="text-ink-faint" x-text="m.pedido?.motivo ? ' · ' + m.pedido.motivo : ''"></span>
                                     </p>
-                                    <p class="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink" x-text="m.conteudo"></p>
+                                    <template x-if="m.visual?.relatorio">
+                                        <section class="mb-3" aria-label="Resumo financeiro">
+                                            <h3 class="font-semibold text-ink" x-text="m.visual.relatorio.titulo"></h3>
+                                            <p class="text-xs text-ink-muted" x-text="m.visual.relatorio.periodo"></p>
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
+                                                <template x-for="(k, i) in m.visual.relatorio.metricas" :key="i">
+                                                    <div class="rounded-lg border border-line p-3">
+                                                        <p class="text-xs text-ink-muted" x-text="k.rotulo"></p>
+                                                        <p class="text-xl font-semibold text-ink" x-text="new Intl.NumberFormat('pt-BR', {style:'currency',currency:'BRL'}).format(k.centavos / 100)"></p>
+                                                        <p class="text-xs text-ink-muted" x-text="k.criterio"></p>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                            <template x-if="m.visual.relatorio.contagens"><div class="flex flex-wrap gap-4 mt-3"><template x-for="(p,j) in m.visual.relatorio.contagens" :key="j"><p class="text-xs"><strong class="text-lg" x-text="p.quantidade"></strong> <span x-text="p.rotulo"></span></p></template></div></template>
+                                            <template x-if="m.visual.relatorio.alertas"><ul class="mt-3 text-sm"><template x-for="(v,j) in m.visual.relatorio.alertas" :key="j"><li x-text="'Atenção: ' + v"></li></template></ul></template>
+                                            <template x-if="m.visual.relatorio.acoes"><ul class="mt-3 text-sm"><template x-for="(v,j) in m.visual.relatorio.acoes" :key="j"><li x-text="'Próxima ação: ' + v"></li></template></ul></template>
+                                            <template x-if="m.visual.relatorio.grafico">
+                                                <figure class="mt-4 rounded-lg border border-line p-3">
+                                                    <figcaption class="text-sm font-semibold mb-3" x-text="m.visual.relatorio.grafico.titulo"></figcaption>
+                                                    <template x-if="m.visual.relatorio.grafico.tipo === 'linha'"><div><svg viewBox="0 0 400 140" class="w-full h-40" role="img" :aria-label="m.visual.relatorio.grafico.titulo"><polyline fill="none" stroke="currentColor" stroke-width="2" :points="m.visual.relatorio.grafico.pontos.map((p,j,a)=> (10+j*380/(a.length-1)) + ',' + (130-(p.centavos-Math.min(0,...a.map(v=>v.centavos)))*120/Math.max(1,Math.max(0,...a.map(v=>v.centavos))-Math.min(0,...a.map(v=>v.centavos))))).join(' ')"></polyline></svg><ul class="flex flex-wrap gap-3 text-xs"><template x-for="(p,j) in m.visual.relatorio.grafico.pontos" :key="j"><li><span x-text="p.rotulo"></span>: <span x-text="new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(p.centavos/100)"></span></li></template></ul></div></template>
+                                                    <template x-for="(p, j) in m.visual.relatorio.grafico.pontos" :key="j">
+                                                        <div class="mb-2" x-show="m.visual.relatorio.grafico.tipo === 'barras'">
+                                                            <div class="flex justify-between gap-3 text-xs"><span x-text="p.rotulo"></span><span x-text="new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(p.centavos/100)"></span></div>
+                                                            <div class="h-3 rounded bg-panel mt-1"><div class="h-3 rounded bg-brand" :style="'width:' + (100 * Math.abs(p.centavos) / Math.max(1,...m.visual.relatorio.grafico.pontos.map(v=>Math.abs(v.centavos)))) + '%'" :class="p.centavos < 0 ? 'opacity-50' : ''"></div></div>
+                                                        </div>
+                                                    </template>
+                                                </figure>
+                                            </template>
+                                            <template x-if="m.visual.relatorio.tabela">
+                                                <details class="mt-3 text-sm"><summary>Ver contas detalhadas</summary><x-tabela min="480px" class="mt-2 text-xs"><thead><tr><th class="text-left">Data</th><th class="text-left">Descrição</th><th class="text-left">Estado</th><th class="text-right">Valor</th></tr></thead><tbody><template x-for="(p,j) in m.visual.relatorio.tabela" :key="j"><tr><td class="py-2" x-text="/^\d{4}-\d{2}-\d{2}$/.test(p.data) ? p.data.slice(8,10)+'/'+p.data.slice(5,7)+'/'+p.data.slice(0,4) : p.data"></td><td x-text="p.descricao"></td><td x-text="p.estado || 'Não informado'"></td><td class="text-right" x-text="new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(p.centavos/100)"></td></tr></template></tbody><tfoot><tr class="font-semibold"><td colspan="3" class="py-2">Subtotal das contas listadas</td><td class="text-right" x-text="new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(m.visual.relatorio.tabela.reduce((s,p)=>s+p.centavos,0)/100)"></td></tr></tfoot></x-tabela></details>
+                                            </template>
+                                            <details class="mt-2 text-xs text-ink-muted"><summary>Fonte da consulta</summary><p x-text="m.visual.relatorio.fonte"></p></details>
+                                        </section>
+                                    </template>
+                                    <div class="central-resposta text-sm leading-relaxed text-ink" x-show="m.visual" x-html="m.visual?.resumo_html || ''"></div>
+                                    <template x-if="m.visual?.longo"><details class="mt-3 text-sm"><summary class="cursor-pointer text-brand-text">Ler resposta completa</summary><div class="central-resposta mt-2" x-html="m.visual.html"></div></details></template>
+                                    <p class="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink" x-show="!m.visual" x-text="m.conteudo"></p>
                                     <button type="button" x-show="m.autor_tipo === 'agente' && m.conteudo.includes('?')" @click="abrirPergunta(m.conteudo)" class="mt-2 text-xs font-semibold text-brand-text">Responder em diálogo</button>
                                     <div class="mt-2 flex flex-wrap gap-2">
                                         <template x-for="a in m.anexos || []" :key="a.id">
@@ -527,7 +563,7 @@
                     <label class="inline-flex items-center gap-1.5">IA <select x-model="iaConsumo" @change="carregarRelatorio('consumo')" class="h-7 rounded-control border-line bg-input px-2 py-0 text-xs text-ink"><option value="">Todas</option><option value="claude">Claude</option><option value="codex">Codex</option><option value="copilot">Copilot</option></select></label>
                 </div>
                 <p class="text-[11px] leading-4 text-ink-faint">Consumo informado pelos runners no período. Ausência de registros não comprova consumo zero; dados antigos podem não estar disponíveis.</p>
-                <div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr><th>Dia</th><th>IA</th><th>Entrada + saída</th><th>Cache</th><th>Premium</th></tr></thead><tbody><template x-for="l in relatorioConsumo.consumo" :key="l.dia + l.agente"><tr class="border-t border-rule"><td x-text="l.dia"></td><td x-text="l.agente"></td><td x-text="tokens(l.entrada + l.saida)"></td><td x-text="tokens(l.cache)"></td><td x-text="l.premium"></td></tr></template></tbody></table></div>
+                <x-tabela min="520px" class="text-sm"><thead><tr><th>Dia</th><th>IA</th><th>Entrada + saída</th><th>Cache</th><th>Premium</th></tr></thead><tbody><template x-for="l in relatorioConsumo.consumo" :key="l.dia + l.agente"><tr class="border-t border-rule"><td x-text="l.dia"></td><td x-text="l.agente"></td><td x-text="tokens(l.entrada + l.saida)"></td><td x-text="tokens(l.cache)"></td><td x-text="l.premium"></td></tr></template></tbody></x-tabela>
                 <p x-show="!relatorioConsumo.consumo.length" class="text-ink-mute">Sem registros para esses filtros.</p>
             </div>
             <h3 class="mb-3 font-semibold text-ink">Minha assinatura: situação atual e últimos sete dias (independente do filtro acima)</h3>
@@ -795,7 +831,7 @@
             <h3 id="titulo-pergunta-central" class="font-semibold text-ink">Preciso de uma informação</h3>
             <p class="mt-3 max-h-60 overflow-y-auto whitespace-pre-wrap text-sm text-ink" x-text="perguntaAberta?.texto"></p>
             <div class="mt-3 flex flex-wrap gap-2"><template x-for="(o, i) in perguntaAberta?.opcoes || []" :key="i"><button type="button" @click="respostaPergunta = o" :aria-pressed="respostaPergunta === o" class="rounded-control border border-line px-3 py-2 text-sm text-ink" :class="respostaPergunta === o ? 'bg-nav-active' : ''" x-text="o"></button></template></div>
-            <label class="mt-3 block text-xs text-ink-mute">Sua resposta<textarea x-ref="respostaPergunta" x-model="respostaPergunta" rows="3" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink" placeholder="Escolha uma opção ou digite…"></textarea></label>
+            <label x-show="perguntaAberta?.tipo !== 'formato'" class="mt-3 block text-xs text-ink-mute">Sua resposta<textarea x-ref="respostaPergunta" x-model="respostaPergunta" rows="3" class="mt-1 w-full rounded-control border-line bg-input text-sm text-ink" placeholder="Escolha uma opção ou digite…"></textarea></label>
             <p class="mt-2 text-xs text-ink-faint">Responder esclarece o pedido; não concede acesso a produção ou autorização de operações críticas.</p>
             <div class="mt-4 flex justify-end gap-3"><button type="button" @click="perguntaAberta = null" class="text-sm text-ink-mute">Agora não</button><button type="button" @click="responderPergunta()" :disabled="!respostaPergunta.trim() || perguntaAberta?.chave !== chaveAba || aba.enviando || !!aba.pendente || atendimento.ativo === 'telegram'" class="rounded-control bg-brand px-3 py-2 text-sm font-semibold text-on-brand disabled:opacity-50">Enviar resposta</button></div>
         </section>

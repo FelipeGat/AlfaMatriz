@@ -50,7 +50,7 @@ class Dossie
      */
     public static function instrucaoDoBloco(): string
     {
-        return "Ao terminar, acrescente no FIM da resposta exatamente este bloco (JSON válido), que a Central usa para guardar o contexto da tarefa:\n"
+        return RespostaVisual::instrucao()."\nAo terminar, acrescente no FIM da resposta exatamente este bloco (JSON válido), que a Central usa para guardar o contexto da tarefa:\n"
             .self::INICIO."\n"
             .'{"resumo": "o que você fez/concluiu, em 1-3 frases", "decisoes": ["decisão tomada e por quê"], '
             .'"testes": [{"comando": "comando rodado", "resultado": "passou|falhou|não rodado"}], '

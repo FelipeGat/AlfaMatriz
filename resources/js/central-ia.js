@@ -39,7 +39,7 @@ export function centralIa(config) {
         // Painel (todos os projetos)
         inicioAtividade: diaLocal(), fimAtividade: diaLocal(), inicioConsumo: diaLocal(), fimConsumo: diaLocal(), usuarioConsumo: '', iaConsumo: '',
         relatorioAtividade: { eventos: [], execucoes: [] }, relatorioConsumo: { consumo: [] }, modoProjetos: ler('central-ia:modo-projetos') || 'cards',
-        perguntaAberta: null, respostaPergunta: '', detalhesChat: false,
+        perguntaAberta: null, respostaPergunta: '', detalhesChat: false, formatoSelecionado: null,
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
@@ -460,7 +460,21 @@ export function centralIa(config) {
             if (event.shiftKey && document.activeElement === primeiro) { event.preventDefault(); ultimo?.focus(); }
             else if (!event.shiftKey && document.activeElement === ultimo) { event.preventDefault(); primeiro?.focus(); }
         },
+        pedeFormatoResposta(texto) {
+            const t = texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            if (/\b(rapida|rapido|elaborada|elaborado|resumida|resumido|detalhada|detalhado|resumo|breve|completa|completo)\b/.test(t)) return false;
+            return /\b(relatorio|balanco|levantamento|apresentacao)\b/.test(t)
+                || (/\b(analis[ea]|analise)\b/.test(t) && /\b(financeir[oa]|pagar|receber|receitas|despesas|faturamento)\b/.test(t));
+        },
         responderPergunta() {
+            if (this.perguntaAberta?.tipo === 'formato') {
+                if (this.perguntaAberta.chave !== this.chaveAba || this.perguntaAberta.rascunho !== this.aba.rascunho
+                    || !['Rápida', 'Elaborada'].includes(this.respostaPergunta) || this.aba.pendente || this.aba.enviando) return;
+                this.formatoSelecionado = { chave: this.chaveAba, texto: this.aba.rascunho, valor: this.respostaPergunta };
+                this.perguntaAberta = null;
+                this.enviar();
+                return;
+            }
             if (!this.perguntaAberta || !this.respostaPergunta.trim() || this.perguntaAberta.chave !== this.chaveAba) return;
             if (this.aba.pendente || this.aba.enviando) { this.aviso = 'Aguarde a confirmação da mensagem anterior.'; return; }
             if (this.aba.rascunho.trim()) { this.aviso = 'Envie ou guarde seu rascunho antes de responder à pergunta.'; return; }
@@ -471,13 +485,21 @@ export function centralIa(config) {
         async enviar() {
             const aba = this.aba, chave = this.chaveAba, projetoEnviado = this.atual;
             if ((this.atendimento.disponivel && this.atendimento.ativo !== 'web') || this.transferindoCanal || aba.enviando || this.bloqueado || !this.podeEnviar || (!aba.pendente && !aba.rascunho.trim() && !aba.arquivos.length)) return;
+            const formato = this.formatoSelecionado?.chave === chave && this.formatoSelecionado?.texto === aba.rascunho
+                ? this.formatoSelecionado.valor : null;
+            if (!aba.pendente && aba.agente !== 'nota' && !formato && this.pedeFormatoResposta(aba.rascunho)) {
+                this.abrirPergunta('Como você prefere receber os resultados? Rápida: principais números e conclusões. Elaborada: comparações, critérios e detalhes disponíveis.', ['Rápida', 'Elaborada']);
+                this.perguntaAberta.tipo = 'formato';
+                this.perguntaAberta.rascunho = aba.rascunho;
+                return;
+            }
             if (!aba.pendente && this.chatAtual) aba.tarefa = this.chatAtual;
             // Vendo uma tarefa (o filtro "Só a tarefa #N"), o pedido vai para ela
             // — e não abre uma tarefa nova sem o contexto da que está na tela.
             if (!aba.pendente && this.verTarefa && aba.tarefa === 'nova') aba.tarefa = this.verTarefa;
             if (!aba.pendente) {
                 aba.pendente = {
-                    client_id: novoId(), conteudo: aba.rascunho.trim() || 'Analise os arquivos anexados.', anexos: aba.arquivos.map(a => a.id), projeto: this.atual || null,
+                    client_id: novoId(), conteudo: (aba.rascunho.trim() || 'Analise os arquivos anexados.') + (formato ? '\n\nFormato escolhido: ' + formato + '. ' + (formato === 'Rápida' ? 'Priorize os indicadores e até três conclusões; detalhes ficam recolhidos. Não omita incertezas materiais.' : 'Inclua comparações quando houver dados, critérios, tabelas e recomendações; mantenha um resumo executivo primeiro.') : ''), anexos: aba.arquivos.map(a => a.id), projeto: this.atual || null,
                     tarefa_id: (this.chatAtual || this.atual) && aba.tarefa !== 'nova' ? Number(aba.tarefa) : null,
                     agente: aba.agente !== 'nota' ? aba.agente : null,
                     modo: aba.modo,
@@ -494,7 +516,7 @@ export function centralIa(config) {
                 aba.progresso = 'Confirmando mensagem…';
                 const r = await this.pedir(config.enviar, 'POST', aba.pendente);
                 aba.recibo = aba.pendente.agente ? 'Pedido recebido. Acompanhe o andamento abaixo.' : 'Mensagem registrada.';
-                aba.pendente = null; aba.rascunho = ''; aba.arquivos = []; this.aviso = '';
+                aba.pendente = null; aba.rascunho = ''; aba.arquivos = []; this.formatoSelecionado = null; this.aviso = '';
                 // Pedido que abriu tarefa nova: o compositor passa a seguir nela.
                 if (r.tarefa_id && aba.tarefa === 'nova') {
                     aba.tarefa = r.tarefa_id;
