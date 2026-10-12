@@ -26,6 +26,7 @@ Codex dentro das extensões do VS Code (`~/.vscode-server/extensions`).
    CENTRAL_IA_ACESSO_MAXIMO=restrito          # ou total (dono, 10/10/2026: "permita tudo")
    CENTRAL_IA_CONFIRMAR=implementar           # ou sempre (confirma também as análises)
    CENTRAL_IA_ANALISE=leitura                 # ou total: a IA decide o que consultar; o rastro fica na auditoria
+   CENTRAL_IA_IGNORAR=pasta-de-video,orcamento-x   # pastas de ~/projetos que não são projeto (pasta vazia já é ignorada)
    CENTRAL_IA_SEGREDO_CONFIRMACAO=<64 hex: openssl rand -hex 32>
    CENTRAL_IA_TELEGRAM_TOKEN=<token do bot>   # só para ENVIAR o código; nunca lê mensagens
    CENTRAL_IA_TELEGRAM_CHAT_ID=<seu chat id>

@@ -50,6 +50,9 @@ function lerConfig() {
         // Analisar: `leitura` (padrão) ou `total` — com total, a IA decide o
         // que consultar, e o que ela viu e alterou fica na auditoria.
         analise: v('CENTRAL_IA_ANALISE') === 'total' ? 'total' : 'leitura',
+        // Pastas em ~/projetos que NÃO são projeto (vídeos, orçamentos):
+        // somem do catálogo, das sessões e do consumo (dono, 12/10/2026).
+        ignorar: new Set((v('CENTRAL_IA_IGNORAR') || '').split(',').map(x => x.trim()).filter(Boolean)),
         segredo: v('CENTRAL_IA_SEGREDO_CONFIRMACAO'),
         telegramToken: v('CENTRAL_IA_TELEGRAM_TOKEN'),
         telegramChat: v('CENTRAL_IA_TELEGRAM_CHAT_ID'),
@@ -94,8 +97,9 @@ function localizarAgentes() {
 
 function listarProjetos() {
     return readdirSync(cfg.projetos)
-        .filter(n => /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(n) && n.length <= 128)
-        .filter(n => { try { return statSync(join(cfg.projetos, n)).isDirectory(); } catch { return false; } })
+        .filter(n => /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(n) && n.length <= 128 && !cfg.ignorar.has(n))
+        // Pasta vazia não é projeto.
+        .filter(n => { try { return statSync(join(cfg.projetos, n)).isDirectory() && readdirSync(join(cfg.projetos, n)).length > 0; } catch { return false; } })
         .sort();
 }
 
@@ -215,12 +219,16 @@ async function batida() {
     agentes = localizarAgentes();
     const projetos = listarProjetos();
     const u = uso();
+    // O que é das pastas ignoradas não sai daqui: sessões somem; o gasto
+    // continua contado (foi gasto de verdade), sem o nome da pasta.
+    const sessoes = u?.sessoes?.filter(x => !cfg.ignorar.has(x.projeto));
+    const consumo = u ? { ...u.consumo, linhas: (u.consumo.linhas || []).map(l => cfg.ignorar.has(l.projeto) ? { ...l, projeto: '(fora dos projetos)' } : l) } : null;
     const r = await api('batida', {
         maquina: cfg.maquina,
         agentes: Object.keys(agentes).filter(k => agentes[k]),
         projetos,
         estado: estadoDosProjetos(projetos),
-        ...(u ? { consumo: { ...u.consumo, limites_claude: limitesDoClaude() }, sessoes: u.sessoes } : {}),
+        ...(u ? { consumo: { ...consumo, limites_claude: limitesDoClaude() }, sessoes } : {}),
     });
     if (r.status !== 200) log('batida recusada', r.status, r.json?.message || '');
 }

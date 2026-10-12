@@ -171,7 +171,9 @@ class CockpitService
             'serie' => $serie,
             'limites' => $limites,
             'por_agente' => $porAgente,
-            'projetos_hoje' => $linhas->where('dia', $hoje)->groupBy('projeto')
+            // "(sem projeto)" e "(fora dos projetos)" não são projetos: o gasto
+            // entra nos totais por IA, não no ranking.
+            'projetos_hoje' => $linhas->where('dia', $hoje)->reject(fn ($l) => str_starts_with((string) ($l['projeto'] ?? ''), '('))->groupBy('projeto')
                 ->map(fn ($g, $p) => ['projeto' => $p, 'tokens' => $g->sum('entrada') + $g->sum('saida'),
                     'por_agente' => $g->groupBy('agente')->map(fn ($x) => $x->sum('entrada') + $x->sum('saida'))->all()])
                 ->sortByDesc('tokens')->take(6)->values()->all(),
