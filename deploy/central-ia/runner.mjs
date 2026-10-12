@@ -620,8 +620,9 @@ async function executar(job) {
             ({ cwd, branch } = criada);
         }
 
-        progresso.etapa('anexos');
-        await informar();
+        // Só diz "preparando os anexos" quando há anexo: sem isso, a tela
+        // mostrava essa etapa em todo pedido (12/10/2026).
+        if ((job.anexos || []).length) { progresso.etapa('anexos'); await informar(); }
         const midias = await prepararAnexos(job.anexos || [], cfg, tmp);
         job.imagens = midias.imagens; job.contextoAnexos = midias.contexto;
         const saida = join(tmp, 'ultima.txt');
