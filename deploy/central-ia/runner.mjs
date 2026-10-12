@@ -20,6 +20,7 @@ import { usoLocal } from './uso-local.mjs';
 import { prepararAnexos } from './anexos.mjs';
 import { acompanharProgresso } from './progresso.mjs';
 import { auditar, confirmar } from './confirmacao.mjs';
+import { caminhoDoStatus, compararGit, criarAuditor, retratoGit } from './auditoria.mjs';
 import { acessoEfetivo, agendaSemIa, CITA_CREDENCIAL, dentroDe, exigeConfirmacao, modeloArgs, permissoes } from './politica.mjs';
 
 const HOME = homedir();
@@ -46,6 +47,9 @@ function lerConfig() {
         // `implementar` (padrão): confirma o que modifica. `sempre`: confirma
         // também as análises.
         confirmar: v('CENTRAL_IA_CONFIRMAR') === 'sempre' ? 'sempre' : 'implementar',
+        // Analisar: `leitura` (padrão) ou `total` — com total, a IA decide o
+        // que consultar, e o que ela viu e alterou fica na auditoria.
+        analise: v('CENTRAL_IA_ANALISE') === 'total' ? 'total' : 'leitura',
         segredo: v('CENTRAL_IA_SEGREDO_CONFIRMACAO'),
         telegramToken: v('CENTRAL_IA_TELEGRAM_TOKEN'),
         telegramChat: v('CENTRAL_IA_TELEGRAM_CHAT_ID'),
@@ -261,7 +265,7 @@ function checkpoint(cwd, projetoDir = null) {
             c.head = git(dir, 'rev-parse', '--short', 'HEAD');
             const linhas = git(dir, 'status', '--porcelain').split('\n').filter(Boolean);
             c.status = linhas.slice(0, 200).map(l => l.slice(0, 300));
-            c.arquivos = linhas.slice(0, 200).map(l => l.slice(3).slice(0, 290));
+            c.arquivos = linhas.slice(0, 200).map(l => caminhoDoStatus(l).slice(0, 290));
             c.diff_stat = (git(dir, 'diff', '--stat').split('\n').at(-1) || '').slice(0, 290);
             break;
         } catch {}
@@ -390,14 +394,19 @@ function comando(job, cwd, branch, saida, acesso) {
     // A sessão interna do agente só é retomada na MESMA pasta: o Claude guarda
     // as sessões por diretório, e retomar noutra falha.
     const sessao = job.continuar?.sessao && job.continuar.cwd === cwd ? job.continuar.sessao : null;
-    const prompt = [instrucoes(job, branch), memoria(), job.dadosOficiais, historicoDaSessao(job.importar), job.contexto, job.contextoAnexos,
+    const remoto = job.remotoAtualizado ? `Git: a Central já rodou \`git fetch --all\` às ${job.remotoAtualizado}; as referências remotas (origin/*) estão atualizadas. Você não tem rede: use o que já está local.`
+        : job.remotoFalhou ? `Git: a Central tentou \`git fetch\` e falhou (${job.remotoFalhou}). Diga que os dados remotos podem estar desatualizados.` : null;
+    const prompt = [instrucoes(job, branch), remoto, memoria(), job.dadosOficiais, historicoDaSessao(job.importar), job.contexto, job.contextoAnexos,
         `Pedido:\n${job.instrucao}`, job.bloco].filter(Boolean).join('\n\n');
     // Acesso total (dono, 10/10/2026: "lá tem que ter acesso total igual
     // aqui, senão fico travado"): só para implementar, só com o teto desta
     // máquina em `total` e só depois da confirmação do dono (confirmacao.mjs).
 
     if (job.agente === 'claude') {
-        const args = ['-p', prompt, '--output-format', 'json'];
+        // stream-json: além da resposta, os eventos de ferramenta — é deles
+        // que sai o "quem viu o quê" da auditoria (a última linha continua
+        // sendo o resultado, como no json).
+        const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose'];
         if (sessao) args.push('--resume', sessao);
         // Continuação de sessão do VS Code: uma cópia, para a original ficar
         // intacta lá.
@@ -428,7 +437,7 @@ function comando(job, cwd, branch, saida, acesso) {
 const filhos = new Set();
 let parar = false;
 
-function rodar(bin, args, cwd, minutos, progresso) {
+function rodar(bin, args, cwd, minutos, progresso, auditor = null) {
     return new Promise(resolvePromise => {
         const env = { ...process.env };
         delete env.ALFAMATRIZ_RUNNER_TOKEN;
@@ -438,7 +447,7 @@ function rodar(bin, args, cwd, minutos, progresso) {
         filhos.add(filho);
         progresso?.processo(true);
         let out = '', err = '', estourou = false;
-        filho.stdout.on('data', d => { progresso?.saida(d); out += d; if (out.length > 4_000_000) out = out.slice(-4_000_000); });
+        filho.stdout.on('data', d => { progresso?.saida(d); auditor?.saida(d); out += d; if (out.length > 4_000_000) out = out.slice(-4_000_000); });
         filho.stderr.on('data', d => { progresso?.saida(d); err += d; if (err.length > 200_000) err = err.slice(-200_000); });
         const prazo = setTimeout(() => {
             estourou = true;
@@ -521,7 +530,9 @@ async function executar(job) {
     // Fora do try: a falha também leva a pasta no checkpoint — é ela que diz
     // onde retomar a sessão do agente na próxima execução.
     let cwd = null, dir = null;
-    const acesso = acessoEfetivo(job, cfg.acessoMaximo);
+    const acesso = acessoEfetivo(job, cfg.acessoMaximo, cfg.analise);
+    const auditor = criarAuditor(job.agente);
+    let antesGit = null;
     try { execucao: {
         // Sem IA: a agenda lida agora é a resposta. Nenhum agente roda, nada
         // é modificado, nenhuma cota é gasta.
@@ -539,7 +550,7 @@ async function executar(job) {
         // máquina é total (como este chat do VS Code); senão, numa pasta neutra.
         dir = job.projeto === '' ? (cfg.acessoMaximo === 'total' ? realpathSync(cfg.projetos) : pastaGeral()) : realpathSync(resolve(cfg.projetos, job.projeto));
         if (job.projeto !== '' && !dentroDe(cfg.projetos, dir)) throw new Error('projeto fora da pasta de projetos');
-        if (job.modo !== 'implementar' && job.agente === 'codex' && CITA_CREDENCIAL.test(job.instrucao)) {
+        if (acesso === 'leitura' && job.agente === 'codex' && CITA_CREDENCIAL.test(job.instrucao)) {
             throw new Error('pedido de análise cita credenciais da máquina; o Codex só leitura não tem como bloquear essa leitura — peça ao Claude');
         }
         job.dadosOficiais = dadosOficiais(job.fontes || []);
@@ -559,6 +570,22 @@ async function executar(job) {
             cwd = job.tarefa?.worktree || join(cfg.worktrees, `${job.projeto}-t${job.tarefa?.id ?? `e${job.id}`}`);
         }
         if (job.continuar?.cwd && !dentroDe(cfg.projetos, job.continuar.cwd)) job.continuar = null;
+
+        // Análise lê o remoto ATUALIZADO: o runner busca antes (só refs
+        // remotas, nada no código). No modo só leitura o agente não tem rede —
+        // em 12/10/2026 o Codex respondeu "sem acesso ao GitHub" a "o
+        // Alexandre mexeu ontem?" enquanto o VS Code buscava e respondia.
+        if (job.modo !== 'implementar' && job.projeto !== '') {
+            progresso.etapa('preparando');
+            try {
+                execFileSync('git', ['-C', cwd, 'fetch', '--all', '--prune', '--quiet'], { timeout: 45_000, stdio: ['ignore', 'ignore', 'pipe'] });
+                job.remotoAtualizado = new Date().toISOString();
+            } catch (e) {
+                const erro = String(e.stderr || e.message);
+                // Pasta sem git ou sem remoto: nada a avisar.
+                if (!/not a git repository|No remote|does not appear to be a git/i.test(erro)) job.remotoFalhou = erro.split('\n').find(Boolean)?.slice(0, 200) || 'falhou';
+            }
+        }
 
         // Modificar exige o código do dono, que ESTA máquina gera e manda ao
         // Telegram dele (confirmacao.mjs). Sem isso, nada roda.
@@ -585,7 +612,8 @@ async function executar(job) {
         // vai esperar.
         if (parar) throw new Error('interrompida porque o runner foi parado ou reiniciado antes de começar');
         progresso.etapa('agente');
-        const r = await rodar(bin, args, cwd, job.timeout_minutos, progresso);
+        antesGit = retratoGit(git, cwd);
+        const r = await rodar(bin, args, cwd, job.timeout_minutos, progresso, auditor);
         if (r.estourou) throw new Error(`passou de ${job.timeout_minutos} minutos e foi encerrado`);
         if (parar) throw new Error('interrompida porque o runner foi parado ou reiniciado; o estado do git ficou registrado e a tarefa pode ser retomada');
 
@@ -609,6 +637,13 @@ async function executar(job) {
         progresso.etapa('finalizando');
         await informar();
         rmSync(tmp, { recursive: true, force: true });
+    }
+
+    // O rastro: o que o agente fez (eventos da CLI) e o que mudou no git.
+    if (resultado && antesGit && cwd) {
+        resultado.auditoria = { acessos: auditor.acessos(), informado: auditor.informado, git: compararGit(git, cwd, antesGit, retratoGit(git, cwd)), acesso };
+    } else if (resultado && auditor.acessos().length) {
+        resultado.auditoria = { acessos: auditor.acessos(), informado: auditor.informado, git: null, acesso };
     }
 
     // A conclusão é idempotente no AlfaMatriz: repetir depois de uma queda

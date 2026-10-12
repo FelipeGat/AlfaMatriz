@@ -74,6 +74,15 @@ class ProgressoService
                 if (! $dono || ! $dono->ativo || $dono->temEscopoDeRevenda() || ! $dono->canPermissao('central_ia', 'ler')) {
                     return;
                 }
+                // Na tela o andamento já aparece ao vivo, embaixo da conversa:
+                // gravar aviso a cada 90 s só enchia o histórico (dono,
+                // 12/10/2026: "para uma pergunta simples, várias notificações").
+                // Vira mensagem só com o atendimento no Telegram.
+                $canal = app(CanalAtivo::class);
+                if ($canal->pronto() && $canal->ativo($dono) !== 'telegram') {
+                    $e->update(['status_avisado_em' => now()]);
+                    return;
+                }
                 app(ConversaService::class)->registrarDoAgente($dono, 'Central de IA', $this->texto($e),
                     CentralIaMensagem::AUTOR_SISTEMA, $e->projeto ?: null, $e->tarefa_id);
                 $e->update(['status_avisado_em' => now()]);

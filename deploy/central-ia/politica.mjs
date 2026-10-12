@@ -27,8 +27,11 @@ export const CITA_CREDENCIAL = /\.ssh\b|id_(?:rsa|ed25519|ecdsa)\b|\.aws\/|(?:^|
  * O acesso que vale de fato: analisar é sempre leitura; implementar é o
  * MENOR entre o que o servidor pediu e o teto desta máquina.
  */
-export function acessoEfetivo(job, maximo) {
-    if (job.modo !== 'implementar') return 'leitura';
+export function acessoEfetivo(job, maximo, analise = 'leitura') {
+    // Analisar: a máquina decide (CENTRAL_IA_ANALISE). Dono, 12/10/2026:
+    // "quem tem que analisar o que consulta e altera é a própria IA" — com
+    // `total`, a análise roda como no VS Code e o rastro fica na auditoria.
+    if (job.modo !== 'implementar') return analise === 'total' && maximo === 'total' ? 'total' : 'leitura';
     return job.acesso === 'total' && maximo === 'total' ? 'total' : 'restrito';
 }
 

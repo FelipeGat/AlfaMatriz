@@ -41,7 +41,7 @@ export function centralIa(config) {
         relatorioAtividade: { eventos: [], execucoes: [] }, relatorioConsumo: { consumo: [] }, modoProjetos: ler('central-ia:modo-projetos') || 'cards',
         perguntaAberta: null, respostaPergunta: '', detalhesChat: false,
         // Pedidos parados esperando o código que a MÁQUINA mandou ao Telegram.
-        confirmacoes: [], codigos: {}, confirmando: null,
+        confirmacoes: [], codigos: {}, confirmando: null, acoesAbertas: {},
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
@@ -131,7 +131,11 @@ export function centralIa(config) {
         corDoNivel(n) { return { erro: 'text-crit', aviso: 'text-warn' }[n] || 'text-ink-faint'; },
         rotuloEvento(t) {
             return { pedido: 'pedido', inicio: 'início', concluida: 'concluído', falhou: 'FALHOU', expirada: 'SEM RESPOSTA', troca_de_agente: 'troca de agente',
-                recusado: 'recusado', sessao_continuada: 'conversa do VS Code', ponto_salvo: 'ponto salvo' }[t] || t;
+                recusado: 'recusado', sessao_continuada: 'conversa do VS Code', ponto_salvo: 'ponto salvo',
+                alteracoes: 'alterou', analise_alterou: 'ANÁLISE ALTEROU', escalada: 'escalada', escalada_esgotada: 'escalada parou',
+                escalada_sem_alternativa: 'sem alternativa', confirmacao_pedida: 'pediu código', confirmacao_aceita: 'confirmado',
+                confirmacao_recusada: 'RECUSADO', confirmacao_expirada: 'código expirou', confirmacao_codigo_errado: 'código errado',
+                confirmacao_digitada: 'código digitado' }[t] || t;
         },
 
         /** A barra de projetos agrupada, já filtrada pela busca. */
@@ -476,6 +480,15 @@ export function centralIa(config) {
             const aba = this.aba, chave = this.chaveAba, projetoEnviado = this.atual;
             if ((this.atendimento.disponivel && this.atendimento.ativo !== 'web') || this.transferindoCanal || aba.enviando || this.bloqueado || !this.podeEnviar || (!aba.pendente && !aba.rascunho.trim() && !aba.arquivos.length)) return;
             if (!aba.pendente && this.chatAtual) aba.tarefa = this.chatAtual;
+            // Pergunta do agente aberta: o que se escreve é a RESPOSTA, e vai
+            // para quem perguntou (como no VS Code), sem diálogo à parte.
+            const pergunta = !aba.pendente && aba.agente === 'auto' && aba.rascunho.trim() && !aba.rascunho.startsWith('Resposta à sua pergunta') ? this.perguntaPendente : null;
+            if (pergunta) {
+                aba.tarefa = pergunta.id;
+                const chave = { 'Claude': 'claude', 'GPT (Codex)': 'codex', 'Copilot': 'copilot' }[pergunta.agente];
+                if (chave && this.maquina.agentes.includes(chave)) aba.agente = chave;
+                aba.rascunho = 'Resposta à sua pergunta ("' + String(pergunta.duvida).slice(0, 300) + '"): ' + aba.rascunho.trim();
+            }
             // Vendo uma tarefa (o filtro "Só a tarefa #N"), o pedido vai para ela
             // — e não abre uma tarefa nova sem o contexto da que está na tela.
             if (!aba.pendente && this.verTarefa && aba.tarefa === 'nova') aba.tarefa = this.verTarefa;
@@ -500,6 +513,7 @@ export function centralIa(config) {
                 const r = await this.pedir(config.enviar, 'POST', aba.pendente);
                 aba.recibo = aba.pendente.agente ? 'Pedido recebido. Acompanhe o andamento abaixo.' : 'Mensagem registrada.';
                 aba.pendente = null; aba.rascunho = ''; aba.arquivos = []; this.aviso = '';
+                if (pergunta) aba.agente = 'auto';
                 // Pedido que abriu tarefa nova: o compositor passa a seguir nela.
                 if (r.tarefa_id && aba.tarefa === 'nova') {
                     aba.tarefa = r.tarefa_id;
@@ -516,7 +530,8 @@ export function centralIa(config) {
         },
 
         /** O que está parado esperando a pessoa: código da máquina e dúvidas de agente. */
-        get duvidasPendentes() { return this.chats.filter(c => c.status === 'aguardando_voce'); },
+        // A dúvida da tarefa aberta já aparece na conversa: a faixa do topo não repete.
+        get duvidasPendentes() { return this.chats.filter(c => c.status === 'aguardando_voce' && c.id !== this.chatAtual && c.id !== Number(this.aba.tarefa)); },
         get esperandoVoce() { return this.confirmacoes.length + this.duvidasPendentes.length; },
 
         /** O código que a máquina mandou ao Telegram; quem confere é ela. */
@@ -561,6 +576,12 @@ export function centralIa(config) {
         delegaveis(m) {
             const nomes = { claude: 'Claude', codex: 'GPT (Codex)', copilot: 'Copilot' };
             return this.maquina.agentes.filter(a => nomes[a] !== m.autor_nome).map(a => [a, nomes[a]]);
+        },
+
+        responderCom(opcao) {
+            if (this.aba.pendente || this.aba.enviando || this.aba.rascunho.trim()) { this.aviso = 'Envie ou apague o rascunho antes.'; return; }
+            this.aba.rascunho = opcao;
+            this.enviar().finally(() => { this.aba.agente = 'auto'; });
         },
 
         /** Atalhos da conversa Geral: o pedido mais comum, no nível mais barato que resolve. */

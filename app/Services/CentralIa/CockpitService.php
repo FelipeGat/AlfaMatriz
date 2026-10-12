@@ -253,6 +253,18 @@ class CockpitService
                     'opcoes_duvida' => $d['opcoes_duvida'] ?? [],
                     'lacunas' => $d['lacunas'] ?? [],
                     'resumo' => collect($d['resumos'] ?? [])->last()['texto'] ?? null,
+                    // Quem viu o quê e quem alterou o quê, execução por execução.
+                    'execucoes' => $t->execucoes()->latest('id')->limit(10)->get()->map(fn (CentralIaExecucao $e) => [
+                        'id' => $e->id, 'agente' => $e->nomeDoAgente(), 'modo' => $e->modo, 'status' => $e->status,
+                        'nivel' => $e->roteamento['nivel'] ?? null, 'modelo' => $e->roteamento['modelo'] ?? null,
+                        'em' => ($e->concluida_em ?? $e->created_at)?->toIso8601String(),
+                        'acesso' => $e->auditoria['acesso'] ?? null,
+                        'informado' => $e->auditoria['informado'] ?? null,
+                        'acessos' => array_slice($e->auditoria['acessos'] ?? [], 0, 60),
+                        'total_acessos' => count($e->auditoria['acessos'] ?? []),
+                        'arquivos' => $e->auditoria['git']['arquivos'] ?? [],
+                        'commits' => $e->auditoria['git']['commits'] ?? [],
+                    ])->all(),
                     'ponto' => isset($d['ponto']) ? ['em' => $d['ponto']['em'], 'agente' => $d['ponto']['agente'], 'mensagem_id' => $d['ponto']['mensagem_id'] ?? null] : null,
                 ];
             })->all();

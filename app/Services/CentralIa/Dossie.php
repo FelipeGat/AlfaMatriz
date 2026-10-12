@@ -62,7 +62,7 @@ class Dossie
             .'"tarefa_concluida": true só quando o objetivo inteiro estiver atendido. '
             // Sinal da escalada automática (dono, 12/10/2026): quem não deu
             // conta passa o pedido a um nível ou a uma IA mais capaz.
-            .'"conseguiu": false quando você NÃO conseguiu resolver o que foi pedido (faltou capacidade, o resultado ficou incompleto ou errado, ou você não achou a causa) — a Central passa o pedido a um modelo mais capaz. Não use false por falta de informação da pessoa: para isso existe "duvida".';
+            .'"conseguiu": false quando você NÃO conseguiu resolver o que foi pedido (faltou capacidade, o resultado ficou incompleto ou errado, ou você não achou a causa) — a Central passa o pedido a um modelo mais capaz. Não use false por falta de informação da pessoa (use "duvida") nem por falta de acesso (rede, permissão, credencial): aí responda com o que deu para verificar e diga a limitação — outro modelo bateria na mesma parede.';
     }
 
     /**

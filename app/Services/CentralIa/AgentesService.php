@@ -508,7 +508,7 @@ class AgentesService
         // Só o erro e o git medido são mascarados aqui. A resposta é mascarada
         // DEPOIS de separar o bloco do dossiê (ver abaixo): mascarar antes
         // podia quebrar o JSON do bloco.
-        foreach (['erro', 'checkpoint'] as $campo) {
+        foreach (['erro', 'checkpoint', 'auditoria'] as $campo) {
             if (isset($dados[$campo])) $dados[$campo] = ProtecaoDeSegredos::dados($dados[$campo]);
         }
         return DB::transaction(function () use ($user, $id, $dados) {
@@ -533,6 +533,7 @@ class AgentesService
                 'sessao_agente' => $dados['sessao_agente'] ?? null,
                 'branch' => $dados['branch'] ?? null,
                 'checkpoint' => $checkpoint,
+                'auditoria' => is_array($dados['auditoria'] ?? null) ? $dados['auditoria'] : null,
                 'erro' => $ok ? null : mb_substr((string) ($dados['erro'] ?? ''), 0, 255),
                 'concluida_em' => now(),
             ]);
@@ -541,6 +542,8 @@ class AgentesService
                 ? Eventos::registrar($user, 'concluida', "{$execucao->nomeDoAgente()} concluiu em ".$execucao->iniciada_em?->diffForHumans(now(), true).($bloco ? '' : ' (sem bloco de contexto)')
                     .(filled($bloco['duvida'] ?? null) ? ' — com dúvida para você' : ''), Eventos::da($execucao) + ['origem' => 'runner'], filled($bloco['duvida'] ?? null) ? 'aviso' : 'info')
                 : Eventos::registrar($user, 'falhou', "{$execucao->nomeDoAgente()} falhou: ".($dados['erro'] ?? 'erro desconhecido'), Eventos::da($execucao) + ['origem' => 'runner'], 'erro');
+
+            $this->registrarRastro($user, $execucao);
 
             if ($tarefa) {
                 $dossie = Dossie::aplicarConclusao($tarefa->dossie ?? Dossie::inicial($tarefa->objetivo), $execucao, $bloco, $checkpoint);
@@ -732,6 +735,23 @@ class AgentesService
             'instrucao' => $anterior->instrucao, 'roteamento' => $rota]);
         $tarefa->update(['status' => CentralIaTarefa::ABERTA, 'ultima_atividade_em' => now()]);
         Eventos::registrar($user, 'troca_de_agente', $rota['motivo'].'; '.$nome.' assume a tarefa #'.$tarefa->id, Eventos::da($nova) + ['origem' => 'central'], 'aviso');
+    }
+
+    /**
+     * O que a execução alterou vai para o log, com quem e onde. Análise que
+     * alterou algo é aviso: o pedido era só consultar.
+     */
+    private function registrarRastro(User $user, CentralIaExecucao $e): void
+    {
+        $g = $e->auditoria['git'] ?? null;
+        $arquivos = $g['arquivos'] ?? [];
+        $commits = $g['commits'] ?? [];
+        if (! $arquivos && ! $commits) return;
+        $texto = "{$e->nomeDoAgente()} alterou ".count($arquivos).' arquivo(s)'.($commits ? ' e fez '.count($commits).' commit(s)' : '')
+            .($arquivos ? ': '.implode(', ', array_slice($arquivos, 0, 8)).(count($arquivos) > 8 ? '…' : '') : '');
+        $analise = $e->modo !== 'implementar';
+        Eventos::registrar($user, $analise ? 'analise_alterou' : 'alteracoes', ($analise ? 'Numa ANÁLISE, ' : '').$texto,
+            Eventos::da($e) + ['origem' => 'runner'], $analise ? 'aviso' : 'info');
     }
 
     public const NIVEIS_EM_ORDEM = ['sem_ia', 'leve', 'medio', 'forte'];

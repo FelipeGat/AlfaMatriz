@@ -275,9 +275,24 @@
                         <span x-text="projetosRecolhidos ? 'Mostrar lista' : 'Recolher lista'"></span>
                     </button>
                     <button type="button" @click="menuProjetosMovel = true" class="rounded-control border border-line px-2 py-1 text-xs text-ink-mute lg:hidden" x-text="tela === 'chats' ? 'Chats' : 'Projetos'"></button>
-                    <h2 class="font-display text-base font-semibold text-ink" x-text="atual || 'Geral'"></h2>
+                    <h2 class="flex-none font-display text-base font-semibold text-ink" x-text="atual || 'Geral'"></h2>
+                    {{-- Projeto › tarefa › abas numa linha só: eram três, e a
+                         resposta ficava com um terço da altura (12/10/2026). --}}
+                    <span x-show="chatAtual" class="min-w-0 flex-1 truncate text-sm text-ink-dim"
+                          :title="chats.find(c => c.id === chatAtual)?.titulo || tarefaVista?.titulo || ''"
+                          x-text="'› #' + chatAtual + ' ' + (chats.find(c => c.id === chatAtual)?.titulo || tarefaVista?.titulo || '')"></span>
+                    <nav x-show="atual" class="ml-auto flex flex-none gap-1 text-xs" aria-label="Seções do projeto">
+                        <template x-for="[chave, rotulo] in [['conversa', 'Chat'], ['tarefas', 'Tarefas'], ['contexto', 'Contexto']]" :key="chave">
+                            <button type="button" @click="sub = chave" class="rounded-ctl px-2 py-1 font-semibold"
+                                    :class="sub === chave ? 'bg-nav-active text-ink' : 'text-ink-mute hover:text-ink'">
+                                <span x-text="rotulo"></span>
+                                <span x-show="chave === 'tarefas' && tarefasEmCurso.length" class="ml-0.5 text-ink-faint" x-text="'(' + tarefasEmCurso.length + ')'"></span>
+                                <span x-show="chave === 'contexto' && tarefaVista?.duvida" class="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-pergunta"></span>
+                            </button>
+                        </template>
+                    </nav>
                     <template x-if="atual">
-                        <p x-show="detalhesChat" class="flex min-w-0 flex-1 flex-wrap gap-x-3 text-xs text-ink-mute">
+                        <p x-show="detalhesChat" class="flex w-full min-w-0 flex-wrap gap-x-3 text-xs text-ink-mute">
                             <span x-show="projetoAtual?.git?.branch" x-text="projetoAtual?.git?.branch"></span>
                             <span x-show="projetoAtual?.git?.git" :class="projetoAtual?.git?.pendentes ? 'text-warn' : ''" x-text="(projetoAtual?.git?.pendentes || 0) + ' pendentes'"></span>
                             <span x-show="projetoAtual?.git?.ultimo_commit" :title="projetoAtual?.git?.ultimo_commit_msg" x-text="'commit ' + haQuanto(projetoAtual?.git?.ultimo_commit)"></span>
@@ -286,7 +301,7 @@
                         </p>
                     </template>
                     <template x-if="atual">
-                        <div x-show="detalhesChat" class="ml-auto flex items-center gap-2 text-xs">
+                        <div x-show="detalhesChat" class="flex items-center gap-2 text-xs">
                             <label class="sr-only" for="central-grupo">Grupo do projeto</label>
                             <select id="central-grupo" @change="moverParaGrupo(atual, $event.target.value || null)"
                                     class="rounded-control border-line bg-input py-1 text-xs text-ink focus:border-brand focus:ring-brand">
@@ -299,18 +314,6 @@
                     </template>
                 </div>
 
-                <p x-show="chatAtual" class="flex-none border-b border-line px-4 py-2 text-sm font-semibold text-ink"
-                   x-text="'#' + chatAtual + ' · ' + (chats.find(c => c.id === chatAtual)?.titulo || tarefaVista?.titulo || 'Chat da tarefa')"></p>
-                <div class="flex flex-none gap-1 border-b border-line px-3 text-xs" x-show="atual">
-                    <template x-for="[chave, rotulo] in [['conversa', 'Chat'], ['tarefas', 'Tarefas'], ['contexto', 'Contexto']]" :key="chave">
-                        <button type="button" @click="sub = chave" class="-mb-px border-b-2 px-2.5 py-2 font-semibold"
-                                :class="sub === chave ? 'border-brand text-ink' : 'border-transparent text-ink-mute hover:text-ink'">
-                            <span x-text="rotulo"></span>
-                            <span x-show="chave === 'tarefas' && tarefasEmCurso.length" class="ml-0.5 text-ink-faint" x-text="'(' + tarefasEmCurso.length + ')'"></span>
-                            <span x-show="chave === 'contexto' && tarefaVista?.duvida" class="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-pergunta"></span>
-                        </button>
-                    </template>
-                </div>
 
                 {{-- Conversa. Sem chat escolhido, é a Geral — com a caixa de
                      mensagem pronta, em vez de uma tela vazia pedindo um clique. --}}
@@ -333,10 +336,6 @@
                             </template>
                         </div>
                     </div>
-                    <div x-show="perguntaPendente" class="mx-4 mb-2 rounded-control border border-brand-mute bg-nav-active p-3 text-sm">
-                        <p class="font-semibold text-ink" x-text="perguntaPendente?.duvida"></p>
-                        <button type="button" @click="abrirPergunta(perguntaPendente.duvida, perguntaPendente.opcoes_duvida || [])" class="mt-2 font-semibold text-brand-text">Responder pergunta</button>
-                    </div>
                     <div x-ref="feed" class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3" role="log" aria-label="Histórico da conversa" aria-live="polite" aria-relevant="additions">
                         <div class="mb-3 text-center" x-show="aba.haAnteriores">
                             <button type="button" @click="anteriores()" :disabled="ocupado || bloqueado" class="text-xs font-semibold text-brand-text disabled:opacity-50">Carregar mensagens anteriores</button>
@@ -356,9 +355,11 @@
                         </div>
                         <div class="space-y-3">
                             <template x-for="m in mensagensVisiveis" :key="m.id">
-                                <article class="min-w-0 rounded-control border px-4 py-2.5"
-                                         :class="m.autor_tipo === 'usuario' ? 'border-line bg-input' : (m.autor_tipo === 'sistema' ? 'border-warn-line bg-warn-tint' : 'border-line bg-canvas')" data-mensagem>
-                                    <div class="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                                {{-- Aviso da Central (escalada, fila, confirmação) é uma linha
+                                     discreta, não um balão: era barulho no meio da conversa. --}}
+                                <article class="min-w-0 rounded-control border"
+                                         :class="m.autor_tipo === 'usuario' ? 'border-line bg-input px-4 py-2.5' : (m.autor_tipo === 'sistema' ? 'border-transparent px-2 py-0.5' : 'border-line bg-canvas px-4 py-2.5')" data-mensagem>
+                                    <div class="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" x-show="m.autor_tipo !== 'sistema'">
                                         <span class="font-semibold text-ink" x-text="autor(m)"></span>
                                         <span class="text-ink-faint" x-show="m.origem !== 'agente'" x-text="canal(m.origem)"></span>
                                         <button type="button" class="text-ink-faint hover:text-brand-text" x-show="m.tarefa_id && !verTarefa" @click="selecionarTarefa(m.tarefa_id)" x-text="'tarefa #' + m.tarefa_id"></button>
@@ -406,18 +407,21 @@
                                     </template>
                                     <div class="central-resposta text-sm leading-relaxed text-ink" x-show="m.visual" x-html="m.visual?.resumo_html || ''"></div>
                                     <template x-if="m.visual?.longo"><details class="mt-3 text-sm"><summary class="cursor-pointer text-brand-text">Ler resposta completa</summary><div class="central-resposta mt-2" x-html="m.visual.html"></div></details></template>
-                                    <p class="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink" x-show="!m.visual" x-text="m.conteudo"></p>
+                                    <p class="whitespace-pre-wrap break-words" x-show="!m.visual"
+                                       :class="m.autor_tipo === 'sistema' ? 'text-xs text-ink-mute' : 'text-sm leading-relaxed text-ink'"
+                                       x-text="m.autor_tipo === 'sistema' ? 'Central · ' + data(m.criada_em) + ' — ' + m.conteudo : m.conteudo"></p>
                                     @if ($podeAcionar)
-                                        {{-- Escolher e delegar sem redigitar (FR-028). Aprovar
-                                             implementa — e a sua máquina pede o código antes. --}}
-                                        <div x-show="m.autor_tipo === 'agente' && m.tarefa_id" class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-2 text-xs">
-                                            <button type="button" x-show="atual" @click="agir(m, 'aprovar')" class="font-semibold text-good">✓ Aprovar e implementar</button>
-                                            <button type="button" @click="agir(m, 'ajustar')" class="font-semibold text-brand-text">✎ Pedir ajuste</button>
-                                            <button type="button" x-show="m.conteudo.includes('?')" @click="abrirPergunta(m.conteudo)" class="font-semibold text-brand-text">Responder pergunta</button>
-                                            <span class="text-ink-faint" x-show="delegaveis(m).length">Passar para:</span>
-                                            <template x-for="[chave, nome] in delegaveis(m)" :key="chave">
-                                                <button type="button" @click="agir(m, 'delegar', chave)" class="font-semibold text-ink-dim hover:text-ink" x-text="nome"></button>
-                                            </template>
+                                        {{-- Ações discretas: responder é escrever na caixa, como no
+                                             VS Code. Aqui ficam os atalhos para delegar ou implementar. --}}
+                                        <div x-show="m.autor_tipo === 'agente' && m.tarefa_id" class="mt-1 text-xs">
+                                            <button type="button" @click="acoesAbertas[m.id] = !acoesAbertas[m.id]" class="text-ink-faint hover:text-ink" :aria-expanded="(!!acoesAbertas[m.id]).toString()">⋯</button>
+                                            <span x-show="acoesAbertas[m.id]" class="ml-2 inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                <button type="button" x-show="atual" @click="agir(m, 'aprovar')" class="font-semibold text-good">Implementar o que foi proposto</button>
+                                                <span class="text-ink-faint" x-show="delegaveis(m).length">Passar para:</span>
+                                                <template x-for="[chave, nome] in delegaveis(m)" :key="chave">
+                                                    <button type="button" @click="agir(m, 'delegar', chave)" class="font-semibold text-ink-dim hover:text-ink" x-text="nome"></button>
+                                                </template>
+                                            </span>
                                         </div>
                                     @endif
                                     <div class="mt-2 flex flex-wrap gap-2">
@@ -428,6 +432,18 @@
                                     <p class="mt-1 text-xs text-ink-faint" x-show="m.entrega && detalhesChat" x-text="entrega(m.entrega)"></p>
                                 </article>
                             </template>
+                            {{-- A pergunta do agente, com o nome de quem pergunta, no fim
+                                 da conversa. Responder é escrever na caixa abaixo. --}}
+                            <article x-show="perguntaPendente && !aba.pendente" x-cloak class="rounded-control border border-pergunta-line bg-pergunta-tint px-4 py-2.5" data-pergunta>
+                                <p class="mb-1 text-xs font-semibold text-pergunta" x-text="'❓ ' + (perguntaPendente?.agente || 'O agente') + ' pergunta'"></p>
+                                <p class="whitespace-pre-wrap break-words text-sm text-ink" x-text="perguntaPendente?.duvida"></p>
+                                <div class="mt-2 flex flex-wrap gap-2" x-show="(perguntaPendente?.opcoes_duvida || []).length">
+                                    <template x-for="(o, i) in perguntaPendente?.opcoes_duvida || []" :key="i">
+                                        <button type="button" @click="responderCom(o)" class="rounded-badge border border-line bg-panel px-3 py-1 text-xs text-ink hover:bg-chip" x-text="o"></button>
+                                    </template>
+                                </div>
+                                <p class="mt-1 text-xs text-ink-faint">Responda na caixa abaixo — ela segue para quem perguntou.</p>
+                            </article>
                             <article x-show="aba.pendente" x-cloak class="rounded-control border border-line bg-input px-4 py-2.5" data-pendente>
                                 <p class="mb-1 text-xs font-semibold text-ink-mute">Você · aguardando confirmação</p>
                                 <p class="whitespace-pre-wrap break-words text-sm text-ink" x-text="aba.pendente?.conteudo"></p>
@@ -489,11 +505,11 @@
                             </div>
                         @endif
                         <div class="flex flex-wrap items-center gap-2 text-xs">
-                            <label class="cursor-pointer font-semibold text-brand-text">📎 Anexar
+                            <label class="cursor-pointer font-semibold text-brand-text" title="Até 20 MB por arquivo · cole ou arraste uma captura">📎 Anexar
                                 <input type="file" class="sr-only" multiple accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/webm,video/quicktime"
                                        :disabled="!!aba.pendente || bloqueado || !podeEnviar" @change="escolherArquivos($event.target.files); $event.target.value = ''">
                             </label>
-                            <span class="text-ink-faint">Até 20 MB por arquivo · cole ou arraste uma captura</span>
+
                             <template x-for="(a, i) in aba.arquivos" :key="a.id">
                                 <button type="button" :disabled="!!aba.pendente" @click="aba.arquivos.splice(i, 1)" class="text-ink-mute" :aria-label="'Remover ' + a.file.name" x-text="a.file.name + ' ×'"></button>
                             </template>
@@ -504,7 +520,7 @@
                             <textarea @paste="colar($event)" id="central-rascunho" x-model="aba.rascunho" maxlength="{{ config('central_ia.max_texto') }}" rows="2"
                                       :readonly="!!aba.pendente" :disabled="bloqueado || !podeEnviar"
                                       @keydown.enter="if (!$event.shiftKey && !$event.isComposing && !window.matchMedia('(pointer: coarse)').matches) { $event.preventDefault(); enviar(); }"
-                                      :placeholder="atual ? 'Peça algo para ' + atual + '… (Enter envia, Shift+Enter quebra linha)' : 'Pergunte ou anote… (Enter envia)'"
+                                      :placeholder="perguntaPendente ? 'Responda a ' + (perguntaPendente.agente || 'quem perguntou') + '… (Enter envia)' : (atual ? 'Peça algo para ' + atual + '… (Enter envia, Shift+Enter quebra linha)' : 'Pergunte ou anote… (Enter envia)')"
                                       class="min-w-0 flex-1 resize-none rounded-control border-line bg-input text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand disabled:opacity-50"></textarea>
                             <button type="submit" :disabled="aba.enviando || bloqueado || !podeEnviar || (!aba.pendente && !aba.rascunho.trim() && !aba.arquivos.length)"
                                     class="flex-none rounded-control bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition hover:bg-brand-bright disabled:opacity-50"
@@ -589,6 +605,31 @@
                                     <p class="font-mono uppercase tracking-caps text-ink-faint">Pendências e riscos</p>
                                     <template x-for="x in tarefaVista.pendencias" :key="'p' + x"><p class="text-ink-dim" x-text="'• ' + x"></p></template>
                                     <template x-for="x in tarefaVista.riscos" :key="'r' + x"><p class="text-warn" x-text="'⚠ ' + x"></p></template>
+                                </div>
+                                {{-- O rastro de cada execução: com acesso total, quem decide é a
+                                     IA, e aqui se confere o que ela viu e o que alterou. --}}
+                                <div class="space-y-2 md:col-span-2" x-show="(tarefaVista.execucoes || []).length">
+                                    <p class="font-mono uppercase tracking-caps text-ink-faint">Quem viu o quê e quem alterou o quê</p>
+                                    <template x-for="e in tarefaVista.execucoes || []" :key="e.id">
+                                        <details class="rounded-control border border-line px-3 py-2">
+                                            <summary class="cursor-pointer text-ink-dim">
+                                                <span class="font-semibold text-ink" x-text="'#' + e.id + ' ' + e.agente"></span>
+                                                <span x-text="' · ' + e.modo + (e.nivel ? ' · ' + e.nivel : '') + (e.modelo ? ' (' + e.modelo + ')' : '') + (e.acesso ? ' · acesso ' + e.acesso : '') + ' · ' + execucao(e.status) + ' · ' + haQuanto(e.em)"></span>
+                                                <span x-show="e.arquivos.length || e.commits.length" class="ml-1 font-semibold" :class="e.modo === 'implementar' ? 'text-brand-text' : 'text-warn'"
+                                                      x-text="'· alterou ' + e.arquivos.length + ' arquivo(s)' + (e.commits.length ? ', ' + e.commits.length + ' commit(s)' : '')"></span>
+                                                <span x-show="!e.arquivos.length && !e.commits.length && e.status === 'concluida'" class="ml-1 text-ink-faint">· não alterou nada</span>
+                                            </summary>
+                                            <div class="mt-2 space-y-1">
+                                                <p x-show="e.arquivos.length" class="break-all text-ink-dim" x-text="'Alterados: ' + e.arquivos.join(', ')"></p>
+                                                <template x-for="c in e.commits" :key="c"><p class="font-mono text-ink-dim" x-text="'commit ' + c"></p></template>
+                                                <p x-show="e.informado === false" class="text-ink-faint">O Copilot não informa as ferramentas que usou; só o que mudou no git aparece.</p>
+                                                <p x-show="e.total_acessos" class="text-ink-faint" x-text="'Consultou e executou (' + e.total_acessos + '):'"></p>
+                                                <template x-for="(a, i) in e.acessos" :key="i">
+                                                    <p class="break-all font-mono text-[11px] text-ink-faint" x-text="a.ferramenta + ' · ' + a.alvo"></p>
+                                                </template>
+                                            </div>
+                                        </details>
+                                    </template>
                                 </div>
                                 <div class="space-y-1 md:col-span-2" x-show="tarefaVista.lacunas.length">
                                     <p class="font-mono uppercase tracking-caps text-ink-faint">Lacunas do contexto</p>
