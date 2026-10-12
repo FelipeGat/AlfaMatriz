@@ -71,6 +71,15 @@ class Roteador
             || collect(self::ANALITICO)->contains(fn ($p) => preg_match('/(^|[^\pL])'.preg_quote($p, '/').'($|[^\pL])/u', $t));
     }
 
+    /**
+     * Operar um sistema: gravar um dado pedido pela pessoa (agendar alguém,
+     * lançar, dar baixa) — não é código nem relatório. Dono, 12/10/2026:
+     * "agende o Vitor amanhã no cliente X" — o agente confere, propõe e só
+     * grava depois de a pessoa confirmar na conversa.
+     */
+    private const OPERACAO = ['agende', 'agendar', 'marque', 'marcar', 'remarque', 'remarcar', 'desmarque', 'desmarcar', 'cancele', 'cancelar',
+        'cadastre', 'cadastrar', 'lance', 'lançar', 'lancar', 'registre', 'registrar', 'dê baixa', 'de baixa', 'baixe', 'emita', 'emitir', 'reagende', 'reagendar'];
+
     /** Ler, resumir, relatar: o nível leve resolve. */
     private const LEVE = ['resumo', 'resuma', 'resumir', 'relatório', 'relatorio', 'agenda', 'compromisso', 'compromissos', 'reunião', 'reuniao',
         'reuniões', 'reunioes', 'status', 'situação', 'situacao', 'lista', 'liste', 'quais', 'quantos', 'quantas', 'balanço', 'balanco',
@@ -91,9 +100,12 @@ class Roteador
     public function nivel(string $instrucao, string $categoria, string $modo, array $fontes = []): string
     {
         if ($modo === 'implementar') return 'forte';
+        if ($categoria === 'operacao') return 'medio';
         $t = Str::lower(Str::squish($instrucao));
         $tem = fn (array $termos) => collect($termos)->contains(fn ($p) => preg_match('/(^|[^\pL])'.preg_quote($p, '/').'/u', $t));
-        if (collect($fontes)->contains('tipo', 'agenda') && ! $tem(self::PENSAR_SOBRE)) return 'sem_ia';
+        // "Sem IA" só para LER a agenda: com um verbo de ação ("agende",
+        // "marque") a lista crua não responde nada.
+        if (collect($fontes)->contains('tipo', 'agenda') && ! $tem(self::PENSAR_SOBRE) && ! $tem(self::OPERACAO)) return 'sem_ia';
         if (in_array($categoria, ['revisao', 'planejamento', 'codigo'], true)) return 'medio';
         if (in_array($categoria, ['apoio', 'relatorio'], true)) return 'leve';
         // Investigação: "quais/status/resumo" é leitura; "por que/diagnostique" pede raciocínio.
@@ -120,6 +132,10 @@ class Roteador
         $categoria = 'investigacao';
         $palavra = null;
         $tem = fn (array $termos) => collect($termos)->first(fn ($t) => preg_match('/(^|[^\pL])'.preg_quote($t, '/').'($|[^\pL])/u', $texto));
+
+        if (($op = $tem(self::OPERACAO)) && ! $tem(self::IMPLEMENTA_DE_VERDADE)) {
+            return $this->escolher('operacao', $op, $disponiveis, $tarefa);
+        }
 
         $analitico = $tem(self::ANALITICO);
         if ($analitico && $tem(['código', 'codigo', 'backend', 'frontend', 'controller', 'migration', 'refatoração', 'refatoracao']) && ! $tem(self::IMPLEMENTA_DE_VERDADE)) {
@@ -185,7 +201,7 @@ class Roteador
     {
         $rotulos = [
             'implementacao' => 'implementação', 'revisao' => 'revisão', 'planejamento' => 'planejamento',
-            'investigacao' => 'investigação', 'apoio' => 'apoio técnico', 'relatorio' => 'relatório',
+            'investigacao' => 'investigação', 'apoio' => 'apoio técnico', 'relatorio' => 'relatório', 'operacao' => 'operação no sistema',
         ];
         $motivo = 'Automático: '.$rotulos[$categoria].($palavra ? " (\"{$palavra}\")" : ' (padrão)');
 

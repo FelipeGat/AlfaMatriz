@@ -198,6 +198,11 @@ class AgentesService
             }
         }
 
+        // Resposta a uma pergunta do agente: segue no MESMO tipo de pedido
+        // (o "sim" de uma operação continua sendo a operação).
+        $resposta = $tarefa && str_starts_with(ltrim($pedido['instrucao']), 'Resposta à sua pergunta')
+            ? $tarefa->execucoes()->whereIn('status', [CentralIaExecucao::CONCLUIDA])->latest('id')->first() : null;
+
         // "Refaça" / "não funcionou": sobe o nível (e, insistindo no máximo, troca a IA).
         $refazer = $agente === 'auto' && ($pedido['nivel'] ?? 'auto') === 'auto' ? $this->escaladaPorRefazer($user, $tarefa, $pedido['instrucao']) : null;
         if ($refazer) {
@@ -221,6 +226,12 @@ class AgentesService
             ? $this->roteador->decidir($pedido['instrucao'], $disponivel['agentes'], $tarefa, $disponivel['esgotados'], $ordens)
             : ['agente' => $agente, 'modo' => null, 'categoria' => null, 'manual' => true, 'motivo' => 'Escolha manual']));
 
+        if ($resposta) {
+            $rota['categoria'] = $resposta->roteamento['categoria'] ?? $rota['categoria'] ?? null;
+            if ($modo === 'auto') $modo = $resposta->modo;
+            $pedido['nivel'] = in_array($pedido['nivel'] ?? 'auto', Preferencias::NIVEIS, true) ? $pedido['nivel'] : ($resposta->roteamento['nivel'] ?? 'auto');
+            $rota['motivo'] = 'Resposta à pergunta de '.$resposta->nomeDoAgente().': segue o mesmo pedido ('.($rota['categoria'] ?? $resposta->modo).')';
+        }
         if ($modo === 'auto') {
             $modo = $rota['modo'] ?? $this->roteador->decidir($pedido['instrucao'], [], $tarefa)['modo'];
         }
@@ -229,7 +240,10 @@ class AgentesService
         app(FontesDeDados::class)->exigirPeriodo($pedido['instrucao'], $rota['modo']);
         $rota['categoria'] ??= $rota['modo'] === 'implementar' ? 'implementacao' : 'investigacao';
         // Dados oficiais que o runner lê e entrega ao agente (ver FontesDeDados).
-        $rota['fontes'] = app(FontesDeDados::class)->detectar($pedido['instrucao']);
+        // A Google Agenda da pessoa só entra na conversa Geral, e nunca numa
+        // operação: "agende o Vitor no calendário" é a agenda do SISTEMA (o
+        // Gestor), e o prompt mandava usar só a agenda pessoal.
+        $rota['fontes'] = $projeto === '' && ($rota['categoria'] ?? null) !== 'operacao' ? app(FontesDeDados::class)->detectar($pedido['instrucao']) : [];
         if (app(Preferencias::class)->ler($user)['coordenador_codex']) {
             if (! in_array('codex', $disponivel['agentes'], true) || isset($disponivel['esgotados']['codex'])) {
                 throw ValidationException::withMessages(['agente' => 'O coordenador Codex não está disponível ou atingiu seu limite. Pedido não executado; nenhum outro provedor assumirá a coordenação silenciosamente.']);
@@ -484,6 +498,7 @@ class AgentesService
             'contexto' => $tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null) : null,
             'bloco' => (($execucao->roteamento['coordenador'] ?? false) ? "Você atua como coordenador deste pedido. Nesta etapa apenas responda, planeje e proponha quem deve fazer o trabalho; não implemente, não execute ferramentas ou comandos e não altere arquivos. Claude faz análise de código e desenvolvimento; Codex faz análise de dados; Copilot faz Git e QA. Identifique fontes disponíveis e impedimentos, não invente números. Delegação automática ainda não está habilitada: descreva a próxima etapa, sem afirmar que outro agente executou algo.\n" : '').Dossie::instrucaoDoBloco()."\nRegras de evidência: nunca invente dados, valores, fontes ou consultas. Relatórios de dados exigem período explícito e fonte autorizada identificada, data da consulta e critérios dos totais. Sem acesso à fonte, informe a limitação e solicite os dados; código, exemplos e testes não comprovam saldos reais. Para esta semana, confirme no texto as datas usadas. Para pedidos executivos com esta semana, use segunda-feira até hoje no fuso local e explicite as datas; para esta semana útil, segunda a sexta (até hoje se ainda estiver em curso). Pergunte somente se a ambiguidade alterar materialmente a decisão ou tornar a consulta insegura. Sem período informado, mantenha o pedido de esclarecimento. Claude só deve apoiar análise de dados quando houver impedimento técnico identificado; não troque de agente apenas para tentar obter números ausentes.",
             'fontes' => $execucao->roteamento['fontes'] ?? [],
+            'categoria' => $execucao->roteamento['categoria'] ?? null,
             'nivel' => $execucao->roteamento['nivel'] ?? null,
             'modelo' => $execucao->roteamento['modelo'] ?? null,
             'esforco' => $execucao->roteamento['esforco'] ?? null,

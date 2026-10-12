@@ -335,6 +335,16 @@ function instrucoes(job, branch) {
             ? `Você está numa worktree própria, na branch ${branch}. Faça as alterações pedidas aqui e rode os testes que fizerem sentido.`
             : 'Você trabalha DIRETO na pasta do projeto, como no VS Code. Antes de alterar, veja o `git status`: alterações que já estavam lá são de outra sessão — preserve-as.',
             'No fim, resuma o que mudou, por quê e como testar.');
+    } else if (job.categoria === 'operacao') {
+        // Operar um sistema (dono, 12/10/2026): confere, propõe, confirma,
+        // e só então grava. Código não se mexe; banco além do pedido, só com
+        // backup oferecido antes.
+        base.push('Pedido de OPERAÇÃO num sistema (ex.: agendar alguém, lançar, dar baixa). Siga esta ordem:',
+            '1) Confira o estado real ANTES (somente leitura): o que já existe, conflitos, o contexto do pedido (ex.: se diz "continuação", procure o atendimento aberto, em andamento ou aguardando; se não achar, diga isso e mostre os 3 últimos desse cliente).',
+            '2) Se o que achou não bater com o pedido, NÃO grave: explique e pergunte (campo "duvida").',
+            '3) Se bater, NÃO grave ainda: escreva exatamente o que vai fazer (quem, onde, quando, horário) e peça a confirmação no campo "duvida", com "opcoes_duvida": ["Sim, pode fazer", "Não"].',
+            '4) Só grave depois de a pessoa confirmar nesta conversa. Grave somente o pedido, pela via oficial do sistema (as notas da memória do dono dizem como; ex.: ponte de produção com DRY antes do APPLY), e confira o resultado depois.',
+            'Operação que só registra o pedido não precisa de backup. Se for preciso alterar CÓDIGO ou mexer no banco além do pedido, pare e pergunte antes se a pessoa deseja um backup, dizendo o motivo (o que será alterado e o que se perde sem ele).');
     } else {
         base.push('Modo ANALISAR: não altere arquivos. Pode rodar comandos de leitura (git, logs, consultas, docker ps/logs) para responder.',
             // A mesma régua para qualquer agente: o dono pediu que resumo,

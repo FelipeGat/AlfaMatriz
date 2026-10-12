@@ -52,6 +52,8 @@ return [
         'planejamento' => ['codex', 'claude', 'copilot'],
         'investigacao' => ['codex', 'claude', 'copilot'],
         'apoio' => ['copilot', 'codex', 'claude'],
+        // Operar um sistema (agendar, lançar, dar baixa): o Codex faz os dados.
+        'operacao' => ['codex', 'claude', 'copilot'],
     ],
 
     /*
