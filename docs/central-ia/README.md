@@ -105,11 +105,9 @@ análise a cada agente no `alfahome` — os três responderam em ~15 s.
 - O bot e o runner são processos longos: código novo só vale depois de
   `docker restart alfamatriz-dev-telegram` e, para o runner, copiar o
   `runner.mjs` de novo e `systemctl --user restart central-ia-runner`.
-- A trava do bot tem dono fixo (o hostname do container,
-  `alfamatriz-dev-telegram`): reiniciar ou recriar o container retoma na hora.
-  No SIGTERM o Symfony sai de dentro do handler e a trava não é solta — por
-  isso o dono fixo, e por isso `stop_signal: SIGTERM` (a imagem do php-fpm
-  para com SIGQUIT, que o artisan não trata).
+- A trava do bot é por conexão MariaDB (`GET_LOCK`, `TelegramConsumerLock`,
+  desde 11/10/2026): cai sozinha com o processo, sem TTL nem dono fixo. O
+  `stop_signal: SIGTERM` continua no compose.
 
 ## O que existe (etapa 4 — cockpit)
 
@@ -334,3 +332,34 @@ Ver [Chats Ativos: uso, isolamento, testes e rollback](chats-ativos.md).
 Ver [auditoria, Ajustes por conta e próximos controles](ajustes-individuais.md).
 As preferências de roteamento, habilitação e limites são individuais. Acesso por
 pasta/ferramenta e orçamento exato de tokens ainda não são controles comprovados.
+
+
+## Revisão e endurecimento (12/10/2026)
+
+Revisão dos commits de 09 a 11/10 (Claude e Codex) passada pelo cstk: `docs/briefing.md`,
+`docs/constitution.md` e `docs/specs/central-ia/` (spec, plano, pesquisa, contrato, tarefas e
+`revisao-2026-10-12.md`). Decisões do dono nesse dia:
+
+- **Ninguém vira o Felipe**: conta com o perfil Central de IA só muda pela própria pessoa, ou
+  pelo dono da Central (`CENTRAL_IA_DONO`) no caso das outras contas. Admin não redefine senha,
+  e-mail, perfis nem situação. Governança de limites é só do dono; ninguém vê o dono.
+- **Runner inviolável** (`deploy/central-ia/README.md`, "Inviolável pelo servidor"):
+  - analisar é só leitura imposta por cada CLI;
+  - implementar exige o código que a própria máquina manda ao Telegram do dono;
+  - o teto de acesso e as pastas são decididos na máquina;
+  - há auditoria local em `~/.local/share/alfa/central-ia-auditoria.log`.
+  
+  Na tela, a faixa "Esperando você" recebe o código; no Telegram, `/confirmar <código>`.
+- **Níveis de custo**: sem IA (a agenda sai direto), econômico, médio e máximo. Os modelos de
+  cada nível ficam em `config/central_ia.php` e podem ser ajustados por conta. O custo premium
+  de cada modelo do Copilot ainda não foi medido; até lá, o Copilot fica em `auto`.
+- **Tela**:
+  - uma faixa só no topo;
+  - Chats Ativos abre na Geral com atalhos;
+  - as respostas trazem aprovar, ajustar e passar para outra IA;
+  - Consumo e Ajustes foram reordenados;
+  - a pergunta "Rápida ou Elaborada" saiu.
+
+Ambiente local: `CENTRAL_IA_DONO` no `.env`, o env do runner com segredo e Telegram próprios
+(0600), e o nginx com `resolver` (o 502 do boot de 12/10). O banco está com a migração
+`2026_10_12_090000` aplicada (backup em `backups/`).

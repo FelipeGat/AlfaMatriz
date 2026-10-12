@@ -84,6 +84,9 @@ class ConfirmacaoTest extends TestCase
         [, $e] = $this->emExecucao($u);
         $this->runner($u, $e->id, ['estado' => 'aguardando']);
         $this->runner($u, $e->id, ['estado' => 'codigo_errado', 'tentativas' => 1])->assertOk();
+        // De volta a "aguardando" depois do erro: a mesma espera, sem repetir o aviso.
+        $this->runner($u, $e->id, ['estado' => 'aguardando', 'tentativas' => 1])->assertOk();
+        $this->assertSame(1, \Illuminate\Support\Facades\DB::table('central_ia_eventos')->where('tipo', 'confirmacao_pedida')->count());
         $this->runner($u, $e->id, ['estado' => 'recusada', 'tentativas' => 3])->assertOk();
         $this->assertDatabaseHas('central_ia_eventos', ['user_id' => $u->id, 'tipo' => 'confirmacao_recusada', 'nivel' => 'erro']);
         $this->actingAs($u)->postJson(route('central-ia.execucoes.confirmar', $e->id), ['codigo' => '123456'])->assertUnprocessable();

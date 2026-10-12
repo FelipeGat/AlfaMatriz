@@ -84,6 +84,6 @@ assert.equal(r.ok, false); assert.equal(s.chamadas.at(-1), 'expirada');
 // 6. O servidor nunca vê o código esperado; a auditoria local registra tudo.
 const log = readFileSync(process.env.CENTRAL_IA_AUDITORIA, 'utf8');
 assert.ok(!log.includes(c1), 'a auditoria não guarda o código');
-for (const d of ['sem_canal', 'pedida', 'confirmada', 'codigo_errado', 'expirada']) assert.ok(log.includes(`"decisao":"${d}"`), d);
+for (const d of ['sem_canal', 'pedida', 'confirmada', 'codigo_errado', 'recusada', 'expirada']) assert.ok(log.includes(`"decisao":"${d}"`), d);
 
 console.log('PASSOU: teto local, leitura por CLI, pastas, código preso ao conteúdo, confirmação, recusa, expiração e auditoria.');

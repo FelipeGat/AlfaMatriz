@@ -131,6 +131,7 @@ export async function confirmar({ job, cwd, acesso, cfg, api, enviar = enviarTel
             tentativas++;
             auditar({ execucao: job.id, decisao: 'codigo_errado', hash, tentativas });
             if (tentativas >= TENTATIVAS) {
+                auditar({ execucao: job.id, decisao: 'recusada', hash, tentativas });
                 await informar('recusada', tentativas);
                 return { ok: false, motivo: 'três códigos errados; pedido recusado pela máquina' };
             }

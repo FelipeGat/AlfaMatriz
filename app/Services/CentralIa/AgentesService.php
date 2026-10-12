@@ -603,6 +603,11 @@ class AgentesService
             ]]);
 
             $mudou = ($antes['estado'] ?? null) !== $estado || ($antes['tentativas'] ?? 0) !== (int) ($dados['tentativas'] ?? 0);
+            // Depois de um código errado a máquina volta a "aguardando": é a
+            // mesma espera, não um pedido novo — sem repetir o aviso.
+            if ($estado === 'aguardando' && in_array($antes['estado'] ?? null, ['aguardando', 'codigo_errado'], true)) {
+                $mudou = false;
+            }
             if ($mudou) {
                 $quem = $e->nomeDoAgente();
                 [$tipo, $nivel, $texto] = match ($estado) {
