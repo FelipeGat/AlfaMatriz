@@ -18,6 +18,10 @@ export const caminhoDoStatus = l => l.replace(/^[ MADRCUT?!]{1,2}\s+/, '');
 export function criarAuditor(agente) {
     let resto = '';
     const acessos = [];
+    // Arquivos que o PRÓPRIO agente editou (ferramenta de edição). O git
+    // mede a pasta inteira, e outra sessão aberta nela (o VS Code) mexe ao
+    // mesmo tempo: sem isto, a mudança dela era atribuída ao agente.
+    const editados = new Set();
     const add = (ferramenta, alvo) => {
         if (acessos.length < LIMITE) acessos.push({ ferramenta: String(ferramenta).slice(0, 40), alvo: String(alvo ?? '').replace(/\s+/g, ' ').slice(0, 300) });
     };
@@ -30,18 +34,23 @@ export function criarAuditor(agente) {
             for (const l of linhas) {
                 let j; try { j = JSON.parse(l); } catch { continue; }
                 if (agente === 'claude' && j.type === 'assistant') {
-                    for (const c of j.message?.content || []) if (c?.type === 'tool_use') add(c.name, alvo(c.input));
+                    for (const c of j.message?.content || []) {
+                        if (c?.type !== 'tool_use') continue;
+                        add(c.name, alvo(c.input));
+                        if (['Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(c.name)) editados.add(c.input?.file_path ?? c.input?.notebook_path);
+                    }
                 }
                 if (agente === 'codex') {
                     const it = j.item;
                     if (j.type === 'item.started' && it?.type === 'command_execution') add('shell', it.command);
-                    if (j.type === 'item.completed' && it?.type === 'file_change') for (const ch of it.changes || []) add('edição', ch.path);
+                    if (j.type === 'item.completed' && it?.type === 'file_change') for (const ch of it.changes || []) { add('edição', ch.path); editados.add(ch.path); }
                     if (j.type === 'item.started' && it?.type === 'web_search') add('web', it.query);
                     if (j.type === 'item.started' && it?.type === 'mcp_tool_call') add('mcp', `${it.server ?? ''} ${it.tool ?? ''}`.trim());
                 }
             }
         },
         acessos: () => acessos,
+        editados: () => [...editados].filter(Boolean),
         informado: agente !== 'copilot',
     };
 }
@@ -63,7 +72,7 @@ export function retratoGit(git, cwd) {
 }
 
 /** O que mudou entre os dois retratos: arquivos e commits novos. */
-export function compararGit(git, cwd, antes, depois) {
+export function compararGit(git, cwd, antes, depois, editados = []) {
     if (!antes || !depois) return null;
     const ja = new Set(antes.status.map(caminhoDoStatus));
     const mexidos = Object.keys(depois.hashes || {}).filter(c => antes.hashes?.[c] && antes.hashes[c] !== depois.hashes[c]);
@@ -74,5 +83,11 @@ export function compararGit(git, cwd, antes, depois) {
     if (antes.head !== depois.head) {
         try { commits = git(cwd, 'log', '--format=%h %s', `${antes.head}..${depois.head}`).split('\n').filter(Boolean).slice(0, 50); } catch {}
     }
-    return { head_antes: antes.head, head_depois: depois.head, arquivos, revertidos: sumiram, commits };
+    // Quem mexeu: o que o agente editou pela ferramenta é dele; o resto mudou
+    // na pasta durante a execução — outra sessão, ou um comando de shell do
+    // agente (o shell não diz o que escreveu).
+    const rel = c => String(c).startsWith(cwd + '/') ? String(c).slice(cwd.length + 1) : String(c);
+    const dele = new Set(editados.map(rel));
+    return { head_antes: antes.head, head_depois: depois.head, arquivos, revertidos: sumiram, commits,
+        pelo_agente: arquivos.filter(c => dele.has(c)), na_pasta: arquivos.filter(c => !dele.has(c)) };
 }

@@ -38,4 +38,11 @@ writeFileSync(join(dir, 'c.txt'), 'c'); git(dir, 'add', 'c.txt'); git(dir, 'comm
 const d = compararGit(git, dir, antes, retratoGit(git, dir));
 assert.ok(d.arquivos.includes('novo.txt') && d.arquivos.includes('base.txt'), JSON.stringify(d));
 assert.equal(d.commits.length, 1); assert.match(d.commits[0], /commit da IA/);
-console.log('PASSOU: acesso da análise decidido na máquina, eventos do Claude e do Codex, arquivos e commits alterados.');
+// Atribuição: o agente editou novo.txt; base.txt e c.txt mudaram por outra via.
+const d2 = compararGit(git, dir, antes, retratoGit(git, dir), [join(dir, 'novo.txt')]);
+assert.deepEqual(d2.pelo_agente, ['novo.txt']);
+assert.ok(d2.na_pasta.includes('base.txt'));
+const ed = criarAuditor('claude');
+ed.saida(JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/p/a.php' } }] } }) + '\n');
+assert.deepEqual(ed.editados(), ['/p/a.php']);
+console.log('PASSOU: acesso da análise decidido na máquina, eventos do Claude e do Codex, arquivos e commits alterados, e quem os alterou.');

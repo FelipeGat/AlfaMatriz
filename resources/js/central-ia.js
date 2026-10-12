@@ -132,7 +132,7 @@ export function centralIa(config) {
         rotuloEvento(t) {
             return { pedido: 'pedido', inicio: 'início', concluida: 'concluído', falhou: 'FALHOU', expirada: 'SEM RESPOSTA', troca_de_agente: 'troca de agente',
                 recusado: 'recusado', sessao_continuada: 'conversa do VS Code', ponto_salvo: 'ponto salvo',
-                alteracoes: 'alterou', analise_alterou: 'ANÁLISE ALTEROU', escalada: 'escalada', escalada_esgotada: 'escalada parou',
+                alteracoes: 'alterou', pasta_mudou: 'pasta mudou', analise_alterou: 'ANÁLISE ALTEROU', escalada: 'escalada', escalada_esgotada: 'escalada parou',
                 escalada_sem_alternativa: 'sem alternativa', confirmacao_pedida: 'pediu código', confirmacao_aceita: 'confirmado',
                 confirmacao_recusada: 'RECUSADO', confirmacao_expirada: 'código expirou', confirmacao_codigo_errado: 'código errado',
                 confirmacao_digitada: 'código digitado' }[t] || t;
@@ -716,7 +716,7 @@ export function centralIa(config) {
             return (partes.length > 1 ? partes[0][0] + partes[1][0] : nome.slice(0, 2)).toUpperCase();
         },
         estado(e) {
-            return { executando: 'Executando', aguardando_voce: 'Aguardando você', falhou: 'Falhou', aberta: 'Na fila / aberta',
+            return { executando: 'Executando', aguardando_voce: 'Aguardando você', falhou: 'Falhou', aberta: 'Aberta',
                 pausada: 'Pausado', arquivada: 'Arquivado', concluida: 'Concluída', ocioso: 'Sem tarefa' }[e] || e;
         },
         corDoEstado(e) {

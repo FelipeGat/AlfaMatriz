@@ -660,7 +660,7 @@ async function executar(job) {
 
     // O rastro: o que o agente fez (eventos da CLI) e o que mudou no git.
     if (resultado && antesGit && cwd) {
-        resultado.auditoria = { acessos: auditor.acessos(), informado: auditor.informado, git: compararGit(git, cwd, antesGit, retratoGit(git, cwd)), acesso };
+        resultado.auditoria = { acessos: auditor.acessos(), informado: auditor.informado, git: compararGit(git, cwd, antesGit, retratoGit(git, cwd), auditor.editados()), acesso };
     } else if (resultado && auditor.acessos().length) {
         resultado.auditoria = { acessos: auditor.acessos(), informado: auditor.informado, git: null, acesso };
     }

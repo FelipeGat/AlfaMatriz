@@ -574,7 +574,9 @@ class AgentesService
                     // Só implementação encerra a tarefa: numa análise ("me diga
                     // onde paramos") o agente marcava concluída a tarefa inteira
                     // porque aquela pergunta tinha sido respondida.
-                    $execucao->modo === 'implementar' && (bool) ($bloco['tarefa_concluida'] ?? false) => CentralIaTarefa::CONCLUIDA,
+                    // Operação feita (agendou, lançou) também encerra.
+                    ($execucao->modo === 'implementar' || ($execucao->roteamento['categoria'] ?? null) === 'operacao')
+                        && (bool) ($bloco['tarefa_concluida'] ?? false) => CentralIaTarefa::CONCLUIDA,
                     default => CentralIaTarefa::ABERTA,
                 };
                 // Ainda há pedido desta tarefa na fila: ela continua em curso.
@@ -759,8 +761,15 @@ class AgentesService
     private function registrarRastro(User $user, CentralIaExecucao $e): void
     {
         $g = $e->auditoria['git'] ?? null;
-        $arquivos = $g['arquivos'] ?? [];
+        // Registros novos separam o que o agente editou do que mudou na pasta
+        // por outra sessão; os antigos só têm `arquivos`.
+        $arquivos = $g['pelo_agente'] ?? ($g['arquivos'] ?? []);
+        $naPasta = isset($g['pelo_agente']) ? ($g['na_pasta'] ?? []) : [];
         $commits = $g['commits'] ?? [];
+        if ($naPasta) {
+            Eventos::registrar($user, 'pasta_mudou', 'Durante a execução de '.$e->nomeDoAgente().', mudou na pasta (sem edição do agente — outra sessão ou comando de shell): '
+                .implode(', ', array_slice($naPasta, 0, 8)).(count($naPasta) > 8 ? '…' : ''), Eventos::da($e) + ['origem' => 'runner']);
+        }
         if (! $arquivos && ! $commits) return;
         $texto = "{$e->nomeDoAgente()} alterou ".count($arquivos).' arquivo(s)'.($commits ? ' e fez '.count($commits).' commit(s)' : '')
             .($arquivos ? ': '.implode(', ', array_slice($arquivos, 0, 8)).(count($arquivos) > 8 ? '…' : '') : '');

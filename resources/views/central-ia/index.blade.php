@@ -620,7 +620,8 @@
                                                 <span x-show="!e.arquivos.length && !e.commits.length && e.status === 'concluida'" class="ml-1 text-ink-faint">· não alterou nada</span>
                                             </summary>
                                             <div class="mt-2 space-y-1">
-                                                <p x-show="e.arquivos.length" class="break-all text-ink-dim" x-text="'Alterados: ' + e.arquivos.join(', ')"></p>
+                                                <p x-show="e.arquivos.length" class="break-all text-ink-dim" x-text="'Alterados pelo agente: ' + e.arquivos.join(', ')"></p>
+                                                <p x-show="(e.na_pasta || []).length" class="break-all text-ink-faint" x-text="'Mudaram na pasta durante a execução, sem edição do agente (outra sessão aberta ou comando de shell): ' + (e.na_pasta || []).join(', ')"></p>
                                                 <template x-for="c in e.commits" :key="c"><p class="font-mono text-ink-dim" x-text="'commit ' + c"></p></template>
                                                 <p x-show="e.informado === false" class="text-ink-faint">O Copilot não informa as ferramentas que usou; só o que mudou no git aparece.</p>
                                                 <p x-show="e.total_acessos" class="text-ink-faint" x-text="'Consultou e executou (' + e.total_acessos + '):'"></p>
