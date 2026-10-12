@@ -78,7 +78,8 @@ class GruposEventosLimitesTest extends TestCase
 
         $eventos = collect($this->actingAs($user)->getJson(route('central-ia.painel'))->json('eventos'));
 
-        $this->assertSame(['troca_de_agente', 'pedido', 'falhou', 'inicio', 'pedido'], $eventos->pluck('tipo')->all());
+        // A falha também dispara a escalada automática (12/10/2026), registrada no log.
+        $this->assertSame(['troca_de_agente', 'pedido', 'escalada', 'falhou', 'inicio', 'pedido'], $eventos->pluck('tipo')->all());
         $falha = $eventos->firstWhere('tipo', 'falhou');
         $this->assertSame(['erro', 'Claude', 'gestor'], [$falha['nivel'], $falha['agente'], $falha['projeto']]);
         $this->assertStringContainsString('teste quebrou', $falha['descricao']);

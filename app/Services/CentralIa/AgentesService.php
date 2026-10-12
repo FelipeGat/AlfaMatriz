@@ -198,6 +198,13 @@ class AgentesService
             }
         }
 
+        // "Refaça" / "não funcionou": sobe o nível (e, insistindo no máximo, troca a IA).
+        $refazer = $agente === 'auto' && ($pedido['nivel'] ?? 'auto') === 'auto' ? $this->escaladaPorRefazer($user, $tarefa, $pedido['instrucao']) : null;
+        if ($refazer) {
+            $pedido['nivel'] = $refazer['nivel'];
+            if ($refazer['agente']) $agente = $refazer['agente'];
+        }
+
         $sessaoDoVsCode = $tarefa?->dossie['origem'] ?? null;
         $origemEsgotada = $sessaoDoVsCode && isset($disponivel['esgotados'][$sessaoDoVsCode['agente']]);
         $rota = $agente === 'auto' && $sessaoDoVsCode && ! $origemEsgotada && in_array($sessaoDoVsCode['agente'], $disponivel['agentes'], true)
@@ -247,6 +254,11 @@ class AgentesService
         $rota['nivel'] = $nivel;
         $rota += app(Preferencias::class)->modelo($user, $nivel, $rota['agente']);
         $rota['motivo'] = ($rota['motivo'] ?? '').' · '.self::rotuloDoNivel($rota);
+        if ($refazer) {
+            $rota['motivo'] = 'Escalada: '.$refazer['motivo'].' · '.self::rotuloDoNivel($rota);
+            $rota['manual'] = false;
+            $rota['escalada'] = ['passos' => 0, 'por' => 'refazer'];
+        }
 
         return DB::transaction(function () use ($user, $texto, $pedido, $origem, $clientId, $telegramUpdateId, $projeto, $tarefa, $rota) {
             // A mensagem primeiro, sem tarefa: o reenvio idempotente precisa
@@ -565,7 +577,11 @@ class AgentesService
             }
 
             if (! $ok) {
-                $this->tentarOutroProvedor($user, $execucao, $dados['erro'] ?? '');
+                FalhaDeProvedor::tipo($dados['erro'] ?? '')
+                    ? $this->tentarOutroProvedor($user, $execucao, $dados['erro'] ?? '')
+                    : $this->escalar($user, $execucao, 'falhou: '.Str::limit((string) ($dados['erro'] ?? 'erro desconhecido'), 200));
+            } elseif ($bloco && ($bloco['conseguiu'] ?? true) === false && blank($bloco['duvida'] ?? null)) {
+                $this->escalar($user, $execucao, 'disse que não conseguiu resolver'.(filled($bloco['resumo'] ?? null) ? ' ('.Str::limit((string) $bloco['resumo'], 200).')' : ''));
             }
 
             return $execucao;
@@ -716,6 +732,130 @@ class AgentesService
             'instrucao' => $anterior->instrucao, 'roteamento' => $rota]);
         $tarefa->update(['status' => CentralIaTarefa::ABERTA, 'ultima_atividade_em' => now()]);
         Eventos::registrar($user, 'troca_de_agente', $rota['motivo'].'; '.$nome.' assume a tarefa #'.$tarefa->id, Eventos::da($nova) + ['origem' => 'central'], 'aviso');
+    }
+
+    public const NIVEIS_EM_ORDEM = ['sem_ia', 'leve', 'medio', 'forte'];
+
+    /** Teto de passos automáticos a partir do pedido original. */
+    public const ESCALADAS_MAXIMAS = 3;
+
+    /**
+     * Quem não resolve passa adiante (dono, 12/10/2026: "caso o agente não
+     * esteja conseguindo resolver… intervenção automática, informando que
+     * mudou a IA"). Sobe um nível com a mesma IA; já no máximo, troca de IA.
+     * Uma nova instrução da pessoa na fila vence; recusa da confirmação e
+     * parada do runner não contam como "não conseguiu".
+     */
+    private function escalar(User $user, CentralIaExecucao $anterior, string $motivo): void
+    {
+        // Erro de AMBIENTE (permissão, login, agente ausente, pasta, recusa do
+        // dono, parada do runner): outro modelo não resolveria — não escala.
+        if (! app(Preferencias::class)->ler($user)['escalar'] || ! $anterior->tarefa_id
+            || preg_match('/^(não executado|interrompida)|permission denied|permiss|login|autentica|auth|não está instalado|fora da pasta|não é um repositório/iu', (string) $anterior->erro)) {
+            return;
+        }
+        $user->esquecerPermissoes();
+        if (! $user->ativo || ! $user->canPermissao('central_ia_agentes', 'incluir')) return;
+
+        $tarefa = CentralIaTarefa::de($user)->whereKey($anterior->tarefa_id)->lockForUpdate()->firstOrFail();
+        if ($tarefa->status === CentralIaTarefa::ARQUIVADA || $tarefa->execucoes()->where('status', CentralIaExecucao::PENDENTE)->exists()) return;
+
+        $rota = $anterior->roteamento ?? [];
+        $passos = $rota['escalada']['passos'] ?? 0;
+        if ($passos >= self::ESCALADAS_MAXIMAS) {
+            $this->conversas->registrarDoAgente($user, 'Central', "{$anterior->nomeDoAgente()} {$motivo}. Já foram ".self::ESCALADAS_MAXIMAS.' trocas automáticas neste pedido: a Central parou aqui para você decidir o próximo passo.', CentralIaMensagem::AUTOR_SISTEMA, $anterior->projeto ?: null, $tarefa->id);
+            Eventos::registrar($user, 'escalada_esgotada', 'Escalada automática parou após '.self::ESCALADAS_MAXIMAS.' passos.', Eventos::da($anterior), 'aviso');
+            return;
+        }
+
+        $nivelAntes = $rota['nivel'] ?? ($anterior->modo === 'implementar' ? 'forte' : 'medio');
+        $proximo = $this->proximoPasso($user, $anterior, $nivelAntes, $rota['escalada']['tentados'] ?? []);
+        if (! $proximo) {
+            $this->conversas->registrarDoAgente($user, 'Central', "{$anterior->nomeDoAgente()} {$motivo}, e não há outra IA disponível acima dela. A tarefa e o histórico foram preservados para você decidir.", CentralIaMensagem::AUTOR_SISTEMA, $anterior->projeto ?: null, $tarefa->id);
+            Eventos::registrar($user, 'escalada_sem_alternativa', 'Sem nível nem IA acima para escalar.', Eventos::da($anterior), 'aviso');
+            return;
+        }
+        [$agente, $nivel] = $proximo;
+
+        $nova = $rota;
+        $nova['agente'] = $agente;
+        $nova['nivel'] = $nivel;
+        $nova = array_merge($nova, app(Preferencias::class)->modelo($user, $nivel, $agente));
+        $nova['manual'] = false;
+        $nova['handoff_de'] = $agente !== $anterior->agente ? $anterior->agente : null;
+        $nova['escalada'] = ['raiz' => $rota['escalada']['raiz'] ?? $anterior->id, 'passos' => $passos + 1, 'anterior' => $anterior->id,
+            'tentados' => array_values(array_unique([...($rota['escalada']['tentados'] ?? []), $anterior->agente.':'.$nivelAntes]))];
+        $nova['motivo'] = 'Escalada automática: '.$anterior->nomeDoAgente().' ('.self::rotuloDoNivel(['nivel' => $nivelAntes] + $rota).') '.$motivo.' · '.self::rotuloDoNivel($nova);
+        unset($nova['fallback']);
+
+        $nome = CentralIaExecucao::AGENTES[$agente];
+        $mudou = $agente !== $anterior->agente ? "a IA mudou para {$nome}" : 'a mesma IA segue num modelo mais capaz';
+        $aviso = $this->conversas->registrarDoAgente($user, 'Central',
+            "⤴ {$anterior->nomeDoAgente()} {$motivo}. Para não travar, {$mudou}: ".self::rotuloDoNivel($nova).'. O pedido, os anexos e o dossiê seguem iguais.'
+            .($anterior->modo === 'implementar' ? ' Sua máquina vai pedir o código de novo antes de modificar algo.' : ''),
+            CentralIaMensagem::AUTOR_SISTEMA, $anterior->projeto ?: null, $tarefa->id);
+        $instrucao = $anterior->instrucao."\n\n(A tentativa anterior — {$anterior->nomeDoAgente()}, ".self::rotuloDoNivel(['nivel' => $nivelAntes] + $rota)." — {$motivo}. Não repita o mesmo caminho; confira o estado real antes de continuar.)";
+        $nova['fallback'] = ['pedido_original' => $rota['fallback']['pedido_original'] ?? $anterior->pedido_id];
+
+        $execucao = CentralIaExecucao::create(['user_id' => $user->id, 'pedido_id' => $aviso->id, 'tarefa_id' => $tarefa->id,
+            'agente' => $agente, 'projeto' => $anterior->projeto, 'modo' => $anterior->modo,
+            'instrucao' => Str::limit($instrucao, 60000, ''), 'roteamento' => $nova]);
+        $tarefa->update(['status' => CentralIaTarefa::ABERTA, 'ultima_atividade_em' => now()]);
+        Eventos::registrar($user, 'escalada', $nova['motivo'], Eventos::da($execucao) + ['origem' => 'central'], 'aviso');
+    }
+
+    /**
+     * O próximo passo: um nível acima com a mesma IA; no máximo, a próxima IA
+     * da preferência (que ainda não tentou no máximo), disponível e liberada.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    private function proximoPasso(User $user, CentralIaExecucao $anterior, string $nivel, array $tentados): ?array
+    {
+        $i = array_search($nivel, self::NIVEIS_EM_ORDEM, true);
+        // Um nível acima, com a mesma IA ("sem IA" que falhou — a agenda não
+        // abriu — passa a uma IA de verdade no econômico).
+        if ($i !== false && $i < count(self::NIVEIS_EM_ORDEM) - 1) {
+            return [$anterior->agente, self::NIVEIS_EM_ORDEM[$i + 1]];
+        }
+        $disponivel = $this->disponiveis($user);
+        $ja = array_merge($tentados, [$anterior->agente.':forte']);
+        $categoria = $anterior->roteamento['categoria'] ?? ($anterior->modo === 'implementar' ? 'implementacao' : 'investigacao');
+        $outro = collect(app(Preferencias::class)->ordem($user, $categoria))
+            ->first(fn ($a) => $a !== $anterior->agente && ! in_array($a.':forte', $ja, true) && in_array($a, $disponivel['agentes'], true)
+                && ! isset($disponivel['esgotados'][$a]) && app(Preferencias::class)->pode($user, $a));
+
+        return $outro ? [$outro, 'forte'] : null;
+    }
+
+    /**
+     * "Refaça", "não funcionou", "de novo": a tentativa anterior não
+     * resolveu. O pedido sobe um nível acima do anterior; se já estava no
+     * máximo e é a segunda vez, troca de IA.
+     *
+     * @return array{nivel: string, agente: ?string, motivo: string}|null
+     */
+    public function escaladaPorRefazer(User $user, ?CentralIaTarefa $tarefa, string $texto): ?array
+    {
+        if (! $tarefa || ! app(Preferencias::class)->ler($user)['escalar']) return null;
+        $t = Str::lower(Str::ascii(Str::squish($texto)));
+        if (! preg_match('/\b(refaca|refazer|de novo|novamente|tente outra vez|tenta de novo|nao funcionou|nao resolveu|nao deu certo|continua (?:errado|com erro|igual|quebrado)|ainda (?:esta|nao|da) (?:errado|erro|funciona|quebrado)|errado de novo|piorou)\b/', $t)) {
+            return null;
+        }
+        $ultima = $tarefa->execucoes()->whereIn('status', [CentralIaExecucao::CONCLUIDA, CentralIaExecucao::FALHOU, CentralIaExecucao::EXPIRADA])->latest('id')->first();
+        if (! $ultima) return null;
+        $nivel = $ultima->roteamento['nivel'] ?? ($ultima->modo === 'implementar' ? 'forte' : 'medio');
+        $i = array_search($nivel, self::NIVEIS_EM_ORDEM, true);
+        if ($i !== false && $i < count(self::NIVEIS_EM_ORDEM) - 1) {
+            $acima = self::NIVEIS_EM_ORDEM[$i + 1];
+            return ['nivel' => $acima, 'agente' => null, 'motivo' => "você pediu para refazer — {$ultima->nomeDoAgente()} no ".self::rotuloDoNivel(['nivel' => $nivel])." não resolveu; sobe para o ".self::rotuloDoNivel(['nivel' => $acima])];
+        }
+        // Já no máximo: na segunda insistência com a mesma IA, troca.
+        $seguidas = $tarefa->execucoes()->where('agente', $ultima->agente)->where('id', '>', (int) $tarefa->execucoes()->where('agente', '!=', $ultima->agente)->max('id'))->count();
+        if ($seguidas < 2) return ['nivel' => 'forte', 'agente' => null, 'motivo' => 'você pediu para refazer; segue no nível máximo'];
+        $proximo = $this->proximoPasso($user, $ultima, 'forte', []);
+
+        return $proximo ? ['nivel' => 'forte', 'agente' => $proximo[0], 'motivo' => "você pediu para refazer de novo — {$ultima->nomeDoAgente()} não resolveu no nível máximo; a IA mudou para ".CentralIaExecucao::AGENTES[$proximo[0]]] : null;
     }
 
     public const INSTRUCAO_DO_PONTO = 'PONTO DE SALVAMENTO desta tarefa. Não altere nada. Escreva um resumo completo para que uma '

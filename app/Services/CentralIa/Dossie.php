@@ -55,11 +55,14 @@ class Dossie
             .'{"resumo": "o que você fez/concluiu, em 1-3 frases", "decisoes": ["decisão tomada e por quê"], '
             .'"testes": [{"comando": "comando rodado", "resultado": "passou|falhou|não rodado"}], '
             .'"proximos_passos": ["..."], "pendencias": ["..."], "riscos": ["..."], '
-            .'"duvida": null, "tarefa_concluida": false}'."\n"
+            .'"duvida": null, "conseguiu": true, "tarefa_concluida": false}'."\n"
             .self::FIM."\n"
             .'Quando precisar perguntar, escreva a pergunta em duvida e opções curtas em opcoes_duvida (lista de até 6 textos). Não esconda a pergunta no meio do relatório; na resposta diga apenas que aguarda esclarecimento. Opções não autorizam deploy, produção ou ações críticas. '
             .'Use "duvida" (texto) SÓ quando não puder seguir sem uma resposta da pessoa — ela será avisada. '
-            .'"tarefa_concluida": true só quando o objetivo inteiro estiver atendido.';
+            .'"tarefa_concluida": true só quando o objetivo inteiro estiver atendido. '
+            // Sinal da escalada automática (dono, 12/10/2026): quem não deu
+            // conta passa o pedido a um nível ou a uma IA mais capaz.
+            .'"conseguiu": false quando você NÃO conseguiu resolver o que foi pedido (faltou capacidade, o resultado ficou incompleto ou errado, ou você não achou a causa) — a Central passa o pedido a um modelo mais capaz. Não use false por falta de informação da pessoa: para isso existe "duvida".';
     }
 
     /**

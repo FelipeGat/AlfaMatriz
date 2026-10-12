@@ -27,6 +27,9 @@ class Preferencias
             'paralelo' => max(1, (int) config('central_ia.agentes.paralelo')),
             'fallback' => (bool) config('central_ia.agentes.fallback_automatico'),
             'niveis' => config('central_ia.niveis'),
+            // Quem não resolve passa o pedido adiante sozinho: nível acima,
+            // e no máximo outra IA (dono, 12/10/2026). Sempre com aviso.
+            'escalar' => true,
         ], is_array($salvas) ? $salvas : []);
         $regras['execucao_bloqueada'] = app(Governanca::class)->execucaoBloqueada($user, $salvas['governanca'] ?? null);
         if ($g = $salvas['governanca'] ?? null) {

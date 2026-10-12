@@ -59,6 +59,7 @@ class CentralIaController extends Controller
             'limite_total' => ['nullable', 'integer', 'min:0', 'max:30000'],
             'paralelo' => ['required', 'integer', 'min:1', 'max:'.max(1, (int) config('central_ia.agentes.paralelo'))],
             'fallback' => ['required', 'boolean'],
+            'escalar' => ['sometimes', 'boolean'],
             // Modelo e esforço por nível e por IA (nulo = padrão da CLI). O
             // nome do modelo vira argumento de linha de comando no runner:
             // só letras, números, ponto, hífen e sublinhado.

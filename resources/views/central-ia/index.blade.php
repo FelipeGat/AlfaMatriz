@@ -836,6 +836,8 @@
                             </div>
                         </div>
                         <label class="flex gap-2 items-center"><input type="checkbox" x-model="ajustes.fallback" class="rounded border-line text-brand">Tentar outra IA habilitada quando o provedor estiver indisponível ou no limite</label>
+                        <label class="flex gap-2 items-start"><input type="checkbox" x-model="ajustes.escalar" class="mt-0.5 rounded border-line text-brand">
+                            <span>Escalar sozinho quando a IA não resolver: sobe um nível (econômico → médio → máximo) e, no máximo, passa para outra IA. Vale também quando você pede para refazer. Sempre com aviso na conversa; para depois de 3 trocas.</span></label>
                         <p class="text-xs text-ink-faint">Sem teto interno: sem limite administrativo. Zero: bloqueia novos pedidos. Tentativas alternativas contam nos limites. As franquias reais continuam sendo as de cada assinatura. Nenhum adaptador de API paga foi adicionado; a autenticação do executor precisa de validação própria. Desabilitar suspende novos pedidos e a fila dessa IA, sem interromper processos já iniciados.</p>
                         @if ($podeParear)
                             <button type="button" @click="salvarAjustes()" :disabled="salvandoAjustes || !preferencias?.disponivel" class="rounded-control bg-brand px-3 py-2 font-semibold text-on-brand disabled:opacity-50">Salvar meus ajustes</button>
