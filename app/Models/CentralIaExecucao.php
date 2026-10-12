@@ -39,15 +39,29 @@ class CentralIaExecucao extends Model
 
     public const EXPIRADA = 'expirada';
 
+    /**
+     * Estados da confirmação pedida pela máquina (ver
+     * `AgentesService::confirmacao`). `aguardando` e `codigo_errado` esperam
+     * a pessoa; os outros encerram a espera.
+     */
+    public const CONFIRMACAO_ESTADOS = ['aguardando', 'confirmada', 'codigo_errado', 'recusada', 'expirada', 'sem_canal'];
+
+    public function aguardandoConfirmacao(): bool
+    {
+        return $this->status === self::EXECUTANDO
+            && in_array($this->confirmacao['estado'] ?? null, ['aguardando', 'codigo_errado'], true);
+    }
+
     protected $fillable = [
         'user_id', 'pedido_id', 'resposta_id', 'runner_id', 'tarefa_id', 'agente', 'projeto', 'modo', 'roteamento', 'checkpoint', 'instrucao',
-        'progresso', 'progresso_em', 'status_avisado_em', 'status', 'sessao_agente', 'branch', 'erro', 'iniciada_em', 'concluida_em',
+        'progresso', 'progresso_em', 'status_avisado_em', 'confirmacao', 'status', 'sessao_agente', 'branch', 'erro', 'iniciada_em', 'concluida_em',
     ];
 
     protected $casts = [
         'roteamento' => 'array',
         'checkpoint' => 'array',
         'progresso' => 'array',
+        'confirmacao' => 'array',
         'progresso_em' => 'datetime',
         'status_avisado_em' => 'datetime',
         'iniciada_em' => 'datetime',

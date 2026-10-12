@@ -19,6 +19,8 @@ import { randomUUID } from 'node:crypto';
 import { usoLocal } from './uso-local.mjs';
 import { prepararAnexos } from './anexos.mjs';
 import { acompanharProgresso } from './progresso.mjs';
+import { auditar, confirmar } from './confirmacao.mjs';
+import { acessoEfetivo, CITA_CREDENCIAL, dentroDe, exigeConfirmacao, permissoes } from './politica.mjs';
 
 const HOME = homedir();
 const CONFIG = process.env.CENTRAL_IA_RUNNER_CONFIG || join(HOME, '.config/alfa/central-ia-runner.env');
@@ -37,6 +39,16 @@ function lerConfig() {
         token: v('ALFAMATRIZ_RUNNER_TOKEN'),
         projetos: (v('CENTRAL_IA_PROJETOS') || join(HOME, 'projetos')).replace(/^~/, HOME),
         maquina: v('CENTRAL_IA_MAQUINA') || hostname().replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 64),
+        // O que a MÁQUINA permite, decidido aqui e não no servidor (dono,
+        // 12/10/2026: "tem que ser inviolável"). O servidor pode pedir menos,
+        // nunca mais. `total` só vale para implementar, e só confirmado.
+        acessoMaximo: v('CENTRAL_IA_ACESSO_MAXIMO') === 'total' ? 'total' : 'restrito',
+        // `implementar` (padrão): confirma o que modifica. `sempre`: confirma
+        // também as análises.
+        confirmar: v('CENTRAL_IA_CONFIRMAR') === 'sempre' ? 'sempre' : 'implementar',
+        segredo: v('CENTRAL_IA_SEGREDO_CONFIRMACAO'),
+        telegramToken: v('CENTRAL_IA_TELEGRAM_TOKEN'),
+        telegramChat: v('CENTRAL_IA_TELEGRAM_CHAT_ID'),
     };
     // Worktrees das execuções de implementar: dentro da pasta de projetos,
     // num diretório com ponto — que a listagem de projetos ignora.
@@ -370,20 +382,15 @@ function historicoDaSessao(imp) {
         + corpo;
 }
 
-const NEGADOS_NO_SHELL = ['git push', 'git commit', 'git reset', 'git checkout', 'git switch', 'git rebase', 'git merge', 'rm -rf', 'sudo', 'docker', 'ssh'];
-
-function comando(job, cwd, branch, saida) {
+function comando(job, cwd, branch, saida, acesso) {
     // A sessão interna do agente só é retomada na MESMA pasta: o Claude guarda
     // as sessões por diretório, e retomar noutra falha.
     const sessao = job.continuar?.sessao && job.continuar.cwd === cwd ? job.continuar.sessao : null;
     const prompt = [instrucoes(job, branch), memoria(), job.dadosOficiais, historicoDaSessao(job.importar), job.contexto, job.contextoAnexos,
         `Pedido:\n${job.instrucao}`, job.bloco].filter(Boolean).join('\n\n');
-    const escreve = job.modo === 'implementar';
     // Acesso total (dono, 10/10/2026: "lá tem que ter acesso total igual
-    // aqui, senão fico travado"): sem caixa de areia e sem lista de comandos
-    // negados. O que segura commit/push/deploy é a instrução acima e a regra
-    // global de cada agente; e cada passo fica no log de eventos da Central.
-    const total = job.acesso === 'total';
+    // aqui, senão fico travado"): só para implementar, só com o teto desta
+    // máquina em `total` e só depois da confirmação do dono (confirmacao.mjs).
 
     if (job.agente === 'claude') {
         const args = ['-p', prompt, '--output-format', 'json'];
@@ -396,34 +403,19 @@ function comando(job, cwd, branch, saida) {
         // sessão retomar. Retomada simples mantém o mesmo id.
         job.sessaoPrevista = sessao && !job.continuar?.fork ? sessao : randomUUID();
         if (!sessao || job.continuar?.fork) args.push('--session-id', job.sessaoPrevista);
-        if (total) {
-            args.push('--permission-mode', 'bypassPermissions', '--add-dir', cfg.projetos);
-        } else if (escreve) {
-            args.push('--permission-mode', 'acceptEdits', '--allowedTools', 'Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash',
-                '--disallowedTools', ...NEGADOS_NO_SHELL.map(c => `Bash(${c}:*)`));
-        } else {
-            args.push('--permission-mode', 'default', '--allowedTools', 'Read', 'Grep', 'Glob', 'WebSearch', 'WebFetch',
-                '--disallowedTools', 'Edit', 'Write', 'NotebookEdit', 'Bash');
-        }
+        args.push(...permissoes('claude', acesso, { projetos: cfg.projetos }));
         return [agentes.claude, args];
     }
 
     if (job.agente === 'codex') {
-        const sandbox = `sandbox_mode="${total ? 'danger-full-access' : (escreve ? 'workspace-write' : 'read-only')}"`;
-        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', '-c', sandbox, '-c', 'approval_policy="never"', '-c', 'forced_login_method="chatgpt"'];
+        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso), '-c', 'forced_login_method="chatgpt"'];
         return [agentes.codex, sessao ? ['exec', 'resume', sessao, ...comum, prompt] : ['exec', ...comum, prompt]];
     }
 
     // Copilot: no modo não interativo ele exige --allow-all-tools; o controle
     // fica no --deny-tool. A sessão leva um nome para ser retomada por ele.
     const nome = sessao || `central-ia-${job.id}`;
-    const args = ['-s', '--no-color', '--add-dir', cwd];
-    if (total) args.push('--allow-all');
-    else {
-        args.push('--allow-all-tools');
-        if (escreve) for (const c of NEGADOS_NO_SHELL) args.push('--deny-tool', `shell(${c})`);
-        else args.push('--deny-tool', 'write', '--deny-tool', 'shell');
-    }
+    const args = ['-s', '--no-color', ...permissoes('copilot', acesso, { cwd })];
     args.push(...(sessao ? ['--resume', sessao] : ['-n', nome]), '-p', prompt);
     return [agentes.copilot, args, nome];
 }
@@ -522,22 +514,48 @@ async function executar(job) {
     await informar();
     const avisos = setInterval(informar, 30_000);
     const tmp = mkdtempSync(join(tmpdir(), 'central-ia-'));
+    // Fora do try: a falha também leva a pasta no checkpoint — é ela que diz
+    // onde retomar a sessão do agente na próxima execução.
+    let cwd = null, dir = null;
+    const acesso = acessoEfetivo(job, cfg.acessoMaximo);
     try {
         if (!agentes[job.agente]) throw new Error(`${job.agente} não está instalado nesta máquina`);
-        // Pedido da conversa Geral (sem projeto): roda numa pasta neutra, só leitura.
-        // Pedido da conversa Geral: com acesso total, na raiz dos projetos
-        // (como este chat do VS Code); senão, numa pasta neutra.
-        const dir = job.projeto === '' ? (job.acesso === 'total' ? realpathSync(cfg.projetos) : pastaGeral()) : realpathSync(resolve(cfg.projetos, job.projeto));
-        if (job.projeto !== '' && !dir.startsWith(realpathSync(cfg.projetos) + sep)) throw new Error('projeto fora da pasta de projetos');
+        // Pedido da conversa Geral: na raiz dos projetos quando o teto desta
+        // máquina é total (como este chat do VS Code); senão, numa pasta neutra.
+        dir = job.projeto === '' ? (cfg.acessoMaximo === 'total' ? realpathSync(cfg.projetos) : pastaGeral()) : realpathSync(resolve(cfg.projetos, job.projeto));
+        if (job.projeto !== '' && !dentroDe(cfg.projetos, dir)) throw new Error('projeto fora da pasta de projetos');
+        if (job.modo !== 'implementar' && job.agente === 'codex' && CITA_CREDENCIAL.test(job.instrucao)) {
+            throw new Error('pedido de análise cita credenciais da máquina; o Codex só leitura não tem como bloquear essa leitura — peça ao Claude');
+        }
         job.dadosOficiais = dadosOficiais(job.fontes || []);
 
         // Onde trabalhar: na worktree da tarefa, se ela já tem uma (analisar
         // também — revisar o que foi feito é olhar a worktree); senão, na
         // pasta do projeto para analisar, e numa worktree nova para implementar.
-        let cwd = dir, branch = null, criada = null;
+        // Toda pasta vinda do servidor passa pelo realpath: fora dos projetos,
+        // recusa (um servidor comprometido apontaria para ~/.ssh).
+        cwd = dir;
+        let branch = null, criada = null, novaWorktree = false;
         if (job.tarefa?.worktree && existsSync(job.tarefa.worktree)) {
-            cwd = job.tarefa.worktree; branch = job.tarefa.branch;
+            if (!dentroDe(cfg.projetos, job.tarefa.worktree)) throw new Error('a pasta da tarefa está fora da pasta de projetos');
+            cwd = realpathSync(job.tarefa.worktree); branch = job.tarefa.branch;
         } else if (job.modo === 'implementar' && !job.na_pasta) {
+            novaWorktree = true;
+            cwd = job.tarefa?.worktree || join(cfg.worktrees, `${job.projeto}-t${job.tarefa?.id ?? `e${job.id}`}`);
+        }
+        if (job.continuar?.cwd && !dentroDe(cfg.projetos, job.continuar.cwd)) job.continuar = null;
+
+        // Modificar exige o código do dono, que ESTA máquina gera e manda ao
+        // Telegram dele (confirmacao.mjs). Sem isso, nada roda.
+        if (exigeConfirmacao(job, cfg.confirmar)) {
+            progresso.etapa('confirmacao');
+            await informar();
+            const c = await confirmar({ job, cwd, acesso, cfg, api, parar: () => parar });
+            if (!c.ok) throw new Error(`não executado: ${c.motivo}`);
+        } else {
+            auditar({ execucao: job.id, decisao: 'leitura', agente: job.agente, projeto: job.projeto, modo: job.modo, cwd });
+        }
+        if (novaWorktree) {
             criada = prepararWorktree(job.projeto, dir, job.tarefa || { id: `e${job.id}` });
             ({ cwd, branch } = criada);
         }
@@ -547,7 +565,10 @@ async function executar(job) {
         const midias = await prepararAnexos(job.anexos || [], cfg, tmp);
         job.imagens = midias.imagens; job.contextoAnexos = midias.contexto;
         const saida = join(tmp, 'ultima.txt');
-        const [bin, args, nomeCopilot] = comando(job, cwd, branch, saida);
+        const [bin, args, nomeCopilot] = comando(job, cwd, branch, saida, acesso);
+        // Parada pedida enquanto preparava: não cria um processo que ninguém
+        // vai esperar.
+        if (parar) throw new Error('interrompida porque o runner foi parado ou reiniciado antes de começar');
         progresso.etapa('agente');
         const r = await rodar(bin, args, cwd, job.timeout_minutos, progresso);
         if (r.estourou) throw new Error(`passou de ${job.timeout_minutos} minutos e foi encerrado`);
@@ -565,9 +586,9 @@ async function executar(job) {
         };
     } catch (e) {
         resultado = { status: 'falhou', erro: String(e.message || e).slice(0, 1900), sessao_agente: job.sessaoPrevista || null };
-        // Mesmo na falha o estado do git interessa: é dele que parte quem
-        // assumir a tarefa depois.
-        if (job.tarefa?.worktree && existsSync(job.tarefa.worktree)) resultado.checkpoint = checkpoint(job.tarefa.worktree, join(cfg.projetos, job.projeto));
+        // Mesmo na falha o estado do git interessa (quem assumir parte dele),
+        // e a pasta é o que permite retomar a sessão do agente depois.
+        if (cwd && existsSync(cwd)) resultado.checkpoint = checkpoint(cwd, dir);
     } finally {
         clearInterval(avisos);
         progresso.etapa('finalizando');
@@ -576,15 +597,18 @@ async function executar(job) {
     }
 
     // A conclusão é idempotente no AlfaMatriz: repetir depois de uma queda
-    // não dobra a resposta.
-    for (let tentativa = 1; tentativa <= 5; tentativa++) {
+    // não dobra a resposta. Insiste por até 30 min — com o AlfaMatriz fora do
+    // ar por alguns minutos, a resposta do agente se perdia.
+    const limite = Date.now() + 30 * 60_000;
+    for (let tentativa = 1; ; tentativa++) {
         try {
             const r = await api(`execucoes/${job.id}/conclusao`, resultado);
             if (r.status === 200) break;
             log(`#${job.id} conclusão recusada`, r.status);
-            if (r.status < 500) break;
+            if (r.status < 500 && r.status !== 429 && r.status !== 408) break;
         } catch (e) { log(`#${job.id} conclusão falhou (${e.message}), tentando de novo`); }
-        await new Promise(r => setTimeout(r, 5000 * tentativa));
+        if (Date.now() > limite) { log(`#${job.id} conclusão desistida após 30 min`); auditar({ execucao: job.id, decisao: 'conclusao_perdida' }); break; }
+        await new Promise(r => setTimeout(r, Math.min(60_000, 5000 * tentativa)));
     }
     log(`#${job.id} ${resultado.status} em ${Math.round((Date.now() - inicio) / 1000)} s`);
 }

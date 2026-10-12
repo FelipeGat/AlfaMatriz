@@ -10,6 +10,20 @@ class RegrasAnaliseTest extends TestCase
         $this->expectException(ValidationException::class);
         app(FontesDeDados::class)->exigirPeriodo('Traga um levantamento do que tenho a pagar e receber');
     }
+    public function test_pedidos_legitimos_nao_pedem_periodo(): void
+    {
+        $f = app(FontesDeDados::class);
+        // Agenda sem data é a de hoje (dono, 10/10/2026).
+        $f->exigirPeriodo('me faça um resumo da minha agenda');
+        // Pedido de código ou de tela que só cita o assunto.
+        $f->exigirPeriodo('corrija o lembrete de contas a pagar');
+        $f->exigirPeriodo('quero receber aviso quando o deploy terminar');
+        $f->exigirPeriodo('adicione um filtro de status na tela do financeiro');
+        // Implementação nunca é relatório.
+        $f->exigirPeriodo('levantamento do que tenho a pagar', 'implementar');
+        $this->assertSame('hoje', $f->detectar('resumo da agenda')[0]['rotulo']);
+    }
+
     public function test_periodo_explicito_e_codigo_nao_sao_bloqueados(): void
     {
         app(FontesDeDados::class)->exigirPeriodo('Resultado financeiro desta semana');

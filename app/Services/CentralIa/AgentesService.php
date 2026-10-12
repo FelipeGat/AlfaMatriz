@@ -159,7 +159,6 @@ class AgentesService
         $disponivel = $this->disponiveis($user);
         $preferencias = app(Preferencias::class);
         $ordens = collect(array_keys($preferencias->ler($user)['padroes']))->mapWithKeys(fn ($c) => [$c => $preferencias->ordem($user, $c)])->all();
-        app(FontesDeDados::class)->exigirPeriodo($pedido['instrucao']);
 
         $disponivel['agentes'] = array_values(array_filter($disponivel['agentes'], fn ($a) => $preferencias->pode($user, $a)));
         $projeto = (string) ($pedido['projeto'] ?? '');
@@ -219,6 +218,8 @@ class AgentesService
             $modo = $rota['modo'] ?? $this->roteador->decidir($pedido['instrucao'], [], $tarefa)['modo'];
         }
         $rota['modo'] = $projeto === '' ? 'analisar' : $modo;
+        // Depois de saber o modo: implementação não é relatório de dados.
+        app(FontesDeDados::class)->exigirPeriodo($pedido['instrucao'], $rota['modo']);
         $rota['categoria'] ??= $rota['modo'] === 'implementar' ? 'implementacao' : 'investigacao';
         // Dados oficiais que o runner lê e entrega ao agente (ver FontesDeDados).
         $rota['fontes'] = app(FontesDeDados::class)->detectar($pedido['instrucao']);
@@ -431,7 +432,9 @@ class AgentesService
         // Primeira execução da continuação: retoma a sessão do VS Code (no
         // Claude, uma cópia dela). Depois, a sessão já é a desta tarefa.
         $continuar = $mesmoAgente
-            ? ['sessao' => $sessaoConhecida->sessao_agente, 'cwd' => $sessaoConhecida->checkpoint['cwd'] ?? null, 'fork' => false]
+            // A pasta vem do checkpoint (o runner o manda também na falha);
+            // execuções antigas sem ele caem na pasta da tarefa.
+            ? ['sessao' => $sessaoConhecida->sessao_agente, 'cwd' => $sessaoConhecida->checkpoint['cwd'] ?? $tarefa?->worktree, 'fork' => false]
             : (! $anterior && ! $corte && $sessaoDoVsCode && $sessaoDoVsCode['agente'] === $execucao->agente
                 ? ['sessao' => $sessaoDoVsCode['sessao'], 'cwd' => $sessaoDoVsCode['cwd'], 'fork' => $execucao->agente === 'claude']
                 : null);
@@ -556,6 +559,89 @@ class AgentesService
     }
 
     /**
+     * O runner conta em que pé está a confirmação que ELE pediu ao dono, e
+     * leva o código que a pessoa digitou (se houver), uma vez só.
+     *
+     * Quem decide se o código vale é a máquina: ela gera o código com um
+     * segredo que este servidor nunca vê e o manda direto ao Telegram do dono,
+     * junto do pedido exato. Daqui só sai o que a pessoa digitou — um servidor
+     * comprometido não tem como forjar a confirmação nem trocar o pedido.
+     *
+     * @return array{codigo: string|null}
+     */
+    public function confirmacao(User $user, CentralIaRunner $runner, int $id, array $dados): array
+    {
+        return DB::transaction(function () use ($user, $runner, $id, $dados) {
+            $e = CentralIaExecucao::where('user_id', $user->id)->whereKey($id)->lockForUpdate()->firstOrFail();
+            abort_unless($e->status === CentralIaExecucao::EXECUTANDO && $e->runner_id === $runner->id, 409, 'Execução não está com esta máquina.');
+
+            $antes = $e->confirmacao ?? [];
+            $estado = $dados['estado'];
+            $codigo = in_array($estado, ['aguardando', 'codigo_errado'], true) ? ($antes['codigo_digitado'] ?? null) : null;
+            $e->update(['confirmacao' => [
+                'estado' => $estado,
+                'tentativas' => (int) ($dados['tentativas'] ?? 0),
+                'expira_em' => $dados['expira_em'] ?? ($antes['expira_em'] ?? null),
+                'resumo' => \Illuminate\Support\Str::limit((string) ($dados['resumo'] ?? ($antes['resumo'] ?? '')), 300),
+                'atualizado_em' => now()->toIso8601String(),
+                // Entregue uma vez: o runner confere e, se errar, a pessoa digita de novo.
+                'codigo_digitado' => null,
+            ]]);
+
+            $mudou = ($antes['estado'] ?? null) !== $estado || ($antes['tentativas'] ?? 0) !== (int) ($dados['tentativas'] ?? 0);
+            if ($mudou) {
+                $quem = $e->nomeDoAgente();
+                [$tipo, $nivel, $texto] = match ($estado) {
+                    'aguardando' => ['confirmacao_pedida', 'aviso', "🔐 Sua máquina pede confirmação antes de {$quem} {$this->verbo($e)}. O pedido exato e o código foram enviados ao seu Telegram pela própria máquina. Digite o código aqui ou responda lá com /confirmar <código>."],
+                    'codigo_errado' => ['confirmacao_codigo_errado', 'aviso', 'O código não confere ('.(int) ($dados['tentativas'] ?? 0).' de 3 tentativas). Confira a mensagem da sua máquina no Telegram e digite de novo.'],
+                    'confirmada' => ['confirmacao_aceita', 'info', "✅ Confirmado na sua máquina. {$quem} começou."],
+                    'recusada' => ['confirmacao_recusada', 'erro', '⛔ Três códigos errados: a máquina recusou o pedido e nada foi modificado.'],
+                    'expirada' => ['confirmacao_expirada', 'erro', '⌛ O código não foi digitado a tempo: a máquina recusou o pedido e nada foi modificado.'],
+                    'sem_canal' => ['confirmacao_sem_canal', 'erro', '⛔ A sua máquina não tem como pedir confirmação (Telegram não configurado nela). Nada foi modificado.'],
+                };
+                Eventos::registrar($user, $tipo, $texto, Eventos::da($e) + ['origem' => 'runner'], $nivel);
+                $this->conversas->registrarDoAgente($user, 'Central', $texto, CentralIaMensagem::AUTOR_SISTEMA, $e->projeto ?: null, $e->tarefa_id);
+            }
+
+            return ['codigo' => $codigo];
+        });
+    }
+
+    /**
+     * A pessoa digitou o código (na tela ou no Telegram). Fica guardado até a
+     * máquina buscar; quem confere é ela.
+     */
+    public function confirmar(User $user, int $id, string $codigo, string $origem): CentralIaExecucao
+    {
+        if (! preg_match('/^\d{6}$/', $codigo)) {
+            throw ValidationException::withMessages(['codigo' => 'O código tem 6 dígitos.']);
+        }
+
+        return DB::transaction(function () use ($user, $id, $codigo, $origem) {
+            $e = CentralIaExecucao::where('user_id', $user->id)->whereKey($id)->lockForUpdate()->firstOrFail();
+            if (! $e->aguardandoConfirmacao()) {
+                throw ValidationException::withMessages(['codigo' => 'Este pedido não está esperando confirmação.']);
+            }
+            $e->update(['confirmacao' => ['codigo_digitado' => $codigo] + $e->confirmacao]);
+            Eventos::registrar($user, 'confirmacao_digitada', "{$user->name} digitou o código de confirmação ({$origem}); a máquina confere.", Eventos::da($e) + ['origem' => $origem]);
+
+            return $e;
+        });
+    }
+
+    /** Execuções desta pessoa esperando o código, para a tela e o Telegram. */
+    public function aguardandoConfirmacao(User $user): \Illuminate\Support\Collection
+    {
+        return CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::EXECUTANDO)
+            ->whereNotNull('confirmacao')->orderBy('id')->get()->filter->aguardandoConfirmacao()->values();
+    }
+
+    private function verbo(CentralIaExecucao $e): string
+    {
+        return $e->modo === 'implementar' ? 'modificar arquivos em '.($e->projeto ?: 'sua máquina') : 'executar o pedido';
+    }
+
+    /**
      * Uma tentativa por provedor, sem repetir o mesmo agente nem criar loop.
      * IDs distintos tornam idempotente a conclusão reenviada do runner anterior.
      * O pedido de sistema só nasce aqui; mensagens de agentes não são roteadas.
@@ -649,14 +735,36 @@ class AgentesService
      */
     public function expirarPresas(User $user): void
     {
+        // Fila parada: pedido sem máquina capaz há 30 min não seria pego tão
+        // cedo, e recebia um aviso "na fila" para sempre. (Tarefa arquivada
+        // só suspende a fila — volta ao desarquivar — e não expira.)
+        $maquinas = CentralIaRunner::where('user_id', $user->id)->get()->filter->online();
+        CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::PENDENTE)->with('tarefa')->get()
+            ->filter(fn (CentralIaExecucao $e) => $e->tarefa?->status !== CentralIaTarefa::ARQUIVADA
+                && $e->created_at->lt(now()->subMinutes(30)) && ! $maquinas->contains(fn ($r) => in_array($e->agente, $r->agentes ?? [], true)
+                    && ($e->projeto === '' || in_array($e->projeto, $r->projetos ?? [], true))))
+            ->each(fn (CentralIaExecucao $e) => DB::transaction(function () use ($user, $e) {
+                $e = CentralIaExecucao::whereKey($e->id)->lockForUpdate()->first();
+                if (! $e || $e->status !== CentralIaExecucao::PENDENTE) return;
+                $motivo = 'nenhuma máquina com '.$e->nomeDoAgente().($e->projeto ? " e o projeto {$e->projeto}" : '').' ficou disponível em 30 min';
+                $aviso = $this->conversas->registrarDoAgente($user, 'Central', "Pedido #{$e->id} saiu da fila: {$motivo}. Nada foi executado; peça de novo quando quiser.", CentralIaMensagem::AUTOR_SISTEMA, $e->projeto ?: null, $e->tarefa_id);
+                $e->update(['status' => CentralIaExecucao::EXPIRADA, 'resposta_id' => $aviso->id, 'concluida_em' => now(), 'erro' => mb_substr("Fila: {$motivo}", 0, 255)]);
+                Eventos::registrar($user, 'expirada', "Pedido #{$e->id} saiu da fila: {$motivo}", Eventos::da($e) + ['origem' => 'central'], 'aviso');
+            }));
+
         CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::EXECUTANDO)
             ->where('iniciada_em', '<', now()->subMinutes(config('central_ia.agentes.timeout_minutos') + 5))->get()
-            ->filter(fn (CentralIaExecucao $e) => $e->iniciada_em->lt(now()->subMinutes($this->teto($e) + 5)))
-            ->each(function (CentralIaExecucao $e) use ($user) {
+            // A espera pela confirmação (até 15 min) conta à parte do teto.
+            ->filter(fn (CentralIaExecucao $e) => $e->iniciada_em->lt(now()->subMinutes($this->teto($e) + ($e->confirmacao ? 20 : 5))))
+            ->each(fn (CentralIaExecucao $e) => DB::transaction(function () use ($user, $e) {
+                // De novo, travado: a conclusão do runner pode ter chegado
+                // entre a consulta e aqui — e ela vence.
+                $e = CentralIaExecucao::whereKey($e->id)->lockForUpdate()->first();
+                if (! $e || $e->status !== CentralIaExecucao::EXECUTANDO) return;
                 $aviso = $this->conversas->registrarDoAgente($user, 'Central', "{$e->nomeDoAgente()} não respondeu a tempo em {$e->projeto}; o pedido foi encerrado.", CentralIaMensagem::AUTOR_SISTEMA, $e->projeto ?: null, $e->tarefa_id);
                 $e->update(['status' => CentralIaExecucao::EXPIRADA, 'resposta_id' => $aviso->id, 'concluida_em' => now()]);
                 Eventos::registrar($user, 'expirada', "{$e->nomeDoAgente()} ficou sem dar notícia além do teto; pedido encerrado", Eventos::da($e) + ['origem' => 'central'], 'erro');
                 $e->tarefa?->update(['status' => CentralIaTarefa::FALHOU, 'ultima_atividade_em' => now()]);
-            });
+            }));
     }
 }

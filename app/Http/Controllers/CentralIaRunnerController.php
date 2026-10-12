@@ -91,6 +91,25 @@ class CentralIaRunnerController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /**
+     * A máquina pediu confirmação ao dono e pergunta pelo código digitado
+     * (ver `AgentesService::confirmacao` e contracts/confirmacao.md).
+     */
+    public function confirmacao(Request $request, int $execucao): JsonResponse
+    {
+        $user = $this->conta($request);
+        $dados = $request->validate([
+            'maquina' => ['required', 'string', 'max:64'],
+            'estado' => ['required', 'in:'.implode(',', CentralIaExecucao::CONFIRMACAO_ESTADOS)],
+            'tentativas' => ['nullable', 'integer', 'min:0', 'max:3'],
+            'expira_em' => ['nullable', 'date'],
+            'resumo' => ['nullable', 'string', 'max:300'],
+        ]);
+        $runner = CentralIaRunner::where('user_id', $user->id)->where('maquina', $dados['maquina'])->firstOrFail();
+
+        return response()->json($this->agentes->confirmacao($user, $runner, $execucao, $dados));
+    }
+
     public function concluir(Request $request, int $execucao): JsonResponse
     {
         $user = $this->conta($request);

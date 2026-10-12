@@ -47,8 +47,13 @@ class Roteador
         'diagnóstico', 'diagnostico', 'explique', 'explicação', 'explicacao', 'compare', 'comparação', 'comparacao', 'lista', 'liste',
         'quais', 'quantos', 'quantas', 'o que', 'como está', 'como esta', 'balanço', 'balanco', 'visão geral', 'visao geral', 'sugestões', 'sugestoes'];
 
-    /** Só estes fazem implementação mesmo com um termo analítico no texto. */
-    private const IMPLEMENTA_DE_VERDADE = ['implemente', 'implementar', 'inplementar', 'inplemente', 'implante', 'implantar', 'corrija', 'corrigir', 'conserte', 'refatore', 'refatorar', 'migre'];
+    /**
+     * Só estes fazem implementação mesmo com um termo analítico no texto.
+     * Os verbos de alteração entram aqui: "adicione um filtro de status na
+     * lista" ia para análise pelo "status" e pela "lista", e nada mudava.
+     */
+    private const IMPLEMENTA_DE_VERDADE = ['implemente', 'implementar', 'inplementar', 'inplemente', 'implante', 'implantar', 'corrija', 'corrigir', 'conserte', 'refatore', 'refatorar', 'migre',
+        'adicione', 'altere', 'remova', 'ajuste', 'inclua', 'troque', 'mude', 'atualize', 'aplique', 'resolva'];
 
     /** Genéricos: só contam como implementação quando nada analítico aparece. */
     private const VERBOS_GENERICOS = ['faça', 'faca', 'crie', 'criar', 'escreva', 'gere', 'monte'];

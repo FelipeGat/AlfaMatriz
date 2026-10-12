@@ -141,6 +141,14 @@ class CentralIaController extends Controller
             'truncado' => count($eventos) === 1000 || count($execucoes) === 1000]);
     }
 
+    public function confirmar(Request $request, int $execucao): JsonResponse
+    {
+        $dados = $request->validate(['codigo' => ['required', 'string', 'regex:/^\d{6}$/']]);
+        app(\App\Services\CentralIa\AgentesService::class)->confirmar($request->user(), $execucao, $dados['codigo'], 'web');
+
+        return $this->semCache(['ok' => true]);
+    }
+
     public function administracao(Request $request): JsonResponse
     {
         $g = app(\App\Services\CentralIa\Governanca::class);
@@ -206,6 +214,11 @@ class CentralIaController extends Controller
                 'projeto' => $ultimaTelegram ? $ultimaTelegram->projeto : $vinculo?->projeto_atual,
                 'tarefa_id' => $ultimaTelegram?->tarefa_id, 'mensagem_id' => $ultimaTelegram?->id],
             'eventos' => \App\Services\CentralIa\Eventos::recentes($request->user()),
+            // Pedidos parados esperando o código que a máquina mandou ao Telegram.
+            'confirmacoes' => app(\App\Services\CentralIa\AgentesService::class)->aguardandoConfirmacao($request->user())
+                ->map(fn ($e) => ['id' => $e->id, 'agente' => $e->nomeDoAgente(), 'projeto' => $e->projeto, 'modo' => $e->modo,
+                    'tarefa_id' => $e->tarefa_id, 'resumo' => $e->confirmacao['resumo'] ?? null, 'tentativas' => $e->confirmacao['tentativas'] ?? 0,
+                    'expira_em' => $e->confirmacao['expira_em'] ?? null])->all(),
             'preferencias' => ['disponivel' => app(\App\Services\CentralIa\Preferencias::class)->pronta(),
                 'regras' => app(\App\Services\CentralIa\Preferencias::class)->ler($request->user())],
             'administracao' => ['permitida' => app(\App\Services\CentralIa\Governanca::class)->administra($request->user()),

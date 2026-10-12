@@ -235,6 +235,10 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware(['permissao:central_ia,incluir', 'throttle:30,1,central-ia-anexos']);
     Route::get('central-ia/anexos/{anexo}', [CentralIaController::class, 'baixarAnexo'])->name('central-ia.anexos.baixar')
         ->middleware('permissao:central_ia')->whereUuid('anexo');
+    // O código que a MÁQUINA da pessoa mandou ao Telegram dela: guardado até
+    // o runner buscar; quem confere é ele (contracts/confirmacao.md).
+    Route::post('central-ia/execucoes/{execucao}/confirmar', [CentralIaController::class, 'confirmar'])->name('central-ia.execucoes.confirmar')
+        ->middleware(['permissao:central_ia,incluir', 'throttle:10,1,central-ia-confirmar'])->whereNumber('execucao');
     Route::post('central-ia/mensagens', [CentralIaController::class, 'enviar'])->name('central-ia.enviar')
         ->middleware(['permissao:central_ia,incluir', 'throttle:20,1,central-ia-enviar']);
     // Parear e desparear o Telegram mexem no canal, não criam conversa: `editar`.

@@ -48,7 +48,8 @@ class CanalAtivo
             if ($canal === 'telegram') {
                 $vinculo = CentralIaTelegramVinculo::where('user_id', $user->id)->first();
                 if (! $vinculo) throw ValidationException::withMessages(['canal' => 'Vincule seu Telegram primeiro, em Ajustes.']);
-                if ($tarefa) CentralIaTarefa::de($user)->where('projeto', $projeto)->findOrFail($tarefa);
+                // Tarefa da conversa Geral tem projeto '' (e não nulo).
+                if ($tarefa) CentralIaTarefa::de($user)->where('projeto', $projeto ?? '')->findOrFail($tarefa);
                 if ($projeto && ! in_array($projeto, app(AgentesService::class)->disponiveis($user)['projetos'], true)
                     && ! \App\Models\CentralIaProjeto::where('user_id', $user->id)->where('projeto', $projeto)->exists()
                     && ! CentralIaMensagem::de($user)->where('projeto', $projeto)->exists()) {

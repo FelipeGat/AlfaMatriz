@@ -15,8 +15,12 @@ class ProgressoService
 {
     public const INTERVALO = 90;
 
+    /** Na fila nada muda a cada 90 s: avisar de 10 em 10 min basta. */
+    public const INTERVALO_FILA = 600;
+
     public const ETAPAS = [
         'preparando' => 'Preparando a execução',
+        'confirmacao' => 'Esperando o seu código de confirmação',
         'anexos' => 'Preparando os anexos',
         'agente' => 'Aguardando resposta do agente',
         'comando' => 'Executando uma ferramenta ou comando',
@@ -56,8 +60,14 @@ class ProgressoService
         foreach ($ids as $id) {
             DB::transaction(function () use ($id) {
                 $e = CentralIaExecucao::whereKey($id)->lockForUpdate()->first();
+                // Na fila: o primeiro aviso aos 90 s, os seguintes de 10 em 10 min.
+                // Tarefa arquivada suspende a fila (reversível): sem aviso.
+                $intervalo = $e?->status === CentralIaExecucao::PENDENTE && $e->status_avisado_em ? self::INTERVALO_FILA : self::INTERVALO;
+                if ($e?->status === CentralIaExecucao::PENDENTE && $e->tarefa?->status === CentralIaTarefa::ARQUIVADA) {
+                    return;
+                }
                 if (! $e || ! in_array($e->status, [CentralIaExecucao::PENDENTE, CentralIaExecucao::EXECUTANDO], true)
-                    || ($e->status_avisado_em ?? $e->created_at)->greaterThan(now()->subSeconds(self::INTERVALO))) {
+                    || ($e->status_avisado_em ?? $e->created_at)->greaterThan(now()->subSeconds($intervalo))) {
                     return;
                 }
                 $dono = User::find($e->user_id);
@@ -82,6 +92,9 @@ class ProgressoService
             $ocupada = $e->tarefa_id && CentralIaExecucao::where('tarefa_id', $e->tarefa_id)->where('status', CentralIaExecucao::EXECUTANDO)->exists();
             return "$cabecalho\nNa fila há {$tempo}. ".(! $online ? 'Máquina sem conexão recente; aguardando reconexão.'
                 : ($ocupada ? 'Aguardando a execução anterior da mesma tarefa terminar.' : 'Aguardando uma vaga no runner.'));
+        }
+        if ($e->aguardandoConfirmacao()) {
+            return "$cabecalho\nEsperando o seu código há {$tempo}. A sua máquina mandou o pedido e o código ao seu Telegram; digite-o na Central ou responda lá com /confirmar <código>.";
         }
         $p = $e->progresso ?? [];
         $etapa = self::ETAPAS[$p['etapa'] ?? ''] ?? 'Sem etapa informada pelo runner';

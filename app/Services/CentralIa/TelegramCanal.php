@@ -120,6 +120,20 @@ class TelegramCanal
         }
 
         if (CentralIaMensagem::where('telegram_update_id', $updateId)->exists()) return;
+
+        // Mensagem encaminhada é texto de OUTRA pessoa: não vira pedido a um
+        // agente com acesso total na máquina do dono.
+        if (isset($m['forward_origin']) || isset($m['forward_from']) || isset($m['forward_from_chat']) || isset($m['forward_date'])) {
+            $this->responder($chatId, 'Mensagem encaminhada não vira pedido. Escreva o pedido com suas palavras (pode colar o texto).');
+
+            return;
+        }
+
+        // O código que a SUA máquina mandou: vale com o canal na tela ou aqui.
+        if ($this->codigoDeConfirmacao($user, $chatId, trim($texto))) {
+            return;
+        }
+
         $controle = app(CanalAtivo::class);
         if ($controle->pronto()) {
             if (trim($texto) === '/matriz') {
@@ -170,6 +184,43 @@ class TelegramCanal
             // Reentrega de um update que já entrou: o cursor se perdeu, a
             // mensagem não.
         }
+    }
+
+    /**
+     * `/confirmar 123456`, `/confirmar <pedido> 123456` ou só os 6 dígitos
+     * quando há um pedido esperando. O código não entra na conversa: ele é
+     * de uso único e quem o confere é a máquina.
+     */
+    private function codigoDeConfirmacao(User $user, int $chatId, string $texto): bool
+    {
+        $comando = (bool) preg_match('/^\/confirmar(?:@\w+)?\b/i', $texto);
+        if (! preg_match('/^(?:\/confirmar(?:@\w+)?\s+)?(?:#?(\d{1,9})\s+)?(\d{6})$/i', $texto, $c)) {
+            if ($comando) {
+                $this->responder($chatId, 'Use /confirmar seguido do código de 6 dígitos que a sua máquina mandou.');
+            }
+
+            return $comando;
+        }
+        $esperando = $this->agentes->aguardandoConfirmacao($user);
+        if (! $comando && $esperando->isEmpty()) {
+            return false;
+        }
+        $alvo = filled($c[1]) ? $esperando->firstWhere('id', (int) $c[1]) : ($esperando->count() === 1 ? $esperando->first() : null);
+        if (! $alvo) {
+            $this->responder($chatId, $esperando->isEmpty()
+                ? 'Nenhum pedido está esperando confirmação agora.'
+                : 'Há '.$esperando->count().' pedidos esperando: '.$esperando->map(fn ($e) => '#'.$e->id)->implode(', ').'. Use /confirmar <pedido> <código>.');
+
+            return true;
+        }
+        try {
+            $this->agentes->confirmar($user, $alvo->id, $c[2], 'telegram');
+            $this->responder($chatId, "Código do pedido #{$alvo->id} enviado à sua máquina; ela confere e começa.");
+        } catch (ValidationException $e) {
+            $this->responder($chatId, collect($e->errors())->flatten()->first());
+        }
+
+        return true;
     }
 
     private function receberMidia(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $texto, int $updateId, array $midia): void
@@ -240,10 +291,15 @@ class TelegramCanal
                 User::whereKey($user->id)->lockForUpdate()->first();
                 if (CentralIaMensagem::where('telegram_update_id', $updateId)->exists()) return;
                 $projeto = $texto === '/status' ? null : $vinculo->projeto_atual;
+                // A resposta fica no assunto ATIVO do canal (projeto e
+                // tarefa): gravada fora dele, a regra de entrega do canal
+                // ativo a segurava e o /status ficava sem resposta no celular.
+                $canal = app(CanalAtivo::class)->pronto() ? app(CanalAtivo::class)->estado($user) : null;
+                $onde = $canal && $canal->canal_ativo === 'telegram' ? [$canal->projeto_canal, $canal->tarefa_canal] : [$projeto, null];
                 $this->conversas->registrarDoUsuario($user, $texto, CentralIaMensagem::ORIGEM_TELEGRAM,
-                    telegramUpdateId: $updateId, projeto: $projeto);
+                    telegramUpdateId: $updateId, projeto: $onde[0], tarefaId: $onde[1]);
                 $this->conversas->registrarDoAgente($user, 'Central de IA', app(ProgressoService::class)->resumo($user, $projeto),
-                    CentralIaMensagem::AUTOR_SISTEMA, $projeto);
+                    CentralIaMensagem::AUTOR_SISTEMA, $onde[0], $onde[1]);
             });
             $this->entregarPendentes();
             return;
@@ -460,7 +516,12 @@ class TelegramCanal
     /** `/salvar`: ponto na tarefa mais recente do projeto em uso. */
     private function salvar(User $user, CentralIaTelegramVinculo $vinculo, int $chatId): void
     {
-        $tarefa = blank($vinculo->projeto_atual) ? null : CentralIaTarefa::de($user)->where('projeto', $vinculo->projeto_atual)
+        // A tarefa do canal ativo vence a "mais recente do projeto": o pedido
+        // do ponto vai para ela (AgentesService::pedir), e o ponto ia para
+        // uma, com o #id e o agente de outra.
+        $canal = app(CanalAtivo::class)->pronto() ? app(CanalAtivo::class)->estado($user) : null;
+        $tarefa = $canal?->tarefa_canal ? CentralIaTarefa::de($user)->find($canal->tarefa_canal) : null;
+        $tarefa ??= blank($vinculo->projeto_atual) ? null : CentralIaTarefa::de($user)->where('projeto', $vinculo->projeto_atual)
             ->emCurso()->orderByDesc('ultima_atividade_em')->first();
         if (! $tarefa) {
             $this->responder($chatId, 'Sem tarefa em curso para salvar. Use /usar <projeto> antes.');
@@ -559,13 +620,13 @@ class TelegramCanal
      */
     private function entregar(int $id): bool
     {
-        $dono = CentralIaEntrega::whereKey($id)->value('user_id');
-        return DB::transaction(function () use ($id, $dono) {
-            if ($dono) User::whereKey($dono)->lockForUpdate()->first();
-            // A troca de canal espera terminar o envio em curso; após retornar,
-            // nenhuma nova entrega pode escapar pelo canal anterior.
-            return $this->entregarInterno($id);
-        });
+        // A chamada ao Telegram fica FORA de qualquer transação: dentro dela,
+        // o `enviando` era só um savepoint — se o processo morresse no meio do
+        // envio, o rollback devolvia a entrega a `pendente` e a mensagem saía
+        // de novo. Agora `enviando` é gravado antes, e quem cai no meio vira
+        // `incerta` (entregarPendentes), sem reenvio. A troca de canal ainda
+        // é conferida na reserva, imediatamente antes do envio.
+        return $this->entregarInterno($id);
     }
 
     private function entregarInterno(int $id): bool
@@ -604,13 +665,20 @@ class TelegramCanal
 
         // O Telegram recusa acima de 4096. Resposta de agente passa disso
         // fácil; no celular vai o começo, e a íntegra fica na tela.
-        if (mb_strlen($texto) > 3800) {
-            $texto = mb_substr($texto, 0, 3800)."\n\n… (continua na Central de IA do AlfaMatriz)";
+        // O limite do Telegram conta em UTF-16: emoji vale 2.
+        if (self::utf16($texto) > 3800) {
+            while (self::utf16($texto) > 3800) {
+                $texto = mb_substr($texto, 0, (int) (mb_strlen($texto) * 0.95));
+            }
+            $texto .= "\n\n… (continua na Central de IA do AlfaMatriz)";
         }
 
         $resultado = $this->api->chamar('sendMessage', [
             'chat_id' => $entrega->chat_id,
             'text' => $this->cabecalho($mensagem)."\n".$texto,
+            // Sem prévia: um link na resposta não é buscado pelos servidores
+            // do Telegram (canal de vazamento por URL montada pelo agente).
+            'link_preview_options' => ['is_disabled' => true],
         ]);
 
         if ($resultado['ok']) {
@@ -646,11 +714,16 @@ class TelegramCanal
         };
     }
 
+    private static function utf16(string $texto): int
+    {
+        return intdiv(strlen(mb_convert_encoding($texto, 'UTF-16LE', 'UTF-8')), 2);
+    }
+
     private function responder(int $chatId, string $texto): void
     {
         // Aviso do próprio bot, fora da conversa. Perdido, a pessoa tenta de
         // novo; por isso não vira entrega rastreada.
-        $this->api->chamar('sendMessage', ['chat_id' => $chatId, 'text' => $texto]);
+        $this->api->chamar('sendMessage', ['chat_id' => $chatId, 'text' => $texto, 'link_preview_options' => ['is_disabled' => true]]);
     }
 
     private function podeEscrever(?User $user): bool

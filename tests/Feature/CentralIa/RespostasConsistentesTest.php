@@ -57,6 +57,9 @@ class RespostasConsistentesTest extends TestCase
         $this->assertSame(['claude', 'implementar'], $agente('Implemente o relatório de vendas'));
         $this->assertSame(['claude', 'implementar'], $agente('Crie a tela de login'));
         $this->assertSame(['claude', 'implementar'], $agente('Corrija o resumo que sai errado'));
+        // Verbo de alteração vence "status" e "lista" (revisão de 12/10).
+        $this->assertSame(['claude', 'implementar'], $agente('Adicione um filtro de status na lista'));
+        $this->assertSame(['claude', 'implementar'], $agente('Remova a coluna de quais clientes'));
     }
 
     public function test_agenda_e_detectada_com_o_periodo(): void

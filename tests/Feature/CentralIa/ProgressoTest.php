@@ -51,7 +51,8 @@ class ProgressoTest extends TestCase
         $this->assertSame(1, CentralIaEntrega::where('mensagem_id', $aviso->id)->count());
         $this->actingAs($u)->getJson(route('central-ia.mensagens', ['projeto' => 'alfamatriz']))
             ->assertJsonPath('mensagens.1.autor_tipo', 'sistema');
-        $this->travel(89)->seconds(); $s->publicar($u);
+        // Na fila, depois do primeiro aviso, o seguinte vem 10 min depois.
+        $this->travel(599)->seconds(); $s->publicar($u);
         $this->assertSame(1, CentralIaMensagem::where('autor_tipo', 'sistema')->count());
         $this->travel(1)->seconds(); $s->publicar($u);
         $this->assertSame(2, CentralIaMensagem::where('autor_tipo', 'sistema')->count());

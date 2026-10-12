@@ -79,9 +79,11 @@ class Dossie
         $json = trim(substr($resposta, $ini + strlen(self::INICIO), $fim - $ini - strlen(self::INICIO)));
         $json = preg_replace('/^```(?:json)?|```$/m', '', $json);
         $bloco = json_decode(trim($json), true);
-        $texto = trim(substr($resposta, 0, $ini).substr($resposta, $fim + strlen(self::FIM)));
-        // Tira a cerca de código que alguns agentes põem em volta do bloco.
-        $texto = trim(preg_replace('/```\s*$/', '', $texto));
+        // Tira a cerca de código que alguns agentes põem em volta do bloco: a
+        // abertura no fim do texto de antes, o fechamento no começo do depois.
+        $antes = preg_replace('/```(?:json)?\s*$/', '', substr($resposta, 0, $ini));
+        $depois = preg_replace('/^\s*```/', '', substr($resposta, $fim + strlen(self::FIM)));
+        $texto = trim(trim($antes).$depois);
 
         return [$texto, is_array($bloco) ? $bloco : null];
     }

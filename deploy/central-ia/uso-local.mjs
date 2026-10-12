@@ -21,6 +21,10 @@ const DIAS = 8;
 const PEDACO = 8 * 1024 * 1024;
 
 const lidos = new Map(); // caminho → estado incremental do arquivo
+// Resposta do Claude → arquivo que a contou. `--fork-session` e `--resume`
+// copiam o histórico para um arquivo novo: sem isto, cada continuação contava
+// de novo tudo o que já tinha sido gasto (472 respostas em dobro em 8 dias).
+const donoDaResposta = new Map();
 let cotaCodex = null;
 
 function dia(ts) {
@@ -116,6 +120,9 @@ function lerClaude(raiz) {
                 const id = `${j.message.id}|${j.requestId ?? ''}`;
                 if (e.vistos.has(id)) return;
                 e.vistos.add(id);
+                const dono = donoDaResposta.get(id);
+                if (dono && dono !== arq) return;
+                donoDaResposta.set(id, arq);
                 somar(e, dia(j.timestamp), 'claude', j.message.model || '?', {
                     entrada: u.input_tokens, saida: u.output_tokens,
                     cache_leitura: u.cache_read_input_tokens, cache_escrita: u.cache_creation_input_tokens,

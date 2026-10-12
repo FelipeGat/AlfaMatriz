@@ -22,6 +22,12 @@ Codex dentro das extensões do VS Code (`~/.vscode-server/extensions`).
    ALFAMATRIZ_URL=http://localhost:8096
    ALFAMATRIZ_RUNNER_TOKEN=<token>
    CENTRAL_IA_PROJETOS=~/projetos
+   # Decidido AQUI, não no servidor (ver "Inviolável" abaixo):
+   CENTRAL_IA_ACESSO_MAXIMO=restrito          # ou total (dono, 10/10/2026: "permita tudo")
+   CENTRAL_IA_CONFIRMAR=implementar           # ou sempre (confirma também as análises)
+   CENTRAL_IA_SEGREDO_CONFIRMACAO=<64 hex: openssl rand -hex 32>
+   CENTRAL_IA_TELEGRAM_TOKEN=<token do bot>   # só para ENVIAR o código; nunca lê mensagens
+   CENTRAL_IA_TELEGRAM_CHAT_ID=<seu chat id>
    EOF
    ```
 
@@ -30,7 +36,7 @@ Codex dentro das extensões do VS Code (`~/.vscode-server/extensions`).
    ```bash
    mkdir -p ~/.local/share/alfa ~/.config/systemd/user
    cp deploy/central-ia/runner.mjs ~/.local/share/alfa/central-ia-runner.mjs
-   cp deploy/central-ia/uso-local.mjs ~/.local/share/alfa/uso-local.mjs
+   cp deploy/central-ia/{uso-local,anexos,progresso,confirmacao,politica}.mjs ~/.local/share/alfa/
    cp deploy/central-ia/central-ia-runner.service ~/.config/systemd/user/
    systemctl --user daemon-reload
    systemctl --user enable --now central-ia-runner
@@ -42,12 +48,37 @@ O runner é copiado para fora do repositório de propósito: trocar de branch no
 checkout não troca o programa que está rodando. Para atualizar, copie de novo
 e `systemctl --user restart central-ia-runner`.
 
+## Inviolável pelo servidor (12/10/2026)
+
+Dono: "o runner faz tudo o que o servidor manda — isso não pode ocorrer". Agora:
+
+- **Analisar é só leitura, imposto pela ferramenta** (`politica.mjs`), seja qual for
+  o acesso que o servidor pedir. Nem na leitura o Claude lê `~/.ssh`, `~/.config/alfa`,
+  `~/.aws`, credenciais das IAs e `.env`. O Codex só leitura não bloqueia leitura por
+  caminho; pedido de análise que cita credenciais é recusado nele.
+- **Implementar exige o seu código**:
+  - A máquina calcula o código com o `CENTRAL_IA_SEGREDO_CONFIRMACAO`, preso ao pedido
+    exato (agente, projeto, pasta, acesso, instrução), e manda os dois direto ao seu
+    Telegram (`confirmacao.mjs`).
+  - Você digita o código na Central ou com `/confirmar <código>` no Telegram.
+  - Três erros ou 15 minutos sem código: o pedido é recusado e nada muda.
+  - O servidor nunca vê o segredo nem o código esperado: não consegue forjar a
+    confirmação nem trocar o pedido.
+- **Teto local**: o acesso efetivo é o menor entre o pedido e `CENTRAL_IA_ACESSO_MAXIMO`.
+  Toda pasta vinda do servidor (worktree, sessão) passa por `realpath` e tem de ficar
+  dentro de `CENTRAL_IA_PROJETOS`.
+- **Auditoria local**: `~/.local/share/alfa/central-ia-auditoria.log` (0600) registra
+  cada leitura, pedido de confirmação, código errado, aceite, recusa e expiração. O
+  código em si nunca é gravado.
+- Sem segredo ou sem Telegram configurado, implementar é recusado.
+- Teste: `node tools/central-ia/test-confirmacao.mjs`.
+
 ## O que ele faz em cada modo
 
 | | Analisar | Implementar |
 |---|---|---|
 | Onde | pasta do projeto (ou a worktree da tarefa, se ela já tem uma) | worktree DA TAREFA em `~/projetos/.central-ia/worktrees/<projeto>-t<n>`, branch `central-ia/t<n>` |
-| Claude | só leitura (Read, Grep, Glob, web) | edita e roda comandos, exceto git push/commit/reset/checkout/merge/rebase, rm -rf, sudo, docker, ssh |
+| Claude | só leitura (Read, Grep, Glob, web e comandos de leitura: git log/status/diff, ls, cat, docker ps/logs) | `restrito`: edita e roda comandos, exceto git push/commit/reset/checkout/merge/rebase, rm -rf, sudo, docker, ssh. `total` (teto local + confirmação): sem restrição |
 | Codex | sandbox `read-only` | sandbox `workspace-write` (só a worktree) |
 | Copilot | sem escrita e sem shell | tudo, exceto os mesmos comandos negados |
 

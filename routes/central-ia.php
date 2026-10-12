@@ -18,6 +18,7 @@ Route::prefix('api/central-ia/runner')
         Route::post('batida', [CentralIaRunnerController::class, 'batida'])->name('central-ia.runner.batida');
         Route::post('proxima', [CentralIaRunnerController::class, 'proxima'])->name('central-ia.runner.proxima');
         Route::post('execucoes/{execucao}/progresso', [CentralIaRunnerController::class, 'progresso'])->whereNumber('execucao')->name('central-ia.runner.progresso');
+        Route::post('execucoes/{execucao}/confirmacao', [CentralIaRunnerController::class, 'confirmacao'])->whereNumber('execucao')->name('central-ia.runner.confirmacao');
         Route::post('execucoes/{execucao}/conclusao', [CentralIaRunnerController::class, 'concluir'])
             ->whereNumber('execucao')->name('central-ia.runner.concluir');
     });

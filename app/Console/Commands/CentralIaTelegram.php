@@ -107,7 +107,22 @@ class CentralIaTelegram extends Command
 
             foreach ($updates as $update) {
                 $lock->assertOwned();
-                $canal->receber($update);
+                try {
+                    $canal->receber($update);
+                    unset($this->falhasPorUpdate[$update['update_id']]);
+                } catch (\Throwable $e) {
+                    // Um update que sempre explode travava o bot para sempre:
+                    // o cursor ficava parado e ele era relido a cada 5 s (com
+                    // download e aviso repetidos). Na terceira falha, passa.
+                    $n = $this->falhasPorUpdate[$update['update_id']] = ($this->falhasPorUpdate[$update['update_id']] ?? 0) + 1;
+                    if ($n < 3) throw $e;
+                    $this->warn("Update {$update['update_id']} falhou 3 vezes (".class_basename($e).'); seguindo adiante.');
+                    $dono = \App\Models\CentralIaTelegramVinculo::where('chat_id', $update['message']['chat']['id'] ?? 0)->value('user_id');
+                    if ($dono) {
+                        \App\Services\CentralIa\Eventos::registrar($dono, 'telegram_update_descartado',
+                            "Mensagem do Telegram {$update['update_id']} falhou 3 vezes (".class_basename($e).') e foi deixada para trás; reenvie se precisar.', ['origem' => 'telegram'], 'erro');
+                    }
+                }
                 $lock->assertOwned();
                 // O cursor anda update a update: uma queda no meio relê só o
                 // que faltou, e o único do update_id segura a repetição.
@@ -125,6 +140,9 @@ class CentralIaTelegram extends Command
             return 5;
         }
     }
+
+    /** @var array<int, int> falhas seguidas de cada update, no processo do bot. */
+    private array $falhasPorUpdate = [];
 
     private function salvarCursor(int $proximo): void
     {
