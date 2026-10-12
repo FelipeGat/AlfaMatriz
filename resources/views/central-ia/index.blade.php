@@ -30,6 +30,8 @@
                 telegramCodigo: '{{ route('central-ia.telegram.codigo') }}',
                 telegramDesvincular: '{{ route('central-ia.telegram.desvincular') }}',
                 confirmar: '{{ url('central-ia/execucoes/__E__/confirmar') }}',
+                pops: '{{ route('central-ia.pops.criar') }}',
+                pop: '{{ url('central-ia/pops/__P__') }}',
                 podeEnviar: {{ $podeEnviar ? 'true' : 'false' }},
              })"
              data-central-ia class="mx-auto flex h-[calc(100dvh-7.5rem)] max-w-[1600px] flex-col gap-3">
@@ -899,6 +901,55 @@
                     </fieldset>
                 </template>
             </div>
+            {{-- POPs das IAs (FR-030..033): o que elas aprenderam de cada sistema.
+                 Só desta conta: nenhum administrador vê, nada vai a repositório. --}}
+            <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
+                <div class="flex items-center justify-between gap-2">
+                    <h3 class="font-semibold text-ink">POPs das IAs <span class="font-normal text-ink-faint" x-text="'(' + pops.length + ')'"></span></h3>
+                    @if ($podeParear)
+                        <button type="button" @click="novoPop()" class="rounded-control border border-btn-line px-3 py-1 text-xs font-semibold text-ink">+ Novo POP</button>
+                    @endif
+                </div>
+                <p class="mt-1 text-xs text-ink-mute">Procedimentos que as IAs aprendem ao operar cada sistema (como registrar, o que precisa saber, cuidados). Vão junto nos pedidos do mesmo sistema, e a IA os corrige quando precisa. Só você e as suas IAs veem.</p>
+                <p x-show="!pops.length && !popEditando" class="mt-2 text-ink-faint">Nenhum POP ainda. Eles nascem quando uma IA descobre como fazer algo num sistema.</p>
+                <template x-if="popEditando">
+                    <form @submit.prevent="salvarPop()" class="mt-3 space-y-2 rounded-control border border-brand-mute p-3">
+                        <div class="flex flex-wrap gap-2">
+                            <label class="text-xs text-ink-mute">Sistema
+                                <input x-model="popEditando.sistema" required pattern="[A-Za-z0-9._-]+" maxlength="128" class="mt-1 block w-40 rounded-control border-line bg-input py-1 text-sm text-ink"></label>
+                            <label class="min-w-0 flex-1 text-xs text-ink-mute">Título
+                                <input x-model="popEditando.titulo" required maxlength="160" class="mt-1 block w-full rounded-control border-line bg-input py-1 text-sm text-ink"></label>
+                        </div>
+                        <label class="block text-xs text-ink-mute">Conteúdo (markdown)
+                            <textarea x-model="popEditando.conteudo" required rows="10" class="mt-1 block w-full rounded-control border-line bg-input font-mono text-xs text-ink"></textarea></label>
+                        <div class="flex justify-end gap-3">
+                            <button type="button" @click="popEditando = null" class="text-xs text-ink-mute">Cancelar</button>
+                            <button type="submit" :disabled="salvandoPop" class="rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand disabled:opacity-50">Salvar POP</button>
+                        </div>
+                    </form>
+                </template>
+                <template x-for="[sistema, lista] in popsPorSistema" :key="sistema">
+                    <div class="mt-3">
+                        <p class="font-mono text-xs uppercase tracking-caps text-ink-faint" x-text="sistema"></p>
+                        <template x-for="p in lista" :key="p.id">
+                            <details class="mt-1 rounded-control border border-line px-3 py-2">
+                                <summary class="cursor-pointer">
+                                    <span class="font-semibold text-ink" x-text="p.titulo"></span>
+                                    <span class="text-xs text-ink-faint" x-text="' · versão ' + p.versao + ' · ' + p.autor + ' · ' + haQuanto(p.atualizado_em)"></span>
+                                </summary>
+                                <div class="central-resposta mt-2 whitespace-pre-wrap text-xs text-ink-dim" x-text="p.conteudo"></div>
+                                @if ($podeParear)
+                                    <div class="mt-2 flex gap-3 text-xs">
+                                        <button type="button" @click="editarPop(p)" class="font-semibold text-brand-text">Editar</button>
+                                        <button type="button" @click="apagarPop(p)" class="font-semibold text-crit">Apagar</button>
+                                    </div>
+                                @endif
+                            </details>
+                        </template>
+                    </div>
+                </template>
+            </div>
+
             <div class="rounded-panel border border-line bg-panel p-4 text-sm">
                 <div class="flex items-center justify-between">
                     <h3 class="font-semibold text-ink">Grupos de projetos</h3>

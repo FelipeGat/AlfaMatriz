@@ -22,6 +22,11 @@ incorporada por referência (US7).
 - Q: E o trabalho em andamento do Codex? → A: O Codex para; o Claude assume.
 - Pedido adicional: testar e corrigir o front e a UX, para a pessoa se achar na tela no dia a dia; respostas coerentes, fáceis de ler, de escolher e de delegar.
 
+### Session 2026-10-12 (tarde) — POPs das IAs
+
+- Q: Como evitar que cada pedido redescubra o sistema (no agendamento do Gestor, ~4 dos ~5 min foram descoberta)? → A: A IA cria um POP interno por sistema (Gestor e os outros, quando o assunto for outro sistema), com o que precisa saber para executar. Ela atualiza o POP conforme a necessidade, e no próximo pedido com o mesmo contexto já sabe como fazer.
+- Q: Quem acessa os POPs? → A: Só as IAs e o administrador do SaaS (o dono da Central). Por isso ficam na Central dele, e não nos repositórios.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Conversar com as minhas IAs pela tela e pelo Telegram (Priority: P1)
@@ -212,6 +217,14 @@ dono e conferir que a máquina não a executa sem o código.
 
 ---
 
+### User Story 14 - A IA aprende o procedimento uma vez (Priority: P2)
+
+**Acceptance Scenarios**:
+
+1. **Given** um agente que terminou um agendamento no Gestor e devolveu um POP, **When** a conclusão chega, **Then** o POP "gestor" é criado (versão 1, autor o agente), e o evento fica no log.
+2. **Given** um POP do gestor, **When** a pessoa pede algo no projeto gestor ou cita "gestor" em outro projeto, **Then** o pedido leva o POP ao agente.
+3. **Given** um POP atualizado pela IA, **When** a pessoa abre Ajustes, **Then** vê a versão atual e quem a escreveu, pode editar ou apagar, e outra conta nunca o vê.
+
 ### Edge Cases
 
 - Produção recebe a Central com as tabelas vazias, e só depois da homologação concluída.
@@ -262,6 +275,11 @@ dono e conferir que a máquina não a executa sem o código.
 - **FR-027**: Cada pedido MUST ser atendido no menor nível de custo que resolve: **sem IA** (dados oficiais mostrados direto, como a lista de compromissos), **leve** (leitura, resumo, relatório), **médio** (análise, revisão, planejamento) ou **forte** (implementação). A tela mostra a IA, o modelo e o motivo; a pessoa pode trocar o nível, e os modelos de cada nível são ajustáveis por conta.
 - **FR-028**: A resposta de um agente MUST chegar à tela legível e com ação: o essencial primeiro; dúvida com opções clicáveis; e os botões "aprovar", "pedir ajuste" e "delegar a outra IA" no próprio balão.
 - **FR-029**: A tela MUST deixar claro, sem rolagem de página, onde a pessoa está (projeto, tarefa, canal ativo), o que está rodando e o que espera por ela (confirmação, dúvida), em no máximo um clique a partir de qualquer aba.
+
+- **FR-030**: Cada conta MUST manter POPs (procedimentos operacionais) por sistema, com título, conteúdo, versão e autor (IA e execução, ou a pessoa). A versão anterior fica guardada.
+- **FR-031**: Todo pedido MUST levar ao agente os POPs do sistema do projeto e os dos sistemas citados no texto, com limite de tamanho, e a regra de segui-los.
+- **FR-032**: O agente MUST poder registrar ou atualizar um POP ao terminar. O conteúdo é mascarado contra segredos, e cada mudança gera um evento no log.
+- **FR-033**: Os POPs MUST ser visíveis e editáveis só pelo dono da conta, na tela, e pelas IAs que rodam pela máquina dele. Nenhum administrador do sistema os vê, e eles não entram em nenhum repositório.
 
 **FR-INFRA-SCHED**: o trabalho periódico (leitura de consumo a cada 2 min, `/usage` do Claude a cada 10 min, git dos projetos a cada minuto) é disparado pela máquina da pessoa; o AlfaMatriz não usa agendador para a Central.
 **FR-INFRA-LOCK**: a exclusividade do leitor do Telegram e a escolha da próxima execução são serializadas no banco.

@@ -499,6 +499,8 @@ class AgentesService
             'bloco' => (($execucao->roteamento['coordenador'] ?? false) ? "Você atua como coordenador deste pedido. Nesta etapa apenas responda, planeje e proponha quem deve fazer o trabalho; não implemente, não execute ferramentas ou comandos e não altere arquivos. Claude faz análise de código e desenvolvimento; Codex faz análise de dados; Copilot faz Git e QA. Identifique fontes disponíveis e impedimentos, não invente números. Delegação automática ainda não está habilitada: descreva a próxima etapa, sem afirmar que outro agente executou algo.\n" : '').Dossie::instrucaoDoBloco()."\nRegras de evidência: nunca invente dados, valores, fontes ou consultas. Relatórios de dados exigem período explícito e fonte autorizada identificada, data da consulta e critérios dos totais. Sem acesso à fonte, informe a limitação e solicite os dados; código, exemplos e testes não comprovam saldos reais. Para esta semana, confirme no texto as datas usadas. Para pedidos executivos com esta semana, use segunda-feira até hoje no fuso local e explicite as datas; para esta semana útil, segunda a sexta (até hoje se ainda estiver em curso). Pergunte somente se a ambiguidade alterar materialmente a decisão ou tornar a consulta insegura. Sem período informado, mantenha o pedido de esclarecimento. Claude só deve apoiar análise de dados quando houver impedimento técnico identificado; não troque de agente apenas para tentar obter números ausentes.",
             'fontes' => $execucao->roteamento['fontes'] ?? [],
             'categoria' => $execucao->roteamento['categoria'] ?? null,
+            // O que as IAs já aprenderam do sistema (POPs): do projeto e dos citados.
+            'pops' => app(Pops::class)->paraPedido($user, $execucao->projeto, $execucao->instrucao),
             'nivel' => $execucao->roteamento['nivel'] ?? null,
             'modelo' => $execucao->roteamento['modelo'] ?? null,
             'esforco' => $execucao->roteamento['esforco'] ?? null,
@@ -559,6 +561,9 @@ class AgentesService
                 : Eventos::registrar($user, 'falhou', "{$execucao->nomeDoAgente()} falhou: ".($dados['erro'] ?? 'erro desconhecido'), Eventos::da($execucao) + ['origem' => 'runner'], 'erro');
 
             $this->registrarRastro($user, $execucao);
+            if ($ok && $bloco && isset($bloco['pop'])) {
+                app(Pops::class)->doBloco($user, $bloco['pop'], $execucao->nomeDoAgente(), $execucao->id, $execucao->projeto);
+            }
 
             if ($tarefa) {
                 $dossie = Dossie::aplicarConclusao($tarefa->dossie ?? Dossie::inicial($tarefa->objetivo), $execucao, $bloco, $checkpoint);

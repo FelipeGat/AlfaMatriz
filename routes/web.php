@@ -237,6 +237,13 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware('permissao:central_ia')->whereUuid('anexo');
     // O código que a MÁQUINA da pessoa mandou ao Telegram dela: guardado até
     // o runner buscar; quem confere é ele (contracts/confirmacao.md).
+    // POPs das IAs: só da própria conta (ver App\Services\CentralIa\Pops).
+    Route::post('central-ia/pops', [CentralIaController::class, 'salvarPop'])->name('central-ia.pops.criar')
+        ->middleware(['permissao:central_ia,editar', 'throttle:30,1,central-ia-pops']);
+    Route::put('central-ia/pops/{pop}', [CentralIaController::class, 'salvarPop'])->name('central-ia.pops.salvar')
+        ->middleware(['permissao:central_ia,editar', 'throttle:30,1,central-ia-pops'])->whereNumber('pop');
+    Route::delete('central-ia/pops/{pop}', [CentralIaController::class, 'apagarPop'])->name('central-ia.pops.apagar')
+        ->middleware(['permissao:central_ia,editar', 'throttle:30,1,central-ia-pops'])->whereNumber('pop');
     Route::post('central-ia/execucoes/{execucao}/confirmar', [CentralIaController::class, 'confirmar'])->name('central-ia.execucoes.confirmar')
         ->middleware(['permissao:central_ia,incluir', 'throttle:10,1,central-ia-confirmar'])->whereNumber('execucao');
     Route::post('central-ia/mensagens', [CentralIaController::class, 'enviar'])->name('central-ia.enviar')

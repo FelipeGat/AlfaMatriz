@@ -414,7 +414,11 @@ function comando(job, cwd, branch, saida, acesso) {
     const sessao = job.continuar?.sessao && job.continuar.cwd === cwd ? job.continuar.sessao : null;
     const remoto = job.remotoAtualizado ? `Git: a Central já rodou \`git fetch --all\` às ${job.remotoAtualizado}; as referências remotas (origin/*) estão atualizadas. Você não tem rede: use o que já está local.`
         : job.remotoFalhou ? `Git: a Central tentou \`git fetch\` e falhou (${job.remotoFalhou}). Diga que os dados remotos podem estar desatualizados.` : null;
-    const prompt = [instrucoes(job, branch), remoto, memoria(), job.dadosOficiais, historicoDaSessao(job.importar), job.contexto, job.contextoAnexos,
+    // POPs: o que as IAs já aprenderam dos sistemas envolvidos. Vêm antes do
+    // pedido para o agente ir direto às consultas, sem redescobrir.
+    const pops = (job.pops || []).length ? ['## POPs — procedimentos já aprendidos (siga-os; se estiverem errados ou incompletos, corrija e devolva o POP atualizado no bloco final)',
+        ...job.pops.map(p => `### ${p.sistema} · ${p.titulo} (versão ${p.versao})\n${p.conteudo}`)].join('\n\n') : null;
+    const prompt = [instrucoes(job, branch), remoto, pops, memoria(), job.dadosOficiais, historicoDaSessao(job.importar), job.contexto, job.contextoAnexos,
         `Pedido:\n${job.instrucao}`, job.bloco].filter(Boolean).join('\n\n');
     // Acesso total (dono, 10/10/2026: "lá tem que ter acesso total igual
     // aqui, senão fico travado"): só para implementar, só com o teto desta

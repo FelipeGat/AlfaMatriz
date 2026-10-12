@@ -150,6 +150,36 @@ class CentralIaController extends Controller
             'truncado' => count($eventos) === 1000 || count($execucoes) === 1000]);
     }
 
+    /** POP escrito ou corrigido pela pessoa. Só da própria conta. */
+    public function salvarPop(Request $request, ?int $pop = null): JsonResponse
+    {
+        $dados = $request->validate([
+            'sistema' => ['required', 'string', 'max:128', 'regex:/^[A-Za-z0-9._-]+$/'],
+            'titulo' => ['required', 'string', 'max:160'],
+            'conteudo' => ['required', 'string', 'max:60000'],
+        ]);
+        $pops = app(\App\Services\CentralIa\Pops::class);
+        if ($pop) {
+            $atual = \App\Models\CentralIaPop::where('user_id', $request->user()->id)->findOrFail($pop);
+            // Mudou sistema ou título: é o mesmo POP com outro nome.
+            if ($atual->sistema !== \Illuminate\Support\Str::lower($dados['sistema']) || $atual->titulo !== $dados['titulo']) {
+                $atual->update(['sistema' => \Illuminate\Support\Str::lower($dados['sistema']), 'titulo' => $dados['titulo']]);
+            }
+        }
+        $salvo = $pops->gravar($request->user(), $dados['sistema'], $dados['titulo'], $dados['conteudo'], $request->user()->name);
+
+        return $this->semCache(['id' => $salvo->id, 'versao' => $salvo->versao]);
+    }
+
+    public function apagarPop(Request $request, int $pop): JsonResponse
+    {
+        $p = \App\Models\CentralIaPop::where('user_id', $request->user()->id)->findOrFail($pop);
+        \App\Services\CentralIa\Eventos::registrar($request->user(), 'pop_apagado', "POP de {$p->sistema} \"{$p->titulo}\" apagado", ['origem' => 'web', 'projeto' => $p->sistema]);
+        $p->delete();
+
+        return $this->semCache(['ok' => true]);
+    }
+
     public function confirmar(Request $request, int $execucao): JsonResponse
     {
         $dados = $request->validate(['codigo' => ['required', 'string', 'regex:/^\d{6}$/']]);
@@ -223,6 +253,7 @@ class CentralIaController extends Controller
                 'projeto' => $ultimaTelegram ? $ultimaTelegram->projeto : $vinculo?->projeto_atual,
                 'tarefa_id' => $ultimaTelegram?->tarefa_id, 'mensagem_id' => $ultimaTelegram?->id],
             'eventos' => \App\Services\CentralIa\Eventos::recentes($request->user()),
+            'pops' => app(\App\Services\CentralIa\Pops::class)->lista($request->user()),
             // Pedidos parados esperando o código que a máquina mandou ao Telegram.
             'confirmacoes' => app(\App\Services\CentralIa\AgentesService::class)->aguardandoConfirmacao($request->user())
                 ->map(fn ($e) => ['id' => $e->id, 'agente' => $e->nomeDoAgente(), 'projeto' => $e->projeto, 'modo' => $e->modo,

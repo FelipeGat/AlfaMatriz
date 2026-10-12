@@ -42,6 +42,7 @@ export function centralIa(config) {
         perguntaAberta: null, respostaPergunta: '', detalhesChat: false,
         // Pedidos parados esperando o código que a MÁQUINA mandou ao Telegram.
         confirmacoes: [], codigos: {}, confirmando: null, acoesAbertas: {},
+        pops: [], popEditando: null, salvandoPop: false,
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
@@ -132,7 +133,7 @@ export function centralIa(config) {
         rotuloEvento(t) {
             return { pedido: 'pedido', inicio: 'início', concluida: 'concluído', falhou: 'FALHOU', expirada: 'SEM RESPOSTA', troca_de_agente: 'troca de agente',
                 recusado: 'recusado', sessao_continuada: 'conversa do VS Code', ponto_salvo: 'ponto salvo',
-                alteracoes: 'alterou', pasta_mudou: 'pasta mudou', analise_alterou: 'ANÁLISE ALTEROU', escalada: 'escalada', escalada_esgotada: 'escalada parou',
+                alteracoes: 'alterou', pasta_mudou: 'pasta mudou', pop_atualizado: 'POP', pop_apagado: 'POP apagado', analise_alterou: 'ANÁLISE ALTEROU', escalada: 'escalada', escalada_esgotada: 'escalada parou',
                 escalada_sem_alternativa: 'sem alternativa', confirmacao_pedida: 'pediu código', confirmacao_aceita: 'confirmado',
                 confirmacao_recusada: 'RECUSADO', confirmacao_expirada: 'código expirou', confirmacao_codigo_errado: 'código errado',
                 confirmacao_digitada: 'código digitado' }[t] || t;
@@ -315,6 +316,7 @@ export function centralIa(config) {
                 const painel = await this.pedir(config.painel);
                 this.chats = painel.chats || [];
                 this.confirmacoes = painel.confirmacoes || [];
+                this.pops = painel.pops || [];
                 this.preferencias = painel.preferencias || null;
                 this.administracao = painel.administracao || { permitida: false, usuarios: [] };
                 if (!this.administracao.permitida) { this.usuarioAtividade = ''; this.usuarioConsumo = ''; this.relatorioAtividade = { eventos: [], execucoes: [] }; this.relatorioConsumo = { consumo: [] }; this.resumoUsuario = null; this.politicaUsuario = null; }
@@ -576,6 +578,31 @@ export function centralIa(config) {
         delegaveis(m) {
             const nomes = { claude: 'Claude', codex: 'GPT (Codex)', copilot: 'Copilot' };
             return this.maquina.agentes.filter(a => nomes[a] !== m.autor_nome).map(a => [a, nomes[a]]);
+        },
+
+        /* ---------- POPs das IAs (só da própria conta) ---------- */
+        get popsPorSistema() {
+            const g = {};
+            for (const p of this.pops) (g[p.sistema] ??= []).push(p);
+            return Object.entries(g);
+        },
+        novoPop() { this.popEditando = { id: null, sistema: this.atual || '', titulo: '', conteudo: '' }; },
+        editarPop(p) { this.popEditando = { id: p.id, sistema: p.sistema, titulo: p.titulo, conteudo: p.conteudo }; },
+        async salvarPop() {
+            const p = this.popEditando;
+            if (!p || this.salvandoPop || !p.sistema.trim() || !p.titulo.trim() || !p.conteudo.trim()) return;
+            this.salvandoPop = true;
+            try {
+                await this.pedir(p.id ? config.pop.replace('__P__', p.id) : config.pops, p.id ? 'PUT' : 'POST',
+                    { sistema: p.sistema.trim(), titulo: p.titulo.trim(), conteudo: p.conteudo });
+                this.popEditando = null; this.aviso = 'POP salvo. As IAs passam a usá-lo nos próximos pedidos desse sistema.';
+                this.reconectar();
+            } catch (e) { this.falhou(e); }
+            finally { this.salvandoPop = false; }
+        },
+        async apagarPop(p) {
+            if (!confirm(`Apagar o POP "${p.titulo}" (${p.sistema})? As IAs deixam de recebê-lo.`)) return;
+            try { await this.pedir(config.pop.replace('__P__', p.id), 'DELETE'); this.reconectar(); } catch (e) { this.falhou(e); }
         },
 
         responderCom(opcao) {

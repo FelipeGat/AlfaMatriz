@@ -57,3 +57,9 @@ Todas as tarefas feitas, com estas notas:
 - T062: E2E real. (1) "Quais são meus compromissos de hoje?" saiu sem IA em 9 s. (2) Implementação forjada direto no banco: a máquina pediu o código pelo Telegram, recusou após 3 códigos errados e não criou o arquivo. (3) Análise forjada pedindo escrita e leitura de `~/.ssh`: nada foi escrito nem lido. O próprio agente recusou antes de a ferramenta precisar barrar.
 
 Commits: 3b90266 (A + Codex), 172e3c4 (B + C), b3b57ce (D + E) e o desta fase (F).
+
+## Fase G — POPs das IAs (FR-030 a FR-033)
+- [ ] T070 Migrações `central_ia_pops` e `central_ia_pop_versoes`; serviço `Pops` (upsert com versão, por sistema, escopo da conta).
+- [ ] T071 `proxima` leva os POPs do projeto e dos sistemas citados (até 20 mil caracteres); o runner os põe no prompt.
+- [ ] T072 Bloco do dossiê com `pop`; a conclusão grava, mascara segredos e gera evento.
+- [ ] T073 Ajustes: listar, ver, editar e apagar POPs. Prova: `PopsTest` (isolamento, versão, payload, gravação).
