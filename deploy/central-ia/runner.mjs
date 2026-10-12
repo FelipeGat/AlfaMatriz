@@ -20,7 +20,7 @@ import { usoLocal } from './uso-local.mjs';
 import { prepararAnexos } from './anexos.mjs';
 import { acompanharProgresso } from './progresso.mjs';
 import { auditar, confirmar } from './confirmacao.mjs';
-import { acessoEfetivo, CITA_CREDENCIAL, dentroDe, exigeConfirmacao, permissoes } from './politica.mjs';
+import { acessoEfetivo, agendaSemIa, CITA_CREDENCIAL, dentroDe, exigeConfirmacao, modeloArgs, permissoes } from './politica.mjs';
 
 const HOME = homedir();
 const CONFIG = process.env.CENTRAL_IA_RUNNER_CONFIG || join(HOME, '.config/alfa/central-ia-runner.env');
@@ -281,16 +281,20 @@ function pastaGeral() {
  * regra de usar só eles. Era o que fazia cada IA trazer uma agenda diferente:
  * cada uma procurava num lugar, e o Codex, isolado, nem alcança a ponte.
  */
+function lerAgenda(f) {
+    const [python, script] = (process.env.CENTRAL_IA_AGENDA || '/mnt/c/Python314/python.exe|C:\\tmp\\gcal\\gcal.py').split('|');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(f.inicio) || !Number.isInteger(f.dias)) throw new Error('período inválido');
+    return execFileSync(python, [script, 'list', '--inicio', f.inicio, '--dias', String(f.dias)],
+        { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+}
+
 function dadosOficiais(fontes) {
     const blocos = [];
     for (const f of fontes) {
         if (f.tipo !== 'agenda') continue;
-        const [python, script] = (process.env.CENTRAL_IA_AGENDA || '/mnt/c/Python314/python.exe|C:\\tmp\\gcal\\gcal.py').split('|');
         let texto;
         try {
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(f.inicio) || !Number.isInteger(f.dias)) throw new Error('período inválido');
-            texto = execFileSync(python, [script, 'list', '--inicio', f.inicio, '--dias', String(f.dias)],
-                { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+            texto = lerAgenda(f);
         } catch (e) {
             texto = `(NÃO FOI POSSÍVEL LER A AGENDA: ${String(e.message).split('\n')[0].slice(0, 200)}. Diga isso na resposta; não procure em outro lugar nem invente.)`;
         }
@@ -403,19 +407,19 @@ function comando(job, cwd, branch, saida, acesso) {
         // sessão retomar. Retomada simples mantém o mesmo id.
         job.sessaoPrevista = sessao && !job.continuar?.fork ? sessao : randomUUID();
         if (!sessao || job.continuar?.fork) args.push('--session-id', job.sessaoPrevista);
-        args.push(...permissoes('claude', acesso, { projetos: cfg.projetos }));
+        args.push(...permissoes('claude', acesso, { projetos: cfg.projetos }), ...modeloArgs('claude', job.modelo, job.esforco));
         return [agentes.claude, args];
     }
 
     if (job.agente === 'codex') {
-        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso), '-c', 'forced_login_method="chatgpt"'];
+        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso), ...modeloArgs('codex', job.modelo, job.esforco), '-c', 'forced_login_method="chatgpt"'];
         return [agentes.codex, sessao ? ['exec', 'resume', sessao, ...comum, prompt] : ['exec', ...comum, prompt]];
     }
 
     // Copilot: no modo não interativo ele exige --allow-all-tools; o controle
     // fica no --deny-tool. A sessão leva um nome para ser retomada por ele.
     const nome = sessao || `central-ia-${job.id}`;
-    const args = ['-s', '--no-color', ...permissoes('copilot', acesso, { cwd })];
+    const args = ['-s', '--no-color', ...permissoes('copilot', acesso, { cwd }), ...modeloArgs('copilot', job.modelo, job.esforco)];
     args.push(...(sessao ? ['--resume', sessao] : ['-n', nome]), '-p', prompt);
     return [agentes.copilot, args, nome];
 }
@@ -518,7 +522,18 @@ async function executar(job) {
     // onde retomar a sessão do agente na próxima execução.
     let cwd = null, dir = null;
     const acesso = acessoEfetivo(job, cfg.acessoMaximo);
-    try {
+    try { execucao: {
+        // Sem IA: a agenda lida agora é a resposta. Nenhum agente roda, nada
+        // é modificado, nenhuma cota é gasta.
+        if (job.nivel === 'sem_ia' && job.modo !== 'implementar' && (job.fontes || []).some(f => f.tipo === 'agenda')) {
+            auditar({ execucao: job.id, decisao: 'sem_ia', projeto: job.projeto });
+            const partes = (job.fontes || []).filter(f => f.tipo === 'agenda').map(f => {
+                try { return agendaSemIa(f.rotulo, f.inicio, lerAgenda(f)); }
+                catch (e) { return `Não foi possível ler a agenda (${String(e.message).split('\n')[0].slice(0, 160)}). Nada foi inventado; tente de novo ou peça um resumo a uma IA.`; }
+            });
+            resultado = { status: 'concluida', resposta: partes.join('\n\n'), sessao_agente: null };
+            break execucao;
+        }
         if (!agentes[job.agente]) throw new Error(`${job.agente} não está instalado nesta máquina`);
         // Pedido da conversa Geral: na raiz dos projetos quando o teto desta
         // máquina é total (como este chat do VS Code); senão, numa pasta neutra.
@@ -584,7 +599,7 @@ async function executar(job) {
             commit_base: criada?.commit_base ?? null,
             checkpoint: checkpoint(cwd, dir),
         };
-    } catch (e) {
+    } } catch (e) {
         resultado = { status: 'falhou', erro: String(e.message || e).slice(0, 1900), sessao_agente: job.sessaoPrevista || null };
         // Mesmo na falha o estado do git interessa (quem assumir parte dele),
         // e a pasta é o que permite retomar a sessão do agente depois.

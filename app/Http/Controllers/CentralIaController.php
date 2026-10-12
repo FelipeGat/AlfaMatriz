@@ -59,6 +59,14 @@ class CentralIaController extends Controller
             'limite_total' => ['nullable', 'integer', 'min:0', 'max:30000'],
             'paralelo' => ['required', 'integer', 'min:1', 'max:'.max(1, (int) config('central_ia.agentes.paralelo'))],
             'fallback' => ['required', 'boolean'],
+            // Modelo e esforço por nível e por IA (nulo = padrão da CLI). O
+            // nome do modelo vira argumento de linha de comando no runner:
+            // só letras, números, ponto, hífen e sublinhado.
+            'niveis' => ['sometimes', 'array:leve,medio,forte'],
+            'niveis.*' => ['array:claude,codex,copilot'],
+            'niveis.*.*' => ['array:modelo,esforco'],
+            'niveis.*.*.modelo' => ['nullable', 'string', 'max:60', 'regex:/^[A-Za-z0-9._-]+$/'],
+            'niveis.*.*.esforco' => ['nullable', Rule::in(\App\Services\CentralIa\Preferencias::ESFORCOS)],
             'coordenador_codex' => ['sometimes', 'boolean'],
         ]);
         foreach (array_keys($servico->ler($request->user())['padroes']) as $c) abort_unless(array_key_exists($c, $dados['padroes']), 422);
@@ -293,6 +301,8 @@ class CentralIaController extends Controller
             // Nulo = só registrar na conversa; `auto` = o roteador escolhe.
             'agente' => ['nullable', 'string'],
             'modo' => ['nullable', 'string'],
+            // Nível de custo escolhido na tela; `auto` (ou ausente) = o roteador decide.
+            'nivel' => ['nullable', Rule::in(['auto', ...\App\Services\CentralIa\Preferencias::NIVEIS])],
         ]);
 
         $dados['conteudo'] = $dados['conteudo'] ?? 'Analise os arquivos anexados.';
@@ -339,6 +349,7 @@ class CentralIaController extends Controller
 
         if ($pedido) {
             $pedido['anexos'] = $dados['anexos'] ?? [];
+            $pedido['nivel'] = $dados['nivel'] ?? 'auto';
             abort_unless($request->user()->canPermissao('central_ia_agentes', 'incluir'), 403, 'Sua conta não pode acionar agentes.');
             $execucao = $this->agentes->pedir($request->user(), $dados['conteudo'], $pedido, CentralIaMensagem::ORIGEM_WEB, $dados['client_id']);
 

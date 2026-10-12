@@ -26,6 +26,7 @@ class Preferencias
             'limite_total' => config('central_ia.agentes.limite_diario_ativo') ? (int) config('central_ia.agentes.limite_diario') : null,
             'paralelo' => max(1, (int) config('central_ia.agentes.paralelo')),
             'fallback' => (bool) config('central_ia.agentes.fallback_automatico'),
+            'niveis' => config('central_ia.niveis'),
         ], is_array($salvas) ? $salvas : []);
         $regras['execucao_bloqueada'] = app(Governanca::class)->execucaoBloqueada($user, $salvas['governanca'] ?? null);
         if ($g = $salvas['governanca'] ?? null) {
@@ -37,6 +38,24 @@ class Preferencias
             $regras['paralelo'] = min($regras['paralelo'], $g['paralelo'] ?? 1);
         }
         return $regras;
+    }
+
+    public const NIVEIS = ['sem_ia', 'leve', 'medio', 'forte'];
+
+    public const ESFORCOS = ['low', 'medium', 'high'];
+
+    /**
+     * Modelo e esforço do agente naquele nível, para esta conta. `sem_ia` não
+     * aciona modelo nenhum.
+     *
+     * @return array{modelo: ?string, esforco: ?string}
+     */
+    public function modelo(User $user, string $nivel, string $agente): array
+    {
+        if ($nivel === 'sem_ia') return ['modelo' => null, 'esforco' => null];
+        $m = $this->ler($user)['niveis'][$nivel][$agente] ?? config("central_ia.niveis.{$nivel}.{$agente}") ?? [];
+
+        return ['modelo' => $m['modelo'] ?? null, 'esforco' => $m['esforco'] ?? null];
     }
 
     private function menor(?int $a, ?int $b): ?int

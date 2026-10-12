@@ -68,3 +68,37 @@ export function permissoes(agente, acesso, { projetos, cwd } = {}) {
     else args.push('--deny-tool', 'write', '--deny-tool', 'shell');
     return args;
 }
+
+const NOME_DE_MODELO = /^[A-Za-z0-9._-]{1,60}$/;
+const ESFORCOS = ['low', 'medium', 'high'];
+
+/**
+ * Modelo e esforço do nível de custo (dono, 12/10/2026: agenda não precisa do
+ * modelo mais caro). Nome estranho é ignorado: vira argumento de comando.
+ */
+export function modeloArgs(agente, modelo, esforco) {
+    const m = typeof modelo === 'string' && NOME_DE_MODELO.test(modelo) ? modelo : null;
+    const e = ESFORCOS.includes(esforco) ? esforco : null;
+    if (agente === 'claude') return [...(m ? ['--model', m] : []), ...(e ? ['--effort', e] : [])];
+    if (agente === 'codex') return [...(m ? ['-m', m] : []), ...(e ? ['-c', `model_reasoning_effort="${e}"`] : [])];
+    return [...(m ? ['--model', m] : []), ...(e ? ['--reasoning-effort', e] : [])];
+}
+
+/**
+ * "Sem IA": a lista da agenda é a resposta — nenhuma IA precisa ler. Agrupa
+ * por dia quando a linha começa com a data (formato da ponte gcal.py).
+ */
+export function agendaSemIa(rotulo, inicio, bruto) {
+    const linhas = String(bruto || '').split('\n').map(l => l.trim()).filter(Boolean);
+    const br = d => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+    const cab = `📅 Agenda — ${rotulo}${/^\d{4}-\d{2}-\d{2}$/.test(inicio) ? ` (a partir de ${br(inicio)})` : ''}`;
+    if (!linhas.length) return `${cab}\n\nNenhum compromisso no período.\n\n_Lido agora da sua Google Agenda, sem IA._`;
+    const dias = new Map();
+    for (const l of linhas) {
+        const m = l.match(/^(\d{4}-\d{2}-\d{2})\s+(.*)$/);
+        const dia = m ? br(m[1]) : '';
+        (dias.get(dia) ?? dias.set(dia, []).get(dia)).push(m ? m[2] : l);
+    }
+    const corpo = [...dias].map(([dia, itens]) => (dia ? `**${dia}**\n` : '') + itens.map(i => `- ${i}`).join('\n')).join('\n\n');
+    return `${cab}\n\n${corpo}\n\n_${linhas.length} compromisso(s), lido(s) agora da sua Google Agenda, sem IA._`;
+}

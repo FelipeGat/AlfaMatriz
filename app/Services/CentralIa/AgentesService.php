@@ -237,6 +237,17 @@ class AgentesService
             throw ValidationException::withMessages(['agente' => 'Nenhum agente disponível na sua máquina agora.']);
         }
 
+        // Nível de custo: o menor que resolve (dono, 12/10/2026). A escolha
+        // da pessoa vence; "sem IA" só existe com dado oficial para mostrar.
+        $nivel = in_array($pedido['nivel'] ?? null, Preferencias::NIVEIS, true) ? $pedido['nivel']
+            : $this->roteador->nivel($pedido['instrucao'], $rota['categoria'] ?? 'investigacao', $rota['modo'], $rota['fontes'] ?? []);
+        if ($nivel === 'sem_ia' && ($rota['modo'] === 'implementar' || ! collect($rota['fontes'] ?? [])->contains('tipo', 'agenda'))) {
+            $nivel = $rota['modo'] === 'implementar' ? 'forte' : 'leve';
+        }
+        $rota['nivel'] = $nivel;
+        $rota += app(Preferencias::class)->modelo($user, $nivel, $rota['agente']);
+        $rota['motivo'] = ($rota['motivo'] ?? '').' · '.self::rotuloDoNivel($rota);
+
         return DB::transaction(function () use ($user, $texto, $pedido, $origem, $clientId, $telegramUpdateId, $projeto, $tarefa, $rota) {
             // A mensagem primeiro, sem tarefa: o reenvio idempotente precisa
             // achá-la antes de criar qualquer coisa.
@@ -461,6 +472,9 @@ class AgentesService
             'contexto' => $tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null) : null,
             'bloco' => (($execucao->roteamento['coordenador'] ?? false) ? "Você atua como coordenador deste pedido. Nesta etapa apenas responda, planeje e proponha quem deve fazer o trabalho; não implemente, não execute ferramentas ou comandos e não altere arquivos. Claude faz análise de código e desenvolvimento; Codex faz análise de dados; Copilot faz Git e QA. Identifique fontes disponíveis e impedimentos, não invente números. Delegação automática ainda não está habilitada: descreva a próxima etapa, sem afirmar que outro agente executou algo.\n" : '').Dossie::instrucaoDoBloco()."\nRegras de evidência: nunca invente dados, valores, fontes ou consultas. Relatórios de dados exigem período explícito e fonte autorizada identificada, data da consulta e critérios dos totais. Sem acesso à fonte, informe a limitação e solicite os dados; código, exemplos e testes não comprovam saldos reais. Para esta semana, confirme no texto as datas usadas. Para pedidos executivos com esta semana, use segunda-feira até hoje no fuso local e explicite as datas; para esta semana útil, segunda a sexta (até hoje se ainda estiver em curso). Pergunte somente se a ambiguidade alterar materialmente a decisão ou tornar a consulta insegura. Sem período informado, mantenha o pedido de esclarecimento. Claude só deve apoiar análise de dados quando houver impedimento técnico identificado; não troque de agente apenas para tentar obter números ausentes.",
             'fontes' => $execucao->roteamento['fontes'] ?? [],
+            'nivel' => $execucao->roteamento['nivel'] ?? null,
+            'modelo' => $execucao->roteamento['modelo'] ?? null,
+            'esforco' => $execucao->roteamento['esforco'] ?? null,
             'continuar' => $continuar,
             'acesso' => config('central_ia.agentes.acesso'),
             'na_pasta' => (bool) config('central_ia.agentes.implementar_na_pasta'),
@@ -685,6 +699,7 @@ class AgentesService
         $aviso = $this->conversas->registrarDoAgente($user, 'Central', $anterior->nomeDoAgente().' atingiu um limite ou ficou indisponível. '.$nome.' assumirá a mesma tarefa, com objetivo, instrução, anexos e dossiê. Antes de continuar, deve conferir o estado atual dos arquivos e os testes.', CentralIaMensagem::AUTOR_SISTEMA, $anterior->projeto ?: null, $tarefa->id);
         $rota = $anterior->roteamento;
         $rota['agente'] = $agente;
+        $rota = array_merge($rota, app(Preferencias::class)->modelo($user, $rota['nivel'] ?? ($anterior->modo === 'implementar' ? 'forte' : 'medio'), $agente));
         $rota['manual'] = false;
         $rota['handoff_de'] = $anterior->agente;
         $rota['motivo'] = 'Troca automática após '.($tipo === 'limite' ? 'limite de franquia' : 'indisponibilidade').' do '.$anterior->nomeDoAgente();
@@ -719,6 +734,17 @@ class AgentesService
         $execucao->update(['roteamento' => ['tipo' => 'ponto'] + ($execucao->roteamento ?? [])]);
 
         return $execucao;
+    }
+
+    public static function rotuloDoNivel(array $rota): string
+    {
+        return match ($rota['nivel'] ?? null) {
+            'sem_ia' => 'sem IA (só os dados oficiais)',
+            'leve' => 'nível leve'.(($rota['modelo'] ?? null) ? " ({$rota['modelo']})" : ''),
+            'medio' => 'nível médio'.(($rota['modelo'] ?? null) ? " ({$rota['modelo']})" : ''),
+            'forte' => 'nível forte'.(($rota['modelo'] ?? null) ? " ({$rota['modelo']})" : ' (modelo principal)'),
+            default => '',
+        };
     }
 
     /** Teto de uma execução no runner: implementar tem mais tempo que analisar. */

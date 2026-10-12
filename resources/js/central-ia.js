@@ -39,7 +39,9 @@ export function centralIa(config) {
         // Painel (todos os projetos)
         inicioAtividade: diaLocal(), fimAtividade: diaLocal(), inicioConsumo: diaLocal(), fimConsumo: diaLocal(), usuarioConsumo: '', iaConsumo: '',
         relatorioAtividade: { eventos: [], execucoes: [] }, relatorioConsumo: { consumo: [] }, modoProjetos: ler('central-ia:modo-projetos') || 'cards',
-        perguntaAberta: null, respostaPergunta: '', detalhesChat: false, formatoSelecionado: null,
+        perguntaAberta: null, respostaPergunta: '', detalhesChat: false,
+        // Pedidos parados esperando o código que a MÁQUINA mandou ao Telegram.
+        confirmacoes: [], codigos: {}, confirmando: null,
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
@@ -54,7 +56,8 @@ export function centralIa(config) {
         atual: GERAL, abas: {}, tarefas: [], verTarefa: null, detalheAberto: true,
         historicosAbertos: {}, fixarEscolha: '', menuProjetosMovel: false,
         projetosRecolhidos: ler('central-ia:projetos-recolhidos') === 'sim',
-        indicadoresRecolhidos: ler('central-ia:indicadores-recolhidos') === 'sim',
+        // Recolhidos por padrão: o estado cabe num selo só ao lado das abas.
+        indicadoresRecolhidos: ler('central-ia:indicadores-recolhidos') !== 'nao',
         alternarProjetos() {
             this.projetosRecolhidos = !this.projetosRecolhidos;
             guardar('central-ia:projetos-recolhidos', this.projetosRecolhidos ? 'sim' : 'nao');
@@ -208,7 +211,7 @@ export function centralIa(config) {
 
         novaAba() {
             return { mensagens: [], carregado: false, haAnteriores: false, rascunho: '', pendente: null, enviando: false, arquivos: [], progresso: '', recibo: '',
-                tarefa: 'nova', agente: 'auto', modo: 'auto', verTarefa: null, scroll: null };
+                tarefa: 'nova', agente: 'auto', modo: 'auto', nivel: 'auto', verTarefa: null, scroll: null };
         },
 
         init() {
@@ -307,6 +310,7 @@ export function centralIa(config) {
             try {
                 const painel = await this.pedir(config.painel);
                 this.chats = painel.chats || [];
+                this.confirmacoes = painel.confirmacoes || [];
                 this.preferencias = painel.preferencias || null;
                 this.administracao = painel.administracao || { permitida: false, usuarios: [] };
                 if (!this.administracao.permitida) { this.usuarioAtividade = ''; this.usuarioConsumo = ''; this.relatorioAtividade = { eventos: [], execucoes: [] }; this.relatorioConsumo = { consumo: [] }; this.resumoUsuario = null; this.politicaUsuario = null; }
@@ -460,21 +464,7 @@ export function centralIa(config) {
             if (event.shiftKey && document.activeElement === primeiro) { event.preventDefault(); ultimo?.focus(); }
             else if (!event.shiftKey && document.activeElement === ultimo) { event.preventDefault(); primeiro?.focus(); }
         },
-        pedeFormatoResposta(texto) {
-            const t = texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-            if (/\b(rapida|rapido|elaborada|elaborado|resumida|resumido|detalhada|detalhado|resumo|breve|completa|completo)\b/.test(t)) return false;
-            return /\b(relatorio|balanco|levantamento|apresentacao)\b/.test(t)
-                || (/\b(analis[ea]|analise)\b/.test(t) && /\b(financeir[oa]|pagar|receber|receitas|despesas|faturamento)\b/.test(t));
-        },
         responderPergunta() {
-            if (this.perguntaAberta?.tipo === 'formato') {
-                if (this.perguntaAberta.chave !== this.chaveAba || this.perguntaAberta.rascunho !== this.aba.rascunho
-                    || !['Rápida', 'Elaborada'].includes(this.respostaPergunta) || this.aba.pendente || this.aba.enviando) return;
-                this.formatoSelecionado = { chave: this.chaveAba, texto: this.aba.rascunho, valor: this.respostaPergunta };
-                this.perguntaAberta = null;
-                this.enviar();
-                return;
-            }
             if (!this.perguntaAberta || !this.respostaPergunta.trim() || this.perguntaAberta.chave !== this.chaveAba) return;
             if (this.aba.pendente || this.aba.enviando) { this.aviso = 'Aguarde a confirmação da mensagem anterior.'; return; }
             if (this.aba.rascunho.trim()) { this.aviso = 'Envie ou guarde seu rascunho antes de responder à pergunta.'; return; }
@@ -485,24 +475,17 @@ export function centralIa(config) {
         async enviar() {
             const aba = this.aba, chave = this.chaveAba, projetoEnviado = this.atual;
             if ((this.atendimento.disponivel && this.atendimento.ativo !== 'web') || this.transferindoCanal || aba.enviando || this.bloqueado || !this.podeEnviar || (!aba.pendente && !aba.rascunho.trim() && !aba.arquivos.length)) return;
-            const formato = this.formatoSelecionado?.chave === chave && this.formatoSelecionado?.texto === aba.rascunho
-                ? this.formatoSelecionado.valor : null;
-            if (!aba.pendente && aba.agente !== 'nota' && !formato && this.pedeFormatoResposta(aba.rascunho)) {
-                this.abrirPergunta('Como você prefere receber os resultados? Rápida: principais números e conclusões. Elaborada: comparações, critérios e detalhes disponíveis.', ['Rápida', 'Elaborada']);
-                this.perguntaAberta.tipo = 'formato';
-                this.perguntaAberta.rascunho = aba.rascunho;
-                return;
-            }
             if (!aba.pendente && this.chatAtual) aba.tarefa = this.chatAtual;
             // Vendo uma tarefa (o filtro "Só a tarefa #N"), o pedido vai para ela
             // — e não abre uma tarefa nova sem o contexto da que está na tela.
             if (!aba.pendente && this.verTarefa && aba.tarefa === 'nova') aba.tarefa = this.verTarefa;
             if (!aba.pendente) {
                 aba.pendente = {
-                    client_id: novoId(), conteudo: (aba.rascunho.trim() || 'Analise os arquivos anexados.') + (formato ? '\n\nFormato escolhido: ' + formato + '. ' + (formato === 'Rápida' ? 'Priorize os indicadores e até três conclusões; detalhes ficam recolhidos. Não omita incertezas materiais.' : 'Inclua comparações quando houver dados, critérios, tabelas e recomendações; mantenha um resumo executivo primeiro.') : ''), anexos: aba.arquivos.map(a => a.id), projeto: this.atual || null,
+                    client_id: novoId(), conteudo: aba.rascunho.trim() || 'Analise os arquivos anexados.', anexos: aba.arquivos.map(a => a.id), projeto: this.atual || null,
                     tarefa_id: (this.chatAtual || this.atual) && aba.tarefa !== 'nova' ? Number(aba.tarefa) : null,
                     agente: aba.agente !== 'nota' ? aba.agente : null,
                     modo: aba.modo,
+                    nivel: aba.nivel || 'auto',
                 };
             }
             aba.enviando = true;
@@ -516,7 +499,7 @@ export function centralIa(config) {
                 aba.progresso = 'Confirmando mensagem…';
                 const r = await this.pedir(config.enviar, 'POST', aba.pendente);
                 aba.recibo = aba.pendente.agente ? 'Pedido recebido. Acompanhe o andamento abaixo.' : 'Mensagem registrada.';
-                aba.pendente = null; aba.rascunho = ''; aba.arquivos = []; this.formatoSelecionado = null; this.aviso = '';
+                aba.pendente = null; aba.rascunho = ''; aba.arquivos = []; this.aviso = '';
                 // Pedido que abriu tarefa nova: o compositor passa a seguir nela.
                 if (r.tarefa_id && aba.tarefa === 'nova') {
                     aba.tarefa = r.tarefa_id;
@@ -530,6 +513,61 @@ export function centralIa(config) {
                 if ([422, 403, 413].includes(erro.status) && aba.pendente) { aba.rascunho = aba.pendente.conteudo; aba.pendente = null; }
             }
             finally { aba.enviando = false; aba.progresso = ''; }
+        },
+
+        /** O que está parado esperando a pessoa: código da máquina e dúvidas de agente. */
+        get duvidasPendentes() { return this.chats.filter(c => c.status === 'aguardando_voce'); },
+        get esperandoVoce() { return this.confirmacoes.length + this.duvidasPendentes.length; },
+
+        /** O código que a máquina mandou ao Telegram; quem confere é ela. */
+        async confirmarCodigo(id) {
+            const codigo = String(this.codigos[id] || '').replace(/\D/g, '');
+            if (codigo.length !== 6 || this.confirmando) { this.aviso = 'Digite os 6 dígitos que a sua máquina mandou ao Telegram.'; return; }
+            this.confirmando = id;
+            try {
+                await this.pedir(config.confirmar.replace('__E__', id), 'POST', { codigo });
+                this.codigos[id] = '';
+                this.aviso = 'Código enviado à sua máquina. Ela confere e começa — ou avisa aqui se não conferir.';
+                this.reconectar();
+            } catch (e) { this.falhou(e); }
+            finally { this.confirmando = null; }
+        },
+
+        /**
+         * Ações no balão da resposta (dono, 12/10/2026: respostas "fáceis de
+         * escolher e delegar"). Usam o compositor de verdade: o pedido aparece
+         * na conversa, com recibo, como se a pessoa tivesse digitado.
+         */
+        agir(m, acao, agente = null) {
+            const aba = this.aba;
+            if (aba.pendente || aba.enviando) { this.aviso = 'Aguarde a confirmação da mensagem anterior.'; return; }
+            if (acao !== 'ajustar' && aba.rascunho.trim()) { this.aviso = 'Envie ou apague o rascunho antes de usar este atalho.'; return; }
+            if (m.tarefa_id) aba.tarefa = m.tarefa_id;
+            if (acao === 'ajustar') {
+                aba.rascunho = aba.rascunho.trim() ? aba.rascunho : 'Ajuste: ';
+                this.$nextTick(() => { const t = document.getElementById('central-rascunho'); t?.focus(); t?.setSelectionRange(t.value.length, t.value.length); });
+                return;
+            }
+            if (acao === 'aprovar') {
+                aba.agente = 'auto'; aba.modo = 'implementar'; aba.nivel = 'auto';
+                aba.rascunho = 'Aprovado. Pode seguir com o que você propôs.';
+            } else if (acao === 'delegar') {
+                aba.agente = agente; aba.modo = 'auto';
+                aba.rascunho = 'Assuma esta tarefa a partir da última resposta e continue de onde parou.';
+            }
+            this.enviar().finally(() => { aba.agente = 'auto'; aba.modo = 'auto'; });
+        },
+        /** Os agentes a quem dá para passar a tarefa: os da máquina, menos quem respondeu. */
+        delegaveis(m) {
+            const nomes = { claude: 'Claude', codex: 'GPT (Codex)', copilot: 'Copilot' };
+            return this.maquina.agentes.filter(a => nomes[a] !== m.autor_nome).map(a => [a, nomes[a]]);
+        },
+
+        /** Atalhos da conversa Geral: o pedido mais comum, no nível mais barato que resolve. */
+        atalho(texto, nivel = 'auto') {
+            if (this.aba.pendente || this.aba.enviando || this.aba.rascunho.trim()) return;
+            this.aba.rascunho = texto; this.aba.agente = 'auto'; this.aba.nivel = nivel;
+            this.enviar().finally(() => { this.aba.nivel = 'auto'; });
         },
 
         async salvarAjustes() {
@@ -588,13 +626,13 @@ export function centralIa(config) {
         async salvarPolitica() {
             if (!this.politicaUsuario || this.salvandoPolitica || !this.administracao.permitida) return;
             const id = String(this.usuarioAtividade);
-            const { revisao, habilitados, pedidos_dia, limite_total, paralelo } = this.politicaUsuario;
+            const { revisao, habilitados, pedidos_dia, limite_total, paralelo, execucao_bloqueada } = this.politicaUsuario;
             this.salvandoPolitica = true;
             try {
-                const r = await this.pedir(config.politicaUsuario.replace('__U__', id), 'PUT', { revisao, habilitados, pedidos_dia, limite_total, paralelo });
+                const r = await this.pedir(config.politicaUsuario.replace('__U__', id), 'PUT', { revisao, habilitados, pedidos_dia, limite_total, paralelo, execucao_bloqueada: execucao_bloqueada !== false });
                 if (id !== String(this.usuarioAtividade) || !this.administracao.permitida) return;
                 this.resumoUsuario = r; this.politicaUsuario = r.politica; this.politicaAlterada = false;
-                this.aviso = 'Política salva. Execução continua bloqueada até validar o executor isolado; deploy e OneDrive não foram liberados.';
+                this.aviso = r.politica?.execucao_bloqueada ? 'Política salva. A execução desta conta continua bloqueada.' : 'Política salva. Execução liberada: a máquina da pessoa ainda pede o código dela antes de modificar algo.';
             } catch (e) { if (id === String(this.usuarioAtividade)) { this.aviso = e.detalhe || 'Não foi possível salvar a política.'; if ([401, 403, 419].includes(e.status)) this.falhou(e); } }
             finally { this.salvandoPolitica = false; }
         },

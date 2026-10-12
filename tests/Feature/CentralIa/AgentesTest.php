@@ -84,10 +84,11 @@ class AgentesTest extends TestCase
         $execucao = CentralIaExecucao::first();
         $this->assertSame(['claude', 'alfacontrol', 'analisar', 'pendente'], [$execucao->agente, $execucao->projeto, $execucao->modo, $execucao->status]);
 
-        $this->actingAs($user)->getJson(route('central-ia.mensagens', ['projeto' => 'alfacontrol']))
+        $r = $this->actingAs($user)->getJson(route('central-ia.mensagens', ['projeto' => 'alfacontrol']))
             ->assertJsonPath('mensagens.0.pedido.agente', 'Claude')
-            ->assertJsonPath('mensagens.0.pedido.status', 'pendente')
-            ->assertJsonPath('mensagens.0.pedido.motivo', 'Escolha manual');
+            ->assertJsonPath('mensagens.0.pedido.status', 'pendente');
+        // O motivo diz a escolha e o nível de custo (ex.: "· nível médio (sonnet)").
+        $this->assertStringStartsWith('Escolha manual · nível', $r->json('mensagens.0.pedido.motivo'));
         $this->actingAs($user)->getJson(route('central-ia.painel'))
             ->assertJsonPath('maquina.online', true)
             ->assertJsonPath('maquina.projetos', ['alfacontrol', 'alfahome']);

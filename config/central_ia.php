@@ -54,6 +54,36 @@ return [
         'apoio' => ['copilot', 'codex', 'claude'],
     ],
 
+    /*
+     * Níveis de custo (dono, 12/10/2026: "relatório da agenda é só para ler,
+     * não preciso usar o fable"). Cada pedido vai ao MENOR nível que resolve:
+     *  - sem_ia: dados oficiais mostrados direto (a lista de compromissos);
+     *  - leve:   ler, resumir, relatar;
+     *  - medio:  analisar, revisar, planejar, investigar;
+     *  - forte:  implementar.
+     * `modelo` nulo = o padrão da CLI. Modelos do catálogo local de 12/10
+     * (`~/.codex/models_cache.json`, `claude --help`). O custo premium de cada
+     * modelo do Copilot não está em nenhum arquivo local: fica `auto` até
+     * medir (Constitution VIII — não presumir). Ajustável por conta.
+     */
+    'niveis' => [
+        'leve' => [
+            'claude' => ['modelo' => 'sonnet', 'esforco' => 'low'],
+            'codex' => ['modelo' => 'gpt-5.6-luna', 'esforco' => 'low'],
+            'copilot' => ['modelo' => 'auto', 'esforco' => 'low'],
+        ],
+        'medio' => [
+            'claude' => ['modelo' => 'sonnet', 'esforco' => 'medium'],
+            'codex' => ['modelo' => 'gpt-6-sol', 'esforco' => 'medium'],
+            'copilot' => ['modelo' => 'auto', 'esforco' => 'medium'],
+        ],
+        'forte' => [
+            'claude' => ['modelo' => null, 'esforco' => null],
+            'codex' => ['modelo' => null, 'esforco' => null],
+            'copilot' => ['modelo' => null, 'esforco' => null],
+        ],
+    ],
+
     'telegram' => [
         // Só o processo do bot (`central-ia:telegram`) recebe o token. A
         // aplicação web não chama o Telegram: ela grava a entrega e o processo

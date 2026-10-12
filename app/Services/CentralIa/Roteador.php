@@ -71,6 +71,36 @@ class Roteador
             || collect(self::ANALITICO)->contains(fn ($p) => preg_match('/(^|[^\pL])'.preg_quote($p, '/').'($|[^\pL])/u', $t));
     }
 
+    /** Ler, resumir, relatar: o nível leve resolve. */
+    private const LEVE = ['resumo', 'resuma', 'resumir', 'relatório', 'relatorio', 'agenda', 'compromisso', 'compromissos', 'reunião', 'reuniao',
+        'reuniões', 'reunioes', 'status', 'situação', 'situacao', 'lista', 'liste', 'quais', 'quantos', 'quantas', 'balanço', 'balanco',
+        'panorama', 'visão geral', 'visao geral', 'como faço', 'como faco', 'qual comando', 'sintaxe', 'exemplo de'];
+
+    /** Pedido sobre a agenda que pede raciocínio, e não só a lista. */
+    private const PENSAR_SOBRE = ['resum', 'analis', 'anális', 'prepar', 'sugir', 'sugest', 'compar', 'prioriz', 'organiz', 'relat', 'conflit', 'explique', 'por que', 'planej'];
+
+    /**
+     * O nível de custo do pedido (ver `config/central_ia.php`, `niveis`).
+     *
+     * - `sem_ia`: só a lista da agenda ("quais meus compromissos hoje?") — os
+     *   dados oficiais já são a resposta, nenhuma IA precisa ler;
+     * - `forte`: implementação;
+     * - `medio`: análise, revisão, planejamento, investigação;
+     * - `leve`: o resto que só lê e relata.
+     */
+    public function nivel(string $instrucao, string $categoria, string $modo, array $fontes = []): string
+    {
+        if ($modo === 'implementar') return 'forte';
+        $t = Str::lower(Str::squish($instrucao));
+        $tem = fn (array $termos) => collect($termos)->contains(fn ($p) => preg_match('/(^|[^\pL])'.preg_quote($p, '/').'/u', $t));
+        if (collect($fontes)->contains('tipo', 'agenda') && ! $tem(self::PENSAR_SOBRE)) return 'sem_ia';
+        if (in_array($categoria, ['revisao', 'planejamento', 'codigo'], true)) return 'medio';
+        if (in_array($categoria, ['apoio', 'relatorio'], true)) return 'leve';
+        // Investigação: "quais/status/resumo" é leitura; "por que/diagnostique" pede raciocínio.
+        return $tem(self::LEVE) && ! $tem(['por que', 'porque', 'diagnóstico', 'diagnostico', 'diagnostique', 'investigue', 'entenda', 'análise', 'analise', 'compare'])
+            ? 'leve' : 'medio';
+    }
+
     public function decidir(string $instrucao, array $disponiveis, ?CentralIaTarefa $tarefa = null, array $esgotados = [], array $preferencias = []): array
     {
         // Quem está no limite da assinatura sai da escolha automática, e o

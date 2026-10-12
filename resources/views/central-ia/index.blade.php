@@ -29,16 +29,23 @@
                 politicaUsuario: '{{ url('central-ia/usuarios/__U__/politica') }}',
                 telegramCodigo: '{{ route('central-ia.telegram.codigo') }}',
                 telegramDesvincular: '{{ route('central-ia.telegram.desvincular') }}',
+                confirmar: '{{ url('central-ia/execucoes/__E__/confirmar') }}',
                 podeEnviar: {{ $podeEnviar ? 'true' : 'false' }},
              })"
              data-central-ia class="mx-auto flex h-[calc(100dvh-7.5rem)] max-w-[1600px] flex-col gap-3">
 
-        {{-- ===== Faixa: abas + estado ===== --}}
-        <div class="flex flex-none flex-wrap items-center gap-2 text-xs">
-            <nav class="flex rounded-control border border-line bg-panel p-0.5" aria-label="Seções da Central">
+        {{--
+            Faixa única (revisão de UX, 12/10/2026): abas à esquerda; à direita
+            um selo com o estado da máquina (abre os detalhes) e o canal. As
+            três linhas de antes comiam ~280px no celular antes do conteúdo.
+        --}}
+        <div class="flex flex-none items-center gap-2 text-xs">
+            <nav class="flex min-w-0 flex-1 overflow-x-auto sm:flex-none" aria-label="Seções da Central">
+                <div class="flex flex-none rounded-control border border-line bg-panel p-0.5">
                 @foreach (['chats' => 'Chats Ativos', 'projetos' => 'Projetos', 'atividade' => 'Atividade', 'consumo' => 'Consumo', 'ajustes' => 'Ajustes'] as $chave => $rotulo)
-                    <button type="button" @click="irPara('{{ $chave }}')" class="rounded-ctl px-3 py-1.5 font-semibold"
-                            :class="tela === '{{ $chave }}' ? 'bg-nav-active text-ink' : 'text-ink-mute hover:text-ink'">
+                    <button type="button" @click="irPara('{{ $chave }}')" class="whitespace-nowrap rounded-ctl px-3 py-1.5 font-semibold"
+                            :class="tela === '{{ $chave }}' ? 'bg-nav-active text-ink' : 'text-ink-mute hover:text-ink'"
+                            :aria-current="tela === '{{ $chave }}' ? 'page' : null">
                         {{ $rotulo }}
                         @if ($chave === 'atividade')
                             <span x-show="emExecucao + naFila" class="ml-1 rounded-badge bg-brand px-1 text-on-brand" x-text="emExecucao + naFila"></span>
@@ -46,28 +53,70 @@
                         @endif
                     </button>
                 @endforeach
+                </div>
             </nav>
-            <button type="button" @click="alternarIndicadores()" :aria-expanded="(!indicadoresRecolhidos).toString()" aria-controls="central-indicadores"
-                    class="rounded-control border border-line px-3 py-2 text-ink-mute hover:text-ink"
-                    x-text="indicadoresRecolhidos ? 'Mostrar indicadores' : 'Recolher indicadores'"></button>
-            <div id="central-indicadores" x-show="!indicadoresRecolhidos" class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
-            <span class="inline-flex items-center gap-1.5 rounded-badge border px-2 py-1"
-                  :class="maquina.online ? 'border-good-line bg-good-tint text-good' : 'border-crit bg-crit-tint text-crit'">
-                <span class="h-1.5 w-1.5 rounded-full" :class="maquina.online ? 'bg-good' : 'bg-crit'"></span>
-                <span x-text="maquina.online ? 'Máquina online' : 'Máquina fora do ar'"></span>
-            </span>
+            <div class="ml-auto flex flex-none items-center gap-2">
+                <button type="button" @click="alternarIndicadores()" :aria-expanded="(!indicadoresRecolhidos).toString()" aria-controls="central-indicadores"
+                        class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-badge border px-2 py-1"
+                        :class="maquina.online ? 'border-good-line bg-good-tint text-good' : 'border-crit bg-crit-tint text-crit'"
+                        :title="'Conversa privada de ' + contaNome + ' · ' + rotuloConexao + ' · clique para ver os detalhes'">
+                    <span class="h-1.5 w-1.5 rounded-full" :class="maquina.online ? 'bg-good' : 'bg-crit'"></span>
+                    <span class="hidden sm:inline" x-text="!maquina.online ? 'Máquina fora do ar' : (emExecucao ? emExecucao + ' rodando' + (naFila ? ' · ' + naFila + ' na fila' : '') : 'Pronta')"></span>
+                    <span class="sm:hidden" x-show="emExecucao" x-text="emExecucao"></span>
+                </button>
+                <button type="button" x-show="atendimento.disponivel && (telegram.vinculado || atendimento.ativo === 'telegram')" x-cloak
+                        @click="transferirCanal(atendimento.ativo === 'telegram' ? 'web' : 'telegram')"
+                        :disabled="transferindoCanal || aba.enviando || !!aba.pendente || !podeEnviar"
+                        class="whitespace-nowrap rounded-badge border px-2 py-1 font-semibold disabled:opacity-50"
+                        :class="atendimento.ativo === 'telegram' ? 'border-brand-mute bg-nav-active text-ink' : 'border-line text-brand-text'"
+                        :title="atendimento.ativo === 'telegram' ? 'O atendimento está no Telegram (' + (atendimento.projeto || 'Geral') + '). Clique para voltar para cá.' : 'Passar o atendimento para o Telegram, com o histórico'"
+                        :aria-label="atendimento.ativo === 'telegram' ? 'Voltar o atendimento para o AlfaMatriz' : 'Continuar pelo Telegram'">
+                    <span>📱</span><span class="hidden sm:inline" x-text="transferindoCanal ? ' Transferindo…' : (atendimento.ativo === 'telegram' ? ' No Telegram · voltar' : ' Telegram')"></span>
+                </button>
+            </div>
+        </div>
+
+        <div id="central-indicadores" x-show="!indicadoresRecolhidos" x-cloak class="flex flex-none flex-wrap items-center gap-2 text-xs">
             @foreach ($agentes as $chave => $nome)
                 <span class="rounded-badge border px-2 py-1"
                       :class="consumo.limites?.esgotados?.['{{ $chave }}'] ? 'border-warn-line text-warn' : (maquina.agentes.includes('{{ $chave }}') ? 'border-line text-ink-dim' : 'border-line text-ink-faint line-through')"
                       :title="consumo.limites?.esgotados?.['{{ $chave }}'] || ''">{{ $nome }}<span x-show="consumo.limites?.esgotados?.['{{ $chave }}']"> · no limite</span></span>
             @endforeach
-            <span class="rounded-badge border border-line px-2 py-1 text-ink-mute"
-                  x-text="emExecucao + ' de ' + paralelo + ' rodando' + (naFila ? ' · ' + naFila + ' na fila' : '')"></span>
+            <span class="rounded-badge border border-line px-2 py-1 text-ink-mute" x-text="emExecucao + ' de ' + paralelo + ' rodando' + (naFila ? ' · ' + naFila + ' na fila' : '')"></span>
             <span class="rounded-badge border border-line px-2 py-1 text-ink-mute"
                   x-show="consumo.limites" x-text="(consumo.limites?.central.usados ?? 0) + (consumo.limites?.central.limite == null ? ' pedidos hoje · sem teto interno' : ' de ' + consumo.limites.central.limite + ' pedidos hoje')"></span>
-            <span role="status" aria-live="polite" class="ml-auto rounded-badge border border-line px-2 py-1 text-ink-mute" x-text="rotuloConexao"></span>
-            </div>
+            <span class="rounded-badge border border-line px-2 py-1 text-ink-mute" x-text="'Conversa privada de ' + contaNome"></span>
+            <span role="status" aria-live="polite" class="rounded-badge border border-line px-2 py-1 text-ink-mute" x-text="rotuloConexao"></span>
+            <button type="button" x-show="!telegram.vinculado" @click="irPara('ajustes')" class="font-semibold text-brand-text">Vincular Telegram</button>
         </div>
+
+        {{--
+            O que espera por você, em qualquer aba (FR-029): o código que a sua
+            máquina mandou ao Telegram e as dúvidas dos agentes. Um clique.
+        --}}
+        <section x-show="esperandoVoce" x-cloak aria-label="Esperando você"
+                 class="flex-none space-y-1.5 rounded-panel border border-pergunta-line bg-pergunta-tint px-3 py-2 text-sm">
+            <template x-for="c in confirmacoes" :key="'c' + c.id">
+                <form @submit.prevent="confirmarCodigo(c.id)" class="flex flex-wrap items-center gap-2">
+                    <span class="font-semibold text-pergunta">🔐 Confirme</span>
+                    <span class="min-w-0 flex-1 text-ink"
+                          x-text="'#' + c.id + ' · ' + (c.resumo || (c.agente + ' em ' + (c.projeto || 'Geral'))) + (c.tentativas ? ' · ' + c.tentativas + ' de 3 tentativas erradas' : '')"></span>
+                    <label class="sr-only" :for="'central-codigo-' + c.id" x-text="'Código do pedido #' + c.id"></label>
+                    <input :id="'central-codigo-' + c.id" x-model="codigos[c.id]" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+                           placeholder="código do Telegram"
+                           class="w-40 rounded-control border-line bg-input py-1 text-sm tracking-widest text-ink placeholder-ink-faint focus:border-brand focus:ring-brand">
+                    <button type="submit" :disabled="confirmando === c.id"
+                            class="rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand disabled:opacity-50">Confirmar</button>
+                </form>
+            </template>
+            <template x-for="t in duvidasPendentes" :key="'d' + t.id">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-semibold text-pergunta">❓ Dúvida</span>
+                    <span class="min-w-0 flex-1 truncate text-ink" x-text="(t.projeto || 'Geral') + ' · #' + t.id + ' ' + t.titulo"></span>
+                    <button type="button" @click="abrirChat(t)" class="text-xs font-semibold text-brand-text">Responder</button>
+                </div>
+            </template>
+        </section>
 
         <div x-show="aviso" x-cloak role="alert" class="flex-none rounded-panel border border-warn-line bg-warn-tint px-4 py-2 text-sm text-ink">
             <span x-text="aviso"></span>
@@ -75,32 +124,29 @@
             <a href="{{ route('login') }}" x-show="bloqueado" class="ml-2 font-semibold text-brand-text">Entrar de novo</a>
         </div>
 
-        <div class="flex flex-none flex-wrap items-center justify-between gap-2 px-1 text-xs text-ink-mute">
-            <span x-show="contaNome" x-text="'Conversa privada de ' + contaNome"></span>
-            <div x-show="atendimento.disponivel" x-cloak class="flex flex-wrap items-center gap-2">
-                <span x-text="atendimento.ativo === 'telegram' ? 'Atendimento no Telegram · ' + (atendimento.projeto || 'Geral') : 'Atendimento no AlfaMatriz'"></span>
-                <button type="button" @click="transferirCanal(atendimento.ativo === 'telegram' ? 'web' : 'telegram')"
-                        :disabled="transferindoCanal || aba.enviando || !!aba.pendente || !podeEnviar"
-                        x-show="telegram.vinculado || atendimento.ativo === 'telegram'"
-                        class="rounded-control border border-line px-3 py-2 font-semibold text-brand-text disabled:opacity-50"
-                        x-text="transferindoCanal ? 'Transferindo…' : (atendimento.ativo === 'telegram' ? 'Retomar no AlfaMatriz' : 'Continuar pelo Telegram')"></button>
-                <button type="button" x-show="!telegram.vinculado" @click="irPara('ajustes')" class="font-semibold text-brand-text">Vincular Telegram</button>
-            </div>
-        </div>
-
         <div x-show="tela === 'projetos'" x-cloak class="min-h-0 flex-1 overflow-y-auto space-y-4">
-            <div class="flex flex-wrap gap-3"><input x-model="busca" placeholder="Buscar projeto…" aria-label="Buscar projeto" class="rounded-control border-line bg-input text-ink">
-                <button @click="definirModoProjetos('cards')" :aria-pressed="modoProjetos === 'cards'" class="rounded-control border border-line px-3 py-2">Cards</button>
-                <button @click="definirModoProjetos('lista')" :aria-pressed="modoProjetos === 'lista'" class="rounded-control border border-line px-3 py-2">Lista</button>
-                <button @click="criarGrupo()" class="text-brand-text">Novo grupo</button></div>
-            <p class="text-sm text-ink-mute">Todos os projetos disponíveis para sua conta. Abra um projeto para escolher ou iniciar um assunto.</p>
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+                <input type="search" x-model="busca" placeholder="Buscar projeto…" aria-label="Buscar projeto" autocomplete="off"
+                       class="w-56 rounded-control border-line bg-input py-1.5 text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand">
+                <div class="flex rounded-control border border-line p-0.5" role="group" aria-label="Exibição">
+                    <button type="button" @click="definirModoProjetos('cards')" :aria-pressed="(modoProjetos === 'cards').toString()" class="rounded-ctl px-2.5 py-1 font-semibold" :class="modoProjetos === 'cards' ? 'bg-nav-active text-ink' : 'text-ink-mute'">Cards</button>
+                    <button type="button" @click="definirModoProjetos('lista')" :aria-pressed="(modoProjetos === 'lista').toString()" class="rounded-ctl px-2.5 py-1 font-semibold" :class="modoProjetos === 'lista' ? 'bg-nav-active text-ink' : 'text-ink-mute'">Lista</button>
+                </div>
+                <button type="button" @click="criarGrupo()" class="font-semibold text-brand-text">+ Novo grupo</button>
+                <span class="text-ink-faint">Clique num projeto para conversar sobre ele. O grupo muda no cabeçalho do projeto aberto.</span>
+            </div>
             <template x-for="g in secoes" :key="g.id"><section class="space-y-2">
                 <h3 class="font-semibold text-ink" x-text="g.nome + ' (' + g.projetos.length + ')'"></h3>
                 <div :class="modoProjetos === 'cards' ? 'grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5' : 'flex flex-col gap-2'">
-                    <template x-for="p in g.projetos" :key="p.nome"><article class="min-w-0 rounded-panel border border-line bg-panel p-3" :class="modoProjetos === 'lista' ? 'flex flex-wrap items-center justify-between gap-3' : 'space-y-2'">
-                        <button @click="abrirProjetoCatalogo(p)" class="block w-full min-w-0 text-left" :title="p.nome"><strong class="block truncate text-sm text-ink" x-text="p.nome"></strong><span class="block truncate text-xs text-ink-mute" :title="p.git?.branch || 'Sem informação Git'" x-text="(p.git?.branch || 'Sem informação Git') + ' · ' + p.tarefas_em_curso + ' assuntos em curso'"></span></button>
-                        <div class="flex min-w-0 items-center gap-2"><select :value="p.grupo_id || ''" @change="moverParaGrupo(p.nome, $event.target.value)" :aria-label="'Grupo de ' + p.nome" class="min-w-0 flex-1 rounded-control border-line bg-input py-1 text-xs text-ink"><option value="">Sem grupo</option><template x-for="grupo in grupos" :key="grupo.id"><option :value="grupo.id" x-text="grupo.nome"></option></template></select><button @click="abrirProjetoCatalogo(p)" class="shrink-0 text-xs text-brand-text">Abrir</button></div>
-                    </article></template>
+                    <template x-for="p in g.projetos" :key="p.nome">
+                        <button type="button" @click="abrirProjetoCatalogo(p)" :title="p.nome"
+                                class="min-w-0 rounded-panel border border-line bg-panel px-3 py-2.5 text-left hover:border-brand-mute hover:bg-chip"
+                                :class="modoProjetos === 'lista' ? 'flex items-center justify-between gap-3' : 'block'">
+                            <strong class="block truncate text-sm text-ink" x-text="p.nome"></strong>
+                            <span class="block truncate text-xs" :class="p.tarefas_em_curso ? 'text-brand-text' : 'text-ink-faint'"
+                                  x-text="(p.tarefas_em_curso ? p.tarefas_em_curso + ' em curso' : 'nada em curso') + ' · ' + (p.git?.branch || 'sem git')"></span>
+                        </button>
+                    </template>
                 </div>
             </section></template>
             <p x-show="!projetos.length" class="text-ink-mute">Nenhum projeto informado para sua conta. Verifique a conexão da máquina.</p>
@@ -254,12 +300,9 @@
                     </template>
                 </div>
 
-                <div x-show="tela === 'chats' && !chatAtual && !atual" class="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm text-ink-mute">
-                    <p>Selecione um chat para continuar o assunto com seu próprio histórico.</p>
-                    <button type="button" @click="irPara('projetos')" class="font-semibold text-brand-text">Escolher projeto para iniciar outro assunto</button>
-                </div>
-                {{-- Conversa --}}
-                <div class="flex min-h-0 flex-1 flex-col" x-show="(chatAtual || atual) && (!atual || sub === 'conversa')">
+                {{-- Conversa. Sem chat escolhido, é a Geral — com a caixa de
+                     mensagem pronta, em vez de uma tela vazia pedindo um clique. --}}
+                <div class="flex min-h-0 flex-1 flex-col" x-show="!atual || sub === 'conversa'">
                     <div class="flex flex-none items-center justify-between px-4 pt-2 text-xs text-ink-faint" x-show="verTarefa && detalhesChat">
                         <span x-text="'Só a tarefa #' + verTarefa"></span>
                         <button type="button" @click="selecionarTarefa(null)" class="font-semibold text-brand-text">Ver o projeto todo</button>
@@ -289,7 +332,15 @@
                         <p x-show="!aba.carregado" class="py-6 text-center text-sm text-ink-faint">Carregando…</p>
                         <div x-show="aba.carregado && !mensagensVisiveis.length && !bloqueado" class="flex h-full flex-col items-center justify-center gap-2 text-center">
                             <h3 class="font-display text-base font-semibold text-ink" x-text="atual ? 'Nada ainda em ' + atual : 'Conversa geral'"></h3>
-                            <p class="max-w-sm text-sm text-ink-mute" x-text="atual ? 'Escreva o pedido abaixo. Em automático, a Central escolhe o agente e mostra o porquê.' : 'Perguntas e pedidos de resumo, relatório ou agenda vão a um agente; o resto fica anotado.'"></p>
+                            <p class="max-w-sm text-sm text-ink-mute" x-text="atual ? 'Escreva o pedido abaixo. Em automático, a Central escolhe a IA e o nível de custo, e mostra o porquê.' : 'Perguntas e pedidos de resumo, relatório ou agenda vão a uma IA — ou a nenhuma, quando os dados bastam. O resto fica anotado.'"></p>
+                            @if ($podeAcionar)
+                                {{-- Os pedidos de todo dia, no nível mais barato que resolve. --}}
+                                <div x-show="!atual" class="mt-2 flex flex-wrap justify-center gap-2 text-xs">
+                                    <button type="button" @click="atalho('Quais são meus compromissos de hoje?')" class="rounded-badge border border-line px-3 py-1.5 text-ink-dim hover:bg-chip">📅 Agenda de hoje <span class="text-ink-faint">· sem IA</span></button>
+                                    <button type="button" @click="atalho('Quais são meus compromissos de amanhã?')" class="rounded-badge border border-line px-3 py-1.5 text-ink-dim hover:bg-chip">📅 Amanhã <span class="text-ink-faint">· sem IA</span></button>
+                                    <button type="button" @click="atalho('Faça um resumo da minha agenda desta semana, com o que exige preparo.')" class="rounded-badge border border-line px-3 py-1.5 text-ink-dim hover:bg-chip">🗓 Resumo da semana <span class="text-ink-faint">· econômico</span></button>
+                                </div>
+                            @endif
                         </div>
                         <div class="space-y-3">
                             <template x-for="m in mensagensVisiveis" :key="m.id">
@@ -301,7 +352,7 @@
                                         <button type="button" class="text-ink-faint hover:text-brand-text" x-show="m.tarefa_id && !verTarefa" @click="selecionarTarefa(m.tarefa_id)" x-text="'tarefa #' + m.tarefa_id"></button>
                                         <time class="text-ink-faint" :datetime="m.criada_em" x-text="data(m.criada_em)"></time>
                                     </div>
-                                    <p class="mb-1 text-xs" x-show="m.pedido && detalhesChat">
+                                    <p class="mb-1 text-xs" x-show="m.pedido">
                                         <span class="font-semibold" :class="corDaExecucao(m.pedido?.status)"
                                               x-text="m.pedido && ('Para ' + m.pedido.agente + ' · ' + m.pedido.modo + ' — ' + execucao(m.pedido.status))"></span>
                                         <span class="text-ink-faint" x-show="m.pedido?.handoff_de" x-text="' · assumiu de ' + m.pedido?.handoff_de"></span>
@@ -344,7 +395,19 @@
                                     <div class="central-resposta text-sm leading-relaxed text-ink" x-show="m.visual" x-html="m.visual?.resumo_html || ''"></div>
                                     <template x-if="m.visual?.longo"><details class="mt-3 text-sm"><summary class="cursor-pointer text-brand-text">Ler resposta completa</summary><div class="central-resposta mt-2" x-html="m.visual.html"></div></details></template>
                                     <p class="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink" x-show="!m.visual" x-text="m.conteudo"></p>
-                                    <button type="button" x-show="m.autor_tipo === 'agente' && m.conteudo.includes('?')" @click="abrirPergunta(m.conteudo)" class="mt-2 text-xs font-semibold text-brand-text">Responder em diálogo</button>
+                                    @if ($podeAcionar)
+                                        {{-- Escolher e delegar sem redigitar (FR-028). Aprovar
+                                             implementa — e a sua máquina pede o código antes. --}}
+                                        <div x-show="m.autor_tipo === 'agente' && m.tarefa_id" class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-2 text-xs">
+                                            <button type="button" x-show="atual" @click="agir(m, 'aprovar')" class="font-semibold text-good">✓ Aprovar e implementar</button>
+                                            <button type="button" @click="agir(m, 'ajustar')" class="font-semibold text-brand-text">✎ Pedir ajuste</button>
+                                            <button type="button" x-show="m.conteudo.includes('?')" @click="abrirPergunta(m.conteudo)" class="font-semibold text-brand-text">Responder pergunta</button>
+                                            <span class="text-ink-faint" x-show="delegaveis(m).length">Passar para:</span>
+                                            <template x-for="[chave, nome] in delegaveis(m)" :key="chave">
+                                                <button type="button" @click="agir(m, 'delegar', chave)" class="font-semibold text-ink-dim hover:text-ink" x-text="nome"></button>
+                                            </template>
+                                        </div>
+                                    @endif
                                     <div class="mt-2 flex flex-wrap gap-2">
                                         <template x-for="a in m.anexos || []" :key="a.id">
                                             <a :href="a.url" class="text-xs font-semibold text-brand-text" x-text="'📎 ' + a.nome" download></a>
@@ -373,10 +436,9 @@
                     {{-- Compositor, sempre visível --}}
                     <form x-show="!atendimento.disponivel || atendimento.ativo === 'web'" @submit.prevent="enviar()" @dragover.prevent @drop.prevent="escolherArquivos($event.dataTransfer.files)" class="flex-none space-y-2 border-t border-line p-3" aria-label="Enviar mensagem">
                         @if ($podeAcionar)
-                            <button type="button" @click="detalhesChat = !detalhesChat" class="text-xs text-ink-mute" x-text="detalhesChat ? 'Recolher opções' : 'Opções do chat'"></button>
-                            <div x-show="detalhesChat" class="flex flex-wrap items-center gap-2 text-xs">
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
                                 <label class="sr-only" for="central-tarefa">Tarefa</label>
-                                <select id="central-tarefa" x-model="aba.tarefa" x-show="atual" :disabled="!!aba.pendente || !!chatAtual"
+                                <select id="central-tarefa" x-model="aba.tarefa" x-show="atual && detalhesChat" :disabled="!!aba.pendente || !!chatAtual"
                                         class="max-w-[16rem] rounded-control border-line bg-input py-1 text-xs text-ink focus:border-brand focus:ring-brand">
                                     <option value="nova" :selected="aba.tarefa === 'nova'">Nova tarefa</option>
                                     {{-- :selected em cada opção: as tarefas chegam DEPOIS do seletor, e só o x-model perdia a escolha --}}
@@ -392,13 +454,24 @@
                                     <option value="nota">Só anotar (sem agente)</option>
                                 </select>
                                 <label class="sr-only" for="central-modo">Modo</label>
-                                <select id="central-modo" x-model="aba.modo" x-show="atual" :disabled="!!aba.pendente || aba.agente === 'nota'"
+                                <label class="sr-only" for="central-nivel">Nível de custo</label>
+                                <select id="central-nivel" x-model="aba.nivel" :disabled="!!aba.pendente || aba.agente === 'nota'"
+                                        title="Automático: a Central usa o nível mais barato que resolve. Sem IA só vale para a agenda."
+                                        class="rounded-control border-line bg-input py-1 text-xs text-ink focus:border-brand focus:ring-brand">
+                                    <option value="auto">Custo automático</option>
+                                    <option value="sem_ia">Sem IA (só dados)</option>
+                                    <option value="leve">Econômico</option>
+                                    <option value="medio">Médio</option>
+                                    <option value="forte">Máximo</option>
+                                </select>
+                                <select id="central-modo" x-model="aba.modo" x-show="atual && detalhesChat" :disabled="!!aba.pendente || aba.agente === 'nota'"
                                         class="rounded-control border-line bg-input py-1 text-xs text-ink focus:border-brand focus:ring-brand">
                                     <option value="auto">Modo automático</option>
                                     @foreach ($modos as $chave => $nome)
                                         <option value="{{ $chave }}">{{ $nome }}</option>
                                     @endforeach
                                 </select>
+                                <button type="button" x-show="atual" @click="detalhesChat = !detalhesChat" class="text-ink-mute hover:text-ink" x-text="detalhesChat ? 'Menos opções' : 'Mais opções'"></button>
                                 <span class="text-warn" x-show="aba.agente !== 'auto' && aba.agente !== 'nota' && consumo.limites?.esgotados?.[aba.agente]"
                                       x-text="'⚠ ' + (consumo.limites?.esgotados?.[aba.agente] || '')"></span>
                             </div>
@@ -555,18 +628,7 @@
 
         {{-- ================= CONSUMO ================= --}}
         <div x-show="tela === 'consumo'" x-cloak class="min-h-0 flex-1 overflow-y-auto">
-            <div class="mb-3 rounded-panel border border-line bg-panel px-3 py-2 space-y-2">
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-ink-mute">
-                    <label class="inline-flex items-center gap-1.5">De <input type="date" x-model="inicioConsumo" @change="carregarRelatorio('consumo')" class="h-7 rounded-control border-line bg-input px-2 py-0 text-xs text-ink"></label>
-                    <label class="inline-flex items-center gap-1.5">Até <input type="date" x-model="fimConsumo" @change="carregarRelatorio('consumo')" class="h-7 rounded-control border-line bg-input px-2 py-0 text-xs text-ink"></label>
-                    <label x-show="administracao.permitida" class="inline-flex items-center gap-1.5">Usuário <select x-model="usuarioConsumo" @change="carregarRelatorio('consumo')" class="h-7 rounded-control border-line bg-input px-2 py-0 text-xs text-ink"><option value="">Meu consumo</option><template x-for="u in administracao.usuarios" :key="u.id"><option :value="u.id" x-text="u.nome"></option></template></select></label>
-                    <label class="inline-flex items-center gap-1.5">IA <select x-model="iaConsumo" @change="carregarRelatorio('consumo')" class="h-7 rounded-control border-line bg-input px-2 py-0 text-xs text-ink"><option value="">Todas</option><option value="claude">Claude</option><option value="codex">Codex</option><option value="copilot">Copilot</option></select></label>
-                </div>
-                <p class="text-[11px] leading-4 text-ink-faint">Consumo informado pelos runners no período. Ausência de registros não comprova consumo zero; dados antigos podem não estar disponíveis.</p>
-                <x-tabela min="520px" class="text-sm"><thead><tr><th>Dia</th><th>IA</th><th>Entrada + saída</th><th>Cache</th><th>Premium</th></tr></thead><tbody><template x-for="l in relatorioConsumo.consumo" :key="l.dia + l.agente"><tr class="border-t border-rule"><td x-text="l.dia"></td><td x-text="l.agente"></td><td x-text="tokens(l.entrada + l.saida)"></td><td x-text="tokens(l.cache)"></td><td x-text="l.premium"></td></tr></template></tbody></x-tabela>
-                <p x-show="!relatorioConsumo.consumo.length" class="text-ink-mute">Sem registros para esses filtros.</p>
-            </div>
-            <h3 class="mb-3 font-semibold text-ink">Minha assinatura: situação atual e últimos sete dias (independente do filtro acima)</h3>
+            <h3 class="mb-3 font-semibold text-ink">Minhas assinaturas agora e nos últimos 7 dias</h3>
             <div x-show="!usuarioConsumo && !iaConsumo">
 
             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -708,38 +770,26 @@
                 </div>
             </div>
             </div>
+            <div class="mt-3 rounded-panel border border-line bg-panel px-3 py-2 space-y-2">
+                <h3 class="text-sm font-semibold text-ink">Histórico por período</h3>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-ink-mute">
+                    <label class="inline-flex items-center gap-1.5">De <input type="date" x-model="inicioConsumo" @change="carregarRelatorio('consumo')" class="h-7 rounded-control border-line bg-input px-2 py-0 text-xs text-ink"></label>
+                    <label class="inline-flex items-center gap-1.5">Até <input type="date" x-model="fimConsumo" @change="carregarRelatorio('consumo')" class="h-7 rounded-control border-line bg-input px-2 py-0 text-xs text-ink"></label>
+                    <label x-show="administracao.permitida" class="inline-flex items-center gap-1.5">Usuário <select x-model="usuarioConsumo" @change="carregarRelatorio('consumo')" class="h-7 rounded-control border-line bg-input px-2 py-0 text-xs text-ink"><option value="">Meu consumo</option><template x-for="u in administracao.usuarios" :key="u.id"><option :value="u.id" x-text="u.nome"></option></template></select></label>
+                    <label class="inline-flex items-center gap-1.5">IA <select x-model="iaConsumo" @change="carregarRelatorio('consumo')" class="h-7 rounded-control border-line bg-input px-2 py-0 text-xs text-ink"><option value="">Todas</option><option value="claude">Claude</option><option value="codex">Codex</option><option value="copilot">Copilot</option></select></label>
+                </div>
+                <p class="text-[11px] leading-4 text-ink-faint">Consumo informado pelos runners no período. Ausência de registros não comprova consumo zero; dados antigos podem não estar disponíveis.</p>
+                <x-tabela min="520px" class="text-sm"><thead><tr><th>Dia</th><th>IA</th><th>Entrada + saída</th><th>Cache</th><th>Premium</th></tr></thead><tbody><template x-for="l in relatorioConsumo.consumo" :key="l.dia + l.agente"><tr class="border-t border-rule"><td x-text="l.dia"></td><td x-text="l.agente"></td><td x-text="tokens(l.entrada + l.saida)"></td><td x-text="tokens(l.cache)"></td><td x-text="l.premium"></td></tr></template></tbody></x-tabela>
+                <p x-show="!relatorioConsumo.consumo.length" class="text-ink-mute">Sem registros para esses filtros.</p>
+            </div>
         </div>
 
         {{-- ================= AJUSTES ================= --}}
         <div x-show="tela === 'ajustes'" x-cloak class="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto lg:grid-cols-2">
-            <div x-show="administracao.permitida" class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
-                <h3 class="font-semibold text-ink">Administração de uso por usuário</h3>
-                <label class="mt-2 block text-ink-mute">Usuário
-                    <select x-model="usuarioAtividade" @change="carregarUsuario()" :disabled="salvandoPolitica" class="mt-1 rounded-control border-line bg-input text-sm text-ink">
-                        <option value="">Selecione outra conta</option>
-                        <template x-for="u in administracao.usuarios" :key="u.id"><option :value="u.id" x-text="u.nome + ' · #' + u.id"></option></template>
-                    </select>
-                </label>
-                <template x-if="politicaUsuario && resumoUsuario">
-                    <fieldset :disabled="salvandoPolitica" @input="politicaAlterada = true" @change="politicaAlterada = true" class="mt-3 space-y-3">
-                        <p class="text-warn">Deploy e OneDrive bloqueados. A execução desta conta permanece suspensa até validar um executor isolado com credenciais próprias. Ajustar os limites não libera acesso a arquivos ou serviços.</p>
-                        <div class="grid gap-3 sm:grid-cols-3">
-                            <template x-for="(nome, a) in {claude:'Claude', codex:'Codex', copilot:'Copilot'}" :key="a">
-                                <div class="rounded-control border border-line p-3 space-y-2"><label class="flex gap-2"><input type="checkbox" x-model="politicaUsuario.habilitados[a]" class="rounded border-line text-brand"><span x-text="nome"></span></label>
-                                    <label class="block text-ink-mute">Máximo por dia<span class="block font-semibold text-ink" x-text="politicaUsuario.pedidos_dia[a] == null ? 'Sem teto interno' : politicaUsuario.pedidos_dia[a]"></span><input type="range" min="0" max="10000" step="1" :value="politicaUsuario.pedidos_dia[a] ?? 0" @input="politicaUsuario.pedidos_dia[a] = Number($event.target.value)" :disabled="politicaUsuario.pedidos_dia[a] == null" class="mt-2 w-full accent-brand"><span class="flex items-center gap-2 text-xs"><input type="checkbox" :checked="politicaUsuario.pedidos_dia[a] == null" @change="politicaUsuario.pedidos_dia[a] = $event.target.checked ? null : 20">Sem teto interno</span></label>
-                                </div>
-                            </template>
-                        </div>
-                        <div class="grid gap-3 sm:grid-cols-2"><label class="text-ink-mute">Máximo total diário<span class="block font-semibold text-ink" x-text="politicaUsuario.limite_total == null ? 'Sem teto interno' : politicaUsuario.limite_total"></span><input type="range" min="0" max="30000" step="1" :value="politicaUsuario.limite_total ?? 0" @input="politicaUsuario.limite_total = Number($event.target.value)" :disabled="politicaUsuario.limite_total == null" class="mt-2 w-full accent-brand"><span class="flex items-center gap-2 text-xs"><input type="checkbox" :checked="politicaUsuario.limite_total == null" @change="politicaUsuario.limite_total = $event.target.checked ? null : 20">Sem teto interno</span></label>
-                            <label class="text-ink-mute">Simultâneas<span class="block font-semibold text-ink" x-text="politicaUsuario.paralelo == null ? 'Sem teto interno' : politicaUsuario.paralelo"></span><input type="range" min="1" max="{{ max(1, (int) config('central_ia.agentes.paralelo')) }}" step="1" :value="politicaUsuario.paralelo ?? 0" @input="politicaUsuario.paralelo = Number($event.target.value)"  class="mt-2 w-full accent-brand"></label></div>
-                        <button type="button" @click="salvarPolitica()" class="rounded-control bg-brand px-3 py-2 font-semibold text-on-brand">Salvar política administrativa</button>
-                    </fieldset>
-                </template>
-            </div>
             <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
                 <h3 class="font-semibold text-ink">Minhas IAs e regras de uso</h3>
                 <p class="mt-1 text-ink-mute">Escolha manual vence o padrão. Automático usa regras locais e informa o motivo, sem gastar uma chamada ao GPT para decidir.</p>
-                <p x-show="ajustes?.execucao_bloqueada" class="mt-2 text-warn">Execução bloqueada para esta conta até validar o executor isolado. Seus ajustes não podem remover restrições administrativas.</p>
+                <p x-show="ajustes?.execucao_bloqueada" class="mt-2 text-warn">A execução de agentes nesta conta depende da liberação do dono da Central. Seus ajustes não removem esse bloqueio.</p>
                 <p x-show="!preferencias?.disponivel" class="mt-2 text-warn">A ativação local destes ajustes está pendente. Não foram salvos nem aplicados.</p>
                 <template x-if="ajustes">
                     <fieldset :disabled="salvandoAjustes || !preferencias?.disponivel" class="mt-3 space-y-3" @input="ajustesAlterados = true" @change="ajustesAlterados = true">
@@ -763,6 +813,27 @@
                         <div class="grid gap-3 sm:grid-cols-2">
                             <label class="text-ink-mute">Limite total diário<span class="block font-semibold text-ink" x-text="ajustes.limite_total == null ? 'Sem teto interno' : ajustes.limite_total"></span><input type="range" min="0" max="30000" step="1" :value="ajustes.limite_total ?? 0" @input="ajustes.limite_total = Number($event.target.value)" :disabled="ajustes.limite_total == null" class="mt-2 w-full accent-brand"><span class="flex items-center gap-2 text-xs"><input type="checkbox" :checked="ajustes.limite_total == null" @change="ajustes.limite_total = $event.target.checked ? null : 20">Sem teto interno</span></label>
                             <label class="text-ink-mute">Execuções simultâneas<span class="block font-semibold text-ink" x-text="ajustes.paralelo == null ? 'Sem teto interno' : ajustes.paralelo"></span><input type="range" min="1" max="{{ max(1, (int) config('central_ia.agentes.paralelo')) }}" step="1" :value="ajustes.paralelo ?? 0" @input="ajustes.paralelo = Number($event.target.value)"  class="mt-2 w-full accent-brand"></label>
+                        </div>
+                        {{-- Níveis de custo (FR-027): o modelo de cada IA em cada nível. Vazio = padrão da CLI. --}}
+                        <div class="space-y-2" x-show="ajustes.niveis">
+                            <p class="font-semibold text-ink">Modelos por nível de custo</p>
+                            <p class="text-xs text-ink-faint">Em automático, cada pedido vai ao nível mais barato que resolve: agenda sem IA; ler e resumir no Econômico; analisar e revisar no Médio; implementar no Máximo. Deixe o modelo vazio para usar o padrão de cada IA.</p>
+                            <div class="grid gap-2 sm:grid-cols-3">
+                                <template x-for="(rotuloNivel, nivel) in {leve: 'Econômico', medio: 'Médio', forte: 'Máximo'}" :key="nivel">
+                                    <div class="space-y-1.5 rounded-control border border-line p-3">
+                                        <p class="text-xs font-semibold text-ink" x-text="rotuloNivel"></p>
+                                        <template x-for="(nomeIa, ia) in {claude: 'Claude', codex: 'Codex', copilot: 'Copilot'}" :key="nivel + ia">
+                                            <label class="flex items-center gap-2 text-xs text-ink-mute"><span class="w-14 flex-none" x-text="nomeIa"></span>
+                                                <input type="text" :value="ajustes.niveis?.[nivel]?.[ia]?.modelo ?? ''" @input="ajustes.niveis[nivel][ia].modelo = $event.target.value.trim() || null"
+                                                       placeholder="padrão" pattern="[A-Za-z0-9._-]+" maxlength="60" class="min-w-0 flex-1 rounded-control border-line bg-input py-1 text-xs text-ink">
+                                                <select :value="ajustes.niveis?.[nivel]?.[ia]?.esforco ?? ''" @change="ajustes.niveis[nivel][ia].esforco = $event.target.value || null" :aria-label="'Esforço de ' + nomeIa + ' no nível ' + rotuloNivel" class="rounded-control border-line bg-input py-1 text-xs text-ink">
+                                                    <option value="">padrão</option><option value="low">baixo</option><option value="medium">médio</option><option value="high">alto</option>
+                                                </select>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
                         <label class="flex gap-2 items-center"><input type="checkbox" x-model="ajustes.fallback" class="rounded border-line text-brand">Tentar outra IA habilitada quando o provedor estiver indisponível ou no limite</label>
                         <p class="text-xs text-ink-faint">Sem teto interno: sem limite administrativo. Zero: bloqueia novos pedidos. Tentativas alternativas contam nos limites. As franquias reais continuam sendo as de cada assinatura. Nenhum adaptador de API paga foi adicionado; a autenticação do executor precisa de validação própria. Desabilitar suspende novos pedidos e a fila dessa IA, sem interromper processos já iniciados.</p>
@@ -824,6 +895,32 @@
                 <p class="mt-2 text-warn">Permissões por pasta, ferramentas, agenda e credenciais isoladas exigem um executor separado por usuário. Não habilite outro usuário no mesmo executor ou HOME. O bloqueio técnico de commit, push e deploy ainda não está comprovado; instruções ao agente não substituem esse bloqueio.</p>
                 <p class="mt-2 text-ink-mute">Tokens e franquias aparecem em Consumo quando informados pelo provedor. Um teto exato por execução não está implementado; solicitações não equivalem a tokens.</p>
                 <p class="mt-1 text-xs text-ink-faint">A franquia mensal do Copilot (Pro: 300, Pro+: 1500) é configurada no servidor (<code class="font-mono">CENTRAL_IA_COPILOT_PREMIUM_MES</code>) — o plano não pode ser lido da máquina.</p>
+            </div>
+            <div x-show="administracao.permitida" class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
+                <h3 class="font-semibold text-ink">Outras contas (você é o dono da Central)</h3>
+                <p class="mt-1 text-xs text-ink-mute">Só contagens e limites — nunca conversas, arquivos ou credenciais. Ninguém administra a sua conta.</p>
+                <label class="mt-2 block text-ink-mute">Usuário
+                    <select x-model="usuarioAtividade" @change="carregarUsuario()" :disabled="salvandoPolitica" class="mt-1 rounded-control border-line bg-input text-sm text-ink">
+                        <option value="">Selecione outra conta</option>
+                        <template x-for="u in administracao.usuarios" :key="u.id"><option :value="u.id" x-text="u.nome + ' · #' + u.id"></option></template>
+                    </select>
+                </label>
+                <template x-if="politicaUsuario && resumoUsuario">
+                    <fieldset :disabled="salvandoPolitica" @input="politicaAlterada = true" @change="politicaAlterada = true" class="mt-3 space-y-3">
+                        <label class="flex items-center gap-2"><input type="checkbox" :checked="!politicaUsuario.execucao_bloqueada" @change="politicaUsuario.execucao_bloqueada = !$event.target.checked" class="rounded border-line text-brand">Liberar a execução de agentes para esta conta</label>
+                        <p class="text-xs text-ink-faint">A pessoa executa na máquina DELA, com as IAs dela; o runner dela impõe os próprios limites e pede o código dela antes de modificar algo. Deploy e OneDrive continuam fora do alcance da tela.</p>
+                        <div class="grid gap-3 sm:grid-cols-3">
+                            <template x-for="(nome, a) in {claude:'Claude', codex:'Codex', copilot:'Copilot'}" :key="a">
+                                <div class="rounded-control border border-line p-3 space-y-2"><label class="flex gap-2"><input type="checkbox" x-model="politicaUsuario.habilitados[a]" class="rounded border-line text-brand"><span x-text="nome"></span></label>
+                                    <label class="block text-ink-mute">Máximo por dia<span class="block font-semibold text-ink" x-text="politicaUsuario.pedidos_dia[a] == null ? 'Sem teto interno' : politicaUsuario.pedidos_dia[a]"></span><input type="range" min="0" max="10000" step="1" :value="politicaUsuario.pedidos_dia[a] ?? 0" @input="politicaUsuario.pedidos_dia[a] = Number($event.target.value)" :disabled="politicaUsuario.pedidos_dia[a] == null" class="mt-2 w-full accent-brand"><span class="flex items-center gap-2 text-xs"><input type="checkbox" :checked="politicaUsuario.pedidos_dia[a] == null" @change="politicaUsuario.pedidos_dia[a] = $event.target.checked ? null : 20">Sem teto interno</span></label>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="grid gap-3 sm:grid-cols-2"><label class="text-ink-mute">Máximo total diário<span class="block font-semibold text-ink" x-text="politicaUsuario.limite_total == null ? 'Sem teto interno' : politicaUsuario.limite_total"></span><input type="range" min="0" max="30000" step="1" :value="politicaUsuario.limite_total ?? 0" @input="politicaUsuario.limite_total = Number($event.target.value)" :disabled="politicaUsuario.limite_total == null" class="mt-2 w-full accent-brand"><span class="flex items-center gap-2 text-xs"><input type="checkbox" :checked="politicaUsuario.limite_total == null" @change="politicaUsuario.limite_total = $event.target.checked ? null : 20">Sem teto interno</span></label>
+                            <label class="text-ink-mute">Simultâneas<span class="block font-semibold text-ink" x-text="politicaUsuario.paralelo == null ? 'Sem teto interno' : politicaUsuario.paralelo"></span><input type="range" min="1" max="{{ max(1, (int) config('central_ia.agentes.paralelo')) }}" step="1" :value="politicaUsuario.paralelo ?? 0" @input="politicaUsuario.paralelo = Number($event.target.value)"  class="mt-2 w-full accent-brand"></label></div>
+                        <button type="button" @click="salvarPolitica()" class="rounded-control bg-brand px-3 py-2 font-semibold text-on-brand">Salvar política administrativa</button>
+                    </fieldset>
+                </template>
             </div>
         </div>
     <div x-show="perguntaAberta" x-cloak @keydown.escape.window="perguntaAberta = null" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

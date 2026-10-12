@@ -15,7 +15,9 @@ assert.equal(u.resumoUsuario, null, 'resposta atrasada não troca o usuário');
 u.politicaUsuario = { revisao: 0, habilitados: {}, pedidos_dia: {}, limite_total: 5, paralelo: 1, deploy: true, onedrive: true, execucao_bloqueada: false };
 u.pedir = async (url, metodo, dados) => {
     assert.equal(url, '/usuarios/3/politica');
-    assert.deepEqual(Object.keys(dados).sort(), ['revisao', 'habilitados', 'pedidos_dia', 'limite_total', 'paralelo'].sort());
+    // Liberar a execução é do dono da Central (12/10/2026); deploy e OneDrive nunca saem da tela.
+    assert.deepEqual(Object.keys(dados).sort(), ['revisao', 'habilitados', 'pedidos_dia', 'limite_total', 'paralelo', 'execucao_bloqueada'].sort());
+    assert.equal(dados.execucao_bloqueada, false);
     return { politica: { revisao: 1 } };
 };
 await u.salvarPolitica(); assert.equal(u.politicaUsuario.revisao, 1);
