@@ -245,6 +245,15 @@
                     <span>Chats Ativos <span class="text-ink-mute" x-text="'(' + chatsFiltrados.length + ')'"></span></span>
                     <button type="button" @click="menuProjetosMovel = false" class="text-xs text-ink-mute lg:hidden">Fechar</button>
                 </div>
+                {{-- Novo chat, sem projeto (Geral) ou num projeto. O primeiro pedido cria o chat. --}}
+                <div class="flex gap-1.5">
+                    <button type="button" @click="novoChat(novoChatEm)" class="flex-none rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand">+ Novo chat</button>
+                    <label class="sr-only" for="central-novo-chat-em">Onde</label>
+                    <select id="central-novo-chat-em" x-model="novoChatEm" class="min-w-0 flex-1 rounded-control border-line bg-input py-1.5 text-xs text-ink">
+                        <option value="">Geral (sem projeto)</option>
+                        <template x-for="p in maquina.projetos" :key="p"><option :value="p" x-text="p"></option></template>
+                    </select>
+                </div>
                 <label class="sr-only" for="central-busca-chats">Buscar assunto ou projeto</label>
                 @if ($podeParear)
                     <button type="button" @click="arquivarChats()" :disabled="arquivando || !chats.length" class="rounded-control border border-btn-line px-3 py-1.5 text-xs font-semibold text-ink disabled:opacity-50">Arquivar chats antigos</button>

@@ -249,6 +249,15 @@ export function centralIa(config) {
             try { if (typeof Notification !== 'undefined' && Notification.permission === 'default') Notification.requestPermission(); } catch {}
         },
 
+        novoChatEm: '',
+        /** Chat novo: o primeiro pedido cria a tarefa (no projeto, ou na Geral). */
+        novoChat(projeto = '') {
+            this.abrir(projeto || GERAL);
+            this.chatAtual = null; this.verTarefa = null; this.aba.verTarefa = null;
+            if (!this.aba.pendente) this.aba.tarefa = 'nova';
+            this.irPara('chats'); this.sub = 'conversa';
+            this.$nextTick(() => document.getElementById('central-rascunho')?.focus());
+        },
         abrirChat(chat) {
             delete this.novidades[chat.id]; this.atualizarTitulo();
             this.abrir(chat.projeto || GERAL, chat.id);
