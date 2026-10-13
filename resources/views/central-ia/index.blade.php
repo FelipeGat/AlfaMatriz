@@ -372,6 +372,18 @@
 
             {{-- Projeto aberto --}}
             <main class="relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-panel border border-line bg-panel">
+                {{-- Visualizador de imagem da prévia: fixo na tela, fecha no ✕, no Esc ou clicando fora. --}}
+                <div x-show="imagemAberta" x-cloak @keydown.escape.window="imagemAberta = null" @click.self="imagemAberta = null"
+                     class="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/70 p-4" role="dialog" aria-modal="true" :aria-label="imagemAberta?.caminho">
+                    <div class="flex w-full max-w-6xl items-center justify-between gap-2">
+                        <span class="truncate text-sm text-ink" x-text="imagemAberta?.caminho.split('/').pop()"></span>
+                        <span class="flex flex-none gap-2">
+                            <a :href="imagemAberta?.url" target="_blank" rel="noopener noreferrer" class="rounded-control border border-line bg-panel px-3 py-1.5 text-xs font-semibold text-ink">Abrir em nova aba</a>
+                            <button type="button" @click="imagemAberta = null" x-ref="fecharImagem" class="rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand">✕ Fechar</button>
+                        </span>
+                    </div>
+                    <img :src="imagemAberta?.url" :alt="imagemAberta?.caminho" class="max-h-[85vh] max-w-full rounded-control border border-line bg-panel object-contain" @click.stop>
+                </div>
                 {{-- Business sem assunto escolhido: nada de mostrar a conversa Geral por baixo. --}}
                 <div x-show="tela === 'business' && !assuntoAtual" x-cloak class="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-2 bg-panel p-6 text-center">
                     <span class="h-8 w-8 text-brand-text"><x-nav-icon name="chat" /></span>
@@ -541,7 +553,10 @@
                                          para abrir no navegador — no Mac ou no Windows. --}}
                                     <div x-show="(m.previas || []).length" class="mt-2 flex flex-wrap items-end gap-2">
                                         <template x-for="p in m.previas || []" :key="p.url">
-                                            <a :href="p.url" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-semibold text-brand-text" :title="p.caminho">
+                                            {{-- Imagem abre aqui mesmo, num visualizador com Fechar (dono, 13/10/2026:
+                                                 "sobe em tela cheia e não tem botão de sair ou voltar"). --}}
+                                            <a :href="p.url" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-semibold text-brand-text" :title="p.caminho"
+                                               @click="if (p.tipo === 'imagem') { $event.preventDefault(); imagemAberta = p; }">
                                                 <img x-show="p.tipo === 'imagem'" :src="p.url" :alt="p.caminho" loading="lazy" class="h-24 max-w-[10rem] rounded-control border border-line object-cover">
                                                 <span x-show="p.tipo === 'pdf'" class="rounded-badge border border-line px-2 py-1" x-text="'📄 ' + p.caminho.split('/').pop()"></span>
                                                 <span x-show="p.tipo === 'pagina'" class="rounded-control bg-brand px-3 py-1.5 text-on-brand" x-text="'🔗 Abrir prévia' + (p.caminho.endsWith('index.html') ? '' : ' · ' + p.caminho.split('/').pop())"></span>

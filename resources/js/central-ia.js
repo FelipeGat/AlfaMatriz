@@ -49,6 +49,7 @@ export function centralIa(config) {
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         // Chats Business: um chat contínuo por assunto (docs/specs/chats-business).
         assuntos: [], novoAssunto: null, buscaAssuntos: '',
+        imagemAberta: null,
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
         politicaUsuario: null, politicaAlterada: false, salvandoPolitica: false, carregandoUsuario: false,
