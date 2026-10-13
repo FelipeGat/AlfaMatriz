@@ -127,7 +127,7 @@ class CentralIaRunnerController extends Controller
     public function previa(Request $request, int $execucao): JsonResponse
     {
         $user = $this->conta($request);
-        $dados = $request->validate(['maquina' => ['required', 'string', 'max:64'], 'caminho' => ['required', 'string', 'max:300'], 'arquivo' => ['required', 'file', 'max:20480']]);
+        $dados = $request->validate(['maquina' => ['required', 'string', 'max:64'], 'caminho' => ['required', 'string', 'max:300'], 'arquivo' => ['required', 'file', 'max:12288']]);
         $runner = CentralIaRunner::where('user_id', $user->id)->where('maquina', $dados['maquina'])->firstOrFail();
         $e = CentralIaExecucao::where('user_id', $user->id)->whereKey($execucao)->firstOrFail();
         abort_unless($e->status === CentralIaExecucao::EXECUTANDO && $e->runner_id === $runner->id, 409, 'Execução não está com esta máquina.');

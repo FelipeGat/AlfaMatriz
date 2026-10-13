@@ -28,7 +28,8 @@ class Eventos
                 'projeto' => isset($dados['projeto']) ? ($dados['projeto'] ?: 'Geral') : null,
                 'tarefa_id' => $dados['tarefa_id'] ?? null,
                 'execucao_id' => $dados['execucao_id'] ?? null,
-                'descricao' => Str::limit($descricao, 495),
+                // O texto do pedido entra aqui: segredo digitado não fica no log.
+                'descricao' => Str::limit(ProtecaoDeSegredos::texto($descricao), 495),
                 'created_at' => now(),
             ]);
         } catch (\Throwable) {

@@ -31,7 +31,8 @@ class Previas
         'pdf' => 'application/pdf', 'woff2' => 'font/woff2', 'woff' => 'font/woff', 'ttf' => 'font/ttf', 'txt' => 'text/plain',
     ];
 
-    public const MAX_ARQUIVO = 20 * 1024 * 1024;
+    // 12 MB: o PHP de produção aceita upload até 12M (deploy/php-alfamatriz.ini).
+    public const MAX_ARQUIVO = 12 * 1024 * 1024;
 
     public const MAX_EXECUCAO = 60 * 1024 * 1024;
 
@@ -56,13 +57,13 @@ class Previas
     {
         $c = self::caminhoValido($caminho);
         abort_unless($c, 422, 'Caminho ou tipo de prévia não aceito.');
-        abort_if($arquivo->getSize() > self::MAX_ARQUIVO, 413, 'Prévia acima de 20 MB.');
+        abort_if($arquivo->getSize() > self::MAX_ARQUIVO, 413, 'Prévia acima de 12 MB.');
         $ja = CentralIaPrevia::where('execucao_id', $e->id);
         abort_if((clone $ja)->count() >= self::MAX_ARQUIVOS || (clone $ja)->sum('tamanho') + $arquivo->getSize() > self::MAX_EXECUCAO, 413, 'Limite de prévias da execução.');
 
         $chave = (clone $ja)->value('chave') ?? Str::random(48);
         $mime = self::TIPOS[Str::lower(pathinfo($c, PATHINFO_EXTENSION))];
-        Storage::disk('local')->putFileAs("central-ia/previas/{$user->id}/{$e->id}/".dirname($c), $arquivo, basename($c));
+        Storage::disk('central_ia')->putFileAs("central-ia/previas/{$user->id}/{$e->id}/".dirname($c), $arquivo, basename($c));
         $visual = str_starts_with($mime, 'image/') && $mime !== 'image/svg+xml' || $mime === 'application/pdf';
 
         return CentralIaPrevia::updateOrCreate(['execucao_id' => $e->id, 'caminho' => $c], [
@@ -91,12 +92,14 @@ class Previas
         $p = $c ? CentralIaPrevia::where('chave', $chave)->where('caminho', $c)->first() : null;
         abort_unless($p && $p->created_at->gt(now()->subDays(self::DIAS)), 404);
         $arquivo = "central-ia/previas/{$p->user_id}/{$p->execucao_id}/{$p->caminho}";
-        abort_unless(Storage::disk('local')->exists($arquivo), 404);
+        abort_unless(Storage::disk('central_ia')->exists($arquivo), 404);
 
-        return response(Storage::disk('local')->get($arquivo), 200, [
+        return response(Storage::disk('central_ia')->get($arquivo), 200, [
             'Content-Type' => $p->mime.(str_starts_with($p->mime, 'text/') ? '; charset=utf-8' : ''),
             // Feita por IA: roda isolada — origem opaca, sem cookie nem API.
-            'Content-Security-Policy' => 'sandbox allow-scripts allow-forms allow-popups',
+            // Sem moldura de outro site e sem chamada de rede a partir da prévia.
+            'Content-Security-Policy' => "sandbox allow-scripts allow-forms allow-popups; frame-ancestors 'none'; connect-src 'none'",
+            'X-Frame-Options' => 'DENY',
             'X-Content-Type-Options' => 'nosniff',
             'Referrer-Policy' => 'no-referrer',
             'X-Robots-Tag' => 'noindex, nofollow',

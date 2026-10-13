@@ -23,7 +23,7 @@ class PreviasTest extends TestCase
 
     public function test_maquina_envia_previa_que_aparece_na_resposta_abre_em_sandbox_e_vai_ao_telegram(): void
     {
-        Storage::fake('local');
+        Storage::fake('central_ia');
         config(['central_ia.canal_exclusivo' => false, 'central_ia.telegram.token' => 'TESTE']);
         $u = User::factory()->create();
         $u->perfis()->attach(Perfil::where('slug', 'central_ia')->value('id'));
@@ -46,7 +46,7 @@ class PreviasTest extends TestCase
         $pagina = collect($m['previas'])->firstWhere('tipo', 'pagina')['url'];
 
         app("auth")->forgetGuards(); // sem sessão: o link vale pelo código
-        $this->get($pagina)->assertOk()->assertHeader('Content-Security-Policy', 'sandbox allow-scripts allow-forms allow-popups')->assertSee('Landing', false);
+        $this->get($pagina)->assertOk()->assertHeader('Content-Security-Policy', "sandbox allow-scripts allow-forms allow-popups; frame-ancestors 'none'; connect-src 'none'")->assertHeader('X-Frame-Options', 'DENY')->assertSee('Landing', false);
         $this->get(str_replace('/index.html', '/../../segredo', $pagina))->assertNotFound();
         $this->get(preg_replace('#previas/[A-Za-z0-9]{48}#', 'previas/'.str_repeat('a', 48), $pagina))->assertNotFound();
 

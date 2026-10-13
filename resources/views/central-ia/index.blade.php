@@ -705,7 +705,7 @@
                             </div>
                         @endif
                         <div class="flex flex-wrap items-center gap-2 text-xs">
-                            <label class="cursor-pointer font-semibold text-brand-text" title="Até 20 MB por arquivo · cole ou arraste uma captura">📎 Anexar
+                            <label class="cursor-pointer font-semibold text-brand-text" title="Até 12 MB por arquivo · cole ou arraste uma captura">📎 Anexar
                                 <input type="file" class="sr-only" multiple accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/webm,video/quicktime"
                                        :disabled="!!aba.pendente || bloqueado || !podeEnviar" @change="escolherArquivos($event.target.files); $event.target.value = ''">
                             </label>
@@ -1158,10 +1158,10 @@
                                 <option value="deploy">Só em deploy, produção ou publicação</option>
                                 <option value="implementar">Em toda implementação e em todo deploy</option>
                                 <option value="sempre">Em todo pedido, até análise</option>
-                                <option value="nunca">Nunca</option>
+                                <option value="nunca">Só deploy (o mínimo: deploy pede sempre)</option>
                             </select>
                             <p class="text-xs text-ink-faint" x-show="maquina.politica"
-                               x-text="'Sua máquina: mínimo ' + ({nunca:'nunca', deploy:'só deploy', inicio:'início do chat e deploy', implementar:'toda implementação', sempre:'todo pedido'}[maquina.politica?.confirmar_minimo] || '?')
+                               x-text="'Sua máquina: mínimo ' + ({nunca:'só deploy', deploy:'só deploy', inicio:'início do chat e deploy', implementar:'toda implementação', sempre:'todo pedido'}[maquina.politica?.confirmar_minimo] || '?')
                                    + ' · Telegram ' + (maquina.politica?.telegram ? 'configurado' : 'NÃO configurado')
                                    + ' · acesso ' + (maquina.politica?.acesso_maximo || '?') + ' · análise ' + (maquina.politica?.analise === 'total' ? 'com acesso total' : 'só leitura')
                                    + '. Aqui você só deixa mais rígido que o mínimo da máquina; o mínimo muda no arquivo de configuração dela.'"></p>

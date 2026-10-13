@@ -24,7 +24,9 @@ assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'corrija o filtro'
 assert.ok(exigeConfirmacao({ modo: 'implementar', instrucao: 'pode fazer o deploy' }, 'inicio', true));
 assert.ok(exigeConfirmacao({ modo: 'analisar', instrucao: 'suba para produção' }, 'deploy', true));
 assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'corrija' }, 'deploy', false));
-assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'faça o deploy' }, 'nunca', false));
+assert.ok(exigeConfirmacao({ modo: 'implementar', instrucao: 'faça o deploy' }, 'nunca', false), 'deploy pede código mesmo com "nunca"');
+assert.ok(exigeConfirmacao({ modo: 'analisar', instrucao: 'faça o push da branch' }, 'nunca', true));
+assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'corrija o filtro' }, 'nunca', false));
 // A pessoa só deixa mais rígido que o mínimo da máquina.
 const { regraEfetiva } = await import('../../deploy/central-ia/politica.mjs');
 assert.equal(regraEfetiva('inicio', 'nunca'), 'inicio');
@@ -38,6 +40,8 @@ assert.ok(!claude.includes('bypassPermissions'));
 assert.ok(claude.includes('Edit') && claude.includes('Write') && claude.indexOf('Edit') > claude.indexOf('--disallowedTools'));
 assert.ok(claude.includes('Read(~/.ssh/**)') && claude.includes('Read(**/.env)'));
 assert.ok(claude.includes('Bash(git log:*)') && !claude.includes('Bash'));
+// Leitura não lê arquivo pelo shell nem manda nada para fora (revisão 13/10/2026).
+for (const proibido of ['Bash(cat:*)', 'Bash(grep:*)', 'Bash(find:*)', 'Bash(head:*)', 'WebFetch']) assert.ok(!claude.includes(proibido), proibido);
 assert.deepEqual(permissoes('codex', 'leitura').filter(a => a.startsWith('sandbox')), ['sandbox_mode="read-only"']);
 const copilot = permissoes('copilot', 'leitura', { cwd: '/p/x' });
 assert.ok(!copilot.includes('--allow-all') && copilot.includes('shell') && copilot.includes('write'));

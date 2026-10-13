@@ -13,8 +13,10 @@ export const NEGADOS_NO_SHELL = ['git push', 'git commit', 'git reset', 'git che
 // Analisar é SÓ LEITURA, imposto pela ferramenta (dono, 12/10/2026: "análise
 // é para averiguar, não modificar"). Os comandos de leitura liberados ao
 // Claude; o resto do Bash é negado no modo -p.
-export const LEITURA_NO_SHELL = ['git log', 'git status', 'git diff', 'git show', 'git branch', 'git blame', 'git rev-parse', 'ls', 'cat', 'head', 'tail',
-    'wc', 'grep', 'rg', 'find', 'tree', 'docker ps', 'docker logs', 'docker inspect', 'date', 'pwd'];
+// Ler arquivo é pela ferramenta Read, que respeita SENSIVEIS; cat/grep/find
+// no shell passavam por cima (revisão de segurança, 13/10/2026).
+export const LEITURA_NO_SHELL = ['git log', 'git status', 'git diff', 'git show', 'git blame', 'git rev-parse', 'ls', 'wc', 'tree',
+    'docker ps', 'docker logs', 'docker inspect', 'date', 'pwd'];
 
 // Nem na leitura: credenciais da máquina.
 export const SENSIVEIS = ['~/.ssh/**', '~/.config/alfa/**', '~/.aws/**', '~/.codex/auth.json', '~/.claude/.credentials.json', '~/.copilot/**', '**/.env', '**/.env.*'];
@@ -47,7 +49,7 @@ export function dentroDe(raiz, caminho) {
  * Quando a máquina pede o código (dono, 13/10/2026: "só no início do chat e
  * em caso de deploy; ficar pedindo toda hora é bem ruim"), do mais frouxo ao
  * mais rígido:
- *  - nunca:       não pede (escolha de quem não quer o Telegram);
+ *  - nunca:       não pede (escolha de quem não quer o Telegram) — EXCETO deploy;
  *  - deploy:      só pedido de deploy, produção, push ou publicação;
  *  - inicio:      deploy + a primeira implementação de cada chat;
  *  - implementar: deploy + toda implementação;
@@ -65,10 +67,12 @@ export const PEDE_DEPLOY = /\b(deploy|deplo[iy]|produ[çc][ãa]o|publi(car|que|c
 
 /** Precisa do código do dono antes de rodar? `chatConfirmado`: já confirmou neste chat. */
 export function exigeConfirmacao(job, regra, chatConfirmado = false) {
-    const deploy = PEDE_DEPLOY.test(job.instrucao || '');
+    // Deploy, produção, push e publicação pedem o código SEMPRE, em qualquer
+    // regra (dono, 13/10/2026: "nem deploy sem autenticação de dois fatores,
+    // que é a mensagem no Telegram"). Máquina sem Telegram não executa.
+    if (PEDE_DEPLOY.test(job.instrucao || '')) return true;
     if (regra === 'nunca') return false;
     if (regra === 'sempre') return true;
-    if (deploy) return true;
     if (regra === 'deploy') return false;
     if (job.modo !== 'implementar') return false;
     return regra === 'implementar' || !chatConfirmado;
@@ -81,7 +85,8 @@ export function permissoes(agente, acesso, { projetos, cwd } = {}) {
         if (total) return ['--permission-mode', 'bypassPermissions', '--add-dir', projetos];
         if (escreve) return ['--permission-mode', 'acceptEdits', '--allowedTools', 'Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash',
             '--disallowedTools', ...NEGADOS_NO_SHELL.map(c => `Bash(${c}:*)`), ...SENSIVEIS.map(p => `Read(${p})`)];
-        return ['--permission-mode', 'default', '--allowedTools', 'Read', 'Grep', 'Glob', 'WebSearch', 'WebFetch',
+        // Sem WebFetch na leitura: era o canal para mandar um arquivo lido para fora.
+        return ['--permission-mode', 'default', '--allowedTools', 'Read', 'Grep', 'Glob', 'WebSearch',
             ...LEITURA_NO_SHELL.map(c => `Bash(${c}:*)`),
             '--disallowedTools', 'Edit', 'Write', 'NotebookEdit', ...SENSIVEIS.map(p => `Read(${p})`)];
     }

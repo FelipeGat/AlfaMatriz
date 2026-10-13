@@ -98,7 +98,10 @@ export function centralIa(config) {
             if (this.aba.tarefa !== 'nova') return Number(this.aba.tarefa);
             if (this.aba.novoExplicito) return null;
             const ultima = [...this.mensagensVisiveis].reverse().find(m => m.tarefa_id);
-            const viva = ultima && [...this.chats, ...this.assuntos].find(c => c.id === ultima.tarefa_id && !['concluida', 'arquivada'].includes(c.status));
+            // Assunto só é destino na aba Business: o feed da Geral também traz
+            // as mensagens dos assuntos sem projeto, e a mensagem cairia nele.
+            const candidatos = this.tela === 'business' ? this.assuntos : this.chats;
+            const viva = ultima && candidatos.find(c => c.id === ultima.tarefa_id && !['concluida', 'arquivada'].includes(c.status));
             return viva ? viva.id : null;
         },
         get rotuloDoDestino() {
@@ -134,8 +137,8 @@ export function centralIa(config) {
             if (this.aba.pendente) return;
             for (const file of lista) {
                 if (this.aba.arquivos.length >= 5) { this.aviso = 'Envie até cinco arquivos por mensagem.'; break; }
-                if (file.size > 20 * 1024 * 1024 || !['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) {
-                    this.aviso = 'Use JPG, PNG, WebP, PDF, MP4, WebM ou MOV de até 20 MB.'; continue;
+                if (file.size > 12 * 1024 * 1024 || !['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) {
+                    this.aviso = 'Use JPG, PNG, WebP, PDF, MP4, WebM ou MOV de até 12 MB.'; continue;
                 }
                 // Miniatura local (nada sai do navegador até o envio).
                 const miniatura = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
@@ -286,7 +289,9 @@ export function centralIa(config) {
             delete this.novidades[chat.id]; this.atualizarTitulo();
             this.abrir(chat.projeto || GERAL, chat.id);
             // Dentro da aba Business, a conversa abre ao lado da lista de assuntos.
-            this.irPara(this.tela === 'business' || this.assuntos.some(a => a.id === chat.id) ? 'business' : 'chats'); this.sub = 'conversa';
+            // Assunto abre na Business; chat comum, em Chats Ativos — mesmo
+            // clicado de dentro da Business (a pergunta pendente aparece em toda aba).
+            this.irPara(this.assuntos.some(a => a.id === chat.id) ? 'business' : 'chats'); this.sub = 'conversa';
         },
 
         /* ---------- Chats Business ---------- */

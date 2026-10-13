@@ -28,7 +28,7 @@ class AnexosTest extends TestCase
     {
         parent::setUp();
         config(['central_ia.canal_exclusivo' => false]); // Compatibilidade antes da ativação.
-        Storage::fake('local');
+        Storage::fake('central_ia');
     }
 
     private function pessoa(): User

@@ -215,7 +215,9 @@ class AgentesService
             && preg_match('/^(pode )?(seguir|continuar|prosseguir|segue|siga|prossiga|continue|retome|retomar)( a[ií])?[\s.!]*$|^(ok|sim|pode|manda ver|vai|aprovado|pode fazer)[\s.!]*$/iu', trim($pedido['instrucao']))
             // Interrompida pelo reinício da máquina também conta: é dela que se segue.
             ? $tarefa->execucoes()->where(fn ($q) => $q->where('status', CentralIaExecucao::CONCLUIDA)
-                ->orWhere(fn ($q) => $q->where('status', CentralIaExecucao::FALHOU)->where('erro', 'like', 'interrompida%')))->latest('id')->first() : null;
+                ->orWhere(fn ($q) => $q->where('status', CentralIaExecucao::FALHOU)->where('erro', 'like', 'interrompida%')))->latest('id')->get()
+                // A semente não é "quem falou por último": seguir vai para quem trabalhou.
+                ->first(fn (CentralIaExecucao $e) => ! in_array($e->roteamento['finalidade'] ?? 'pedido', ['semear', 'condensar'], true)) : null;
         if ($seguir) {
             $agente = $seguir->agente;
             if ($modo === 'auto') $modo = $seguir->modo;
@@ -707,7 +709,9 @@ class AgentesService
             $ok = $dados['status'] === CentralIaExecucao::CONCLUIDA;
             [$texto, $bloco] = $ok ? Dossie::extrair($dados['resposta'] ?? '') : ['Não consegui concluir: '.($dados['erro'] ?? 'erro desconhecido').'.', null];
             $bloco = $bloco === null ? null : ProtecaoDeSegredos::dados($bloco);
-            $tarefa = $execucao->tarefa;
+            // Travada: a correção da memória (corrigirMemoria) também trava a
+            // tarefa — sem isto, o dossiê lido aqui gravava por cima dela.
+            $tarefa = $execucao->tarefa_id ? CentralIaTarefa::whereKey($execucao->tarefa_id)->lockForUpdate()->first() : null;
 
             $resposta = $this->conversas->registrarDoAgente($user, $execucao->nomeDoAgente(), $texto ?: '(resposta vazia)', CentralIaMensagem::AUTOR_AGENTE, $execucao->projeto ?: null, $tarefa?->id);
             $checkpoint = is_array($dados['checkpoint'] ?? null) ? $dados['checkpoint'] : null;

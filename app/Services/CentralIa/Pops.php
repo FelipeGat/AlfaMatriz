@@ -80,7 +80,9 @@ class Pops
         $lista = array_is_list($pop) ? array_slice($pop, 0, 3) : [$pop];
         foreach ($lista as $p) {
             if (! is_array($p) || ! is_string($p['titulo'] ?? null) || ! is_string($p['conteudo'] ?? null)) continue;
-            $sistema = is_string($p['sistema'] ?? null) && trim($p['sistema']) !== '' ? $p['sistema'] : $projeto;
+            // Num projeto, o agente só escreve o POP DESTE sistema: um POP
+            // gravado em outro seria injetado nos pedidos de lá (revisão 13/10/2026).
+            $sistema = $projeto !== '' ? $projeto : (is_string($p['sistema'] ?? null) ? $p['sistema'] : '');
             if (trim($sistema) === '') continue;
             $this->gravar($user, $sistema, $p['titulo'], $p['conteudo'], $autor, $execucaoId);
         }

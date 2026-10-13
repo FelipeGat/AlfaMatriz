@@ -12,7 +12,7 @@
  * ~/.config/alfa/central-ia-runner.env — ver deploy/central-ia/README.md.
  */
 import { spawn, execFileSync } from 'node:child_process';
-import { writeFileSync, closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from 'node:fs';
+import { writeFileSync, closeSync, existsSync, lstatSync, openSync, readFileSync, readSync, readdirSync, statSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from 'node:fs';
 import { homedir, hostname, tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -156,14 +156,18 @@ async function apiArquivo(caminho, campos, conteudo, nome) {
 }
 
 const PREVIAS = join(HOME, '.local/share/alfa/central-ia-previas');
+const ID_DE_SESSAO = /^[A-Za-z0-9][A-Za-z0-9-]{7,79}$/;
 
 /** Os arquivos que o agente deixou na pasta de prévia, com caminho relativo. */
 function arquivosDaPrevia(dir, base = dir, lista = []) {
     for (const n of readdirSync(dir)) {
         const c = join(dir, n);
-        const st = statSync(c);
+        // lstat, não stat: link simbólico não entra (um agente apontaria
+        // previa/x.txt para ~/.config/alfa e o arquivo ficaria público).
+        const st = lstatSync(c);
+        if (st.isSymbolicLink()) continue;
         if (st.isDirectory()) arquivosDaPrevia(c, base, lista);
-        else if (st.isFile() && st.size <= 20 * 1024 * 1024 && lista.length < 80) lista.push(c.slice(base.length + 1));
+        else if (st.isFile() && st.size <= 12 * 1024 * 1024 && lista.length < 80) lista.push(c.slice(base.length + 1));
     }
     return lista;
 }
@@ -436,7 +440,7 @@ function memoria() {
  * Lido do fim do arquivo (a sessão do gestor passa de 100 MB).
  */
 function historicoDaSessao(imp) {
-    if (!imp || imp.agente !== 'claude') return null;
+    if (!imp || imp.agente !== 'claude' || !ID_DE_SESSAO.test(String(imp.sessao || ''))) return null;
     const base = join(HOME, '.claude/projects');
     let arq = null;
     try {
@@ -472,7 +476,9 @@ function historicoDaSessao(imp) {
 function comando(job, cwd, branch, saida, acesso) {
     // A sessão interna do agente só é retomada na MESMA pasta: o Claude guarda
     // as sessões por diretório, e retomar noutra falha.
-    const sessao = job.continuar?.sessao && job.continuar.cwd === cwd ? job.continuar.sessao : null;
+    // Id de sessão vira argumento de linha de comando: só o formato de id
+    // (nada que comece com "-" e vire opção da CLI).
+    const sessao = job.continuar?.sessao && job.continuar.cwd === cwd && ID_DE_SESSAO.test(job.continuar.sessao) ? job.continuar.sessao : null;
     const remoto = job.remotoAtualizado ? `Git: a Central já rodou \`git fetch --all\` às ${job.remotoAtualizado}; as referências remotas (origin/*) estão atualizadas. Você não tem rede: use o que já está local.`
         : job.remotoFalhou ? `Git: a Central tentou \`git fetch\` e falhou (${job.remotoFalhou}). Diga que os dados remotos podem estar desatualizados.` : null;
     // POPs: o que as IAs já aprenderam dos sistemas envolvidos. Vêm antes do
@@ -516,8 +522,10 @@ function comando(job, cwd, branch, saida, acesso) {
     // fica no --deny-tool. A sessão leva um nome para ser retomada por ele.
     const nome = sessao || `central-ia-${job.id}`;
     const args = ['-s', '--no-color', ...permissoes('copilot', acesso, { cwd }), ...modeloArgs('copilot', job.modelo, job.esforco)];
-    args.push(...(sessao ? ['--resume', sessao] : ['-n', nome]), '-p', prompt);
-    return [agentes.copilot, args, nome];
+    // Pedido pelo stdin também no Copilot (E2BIG acima de 128 KB, que o
+    // contexto de um chat de assunto passa fácil).
+    args.push(...(sessao ? ['--resume', sessao] : ['-n', nome]));
+    return [agentes.copilot, args, nome, prompt];
 }
 
 // Processos de agente em andamento, para a parada do serviço encerrá-los.
@@ -656,6 +664,10 @@ async function executar(job) {
         } else if (job.modo === 'implementar' && !job.na_pasta) {
             novaWorktree = true;
             cwd = job.tarefa?.worktree || join(cfg.worktrees, `${job.projeto}-t${job.tarefa?.id ?? `e${job.id}`}`);
+            // A pasta ainda não existe, então o realpath não serve: confere
+            // pelo caminho resolvido que ela fica nas worktrees ou nos projetos.
+            const alvo = resolve(cwd);
+            if (![cfg.worktrees, cfg.projetos].some(r => alvo.startsWith(resolve(r) + sep))) throw new Error('a pasta da tarefa está fora das pastas permitidas');
         }
         if (job.continuar?.cwd && !dentroDe(cfg.projetos, job.continuar.cwd)) job.continuar = null;
 

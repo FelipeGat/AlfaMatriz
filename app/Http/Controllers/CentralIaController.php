@@ -672,7 +672,7 @@ class CentralIaController extends Controller
     public function anexar(Request $request): JsonResponse
     {
         app(\App\Services\CentralIa\CanalAtivo::class)->exigir($request->user(), 'web');
-        $dados = $request->validate(['arquivo' => ['required', 'file', 'max:20480'], 'client_id' => ['required', 'uuid']]);
+        $dados = $request->validate(['arquivo' => ['required', 'file', 'max:12288'], 'client_id' => ['required', 'uuid']]);
         $anexo = app(\App\Services\CentralIa\AnexosService::class)->guardar($request->user(), $dados['arquivo'], $dados['client_id']);
         return $this->semCache($anexo->publico(), $anexo->wasRecentlyCreated ? 201 : 200);
     }

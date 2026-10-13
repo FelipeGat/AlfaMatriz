@@ -257,10 +257,9 @@ checkout, que agora existe porque ele serve a porta 8096.
 
 ## A remover antes do deploy
 
-- `tools/central-ia/reference/backend` — código da aplicação separada, mantido
-  só como consulta para o Telegram e o runner.
-- `tools/central-ia/run-real-backup-validation.py` — feito para o PostgreSQL
-  da aplicação separada.
+Removidos em 13/10/2026, na revisão para produção: `tools/central-ia/reference/backend`
+(a aplicação separada antiga, mantida só como consulta) e
+`tools/central-ia/run-real-backup-validation.py` (feito para o PostgreSQL dela).
 
 ### Ajustes locais após a retomada pelo Codex
 

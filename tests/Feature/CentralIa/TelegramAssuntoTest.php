@@ -134,4 +134,32 @@ class TelegramAssuntoTest extends TestCase
         $this->respondeu('Não achei o chat nem o pedido #'.$alheio->id);
         $this->assertSame('gestor', CentralIaTelegramVinculo::where('chat_id', 703)->value('projeto_atual'));
     }
+
+    /** Com o canal exclusivo LIGADO (padrão de produção) — revisão de 13/10/2026. */
+    public function test_canal_exclusivo_assunto_com_projeto_e_chat_da_geral_recebem_as_mensagens(): void
+    {
+        config(['central_ia.canal_exclusivo' => true]);
+        $u = User::factory()->create();
+        $u->perfis()->attach(Perfil::where('slug', 'central_ia')->value('id'));
+        CentralIaRunner::create(['user_id' => $u->id, 'maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => ['gestor'], 'visto_em' => now()]);
+        CentralIaTelegramVinculo::create(['user_id' => $u->id, 'chat_id' => 704, 'vinculado_em' => now()]);
+        $sg = CentralIaTarefa::create(['user_id' => $u->id, 'tipo' => 'assunto', 'titulo' => 'Gestor.SG', 'objetivo' => 'x', 'projeto' => 'gestor', 'ultima_atividade_em' => now()]);
+        $geral = CentralIaTarefa::create(['user_id' => $u->id, 'titulo' => 'Resumo da semana', 'objetivo' => 'x', 'projeto' => '', 'ultima_atividade_em' => now()]);
+        app(\App\Services\CentralIa\CanalAtivo::class)->transferir($u, 'telegram');
+
+        // Assunto COM projeto: o pedido não é recusado e cai nele.
+        $this->falar(704, '/assunto gestor');
+        $this->falar(704, 'liste os orçamentos em aberto');
+        $e = CentralIaExecucao::latest('id')->first();
+        $this->assertSame([$sg->id, 'gestor'], [$e?->tarefa_id, $e?->projeto]);
+        // E a resposta pode ser entregue no Telegram.
+        $resposta = \App\Models\CentralIaMensagem::create(['conversa_id' => \App\Models\CentralIaMensagem::where('tarefa_id', $sg->id)->value('conversa_id'),
+            'user_id' => $u->id, 'projeto' => 'gestor', 'tarefa_id' => $sg->id, 'autor_tipo' => CentralIaMensagem::AUTOR_AGENTE, 'autor_nome' => 'Claude', 'origem' => 'agente', 'conteudo' => 'ok']);
+        $this->assertTrue(app(\App\Services\CentralIa\CanalAtivo::class)->entregaPermitida($u, $resposta));
+
+        // Chat comum da Geral trazido por "continuar #N": "pode seguir" vai para ele, não vira anotação.
+        $this->falar(704, 'continuar #'.$geral->id);
+        $this->falar(704, 'refaz com mais detalhes');
+        $this->assertSame($geral->id, CentralIaExecucao::latest('id')->value('tarefa_id'));
+    }
 }

@@ -257,7 +257,7 @@ class TelegramCanal
                         CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId));
                 });
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Storage::disk('local')->delete($anexo->caminho);
+                \Illuminate\Support\Facades\Storage::disk('central_ia')->delete($anexo->caminho);
                 $anexo->delete();
                 throw $e;
             }
@@ -360,6 +360,11 @@ class TelegramCanal
             // Chat de assunto apontado: toda mensagem é pedido nele (Chats Business).
             ($assunto = $this->assuntoAtual($user, $vinculo)) !== null => $this->confirmar($chatId, $this->agentes->pedir($user, $texto, [
                 'projeto' => $assunto->projeto, 'agente' => $vinculo->agente_atual ?? 'auto', 'modo' => 'auto', 'instrucao' => $texto, 'tarefa_id' => $assunto->id,
+            ], CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId)),
+            // Chat comum da Geral trazido com "continuar #N": a conversa ativa
+            // aponta o chat, e toda mensagem é pedido nele (não anotação).
+            ($chatDaGeral = $this->chatDaGeralAtivo($user, $vinculo)) !== null => $this->confirmar($chatId, $this->agentes->pedir($user, $texto, [
+                'projeto' => '', 'agente' => $vinculo->agente_atual ?? 'auto', 'modo' => 'auto', 'instrucao' => $texto, 'tarefa_id' => $chatDaGeral,
             ], CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId)),
             filled($vinculo->projeto_atual) => $this->pedirNoProjeto($user, $vinculo, $chatId, $texto, $texto, $updateId),
             // Sem projeto, mas é um pedido de resposta ("resumo da minha
@@ -470,6 +475,16 @@ class TelegramCanal
             .($duvida ? "\n\n❓ Esperando você: {$duvida}" : ''));
     }
 
+    /** Chat comum da Geral ativo no Telegram (continuar #N), se ainda está em curso. */
+    private function chatDaGeralAtivo(User $user, CentralIaTelegramVinculo $vinculo): ?int
+    {
+        if (filled($vinculo->projeto_atual) || ! app(CanalAtivo::class)->pronto()) return null;
+        $c = app(CanalAtivo::class)->estado($user);
+        if (! $c || $c->canal_ativo !== 'telegram' || ! $c->tarefa_canal || filled($c->projeto_canal)) return null;
+
+        return CentralIaTarefa::de($user)->tarefas()->where('projeto', '')->where('status', '!=', CentralIaTarefa::ARQUIVADA)->whereKey($c->tarefa_canal)->value('id');
+    }
+
     /** O assunto apontado pelo vínculo, se ainda é da conta e não foi arquivado. */
     private function assuntoAtual(User $user, CentralIaTelegramVinculo $vinculo): ?CentralIaTarefa
     {
@@ -506,8 +521,15 @@ class TelegramCanal
             return;
         }
         $a = $achados->first();
-        $this->definir($vinculo, $chatId, ['assunto_atual_id' => $a->id, 'projeto_atual' => null],
-            'Falando em “'.$a->titulo.'”. Suas mensagens agora vão para esse chat, com a memória e o histórico dele. /geral sai.');
+        // Com canal exclusivo, a conversa ativa leva o projeto E o chat do
+        // assunto — senão um assunto com projeto (Gestor.SG) era recusado
+        // ("não é o projeto da conversa ativa") e a resposta não voltava.
+        if (app(CanalAtivo::class)->pronto()) {
+            app(CanalAtivo::class)->transferir($user, 'telegram', $a->projeto === '' ? null : $a->projeto, $a->id);
+        } else {
+            $vinculo->update(['assunto_atual_id' => $a->id, 'projeto_atual' => null]);
+        }
+        $this->responder($chatId, 'Falando em “'.$a->titulo.'”. Suas mensagens agora vão para esse chat, com a memória e o histórico dele. /geral sai.');
     }
 
     private function pedirNoProjeto(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $instrucao, string $texto, int $updateId, bool $novaTarefa = false, ?string $agente = null): void
@@ -696,9 +718,9 @@ class TelegramCanal
             $p->update(['telegram' => 'enviando']);
             $arquivo = "central-ia/previas/{$p->user_id}/{$p->execucao_id}/{$p->caminho}";
             $foto = $p->tipo() === 'imagem' && $p->tamanho <= 10 * 1024 * 1024;
-            $r = \Illuminate\Support\Facades\Storage::disk('local')->exists($arquivo)
+            $r = \Illuminate\Support\Facades\Storage::disk('central_ia')->exists($arquivo)
                 ? $this->api->enviarArquivo($foto ? 'sendPhoto' : 'sendDocument', $foto ? 'photo' : 'document',
-                    \Illuminate\Support\Facades\Storage::disk('local')->get($arquivo), basename($p->caminho),
+                    \Illuminate\Support\Facades\Storage::disk('central_ia')->get($arquivo), basename($p->caminho),
                     ['chat_id' => $vinculo->chat_id, 'caption' => 'Prévia da execução #'.$p->execucao_id.' — '.$p->caminho])
                 : ['ok' => false, 'erro' => 'recusada'];
             $p->update(['telegram' => $r['ok'] ? 'enviado' : ($r['erro'] === 'limite' ? 'pendente' : 'falhou')]);
@@ -797,7 +819,8 @@ class TelegramCanal
             return true;
         }
 
-        if ($resultado['erro'] === 'nao_enviada' && $entrega->tentativas < 5) {
+        // ~20 voltas do bot (alguns minutos): cobre uma queda de rede mais longa.
+        if ($resultado['erro'] === 'nao_enviada' && $entrega->tentativas < 20) {
             // Nada saiu (conexão): volta para a fila e tenta na próxima volta.
             $entrega->update(['status' => CentralIaEntrega::PENDENTE, 'erro' => 'nao_enviada']);
 

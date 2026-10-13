@@ -29,7 +29,7 @@ final class ProtecaoDeSegredos
             // Usuário e senha dentro de URL (mysql://u:senha@host).
             '/(\b[a-z][a-z0-9+.-]*:\/\/[^\s:\/@]+:)[^\s@\/]+@/i',
             // NOME=valor e "nome": "valor" — a aspa fica onde estava.
-            '/((?:password|passwd|senha|api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|secret|token|[A-Z][A-Z0-9_]*_(?:PASSWORD|SECRET|TOKEN|KEY))["\x27]?\s*[:=]\s*)(["\x27]?)(?!\[SEGREDO|\[REMOVIDO)[^\s,"\x27;}]{4,}/i',
+            '/((?:password|passwd|senha|api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|secret|token|[A-Z][A-Z0-9_]*_(?:PASSWORD|SECRET|TOKEN|KEY)|[A-Z][A-Z0-9_]*SEGREDO[A-Z0-9_]*)["\x27]?\s*[:=]\s*)(["\x27]?)(?!\[SEGREDO|\[REMOVIDO)[^\s,"\x27;}]{4,}/i',
         ], [self::REMOVIDO, self::REMOVIDO, self::REMOVIDO, self::REMOVIDO, self::REMOVIDO, self::REMOVIDO, 'Bearer [REMOVIDO]', '$1[REMOVIDO]@', '$1$2[REMOVIDO]'], $texto) ?? '[Conteúdo indisponível]';
     }
 
