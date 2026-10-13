@@ -42,7 +42,7 @@ class CentralIaRunnerController extends Controller
             'projetos.*' => ['string', 'max:128', 'regex:/^[A-Za-z0-9._-]+$/'],
             'estado' => ['nullable', 'array', 'max:300'],
             'consumo' => ['nullable', 'array'],
-            'sessoes' => ['nullable', 'array', 'max:60'],
+            'sessoes' => ['nullable', 'array', 'max:120'],
             'politica' => ['nullable', 'array:acesso_maximo,analise,confirmar_minimo,telegram'],
             'politica.acesso_maximo' => ['nullable', 'in:total,restrito'],
             'politica.analise' => ['nullable', 'in:total,leitura'],
@@ -150,6 +150,13 @@ class CentralIaRunnerController extends Controller
             // O estado do git medido pelo runner ao fim — fato, não relato.
             // O rastro da execução (deploy/central-ia/auditoria.mjs).
             'auditoria' => ['nullable', 'array'],
+            // Semente de chat de assunto: quanto de cada conversa foi lido.
+            'semente' => ['nullable', 'array', 'max:5'],
+            'semente.*.agente' => ['required', 'in:claude,codex'],
+            'semente.*.id' => ['required', 'string', 'max:80'],
+            'semente.*.incluidos' => ['nullable', 'integer', 'min:0'],
+            'semente.*.fora' => ['nullable', 'integer', 'min:0'],
+            'semente.*.caracteres' => ['nullable', 'integer', 'min:0'],
             'auditoria.acessos' => ['nullable', 'array', 'max:300'],
             'auditoria.acessos.*.ferramenta' => ['required', 'string', 'max:40'],
             'auditoria.acessos.*.alvo' => ['nullable', 'string', 'max:300'],
@@ -268,15 +275,21 @@ class CentralIaRunnerController extends Controller
         $limpas = [];
 
         foreach ($sessoes as $s) {
+            // O '' da raiz chega como null (ConvertEmptyStringsToNull).
+            if (is_array($s) && array_key_exists('projeto', $s) && $s['projeto'] === null) $s['projeto'] = '';
             if (! is_array($s) || ! in_array($s['agente'] ?? null, ['claude', 'codex', 'copilot'], true)
                 || ! is_string($s['id'] ?? null) || ! preg_match('/^[A-Za-z0-9-]{8,80}$/', $s['id'])
-                || ! in_array($s['projeto'] ?? null, $projetos, true) || ! is_string($s['cwd'] ?? null)) {
+                // '' = conversa da raiz ~/projetos (Chats Business semeia dela).
+                || ! (($s['projeto'] ?? null) === '' || in_array($s['projeto'] ?? null, $projetos, true)) || ! is_string($s['cwd'] ?? null)) {
                 continue;
             }
             $limpas[] = [
                 'agente' => $s['agente'], 'id' => $s['id'], 'projeto' => $s['projeto'], 'cwd' => mb_substr($s['cwd'], 0, 255),
                 'ultima_atividade' => is_string($s['ultima_atividade'] ?? null) ? mb_substr($s['ultima_atividade'], 0, 40) : null,
                 'mensagens' => is_int($s['mensagens'] ?? null) ? $s['mensagens'] : 0,
+                // O nome que a pessoa deu à conversa no VS Code.
+                'titulo' => is_string($s['titulo'] ?? null) ? mb_substr(trim($s['titulo']), 0, 120) : null,
+                'origem' => in_array($s['origem'] ?? null, ['wsl', 'mac_copia'], true) ? $s['origem'] : 'wsl',
             ];
         }
 

@@ -7,7 +7,9 @@
  *
  * Regra herdada do painel-avanco: só CONTAGENS e metadados (tokens, modelo,
  * dia, pasta, quantidade de mensagens). O texto das conversas nunca sai daqui
- * — nem para o AlfaMatriz, nem para o log.
+ * — nem para o AlfaMatriz, nem para o log. Exceção pequena, para a pessoa
+ * reconhecer a conversa (Chats Business): o NOME que ela deu à conversa no
+ * VS Code, ou, sem nome, o começo do primeiro pedido (80 caracteres).
  *
  * Os arquivos só crescem no fim (jsonl), e o da sessão longa do gestor passa
  * de 100 MB: cada arquivo é lido a partir de onde parou na rodada anterior.
@@ -58,7 +60,7 @@ function novasLinhas(caminho, aoLer) {
     try { st = statSync(caminho); } catch { return null; }
     let e = lidos.get(caminho);
     if (!e || st.size < e.offset) {
-        e = { offset: 0, resto: '', vistos: new Set(), uso: {}, projetos: {}, mensagens: 0, cwd: null, sessao: null, origem: null, ultima: null };
+        e = { offset: 0, resto: '', vistos: new Set(), uso: {}, projetos: {}, mensagens: 0, cwd: null, sessao: null, origem: null, ultima: null, titulo: null, tituloIa: null, primeiro: null };
         lidos.set(caminho, e);
     }
     if (st.size === e.offset) return e;
@@ -111,7 +113,14 @@ function lerClaude(raiz) {
             // a pessoa escreveu.
             const c = j.message?.content;
             if (j.type === 'user' && !j.isSidechain && !j.isMeta
-                && (typeof c === 'string' || (Array.isArray(c) && c.some(x => x?.type === 'text')))) e.mensagens++;
+                && (typeof c === 'string' || (Array.isArray(c) && c.some(x => x?.type === 'text')))) {
+                e.mensagens++;
+                const t = typeof c === 'string' ? c : c.find(x => x?.type === 'text')?.text;
+                if (!e.primeiro && t && !/^\s*</.test(t)) e.primeiro = t.trim().replace(/\s+/g, ' ').slice(0, 80);
+            }
+            // O nome que a pessoa deu à conversa (o último vale: ela renomeia).
+            if (j.type === 'custom-title' && j.customTitle) e.titulo = String(j.customTitle).slice(0, 120);
+            if (j.type === 'ai-title' && j.aiTitle) e.tituloIa = String(j.aiTitle).slice(0, 120);
             contarProjetos(e, linha, raiz);
             const u = j.message?.usage;
             if (j.type === 'assistant' && u) {
@@ -131,6 +140,47 @@ function lerClaude(raiz) {
         });
         return e && { ...e, agente: 'claude', vscode: e.origem === 'claude-vscode' };
     }).filter(Boolean);
+}
+
+// Conversas copiadas do Mac (cópia única, Chats Business): só metadados para a
+// lista — o consumo delas é do Mac e não entra na conta desta máquina.
+export const IMPORTADAS = join(HOME, '.local/share/alfa/central-ia-importadas');
+
+function lerImportadas() {
+    return arquivos(IMPORTADAS, n => n.endsWith('.jsonl'), 0, 3650).map(arq => {
+        const e = novasLinhas(arq, (j, _l, e) => {
+            if (j.cwd && !e.cwd) e.cwd = j.cwd;
+            if (j.sessionId && !e.sessao) e.sessao = j.sessionId;
+            if (j.timestamp) e.ultima = j.timestamp;
+            const c = j.message?.content;
+            if (j.type === 'user' && !j.isSidechain && !j.isMeta && (typeof c === 'string' || (Array.isArray(c) && c.some(x => x?.type === 'text')))) {
+                e.mensagens++;
+                const t = typeof c === 'string' ? c : c.find(x => x?.type === 'text')?.text;
+                if (!e.primeiro && t && !/^\s*</.test(t)) e.primeiro = t.trim().replace(/\s+/g, ' ').slice(0, 80);
+            }
+            if (j.type === 'custom-title' && j.customTitle) e.titulo = String(j.customTitle).slice(0, 120);
+            if (j.type === 'ai-title' && j.aiTitle) e.tituloIa = String(j.aiTitle).slice(0, 120);
+        });
+        return e && { ...e, agente: 'claude', vscode: true, copia: true, arquivo: arq };
+    }).filter(Boolean);
+}
+
+/**
+ * O arquivo de uma sessão que ESTA máquina listou — nunca um caminho vindo do
+ * servidor (um servidor comprometido apontaria para ~/.ssh).
+ * @returns {{arquivo: string, copia: boolean}|null}
+ */
+export function arquivoDaSessao(agente, id) {
+    const pastas = agente === 'claude' ? [join(HOME, '.claude/projects') + sep, IMPORTADAS + sep]
+        : agente === 'codex' ? [join(HOME, '.codex/sessions') + sep] : [];
+    let achado = null;
+    for (const [caminho, e] of lidos) {
+        if (e.sessao !== id || !pastas.some(p => caminho.startsWith(p))) continue;
+        // No Claude, o arquivo com o nome da sessão é o dela; cópias por
+        // --fork-session começam com o id de outra.
+        if (!achado || caminho.endsWith(`${sep}${id}.jsonl`)) achado = { arquivo: caminho, copia: caminho.startsWith(IMPORTADAS + sep) };
+    }
+    return achado;
 }
 
 function lerCodex(raiz) {
@@ -199,6 +249,7 @@ function projetoDa(e, raiz) {
  */
 export function usoLocal(raiz) {
     const todas = [...lerClaude(raiz), ...lerCodex(raiz), ...lerCopilot(raiz)];
+    const copias = lerImportadas();
     const desde = new Date(Date.now() - DIAS * 86400_000).toLocaleDateString('sv-SE');
 
     const linhas = {};
@@ -215,12 +266,18 @@ export function usoLocal(raiz) {
     // Sessões que a PESSOA abriu (VS Code), as mais recentes primeiro — as
     // que o runner cria (`sdk-cli`, `codex_exec`) e as das worktrees da
     // Central ficam de fora.
-    const sessoes = todas
+    // A conversa aberta na RAIZ ~/projetos (como a do Comercial VixCard) entra
+    // com projeto '' quando não dá para dizer de qual projeto ela é; as
+    // cópias do Mac também (Chats Business).
+    const sessoes = [...todas, ...copias]
         .filter(s => s.vscode && s.sessao && s.cwd && s.ultima && !s.cwd.includes(`${sep}.central-ia${sep}`))
-        .map(s => ({ agente: s.agente, id: s.sessao, cwd: s.cwd, projeto: projetoDa(s, raiz), ultima_atividade: s.ultima, mensagens: s.mensagens }))
-        .filter(s => s.projeto && s.mensagens > 0)
+        .map(s => ({ agente: s.agente, id: s.sessao, cwd: s.cwd,
+            projeto: s.copia ? '' : (projetoDa(s, raiz) ?? (s.cwd === raiz ? '' : null)),
+            ultima_atividade: s.ultima, mensagens: s.mensagens,
+            titulo: s.titulo || s.tituloIa || s.primeiro || null, origem: s.copia ? 'mac_copia' : 'wsl' }))
+        .filter(s => s.projeto !== null && s.mensagens > 0)
         .sort((a, b) => b.ultima_atividade.localeCompare(a.ultima_atividade))
-        .slice(0, 40);
+        .slice(0, 120);
 
     const inicioDoMes = new Date().toLocaleDateString('sv-SE').slice(0, 8) + '01';
     const premiumMes = todas.filter(s => s.agente === 'copilot')

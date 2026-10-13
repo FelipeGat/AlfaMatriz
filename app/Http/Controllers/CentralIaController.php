@@ -494,6 +494,36 @@ class CentralIaController extends Controller
         return $this->semCache(['id' => $assunto->id], 201);
     }
 
+    /**
+     * Cria um chat de assunto a partir de conversas do VS Code (Chats
+     * Business): a última semana delas vira a memória de partida.
+     */
+    public function semearAssunto(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->canPermissao('central_ia_agentes', 'incluir'), 403, 'Sua conta não pode acionar agentes.');
+        $request->validate([
+            'sessoes' => ['required', 'array', 'min:1', 'max:5'],
+            'sessoes.*.agente' => ['required', 'string', 'in:claude,codex,copilot'],
+            'sessoes.*.id' => ['required', 'string', 'max:80'],
+        ]);
+        $dados = $this->dadosDoAssunto($request, true);
+
+        // Tudo ou nada: sessão inválida não deixa assunto vazio para trás.
+        [$assunto, $execucao] = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $dados, $request) {
+            $assunto = CentralIaTarefa::create([
+                'user_id' => $user->id, 'tipo' => CentralIaTarefa::ASSUNTO, 'titulo' => $dados['titulo'],
+                'objetivo' => "Chat contínuo do assunto \"{$dados['titulo']}\".", 'grupo_id' => $dados['grupo_id'] ?? null, 'projeto' => $dados['projeto'] ?? '',
+                'dossie' => \App\Services\CentralIa\Dossie::inicial("Chat contínuo do assunto \"{$dados['titulo']}\"."), 'ultima_atividade_em' => now(),
+            ]);
+
+            return [$assunto, $this->agentes->semear($user, $assunto, $request->input('sessoes'))];
+        });
+        \App\Services\CentralIa\Eventos::registrar($user, 'assunto_criado', "Chat de assunto criado a partir do VS Code: {$assunto->titulo}", ['projeto' => $assunto->projeto, 'tarefa_id' => $assunto->id]);
+
+        return $this->semCache(['id' => $assunto->id, 'execucao_id' => $execucao->id], 201);
+    }
+
     /** Renomeia, troca grupo ou projeto, arquiva e reabre um chat de assunto. */
     public function salvarAssunto(Request $request, int $assunto): JsonResponse
     {

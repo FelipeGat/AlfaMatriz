@@ -202,7 +202,14 @@ class CockpitService
 
     private function sessoes(User $user): array
     {
-        return $this->agentes->sessoes($user)->take(25)->map(fn ($s) => $s + [
+        // Conversa que já semeou um chat de assunto: a tela marca (Chats Business).
+        $semeadas = [];
+        foreach (CentralIaTarefa::de($user)->assuntos()->get(['id', 'dossie']) as $a) {
+            foreach ($a->dossie['sementes'] ?? [] as $s) $semeadas[$s['id'] ?? ''] = $a->id;
+        }
+
+        return $this->agentes->sessoes($user)->take(120)->map(fn ($s) => $s + [
+            'semeada_em' => $semeadas[$s['id']] ?? null,
             'nome' => CentralIaExecucao::AGENTES[$s['agente']] ?? $s['agente'],
             'ativa_agora' => $s['ultima_atividade'] && Carbon::parse($s['ultima_atividade'])->greaterThan(now()->subMinutes(AgentesService::PARADA_MINUTOS)),
         ])->all();

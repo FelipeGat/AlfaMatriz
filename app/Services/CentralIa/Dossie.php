@@ -70,6 +70,8 @@ class Dossie
             .'"delegar": quando o próximo passo é de OUTRO agente (ex.: QA independente pelo Copilot, revisão pelo Codex, implementação pelo Claude), NÃO peça à pessoa para fazê-lo: devolva {"agente": "claude|codex|copilot", "modo": "analisar|implementar", "pedido": "o que ele deve fazer, com os arquivos e critérios"} e a Central encaminha na mesma tarefa. A pessoa só decide o que é dela (aprovar, commit, deploy, produção). '
             // Fim de fluxo sem pergunta (13/10/2026, tarefa #14: QA aprovado e o
             // chat ficou parado sem dizer que esperava a decisão).
+            // Chats Business (docs/specs/chats-business): a memória do assunto.
+            .'Em chat de assunto, quando descobrir ou mudar ONDE fica algo (pasta, arquivo, sistema, planilha) ou em que ETAPA uma frente está, devolva "mapa": [{"texto": "o que é", "caminho": "caminho exato", "etapa": "onde está agora"}]; e regras de como a pessoa quer as coisas em "jeito_de_fazer": ["..."]. Só o que você viu de fato. '
             .'Quando o trabalho estiver PRONTO e só faltar o que é da pessoa (commit, deploy), pergunte no campo "duvida": "Está pronto. Posso fazer o commit e o deploy?", com "opcoes_duvida": ["Sim, commit e deploy", "Só o commit", "Ainda não"].';
     }
 
@@ -143,6 +145,25 @@ class Dossie
             $d['decisoes'][] = ['texto' => $decisao, 'agente' => $agente, 'em' => $agora];
         }
         $d['decisoes'] = array_slice($d['decisoes'], -30);
+
+        // Chats Business: onde fica cada coisa e o jeito de fazer. O mesmo
+        // caminho (ou o mesmo texto) ATUALIZA o item — a etapa muda; não
+        // vira uma segunda linha.
+        $chave = fn (array $i) => mb_strtolower(trim($i['caminho'] ?? '') ?: preg_replace('/\s+/', ' ', trim($i['texto'] ?? '')));
+        foreach (['mapa', 'jeito_de_fazer'] as $campo) {
+            foreach ((array) ($bloco[$campo] ?? []) as $item) {
+                $item = is_string($item) ? ['texto' => $item] : (is_array($item) ? $item : null);
+                if (! $item || ! is_string($item['texto'] ?? null) || trim($item['texto']) === '') continue;
+                $novo = array_filter([
+                    'texto' => Str::limit(trim($item['texto']), 500),
+                    'caminho' => is_string($item['caminho'] ?? null) ? Str::limit(trim($item['caminho']), 300) : null,
+                    'etapa' => is_string($item['etapa'] ?? null) ? Str::limit(trim($item['etapa']), 200) : null,
+                ]) + ['agente' => $agente, 'em' => $agora];
+                $itens = array_values(array_filter($d[$campo] ?? [], fn ($x) => is_array($x) && $chave($x) !== $chave($novo)));
+                $itens[] = $novo;
+                $d[$campo] = array_slice($itens, -40);
+            }
+        }
 
         foreach ((array) ($bloco['testes'] ?? []) as $t) {
             if (is_array($t) && filled($t['comando'] ?? null)) {

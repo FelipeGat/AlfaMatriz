@@ -49,7 +49,7 @@ export function centralIa(config) {
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         // Chats Business: um chat contínuo por assunto (docs/specs/chats-business).
         assuntos: [], novoAssunto: null, buscaAssuntos: '',
-        imagemAberta: null,
+        imagemAberta: null, trazendo: null,
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
         politicaUsuario: null, politicaAlterada: false, salvandoPolitica: false, carregandoUsuario: false,
@@ -310,6 +310,35 @@ export function centralIa(config) {
                 this.abrirAssunto(this.assuntos[0]);
                 this.$nextTick(() => document.getElementById('central-rascunho')?.focus());
             } catch (erro) { this.falhou(erro); n.salvando = false; }
+        },
+        /** Conversas do VS Code que podem semear um chat (Claude e Codex), com nome primeiro. */
+        get conversasDoVsCode() {
+            return this.sessoes.filter(s => ['claude', 'codex'].includes(s.agente))
+                .sort((a, b) => (!!b.titulo - !!a.titulo) || b.ultima_atividade.localeCompare(a.ultima_atividade));
+        },
+        abrirTrazer() { this.trazendo = { ids: [], titulo: '', grupo_id: '', projeto: '', salvando: false, nomeTocado: false }; },
+        /** Marca/desmarca; o nome e o grupo do chat seguem a primeira conversa marcada (Vix* → VixCard). */
+        marcarConversa(s) {
+            const t = this.trazendo;
+            t.ids = t.ids.includes(s.id) ? t.ids.filter(x => x !== s.id) : [...t.ids, s.id];
+            const primeira = this.sessoes.find(x => x.id === t.ids[0]);
+            if (!t.nomeTocado) t.titulo = primeira?.titulo || '';
+            if (primeira && !t.grupo_id) {
+                const alvo = /vix/i.test(primeira.titulo || '') ? /vix/i : /alfa/i;
+                t.grupo_id = this.grupos.find(g => alvo.test(g.nome))?.id || '';
+            }
+        },
+        async trazerDoVsCode() {
+            const t = this.trazendo;
+            if (!t?.ids.length || !t.titulo.trim() || t.salvando) return;
+            t.salvando = true;
+            try {
+                const sessoes = t.ids.map(id => ({ agente: this.sessoes.find(s => s.id === id).agente, id }));
+                const r = await this.pedir(config.semear, 'POST', { titulo: t.titulo.trim(), grupo_id: t.grupo_id ? Number(t.grupo_id) : null, projeto: t.projeto || '', sessoes });
+                this.assuntos = [{ id: r.id, titulo: t.titulo.trim(), grupo_id: t.grupo_id ? Number(t.grupo_id) : null, projeto: t.projeto || '', status: 'executando', agente: null, ultima_atividade: new Date().toISOString() }, ...this.assuntos];
+                this.trazendo = null;
+                this.abrirAssunto(this.assuntos[0]);
+            } catch (erro) { this.falhou(erro); t.salvando = false; }
         },
         async salvarAssunto(a, dados) {
             try { await this.pedir(config.assunto.replace('__A__', a.id), 'PUT', dados); this.reconectar(); } catch (erro) { this.falhou(erro); }

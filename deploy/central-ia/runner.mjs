@@ -16,7 +16,8 @@ import { writeFileSync, closeSync, existsSync, openSync, readFileSync, readSync,
 import { homedir, hostname, tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { usoLocal } from './uso-local.mjs';
+import { arquivoDaSessao, usoLocal } from './uso-local.mjs';
+import { montarSemente } from './extrato.mjs';
 import { prepararAnexos } from './anexos.mjs';
 import { acompanharProgresso } from './progresso.mjs';
 import { auditar, confirmar } from './confirmacao.mjs';
@@ -690,6 +691,13 @@ async function executar(job) {
             job.previaDir = join(PREVIAS, `e${job.id}`);
             mkdirSync(job.previaDir, { recursive: true });
         }
+        if (Array.isArray(job.semear) && job.semear.length) {
+            uso(); // garante a lista de sessões desta máquina
+            const s = montarSemente(job.semear, { localizar: arquivoDaSessao });
+            job.contexto = [job.contexto, s.texto].filter(Boolean).join('\n\n');
+            job.sementeLida = s.lidas;
+            auditar({ execucao: job.id, decisao: 'semente', conversas: s.lidas.map(l => ({ id: l.id, turnos: l.incluidos, caracteres: l.caracteres })) });
+        }
         const [bin, args, nomeCopilot] = comando(job, cwd, branch, saida, acesso);
         // Parada pedida enquanto preparava: não cria um processo que ninguém
         // vai esperar.
@@ -720,6 +728,11 @@ async function executar(job) {
             commit_base: criada?.commit_base ?? null,
             checkpoint: checkpoint(cwd, dir),
         };
+        if (job.sementeLida) {
+            resultado.semente = job.sementeLida.map(({ agente, id, incluidos, fora, caracteres }) => ({ agente, id, incluidos, fora, caracteres }));
+            // Cópia do Mac: usada uma vez e apagada (FR-020).
+            for (const l of job.sementeLida) if (l.copia) rmSync(l.arquivo, { force: true });
+        }
     } } catch (e) {
         resultado = { status: 'falhou', erro: String(e.message || e).slice(0, 1900), sessao_agente: job.sessaoPrevista || null };
         // Mesmo na falha o estado do git interessa (quem assumir parte dele),
