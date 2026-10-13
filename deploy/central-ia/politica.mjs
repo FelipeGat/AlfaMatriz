@@ -138,3 +138,29 @@ export function agendaSemIa(rotulo, inicio, bruto) {
     const corpo = [...dias].map(([dia, itens]) => (dia ? `**${dia}**\n` : '') + itens.map(i => `- ${i}`).join('\n')).join('\n\n');
     return `${cab}\n\n${corpo}\n\n_${linhas.length} compromisso(s), lido(s) agora da sua Google Agenda, sem IA._`;
 }
+
+/**
+ * Regra do dono para QUALQUER IA que implemente em projeto (13/10/2026: "quem
+ * for fazer a implementação tem que passar pelo cstk"). Espelha o ~/.claude/
+ * CLAUDE.md global — que só o Claude lê sozinho; Codex e Copilot não leem nem
+ * têm os skills do cstk, então não implementam frente nova: devolvem ao Claude.
+ * Sem projeto (chat de assunto nas pastas de ~/projetos, propostas, planilhas)
+ * não se aplica: não é código de repositório.
+ */
+export function regraCstk(agente, projeto) {
+    if (!projeto) return null;
+    const comum = [
+        '## Regra obrigatória do dono: SDD com cstk',
+        'Antes de escrever código novo, confira se existem docs/briefing.md e docs/constitution.md no projeto.',
+        'Frente NOVA (feature, módulo, integração) só se implementa com docs/specs/<feature>/{spec,plan,tasks}.md prontos; a implementação segue as tarefas de tasks.md.',
+        'Correção pontual de bug num projeto que já tem esses documentos, e ajuste de layout, texto ou configuração, não exigem o pipeline inteiro.',
+    ];
+    if (agente === 'claude') {
+        return [...comum,
+            'Você tem os skills do cstk: frente nova sem spec → rode o pipeline (/cstk:briefing e /cstk:constitution se faltarem; depois /cstk:specify → /cstk:clarify → /cstk:plan → /cstk:create-tasks → /cstk:execute-task). Bug pontual → /cstk:bugfix.',
+        ].join('\n');
+    }
+    return [...comum,
+        'Você NÃO tem os skills do cstk. Se o pedido for frente nova e o projeto não tiver a spec dela em docs/specs/, NÃO implemente: explique em uma linha e devolva no bloco final "delegar": {"agente": "claude", "modo": "implementar", "pedido": "<o pedido original>, passando pelo pipeline do cstk"}. Correção pontual ou ajuste: pode seguir.',
+    ].join('\n');
+}

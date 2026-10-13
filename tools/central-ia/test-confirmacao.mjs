@@ -113,4 +113,15 @@ await assert.rejects(enviarTelegram(cfg, 'x', { dormir, buscar: async () => { re
 assert.equal(recusas, 1, 'recusa não repete');
 await assert.rejects(enviarTelegram(cfg, 'x', { dormir, buscar: async () => { throw new TypeError('fetch failed'); } }), /fetch failed/);
 
+// 8. cstk para quem implementa (13/10/2026): Claude roda o pipeline; Codex e
+// Copilot não implementam frente nova sem spec, devolvem ao Claude.
+const { regraCstk } = await import('../../deploy/central-ia/politica.mjs');
+assert.match(regraCstk('claude', 'gestor'), /\/cstk:specify/);
+assert.match(regraCstk('claude', 'gestor'), /\/cstk:bugfix/);
+for (const a of ['codex', 'copilot']) {
+    assert.match(regraCstk(a, 'gestor'), /NÃO implemente/);
+    assert.match(regraCstk(a, 'gestor'), /"delegar": \{"agente": "claude"/);
+}
+assert.equal(regraCstk('codex', ''), null, 'assunto sem projeto não é código de repositório');
+
 console.log('PASSOU: teto local, leitura por CLI, pastas, código preso ao conteúdo, confirmação, recusa, expiração e auditoria.');

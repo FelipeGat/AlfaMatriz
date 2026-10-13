@@ -17,6 +17,12 @@ que ordem, e o que cada pessoa faz na própria máquina.
   (segundo fator), qualquer que seja a regra escolhida em Ajustes.
   - A máquina sem Telegram configurado não executa esse tipo de pedido.
   - Quem garante isso é o runner (`deploy/central-ia/politica.mjs`, `exigeConfirmacao`), e não o servidor.
+- **Quem implementa passa pelo cstk**, seja Claude, Codex ou Copilot (`politica.mjs`, `regraCstk`, no
+  prompt de todo pedido de implementar em projeto).
+  - Frente nova só com `docs/specs/<feature>/` pronta. O Claude roda o pipeline; o Codex e o Copilot, que
+    não têm os skills, devolvem o pedido ao Claude.
+  - Bug pontual e ajuste de layout, texto ou configuração seguem direto.
+  - **Cada pessoa precisa ter o plugin cstk instalado no Claude Code da própria máquina**, como o Felipe tem.
 
 ## Antes de publicar
 

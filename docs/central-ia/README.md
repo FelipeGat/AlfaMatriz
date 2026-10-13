@@ -383,3 +383,12 @@ Spec, plano e tarefas: `docs/specs/chats-business/`. O dono passou a trabalhar p
 - **Telegram.** `/assunto` lista, `/assunto 2` ou `/assunto comercial` aponta e `/geral` sai. As mensagens caem no mesmo chat da tela.
 - **Pedido pelo stdin.** O Claude e o Codex recebem o pedido pela entrada padrão. Como argumento, passava do limite de 128 KB do Linux (`spawn E2BIG`).
 - **Adiado.** Condensar o histórico antigo e reduzir pela cota (fase 3). "Atualizar do VS Code" saiu do escopo.
+
+### Quem implementa passa pelo cstk (13/10/2026)
+
+O runner acrescenta a regra do cstk (`politica.mjs`, `regraCstk`) a todo pedido de implementar em projeto,
+para as três IAs, e não só para o Claude, que já a recebia pelo `~/.claude/CLAUDE.md` global.
+- **Frente nova:** só com spec. O Claude roda o pipeline; o Codex e o Copilot devolvem o pedido ao Claude
+  pelo `delegar`.
+- **Bug pontual e ajustes:** seguem direto.
+- **Chat de assunto sem projeto** (propostas, planilhas): fica de fora, porque não é código de repositório.

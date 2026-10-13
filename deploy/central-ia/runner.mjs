@@ -23,7 +23,7 @@ import { prepararAnexos } from './anexos.mjs';
 import { acompanharProgresso } from './progresso.mjs';
 import { auditar, confirmar } from './confirmacao.mjs';
 import { caminhoDoStatus, compararGit, criarAuditor, retratoGit } from './auditoria.mjs';
-import { acessoEfetivo, agendaSemIa, CITA_CREDENCIAL, dentroDe, exigeConfirmacao, modeloArgs, permissoes, regraEfetiva } from './politica.mjs';
+import { acessoEfetivo, agendaSemIa, CITA_CREDENCIAL, dentroDe, exigeConfirmacao, modeloArgs, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h): a regra "inicio" não pede
 // o código de novo no mesmo chat. Fica aqui, e não no servidor.
@@ -396,6 +396,9 @@ function instrucoes(job, branch) {
             ? `Você está numa worktree própria, na branch ${branch}. Faça as alterações pedidas aqui e rode os testes que fizerem sentido.`
             : 'Você trabalha DIRETO na pasta do projeto, como no VS Code. Antes de alterar, veja o `git status`: alterações que já estavam lá são de outra sessão — preserve-as.',
             'No fim, resuma o que mudou, por quê e como testar.');
+        // Quem implementa passa pelo cstk — Claude, Codex ou Copilot.
+        const cstk = regraCstk(job.agente, job.projeto);
+        if (cstk) base.push(cstk);
     } else if (job.categoria === 'operacao') {
         // Operar um sistema (dono, 12/10/2026): confere, propõe, confirma,
         // e só então grava. Código não se mexe; banco além do pedido, só com
