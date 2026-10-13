@@ -86,4 +86,21 @@ class TelegramAssuntoTest extends TestCase
         $this->assertSame(0, CentralIaExecucao::count(), 'ponteiro para assunto alheio não vira pedido');
         $this->assertSame(0, CentralIaMensagem::where('tarefa_id', $alheio->id)->count());
     }
+
+    public function test_botao_do_telegram_num_assunto_aponta_o_assunto(): void
+    {
+        config(['central_ia.canal_exclusivo' => true]);
+        $u = User::factory()->create();
+        $u->perfis()->attach(Perfil::where('slug', 'central_ia')->value('id'));
+        CentralIaRunner::create(['user_id' => $u->id, 'maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => [], 'visto_em' => now()]);
+        CentralIaTelegramVinculo::create(['user_id' => $u->id, 'chat_id' => 702, 'vinculado_em' => now(), 'projeto_atual' => 'gestor']);
+        $vix = CentralIaTarefa::create(['user_id' => $u->id, 'tipo' => 'assunto', 'titulo' => 'Proposta Comercial VixCard', 'objetivo' => 'x', 'projeto' => '', 'ultima_atividade_em' => now()]);
+
+        $this->actingAs($u)->postJson(route('central-ia.canal'), ['canal' => 'telegram', 'projeto' => null, 'tarefa_id' => $vix->id])->assertOk();
+        $v = CentralIaTelegramVinculo::where('chat_id', 702)->first();
+        $this->assertSame([$vix->id, null], [$v->assunto_atual_id, $v->projeto_atual]);
+
+        $this->falar(702, 'o Lorenzo respondeu?');
+        $this->assertSame($vix->id, CentralIaExecucao::latest('id')->value('tarefa_id'), 'a mensagem vai para o assunto, não para a Geral');
+    }
 }

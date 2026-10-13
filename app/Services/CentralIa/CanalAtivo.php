@@ -49,7 +49,7 @@ class CanalAtivo
                 $vinculo = CentralIaTelegramVinculo::where('user_id', $user->id)->first();
                 if (! $vinculo) throw ValidationException::withMessages(['canal' => 'Vincule seu Telegram primeiro, em Ajustes.']);
                 // Tarefa da conversa Geral tem projeto '' (e não nulo).
-                if ($tarefa) CentralIaTarefa::de($user)->where('projeto', $projeto ?? '')->findOrFail($tarefa);
+                $doChat = $tarefa ? CentralIaTarefa::de($user)->where('projeto', $projeto ?? '')->findOrFail($tarefa) : null;
                 if ($projeto && ! in_array($projeto, app(AgentesService::class)->disponiveis($user)['projetos'], true)
                     && ! \App\Models\CentralIaProjeto::where('user_id', $user->id)->where('projeto', $projeto)->exists()
                     && ! CentralIaMensagem::de($user)->where('projeto', $projeto)->exists()) {
@@ -57,7 +57,9 @@ class CanalAtivo
                 }
                 // Reenvio da mesma transferência não gera outra confirmação.
                 if ($conversa->canal_ativo === 'telegram' && $conversa->projeto_canal === $projeto && $conversa->tarefa_canal == $tarefa) return $conversa;
-                $vinculo->update(['projeto_atual' => $projeto]);
+                // Chat de assunto (Business): o Telegram aponta para ele, e não
+                // para o projeto — senão as mensagens cairiam na Geral.
+                $vinculo->update(['projeto_atual' => $doChat?->ehAssunto() ? null : $projeto, 'assunto_atual_id' => $doChat?->ehAssunto() ? $doChat->id : null]);
             } elseif ($conversa->canal_ativo === 'web') {
                 return $conversa;
             }
@@ -67,7 +69,7 @@ class CanalAtivo
                 ['origem' => $canal, 'projeto' => $projeto, 'tarefa_id' => $tarefa]);
             // Confirmação curta persistida, entregue pela fila existente, nunca chama IA.
             if ($canal === 'telegram') app(ConversaService::class)->registrarDoAgente($user, 'Central de IA',
-                'Conversa ativada no Telegram · '.($projeto ?: 'Geral').($tarefa ? ' · tarefa #'.$tarefa : '').'. Continue por aqui. Para voltar ao sistema, envie /matriz.',
+                'Conversa ativada no Telegram · '.($doChat?->ehAssunto() ? '“'.$doChat->titulo.'”' : ($projeto ?: 'Geral').($tarefa ? ' · tarefa #'.$tarefa : '')).'. Continue por aqui. Para voltar ao sistema, envie /matriz.',
                 CentralIaMensagem::AUTOR_SISTEMA, $projeto, $tarefa);
             return $conversa;
         });
