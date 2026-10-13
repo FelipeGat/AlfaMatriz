@@ -30,6 +30,10 @@ class Preferencias
             // Quem não resolve passa o pedido adiante sozinho: nível acima,
             // e no máximo outra IA (dono, 12/10/2026). Sempre com aviso.
             'escalar' => true,
+            // Quando a máquina pede o código no Telegram (dono, 13/10/2026: "só
+            // no início do chat e em caso de deploy"). Por pessoa; a máquina
+            // de cada um ainda impõe o próprio mínimo.
+            'confirmacao' => 'inicio',
         ], is_array($salvas) ? $salvas : []);
         $regras['execucao_bloqueada'] = app(Governanca::class)->execucaoBloqueada($user, $salvas['governanca'] ?? null);
         if ($g = $salvas['governanca'] ?? null) {

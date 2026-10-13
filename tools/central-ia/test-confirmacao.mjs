@@ -18,6 +18,19 @@ assert.equal(acessoEfetivo({ modo: 'implementar', acesso: 'total' }, 'total'), '
 assert.ok(exigeConfirmacao({ modo: 'implementar' }, 'implementar'));
 assert.ok(!exigeConfirmacao({ modo: 'analisar' }, 'implementar'));
 assert.ok(exigeConfirmacao({ modo: 'analisar' }, 'sempre'));
+// "inicio": só a primeira implementação do chat, e deploy sempre.
+assert.ok(exigeConfirmacao({ modo: 'implementar', instrucao: 'corrija o filtro' }, 'inicio', false));
+assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'corrija o filtro' }, 'inicio', true));
+assert.ok(exigeConfirmacao({ modo: 'implementar', instrucao: 'pode fazer o deploy' }, 'inicio', true));
+assert.ok(exigeConfirmacao({ modo: 'analisar', instrucao: 'suba para produção' }, 'deploy', true));
+assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'corrija' }, 'deploy', false));
+assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'faça o deploy' }, 'nunca', false));
+// A pessoa só deixa mais rígido que o mínimo da máquina.
+const { regraEfetiva } = await import('../../deploy/central-ia/politica.mjs');
+assert.equal(regraEfetiva('inicio', 'nunca'), 'inicio');
+assert.equal(regraEfetiva('inicio', 'implementar'), 'implementar');
+assert.equal(regraEfetiva('nunca', 'nunca'), 'nunca');
+assert.equal(regraEfetiva('deploy', undefined), 'deploy');
 
 // 2. Leitura de verdade em cada CLI.
 const claude = permissoes('claude', 'leitura', { projetos: '/p' });

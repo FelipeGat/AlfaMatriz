@@ -92,6 +92,37 @@ class ConfirmacaoTest extends TestCase
         $this->runner($u, $e->id, ['estado' => 'aguardando'])->assertJsonPath('codigo', '220705');
     }
 
+    public function test_regra_de_confirmacao_e_por_pessoa_e_a_maquina_informa_o_minimo(): void
+    {
+        $u = $this->comCentral();
+        $regras = app(\App\Services\CentralIa\Preferencias::class)->ler($u);
+        $this->assertSame('inicio', $regras['confirmacao'], 'padrão: início do chat e deploy');
+        $regras['confirmacao'] = 'deploy';
+        $this->actingAs($u)->putJson(route('central-ia.preferencias'), $regras)->assertOk();
+        $regras['confirmacao'] = 'qualquer';
+        $this->putJson(route('central-ia.preferencias'), $regras)->assertUnprocessable();
+
+        [, $e] = $this->emExecucao($u);
+        $outro = $this->comCentral();
+        $this->assertSame('inicio', app(\App\Services\CentralIa\Preferencias::class)->ler($outro)['confirmacao'], 'a escolha de um não muda a do outro');
+
+        Sanctum::actingAs($u, ['central-ia-runner']);
+        $this->postJson(route('central-ia.runner.batida'), ['maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => ['alfahome'],
+            'politica' => ['acesso_maximo' => 'total', 'analise' => 'total', 'confirmar_minimo' => 'inicio', 'telegram' => true]])->assertOk();
+        $this->actingAs($u)->getJson(route('central-ia.painel'))->assertJsonPath('maquina.politica.confirmar_minimo', 'inicio');
+    }
+
+    public function test_payload_leva_a_regra_da_pessoa(): void
+    {
+        $u = $this->comCentral();
+        $regras = app(\App\Services\CentralIa\Preferencias::class)->ler($u);
+        $regras['confirmacao'] = 'implementar';
+        $this->actingAs($u)->putJson(route('central-ia.preferencias'), $regras)->assertOk();
+        $runner = CentralIaRunner::create(['user_id' => $u->id, 'maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => ['alfahome'], 'visto_em' => now()]);
+        app(AgentesService::class)->pedir($u, 'x', ['projeto' => 'alfahome', 'agente' => 'claude', 'modo' => 'implementar', 'instrucao' => 'corrija o filtro'], 'web', 'c-reg');
+        $this->assertSame('implementar', app(AgentesService::class)->proxima($u, $runner)['confirmacao_regra']);
+    }
+
     public function test_tres_erros_recusam_e_ninguem_mais_confirma(): void
     {
         $u = $this->comCentral();

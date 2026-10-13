@@ -929,6 +929,22 @@
                                 </template>
                             </div>
                         </div>
+                        {{-- Confirmação pelo Telegram: por pessoa; a máquina dela impõe o mínimo. --}}
+                        <div class="space-y-1">
+                            <label class="block font-semibold text-ink" for="central-confirmacao">Código de confirmação no Telegram</label>
+                            <select id="central-confirmacao" x-model="ajustes.confirmacao" class="w-full max-w-md rounded-control border-line bg-input text-sm text-ink">
+                                <option value="inicio">No início de cada chat e em todo deploy (recomendado)</option>
+                                <option value="deploy">Só em deploy, produção ou publicação</option>
+                                <option value="implementar">Em toda implementação e em todo deploy</option>
+                                <option value="sempre">Em todo pedido, até análise</option>
+                                <option value="nunca">Nunca</option>
+                            </select>
+                            <p class="text-xs text-ink-faint" x-show="maquina.politica"
+                               x-text="'Sua máquina: mínimo ' + ({nunca:'nunca', deploy:'só deploy', inicio:'início do chat e deploy', implementar:'toda implementação', sempre:'todo pedido'}[maquina.politica?.confirmar_minimo] || '?')
+                                   + ' · Telegram ' + (maquina.politica?.telegram ? 'configurado' : 'NÃO configurado')
+                                   + ' · acesso ' + (maquina.politica?.acesso_maximo || '?') + ' · análise ' + (maquina.politica?.analise === 'total' ? 'com acesso total' : 'só leitura')
+                                   + '. Aqui você só deixa mais rígido que o mínimo da máquina; o mínimo muda no arquivo de configuração dela.'"></p>
+                        </div>
                         <label class="flex gap-2 items-center"><input type="checkbox" x-model="ajustes.fallback" class="rounded border-line text-brand">Tentar outra IA habilitada quando o provedor estiver indisponível ou no limite</label>
                         <label class="flex gap-2 items-start"><input type="checkbox" x-model="ajustes.escalar" class="mt-0.5 rounded border-line text-brand">
                             <span>Escalar sozinho quando a IA não resolver: sobe um nível (econômico → médio → máximo) e, no máximo, passa para outra IA. Vale também quando você pede para refazer. Sempre com aviso na conversa; para depois de 3 trocas.</span></label>

@@ -74,6 +74,7 @@ class CockpitService
                 'online' => $maquina['online'],
                 'agentes' => $maquina['agentes'],
                 'projetos' => $maquina['projetos'],
+                'politica' => \App\Models\CentralIaRunner::where('user_id', $user->id)->orderByDesc('visto_em')->value('politica'),
             ],
             'paralelo' => min((int) config('central_ia.agentes.paralelo'), app(Preferencias::class)->ler($user)['paralelo']),
         ];

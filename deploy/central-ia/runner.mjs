@@ -21,7 +21,19 @@ import { prepararAnexos } from './anexos.mjs';
 import { acompanharProgresso } from './progresso.mjs';
 import { auditar, confirmar } from './confirmacao.mjs';
 import { caminhoDoStatus, compararGit, criarAuditor, retratoGit } from './auditoria.mjs';
-import { acessoEfetivo, agendaSemIa, CITA_CREDENCIAL, dentroDe, exigeConfirmacao, modeloArgs, permissoes } from './politica.mjs';
+import { acessoEfetivo, agendaSemIa, CITA_CREDENCIAL, dentroDe, exigeConfirmacao, modeloArgs, permissoes, regraEfetiva } from './politica.mjs';
+
+// Chats já confirmados nesta máquina (vale 12 h): a regra "inicio" não pede
+// o código de novo no mesmo chat. Fica aqui, e não no servidor.
+const CONFIRMADOS = join(homedir(), '.local/share/alfa/central-ia-chats-confirmados.json');
+const VALIDADE_CHAT_MS = 12 * 3600_000;
+function chatsConfirmados() {
+    try { return Object.fromEntries(Object.entries(JSON.parse(readFileSync(CONFIRMADOS, 'utf8'))).filter(([, ate]) => ate > Date.now())); } catch { return {}; }
+}
+function marcarChatConfirmado(tarefa) {
+    if (!tarefa) return;
+    try { writeFileSync(CONFIRMADOS, JSON.stringify({ ...chatsConfirmados(), [tarefa]: Date.now() + VALIDADE_CHAT_MS }), { mode: 0o600 }); } catch {}
+}
 
 const HOME = homedir();
 const CONFIG = process.env.CENTRAL_IA_RUNNER_CONFIG || join(HOME, '.config/alfa/central-ia-runner.env');
@@ -46,7 +58,9 @@ function lerConfig() {
         acessoMaximo: v('CENTRAL_IA_ACESSO_MAXIMO') === 'total' ? 'total' : 'restrito',
         // `implementar` (padrão): confirma o que modifica. `sempre`: confirma
         // também as análises.
-        confirmar: v('CENTRAL_IA_CONFIRMAR') === 'sempre' ? 'sempre' : 'implementar',
+        // O MÍNIMO desta máquina (nunca, deploy, inicio, implementar, sempre).
+        // A escolha da pessoa em Ajustes só deixa mais rígido.
+        confirmar: ['nunca', 'deploy', 'inicio', 'implementar', 'sempre'].includes(v('CENTRAL_IA_CONFIRMAR')) ? v('CENTRAL_IA_CONFIRMAR') : 'inicio',
         // Analisar: `leitura` (padrão) ou `total` — com total, a IA decide o
         // que consultar, e o que ela viu e alterou fica na auditoria.
         analise: v('CENTRAL_IA_ANALISE') === 'total' ? 'total' : 'leitura',
@@ -252,6 +266,9 @@ async function batida() {
         agentes: Object.keys(agentes).filter(k => agentes[k]),
         projetos,
         estado: estadoDosProjetos(projetos),
+        // O que esta máquina impõe, para a tela mostrar (só leitura lá).
+        politica: { acesso_maximo: cfg.acessoMaximo, analise: cfg.analise, confirmar_minimo: cfg.confirmar,
+            telegram: !!(cfg.telegramToken && cfg.telegramChat && /^[0-9a-f]{64}$/i.test(cfg.segredo || '')) },
         ...(u ? { consumo: { ...consumo, limites_claude: limitesDoClaude() }, sessoes } : {}),
     });
     if (r.status !== 200) log('batida recusada', r.status, r.json?.message || '');
@@ -641,11 +658,13 @@ async function executar(job) {
 
         // Modificar exige o código do dono, que ESTA máquina gera e manda ao
         // Telegram dele (confirmacao.mjs). Sem isso, nada roda.
-        if (exigeConfirmacao(job, cfg.confirmar)) {
+        const regra = regraEfetiva(cfg.confirmar, job.confirmacao_regra);
+        if (exigeConfirmacao(job, regra, !!chatsConfirmados()[job.tarefa?.id])) {
             progresso.etapa('confirmacao');
             await informar();
             const c = await confirmar({ job, cwd, acesso, cfg, api, parar: () => parar });
             if (!c.ok) throw new Error(`não executado: ${c.motivo}`);
+            marcarChatConfirmado(job.tarefa?.id);
         } else {
             auditar({ execucao: job.id, decisao: 'leitura', agente: job.agente, projeto: job.projeto, modo: job.modo, cwd });
         }

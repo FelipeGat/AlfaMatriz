@@ -43,6 +43,11 @@ class CentralIaRunnerController extends Controller
             'estado' => ['nullable', 'array', 'max:300'],
             'consumo' => ['nullable', 'array'],
             'sessoes' => ['nullable', 'array', 'max:60'],
+            'politica' => ['nullable', 'array:acesso_maximo,analise,confirmar_minimo,telegram'],
+            'politica.acesso_maximo' => ['nullable', 'in:total,restrito'],
+            'politica.analise' => ['nullable', 'in:total,leitura'],
+            'politica.confirmar_minimo' => ['nullable', 'in:nunca,deploy,inicio,implementar,sempre'],
+            'politica.telegram' => ['nullable', 'boolean'],
         ]);
 
         CentralIaRunner::updateOrCreate(
@@ -55,6 +60,7 @@ class CentralIaRunnerController extends Controller
                 // mantém o último valor em vez de apagar o card.
                 ...(array_key_exists('consumo', $dados) ? ['consumo' => $this->consumo($dados['consumo'] ?? [])] : []),
                 ...(array_key_exists('sessoes', $dados) ? ['sessoes' => $this->sessoes($dados['sessoes'] ?? [], $dados['projetos'])] : []),
+                ...(array_key_exists('politica', $dados) ? ['politica' => $dados['politica']] : []),
                 'visto_em' => now(),
             ],
         );

@@ -43,9 +43,35 @@ export function dentroDe(raiz, caminho) {
     } catch { return false; }
 }
 
-/** Precisa do código do dono antes de rodar? */
-export function exigeConfirmacao(job, regra) {
-    return job.modo === 'implementar' || regra === 'sempre';
+/**
+ * Quando a máquina pede o código (dono, 13/10/2026: "só no início do chat e
+ * em caso de deploy; ficar pedindo toda hora é bem ruim"), do mais frouxo ao
+ * mais rígido:
+ *  - nunca:       não pede (escolha de quem não quer o Telegram);
+ *  - deploy:      só pedido de deploy, produção, push ou publicação;
+ *  - inicio:      deploy + a primeira implementação de cada chat;
+ *  - implementar: deploy + toda implementação;
+ *  - sempre:      todo pedido, até análise.
+ */
+export const REGRAS_DE_CONFIRMACAO = ['nunca', 'deploy', 'inicio', 'implementar', 'sempre'];
+
+/** A regra que vale: a da pessoa (Ajustes), nunca mais frouxa que o mínimo da máquina. */
+export function regraEfetiva(minimoDaMaquina, daPessoa) {
+    const i = r => Math.max(0, REGRAS_DE_CONFIRMACAO.indexOf(r));
+    return REGRAS_DE_CONFIRMACAO[Math.max(i(minimoDaMaquina), REGRAS_DE_CONFIRMACAO.includes(daPessoa) ? i(daPessoa) : 0)];
+}
+
+export const PEDE_DEPLOY = /\b(deploy|deplo[iy]|produ[çc][ãa]o|publi(car|que|ca[çc][ãa]o)|push|tag\s+v\d|release|subir\s+(pra|para)\s+o?\s*ar|merge\s+(na|para\s+a)\s+main)\b/i;
+
+/** Precisa do código do dono antes de rodar? `chatConfirmado`: já confirmou neste chat. */
+export function exigeConfirmacao(job, regra, chatConfirmado = false) {
+    const deploy = PEDE_DEPLOY.test(job.instrucao || '');
+    if (regra === 'nunca') return false;
+    if (regra === 'sempre') return true;
+    if (deploy) return true;
+    if (regra === 'deploy') return false;
+    if (job.modo !== 'implementar') return false;
+    return regra === 'implementar' || !chatConfirmado;
 }
 
 /** Argumentos de permissão de cada CLI para o acesso efetivo. */
