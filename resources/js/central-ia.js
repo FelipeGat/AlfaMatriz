@@ -257,7 +257,8 @@ export function centralIa(config) {
                 if (!tipo) continue;
                 this.novidades[c.id] = tipo;
                 const texto = { aguardando: 'está esperando você', falhou: 'falhou', terminou: 'terminou' }[tipo];
-                this.aviso = `Chat #${c.id} (${c.projeto || 'Geral'}) ${texto}: ${c.titulo}`;
+                // Assunto (tem grupo_id) se diz pelo nome; tarefa, pelo projeto.
+                this.aviso = 'grupo_id' in c ? `${c.titulo} ${texto}.` : `Chat #${c.id} (${c.projeto || 'Geral'}) ${texto}: ${c.titulo}`;
                 try { if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification(`Central de IA · #${c.id} ${texto}`, { body: c.titulo, tag: 'central-ia-' + c.id }); } catch {}
             }
             this.atualizarTitulo();

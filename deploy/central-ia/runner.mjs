@@ -16,6 +16,7 @@ import { writeFileSync, closeSync, existsSync, openSync, readFileSync, readSync,
 import { homedir, hostname, tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { setDefaultAutoSelectFamilyAttemptTimeout } from 'node:net';
 import { arquivoDaSessao, usoLocal } from './uso-local.mjs';
 import { montarSemente } from './extrato.mjs';
 import { prepararAnexos } from './anexos.mjs';
@@ -78,6 +79,11 @@ function lerConfig() {
     if (!config.token) throw new Error(`ALFAMATRIZ_RUNNER_TOKEN ausente (${CONFIG}).`);
     return config;
 }
+
+// O Node tenta IPv4 e IPv6 juntos e desiste de cada um em 250 ms; daqui o
+// IPv6 não tem rota e o IPv4 até o Telegram às vezes passa disso — o código
+// de confirmação não saía ("fetch failed", 13/10/2026). 2,5 s por tentativa.
+setDefaultAutoSelectFamilyAttemptTimeout(2500);
 
 const cfg = lerConfig();
 const log = (...a) => console.log(new Date().toISOString(), ...a);

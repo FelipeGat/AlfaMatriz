@@ -77,15 +77,30 @@ export function mensagem(job, cwd, acesso, cod) {
     ].join('\n');
 }
 
-export async function enviarTelegram(cfg, texto) {
-    const r = await fetch(`https://api.telegram.org/bot${cfg.telegramToken}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: cfg.telegramChat, text: texto, link_preview_options: { is_disabled: true } }),
-        signal: AbortSignal.timeout(15000),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!j.ok) throw new Error(`Telegram recusou (${r.status})`);
+/**
+ * Manda o texto ao Telegram do dono. Falha de REDE tenta de novo (3 vezes):
+ * em 13/10/2026 o "fetch failed" intermitente até o api.telegram.org fez um
+ * pedido cair como "Telegram não configurado". Recusa do Telegram não repete.
+ */
+export async function enviarTelegram(cfg, texto, { tentativas = 3, dormir = ms => new Promise(r => setTimeout(r, ms)), buscar = fetch } = {}) {
+    for (let i = 1; ; i++) {
+        let r;
+        try {
+            r = await buscar(`https://api.telegram.org/bot${cfg.telegramToken}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: cfg.telegramChat, text: texto, link_preview_options: { is_disabled: true } }),
+                signal: AbortSignal.timeout(15000),
+            });
+        } catch (e) {
+            if (i >= tentativas) throw e;
+            await dormir(2000 * i);
+            continue;
+        }
+        const j = await r.json().catch(() => ({}));
+        if (!j.ok) throw new Error(`Telegram recusou (${r.status})`);
+        return;
+    }
 }
 
 /**

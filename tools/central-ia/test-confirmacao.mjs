@@ -99,4 +99,14 @@ const log = readFileSync(process.env.CENTRAL_IA_AUDITORIA, 'utf8');
 assert.ok(!log.includes(c1), 'a auditoria não guarda o código');
 for (const d of ['sem_canal', 'pedida', 'confirmada', 'codigo_errado', 'recusada', 'expirada']) assert.ok(log.includes(`"decisao":"${d}"`), d);
 
+// 7. Envio ao Telegram: falha de rede tenta de novo; recusa do Telegram não.
+const { enviarTelegram } = await import('../../deploy/central-ia/confirmacao.mjs');
+let chamadasRede = 0;
+await enviarTelegram(cfg, 'x', { dormir, buscar: async () => { if (++chamadasRede < 3) throw new TypeError('fetch failed'); return { status: 200, json: async () => ({ ok: true }) }; } });
+assert.equal(chamadasRede, 3, 'duas falhas de rede e a terceira passa');
+let recusas = 0;
+await assert.rejects(enviarTelegram(cfg, 'x', { dormir, buscar: async () => { recusas++; return { status: 400, json: async () => ({ ok: false }) }; } }), /recusou/);
+assert.equal(recusas, 1, 'recusa não repete');
+await assert.rejects(enviarTelegram(cfg, 'x', { dormir, buscar: async () => { throw new TypeError('fetch failed'); } }), /fetch failed/);
+
 console.log('PASSOU: teto local, leitura por CLI, pastas, código preso ao conteúdo, confirmação, recusa, expiração e auditoria.');
