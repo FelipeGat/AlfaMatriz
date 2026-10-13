@@ -215,7 +215,7 @@ export function centralIa(config) {
         get chatsFiltrados() {
             const termo = this.buscaChats.trim().toLocaleLowerCase('pt-BR');
             return this.chats.filter(c => (!this.filtroChatProjeto || c.projeto === this.filtroChatProjeto)
-                && (this.filtroChatEstado === 'todos' || (this.filtroChatEstado === 'ativos' ? c.status !== 'pausada' : c.status === this.filtroChatEstado))
+                && (this.filtroChatEstado === 'todos' || (this.filtroChatEstado === 'ativos' ? !['pausada', 'concluida'].includes(c.status) : c.status === this.filtroChatEstado))
                 && (!termo || [c.titulo, c.projeto, c.agente, '#' + c.id].join(' ').toLocaleLowerCase('pt-BR').includes(termo)));
         },
         /**

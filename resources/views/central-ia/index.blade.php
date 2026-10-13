@@ -258,9 +258,9 @@
                 </select>
                 <label class="sr-only" for="central-filtro-chat-estado">Estado dos chats</label>
                 <select id="central-filtro-chat-estado" x-model="filtroChatEstado" class="rounded-control border-line bg-input py-1.5 text-xs text-ink">
-                    <option value="ativos">Em andamento</option><option value="executando">Executando</option>
+                    <option value="ativos">Em andamento</option><option value="concluida">Concluídas (últimas 24 h)</option><option value="executando">Executando</option>
                     <option value="aguardando_voce">Aguardando você</option><option value="falhou">Com falha</option>
-                    <option value="aberta">Abertos / na fila</option><option value="pausada">Pausados</option><option value="todos">Todos, incluindo pausados</option>
+                    <option value="aberta">Abertos / na fila</option><option value="pausada">Pausados</option><option value="todos">Todos (pausados e concluídas)</option>
                 </select>
                 <div class="min-h-0 flex-1 space-y-2 overflow-y-auto">
                     <p x-show="!chatsFiltrados.length" class="p-2 text-xs text-ink-mute">Nenhum chat corresponde ao filtro. Inicie outro assunto pela aba Projetos.</p>
