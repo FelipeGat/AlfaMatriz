@@ -138,13 +138,22 @@
                 <span class="text-ink-faint">Clique num projeto para conversar sobre ele; o grupo muda no rodapé do card.</span>
             </div>
             <template x-for="g in secoes" :key="g.id"><section class="space-y-2">
-                <h3 class="font-semibold text-ink" x-text="g.nome + ' (' + g.projetos.length + ')'"></h3>
-                <div :class="modoProjetos === 'cards' ? 'grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5' : 'flex flex-col gap-2'">
+                {{-- Seta para recolher o grupo (fica lembrado neste navegador). --}}
+                <h3 class="font-semibold text-ink">
+                    <button type="button" @click="recolher('g' + g.id)" class="flex items-center gap-2 hover:text-brand-text" :aria-expanded="(!recolhidos.includes('g' + g.id)).toString()">
+                        <span class="inline-block text-xs text-ink-mute transition-transform" :class="recolhidos.includes('g' + g.id) ? '-rotate-90' : ''">▼</span>
+                        <span x-text="g.nome + ' (' + g.projetos.length + ')'"></span>
+                        <span x-show="g.projetos.some(p => p.tarefas_em_curso)" class="rounded-badge bg-brand px-1.5 text-[11px] text-on-brand"
+                              x-text="g.projetos.filter(p => p.tarefas_em_curso).length + ' com chat aberto'"></span>
+                    </button>
+                </h3>
+                <div x-show="!recolhidos.includes('g' + g.id)" :class="modoProjetos === 'cards' ? 'grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5' : 'flex flex-col gap-2'">
                     <template x-for="p in g.projetos" :key="p.nome">
                         {{-- O grupo muda no próprio card: escondido no cabeçalho do
                              projeto aberto, ninguém achava (dono, 12/10/2026). --}}
-                        <div class="min-w-0 rounded-panel border border-line bg-panel hover:border-brand-mute"
-                             :class="modoProjetos === 'lista' ? 'flex items-center justify-between gap-3 pr-2' : ''">
+                        {{-- Projeto com chat em aberto: card destacado. --}}
+                        <div class="min-w-0 rounded-panel border hover:border-brand-mute"
+                             :class="(p.tarefas_em_curso ? 'border-brand-mute bg-nav-active' : 'border-line bg-panel') + (modoProjetos === 'lista' ? ' flex items-center justify-between gap-3 pr-2' : '')">
                             <button type="button" @click="abrirProjetoCatalogo(p)" :title="'Abrir ' + p.nome" class="block w-full min-w-0 px-3 pt-2.5 text-left" :class="modoProjetos === 'lista' ? 'pb-2.5' : 'pb-1'">
                                 <strong class="block truncate text-sm text-ink" x-text="p.nome"></strong>
                                 <span class="block truncate text-xs" :class="p.tarefas_em_curso ? 'text-brand-text' : 'text-ink-faint'"

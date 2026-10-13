@@ -346,6 +346,10 @@ function instrucoes(job, branch) {
             '4) Só grave depois de a pessoa confirmar nesta conversa. Grave somente o pedido, pela via oficial do sistema (as notas da memória do dono dizem como; ex.: ponte de produção com DRY antes do APPLY), e confira o resultado depois.',
             'Operação que só registra o pedido não precisa de backup. Se for preciso alterar CÓDIGO ou mexer no banco além do pedido, pare e pergunte antes se a pessoa deseja um backup, dizendo o motivo (o que será alterado e o que se perde sem ele).');
     } else {
+        // Análise que propõe mudança termina oferecendo os três caminhos
+        // (dono, 13/10/2026: "perguntar se era aquilo mesmo e quer implementar,
+        // ou se deveria trazer outra sugestão").
+        if (job.projeto) base.push('Se a sua análise PROPÕE uma mudança (código, tela, regra, dado), termine perguntando no campo "duvida": "É isso que você quer? Posso implementar?", com "opcoes_duvida" exatamente: ["Sim, implementar", "Trazer outra sugestão", "Outra sugestão com outra IA"]. Se for só uma consulta ou resposta, não pergunte.');
         base.push('Modo ANALISAR: não altere arquivos. Pode rodar comandos de leitura (git, logs, consultas, docker ps/logs) para responder.',
             // A mesma régua para qualquer agente: o dono pediu que resumo,
             // análise e relatório tenham a mesma qualidade venha de quem vier.

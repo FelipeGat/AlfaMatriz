@@ -231,6 +231,32 @@ class AgentesService
             if ($modo === 'auto') $modo = $resposta->modo;
             $pedido['nivel'] = in_array($pedido['nivel'] ?? 'auto', Preferencias::NIVEIS, true) ? $pedido['nivel'] : ($resposta->roteamento['nivel'] ?? 'auto');
             $rota['motivo'] = 'Resposta à pergunta de '.$resposta->nomeDoAgente().': segue o mesmo pedido ('.($rota['categoria'] ?? $resposta->modo).')';
+
+            // As três saídas de uma análise que propôs mudança (dono, 13/10/2026).
+            $escolha = array_search(trim(Str::afterLast($pedido['instrucao'], '):')), self::OPCOES_DA_PROPOSTA, true);
+            $usaveis = fn (string $cat) => collect(app(Preferencias::class)->ordem($user, $cat))
+                ->filter(fn ($a) => in_array($a, $disponivel['agentes'], true) && ! isset($disponivel['esgotados'][$a]));
+            if ($escolha === 'implementar') {
+                $modo = 'implementar'; $rota['categoria'] = 'implementacao';
+                $pedido['nivel'] = 'forte';
+                $rota['agente'] = $usaveis('implementacao')->first() ?? $rota['agente'];
+                $proposta = CentralIaMensagem::where('user_id', $user->id)->find($resposta->resposta_id)?->conteudo;
+                $pedido['instrucao'] = 'Implemente o que foi proposto na análise anterior desta tarefa e aprovado pela pessoa. Confira o estado real antes.'
+                    .($proposta ? "\n\nProposta aprovada ({$resposta->nomeDoAgente()}):\n".Str::limit($proposta, 8000) : '');
+                $rota['motivo'] = 'Proposta de '.$resposta->nomeDoAgente().' aprovada: implementar';
+            } elseif ($escolha === 'outra_ia') {
+                $modo = 'analisar';
+                $rota['agente'] = $usaveis($rota['categoria'] ?? 'investigacao')->first(fn ($a) => $a !== $resposta->agente)
+                    ?? collect($disponivel['agentes'])->first(fn ($a) => $a !== $resposta->agente) ?? $rota['agente'];
+                $pedido['instrucao'] = 'A pessoa NÃO aprovou a proposta anterior desta tarefa e quer outra sugestão, de outro ângulo. Analise de novo e proponha uma alternativa diferente.';
+                $rota['motivo'] = 'Outra sugestão pedida: '.$resposta->nomeDoAgente().' propôs; agora outra IA analisa';
+            } elseif ($escolha === 'mesma') {
+                $modo = 'analisar';
+                $rota['agente'] = $resposta->agente;
+                $pedido['instrucao'] = 'A pessoa NÃO aprovou a sua proposta anterior e quer outra sugestão. Proponha uma alternativa diferente, dizendo o que muda em relação à anterior.';
+                $rota['motivo'] = 'Outra sugestão pedida à mesma IA ('.$resposta->nomeDoAgente().')';
+            }
+            if ($escolha) $rota['manual'] = false;
         }
         if ($modo === 'auto') {
             $modo = $rota['modo'] ?? $this->roteador->decidir($pedido['instrucao'], [], $tarefa)['modo'];
@@ -782,6 +808,9 @@ class AgentesService
         Eventos::registrar($user, $analise ? 'analise_alterou' : 'alteracoes', ($analise ? 'Numa ANÁLISE, ' : '').$texto,
             Eventos::da($e) + ['origem' => 'runner'], $analise ? 'aviso' : 'info');
     }
+
+    /** As saídas de uma análise que propôs mudança: o agente oferece estas três. */
+    public const OPCOES_DA_PROPOSTA = ['implementar' => 'Sim, implementar', 'mesma' => 'Trazer outra sugestão', 'outra_ia' => 'Outra sugestão com outra IA'];
 
     public const NIVEIS_EM_ORDEM = ['sem_ia', 'leve', 'medio', 'forte'];
 
