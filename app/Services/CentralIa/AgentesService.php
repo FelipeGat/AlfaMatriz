@@ -207,14 +207,19 @@ class AgentesService
         // mesmo modo, sabendo do que se trata (em 13/10/2026 o "pode seguir"
         // da tarefa #14 foi a outra IA, que não sabia o que seguir).
         $seguir = $tarefa && ! $resposta && $agente === 'auto'
-            && preg_match('/^(pode seguir|pode continuar|pode prosseguir|segue|siga|prossiga|continue|ok|sim|pode|manda ver|vai|aprovado|pode fazer)[\s.!]*$/iu', trim($pedido['instrucao']))
-            ? $tarefa->execucoes()->whereIn('status', [CentralIaExecucao::CONCLUIDA])->latest('id')->first() : null;
+            // "seguir" sozinho também (13/10/2026: foi ao Codex analisando, e não ao Claude que implementava).
+            && preg_match('/^(pode )?(seguir|continuar|prosseguir|segue|siga|prossiga|continue|retome|retomar)( a[ií])?[\s.!]*$|^(ok|sim|pode|manda ver|vai|aprovado|pode fazer)[\s.!]*$/iu', trim($pedido['instrucao']))
+            // Interrompida pelo reinício da máquina também conta: é dela que se segue.
+            ? $tarefa->execucoes()->where(fn ($q) => $q->where('status', CentralIaExecucao::CONCLUIDA)
+                ->orWhere(fn ($q) => $q->where('status', CentralIaExecucao::FALHOU)->where('erro', 'like', 'interrompida%')))->latest('id')->first() : null;
         if ($seguir) {
             $agente = $seguir->agente;
             if ($modo === 'auto') $modo = $seguir->modo;
             $ultima = CentralIaMensagem::where('user_id', $user->id)->find($seguir->resposta_id)?->conteudo;
-            $pedido['instrucao'] = "A pessoa respondeu \"{$pedido['instrucao']}\" à sua última mensagem nesta tarefa: siga com o próximo passo que você propôs."
-                .($ultima ? "\n\nSua última mensagem:\n".Str::limit($ultima, 6000) : '');
+            $pedido['instrucao'] = $seguir->status === CentralIaExecucao::FALHOU
+                ? "Seu trabalho anterior nesta tarefa foi interrompido no meio (a máquina reiniciou). Confira o estado real da pasta (git status, git diff) e retome de onde parou. O pedido era:\n\n".Str::limit((string) $seguir->instrucao, 6000)
+                : "A pessoa respondeu \"{$pedido['instrucao']}\" à sua última mensagem nesta tarefa: siga com o próximo passo que você propôs."
+                    .($ultima ? "\n\nSua última mensagem:\n".Str::limit($ultima, 6000) : '');
         }
 
         // "Refaça" / "não funcionou": sobe o nível (e, insistindo no máximo, troca a IA).
@@ -550,7 +555,10 @@ class AgentesService
                 'branch' => $tarefa->branch,
                 'commit_base' => $tarefa->commit_base,
             ] : null,
-            'contexto' => $tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null) : null,
+            'contexto' => $tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null)
+                // Chat novo num projeto começa sabendo dos chats recentes dele
+                // (dono, 13/10/2026: "abrir um novo chat… ele saberia o contexto do projeto").
+                : ($tarefa && $execucao->projeto !== '' ? $this->contextoDoProjeto($user, $execucao->projeto, $tarefa->id) : null),
             'bloco' => (($execucao->roteamento['coordenador'] ?? false) ? "Você atua como coordenador deste pedido. Nesta etapa apenas responda, planeje e proponha quem deve fazer o trabalho; não implemente, não execute ferramentas ou comandos e não altere arquivos. Claude faz análise de código e desenvolvimento; Codex faz análise de dados; Copilot faz Git e QA. Identifique fontes disponíveis e impedimentos, não invente números. Delegação automática ainda não está habilitada: descreva a próxima etapa, sem afirmar que outro agente executou algo.\n" : '').Dossie::instrucaoDoBloco()."\nRegras de evidência: nunca invente dados, valores, fontes ou consultas. Relatórios de dados exigem período explícito e fonte autorizada identificada, data da consulta e critérios dos totais. Sem acesso à fonte, informe a limitação e solicite os dados; código, exemplos e testes não comprovam saldos reais. Para esta semana, confirme no texto as datas usadas. Para pedidos executivos com esta semana, use segunda-feira até hoje no fuso local e explicite as datas; para esta semana útil, segunda a sexta (até hoje se ainda estiver em curso). Pergunte somente se a ambiguidade alterar materialmente a decisão ou tornar a consulta insegura. Sem período informado, mantenha o pedido de esclarecimento. Claude só deve apoiar análise de dados quando houver impedimento técnico identificado; não troque de agente apenas para tentar obter números ausentes.",
             'fontes' => $execucao->roteamento['fontes'] ?? [],
             'categoria' => $execucao->roteamento['categoria'] ?? null,
@@ -1043,6 +1051,21 @@ class AgentesService
         };
     }
 
+    /** Os chats recentes do projeto, para quem começa um chat novo nele. */
+    public function contextoDoProjeto(User $user, string $projeto, int $exceto): ?string
+    {
+        $tarefas = CentralIaTarefa::de($user)->where('projeto', $projeto)->where('id', '!=', $exceto)
+            ->orderByDesc('ultima_atividade_em')->limit(6)->get();
+        if ($tarefas->isEmpty()) return null;
+        $linhas = ["## Chats recentes deste projeto na Central (para contexto; não são o pedido atual)"];
+        foreach ($tarefas as $t) {
+            $resumo = collect($t->dossie['resumos'] ?? [])->last()['texto'] ?? null;
+            $linhas[] = "- #{$t->id} [{$t->status}] {$t->titulo}".($resumo ? ' — '.Str::limit($resumo, 400) : '');
+        }
+
+        return implode("\n", $linhas);
+    }
+
     /** Teto de uma execução no runner: implementar tem mais tempo que analisar. */
     public function teto(CentralIaExecucao $e): int
     {
@@ -1055,6 +1078,29 @@ class AgentesService
      * Execução sem notícia além do teto: o runner caiu ou a máquina desligou.
      * Vira `expirada` com aviso na conversa, e a fila da pessoa anda.
      */
+    /**
+     * O que ficou "executando" num processo do runner que já morreu: a batida
+     * do processo novo diz quando ele subiu e o que tem nas mãos. Começou antes
+     * dele e não está com ele = ninguém mais vai responder (13/10/2026: o WSL
+     * reiniciou e o #84 ficaria preso até o teto, uma hora depois).
+     */
+    public function interromperOrfas(User $user, CentralIaRunner $runner, \Carbon\CarbonInterface $desde, array $emCurso): void
+    {
+        CentralIaExecucao::where('user_id', $user->id)->where('runner_id', $runner->id)
+            ->where('status', CentralIaExecucao::EXECUTANDO)->where('iniciada_em', '<', $desde)
+            ->whereNotIn('id', array_map('intval', $emCurso))->get()
+            ->each(fn (CentralIaExecucao $e) => DB::transaction(function () use ($user, $e) {
+                $e = CentralIaExecucao::whereKey($e->id)->lockForUpdate()->first();
+                if (! $e || $e->status !== CentralIaExecucao::EXECUTANDO) return;
+                $aviso = $this->conversas->registrarDoAgente($user, 'Central', "A máquina reiniciou no meio do trabalho de {$e->nomeDoAgente()}".($e->projeto ? " em {$e->projeto}" : '')
+                    .'; o pedido foi interrompido. O que já tinha sido alterado ficou na pasta. Para retomar, diga "pode seguir".', CentralIaMensagem::AUTOR_SISTEMA, $e->projeto ?: null, $e->tarefa_id);
+                $e->update(['status' => CentralIaExecucao::FALHOU, 'resposta_id' => $aviso->id, 'concluida_em' => now(),
+                    'erro' => 'interrompida porque a máquina reiniciou sem o runner avisar']);
+                Eventos::registrar($user, 'falhou', "{$e->nomeDoAgente()} interrompido: a máquina reiniciou no meio do pedido #{$e->id}", Eventos::da($e) + ['origem' => 'runner'], 'erro');
+                $e->tarefa?->update(['status' => CentralIaTarefa::FALHOU, 'ultima_atividade_em' => now()]);
+            }));
+    }
+
     public function expirarPresas(User $user): void
     {
         // Fila parada: pedido sem máquina capaz há 30 min não seria pego tão

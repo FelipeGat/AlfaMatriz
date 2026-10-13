@@ -580,11 +580,16 @@
 
                 {{-- Tarefas --}}
                 <div class="min-h-0 flex-1 overflow-y-auto p-3" x-show="atual && sub === 'tarefas'" x-cloak>
+                    {{-- Chat novo já no projeto: começa com o contexto dele (CLAUDE.md, POPs, chats recentes). --}}
+                    <div class="mb-3 flex items-center gap-2">
+                        <button type="button" @click="novoChat(atual)" class="rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand" x-text="'+ Novo chat em ' + atual"></button>
+                        <span class="text-xs text-ink-faint">O agente começa sabendo do projeto e dos chats recentes dele.</span>
+                    </div>
                     <p x-show="!tarefas.length" class="px-1 py-2 text-sm text-ink-faint">Nenhuma tarefa ainda. Um pedido na Conversa abre a primeira.</p>
                     <ul class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                         <template x-for="t in tarefas" :key="t.id">
-                            <li>
-                                <button type="button" @click="selecionarTarefa(t.id, true)" class="h-full w-full rounded-control border border-line px-3 py-2 text-left hover:bg-chip">
+                            <li class="flex flex-col rounded-control border border-line hover:bg-chip">
+                                <button type="button" @click="selecionarTarefa(t.id, true)" class="w-full flex-1 px-3 py-2 text-left">
                                     <span class="flex items-center gap-1.5 text-[11px]">
                                         <span class="rounded-badge border px-1.5 py-0.5" :class="corDoEstado(t.status)" x-text="estado(t.status)"></span>
                                         <span class="text-ink-faint" x-text="'#' + t.id"></span>
@@ -594,7 +599,7 @@
                                     <span class="mt-0.5 block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-ink-faint"
                                           x-text="(t.agente || 'sem agente') + (t.branch ? ' · ' + t.branch : '') + ' · ' + haQuanto(t.ultima_atividade)"></span>
                                 </button>
-                                <button type="button" x-show="t.status === 'arquivada'" @click="mudarTarefa(t.id, 'aberta')" class="mt-1 text-xs font-semibold text-brand-text">Reabrir chat e liberar pedidos suspensos</button>
+                                <button type="button" x-show="t.status === 'arquivada'" @click="mudarTarefa(t.id, 'aberta')" class="border-t border-line px-3 py-1.5 text-left text-xs font-semibold text-brand-text">Reabrir chat e liberar pedidos suspensos</button>
                             </li>
                         </template>
                     </ul>

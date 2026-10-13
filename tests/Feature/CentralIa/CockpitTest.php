@@ -312,4 +312,20 @@ class CockpitTest extends TestCase
         $this->assertSame('gestor', CentralIaMensagem::first()->projeto);
         $this->assertNotNull(app(AgentesService::class)->interpretar('/auto gestor x'));
     }
+
+    public function test_chat_novo_no_projeto_recebe_os_chats_recentes_dele(): void
+    {
+        config(['central_ia.canal_exclusivo' => false]);
+        $u = \App\Models\User::factory()->create();
+        $u->perfis()->attach(\App\Models\Perfil::where('slug', 'central_ia')->value('id'));
+        $r = \App\Models\CentralIaRunner::create(['user_id' => $u->id, 'maquina' => 'wsl', 'agentes' => ['codex'], 'projetos' => ['gestor'], 'visto_em' => now()]);
+        \App\Models\CentralIaTarefa::create(['user_id' => $u->id, 'projeto' => 'gestor', 'titulo' => 'Relatório de custos por dia', 'objetivo' => 'x',
+            'status' => 'concluida', 'dossie' => ['resumos' => [['texto' => 'Linha por dia implementada e aprovada no QA']]], 'ultima_atividade_em' => now()]);
+        \App\Models\CentralIaTarefa::create(['user_id' => $u->id, 'projeto' => 'outro', 'titulo' => 'Não é deste projeto', 'objetivo' => 'x', 'ultima_atividade_em' => now()]);
+        app(\App\Services\CentralIa\AgentesService::class)->pedir($u, 'revise o PDF', ['projeto' => 'gestor', 'agente' => 'codex', 'modo' => 'analisar', 'instrucao' => 'revise o PDF'], 'web', 'cp1');
+        $job = app(\App\Services\CentralIa\AgentesService::class)->proxima($u, $r);
+        $this->assertStringContainsString('Relatório de custos por dia', $job['contexto']);
+        $this->assertStringContainsString('aprovada no QA', $job['contexto']);
+        $this->assertStringNotContainsString('Não é deste projeto', $job['contexto']);
+    }
 }

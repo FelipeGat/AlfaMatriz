@@ -80,6 +80,11 @@ function lerConfig() {
 
 const cfg = lerConfig();
 const log = (...a) => console.log(new Date().toISOString(), ...a);
+// Quando este processo subiu e o que ele tem nas mãos: o servidor encerra o
+// que ficou "executando" de um processo anterior que morreu sem avisar (13/10/2026:
+// o WSL reiniciou e o pedido #84 ficou preso até o teto).
+const INICIO_DO_PROCESSO = new Date().toISOString();
+const emCurso = new Set();
 
 /* ---------- agentes instalados ---------- */
 
@@ -269,6 +274,8 @@ async function batida() {
         // O que esta máquina impõe, para a tela mostrar (só leitura lá).
         politica: { acesso_maximo: cfg.acessoMaximo, analise: cfg.analise, confirmar_minimo: cfg.confirmar,
             telegram: !!(cfg.telegramToken && cfg.telegramChat && /^[0-9a-f]{64}$/i.test(cfg.segredo || '')) },
+        desde: INICIO_DO_PROCESSO,
+        em_curso: [...emCurso],
         ...(u ? { consumo: { ...consumo, limites_claude: limitesDoClaude() }, sessoes } : {}),
     });
     if (r.status !== 200) log('batida recusada', r.status, r.json?.message || '');
@@ -783,7 +790,9 @@ while (!parar) {
         if (rodando.size < PARALELO) {
             const r = await api('proxima', { maquina: cfg.maquina });
             if (r.status === 200 && r.json?.id) {
-                const p = executar(r.json).catch(e => log(`#${r.json.id} erro no runner:`, e.message)).finally(() => { rodando.delete(p); marcarOcupado(); });
+                const id = r.json.id;
+                emCurso.add(id);
+                const p = executar(r.json).catch(e => log(`#${id} erro no runner:`, e.message)).finally(() => { rodando.delete(p); emCurso.delete(id); marcarOcupado(); });
                 rodando.add(p);
                 marcarOcupado();
                 continue;

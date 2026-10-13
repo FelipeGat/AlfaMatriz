@@ -48,9 +48,12 @@ class CentralIaRunnerController extends Controller
             'politica.analise' => ['nullable', 'in:total,leitura'],
             'politica.confirmar_minimo' => ['nullable', 'in:nunca,deploy,inicio,implementar,sempre'],
             'politica.telegram' => ['nullable', 'boolean'],
+            'desde' => ['nullable', 'date'],
+            'em_curso' => ['nullable', 'array', 'max:50'],
+            'em_curso.*' => ['integer'],
         ]);
 
-        CentralIaRunner::updateOrCreate(
+        $runner = CentralIaRunner::updateOrCreate(
             ['user_id' => $user->id, 'maquina' => $dados['maquina']],
             [
                 'agentes' => array_values(array_unique($dados['agentes'])),
@@ -64,6 +67,10 @@ class CentralIaRunnerController extends Controller
                 'visto_em' => now(),
             ],
         );
+
+        if (! empty($dados['desde'])) {
+            app(AgentesService::class)->interromperOrfas($user, $runner, \Illuminate\Support\Carbon::parse($dados['desde']), $dados['em_curso'] ?? []);
+        }
 
         app(\App\Services\CentralIa\ProgressoService::class)->publicar($user);
 
