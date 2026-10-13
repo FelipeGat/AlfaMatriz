@@ -115,18 +115,10 @@
              quem não tem `dashboard` — o perfil comercial — clicava no logo
              para tomar 403. `telaInicial()` é quem sabe a resposta, e já a dava
              ao login e ao desvio de quem entra. --}}
-        <a href="{{ Auth::user()->telaInicial() }}" class="flex items-center gap-2.5 min-w-0 rail:lg:hidden">
+        <a href="{{ Auth::user()->telaInicial() }}" class="flex items-center gap-2.5 min-w-0">
             <img src="/icon-matriz-solid.svg" alt="" class="h-7 w-7 shrink-0">
             <img src="/alfamatriz.png" alt="AlfaMatriz" class="h-[15px] w-auto shrink-0 rail:lg:hidden">
         </a>
-
-        <button type="button" @click="alternarRail()"
-                class="ml-auto hidden lg:flex h-7 w-7 shrink-0 items-center justify-center rounded-ctl text-ink-mute hover:bg-chip hover:text-ink rail:lg:ml-0"
-                :aria-label="railAberto ? 'Recolher menu lateral' : 'Expandir menu lateral'"
-                :aria-expanded="railAberto.toString()" aria-controls="menu-principal"
-                :title="railAberto ? 'Recolher menu' : 'Expandir menu'">
-            <span class="h-4 w-4"><x-nav-icon name="panel-left" /></span>
-        </button>
 
         <button type="button" @click="gavetaAberta = false"
                 class="ml-auto lg:hidden h-7 w-7 text-ink-mute hover:text-ink transition"
