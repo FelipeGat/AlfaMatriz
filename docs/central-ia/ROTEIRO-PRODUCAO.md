@@ -38,10 +38,12 @@ que ordem, e o que cada pessoa faz na própria máquina.
    | `CENTRAL_IA_ACESSO` | `total` (decisão do Felipe) ou `restrito` | Quanto o servidor PEDE ao runner. A máquina de cada um ainda impõe o próprio teto. |
    | `CENTRAL_IA_ARQUIVOS_ROOT` | o `publicar.sh` escreve sozinho | Anexos e prévias em `compartilhado/central-ia`, fora das versões azul/verde. |
 
-3. **Telegram: um consumidor por bot.** Se produção usar o mesmo bot do ambiente local, o bot local
-   (`docker stop alfamatriz-dev-telegram`, na máquina do Felipe) tem que estar PARADO antes de ligar o de
-   produção. Ligados os dois, o Telegram derruba ambos (409). A alternativa é criar um bot só para produção.
-   **Decisão do Felipe pendente.**
+3. **Telegram: o bot de produção é o mesmo de hoje (`GrupoSolucoesAgentBot`)** — decisão do Felipe,
+   13/10/2026.
+   - O bot local foi DESLIGADO nesse dia (`alfamatriz-dev-telegram`, fora do `up -d` do boot por um perfil do
+     compose), porque o Telegram aceita um consumidor só por bot.
+   - Use o MESMO token em `CENTRAL_IA_TELEGRAM_TOKEN`.
+4. **Homologação:** dada como cumprida pelo Felipe em 13/10/2026.
 
 ## Publicar
 
