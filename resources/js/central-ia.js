@@ -111,8 +111,20 @@ export function centralIa(config) {
                 if (file.size > 20 * 1024 * 1024 || !['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) {
                     this.aviso = 'Use JPG, PNG, WebP, PDF, MP4, WebM ou MOV de até 20 MB.'; continue;
                 }
-                this.aba.arquivos.push({ file, id: novoId(), enviado: false });
+                // Miniatura local (nada sai do navegador até o envio).
+                const miniatura = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+                this.aba.arquivos.push({ file, id: novoId(), enviado: false, miniatura });
             }
+        },
+        removerArquivo(i) {
+            const [a] = this.aba.arquivos.splice(i, 1);
+            if (a?.miniatura) URL.revokeObjectURL(a.miniatura);
+        },
+        /** A caixa cresce com o texto, até 40% da altura da janela. */
+        crescer(el) {
+            if (!el) return;
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight + 2, Math.round(window.innerHeight * 0.4)) + 'px';
         },
         colar(event) {
             const arquivos = [...(event.clipboardData?.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
@@ -514,6 +526,7 @@ export function centralIa(config) {
                 aba.progresso = 'Confirmando mensagem…';
                 const r = await this.pedir(config.enviar, 'POST', aba.pendente);
                 aba.recibo = aba.pendente.agente ? 'Pedido recebido. Acompanhe o andamento abaixo.' : 'Mensagem registrada.';
+                for (const a of aba.arquivos) if (a.miniatura) URL.revokeObjectURL(a.miniatura);
                 aba.pendente = null; aba.rascunho = ''; aba.arquivos = []; this.aviso = '';
                 if (pergunta) aba.agente = 'auto';
                 // Pedido que abriu tarefa nova: o compositor passa a seguir nela.

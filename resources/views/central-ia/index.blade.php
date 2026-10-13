@@ -512,18 +512,28 @@
                                        :disabled="!!aba.pendente || bloqueado || !podeEnviar" @change="escolherArquivos($event.target.files); $event.target.value = ''">
                             </label>
 
+                            {{-- Imagem colada ou anexada aparece em miniatura (como no VS Code);
+                                 PDF e vídeo, pelo nome. O × tira antes de enviar. --}}
                             <template x-for="(a, i) in aba.arquivos" :key="a.id">
-                                <button type="button" :disabled="!!aba.pendente" @click="aba.arquivos.splice(i, 1)" class="text-ink-mute" :aria-label="'Remover ' + a.file.name" x-text="a.file.name + ' ×'"></button>
+                                <span class="relative inline-flex items-center">
+                                    <img x-show="a.miniatura" :src="a.miniatura" :alt="a.file.name" :title="a.file.name"
+                                         class="h-14 w-14 rounded-control border border-line object-cover">
+                                    <span x-show="!a.miniatura" class="rounded-badge border border-line px-2 py-1 text-ink-dim" x-text="a.file.name"></span>
+                                    <button type="button" :disabled="!!aba.pendente" @click="removerArquivo(i)" :aria-label="'Remover ' + a.file.name"
+                                            class="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-panel text-[11px] leading-none text-ink-mute hover:text-ink disabled:hidden">×</button>
+                                </span>
                             </template>
                             <span role="status" x-text="aba.progresso" class="text-brand-text"></span>
                         </div>
                         <div class="flex items-end gap-2">
                             <label for="central-rascunho" class="sr-only">Sua mensagem</label>
+                            {{-- Cresce com o texto até 40% da tela; depois rola por dentro. --}}
                             <textarea @paste="colar($event)" id="central-rascunho" x-model="aba.rascunho" maxlength="{{ config('central_ia.max_texto') }}" rows="2"
+                                      @input="crescer($el)" x-effect="aba.rascunho; $nextTick(() => crescer($el))"
                                       :readonly="!!aba.pendente" :disabled="bloqueado || !podeEnviar"
                                       @keydown.enter="if (!$event.shiftKey && !$event.isComposing && !window.matchMedia('(pointer: coarse)').matches) { $event.preventDefault(); enviar(); }"
                                       :placeholder="perguntaPendente ? 'Responda a ' + (perguntaPendente.agente || 'quem perguntou') + '… (Enter envia)' : (atual ? 'Peça algo para ' + atual + '… (Enter envia, Shift+Enter quebra linha)' : 'Pergunte ou anote… (Enter envia)')"
-                                      class="min-w-0 flex-1 resize-none rounded-control border-line bg-input text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand disabled:opacity-50"></textarea>
+                                      class="min-w-0 flex-1 resize-none overflow-y-auto rounded-control border-line bg-input text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand disabled:opacity-50"></textarea>
                             <button type="submit" :disabled="aba.enviando || bloqueado || !podeEnviar || (!aba.pendente && !aba.rascunho.trim() && !aba.arquivos.length)"
                                     class="flex-none rounded-control bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition hover:bg-brand-bright disabled:opacity-50"
                                     x-text="aba.enviando ? 'Enviando…' : (aba.pendente ? 'Reenviar' : 'Enviar')"></button>
