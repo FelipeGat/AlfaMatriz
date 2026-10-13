@@ -1,0 +1,34 @@
+{
+  "started_at_utc": "20261010T195423Z-c2c24a",
+  "inference_executed": false,
+  "existing_services_restarted": false,
+  "real_link_or_migration_performed": false,
+  "plaintext_files_created": false,
+  "databases": {
+    "alfamatriz": {
+      "tables": 59,
+      "records": 20699,
+      "restored_counts_match": true,
+      "restored_data_digest_matches": true,
+      "live_counts_unchanged_during_drill": true,
+      "encrypted_artifact_sha256": "c5350fb96cd7e121f38301aebec7c797bff915b1e2efb13e656830a9edd7799a",
+      "wrong_key_rejected": true,
+      "tampered_artifact_rejected": true,
+      "no_host_mounts_or_published_ports": true
+    },
+    "central": {
+      "tables": 19,
+      "records": 32,
+      "restored_counts_match": true,
+      "restored_data_digest_matches": true,
+      "live_counts_unchanged_during_drill": true,
+      "encrypted_artifact_sha256": "d238ea5bd2cfa0ad15f9d01e7c389c70e2263f8f73634c101378334031f59884",
+      "wrong_key_rejected": true,
+      "tampered_artifact_rejected": true,
+      "no_host_mounts_or_published_ports": true
+    }
+  },
+  "phase": "completed",
+  "passed": true,
+  "temporary_restore_resources_removed": true
+}

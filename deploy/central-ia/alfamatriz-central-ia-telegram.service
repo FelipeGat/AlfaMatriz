@@ -1,0 +1,30 @@
+# Bot do Telegram da Central de IA, no servidor do AlfaMatriz.
+#
+# Instalar (uma vez, como root), depois do primeiro deploy com a Central:
+#   cp deploy/central-ia/alfamatriz-central-ia-telegram.service /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now alfamatriz-central-ia-telegram
+#
+# - Roda a partir de atual/: o deploy/publicar.sh o reinicia depois de cada
+#   troca de versão (processo longo não vê código novo sozinho).
+# - UM consumidor por bot. Antes de ligar este, pare qualquer outro que use o
+#   mesmo token (ex.: o container alfamatriz-dev-telegram do ambiente local), ou
+#   use um bot próprio de produção (CENTRAL_IA_TELEGRAM_TOKEN no .env).
+# - Precisa de saída para api.telegram.org.
+[Unit]
+Description=Central de IA — bot do Telegram (AlfaMatriz)
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/alfamatriz/atual
+ExecStart=/usr/bin/php artisan central-ia:telegram
+KillSignal=SIGTERM
+TimeoutStopSec=30
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

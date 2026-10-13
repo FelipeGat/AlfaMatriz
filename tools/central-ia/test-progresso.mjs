@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import { acompanharProgresso } from '../../deploy/central-ia/progresso.mjs';
+let agora = 0;
+const p = acompanharProgresso(() => agora);
+assert.deepEqual(p.retrato(), { sequencia: 1, etapa: 'preparando', atividade_em: null, processo_ativo: null });
+p.processo(true); p.etapa('agente');
+p.saida('{"type":"item.started","item":{"type":"command_');
+assert.equal(p.retrato().etapa, 'agente');
+agora = 30000;
+p.saida('execution","command":"SEGREDO"}}\n');
+const comando = p.retrato();
+assert.equal(comando.etapa, 'comando');
+assert.equal(comando.atividade_em, new Date(agora).toISOString());
+assert.ok(!JSON.stringify(comando).includes('SEGREDO'));
+p.saida('invalido\n{"type":"item.completed","item":{"type":"command_execution"}}\n{"type":"item.completed","item":{"type":"agent_message","text":"SEGREDO"}}\n');
+assert.equal(p.retrato().etapa, 'resposta');
+p.saida('{"type":"turn.completed"}\n'); p.processo(false);
+const final = p.retrato();
+assert.equal(final.etapa, 'finalizando'); assert.equal(final.processo_ativo, false);
+agora = 120000;
+assert.equal(p.retrato().atividade_em, final.atividade_em, 'Batida sem saída não simula atividade');
+console.log('PASSOU: eventos fragmentados, sequência, metadados sem conteúdo e última atividade real.');
+
+const { centralIa } = await import('../../resources/js/central-ia.js');
+const ui = centralIa({ podeEnviar: true });
+ui.agora = Date.parse('2026-10-11T12:00:00Z'); ui.maquina.online = true;
+const pedido = { agente: 'Codex', status: 'executando', criada_em: '2026-10-11T11:55:00Z',
+    progresso_em: '2026-10-11T11:59:30Z', progresso: { etapa: 'comando' } };
+assert.match(ui.andamento(pedido), /Executando uma ferramenta/);
+ui.agora += 90000;
+assert.match(ui.andamento(pedido), /Sem confirmação recente desta execução/);
+assert.match(ui.andamento({ ...pedido, status: 'pendente' }), /Na fila/);
+ui.maquina.online = false;
+assert.match(ui.andamento({ ...pedido, status: 'pendente' }), /Máquina desconectada/);
+console.log('PASSOU: indicador web, confirmação por execução e desconexão com relógio controlado.');

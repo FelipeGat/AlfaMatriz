@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { centralIa } from '../../resources/js/central-ia.js';
+globalThis.localStorage = { getItem: () => null, setItem() {} };
+globalThis.location = { search: '', pathname: '/central-ia' };
+const u = centralIa({}); u.$refs = {}; u.$nextTick = f => f(); u.garantirAba();
+u.tarefas = [{ id: 3, duvida: 'Qual período?', opcoes_duvida: ['Esta semana'] }]; u.verTarefa = 3;
+assert.equal(u.perguntaPendente.duvida, 'Qual período?');
+let enviou = 0; u.enviar = () => { enviou++; };
+u.abrirPergunta('Qual período?', ['Esta semana']); u.respostaPergunta = '05 a 11/10/2026';
+u.atual = 'outro'; u.garantirAba(); u.responderPergunta(); assert.equal(enviou, 0);
+u.atual = ''; u.responderPergunta(); assert.equal(enviou, 1); assert.match(u.aba.rascunho, /05 a 11/);
+u.abrirPergunta('Outra pergunta'); u.respostaPergunta = 'Sim'; u.responderPergunta(); assert.equal(enviou, 1, 'não substituir rascunho');
+console.log('PASSOU: pergunta estruturada, resposta no assunto correto e proteção do rascunho.');

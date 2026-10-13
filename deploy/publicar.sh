@@ -221,6 +221,22 @@ else
     echo "    aviso: $COMPARTILHADO/.env não existe — a cópia usará o .env que já tiver."
 fi
 
+# Anexos e prévias da Central de IA também são dado do usuário: moram em
+# compartilhado/central-ia, fora das versões, pelo disco `central_ia`
+# (config/filesystems.php). Idempotente: só cria a pasta e a linha uma vez.
+if [[ -f "$COMPARTILHADO/.env" ]]; then
+    mkdir -p "$COMPARTILHADO/central-ia" || falhar "criar compartilhado/central-ia"
+    # Quem grava é o PHP-FPM (www-data); criada pelo root, a pasta recusaria
+    # o primeiro anexo. Mesmo critério do "Devolvendo storage" mais abaixo.
+    if [[ "${EUID:-$(id -u)}" -eq 0 ]] && id -u www-data >/dev/null 2>&1; then
+        chown www-data:www-data "$COMPARTILHADO/central-ia" || falhar "dar compartilhado/central-ia ao www-data"
+    fi
+    if ! grep -q '^CENTRAL_IA_ARQUIVOS_ROOT=' "$COMPARTILHADO/.env"; then
+        printf '\n# Anexos e prévias da Central de IA, fora das versões azul/verde.\nCENTRAL_IA_ARQUIVOS_ROOT=%s\n' \
+            "$COMPARTILHADO/central-ia" >> "$COMPARTILHADO/.env" || falhar "apontar os arquivos da Central para compartilhado/"
+    fi
+fi
+
 # ------------------------------------------------------- dependências PHP
 #
 # Havendo portão, a instalação acontece DUAS vezes, e não é desperdício: o
@@ -369,6 +385,19 @@ else
     sudo systemctl reload php8.2-fpm >/dev/null 2>&1 || true
 fi
 
+# O bot do Telegram da Central de IA é processo longo: carrega o código na
+# partida e não vê a troca de versão. Roda a partir de atual/ e é reiniciado
+# aqui — só se a unidade estiver instalada (deploy/central-ia/README.md).
+reiniciar_bot_da_central() {
+    local unidade="alfamatriz-central-ia-telegram.service"
+    local sc="systemctl"; [[ "${EUID:-$(id -u)}" -eq 0 ]] || sc="sudo systemctl"
+    if $sc list-unit-files "$unidade" 2>/dev/null | grep -q "$unidade"; then
+        $sc restart "$unidade" >/dev/null 2>&1 || echo "    aviso: não reiniciei $unidade — reinicie à mão"
+    fi
+}
+etapa "Reiniciando o bot do Telegram da Central (se instalado)"
+reiniciar_bot_da_central
+
 # ------------------------------------------------------------ saúde pública
 
 if [[ -n "$URL_PUBLICA" ]]; then
@@ -383,6 +412,7 @@ if [[ -n "$URL_PUBLICA" ]]; then
         else
             sudo systemctl reload php8.2-fpm >/dev/null 2>&1 || true
         fi
+        reiniciar_bot_da_central
 
         if conferir_saude "$URL_PUBLICA" "$TENTATIVAS_SAUDE"; then
             echo "publicar.sh: voltou para $ATIVA e o sistema está saudável de novo." >&2

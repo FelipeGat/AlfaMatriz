@@ -30,6 +30,18 @@ return [
 
     'disks' => [
 
+        // Anexos e prévias da Central de IA. Em produção (azul/verde) a pasta
+        // da aplicação troca a cada publicação: o .env aponta este disco para
+        // compartilhado/central-ia (deploy/publicar.sh), senão os arquivos
+        // sumiriam da vista na troca seguinte.
+        'central_ia' => [
+            'driver' => 'local',
+            'root' => env('CENTRAL_IA_ARQUIVOS_ROOT', storage_path('app/private')),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),

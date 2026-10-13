@@ -43,6 +43,9 @@
             ['route' => 'contas-financeiras.index', 'recurso' => 'financeiro', 'pattern' => 'contas-financeiras.*', 'label' => 'Caixa', 'icon' => 'banknotes', 'matriz' => true],
         ],
         'Desenvolvimento' => [
+            // Só por permissão: quem tem o perfil "Central de IA" vê; o
+            // Administrador não o recebe de fábrica.
+            ['route' => 'central-ia.index', 'recurso' => 'central_ia', 'pattern' => 'central-ia.*', 'label' => 'Central de IA', 'icon' => 'chat', 'matriz' => true],
             ['route' => 'tarefas.index', 'recurso' => 'tarefas', 'pattern' => 'tarefas.*', 'label' => 'Tarefas', 'icon' => 'view-grid', 'matriz' => true],
             // Logo abaixo de Tarefas, e não num grupo "Pessoal" próprio: o
             // desenho (§19) previa o grupo pessoal, com Agenda e Notas. Decisão
@@ -138,8 +141,15 @@
 
             {{-- O rótulo do grupo ganha um respiro maior acima que abaixo: ele
                  pertence ao que vem depois, não ao que veio antes. --}}
-            <p class="px-[14px] pt-3 pb-1 first:pt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-caps-max text-ink-faint
-                      rail:lg:hidden">{{ $nomeGrupo }}</p>
+            <button type="button" @click="alternarGrupoMenu(@js($nomeGrupo))"
+                    :aria-expanded="((!railAberto && !gavetaAberta) || !gruposMenuFechados.includes(@js($nomeGrupo))).toString()"
+                    aria-controls="menu-grupo-{{ $loop->index }}"
+                    class="flex w-full items-center justify-between px-[14px] pt-3 pb-1 font-mono text-[9.5px] font-semibold uppercase tracking-caps-max text-ink-faint hover:text-ink rail:lg:hidden">
+                <span>{{ $nomeGrupo }}</span>
+                <span class="h-3 w-3 transition-transform" :class="gruposMenuFechados.includes(@js($nomeGrupo)) && '-rotate-90'"><x-nav-icon name="chevron-down" /></span>
+            </button>
+            <div id="menu-grupo-{{ $loop->index }}"
+                 :class="gruposMenuFechados.includes(@js($nomeGrupo)) && 'hidden rail:lg:block'">
 
             @foreach ($links as $link)
                 @php $ativo = request()->routeIs(...(array) $link['pattern']); @endphp
@@ -175,6 +185,7 @@
                     <span class="truncate rail:lg:hidden">{{ $link['label'] }}</span>
                 </a>
             @endforeach
+            </div>
         @endforeach
     </nav>
 

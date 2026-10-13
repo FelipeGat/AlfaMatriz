@@ -4,6 +4,7 @@ namespace Tests\Feature\Permissoes;
 
 use App\Models\Perfil;
 use App\Models\Permissao;
+use Database\Seeders\PerfilPermissaoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -46,16 +47,16 @@ class MigracaoEditarTest extends TestCase
     }
 
     /**
-     * @spec:AC-280 O Administrador tem `editar` em todos os recursos sem
+     * @spec:AC-280 O Administrador tem `editar` nos recursos administrativos sem
      * ninguém marcar nada — ele é imutável na tela, então não teria outro
      * caminho para receber a ação nova.
      */
-    public function test_administrador_recebe_editar_em_todos_os_recursos(): void
+    public function test_administrador_recebe_editar_nos_recursos_existentes_sem_grant_automatico_de_ia(): void
     {
-        $this->seed(\Database\Seeders\PerfilPermissaoSeeder::class);
+        $this->seed(PerfilPermissaoSeeder::class);
 
         $admin = Perfil::where('slug', 'admin')->firstOrFail();
-        $recursos = Permissao::count();
+        $recursos = Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes'])->count();
 
         $comEditar = $admin->permissoes()->wherePivot('editar', true)->count();
 
@@ -64,6 +65,7 @@ class MigracaoEditarTest extends TestCase
             $comEditar,
             "O Administrador precisa de editar nos {$recursos} recursos, e tem em {$comEditar}."
         );
+        $this->assertSame(0, $admin->permissoes()->whereIn('recurso', ['central_ia', 'central_ia_agentes'])->count());
     }
 
     /**

@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import { centralIa } from '../../resources/js/central-ia.js';
+globalThis.localStorage = { getItem: () => null, setItem() {} };
+globalThis.document = { hidden: false };
+globalThis.location = { search: '', pathname: '/central-ia' };
+globalThis.history = { replaceState() {} };
+const u = centralIa({ preferencias: '/preferencias', arquivarChats: '/arquivar' });
+u.$refs = {}; u.$nextTick = f => f(); u.reconectar = () => {}; u.garantirAba();
+u.preferencias = { disponivel: true }; u.ajustes = { revisao_config: 1 }; u.ajustesAlterados = true;
+u.pedir = async () => { throw { detalhe: 'Conflito de revisão' }; };
+await u.salvarAjustes();
+assert.equal(u.ajustesAlterados, true); assert.equal(u.ajustes.revisao_config, 1); assert.equal(u.salvandoAjustes, false);
+u.pedir = async (url, metodo, dados) => {
+    assert.equal(url, '/preferencias'); assert.equal(metodo, 'PUT'); assert.equal(dados.revisao_config, 1);
+    return { regras: { revisao_config: 2 } };
+};
+await u.salvarAjustes(); assert.equal(u.ajustes.revisao_config, 2); assert.equal(u.ajustesAlterados, false);
+u.chats = [{ id: 1, projeto: 'alfamatriz' }, { id: 2, projeto: 'alfamatriz' }];
+u.abrirChat(u.chats[0]); u.aba.rascunho = 'Não apagar';
+globalThis.confirm = () => false; await u.arquivarChats(); assert.equal(u.chats.length, 2);
+globalThis.confirm = () => true;
+u.pedir = async (url, metodo, dados) => { assert.equal(url, '/arquivar'); assert.deepEqual(dados.ids, [1, 2]); return { arquivadas: [1], rodando: [2] }; };
+await u.arquivarChats();
+assert.equal(u.chats.length, 1); assert.equal(u.chats[0].id, 2); assert.equal(u.chatAtual, null);
+assert.equal(u.abas['chat:' + JSON.stringify(['alfamatriz', 1])].rascunho, 'Não apagar');
+console.log('PASSOU: conflito de ajustes, confirmação de salvamento, cancelamento e arquivamento sem interromper chat em execução.');

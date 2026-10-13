@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+.env.*
+runtime/
+vendor/
+node_modules/
+*.aesgcm
+*.key
+*.sql
+*.dump
+auth.json

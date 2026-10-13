@@ -1,6 +1,8 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import { centralIa } from './central-ia';
+Alpine.data('centralIa', centralIa);
 
 /**
  * Estado da moldura: menu recolhido e tema.
@@ -19,6 +21,16 @@ Alpine.data('shell', () => ({
 
     // Gaveta é coisa de tela estreita: some junto com a navegação.
     gavetaAberta: false,
+    gruposMenuFechados: (() => {
+        try { const v = JSON.parse(localStorage.getItem('alfamatriz:grupos-menu') || '[]'); return Array.isArray(v) ? v : []; }
+        catch { return []; }
+    })(),
+    alternarGrupoMenu(grupo) {
+        this.gruposMenuFechados = this.gruposMenuFechados.includes(grupo)
+            ? this.gruposMenuFechados.filter(g => g !== grupo) : [...this.gruposMenuFechados, grupo];
+        this.lembrar('alfamatriz:grupos-menu', JSON.stringify(this.gruposMenuFechados));
+    },
+
 
     /**
      * O painel do sino.

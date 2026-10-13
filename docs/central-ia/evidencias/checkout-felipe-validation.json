@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-10",
+  "branch": "Felipe",
+  "base_main": "1e2bbb9",
+  "main_commits_incorporated": 200,
+  "php": "8.2.30",
+  "tests_passed": 1409,
+  "assertions": 8541,
+  "failures": 0,
+  "errors": 0,
+  "phpunit_deprecations": 2,
+  "isolated_sqlite_memory": true,
+  "network_enabled": false,
+  "production_modified": false,
+  "real_identity_linked": false,
+  "single_database_adaptation_complete": false,
+  "push_performed": false,
+  "bootstrap": "tools/central-ia/testing/TestCase.php"
+}

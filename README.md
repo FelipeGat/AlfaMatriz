@@ -165,3 +165,5 @@ deploy/restaurar.sh --arquivo /var/backups/alfamatriz/AAAA-MM-DD.sql.gz --confir
 
 O script recusa rodar sem `--confirmo` ou apontando pra um arquivo que não
 existe — não tem como sobrescrever o banco de produção por engano.
+
+A Central de IA oferece filtro administrativo de atividade e limites individuais em Ajustes. Consulte [governança por usuário](docs/central-ia/governanca-usuarios.md), incluindo o bloqueio de execução de outras contas até validar executores isolados.

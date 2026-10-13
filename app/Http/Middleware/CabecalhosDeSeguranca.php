@@ -32,6 +32,12 @@ class CabecalhosDeSeguranca
     {
         $response = $next($request);
 
+        // A prévia de agente da Central de IA traz a própria CSP (sandbox, sem
+        // origem): trocar por esta devolveria a página à origem do sistema.
+        if ($request->routeIs('central-ia.previa')) {
+            return $response;
+        }
+
         $response->headers->set('Content-Security-Policy', implode('; ', [
             "default-src 'self'",
             "connect-src 'self'",

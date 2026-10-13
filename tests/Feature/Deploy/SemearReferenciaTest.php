@@ -34,16 +34,16 @@ class SemearReferenciaTest extends TestCase
         $this->assertSame(1, Permissao::where('recurso', 'faturamento')->count());
     }
 
-    public function test_o_perfil_admin_alcanca_todos_os_recursos_depois_da_carga(): void
+    public function test_admin_alcanca_recursos_administrativos_sem_grants_automaticos_de_ia(): void
     {
         $this->artisan('alfa:semear-referencia')->assertSuccessful();
 
         $admin = Perfil::where('slug', 'admin')->sole();
 
         $this->assertSame(
-            Permissao::count(),
+            Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes'])->count(),
             $admin->permissoes()->count(),
-            'Recurso novo sem permissão no admin é tela invisível para quem administra o sistema.'
+            'Recursos administrativos mantêm grants; IA exige autorização explícita.'
         );
     }
 

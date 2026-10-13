@@ -5,6 +5,7 @@ use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\Auth\PrimeiroAcessoController;
 use App\Http\Controllers\CadastroAuxiliarController;
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\CentralIaController;
 use App\Http\Controllers\CentroControleController;
 use App\Http\Controllers\CentroCustoController;
 use App\Http\Controllers\ClienteController;
@@ -48,6 +49,11 @@ Route::get('/', fn () => redirect()->to(auth()->user()?->telaInicial() ?? route(
 // Fora do grupo autenticado de propósito: o deploy confere a saúde antes de
 // existir qualquer sessão.
 Route::get('/healthz', SaudeController::class)->name('healthz');
+
+// Prévia visual de um agente da Central de IA: pelo código do link, e não
+// pela sessão — a página roda em sandbox, sem cookie (App\Services\CentralIa\Previas).
+Route::get('central-ia/previas/{chave}/{caminho}', [\App\Http\Controllers\CentralIaController::class, 'previa'])
+    ->where('chave', '[A-Za-z0-9]{48}')->where('caminho', '.*')->middleware('throttle:240,1,central-ia-previa')->name('central-ia.previa');
 
 // Token fresco para as telas de fora (login, senha esquecida): elas ficam
 // abertas por horas e o token embutido no HTML vence junto com a sessão.
@@ -187,6 +193,84 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
      */
     Route::get('agenda', [AgendaController::class, 'index'])->name('agenda.index')
         ->middleware('permissao:agenda');
+
+    // Central de IA. Sem id de conversa na rota: é sempre a da conta logada.
+    // O poll da tela bate a cada 5 s, daí o teto de leitura folgado.
+    Route::get('central-ia', [CentralIaController::class, 'index'])->name('central-ia.index')
+        ->middleware('permissao:central_ia');
+    // O cockpit faz três polls (painel, conversa, tarefas) a cada 5 s.
+    //
+    // Cada `throttle` leva um PREFIXO próprio: sem ele, o Laravel conta todas
+    // as rotas da mesma conta num balde só — e os polls da tela, somados ao
+    // runner (que usa a mesma conta, a cada 3 s), estouravam o limite de 20
+    // do envio: a mensagem ficava em "aguardando confirmação" com 429.
+    // Aconteceu com o dono em 10/10/2026.
+    Route::get('central-ia/painel', [CentralIaController::class, 'painel'])->name('central-ia.painel')
+        ->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-painel']);
+    Route::put('central-ia/preferencias', [CentralIaController::class, 'preferencias'])->name('central-ia.preferencias')
+        ->middleware(['permissao:central_ia,editar', 'throttle:20,1,central-ia-preferencias']);
+    Route::post('central-ia/chats/arquivar', [CentralIaController::class, 'arquivarChats'])->name('central-ia.chats.arquivar')
+        ->middleware(['permissao:central_ia,editar', 'throttle:20,1,central-ia-arquivar']);
+    Route::get('central-ia/relatorio', [CentralIaController::class, 'relatorio'])->name('central-ia.relatorio')->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-relatorio']);
+    Route::get('central-ia/administracao', [CentralIaController::class, 'administracao'])->name('central-ia.administracao')
+        ->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-admin']);
+    Route::put('central-ia/usuarios/{usuario}/politica', [CentralIaController::class, 'politicaUsuario'])->whereNumber('usuario')->name('central-ia.usuarios.politica')
+        ->middleware(['permissao:central_ia', 'throttle:20,1,central-ia-politica']);
+    Route::get('central-ia/mensagens', [CentralIaController::class, 'mensagens'])->name('central-ia.mensagens')
+        ->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-mensagens']);
+    Route::get('central-ia/projetos/{projeto}/tarefas', [CentralIaController::class, 'tarefas'])->name('central-ia.tarefas')
+        ->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-tarefas'])->where('projeto', '[A-Za-z0-9._-]+');
+    Route::post('central-ia/projetos/{projeto}/fixar', [CentralIaController::class, 'fixar'])->name('central-ia.fixar')
+        ->middleware('permissao:central_ia,editar')->where('projeto', '[A-Za-z0-9._-]+');
+    Route::post('central-ia/grupos', [CentralIaController::class, 'criarGrupo'])->name('central-ia.grupos.criar')
+        ->middleware('permissao:central_ia,editar');
+    Route::put('central-ia/grupos/{grupo}', [CentralIaController::class, 'renomearGrupo'])->name('central-ia.grupos.renomear')
+        ->middleware('permissao:central_ia,editar')->whereNumber('grupo');
+    Route::delete('central-ia/grupos/{grupo}', [CentralIaController::class, 'apagarGrupo'])->name('central-ia.grupos.apagar')
+        ->middleware('permissao:central_ia,editar')->whereNumber('grupo');
+    Route::post('central-ia/projetos/{projeto}/grupo', [CentralIaController::class, 'grupoDoProjeto'])->name('central-ia.projetos.grupo')
+        ->middleware('permissao:central_ia,editar')->where('projeto', '[A-Za-z0-9._-]+');
+    // Chats Business: chat contínuo por assunto (docs/specs/chats-business).
+    Route::post('central-ia/assuntos', [CentralIaController::class, 'criarAssunto'])->name('central-ia.assuntos.criar')
+        ->middleware(['permissao:central_ia,incluir', 'throttle:30,1,central-ia-assuntos']);
+    Route::post('central-ia/assuntos/semear', [CentralIaController::class, 'semearAssunto'])->name('central-ia.assuntos.semear')
+        ->middleware(['permissao:central_ia,incluir', 'throttle:10,1,central-ia-semear']);
+    Route::get('central-ia/assuntos/{assunto}/memoria', [CentralIaController::class, 'memoriaDoAssunto'])->name('central-ia.assuntos.memoria')
+        ->middleware(['permissao:central_ia', 'throttle:120,1,central-ia-memoria'])->whereNumber('assunto');
+    Route::put('central-ia/assuntos/{assunto}/memoria', [CentralIaController::class, 'corrigirMemoria'])->name('central-ia.assuntos.memoria.salvar')
+        ->middleware(['permissao:central_ia,editar', 'throttle:60,1,central-ia-memoria'])->whereNumber('assunto');
+    Route::put('central-ia/assuntos/{assunto}', [CentralIaController::class, 'salvarAssunto'])->name('central-ia.assuntos.salvar')
+        ->middleware(['permissao:central_ia,editar', 'throttle:60,1,central-ia-assuntos'])->whereNumber('assunto');
+    Route::post('central-ia/sessoes/continuar', [CentralIaController::class, 'continuarSessao'])->name('central-ia.sessoes.continuar')
+        ->middleware(['permissao:central_ia,incluir', 'throttle:20,1,central-ia-continuar']);
+    Route::post('central-ia/tarefas/{tarefa}/ponto', [CentralIaController::class, 'salvarPonto'])->name('central-ia.tarefas.ponto')
+        ->middleware(['permissao:central_ia,incluir', 'throttle:10,1,central-ia-ponto'])->whereNumber('tarefa');
+    Route::post('central-ia/tarefas/{tarefa}/status', [CentralIaController::class, 'statusDaTarefa'])->name('central-ia.tarefas.status')
+        ->middleware('permissao:central_ia,editar')->whereNumber('tarefa');
+    Route::post('central-ia/anexos', [CentralIaController::class, 'anexar'])->name('central-ia.anexos.criar')
+        ->middleware(['permissao:central_ia,incluir', 'throttle:30,1,central-ia-anexos']);
+    Route::get('central-ia/anexos/{anexo}', [CentralIaController::class, 'baixarAnexo'])->name('central-ia.anexos.baixar')
+        ->middleware('permissao:central_ia')->whereUuid('anexo');
+    // O código que a MÁQUINA da pessoa mandou ao Telegram dela: guardado até
+    // o runner buscar; quem confere é ele (contracts/confirmacao.md).
+    // POPs das IAs: só da própria conta (ver App\Services\CentralIa\Pops).
+    Route::post('central-ia/pops', [CentralIaController::class, 'salvarPop'])->name('central-ia.pops.criar')
+        ->middleware(['permissao:central_ia,editar', 'throttle:30,1,central-ia-pops']);
+    Route::put('central-ia/pops/{pop}', [CentralIaController::class, 'salvarPop'])->name('central-ia.pops.salvar')
+        ->middleware(['permissao:central_ia,editar', 'throttle:30,1,central-ia-pops'])->whereNumber('pop');
+    Route::delete('central-ia/pops/{pop}', [CentralIaController::class, 'apagarPop'])->name('central-ia.pops.apagar')
+        ->middleware(['permissao:central_ia,editar', 'throttle:30,1,central-ia-pops'])->whereNumber('pop');
+    Route::post('central-ia/execucoes/{execucao}/confirmar', [CentralIaController::class, 'confirmar'])->name('central-ia.execucoes.confirmar')
+        ->middleware(['permissao:central_ia,incluir', 'throttle:10,1,central-ia-confirmar'])->whereNumber('execucao');
+    Route::post('central-ia/mensagens', [CentralIaController::class, 'enviar'])->name('central-ia.enviar')
+        ->middleware(['permissao:central_ia,incluir', 'throttle:20,1,central-ia-enviar']);
+    // Parear e desparear o Telegram mexem no canal, não criam conversa: `editar`.
+    Route::post('central-ia/canal', [CentralIaController::class, 'canal'])->name('central-ia.canal')
+        ->middleware(['permissao:central_ia,editar', 'throttle:20,1,central-ia-canal']);
+    Route::post('central-ia/telegram/codigo', [CentralIaController::class, 'codigoTelegram'])->name('central-ia.telegram.codigo')
+        ->middleware(['permissao:central_ia,editar', 'throttle:6,1,central-ia-telegram']);
+    Route::delete('central-ia/telegram', [CentralIaController::class, 'desvincularTelegram'])->name('central-ia.telegram.desvincular')
+        ->middleware('permissao:central_ia,editar');
     Route::get('agenda/dia/{data}', [AgendaController::class, 'dia'])->name('agenda.dia')
         ->middleware('permissao:agenda')
         ->where('data', '\\d{4}-\\d{2}-\\d{2}');

@@ -1,0 +1,27 @@
+{
+  "versao": 1,
+  "titulo": "Empresa Exemplo — relatório sintético de teste",
+  "periodo": "01 a 05/01/2026",
+  "fonte": "Dados fictícios criados para o teste; nenhum valor real.",
+  "metricas": [
+    {"rotulo":"Recebido","centavos":100000,"criterio":"Baixas no período"},
+    {"rotulo":"Pago","centavos":150000,"criterio":"Baixas no período"},
+    {"rotulo":"Resultado realizado","centavos":-50000,"criterio":"Recebido menos pago; não é lucro nem saldo bancário"},
+    {"rotulo":"A receber vencido","centavos":300000,"criterio":"Três cobranças fictícias vencidas"}
+  ],
+  "contagens": [
+    {"rotulo":"Atendimentos registrados","quantidade":10},
+    {"rotulo":"Orçamentos criados","quantidade":5}
+  ],
+  "grafico": {"titulo":"Recebido x pago","tipo":"barras","pontos":[
+    {"rotulo":"Recebido","centavos":100000},
+    {"rotulo":"Pago","centavos":150000}
+  ]},
+  "tabela": [
+    {"data":"02/01/2026","descricao":"Fornecedor Fictício A","centavos":10000,"estado":"aberto"},
+    {"data":"03/01/2026","descricao":"Fornecedor Fictício B","centavos":20000,"estado":"vencido"},
+    {"data":"04/01/2026","descricao":"Fornecedor Fictício C","centavos":30000,"estado":"pago"}
+  ],
+  "alertas": ["Dados fictícios: não use para decisão."],
+  "acoes": ["Conferir o formato da tabela na tela."]
+}

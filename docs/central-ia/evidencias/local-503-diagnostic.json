@@ -1,0 +1,26 @@
+{
+  "controlled_single_worker": {
+    "http_status": 503,
+    "elapsed_ms": 6039,
+    "real_accounts": false,
+    "real_inference": false
+  },
+  "restored_eight_workers": {
+    "http_status": 200,
+    "elapsed_ms": 812,
+    "real_accounts": false,
+    "real_inference": false
+  },
+  "central_transport_metadata": [
+    {
+      "event": "identity_authority_unavailable",
+      "category": "transport",
+      "status": null,
+      "transport_code": null
+    }
+  ],
+  "historical_503_exact_cause_confirmed": false,
+  "reproduced_cause": "Recursive Alfa -> Central -> Alfa request exhausts single Alfa FPM worker; authority times out.",
+  "real_accounts": false,
+  "real_inference": false
+}
