@@ -186,7 +186,7 @@
         </div>
         {{-- ================= PROJETOS ================= --}}
         <div x-show="['chats', 'business'].includes(tela)" class="relative grid min-h-0 flex-1 grid-cols-1 gap-3"
-             :class="projetosRecolhidos ? 'lg:grid-cols-1' : 'lg:grid-cols-[260px_minmax(0,1fr)]'">
+             :class="projetosRecolhidos ? 'lg:grid-cols-1' : (tela === 'business' ? 'lg:grid-cols-[320px_minmax(0,1fr)]' : 'lg:grid-cols-[260px_minmax(0,1fr)]')">
 
             {{-- Barra de projetos: busca + grupos (no celular, gaveta sobre o conteúdo) --}}
             <aside id="central-projetos" x-show="tela === 'projetos'" aria-label="Projetos"
@@ -352,7 +352,8 @@
                                                 class="w-full rounded-control border px-2.5 py-1.5 pr-14 text-left hover:bg-chip"
                                                 :class="(chatAtual === a.id ? 'border-brand-mute bg-nav-active' : (a.status === 'aguardando_voce' ? 'border-pergunta-line bg-pergunta-tint' : 'border-line'))
                                                     + (novidades[a.id] ? ' animate-pulse ring-2 ring-brand' : '')">
-                                            <span class="block overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-ink" x-text="a.titulo"></span>
+                                            {{-- Nome inteiro, quebrando linha (dono, 13/10/2026: "Proposta Comercial Vix…" não serve). --}}
+                                            <span class="block break-words text-sm font-semibold text-ink" x-text="a.titulo"></span>
                                             <span class="mt-0.5 flex flex-wrap items-center gap-1 text-[11px]">
                                                 <span x-show="a.status !== 'aberta'" class="rounded-badge border px-1 py-px" :class="corDoEstado(a.status)" x-text="estado(a.status)"></span>
                                                 <span x-show="novidades[a.id]" class="rounded-badge px-1 font-semibold text-on-brand"
