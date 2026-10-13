@@ -131,6 +131,7 @@ class CentralIaTelegram extends Command
 
             $lock->assertOwned();
             $canal->entregarPendentes();
+            $canal->entregarPrevias();
 
             return null;
         } catch (\Throwable $e) {

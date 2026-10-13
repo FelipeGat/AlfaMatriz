@@ -48,6 +48,13 @@ class PropostaTest extends TestCase
         $this->assertStringContainsString('Proposta: uma linha por dia.', $i->instrucao);
     }
 
+    public function test_modelo_para_meu_ok_e_proposta_e_nao_implementacao(): void
+    {
+        $r = app(\App\Services\CentralIa\Roteador::class)->decidir('a landing ainda está antiga, me traga um modelo conceito da landing para meu ok e depois faça a implementaçao dela.', ['claude', 'codex', 'copilot']);
+        $this->assertSame('analisar', $r['modo']);
+        $this->assertSame('planejamento', $r['categoria']);
+    }
+
     public function test_outra_sugestao_mesma_ou_outra_ia(): void
     {
         [$u, $s, $e] = $this->cenario();

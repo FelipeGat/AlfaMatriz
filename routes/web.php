@@ -50,6 +50,11 @@ Route::get('/', fn () => redirect()->to(auth()->user()?->telaInicial() ?? route(
 // existir qualquer sessão.
 Route::get('/healthz', SaudeController::class)->name('healthz');
 
+// Prévia visual de um agente da Central de IA: pelo código do link, e não
+// pela sessão — a página roda em sandbox, sem cookie (App\Services\CentralIa\Previas).
+Route::get('central-ia/previas/{chave}/{caminho}', [\App\Http\Controllers\CentralIaController::class, 'previa'])
+    ->where('chave', '[A-Za-z0-9]{48}')->where('caminho', '.*')->middleware('throttle:240,1,central-ia-previa')->name('central-ia.previa');
+
 // Token fresco para as telas de fora (login, senha esquecida): elas ficam
 // abertas por horas e o token embutido no HTML vence junto com a sessão.
 // Buscar aqui renova os dois de uma vez, porque a resposta também recria o

@@ -203,6 +203,20 @@ class AgentesService
         $resposta = $tarefa && str_starts_with(ltrim($pedido['instrucao']), 'Resposta à sua pergunta')
             ? $tarefa->execucoes()->whereIn('status', [CentralIaExecucao::CONCLUIDA])->latest('id')->first() : null;
 
+        // "Pode seguir", "ok", "sim": continua com quem falou por último, no
+        // mesmo modo, sabendo do que se trata (em 13/10/2026 o "pode seguir"
+        // da tarefa #14 foi a outra IA, que não sabia o que seguir).
+        $seguir = $tarefa && ! $resposta && $agente === 'auto'
+            && preg_match('/^(pode seguir|pode continuar|pode prosseguir|segue|siga|prossiga|continue|ok|sim|pode|manda ver|vai|aprovado|pode fazer)[\s.!]*$/iu', trim($pedido['instrucao']))
+            ? $tarefa->execucoes()->whereIn('status', [CentralIaExecucao::CONCLUIDA])->latest('id')->first() : null;
+        if ($seguir) {
+            $agente = $seguir->agente;
+            if ($modo === 'auto') $modo = $seguir->modo;
+            $ultima = CentralIaMensagem::where('user_id', $user->id)->find($seguir->resposta_id)?->conteudo;
+            $pedido['instrucao'] = "A pessoa respondeu \"{$pedido['instrucao']}\" à sua última mensagem nesta tarefa: siga com o próximo passo que você propôs."
+                .($ultima ? "\n\nSua última mensagem:\n".Str::limit($ultima, 6000) : '');
+        }
+
         // "Refaça" / "não funcionou": sobe o nível (e, insistindo no máximo, troca a IA).
         $refazer = $agente === 'auto' && ($pedido['nivel'] ?? 'auto') === 'auto' ? $this->escaladaPorRefazer($user, $tarefa, $pedido['instrucao']) : null;
         if ($refazer) {
@@ -226,6 +240,12 @@ class AgentesService
             ? $this->roteador->decidir($pedido['instrucao'], $disponivel['agentes'], $tarefa, $disponivel['esgotados'], $ordens)
             : ['agente' => $agente, 'modo' => null, 'categoria' => null, 'manual' => true, 'motivo' => 'Escolha manual']));
 
+        if ($seguir) {
+            $rota['categoria'] = $seguir->roteamento['categoria'] ?? null;
+            $rota['manual'] = false;
+            $pedido['nivel'] ??= $seguir->roteamento['nivel'] ?? 'auto';
+            $rota['motivo'] = 'Continua com '.$seguir->nomeDoAgente().', que falou por último (mesmo modo: '.$seguir->modo.')';
+        }
         if ($resposta) {
             $rota['categoria'] = $resposta->roteamento['categoria'] ?? $rota['categoria'] ?? null;
             if ($modo === 'auto') $modo = $resposta->modo;
@@ -587,6 +607,9 @@ class AgentesService
                 : Eventos::registrar($user, 'falhou', "{$execucao->nomeDoAgente()} falhou: ".($dados['erro'] ?? 'erro desconhecido'), Eventos::da($execucao) + ['origem' => 'runner'], 'erro');
 
             $this->registrarRastro($user, $execucao);
+            if ($ok && $bloco && is_array($bloco['delegar'] ?? null) && $tarefa) {
+                $this->delegar($user, $execucao, $bloco['delegar']);
+            }
             if ($ok && $bloco && isset($bloco['pop'])) {
                 app(Pops::class)->doBloco($user, $bloco['pop'], $execucao->nomeDoAgente(), $execucao->id, $execucao->projeto);
             }
@@ -811,6 +834,43 @@ class AgentesService
 
     /** As saídas de uma análise que propôs mudança: o agente oferece estas três. */
     public const OPCOES_DA_PROPOSTA = ['implementar' => 'Sim, implementar', 'mesma' => 'Trazer outra sugestão', 'outra_ia' => 'Outra sugestão com outra IA'];
+
+    /** Teto de passagens automáticas entre agentes a partir do pedido da pessoa. */
+    public const DELEGACOES_MAXIMAS = 4;
+
+    /**
+     * Um agente passa o próximo passo a outro (ex.: Claude implementou, o
+     * Copilot faz o QA que o projeto exige). A Central encaminha na mesma
+     * tarefa e avisa; a pessoa não vira mensageira entre IAs.
+     */
+    private function delegar(User $user, CentralIaExecucao $de, array $d): void
+    {
+        $agente = $d['agente'] ?? null;
+        $pedido = is_string($d['pedido'] ?? null) ? trim($d['pedido']) : '';
+        if (! array_key_exists((string) $agente, CentralIaExecucao::AGENTES) || $pedido === '') return;
+        $passos = ($de->roteamento['delegacao']['passos'] ?? 0) + 1;
+        $tarefa = $de->tarefa;
+        if ($passos > self::DELEGACOES_MAXIMAS) {
+            $this->conversas->registrarDoAgente($user, 'Central', "{$de->nomeDoAgente()} quis passar a tarefa adiante de novo, mas já foram ".self::DELEGACOES_MAXIMAS.' passagens seguidas: a Central parou aqui para você decidir.', CentralIaMensagem::AUTOR_SISTEMA, $de->projeto ?: null, $tarefa->id);
+            return;
+        }
+        $disponivel = $this->disponiveis($user);
+        if (! in_array($agente, $disponivel['agentes'], true) || ! app(Preferencias::class)->pode($user, $agente)) {
+            $this->conversas->registrarDoAgente($user, 'Central', "{$de->nomeDoAgente()} pediu para passar a ".CentralIaExecucao::AGENTES[$agente].', que não está disponível na sua máquina agora. A tarefa espera por você.', CentralIaMensagem::AUTOR_SISTEMA, $de->projeto ?: null, $tarefa->id);
+            return;
+        }
+        $modo = ($d['modo'] ?? 'analisar') === 'implementar' && $de->projeto !== '' ? 'implementar' : 'analisar';
+        $nome = CentralIaExecucao::AGENTES[$agente];
+        $aviso = $this->conversas->registrarDoAgente($user, 'Central', "↪ {$de->nomeDoAgente()} passou para {$nome}: ".Str::limit($pedido, 300), CentralIaMensagem::AUTOR_SISTEMA, $de->projeto ?: null, $tarefa->id);
+        $nivel = $modo === 'implementar' ? 'forte' : 'medio';
+        $rota = ['agente' => $agente, 'modo' => $modo, 'categoria' => $modo === 'implementar' ? 'implementacao' : 'revisao', 'manual' => false,
+            'nivel' => $nivel, 'handoff_de' => $de->agente, 'delegacao' => ['passos' => $passos, 'de' => $de->id],
+            'motivo' => "Passado por {$de->nomeDoAgente()}"] + app(Preferencias::class)->modelo($user, $nivel, $agente);
+        $nova = CentralIaExecucao::create(['user_id' => $user->id, 'pedido_id' => $aviso->id, 'tarefa_id' => $tarefa->id, 'agente' => $agente,
+            'projeto' => $de->projeto, 'modo' => $modo, 'instrucao' => $pedido, 'roteamento' => $rota]);
+        $tarefa->update(['status' => CentralIaTarefa::ABERTA, 'ultima_atividade_em' => now()]);
+        Eventos::registrar($user, 'delegacao', "{$de->nomeDoAgente()} passou para {$nome} ({$modo})", Eventos::da($nova) + ['origem' => 'central']);
+    }
 
     public const NIVEIS_EM_ORDEM = ['sem_ia', 'leve', 'medio', 'forte'];
 

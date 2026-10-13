@@ -27,6 +27,11 @@ incorporada por referência (US7).
 - Q: Como evitar que cada pedido redescubra o sistema (no agendamento do Gestor, ~4 dos ~5 min foram descoberta)? → A: A IA cria um POP interno por sistema (Gestor e os outros, quando o assunto for outro sistema), com o que precisa saber para executar. Ela atualiza o POP conforme a necessidade, e no próximo pedido com o mesmo contexto já sabe como fazer.
 - Q: Quem acessa os POPs? → A: Só as IAs e o administrador do SaaS (o dono da Central). Por isso ficam na Central dele, e não nos repositórios.
 
+### Session 2026-10-13 — prévias visuais
+
+- Q: Como o agente mostra um conceito visual (imagem, PDF, página) para aprovação? → A: Imagem e PDF vão ao Telegram. Página web tem de abrir no navegador, no Mac ou no Windows. Não pode ficar num arquivo em `C:\tmp` que só o Windows vê.
+- Q: "Me traga um modelo conceito para meu ok e depois implemente" é implementação? → A: Não. Primeiro vem a proposta; a implementação só começa depois do ok.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Conversar com as minhas IAs pela tela e pelo Telegram (Priority: P1)
@@ -225,6 +230,14 @@ dono e conferir que a máquina não a executa sem o código.
 2. **Given** um POP do gestor, **When** a pessoa pede algo no projeto gestor ou cita "gestor" em outro projeto, **Then** o pedido leva o POP ao agente.
 3. **Given** um POP atualizado pela IA, **When** a pessoa abre Ajustes, **Then** vê a versão atual e quem a escreveu, pode editar ou apagar, e outra conta nunca o vê.
 
+### User Story 15 - Ver o conceito antes de aprovar (Priority: P2)
+
+**Acceptance Scenarios**:
+
+1. **Given** "me traga um modelo conceito da landing para meu ok e depois implemente", **When** em automático, **Then** vira proposta (analisar), sem pedir o código.
+2. **Given** um agente que salvou `conceito.png`, `conceito.pdf` e `pagina/index.html` na pasta de prévia, **When** a resposta chega, **Then** a conversa mostra a miniatura, o PDF e "Abrir prévia", e a imagem e o PDF vão ao Telegram.
+3. **Given** a página de prévia, **When** outra conta tenta abri-la, **Then** recebe 404; **When** o dono abre, **Then** a página vem com a CSP sandbox.
+
 ### Edge Cases
 
 - Produção recebe a Central com as tabelas vazias, e só depois da homologação concluída.
@@ -280,6 +293,11 @@ dono e conferir que a máquina não a executa sem o código.
 - **FR-031**: Todo pedido MUST levar ao agente os POPs do sistema do projeto e os dos sistemas citados no texto, com limite de tamanho, e a regra de segui-los.
 - **FR-032**: O agente MUST poder registrar ou atualizar um POP ao terminar. O conteúdo é mascarado contra segredos, e cada mudança gera um evento no log.
 - **FR-033**: Os POPs MUST ser visíveis e editáveis só pelo dono da conta, na tela, e pelas IAs que rodam pela máquina dele. Nenhum administrador do sistema os vê, e eles não entram em nenhum repositório.
+
+- **FR-034**: O agente MUST poder mostrar uma prévia visual salvando arquivos (imagens, PDF, página HTML com seus recursos) numa pasta de prévia da execução. A máquina envia esses arquivos à Central, e eles aparecem na resposta: imagem em miniatura, PDF e página como link.
+- **FR-035**: A página de prévia MUST abrir no navegador de qualquer aparelho da pessoa que alcança o AlfaMatriz, só para o dono, e isolada da sessão dele (sandbox, sem acesso a cookies nem à API).
+- **FR-036**: As imagens e os PDFs de prévia MUST ser enviados ao Telegram da pessoa, quando houver vínculo.
+- **FR-037**: O pedido que pede um modelo, conceito ou proposta "para o meu ok" MUST virar proposta (análise), e não implementação. A implementação só vem depois da aprovação.
 
 **FR-INFRA-SCHED**: o trabalho periódico (leitura de consumo a cada 2 min, `/usage` do Claude a cada 10 min, git dos projetos a cada minuto) é disparado pela máquina da pessoa; o AlfaMatriz não usa agendador para a Central.
 **FR-INFRA-LOCK**: a exclusividade do leitor do Telegram e a escolha da próxima execução são serializadas no banco.

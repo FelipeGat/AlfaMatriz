@@ -596,6 +596,29 @@ class TelegramCanal
     /**
      * Leva ao Telegram as entregas pendentes, mais antigas primeiro.
      */
+    /**
+     * Imagens e PDFs de prévia vão ao Telegram (dono, 13/10/2026: "imagem ou
+     * pdf, pode mandar para o telegram"), seja qual for o canal ativo.
+     */
+    public function entregarPrevias(int $limite = 5): void
+    {
+        if (! app(Previas::class)->pronto()) return;
+        foreach (\App\Models\CentralIaPrevia::where('telegram', 'pendente')->orderBy('id')->limit($limite)->get() as $p) {
+            $vinculo = CentralIaTelegramVinculo::where('user_id', $p->user_id)->first();
+            if (! $vinculo) { $p->update(['telegram' => null]); continue; }
+            $p->update(['telegram' => 'enviando']);
+            $arquivo = "central-ia/previas/{$p->user_id}/{$p->execucao_id}/{$p->caminho}";
+            $foto = $p->tipo() === 'imagem' && $p->tamanho <= 10 * 1024 * 1024;
+            $r = \Illuminate\Support\Facades\Storage::disk('local')->exists($arquivo)
+                ? $this->api->enviarArquivo($foto ? 'sendPhoto' : 'sendDocument', $foto ? 'photo' : 'document',
+                    \Illuminate\Support\Facades\Storage::disk('local')->get($arquivo), basename($p->caminho),
+                    ['chat_id' => $vinculo->chat_id, 'caption' => 'Prévia da execução #'.$p->execucao_id.' — '.$p->caminho])
+                : ['ok' => false, 'erro' => 'recusada'];
+            $p->update(['telegram' => $r['ok'] ? 'enviado' : ($r['erro'] === 'limite' ? 'pendente' : 'falhou')]);
+            if (! $r['ok'] && $r['erro'] === 'limite') return;
+        }
+    }
+
     public function entregarPendentes(int $limite = 20): void
     {
         // Presa em `enviando` é processo que morreu no meio da chamada: pode

@@ -581,7 +581,17 @@ class CentralIaController extends Controller
             'criada_em' => $m->created_at->toIso8601String(),
             'entrega' => $m->entrega?->status,
             'pedido' => $this->pedido($m),
+            // O que o agente mostrou junto da resposta (FR-034).
+            'previas' => $m->autor_tipo === CentralIaMensagem::AUTOR_AGENTE
+                ? (($e = CentralIaExecucao::where('resposta_id', $m->id)->value('id')) ? app(\App\Services\CentralIa\Previas::class)->daExecucao($e) : [])
+                : [],
         ];
+    }
+
+    /** A prévia, pelo código do link (ver App\Services\CentralIa\Previas). */
+    public function previa(string $chave, string $caminho): \Symfony\Component\HttpFoundation\Response
+    {
+        return app(\App\Services\CentralIa\Previas::class)->servir($chave, $caminho);
     }
 
     private function pedido(CentralIaMensagem $m): ?array

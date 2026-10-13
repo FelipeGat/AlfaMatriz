@@ -110,6 +110,19 @@ class CentralIaRunnerController extends Controller
         return response()->json($this->agentes->confirmacao($user, $runner, $execucao, $dados));
     }
 
+    /** Um arquivo de prévia que o agente deixou na pasta da execução (FR-034). */
+    public function previa(Request $request, int $execucao): JsonResponse
+    {
+        $user = $this->conta($request);
+        $dados = $request->validate(['maquina' => ['required', 'string', 'max:64'], 'caminho' => ['required', 'string', 'max:300'], 'arquivo' => ['required', 'file', 'max:20480']]);
+        $runner = CentralIaRunner::where('user_id', $user->id)->where('maquina', $dados['maquina'])->firstOrFail();
+        $e = CentralIaExecucao::where('user_id', $user->id)->whereKey($execucao)->firstOrFail();
+        abort_unless($e->status === CentralIaExecucao::EXECUTANDO && $e->runner_id === $runner->id, 409, 'Execução não está com esta máquina.');
+        $p = app(\App\Services\CentralIa\Previas::class)->guardar($user, $e, $dados['caminho'], $dados['arquivo']);
+
+        return response()->json(['ok' => true, 'tipo' => $p->tipo()]);
+    }
+
     public function concluir(Request $request, int $execucao): JsonResponse
     {
         $user = $this->conta($request);

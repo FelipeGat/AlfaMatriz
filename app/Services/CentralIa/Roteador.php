@@ -133,6 +133,14 @@ class Roteador
         $palavra = null;
         $tem = fn (array $termos) => collect($termos)->first(fn ($t) => preg_match('/(^|[^\pL])'.preg_quote($t, '/').'($|[^\pL])/u', $texto));
 
+        // "Me traga um modelo para meu ok e depois implemente": primeiro a
+        // proposta; a implementação vem com o "Sim, implementar" (dono,
+        // 13/10/2026 — caía direto em implementação e pedia o código).
+        if ($p = $tem(['para meu ok', 'para o meu ok', 'para minha aprovação', 'para minha aprovacao', 'para eu aprovar', 'modelo conceito',
+            'conceito', 'protótipo', 'prototipo', 'mockup', 'antes de implementar', 'me traga uma proposta', 'me traga um modelo'])) {
+            return $this->escolher('planejamento', $p, $disponiveis, $tarefa);
+        }
+
         if (($op = $tem(self::OPERACAO)) && ! $tem(self::IMPLEMENTA_DE_VERDADE)) {
             return $this->escolher('operacao', $op, $disponiveis, $tarefa);
         }

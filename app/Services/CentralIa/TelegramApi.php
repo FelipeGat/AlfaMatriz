@@ -78,6 +78,23 @@ class TelegramApi
     /**
      * @return array{ok: bool, resultado?: mixed, erro?: string, esperar?: int}
      */
+    /** Manda um arquivo (sendPhoto/sendDocument). Mesmo contrato de `chamar`. */
+    public function enviarArquivo(string $metodo, string $campo, string $conteudo, string $nome, array $dados, int $timeout = 60): array
+    {
+        $this->verificarConsumidor();
+        if (! $this->configurado()) return ['ok' => false, 'erro' => 'nao_configurado'];
+        try {
+            $resposta = Http::connectTimeout(5)->timeout($timeout)->attach($campo, $conteudo, $nome)
+                ->post('https://api.telegram.org/bot'.config('central_ia.telegram.token').'/'.$metodo, $dados);
+        } catch (\Throwable) {
+            return ['ok' => false, 'erro' => 'incerta'];
+        }
+        $corpo = $resposta->json();
+
+        return $resposta->successful() && ($corpo['ok'] ?? false) === true ? ['ok' => true]
+            : ['ok' => false, 'erro' => $resposta->status() === 429 ? 'limite' : ($resposta->clientError() ? 'recusada' : 'incerta')];
+    }
+
     public function chamar(string $metodo, array $dados = [], int $timeout = 15): array
     {
         $this->verificarConsumidor();

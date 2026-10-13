@@ -118,6 +118,30 @@ async function api(caminho, corpo) {
     return { status: r.status, json };
 }
 
+/** Um arquivo para a Central (multipart): a prévia que o agente deixou. */
+async function apiArquivo(caminho, campos, conteudo, nome) {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(campos)) form.append(k, v);
+    form.append('arquivo', new Blob([conteudo]), nome);
+    const r = await fetch(`${cfg.url}/api/central-ia/runner/${caminho}`, {
+        method: 'POST', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/json' }, body: form, signal: AbortSignal.timeout(120000),
+    });
+    return r.status;
+}
+
+const PREVIAS = join(HOME, '.local/share/alfa/central-ia-previas');
+
+/** Os arquivos que o agente deixou na pasta de prévia, com caminho relativo. */
+function arquivosDaPrevia(dir, base = dir, lista = []) {
+    for (const n of readdirSync(dir)) {
+        const c = join(dir, n);
+        const st = statSync(c);
+        if (st.isDirectory()) arquivosDaPrevia(c, base, lista);
+        else if (st.isFile() && st.size <= 20 * 1024 * 1024 && lista.length < 80) lista.push(c.slice(base.length + 1));
+    }
+    return lista;
+}
+
 let agentes = {};
 
 /**
@@ -324,6 +348,8 @@ function dadosOficiais(fontes) {
 function instrucoes(job, branch) {
     const base = [
         'Você está atendendo um pedido feito pela Central de IA do AlfaMatriz. Responda em português do Brasil.',
+        // Prévia visual (dono, 13/10/2026): o que ficava em C:\tmp o Mac não via.
+        ...(job.previaDir ? [`Para MOSTRAR algo visual à pessoa (conceito, tela, gráfico, PDF), salve na pasta de prévia ${job.previaDir}: imagens (png/jpg/webp) e PDF aparecem na conversa e vão ao Telegram dela; uma página web vai em ${job.previaDir}/pagina/index.html (CSS, JS e imagens ao lado, com caminhos RELATIVOS) e vira um link para abrir no navegador, no Mac ou no Windows. Não use C:\\tmp nem outra pasta para isso, e não precisa dizer o caminho na resposta.`] : []),
         job.projeto
             ? `Projeto: ${job.projeto}. Siga as instruções do próprio projeto (CLAUDE.md, AGENTS.md, README).`
             : 'Pedido da conversa Geral, fora de projeto: responda com os dados oficiais abaixo (se houver) e o que a pergunta pede.',
@@ -634,6 +660,10 @@ async function executar(job) {
         const midias = await prepararAnexos(job.anexos || [], cfg, tmp);
         job.imagens = midias.imagens; job.contextoAnexos = midias.contexto;
         const saida = join(tmp, 'ultima.txt');
+        if (acesso !== 'leitura') {
+            job.previaDir = join(PREVIAS, `e${job.id}`);
+            mkdirSync(job.previaDir, { recursive: true });
+        }
         const [bin, args, nomeCopilot] = comando(job, cwd, branch, saida, acesso);
         // Parada pedida enquanto preparava: não cria um processo que ninguém
         // vai esperar.
@@ -645,6 +675,16 @@ async function executar(job) {
         if (parar) throw new Error('interrompida porque o runner foi parado ou reiniciado; o estado do git ficou registrado e a tarefa pode ser retomada');
 
         const { resposta, sessao } = interpretar(job, r, saida, nomeCopilot);
+        // Prévias: sobem antes da conclusão, para a resposta já chegar com elas.
+        if (job.previaDir && existsSync(job.previaDir)) {
+            for (const rel of arquivosDaPrevia(job.previaDir)) {
+                try {
+                    const st = await apiArquivo(`execucoes/${job.id}/previa`, { maquina: cfg.maquina, caminho: rel.split(sep).join('/') }, readFileSync(join(job.previaDir, rel)), rel.split(sep).pop());
+                    if (st !== 200) log(`#${job.id} prévia ${rel} recusada`, st);
+                } catch (e) { log(`#${job.id} prévia ${rel} falhou:`, e.message); }
+            }
+            rmSync(job.previaDir, { recursive: true, force: true });
+        }
         resultado = {
             status: 'concluida',
             resposta: (resposta || '(o agente não escreveu resposta)') + (branch ? resumoDaBranch(cwd, branch) : ''),

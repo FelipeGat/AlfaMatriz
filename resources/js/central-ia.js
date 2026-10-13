@@ -43,6 +43,9 @@ export function centralIa(config) {
         // Pedidos parados esperando o código que a MÁQUINA mandou ao Telegram.
         confirmacoes: [], codigos: {}, confirmando: null, acoesAbertas: {},
         pops: [], popEditando: null, salvandoPop: false,
+        // Novidades por chat (dono, 13/10/2026: "imagina 5 chats simultâneos —
+        // o próprio chat tem que comunicar que finalizou ou está aguardando").
+        novidades: {}, estadoDosChats: null, tituloOriginal: null,
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
@@ -215,7 +218,39 @@ export function centralIa(config) {
                 && (this.filtroChatEstado === 'todos' || (this.filtroChatEstado === 'ativos' ? c.status !== 'pausada' : c.status === this.filtroChatEstado))
                 && (!termo || [c.titulo, c.projeto, c.agente, '#' + c.id].join(' ').toLocaleLowerCase('pt-BR').includes(termo)));
         },
+        /**
+         * Compara o estado de cada chat com o do poll anterior: terminou,
+         * falhou ou passou a esperar você vira novidade (pisca até abrir).
+         */
+        notarNovidades(chats) {
+            const antes = this.estadoDosChats;
+            this.estadoDosChats = Object.fromEntries(chats.map(c => [c.id, c.status]));
+            if (antes === null) return; // primeira carga: nada é novidade
+            for (const c of chats) {
+                const era = antes[c.id];
+                if (!era || era === c.status || c.id === this.chatAtual) continue;
+                const tipo = c.status === 'aguardando_voce' ? 'aguardando' : c.status === 'falhou' ? 'falhou'
+                    : (era === 'executando' && ['aberta', 'concluida'].includes(c.status)) ? 'terminou' : null;
+                if (!tipo) continue;
+                this.novidades[c.id] = tipo;
+                const texto = { aguardando: 'está esperando você', falhou: 'falhou', terminou: 'terminou' }[tipo];
+                this.aviso = `Chat #${c.id} (${c.projeto || 'Geral'}) ${texto}: ${c.titulo}`;
+                try { if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification(`Central de IA · #${c.id} ${texto}`, { body: c.titulo, tag: 'central-ia-' + c.id }); } catch {}
+            }
+            this.atualizarTitulo();
+        },
+        get totalNovidades() { return Object.keys(this.novidades).length; },
+        atualizarTitulo() {
+            if (typeof document === 'undefined' || typeof document.title !== 'string') return;
+            this.tituloOriginal ??= document.title.replace(/^\(\d+\) /, '');
+            document.title = (this.totalNovidades ? `(${this.totalNovidades}) ` : '') + this.tituloOriginal;
+        },
+        pedirNotificacoes() {
+            try { if (typeof Notification !== 'undefined' && Notification.permission === 'default') Notification.requestPermission(); } catch {}
+        },
+
         abrirChat(chat) {
+            delete this.novidades[chat.id]; this.atualizarTitulo();
             this.abrir(chat.projeto || GERAL, chat.id);
             this.irPara('chats'); this.sub = 'conversa';
         },
@@ -326,6 +361,7 @@ export function centralIa(config) {
             let alcancando = false;
             try {
                 const painel = await this.pedir(config.painel);
+                this.notarNovidades(painel.chats || []);
                 this.chats = painel.chats || [];
                 this.confirmacoes = painel.confirmacoes || [];
                 this.pops = painel.pops || [];

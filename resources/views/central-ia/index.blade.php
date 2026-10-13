@@ -49,6 +49,9 @@
                             :class="tela === '{{ $chave }}' ? 'bg-nav-active text-ink' : 'text-ink-mute hover:text-ink'"
                             :aria-current="tela === '{{ $chave }}' ? 'page' : null">
                         {{ $rotulo }}
+                        @if ($chave === 'chats')
+                            <span x-show="totalNovidades" class="ml-1 animate-pulse rounded-badge bg-pergunta px-1 text-on-brand" x-text="totalNovidades"></span>
+                        @endif
                         @if ($chave === 'atividade')
                             <span x-show="emExecucao + naFila" class="ml-1 rounded-badge bg-brand px-1 text-on-brand" x-text="emExecucao + naFila"></span>
                             <span x-show="eventos.some(e => e.nivel === 'erro' && Date.now() - new Date(e.em) < 3600000)" class="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-crit"></span>
@@ -262,9 +265,14 @@
                 <div class="min-h-0 flex-1 space-y-2 overflow-y-auto">
                     <p x-show="!chatsFiltrados.length" class="p-2 text-xs text-ink-mute">Nenhum chat corresponde ao filtro. Inicie outro assunto pela aba Projetos.</p>
                     <template x-for="c in chatsFiltrados" :key="c.id">
-                        <button type="button" @click="abrirChat(c)" :aria-pressed="(chatAtual === c.id).toString()"
+                        {{-- Chat com novidade pisca até ser aberto; esperando você, na cor da pergunta. --}}
+                        <button type="button" @click="abrirChat(c); pedirNotificacoes()" :aria-pressed="(chatAtual === c.id).toString()"
                                 class="w-full rounded-control border px-3 py-2 text-left hover:bg-chip"
-                                :class="chatAtual === c.id ? 'border-brand-mute bg-nav-active' : 'border-line'">
+                                :class="(chatAtual === c.id ? 'border-brand-mute bg-nav-active' : (c.status === 'aguardando_voce' ? 'border-pergunta-line bg-pergunta-tint' : 'border-line'))
+                                    + (novidades[c.id] ? ' animate-pulse ring-2 ring-brand' : '')">
+                            <span x-show="novidades[c.id]" class="float-right rounded-badge px-1.5 text-[10px] font-semibold text-on-brand"
+                                  :class="novidades[c.id] === 'falhou' ? 'bg-crit' : (novidades[c.id] === 'aguardando' ? 'bg-pergunta' : 'bg-brand')"
+                                  x-text="{ terminou: '✓ terminou', aguardando: '❓ espera você', falhou: '✕ falhou' }[novidades[c.id]]"></span>
                             <span class="block text-[11px] text-ink-mute" x-text="(c.projeto || 'Geral') + ' · #' + c.id"></span>
                             <span class="mt-1 block break-words text-sm font-semibold text-ink" x-text="c.titulo"></span>
                             <span class="mt-1 flex flex-wrap gap-1 text-[11px]">
@@ -435,6 +443,17 @@
                                             </span>
                                         </div>
                                     @endif
+                                    {{-- Prévia visual do agente (FR-034): imagem em miniatura, PDF e página
+                                         para abrir no navegador — no Mac ou no Windows. --}}
+                                    <div x-show="(m.previas || []).length" class="mt-2 flex flex-wrap items-end gap-2">
+                                        <template x-for="p in m.previas || []" :key="p.url">
+                                            <a :href="p.url" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-semibold text-brand-text" :title="p.caminho">
+                                                <img x-show="p.tipo === 'imagem'" :src="p.url" :alt="p.caminho" loading="lazy" class="h-24 max-w-[10rem] rounded-control border border-line object-cover">
+                                                <span x-show="p.tipo === 'pdf'" class="rounded-badge border border-line px-2 py-1" x-text="'📄 ' + p.caminho.split('/').pop()"></span>
+                                                <span x-show="p.tipo === 'pagina'" class="rounded-control bg-brand px-3 py-1.5 text-on-brand" x-text="'🔗 Abrir prévia' + (p.caminho.endsWith('index.html') ? '' : ' · ' + p.caminho.split('/').pop())"></span>
+                                            </a>
+                                        </template>
+                                    </div>
                                     <div class="mt-2 flex flex-wrap gap-2">
                                         <template x-for="a in m.anexos || []" :key="a.id">
                                             <a :href="a.url" class="text-xs font-semibold text-brand-text" x-text="'📎 ' + a.nome" download></a>
