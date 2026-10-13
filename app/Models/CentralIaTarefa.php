@@ -28,13 +28,24 @@ class CentralIaTarefa extends Model
     public const PAUSADA = 'pausada';
     public const ARQUIVADA = 'arquivada';
 
+    /**
+     * Tipos: a tarefa comum termina; o ASSUNTO (Chats Business) é um chat
+     * contínuo por tema — "Comercial VixCard" — que nunca se conclui sozinho
+     * e cuja memória qualquer agente recebe (docs/specs/chats-business).
+     */
+    public const TAREFA = 'tarefa';
+
+    public const ASSUNTO = 'assunto';
+
     /** As que aparecem no cockpit como trabalho em curso. */
     public const EM_CURSO = [self::ABERTA, self::EXECUTANDO, self::AGUARDANDO_VOCE, self::FALHOU, self::PAUSADA];
 
     protected $fillable = [
         'user_id', 'projeto', 'titulo', 'objetivo', 'status', 'agente_atual',
-        'worktree', 'branch', 'commit_base', 'dossie', 'ultima_atividade_em',
+        'worktree', 'branch', 'commit_base', 'dossie', 'ultima_atividade_em', 'tipo', 'grupo_id',
     ];
+
+    protected $attributes = ['tipo' => self::TAREFA];
 
     protected $casts = [
         'dossie' => 'array',
@@ -49,6 +60,27 @@ class CentralIaTarefa extends Model
     public function scopeDe(Builder $query, User $user): Builder
     {
         return $query->where('user_id', $user->id);
+    }
+
+    public function grupo(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(CentralIaGrupo::class, 'grupo_id');
+    }
+
+    public function ehAssunto(): bool
+    {
+        return $this->tipo === self::ASSUNTO;
+    }
+
+    public function scopeAssuntos(Builder $query): Builder
+    {
+        return $query->where('tipo', self::ASSUNTO);
+    }
+
+    /** Só as tarefas comuns: Chats Ativos, Projetos e a aba Tarefas não listam assunto. */
+    public function scopeTarefas(Builder $query): Builder
+    {
+        return $query->where('tipo', self::TAREFA);
     }
 
     public function scopeEmCurso(Builder $query): Builder

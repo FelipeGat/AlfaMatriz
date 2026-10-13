@@ -47,6 +47,8 @@ export function centralIa(config) {
         // o próprio chat tem que comunicar que finalizou ou está aguardando").
         novidades: {}, estadoDosChats: null, tituloOriginal: null,
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
+        // Chats Business: um chat contínuo por assunto (docs/specs/chats-business).
+        assuntos: [], novoAssunto: null, buscaAssuntos: '',
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
         politicaUsuario: null, politicaAlterada: false, salvandoPolitica: false, carregandoUsuario: false,
@@ -261,7 +263,44 @@ export function centralIa(config) {
         abrirChat(chat) {
             delete this.novidades[chat.id]; this.atualizarTitulo();
             this.abrir(chat.projeto || GERAL, chat.id);
-            this.irPara('chats'); this.sub = 'conversa';
+            // Dentro da aba Business, a conversa abre ao lado da lista de assuntos.
+            this.irPara(this.tela === 'business' || this.assuntos.some(a => a.id === chat.id) ? 'business' : 'chats'); this.sub = 'conversa';
+        },
+
+        /* ---------- Chats Business ---------- */
+        get assuntoAtual() { return this.assuntos.find(a => a.id === this.chatAtual) || null; },
+        /** Os assuntos nos grupos de Projetos (os mesmos da conta), e os sem grupo por último. */
+        get secoesAssuntos() {
+            const termo = this.buscaAssuntos.trim().toLocaleLowerCase('pt-BR');
+            const lista = this.assuntos.filter(a => !termo || [a.titulo, a.projeto, a.agente].join(' ').toLocaleLowerCase('pt-BR').includes(termo));
+            const secoes = this.grupos.map(g => ({ id: 'assunto-g' + g.id, nome: g.nome, assuntos: lista.filter(a => a.grupo_id === g.id) }));
+            secoes.push({ id: 'assunto-sem', nome: 'Sem grupo', assuntos: lista.filter(a => !this.grupos.some(g => g.id === a.grupo_id)) });
+            return secoes.filter(s => s.assuntos.length || (!termo && s.id !== 'assunto-sem'));
+        },
+        abrirAssunto(a) { this.irPara('business'); this.abrirChat(a); this.pedirNotificacoes(); },
+        async criarAssunto() {
+            const n = this.novoAssunto;
+            if (!n?.titulo.trim() || n.salvando) return;
+            n.salvando = true;
+            try {
+                const r = await this.pedir(config.assuntos, 'POST', { titulo: n.titulo.trim(), grupo_id: n.grupo_id ? Number(n.grupo_id) : null, projeto: n.projeto || '' });
+                this.assuntos = [{ id: r.id, titulo: n.titulo.trim(), grupo_id: n.grupo_id ? Number(n.grupo_id) : null, projeto: n.projeto || '', status: 'aberta', agente: null, ultima_atividade: new Date().toISOString() }, ...this.assuntos];
+                this.novoAssunto = null;
+                this.abrirAssunto(this.assuntos[0]);
+                this.$nextTick(() => document.getElementById('central-rascunho')?.focus());
+            } catch (erro) { this.falhou(erro); n.salvando = false; }
+        },
+        async salvarAssunto(a, dados) {
+            try { await this.pedir(config.assunto.replace('__A__', a.id), 'PUT', dados); this.reconectar(); } catch (erro) { this.falhou(erro); }
+        },
+        async renomearAssunto(a) {
+            const titulo = prompt('Nome do chat:', a.titulo);
+            if (titulo?.trim() && titulo.trim() !== a.titulo) this.salvarAssunto(a, { titulo: titulo.trim() });
+        },
+        async arquivarAssunto(a) {
+            if (!confirm(`Arquivar o chat "${a.titulo}"? A memória e o histórico ficam guardados.`)) return;
+            await this.salvarAssunto(a, { status: 'arquivada' });
+            if (this.chatAtual === a.id) { this.chatAtual = null; this.abrir(GERAL); this.irPara('business'); }
         },
 
         get sessoesDoProjeto() { return this.sessoes.filter(s => s.projeto === this.atual); },
@@ -370,8 +409,9 @@ export function centralIa(config) {
             let alcancando = false;
             try {
                 const painel = await this.pedir(config.painel);
-                this.notarNovidades(painel.chats || []);
+                this.notarNovidades([...(painel.chats || []), ...(painel.assuntos || [])]);
                 this.chats = painel.chats || [];
+                this.assuntos = painel.assuntos || [];
                 this.confirmacoes = painel.confirmacoes || [];
                 this.pops = painel.pops || [];
                 this.preferencias = painel.preferencias || null;
@@ -456,7 +496,7 @@ export function centralIa(config) {
             if (tarefa) this.aba.tarefa = tarefa;
             this.tarefas = [];
             this.menuProjetosMovel = false;
-            if (!['projetos', 'chats'].includes(this.tela)) this.irPara('projetos');
+            if (!['projetos', 'chats', 'business'].includes(this.tela)) this.irPara('projetos');
             guardar('central-ia:projeto', this.atual);
             const q = new URLSearchParams(location.search);
             this.atual ? q.set('projeto', this.atual) : q.delete('projeto');

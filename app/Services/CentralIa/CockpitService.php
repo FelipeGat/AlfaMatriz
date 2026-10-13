@@ -27,7 +27,7 @@ class CockpitService
         $linhasFixadas = CentralIaProjeto::where('user_id', $user->id)->orderBy('ordem')->orderBy('projeto')->get();
         $fixados = $linhasFixadas->pluck('projeto')->all();
         $grupoDe = $linhasFixadas->pluck('grupo_id', 'projeto');
-        $tarefas = CentralIaTarefa::de($user)->emCurso()->orderByDesc('ultima_atividade_em')->get()->groupBy('projeto');
+        $tarefas = CentralIaTarefa::de($user)->tarefas()->emCurso()->orderByDesc('ultima_atividade_em')->get()->groupBy('projeto');
         $recentes = CentralIaExecucao::where('user_id', $user->id)->where('created_at', '>=', now()->subDay())->distinct()->pluck('projeto')->all();
 
         // '' é a conversa Geral: tem tarefas, mas não é projeto da barra.
@@ -65,6 +65,7 @@ class CockpitService
         return [
             'projetos' => $projetos,
             'chats' => $this->chats($user),
+            'assuntos' => $this->assuntos($user),
             'grupos' => \App\Models\CentralIaGrupo::where('user_id', $user->id)->orderBy('ordem')->orderBy('nome')->get(['id', 'nome', 'ordem'])->toArray(),
             'atividade' => $this->atividade($user),
             'recentes' => $this->recentes($maquina, $nomes),
@@ -85,12 +86,25 @@ class CockpitService
     {
         // Concluída fica 24 h na lista (dono, 13/10/2026: "a #15 sumiu da
         // tela" — terminou e saiu antes de ele ver o desfecho).
-        return CentralIaTarefa::de($user)
+        return CentralIaTarefa::de($user)->tarefas()
             ->where(fn ($q) => $q->emCurso()->orWhere(fn ($c) => $c->where('status', CentralIaTarefa::CONCLUIDA)->where('ultima_atividade_em', '>=', now()->subDay())))
             ->orderByDesc('ultima_atividade_em')->orderByDesc('id')
             ->get(['id', 'projeto', 'titulo', 'status', 'agente_atual', 'ultima_atividade_em', 'created_at'])
             ->map(fn (CentralIaTarefa $t) => [
                 'id' => $t->id, 'projeto' => $t->projeto, 'titulo' => $t->titulo, 'status' => $t->status,
+                'agente' => CentralIaExecucao::AGENTES[$t->agente_atual] ?? null,
+                'ultima_atividade' => ($t->ultima_atividade_em ?? $t->created_at)?->toIso8601String(),
+            ])->all();
+    }
+
+    /** Os chats de assunto (aba Business), sem os arquivados. */
+    public function assuntos(User $user): array
+    {
+        return CentralIaTarefa::de($user)->assuntos()->where('status', '!=', CentralIaTarefa::ARQUIVADA)
+            ->orderByDesc('ultima_atividade_em')->orderByDesc('id')
+            ->get(['id', 'titulo', 'grupo_id', 'projeto', 'status', 'agente_atual', 'ultima_atividade_em', 'created_at'])
+            ->map(fn (CentralIaTarefa $t) => [
+                'id' => $t->id, 'titulo' => $t->titulo, 'grupo_id' => $t->grupo_id, 'projeto' => $t->projeto, 'status' => $t->status,
                 'agente' => CentralIaExecucao::AGENTES[$t->agente_atual] ?? null,
                 'ultima_atividade' => ($t->ultima_atividade_em ?? $t->created_at)?->toIso8601String(),
             ])->all();
@@ -230,7 +244,7 @@ class CockpitService
      */
     public function tarefas(User $user, string $projeto): array
     {
-        return CentralIaTarefa::de($user)->where('projeto', $projeto)
+        return CentralIaTarefa::de($user)->tarefas()->where('projeto', $projeto)
             ->orderByRaw('CASE WHEN status IN (?, ?, ?, ?, ?) THEN 0 ELSE 1 END', CentralIaTarefa::EM_CURSO)
             ->orderByDesc('ultima_atividade_em')->limit(30)->get()
             ->map(function (CentralIaTarefa $t) {

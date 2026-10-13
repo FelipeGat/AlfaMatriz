@@ -175,7 +175,11 @@ class AgentesService
         // Projeto vazio é a conversa Geral: pergunta que não é de projeto
         // nenhum ("resumo da minha agenda"). Só análise — sem pasta, não há
         // onde implementar.
-        if ($projeto === '' && ($pedido['modo'] ?? 'auto') === 'implementar') {
+        // Exceção: o chat de assunto sem projeto (Chats Business) trabalha nas
+        // pastas de ~/projetos, como o chat do VS Code — implementa ali mesmo.
+        $assuntoSemProjeto = $projeto === '' && filled($pedido['tarefa_id'] ?? null)
+            && CentralIaTarefa::de($user)->assuntos()->whereKey($pedido['tarefa_id'])->exists();
+        if ($projeto === '' && ($pedido['modo'] ?? 'auto') === 'implementar' && ! $assuntoSemProjeto) {
             throw ValidationException::withMessages(['projeto' => 'Para implementar, escolha um projeto.']);
         }
 
@@ -295,7 +299,7 @@ class AgentesService
         if ($modo === 'auto') {
             $modo = $rota['modo'] ?? $this->roteador->decidir($pedido['instrucao'], [], $tarefa)['modo'];
         }
-        $rota['modo'] = $projeto === '' ? 'analisar' : $modo;
+        $rota['modo'] = $projeto === '' && ! $assuntoSemProjeto ? 'analisar' : $modo;
         // Depois de saber o modo: implementação não é relatório de dados.
         app(FontesDeDados::class)->exigirPeriodo($pedido['instrucao'], $rota['modo']);
         $rota['categoria'] ??= $rota['modo'] === 'implementar' ? 'implementacao' : 'investigacao';
@@ -494,7 +498,9 @@ class AgentesService
                 // ao cockpit) entra pelo `whereNull`.
                 ->where(fn ($q) => $q->whereNull('tarefa_id')
                     ->orWhereNotIn('tarefa_id', (clone $rodando)->whereNotNull('tarefa_id')->select('tarefa_id')))
-                ->where(fn ($q) => $q->where('modo', '!=', 'implementar')->orWhereNotIn('projeto', $projetosOcupados ?: ['']))
+                // Sem projeto ocupado, nenhum filtro: o `['']` de antes barrava
+                // o assunto sem projeto, que implementa na raiz (Chats Business).
+                ->when($projetosOcupados, fn ($q) => $q->where(fn ($q) => $q->where('modo', '!=', 'implementar')->orWhereNotIn('projeto', $projetosOcupados)))
                 ->orderBy('id')->lockForUpdate()->first();
 
             if ($execucao) {
@@ -536,6 +542,24 @@ class AgentesService
                 ? ['sessao' => $sessaoDoVsCode['sessao'], 'cwd' => $sessaoDoVsCode['cwd'], 'fork' => $execucao->agente === 'claude']
                 : null);
 
+        // Chat de assunto: memória + histórico dentro do orçamento, sempre em
+        // sessão nova — retomar a sessão do agente mandaria o histórico em
+        // dobro e furaria o teto (docs/specs/chats-business, research D3).
+        $assunto = null;
+        if ($tarefa?->ehAssunto()) {
+            $continuar = null;
+            $assunto = app(ContextoDoAssunto::class)->montar($tarefa, (int) app(Preferencias::class)->ler($user)['assunto_contexto_tokens'], $execucao->pedido_id);
+            $r = $assunto['resumo'];
+            // Na bolha do pedido: quanto do histórico foi ao agente (FR-013).
+            $comoFoi = match ($r['modo']) {
+                'inteiro' => 'histórico inteiro',
+                'reduzido' => "cota perto do fim: só as {$r['mensagens']} últimas mensagens",
+                default => "histórico condensado ({$r['mensagens_fora']} mensagens antigas fora)",
+            };
+            $execucao->update(['roteamento' => array_merge($execucao->roteamento ?? [], ['contexto' => $r,
+                'motivo' => trim(($execucao->roteamento['motivo'] ?? '').' · '.$comoFoi.', ~'.number_format($r['tokens_estimados'] / 1000, 1, ',', '').' mil tokens', ' ·')])]);
+        }
+
         return [
             'id' => $execucao->id,
             'agente' => $execucao->agente,
@@ -555,10 +579,10 @@ class AgentesService
                 'branch' => $tarefa->branch,
                 'commit_base' => $tarefa->commit_base,
             ] : null,
-            'contexto' => $tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null)
+            'contexto' => $assunto ? $assunto['texto'] : ($tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null)
                 // Chat novo num projeto começa sabendo dos chats recentes dele
                 // (dono, 13/10/2026: "abrir um novo chat… ele saberia o contexto do projeto").
-                : ($tarefa && $execucao->projeto !== '' ? $this->contextoDoProjeto($user, $execucao->projeto, $tarefa->id) : null),
+                : ($tarefa && $execucao->projeto !== '' ? $this->contextoDoProjeto($user, $execucao->projeto, $tarefa->id) : null)),
             'bloco' => (($execucao->roteamento['coordenador'] ?? false) ? "Você atua como coordenador deste pedido. Nesta etapa apenas responda, planeje e proponha quem deve fazer o trabalho; não implemente, não execute ferramentas ou comandos e não altere arquivos. Claude faz análise de código e desenvolvimento; Codex faz análise de dados; Copilot faz Git e QA. Identifique fontes disponíveis e impedimentos, não invente números. Delegação automática ainda não está habilitada: descreva a próxima etapa, sem afirmar que outro agente executou algo.\n" : '').Dossie::instrucaoDoBloco()."\nRegras de evidência: nunca invente dados, valores, fontes ou consultas. Relatórios de dados exigem período explícito e fonte autorizada identificada, data da consulta e critérios dos totais. Sem acesso à fonte, informe a limitação e solicite os dados; código, exemplos e testes não comprovam saldos reais. Para esta semana, confirme no texto as datas usadas. Para pedidos executivos com esta semana, use segunda-feira até hoje no fuso local e explicite as datas; para esta semana útil, segunda a sexta (até hoje se ainda estiver em curso). Pergunte somente se a ambiguidade alterar materialmente a decisão ou tornar a consulta insegura. Sem período informado, mantenha o pedido de esclarecimento. Claude só deve apoiar análise de dados quando houver impedimento técnico identificado; não troque de agente apenas para tentar obter números ausentes.",
             'fontes' => $execucao->roteamento['fontes'] ?? [],
             'categoria' => $execucao->roteamento['categoria'] ?? null,
@@ -572,7 +596,9 @@ class AgentesService
             'esforco' => $execucao->roteamento['esforco'] ?? null,
             'continuar' => $continuar,
             'acesso' => config('central_ia.agentes.acesso'),
-            'na_pasta' => (bool) config('central_ia.agentes.implementar_na_pasta'),
+            // Assunto sem projeto implementa na raiz dos projetos: não há
+            // repositório onde abrir worktree.
+            'na_pasta' => (bool) config('central_ia.agentes.implementar_na_pasta') || ($tarefa?->ehAssunto() && $execucao->projeto === ''),
             // Outro agente assumindo uma conversa do VS Code: o runner lê o
             // histórico dela e põe no prompt (só texto, sem ferramentas).
             'importar' => ! $continuar && ! $corte && $sessaoDoVsCode && $sessaoDoVsCode['agente'] !== $execucao->agente
@@ -649,7 +675,9 @@ class AgentesService
                     // onde paramos") o agente marcava concluída a tarefa inteira
                     // porque aquela pergunta tinha sido respondida.
                     // Operação feita (agendou, lançou) também encerra.
-                    ($execucao->modo === 'implementar' || ($execucao->roteamento['categoria'] ?? null) === 'operacao')
+                    // Assunto (Chats Business) é contínuo: nunca se conclui sozinho.
+                    ! $tarefa->ehAssunto()
+                        && ($execucao->modo === 'implementar' || ($execucao->roteamento['categoria'] ?? null) === 'operacao')
                         && (bool) ($bloco['tarefa_concluida'] ?? false) => CentralIaTarefa::CONCLUIDA,
                     default => CentralIaTarefa::ABERTA,
                 };
@@ -1054,7 +1082,7 @@ class AgentesService
     /** Os chats recentes do projeto, para quem começa um chat novo nele. */
     public function contextoDoProjeto(User $user, string $projeto, int $exceto): ?string
     {
-        $tarefas = CentralIaTarefa::de($user)->where('projeto', $projeto)->where('id', '!=', $exceto)
+        $tarefas = CentralIaTarefa::de($user)->tarefas()->where('projeto', $projeto)->where('id', '!=', $exceto)
             ->orderByDesc('ultima_atividade_em')->limit(6)->get();
         if ($tarefas->isEmpty()) return null;
         $linhas = ["## Chats recentes deste projeto na Central (para contexto; não são o pedido atual)"];

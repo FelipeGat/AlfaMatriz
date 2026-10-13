@@ -20,6 +20,8 @@
                 ponto: '{{ url('central-ia/tarefas/__T__/ponto') }}',
                 continuar: '{{ route('central-ia.sessoes.continuar') }}',
                 grupos: '{{ route('central-ia.grupos.criar') }}',
+                assuntos: '{{ route('central-ia.assuntos.criar') }}',
+                assunto: '{{ url('central-ia/assuntos/__A__') }}',
                 grupo: '{{ url('central-ia/grupos/__G__') }}',
                 grupoDoProjeto: '{{ route('central-ia.projetos.grupo', '__P__') }}',
                 canal: '{{ route('central-ia.canal') }}',
@@ -44,11 +46,14 @@
         <div class="flex flex-none items-center gap-2 text-xs">
             <nav class="flex min-w-0 flex-1 overflow-x-auto sm:flex-none" aria-label="Seções da Central">
                 <div class="flex flex-none rounded-control border border-line bg-panel p-0.5">
-                @foreach (['chats' => 'Chats Ativos', 'projetos' => 'Projetos', 'atividade' => 'Atividade', 'consumo' => 'Consumo', 'ajustes' => 'Ajustes'] as $chave => $rotulo)
+                @foreach (['chats' => 'Chats Ativos', 'business' => 'Business', 'projetos' => 'Projetos', 'atividade' => 'Atividade', 'consumo' => 'Consumo', 'ajustes' => 'Ajustes'] as $chave => $rotulo)
                     <button type="button" @click="irPara('{{ $chave }}')" class="whitespace-nowrap rounded-ctl px-3 py-1.5 font-semibold"
                             :class="tela === '{{ $chave }}' ? 'bg-nav-active text-ink' : 'text-ink-mute hover:text-ink'"
                             :aria-current="tela === '{{ $chave }}' ? 'page' : null">
                         {{ $rotulo }}
+                        @if ($chave === 'business')
+                            <span x-show="assuntos.some(a => novidades[a.id])" class="ml-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-pergunta"></span>
+                        @endif
                         @if ($chave === 'chats')
                             <span x-show="totalNovidades" class="ml-1 animate-pulse rounded-badge bg-pergunta px-1 text-on-brand" x-text="totalNovidades"></span>
                         @endif
@@ -178,7 +183,7 @@
             <p x-show="!projetos.length" class="text-ink-mute">Nenhum projeto informado para sua conta. Verifique a conexão da máquina.</p>
         </div>
         {{-- ================= PROJETOS ================= --}}
-        <div x-show="tela === 'chats'" class="relative grid min-h-0 flex-1 grid-cols-1 gap-3"
+        <div x-show="['chats', 'business'].includes(tela)" class="relative grid min-h-0 flex-1 grid-cols-1 gap-3"
              :class="projetosRecolhidos ? 'lg:grid-cols-1' : 'lg:grid-cols-[260px_minmax(0,1fr)]'">
 
             {{-- Barra de projetos: busca + grupos (no celular, gaveta sobre o conteúdo) --}}
@@ -293,23 +298,103 @@
                 </div>
             </aside>
 
+            {{-- Chats Business: um chat contínuo por assunto, nos grupos da conta (docs/specs/chats-business). --}}
+            <aside id="central-business" x-show="tela === 'business'" x-cloak aria-label="Chats Business"
+                   class="min-h-0 flex-col gap-2 overflow-hidden rounded-panel border border-line bg-panel p-2"
+                   :class="menuProjetosMovel ? 'absolute inset-0 z-10 flex' : (projetosRecolhidos ? 'hidden' : 'hidden lg:flex')">
+                <div class="flex items-center justify-between gap-2 px-1 text-sm font-semibold text-ink">
+                    <span>Business <span class="text-ink-mute" x-text="'(' + assuntos.length + ')'"></span></span>
+                    <button type="button" @click="menuProjetosMovel = false" class="text-xs text-ink-mute lg:hidden">Fechar</button>
+                </div>
+                <p class="px-1 text-[11px] text-ink-faint">Um chat por assunto. Qualquer IA que atender já sabe o histórico e a memória dele.</p>
+                <button type="button" x-show="!novoAssunto" @click="novoAssunto = { titulo: '', grupo_id: '', projeto: '', salvando: false }; $nextTick(() => document.getElementById('central-novo-assunto')?.focus())"
+                        class="rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand">+ Novo assunto</button>
+                <form x-show="novoAssunto" x-cloak @submit.prevent="criarAssunto()" class="space-y-1.5 rounded-control border border-line p-2">
+                    <label class="sr-only" for="central-novo-assunto">Nome do assunto</label>
+                    <input id="central-novo-assunto" type="text" maxlength="120" x-bind:value="novoAssunto?.titulo ?? ''" @input="novoAssunto.titulo = $event.target.value" placeholder="Ex.: Comercial VixCard"
+                           class="w-full rounded-control border-line bg-input py-1.5 text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand">
+                    <label class="sr-only" for="central-novo-assunto-grupo">Grupo</label>
+                    <select id="central-novo-assunto-grupo" @change="novoAssunto.grupo_id = $event.target.value" class="w-full rounded-control border-line bg-input py-1.5 text-xs text-ink">
+                        <option value="">Sem grupo</option>
+                        <template x-for="g in grupos" :key="g.id"><option :value="g.id" x-text="g.nome"></option></template>
+                    </select>
+                    <label class="sr-only" for="central-novo-assunto-projeto">Projeto</label>
+                    <select id="central-novo-assunto-projeto" @change="novoAssunto.projeto = $event.target.value" class="w-full rounded-control border-line bg-input py-1.5 text-xs text-ink">
+                        <option value="">Sem projeto (pastas de ~/projetos)</option>
+                        <template x-for="p in maquina.projetos" :key="p"><option :value="p" x-text="'Projeto: ' + p"></option></template>
+                    </select>
+                    <div class="flex gap-1.5">
+                        <button type="submit" :disabled="!novoAssunto?.titulo.trim() || novoAssunto?.salvando" class="flex-1 rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand disabled:opacity-50">Criar</button>
+                        <button type="button" @click="novoAssunto = null" class="rounded-control border border-line px-3 py-1.5 text-xs text-ink-mute">Cancelar</button>
+                    </div>
+                </form>
+                <label class="sr-only" for="central-busca-assuntos">Buscar assunto</label>
+                <input id="central-busca-assuntos" type="search" x-model="buscaAssuntos" placeholder="Buscar assunto…" autocomplete="off"
+                       class="rounded-control border-line bg-input py-1.5 text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand">
+                <div class="min-h-0 flex-1 space-y-2 overflow-y-auto pr-0.5">
+                    <p x-show="!assuntos.length" class="p-2 text-xs text-ink-mute">Nenhum assunto ainda. Crie o primeiro: "Comercial VixCard", "Andamento de obras"…</p>
+                    <template x-for="sec in secoesAssuntos" :key="sec.id">
+                        <div>
+                            <button type="button" @click="recolher(sec.id)" class="flex w-full min-w-0 items-center gap-1 px-1 py-1 text-left font-mono text-[11px] uppercase tracking-caps text-ink-faint hover:text-ink">
+                                <span x-text="recolhidos.includes(sec.id) && !buscaAssuntos ? '▸' : '▾'"></span>
+                                <span class="overflow-hidden text-ellipsis whitespace-nowrap" x-text="sec.nome"></span>
+                                <span x-text="'(' + sec.assuntos.length + ')'"></span>
+                                <span x-show="sec.assuntos.some(a => novidades[a.id] || a.status === 'aguardando_voce')" class="h-1.5 w-1.5 rounded-full bg-pergunta"></span>
+                            </button>
+                            <div class="space-y-1" x-show="!recolhidos.includes(sec.id) || buscaAssuntos">
+                                <p x-show="!sec.assuntos.length" class="px-2 py-1 text-xs text-ink-faint">Vazio.</p>
+                                <template x-for="a in sec.assuntos" :key="a.id">
+                                    <div class="group relative">
+                                        <button type="button" @click="abrirAssunto(a)" :aria-pressed="(chatAtual === a.id).toString()"
+                                                class="w-full rounded-control border px-2.5 py-1.5 pr-14 text-left hover:bg-chip"
+                                                :class="(chatAtual === a.id ? 'border-brand-mute bg-nav-active' : (a.status === 'aguardando_voce' ? 'border-pergunta-line bg-pergunta-tint' : 'border-line'))
+                                                    + (novidades[a.id] ? ' animate-pulse ring-2 ring-brand' : '')">
+                                            <span class="block overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-ink" x-text="a.titulo"></span>
+                                            <span class="mt-0.5 flex flex-wrap items-center gap-1 text-[11px]">
+                                                <span x-show="a.status !== 'aberta'" class="rounded-badge border px-1 py-px" :class="corDoEstado(a.status)" x-text="estado(a.status)"></span>
+                                                <span x-show="novidades[a.id]" class="rounded-badge px-1 font-semibold text-on-brand"
+                                                      :class="novidades[a.id] === 'falhou' ? 'bg-crit' : (novidades[a.id] === 'aguardando' ? 'bg-pergunta' : 'bg-brand')"
+                                                      x-text="{ terminou: '✓ respondeu', aguardando: '❓ espera você', falhou: '✕ falhou' }[novidades[a.id]]"></span>
+                                                <span class="text-ink-faint" x-text="(a.projeto ? a.projeto + ' · ' : '') + haQuanto(a.ultima_atividade)"></span>
+                                            </span>
+                                        </button>
+                                        <span class="absolute right-1.5 top-1.5 hidden gap-0.5 group-hover:flex group-focus-within:flex">
+                                            <button type="button" @click="renomearAssunto(a)" class="rounded-control px-1 text-[11px] text-ink-mute hover:bg-chip hover:text-ink" :aria-label="'Renomear ' + a.titulo">✎</button>
+                                            <button type="button" @click="arquivarAssunto(a)" class="rounded-control px-1 text-[11px] text-ink-mute hover:bg-chip hover:text-ink" :aria-label="'Arquivar ' + a.titulo">⌫</button>
+                                        </span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </aside>
+
             {{-- Projeto aberto --}}
-            <main class="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-panel border border-line bg-panel">
+            <main class="relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-panel border border-line bg-panel">
+                {{-- Business sem assunto escolhido: nada de mostrar a conversa Geral por baixo. --}}
+                <div x-show="tela === 'business' && !assuntoAtual" x-cloak class="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-2 bg-panel p-6 text-center">
+                    <span class="h-8 w-8 text-brand-text"><x-nav-icon name="chat" /></span>
+                    <p class="font-semibold text-ink">Escolha um assunto à esquerda, ou crie um novo.</p>
+                    <p class="max-w-sm text-sm text-ink-mute">Cada assunto é um chat contínuo: "Comercial VixCard", "Andamento de obras"… A IA que atender já recebe o histórico e a memória dele.</p>
+                </div>
                 <div class="flex flex-none flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2">
-                    <button type="button" @click="alternarProjetos()" :aria-expanded="(!projetosRecolhidos).toString()" :aria-controls="tela === 'chats' ? 'central-chats' : 'central-projetos'"
+                    <button type="button" @click="alternarProjetos()" :aria-expanded="(!projetosRecolhidos).toString()" :aria-controls="tela === 'chats' ? 'central-chats' : (tela === 'business' ? 'central-business' : 'central-projetos')"
                             class="hidden lg:flex items-center gap-2 rounded-control border border-line px-2 py-1 text-xs text-ink-mute hover:text-ink"
                             :title="projetosRecolhidos ? 'Mostrar lista' : 'Recolher lista'">
                         <span class="h-4 w-4"><x-nav-icon name="panel-left" /></span>
                         <span x-text="projetosRecolhidos ? 'Mostrar lista' : 'Recolher lista'"></span>
                     </button>
-                    <button type="button" @click="menuProjetosMovel = true" class="rounded-control border border-line px-2 py-1 text-xs text-ink-mute lg:hidden" x-text="tela === 'chats' ? 'Chats' : 'Projetos'"></button>
-                    <h2 class="flex-none font-display text-base font-semibold text-ink" x-text="atual || 'Geral'"></h2>
+                    <button type="button" @click="menuProjetosMovel = true" class="rounded-control border border-line px-2 py-1 text-xs text-ink-mute lg:hidden" x-text="tela === 'chats' ? 'Chats' : (tela === 'business' ? 'Business' : 'Projetos')"></button>
+                    <h2 class="flex-none font-display text-base font-semibold text-ink" x-text="assuntoAtual ? assuntoAtual.titulo : (atual || 'Geral')"></h2>
+                    <span x-show="assuntoAtual" class="min-w-0 flex-1 truncate text-sm text-ink-dim"
+                          x-text="'· ' + (grupos.find(g => g.id === assuntoAtual?.grupo_id)?.nome || 'Sem grupo') + (assuntoAtual?.projeto ? ' · projeto ' + assuntoAtual.projeto : '')"></span>
                     {{-- Projeto › tarefa › abas numa linha só: eram três, e a
                          resposta ficava com um terço da altura (12/10/2026). --}}
-                    <span x-show="chatAtual" class="min-w-0 flex-1 truncate text-sm text-ink-dim"
+                    <span x-show="chatAtual && !assuntoAtual" class="min-w-0 flex-1 truncate text-sm text-ink-dim"
                           :title="chats.find(c => c.id === chatAtual)?.titulo || tarefaVista?.titulo || ''"
                           x-text="'› #' + chatAtual + ' ' + (chats.find(c => c.id === chatAtual)?.titulo || tarefaVista?.titulo || '')"></span>
-                    <nav x-show="atual" class="ml-auto flex flex-none gap-1 text-xs" aria-label="Seções do projeto">
+                    <nav x-show="atual && !assuntoAtual" class="ml-auto flex flex-none gap-1 text-xs" aria-label="Seções do projeto">
                         <template x-for="[chave, rotulo] in [['conversa', 'Chat'], ['tarefas', 'Tarefas'], ['contexto', 'Contexto']]" :key="chave">
                             <button type="button" @click="sub = chave" class="rounded-ctl px-2 py-1 font-semibold"
                                     :class="sub === chave ? 'bg-nav-active text-ink' : 'text-ink-mute hover:text-ink'">
@@ -370,11 +455,11 @@
                         </div>
                         <p x-show="!aba.carregado" class="py-6 text-center text-sm text-ink-faint">Carregando…</p>
                         <div x-show="aba.carregado && !mensagensVisiveis.length && !bloqueado" class="flex h-full flex-col items-center justify-center gap-2 text-center">
-                            <h3 class="font-display text-base font-semibold text-ink" x-text="atual ? 'Nada ainda em ' + atual : 'Conversa geral'"></h3>
-                            <p class="max-w-sm text-sm text-ink-mute" x-text="atual ? 'Escreva o pedido abaixo. Em automático, a Central escolhe a IA e o nível de custo, e mostra o porquê.' : 'Perguntas e pedidos de resumo, relatório ou agenda vão a uma IA — ou a nenhuma, quando os dados bastam. O resto fica anotado.'"></p>
+                            <h3 class="font-display text-base font-semibold text-ink" x-text="assuntoAtual ? 'Nada ainda em ' + assuntoAtual.titulo : (atual ? 'Nada ainda em ' + atual : 'Conversa geral')"></h3>
+                            <p class="max-w-sm text-sm text-ink-mute" x-text="assuntoAtual ? 'Escreva abaixo. Toda mensagem vai a uma IA, que recebe o histórico e a memória deste assunto e trabalha nas pastas de ' + (assuntoAtual.projeto || '~/projetos') + '.' : atual ? 'Escreva o pedido abaixo. Em automático, a Central escolhe a IA e o nível de custo, e mostra o porquê.' : 'Perguntas e pedidos de resumo, relatório ou agenda vão a uma IA — ou a nenhuma, quando os dados bastam. O resto fica anotado.'"></p>
                             @if ($podeAcionar)
                                 {{-- Os pedidos de todo dia, no nível mais barato que resolve. --}}
-                                <div x-show="!atual" class="mt-2 flex flex-wrap justify-center gap-2 text-xs">
+                                <div x-show="!atual && !assuntoAtual" class="mt-2 flex flex-wrap justify-center gap-2 text-xs">
                                     <button type="button" @click="atalho('Quais são meus compromissos de hoje?')" class="rounded-badge border border-line px-3 py-1.5 text-ink-dim hover:bg-chip">📅 Agenda de hoje <span class="text-ink-faint">· sem IA</span></button>
                                     <button type="button" @click="atalho('Quais são meus compromissos de amanhã?')" class="rounded-badge border border-line px-3 py-1.5 text-ink-dim hover:bg-chip">📅 Amanhã <span class="text-ink-faint">· sem IA</span></button>
                                     <button type="button" @click="atalho('Faça um resumo da minha agenda desta semana, com o que exige preparo.')" class="rounded-badge border border-line px-3 py-1.5 text-ink-dim hover:bg-chip">🗓 Resumo da semana <span class="text-ink-faint">· econômico</span></button>
@@ -569,7 +654,7 @@
                                       @input="crescer($el)" x-effect="aba.rascunho; $nextTick(() => crescer($el))"
                                       :readonly="!!aba.pendente" :disabled="bloqueado || !podeEnviar"
                                       @keydown.enter="if (!$event.shiftKey && !$event.isComposing && !window.matchMedia('(pointer: coarse)').matches) { $event.preventDefault(); enviar(); }"
-                                      :placeholder="perguntaPendente ? 'Responda a ' + (perguntaPendente.agente || 'quem perguntou') + '… (Enter envia)' : (atual ? 'Peça algo para ' + atual + '… (Enter envia, Shift+Enter quebra linha)' : 'Pergunte ou anote… (Enter envia)')"
+                                      :placeholder="perguntaPendente ? 'Responda a ' + (perguntaPendente.agente || 'quem perguntou') + '… (Enter envia)' : (assuntoAtual ? 'Fale sobre ' + assuntoAtual.titulo + '… (Enter envia, Shift+Enter quebra linha)' : (atual ? 'Peça algo para ' + atual + '… (Enter envia, Shift+Enter quebra linha)' : 'Pergunte ou anote… (Enter envia)'))"
                                       class="min-w-0 flex-1 resize-none overflow-y-auto rounded-control border-line bg-input text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand disabled:opacity-50"></textarea>
                             <button type="submit" :disabled="aba.enviando || bloqueado || !podeEnviar || (!aba.pendente && !aba.rascunho.trim() && !aba.arquivos.length)"
                                     class="flex-none rounded-control bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition hover:bg-brand-bright disabled:opacity-50"

@@ -230,6 +230,11 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware('permissao:central_ia,editar')->whereNumber('grupo');
     Route::post('central-ia/projetos/{projeto}/grupo', [CentralIaController::class, 'grupoDoProjeto'])->name('central-ia.projetos.grupo')
         ->middleware('permissao:central_ia,editar')->where('projeto', '[A-Za-z0-9._-]+');
+    // Chats Business: chat contínuo por assunto (docs/specs/chats-business).
+    Route::post('central-ia/assuntos', [CentralIaController::class, 'criarAssunto'])->name('central-ia.assuntos.criar')
+        ->middleware(['permissao:central_ia,incluir', 'throttle:30,1,central-ia-assuntos']);
+    Route::put('central-ia/assuntos/{assunto}', [CentralIaController::class, 'salvarAssunto'])->name('central-ia.assuntos.salvar')
+        ->middleware(['permissao:central_ia,editar', 'throttle:60,1,central-ia-assuntos'])->whereNumber('assunto');
     Route::post('central-ia/sessoes/continuar', [CentralIaController::class, 'continuarSessao'])->name('central-ia.sessoes.continuar')
         ->middleware(['permissao:central_ia,incluir', 'throttle:20,1,central-ia-continuar']);
     Route::post('central-ia/tarefas/{tarefa}/ponto', [CentralIaController::class, 'salvarPonto'])->name('central-ia.tarefas.ponto')

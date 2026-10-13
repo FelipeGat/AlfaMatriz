@@ -60,6 +60,7 @@ class CentralIaController extends Controller
             'paralelo' => ['required', 'integer', 'min:1', 'max:'.max(1, (int) config('central_ia.agentes.paralelo'))],
             'fallback' => ['required', 'boolean'],
             'escalar' => ['sometimes', 'boolean'],
+            'assunto_contexto_tokens' => ['sometimes', 'integer', 'between:20000,150000'],
             'confirmacao' => ['sometimes', Rule::in(['nunca', 'deploy', 'inicio', 'implementar', 'sempre'])],
             // Modelo e esforço por nível e por IA (nulo = padrão da CLI). O
             // nome do modelo vira argumento de linha de comando no runner:
@@ -378,7 +379,9 @@ class CentralIaController extends Controller
         // Na Geral, "automático" só aciona agente quando a mensagem pede uma
         // resposta; o resto é anotação (não gasta cota). Agente escolhido
         // explicitamente aciona sempre.
-        $geralAuto = blank($dados['projeto'] ?? null) && ($dados['agente'] ?? null) === 'auto';
+        // No chat de assunto (Chats Business), toda mensagem vai a uma IA.
+        $geralAuto = blank($dados['projeto'] ?? null) && ($dados['agente'] ?? null) === 'auto'
+            && ! (filled($dados['tarefa_id'] ?? null) && CentralIaTarefa::de($request->user())->assuntos()->whereKey($dados['tarefa_id'])->exists());
         if ($geralAuto && ! app(\App\Services\CentralIa\Roteador::class)->pedeResposta($dados['conteudo'])) {
             $dados['agente'] = null;
         }
@@ -471,6 +474,63 @@ class CentralIaController extends Controller
      * Põe o projeto num grupo (ou tira). Pôr num grupo também o fixa: estar
      * num grupo é querer vê-lo sempre.
      */
+    /** Chat de assunto novo (Chats Business): nome, grupo e, se quiser, um projeto. */
+    public function criarAssunto(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $dados = $this->dadosDoAssunto($request, true);
+        $assunto = CentralIaTarefa::create([
+            'user_id' => $user->id,
+            'tipo' => CentralIaTarefa::ASSUNTO,
+            'titulo' => $dados['titulo'],
+            'objetivo' => "Chat contínuo do assunto \"{$dados['titulo']}\".",
+            'grupo_id' => $dados['grupo_id'] ?? null,
+            'projeto' => $dados['projeto'] ?? '',
+            'dossie' => \App\Services\CentralIa\Dossie::inicial("Chat contínuo do assunto \"{$dados['titulo']}\"."),
+            'ultima_atividade_em' => now(),
+        ]);
+        \App\Services\CentralIa\Eventos::registrar($user, 'assunto_criado', "Chat de assunto criado: {$assunto->titulo}", ['projeto' => $assunto->projeto, 'tarefa_id' => $assunto->id]);
+
+        return $this->semCache(['id' => $assunto->id], 201);
+    }
+
+    /** Renomeia, troca grupo ou projeto, arquiva e reabre um chat de assunto. */
+    public function salvarAssunto(Request $request, int $assunto): JsonResponse
+    {
+        $a = CentralIaTarefa::de($request->user())->assuntos()->findOrFail($assunto);
+        $dados = $this->dadosDoAssunto($request, false);
+        // Cada mensagem guarda o projeto: trocá-lo depois partiria o histórico.
+        abort_if(array_key_exists('projeto', $dados) && $dados['projeto'] !== $a->projeto
+            && \App\Models\CentralIaMensagem::where('tarefa_id', $a->id)->exists(), 422, 'O projeto só muda enquanto o chat está vazio.');
+        if (isset($dados['status'])) {
+            $ocupado = $a->execucoes()->whereIn('status', [CentralIaExecucao::PENDENTE, CentralIaExecucao::EXECUTANDO])->exists();
+            abort_if($ocupado && $dados['status'] === CentralIaTarefa::ARQUIVADA, 422, 'Há pedido deste chat na fila ou rodando.');
+        }
+        $a->update($dados);
+
+        return $this->semCache(['id' => $a->id, 'status' => $a->status]);
+    }
+
+    private function dadosDoAssunto(Request $request, bool $criando): array
+    {
+        $user = $request->user();
+        $dados = $request->validate([
+            'titulo' => [$criando ? 'required' : 'sometimes', 'string', 'max:120'],
+            'grupo_id' => ['sometimes', 'nullable', 'integer'],
+            'projeto' => ['sometimes', 'nullable', 'string', 'max:128'],
+            'status' => [$criando ? 'prohibited' : 'sometimes', Rule::in([CentralIaTarefa::ABERTA, CentralIaTarefa::ARQUIVADA])],
+        ]);
+        if (isset($dados['titulo'])) $dados['titulo'] = trim($dados['titulo']);
+        // Grupo e projeto de outra conta não existem para esta (Princípio I).
+        abort_if(filled($dados['grupo_id'] ?? null) && ! \App\Models\CentralIaGrupo::where('user_id', $user->id)->whereKey($dados['grupo_id'])->exists(), 404);
+        if (array_key_exists('projeto', $dados)) {
+            $dados['projeto'] = (string) ($dados['projeto'] ?? '');
+            abort_unless($dados['projeto'] === '' || in_array($dados['projeto'], $this->agentes->disponiveis($user)['projetos'], true), 422, 'Projeto desconhecido nas máquinas da conta.');
+        }
+
+        return $dados;
+    }
+
     public function grupoDoProjeto(Request $request, string $projeto): JsonResponse
     {
         $user = $request->user();
@@ -513,6 +573,7 @@ class CentralIaController extends Controller
     {
         $dados = $request->validate(['status' => ['required', Rule::in([CentralIaTarefa::CONCLUIDA, CentralIaTarefa::PAUSADA, CentralIaTarefa::ABERTA])]]);
         $t = CentralIaTarefa::de($request->user())->findOrFail($tarefa);
+        abort_if($t->ehAssunto() && $dados['status'] === CentralIaTarefa::CONCLUIDA, 422, 'Um chat de assunto não se conclui: arquive-o na aba Business.');
 
         $ocupada = $t->execucoes()->whereIn('status', [CentralIaExecucao::PENDENTE, CentralIaExecucao::EXECUTANDO])->exists();
         abort_if($ocupada && $dados['status'] !== CentralIaTarefa::ABERTA, 422, 'Há pedido desta tarefa na fila ou rodando.');

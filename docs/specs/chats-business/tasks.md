@@ -23,39 +23,48 @@ orçamento de contexto e memória visível e corrigível. Ref: `docs/specs/chats
 
 Ref: data-model.md; FR-002, FR-003
 
-- [ ] 1.1.1 Migração `2026_10_14_090000_chats_de_assunto`: `tipo` (padrão `tarefa`), `grupo_id` e índice `(user_id, tipo, status)` em `central_ia_tarefas`; `assunto_atual_id` em `central_ia_telegram_vinculos`; com `down()`
-- [ ] 1.1.2 Conferir a migração em SQLite (suíte) e em MariaDB (`alfamatriz-dev`, com backup das tabelas `central_ia_*` antes)
-- [ ] 1.1.3 `CentralIaTarefa`: constante `ASSUNTO`, `scopeAssuntos()`, `scopeTarefas()`, relação `grupo()` e `tipo`/`grupo_id` no fillable
-- [ ] 1.1.4 Chats Ativos, Projetos, contagem de tarefas e `contextoDoProjeto` passam a filtrar `tipo = 'tarefa'`
-- [ ] 1.1.5 Teste: um assunto não aparece em Chats Ativos nem na aba Tarefas do projeto
+- [x] 1.1.1 Migração `2026_10_14_090000_chats_de_assunto`: `tipo` (padrão `tarefa`), `grupo_id` e índice `(user_id, tipo, status)` em `central_ia_tarefas`; `assunto_atual_id` em `central_ia_telegram_vinculos`; com `down()`
+- [x] 1.1.2 Conferir a migração em SQLite (suíte) e em MariaDB (`alfamatriz-dev`, com backup das tabelas `central_ia_*` antes)
+- [x] 1.1.3 `CentralIaTarefa`: constante `ASSUNTO`, `scopeAssuntos()`, `scopeTarefas()`, relação `grupo()` e `tipo`/`grupo_id` no fillable
+- [x] 1.1.4 Chats Ativos, Projetos, contagem de tarefas e `contextoDoProjeto` passam a filtrar `tipo = 'tarefa'`
+- [x] 1.1.5 Teste: um assunto não aparece em Chats Ativos nem na aba Tarefas do projeto
 
 ### 1.2 Contexto do assunto dentro do orçamento `[A]`
 
 Ref: research D3; FR-004, FR-010, FR-013, SC-003
 
-- [ ] 1.2.1 `ContextoDoAssunto::paraPrompt`: memória + condensado + parte recente literal, estimativa de tokens (caracteres ÷ 3,5) e resumo `{tokens_estimados, modo, mensagens_fora}`
-- [ ] 1.2.2 `Preferencias`: `assunto_contexto_tokens` (padrão 60000, faixa 20000–150000) com validação
-- [ ] 1.2.3 `AgentesService::pedir` usa `ContextoDoAssunto` em `tipo = 'assunto'` e grava o resumo em `roteamento.contexto`
-- [ ] 1.2.4 `concluir`: assunto nunca vai para `concluida`; volta para `aberta` ou `aguardando_voce`
-- [ ] 1.2.5 Testes: histórico pequeno vai inteiro; o contexto nunca passa do orçamento; troca de agente recebe a mesma memória; `tarefa_concluida` é ignorado
+- [x] 1.2.1 `ContextoDoAssunto::paraPrompt`: memória + condensado + parte recente literal, estimativa de tokens (caracteres ÷ 3,5) e resumo `{tokens_estimados, modo, mensagens_fora}`
+- [x] 1.2.2 `Preferencias`: `assunto_contexto_tokens` (padrão 60000, faixa 20000–150000) com validação
+- [x] 1.2.3 `AgentesService::pedir` usa `ContextoDoAssunto` em `tipo = 'assunto'` e grava o resumo em `roteamento.contexto`
+- [x] 1.2.4 `concluir`: assunto nunca vai para `concluida`; volta para `aberta` ou `aguardando_voce`
+- [x] 1.2.5 Testes: histórico pequeno vai inteiro; o contexto nunca passa do orçamento; troca de agente recebe a mesma memória; `tarefa_concluida` é ignorado
 
 ### 1.3 Rotas de assunto `[A]`
 
 Ref: contracts/assuntos.md §B; FR-002, FR-014
 
-- [ ] 1.3.1 `POST central-ia/assuntos` e `PUT central-ia/assuntos/{assunto}` (nome, grupo, projeto, arquivar e reabrir), com grupo e projeto validados na conta
-- [ ] 1.3.2 `assuntos[]` no `painel` (`CockpitService`), sem os arquivados
-- [ ] 1.3.3 Testes de isolamento: outra conta recebe 404 em todas as rotas; admin não vê; o painel dela não lista assunto alheio
+- [x] 1.3.1 `POST central-ia/assuntos` e `PUT central-ia/assuntos/{assunto}` (nome, grupo, projeto, arquivar e reabrir), com grupo e projeto validados na conta
+- [x] 1.3.2 `assuntos[]` no `painel` (`CockpitService`), sem os arquivados
+- [x] 1.3.3 Testes de isolamento: outra conta recebe 404 em todas as rotas; admin não vê; o painel dela não lista assunto alheio
 
 ### 1.4 Aba Business na tela `[A]`
 
 Ref: research D9; FR-001, FR-018, SC-005
 
-- [ ] 1.4.1 Aba de topo "Business" com lista agrupada e recolhível (mesmos grupos de Projetos), pulso e novidade
-- [ ] 1.4.2 "+ Novo assunto" (nome, grupo, projeto opcional) e abertura do painel de conversa com o assunto
-- [ ] 1.4.3 Linha de sistema com o contexto enviado (inteiro ou condensado, tamanho) e o custo
-- [ ] 1.4.4 `npm run build`, screenshot Playwright nos temas claro e escuro, sem erro de JS
-- [ ] 1.4.5 Teste do redesign: sem hex solto, sem `<table>` cru, sem SVG fora do `x-nav-icon`
+- [x] 1.4.1 Aba de topo "Business" com lista agrupada e recolhível (mesmos grupos de Projetos), pulso e novidade
+- [x] 1.4.2 "+ Novo assunto" (nome, grupo, projeto opcional) e abertura do painel de conversa com o assunto
+- [x] 1.4.3 Linha de sistema com o contexto enviado (inteiro ou condensado, tamanho) e o custo
+- [x] 1.4.4 `npm run build`, screenshot Playwright nos temas claro e escuro, sem erro de JS
+- [x] 1.4.5 Teste do redesign: sem hex solto, sem `<table>` cru, sem SVG fora do `x-nav-icon`
+
+### 1.5 Assunto sem projeto trabalha nas pastas de ~/projetos `[A]`
+
+Ref: emergiu na execução da Fase 1 (13/10/2026). Na Geral, mensagem que não é pergunta só era anotada e implementar era recusado; um "Comercial VixCard" precisa mexer em arquivos.
+
+- [x] 1.5.1 No assunto, toda mensagem vai a uma IA (sem a regra de anotação da Geral)
+- [x] 1.5.2 Assunto sem projeto pode implementar, na raiz dos projetos (`na_pasta`, sem worktree), com as mesmas confirmações
+- [x] 1.5.3 Fila: o filtro `['']` de projetos ocupados barrava implementar sem projeto; corrigido
+- [x] 1.5.4 Teste: assunto sem projeto aciona IA e implementa na raiz; a Geral continua sem implementar
 
 ---
 
@@ -180,11 +189,11 @@ flowchart TD
 
 | Fase | Tarefas | Subtarefas | Criticidade |
 |------|---------|------------|-------------|
-| 1 - Chat de assunto que lembra | 4 | 18 | A |
+| 1 - Chat de assunto que lembra | 5 | 22 | A |
 | 2 - Semente do VS Code | 5 | 21 | A/M |
 | 3 - Condensação e cota | 3 | 7 | A/M |
 | 4 - Memória e Telegram | 3 | 11 | A/M |
-| **Total** | **15** | **57** | - |
+| **Total** | **16** | **61** | - |
 
 ## Escopo Coberto
 
