@@ -19,7 +19,16 @@ o IV (segredos) e o VIII (zero fabricação).
    que já existe no VS Code e semeia o chat novo com ele. A conversa original não é alterada.
 2. **Histórico**: o agente lê **todo o histórico** do chat, "desde que não gaste todo o uso". Acima de um
    limite, a parte antiga é condensada. A pessoa continua vendo tudo.
-3. **Quem lê**: todos os agentes **do usuário** leem os chats dele. Nada sai da conta e do perfil.
+3. **Primeira leva** (dono, 13/10/2026: "não precisa trazer todos"): só quatro conversas viram chat
+   semeado — **Proposta Comercial VixCard** e **Gestor.SG** (gravadas no WSL), **Proposta comercial
+   Grupo Soluções** e **Relatório avanço de obra** (gravadas só no Mac). Os demais assuntos começam do
+   zero na Central. O Gestor.VixCard também começa do zero.
+   Conferido em 13/10/2026 no WSL: Proposta Comercial VixCard é uma sessão do Claude atualizada nesse
+   dia (~77 MB); Gestor.SG são duas sessões do Claude (~119 MB e ~2 MB), que semeiam o mesmo chat. Pelo
+   tamanho, a semente lê por partes e respeita o teto de custo da importação (ver Edge Cases).
+4. **Conversas do Mac**: **cópia única** das duas pelo túnel SSH que já existe. Nada fica instalado no
+   Mac, e depois da semente esses chats vivem só na Central.
+5. **Quem lê**: todos os agentes **do usuário** leem os chats dele. Nada sai da conta e do perfil.
    Outro usuário, administrador inclusive, não vê.
 
 ## User Scenarios & Testing
@@ -134,12 +143,10 @@ fonte custa menos que repetir a correção a cada pedido.
 
 ### Edge Cases
 
-- **Conversa do VS Code que só existe no Mac** (resolvido pelo dono em 13/10/2026): o Mac ganha um
-  **runner leitor**, que só lê as conversas do VS Code de lá e os grupos em que a pessoa as organizou e
-  as entrega à Central. Ele nunca executa pedido, nunca altera arquivo e usa um token que só serve para
-  essa entrega. As conversas do Mac aparecem em "Trazer do VS Code" com a máquina indicada.
-- **Grupos**: quando o runner leitor do Mac traz o grupo da conversa, ele é sugerido. Sem essa
-  informação, o padrão é o grupo é sugerido pela regra que a Central já usa (nome Vix* → VixCard, o resto →
+- **Conversa do VS Code que só existe no Mac** (dono, 13/10/2026): as duas da primeira leva são
+  copiadas uma vez do Mac pelo túnel SSH e semeadas a partir da cópia. Nada fica instalado no Mac, e
+  "atualizar do VS Code" (FR-009) não vale para elas. A cópia é apagada da máquina depois da semente.
+- **Grupos**: o padrão é o grupo é sugerido pela regra que a Central já usa (nome Vix* → VixCard, o resto →
   Alfa Tecnologia), mais o grupo **Pessoal** para English, AlfaHome e Painel Avanço. A pessoa troca à
   vontade.
 - **Duas conversas do VS Code para o mesmo assunto** (ex.: "VIX-ID Patrimonio" e "VIX-ID - Controle de
@@ -195,9 +202,11 @@ fonte custa menos que repetir a correção a cada pedido.
 - **FR-018**: A lista MUST sinalizar o chat que terminou ou está esperando a pessoa, como Chats Ativos.
 - **FR-019**: O Telegram MUST poder apontar para um chat de assunto, e o que entra por ele cai no mesmo
   histórico.
-- **FR-020**: Uma máquina MUST poder rodar o runner em modo **só leitura de conversas**: entrega à
-  Central as conversas do VS Code e os grupos dela, nunca recebe pedido para executar e usa uma
-  credencial que só autoriza essa entrega.
+- **FR-020**: As duas conversas da primeira leva que só existem no Mac MUST ser trazidas por uma cópia
+  única, sem nada permanente instalado no Mac. A cópia local é apagada depois da semente.
+- **FR-021**: A primeira leva MUST semear exatamente quatro chats: Proposta Comercial VixCard (grupo
+  VixCard), Gestor.SG, Proposta comercial Grupo Soluções e Relatório avanço de obra (grupo Alfa
+  Tecnologia). Nenhuma outra conversa é importada sem a pessoa pedir.
 
 ### Key Entities
 
