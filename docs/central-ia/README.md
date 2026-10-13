@@ -363,3 +363,24 @@ Revisão dos commits de 09 a 11/10 (Claude e Codex) passada pelo cstk: `docs/bri
 Ambiente local: `CENTRAL_IA_DONO` no `.env`, o env do runner com segredo e Telegram próprios
 (0600), e o nginx com `resolver` (o 502 do boot de 12/10). O banco está com a migração
 `2026_10_12_090000` aplicada (backup em `backups/`).
+
+## Chats Business — um chat contínuo por assunto (13/10/2026)
+
+Spec, plano e tarefas: `docs/specs/chats-business/`. O dono passou a trabalhar pela Central em vez do VS Code.
+
+- **O que é.** Aba **Business**: um chat por assunto ("Proposta Comercial VixCard", "Gestor.SG"…), nos grupos da conta.
+  - É uma `central_ia_tarefas` com `tipo = 'assunto'`: reaproveita fila, Telegram, avisos, confirmação, auditoria e POPs.
+  - Nunca se conclui sozinho e não aparece em Chats Ativos nem na aba Tarefas.
+- **Contexto.** Qualquer agente recebe a memória do assunto e o histórico do chat (`ContextoDoAssunto`), até `assunto_contexto_tokens` por pedido (padrão 60 mil).
+  - O resto fica de fora, e a bolha do pedido diz quanto foi.
+  - Sempre sessão nova do agente: retomar a sessão dele dobraria o histórico.
+- **Sem projeto.** O assunto sem projeto aciona IA em toda mensagem e implementa na raiz `~/projetos` (`na_pasta`), com as mesmas confirmações.
+- **Memória.** Mapa do trabalho (`mapa`: o que é, caminho, etapa), `jeito_de_fazer`, decisões, pendências e próximos passos.
+  - O mesmo caminho atualiza o item.
+  - A aba **Memória** edita e apaga, e o que a pessoa apaga não volta pela mão de um agente.
+- **Semente.** "Trazer do VS Code" lê a ÚLTIMA SEMANA das conversas marcadas (`extrato.mjs`, até ~420 mil caracteres) numa execução de nível econômico.
+  - O servidor só manda o id; o runner acha o arquivo entre as conversas que ele mesmo listou.
+  - Primeira leva (13/10): Proposta Comercial VixCard, Gestor.SG, Proposta comercial Grupo Soluções, Relatório avanço de obra.
+- **Telegram.** `/assunto` lista, `/assunto 2` ou `/assunto comercial` aponta e `/geral` sai. As mensagens caem no mesmo chat da tela.
+- **Pedido pelo stdin.** O Claude e o Codex recebem o pedido pela entrada padrão. Como argumento, passava do limite de 128 KB do Linux (`spawn E2BIG`).
+- **Adiado.** Condensar o histórico antigo e reduzir pela cota (fase 3). "Atualizar do VS Code" saiu do escopo.

@@ -244,7 +244,11 @@ class TelegramCanal
                     if (! $pedido && str_starts_with($texto, '/')) {
                         throw ValidationException::withMessages(['arquivo' => 'Envie uma legenda descrevendo o pedido, sem comandos de navegação.']);
                     }
-                    $pedido ??= ['projeto' => $vinculo->projeto_atual ?? '', 'agente' => $vinculo->agente_atual ?? 'auto',
+                    // Foto num assunto apontado (/assunto) vai para ele.
+                    $assunto = $this->assuntoAtual($user, $vinculo);
+                    $pedido ??= $assunto
+                        ? ['projeto' => $assunto->projeto, 'agente' => $vinculo->agente_atual ?? 'auto', 'modo' => 'auto', 'instrucao' => $texto, 'tarefa_id' => $assunto->id]
+                        : ['projeto' => $vinculo->projeto_atual ?? '', 'agente' => $vinculo->agente_atual ?? 'auto',
                         'modo' => 'analisar', 'instrucao' => $texto,
                         'tarefa_id' => filled($vinculo->projeto_atual) ? CentralIaTarefa::de($user)->where('projeto', $vinculo->projeto_atual)
                             ->emCurso()->orderByDesc('ultima_atividade_em')->value('id') : null];
@@ -334,7 +338,8 @@ class TelegramCanal
             $comando === '/projetos' => $this->responder($chatId, $this->textoProjetos($user, $vinculo)),
             $comando === '/status' => $this->responder($chatId, $this->textoStatus($user)),
             $comando === '/usar' => $this->usar($user, $vinculo, $chatId, trim($resto)),
-            $comando === '/geral' => $this->definir($vinculo, $chatId, ['projeto_atual' => null], 'Mensagens voltam para a conversa Geral, sem acionar agente.'),
+            $comando === '/geral' => $this->definir($vinculo, $chatId, ['projeto_atual' => null, 'assunto_atual_id' => null], 'Mensagens voltam para a conversa Geral, sem acionar agente.'),
+            $comando === '/assunto' => $this->apontarAssunto($user, $vinculo, $chatId, trim($resto)),
             $comando !== null && array_key_exists($comando, $agentes) && trim($resto) === '' => $this->definir(
                 $vinculo, $chatId, ['agente_atual' => $agentes[$comando]],
                 'Próximos pedidos: '.($agentes[$comando] ? CentralIaExecucao::AGENTES[$agentes[$comando]] : 'IA automática').'.'
@@ -344,6 +349,10 @@ class TelegramCanal
             $comando === '/continuar' => $this->continuar($user, $vinculo, $chatId, trim($resto)),
             $comando === '/salvar' => $this->salvar($user, $vinculo, $chatId),
             $comando !== null => $this->responder($chatId, $this->ajuda()),
+            // Chat de assunto apontado: toda mensagem é pedido nele (Chats Business).
+            ($assunto = $this->assuntoAtual($user, $vinculo)) !== null => $this->confirmar($chatId, $this->agentes->pedir($user, $texto, [
+                'projeto' => $assunto->projeto, 'agente' => $vinculo->agente_atual ?? 'auto', 'modo' => 'auto', 'instrucao' => $texto, 'tarefa_id' => $assunto->id,
+            ], CentralIaMensagem::ORIGEM_TELEGRAM, telegramUpdateId: $updateId)),
             filled($vinculo->projeto_atual) => $this->pedirNoProjeto($user, $vinculo, $chatId, $texto, $texto, $updateId),
             // Sem projeto, mas é um pedido de resposta ("resumo da minha
             // agenda de hoje"): vai a um agente na conversa Geral.
@@ -419,8 +428,48 @@ class TelegramCanal
             return;
         }
 
-        $this->definir($vinculo, $chatId, ['projeto_atual' => $projeto],
+        $this->definir($vinculo, $chatId, ['projeto_atual' => $projeto, 'assunto_atual_id' => null],
             "Usando {$projeto}. Suas mensagens agora são pedidos nele (continuam a tarefa mais recente; /nova abre outra). /geral sai.");
+    }
+
+    /** O assunto apontado pelo vínculo, se ainda é da conta e não foi arquivado. */
+    private function assuntoAtual(User $user, CentralIaTelegramVinculo $vinculo): ?CentralIaTarefa
+    {
+        return $vinculo->assunto_atual_id
+            ? CentralIaTarefa::de($user)->assuntos()->where('status', '!=', CentralIaTarefa::ARQUIVADA)->find($vinculo->assunto_atual_id)
+            : null;
+    }
+
+    /**
+     * `/assunto` lista os chats de assunto; `/assunto 2` ou `/assunto comercial`
+     * aponta para um — as mensagens seguintes vão para ele (FR-019).
+     */
+    private function apontarAssunto(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $alvo): void
+    {
+        $assuntos = CentralIaTarefa::de($user)->assuntos()->where('status', '!=', CentralIaTarefa::ARQUIVADA)
+            ->orderByDesc('ultima_atividade_em')->orderByDesc('id')->get(['id', 'titulo', 'projeto', 'status']);
+        if ($assuntos->isEmpty()) {
+            $this->responder($chatId, 'Nenhum chat de assunto ainda. Crie na Central, aba Business.');
+
+            return;
+        }
+        $lista = fn () => $assuntos->values()->map(fn ($a, $i) => ($i + 1).'. '.$a->titulo.($vinculo->assunto_atual_id === $a->id ? ' ← em uso' : ''))->implode(PHP_EOL);
+        if ($alvo === '') {
+            $this->responder($chatId, 'Chats de assunto:'.PHP_EOL.$lista().PHP_EOL.PHP_EOL.'/assunto 1 (ou parte do nome) para falar nele. /geral sai.');
+
+            return;
+        }
+        $achados = ctype_digit($alvo)
+            ? $assuntos->values()->slice((int) $alvo - 1, 1)
+            : $assuntos->filter(fn ($a) => str_contains(mb_strtolower($a->titulo), mb_strtolower($alvo)));
+        if ($achados->count() !== 1) {
+            $this->responder($chatId, ($achados->isEmpty() ? 'Não achei “'.$alvo.'”.' : 'Mais de um chat com “'.$alvo.'”.').PHP_EOL.$lista());
+
+            return;
+        }
+        $a = $achados->first();
+        $this->definir($vinculo, $chatId, ['assunto_atual_id' => $a->id, 'projeto_atual' => null],
+            'Falando em “'.$a->titulo.'”. Suas mensagens agora vão para esse chat, com a memória e o histórico dele. /geral sai.');
     }
 
     private function pedirNoProjeto(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $instrucao, string $texto, int $updateId, bool $novaTarefa = false, ?string $agente = null): void
@@ -554,7 +603,7 @@ class TelegramCanal
     private function ajuda(): string
     {
         return "Comandos:\n/projetos — projetos do cockpit\n/status — o que roda e o que espera você\n/usar <projeto> — mensagens viram pedidos nele\n"
-            ."/nova <pedido> — tarefa nova no projeto em uso\n/geral — sai do projeto\n/auto, /claude, /gpt, /copilot — agente dos próximos pedidos\n"
+            ."/nova <pedido> — tarefa nova no projeto em uso\n/assunto — chats de assunto (Business); /assunto 1 fala no primeiro\n/geral — sai do projeto ou do assunto\n/auto, /claude, /gpt, /copilot — agente dos próximos pedidos\n"
             ."/trocar <agente> [pedido] — passa a tarefa atual para outro agente\n/continuar <projeto> [agente] — segue a conversa do VS Code daquele projeto\n/salvar — salva um ponto na tarefa atual (a conversa recomeça enxuta)\n/claude <projeto> <pedido> — pedido direto (com ! para implementar)";
     }
 

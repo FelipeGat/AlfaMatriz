@@ -162,25 +162,25 @@ Ref: research D5; FR-012
 
 Ref: data-model.md; FR-005, FR-006
 
-- [ ] 4.1.1 `Dossie`: `mapa` e `jeito_de_fazer` no bloco e em `aplicarConclusao`, com dedupe normalizado e no máximo 40 itens
-- [ ] 4.1.2 `Dossie::aplicarCorrecao` e `GET/PUT central-ia/assuntos/{assunto}/memoria`
-- [ ] 4.1.3 Sub-aba Memória com editar e apagar e o histórico das correções
-- [ ] 4.1.4 Testes: item apagado não vai no pedido seguinte; correção prevalece sobre item de agente; outra conta recebe 404
+- [x] 4.1.1 `Dossie`: `mapa` e `jeito_de_fazer` no bloco e em `aplicarConclusao`, com dedupe normalizado e no máximo 40 itens
+- [x] 4.1.2 `Dossie::aplicarCorrecao` e `GET/PUT central-ia/assuntos/{assunto}/memoria`
+- [x] 4.1.3 Sub-aba Memória com editar e apagar e o histórico das correções
+- [x] 4.1.4 Testes: item apagado não vai no pedido seguinte; correção prevalece sobre item de agente; outra conta recebe 404
 
 ### 4.2 `/assunto` no Telegram `[M]`
 
 Ref: research D10; FR-019
 
-- [ ] 4.2.1 `/assunto` lista; `/assunto <nome|número>` aponta; `/geral` limpa
-- [ ] 4.2.2 Mensagem com `assunto_atual_id` vira pedido na tarefa do assunto
-- [ ] 4.2.3 Testes do canal (Http fake) e reinício do container do bot
+- [x] 4.2.1 `/assunto` lista; `/assunto <nome|número>` aponta; `/geral` limpa
+- [x] 4.2.2 Mensagem com `assunto_atual_id` vira pedido na tarefa do assunto
+- [x] 4.2.3 Testes do canal (Http fake) e reinício do container do bot ("Ouvindo @GrupoSolucoesAgentBot", 13/10/2026)
 
 ### 4.3 Fechamento `[A]`
 
-- [ ] 4.3.1 Suíte `CentralIa|Redesign` e testes Node verdes
-- [ ] 4.3.2 Runner reiniciado em ociosidade e observado (Princípio V)
-- [ ] 4.3.3 Quickstart Cenários 3 a 10 conferidos na tela
-- [ ] 4.3.4 `docs/central-ia/README.md` com a seção Chats Business
+- [x] 4.3.1 Suíte `CentralIa|Redesign` e testes Node verdes
+- [x] 4.3.2 Runner reiniciado em ociosidade e observado (Princípio V)
+- [x] 4.3.3 Quickstart: 3, 4, 7, 8 e 10 cobertos por teste; 9 (roundtrip) e a Memória conferidos na tela; 5 e 6 dependem da fase 3, adiada
+- [x] 4.3.4 `docs/central-ia/README.md` com a seção Chats Business
 
 ---
 
