@@ -83,7 +83,10 @@ class CockpitService
     /** Chats da Central são assuntos/tarefas; sessões externas não são importadas aqui. */
     public function chats(User $user): array
     {
-        return CentralIaTarefa::de($user)->emCurso()
+        // Concluída fica 24 h na lista (dono, 13/10/2026: "a #15 sumiu da
+        // tela" — terminou e saiu antes de ele ver o desfecho).
+        return CentralIaTarefa::de($user)
+            ->where(fn ($q) => $q->emCurso()->orWhere(fn ($c) => $c->where('status', CentralIaTarefa::CONCLUIDA)->where('ultima_atividade_em', '>=', now()->subDay())))
             ->orderByDesc('ultima_atividade_em')->orderByDesc('id')
             ->get(['id', 'projeto', 'titulo', 'status', 'agente_atual', 'ultima_atividade_em', 'created_at'])
             ->map(fn (CentralIaTarefa $t) => [

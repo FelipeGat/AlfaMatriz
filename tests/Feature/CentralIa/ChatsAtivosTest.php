@@ -28,12 +28,15 @@ class ChatsAtivosTest extends TestCase
     {
         $u = $this->pessoa();
         foreach (range(1, 5) as $n) $this->tarefa($u, 'Assunto '.$n);
-        $this->tarefa($u, 'Encerrado', 'concluida');
+        // Concluída fica 24 h na lista (13/10/2026); depois sai.
+        $this->tarefa($u, 'Encerrado agora', 'concluida')->update(['ultima_atividade_em' => now()]);
+        $this->tarefa($u, 'Encerrado anteontem', 'concluida')->update(['ultima_atividade_em' => now()->subDays(2)]);
         $this->tarefa($this->pessoa(), 'Privado de outro usuário');
         $r = $this->actingAs($u)->getJson(route('central-ia.painel'))->assertOk()
-            ->assertJsonCount(5, 'chats')->assertJsonCount(1, 'projetos');
-        $this->assertCount(5, array_unique(array_column($r->json('chats'), 'id')));
-        $this->assertNotContains('Encerrado', array_column($r->json('chats'), 'titulo'));
+            ->assertJsonCount(6, 'chats')->assertJsonCount(1, 'projetos');
+        $this->assertCount(6, array_unique(array_column($r->json('chats'), 'id')));
+        $this->assertContains('Encerrado agora', array_column($r->json('chats'), 'titulo'));
+        $this->assertNotContains('Encerrado anteontem', array_column($r->json('chats'), 'titulo'));
         $this->assertNotContains('Privado de outro usuário', array_column($r->json('chats'), 'titulo'));
         $this->assertArrayNotHasKey('dossie', $r->json('chats.0'));
     }
