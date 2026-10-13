@@ -230,8 +230,9 @@ fonte custa menos que repetir a correção a cada pedido.
   sem que a pessoa as repita.
 - **SC-002**: Um chat semeado de uma conversa do VS Code fica pronto em menos de 2 minutos, e a memória
   de partida não contém nenhuma decisão ausente da conversa original (conferido por amostra).
-- **SC-003**: Num chat com histórico acima do limite, o custo de um pedido fica no máximo 30% acima do
-  custo do mesmo pedido num chat vazio.
+- **SC-003**: Em qualquer chat de assunto, o contexto enviado por pedido nunca passa do orçamento
+  configurado da conta, qualquer que seja o tamanho do histórico (ajustado no `/plan`, research
+  Decision 11).
 - **SC-004**: Nenhum chat, memória ou semente de uma conta aparece para outra conta, administrador
   inclusive (teste de isolamento).
 - **SC-005**: A pessoa troca de assunto em no máximo 2 cliques a partir de qualquer tela da Central.
