@@ -67,7 +67,10 @@ class Dossie
             .'"pop": quando você precisou DESCOBRIR como operar um sistema (tabelas, serviços, comandos, a via oficial de produção, cuidados) ou achou um POP recebido desatualizado, devolva {"sistema": "nome do projeto/sistema", "titulo": "o procedimento", "conteudo": "o POP COMPLETO e atualizado, em markdown: quando usar, passos, comandos testados, campos obrigatórios, armadilhas"}. Mesmo título substitui o anterior. Nunca ponha senha, token ou credencial. Sem nada novo, null. '
             // Delegação (dono, 13/10/2026, tarefa #14: o Claude parou esperando o
             // QA do Copilot e a pessoa recebeu um pedido que não é dela).
-            .'"delegar": quando o próximo passo é de OUTRO agente (ex.: QA independente pelo Copilot, revisão pelo Codex, implementação pelo Claude), NÃO peça à pessoa para fazê-lo: devolva {"agente": "claude|codex|copilot", "modo": "analisar|implementar", "pedido": "o que ele deve fazer, com os arquivos e critérios"} e a Central encaminha na mesma tarefa. A pessoa só decide o que é dela (aprovar, commit, deploy, produção).';
+            .'"delegar": quando o próximo passo é de OUTRO agente (ex.: QA independente pelo Copilot, revisão pelo Codex, implementação pelo Claude), NÃO peça à pessoa para fazê-lo: devolva {"agente": "claude|codex|copilot", "modo": "analisar|implementar", "pedido": "o que ele deve fazer, com os arquivos e critérios"} e a Central encaminha na mesma tarefa. A pessoa só decide o que é dela (aprovar, commit, deploy, produção). '
+            // Fim de fluxo sem pergunta (13/10/2026, tarefa #14: QA aprovado e o
+            // chat ficou parado sem dizer que esperava a decisão).
+            .'Quando o trabalho estiver PRONTO e só faltar o que é da pessoa (commit, deploy), pergunte no campo "duvida": "Está pronto. Posso fazer o commit e o deploy?", com "opcoes_duvida": ["Sim, commit e deploy", "Só o commit", "Ainda não"].';
     }
 
     /**

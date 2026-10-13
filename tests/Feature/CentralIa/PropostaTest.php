@@ -55,6 +55,16 @@ class PropostaTest extends TestCase
         $this->assertSame('planejamento', $r['categoria']);
     }
 
+    public function test_commit_e_deploy_viram_execucao(): void
+    {
+        [$u, $s, $e] = $this->cenario();
+        $c = $this->responder($u, $s, $e, 'Sim, commit e deploy', 'a5');
+        $this->assertSame(['implementar', 'claude'], [$c->modo, $c->agente]);
+        $this->assertStringContainsString('commit e o deploy', $c->instrucao);
+        $r = app(\App\Services\CentralIa\Roteador::class)->decidir('pode fazer commit e deploy', ['claude', 'codex', 'copilot']);
+        $this->assertSame('implementar', $r['modo']);
+    }
+
     public function test_outra_sugestao_mesma_ou_outra_ia(): void
     {
         [$u, $s, $e] = $this->cenario();

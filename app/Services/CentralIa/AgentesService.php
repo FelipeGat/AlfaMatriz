@@ -264,6 +264,15 @@ class AgentesService
                 $pedido['instrucao'] = 'Implemente o que foi proposto na análise anterior desta tarefa e aprovado pela pessoa. Confira o estado real antes.'
                     .($proposta ? "\n\nProposta aprovada ({$resposta->nomeDoAgente()}):\n".Str::limit($proposta, 8000) : '');
                 $rota['motivo'] = 'Proposta de '.$resposta->nomeDoAgente().' aprovada: implementar';
+            } elseif ($escolha === 'commit_deploy' || $escolha === 'commit') {
+                // Commit (e deploy) é execução, com quem implementa; deploy pede
+                // o código da máquina sempre (politica.mjs, PEDE_DEPLOY).
+                $modo = 'implementar'; $rota['categoria'] = 'implementacao'; $pedido['nivel'] = 'forte';
+                $rota['agente'] = $usaveis('implementacao')->first() ?? $rota['agente'];
+                $pedido['instrucao'] = $escolha === 'commit_deploy'
+                    ? 'A pessoa aprovou: faça o commit e o deploy desta tarefa, seguindo o fluxo do projeto (CLAUDE.md), e confira o resultado publicado.'
+                    : 'A pessoa aprovou: faça só o commit desta tarefa, seguindo o fluxo do projeto. Não faça deploy.';
+                $rota['motivo'] = $escolha === 'commit_deploy' ? 'Aprovado: commit e deploy' : 'Aprovado: só o commit';
             } elseif ($escolha === 'outra_ia') {
                 $modo = 'analisar';
                 $rota['agente'] = $usaveis($rota['categoria'] ?? 'investigacao')->first(fn ($a) => $a !== $resposta->agente)
@@ -836,7 +845,8 @@ class AgentesService
     }
 
     /** As saídas de uma análise que propôs mudança: o agente oferece estas três. */
-    public const OPCOES_DA_PROPOSTA = ['implementar' => 'Sim, implementar', 'mesma' => 'Trazer outra sugestão', 'outra_ia' => 'Outra sugestão com outra IA'];
+    public const OPCOES_DA_PROPOSTA = ['implementar' => 'Sim, implementar', 'mesma' => 'Trazer outra sugestão', 'outra_ia' => 'Outra sugestão com outra IA',
+        'commit_deploy' => 'Sim, commit e deploy', 'commit' => 'Só o commit'];
 
     /** Teto de passagens automáticas entre agentes a partir do pedido da pessoa. */
     public const DELEGACOES_MAXIMAS = 4;
