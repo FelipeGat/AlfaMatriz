@@ -92,7 +92,7 @@ class ProgressoService
 
     public function texto(CentralIaExecucao $e): string
     {
-        $projeto = $e->projeto ?: 'Geral';
+        $projeto = $e->tarefa?->ehAssunto() ? '“'.$e->tarefa->titulo.'”' : ($e->projeto ?: 'Geral');
         $cabecalho = "{$projeto} — pedido #{$e->id}".($e->tarefa_id ? " · tarefa #{$e->tarefa_id}" : '')." · {$e->nomeDoAgente()}";
         $tempo = $this->tempo($e->iniciada_em ?? $e->created_at);
         if ($e->status === CentralIaExecucao::PENDENTE) {
@@ -128,7 +128,7 @@ class ProgressoService
             $linhas[] = "Tarefa #{$t->id} em {$t->projeto} aguarda você: ".Str::limit($t->dossie['duvida'] ?? $t->titulo, 300);
         }
         if (! $linhas && ($ultima = (clone $consulta)->orderByDesc('id')->first())) {
-            $linhas[] = 'Último pedido #'.$ultima->id.' em '.($ultima->projeto ?: 'Geral').': '
+            $linhas[] = 'Último pedido #'.$ultima->id.' em '.($ultima->tarefa?->ehAssunto() ? '“'.$ultima->tarefa->titulo.'”' : ($ultima->projeto ?: 'Geral')).': '
                 .(['concluida' => 'concluído', 'falhou' => 'falhou', 'expirada' => 'expirou'][$ultima->status] ?? $ultima->status)
                 .($ultima->erro ? '. '.Str::limit($ultima->erro, 300) : '.');
         }

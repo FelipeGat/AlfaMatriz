@@ -797,6 +797,13 @@ class TelegramCanal
             return true;
         }
 
+        if ($resultado['erro'] === 'nao_enviada' && $entrega->tentativas < 5) {
+            // Nada saiu (conexão): volta para a fila e tenta na próxima volta.
+            $entrega->update(['status' => CentralIaEntrega::PENDENTE, 'erro' => 'nao_enviada']);
+
+            return false;
+        }
+
         if ($resultado['erro'] === 'limite') {
             // 429 é "não entreguei": volta para a fila sem contar como incerta.
             $entrega->update(['status' => CentralIaEntrega::PENDENTE, 'erro' => 'limite']);
@@ -814,8 +821,10 @@ class TelegramCanal
 
     private function cabecalho(CentralIaMensagem $m): string
     {
-        // Vários projetos no mesmo chat: cada mensagem diz de qual é.
-        $projeto = $m->projeto ? "[{$m->projeto}] " : '';
+        // Vários projetos no mesmo chat: cada mensagem diz de qual é — e o
+        // chat de assunto (Business), pelo nome dele.
+        $assunto = $m->tarefa_id ? CentralIaTarefa::assuntos()->where('user_id', $m->user_id)->whereKey($m->tarefa_id)->value('titulo') : null;
+        $projeto = $assunto ? "[{$assunto}] " : ($m->projeto ? "[{$m->projeto}] " : '');
 
         return $projeto.match ($m->autor_tipo) {
             CentralIaMensagem::AUTOR_USUARIO => '🖥 Você, pelo AlfaMatriz:',

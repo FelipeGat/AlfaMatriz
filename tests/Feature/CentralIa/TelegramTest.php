@@ -219,6 +219,28 @@ class TelegramTest extends TestCase
         $this->assertSame(1, (int) CentralIaEntrega::value('tentativas'));
     }
 
+    /**
+     * Falha de CONEXÃO quer dizer que nada saiu: volta para a fila e sai na
+     * próxima volta (13/10/2026: a resposta de um assunto ficou incerta num
+     * soluço de rede e a pessoa perguntou "travou?").
+     */
+    public function test_falha_de_conexao_volta_para_a_fila_e_sai_depois(): void
+    {
+        $this->fakeTelegram(extra: ['api.telegram.org/*/sendMessage' => Http::sequence()
+            ->push(['ok' => true, 'result' => ['message_id' => 1]])
+            ->pushFailedConnection('cURL error 7: Failed to connect to api.telegram.org port 443')
+            ->push(['ok' => true, 'result' => ['message_id' => 2]])]);
+        $user = $this->comCentral();
+        $this->parear($user);
+        app(ConversaService::class)->registrarDoUsuario($user, 'tem que chegar', CentralIaMensagem::ORIGEM_WEB);
+
+        app(TelegramCanal::class)->entregarPendentes();
+        $this->assertSame(CentralIaEntrega::PENDENTE, CentralIaEntrega::value('status'));
+        app(TelegramCanal::class)->entregarPendentes();
+        $this->assertSame(CentralIaEntrega::ENTREGUE, CentralIaEntrega::value('status'));
+        $this->assertSame(2, (int) CentralIaEntrega::value('tentativas'));
+    }
+
     public function test_entrega_presa_em_enviando_vira_incerta(): void
     {
         $this->fakeTelegram();

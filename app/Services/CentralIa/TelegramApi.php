@@ -105,8 +105,16 @@ class TelegramApi
         try {
             $resposta = Http::connectTimeout(5)->timeout($timeout)
                 ->post('https://api.telegram.org/bot'.config('central_ia.telegram.token').'/'.$metodo, $dados);
-        } catch (\Throwable) {
-            return ['ok' => false, 'erro' => 'incerta'];
+        } catch (\Throwable $e) {
+            // Falha de CONEXÃO (DNS, recusa, tempo esgotado ao conectar) quer
+            // dizer que nada saiu: dá para tentar de novo sem duplicar. Em
+            // 13/10/2026 a resposta de um assunto ficou "incerta" num soluço de
+            // rede e a pessoa teve de perguntar "travou?".
+            $msg = preg_replace('/bot\d+:[A-Za-z0-9_-]+/', 'bot[REDACTED]', $e->getMessage());
+            $naoSaiu = (bool) preg_match('/cURL error (6|7)\b|Connection timed out after|Could not resolve|Failed to connect|Connection refused/i', $msg);
+            \Illuminate\Support\Facades\Log::warning('Telegram: chamada falhou', ['metodo' => $metodo, 'nao_saiu' => $naoSaiu, 'erro' => mb_substr($msg, 0, 300)]);
+
+            return ['ok' => false, 'erro' => $naoSaiu ? 'nao_enviada' : 'incerta'];
         }
 
         $corpo = $resposta->json();
