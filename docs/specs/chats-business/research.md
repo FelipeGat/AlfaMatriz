@@ -129,6 +129,16 @@ execução, que é mostrada antes.
 - Enviar o arquivo inteiro ao agente: rejeitado por custo e por tamanho.
 - Ler a sessão no servidor: rejeitado, porque o arquivo só existe na máquina (Princípio II).
 
+## Decision 6b — Só a última semana, com foco no mapa do trabalho (dono, 13/10/2026)
+
+**Decision**: o extrato só pega turnos com `timestamp` nos últimos 7 dias. O prompt da semente pede,
+antes de tudo, o **mapa do trabalho**: pastas, arquivos e sistemas onde se consulta e onde se dá
+andamento, e a etapa atual de cada frente. Esses itens vão na chave nova `mapa` da memória, com o
+caminho exato citado na conversa. Só entra caminho que aparece no texto (FR-016).
+
+**Consequência**: o custo da semente cai a uma fração do medido na Decision 6. O teto de importação
+continua como proteção.
+
 ## Decision 7 — Nome das sessões vem do próprio arquivo
 
 **Decision**: o runner (`uso-local.mjs`) passa a informar `titulo` em cada sessão, nesta ordem:

@@ -17,7 +17,13 @@ o IV (segredos) e o VIII (zero fabricação).
 
 1. **Origem**: os chats são **criados novos** na Central. A Central entende o contexto de cada conversa
    que já existe no VS Code e semeia o chat novo com ele. A conversa original não é alterada.
-2. **Histórico**: o agente lê **todo o histórico** do chat, "desde que não gaste todo o uso". Acima de um
+2. **Semente só da semana passada** (dono, 13/10/2026): "não precisa trazer todo o histórico, apenas o
+   da semana passada; a ideia é que ele saiba onde ir em cada pasta para consultar ou dar andamento, e
+   cada etapa". A semente lê só os últimos 7 dias da conversa e extrai o **mapa do trabalho**: onde fica
+   cada coisa (pastas, arquivos, sistemas), onde consultar, onde registrar, e em que etapa cada frente
+   está. O uso é o **dia a dia**: "quero falar sobre Comercial da VixCard, vou nesse chat e ele tem o
+   histórico".
+2b. **Histórico do chat na Central**: o agente lê **todo o histórico** do chat, "desde que não gaste todo o uso". Acima de um
    limite, a parte antiga é condensada. A pessoa continua vendo tudo.
 3. **Primeira leva** (dono, 13/10/2026: "não precisa trazer todos"): só quatro conversas viram chat
    semeado — **Proposta Comercial VixCard** e **Gestor.SG** (gravadas no WSL), **Proposta comercial
@@ -90,6 +96,9 @@ que a memória de partida cita decisões que estão na conversa original e não 
    o contém.
 4. **Given** uma conversa que segue sendo usada no VS Code depois da importação, **When** a pessoa pede
    "atualizar do VS Code" no chat, **Then** só o trecho novo é lido e acrescentado à memória.
+6. **Given** uma conversa com meses de histórico, **When** ela semeia um chat, **Then** só os últimos 7
+   dias são lidos e a memória traz o mapa do trabalho: as pastas e arquivos onde consultar e dar
+   andamento e a etapa em que cada frente está.
 5. **Given** uma conversa que não tem nome dado pela pessoa, **Then** ela aparece com o primeiro pedido
    como título provisório, num bloco separado "sem nome".
 
@@ -204,6 +213,9 @@ fonte custa menos que repetir a correção a cada pedido.
   histórico.
 - **FR-020**: As duas conversas da primeira leva que só existem no Mac MUST ser trazidas por uma cópia
   única, sem nada permanente instalado no Mac. A cópia local é apagada depois da semente.
+- **FR-022**: A semente MUST ler só as mensagens dos últimos 7 dias de cada conversa de origem, e a
+  memória de partida MUST trazer o **mapa do trabalho**: onde fica cada coisa (pastas, arquivos,
+  sistemas), onde consultar, onde registrar e em que etapa cada frente do assunto está.
 - **FR-021**: A primeira leva MUST semear exatamente quatro chats: Proposta Comercial VixCard (grupo
   VixCard), Gestor.SG, Proposta comercial Grupo Soluções e Relatório avanço de obra (grupo Alfa
   Tecnologia). Nenhuma outra conversa é importada sem a pessoa pedir.
@@ -212,7 +224,8 @@ fonte custa menos que repetir a correção a cada pedido.
 
 - **Chat de assunto**: nome, grupo, projeto opcional, situação (aberto ou arquivado), última atividade
   e dono. Tem uma memória e um histórico.
-- **Memória do assunto**: objetivo, decisões, jeito de fazer e pendências. Cada item tem autor (agente
+- **Memória do assunto**: objetivo, mapa do trabalho (onde fica cada coisa e em que etapa está),
+  decisões, jeito de fazer e pendências. Cada item tem autor (agente
   ou pessoa) e data. As correções da pessoa ficam versionadas.
 - **Semente**: o vínculo entre o chat e as conversas do VS Code de origem. Guarda a máquina, o agente,
   a conversa, até onde foi lida e o custo da leitura.

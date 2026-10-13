@@ -38,6 +38,7 @@ Chaves que já existem e são reaproveitadas: `objetivo`, `decisoes[]`, `pendenc
 
 | Chave | Forma | Regra |
 |---|---|---|
+| `mapa` | `[{texto, caminho?, etapa?, agente, em}]` | Onde fica cada coisa e em que etapa está (FR-022). Acumula sem duplicar, máximo de 40 itens. |
 | `jeito_de_fazer` | `[{texto, agente, em}]` | Acumula sem duplicar (comparação normalizada), máximo de 40 itens. |
 | `correcoes` | `[{acao: editar\|apagar, chave, antes, depois, em}]` | Feitas pela pessoa. Prevalecem e ficam só por acréscimo. |
 | `condensado` | `{ate_mensagem_id, texto, em, execucao}` | Resumo do histórico antigo (research Decision 4). Máximo de 24 mil caracteres. |

@@ -75,7 +75,7 @@ Ref: research D7, D8; contracts §A; FR-007
 
 Ref: research D6; FR-016
 
-- [ ] 2.2.1 `deploy/central-ia/extrato.mjs`: `extrair(arquivo, {desde})` com turnos pedido e resposta final cortados em 4 mil caracteres, sem ferramenta, sidechain nem meta
+- [ ] 2.2.1 `deploy/central-ia/extrato.mjs`: `extrair(arquivo, {desde, aPartirDe: hoje-7d})` (FR-022: só a última semana) com turnos pedido e resposta final cortados em 4 mil caracteres, sem ferramenta, sidechain nem meta
 - [ ] 2.2.2 `partes(turnos, 100000)` e `estimar()`
 - [ ] 2.2.3 `tools/central-ia/test-extrato.mjs`: fixture com tool output, sidechain e meta; limites de corte e partes
 
@@ -85,7 +85,7 @@ Ref: research D6; contracts §A; FR-008, FR-015, FR-016
 
 - [ ] 2.3.1 `AgentesService::semear` e `POST central-ia/assuntos/semear` (1 a 5 sessões, escopadas em `sessoes($user)`); `finalidade = semear` no payload de `proxima`
 - [ ] 2.3.2 Runner: localiza o arquivo pelo id entre as próprias sessões (recusa id desconhecido) e estima; acima do teto, conclui com `estimativa_caracteres`
-- [ ] 2.3.3 Runner: uma passada por parte com o modelo `leve` e o prompt "só o que está no texto", mais uma passada final que junta; devolve bloco e `semente[]`
+- [ ] 2.3.3 Runner: uma passada por parte com o modelo `leve` e o prompt "mapa do trabalho primeiro (pastas, arquivos, sistemas, etapa de cada frente); só o que está no texto", mais uma passada final que junta; devolve bloco e `semente[]`
 - [ ] 2.3.4 Runner: apaga a cópia `mac_copia` depois do sucesso
 - [ ] 2.3.5 Servidor: grava a memória de partida (via `ProtecaoDeSegredos`) e `sementes[]`; teto vira "aguardando você" com opções Sim e Não
 - [ ] 2.3.6 `Preferencias`: `semente_teto_caracteres` (padrão 1.500.000)
@@ -139,7 +139,7 @@ Ref: research D5; FR-012
 
 Ref: data-model.md; FR-005, FR-006
 
-- [ ] 4.1.1 `Dossie`: `jeito_de_fazer` no bloco e em `aplicarConclusao`, com dedupe normalizado e no máximo 40 itens
+- [ ] 4.1.1 `Dossie`: `mapa` e `jeito_de_fazer` no bloco e em `aplicarConclusao`, com dedupe normalizado e no máximo 40 itens
 - [ ] 4.1.2 `Dossie::aplicarCorrecao` e `GET/PUT central-ia/assuntos/{assunto}/memoria`
 - [ ] 4.1.3 Sub-aba Memória com editar e apagar e o histórico das correções
 - [ ] 4.1.4 Testes: item apagado não vai no pedido seguinte; correção prevalece sobre item de agente; outra conta recebe 404
