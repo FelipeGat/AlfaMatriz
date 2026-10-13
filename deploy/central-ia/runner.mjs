@@ -12,7 +12,7 @@
  * ~/.config/alfa/central-ia-runner.env — ver deploy/central-ia/README.md.
  */
 import { spawn, execFileSync } from 'node:child_process';
-import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from 'node:fs';
+import { writeFileSync, closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from 'node:fs';
 import { homedir, hostname, tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -753,13 +753,20 @@ const relogio = setInterval(batendo, 30_000);
 // pessoa, e uma por tarefa); aqui é a máquina que se protege.
 const PARALELO = Math.max(1, Number(process.env.CENTRAL_IA_PARALELO || 2));
 const rodando = new Set();
+// Quantas execuções estão com esta máquina — inclusive esperando o código do
+// dono, que não tem processo filho. O reinício "quando ocioso" lê isto: em
+// 13/10/2026 ele reiniciou no meio de duas confirmações e as derrubou.
+const OCUPADO = join(HOME, '.local/share/alfa/central-ia-ocupado');
+const marcarOcupado = () => { try { writeFileSync(OCUPADO, String(rodando.size)); } catch {} };
+marcarOcupado();
 while (!parar) {
     try {
         if (rodando.size < PARALELO) {
             const r = await api('proxima', { maquina: cfg.maquina });
             if (r.status === 200 && r.json?.id) {
-                const p = executar(r.json).catch(e => log(`#${r.json.id} erro no runner:`, e.message)).finally(() => rodando.delete(p));
+                const p = executar(r.json).catch(e => log(`#${r.json.id} erro no runner:`, e.message)).finally(() => { rodando.delete(p); marcarOcupado(); });
                 rodando.add(p);
+                marcarOcupado();
                 continue;
             }
             if (r.status === 401 || r.status === 403) log('token recusado ou conta sem permissão', r.status);

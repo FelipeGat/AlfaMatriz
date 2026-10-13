@@ -84,7 +84,9 @@ export function modeloArgs(agente, modelo, esforco) {
     const e = ESFORCOS.includes(esforco) ? esforco : null;
     if (agente === 'claude') return [...(m ? ['--model', m] : []), ...(e ? ['--effort', e] : [])];
     if (agente === 'codex') return [...(m ? ['-m', m] : []), ...(e ? ['-c', `model_reasoning_effort="${e}"`] : [])];
-    return [...(m ? ['--model', m] : []), ...(e ? ['--reasoning-effort', e] : [])];
+    // Copilot em "auto" recusa esforço ("Model auto does not support reasoning
+    // effort", 13/10/2026): o esforço só vai com modelo escolhido.
+    return [...(m ? ['--model', m] : []), ...(e && m && m !== 'auto' ? ['--reasoning-effort', e] : [])];
 }
 
 /**
