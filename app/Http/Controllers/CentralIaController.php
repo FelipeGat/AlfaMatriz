@@ -524,6 +524,52 @@ class CentralIaController extends Controller
         return $this->semCache(['id' => $assunto->id, 'execucao_id' => $execucao->id], 201);
     }
 
+    /** A memória do assunto, como a tela mostra (Chats Business, FR-006). */
+    public function memoriaDoAssunto(Request $request, int $assunto): JsonResponse
+    {
+        $a = CentralIaTarefa::de($request->user())->assuntos()->findOrFail($assunto);
+
+        return $this->semCache($this->memoria($a));
+    }
+
+    /** Edita ou apaga um item da memória; a correção da pessoa prevalece. */
+    public function corrigirMemoria(Request $request, int $assunto): JsonResponse
+    {
+        $dados = $request->validate([
+            'lista' => ['required', Rule::in(\App\Services\CentralIa\Dossie::LISTAS_DA_MEMORIA)],
+            'indice' => ['required', 'integer', 'min:0', 'max:500'],
+            'acao' => ['required', Rule::in(['editar', 'apagar'])],
+            'antes' => ['present', 'nullable', 'string', 'max:2000'],
+            'texto' => ['required_if:acao,editar', 'nullable', 'string', 'max:500'],
+            'caminho' => ['nullable', 'string', 'max:300'],
+            'etapa' => ['nullable', 'string', 'max:200'],
+        ]);
+        $a = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $assunto, $dados) {
+            $a = CentralIaTarefa::de($request->user())->assuntos()->lockForUpdate()->findOrFail($assunto);
+            $novo = \App\Services\CentralIa\Dossie::aplicarCorrecao($a->dossie ?? [], $dados['lista'], $dados['indice'], $dados['acao'], (string) ($dados['antes'] ?? ''),
+                \App\Services\CentralIa\ProtecaoDeSegredos::dados(['texto' => $dados['texto'] ?? '', 'caminho' => $dados['caminho'] ?? null, 'etapa' => $dados['etapa'] ?? null]));
+            abort_if($novo === null, 409, 'Esse item mudou enquanto você editava. Abra a memória de novo.');
+            $a->update(['dossie' => $novo]);
+
+            return $a;
+        });
+        \App\Services\CentralIa\Eventos::registrar($request->user(), 'memoria_corrigida', "Memória do assunto \"{$a->titulo}\": {$dados['acao']} em {$dados['lista']}", ['projeto' => $a->projeto, 'tarefa_id' => $a->id]);
+
+        return $this->semCache($this->memoria($a));
+    }
+
+    private function memoria(CentralIaTarefa $a): array
+    {
+        $d = $a->dossie ?? [];
+        $listas = [];
+        foreach (\App\Services\CentralIa\Dossie::LISTAS_DA_MEMORIA as $l) {
+            $listas[$l] = array_map(fn ($i) => is_array($i) ? array_intersect_key($i, array_flip(['texto', 'caminho', 'etapa', 'agente', 'em'])) : ['texto' => (string) $i], array_values($d[$l] ?? []));
+        }
+
+        return ['id' => $a->id, 'titulo' => $a->titulo, 'objetivo' => $d['objetivo'] ?? null, 'listas' => $listas,
+            'sementes' => array_values($d['sementes'] ?? []), 'correcoes' => array_reverse(array_values($d['correcoes'] ?? []))];
+    }
+
     /** Renomeia, troca grupo ou projeto, arquiva e reabre um chat de assunto. */
     public function salvarAssunto(Request $request, int $assunto): JsonResponse
     {

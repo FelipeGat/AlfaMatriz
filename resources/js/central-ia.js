@@ -49,7 +49,7 @@ export function centralIa(config) {
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         // Chats Business: um chat contínuo por assunto (docs/specs/chats-business).
         assuntos: [], novoAssunto: null, buscaAssuntos: '',
-        imagemAberta: null, trazendo: null,
+        imagemAberta: null, trazendo: null, memoria: null,
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
         politicaUsuario: null, politicaAlterada: false, salvandoPolitica: false, carregandoUsuario: false,
@@ -339,6 +339,38 @@ export function centralIa(config) {
                 this.trazendo = null;
                 this.abrirAssunto(this.assuntos[0]);
             } catch (erro) { this.falhou(erro); t.salvando = false; }
+        },
+        async carregarMemoria() {
+            const a = this.assuntoAtual;
+            if (!a) return;
+            if (this.memoria?.id !== a.id) this.memoria = null;
+            try { this.memoria = await this.pedir(config.memoria.replace('__A__', a.id)); } catch (erro) { this.falhou(erro); }
+        },
+        /** Editar ou apagar um item; manda o texto que a pessoa via, para não corrigir o item errado. */
+        async corrigirMemoria(lista, i, acao) {
+            const item = this.memoria?.listas[lista]?.[i];
+            if (!item) return;
+            const corpo = { lista, indice: i, acao, antes: item.texto };
+            if (acao === 'apagar') {
+                if (!confirm(`Apagar da memória?
+
+${item.texto}
+
+Uma IA não poderá devolvê-lo depois.`)) return;
+            } else {
+                const texto = prompt('Texto:', item.texto);
+                if (texto === null || !texto.trim()) return;
+                corpo.texto = texto.trim();
+                if (lista === 'mapa') {
+                    const caminho = prompt('Caminho (pasta, arquivo ou link; vazio se não houver):', item.caminho || '');
+                    if (caminho === null) return;
+                    const etapa = prompt('Em que etapa está agora? (vazio se não se aplica)', item.etapa || '');
+                    if (etapa === null) return;
+                    corpo.caminho = caminho.trim() || null; corpo.etapa = etapa.trim() || null;
+                }
+            }
+            try { this.memoria = await this.pedir(config.memoria.replace('__A__', this.memoria.id), 'PUT', corpo); }
+            catch (erro) { this.falhou(erro); this.carregarMemoria(); }
         },
         async salvarAssunto(a, dados) {
             try { await this.pedir(config.assunto.replace('__A__', a.id), 'PUT', dados); this.reconectar(); } catch (erro) { this.falhou(erro); }

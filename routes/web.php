@@ -235,6 +235,10 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware(['permissao:central_ia,incluir', 'throttle:30,1,central-ia-assuntos']);
     Route::post('central-ia/assuntos/semear', [CentralIaController::class, 'semearAssunto'])->name('central-ia.assuntos.semear')
         ->middleware(['permissao:central_ia,incluir', 'throttle:10,1,central-ia-semear']);
+    Route::get('central-ia/assuntos/{assunto}/memoria', [CentralIaController::class, 'memoriaDoAssunto'])->name('central-ia.assuntos.memoria')
+        ->middleware(['permissao:central_ia', 'throttle:120,1,central-ia-memoria'])->whereNumber('assunto');
+    Route::put('central-ia/assuntos/{assunto}/memoria', [CentralIaController::class, 'corrigirMemoria'])->name('central-ia.assuntos.memoria.salvar')
+        ->middleware(['permissao:central_ia,editar', 'throttle:60,1,central-ia-memoria'])->whereNumber('assunto');
     Route::put('central-ia/assuntos/{assunto}', [CentralIaController::class, 'salvarAssunto'])->name('central-ia.assuntos.salvar')
         ->middleware(['permissao:central_ia,editar', 'throttle:60,1,central-ia-assuntos'])->whereNumber('assunto');
     Route::post('central-ia/sessoes/continuar', [CentralIaController::class, 'continuarSessao'])->name('central-ia.sessoes.continuar')

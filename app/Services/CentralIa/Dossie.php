@@ -141,7 +141,11 @@ class Dossie
             $d['resumos'][] = ['agente' => $agente, 'execucao' => $e->id, 'texto' => Str::limit($bloco['resumo'], 800), 'em' => $agora];
             $d['resumos'] = array_slice($d['resumos'], -12);
         }
+        // O que a pessoa apagou da memória não volta pela mão de um agente
+        // (Chats Business, FR-006: a correção dela prevalece).
+        $apagados = $d['apagados'] ?? [];
         foreach ($lista($bloco['decisoes'] ?? []) as $decisao) {
+            if (in_array(self::chaveDoItem(['texto' => $decisao]), $apagados, true)) continue;
             $d['decisoes'][] = ['texto' => $decisao, 'agente' => $agente, 'em' => $agora];
         }
         $d['decisoes'] = array_slice($d['decisoes'], -30);
@@ -149,7 +153,7 @@ class Dossie
         // Chats Business: onde fica cada coisa e o jeito de fazer. O mesmo
         // caminho (ou o mesmo texto) ATUALIZA o item — a etapa muda; não
         // vira uma segunda linha.
-        $chave = fn (array $i) => mb_strtolower(trim($i['caminho'] ?? '') ?: preg_replace('/\s+/', ' ', trim($i['texto'] ?? '')));
+        $chave = fn (array $i) => self::chaveDoItem($i);
         foreach (['mapa', 'jeito_de_fazer'] as $campo) {
             foreach ((array) ($bloco[$campo] ?? []) as $item) {
                 $item = is_string($item) ? ['texto' => $item] : (is_array($item) ? $item : null);
@@ -159,6 +163,7 @@ class Dossie
                     'caminho' => is_string($item['caminho'] ?? null) ? Str::limit(trim($item['caminho']), 300) : null,
                     'etapa' => is_string($item['etapa'] ?? null) ? Str::limit(trim($item['etapa']), 200) : null,
                 ]) + ['agente' => $agente, 'em' => $agora];
+                if (in_array($chave($novo), $apagados, true)) continue;
                 $itens = array_values(array_filter($d[$campo] ?? [], fn ($x) => is_array($x) && $chave($x) !== $chave($novo)));
                 $itens[] = $novo;
                 $d[$campo] = array_slice($itens, -40);
@@ -181,6 +186,51 @@ class Dossie
         }
         $d['duvida'] = is_string($bloco['duvida'] ?? null) && trim($bloco['duvida']) !== '' ? Str::limit($bloco['duvida'], 1500) : null;
         $d['opcoes_duvida'] = $d['duvida'] ? array_slice(array_values(array_filter(array_map(fn ($o) => is_string($o) ? Str::limit(trim($o), 250) : '', is_array($bloco['opcoes_duvida'] ?? null) ? $bloco['opcoes_duvida'] : []))), 0, 6) : [];
+
+        return $d;
+    }
+
+    /** Identidade de um item da memória: o caminho, ou o texto normalizado. */
+    public static function chaveDoItem(array $i): string
+    {
+        return mb_strtolower(trim((string) ($i['caminho'] ?? '')) ?: preg_replace('/\s+/', ' ', trim((string) ($i['texto'] ?? ''))));
+    }
+
+    /** As listas da memória que a pessoa pode corrigir (Chats Business). */
+    public const LISTAS_DA_MEMORIA = ['mapa', 'jeito_de_fazer', 'decisoes', 'pendencias', 'proximos_passos'];
+
+    /**
+     * Correção da pessoa num item da memória: editar ou apagar. `$antes` é o
+     * texto que ela estava vendo — se outro pedido mexeu no item nesse meio
+     * tempo, recusa em vez de corrigir o item errado.
+     *
+     * @return array|null o dossiê novo, ou null se o item mudou
+     */
+    public static function aplicarCorrecao(array $d, string $lista, int $indice, string $acao, string $antes, array $novo = []): ?array
+    {
+        $itens = array_values($d[$lista] ?? []);
+        $atual = $itens[$indice] ?? null;
+        $textoAtual = is_array($atual) ? (string) ($atual['texto'] ?? '') : (string) $atual;
+        if ($atual === null || trim($textoAtual) !== trim($antes)) return null;
+
+        $agora = now()->toIso8601String();
+        if ($acao === 'apagar') {
+            array_splice($itens, $indice, 1);
+            $d['apagados'] = array_values(array_unique([...($d['apagados'] ?? []), self::chaveDoItem(is_array($atual) ? $atual : ['texto' => $atual])]));
+            $depois = null;
+        } else {
+            $texto = Str::limit(trim((string) ($novo['texto'] ?? '')), 500);
+            $item = in_array($lista, ['pendencias', 'proximos_passos'], true) ? $texto
+                : array_filter(['texto' => $texto,
+                    'caminho' => $lista === 'mapa' && filled($novo['caminho'] ?? null) ? Str::limit(trim($novo['caminho']), 300) : null,
+                    'etapa' => $lista === 'mapa' && filled($novo['etapa'] ?? null) ? Str::limit(trim($novo['etapa']), 200) : null,
+                ]) + ['agente' => 'Você', 'em' => $agora];
+            $itens[$indice] = $item;
+            $depois = $texto;
+        }
+        $d[$lista] = $itens;
+        $d['correcoes'][] = ['acao' => $acao, 'lista' => $lista, 'antes' => Str::limit($textoAtual, 500), 'depois' => $depois, 'em' => $agora];
+        $d['correcoes'] = array_slice($d['correcoes'], -50);
 
         return $d;
     }

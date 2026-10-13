@@ -23,6 +23,7 @@
                 assuntos: '{{ route('central-ia.assuntos.criar') }}',
                 assunto: '{{ url('central-ia/assuntos/__A__') }}',
                 semear: '{{ route('central-ia.assuntos.semear') }}',
+                memoria: '{{ url('central-ia/assuntos/__A__/memoria') }}',
                 grupo: '{{ url('central-ia/grupos/__G__') }}',
                 grupoDoProjeto: '{{ route('central-ia.projetos.grupo', '__P__') }}',
                 canal: '{{ route('central-ia.canal') }}',
@@ -468,6 +469,13 @@
                             </button>
                         </template>
                     </nav>
+                    {{-- No assunto: Chat e Memória. --}}
+                    <nav x-show="assuntoAtual" class="ml-auto flex flex-none gap-1 text-xs" aria-label="Seções do assunto">
+                        <template x-for="[chave, rotulo] in [['conversa', 'Chat'], ['memoria', 'Memória']]" :key="chave">
+                            <button type="button" @click="sub = chave; if (chave === 'memoria') carregarMemoria()" class="rounded-ctl px-2 py-1 font-semibold"
+                                    :class="sub === chave ? 'bg-nav-active text-ink' : 'text-ink-mute hover:text-ink'" x-text="rotulo"></button>
+                        </template>
+                    </nav>
                     <template x-if="atual">
                         <p x-show="detalhesChat" class="flex w-full min-w-0 flex-wrap gap-x-3 text-xs text-ink-mute">
                             <span x-show="projetoAtual?.git?.branch" x-text="projetoAtual?.git?.branch"></span>
@@ -494,7 +502,7 @@
 
                 {{-- Conversa. Sem chat escolhido, é a Geral — com a caixa de
                      mensagem pronta, em vez de uma tela vazia pedindo um clique. --}}
-                <div class="flex min-h-0 flex-1 flex-col" x-show="!atual || sub === 'conversa'">
+                <div class="flex min-h-0 flex-1 flex-col" x-show="sub === 'conversa' || (!atual && sub !== 'memoria') || (sub === 'memoria' && !assuntoAtual)">
                     <div class="flex flex-none items-center justify-between px-4 pt-2 text-xs text-ink-faint" x-show="verTarefa && detalhesChat">
                         <span x-text="'Só a tarefa #' + verTarefa"></span>
                         <button type="button" @click="selecionarTarefa(null)" class="font-semibold text-brand-text">Ver o projeto todo</button>
@@ -757,6 +765,50 @@
                             </li>
                         </template>
                     </ul>
+                </div>
+
+                {{-- Memória do assunto (Chats Business, FR-006): o que qualquer IA recebe antes de atender. A correção da pessoa prevalece. --}}
+                <div class="min-h-0 flex-1 overflow-y-auto p-4 text-sm" x-show="assuntoAtual && sub === 'memoria'" x-cloak>
+                    <p x-show="!memoria" class="text-ink-faint">Carregando a memória…</p>
+                    <template x-if="memoria">
+                        <div class="space-y-4">
+                            <p class="text-xs text-ink-mute">É isto que a IA recebe antes de atender este chat, além do histórico. Corrija ou apague o que estiver errado: um item apagado não volta, mesmo que uma IA o devolva depois.</p>
+                            <template x-for="[lista, titulo] in [['mapa', 'Onde fica cada coisa e em que etapa está'], ['jeito_de_fazer', 'Jeito de fazer'], ['decisoes', 'Decisões'], ['pendencias', 'Pendências'], ['proximos_passos', 'Próximos passos']]" :key="lista">
+                                <section>
+                                    <h3 class="mb-1 font-mono text-[11px] uppercase tracking-caps text-ink-faint" x-text="titulo + ' (' + (memoria.listas[lista] || []).length + ')'"></h3>
+                                    <p x-show="!(memoria.listas[lista] || []).length" class="text-xs text-ink-faint">Nada ainda.</p>
+                                    <ul class="space-y-1">
+                                        <template x-for="(item, i) in memoria.listas[lista] || []" :key="lista + i + item.texto">
+                                            <li class="group flex items-start gap-2 rounded-control border border-line px-3 py-2">
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="break-words text-ink" x-text="item.texto"></p>
+                                                    <p x-show="item.caminho" class="break-all font-mono text-[11px] text-ink-dim" x-text="item.caminho"></p>
+                                                    <p x-show="item.etapa" class="text-xs text-brand-text" x-text="'Etapa: ' + item.etapa"></p>
+                                                    <p x-show="item.agente" class="text-[11px] text-ink-faint" x-text="item.agente + (item.em ? ' · ' + haQuanto(item.em) : '')"></p>
+                                                </div>
+                                                <span class="flex flex-none gap-1">
+                                                    <button type="button" @click="corrigirMemoria(lista, i, 'editar')" class="rounded-control px-1.5 py-0.5 text-xs text-ink-mute hover:bg-chip hover:text-ink" :aria-label="'Editar: ' + item.texto">Editar</button>
+                                                    <button type="button" @click="corrigirMemoria(lista, i, 'apagar')" class="rounded-control px-1.5 py-0.5 text-xs text-ink-mute hover:bg-chip hover:text-crit" :aria-label="'Apagar: ' + item.texto">Apagar</button>
+                                                </span>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </section>
+                            </template>
+                            <section x-show="memoria.sementes.length" class="text-xs text-ink-mute">
+                                <h3 class="mb-1 font-mono text-[11px] uppercase tracking-caps text-ink-faint">De onde veio</h3>
+                                <template x-for="s in memoria.sementes" :key="s.id + s.execucao">
+                                    <p x-text="'Conversa do VS Code “' + (s.titulo || s.id) + '” · ' + s.turnos + ' trocas da última semana' + (s.fora ? ' (' + s.fora + ' de fora)' : '') + ' · ' + haQuanto(s.em)"></p>
+                                </template>
+                            </section>
+                            <section x-show="memoria.correcoes.length" class="text-xs text-ink-mute">
+                                <h3 class="mb-1 font-mono text-[11px] uppercase tracking-caps text-ink-faint">Suas correções</h3>
+                                <template x-for="c in memoria.correcoes" :key="c.em + c.antes">
+                                    <p x-text="(c.acao === 'apagar' ? 'Apagou ' : 'Editou ') + '“' + c.antes + '”' + (c.depois ? ' → “' + c.depois + '”' : '') + ' · ' + haQuanto(c.em)"></p>
+                                </template>
+                            </section>
+                        </div>
+                    </template>
                 </div>
 
                 {{-- Contexto (dossiê) --}}

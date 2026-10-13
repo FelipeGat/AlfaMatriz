@@ -116,6 +116,13 @@ Ref: emergiu na execução (13/10/2026): as sementes do Gestor.SG e da Proposta 
 - [x] 2.6.1 Claude e Codex recebem o pedido pelo stdin (`-p` sem texto; `codex exec -`)
 - [x] 2.6.2 Conferido de verdade: Claude e Codex respondem lendo do stdin; as duas sementes refeitas concluíram
 
+### 2.6 Pedido ao agente pelo stdin `[A]`
+
+Ref: emergiu na execução (13/10/2026): as sementes do Gestor.SG e da Proposta GS caíram com `spawn E2BIG` — o pedido ia como argumento, que o Linux limita a 128 KB.
+
+- [x] 2.6.1 Claude e Codex recebem o pedido pelo stdin (`-p` sem texto; `codex exec -`)
+- [x] 2.6.2 Conferido de verdade: Claude e Codex respondem lendo do stdin; as duas sementes refeitas concluíram
+
 ### 2.5 Atualizar do VS Code `[M]`
 
 Ref: FR-009
@@ -125,7 +132,7 @@ Ref: FR-009
 
 ---
 
-## FASE 3 - Condensação e cota (P3)
+## FASE 3 - Condensação e cota (P3) — ADIADA pelo dono em 13/10/2026 ("não precisa agora")
 
 ### 3.1 Condensar depois do pedido `[A]`
 
@@ -197,10 +204,10 @@ flowchart TD
 | Fase | Tarefas | Subtarefas | Criticidade |
 |------|---------|------------|-------------|
 | 1 - Chat de assunto que lembra | 5 | 22 | A |
-| 2 - Semente do VS Code | 6 | 23 | A/M |
+| 2 - Semente do VS Code | 5 | 21 | A |
 | 3 - Condensação e cota | 3 | 7 | A/M |
 | 4 - Memória e Telegram | 3 | 11 | A/M |
-| **Total** | **17** | **63** | - |
+| **Total** | **16** | **61** | - |
 
 ## Escopo Coberto
 
@@ -219,3 +226,4 @@ flowchart TD
 | Importar todas as conversas | Gestor.VixCard, AlfaHome, English etc. | Dono: "os demais posso iniciar lá do zero" |
 | Grupos do VS Code | Ler os grupos do Mac | Não estão nos arquivos do WSL (research D7) |
 | Produção | Subir os Chats Business para produção | Só com a Central 100% e autorização do dono |
+| Atualizar do VS Code (FR-009, antiga 2.5) | Trazer de novo o trecho novo da conversa de origem | Dono, 13/10/2026: "não irei usar mais o VS Code" |
