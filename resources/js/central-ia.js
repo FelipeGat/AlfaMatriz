@@ -87,6 +87,26 @@ export function centralIa(config) {
         get projetoAtual() { return this.projetos.find(p => p.nome === this.atual) || null; },
         get tarefaVista() { return this.tarefas.find(t => t.id === this.verTarefa) || null; },
         get tarefasEmCurso() { return this.tarefas.filter(t => !['concluida'].includes(t.status)); },
+        /**
+         * Para onde vai a próxima mensagem. Sem chat escolhido, o chat da
+         * última mensagem na tela, se ainda estiver em curso — e não um chat
+         * novo (dono, 13/10/2026: "ótimo, o commit está feito?" respondido
+         * sob o #16 virou o #19). Chat novo só pelo "+ Novo chat".
+         */
+        get destinoDaMensagem() {
+            if (this.chatAtual) return this.chatAtual;
+            if (this.aba.tarefa !== 'nova') return Number(this.aba.tarefa);
+            if (this.aba.novoExplicito) return null;
+            const ultima = [...this.mensagensVisiveis].reverse().find(m => m.tarefa_id);
+            const viva = ultima && [...this.chats, ...this.assuntos].find(c => c.id === ultima.tarefa_id && !['concluida', 'arquivada'].includes(c.status));
+            return viva ? viva.id : null;
+        },
+        get rotuloDoDestino() {
+            const id = this.destinoDaMensagem;
+            if (!id) return '→ novo chat';
+            const c = [...this.chats, ...this.assuntos].find(x => x.id === id);
+            return '→ #' + id + (c ? ' ' + c.titulo : '');
+        },
         get mensagensVisiveis() {
             return this.aba.mensagens.filter(m => {
                 if (this.verTarefa && m.tarefa_id !== this.verTarefa) return false;
@@ -257,7 +277,7 @@ export function centralIa(config) {
         novoChat(projeto = '') {
             this.abrir(projeto || GERAL);
             this.chatAtual = null; this.verTarefa = null; this.aba.verTarefa = null;
-            if (!this.aba.pendente) this.aba.tarefa = 'nova';
+            if (!this.aba.pendente) { this.aba.tarefa = 'nova'; this.aba.novoExplicito = true; }
             this.irPara('chats'); this.sub = 'conversa';
             this.$nextTick(() => document.getElementById('central-rascunho')?.focus());
         },
@@ -589,7 +609,7 @@ export function centralIa(config) {
                 if (alvo) { this.codigos[alvo.id] = codigo; aba.rascunho = ''; return this.confirmarCodigo(alvo.id); }
                 this.aviso = 'Há mais de um pedido esperando código: digite-o na faixa "Confirme" do pedido certo.'; return;
             }
-            if (!aba.pendente && this.chatAtual) aba.tarefa = this.chatAtual;
+            if (!aba.pendente) aba.tarefa = this.destinoDaMensagem || 'nova';
             // Pergunta do agente aberta: o que se escreve é a RESPOSTA, e vai
             // para quem perguntou (como no VS Code), sem diálogo à parte.
             const pergunta = !aba.pendente && aba.agente === 'auto' && aba.rascunho.trim() && !aba.rascunho.startsWith('Resposta à sua pergunta') ? this.perguntaPendente : null;
@@ -605,7 +625,7 @@ export function centralIa(config) {
             if (!aba.pendente) {
                 aba.pendente = {
                     client_id: novoId(), conteudo: aba.rascunho.trim() || 'Analise os arquivos anexados.', anexos: aba.arquivos.map(a => a.id), projeto: this.atual || null,
-                    tarefa_id: (this.chatAtual || this.atual) && aba.tarefa !== 'nova' ? Number(aba.tarefa) : null,
+                    tarefa_id: aba.tarefa !== 'nova' ? Number(aba.tarefa) : null,
                     agente: aba.agente !== 'nota' ? aba.agente : null,
                     modo: aba.modo,
                     nivel: aba.nivel || 'auto',
@@ -627,7 +647,7 @@ export function centralIa(config) {
                 if (pergunta) aba.agente = 'auto';
                 // Pedido que abriu tarefa nova: o compositor passa a seguir nela.
                 if (r.tarefa_id && aba.tarefa === 'nova') {
-                    aba.tarefa = r.tarefa_id;
+                    aba.tarefa = r.tarefa_id; aba.novoExplicito = false;
                     if (chave === this.chaveAba) this.abrirChat({ projeto: projetoEnviado, id: r.tarefa_id });
                 }
                 await this.atualizar();

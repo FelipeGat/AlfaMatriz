@@ -648,6 +648,8 @@
                                 <input type="file" class="sr-only" multiple accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/webm,video/quicktime"
                                        :disabled="!!aba.pendente || bloqueado || !podeEnviar" @change="escolherArquivos($event.target.files); $event.target.value = ''">
                             </label>
+                            {{-- Para onde vai a mensagem: chat da tela ou novo (o #19 nasceu sem ninguém ver). --}}
+                            <span class="min-w-0 truncate text-ink-faint" :class="destinoDaMensagem ? '' : 'font-semibold text-warn'" x-text="rotuloDoDestino" :title="rotuloDoDestino"></span>
 
                             {{-- Imagem colada ou anexada aparece em miniatura (como no VS Code);
                                  PDF e vídeo, pelo nome. O × tira antes de enviar. --}}
