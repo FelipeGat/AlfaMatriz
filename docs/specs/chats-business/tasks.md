@@ -74,40 +74,47 @@ Ref: emergiu na execução da Fase 1 (13/10/2026). Na Geral, mensagem que não �
 
 Ref: research D7, D8; contracts §A; FR-007
 
-- [ ] 2.1.1 `uso-local.mjs`: `titulo` (customTitle, depois aiTitle, depois o primeiro pedido em 80 caracteres)
-- [ ] 2.1.2 `uso-local.mjs`: sessão da raiz `~/projetos` com projeto `''`; arquivos de `~/.local/share/alfa/central-ia-importadas/` com origem `mac_copia`
-- [ ] 2.1.3 `CentralIaRunnerController::sessoes`: aceita `titulo`, `origem` e projeto `''`, com limite de 120
-- [ ] 2.1.4 Teste Node: títulos, raiz e cópia (fixtures `.jsonl` pequenas)
-- [ ] 2.1.5 Teste PHP: a batida aceita sessão da raiz e continua recusando projeto alheio
+- [x] 2.1.1 `uso-local.mjs`: `titulo` (customTitle, depois aiTitle, depois o primeiro pedido em 80 caracteres)
+- [x] 2.1.2 `uso-local.mjs`: sessão da raiz `~/projetos` com projeto `''`; arquivos de `~/.local/share/alfa/central-ia-importadas/` com origem `mac_copia`
+- [x] 2.1.3 `CentralIaRunnerController::sessoes`: aceita `titulo`, `origem` e projeto `''`, com limite de 120
+- [x] 2.1.4 Teste Node: títulos, raiz e cópia (fixtures `.jsonl` pequenas)
+- [x] 2.1.5 Teste PHP: a batida aceita sessão da raiz e continua recusando projeto alheio
 
 ### 2.2 Extrato e partes `[A]`
 
 Ref: research D6; FR-016
 
-- [ ] 2.2.1 `deploy/central-ia/extrato.mjs`: `extrair(arquivo, {desde, aPartirDe: hoje-7d})` (FR-022: só a última semana) com turnos pedido e resposta final cortados em 4 mil caracteres, sem ferramenta, sidechain nem meta
-- [ ] 2.2.2 `partes(turnos, 100000)` e `estimar()`
-- [ ] 2.2.3 `tools/central-ia/test-extrato.mjs`: fixture com tool output, sidechain e meta; limites de corte e partes
+- [x] 2.2.1 `deploy/central-ia/extrato.mjs`: `extrair(arquivo, {desde, aPartirDe: hoje-7d})` (FR-022: só a última semana) com turnos pedido e resposta final cortados em 4 mil caracteres, sem ferramenta, sidechain nem meta
+- [x] 2.2.2 `formatar(turnos, max)`: só a última semana coube numa passada (a semana do Gestor.SG tinha ~400 mil caracteres); dividir em partes ficou desnecessário <!-- decisão na execução, 13/10/2026 -->
+- [x] 2.2.3 `tools/central-ia/test-extrato.mjs`: fixture com tool output, sidechain e meta; limites de corte e partes
 
 ### 2.3 Execução `semear` `[A]`
 
 Ref: research D6; contracts §A; FR-008, FR-015, FR-016
 
-- [ ] 2.3.1 `AgentesService::semear` e `POST central-ia/assuntos/semear` (1 a 5 sessões, escopadas em `sessoes($user)`); `finalidade = semear` no payload de `proxima`
-- [ ] 2.3.2 Runner: localiza o arquivo pelo id entre as próprias sessões (recusa id desconhecido) e estima; acima do teto, conclui com `estimativa_caracteres`
-- [ ] 2.3.3 Runner: uma passada por parte com o modelo `leve` e o prompt "mapa do trabalho primeiro (pastas, arquivos, sistemas, etapa de cada frente); só o que está no texto", mais uma passada final que junta; devolve bloco e `semente[]`
-- [ ] 2.3.4 Runner: apaga a cópia `mac_copia` depois do sucesso
-- [ ] 2.3.5 Servidor: grava a memória de partida (via `ProtecaoDeSegredos`) e `sementes[]`; teto vira "aguardando você" com opções Sim e Não
-- [ ] 2.3.6 `Preferencias`: `semente_teto_caracteres` (padrão 1.500.000)
-- [ ] 2.3.7 Testes: sessão de outra conta é recusada; teto para antes de ler; segredo é mascarado; o runner não aceita caminho vindo do servidor
+- [x] 2.3.1 `AgentesService::semear` e `POST central-ia/assuntos/semear` (1 a 5 sessões, escopadas em `sessoes($user)`); `finalidade = semear` no payload de `proxima`
+- [x] 2.3.2 Runner: localiza o arquivo pelo id entre as próprias sessões (recusa id desconhecido); acima de ~420 mil caracteres ficam os turnos mais recentes e a conversa diz quantos ficaram de fora (em vez de parar e perguntar)
+- [x] 2.3.3 Runner: uma passada por parte com o modelo `leve` e o prompt "mapa do trabalho primeiro (pastas, arquivos, sistemas, etapa de cada frente); só o que está no texto", mais uma passada final que junta; devolve bloco e `semente[]`
+- [x] 2.3.4 Runner: apaga a cópia `mac_copia` depois do sucesso
+- [x] 2.3.5 Servidor: grava a memória de partida (via `ProtecaoDeSegredos`) e `sementes[]`; teto vira "aguardando você" com opções Sim e Não
+- [x] 2.3.6 Teto fixo de ~420 mil caracteres no runner (cabe numa passada do modelo econômico); preferência dispensada com a semente de uma semana
+- [x] 2.3.7 Testes: sessão de outra conta é recusada; teto para antes de ler; segredo é mascarado; o runner não aceita caminho vindo do servidor
 
 ### 2.4 Modal "Trazer do VS Code" e primeira leva `[A]`
 
 Ref: quickstart Cenário 1; FR-021
 
-- [ ] 2.4.1 Modal com sessões (título, agente, origem, pasta, data), multiseleção, nome e grupo sugeridos, marca "já semeada"
-- [ ] 2.4.2 Comando para o dono rodar no Mac (quickstart) e conferir a chegada das duas cópias
-- [ ] 2.4.3 Semear os quatro chats: Proposta Comercial VixCard, Gestor.SG (duas sessões), Proposta comercial Grupo Soluções e Relatório avanço de obra
-- [ ] 2.4.4 Conferir por amostra que a memória de cada um só tem decisões presentes na conversa original (SC-002)
+- [x] 2.4.1 Modal com sessões (título, agente, origem, pasta, data), multiseleção, nome e grupo sugeridos, marca "já semeada"
+- [x] 2.4.2 Cópia do Mac dispensada: as quatro conversas estão gravadas no WSL (o VS Code do Mac conecta nele); o suporte à pasta de cópias ficou no runner
+- [x] 2.4.3 Semear os quatro chats: Proposta Comercial VixCard, Gestor.SG (duas sessões), Proposta comercial Grupo Soluções e Relatório avanço de obra
+- [x] 2.4.4 Conferido na Proposta Comercial VixCard (4 frentes com caminho e etapa, sem invenção). Conferir por amostra que a memória de cada um só tem decisões presentes na conversa original (SC-002)
+
+### 2.6 Pedido ao agente pelo stdin `[A]`
+
+Ref: emergiu na execução (13/10/2026): as sementes do Gestor.SG e da Proposta GS caíram com `spawn E2BIG` — o pedido ia como argumento, que o Linux limita a 128 KB.
+
+- [x] 2.6.1 Claude e Codex recebem o pedido pelo stdin (`-p` sem texto; `codex exec -`)
+- [x] 2.6.2 Conferido de verdade: Claude e Codex respondem lendo do stdin; as duas sementes refeitas concluíram
 
 ### 2.5 Atualizar do VS Code `[M]`
 
@@ -190,10 +197,10 @@ flowchart TD
 | Fase | Tarefas | Subtarefas | Criticidade |
 |------|---------|------------|-------------|
 | 1 - Chat de assunto que lembra | 5 | 22 | A |
-| 2 - Semente do VS Code | 5 | 21 | A/M |
+| 2 - Semente do VS Code | 6 | 23 | A/M |
 | 3 - Condensação e cota | 3 | 7 | A/M |
 | 4 - Memória e Telegram | 3 | 11 | A/M |
-| **Total** | **16** | **61** | - |
+| **Total** | **17** | **63** | - |
 
 ## Escopo Coberto
 

@@ -483,7 +483,10 @@ function comando(job, cwd, branch, saida, acesso) {
         // stream-json: além da resposta, os eventos de ferramenta — é deles
         // que sai o "quem viu o quê" da auditoria (a última linha continua
         // sendo o resultado, como no json).
-        const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose'];
+        // O pedido vai pelo stdin, não por argumento: o Linux limita um
+        // argumento a 128 KB, e a semente do Gestor.SG (13/10/2026) caiu com
+        // "spawn E2BIG". Contexto de chat de assunto passa disso fácil.
+        const args = ['-p', '--output-format', 'stream-json', '--verbose'];
         if (sessao) args.push('--resume', sessao);
         // Continuação de sessão do VS Code: uma cópia, para a original ficar
         // intacta lá.
@@ -494,12 +497,13 @@ function comando(job, cwd, branch, saida, acesso) {
         job.sessaoPrevista = sessao && !job.continuar?.fork ? sessao : randomUUID();
         if (!sessao || job.continuar?.fork) args.push('--session-id', job.sessaoPrevista);
         args.push(...permissoes('claude', acesso, { projetos: cfg.projetos }), ...modeloArgs('claude', job.modelo, job.esforco));
-        return [agentes.claude, args];
+        return [agentes.claude, args, null, prompt];
     }
 
     if (job.agente === 'codex') {
         const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso), ...modeloArgs('codex', job.modelo, job.esforco), '-c', 'forced_login_method="chatgpt"'];
-        return [agentes.codex, sessao ? ['exec', 'resume', sessao, ...comum, prompt] : ['exec', ...comum, prompt]];
+        // `-`: o Codex lê o pedido do stdin (mesmo motivo do Claude, E2BIG).
+        return [agentes.codex, sessao ? ['exec', 'resume', sessao, ...comum, '-'] : ['exec', ...comum, '-'], null, prompt];
     }
 
     // Copilot: no modo não interativo ele exige --allow-all-tools; o controle
@@ -514,13 +518,14 @@ function comando(job, cwd, branch, saida, acesso) {
 const filhos = new Set();
 let parar = false;
 
-function rodar(bin, args, cwd, minutos, progresso, auditor = null) {
+function rodar(bin, args, cwd, minutos, progresso, auditor = null, entrada = null) {
     return new Promise(resolvePromise => {
         const env = { ...process.env };
         delete env.ALFAMATRIZ_RUNNER_TOKEN;
         // A troca de CLI não habilita cobrança por chave de API herdada.
         for (const chave of ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN']) delete env[chave];
-        const filho = spawn(bin, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+        const filho = spawn(bin, args, { cwd, env, stdio: [entrada === null ? 'ignore' : 'pipe', 'pipe', 'pipe'], detached: true });
+        if (entrada !== null) { filho.stdin.on('error', () => {}); filho.stdin.end(entrada); }
         filhos.add(filho);
         progresso?.processo(true);
         let out = '', err = '', estourou = false;
@@ -698,13 +703,13 @@ async function executar(job) {
             job.sementeLida = s.lidas;
             auditar({ execucao: job.id, decisao: 'semente', conversas: s.lidas.map(l => ({ id: l.id, turnos: l.incluidos, caracteres: l.caracteres })) });
         }
-        const [bin, args, nomeCopilot] = comando(job, cwd, branch, saida, acesso);
+        const [bin, args, nomeCopilot, entrada] = comando(job, cwd, branch, saida, acesso);
         // Parada pedida enquanto preparava: não cria um processo que ninguém
         // vai esperar.
         if (parar) throw new Error('interrompida porque o runner foi parado ou reiniciado antes de começar');
         progresso.etapa('agente');
         antesGit = retratoGit(git, cwd);
-        const r = await rodar(bin, args, cwd, job.timeout_minutos, progresso, auditor);
+        const r = await rodar(bin, args, cwd, job.timeout_minutos, progresso, auditor, entrada ?? null);
         if (r.estourou) throw new Error(`passou de ${job.timeout_minutos} minutos e foi encerrado`);
         if (parar) throw new Error('interrompida porque o runner foi parado ou reiniciado; o estado do git ficou registrado e a tarefa pode ser retomada');
 
