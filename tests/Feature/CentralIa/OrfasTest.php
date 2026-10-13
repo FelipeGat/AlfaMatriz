@@ -66,4 +66,22 @@ class OrfasTest extends TestCase
         $this->assertSame('implementar', $novo->modo);
         $this->assertStringContainsString('crie os três módulos', $novo->instrucao);
     }
+
+    public function test_horario_do_runner_em_utc_nao_encerra_o_que_comecou_depois(): void
+    {
+        config(['central_ia.canal_exclusivo' => false]);
+        $u = User::factory()->create();
+        $u->perfis()->attach(Perfil::where('slug', 'central_ia')->value('id'));
+        $r = CentralIaRunner::create(['user_id' => $u->id, 'maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => ['gestor'], 'visto_em' => now()]);
+        $svc = app(AgentesService::class);
+        $e = $svc->pedir($u, 'a', ['projeto' => 'gestor', 'agente' => 'claude', 'modo' => 'analisar', 'instrucao' => 'a'], 'web', 'utc');
+        $svc->proxima($u, $r);
+
+        // O runner subiu há 10 min e manda em UTC, com "Z" (13/10/2026: o
+        // servidor comparava 14:27Z com 11:36 local e encerrava o pedido).
+        Sanctum::actingAs($u, ['central-ia-runner']);
+        $this->postJson(route('central-ia.runner.batida'), ['maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => ['gestor'],
+            'desde' => now()->subMinutes(10)->utc()->format('Y-m-d\\TH:i:s.v\\Z'), 'em_curso' => []])->assertOk();
+        $this->assertSame(CentralIaExecucao::EXECUTANDO, $e->fresh()->status);
+    }
 }

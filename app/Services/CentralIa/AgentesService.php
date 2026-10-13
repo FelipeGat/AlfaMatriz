@@ -296,6 +296,25 @@ class AgentesService
             }
             if ($escolha) $rota['manual'] = false;
         }
+        // Chat de assunto (Business): em automático, segue com a IA que
+        // trabalhou por último nele; se ela implementava e a mensagem não é
+        // pergunta, continua implementando. Em 13/10/2026 "ótimo, mas quero com
+        // cara de proposta comercial" sobre o PDF que o Claude fez foi ao Codex
+        // como consulta de agenda (por causa de "reunião").
+        if ($tarefa?->ehAssunto() && $agente === 'auto' && ! $seguir && ! $resposta && ! $refazer) {
+            $ultimaDoChat = $tarefa->execucoes()->where('status', CentralIaExecucao::CONCLUIDA)->latest('id')->get()
+                ->first(fn (CentralIaExecucao $e) => ! in_array($e->roteamento['finalidade'] ?? 'pedido', ['semear', 'condensar'], true)
+                    && ($e->roteamento['nivel'] ?? null) !== 'sem_ia');
+            if ($ultimaDoChat && in_array($ultimaDoChat->agente, $disponivel['agentes'], true) && ! isset($disponivel['esgotados'][$ultimaDoChat->agente])) {
+                $rota['agente'] = $ultimaDoChat->agente;
+                $rota['manual'] = false;
+                if ($modo === 'auto' && $ultimaDoChat->modo === 'implementar' && ! str_contains($pedido['instrucao'], '?')) {
+                    $modo = 'implementar';
+                    $rota['categoria'] = 'implementacao';
+                }
+                $rota['motivo'] = 'Assunto: continua com '.$ultimaDoChat->nomeDoAgente().', que trabalhou por último neste chat';
+            }
+        }
         if ($modo === 'auto') {
             $modo = $rota['modo'] ?? $this->roteador->decidir($pedido['instrucao'], [], $tarefa)['modo'];
         }
@@ -307,7 +326,11 @@ class AgentesService
         // A Google Agenda da pessoa só entra na conversa Geral, e nunca numa
         // operação: "agende o Vitor no calendário" é a agenda do SISTEMA (o
         // Gestor), e o prompt mandava usar só a agenda pessoal.
-        $rota['fontes'] = $projeto === '' && ($rota['categoria'] ?? null) !== 'operacao' ? app(FontesDeDados::class)->detectar($pedido['instrucao']) : [];
+        // No assunto, a agenda só entra quando a mensagem fala dela: "reunião"
+        // num pedido sobre proposta não é consulta de agenda.
+        $rota['fontes'] = $projeto === '' && ($rota['categoria'] ?? null) !== 'operacao'
+            && (! $tarefa?->ehAssunto() || preg_match('/\b(agenda|compromissos?|calend[aá]rio)\b/iu', $pedido['instrucao']))
+            ? app(FontesDeDados::class)->detectar($pedido['instrucao']) : [];
         if (app(Preferencias::class)->ler($user)['coordenador_codex']) {
             if (! in_array('codex', $disponivel['agentes'], true) || isset($disponivel['esgotados']['codex'])) {
                 throw ValidationException::withMessages(['agente' => 'O coordenador Codex não está disponível ou atingiu seu limite. Pedido não executado; nenhum outro provedor assumirá a coordenação silenciosamente.']);

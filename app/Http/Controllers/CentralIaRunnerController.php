@@ -69,7 +69,7 @@ class CentralIaRunnerController extends Controller
         );
 
         if (! empty($dados['desde'])) {
-            app(AgentesService::class)->interromperOrfas($user, $runner, \Illuminate\Support\Carbon::parse($dados['desde']), $dados['em_curso'] ?? []);
+            app(AgentesService::class)->interromperOrfas($user, $runner, \Illuminate\Support\Carbon::parse($dados['desde'])->timezone(config('app.timezone')), $dados['em_curso'] ?? []);
         }
 
         app(\App\Services\CentralIa\ProgressoService::class)->publicar($user);

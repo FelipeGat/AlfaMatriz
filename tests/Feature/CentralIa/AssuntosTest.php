@@ -191,4 +191,28 @@ class AssuntosTest extends TestCase
         $this->expectException(\Illuminate\Validation\ValidationException::class);
         app(AgentesService::class)->pedir($u, 'x', ['projeto' => '', 'agente' => 'claude', 'modo' => 'implementar', 'instrucao' => 'corrija'], 'web', 'geral');
     }
+
+    public function test_no_assunto_feedback_continua_com_quem_implementou_e_reuniao_nao_vira_agenda(): void
+    {
+        $u = $this->comCentral();
+        $id = $this->criar($u);
+        $svc = app(AgentesService::class);
+        $runner = CentralIaRunner::where('user_id', $u->id)->first();
+        $e = $svc->pedir($u, 'x', ['projeto' => '', 'tarefa_id' => $id, 'agente' => 'claude', 'modo' => 'implementar', 'instrucao' => 'salve a proposta como v3'], 'web', 'v3');
+        $svc->proxima($u, $runner);
+        $this->responder($u, $e->id, 'Proposta v3 salva.');
+
+        $novo = $svc->pedir($u, 'x', ['projeto' => '', 'tarefa_id' => $id, 'agente' => 'auto', 'modo' => 'auto',
+            'instrucao' => 'ótimo, mas está com cara de reunião, quero com cara de proposta comercial, sem informações de reunião. Tem que trazer o que será feito e valores.'], 'web', 'fb');
+        $this->assertSame(['claude', 'implementar'], [$novo->agente, $novo->modo]);
+        $this->assertSame([], $novo->roteamento['fontes'] ?? [], 'reunião não é consulta de agenda');
+        $this->assertNotSame('sem_ia', $novo->roteamento['nivel']);
+
+        // Pergunta não vira implementação.
+        $svc->proxima($u, $runner);
+        $this->responder($u, $novo->id, 'ok');
+        $pergunta = $svc->pedir($u, 'x', ['projeto' => '', 'tarefa_id' => $id, 'agente' => 'auto', 'modo' => 'auto', 'instrucao' => 'quanto ficou o total?'], 'web', 'pq');
+        $this->assertSame('claude', $pergunta->agente);
+        $this->assertNotSame('implementar', $pergunta->modo);
+    }
 }
