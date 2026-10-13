@@ -103,4 +103,35 @@ class TelegramAssuntoTest extends TestCase
         $this->falar(702, 'o Lorenzo respondeu?');
         $this->assertSame($vix->id, CentralIaExecucao::latest('id')->value('tarefa_id'), 'a mensagem vai para o assunto, não para a Geral');
     }
+
+    public function test_continuar_numero_traz_o_chat_pelo_numero_do_chat_ou_do_pedido(): void
+    {
+        $u = User::factory()->create();
+        $u->perfis()->attach(Perfil::where('slug', 'central_ia')->value('id'));
+        CentralIaRunner::create(['user_id' => $u->id, 'maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => ['gestor'], 'visto_em' => now()]);
+        CentralIaTelegramVinculo::create(['user_id' => $u->id, 'chat_id' => 703, 'vinculado_em' => now()]);
+        $vix = CentralIaTarefa::create(['user_id' => $u->id, 'tipo' => 'assunto', 'titulo' => 'Proposta Comercial VixCard', 'objetivo' => 'x', 'projeto' => '', 'ultima_atividade_em' => now(),
+            'dossie' => ['duvida' => 'Posso salvar como v3?']]);
+        $pedido = app(\App\Services\CentralIa\AgentesService::class)->pedir($u, 'x', ['projeto' => '', 'tarefa_id' => $vix->id, 'agente' => 'claude', 'modo' => 'analisar', 'instrucao' => 'x'], 'web', 'c1');
+        // O agente parou perguntando (o pedido limpa a dúvida anterior; esta é a nova).
+        $vix->update(['dossie' => array_merge($vix->fresh()->dossie, ['duvida' => 'Posso salvar como v3?'])]);
+        $gestor = CentralIaTarefa::create(['user_id' => $u->id, 'titulo' => 'Relatório de custos', 'objetivo' => 'x', 'projeto' => 'gestor', 'ultima_atividade_em' => now()]);
+
+        // Pelo número do PEDIDO: vai para o chat dele.
+        $this->falar(703, 'Continuar #'.$pedido->id);
+        $this->respondeu('Continuando “Proposta Comercial VixCard” aqui');
+        $this->respondeu('Esperando você: Posso salvar como v3?');
+        $this->assertSame($vix->id, CentralIaTelegramVinculo::where('chat_id', 703)->value('assunto_atual_id'));
+
+        // Pelo número do chat comum: vira o projeto em uso, e o assunto sai.
+        $this->falar(703, '/continuar #'.$gestor->id);
+        $v = CentralIaTelegramVinculo::where('chat_id', 703)->first();
+        $this->assertSame(['gestor', null], [$v->projeto_atual, $v->assunto_atual_id]);
+
+        $outro = User::factory()->create();
+        $alheio = CentralIaTarefa::create(['user_id' => $outro->id, 'tipo' => 'assunto', 'titulo' => 'Do outro', 'objetivo' => 'x', 'projeto' => '', 'ultima_atividade_em' => now()]);
+        $this->falar(703, 'continuar '.$alheio->id);
+        $this->respondeu('Não achei o chat nem o pedido #'.$alheio->id);
+        $this->assertSame('gestor', CentralIaTelegramVinculo::where('chat_id', 703)->value('projeto_atual'));
+    }
 }

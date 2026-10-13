@@ -320,6 +320,14 @@ class TelegramCanal
         // com palavras: "continuar gestor de onde paramos", "usar o alfahome".
         // Foi assim que o dono escreveu na primeira tentativa (10/10/2026), e
         // a mensagem virou anotação calada.
+        // "continuar #20" (ou /continuar #20): traz para cá aquele chat — de
+        // assunto ou comum; número de pedido leva ao chat dele (dono, 13/10/2026).
+        if (preg_match('/^\/?(?:continuar|continue|seguir|retomar|assumir|abrir)\s+#?(\d+)\s*$/iu', trim($texto), $m)) {
+            $this->continuarChat($user, $vinculo, $chatId, (int) $m[1]);
+
+            return;
+        }
+
         if (! str_starts_with($texto, '/') && blank($vinculo->projeto_atual) && ($intencao = $this->intencao($user, $texto))) {
             [$verbo, $projeto] = $intencao;
             $verbo === 'continuar'
@@ -430,6 +438,36 @@ class TelegramCanal
 
         $this->definir($vinculo, $chatId, ['projeto_atual' => $projeto, 'assunto_atual_id' => null],
             "Usando {$projeto}. Suas mensagens agora são pedidos nele (continuam a tarefa mais recente; /nova abre outra). /geral sai.");
+    }
+
+    /**
+     * Assume pelo Telegram o chat #N (ou o chat do pedido #N): assunto vira o
+     * ponteiro /assunto; chat comum vira o projeto e a tarefa em uso.
+     */
+    private function continuarChat(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, int $numero): void
+    {
+        $chat = CentralIaTarefa::de($user)->find($numero)
+            ?? CentralIaTarefa::de($user)->find(CentralIaExecucao::where('user_id', $user->id)->whereKey($numero)->value('tarefa_id'));
+        if (! $chat || $chat->status === CentralIaTarefa::ARQUIVADA) {
+            $this->responder($chatId, $chat ? "O chat #{$chat->id} está arquivado. Reabra na Central para continuar." : "Não achei o chat nem o pedido #{$numero} na sua conta. /status mostra os em andamento.");
+
+            return;
+        }
+        $ultima = CentralIaMensagem::de($user)->where('tarefa_id', $chat->id)->whereIn('autor_tipo', [CentralIaMensagem::AUTOR_AGENTE])
+            ->latest('id')->value('conteudo');
+        $resumo = $ultima ? \Illuminate\Support\Str::limit(trim(Dossie::extrair($ultima)[0]), 700) : null;
+        $nome = $chat->ehAssunto() ? '“'.$chat->titulo.'”' : "#{$chat->id} ".$chat->titulo.($chat->projeto ? " ({$chat->projeto})" : '');
+        $duvida = $chat->dossie['duvida'] ?? null;
+
+        if (app(CanalAtivo::class)->pronto()) {
+            app(CanalAtivo::class)->transferir($user, 'telegram', $chat->projeto === '' ? null : $chat->projeto, $chat->id);
+            $vinculo->refresh();
+        } else {
+            $vinculo->update(['projeto_atual' => $chat->ehAssunto() ? null : ($chat->projeto ?: null), 'assunto_atual_id' => $chat->ehAssunto() ? $chat->id : null]);
+        }
+        $this->responder($chatId, "Continuando {$nome} aqui. Suas mensagens vão para esse chat, com o histórico e a memória dele. /geral sai."
+            .($resumo ? "\n\nÚltima resposta:\n{$resumo}" : '')
+            .($duvida ? "\n\n❓ Esperando você: {$duvida}" : ''));
     }
 
     /** O assunto apontado pelo vínculo, se ainda é da conta e não foi arquivado. */
@@ -603,7 +641,7 @@ class TelegramCanal
     private function ajuda(): string
     {
         return "Comandos:\n/projetos — projetos do cockpit\n/status — o que roda e o que espera você\n/usar <projeto> — mensagens viram pedidos nele\n"
-            ."/nova <pedido> — tarefa nova no projeto em uso\n/assunto — chats de assunto (Business); /assunto 1 fala no primeiro\n/geral — sai do projeto ou do assunto\n/auto, /claude, /gpt, /copilot — agente dos próximos pedidos\n"
+            ."/nova <pedido> — tarefa nova no projeto em uso\n/assunto — chats de assunto (Business); /assunto 1 fala no primeiro\ncontinuar #20 — traz para cá o chat #20 (ou o chat do pedido #20)\n/geral — sai do projeto ou do assunto\n/auto, /claude, /gpt, /copilot — agente dos próximos pedidos\n"
             ."/trocar <agente> [pedido] — passa a tarefa atual para outro agente\n/continuar <projeto> [agente] — segue a conversa do VS Code daquele projeto\n/salvar — salva um ponto na tarefa atual (a conversa recomeça enxuta)\n/claude <projeto> <pedido> — pedido direto (com ! para implementar)";
     }
 
