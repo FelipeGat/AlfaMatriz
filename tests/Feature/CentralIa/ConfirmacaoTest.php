@@ -78,6 +78,20 @@ class ConfirmacaoTest extends TestCase
         $this->assertDatabaseMissing('central_ia_mensagens', ['conteudo' => '123456']);
     }
 
+    public function test_codigo_digitado_na_caixa_de_mensagem_confirma_e_nao_vira_pedido(): void
+    {
+        $u = $this->comCentral();
+        [, $e] = $this->emExecucao($u);
+        $this->runner($u, $e->id, ['estado' => 'aguardando']);
+        $antes = \App\Models\CentralIaMensagem::count();
+
+        $this->actingAs($u)->postJson(route('central-ia.enviar'), ['conteudo' => '220705', 'client_id' => (string) \Illuminate\Support\Str::uuid(),
+            'projeto' => 'alfahome', 'tarefa_id' => $e->tarefa_id, 'agente' => 'auto', 'modo' => 'auto'])->assertOk()->assertJsonPath('confirmacao', $e->id);
+        $this->assertSame($antes, \App\Models\CentralIaMensagem::count(), 'o código não entra na conversa');
+        $this->assertSame(1, \App\Models\CentralIaExecucao::count(), 'e não vira pedido novo');
+        $this->runner($u, $e->id, ['estado' => 'aguardando'])->assertJsonPath('codigo', '220705');
+    }
+
     public function test_tres_erros_recusam_e_ninguem_mais_confirma(): void
     {
         $u = $this->comCentral();

@@ -493,6 +493,16 @@ export function centralIa(config) {
         async enviar() {
             const aba = this.aba, chave = this.chaveAba, projetoEnviado = this.atual;
             if ((this.atendimento.disponivel && this.atendimento.ativo !== 'web') || this.transferindoCanal || aba.enviando || this.bloqueado || !this.podeEnviar || (!aba.pendente && !aba.rascunho.trim() && !aba.arquivos.length)) return;
+            // Código de confirmação digitado na caixa (13/10/2026: o dono mandou
+            // "220705" como mensagem e virou pedido novo). Com pedido esperando,
+            // 6 dígitos confirmam — não vão para a conversa.
+            const codigo = aba.rascunho.trim();
+            if (!aba.pendente && /^\d{6}$/.test(codigo) && this.confirmacoes.length) {
+                const alvo = this.confirmacoes.find(c => c.tarefa_id && (c.tarefa_id === this.chatAtual || c.tarefa_id === Number(aba.tarefa)))
+                    || (this.confirmacoes.length === 1 ? this.confirmacoes[0] : null);
+                if (alvo) { this.codigos[alvo.id] = codigo; aba.rascunho = ''; return this.confirmarCodigo(alvo.id); }
+                this.aviso = 'Há mais de um pedido esperando código: digite-o na faixa "Confirme" do pedido certo.'; return;
+            }
             if (!aba.pendente && this.chatAtual) aba.tarefa = this.chatAtual;
             // Pergunta do agente aberta: o que se escreve é a RESPOSTA, e vai
             // para quem perguntou (como no VS Code), sem diálogo à parte.

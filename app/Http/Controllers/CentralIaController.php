@@ -339,6 +339,19 @@ class CentralIaController extends Controller
 
         $dados['conteudo'] = $dados['conteudo'] ?? 'Analise os arquivos anexados.';
 
+        // Mesma defesa no servidor: 6 dígitos com pedido esperando código são a
+        // confirmação, e não uma mensagem (o código não entra na conversa).
+        if (empty($dados['anexos']) && preg_match('/^\s*(\d{6})\s*$/', $dados['conteudo'], $c)) {
+            $esperando = $this->agentes->aguardandoConfirmacao($request->user());
+            $alvo = $esperando->first(fn ($e) => $e->tarefa_id && (int) $e->tarefa_id === (int) ($dados['tarefa_id'] ?? 0))
+                ?? ($esperando->count() === 1 ? $esperando->first() : null);
+            if ($alvo) {
+                $this->agentes->confirmar($request->user(), $alvo->id, $c[1], 'web');
+
+                return $this->semCache(['confirmacao' => $alvo->id]);
+            }
+        }
+
         // Consulta operacional não espera na fila da IA, mesmo durante execução.
         if (empty($dados['anexos']) && app(\App\Services\CentralIa\ProgressoService::class)->consulta($dados['conteudo'])) {
             $mensagem = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $dados) {
