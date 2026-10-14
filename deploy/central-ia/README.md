@@ -124,8 +124,17 @@ Dono: "o runner faz tudo o que o servidor manda — isso não pode ocorrer". Ago
 - Sessões do VS Code: só as abertas dentro da pasta de projetos têm título e
   começo do pedido enviados (para a pessoa reconhecer o chat). As de outras pastas
   ficam na máquina; delas só sai a contagem de tokens.
-- Até 2 execuções ao mesmo tempo (`CENTRAL_IA_PARALELO`); 15 minutos de teto (`CENTRAL_IA_TIMEOUT_MINUTOS`);
-  20 pedidos por dia por pessoa (`CENTRAL_IA_LIMITE_DIARIO`) — no `.env` do AlfaMatriz.
+- Até 2 execuções ao mesmo tempo (`CENTRAL_IA_PARALELO`); 15 minutos de teto (`CENTRAL_IA_TIMEOUT_MINUTOS`,
+  60 para implementar) — no `.env` do AlfaMatriz.
+- **Não há teto diário por padrão.** Quem limita é a assinatura de IA de cada pessoa. Os limites de pedidos
+  por dia (por IA e no total) são dados pela tela: a pessoa nos Ajustes dela e o administrador para cada
+  conta; vale o menor. Conta nova que não é admin nasce bloqueada até um admin liberar. O teto
+  `CENTRAL_IA_LIMITE_DIARIO` (20) do `.env` só vale com `CENTRAL_IA_LIMITE_DIARIO_ATIVO=true`, desligado
+  por padrão desde 11/10/2026.
+- Ritmo da consulta por pedido novo (T-374): a cada 3 s até 5 min depois do último trabalho da máquina,
+  a cada 10 s quando ela está parada (~8,6 mil consultas por dia em vez de ~29 mil). Máquina desconectada
+  na tela (401/403) ou servidor fora de alcance: avisa uma vez no log e espaça até 10 min / 2 min, voltando
+  ao normal sozinha quando o acesso volta (`politica.mjs`: `acompanharAcesso`, `ritmoDaConsulta`).
 - Os hooks e instruções de cada agente (`~/.claude`, `CLAUDE.md` do projeto…)
   valem normalmente: o agente roda como a pessoa rodaria.
 

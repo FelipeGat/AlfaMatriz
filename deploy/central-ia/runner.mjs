@@ -23,7 +23,7 @@ import { prepararAnexos } from './anexos.mjs';
 import { acompanharProgresso } from './progresso.mjs';
 import { auditar, confirmar } from './confirmacao.mjs';
 import { caminhoDoStatus, compararGit, criarAuditor, retratoGit } from './auditoria.mjs';
-import { acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
+import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h): a regra "inicio" não pede
 // o código de novo no mesmo chat. Fica aqui, e não no servidor.
@@ -108,6 +108,14 @@ setDefaultAutoSelectFamilyAttemptTimeout(2500);
 
 const cfg = lerConfig();
 const log = (...a) => console.log(new Date().toISOString(), ...a);
+// Acesso ao AlfaMatriz (politica.mjs: acompanharAcesso): máquina desconectada
+// ou servidor fora de alcance avisam uma vez e espaçam as tentativas.
+let acesso = ESTADO_INICIAL;
+const notarAcesso = resultado => {
+    const r = acompanharAcesso(acesso, resultado);
+    acesso = r.estado;
+    if (r.aviso) log(r.aviso);
+};
 // Quando este processo subiu e o que ele tem nas mãos: o servidor encerra o
 // que ficou "executando" de um processo anterior que morreu sem avisar (13/10/2026:
 // o WSL reiniciou e o pedido #84 ficou preso até o teto).
@@ -338,6 +346,8 @@ function limitesDoClaude() {
 }
 
 async function batida() {
+    // Recusada, a batida só repetiria a recusa: quem confere se o acesso voltou é o laço.
+    if (acesso.situacao === 'recusado') return;
     agentes = localizarAgentes();
     const projetos = listarProjetos();
     const u = uso();
@@ -357,7 +367,8 @@ async function batida() {
         em_curso: [...emCurso],
         ...(u ? { consumo: { ...consumo, limites_claude: limitesDoClaude() }, sessoes } : {}),
     });
-    if (r.status !== 200) log('batida recusada', r.status, r.json?.message || '');
+    if (r.status === 401 || r.status === 403) notarAcesso(r.status);
+    else if (r.status !== 200) log('batida recusada', r.status, r.json?.message || '');
 }
 
 /* ---------- execução ---------- */
@@ -911,7 +922,8 @@ process.on('SIGINT', encerrar);
 log(`runner ${cfg.maquina} → ${cfg.url}, projetos em ${cfg.projetos}`);
 // A batida corre à parte do laço: durante uma execução longa a máquina
 // continua aparecendo como online na tela.
-const batendo = () => batida().catch(e => log('batida falhou:', e.message));
+// Fora de alcance, o laço já avisou uma vez; a batida não repete a cada 30 s.
+const batendo = () => batida().catch(e => { if (acesso.situacao !== 'rede') log('batida falhou:', e.message); });
 await batendo();
 const relogio = setInterval(batendo, 30_000);
 // Até PARALELO execuções ao mesmo tempo. O AlfaMatriz também limita (por
@@ -924,24 +936,34 @@ const rodando = new Set();
 const OCUPADO = join(HOME, '.local/share/alfa/central-ia-ocupado');
 const marcarOcupado = () => { try { writeFileSync(OCUPADO, String(rodando.size)); } catch {} };
 marcarOcupado();
+// Último trabalho desta máquina (politica.mjs: ritmoDaConsulta): perto dele a
+// consulta é a cada 3 s; parada, a cada 10 s. Subir conta como trabalho, para
+// o teste logo depois de instalar não esperar.
+let ultimoTrabalho = Date.now();
 while (!parar) {
     try {
         if (rodando.size < PARALELO) {
             const r = await api('proxima', { maquina: cfg.maquina });
+            notarAcesso(r.status);
             if (r.status === 200 && r.json?.id) {
                 const id = r.json.id;
                 emCurso.add(id);
-                const p = executar(r.json).catch(e => log(`#${id} erro no runner:`, e.message)).finally(() => { rodando.delete(p); emCurso.delete(id); marcarOcupado(); });
+                ultimoTrabalho = Date.now();
+                const p = executar(r.json).catch(e => log(`#${id} erro no runner:`, e.message)).finally(() => { rodando.delete(p); emCurso.delete(id); marcarOcupado(); ultimoTrabalho = Date.now(); });
                 rodando.add(p);
                 marcarOcupado();
                 continue;
             }
-            if (r.status === 401 || r.status === 403) log('token recusado ou conta sem permissão', r.status);
         }
     } catch (e) {
-        log('AlfaMatriz indisponível:', e.message);
+        if (acesso.situacao !== 'rede') log('AlfaMatriz indisponível:', e.message);
+        notarAcesso('rede');
     }
-    await new Promise(r => setTimeout(r, 3000));
+    // Com algo rodando, a máquina não está ociosa: a resposta seguinte da conversa vem logo.
+    if (rodando.size) ultimoTrabalho = Date.now();
+    const espera = acesso.situacao === 'ok' ? ritmoDaConsulta(Date.now() - ultimoTrabalho) : acesso.espera;
+    // Em passos de 1 s: a espera chega a 10 min, e parar o serviço não espera por ela.
+    for (let t = 0; t < espera && !parar; t += 1000) await new Promise(r => setTimeout(r, Math.min(1000, espera - t)));
 }
 // Parada pedida: espera o que está rodando terminar e devolver a resposta.
 await Promise.allSettled([...rodando]);

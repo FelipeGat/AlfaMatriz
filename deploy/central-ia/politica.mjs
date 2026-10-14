@@ -214,3 +214,50 @@ export function decisaoSemConfirmacao(job, regra, acesso) {
     if (job.modo !== 'implementar' && acesso === 'leitura') return { decisao: 'leitura' };
     return { decisao: 'sem_confirmacao', regra, acesso };
 }
+
+/**
+ * Quanto esperar até chamar o AlfaMatriz de novo, e o que dizer no log (T-374).
+ * Desconectar a máquina na tela vira 401 aqui; sem isto o runner batia a cada
+ * 3 s para sempre e gravava uma linha por tentativa — ~29 mil por dia no PC
+ * da pessoa, até alguém desligar o serviço na mão (teste no staging,
+ * 14/10/2026). Encerrar não serve: o launchd e o systemd o religam em
+ * seguida. Então avisa UMA vez e espaça; quando o acesso volta (o admin
+ * liberou a conta de novo), volta ao ritmo normal sozinho. Servidor fora de
+ * alcance (Tailscale desligado) é o mesmo laço, com espera menor.
+ *  - `estado`: { situacao: 'ok' | 'recusado' | 'rede', espera } — comece com ESTADO_INICIAL;
+ *  - `resultado`: o status HTTP da resposta, ou 'rede' quando nem houve resposta.
+ * Outros erros (5xx, 429) não mudam nada: são passageiros, o laço normal cuida.
+ */
+export const ESPERAS = { normal: 3_000, ocioso: 10_000, ociosoApos: 5 * 60_000, recusado: [30_000, 10 * 60_000], rede: [5_000, 2 * 60_000] };
+export const ESTADO_INICIAL = { situacao: 'ok', espera: ESPERAS.normal };
+
+/**
+ * Espera entre duas perguntas "tem pedido para mim?" quando o acesso está ok
+ * (T-374, dono do produto, 14/10/2026). A 3 s fixos, cada máquina parada
+ * fazia ~29 mil consultas por dia ao servidor, e o time inteiro multiplica
+ * isso. Parada há mais de 5 min, a máquina pergunta a cada 10 s: o primeiro
+ * pedido do dia espera no máximo isso. Em conversa (pedido recebido ou
+ * terminado há pouco) continua a 3 s, que é quando a demora se sente.
+ * `ociosoHaMs`: quanto tempo desde o último trabalho desta máquina.
+ */
+export function ritmoDaConsulta(ociosoHaMs) {
+    return ociosoHaMs < ESPERAS.ociosoApos ? ESPERAS.normal : ESPERAS.ocioso;
+}
+
+export function acompanharAcesso(estado, resultado) {
+    const situacao = resultado === 'rede' ? 'rede'
+        : resultado === 401 || resultado === 403 ? 'recusado'
+        : resultado >= 200 && resultado < 300 ? 'ok' : null;
+    if (situacao === null) return { estado, aviso: null };
+    if (situacao === 'ok') {
+        return { estado: ESTADO_INICIAL, aviso: estado.situacao === 'ok' ? null : 'acesso ao AlfaMatriz de volta; voltando a pedir trabalho' };
+    }
+    const [inicial, maxima] = ESPERAS[situacao];
+    if (estado.situacao === situacao) return { estado: { situacao, espera: Math.min(estado.espera * 2, maxima) }, aviso: null };
+    return {
+        estado: { situacao, espera: inicial },
+        aviso: situacao === 'recusado'
+            ? `acesso recusado (${resultado}): a máquina foi desconectada em Minhas máquinas ou a conta perdeu a Central. Tento de novo de tempos em tempos (até a cada ${maxima / 60_000} min), sem repetir este aviso. Para conectar de novo, gere um comando novo em Central de IA › Ajustes › Minhas máquinas.`
+            : `AlfaMatriz fora de alcance (Tailscale desligado ou servidor fora do ar). Tento de novo de tempos em tempos (até a cada ${maxima / 60_000} min), sem repetir este aviso.`,
+    };
+}
