@@ -45,3 +45,11 @@ Schedule::command('avisos:do-dia')
     ->dailyAt('08:00')
     ->withoutOverlapping()
     ->onOneServer();
+
+// Limpeza da Central de IA (T-378): anexos e prévias com mais de 90 dias,
+// histórico com mais de 1 ano (prazos em `central_ia.retencao`). De
+// madrugada, longe do uso; o que apagou fica no log.
+Schedule::command('central-ia:limpar')
+    ->dailyAt('03:30')
+    ->withoutOverlapping()
+    ->onOneServer();

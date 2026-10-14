@@ -87,6 +87,20 @@ return [
         ],
     ],
 
+    /*
+     * Quanto tempo a Central guarda (T-378, prazos aceitos pelo dono em
+     * 14/10/2026). Antes nada era apagado: conversas, pedidos e anexos
+     * cresciam sem limite. Quem apaga é `central-ia:limpar`, uma vez por dia.
+     *  - anexos_dias: o arquivo enviado na conversa e a prévia do agente (a
+     *    prévia já sai do ar em 7 dias; o arquivo ficava no disco para sempre);
+     *  - historico_dias: mensagens, pedidos a agente, eventos e entregas ao
+     *    Telegram. Pedido ainda pendente ou executando nunca é apagado.
+     */
+    'retencao' => [
+        'anexos_dias' => (int) env('CENTRAL_IA_RETENCAO_ANEXOS_DIAS', 90),
+        'historico_dias' => (int) env('CENTRAL_IA_RETENCAO_HISTORICO_DIAS', 365),
+    ],
+
     'telegram' => [
         // Não há bot no servidor (T-374, decisão do dono em 14/10/2026): cada
         // pessoa cadastra o PRÓPRIO bot nos Ajustes da Central, e o token mora

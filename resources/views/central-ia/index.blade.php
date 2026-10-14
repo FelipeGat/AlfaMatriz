@@ -1234,6 +1234,16 @@
                     </div>
                 @endif
             </div>
+            {{-- Prazos de guarda (T-378): quem usa precisa saber que o histórico some,
+                 antes de descobrir procurando uma conversa antiga. Lidos da config,
+                 a mesma que o `central-ia:limpar` usa. --}}
+            <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
+                <h3 class="font-semibold text-ink">Por quanto tempo a Central guarda</h3>
+                <ul class="mt-2 list-disc space-y-1 pl-5 text-ink-mute">
+                    <li>Anexos e prévias: {{ (int) config('central_ia.retencao.anexos_dias') }} dias. Depois disso o arquivo é apagado; a mensagem continua.</li>
+                    <li>Conversas, pedidos aos agentes e o registro de atividade: {{ (int) config('central_ia.retencao.historico_dias') }} dias. Pedido ainda em andamento nunca é apagado.</li>
+                </ul>
+            </div>
             {{-- POPs das IAs (FR-030..033): o que elas aprenderam de cada sistema.
                  Só desta conta: nenhum administrador vê, nada vai a repositório. --}}
             <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
