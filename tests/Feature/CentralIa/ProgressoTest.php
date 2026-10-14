@@ -12,7 +12,7 @@ use Tests\TestCase;
 
 class ProgressoTest extends TestCase
 {
-    use RefreshDatabase;
+    use BotProprioNosTestes, RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -124,12 +124,11 @@ class ProgressoTest extends TestCase
 
     public function test_consulta_telegram_direta_aparece_na_central_e_nao_entra_na_fila(): void
     {
-        config(['central_ia.telegram.token' => 'token-teste']);
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]])]);
         $u = $this->pessoa(); $this->pedir($u);
         CentralIaTelegramVinculo::create(['user_id' => $u->id, 'chat_id' => 42, 'projeto_atual' => 'alfamatriz']);
         $msg = ['update_id' => 42, 'message' => ['text' => 'Travou?', 'chat' => ['type' => 'private', 'id' => 42], 'from' => ['id' => 42, 'is_bot' => false]]];
-        $canal = app(TelegramCanal::class); $canal->receber($msg); $canal->receber($msg);
+        $canal = app(TelegramCanal::class); $this->entregarAoBot($canal, $msg); $this->entregarAoBot($canal, $msg);
         $this->assertSame(1, CentralIaExecucao::count());
         $this->assertSame(1, CentralIaMensagem::where('autor_tipo', 'sistema')->count());
         Http::assertSent(fn ($r) => str_contains($r['text'] ?? '', 'Status observado pela Central'));

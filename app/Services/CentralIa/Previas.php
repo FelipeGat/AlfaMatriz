@@ -102,8 +102,12 @@ class Previas
             // segurança de 13/10/2026): HTML gerado por IA, servido no
             // endereço do AlfaMatriz, podia montar um login falso e mandar a
             // senha para fora. A prévia mostra o formulário; não o envia.
+            //
+            // Sem X-Frame-Options aqui (T-374): o nginx já põe o dele em toda
+            // resposta, e a prévia saía com dois valores que se contradiziam
+            // (SAMEORIGIN e DENY). Quem proíbe a moldura é o frame-ancestors
+            // da CSP, que o navegador respeita acima do X-Frame-Options.
             'Content-Security-Policy' => "sandbox allow-scripts allow-forms allow-popups; frame-ancestors 'none'; connect-src 'none'; form-action 'none'",
-            'X-Frame-Options' => 'DENY',
             'X-Content-Type-Options' => 'nosniff',
             'Referrer-Policy' => 'no-referrer',
             'X-Robots-Tag' => 'noindex, nofollow',

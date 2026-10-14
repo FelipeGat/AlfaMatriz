@@ -5,8 +5,8 @@
  * Módulo puro (sem efeito ao importar), para o teste conferir os argumentos
  * gerados para cada CLI, em cada modo e acesso.
  */
-import { realpathSync } from 'node:fs';
-import { sep } from 'node:path';
+import { existsSync, realpathSync } from 'node:fs';
+import { join, sep } from 'node:path';
 
 export const NEGADOS_NO_SHELL = ['git push', 'git commit', 'git reset', 'git checkout', 'git switch', 'git rebase', 'git merge', 'rm -rf', 'sudo', 'docker', 'ssh'];
 
@@ -146,13 +146,14 @@ export function modeloArgs(agente, modelo, esforco) {
 
 /**
  * "Sem IA": a lista da agenda é a resposta — nenhuma IA precisa ler. Agrupa
- * por dia quando a linha começa com a data (formato da ponte gcal.py).
+ * por dia quando a linha começa com a data (`AAAA-MM-DD resto`), o formato
+ * da Agenda do AlfaMatriz e o que se pede a uma agenda pessoal integrada.
  */
-export function agendaSemIa(rotulo, inicio, bruto) {
+export function agendaSemIa(rotulo, inicio, bruto, fonte = 'sua agenda') {
     const linhas = String(bruto || '').split('\n').map(l => l.trim()).filter(Boolean);
     const br = d => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
     const cab = `📅 Agenda — ${rotulo}${/^\d{4}-\d{2}-\d{2}$/.test(inicio) ? ` (a partir de ${br(inicio)})` : ''}`;
-    if (!linhas.length) return `${cab}\n\nNenhum compromisso no período.\n\n_Lido agora da sua Google Agenda, sem IA._`;
+    if (!linhas.length) return `${cab}\n\nNenhum compromisso no período.\n\n_Lido agora (${fonte}), sem IA._`;
     const dias = new Map();
     for (const l of linhas) {
         const m = l.match(/^(\d{4}-\d{2}-\d{2})\s+(.*)$/);
@@ -160,21 +161,21 @@ export function agendaSemIa(rotulo, inicio, bruto) {
         (dias.get(dia) ?? dias.set(dia, []).get(dia)).push(m ? m[2] : l);
     }
     const corpo = [...dias].map(([dia, itens]) => (dia ? `**${dia}**\n` : '') + itens.map(i => `- ${i}`).join('\n')).join('\n\n');
-    return `${cab}\n\n${corpo}\n\n_${linhas.length} compromisso(s), lido(s) agora da sua Google Agenda, sem IA._`;
+    return `${cab}\n\n${corpo}\n\n_${linhas.length} compromisso(s), lido(s) agora (${fonte}), sem IA._`;
 }
 
 /**
- * Regra do dono para QUALQUER IA que implemente em projeto (13/10/2026: "quem
- * for fazer a implementação tem que passar pelo cstk"). Espelha o ~/.claude/
- * CLAUDE.md global — que só o Claude lê sozinho; Codex e Copilot não leem nem
- * têm os skills do cstk, então não implementam frente nova: devolvem ao Claude.
- * Sem projeto (chat de assunto nas pastas de ~/projetos, propostas, planilhas)
- * não se aplica: não é código de repositório.
+ * O método cstk (SDD) para QUALQUER IA que implemente em projeto, quando a
+ * pessoa liga a opção nos Ajustes (T-374: era imposto a todos, e é o método
+ * de trabalho de quem o usa, não regra da Central). Codex e Copilot não têm
+ * os skills do cstk, então não implementam frente nova: devolvem ao Claude.
+ * Sem projeto (chat de assunto na raiz da pasta de projetos, propostas,
+ * planilhas) não se aplica: não é código de repositório.
  */
 export function regraCstk(agente, projeto) {
     if (!projeto) return null;
     const comum = [
-        '## Regra obrigatória do dono: SDD com cstk',
+        '## Regra da pessoa: SDD com cstk',
         'Antes de escrever código novo, confira se existem docs/briefing.md e docs/constitution.md no projeto.',
         'Frente NOVA (feature, módulo, integração) só se implementa com docs/specs/<feature>/{spec,plan,tasks}.md prontos; a implementação segue as tarefas de tasks.md.',
         'Correção pontual de bug num projeto que já tem esses documentos, e ajuste de layout, texto ou configuração, não exigem o pipeline inteiro.',
@@ -187,4 +188,29 @@ export function regraCstk(agente, projeto) {
     return [...comum,
         'Você NÃO tem os skills do cstk. Se o pedido for frente nova e o projeto não tiver a spec dela em docs/specs/, NÃO implemente: explique em uma linha e devolva no bloco final "delegar": {"agente": "claude", "modo": "implementar", "pedido": "<o pedido original>, passando pelo pipeline do cstk"}. Correção pontual ou ajuste: pode seguir.',
     ].join('\n');
+}
+
+/**
+ * Qual MEMORY.md vai aos agentes, escolhido pela máquina (T-374). O servidor
+ * só liga ou desliga; se ele apontasse o arquivo, quem o controlasse leria
+ * qualquer arquivo da máquina pelo prompt.
+ *  - `configurada` (CENTRAL_IA_MEMORIA): `nenhuma` desliga; um caminho vale
+ *    se o arquivo existir;
+ *  - sem valor: a memória do Claude para a pasta de projetos —
+ *    ~/.claude/projects/<pasta com cada caractere fora de [A-Za-z0-9] trocado
+ *    por "-">/memory/MEMORY.md, o nome que o próprio Claude Code dá.
+ */
+export function arquivoDeMemoria(configurada, projetos, home) {
+    if (configurada === 'nenhuma') return null;
+    const arq = configurada || join(home, '.claude/projects', projetos.replace(/[^A-Za-z0-9]/g, '-'), 'memory/MEMORY.md');
+    return existsSync(arq) ? arq : null;
+}
+
+/**
+ * O que a auditoria local grava quando a execução roda SEM pedir código
+ * (T-374: a implementação liberada pela regra saía como "leitura").
+ */
+export function decisaoSemConfirmacao(job, regra, acesso) {
+    if (job.modo !== 'implementar' && acesso === 'leitura') return { decisao: 'leitura' };
+    return { decisao: 'sem_confirmacao', regra, acesso };
 }

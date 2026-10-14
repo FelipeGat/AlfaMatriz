@@ -207,6 +207,14 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // Aconteceu com o dono em 10/10/2026.
     Route::get('central-ia/painel', [CentralIaController::class, 'painel'])->name('central-ia.painel')
         ->middleware(['permissao:central_ia', 'throttle:90,1,central-ia-painel']);
+    // Conectar minha máquina (T-374): a pessoa gera o código de instalação
+    // e desconecta as próprias máquinas, sem artisan no servidor.
+    Route::get('central-ia/maquinas', [\App\Http\Controllers\CentralIaMaquinasController::class, 'index'])->name('central-ia.maquinas')
+        ->middleware(['permissao:central_ia', 'throttle:60,1,central-ia-maquinas']);
+    Route::post('central-ia/maquinas/instalacao', [\App\Http\Controllers\CentralIaMaquinasController::class, 'instalacao'])->name('central-ia.maquinas.instalacao')
+        ->middleware(['permissao:central_ia_agentes,incluir', 'throttle:10,1,central-ia-maquinas-codigo']);
+    Route::delete('central-ia/maquinas/{token}', [\App\Http\Controllers\CentralIaMaquinasController::class, 'desconectar'])->whereNumber('token')->name('central-ia.maquinas.desconectar')
+        ->middleware(['permissao:central_ia_agentes,incluir', 'throttle:20,1,central-ia-maquinas-desconectar']);
     Route::put('central-ia/preferencias', [CentralIaController::class, 'preferencias'])->name('central-ia.preferencias')
         ->middleware(['permissao:central_ia,editar', 'throttle:20,1,central-ia-preferencias']);
     Route::post('central-ia/chats/arquivar', [CentralIaController::class, 'arquivarChats'])->name('central-ia.chats.arquivar')
@@ -267,6 +275,12 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // Parear e desparear o Telegram mexem no canal, não criam conversa: `editar`.
     Route::post('central-ia/canal', [CentralIaController::class, 'canal'])->name('central-ia.canal')
         ->middleware(['permissao:central_ia,editar', 'throttle:20,1,central-ia-canal']);
+    // O bot de cada pessoa (T-374): guardar confere o token no Telegram, por
+    // isso o limite curto.
+    Route::put('central-ia/telegram/bot', [CentralIaController::class, 'salvarBotTelegram'])->name('central-ia.telegram.bot')
+        ->middleware(['permissao:central_ia,editar', 'throttle:6,1,central-ia-telegram-bot']);
+    Route::delete('central-ia/telegram/bot', [CentralIaController::class, 'removerBotTelegram'])->name('central-ia.telegram.bot.remover')
+        ->middleware('permissao:central_ia,editar');
     Route::post('central-ia/telegram/codigo', [CentralIaController::class, 'codigoTelegram'])->name('central-ia.telegram.codigo')
         ->middleware(['permissao:central_ia,editar', 'throttle:6,1,central-ia-telegram']);
     Route::delete('central-ia/telegram', [CentralIaController::class, 'desvincularTelegram'])->name('central-ia.telegram.desvincular')

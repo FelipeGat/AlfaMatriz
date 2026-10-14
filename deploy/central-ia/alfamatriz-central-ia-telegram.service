@@ -6,9 +6,10 @@
 #
 # - Roda a partir de atual/: o deploy/publicar.sh o reinicia depois de cada
 #   troca de versão (processo longo não vê código novo sozinho).
-# - UM consumidor por bot. Antes de ligar este, pare qualquer outro que use o
-#   mesmo token (ex.: o container alfamatriz-dev-telegram do ambiente local), ou
-#   use um bot próprio de produção (CENTRAL_IA_TELEGRAM_TOKEN no .env).
+# - Ouve o bot de CADA pessoa (T-374), cadastrado nos Ajustes da Central e
+#   marcado com o APP_URL deste servidor; sem bot nenhum, fica de pé e espera.
+#   O Telegram aceita UM leitor por bot: o mesmo bot não pode estar cadastrado
+#   em dois ambientes ao mesmo tempo.
 # - Precisa de saída para api.telegram.org.
 [Unit]
 Description=Central de IA — bot do Telegram (AlfaMatriz)

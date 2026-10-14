@@ -5,7 +5,12 @@ namespace App\Services\CentralIa;
 use Illuminate\Support\Facades\Http;
 
 /**
- * A única porta para a API do bot da Central.
+ * A única porta para a API dos bots da Central.
+ *
+ * Cada pessoa tem o PRÓPRIO bot (T-374): não há token no `.env`. Quem chama
+ * pega a porta de um bot com `doBot()` (ou `comToken()`, para conferir um
+ * token antes de guardá-lo); a instância que o container entrega não fala com
+ * bot nenhum.
  *
  * O token viaja na URL (`/bot<token>/método`), e a mensagem de exceção do
  * cliente HTTP repete a URL inteira: nada daqui é logado nem repassado, e quem
@@ -20,6 +25,22 @@ use Illuminate\Support\Facades\Http;
 class TelegramApi
 {
     private ?\Closure $verificarConsumidor = null;
+
+    private ?string $token = null;
+
+    /** Uma cópia que fala com o bot deste token. A trava do consumidor vai junto. */
+    public function comToken(string $token): static
+    {
+        $copia = clone $this;
+        $copia->token = $token;
+
+        return $copia;
+    }
+
+    public function doBot(\App\Models\CentralIaTelegramBot $bot): static
+    {
+        return $this->comToken($bot->token);
+    }
 
     public function protegerConsumidor(callable $verificar): void
     {
@@ -44,7 +65,7 @@ class TelegramApi
         }
         try {
             $r = Http::connectTimeout(5)->timeout(45)->withOptions(['stream' => true])
-                ->get('https://api.telegram.org/file/bot'.config('central_ia.telegram.token').'/'.$caminho);
+                ->get('https://api.telegram.org/file/bot'.$this->token.'/'.$caminho);
             if (! $r->successful()) {
                 return false;
             }
@@ -72,7 +93,7 @@ class TelegramApi
 
     public function configurado(): bool
     {
-        return filled(config('central_ia.telegram.token'));
+        return filled($this->token);
     }
 
     /**
@@ -85,7 +106,7 @@ class TelegramApi
         if (! $this->configurado()) return ['ok' => false, 'erro' => 'nao_configurado'];
         try {
             $resposta = Http::connectTimeout(5)->timeout($timeout)->attach($campo, $conteudo, $nome)
-                ->post('https://api.telegram.org/bot'.config('central_ia.telegram.token').'/'.$metodo, $dados);
+                ->post('https://api.telegram.org/bot'.$this->token.'/'.$metodo, $dados);
         } catch (\Throwable) {
             return ['ok' => false, 'erro' => 'incerta'];
         }
@@ -104,7 +125,7 @@ class TelegramApi
 
         try {
             $resposta = Http::connectTimeout(5)->timeout($timeout)
-                ->post('https://api.telegram.org/bot'.config('central_ia.telegram.token').'/'.$metodo, $dados);
+                ->post('https://api.telegram.org/bot'.$this->token.'/'.$metodo, $dados);
         } catch (\Throwable $e) {
             // Falha de CONEXÃO (DNS, recusa, tempo esgotado ao conectar) quer
             // dizer que nada saiu: dá para tentar de novo sem duplicar. Em
@@ -126,7 +147,9 @@ class TelegramApi
         return match (true) {
             $resposta->status() === 409 => ['ok' => false, 'erro' => 'conflito'],
             $resposta->status() === 429 => ['ok' => false, 'erro' => 'limite', 'esperar' => (int) ($corpo['parameters']['retry_after'] ?? 5)],
-            $resposta->clientError() => ['ok' => false, 'erro' => 'recusada'],
+            // O status vai junto: 401/404 é token revogado, e só isso tira o
+            // bot da leitura; um 400 é recusa daquela chamada.
+            $resposta->clientError() => ['ok' => false, 'erro' => 'recusada', 'status' => $resposta->status()],
             default => ['ok' => false, 'erro' => 'incerta'],
         };
     }

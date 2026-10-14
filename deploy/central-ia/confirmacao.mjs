@@ -72,7 +72,7 @@ export function mensagem(job, cwd, acesso, cod) {
         instrucao,
         '',
         `Código: ${cod}`,
-        `Vale 15 min. Se foi você, digite o código na Central ou mande ao bot da Central no Telegram: /confirmar ${cod}`,
+        `Vale 15 min. Se foi você, digite o código na Central ou responda aqui: /confirmar ${cod}`,
         'Se NÃO foi você, não digite nada: o pedido é recusado sozinho.',
     ].join('\n');
 }

@@ -6,6 +6,7 @@ use App\Models\CentralIaEntrega;
 use App\Models\CentralIaExecucao;
 use App\Models\CentralIaMensagem;
 use App\Models\CentralIaTarefa;
+use App\Models\CentralIaTelegramBot;
 use App\Models\CentralIaTelegramVinculo;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -19,9 +20,16 @@ use Illuminate\Validation\ValidationException;
  * Quem fala pelo Telegram passa pelas MESMAS portas da tela, relidas a cada
  * mensagem: conta ativa e permissão `central_ia`. Perdeu o perfil, o chat
  * pareado para de falar com a Central na hora — o vínculo não é permissão.
+ *
+ * Cada pessoa fala pelo PRÓPRIO bot (T-374). Um update só vale no bot de quem
+ * o recebeu: o chat de Bruno escrevendo no bot de Ana não entra na conversa de
+ * ninguém, e o código de pareamento de Bruno não liga o bot de Ana.
  */
 class TelegramCanal
 {
+    /** A porta do bot que recebeu o update em tratamento (só dentro de `receber`). */
+    private ?TelegramApi $atual = null;
+
     public function __construct(
         private readonly TelegramApi $api,
         private readonly ConversaService $conversas,
@@ -32,6 +40,86 @@ class TelegramCanal
     public function vinculoDe(User $user): ?CentralIaTelegramVinculo
     {
         return CentralIaTelegramVinculo::where('user_id', $user->id)->first();
+    }
+
+    public function botDe(User|int $user): ?CentralIaTelegramBot
+    {
+        return CentralIaTelegramBot::desteServidor()->where('user_id', $user instanceof User ? $user->id : $user)->first();
+    }
+
+    /** A porta do bot de uma pessoa, ou null se ela não tem bot que funcione aqui. */
+    private function apiDe(int $userId): ?TelegramApi
+    {
+        $bot = $this->botDe($userId);
+
+        return $bot && $bot->situacao !== CentralIaTelegramBot::TOKEN_INVALIDO ? $this->api->doBot($bot) : null;
+    }
+
+    /**
+     * Guarda o bot que a pessoa criou no @BotFather, depois de o Telegram
+     * confirmar que o token é de um bot e que ninguém o lê por webhook.
+     *
+     * Trocar de bot desfaz o vínculo do chat: a pessoa ainda não tocou em
+     * Começar no bot novo, e ele não teria como falar com ela. O mesmo bot
+     * (token renovado no @BotFather) mantém o vínculo e o cursor.
+     */
+    public function cadastrarBot(User $user, string $token): CentralIaTelegramBot
+    {
+        $token = trim($token);
+        if (! preg_match('/^\d{5,}:[A-Za-z0-9_-]{30,}$/D', $token)) {
+            throw ValidationException::withMessages(['token' => 'Isso não parece o token de um bot. Copie a linha inteira que o @BotFather mandou (números, dois-pontos e letras).']);
+        }
+        $api = $this->api->comToken($token);
+        $eu = $api->chamar('getMe');
+        if (! $eu['ok']) {
+            throw ValidationException::withMessages(['token' => $eu['erro'] === 'recusada'
+                ? 'O Telegram não reconheceu esse token. Confira no @BotFather (/mybots → o seu bot → API Token).'
+                : 'Não consegui falar com o Telegram agora. Tente de novo em instantes.']);
+        }
+        $botId = $eu['resultado']['id'] ?? null;
+        $usuario = $eu['resultado']['username'] ?? null;
+        if (! is_int($botId) || ! is_string($usuario) || ! ($eu['resultado']['is_bot'] ?? false)) {
+            throw ValidationException::withMessages(['token' => 'O Telegram respondeu, mas não como um bot. Confira o token.']);
+        }
+        $webhook = $api->chamar('getWebhookInfo');
+        if (! $webhook['ok'] || filled($webhook['resultado']['url'] ?? null)) {
+            throw ValidationException::withMessages(['token' => 'Esse bot já está ligado a outro sistema (webhook). Crie um bot só para a Central.']);
+        }
+
+        return DB::transaction(function () use ($user, $token, $botId, $usuario) {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            if (CentralIaTelegramBot::where('telegram_bot_id', $botId)->where('user_id', '!=', $user->id)->exists()) {
+                throw ValidationException::withMessages(['token' => 'Esse bot já está cadastrado em outra conta. Cada pessoa usa o próprio bot.']);
+            }
+            $anterior = CentralIaTelegramBot::where('user_id', $user->id)->lockForUpdate()->first();
+            $mesmo = $anterior && $anterior->telegram_bot_id === $botId && $anterior->servidor === CentralIaTelegramBot::servidorAtual();
+            if ($anterior && ! $mesmo) {
+                $this->desfazerVinculo($user);
+            }
+            $bot = CentralIaTelegramBot::updateOrCreate(['user_id' => $user->id], [
+                'telegram_bot_id' => $botId, 'usuario' => $usuario, 'token' => $token,
+                'servidor' => CentralIaTelegramBot::servidorAtual(),
+                'proximo_update_id' => $mesmo ? $anterior->proximo_update_id : 0,
+                'situacao' => CentralIaTelegramBot::OK, 'situacao_em' => now(),
+            ]);
+            Eventos::registrar($user, 'telegram_bot', ($mesmo ? 'Token do bot @' : 'Bot @').$usuario.($mesmo ? ' renovado.' : ' cadastrado na Central.'), ['origem' => 'web']);
+
+            return $bot;
+        });
+    }
+
+    /** Tira o bot da Central. O bot continua existindo no Telegram: apagar é no @BotFather. */
+    public function removerBot(User $user): void
+    {
+        DB::transaction(function () use ($user) {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $this->desfazerVinculo($user);
+            $usuario = CentralIaTelegramBot::where('user_id', $user->id)->value('usuario');
+            CentralIaTelegramBot::where('user_id', $user->id)->delete();
+            if ($usuario) {
+                Eventos::registrar($user, 'telegram_bot', "Bot @{$usuario} retirado da Central.", ['origem' => 'web']);
+            }
+        });
     }
 
     /**
@@ -59,18 +147,37 @@ class TelegramCanal
     {
         DB::transaction(function () use ($user) {
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
-            if (app(CanalAtivo::class)->pronto()) app(CanalAtivo::class)->transferir($user, 'web');
-            CentralIaTelegramVinculo::where('user_id', $user->id)->delete();
-            // O que ainda ia para aquele chat não vai mais.
-            CentralIaEntrega::where('user_id', $user->id)->where('status', CentralIaEntrega::PENDENTE)
-                ->update(['status' => CentralIaEntrega::FALHOU, 'erro' => 'desvinculado']);
+            $this->desfazerVinculo($user);
         });
     }
 
+    /** Dentro de uma transação que já travou a conta. */
+    private function desfazerVinculo(User $user): void
+    {
+        if (! CentralIaTelegramVinculo::where('user_id', $user->id)->exists()) {
+            return;
+        }
+        if (app(CanalAtivo::class)->pronto()) app(CanalAtivo::class)->transferir($user, 'web');
+        CentralIaTelegramVinculo::where('user_id', $user->id)->delete();
+        // O que ainda ia para aquele chat não vai mais.
+        CentralIaEntrega::where('user_id', $user->id)->where('status', CentralIaEntrega::PENDENTE)
+            ->update(['status' => CentralIaEntrega::FALHOU, 'erro' => 'desvinculado']);
+    }
+
     /**
-     * Um update do getUpdates. Nada do payload bruto é guardado.
+     * Um update do getUpdates do bot `$bot`. Nada do payload bruto é guardado.
      */
-    public function receber(array $update): void
+    public function receber(array $update, CentralIaTelegramBot $bot): void
+    {
+        $this->atual = $this->api->doBot($bot);
+        try {
+            $this->receberNoBot($update, $bot);
+        } finally {
+            $this->atual = null;
+        }
+    }
+
+    private function receberNoBot(array $update, CentralIaTelegramBot $bot): void
     {
         $updateId = $update['update_id'] ?? null;
         $m = $update['message'] ?? null;
@@ -98,15 +205,16 @@ class TelegramCanal
 
         if (str_starts_with($texto, '/start')) {
             // O código nunca vira texto da conversa.
-            $this->parear($chatId, trim(substr($texto, 6)), $m['from']['username'] ?? null);
+            $this->parear($bot, $chatId, trim(substr($texto, 6)), $m['from']['username'] ?? null);
 
             return;
         }
 
-        $vinculo = CentralIaTelegramVinculo::where('chat_id', $chatId)->first();
+        // Só o dono do bot conversa por ele.
+        $vinculo = CentralIaTelegramVinculo::where('chat_id', $chatId)->where('user_id', $bot->user_id)->first();
 
         if (! $vinculo) {
-            $this->responder($chatId, 'Este chat não está ligado a nenhuma conta. Gere o código na Central de IA do AlfaMatriz e toque no link.');
+            $this->responder($chatId, 'Este chat não está ligado à Central. Se o bot é seu, gere o código em Ajustes da Central de IA do AlfaMatriz e toque no link.');
 
             return;
         }
@@ -119,7 +227,7 @@ class TelegramCanal
             return;
         }
 
-        if (CentralIaMensagem::where('telegram_update_id', $updateId)->exists()) return;
+        if (CentralIaMensagem::where('user_id', $user->id)->where('telegram_update_id', $updateId)->exists()) return;
 
         // Mensagem encaminhada é texto de OUTRA pessoa: não vira pedido a um
         // agente com acesso total na máquina do dono.
@@ -140,7 +248,7 @@ class TelegramCanal
                 if ($controle->ativo($user) === 'telegram') {
                     DB::transaction(function () use ($user, $texto, $updateId, $controle) {
                         User::whereKey($user->id)->lockForUpdate()->firstOrFail();
-                        if ($controle->ativo($user) !== 'telegram' || CentralIaMensagem::where('telegram_update_id', $updateId)->exists()) return;
+                        if ($controle->ativo($user) !== 'telegram' || CentralIaMensagem::where('user_id', $user->id)->where('telegram_update_id', $updateId)->exists()) return;
                         $this->conversas->registrarDoUsuario($user, $texto, 'telegram', telegramUpdateId: $updateId,
                             projeto: $controle->estado($user)?->projeto_canal);
                         $controle->transferir($user, 'web');
@@ -162,7 +270,7 @@ class TelegramCanal
         }
 
         try {
-            if (CentralIaMensagem::where('telegram_update_id', $updateId)->exists()) {
+            if (CentralIaMensagem::where('user_id', $user->id)->where('telegram_update_id', $updateId)->exists()) {
                 return;
             }
             DB::transaction(function () use ($user, $vinculo, $chatId, $texto, $updateId, $midia) {
@@ -231,10 +339,10 @@ class TelegramCanal
         $this->responder($chatId, 'Arquivo recebido. Estou baixando para analisar…');
         $tmp = tempnam(sys_get_temp_dir(), 'central-ia-');
         try {
-            if (! $this->api->baixar($midia['file_id'], $tmp)) {
+            if (! $this->atual->baixar($midia['file_id'], $tmp)) {
                 throw ValidationException::withMessages(['arquivo' => 'Não consegui baixar o arquivo. Reenvie um arquivo de até 20 MB.']);
             }
-            $this->api->verificarConsumidor();
+            $this->atual->verificarConsumidor();
             $anexo = app(AnexosService::class)->guardar($user,
                 new \Illuminate\Http\UploadedFile($tmp, $midia['file_name'] ?? 'foto.jpg', null, null, true), (string) \Illuminate\Support\Str::uuid());
             try {
@@ -275,7 +383,7 @@ class TelegramCanal
             ->distinct()->pluck('user_id');
         foreach (CentralIaTelegramVinculo::whereIn('user_id', $users)->get() as $vinculo) {
             if (($user = User::find($vinculo->user_id)) && $this->podeEscrever($user) && (! app(CanalAtivo::class)->pronto() || app(CanalAtivo::class)->ativo($user) === 'telegram') && $this->agentes->disponiveis($user)['online']) {
-                $this->api->chamar('sendChatAction', ['chat_id' => $vinculo->chat_id, 'action' => 'typing'], 3);
+                $this->apiDe($vinculo->user_id)?->chamar('sendChatAction', ['chat_id' => $vinculo->chat_id, 'action' => 'typing'], 3);
             }
         }
     }
@@ -293,7 +401,7 @@ class TelegramCanal
         if (app(ProgressoService::class)->consulta($texto)) {
             DB::transaction(function () use ($user, $vinculo, $texto, $updateId) {
                 User::whereKey($user->id)->lockForUpdate()->first();
-                if (CentralIaMensagem::where('telegram_update_id', $updateId)->exists()) return;
+                if (CentralIaMensagem::where('user_id', $user->id)->where('telegram_update_id', $updateId)->exists()) return;
                 $projeto = $texto === '/status' ? null : $vinculo->projeto_atual;
                 // A resposta fica no assunto ATIVO do canal (projeto e
                 // tarefa): gravada fora dele, a regra de entrega do canal
@@ -418,7 +526,7 @@ class TelegramCanal
         $modo = $e->modo === 'implementar' ? 'implementar' : 'analisar';
         $handoff = isset($e->roteamento['handoff_de']) ? ' Assume a tarefa no lugar de '.(CentralIaExecucao::AGENTES[$e->roteamento['handoff_de']] ?? '?').', com o contexto dela.' : '';
         $onde = $e->projeto !== '' ? $e->projeto : 'Geral';
-        $fontes = collect($e->roteamento['fontes'] ?? [])->map(fn ($f) => $f['tipo'] === 'agenda' ? "Google Agenda ({$f['rotulo']})" : $f['tipo'])->implode(', ');
+        $fontes = collect($e->roteamento['fontes'] ?? [])->map(fn ($f) => $f['tipo'] === 'agenda' ? "Agenda ({$f['rotulo']})" : $f['tipo'])->implode(', ');
         $this->responder($chatId, "Recebido em {$onde}: {$e->nomeDoAgente()} vai {$modo} (tarefa #{$e->tarefa_id}). "
             .($fontes ? "Dados oficiais: {$fontes}. " : '')
             .($e->roteamento['motivo'] ?? '').".{$handoff} A resposta chega aqui quando terminar.");
@@ -667,15 +775,17 @@ class TelegramCanal
             ."/trocar <agente> [pedido] — passa a tarefa atual para outro agente\n/continuar <projeto> [agente] — segue a conversa do VS Code daquele projeto\n/salvar — salva um ponto na tarefa atual (a conversa recomeça enxuta)\n/claude <projeto> <pedido> — pedido direto (com ! para implementar)";
     }
 
-    private function parear(int $chatId, string $codigo, ?string $usuarioTelegram): void
+    private function parear(CentralIaTelegramBot $bot, int $chatId, string $codigo, ?string $usuarioTelegram): void
     {
-        $resposta = DB::transaction(function () use ($chatId, $codigo, $usuarioTelegram) {
+        $resposta = DB::transaction(function () use ($bot, $chatId, $codigo, $usuarioTelegram) {
             $registro = preg_match('/^[a-f0-9]{32}$/D', $codigo)
                 ? DB::table('central_ia_telegram_codigos')->where('codigo_hash', hash('sha256', $codigo))->lockForUpdate()->first()
                 : null;
 
-            if (! $registro || now()->greaterThan($registro->expira_em)) {
-                return 'Código inválido ou vencido. Gere outro na Central de IA do AlfaMatriz.';
+            // O código de outra conta não liga ESTE bot: seria a conversa de
+            // uma pessoa correndo pelo bot de outra.
+            if (! $registro || now()->greaterThan($registro->expira_em) || (int) $registro->user_id !== (int) $bot->user_id) {
+                return 'Código inválido ou vencido. Gere outro em Ajustes da Central de IA do AlfaMatriz.';
             }
 
             DB::table('central_ia_telegram_codigos')->where('id', $registro->id)->delete();
@@ -714,12 +824,13 @@ class TelegramCanal
         if (! app(Previas::class)->pronto()) return;
         foreach (\App\Models\CentralIaPrevia::where('telegram', 'pendente')->orderBy('id')->limit($limite)->get() as $p) {
             $vinculo = CentralIaTelegramVinculo::where('user_id', $p->user_id)->first();
-            if (! $vinculo) { $p->update(['telegram' => null]); continue; }
+            $api = $vinculo ? $this->apiDe($p->user_id) : null;
+            if (! $api) { $p->update(['telegram' => null]); continue; }
             $p->update(['telegram' => 'enviando']);
             $arquivo = "central-ia/previas/{$p->user_id}/{$p->execucao_id}/{$p->caminho}";
             $foto = $p->tipo() === 'imagem' && $p->tamanho <= 10 * 1024 * 1024;
             $r = \Illuminate\Support\Facades\Storage::disk('central_ia')->exists($arquivo)
-                ? $this->api->enviarArquivo($foto ? 'sendPhoto' : 'sendDocument', $foto ? 'photo' : 'document',
+                ? $api->enviarArquivo($foto ? 'sendPhoto' : 'sendDocument', $foto ? 'photo' : 'document',
                     \Illuminate\Support\Facades\Storage::disk('central_ia')->get($arquivo), basename($p->caminho),
                     ['chat_id' => $vinculo->chat_id, 'caption' => 'Prévia da execução #'.$p->execucao_id.' — '.$p->caminho])
                 : ['ok' => false, 'erro' => 'recusada'];
@@ -778,6 +889,12 @@ class TelegramCanal
                 return null;
             }
 
+            if (! $this->apiDe($entrega->user_id)) {
+                $entrega->update(['status' => CentralIaEntrega::FALHOU, 'erro' => 'sem_bot']);
+
+                return null;
+            }
+
             if (! app(CanalAtivo::class)->entregaPermitida(User::findOrFail($entrega->user_id), $entrega->mensagem)) {
                 $entrega->update(['status' => CentralIaEntrega::FALHOU, 'erro' => 'canal_inativo']);
                 return null;
@@ -805,13 +922,14 @@ class TelegramCanal
             $texto .= "\n\n… (continua na Central de IA do AlfaMatriz)";
         }
 
-        $resultado = $this->api->chamar('sendMessage', [
+        $api = $this->apiDe($entrega->user_id);
+        $resultado = $api ? $api->chamar('sendMessage', [
             'chat_id' => $entrega->chat_id,
             'text' => $this->cabecalho($mensagem)."\n".$texto,
             // Sem prévia: um link na resposta não é buscado pelos servidores
             // do Telegram (canal de vazamento por URL montada pelo agente).
             'link_preview_options' => ['is_disabled' => true],
-        ]);
+        ]) : ['ok' => false, 'erro' => 'recusada'];
 
         if ($resultado['ok']) {
             $entrega->update(['status' => CentralIaEntrega::ENTREGUE, 'telegram_message_id' => $resultado['resultado']['message_id'] ?? null, 'erro' => null]);
@@ -865,7 +983,7 @@ class TelegramCanal
     {
         // Aviso do próprio bot, fora da conversa. Perdido, a pessoa tenta de
         // novo; por isso não vira entrega rastreada.
-        $this->api->chamar('sendMessage', ['chat_id' => $chatId, 'text' => $texto, 'link_preview_options' => ['is_disabled' => true]]);
+        $this->atual?->chamar('sendMessage', ['chat_id' => $chatId, 'text' => $texto, 'link_preview_options' => ['is_disabled' => true]]);
     }
 
     private function podeEscrever(?User $user): bool

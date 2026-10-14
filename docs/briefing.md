@@ -110,7 +110,7 @@ tocar produção > continuidade de contexto > velocidade de entrega.
 | Frontend | Blade + Alpine + Tailwind (tokens em `tailwind.config.js` e `app.css`) | Sem SPA; redesign com tokens próprios |
 | Banco de dados | MariaDB 10.11 (testes em SQLite em memória) | Mesmo banco do AlfaMatriz (`central_ia_*`) |
 | Infraestrutura | Docker Desktop na WSL2 (`alfamatriz-dev`, porta 8096); runner como serviço systemd do usuário | Cada pessoa executa na própria máquina |
-| Integracoes | Telegram (long polling), CLIs Claude/Codex/Copilot, Google Agenda pela ponte `gcal.py`, Sanctum para o runner | — |
+| Integracoes | Telegram (long polling), CLIs Claude/Codex/Copilot, Agenda do AlfaMatriz (ou agenda pessoal configurada na máquina), Sanctum para o runner | — |
 
 ## 7. Qualidade e Padroes
 

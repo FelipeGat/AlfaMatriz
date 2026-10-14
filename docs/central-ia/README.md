@@ -51,7 +51,8 @@ deste README, vale este.
 ## O que existe (etapa 2)
 
 - `central_ia_telegram_vinculos` (um chat por conta, uma conta por chat),
-  `central_ia_telegram_codigos` (só o hash), `central_ia_telegram_cursor` e
+  `central_ia_telegram_codigos` (só o hash), `central_ia_telegram_cursor` (sem uso desde a T-374: o cursor
+  é por bot, em `central_ia_telegram_bots`) e
   `central_ia_entregas` (migração `2026_10_10_210000_telegram_da_central_ia.php`).
 - `TelegramApi` (único ponto que fala com o bot; o token nunca vai para log),
   `TelegramCanal` (parear, receber, entregar) e o comando `central-ia:telegram`.
@@ -389,7 +390,7 @@ Spec, plano e tarefas: `docs/specs/chats-business/`. O dono passou a trabalhar p
 - **Pedido pelo stdin.** O Claude e o Codex recebem o pedido pela entrada padrão. Como argumento, passava do limite de 128 KB do Linux (`spawn E2BIG`).
 - **Adiado.** Condensar o histórico antigo e reduzir pela cota (fase 3). "Atualizar do VS Code" saiu do escopo.
 
-### Quem implementa passa pelo cstk (13/10/2026)
+### Quem implementa passa pelo cstk (13/10/2026) — virou opção por pessoa na T-374
 
 O runner acrescenta a regra do cstk (`politica.mjs`, `regraCstk`) a todo pedido de implementar em projeto,
 para as três IAs, e não só para o Claude, que já a recebia pelo `~/.claude/CLAUDE.md` global.
@@ -397,3 +398,34 @@ para as três IAs, e não só para o Claude, que já a recebia pelo `~/.claude/C
   pelo `delegar`.
 - **Bug pontual e ajustes:** seguem direto.
 - **Chat de assunto sem projeto** (propostas, planilhas): fica de fora, porque não é código de repositório.
+
+## Central para o time (T-374, 14/10/2026)
+
+Dono do produto: "nada pode estar preso à máquina do Felipe; a Central de IA é para um time".
+
+- **Quem administra** os limites e libera a execução das outras contas é quem tem o perfil Administrador e o
+  perfil "Central de IA" (`Governanca::administra`). O `CENTRAL_IA_DONO` saiu. Conta nova nasce bloqueada até
+  um administrador liberar; administrador nunca é bloqueado por política.
+- **Conectar minha máquina** (Ajustes → Minhas máquinas): código de instalação de uso único (15 min) →
+  `curl …/central-ia/instalar.sh | bash -s -- <código>` → o instalador troca o código pelo token
+  (`POST /api/central-ia/instalacao`), grava a configuração e liga o serviço (systemd no Linux/WSL, launchd no
+  Mac). A tela lista as máquinas (`central_ia_runners.token_id` liga a batida ao token), avisa a que sumiu
+  (tailnet) e desconecta. Ver `deploy/central-ia/README.md`.
+- **Mac:** sessões abertas por `ps` + `lsof` (sem `/proc`), extensões do VS Code em `~/.vscode`, binário do
+  Codex por arquitetura, anexos dentro do HOME (o Colima só monta o HOME).
+- **Saiu do runner o que era de uma máquina:** memória com caminho fixo (agora opção nos Ajustes; o arquivo é
+  o da pasta de projetos ou `CENTRAL_IA_MEMORIA`), agenda pelo script do Windows (agora a Agenda do AlfaMatriz,
+  ou `CENTRAL_IA_AGENDA` na máquina), painel 8089 (agora `CENTRAL_IA_RETRATO`, opcional), cstk imposto (agora
+  opção nos Ajustes, desligada).
+- **Bot do Telegram de cada pessoa** (decisão do dono em 14/10/2026): nenhum bot no `.env`. A pessoa cria o
+  dela no @BotFather e cola o token em Ajustes → Telegram (`PUT central-ia/telegram/bot`); o servidor confere
+  com `getMe` e `getWebhookInfo`, guarda cifrado em `central_ia_telegram_bots` (um bot por conta, uma conta por
+  bot) e o `central-ia:telegram` ouve todos os bots marcados com o `APP_URL` deste servidor, cada um com o
+  próprio cursor. Um update só vale no bot de quem o recebeu (o código de pareamento e o chat têm de ser do dono
+  do bot). O mesmo bot leva o código de confirmação: a instalação manda o token dele à máquina da pessoa — o
+  bot de confirmação separado existia porque o bot era compartilhado, e deixou de ser. Token revogado (401),
+  webhook ou outro leitor (409) tiram só aquele bot da leitura, e a tela avisa a pessoa.
+- **O que sai da máquina:** título e começo do pedido só das conversas abertas dentro da pasta de projetos.
+- **Auditoria local:** a implementação que roda sem código fica como `sem_confirmacao`, e não "leitura".
+- **Prévia:** sem `X-Frame-Options` próprio (o nginx já põe o dele; saíam dois que se contradiziam). Quem
+  proíbe a moldura é o `frame-ancestors 'none'` da CSP.

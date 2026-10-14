@@ -26,7 +26,7 @@ use Tests\TestCase;
  */
 class AgentesTest extends TestCase
 {
-    use RefreshDatabase;
+    use BotProprioNosTestes, RefreshDatabase;
     protected function setUp(): void
     {
         parent::setUp();
@@ -65,7 +65,7 @@ class AgentesTest extends TestCase
         $this->assertSame(['agente' => 'claude', 'modo' => 'analisar', 'projeto' => 'alfacontrol', 'instrucao' => 'veja os erros'], $s->interpretar('/claude alfacontrol veja os erros'));
         $this->assertSame('implementar', $s->interpretar('/claude! alfahome corrija')['modo']);
         $this->assertSame('codex', $s->interpretar('/gpt vix-id resuma')['agente']);
-        $this->assertSame('copilot', $s->interpretar("/copilot@GrupoSolucoesAgentBot alfagym liste\nas rotas")['agente']);
+        $this->assertSame('copilot', $s->interpretar("/copilot@CentralDaAlfaBot alfagym liste\nas rotas")['agente']);
         $this->assertNull($s->interpretar('claude alfacontrol sem barra'));
         $this->assertNull($s->interpretar('/claude alfacontrol'));
         $this->assertNull($s->interpretar('/outro alfacontrol x'));
@@ -248,15 +248,14 @@ class AgentesTest extends TestCase
 
     public function test_pedido_pelo_telegram_e_resposta_volta_para_la(): void
     {
-        config(['central_ia.telegram.token' => 'token-de-teste']);
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 7]])]);
         $user = $this->comCentral();
         $this->maquina($user);
         $canal = app(TelegramCanal::class);
-        $canal->receber(['update_id' => 1, 'message' => ['text' => '/start '.$canal->gerarCodigo($user), 'chat' => ['id' => 42, 'type' => 'private'], 'from' => ['id' => 42, 'is_bot' => false]]]);
+        $this->entregarAoBot($canal, ['update_id' => 1, 'message' => ['text' => '/start '.$canal->gerarCodigo($user), 'chat' => ['id' => 42, 'type' => 'private'], 'from' => ['id' => 42, 'is_bot' => false]]]);
 
-        $canal->receber(['update_id' => 2, 'message' => ['text' => '/gpt alfahome resuma o projeto', 'chat' => ['id' => 42, 'type' => 'private'], 'from' => ['id' => 42, 'is_bot' => false]]]);
-        $canal->receber(['update_id' => 3, 'message' => ['text' => '/claude naoexiste x', 'chat' => ['id' => 42, 'type' => 'private'], 'from' => ['id' => 42, 'is_bot' => false]]]);
+        $this->entregarAoBot($canal, ['update_id' => 2, 'message' => ['text' => '/gpt alfahome resuma o projeto', 'chat' => ['id' => 42, 'type' => 'private'], 'from' => ['id' => 42, 'is_bot' => false]]]);
+        $this->entregarAoBot($canal, ['update_id' => 3, 'message' => ['text' => '/claude naoexiste x', 'chat' => ['id' => 42, 'type' => 'private'], 'from' => ['id' => 42, 'is_bot' => false]]]);
 
         $this->assertSame(1, CentralIaExecucao::count());
         $execucao = CentralIaExecucao::first();

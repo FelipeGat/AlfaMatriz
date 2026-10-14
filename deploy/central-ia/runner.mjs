@@ -13,7 +13,7 @@
  */
 import { spawn, execFileSync } from 'node:child_process';
 import { writeFileSync, closeSync, existsSync, lstatSync, openSync, readFileSync, readSync, readdirSync, statSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from 'node:fs';
-import { homedir, hostname, tmpdir } from 'node:os';
+import { homedir, hostname, platform, release, tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { setDefaultAutoSelectFamilyAttemptTimeout } from 'node:net';
@@ -23,7 +23,7 @@ import { prepararAnexos } from './anexos.mjs';
 import { acompanharProgresso } from './progresso.mjs';
 import { auditar, confirmar } from './confirmacao.mjs';
 import { caminhoDoStatus, compararGit, criarAuditor, retratoGit } from './auditoria.mjs';
-import { acessoEfetivo, agendaSemIa, CITA_CREDENCIAL, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
+import { acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h): a regra "inicio" não pede
 // o código de novo no mesmo chat. Fica aqui, e não no servidor.
@@ -40,6 +40,10 @@ function marcarChatConfirmado(tarefa) {
 const HOME = homedir();
 const CONFIG = process.env.CENTRAL_IA_RUNNER_CONFIG || join(HOME, '.config/alfa/central-ia-runner.env');
 
+// Linux, WSL ou Mac (T-374): o runner roda nos três. A WSL se reconhece pelo
+// kernel da Microsoft.
+const SISTEMA = platform() === 'darwin' ? 'mac' : platform() === 'linux' ? (/microsoft/i.test(release()) ? 'wsl' : 'linux') : 'outro';
+
 function lerConfig() {
     const env = {};
     if (existsSync(CONFIG)) {
@@ -52,6 +56,7 @@ function lerConfig() {
     const config = {
         url: (v('ALFAMATRIZ_URL') || 'http://localhost:8096').replace(/\/$/, ''),
         token: v('ALFAMATRIZ_RUNNER_TOKEN'),
+        // A pasta onde ficam os projetos da pessoa — o instalador pergunta.
         projetos: (v('CENTRAL_IA_PROJETOS') || join(HOME, 'projetos')).replace(/^~/, HOME),
         maquina: v('CENTRAL_IA_MAQUINA') || hostname().replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 64),
         // O que a MÁQUINA permite, decidido aqui e não no servidor (dono,
@@ -66,20 +71,28 @@ function lerConfig() {
         // Analisar: `leitura` (padrão) ou `total` — com total, a IA decide o
         // que consultar, e o que ela viu e alterou fica na auditoria.
         analise: v('CENTRAL_IA_ANALISE') === 'total' ? 'total' : 'leitura',
-        // Pastas em ~/projetos que NÃO são projeto (vídeos, orçamentos):
+        // Pastas da pasta de projetos que NÃO são projeto (vídeos, orçamentos):
         // somem do catálogo, das sessões e do consumo (dono, 12/10/2026).
         ignorar: new Set((v('CENTRAL_IA_IGNORAR') || '').split(',').map(x => x.trim()).filter(Boolean)),
         segredo: v('CENTRAL_IA_SEGREDO_CONFIRMACAO'),
-        // Bot PRÓPRIO dos runners, que só envia o código (T-368, 14/10/2026).
-        // O token do bot da Central (o que pareia contas e recebe pedidos) não
-        // vai para máquina de mais ninguém: quem o tivesse lia as mensagens dos
-        // outros por getUpdates, inclusive o /start <código> do pareamento, e
-        // ligava o próprio Telegram à conta alheia. O nome antigo continua
-        // aceito para a máquina do Felipe, que criou o bot e já tem o token
-        // (dono do produto: não mexer no ambiente dele); máquina nova usa o
-        // _CONFIRMACAO.
+        // O bot DA PESSOA (T-374, 14/10/2026): cada um cadastra o seu nos
+        // Ajustes da Central, conversa por ele e recebe aqui o código. O
+        // instalador grava o token e o chat UMA vez; o servidor não muda para
+        // onde o código vai. O nome da variável ficou o do tempo em que havia
+        // um bot só para o código (T-368), e o mais antigo, das máquinas
+        // instaladas à mão, continua aceito.
         telegramToken: v('CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO') || v('CENTRAL_IA_TELEGRAM_TOKEN'),
         telegramChat: v('CENTRAL_IA_TELEGRAM_CHAT_ID'),
+        // Opcionais, todos desta máquina e nenhum vindo do servidor (T-374):
+        // - memória: o MEMORY.md que vai aos agentes quando a pessoa liga a
+        //   opção nos Ajustes; sem valor, o da pasta de projetos, se existir;
+        //   `nenhuma` desliga de vez nesta máquina;
+        // - agenda: comando que lista a agenda pessoal (`programa|script`);
+        //   sem ele, a agenda é a do AlfaMatriz, que vem no pedido;
+        // - retrato: um retrato.json de painel de andamento, se a pessoa usa.
+        memoria: (v('CENTRAL_IA_MEMORIA') || '').replace(/^~/, HOME),
+        agenda: v('CENTRAL_IA_AGENDA') || '',
+        retrato: (v('CENTRAL_IA_RETRATO') || '').replace(/^~/, HOME),
     };
     // Worktrees das execuções de implementar: dentro da pasta de projetos,
     // num diretório com ponto — que a listagem de projetos ignora.
@@ -112,19 +125,25 @@ function noPath(nome) {
 }
 
 // As extensões do VS Code trazem os binários numa pasta com a versão no nome,
-// e a pasta muda a cada atualização: procura a mais nova a cada batida.
+// e a pasta muda a cada atualização: procura a mais nova a cada batida. Na
+// WSL/SSH ficam em ~/.vscode-server; no Mac e no Linux de mesa, em ~/.vscode.
 function maisNovo(prefixo, relativo) {
-    const base = join(HOME, '.vscode-server/extensions');
-    if (!existsSync(base)) return null;
-    const achados = readdirSync(base).filter(d => d.startsWith(prefixo)).map(d => join(base, d, relativo)).filter(existsSync);
+    const achados = [];
+    for (const base of [join(HOME, '.vscode-server/extensions'), join(HOME, '.vscode/extensions')]) {
+        if (!existsSync(base)) continue;
+        achados.push(...readdirSync(base).filter(d => d.startsWith(prefixo)).map(d => join(base, d, relativo)).filter(existsSync));
+    }
     achados.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     return achados.at(-1) || null;
 }
 
+// A pasta do binário do Codex dentro da extensão muda com o sistema.
+const CODEX_NA_EXTENSAO = SISTEMA === 'mac' ? `bin/macos-${process.arch === 'arm64' ? 'aarch64' : 'x86_64'}/codex` : `bin/linux-${process.arch === 'arm64' ? 'aarch64' : 'x86_64'}/codex`;
+
 function localizarAgentes() {
     return {
         claude: noPath('claude') || maisNovo('anthropic.claude-code-', 'resources/native-binary/claude'),
-        codex: noPath('codex') || maisNovo('openai.chatgpt-', 'bin/linux-x86_64/codex'),
+        codex: noPath('codex') || maisNovo('openai.chatgpt-', CODEX_NA_EXTENSAO),
         copilot: noPath('copilot') || (existsSync(join(HOME, '.local/bin/copilot')) ? join(HOME, '.local/bin/copilot') : null),
     };
 }
@@ -191,13 +210,11 @@ let agentes = {};
 function sessoesAbertas() {
     const raiz = realpathSync(cfg.projetos) + sep;
     const porProjeto = {};
-    for (const pid of readdirSync('/proc').filter(p => /^\d+$/.test(p))) {
+    let processos;
+    try { processos = processosDeAgente(); } catch (e) { log('sessões abertas indisponíveis:', String(e.message).split('\n')[0]); return {}; }
+    for (const { agente, cwd: pasta } of processos) {
         try {
-            const cmd = readFileSync(`/proc/${pid}/cmdline`, 'utf8');
-            const agente = /native-binary\/claude|\/claude\0/.test(cmd) ? 'claude'
-                : /\/codex\0/.test(cmd) ? 'codex' : /copilot/.test(cmd) ? 'copilot' : null;
-            if (!agente) continue;
-            const cwd = realpathSync(`/proc/${pid}/cwd`);
+            const cwd = realpathSync(pasta);
             if (!cwd.startsWith(raiz)) continue;
             const projeto = cwd.slice(raiz.length).split(sep)[0];
             // As worktrees da própria Central não contam como sessão de alguém.
@@ -208,10 +225,53 @@ function sessoesAbertas() {
     return porProjeto;
 }
 
-// Fase e atividade lidas do painel-avanco (porta 8089), quando ele existe —
-// só leitura do retrato que ele já gera, sem coletar de novo.
+function qualAgente(cmd) {
+    return /native-binary\/claude|\/claude(?:\0|\s|$)/.test(cmd) ? 'claude'
+        : /\/codex(?:\0|\s|$)/.test(cmd) ? 'codex' : /copilot/.test(cmd) ? 'copilot' : null;
+}
+
+/**
+ * Os processos de agente e a pasta de cada um. No Linux e na WSL, pelo
+ * /proc; no Mac, que não tem /proc (T-374: o runner quebrava lá), pelo `ps`
+ * e pelo `lsof` — que dá a pasta de trabalho (`cwd`) de cada processo.
+ */
+function processosDeAgente() {
+    const achados = [];
+    if (existsSync('/proc/self/cwd')) {
+        for (const pid of readdirSync('/proc').filter(p => /^\d+$/.test(p))) {
+            try {
+                const agente = qualAgente(readFileSync(`/proc/${pid}/cmdline`, 'utf8'));
+                if (agente) achados.push({ agente, cwd: `/proc/${pid}/cwd` });
+            } catch {}
+        }
+        return achados;
+    }
+    const porPid = new Map();
+    for (const linha of execFileSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8', timeout: 10_000, stdio: ['ignore', 'pipe', 'ignore'] }).split('\n')) {
+        const m = linha.trim().match(/^(\d+)\s+(.*)$/);
+        const agente = m && qualAgente(m[2]);
+        if (agente && Number(m[1]) !== process.pid) porPid.set(m[1], agente);
+    }
+    if (!porPid.size) return achados;
+    // -a: E entre os filtros; -d cwd: só a pasta de trabalho; -Fn: saída
+    // "p<pid>" e "n<pasta>", uma por linha.
+    let saida = '';
+    try { saida = execFileSync('lsof', ['-a', '-d', 'cwd', '-Fn', '-p', [...porPid.keys()].join(',')], { encoding: 'utf8', timeout: 10_000, stdio: ['ignore', 'pipe', 'ignore'] }); }
+    catch (e) { saida = String(e.stdout || ''); } // lsof sai com 1 se algum pid já terminou
+    let pid = null;
+    for (const linha of saida.split('\n')) {
+        if (linha.startsWith('p')) pid = linha.slice(1);
+        else if (linha.startsWith('n') && pid && porPid.has(pid)) achados.push({ agente: porPid.get(pid), cwd: linha.slice(1) });
+    }
+    return achados;
+}
+
+// Fase e atividade de um painel de andamento, para quem usa um: o
+// retrato.json que ele gera, só lido. Opcional (T-374): o caminho fixo de
+// antes era o painel da máquina de uma pessoa.
 function retratoDoPainel() {
-    const arquivo = join(cfg.projetos, 'painel-avanco', 'retrato.json');
+    if (!cfg.retrato) return {};
+    const arquivo = cfg.retrato;
     try {
         const r = JSON.parse(readFileSync(arquivo, 'utf8'));
         return Object.fromEntries((r.projetos || []).map(p => [p.nome, { fase: p.fase_inferida?.rotulo ?? p.fase_inferida ?? null, atividade: p.status_atividade?.rotulo ?? p.status_atividade ?? null }]));
@@ -292,7 +352,7 @@ async function batida() {
         estado: estadoDosProjetos(projetos),
         // O que esta máquina impõe, para a tela mostrar (só leitura lá).
         politica: { acesso_maximo: cfg.acessoMaximo, analise: cfg.analise, confirmar_minimo: cfg.confirmar,
-            telegram: !!(cfg.telegramToken && cfg.telegramChat && /^[0-9a-f]{64}$/i.test(cfg.segredo || '')) },
+            telegram: !!(cfg.telegramToken && cfg.telegramChat && /^[0-9a-f]{64}$/i.test(cfg.segredo || '')), sistema: SISTEMA },
         desde: INICIO_DO_PROCESSO,
         em_curso: [...emCurso],
         ...(u ? { consumo: { ...consumo, limites_claude: limitesDoClaude() }, sessoes } : {}),
@@ -329,8 +389,8 @@ function prepararWorktree(projeto, dir, tarefa) {
 
 /**
  * O estado real do git ao fim da execução — medido aqui, não relatado. A
- * continuação de uma sessão do VS Code roda na RAIZ ~/projetos, que não é
- * repositório: aí o git medido é o da pasta do projeto.
+ * continuação de uma sessão do VS Code roda na RAIZ da pasta de projetos, que
+ * não é repositório: aí o git medido é o da pasta do projeto.
  */
 function checkpoint(cwd, projetoDir = null) {
     const c = { cwd };
@@ -348,6 +408,19 @@ function checkpoint(cwd, projetoDir = null) {
     return c;
 }
 
+/**
+ * Onde ficam os anexos da execução. No Mac, dentro do HOME (T-374): o Docker
+ * de lá (Colima, e o Docker Desktop configurado assim) só monta o HOME, e a
+ * conversão de PDF e vídeo num container não achava o /var/folders do
+ * tmpdir(). No Linux e na WSL, o tmpdir() de sempre.
+ */
+function pastaTemporaria() {
+    if (SISTEMA !== 'mac') return tmpdir();
+    const dir = join(HOME, '.local/share/alfa/tmp');
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    return dir;
+}
+
 function pastaGeral() {
     const dir = join(HOME, '.local/share/alfa/central-ia-geral');
     mkdirSync(dir, { recursive: true });
@@ -360,25 +433,36 @@ function pastaGeral() {
  * regra de usar só eles. Era o que fazia cada IA trazer uma agenda diferente:
  * cada uma procurava num lugar, e o Codex, isolado, nem alcança a ponte.
  */
+/**
+ * A agenda do período. Com `CENTRAL_IA_AGENDA` (`programa|script`, opcional
+ * por máquina), a agenda pessoal que a pessoa integrou — chamada com
+ * `list --inicio AAAA-MM-DD --dias N`, uma linha por evento. Sem ela, a do
+ * próprio AlfaMatriz, que o servidor já manda no pedido (T-374: o padrão era
+ * o script do Google Agenda no Windows de uma pessoa).
+ */
 function lerAgenda(f) {
-    const [python, script] = (process.env.CENTRAL_IA_AGENDA || '/mnt/c/Python314/python.exe|C:\\tmp\\gcal\\gcal.py').split('|');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(f.inicio) || !Number.isInteger(f.dias)) throw new Error('período inválido');
-    return execFileSync(python, [script, 'list', '--inicio', f.inicio, '--dias', String(f.dias)],
-        { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    if (cfg.agenda) {
+        const [programa, ...resto] = cfg.agenda.split('|');
+        return { fonte: 'agenda pessoal desta máquina', texto: execFileSync(programa, [...resto, 'list', '--inicio', f.inicio, '--dias', String(f.dias)],
+            { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'] }).trim() };
+    }
+    if (typeof f.alfamatriz === 'string') return { fonte: 'Agenda do AlfaMatriz', texto: f.alfamatriz.trim() };
+    throw new Error('nenhuma agenda disponível (sem acesso à Agenda do AlfaMatriz e sem agenda pessoal configurada nesta máquina)');
 }
 
 function dadosOficiais(fontes) {
     const blocos = [];
     for (const f of fontes) {
         if (f.tipo !== 'agenda') continue;
-        let texto;
+        let texto, fonte = 'agenda da pessoa';
         try {
-            texto = lerAgenda(f);
+            ({ texto, fonte } = lerAgenda(f));
         } catch (e) {
             texto = `(NÃO FOI POSSÍVEL LER A AGENDA: ${String(e.message).split('\n')[0].slice(0, 200)}. Diga isso na resposta; não procure em outro lugar nem invente.)`;
         }
         blocos.push([
-            `## Dados oficiais — Google Agenda de todas as agendas da pessoa, lido agora pela Central`,
+            `## Dados oficiais — ${fonte}, lida agora pela Central`,
             `Período: ${f.rotulo} (a partir de ${f.inicio}, ${f.dias} dia(s)). Formato: data hora [agenda] título.`,
             texto || 'Nenhum evento no período.',
             'Regras: para a agenda, use SOMENTE estes dados. Não procure agenda em arquivos, repositórios ou outros sistemas.',
@@ -391,8 +475,9 @@ function dadosOficiais(fontes) {
 function instrucoes(job, branch) {
     const base = [
         'Você está atendendo um pedido feito pela Central de IA do AlfaMatriz. Responda em português do Brasil.',
-        // Prévia visual (dono, 13/10/2026): o que ficava em C:\tmp o Mac não via.
-        ...(job.previaDir ? [`Para MOSTRAR algo visual à pessoa (conceito, tela, gráfico, PDF), salve na pasta de prévia ${job.previaDir}: imagens (png/jpg/webp) e PDF aparecem na conversa e vão ao Telegram dela; uma página web vai em ${job.previaDir}/pagina/index.html (CSS, JS e imagens ao lado, com caminhos RELATIVOS) e vira um link para abrir no navegador, no Mac ou no Windows. Não use C:\\tmp nem outra pasta para isso, e não precisa dizer o caminho na resposta.`] : []),
+        // Prévia visual (dono, 13/10/2026): o que ficava numa pasta solta da
+        // máquina, quem estava em outra não via.
+        ...(job.previaDir ? [`Para MOSTRAR algo visual à pessoa (conceito, tela, gráfico, PDF), salve na pasta de prévia ${job.previaDir}: imagens (png/jpg/webp) e PDF aparecem na conversa e vão ao Telegram dela; uma página web vai em ${job.previaDir}/pagina/index.html (CSS, JS e imagens ao lado, com caminhos RELATIVOS) e vira um link para abrir no navegador, no Mac ou no Windows. Não use outra pasta (temporária ou de projeto) para isso, e não precisa dizer o caminho na resposta.`] : []),
         job.projeto
             ? `Projeto: ${job.projeto}. Siga as instruções do próprio projeto (CLAUDE.md, AGENTS.md, README).`
             : 'Pedido da conversa Geral, fora de projeto: responda com os dados oficiais abaixo (se houver) e o que a pergunta pede.',
@@ -404,8 +489,8 @@ function instrucoes(job, branch) {
             ? `Você está numa worktree própria, na branch ${branch}. Faça as alterações pedidas aqui e rode os testes que fizerem sentido.`
             : 'Você trabalha DIRETO na pasta do projeto, como no VS Code. Antes de alterar, veja o `git status`: alterações que já estavam lá são de outra sessão — preserve-as.',
             'No fim, resuma o que mudou, por quê e como testar.');
-        // Quem implementa passa pelo cstk — Claude, Codex ou Copilot.
-        const cstk = regraCstk(job.agente, job.projeto);
+        // O método cstk, só para quem o ligou nos Ajustes (T-374).
+        const cstk = job.cstk ? regraCstk(job.agente, job.projeto) : null;
         if (cstk) base.push(cstk);
     } else if (job.categoria === 'operacao') {
         // Operar um sistema (dono, 12/10/2026): confere, propõe, confirma,
@@ -432,15 +517,19 @@ function instrucoes(job, branch) {
 }
 
 /**
- * A memória do dono (o índice das notas que o Claude guarda em ~/projetos):
- * entregue a qualquer agente. Sem isso, cada um começava sem saber das
- * portas, das pontes e das decisões já tomadas.
+ * A memória da pessoa (o índice das notas que o Claude guarda para a pasta de
+ * projetos): entregue a qualquer agente, quando ela liga a opção nos Ajustes.
+ * Sem isso, cada um começava sem saber das portas, das pontes e das decisões
+ * já tomadas. O arquivo é escolhido AQUI (arquivoDeMemoria): o servidor só
+ * diz sim ou não, e não aponta arquivo nenhum da máquina.
  */
-function memoria() {
-    const arq = process.env.CENTRAL_IA_MEMORIA || join(HOME, '.claude/projects/-home-duque-de-caxias-projetos/memory/MEMORY.md');
+function memoria(job) {
+    if (!job.memoria) return null;
+    const arq = arquivoDeMemoria(cfg.memoria, realpathSync(cfg.projetos), HOME);
+    if (!arq) return null;
     try {
         const texto = readFileSync(arq, 'utf8').trim();
-        return texto ? `## Memória do dono (índice — os arquivos ficam em ${arq.replace(/\/MEMORY\.md$/, '')}; leia o que for relevante)\n${texto.slice(0, 12000)}` : null;
+        return texto ? `## Memória da pessoa (índice — os arquivos ficam em ${arq.replace(/\/MEMORY\.md$/, '')}; leia o que for relevante)\n${texto.slice(0, 12000)}` : null;
     } catch { return null; }
 }
 
@@ -496,7 +585,7 @@ function comando(job, cwd, branch, saida, acesso) {
     // pedido para o agente ir direto às consultas, sem redescobrir.
     const pops = (job.pops || []).length ? ['## POPs — procedimentos já aprendidos (siga-os; se estiverem errados ou incompletos, corrija e devolva o POP atualizado no bloco final)',
         ...job.pops.map(p => `### ${p.sistema} · ${p.titulo} (versão ${p.versao})\n${p.conteudo}`)].join('\n\n') : null;
-    const prompt = [instrucoes(job, branch), remoto, pops, memoria(), job.dadosOficiais, historicoDaSessao(job.importar), job.contexto, job.contextoAnexos,
+    const prompt = [instrucoes(job, branch), remoto, pops, memoria(job), job.dadosOficiais, historicoDaSessao(job.importar), job.contexto, job.contextoAnexos,
         `Pedido:\n${job.instrucao}`, job.bloco].filter(Boolean).join('\n\n');
     // Acesso total (dono, 10/10/2026: "lá tem que ter acesso total igual
     // aqui, senão fico travado"): só para implementar, só com o teto desta
@@ -633,7 +722,7 @@ async function executar(job) {
     };
     await informar();
     const avisos = setInterval(informar, 30_000);
-    const tmp = mkdtempSync(join(tmpdir(), 'central-ia-'));
+    const tmp = mkdtempSync(join(pastaTemporaria(), 'central-ia-'));
     // Fora do try: a falha também leva a pasta no checkpoint — é ela que diz
     // onde retomar a sessão do agente na próxima execução.
     let cwd = null, dir = null;
@@ -646,7 +735,7 @@ async function executar(job) {
         if (job.nivel === 'sem_ia' && job.modo !== 'implementar' && (job.fontes || []).some(f => f.tipo === 'agenda')) {
             auditar({ execucao: job.id, decisao: 'sem_ia', projeto: job.projeto });
             const partes = (job.fontes || []).filter(f => f.tipo === 'agenda').map(f => {
-                try { return agendaSemIa(f.rotulo, f.inicio, lerAgenda(f)); }
+                try { const a = lerAgenda(f); return agendaSemIa(f.rotulo, f.inicio, a.texto, a.fonte); }
                 catch (e) { return `Não foi possível ler a agenda (${String(e.message).split('\n')[0].slice(0, 160)}). Nada foi inventado; tente de novo ou peça um resumo a uma IA.`; }
             });
             resultado = { status: 'concluida', resposta: partes.join('\n\n'), sessao_agente: null };
@@ -654,7 +743,8 @@ async function executar(job) {
         }
         if (!agentes[job.agente]) throw new Error(`${job.agente} não está instalado nesta máquina`);
         // Pedido da conversa Geral: na raiz dos projetos quando o teto desta
-        // máquina é total (como este chat do VS Code); senão, numa pasta neutra.
+        // máquina é total (como um chat do VS Code aberto nela); senão, numa
+        // pasta neutra.
         dir = job.projeto === '' ? (cfg.acessoMaximo === 'total' ? realpathSync(cfg.projetos) : pastaGeral()) : realpathSync(resolve(cfg.projetos, job.projeto));
         if (job.projeto !== '' && !dentroDe(cfg.projetos, dir)) throw new Error('projeto fora da pasta de projetos');
         if (acesso === 'leitura' && job.agente === 'codex' && CITA_CREDENCIAL.test(job.instrucao)) {
@@ -708,7 +798,9 @@ async function executar(job) {
             if (!c.ok) throw new Error(`não executado: ${c.motivo}`);
             marcarChatConfirmado(job.tarefa?.id);
         } else {
-            auditar({ execucao: job.id, decisao: 'leitura', agente: job.agente, projeto: job.projeto, modo: job.modo, cwd });
+            // "leitura" só quando É leitura (T-374: a implementação que a regra
+            // deixou passar sem código saía no log como leitura).
+            auditar({ execucao: job.id, ...decisaoSemConfirmacao(job, regra, acesso), agente: job.agente, projeto: job.projeto, modo: job.modo, cwd });
         }
         if (novaWorktree) {
             criada = prepararWorktree(job.projeto, dir, job.tarefa || { id: `e${job.id}` });

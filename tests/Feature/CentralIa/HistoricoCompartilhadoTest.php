@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 class HistoricoCompartilhadoTest extends TestCase
 {
-    use RefreshDatabase;
+    use BotProprioNosTestes, RefreshDatabase;
 
     protected function setUp(): void
     {

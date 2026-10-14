@@ -11,34 +11,61 @@ class GovernancaTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** `$dono`: o dono da Central (`CENTRAL_IA_DONO`), único que administra os demais. */
-    private function pessoa(bool $dono = false): User
+    /**
+     * `$admin`: perfil Administrador além do "Central de IA" — quem administra
+     * a Central (T-374; antes era o e-mail do `CENTRAL_IA_DONO`).
+     */
+    private function pessoa(bool $admin = false): User
     {
         $u = User::factory()->create();
-        $u->perfis()->sync([Perfil::where('slug', 'central_ia')->value('id')]);
-        if ($dono) config(['central_ia.dono' => $u->email]);
-        return $u;
+        $u->perfis()->sync(array_filter([Perfil::where('slug', 'central_ia')->value('id'), $admin ? Perfil::where('slug', 'admin')->value('id') : null]));
+        return $u->fresh();
     }
 
-    public function test_admin_do_sistema_que_nao_e_o_dono_nao_administra_nem_ve_ninguem(): void
+    public function test_quem_administra_e_o_admin_que_usa_a_central_e_nao_um_email(): void
     {
-        $dono = $this->pessoa(true);
-        $rossini = $this->pessoa();
-        $rossini->perfis()->attach(Perfil::where('slug', 'admin')->value('id'));
+        $felipe = $this->pessoa(true);
+        $rossini = $this->pessoa(true);
         $alexandre = $this->pessoa();
-        $this->actingAs($rossini)->getJson(route('central-ia.administracao', ['usuario' => $dono->id]))->assertForbidden();
-        $this->getJson(route('central-ia.administracao', ['usuario' => $alexandre->id]))->assertForbidden();
-        $this->putJson(route('central-ia.usuarios.politica', $alexandre->id), $this->politica())->assertForbidden();
-        $this->getJson(route('central-ia.relatorio', ['inicio' => now()->toDateString(), 'fim' => now()->toDateString(), 'usuario' => $dono->id]))->assertForbidden();
-        // O dono não aparece na lista que ele mesmo administra, e ninguém o administra.
-        $this->actingAs($dono)->getJson(route('central-ia.painel'))->assertOk()->assertJsonMissing(['id' => $dono->id, 'nome' => $dono->name]);
-        $this->assertFalse(app(Preferencias::class)->ler($dono)['execucao_bloqueada']);
+        // O e-mail no .env não dá nem tira nada: a regra é o perfil.
+        config(['central_ia.dono' => $felipe->email]);
+        $this->actingAs($rossini)->getJson(route('central-ia.administracao', ['usuario' => $alexandre->id]))->assertOk();
+        // Admin administra qualquer conta, inclusive a de outro admin (T-368).
+        $this->getJson(route('central-ia.administracao', ['usuario' => $felipe->id]))->assertOk();
+        $this->putJson(route('central-ia.usuarios.politica', $alexandre->id), $this->politica())->assertOk();
+        $this->getJson(route('central-ia.relatorio', ['inicio' => now()->toDateString(), 'fim' => now()->toDateString(), 'usuario' => $felipe->id]))->assertOk();
+        // A própria conta não aparece na lista: é dos Ajustes dela.
+        $painel = $this->getJson(route('central-ia.painel'))->assertOk()->assertJsonPath('administracao.permitida', true);
+        $ids = array_column($painel->json('administracao.usuarios'), 'id');
+        $this->assertNotContains($rossini->id, $ids);
+        $this->assertContains($felipe->id, $ids);
+        $this->assertContains($alexandre->id, $ids);
+        $this->putJson(route('central-ia.usuarios.politica', $rossini->id), $this->politica())->assertUnprocessable();
+        $this->assertFalse(app(Preferencias::class)->ler($rossini)['execucao_bloqueada'], 'quem administra não é bloqueado');
     }
 
-    public function test_dono_libera_a_execucao_de_outra_conta(): void
+    public function test_admin_sem_o_perfil_da_central_nao_administra_a_central(): void
+    {
+        // T-368: o Admin só usa a Central se tiver o perfil "Central de IA".
+        $admin = User::factory()->create();
+        $membro = $this->pessoa();
+        $this->actingAs($admin)->getJson(route('central-ia.administracao', ['usuario' => $membro->id]))->assertForbidden();
+        $this->putJson(route('central-ia.usuarios.politica', $membro->id), $this->politica())->assertForbidden();
+    }
+
+    public function test_lista_so_traz_quem_usa_a_central(): void
+    {
+        $admin = $this->pessoa(true); $membro = $this->pessoa();
+        $semCentral = User::factory()->semPerfil()->create();
+        $ids = array_column($this->actingAs($admin)->getJson(route('central-ia.painel'))->json('administracao.usuarios'), 'id');
+        $this->assertContains($membro->id, $ids);
+        $this->assertNotContains($semCentral->id, $ids);
+    }
+
+    public function test_admin_libera_a_execucao_de_outra_conta(): void
     {
         $dono = $this->pessoa(true); $membro = $this->pessoa();
-        $this->assertTrue(app(Preferencias::class)->ler($membro)['execucao_bloqueada']);
+        $this->assertTrue(app(Preferencias::class)->ler($membro)['execucao_bloqueada'], 'conta nova nasce bloqueada até um admin liberar');
         $this->actingAs($dono)->putJson(route('central-ia.usuarios.politica', $membro->id), $this->politica() + ['execucao_bloqueada' => false])
             ->assertOk()->assertJsonPath('politica.execucao_bloqueada', false);
         $this->assertFalse(app(Preferencias::class)->ler($membro)['execucao_bloqueada']);
@@ -52,7 +79,7 @@ class GovernancaTest extends TestCase
 
     public function test_membro_nao_pode_consultar_nem_modificar_outro_usuario(): void
     {
-        $membro = $this->pessoa(); $outro = $this->pessoa(true);
+        $membro = $this->pessoa(); $outro = $this->pessoa();
         $this->actingAs($membro)->getJson(route('central-ia.administracao', ['usuario' => $outro->id]))->assertForbidden();
         $this->putJson(route('central-ia.usuarios.politica', $outro->id), $this->politica())->assertForbidden();
         $this->getJson(route('central-ia.painel'))->assertOk()->assertJsonPath('administracao.permitida', false)->assertJsonCount(0, 'administracao.usuarios');
@@ -132,7 +159,7 @@ class GovernancaTest extends TestCase
         $this->assertStringNotContainsString('SEGREDO', $r->getContent());
         $this->actingAs($membro)->getJson(route('central-ia.relatorio', $f + []))->assertOk();
         $f['usuario'] = $admin->id;
-        // O membro não vê o relatório do dono (nem de ninguém).
+        // O membro não vê o relatório de admin nenhum (nem de ninguém).
         $this->getJson(route('central-ia.relatorio', $f))->assertForbidden();
         $f['usuario'] = $membro->id; $f['fim'] = '2026-10-09';
         $this->getJson(route('central-ia.relatorio', $f))->assertUnprocessable();

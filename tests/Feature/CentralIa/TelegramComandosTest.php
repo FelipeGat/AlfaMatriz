@@ -19,7 +19,7 @@ use Tests\TestCase;
  */
 class TelegramComandosTest extends TestCase
 {
-    use RefreshDatabase;
+    use BotProprioNosTestes, RefreshDatabase;
 
     private const CHAT = 4242;
 
@@ -31,7 +31,6 @@ class TelegramComandosTest extends TestCase
     {
         parent::setUp();
         config(['central_ia.canal_exclusivo' => false]); // Compatibilidade antes da ativação.
-        config(['central_ia.telegram.token' => 'token-de-teste']);
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]])]);
 
         $this->user = User::factory()->create();
@@ -39,7 +38,7 @@ class TelegramComandosTest extends TestCase
         CentralIaRunner::create(['user_id' => $this->user->id, 'maquina' => 'wsl', 'agentes' => ['claude', 'codex', 'copilot'],
             'projetos' => ['alfahome', 'gestor'], 'visto_em' => now()]);
         $canal = app(TelegramCanal::class);
-        $canal->receber($this->msg('/start '.$canal->gerarCodigo($this->user)));
+        $this->entregarAoBot($canal, $this->msg('/start '.$canal->gerarCodigo($this->user)));
     }
 
     private function msg(string $texto): array
@@ -49,7 +48,7 @@ class TelegramComandosTest extends TestCase
 
     private function enviar(string $texto): string
     {
-        app(TelegramCanal::class)->receber($this->msg($texto));
+        $this->entregarAoBot(app(TelegramCanal::class), $this->msg($texto));
 
         return (string) collect(Http::recorded())->map(fn ($p) => $p[0]['text'] ?? '')->last();
     }

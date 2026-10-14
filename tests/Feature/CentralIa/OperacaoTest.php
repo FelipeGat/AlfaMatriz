@@ -31,7 +31,7 @@ class OperacaoTest extends TestCase
         $this->assertSame('operacao', $e->roteamento['categoria']);
         $this->assertSame('analisar', $e->modo, 'confere e pergunta antes; não pede o código de implementação');
         $this->assertSame('medio', $e->roteamento['nivel']);
-        $this->assertSame([], $e->roteamento['fontes'], 'a agenda do Gestor não é a Google Agenda do dono');
+        $this->assertSame([], $e->roteamento['fontes'], 'a agenda do Gestor não é a agenda pessoal');
 
         $job = $s->proxima($u, $r);
         $this->assertSame('operacao', $job['categoria']);

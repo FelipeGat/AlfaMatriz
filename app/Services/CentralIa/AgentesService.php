@@ -325,7 +325,7 @@ class AgentesService
         app(FontesDeDados::class)->exigirPeriodo($pedido['instrucao'], $rota['modo']);
         $rota['categoria'] ??= $rota['modo'] === 'implementar' ? 'implementacao' : 'investigacao';
         // Dados oficiais que o runner lê e entrega ao agente (ver FontesDeDados).
-        // A Google Agenda da pessoa só entra na conversa Geral, e nunca numa
+        // A agenda da pessoa só entra na conversa Geral, e nunca numa
         // operação: "agende o Vitor no calendário" é a agenda do SISTEMA (o
         // Gestor), e o prompt mandava usar só a agenda pessoal.
         // No assunto, a agenda só entra quando a mensagem fala dela: "reunião"
@@ -659,7 +659,13 @@ class AgentesService
                 // (dono, 13/10/2026: "abrir um novo chat… ele saberia o contexto do projeto").
                 : ($tarefa && $execucao->projeto !== '' ? $this->contextoDoProjeto($user, $execucao->projeto, $tarefa->id) : null)),
             'bloco' => (($execucao->roteamento['coordenador'] ?? false) ? "Você atua como coordenador deste pedido. Nesta etapa apenas responda, planeje e proponha quem deve fazer o trabalho; não implemente, não execute ferramentas ou comandos e não altere arquivos. Claude faz análise de código e desenvolvimento; Codex faz análise de dados; Copilot faz Git e QA. Identifique fontes disponíveis e impedimentos, não invente números. Delegação automática ainda não está habilitada: descreva a próxima etapa, sem afirmar que outro agente executou algo.\n" : '').Dossie::instrucaoDoBloco()."\nRegras de evidência: nunca invente dados, valores, fontes ou consultas. Relatórios de dados exigem período explícito e fonte autorizada identificada, data da consulta e critérios dos totais. Sem acesso à fonte, informe a limitação e solicite os dados; código, exemplos e testes não comprovam saldos reais. Para esta semana, confirme no texto as datas usadas. Para pedidos executivos com esta semana, use segunda-feira até hoje no fuso local e explicite as datas; para esta semana útil, segunda a sexta (até hoje se ainda estiver em curso). Pergunte somente se a ambiguidade alterar materialmente a decisão ou tornar a consulta insegura. Sem período informado, mantenha o pedido de esclarecimento. Claude só deve apoiar análise de dados quando houver impedimento técnico identificado; não troque de agente apenas para tentar obter números ausentes.",
-            'fontes' => $execucao->roteamento['fontes'] ?? [],
+            'fontes' => $this->comAgendaDoMatriz($user, $execucao->roteamento['fontes'] ?? []),
+            // Opções da pessoa (T-374), desligadas por padrão: a regra do cstk
+            // para quem implementa e a memória do Claude da máquina dela. O
+            // ARQUIVO da memória quem escolhe é a máquina; aqui só se diz sim
+            // ou não.
+            'cstk' => (bool) (app(Preferencias::class)->ler($user)['cstk'] ?? false),
+            'memoria' => (bool) (app(Preferencias::class)->ler($user)['memoria'] ?? false),
             // Semente do chat de assunto: o runner lê estas conversas (pelo id,
             // entre as que ELE listou) e entrega o extrato da última semana.
             'semear' => $execucao->roteamento['semear'] ?? null,
@@ -683,6 +689,30 @@ class AgentesService
                 && ! CentralIaExecucao::where('tarefa_id', $tarefa?->id)->where('agente', $execucao->agente)->where('id', '<', $execucao->id)->exists()
                 ? $sessaoDoVsCode : null,
         ];
+    }
+
+    /**
+     * A agenda do próprio AlfaMatriz, para a máquina que não tem outra
+     * (T-374). O padrão do runner era um script do Google Agenda num caminho
+     * do Windows de uma pessoa; agora, sem integração configurada na máquina,
+     * a "agenda" é a daqui: compromissos e prazos de tarefa da pessoa, como a
+     * tela Agenda mostra filtrada por ela. Quem não vê a Agenda não recebe.
+     */
+    private function comAgendaDoMatriz(User $user, array $fontes): array
+    {
+        if (! $user->canPermissao('agenda', 'ler')) return $fontes;
+
+        return array_map(function (array $f) use ($user) {
+            if (($f['tipo'] ?? null) !== 'agenda' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $f['inicio'] ?? '')) return $f;
+            $de = \Illuminate\Support\Carbon::parse($f['inicio'])->startOfDay();
+            $ate = $de->copy()->addDays(max(1, (int) ($f['dias'] ?? 1)) - 1)->endOfDay();
+            $linhas = app(\App\Services\AgendaService::class)->itens($de, $ate, [$user->id])
+                ->map(fn (array $i) => trim($i['data'].' '.($i['tipo'] === 'tarefa' ? 'prazo' : $i['ordenacao'])
+                    .' ['.$i['rotulo'].'] '.$i['titulo'].(filled($i['meta'] ?? null) && is_string($i['meta']) ? ' — '.$i['meta'] : '')))
+                ->all();
+
+            return $f + ['alfamatriz' => implode("\n", $linhas)];
+        }, $fontes);
     }
 
     /**

@@ -22,7 +22,7 @@ use Tests\TestCase;
 
 class AnexosTest extends TestCase
 {
-    use RefreshDatabase;
+    use BotProprioNosTestes, RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -109,7 +109,6 @@ class AnexosTest extends TestCase
 
     public function test_telegram_recebe_foto_e_sinaliza_ate_a_conclusao(): void
     {
-        config(['central_ia.telegram.token' => 'token-teste']);
         $u = $this->pessoa();
         CentralIaTelegramVinculo::create(['user_id' => $u->id, 'chat_id' => 100, 'projeto_atual' => 'alfamatriz', 'agente_atual' => 'codex']);
         $file = UploadedFile::fake()->image('tela.jpg');
@@ -119,7 +118,7 @@ class AnexosTest extends TestCase
         $update = ['update_id' => 123, 'message' => ['chat' => ['type' => 'private', 'id' => 100], 'from' => ['id' => 100, 'is_bot' => false],
             'photo' => [['file_id' => 'foto', 'file_size' => 100]], 'caption' => 'Analise esta tela']];
         $canal = app(TelegramCanal::class);
-        $canal->receber($update); $canal->receber($update);
+        $this->entregarAoBot($canal, $update); $this->entregarAoBot($canal, $update);
         $this->assertSame(1, CentralIaAnexo::count());
         $this->assertSame(1, CentralIaExecucao::count());
         $this->assertNotNull(CentralIaAnexo::first()->mensagem_id);

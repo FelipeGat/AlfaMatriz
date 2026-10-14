@@ -11,14 +11,14 @@ use Tests\TestCase;
 
 class CanalAtivoTest extends TestCase
 {
-    use RefreshDatabase;
+    use BotProprioNosTestes, RefreshDatabase;
 
     private User $dono;
 
     protected function setUp(): void
     {
         parent::setUp();
-        config(['central_ia.canal_exclusivo' => true, 'central_ia.telegram.token' => 'teste']);
+        config(['central_ia.canal_exclusivo' => true]);
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 10]])]);
         $this->dono = User::factory()->create();
         $this->dono->perfis()->attach(Perfil::where('slug', 'central_ia')->value('id'));
@@ -32,7 +32,7 @@ class CanalAtivoTest extends TestCase
 
     private function receber(string $texto, int $id = 1): void
     {
-        app(TelegramCanal::class)->receber(['update_id' => $id, 'message' => [
+        $this->entregarAoBot(app(TelegramCanal::class), ['update_id' => $id, 'message' => [
             'text' => $texto, 'chat' => ['type' => 'private', 'id' => 987], 'from' => ['id' => 987, 'is_bot' => false],
         ]]);
     }

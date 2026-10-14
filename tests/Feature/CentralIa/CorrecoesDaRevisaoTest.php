@@ -22,7 +22,7 @@ use Tests\TestCase;
 /** Defeitos achados na revisão de 12/10/2026 (docs/specs/central-ia/revisao-2026-10-12.md). */
 class CorrecoesDaRevisaoTest extends TestCase
 {
-    use RefreshDatabase;
+    use BotProprioNosTestes, RefreshDatabase;
 
     private function comCentral(): User
     {
@@ -34,7 +34,7 @@ class CorrecoesDaRevisaoTest extends TestCase
 
     public function test_status_no_telegram_responde_com_projeto_e_tarefa_no_canal(): void
     {
-        config(['central_ia.canal_exclusivo' => true, 'central_ia.telegram.token' => 'TESTE']);
+        config(['central_ia.canal_exclusivo' => true]);
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]])]);
         $u = $this->comCentral();
         CentralIaRunner::create(['user_id' => $u->id, 'maquina' => 'wsl', 'agentes' => ['codex'], 'projetos' => ['alfahome'], 'visto_em' => now()]);
@@ -42,7 +42,7 @@ class CorrecoesDaRevisaoTest extends TestCase
         $t = CentralIaTarefa::create(['user_id' => $u->id, 'projeto' => 'alfahome', 'titulo' => 'Filtro', 'objetivo' => 'Filtro']);
         app(CanalAtivo::class)->transferir($u, 'telegram', 'alfahome', $t->id);
 
-        app(TelegramCanal::class)->receber(['update_id' => 900, 'message' => ['message_id' => 9, 'chat' => ['id' => 77, 'type' => 'private'],
+        $this->entregarAoBot(app(TelegramCanal::class), ['update_id' => 900, 'message' => ['message_id' => 9, 'chat' => ['id' => 77, 'type' => 'private'],
             'from' => ['id' => 77, 'is_bot' => false], 'text' => '/status']]);
 
         $resposta = CentralIaMensagem::where('autor_tipo', CentralIaMensagem::AUTOR_SISTEMA)->where('conteudo', 'like', 'Status observado%')->firstOrFail();

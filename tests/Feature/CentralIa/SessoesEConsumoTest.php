@@ -21,7 +21,7 @@ use Tests\TestCase;
  */
 class SessoesEConsumoTest extends TestCase
 {
-    use RefreshDatabase;
+    use BotProprioNosTestes, RefreshDatabase;
     protected function setUp(): void
     {
         parent::setUp();
@@ -169,15 +169,14 @@ class SessoesEConsumoTest extends TestCase
      */
     public function test_continuar_dito_com_palavras_ja_manda_o_pedido(): void
     {
-        config(['central_ia.telegram.token' => 'token-de-teste']);
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]])]);
         $user = $this->comCentral();
         $this->batida($user);
         $canal = app(TelegramCanal::class);
         $msg = fn ($id, $t) => ['update_id' => $id, 'message' => ['text' => $t, 'chat' => ['id' => 77, 'type' => 'private'], 'from' => ['id' => 77, 'is_bot' => false]]];
-        $canal->receber($msg(1, '/start '.$canal->gerarCodigo($user)));
+        $this->entregarAoBot($canal, $msg(1, '/start '.$canal->gerarCodigo($user)));
 
-        $canal->receber($msg(2, 'Continuar gestor de onde paramos'));
+        $this->entregarAoBot($canal, $msg(2, 'Continuar gestor de onde paramos'));
 
         $tarefa = CentralIaTarefa::firstOrFail();
         $execucao = CentralIaExecucao::firstOrFail();
@@ -190,16 +189,15 @@ class SessoesEConsumoTest extends TestCase
 
     public function test_continuar_pelo_telegram(): void
     {
-        config(['central_ia.telegram.token' => 'token-de-teste']);
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]])]);
         $user = $this->comCentral();
         $this->batida($user);
         $canal = app(TelegramCanal::class);
         $msg = fn ($id, $t) => ['update_id' => $id, 'message' => ['text' => $t, 'chat' => ['id' => 77, 'type' => 'private'], 'from' => ['id' => 77, 'is_bot' => false]]];
-        $canal->receber($msg(1, '/start '.$canal->gerarCodigo($user)));
+        $this->entregarAoBot($canal, $msg(1, '/start '.$canal->gerarCodigo($user)));
 
-        $canal->receber($msg(2, '/continuar gestor'));
-        $canal->receber($msg(3, 'Siga de onde parou'));
+        $this->entregarAoBot($canal, $msg(2, '/continuar gestor'));
+        $this->entregarAoBot($canal, $msg(3, 'Siga de onde parou'));
 
         $this->assertSame('gestor', CentralIaTelegramVinculo::value('projeto_atual'));
         $tarefa = CentralIaTarefa::firstOrFail();

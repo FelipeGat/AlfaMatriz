@@ -33,8 +33,12 @@
                 politicaUsuario: '{{ url('central-ia/usuarios/__U__/politica') }}',
                 telegramCodigo: '{{ route('central-ia.telegram.codigo') }}',
                 telegramDesvincular: '{{ route('central-ia.telegram.desvincular') }}',
+                telegramBot: '{{ route('central-ia.telegram.bot') }}',
                 confirmar: '{{ url('central-ia/execucoes/__E__/confirmar') }}',
                 pops: '{{ route('central-ia.pops.criar') }}',
+                maquinas: '{{ route('central-ia.maquinas') }}',
+                maquinasInstalacao: '{{ route('central-ia.maquinas.instalacao') }}',
+                maquinaDesconectar: '{{ url('central-ia/maquinas/__M__') }}',
                 pop: '{{ url('central-ia/pops/__P__') }}',
                 podeEnviar: {{ $podeEnviar ? 'true' : 'false' }},
              })"
@@ -406,7 +410,7 @@
                                     <input type="checkbox" :checked="trazendo?.ids.includes(s.id)" @change="marcarConversa(s)" class="rounded border-line text-brand">
                                     <span class="min-w-0 flex-1">
                                         <span class="block truncate text-sm font-semibold text-ink" x-text="s.titulo || '(sem nome) ' + s.id.slice(0, 8)"></span>
-                                        <span class="block text-[11px] text-ink-faint" x-text="s.nome + ' · ' + (s.projeto || '~/projetos') + ' · ' + haQuanto(s.ultima_atividade) + (s.origem === 'mac_copia' ? ' · cópia do Mac' : '')"></span>
+                                        <span class="block text-[11px] text-ink-faint" x-text="s.nome + ' · ' + (s.projeto || 'raiz dos projetos') + ' · ' + haQuanto(s.ultima_atividade) + (s.origem === 'mac_copia' ? ' · cópia do Mac' : '')"></span>
                                     </span>
                                     <span x-show="s.semeada_em" class="flex-none rounded-badge border border-line px-1 text-[11px] text-ink-mute" x-text="'já no chat #' + s.semeada_em"></span>
                                 </label>
@@ -1104,7 +1108,7 @@
             <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
                 <h3 class="font-semibold text-ink">Minhas IAs e regras de uso</h3>
                 <p class="mt-1 text-ink-mute">Escolha manual vence o padrão. Automático usa regras locais e informa o motivo, sem gastar uma chamada ao GPT para decidir.</p>
-                <p x-show="ajustes?.execucao_bloqueada" class="mt-2 text-warn">A execução de agentes nesta conta depende da liberação do dono da Central. Seus ajustes não removem esse bloqueio.</p>
+                <p x-show="ajustes?.execucao_bloqueada" class="mt-2 text-warn">A execução de agentes nesta conta depende da liberação de um administrador da Central. Seus ajustes não removem esse bloqueio.</p>
                 <p x-show="!preferencias?.disponivel" class="mt-2 text-warn">A ativação local destes ajustes está pendente. Não foram salvos nem aplicados.</p>
                 <template x-if="ajustes">
                     <fieldset :disabled="salvandoAjustes || !preferencias?.disponivel" class="mt-3 space-y-3" @input="ajustesAlterados = true" @change="ajustesAlterados = true">
@@ -1167,6 +1171,11 @@
                                    + '. Aqui você só deixa mais rígido que o mínimo da máquina; o mínimo muda no arquivo de configuração dela.'"></p>
                         </div>
                         <label class="flex gap-2 items-center"><input type="checkbox" x-model="ajustes.fallback" class="rounded border-line text-brand">Tentar outra IA habilitada quando o provedor estiver indisponível ou no limite</label>
+                        {{-- Opções da pessoa, desligadas por padrão (T-374). --}}
+                        <label class="flex gap-2 items-start"><input type="checkbox" x-model="ajustes.cstk" class="mt-0.5 rounded border-line text-brand">
+                            <span>Implementar pelo método cstk (SDD): frente nova só com spec, plano e tarefas prontos; Codex e Copilot devolvem frente nova ao Claude. Para quem trabalha com o cstk.</span></label>
+                        <label class="flex gap-2 items-start"><input type="checkbox" x-model="ajustes.memoria" class="mt-0.5 rounded border-line text-brand">
+                            <span>Levar aos agentes a memória do Claude da minha máquina (o <code class="font-mono">MEMORY.md</code> da pasta de projetos). Vai também ao Codex e ao Copilot. Outro arquivo, ou nenhum: <code class="font-mono">CENTRAL_IA_MEMORIA</code> na configuração da máquina.</span></label>
                         <label class="flex gap-2 items-start"><input type="checkbox" x-model="ajustes.escalar" class="mt-0.5 rounded border-line text-brand">
                             <span>Escalar sozinho quando a IA não resolver: sobe um nível (econômico → médio → máximo) e, no máximo, passa para outra IA. Vale também quando você pede para refazer. Sempre com aviso na conversa; para depois de 3 trocas.</span></label>
                         <p class="text-xs text-ink-faint">Sem teto interno: sem limite administrativo. Zero: bloqueia novos pedidos. Tentativas alternativas contam nos limites. As franquias reais continuam sendo as de cada assinatura. Nenhum adaptador de API paga foi adicionado; a autenticação do executor precisa de validação própria. Desabilitar suspende novos pedidos e a fila dessa IA, sem interromper processos já iniciados.</p>
@@ -1175,6 +1184,55 @@
                         @endif
                     </fieldset>
                 </template>
+            </div>
+            {{-- Conectar minha máquina (T-374): sem artisan no servidor, em Linux, WSL e Mac. --}}
+            <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
+                <div class="flex items-center justify-between gap-2">
+                    <h3 class="font-semibold text-ink">Minhas máquinas <span class="font-normal text-ink-faint" x-text="'(' + maquinas.lista.length + ')'"></span></h3>
+                    <button type="button" @click="carregarMaquinas()" class="text-xs font-semibold text-brand-text">Atualizar</button>
+                </div>
+                <p class="mt-1 text-ink-mute">Os agentes rodam na SUA máquina, com o login de IA que você já usa (Claude Code, Codex, Copilot) e nos seus projetos. Nada da sua assinatura de IA vem para o AlfaMatriz.</p>
+                <p x-show="maquinas.carregada && !maquinas.lista.length" class="mt-2 text-ink-faint">Nenhuma máquina conectada ainda.</p>
+                <ul class="mt-2 divide-y divide-rule">
+                    <template x-for="m in maquinas.lista" :key="m.id">
+                        <li class="flex flex-wrap items-start justify-between gap-2 py-2">
+                            <div class="min-w-0">
+                                <p class="font-semibold text-ink"><span x-text="m.maquina || m.nome"></span>
+                                    <span class="ml-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+                                          :class="m.online ? 'border-good-line bg-good-tint text-good' : (m.situacao === 'nunca' ? 'border-line text-ink-mute' : 'border-warn-line bg-warn-tint text-warn')"
+                                          x-text="m.online ? 'conectada' : (m.situacao === 'nunca' ? 'aguardando' : 'sem notícia')"></span></p>
+                                <p class="text-xs text-ink-faint" x-text="sistemaDaMaquina(m.sistema) + ' · ' + (m.agentes.length ? m.agentes.join(', ') : 'nenhuma IA encontrada') + ' · ' + m.projetos + ' projeto(s) · Telegram de confirmação ' + (m.telegram ? 'ok' : 'não configurado') + ' · última notícia ' + haQuanto(m.visto_em)"></p>
+                                <p x-show="m.situacao === 'nunca'" class="text-xs text-ink-mute">Ainda não falou com o AlfaMatriz. Rode o comando nela; se ele disser que não alcança o AlfaMatriz, ligue o Tailscale nessa máquina.</p>
+                                <p x-show="m.situacao === 'sumiu'" class="text-xs text-warn">Sem notícia desta máquina. Confira se ela está ligada, com o Tailscale conectado (a Central só atende pela tailnet), e se o serviço do runner está rodando.</p>
+                            </div>
+                            @if ($podeAcionar)
+                                <button type="button" @click="desconectarMaquina(m)" class="text-xs font-semibold text-crit">Desconectar</button>
+                            @endif
+                        </li>
+                    </template>
+                </ul>
+                @if ($podeAcionar)
+                    <div class="mt-3 space-y-2 rounded-control border border-line p-3">
+                        <p class="font-semibold text-ink">Conectar uma máquina</p>
+                        <ol class="list-decimal space-y-1 pl-5 text-ink-mute">
+                            <li>Na máquina: Tailscale ligado, Node 18 ou mais novo, git, e as IAs que você usa já logadas. No Windows, tudo dentro do WSL (Ubuntu); no Mac, no Terminal.</li>
+                            <li x-show="!telegram.vinculado">Cadastre o seu bot e vincule o Telegram (quadro Telegram, abaixo): é pelo seu bot que a máquina pede o código antes de modificar arquivos.</li>
+                            <li>Gere o comando e cole no terminal da máquina. Ele baixa o runner, pergunta a pasta dos seus projetos, grava a configuração (só você lê) e liga o serviço.</li>
+                        </ol>
+                        <p x-show="maquinas.carregada && !maquinas.telegram_pronto" class="text-xs text-warn">Sem o seu bot vinculado, a máquina conecta, mas recusa pedidos que modificam arquivos: não teria por onde mandar o código.</p>
+                        <button type="button" @click="gerarComandoMaquina()" class="rounded-control bg-brand px-3 py-2 text-xs font-semibold text-on-brand" x-text="maquinas.comando && !codigoVencido() ? 'Gerar outro comando' : 'Gerar comando de instalação'"></button>
+                        <template x-if="maquinas.comando && !codigoVencido()">
+                            <div class="space-y-1">
+                                <code class="block select-all break-all rounded-control bg-input p-2 font-mono text-xs text-ink" x-text="maquinas.comando"></code>
+                                <div class="flex items-center gap-3 text-xs">
+                                    <button type="button" @click="copiarComando(maquinas.comando)" class="font-semibold text-brand-text" x-text="maquinas.copiado ? 'Copiado' : 'Copiar'"></button>
+                                    <span class="text-ink-faint" x-text="'Vale ' + maquinas.minutos + ' minutos e uma vez só. A máquina aparece na lista acima assim que o comando terminar.'"></span>
+                                </div>
+                            </div>
+                        </template>
+                        <p x-show="maquinas.comando_atualizar" class="text-xs text-ink-faint">Para atualizar uma máquina já conectada: <code class="break-all font-mono text-ink" x-text="maquinas.comando_atualizar"></code></p>
+                    </div>
+                @endif
             </div>
             {{-- POPs das IAs (FR-030..033): o que elas aprenderam de cada sistema.
                  Só desta conta: nenhum administrador vê, nada vai a repositório. --}}
@@ -1255,32 +1313,64 @@
                         @endif
                     </div>
                 </template>
+                {{-- Cada pessoa usa o PRÓPRIO bot (T-374): ela conversa e recebe o código de confirmação por ele. --}}
                 <template x-if="!telegram.vinculado">
                     <div class="mt-1 space-y-2 text-ink-mute">
-                        <p>Converse pelo celular com <span class="font-semibold text-ink">{{ '@'.config('central_ia.telegram.bot') }}</span>.</p>
-                        @if ($podeParear)
-                            <button type="button" x-show="!pareamento" @click="parearTelegram()" class="rounded-control border border-btn-line px-3 py-1.5 text-xs font-semibold text-ink">Vincular Telegram</button>
-                            <div x-show="pareamento" x-cloak class="space-y-1">
-                                <a :href="pareamento?.link" target="_blank" rel="noopener" class="inline-block rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand">Abrir no Telegram</a>
-                                <p class="text-xs">Ou envie: <code class="break-all font-mono text-ink" x-text="pareamento?.comando"></code></p>
+                        <template x-if="!telegram.bot">
+                            <div class="space-y-2">
+                                <p>A Central fala com você por um bot do Telegram só seu. Criar leva um minuto:</p>
+                                <ol class="list-decimal space-y-1 pl-5">
+                                    <li>No Telegram, abra <a href="https://t.me/BotFather" target="_blank" rel="noopener" class="font-semibold text-brand-text">@BotFather</a> e mande <code class="font-mono text-ink">/newbot</code>.</li>
+                                    <li>Dê um nome (ex.: Central do seu nome) e um @ que termine em <code class="font-mono text-ink">bot</code>.</li>
+                                    <li>Copie o token que ele mandar (a linha com números, dois-pontos e letras) e cole abaixo.</li>
+                                </ol>
                             </div>
+                        </template>
+                        <template x-if="telegram.bot">
+                            <p>Seu bot: <a :href="'https://t.me/' + telegram.bot" target="_blank" rel="noopener" class="font-semibold text-ink" x-text="'@' + telegram.bot"></a>.</p>
+                        </template>
+                        @if ($podeParear)
+                            <template x-if="telegram.bot">
+                                <div class="space-y-1">
+                                    <button type="button" x-show="!pareamento" @click="parearTelegram()" class="rounded-control border border-btn-line px-3 py-1.5 text-xs font-semibold text-ink">Vincular Telegram</button>
+                                    <div x-show="pareamento" x-cloak class="space-y-1">
+                                        <a :href="pareamento?.link" target="_blank" rel="noopener" class="inline-block rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand">Abrir o seu bot e tocar em Começar</a>
+                                        <p class="text-xs">Ou envie ao bot: <code class="break-all font-mono text-ink" x-text="pareamento?.comando"></code></p>
+                                    </div>
+                                </div>
+                            </template>
                         @endif
                     </div>
                 </template>
+                <p x-show="telegram.bot_situacao === 'token_invalido'" x-cloak class="mt-2 text-xs text-warn">O Telegram recusou o token deste bot (foi trocado ou apagado no @BotFather). Cole o token novo para voltar a falar com ele.</p>
+                <p x-show="telegram.bot_situacao === 'conflito'" x-cloak class="mt-2 text-xs text-warn">Outro programa está lendo este bot. Use um bot só para a Central.</p>
+                <p x-show="telegram.bot_situacao === 'webhook'" x-cloak class="mt-2 text-xs text-warn">Este bot está ligado a outro sistema (webhook). Crie um bot só para a Central.</p>
+                @if ($podeParear)
+                    <form x-show="!telegram.bot || trocandoBot || telegram.bot_situacao === 'token_invalido'" x-cloak @submit.prevent="salvarBotTelegram()" class="mt-2 flex flex-wrap items-center gap-2">
+                        <label class="sr-only" for="central-bot-token">Token do bot</label>
+                        <input id="central-bot-token" type="password" autocomplete="off" x-model="botToken" placeholder="Token do bot (123456789:AA…)" class="w-full max-w-sm rounded-control border-line bg-input font-mono text-xs text-ink">
+                        <button type="submit" :disabled="salvandoBot || !botToken.trim()" class="rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand disabled:opacity-50" x-text="salvandoBot ? 'Conferindo…' : 'Salvar bot'"></button>
+                    </form>
+                    <p x-show="telegram.bot && !trocandoBot" class="mt-2 flex gap-3 text-xs">
+                        <button type="button" @click="trocandoBot = true" class="font-semibold text-brand-text">Trocar o token ou o bot</button>
+                        <button type="button" @click="removerBotTelegram()" class="font-semibold text-crit">Retirar o bot da Central</button>
+                    </p>
+                @endif
+                <p x-show="telegram.bot" class="mt-2 text-xs text-ink-faint">Depois de cadastrar ou trocar o bot, gere um comando novo em Minhas máquinas e rode-o em cada máquina: é por esse bot que ela manda o código de confirmação.</p>
                 <p class="mt-3 text-xs text-ink-faint">Comandos: <code class="font-mono">/projetos</code>, <code class="font-mono">/status</code>, <code class="font-mono">/usar gestor</code>, <code class="font-mono">/continuar gestor</code>, <code class="font-mono">/nova</code>, <code class="font-mono">/geral</code>, <code class="font-mono">/trocar codex</code>, <code class="font-mono">/salvar</code>, <code class="font-mono">/claude</code> · <code class="font-mono">/gpt</code> · <code class="font-mono">/copilot</code> · <code class="font-mono">/auto</code>. Também vale escrever "continuar gestor de onde paramos".</p>
             </div>
 
             <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
                 <h3 class="font-semibold text-ink">Acesso e limites</h3>
                 <p class="mt-1 text-ink-mute" x-text="'Pedidos a agentes por dia: ' + (consumo.limites?.central.limite ?? 'sem teto interno') + ' · ao mesmo tempo: ' + paralelo"></p>
-                <p class="mt-1 text-ink-mute">Acesso amplo inicial autorizado pelo dono. O executor atual usa o usuário Linux e suas conexões locais. Selecionar uma pasta não impede tecnicamente acesso a outras pastas.</p>
+                <p class="mt-1 text-ink-mute">O executor usa o usuário da sua máquina e as conexões dela. Selecionar uma pasta não impede tecnicamente acesso a outras pastas.</p>
                 <p class="mt-2 text-warn">Permissões por pasta, ferramentas, agenda e credenciais isoladas exigem um executor separado por usuário. Não habilite outro usuário no mesmo executor ou HOME. O bloqueio técnico de commit, push e deploy ainda não está comprovado; instruções ao agente não substituem esse bloqueio.</p>
                 <p class="mt-2 text-ink-mute">Tokens e franquias aparecem em Consumo quando informados pelo provedor. Um teto exato por execução não está implementado; solicitações não equivalem a tokens.</p>
                 <p class="mt-1 text-xs text-ink-faint">A franquia mensal do Copilot (Pro: 300, Pro+: 1500) é configurada no servidor (<code class="font-mono">CENTRAL_IA_COPILOT_PREMIUM_MES</code>) — o plano não pode ser lido da máquina.</p>
             </div>
             <div x-show="administracao.permitida" class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
-                <h3 class="font-semibold text-ink">Outras contas (você é o dono da Central)</h3>
-                <p class="mt-1 text-xs text-ink-mute">Só contagens e limites — nunca conversas, arquivos ou credenciais. Ninguém administra a sua conta.</p>
+                <h3 class="font-semibold text-ink">Outras contas (você administra a Central)</h3>
+                <p class="mt-1 text-xs text-ink-mute">Só contagens e limites — nunca conversas, arquivos ou credenciais. Quem tem o perfil Administrador e usa a Central administra as outras contas; a sua, você ajusta acima.</p>
                 <label class="mt-2 block text-ink-mute">Usuário
                     <select x-model="usuarioAtividade" @change="carregarUsuario()" :disabled="salvandoPolitica" class="mt-1 rounded-control border-line bg-input text-sm text-ink">
                         <option value="">Selecione outra conta</option>

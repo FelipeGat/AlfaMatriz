@@ -37,6 +37,15 @@ class Preferencias
             // Chats Business: o histórico vai ao agente até este teto por pedido
             // (dono, 13/10/2026: "todo o histórico, desde que não gaste todo o uso").
             'assunto_contexto_tokens' => 60000,
+            // Método cstk (SDD) para quem implementa: opção da pessoa, desligada
+            // por padrão (T-374). Era regra imposta a todos, vinda do método de
+            // trabalho de uma pessoa só.
+            'cstk' => false,
+            // Levar aos agentes a memória do Claude da própria máquina (o
+            // MEMORY.md da pasta de projetos). Desligada por padrão (T-374): o
+            // caminho fixo de antes era o da WSL de uma pessoa, e a memória vai
+            // também a Codex e Copilot, que são outros provedores.
+            'memoria' => false,
         ], is_array($salvas) ? $salvas : []);
         $regras['execucao_bloqueada'] = app(Governanca::class)->execucaoBloqueada($user, $salvas['governanca'] ?? null);
         if ($g = $salvas['governanca'] ?? null) {

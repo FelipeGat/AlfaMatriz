@@ -14,7 +14,7 @@ class CentralIaRunner extends Model
     /** Sem batida há mais que isto, a máquina está fora do ar. */
     public const ONLINE_SEGUNDOS = 90;
 
-    protected $fillable = ['user_id', 'maquina', 'agentes', 'projetos', 'estado', 'consumo', 'sessoes', 'politica', 'visto_em'];
+    protected $fillable = ['user_id', 'maquina', 'agentes', 'projetos', 'estado', 'consumo', 'sessoes', 'politica', 'token_id', 'visto_em'];
 
     protected $casts = [
         'politica' => 'array',

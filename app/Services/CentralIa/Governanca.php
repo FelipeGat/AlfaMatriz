@@ -9,22 +9,28 @@ use Illuminate\Support\Facades\DB;
  * Limites da Central de outras contas — só contagens, nunca conversas nem
  * credenciais.
  *
- * Quem administra é o DONO da Central (`CENTRAL_IA_DONO`), e não qualquer
- * admin do AlfaMatriz: em 12/10/2026 o dono decidiu que Rossini e Alexandre
- * não veem nem controlam nada da Central dele. Ninguém administra o dono.
+ * Quem administra é quem tem o perfil Administrador E usa a Central (T-374,
+ * dono do produto, 14/10/2026: "nada pode estar preso à máquina do Felipe; a
+ * Central de IA é para um time"). Antes era um e-mail no `.env`
+ * (o "dono" da Central): a governança ficava presa a uma pessoa, e trocar quem
+ * cuida exigia mexer no servidor. Admin administra qualquer conta, inclusive
+ * a de outro admin (T-368: "admin precisa ter acesso total a tudo"); só não
+ * administra a própria, que é dos Ajustes dela.
  */
 class Governanca
 {
     public function administra(User $user): bool
     {
-        return $user->ativo && ! $user->temEscopoDeRevenda() && $user->ehDonoDaCentral();
+        return $user->ativo && ! $user->temEscopoDeRevenda() && $user->ehAdmin() && $user->canPermissao('central_ia', 'ler');
     }
 
     public function usuarios(User $admin): array
     {
         if (! $this->administra($admin)) return [];
+        // Só quem usa a Central: a lista de todas as contas do sistema enchia o
+        // seletor de gente que nunca vai ter política para administrar.
         return User::query()->where('id', '!=', $admin->id)->orderBy('name')->get(['id', 'name', 'email', 'ativo'])
-            ->reject(fn ($u) => $u->ehDonoDaCentral())
+            ->filter(fn ($u) => $u->canPermissao('central_ia', 'ler'))
             ->map(fn ($u) => ['id' => $u->id, 'nome' => $u->name, 'ativo' => (bool) $u->ativo])->values()->all();
     }
 
@@ -39,13 +45,12 @@ class Governanca
 
     public function execucaoBloqueada(User $user, ?array $politica = null): bool
     {
-        // O dono nunca é bloqueado por política (ninguém o administra). Os
-        // demais nascem bloqueados até o dono liberar: cada um executa na
-        // própria máquina, cujo runner impõe os limites locais (ver
-        // deploy/central-ia/README.md), mas quem decide liberar é o dono.
-        // Sem dono configurado não há quem libere nem quem bloqueie: cada um
-        // executa na própria máquina, como antes da governança.
-        if (blank(config('central_ia.dono')) || $this->administra($user)) return false;
+        // Quem administra não é bloqueado por política. Os demais nascem
+        // bloqueados até um administrador liberar pela tela: cada um executa
+        // na própria máquina, cujo runner impõe os limites locais (ver
+        // deploy/central-ia/README.md), mas quem decide liberar é quem
+        // administra a Central.
+        if ($this->administra($user)) return false;
         return $politica === null || ($politica['execucao_bloqueada'] ?? true);
     }
 
@@ -59,7 +64,7 @@ class Governanca
     public function resumo(User $admin, User $user): array
     {
         abort_unless($this->administra($admin), 403);
-        abort_if($user->ehDonoDaCentral() || $user->id === $admin->id, 404);
+        abort_if($user->id === $admin->id, 404);
         $uso = [];
         foreach (array_keys(CentralIaExecucao::AGENTES) as $a) $uso[$a] = app(Preferencias::class)->usados($user, $a);
         $execucoes = CentralIaExecucao::where('user_id', $user->id)->latest('id')->limit(100)

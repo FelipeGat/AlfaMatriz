@@ -57,7 +57,10 @@ export function centralIa(config) {
         recentes: [], consumo: { por_agente: [], projetos_hoje: [], cota_codex: null, serie: [], limites: null }, sessoes: [], periodo: 'hoje',
         grupos: [], busca: '', recolhidos: [], tela: 'projetos', sub: 'conversa',
         eventos: [], vistaAtividade: 'log', soProblemas: false, projetoLog: '', barraAberta: false, barraHover: null, mostrarTabela: false,
-        telegram: { vinculado: false, usuario: null }, pareamento: null, contaNome: '', escolherConversaInicial: false,
+        telegram: { vinculado: false, usuario: null, bot: null, bot_situacao: null }, pareamento: null, botToken: '', salvandoBot: false, trocandoBot: false, contaNome: '', escolherConversaInicial: false,
+        // Conectar minha máquina (T-374): o comando de instalação e as máquinas da pessoa.
+        maquinas: { lista: [], carregada: false, comando: null, minutos: 15, gerado_em: null, copiado: false },
+        espiandoMaquinas: null,
         atendimento: { disponivel: false, ativo: 'web', projeto: null, tarefa_id: null }, transferindoCanal: false,
         // Projeto aberto
         atual: GERAL, abas: {}, tarefas: [], verTarefa: null, detalheAberto: true,
@@ -200,7 +203,7 @@ export function centralIa(config) {
             this.recolhidos = this.recolhidos.includes(id) ? this.recolhidos.filter(x => x !== id) : [...this.recolhidos, id];
             guardar('central-ia:recolhidos', JSON.stringify(this.recolhidos));
         },
-        irPara(tela) { this.tela = tela; if (['atividade', 'consumo'].includes(tela)) this.carregarRelatorio(tela); guardar('central-ia:tela', tela); if (tela === 'projetos') this.$nextTick(() => { const f = this.$refs.feed; if (f) f.scrollTop = f.scrollHeight; }); },
+        irPara(tela) { this.tela = tela; if (['atividade', 'consumo'].includes(tela)) this.carregarRelatorio(tela); if (tela === 'ajustes') this.carregarMaquinas(); guardar('central-ia:tela', tela); if (tela === 'projetos') this.$nextTick(() => { const f = this.$refs.feed; if (f) f.scrollTop = f.scrollHeight; }); },
 
         async criarGrupo() {
             const nome = prompt('Nome do grupo (ex.: VixCard, Grupo Soluções, Pessoal):');
@@ -406,6 +409,7 @@ Uma IA não poderá devolvê-lo depois.`)) return;
             const url = new URLSearchParams(location.search).get('projeto');
             this.abaVazia = this.novaAba();
             this.tela = ler('central-ia:tela') || 'chats';
+            if (this.tela === 'ajustes') this.carregarMaquinas();
             try { this.recolhidos = JSON.parse(ler('central-ia:recolhidos') || '[]'); } catch { this.recolhidos = []; }
             const salvo = ler('central-ia:projeto');
             this.escolherConversaInicial = url === null && salvo === null;
@@ -921,6 +925,46 @@ Uma IA não poderá devolvê-lo depois.`)) return;
             catch (erro) { this.falhou(erro); }
         },
 
+        /* ---------- Conectar minha máquina (T-374) ---------- */
+
+        async carregarMaquinas() {
+            if (!config.maquinas) return;
+            try {
+                const { maquinas: lista, ...resto } = await this.pedir(config.maquinas);
+                this.maquinas = { ...this.maquinas, ...resto, lista, carregada: true };
+            }
+            catch (erro) { this.falhou(erro); }
+        },
+
+        async gerarComandoMaquina() {
+            try {
+                const r = await this.pedir(config.maquinasInstalacao, 'POST', {});
+                this.maquinas = { ...this.maquinas, comando: r.comando, minutos: r.minutos, gerado_em: Date.now(), copiado: false };
+                // Enquanto o código vale, a lista se atualiza sozinha: a máquina
+                // aparece aqui assim que o comando rodar nela.
+                clearInterval(this.espiandoMaquinas);
+                this.espiandoMaquinas = setInterval(() => {
+                    if (this.tela !== 'ajustes' || Date.now() - this.maquinas.gerado_em > r.minutos * 60_000) { clearInterval(this.espiandoMaquinas); return; }
+                    this.carregarMaquinas();
+                }, 5000);
+            } catch (erro) { this.falhou(erro); }
+        },
+
+        codigoVencido() { return !this.maquinas.gerado_em || this.agora - this.maquinas.gerado_em > this.maquinas.minutos * 60_000; },
+
+        async copiarComando(texto) {
+            try { await navigator.clipboard.writeText(texto); this.maquinas.copiado = true; setTimeout(() => { this.maquinas.copiado = false; }, 2500); }
+            catch { this.aviso = 'Não consegui copiar: selecione o comando e copie à mão.'; }
+        },
+
+        async desconectarMaquina(m) {
+            if (!confirm(`Desconectar a máquina "${m.maquina || m.nome}"? Ela deixa de receber pedidos até ser conectada de novo.`)) return;
+            try { const r = await this.pedir(config.maquinaDesconectar.replace('__M__', m.id), 'DELETE'); this.maquinas.lista = r.maquinas; }
+            catch (erro) { this.falhou(erro); }
+        },
+
+        sistemaDaMaquina(s) { return { mac: 'Mac', wsl: 'Windows (WSL)', linux: 'Linux' }[s] || '—'; },
+
         async parearTelegram() {
             try { this.pareamento = await this.pedir(config.telegramCodigo, 'POST', {}); this.aviso = ''; }
             catch (erro) { this.falhou(erro); }
@@ -928,8 +972,29 @@ Uma IA não poderá devolvê-lo depois.`)) return;
 
         async desvincularTelegram() {
             if (!confirm('Desvincular o Telegram desta conversa?')) return;
-            try { await this.pedir(config.telegramDesvincular, 'DELETE'); this.telegram = { vinculado: false, usuario: null }; }
+            try { await this.pedir(config.telegramDesvincular, 'DELETE'); this.telegram = { ...this.telegram, vinculado: false, usuario: null }; }
             catch (erro) { this.falhou(erro); }
+        },
+
+        /** O bot de cada pessoa (T-374). O token só vai ao servidor; a tela não o guarda. */
+        async salvarBotTelegram() {
+            if (this.salvandoBot || !this.botToken.trim()) return;
+            this.salvandoBot = true;
+            try {
+                const r = await this.pedir(config.telegramBot, 'PUT', { token: this.botToken.trim() });
+                this.botToken = ''; this.trocandoBot = false; this.aviso = '';
+                this.telegram = { ...this.telegram, bot: r.bot, bot_situacao: 'ok', vinculado: r.vinculado };
+                this.pareamento = r.pareamento;
+            } catch (erro) { this.falhou(erro); }
+            finally { this.salvandoBot = false; }
+        },
+
+        async removerBotTelegram() {
+            if (!confirm('Retirar o seu bot da Central? A conversa pelo Telegram para, e as suas máquinas deixam de receber o código de confirmação até você cadastrar um bot de novo.')) return;
+            try {
+                await this.pedir(config.telegramBot, 'DELETE');
+                this.telegram = { vinculado: false, usuario: null, bot: null, bot_situacao: null }; this.pareamento = null;
+            } catch (erro) { this.falhou(erro); }
         },
 
         /* ---------- rótulos ---------- */

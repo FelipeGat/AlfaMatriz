@@ -43,11 +43,13 @@ class CentralIaRunnerController extends Controller
             'estado' => ['nullable', 'array', 'max:300'],
             'consumo' => ['nullable', 'array'],
             'sessoes' => ['nullable', 'array', 'max:120'],
-            'politica' => ['nullable', 'array:acesso_maximo,analise,confirmar_minimo,telegram'],
+            'politica' => ['nullable', 'array:acesso_maximo,analise,confirmar_minimo,telegram,sistema'],
             'politica.acesso_maximo' => ['nullable', 'in:total,restrito'],
             'politica.analise' => ['nullable', 'in:total,leitura'],
             'politica.confirmar_minimo' => ['nullable', 'in:nunca,deploy,inicio,implementar,sempre'],
             'politica.telegram' => ['nullable', 'boolean'],
+            // Linux, WSL ou Mac (T-374): a tela de máquinas mostra qual é qual.
+            'politica.sistema' => ['nullable', 'in:linux,wsl,mac,outro'],
             'desde' => ['nullable', 'date'],
             'em_curso' => ['nullable', 'array', 'max:50'],
             'em_curso.*' => ['integer'],
@@ -64,6 +66,10 @@ class CentralIaRunnerController extends Controller
                 ...(array_key_exists('consumo', $dados) ? ['consumo' => $this->consumo($dados['consumo'] ?? [])] : []),
                 ...(array_key_exists('sessoes', $dados) ? ['sessoes' => $this->sessoes($dados['sessoes'] ?? [], $dados['projetos'])] : []),
                 ...(array_key_exists('politica', $dados) ? ['politica' => $dados['politica']] : []),
+                // O token desta batida: liga a máquina à linha de "Conectar
+                // minha máquina", e o Desconectar apaga as duas (T-374).
+                'token_id' => ($token = $request->user()->currentAccessToken()) instanceof \Laravel\Sanctum\PersonalAccessToken
+                    && is_int($token->getKey()) ? $token->getKey() : null,
                 'visto_em' => now(),
             ],
         );

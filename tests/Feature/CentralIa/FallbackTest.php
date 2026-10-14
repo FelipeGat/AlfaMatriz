@@ -19,7 +19,7 @@ use Tests\TestCase;
 
 class FallbackTest extends TestCase
 {
-    use RefreshDatabase;
+    use BotProprioNosTestes, RefreshDatabase;
     protected function setUp(): void
     {
         parent::setUp();
@@ -177,10 +177,9 @@ class FallbackTest extends TestCase
     public function test_handoff_e_resposta_ficam_na_mesma_conversa_e_no_telegram(): void
     {
         [$user, $runner] = $this->conta();
-        config(['central_ia.telegram.token' => 'TOKEN_SINTETICO']);
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]])]);
         $canal = app(TelegramCanal::class);
-        $canal->receber(['update_id' => 1, 'message' => ['text' => '/start '.$canal->gerarCodigo($user),
+        $this->entregarAoBot($canal, ['update_id' => 1, 'message' => ['text' => '/start '.$canal->gerarCodigo($user),
             'chat' => ['id' => 999, 'type' => 'private'], 'from' => ['id' => 999, 'is_bot' => false]]]);
         $e = $this->pedido($user);
         $s = app(AgentesService::class);

@@ -17,12 +17,12 @@ que ordem, e o que cada pessoa faz na própria máquina.
   (segundo fator), qualquer que seja a regra escolhida em Ajustes.
   - A máquina sem Telegram configurado não executa esse tipo de pedido.
   - Quem garante isso é o runner (`deploy/central-ia/politica.mjs`, `exigeConfirmacao`), e não o servidor.
-- **Quem implementa passa pelo cstk**, seja Claude, Codex ou Copilot (`politica.mjs`, `regraCstk`, no
-  prompt de todo pedido de implementar em projeto).
-  - Frente nova só com `docs/specs/<feature>/` pronta. O Claude roda o pipeline; o Codex e o Copilot, que
-    não têm os skills, devolvem o pedido ao Claude.
-  - Bug pontual e ajuste de layout, texto ou configuração seguem direto.
-  - **Cada pessoa precisa ter o plugin cstk instalado no Claude Code da própria máquina**, como o Felipe tem.
+- **O método cstk é opção de cada pessoa** (Ajustes → "Implementar pelo método cstk"), desligada por padrão
+  (T-374, 14/10/2026: era imposto a todos). Quem liga precisa do plugin cstk no Claude Code da própria
+  máquina; o Codex e o Copilot, que não têm os skills, devolvem frente nova ao Claude.
+- **Nada preso à máquina de uma pessoa** (T-374, dono do produto, 14/10/2026: "a Central de IA é para um
+  time"). Governança pelo perfil, bot da empresa, conexão de máquina pela tela, e o runner sem caminho,
+  agenda, memória ou painel de ninguém.
 
 ## Antes de publicar
 
@@ -32,22 +32,27 @@ que ordem, e o que cada pessoa faz na própria máquina.
 
    | Variável | Valor | Por quê |
    |---|---|---|
-   | `CENTRAL_IA_DONO` | e-mail do Felipe em produção | Só o dono administra os limites dos outros. Contas com a Central seguem a regra de contas de sempre: o administrador altera, desativa e troca a senha (dono do produto, 14/10/2026, T-368). |
-   | `CENTRAL_IA_TELEGRAM_TOKEN` | token do bot | Sem ele: sem Telegram, sem pareamento, sem código de confirmação. |
-   | `CENTRAL_IA_TELEGRAM_BOT` | nome do bot | Só se for um bot diferente do `GrupoSolucoesAgentBot`. |
+   | `APP_URL` | o endereço da tailnet (`https://alfamatriz.tail0939dd.ts.net`) | O comando de instalação aponta para ele. |
+
+   **Quem administra a Central** (limites e liberação das outras contas) é quem tem o perfil Administrador **e**
+   o perfil "Central de IA" (T-374). O `CENTRAL_IA_DONO` saiu; se estiver no `.env`, é ignorado. Conta nova
+   com a Central nasce com a execução bloqueada até um desses administradores liberar em Ajustes → Outras contas.
    | `CENTRAL_IA_ACESSO` | `restrito` (padrão; dono do produto, 14/10/2026, T-368) | Quanto o servidor PEDE ao runner. A máquina de cada um ainda impõe o próprio teto. Mesmo no `total`, push, ssh e publicação ficam bloqueados fora de pedido de deploy, que sempre pede o código; o Codex só recebe `total` em pedido de deploy. |
    | `CENTRAL_IA_ARQUIVOS_ROOT` | o `publicar.sh` escreve sozinho | Anexos e prévias em `compartilhado/central-ia`, fora das versões azul/verde. |
 
-3. **Telegram: o bot de produção é o mesmo de hoje (`GrupoSolucoesAgentBot`)** — decisão do Felipe,
-   13/10/2026.
-   - O bot local foi DESLIGADO nesse dia (`alfamatriz-dev-telegram`, fora do `up -d` do boot por um perfil do
-     compose), porque o Telegram aceita um consumidor só por bot.
-   - Use o MESMO token em `CENTRAL_IA_TELEGRAM_TOKEN` no `.env` do servidor. Fora dele, o token só fica na
-     máquina do Felipe, que criou o bot (T-368, 14/10/2026). Máquina de **outra pessoa** nunca recebe esse token:
-     com ele, ela leria as mensagens dos outros pelo `getUpdates`, inclusive o código de pareamento. Nela, o código
-     de confirmação sai de um SEGUNDO bot, só dos runners, que apenas envia (`CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO`).
-     A pessoa dá `/start` nesse bot uma vez; a resposta `/confirmar` vai ao bot da Central. O runner aceita os dois
-     nomes, então a máquina do Felipe segue como está.
+3. **Telegram: cada pessoa usa o PRÓPRIO bot** (T-374, decisão do dono em 14/10/2026). Não há bot no `.env`:
+   os antigos `CENTRAL_IA_TELEGRAM_TOKEN`, `_BOT`, `_TOKEN_CONFIRMACAO` e `_BOT_CONFIRMACAO` saíram e, se ainda
+   estiverem no `.env`, são ignorados. Cada um cria o seu bot no @BotFather e cola o token em Ajustes →
+   Telegram; o servidor confere no Telegram, guarda cifrado e o serviço `alfamatriz-central-ia-telegram` passa
+   a ouvi-lo. O mesmo bot conversa e leva o código de confirmação da máquina.
+   - **O Felipe** cola o token do `GrupoSolucoesAgentBot` (o bot de antes): é o mesmo bot, então a conversa
+     dele continua ligada sem parear de novo. Depois, gera um comando novo em Minhas máquinas e roda-o na
+     máquina dele, para ela mandar o código pelo mesmo bot.
+   - O Telegram aceita um leitor só por bot: o mesmo bot não pode estar cadastrado em staging e em produção ao
+     mesmo tempo (um derruba o outro com 409, e a tela avisa). Para testar no staging, um bot de teste.
+   - Uma cópia do banco em outro lugar não lê os bots: cada bot fica marcado com o `APP_URL` de onde foi
+     cadastrado.
+   - O serviço do bot sobe mesmo sem bot nenhum cadastrado, e espera.
 4. **Homologação:** dada como cumprida pelo Felipe em 13/10/2026.
 
 ## Publicar
@@ -78,22 +83,23 @@ O fluxo de sempre (`deploy/publicar.sh`). O que ele faz a mais por causa da Cent
 3. **Conferir a tela:** abrir a Central, as abas Chats Ativos, Business e Ajustes, e o menu lateral
    recolhido e aberto.
 
-## Cada pessoa, na própria máquina
+## Cada pessoa, na própria máquina (Linux, Windows com WSL, Mac)
 
-1. Fazer login no Claude Code, no Codex e no Copilot **com a própria conta**.
-2. Receber o token da própria conta: `php artisan alfa:central-ia-token <email> --nome=<maquina>`.
-   - O token aparece uma vez.
-   - **Só para a própria pessoa.** Emitir token com o e-mail de outra conta é se passar por ela.
-3. Instalar o runner conforme `deploy/central-ia/README.md`, copiando TODOS os módulos `.mjs`. Em
-   `~/.config/alfa/central-ia-runner.env` (permissão 0600):
-   - `ALFAMATRIZ_URL=https://alfamatriz.tail0939dd.ts.net` (a máquina precisa estar na tailnet);
-   - o token do passo 2;
-   - `CENTRAL_IA_ACESSO_MAXIMO`: o teto desta máquina;
-   - `CENTRAL_IA_CONFIRMAR`: o mínimo de confirmação desta máquina. **Na do Felipe: `inicio`.**
-   - Para usar o código pelo Telegram: `CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO` (o bot dos runners; o da Central
-     só na máquina do Felipe), `CENTRAL_IA_TELEGRAM_CHAT_ID` e
-     `CENTRAL_IA_SEGREDO_CONFIRMACAO`, que é um segredo de 64 caracteres hexadecimais **da própria pessoa**.
-4. Parear o Telegram em Ajustes → Telegram.
+Pela tela, sem ninguém rodar nada no servidor (T-374):
+
+1. Tailscale ligado na máquina; Node 18+ e git; login no Claude Code, no Codex e no Copilot **com a própria conta**.
+2. Central de IA → Ajustes → Telegram: criar o próprio bot no @BotFather (`/newbot`), colar o token e tocar em
+   "Abrir o seu bot e tocar em Começar".
+3. (Se trocar de bot depois: gerar um comando novo em Minhas máquinas e rodar de novo em cada máquina.)
+4. Ajustes → Minhas máquinas → **Gerar comando de instalação** e colar no terminal (no Windows, no Ubuntu do WSL).
+   O comando baixa o runner, pergunta a pasta dos projetos, grava `~/.config/alfa/central-ia-runner.env` (0600) com
+   o token, o chat do Telegram e um segredo de confirmação gerado ali mesmo, e liga o serviço (systemd no
+   Linux/WSL, launchd no Mac). O código do comando vale 15 minutos e uma vez só.
+5. A máquina aparece na lista em até 30 s. Atualizar depois: o comando curto da mesma tela.
+
+O teto local (`CENTRAL_IA_ACESSO_MAXIMO`, `CENTRAL_IA_CONFIRMAR`, `CENTRAL_IA_ANALISE`) continua no arquivo
+da máquina — é ele que torna a máquina inviolável pelo servidor. O `alfa:central-ia-token` continua existindo
+para quem precisar emitir à mão.
 
 ## O que a revisão de segurança deixou documentado (desenho escolhido, não defeito)
 
@@ -105,6 +111,8 @@ O fluxo de sempre (`deploy/publicar.sh`). O que ele faz a mais por causa da Cent
   sempre. Quem quiser mais rigor escolhe "toda implementação" em Ajustes.
 - **O código confere a instrução, a pasta e o acesso, mas não o contexto montado pelo servidor.** Um
   servidor comprometido poderia pôr ordens no contexto. Por isso o servidor de produção é só da tailnet e
-  o token do runner é por máquina e revogável (`--revogar`).
+  o token do runner é por máquina e revogável (Desconectar, em Ajustes → Minhas máquinas).
 - **Quem tem root no servidor lê o banco.** Nenhuma regra de aplicação impede isso. Emitir token de runner
-  para a conta de outra pessoa é o mesmo que se passar por ela; o combinado é cada um emitir só o seu.
+  para a conta de outra pessoa é o mesmo que se passar por ela; pela tela, cada um só gera o seu.
+- **O chat do Telegram vai à máquina uma vez, na instalação** (T-374). Depois o servidor não muda para onde o
+  código vai: se mudasse, quem o controlasse mandaria o código para o próprio Telegram.

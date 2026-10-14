@@ -5,50 +5,69 @@ Codex/GPT, Copilot) **com o login de IA dela**, nos **projetos dela**. O
 AlfaMatriz guarda a conversa e os pedidos; o runner busca, executa e devolve.
 Nenhuma credencial de IA vai para o AlfaMatriz.
 
-## Instalar (WSL / Linux)
+## Instalar (Linux, Windows com WSL, Mac) — pela tela
 
-Pré-requisitos: Node 18+, `git`, e os agentes logados como a pessoa usa no
-dia a dia (`claude`, `codex`, `copilot`). O runner também acha o Claude e o
-Codex dentro das extensões do VS Code (`~/.vscode-server/extensions`).
+Desde 14/10/2026 (T-374) ninguém instala à mão nem roda nada no servidor:
 
 1. Ter o perfil **Central de IA** na tela de usuários do AlfaMatriz.
-2. Emitir o token (aparece uma vez) — no servidor do AlfaMatriz:
-   `php artisan alfa:central-ia-token <email> --nome=<maquina>`
-3. Configuração, só para a própria pessoa ler:
+2. Na máquina: Tailscale ligado, Node 18+, `git`, e os agentes logados como a pessoa usa no dia a dia
+   (`claude`, `codex`, `copilot`). O runner também acha o Claude e o Codex dentro das extensões do VS Code
+   (`~/.vscode-server/extensions` na WSL, `~/.vscode/extensions` no Mac e no Linux de mesa).
+3. Central de IA → Ajustes → Telegram: criar o SEU bot no @BotFather, colar o token e tocar em Começar nele
+   (T-374: cada pessoa usa o próprio bot; ele conversa e leva o código de confirmação).
+4. Ajustes → **Minhas máquinas → Gerar comando de instalação**, e colar no terminal (no Windows, no Ubuntu
+   do WSL):
 
    ```bash
-   mkdir -p ~/.config/alfa && umask 077
-   cat > ~/.config/alfa/central-ia-runner.env <<'EOF'
-   ALFAMATRIZ_URL=http://localhost:8096
-   ALFAMATRIZ_RUNNER_TOKEN=<token>
-   CENTRAL_IA_PROJETOS=~/projetos
-   # Decidido AQUI, não no servidor (ver "Inviolável" abaixo):
-   CENTRAL_IA_ACESSO_MAXIMO=restrito          # ou total (dono, 10/10/2026: "permita tudo")
-   CENTRAL_IA_CONFIRMAR=implementar           # ou sempre (confirma também as análises)
-   CENTRAL_IA_ANALISE=leitura                 # ou total: a IA decide o que consultar; o rastro fica na auditoria
-   CENTRAL_IA_IGNORAR=pasta-de-video,orcamento-x   # pastas de ~/projetos que não são projeto (pasta vazia já é ignorada)
-   CENTRAL_IA_SEGREDO_CONFIRMACAO=<64 hex: openssl rand -hex 32>
-   CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=<token do bot dos runners>   # só ENVIA o código; o token do bot da Central só na máquina do Felipe (aceito no nome antigo CENTRAL_IA_TELEGRAM_TOKEN)
-   CENTRAL_IA_TELEGRAM_CHAT_ID=<seu chat id>
-   EOF
+   curl -fsSL https://<alfamatriz>/central-ia/instalar.sh | bash -s -- <código>
    ```
 
-4. Serviço:
+O `instalar.sh` (servido pelo AlfaMatriz com o endereço dele dentro):
 
-   ```bash
-   mkdir -p ~/.local/share/alfa ~/.config/systemd/user
-   cp deploy/central-ia/runner.mjs ~/.local/share/alfa/central-ia-runner.mjs
-   cp deploy/central-ia/{uso-local,anexos,progresso,confirmacao,politica,auditoria,extrato}.mjs ~/.local/share/alfa/
-   cp deploy/central-ia/central-ia-runner.service ~/.config/systemd/user/
-   systemctl --user daemon-reload
-   systemctl --user enable --now central-ia-runner
-   loginctl enable-linger "$USER"   # continua rodando sem sessão aberta
-   journalctl --user -u central-ia-runner -f
-   ```
+- confere sistema, Node, git e se a máquina alcança o AlfaMatriz (sem a tailnet, diz para ligar o Tailscale);
+- baixa os módulos do runner para `~/.local/share/alfa/` (fora de qualquer repositório: trocar de branch num
+  checkout não troca o programa que está rodando);
+- troca o código (uso único, 15 min) pelo token, pergunta a pasta dos projetos e grava
+  `~/.config/alfa/central-ia-runner.env` (0600), mantendo o que já houver nele. O segredo da confirmação
+  nasce ali e nunca sai da máquina; o chat do Telegram e o token do SEU bot vêm do servidor nessa
+  hora, uma vez só (trocou de bot nos Ajustes? gere um comando novo e rode de novo);
+- liga o serviço: `systemd --user` no Linux e na WSL (com `linger`), `launchd` no Mac
+  (`~/Library/LaunchAgents/br.com.alfa.central-ia-runner.plist`, log em `~/Library/Logs/central-ia-runner.log`).
+  WSL sem systemd: o instalador diz como ligar;
+- prepara a imagem Docker que converte PDF e vídeo, se houver Docker (`--sem-anexos` pula);
+- manda uma mensagem de teste pelo seu bot.
 
-O runner é copiado para fora do repositório de propósito: trocar de branch no
-checkout não troca o programa que está rodando. Para atualizar, copie de novo
-e `systemctl --user restart central-ia-runner`.
+**Atualizar:** o mesmo comando sem o código (`curl -fsSL https://<alfamatriz>/central-ia/instalar.sh | bash`).
+Ele baixa o runner de novo e reinicia o serviço só quando estiver ocioso (`atualizar-quando-ocioso.sh`).
+
+**Desconectar:** Ajustes → Minhas máquinas → Desconectar (o token deixa de valer na hora).
+
+Opções da configuração, todas da máquina e nenhuma vinda do servidor:
+
+```bash
+ALFAMATRIZ_URL=…                       # gravado pelo instalador
+ALFAMATRIZ_RUNNER_TOKEN=…              # gravado pelo instalador
+CENTRAL_IA_PROJETOS=~/projetos         # a pasta dos projetos (o instalador pergunta)
+CENTRAL_IA_MAQUINA=notebook-ana        # nome na tela (padrão: o hostname)
+# Decidido AQUI, não no servidor (ver "Inviolável" abaixo):
+CENTRAL_IA_ACESSO_MAXIMO=restrito      # ou total
+CENTRAL_IA_CONFIRMAR=inicio            # mínimo: nunca, deploy, inicio, implementar, sempre
+CENTRAL_IA_ANALISE=leitura             # ou total: a IA decide o que consultar; o rastro fica na auditoria
+CENTRAL_IA_IGNORAR=videos,orcamentos   # subpastas que não são projeto (pasta vazia já é ignorada)
+CENTRAL_IA_SEGREDO_CONFIRMACAO=…       # 64 hex, gerado pelo instalador
+CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=… # o SEU bot (T-374); o nome é do tempo do bot só de código
+CENTRAL_IA_TELEGRAM_CHAT_ID=…
+# Opcionais (T-374: nada disso tem mais padrão de uma máquina específica):
+CENTRAL_IA_MEMORIA=…                   # o MEMORY.md que vai aos agentes quando a pessoa liga "memória" nos
+                                       # Ajustes; sem valor, o do Claude para a pasta de projetos; `nenhuma` desliga
+CENTRAL_IA_AGENDA="programa|script"    # agenda pessoal: chamado com `list --inicio AAAA-MM-DD --dias N`,
+                                       # uma linha por evento. Sem ele, a agenda é a do AlfaMatriz
+CENTRAL_IA_RETRATO=…/retrato.json      # fase e atividade de um painel de andamento, se a pessoa usa um
+```
+
+Instalação à mão (sem a tela) continua possível: `php artisan alfa:central-ia-token <email> --nome=<maquina>`
+no servidor, o arquivo acima escrito à mão e os módulos copiados para `~/.local/share/alfa/` (o `runner.mjs`
+com o nome `central-ia-runner.mjs`); `central-ia-runner.service` é o modelo da unidade do systemd.
 
 ## Inviolável pelo servidor (12/10/2026)
 
@@ -70,8 +89,9 @@ Dono: "o runner faz tudo o que o servidor manda — isso não pode ocorrer". Ago
   Toda pasta vinda do servidor (worktree, sessão) passa por `realpath` e tem de ficar
   dentro de `CENTRAL_IA_PROJETOS`.
 - **Auditoria local**: `~/.local/share/alfa/central-ia-auditoria.log` (0600) registra
-  cada leitura, pedido de confirmação, código errado, aceite, recusa e expiração. O
-  código em si nunca é gravado.
+  cada leitura, execução que a regra deixou rodar sem código (`sem_confirmacao`, com a
+  regra e o acesso — T-374: antes saía como "leitura"), pedido de confirmação, código
+  errado, aceite, recusa e expiração. O código em si nunca é gravado.
 - Sem segredo ou sem Telegram configurado, implementar é recusado.
 - **Análise com acesso total (opcional, `CENTRAL_IA_ANALISE=total`)**: decisão do dono em 12/10/2026,
   "quem tem que analisar o que consulta e altera é a própria IA". O preço é que uma análise forjada no
@@ -88,7 +108,7 @@ Dono: "o runner faz tudo o que o servidor manda — isso não pode ocorrer". Ago
 
 | | Analisar | Implementar |
 |---|---|---|
-| Onde | pasta do projeto (ou a worktree da tarefa, se ela já tem uma) | worktree DA TAREFA em `~/projetos/.central-ia/worktrees/<projeto>-t<n>`, branch `central-ia/t<n>` |
+| Onde | pasta do projeto (ou a worktree da tarefa, se ela já tem uma) | worktree DA TAREFA em `<pasta de projetos>/.central-ia/worktrees/<projeto>-t<n>`, branch `central-ia/t<n>` |
 | Claude | só leitura (Read, Grep, Glob, web e comandos de leitura: git log/status/diff, ls, cat, docker ps/logs) | `restrito`: edita e roda comandos, exceto git push/commit/reset/checkout/merge/rebase, rm -rf, sudo, docker, ssh. `total` (teto local + confirmação): sem restrição |
 | Codex | sandbox `read-only` | sandbox `workspace-write` (só a worktree) |
 | Copilot | sem escrita e sem shell | tudo, exceto os mesmos comandos negados |
@@ -99,19 +119,23 @@ Dono: "o runner faz tudo o que o servidor manda — isso não pode ocorrer". Ago
   dossiê da tarefa no prompt. A sessão interna do agente só é retomada pelo
   MESMO agente na mesma pasta.
 - Na batida (30 s) o runner manda o estado de cada projeto: branch, pendências,
-  último commit, sessões de agente abertas na pasta (`/proc`) e fase/ritmo do
-  `painel-avanco/retrato.json`, se existir.
+  último commit, sessões de agente abertas na pasta (`/proc` no Linux e na WSL;
+  `ps` e `lsof` no Mac) e fase/ritmo do `CENTRAL_IA_RETRATO`, se configurado.
+- Sessões do VS Code: só as abertas dentro da pasta de projetos têm título e
+  começo do pedido enviados (para a pessoa reconhecer o chat). As de outras pastas
+  ficam na máquina; delas só sai a contagem de tokens.
 - Até 2 execuções ao mesmo tempo (`CENTRAL_IA_PARALELO`); 15 minutos de teto (`CENTRAL_IA_TIMEOUT_MINUTOS`);
   20 pedidos por dia por pessoa (`CENTRAL_IA_LIMITE_DIARIO`) — no `.env` do AlfaMatriz.
 - Os hooks e instruções de cada agente (`~/.claude`, `CLAUDE.md` do projeto…)
   valem normalmente: o agente roda como a pessoa rodaria.
 
-Limpar uma worktree já revisada: `git -C ~/projetos/<projeto> worktree remove <caminho>`.
+Limpar uma worktree já revisada: `git -C <pasta de projetos>/<projeto> worktree remove <caminho>`.
 
 ## Anexos (tarefa 9)
 
-Copiar também `anexos.mjs` para a pasta do runner. Construir a imagem local:
-`docker build -t alfamatriz-central-media:local deploy/central-ia/media`.
+O instalador baixa o `anexos.mjs` e constrói a imagem local quando há Docker (à mão:
+`docker build -t alfamatriz-central-media:local deploy/central-ia/media`). No Mac, os anexos ficam em
+`~/.local/share/alfa/tmp`, dentro do HOME, que é o que o Docker de lá (Colima) monta.
 Ela contém Poppler e FFmpeg para PDFs e vídeos; o runner usa containers
 transitórios sem rede e com limites de recursos. Teste independente:
 `node tools/central-ia/test-anexos.mjs`.

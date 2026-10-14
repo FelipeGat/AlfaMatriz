@@ -9,12 +9,12 @@ use Tests\TestCase;
 
 /**
  * Conta com a Central de IA segue a regra de contas de sempre: o
- * administrador desativa, troca a senha, altera e exclui — inclusive a do
- * dono da Central.
+ * administrador desativa, troca a senha, altera e exclui — inclusive a de
+ * outro administrador que usa a Central.
  *
  * Dono do produto, 14/10/2026 (T-368): "admin precisa ter acesso total a
  * tudo". A branch da Central trazia uma trava que deixava essas contas só
- * nas mãos da própria pessoa e do dono (`CENTRAL_IA_DONO`); com ela, uma
+ * nas mãos da própria pessoa e de um e-mail no `.env` (que saiu na T-374); com ela, uma
  * conta comprometida ou de quem saiu da empresa não tinha quem a cortasse
  * pela tela. O que protege a máquina da pessoa é a confirmação fora de banda
  * do runner, e não a conta no AlfaMatriz.
@@ -36,10 +36,9 @@ class ProtecaoDaContaTest extends TestCase
         return $u->fresh();
     }
 
-    public function test_admin_administra_a_conta_do_dono_da_central(): void
+    public function test_admin_administra_a_conta_de_outro_admin_com_central(): void
     {
         $felipe = $this->comCentral($this->admin());
-        config(['central_ia.dono' => $felipe->email]);
         $rossini = $this->admin();
         $hash = $felipe->password;
 

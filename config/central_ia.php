@@ -1,10 +1,9 @@
 <?php
 
 return [
-    // O dono da Central (e-mail): o único que administra os limites de outras
-    // contas, e cuja conta ninguém mais altera (dono, 12/10/2026: "admin virar
-    // você não pode ocorrer"). Sem valor, ninguém administra ninguém.
-    'dono' => env('CENTRAL_IA_DONO'),
+    // Quem administra os limites das outras contas é quem tem o perfil
+    // Administrador e usa a Central (T-374) — ver App\Services\CentralIa\Governanca.
+    // O e-mail de um "dono" no .env, que vinha antes, saiu: a Central é de um time.
 
     // Teto de uma mensagem. O Telegram corta em 4096; abaixo disso, a mesma
     // mensagem cabe nos dois canais sem ser partida.
@@ -26,9 +25,9 @@ return [
         // Implementar leva mais: a rodada de QA do gestor (10/10/2026) não
         // coube em 15 min e foi cortada no meio.
         'timeout_implementar_minutos' => (int) env('CENTRAL_IA_TIMEOUT_IMPLEMENTAR_MINUTOS', 60),
-        // Execuções ao mesmo tempo por pessoa. A máquina do Felipe tem 6 CPUs
-        // e ~7 GB na WSL: cinco projetos À VISTA, dois rodando (dono, 10/10).
-        // Uma mesma tarefa nunca roda duas vezes ao mesmo tempo.
+        // Execuções ao mesmo tempo por pessoa (teto do servidor; cada máquina
+        // tem o seu, CENTRAL_IA_PARALELO no runner). Dois cabem numa máquina
+        // de 6 CPUs e ~7 GB. Uma mesma tarefa nunca roda duas vezes ao mesmo tempo.
         'paralelo' => (int) env('CENTRAL_IA_PARALELO', 2),
         // Acesso dos agentes. `restrito` é o padrão (dono do produto,
         // 14/10/2026, T-368: "precisa de aprovação onde for necessário"): só
@@ -89,11 +88,11 @@ return [
     ],
 
     'telegram' => [
-        // Só o processo do bot (`central-ia:telegram`) recebe o token. A
-        // aplicação web não chama o Telegram: ela grava a entrega e o processo
-        // do bot é quem a leva.
-        'token' => env('CENTRAL_IA_TELEGRAM_TOKEN'),
-        'bot' => env('CENTRAL_IA_TELEGRAM_BOT', 'GrupoSolucoesAgentBot'),
+        // Não há bot no servidor (T-374, decisão do dono em 14/10/2026): cada
+        // pessoa cadastra o PRÓPRIO bot nos Ajustes da Central, e o token mora
+        // cifrado em `central_ia_telegram_bots`. Os antigos
+        // CENTRAL_IA_TELEGRAM_TOKEN/_BOT/_CONFIRMACAO saíram — o primeiro bot
+        // era da conta pessoal de quem criou a Central.
         'codigo_minutos' => 10,
         // Quanto o getUpdates espera por novidade. É também o atraso máximo
         // de uma mensagem da tela até o celular, porque a entrega sai entre

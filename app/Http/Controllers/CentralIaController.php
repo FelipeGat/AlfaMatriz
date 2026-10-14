@@ -71,6 +71,8 @@ class CentralIaController extends Controller
             'niveis.*.*.modelo' => ['nullable', 'string', 'max:60', 'regex:/^[A-Za-z0-9._-]+$/'],
             'niveis.*.*.esforco' => ['nullable', Rule::in(\App\Services\CentralIa\Preferencias::ESFORCOS)],
             'coordenador_codex' => ['sometimes', 'boolean'],
+            'cstk' => ['sometimes', 'boolean'],
+            'memoria' => ['sometimes', 'boolean'],
         ]);
         foreach (array_keys($servico->ler($request->user())['padroes']) as $c) abort_unless(array_key_exists($c, $dados['padroes']), 422);
         foreach (array_keys(CentralIaExecucao::AGENTES) as $a) {
@@ -125,8 +127,6 @@ class CentralIaController extends Controller
         if (!empty($dados['usuario']) && (int) $dados['usuario'] !== $user->id) {
             abort_unless(app(\App\Services\CentralIa\Governanca::class)->administra($user), 403);
             $user = \App\Models\User::findOrFail($dados['usuario']);
-            // Ninguém vê o relatório do dono da Central.
-            abort_if($user->ehDonoDaCentral(), 404);
         }
         $privado = $user->id === $request->user()->id;
         $agente = $dados['agente'] ?? null;
@@ -206,14 +206,13 @@ class CentralIaController extends Controller
         abort_if($usuario === $request->user()->id, 422, 'Use seus próprios Ajustes para esta conta.');
         abort_unless(app(\App\Services\CentralIa\Preferencias::class)->pronta(), 503);
         $alvo = \App\Models\User::findOrFail($usuario);
-        abort_if($alvo->ehDonoDaCentral(), 404);
         $dados = $request->validate([
             'revisao' => ['required', 'integer', 'min:0'],
             'habilitados' => ['required', 'array:claude,codex,copilot'], 'habilitados.*' => ['required', 'boolean'],
             'pedidos_dia' => ['required', 'array:claude,codex,copilot'], 'pedidos_dia.*' => ['nullable', 'integer', 'min:0', 'max:10000'],
             'limite_total' => ['nullable', 'integer', 'min:0', 'max:30000'],
             'paralelo' => ['required', 'integer', 'min:1', 'max:'.max(1, (int) config('central_ia.agentes.paralelo'))],
-            // Liberar a execução é decisão do dono da Central; deploy e
+            // Liberar a execução é decisão de quem administra a Central; deploy e
             // OneDrive continuam fora do alcance da tela.
             'execucao_bloqueada' => ['sometimes', 'boolean'], 'deploy' => ['prohibited'], 'onedrive' => ['prohibited'],
         ]);
@@ -229,7 +228,7 @@ class CentralIaController extends Controller
             $regras = $registro?->regras ?? app(\App\Services\CentralIa\Preferencias::class)->ler($alvo);
             $regras['governanca'] = $dados; $regras['revisao_config']++;
             \App\Models\CentralIaPreferencia::updateOrCreate(['user_id' => $alvo->id], ['regras' => $regras]);
-            \App\Services\CentralIa\Eventos::registrar($request->user(), 'politica_usuario', 'Política administrativa atualizada para conta #'.$alvo->id.($dados['execucao_bloqueada'] ? '; execução bloqueada.' : '; execução liberada pelo dono.'));
+            \App\Services\CentralIa\Eventos::registrar($request->user(), 'politica_usuario', 'Política administrativa atualizada para conta #'.$alvo->id.($dados['execucao_bloqueada'] ? '; execução bloqueada.' : '; execução liberada pela administração.'));
         });
         return $this->semCache($g->resumo($request->user(), $alvo));
     }
@@ -242,6 +241,7 @@ class CentralIaController extends Controller
     {
         app(\App\Services\CentralIa\ProgressoService::class)->publicar($request->user());
         $vinculo = $this->telegram->vinculoDe($request->user());
+        $bot = $this->telegram->botDe($request->user());
         $ultimaTelegram = $vinculo ? CentralIaMensagem::de($request->user())
             ->where('origem', CentralIaMensagem::ORIGEM_TELEGRAM)->latest('id')->first(['id', 'projeto', 'tarefa_id']) : null;
 
@@ -251,7 +251,8 @@ class CentralIaController extends Controller
                 'ativo' => app(\App\Services\CentralIa\CanalAtivo::class)->ativo($request->user()),
                 'projeto' => app(\App\Services\CentralIa\CanalAtivo::class)->estado($request->user())?->projeto_canal,
                 'tarefa_id' => app(\App\Services\CentralIa\CanalAtivo::class)->estado($request->user())?->tarefa_canal],
-            'telegram' => ['vinculado' => (bool) $vinculo, 'usuario' => $vinculo?->telegram_usuario,
+            'telegram' => ['vinculado' => (bool) ($vinculo && $bot), 'usuario' => $vinculo?->telegram_usuario,
+                'bot' => $bot?->usuario, 'bot_situacao' => $bot?->situacao,
                 'projeto' => $ultimaTelegram ? $ultimaTelegram->projeto : $vinculo?->projeto_atual,
                 'tarefa_id' => $ultimaTelegram?->tarefa_id, 'mensagem_id' => $ultimaTelegram?->id],
             'eventos' => \App\Services\CentralIa\Eventos::recentes($request->user()),
@@ -684,13 +685,42 @@ class CentralIaController extends Controller
 
     public function codigoTelegram(Request $request): JsonResponse
     {
+        // O link é para o bot DA PESSOA (T-374): sem ele, não há para onde mandar.
+        $bot = $this->telegram->botDe($request->user());
+        abort_unless($bot, 422, 'Cadastre o seu bot do Telegram antes de vincular.');
         $codigo = $this->telegram->gerarCodigo($request->user());
 
         return $this->semCache([
-            'link' => 'https://t.me/'.config('central_ia.telegram.bot').'?start='.$codigo,
+            'link' => 'https://t.me/'.$bot->usuario.'?start='.$codigo,
             'comando' => '/start '.$codigo,
             'minutos' => config('central_ia.telegram.codigo_minutos'),
         ]);
+    }
+
+    /** Guarda o bot da pessoa e já devolve o link de pareamento com ele. */
+    public function salvarBotTelegram(Request $request): JsonResponse
+    {
+        $dados = $request->validate(['token' => ['required', 'string', 'max:200']]);
+        $bot = $this->telegram->cadastrarBot($request->user(), $dados['token']);
+        $vinculado = (bool) $this->telegram->vinculoDe($request->user());
+        $codigo = $vinculado ? null : $this->telegram->gerarCodigo($request->user());
+
+        return $this->semCache([
+            'bot' => $bot->usuario,
+            'vinculado' => $vinculado,
+            'pareamento' => $codigo ? [
+                'link' => 'https://t.me/'.$bot->usuario.'?start='.$codigo,
+                'comando' => '/start '.$codigo,
+                'minutos' => config('central_ia.telegram.codigo_minutos'),
+            ] : null,
+        ]);
+    }
+
+    public function removerBotTelegram(Request $request): JsonResponse
+    {
+        $this->telegram->removerBot($request->user());
+
+        return $this->semCache(['ok' => true]);
     }
 
     public function desvincularTelegram(Request $request): JsonResponse

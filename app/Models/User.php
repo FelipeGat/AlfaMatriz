@@ -329,14 +329,6 @@ class User extends Authenticatable
         return $this->perfis->contains('slug', 'admin');
     }
 
-    /** O dono da Central (`CENTRAL_IA_DONO`): administra os limites dos demais. */
-    public function ehDonoDaCentral(): bool
-    {
-        $dono = config('central_ia.dono');
-
-        return filled($dono) && strcasecmp($this->email, $dono) === 0;
-    }
-
     /**
      * Esta conta é um painel de parede — daqueles que ficam abertos o dia todo?
      *

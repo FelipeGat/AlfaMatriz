@@ -24,7 +24,7 @@ use Tests\TestCase;
  */
 class TelegramTest extends TestCase
 {
-    use RefreshDatabase;
+    use BotProprioNosTestes, RefreshDatabase;
 
     private const CHAT = 5550001;
 
@@ -32,7 +32,6 @@ class TelegramTest extends TestCase
     {
         parent::setUp();
         config(['central_ia.canal_exclusivo' => false]); // Compatibilidade antes da ativação.
-        config(['central_ia.telegram.token' => 'token-de-teste']);
         // A suíte usa SQLite; a trava real MariaDB tem testes próprios.
         $this->mock(\App\Services\CentralIa\TelegramConsumerLock::class, function ($mock) {
             $mock->shouldReceive('acquire')->andReturn(true);
@@ -70,7 +69,7 @@ class TelegramTest extends TestCase
     private function parear(User $user, int $chat = self::CHAT): void
     {
         $codigo = app(TelegramCanal::class)->gerarCodigo($user);
-        app(TelegramCanal::class)->receber($this->update(random_int(1, 1_000_000), '/start '.$codigo, $chat));
+        $this->entregarAoBot(app(TelegramCanal::class), $this->update(random_int(1, 1_000_000), '/start '.$codigo, $chat));
     }
 
     private function textosEnviados(): array
@@ -80,15 +79,137 @@ class TelegramTest extends TestCase
             ->map(fn ($par) => $par[0]['text'])->values()->all();
     }
 
-    public function test_a_tela_gera_o_link_de_pareamento_e_guarda_so_o_hash(): void
+    /** T-374: cada pessoa usa o próprio bot; sem ele, não há para onde mandar. */
+    public function test_sem_bot_cadastrado_a_tela_nao_gera_pareamento(): void
+    {
+        $this->actingAs($this->comCentral())->postJson(route('central-ia.telegram.codigo'))->assertUnprocessable();
+        $this->assertSame(0, DB::table('central_ia_telegram_codigos')->count());
+    }
+
+    public function test_a_tela_gera_o_link_para_o_bot_da_pessoa_e_guarda_so_o_hash(): void
     {
         $user = $this->comCentral();
+        $bot = $this->botNoTeste($user);
 
         $resposta = $this->actingAs($user)->postJson(route('central-ia.telegram.codigo'))->assertOk();
 
-        $this->assertMatchesRegularExpression('#^https://t\.me/GrupoSolucoesAgentBot\?start=[a-f0-9]{32}$#', $resposta->json('link'));
+        $this->assertMatchesRegularExpression('#^https://t\.me/'.$bot->usuario.'\?start=[a-f0-9]{32}$#', $resposta->json('link'));
         $codigo = Str::after($resposta->json('link'), 'start=');
         $this->assertSame(hash('sha256', $codigo), DB::table('central_ia_telegram_codigos')->value('codigo_hash'));
+    }
+
+    private const TOKEN = '7012345678:AAHkT3stT0kenD3B0tDaCentral_abc-123';
+
+    private function fakeBotFather(int $botId = 7012345678, string $usuario = 'central_da_ana_bot', string $webhook = '', int $statusMe = 200): void
+    {
+        Http::fake([
+            'api.telegram.org/*/getMe' => $statusMe === 200
+                ? Http::response(['ok' => true, 'result' => ['id' => $botId, 'is_bot' => true, 'username' => $usuario]])
+                : Http::response(['ok' => false, 'description' => 'Unauthorized'], $statusMe),
+            'api.telegram.org/*/getWebhookInfo' => Http::response(['ok' => true, 'result' => ['url' => $webhook]]),
+        ]);
+    }
+
+    public function test_cadastrar_o_bot_confere_no_telegram_guarda_cifrado_e_ja_devolve_o_pareamento(): void
+    {
+        $this->fakeBotFather();
+        $ana = $this->comCentral();
+
+        $r = $this->actingAs($ana)->putJson(route('central-ia.telegram.bot'), ['token' => self::TOKEN])->assertOk()
+            ->assertJsonPath('bot', 'central_da_ana_bot')->assertJsonPath('vinculado', false);
+
+        $this->assertMatchesRegularExpression('#^https://t\.me/central_da_ana_bot\?start=[a-f0-9]{32}$#', $r->json('pareamento.link'));
+        $cru = DB::table('central_ia_telegram_bots')->value('token');
+        $this->assertStringNotContainsString(self::TOKEN, $cru, 'O token mora cifrado no banco.');
+        $this->assertSame(self::TOKEN, \App\Models\CentralIaTelegramBot::first()->token);
+        Http::assertSent(fn (Request $q) => str_contains($q->url(), '/bot'.self::TOKEN.'/getMe'));
+        $painel = $this->actingAs($ana)->getJson(route('central-ia.painel'))->assertJsonPath('telegram.bot', 'central_da_ana_bot');
+        $this->assertStringNotContainsString(self::TOKEN, $painel->getContent(), 'O token nunca volta para a tela.');
+    }
+
+    public function test_token_errado_recusado_pelo_telegram_ou_com_webhook_nao_e_guardado(): void
+    {
+        Http::fake([
+            'api.telegram.org/*/getMe' => Http::sequence()
+                ->push(['ok' => false, 'description' => 'Unauthorized'], 401)
+                ->push(['ok' => true, 'result' => ['id' => 7012345678, 'is_bot' => true, 'username' => 'central_da_ana_bot']]),
+            'api.telegram.org/*/getWebhookInfo' => Http::response(['ok' => true, 'result' => ['url' => 'https://outro.sistema/hook']]),
+        ]);
+        $ana = $this->comCentral();
+
+        $this->actingAs($ana)->putJson(route('central-ia.telegram.bot'), ['token' => 'nao-e-token'])->assertUnprocessable();
+        Http::assertNothingSent();
+        $this->actingAs($ana)->putJson(route('central-ia.telegram.bot'), ['token' => self::TOKEN])->assertUnprocessable()
+            ->assertJsonPath('message', fn ($m) => str_contains($m, 'não reconheceu'));
+        $this->actingAs($ana)->putJson(route('central-ia.telegram.bot'), ['token' => self::TOKEN])->assertUnprocessable()
+            ->assertJsonPath('message', fn ($m) => str_contains($m, 'webhook'));
+
+        $this->assertSame(0, \App\Models\CentralIaTelegramBot::count());
+    }
+
+    public function test_o_mesmo_bot_nao_serve_a_duas_contas(): void
+    {
+        $this->fakeBotFather();
+        $this->actingAs($this->comCentral())->putJson(route('central-ia.telegram.bot'), ['token' => self::TOKEN])->assertOk();
+
+        $this->actingAs($this->comCentral())->putJson(route('central-ia.telegram.bot'), ['token' => self::TOKEN])->assertUnprocessable()
+            ->assertJsonPath('message', fn ($m) => str_contains($m, 'outra conta'));
+        $this->assertSame(1, \App\Models\CentralIaTelegramBot::count());
+    }
+
+    public function test_trocar_de_bot_desfaz_o_vinculo_e_renovar_o_token_do_mesmo_bot_mantem(): void
+    {
+        $eu = fn (int $id, string $u) => ['ok' => true, 'result' => ['id' => $id, 'is_bot' => true, 'username' => $u]];
+        Http::fake([
+            'api.telegram.org/*/getMe' => Http::sequence()->push($eu(7012345678, 'central_da_ana_bot'))
+                ->push($eu(7012345678, 'central_da_ana_bot'))->push($eu(7099999999, 'outro_da_ana_bot')),
+            'api.telegram.org/*/getWebhookInfo' => Http::response(['ok' => true, 'result' => ['url' => '']]),
+        ]);
+        $ana = $this->comCentral();
+        $this->actingAs($ana)->putJson(route('central-ia.telegram.bot'), ['token' => self::TOKEN])->assertOk();
+        CentralIaTelegramVinculo::create(['user_id' => $ana->id, 'chat_id' => self::CHAT]);
+
+        // Token renovado no @BotFather: mesmo bot, a conversa continua ligada.
+        $this->actingAs($ana)->putJson(route('central-ia.telegram.bot'), ['token' => '7012345678:BBnov0T0kenD0MesmoB0tDaCentral_xyz'])->assertOk()
+            ->assertJsonPath('vinculado', true)->assertJsonPath('pareamento', null);
+        $this->assertSame(1, CentralIaTelegramVinculo::count());
+
+        // Outro bot: a pessoa ainda não tocou em Começar nele.
+        $this->actingAs($ana)->putJson(route('central-ia.telegram.bot'), ['token' => '7099999999:CCoutr0B0tDaAnaParaACentral_qwe12'])->assertOk()
+            ->assertJsonPath('vinculado', false);
+        $this->assertSame(0, CentralIaTelegramVinculo::count());
+        $this->assertSame('outro_da_ana_bot', \App\Models\CentralIaTelegramBot::value('usuario'));
+    }
+
+    public function test_retirar_o_bot_para_a_conversa_pelo_telegram(): void
+    {
+        $this->fakeTelegram();
+        $ana = $this->comCentral();
+        $this->parear($ana);
+
+        $this->actingAs($ana)->deleteJson(route('central-ia.telegram.bot.remover'))->assertOk();
+
+        $this->assertSame(0, \App\Models\CentralIaTelegramBot::count());
+        $this->assertSame(0, CentralIaTelegramVinculo::count());
+        $this->actingAs($ana)->getJson(route('central-ia.painel'))->assertJsonPath('telegram.bot', null)->assertJsonPath('telegram.vinculado', false);
+    }
+
+    /** O código de uma conta não liga o bot de outra, e o bot de Ana não ouve o chat de Bruno. */
+    public function test_cada_bot_so_atende_o_proprio_dono(): void
+    {
+        $this->fakeTelegram();
+        $ana = $this->comCentral();
+        $bruno = $this->comCentral();
+        $botDaAna = $this->botNoTeste($ana);
+        $this->parear($bruno, 5550009);
+
+        $codigoDoBruno = app(TelegramCanal::class)->gerarCodigo($bruno);
+        app(TelegramCanal::class)->receber($this->update(70, '/start '.$codigoDoBruno, 5550009), $botDaAna);
+        app(TelegramCanal::class)->receber($this->update(71, 'pelo bot errado', 5550009), $botDaAna);
+
+        $this->assertSame([$bruno->id], CentralIaTelegramVinculo::pluck('user_id')->all());
+        $this->assertSame(0, CentralIaMensagem::count());
+        Http::assertSent(fn (Request $q) => str_contains($q->url(), '/bot'.$botDaAna->token.'/sendMessage') && str_contains($q['text'], 'inválido'));
     }
 
     public function test_start_com_o_codigo_pareia_e_o_codigo_nao_serve_de_novo(): void
@@ -97,13 +218,13 @@ class TelegramTest extends TestCase
         $user = $this->comCentral();
         $codigo = app(TelegramCanal::class)->gerarCodigo($user);
 
-        app(TelegramCanal::class)->receber($this->update(1, '/start '.$codigo));
+        $this->entregarAoBot(app(TelegramCanal::class), $this->update(1, '/start '.$codigo));
 
         $this->assertSame(self::CHAT, CentralIaTelegramVinculo::where('user_id', $user->id)->value('chat_id'));
         $this->assertStringContainsString('agora é a sua conversa', $this->textosEnviados()[0]);
         $this->assertSame(0, CentralIaMensagem::count(), 'O /start nunca vira texto da conversa.');
 
-        app(TelegramCanal::class)->receber($this->update(2, '/start '.$codigo, 5550002));
+        $this->entregarAoBot(app(TelegramCanal::class), $this->update(2, '/start '.$codigo, 5550002));
         $this->assertSame(1, CentralIaTelegramVinculo::count());
     }
 
@@ -114,7 +235,7 @@ class TelegramTest extends TestCase
         $codigo = app(TelegramCanal::class)->gerarCodigo($user);
         $this->travel(11)->minutes();
 
-        app(TelegramCanal::class)->receber($this->update(1, '/start '.$codigo));
+        $this->entregarAoBot(app(TelegramCanal::class), $this->update(1, '/start '.$codigo));
 
         $this->assertSame(0, CentralIaTelegramVinculo::count());
         $this->assertStringContainsString('vencido', $this->textosEnviados()[0]);
@@ -139,8 +260,8 @@ class TelegramTest extends TestCase
         $user = $this->comCentral();
         $this->parear($user);
 
-        app(TelegramCanal::class)->receber($this->update(10, 'Anotação: rever o contrato'));
-        app(TelegramCanal::class)->receber($this->update(10, 'Anotação: rever o contrato'));
+        $this->entregarAoBot(app(TelegramCanal::class), $this->update(10, 'Anotação: rever o contrato'));
+        $this->entregarAoBot(app(TelegramCanal::class), $this->update(10, 'Anotação: rever o contrato'));
 
         $this->assertSame(1, CentralIaMensagem::count());
         $mensagem = CentralIaMensagem::first();
@@ -158,9 +279,9 @@ class TelegramTest extends TestCase
         $this->fakeTelegram();
         $this->parear($this->comCentral());
 
-        app(TelegramCanal::class)->receber($this->update(20, 'em grupo', tipo: 'group'));
-        app(TelegramCanal::class)->receber($this->update(21, 'outro remetente', de: 777));
-        app(TelegramCanal::class)->receber($this->update(22, 'quem sou eu?', chat: 999));
+        $this->entregarAoBot(app(TelegramCanal::class), $this->update(20, 'em grupo', tipo: 'group'));
+        $this->entregarAoBot(app(TelegramCanal::class), $this->update(21, 'outro remetente', de: 777));
+        $this->entregarAoBot(app(TelegramCanal::class), $this->update(22, 'quem sou eu?', chat: 999));
 
         $this->assertSame(0, CentralIaMensagem::count());
         $this->assertStringContainsString('não está ligado', last($this->textosEnviados()));
@@ -176,7 +297,7 @@ class TelegramTest extends TestCase
         $this->parear($user);
         $user->perfis()->detach(Perfil::where('slug', 'central_ia')->value('id'));
 
-        app(TelegramCanal::class)->receber($this->update(30, 'ainda entro?'));
+        $this->entregarAoBot(app(TelegramCanal::class), $this->update(30, 'ainda entro?'));
 
         $this->assertSame(0, CentralIaMensagem::count());
         $this->assertStringContainsString('não tem acesso', last($this->textosEnviados()));
@@ -278,33 +399,86 @@ class TelegramTest extends TestCase
         $this->artisan('central-ia:telegram', ['--uma-vez' => true])->assertSuccessful();
 
         $this->assertSame(['primeira', 'segunda'], CentralIaMensagem::orderBy('id')->pluck('conteudo')->all());
-        $this->assertSame(42, (int) DB::table('central_ia_telegram_cursor')->value('proximo_update_id'));
+        $this->assertSame(42, \App\Models\CentralIaTelegramBot::where('user_id', $user->id)->value('proximo_update_id'));
         Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/getUpdates') && $r['offset'] === 0);
     }
 
-    public function test_outro_consumidor_no_mesmo_bot_e_avisado_e_nada_e_lido(): void
+    /** Dois bots, duas pessoas: cada update entra na conversa do dono do bot que o recebeu. */
+    public function test_o_processo_ouve_o_bot_de_cada_pessoa(): void
+    {
+        $ana = $this->comCentral();
+        $bruno = $this->comCentral();
+        $botAna = $this->botNoTeste($ana);
+        $botBruno = $this->botNoTeste($bruno);
+        CentralIaTelegramVinculo::create(['user_id' => $ana->id, 'chat_id' => 6001]);
+        CentralIaTelegramVinculo::create(['user_id' => $bruno->id, 'chat_id' => 6002]);
+        Http::fake([
+            'api.telegram.org/*/getWebhookInfo' => Http::response(['ok' => true, 'result' => ['url' => '']]),
+            'api.telegram.org/bot'.$botAna->token.'/getUpdates' => Http::response(['ok' => true, 'result' => [$this->update(10, 'da Ana', 6001)]]),
+            'api.telegram.org/bot'.$botBruno->token.'/getUpdates' => Http::response(['ok' => true, 'result' => [$this->update(10, 'do Bruno', 6002)]]),
+            'api.telegram.org/*/sendMessage' => Http::response(['ok' => true, 'result' => ['message_id' => 1]]),
+        ]);
+
+        $this->artisan('central-ia:telegram', ['--uma-vez' => true])->assertSuccessful();
+
+        $this->assertSame('da Ana', CentralIaMensagem::where('user_id', $ana->id)->value('conteudo'));
+        $this->assertSame('do Bruno', CentralIaMensagem::where('user_id', $bruno->id)->value('conteudo'));
+        $this->assertSame([11, 11], \App\Models\CentralIaTelegramBot::orderBy('id')->pluck('proximo_update_id')->all());
+    }
+
+    /** O ambiente local roda com cópia do banco: os bots de lá não são lidos aqui. */
+    public function test_bot_cadastrado_em_outro_servidor_nao_e_lido(): void
+    {
+        $this->fakeTelegram();
+        $this->botNoTeste($this->comCentral())->forceFill(['servidor' => hash('sha256', 'https://outro.servidor')])->save();
+
+        $this->artisan('central-ia:telegram', ['--uma-vez' => true])->assertSuccessful();
+
+        Http::assertNothingSent();
+    }
+
+    public function test_outro_consumidor_no_mesmo_bot_e_avisado_e_so_ele_fica_de_lado(): void
     {
         $this->fakeTelegram(extra: ['api.telegram.org/*/getUpdates' => Http::response(['ok' => false], 409)]);
+        $this->botNoTeste($this->comCentral());
 
         $this->artisan('central-ia:telegram', ['--uma-vez' => true])
             ->expectsOutputToContain('Outro consumidor')
             ->assertFailed();
+        $this->assertSame('conflito', \App\Models\CentralIaTelegramBot::value('situacao'));
     }
 
     public function test_bot_com_webhook_nao_e_tocado(): void
     {
         $this->fakeTelegram(extra: ['api.telegram.org/*/getWebhookInfo' => Http::response(['ok' => true, 'result' => ['url' => 'https://x.test/hook']])]);
+        $this->botNoTeste($this->comCentral());
 
         $this->artisan('central-ia:telegram', ['--uma-vez' => true])->assertFailed();
 
         Http::assertNotSent(fn (Request $r) => str_ends_with($r->url(), '/getUpdates'));
+        $this->assertSame('webhook', \App\Models\CentralIaTelegramBot::value('situacao'));
     }
 
-    public function test_sem_token_o_bot_nao_sobe(): void
+    /** Token revogado no @BotFather: o bot sai da leitura e a tela pede o novo. */
+    public function test_token_revogado_tira_o_bot_da_leitura(): void
     {
-        config(['central_ia.telegram.token' => null]);
+        $this->fakeTelegram(extra: ['api.telegram.org/*/getUpdates' => Http::response(['ok' => false], 401)]);
+        $user = $this->comCentral();
+        $this->botNoTeste($user);
 
         $this->artisan('central-ia:telegram', ['--uma-vez' => true])->assertFailed();
+
+        $this->assertSame('token_invalido', \App\Models\CentralIaTelegramBot::value('situacao'));
+        $this->actingAs($user)->getJson(route('central-ia.painel'))->assertJsonPath('telegram.bot_situacao', 'token_invalido');
+    }
+
+    public function test_sem_bot_nenhum_o_processo_fica_de_pe_sem_chamar_o_telegram(): void
+    {
+        Http::fake();
+
+        $this->artisan('central-ia:telegram', ['--uma-vez' => true])->assertSuccessful();
+
+        Http::assertNothingSent();
     }
 
     public function test_trava_recusada_nao_faz_nem_a_primeira_chamada_http(): void

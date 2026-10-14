@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CentralIaMaquinasController;
 use App\Http\Controllers\CentralIaRunnerController;
 use Illuminate\Support\Facades\Route;
 
@@ -23,3 +24,17 @@ Route::prefix('api/central-ia/runner')
         Route::post('execucoes/{execucao}/conclusao', [CentralIaRunnerController::class, 'concluir'])
             ->whereNumber('execucao')->name('central-ia.runner.concluir');
     });
+
+/*
+ * "Conectar minha máquina" (T-374), a metade do terminal. O instalador e os
+ * arquivos do runner não têm segredo (são o que está no repositório) e saem
+ * sem login: quem cola o comando ainda não tem token. O que dá acesso é o
+ * código de uso único, trocado por token em `instalacao` — e essa porta tem
+ * teto baixo por endereço, contra quem tentasse adivinhar código.
+ */
+Route::get('central-ia/instalar.sh', [CentralIaMaquinasController::class, 'instalador'])
+    ->middleware('throttle:30,1,central-ia-instalador')->name('central-ia.instalador');
+Route::get('central-ia/runner/arquivos/{arquivo}', [CentralIaMaquinasController::class, 'arquivo'])
+    ->where('arquivo', '[a-z-]+\.(mjs|sh)')->middleware('throttle:120,1,central-ia-instalador')->name('central-ia.runner.arquivo');
+Route::post('api/central-ia/instalacao', [CentralIaMaquinasController::class, 'trocarCodigo'])
+    ->middleware('throttle:10,1,central-ia-instalacao')->name('central-ia.instalacao.trocar');

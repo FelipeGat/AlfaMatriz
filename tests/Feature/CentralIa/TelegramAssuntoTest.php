@@ -20,20 +20,20 @@ use Tests\TestCase;
  */
 class TelegramAssuntoTest extends TestCase
 {
-    use RefreshDatabase;
+    use BotProprioNosTestes, RefreshDatabase;
 
     private int $update = 100;
 
     protected function setUp(): void
     {
         parent::setUp();
-        config(['central_ia.canal_exclusivo' => false, 'central_ia.telegram.token' => 'TESTE']);
+        config(['central_ia.canal_exclusivo' => false]);
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]])]);
     }
 
     private function falar(int $chat, string $texto): void
     {
-        app(TelegramCanal::class)->receber(['update_id' => ++$this->update, 'message' => ['message_id' => $this->update,
+        $this->entregarAoBot(app(TelegramCanal::class), ['update_id' => ++$this->update, 'message' => ['message_id' => $this->update,
             'chat' => ['id' => $chat, 'type' => 'private'], 'from' => ['id' => $chat, 'is_bot' => false], 'text' => $texto]]);
     }
 

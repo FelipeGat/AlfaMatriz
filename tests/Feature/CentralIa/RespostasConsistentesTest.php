@@ -23,7 +23,7 @@ use Tests\TestCase;
  */
 class RespostasConsistentesTest extends TestCase
 {
-    use RefreshDatabase;
+    use BotProprioNosTestes, RefreshDatabase;
     protected function setUp(): void
     {
         parent::setUp();
@@ -126,19 +126,18 @@ class RespostasConsistentesTest extends TestCase
 
     public function test_pelo_telegram_sem_projeto_o_resumo_da_agenda_vai_ao_codex(): void
     {
-        config(['central_ia.telegram.token' => 'token-de-teste']);
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]])]);
         $user = $this->comCentral();
         $canal = app(TelegramCanal::class);
         $msg = fn ($id, $t) => ['update_id' => $id, 'message' => ['text' => $t, 'chat' => ['id' => 9, 'type' => 'private'], 'from' => ['id' => 9, 'is_bot' => false]]];
-        $canal->receber($msg(1, '/start '.$canal->gerarCodigo($user)));
+        $this->entregarAoBot($canal, $msg(1, '/start '.$canal->gerarCodigo($user)));
 
-        $canal->receber($msg(2, 'Me faça um resumo de minha agenda de hoje'));
+        $this->entregarAoBot($canal, $msg(2, 'Me faça um resumo de minha agenda de hoje'));
 
         $e = CentralIaExecucao::firstOrFail();
         $this->assertSame(['', 'codex'], [$e->projeto, $e->agente]);
         $recibo = (string) collect(Http::recorded())->map(fn ($p) => $p[0]['text'] ?? '')->last();
         $this->assertStringContainsString('Recebido em Geral: GPT (Codex)', $recibo);
-        $this->assertStringContainsString('Google Agenda (hoje)', $recibo);
+        $this->assertStringContainsString('Agenda (hoje)', $recibo);
     }
 }

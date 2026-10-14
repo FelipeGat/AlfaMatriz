@@ -5,11 +5,12 @@
  *   Codex        ~/.codex/sessions/AAAA/MM/DD/rollout-*.jsonl
  *   Copilot      ~/.copilot/session-state/<sessão>/events.jsonl
  *
- * Regra herdada do painel-avanco: só CONTAGENS e metadados (tokens, modelo,
- * dia, pasta, quantidade de mensagens). O texto das conversas nunca sai daqui
- * — nem para o AlfaMatriz, nem para o log. Exceção pequena, para a pessoa
- * reconhecer a conversa (Chats Business): o NOME que ela deu à conversa no
- * VS Code, ou, sem nome, o começo do primeiro pedido (80 caracteres).
+ * Só CONTAGENS e metadados (tokens, modelo, dia, pasta, quantidade de
+ * mensagens). O texto das conversas nunca sai daqui — nem para o AlfaMatriz,
+ * nem para o log. Exceção pequena, para a pessoa reconhecer a conversa (Chats
+ * Business): o NOME que ela deu à conversa no VS Code, ou, sem nome, o começo
+ * do primeiro pedido (80 caracteres) — e só das conversas abertas dentro da
+ * pasta de projetos (T-374).
  *
  * Os arquivos só crescem no fim (jsonl), e o da sessão longa do gestor passa
  * de 100 MB: cada arquivo é lido a partir de onde parou na rodada anterior.
@@ -94,7 +95,7 @@ function somar(e, d, agente, chave, valores) {
 }
 
 // Projeto citado nos caminhos de arquivo da linha — para saber de qual
-// projeto é uma sessão aberta na RAIZ ~/projetos (caso do VS Code).
+// projeto é uma sessão aberta na RAIZ da pasta de projetos (caso do VS Code).
 function contarProjetos(e, linha, raiz) {
     const re = new RegExp(raiz.replace(/[/.]/g, '\\$&') + '/([A-Za-z0-9][A-Za-z0-9._-]*)/', 'g');
     let m;
@@ -265,12 +266,16 @@ export function usoLocal(raiz) {
 
     // Sessões que a PESSOA abriu (VS Code), as mais recentes primeiro — as
     // que o runner cria (`sdk-cli`, `codex_exec`) e as das worktrees da
-    // Central ficam de fora.
-    // A conversa aberta na RAIZ ~/projetos (como a do Comercial VixCard) entra
-    // com projeto '' quando não dá para dizer de qual projeto ela é; as
+    // Central ficam de fora. A conversa aberta na RAIZ da pasta de projetos
+    // entra com projeto '' quando não dá para dizer de qual projeto ela é; as
     // cópias do Mac também (Chats Business).
+    // Só as conversas abertas DENTRO da pasta de projetos (T-374): o título e o
+    // começo do primeiro pedido de uma conversa de qualquer outra pasta da
+    // pessoa (pessoal, de outro trabalho) não têm por que sair da máquina. O
+    // consumo de todas continua contado — são só números.
     const sessoes = [...todas, ...copias]
         .filter(s => s.vscode && s.sessao && s.cwd && s.ultima && !s.cwd.includes(`${sep}.central-ia${sep}`))
+        .filter(s => s.copia || s.cwd === raiz || s.cwd.startsWith(raiz + sep))
         .map(s => ({ agente: s.agente, id: s.sessao, cwd: s.cwd,
             projeto: s.copia ? '' : (projetoDa(s, raiz) ?? (s.cwd === raiz ? '' : null)),
             ultima_atividade: s.ultima, mensagens: s.mensagens,

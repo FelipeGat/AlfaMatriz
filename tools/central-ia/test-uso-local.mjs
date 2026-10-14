@@ -27,4 +27,22 @@ appendFileSync(join(dir, 'fork.jsonl'), resposta('m4', 25) + '\n');
 appendFileSync(join(dir, 'original.jsonl'), resposta('m3', 50) + '\n');
 assert.equal(total(usoLocal(join(home, 'projetos'))), 375);
 
-console.log('PASSOU: consumo do Claude deduplicado entre sessão original e cópia, também na leitura incremental.');
+// T-374: conversa aberta FORA da pasta de projetos não sai da máquina — nem o
+// título, nem o começo do pedido —, mesmo citando caminhos de um projeto. A de
+// dentro sai. O consumo das duas continua contado.
+mkdirSync(join(home, 'projetos/gestor'), { recursive: true });
+const conversa = (cwd, sessionId, texto) => [
+    JSON.stringify({ type: 'user', cwd, sessionId, entrypoint: 'claude-vscode', timestamp: hoje, message: { content: texto } }),
+    ...Array.from({ length: 6 }, (_, i) => JSON.stringify({ type: 'assistant', timestamp: hoje, requestId: `r-${sessionId}-${i}`,
+        message: { id: `${sessionId}-${i}`, model: 'claude-teste', content: `lendo ${join(home, 'projetos/gestor')}/x.php`, usage: { input_tokens: 1, output_tokens: 1 } } })),
+].join('\n') + '\n';
+const fora = join(home, '.claude/projects/-pessoal'); mkdirSync(fora, { recursive: true });
+writeFileSync(join(fora, 'pessoal.jsonl'), conversa(join(home, 'pessoal'), 'sessao-pessoal-1', 'ASSUNTO PESSOAL que não pode sair'));
+const dentro = join(home, '.claude/projects/-gestor'); mkdirSync(dentro, { recursive: true });
+writeFileSync(join(dentro, 'gestor.jsonl'), conversa(join(home, 'projetos/gestor'), 'sessao-gestor-1', 'corrigir o relatório'));
+const r = usoLocal(join(home, 'projetos'));
+assert.deepEqual(r.sessoes.map(x => x.id), ['sessao-gestor-1'], 'só a conversa de dentro da pasta de projetos');
+assert.ok(!JSON.stringify(r.sessoes).includes('PESSOAL'), 'o texto da conversa de fora não sai');
+assert.equal(total(r), 375 + 12, 'o consumo das duas continua contado');
+
+console.log('PASSOU: consumo do Claude deduplicado entre sessão original e cópia, também na leitura incremental; conversa fora da pasta de projetos não sai da máquina.');
