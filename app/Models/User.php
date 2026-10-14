@@ -329,16 +329,6 @@ class User extends Authenticatable
         return $this->perfis->contains('slug', 'admin');
     }
 
-    /**
-     * Conta com a Central de IA: o runner dela executa agentes com acesso
-     * total na máquina da pessoa. Quem trocasse a senha dela entraria ali —
-     * por isso só ela (ou o dono da Central) mexe nessa conta.
-     */
-    public function temCentral(): bool
-    {
-        return $this->perfis->contains('slug', 'central_ia');
-    }
-
     /** O dono da Central (`CENTRAL_IA_DONO`): administra os limites dos demais. */
     public function ehDonoDaCentral(): bool
     {

@@ -8,10 +8,16 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Conta com a Central de IA só muda pela própria pessoa (ou pelo dono da
- * Central, para os outros). Dono, 12/10/2026: um admin redefinir a senha do
- * Felipe e entrar como ele "não pode ocorrer" — a Central dele aciona
- * agentes com acesso total na máquina dele.
+ * Conta com a Central de IA segue a regra de contas de sempre: o
+ * administrador desativa, troca a senha, altera e exclui — inclusive a do
+ * dono da Central.
+ *
+ * Dono do produto, 14/10/2026 (T-368): "admin precisa ter acesso total a
+ * tudo". A branch da Central trazia uma trava que deixava essas contas só
+ * nas mãos da própria pessoa e do dono (`CENTRAL_IA_DONO`); com ela, uma
+ * conta comprometida ou de quem saiu da empresa não tinha quem a cortasse
+ * pela tela. O que protege a máquina da pessoa é a confirmação fora de banda
+ * do runner, e não a conta no AlfaMatriz.
  */
 class ProtecaoDaContaTest extends TestCase
 {
@@ -30,49 +36,29 @@ class ProtecaoDaContaTest extends TestCase
         return $u->fresh();
     }
 
-    public function test_admin_nao_redefine_senha_nem_altera_a_conta_do_dono(): void
+    public function test_admin_administra_a_conta_do_dono_da_central(): void
     {
         $felipe = $this->comCentral($this->admin());
         config(['central_ia.dono' => $felipe->email]);
         $rossini = $this->admin();
         $hash = $felipe->password;
 
-        $this->actingAs($rossini)->post(route('usuarios.senha', $felipe))->assertSessionHas('erro');
-        $this->assertSame($hash, $felipe->fresh()->password);
+        $this->actingAs($rossini)->post(route('usuarios.senha', $felipe))->assertSessionHas('senha_gerada');
+        $this->assertNotSame($hash, $felipe->fresh()->password);
 
-        $this->put(route('usuarios.update', $felipe), ['name' => 'X', 'email' => 'rossini-controla@exemplo.test', 'perfis' => [Perfil::where('slug', 'admin')->value('id')]])
-            ->assertSessionHas('erro');
-        $this->assertSame($felipe->email, $felipe->fresh()->email);
-
-        $this->post(route('usuarios.ativo', $felipe))->assertSessionHas('erro');
-        $this->assertTrue((bool) $felipe->fresh()->ativo);
-
-        $this->delete(route('usuarios.destroy', $felipe))->assertSessionHas('erro');
-        $this->assertNotNull($felipe->fresh());
-
-        // A tentativa chega ao sino do alvo.
-        $this->assertDatabaseHas('notificacoes', ['destinatario_id' => $felipe->id, 'tipo' => 'seguranca']);
+        $this->post(route('usuarios.ativo', $felipe))->assertSessionMissing('erro');
+        $this->assertFalse((bool) $felipe->fresh()->ativo);
     }
 
-    public function test_conta_com_central_de_outra_pessoa_tambem_e_protegida_de_admin_comum(): void
+    public function test_admin_desativa_e_exclui_conta_com_central(): void
     {
         $alexandre = $this->comCentral(User::factory()->semPerfil()->create());
-        $rossini = $this->admin();
-        $hash = $alexandre->password;
 
-        $this->actingAs($rossini)->post(route('usuarios.senha', $alexandre))->assertSessionHas('erro');
-        $this->assertSame($hash, $alexandre->fresh()->password);
-    }
+        $this->actingAs($this->admin())->post(route('usuarios.ativo', $alexandre))->assertSessionMissing('erro');
+        $this->assertFalse((bool) $alexandre->fresh()->ativo);
 
-    public function test_dono_administra_a_conta_de_outro_usuario_com_central(): void
-    {
-        $felipe = $this->comCentral($this->admin());
-        config(['central_ia.dono' => $felipe->email]);
-        $alexandre = $this->comCentral(User::factory()->semPerfil()->create());
-        $hash = $alexandre->password;
-
-        $this->actingAs($felipe)->post(route('usuarios.senha', $alexandre))->assertSessionHas('senha_gerada');
-        $this->assertNotSame($hash, $alexandre->fresh()->password);
+        $this->delete(route('usuarios.destroy', $alexandre))->assertSessionMissing('erro');
+        $this->assertNull(User::find($alexandre->id));
     }
 
     public function test_conta_sem_central_segue_a_regra_de_sempre(): void

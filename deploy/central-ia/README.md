@@ -28,7 +28,7 @@ Codex dentro das extensões do VS Code (`~/.vscode-server/extensions`).
    CENTRAL_IA_ANALISE=leitura                 # ou total: a IA decide o que consultar; o rastro fica na auditoria
    CENTRAL_IA_IGNORAR=pasta-de-video,orcamento-x   # pastas de ~/projetos que não são projeto (pasta vazia já é ignorada)
    CENTRAL_IA_SEGREDO_CONFIRMACAO=<64 hex: openssl rand -hex 32>
-   CENTRAL_IA_TELEGRAM_TOKEN=<token do bot>   # só para ENVIAR o código; nunca lê mensagens
+   CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=<token do bot dos runners>   # só ENVIA o código; o token do bot da Central só na máquina do Felipe (aceito no nome antigo CENTRAL_IA_TELEGRAM_TOKEN)
    CENTRAL_IA_TELEGRAM_CHAT_ID=<seu chat id>
    EOF
    ```
@@ -75,7 +75,8 @@ Dono: "o runner faz tudo o que o servidor manda — isso não pode ocorrer". Ago
 - Sem segredo ou sem Telegram configurado, implementar é recusado.
 - **Análise com acesso total (opcional, `CENTRAL_IA_ANALISE=total`)**: decisão do dono em 12/10/2026,
   "quem tem que analisar o que consulta e altera é a própria IA". O preço é que uma análise forjada no
-  servidor também roda sem código. Com ou sem ela:
+  servidor também roda sem código. **Desde 14/10/2026 (T-368)** ela só vale se o servidor também pedir
+  acesso total, e nem com acesso total publica (push, ssh, `gh`) fora de pedido de deploy. Com ou sem ela:
   - antes de toda análise, o runner roda `git fetch --all`, então o agente vê o remoto atualizado mesmo sem rede;
   - toda execução manda a **auditoria** (`auditoria.mjs`): o que o agente consultou e executou (eventos da
     CLI; o Copilot não informa) e o que mudou no git (arquivos e commits, medidos antes e depois);

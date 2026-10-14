@@ -203,7 +203,8 @@ class GruposEventosLimitesTest extends TestCase
         $this->assertTrue(DB::table('central_ia_mensagens')->where('tarefa_id', $tarefa)->where('id', '<', $ponto['mensagem_id'])->exists(), 'Salvar ponto preserva as mensagens anteriores.');
     }
 
-    public function test_acesso_total_e_uma_implementacao_por_projeto(): void
+    /** O servidor pede `restrito` por padrão desde 14/10/2026 (T-368); `total` só configurado. */
+    public function test_acesso_restrito_por_padrao_e_uma_implementacao_por_projeto(): void
     {
         $user = $this->comCentral();
         $this->pedir($user, 'Implemente o filtro', ['agente' => 'claude']);
@@ -212,7 +213,7 @@ class GruposEventosLimitesTest extends TestCase
         Sanctum::actingAs($user, ['central-ia-runner']);
 
         $primeiro = $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->json();
-        $this->assertSame(['total', true], [$primeiro['acesso'], $primeiro['na_pasta']]);
+        $this->assertSame(['restrito', true], [$primeiro['acesso'], $primeiro['na_pasta']]);
 
         // A 2ª implementação no gestor espera; a análise passa na frente.
         $segundo = $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->json();

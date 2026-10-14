@@ -30,11 +30,13 @@ return [
         // e ~7 GB na WSL: cinco projetos À VISTA, dois rodando (dono, 10/10).
         // Uma mesma tarefa nunca roda duas vezes ao mesmo tempo.
         'paralelo' => (int) env('CENTRAL_IA_PARALELO', 2),
-        // Acesso dos agentes. `total` (dono, 10/10/2026: "permita tudo"): sem
-        // caixa de areia nem comandos negados — igual ao VS Code. `restrito`
-        // volta às regras de antes (só leitura ao analisar, worktree ao
-        // implementar, sem docker/ssh/push).
-        'acesso' => env('CENTRAL_IA_ACESSO', 'total'),
+        // Acesso dos agentes. `restrito` é o padrão (dono do produto,
+        // 14/10/2026, T-368: "precisa de aprovação onde for necessário"): só
+        // leitura ao analisar e, ao implementar, sem push, commit, docker, ssh
+        // nem sudo. `total` tira a caixa de areia, como no VS Code, mas só vale
+        // se a máquina também permitir, e mesmo nele push, ssh e publicação
+        // só saem em pedido de deploy, que sempre pede o código (politica.mjs).
+        'acesso' => env('CENTRAL_IA_ACESSO', 'restrito'),
         // Implementar direto na pasta do projeto (como no VS Code), e não numa
         // worktree. Com isso, um projeto só tem uma implementação por vez.
         'implementar_na_pasta' => (bool) env('CENTRAL_IA_IMPLEMENTAR_NA_PASTA', true),

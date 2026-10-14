@@ -98,7 +98,11 @@ class Previas
             'Content-Type' => $p->mime.(str_starts_with($p->mime, 'text/') ? '; charset=utf-8' : ''),
             // Feita por IA: roda isolada — origem opaca, sem cookie nem API.
             // Sem moldura de outro site e sem chamada de rede a partir da prévia.
-            'Content-Security-Policy' => "sandbox allow-scripts allow-forms allow-popups; frame-ancestors 'none'; connect-src 'none'",
+            // Formulário não envia para lugar nenhum (T-368, revisão de
+            // segurança de 13/10/2026): HTML gerado por IA, servido no
+            // endereço do AlfaMatriz, podia montar um login falso e mandar a
+            // senha para fora. A prévia mostra o formulário; não o envia.
+            'Content-Security-Policy' => "sandbox allow-scripts allow-forms allow-popups; frame-ancestors 'none'; connect-src 'none'; form-action 'none'",
             'X-Frame-Options' => 'DENY',
             'X-Content-Type-Options' => 'nosniff',
             'Referrer-Policy' => 'no-referrer',

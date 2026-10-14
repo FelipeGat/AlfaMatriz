@@ -23,7 +23,7 @@ import { prepararAnexos } from './anexos.mjs';
 import { acompanharProgresso } from './progresso.mjs';
 import { auditar, confirmar } from './confirmacao.mjs';
 import { caminhoDoStatus, compararGit, criarAuditor, retratoGit } from './auditoria.mjs';
-import { acessoEfetivo, agendaSemIa, CITA_CREDENCIAL, dentroDe, exigeConfirmacao, modeloArgs, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
+import { acessoEfetivo, agendaSemIa, CITA_CREDENCIAL, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h): a regra "inicio" não pede
 // o código de novo no mesmo chat. Fica aqui, e não no servidor.
@@ -70,7 +70,15 @@ function lerConfig() {
         // somem do catálogo, das sessões e do consumo (dono, 12/10/2026).
         ignorar: new Set((v('CENTRAL_IA_IGNORAR') || '').split(',').map(x => x.trim()).filter(Boolean)),
         segredo: v('CENTRAL_IA_SEGREDO_CONFIRMACAO'),
-        telegramToken: v('CENTRAL_IA_TELEGRAM_TOKEN'),
+        // Bot PRÓPRIO dos runners, que só envia o código (T-368, 14/10/2026).
+        // O token do bot da Central (o que pareia contas e recebe pedidos) não
+        // vai para máquina de mais ninguém: quem o tivesse lia as mensagens dos
+        // outros por getUpdates, inclusive o /start <código> do pareamento, e
+        // ligava o próprio Telegram à conta alheia. O nome antigo continua
+        // aceito para a máquina do Felipe, que criou o bot e já tem o token
+        // (dono do produto: não mexer no ambiente dele); máquina nova usa o
+        // _CONFIRMACAO.
+        telegramToken: v('CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO') || v('CENTRAL_IA_TELEGRAM_TOKEN'),
         telegramChat: v('CENTRAL_IA_TELEGRAM_CHAT_ID'),
     };
     // Worktrees das execuções de implementar: dentro da pasta de projetos,
@@ -511,12 +519,12 @@ function comando(job, cwd, branch, saida, acesso) {
         // sessão retomar. Retomada simples mantém o mesmo id.
         job.sessaoPrevista = sessao && !job.continuar?.fork ? sessao : randomUUID();
         if (!sessao || job.continuar?.fork) args.push('--session-id', job.sessaoPrevista);
-        args.push(...permissoes('claude', acesso, { projetos: cfg.projetos }), ...modeloArgs('claude', job.modelo, job.esforco));
+        args.push(...permissoes('claude', acesso, { projetos: cfg.projetos, deploy: pedeDeploy(job) }), ...modeloArgs('claude', job.modelo, job.esforco));
         return [agentes.claude, args, null, prompt];
     }
 
     if (job.agente === 'codex') {
-        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso), ...modeloArgs('codex', job.modelo, job.esforco), '-c', 'forced_login_method="chatgpt"'];
+        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso, { deploy: pedeDeploy(job) }), ...modeloArgs('codex', job.modelo, job.esforco), '-c', 'forced_login_method="chatgpt"'];
         // `-`: o Codex lê o pedido do stdin (mesmo motivo do Claude, E2BIG).
         return [agentes.codex, sessao ? ['exec', 'resume', sessao, ...comum, '-'] : ['exec', ...comum, '-'], null, prompt];
     }
@@ -524,7 +532,7 @@ function comando(job, cwd, branch, saida, acesso) {
     // Copilot: no modo não interativo ele exige --allow-all-tools; o controle
     // fica no --deny-tool. A sessão leva um nome para ser retomada por ele.
     const nome = sessao || `central-ia-${job.id}`;
-    const args = ['-s', '--no-color', ...permissoes('copilot', acesso, { cwd }), ...modeloArgs('copilot', job.modelo, job.esforco)];
+    const args = ['-s', '--no-color', ...permissoes('copilot', acesso, { cwd, deploy: pedeDeploy(job) }), ...modeloArgs('copilot', job.modelo, job.esforco)];
     // Pedido pelo stdin também no Copilot (E2BIG acima de 128 KB, que o
     // contexto de um chat de assunto passa fácil).
     args.push(...(sessao ? ['--resume', sessao] : ['-n', nome]));

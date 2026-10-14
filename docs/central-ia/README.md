@@ -212,7 +212,10 @@ resumo da agenda de hoje" não pode trazer uma resposta por IA.
   barras em HTML: o Alpine não roda `<template x-for>` dentro de `<svg>`).
 - A IA automática desvia do Claude só com a SESSÃO de 5 h em 100% (com a
   semana em 100% ele ainda rodou); do Codex, com qualquer janela em 100%.
-- **Acesso total** (dono: "permita tudo"): `CENTRAL_IA_ACESSO=total` —
+- **Acesso total** — desde 14/10/2026 (T-368) o padrão do servidor é `restrito`. No `total`, o
+  código continua só no início da conversa e em deploy, mas push, ssh, `gh` de publicação e afins
+  ficam bloqueados fora de pedido de deploy (`PUBLICACAO_NO_SHELL`), e o Codex só recebe `total` em
+  pedido de deploy. Era (dono: "permita tudo"): `CENTRAL_IA_ACESSO=total` —
   Claude `bypassPermissions`, Codex `danger-full-access`, Copilot `--allow-all`;
   implementar DIRETO na pasta (`CENTRAL_IA_IMPLEMENTAR_NA_PASTA`), uma
   implementação por projeto de cada vez; memória do dono no prompt de todos;
@@ -339,9 +342,11 @@ Revisão dos commits de 09 a 11/10 (Claude e Codex) passada pelo cstk: `docs/bri
 `docs/constitution.md` e `docs/specs/central-ia/` (spec, plano, pesquisa, contrato, tarefas e
 `revisao-2026-10-12.md`). Decisões do dono nesse dia:
 
-- **Ninguém vira o Felipe**: conta com o perfil Central de IA só muda pela própria pessoa, ou
-  pelo dono da Central (`CENTRAL_IA_DONO`) no caso das outras contas. Admin não redefine senha,
-  e-mail, perfis nem situação. Governança de limites é só do dono; ninguém vê o dono.
+- ~~**Ninguém vira o Felipe**: conta com o perfil Central de IA só muda pela própria pessoa, ou
+  pelo dono da Central.~~ **Revogado em 14/10/2026 (T-368)** pelo dono do produto: "admin precisa
+  ter acesso total a tudo". Conta com a Central segue a regra de contas de sempre; o que protege a
+  máquina da pessoa é a confirmação fora de banda do runner. Governança de limites continua só do
+  dono da Central.
 - **Runner inviolável** (`deploy/central-ia/README.md`, "Inviolável pelo servidor"):
   - analisar é só leitura imposta por cada CLI;
   - implementar exige o código que a própria máquina manda ao Telegram do dono;

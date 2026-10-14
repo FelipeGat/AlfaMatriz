@@ -32,17 +32,22 @@ que ordem, e o que cada pessoa faz na própria máquina.
 
    | Variável | Valor | Por quê |
    |---|---|---|
-   | `CENTRAL_IA_DONO` | e-mail do Felipe em produção | Só o dono administra os limites dos outros, e só ele (ou a própria pessoa) altera uma conta com a Central. |
+   | `CENTRAL_IA_DONO` | e-mail do Felipe em produção | Só o dono administra os limites dos outros. Contas com a Central seguem a regra de contas de sempre: o administrador altera, desativa e troca a senha (dono do produto, 14/10/2026, T-368). |
    | `CENTRAL_IA_TELEGRAM_TOKEN` | token do bot | Sem ele: sem Telegram, sem pareamento, sem código de confirmação. |
    | `CENTRAL_IA_TELEGRAM_BOT` | nome do bot | Só se for um bot diferente do `GrupoSolucoesAgentBot`. |
-   | `CENTRAL_IA_ACESSO` | `total` (decisão do Felipe) ou `restrito` | Quanto o servidor PEDE ao runner. A máquina de cada um ainda impõe o próprio teto. |
+   | `CENTRAL_IA_ACESSO` | `restrito` (padrão; dono do produto, 14/10/2026, T-368) | Quanto o servidor PEDE ao runner. A máquina de cada um ainda impõe o próprio teto. Mesmo no `total`, push, ssh e publicação ficam bloqueados fora de pedido de deploy, que sempre pede o código; o Codex só recebe `total` em pedido de deploy. |
    | `CENTRAL_IA_ARQUIVOS_ROOT` | o `publicar.sh` escreve sozinho | Anexos e prévias em `compartilhado/central-ia`, fora das versões azul/verde. |
 
 3. **Telegram: o bot de produção é o mesmo de hoje (`GrupoSolucoesAgentBot`)** — decisão do Felipe,
    13/10/2026.
    - O bot local foi DESLIGADO nesse dia (`alfamatriz-dev-telegram`, fora do `up -d` do boot por um perfil do
      compose), porque o Telegram aceita um consumidor só por bot.
-   - Use o MESMO token em `CENTRAL_IA_TELEGRAM_TOKEN`.
+   - Use o MESMO token em `CENTRAL_IA_TELEGRAM_TOKEN` no `.env` do servidor. Fora dele, o token só fica na
+     máquina do Felipe, que criou o bot (T-368, 14/10/2026). Máquina de **outra pessoa** nunca recebe esse token:
+     com ele, ela leria as mensagens dos outros pelo `getUpdates`, inclusive o código de pareamento. Nela, o código
+     de confirmação sai de um SEGUNDO bot, só dos runners, que apenas envia (`CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO`).
+     A pessoa dá `/start` nesse bot uma vez; a resposta `/confirmar` vai ao bot da Central. O runner aceita os dois
+     nomes, então a máquina do Felipe segue como está.
 4. **Homologação:** dada como cumprida pelo Felipe em 13/10/2026.
 
 ## Publicar
@@ -85,7 +90,8 @@ O fluxo de sempre (`deploy/publicar.sh`). O que ele faz a mais por causa da Cent
    - o token do passo 2;
    - `CENTRAL_IA_ACESSO_MAXIMO`: o teto desta máquina;
    - `CENTRAL_IA_CONFIRMAR`: o mínimo de confirmação desta máquina. **Na do Felipe: `inicio`.**
-   - Para usar o código pelo Telegram: `CENTRAL_IA_TELEGRAM_TOKEN`, `CENTRAL_IA_TELEGRAM_CHAT_ID` e
+   - Para usar o código pelo Telegram: `CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO` (o bot dos runners; o da Central
+     só na máquina do Felipe), `CENTRAL_IA_TELEGRAM_CHAT_ID` e
      `CENTRAL_IA_SEGREDO_CONFIRMACAO`, que é um segredo de 64 caracteres hexadecimais **da própria pessoa**.
 4. Parear o Telegram em Ajustes → Telegram.
 

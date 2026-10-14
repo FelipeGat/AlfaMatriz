@@ -114,10 +114,6 @@ class UsuarioController extends Controller
 
     public function update(Request $request, User $usuario): RedirectResponse
     {
-        if ($erro = $this->protegerContaDaCentral($request, $usuario, 'alterar a conta')) {
-            return $erro;
-        }
-
         $dados = $this->validar($request, $usuario);
 
         if ($erro = $this->recusarPromocaoIndevida($request, $dados['perfis'], $usuario)) {
@@ -148,10 +144,6 @@ class UsuarioController extends Controller
      */
     public function redefinirSenha(Request $request, User $usuario): RedirectResponse
     {
-        if ($erro = $this->protegerContaDaCentral($request, $usuario, 'redefinir a senha')) {
-            return $erro;
-        }
-
         // Mesma regra de AC-264, do outro lado: quem não é administrador não
         // lê a senha nova de quem é. Sem isto, a permissão `usuarios` sozinha
         // bastaria para tomar a conta do admin — não promovendo, mas trocando
@@ -221,10 +213,6 @@ class UsuarioController extends Controller
 
     public function alternarAtivo(Request $request, User $usuario): RedirectResponse
     {
-        if ($erro = $this->protegerContaDaCentral($request, $usuario, 'desativar ou reativar a conta')) {
-            return $erro;
-        }
-
         if ($erro = $this->recusarAutoSabotagem($request, $usuario, 'desativar a própria conta')) {
             return $erro;
         }
@@ -252,10 +240,6 @@ class UsuarioController extends Controller
 
     public function destroy(Request $request, User $usuario): RedirectResponse
     {
-        if ($erro = $this->protegerContaDaCentral($request, $usuario, 'excluir a conta')) {
-            return $erro;
-        }
-
         if ($erro = $this->recusarAutoSabotagem($request, $usuario, 'excluir a própria conta')) {
             return $erro;
         }
@@ -276,46 +260,6 @@ class UsuarioController extends Controller
 
         return back()->with('status', "Conta de {$usuario->name} excluída.");
     }
-
-    /**
-     * Conta com a Central de IA só muda pela mão da própria pessoa — ou do
-     * dono da Central, que administra as dos outros mas não tem quem
-     * administre a dele.
-     *
-     * Ser admin não basta (dono, 12/10/2026). A Central aciona agentes com
-     * acesso total na máquina da pessoa: quem redefinisse a senha dela, ou
-     * trocasse o e-mail e pedisse senha nova, entraria como ela e executaria
-     * o que quisesse lá. A recusa fica na auditoria e no sino do alvo, que é
-     * quem precisa saber que alguém tentou.
-     */
-    private function protegerContaDaCentral(Request $request, User $usuario, string $acao): ?RedirectResponse
-    {
-        $quem = $request->user();
-        if (! $usuario->temCentral() && ! $usuario->ehDonoDaCentral()) {
-            return null;
-        }
-        if ($quem->id === $usuario->id || ($quem->ehDonoDaCentral() && ! $usuario->ehDonoDaCentral())) {
-            return null;
-        }
-
-        Auditoria::registrar(
-            recurso: 'usuarios',
-            acao: 'conta_central_recusada',
-            alvo: $usuario,
-            descricao: "{$quem->email} tentou {$acao} de {$usuario->email}",
-        );
-        Notificacao::avisar($usuario->id, $quem->id, [
-            'tipo' => 'seguranca',
-            'nivel' => 'critico',
-            'icone' => 'alert-triangle',
-            'titulo' => "{$quem->name} tentou {$acao} da sua conta",
-            'meta' => 'Recusado · conta com Central de IA só muda pela própria pessoa',
-            'rota' => route('profile.edit'),
-        ]);
-
-        return back()->with('erro', "Não é possível {$acao} de {$usuario->name}: contas com a Central de IA só são alteradas pela própria pessoa.");
-    }
-
 
     /**
      * Troca os perfis da conta e deixa o rastro disso.

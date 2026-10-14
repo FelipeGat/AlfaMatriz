@@ -125,3 +125,18 @@ for (const a of ['codex', 'copilot']) {
 assert.equal(regraCstk('codex', ''), null, 'assunto sem projeto não é código de repositório');
 
 console.log('PASSOU: teto local, leitura por CLI, pastas, código preso ao conteúdo, confirmação, recusa, expiração e auditoria.');
+
+// T-368: análise só ganha acesso total se o servidor também pedir.
+assert.equal(acessoEfetivo({ modo: 'analisar', acesso: 'restrito' }, 'total', 'total'), 'leitura');
+// T-368: código só no início da conversa e em deploy; fora de deploy, o acesso
+// total não publica (push, ssh, gh…), e o Codex nem recebe acesso total.
+assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'corrija o filtro' }, 'inicio', true));
+assert.ok(exigeConfirmacao({ modo: 'implementar', instrucao: 'faça o push' }, 'inicio', true));
+const claudeTotal = permissoes('claude', 'total', { projetos: '/p' });
+assert.ok(claudeTotal.includes('bypassPermissions') && claudeTotal.includes('Bash(git push:*)') && claudeTotal.includes('Bash(ssh:*)'));
+assert.ok(!permissoes('claude', 'total', { projetos: '/p', deploy: true }).includes('Bash(git push:*)'));
+assert.ok(permissoes('copilot', 'total', { cwd: '/p/x' }).includes('shell(git push)'));
+assert.ok(!permissoes('copilot', 'total', { cwd: '/p/x', deploy: true }).includes('shell(git push)'));
+assert.deepEqual(permissoes('codex', 'total').filter(a => a.startsWith('sandbox')), ['sandbox_mode="workspace-write"']);
+assert.deepEqual(permissoes('codex', 'total', { deploy: true }).filter(a => a.startsWith('sandbox')), ['sandbox_mode="danger-full-access"']);
+console.log('T-368: acesso total sem publicar fora de deploy');

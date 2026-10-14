@@ -33,7 +33,10 @@ export function acessoEfetivo(job, maximo, analise = 'leitura') {
     // Analisar: a máquina decide (CENTRAL_IA_ANALISE). Dono, 12/10/2026:
     // "quem tem que analisar o que consulta e altera é a própria IA" — com
     // `total`, a análise roda como no VS Code e o rastro fica na auditoria.
-    if (job.modo !== 'implementar') return analise === 'total' && maximo === 'total' ? 'total' : 'leitura';
+    // Análise com acesso total precisa das TRÊS chaves: a máquina, o tipo de
+    // análise e o servidor (T-368: o servidor que pede `restrito` não
+    // recebia análise com acesso total só porque a máquina permitia).
+    if (job.modo !== 'implementar') return analise === 'total' && maximo === 'total' && job.acesso === 'total' ? 'total' : 'leitura';
     return job.acesso === 'total' && maximo === 'total' ? 'total' : 'restrito';
 }
 
@@ -63,6 +66,19 @@ export function regraEfetiva(minimoDaMaquina, daPessoa) {
     return REGRAS_DE_CONFIRMACAO[Math.max(i(minimoDaMaquina), REGRAS_DE_CONFIRMACAO.includes(daPessoa) ? i(daPessoa) : 0)];
 }
 
+// O que manda código ou versão para fora da máquina. Bloqueado MESMO no
+// acesso total, a não ser que o pedido seja de deploy — e pedido de deploy
+// sempre passa pelo código (T-368, dono do produto, 14/10/2026: código só no
+// início da conversa e em deploy, sem a brecha de escrever "envie ao remoto"
+// e o push sair sem código, porque a lista PEDE_DEPLOY é por palavra).
+export const PUBLICACAO_NO_SHELL = ['git push', 'git -C', 'ssh', 'scp', 'sftp', 'rsync', 'gh pr merge', 'gh release', 'gh workflow', 'gh api',
+    'docker push', 'npm publish'];
+
+/** Pedido de deploy: sempre confirmado por código, e o único que publica. */
+export function pedeDeploy(job) {
+    return PEDE_DEPLOY.test(job?.instrucao || '');
+}
+
 export const PEDE_DEPLOY = /\b(deploy|deplo[iy]|produ[çc][ãa]o|publi(car|que|ca[çc][ãa]o)|push|tag\s+v\d|release|subir\s+(pra|para)\s+o?\s*ar|merge\s+(na|para\s+a)\s+main)\b/i;
 
 /** Precisa do código do dono antes de rodar? `chatConfirmado`: já confirmou neste chat. */
@@ -79,10 +95,17 @@ export function exigeConfirmacao(job, regra, chatConfirmado = false) {
 }
 
 /** Argumentos de permissão de cada CLI para o acesso efetivo. */
-export function permissoes(agente, acesso, { projetos, cwd } = {}) {
+export function permissoes(agente, acesso, { projetos, cwd, deploy = false } = {}) {
+    // O Codex não nega comando por comando: sem pedido de deploy, ele não
+    // recebe acesso total (fica no workspace-write, sem rede), e assim não
+    // publica nada (T-368).
+    if (agente === 'codex' && acesso === 'total' && !deploy) acesso = 'restrito';
     const total = acesso === 'total', escreve = acesso !== 'leitura';
+    const semPublicar = total && !deploy;
     if (agente === 'claude') {
-        if (total) return ['--permission-mode', 'bypassPermissions', '--add-dir', projetos];
+        // A negação vale mesmo no bypassPermissions.
+        if (total) return ['--permission-mode', 'bypassPermissions', '--add-dir', projetos,
+            ...(semPublicar ? ['--disallowedTools', ...PUBLICACAO_NO_SHELL.map(c => `Bash(${c}:*)`)] : [])];
         if (escreve) return ['--permission-mode', 'acceptEdits', '--allowedTools', 'Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash',
             '--disallowedTools', ...NEGADOS_NO_SHELL.map(c => `Bash(${c}:*)`), ...SENSIVEIS.map(p => `Read(${p})`)];
         // Sem WebFetch na leitura: era o canal para mandar um arquivo lido para fora.
@@ -96,7 +119,8 @@ export function permissoes(agente, acesso, { projetos, cwd } = {}) {
     // Copilot: no -p ele exige --allow-all-tools; quem segura é o --deny-tool,
     // que vence. Na leitura, sem escrita e sem shell nenhum.
     const args = ['--add-dir', cwd];
-    if (total) return [...args, '--allow-all'];
+    // No Copilot a negação vence o --allow-all.
+    if (total) return [...args, '--allow-all', ...(semPublicar ? PUBLICACAO_NO_SHELL.flatMap(c => ['--deny-tool', `shell(${c})`]) : [])];
     args.push('--allow-all-tools');
     if (escreve) for (const c of NEGADOS_NO_SHELL) args.push('--deny-tool', `shell(${c})`);
     else args.push('--deny-tool', 'write', '--deny-tool', 'shell');
