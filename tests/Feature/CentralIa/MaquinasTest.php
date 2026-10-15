@@ -36,17 +36,59 @@ class MaquinasTest extends TestCase
     private function codigo(User $u): string
     {
         $comando = $this->actingAs($u)->postJson(route('central-ia.maquinas.instalacao'))->assertOk()->json('comando');
-        $this->assertMatchesRegularExpression('#^curl -fsSL http\S+/central-ia/instalar\.sh \| bash -s -- [A-Za-z0-9]{40}$#', $comando);
+        // O código vai no ambiente do bash, fora do `ps` dos outros usuários.
+        $this->assertMatchesRegularExpression('#^curl -fsSL http\S+/central-ia/instalar\.sh \| CENTRAL_IA_CODIGO=[A-Za-z0-9]{40} bash$#', $comando);
 
-        return substr($comando, -40);
+        return substr($comando, -45, 40);
     }
 
     /** O terminal não tem sessão: troca o código como um programa qualquer. */
-    private function trocar(string $codigo, string $maquina = 'notebook-ana')
+    private function trocar(string $codigo, string $maquina = 'notebook-ana', bool $nova = false)
     {
         Auth::forgetGuards();
 
-        return $this->withSession([])->postJson(route('central-ia.instalacao.trocar'), ['codigo' => $codigo, 'maquina' => $maquina]);
+        return $this->withSession([])->postJson(route('central-ia.instalacao.trocar'), ['codigo' => $codigo, 'maquina' => $maquina, 'nova' => $nova]);
+    }
+
+    /** Revisão da T-374: dois computadores com o mesmo nome não se derrubam. */
+    public function test_maquina_nova_com_nome_repetido_ganha_sufixo_e_a_mesma_maquina_troca_o_proprio_token(): void
+    {
+        $ana = $this->pessoa();
+        $this->trocar($this->codigo($ana), 'MacBook-Pro', nova: true)->assertOk()->assertJsonPath('maquina', 'MacBook-Pro');
+        $this->trocar($this->codigo($ana), 'MacBook-Pro', nova: true)->assertOk()->assertJsonPath('maquina', 'MacBook-Pro-2');
+        $this->assertEqualsCanonicalizing(['MacBook-Pro', 'MacBook-Pro-2'], $ana->tokens()->pluck('name')->all(), 'o primeiro continua conectado');
+
+        // A mesma máquina rodando o comando de novo (já tem configuração): troca o token dela.
+        $antigo = $ana->tokens()->where('name', 'MacBook-Pro-2')->value('id');
+        $this->trocar($this->codigo($ana), 'MacBook-Pro-2')->assertOk()->assertJsonPath('maquina', 'MacBook-Pro-2');
+        $this->assertSame(2, $ana->tokens()->count());
+        $this->assertNotSame($antigo, $ana->tokens()->where('name', 'MacBook-Pro-2')->value('id'));
+    }
+
+    /** Revisão da T-374: com a trava do código ocupada por outra troca, esta não leva token. */
+    public function test_troca_simultanea_do_mesmo_codigo_nao_gera_dois_tokens(): void
+    {
+        $ana = $this->pessoa();
+        $codigo = $this->codigo($ana);
+        $trava = \Illuminate\Support\Facades\Cache::lock('central-ia:instalacao:'.hash('sha256', $codigo).':trava', 10);
+        $this->assertTrue($trava->get());
+        $this->travar(fn () => $this->trocar($codigo)->assertUnprocessable());
+        $trava->release();
+        $this->trocar($codigo)->assertOk();
+        $this->assertSame(1, $ana->tokens()->count());
+    }
+
+    /** Sem esperar os 5 s da trava de verdade: o relógio anda junto com o sono falso. */
+    private function travar(callable $f): void
+    {
+        \Illuminate\Support\Carbon::setTestNow(now());
+        \Illuminate\Support\Sleep::fake(syncWithCarbon: true);
+        try {
+            $f();
+        } finally {
+            \Illuminate\Support\Sleep::fake(false);
+            \Illuminate\Support\Carbon::setTestNow();
+        }
     }
 
     public function test_a_pessoa_conecta_a_maquina_pela_tela_com_codigo_de_uso_unico(): void
@@ -58,11 +100,15 @@ class MaquinasTest extends TestCase
         $codigo = $this->codigo($ana);
         $this->assertSame(0, $ana->tokens()->count(), 'o token só nasce quando a máquina troca o código');
 
-        // T-374: o código vai pelo bot DA PESSOA, o mesmo em que ela conversa.
+        // T-374: só o chat vai à máquina. O código sai por um segundo bot da
+        // pessoa, cujo token ela cola no terminal; o do bot da conversa, que o
+        // servidor guarda, nunca vai — senão quem invadisse o servidor
+        // encaminharia o código a si mesmo.
         $r = $this->trocar($codigo)->assertOk()
             ->assertJsonPath('telegram.chat_id', '987654')
-            ->assertJsonPath('telegram.token', $this->botNoTeste($ana)->token)
+            ->assertJsonMissingPath('telegram.token')
             ->assertJsonPath('telegram.bot', $this->botNoTeste($ana)->usuario);
+        $this->assertStringNotContainsString($this->botNoTeste($ana)->token, $r->getContent(), 'o token do bot da conversa fica só no servidor');
         $token = $ana->tokens()->sole();
         $this->assertSame(['central-ia-runner'], $token->abilities, 'o token não abre o /mcp nem outra porta');
         $this->assertSame('notebook-ana', $token->name);
@@ -133,7 +179,7 @@ class MaquinasTest extends TestCase
         $ana = $this->pessoa();
 
         $this->trocar($this->codigo($ana))->assertOk()
-            ->assertJsonPath('telegram.token', null)->assertJsonPath('telegram.chat_id', null);
+            ->assertJsonPath('telegram.chat_id', null);
         $this->actingAs($ana)->getJson(route('central-ia.maquinas'))->assertJsonPath('telegram_pronto', false);
     }
 

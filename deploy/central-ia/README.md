@@ -13,32 +13,49 @@ Desde 14/10/2026 (T-374) ninguém instala à mão nem roda nada no servidor:
 2. Na máquina: Tailscale ligado, Node 18+, `git`, e os agentes logados como a pessoa usa no dia a dia
    (`claude`, `codex`, `copilot`). O runner também acha o Claude e o Codex dentro das extensões do VS Code
    (`~/.vscode-server/extensions` na WSL, `~/.vscode/extensions` no Mac e no Linux de mesa).
-3. Central de IA → Ajustes → Telegram: criar o SEU bot no @BotFather, colar o token e tocar em Começar nele
-   (T-374: cada pessoa usa o próprio bot; ele conversa e leva o código de confirmação).
+3. Central de IA → Ajustes → Telegram: criar o SEU bot da conversa no @BotFather, colar o token e tocar em
+   Começar nele. Criar também um **segundo** bot, o do código de confirmação, e tocar em Começar nele: o token
+   desse vai só para a máquina, colado no terminal na instalação (T-374, com a regra da T-368 de que o token do
+   bot do código nunca passa pelo servidor).
 4. Ajustes → **Minhas máquinas → Gerar comando de instalação**, e colar no terminal (no Windows, no Ubuntu
    do WSL):
 
    ```bash
-   curl -fsSL https://<alfamatriz>/central-ia/instalar.sh | bash -s -- <código>
+   curl -fsSL https://<alfamatriz>/central-ia/instalar.sh | CENTRAL_IA_CODIGO=<código> bash
    ```
+
+   O código vai no ambiente, e não como argumento, para não aparecer no `ps` de outros usuários da máquina
+   (o `bash -s -- <código>` antigo continua aceito). O script inteiro fica numa função chamada só na última
+   linha: download cortado no meio não executa nada.
 
 O `instalar.sh` (servido pelo AlfaMatriz com o endereço dele dentro):
 
 - confere sistema, Node, git e se a máquina alcança o AlfaMatriz (sem a tailnet, diz para ligar o Tailscale);
 - baixa os módulos do runner para `~/.local/share/alfa/` (fora de qualquer repositório: trocar de branch num
   checkout não troca o programa que está rodando);
-- troca o código (uso único, 15 min) pelo token, pergunta a pasta dos projetos e grava
+- troca o código (uso único, 15 min) pelo token ANTES de perguntar qualquer coisa — máquina nova com o nome
+  de outra máquina da mesma pessoa ganha um sufixo (`MacBook-Pro-2`), em vez de desconectar a outra —,
+  pergunta a pasta dos projetos e grava
   `~/.config/alfa/central-ia-runner.env` (0600), mantendo o que já houver nele. O segredo da confirmação
-  nasce ali e nunca sai da máquina; o chat do Telegram e o token do SEU bot vêm do servidor nessa
-  hora, uma vez só (trocou de bot nos Ajustes? gere um comando novo e rode de novo);
+  nasce ali e nunca sai da máquina; o chat do Telegram vem do servidor nessa hora, uma vez só;
 - liga o serviço: `systemd --user` no Linux e na WSL (com `linger`), `launchd` no Mac
   (`~/Library/LaunchAgents/br.com.alfa.central-ia-runner.plist`, log em `~/Library/Logs/central-ia-runner.log`).
   WSL sem systemd: o instalador diz como ligar;
 - prepara a imagem Docker que converte PDF e vídeo, se houver Docker (`--sem-anexos` pula);
-- manda uma mensagem de teste pelo seu bot.
+- pede o token do bot do código sem eco no terminal (ou o lê de `CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO`),
+  confere no Telegram (`getMe`) e recusa o bot da conversa no lugar dele; uma instalação antiga que mandava o
+  código pelo bot da conversa perde esse token e passa a recusar modificar arquivos até ganhar o bot do código;
+- manda uma mensagem de teste pelo bot do código.
 
 **Atualizar:** o mesmo comando sem o código (`curl -fsSL https://<alfamatriz>/central-ia/instalar.sh | bash`).
-Ele baixa o runner de novo e reinicia o serviço só quando estiver ocioso (`atualizar-quando-ocioso.sh`).
+Ele baixa o runner de novo e reinicia o serviço só quando estiver ocioso (`atualizar-quando-ocioso.sh`): o
+script deixa o arquivo `central-ia-reiniciar`, e o próprio runner sai antes de pedir trabalho (o runner
+que sabe fazer isso grava o pid em `central-ia-conhece-reinicio` e nunca é morto de fora; o de versões
+anteriores é reiniciado quando fica livre). No Mac, se o plist mudou, o runner só PAUSA (para de pedir
+trabalho e avisa em `central-ia-pausado`) e o script descarrega e carrega o serviço — o `kickstart` não
+relê o plist. Conectar de novo com código troca o token no arquivo; o runner em execução passa a usá-lo no
+primeiro 401, sem perder o pedido que estava rodando.
+Testes: `node tools/central-ia/test-reinicio.mjs` e `node tools/central-ia/test-instalador.mjs`.
 
 **Desconectar:** Ajustes → Minhas máquinas → Desconectar (o token deixa de valer na hora).
 
@@ -55,7 +72,7 @@ CENTRAL_IA_CONFIRMAR=inicio            # mínimo: nunca, deploy, inicio, impleme
 CENTRAL_IA_ANALISE=leitura             # ou total: a IA decide o que consultar; o rastro fica na auditoria
 CENTRAL_IA_IGNORAR=videos,orcamentos   # subpastas que não são projeto (pasta vazia já é ignorada)
 CENTRAL_IA_SEGREDO_CONFIRMACAO=…       # 64 hex, gerado pelo instalador
-CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=… # o SEU bot (T-374); o nome é do tempo do bot só de código
+CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=… # o SEU bot do código; só esta máquina tem o token
 CENTRAL_IA_TELEGRAM_CHAT_ID=…
 # Opcionais (T-374: nada disso tem mais padrão de uma máquina específica):
 CENTRAL_IA_MEMORIA=…                   # o MEMORY.md que vai aos agentes quando a pessoa liga "memória" nos

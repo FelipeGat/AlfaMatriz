@@ -54,6 +54,7 @@ class TelegramTest extends TestCase
             'api.telegram.org/*/getWebhookInfo' => Http::response(['ok' => true, 'result' => ['url' => '']]),
             'api.telegram.org/*/getUpdates' => Http::response(['ok' => true, 'result' => $updates]),
             'api.telegram.org/*/sendMessage' => Http::response(['ok' => true, 'result' => ['message_id' => 99]]),
+            'api.telegram.org/*/getChat' => Http::response(['ok' => true, 'result' => ['id' => self::CHAT, 'type' => 'private']]),
         ]);
     }
 
@@ -164,6 +165,7 @@ class TelegramTest extends TestCase
             'api.telegram.org/*/getMe' => Http::sequence()->push($eu(7012345678, 'central_da_ana_bot'))
                 ->push($eu(7012345678, 'central_da_ana_bot'))->push($eu(7099999999, 'outro_da_ana_bot')),
             'api.telegram.org/*/getWebhookInfo' => Http::response(['ok' => true, 'result' => ['url' => '']]),
+            'api.telegram.org/*/getChat' => Http::response(['ok' => true, 'result' => ['id' => self::CHAT, 'type' => 'private']]),
         ]);
         $ana = $this->comCentral();
         $this->actingAs($ana)->putJson(route('central-ia.telegram.bot'), ['token' => self::TOKEN])->assertOk();
@@ -179,6 +181,37 @@ class TelegramTest extends TestCase
             ->assertJsonPath('vinculado', false);
         $this->assertSame(0, CentralIaTelegramVinculo::count());
         $this->assertSame('outro_da_ana_bot', \App\Models\CentralIaTelegramBot::value('usuario'));
+    }
+
+    /**
+     * Revisão da T-374: quem pareou com o bot antigo (o do .env) e cadastra
+     * agora o próprio bot só continua vinculado se esse bot já conversou com
+     * o chat — bot que a pessoa nunca abriu não consegue escrever primeiro.
+     */
+    public function test_vinculo_herdado_so_continua_se_o_bot_novo_conhece_o_chat(): void
+    {
+        $eu = fn (int $id, string $u) => ['ok' => true, 'result' => ['id' => $id, 'is_bot' => true, 'username' => $u]];
+        Http::fake([
+            'api.telegram.org/*/getMe' => Http::sequence()->push($eu(7012345678, 'central_da_ana_bot'))->push($eu(7099999999, 'central_do_bruno_bot')),
+            'api.telegram.org/*/getWebhookInfo' => Http::response(['ok' => true, 'result' => ['url' => '']]),
+            'api.telegram.org/*/getChat' => Http::sequence()
+                ->push(['ok' => true, 'result' => ['id' => self::CHAT, 'type' => 'private']])
+                ->push(['ok' => false, 'error_code' => 400, 'description' => 'Bad Request: chat not found'], 400),
+        ]);
+        $ana = $this->comCentral();
+        $bruno = $this->comCentral();
+        CentralIaTelegramVinculo::create(['user_id' => $ana->id, 'chat_id' => self::CHAT]);
+        CentralIaTelegramVinculo::create(['user_id' => $bruno->id, 'chat_id' => self::CHAT + 1]);
+        // Vínculos do bot antigo, de antes de cada pessoa ter o seu: nenhum bot cadastrado ainda.
+        \App\Models\CentralIaTelegramBot::query()->delete();
+
+        Http::preventStrayRequests();
+        // O mesmo bot que ela já usava (caso do Felipe): a conversa continua ligada.
+        $this->actingAs($ana)->putJson(route('central-ia.telegram.bot'), ['token' => self::TOKEN])->assertOk()->assertJsonPath('vinculado', true);
+        // Um bot que o Bruno nunca abriu: precisa tocar em Começar nele.
+        $this->actingAs($bruno)->putJson(route('central-ia.telegram.bot'), ['token' => '7099999999:CCoutr0B0tDoBrunoParaACentral_qwe1'])->assertOk()
+            ->assertJsonPath('vinculado', false);
+        $this->assertSame([$ana->id], CentralIaTelegramVinculo::pluck('user_id')->all());
     }
 
     public function test_retirar_o_bot_para_a_conversa_pelo_telegram(): void

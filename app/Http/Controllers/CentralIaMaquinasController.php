@@ -76,8 +76,9 @@ class CentralIaMaquinasController extends Controller
         $dados = $request->validate([
             'codigo' => ['required', 'string', 'size:40', 'alpha_num'],
             'maquina' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
+            'nova' => ['sometimes', 'boolean'],
         ]);
-        $resposta = $this->maquinas->concluir($dados['codigo'], $dados['maquina']);
+        $resposta = $this->maquinas->concluir($dados['codigo'], $dados['maquina'], (bool) ($dados['nova'] ?? false));
         // Código vencido, já usado ou de conta que perdeu o acesso: a mesma
         // resposta para os três, sem dizer qual.
         abort_unless($resposta, 422, 'Código de instalação inválido ou vencido. Gere outro em Ajustes da Central de IA.');

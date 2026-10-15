@@ -407,7 +407,7 @@ Dono do produto: "nada pode estar preso à máquina do Felipe; a Central de IA �
   perfil "Central de IA" (`Governanca::administra`). O `CENTRAL_IA_DONO` saiu. Conta nova nasce bloqueada até
   um administrador liberar; administrador nunca é bloqueado por política.
 - **Conectar minha máquina** (Ajustes → Minhas máquinas): código de instalação de uso único (15 min) →
-  `curl …/central-ia/instalar.sh | bash -s -- <código>` → o instalador troca o código pelo token
+  `curl …/central-ia/instalar.sh | CENTRAL_IA_CODIGO=<código> bash` → o instalador troca o código pelo token
   (`POST /api/central-ia/instalacao`), grava a configuração e liga o serviço (systemd no Linux/WSL, launchd no
   Mac). A tela lista as máquinas (`central_ia_runners.token_id` liga a batida ao token), avisa a que sumiu
   (tailnet) e desconecta. Ver `deploy/central-ia/README.md`.

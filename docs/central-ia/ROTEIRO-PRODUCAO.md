@@ -40,14 +40,21 @@ que ordem, e o que cada pessoa faz na própria máquina.
    | `CENTRAL_IA_ACESSO` | `restrito` (padrão; dono do produto, 14/10/2026, T-368) | Quanto o servidor PEDE ao runner. A máquina de cada um ainda impõe o próprio teto. Mesmo no `total`, push, ssh e publicação ficam bloqueados fora de pedido de deploy, que sempre pede o código; o Codex só recebe `total` em pedido de deploy. |
    | `CENTRAL_IA_ARQUIVOS_ROOT` | o `publicar.sh` escreve sozinho | Anexos e prévias em `compartilhado/central-ia`, fora das versões azul/verde. |
 
-3. **Telegram: cada pessoa usa o PRÓPRIO bot** (T-374, decisão do dono em 14/10/2026). Não há bot no `.env`:
+3. **Telegram: cada pessoa tem os PRÓPRIOS bots, dois** (T-374; decisão do dono em 14/10/2026 de que cada
+   membro tem o seu, e não um bot da empresa para todos; o par segue a decisão da T-368 de que o token do bot do
+   código nunca passa pelo servidor). Não há bot no `.env`:
    os antigos `CENTRAL_IA_TELEGRAM_TOKEN`, `_BOT`, `_TOKEN_CONFIRMACAO` e `_BOT_CONFIRMACAO` saíram e, se ainda
    estiverem no `.env`, são ignorados. Cada um cria o seu bot no @BotFather e cola o token em Ajustes →
    Telegram; o servidor confere no Telegram, guarda cifrado e o serviço `alfamatriz-central-ia-telegram` passa
-   a ouvi-lo. O mesmo bot conversa e leva o código de confirmação da máquina.
-   - **O Felipe** cola o token do `GrupoSolucoesAgentBot` (o bot de antes): é o mesmo bot, então a conversa
-     dele continua ligada sem parear de novo. Depois, gera um comando novo em Minhas máquinas e roda-o na
-     máquina dele, para ela mandar o código pelo mesmo bot.
+   a ouvi-lo. Esse é o bot da **conversa**. O código de confirmação sai por um **segundo** bot da pessoa, o bot do
+   código: o token dele é colado no terminal durante a instalação e fica só no arquivo 0600 da máquina. Se o
+   servidor guardasse o token do bot que manda o código, quem o invadisse encaminharia o código a si mesmo e
+   confirmaria sozinho. O instalador recusa o bot da conversa no lugar do bot do código.
+   - **O Felipe** cola o token do `GrupoSolucoesAgentBot` (o bot de antes) como bot da conversa: é o mesmo bot,
+     então a conversa dele continua ligada sem parear de novo. Depois cria o bot do código, toca em Começar nele,
+     gera um comando novo em Minhas máquinas e roda-o na máquina dele, colando o token quando ele pedir.
+   - Os bots ouvidos são os cadastrados com o `APP_URL` atual: **mudar o `APP_URL` faz todos pararem de ser
+     ouvidos, sem erro**, até cada pessoa cadastrar o bot de novo. Não mude o `APP_URL` depois de ligar.
    - O Telegram aceita um leitor só por bot: o mesmo bot não pode estar cadastrado em staging e em produção ao
      mesmo tempo (um derruba o outro com 409, e a tela avisa). Para testar no staging, um bot de teste.
    - Uma cópia do banco em outro lugar não lê os bots: cada bot fica marcado com o `APP_URL` de onde foi
@@ -88,12 +95,14 @@ O fluxo de sempre (`deploy/publicar.sh`). O que ele faz a mais por causa da Cent
 Pela tela, sem ninguém rodar nada no servidor (T-374):
 
 1. Tailscale ligado na máquina; Node 18+ e git; login no Claude Code, no Codex e no Copilot **com a própria conta**.
-2. Central de IA → Ajustes → Telegram: criar o próprio bot no @BotFather (`/newbot`), colar o token e tocar em
+2. Central de IA → Ajustes → Telegram: criar o bot da conversa no @BotFather (`/newbot`), colar o token e tocar em
    "Abrir o seu bot e tocar em Começar".
-3. (Se trocar de bot depois: gerar um comando novo em Minhas máquinas e rodar de novo em cada máquina.)
+3. Criar no @BotFather um **segundo** bot, só para o código de confirmação, e tocar em Começar nele. O token dele
+   NÃO vai para a tela: o comando do passo 4 pede no terminal (ou ele vem em
+   `CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO`). Para trocar esse bot depois, rodar de novo o comando de atualizar.
 4. Ajustes → Minhas máquinas → **Gerar comando de instalação** e colar no terminal (no Windows, no Ubuntu do WSL).
    O comando baixa o runner, pergunta a pasta dos projetos, grava `~/.config/alfa/central-ia-runner.env` (0600) com
-   o token, o chat do Telegram e um segredo de confirmação gerado ali mesmo, e liga o serviço (systemd no
+   o token, o chat do Telegram, o token do bot do código e um segredo de confirmação gerado ali mesmo, e liga o serviço (systemd no
    Linux/WSL, launchd no Mac). O código do comando vale 15 minutos e uma vez só.
 5. A máquina aparece na lista em até 30 s. Atualizar depois: o comando curto da mesma tela.
 
