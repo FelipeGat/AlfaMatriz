@@ -215,7 +215,12 @@ class MaquinasTest extends TestCase
         $this->assertSame($viva->id, $pendente->fresh()->runner_id);
     }
 
-    /** Revisão da T-374: conta travada antes de ler as máquinas, na ordem do `proxima`. */
+    /**
+     * Revisão da T-374: conta travada antes de ler as máquinas, na ordem do
+     * `proxima`. Limite assumido: o SQLite ignora o `FOR UPDATE`, então o
+     * teste prova a ORDEM das leituras (as duas com `lockForUpdate` no
+     * código), e não a espera entre duas conexões.
+     */
     public function test_desconectar_trava_a_conta_antes_de_ler_as_maquinas(): void
     {
         $ana = $this->pessoa();
@@ -231,6 +236,132 @@ class MaquinasTest extends TestCase
         $maquinas = collect($consultas)->search(fn ($sql) => str_contains($sql, 'from "central_ia_runners"'));
         $this->assertNotFalse($conta, 'a conta é lida (e travada) no desconectar');
         $this->assertLessThan($maquinas, $conta);
+    }
+
+    /**
+     * 3ª revisão da T-374: a batida autenticada antes do Desconectar e gravada
+     * depois não recria a máquina com o token já apagado.
+     */
+    public function test_batida_que_chega_depois_do_desconectar_nao_recria_a_maquina(): void
+    {
+        $ana = $this->pessoa();
+        $token = $this->trocar($this->codigo($ana), 'mac-ana')->json('token');
+        $tokenId = $ana->tokens()->sole()->id;
+        Auth::forgetGuards();
+
+        // O Desconectar acontece entre a autenticação da batida e a gravação:
+        // a primeira transação da batida é o ponto em que ela grava.
+        $feito = false;
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Database\Events\TransactionBeginning::class, function () use (&$feito, $tokenId) {
+            if ($feito) return;
+            $feito = true;
+            \Laravel\Sanctum\PersonalAccessToken::whereKey($tokenId)->delete();
+        });
+
+        $this->withToken($token)->postJson(route('central-ia.runner.batida'), ['maquina' => 'mac-ana', 'agentes' => ['claude'], 'projetos' => ['gestor']])
+            ->assertUnauthorized();
+        $this->assertTrue($feito);
+        $this->assertSame(0, CentralIaRunner::where('user_id', $ana->id)->count(), 'nenhuma máquina órfã');
+        $this->assertSame([], app(AgentesService::class)->disponiveis($ana)['agentes'], 'nada conta como disponível');
+    }
+
+    /** 3ª revisão da T-374: máquina cujo token caiu não recebe pedido, mesmo que a linha tenha ficado. */
+    public function test_proxima_nao_entrega_a_maquina_cujo_token_caiu(): void
+    {
+        config(['central_ia.canal_exclusivo' => false]);
+        $ana = $this->pessoa(admin: true); // não-admin nasce com a execução bloqueada
+        $this->trocar($this->codigo($ana), 'mac-ana')->assertOk();
+        Auth::forgetGuards();
+        $tokenId = $ana->tokens()->sole()->id;
+        $orfa = CentralIaRunner::create(['user_id' => $ana->id, 'maquina' => 'mac-ana', 'agentes' => ['claude'], 'projetos' => ['gestor'],
+            'token_id' => $tokenId, 'visto_em' => now()]);
+        \Laravel\Sanctum\PersonalAccessToken::whereKey($tokenId)->delete();
+        $agentes = app(AgentesService::class);
+        $pendente = $agentes->pedir($ana, 'revise', ['projeto' => 'gestor', 'agente' => 'claude', 'modo' => 'analisar', 'instrucao' => 'revise'], 'web', 'tk1');
+
+        $this->assertNull($agentes->proxima($ana, $orfa));
+        $this->assertSame(CentralIaExecucao::PENDENTE, $pendente->fresh()->status);
+    }
+
+    /**
+     * 3ª revisão da T-374: todo caminho que trava uma execução e avisa na
+     * conversa (que trava a conta) trava a conta PRIMEIRO, na ordem do
+     * `desconectar` e do `proxima` — a ordem invertida dava deadlock.
+     *
+     * Limite assumido: o SQLite dos testes ignora o `FOR UPDATE`, então o que
+     * se prova é a ORDEM das leituras travadas dentro de cada transação, e
+     * não a espera entre duas conexões. As duas leituras levam o
+     * `lockForUpdate` no código; a ordem delas é a ordem das travas no MySQL.
+     */
+    public function test_caminhos_que_avisam_na_conversa_travam_a_conta_antes_da_execucao(): void
+    {
+        config(['central_ia.canal_exclusivo' => false]);
+        $ana = $this->pessoa(admin: true);
+        $runner = CentralIaRunner::create(['user_id' => $ana->id, 'maquina' => 'mac-ana', 'agentes' => ['claude'], 'projetos' => ['gestor'], 'visto_em' => now()]);
+        $t = CentralIaTarefa::create(['user_id' => $ana->id, 'projeto' => '', 'titulo' => 'Geral', 'objetivo' => 'Geral']);
+        $execucao = fn (string $status, array $mais = []) => CentralIaExecucao::create(['user_id' => $ana->id, 'tarefa_id' => $t->id, 'projeto' => 'gestor',
+            'agente' => 'claude', 'modo' => 'analisar', 'instrucao' => 'x', 'status' => $status,
+            'pedido_id' => app(ConversaService::class)->registrarDoAgente($ana, 'Central', 'pedido', projeto: '', tarefaId: $t->id)->id] + $mais);
+        $agentes = app(AgentesService::class);
+
+        $caminhos = [
+            'publicar' => function () use ($execucao, $ana) {
+                $e = $execucao(CentralIaExecucao::PENDENTE);
+                $e->forceFill(['created_at' => now()->subMinutes(3)])->save();
+                app(\App\Services\CentralIa\ProgressoService::class)->publicar($ana);
+            },
+            'confirmacao' => function () use ($execucao, $ana, $runner, $agentes) {
+                $e = $execucao(CentralIaExecucao::EXECUTANDO, ['runner_id' => $runner->id, 'iniciada_em' => now()]);
+                $agentes->confirmacao($ana, $runner, $e->id, ['estado' => 'aguardando']);
+            },
+            'interromperOrfas' => function () use ($execucao, $ana, $runner, $agentes) {
+                $execucao(CentralIaExecucao::EXECUTANDO, ['runner_id' => $runner->id, 'iniciada_em' => now()->subMinutes(5)]);
+                $agentes->interromperOrfas($ana, $runner, now(), []);
+            },
+            'interromperDaMaquinaDesconectada' => function () use ($execucao, $ana, $runner, $agentes) {
+                $execucao(CentralIaExecucao::EXECUTANDO, ['runner_id' => $runner->id, 'iniciada_em' => now()]);
+                $agentes->interromperDaMaquinaDesconectada($ana, $runner);
+            },
+            'expirarPresas (fila)' => function () use ($execucao, $ana, $runner, $agentes) {
+                $runner->update(['visto_em' => now()->subHour()]);
+                $e = $execucao(CentralIaExecucao::PENDENTE);
+                $e->forceFill(['created_at' => now()->subMinutes(31)])->save();
+                $agentes->expirarPresas($ana);
+            },
+            'expirarPresas (teto)' => function () use ($execucao, $ana, $runner, $agentes) {
+                $execucao(CentralIaExecucao::EXECUTANDO, ['runner_id' => $runner->id, 'iniciada_em' => now()->subHours(10)]);
+                $agentes->expirarPresas($ana);
+            },
+        ];
+
+        $invertidos = [];
+        foreach ($caminhos as $nome => $caminho) {
+            CentralIaExecucao::query()->update(['status' => CentralIaExecucao::CONCLUIDA]);
+            $ordem = [];
+            $ouvindo = true;
+            \Illuminate\Support\Facades\Event::listen(\Illuminate\Database\Events\TransactionBeginning::class, function () use (&$ordem, &$ouvindo) {
+                if ($ouvindo) $ordem[] = 'BEGIN';
+            });
+            \Illuminate\Support\Facades\DB::listen(function ($q) use (&$ordem, &$ouvindo) {
+                if (! $ouvindo) return;
+                if (preg_match('/^select \* from "users" where "users"\."id" = \?/', $q->sql)) $ordem[] = 'conta';
+                elseif (preg_match('/^select .* from "central_ia_execucoes" where .*"id" = \?/', $q->sql)) $ordem[] = 'execucao';
+            });
+
+            $caminho();
+            $ouvindo = false;
+
+            $transacoes = 0;
+            foreach (array_keys($ordem, 'BEGIN', true) as $i) {
+                $primeira = collect(array_slice($ordem, $i + 1))->first(fn ($x) => $x !== 'BEGIN');
+                if ($primeira === null) continue;
+                $transacoes++;
+                if ($primeira !== 'conta') $invertidos[$nome] = true;
+            }
+            $this->assertGreaterThan(0, $transacoes, "{$nome}: nenhuma transação exercitada");
+            $this->assertContains('execucao', $ordem, "{$nome}: o caminho não chegou a travar a execução");
+        }
+        $this->assertSame([], array_keys($invertidos), 'travaram a execução antes da conta');
     }
 
     public function test_maquina_sem_noticia_pede_para_conferir_a_tailnet(): void

@@ -543,6 +543,47 @@ class TelegramTest extends TestCase
     }
 
     /**
+     * 3ª revisão da T-374: passados os 5 s de lado, o mesmo update é tentado
+     * de novo; na terceira falha ele é deixado para trás, o cursor anda e o
+     * descarte fica no log da pessoa.
+     */
+    public function test_update_com_erro_volta_depois_dos_5_s_e_e_descartado_na_terceira_falha(): void
+    {
+        $ana = $this->comCentral();
+        $botAna = $this->botNoTeste($ana);
+        Http::fake([
+            'api.telegram.org/*/getWebhookInfo' => Http::response(['ok' => true, 'result' => ['url' => '']]),
+            'api.telegram.org/*/getUpdates' => fn () => Http::response(['ok' => true, 'result' => [$this->update(10, 'oi')]]),
+        ]);
+        $this->partialMock(TelegramCanal::class, fn ($m) => $m->shouldReceive('receber')->andThrow(new \RuntimeException('update ruim')));
+
+        $cmd = $this->app->make(\App\Console\Commands\CentralIaTelegram::class);
+        $cmd->setLaravel($this->app);
+        $cmd->setInput(new \Symfony\Component\Console\Input\ArrayInput([], $cmd->getDefinition()));
+        $cmd->setOutput(new \Illuminate\Console\OutputStyle(new \Symfony\Component\Console\Input\ArrayInput([]), new \Symfony\Component\Console\Output\BufferedOutput));
+        $ciclo = new \ReflectionMethod($cmd, 'ciclo');
+        $deLado = new \ReflectionProperty($cmd, 'deLado');
+        $args = [app(\App\Services\CentralIa\TelegramApi::class), app(TelegramCanal::class), app(\App\Services\CentralIa\TelegramConsumerLock::class)];
+        $leituras = fn () => collect(Http::recorded())->filter(fn ($par) => str_contains($par[0]->url(), $botAna->token.'/getUpdates'))->count();
+        $descartes = fn () => \Illuminate\Support\Facades\DB::table('central_ia_eventos')->where('user_id', $ana->id)->where('tipo', 'telegram_update_descartado')->count();
+
+        foreach ([1, 2] as $tentativa) {
+            $ciclo->invoke($cmd, ...$args);
+            $this->assertSame($tentativa, $leituras());
+            $this->assertSame(0, $botAna->fresh()->proximo_update_id, "falha {$tentativa}: o update fica para ser tentado");
+            $this->assertSame(0, $descartes());
+            // Os 5 s de lado passam (o comando mede pelo relógio do processo).
+            $this->assertGreaterThan(time(), $deLado->getValue($cmd)[$botAna->id] ?? 0, 'o bot fica de lado depois da falha');
+            $deLado->setValue($cmd, [$botAna->id => time() - 1]);
+        }
+
+        $ciclo->invoke($cmd, ...$args);
+        $this->assertSame(3, $leituras(), 'a terceira tentativa aconteceu');
+        $this->assertSame(11, $botAna->fresh()->proximo_update_id, 'na terceira falha o cursor anda');
+        $this->assertSame(1, $descartes(), 'e o descarte fica no log');
+    }
+
+    /**
      * Revisão da T-374: o número do update é de cada bot. Trocado o bot, os
      * números do antigo saem, e o update 10 do novo não some como repetido.
      */

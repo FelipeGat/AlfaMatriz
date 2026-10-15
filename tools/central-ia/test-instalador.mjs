@@ -218,6 +218,7 @@ assert.equal(r.status, 0, r.saida);
 assert.match(conf(), /^CENTRAL_IA_TELEGRAM_TOKEN=tok-codigo$/m, 'sem o bot da conversa, nada se conclui sobre a chave antiga');
 assert.doesNotMatch(r.saida, /No @BotFather/, 'sem o bot da conversa, não pergunta o token');
 assert.match(r.saida, /instalador antigo\. Gere um comando novo/);
+assert.doesNotMatch(r.saida, /mais tarde/, 'sem o bot da conversa, só o aviso do fim (gerar comando novo)');
 
 // 16. Sem o bot da conversa cadastrado no servidor (sem chat): o aviso manda
 // cadastrá-lo, e não só gerar outro comando.
@@ -227,6 +228,50 @@ assert.equal(r.status, 0, r.saida);
 assert.match(r.saida, /Primeiro cadastre o seu bot da conversa/);
 assert.doesNotMatch(r.saida, /instalador antigo/);
 assert.doesNotMatch(conf(), /TOKEN_CONFIRMACAO/);
+
+// 17 a 20 (3ª revisão da T-374). A chave antiga é julgada DEPOIS do bot
+// gravado e do token novo: quem cai ali não pode levar o único token bom.
+const soTelegram = linhas => writeFileSync(CONF, conf().replace(/^CENTRAL_IA_TELEGRAM_\w+=.*\n/gm, '')
+    + ['CENTRAL_IA_TELEGRAM_CHAT_ID=555', 'CENTRAL_IA_TELEGRAM_BOT_CONVERSA=conversa_bot', ...linhas].join('\n') + '\n');
+const soOBotDoCodigo = (token, msg) => {
+    assert.deepEqual(conf().match(/^CENTRAL_IA_TELEGRAM_TOKEN.*$/gm), [`CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=${token}`], msg);
+    assert.doesNotMatch(r.saida, /Pode apagá-la/, msg);
+    assert.doesNotMatch(r.saida, /No @BotFather/, `${msg}: não pergunta o token que já tem`);
+};
+
+// 17. Token novo recusado pelo Telegram: a chave antiga (outro bot válido) vira o bot do código.
+soTelegram(['CENTRAL_IA_TELEGRAM_TOKEN=tok-outro']);
+r = await rodar({ CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO: 'tok-errado' }, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+assert.match(r.saida, /Telegram recusou esse token/);
+soOBotDoCodigo('tok-outro', 'novo recusado');
+
+// 18. Token novo é o bot da conversa: idem.
+soTelegram(['CENTRAL_IA_TELEGRAM_TOKEN=tok-outro']);
+r = await rodar({ CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO: 'tok-conversa' }, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+assert.match(r.saida, /bot em que você conversa/);
+soOBotDoCodigo('tok-outro', 'novo é o bot da conversa');
+
+// 19. O bot do código gravado era o da conversa: sai, e a chave antiga o substitui.
+soTelegram(['CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=tok-conversa', 'CENTRAL_IA_TELEGRAM_TOKEN=tok-outro']);
+r = await rodar({}, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+soOBotDoCodigo('tok-outro', 'atual era o bot da conversa');
+
+// 20. O bot do código gravado foi revogado: a chave antiga, que o Telegram confirma, o substitui.
+soTelegram(['CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=tok-revogado', 'CENTRAL_IA_TELEGRAM_TOKEN=tok-outro']);
+r = await rodar({}, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+soOBotDoCodigo('tok-outro', 'atual revogado');
+
+// 21. Token novo bom e chave antiga de outro bot: o novo vale e a antiga sobra (com o @ do que vale).
+soTelegram(['CENTRAL_IA_TELEGRAM_TOKEN=tok-outro']);
+r = await rodar({ CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO: 'tok-codigo' }, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+assert.match(conf(), /^CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=tok-codigo$/m);
+assert.match(conf(), /^CENTRAL_IA_TELEGRAM_TOKEN=tok-outro$/m);
+assert.match(r.saida, /@outro_bot\) de .* não é usada: o bot do código é o @codigo_bot/);
 
 servidor.close();
 rmSync(home, { recursive: true, force: true });

@@ -1120,7 +1120,7 @@ while (!parar) {
                 proximoEspelho = Date.now() + (pendentes ? 60_000 : 15 * 60_000);
             })().catch(e => { log('Documentos: erro', e.message); proximoEspelho = Date.now() + 15 * 60_000; }).finally(() => { espelhando = false; });
         }
-        if (!transcrevendo && rodando.size < PARALELO && Date.now() >= transcricaoPausadaAte && await whisperPronto()) {
+        if (!transcrevendo && rodando.size < PARALELO && !existsSync(REINICIAR) && Date.now() >= transcricaoPausadaAte && await whisperPronto()) {
             const t = await api('transcricoes/proxima', { maquina: cfg.maquina });
             if (t.status === 403 || t.status === 404 || t.status === 405) transcricaoPausadaAte = Date.now() + 3600_000;
             if (t.status === 200 && t.json?.id) {
@@ -1140,7 +1140,11 @@ while (!parar) {
                 marcarOcupado();
             }
         }
-        if (rodando.size < PARALELO) {
+        // Reinício pedido com algo rodando: não pega trabalho novo, para a
+        // máquina esvaziar. Com PARALELO=2 os pedidos se sobrepunham, ela
+        // nunca ficava livre e a atualização esperava para sempre (3ª revisão
+        // da T-374). O pedido segue na fila do servidor, para esta ou outra.
+        if (rodando.size < PARALELO && !existsSync(REINICIAR)) {
             const r = await api('proxima', { maquina: cfg.maquina });
             notarAcesso(r.status);
             if (r.status === 200 && r.json?.id) {

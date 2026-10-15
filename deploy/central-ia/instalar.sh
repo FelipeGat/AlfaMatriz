@@ -238,14 +238,51 @@ TG_CHAT="$(ler_conf CENTRAL_IA_TELEGRAM_CHAT_ID)"
 CONVERSA="$(ler_conf CENTRAL_IA_TELEGRAM_BOT_CONVERSA)"
 NOVO="${CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO:-}"
 ATUAL="$(ler_conf CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO)"
+# O @ do bot do código gravado, quando o Telegram o confirma; vazio = não
+# confirmado (recusado ou Telegram fora do ar).
+NOME_ATUAL=""
+[ -n "$ATUAL" ] && NOME_ATUAL="$(bot_do_token "$ATUAL")"
+if [ -n "$ATUAL" ] && [ -n "$CONVERSA" ] && [ "$NOME_ATUAL" = "$CONVERSA" ]; then
+  # Instalação anterior aos dois bots: o código saía pelo bot da conversa,
+  # cujo token o servidor tem. Sai daqui, e a máquina recusa modificar
+  # arquivos até ganhar o bot do código.
+  gravar_conf CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO ""
+  ATUAL="" NOME_ATUAL=""
+  aviso "O código saía pelo @$CONVERSA, o bot em que você conversa com a Central. Agora ele sai por um bot só para isso."
+fi
+
+# Grava o token colado (do ambiente ou da pergunta) como bot do código, se o
+# Telegram o confirmar e ele não for o bot da conversa.
+usar_novo() {
+  local nome
+  nome="$(bot_do_token "$NOVO")"
+  if [ -z "$CONVERSA" ]; then
+    # Sem saber qual é o bot da conversa não há como recusá-lo aqui. O que
+    # fazer (cadastrar o bot ou gerar um comando novo) vem no aviso do fim.
+    aviso "Não sei qual é o seu bot da conversa, então não gravei esse token."
+  elif [ -z "$nome" ]; then
+    aviso "O Telegram recusou esse token. Confira no @BotFather e rode o comando de novo."
+  elif [ "$nome" = "$CONVERSA" ]; then
+    aviso "Esse é o @$nome, o bot em que você conversa com a Central. O código precisa de um bot só dele: crie outro no @BotFather."
+  else
+    gravar_conf CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO "$NOVO"
+    ATUAL="$NOVO" NOME_ATUAL="$nome"
+    ok "Bot do código: @$nome (o token fica só nesta máquina)."
+  fi
+}
+[ -n "$NOVO" ] && usar_novo
+
 # A chave antiga das máquinas instaladas à mão. Nela costumava estar o bot da
-# conversa, cujo token o servidor tem, e o runner já não a aceita: vira bot do
-# código só se o getMe disser que é OUTRO bot que não o da conversa (revisão da
-# T-374). Sai do arquivo só quando se sabe o que ela era: convertida, igual ao
-# bot do código já gravado, ou confirmada como o bot da conversa. Apagar sem
-# saber (Telegram fora do ar, bot da conversa desconhecido) perdia o único
-# token do bot do código daquela máquina; e na linha ela não faz mal, porque o
-# runner a ignora.
+# conversa, cujo token o servidor tem, e o runner já não a aceita. Decide-se
+# DEPOIS do bot gravado e do token novo (3ª revisão da T-374): antes, ela era
+# julgada contra um ATUAL que ainda ia cair (bot da conversa, token recusado)
+# e o instalador mandava apagar o único token bom da máquina.
+# Vira bot do código quando o getMe diz que é OUTRO bot que não o da conversa
+# e não há bot do código confirmado. Sai do arquivo só quando se sabe o que
+# ela era: convertida, igual ao bot do código gravado, ou confirmada como o
+# bot da conversa. Apagar sem saber (Telegram fora do ar, bot da conversa
+# desconhecido) perdia o único token do bot do código daquela máquina; e na
+# linha ela não faz mal, porque o runner a ignora.
 LEGADO="$(ler_conf CENTRAL_IA_TELEGRAM_TOKEN)"
 if [ -n "$LEGADO" ]; then
   NOME_LEGADO=""
@@ -254,25 +291,23 @@ if [ -n "$LEGADO" ]; then
     gravar_conf CENTRAL_IA_TELEGRAM_TOKEN ""
   elif [ -n "$NOME_LEGADO" ] && [ "$NOME_LEGADO" = "$CONVERSA" ]; then
     gravar_conf CENTRAL_IA_TELEGRAM_TOKEN ""
-  elif [ -n "$NOME_LEGADO" ] && [ -z "$ATUAL" ] && [ -z "$NOVO" ]; then
+  elif [ -n "$NOME_LEGADO" ] && [ -z "$NOME_ATUAL" ]; then
+    # Sem bot do código, ou com um que o Telegram acabou de recusar enquanto
+    # confirmava a chave antiga: ela é o bot do código que vale.
     gravar_conf CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO "$LEGADO"
     gravar_conf CENTRAL_IA_TELEGRAM_TOKEN ""
-    ATUAL="$LEGADO"
+    ATUAL="$LEGADO" NOME_ATUAL="$NOME_LEGADO"
     ok "Bot do código: @$NOME_LEGADO (veio da configuração antiga desta máquina)."
   elif [ -n "$NOME_LEGADO" ]; then
-    aviso "A linha CENTRAL_IA_TELEGRAM_TOKEN (@$NOME_LEGADO) de $CONF não é usada: o bot do código é outro. Pode apagá-la."
-  else
+    # Só aqui há um bot do código gravado E confirmado: a antiga sobra.
+    aviso "A linha CENTRAL_IA_TELEGRAM_TOKEN (@$NOME_LEGADO) de $CONF não é usada: o bot do código é o @$NOME_ATUAL. Pode apagá-la."
+  elif [ -n "$CONVERSA" ]; then
+    # Sem o bot da conversa, o aviso do fim já manda gerar um comando novo;
+    # "rode de novo mais tarde" o contradizia.
     aviso "Não consegui conferir a linha antiga CENTRAL_IA_TELEGRAM_TOKEN de $CONF; ela ficou lá, sem uso. Rode o comando de novo mais tarde."
   fi
 fi
-if [ -n "$ATUAL" ] && [ -n "$CONVERSA" ] && [ "$(bot_do_token "$ATUAL")" = "$CONVERSA" ]; then
-  # Instalação anterior aos dois bots: o código saía pelo bot da conversa,
-  # cujo token o servidor tem. Sai daqui, e a máquina recusa modificar
-  # arquivos até ganhar o bot do código.
-  gravar_conf CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO ""
-  ATUAL=""
-  aviso "O código saía pelo @$CONVERSA, o bot em que você conversa com a Central. Agora ele sai por um bot só para isso."
-fi
+
 # Sem saber qual é o bot da conversa, não há como recusá-lo no lugar do bot do
 # código: não pergunta (o aviso no fim diz o que fazer).
 if [ -z "$NOVO" ] && [ -z "$ATUAL" ] && [ -n "$TG_CHAT" ] && [ -n "$CONVERSA" ]; then
@@ -280,22 +315,7 @@ if [ -z "$NOVO" ] && [ -z "$ATUAL" ] && [ -n "$TG_CHAT" ] && [ -n "$CONVERSA" ];
   echo "O código de confirmação dos seus pedidos chega por um bot do Telegram só para isso, diferente do bot da conversa."
   echo "No @BotFather: /newbot, um nome (ex.: Código do seu nome) e um @ terminado em bot. Depois abra o bot novo e toque em Começar."
   NOVO="$(perguntar_segredo "Cole aqui o token do bot do código (Enter para deixar para depois)")"
-fi
-if [ -n "$NOVO" ]; then
-  NOME="$(bot_do_token "$NOVO")"
-  if [ -z "$CONVERSA" ]; then
-    # Sem saber qual é o bot da conversa não há como recusá-lo aqui. O que
-    # fazer (cadastrar o bot ou gerar um comando novo) vem no aviso do fim.
-    aviso "Não sei qual é o seu bot da conversa, então não gravei esse token."
-  elif [ -z "$NOME" ]; then
-    aviso "O Telegram recusou esse token. Confira no @BotFather e rode o comando de novo."
-  elif [ -n "$CONVERSA" ] && [ "$NOME" = "$CONVERSA" ]; then
-    aviso "Esse é o @$NOME, o bot em que você conversa com a Central. O código precisa de um bot só dele: crie outro no @BotFather."
-  else
-    gravar_conf CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO "$NOVO"
-    ATUAL="$NOVO"
-    ok "Bot do código: @$NOME (o token fica só nesta máquina)."
-  fi
+  [ -n "$NOVO" ] && usar_novo
 fi
 
 # ---------- serviço ----------

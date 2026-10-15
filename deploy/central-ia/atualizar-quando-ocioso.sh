@@ -43,6 +43,13 @@ RECARREGAR=0
 
 if [ "$(uname -s)" = Darwin ]; then
   PLIST="$HOME/Library/LaunchAgents/$ROTULO.plist"
+  # Os dois: descarregado, só o `bootstrap` liga; carregado sem processo
+  # (o launchd desistiu de religar), o `bootstrap` falha e quem liga é o
+  # `kickstart` (3ª revisão da T-374).
+  ligar_a_mao() {
+    log "  launchctl bootstrap gui/$(id -u) $PLIST"
+    log "  ou, se ele disser que o serviço já está carregado: launchctl kickstart -k gui/$(id -u)/$ROTULO"
+  }
   pid_do_runner() { launchctl print "gui/$(id -u)/$ROTULO" 2>/dev/null | awk '/^[[:space:]]*pid = / { print $3; exit }'; }
   if [ "$RECARREGAR" = 1 ]; then
     # O `bootout` volta antes de o launchd terminar de descarregar: o
@@ -65,7 +72,7 @@ if [ "$(uname -s)" = Darwin ]; then
         log "serviço recarregado na última tentativa"; return 0
       fi
       log "ERRO: o macOS não recarregou o serviço; o runner está DESLIGADO. Para ligar à mão:"
-      log "  launchctl bootstrap gui/$(id -u) $PLIST"
+      ligar_a_mao
       return 1
     }
   else
@@ -95,6 +102,10 @@ pedir() { if [ "$RECARREGAR" = 1 ]; then echo pausar > "$REINICIAR"; else : > "$
 # fora do ar, até 30 min. Trocáveis só para o teste (test-reinicio.mjs).
 TETO_TRAVA="${CENTRAL_IA_ATUALIZAR_TETO_TRAVA:-7200}"
 TETO_SEM_RUNNER="${CENTRAL_IA_ATUALIZAR_TETO_SEM_RUNNER:-1800}"
+# O runner que sabe sair, ocupado: o runner deixa de pedir trabalho novo com
+# o reinício pedido, então esvazia; o teto é a rede de segurança (3ª revisão
+# da T-374) — 2 h, mais que o pedido mais longo somado à espera do código.
+TETO_OCUPADO="${CENTRAL_IA_ATUALIZAR_TETO_OCUPADO:-7200}"
 TRAVA="$DIR/central-ia-atualizar.trava"
 esperou=0
 until mkdir "$TRAVA" 2>/dev/null; do
@@ -119,6 +130,7 @@ rm -f "$PAUSADO"
 pedir
 idle=0
 sem_runner=0
+ocupado=0
 while :; do
   sleep 5
   agora="$(pid_do_runner || true)"
@@ -130,7 +142,7 @@ while :; do
     if [ "$sem_runner" -ge "$TETO_SEM_RUNNER" ]; then
       rm -f "$REINICIAR" "$PAUSADO"
       log "ERRO: o serviço do runner não voltou em $((sem_runner / 60)) min; desisti. Para ligar à mão:"
-      if [ "$(uname -s)" = Darwin ]; then log "  launchctl bootstrap gui/$(id -u) $PLIST"; else log "  systemctl --user restart central-ia-runner"; fi
+      if [ "$(uname -s)" = Darwin ]; then ligar_a_mao; else log "  systemctl --user restart central-ia-runner"; fi
       exit 1
     fi
     continue
@@ -147,8 +159,17 @@ while :; do
   if [ "$(cat "$PAUSADO" 2>/dev/null || true)" = "$agora" ]; then
     rm -f "$PAUSADO"; reiniciar; exit 0
   fi
-  # Runner que sabe sair (ou pausar) sozinho: só esperar.
-  if conhece "$agora"; then continue; fi
+  # Runner que sabe sair (ou pausar) sozinho: só esperar — até o teto. Desistindo,
+  # apaga o pedido, para o runner voltar a pegar trabalho com a versão que tem.
+  if conhece "$agora"; then
+    ocupado=$((ocupado + 5))
+    if [ "$ocupado" -ge "$TETO_OCUPADO" ]; then
+      rm -f "$REINICIAR"
+      log "ERRO: o runner não ficou livre em $((ocupado / 60)) min; desisti, e ele segue com a versão antiga. Rode o comando de instalar de novo mais tarde."
+      exit 1
+    fi
+    continue
+  fi
   if ocioso "$agora"; then idle=$((idle+1)); else idle=0; fi
   if [ "$idle" -ge 4 ]; then
     # Última checagem colada no kill, sem espera entre as duas.

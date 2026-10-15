@@ -66,9 +66,13 @@ class ProgressoService
             ->when($user, fn ($q) => $q->where('user_id', $user->id))
             ->where('created_at', '<=', now()->subSeconds(self::INTERVALO))
             ->where(fn ($q) => $q->whereNull('status_avisado_em')->orWhere('status_avisado_em', '<=', now()->subSeconds(self::INTERVALO)))
-            ->orderBy('id')->limit(100)->pluck('id');
-        foreach ($ids as $id) {
-            DB::transaction(function () use ($id) {
+            ->orderBy('id')->limit(100)->pluck('user_id', 'id');
+        foreach ($ids as $id => $donoId) {
+            DB::transaction(function () use ($id, $donoId) {
+                // A conta antes da execução: o aviso grava na conversa, que
+                // trava a conta, e a ordem invertida dava deadlock com o
+                // `desconectar` e o `proxima` (revisão da T-374).
+                User::whereKey($donoId)->lockForUpdate()->first();
                 $e = CentralIaExecucao::whereKey($id)->lockForUpdate()->first();
                 // Na fila: o primeiro aviso aos 90 s, os seguintes de 10 em 10 min.
                 // Tarefa arquivada suspende a fila (reversível): sem aviso.
