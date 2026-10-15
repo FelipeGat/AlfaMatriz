@@ -142,9 +142,17 @@ function cenario({ ocupado = '0', saiSozinho = false, liberaEm = 0, atraso = 0, 
 R="${raiz}"
 case "$*" in
   *kickstart*|*restart*) echo forçado >> "$R/kill"; echo 200 > "$R/pid" ;;
-  *bootout*) echo descarregado >> "$R/recarga" ;;
-  *bootstrap*) echo carregado >> "$R/recarga"; echo 400 > "$R/pid" ;;
-  *print*) echo "	pid = $(cat "$R/pid")" ;;
+  # Como o launchd de verdade (Mac mini, 15/10/2026): o bootout volta na hora,
+  # mas o serviço ainda aparece por um tempo, e bootstrap nesse meio falha com 5.
+  *bootout*) echo descarregado >> "$R/recarga"; echo 3 > "$R/saindo" ;;
+  *bootstrap*) if [ -f "$R/saindo" ]; then echo falhou >> "$R/recarga"; exit 5; fi
+               rm -f "$R/fora"; echo carregado >> "$R/recarga"; echo 400 > "$R/pid" ;;
+  *print*) if [ -f "$R/saindo" ]; then n=$(cat "$R/saindo")
+             if [ "$n" -gt 0 ]; then echo $((n-1)) > "$R/saindo"; echo "	pid = $(cat "$R/pid")"; exit 0; fi
+             rm -f "$R/saindo"; touch "$R/fora"
+           fi
+           [ -f "$R/fora" ] && exit 113
+           echo "	pid = $(cat "$R/pid")" ;;
   *MainPID*) cat "$R/pid" ;;
 esac`;
     for (const nome of ['launchctl', 'systemctl']) { writeFileSync(join(bin, nome), servico); chmodSync(join(bin, nome), 0o755); }

@@ -40,7 +40,22 @@ if [ "$(uname -s)" = Darwin ]; then
   PLIST="$HOME/Library/LaunchAgents/$ROTULO.plist"
   pid_do_runner() { launchctl print "gui/$(id -u)/$ROTULO" 2>/dev/null | awk '/^[[:space:]]*pid = / { print $3; exit }'; }
   if [ "$RECARREGAR" = 1 ]; then
-    reiniciar() { launchctl bootout "gui/$(id -u)/$ROTULO" 2>/dev/null || true; launchctl bootstrap "gui/$(id -u)" "$PLIST"; }
+    # O `bootout` volta antes de o launchd terminar de descarregar: o
+    # `bootstrap` colado nele falhava com "5: Input/output error" e o serviço
+    # ficava DESCARREGADO, sem runner até alguém notar (teste no Mac mini,
+    # 15/10/2026). Espera o serviço sumir (o ExitTimeOut do plist é 60 s) e
+    # tenta carregar de novo até conseguir.
+    reiniciar() {
+      local i
+      launchctl bootout "gui/$(id -u)/$ROTULO" 2>/dev/null || true
+      for i in $(seq 1 75); do launchctl print "gui/$(id -u)/$ROTULO" >/dev/null 2>&1 || break; sleep 1; done
+      for i in $(seq 1 30); do
+        launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null && return 0
+        launchctl print "gui/$(id -u)/$ROTULO" >/dev/null 2>&1 && return 0
+        sleep 2
+      done
+      return 1
+    }
   else
     reiniciar() { launchctl kickstart -k "gui/$(id -u)/$ROTULO"; }
   fi
