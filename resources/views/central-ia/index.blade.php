@@ -1242,6 +1242,7 @@
                 <ul class="mt-2 list-disc space-y-1 pl-5 text-ink-mute">
                     <li>Anexos e prévias: {{ (int) config('central_ia.retencao.anexos_dias') }} dias. Depois disso o arquivo é apagado; a mensagem continua.</li>
                     <li>Conversas, pedidos aos agentes e o registro de atividade: {{ (int) config('central_ia.retencao.historico_dias') }} dias. Pedido ainda em andamento nunca é apagado.</li>
+                    <li>Na sua máquina: o log do runner e a auditoria são girados ao passar de 10 MB (ficam as duas últimas cópias). A cópia do projeto de uma tarefa concluída ou arquivada é apagada só se não tiver alteração nem commit fora da main.</li>
                 </ul>
             </div>
             {{-- POPs das IAs (FR-030..033): o que elas aprenderam de cada sistema.

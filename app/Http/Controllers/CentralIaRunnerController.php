@@ -80,7 +80,16 @@ class CentralIaRunnerController extends Controller
 
         app(\App\Services\CentralIa\ProgressoService::class)->publicar($user);
 
-        return response()->json(['ok' => true]);
+        // Tarefas encerradas que têm worktree (T-378): a máquina apaga a pasta
+        // delas, mas só se não houver alteração nem commit fora da main — quem
+        // confere isso é ela (deploy/central-ia/limpeza.mjs), que vê o git.
+        // Reabrir a tarefa recria a pasta em cima da branch, que fica.
+        $encerradas = \App\Models\CentralIaTarefa::de($user)
+            ->whereIn('status', [\App\Models\CentralIaTarefa::CONCLUIDA, \App\Models\CentralIaTarefa::ARQUIVADA])
+            ->whereNotNull('worktree')
+            ->orderByDesc('id')->limit(500)->pluck('id')->all();
+
+        return response()->json(['ok' => true, 'encerradas' => $encerradas]);
     }
 
     public function proxima(Request $request): JsonResponse|Response

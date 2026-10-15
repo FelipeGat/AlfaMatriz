@@ -22,6 +22,7 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { appendFileSync, chmodSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
+import { girar } from './limpeza.mjs';
 
 export const VALIDADE_MS = 15 * 60_000;
 export const TENTATIVAS = 3;
@@ -32,6 +33,9 @@ const LOG = process.env.CENTRAL_IA_AUDITORIA || join(homedir(), '.local/share/al
 export function auditar(evento) {
     try {
         mkdirSync(dirname(LOG), { recursive: true });
+        // Passou do limite, gira (T-378): a auditoria guarda as últimas
+        // cópias em vez de crescer sem fim.
+        girar(LOG);
         const novo = !existsSync(LOG);
         appendFileSync(LOG, JSON.stringify({ em: new Date().toISOString(), ...evento }) + '\n');
         if (novo) chmodSync(LOG, 0o600);

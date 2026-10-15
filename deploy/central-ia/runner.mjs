@@ -23,6 +23,7 @@ import { prepararAnexos } from './anexos.mjs';
 import { acompanharProgresso } from './progresso.mjs';
 import { auditar, confirmar } from './confirmacao.mjs';
 import { caminhoDoStatus, compararGit, criarAuditor, retratoGit } from './auditoria.mjs';
+import { girar, limparWorktrees } from './limpeza.mjs';
 import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h): a regra "inicio" não pede
@@ -93,6 +94,10 @@ function lerConfig() {
         memoria: (v('CENTRAL_IA_MEMORIA') || '').replace(/^~/, HOME),
         agenda: v('CENTRAL_IA_AGENDA') || '',
         retrato: (v('CENTRAL_IA_RETRATO') || '').replace(/^~/, HOME),
+        // O arquivo que o launchd enche com a saída deste processo (instalar.sh),
+        // para girar quando passa do limite (T-378). No Linux e no WSL a saída
+        // vai para o journal, que tem limite próprio: sem arquivo, nada a girar.
+        logArquivo: (v('CENTRAL_IA_LOG') || (SISTEMA === 'mac' ? join(HOME, 'Library/Logs/central-ia-runner.log') : '')).replace(/^~/, HOME),
     };
     // Worktrees das execuções de implementar: dentro da pasta de projetos,
     // num diretório com ponto — que a listagem de projetos ignora.
@@ -121,6 +126,11 @@ const notarAcesso = resultado => {
 // o WSL reiniciou e o pedido #84 ficou preso até o teto).
 const INICIO_DO_PROCESSO = new Date().toISOString();
 const emCurso = new Set();
+// As TAREFAS com execução nesta máquina agora: a worktree delas não sai,
+// mesmo que o servidor já as dê por encerradas (T-378).
+const tarefasEmCurso = new Set();
+// Tarefas encerradas desta conta que têm worktree, como a última batida disse.
+let encerradas = [];
 
 /* ---------- agentes instalados ---------- */
 
@@ -369,6 +379,26 @@ async function batida() {
     });
     if (r.status === 401 || r.status === 403) notarAcesso(r.status);
     else if (r.status !== 200) log('batida recusada', r.status, r.json?.message || '');
+    else if (Array.isArray(r.json?.encerradas)) encerradas = r.json.encerradas;
+}
+
+/* ---------- faxina (T-378) ---------- */
+
+// O log gira a cada volta (é só um stat); as worktrees, uma vez por hora,
+// porque cada uma custa alguns comandos de git.
+const FAXINA_MS = 10 * 60_000;
+const WORKTREES_MS = 3600_000;
+let ultimaFaxinaDeWorktrees = 0;
+function faxina() {
+    try {
+        if (cfg.logArquivo && girar(cfg.logArquivo, { copiar: true })) log('log do runner girado');
+    } catch (e) { log('não consegui girar o log:', e.message); }
+    if (Date.now() - ultimaFaxinaDeWorktrees < WORKTREES_MS || !encerradas.length) return;
+    ultimaFaxinaDeWorktrees = Date.now();
+    for (const f of limparWorktrees({ git, worktrees: cfg.worktrees, projetos: cfg.projetos, encerradas, emCurso: tarefasEmCurso })) {
+        if (f.removida) { log('worktree de tarefa encerrada removida:', f.worktree); auditar({ decisao: 'worktree_removida', worktree: f.worktree }); }
+        else log('worktree de tarefa encerrada mantida:', f.worktree, `(${f.motivo})`);
+    }
 }
 
 /* ---------- execução ---------- */
@@ -926,6 +956,8 @@ log(`runner ${cfg.maquina} → ${cfg.url}, projetos em ${cfg.projetos}`);
 const batendo = () => batida().catch(e => { if (acesso.situacao !== 'rede') log('batida falhou:', e.message); });
 await batendo();
 const relogio = setInterval(batendo, 30_000);
+const faxinando = setInterval(faxina, FAXINA_MS);
+faxina();
 // Até PARALELO execuções ao mesmo tempo. O AlfaMatriz também limita (por
 // pessoa, e uma por tarefa); aqui é a máquina que se protege.
 const PARALELO = Math.max(1, Number(process.env.CENTRAL_IA_PARALELO || 2));
@@ -947,9 +979,11 @@ while (!parar) {
             notarAcesso(r.status);
             if (r.status === 200 && r.json?.id) {
                 const id = r.json.id;
+                const tarefaId = r.json.tarefa?.id;
                 emCurso.add(id);
+                if (tarefaId) tarefasEmCurso.add(tarefaId);
                 ultimoTrabalho = Date.now();
-                const p = executar(r.json).catch(e => log(`#${id} erro no runner:`, e.message)).finally(() => { rodando.delete(p); emCurso.delete(id); marcarOcupado(); ultimoTrabalho = Date.now(); });
+                const p = executar(r.json).catch(e => log(`#${id} erro no runner:`, e.message)).finally(() => { rodando.delete(p); emCurso.delete(id); if (tarefaId) tarefasEmCurso.delete(tarefaId); marcarOcupado(); ultimoTrabalho = Date.now(); });
                 rodando.add(p);
                 marcarOcupado();
                 continue;
@@ -968,4 +1002,5 @@ while (!parar) {
 // Parada pedida: espera o que está rodando terminar e devolver a resposta.
 await Promise.allSettled([...rodando]);
 clearInterval(relogio);
+clearInterval(faxinando);
 log('runner encerrado');

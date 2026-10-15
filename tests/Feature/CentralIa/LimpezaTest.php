@@ -8,6 +8,7 @@ use App\Models\CentralIaEntrega;
 use App\Models\CentralIaExecucao;
 use App\Models\CentralIaMensagem;
 use App\Models\CentralIaPrevia;
+use App\Models\CentralIaTarefa;
 use App\Models\Perfil;
 use App\Models\User;
 use App\Services\CentralIa\Limpeza;
@@ -17,6 +18,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -229,6 +231,31 @@ class LimpezaTest extends TestCase
 
         $this->actingAs($this->u)->get(route('central-ia.index'))->assertOk()
             ->assertSee('Por quanto tempo a Central guarda')->assertSee('Anexos e prévias: 91 dias')->assertSee('365 dias');
+    }
+
+    public function test_batida_diz_a_maquina_quais_tarefas_com_worktree_estao_encerradas(): void
+    {
+        $this->u->perfis()->attach(Perfil::where('slug', 'central_ia')->value('id'));
+        $outro = User::factory()->create();
+        $t = fn (User $dono, string $status, ?string $wt) => CentralIaTarefa::create(['user_id' => $dono->id, 'projeto' => 'app',
+            'titulo' => 'x', 'objetivo' => 'x', 'status' => $status, 'worktree' => $wt])->id;
+        $concluida = $t($this->u, CentralIaTarefa::CONCLUIDA, '/p/.central-ia/worktrees/app-t1');
+        $arquivada = $t($this->u, CentralIaTarefa::ARQUIVADA, '/p/.central-ia/worktrees/app-t2');
+        $t($this->u, CentralIaTarefa::ABERTA, '/p/.central-ia/worktrees/app-t3');
+        $t($this->u, CentralIaTarefa::PAUSADA, '/p/.central-ia/worktrees/app-t4');
+        $t($this->u, CentralIaTarefa::CONCLUIDA, null);
+        $t($outro, CentralIaTarefa::CONCLUIDA, '/q/.central-ia/worktrees/app-t6');
+        Sanctum::actingAs($this->u, ['central-ia-runner']);
+
+        $ids = $this->postJson(route('central-ia.runner.batida'), ['maquina' => 'mac', 'agentes' => [], 'projetos' => []])
+            ->assertOk()->json('encerradas');
+
+        $this->assertEqualsCanonicalizing([$concluida, $arquivada], $ids);
+    }
+
+    public function test_o_instalador_leva_o_modulo_de_limpeza(): void
+    {
+        $this->get(route('central-ia.runner.arquivo', 'limpeza.mjs'))->assertOk()->assertSee('export function limparWorktrees', false);
     }
 
     public function test_limpeza_esta_agendada_uma_vez_por_dia(): void

@@ -140,6 +140,36 @@ Dono: "o runner faz tudo o que o servidor manda — isso não pode ocorrer". Ago
 
 Limpar uma worktree já revisada: `git -C <pasta de projetos>/<projeto> worktree remove <caminho>`.
 
+## O que é apagado sozinho (T-378)
+
+Prazos aceitos pelo dono em 14/10/2026. Antes nada da Central era apagado.
+
+**No servidor** — `php artisan central-ia:limpar`, todo dia às 03:30 (`routes/console.php`); prazos em
+`config/central_ia.php` → `retencao`, mostrados nos Ajustes da Central:
+
+| O quê | Prazo |
+|---|---|
+| Anexos e prévias (arquivo e registro) | 90 dias (`CENTRAL_IA_RETENCAO_ANEXOS_DIAS`) |
+| Mensagens, pedidos aos agentes, eventos e entregas ao Telegram | 1 ano (`CENTRAL_IA_RETENCAO_HISTORICO_DIAS`) |
+
+- Pedido pendente ou executando nunca sai, nem a mensagem dele. "Mais de N dias" é estrito: com N dias exatos fica.
+- `--dry-run` mostra quanto apagaria sem apagar nada; a volta de verdade deixa a contagem no log do Laravel.
+- Prazo abaixo de 7 dias é recusado (um `0` no `.env` apagaria tudo).
+
+**Na máquina** — o runner, sozinho (`limpeza.mjs`; teste: `node tools/central-ia/test-limpeza.mjs`):
+
+- **Log do runner** (só no Mac, `~/Library/Logs/central-ia-runner.log`; no Linux e na WSL é o journal,
+  que tem limite próprio): passou de 10 MB, vira `.1` e o anterior vira `.2` — a cada 10 min. É copiado e
+  esvaziado no lugar, porque o launchd o mantém aberto (em modo de acréscimo, conferido com `lsof`).
+  Outro caminho: `CENTRAL_IA_LOG`.
+- **Auditoria** (`~/.local/share/alfa/central-ia-auditoria.log`): mesmo limite e as mesmas duas cópias, 0600.
+- **Worktree da tarefa**: uma vez por hora, só se a tarefa estiver **concluída ou arquivada** no AlfaMatriz
+  (a batida traz a lista), não estiver rodando na máquina, não tiver **nenhuma alteração** (inclusive
+  arquivo novo) e **nenhum commit fora da main** (`main`, `origin/main`, `master` ou `origin/master`).
+  Os agentes não commitam: a worktree pode ser o único lugar do trabalho. Na dúvida — git que falha,
+  main que não se acha — ela fica, e o log diz por quê. Remove com `git worktree remove` sem `--force`;
+  a branch `central-ia/t<n>` fica, e reabrir a tarefa recria a pasta em cima dela.
+
 ## Anexos (tarefa 9)
 
 O instalador baixa o `anexos.mjs` e constrói a imagem local quando há Docker (à mão:

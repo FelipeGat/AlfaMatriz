@@ -41,7 +41,7 @@ class Maquinas
      */
     public const ARQUIVOS = [
         'runner.mjs', 'politica.mjs', 'confirmacao.mjs', 'auditoria.mjs', 'uso-local.mjs',
-        'extrato.mjs', 'anexos.mjs', 'progresso.mjs', 'atualizar-quando-ocioso.sh',
+        'extrato.mjs', 'anexos.mjs', 'progresso.mjs', 'limpeza.mjs', 'atualizar-quando-ocioso.sh',
     ];
 
     public function podeConectar(User $user): bool
