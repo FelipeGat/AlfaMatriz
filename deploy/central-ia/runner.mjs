@@ -12,7 +12,7 @@
  * ~/.config/alfa/central-ia-runner.env — ver deploy/central-ia/README.md.
  */
 import { spawn, execFileSync } from 'node:child_process';
-import { writeFileSync, closeSync, existsSync, lstatSync, openSync, readFileSync, readSync, readdirSync, statSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from 'node:fs';
+import { writeFileSync, unlinkSync, closeSync, existsSync, lstatSync, openSync, readFileSync, readSync, readdirSync, statSync, mkdtempSync, rmSync, mkdirSync, realpathSync } from 'node:fs';
 import { homedir, hostname, platform, release, tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -972,7 +972,21 @@ marcarOcupado();
 // consulta é a cada 3 s; parada, a cada 10 s. Subir conta como trabalho, para
 // o teste logo depois de instalar não esperar.
 let ultimoTrabalho = Date.now();
+// Atualização (atualizar-quando-ocioso.sh) pede o reinício por este arquivo, e
+// quem decide sair é o próprio laço, no mesmo passo em que pediria trabalho: com
+// nada rodando, sai antes de chamar `proxima`, então nenhum pedido é pego e
+// largado. Antes o script matava o processo de fora depois de checar o
+// `OCUPADO`, e um pedido que chegava entre a checagem e o kill morria como
+// "expirada" (#17 no staging, 15/10/2026). O serviço (KeepAlive no launchd,
+// Restart=always no systemd) o religa já com a versão nova.
+const REINICIAR = join(HOME, '.local/share/alfa/central-ia-reiniciar');
 while (!parar) {
+    if (!rodando.size && existsSync(REINICIAR)) {
+        try { unlinkSync(REINICIAR); } catch {}
+        log('reiniciando para carregar a versão nova (nada em andamento)');
+        parar = true;
+        break;
+    }
     try {
         if (rodando.size < PARALELO) {
             const r = await api('proxima', { maquina: cfg.maquina });
@@ -1004,3 +1018,5 @@ await Promise.allSettled([...rodando]);
 clearInterval(relogio);
 clearInterval(faxinando);
 log('runner encerrado');
+// Sai de vez: um socket ainda aberto não pode segurar o processo e atrasar a volta.
+process.exit(0);
