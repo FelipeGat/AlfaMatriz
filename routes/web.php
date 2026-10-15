@@ -280,7 +280,7 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::put('central-ia/telegram/bot', [CentralIaController::class, 'salvarBotTelegram'])->name('central-ia.telegram.bot')
         ->middleware(['permissao:central_ia,editar', 'throttle:6,1,central-ia-telegram-bot']);
     Route::delete('central-ia/telegram/bot', [CentralIaController::class, 'removerBotTelegram'])->name('central-ia.telegram.bot.remover')
-        ->middleware('permissao:central_ia,editar');
+        ->middleware(['permissao:central_ia,editar', 'throttle:6,1,central-ia-telegram-bot']);
     Route::post('central-ia/telegram/codigo', [CentralIaController::class, 'codigoTelegram'])->name('central-ia.telegram.codigo')
         ->middleware(['permissao:central_ia,editar', 'throttle:6,1,central-ia-telegram']);
     Route::delete('central-ia/telegram', [CentralIaController::class, 'desvincularTelegram'])->name('central-ia.telegram.desvincular')

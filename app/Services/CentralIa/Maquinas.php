@@ -165,7 +165,9 @@ class Maquinas
         $token = $this->tokens($user)->firstWhere('id', $tokenId);
         abort_unless($token, 404);
         DB::transaction(function () use ($user, $token) {
-            CentralIaRunner::where('user_id', $user->id)->where('token_id', $token->id)->delete();
+            $runners = CentralIaRunner::where('user_id', $user->id)->where('token_id', $token->id)->get();
+            foreach ($runners as $runner) app(AgentesService::class)->interromperDaMaquinaDesconectada($user, $runner);
+            CentralIaRunner::whereKey($runners->modelKeys())->delete();
             $token->delete();
         });
         Eventos::registrar($user, 'maquina', "Máquina {$token->name} desconectada da Central.", ['origem' => 'web']);

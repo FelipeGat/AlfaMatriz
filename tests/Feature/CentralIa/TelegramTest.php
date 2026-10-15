@@ -459,6 +459,78 @@ class TelegramTest extends TestCase
         $this->assertSame([11, 11], \App\Models\CentralIaTelegramBot::orderBy('id')->pluck('proximo_update_id')->all());
     }
 
+    /**
+     * Revisão da T-374: a pessoa troca de bot pela tela enquanto o processo lê
+     * o antigo. O cursor do antigo não pode ir para a linha do novo — o
+     * Telegram daria por lido o /start do bot novo.
+     */
+    public function test_bot_trocado_no_meio_do_ciclo_nao_herda_o_cursor_do_antigo(): void
+    {
+        $ana = $this->comCentral();
+        $bot = $this->botNoTeste($ana);
+        CentralIaTelegramVinculo::create(['user_id' => $ana->id, 'chat_id' => self::CHAT]);
+        Http::fake([
+            'api.telegram.org/*/getWebhookInfo' => Http::response(['ok' => true, 'result' => ['url' => '']]),
+            'api.telegram.org/*/getUpdates' => function () use ($bot) {
+                // A tela grava o bot novo enquanto o pedido ao Telegram está no ar.
+                \App\Models\CentralIaTelegramBot::whereKey($bot->id)->update(['telegram_bot_id' => 7099999999, 'usuario' => 'novo_da_ana_bot',
+                    'proximo_update_id' => 0, 'updated_at' => now()->addSecond()]);
+
+                return Http::response(['ok' => true, 'result' => [$this->update(500, 'pelo bot antigo')]]);
+            },
+            'api.telegram.org/*/sendMessage' => Http::response(['ok' => true, 'result' => ['message_id' => 1]]),
+        ]);
+
+        $this->artisan('central-ia:telegram', ['--uma-vez' => true])->assertSuccessful();
+
+        $this->assertSame([7099999999, 0], [$bot->fresh()->telegram_bot_id, $bot->fresh()->proximo_update_id]);
+    }
+
+    /** Revisão da T-374: o update que explode no bot de uma pessoa não para os bots das outras. */
+    public function test_update_com_erro_so_para_o_bot_de_quem_o_mandou(): void
+    {
+        $ana = $this->comCentral();
+        $bruno = $this->comCentral();
+        $botAna = $this->botNoTeste($ana);
+        $botBruno = $this->botNoTeste($bruno);
+        Http::fake([
+            'api.telegram.org/*/getWebhookInfo' => Http::response(['ok' => true, 'result' => ['url' => '']]),
+            'api.telegram.org/*/getUpdates' => Http::response(['ok' => true, 'result' => [$this->update(10, 'oi')]]),
+        ]);
+        $this->partialMock(TelegramCanal::class, fn ($m) => $m->shouldReceive('receber')->andReturnUsing(function ($update, $bot) use ($ana) {
+            if ($bot->user_id === $ana->id) throw new \RuntimeException('update ruim');
+        }));
+
+        $this->artisan('central-ia:telegram', ['--uma-vez' => true]);
+
+        $this->assertSame(0, $botAna->fresh()->proximo_update_id, 'o update da Ana é tentado de novo');
+        $this->assertSame(11, $botBruno->fresh()->proximo_update_id, 'o bot do Bruno foi lido no mesmo ciclo');
+    }
+
+    /**
+     * Revisão da T-374: o número do update é de cada bot. Trocado o bot, os
+     * números do antigo saem, e o update 10 do novo não some como repetido.
+     */
+    public function test_trocar_de_bot_libera_os_numeros_de_update_do_antigo(): void
+    {
+        $eu = fn (int $id, string $u) => ['ok' => true, 'result' => ['id' => $id, 'is_bot' => true, 'username' => $u]];
+        Http::fake([
+            'api.telegram.org/*/getMe' => Http::sequence()->push($eu(7012345678, 'central_da_ana_bot'))->push($eu(7099999999, 'outro_da_ana_bot')),
+            'api.telegram.org/*/getWebhookInfo' => Http::response(['ok' => true, 'result' => ['url' => '']]),
+            'api.telegram.org/*/getChat' => Http::response(['ok' => true, 'result' => ['id' => self::CHAT, 'type' => 'private']]),
+        ]);
+        $ana = $this->comCentral();
+        $outro = $this->comCentral();
+        $this->actingAs($ana)->putJson(route('central-ia.telegram.bot'), ['token' => self::TOKEN])->assertOk();
+        app(ConversaService::class)->registrarDoUsuario($ana, 'pelo bot antigo', 'telegram', telegramUpdateId: 10);
+        app(ConversaService::class)->registrarDoUsuario($outro, 'de outra pessoa', 'telegram', telegramUpdateId: 10);
+
+        $this->actingAs($ana)->putJson(route('central-ia.telegram.bot'), ['token' => '7099999999:CCoutr0B0tDaAnaParaACentral_qwe12'])->assertOk();
+
+        $this->assertNull(CentralIaMensagem::where('user_id', $ana->id)->value('telegram_update_id'));
+        $this->assertSame(10, CentralIaMensagem::where('user_id', $outro->id)->value('telegram_update_id'), 'só os números da Ana');
+    }
+
     /** O ambiente local roda com cópia do banco: os bots de lá não são lidos aqui. */
     public function test_bot_cadastrado_em_outro_servidor_nao_e_lido(): void
     {

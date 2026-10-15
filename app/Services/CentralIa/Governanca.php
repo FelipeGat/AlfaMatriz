@@ -29,9 +29,14 @@ class Governanca
         if (! $this->administra($admin)) return [];
         // Só quem usa a Central: a lista de todas as contas do sistema enchia o
         // seletor de gente que nunca vai ter política para administrar.
-        return User::query()->where('id', '!=', $admin->id)->orderBy('name')->get(['id', 'name', 'email', 'ativo'])
-            ->filter(fn ($u) => $u->canPermissao('central_ia', 'ler'))
-            ->map(fn ($u) => ['id' => $u->id, 'nome' => $u->name, 'ativo' => (bool) $u->ativo])->values()->all();
+        // Numa consulta só, e não `canPermissao` conta a conta: o painel chama
+        // isto a cada ~5 s, e era uma consulta por conta do sistema a cada vez
+        // (revisão da T-374). A regra é a mesma do `canPermissao`: basta UM
+        // perfil da conta conceder `ler` em `central_ia`.
+        return User::query()->where('id', '!=', $admin->id)
+            ->whereHas('perfis.permissoes', fn ($q) => $q->where('permissoes.recurso', 'central_ia')->where('perfil_permissao.ler', true))
+            ->orderBy('name')->get(['id', 'name', 'ativo'])
+            ->map(fn ($u) => ['id' => $u->id, 'nome' => $u->name, 'ativo' => (bool) $u->ativo])->all();
     }
 
     public function padrao(): array

@@ -7,10 +7,11 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Cada pessoa usa o PRÓPRIO bot do Telegram na Central (T-374, decisão do dono
  * em 14/10/2026). Antes era um bot só, no `.env`, criado na conta pessoal de
- * quem montou a Central — e um segundo bot só para o código de confirmação,
- * porque o token do bot compartilhado não podia ir à máquina de ninguém (quem
- * o tivesse leria as conversas de todos). Com o bot de cada um, esse motivo
- * some: o mesmo bot conversa e leva o código.
+ * quem montou a Central. Esta tabela guarda o bot da CONVERSA de cada um. O
+ * código de confirmação continua saindo por um segundo bot da pessoa, cujo
+ * token fica só na máquina dela e nunca passa por aqui (T-368; revisão da
+ * T-374, 15/10/2026: este texto dizia, por engano, que o mesmo bot levaria o
+ * código).
  *
  * - `token` é cifrado com a APP_KEY (cast `encrypted` no modelo).
  * - `telegram_bot_id` único: o mesmo bot em duas contas misturaria as

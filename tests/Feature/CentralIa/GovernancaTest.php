@@ -62,6 +62,29 @@ class GovernancaTest extends TestCase
         $this->assertNotContains($semCentral->id, $ids);
     }
 
+    /** Revisão da T-374: o painel chama a lista a cada ~5 s; era uma consulta por conta. */
+    public function test_a_lista_sai_numa_consulta_so_qualquer_que_seja_o_numero_de_contas(): void
+    {
+        $admin = $this->pessoa(true);
+        $contar = function () use ($admin) {
+            \Illuminate\Support\Facades\DB::flushQueryLog();
+            \Illuminate\Support\Facades\DB::enableQueryLog();
+            $lista = app(Governanca::class)->usuarios($admin);
+            $n = count(\Illuminate\Support\Facades\DB::getQueryLog());
+            \Illuminate\Support\Facades\DB::disableQueryLog();
+
+            return [$n, count($lista)];
+        };
+        $this->pessoa();
+        $contar(); // o perfil do próprio admin fica em cache na conta
+        [$antes, $listadosAntes] = $contar();
+        $this->assertSame(1, $antes);
+        foreach (range(1, 5) as $_) { $this->pessoa(); User::factory()->semPerfil()->create(); }
+        [$depois, $listados] = $contar();
+        $this->assertSame($listadosAntes + 5, $listados, 'entram as 5 que usam a Central, e só elas');
+        $this->assertSame($antes, $depois);
+    }
+
     public function test_admin_libera_a_execucao_de_outra_conta(): void
     {
         $dono = $this->pessoa(true); $membro = $this->pessoa();

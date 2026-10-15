@@ -163,6 +163,31 @@ class MaquinasTest extends TestCase
         $this->withToken($token)->postJson(route('central-ia.runner.batida'), ['maquina' => 'mac-ana', 'agentes' => [], 'projetos' => []])->assertUnauthorized();
     }
 
+    /** Revisão da T-374: o pedido que a máquina tinha na mão não fica "executando" até o teto. */
+    public function test_desconectar_interrompe_o_pedido_que_a_maquina_tinha_na_mao(): void
+    {
+        $ana = $this->pessoa();
+        $this->trocar($this->codigo($ana), 'mac-ana')->assertOk();
+        Auth::forgetGuards();
+        $runner = CentralIaRunner::create(['user_id' => $ana->id, 'maquina' => 'mac-ana', 'agentes' => ['claude'], 'projetos' => [],
+            'token_id' => $ana->tokens()->sole()->id, 'visto_em' => now()]);
+        $outra = CentralIaRunner::create(['user_id' => $ana->id, 'maquina' => 'wsl-ana', 'agentes' => ['claude'], 'projetos' => [], 'visto_em' => now()]);
+        $t = CentralIaTarefa::create(['user_id' => $ana->id, 'projeto' => '', 'titulo' => 'Geral', 'objetivo' => 'Geral']);
+        $pedido = fn (CentralIaRunner $r) => CentralIaExecucao::create(['user_id' => $ana->id, 'tarefa_id' => $t->id, 'projeto' => '', 'agente' => 'claude',
+            'modo' => 'analisar', 'instrucao' => 'x', 'status' => CentralIaExecucao::EXECUTANDO, 'runner_id' => $r->id, 'iniciada_em' => now(),
+            'pedido_id' => app(ConversaService::class)->registrarDoAgente($ana, 'Central', 'pedido', projeto: '', tarefaId: $t->id)->id]);
+        $daMaquina = $pedido($runner);
+        $daOutra = $pedido($outra);
+
+        $this->actingAs($ana)->deleteJson(route('central-ia.maquinas.desconectar', $ana->tokens()->sole()->id))->assertOk();
+
+        $daMaquina->refresh();
+        $this->assertSame(CentralIaExecucao::FALHOU, $daMaquina->status);
+        $this->assertStringContainsString('desconectada', $daMaquina->erro);
+        $this->assertStringContainsString('mac-ana foi desconectada', \App\Models\CentralIaMensagem::find($daMaquina->resposta_id)->conteudo);
+        $this->assertSame(CentralIaExecucao::EXECUTANDO, $daOutra->fresh()->status, 'o pedido de outra máquina segue');
+    }
+
     public function test_maquina_sem_noticia_pede_para_conferir_a_tailnet(): void
     {
         $ana = $this->pessoa();

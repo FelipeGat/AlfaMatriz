@@ -21,7 +21,8 @@ que ordem, e o que cada pessoa faz na própria máquina.
   (T-374, 14/10/2026: era imposto a todos). Quem liga precisa do plugin cstk no Claude Code da própria
   máquina; o Codex e o Copilot, que não têm os skills, devolvem frente nova ao Claude.
 - **Nada preso à máquina de uma pessoa** (T-374, dono do produto, 14/10/2026: "a Central de IA é para um
-  time"). Governança pelo perfil, bot da empresa, conexão de máquina pela tela, e o runner sem caminho,
+  time"). Governança pelo perfil, dois bots do Telegram de cada pessoa (o da conversa, cadastrado em Ajustes, e o
+  do código, só na máquina dela), conexão de máquina pela tela, e o runner sem caminho,
   agenda, memória ou painel de ninguém.
 
 ## Antes de publicar

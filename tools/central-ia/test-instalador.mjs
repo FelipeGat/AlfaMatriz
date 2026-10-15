@@ -64,7 +64,9 @@ const exe = (nome, corpo) => { writeFileSync(join(bin, nome), `#!/bin/bash\n${co
 exe('uname', 'echo Darwin');
 exe('hostname', 'echo MacBook-Pro');
 // O serviço "já carregado" depois da primeira instalação.
-exe('launchctl', `case "$1" in print) [ -f "$HOME/carregado" ] ;; bootstrap) touch "$HOME/carregado" ;; esac`);
+// Na hora de ligar, anota se o bot do código já estava no arquivo: o runner
+// lê a configuração ao subir (revisão da T-374).
+exe('launchctl', `case "$1" in print) [ -f "$HOME/carregado" ] ;; bootstrap) touch "$HOME/carregado"; grep -c '^CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=' "$HOME/.config/alfa/central-ia-runner.env" >> "$HOME/ligado.log" || true ;; esac`);
 exe('docker', 'exit 1');
 
 // Assíncrono: o AlfaMatriz falso roda neste mesmo processo.
@@ -159,6 +161,33 @@ assert.deepEqual(conf().match(/^CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=.*$/gm), [
 assert.deepEqual(enviados, [{ token: 'tok-codigo', chat: '555' }]);
 assert.equal(spawnSync('stat', ['-f', '%Lp', CONF]).stdout.toString().trim() || spawnSync('stat', ['-c', '%a', CONF]).stdout.toString().trim(), '600');
 
+// 10. Sem código, o bot da conversa continua recusado: o @ dele ficou gravado na conexão.
+assert.match(conf(), /^CENTRAL_IA_TELEGRAM_BOT_CONVERSA=conversa_bot$/m);
+writeFileSync(CONF, conf().replace(/^CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=.*\n/m, ''));
+r = await rodar({ CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO: 'tok-conversa' }, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+assert.match(r.saida, /bot em que você conversa/);
+assert.doesNotMatch(conf(), /TOKEN_CONFIRMACAO/);
+
+// 11. A chave antiga (CENTRAL_IA_TELEGRAM_TOKEN): com o bot da conversa, só sai;
+// com outro bot, vira o bot do código. Nos dois casos some do arquivo.
+writeFileSync(CONF, conf() + 'CENTRAL_IA_TELEGRAM_TOKEN=tok-conversa\n');
+r = await rodar({}, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+assert.doesNotMatch(conf(), /TELEGRAM_TOKEN/);
+writeFileSync(CONF, conf() + 'CENTRAL_IA_TELEGRAM_TOKEN=tok-codigo\n');
+r = await rodar({}, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+assert.deepEqual(conf().match(/^CENTRAL_IA_TELEGRAM_TOKEN.*$/gm), ['CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=tok-codigo']);
+
+// 12. Máquina nova: o bot do código está no arquivo ANTES de o serviço ligar.
+rmSync(join(home, '.config'), { recursive: true, force: true });
+rmSync(join(home, 'carregado'), { force: true });
+rmSync(join(home, 'ligado.log'), { force: true });
+r = await rodar({ ...COD, CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO: 'tok-codigo' }, ARGS);
+assert.equal(r.status, 0, r.saida);
+assert.equal(readFileSync(join(home, 'ligado.log'), 'utf8'), '1\n', 'o serviço ligou antes de o bot do código estar gravado');
+
 servidor.close();
 rmSync(home, { recursive: true, force: true });
-console.log('PASSOU: instalador troca o código (do ambiente) antes de perguntar, grava o nome do servidor, não deixa chave repetida, recarrega o plist mudado, não roda pela metade e só aceita como bot do código um bot que não é o da conversa.');
+console.log('PASSOU: instalador troca o código (do ambiente) antes de perguntar, grava o nome do servidor, não deixa chave repetida, recarrega o plist mudado, não roda pela metade só aceita como bot do código um bot que não é o da conversa (com ou sem código, e na chave antiga) e grava o bot do código antes de ligar o serviço.');

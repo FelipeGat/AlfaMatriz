@@ -88,6 +88,13 @@ NODE="$(command -v node || true)"
 "$NODE" -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 18 ? 0 : 1)' \
   || erro "O Node desta máquina é antigo ($("$NODE" -v)). A Central precisa do 18 ou mais novo."
 
+# O serviço guarda o caminho deste node. No nvm o caminho tem a versão, e
+# trocar de versão (ou apagar a antiga) para o serviço até rodar o comando de
+# atualizar de novo.
+case "$NODE" in
+  */.nvm/*|*/.fnm/*|*/.volta/*|*/.asdf/*) aviso "O serviço vai usar o node em $NODE. Se trocar a versão do node, rode o comando de atualizar de novo." ;;
+esac
+
 # A tailnet: o AlfaMatriz só atende por ela.
 if ! curl -fsS --max-time 15 -o /dev/null "$URL/healthz"; then
   erro "Esta máquina não alcança o AlfaMatriz ($URL). Ligue o Tailscale nela (entrar na tailnet da Alfa) e rode o comando de novo."
@@ -108,7 +115,9 @@ fi
 
 # ---------- arquivos do runner ----------
 TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+# Ctrl-C na pergunta do token (lida sem eco) deixava o terminal sem eco.
+trap 'rm -rf "$TMP"; stty echo </dev/tty >/dev/null 2>&1 || true' EXIT
+trap 'exit 130' INT TERM
 for f in $ARQUIVOS; do
   curl -fsS --max-time 60 "$URL/central-ia/runner/arquivos/$f" -o "$TMP/$f" || erro "Não consegui baixar $f do AlfaMatriz."
   case "$f" in *.mjs) "$NODE" --check "$TMP/$f" || erro "O arquivo $f chegou corrompido." ;; esac
@@ -180,12 +189,95 @@ if [ -n "$CODIGO" ]; then
     definir("CENTRAL_IA_MAQUINA", process.env.MAQUINA);
     if (!/^[0-9a-f]{64}$/i.test(atual("CENTRAL_IA_SEGREDO_CONFIRMACAO") || "")) definir("CENTRAL_IA_SEGREDO_CONFIRMACAO", randomBytes(32).toString("hex"));
     definir("CENTRAL_IA_TELEGRAM_CHAT_ID", r.telegram?.chat_id);
+    // Só o @ do bot da CONVERSA (nunca o token): o comando de atualizar, sem
+    // código, também precisa saber qual bot recusar como bot do código.
+    definir("CENTRAL_IA_TELEGRAM_BOT_CONVERSA", r.telegram?.bot);
     writeFileSync(process.env.CONF, linhas.join("\n").replace(/\n*$/, "\n"), { mode: 0o600 });
     chmodSync(process.env.CONF, 0o600);
     console.log(JSON.stringify({ conta: r.conta, bot: r.telegram?.bot || null, chat: !!r.telegram?.chat_id }));
   ' > "$TMP/conectada.json"
   ok "Máquina \"$MAQUINA\" conectada à conta $(sed -n 's/.*"conta":"\([^"]*\)".*/\1/p' "$TMP/conectada.json") · projetos em $PROJETOS"
   ok "Configuração em $CONF (só você lê)"
+fi
+
+# ---------- Telegram: o bot do código ----------
+# ANTES de ligar o serviço: o runner que sobe já precisa achar o token no
+# arquivo. Depois do serviço, a máquina recém-instalada ficava sem o bot do
+# código até reiniciar por outro motivo, e recusava todo pedido que modifica
+# arquivos (revisão da T-374). O runner também relê o arquivo antes de cada
+# confirmação, para o caso de alguém editá-lo à mão.
+# Trocável só para o teste do instalador (tools/central-ia/test-instalador.mjs).
+TG_API="${CENTRAL_IA_TELEGRAM_API:-https://api.telegram.org}"
+# O @ do bot de um token, pelo getMe; vazio se o Telegram recusar.
+bot_do_token() {
+  TG_TOKEN="$1" TG_API="$TG_API" "$NODE" -e '
+    fetch(`${process.env.TG_API}/bot${process.env.TG_TOKEN}/getMe`, { signal: AbortSignal.timeout(15000) })
+      .then(r => r.json()).then(j => { if (!j.ok) process.exit(1); process.stdout.write(String(j.result.username || "")); })
+      .catch(() => process.exit(1));' 2>/dev/null || true
+}
+# Grava (ou, com valor vazio, apaga) uma chave da configuração.
+gravar_conf() {
+  CONF="$CONF" K="$1" V="$2" "$NODE" -e '
+    const fs = require("node:fs");
+    const re = new RegExp(`^\\s*${process.env.K}\\s*=`);
+    const linhas = (fs.existsSync(process.env.CONF) ? fs.readFileSync(process.env.CONF, "utf8") : "").split("\n").filter(l => !re.test(l));
+    if (process.env.V) linhas.push(`${process.env.K}=${process.env.V}`);
+    fs.writeFileSync(process.env.CONF, linhas.join("\n").replace(/^\n+/, "").replace(/\n*$/, "\n"), { mode: 0o600 });
+    fs.chmodSync(process.env.CONF, 0o600);'
+}
+
+TG_CHAT="$(ler_conf CENTRAL_IA_TELEGRAM_CHAT_ID)"
+# O bot da CONVERSA (só o @): vem do servidor na conexão e fica gravado para o
+# comando de atualizar, que não tem código. Não serve de bot do código.
+CONVERSA="$(ler_conf CENTRAL_IA_TELEGRAM_BOT_CONVERSA)"
+NOVO="${CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO:-}"
+ATUAL="$(ler_conf CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO)"
+# A chave antiga das máquinas instaladas à mão. Nela costumava estar o bot da
+# conversa, cujo token o servidor tem, e o runner já não a aceita: vira bot do
+# código só se o getMe disser que é OUTRO bot que não o da conversa (revisão da
+# T-374). Em qualquer caso sai do arquivo.
+LEGADO="$(ler_conf CENTRAL_IA_TELEGRAM_TOKEN)"
+if [ -n "$LEGADO" ]; then
+  if [ -z "$ATUAL" ] && [ -z "$NOVO" ] && [ -n "$CONVERSA" ]; then
+    NOME_LEGADO="$(bot_do_token "$LEGADO")"
+    if [ -n "$NOME_LEGADO" ] && [ "$NOME_LEGADO" != "$CONVERSA" ]; then
+      gravar_conf CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO "$LEGADO"
+      ATUAL="$LEGADO"
+      ok "Bot do código: @$NOME_LEGADO (veio da configuração antiga desta máquina)."
+    fi
+  fi
+  gravar_conf CENTRAL_IA_TELEGRAM_TOKEN ""
+fi
+if [ -n "$ATUAL" ] && [ -n "$CONVERSA" ] && [ "$(bot_do_token "$ATUAL")" = "$CONVERSA" ]; then
+  # Instalação anterior aos dois bots: o código saía pelo bot da conversa,
+  # cujo token o servidor tem. Sai daqui, e a máquina recusa modificar
+  # arquivos até ganhar o bot do código.
+  gravar_conf CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO ""
+  ATUAL=""
+  aviso "O código saía pelo @$CONVERSA, o bot em que você conversa com a Central. Agora ele sai por um bot só para isso."
+fi
+if [ -z "$NOVO" ] && [ -z "$ATUAL" ] && [ -n "$TG_CHAT" ]; then
+  echo
+  echo "O código de confirmação dos seus pedidos chega por um bot do Telegram só para isso, diferente do bot da conversa."
+  echo "No @BotFather: /newbot, um nome (ex.: Código do seu nome) e um @ terminado em bot. Depois abra o bot novo e toque em Começar."
+  NOVO="$(perguntar_segredo "Cole aqui o token do bot do código (Enter para deixar para depois)")"
+fi
+if [ -n "$NOVO" ]; then
+  NOME="$(bot_do_token "$NOVO")"
+  if [ -z "$CONVERSA" ]; then
+    # Sem saber qual é o bot da conversa não há como recusá-lo aqui. Só
+    # acontece em máquina conectada antes desta versão do instalador.
+    aviso "Não sei qual é o seu bot da conversa, então não posso conferir esse token."
+    aviso "Gere um comando novo em Central de IA › Ajustes › Minhas máquinas e rode-o aqui."
+  elif [ -z "$NOME" ]; then
+    aviso "O Telegram recusou esse token. Confira no @BotFather e rode o comando de novo."
+  elif [ -n "$CONVERSA" ] && [ "$NOME" = "$CONVERSA" ]; then
+    aviso "Esse é o @$NOME, o bot em que você conversa com a Central. O código precisa de um bot só dele: crie outro no @BotFather."
+  else
+    gravar_conf CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO "$NOVO"
+    ATUAL="$NOVO"
+    ok "Bot do código: @$NOME (o token fica só nesta máquina)."
+  fi
 fi
 
 # ---------- serviço ----------
@@ -223,6 +315,7 @@ EOF
     launchctl bootstrap "gui/$(id -u)" "$PLIST" || erro "O macOS não aceitou o serviço ($PLIST)."
   fi
   LOG="tail -f ~/Library/Logs/central-ia-runner.log"
+  LOG_ATUALIZAR="$HOME/Library/Logs/central-ia-runner.log"
 else
   if ! systemctl --user show-environment >/dev/null 2>&1; then
     aviso "O systemd não está ligado nesta máquina, e é ele que mantém o runner rodando."
@@ -236,7 +329,9 @@ else
   UNIDADE="$HOME/.config/systemd/user/central-ia-runner.service"
   # O PATH do terminal, sem as pastas do Windows que o WSL acrescenta: o
   # serviço acharia o `claude` do npm do Windows antes do da distro.
-  PATH_SERVICO="$(printf '%s' "$PATH" | tr ':' '\n' | grep -v '^/mnt/' | paste -sd: -)"
+  PATH_SERVICO="$(printf '%s' "$PATH" | tr ':' '\n' | grep -v '^/mnt/' | paste -sd: - | sed 's/%/%%/g')"
+  # `%` é especificador na unidade do systemd: escrito dobrado, vale literal.
+  NODE_SERVICO="$(printf '%s' "$NODE" | sed 's/%/%%/g')"
   mkdir -p "$(dirname "$UNIDADE")"
   cat > "$UNIDADE" <<EOF
 # Runner da Central de IA — gerado pelo instalador do AlfaMatriz (T-374).
@@ -245,7 +340,7 @@ Description=Runner da Central de IA (AlfaMatriz)
 After=network-online.target
 
 [Service]
-ExecStart="$NODE" %h/.local/share/alfa/central-ia-runner.mjs
+ExecStart="$NODE_SERVICO" %h/.local/share/alfa/central-ia-runner.mjs
 Restart=always
 RestartSec=10
 TimeoutStopSec=60
@@ -255,18 +350,20 @@ Environment="PATH=$PATH_SERVICO"
 [Install]
 WantedBy=default.target
 EOF
-  systemctl --user daemon-reload
-  systemctl --user enable central-ia-runner >/dev/null 2>&1
-  if systemctl --user is-active --quiet central-ia-runner; then RODANDO=1; else systemctl --user start central-ia-runner; fi
+  systemctl --user daemon-reload || erro "O systemd não releu o serviço ($UNIDADE)."
+  systemctl --user enable central-ia-runner >/dev/null 2>&1 || erro "O systemd não aceitou o serviço ($UNIDADE): confira com  systemctl --user status central-ia-runner"
+  if systemctl --user is-active --quiet central-ia-runner; then RODANDO=1; else systemctl --user start central-ia-runner || erro "O serviço não ligou: confira com  journalctl --user -u central-ia-runner"; fi
   # Continua rodando sem sessão aberta.
   EU="$(id -un)"
   loginctl enable-linger "$EU" >/dev/null 2>&1 || aviso "Não consegui ligar o linger: o runner para quando você sair da sessão (sudo loginctl enable-linger $EU resolve)."
   LOG="journalctl --user -u central-ia-runner -f"
+  LOG_ATUALIZAR="$DEST/central-ia-atualizar.log"
 fi
 
 if [ "$RODANDO" = 1 ]; then
   # Já rodava: reinicia só quando não houver pedido em andamento.
-  CENTRAL_IA_RECARREGAR="$RECARREGAR" nohup "$DEST/atualizar-quando-ocioso.sh" >/dev/null 2>&1 &
+  # A saída vai para um log: recarga que falha não pode sumir em silêncio.
+  CENTRAL_IA_RECARREGAR="$RECARREGAR" nohup "$DEST/atualizar-quando-ocioso.sh" >>"$LOG_ATUALIZAR" 2>&1 &
   ok "Serviço atualizado: o runner reinicia sozinho assim que terminar o que está fazendo."
 else
   ok "Serviço ligado."
@@ -284,60 +381,8 @@ else
   [ "$ANEXOS" = 1 ] && aviso "Sem Docker: PDF e vídeo anexados não são convertidos (imagens funcionam)."
 fi
 
-# ---------- Telegram: o bot do código ----------
-# Trocável só para o teste do instalador (tools/central-ia/test-instalador.mjs).
-TG_API="${CENTRAL_IA_TELEGRAM_API:-https://api.telegram.org}"
-# O @ do bot de um token, pelo getMe; vazio se o Telegram recusar.
-bot_do_token() {
-  TG_TOKEN="$1" TG_API="$TG_API" "$NODE" -e '
-    fetch(`${process.env.TG_API}/bot${process.env.TG_TOKEN}/getMe`, { signal: AbortSignal.timeout(15000) })
-      .then(r => r.json()).then(j => { if (!j.ok) process.exit(1); process.stdout.write(String(j.result.username || "")); })
-      .catch(() => process.exit(1));' 2>/dev/null || true
-}
-# Grava (ou, com valor vazio, apaga) uma chave da configuração.
-gravar_conf() {
-  CONF="$CONF" K="$1" V="$2" "$NODE" -e '
-    const fs = require("node:fs");
-    const re = new RegExp(`^\\s*${process.env.K}\\s*=`);
-    const linhas = (fs.existsSync(process.env.CONF) ? fs.readFileSync(process.env.CONF, "utf8") : "").split("\n").filter(l => !re.test(l));
-    if (process.env.V) linhas.push(`${process.env.K}=${process.env.V}`);
-    fs.writeFileSync(process.env.CONF, linhas.join("\n").replace(/^\n+/, "").replace(/\n*$/, "\n"), { mode: 0o600 });
-    fs.chmodSync(process.env.CONF, 0o600);'
-}
-
-TG_CHAT="$(ler_conf CENTRAL_IA_TELEGRAM_CHAT_ID)"
-# O bot da CONVERSA (só o @, vindo do servidor na conexão): não serve de bot do código.
-CONVERSA="$(sed -n 's/.*"bot":"\([^"]*\)".*/\1/p' "$TMP/conectada.json" 2>/dev/null || true)"
-NOVO="${CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO:-}"
-ATUAL="$(ler_conf CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO)"
-if [ -n "$ATUAL" ] && [ -n "$CONVERSA" ] && [ "$(bot_do_token "$ATUAL")" = "$CONVERSA" ]; then
-  # Instalação anterior aos dois bots: o código saía pelo bot da conversa,
-  # cujo token o servidor tem. Sai daqui, e a máquina recusa modificar
-  # arquivos até ganhar o bot do código.
-  gravar_conf CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO ""
-  ATUAL=""
-  aviso "O código saía pelo @$CONVERSA, o bot em que você conversa com a Central. Agora ele sai por um bot só para isso."
-fi
-if [ -z "$NOVO" ] && [ -z "$ATUAL" ] && [ -n "$TG_CHAT" ]; then
-  echo
-  echo "O código de confirmação dos seus pedidos chega por um bot do Telegram só para isso, diferente do bot da conversa."
-  echo "No @BotFather: /newbot, um nome (ex.: Código do seu nome) e um @ terminado em bot. Depois abra o bot novo e toque em Começar."
-  NOVO="$(perguntar_segredo "Cole aqui o token do bot do código (Enter para deixar para depois)")"
-fi
-if [ -n "$NOVO" ]; then
-  NOME="$(bot_do_token "$NOVO")"
-  if [ -z "$NOME" ]; then
-    aviso "O Telegram recusou esse token. Confira no @BotFather e rode o comando de novo."
-  elif [ -n "$CONVERSA" ] && [ "$NOME" = "$CONVERSA" ]; then
-    aviso "Esse é o @$NOME, o bot em que você conversa com a Central. O código precisa de um bot só dele: crie outro no @BotFather."
-  else
-    gravar_conf CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO "$NOVO"
-    ATUAL="$NOVO"
-    ok "Bot do código: @$NOME (o token fica só nesta máquina)."
-  fi
-fi
-
-TG_TOKEN="$ATUAL"; [ -n "$TG_TOKEN" ] || TG_TOKEN="$(ler_conf CENTRAL_IA_TELEGRAM_TOKEN)"
+# ---------- Telegram: mensagem de teste pelo bot do código ----------
+TG_TOKEN="$ATUAL"
 if [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ]; then
   if TG_TOKEN="$TG_TOKEN" TG_CHAT="$TG_CHAT" TG_API="$TG_API" MAQUINA="$(ler_conf CENTRAL_IA_MAQUINA)" "$NODE" -e '
       fetch(`${process.env.TG_API}/bot${process.env.TG_TOKEN}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" },

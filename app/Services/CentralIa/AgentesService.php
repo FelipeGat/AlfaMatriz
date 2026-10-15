@@ -635,6 +635,9 @@ class AgentesService
                 'motivo' => trim(($execucao->roteamento['motivo'] ?? '').' · '.$comoFoi.', ~'.number_format($r['tokens_estimados'] / 1000, 1, ',', '').' mil tokens', ' ·')])]);
         }
 
+        // As opções da pessoa (T-374), lidas uma vez para as duas chaves.
+        $opcoes = app(Preferencias::class)->ler($user);
+
         return [
             'id' => $execucao->id,
             'agente' => $execucao->agente,
@@ -664,8 +667,8 @@ class AgentesService
             // para quem implementa e a memória do Claude da máquina dela. O
             // ARQUIVO da memória quem escolhe é a máquina; aqui só se diz sim
             // ou não.
-            'cstk' => (bool) (app(Preferencias::class)->ler($user)['cstk'] ?? false),
-            'memoria' => (bool) (app(Preferencias::class)->ler($user)['memoria'] ?? false),
+            'cstk' => (bool) ($opcoes['cstk'] ?? false),
+            'memoria' => (bool) ($opcoes['memoria'] ?? false),
             // Semente do chat de assunto: o runner lê estas conversas (pelo id,
             // entre as que ELE listou) e entrega o extrato da última semana.
             'semear' => $execucao->roteamento['semear'] ?? null,
@@ -1244,6 +1247,28 @@ class AgentesService
                 $e->update(['status' => CentralIaExecucao::FALHOU, 'resposta_id' => $aviso->id, 'concluida_em' => now(),
                     'erro' => 'interrompida porque a máquina reiniciou sem o runner avisar']);
                 Eventos::registrar($user, 'falhou', "{$e->nomeDoAgente()} interrompido: a máquina reiniciou no meio do pedido #{$e->id}", Eventos::da($e) + ['origem' => 'runner'], 'erro');
+                $e->tarefa?->update(['status' => CentralIaTarefa::FALHOU, 'ultima_atividade_em' => now()]);
+            }));
+    }
+
+    /**
+     * A máquina foi desconectada em Minhas máquinas com pedidos na mão: o
+     * runner dela já não consegue devolver a resposta (o token caiu), e o
+     * pedido ficava "executando" até o teto — ocupando o paralelo da pessoa e
+     * avisando a falha só lá no fim (revisão da T-374).
+     */
+    public function interromperDaMaquinaDesconectada(User $user, CentralIaRunner $runner): void
+    {
+        CentralIaExecucao::where('user_id', $user->id)->where('runner_id', $runner->id)
+            ->where('status', CentralIaExecucao::EXECUTANDO)->get()
+            ->each(fn (CentralIaExecucao $e) => DB::transaction(function () use ($user, $e, $runner) {
+                $e = CentralIaExecucao::whereKey($e->id)->lockForUpdate()->first();
+                if (! $e || $e->status !== CentralIaExecucao::EXECUTANDO) return;
+                $aviso = $this->conversas->registrarDoAgente($user, 'Central', "A máquina {$runner->maquina} foi desconectada no meio do trabalho de {$e->nomeDoAgente()}".($e->projeto ? " em {$e->projeto}" : '')
+                    .'; o pedido foi interrompido. O que já tinha sido alterado ficou na pasta dela. Para retomar, conecte a máquina de novo e diga "pode seguir".', CentralIaMensagem::AUTOR_SISTEMA, $e->projeto ?: null, $e->tarefa_id);
+                $e->update(['status' => CentralIaExecucao::FALHOU, 'resposta_id' => $aviso->id, 'concluida_em' => now(),
+                    'erro' => 'interrompida porque a máquina foi desconectada']);
+                Eventos::registrar($user, 'falhou', "{$e->nomeDoAgente()} interrompido: a máquina {$runner->maquina} foi desconectada no meio do pedido #{$e->id}", Eventos::da($e) + ['origem' => 'web'], 'erro');
                 $e->tarefa?->update(['status' => CentralIaTarefa::FALHOU, 'ultima_atividade_em' => now()]);
             }));
     }

@@ -26,8 +26,13 @@
 # voltaria com o plist velho. Então o pedido é "pausar": o runner para de pedir
 # trabalho e avisa em "central-ia-pausado", e daqui se descarrega e carrega o
 # serviço sem pedido na mão.
+#
+# A saída vai para o log do runner (o instalador a manda para lá): uma recarga
+# que falhasse em silêncio deixava o serviço descarregado sem rastro nenhum
+# (revisão da T-374).
 set -eu
 DIR="$HOME/.local/share/alfa"
+log() { printf '%s atualizar-quando-ocioso: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 OCUPADO="$DIR/central-ia-ocupado"
 REINICIAR="$DIR/central-ia-reiniciar"
 CONHECE="$DIR/central-ia-conhece-reinicio"
@@ -50,10 +55,17 @@ if [ "$(uname -s)" = Darwin ]; then
       launchctl bootout "gui/$(id -u)/$ROTULO" 2>/dev/null || true
       for i in $(seq 1 75); do launchctl print "gui/$(id -u)/$ROTULO" >/dev/null 2>&1 || break; sleep 1; done
       for i in $(seq 1 30); do
-        launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null && return 0
-        launchctl print "gui/$(id -u)/$ROTULO" >/dev/null 2>&1 && return 0
+        launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null && { log "serviço recarregado"; return 0; }
+        launchctl print "gui/$(id -u)/$ROTULO" >/dev/null 2>&1 && { log "serviço recarregado"; return 0; }
         sleep 2
       done
+      # Última tentativa, com o erro do launchctl no log, e o comando para
+      # quem abrir o log: descarregado, o KeepAlive não religa nada.
+      if launchctl bootstrap "gui/$(id -u)" "$PLIST" && launchctl kickstart "gui/$(id -u)/$ROTULO"; then
+        log "serviço recarregado na última tentativa"; return 0
+      fi
+      log "ERRO: o macOS não recarregou o serviço; o runner está DESLIGADO. Para ligar à mão:"
+      log "  launchctl bootstrap gui/$(id -u) $PLIST"
       return 1
     }
   else
@@ -70,6 +82,22 @@ ocioso() { # $1 = pid do runner
 }
 conhece() { [ "$(cat "$CONHECE" 2>/dev/null || true)" = "$1" ]; }
 pedir() { if [ "$RECARREGAR" = 1 ]; then echo pausar > "$REINICIAR"; else : > "$REINICIAR"; fi; }
+
+# Um de cada vez: dois instaladores rodados juntos davam dois scripts, e com
+# RECARREGAR os dois descarregavam e carregavam o serviço ao mesmo tempo
+# (revisão da T-374). O segundo espera o primeiro terminar — e não desiste,
+# porque pode trazer o plist novo que o primeiro não viu. Trava largada por
+# um script que morreu (pid que não existe mais) é desfeita.
+TRAVA="$DIR/central-ia-atualizar.trava"
+until mkdir "$TRAVA" 2>/dev/null; do
+  dono="$(cat "$TRAVA/pid" 2>/dev/null || true)"
+  if [ -n "$dono" ] && ! kill -0 "$dono" 2>/dev/null; then rm -rf "$TRAVA"; continue; fi
+  # Sem pid há mais de 1 min: morreu entre o mkdir e gravar o pid.
+  if [ -z "$dono" ] && [ -n "$(find "$TRAVA" -maxdepth 0 -mmin +1 2>/dev/null)" ]; then rm -rf "$TRAVA"; continue; fi
+  sleep 5
+done
+echo $$ > "$TRAVA/pid"
+trap 'rm -rf "$TRAVA"' EXIT
 
 antes="$(pid_do_runner || true)"
 # Serviço parado: não há pedido a perder.
