@@ -1144,7 +1144,7 @@
                                         <template x-for="(nomeIa, ia) in {claude: 'Claude', codex: 'Codex', copilot: 'Copilot'}" :key="nivel + ia">
                                             <label class="flex items-center gap-2 text-xs text-ink-mute"><span class="w-14 flex-none" x-text="nomeIa"></span>
                                                 <input type="text" :value="ajustes.niveis?.[nivel]?.[ia]?.modelo ?? ''" @input="ajustes.niveis[nivel][ia].modelo = $event.target.value.trim() || null"
-                                                       placeholder="padrão" pattern="[A-Za-z0-9._-]+" maxlength="60" class="min-w-0 flex-1 rounded-control border-line bg-input py-1 text-xs text-ink">
+                                                       placeholder="padrão" pattern="[A-Za-z0-9._\-]+" maxlength="60" class="min-w-0 flex-1 rounded-control border-line bg-input py-1 text-xs text-ink">
                                                 <select :value="ajustes.niveis?.[nivel]?.[ia]?.esforco ?? ''" @change="ajustes.niveis[nivel][ia].esforco = $event.target.value || null" :aria-label="'Esforço de ' + nomeIa + ' no nível ' + rotuloNivel" class="rounded-control border-line bg-input py-1 text-xs text-ink">
                                                     <option value="">padrão</option><option value="low">baixo</option><option value="medium">médio</option><option value="high">alto</option>
                                                 </select>
@@ -1260,7 +1260,7 @@
                     <form @submit.prevent="salvarPop()" class="mt-3 space-y-2 rounded-control border border-brand-mute p-3">
                         <div class="flex flex-wrap gap-2">
                             <label class="text-xs text-ink-mute">Sistema
-                                <input x-model="popEditando.sistema" required pattern="[A-Za-z0-9._-]+" maxlength="128" class="mt-1 block w-40 rounded-control border-line bg-input py-1 text-sm text-ink"></label>
+                                <input x-model="popEditando.sistema" required pattern="[A-Za-z0-9._\-]+" maxlength="128" class="mt-1 block w-40 rounded-control border-line bg-input py-1 text-sm text-ink"></label>
                             <label class="min-w-0 flex-1 text-xs text-ink-mute">Título
                                 <input x-model="popEditando.titulo" required maxlength="160" class="mt-1 block w-full rounded-control border-line bg-input py-1 text-sm text-ink"></label>
                         </div>
