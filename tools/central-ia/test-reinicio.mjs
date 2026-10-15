@@ -70,6 +70,10 @@ assert.match(log, /runner encerrado/);
 const fonte = readFileSync(RUNNER, 'utf8');
 assert.match(fonte, /if \(!rodando\.size && existsSync\(REINICIAR\)\)/);
 assert.ok(fonte.indexOf('existsSync(REINICIAR)') < fonte.indexOf("api('proxima'"), 'o reinício tem de ser decidido antes de pedir trabalho');
+// Revisão da T-374: na espera longa (acesso recusado ou rede), o arquivo de
+// reinício só encurta a espera com a máquina livre. Com um pedido rodando, o
+// laço não sai, e a espera cortada a cada 1 s virava consulta por segundo.
+assert.match(fonte, /if \(espera > 10_000 && !rodando\.size && existsSync\(REINICIAR\)\) break;/);
 rmSync(home, { recursive: true, force: true });
 
 /* ---------- 1b. pausar (Mac, plist mudado) e token novo depois de reconectar ---------- */
@@ -130,7 +134,7 @@ rmSync(home, { recursive: true, force: true });
 
 /* ---------- 2. o script, com launchctl/systemctl e pgrep de mentira ---------- */
 // O serviço falso: `pid` guarda o pid atual; "kill" registra o reinício à força.
-function cenario({ ocupado = '0', saiSozinho = false, liberaEm = 0, atraso = 0, recarregar = false }) {
+function cenario({ ocupado = '0', saiSozinho = false, liberaEm = 0, atraso = 0, recarregar = false, naoVolta = false, travaDeOutro = false, env = {}, limite = 20_000 }) {
     const raiz = mkdtempSync(join(tmpdir(), 'central-ia-ocioso-'));
     const bin = join(raiz, 'bin');
     const alfa = join(raiz, '.local/share/alfa');
@@ -174,13 +178,15 @@ while [ ! -f "$R/fim" ]; do
   [ ${liberaEm} -gt 0 ] && [ $n -ge ${liberaEm} ] && echo 0 > "$A/central-ia-ocupado"
   if ${saiSozinho} && [ $n -ge ${atraso} ] && [ -f "$A/central-ia-reiniciar" ] && [ "$(cat "$A/central-ia-ocupado")" = 0 ]; then
     if [ "$(cat "$A/central-ia-reiniciar")" = pausar ]; then rm -f "$A/central-ia-reiniciar"; cat "$R/pid" > "$A/central-ia-pausado"
-    else rm -f "$A/central-ia-reiniciar"; echo 300 > "$R/pid"; exit 0; fi
+    else rm -f "$A/central-ia-reiniciar"; echo ${naoVolta ? 0 : 300} > "$R/pid"; exit 0; fi
   fi
   /bin/sleep 0.05
 done`;
     writeFileSync(join(raiz, 'ator.sh'), ator);
+    // Outra atualização viva segurando a trava (o pid é o deste teste).
+    if (travaDeOutro) { mkdirSync(join(alfa, 'central-ia-atualizar.trava')); writeFileSync(join(alfa, 'central-ia-atualizar.trava/pid'), String(process.pid)); }
     const a = spawn('bash', [join(raiz, 'ator.sh')], { stdio: 'ignore' });
-    const r = spawnSync('bash', [SCRIPT], { env: { ...process.env, HOME: raiz, PATH: `${bin}:${process.env.PATH}`, CENTRAL_IA_RECARREGAR: recarregar ? '1' : '0' }, timeout: 20_000 });
+    const r = spawnSync('bash', [SCRIPT], { env: { ...process.env, HOME: raiz, PATH: `${bin}:${process.env.PATH}`, CENTRAL_IA_RECARREGAR: recarregar ? '1' : '0', ...env }, timeout: limite });
     writeFileSync(join(raiz, 'fim'), '');
     a.kill();
     const res = {
@@ -188,6 +194,7 @@ done`;
         forcado: existsSync(join(raiz, 'kill')) ? readFileSync(join(raiz, 'kill'), 'utf8').trim().split('\n').length : 0,
         arquivo: existsSync(join(alfa, 'central-ia-reiniciar')),
         pid: readFileSync(join(raiz, 'pid'), 'utf8').trim(),
+        ...(naoVolta || travaDeOutro ? { saida: r.stdout.toString(), trava: existsSync(join(alfa, 'central-ia-atualizar.trava')) } : {}),
         ...(recarregar ? { recarga: existsSync(join(raiz, 'recarga')) ? readFileSync(join(raiz, 'recarga'), 'utf8').trim().split('\n') : [] } : {}),
     };
     rmSync(raiz, { recursive: true, force: true });
@@ -223,8 +230,26 @@ assert.deepEqual(r, { status: 0, forcado: 1, arquivo: false, pid: '200' });
 r = cenario({ saiSozinho: false, ocupado: '1', liberaEm: 40 });
 assert.deepEqual(r, { status: 0, forcado: 1, arquivo: false, pid: '200' });
 
+// Revisão da T-374: o serviço que não volta não segura o script para sempre.
+// Depois do teto sem runner (30 min; aqui, 60 s de relógio simulado), desiste
+// com o comando no log e apaga o pedido — um "pausar" largado faria o runner
+// que voltasse depois ficar parado sem ninguém para recarregá-lo.
+r = cenario({ saiSozinho: true, naoVolta: true, env: { CENTRAL_IA_ATUALIZAR_TETO_SEM_RUNNER: '60' }, limite: 10_000 });
+assert.equal(r.status, 1, `devia desistir:\n${r.saida}`);
+assert.equal(r.arquivo, false, 'desistindo, apaga o pedido de reinício');
+assert.match(r.saida, /não voltou em 1 min/);
+assert.equal(r.trava, false, 'e solta a trava');
+
+// E a trava de outra atualização viva também tem teto (2 h; aqui, 60 s).
+r = cenario({ saiSozinho: true, travaDeOutro: true, env: { CENTRAL_IA_ATUALIZAR_TETO_TRAVA: '60' }, limite: 10_000 });
+assert.equal(r.status, 1, `devia desistir da trava:\n${r.saida}`);
+assert.equal(r.forcado, 0);
+assert.equal(r.pid, '100', 'sem a trava, não mexe no runner');
+assert.equal(r.trava, true, 'a trava é da outra: fica');
+assert.match(r.saida, /outra atualização/);
+
 // A última checagem do caminho antigo vem colada no kill, sem espera entre as duas.
 const script = readFileSync(SCRIPT, 'utf8');
 assert.match(script, /if ocioso "\$agora"; then rm -f "\$REINICIAR"; reiniciar; exit 0; fi/);
 
-console.log('PASSOU: o runner sai sozinho antes de pedir trabalho quando o reinício é pedido; o script não mata o runner novo (nem o lento) e só mata o antigo livre; no Mac, plist mudado recarrega o serviço com o runner pausado; token trocado no arquivo vale no primeiro 401.');
+console.log('PASSOU: o runner sai sozinho antes de pedir trabalho quando o reinício é pedido; o script não mata o runner novo (nem o lento) e só mata o antigo livre; no Mac, plist mudado recarrega o serviço com o runner pausado; token trocado no arquivo vale no primeiro 401; e o script desiste com log depois do teto (serviço que não volta, trava de outra atualização).');

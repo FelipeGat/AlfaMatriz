@@ -178,7 +178,11 @@ class CentralIaTelegram extends Command
                 // uma pessoa atrasava os bots e as entregas de todas (revisão
                 // da T-374).
                 if ($n < 3) {
-                    $this->warn("Update {$update['update_id']} do bot @{$bot->usuario} falhou (".class_basename($e).'); tento de novo no próximo ciclo.');
+                    $this->warn("Update {$update['update_id']} do bot @{$bot->usuario} falhou (".class_basename($e).'); tento de novo em 5 s.');
+                    // Com o bot de outra pessoa recebendo, a volta segue sem
+                    // pausa e as três tentativas saíam em segundos — um
+                    // tropeço passageiro (banco, rede) descartava a mensagem.
+                    $this->deLado[$bot->id] = time() + 5;
 
                     return false;
                 }

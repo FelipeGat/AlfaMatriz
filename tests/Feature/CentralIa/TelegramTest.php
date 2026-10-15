@@ -508,6 +508,41 @@ class TelegramTest extends TestCase
     }
 
     /**
+     * Revisão da T-374: com o bot de outra pessoa recebendo, a volta segue sem
+     * pausa, e as três tentativas do update ruim saíam em segundos. Depois de
+     * uma falha, o bot dele fica 5 s de lado.
+     */
+    public function test_update_com_erro_espera_antes_de_ser_tentado_de_novo(): void
+    {
+        $ana = $this->comCentral();
+        $bruno = $this->comCentral();
+        $botAna = $this->botNoTeste($ana);
+        $this->botNoTeste($bruno);
+        $proximo = 10;
+        Http::fake([
+            'api.telegram.org/*/getWebhookInfo' => Http::response(['ok' => true, 'result' => ['url' => '']]),
+            'api.telegram.org/*/getUpdates' => function () use (&$proximo) { return Http::response(['ok' => true, 'result' => [$this->update($proximo++, 'oi')]]); },
+        ]);
+        $this->partialMock(TelegramCanal::class, fn ($m) => $m->shouldReceive('receber')->andReturnUsing(function ($update, $bot) use ($ana) {
+            if ($bot->user_id === $ana->id) throw new \RuntimeException('update ruim');
+        }));
+
+        // Duas voltas no MESMO processo, uma colada na outra, como no laço.
+        $cmd = $this->app->make(\App\Console\Commands\CentralIaTelegram::class);
+        $cmd->setLaravel($this->app);
+        $cmd->setInput(new \Symfony\Component\Console\Input\ArrayInput([], $cmd->getDefinition()));
+        $cmd->setOutput(new \Illuminate\Console\OutputStyle(new \Symfony\Component\Console\Input\ArrayInput([]), new \Symfony\Component\Console\Output\BufferedOutput));
+        $ciclo = new \ReflectionMethod($cmd, 'ciclo');
+        $args = [app(\App\Services\CentralIa\TelegramApi::class), app(TelegramCanal::class), app(\App\Services\CentralIa\TelegramConsumerLock::class)];
+        $ciclo->invoke($cmd, ...$args);
+        $ciclo->invoke($cmd, ...$args);
+
+        $leiturasDaAna = collect(Http::recorded())->filter(fn ($par) => str_contains($par[0]->url(), $botAna->token.'/getUpdates'))->count();
+        $this->assertSame(1, $leiturasDaAna, 'o bot da Ana ficou de lado na volta seguinte');
+        $this->assertSame(0, $botAna->fresh()->proximo_update_id, 'e o update dele continua para ser tentado');
+    }
+
+    /**
      * Revisão da T-374: o número do update é de cada bot. Trocado o bot, os
      * números do antigo saem, e o update 10 do novo não some como repetido.
      */
