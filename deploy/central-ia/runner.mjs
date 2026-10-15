@@ -182,13 +182,29 @@ function listarProjetos() {
 
 /* ---------- AlfaMatriz ---------- */
 
-async function api(caminho, corpo) {
+// A máquina conectada de novo (o comando rodado com código novo) troca o
+// token no arquivo, e o servidor apaga o antigo na hora; este processo ainda
+// tem o antigo na memória até reiniciar. No primeiro 401, relê o arquivo e, se
+// o token mudou, tenta de novo com ele: senão o resultado do pedido que estava
+// rodando voltava com 401 e se perdia (revisão da T-374).
+function tokenNovoNoArquivo() {
+    if (process.env.ALFAMATRIZ_RUNNER_TOKEN) return false;
+    let novo;
+    try { novo = lerConfig().token; } catch { return false; }
+    if (!novo || novo === cfg.token) return false;
+    cfg.token = novo;
+    log('token novo no arquivo de configuração: usando-o (a máquina foi conectada de novo)');
+    return true;
+}
+
+async function api(caminho, corpo, deNovo = true) {
     const r = await fetch(`${cfg.url}/api/central-ia/runner/${caminho}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify(corpo),
         signal: AbortSignal.timeout(20000),
     });
+    if (r.status === 401 && deNovo && tokenNovoNoArquivo()) return api(caminho, corpo, false);
     const texto = await r.text();
     let json = null;
     try { json = texto ? JSON.parse(texto) : null; } catch {}
@@ -196,13 +212,14 @@ async function api(caminho, corpo) {
 }
 
 /** Um arquivo para a Central (multipart): a prévia que o agente deixou. */
-async function apiArquivo(caminho, campos, conteudo, nome) {
+async function apiArquivo(caminho, campos, conteudo, nome, deNovo = true) {
     const form = new FormData();
     for (const [k, v] of Object.entries(campos)) form.append(k, v);
     form.append('arquivo', new Blob([conteudo]), nome);
     const r = await fetch(`${cfg.url}/api/central-ia/runner/${caminho}`, {
         method: 'POST', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/json' }, body: form, signal: AbortSignal.timeout(120000),
     });
+    if (r.status === 401 && deNovo && tokenNovoNoArquivo()) return apiArquivo(caminho, campos, conteudo, nome, false);
     return r.status;
 }
 
@@ -986,6 +1003,16 @@ let ultimoTrabalho = Date.now();
 // `OCUPADO`, e um pedido que chegava entre a checagem e o kill morria como
 // "expirada" (#17 no staging, 15/10/2026). O serviço (KeepAlive no launchd,
 // Restart=always no systemd) o religa já com a versão nova.
+//
+// Revisão da T-374, mais dois pedaços:
+// - `CONHECE` diz ao script que ESTE processo sabe sair sozinho. Sem isso o
+//   script supunha "runner antigo" depois de ~20 s sem saída, e um `proxima`
+//   lento (até 20 s) ainda podia trazer um pedido no instante do kill.
+// - "pausar" no arquivo: no Mac, quando o serviço em si mudou (o plist), o
+//   launchd só relê o plist descarregando o serviço, e religar sozinho volta
+//   com o plist velho. Então o runner para de pedir trabalho, avisa em
+//   `PAUSADO`, e o script descarrega e carrega o serviço sem pedido nenhum na
+//   mão. Ninguém veio em 2 min (o script morreu): volta a trabalhar.
 const REINICIAR = join(HOME, '.local/share/alfa/central-ia-reiniciar');
 // Transcrição de reuniões (Secretário, Etapa 4): uma por vez; a presença da
 // imagem é conferida a cada 10 min (o instalador pode tê-la criado depois).
@@ -1005,12 +1032,31 @@ async function whisperPronto() {
     if (Date.now() - whisperConferido.em > 600_000) whisperConferido = { em: Date.now(), ok: await whisperInstalado() };
     return whisperConferido.ok;
 }
+const CONHECE = join(HOME, '.local/share/alfa/central-ia-conhece-reinicio');
+const PAUSADO = join(HOME, '.local/share/alfa/central-ia-pausado');
+const PAUSA_MAX_MS = 120_000;
+try { writeFileSync(CONHECE, String(process.pid)); } catch {}
+let pausadoDesde = 0;
 while (!parar) {
     if (!rodando.size && existsSync(REINICIAR)) {
+        let pedido = '';
+        try { pedido = readFileSync(REINICIAR, 'utf8').trim(); } catch {}
         try { unlinkSync(REINICIAR); } catch {}
-        log('reiniciando para carregar a versão nova (nada em andamento)');
-        parar = true;
-        break;
+        if (pedido === 'pausar') {
+            pausadoDesde = Date.now();
+            try { writeFileSync(PAUSADO, String(process.pid)); } catch {}
+            log('parado, sem pedir trabalho, para o serviço ser recarregado (nada em andamento)');
+        } else {
+            log('reiniciando para carregar a versão nova (nada em andamento)');
+            parar = true;
+            break;
+        }
+    }
+    if (pausadoDesde) {
+        if (Date.now() - pausadoDesde < PAUSA_MAX_MS) { await new Promise(r => setTimeout(r, 1000)); continue; }
+        pausadoDesde = 0;
+        try { unlinkSync(PAUSADO); } catch {}
+        log('ninguém recarregou o serviço em 2 min: voltando a pedir trabalho');
     }
     try {
         // Reuniões do Secretário: uma transcrição por vez, quando a imagem

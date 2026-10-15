@@ -102,21 +102,39 @@ class Maquinas
     /**
      * A máquina troca o código pelo token. Uso único: o `pull` tira o código
      * do cache antes de qualquer outra coisa, e o segundo uso não acha nada.
+     * O `pull` sozinho lê e depois apaga (no cache `database`, duas consultas):
+     * duas trocas no mesmo instante liam as duas e saíam com dois tokens
+     * (revisão da T-374). A trava faz uma esperar a outra, e a segunda já não
+     * acha o código.
      * As portas da tela valem de novo aqui — quem perdeu o perfil ou foi
      * desativado nos 15 minutos não leva o token.
      *
      * A mesma máquina conectada de novo (o comando rodado outra vez, com
-     * código novo) troca o token antigo dela, em vez de deixar dois.
+     * código novo) troca o token antigo dela, em vez de deixar dois. Máquina
+     * NOVA (`$nova`: sem configuração anterior) com o nome de outra da mesma
+     * pessoa ganha um sufixo: dois Macs chamados "MacBook-Pro" não podem um
+     * desconectar o outro em silêncio (revisão da T-374).
      */
-    public function concluir(string $codigo, string $maquina): ?array
+    public function concluir(string $codigo, string $maquina, bool $nova = false): ?array
     {
-        $dados = Cache::pull($this->chave($codigo));
+        $chave = $this->chave($codigo);
+        try {
+            $dados = Cache::lock($chave.':trava', 10)->block(5, fn () => Cache::pull($chave));
+        } catch (\Illuminate\Contracts\Cache\LockTimeoutException) {
+            $dados = null;
+        }
         $user = $dados ? User::find($dados['user_id']) : null;
         if (! $user || ! $this->podeConectar($user)) {
             return null;
         }
 
-        $token = DB::transaction(function () use ($user, $maquina) {
+        $token = DB::transaction(function () use ($user, &$maquina, $nova) {
+            if ($nova) {
+                $usados = $this->tokens($user)->pluck('name')->all();
+                for ($base = mb_substr($maquina, 0, 60), $n = 2; in_array($maquina, $usados, true); $n++) {
+                    $maquina = "{$base}-{$n}";
+                }
+            }
             $this->tokens($user)->filter(fn ($t) => $t->name === $maquina)->each(function ($t) use ($user) {
                 CentralIaRunner::where('user_id', $user->id)->where('token_id', $t->id)->update(['token_id' => null]);
                 $t->delete();
@@ -127,19 +145,22 @@ class Maquinas
         Eventos::registrar($user, 'maquina', "Máquina {$maquina} conectada à Central.", ['origem' => 'runner']);
 
         $chat = CentralIaTelegramVinculo::where('user_id', $user->id)->value('chat_id');
-        // O bot DA PESSOA (T-374): ela conversa e recebe o código pelo mesmo
-        // bot. O token ir à máquina dela não abre nada que ela já não tenha.
         $bot = CentralIaTelegramBot::desteServidor()->where('user_id', $user->id)->first();
 
         return [
             'token' => $token->plainTextToken,
+            'maquina' => $maquina,
             'conta' => $user->name,
-            // O chat vai UMA vez, na instalação, e fica no arquivo da máquina.
-            // Depois disso o servidor não muda para onde o código vai: se
-            // mudasse, quem controlasse o servidor mandaria o código para o
-            // próprio Telegram e confirmaria o que quisesse.
+            // Só o chat, e UMA vez, na instalação: ele fica no arquivo da
+            // máquina, e o servidor não muda depois para onde o código vai.
+            // O código sai por um SEGUNDO bot da pessoa, cujo token é colado no
+            // terminal e nunca passa pelo servidor (decisão da T-368, mantida
+            // na T-374 com um par de bots por pessoa). Com o token do bot da
+            // conversa aqui, quem controlasse o servidor encaminharia a
+            // mensagem com o código e confirmaria o que quisesse (revisão da
+            // T-374). O nome do bot da conversa vai só para o instalador
+            // recusar o mesmo bot no lugar do de código.
             'telegram' => [
-                'token' => $bot && $chat ? $bot->token : null,
                 'chat_id' => $bot && $chat ? (string) $chat : null,
                 'bot' => $bot?->usuario,
             ],
@@ -158,12 +179,17 @@ class Maquinas
         Eventos::registrar($user, 'maquina', "Máquina {$token->name} desconectada da Central.", ['origem' => 'web']);
     }
 
-    /** O comando que a pessoa cola no terminal. */
+    /**
+     * O comando que a pessoa cola no terminal. O código vai no AMBIENTE do
+     * bash, e não como argumento: argumento aparece no `ps` de qualquer
+     * usuário da máquina durante a instalação inteira; o ambiente de um
+     * processo, só para o dono dele (revisão da T-374).
+     */
     public function comando(?string $codigo = null): string
     {
         $url = rtrim((string) config('app.url'), '/');
 
-        return "curl -fsSL {$url}/central-ia/instalar.sh | bash".($codigo ? " -s -- {$codigo}" : '');
+        return "curl -fsSL {$url}/central-ia/instalar.sh | ".($codigo ? "CENTRAL_IA_CODIGO={$codigo} " : '').'bash';
     }
 
     /** O instalador, com o endereço deste AlfaMatriz já dentro. */

@@ -85,15 +85,24 @@ class TelegramCanal
         if (! $webhook['ok'] || filled($webhook['resultado']['url'] ?? null)) {
             throw ValidationException::withMessages(['token' => 'Esse bot já está ligado a outro sistema (webhook). Crie um bot só para a Central.']);
         }
+        // O vínculo de quem pareou com o bot ANTIGO (o do .env, antes da
+        // T-374) só continua se o bot cadastrado agora já conversou com aquele
+        // chat. Bot que a pessoa nunca abriu não pode escrever primeiro: a tela
+        // dizia "vinculado" e o código de confirmação não chegava (revisão da
+        // T-374). Só o "chat não encontrado" (400) ou "bot bloqueado" (403) do
+        // Telegram desfaz; falha de rede não decide nada.
+        $chat = CentralIaTelegramVinculo::where('user_id', $user->id)->value('chat_id');
+        $conhece = $chat ? $api->chamar('getChat', ['chat_id' => $chat]) : null;
+        $chatDesconhecido = $conhece && in_array($conhece['status'] ?? null, [400, 403], true);
 
-        return DB::transaction(function () use ($user, $token, $botId, $usuario) {
+        return DB::transaction(function () use ($user, $token, $botId, $usuario, $chatDesconhecido) {
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             if (CentralIaTelegramBot::where('telegram_bot_id', $botId)->where('user_id', '!=', $user->id)->exists()) {
                 throw ValidationException::withMessages(['token' => 'Esse bot já está cadastrado em outra conta. Cada pessoa usa o próprio bot.']);
             }
             $anterior = CentralIaTelegramBot::where('user_id', $user->id)->lockForUpdate()->first();
             $mesmo = $anterior && $anterior->telegram_bot_id === $botId && $anterior->servidor === CentralIaTelegramBot::servidorAtual();
-            if ($anterior && ! $mesmo) {
+            if (($anterior && ! $mesmo) || $chatDesconhecido) {
                 $this->desfazerVinculo($user);
             }
             $bot = CentralIaTelegramBot::updateOrCreate(['user_id' => $user->id], [
