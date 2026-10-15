@@ -38,13 +38,18 @@ O `instalar.sh` (servido pelo AlfaMatriz com o endereço dele dentro):
   pergunta a pasta dos projetos e grava
   `~/.config/alfa/central-ia-runner.env` (0600), mantendo o que já houver nele. O segredo da confirmação
   nasce ali e nunca sai da máquina; o chat do Telegram vem do servidor nessa hora, uma vez só;
+- pede o token do bot do código sem eco no terminal (ou o lê de `CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO`),
+  confere no Telegram (`getMe`) e recusa o bot da conversa no lugar dele — com ou sem código, porque o @ do
+  bot da conversa fica gravado (`CENTRAL_IA_TELEGRAM_BOT_CONVERSA`) na conexão. Uma instalação antiga que
+  mandava o código pelo bot da conversa perde esse token e passa a recusar modificar arquivos até ganhar o
+  bot do código. A chave antiga `CENTRAL_IA_TELEGRAM_TOKEN` sai do arquivo; vira bot do código só se for
+  outro bot que não o da conversa. Tudo isso ANTES de ligar o serviço: o runner que sobe já acha o token
+  (e relê o arquivo antes de cada batida e de cada confirmação);
 - liga o serviço: `systemd --user` no Linux e na WSL (com `linger`), `launchd` no Mac
   (`~/Library/LaunchAgents/br.com.alfa.central-ia-runner.plist`, log em `~/Library/Logs/central-ia-runner.log`).
-  WSL sem systemd: o instalador diz como ligar;
+  WSL sem systemd: o instalador diz como ligar. Com o node do nvm (ou fnm, volta, asdf), o serviço guarda o
+  caminho da versão: trocou a versão, rode o comando de atualizar;
 - prepara a imagem Docker que converte PDF e vídeo, se houver Docker (`--sem-anexos` pula);
-- pede o token do bot do código sem eco no terminal (ou o lê de `CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO`),
-  confere no Telegram (`getMe`) e recusa o bot da conversa no lugar dele; uma instalação antiga que mandava o
-  código pelo bot da conversa perde esse token e passa a recusar modificar arquivos até ganhar o bot do código;
 - manda uma mensagem de teste pelo bot do código.
 
 **Atualizar:** o mesmo comando sem o código (`curl -fsSL https://<alfamatriz>/central-ia/instalar.sh | bash`).
@@ -53,9 +58,13 @@ script deixa o arquivo `central-ia-reiniciar`, e o próprio runner sai antes de 
 que sabe fazer isso grava o pid em `central-ia-conhece-reinicio` e nunca é morto de fora; o de versões
 anteriores é reiniciado quando fica livre). No Mac, se o plist mudou, o runner só PAUSA (para de pedir
 trabalho e avisa em `central-ia-pausado`) e o script descarrega e carrega o serviço — o `kickstart` não
-relê o plist. Conectar de novo com código troca o token no arquivo; o runner em execução passa a usá-lo no
-primeiro 401, sem perder o pedido que estava rodando.
-Testes: `node tools/central-ia/test-reinicio.mjs` e `node tools/central-ia/test-instalador.mjs`.
+relê o plist. Se a recarga falhar, o log diz o comando para ligar à mão. A saída do script vai para o log do
+runner no Mac e para `~/.local/share/alfa/central-ia-atualizar.log` no Linux; dois comandos de atualizar
+rodados juntos esperam um pelo outro. Conectar de novo com código troca o token no arquivo; o runner em
+execução passa a usá-lo no primeiro 401, sem perder o pedido que estava rodando, e a máquina que estava
+desconectada (esperando até 10 min entre tentativas) volta em segundos.
+Testes: `node tools/central-ia/test-reinicio.mjs`, `node tools/central-ia/test-instalador.mjs` e
+`node tools/central-ia/test-releitura.mjs`.
 
 **Desconectar:** Ajustes → Minhas máquinas → Desconectar (o token deixa de valer na hora).
 
@@ -77,6 +86,7 @@ CENTRAL_IA_IGNORAR=videos,orcamentos   # subpastas que não são projeto (pasta 
 CENTRAL_IA_SEGREDO_CONFIRMACAO=…       # 64 hex, gerado pelo instalador
 CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=… # o SEU bot do código; só esta máquina tem o token
 CENTRAL_IA_TELEGRAM_CHAT_ID=…
+CENTRAL_IA_TELEGRAM_BOT_CONVERSA=…      # só o @ do bot da conversa, para o instalador recusá-lo
 # Opcionais (T-374: nada disso tem mais padrão de uma máquina específica):
 CENTRAL_IA_MEMORIA=…                   # o MEMORY.md que vai aos agentes quando a pessoa liga "memória" nos
                                        # Ajustes; sem valor, o do Claude para a pasta de projetos; `nenhuma` desliga

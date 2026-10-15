@@ -74,13 +74,15 @@ function lerConfig() {
         // somem do catálogo, das sessões e do consumo (dono, 12/10/2026).
         ignorar: new Set((v('CENTRAL_IA_IGNORAR') || '').split(',').map(x => x.trim()).filter(Boolean)),
         segredo: v('CENTRAL_IA_SEGREDO_CONFIRMACAO'),
-        // O bot DA PESSOA (T-374, 14/10/2026): cada um cadastra o seu nos
-        // Ajustes da Central, conversa por ele e recebe aqui o código. O
-        // instalador grava o token e o chat UMA vez; o servidor não muda para
-        // onde o código vai. O nome da variável ficou o do tempo em que havia
-        // um bot só para o código (T-368), e o mais antigo, das máquinas
-        // instaladas à mão, continua aceito.
-        telegramToken: v('CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO') || v('CENTRAL_IA_TELEGRAM_TOKEN'),
+        // O bot do CÓDIGO da pessoa (T-368, T-374): só para o código de
+        // confirmação, diferente do bot da conversa, e o token dele nunca passa
+        // pelo servidor. O instalador o pede no terminal e grava o token e o
+        // chat; o servidor não muda para onde o código vai. O antigo
+        // `CENTRAL_IA_TELEGRAM_TOKEN` NÃO vale mais (revisão da T-374): nas
+        // máquinas instaladas à mão ele guardava o bot compartilhado da
+        // conversa, cujo token o servidor tem — o instalador o converte depois
+        // de conferir que é outro bot.
+        telegramToken: v('CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO'),
         telegramChat: v('CENTRAL_IA_TELEGRAM_CHAT_ID'),
         // Opcionais, todos desta máquina e nenhum vindo do servidor (T-374):
         // - memória: o MEMORY.md que vai aos agentes quando a pessoa liga a
@@ -195,6 +197,22 @@ function tokenNovoNoArquivo() {
     cfg.token = novo;
     log('token novo no arquivo de configuração: usando-o (a máquina foi conectada de novo)');
     return true;
+}
+
+// O bot do código pode chegar DEPOIS de o processo subir: o instalador o grava
+// quando a pessoa cola o token, e rodar o comando de novo só para colá-lo não
+// precisa esperar reinício nenhum (revisão da T-374: a máquina recém-instalada
+// ficava sem o bot até reiniciar por outro motivo). Relê do arquivo antes de
+// cada batida e de cada confirmação; o ambiente do processo continua vencendo.
+function releTelegram() {
+    let novo;
+    try { novo = lerConfig(); } catch { return; }
+    for (const k of ['telegramToken', 'telegramChat', 'segredo']) {
+        if (novo[k] !== cfg[k]) {
+            cfg[k] = novo[k];
+            if (k === 'telegramToken') log(novo[k] ? 'bot do código lido do arquivo de configuração' : 'bot do código retirado do arquivo de configuração');
+        }
+    }
 }
 
 async function api(caminho, corpo, deNovo = true) {
@@ -381,6 +399,7 @@ function limitesDoClaude() {
 async function batida() {
     // Recusada, a batida só repetiria a recusa: quem confere se o acesso voltou é o laço.
     if (acesso.situacao === 'recusado') return;
+    releTelegram();
     agentes = localizarAgentes();
     const projetos = listarProjetos();
     const u = uso();
@@ -400,8 +419,11 @@ async function batida() {
         em_curso: [...emCurso],
         ...(u ? { consumo: { ...consumo, limites_claude: limitesDoClaude() }, sessoes } : {}),
     });
-    if (r.status === 401 || r.status === 403) notarAcesso(r.status);
-    else if (r.status !== 200) log('batida recusada', r.status, r.json?.message || '');
+    // O 2xx também conta: depois de "fora de alcance", a batida que passa tira
+    // o laço da espera longa sem esperar a consulta seguinte.
+    if (r.status === 401 || r.status === 403 || (r.status >= 200 && r.status < 300)) notarAcesso(r.status);
+    if (r.status === 401 || r.status === 403) return;
+    if (r.status !== 200) log('batida recusada', r.status, r.json?.message || '');
     else if (Array.isArray(r.json?.encerradas)) encerradas = r.json.encerradas;
 }
 
@@ -859,6 +881,7 @@ async function executar(job) {
         if (exigeConfirmacao(job, regra, chatConfirmado(CONFIRMADOS, chaveChat))) {
             progresso.etapa('confirmacao');
             await informar();
+            releTelegram();
             const c = await confirmar({ job, cwd, acesso, cfg, api, parar: () => parar });
             if (!c.ok) throw new Error(`não executado: ${c.motivo}`);
             marcarChatConfirmado(CONFIRMADOS, chaveChat);
@@ -1139,8 +1162,17 @@ while (!parar) {
     // Com algo rodando, a máquina não está ociosa: a resposta seguinte da conversa vem logo.
     if (rodando.size) ultimoTrabalho = Date.now();
     const espera = acesso.situacao === 'ok' ? ritmoDaConsulta(Date.now() - ultimoTrabalho) : acesso.espera;
-    // Em passos de 1 s: a espera chega a 10 min, e parar o serviço não espera por ela.
-    for (let t = 0; t < espera && !parar; t += 1000) await new Promise(r => setTimeout(r, Math.min(1000, espera - t)));
+    // Em passos de 1 s: a espera chega a 10 min, e parar o serviço não espera
+    // por ela. Nem a atualização (o pedido de reinício) nem a máquina conectada
+    // de novo (token novo no arquivo): sem isso, quem reconectava via a máquina
+    // online na tela e o pedido seguinte esperava até 10 min (revisão da T-374).
+    const situacaoAntes = acesso.situacao;
+    for (let t = 0; t < espera && !parar; t += 1000) {
+        await new Promise(r => setTimeout(r, Math.min(1000, espera - t)));
+        if (espera > 10_000 && existsSync(REINICIAR)) break;
+        if (acesso.situacao !== situacaoAntes) break;
+        if (situacaoAntes === 'recusado' && t % 5000 === 0 && tokenNovoNoArquivo()) break;
+    }
 }
 // Parada pedida: espera o que está rodando terminar e devolver a resposta.
 await Promise.allSettled([...rodando]);
