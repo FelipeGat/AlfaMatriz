@@ -88,13 +88,25 @@ pedir() { if [ "$RECARREGAR" = 1 ]; then echo pausar > "$REINICIAR"; else : > "$
 # (revisão da T-374). O segundo espera o primeiro terminar — e não desiste,
 # porque pode trazer o plist novo que o primeiro não viu. Trava largada por
 # um script que morreu (pid que não existe mais) é desfeita.
+#
+# Tetos (revisão da T-374), contados em passos de 5 s: um script esquecido
+# esperando para sempre ficava pendurado no sistema sem ninguém saber. A
+# trava espera até 2 h — mais que o pedido mais longo (60 min) —, e o serviço
+# fora do ar, até 30 min. Trocáveis só para o teste (test-reinicio.mjs).
+TETO_TRAVA="${CENTRAL_IA_ATUALIZAR_TETO_TRAVA:-7200}"
+TETO_SEM_RUNNER="${CENTRAL_IA_ATUALIZAR_TETO_SEM_RUNNER:-1800}"
 TRAVA="$DIR/central-ia-atualizar.trava"
+esperou=0
 until mkdir "$TRAVA" 2>/dev/null; do
   dono="$(cat "$TRAVA/pid" 2>/dev/null || true)"
   if [ -n "$dono" ] && ! kill -0 "$dono" 2>/dev/null; then rm -rf "$TRAVA"; continue; fi
   # Sem pid há mais de 1 min: morreu entre o mkdir e gravar o pid.
   if [ -z "$dono" ] && [ -n "$(find "$TRAVA" -maxdepth 0 -mmin +1 2>/dev/null)" ]; then rm -rf "$TRAVA"; continue; fi
-  sleep 5
+  if [ "$esperou" -ge "$TETO_TRAVA" ]; then
+    log "ERRO: outra atualização (pid $dono) segura a trava há $((esperou / 60)) min; desisti. Rode o comando de instalar de novo quando ela terminar."
+    exit 1
+  fi
+  sleep 5; esperou=$((esperou + 5))
 done
 echo $$ > "$TRAVA/pid"
 trap 'rm -rf "$TRAVA"' EXIT
@@ -106,11 +118,24 @@ if [ -z "$antes" ] || [ "$antes" = 0 ]; then rm -f "$REINICIAR" "$PAUSADO"; rein
 rm -f "$PAUSADO"
 pedir
 idle=0
+sem_runner=0
 while :; do
   sleep 5
   agora="$(pid_do_runner || true)"
-  # Saiu e ainda não voltou: espera o serviço religar.
-  if [ -z "$agora" ] || [ "$agora" = 0 ]; then continue; fi
+  # Saiu e ainda não voltou: espera o serviço religar — até o teto. Desistindo,
+  # apaga o pedido: um "pausar" largado deixaria o runner que voltasse depois
+  # parado, sem ninguém para recarregar o serviço.
+  if [ -z "$agora" ] || [ "$agora" = 0 ]; then
+    sem_runner=$((sem_runner + 5))
+    if [ "$sem_runner" -ge "$TETO_SEM_RUNNER" ]; then
+      rm -f "$REINICIAR" "$PAUSADO"
+      log "ERRO: o serviço do runner não voltou em $((sem_runner / 60)) min; desisti. Para ligar à mão:"
+      if [ "$(uname -s)" = Darwin ]; then log "  launchctl bootstrap gui/$(id -u) $PLIST"; else log "  systemctl --user restart central-ia-runner"; fi
+      exit 1
+    fi
+    continue
+  fi
+  sem_runner=0
   if [ "$agora" != "$antes" ]; then
     # Saiu sozinho e o serviço já o religou: pronto (ele mesmo apagou o arquivo).
     [ "$RECARREGAR" = 1 ] || exit 0

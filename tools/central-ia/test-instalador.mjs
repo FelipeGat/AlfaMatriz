@@ -188,6 +188,46 @@ r = await rodar({ ...COD, CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO: 'tok-codigo' },
 assert.equal(r.status, 0, r.saida);
 assert.equal(readFileSync(join(home, 'ligado.log'), 'utf8'), '1\n', 'o serviço ligou antes de o bot do código estar gravado');
 
+// Sem terminal (o CI, o `curl | bash` de um script): o trap do eco não
+// pode imprimir o erro de abrir o /dev/tty.
+assert.doesNotMatch(r.saida, /dev\/tty/, r.saida);
+
+// 13. Chave antiga que o Telegram não confirma (fora do ar ou recusada): fica
+// no arquivo, com aviso. Apagar sem saber perdia o token do bot do código.
+writeFileSync(CONF, conf().replace(/^CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=.*\n/m, '') + 'CENTRAL_IA_TELEGRAM_TOKEN=tok-errado\n');
+r = await rodar({}, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+assert.match(conf(), /^CENTRAL_IA_TELEGRAM_TOKEN=tok-errado$/m, 'não confirmada, a chave antiga fica');
+assert.match(r.saida, /Não consegui conferir a linha antiga/);
+
+// 14. Chave antiga de outro bot, com o bot do código já gravado: fica, com aviso.
+writeFileSync(CONF, conf().replace(/^CENTRAL_IA_TELEGRAM_TOKEN=.*\n/m, '') + 'CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=tok-codigo\nCENTRAL_IA_TELEGRAM_TOKEN=tok-outro\n');
+BOTS['tok-outro'] = 'outro_bot';
+r = await rodar({}, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+assert.match(conf(), /^CENTRAL_IA_TELEGRAM_TOKEN=tok-outro$/m);
+assert.match(conf(), /^CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=tok-codigo$/m);
+assert.match(r.saida, /@outro_bot\) de .* não é usada/);
+
+// 15. Instalação antiga, sem o @ do bot da conversa: a chave antiga não é
+// apagada, não se pergunta o token (não haveria como recusar o bot da
+// conversa) e o aviso manda gerar um comando novo.
+writeFileSync(CONF, conf().replace(/^CENTRAL_IA_TELEGRAM_(TOKEN|TOKEN_CONFIRMACAO|BOT_CONVERSA)=.*\n/gm, '') + 'CENTRAL_IA_TELEGRAM_TOKEN=tok-codigo\n');
+r = await rodar({}, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+assert.match(conf(), /^CENTRAL_IA_TELEGRAM_TOKEN=tok-codigo$/m, 'sem o bot da conversa, nada se conclui sobre a chave antiga');
+assert.doesNotMatch(r.saida, /No @BotFather/, 'sem o bot da conversa, não pergunta o token');
+assert.match(r.saida, /instalador antigo\. Gere um comando novo/);
+
+// 16. Sem o bot da conversa cadastrado no servidor (sem chat): o aviso manda
+// cadastrá-lo, e não só gerar outro comando.
+writeFileSync(CONF, conf().replace(/^CENTRAL_IA_TELEGRAM_(TOKEN|CHAT_ID)=.*\n/gm, ''));
+r = await rodar({ CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO: 'tok-codigo' }, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+assert.match(r.saida, /Primeiro cadastre o seu bot da conversa/);
+assert.doesNotMatch(r.saida, /instalador antigo/);
+assert.doesNotMatch(conf(), /TOKEN_CONFIRMACAO/);
+
 servidor.close();
 rmSync(home, { recursive: true, force: true });
-console.log('PASSOU: instalador troca o código (do ambiente) antes de perguntar, grava o nome do servidor, não deixa chave repetida, recarrega o plist mudado, não roda pela metade só aceita como bot do código um bot que não é o da conversa (com ou sem código, e na chave antiga) e grava o bot do código antes de ligar o serviço.');
+console.log('PASSOU: instalador troca o código (do ambiente) antes de perguntar, grava o nome do servidor, não deixa chave repetida, recarrega o plist mudado, não roda pela metade só aceita como bot do código um bot que não é o da conversa (com ou sem código, e na chave antiga) grava o bot do código antes de ligar o serviço, e só apaga a chave antiga quando sabe o que ela era.');

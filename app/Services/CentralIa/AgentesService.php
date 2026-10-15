@@ -552,6 +552,10 @@ class AgentesService
 
         $execucao = DB::transaction(function () use ($user, $runner) {
             User::whereKey($user->id)->lockForUpdate()->first();
+            // Desconectada enquanto este pedido esperava a trava da conta: o
+            // `desconectar` já interrompeu o que ela tinha e apagou a máquina,
+            // e nada mais pode ser entregue a ela (revisão da T-374).
+            if (! CentralIaRunner::whereKey($runner->id)->exists()) return null;
             if (app(Preferencias::class)->ler($user)['execucao_bloqueada']) return null;
 
             $rodando = CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::EXECUTANDO);

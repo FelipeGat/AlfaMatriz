@@ -1086,7 +1086,9 @@ while (!parar) {
     const situacaoAntes = acesso.situacao;
     for (let t = 0; t < espera && !parar; t += 1000) {
         await new Promise(r => setTimeout(r, Math.min(1000, espera - t)));
-        if (espera > 10_000 && existsSync(REINICIAR)) break;
+        // Só com a máquina livre: com pedido rodando o laço não sai, e cortar
+        // a espera aqui virava uma consulta por segundo ao servidor.
+        if (espera > 10_000 && !rodando.size && existsSync(REINICIAR)) break;
         if (acesso.situacao !== situacaoAntes) break;
         if (situacaoAntes === 'recusado' && t % 5000 === 0 && tokenNovoNoArquivo()) break;
     }

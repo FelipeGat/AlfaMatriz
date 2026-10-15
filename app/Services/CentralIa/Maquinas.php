@@ -121,6 +121,8 @@ class Maquinas
         }
 
         $token = DB::transaction(function () use ($user, &$maquina, $nova) {
+            // Mesma ordem de travas do `desconectar`: conta, depois tokens.
+            User::whereKey($user->id)->lockForUpdate()->first();
             if ($nova) {
                 $usados = $this->tokens($user)->pluck('name')->all();
                 for ($base = mb_substr($maquina, 0, 60), $n = 2; in_array($maquina, $usados, true); $n++) {
@@ -164,7 +166,13 @@ class Maquinas
     {
         $token = $this->tokens($user)->firstWhere('id', $tokenId);
         abort_unless($token, 404);
+        // A trava na conta vem primeiro, como no `proxima` e no `concluir`:
+        // sem ela, um pedido entregue à máquina no mesmo instante escapava da
+        // interrupção (lido antes de virar "executando") e ficava preso a uma
+        // máquina que já não existe; e as travas em ordens diferentes davam
+        // deadlock com o `concluir` (revisão da T-374).
         DB::transaction(function () use ($user, $token) {
+            User::whereKey($user->id)->lockForUpdate()->first();
             $runners = CentralIaRunner::where('user_id', $user->id)->where('token_id', $token->id)->get();
             foreach ($runners as $runner) app(AgentesService::class)->interromperDaMaquinaDesconectada($user, $runner);
             CentralIaRunner::whereKey($runners->modelKeys())->delete();

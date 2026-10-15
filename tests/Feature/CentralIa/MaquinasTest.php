@@ -188,6 +188,51 @@ class MaquinasTest extends TestCase
         $this->assertSame(CentralIaExecucao::EXECUTANDO, $daOutra->fresh()->status, 'o pedido de outra máquina segue');
     }
 
+    /**
+     * Revisão da T-374: o `proxima` que esperava a trava da conta enquanto a
+     * máquina era desconectada não entrega o pedido a ela depois.
+     */
+    public function test_maquina_desconectada_nao_recebe_pedido_do_proxima_que_ja_estava_a_caminho(): void
+    {
+        config(['central_ia.canal_exclusivo' => false]);
+        $ana = $this->pessoa(admin: true); // não-admin nasce com a execução bloqueada
+        $this->trocar($this->codigo($ana), 'mac-ana')->assertOk();
+        Auth::forgetGuards();
+        $runner = CentralIaRunner::create(['user_id' => $ana->id, 'maquina' => 'mac-ana', 'agentes' => ['claude'], 'projetos' => ['gestor'],
+            'token_id' => $ana->tokens()->sole()->id, 'visto_em' => now()]);
+        $agentes = app(\App\Services\CentralIa\AgentesService::class);
+        $pendente = $agentes->pedir($ana, 'revise', ['projeto' => 'gestor', 'agente' => 'claude', 'modo' => 'analisar', 'instrucao' => 'revise'], 'web', 'dx1');
+
+        app(Maquinas::class)->desconectar($ana, $ana->tokens()->sole()->id);
+
+        // O `proxima` já tinha a máquina em mãos (autenticada antes do desconectar).
+        $this->assertNull($agentes->proxima($ana, $runner));
+        $this->assertSame(CentralIaExecucao::PENDENTE, $pendente->fresh()->status);
+
+        // E o pedido segue para a máquina que está de pé.
+        $viva = CentralIaRunner::create(['user_id' => $ana->id, 'maquina' => 'wsl-ana', 'agentes' => ['claude'], 'projetos' => ['gestor'], 'visto_em' => now()]);
+        $this->assertSame($pendente->id, $agentes->proxima($ana, $viva)['id']);
+        $this->assertSame($viva->id, $pendente->fresh()->runner_id);
+    }
+
+    /** Revisão da T-374: conta travada antes de ler as máquinas, na ordem do `proxima`. */
+    public function test_desconectar_trava_a_conta_antes_de_ler_as_maquinas(): void
+    {
+        $ana = $this->pessoa();
+        $this->trocar($this->codigo($ana), 'mac-ana')->assertOk();
+        Auth::forgetGuards();
+        $tokenId = $ana->tokens()->sole()->id;
+        $consultas = [];
+        \Illuminate\Support\Facades\DB::listen(function ($q) use (&$consultas) { $consultas[] = $q->sql; });
+
+        app(Maquinas::class)->desconectar($ana, $tokenId);
+
+        $conta = collect($consultas)->search(fn ($sql) => preg_match('/from "users" where "users"\."id" = \?/', $sql));
+        $maquinas = collect($consultas)->search(fn ($sql) => str_contains($sql, 'from "central_ia_runners"'));
+        $this->assertNotFalse($conta, 'a conta é lida (e travada) no desconectar');
+        $this->assertLessThan($maquinas, $conta);
+    }
+
     public function test_maquina_sem_noticia_pede_para_conferir_a_tailnet(): void
     {
         $ana = $this->pessoa();
