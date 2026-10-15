@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\VigiaErro;
 use App\Models\VigiaErroHora;
 use App\Models\VigiaIgnorado;
+use App\Services\Vigia\IgnoradosDoVigia;
 use App\Services\Vigia\VigiaDeLogs;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as RequisicaoHttp;
@@ -390,6 +391,65 @@ class RecebimentoDoVigiaTest extends TestCase
 
         $ignorado->delete();
         $this->enviar([$this->erro()])->assertOk();
+
+        $this->assertSame(1, Tarefa::count());
+        $this->assertFalse(VigiaErro::first()->ignorado);
+    }
+
+    /**
+     * #391: o script rodado à mão no Gestor (15/10/2026). Numa QueryException
+     * o arquivo só aparece no rastro, e o ignorado de caminho não o segurava.
+     */
+    private function erroDeScriptAvulso(): array
+    {
+        return $this->erro([
+            'nivel' => 'ERROR',
+            'mensagem' => "SQLSTATE[23000]: Integrity constraint violation: 1052 Column 'deleted_at' in where clause is ambiguous",
+            'excecao' => 'Illuminate\\Database\\QueryException',
+            'trecho' => "Illuminate\\Database\\QueryException(code: 23000): SQLSTATE[23000]: Integrity constraint violation…\n"
+                ."#0 /var/www/vendor/laravel/framework/src/Illuminate/Database/Connection.php(794): Illuminate\\Database\\Connection->runQueryCallback('select `contas_...', Array, Object(Closure))\n"
+                ."#5 /var/www/vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php(3370): Illuminate\\Database\\Query\\Builder->onceWithColumns(Array, Object(Closure))\n"
+                ."#6 /var/www/_run.php(28): Illuminate\\Database\\Query\\Builder->get(Array)\n"
+                .'#7 {main}',
+        ]);
+    }
+
+    public function test_ignorado_de_caminho_segura_o_erro_que_so_aparece_no_rastro(): void
+    {
+        VigiaIgnorado::create(['padrao' => '/var/www/_run.php', 'sistema_id' => $this->sistema->id]);
+
+        $this->enviar([$this->erroDeScriptAvulso()])->assertOk()->assertJson(['ignorados' => 1]);
+
+        $this->assertSame(0, Tarefa::count());
+        $this->assertTrue(VigiaErro::first()->ignorado);
+    }
+
+    public function test_ignorar_pela_tela_acerta_a_marca_pelo_rastro(): void
+    {
+        $this->enviar([$this->erroDeScriptAvulso()])->assertOk();
+        $this->assertFalse(VigiaErro::first()->ignorado);
+
+        app(IgnoradosDoVigia::class)->ignorar('/var/www/_run.php', $this->sistema);
+
+        $this->assertTrue(VigiaErro::first()->ignorado, 'O recálculo também olha o rastro.');
+    }
+
+    /**
+     * Só a ORIGEM conta, e não qualquer quadro: o erro da aplicação que apenas
+     * passou pelo arquivo ignorado continua vigiado.
+     */
+    public function test_erro_que_so_passou_pelo_arquivo_ignorado_continua_vigiado(): void
+    {
+        VigiaIgnorado::create(['padrao' => 'public/index.php']);
+
+        $this->enviar([$this->erro([
+            'nivel' => 'ERROR',
+            'mensagem' => 'Undefined variable $obra',
+            'excecao' => 'ErrorException',
+            'trecho' => "ErrorException(code: 0): Undefined variable \$obra at /var/www/app/Http/Controllers/ObraController.php:41\n"
+                ."#0 /var/www/vendor/laravel/framework/src/Illuminate/Routing/Controller.php(54): show()\n"
+                .'#1 /var/www/public/index.php(17): Illuminate\\Foundation\\Http\\Kernel->handle()',
+        ])])->assertOk()->assertJson(['ignorados' => 0]);
 
         $this->assertSame(1, Tarefa::count());
         $this->assertFalse(VigiaErro::first()->ignorado);

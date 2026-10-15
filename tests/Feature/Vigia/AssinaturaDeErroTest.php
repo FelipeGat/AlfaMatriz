@@ -81,4 +81,45 @@ class AssinaturaDeErroTest extends TestCase
         $this->assertSame('App\\Exceptions\\X', $assinatura->excecao);
         $this->assertSame('Deu ruim no pedido {n}', $assinatura->padrao);
     }
+
+    /**
+     * #391: o lugar de onde o erro saiu, para a lista do que ignorar. Rastro
+     * tirado de um erro real do Gestor (T-387 de lá, 15/10/2026).
+     */
+    public function test_origem_e_o_primeiro_lugar_fora_do_vendor(): void
+    {
+        $queryException = "Illuminate\\Database\\QueryException(code: 42000): SQLSTATE[42000]: Syntax error or access violation: 1055 Expression #1 of ORDER BY…\n"
+            ."#0 /var/www/vendor/laravel/framework/src/Illuminate/Database/Connection.php(794): Illuminate\\Database\\Connection->runQueryCallback('select `h`.`sta...', Array, Object(Closure))\n"
+            ."#5 /var/www/vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php(3370): Illuminate\\Database\\Query\\Builder->onceWithColumns(Array, Object(Closure))\n"
+            ."#6 /var/www/_run.php(70): Illuminate\\Database\\Query\\Builder->get()\n"
+            ."#7 {main}\n"
+            ."[previous exception] [object] (PDOException(code: 42000): SQLSTATE[42000] at /var/www/vendor/laravel/framework/src/Illuminate/Database/Connection.php:420)";
+
+        $this->assertSame('/var/www/_run.php:70', AssinaturaDeErro::origem($queryException));
+
+        // Lançado no próprio arquivo: o "at" do cabeçalho já diz.
+        $noScript = "ErrorException(code: 0): Trying to access array offset on float at /var/www/_run.php:22\n"
+            ."#0 /var/www/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/HandleExceptions.php(258): handleError(2)\n"
+            ."#1 /var/www/_run.php(22): closure(2)\n"
+            ."#2 {main}";
+
+        $this->assertSame('/var/www/_run.php:22', AssinaturaDeErro::origem($noScript));
+
+        // Erro da aplicação que passou pelo index.php: a origem é o código
+        // dela, não a porta de entrada.
+        $daAplicacao = "#0 /var/www/vendor/laravel/framework/src/Illuminate/Database/Connection.php(794): run()\n"
+            ."#1 /var/www/app/Http/Controllers/ObraController.php(41): Illuminate\\Database\\Query\\Builder->get()\n"
+            ."#2 /var/www/vendor/laravel/framework/src/Illuminate/Routing/Controller.php(54): show()\n"
+            ."#3 [internal function]: closure()\n"
+            ."#4 /var/www/public/index.php(17): Illuminate\\Foundation\\Http\\Kernel->handle()";
+
+        $this->assertSame('/var/www/app/Http/Controllers/ObraController.php:41', AssinaturaDeErro::origem($daAplicacao));
+    }
+
+    public function test_sem_rastro_php_nao_ha_origem(): void
+    {
+        $this->assertNull(AssinaturaDeErro::origem(null));
+        $this->assertNull(AssinaturaDeErro::origem("#0 /var/www/vendor/x/Y.php(1): f()\n#1 {main}"));
+        $this->assertNull(AssinaturaDeErro::origem("java.lang.IllegalStateException: x\n\tat br.com.alfa.X.y(X.java:3)"));
+    }
 }

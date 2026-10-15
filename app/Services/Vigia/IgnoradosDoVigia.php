@@ -103,7 +103,7 @@ class IgnoradosDoVigia
     {
         $regras = VigiaIgnorado::all();
 
-        VigiaErro::query()->select(['id', 'sistema_id', 'padrao', 'excecao', 'mensagem', 'ignorado'])
+        VigiaErro::query()->select(['id', 'sistema_id', 'padrao', 'excecao', 'mensagem', 'trecho', 'ignorado'])
             ->lazyById()
             ->each(function (VigiaErro $erro) use ($regras) {
                 $deve = $this->regraDe($erro, $regras) !== null;
@@ -132,11 +132,17 @@ class IgnoradosDoVigia
      * A regra casa com o texto cru do erro OU com o padrão normalizado: quem
      * ignora pela linha de comando costuma copiar a mensagem como apareceu; o
      * botão da tela ignora pelo padrão.
+     *
+     * E com a ORIGEM do erro no rastro (#391), para o ignorado de caminho
+     * (`/var/www/_run.php`) segurar o erro de script avulso que só aparece
+     * no stack. Só a origem — ver `AssinaturaDeErro::origem`.
      */
     public static function cobre(VigiaIgnorado $regra, VigiaErro $erro): bool
     {
         $texto = trim(($erro->excecao ? $erro->excecao.': ' : '').$erro->mensagem);
+        $origem = AssinaturaDeErro::origem($erro->trecho);
 
-        return $regra->casaCom($texto) || $regra->casaCom($erro->padrao);
+        return $regra->casaCom($texto) || $regra->casaCom($erro->padrao)
+            || ($origem !== null && $regra->casaCom($origem));
     }
 }

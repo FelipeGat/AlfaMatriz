@@ -106,6 +106,46 @@ class AssinaturaDeErro
         return null;
     }
 
+    /**
+     * De onde o erro saiu, como `caminho:linha`: o primeiro lugar do rastro
+     * PHP fora do `/vendor/` — o "at caminho:linha" do cabeçalho da exceção ou
+     * um quadro "#N caminho(linha)", o que vier primeiro.
+     *
+     * Existe para a lista do que ignorar (#391): numa QueryException o "at"
+     * aponta o `Connection.php` do framework, e o script rodado à mão
+     * (`/var/www/_run.php` no Gestor, 15/10/2026) só aparece no rastro — o
+     * ignorado de caminho não o segurava e cada consulta virou uma tarefa.
+     *
+     * SÓ o primeiro, e não qualquer quadro: todo pedido web passa pelo
+     * `public/index.php` e todo comando pelo `artisan`. Casar com qualquer
+     * quadro faria um ignorado de caminho calar também o erro de verdade que
+     * apenas PASSOU por aquele arquivo. O primeiro de fora do framework é o
+     * código que chamou o que quebrou — o dono do erro.
+     */
+    public static function origem(?string $trecho): ?string
+    {
+        foreach (preg_split('/\R/', (string) $trecho) ?: [] as $linha) {
+            $linha = trim($linha);
+            $lugares = [];
+
+            if (preg_match('/^#\d+\s+(\/[^\s(]+)\((\d+)\)/', $linha, $m)) {
+                $lugares[] = $m[1].':'.$m[2];
+            } elseif (preg_match_all('/\bat\s+(\/[^\s:()]+\.php):(\d+)/', $linha, $ms, PREG_SET_ORDER)) {
+                foreach ($ms as $m) {
+                    $lugares[] = $m[1].':'.$m[2];
+                }
+            }
+
+            foreach ($lugares as $lugar) {
+                if (! str_contains($lugar, '/vendor/')) {
+                    return $lugar;
+                }
+            }
+        }
+
+        return null;
+    }
+
     private static function pacoteDeFora(string $quadro): bool
     {
         foreach (self::PACOTES_DE_FORA as $prefixo) {
