@@ -156,3 +156,12 @@ console.log('T-368: acesso total sem publicar fora de deploy');
     assert.ok(!/Google/.test(agendaSemIa('hoje', '2026-10-14', '2026-10-14 09:00 [Compromisso] Reunião')));
     console.log('T-374: memória escolhida pela máquina e agenda sem fonte fixa');
 }
+
+// T-368: a auditoria não chama de "leitura" a implementação que rodou sem código.
+{
+    const { decisaoSemConfirmacao } = await import('../../deploy/central-ia/politica.mjs');
+    assert.deepEqual(decisaoSemConfirmacao({ modo: 'analisar' }, 'inicio', 'leitura'), { decisao: 'leitura' });
+    assert.deepEqual(decisaoSemConfirmacao({ modo: 'implementar' }, 'inicio', 'restrito'), { decisao: 'sem_confirmacao', regra: 'inicio', acesso: 'restrito' });
+    assert.equal(decisaoSemConfirmacao({ modo: 'analisar' }, 'nunca', 'total').decisao, 'sem_confirmacao', 'análise com acesso total também não é leitura');
+    console.log('T-368: auditoria sem "leitura" falsa');
+}

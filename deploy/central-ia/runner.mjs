@@ -24,7 +24,7 @@ import { acompanharProgresso } from './progresso.mjs';
 import { auditar, confirmar } from './confirmacao.mjs';
 import { caminhoDoStatus, compararGit, criarAuditor, retratoGit } from './auditoria.mjs';
 import { girar, limparWorktrees } from './limpeza.mjs';
-import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
+import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h): a regra "inicio" não pede
 // o código de novo no mesmo chat. Fica aqui, e não no servidor.
@@ -839,7 +839,9 @@ async function executar(job) {
             if (!c.ok) throw new Error(`não executado: ${c.motivo}`);
             marcarChatConfirmado(job.tarefa?.id);
         } else {
-            auditar({ execucao: job.id, decisao: 'leitura', agente: job.agente, projeto: job.projeto, modo: job.modo, cwd });
+            // "leitura" só quando É leitura (T-368: a implementação que a regra
+            // deixou passar sem código saía no log como leitura).
+            auditar({ execucao: job.id, ...decisaoSemConfirmacao(job, regra, acesso), agente: job.agente, projeto: job.projeto, modo: job.modo, cwd });
         }
         if (novaWorktree) {
             criada = prepararWorktree(job.projeto, dir, job.tarefa || { id: `e${job.id}` });
