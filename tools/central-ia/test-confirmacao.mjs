@@ -143,7 +143,7 @@ console.log('T-368: acesso total sem publicar fora de deploy');
 
 // T-374: nada preso à máquina de uma pessoa.
 {
-    const { arquivoDeMemoria, decisaoSemConfirmacao, agendaSemIa } = await import('../../deploy/central-ia/politica.mjs');
+    const { arquivoDeMemoria, agendaSemIa } = await import('../../deploy/central-ia/politica.mjs');
     const home = mkdtempSync(join(tmpdir(), 'central-ia-mem-'));
     const projetos = join(home, 'meus projetos');
     const derivada = join(home, '.claude/projects', projetos.replace(/[^A-Za-z0-9]/g, '-'), 'memory/MEMORY.md');
@@ -152,11 +152,7 @@ console.log('T-368: acesso total sem publicar fora de deploy');
     assert.equal(arquivoDeMemoria('', projetos, home), derivada, 'a memória do Claude para a pasta de projetos');
     assert.equal(arquivoDeMemoria('nenhuma', projetos, home), null, '`nenhuma` desliga na máquina');
     assert.equal(arquivoDeMemoria(join(home, 'nao-existe.md'), projetos, home), null);
-    // A auditoria não chama de "leitura" a implementação que rodou sem código.
-    assert.deepEqual(decisaoSemConfirmacao({ modo: 'analisar' }, 'inicio', 'leitura'), { decisao: 'leitura' });
-    assert.deepEqual(decisaoSemConfirmacao({ modo: 'implementar' }, 'inicio', 'restrito'), { decisao: 'sem_confirmacao', regra: 'inicio', acesso: 'restrito' });
-    assert.equal(decisaoSemConfirmacao({ modo: 'analisar' }, 'nunca', 'total').decisao, 'sem_confirmacao', 'análise com acesso total também não é leitura');
     assert.match(agendaSemIa('hoje', '2026-10-14', '', 'Agenda do AlfaMatriz'), /Lido agora \(Agenda do AlfaMatriz\), sem IA/);
     assert.ok(!/Google/.test(agendaSemIa('hoje', '2026-10-14', '2026-10-14 09:00 [Compromisso] Reunião')));
-    console.log('T-374: memória escolhida pela máquina, auditoria sem "leitura" falsa e agenda sem fonte fixa');
+    console.log('T-374: memória escolhida pela máquina e agenda sem fonte fixa');
 }

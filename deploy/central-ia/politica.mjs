@@ -207,15 +207,6 @@ export function arquivoDeMemoria(configurada, projetos, home) {
 }
 
 /**
- * O que a auditoria local grava quando a execução roda SEM pedir código
- * (T-374: a implementação liberada pela regra saía como "leitura").
- */
-export function decisaoSemConfirmacao(job, regra, acesso) {
-    if (job.modo !== 'implementar' && acesso === 'leitura') return { decisao: 'leitura' };
-    return { decisao: 'sem_confirmacao', regra, acesso };
-}
-
-/**
  * Quanto esperar até chamar o AlfaMatriz de novo, e o que dizer no log (T-374).
  * Desconectar a máquina na tela vira 401 aqui; sem isto o runner batia a cada
  * 3 s para sempre e gravava uma linha por tentativa — ~29 mil por dia no PC
