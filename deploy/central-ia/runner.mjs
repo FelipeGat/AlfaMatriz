@@ -1057,7 +1057,11 @@ while (!parar) {
         log('ninguém recarregou o serviço em 2 min: voltando a pedir trabalho');
     }
     try {
-        if (rodando.size < PARALELO) {
+        // Reinício pedido com algo rodando: não pega trabalho novo, para a
+        // máquina esvaziar. Com PARALELO=2 os pedidos se sobrepunham, ela
+        // nunca ficava livre e a atualização esperava para sempre (3ª revisão
+        // da T-374). O pedido segue na fila do servidor, para esta ou outra.
+        if (rodando.size < PARALELO && !existsSync(REINICIAR)) {
             const r = await api('proxima', { maquina: cfg.maquina });
             notarAcesso(r.status);
             if (r.status === 200 && r.json?.id) {

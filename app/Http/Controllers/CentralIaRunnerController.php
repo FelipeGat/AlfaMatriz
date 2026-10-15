@@ -55,24 +55,39 @@ class CentralIaRunnerController extends Controller
             'em_curso.*' => ['integer'],
         ]);
 
-        $runner = CentralIaRunner::updateOrCreate(
-            ['user_id' => $user->id, 'maquina' => $dados['maquina']],
-            [
-                'agentes' => array_values(array_unique($dados['agentes'])),
-                'projetos' => array_values(array_unique($dados['projetos'])),
-                'estado' => $this->estado($dados['estado'] ?? [], $dados['projetos']),
-                // Ausente na batida = runner antigo ou leitura ainda não feita:
-                // mantém o último valor em vez de apagar o card.
-                ...(array_key_exists('consumo', $dados) ? ['consumo' => $this->consumo($dados['consumo'] ?? [])] : []),
-                ...(array_key_exists('sessoes', $dados) ? ['sessoes' => $this->sessoes($dados['sessoes'] ?? [], $dados['projetos'])] : []),
-                ...(array_key_exists('politica', $dados) ? ['politica' => $dados['politica']] : []),
-                // O token desta batida: liga a máquina à linha de "Conectar
-                // minha máquina", e o Desconectar apaga as duas (T-374).
-                'token_id' => ($token = $request->user()->currentAccessToken()) instanceof \Laravel\Sanctum\PersonalAccessToken
-                    && is_int($token->getKey()) ? $token->getKey() : null,
-                'visto_em' => now(),
-            ],
-        );
+        $token = $request->user()->currentAccessToken();
+        $tokenId = $token instanceof \Laravel\Sanctum\PersonalAccessToken && is_int($token->getKey()) ? $token->getKey() : null;
+
+        // A batida autenticada antes do Desconectar e gravada depois recriava
+        // a máquina com o token já apagado: a linha órfã sumia da tela, mas
+        // seguia contando como disponível e recebia pedido pelo `proxima`
+        // (revisão da T-374). Na trava da conta, na ordem do `desconectar`,
+        // o token ainda tem de existir.
+        $runner = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $dados, $tokenId) {
+            User::whereKey($user->id)->lockForUpdate()->first();
+            if ($tokenId !== null && ! \Laravel\Sanctum\PersonalAccessToken::whereKey($tokenId)->exists()) {
+                return null;
+            }
+
+            return CentralIaRunner::updateOrCreate(
+                ['user_id' => $user->id, 'maquina' => $dados['maquina']],
+                [
+                    'agentes' => array_values(array_unique($dados['agentes'])),
+                    'projetos' => array_values(array_unique($dados['projetos'])),
+                    'estado' => $this->estado($dados['estado'] ?? [], $dados['projetos']),
+                    // Ausente na batida = runner antigo ou leitura ainda não feita:
+                    // mantém o último valor em vez de apagar o card.
+                    ...(array_key_exists('consumo', $dados) ? ['consumo' => $this->consumo($dados['consumo'] ?? [])] : []),
+                    ...(array_key_exists('sessoes', $dados) ? ['sessoes' => $this->sessoes($dados['sessoes'] ?? [], $dados['projetos'])] : []),
+                    ...(array_key_exists('politica', $dados) ? ['politica' => $dados['politica']] : []),
+                    // O token desta batida: liga a máquina à linha de "Conectar
+                    // minha máquina", e o Desconectar apaga as duas (T-374).
+                    'token_id' => $tokenId,
+                    'visto_em' => now(),
+                ],
+            );
+        });
+        abort_unless($runner, 401, 'Esta máquina foi desconectada.');
 
         if (! empty($dados['desde'])) {
             app(AgentesService::class)->interromperOrfas($user, $runner, \Illuminate\Support\Carbon::parse($dados['desde'])->timezone(config('app.timezone')), $dados['em_curso'] ?? []);

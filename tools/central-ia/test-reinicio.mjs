@@ -74,6 +74,9 @@ assert.ok(fonte.indexOf('existsSync(REINICIAR)') < fonte.indexOf("api('proxima'"
 // reinício só encurta a espera com a máquina livre. Com um pedido rodando, o
 // laço não sai, e a espera cortada a cada 1 s virava consulta por segundo.
 assert.match(fonte, /if \(espera > 10_000 && !rodando\.size && existsSync\(REINICIAR\)\) break;/);
+// 3ª revisão da T-374: com o reinício pedido e algo rodando, não pega trabalho
+// novo — senão, com PARALELO=2, a máquina nunca esvaziava.
+assert.match(fonte, /if \(rodando\.size < PARALELO && !existsSync\(REINICIAR\)\) \{\n\s+const r = await api\('proxima'/);
 rmSync(home, { recursive: true, force: true });
 
 /* ---------- 1b. pausar (Mac, plist mudado) e token novo depois de reconectar ---------- */
@@ -134,7 +137,7 @@ rmSync(home, { recursive: true, force: true });
 
 /* ---------- 2. o script, com launchctl/systemctl e pgrep de mentira ---------- */
 // O serviço falso: `pid` guarda o pid atual; "kill" registra o reinício à força.
-function cenario({ ocupado = '0', saiSozinho = false, liberaEm = 0, atraso = 0, recarregar = false, naoVolta = false, travaDeOutro = false, env = {}, limite = 20_000 }) {
+function cenario({ ocupado = '0', saiSozinho = false, liberaEm = 0, atraso = 0, recarregar = false, mac = false, naoVolta = false, travaDeOutro = false, env = {}, limite = 20_000 }) {
     const raiz = mkdtempSync(join(tmpdir(), 'central-ia-ocioso-'));
     const bin = join(raiz, 'bin');
     const alfa = join(raiz, '.local/share/alfa');
@@ -162,7 +165,7 @@ esac`;
     for (const nome of ['launchctl', 'systemctl']) { writeFileSync(join(bin, nome), servico); chmodSync(join(bin, nome), 0o755); }
     writeFileSync(join(bin, 'pgrep'), '#!/bin/bash\nexit 1\n');
     // O caminho do Mac (o único com recarga do plist) também no Linux do CI.
-    if (recarregar) { writeFileSync(join(bin, 'uname'), '#!/bin/bash\necho Darwin\n'); chmodSync(join(bin, 'uname'), 0o755); }
+    if (recarregar || mac) { writeFileSync(join(bin, 'uname'), '#!/bin/bash\necho Darwin\n'); chmodSync(join(bin, 'uname'), 0o755); }
     writeFileSync(join(bin, 'sleep'), '#!/bin/bash\nexec /bin/sleep 0.05\n');
     chmodSync(join(bin, 'pgrep'), 0o755);
     chmodSync(join(bin, 'sleep'), 0o755);
@@ -178,7 +181,8 @@ while [ ! -f "$R/fim" ]; do
   [ ${liberaEm} -gt 0 ] && [ $n -ge ${liberaEm} ] && echo 0 > "$A/central-ia-ocupado"
   if ${saiSozinho} && [ $n -ge ${atraso} ] && [ -f "$A/central-ia-reiniciar" ] && [ "$(cat "$A/central-ia-ocupado")" = 0 ]; then
     if [ "$(cat "$A/central-ia-reiniciar")" = pausar ]; then rm -f "$A/central-ia-reiniciar"; cat "$R/pid" > "$A/central-ia-pausado"
-    else rm -f "$A/central-ia-reiniciar"; echo ${naoVolta ? 0 : 300} > "$R/pid"; exit 0; fi
+    elif ${naoVolta}; then echo 100 > "$A/central-ia-pausado"; echo 0 > "$R/pid"; exit 0
+    else rm -f "$A/central-ia-reiniciar"; echo 300 > "$R/pid"; exit 0; fi
   fi
   /bin/sleep 0.05
 done`;
@@ -193,8 +197,9 @@ done`;
         status: r.status,
         forcado: existsSync(join(raiz, 'kill')) ? readFileSync(join(raiz, 'kill'), 'utf8').trim().split('\n').length : 0,
         arquivo: existsSync(join(alfa, 'central-ia-reiniciar')),
+        ...(naoVolta ? { pausado: existsSync(join(alfa, 'central-ia-pausado')) } : {}),
         pid: readFileSync(join(raiz, 'pid'), 'utf8').trim(),
-        ...(naoVolta || travaDeOutro ? { saida: r.stdout.toString(), trava: existsSync(join(alfa, 'central-ia-atualizar.trava')) } : {}),
+        ...(naoVolta || travaDeOutro || env.CENTRAL_IA_ATUALIZAR_TETO_OCUPADO ? { saida: r.stdout.toString(), trava: existsSync(join(alfa, 'central-ia-atualizar.trava')) } : {}),
         ...(recarregar ? { recarga: existsSync(join(raiz, 'recarga')) ? readFileSync(join(raiz, 'recarga'), 'utf8').trim().split('\n') : [] } : {}),
     };
     rmSync(raiz, { recursive: true, force: true });
@@ -239,6 +244,24 @@ assert.equal(r.status, 1, `devia desistir:\n${r.saida}`);
 assert.equal(r.arquivo, false, 'desistindo, apaga o pedido de reinício');
 assert.match(r.saida, /não voltou em 1 min/);
 assert.equal(r.trava, false, 'e solta a trava');
+// 3ª revisão: o ator sai sem apagar nada, e deixa um "pausado" largado: quem
+// apaga os dois é o script.
+assert.equal(r.pausado, false, 'desistindo, apaga também o aviso de pausado');
+
+// No Mac, o log dá também o `kickstart`: carregado sem processo, o `bootstrap` falha.
+r = cenario({ saiSozinho: true, naoVolta: true, mac: true, env: { CENTRAL_IA_ATUALIZAR_TETO_SEM_RUNNER: '60' }, limite: 10_000 });
+assert.equal(r.status, 1, `devia desistir:\n${r.saida}`);
+assert.match(r.saida, /launchctl bootstrap gui\/\d+ /);
+assert.match(r.saida, /launchctl kickstart -k gui\/\d+\/br\.com\.alfa\.central-ia-runner/);
+
+// 3ª revisão: o runner novo que nunca fica livre também tem teto (2 h; aqui,
+// 60 s): desiste sem matar nada e apaga o pedido, para ele voltar a pegar trabalho.
+r = cenario({ saiSozinho: true, ocupado: '1', env: { CENTRAL_IA_ATUALIZAR_TETO_OCUPADO: '60' }, limite: 10_000 });
+assert.equal(r.status, 1, `devia desistir do runner ocupado:\n${r.saida}`);
+assert.equal(r.forcado, 0, 'o runner que sabe sair nunca é morto');
+assert.equal(r.arquivo, false, 'desistindo, apaga o pedido de reinício');
+assert.equal(r.pid, '100');
+assert.match(r.saida, /não ficou livre em 1 min/);
 
 // E a trava de outra atualização viva também tem teto (2 h; aqui, 60 s).
 r = cenario({ saiSozinho: true, travaDeOutro: true, env: { CENTRAL_IA_ATUALIZAR_TETO_TRAVA: '60' }, limite: 10_000 });
