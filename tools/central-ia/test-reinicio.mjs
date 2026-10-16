@@ -271,8 +271,75 @@ assert.equal(r.pid, '100', 'sem a trava, não mexe no runner');
 assert.equal(r.trava, true, 'a trava é da outra: fica');
 assert.match(r.saida, /outra atualização/);
 
+/* ---------- 3. Windows (WSL): o central-ia-wsl.sh no lugar do systemd ---------- */
+// Desde 16/10/2026 o runner do WSL não depende do systemd: o supervisor que o
+// instalador grava o religa, e o script de atualizar o acha pelo pid que ele
+// deixa. Precisa do flock (util-linux): no Mac, onde ele não existe, pula.
+let wsl = 'pulado (sem flock)';
+if (spawnSync('sh', ['-c', 'command -v flock']).status === 0) {
+    const raiz = mkdtempSync(join(tmpdir(), 'central-ia-wsl-'));
+    const alfa = join(raiz, '.local/share/alfa');
+    const bin = join(raiz, 'bin');
+    mkdirSync(alfa, { recursive: true });
+    mkdirSync(bin);
+    const instalador = readFileSync(new URL('../../deploy/central-ia/instalar.sh', import.meta.url), 'utf8');
+    const supervisor = instalador.match(/<<'SUPERVISOR'\n([\s\S]*?)\nSUPERVISOR\n/)[1];
+    writeFileSync(join(alfa, 'central-ia-wsl.sh'), supervisor + '\n');
+    chmodSync(join(alfa, 'central-ia-wsl.sh'), 0o700);
+    // Relógio rápido: o supervisor espera 10 s e o script de atualizar, 5 s.
+    writeFileSync(join(bin, 'sleep'), '#!/bin/bash\nexec /bin/sleep 0.05\n');
+    writeFileSync(join(bin, 'uname'), '#!/bin/bash\necho Linux\n');
+    chmodSync(join(bin, 'sleep'), 0o755);
+    chmodSync(join(bin, 'uname'), 0o755);
+    writeFileSync(join(alfa, 'central-ia-wsl.env'), `HOME=${raiz}\nNODE=${process.execPath}\nPATH=${bin}:${process.env.PATH}\nCENTRAL_IA_LOG=${join(alfa, 'central-ia-runner.log')}\n`);
+    // O "runner": diz que sabe sair, e sai ao ver o pedido de reinício.
+    writeFileSync(join(alfa, 'central-ia-runner.mjs'), `import { existsSync, unlinkSync, writeFileSync, appendFileSync } from 'node:fs';
+const A = ${JSON.stringify(alfa)};
+writeFileSync(A + '/central-ia-conhece-reinicio', String(process.pid));
+appendFileSync(A + '/subidas', process.pid + '\\n');
+process.on('SIGTERM', () => process.exit(0));
+setInterval(() => { if (existsSync(A + '/central-ia-reiniciar')) { unlinkSync(A + '/central-ia-reiniciar'); process.exit(0); } }, 50);
+`);
+    writeFileSync(join(alfa, 'central-ia-ocupado'), '0');
+    const env = { ...process.env, HOME: raiz, PATH: `${bin}:${process.env.PATH}` };
+    const sup = spawn('bash', [join(alfa, 'central-ia-wsl.sh')], { env, stdio: 'ignore', detached: true });
+    const PIDF = join(alfa, 'central-ia-runner.pid');
+    const pidAtual = () => (existsSync(PIDF) ? readFileSync(PIDF, 'utf8').trim() : '');
+    for (let i = 0; i < 100 && !pidAtual(); i++) await espera(50);
+    const primeiro = pidAtual();
+    assert.ok(primeiro, 'o supervisor sobe o runner e deixa o pid');
+
+    // Um segundo supervisor (o .vbs rodado de novo, o instalador) sai na hora.
+    const outro = spawnSync('bash', [join(alfa, 'central-ia-wsl.sh')], { env, timeout: 5000 });
+    assert.equal(outro.status, 0);
+    assert.equal(readFileSync(join(alfa, 'subidas'), 'utf8').trim().split('\n').length, 1, 'dois supervisores subiriam dois runners');
+
+    // Atualizar: o runner sai sozinho e o supervisor o religa; o script vê o pid novo.
+    const at = spawnSync('bash', [SCRIPT], { env, timeout: 15_000 });
+    assert.equal(at.status, 0, at.stdout.toString() + at.stderr.toString());
+    for (let i = 0; i < 100 && (!pidAtual() || pidAtual() === primeiro); i++) await espera(50);
+    assert.notEqual(pidAtual(), primeiro, 'o supervisor religa o runner');
+    assert.ok(pidAtual(), 'com o runner novo no pid');
+
+    // Runner morto de fora (o kill do caminho antigo): o supervisor religa também.
+    const segundo = pidAtual();
+    process.kill(Number(segundo), 'SIGKILL');
+    for (let i = 0; i < 100 && (!pidAtual() || pidAtual() === segundo); i++) await espera(50);
+    assert.notEqual(pidAtual(), segundo, 'Restart=always: morto, volta');
+
+    // Supervisor parado: para o runner junto.
+    const ultimo = Number(pidAtual());
+    process.kill(sup.pid, 'SIGTERM');
+    for (let i = 0; i < 100; i++) { try { process.kill(ultimo, 0); } catch { break; } await espera(50); }
+    assert.throws(() => process.kill(ultimo, 0), 'o runner sobreviveu ao supervisor');
+    assert.equal(existsSync(PIDF), false, 'parado, não deixa pid velho');
+    rmSync(raiz, { recursive: true, force: true });
+    wsl = 'passou';
+}
+
 // A última checagem do caminho antigo vem colada no kill, sem espera entre as duas.
 const script = readFileSync(SCRIPT, 'utf8');
 assert.match(script, /if ocioso "\$agora"; then rm -f "\$REINICIAR"; reiniciar; exit 0; fi/);
 
+console.log(`WSL (supervisor sem systemd): ${wsl}`);
 console.log('PASSOU: o runner sai sozinho antes de pedir trabalho quando o reinício é pedido; o script não mata o runner novo (nem o lento) e só mata o antigo livre; no Mac, plist mudado recarrega o serviço com o runner pausado; token trocado no arquivo vale no primeiro 401; e o script desiste com log depois do teto (serviço que não volta, trava de outra atualização).');

@@ -76,10 +76,96 @@ perguntar_segredo() { # $1 = pergunta
   printf '%s' "$resposta"
 }
 
+# ---------- Windows (WSL): o runner sem o systemd ----------
+# No Windows o runner não depende do systemd (decisão do dono, 16/10/2026):
+# - o WSL desliga a distro segundos depois de fechar o último terminal, e o
+#   serviço do systemd vai junto; o linger não segura (teste de 16/10/2026,
+#   máquina offline das 16:17 às 16:26). O que segura é um wsl.exe aberto;
+# - no desktop do teste, o WSLg monta /run/user/1000 por cima do canal do
+#   systemd do usuário, e o `systemctl --user` respondia "Failed to connect to
+#   bus" em 5 de 5 religadas, com o serviço rodando: o instalador o dava como
+#   desligado e parava.
+# Então um script na pasta Inicialização do Windows (da pessoa, sem
+# administrador; autorizado pelo dono em 16/10/2026) abre, escondido, um
+# wsl.exe que roda o central-ia-wsl.sh — e é esse wsl.exe aberto que mantém o
+# Ubuntu ligado. O central-ia-wsl.sh faz o papel do systemd: roda o runner e o
+# religa 10 s depois de ele sair. O .vbs não abre um segundo se já houver um (a
+# marca vai na linha de comando), e o central-ia-wsl.sh, pela trava, também não.
+# O wsl.exe nasce pelo WMI (Win32_Process.Create), e não pelo WScript.Shell:
+# aberto pelo Run, ele é filho de quem rodou o instalador e morre junto com o
+# terminal ou a sessão SSH (no teste, morreu ao fechar a sessão); pelo WMI ele
+# nasce fora dessa árvore.
+
+# Supervisor no ar = a trava dele está presa.
+supervisor_wsl_no_ar() { ! flock -n "$DEST/central-ia-wsl.trava" true 2>/dev/null; }
+
+# Grava o .vbs na Inicialização e o roda; 1 quando o Windows não está à vista.
+abrir_pelo_windows() {
+  local appdata pasta vbs distro
+  distro="${WSL_DISTRO_NAME:-}"
+  # Programa do Windows lê o stdin: sem o </dev/null, o cmd.exe comeria o
+  # resto de um script que chega pelo stdin.
+  appdata="$( (cd /mnt/c 2>/dev/null; cmd.exe /c 'echo %APPDATA%' </dev/null 2>/dev/null) | tr -d '\r' || true)"
+  if [ -z "$distro" ] || [ -z "$appdata" ] || ! command -v wslpath >/dev/null; then return 1; fi
+  pasta="$(wslpath "$appdata")/Microsoft/Windows/Start Menu/Programs/Startup"
+  vbs="$pasta/central-ia-wsl.vbs"
+  mkdir -p "$pasta"
+  # ASCII de propósito: o wscript lê o arquivo na página de código do Windows.
+  # O caminho do supervisor vai relativo à casa (`--cd ~`): sem espaço nem
+  # aspas para escapar na linha de comando do Windows.
+  cat > "$vbs" <<VBS
+' Central de IA (AlfaMatriz): mantem o runner rodando no $distro do WSL, com o
+' terminal fechado. Gerado pelo instalador.
+' Para desligar: apague este arquivo e rode  wsl --terminate $distro
+Set wmi = GetObject("winmgmts:\\\\.\\root\\cimv2")
+Set abertos = wmi.ExecQuery("SELECT ProcessId FROM Win32_Process WHERE Name = 'wsl.exe' AND CommandLine LIKE '%CENTRAL_IA_SUPERVISOR_WSL%'")
+If abertos.Count = 0 Then
+  Set inicio = wmi.Get("Win32_ProcessStartup").SpawnInstance_
+  inicio.ShowWindow = 0
+  wmi.Get("Win32_Process").Create "wsl.exe -d $distro -u $(id -un) --cd ~ --exec /usr/bin/env CENTRAL_IA_SUPERVISOR_WSL=1 /bin/bash .local/share/alfa/central-ia-wsl.sh", Null, inicio, pid
+End If
+VBS
+  (cd /mnt/c 2>/dev/null; wscript.exe "$(wslpath -w "$vbs")" </dev/null)
+}
+
+# A instalação anterior (até 16/10/2026) ligava o runner pelo systemd também
+# no WSL. Sai, para não rodarem dois. Sem o canal do systemd (o WSLg o cobre),
+# a unidade é trocada por uma que não religa e o systemd do usuário a relê pelo
+# SIGHUP — conferido no desktop do teste. Pedido em andamento não é cortado: o
+# runner antigo sai sozinho quando fica livre (o mesmo pedido do
+# atualizar-quando-ocioso.sh), e só leva o TERM depois de 10 min.
+desligar_systemd_antigo() {
+  local u="$HOME/.config/systemd/user/central-ia-runner.service" canal=0 sd p i
+  [ -f "$u" ] || return 0
+  systemctl --user show-environment >/dev/null 2>&1 && canal=1
+  sd="$(pgrep -u "$(id -u)" -x systemd | head -1 || true)"
+  if [ "$canal" = 0 ] && [ -n "$sd" ]; then
+    printf '[Service]\nExecStart=/bin/true\nRestart=no\n' > "$u"
+    kill -HUP "$sd" 2>/dev/null || true; sleep 2
+  fi
+  p=""; [ -n "$sd" ] && p="$(pgrep -P "$sd" -f central-ia-runner.mjs | head -1 || true)"
+  # Runner de antes do reinício pedido (não grava o pid em
+  # central-ia-conhece-reinicio) não sairia sozinho: leva o TERM direto.
+  if [ -n "$p" ] && [ "$(cat "$DEST/central-ia-conhece-reinicio" 2>/dev/null || true)" != "$p" ]; then
+    kill -TERM "$p" 2>/dev/null || true
+  elif [ -n "$p" ]; then
+    : > "$DEST/central-ia-reiniciar"
+    echo "Parando o runner antigo (do systemd) assim que ele terminar o que está fazendo…"
+    for i in $(seq 1 120); do kill -0 "$p" 2>/dev/null || break; sleep 5; done
+    kill -TERM "$p" 2>/dev/null || true
+    rm -f "$DEST/central-ia-reiniciar"
+  fi
+  # Com o canal, quem para (e desfaz o religar do Restart=always) é ele.
+  [ "$canal" = 1 ] && systemctl --user disable --now central-ia-runner >/dev/null 2>&1 || true
+  rm -f "$u" "$HOME/.config/systemd/user/default.target.wants/central-ia-runner.service"
+  ok "O serviço antigo do systemd saiu: no Windows, quem mantém o runner é o script da Inicialização."
+}
+
 # ---------- sistema e pré-requisitos ----------
 case "$(uname -s)" in
   Darwin) SISTEMA=mac ;;
-  Linux) if grep -qi microsoft /proc/version 2>/dev/null; then SISTEMA=wsl; else SISTEMA=linux; fi ;;
+  # O kernel do WSL se identifica no `uname -r` (…-microsoft-standard-WSL2).
+  Linux) if uname -r | grep -qi microsoft || grep -qi microsoft /proc/version 2>/dev/null; then SISTEMA=wsl; else SISTEMA=linux; fi ;;
   *) erro "No Windows, rode este comando dentro do WSL (Ubuntu). O runner roda no Linux, no WSL e no Mac." ;;
 esac
 
@@ -89,6 +175,13 @@ NODE="$(command -v node || true)"
 [ -n "$NODE" ] || erro "Falta o Node 18 ou mais novo. Mac: brew install node. Linux/WSL: https://nodejs.org (ou nvm)."
 "$NODE" -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 18 ? 0 : 1)' \
   || erro "O Node desta máquina é antigo ($("$NODE" -v)). A Central precisa do 18 ou mais novo."
+
+# O Node tenta IPv4 e IPv6 juntos e desiste de cada um em 250 ms. No WSL o
+# IPv6 não tem rota e o IPv4 até o Telegram passa disso (~335 ms no teste de
+# 16/10/2026): todo fetch daqui falhava, e o token bom do bot do código era
+# dado como "recusado pelo Telegram". O runner já tinha o mesmo ajuste
+# (runner.mjs, 13/10/2026). Vai na frente de todo `node -e` que usa a rede.
+REDE='require("node:net").setDefaultAutoSelectFamilyAttemptTimeout?.(2500);'
 
 # O serviço guarda o caminho deste node. No nvm o caminho tem a versão, e
 # trocar de versão (ou apagar a antiga) para o serviço até rodar o comando de
@@ -216,7 +309,7 @@ fi
 TG_API="${CENTRAL_IA_TELEGRAM_API:-https://api.telegram.org}"
 # O @ do bot de um token, pelo getMe; vazio se o Telegram recusar.
 bot_do_token() {
-  TG_TOKEN="$1" TG_API="$TG_API" "$NODE" -e '
+  TG_TOKEN="$1" TG_API="$TG_API" "$NODE" -e "$REDE"'
     fetch(`${process.env.TG_API}/bot${process.env.TG_TOKEN}/getMe`, { signal: AbortSignal.timeout(15000) })
       .then(r => r.json()).then(j => { if (!j.ok) process.exit(1); process.stdout.write(String(j.result.username || "")); })
       .catch(() => process.exit(1));' 2>/dev/null || true
@@ -354,14 +447,94 @@ EOF
   fi
   LOG="tail -f ~/Library/Logs/central-ia-runner.log"
   LOG_ATUALIZAR="$HOME/Library/Logs/central-ia-runner.log"
+elif [ "$SISTEMA" = wsl ]; then
+  desligar_systemd_antigo
+  SUPERVISOR="$DEST/central-ia-wsl.sh"
+  # O ambiente fica num arquivo à parte, relido a cada vez que o runner sobe:
+  # o supervisor roda por dias, e trocar o node (nvm) ou o PATH vale no
+  # próximo reinício, sem ter de derrubá-lo. O PATH é o do terminal, sem as
+  # pastas do Windows que o WSL acrescenta: o runner acharia o `claude` do npm
+  # do Windows antes do da distro. O ~/.local/bin (onde o instalador do
+  # Claude Code põe o `claude`) entra mesmo que o terminal não o tenha: rodado
+  # sem shell de login (pelo SSH, no teste de 16/10/2026), o PATH vinha sem ele
+  # e a máquina subia sem nenhum agente.
+  PATH_WSL="$(printf '%s' "$PATH" | tr ':' '\n' | grep -v '^/mnt/' | paste -sd: -)"
+  case ":$PATH_WSL:" in *":$HOME/.local/bin:"*) ;; *) [ -d "$HOME/.local/bin" ] && PATH_WSL="$HOME/.local/bin:$PATH_WSL" ;; esac
+  { printf 'HOME=%q\n' "$HOME"
+    printf 'NODE=%q\n' "$NODE"
+    printf 'PATH=%q\n' "$PATH_WSL"
+    # O runner gira o próprio log (limpeza.mjs) quando sabe onde ele está.
+    printf 'CENTRAL_IA_LOG=%q\n' "$DEST/central-ia-runner.log"
+  } > "$DEST/central-ia-wsl.env.novo"
+  mv -f "$DEST/central-ia-wsl.env.novo" "$DEST/central-ia-wsl.env"
+  # Trocado pelo `mv`, nunca reescrito no lugar: o bash lê o script aos
+  # pedaços enquanto roda, e o supervisor no ar leria o arquivo novo pela
+  # metade. O que está no ar segue com o texto antigo até o Ubuntu religar;
+  # por isso o que muda (node, PATH) mora no .env, relido a cada subida.
+  cat > "$SUPERVISOR.novo" <<'SUPERVISOR'
+#!/bin/bash
+# Runner da Central de IA no Windows (WSL) — gerado pelo instalador do
+# AlfaMatriz (T-374). Faz o papel do systemd: roda o runner e o religa 10 s
+# depois de ele sair (Restart=always). Quem o abre é o central-ia-wsl.vbs da
+# pasta Inicialização do Windows, e o wsl.exe dele é que mantém o Ubuntu ligado.
+set -u
+DIR="$(cd "$(dirname "$0")" && pwd)"
+# Um só: a trava fica presa enquanto este script roda.
+exec 9>"$DIR/central-ia-wsl.trava"
+flock -n 9 || exit 0
+LOG="$DIR/central-ia-runner.log"
+PID="$DIR/central-ia-runner.pid"
+filho=""
+# Parado (wsl --terminate, desligar o Windows): para o runner junto e espera
+# ele encerrar os agentes, como o KillMode=mixed do systemd.
+trap '[ -n "$filho" ] && { kill -TERM "$filho" 2>/dev/null; wait "$filho" 2>/dev/null; }; rm -f "$PID"; exit 0' TERM INT HUP
+while :; do
+  . "$DIR/central-ia-wsl.env"
+  # Sem journal, o limite do log é o do próprio runner (CENTRAL_IA_LOG: passou
+  # de 10 MB, ele copia e esvazia no lugar; o >> abaixo acompanha).
+  export HOME PATH CENTRAL_IA_LOG
+  # 9>&-: o runner não herda a trava, senão ela seguiria presa sem supervisor.
+  "$NODE" "$DIR/central-ia-runner.mjs" >>"$LOG" 2>&1 9>&- &
+  filho=$!
+  echo "$filho" > "$PID"
+  wait "$filho"; saiu=$?
+  printf '%s supervisor: o runner saiu (%s); religando em 10 s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$saiu" >>"$LOG"
+  filho=""
+  rm -f "$PID"
+  sleep 10 & wait $!
+done
+SUPERVISOR
+  chmod 700 "$SUPERVISOR.novo"
+  mv -f "$SUPERVISOR.novo" "$SUPERVISOR"
+  if supervisor_wsl_no_ar; then RODANDO=1; fi
+  # Grava (ou regrava) o .vbs sempre: o nome da distro ou do usuário pode ter
+  # mudado. Rodá-lo com o supervisor no ar não faz nada.
+  if abrir_pelo_windows; then
+    NO_WINDOWS=1
+  else
+    NO_WINDOWS=0
+  fi
+  if [ "$RODANDO" = 0 ]; then
+    for i in $(seq 1 20); do supervisor_wsl_no_ar && break; sleep 1; done
+    if ! supervisor_wsl_no_ar; then
+      # Sem o Windows à vista (interop desligado) ou o .vbs não abriu: roda
+      # daqui, e vale enquanto o Ubuntu estiver aberto.
+      setsid nohup /bin/bash "$SUPERVISOR" </dev/null >/dev/null 2>&1 &
+      for i in $(seq 1 10); do supervisor_wsl_no_ar && break; sleep 1; done
+      supervisor_wsl_no_ar || erro "O runner não ligou: confira  $DEST/central-ia-runner.log"
+      NO_WINDOWS=0
+    fi
+  fi
+  if [ "$NO_WINDOWS" = 1 ]; then
+    ok "Windows: o runner fica rodando com o terminal fechado (e liga sozinho ao entrar no Windows)."
+  else
+    aviso "Não consegui ligar o runner pelo Windows: ele para quando o Ubuntu fechar. Deixe um terminal do Ubuntu aberto."
+  fi
+  LOG="tail -f $DEST/central-ia-runner.log"
+  LOG_ATUALIZAR="$DEST/central-ia-atualizar.log"
 else
   if ! systemctl --user show-environment >/dev/null 2>&1; then
     aviso "O systemd não está ligado nesta máquina, e é ele que mantém o runner rodando."
-    if [ "$SISTEMA" = wsl ]; then
-      aviso "No WSL: rode  printf '[boot]\\nsystemd=true\\n' | sudo tee -a /etc/wsl.conf"
-      aviso "depois, no PowerShell do Windows,  wsl --shutdown  — abra o Ubuntu de novo e rode:"
-      aviso "  curl -fsSL $URL/central-ia/instalar.sh | bash"
-    fi
     erro "A configuração foi gravada; falta só o serviço."
   fi
   UNIDADE="$HOME/.config/systemd/user/central-ia-runner.service"
@@ -456,7 +629,7 @@ fi
 # ---------- Telegram: mensagem de teste pelo bot do código ----------
 TG_TOKEN="$ATUAL"
 if [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ]; then
-  if TG_TOKEN="$TG_TOKEN" TG_CHAT="$TG_CHAT" TG_API="$TG_API" MAQUINA="$(ler_conf CENTRAL_IA_MAQUINA)" "$NODE" -e '
+  if TG_TOKEN="$TG_TOKEN" TG_CHAT="$TG_CHAT" TG_API="$TG_API" MAQUINA="$(ler_conf CENTRAL_IA_MAQUINA)" "$NODE" -e "$REDE"'
       fetch(`${process.env.TG_API}/bot${process.env.TG_TOKEN}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chat_id: process.env.TG_CHAT, text: `✅ A máquina ${process.env.MAQUINA || ""} está conectada à Central de IA. Os códigos de confirmação dos seus pedidos chegam aqui.` }),
         signal: AbortSignal.timeout(15000) }).then(r => r.json()).then(j => process.exit(j.ok ? 0 : 1)).catch(() => process.exit(1));'; then
