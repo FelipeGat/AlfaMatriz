@@ -259,9 +259,28 @@ class AgentesService
         }
         if ($resposta) {
             $rota['categoria'] = $resposta->roteamento['categoria'] ?? $rota['categoria'] ?? null;
-            if ($modo === 'auto') $modo = $resposta->modo;
-            $pedido['nivel'] = in_array($pedido['nivel'] ?? 'auto', Preferencias::NIVEIS, true) ? $pedido['nivel'] : ($resposta->roteamento['nivel'] ?? 'auto');
+            // A resposta só SOBE de modo, nunca desce (T-368, decisão do dono
+            // em 16/10/2026). Ela herdava sempre o modo do pedido: depois de uma
+            // pergunta numa análise, "faça o push", com o código confirmado,
+            // rodava só leitura e era negado, e só um chat novo resolvia. Se o
+            // próprio texto pede mudança, roda como implementação, com o código
+            // pelas regras de sempre; se só informa, segue no modo do pedido.
+            $subiu = false;
+            if ($modo === 'auto') {
+                // Só o que a pessoa escreveu: a instrução repete a pergunta do
+                // agente entre aspas, e um "posso implementar?" dele não é pedido.
+                $subiu = $resposta->modo !== 'implementar'
+                    && $this->roteador->decidir(trim(Str::afterLast($pedido['instrucao'], '):')), [], $tarefa)['modo'] === 'implementar';
+                $modo = $subiu ? 'implementar' : $resposta->modo;
+            }
+            // Subiu para implementação: o nível sai do modo novo (`auto`), e não
+            // do nível da análise de onde veio a pergunta.
+            $pedido['nivel'] = in_array($pedido['nivel'] ?? 'auto', Preferencias::NIVEIS, true) ? $pedido['nivel'] : ($subiu ? 'auto' : ($resposta->roteamento['nivel'] ?? 'auto'));
             $rota['motivo'] = 'Resposta à pergunta de '.$resposta->nomeDoAgente().': segue o mesmo pedido ('.($rota['categoria'] ?? $resposta->modo).')';
+            if ($subiu) {
+                $rota['categoria'] = 'implementacao';
+                $rota['motivo'] = 'Resposta à pergunta de '.$resposta->nomeDoAgente().': pede alteração, roda como implementação';
+            }
 
             // As três saídas de uma análise que propôs mudança (dono, 13/10/2026).
             $escolha = array_search(trim(Str::afterLast($pedido['instrucao'], '):')), self::OPCOES_DA_PROPOSTA, true);
@@ -637,6 +656,10 @@ class AgentesService
 
         return [
             'id' => $execucao->id,
+            // A máquina guarda o chat confirmado com servidor + conta + chat
+            // (T-368): o número do chat sozinho se repete entre servidores e
+            // contas, e liberava o chat de outra conta sem pedir código.
+            'conta' => $user->id,
             'agente' => $execucao->agente,
             'projeto' => $execucao->projeto,
             'modo' => $execucao->modo,

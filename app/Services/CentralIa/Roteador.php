@@ -29,7 +29,7 @@ class Roteador
     private const CATEGORIAS = [
         'implementacao' => ['implemente', 'implementar', 'inplementar', 'inplemente', 'implante', 'implantar', 'corrija', 'corrigir', 'conserte', 'crie', 'criar', 'adicione', 'adicionar',
             'altere', 'alterar', 'ajuste', 'ajustar', 'refatore', 'refatorar', 'remova', 'mude', 'mudar', 'troque', 'escreva', 'faça', 'faca',
-            'aplique', 'migre', 'atualize', 'inclua', 'resolva', 'gere', 'monte', 'commit', 'commite', 'deploy', 'publique'],
+            'aplique', 'migre', 'atualize', 'inclua', 'resolva', 'gere', 'monte', 'commit', 'commite', 'push', 'deploy', 'publique'],
         'revisao' => ['revise', 'revisar', 'revisão', 'revisao', 'review', 'audite', 'auditar', 'confira', 'valide', 'validar', 'avalie o código'],
         'planejamento' => ['planeje', 'planejar', 'plano', 'arquitetura', 'arquitete', 'desenhe', 'proponha', 'estratégia', 'estrategia', 'roadmap'],
         'investigacao' => ['investigue', 'investigar', 'descubra', 'por que', 'porque', 'entenda', 'diagnostique', 'mapeie'],
@@ -56,7 +56,9 @@ class Roteador
         'adicione', 'altere', 'remova', 'ajuste', 'inclua', 'troque', 'mude', 'atualize', 'aplique', 'resolva',
         // Commit e deploy são execução (13/10/2026: "pode fazer commit e deploy"
         // caía em análise). Deploy pede o código da máquina sempre.
-        'commit', 'commite', 'deploy', 'publique', 'publicar'];
+        // Push também (T-368): "pode fazer o push", resposta a uma pergunta
+        // do agente, ficava em análise e o push era negado.
+        'commit', 'commite', 'push', 'deploy', 'publique', 'publicar'];
 
     /** Genéricos: só contam como implementação quando nada analítico aparece. */
     private const VERBOS_GENERICOS = ['faça', 'faca', 'crie', 'criar', 'escreva', 'gere', 'monte'];

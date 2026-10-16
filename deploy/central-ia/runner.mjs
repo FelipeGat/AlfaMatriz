@@ -21,22 +21,14 @@ import { arquivoDaSessao, usoLocal } from './uso-local.mjs';
 import { montarSemente } from './extrato.mjs';
 import { prepararAnexos } from './anexos.mjs';
 import { acompanharProgresso } from './progresso.mjs';
-import { auditar, confirmar } from './confirmacao.mjs';
+import { auditar, chatConfirmado, chaveDoChat, confirmar, marcarChatConfirmado } from './confirmacao.mjs';
 import { caminhoDoStatus, compararGit, criarAuditor, retratoGit } from './auditoria.mjs';
 import { girar, limparWorktrees } from './limpeza.mjs';
 import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
-// Chats já confirmados nesta máquina (vale 12 h): a regra "inicio" não pede
-// o código de novo no mesmo chat. Fica aqui, e não no servidor.
+// Chats já confirmados nesta máquina (vale 12 h; chave servidor + conta +
+// chat, em confirmacao.mjs). Fica aqui, e não no servidor.
 const CONFIRMADOS = join(homedir(), '.local/share/alfa/central-ia-chats-confirmados.json');
-const VALIDADE_CHAT_MS = 12 * 3600_000;
-function chatsConfirmados() {
-    try { return Object.fromEntries(Object.entries(JSON.parse(readFileSync(CONFIRMADOS, 'utf8'))).filter(([, ate]) => ate > Date.now())); } catch { return {}; }
-}
-function marcarChatConfirmado(tarefa) {
-    if (!tarefa) return;
-    try { writeFileSync(CONFIRMADOS, JSON.stringify({ ...chatsConfirmados(), [tarefa]: Date.now() + VALIDADE_CHAT_MS }), { mode: 0o600 }); } catch {}
-}
 
 const HOME = homedir();
 const CONFIG = process.env.CENTRAL_IA_RUNNER_CONFIG || join(HOME, '.config/alfa/central-ia-runner.env');
@@ -832,12 +824,13 @@ async function executar(job) {
         // Modificar exige o código do dono, que ESTA máquina gera e manda ao
         // Telegram dele (confirmacao.mjs). Sem isso, nada roda.
         const regra = regraEfetiva(cfg.confirmar, job.confirmacao_regra);
-        if (exigeConfirmacao(job, regra, !!chatsConfirmados()[job.tarefa?.id])) {
+        const chaveChat = chaveDoChat(cfg.url, job.conta, job.tarefa?.id);
+        if (exigeConfirmacao(job, regra, chatConfirmado(CONFIRMADOS, chaveChat))) {
             progresso.etapa('confirmacao');
             await informar();
             const c = await confirmar({ job, cwd, acesso, cfg, api, parar: () => parar });
             if (!c.ok) throw new Error(`não executado: ${c.motivo}`);
-            marcarChatConfirmado(job.tarefa?.id);
+            marcarChatConfirmado(CONFIRMADOS, chaveChat);
         } else {
             // "leitura" só quando É leitura (T-368: a implementação que a regra
             // deixou passar sem código saía no log como leitura).

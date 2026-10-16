@@ -36,8 +36,11 @@ class Governanca
 
     public function padrao(): array
     {
+        // O total nasce sem teto (T-368): quem limita são os tetos por IA. Com 0
+        // aqui, liberar a conta e dar "Claude 1/dia" sem mexer no total deixava
+        // a pessoa sem nenhum pedido, sem aviso nenhum.
         return ['revisao' => 0, 'habilitados' => ['claude' => false, 'codex' => false, 'copilot' => false],
-            'pedidos_dia' => ['claude' => 0, 'codex' => 0, 'copilot' => 0], 'limite_total' => 0, 'paralelo' => 1,
+            'pedidos_dia' => ['claude' => 0, 'codex' => 0, 'copilot' => 0], 'limite_total' => null, 'paralelo' => 1,
             // Não há executor com ACL comprovada nesta versão. Não existe opção
             // de "liberar" pelo navegador que finja que o isolamento foi feito.
             'execucao_bloqueada' => true, 'deploy' => false, 'onedrive' => false];

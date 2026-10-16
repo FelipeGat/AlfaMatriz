@@ -165,3 +165,32 @@ console.log('T-368: acesso total sem publicar fora de deploy');
     assert.equal(decisaoSemConfirmacao({ modo: 'analisar' }, 'nunca', 'total').decisao, 'sem_confirmacao', 'análise com acesso total também não é leitura');
     console.log('T-368: auditoria sem "leitura" falsa');
 }
+
+// T-368: chat confirmado vale só no mesmo servidor, na mesma conta e no mesmo
+// chat. O chat 5 confirmado no staging liberou o chat 5 da produção, de outra
+// conta, sem pedir código.
+{
+    const { chaveDoChat, chatConfirmado, marcarChatConfirmado, VALIDADE_CHAT_MS } = await import('../../deploy/central-ia/confirmacao.mjs');
+    const arq = join(dir, 'chats-confirmados.json');
+    const staging = 'https://alfamatriz-staging.exemplo', producao = 'https://matriz.exemplo';
+    const agora = 1_000_000;
+    marcarChatConfirmado(arq, chaveDoChat(staging, 7, 5), agora);
+    assert.ok(chatConfirmado(arq, chaveDoChat(staging, 7, 5), agora), 'o mesmo chat continua liberado');
+    assert.ok(chatConfirmado(arq, chaveDoChat(staging + '/', 7, 5), agora), 'barra no fim do endereço não muda o servidor');
+    assert.ok(!chatConfirmado(arq, chaveDoChat(producao, 7, 5), agora), 'mesmo número em outro servidor pede código');
+    assert.ok(!chatConfirmado(arq, chaveDoChat(staging, 8, 5), agora), 'mesmo número em outra conta pede código');
+    assert.ok(!chatConfirmado(arq, chaveDoChat(staging, 7, 6), agora), 'outro chat pede código');
+    assert.ok(!chatConfirmado(arq, chaveDoChat(staging, 7, 5), agora + VALIDADE_CHAT_MS + 1), 'vence em 12 h');
+    // Servidor sem a conta no pedido: não há chave, nada fica liberado nem gravado.
+    assert.equal(chaveDoChat(producao, undefined, 5), null);
+    assert.ok(!chatConfirmado(arq, chaveDoChat(producao, undefined, 5), agora));
+    marcarChatConfirmado(arq, chaveDoChat(producao, undefined, 5), agora);
+    assert.deepEqual(Object.keys(JSON.parse(readFileSync(arq, 'utf8'))), [chaveDoChat(staging, 7, 5)]);
+    // O arquivo do formato antigo (só o número do chat) não libera nada.
+    const antigo = join(dir, 'chats-antigos.json');
+    writeFileSync(antigo, JSON.stringify({ 5: agora + VALIDADE_CHAT_MS }));
+    assert.ok(!chatConfirmado(antigo, chaveDoChat(producao, 7, 5), agora), 'entrada antiga, sem servidor e conta, não vale');
+    marcarChatConfirmado(antigo, chaveDoChat(producao, 7, 9), agora);
+    assert.deepEqual(Object.keys(JSON.parse(readFileSync(antigo, 'utf8'))), [chaveDoChat(producao, 7, 9)], 'a entrada antiga some na próxima gravação');
+    console.log('T-368: chat confirmado preso a servidor + conta + chat');
+}

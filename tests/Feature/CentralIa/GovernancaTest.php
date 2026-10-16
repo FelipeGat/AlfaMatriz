@@ -71,6 +71,31 @@ class GovernancaTest extends TestCase
         $this->assertFalse(app(Preferencias::class)->ler($membro)['execucao_bloqueada']);
     }
 
+    /**
+     * T-368, teste em produção: liberar a Membro com "Claude 1/dia" sem mexer
+     * no total deixava o total em 0, e ela não conseguia pedir nada.
+     */
+    public function test_total_nasce_sem_teto_e_total_zero_com_ia_liberada_e_recusado(): void
+    {
+        $admin = $this->pessoa(true); $membro = $this->pessoa();
+        $this->actingAs($admin)->getJson(route('central-ia.administracao', ['usuario' => $membro->id]))
+            ->assertOk()->assertJsonPath('politica.limite_total', null);
+
+        $soClaude = ['revisao' => 0, 'habilitados' => ['claude' => true, 'codex' => false, 'copilot' => false],
+            'pedidos_dia' => ['claude' => 1, 'codex' => 0, 'copilot' => 0], 'paralelo' => 1, 'execucao_bloqueada' => false];
+        $this->putJson(route('central-ia.usuarios.politica', $membro->id), $soClaude + ['limite_total' => 0])
+            ->assertUnprocessable()->assertJsonValidationErrors(['limite_total' => 'nenhum pedido']);
+        $this->assertTrue(app(Preferencias::class)->ler($membro)['execucao_bloqueada'], 'a recusa não grava nada');
+
+        $this->putJson(route('central-ia.usuarios.politica', $membro->id), $soClaude + ['limite_total' => null])->assertOk();
+        $this->assertTrue(app(Preferencias::class)->pode($membro, 'claude'), 'o teto por IA é que limita: 1 pedido no Claude');
+        $this->assertFalse(app(Preferencias::class)->pode($membro, 'codex'));
+
+        // Sem IA liberada, total 0 não engana ninguém: continua aceito.
+        $nenhuma = ['revisao' => 1, 'habilitados' => ['claude' => false, 'codex' => false, 'copilot' => false]] + $soClaude;
+        $this->putJson(route('central-ia.usuarios.politica', $membro->id), $nenhuma + ['limite_total' => 0])->assertOk();
+    }
+
     private function politica(): array
     {
         return ['revisao' => 0, 'habilitados' => ['claude' => true,'codex' => true,'copilot' => false],

@@ -158,6 +158,8 @@ class AgentesTest extends TestCase
         $trabalho = $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->assertOk()
             ->assertJsonPath('agente', 'claude')->assertJsonPath('projeto', 'alfacontrol')
             ->assertJsonPath('tarefa.id', $tarefa)
+            // A máquina guarda o chat confirmado por servidor + conta + chat (T-368).
+            ->assertJsonPath('conta', $user->id)
             ->assertJsonPath('continuar', null)->json();
 
         $this->postJson(route('central-ia.runner.proxima'), ['maquina' => 'wsl'])->assertNoContent();
