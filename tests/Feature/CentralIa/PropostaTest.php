@@ -65,6 +65,26 @@ class PropostaTest extends TestCase
         $this->assertSame('implementar', $r['modo']);
     }
 
+    /**
+     * T-368, teste em produção: depois de uma pergunta numa análise, "faça o
+     * push" herdava a análise e rodava só leitura, mesmo com o código
+     * confirmado. A resposta só sobe de modo; a que só informa segue o pedido.
+     */
+    public function test_resposta_que_pede_mudanca_sobe_para_implementacao(): void
+    {
+        [$u, $s, $e] = $this->cenario();
+        $info = $this->responder($u, $s, $e, 'o arquivo certo é o nota.txt', 'b1');
+        $this->assertSame('analisar', $info->modo, 'a resposta que só informa segue no modo do pedido');
+        $this->assertStringContainsString('segue o mesmo pedido', $info->roteamento['motivo']);
+
+        $s->proxima($u, CentralIaRunner::first());
+        $push = $this->responder($u, $s, $e, 'pode fazer o push da main para o origin', 'b2');
+        $this->assertSame('implementar', $push->modo);
+        $this->assertSame('implementacao', $push->roteamento['categoria']);
+        $this->assertSame('forte', $push->roteamento['nivel'], 'o nível sai da implementação, e não da análise');
+        $this->assertStringContainsString('pede alteração', $push->roteamento['motivo']);
+    }
+
     public function test_outra_sugestao_mesma_ou_outra_ia(): void
     {
         [$u, $s, $e] = $this->cenario();

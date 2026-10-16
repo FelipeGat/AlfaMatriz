@@ -217,6 +217,11 @@ class CentralIaController extends Controller
             'execucao_bloqueada' => ['sometimes', 'boolean'], 'deploy' => ['prohibited'], 'onedrive' => ['prohibited'],
         ]);
         foreach (array_keys(CentralIaExecucao::AGENTES) as $a) abort_unless(isset($dados['habilitados'][$a]) && array_key_exists($a, $dados['pedidos_dia']), 422);
+        // Total 0 com uma IA liberada é a conta sem pedido nenhum (T-368): a
+        // Membro de teste ficou assim, e nada na tela dizia.
+        if (isset($dados['limite_total']) && (int) $dados['limite_total'] === 0 && array_filter($dados['habilitados'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['limite_total' => 'Com o máximo total diário em 0, esta conta não consegue fazer nenhum pedido. Aumente o total ou marque "Sem teto interno".']);
+        }
         \Illuminate\Support\Facades\DB::transaction(function () use ($alvo, $dados, $g, $request) {
             \App\Models\User::whereKey($alvo->id)->lockForUpdate()->firstOrFail();
             $politica = $g->politica($alvo) ?? $g->padrao();

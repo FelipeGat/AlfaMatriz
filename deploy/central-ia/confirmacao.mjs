@@ -19,7 +19,7 @@
  * não alcança.
  */
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import { appendFileSync, chmodSync, existsSync, mkdirSync } from 'node:fs';
+import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { girar } from './limpeza.mjs';
@@ -62,6 +62,43 @@ export function confere(esperado, digitado) {
 
 export function segredoValido(segredo) {
     return typeof segredo === 'string' && /^[0-9a-f]{64}$/i.test(segredo);
+}
+
+/**
+ * Chats já confirmados nesta máquina (vale 12 h): a regra "inicio" não pede o
+ * código de novo no mesmo chat.
+ *
+ * A chave é servidor + conta + chat (T-368). Era só o número do chat, e o
+ * número se repete entre servidores e contas: o chat 5 confirmado no staging
+ * liberou o chat 5 da produção, de outra conta, e o pedido alterou arquivos sem
+ * pedir código. Faltando qualquer das três partes não há chave, e sem chave
+ * nada fica liberado. As entradas do formato antigo (só o número) nunca casam
+ * com uma chave nova: quem confirmou antes desta versão confirma de novo.
+ */
+export const VALIDADE_CHAT_MS = 12 * 3600_000;
+
+export function chaveDoChat(servidor, conta, chat) {
+    if (!servidor || conta == null || conta === '' || chat == null || chat === '') return null;
+    return `${String(servidor).replace(/\/+$/, '')}|${conta}|${chat}`;
+}
+
+export function chatsConfirmados(arquivo, agora = Date.now()) {
+    try {
+        return Object.fromEntries(Object.entries(JSON.parse(readFileSync(arquivo, 'utf8')))
+            .filter(([chave, ate]) => chave.includes('|') && ate > agora));
+    } catch { return {}; }
+}
+
+export function chatConfirmado(arquivo, chave, agora = Date.now()) {
+    return !!chave && !!chatsConfirmados(arquivo, agora)[chave];
+}
+
+export function marcarChatConfirmado(arquivo, chave, agora = Date.now()) {
+    if (!chave) return;
+    try {
+        mkdirSync(dirname(arquivo), { recursive: true });
+        writeFileSync(arquivo, JSON.stringify({ ...chatsConfirmados(arquivo, agora), [chave]: agora + VALIDADE_CHAT_MS }), { mode: 0o600 });
+    } catch {}
 }
 
 /** A mensagem que a pessoa lê no celular: o pedido EXATO, não um resumo do servidor. */
