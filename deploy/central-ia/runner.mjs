@@ -64,6 +64,8 @@ function lerConfig() {
         // Analisar: `leitura` (padrão) ou `total` — com total, a IA decide o
         // que consultar, e o que ela viu e alterou fica na auditoria.
         analise: v('CENTRAL_IA_ANALISE') === 'total' ? 'total' : 'leitura',
+        // Codex com acesso total fora de deploy (padrão: não). Ver politica.mjs.
+        codexTotal: v('CENTRAL_IA_CODEX_TOTAL') === 'sim',
         // Pastas da pasta de projetos que NÃO são projeto (vídeos, orçamentos):
         // somem do catálogo, das sessões e do consumo (dono, 12/10/2026).
         ignorar: new Set((v('CENTRAL_IA_IGNORAR') || '').split(',').map(x => x.trim()).filter(Boolean)),
@@ -646,7 +648,7 @@ function comando(job, cwd, branch, saida, acesso) {
     }
 
     if (job.agente === 'codex') {
-        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso, { deploy: pedeDeploy(job) }), ...modeloArgs('codex', job.modelo, job.esforco), '-c', 'forced_login_method="chatgpt"'];
+        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso, { deploy: pedeDeploy(job), codexTotal: cfg.codexTotal }), ...modeloArgs('codex', job.modelo, job.esforco), '-c', 'forced_login_method="chatgpt"'];
         // `-`: o Codex lê o pedido do stdin (mesmo motivo do Claude, E2BIG).
         return [agentes.codex, sessao ? ['exec', 'resume', sessao, ...comum, '-'] : ['exec', ...comum, '-'], null, prompt];
     }
