@@ -89,6 +89,9 @@ CENTRAL_IA_MAQUINA=notebook-ana        # nome na tela (padrão: o hostname)
 CENTRAL_IA_ACESSO_MAXIMO=restrito      # ou total
 CENTRAL_IA_CONFIRMAR=inicio            # mínimo: nunca, deploy, inicio, implementar, sempre
 CENTRAL_IA_ANALISE=leitura             # ou total: a IA decide o que consultar; o rastro fica na auditoria
+CENTRAL_IA_CODEX_TOTAL=sim             # opcional: o Codex também com acesso total fora de deploy (rede, pontes
+                                       # de produção). Sem isso ele fica no workspace-write, sem rede (T-368).
+                                       # O deploy continua pedindo o código no Telegram.
 CENTRAL_IA_IGNORAR=videos,orcamentos   # subpastas que não são projeto (pasta vazia já é ignorada)
 CENTRAL_IA_SEGREDO_CONFIRMACAO=…       # 64 hex, gerado pelo instalador
 CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=… # o SEU bot do código; só esta máquina tem o token

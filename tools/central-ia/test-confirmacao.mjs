@@ -192,5 +192,12 @@ console.log('T-368: acesso total sem publicar fora de deploy');
     assert.ok(!chatConfirmado(antigo, chaveDoChat(producao, 7, 5), agora), 'entrada antiga, sem servidor e conta, não vale');
     marcarChatConfirmado(antigo, chaveDoChat(producao, 7, 9), agora);
     assert.deepEqual(Object.keys(JSON.parse(readFileSync(antigo, 'utf8'))), [chaveDoChat(producao, 7, 9)], 'a entrada antiga some na próxima gravação');
-    console.log('T-368: chat confirmado preso a servidor + conta + chat');
+    // Codex com acesso total fora de deploy só com a opção da máquina (16/10/2026).
+const sandbox = a => a.find(x => x.startsWith('sandbox_mode='));
+assert.equal(sandbox(permissoes('codex', 'total')), 'sandbox_mode="workspace-write"', 'padrão: sem rede fora de deploy');
+assert.equal(sandbox(permissoes('codex', 'total', { deploy: true })), 'sandbox_mode="danger-full-access"');
+assert.equal(sandbox(permissoes('codex', 'total', { codexTotal: true })), 'sandbox_mode="danger-full-access"', 'opção da máquina');
+assert.equal(sandbox(permissoes('codex', 'restrito', { codexTotal: true })), 'sandbox_mode="workspace-write"', 'a opção não passa do teto');
+
+console.log('T-368: chat confirmado preso a servidor + conta + chat');
 }

@@ -95,11 +95,14 @@ export function exigeConfirmacao(job, regra, chatConfirmado = false) {
 }
 
 /** Argumentos de permissão de cada CLI para o acesso efetivo. */
-export function permissoes(agente, acesso, { projetos, cwd, deploy = false } = {}) {
+export function permissoes(agente, acesso, { projetos, cwd, deploy = false, codexTotal = false } = {}) {
     // O Codex não nega comando por comando: sem pedido de deploy, ele não
     // recebe acesso total (fica no workspace-write, sem rede), e assim não
-    // publica nada (T-368).
-    if (agente === 'codex' && acesso === 'total' && !deploy) acesso = 'restrito';
+    // publica nada (T-368). Exceção da MÁQUINA (`CENTRAL_IA_CODEX_TOTAL=sim`,
+    // Felipe, 16/10/2026): quem quer o Codex operando como no VS Code (rede,
+    // pontes de produção, pastas fora do projeto) liga na própria máquina. O
+    // deploy continua pedindo o código no Telegram (exigeConfirmacao).
+    if (agente === 'codex' && acesso === 'total' && !deploy && !codexTotal) acesso = 'restrito';
     const total = acesso === 'total', escreve = acesso !== 'leitura';
     const semPublicar = total && !deploy;
     if (agente === 'claude') {
