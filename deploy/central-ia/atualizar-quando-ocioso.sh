@@ -3,8 +3,9 @@
 # nenhuma execução com a máquina (inclusive esperando o código do dono, que
 # não tem processo).
 #
-# Serve ao systemd (Linux, WSL) e ao launchd (Mac) — T-374: era só systemd e
-# lia /proc, que o Mac não tem.
+# Serve ao systemd (Linux), ao launchd (Mac) e ao central-ia-wsl.sh (Windows
+# com WSL, desde 16/10/2026) — T-374: era só systemd e lia /proc, que o Mac
+# não tem.
 #
 # Desde 15/10/2026 (T-374) quem decide a hora é o próprio runner: este script
 # deixa o arquivo "central-ia-reiniciar", e o laço do runner sai antes de pedir
@@ -78,6 +79,25 @@ if [ "$(uname -s)" = Darwin ]; then
   else
     reiniciar() { launchctl kickstart -k "gui/$(id -u)/$ROTULO"; }
   fi
+elif [ -f "$DIR/central-ia-wsl.sh" ]; then
+  # Windows (WSL), sem systemd desde 16/10/2026: quem religa o runner é o
+  # central-ia-wsl.sh, que deixa o pid dele em central-ia-runner.pid. Reiniciar
+  # é parar o runner; o supervisor o sobe de novo em 10 s.
+  pid_do_runner() {
+    local p
+    p="$(cat "$DIR/central-ia-runner.pid" 2>/dev/null || true)"
+    [ -n "$p" ] && kill -0 "$p" 2>/dev/null && echo "$p"
+  }
+  reiniciar() {
+    local p
+    p="$(pid_do_runner || true)"
+    if [ -n "$p" ]; then kill -TERM "$p"; return 0; fi
+    # Sem runner, com o supervisor no ar: ele mesmo religa.
+    flock -n "$DIR/central-ia-wsl.trava" true 2>/dev/null || return 0
+    log "ERRO: o supervisor do runner não está rodando; o runner está DESLIGADO. Para ligar, rode o comando de instalar de novo"
+    log "  (ou reinicie o Windows: o script da pasta Inicialização o liga)."
+    return 1
+  }
 else
   pid_do_runner() { systemctl --user show central-ia-runner -p MainPID --value; }
   reiniciar() { systemctl --user restart central-ia-runner; }
@@ -142,7 +162,9 @@ while :; do
     if [ "$sem_runner" -ge "$TETO_SEM_RUNNER" ]; then
       rm -f "$REINICIAR" "$PAUSADO"
       log "ERRO: o serviço do runner não voltou em $((sem_runner / 60)) min; desisti. Para ligar à mão:"
-      if [ "$(uname -s)" = Darwin ]; then ligar_a_mao; else log "  systemctl --user restart central-ia-runner"; fi
+      if [ "$(uname -s)" = Darwin ]; then ligar_a_mao
+      elif [ -f "$DIR/central-ia-wsl.sh" ]; then log "  rode o comando de instalar de novo (ou reinicie o Windows)"
+      else log "  systemctl --user restart central-ia-runner"; fi
       exit 1
     fi
     continue

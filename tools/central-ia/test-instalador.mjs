@@ -273,6 +273,102 @@ assert.match(conf(), /^CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=tok-codigo$/m);
 assert.match(conf(), /^CENTRAL_IA_TELEGRAM_TOKEN=tok-outro$/m);
 assert.match(r.saida, /@outro_bot\) de .* não é usada: o bot do código é o @codigo_bot/);
 
+// 22. Teste do item 211 (Windows com WSL, 16/10/2026): o Telegram atendia em
+// ~335 ms e o Node desiste de cada família em 250 ms; todo `node -e` que usa a
+// rede tem de levar o ajuste do runner. O atraso não se reproduz no 127.0.0.1,
+// por isso a conferência é no texto.
+const comFetch = [...FONTE.matchAll(/"\$NODE" -e ([^\n]*)\n[^\n]*fetch\(/g)].map(m => m[1]);
+assert.equal(comFetch.length, 2, 'os dois fetch do instalador (getMe e a mensagem de teste)');
+for (const inicio of comFetch) assert.match(inicio, /^"\$REDE"'/, `fetch sem o ajuste de rede: ${inicio}`);
+assert.match(FONTE, /^REDE='require\("node:net"\)\.setDefaultAutoSelectFamilyAttemptTimeout\?\.\(2500\);'$/m);
+
+// 23. WSL, sem systemd (decisão do dono, 16/10/2026): o Windows desliga a
+// distro com o terminal fechado, e o WSLg cobre o canal do systemd do usuário.
+// O instalador grava o supervisor e o script da Inicialização do Windows, que
+// o abre, e o roda na hora.
+const homeW = mkdtempSync(join(tmpdir(), 'central-ia-instalador-wsl-'));
+const binW = join(homeW, 'bin');
+mkdirSync(binW);
+mkdirSync(join(homeW, '.local/bin'), { recursive: true });
+const exeW = (nome, corpo) => { writeFileSync(join(binW, nome), `#!/bin/bash\n${corpo}\n`); chmodSync(join(binW, nome), 0o755); };
+exeW('uname', 'case "$1" in -r) echo 6.6.87.2-microsoft-standard-WSL2 ;; *) echo Linux ;; esac');
+exeW('hostname', 'echo Desktop');
+// Como no desktop do teste: o canal do systemd não responde.
+exeW('systemctl', 'echo "$*" >> "$HOME/systemctl.log"; exit 1');
+exeW('loginctl', 'exit 0');
+exeW('docker', 'exit 1');
+// A trava do supervisor: presa enquanto "ele" roda (a marca no HOME).
+exeW('flock', '[ ! -f "$HOME/supervisor-no-ar" ]');
+// Lê o stdin como o cmd.exe de verdade: sem o </dev/null, comeria o script.
+exeW('cmd.exe', 'cat >/dev/null; echo "C:\\Users\\ana\\AppData\\Roaming"');
+exeW('wslpath', `if [ "$1" = -w ]; then echo "W:$2"; else echo "$HOME/c/Users/ana/AppData/Roaming"; fi`);
+// O .vbs de verdade abre o supervisor.
+exeW('wscript.exe', 'cat >/dev/null; echo "$1" >> "$HOME/wscript.log"; touch "$HOME/supervisor-no-ar"');
+exeW('setsid', 'echo "$*" >> "$HOME/setsid.log"; touch "$HOME/supervisor-no-ar"');
+const STARTUP = join(homeW, 'c/Users/ana/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/central-ia-wsl.vbs');
+const DEST_W = join(homeW, '.local/share/alfa');
+const UNIDADE_W = join(homeW, '.config/systemd/user/central-ia-runner.service');
+const W = { HOME: homeW, PATH: `${binW}:${process.env.PATH}`, WSL_DISTRO_NAME: 'Ubuntu' };
+const EU = spawnSync('id', ['-un']).stdout.toString().trim();
+r = await rodar({ ...W, ...COD }, ['--sem-anexos', '--projetos', join(homeW, 'projetos')]);
+assert.equal(r.status, 0, r.saida);
+assert.match(r.saida, /sistema: wsl/);
+assert.match(r.saida, /o runner fica rodando com o terminal fechado/);
+assert.doesNotMatch(r.saida, /systemd não está ligado/, 'no WSL o systemd não é cobrado');
+assert.equal(existsSync(UNIDADE_W), false, 'no WSL não há unidade do systemd');
+assert.equal(existsSync(join(homeW, 'systemctl.log')), false, 'nem se pergunta ao systemd');
+const vbs = readFileSync(STARTUP, 'utf8');
+assert.ok(vbs.includes(`Win32_Process").Create "wsl.exe -d Ubuntu -u ${EU} --cd ~ --exec /usr/bin/env CENTRAL_IA_SUPERVISOR_WSL=1 /bin/bash .local/share/alfa/central-ia-wsl.sh", Null, inicio, pid`), `pelo WMI, fora da árvore do terminal, rodando o supervisor:\n${vbs}`);
+assert.match(vbs, /CommandLine LIKE '%CENTRAL_IA_SUPERVISOR_WSL%'/, 'a marca que impede um segundo');
+assert.match(vbs, /inicio\.ShowWindow = 0/, 'escondido');
+assert.doesNotMatch(vbs, /WScript\.Shell/, 'aberto pelo Run, morre com o terminal');
+assert.match(vbs, /winmgmts:\\\\\.\\root\\cimv2/, 'o caminho do WMI com as barras certas');
+assert.match(vbs, /If abertos\.Count = 0 Then/, 'não abre um segundo');
+assert.match(vbs, /^[\x00-\x7f]*$/, 'ASCII: o wscript lê na página de código do Windows');
+assert.equal(readFileSync(join(homeW, 'wscript.log'), 'utf8'), `W:${STARTUP}\n`, 'rodado na hora');
+assert.equal(existsSync(join(homeW, 'setsid.log')), false, 'com o Windows à vista, não roda pelo terminal');
+const supervisor = readFileSync(join(DEST_W, 'central-ia-wsl.sh'), 'utf8');
+assert.match(supervisor, /flock -n 9 \|\| exit 0/, 'um supervisor só');
+assert.match(supervisor, /\. "\$DIR\/central-ia-wsl\.env"/, 'o ambiente relido a cada subida');
+const ambiente = readFileSync(join(DEST_W, 'central-ia-wsl.env'), 'utf8');
+assert.match(ambiente, /^NODE=\/\S*node$/m, 'o caminho do node do terminal');
+assert.match(ambiente, /^CENTRAL_IA_LOG=\S*\/\.local\/share\/alfa\/central-ia-runner\.log$/m, 'sem journal, quem gira o log é o runner');
+assert.doesNotMatch(ambiente, /\/mnt\//, 'sem as pastas do Windows no PATH');
+assert.match(ambiente, new RegExp(`^PATH=${join(homeW, '.local/bin').replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}:`, 'm'), 'o ~/.local/bin do claude, mesmo fora do PATH do terminal');
+assert.equal(existsSync(join(homeW, 'atualizar.log')), false, 'supervisor novo: só liga, não reinicia');
+assert.match(r.saida, /Pronto\./, 'o cmd.exe não comeu o resto do script');
+
+// 23b. Atualizar com o supervisor no ar: reinicia pelo script de atualizar.
+r = await rodar({ ...W }, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+assert.match(await (async () => { for (let i = 0; i < 50 && !existsSync(join(homeW, 'atualizar.log')); i++) await new Promise(res => setTimeout(res, 100)); return readFileSync(join(homeW, 'atualizar.log'), 'utf8'); })(), /recarregar=0/);
+assert.match(r.saida, /reinicia sozinho/);
+
+// 23c. Instalação de antes (serviço do systemd), sem o canal do systemd: a
+// unidade é trocada por uma que não religa, o systemd do usuário a relê pelo
+// SIGHUP, e ela sai — senão rodariam dois runners.
+mkdirSync(join(homeW, '.config/systemd/user/default.target.wants'), { recursive: true });
+writeFileSync(UNIDADE_W, '[Service]\nExecStart=/x/node runner.mjs\nRestart=always\n');
+writeFileSync(join(homeW, '.config/systemd/user/default.target.wants/central-ia-runner.service'), '');
+exeW('pgrep', 'case "$*" in *"-x systemd"*) echo 999999 ;; *) exit 1 ;; esac');
+r = await rodar({ ...W }, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+assert.equal(existsSync(UNIDADE_W), false, 'a unidade antiga sai');
+assert.equal(existsSync(join(homeW, '.config/systemd/user/default.target.wants/central-ia-runner.service')), false);
+assert.match(r.saida, /O serviço antigo do systemd saiu/);
+
+// 24. WSL sem o Windows à vista (interop desligado) e supervisor fora do ar:
+// roda pelo terminal e avisa.
+// Um cmd.exe que falha, e não a falta dele: rodado num WSL de verdade, o do
+// Windows estaria no PATH.
+exeW('cmd.exe', 'cat >/dev/null; exit 1');
+rmSync(join(homeW, 'supervisor-no-ar'));
+r = await rodar({ ...W }, ['--sem-anexos']);
+assert.equal(r.status, 0, r.saida);
+assert.match(r.saida, /Deixe um terminal do Ubuntu aberto/);
+assert.match(readFileSync(join(homeW, 'setsid.log'), 'utf8'), /nohup \/bin\/bash .*central-ia-wsl\.sh/);
+rmSync(homeW, { recursive: true, force: true });
+
 servidor.close();
 rmSync(home, { recursive: true, force: true });
-console.log('PASSOU: instalador troca o código (do ambiente) antes de perguntar, grava o nome do servidor, não deixa chave repetida, recarrega o plist mudado, não roda pela metade só aceita como bot do código um bot que não é o da conversa (com ou sem código, e na chave antiga) grava o bot do código antes de ligar o serviço, e só apaga a chave antiga quando sabe o que ela era.');
+console.log('PASSOU: instalador troca o código (do ambiente) antes de perguntar, grava o nome do servidor, não deixa chave repetida, recarrega o plist mudado, não roda pela metade só aceita como bot do código um bot que não é o da conversa (com ou sem código, e na chave antiga) grava o bot do código antes de ligar o serviço, e só apaga a chave antiga quando sabe o que ela era; todo fetch leva o ajuste de rede do WSL, e no WSL o runner roda sem systemd, pelo supervisor que a Inicialização do Windows abre (e a unidade antiga sai).');

@@ -45,10 +45,20 @@ O `instalar.sh` (servido pelo AlfaMatriz com o endereço dele dentro):
   bot do código. A chave antiga `CENTRAL_IA_TELEGRAM_TOKEN` sai do arquivo; vira bot do código só se for
   outro bot que não o da conversa. Tudo isso ANTES de ligar o serviço: o runner que sobe já acha o token
   (e relê o arquivo antes de cada batida e de cada confirmação);
-- liga o serviço: `systemd --user` no Linux e na WSL (com `linger`), `launchd` no Mac
+- liga o serviço: `systemd --user` no Linux (com `linger`), `launchd` no Mac
   (`~/Library/LaunchAgents/br.com.alfa.central-ia-runner.plist`, log em `~/Library/Logs/central-ia-runner.log`).
-  WSL sem systemd: o instalador diz como ligar. Com o node do nvm (ou fnm, volta, asdf), o serviço guarda o
-  caminho da versão: trocou a versão, rode o comando de atualizar;
+  Com o node do nvm (ou fnm, volta, asdf), o serviço guarda o caminho da versão: trocou a versão, rode o
+  comando de atualizar;
+- **no Windows (WSL), sem systemd** (decisão do dono, 16/10/2026): o WSL desliga o Ubuntu com o último
+  terminal fechado (o `linger` não segura), e no WSLg o `systemctl --user` nem responde. Quem faz o papel do
+  serviço é o `~/.local/share/alfa/central-ia-wsl.sh`, que roda o runner e o religa 10 s depois de ele sair
+  (um só, pela trava `central-ia-wsl.trava`; o pid do runner fica em `central-ia-runner.pid`, e o ambiente
+  em `central-ia-wsl.env`, relido a cada subida). Quem o abre é o `central-ia-wsl.vbs`, na pasta
+  Inicialização do Windows da pessoa (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`, sem
+  administrador; autorizado pelo dono em 16/10/2026): um `wsl.exe` escondido, aberto pelo WMI, que mantém o
+  Ubuntu ligado. O instalador grava os dois e roda o `.vbs` na hora. Log em
+  `~/.local/share/alfa/central-ia-runner.log`. A instalação de antes, pelo systemd, sai sozinha (sem cortar
+  pedido em andamento). Para desligar: apagar o `.vbs` e `wsl --terminate <distro>`;
 - prepara a imagem Docker que converte PDF e vídeo, se houver Docker (`--sem-anexos` pula);
 - manda uma mensagem de teste pelo bot do código.
 
@@ -185,8 +195,8 @@ Prazos aceitos pelo dono em 14/10/2026. Antes nada da Central era apagado.
 
 **Na máquina** — o runner, sozinho (`limpeza.mjs`; teste: `node tools/central-ia/test-limpeza.mjs`):
 
-- **Log do runner** (só no Mac, `~/Library/Logs/central-ia-runner.log`; no Linux e na WSL é o journal,
-  que tem limite próprio): passou de 10 MB, vira `.1` e o anterior vira `.2` — a cada 10 min. É copiado e
+- **Log do runner** (no Mac, `~/Library/Logs/central-ia-runner.log`; no WSL,
+  `~/.local/share/alfa/central-ia-runner.log`; no Linux é o journal, que tem limite próprio): passou de 10 MB, vira `.1` e o anterior vira `.2` — a cada 10 min. É copiado e
   esvaziado no lugar, porque o launchd o mantém aberto (em modo de acréscimo, conferido com `lsof`).
   Outro caminho: `CENTRAL_IA_LOG`.
 - **Auditoria** (`~/.local/share/alfa/central-ia-auditoria.log`): mesmo limite e as mesmas duas cópias, 0600.
