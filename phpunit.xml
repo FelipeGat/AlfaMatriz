@@ -39,5 +39,12 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- O monitor parte de "não configurado" nos testes: o staging roda a suíte
+             com o .env de verdade, e o endereço de lá vazava para os testes que
+             conferem justamente o caso sem endereço (T-394). Quem precisa dele
+             liga com config() no próprio teste. -->
+        <env name="ALFAMONITOR_URL" value=""/>
+        <env name="ALFAMONITOR_API_URL" value=""/>
+        <env name="ALFAMONITOR_API_TOKEN" value=""/>
     </php>
 </phpunit>
