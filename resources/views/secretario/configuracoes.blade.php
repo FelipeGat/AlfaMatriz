@@ -42,5 +42,66 @@
                 </div>
             </div>
         </x-painel>
+
+        {{-- Etapa 2: a conta Google da própria pessoa. Tokens nunca chegam à tela. --}}
+        @if (session('status'))
+            <x-aviso>{{ session('status') }}</x-aviso>
+        @endif
+        @if ($errors->has('google'))
+            <x-aviso tom="critico" :segundos="0">{{ $errors->first('google') }}</x-aviso>
+        @endif
+        <x-painel titulo="Google Agenda">
+            <div class="space-y-3 text-[13.5px] text-ink">
+                @if (! $google)
+                    @if ($googleConfigurado)
+                        <p>Conecte sua conta para o Secretário ver e criar eventos nas suas agendas. O Matriz pede só acesso a agendas e eventos; ninguém mais vê.</p>
+                        <a href="{{ route('secretario.google.conectar') }}" class="inline-flex h-[36px] items-center rounded-control bg-brand px-4 text-[13px] font-semibold text-on-brand hover:bg-brand-bright">Conectar Google Agenda</a>
+                    @else
+                        <p class="text-ink-mute">A integração com o Google ainda não está configurada no servidor (cliente OAuth do Google pendente).</p>
+                    @endif
+                @else
+                    <p>
+                        Conta: <span class="font-semibold">{{ $google->conta ?? '—' }}</span> ·
+                        @if ($google->conectada())
+                            <span class="text-good">conectada</span>
+                        @else
+                            <span class="text-crit">precisa reconectar</span> · <a href="{{ route('secretario.google.conectar') }}" class="font-semibold text-brand-text">Reconectar</a>
+                        @endif
+                        · última leitura {{ $google->sincronizado_em?->format('d/m H:i') ?? 'ainda não' }}
+                    </p>
+                    @if ($agendas->isNotEmpty())
+                        <ul class="divide-y divide-line rounded-ctl border border-line">
+                            @foreach ($agendas as $a)
+                                <li x-data="{ incluida: @js($a->incluida), padrao: @js($a->padrao), palavras: @js($a->palavras ?? ''), salvo: false,
+                                        async salvar() {
+                                            const r = await fetch(@js(route('secretario.google.agendas', $a->id)), { method: 'PUT',
+                                                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                                                body: JSON.stringify({ incluida: this.incluida, padrao: this.padrao, palavras: this.palavras || null }) });
+                                            this.salvo = r.ok; if (r.ok && this.padrao) location.reload();
+                                        } }"
+                                    class="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center">
+                                    <span class="min-w-0 flex-1 break-words font-semibold">{{ $a->nome }} @if ($a->primaria)<span class="text-[11px] font-normal text-ink-mute">(principal)</span>@endif</span>
+                                    <label class="flex items-center gap-1.5 text-[12.5px]"><input type="checkbox" x-model="incluida" @change="salvar()" class="rounded border-btn-line text-brand focus:ring-brand"> na visão</label>
+                                    <label class="flex items-center gap-1.5 text-[12.5px]"><input type="radio" name="padrao" :checked="padrao" @change="padrao = true; salvar()" class="border-btn-line text-brand focus:ring-brand"> padrão</label>
+                                    <input type="text" x-model="palavras" @change="salvar()" maxlength="255" placeholder="palavras: vixcard, vix-id"
+                                           class="w-full rounded-control border border-btn-line bg-surface px-2 py-1 text-[12.5px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none sm:w-52">
+                                    <span x-show="salvo" x-cloak class="text-[11.5px] text-good">salvo</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                        <p class="text-[12px] text-ink-mute">"Agenda uma reunião… da VixCard" vai para a agenda cujas palavras aparecem na frase; senão, para a padrão.</p>
+                    @endif
+                    <div class="flex flex-wrap gap-2" x-data="{ msg: '' }">
+                        <button type="button" @click="msg = 'lendo…'; const r = await fetch(@js(route('secretario.google.sincronizar')), { method: 'POST', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content } }); const j = await r.json().catch(() => ({})); msg = r.ok ? 'lido às ' + j.sincronizado_em + ' (' + j.eventos + ' eventos)' : 'falhou (' + (j.erro || r.status) + ')'"
+                                class="h-[34px] rounded-control border border-btn-line px-3 text-[12.5px] font-semibold text-ink-dim hover:text-brand hover:border-brand">Sincronizar agora</button>
+                        <form method="POST" action="{{ route('secretario.google.desconectar') }}" onsubmit="return confirm('Desconectar o Google? A autorização é revogada e os eventos guardados aqui são apagados.')">
+                            @csrf
+                            <button type="submit" class="h-[34px] rounded-control border border-btn-line px-3 text-[12.5px] font-semibold text-ink-mute hover:text-crit hover:border-crit">Desconectar</button>
+                        </form>
+                        <span x-show="msg" x-text="msg" class="self-center text-[12px] text-ink-mute"></span>
+                    </div>
+                @endif
+            </div>
+        </x-painel>
     </div>
 </x-app-layout>

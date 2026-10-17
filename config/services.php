@@ -41,6 +41,14 @@ return [
         'chat_id_alertas' => env('TELEGRAM_CHAT_ID_ALERTAS'),
     ],
 
+    // Google Agenda do Secretário (docs/specs/secretario-agenda): cliente OAuth
+    // "Aplicativo da Web" da PRÓPRIA conta do dono. Sem os dois, a tela diz
+    // que a integração não está configurada e nada mais muda.
+    'google_secretario' => [
+        'client_id' => env('GOOGLE_SECRETARIO_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_SECRETARIO_CLIENT_SECRET'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

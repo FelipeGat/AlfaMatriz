@@ -35,7 +35,7 @@ class Conversa
         if ($ja = CentralIaMensagem::de($user)->where('client_id', $clientId)->first()) {
             return $ja->conteudo === $texto && $this->foiDoSecretario($ja) ? $ja : null;
         }
-        $r = $this->propostas->responder($user, $texto) ?? $this->propostas->criar($user, $texto, 'matriz');
+        $r = $this->interpretar($user, $texto, 'matriz');
         if (! $r) {
             return null;
         }
@@ -66,7 +66,7 @@ class Conversa
         if (CentralIaMensagem::where('user_id', $user->id)->where('telegram_update_id', $updateId)->exists()) {
             return true;
         }
-        $r = $this->propostas->responder($user, $texto) ?? $this->propostas->criar($user, $texto, 'telegram');
+        $r = $this->interpretar($user, $texto, 'telegram');
         if (! $r) {
             return false;
         }
@@ -92,6 +92,19 @@ class Conversa
         }
 
         return true;
+    }
+
+    /**
+     * Pergunta de agenda primeiro (Etapa 2: respondida com dado real, sem IA);
+     * depois resposta a uma proposta pendente; depois pedido novo.
+     */
+    private function interpretar(User $user, string $texto, string $origem): ?array
+    {
+        if (($agenda = app(ConsultaDeAgenda::class)->responder($user, $texto)) !== null) {
+            return ['proposta' => null, 'item' => null, 'mensagem' => $agenda];
+        }
+
+        return $this->propostas->responder($user, $texto) ?? $this->propostas->criar($user, $texto, $origem);
     }
 
     private function foiDoSecretario(CentralIaMensagem $m): bool

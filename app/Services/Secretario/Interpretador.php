@@ -38,12 +38,14 @@ class Interpretador
     private const GATILHO_LEMBRETE = '/\b(me\s+lembr(?:a|e|ar)|lembr(?:a|e)-?me|lembra\s+de\s+me|me\s+avis(?:a|e)|cria\s+um\s+lembrete|crie\s+um\s+lembrete|lembrete)\b/u';
     private const GATILHO_ANOTAR = '/^(?:anot(?:a|e|ar)|registr(?:a|e))\b|\banot(?:a|e)\s+(?:a[ií]\s+)?(?:que|pra|para)\b/u';
     private const GATILHO_PRECISO = '/^(?:eu\s+)?(?:preciso|tenho\s+que|tenho\s+de)\b/u';
+    /** "Agenda uma reunião…": só vale com o Google conectado (Etapa 2); sem ele, segue para a Central. */
+    private const GATILHO_AGENDAR = '/^(?:agend(?:a|e|ar)|marc(?:a|e|ar)|marque)\b/u';
 
     /**
      * @param  bool  $explicito  o texto veio do campo do próprio Secretário (Meu Dia): não precisa de gatilho
      * @return array{resultado: string, dados?: array, falta?: string, avisos?: list<string>}
      */
-    public function interpretar(string $texto, CarbonImmutable $agora, bool $explicito = false): array
+    public function interpretar(string $texto, CarbonImmutable $agora, bool $explicito = false, bool $agendar = false): array
     {
         $original = trim(preg_replace('/\s+/u', ' ', $texto));
         if ($original === '' || mb_strlen($original) > 500) {
@@ -56,7 +58,23 @@ class Interpretador
             $norm = 'me lembra '.trim(substr($norm, 9));
         }
 
+        // "das 14h às 15h30" / "por 30 min": o fim do evento. Sai da frase antes
+        // de ler a hora, senão "às 15h30" seria lido como o início.
+        $fimDito = null;
+        $duracao = null;
+        if ($agendar && preg_match(self::GATILHO_AGENDAR, $norm)) {
+            if (preg_match('/\bd[ae]s?\s+(\d{1,2})(?:h|:)?(\d{2})?\s+(?:as|ate\s+as|ate|a)\s+(\d{1,2})(?:h|:)?(\d{2})?(?:h)?\b/u', $norm, $m)) {
+                $fimDito = sprintf('%02d:%02d', (int) $m[3], (int) ($m[4] ?? 0));
+                $norm = str_replace($m[0], sprintf('as %02d:%02d', (int) $m[1], (int) ($m[2] ?? 0)), $norm);
+            } elseif (preg_match('/\b(?:por|durante|de)\s+(\d{1,3}|uma|meia)\s*(minutos?|min|horas?|h)\b(?:\s+e\s+meia)?/u', $norm, $m)) {
+                $n = $m[1] === 'uma' ? 1 : ($m[1] === 'meia' ? 0.5 : (int) $m[1]);
+                $duracao = (int) round(str_starts_with($m[2], 'h') ? $n * 60 + (str_ends_with($m[0], 'e meia') ? 30 : 0) : $n);
+                $norm = trim(str_replace($m[0], ' ', $norm));
+            }
+        }
+
         $tipo = match (true) {
+            $agendar && (bool) preg_match(self::GATILHO_AGENDAR, $norm) => 'evento_google',
             (bool) preg_match(self::GATILHO_LEMBRETE, $norm) => 'lembrete',
             (bool) preg_match(self::GATILHO_ANOTAR, $norm) => 'tarefa',
             (bool) preg_match(self::GATILHO_PRECISO, $norm) => 'tarefa_se_data',
@@ -84,6 +102,9 @@ class Interpretador
         }
 
         $titulo = $this->titulo($original, $norm, $removidos);
+        if ($tipo === 'evento_google') {
+            $titulo = Str::ucfirst(preg_replace('/^(?:uma?|o|a)\s+/iu', '', $titulo));
+        }
 
         $dados = [
             'tipo' => $tipo,
@@ -93,12 +114,21 @@ class Interpretador
             'recorrencia' => $tempo['recorrencia'],
             'inequivoco' => $tempo['inequivoco'],
         ];
+        if ($tipo === 'evento_google') {
+            $dados['fim'] = null;
+            if ($tempo['quando'] && $tempo['hora'] !== null) {
+                $fim = $fimDito ? $tempo['quando']->setTimeFromTimeString($fimDito) : $tempo['quando']->addMinutes($duracao ?? 60);
+                $dados['fim'] = ($fim->greaterThan($tempo['quando']) ? $fim : $tempo['quando']->addMinutes(60))->format('Y-m-d H:i:s');
+            }
+            $dados['so_data'] = false;
+        }
 
         if ($titulo === '') {
             return ['resultado' => self::FALTA, 'falta' => 'titulo', 'dados' => $dados, 'avisos' => $avisos];
         }
-        // Lembrete sem quando: perguntar, nunca chutar (FR-009).
-        if (in_array($tipo, ['lembrete', 'compromisso'], true) && $tempo['quando'] === null) {
+        // Lembrete sem quando: perguntar, nunca chutar (FR-009). Evento precisa de hora.
+        if ((in_array($tipo, ['lembrete', 'compromisso'], true) && $tempo['quando'] === null)
+            || ($tipo === 'evento_google' && $tempo['hora'] === null && ! $tempo['relativo'])) {
             return ['resultado' => self::FALTA, 'falta' => 'quando', 'dados' => $dados, 'avisos' => $avisos];
         }
         if ($tempo['recorrencia'] && $tempo['hora'] === null) {
@@ -338,7 +368,7 @@ class Interpretador
         }
         $t = preg_replace([
             '/^(matriz|secretario)[,:!]?\s+/u',
-            self::GATILHO_LEMBRETE, self::GATILHO_ANOTAR, self::GATILHO_PRECISO,
+            self::GATILHO_LEMBRETE, self::GATILHO_ANOTAR, self::GATILHO_PRECISO, self::GATILHO_AGENDAR,
             '/^\s*(?:por\s+favor|pfv|pf)\b/u',
         ], ' ', $t);
         $t = trim(preg_replace('/\s+/u', ' ', $t), " ,.;:!?-");

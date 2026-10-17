@@ -32,9 +32,14 @@ class Propostas
      */
     public function criar(User $user, string $texto, string $origem, bool $explicito = false): ?array
     {
-        $r = $this->interpretador->interpretar($texto, CarbonImmutable::now(), $explicito);
+        // "Agenda uma reunião…" só é do Secretário com o Google conectado (Etapa 2).
+        $agendar = app(EventoGoogle::class)->disponivel($user);
+        $r = $this->interpretador->interpretar($texto, CarbonImmutable::now(), $explicito, $agendar);
         if ($r['resultado'] === Interpretador::NAO_E) {
             return null;
+        }
+        if (($r['dados']['tipo'] ?? null) === 'evento_google') {
+            $r['dados'] = app(EventoGoogle::class)->escolherAgenda($user, $texto, $r['dados']);
         }
 
         return DB::transaction(function () use ($user, $texto, $origem, $r) {
@@ -98,6 +103,18 @@ class Propostas
         if (($p->falta === 'quando' || $semNao !== $t || $soTempo) && ($q = $this->interpretador->soQuando($semNao, CarbonImmutable::now()))) {
             return DB::transaction(function () use ($user, $p, $q) {
                 $dados = array_merge($p->dados, ['quando' => $q['quando'], 'so_data' => $q['so_data'], 'inequivoco' => false, 'avisos' => $q['avisos']]);
+                if (($p->dados['tipo'] ?? null) === 'evento_google') {
+                    // Evento muda de hora mantendo a duração (1 h se ainda não tinha).
+                    $antes = ($p->dados['quando'] ?? null) && ($p->dados['fim'] ?? null)
+                        ? CarbonImmutable::parse($p->dados['quando'])->diffInMinutes(CarbonImmutable::parse($p->dados['fim'])) : 60;
+                    $dados['so_data'] = false;
+                    $dados['fim'] = $q['so_data'] ? null : CarbonImmutable::parse($q['quando'])->addMinutes((int) $antes)->format('Y-m-d H:i:s');
+                    if ($q['so_data']) {
+                        $p->update(['dados' => $dados, 'falta' => 'quando']);
+
+                        return ['proposta' => $p->fresh(), 'item' => null, 'mensagem' => '🗓 Que horas? (ex.: às 14h)'];
+                    }
+                }
                 if ($q['recorrencia']) {
                     $dados['recorrencia'] = $q['recorrencia'];
                 }
@@ -113,6 +130,9 @@ class Propostas
     /** Monta a mensagem da proposta — ou grava direto, se a pessoa ligou a confirmação automática. */
     private function depoisDeMontar(User $user, SecretarioProposta $p, bool $aceitarAutomatica = true): array
     {
+        if ($p->falta === 'quando' && ($p->dados['tipo'] ?? null) === 'evento_google') {
+            return ['proposta' => $p, 'item' => null, 'mensagem' => "🗓 Para quando marco: {$p->dados['titulo']}?\nEx.: segunda às 14h, amanhã das 10h às 11h30."];
+        }
         if ($p->falta === 'quando') {
             // Pista de tempo que as regras não resolvem ("semana que vem,
             // depois da diretoria"): a IA da pessoa propõe, se a máquina está
@@ -147,6 +167,9 @@ class Propostas
         if (isset($d['item_id'])) {
             return "🗓 Reagendar “{$titulo}” para {$quandoTxt}. Confirma?";
         }
+        if ($d['tipo'] === 'evento_google') {
+            return app(EventoGoogle::class)->resumo($user, $d);
+        }
         $linha = match ($d['tipo']) {
             'compromisso' => "📝 Compromisso {$quandoTxt}{$serie}: {$titulo}.\nAviso ".$this->antecedencia($user).' min antes ('
                 .$quando->copy()->subMinutes($this->antecedencia($user))->format('H:i').').',
@@ -179,6 +202,11 @@ class Propostas
                 return ['proposta' => $p, 'item' => null, 'mensagem' => 'Essa proposta não vale mais. Diga de novo o que registrar.'];
             }
             $d = $p->dados;
+            if ($d['tipo'] === 'evento_google') {
+                // Ação EXTERNA: o Google é chamado aqui, com a proposta travada —
+                // a segunda confirmação espera, acha `confirmada` e não cria outro.
+                return app(EventoGoogle::class)->criar($user, $p);
+            }
             if (isset($d['item_id'])) {
                 // Proposta de REAGENDAR um item que já existe.
                 $item = SecretarioItem::de($user)->findOrFail($d['item_id']);

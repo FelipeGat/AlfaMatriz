@@ -35,7 +35,8 @@
         // recebe de fábrica: lembretes e tarefas de UMA conta (docs/specs/
         // secretario-executivo). No topo porque é a primeira tela do dia.
         'Secretário' => [
-            ['route' => 'secretario.meu-dia', 'recurso' => 'secretario', 'pattern' => 'secretario.*', 'label' => 'Meu Dia', 'icon' => 'sun', 'matriz' => true],
+            ['route' => 'secretario.meu-dia', 'recurso' => 'secretario', 'pattern' => ['secretario.meu-dia', 'secretario.configuracoes'], 'label' => 'Meu Dia', 'icon' => 'sun', 'matriz' => true],
+            ['route' => 'secretario.agenda', 'recurso' => 'secretario', 'pattern' => 'secretario.agenda', 'label' => 'Agenda consolidada', 'icon' => 'calendar', 'matriz' => true],
         ],
         'Comercial' => [
             ['route' => 'leads.index', 'recurso' => 'leads', 'pattern' => 'leads.*', 'label' => 'Funil de Vendas', 'icon' => 'view-grid'],

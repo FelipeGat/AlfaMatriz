@@ -206,6 +206,13 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         Route::post('itens/{item}/reagendar', [\App\Http\Controllers\SecretarioController::class, 'reagendar'])->whereNumber('item')->name('itens.reagendar')->middleware('permissao:secretario,editar');
         Route::get('configuracoes', [\App\Http\Controllers\SecretarioController::class, 'configuracoes'])->name('configuracoes')->middleware('permissao:secretario,ler');
         Route::put('configuracoes', [\App\Http\Controllers\SecretarioController::class, 'salvarConfiguracoes'])->name('configuracoes.salvar')->middleware('permissao:secretario,editar');
+        // Etapa 2 (docs/specs/secretario-agenda): agenda consolidada e a conta Google da própria pessoa.
+        Route::get('agenda', [\App\Http\Controllers\SecretarioGoogleController::class, 'visao'])->name('agenda')->middleware('permissao:secretario,ler');
+        Route::get('google/conectar', [\App\Http\Controllers\SecretarioGoogleController::class, 'conectar'])->name('google.conectar')->middleware('permissao:secretario,editar');
+        Route::get('google/retorno', [\App\Http\Controllers\SecretarioGoogleController::class, 'retorno'])->name('google.retorno')->middleware('permissao:secretario,editar');
+        Route::post('google/desconectar', [\App\Http\Controllers\SecretarioGoogleController::class, 'desconectar'])->name('google.desconectar')->middleware('permissao:secretario,editar');
+        Route::post('google/sincronizar', [\App\Http\Controllers\SecretarioGoogleController::class, 'sincronizar'])->name('google.sincronizar')->middleware('permissao:secretario,editar');
+        Route::put('google/agendas/{agenda}', [\App\Http\Controllers\SecretarioGoogleController::class, 'agenda'])->whereNumber('agenda')->name('google.agendas')->middleware('permissao:secretario,editar');
     });
 
     // Central de IA. Sem id de conversa na rota: é sempre a da conta logada.

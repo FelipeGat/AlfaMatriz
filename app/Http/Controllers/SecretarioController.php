@@ -117,7 +117,12 @@ class SecretarioController extends Controller
 
     public function configuracoes(Request $request): View
     {
-        return view('secretario.configuracoes', ['preferencia' => SecretarioPreferencia::de($request->user())]);
+        return view('secretario.configuracoes', [
+            'preferencia' => SecretarioPreferencia::de($request->user()),
+            'google' => \App\Models\SecretarioGoogleConta::where('user_id', $request->user()->id)->first(),
+            'agendas' => \App\Models\SecretarioGoogleAgenda::where('user_id', $request->user()->id)->orderByDesc('primaria')->orderBy('nome')->get(),
+            'googleConfigurado' => app(\App\Services\Secretario\GoogleAgenda::class)->configurado(),
+        ]);
     }
 
     public function salvarConfiguracoes(Request $request): JsonResponse

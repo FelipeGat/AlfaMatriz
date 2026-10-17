@@ -61,3 +61,12 @@ Schedule::command('secretario:despachar')
     ->everyMinute()
     ->withoutOverlapping()
     ->onOneServer();
+
+// Google Agenda do Secretário (docs/specs/secretario-agenda): eventos de
+// ontem a +30 dias, a cada 10 min. É o que deixa a pergunta pelo chat e o
+// briefing responderem na hora, sem depender de o Google responder naquele
+// instante nem da máquina do dono.
+Schedule::command('secretario:sincronizar-google')
+    ->everyTenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
