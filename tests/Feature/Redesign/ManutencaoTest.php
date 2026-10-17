@@ -50,11 +50,11 @@ class ManutencaoTest extends TestCase
     }
 
     /**
-     * Atualizar (#235): toda aba tem o botão e a hora do dado; só as de Erros
-     * e Monitor (#394) se atualizam sozinhas — são as que mudam com o lote do
-     * vigia e com o webhook do AlfaMonitor.
+     * Atualizar (#235): toda aba tem o botão e a hora do dado; só a de Erros
+     * se atualiza sozinha — é a que muda com o lote do vigia. (A aba Monitor,
+     * que também se atualizava, virou tela própria em #394.)
      */
-    public function test_o_botao_atualizar_e_a_atualizacao_automatica_so_nas_abas_erros_e_monitor(): void
+    public function test_o_botao_atualizar_e_a_atualizacao_automatica_so_na_aba_erros(): void
     {
         \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::parse('2026-10-03 18:42:00'));
         $this->actingAs(User::factory()->create());
@@ -62,9 +62,6 @@ class ManutencaoTest extends TestCase
         $this->get(route('manutencao.index'))
             ->assertSee('Atualizar')
             ->assertSee('data-gerado-em="18:42"', false)
-            ->assertSee("manutencaoTela({ automatico: true })", false);
-
-        $this->get(route('manutencao.index', ['aba' => 'monitor']))
             ->assertSee("manutencaoTela({ automatico: true })", false);
 
         foreach (['atualizacoes', 'programadas'] as $aba) {

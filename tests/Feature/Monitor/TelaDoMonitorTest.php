@@ -14,8 +14,9 @@ use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
- * A aba Monitor da tela de Manutenção (#394): o que está fora agora e o
- * histórico, a partir do que o webhook do AlfaMonitor guardou.
+ * Os alertas recebidos (#394): o que está fora agora e o histórico, a partir
+ * do que o webhook do AlfaMonitor guardou. Nasceu como a aba Monitor da
+ * Manutenção e mudou para a tela de Incidentes do Monitor.
  */
 class TelaDoMonitorTest extends TestCase
 {
@@ -72,10 +73,10 @@ class TelaDoMonitorTest extends TestCase
         ], $extra));
     }
 
-    private function aba(array $query = [])
+    private function aba(array $query = [], ?User $usuario = null)
     {
-        return $this->actingAs(User::factory()->create())
-            ->get(route('manutencao.index', ['aba' => 'monitor'] + $query));
+        return $this->actingAs($usuario ?? User::factory()->create())
+            ->get(route('monitor.incidentes', ['origem' => 'alertas'] + $query));
     }
 
     public function test_vazia_diz_de_onde_o_conteudo_vem(): void
@@ -103,7 +104,7 @@ class TelaDoMonitorTest extends TestCase
             ->assertSee('AlfaControl:123')
             ->assertSee('Dispositivo de acesso')
             ->assertSee('há 2 horas')
-            ->assertSee('2 itens fora do ar agora');
+            ->assertSee('2 alertas abertos');
 
         $this->assertStringNotContainsString('ALFA SITE', explode('Histórico', $resposta->getContent())[0]);
     }
@@ -167,9 +168,45 @@ class TelaDoMonitorTest extends TestCase
         $this->aba()->assertSee('https://monitor.exemplo/monitor/GYM', false);
     }
 
-    public function test_se_atualiza_sozinha_como_a_aba_erros(): void
+    public function test_se_atualiza_sozinha(): void
     {
-        $this->aba()->assertSee('manutencaoTela({ automatico: true })', false);
+        $this->aba()->assertSee('monitorTela({ automatico: true })', false);
+    }
+
+    public function test_o_endereco_antigo_da_manutencao_leva_para_ca(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->get(route('manutencao.index', ['aba' => 'monitor']))
+            ->assertRedirect(route('monitor.incidentes', ['origem' => 'alertas']));
+    }
+
+    /**
+     * "Uma pessoa pode ter acesso à parte de monitoramento mas não à de
+     * assinaturas da Hostinger" (o dono). O vencimento e a integração saem;
+     * a VPS e a banda são o servidor, e ficam.
+     */
+    public function test_sem_a_permissao_da_hostinger_os_vencimentos_somem(): void
+    {
+        foreach ([
+            'venc:subscription:42' => 'Plano que vence',
+            'venc:domain:exemplo.com.br' => 'Domínio que vence',
+            'integracao' => 'API da Hostinger fora',
+            'vps:1498832' => 'VPS parada',
+            'banda:1498832' => 'Banda no limite',
+        ] as $entity => $nome) {
+            $this->evento($this->alerta(['kind' => 'hostinger', 'entity' => $entity, 'entity_name' => $nome, 'title' => $nome]));
+        }
+
+        $membro = User::factory()->membro()->create();
+
+        $this->aba([], $membro)->assertOk()
+            ->assertDontSee('Plano que vence')
+            ->assertDontSee('Domínio que vence')
+            ->assertDontSee('API da Hostinger fora')
+            ->assertSee('VPS parada')
+            ->assertSee('Banda no limite');
+
+        $this->aba()->assertSee('Plano que vence')->assertSee('Domínio que vence')->assertSee('API da Hostinger fora');
     }
 
     public function test_perfil_de_exibicao_e_revenda_nao_entram(): void
@@ -179,10 +216,10 @@ class TelaDoMonitorTest extends TestCase
         $exibicao = User::factory()->semPerfil()->create();
         $exibicao->perfis()->attach(Perfil::where('slug', 'exibicao')->value('id'));
 
-        $this->actingAs($exibicao)->get(route('manutencao.index', ['aba' => 'monitor']))->assertForbidden();
+        $this->actingAs($exibicao)->get(route('monitor.incidentes', ['origem' => 'alertas']))->assertForbidden();
 
         $revenda = Revenda::create(['nome' => 'Alpha Rev', 'ativo' => true]);
         $this->actingAs(User::factory()->create(['revenda_id' => $revenda->id]))
-            ->get(route('manutencao.index', ['aba' => 'monitor']))->assertForbidden();
+            ->get(route('monitor.incidentes', ['origem' => 'alertas']))->assertForbidden();
     }
 }

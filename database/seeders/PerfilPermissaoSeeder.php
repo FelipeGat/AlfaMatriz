@@ -94,6 +94,13 @@ class PerfilPermissaoSeeder extends Seeder
             // `2026_10_03_150000_permissao_de_manutencao.php`, que é quem leva
             // isto a produção; aqui é só o estado inicial de quem semeia.
             'manutencao' => 'Manutenção e atualizações (erros dos sistemas, changelog e janelas)',
+
+            // As telas do AlfaMonitor (#394). Duas portas por decisão do dono:
+            // ver o monitoramento não dá a assinatura da Hostinger. Espelha
+            // `2026_10_17_150000_permissoes_do_monitor.php`, que é quem leva
+            // isto a produção; aqui é só o estado inicial de quem semeia.
+            'monitor' => 'Monitor (servidores, sistemas e aparelhos de acesso do AlfaMonitor)',
+            'monitor_hostinger' => 'Monitor — assinaturas e domínios da Hostinger',
         ];
 
         foreach ($recursos as $slug => $descricao) {
@@ -201,6 +208,12 @@ class PerfilPermissaoSeeder extends Seeder
         // ignora. A migração de produção usa a mesma régua.
         $membro->permissoes()->syncWithoutDetaching([
             $todasPermissoes['manutencao'] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
+        ]);
+
+        // O Monitor segue a Manutenção, de onde a vitrine dele saiu, e só lê.
+        // A Hostinger fica de fora: nasce só no Administrador (ver a migração).
+        $membro->permissoes()->syncWithoutDetaching([
+            $todasPermissoes['monitor'] => ['ler' => true, 'incluir' => false, 'editar' => false, 'imprimir' => true, 'excluir' => false],
         ]);
 
         // Quem vende não é quem opera. O perfil mais próximo era `operacao`, e

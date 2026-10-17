@@ -1,0 +1,333 @@
+{
+ "disponibilidade": [
+  {
+   "alvo": "https://alfasolucoes.cloud",
+   "checks": 10025,
+   "estado": "lento",
+   "fora_do_ar_s": 264,
+   "media_ms": 305,
+   "mttr_s": 264,
+   "nome": "ALFA SITE",
+   "online": true,
+   "orcamento_erro_s": 605,
+   "orcamento_usado_pct": 43.65,
+   "pct_no_ar": 99.93,
+   "pct_no_ar_bruto": 99.93,
+   "quedas": 1,
+   "slo_pct": 99.9,
+   "tipo": "HTTP"
+  },
+  {
+   "alvo": "https://control.alfasolucoes.cloud/",
+   "checks": 10025,
+   "estado": "lento",
+   "fora_do_ar_s": 2090,
+   "media_ms": 256,
+   "mttr_s": 1045,
+   "nome": "CONTROL",
+   "online": true,
+   "orcamento_erro_s": 605,
+   "orcamento_usado_pct": 100.0,
+   "pct_no_ar": 99.61,
+   "pct_no_ar_bruto": 99.61,
+   "quedas": 2,
+   "slo_pct": 99.9,
+   "tipo": "HTTP"
+  },
+  {
+   "alvo": "https://gym.alfasolucoes.cloud",
+   "checks": 10026,
+   "estado": "lento",
+   "fora_do_ar_s": 624,
+   "media_ms": 272,
+   "mttr_s": 208,
+   "nome": "GYM",
+   "online": true,
+   "orcamento_erro_s": 605,
+   "orcamento_usado_pct": 100.0,
+   "pct_no_ar": 99.87,
+   "pct_no_ar_bruto": 99.87,
+   "quedas": 3,
+   "slo_pct": 99.9,
+   "tipo": "HTTP"
+  },
+  {
+   "alvo": "https://gestor.alfa.solucoesgrupo.com/",
+   "checks": 10025,
+   "estado": "lento",
+   "fora_do_ar_s": 263,
+   "media_ms": 373,
+   "mttr_s": 263,
+   "nome": "GESTOR",
+   "online": true,
+   "orcamento_erro_s": 605,
+   "orcamento_usado_pct": 43.49,
+   "pct_no_ar": 99.94,
+   "pct_no_ar_bruto": 99.94,
+   "quedas": 1,
+   "slo_pct": 99.9,
+   "tipo": "HTTP"
+  },
+  {
+   "alvo": "https://home.alfasolucoes.cloud",
+   "checks": 10026,
+   "estado": "lento",
+   "fora_do_ar_s": 274,
+   "media_ms": 334,
+   "mttr_s": 274,
+   "nome": "HOME",
+   "online": true,
+   "orcamento_erro_s": 605,
+   "orcamento_usado_pct": 45.3,
+   "pct_no_ar": 99.92,
+   "pct_no_ar_bruto": 99.92,
+   "quedas": 1,
+   "slo_pct": 99.9,
+   "tipo": "HTTP"
+  }
+ ],
+ "dispositivos": [
+  {
+   "fonte": "AlfaControl",
+   "offline_agora": [
+    {
+     "aparelho": "Aparelho 9",
+     "aparelho_id": 89,
+     "cliente": "CLIENTE 1",
+     "cliente_id": 8
+    },
+    {
+     "aparelho": "Aparelho 10",
+     "aparelho_id": 69,
+     "cliente": "CLIENTE 10",
+     "cliente_id": 12
+    }
+   ],
+   "online": 13,
+   "total": 33
+  },
+  {
+   "fonte": "AlfaGym",
+   "offline_agora": [
+    {
+     "aparelho": "Aparelho 1",
+     "aparelho_id": 8,
+     "cliente": "CLIENTE 5",
+     "cliente_id": 5
+    },
+    {
+     "aparelho": "Aparelho 2",
+     "aparelho_id": 21,
+     "cliente": "CLIENTE 6",
+     "cliente_id": 10
+    }
+   ],
+   "online": 1,
+   "total": 9
+  }
+ ],
+ "gerado_em": "2026-10-17T14:32:42-03:00",
+ "incidentes": [
+  {
+   "duracao_s": 263,
+   "fim": "2026-10-17T10:30:44-03:00",
+   "http": null,
+   "inicio": "2026-10-17T10:26:21-03:00",
+   "monitor": "GYM"
+  },
+  {
+   "duracao_s": 1827,
+   "fim": "2026-10-17T10:10:32-03:00",
+   "http": null,
+   "inicio": "2026-10-17T09:40:05-03:00",
+   "monitor": "CONTROL"
+  },
+  {
+   "duracao_s": 98,
+   "fim": "2026-10-15T16:39:42-03:00",
+   "http": null,
+   "inicio": "2026-10-15T16:38:04-03:00",
+   "monitor": "GYM"
+  }
+ ],
+ "janela": "7d",
+ "recomendacoes": [
+  {
+   "acao": "Investigue com iotop/iostat e considere disco mais rápido (NVMe/SSD); adicionar vCPU não ajuda.",
+   "categoria": "Performance",
+   "confianca": "Low",
+   "detalhe": "A CPU passa tempo ocioso esperando o disco — o limite é I/O, não processamento.",
+   "escopo": "GESTOR VPS",
+   "evidencias": [
+    "Tempo de espera por I/O (iowait) chega a 38% (p95)"
+   ],
+   "severidade": "warning",
+   "titulo": "Gargalo de I/O de disco"
+  },
+  {
+   "acao": "Investigue a causa das quedas (logs/erros no horário) e considere redundância.",
+   "categoria": "Disponibilidade",
+   "confianca": "High",
+   "detalhe": "O monitor registrou indisponibilidade ou lentidão relevante na janela.",
+   "escopo": "Geral",
+   "evidencias": [
+    "Uptime 99.93% na janela (10025 checks)",
+    "1 quedas",
+    "Tempo médio de recuperação: 4 min",
+    "Maior queda: 4 min",
+    "56% das checagens lentas"
+   ],
+   "severidade": "warning",
+   "titulo": "Disponibilidade de \"ALFA SITE\" abaixo do ideal"
+  }
+ ],
+ "resumo": {
+  "disponibilidade_media_pct": 99.85,
+  "fora_do_ar_s": 3515,
+  "incidentes": 8,
+  "monitores_total": 5,
+  "resposta_media_ms": 308,
+  "saude_geral": 93,
+  "servidores_atencao": 0,
+  "servidores_criticos": 0,
+  "servidores_saudaveis": 4,
+  "servidores_total": 4,
+  "veredito": "ok"
+ },
+ "retrato_idade_s": 0,
+ "servidores": [
+  {
+   "amostras": 27316,
+   "cpu": {
+    "agora_pct": 6.93,
+    "media_pct": 8.65,
+    "pico_em": "13/10 03:17",
+    "pico_pct": 74.9
+   },
+   "disco": {
+    "agora_pct": 41.0,
+    "media_pct": 41.73,
+    "pico_em": "13/10 03:37",
+    "pico_pct": 43.0
+   },
+   "disco_total_bytes": 106300440576,
+   "disco_usado_bytes": 40802189312,
+   "mem": {
+    "agora_pct": 33.54,
+    "media_pct": 39.03,
+    "pico_em": "13/10 11:19",
+    "pico_pct": 47.3
+   },
+   "nome": "CONTROL VPS",
+   "online": true,
+   "saude": 100,
+   "slug": "control-vps",
+   "steal": {
+    "agora_pct": 2.16,
+    "media_pct": 8.53,
+    "pico_em": "16/10 12:10",
+    "pico_pct": 75.97
+   }
+  },
+  {
+   "amostras": 27346,
+   "cpu": {
+    "agora_pct": 3.71,
+    "media_pct": 5.13,
+    "pico_em": "17/10 10:31",
+    "pico_pct": 98.78
+   },
+   "disco": {
+    "agora_pct": 36.0,
+    "media_pct": 36.14,
+    "pico_em": "14/10 21:14",
+    "pico_pct": 37.0
+   },
+   "disco_total_bytes": 106300440576,
+   "disco_usado_bytes": 36507222016,
+   "mem": {
+    "agora_pct": 38.07,
+    "media_pct": 33.5,
+    "pico_em": "13/10 12:50",
+    "pico_pct": 45.68
+   },
+   "nome": "GYM VPS",
+   "online": true,
+   "saude": 100,
+   "slug": "gym-vps",
+   "steal": {
+    "agora_pct": 5.44,
+    "media_pct": 8.55,
+    "pico_em": "12/10 00:00",
+    "pico_pct": 74.1
+   }
+  },
+  {
+   "amostras": 27328,
+   "cpu": {
+    "agora_pct": 5.18,
+    "media_pct": 20.09,
+    "pico_em": "15/10 22:01",
+    "pico_pct": 87.81
+   },
+   "disco": {
+    "agora_pct": 53.0,
+    "media_pct": 52.92,
+    "pico_em": "17/10 14:30",
+    "pico_pct": 53.0
+   },
+   "disco_total_bytes": 106300440576,
+   "disco_usado_bytes": 53687091200,
+   "mem": {
+    "agora_pct": 27.0,
+    "media_pct": 27.12,
+    "pico_em": "11/10 01:02",
+    "pico_pct": 32.69
+   },
+   "nome": "GESTOR VPS",
+   "online": true,
+   "saude": 93,
+   "slug": "gestor-vps",
+   "steal": {
+    "agora_pct": 8.78,
+    "media_pct": 9.59,
+    "pico_em": "13/10 23:00",
+    "pico_pct": 86.15
+   }
+  },
+  {
+   "amostras": 25233,
+   "cpu": {
+    "agora_pct": 2.37,
+    "media_pct": 3.06,
+    "pico_em": "17/10 10:09",
+    "pico_pct": 74.34
+   },
+   "disco": {
+    "agora_pct": 24.0,
+    "media_pct": 23.23,
+    "pico_em": "17/10 14:30",
+    "pico_pct": 24.0
+   },
+   "disco_total_bytes": 106300440576,
+   "disco_usado_bytes": 23622320128,
+   "mem": {
+    "agora_pct": 22.06,
+    "media_pct": 26.19,
+    "pico_em": "16/10 03:05",
+    "pico_pct": 27.11
+   },
+   "nome": "JORNADA VPS",
+   "online": true,
+   "saude": 100,
+   "slug": "jornada-vps",
+   "steal": {
+    "agora_pct": 4.09,
+    "media_pct": 3.7,
+    "pico_em": "13/10 16:00",
+    "pico_pct": 59.06
+   }
+  }
+ ],
+ "v": 1
+}

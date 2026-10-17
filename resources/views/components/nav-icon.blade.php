@@ -143,6 +143,10 @@
         // Commits e PRs ligados pelo GitHub (#211): o `code-bracket` do
         // Heroicons, o sinal que quem programa lê como "código" sem rótulo.
         'code' => 'M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5',
+        // Monitor (#394): o `signal` do Heroicons, ondas saindo de um ponto —
+        // "está no ar?". `bolt` já é o Centro de Controle. O ponto do meio é
+        // um círculo de verdade, mesmo conserto da 'duvida'.
+        'signal' => 'M9.348 14.652a3.75 3.75 0 010-5.304m5.304 0a3.75 3.75 0 010 5.304m-7.425 2.121a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788 M11.4 12a.6.6 0 101.2 0 .6.6 0 10-1.2 0z',
     ];
 @endphp
 

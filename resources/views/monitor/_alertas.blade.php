@@ -1,6 +1,9 @@
 {{--
-    A aba Monitor (#394): o que o AlfaMonitor empurrou pelo webhook. Só
-    mostra — quem avisa é o monitor.
+    Incidentes › Alertas recebidos (#394): o que o AlfaMonitor empurrou pelo
+    webhook e o Matriz guardou. É aqui que aparecem servidor, fonte e
+    Hostinger — a tabela de incidentes do monitor só tem disponibilidade e
+    aparelhos. Só mostra — quem avisa é o monitor. Os vencimentos da
+    Hostinger só chegam a quem tem `monitor_hostinger` (o controller filtra).
     Espera: $filtros, $agora, $historico, $quedas, $ligado, $ultimoRecebido, $kpis.
 --}}
 @use('App\Models\MonitorAlerta')
@@ -17,7 +20,7 @@
 </div>
 
 <form method="GET" class="flex flex-wrap items-center gap-2">
-    <input type="hidden" name="aba" value="monitor">
+    <input type="hidden" name="origem" value="alertas">
 
     <select name="kind" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
         <option value="">Todos os tipos</option>
@@ -27,7 +30,7 @@
     </select>
 
     <select name="periodo" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
-        @foreach (\App\Http\Controllers\ManutencaoController::PERIODOS_DO_MONITOR as $dias)
+        @foreach (\App\Http\Controllers\PainelDoMonitorController::PERIODOS_DOS_ALERTAS as $dias)
             <option value="{{ $dias }}" @selected($filtros['periodo'] === $dias)>Histórico de {{ $dias }} dias</option>
         @endforeach
     </select>
@@ -79,7 +82,7 @@
         <tbody>
             @forelse ($agora as $alerta)
                 <tr class="border-b border-rule hover:bg-chip transition align-top">
-                    @include('manutencao._monitor-item', ['alerta' => $alerta])
+                    @include('monitor._alerta-item', ['alerta' => $alerta])
                     {{-- Casou com o cadastro: o nome do Matriz, e não o que o
                          monitor mandou (que vem do AlfaControl/AlfaGym). --}}
                     <td class="px-4 py-3 text-[13px] text-ink-dim">{{ $alerta->clienteDoMatriz?->nome ?? $alerta->cliente ?? '—' }}</td>
@@ -132,7 +135,7 @@
                     <td class="px-4 py-3 font-sans tabular text-[12.5px] text-ink-dim whitespace-nowrap">
                         {{ $evento->ocorreu_em->format('d/m/Y H:i') }}
                     </td>
-                    @include('manutencao._monitor-item', ['alerta' => $evento->alerta])
+                    @include('monitor._alerta-item', ['alerta' => $evento->alerta])
                     <td class="px-4 py-3">
                         <div class="flex flex-wrap items-center gap-1.5">
                             <x-badge :tom="match ($evento->rotulo()) { 'Voltou' => 'bom', 'Caiu' => 'critico', default => 'neutro' }">{{ $evento->rotulo() }}</x-badge>
