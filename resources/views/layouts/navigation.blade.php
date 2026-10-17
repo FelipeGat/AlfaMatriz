@@ -81,6 +81,11 @@
             // Erros (#224): a tela mostra o log cru dos sistemas, e o perfil de
             // exibição não o lê — a mesma régua da Agenda.
             ['route' => 'manutencao.index', 'recurso' => 'manutencao', 'pattern' => 'manutencao.*', 'label' => 'Manutenção e atualizações', 'icon' => 'wrench', 'matriz' => true],
+            // As telas do AlfaMonitor (#394): item PRÓPRIO, e não aba da
+            // Manutenção, por decisão do dono em 17/10/2026 — sete telas não
+            // cabem numa aba. Logo abaixo da Manutenção porque é de lá que a
+            // vitrine dos alertas saiu. `recurso` próprio (`monitor`).
+            ['route' => 'monitor.geral', 'recurso' => 'monitor', 'pattern' => 'monitor.*', 'label' => 'Monitor', 'icon' => 'signal', 'matriz' => true],
         ],
         'Sistema' => [
             ['route' => 'cadastros-auxiliares.index', 'recurso' => 'financeiro', 'pattern' => ['cadastros-auxiliares.*', 'centros-custo.*', 'fornecedores.*', 'categorias.*', 'subcategorias.*', 'contas.*'], 'label' => 'Cadastros', 'icon' => 'tag', 'matriz' => true],

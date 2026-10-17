@@ -1,0 +1,262 @@
+{
+ "fontes": [
+  {
+   "clientes": [
+    {
+     "acessos_hoje": 52,
+     "aparelhos": [
+      {
+       "barra": {
+        "balde_min": 1.0,
+        "pontos": [
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:18:47-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:19:47-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:20:48-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:21:48-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:22:48-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:23:49-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:24:49-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:25:50-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:26:50-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:27:51-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:28:51-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:29:52-03:00"
+         }
+        ]
+       },
+       "estado": "offline",
+       "id": 8,
+       "ip": "192.0.2.33",
+       "modelo": "controlid_idface",
+       "nome": "Aparelho 1",
+       "pct_no_ar_24h": 99.14,
+       "ping_ms": 4,
+       "sino": false,
+       "ultimo_ping": "2026-10-17T14:09:00.870921Z"
+      }
+     ],
+     "cliente_id": 5,
+     "fechado_agora": false,
+     "horario": null,
+     "negados_hoje": 2,
+     "nome": "CLIENTE 5",
+     "online": 0,
+     "sino": false,
+     "total": 1
+    },
+    {
+     "acessos_hoje": 52,
+     "aparelhos": [
+      {
+       "barra": {
+        "balde_min": 1.0,
+        "pontos": [
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:18:47-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:19:47-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:20:48-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:21:48-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:22:48-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:23:49-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:24:49-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:25:50-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:26:50-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:27:51-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:28:51-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:29:52-03:00"
+         }
+        ]
+       },
+       "estado": "offline",
+       "id": 21,
+       "ip": "192.0.2.34",
+       "modelo": "controlid_idface",
+       "nome": "Aparelho 2",
+       "pct_no_ar_24h": 99.86,
+       "ping_ms": 3,
+       "sino": true,
+       "ultimo_ping": "2026-10-17T15:01:00.877253Z"
+      }
+     ],
+     "cliente_id": 10,
+     "fechado_agora": false,
+     "horario": null,
+     "negados_hoje": 6,
+     "nome": "CLIENTE 6",
+     "online": 0,
+     "sino": true,
+     "total": 1
+    },
+    {
+     "acessos_hoje": null,
+     "aparelhos": [
+      {
+       "barra": {
+        "balde_min": 1.0,
+        "pontos": [
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:18:47-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:19:47-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:20:48-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:21:48-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:22:48-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:23:49-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:24:49-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:25:50-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:26:50-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:27:51-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:28:51-03:00"
+         },
+         {
+          "estado": "parcial",
+          "inicio": "2026-10-17T14:29:52-03:00"
+         }
+        ]
+       },
+       "estado": "offline",
+       "id": 16,
+       "ip": "192.0.2.35",
+       "modelo": "controlid_idface",
+       "nome": "Aparelho 3",
+       "pct_no_ar_24h": 100.0,
+       "ping_ms": 4,
+       "sino": false,
+       "ultimo_ping": "2026-10-17T01:01:27.840117Z"
+      }
+     ],
+     "cliente_id": 7,
+     "fechado_agora": false,
+     "horario": null,
+     "negados_hoje": null,
+     "nome": "CLIENTE 7",
+     "online": 0,
+     "sino": false,
+     "total": 1
+    }
+   ],
+   "coleta": "ok",
+   "fonte": "AlfaGym",
+   "online": 1,
+   "sistema": "alfagym",
+   "totais": {
+    "d30": {
+     "liberados": 28910,
+     "negados": 5735
+    },
+    "d7": {
+     "liberados": 5194,
+     "negados": 1240
+    },
+    "hoje": {
+     "liberados": 152,
+     "negados": 17
+    }
+   },
+   "total": 9,
+   "ultima_coleta": "2026-10-17T14:29:52-03:00"
+  }
+ ],
+ "gerado_em": "2026-10-17T14:32:58-03:00",
+ "retrato_idade_s": 2,
+ "v": 1
+}

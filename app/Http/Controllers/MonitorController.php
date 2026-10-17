@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\MonitorAlerta;
 use App\Models\Sistema;
 use App\Services\Monitor\AlertasDoMonitor;
+use App\Services\Monitor\ApiDoMonitor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +32,7 @@ class MonitorController extends Controller
 
     public const VERSAO_DO_CONTRATO = 1;
 
-    public function __invoke(Request $request, AlertasDoMonitor $alertas): JsonResponse
+    public function __invoke(Request $request, AlertasDoMonitor $alertas, ApiDoMonitor $api): JsonResponse
     {
         if (! $this->tokenValido((string) $request->header('X-AlfaMonitor-Token'))) {
             return response()->json(['message' => 'Token do AlfaMonitor inválido.'], 401);
@@ -86,6 +87,11 @@ class MonitorController extends Controller
         }
 
         $resultado = $alertas->receber($validacao->validated());
+
+        // O alerta mudou o que as telas do Monitor mostram (Atenção, servidor,
+        // incidentes): a próxima atualização delas vai ao monitor em vez de
+        // servir o cache de até 30 s.
+        $api->invalidar();
 
         return response()->json(['message' => $resultado]);
     }

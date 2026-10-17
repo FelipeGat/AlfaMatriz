@@ -1,0 +1,106 @@
+{
+ "dias": 7,
+ "estado": "historico",
+ "gerado_em": "2026-10-17T14:32:34-03:00",
+ "incidentes": [
+  {
+   "aberto": false,
+   "cliente": {
+    "id": "autoe7a6a15ed1c36376",
+    "nome": "CLIENTE 9"
+   },
+   "duracao_s": 24693,
+   "event_id": 3529,
+   "fim": "2026-10-14T15:05:09-03:00",
+   "fora_do_horario": false,
+   "id": 25829293,
+   "incident_id": 3529,
+   "inicio": "2026-10-14T08:13:36-03:00",
+   "nome": "Aparelho 5",
+   "origem": "AlfaGym",
+   "recorrencia_7d": 1,
+   "sev": "crit",
+   "silenciado": false,
+   "tipo": "dispositivos"
+  },
+  {
+   "aberto": false,
+   "cliente": {
+    "id": "auto89af9cc6e6c0a824",
+    "nome": "CLIENTE 2"
+   },
+   "duracao_s": 903,
+   "event_id": 3535,
+   "fim": "2026-10-14T11:22:14-03:00",
+   "fora_do_horario": false,
+   "id": 25829274,
+   "incident_id": 3535,
+   "inicio": "2026-10-14T11:07:11-03:00",
+   "nome": "Aparelho 6",
+   "origem": "AlfaControl",
+   "recorrencia_7d": 1,
+   "sev": "crit",
+   "silenciado": false,
+   "tipo": "dispositivos"
+  },
+  {
+   "aberto": false,
+   "cliente": {
+    "id": "auto89af9cc6e6c0a824",
+    "nome": "CLIENTE 2"
+   },
+   "duracao_s": 903,
+   "event_id": 3536,
+   "fim": "2026-10-14T11:22:14-03:00",
+   "fora_do_horario": false,
+   "id": 25829276,
+   "incident_id": 3536,
+   "inicio": "2026-10-14T11:07:11-03:00",
+   "nome": "Aparelho 7",
+   "origem": "AlfaControl",
+   "recorrencia_7d": 1,
+   "sev": "crit",
+   "silenciado": false,
+   "tipo": "dispositivos"
+  },
+  {
+   "aberto": false,
+   "cliente": {
+    "id": "auto89af9cc6e6c0a824",
+    "nome": "CLIENTE 2"
+   },
+   "duracao_s": 903,
+   "event_id": 3537,
+   "fim": "2026-10-14T11:22:14-03:00",
+   "fora_do_horario": false,
+   "id": 25829278,
+   "incident_id": 3537,
+   "inicio": "2026-10-14T11:07:11-03:00",
+   "nome": "Aparelho 8",
+   "origem": "AlfaControl",
+   "recorrencia_7d": 1,
+   "sev": "crit",
+   "silenciado": false,
+   "tipo": "dispositivos"
+  },
+  {
+   "aberto": false,
+   "cliente": null,
+   "duracao_s": 1827,
+   "event_id": 3674,
+   "fim": "2026-10-17T10:10:32-03:00",
+   "fora_do_horario": false,
+   "id": 25914209,
+   "incident_id": 3674,
+   "inicio": "2026-10-17T09:40:05-03:00",
+   "nome": "CONTROL",
+   "origem": "Disponibilidade",
+   "recorrencia_7d": 1,
+   "sev": "crit",
+   "silenciado": false,
+   "tipo": "disponibilidade"
+  }
+ ],
+ "retrato_idade_s": 0,
+ "v": 1
+}

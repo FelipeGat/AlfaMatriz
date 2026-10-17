@@ -1,0 +1,91 @@
+{
+ "clientes": [
+  {
+   "acesso": [
+    {
+     "cliente_id": 5,
+     "fonte": "AlfaGym"
+    }
+   ],
+   "acessos_hoje": 52,
+   "dispositivos_online": 0,
+   "dispositivos_total": 1,
+   "fontes": [
+    "AlfaGym"
+   ],
+   "horario": null,
+   "id": "autoa0ab09272d0ba81b",
+   "monitores": 0,
+   "negados_hoje": 2,
+   "nome": "CLIENTE 5",
+   "servidores": 0,
+   "sev": "crit"
+  },
+  {
+   "acesso": [
+    {
+     "cliente_id": 10,
+     "fonte": "AlfaGym"
+    }
+   ],
+   "acessos_hoje": 52,
+   "dispositivos_online": 0,
+   "dispositivos_total": 1,
+   "fontes": [
+    "AlfaGym"
+   ],
+   "horario": null,
+   "id": "auto674237745022d8f9",
+   "monitores": 0,
+   "negados_hoje": 6,
+   "nome": "CLIENTE 6",
+   "servidores": 0,
+   "sev": "crit"
+  },
+  {
+   "acesso": [
+    {
+     "cliente_id": 7,
+     "fonte": "AlfaGym"
+    }
+   ],
+   "acessos_hoje": null,
+   "dispositivos_online": 0,
+   "dispositivos_total": 1,
+   "fontes": [
+    "AlfaGym"
+   ],
+   "horario": null,
+   "id": "auto2ae365bc49d1c2",
+   "monitores": 0,
+   "negados_hoje": null,
+   "nome": "CLIENTE 7",
+   "servidores": 0,
+   "sev": "crit"
+  },
+  {
+   "acesso": [
+    {
+     "cliente_id": 4,
+     "fonte": "AlfaGym"
+    }
+   ],
+   "acessos_hoje": 20,
+   "dispositivos_online": 1,
+   "dispositivos_total": 1,
+   "fontes": [
+    "AlfaGym"
+   ],
+   "horario": null,
+   "id": "auto8c7b62919d4ea8e8",
+   "monitores": 0,
+   "negados_hoje": 2,
+   "nome": "CLIENTE 8",
+   "servidores": 0,
+   "sev": "ok"
+  }
+ ],
+ "gerado_em": "2026-10-17T14:32:31-03:00",
+ "retrato_idade_s": 3,
+ "v": 1
+}

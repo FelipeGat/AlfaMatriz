@@ -1,0 +1,29 @@
+{
+ "dias": 7,
+ "estado": "aberto",
+ "gerado_em": "2026-10-17T14:32:34-03:00",
+ "incidentes": [
+  {
+   "aberto": true,
+   "cliente": {
+    "id": "auto3a6f8bf4c9e471a1",
+    "nome": "CLIENTE 4"
+   },
+   "duracao_s": 2032,
+   "event_id": 3688,
+   "fim": null,
+   "fora_do_horario": false,
+   "id": 25943662,
+   "incident_id": 3688,
+   "inicio": "2026-10-17T13:58:42-03:00",
+   "nome": "Aparelho 4",
+   "origem": "AlfaControl",
+   "recorrencia_7d": 0,
+   "sev": "crit",
+   "silenciado": false,
+   "tipo": "dispositivos"
+  }
+ ],
+ "retrato_idade_s": 0,
+ "v": 1
+}

@@ -1,5 +1,5 @@
 {{--
-    A célula "O quê" da aba Monitor (#394), igual em Fora agora e no
+    A célula "O quê" dos alertas recebidos (#394), igual em Fora agora e no
     Histórico: o nome legível, o tipo e a chave do monitor, que é o que se
     procura na web dele. Espera: $alerta.
 --}}

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -51,6 +52,21 @@ class MonitorAlerta extends Model
             'ultimo_evento_em' => 'datetime',
             'ultimo_aviso_em' => 'datetime',
         ];
+    }
+
+    /**
+     * Tira os alertas que são da ASSINATURA da Hostinger, para quem não tem
+     * `monitor_hostinger` (decisão do dono: ver o monitoramento não dá o
+     * contrato com o fornecedor). A regra é o prefixo do `entity`, fixo no
+     * monitor (combinado com ele em 17/10/2026): `venc:domain:…` e
+     * `venc:subscription:…` são vencimento, `integracao` é a API da Hostinger
+     * fora. `vps:` e `banda:` são o servidor — monitoramento, e ficam.
+     */
+    public function scopeSemAssinaturasDaHostinger(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $q) => $q->where('kind', '!=', 'hostinger')
+            ->orWhere(fn (Builder $h) => $h->where('entity', 'not like', 'venc:%')
+                ->where('entity', '!=', 'integracao')));
     }
 
     public function eventos(): HasMany

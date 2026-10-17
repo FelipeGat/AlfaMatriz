@@ -36,10 +36,15 @@ return [
 
     // O grupo de alertas do Telegram, onde o vigia de logs avisa (#219). Sem
     // os dois, o aviso não sai e fica registrado no log — ver `AvisoNoTelegram`.
-    // A web do AlfaMonitor (#394), para a tela de Manutenção abrir o `link`
-    // relativo que vem em cada alerta. Sem ela, a tela só não oferece o link.
+    // O AlfaMonitor (#394). `url` é a web dele: abre o `link` relativo de
+    // cada alerta e é a base da API de leitura (`/api/v1/…`) que as telas do
+    // Monitor consultam. `api_token` é o token de MÁQUINA só de leitura que o
+    // monitor emite em Config → "API de leitura" — outro, e no sentido
+    // contrário, do `alfa:monitor-token` do webhook. Sem os dois, as telas
+    // dizem que o monitor não está ligado em vez de quebrar.
     'alfamonitor' => [
         'url' => env('ALFAMONITOR_URL'),
+        'api_token' => env('ALFAMONITOR_API_TOKEN'),
     ],
 
     'telegram' => [

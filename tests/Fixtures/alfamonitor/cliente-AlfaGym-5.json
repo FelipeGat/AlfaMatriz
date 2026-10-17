@@ -1,0 +1,210 @@
+{
+ "acesso": [
+  {
+   "cliente_id": 5,
+   "fonte": "AlfaGym"
+  }
+ ],
+ "acessos": {
+  "d30": {
+   "liberados": 3984,
+   "negados": 235
+  },
+  "d7": {
+   "liberados": 822,
+   "negados": 93
+  },
+  "hoje": {
+   "liberados": 52,
+   "negados": 2
+  }
+ },
+ "aparelhos": [
+  {
+   "estado": "offline",
+   "fonte": "AlfaGym",
+   "id": 8,
+   "nome": "Aparelho 1",
+   "pct_no_ar_24h": 99.14,
+   "pct_no_ar_7d": 76.81,
+   "quedas_7d": 3
+  }
+ ],
+ "dispositivos_online": 0,
+ "dispositivos_total": 1,
+ "gerado_em": "2026-10-17T14:33:00-03:00",
+ "horario": null,
+ "id": "autoa0ab09272d0ba81b",
+ "monitores": [],
+ "nome": "CLIENTE 5",
+ "pct_no_ar_24h": 99.14,
+ "pct_no_ar_7d": 76.81,
+ "quedas_24h": 0,
+ "quedas_7d": 3,
+ "quedas_descontadas_7d": 5,
+ "quedas_lista_7d": [
+  {
+   "aparelho": "Aparelho 1",
+   "duracao_s": 12192,
+   "fim": "2026-10-16T13:55:53-03:00",
+   "inicio": "2026-10-16T10:32:41-03:00"
+  },
+  {
+   "aparelho": "Aparelho 1",
+   "duracao_s": 12954,
+   "fim": "2026-10-15T13:58:46-03:00",
+   "inicio": "2026-10-15T10:22:52-03:00"
+  },
+  {
+   "aparelho": "Aparelho 1",
+   "duracao_s": 18804,
+   "fim": "2026-10-14T16:22:35-03:00",
+   "inicio": "2026-10-14T11:09:11-03:00"
+  }
+ ],
+ "retrato_idade_s": 0,
+ "serie_30d": [
+  {
+   "dia": "2026-09-18",
+   "liberados": 139,
+   "negados": 4
+  },
+  {
+   "dia": "2026-09-19",
+   "liberados": 40,
+   "negados": 1
+  },
+  {
+   "dia": "2026-09-21",
+   "liberados": 218,
+   "negados": 14
+  },
+  {
+   "dia": "2026-09-22",
+   "liberados": 218,
+   "negados": 16
+  },
+  {
+   "dia": "2026-09-23",
+   "liberados": 152,
+   "negados": 8
+  },
+  {
+   "dia": "2026-09-24",
+   "liberados": 174,
+   "negados": 4
+  },
+  {
+   "dia": "2026-09-25",
+   "liberados": 152,
+   "negados": 4
+  },
+  {
+   "dia": "2026-09-26",
+   "liberados": 55,
+   "negados": 0
+  },
+  {
+   "dia": "2026-09-27",
+   "liberados": 7,
+   "negados": 0
+  },
+  {
+   "dia": "2026-09-28",
+   "liberados": 195,
+   "negados": 3
+  },
+  {
+   "dia": "2026-09-29",
+   "liberados": 176,
+   "negados": 6
+  },
+  {
+   "dia": "2026-09-30",
+   "liberados": 186,
+   "negados": 3
+  },
+  {
+   "dia": "2026-10-01",
+   "liberados": 176,
+   "negados": 8
+  },
+  {
+   "dia": "2026-10-02",
+   "liberados": 146,
+   "negados": 0
+  },
+  {
+   "dia": "2026-10-03",
+   "liberados": 15,
+   "negados": 2
+  },
+  {
+   "dia": "2026-10-04",
+   "liberados": 11,
+   "negados": 0
+  },
+  {
+   "dia": "2026-10-05",
+   "liberados": 204,
+   "negados": 6
+  },
+  {
+   "dia": "2026-10-06",
+   "liberados": 205,
+   "negados": 10
+  },
+  {
+   "dia": "2026-10-07",
+   "liberados": 213,
+   "negados": 27
+  },
+  {
+   "dia": "2026-10-08",
+   "liberados": 160,
+   "negados": 9
+  },
+  {
+   "dia": "2026-10-09",
+   "liberados": 168,
+   "negados": 12
+  },
+  {
+   "dia": "2026-10-10",
+   "liberados": 56,
+   "negados": 0
+  },
+  {
+   "dia": "2026-10-12",
+   "liberados": 43,
+   "negados": 2
+  },
+  {
+   "dia": "2026-10-13",
+   "liberados": 196,
+   "negados": 36
+  },
+  {
+   "dia": "2026-10-14",
+   "liberados": 200,
+   "negados": 41
+  },
+  {
+   "dia": "2026-10-15",
+   "liberados": 170,
+   "negados": 8
+  },
+  {
+   "dia": "2026-10-16",
+   "liberados": 161,
+   "negados": 4
+  },
+  {
+   "dia": "2026-10-17",
+   "liberados": 52,
+   "negados": 2
+  }
+ ],
+ "servidores": [],
+ "v": 1
+}
