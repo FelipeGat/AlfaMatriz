@@ -6,6 +6,8 @@
         @if ($aba === 'erros')
             {{ $kpis['vigiados'] }} {{ $kpis['vigiados'] === 1 ? 'erro vigiado' : 'erros vigiados' }}
             em {{ $sistemas->count() }} {{ $sistemas->count() === 1 ? 'sistema' : 'sistemas' }}
+        @elseif ($aba === 'monitor')
+            {{ $kpis['fora'] }} {{ $kpis['fora'] === 1 ? 'item fora do ar' : 'itens fora do ar' }} agora
         @elseif ($aba === 'atualizacoes')
             {{ $atualizacoes->total() }} {{ $atualizacoes->total() === 1 ? 'atualização publicada' : 'atualizações publicadas' }}
         @else
@@ -39,12 +41,16 @@
             <x-aviso tom="critico" :segundos="0">{{ $errors->first() }}</x-aviso>
         @endif
 
-        {{-- Erros vem primeiro porque é o que pede ação: as outras duas abas
-             são registro e agenda, a de erros é o que está quebrando agora. --}}
+        {{-- Erros e Monitor vêm primeiro porque são o que pede ação: as outras
+             duas abas são registro e agenda. --}}
         <x-abas>
             <x-abas.item :href="route('manutencao.index', ['aba' => 'erros'])"
                          :ativo="$aba === 'erros'" icone="alert-triangle">
                 Erros
+            </x-abas.item>
+            <x-abas.item :href="route('manutencao.index', ['aba' => 'monitor'])"
+                         :ativo="$aba === 'monitor'" icone="bolt">
+                Monitor
             </x-abas.item>
             <x-abas.item :href="route('manutencao.index', ['aba' => 'atualizacoes'])"
                          :ativo="$aba === 'atualizacoes'" icone="document">
@@ -57,7 +63,7 @@
         </x-abas>
 
         <div id="manutencao-conteudo" class="space-y-4" data-gerado-em="{{ now()->format('H:i') }}"
-             x-data="manutencaoTela({ automatico: {{ $aba === 'erros' ? 'true' : 'false' }} })"
+             x-data="manutencaoTela({ automatico: {{ in_array($aba, ['erros', 'monitor'], true) ? 'true' : 'false' }} })"
              @manutencao-atualizar.window="atualizar()">
             @include('manutencao._'.$aba)
         </div>

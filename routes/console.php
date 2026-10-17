@@ -53,3 +53,10 @@ Schedule::command('central-ia:limpar')
     ->dailyAt('03:30')
     ->withoutOverlapping()
     ->onOneServer();
+
+// O histórico dos alertas do AlfaMonitor (#394) guarda 90 dias
+// (`MonitorEvento::DIAS_DE_HISTORICO`); o estado de agora não depende dele.
+Schedule::command('model:prune', ['--model' => [\App\Models\MonitorEvento::class]])
+    ->dailyAt('03:40')
+    ->withoutOverlapping()
+    ->onOneServer();

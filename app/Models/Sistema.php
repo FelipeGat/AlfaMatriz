@@ -43,7 +43,7 @@ class Sistema extends Model
      * `alfa:vigia-token` o grava — e fora de toda serialização: hash de token
      * não tem por que sair numa resposta de tela.
      */
-    protected $hidden = ['vigia_token_hash'];
+    protected $hidden = ['vigia_token_hash', 'monitor_token_hash'];
 
     /**
      * Trocar o token do vigia aparece na auditoria, mas sem o valor.
@@ -52,7 +52,7 @@ class Sistema extends Model
      */
     public function camposOcultosNaAuditoria(): array
     {
-        return ['password', 'vigia_token_hash'];
+        return ['password', 'vigia_token_hash', 'monitor_token_hash'];
     }
 
     protected function casts(): array

@@ -15,8 +15,8 @@
          * atualização mostra é exatamente o que um F5 mostraria. O Alpine liga
          * sozinho os componentes do HTML novo (confirmar, abrir changelog).
          *
-         * Automático só na aba Erros, a cada 5 minutos — é a que muda sozinha,
-         * de hora em hora, com o lote do vigia. Pausa com a aba do navegador
+         * Automático só nas abas Erros e Monitor, a cada 5 minutos — as que
+         * mudam sozinhas, com o lote do vigia e com o webhook do AlfaMonitor. Pausa com a aba do navegador
          * escondida, como o sino (`app.js`), e ao voltar atualiza na hora se o
          * dado já passou do prazo, em vez de esperar o próximo tique.
          */

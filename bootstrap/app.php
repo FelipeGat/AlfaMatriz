@@ -20,13 +20,15 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
-        // O webhook do GitHub (#211), o vigia de logs (#219) e o registro do
-        // changelog (#225) fora do grupo `web`: ver `routes/github.php`,
-        // `routes/vigia.php` e `routes/atualizacoes.php`.
+        // O webhook do GitHub (#211), o vigia de logs (#219), o registro do
+        // changelog (#225) e os alertas do AlfaMonitor (#394) fora do grupo
+        // `web`: ver `routes/github.php`, `routes/vigia.php`,
+        // `routes/atualizacoes.php` e `routes/monitor.php`.
         then: function () {
             Route::group([], base_path('routes/github.php'));
             Route::group([], base_path('routes/vigia.php'));
             Route::group([], base_path('routes/atualizacoes.php'));
+            Route::group([], base_path('routes/monitor.php'));
             Route::group([], base_path('routes/central-ia.php'));
         },
     )

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Atualizacao;
 use App\Models\Compromisso;
+use App\Models\MonitorAlerta;
+use App\Models\MonitorEvento;
 use App\Models\Sistema;
 use App\Models\VigiaErro;
 use App\Models\VigiaErroHora;
@@ -31,10 +33,19 @@ use InvalidArgumentException;
  * As abas Atualizações e Programadas (#225) são a vitrine de duas coisas que
  * nascem em outro lugar: o changelog que o `publicar-changelog.sh` manda ao
  * Telegram (e registra aqui) e a janela de manutenção marcada na Agenda.
+ *
+ * A aba Monitor (#394) é a vitrine do AlfaMonitor: o que está fora agora e o
+ * histórico de quedas e voltas, empurrados pelo webhook dele. Só mostra — o
+ * aviso continua saindo do monitor.
  */
 class ManutencaoController extends Controller
 {
-    public const ABAS = ['erros', 'atualizacoes', 'programadas'];
+    public const ABAS = ['erros', 'monitor', 'atualizacoes', 'programadas'];
+
+    /** Os recortes do histórico do Monitor, em dias. */
+    public const PERIODOS_DO_MONITOR = [7, 30, 90];
+
+    public const EVENTOS_POR_PAGINA = 30;
 
     public const SITUACOES = ['vigiados', 'ignorados', 'todos'];
 
@@ -60,6 +71,7 @@ class ManutencaoController extends Controller
         $aba = in_array($request->query('aba'), self::ABAS, true) ? $request->query('aba') : 'erros';
 
         $dados = match ($aba) {
+            'monitor' => $this->abaMonitor($request),
             'atualizacoes' => $this->abaAtualizacoes($request),
             'programadas' => $this->abaProgramadas(),
             default => $this->abaErros($request),
@@ -183,6 +195,76 @@ class ManutencaoController extends Controller
                 'ocorrencias24h' => (int) VigiaErroHora::where('hora', '>=', now()->subDay()->startOfHour()->format('Y-m-d H:i:s'))->sum('total'),
                 'picos' => VigiaErro::where('pico_avisado_em', '>=', now()->subDays(self::DIAS_DA_SEMANA)->format('Y-m-d H:i:s'))->count(),
                 'ignorados' => VigiaErro::where('ignorado', true)->count(),
+            ],
+        ];
+    }
+
+    /**
+     * O AlfaMonitor (#394): o que está fora AGORA e o histórico.
+     *
+     * "Agora" é o estado (`MonitorAlerta`), não a soma do histórico: é o que
+     * sobrevive a evento repetido ou fora de ordem. O histórico esconde os
+     * lembretes por padrão — "ainda fora há 4h" de 4 em 4 horas enterraria as
+     * quedas, que são o que se procura nele.
+     *
+     * @return array<string, mixed>
+     */
+    private function abaMonitor(Request $request): array
+    {
+        $filtros = [
+            'kind' => array_key_exists($request->query('kind'), MonitorAlerta::KINDS) ? $request->query('kind') : '',
+            'periodo' => in_array((int) $request->query('periodo'), self::PERIODOS_DO_MONITOR, true) ? (int) $request->query('periodo') : 7,
+            'lembretes' => $request->boolean('lembretes'),
+        ];
+
+        $rank = array_flip(array_keys(MonitorAlerta::SEVERIDADES));
+
+        $agora = MonitorAlerta::query()
+            ->with('clienteDoMatriz')
+            ->where('aberto', true)
+            ->when($filtros['kind'], fn ($q, $kind) => $q->where('kind', $kind))
+            ->get()
+            // Crítico primeiro e, dentro da gravidade, quem caiu antes: o que
+            // está fora há mais tempo é o que mais pede olho.
+            ->sortBy([
+                fn ($a, $b) => ($rank[$a->severity] ?? 9) <=> ($rank[$b->severity] ?? 9),
+                fn ($a, $b) => $a->caiu_em <=> $b->caiu_em,
+            ])
+            ->values();
+
+        $historico = MonitorEvento::query()
+            ->with('alerta')
+            ->when($filtros['kind'], fn ($q, $kind) => $q->whereHas('alerta', fn ($a) => $a->where('kind', $kind)))
+            ->when(! $filtros['lembretes'], fn ($q) => $q->where('derived', false))
+            ->where('ocorreu_em', '>=', now()->subDays($filtros['periodo'])->format('Y-m-d H:i:s'))
+            ->orderByDesc('ocorreu_em')
+            ->orderByDesc('event_id')
+            ->paginate(self::EVENTOS_POR_PAGINA)
+            ->withQueryString();
+
+        // Quanto tempo ficou fora: a volta aponta a queda pelo incident_id.
+        $quedas = MonitorEvento::query()
+            ->whereIn('event_id', $historico->getCollection()->where('resolved', true)->pluck('incident_id')->filter())
+            ->pluck('ocorreu_em', 'event_id');
+
+        $ultimo = MonitorEvento::query()->latest('id')->first();
+
+        return [
+            'filtros' => $filtros,
+            'agora' => $agora,
+            'historico' => $historico,
+            'quedas' => $quedas,
+            // Se o monitor está ligado (tem token) e quando falou por último:
+            // tela vazia com o monitor mudo há dias não é boa notícia.
+            'ligado' => Sistema::whereNotNull('monitor_token_hash')->exists(),
+            'ultimoRecebido' => $ultimo?->created_at,
+            'kpis' => [
+                'fora' => MonitorAlerta::where('aberto', true)->count(),
+                'criticos' => MonitorAlerta::where('aberto', true)->where('severity', 'critical')->count(),
+                'quedas7d' => MonitorEvento::where('derived', false)->where('resolved', false)
+                    ->where('ocorreu_em', '>=', now()->subDays(7)->format('Y-m-d H:i:s'))->count(),
+                'voltas24h' => MonitorEvento::where('derived', false)->where('resolved', true)
+                    ->where('ocorreu_em', '>=', now()->subDay()->format('Y-m-d H:i:s'))->count(),
             ],
         ];
     }

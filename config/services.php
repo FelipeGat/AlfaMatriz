@@ -36,6 +36,12 @@ return [
 
     // O grupo de alertas do Telegram, onde o vigia de logs avisa (#219). Sem
     // os dois, o aviso não sai e fica registrado no log — ver `AvisoNoTelegram`.
+    // A web do AlfaMonitor (#394), para a tela de Manutenção abrir o `link`
+    // relativo que vem em cada alerta. Sem ela, a tela só não oferece o link.
+    'alfamonitor' => [
+        'url' => env('ALFAMONITOR_URL'),
+    ],
+
     'telegram' => [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
         'chat_id_alertas' => env('TELEGRAM_CHAT_ID_ALERTAS'),
