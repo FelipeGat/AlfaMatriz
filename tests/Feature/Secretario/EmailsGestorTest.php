@@ -221,4 +221,27 @@ class EmailsGestorTest extends TestCase
         $this->postJson(route('secretario.emails.testar'), ['pasta_entrada' => "INBOX\r\nA1 STORE 1:* +FLAGS (\\Deleted)"] + $base)->assertUnprocessable()->assertJsonValidationErrors('pasta_entrada');
         $this->assertSame(0, SecretarioEmailConta::count());
     }
+
+    /** Tela de Mensagens (desenho de 17/10): texto e prévia lidos na hora, nunca guardados; estrela só daqui. */
+    public function test_mensagens_texto_previa_estrela_e_isolamento(): void
+    {
+        $u = $this->dono(telegram: false);
+        app(LeitorDeEmails::class)->sincronizar($this->caixa($u));
+        $e = SecretarioEmail::where('assunto', 'URGENTE: contrato')->sole();
+        $this->actingAs($u);
+
+        $this->getJson(route('secretario.emails.texto', $e->id))->assertOk()->assertJsonPath('texto', fn ($t) => str_contains($t, 'Consegue assinar hoje?'));
+        $this->postJson(route('secretario.emails.previas'), ['ids' => [$e->id]])->assertOk()->assertJsonPath('previas.'.$e->id, fn ($t) => str_contains($t, 'Consegue assinar'));
+        $this->assertEmpty(array_filter($this->imap->comandos, fn ($c) => preg_match('/STORE|EXPUNGE|SELECT/i', $c)), 'Só leitura');
+        $this->assertFalse(\Illuminate\Support\Facades\Schema::hasColumn('secretario_emails', 'texto'), 'O texto não é guardado');
+
+        $this->postJson(route('secretario.emails.favorito', $e->id))->assertOk()->assertJsonPath('favorito', true);
+        $this->get(route('secretario.emails.index', ['ver' => 'todas', 'status' => 'favoritos']))->assertOk()->assertSee('URGENTE: contrato')->assertDontSee('Planilha');
+        $this->get(route('secretario.emails.index', ['ver' => 'todas', 'q' => 'Planilha']))->assertOk()->assertSee('Planilha')->assertDontSee('URGENTE: contrato');
+
+        $outro = $this->admin();
+        $this->actingAs($outro)->getJson(route('secretario.emails.texto', $e->id))->assertNotFound();
+        $this->postJson(route('secretario.emails.favorito', $e->id))->assertNotFound();
+        $this->postJson(route('secretario.emails.previas'), ['ids' => [$e->id]])->assertOk()->assertJsonPath('previas', []);
+    }
 }

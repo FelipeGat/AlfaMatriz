@@ -34,13 +34,64 @@ class SecretarioEmailsController extends Controller
 
     public function index(Request $request): View
     {
-        $filtro = in_array($request->query('ver'), ['aguardando', 'importantes', 'todas'], true) ? $request->query('ver') : 'importantes';
-        $emails = SecretarioEmail::de($request->user())->with('conta')->where('enviado', false)->where('recebido_em', '>=', now()->subDays(7))
+        $f = $request->validate([
+            'ver' => ['nullable', Rule::in(['aguardando', 'importantes', 'todas'])], 'conta' => ['nullable', 'integer'],
+            'status' => ['nullable', Rule::in(['nao_lidos', 'aguardando', 'respondidas', 'favoritos'])],
+            'dias' => ['nullable', Rule::in(['1', '3', '7', '30'])], 'q' => ['nullable', 'string', 'max:120'],
+        ]);
+        $filtro = $f['ver'] ?? 'importantes';
+        $dias = (int) ($f['dias'] ?? 7);
+        $busca = trim((string) ($f['q'] ?? ''));
+        $emails = SecretarioEmail::de($request->user())->with('conta')->where('enviado', false)->where('recebido_em', '>=', now()->subDays($dias)->startOfDay())
             ->when($filtro === 'aguardando', fn ($q) => $q->aguardando())
-            ->when($filtro === 'importantes', fn ($q) => $q->where(fn ($w) => $w->where('urgencia', 'alta')->orWhere(fn ($x) => $x->where('pede_retorno', true)->where('respondido', false))))
+            ->when($filtro === 'importantes', fn ($q) => $q->where(fn ($w) => $w->where('urgencia', 'alta')->orWhere('favorito', true)->orWhere(fn ($x) => $x->where('pede_retorno', true)->where('respondido', false))))
+            ->when($f['conta'] ?? null, fn ($q, $c) => $q->where('conta_id', $c))
+            ->when(($f['status'] ?? null) === 'nao_lidos', fn ($q) => $q->where('lido', false))
+            ->when(($f['status'] ?? null) === 'aguardando', fn ($q) => $q->aguardando())
+            ->when(($f['status'] ?? null) === 'respondidas', fn ($q) => $q->where('respondido', true))
+            ->when(($f['status'] ?? null) === 'favoritos', fn ($q) => $q->where('favorito', true))
+            ->when($busca !== '', function ($q) use ($busca) {
+                $termo = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $busca).'%';
+                $q->where(fn ($w) => $w->where('assunto', 'like', $termo)->orWhere('de_nome', 'like', $termo)->orWhere('de_email', 'like', $termo));
+            })
             ->orderByDesc('recebido_em')->paginate(30)->withQueryString();
 
-        return view('secretario.emails', ['emails' => $emails, 'filtro' => $filtro, 'contas' => SecretarioEmailConta::de($request->user())->orderBy('rotulo')->get()]);
+        return view('secretario.emails', ['emails' => $emails, 'filtro' => $filtro, 'filtros' => $f + ['dias' => (string) $dias],
+            'contas' => SecretarioEmailConta::de($request->user())->orderBy('rotulo')->get()]);
+    }
+
+    /**
+     * O texto da mensagem, lido AGORA no servidor de e-mail (BODY.PEEK: não marca
+     * como lida) e devolvido sem guardar — o Matriz só guarda metadados (FR-004).
+     */
+    public function texto(Request $request, int $email, LeitorDeEmails $leitor): JsonResponse
+    {
+        $e = SecretarioEmail::de($request->user())->with('conta')->findOrFail($email);
+        $texto = $e->conta ? ($leitor->textosAgora($e->conta, [$e], 20000)[$e->id] ?? null) : null;
+
+        return response()->json(['texto' => $texto], $texto === null ? 502 : 200)->header('Cache-Control', 'no-store, private');
+    }
+
+    /** Começo do texto das mensagens da página (até 30), lido agora e não guardado. */
+    public function previas(Request $request, LeitorDeEmails $leitor): JsonResponse
+    {
+        $ids = $request->validate(['ids' => ['required', 'array', 'max:30'], 'ids.*' => ['integer']])['ids'];
+        $saida = [];
+        foreach (SecretarioEmail::de($request->user())->with('conta')->whereIn('id', $ids)->get()->groupBy('conta_id') as $doConta) {
+            foreach ($leitor->textosAgora($doConta->first()->conta, $doConta, 600) as $id => $t) {
+                $saida[$id] = Str::limit(Str::squish($t), 140);
+            }
+        }
+
+        return response()->json(['previas' => $saida])->header('Cache-Control', 'no-store, private');
+    }
+
+    public function favoritar(Request $request, int $email): JsonResponse
+    {
+        $e = SecretarioEmail::de($request->user())->findOrFail($email);
+        $e->update(['favorito' => ! $e->favorito]);
+
+        return response()->json(['favorito' => $e->favorito]);
     }
 
     private function regras(): array

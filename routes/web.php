@@ -234,6 +234,9 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         Route::delete('emails/contas/{conta}', [$em, 'remover'])->whereNumber('conta')->name('emails.remover')->middleware('permissao:secretario,excluir');
         Route::post('emails/contas/{conta}/ler', [$em, 'ler'])->whereNumber('conta')->name('emails.ler')->middleware(['permissao:secretario,editar', 'throttle:10,1']);
         Route::post('emails/{email}/rascunho', [$em, 'rascunho'])->whereNumber('email')->name('emails.rascunho')->middleware('permissao:secretario,incluir');
+        Route::get('emails/{email}/texto', [$em, 'texto'])->whereNumber('email')->name('emails.texto')->middleware(['permissao:secretario,ler', 'throttle:60,1,secretario-email-texto']);
+        Route::post('emails/previas', [$em, 'previas'])->name('emails.previas')->middleware(['permissao:secretario,ler', 'throttle:20,1,secretario-email-previas']);
+        Route::post('emails/{email}/favorito', [$em, 'favoritar'])->whereNumber('email')->name('emails.favorito')->middleware('permissao:secretario,editar');
         Route::post('emails/{email}/lembrar', [$em, 'lembrar'])->whereNumber('email')->name('emails.lembrar')->middleware('permissao:secretario,incluir');
         // Etapa 6 (docs/specs/secretario-memoria): busca no histórico, só leitura.
         Route::get('memoria', [\App\Http\Controllers\SecretarioMemoriaController::class, 'index'])->name('memoria')->middleware('permissao:secretario,ler');

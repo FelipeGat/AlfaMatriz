@@ -12,11 +12,11 @@ class SecretarioEmail extends Model
     protected $table = 'secretario_emails';
 
     protected $fillable = ['user_id', 'conta_id', 'pasta', 'uidvalidity', 'uid', 'message_id', 'responde_a', 'de_nome', 'de_email', 'assunto',
-        'recebido_em', 'tipo', 'urgencia', 'pede_retorno', 'enviado', 'respondido', 'lido'];
+        'recebido_em', 'tipo', 'urgencia', 'pede_retorno', 'enviado', 'respondido', 'lido', 'favorito'];
 
     protected function casts(): array
     {
-        return ['recebido_em' => 'datetime', 'pede_retorno' => 'boolean', 'enviado' => 'boolean', 'respondido' => 'boolean', 'lido' => 'boolean'];
+        return ['recebido_em' => 'datetime', 'pede_retorno' => 'boolean', 'enviado' => 'boolean', 'respondido' => 'boolean', 'lido' => 'boolean', 'favorito' => 'boolean'];
     }
 
     public function scopeDe(Builder $query, User $user): Builder
@@ -33,6 +33,17 @@ class SecretarioEmail extends Model
     public function conta(): BelongsTo
     {
         return $this->belongsTo(SecretarioEmailConta::class, 'conta_id');
+    }
+
+    /** Onde abrir a mensagem: no Gmail, a própria; nos servidores "mail.X" (cPanel), o webmail "webmail.X". */
+    public function linkParaAbrir(): ?string
+    {
+        if ($l = $this->link()) {
+            return $l;
+        }
+        $host = (string) ($this->conta?->host ?? '');
+
+        return str_starts_with($host, 'mail.') ? 'https://webmail.'.substr($host, 5).'/' : null;
     }
 
     /** Link para abrir no Gmail (busca pelo Message-ID); outros provedores mostram o identificador. */

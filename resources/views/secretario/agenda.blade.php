@@ -101,7 +101,7 @@
                     <div class="grid" :style="colunas()">
                         <div class="relative" :style="`height: ${altura()}px`">
                             <template x-for="h in horas()" :key="h">
-                                <span class="absolute right-1.5 font-mono text-[10.5px] text-ink-faint" :class="h * 60 === faixa().ini ? 'translate-y-0.5' : '-translate-y-1/2'" :style="`top: ${(h * 60 - faixa().ini) * 0.6}px`" x-text="String(h).padStart(2, '0') + ':00'"></span>
+                                <span class="absolute right-1.5 font-mono text-[10.5px] text-ink-faint" :class="'translate-y-0.5'" :style="`top: ${(h * 60 - faixa().ini) * 0.6}px`" x-text="String(h).padStart(2, '0') + ':00'"></span>
                             </template>
                         </div>
                         <template x-for="d in dias()" :key="'g' + d.chave">
@@ -322,13 +322,17 @@
                     return dia + (e.dia_inteiro ? '' : ', ' + this.hora(e.inicio));
                 },
                 minutosAgora() { return this.agora.getHours() * 60 + this.agora.getMinutes(); },
-                /* Faixa como no Gestor: 07–20 sem eventos; com eventos, 1 h antes do primeiro e 1 h depois do último. */
+                /* Faixa padrão 08:00–18:00 (Felipe, 17/10/2026); evento da semana antes ou depois estende até a hora cheia que o cobre. */
                 faixa() {
-                    const doPeriodo = this.dias().flatMap(d => this.doDia(d, false));
-                    if (!doPeriodo.length) return { ini: 7 * 60, fim: 20 * 60 };
-                    const ini = Math.max(0, Math.floor(Math.min(...doPeriodo.map(e => this.min(e.inicio))) / 60) * 60 - 60);
-                    const fim = Math.min(24 * 60, Math.ceil(Math.max(...doPeriodo.map(e => e.fim && e.fim.slice(0, 10) === e.inicio.slice(0, 10) ? this.min(e.fim) : this.min(e.inicio) + 60)) / 60) * 60 + 60);
-                    return { ini: Math.min(ini, 7 * 60), fim: Math.max(fim, Math.min(ini, 7 * 60) + 8 * 60, 20 * 60) };
+                    const doPeriodo = this.dias().flatMap(d => this.doDia(d, false).map(e => ({ e, d })));
+                    let ini = 8 * 60, fim = 18 * 60;
+                    for (const { e, d } of doPeriodo) {
+                        const comeca = e.inicio.slice(0, 10) < d.chave ? 0 : this.min(e.inicio);
+                        const termina = !e.fim ? comeca + 60 : (e.fim.slice(0, 10) > d.chave ? 24 * 60 : this.min(e.fim));
+                        ini = Math.min(ini, Math.floor(comeca / 60) * 60);
+                        fim = Math.max(fim, Math.min(24 * 60, Math.ceil(termina / 60) * 60));
+                    }
+                    return { ini, fim };
                 },
                 horas() { const f = this.faixa(); return Array.from({ length: (f.fim - f.ini) / 60 + 1 }, (_, i) => f.ini / 60 + i); },
                 altura() { const f = this.faixa(); return (f.fim - f.ini) * 0.6; },
