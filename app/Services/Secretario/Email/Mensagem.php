@@ -149,12 +149,22 @@ class Mensagem
         if (! preg_match('/BEGIN:VEVENT/i', $ics) && ! preg_match('/^SUMMARY/mi', $ics)) {
             return null;
         }
-        $prop = fn (string $nome): ?array => preg_match('/^'.$nome.'((?:;[^:\n]*)?):(.*)$/mi', $ics, $m) ? [$m[1], trim($m[2])] : null;
+        $calendario = $ics;
+        // O Outlook põe um VTIMEZONE antes do evento, com DTSTART:16010101T000000:
+        // as propriedades do evento vêm só do bloco VEVENT.
+        if (preg_match('/^BEGIN:VEVENT\s*$(.*?)^END:VEVENT\s*$/msi', $ics, $ev)) {
+            $ics = $ev[1];
+        }
+        $prop = fn (string $nome, ?string $em = null): ?array => preg_match('/^'.$nome.'((?:;[^:\n]*)?):(.*)$/mi', $em ?? $ics, $m) ? [$m[1], trim($m[2])] : null;
         $texto = fn (?array $p) => $p ? str_replace(['\\n', '\\N', '\\,', '\;', '\\\\'], ["\n", "\n", ',', ';', '\\'], $p[1]) : null;
-        $tz = config('app.timezone');
-        $quando = function (?array $p) use ($tz): ?CarbonImmutable {
+        $quando = function (?array $p): ?CarbonImmutable {
             if (! $p) {
                 return null;
+            }
+            // TZID com nome IANA vale; o do Windows ("E. South America Standard Time") cai no do sistema.
+            $tz = config('app.timezone');
+            if (preg_match('/TZID="?([^";:]+)"?/i', $p[0], $z) && in_array(trim($z[1]), \DateTimeZone::listIdentifiers(), true)) {
+                $tz = trim($z[1]);
             }
             try {
                 $v = $p[1];
@@ -163,8 +173,8 @@ class Mensagem
                 }
 
                 return str_ends_with($v, 'Z')
-                    ? CarbonImmutable::createFromFormat('Ymd\THis\Z', $v, 'UTC')->setTimezone($tz)
-                    : CarbonImmutable::createFromFormat('Ymd\THis', substr($v, 0, 15), $tz);
+                    ? CarbonImmutable::createFromFormat('Ymd\THis\Z', $v, 'UTC')->setTimezone(config('app.timezone'))
+                    : CarbonImmutable::createFromFormat('Ymd\THis', substr($v, 0, 15), $tz)->setTimezone(config('app.timezone'));
             } catch (\Throwable) {
                 return null;
             }
@@ -181,7 +191,7 @@ class Mensagem
         $inicio = $prop('DTSTART');
 
         return [
-            'metodo' => mb_strtoupper((string) ($prop('METHOD')[1] ?? 'REQUEST')),
+            'metodo' => mb_strtoupper((string) ($prop('METHOD', $calendario)[1] ?? 'REQUEST')),
             'titulo' => $texto($prop('SUMMARY')) ?: null,
             'inicio' => $quando($inicio),
             'fim' => $quando($prop('DTEND')),

@@ -245,7 +245,10 @@ class EmailsGestorTest extends TestCase
         $this->postJson(route('secretario.emails.previas'), ['ids' => [$e->id]])->assertOk()->assertJsonPath('previas', []);
     }
 
-    private const ICS = "BEGIN:VCALENDAR\r\nPRODID:-//Microsoft Corporation//Outlook 16.0 MIMEDIR//EN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\n"
+    // Com o VTIMEZONE do Outlook antes do evento: o DTSTART de 1601 dele não é o da reunião.
+    private const ICS = "BEGIN:VCALENDAR\r\nPRODID:-//Microsoft Corporation//Outlook 16.0 MIMEDIR//EN\r\nMETHOD:REQUEST\r\n"
+        ."BEGIN:VTIMEZONE\r\nTZID:E. South America Standard Time\r\nBEGIN:STANDARD\r\nDTSTART:16010101T000000\r\nTZOFFSETFROM:-0300\r\nTZOFFSETTO:-0300\r\n"
+        ."END:STANDARD\r\nEND:VTIMEZONE\r\nBEGIN:VEVENT\r\n"
         ."ATTENDEE;CN=igorbg@nwcventure.com.br;RSVP=TRUE:mailto:igorbg@nwcventure.com\r\n .br\r\nATTENDEE;CN=Felipe Gat;RSVP=TRUE:mailto:felipegat@vixcard.com.br\r\n"
         ."DESCRIPTION:Pauta: demonstração\\, prazos\\nLevar tags\r\nDTSTART;TZID=E. South America Standard Time:20261022T150000\r\n"
         ."DTEND;TZID=E. South America Standard Time:20261022T160000\r\nLOCATION:Sala VixCard\r\nORGANIZER;CN=Victor:mailto:victor@vixcard.com.br\r\n"
