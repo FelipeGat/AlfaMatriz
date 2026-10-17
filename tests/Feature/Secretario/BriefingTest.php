@@ -204,7 +204,7 @@ class BriefingTest extends TestCase
         $this->artisan('secretario:briefing');
 
         $semPerfil = User::factory()->create();
-        $semPerfil->perfis()->attach(Perfil::where('slug', 'central_ia')->value('id'));
+        $semPerfil->perfis()->sync([Perfil::where('slug', 'central_ia')->value('id')]); // só a Central: sem o Secretário
         $this->actingAs($semPerfil)->postJson(route('central-ia.enviar'), ['client_id' => (string) Str::uuid(), 'conteudo' => 'resume meu dia'])->assertCreated();
         $this->assertSame(0, CentralIaMensagem::where('user_id', $semPerfil->id)->where('autor_nome', 'Secretário')->count());
 

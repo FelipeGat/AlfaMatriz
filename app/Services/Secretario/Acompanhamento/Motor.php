@@ -23,10 +23,7 @@ class Motor
     /** As contas com o Secretário ligado: as mesmas portas do briefing. */
     public function contas(): Collection
     {
-        $perfilId = Perfil::where('slug', 'secretario')->value('id');
-
-        return $perfilId ? User::whereHas('perfis', fn ($q) => $q->whereKey($perfilId))->get()
-            ->filter(fn (User $u) => $u->ativo && ! $u->temEscopoDeRevenda() && $u->canPermissao('secretario', 'ler'))->values() : collect();
+        return \App\Services\Secretario\Contas::comSecretario();
     }
 
     /** @return int quantos ativos a conta tem depois da rodada */

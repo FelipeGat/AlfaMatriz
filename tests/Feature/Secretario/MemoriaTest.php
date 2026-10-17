@@ -211,10 +211,11 @@ class MemoriaTest extends TestCase
         $this->actingAs($u)->get(route('secretario.memoria', ['q' => 'orcamento']))->assertOk()
             ->assertSee('Itens do Secretário (8 de 11)')->assertSee('Orçamento número 11');
 
-        // Admin e outra conta: a tela não abre (sem o perfil) ou não vê nada (com o perfil).
+        // Sem o Secretário a tela não abre; o admin (que o tem desde 17/10) não vê nada de outra conta.
+        $soCentral = \App\Models\User::factory()->create();
+        $soCentral->perfis()->sync([Perfil::where('slug', 'central_ia')->value('id')]);
+        $this->actingAs($soCentral)->get(route('secretario.memoria', ['q' => 'orcamento']))->assertForbidden();
         $admin = $this->admin();
-        $this->actingAs($admin)->get(route('secretario.memoria', ['q' => 'orcamento']))->assertForbidden();
-        $admin->perfis()->syncWithoutDetaching([Perfil::where('slug', 'secretario')->value('id')]);
         $this->actingAs($admin)->get(route('secretario.memoria', ['q' => 'orcamento']))->assertOk()
             ->assertSee('Nenhum registro com')->assertDontSee('Orçamento número');
     }

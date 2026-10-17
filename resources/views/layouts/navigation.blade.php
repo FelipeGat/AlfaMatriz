@@ -19,13 +19,18 @@
     $escopo = Auth::user()?->temEscopoDeRevenda() ?? false;
 
     $grupos = [
-        // Pessoal do dono, com recurso próprio (`secretario`) que o admin não
-        // recebe de fábrica: o dia de UMA conta (docs/specs/secretario-
-        // executivo). No topo porque é a primeira tela do dia, e na ordem do
-        // uso: o que pede ação primeiro, a configuração por último. "Minha
-        // agenda", e não "Agenda": a Agenda do time mora em Desenvolvimento.
+        // O dia de cada pessoa (docs/specs/secretario-executivo): recurso
+        // próprio (`secretario`), dado sempre da própria conta — desde
+        // 17/10/2026 em todos os perfis de pessoas. No topo porque é a primeira
+        // tela do dia, e na ordem do uso. "Minha agenda", e não "Agenda": a
+        // Agenda do time mora em Desenvolvimento.
+        //
+        // A Central de IA mora aqui também (Felipe, 17/10/2026): é por ela que
+        // se fala com o Secretário e com os agentes. O recurso continua o dela
+        // (`central_ia`): só quem tem o perfil Central de IA a vê.
         'Secretário' => [
             ['route' => 'secretario.meu-dia', 'recurso' => 'secretario', 'pattern' => 'secretario.meu-dia', 'label' => 'Meu Dia', 'icon' => 'sun', 'matriz' => true],
+            ['route' => 'central-ia.index', 'recurso' => 'central_ia', 'pattern' => 'central-ia.*', 'label' => 'Central de IA', 'icon' => 'chat', 'matriz' => true],
             ['route' => 'secretario.acompanhamentos', 'recurso' => 'secretario', 'pattern' => ['secretario.acompanhamentos', 'secretario.acompanhamentos.*'], 'label' => 'Acompanhamentos', 'icon' => 'bell', 'matriz' => true],
             ['route' => 'secretario.agenda', 'recurso' => 'secretario', 'pattern' => 'secretario.agenda', 'label' => 'Minha agenda', 'icon' => 'calendar', 'matriz' => true],
             ['route' => 'secretario.reunioes.index', 'recurso' => 'secretario', 'pattern' => 'secretario.reunioes.*', 'label' => 'Reuniões', 'icon' => 'speaker-wave', 'matriz' => true],
@@ -57,9 +62,6 @@
             ['route' => 'contas-financeiras.index', 'recurso' => 'financeiro', 'pattern' => 'contas-financeiras.*', 'label' => 'Caixa', 'icon' => 'banknotes', 'matriz' => true],
         ],
         'Desenvolvimento' => [
-            // Só por permissão: quem tem o perfil "Central de IA" vê; o
-            // Administrador não o recebe de fábrica.
-            ['route' => 'central-ia.index', 'recurso' => 'central_ia', 'pattern' => 'central-ia.*', 'label' => 'Central de IA', 'icon' => 'chat', 'matriz' => true],
             ['route' => 'tarefas.index', 'recurso' => 'tarefas', 'pattern' => 'tarefas.*', 'label' => 'Tarefas', 'icon' => 'view-grid', 'matriz' => true],
             // Logo abaixo de Tarefas, e não num grupo "Pessoal" próprio: o
             // desenho (§19) previa o grupo pessoal, com Agenda e Notas. Decisão

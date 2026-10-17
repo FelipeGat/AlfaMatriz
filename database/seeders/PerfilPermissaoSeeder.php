@@ -104,7 +104,7 @@ class PerfilPermissaoSeeder extends Seeder
         $financeiro = Perfil::updateOrCreate(['slug' => 'financeiro'], ['nome' => 'Financeiro']);
         $operacao = Perfil::updateOrCreate(['slug' => 'operacao'], ['nome' => 'Operação']);
 
-        // O Secretário é pessoal como a Central: o admin não o recebe de fábrica.
+        // Central e Secretário fora do "tudo do admin": a Central por perfil próprio; o Secretário, logo abaixo.
         $todasPermissoes = Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes', 'secretario'])->pluck('id', 'recurso');
 
         foreach ($todasPermissoes as $permissaoId) {
@@ -242,6 +242,16 @@ class PerfilPermissaoSeeder extends Seeder
             $revenda->permissoes()->syncWithoutDetaching([
                 $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
             ]);
+        }
+        // O Secretário é de cada pessoa (dado sempre da própria conta): os
+        // perfis de pessoas o recebem desde 17/10/2026 — a migração
+        // `2026_10_17_230000` leva o mesmo a produção. Revenda e Exibição, não.
+        if ($secretario = Permissao::where('recurso', 'secretario')->value('id')) {
+            foreach (Perfil::whereIn('slug', ['admin', 'financeiro', 'operacao', 'membro', 'comercial'])->get() as $perfil) {
+                $perfil->permissoes()->syncWithoutDetaching([
+                    $secretario => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => false, 'excluir' => true],
+                ]);
+            }
         }
     }
 }

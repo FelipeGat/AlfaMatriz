@@ -41,8 +41,8 @@ class SemearReferenciaTest extends TestCase
         $admin = Perfil::where('slug', 'admin')->sole();
 
         $this->assertSame(
-            // O Secretário é pessoal como a Central: o admin não o recebe de fábrica.
-            Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes', 'secretario'])->count(),
+            // A Central exige perfil próprio; o Secretário vale para o admin desde 17/10/2026 (cada um vê o seu).
+            Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes'])->count(),
             $admin->permissoes()->count(),
             'Recursos administrativos mantêm grants; IA exige autorização explícita.'
         );

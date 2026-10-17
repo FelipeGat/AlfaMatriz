@@ -14,12 +14,16 @@ class IsolamentoTest extends TestCase
 {
     use RefreshDatabase, SecretarioNosTestes;
 
-    public function test_admin_nao_recebe_o_secretario_de_fabrica(): void
+    /** Desde 17/10/2026 o admin tem o Secretário — o DELE: nada de outra conta (abaixo). Sem a permissão, a porta fecha. */
+    public function test_admin_recebe_o_proprio_secretario_e_quem_nao_tem_a_permissao_nao_entra(): void
     {
         $admin = $this->admin();
-        $this->assertFalse($admin->canPermissao('secretario', 'ler'));
-        $this->actingAs($admin)->get(route('secretario.meu-dia'))->assertForbidden();
-        $this->actingAs($admin)->getJson(route('secretario.itens'))->assertForbidden();
+        $this->assertTrue($admin->canPermissao('secretario', 'ler'));
+        $this->actingAs($admin)->get(route('secretario.meu-dia'))->assertOk();
+        $soCentral = \App\Models\User::factory()->create();
+        $soCentral->perfis()->sync([Perfil::where('slug', 'central_ia')->value('id')]);
+        $this->actingAs($soCentral)->get(route('secretario.meu-dia'))->assertForbidden();
+        $this->actingAs($soCentral)->getJson(route('secretario.itens'))->assertForbidden();
     }
 
     public function test_outra_conta_com_o_perfil_recebe_404_e_nao_ve_nada(): void
@@ -52,7 +56,8 @@ class IsolamentoTest extends TestCase
     public function test_menu_so_para_quem_tem_o_perfil(): void
     {
         $this->actingAs($this->dono())->get(route('secretario.meu-dia'))->assertOk()->assertSee('Meu Dia');
-        $semPerfil = $this->admin();
-        $this->actingAs($semPerfil)->get(route('dashboard'))->assertDontSee(route('secretario.meu-dia'));
+        $semPerfil = \App\Models\User::factory()->create();
+        $semPerfil->perfis()->sync([Perfil::where('slug', 'central_ia')->value('id')]);
+        $this->actingAs($semPerfil)->get(route('central-ia.index'))->assertDontSee(route('secretario.meu-dia'));
     }
 }

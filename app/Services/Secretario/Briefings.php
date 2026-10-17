@@ -31,16 +31,9 @@ class Briefings
         if ($agora->format('H:i') >= self::LIMITE_ATRASO) {
             return collect();
         }
-        $perfilId = Perfil::where('slug', 'secretario')->value('id');
-        if (! $perfilId) {
-            return collect();
-        }
 
-        return User::whereHas('perfis', fn ($q) => $q->whereKey($perfilId))->get()
+        return Contas::comSecretario()
             ->filter(function (User $u) use ($agora) {
-                if (! $u->ativo || $u->temEscopoDeRevenda() || ! $u->canPermissao('secretario', 'ler')) {
-                    return false;
-                }
                 $p = SecretarioPreferencia::de($u);
 
                 return $p->briefing

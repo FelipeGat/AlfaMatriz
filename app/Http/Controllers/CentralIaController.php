@@ -365,7 +365,8 @@ class CentralIaController extends Controller
         // Tarefa de outra conta não passa por aqui: o fluxo normal recusa com a regra dele.
         $tarefaDoSecretario = filled($dados['tarefa_id'] ?? null)
             ? CentralIaTarefa::de($request->user())->where('projeto', $dados['projeto'] ?? '')->find($dados['tarefa_id']) : null;
-        if (empty($dados['anexos']) && (blank($dados['tarefa_id'] ?? null) || $tarefaDoSecretario)) {
+        // Chat de assunto (Business) aciona a IA sempre: o Secretário não o intercepta.
+        if (empty($dados['anexos']) && (blank($dados['tarefa_id'] ?? null) || ($tarefaDoSecretario && ! $tarefaDoSecretario->ehAssunto()))) {
             $secretario = app(\App\Services\Secretario\Conversa::class)->doWeb($request->user(), $dados['conteudo'], $dados['client_id'],
                 $dados['projeto'] ?? null, $tarefaDoSecretario?->id);
             if ($secretario) {

@@ -313,4 +313,28 @@ class AcompanhamentoTest extends TestCase
         $this->post(route('secretario.acompanhamentos.adiar', $conflito->id))->assertNotFound();
         $this->get(route('secretario.acompanhamentos'))->assertOk()->assertSee('Nada pedindo acompanhamento agora.')->assertDontSee('Visita RFID');
     }
+
+    /** Desde 17/10/2026: o Secretário vale para os perfis de pessoas, e cada conta tem o seu. */
+    public function test_secretario_para_os_perfis_de_pessoas_mas_nao_revenda_nem_exibicao(): void
+    {
+        (new \Database\Seeders\PerfilPermissaoSeeder)->run(); // Membro e Exibição nascem no seeder
+        $com = fn (string $slug) => tap(User::factory()->create(), fn ($u) => $u->perfis()->sync([Perfil::where('slug', $slug)->value('id')]));
+        $membro = $com('membro');
+        $admin = $com('admin');
+        $exibicao = $com('exibicao');
+        $revenda = $com('revenda');
+
+        $contas = \App\Services\Secretario\Contas::comSecretario()->pluck('id')->all();
+        $this->assertContains($membro->id, $contas);
+        $this->assertContains($admin->id, $contas);
+        $this->assertNotContains($exibicao->id, $contas);
+        $this->assertNotContains($revenda->id, $contas);
+
+        // Cada um vê só o seu, administrador incluído.
+        $this->item($membro, ['titulo' => 'Tarefa do membro', 'quando' => '2026-10-21 07:00:00']);
+        app(Motor::class)->rodar($membro, CarbonImmutable::now());
+        $this->actingAs($membro)->get(route('secretario.acompanhamentos'))->assertOk()->assertSee('Tarefa do membro');
+        $this->actingAs($admin)->get(route('secretario.acompanhamentos'))->assertOk()->assertDontSee('Tarefa do membro');
+        $this->actingAs($exibicao)->get(route('secretario.meu-dia'))->assertForbidden();
+    }
 }
