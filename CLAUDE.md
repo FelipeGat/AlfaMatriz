@@ -300,8 +300,14 @@ comando pelo Telegram, tag de produção só depois de ele autorizar — ainda n
   O estado mora em `monitor_alertas`, por (kind, entity); a regra, em `AlertasDoMonitor`: evento
   mais velho que o estado só entra no histórico, "voltou" sem queda é aceito e marcado, e a queda
   atrasada que chega depois da volta encaixa sem reabrir. A vitrine é a aba Monitor da Manutenção
-  (recurso `manutencao`); o histórico guarda 90 dias (`model:prune`). Fases seguintes, ainda não
-  feitas: a API de leitura do monitor (reconciliar o que se perdeu com o Matriz fora > 9 h) e logs.
+  (recurso `manutencao`); o histórico guarda 90 dias (`model:prune`). **Reconciliação (#399):** o
+  monitor desiste depois de ~8h40, então a cada hora `alfa:monitor-reconciliar`
+  (`ReconciliacaoDoMonitor`) pede `GET /api/v1/notificacoes?depois_de=<event_id>` e passa cada uma
+  pelo mesmo `AlertasDoMonitor::receber` (as regras de validação são `AlertasDoMonitor::regras()`,
+  as mesmas do webhook). O cursor é o `event_id` do monitor, no cache (`forever`); perdido, volta a
+  zero e confere os 7 dias que o monitor guarda, sem duplicar (UNIQUE do `event_id`). Fora mais de
+  7 dias, o que passou não existe mais lá. As listas paginadas das telas recomeçam se o `total`
+  muda entre as páginas (`ListaMudouDuranteABusca`, até 3 vezes). Ainda não feito: logs (#228).
 - Teste em `tests/Feature/Mcp/` com `AlfaMatrizServer::actingAs($u)->tool(...)`. Fumaça de
   verdade: mandar JSON-RPC pelo stdin do `mcp:start` — foi assim que se conferiu o caminho inteiro.
 - **A fase 2 é a ponte do Telegram**, em `deploy/agente/` (`ponte-telegram.mjs`, README com a

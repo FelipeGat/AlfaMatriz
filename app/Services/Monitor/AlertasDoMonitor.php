@@ -32,6 +32,34 @@ class AlertasDoMonitor
     public const REPETIDO = 'repetido';
 
     /**
+     * O que um evento precisa ter para entrar. Valem igual para o webhook
+     * (`MonitorController`) e para a reconciliação (`ReconciliacaoDoMonitor`,
+     * #399): o mesmo evento não pode passar por uma porta e ser recusado na
+     * outra.
+     *
+     * @return array<string, string>
+     */
+    public static function regras(): array
+    {
+        return [
+            'event_id' => 'required|integer|min:1',
+            'incident_id' => 'nullable|integer|min:1',
+            'kind' => 'required|string',
+            'entity' => 'required|string|max:191',
+            'entity_name' => 'nullable|string|max:255',
+            'severity' => 'required|in:'.implode(',', array_keys(MonitorAlerta::SEVERIDADES)),
+            'cliente' => 'nullable|string|max:255',
+            'title' => 'required|string|max:255',
+            'body' => 'nullable|string|max:10000',
+            'resolved' => 'required|boolean',
+            'derived' => 'nullable|boolean',
+            'link' => 'nullable|string|max:500',
+            'at' => 'nullable|integer|min:0',
+            'occurred_at' => 'required|integer|min:0',
+        ];
+    }
+
+    /**
      * @param  array{event_id: int, incident_id?: ?int, kind: string, entity: string, entity_name?: ?string,
      *               severity: string, cliente?: ?string, title: string, body?: ?string, resolved: bool,
      *               derived?: bool, link?: ?string, at?: ?int, occurred_at: int}  $e

@@ -54,6 +54,15 @@ Schedule::command('central-ia:limpar')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Os alertas do AlfaMonitor que o webhook não entregou (#399): o monitor
+// desiste depois de ~8h40, e o Matriz fora mais que isso os perderia. A
+// cada hora pede ao monitor o que veio depois do último já conferido — quase
+// sempre nada de novo. Fora da hora cheia, longe da sincronização.
+Schedule::command('alfa:monitor-reconciliar')
+    ->hourlyAt(20)
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // O histórico dos alertas do AlfaMonitor (#394) guarda 90 dias
 // (`MonitorEvento::DIAS_DE_HISTORICO`); o estado de agora não depende dele.
 Schedule::command('model:prune', ['--model' => [\App\Models\MonitorEvento::class]])
