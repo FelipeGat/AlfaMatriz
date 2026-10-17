@@ -169,6 +169,13 @@ class TelegramCanal
      */
     public function receber(array $update, CentralIaTelegramBot $bot): void
     {
+        // Toque num botão do Secretário (lembrete, proposta): regras próprias,
+        // mesmas proteções de chat privado e dono (contracts/telegram.md).
+        if (isset($update['callback_query']) && is_array($update['callback_query'])) {
+            app(\App\Services\Secretario\TelegramDoSecretario::class)->toque($update['callback_query'], $bot);
+
+            return;
+        }
         $this->atual = $this->api->doBot($bot);
         try {
             $this->receberNoBot($update, $bot);
@@ -239,6 +246,17 @@ class TelegramCanal
 
         // O código que a SUA máquina mandou: vale com o canal na tela ou aqui.
         if ($this->codigoDeConfirmacao($user, $chatId, trim($texto))) {
+            return;
+        }
+
+        // O Secretário ("me lembra amanhã às 9h…") antes do canal ativo:
+        // registrar um lembrete é comando, e funciona com a conversa na tela
+        // (docs/specs/secretario-executivo, research D10). Só para quem tem o
+        // perfil; para os demais, nada muda.
+        $comando = trim($texto);
+        if (! $midia && $comando !== '' && mb_strlen($comando) <= config('central_ia.max_texto')
+            && (! str_starts_with($comando, '/') || str_starts_with($comando, '/lembrete'))
+            && app(\App\Services\Secretario\Conversa::class)->doTelegram($user, $comando, $updateId)) {
             return;
         }
 

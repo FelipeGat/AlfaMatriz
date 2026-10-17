@@ -766,6 +766,12 @@ class AgentesService
             // tarefa — sem isto, o dossiê lido aqui gravava por cima dela.
             $tarefa = $execucao->tarefa_id ? CentralIaTarefa::whereKey($execucao->tarefa_id)->lockForUpdate()->first() : null;
 
+            // Pedido do Secretário (frase que as regras não entenderam): o bloco
+            // vira proposta a CONFIRMAR, validada aqui — nunca item direto.
+            if ($ok && isset($execucao->roteamento['secretario_proposta'])) {
+                [$texto, $blocoSecretario] = \App\Services\Secretario\PropostaDaIa::separar((string) $texto);
+                $texto = app(\App\Services\Secretario\PropostaDaIa::class)->concluir($user, $execucao, $blocoSecretario) ?? $texto;
+            }
             $resposta = $this->conversas->registrarDoAgente($user, $execucao->nomeDoAgente(), $texto ?: '(resposta vazia)', CentralIaMensagem::AUTOR_AGENTE, $execucao->projeto ?: null, $tarefa?->id);
             $checkpoint = is_array($dados['checkpoint'] ?? null) ? $dados['checkpoint'] : null;
 

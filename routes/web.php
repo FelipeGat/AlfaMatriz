@@ -194,6 +194,20 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::get('agenda', [AgendaController::class, 'index'])->name('agenda.index')
         ->middleware('permissao:agenda');
 
+    // Secretário (docs/specs/secretario-executivo): itens PESSOAIS, sem id de
+    // usuário na rota — é sempre a conta logada; o de outra conta dá 404.
+    Route::prefix('secretario')->name('secretario.')->middleware('throttle:120,1,secretario')->group(function () {
+        Route::get('/', [\App\Http\Controllers\SecretarioController::class, 'meuDia'])->name('meu-dia')->middleware('permissao:secretario,ler');
+        Route::get('itens', [\App\Http\Controllers\SecretarioController::class, 'itens'])->name('itens')->middleware('permissao:secretario,ler');
+        Route::post('interpretar', [\App\Http\Controllers\SecretarioController::class, 'interpretar'])->name('interpretar')->middleware('permissao:secretario,incluir');
+        Route::post('propostas/{proposta}/confirmar', [\App\Http\Controllers\SecretarioController::class, 'confirmar'])->whereNumber('proposta')->name('propostas.confirmar')->middleware('permissao:secretario,incluir');
+        Route::post('propostas/{proposta}/descartar', [\App\Http\Controllers\SecretarioController::class, 'descartar'])->whereNumber('proposta')->name('propostas.descartar')->middleware('permissao:secretario,incluir');
+        Route::post('itens/{item}/acao', [\App\Http\Controllers\SecretarioController::class, 'acao'])->whereNumber('item')->name('itens.acao')->middleware('permissao:secretario,editar');
+        Route::post('itens/{item}/reagendar', [\App\Http\Controllers\SecretarioController::class, 'reagendar'])->whereNumber('item')->name('itens.reagendar')->middleware('permissao:secretario,editar');
+        Route::get('configuracoes', [\App\Http\Controllers\SecretarioController::class, 'configuracoes'])->name('configuracoes')->middleware('permissao:secretario,ler');
+        Route::put('configuracoes', [\App\Http\Controllers\SecretarioController::class, 'salvarConfiguracoes'])->name('configuracoes.salvar')->middleware('permissao:secretario,editar');
+    });
+
     // Central de IA. Sem id de conversa na rota: é sempre a da conta logada.
     // O poll da tela bate a cada 5 s, daí o teto de leitura folgado.
     Route::get('central-ia', [CentralIaController::class, 'index'])->name('central-ia.index')

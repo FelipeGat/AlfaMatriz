@@ -209,7 +209,7 @@ class LimpezaTest extends TestCase
         $this->assertSame(4, CentralIaMensagem::count());
 
         $real = app(Limpeza::class)->executar();
-        $this->assertSame(['anexos' => 2, 'previas' => 1, 'eventos' => 1, 'entregas' => 1, 'execucoes' => 1, 'mensagens' => 3], $real);
+        $this->assertSame(['anexos' => 2, 'previas' => 1, 'eventos' => 1, 'entregas' => 1, 'execucoes' => 1, 'mensagens' => 3, 'secretario' => 0], $real);
         $this->assertSame($real, $ensaio);
         $this->assertSame(1, CentralIaMensagem::count());
     }

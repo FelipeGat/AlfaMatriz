@@ -149,7 +149,8 @@ class CentralIaTelegram extends Command
         $leitura = $api->chamar('getUpdates', [
             'offset' => $bot->proximo_update_id,
             'timeout' => $espera,
-            'allowed_updates' => ['message'],
+            // `callback_query`: os botões do Secretário (Concluir, Adiar…).
+            'allowed_updates' => ['message', 'callback_query'],
         ], $espera + 10);
 
         if (! $leitura['ok']) {

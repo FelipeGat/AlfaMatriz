@@ -104,7 +104,8 @@ class PerfilPermissaoSeeder extends Seeder
         $financeiro = Perfil::updateOrCreate(['slug' => 'financeiro'], ['nome' => 'Financeiro']);
         $operacao = Perfil::updateOrCreate(['slug' => 'operacao'], ['nome' => 'Operação']);
 
-        $todasPermissoes = Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes'])->pluck('id', 'recurso');
+        // O Secretário é pessoal como a Central: o admin não o recebe de fábrica.
+        $todasPermissoes = Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes', 'secretario'])->pluck('id', 'recurso');
 
         foreach ($todasPermissoes as $permissaoId) {
             $admin->permissoes()->syncWithoutDetaching([

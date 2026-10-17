@@ -31,6 +31,12 @@
             // moram dentro da tela (`?secao=`), não no menu.
             ['route' => 'relatorios.index', 'recurso' => 'relatorios', 'pattern' => 'relatorios.*', 'label' => 'Relatórios', 'icon' => 'chart-bar', 'matriz' => true],
         ],
+        // Pessoal do dono, com recurso próprio (`secretario`) que o admin não
+        // recebe de fábrica: lembretes e tarefas de UMA conta (docs/specs/
+        // secretario-executivo). No topo porque é a primeira tela do dia.
+        'Secretário' => [
+            ['route' => 'secretario.meu-dia', 'recurso' => 'secretario', 'pattern' => 'secretario.*', 'label' => 'Meu Dia', 'icon' => 'sun', 'matriz' => true],
+        ],
         'Comercial' => [
             ['route' => 'leads.index', 'recurso' => 'leads', 'pattern' => 'leads.*', 'label' => 'Funil de Vendas', 'icon' => 'view-grid'],
             ['route' => 'revendas.index', 'recurso' => 'revendas', 'pattern' => ['revendas.*', 'clientes.*'], 'label' => 'Revendas e clientes', 'icon' => 'building', 'params' => $escopo ? ['aba' => 'clientes'] : []],

@@ -56,7 +56,7 @@ class MigracaoEditarTest extends TestCase
         $this->seed(PerfilPermissaoSeeder::class);
 
         $admin = Perfil::where('slug', 'admin')->firstOrFail();
-        $recursos = Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes'])->count();
+        $recursos = Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes', 'secretario'])->count();
 
         $comEditar = $admin->permissoes()->wherePivot('editar', true)->count();
 

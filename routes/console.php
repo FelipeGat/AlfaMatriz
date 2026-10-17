@@ -53,3 +53,11 @@ Schedule::command('central-ia:limpar')
     ->dailyAt('03:30')
     ->withoutOverlapping()
     ->onOneServer();
+
+// Lembretes do Secretário (docs/specs/secretario-executivo): a cada minuto,
+// porque o aviso tem de chegar na hora. Sem fila e sem IA — chega com a
+// máquina do dono desligada. O texto dos itens não vai para o log.
+Schedule::command('secretario:despachar')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer();

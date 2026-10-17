@@ -360,6 +360,19 @@ class CentralIaController extends Controller
             }
         }
 
+        // O Secretário ("me lembra amanhã às 9h…", "sim" à proposta dele):
+        // resposta na hora, sem fila de IA. Só para quem tem o perfil.
+        // Tarefa de outra conta não passa por aqui: o fluxo normal recusa com a regra dele.
+        $tarefaDoSecretario = filled($dados['tarefa_id'] ?? null)
+            ? CentralIaTarefa::de($request->user())->where('projeto', $dados['projeto'] ?? '')->find($dados['tarefa_id']) : null;
+        if (empty($dados['anexos']) && (blank($dados['tarefa_id'] ?? null) || $tarefaDoSecretario)) {
+            $secretario = app(\App\Services\Secretario\Conversa::class)->doWeb($request->user(), $dados['conteudo'], $dados['client_id'],
+                $dados['projeto'] ?? null, $tarefaDoSecretario?->id);
+            if ($secretario) {
+                return $this->semCache(['id' => $secretario->id, 'status_direto' => true], $secretario->wasRecentlyCreated ? 201 : 200);
+            }
+        }
+
         // Consulta operacional não espera na fila da IA, mesmo durante execução.
         if (empty($dados['anexos']) && app(\App\Services\CentralIa\ProgressoService::class)->consulta($dados['conteudo'])) {
             $mensagem = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $dados) {
