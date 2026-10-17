@@ -67,6 +67,10 @@ class LeitorDeEmails
                 foreach ($c->buscarMensagens($uids) as $bruto) {
                     $m = Mensagem::de($bruto);
                     $cl = $enviados ? ['tipo' => 'outro', 'urgencia' => 'normal', 'pede_retorno' => false] : $this->classificador->classificar($m, $conta->dominio());
+                    // Convite de reunião (text/calendar): a tela oferece registrá-lo na agenda.
+                    if (! $enviados && $m->convite) {
+                        $cl['tipo'] = 'reuniao';
+                    }
                     try {
                         SecretarioEmail::create([
                             'user_id' => $conta->user_id, 'conta_id' => $conta->id, 'pasta' => $pasta, 'uidvalidity' => $info['uidvalidity'], 'uid' => $m->uid,
@@ -130,6 +134,12 @@ class LeitorDeEmails
      */
     public function textosAgora(SecretarioEmailConta $conta, iterable $emails, int $bytes = 1500): array
     {
+        return array_map(fn (Mensagem $m) => mb_substr($m->texto, 0, $bytes), $this->mensagensAgora($conta, $emails, $bytes));
+    }
+
+    /** @return array<int, Mensagem> as mensagens lidas AGORA (BODY.PEEK), por id; nada é guardado. */
+    public function mensagensAgora(SecretarioEmailConta $conta, iterable $emails, int $bytes = 1500): array
+    {
         $porPasta = [];
         foreach ($emails as $e) {
             $porPasta[$e->pasta][$e->uid] = $e->id;
@@ -145,7 +155,7 @@ class LeitorDeEmails
                 $c->examinar($pasta);
                 foreach ($c->buscarMensagens(array_keys($mapa), $bytes) as $bruto) {
                     if (isset($mapa[$bruto['uid']])) {
-                        $saida[$mapa[$bruto['uid']]] = mb_substr(Mensagem::de($bruto)->texto, 0, $bytes);
+                        $saida[$mapa[$bruto['uid']]] = Mensagem::de($bruto);
                     }
                 }
             }

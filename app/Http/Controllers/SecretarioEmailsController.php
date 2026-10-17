@@ -69,9 +69,21 @@ class SecretarioEmailsController extends Controller
     public function texto(Request $request, int $email, LeitorDeEmails $leitor): JsonResponse
     {
         $e = SecretarioEmail::de($request->user())->with('conta')->findOrFail($email);
-        $texto = $e->conta ? ($leitor->textosAgora($e->conta, [$e], 20000)[$e->id] ?? null) : null;
+        $m = $e->conta ? ($leitor->mensagensAgora($e->conta, [$e], 20000)[$e->id] ?? null) : null;
+        // Lida antes de o Matriz reconhecer convites: o tipo se acerta ao abrir.
+        if ($m?->convite && $e->tipo !== 'reuniao') {
+            $e->update(['tipo' => 'reuniao']);
+        }
+        // Convite de reunião: os dados para "Registrar na minha agenda" (e se já está lá).
+        $convite = ($c = $m?->convite) && $c['inicio'] ? [
+            'titulo' => $c['titulo'] ?? $e->assunto, 'data' => $c['inicio']->format('Y-m-d'), 'hora' => $c['dia_inteiro'] ? null : $c['inicio']->format('H:i'),
+            'quando' => \App\Services\Secretario\Datas::porExtenso($c['inicio'], $c['dia_inteiro']).($c['fim'] && ! $c['dia_inteiro'] ? ' até '.$c['fim']->format('H:i') : ''),
+            'local' => $c['local'], 'organizador' => $c['organizador'], 'participantes' => array_slice($c['participantes'], 0, 15), 'cancelado' => $c['metodo'] === 'CANCEL',
+            'ja_na_agenda' => SecretarioItem::de($request->user())->where('status', SecretarioItem::ABERTO)->where('titulo', $c['titulo'] ?? $e->assunto)
+                ->where('quando', $c['inicio']->format('Y-m-d H:i:s'))->exists(),
+        ] : null;
 
-        return response()->json(['texto' => $texto], $texto === null ? 502 : 200)->header('Cache-Control', 'no-store, private');
+        return response()->json(['texto' => $m?->texto, 'convite' => $convite], $m === null ? 502 : 200)->header('Cache-Control', 'no-store, private');
     }
 
     /** Começo do texto das mensagens da página (até 30), lido agora e não guardado. */

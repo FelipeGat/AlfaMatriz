@@ -244,4 +244,44 @@ class EmailsGestorTest extends TestCase
         $this->postJson(route('secretario.emails.favorito', $e->id))->assertNotFound();
         $this->postJson(route('secretario.emails.previas'), ['ids' => [$e->id]])->assertOk()->assertJsonPath('previas', []);
     }
+
+    private const ICS = "BEGIN:VCALENDAR\r\nPRODID:-//Microsoft Corporation//Outlook 16.0 MIMEDIR//EN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\n"
+        ."ATTENDEE;CN=igorbg@nwcventure.com.br;RSVP=TRUE:mailto:igorbg@nwcventure.com\r\n .br\r\nATTENDEE;CN=Felipe Gat;RSVP=TRUE:mailto:felipegat@vixcard.com.br\r\n"
+        ."DESCRIPTION:Pauta: demonstração\\, prazos\\nLevar tags\r\nDTSTART;TZID=E. South America Standard Time:20261022T150000\r\n"
+        ."DTEND;TZID=E. South America Standard Time:20261022T160000\r\nLOCATION:Sala VixCard\r\nORGANIZER;CN=Victor:mailto:victor@vixcard.com.br\r\n"
+        ."SUMMARY;LANGUAGE=pt-BR:Reunião RFID - VIXCARD\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+
+    /** Convite do Outlook (17/10): vira resumo legível e um compromisso com um clique, sem duplicar. */
+    public function test_convite_de_reuniao_legivel_e_registrado_na_agenda(): void
+    {
+        // Direto (text/calendar) e aninhado (mixed > alternative + calendar): os dois viram o mesmo convite.
+        $direto = \App\Services\Secretario\Email\Mensagem::analisar(['content-type' => 'text/calendar; method=REQUEST; charset="utf-8"'], self::ICS);
+        $this->assertStringContainsString('📅 Convite de reunião: Reunião RFID - VIXCARD', $direto[0]);
+        $this->assertStringContainsString('Quando: qui, 22/10 às 15:00 até 16:00', $direto[0]);
+        $this->assertStringContainsString('Participantes: igorbg@nwcventure.com.br, Felipe Gat <felipegat@vixcard.com.br>', $direto[0]);
+        $this->assertStringContainsString("Pauta: demonstração, prazos\nLevar tags", $direto[0]);
+        $this->assertStringNotContainsString('BEGIN:VCALENDAR', $direto[0]);
+        $aninhado = "--A\r\nContent-Type: multipart/alternative; boundary=\"B\"\r\n\r\n--B\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nOi, segue o convite.\r\n--B\r\n"
+            ."Content-Type: text/calendar; method=REQUEST\r\n\r\n".self::ICS."--B--\r\n--A--\r\n";
+        $m = \App\Services\Secretario\Email\Mensagem::analisar(['content-type' => 'multipart/mixed; boundary="A"'], $aninhado);
+        $this->assertStringStartsWith('Oi, segue o convite.', $m[0]);
+        $this->assertSame('Reunião RFID - VIXCARD', $m[1]['titulo']);
+
+        $this->imap->pastas['INBOX']['mensagens'][5] = ['cabecalho' => "From: victor@vixcard.com.br\r\nSubject: Reunião RFID - VIXCARD\r\nMessage-ID: <cal@vix>\r\nContent-Type: text/calendar; method=REQUEST; charset=utf-8\r\n\r\n",
+            'texto' => self::ICS, 'data' => '17-Oct-2026 09:30:00 -0300'];
+        $u = $this->dono(telegram: false);
+        app(LeitorDeEmails::class)->sincronizar($this->caixa($u));
+        $e = SecretarioEmail::where('message_id', '<cal@vix>')->sole();
+        $this->assertSame('reuniao', $e->tipo);
+        $this->actingAs($u)->get(route('secretario.emails.index', ['ver' => 'todas']))->assertOk()->assertSee('📅 Reunião');
+        $this->getJson(route('secretario.emails.texto', $e->id))->assertOk()
+            ->assertJsonPath('convite.titulo', 'Reunião RFID - VIXCARD')->assertJsonPath('convite.data', '2026-10-22')->assertJsonPath('convite.hora', '15:00')
+            ->assertJsonPath('convite.ja_na_agenda', false);
+
+        $dados = ['titulo' => 'Reunião RFID - VIXCARD', 'data' => '2026-10-22', 'hora' => '15:00', 'empresa' => 'vixcard', 'descricao' => 'Convite por e-mail de victor@vixcard.com.br'];
+        $this->postJson(route('secretario.agenda.novo'), $dados)->assertOk();
+        $this->postJson(route('secretario.agenda.novo'), $dados)->assertOk()->assertJsonPath('mensagem', fn ($m) => str_starts_with($m, 'Já está na sua agenda'));
+        $this->assertSame(1, SecretarioItem::where('titulo', 'Reunião RFID - VIXCARD')->count());
+        $this->getJson(route('secretario.emails.texto', $e->id))->assertJsonPath('convite.ja_na_agenda', true);
+    }
 }

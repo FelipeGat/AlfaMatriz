@@ -154,9 +154,16 @@ class SecretarioGoogleController extends Controller
     {
         $d = $request->validate([
             'titulo' => ['required', 'string', 'max:190'], 'data' => ['required', 'date_format:Y-m-d'], 'hora' => ['nullable', 'date_format:H:i'],
+            'descricao' => ['nullable', 'string', 'max:2000'],
             'empresa' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(\App\Services\Secretario\CentralDeGestao::EMPRESAS))],
         ]);
+        $quando = $d['data'].' '.($d['hora'] ?? '00:00').':00';
+        // O mesmo compromisso (título e horário) não entra duas vezes.
+        if ($ja = \App\Models\SecretarioItem::de($request->user())->where('status', \App\Models\SecretarioItem::ABERTO)->where('titulo', $d['titulo'])->where('quando', $quando)->first()) {
+            return response()->json(['ok' => true, 'mensagem' => 'Já está na sua agenda: '.\App\Services\Secretario\Datas::porExtenso($ja->quando, $ja->so_data).'.']);
+        }
         $item = \App\Models\SecretarioItem::create(['user_id' => $request->user()->id, 'tipo' => $d['hora'] ? 'compromisso' : 'tarefa', 'titulo' => $d['titulo'],
+            'descricao' => $d['descricao'] ?? null,
             'quando' => $d['data'].' '.($d['hora'] ?? '00:00').':00', 'so_data' => ! $d['hora'], 'empresa' => $d['empresa'] ?? null,
             'antecedencia_min' => $d['hora'] ? \App\Models\SecretarioPreferencia::de($request->user())->antecedencia_padrao : null, 'origem' => 'matriz']);
         $despachante->programar($item);

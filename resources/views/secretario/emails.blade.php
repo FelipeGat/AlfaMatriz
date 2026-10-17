@@ -85,6 +85,7 @@
                                         <span class="block truncate text-[13px] {{ $e->lido ? 'text-ink' : 'font-semibold text-ink' }}">{{ $e->assunto }}</span>
                                         <span class="block truncate text-[12px] text-ink-mute" x-text="previas[{{ $e->id }}] ?? @js((string) $e->conta?->rotulo)"></span>
                                         <span class="mt-1 flex items-center gap-1.5">
+                                            @if ($e->tipo === 'reuniao')<span class="rounded-control bg-exame-tint px-1.5 py-0.5 text-[10.5px] font-semibold text-exame">📅 Reunião</span>@endif
                                             <span class="rounded-control px-1.5 py-0.5 text-[10.5px] font-semibold {{ $cor }}">{{ $rotulo }}</span>
                                             <span class="text-[10.5px] text-ink-faint">{{ $e->conta?->rotulo }}</span>
                                             <span class="ml-auto h-4 w-4 text-[15px] leading-4" :class="estrelas[{{ $e->id }}] ? 'text-warn' : 'text-ink-faint'" @click.stop="estrela({{ $e->id }})" x-text="estrelas[{{ $e->id }}] ? '★' : '☆'" title="Estrela (só aqui no Matriz)"></span>
@@ -122,6 +123,28 @@
                                     <span class="h-3.5 w-3.5"><x-nav-icon name="envelope" /></span> Abrir no e-mail
                                 </a>
                             </div>
+                            {{-- Convite de reunião: registrar na agenda com um clique (Felipe, 17/10/2026). --}}
+                            <template x-if="convite">
+                                <div class="rounded-ctl border border-exame-line bg-exame-tint px-4 py-3">
+                                    <p class="text-[12px] font-semibold uppercase tracking-caps text-exame" x-text="convite.cancelado ? 'Reunião cancelada' : 'Convite de reunião'"></p>
+                                    <p class="mt-1 text-[15px] font-semibold text-ink" x-text="convite.titulo"></p>
+                                    <p class="text-[13px] text-ink" x-text="convite.quando"></p>
+                                    <p x-show="convite.local" class="text-[12.5px] text-ink-dim" x-text="'Onde: ' + convite.local"></p>
+                                    <p x-show="convite.organizador" class="text-[12.5px] text-ink-dim" x-text="'Organizador: ' + convite.organizador"></p>
+                                    <p x-show="convite.participantes.length" class="text-[12.5px] text-ink-dim" x-text="'Participantes: ' + convite.participantes.join(', ')"></p>
+                                    <div x-show="!convite.cancelado" class="mt-2.5 flex flex-wrap items-center gap-2">
+                                        <select x-model="convite.empresa" class="{{ $campo }}">
+                                            <option value="">Sem empresa</option>
+                                            @foreach (\App\Services\Secretario\CentralDeGestao::EMPRESAS as $k => $nome)<option value="{{ $k }}">{{ $nome }}</option>@endforeach
+                                        </select>
+                                        <button type="button" @click="registrarReuniao()" :disabled="convite.ja_na_agenda"
+                                                class="inline-flex h-[30px] items-center gap-1.5 rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright disabled:opacity-60">
+                                            <span class="h-3.5 w-3.5"><x-nav-icon name="calendar" peso="2" /></span>
+                                            <span x-text="convite.ja_na_agenda ? 'Já está na sua agenda' : 'Registrar na minha agenda'"></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
                             <div class="rounded-ctl border border-line bg-canvas px-4 py-3">
                                 <p x-show="carregando" class="text-[13px] text-ink-faint">Lendo a mensagem no servidor de e-mail…</p>
                                 <p x-show="!carregando && erroTexto" class="text-[13px] text-warn">Não consegui ler o texto agora. Use “Abrir no e-mail”.</p>
@@ -161,7 +184,7 @@
             const csrf = () => document.querySelector('meta[name="csrf-token"]').content;
             const hoje = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
             return {
-                lista, atual: null, texto: '', carregando: false, erroTexto: false, recado: '', atualizando: false, previas: {},
+                lista, atual: null, texto: '', convite: null, carregando: false, erroTexto: false, recado: '', atualizando: false, previas: {},
                 estrelas: Object.fromEntries(lista.map(e => [e.id, e.favorito])),
                 agenda: { aberto: false, data: hoje(), hora: '' },
                 iniciar() {
@@ -172,8 +195,8 @@
                 iniciais(n) { return (n || '?').replace(/[^\p{L}]/gu, '').slice(0, 2).toUpperCase() || '?'; },
                 async abrir(id) {
                     this.atual = lista.find(e => e.id === id); this.recado = ''; this.agenda.aberto = false;
-                    this.carregando = true; this.erroTexto = false; this.texto = '';
-                    try { const r = await fetch(this.atual.texto, { headers: { Accept: 'application/json' } }); const j = await r.json(); this.erroTexto = !r.ok; this.texto = j.texto || ''; }
+                    this.carregando = true; this.erroTexto = false; this.texto = ''; this.convite = null;
+                    try { const r = await fetch(this.atual.texto, { headers: { Accept: 'application/json' } }); const j = await r.json(); this.erroTexto = !r.ok; this.texto = j.texto || ''; this.convite = j.convite ? { ...j.convite, empresa: '' } : null; }
                     catch (e) { this.erroTexto = true; }
                     this.carregando = false;
                     if (window.innerWidth < 1024) this.$nextTick(() => this.$root.querySelector('section:last-of-type')?.scrollIntoView({ behavior: 'smooth' }));
@@ -194,6 +217,15 @@
                     const j = await r.json().catch(() => ({}));
                     this.recado = r.ok ? j.mensagem : (Object.values(j.errors || {}).flat()[0] || 'Não deu certo.');
                     if (r.ok) this.agenda.aberto = false;
+                },
+                async registrarReuniao() {
+                    const c = this.convite;
+                    const descricao = ['Convite por e-mail de ' + this.atual.de, c.local ? 'Onde: ' + c.local : '', c.participantes.length ? 'Participantes: ' + c.participantes.join(', ') : ''].filter(Boolean).join('\n');
+                    const r = await fetch(@json(route('secretario.agenda.novo')), { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
+                        body: JSON.stringify({ titulo: c.titulo.slice(0, 190), data: c.data, hora: c.hora, empresa: c.empresa || null, descricao }) });
+                    const j = await r.json().catch(() => ({}));
+                    this.recado = r.ok ? j.mensagem : (Object.values(j.errors || {}).flat()[0] || 'Não deu certo.');
+                    if (r.ok) c.ja_na_agenda = true;
                 },
                 async atualizar() {
                     this.atualizando = true;

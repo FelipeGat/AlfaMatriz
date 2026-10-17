@@ -20,6 +20,8 @@ class Mensagem
         public readonly string $assunto,
         public readonly CarbonImmutable $recebidoEm,
         public readonly string $texto,
+        /** Convite de reunião (text/calendar), lido do VEVENT; null se não é convite. */
+        public readonly ?array $convite = null,
     ) {}
 
     public static function de(array $bruto): self
@@ -36,7 +38,7 @@ class Mensagem
             mb_substr($email ?: '(sem remetente)', 0, 190),
             mb_substr(trim($h['subject'] ?? '') ?: '(sem assunto)', 0, 255),
             $data->setTimezone(config('app.timezone')),
-            self::textoLegivel($h, (string) $bruto['texto']),
+            ...self::analisar($h, (string) $bruto['texto']),
         );
     }
 
@@ -80,29 +82,147 @@ class Mensagem
         }
     }
 
-    /** O começo do texto que um humano leria; HTML vira texto. */
+    /**
+     * O começo do texto que um humano leria. Abre as partes em qualquer
+     * profundidade (o Outlook manda multipart/mixed com multipart/alternative
+     * dentro) e prefere texto, depois HTML; convite de reunião (text/calendar)
+     * vira um resumo legível em vez do código iCalendar cru.
+     */
     public static function textoLegivel(array $h, string $corpo): string
     {
-        $tipo = mb_strtolower($h['content-type'] ?? 'text/plain');
-        $cte = mb_strtolower(trim($h['content-transfer-encoding'] ?? ''));
-        if (str_starts_with($tipo, 'multipart/') && preg_match('/boundary="?([^";]+)"?/i', $h['content-type'] ?? '', $b)) {
-            $melhor = null;
+        return self::analisar($h, $corpo)[0];
+    }
+
+    /** @return array{0: string, 1: ?array} o texto legível e o convite (se houver) */
+    public static function analisar(array $h, string $corpo): array
+    {
+        $achado = ['plain' => null, 'html' => null, 'calendar' => null];
+        self::partes($h['content-type'] ?? 'text/plain', $h['content-transfer-encoding'] ?? '', $corpo, $achado, 0);
+        $convite = $achado['calendar'] !== null ? self::conviteDados($achado['calendar']) : null;
+        $resumo = $convite ? self::resumoDoConvite($convite) : '';
+        foreach (['plain', 'html'] as $tipo) {
+            if ($achado[$tipo] !== null && trim($achado[$tipo]) !== '') {
+                return [$achado[$tipo].($resumo !== '' ? "\n\n".$resumo : ''), $convite];
+            }
+        }
+
+        return [$resumo, $convite];
+    }
+
+    /** @param array{plain: ?string, html: ?string, calendar: ?string} $achado */
+    private static function partes(string $tipoBruto, string $cte, string $corpo, array &$achado, int $nivel): void
+    {
+        $tipo = mb_strtolower($tipoBruto);
+        if ($nivel < 5 && str_starts_with($tipo, 'multipart/') && preg_match('/boundary="?([^";]+)"?/i', $tipoBruto, $b)) {
             foreach (explode('--'.$b[1], $corpo) as $parte) {
                 [$cabeca, $miolo] = array_pad(preg_split("/\r?\n\r?\n/", ltrim($parte, "\r\n"), 2), 2, '');
                 $hp = self::cabecalhos($cabeca);
-                $tp = mb_strtolower($hp['content-type'] ?? '');
-                if (str_starts_with($tp, 'text/plain')) {
-                    return self::decodificar($miolo, $hp['content-transfer-encoding'] ?? '', $tp);
-                }
-                if (str_starts_with($tp, 'text/html') && $melhor === null) {
-                    $melhor = [$miolo, $hp['content-transfer-encoding'] ?? '', $tp];
+                if (isset($hp['content-type'])) {
+                    self::partes($hp['content-type'], $hp['content-transfer-encoding'] ?? '', $miolo, $achado, $nivel + 1);
                 }
             }
 
-            return $melhor ? self::decodificar(...$melhor) : '';
+            return;
+        }
+        $chave = match (true) {
+            str_starts_with($tipo, 'text/calendar') || str_starts_with($tipo, 'application/ics') => 'calendar',
+            str_starts_with($tipo, 'text/html') => 'html',
+            str_starts_with($tipo, 'text/plain') || $nivel === 0 && ! str_contains($tipo, '/') => 'plain',
+            default => null,
+        };
+        if ($chave && $achado[$chave] === null) {
+            $achado[$chave] = $chave === 'calendar' ? self::decodificarCru($corpo, $cte) : self::decodificar($corpo, $cte, $tipo);
+        }
+    }
+
+    /**
+     * Os dados do VEVENT (RFC 5545), sem inventar o que não veio. Hora com
+     * TZID do Windows ("E. South America Standard Time") é tratada como hora
+     * local; com "Z", como UTC.
+     *
+     * @return array{metodo: string, titulo: ?string, inicio: ?CarbonImmutable, fim: ?CarbonImmutable, dia_inteiro: bool, local: ?string, organizador: ?string, participantes: list<string>, descricao: ?string}|null
+     */
+    public static function conviteDados(string $ics): ?array
+    {
+        // Linhas dobradas: a continuação começa com espaço ou tab.
+        $ics = preg_replace("/\r?\n[ \t]/", '', str_replace("\r\n", "\n", $ics));
+        if (! preg_match('/BEGIN:VEVENT/i', $ics) && ! preg_match('/^SUMMARY/mi', $ics)) {
+            return null;
+        }
+        $prop = fn (string $nome): ?array => preg_match('/^'.$nome.'((?:;[^:\n]*)?):(.*)$/mi', $ics, $m) ? [$m[1], trim($m[2])] : null;
+        $texto = fn (?array $p) => $p ? str_replace(['\\n', '\\N', '\\,', '\;', '\\\\'], ["\n", "\n", ',', ';', '\\'], $p[1]) : null;
+        $tz = config('app.timezone');
+        $quando = function (?array $p) use ($tz): ?CarbonImmutable {
+            if (! $p) {
+                return null;
+            }
+            try {
+                $v = $p[1];
+                if (preg_match('/^\d{8}$/', $v)) {
+                    return CarbonImmutable::createFromFormat('Ymd', $v, $tz)->startOfDay();
+                }
+
+                return str_ends_with($v, 'Z')
+                    ? CarbonImmutable::createFromFormat('Ymd\THis\Z', $v, 'UTC')->setTimezone($tz)
+                    : CarbonImmutable::createFromFormat('Ymd\THis', substr($v, 0, 15), $tz);
+            } catch (\Throwable) {
+                return null;
+            }
+        };
+        $quem = function (?array $p): ?string {
+            if (! $p) {
+                return null;
+            }
+            $email = preg_replace('/^mailto:/i', '', $p[1]);
+
+            return preg_match('/CN="?([^";:]+)"?/i', $p[0], $c) && trim($c[1]) !== $email ? trim($c[1]).' <'.$email.'>' : $email;
+        };
+        preg_match_all('/^ATTENDEE((?:;[^:\n]*)?):(.*)$/mi', $ics, $ps, PREG_SET_ORDER);
+        $inicio = $prop('DTSTART');
+
+        return [
+            'metodo' => mb_strtoupper((string) ($prop('METHOD')[1] ?? 'REQUEST')),
+            'titulo' => $texto($prop('SUMMARY')) ?: null,
+            'inicio' => $quando($inicio),
+            'fim' => $quando($prop('DTEND')),
+            'dia_inteiro' => $inicio !== null && strlen($inicio[1]) === 8,
+            'local' => $texto($prop('LOCATION')) ?: null,
+            'organizador' => $quem($prop('ORGANIZER')),
+            'participantes' => array_values(array_filter(array_map(fn ($m) => $quem([$m[1], trim($m[2])]), $ps))),
+            'descricao' => trim((string) $texto($prop('DESCRIPTION'))) ?: null,
+        ];
+    }
+
+    /** O convite em texto legível ("📅 Convite de reunião: …"). */
+    public static function resumoDoConvite(array $c): string
+    {
+        $linhas = [($c['metodo'] === 'CANCEL' ? '❌ Reunião cancelada' : '📅 Convite de reunião').': '.($c['titulo'] ?? '(sem título)')];
+        if ($c['inicio']) {
+            $linhas[] = 'Quando: '.\App\Services\Secretario\Datas::porExtenso($c['inicio'], $c['dia_inteiro'])
+                .($c['fim'] && ! $c['dia_inteiro'] ? ' até '.$c['fim']->format('H:i') : '');
+        }
+        foreach (['local' => 'Onde', 'organizador' => 'Organizador'] as $k => $rot) {
+            if ($c[$k]) {
+                $linhas[] = $rot.': '.$c[$k];
+            }
+        }
+        if ($c['participantes']) {
+            $linhas[] = 'Participantes: '.implode(', ', array_slice($c['participantes'], 0, 15)).(count($c['participantes']) > 15 ? ' e mais '.(count($c['participantes']) - 15) : '');
+        }
+        if ($c['descricao']) {
+            $linhas[] = "\n".$c['descricao'];
         }
 
-        return self::decodificar($corpo, $cte, $tipo);
+        return implode("\n", $linhas);
+    }
+
+    private static function decodificarCru(string $texto, string $cte): string
+    {
+        return match (mb_strtolower(trim($cte))) {
+            'base64' => (string) base64_decode(preg_replace('/[^A-Za-z0-9+\/=]/', '', $texto)),
+            'quoted-printable' => quoted_printable_decode($texto),
+            default => $texto,
+        };
     }
 
     private static function decodificar(string $texto, string $cte, string $tipo): string
