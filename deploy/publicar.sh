@@ -391,7 +391,12 @@ fi
 reiniciar_bot_da_central() {
     local unidade="alfamatriz-central-ia-telegram.service"
     local sc="systemctl"; [[ "${EUID:-$(id -u)}" -eq 0 ]] || sc="sudo systemctl"
-    if $sc list-unit-files "$unidade" 2>/dev/null | grep -q "$unidade"; then
+    # Saída capturada antes do grep: com `pipefail`, o `grep -q` fecha o cano
+    # no primeiro acerto, o systemctl leva SIGPIPE e o `if` dava falso ao
+    # acaso — o bot ficava na versão velha sem aviso (v2026.10.17.1 e .2).
+    local unidades
+    unidades="$($sc list-unit-files "$unidade" 2>/dev/null || true)"
+    if grep -q "$unidade" <<<"$unidades"; then
         $sc restart "$unidade" >/dev/null 2>&1 || echo "    aviso: não reiniciei $unidade — reinicie à mão"
     fi
 }
