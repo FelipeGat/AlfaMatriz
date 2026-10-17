@@ -35,7 +35,8 @@ class TelasDoMonitorTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-10-17 14:33:00'));
 
         config([
-            'services.alfamonitor.url' => self::BASE,
+            'services.alfamonitor.url' => 'https://app.exemplo',
+            'services.alfamonitor.api_url' => self::BASE,
             'services.alfamonitor.api_token' => 'token-de-leitura',
         ]);
     }
@@ -89,6 +90,26 @@ class TelasDoMonitorTest extends TestCase
             ->assertSee('ALFAMONITOR_API_TOKEN');
 
         Http::assertNothingSent();
+    }
+
+    /**
+     * A API vai pela rede interna do alfa-server (`ALFAMONITOR_API_URL`), e o
+     * link do navegador pela tailnet (`ALFAMONITOR_URL`). Sem a primeira,
+     * vale a segunda — é o default do `config/services.php`, refeito aqui.
+     */
+    public function test_a_api_usa_o_endereco_interno_e_sem_ele_a_url_da_web(): void
+    {
+        $this->monitorNoAr();
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->get(route('monitor.clientes'))->assertOk();
+        Http::assertSent(fn (Request $r) => str_starts_with($r->url(), self::BASE.'/api/v1/clientes'));
+
+        config(['services.alfamonitor.url' => self::BASE.'/web', 'services.alfamonitor.api_url' => self::BASE.'/web']);
+        app(ApiDoMonitor::class)->invalidar();
+
+        $this->actingAs($admin)->get(route('monitor.clientes'));
+        Http::assertSent(fn (Request $r) => str_starts_with($r->url(), self::BASE.'/web/api/v1/clientes'));
     }
 
     public function test_a_geral_mostra_o_retrato_do_monitor(): void
