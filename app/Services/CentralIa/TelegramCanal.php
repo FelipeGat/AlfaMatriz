@@ -883,8 +883,9 @@ class TelegramCanal
      * Leva ao Telegram as entregas pendentes, mais antigas primeiro.
      */
     /**
-     * Imagens e PDFs de prévia vão ao Telegram (dono, 13/10/2026: "imagem ou
-     * pdf, pode mandar para o telegram"), seja qual for o canal ativo.
+     * Imagens, PDFs e vídeos de prévia vão ao Telegram (dono, 13/10/2026:
+     * "imagem ou pdf, pode mandar para o telegram"; 17/10/2026: "quero o
+     * vídeo"), seja qual for o canal ativo.
      */
     public function entregarPrevias(int $limite = 5): void
     {
@@ -896,10 +897,14 @@ class TelegramCanal
             $p->update(['telegram' => 'enviando']);
             $arquivo = "central-ia/previas/{$p->user_id}/{$p->execucao_id}/{$p->caminho}";
             $foto = $p->tipo() === 'imagem' && $p->tamanho <= 10 * 1024 * 1024;
+            // Vídeo vai por sendVideo, que toca no próprio Telegram.
+            $video = $p->tipo() === 'video';
+            [$metodo, $campo] = $foto ? ['sendPhoto', 'photo'] : ($video ? ['sendVideo', 'video'] : ['sendDocument', 'document']);
             $r = \Illuminate\Support\Facades\Storage::disk('central_ia')->exists($arquivo)
-                ? $api->enviarArquivo($foto ? 'sendPhoto' : 'sendDocument', $foto ? 'photo' : 'document',
+                ? $api->enviarArquivo($metodo, $campo,
                     \Illuminate\Support\Facades\Storage::disk('central_ia')->get($arquivo), basename($p->caminho),
-                    ['chat_id' => $vinculo->chat_id, 'caption' => 'Prévia da execução #'.$p->execucao_id.' — '.$p->caminho])
+                    ['chat_id' => $vinculo->chat_id, 'caption' => 'Prévia da execução #'.$p->execucao_id.' — '.$p->caminho]
+                        + ($video ? ['supports_streaming' => 'true'] : []), $video ? 180 : 60)
                 : ['ok' => false, 'erro' => 'recusada'];
             $p->update(['telegram' => $r['ok'] ? 'enviado' : ($r['erro'] === 'limite' ? 'pendente' : 'falhou')]);
             if (! $r['ok'] && $r['erro'] === 'limite') return;

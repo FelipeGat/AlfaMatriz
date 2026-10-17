@@ -56,4 +56,32 @@ class PreviasTest extends TestCase
         $this->assertSame('enviado', CentralIaPrevia::where('caminho', 'conceito.png')->value('telegram'));
         $this->assertNull(CentralIaPrevia::where('caminho', 'pagina/index.html')->value('telegram'), 'página não vai ao Telegram');
     }
+    public function test_video_mp4_aparece_na_resposta_e_vai_ao_telegram_por_send_video(): void
+    {
+        Storage::fake('central_ia');
+        config(['central_ia.canal_exclusivo' => false]);
+        $u = User::factory()->create();
+        $u->perfis()->attach(Perfil::where('slug', 'central_ia')->value('id'));
+        CentralIaTelegramVinculo::create(['user_id' => $u->id, 'chat_id' => 99, 'vinculado_em' => now()]);
+        $r = CentralIaRunner::create(['user_id' => $u->id, 'maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => ['alfahome'], 'visto_em' => now()]);
+        $s = app(AgentesService::class);
+        $s->pedir($u, 'faça um vídeo narrado', ['projeto' => 'alfahome', 'agente' => 'claude', 'modo' => 'auto', 'instrucao' => 'faça um vídeo narrado'], 'web', 'v1');
+        $job = $s->proxima($u, $r);
+
+        Sanctum::actingAs($u, ['central-ia-runner']);
+        $enviar = fn (string $caminho, UploadedFile $f) => $this->post(route('central-ia.runner.previa', $job['id']), ['maquina' => 'wsl', 'caminho' => $caminho, 'arquivo' => $f], ['Accept' => 'application/json']);
+        $enviar('demo.mp4', UploadedFile::fake()->createWithContent('demo.mp4', str_repeat('v', 2048)))->assertOk();
+        $enviar('grande.mp4', UploadedFile::fake()->create('grande.mp4', 13 * 1024, 'video/mp4'))->assertStatus(422); // acima de 12 MB
+        $s->concluir($u, $job['id'], ['status' => 'concluida', 'resposta' => 'Vídeo pronto.']);
+
+        $m = collect($this->actingAs($u)->getJson(route('central-ia.mensagens', ['projeto' => 'alfahome']))->json('mensagens'))->firstWhere('autor_tipo', 'agente');
+        $this->assertSame(['video'], collect($m['previas'])->pluck('tipo')->all());
+        app('auth')->forgetGuards();
+        $this->get($m['previas'][0]['url'])->assertOk()->assertHeader('Content-Type', 'video/mp4');
+
+        Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => []])]);
+        app(TelegramCanal::class)->entregarPrevias();
+        Http::assertSent(fn ($req) => str_contains($req->url(), 'sendVideo'));
+        $this->assertSame('enviado', CentralIaPrevia::where('caminho', 'demo.mp4')->value('telegram'));
+    }
 }
