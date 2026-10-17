@@ -78,3 +78,10 @@ Schedule::command('secretario:briefing')
     ->everyMinute()
     ->withoutOverlapping()
     ->onOneServer();
+
+// Reuniões do Secretário (docs/specs/secretario-reunioes): transcrição presa há
+// mais de 60 min volta para a fila; na 3ª tentativa falha e o áudio é apagado.
+Schedule::command('secretario:reunioes')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();

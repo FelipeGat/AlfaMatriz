@@ -213,6 +213,14 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         Route::post('google/desconectar', [\App\Http\Controllers\SecretarioGoogleController::class, 'desconectar'])->name('google.desconectar')->middleware('permissao:secretario,editar');
         Route::post('google/sincronizar', [\App\Http\Controllers\SecretarioGoogleController::class, 'sincronizar'])->name('google.sincronizar')->middleware('permissao:secretario,editar');
         Route::put('google/agendas/{agenda}', [\App\Http\Controllers\SecretarioGoogleController::class, 'agenda'])->whereNumber('agenda')->name('google.agendas')->middleware('permissao:secretario,editar');
+        // Etapa 4 (docs/specs/secretario-reunioes): reuniões por áudio.
+        Route::get('reunioes', [\App\Http\Controllers\SecretarioReunioesController::class, 'index'])->name('reunioes.index')->middleware('permissao:secretario,ler');
+        Route::post('reunioes', [\App\Http\Controllers\SecretarioReunioesController::class, 'enviar'])->name('reunioes.enviar')->middleware('permissao:secretario,incluir');
+        Route::get('reunioes/{reuniao}', [\App\Http\Controllers\SecretarioReunioesController::class, 'mostrar'])->whereNumber('reuniao')->name('reunioes.mostrar')->middleware('permissao:secretario,ler');
+        Route::get('reunioes/{reuniao}/ata', [\App\Http\Controllers\SecretarioReunioesController::class, 'ata'])->whereNumber('reuniao')->name('reunioes.ata')->middleware('permissao:secretario,ler');
+        Route::post('reunioes/{reuniao}/analisar', [\App\Http\Controllers\SecretarioReunioesController::class, 'analisarDeNovo'])->whereNumber('reuniao')->name('reunioes.analisar')->middleware('permissao:secretario,editar');
+        Route::post('reunioes/{reuniao}/aprovar-lote', [\App\Http\Controllers\SecretarioReunioesController::class, 'aprovarLote'])->whereNumber('reuniao')->name('reunioes.aprovar-lote')->middleware('permissao:secretario,editar');
+        Route::post('reunioes/propostas/{proposta}', [\App\Http\Controllers\SecretarioReunioesController::class, 'proposta'])->whereNumber('proposta')->name('reunioes.proposta')->middleware('permissao:secretario,editar');
     });
 
     // Central de IA. Sem id de conversa na rota: é sempre a da conta logada.

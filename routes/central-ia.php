@@ -23,6 +23,10 @@ Route::prefix('api/central-ia/runner')
         Route::post('execucoes/{execucao}/confirmacao', [CentralIaRunnerController::class, 'confirmacao'])->whereNumber('execucao')->name('central-ia.runner.confirmacao');
         Route::post('execucoes/{execucao}/conclusao', [CentralIaRunnerController::class, 'concluir'])
             ->whereNumber('execucao')->name('central-ia.runner.concluir');
+        // Secretário, Etapa 4: a máquina da pessoa transcreve as reuniões dela.
+        Route::post('transcricoes/proxima', [\App\Http\Controllers\SecretarioRunnerController::class, 'proxima'])->name('secretario.runner.proxima');
+        Route::get('transcricoes/{reuniao}/audio', [\App\Http\Controllers\SecretarioRunnerController::class, 'audio'])->whereNumber('reuniao')->name('secretario.runner.audio');
+        Route::post('transcricoes/{reuniao}', [\App\Http\Controllers\SecretarioRunnerController::class, 'resultado'])->whereNumber('reuniao')->name('secretario.runner.resultado');
     });
 
 /*

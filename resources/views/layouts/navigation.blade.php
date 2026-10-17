@@ -37,6 +37,7 @@
         'Secretário' => [
             ['route' => 'secretario.meu-dia', 'recurso' => 'secretario', 'pattern' => ['secretario.meu-dia', 'secretario.configuracoes'], 'label' => 'Meu Dia', 'icon' => 'sun', 'matriz' => true],
             ['route' => 'secretario.agenda', 'recurso' => 'secretario', 'pattern' => 'secretario.agenda', 'label' => 'Agenda consolidada', 'icon' => 'calendar', 'matriz' => true],
+            ['route' => 'secretario.reunioes.index', 'recurso' => 'secretario', 'pattern' => 'secretario.reunioes.*', 'label' => 'Reuniões', 'icon' => 'speaker-wave', 'matriz' => true],
         ],
         'Comercial' => [
             ['route' => 'leads.index', 'recurso' => 'leads', 'pattern' => 'leads.*', 'label' => 'Funil de Vendas', 'icon' => 'view-grid'],

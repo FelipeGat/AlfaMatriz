@@ -21,6 +21,7 @@ ARQUIVOS="__ARQUIVOS__"
 ROTULO="br.com.alfa.central-ia-runner"
 IMAGEM="alfamatriz-central-media:local"
 IMAGEM_OFFICE="alfamatriz-central-office:local"
+IMAGEM_WHISPER="alfamatriz-central-whisper:local"
 
 CODIGO="" PROJETOS="" MAQUINA="" ANEXOS=1
 while [ $# -gt 0 ]; do
@@ -241,6 +242,18 @@ if [ "$ANEXOS" = 1 ] && command -v docker >/dev/null && docker info >/dev/null 2
     printf 'FROM debian:bookworm-slim\nRUN apt-get update && apt-get install -y --no-install-recommends libreoffice-writer-nogui libreoffice-calc-nogui libreoffice-impress-nogui poppler-utils fonts-dejavu-core fonts-liberation2 && rm -rf /var/lib/apt/lists/*\n' \
       | docker build -q -t "$IMAGEM_OFFICE" - >/dev/null && ok "Conversão de Word, Excel e PowerPoint pronta." \
       || aviso "Não consegui preparar a conversão de documentos; o agente recebe o original e texto puro funciona."
+  fi
+  # Reuniões do Secretário (docs/specs/secretario-reunioes): transcrição na
+  # máquina, sem rede na hora de transcrever — o modelo vem dentro da imagem.
+  # Mesmo conteúdo de deploy/central-ia/whisper/Dockerfile.
+  if ! docker image inspect "$IMAGEM_WHISPER" >/dev/null 2>&1 && [ -f "$DEST/transcrever_reuniao.py" ]; then
+    echo "Preparando a transcrição de reuniões (Docker; baixa ~1,7 GB na primeira vez)…"
+    CTX="$(mktemp -d)"
+    cp "$DEST/transcrever_reuniao.py" "$CTX/"
+    printf 'FROM python:3.11-slim\nRUN pip install --no-cache-dir "faster-whisper==1.1.1" requests && python -c "from faster_whisper import WhisperModel; WhisperModel(\x27small\x27, device=\x27cpu\x27, compute_type=\x27int8\x27, download_root=\x27/modelos\x27)" && chmod -R a+rX /modelos\nENV HF_HUB_OFFLINE=1 WHISPER_MODELOS=/modelos\nCOPY transcrever_reuniao.py /app/transcrever_reuniao.py\n' > "$CTX/Dockerfile"
+    docker build -q -t "$IMAGEM_WHISPER" "$CTX" >/dev/null && ok "Transcrição de reuniões pronta." \
+      || aviso "Não consegui preparar a transcrição de reuniões; o resto do runner funciona."
+    rm -rf "$CTX"
   fi
 else
   [ "$ANEXOS" = 1 ] && aviso "Sem Docker: PDF, vídeo e documentos anexados não são convertidos (imagens e texto puro funcionam)."

@@ -768,6 +768,12 @@ class AgentesService
 
             // Pedido do Secretário (frase que as regras não entenderam): o bloco
             // vira proposta a CONFIRMAR, validada aqui — nunca item direto.
+            // Análise de reunião do Secretário (Etapa 4): o bloco é validado e
+            // vira proposta a REVISAR; na conversa fica só o resumo e o caminho.
+            if (isset($execucao->roteamento['secretario_reuniao'])) {
+                [, $blocoReuniao] = \App\Services\Secretario\AnaliseDeReuniao::separar((string) ($dados['resposta'] ?? ''));
+                $texto = app(\App\Services\Secretario\AnaliseDeReuniao::class)->concluir($user, $execucao, $ok, $blocoReuniao);
+            }
             if ($ok && isset($execucao->roteamento['secretario_proposta'])) {
                 [$texto, $blocoSecretario] = \App\Services\Secretario\PropostaDaIa::separar((string) $texto);
                 $texto = app(\App\Services\Secretario\PropostaDaIa::class)->concluir($user, $execucao, $blocoSecretario) ?? $texto;

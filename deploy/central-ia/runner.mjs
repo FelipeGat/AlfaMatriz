@@ -24,6 +24,7 @@ import { acompanharProgresso } from './progresso.mjs';
 import { auditar, chatConfirmado, chaveDoChat, confirmar, marcarChatConfirmado } from './confirmacao.mjs';
 import { caminhoDoStatus, compararGit, criarAuditor, retratoGit } from './auditoria.mjs';
 import { girar, limparWorktrees } from './limpeza.mjs';
+import { transcrever, whisperInstalado } from './transcricao.mjs';
 import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h; chave servidor + conta +
@@ -975,6 +976,15 @@ let ultimoTrabalho = Date.now();
 // "expirada" (#17 no staging, 15/10/2026). O serviço (KeepAlive no launchd,
 // Restart=always no systemd) o religa já com a versão nova.
 const REINICIAR = join(HOME, '.local/share/alfa/central-ia-reiniciar');
+// Transcrição de reuniões (Secretário, Etapa 4): uma por vez; a presença da
+// imagem é conferida a cada 10 min (o instalador pode tê-la criado depois).
+let transcrevendo = false;
+let transcricaoPausadaAte = 0;
+let whisperConferido = { em: 0, ok: false };
+async function whisperPronto() {
+    if (Date.now() - whisperConferido.em > 600_000) whisperConferido = { em: Date.now(), ok: await whisperInstalado() };
+    return whisperConferido.ok;
+}
 while (!parar) {
     if (!rodando.size && existsSync(REINICIAR)) {
         try { unlinkSync(REINICIAR); } catch {}
@@ -983,6 +993,26 @@ while (!parar) {
         break;
     }
     try {
+        // Reuniões do Secretário: uma transcrição por vez, quando a imagem
+        // existe e a conta usa o Secretário (403 = não usa; tenta de novo em 1 h).
+        if (!transcrevendo && rodando.size < PARALELO && Date.now() >= transcricaoPausadaAte && await whisperPronto()) {
+            const t = await api('transcricoes/proxima', { maquina: cfg.maquina });
+            if (t.status === 403 || t.status === 404 || t.status === 405) transcricaoPausadaAte = Date.now() + 3600_000;
+            if (t.status === 200 && t.json?.id) {
+                transcrevendo = true;
+                ultimoTrabalho = Date.now();
+                log(`reunião #${t.json.id}: transcrevendo (${t.json.modo})`);
+                const p = transcrever(t.json, cfg, pastaTemporaria())
+                    .then(async res => {
+                        const envio = await api(`transcricoes/${t.json.id}`, { maquina: cfg.maquina, ...res });
+                        log(`reunião #${t.json.id}: ${res.status === 'ok' ? res.trechos.length + ' trecho(s)' : 'falhou (' + res.erro + ')'} → ${envio.status}`);
+                    })
+                    .catch(e => log(`reunião #${t.json.id} erro no runner:`, e.message))
+                    .finally(() => { rodando.delete(p); transcrevendo = false; marcarOcupado(); ultimoTrabalho = Date.now(); });
+                rodando.add(p);
+                marcarOcupado();
+            }
+        }
         if (rodando.size < PARALELO) {
             const r = await api('proxima', { maquina: cfg.maquina });
             notarAcesso(r.status);

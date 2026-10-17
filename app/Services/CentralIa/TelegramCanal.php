@@ -236,6 +236,18 @@ class TelegramCanal
 
         if (CentralIaMensagem::where('user_id', $user->id)->where('telegram_update_id', $updateId)->exists()) return;
 
+        // Voz e áudio (Secretário, Etapa 4): reunião ou ditado, transcritos na
+        // máquina do dono. Antes da recusa de encaminhada: áudio de reunião
+        // encaminhado é o uso normal e vira DADO (nada é criado sem revisão);
+        // só não vira ditado, porque fala de outra pessoa não é comando.
+        $audio = $m['voice'] ?? $m['audio'] ?? (str_starts_with((string) ($m['document']['mime_type'] ?? ''), 'audio/') ? $m['document'] : null);
+        if (is_array($audio) && app(\App\Services\Secretario\Conversa::class)->pode($user)) {
+            $encaminhada = isset($m['forward_origin']) || isset($m['forward_from']) || isset($m['forward_from_chat']) || isset($m['forward_date']);
+            $this->receberAudio($user, $chatId, $updateId, $audio, isset($m['voice']) && ! $encaminhada);
+
+            return;
+        }
+
         // Mensagem encaminhada é texto de OUTRA pessoa: não vira pedido a um
         // agente com acesso total na máquina do dono.
         if (isset($m['forward_origin']) || isset($m['forward_from']) || isset($m['forward_from_chat']) || isset($m['forward_date'])) {
@@ -392,6 +404,43 @@ class TelegramCanal
                 unlink($tmp);
             }
         }
+    }
+
+    /** Baixa o áudio do Telegram e entrega ao Secretário (docs/specs/secretario-reunioes). */
+    private function receberAudio(User $user, int $chatId, int $updateId, array $audio, bool $voz): void
+    {
+        if (($audio['file_size'] ?? 0) > \App\Services\Secretario\Reunioes::MAX_BYTES || ! is_string($audio['file_id'] ?? null)) {
+            $this->responder($chatId, 'Áudio acima de 12 MB. Grave em OGG/Opus (cabe ~1 h) ou divida o arquivo.');
+
+            return;
+        }
+        if (\App\Models\SecretarioReuniao::where('telegram_update_id', $updateId)->exists()) {
+            return;
+        }
+        $duracao = is_int($audio['duration'] ?? null) ? $audio['duration'] : null;
+        $ditado = $voz && $duracao !== null && $duracao <= \App\Services\Secretario\Reunioes::DITADO_MAX_S;
+        $tmp = tempnam(sys_get_temp_dir(), 'secretario-');
+        try {
+            if (! $this->atual->baixar($audio['file_id'], $tmp)) {
+                $this->responder($chatId, 'Não consegui baixar o áudio. Mande de novo.');
+
+                return;
+            }
+            $this->atual->verificarConsumidor();
+            $nome = is_string($audio['file_name'] ?? null) ? $audio['file_name'] : ($voz ? 'voz' : 'audio');
+            app(\App\Services\Secretario\Reunioes::class)->receber($user, $tmp, $nome, 'telegram', $ditado ? 'ditado' : 'reuniao', $updateId, $duracao);
+        } catch (ValidationException $e) {
+            $this->responder($chatId, collect($e->errors())->flatten()->first());
+
+            return;
+        } finally {
+            @unlink($tmp);
+        }
+        $online = \App\Models\CentralIaRunner::where('user_id', $user->id)->get()->contains(fn ($r) => $r->online());
+        $this->responder($chatId, ($ditado
+            ? '🎙 Recebi. Transcrevo na sua máquina e já te digo o que entendi.'
+            : '🎧 Recebi o áudio. Vou transcrever na sua máquina e te aviso quando a reunião estiver pronta para revisão.')
+            .($online ? '' : "\nSua máquina está desligada agora: começo assim que ela voltar."));
     }
 
     public function sinalizarAtividade(): void
