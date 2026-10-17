@@ -53,4 +53,31 @@ class OperacaoTest extends TestCase
         $this->assertSame('sem_ia', $r->nivel('quais meus compromissos amanhã?', 'investigacao', 'analisar', $agenda));
         $this->assertNotSame('sem_ia', $r->nivel('marque reunião amanhã na agenda', 'investigacao', 'analisar', $agenda));
     }
+
+    /**
+     * Felipe, 16/10/2026: análise, relatório, consulta de código ou banco e
+     * operação no sistema são do Codex; o Claude fica só com desenvolvimento.
+     * Os dois primeiros textos são os pedidos reais que caíram no Claude.
+     */
+    public function test_analise_operacao_e_consulta_vao_ao_codex_e_desenvolvimento_ao_claude(): void
+    {
+        $r = app(\App\Services\CentralIa\Roteador::class);
+        $todos = ['claude', 'codex', 'copilot'];
+
+        $baixa = $r->decidir("Analise os orçamentos: 191 rev 1 e 2\nmude o status para Financeiro, depois dê baixa nos pagamentos, cliente pagou corretamente hoje ao final do dia.", $todos);
+        $this->assertSame(['operacao', 'codex', 'analisar'], [$baixa['categoria'], $baixa['agente'], $baixa['modo']]);
+
+        $cenario = $r->decidir('Preciso que analise o seguinte agora e me traga um cenário: um cliente têxtil conta 1.000 peças por dia na mão. '
+            .'Quero que o sistema tenha um perfil para vestuário e lavanderia, e ver como implantar isso com RFID.', $todos);
+        $this->assertSame(['planejamento', 'codex', 'analisar'], [$cenario['categoria'], $cenario['agente'], $cenario['modo']]);
+
+        $codigo = $r->decidir('Analise o código do controller de orçamentos e me diga onde o status muda.', $todos);
+        $this->assertSame(['codigo', 'codex', 'analisar'], [$codigo['categoria'], $codigo['agente'], $codigo['modo']]);
+
+        $bug = $r->decidir('Corrija o bug na tela de orçamentos: o status não muda.', $todos);
+        $this->assertSame(['implementacao', 'claude', 'implementar'], [$bug['categoria'], $bug['agente'], $bug['modo']]);
+
+        $deploy = $r->decidir('Mude o status do orçamento 191 e faça o deploy.', $todos);
+        $this->assertSame('implementar', $deploy['modo'], 'publicar continua execução');
+    }
 }
