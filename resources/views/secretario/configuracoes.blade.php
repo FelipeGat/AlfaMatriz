@@ -11,12 +11,16 @@
             auto_confirmar: @js((bool) $preferencia->auto_confirmar),
             antecedencia_padrao: @js((int) $preferencia->antecedencia_padrao),
             telegram: @js((bool) $preferencia->telegram),
+            briefing: @js((bool) $preferencia->briefing),
+            briefing_hora: @js($preferencia->briefing_hora),
+            briefing_dias: @js(array_map('intval', (array) $preferencia->briefing_dias)),
             salvo: '', erro: '',
             async salvar() {
                 this.salvo = ''; this.erro = '';
                 const r = await fetch(@js(route('secretario.configuracoes.salvar')), { method: 'PUT',
                     headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                    body: JSON.stringify({ auto_confirmar: this.auto_confirmar, antecedencia_padrao: Number(this.antecedencia_padrao), telegram: this.telegram }) });
+                    body: JSON.stringify({ auto_confirmar: this.auto_confirmar, antecedencia_padrao: Number(this.antecedencia_padrao), telegram: this.telegram,
+                        briefing: this.briefing, briefing_hora: this.briefing_hora, briefing_dias: this.briefing_dias }) });
                 r.ok ? this.salvo = 'Salvo.' : this.erro = 'Não deu certo. Confira os valores.';
             } }" class="mx-auto w-full max-w-2xl space-y-4">
         <x-painel titulo="Como o Secretário confirma e avisa">
@@ -35,6 +39,22 @@
                     <input type="checkbox" x-model="telegram" class="mt-1 rounded border-btn-line text-brand focus:ring-brand">
                     <span>Mandar os lembretes também no Telegram <span class="block text-[12px] text-ink-mute">O sino do AlfaMatriz recebe sempre.</span></span>
                 </label>
+                <div class="space-y-2 border-t border-line pt-3">
+                    <label class="flex items-start gap-3">
+                        <input type="checkbox" x-model="briefing" class="mt-1 rounded border-btn-line text-brand focus:ring-brand">
+                        <span>Briefing diário <span class="block text-[12px] text-ink-mute">O resumo do dia no Telegram e no Meu Dia, no horário abaixo.</span></span>
+                    </label>
+                    <div x-show="briefing" class="flex flex-col gap-2 pl-7 sm:flex-row sm:items-center sm:gap-4">
+                        <label class="flex items-center gap-2">às <input type="time" x-model="briefing_hora" class="rounded-control border border-btn-line bg-surface px-2 py-1 text-ink focus:border-brand focus:outline-none"></label>
+                        <div class="flex flex-wrap gap-1">
+                            @foreach ([1 => 'seg', 2 => 'ter', 3 => 'qua', 4 => 'qui', 5 => 'sex', 6 => 'sáb', 7 => 'dom'] as $n => $dia)
+                                <button type="button" @click="briefing_dias.includes({{ $n }}) ? briefing_dias = briefing_dias.filter(d => d !== {{ $n }}) : briefing_dias.push({{ $n }})"
+                                        :class="briefing_dias.includes({{ $n }}) ? 'bg-brand text-on-brand border-brand' : 'border-btn-line text-ink-dim'"
+                                        class="h-[30px] rounded-control border px-2 text-[12px] font-semibold">{{ $dia }}</button>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
                 <div class="flex items-center gap-3">
                     <button type="button" @click="salvar()" class="h-[36px] rounded-control bg-brand px-4 text-[13px] font-semibold text-on-brand hover:bg-brand-bright">Salvar</button>
                     <span x-show="salvo" x-text="salvo" class="text-[12.5px] text-good"></span>

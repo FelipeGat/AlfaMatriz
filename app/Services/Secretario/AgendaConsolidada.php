@@ -145,7 +145,7 @@ class AgendaConsolidada
             'ok' => null,
             'desatualizado' => "⚠ O Google não é lido há mais de ".self::DESATUALIZADO_MIN." min{$hora}: pode faltar evento.",
             'reconectar' => '⚠ O Google Agenda precisa ser reconectado (Secretário → Configurações): os eventos dele não estão aqui.',
-            default => '⚠ O Google Agenda não está conectado: só aparecem o Secretário e a Agenda do Matriz.',
+            default => '⚠ O Google Agenda não está conectado: os eventos dele não entram aqui.',
         };
     }
 }

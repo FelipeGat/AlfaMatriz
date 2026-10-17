@@ -15,7 +15,7 @@
          vazio nunca é apresentado como dia livre de certeza (FR-011). --}}
     <div class="mx-auto w-full max-w-3xl space-y-4">
         @if ($visao['google']['aviso'])
-            <x-aviso tom="atencao" :segundos="0">{{ $visao['google']['aviso'] }}</x-aviso>
+            <p class="rounded-panel border border-warn-line bg-warn-tint px-4 py-2.5 text-[13px] text-warn">{{ $visao['google']['aviso'] }}</p>
         @elseif ($visao['google']['sincronizado_em'])
             <p class="font-mono text-[11px] text-ink-faint">Google lido em {{ $visao['google']['sincronizado_em'] }}</p>
         @endif

@@ -100,6 +100,13 @@ class Conversa
      */
     private function interpretar(User $user, string $texto, string $origem): ?array
     {
+        // "Resume meu dia": o briefing de agora (Etapa 3), sem IA.
+        $briefings = app(Briefings::class);
+        if ($briefings->frase($texto)) {
+            $b = $briefings->gerar($user, \Carbon\CarbonImmutable::now(), \App\Models\SecretarioBriefing::PEDIDO);
+
+            return ['proposta' => null, 'item' => null, 'mensagem' => $b?->texto ?? 'Não consegui montar o resumo agora.'];
+        }
         if (($agenda = app(ConsultaDeAgenda::class)->responder($user, $texto)) !== null) {
             return ['proposta' => null, 'item' => null, 'mensagem' => $agenda];
         }

@@ -81,7 +81,7 @@ class ConsultaDeAgenda
             $linhas[] = 'Livre: 08:00–18:00';
         }
 
-        return implode("\n", array_merge($linhas, [$this->rodape($situacao)]));
+        return implode("\n", array_merge($linhas, [$this->rodape($user, $situacao)]));
     }
 
     private function livreAs(User $user, CarbonImmutable $hora, CarbonImmutable $agora): string
@@ -103,7 +103,7 @@ class ConsultaDeAgenda
                 .($proximo ? "\nLivre mais perto: ".$proximo[0]->format('H:i').'–'.$proximo[1]->format('H:i').'.' : "\nSem livre de 30 min entre 08:00 e 18:00 nesse dia.");
         }
 
-        return $resposta."\n".$this->rodape($situacao);
+        return $resposta."\n".$this->rodape($user, $situacao);
     }
 
     private function linha(array $i): string
@@ -113,13 +113,13 @@ class ConsultaDeAgenda
         return "{$hora} {$i['titulo']} — {$i['origem_rotulo']}".($i['conflito'] ? ' ⚠ conflito' : '');
     }
 
-    private function rodape(array $situacao): string
+    private function rodape(User $user, array $situacao): string
     {
         $google = match ($situacao['estado']) {
             'ok' => 'Google (lido às '.$situacao['sincronizado_em']->format('H:i').')',
             default => null,
         };
-        $fontes = 'Fontes: '.implode(', ', array_filter([$google, 'Agenda do Matriz', 'Secretário'])).'.';
+        $fontes = 'Fontes: '.implode(', ', array_filter([$google, $user->canPermissao('agenda', 'ler') ? 'Agenda do Matriz' : null, 'Secretário'])).'.';
 
         return trim(($this->agenda->aviso($situacao) ?? '')."\n".$fontes);
     }

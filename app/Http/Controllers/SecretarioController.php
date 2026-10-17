@@ -52,6 +52,10 @@ class SecretarioController extends Controller
             'concluidos_hoje' => SecretarioItem::de($user)->where('status', SecretarioItem::CONCLUIDO)
                 ->where('concluido_em', '>=', $agora->copy()->startOfDay())->count(),
             'telegram_pareado' => app(TelegramCanal::class)->vinculoDe($user) !== null,
+            // O briefing de hoje mais recente (o automático da manhã ou um pedido depois).
+            'briefing' => ($b = \App\Models\SecretarioBriefing::de($user)->whereDate('data', $agora->toDateString())
+                ->orderByDesc('gerado_em')->orderByDesc('id')->first())
+                ? ['texto' => $b->texto, 'gerado_em' => $b->gerado_em->format('H:i'), 'origem' => $b->origem, 'telegram' => $b->telegram] : null,
         ]);
     }
 
@@ -131,7 +135,15 @@ class SecretarioController extends Controller
             'auto_confirmar' => ['required', 'boolean'],
             'antecedencia_padrao' => ['required', 'integer', 'min:0', 'max:1440'],
             'telegram' => ['required', 'boolean'],
+            'briefing' => ['sometimes', 'boolean'],
+            'briefing_hora' => ['sometimes', 'date_format:H:i'],
+            'briefing_dias' => ['sometimes', 'array', 'min:1'],
+            'briefing_dias.*' => ['integer', 'between:1,7', 'distinct'],
         ]);
+        if (isset($dados['briefing_dias'])) {
+            $dados['briefing_dias'] = array_values(array_map('intval', $dados['briefing_dias']));
+            sort($dados['briefing_dias']);
+        }
         SecretarioPreferencia::updateOrCreate(['user_id' => $request->user()->id], $dados);
 
         return $this->semCache(['ok' => true]);

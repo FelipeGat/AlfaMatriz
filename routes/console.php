@@ -70,3 +70,11 @@ Schedule::command('secretario:sincronizar-google')
     ->everyTenMinutes()
     ->withoutOverlapping()
     ->onOneServer();
+
+// Briefing do Secretário (docs/specs/secretario-briefing): no horário de cada
+// conta (padrão 07:00, seg–sex), um por dia; parado no horário, sai na volta
+// até o meio-dia. Montado por regra — não depende da IA nem da máquina do dono.
+Schedule::command('secretario:briefing')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer();

@@ -19,8 +19,22 @@
         </p>
 
         @unless ($telegramPareado)
-            <x-aviso tom="atencao" :segundos="0">O Telegram não está ligado à Central: os lembretes chegam só no sino. Ligue em Central de IA → Ajustes → Telegram.</x-aviso>
+            {{-- Faixa fixa, e não o toast do x-aviso: é um estado da conta, não um aviso que passa, e o toast cobria o topo da tela. --}}
+            <p class="rounded-panel border border-warn-line bg-warn-tint px-4 py-2.5 text-[13px] text-warn">O Telegram não está ligado à Central: os lembretes chegam só no sino. Ligue em Central de IA → Ajustes → Telegram.</p>
         @endunless
+
+        {{-- Briefing de hoje (Etapa 3): recolhível; o estado fica no navegador. --}}
+        <template x-if="dados.briefing">
+            <section class="rounded-panel border border-line bg-subtle">
+                <button type="button" @click="briefingAberto = !briefingAberto; try { localStorage.setItem('secretario:briefing-aberto', briefingAberto ? 'sim' : 'nao') } catch (e) {}"
+                        class="flex h-[38px] w-full items-center gap-2 border-b border-line bg-head px-4 text-left">
+                    <span class="font-display text-[15px] font-semibold text-ink">Briefing de hoje</span>
+                    <span class="font-mono text-[11px] text-ink-faint" x-text="'gerado às ' + dados.briefing.gerado_em"></span>
+                    <span class="ml-auto text-[12px] text-ink-mute" x-text="briefingAberto ? 'recolher' : 'mostrar'"></span>
+                </button>
+                <pre x-show="briefingAberto" x-text="dados.briefing.texto" class="whitespace-pre-wrap break-words px-4 py-3 font-sans text-[13px] leading-relaxed text-ink"></pre>
+            </section>
+        </template>
 
         {{-- Registrar do jeito que se fala. A proposta aparece aqui e só vira item com Confirmar. --}}
         <x-painel titulo="Registrar">
@@ -103,6 +117,7 @@
                 return json;
             };
             return {
+                briefingAberto: (() => { try { return localStorage.getItem('secretario:briefing-aberto') !== 'nao'; } catch (e) { return true; } })(),
                 dados: {}, carregado: false, texto: '', proposta: null, pergunta: '', recado: '', enviando: false, erro: '',
                 secoes: [
                     { chave: 'atrasados', titulo: 'Atrasados' }, { chave: 'hoje', titulo: 'Hoje' },
