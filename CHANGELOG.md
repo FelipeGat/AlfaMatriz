@@ -1,5 +1,27 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 17/10/2026 — O AlfaMonitor agora dentro do Matriz (v2026.10.17.12, T-394)
+
+### Novidades
+
+- **Novo item "Monitor" no menu.** Sete telas mostram o que o AlfaMonitor
+  está vendo, sem sair do Matriz: Geral, Acesso (catracas e leitores do
+  AlfaControl e do AlfaGym), Servidor, Clientes, Página do cliente,
+  Incidentes e Relatórios. Elas servem só para consulta. Reiniciar VPS,
+  cadastros e avisos continuam no próprio monitor, e rede, sondas e câmeras
+  ficam de fora.
+- **Alertas recebidos.** Em Incidentes, a visão "Alertas recebidos" mostra
+  cada queda e cada volta que o monitor avisou: o que está fora agora, há
+  quanto tempo, e o histórico com filtros. Alerta repetido não aparece duas
+  vezes, e alerta que chega fora de ordem não bagunça a situação atual.
+- **Os avisos continuam saindo só do monitor.** O Matriz não manda Telegram,
+  não toca o sino e não abre tarefa por causa desses alertas.
+- **Assinaturas da Hostinger com permissão própria.** A tabela de
+  vencimentos da Hostinger aparece só para o Administrador.
+- **Listas grandes em páginas.** Incidentes e Clientes mostram 50 por
+  página. A visão "Por cliente" mostra a lista inteira. Se o monitor não
+  responder, a tela mostra o último dado completo, com um aviso.
+
 ## AlfaMatriz — 10/10/2026 — Avisos do dia sem falha em dia cheio (v2026.10.09.1, T-331)
 
 ### Correções
