@@ -44,9 +44,19 @@ class ProgressoService
             if ($e->status !== CentralIaExecucao::EXECUTANDO || ($e->progresso['sequencia'] ?? 0) >= $dados['sequencia']) {
                 return;
             }
-            // Apenas metadados: nunca publicar comandos, prompts ou saída bruta.
-            $e->update(['progresso' => array_intersect_key($dados, array_flip(['sequencia', 'etapa', 'atividade_em', 'processo_ativo'])),
-                'progresso_em' => now()]);
+            // Nunca a saída bruta nem o conteúdo de arquivos. Desde 17/10/2026
+            // vão também a última ação (ferramenta + alvo, curta) e a última
+            // fala do agente — o dono: "não pode ficar 11 min sem interação ou
+            // alguma amostra do que está sendo feito". O runner já corta; aqui
+            // ainda passa pela máscara de segredos, porque um comando pode
+            // levar um token na linha.
+            $progresso = array_intersect_key($dados, array_flip(['sequencia', 'etapa', 'atividade_em', 'processo_ativo', 'acao', 'acao_em', 'fala', 'acoes']));
+            foreach (['acao', 'fala'] as $campo) {
+                if (isset($progresso[$campo])) {
+                    $progresso[$campo] = Str::limit(ProtecaoDeSegredos::texto($progresso[$campo]), 200);
+                }
+            }
+            $e->update(['progresso' => $progresso, 'progresso_em' => now()]);
         });
     }
 
@@ -113,7 +123,10 @@ class ProgressoService
         $atividade = ! empty($p['atividade_em']) ? 'Última saída do processo há '.$this->tempo(Carbon::parse($p['atividade_em'])).'.' : 'O processo ainda não informou saída.';
         $processo = ($p['processo_ativo'] ?? null) === true ? 'Processo do agente ativo.'
             : (($p['processo_ativo'] ?? null) === false ? 'Processo do agente encerrado.' : 'Processo do agente ainda não iniciado.');
-        return "$cabecalho\nEm execução há {$tempo}: {$etapa}. {$processo} {$atividade} Confirmação do runner há ".$this->tempo($e->progresso_em).'.';
+        $acao = ! empty($p['acao']) ? "\nÚltima ação: {$p['acao']}".(! empty($p['acao_em']) ? ' (há '.$this->tempo(Carbon::parse($p['acao_em'])).')' : '')
+            .(! empty($p['acoes']) ? " · {$p['acoes']} ações até agora" : '').'.' : '';
+        $fala = ! empty($p['fala']) ? "\nO agente disse: “{$p['fala']}”" : '';
+        return "$cabecalho\nEm execução há {$tempo}: {$etapa}. {$processo} {$atividade} Confirmação do runner há ".$this->tempo($e->progresso_em).'.'.$acao.$fala;
     }
 
     public function resumo(User $user, ?string $projeto = null, ?int $tarefa = null): string

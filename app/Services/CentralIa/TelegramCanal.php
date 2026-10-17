@@ -334,13 +334,13 @@ class TelegramCanal
     private function receberMidia(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $texto, int $updateId, array $midia): void
     {
         if (($midia['file_size'] ?? 0) > AnexosService::MAX_BYTES || ! is_string($midia['file_id'] ?? null)) {
-            throw ValidationException::withMessages(['arquivo' => 'O arquivo deve ter até 20 MB.']);
+            throw ValidationException::withMessages(['arquivo' => 'O arquivo deve ter até 12 MB.']);
         }
         $this->responder($chatId, 'Arquivo recebido. Estou baixando para analisar…');
         $tmp = tempnam(sys_get_temp_dir(), 'central-ia-');
         try {
             if (! $this->atual->baixar($midia['file_id'], $tmp)) {
-                throw ValidationException::withMessages(['arquivo' => 'Não consegui baixar o arquivo. Reenvie um arquivo de até 20 MB.']);
+                throw ValidationException::withMessages(['arquivo' => 'Não consegui baixar o arquivo. Reenvie um arquivo de até 12 MB.']);
             }
             $this->atual->verificarConsumidor();
             $anexo = app(AnexosService::class)->guardar($user,

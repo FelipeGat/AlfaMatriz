@@ -277,11 +277,11 @@ Removidos em 13/10/2026, na revisão para produção: `tools/central-ia/referenc
 
 ### Tarefa 9 — anexos e atividade (Codex, 11/10/2026)
 
-- Web: Anexar, colar captura ou arrastar; JPG/PNG/WebP/PDF/MP4/WebM/MOV, até cinco arquivos de 20 MB cada, upload sequencial e reenvio com UUID.
+- Web: Anexar, colar captura ou arrastar; JPG/PNG/WebP/PDF/MP4/WebM/MOV, texto (TXT/MD/CSV/TSV/JSON/LOG) e documentos (DOC/DOCX/XLS/XLSX/PPT/PPTX/ODT/ODS/ODP/RTF), até cinco arquivos de 12 MB cada (o limite do PHP de produção), upload sequencial e reenvio com UUID.
 - Arquivos no disco `local`, privados por dono, inclusive no download pelo runner. Vinculação transacional à mensagem e hash SHA-256.
 - Telegram recebe foto/documento/vídeo com legenda opcional, confirma o download e renova `typing` com leitura curta (3 s). Um consumidor continua obrigatório.
 - Tela distingue fila, execução e máquina offline, com tempo decorrido. Isso dá feedback durante a espera; não garante resposta completa mais rápida do modelo.
-- Runner precisa de `anexos.mjs` ao lado do `central-ia-runner.mjs` e da imagem `alfamatriz-central-media:local` (Dockerfile em `deploy/central-ia/media`).
+- Runner precisa de `anexos.mjs` ao lado do `central-ia-runner.mjs` e da imagem `alfamatriz-central-media:local` (Dockerfile em `deploy/central-ia/media`); documentos de escritório usam `alfamatriz-central-office:local` (`deploy/central-ia/office`).
 - PDF: texto até 50 mil caracteres por arquivo e imagens das primeiras oito páginas. Vídeo: até doze quadros distribuídos pela duração; sem transcrição do áudio. Codex recebe as imagens via `--image`, inclusive ao retomar sessão.
 - Conversores rodam sem rede, sem privilégios e com memória/CPU limitadas. Mídias temporárias são removidas ao fim da execução.
 - Teste: `node tools/central-ia/test-anexos.mjs`; testes PHP em `tests/Feature/CentralIa/AnexosTest.php`. Especificação em `docs/specs/central-ia-interacao-anexos/`.

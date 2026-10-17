@@ -17,11 +17,54 @@ class AnexosService
     public const MAX_BYTES = 12 * 1024 * 1024;
     public const MIMES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'video/mp4', 'video/webm', 'video/quicktime'];
 
+    /**
+     * Texto e documentos de escritório (dono, 17/10/2026: "tenho que
+     * conseguir importar txt, pdf, doc, xls, csv, ppt"). Valem pelo PAR
+     * extensão + tipo real: o finfo sozinho não separa csv de txt nem docx de
+     * zip, e a extensão sozinha deixaria um executável entrar como .doc. O
+     * MIME guardado é o canônico da extensão, que é o que o runner reconhece.
+     * Formatos com macro (docm, xlsm, pptm) ficam fora de propósito.
+     */
+    public const DOCUMENTOS = [
+        'txt' => 'text/plain', 'md' => 'text/markdown', 'csv' => 'text/csv', 'tsv' => 'text/tab-separated-values',
+        'json' => 'application/json', 'log' => 'text/plain', 'rtf' => 'application/rtf',
+        'doc' => 'application/msword', 'xls' => 'application/vnd.ms-excel', 'ppt' => 'application/vnd.ms-powerpoint',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'odt' => 'application/vnd.oasis.opendocument.text', 'ods' => 'application/vnd.oasis.opendocument.spreadsheet',
+        'odp' => 'application/vnd.oasis.opendocument.presentation',
+    ];
+
+    public const MENSAGEM_TIPOS = 'Envie imagem (JPG, PNG, WebP), PDF, vídeo (MP4, WebM, MOV), texto (TXT, MD, CSV, TSV, JSON, LOG) ou documento (DOC, DOCX, XLS, XLSX, PPT, PPTX, ODT, ODS, ODP, RTF) de até 12 MB.';
+
+    /** O tipo a guardar, ou null se o par extensão + conteúdo não fecha. */
+    public static function tipo(string $nome, string $detectado): ?string
+    {
+        if (in_array($detectado, self::MIMES, true)) {
+            return $detectado;
+        }
+        $ext = strtolower(pathinfo($nome, PATHINFO_EXTENSION));
+        $canonico = self::DOCUMENTOS[$ext] ?? null;
+        $aceitos = match (true) {
+            $canonico === null => [],
+            in_array($ext, ['txt', 'md', 'csv', 'tsv', 'json', 'log'], true) => null, // qualquer text/*
+            $ext === 'rtf' => ['text/rtf', 'application/rtf'],
+            in_array($ext, ['doc', 'xls', 'ppt'], true) => [$canonico, 'application/CDFV2', 'application/x-ole-storage', 'application/vnd.ms-office'],
+            // OOXML e ODF são zip; libmagic antigo não olha dentro.
+            default => [$canonico, 'application/zip'],
+        };
+        $ok = $aceitos === null
+            ? str_starts_with($detectado, 'text/') || in_array($detectado, ['application/json', 'application/csv'], true)
+            : in_array($detectado, $aceitos, true);
+        return $ok ? $canonico : null;
+    }
+
     public function guardar(User $user, UploadedFile $arquivo, string $id): CentralIaAnexo
     {
-        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($arquivo->getRealPath());
-        if (! in_array($mime, self::MIMES, true) || $arquivo->getSize() > self::MAX_BYTES || $arquivo->getSize() < 1) {
-            throw ValidationException::withMessages(['arquivo' => 'Envie JPG, PNG, WebP, PDF, MP4, WebM ou MOV de até 12 MB.']);
+        $mime = self::tipo($arquivo->getClientOriginalName(), (string) (new \finfo(FILEINFO_MIME_TYPE))->file($arquivo->getRealPath()));
+        if (! $mime || $arquivo->getSize() > self::MAX_BYTES || $arquivo->getSize() < 1) {
+            throw ValidationException::withMessages(['arquivo' => self::MENSAGEM_TIPOS]);
         }
         $hash = hash_file('sha256', $arquivo->getRealPath());
         // Trava por conta: reenvios simultâneos não sobrescrevem o arquivo.

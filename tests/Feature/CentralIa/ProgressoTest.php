@@ -110,6 +110,25 @@ class ProgressoTest extends TestCase
         $this->assertSame('agente', $e->fresh()->progresso['etapa']);
     }
 
+    public function test_ultima_acao_e_fala_aparecem_mascaradas_e_campo_estranho_fica_fora(): void
+    {
+        $this->freezeTime(); $u = $this->pessoa(); $e = $this->pedir($u);
+        app(AgentesService::class)->proxima($u, CentralIaRunner::where('user_id', $u->id)->first());
+        Sanctum::actingAs($u, ['central-ia-runner']);
+        $dados = ['maquina' => 'wsl', 'sequencia' => 1, 'etapa' => 'comando', 'processo_ativo' => true, 'atividade_em' => now()->toIso8601String(),
+            'acao' => 'rodando: curl -H "Authorization: Bearer abcdefghijklmnop1234" https://x', 'acao_em' => now()->subSeconds(20)->toIso8601String(),
+            'fala' => 'Vou conferir o filtro do inventário.', 'acoes' => 7, 'saida' => 'SAIDA-BRUTA'];
+        $this->postJson(route('central-ia.runner.progresso', $e->id), $dados)->assertOk();
+        $p = $e->fresh()->progresso;
+        $this->assertStringNotContainsString('abcdefghijklmnop1234', $p['acao']);
+        $this->assertArrayNotHasKey('saida', $p);
+        $texto = app(ProgressoService::class)->texto($e->fresh());
+        $this->assertStringContainsString('Última ação: rodando: curl', $texto);
+        $this->assertStringContainsString('(há 20 s) · 7 ações até agora', $texto);
+        $this->assertStringContainsString('O agente disse: “Vou conferir o filtro do inventário.”', $texto);
+        $this->postJson(route('central-ia.runner.progresso', $e->id), array_replace($dados, ['sequencia' => 2, 'acao' => str_repeat('x', 201)]))->assertUnprocessable();
+    }
+
     public function test_consulta_web_direta_idempotente_e_privada_nao_gasta_execucao(): void
     {
         $u = $this->pessoa(); $e = $this->pedir($u);

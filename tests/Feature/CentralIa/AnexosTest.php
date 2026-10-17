@@ -66,6 +66,31 @@ class AnexosTest extends TestCase
         $this->assertSame(0, CentralIaAnexo::count());
     }
 
+    public function test_texto_e_documentos_entram_pelo_par_extensao_e_conteudo(): void
+    {
+        $u = $this->pessoa();
+        $zip = tempnam(sys_get_temp_dir(), 'docx'); $z = new \ZipArchive(); $z->open($zip, \ZipArchive::OVERWRITE);
+        $z->addFromString('[Content_Types].xml', '<Types/>'); $z->addFromString('word/document.xml', '<w:document/>'); $z->close();
+        $casos = [
+            ['notas.md', "# Notas\nconteúdo", 'text/markdown'],
+            ['dados.csv', "a,b\n1,2\n", 'text/csv'],
+            ['log.txt', "linha 1\nlinha 2\n", 'text/plain'],
+            ['relatorio.docx', file_get_contents($zip), 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        ];
+        foreach ($casos as [$nome, $conteudo, $mime]) {
+            $this->actingAs($u)->post(route('central-ia.anexos.criar'), ['arquivo' => UploadedFile::fake()->createWithContent($nome, $conteudo),
+                'client_id' => (string) Str::uuid()], ['Accept' => 'application/json'])->assertCreated();
+            $this->assertSame($mime, CentralIaAnexo::where('nome', $nome)->value('mime'), $nome);
+        }
+        // Executável disfarçado de documento, macro e extensão fora da lista.
+        foreach ([['planilha.xls', "\x7fELF\x02\x01\x01".str_repeat("\0", 60)], ['macro.docm', file_get_contents($zip)], ['pagina.html', '<html></html>']] as [$nome, $conteudo]) {
+            $this->actingAs($u)->post(route('central-ia.anexos.criar'), ['arquivo' => UploadedFile::fake()->createWithContent($nome, $conteudo),
+                'client_id' => (string) Str::uuid()], ['Accept' => 'application/json'])->assertUnprocessable();
+        }
+        $this->assertSame(4, CentralIaAnexo::count());
+        @unlink($zip);
+    }
+
     public function test_upload_idempotente_nao_sobrescreve_conteudo(): void
     {
         $u = $this->pessoa(); $file = UploadedFile::fake()->image('tela.png'); $id = (string) Str::uuid();
