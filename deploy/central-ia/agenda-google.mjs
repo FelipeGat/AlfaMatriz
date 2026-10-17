@@ -40,7 +40,9 @@ export async function lerAgenda(config, { executar = exec } = {}) {
         const d = lerSaida(stdout);
         return d ? { ok: true, ...d } : { ok: false, erro: 'saída do exportador sem a agenda' };
     } catch (e) {
-        return { ok: false, erro: e.killed ? 'o exportador passou do tempo' : 'o exportador falhou' };
+        // O motivo vai ao log da máquina (código e a última linha de erro), nunca ao servidor.
+        const motivo = [e.code, String(e.stderr || '').trim().split(/\r?\n/).pop()].filter(Boolean).join(' · ').slice(0, 200);
+        return { ok: false, erro: (e.killed ? 'o exportador passou do tempo' : 'o exportador falhou') + (motivo ? ' — ' + motivo : '') };
     }
 }
 

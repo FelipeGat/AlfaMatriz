@@ -44,7 +44,9 @@ export async function lerGestor(config, { executar = exec } = {}) {
         const blocos = lerSaida(stdout);
         return blocos ? { ok: true, blocos } : { ok: false, erro: 'saída da ponte sem o retrato' };
     } catch (e) {
-        return { ok: false, erro: (e.killed ? 'a ponte passou do tempo' : 'a ponte falhou') };
+        // O motivo vai ao log da máquina (código e a última linha de erro), nunca ao servidor.
+        const motivo = [e.code, String(e.stderr || '').trim().split(/\r?\n/).pop()].filter(Boolean).join(' · ').slice(0, 200);
+        return { ok: false, erro: (e.killed ? 'a ponte passou do tempo' : 'a ponte falhou') + (motivo ? ' — ' + motivo : '') };
     }
 }
 
