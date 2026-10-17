@@ -315,7 +315,6 @@
                 <p class="px-1 text-[11px] text-ink-faint">Um chat por assunto. Qualquer IA que atender já sabe o histórico e a memória dele.</p>
                 <button type="button" x-show="!novoAssunto" @click="novoAssunto = { titulo: '', grupo_id: '', projeto: '', salvando: false }; $nextTick(() => document.getElementById('central-novo-assunto')?.focus())"
                         class="rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand">+ Novo assunto</button>
-                <button type="button" x-show="!novoAssunto" @click="abrirTrazer()" class="rounded-control border border-btn-line px-3 py-1.5 text-xs font-semibold text-ink">Trazer do VS Code</button>
                 <form x-show="novoAssunto" x-cloak @submit.prevent="criarAssunto()" class="space-y-1.5 rounded-control border border-line p-2">
                     <label class="sr-only" for="central-novo-assunto">Nome do assunto</label>
                     <input id="central-novo-assunto" type="text" maxlength="120" x-bind:value="novoAssunto?.titulo ?? ''" @input="novoAssunto.titulo = $event.target.value" placeholder="Ex.: Comercial VixCard"
@@ -391,56 +390,6 @@
                         </span>
                     </div>
                     <img :src="imagemAberta?.url" :alt="imagemAberta?.caminho" class="max-h-[85vh] max-w-full rounded-control border border-line bg-panel object-contain" @click.stop>
-                </div>
-                {{-- Trazer do VS Code (Chats Business): a última semana das conversas marcadas vira a memória do chat novo. --}}
-                <div x-show="trazendo" x-cloak @keydown.escape.window="trazendo = null" @click.self="trazendo = null"
-                     class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="central-trazer-titulo">
-                    <form @submit.prevent="trazerDoVsCode()" class="flex max-h-[90vh] w-full max-w-2xl flex-col gap-3 rounded-panel border border-line bg-panel p-4">
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <h3 id="central-trazer-titulo" class="font-display text-base font-semibold text-ink">Trazer do VS Code</h3>
-                                <p class="text-xs text-ink-mute">Marque uma ou mais conversas do mesmo assunto. Uma IA no nível econômico lê a última semana delas e monta a memória do chat: onde fica cada coisa, em que etapa está, decisões e pendências. Nada é alterado no VS Code.</p>
-                            </div>
-                            <button type="button" @click="trazendo = null" class="flex-none rounded-control border border-line px-2 py-1 text-xs text-ink-mute">✕ Fechar</button>
-                        </div>
-                        <div class="min-h-0 flex-1 space-y-1 overflow-y-auto rounded-control border border-line p-1">
-                            <p x-show="!conversasDoVsCode.length" class="p-2 text-xs text-ink-mute">Nenhuma conversa do Claude ou do Codex informada pela sua máquina.</p>
-                            <template x-for="s in conversasDoVsCode" :key="s.agente + s.id">
-                                <label class="flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 hover:bg-chip" :class="trazendo?.ids.includes(s.id) ? 'bg-nav-active' : ''">
-                                    <input type="checkbox" :checked="trazendo?.ids.includes(s.id)" @change="marcarConversa(s)" class="rounded border-line text-brand">
-                                    <span class="min-w-0 flex-1">
-                                        <span class="block truncate text-sm font-semibold text-ink" x-text="s.titulo || '(sem nome) ' + s.id.slice(0, 8)"></span>
-                                        <span class="block text-[11px] text-ink-faint" x-text="s.nome + ' · ' + (s.projeto || 'raiz dos projetos') + ' · ' + haQuanto(s.ultima_atividade) + (s.origem === 'mac_copia' ? ' · cópia do Mac' : '')"></span>
-                                    </span>
-                                    <span x-show="s.semeada_em" class="flex-none rounded-badge border border-line px-1 text-[11px] text-ink-mute" x-text="'já no chat #' + s.semeada_em"></span>
-                                </label>
-                            </template>
-                        </div>
-                        <div class="grid gap-2 sm:grid-cols-3">
-                            <label class="text-xs text-ink-mute sm:col-span-3">Nome do chat
-                                <input type="text" maxlength="120" :value="trazendo?.titulo ?? ''" @input="trazendo.titulo = $event.target.value; trazendo.nomeTocado = true"
-                                       class="mt-1 w-full rounded-control border-line bg-input py-1.5 text-sm text-ink focus:border-brand focus:ring-brand" placeholder="Ex.: Comercial VixCard">
-                            </label>
-                            <label class="text-xs text-ink-mute">Grupo
-                                <select @change="trazendo.grupo_id = $event.target.value" class="mt-1 w-full rounded-control border-line bg-input py-1.5 text-xs text-ink">
-                                    <option value="" :selected="!trazendo?.grupo_id">Sem grupo</option>
-                                    <template x-for="g in grupos" :key="g.id"><option :value="g.id" :selected="String(trazendo?.grupo_id) === String(g.id)" x-text="g.nome"></option></template>
-                                </select>
-                            </label>
-                            <label class="text-xs text-ink-mute sm:col-span-2">Projeto (opcional)
-                                <select @change="trazendo.projeto = $event.target.value" class="mt-1 w-full rounded-control border-line bg-input py-1.5 text-xs text-ink">
-                                    <option value="">Sem projeto (pastas de ~/projetos)</option>
-                                    <template x-for="p in maquina.projetos" :key="p"><option :value="p" x-text="p"></option></template>
-                                </select>
-                            </label>
-                        </div>
-                        <div class="flex justify-end gap-2">
-                            <button type="button" @click="trazendo = null" class="rounded-control border border-line px-3 py-1.5 text-xs text-ink-mute">Cancelar</button>
-                            <button type="submit" :disabled="!trazendo?.ids.length || !trazendo?.titulo.trim() || trazendo?.salvando"
-                                    class="rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand disabled:opacity-50"
-                                    x-text="trazendo?.salvando ? 'Criando…' : 'Criar chat e trazer a última semana'"></button>
-                        </div>
-                    </form>
                 </div>
                 {{-- Business sem assunto escolhido: nada de mostrar a conversa Geral por baixo. --}}
                 <div x-show="tela === 'business' && !assuntoAtual" x-cloak class="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-2 bg-panel p-6 text-center">
@@ -713,6 +662,11 @@
                                 <input type="file" class="sr-only" multiple accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/webm,video/quicktime"
                                        :disabled="!!aba.pendente || bloqueado || !podeEnviar" @change="escolherArquivos($event.target.files); $event.target.value = ''">
                             </label>
+                            {{-- Recolher a caixa: com texto longo, a conversa acima continua legível. --}}
+                            <button type="button" @click="alternarCaixa()" :aria-pressed="caixaRecolhida.toString()"
+                                    class="font-semibold text-ink-mute hover:text-ink"
+                                    :title="caixaRecolhida ? 'Mostrar a caixa inteira' : 'Recolher a caixa para ler a conversa acima'"
+                                    x-text="caixaRecolhida ? '⤢ Expandir caixa' : '⤡ Recolher caixa'"></button>
                             {{-- Para onde vai a mensagem: chat da tela ou novo (o #19 nasceu sem ninguém ver). --}}
                             <span class="min-w-0 truncate text-ink-faint" :class="destinoDaMensagem ? '' : 'font-semibold text-warn'" x-text="rotuloDoDestino" :title="rotuloDoDestino"></span>
 
@@ -731,7 +685,7 @@
                         </div>
                         <div class="flex items-end gap-2">
                             <label for="central-rascunho" class="sr-only">Sua mensagem</label>
-                            {{-- Cresce com o texto até 40% da tela; depois rola por dentro. --}}
+                            {{-- Cresce com o texto até 40% da tela (ou 2 linhas, recolhida); depois rola por dentro. --}}
                             <textarea @paste="colar($event)" id="central-rascunho" x-model="aba.rascunho" maxlength="{{ config('central_ia.max_texto') }}" rows="2"
                                       @input="crescer($el)" x-effect="aba.rascunho; $nextTick(() => crescer($el))"
                                       :readonly="!!aba.pendente" :disabled="bloqueado || !podeEnviar"
