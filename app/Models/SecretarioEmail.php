@@ -12,11 +12,11 @@ class SecretarioEmail extends Model
     protected $table = 'secretario_emails';
 
     protected $fillable = ['user_id', 'conta_id', 'pasta', 'uidvalidity', 'uid', 'message_id', 'responde_a', 'de_nome', 'de_email', 'assunto',
-        'recebido_em', 'tipo', 'urgencia', 'pede_retorno', 'enviado', 'respondido'];
+        'recebido_em', 'tipo', 'urgencia', 'pede_retorno', 'enviado', 'respondido', 'lido'];
 
     protected function casts(): array
     {
-        return ['recebido_em' => 'datetime', 'pede_retorno' => 'boolean', 'enviado' => 'boolean', 'respondido' => 'boolean'];
+        return ['recebido_em' => 'datetime', 'pede_retorno' => 'boolean', 'enviado' => 'boolean', 'respondido' => 'boolean', 'lido' => 'boolean'];
     }
 
     public function scopeDe(Builder $query, User $user): Builder

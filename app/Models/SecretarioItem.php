@@ -25,7 +25,7 @@ class SecretarioItem extends Model
 
     protected $fillable = [
         'user_id', 'tipo', 'titulo', 'descricao', 'quando', 'so_data', 'fuso', 'antecedencia_min', 'prioridade',
-        'status', 'recorrencia', 'origem', 'origem_ref', 'concluido_em', 'cancelado_em',
+        'status', 'recorrencia', 'origem', 'origem_ref', 'concluido_em', 'cancelado_em', 'empresa',
     ];
 
     protected function casts(): array

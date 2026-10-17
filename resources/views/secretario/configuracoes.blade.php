@@ -168,5 +168,6 @@
             </p>
             <p class="mt-1 text-[12px] text-ink-mute">A máquina lê o Gestor pela ponte de produção, só leitura (o script recusa gravar e abre o banco em modo leitura), de hora em hora e antes do briefing.</p>
         </x-painel>
+        @include('secretario._regras')
     </div>
 </x-app-layout>

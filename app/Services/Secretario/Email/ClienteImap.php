@@ -89,6 +89,12 @@ class ClienteImap
         return $this->buscar('UID SEARCH SINCE '.$data->format('j-M-Y'));
     }
 
+    /** @return list<int> UIDs NÃO lidos desde a data — só pergunta; a marca não muda (pasta aberta com EXAMINE). */
+    public function naoLidosDesde(\DateTimeInterface $data): array
+    {
+        return $this->buscar('UID SEARCH UNSEEN SINCE '.$data->format('j-M-Y'));
+    }
+
     /** @return list<int> UIDs depois de $ultimo. */
     public function depoisDe(int $ultimo): array
     {

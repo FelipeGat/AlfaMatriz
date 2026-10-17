@@ -50,6 +50,10 @@ class ImapFalso implements TransporteImap
             $this->saida[] = '* OK [UIDVALIDITY '.$p['uidvalidity'].'] ok';
             $this->saida[] = "{$tag} OK [READ-ONLY] EXAMINE";
             $this->atual = $m[1];
+        } elseif (preg_match('/^UID SEARCH UNSEEN SINCE .+$/', $cmd)) {
+            $uids = array_keys(array_filter($this->pastas[$this->atual]['mensagens'], fn ($msg) => ! ($msg['lida'] ?? false)));
+            $this->saida[] = '* SEARCH '.implode(' ', $uids);
+            $ok();
         } elseif (preg_match('/^UID SEARCH (SINCE .+|UID (\d+):\*)$/', $cmd, $m)) {
             $uids = array_keys($this->pastas[$this->atual]['mensagens']);
             if (isset($m[2])) {

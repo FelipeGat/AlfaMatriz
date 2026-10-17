@@ -87,6 +87,13 @@ Schedule::command('secretario:acompanhar')
     ->withoutOverlapping()
     ->onOneServer();
 
+// "Lá fora" do Meu Dia (docs/specs/secretario-central-do-dia): dólar, clima,
+// Flamengo e notícias de fontes públicas, para o cache. Só GET.
+Schedule::command('secretario:la-fora')
+    ->everyThirtyMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Reuniões do Secretário (docs/specs/secretario-reunioes): transcrição presa há
 // mais de 60 min volta para a fila; na 3ª tentativa falha e o áudio é apagado.
 Schedule::command('secretario:reunioes')

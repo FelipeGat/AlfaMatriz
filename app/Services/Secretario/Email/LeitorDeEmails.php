@@ -17,6 +17,7 @@ use RuntimeException;
 class LeitorDeEmails
 {
     public const DIAS_PRIMEIRA = 3;
+    public const DIAS_NAO_LIDOS = 3;
     public const DIAS_GUARDA = 30;
     public const MAX_POR_VEZ = 300;
 
@@ -74,6 +75,16 @@ class LeitorDeEmails
                     } catch (UniqueConstraintViolationException) {
                         // Já lida (rodada concorrente ou repetição): segue.
                     }
+                }
+                // Etapa 8: não lidos dos últimos dias. Só a entrada; a marca é do
+                // servidor e só é consultada (UNSEEN), nunca alterada.
+                if (! $enviados) {
+                    $desde = CarbonImmutable::now()->subDays(self::DIAS_NAO_LIDOS);
+                    $naoLidos = $c->naoLidosDesde($desde);
+                    $recentes = SecretarioEmail::where('conta_id', $conta->id)->where('pasta', $pasta)->where('uidvalidity', $info['uidvalidity'])
+                        ->where('recebido_em', '>=', $desde->startOfDay());
+                    (clone $recentes)->whereIn('uid', $naoLidos ?: [0])->update(['lido' => false]);
+                    (clone $recentes)->whereNotIn('uid', $naoLidos ?: [0])->update(['lido' => true]);
                 }
                 // UIDVALIDITY mudou (caixa recriada): a posição antiga não vale mais.
                 $base = $pos && (int) $pos['uidvalidity'] === $info['uidvalidity'] ? (int) $pos['ultimo_uid'] : 0;

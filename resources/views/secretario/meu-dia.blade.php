@@ -32,6 +32,8 @@
             <p class="rounded-panel border border-warn-line bg-warn-tint px-4 py-2.5 text-[13px] text-warn">O Telegram não está ligado à Central: os lembretes chegam só no sino. Ligue em Central de IA → Ajustes → Telegram.</p>
         @endunless
 
+        @include('secretario._la-fora')
+
         {{-- Briefing de hoje (Etapa 3): recolhível; o estado fica no navegador. --}}
         <template x-if="dados.briefing">
             <section class="rounded-panel border border-line bg-subtle">

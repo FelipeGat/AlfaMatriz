@@ -115,6 +115,28 @@ class SecretarioGoogleController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /**
+     * Eventos do calendário (Etapa 8, "igual ao Gestor"): lista plana de um
+     * intervalo de até 42 dias — a tela monta Dia, Semana e Mês com ela.
+     */
+    public function eventos(Request $request, AgendaConsolidada $agenda): JsonResponse
+    {
+        $d = $request->validate(['de' => ['required', 'date_format:Y-m-d'], 'ate' => ['required', 'date_format:Y-m-d', 'after_or_equal:de']]);
+        $de = CarbonImmutable::parse($d['de'])->startOfDay();
+        $ate = CarbonImmutable::parse($d['ate'])->endOfDay();
+        abort_if($de->diffInDays($ate) > 42, 422, 'Intervalo grande demais.');
+        $situacao = $agenda->situacaoGoogle($request->user());
+
+        return response()->json([
+            'eventos' => $agenda->periodo($request->user(), $de, $ate)->map(fn ($x) => [
+                'titulo' => $x['titulo'], 'origem' => $x['origem'], 'origem_rotulo' => $x['origem_rotulo'],
+                'inicio' => $x['inicio']->format('Y-m-d\TH:i'), 'fim' => $x['fim']?->format('Y-m-d\TH:i'),
+                'dia_inteiro' => (bool) $x['dia_inteiro'], 'conflito' => (bool) $x['conflito'], 'link' => $x['link'],
+            ])->values(),
+            'google' => ['estado' => $situacao['estado'], 'aviso' => $agenda->aviso($situacao)],
+        ])->header('Cache-Control', 'no-store, private');
+    }
+
     /** Secretário → Agenda: a visão consolidada (spec US2). `?formato=json` para a tela. */
     public function visao(Request $request, AgendaConsolidada $agenda): View|JsonResponse
     {

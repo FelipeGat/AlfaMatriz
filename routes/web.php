@@ -208,6 +208,7 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         Route::put('configuracoes', [\App\Http\Controllers\SecretarioController::class, 'salvarConfiguracoes'])->name('configuracoes.salvar')->middleware('permissao:secretario,editar');
         // Etapa 2 (docs/specs/secretario-agenda): agenda consolidada e a conta Google da própria pessoa.
         Route::get('agenda', [\App\Http\Controllers\SecretarioGoogleController::class, 'visao'])->name('agenda')->middleware('permissao:secretario,ler');
+        Route::get('agenda/eventos', [\App\Http\Controllers\SecretarioGoogleController::class, 'eventos'])->name('agenda.eventos')->middleware('permissao:secretario,ler');
         Route::get('google/conectar', [\App\Http\Controllers\SecretarioGoogleController::class, 'conectar'])->name('google.conectar')->middleware('permissao:secretario,editar');
         Route::get('google/retorno', [\App\Http\Controllers\SecretarioGoogleController::class, 'retorno'])->name('google.retorno')->middleware('permissao:secretario,editar');
         Route::post('google/desconectar', [\App\Http\Controllers\SecretarioGoogleController::class, 'desconectar'])->name('google.desconectar')->middleware('permissao:secretario,editar');
@@ -238,6 +239,8 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         Route::get('acompanhamentos', [$ac, 'index'])->name('acompanhamentos')->middleware('permissao:secretario,ler');
         Route::put('acompanhamentos/regras', [$ac, 'salvarRegras'])->name('acompanhamentos.regras')->middleware('permissao:secretario,editar');
         Route::post('acompanhamentos/{acompanhamento}/resolver', [$ac, 'resolver'])->whereNumber('acompanhamento')->name('acompanhamentos.resolver')->middleware('permissao:secretario,editar');
+        Route::post('acompanhamentos/pontos', [$ac, 'lancarPonto'])->name('acompanhamentos.pontos')->middleware('permissao:secretario,incluir');
+        Route::post('acompanhamentos/pontos/{item}/concluir', [$ac, 'concluirPonto'])->whereNumber('item')->name('acompanhamentos.pontos.concluir')->middleware('permissao:secretario,editar');
         Route::post('acompanhamentos/{acompanhamento}/adiar', [$ac, 'adiar'])->whereNumber('acompanhamento')->name('acompanhamentos.adiar')->middleware('permissao:secretario,editar');
     });
 

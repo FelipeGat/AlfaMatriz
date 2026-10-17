@@ -57,7 +57,10 @@ class AgendaGoogleTest extends TestCase
         $livres = array_map(fn ($l) => $l[0]->format('H:i').'–'.$l[1]->format('H:i'), app(AgendaConsolidada::class)->livres($itens, $dia));
         $this->assertSame(['08:00–10:00', '11:30–14:30', '15:30–18:00'], $livres);
 
-        $this->actingAs($u)->get(route('secretario.agenda'))->assertOk()->assertSee('Visita Condonal')->assertSee('Google · VixCard')->assertSee('conflito');
+        // Etapa 8: a tela é calendário; os eventos vêm do JSON do intervalo.
+        $this->actingAs($u)->get(route('secretario.agenda'))->assertOk();
+        $this->getJson(route('secretario.agenda.eventos', ['de' => $dia->format('Y-m-d'), 'ate' => $dia->format('Y-m-d')]))->assertOk()
+            ->assertJsonPath('eventos.3.titulo', 'Visita Condonal')->assertJsonPath('eventos.3.origem_rotulo', 'Google · VixCard')->assertJsonPath('eventos.1.conflito', true);
     }
 
     public function test_casos_de_conflito_e_livre(): void

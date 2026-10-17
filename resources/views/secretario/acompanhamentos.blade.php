@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="titulo">Acompanhamentos</x-slot>
-    <x-slot name="contexto"><span>por regra, sem IA · só o que pede ação</span></x-slot>
+    <x-slot name="contexto"><span>central de gestão · Grupo Soluções e VixCard</span></x-slot>
 
     {{-- Etapa 7 (docs/specs/secretario-acompanhamento). A lista é o que o motor
          achou na última conferência (a cada 5 min); o resumo no sino e no
@@ -10,10 +10,101 @@
         $campo = 'rounded-control border border-btn-line bg-surface px-2 py-1.5 text-[13px] text-ink focus:border-brand focus:outline-none';
         $botao = 'h-[30px] rounded-control border border-btn-line px-2.5 text-[12px] font-semibold text-ink-dim hover:border-brand hover:text-brand';
     @endphp
-    <div class="mx-auto w-full max-w-3xl space-y-4">
+    <div class="mx-auto w-full max-w-5xl space-y-4">
         @if (session('status'))
             <x-aviso>{{ session('status') }}</x-aviso>
         @endif
+        {{-- Etapa 8 (docs/specs/secretario-central-do-dia): a Central de gestão. --}}
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+            @foreach ([
+                ['Compromissos hoje', $numeros['compromissos'], route('secretario.agenda')],
+                ['E-mails não lidos (3 dias)', $numeros['nao_lidos'], route('secretario.emails.index', ['ver' => 'todas'])],
+                ['Tarefas vencidas', $numeros['vencidas'], route('secretario.meu-dia')],
+                ['Alertas ativos', $numeros['alertas'], '#alertas'],
+            ] as [$rotulo, $n, $link])
+                <a href="{{ $link }}" class="rounded-panel border border-line bg-subtle px-4 py-3 hover:border-brand">
+                    <p class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">{{ $rotulo }}</p>
+                    <p class="mt-1 font-display text-[24px] font-semibold {{ $n > 0 && $rotulo === 'Tarefas vencidas' ? 'text-crit' : 'text-ink' }}">{{ $n }}</p>
+                </a>
+            @endforeach
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div id="grupo_solucoes" class="scroll-mt-20">
+                <x-painel :titulo="'Grupo Soluções'.($gestor ? ' · Gestor lido às '.$gestor['lido_em']->format('H:i') : '')" solto>
+                    @if (! $gestor)
+                        <p class="px-4 py-3 text-[13px] text-ink-mute">Sua máquina ainda não leu o Gestor (a leitura é de hora em hora).</p>
+                    @else
+                        @if ($gestor['velho'])
+                            <p class="border-b border-line bg-warn-tint px-4 py-2 text-[12.5px] text-warn">Retrato de {{ $gestor['lido_em']->format('d/m H:i') }}: desatualizado. Confira se a sua máquina está ligada.</p>
+                        @endif
+                        <ul class="divide-y divide-line">
+                            @foreach ($gestor['blocos'] as $b)
+                                <li class="px-4 py-2.5" x-data="{ aberto: false }">
+                                    <button type="button" @click="aberto = !aberto" class="flex w-full items-baseline gap-2 text-left">
+                                        <span class="font-display text-[18px] font-semibold {{ $b['quantidade'] > 0 ? 'text-ink' : 'text-ink-faint' }}">{{ $b['quantidade'] }}</span>
+                                        <span class="min-w-0 flex-1 text-[13px] text-ink">{{ $b['rotulo'] }}</span>
+                                        @if (! empty($b['valor']))<span class="whitespace-nowrap font-mono text-[12px] text-ink-dim">R$ {{ number_format($b['valor'], 2, ',', '.') }}</span>@endif
+                                        @if ($b['itens'])<span class="text-[11px] text-ink-faint" x-text="aberto ? '▲' : '▼'"></span>@endif
+                                    </button>
+                                    @if ($b['itens'])
+                                        <ul x-show="aberto" x-cloak class="mt-1.5 space-y-1 pl-7 text-[12.5px] text-ink-dim">
+                                            @foreach ($b['itens'] as $it)
+                                                <li>{{ $it['texto'] }}@if (! empty($it['data'])) <span class="text-ink-faint">· {{ \Carbon\Carbon::parse($it['data'])->format('d/m') }}</span>@endif</li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
+                                </li>
+                            @endforeach
+                            @foreach ($pontos['grupo_solucoes'] as $i)
+                                @include('secretario._ponto', ['i' => $i])
+                            @endforeach
+                        </ul>
+                    @endif
+                    @if (! $gestor && $pontos['grupo_solucoes']->isNotEmpty())
+                        <ul class="divide-y divide-line border-t border-line">
+                            @foreach ($pontos['grupo_solucoes'] as $i)
+                                @include('secretario._ponto', ['i' => $i])
+                            @endforeach
+                        </ul>
+                    @endif
+                </x-painel>
+            </div>
+            <div id="vixcard" class="scroll-mt-20">
+                <x-painel :titulo="'VixCard · '.$pontos['vixcard']->count().' ponto(s) em aberto'" solto>
+                    <ul class="divide-y divide-line">
+                        @forelse ($pontos['vixcard'] as $i)
+                            @include('secretario._ponto', ['i' => $i])
+                        @empty
+                            <li class="px-4 py-3 text-[13px] text-ink-mute">Nenhum ponto lançado. A VixCard ainda não tem sistema: lance aqui o que precisa da sua decisão.</li>
+                        @endforelse
+                    </ul>
+                </x-painel>
+            </div>
+        </div>
+
+        <x-painel titulo="Lançar ponto de gestão">
+            <form method="POST" action="{{ route('secretario.acompanhamentos.pontos') }}" class="flex flex-col gap-2 md:flex-row md:items-center">
+                @csrf
+                <select name="empresa" class="{{ $campo }}">
+                    @foreach (\App\Services\Secretario\CentralDeGestao::EMPRESAS as $k => $nome)
+                        <option value="{{ $k }}" @selected(old('empresa', 'vixcard') === $k)>{{ $nome }}</option>
+                    @endforeach
+                </select>
+                <input type="text" name="titulo" value="{{ old('titulo') }}" maxlength="190" required placeholder="O que precisa da sua decisão (ex.: aprovar tabela de preços)" class="{{ $campo }} min-w-0 flex-1">
+                <input type="date" name="prazo" value="{{ old('prazo') }}" class="{{ $campo }}" title="Prazo (opcional)">
+                <select name="prioridade" class="{{ $campo }}">
+                    @foreach (['normal' => 'normal', 'alta' => 'alta', 'baixa' => 'baixa'] as $k => $r)
+                        <option value="{{ $k }}" @selected(old('prioridade', 'normal') === $k)>{{ $r }}</option>
+                    @endforeach
+                </select>
+                <button class="h-[34px] rounded-control bg-brand px-4 text-[13px] font-semibold text-on-brand hover:bg-brand-bright">Lançar</button>
+            </form>
+            @error('titulo')<p class="mt-1 text-[12px] text-crit">{{ $message }}</p>@enderror
+            <p class="mt-1.5 text-[12px] text-ink-mute">Com prazo, o Secretário lembra às 08:00 do dia e avisa se vencer.</p>
+        </x-painel>
+
+        <h2 id="alertas" class="scroll-mt-20 pt-2 font-display text-[16px] font-semibold text-ink">Alertas</h2>
         @if ($silencio)
             <p class="rounded-panel border border-line bg-subtle px-4 py-2.5 text-[13px] text-ink-mute">
                 Em silêncio agora ({{ $config['fim_de_semana'] && now()->isWeekend() ? 'fim de semana' : 'das '.$config['silencio_inicio'].' às '.$config['silencio_fim'] }}): os resumos esperam. A lista abaixo continua valendo.
@@ -71,50 +162,6 @@
             @endforelse
         </x-painel>
 
-        <x-painel titulo="Regras">
-            <form method="POST" action="{{ route('secretario.acompanhamentos.regras') }}" class="space-y-4">
-                @csrf @method('PUT')
-                <div class="divide-y divide-line rounded-ctl border border-line">
-                    @foreach (\App\Services\Secretario\Acompanhamento\Regras::REGRAS as $chave => [$rotulo, $unidade, , $min, $max])
-                        @php $r = $config['regras'][$chave]; @endphp
-                        <div class="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center">
-                            <label class="flex min-w-0 flex-1 items-center gap-2 text-[13.5px] text-ink">
-                                <input type="hidden" name="regras[{{ $chave }}][ligada]" value="0">
-                                <input type="checkbox" name="regras[{{ $chave }}][ligada]" value="1" @checked(old("regras.$chave.ligada", $r['ligada'])) class="rounded border-btn-line text-brand focus:ring-brand">
-                                {{ $rotulo }}
-                            </label>
-                            <div class="flex items-center gap-2 text-[12.5px] text-ink-mute">
-                                <input type="number" name="regras[{{ $chave }}][valor]" min="{{ $min }}" max="{{ $max }}" value="{{ old("regras.$chave.valor", $r['valor']) }}" class="{{ $campo }} w-[70px]">
-                                <span class="whitespace-nowrap">{{ $unidade }}</span>
-                                <select name="regras[{{ $chave }}][prioridade]" class="{{ $campo }}">
-                                    @foreach (['alta', 'normal', 'baixa'] as $p)
-                                        <option value="{{ $p }}" @selected(old("regras.$chave.prioridade", $r['prioridade']) === $p)>{{ $p }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                        @error("regras.$chave.valor")<p class="px-3 pb-2 text-[12px] text-crit">{{ $message }}</p>@enderror
-                    @endforeach
-                </div>
-
-                <div class="grid grid-cols-1 gap-3 text-[13px] text-ink sm:grid-cols-2">
-                    <label class="flex items-center justify-between gap-2">Silêncio das
-                        <span class="flex items-center gap-1.5"><input type="time" name="silencio_inicio" value="{{ old('silencio_inicio', $config['silencio_inicio']) }}" class="{{ $campo }}"> às
-                        <input type="time" name="silencio_fim" value="{{ old('silencio_fim', $config['silencio_fim']) }}" class="{{ $campo }}"></span></label>
-                    <label class="flex items-center gap-2">
-                        <input type="hidden" name="fim_de_semana" value="0">
-                        <input type="checkbox" name="fim_de_semana" value="1" @checked(old('fim_de_semana', $config['fim_de_semana'])) class="rounded border-btn-line text-brand focus:ring-brand">
-                        Fim de semana em silêncio
-                    </label>
-                    @foreach (['intervalo_h' => [1, 24], 'teto_dia' => [1, 12], 'repetir_h' => [4, 168], 'repeticoes' => [1, 10]] as $k => [$min, $max])
-                        <label class="flex items-center justify-between gap-2">{{ \App\Services\Secretario\Acompanhamento\Regras::POLITICA[$k][0] }}
-                            <input type="number" name="{{ $k }}" min="{{ $min }}" max="{{ $max }}" value="{{ old($k, $config[$k]) }}" class="{{ $campo }} w-[70px]"></label>
-                        @error($k)<p class="text-[12px] text-crit sm:col-span-2">{{ $message }}</p>@enderror
-                    @endforeach
-                </div>
-                <p class="text-[12px] text-ink-mute">Alta sai na hora (fora do silêncio); normal espera o intervalo entre resumos; baixa nunca sai, fica aqui e no briefing.</p>
-                <button class="h-[36px] rounded-control bg-brand px-4 text-[13px] font-semibold text-on-brand hover:bg-brand-bright">Salvar regras</button>
-            </form>
-        </x-painel>
+        <p class="text-center text-[12.5px] text-ink-mute">Regras e horários dos avisos: <a href="{{ route('secretario.configuracoes') }}#avisos" class="font-semibold text-brand-text hover:underline">Secretário → Configurações</a></p>
     </div>
 </x-app-layout>

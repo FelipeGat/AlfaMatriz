@@ -23,7 +23,8 @@
         // próprio (`secretario`), dado sempre da própria conta — desde
         // 17/10/2026 em todos os perfis de pessoas. No topo porque é a primeira
         // tela do dia, e na ordem do uso. "Minha agenda", e não "Agenda": a
-        // Agenda do time mora em Desenvolvimento.
+        // Agenda do time mora em Desenvolvimento. A Memória saiu do menu (Felipe,
+        // 17/10/2026: a tela confundia); as perguntas pelo chat continuam.
         //
         // A Central de IA mora aqui também (Felipe, 17/10/2026): é por ela que
         // se fala com o Secretário e com os agentes. O recurso continua o dela
@@ -35,7 +36,6 @@
             ['route' => 'secretario.agenda', 'recurso' => 'secretario', 'pattern' => 'secretario.agenda', 'label' => 'Minha agenda', 'icon' => 'calendar', 'matriz' => true],
             ['route' => 'secretario.reunioes.index', 'recurso' => 'secretario', 'pattern' => 'secretario.reunioes.*', 'label' => 'Reuniões', 'icon' => 'speaker-wave', 'matriz' => true],
             ['route' => 'secretario.emails.index', 'recurso' => 'secretario', 'pattern' => 'secretario.emails.*', 'label' => 'Mensagens', 'icon' => 'balao', 'matriz' => true],
-            ['route' => 'secretario.memoria', 'recurso' => 'secretario', 'pattern' => ['secretario.memoria', 'secretario.memoria.*'], 'label' => 'Memória', 'icon' => 'search', 'matriz' => true],
             ['route' => 'secretario.configuracoes', 'recurso' => 'secretario', 'pattern' => 'secretario.configuracoes', 'label' => 'Configurações', 'icon' => 'settings', 'matriz' => true],
         ],
         'Painéis' => [

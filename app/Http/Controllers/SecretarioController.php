@@ -28,6 +28,8 @@ class SecretarioController extends Controller
             'telegramPareado' => app(TelegramCanal::class)->vinculoDe($request->user()) !== null,
             // Etapa 7: uma linha só, com o que é alta prioridade e o total (FR-010).
             'acompanhamentos' => \App\Models\SecretarioAcompanhamento::de($request->user())->ativos()->get(),
+            // Etapa 8: dólar, clima, Flamengo e notícias, do cache (público, igual para todos).
+            'laFora' => app(\App\Services\Secretario\LaFora::class)->ler(),
         ]);
     }
 
@@ -130,6 +132,8 @@ class SecretarioController extends Controller
             'googleConfigurado' => app(\App\Services\Secretario\GoogleAgenda::class)->configurado(),
             'caixas' => \App\Models\SecretarioEmailConta::de($request->user())->orderBy('rotulo')->get(),
             'gestor' => \App\Models\SecretarioGestorRetrato::where('user_id', $request->user()->id)->first(),
+            // Etapa 8: as regras dos avisos moram aqui.
+            'config' => \App\Services\Secretario\Acompanhamento\Regras::de($request->user()),
         ]);
     }
 

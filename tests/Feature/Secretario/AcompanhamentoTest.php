@@ -270,7 +270,7 @@ class AcompanhamentoTest extends TestCase
 
         $this->get(route('secretario.acompanhamentos'))->assertOk()
             ->assertSeeInOrder(['Alta prioridade (1)', 'Conflito amanhã', 'Prioridade normal (6)', 'Tarefa vencida desde'])
-            ->assertSee('Salvar regras');
+            ->assertDontSee('Salvar regras'); // as regras moram em Configurações desde a Etapa 8
         $this->get(route('secretario.meu-dia'))->assertOk()->assertSee('7 para acompanhar')->assertSee('Conflito amanhã');
 
         // Ações.
@@ -290,7 +290,7 @@ class AcompanhamentoTest extends TestCase
         $form['regras']['tarefa_vencida']['valor'] = 6;
         $form['regras']['reuniao_proxima']['ligada'] = '0';
         $form['fim_de_semana'] = '0';
-        $this->put(route('secretario.acompanhamentos.regras'), $form)->assertRedirect(route('secretario.acompanhamentos'));
+        $this->put(route('secretario.acompanhamentos.regras'), $form)->assertRedirect(route('secretario.configuracoes').'#avisos');
         $c = Regras::de($u);
         $this->assertSame([6, false, false], [$c['regras']['tarefa_vencida']['valor'], $c['regras']['reuniao_proxima']['ligada'], $c['fim_de_semana']]);
 

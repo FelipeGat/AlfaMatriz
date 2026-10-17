@@ -94,6 +94,14 @@ class EmailsGestorTest extends TestCase
         $this->assertSame(['João', 'documento', 'alta', true], [$e('URGENTE: contrato')->de_nome, $e('URGENTE: contrato')->tipo, $e('URGENTE: contrato')->urgencia, $e('URGENTE: contrato')->pede_retorno]);
         $this->assertFalse($e('Planilha')->pede_retorno, 'Mesmo domínio da caixa não é cliente esperando');
         $this->assertFalse(\Illuminate\Support\Facades\Schema::hasColumn('secretario_emails', 'texto'), 'O corpo não tem nem coluna');
+        // Etapa 8: não lido vem do servidor (UNSEEN) e muda quando a mensagem é lida lá — sem nenhum STORE daqui.
+        $this->assertTrue($this->imap->comandos !== [] && in_array(true, array_map(fn ($c) => str_starts_with($c, 'UID SEARCH UNSEEN SINCE '), $this->imap->comandos), true));
+        $this->assertSame(4, SecretarioEmail::where('enviado', false)->where('lido', false)->count());
+        $this->imap->pastas['INBOX']['mensagens'][1]['lida'] = true;
+        app(LeitorDeEmails::class)->sincronizar($c->fresh());
+        $this->assertTrue($e('Orçamento da demonstração')->fresh()->lido);
+        $this->assertSame(3, SecretarioEmail::where('enviado', false)->where('lido', false)->count());
+        $this->assertEmpty(array_filter($this->imap->comandos, fn ($c) => preg_match('/STORE|EXPUNGE|COPY|MOVE|SELECT/i', $c)));
     }
 
     public function test_perguntas_sem_ia_e_limitacao_da_caixa_com_erro(): void
