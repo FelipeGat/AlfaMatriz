@@ -53,6 +53,19 @@ class ApiDoMonitor
     /** O relatório que venceu lá leva ~8 s: 5 s cortariam a resposta certa. */
     public const TIMEOUT_RELATORIO_S = 20;
 
+    /**
+     * A API pagina as listas desde 17/10/2026 (pedido do dono, antes da tag):
+     * 50 por página se ninguém disser nada. O Matriz pede o máximo do
+     * contrato e junta as páginas, porque a busca, a ordem e o agrupamento
+     * por cliente das telas são feitos AQUI — sobre uma página só, a busca
+     * não acharia o cliente da página 3 e "Por cliente" contaria errado. A
+     * tela pagina depois, sobre a lista inteira (`PainelDoMonitorController`).
+     */
+    public const POR_PAGINA = 200;
+
+    /** Trava contra lista que não acaba: 50 × 200 já são 10 mil itens. */
+    private const PAGINAS_MAX = 50;
+
     private const PREFIXO = 'alfamonitor-api:';
 
     public function configurada(): bool
@@ -81,8 +94,11 @@ class ApiDoMonitor
             return $this->resposta($guardado);
         }
 
+        $paginada = $this->listaPaginada($rota) !== null;
+        $pedido = $paginada ? $parametros + ['por_pagina' => self::POR_PAGINA] : $parametros;
+
         try {
-            $http = $this->pedir($rota, $parametros, $timeoutS);
+            $http = $this->pedir($rota, $pedido, $timeoutS);
         } catch (ConnectionException) {
             return $this->ultimoBom($chaveDoBom, 'O AlfaMonitor não respondeu.');
         } catch (Throwable $e) {
@@ -121,6 +137,21 @@ class ApiDoMonitor
             return $this->ultimoBom($chaveDoBom, 'O AlfaMonitor mudou o formato da resposta; o Matriz precisa ser atualizado.');
         }
 
+        if ($paginada) {
+            try {
+                $dados = $this->juntarPaginas($rota, $pedido, $timeoutS, $dados);
+            } catch (Throwable $e) {
+                $dados = null;
+                Log::warning('AlfaMonitor: falha ao buscar as páginas seguintes.', ['rota' => $rota, 'erro' => $e->getMessage()]);
+            }
+
+            // Lista pela metade parece lista inteira: melhor o último retrato
+            // completo, marcado velho, do que uma tela que esconde o resto.
+            if ($dados === null) {
+                return $this->ultimoBom($chaveDoBom, 'O AlfaMonitor não entregou a lista inteira.');
+            }
+        }
+
         Cache::put($chave, $dados, $cacheS);
         Cache::put($chaveDoBom, $dados, self::ULTIMO_BOM_S);
 
@@ -145,6 +176,86 @@ class ApiDoMonitor
         }
 
         return $http->successful() ? $http->body() : null;
+    }
+
+    /**
+     * Onde mora a lista paginada de cada rota, pelo contrato. `acesso`
+     * pagina os clientes DENTRO de cada fonte, com um `paginacao` por fonte;
+     * as outras levam um `paginacao` ao lado da lista. Rota fora daqui não
+     * pagina (visão geral, Hostinger, servidor e relatório são curtas).
+     */
+    private function listaPaginada(string $rota): ?string
+    {
+        $rota = trim($rota, '/');
+
+        return match (true) {
+            $rota === 'incidentes' => 'incidentes',
+            $rota === 'clientes' => 'clientes',
+            $rota === 'acesso' => 'fontes',
+            str_starts_with($rota, 'clientes/') => 'quedas_lista_7d',
+            default => null,
+        };
+    }
+
+    /**
+     * Pede as páginas 2 em diante e acrescenta cada uma à primeira. Volta
+     * null se alguma falhar. Monitor que ainda não pagina não manda
+     * `paginacao`, e aí a primeira já é a lista inteira.
+     *
+     * @param  array<string, scalar>  $pedido
+     * @param  array<string, mixed>  $dados
+     * @return array<string, mixed>|null
+     */
+    private function juntarPaginas(string $rota, array $pedido, int $timeoutS, array $dados): ?array
+    {
+        $lista = $this->listaPaginada($rota);
+        $porFonte = $lista === 'fontes';
+        $paginasDe = fn (array $bloco): int => max(1, (int) ($bloco['paginacao']['paginas'] ?? 1));
+
+        $paginas = $porFonte
+            ? (int) collect($dados['fontes'] ?? [])->map(fn ($f) => is_array($f) ? $paginasDe($f) : 1)->max()
+            : $paginasDe($dados);
+
+        if ($paginas > self::PAGINAS_MAX) {
+            Log::warning('AlfaMonitor: lista com mais páginas que a trava; o resto fica de fora.', ['rota' => $rota, 'paginas' => $paginas]);
+            $paginas = self::PAGINAS_MAX;
+        }
+
+        for ($pagina = 2; $pagina <= $paginas; $pagina++) {
+            $http = $this->pedir($rota, $pedido + ['pagina' => $pagina], $timeoutS);
+            $proxima = $http->json();
+
+            if (! $http->successful() || ! is_array($proxima) || ($proxima['v'] ?? null) !== self::VERSAO_DO_CONTRATO) {
+                return null;
+            }
+
+            if ($porFonte) {
+                $seguintes = collect($proxima['fontes'] ?? [])->filter(fn ($f) => is_array($f))->keyBy('fonte');
+
+                foreach ($dados['fontes'] ?? [] as $i => $fonte) {
+                    $mais = $seguintes->get($fonte['fonte'] ?? null)['clientes'] ?? [];
+                    $dados['fontes'][$i]['clientes'] = array_merge($fonte['clientes'] ?? [], $mais);
+                }
+            } else {
+                $dados[$lista] = array_merge($dados[$lista] ?? [], $proxima[$lista] ?? []);
+            }
+        }
+
+        // Juntas, viram uma página só: quem ler `paginacao` depois não deve
+        // achar que falta alguma.
+        $achatar = fn (array $bloco, int $quantos): array => isset($bloco['paginacao'])
+            ? ['paginacao' => ['pagina' => 1, 'por_pagina' => max(1, $quantos), 'paginas' => 1] + $bloco['paginacao']] + $bloco
+            : $bloco;
+
+        if ($porFonte) {
+            foreach ($dados['fontes'] ?? [] as $i => $fonte) {
+                $dados['fontes'][$i] = $achatar($fonte, count($fonte['clientes'] ?? []));
+            }
+
+            return $dados;
+        }
+
+        return $achatar($dados, count($dados[$lista] ?? []));
     }
 
     /** Chamado pelo webhook: o próximo pedido de cada tela vai ao monitor. */

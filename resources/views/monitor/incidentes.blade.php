@@ -7,7 +7,8 @@
     - "Alertas recebidos": o que o webhook guardou aqui, onde estão servidor,
       fonte e Hostinger, que só chegam por ele.
 
-    Espera ($origem = monitor): $resposta, $filtros, $incidentes, $porCliente.
+    Espera ($origem = monitor): $resposta, $filtros, $incidentes (todos), $pagina
+    (os 50 da página, na visão em lista), $porCliente.
     Espera ($origem = alertas): o que `monitor._alertas` espera.
 --}}
 @use('App\Services\Monitor\FormatoDoMonitor', 'F')
@@ -66,7 +67,7 @@
             $grupos = match (true) {
                 $incidentes->isEmpty() => collect(),
                 $filtros['visao'] === 'cliente' => $porCliente,
-                default => collect(['' => $incidentes]),
+                default => collect(['' => $pagina->getCollection()]),
             };
         @endphp
 
@@ -127,5 +128,9 @@
                 {{ $filtros['estado'] === 'aberto' ? 'Nenhum incidente em aberto.' : 'Nenhum incidente neste período.' }}
             </div>
         @endforelse
+
+        @if ($filtros['visao'] === 'lista')
+            {{ $pagina->links() }}
+        @endif
     @endif
 </x-monitor.tela>
