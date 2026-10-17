@@ -1,0 +1,585 @@
+{
+ "acesso": [
+  {
+   "coleta": "ok",
+   "fonte": "AlfaControl",
+   "hoje": {
+    "liberados": 1175,
+    "negados": 10
+   },
+   "online": 13,
+   "sistema": "alfacontrol",
+   "total": 33,
+   "ultima_coleta": "2026-10-17T14:29:52-03:00"
+  },
+  {
+   "coleta": "ok",
+   "fonte": "AlfaGym",
+   "hoje": {
+    "liberados": 152,
+    "negados": 17
+   },
+   "online": 1,
+   "sistema": "alfagym",
+   "total": 9,
+   "ultima_coleta": "2026-10-17T14:29:52-03:00"
+  }
+ ],
+ "atencao": [
+  {
+   "desde": null,
+   "detalhe": "0/1 online · Aparelho X offline",
+   "nome": "CLIENTE 1",
+   "ref": {
+    "cliente": "auto4222b130500f39c8"
+   },
+   "sev": "crit",
+   "tipo": "dispositivos"
+  },
+  {
+   "desde": null,
+   "detalhe": "0/4 online · Aparelho X offline · já caiu 8x nos últimos 7d",
+   "nome": "CLIENTE 2",
+   "ref": {
+    "cliente": "auto89af9cc6e6c0a824"
+   },
+   "sev": "crit",
+   "tipo": "dispositivos"
+  },
+  {
+   "desde": null,
+   "detalhe": "0/6 online · Aparelho X offline · já caiu 1x nos últimos 7d",
+   "nome": "CLIENTE 3",
+   "ref": {
+    "cliente": "auto5a35b145d2bf339e"
+   },
+   "sev": "crit",
+   "tipo": "dispositivos"
+  },
+  {
+   "desde": null,
+   "detalhe": "HTTP · https://alfasolucoes.cloud · já caiu 1x nos últimos 7d",
+   "nome": "ALFA SITE",
+   "ref": null,
+   "sev": "warn",
+   "tipo": "disponibilidade"
+  },
+  {
+   "desde": "há 33 min",
+   "detalhe": "2/3 online · Aparelho X offline",
+   "nome": "CLIENTE 4",
+   "ref": {
+    "cliente": "auto3a6f8bf4c9e471a1"
+   },
+   "sev": "warn",
+   "tipo": "dispositivos"
+  }
+ ],
+ "disponibilidade": [
+  {
+   "alvo": "https://alfasolucoes.cloud",
+   "barra": {
+    "balde_min": 1.0,
+    "pontos": [
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:18:47-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:19:48-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:20:48-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:21:49-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:22:49-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:23:49-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:24:49-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:25:50-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:26:51-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:27:51-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:28:51-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:29:52-03:00"
+     }
+    ]
+   },
+   "cliente": null,
+   "estado": "lento",
+   "http": 200,
+   "media_24h_ms": 276,
+   "nome": "ALFA SITE",
+   "pct_no_ar_24h": 100.0,
+   "pct_no_ar_30d": 99.93,
+   "resp_ms": 321,
+   "tipo": "HTTP"
+  },
+  {
+   "alvo": "https://control.alfasolucoes.cloud/",
+   "barra": {
+    "balde_min": 1.0,
+    "pontos": [
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:18:47-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:19:48-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:20:48-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:21:48-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:22:49-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:23:49-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:24:49-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:25:50-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:26:51-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:27:51-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:28:51-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:29:52-03:00"
+     }
+    ]
+   },
+   "cliente": null,
+   "estado": "lento",
+   "http": 200,
+   "media_24h_ms": 227,
+   "nome": "CONTROL",
+   "pct_no_ar_24h": 97.83,
+   "pct_no_ar_30d": 99.61,
+   "resp_ms": 274,
+   "tipo": "HTTP"
+  },
+  {
+   "alvo": "https://gym.alfasolucoes.cloud",
+   "barra": {
+    "balde_min": 1.0,
+    "pontos": [
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:18:47-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:19:48-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:20:48-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:21:49-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:22:49-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:23:49-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:24:49-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:25:50-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:26:51-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:27:51-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:28:51-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:29:52-03:00"
+     }
+    ]
+   },
+   "cliente": null,
+   "estado": "lento",
+   "http": 200,
+   "media_24h_ms": 242,
+   "nome": "GYM",
+   "pct_no_ar_24h": 99.65,
+   "pct_no_ar_30d": 99.87,
+   "resp_ms": 288,
+   "tipo": "HTTP"
+  },
+  {
+   "alvo": "https://gestor.alfa.solucoesgrupo.com/",
+   "barra": {
+    "balde_min": 1.0,
+    "pontos": [
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:18:47-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:19:48-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:20:48-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:21:49-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:22:49-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:23:49-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:24:49-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:25:50-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:26:51-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:27:51-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:28:51-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:29:52-03:00"
+     }
+    ]
+   },
+   "cliente": null,
+   "estado": "lento",
+   "http": 200,
+   "media_24h_ms": 372,
+   "nome": "GESTOR",
+   "pct_no_ar_24h": 100.0,
+   "pct_no_ar_30d": 99.94,
+   "resp_ms": 474,
+   "tipo": "HTTP"
+  },
+  {
+   "alvo": "https://home.alfasolucoes.cloud",
+   "barra": {
+    "balde_min": 1.0,
+    "pontos": [
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:18:47-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:19:48-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:20:48-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:21:49-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:22:49-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:23:49-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:24:49-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:25:50-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:26:51-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:27:51-03:00"
+     },
+     {
+      "estado": "up",
+      "inicio": "2026-10-17T14:28:51-03:00"
+     },
+     {
+      "estado": "parcial",
+      "inicio": "2026-10-17T14:29:52-03:00"
+     }
+    ]
+   },
+   "cliente": null,
+   "estado": "lento",
+   "http": 200,
+   "media_24h_ms": 335,
+   "nome": "HOME",
+   "pct_no_ar_24h": 100.0,
+   "pct_no_ar_30d": 99.92,
+   "resp_ms": 345,
+   "tipo": "HTTP"
+  }
+ ],
+ "gerado_em": "2026-10-17T14:32:31-03:00",
+ "retrato_idade_s": 3,
+ "servidores": [
+  {
+   "agente": true,
+   "cpu_pct": 6.93,
+   "cpu_stat": {
+    "media_24h_pct": 11.79,
+    "pico_1h_pct": 37.14
+   },
+   "disco_pct": 41.0,
+   "disco_stat": {
+    "media_24h_pct": 41.81,
+    "pico_1h_pct": 41.0
+   },
+   "disco_total_bytes": 106300440576,
+   "disco_usado_bytes": 40802189312,
+   "load": [
+    0.41,
+    0.36,
+    0.31
+   ],
+   "mem_pct": 33.54,
+   "mem_stat": {
+    "media_24h_pct": 39.18,
+    "pico_1h_pct": 34.97
+   },
+   "mem_total_bytes": 8330936320,
+   "mem_usada_bytes": 2794455040,
+   "nome": "CONTROL VPS",
+   "online": true,
+   "sev": "ok",
+   "slug": "control-vps",
+   "steal_pct": 2.16,
+   "vps": {
+    "banda_cota_bytes": 8589934592000,
+    "banda_pct": 8.17,
+    "banda_usada_bytes": 702009245819,
+    "estado": "Rodando",
+    "estado_tipo": "ok",
+    "hostname": "control.alfasolucoes.cloud",
+    "id": 1498832
+   }
+  },
+  {
+   "agente": true,
+   "cpu_pct": 3.71,
+   "cpu_stat": {
+    "media_24h_pct": 5.14,
+    "pico_1h_pct": 7.59
+   },
+   "disco_pct": 36.0,
+   "disco_stat": {
+    "media_24h_pct": 36.0,
+    "pico_1h_pct": 36.0
+   },
+   "disco_total_bytes": 106300440576,
+   "disco_usado_bytes": 36507222016,
+   "load": [
+    0.07,
+    0.09,
+    0.09
+   ],
+   "mem_pct": 38.07,
+   "mem_stat": {
+    "media_24h_pct": 34.2,
+    "pico_1h_pct": 38.23
+   },
+   "mem_total_bytes": 8330936320,
+   "mem_usada_bytes": 3171942400,
+   "nome": "GYM VPS",
+   "online": true,
+   "sev": "ok",
+   "slug": "gym-vps",
+   "steal_pct": 5.44,
+   "vps": {
+    "banda_cota_bytes": 8589934592000,
+    "banda_pct": 2.33,
+    "banda_usada_bytes": 200527483413,
+    "estado": "Rodando",
+    "estado_tipo": "ok",
+    "hostname": "gym.alfasolucoes.cloud",
+    "id": 1542069
+   }
+  },
+  {
+   "agente": true,
+   "cpu_pct": 5.18,
+   "cpu_stat": {
+    "media_24h_pct": 20.76,
+    "pico_1h_pct": 59.76
+   },
+   "disco_pct": 53.0,
+   "disco_stat": {
+    "media_24h_pct": 53.0,
+    "pico_1h_pct": 53.0
+   },
+   "disco_total_bytes": 106300440576,
+   "disco_usado_bytes": 53687091200,
+   "load": [
+    0.03,
+    0.08,
+    0.11
+   ],
+   "mem_pct": 27.0,
+   "mem_stat": {
+    "media_24h_pct": 27.3,
+    "pico_1h_pct": 27.82
+   },
+   "mem_total_bytes": 8330936320,
+   "mem_usada_bytes": 2249195520,
+   "nome": "GESTOR VPS",
+   "online": true,
+   "sev": "ok",
+   "slug": "gestor-vps",
+   "steal_pct": 8.78,
+   "vps": {
+    "banda_cota_bytes": 8589934592000,
+    "banda_pct": 6.45,
+    "banda_usada_bytes": 553699413544,
+    "estado": "Rodando",
+    "estado_tipo": "ok",
+    "hostname": "gestor.alfa.solucoesgrupo.com",
+    "id": 1340282
+   }
+  },
+  {
+   "agente": true,
+   "cpu_pct": 2.37,
+   "cpu_stat": {
+    "media_24h_pct": 3.19,
+    "pico_1h_pct": 7.04
+   },
+   "disco_pct": 24.0,
+   "disco_stat": {
+    "media_24h_pct": 23.83,
+    "pico_1h_pct": 24.0
+   },
+   "disco_total_bytes": 106300440576,
+   "disco_usado_bytes": 23622320128,
+   "load": [
+    0.0,
+    0.03,
+    0.06
+   ],
+   "mem_pct": 22.06,
+   "mem_stat": {
+    "media_24h_pct": 25.68,
+    "pico_1h_pct": 22.42
+   },
+   "mem_total_bytes": 8330936320,
+   "mem_usada_bytes": 1838153728,
+   "nome": "JORNADA VPS",
+   "online": true,
+   "sev": "ok",
+   "slug": "jornada-vps",
+   "steal_pct": 4.09,
+   "vps": {
+    "banda_cota_bytes": 8589934592000,
+    "banda_pct": 1.28,
+    "banda_usada_bytes": 109697409389,
+    "estado": "Rodando",
+    "estado_tipo": "ok",
+    "hostname": "jornada.alfasolucoes.cloud",
+    "id": 1862582
+   }
+  }
+ ],
+ "topo": {
+  "acessos_hoje": 1354,
+  "atencao_crit": 8,
+  "atencao_warn": 7,
+  "dispositivos_online": 14,
+  "dispositivos_total": 42,
+  "monitores_no_ar": 5,
+  "monitores_total": 5,
+  "servidores_online": 4,
+  "servidores_total": 4
+ },
+ "v": 1
+}

@@ -31,6 +31,10 @@ use InvalidArgumentException;
  * As abas Atualizações e Programadas (#225) são a vitrine de duas coisas que
  * nascem em outro lugar: o changelog que o `publicar-changelog.sh` manda ao
  * Telegram (e registra aqui) e a janela de manutenção marcada na Agenda.
+ *
+ * A aba Monitor (#394, fase 1) morou aqui até o Monitor ganhar item próprio
+ * no menu (decisão do dono, 17/10/2026): virou os "Alertas recebidos" da tela
+ * de Incidentes, e o endereço antigo leva para lá.
  */
 class ManutencaoController extends Controller
 {
@@ -53,9 +57,16 @@ class ManutencaoController extends Controller
 
     public function __construct(private readonly IgnoradosDoVigia $ignorados) {}
 
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
         $this->bloquearVisaoDaMatriz();
+
+        // Link salvo da aba que mudou de casa: quem tem o Monitor cai nos
+        // alertas recebidos; quem não tem, nos Erros, como qualquer aba
+        // desconhecida.
+        if ($request->query('aba') === 'monitor' && $request->user()->canPermissao('monitor', 'ler')) {
+            return redirect()->route('monitor.incidentes', ['origem' => 'alertas']);
+        }
 
         $aba = in_array($request->query('aba'), self::ABAS, true) ? $request->query('aba') : 'erros';
 

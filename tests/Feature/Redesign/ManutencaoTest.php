@@ -51,7 +51,8 @@ class ManutencaoTest extends TestCase
 
     /**
      * Atualizar (#235): toda aba tem o botão e a hora do dado; só a de Erros
-     * se atualiza sozinha — é a que muda com o lote do vigia.
+     * se atualiza sozinha — é a que muda com o lote do vigia. (A aba Monitor,
+     * que também se atualizava, virou tela própria em #394.)
      */
     public function test_o_botao_atualizar_e_a_atualizacao_automatica_so_na_aba_erros(): void
     {

@@ -40,7 +40,7 @@
         @endif
 
         {{-- Erros vem primeiro porque é o que pede ação: as outras duas abas
-             são registro e agenda, a de erros é o que está quebrando agora. --}}
+             são registro e agenda. --}}
         <x-abas>
             <x-abas.item :href="route('manutencao.index', ['aba' => 'erros'])"
                          :ativo="$aba === 'erros'" icone="alert-triangle">

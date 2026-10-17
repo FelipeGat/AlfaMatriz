@@ -19,6 +19,7 @@ use App\Http\Controllers\FaturamentoController;
 use App\Http\Controllers\FornecedorController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\ManutencaoController;
+use App\Http\Controllers\PainelDoMonitorController;
 use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\OQueEsperaVoceController;
 use App\Http\Controllers\PainelController;
@@ -681,6 +682,24 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware('permissao:manutencao,editar');
     Route::delete('manutencao/ignorados/{ignorado}', [ManutencaoController::class, 'deixarDeIgnorar'])->name('manutencao.ignorados.destroy')
         ->middleware('permissao:manutencao,editar');
+    // As telas do AlfaMonitor (#394): só leitura, por decisão do dono — as
+    // ações (reiniciar VPS, sino, cadastros) ficam no monitor. Por isso tudo
+    // é GET e nada passa de `ler`, menos exportar o relatório (`imprimir`).
+    // A Hostinger tem porta própria (`monitor_hostinger`), conferida dentro
+    // do controller porque ela é um bloco da Geral, não uma tela.
+    Route::middleware('permissao:monitor')->prefix('monitor')->name('monitor.')->group(function () {
+        Route::get('/', [PainelDoMonitorController::class, 'geral'])->name('geral');
+        Route::get('acesso', [PainelDoMonitorController::class, 'acesso'])->name('acesso');
+        Route::get('servidores/{slug}', [PainelDoMonitorController::class, 'servidor'])->name('servidor')
+            ->where('slug', '[A-Za-z0-9._-]+');
+        Route::get('clientes', [PainelDoMonitorController::class, 'clientes'])->name('clientes');
+        Route::get('clientes/{id}', [PainelDoMonitorController::class, 'cliente'])->name('cliente')
+            ->where('id', '[A-Za-z0-9:_-]+');
+        Route::get('incidentes', [PainelDoMonitorController::class, 'incidentes'])->name('incidentes');
+        Route::get('relatorios', [PainelDoMonitorController::class, 'relatorio'])->name('relatorio');
+        Route::get('relatorios/exportar', [PainelDoMonitorController::class, 'exportar'])->name('relatorio.exportar')
+            ->middleware('permissao:monitor,imprimir');
+    });
     Route::resource('centros-custo', CentroCustoController::class)->only(['store', 'destroy'])
         ->parameters(['centros-custo' => 'centro_custo'])
         ->middleware('permissao:financeiro');
