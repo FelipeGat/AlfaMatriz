@@ -607,7 +607,10 @@
                     <div class="flex-none space-y-1 border-t border-line px-4 py-2 text-xs" role="status" aria-live="polite" x-show="pedidosAtivos.length || aba.recibo">
                         <p x-show="aba.recibo && !pedidosAtivos.length" x-text="aba.recibo" class="text-ink-mute"></p>
                         <template x-for="a in pedidosAtivos" :key="a.id">
-                            <p class="flex items-center gap-2 text-brand-text"><span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand"></span><span x-text="andamento(a)"></span></p>
+                            <div>
+                                <p class="flex items-center gap-2 text-brand-text"><span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand"></span><span x-text="andamento(a)"></span></p>
+                                <p x-show="detalheDoAndamento(a)" x-text="detalheDoAndamento(a)" class="ml-3.5 line-clamp-2 break-words text-ink-mute"></p>
+                            </div>
                         </template>
                     </div>
                     <div x-show="atendimento.disponivel && atendimento.ativo === 'telegram'" x-cloak class="flex-none border-t border-line px-4 py-3 text-sm text-ink-mute">
@@ -658,8 +661,8 @@
                             </div>
                         @endif
                         <div class="flex flex-wrap items-center gap-2 text-xs">
-                            <label class="cursor-pointer font-semibold text-brand-text" title="Até 12 MB por arquivo · cole ou arraste uma captura">📎 Anexar
-                                <input type="file" class="sr-only" multiple accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/webm,video/quicktime"
+                            <label class="cursor-pointer font-semibold text-brand-text" title="Imagem, PDF, vídeo, texto, Word, Excel ou PowerPoint · até 12 MB por arquivo · cole ou arraste uma captura">📎 Anexar
+                                <input type="file" class="sr-only" multiple accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/webm,video/quicktime,.txt,.md,.csv,.tsv,.json,.log,.rtf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp"
                                        :disabled="!!aba.pendente || bloqueado || !podeEnviar" @change="escolherArquivos($event.target.files); $event.target.value = ''">
                             </label>
                             {{-- Recolher a caixa: com texto longo, a conversa acima continua legível. --}}

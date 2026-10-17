@@ -129,6 +129,11 @@ class CentralIaRunnerController extends Controller
             'etapa' => ['required', 'in:'.implode(',', array_keys(\App\Services\CentralIa\ProgressoService::ETAPAS))],
             'atividade_em' => ['nullable', 'date', 'before_or_equal:'.now()->addSeconds(5)->toIso8601String()],
             'processo_ativo' => ['present', 'nullable', 'boolean'],
+            // Opcionais: runner antigo não manda, e o andamento continua só com a etapa.
+            'acao' => ['nullable', 'string', 'max:200'],
+            'acao_em' => ['nullable', 'date', 'before_or_equal:'.now()->addSeconds(5)->toIso8601String()],
+            'fala' => ['nullable', 'string', 'max:240'],
+            'acoes' => ['nullable', 'integer', 'min:0'],
         ]);
         app(\App\Services\CentralIa\ProgressoService::class)->registrar($user, $dados['maquina'], $execucao, $dados);
         return response()->json(['ok' => true]);

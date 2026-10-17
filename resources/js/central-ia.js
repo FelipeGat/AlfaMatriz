@@ -29,6 +29,9 @@ function novoId() {
 }
 
 const GERAL = '';
+// Espelho de AnexosService::MIMES + DOCUMENTOS (e do accept do Blade).
+const EXTENSOES_DE_ANEXO = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'mp4', 'webm', 'mov', 'txt', 'md', 'csv', 'tsv', 'json', 'log', 'rtf',
+    'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp'];
 const diaLocal = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
 function guardar(chave, valor) { try { localStorage.setItem(chave, valor); } catch {} }
@@ -145,12 +148,29 @@ export function centralIa(config) {
                 : etapas[a.progresso?.etapa] || 'Aguardando informação do runner';
             return a.agente + ' · ' + estado + ' · ' + tempo;
         },
+        // O que o agente está fazendo agora (o runner manda a última ação e a
+        // última fala): sem isso, 11 min de "Aguardando resposta" parecem travamento.
+        detalheDoAndamento(a) {
+            const p = a.progresso || {};
+            if (a.status !== 'executando' || (!p.acao && !p.fala)) return '';
+            const ha = quando => {
+                const s = Math.max(0, Math.floor((this.agora - new Date(quando).getTime()) / 1000));
+                return s < 60 ? s + ' s' : Math.floor(s / 60) + ' min';
+            };
+            const partes = [];
+            if (p.acao) partes.push('Agora: ' + p.acao + (p.acao_em ? ' (há ' + ha(p.acao_em) + ')' : '') + (p.acoes ? ' · ' + p.acoes + ' ações' : ''));
+            if (p.fala) partes.push('“' + p.fala + '”');
+            return partes.join(' — ');
+        },
         escolherArquivos(lista) {
             if (this.aba.pendente) return;
             for (const file of lista) {
                 if (this.aba.arquivos.length >= 5) { this.aviso = 'Envie até cinco arquivos por mensagem.'; break; }
-                if (file.size > 12 * 1024 * 1024 || !['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) {
-                    this.aviso = 'Use JPG, PNG, WebP, PDF, MP4, WebM ou MOV de até 12 MB.'; continue;
+                // Pela extensão: o navegador dá csv como "application/vnd.ms-excel" no
+                // Windows e .md sem tipo nenhum. O servidor confere o conteúdo de verdade.
+                const ext = (file.name.split('.').pop() || '').toLowerCase();
+                if (file.size > 12 * 1024 * 1024 || !EXTENSOES_DE_ANEXO.includes(ext)) {
+                    this.aviso = 'Use imagem, PDF, vídeo, texto (TXT, MD, CSV, JSON), Word, Excel ou PowerPoint de até 12 MB. Arquivos com macro (docm, xlsm, pptm) não entram.'; continue;
                 }
                 // Miniatura local (nada sai do navegador até o envio).
                 const miniatura = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
@@ -421,7 +441,7 @@ export function centralIa(config) {
                 this.bloqueado = true; this.conexao = 'bloqueado'; this.abas = {}; this.garantirAba();
                 this.aviso = 'Sua sessão ou permissão mudou. Entre novamente no AlfaMatriz para continuar.';
             } else if ([422, 403, 413].includes(erro.status)) {
-                this.aviso = erro.status === 413 ? 'Arquivo maior que o limite do servidor (20 MB).' : erro.detalhe || 'Confira a mensagem: ela não pôde ser registrada.';
+                this.aviso = erro.status === 413 ? 'Arquivo maior que o limite do servidor (12 MB).' : erro.detalhe || 'Confira a mensagem: ela não pôde ser registrada.';
             } else {
                 this.conexao = 'offline';
                 this.aviso = erro.status === 429 ? 'Muitas requisições em pouco tempo. Aguarde um instante.'

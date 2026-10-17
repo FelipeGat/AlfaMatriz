@@ -35,6 +35,7 @@ URL="__ALFAMATRIZ_URL__"
 ARQUIVOS="__ARQUIVOS__"
 ROTULO="br.com.alfa.central-ia-runner"
 IMAGEM="alfamatriz-central-media:local"
+IMAGEM_OFFICE="alfamatriz-central-office:local"
 
 CODIGO="${CENTRAL_IA_CODIGO:-}" PROJETOS="" MAQUINA="" ANEXOS=1
 while [ $# -gt 0 ]; do
@@ -584,8 +585,16 @@ if [ "$ANEXOS" = 1 ] && command -v docker >/dev/null && docker info >/dev/null 2
       | docker build -q -t "$IMAGEM" - >/dev/null && ok "Conversão de PDF e vídeo pronta." \
       || aviso "Não consegui preparar a conversão de PDF e vídeo; imagens continuam funcionando."
   fi
+  # Word, Excel e PowerPoint (17/10/2026): imagem à parte, para não refazer a
+  # de PDF e vídeo de quem já a tem. Mesmo conteúdo de deploy/central-ia/office.
+  if ! docker image inspect "$IMAGEM_OFFICE" >/dev/null 2>&1; then
+    echo "Preparando a conversão de Word, Excel e PowerPoint (Docker; leva alguns minutos na primeira vez)…"
+    printf 'FROM debian:bookworm-slim\nRUN apt-get update && apt-get install -y --no-install-recommends libreoffice-writer-nogui libreoffice-calc-nogui libreoffice-impress-nogui poppler-utils fonts-dejavu-core fonts-liberation2 && rm -rf /var/lib/apt/lists/*\n' \
+      | docker build -q -t "$IMAGEM_OFFICE" - >/dev/null && ok "Conversão de Word, Excel e PowerPoint pronta." \
+      || aviso "Não consegui preparar a conversão de documentos; o agente recebe o original e texto puro funciona."
+  fi
 else
-  [ "$ANEXOS" = 1 ] && aviso "Sem Docker: PDF e vídeo anexados não são convertidos (imagens funcionam)."
+  [ "$ANEXOS" = 1 ] && aviso "Sem Docker: PDF, vídeo e documentos anexados não são convertidos (imagens e texto puro funcionam)."
 fi
 
 # ---------- Telegram: mensagem de teste pelo bot do código ----------

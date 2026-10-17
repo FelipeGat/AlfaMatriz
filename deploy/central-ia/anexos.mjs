@@ -5,17 +5,47 @@ import { createHash } from 'node:crypto';
 import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
+// O servidor aceita até 12 MB (AnexosService::MAX_BYTES); a folga aqui é só
+// para não recusar por arredondamento.
 const MAX = 20 * 1024 * 1024;
 const extensoes = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf',
-    'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' };
+    'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
+    // Espelho de AnexosService::DOCUMENTOS (o servidor guarda o MIME canônico).
+    'text/plain': 'txt', 'text/markdown': 'md', 'text/csv': 'csv', 'text/tab-separated-values': 'tsv', 'application/json': 'json',
+    'application/rtf': 'rtf', 'application/msword': 'doc', 'application/vnd.ms-excel': 'xls', 'application/vnd.ms-powerpoint': 'ppt',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+    'application/vnd.oasis.opendocument.text': 'odt', 'application/vnd.oasis.opendocument.spreadsheet': 'ods',
+    'application/vnd.oasis.opendocument.presentation': 'odp' };
+const TEXTO = ['txt', 'md', 'csv', 'tsv', 'json'];
+export const IMAGEM_OFFICE = 'alfamatriz-central-office:local';
 
-async function converter(dir, comando, args) {
+async function converter(dir, comando, args, { imagem = 'alfamatriz-central-media:local', memoria = '512m', env = [] } = {}) {
     // Mídia não confiável: conversão sem rede, privilégios ou acesso aos projetos.
     return exec('docker', ['run', '--rm', '--pull=never', '--network=none', '--read-only', '--cap-drop=ALL',
-        '--security-opt=no-new-privileges', '--memory=512m', '--cpus=1', '--pids-limit=128',
-        '--user', `${process.getuid()}:${process.getgid()}`, '--tmpfs', '/tmp:rw,noexec,nosuid,size=128m',
-        '--mount', `type=bind,src=${dir},dst=/media`, 'alfamatriz-central-media:local', comando, ...args],
-    { timeout: 90000, maxBuffer: 2 * 1024 * 1024 });
+        '--security-opt=no-new-privileges', `--memory=${memoria}`, '--cpus=1', '--pids-limit=128',
+        '--user', `${process.getuid()}:${process.getgid()}`, '--tmpfs', '/tmp:rw,noexec,nosuid,size=256m',
+        ...env.flatMap(e => ['-e', e]),
+        '--mount', `type=bind,src=${dir},dst=/media`, imagem, comando, ...args],
+    { timeout: 120000, maxBuffer: 2 * 1024 * 1024 });
+}
+
+// Word, Excel e PowerPoint viram PDF numa imagem à parte (LibreOffice é
+// grande e a de PDF e vídeo já está instalada nas máquinas). Macro não roda:
+// sem rede, perfil novo em /tmp e a segurança de macro padrão do LibreOffice.
+async function officeParaPdf(dir, ext) {
+    await converter(dir, 'soffice', ['--headless', '--norestore', '-env:UserInstallation=file:///tmp/perfil',
+        '--convert-to', 'pdf', '--outdir', '/media', `/media/original.${ext}`],
+    { imagem: IMAGEM_OFFICE, memoria: '1g', env: ['HOME=/tmp'] });
+}
+
+async function pdfParaContexto(dir, pdf) {
+    await converter(dir, 'pdftotext', ['-layout', `/media/${pdf}`, '/media/texto.txt']);
+    const texto = readFileSync(join(dir, 'texto.txt'), 'utf8');
+    await converter(dir, 'pdftoppm', ['-f', '1', '-l', '8', '-scale-to', '1600', '-png', `/media/${pdf}`, '/media/pagina']);
+    return `\nTexto extraído${texto.length > 50000 ? ' (limitado a 50 mil caracteres)' : ''}:\n${texto.slice(0, 50000)}`
+        + '\nImagens das primeiras 8 páginas (ou todas, se menor). Não presuma o conteúdo de páginas não exibidas.';
 }
 
 export async function prepararAnexos(anexos, cfg, tmp) {
@@ -42,11 +72,20 @@ export async function prepararAnexos(anexos, cfg, tmp) {
         if (a.mime.startsWith('image/')) {
             imagens.push(arquivo);
         } else if (a.mime === 'application/pdf') {
-            await converter(dir, 'pdftotext', ['-layout', '/media/original.pdf', '/media/texto.txt']);
-            const texto = readFileSync(join(dir, 'texto.txt'), 'utf8');
-            nota += `\nTexto extraído${texto.length > 50000 ? ' (limitado a 50 mil caracteres)' : ''}:\n${texto.slice(0, 50000)}`;
-            await converter(dir, 'pdftoppm', ['-f', '1', '-l', '8', '-scale-to', '1600', '-png', '/media/original.pdf', '/media/pagina']);
-            nota += '\nImagens das primeiras 8 páginas (ou todas, se menor). Não presuma o conteúdo de páginas não exibidas.';
+            nota += await pdfParaContexto(dir, 'original.pdf');
+        } else if (TEXTO.includes(extensoes[a.mime])) {
+            // Texto puro não precisa de conversor: vai direto, cortado.
+            const texto = bytes.toString('utf8');
+            nota += `\nConteúdo${texto.length > 50000 ? ' (limitado a 50 mil caracteres)' : ''}:\n${texto.slice(0, 50000)}`;
+        } else if (!a.mime.startsWith('video/')) {
+            try {
+                await officeParaPdf(dir, extensoes[a.mime]);
+                nota += `\nDocumento convertido para PDF (${join(dir, 'original.pdf')}).` + await pdfParaContexto(dir, 'original.pdf');
+            } catch (e) {
+                // Sem a imagem do LibreOffice o pedido segue: o agente tem o original.
+                nota += `\nNão foi possível converter este documento nesta máquina (${String(e.message || e).split('\n')[0].slice(0, 160)}).`
+                    + ' Leia o original pelo caminho acima, se tiver como, e avise a pessoa se não conseguir.';
+            }
         } else {
             const { stdout } = await converter(dir, 'ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', `/media/original.${extensoes[a.mime]}`]);
             const duracao = Number(stdout.trim());
