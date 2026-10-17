@@ -436,6 +436,62 @@ class TelasDoMonitorTest extends TestCase
             ->assertDontSee('Incidente 030');
     }
 
+    /**
+     * Um incidente novo entre a página 1 e a 2 empurra a lista e repetiria o
+     * último da página 1 (#399): o total mudou, a busca recomeça e a lista
+     * sai certa, sem repetido.
+     */
+    public function test_se_a_lista_muda_entre_as_paginas_a_busca_recomeca(): void
+    {
+        $antes = array_map(fn ($n) => $this->incidente($n), range(30, 1));
+        $depois = array_map(fn ($n) => $this->incidente($n), range(31, 1));
+        $primeiras = 0;
+
+        Http::fake([
+            self::BASE.'/api/v1/incidentes*' => function (Request $r) use ($antes, $depois, &$primeiras) {
+                $pagina = (int) ($r->data()['pagina'] ?? 1);
+
+                if ($pagina === 1) {
+                    $primeiras++;
+                }
+
+                // A 1ª busca lê a página 1 antes do incidente 31 chegar.
+                $itens = $pagina === 1 && $primeiras === 1 ? $antes : $depois;
+
+                return Http::response($this->paginaDeIncidentes($itens, $pagina, 20));
+            },
+        ]);
+
+        $this->actingAs($this->admin())->get(route('monitor.incidentes', ['estado' => 'historico', 'dias' => 30, 'visao' => 'cliente']))
+            ->assertOk()
+            ->assertSee('31 incidentes')
+            ->assertSee('Incidente 031')
+            ->assertDontSee('mudou durante a busca');
+
+        $this->assertSame(2, $primeiras);
+    }
+
+    public function test_se_a_lista_nao_para_de_mudar_a_tela_avisa_em_vez_de_mostrar_lista_torta(): void
+    {
+        $chamadas = 0;
+
+        Http::fake([
+            self::BASE.'/api/v1/incidentes*' => function (Request $r) use (&$chamadas) {
+                $chamadas++;
+                $itens = array_map(fn ($n) => $this->incidente($n), range(20 + $chamadas, 1));
+
+                return Http::response($this->paginaDeIncidentes($itens, (int) ($r->data()['pagina'] ?? 1), 20));
+            },
+        ]);
+
+        $this->actingAs($this->admin())->get(route('monitor.incidentes', ['estado' => 'historico', 'dias' => 30]))
+            ->assertOk()
+            ->assertSee('A lista do AlfaMonitor mudou durante a busca');
+
+        // Três tentativas, duas páginas cada.
+        $this->assertSame(6, $chamadas);
+    }
+
     public function test_a_busca_de_clientes_acha_quem_esta_em_outra_pagina_da_api(): void
     {
         $clientes = $this->exemplo('clientes');
