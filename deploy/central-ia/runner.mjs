@@ -512,7 +512,7 @@ function instrucoes(job, branch) {
         'Você está atendendo um pedido feito pela Central de IA do AlfaMatriz. Responda em português do Brasil.',
         // Prévia visual (dono, 13/10/2026): o que ficava numa pasta solta da
         // máquina, quem estava em outra não via.
-        ...(job.previaDir ? [`Para MOSTRAR algo visual à pessoa (conceito, tela, gráfico, PDF), salve na pasta de prévia ${job.previaDir}: imagens (png/jpg/webp) e PDF aparecem na conversa e vão ao Telegram dela; uma página web vai em ${job.previaDir}/pagina/index.html (CSS, JS e imagens ao lado, com caminhos RELATIVOS) e vira um link para abrir no navegador, no Mac ou no Windows. Não use outra pasta (temporária ou de projeto) para isso, e não precisa dizer o caminho na resposta.`] : []),
+        ...(job.previaDir ? [`Para MOSTRAR algo visual à pessoa (conceito, tela, gráfico, PDF), salve na pasta de prévia ${job.previaDir}: imagens (png/jpg/webp), PDF e vídeo MP4 (até 12 MB cada; vídeo maior, reduza antes) aparecem na conversa e vão ao Telegram dela; uma página web vai em ${job.previaDir}/pagina/index.html (CSS, JS e imagens ao lado, com caminhos RELATIVOS) e vira um link para abrir no navegador, no Mac ou no Windows. Não use outra pasta (temporária ou de projeto) para isso, e não precisa dizer o caminho na resposta.`] : []),
         job.projeto
             ? `Projeto: ${job.projeto}. Siga as instruções do próprio projeto (CLAUDE.md, AGENTS.md, README).`
             : 'Pedido da conversa Geral, fora de projeto: responda com os dados oficiais abaixo (se houver) e o que a pergunta pede.',

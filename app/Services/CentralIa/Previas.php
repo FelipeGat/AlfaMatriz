@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Prévias visuais (FR-034 a FR-036). O agente salva o que quer mostrar numa
  * pasta da execução; a máquina envia para cá; a resposta mostra miniatura,
- * PDF e "Abrir prévia", e imagem e PDF vão ao Telegram.
+ * PDF, vídeo e "Abrir prévia", e imagem, PDF e vídeo vão ao Telegram.
  *
  * O endereço da prévia leva um código aleatório da execução, e não a sessão:
  * a página é servida em sandbox (origem opaca, sem cookie nem API do
@@ -28,7 +28,7 @@ class Previas
     public const TIPOS = [
         'html' => 'text/html', 'htm' => 'text/html', 'css' => 'text/css', 'js' => 'text/javascript', 'json' => 'application/json',
         'png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'webp' => 'image/webp', 'gif' => 'image/gif', 'svg' => 'image/svg+xml',
-        'pdf' => 'application/pdf', 'woff2' => 'font/woff2', 'woff' => 'font/woff', 'ttf' => 'font/ttf', 'txt' => 'text/plain',
+        'pdf' => 'application/pdf', 'mp4' => 'video/mp4', 'woff2' => 'font/woff2', 'woff' => 'font/woff', 'ttf' => 'font/ttf', 'txt' => 'text/plain',
     ];
 
     // 12 MB: o PHP de produção aceita upload até 12M (deploy/php-alfamatriz.ini).
@@ -64,23 +64,25 @@ class Previas
         $chave = (clone $ja)->value('chave') ?? Str::random(48);
         $mime = self::TIPOS[Str::lower(pathinfo($c, PATHINFO_EXTENSION))];
         Storage::disk('central_ia')->putFileAs("central-ia/previas/{$user->id}/{$e->id}/".dirname($c), $arquivo, basename($c));
-        $visual = str_starts_with($mime, 'image/') && $mime !== 'image/svg+xml' || $mime === 'application/pdf';
+        // Vídeo (MP4) também (dono, 17/10/2026: "quero o vídeo"), dentro dos
+        // mesmos 12 MB: o PHP de produção não aceita mais que isso.
+        $visual = str_starts_with($mime, 'image/') && $mime !== 'image/svg+xml' || in_array($mime, ['application/pdf', 'video/mp4'], true);
 
         return CentralIaPrevia::updateOrCreate(['execucao_id' => $e->id, 'caminho' => $c], [
             'user_id' => $user->id, 'chave' => $chave, 'mime' => $mime, 'tamanho' => $arquivo->getSize(),
             'sha256' => hash_file('sha256', $arquivo->getRealPath()),
-            // Imagem e PDF vão ao Telegram (dono, 13/10/2026), quando há vínculo.
+            // Imagem, PDF e vídeo vão ao Telegram (dono, 13 e 17/10/2026), quando há vínculo.
             'telegram' => $visual && CentralIaTelegramVinculo::where('user_id', $user->id)->exists() ? 'pendente' : null,
         ]);
     }
 
-    /** O que a resposta mostra: imagens, PDFs e as páginas (os .html). */
+    /** O que a resposta mostra: imagens, PDFs, vídeos e as páginas (os .html). */
     public function daExecucao(int $execucaoId): array
     {
         if (! $this->pronto()) return [];
 
         return CentralIaPrevia::where('execucao_id', $execucaoId)->orderBy('caminho')->get()
-            ->filter(fn ($p) => in_array($p->tipo(), ['imagem', 'pdf', 'pagina'], true))
+            ->filter(fn ($p) => in_array($p->tipo(), ['imagem', 'pdf', 'video', 'pagina'], true))
             ->map(fn ($p) => ['caminho' => $p->caminho, 'tipo' => $p->tipo(),
                 'url' => route('central-ia.previa', ['chave' => $p->chave, 'caminho' => $p->caminho])])
             ->values()->all();

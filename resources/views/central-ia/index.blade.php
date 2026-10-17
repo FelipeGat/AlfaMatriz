@@ -563,7 +563,7 @@
                                             </span>
                                         </div>
                                     @endif
-                                    {{-- Prévia visual do agente (FR-034): imagem em miniatura, PDF e página
+                                    {{-- Prévia visual do agente (FR-034): imagem em miniatura, PDF, vídeo e página
                                          para abrir no navegador — no Mac ou no Windows. --}}
                                     <div x-show="(m.previas || []).length" class="mt-2 flex flex-wrap items-end gap-2">
                                         <template x-for="p in m.previas || []" :key="p.url">
@@ -573,6 +573,7 @@
                                                @click="if (p.tipo === 'imagem') { $event.preventDefault(); imagemAberta = p; }">
                                                 <img x-show="p.tipo === 'imagem'" :src="p.url" :alt="p.caminho" loading="lazy" class="h-24 max-w-[10rem] rounded-control border border-line object-cover">
                                                 <span x-show="p.tipo === 'pdf'" class="rounded-badge border border-line px-2 py-1" x-text="'📄 ' + p.caminho.split('/').pop()"></span>
+                                                <span x-show="p.tipo === 'video'" class="rounded-badge border border-line px-2 py-1" x-text="'🎬 ' + p.caminho.split('/').pop()"></span>
                                                 <span x-show="p.tipo === 'pagina'" class="rounded-control bg-brand px-3 py-1.5 text-on-brand" x-text="'🔗 Abrir prévia' + (p.caminho.endsWith('index.html') ? '' : ' · ' + p.caminho.split('/').pop())"></span>
                                             </a>
                                         </template>
