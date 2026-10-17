@@ -287,6 +287,21 @@ comando pelo Telegram, tag de produção só depois de ele autorizar — ainda n
   AlfaMatriz; o de outro registra sem tarefas e avisa (#252: uma tag de mesmo nome aqui daria as
   tarefas erradas).
   `--importar deploy/changelog/*.txt` registra os antigos sem enviar nada.
+- **Alertas do AlfaMonitor (#394, fase 1, 17/10/2026).** O monitoramento passa a ser visto no
+  Matriz, sem rede, sonda, câmeras e DVR (decisão do dono). O AlfaMonitor continua independente e
+  continua sendo QUEM AVISA: aqui só se mostra — nada de tarefa, sino ou Telegram por cima, senão o
+  mesmo alerta toca duas vezes. A porta é `POST /api/monitor/eventos` (`routes/monitor.php`, fora do
+  grupo `web`), com o cabeçalho `X-AlfaMonitor-Token` (`<id>|<segredo>` de `alfa:monitor-token
+  <sistema>`, só o hash em `sistemas.monitor_token_hash`, na linha do sistema que MANDA). O contrato
+  v1 foi combinado com a Central AlfaMonitor: `event_id` único (UNIQUE em `monitor_eventos`: o
+  monitor reenvia por ~8h40 o que não recebeu 2xx), `occurred_at` decide a ordem (o `at` é a hora do
+  ENVIO e muda a cada tentativa), `derived` é lembrete e não queda nova, `v` diferente de 1 e kind
+  fora de `MonitorAlerta::KINDS` voltam 202 e são descartados (erro faria o monitor insistir à toa).
+  O estado mora em `monitor_alertas`, por (kind, entity); a regra, em `AlertasDoMonitor`: evento
+  mais velho que o estado só entra no histórico, "voltou" sem queda é aceito e marcado, e a queda
+  atrasada que chega depois da volta encaixa sem reabrir. A vitrine é a aba Monitor da Manutenção
+  (recurso `manutencao`); o histórico guarda 90 dias (`model:prune`). Fases seguintes, ainda não
+  feitas: a API de leitura do monitor (reconciliar o que se perdeu com o Matriz fora > 9 h) e logs.
 - Teste em `tests/Feature/Mcp/` com `AlfaMatrizServer::actingAs($u)->tool(...)`. Fumaça de
   verdade: mandar JSON-RPC pelo stdin do `mcp:start` — foi assim que se conferiu o caminho inteiro.
 - **A fase 2 é a ponte do Telegram**, em `deploy/agente/` (`ponte-telegram.mjs`, README com a
