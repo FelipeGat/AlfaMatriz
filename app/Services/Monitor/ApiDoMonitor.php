@@ -57,7 +57,7 @@ class ApiDoMonitor
 
     public function configurada(): bool
     {
-        return filled(config('services.alfamonitor.url')) && filled(config('services.alfamonitor.api_token'));
+        return filled(config('services.alfamonitor.api_url')) && filled(config('services.alfamonitor.api_token'));
     }
 
     /**
@@ -66,7 +66,7 @@ class ApiDoMonitor
     public function buscar(string $rota, array $parametros = [], int $cacheS = self::CACHE_VIVO_S, int $timeoutS = self::TIMEOUT_S): RespostaDoMonitor
     {
         if (! $this->configurada()) {
-            return RespostaDoMonitor::falha('O Matriz ainda não tem o endereço e o token de leitura do AlfaMonitor (ALFAMONITOR_URL e ALFAMONITOR_API_TOKEN).');
+            return RespostaDoMonitor::falha('O Matriz ainda não tem o endereço e o token de leitura do AlfaMonitor (ALFAMONITOR_API_URL e ALFAMONITOR_API_TOKEN).');
         }
 
         $parametros = array_filter($parametros, fn ($v) => $v !== null && $v !== '');
@@ -163,7 +163,7 @@ class ApiDoMonitor
      */
     private function pedir(string $rota, array $parametros, int $timeoutS, string $aceita = 'application/json'): Response
     {
-        return Http::baseUrl(rtrim((string) config('services.alfamonitor.url'), '/').'/api/v1')
+        return Http::baseUrl(rtrim((string) config('services.alfamonitor.api_url'), '/').'/api/v1')
             ->withToken((string) config('services.alfamonitor.api_token'))
             ->accept($aceita)
             ->connectTimeout(3)
