@@ -49,7 +49,7 @@ export function centralIa(config) {
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         // Chats Business: um chat contínuo por assunto (docs/specs/chats-business).
         assuntos: [], novoAssunto: null, buscaAssuntos: '',
-        imagemAberta: null, trazendo: null, memoria: null,
+        imagemAberta: null, memoria: null,
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
         politicaUsuario: null, politicaAlterada: false, salvandoPolitica: false, carregandoUsuario: false,
@@ -68,6 +68,15 @@ export function centralIa(config) {
         projetosRecolhidos: ler('central-ia:projetos-recolhidos') === 'sim',
         // Recolhidos por padrão: o estado cabe num selo só ao lado das abas.
         indicadoresRecolhidos: ler('central-ia:indicadores-recolhidos') !== 'nao',
+        // Caixa de mensagem recolhida (Felipe, 17/10/2026: escrevendo muito, a
+        // caixa crescia e escondia a conversa de onde vinha o contexto). Só a
+        // preferência de tela vai para o navegador, nunca o texto.
+        caixaRecolhida: ler('central-ia:caixa-recolhida') === 'sim',
+        alternarCaixa() {
+            this.caixaRecolhida = !this.caixaRecolhida;
+            guardar('central-ia:caixa-recolhida', this.caixaRecolhida ? 'sim' : 'nao');
+            this.$nextTick(() => this.crescer(document.getElementById('central-rascunho')));
+        },
         alternarProjetos() {
             this.projetosRecolhidos = !this.projetosRecolhidos;
             guardar('central-ia:projetos-recolhidos', this.projetosRecolhidos ? 'sim' : 'nao');
@@ -156,7 +165,9 @@ export function centralIa(config) {
         crescer(el) {
             if (!el) return;
             el.style.height = 'auto';
-            el.style.height = Math.min(el.scrollHeight + 2, Math.round(window.innerHeight * 0.4)) + 'px';
+            // Recolhida: duas linhas, o texto rola por dentro e a conversa fica à vista.
+            const teto = this.caixaRecolhida ? 52 : Math.round(window.innerHeight * 0.4);
+            el.style.height = Math.min(el.scrollHeight + 2, teto) + 'px';
         },
         colar(event) {
             const arquivos = [...(event.clipboardData?.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
@@ -319,67 +330,6 @@ export function centralIa(config) {
                 this.abrirAssunto(this.assuntos[0]);
                 this.$nextTick(() => document.getElementById('central-rascunho')?.focus());
             } catch (erro) { this.falhou(erro); n.salvando = false; }
-        },
-        /** Conversas do VS Code que podem semear um chat (Claude e Codex), com nome primeiro. */
-        get conversasDoVsCode() {
-            return this.sessoes.filter(s => ['claude', 'codex'].includes(s.agente))
-                .sort((a, b) => (!!b.titulo - !!a.titulo) || b.ultima_atividade.localeCompare(a.ultima_atividade));
-        },
-        abrirTrazer() { this.trazendo = { ids: [], titulo: '', grupo_id: '', projeto: '', salvando: false, nomeTocado: false }; },
-        /** Marca/desmarca; o nome e o grupo do chat seguem a primeira conversa marcada (Vix* → VixCard). */
-        marcarConversa(s) {
-            const t = this.trazendo;
-            t.ids = t.ids.includes(s.id) ? t.ids.filter(x => x !== s.id) : [...t.ids, s.id];
-            const primeira = this.sessoes.find(x => x.id === t.ids[0]);
-            if (!t.nomeTocado) t.titulo = primeira?.titulo || '';
-            if (primeira && !t.grupo_id) {
-                const alvo = /vix/i.test(primeira.titulo || '') ? /vix/i : /alfa/i;
-                t.grupo_id = this.grupos.find(g => alvo.test(g.nome))?.id || '';
-            }
-        },
-        async trazerDoVsCode() {
-            const t = this.trazendo;
-            if (!t?.ids.length || !t.titulo.trim() || t.salvando) return;
-            t.salvando = true;
-            try {
-                const sessoes = t.ids.map(id => ({ agente: this.sessoes.find(s => s.id === id).agente, id }));
-                const r = await this.pedir(config.semear, 'POST', { titulo: t.titulo.trim(), grupo_id: t.grupo_id ? Number(t.grupo_id) : null, projeto: t.projeto || '', sessoes });
-                this.assuntos = [{ id: r.id, titulo: t.titulo.trim(), grupo_id: t.grupo_id ? Number(t.grupo_id) : null, projeto: t.projeto || '', status: 'executando', agente: null, ultima_atividade: new Date().toISOString() }, ...this.assuntos];
-                this.trazendo = null;
-                this.abrirAssunto(this.assuntos[0]);
-            } catch (erro) { this.falhou(erro); t.salvando = false; }
-        },
-        async carregarMemoria() {
-            const a = this.assuntoAtual;
-            if (!a) return;
-            if (this.memoria?.id !== a.id) this.memoria = null;
-            try { this.memoria = await this.pedir(config.memoria.replace('__A__', a.id)); } catch (erro) { this.falhou(erro); }
-        },
-        /** Editar ou apagar um item; manda o texto que a pessoa via, para não corrigir o item errado. */
-        async corrigirMemoria(lista, i, acao) {
-            const item = this.memoria?.listas[lista]?.[i];
-            if (!item) return;
-            const corpo = { lista, indice: i, acao, antes: item.texto };
-            if (acao === 'apagar') {
-                if (!confirm(`Apagar da memória?
-
-${item.texto}
-
-Uma IA não poderá devolvê-lo depois.`)) return;
-            } else {
-                const texto = prompt('Texto:', item.texto);
-                if (texto === null || !texto.trim()) return;
-                corpo.texto = texto.trim();
-                if (lista === 'mapa') {
-                    const caminho = prompt('Caminho (pasta, arquivo ou link; vazio se não houver):', item.caminho || '');
-                    if (caminho === null) return;
-                    const etapa = prompt('Em que etapa está agora? (vazio se não se aplica)', item.etapa || '');
-                    if (etapa === null) return;
-                    corpo.caminho = caminho.trim() || null; corpo.etapa = etapa.trim() || null;
-                }
-            }
-            try { this.memoria = await this.pedir(config.memoria.replace('__A__', this.memoria.id), 'PUT', corpo); }
-            catch (erro) { this.falhou(erro); this.carregarMemoria(); }
         },
         async salvarAssunto(a, dados) {
             try { await this.pedir(config.assunto.replace('__A__', a.id), 'PUT', dados); this.reconectar(); } catch (erro) { this.falhou(erro); }
