@@ -50,3 +50,15 @@
             </form>
         </x-painel>
 </div>
+
+{{-- Histórico dos resumos enviados (estava em Acompanhamentos até a Etapa 8). --}}
+<x-painel titulo="Avisos enviados (7 dias)" solto>
+    @forelse ($envios as $e)
+        <p class="border-b border-line px-4 py-2 text-[12.5px] text-ink-dim last:border-0">
+            {{ $e->created_at->format('d/m H:i') }} · {{ $e->canal === 'sino' ? 'Sino' : 'Telegram' }} · {{ $e->quantos }} situação(ões) ·
+            <span class="{{ $e->status === 'falhou' ? 'text-crit' : ($e->status === 'entregue' ? 'text-good' : 'text-ink-mute') }}">{{ ['pendente' => 'na fila', 'enviando' => 'enviando', 'entregue' => 'entregue', 'falhou' => 'não chegou'][$e->status] ?? $e->status }}</span>
+        </p>
+    @empty
+        <p class="px-4 py-3 text-[13px] text-ink-mute">Nenhum resumo enviado nos últimos 7 dias.</p>
+    @endforelse
+</x-painel>

@@ -204,11 +204,14 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         Route::post('propostas/{proposta}/descartar', [\App\Http\Controllers\SecretarioController::class, 'descartar'])->whereNumber('proposta')->name('propostas.descartar')->middleware('permissao:secretario,incluir');
         Route::post('itens/{item}/acao', [\App\Http\Controllers\SecretarioController::class, 'acao'])->whereNumber('item')->name('itens.acao')->middleware('permissao:secretario,editar');
         Route::post('itens/{item}/reagendar', [\App\Http\Controllers\SecretarioController::class, 'reagendar'])->whereNumber('item')->name('itens.reagendar')->middleware('permissao:secretario,editar');
+        Route::post('anotacoes', [\App\Http\Controllers\SecretarioController::class, 'anotar'])->name('anotacoes')->middleware('permissao:secretario,incluir');
+        Route::post('anotacoes/{item}/arquivar', [\App\Http\Controllers\SecretarioController::class, 'arquivarAnotacao'])->whereNumber('item')->name('anotacoes.arquivar')->middleware('permissao:secretario,editar');
         Route::get('configuracoes', [\App\Http\Controllers\SecretarioController::class, 'configuracoes'])->name('configuracoes')->middleware('permissao:secretario,ler');
         Route::put('configuracoes', [\App\Http\Controllers\SecretarioController::class, 'salvarConfiguracoes'])->name('configuracoes.salvar')->middleware('permissao:secretario,editar');
         // Etapa 2 (docs/specs/secretario-agenda): agenda consolidada e a conta Google da própria pessoa.
         Route::get('agenda', [\App\Http\Controllers\SecretarioGoogleController::class, 'visao'])->name('agenda')->middleware('permissao:secretario,ler');
         Route::get('agenda/eventos', [\App\Http\Controllers\SecretarioGoogleController::class, 'eventos'])->name('agenda.eventos')->middleware('permissao:secretario,ler');
+        Route::post('agenda/eventos', [\App\Http\Controllers\SecretarioGoogleController::class, 'novoEvento'])->name('agenda.novo')->middleware('permissao:secretario,incluir');
         Route::get('google/conectar', [\App\Http\Controllers\SecretarioGoogleController::class, 'conectar'])->name('google.conectar')->middleware('permissao:secretario,editar');
         Route::get('google/retorno', [\App\Http\Controllers\SecretarioGoogleController::class, 'retorno'])->name('google.retorno')->middleware('permissao:secretario,editar');
         Route::post('google/desconectar', [\App\Http\Controllers\SecretarioGoogleController::class, 'desconectar'])->name('google.desconectar')->middleware('permissao:secretario,editar');
@@ -217,6 +220,7 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         // Etapa 4 (docs/specs/secretario-reunioes): reuniões por áudio.
         Route::get('reunioes', [\App\Http\Controllers\SecretarioReunioesController::class, 'index'])->name('reunioes.index')->middleware('permissao:secretario,ler');
         Route::post('reunioes', [\App\Http\Controllers\SecretarioReunioesController::class, 'enviar'])->name('reunioes.enviar')->middleware('permissao:secretario,incluir');
+        Route::patch('reunioes/{reuniao}/empresa', [\App\Http\Controllers\SecretarioReunioesController::class, 'empresa'])->whereNumber('reuniao')->name('reunioes.empresa')->middleware('permissao:secretario,editar');
         Route::get('reunioes/{reuniao}', [\App\Http\Controllers\SecretarioReunioesController::class, 'mostrar'])->whereNumber('reuniao')->name('reunioes.mostrar')->middleware('permissao:secretario,ler');
         Route::get('reunioes/{reuniao}/ata', [\App\Http\Controllers\SecretarioReunioesController::class, 'ata'])->whereNumber('reuniao')->name('reunioes.ata')->middleware('permissao:secretario,ler');
         Route::post('reunioes/{reuniao}/analisar', [\App\Http\Controllers\SecretarioReunioesController::class, 'analisarDeNovo'])->whereNumber('reuniao')->name('reunioes.analisar')->middleware('permissao:secretario,editar');

@@ -269,9 +269,10 @@ class AcompanhamentoTest extends TestCase
         $this->actingAs($u);
 
         $this->get(route('secretario.acompanhamentos'))->assertOk()
-            ->assertSeeInOrder(['Alta prioridade (1)', 'Conflito amanhã', 'Prioridade normal (6)', 'Tarefa vencida desde'])
+            // A Central (desenho de 17/10/2026): uma tabela só, vencidos e alta primeiro.
+            ->assertSeeInOrder(['Tarefa vencida desde', 'Conflito amanhã'])
             ->assertDontSee('Salvar regras'); // as regras moram em Configurações desde a Etapa 8
-        $this->get(route('secretario.meu-dia'))->assertOk()->assertSee('7 para acompanhar')->assertSee('Conflito amanhã');
+        $this->get(route('secretario.meu-dia'))->assertOk()->assertSee('Acompanhamentos')->assertSee('Conflito amanhã');
 
         // Ações.
         $tarefa = SecretarioAcompanhamento::where('regra', 'tarefa_vencida')->sole();

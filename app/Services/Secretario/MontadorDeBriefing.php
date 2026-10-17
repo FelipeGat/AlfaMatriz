@@ -48,7 +48,7 @@ class MontadorDeBriefing
             $partes[] = "⚠ {$conflitos} compromisso(s) em conflito de horário hoje.";
         }
 
-        $abertos = SecretarioItem::de($user)->where('status', SecretarioItem::ABERTO)->orderBy('quando')->orderBy('id')->limit(500)->get();
+        $abertos = SecretarioItem::de($user)->where('status', SecretarioItem::ABERTO)->where('origem', '!=', 'anotacao')->orderBy('quando')->orderBy('id')->limit(500)->get();
         $atrasados = $abertos->filter(fn ($i) => $i->quando && ($i->so_data ? $i->quando->copy()->endOfDay() : $i->quando)->lessThan($agora));
         // Só o que é do dia SEM hora: o que tem hora já está na agenda acima, e
         // a missão pede o resumo "sem informações repetidas".

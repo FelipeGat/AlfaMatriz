@@ -132,9 +132,30 @@ class SecretarioGoogleController extends Controller
                 'titulo' => $x['titulo'], 'origem' => $x['origem'], 'origem_rotulo' => $x['origem_rotulo'],
                 'inicio' => $x['inicio']->format('Y-m-d\TH:i'), 'fim' => $x['fim']?->format('Y-m-d\TH:i'),
                 'dia_inteiro' => (bool) $x['dia_inteiro'], 'conflito' => (bool) $x['conflito'], 'link' => $x['link'],
+                // O calendário de cada evento (filtro "Meus calendários"): a empresa do ponto/compromisso, senão a origem.
+                'calendario' => match (true) {
+                    ($x['empresa'] ?? null) === null => $x['origem'],
+                    in_array($x['empresa'], \App\Services\Secretario\CentralDeGestao::COM_CALENDARIO, true) => $x['empresa'],
+                    default => 'outros',
+                },
             ])->values(),
             'google' => ['estado' => $situacao['estado'], 'aviso' => $agenda->aviso($situacao)],
         ])->header('Cache-Control', 'no-store, private');
+    }
+
+    /** "Novo evento" do calendário: um compromisso do Secretário (com lembrete), nunca um evento no Google sem confirmação. */
+    public function novoEvento(Request $request, \App\Services\Secretario\Despachante $despachante): JsonResponse
+    {
+        $d = $request->validate([
+            'titulo' => ['required', 'string', 'max:190'], 'data' => ['required', 'date_format:Y-m-d'], 'hora' => ['nullable', 'date_format:H:i'],
+            'empresa' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(\App\Services\Secretario\CentralDeGestao::EMPRESAS))],
+        ]);
+        $item = \App\Models\SecretarioItem::create(['user_id' => $request->user()->id, 'tipo' => $d['hora'] ? 'compromisso' : 'tarefa', 'titulo' => $d['titulo'],
+            'quando' => $d['data'].' '.($d['hora'] ?? '00:00').':00', 'so_data' => ! $d['hora'], 'empresa' => $d['empresa'] ?? null,
+            'antecedencia_min' => $d['hora'] ? \App\Models\SecretarioPreferencia::de($request->user())->antecedencia_padrao : null, 'origem' => 'matriz']);
+        $despachante->programar($item);
+
+        return response()->json(['ok' => true, 'mensagem' => 'Evento criado: '.\App\Services\Secretario\Datas::porExtenso($item->quando, $item->so_data).'.']);
     }
 
     /** Secretário → Agenda: a visão consolidada (spec US2). `?formato=json` para a tela. */

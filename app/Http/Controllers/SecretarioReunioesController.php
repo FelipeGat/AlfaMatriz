@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CentralIaRunner;
 use App\Models\SecretarioReuniao;
 use App\Models\SecretarioReuniaoProposta;
+use App\Services\Secretario\CentralDeGestao;
 use App\Services\Secretario\AnaliseDeReuniao;
 use App\Services\Secretario\Reunioes;
 use App\Services\Secretario\RevisaoDeReuniao;
@@ -21,20 +22,39 @@ use Illuminate\View\View;
  */
 class SecretarioReunioesController extends Controller
 {
+    /** Abas da lista (desenho de 17/10/2026) => situações da reunião. */
+    public const ABAS = [
+        'todas' => ['Todas', null],
+        'processando' => ['Processando', [SecretarioReuniao::AGUARDANDO, SecretarioReuniao::TRANSCREVENDO, SecretarioReuniao::ANALISANDO]],
+        'revisar' => ['Aguardando revisão', [SecretarioReuniao::PRONTA]],
+        'revisadas' => ['Revisadas', [SecretarioReuniao::REVISADA]],
+        'falhas' => ['Com falha', [SecretarioReuniao::FALHOU]],
+    ];
+
     public function index(Request $request): View
     {
-        $busca = trim((string) $request->query('q', ''));
-        $reunioes = SecretarioReuniao::de($request->user())->where('modo', 'reuniao')
+        $f = $request->validate([
+            'q' => ['nullable', 'string', 'max:120'], 'de' => ['nullable', 'date_format:Y-m-d'], 'ate' => ['nullable', 'date_format:Y-m-d'],
+            'empresa' => ['nullable', Rule::in(array_keys(CentralDeGestao::EMPRESAS))], 'aba' => ['nullable', Rule::in(array_keys(self::ABAS))],
+        ]);
+        $busca = trim((string) ($f['q'] ?? ''));
+        $aba = $f['aba'] ?? 'todas';
+        $base = SecretarioReuniao::de($request->user())->where('modo', 'reuniao')
             ->when($busca !== '', function ($q) use ($busca) {
                 $termo = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $busca).'%';
                 $q->where(fn ($w) => $w->where('titulo', 'like', $termo)->orWhere('resumo', 'like', $termo)
                     ->orWhereHas('trechos', fn ($t) => $t->where('texto', 'like', $termo)));
             })
+            ->when($f['de'] ?? null, fn ($q, $de) => $q->where('created_at', '>=', $de.' 00:00:00'))
+            ->when($f['ate'] ?? null, fn ($q, $ate) => $q->where('created_at', '<=', $ate.' 23:59:59'))
+            ->when($f['empresa'] ?? null, fn ($q, $e) => $q->where('empresa', $e));
+        $contagem = collect(self::ABAS)->map(fn ($a) => (clone $base)->when($a[1], fn ($q, $st) => $q->whereIn('status', $st))->count());
+        $reunioes = (clone $base)->when(self::ABAS[$aba][1], fn ($q, $st) => $q->whereIn('status', $st))
             ->withCount(['propostas as tarefas_pendentes' => fn ($q) => $q->whereIn('categoria', ['tarefa', 'pendencia'])->where('status', 'pendente')])
             ->orderByDesc('id')->paginate(20)->withQueryString();
 
         return view('secretario.reunioes.index', [
-            'reunioes' => $reunioes, 'busca' => $busca,
+            'reunioes' => $reunioes, 'busca' => $busca, 'filtros' => $f + ['aba' => $aba], 'contagem' => $contagem,
             'maquinaOnline' => CentralIaRunner::where('user_id', $request->user()->id)->get()->contains(fn ($r) => $r->online()),
         ]);
     }
@@ -44,9 +64,13 @@ class SecretarioReunioesController extends Controller
         $dados = $request->validate([
             'audio' => ['required', 'file', 'max:12288'],
             'origem' => ['nullable', Rule::in(['upload', 'gravacao'])],
+            'empresa' => ['nullable', Rule::in(array_keys(CentralDeGestao::EMPRESAS))],
         ]);
         $arquivo = $dados['audio'];
         $r = $reunioes->receber($request->user(), $arquivo->getRealPath(), $arquivo->getClientOriginalName(), $dados['origem'] ?? 'upload');
+        if (! empty($dados['empresa'])) {
+            $r->update(['empresa' => $dados['empresa']]);
+        }
 
         return $request->expectsJson()
             ? response()->json(['id' => $r->id, 'url' => route('secretario.reunioes.mostrar', $r->id)], 201)
@@ -107,5 +131,14 @@ class SecretarioReunioesController extends Controller
         $r = SecretarioReuniao::de($request->user())->findOrFail($reuniao);
 
         return response()->json(['aprovadas' => $revisao->aprovarLote($request->user(), $r)]);
+    }
+
+    /** A empresa da reunião, trocada na própria lista. */
+    public function empresa(Request $request, int $reuniao): RedirectResponse
+    {
+        $d = $request->validate(['empresa' => ['nullable', Rule::in(array_keys(CentralDeGestao::EMPRESAS))]]);
+        SecretarioReuniao::de($request->user())->findOrFail($reuniao)->update(['empresa' => $d['empresa'] ?: null]);
+
+        return back();
     }
 }

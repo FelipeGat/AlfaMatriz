@@ -97,9 +97,10 @@ class CentralDoDiaTest extends TestCase
 
         $r = $this->get(route('secretario.acompanhamentos'))->assertOk();
         $r->assertSeeInOrder(['Compromissos hoje', '1', 'E-mails não lidos (3 dias)', '2', 'Tarefas vencidas', '2']);
-        $r->assertSee('Grupo Soluções · Gestor lido às 09:00')->assertSee('104')->assertSee('R$ 5.041.515,73')->assertSee('Orç. 151 — VD Cariacica');
-        $r->assertSee('VixCard · 1 ponto(s) em aberto')->assertSee('Aprovar tabela de preços')->assertSee('atrasado');
-        $r->assertDontSee('Salvar regras')->assertSee('Regras e horários dos avisos');
+        $r->assertSee('Gestor lido às 09:00')->assertSee('104 orçamento(s) aguardando aprovação')->assertSee('Orç. 151')->assertSee('VD Cariacica')
+            ->assertSee('Aguardando aprovação');
+        $r->assertSee('Aprovar tabela de preços')->assertSee('Ponto de gestão')->assertSee('Vencido');
+        $r->assertDontSee('Salvar regras')->assertSee('Regras dos avisos');
 
         // Outra conta, admin incluído: não vê nem conclui.
         $admin = $this->admin();
@@ -126,7 +127,7 @@ class CentralDoDiaTest extends TestCase
         $u = $this->dono(telegram: false);
         SecretarioItem::create(['user_id' => $u->id, 'tipo' => 'compromisso', 'titulo' => 'Visita RFID', 'quando' => '2026-10-22 09:00:00', 'origem' => 'matriz']);
         SecretarioItem::create(['user_id' => $u->id, 'tipo' => 'compromisso', 'titulo' => 'Call', 'quando' => '2026-10-22 09:30:00', 'origem' => 'matriz']);
-        $this->actingAs($u)->get(route('secretario.agenda'))->assertOk()->assertSee('minhaAgenda()', false);
+        $this->actingAs($u)->get(route('secretario.agenda'))->assertOk()->assertSee('minhaAgenda(', false);
         $j = $this->getJson(route('secretario.agenda.eventos', ['de' => '2026-10-19', 'ate' => '2026-10-25']))->assertOk()->json('eventos');
         $this->assertSame(['Visita RFID', '2026-10-22T09:00', '2026-10-22T10:00', true], [$j[0]['titulo'], $j[0]['inicio'], $j[0]['fim'], $j[0]['conflito']]);
         $this->getJson(route('secretario.agenda.eventos', ['de' => '2026-10-01', 'ate' => '2026-12-31']))->assertStatus(422);

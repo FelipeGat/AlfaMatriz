@@ -11,7 +11,9 @@ use App\Services\Secretario\Itens;
 use App\Services\Secretario\Propostas;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -30,14 +32,31 @@ class SecretarioController extends Controller
             'acompanhamentos' => \App\Models\SecretarioAcompanhamento::de($request->user())->ativos()->get(),
             // Etapa 8: dólar, clima, Flamengo e notícias, do cache (público, igual para todos).
             'laFora' => app(\App\Services\Secretario\LaFora::class)->ler(),
-        ]);
+        ] + app(\App\Services\Secretario\PainelDoDia::class)->montar($request->user(), CarbonImmutable::now()));
+    }
+
+    /** Anotação rápida do Meu Dia: guardada como item do Secretário, fora das listas de tarefa. */
+    public function anotar(Request $request): RedirectResponse
+    {
+        $d = $request->validate(['texto' => ['required', 'string', 'max:500']]);
+        SecretarioItem::create(['user_id' => $request->user()->id, 'tipo' => 'lembrete', 'titulo' => Str::squish($d['texto']), 'origem' => 'anotacao']);
+
+        return redirect()->route('secretario.meu-dia')->with('status', 'Anotação guardada.');
+    }
+
+    public function arquivarAnotacao(Request $request, int $item, Itens $itens): RedirectResponse
+    {
+        $i = SecretarioItem::de($request->user())->where('origem', 'anotacao')->findOrFail($item);
+        $itens->agir($request->user(), $i, 'concluir');
+
+        return redirect()->route('secretario.meu-dia');
     }
 
     public function itens(Request $request): JsonResponse
     {
         $user = $request->user();
         $agora = now();
-        $abertos = SecretarioItem::de($user)->where('status', SecretarioItem::ABERTO)
+        $abertos = SecretarioItem::de($user)->where('status', SecretarioItem::ABERTO)->where('origem', '!=', 'anotacao')
             ->orderByRaw('quando is null')->orderBy('quando')->orderBy('id')->limit(500)->get();
 
         $vencido = fn (SecretarioItem $i) => $i->quando && ($i->so_data ? $i->quando->copy()->endOfDay() : $i->quando)->lessThan($agora);
@@ -134,6 +153,9 @@ class SecretarioController extends Controller
             'gestor' => \App\Models\SecretarioGestorRetrato::where('user_id', $request->user()->id)->first(),
             // Etapa 8: as regras dos avisos moram aqui.
             'config' => \App\Services\Secretario\Acompanhamento\Regras::de($request->user()),
+            'telegramPareado' => app(TelegramCanal::class)->vinculoDe($request->user()) !== null,
+            'maquinaOnline' => \App\Models\CentralIaRunner::where('user_id', $request->user()->id)->get()->contains(fn ($r) => $r->online()),
+            'envios' => \App\Models\SecretarioAcompanhamentoEnvio::de($request->user())->where('created_at', '>=', now()->subDays(7))->latest('id')->limit(30)->get(),
         ]);
     }
 

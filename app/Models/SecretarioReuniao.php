@@ -30,7 +30,7 @@ class SecretarioReuniao extends Model
     protected $fillable = [
         'user_id', 'titulo', 'origem', 'modo', 'status', 'erro', 'arquivo', 'mime', 'tamanho', 'sha256', 'duracao_s', 'maquina',
         'reservada_em', 'tentativas', 'tipo_reuniao', 'contexto', 'resumo', 'participantes', 'proximos_passos', 'roteiro', 'parcial',
-        'execucao_id', 'telegram_update_id', 'transcrita_em', 'analisada_em',
+        'execucao_id', 'telegram_update_id', 'transcrita_em', 'analisada_em', 'empresa',
     ];
 
     protected $attributes = ['status' => self::AGUARDANDO, 'modo' => 'reuniao', 'tentativas' => 0, 'parcial' => false];

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\SecretarioAcompanhamento;
-use App\Models\SecretarioAcompanhamentoEnvio;
 use App\Models\SecretarioItem;
 use App\Models\SecretarioPreferencia;
 use App\Services\Secretario\Acompanhamento\Politica;
@@ -34,10 +33,9 @@ class SecretarioAcompanhamentosController extends Controller
             // Etapa 8: a Central de gestão no topo (números, Grupo Soluções, VixCard).
             'numeros' => $central->numeros($user, $agora),
             'gestor' => $central->grupoSolucoes($user),
-            'pontos' => collect(CentralDeGestao::EMPRESAS)->map(fn ($rotulo, $empresa) => $central->pontos($user, $empresa)),
-            'ativos' => SecretarioAcompanhamento::de($user)->ativos()->get()->groupBy('prioridade'),
+            'linhas' => $central->linhas($user, $agora),
+            'atividade' => $central->atividade($user),
             'dispensados' => SecretarioAcompanhamento::de($user)->where('situacao', SecretarioAcompanhamento::DISPENSADO)->count(),
-            'envios' => SecretarioAcompanhamentoEnvio::de($user)->where('created_at', '>=', now()->subDays(7))->latest('id')->limit(60)->get(),
             'config' => $config,
             'silencio' => $politica->emSilencio($config, CarbonImmutable::now()),
         ]);

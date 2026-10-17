@@ -53,7 +53,7 @@ class AgendaConsolidada
             $itens->push([
                 'origem' => 'secretario', 'origem_rotulo' => 'Secretário · '.ucfirst($i->tipo), 'titulo' => $i->titulo,
                 'inicio' => $inicio, 'fim' => $compromisso ? $inicio->addMinutes(self::DURACAO_PADRAO_MIN) : null,
-                'dia_inteiro' => $i->so_data, 'link' => null, 'ocupa' => $compromisso, 'ref' => 'secretario:'.$i->id,
+                'dia_inteiro' => $i->so_data, 'link' => null, 'ocupa' => $compromisso, 'ref' => 'secretario:'.$i->id, 'empresa' => $i->empresa,
             ]);
         }
 
