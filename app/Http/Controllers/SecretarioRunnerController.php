@@ -55,6 +55,33 @@ class SecretarioRunnerController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /**
+     * O retrato das pendências do Gestor, lido pela máquina pela ponte de
+     * produção em modo só leitura (contracts/gestor-retrato.md). Inválido é
+     * recusado inteiro e o anterior continua valendo (FR-012).
+     */
+    public function gestor(Request $request): JsonResponse
+    {
+        [$user, $maquina] = $this->conta($request);
+        $blocos = array_keys(\App\Models\SecretarioGestorRetrato::BLOCOS);
+        $dados = $request->validate([
+            'lido_em' => ['required', 'date', 'before_or_equal:'.now()->addMinutes(5)->toIso8601String(), 'after:'.now()->subDay()->toIso8601String()],
+            'blocos' => ['required', 'array:'.implode(',', $blocos)],
+            'blocos.*.quantidade' => ['required', 'integer', 'min:0', 'max:100000'],
+            'blocos.*.valor' => ['nullable', 'numeric', 'min:0', 'max:1000000000'],
+            'blocos.*.itens' => ['present', 'array', 'max:10'],
+            'blocos.*.itens.*.texto' => ['required', 'string', 'max:200'],
+            'blocos.*.itens.*.data' => ['nullable', 'date_format:Y-m-d'],
+            'blocos.*.itens.*.valor' => ['nullable', 'numeric', 'min:0', 'max:1000000000'],
+        ]);
+        \App\Models\SecretarioGestorRetrato::updateOrCreate(['user_id' => $user->id], [
+            'maquina' => $maquina, 'lido_em' => \Carbon\CarbonImmutable::parse($dados['lido_em'])->setTimezone(config('app.timezone')), 'dados' => ['blocos' => $dados['blocos']],
+        ]);
+        \App\Services\CentralIa\Eventos::registrar($user, 'secretario_gestor_retrato', 'Retrato do Gestor recebido da máquina '.$maquina.'.', ['origem' => 'runner']);
+
+        return response()->json(['ok' => true]);
+    }
+
     /** @return array{0: User, 1: string} a conta do token e a máquina dela que chama */
     private function conta(Request $request): array
     {

@@ -17,8 +17,6 @@ class MontadorDeBriefing
 {
     public const MAX_LINHAS = 8;
     public const MAX_CARACTERES = 3800;
-    /** Fontes da missão que ainda não têm etapa pronta: o briefing diz que não entram. */
-    public const AINDA_AUSENTES = ['e-mail', 'reuniões', 'Gestor'];
 
     public function __construct(private AgendaConsolidada $agenda) {}
 
@@ -67,6 +65,29 @@ class MontadorDeBriefing
             $partes[] = '📌 Pendências sem data ('.$semData->count().")\n".$this->limitar($semData->map(fn ($i) => '• '.$i->titulo)->all());
         }
 
+        // Etapa 5: e-mails importantes desde ontem e o retrato do Gestor.
+        $temEmail = \App\Models\SecretarioEmailConta::de($user)->exists();
+        if ($temEmail) {
+            $emails = \App\Models\SecretarioEmail::de($user)->with('conta')->where('enviado', false)->where('recebido_em', '>=', $hoje->subDay())
+                ->where(fn ($q) => $q->where('urgencia', 'alta')->orWhere(fn ($w) => $w->where('pede_retorno', true)->where('respondido', false)))
+                ->orderBy('recebido_em')->get();
+            if ($emails->isNotEmpty()) {
+                $partes[] = '📧 Mensagens importantes ('.$emails->count().")\n".$this->limitar($emails->map(fn ($e) => '• '.app(\App\Services\Secretario\ConsultaDeEmails::class)->linha($e, true))->all());
+            }
+        }
+        $retrato = \App\Models\SecretarioGestorRetrato::where('user_id', $user->id)->first();
+        $gestorOk = $retrato && ! $retrato->velho();
+        if ($gestorOk) {
+            $linhasGestor = [];
+            foreach (\App\Models\SecretarioGestorRetrato::BLOCOS as $chave => $rotulo) {
+                $b = $retrato->dados['blocos'][$chave] ?? null;
+                if ($b && $b['quantidade'] > 0) {
+                    $linhasGestor[] = '• '.$b['quantidade'].' '.$rotulo.(isset($b['valor']) && $b['valor'] > 0 ? ' (R$ '.number_format($b['valor'], 2, ',', '.').')' : '');
+                }
+            }
+            $partes[] = '🏢 Gestor (lido às '.$retrato->lido_em->format('H:i').")\n".($linhasGestor ? implode("\n", $linhasGestor) : 'Nenhuma pendência nos blocos lidos.');
+        }
+
         if ($sugestao = $this->sugestao($itensDoDia, $hoje, $agora, $atrasados, $semData, $googleOk)) {
             $partes[] = '💡 '.$sugestao;
         }
@@ -75,12 +96,23 @@ class MontadorDeBriefing
             $googleOk ? 'Google (lido às '.$situacao['sincronizado_em']->format('H:i').')' : null,
             // Só diz que leu a Agenda do time quem pode lê-la (FR-006).
             $user->canPermissao('agenda', 'ler') ? 'Agenda do Matriz' : null, 'Secretário',
+            $temEmail ? 'e-mail' : null, $gestorOk ? 'Gestor (lido às '.$retrato->lido_em->format('H:i').')' : null,
         ]));
         $rodape = 'Fontes: '.implode(', ', $usadas).'.';
         if ($aviso = $this->agenda->aviso($situacao)) {
             $rodape = $aviso."\n".$rodape;
         }
-        $rodape .= "\nAinda não entram: ".implode(', ', self::AINDA_AUSENTES).'.';
+        // O que ainda não entra, dito por nome — ausência de fonte não é ausência de pendência.
+        $ausentes = array_values(array_filter([
+            $temEmail ? null : 'e-mail (nenhuma caixa ligada)',
+            $gestorOk ? null : ($retrato ? 'Gestor (não lido desde '.$retrato->lido_em->format('d/m H:i').')' : 'Gestor (sua máquina ainda não leu)'),
+        ]));
+        if ($temEmail && \App\Models\SecretarioEmailConta::de($user)->where('situacao', 'erro')->exists()) {
+            $ausentes[] = 'parte do e-mail (caixa com erro de leitura)';
+        }
+        if ($ausentes) {
+            $rodape .= "\nNão entram agora: ".implode('; ', $ausentes).'.';
+        }
         $partes[] = $rodape;
 
         $texto = implode("\n\n", $partes);
@@ -89,7 +121,7 @@ class MontadorDeBriefing
         }
 
         return ['texto' => $texto, 'fontes' => [
-            'usadas' => $usadas, 'ausentes' => self::AINDA_AUSENTES,
+            'usadas' => $usadas, 'ausentes' => $ausentes,
             'google' => ['estado' => $situacao['estado'], 'sincronizado_em' => $situacao['sincronizado_em']?->format('Y-m-d H:i')],
         ]];
     }

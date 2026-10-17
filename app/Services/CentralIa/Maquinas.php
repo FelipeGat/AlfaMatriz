@@ -44,6 +44,8 @@ class Maquinas
         'extrato.mjs', 'anexos.mjs', 'progresso.mjs', 'limpeza.mjs', 'atualizar-quando-ocioso.sh',
         // Secretário, Etapa 4: transcrição de reuniões na máquina.
         'transcricao.mjs', 'transcrever_reuniao.py',
+        // Etapa 5: o retrato do Gestor pela ponte (o .php vai para o C:\tmp do dono).
+        'gestor.mjs', 'secretario_gestor.php',
     ];
 
     public function podeConectar(User $user): bool

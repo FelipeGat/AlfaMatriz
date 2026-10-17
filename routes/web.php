@@ -221,6 +221,15 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         Route::post('reunioes/{reuniao}/analisar', [\App\Http\Controllers\SecretarioReunioesController::class, 'analisarDeNovo'])->whereNumber('reuniao')->name('reunioes.analisar')->middleware('permissao:secretario,editar');
         Route::post('reunioes/{reuniao}/aprovar-lote', [\App\Http\Controllers\SecretarioReunioesController::class, 'aprovarLote'])->whereNumber('reuniao')->name('reunioes.aprovar-lote')->middleware('permissao:secretario,editar');
         Route::post('reunioes/propostas/{proposta}', [\App\Http\Controllers\SecretarioReunioesController::class, 'proposta'])->whereNumber('proposta')->name('reunioes.proposta')->middleware('permissao:secretario,editar');
+        // Etapa 5 (docs/specs/secretario-emails-gestor): caixas IMAP só de leitura e mensagens.
+        $em = \App\Http\Controllers\SecretarioEmailsController::class;
+        Route::get('emails', [$em, 'index'])->name('emails.index')->middleware('permissao:secretario,ler');
+        Route::post('emails/contas/testar', [$em, 'testar'])->name('emails.testar')->middleware(['permissao:secretario,editar', 'throttle:10,1']);
+        Route::post('emails/contas', [$em, 'cadastrar'])->name('emails.cadastrar')->middleware(['permissao:secretario,editar', 'throttle:10,1']);
+        Route::delete('emails/contas/{conta}', [$em, 'remover'])->whereNumber('conta')->name('emails.remover')->middleware('permissao:secretario,excluir');
+        Route::post('emails/contas/{conta}/ler', [$em, 'ler'])->whereNumber('conta')->name('emails.ler')->middleware(['permissao:secretario,editar', 'throttle:10,1']);
+        Route::post('emails/{email}/rascunho', [$em, 'rascunho'])->whereNumber('email')->name('emails.rascunho')->middleware('permissao:secretario,incluir');
+        Route::post('emails/{email}/lembrar', [$em, 'lembrar'])->whereNumber('email')->name('emails.lembrar')->middleware('permissao:secretario,incluir');
     });
 
     // Central de IA. Sem id de conversa na rota: é sempre a da conta logada.

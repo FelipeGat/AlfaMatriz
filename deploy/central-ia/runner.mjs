@@ -25,6 +25,7 @@ import { auditar, chatConfirmado, chaveDoChat, confirmar, marcarChatConfirmado }
 import { caminhoDoStatus, compararGit, criarAuditor, retratoGit } from './auditoria.mjs';
 import { girar, limparWorktrees } from './limpeza.mjs';
 import { transcrever, whisperInstalado } from './transcricao.mjs';
+import { hora as horaDoGestor, lerGestor } from './gestor.mjs';
 import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h; chave servidor + conta +
@@ -88,6 +89,9 @@ function lerConfig() {
         // - retrato: um retrato.json de painel de andamento, se a pessoa usa.
         memoria: (v('CENTRAL_IA_MEMORIA') || '').replace(/^~/, HOME),
         agenda: v('CENTRAL_IA_AGENDA') || '',
+        // - gestor: a ponte de produção do Gestor (`programa|ponte|script`),
+        //   rodada SÓ PARA LEITURA (sem --apply) para o Secretário (Etapa 5).
+        gestor: v('CENTRAL_IA_GESTOR') || '',
         retrato: (v('CENTRAL_IA_RETRATO') || '').replace(/^~/, HOME),
         // O arquivo que o launchd enche com a saída deste processo (instalar.sh),
         // para girar quando passa do limite (T-378). No Linux e no WSL a saída
@@ -979,6 +983,9 @@ const REINICIAR = join(HOME, '.local/share/alfa/central-ia-reiniciar');
 // Transcrição de reuniões (Secretário, Etapa 4): uma por vez; a presença da
 // imagem é conferida a cada 10 min (o instalador pode tê-la criado depois).
 let transcrevendo = false;
+let lendoGestor = false;
+let ultimoGestor = null;
+let gestorPausadoAte = 0;
 let transcricaoPausadaAte = 0;
 let whisperConferido = { em: 0, ok: false };
 async function whisperPronto() {
@@ -995,6 +1002,18 @@ while (!parar) {
     try {
         // Reuniões do Secretário: uma transcrição por vez, quando a imagem
         // existe e a conta usa o Secretário (403 = não usa; tenta de novo em 1 h).
+        // Pendências do Gestor (Secretário, Etapa 5): retrato de hora em hora,
+        // em paralelo ao resto; uma leitura por vez.
+        if (cfg.gestor && !lendoGestor && Date.now() >= gestorPausadoAte && horaDoGestor(ultimoGestor)) {
+            lendoGestor = true;
+            ultimoGestor = new Date();
+            lerGestor(cfg.gestor).then(async r => {
+                if (!r.ok) return log('Gestor: retrato não lido —', r.erro);
+                const envio = await api('gestor', { maquina: cfg.maquina, lido_em: new Date().toISOString(), blocos: r.blocos });
+                if (envio.status === 403 || envio.status === 404) gestorPausadoAte = Date.now() + 3600_000 * 6;
+                log('Gestor: retrato enviado →', envio.status);
+            }).catch(e => log('Gestor: erro', e.message)).finally(() => { lendoGestor = false; });
+        }
         if (!transcrevendo && rodando.size < PARALELO && Date.now() >= transcricaoPausadaAte && await whisperPronto()) {
             const t = await api('transcricoes/proxima', { maquina: cfg.maquina });
             if (t.status === 403 || t.status === 404 || t.status === 405) transcricaoPausadaAte = Date.now() + 3600_000;

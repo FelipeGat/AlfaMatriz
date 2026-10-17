@@ -80,7 +80,7 @@ class BriefingTest extends TestCase
             "📌 Pendências sem data (1)\n• Falar com o Rossini",
             '💡 Livre 11:00–14:30: bom momento para "Enviar proposta Condonal".',
             'Fontes: Google (lido às 06:50), Agenda do Matriz, Secretário.',
-            'Ainda não entram: e-mail, reuniões, Gestor.',
+            'Não entram agora: e-mail (nenhuma caixa ligada); Gestor (sua máquina ainda não leu).',
         ] as $esperado) {
             $this->assertStringContainsString($esperado, $texto);
         }

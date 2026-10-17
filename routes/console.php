@@ -85,3 +85,10 @@ Schedule::command('secretario:reunioes')
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->onOneServer();
+
+// E-mails do Secretário (docs/specs/secretario-emails-gestor): a cada 10 min,
+// só leitura (EXAMINE + BODY.PEEK — nunca marca como lido), só metadados.
+Schedule::command('secretario:emails')
+    ->everyTenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();

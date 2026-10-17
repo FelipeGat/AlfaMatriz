@@ -126,6 +126,8 @@ class SecretarioController extends Controller
             'google' => \App\Models\SecretarioGoogleConta::where('user_id', $request->user()->id)->first(),
             'agendas' => \App\Models\SecretarioGoogleAgenda::where('user_id', $request->user()->id)->orderByDesc('primaria')->orderBy('nome')->get(),
             'googleConfigurado' => app(\App\Services\Secretario\GoogleAgenda::class)->configurado(),
+            'caixas' => \App\Models\SecretarioEmailConta::de($request->user())->orderBy('rotulo')->get(),
+            'gestor' => \App\Models\SecretarioGestorRetrato::where('user_id', $request->user()->id)->first(),
         ]);
     }
 

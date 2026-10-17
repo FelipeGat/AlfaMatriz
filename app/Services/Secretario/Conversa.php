@@ -107,6 +107,12 @@ class Conversa
 
             return ['proposta' => null, 'item' => null, 'mensagem' => $b?->texto ?? 'Não consegui montar o resumo agora.'];
         }
+        // Etapa 5: "o que estou devendo aos clientes?" e as perguntas de e-mail.
+        foreach ([ConsultaDePendencias::class, ConsultaDeEmails::class] as $consulta) {
+            if (($resposta = app($consulta)->responder($user, $texto)) !== null) {
+                return ['proposta' => null, 'item' => null, 'mensagem' => $resposta];
+            }
+        }
         if (($agenda = app(ConsultaDeAgenda::class)->responder($user, $texto)) !== null) {
             return ['proposta' => null, 'item' => null, 'mensagem' => $agenda];
         }

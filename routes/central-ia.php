@@ -27,6 +27,8 @@ Route::prefix('api/central-ia/runner')
         Route::post('transcricoes/proxima', [\App\Http\Controllers\SecretarioRunnerController::class, 'proxima'])->name('secretario.runner.proxima');
         Route::get('transcricoes/{reuniao}/audio', [\App\Http\Controllers\SecretarioRunnerController::class, 'audio'])->whereNumber('reuniao')->name('secretario.runner.audio');
         Route::post('transcricoes/{reuniao}', [\App\Http\Controllers\SecretarioRunnerController::class, 'resultado'])->whereNumber('reuniao')->name('secretario.runner.resultado');
+        // Etapa 5: o retrato das pendências do Gestor, lido pela máquina (só leitura).
+        Route::post('gestor', [\App\Http\Controllers\SecretarioRunnerController::class, 'gestor'])->name('secretario.runner.gestor');
     });
 
 /*

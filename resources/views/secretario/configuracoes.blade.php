@@ -123,5 +123,50 @@
                 @endif
             </div>
         </x-painel>
+
+        {{-- Etapa 5: caixas de e-mail (só leitura) e o retrato do Gestor. A senha não volta para a tela. --}}
+        <x-painel titulo="E-mail (somente leitura)">
+            <div class="space-y-3 text-[13.5px] text-ink" x-data="{ f: { rotulo: '', host: '', porta: 993, seguranca: 'ssl', usuario: '', senha: '', pasta_entrada: 'INBOX', pasta_enviados: '' }, recado: '', erro: false, ocupado: false,
+                    async enviar(rota) { this.ocupado = true; this.recado = ''; const r = await fetch(rota, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }, body: JSON.stringify(this.f) });
+                        const j = await r.json().catch(() => ({})); this.ocupado = false; this.erro = !r.ok;
+                        if (r.status === 201) { location.reload(); return; }
+                        this.recado = r.ok ? ('Conectou: ' + j.mensagens + ' mensagem(ns) na entrada. Pastas: ' + (j.pastas || []).slice(0, 12).join(', ')) : (j.erro || (j.errors && Object.values(j.errors)[0][0]) || 'Não deu certo.'); } }">
+                <p class="text-[12.5px] text-ink-mute">O Matriz só lê: abre a pasta em modo leitura, não marca nada como lido e não envia e-mail. Guarda remetente, assunto e data — o texto da mensagem não fica guardado. Em Gmail/Outlook, use uma <b>senha de app</b>.</p>
+                @foreach ($caixas as $c)
+                    <div class="flex flex-col gap-1 rounded-ctl border border-line px-3 py-2 sm:flex-row sm:items-center sm:gap-3">
+                        <span class="min-w-0 flex-1 break-words"><b>{{ $c->rotulo }}</b> · {{ $c->usuario }} · {{ $c->host }}</span>
+                        <span class="text-[12px] {{ $c->situacao === 'erro' ? 'text-crit' : 'text-ink-mute' }}">{{ $c->situacao === 'erro' ? 'erro: '.$c->erro : 'lida '.($c->lida_em?->format('d/m H:i') ?? '—') }}</span>
+                        <form method="POST" action="{{ route('secretario.emails.remover', $c->id) }}" onsubmit="return confirm('Remover a caixa? A senha e as mensagens guardadas dela serão apagadas.')">@csrf @method('DELETE')
+                            <button class="h-[28px] rounded-control border border-btn-line px-2 text-[12px] font-semibold text-ink-mute hover:border-crit hover:text-crit">Remover</button></form>
+                    </div>
+                @endforeach
+                <div class="grid gap-2 sm:grid-cols-2">
+                    <input x-model="f.rotulo" placeholder="Rótulo (ex.: VixCard comercial)" class="rounded-control border border-btn-line bg-surface px-2 py-1.5 text-ink">
+                    <input x-model="f.host" placeholder="Servidor IMAP (ex.: imap.gmail.com)" class="rounded-control border border-btn-line bg-surface px-2 py-1.5 text-ink">
+                    <div class="flex gap-2"><input x-model="f.porta" type="number" class="w-24 rounded-control border border-btn-line bg-surface px-2 py-1.5 text-ink">
+                        <select x-model="f.seguranca" class="flex-1 rounded-control border border-btn-line bg-surface px-2 py-1.5 text-ink"><option value="ssl">SSL (993)</option><option value="tls">STARTTLS (143)</option></select></div>
+                    <input x-model="f.usuario" placeholder="Usuário (e-mail)" autocomplete="off" class="rounded-control border border-btn-line bg-surface px-2 py-1.5 text-ink">
+                    <input x-model="f.senha" type="password" placeholder="Senha (de app)" autocomplete="new-password" class="rounded-control border border-btn-line bg-surface px-2 py-1.5 text-ink">
+                    <input x-model="f.pasta_entrada" placeholder="Pasta de entrada" class="rounded-control border border-btn-line bg-surface px-2 py-1.5 text-ink">
+                    <input x-model="f.pasta_enviados" placeholder="Pasta de enviados (para saber o que já foi respondido)" class="rounded-control border border-btn-line bg-surface px-2 py-1.5 text-ink sm:col-span-2">
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="button" @click="enviar(@js(route('secretario.emails.testar')))" :disabled="ocupado" class="h-[34px] rounded-control border border-btn-line px-3 text-[12.5px] font-semibold text-ink-dim hover:border-brand hover:text-brand">Testar</button>
+                    <button type="button" @click="enviar(@js(route('secretario.emails.cadastrar')))" :disabled="ocupado" class="h-[34px] rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Ligar caixa</button>
+                    <span x-show="recado" x-text="recado" class="text-[12.5px]" :class="erro ? 'text-crit' : 'text-good'"></span>
+                </div>
+            </div>
+        </x-painel>
+
+        <x-painel titulo="Gestor (pela sua máquina)">
+            <p class="text-[13.5px] text-ink">
+                @if ($gestor)
+                    Último retrato: {{ $gestor->lido_em->format('d/m H:i') }} (máquina {{ $gestor->maquina }}){{ $gestor->velho() ? ' — desatualizado' : '' }}.
+                @else
+                    Sua máquina ainda não mandou o retrato do Gestor.
+                @endif
+            </p>
+            <p class="mt-1 text-[12px] text-ink-mute">A máquina lê o Gestor pela ponte de produção, só leitura (o script recusa gravar e abre o banco em modo leitura), de hora em hora e antes do briefing.</p>
+        </x-painel>
     </div>
 </x-app-layout>
