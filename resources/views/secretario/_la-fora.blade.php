@@ -9,7 +9,7 @@
 <section x-data="{ aba: null }" class="rounded-panel border border-line bg-surface">
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-4 py-3">
         <span class="h-6 w-6 text-brand-text"><x-nav-icon name="globe" peso="1.7" /></span>
-        <h2 class="font-display text-[19px] font-semibold text-ink">Lá fora</h2>
+        <h2 class="font-display text-[15px] font-semibold text-ink">Lá fora</h2>
         <nav class="flex flex-wrap gap-1">
             @foreach (['dolar' => 'Dólar', 'clima' => 'Vitória', 'flamengo' => 'Flamengo', 'brasil' => 'Brasil', 'mundo' => 'Mundo'] as $k => $rotulo)
                 <button type="button" @click="aba = aba === '{{ $k }}' ? null : '{{ $k }}'" class="border-b-2 px-2 pb-1 font-mono text-[12px]"

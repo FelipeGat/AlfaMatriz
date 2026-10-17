@@ -79,7 +79,10 @@ class SecretarioGoogleController extends Controller
     {
         $conta = SecretarioGoogleConta::where('user_id', $request->user()->id)->first();
         if ($conta) {
-            $google->revogar($conta);
+            // Pela máquina não há token aqui: só apaga o que veio dela.
+            if (! $conta->pelaMaquina()) {
+                $google->revogar($conta);
+            }
             DB::transaction(function () use ($request) {
                 SecretarioGoogleEvento::where('user_id', $request->user()->id)->delete();
                 SecretarioGoogleAgenda::where('user_id', $request->user()->id)->delete();
@@ -134,6 +137,9 @@ class SecretarioGoogleController extends Controller
                 'dia_inteiro' => (bool) $x['dia_inteiro'], 'conflito' => (bool) $x['conflito'], 'link' => $x['link'],
                 // O calendário de cada evento (filtro "Meus calendários"): a empresa do ponto/compromisso, senão a origem.
                 'calendario' => match (true) {
+                    // Agenda do Google com o nome da empresa (ex.: "VixCard", "Comercial Grupo") ganha a cor dela.
+                    $x['origem'] === 'google' && str_contains(mb_strtolower($x['origem_rotulo']), 'vixcard') => 'vixcard',
+                    $x['origem'] === 'google' && str_contains(mb_strtolower($x['origem_rotulo']), 'grupo') => 'grupo_solucoes',
                     ($x['empresa'] ?? null) === null => $x['origem'],
                     in_array($x['empresa'], \App\Services\Secretario\CentralDeGestao::COM_CALENDARIO, true) => $x['empresa'],
                     default => 'outros',

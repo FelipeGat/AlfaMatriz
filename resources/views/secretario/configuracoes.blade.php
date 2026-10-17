@@ -3,7 +3,7 @@
     <x-slot name="contexto"><span>personalize como o seu secretário trabalha</span></x-slot>
     <x-slot name="acoes">
         <a href="{{ route('secretario.meu-dia') }}"
-           class="h-[34px] px-3 inline-flex items-center gap-1.5 rounded-control border border-btn-line text-ink-dim text-[12.5px] font-semibold hover:text-brand hover:border-brand transition whitespace-nowrap">
+           class="h-[30px] px-3 inline-flex items-center gap-1.5 rounded-control border border-btn-line text-ink-dim text-[12.5px] font-semibold hover:text-brand hover:border-brand transition whitespace-nowrap">
             Meu Dia
         </a>
     </x-slot>
@@ -16,7 +16,13 @@
         $chave = 'relative inline-flex h-[24px] w-[44px] shrink-0 items-center rounded-full transition';
         $estado = fn (string $tom, string $texto) => '<span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[12px] font-semibold '
             .['ok' => 'bg-good-tint text-good', 'alerta' => 'bg-warn-tint text-warn', 'erro' => 'bg-crit-tint text-crit', 'neutro' => 'bg-head text-ink-mute'][$tom].'">'.e($texto).'</span>';
-        $googleEstado = ! $googleConfigurado && ! $google ? ['neutro', 'Não configurado'] : (! $google ? ['erro', 'Não conectado'] : ($google->conectada() ? ['ok', 'Conectado'] : ['erro', 'Reconectar']));
+        $googleEstado = match (true) {
+            ! $google && ! $googleConfigurado => ['neutro', 'Não configurado'],
+            ! $google => ['erro', 'Não conectado'],
+            $google->pelaMaquina() => $google->sincronizado_em?->greaterThan(now()->subMinutes(30)) ? ['ok', 'Pela máquina'] : ['alerta', 'Máquina sem ler'],
+            $google->conectada() => ['ok', 'Conectado'],
+            default => ['erro', 'Reconectar'],
+        };
         $emailEstado = $caixas->isEmpty() ? ['neutro', 'Nenhuma caixa'] : ($caixas->contains('situacao', 'erro') ? ['erro', 'Com erro'] : ['ok', $caixas->count().' caixa(s)']);
         $gestorEstado = ! $gestor ? ['neutro', 'Sem leitura'] : ($gestor->velho() ? ['alerta', 'Desatualizado'] : ['ok', 'Lido às '.$gestor->lido_em->format('H:i')]);
     @endphp
@@ -36,11 +42,11 @@
                     body: JSON.stringify({ auto_confirmar: this.auto_confirmar, antecedencia_padrao: Number(this.antecedencia_padrao), telegram: this.telegram,
                         briefing: this.briefing, briefing_hora: this.briefing_hora, briefing_dias: this.briefing_dias }) });
                 r.ok ? this.salvo = 'Salvo.' : this.erro = 'Não deu certo. Confira os valores.';
-            } }" class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+            } }" class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
         <div class="min-w-0 space-y-4">
             <div>
-                <h1 class="font-display text-[28px] font-semibold leading-tight text-ink">Configurações do Secretário</h1>
-                <p class="mt-1 text-[14px] text-ink-mute">Defina como o AlfaMatriz deve trabalhar, avisar e se comunicar com você.</p>
+                <h1 class="font-display text-[22px] font-semibold leading-tight text-ink">Configurações do Secretário</h1>
+                <p class="mt-0.5 text-[13px] text-ink-mute">Defina como o AlfaMatriz deve trabalhar, avisar e se comunicar com você.</p>
             </div>
             @if (session('status'))
                 <x-aviso>{{ session('status') }}</x-aviso>
@@ -53,7 +59,7 @@
             <section class="rounded-panel border border-line bg-surface">
                 <button type="button" @click="aberto.comportamento = !aberto.comportamento" class="flex w-full items-center gap-2.5 border-b border-line px-4 py-3 text-left">
                     <span class="h-5 w-5 text-ink-dim"><x-nav-icon name="bell" peso="1.7" /></span>
-                    <span class="flex-1 font-display text-[16px] font-semibold text-ink">Comportamento e avisos</span>
+                    <span class="flex-1 font-display text-[15px] font-semibold text-ink">Comportamento e avisos</span>
                     <span class="text-ink-faint" x-text="aberto.comportamento ? '▴' : '▾'"></span>
                 </button>
                 <div x-show="aberto.comportamento" class="space-y-4 px-4 py-4 text-[13.5px] text-ink">
@@ -86,7 +92,7 @@
                         </span>
                     </div>
                     <div class="flex items-center gap-3 border-t border-line pt-3">
-                        <button type="button" @click="salvar()" class="h-[36px] rounded-control bg-brand px-4 text-[13px] font-semibold text-on-brand hover:bg-brand-bright">Salvar</button>
+                        <button type="button" @click="salvar()" class="h-[30px] rounded-control bg-brand px-4 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Salvar</button>
                         <span x-show="salvo" x-text="salvo" class="text-[12.5px] text-good"></span>
                         <span x-show="erro" x-text="erro" class="text-[12.5px] text-crit"></span>
                     </div>
@@ -97,7 +103,7 @@
             <section id="google" class="scroll-mt-20 rounded-panel border border-line bg-surface">
                 <button type="button" @click="aberto.google = !aberto.google" class="flex w-full items-center gap-2.5 border-b border-line px-4 py-3 text-left">
                     <span class="h-5 w-5 text-ink-dim"><x-nav-icon name="calendar" peso="1.7" /></span>
-                    <span class="flex-1 font-display text-[16px] font-semibold text-ink">Google Agenda</span>
+                    <span class="flex-1 font-display text-[15px] font-semibold text-ink">Google Agenda</span>
                     {!! $estado(...$googleEstado) !!}
                     <span class="text-ink-faint" x-text="aberto.google ? '▴' : '▾'"></span>
                 </button>
@@ -106,14 +112,19 @@
                 @if (! $google)
                     @if ($googleConfigurado)
                         <p>Conecte sua conta para o Secretário ver e criar eventos nas suas agendas. O Matriz pede só acesso a agendas e eventos; ninguém mais vê.</p>
-                        <a href="{{ route('secretario.google.conectar') }}" class="inline-flex h-[36px] items-center rounded-control bg-brand px-4 text-[13px] font-semibold text-on-brand hover:bg-brand-bright">Conectar Google Agenda</a>
+                        <a href="{{ route('secretario.google.conectar') }}" class="inline-flex h-[30px] items-center rounded-control bg-brand px-4 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Conectar Google Agenda</a>
                     @else
                         <p class="text-ink-mute">A integração com o Google ainda não está configurada no servidor (cliente OAuth do Google pendente).</p>
                     @endif
                 @else
                     <p>
+                        @if ($google->pelaMaquina())
+                            Lido pela sua máquina ({{ \Illuminate\Support\Str::after($google->conta, 'máquina ') }}), pela ponte pessoal do Google que você já autorizou — sem token aqui.
+                        @else
                         Conta: <span class="font-semibold">{{ $google->conta ?? '—' }}</span> ·
-                        @if ($google->conectada())
+                        @endif
+                        @if ($google->pelaMaquina())
+                        @elseif ($google->conectada())
                             <span class="text-good">conectada</span>
                         @else
                             <span class="text-crit">precisa reconectar</span> · <a href="{{ route('secretario.google.conectar') }}" class="font-semibold text-brand-text">Reconectar</a>
@@ -142,15 +153,17 @@
                         </ul>
                         <p class="text-[12px] text-ink-mute">"Agenda uma reunião… da VixCard" vai para a agenda cujas palavras aparecem na frase; senão, para a padrão.</p>
                     @endif
+                    @unless ($google->pelaMaquina())
                     <div class="flex flex-wrap gap-2" x-data="{ msg: '' }">
                         <button type="button" @click="msg = 'lendo…'; const r = await fetch(@js(route('secretario.google.sincronizar')), { method: 'POST', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content } }); const j = await r.json().catch(() => ({})); msg = r.ok ? 'lido às ' + j.sincronizado_em + ' (' + j.eventos + ' eventos)' : 'falhou (' + (j.erro || r.status) + ')'"
-                                class="h-[34px] rounded-control border border-btn-line px-3 text-[12.5px] font-semibold text-ink-dim hover:text-brand hover:border-brand">Sincronizar agora</button>
+                                class="h-[30px] rounded-control border border-btn-line px-3 text-[12.5px] font-semibold text-ink-dim hover:text-brand hover:border-brand">Sincronizar agora</button>
                         <form method="POST" action="{{ route('secretario.google.desconectar') }}" onsubmit="return confirm('Desconectar o Google? A autorização é revogada e os eventos guardados aqui são apagados.')">
                             @csrf
-                            <button type="submit" class="h-[34px] rounded-control border border-btn-line px-3 text-[12.5px] font-semibold text-ink-mute hover:text-crit hover:border-crit">Desconectar</button>
+                            <button type="submit" class="h-[30px] rounded-control border border-btn-line px-3 text-[12.5px] font-semibold text-ink-mute hover:text-crit hover:border-crit">Desconectar</button>
                         </form>
                         <span x-show="msg" x-text="msg" class="self-center text-[12px] text-ink-mute"></span>
                     </div>
+                    @endunless
                 @endif
             </div>
                 </div>
@@ -160,7 +173,7 @@
             <section id="emails" class="scroll-mt-20 rounded-panel border border-line bg-surface">
                 <button type="button" @click="aberto.email = !aberto.email" class="flex w-full items-center gap-2.5 border-b border-line px-4 py-3 text-left">
                     <span class="h-5 w-5 text-ink-dim"><x-nav-icon name="envelope" peso="1.7" /></span>
-                    <span class="flex-1 font-display text-[16px] font-semibold text-ink">E-mail (somente leitura)</span>
+                    <span class="flex-1 font-display text-[15px] font-semibold text-ink">E-mail (somente leitura)</span>
                     {!! $estado(...$emailEstado) !!}
                     <span class="text-ink-faint" x-text="aberto.email ? '▴' : '▾'"></span>
                 </button>
@@ -190,8 +203,8 @@
                     <input x-model="f.pasta_enviados" placeholder="Pasta de enviados (para saber o que já foi respondido)" class="rounded-control border border-btn-line bg-canvas px-2.5 py-2 text-[13.5px] text-ink sm:col-span-2">
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <button type="button" @click="enviar(@js(route('secretario.emails.testar')))" :disabled="ocupado" class="h-[34px] rounded-control border border-btn-line px-3 text-[12.5px] font-semibold text-ink-dim hover:border-brand hover:text-brand">Testar</button>
-                    <button type="button" @click="enviar(@js(route('secretario.emails.cadastrar')))" :disabled="ocupado" class="h-[34px] rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Ligar caixa</button>
+                    <button type="button" @click="enviar(@js(route('secretario.emails.testar')))" :disabled="ocupado" class="h-[30px] rounded-control border border-btn-line px-3 text-[12.5px] font-semibold text-ink-dim hover:border-brand hover:text-brand">Testar</button>
+                    <button type="button" @click="enviar(@js(route('secretario.emails.cadastrar')))" :disabled="ocupado" class="h-[30px] rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Ligar caixa</button>
                     <span x-show="recado" x-text="recado" class="text-[12.5px]" :class="erro ? 'text-crit' : 'text-good'"></span>
                 </div>
             </div>
@@ -201,7 +214,7 @@
             <section class="rounded-panel border border-line bg-surface">
                 <button type="button" @click="aberto.gestor = !aberto.gestor" class="flex w-full items-center gap-2.5 border-b border-line px-4 py-3 text-left">
                     <span class="h-5 w-5 text-ink-dim"><x-nav-icon name="building" peso="1.7" /></span>
-                    <span class="flex-1 font-display text-[16px] font-semibold text-ink">Gestor (pela sua máquina)</span>
+                    <span class="flex-1 font-display text-[15px] font-semibold text-ink">Gestor (pela sua máquina)</span>
                     {!! $estado(...$gestorEstado) !!}
                     <span class="text-ink-faint" x-text="aberto.gestor ? '▴' : '▾'"></span>
                 </button>
@@ -223,7 +236,7 @@
             <section class="rounded-panel border border-line bg-surface">
                 <div class="flex items-center gap-2 border-b border-line px-4 py-3">
                     <span class="h-5 w-5 text-brand-text"><x-nav-icon name="sun" peso="1.7" /></span>
-                    <h2 class="flex-1 font-display text-[16px] font-semibold text-ink">Status do Secretário</h2>
+                    <h2 class="flex-1 font-display text-[15px] font-semibold text-ink">Status do Secretário</h2>
                     {!! $estado('ok', 'Ativo') !!}
                 </div>
                 <ul class="divide-y divide-line">
@@ -246,7 +259,7 @@
             <section class="rounded-panel border border-line bg-surface">
                 <div class="flex items-center gap-2 border-b border-line px-4 py-3">
                     <span class="h-5 w-5 text-brand-text"><x-nav-icon name="bell" peso="1.7" /></span>
-                    <h2 class="font-display text-[16px] font-semibold text-ink">Canais de notificação</h2>
+                    <h2 class="font-display text-[15px] font-semibold text-ink">Canais de notificação</h2>
                 </div>
                 <ul class="divide-y divide-line">
                     <li class="flex items-center gap-3 px-4 py-3">
@@ -266,7 +279,7 @@
             <section class="rounded-panel border border-line bg-surface" x-data="{ dicas: true }">
                 <button type="button" @click="dicas = !dicas" class="flex w-full items-center gap-2 border-b border-line px-4 py-3 text-left">
                     <span class="h-5 w-5 text-brand-text"><x-nav-icon name="duvida" peso="1.7" /></span>
-                    <span class="flex-1 font-display text-[16px] font-semibold text-ink">Dicas e boas práticas</span>
+                    <span class="flex-1 font-display text-[15px] font-semibold text-ink">Dicas e boas práticas</span>
                     <span class="text-ink-faint" x-text="dicas ? '▴' : '▾'"></span>
                 </button>
                 <ol x-show="dicas" class="space-y-2.5 px-4 py-3 text-[13px] text-ink-dim">

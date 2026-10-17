@@ -128,7 +128,7 @@ class AgendaConsolidada
         $estado = match (true) {
             ! app(GoogleAgenda::class)->configurado() && ! $conta => 'nao_configurado',
             ! $conta => 'desconectado',
-            ! $conta->conectada() => 'reconectar',
+            ! $conta->conectada() && ! $conta->pelaMaquina() => 'reconectar',
             ! $conta->sincronizado_em || $conta->sincronizado_em->lessThan(now()->subMinutes(self::DESATUALIZADO_MIN)) => 'desatualizado',
             default => 'ok',
         };

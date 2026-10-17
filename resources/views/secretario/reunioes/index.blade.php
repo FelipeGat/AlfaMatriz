@@ -6,7 +6,7 @@
          passa pelo servidor e é APAGADO depois da transcrição, feita na máquina
          do dono; ficam o texto, a análise e as evidências. --}}
     @php
-        $campo = 'rounded-control border border-btn-line bg-canvas px-3 py-2 text-[13.5px] text-ink focus:border-brand focus:outline-none';
+        $campo = 'rounded-control border border-btn-line bg-canvas px-2.5 py-1.5 text-[13px] text-ink focus:border-brand focus:outline-none';
         $empresas = \App\Services\Secretario\CentralDeGestao::EMPRESAS;
         $corStatus = ['aguardando' => 'bg-head text-ink-dim', 'transcrevendo' => 'bg-brand/10 text-brand-text', 'analisando' => 'bg-brand/10 text-brand-text',
             'pronta' => 'bg-warn-tint text-warn', 'revisada' => 'bg-good-tint text-good', 'falhou' => 'bg-crit-tint text-crit'];
@@ -16,11 +16,11 @@
     @endphp
     <div class="mx-auto w-full max-w-7xl space-y-4" x-data="secretarioReunioes()">
         {{-- Gravar --}}
-        <section id="gravar" class="scroll-mt-20 rounded-panel border border-line bg-surface p-5">
+        <section id="gravar" class="scroll-mt-20 rounded-panel border border-line bg-surface p-4">
             <div class="flex flex-wrap items-start gap-3">
                 <span class="h-7 w-7 text-brand-text"><x-nav-icon name="speaker-wave" peso="1.7" /></span>
                 <div class="min-w-0 flex-1">
-                    <h2 class="font-display text-[20px] font-semibold text-ink">Gravar nova reunião</h2>
+                    <h2 class="font-display text-[15px] font-semibold text-ink">Gravar nova reunião</h2>
                     <p class="text-[13.5px] text-ink-mute">Grave, transcreva e receba o resumo com os próximos passos.</p>
                 </div>
                 <p class="flex max-w-[420px] items-start gap-2 rounded-ctl bg-brand/10 px-3 py-2 text-[12.5px] text-ink-dim">
@@ -32,9 +32,9 @@
                 <p class="mt-3 rounded-ctl border border-warn-line bg-warn-tint px-3 py-2 text-[13px] text-warn">Sua máquina está desligada agora: o áudio fica guardado e a transcrição começa quando ela voltar (até 7 dias).</p>
             @endunless
             <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[300px_minmax(0,1fr)_320px]">
-                <div class="flex flex-col items-center justify-center rounded-ctl border border-line py-5">
-                    <span class="flex h-16 w-16 items-center justify-center rounded-full" :class="gravando ? 'bg-crit text-white animate-pulse' : 'bg-crit-tint text-crit'"><span class="h-8 w-8"><x-nav-icon name="microphone" peso="1.7" /></span></span>
-                    <p class="mt-3 font-mono text-[26px] font-semibold text-ink" x-text="tempo || '00:00'"></p>
+                <div class="flex flex-col items-center justify-center rounded-ctl border border-line py-4">
+                    <span class="flex h-12 w-12 items-center justify-center rounded-full" :class="gravando ? 'bg-crit text-white animate-pulse' : 'bg-crit-tint text-crit'"><span class="h-6 w-6"><x-nav-icon name="microphone" peso="1.7" /></span></span>
+                    <p class="mt-3 font-mono text-[21px] font-semibold text-ink" x-text="tempo || '00:00'"></p>
                     <p class="text-[12.5px] text-ink-mute" x-text="gravando ? 'Gravando…' : (enviando ? 'Enviando…' : 'Pronto para gravar')"></p>
                 </div>
                 <ul class="space-y-2.5 self-center text-[13.5px] text-ink-dim">
@@ -49,12 +49,12 @@
                         @foreach ($empresas as $k => $nome)<option value="{{ $k }}">{{ $nome }}</option>@endforeach
                     </select>
                     <button type="button" x-show="!gravando" @click="gravar()" :disabled="enviando"
-                            class="flex h-[46px] w-full items-center justify-center gap-2 rounded-control bg-brand text-[15px] font-semibold text-on-brand hover:bg-brand-bright disabled:opacity-60">
+                            class="flex h-[30px] w-full items-center justify-center gap-2 rounded-control bg-brand text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright disabled:opacity-60">
                         <i class="h-2.5 w-2.5 rounded-full bg-white"></i> Gravar agora
                     </button>
                     <button type="button" x-show="gravando" x-cloak @click="parar()"
-                            class="flex h-[46px] w-full items-center justify-center gap-2 rounded-control border-2 border-crit text-[15px] font-semibold text-crit">■ Parar e enviar</button>
-                    <label class="flex h-[42px] w-full cursor-pointer items-center justify-center gap-2 rounded-control border border-btn-line text-[13.5px] font-semibold text-ink-dim hover:border-brand hover:text-brand">
+                            class="flex h-[30px] w-full items-center justify-center gap-2 rounded-control border-2 border-crit text-[12.5px] font-semibold text-crit">■ Parar e enviar</button>
+                    <label class="flex h-[30px] w-full cursor-pointer items-center justify-center gap-2 rounded-control border border-btn-line text-[12.5px] font-semibold text-ink-dim hover:border-brand hover:text-brand">
                         <span class="h-4 w-4"><x-nav-icon name="upload" /></span> Enviar áudio existente
                         <input type="file" class="sr-only" accept=".mp3,.wav,.m4a,.ogg,.opus,.oga,.webm,audio/*" @change="enviar($event.target.files[0], 'upload'); $event.target.value = ''">
                     </label>
@@ -77,14 +77,14 @@
                 <option value="">Todas as empresas</option>
                 @foreach ($empresas as $k => $nome)<option value="{{ $k }}" @selected(($filtros['empresa'] ?? '') === $k)>{{ $nome }}</option>@endforeach
             </select>
-            <button class="h-[40px] rounded-control border border-btn-line px-4 text-[13px] font-semibold text-ink-dim hover:border-brand hover:text-brand">Filtrar</button>
+            <button class="h-[30px] rounded-control border border-btn-line px-4 text-[12.5px] font-semibold text-ink-dim hover:border-brand hover:text-brand">Filtrar</button>
         </form>
 
         {{-- Abas e tabela --}}
         <section class="rounded-panel border border-line bg-surface">
             <nav class="flex gap-1 overflow-x-auto border-b border-line px-3 pt-2">
                 @foreach (\App\Http\Controllers\SecretarioReunioesController::ABAS as $k => [$rotulo])
-                    <a href="{{ $url(['aba' => $k, 'page' => null]) }}" class="flex shrink-0 items-center gap-1.5 border-b-2 px-3 pb-2.5 pt-1.5 text-[13.5px] {{ $filtros['aba'] === $k ? 'border-brand font-semibold text-ink' : 'border-transparent text-ink-mute hover:text-ink' }}">
+                    <a href="{{ $url(['aba' => $k, 'page' => null]) }}" class="flex shrink-0 items-center gap-1.5 border-b-2 px-3 pb-2 pt-1 text-[13px] {{ $filtros['aba'] === $k ? 'border-brand font-semibold text-ink' : 'border-transparent text-ink-mute hover:text-ink' }}">
                         {{ $rotulo }}
                         <span class="rounded-full px-1.5 text-[11px] font-semibold {{ $filtros['aba'] === $k ? 'bg-brand text-on-brand' : 'bg-head text-ink-mute' }}">{{ $contagem[$k] }}</span>
                     </a>

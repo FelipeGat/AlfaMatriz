@@ -26,6 +26,7 @@ import { caminhoDoStatus, compararGit, criarAuditor, retratoGit } from './audito
 import { girar, limparWorktrees } from './limpeza.mjs';
 import { transcrever, whisperInstalado } from './transcricao.mjs';
 import { hora as horaDoGestor, lerGestor } from './gestor.mjs';
+import { hora as horaDaAgenda, lerAgenda as lerAgendaGoogle } from './agenda-google.mjs';
 import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h; chave servidor + conta +
@@ -92,6 +93,9 @@ function lerConfig() {
         // - gestor: a ponte de produção do Gestor (`programa|ponte|script`),
         //   rodada SÓ PARA LEITURA (sem --apply) para o Secretário (Etapa 5).
         gestor: v('CENTRAL_IA_GESTOR') || '',
+        // - google: o exportador da agenda do Google (`programa|script|pasta`),
+        //   só leitura, na pasta da ponte pessoal já autorizada (Secretário).
+        google: v('CENTRAL_IA_GOOGLE') || '',
         retrato: (v('CENTRAL_IA_RETRATO') || '').replace(/^~/, HOME),
         // O arquivo que o launchd enche com a saída deste processo (instalar.sh),
         // para girar quando passa do limite (T-378). No Linux e no WSL a saída
@@ -987,6 +991,9 @@ let lendoGestor = false;
 let ultimoGestor = null;
 let gestorPausadoAte = 0;
 let transcricaoPausadaAte = 0;
+let lendoAgenda = false;
+let ultimaAgenda = null;
+let agendaPausadaAte = 0;
 let whisperConferido = { em: 0, ok: false };
 async function whisperPronto() {
     if (Date.now() - whisperConferido.em > 600_000) whisperConferido = { em: Date.now(), ok: await whisperInstalado() };
@@ -1013,6 +1020,17 @@ while (!parar) {
                 if (envio.status === 403 || envio.status === 404) gestorPausadoAte = Date.now() + 3600_000 * 6;
                 log('Gestor: retrato enviado →', envio.status);
             }).catch(e => log('Gestor: erro', e.message)).finally(() => { lendoGestor = false; });
+        }
+        // Agenda do Google (pela máquina): a cada 10 min, uma leitura por vez.
+        if (cfg.google && !lendoAgenda && Date.now() >= agendaPausadaAte && horaDaAgenda(ultimaAgenda)) {
+            lendoAgenda = true;
+            ultimaAgenda = new Date();
+            lerAgendaGoogle(cfg.google).then(async r => {
+                if (!r.ok) return log('Agenda: não lida —', r.erro);
+                const envio = await api('agenda-google', { maquina: cfg.maquina, lido_em: new Date().toISOString(), agendas: r.agendas, eventos: r.eventos });
+                if (envio.status === 403 || envio.status === 404) agendaPausadaAte = Date.now() + 3600_000 * 6;
+                if (envio.status !== 200) log('Agenda: envio →', envio.status);
+            }).catch(e => log('Agenda: erro', e.message)).finally(() => { lendoAgenda = false; });
         }
         if (!transcrevendo && rodando.size < PARALELO && Date.now() >= transcricaoPausadaAte && await whisperPronto()) {
             const t = await api('transcricoes/proxima', { maquina: cfg.maquina });

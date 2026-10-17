@@ -82,6 +82,75 @@ class SecretarioRunnerController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /**
+     * A agenda do Google lida pela máquina (docs/specs/secretario-agenda-pela-maquina):
+     * a ponte pessoal que a pessoa já autorizou lê, a máquina manda. Substitui
+     * agendas e eventos da janela; conta OAuth conectada aqui tem precedência.
+     */
+    public function agenda(Request $request): JsonResponse
+    {
+        [$user, $maquina] = $this->conta($request);
+        $d = $request->validate([
+            'lido_em' => ['required', 'date', 'before_or_equal:'.now()->addMinutes(5)->toIso8601String(), 'after:'.now()->subDay()->toIso8601String()],
+            'agendas' => ['present', 'array', 'max:100'],
+            'agendas.*.id' => ['required', 'string', 'max:255'],
+            'agendas.*.nome' => ['required', 'string', 'max:255'],
+            'agendas.*.primaria' => ['boolean'],
+            'eventos' => ['present', 'array', 'max:5000'],
+            'eventos.*.agenda' => ['required', 'string', 'max:255'],
+            'eventos.*.id' => ['required', 'string', 'max:255'],
+            'eventos.*.titulo' => ['nullable', 'string', 'max:255'],
+            'eventos.*.inicio' => ['required', 'string', 'max:40'],
+            'eventos.*.fim' => ['required', 'string', 'max:40'],
+            'eventos.*.dia_inteiro' => ['required', 'boolean'],
+            'eventos.*.link' => ['nullable', 'string', 'max:500'],
+        ]);
+        $conta = \App\Models\SecretarioGoogleConta::where('user_id', $user->id)->first();
+        if ($conta && $conta->conectada()) {
+            return response()->json(['ok' => true, 'ignorado' => 'a conta OAuth do Matriz já lê o Google']);
+        }
+        $tz = config('app.timezone');
+        \Illuminate\Support\Facades\DB::transaction(function () use ($user, $maquina, $d, $tz) {
+            \App\Models\SecretarioGoogleConta::updateOrCreate(['user_id' => $user->id], [
+                'conta' => 'máquina '.$maquina, 'access_token' => '', 'refresh_token' => null, 'expira_em' => now(),
+                'situacao' => \App\Models\SecretarioGoogleConta::MAQUINA, 'erro' => null,
+                'sincronizado_em' => \Carbon\CarbonImmutable::parse($d['lido_em'])->setTimezone($tz),
+            ]);
+            $ids = [];
+            foreach ($d['agendas'] as $a) {
+                $agenda = \App\Models\SecretarioGoogleAgenda::firstOrNew(['user_id' => $user->id, 'google_id' => $a['id']]);
+                $nova = ! $agenda->exists;
+                $agenda->fill(['nome' => $a['nome'], 'primaria' => (bool) ($a['primaria'] ?? false)] + ($nova ? ['incluida' => true] : []))->save();
+                $ids[$a['id']] = $agenda;
+            }
+            \App\Models\SecretarioGoogleAgenda::where('user_id', $user->id)->whereNotIn('google_id', array_keys($ids) ?: [''])->delete();
+            if (! \App\Models\SecretarioGoogleAgenda::where('user_id', $user->id)->where('padrao', true)->exists()) {
+                \App\Models\SecretarioGoogleAgenda::where('user_id', $user->id)->where('primaria', true)->limit(1)->update(['padrao' => true]);
+            }
+            // Eventos: a janela lida inteira substitui o que havia (cancelado ou apagado no Google some daqui).
+            \App\Models\SecretarioGoogleEvento::where('user_id', $user->id)->delete();
+            foreach ($d['eventos'] as $e) {
+                $agenda = $ids[$e['agenda']] ?? null;
+                if (! $agenda || ! $agenda->incluida) {
+                    continue;
+                }
+                try {
+                    [$ini, $fim] = $e['dia_inteiro']
+                        ? [\Carbon\CarbonImmutable::parse($e['inicio'], $tz)->startOfDay(), \Carbon\CarbonImmutable::parse($e['fim'], $tz)->startOfDay()]
+                        : [\Carbon\CarbonImmutable::parse($e['inicio'])->setTimezone($tz), \Carbon\CarbonImmutable::parse($e['fim'])->setTimezone($tz)];
+                } catch (\Throwable) {
+                    continue;
+                }
+                \App\Models\SecretarioGoogleEvento::updateOrCreate(['agenda_id' => $agenda->id, 'google_id' => $e['id']], ['user_id' => $user->id,
+                    'titulo' => trim((string) ($e['titulo'] ?? '')) ?: '(sem título)', 'inicio' => $ini, 'fim' => $fim, 'dia_inteiro' => $e['dia_inteiro'],
+                    'link' => is_string($e['link'] ?? null) && str_starts_with($e['link'], 'https://') ? $e['link'] : null]);
+            }
+        });
+        \App\Services\CentralIa\Eventos::registrar($user, 'secretario_agenda_maquina', 'Agenda do Google recebida da máquina '.$maquina.' ('.count($d['eventos']).' eventos).', ['origem' => 'runner']);
+
+        return response()->json(['ok' => true]);
+    }
+
     /** @return array{0: User, 1: string} a conta do token e a máquina dela que chama */
     private function conta(Request $request): array
     {

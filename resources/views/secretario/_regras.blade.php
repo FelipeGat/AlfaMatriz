@@ -46,7 +46,7 @@
                     @endforeach
                 </div>
                 <p class="text-[12px] text-ink-mute">Alta sai na hora (fora do silêncio); normal espera o intervalo entre resumos; baixa nunca sai, fica aqui e no briefing.</p>
-                <button class="h-[36px] rounded-control bg-brand px-4 text-[13px] font-semibold text-on-brand hover:bg-brand-bright">Salvar regras</button>
+                <button class="h-[30px] rounded-control bg-brand px-4 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Salvar regras</button>
             </form>
         </x-painel>
 </div>

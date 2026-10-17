@@ -3,7 +3,7 @@
     <x-slot name="contexto"><span>central de gestão · Grupo Soluções e VixCard</span></x-slot>
     <x-slot name="acoes">
         <a href="{{ route('secretario.configuracoes') }}#avisos"
-           class="h-[34px] px-3 inline-flex items-center gap-1.5 rounded-control border border-btn-line text-ink-dim text-[12.5px] font-semibold hover:text-brand hover:border-brand transition whitespace-nowrap">
+           class="h-[30px] px-3 inline-flex items-center gap-1.5 rounded-control border border-btn-line text-ink-dim text-[12.5px] font-semibold hover:text-brand hover:border-brand transition whitespace-nowrap">
             <span class="h-4 w-4"><x-nav-icon name="settings" /></span> Regras dos avisos
         </a>
     </x-slot>
@@ -13,7 +13,7 @@
          ainda não tem sistema), alertas das regras e os itens do retrato do
          Gestor (até 10 por bloco, os que a máquina lê). Filtros no navegador. --}}
     @php
-        $campo = 'w-full rounded-control border border-btn-line bg-canvas px-3 py-2 text-[13.5px] text-ink focus:border-brand focus:outline-none';
+        $campo = 'w-full rounded-control border border-btn-line bg-canvas px-2.5 py-1.5 text-[13px] text-ink focus:border-brand focus:outline-none';
         $corStatus = fn ($s) => match ($s) {
             'Vencido' => 'bg-crit-tint text-crit', 'Vence hoje', 'A pagar' => 'bg-warn-tint text-warn', 'Adiado', 'Parado' => 'bg-head text-ink-mute',
             'Aguardando aprovação', 'Próximo passo' => 'bg-warn-tint text-warn', 'Em elaboração' => 'bg-brand/10 text-brand-text', default => 'bg-head text-ink-dim',
@@ -25,14 +25,14 @@
     <div x-data="{ aba: 'todos', busca: '', prio: '', origem: '', filtros: false,
                    mostra(l) { return (this.aba === 'todos' || l.aba === this.aba) && (!this.prio || l.prio === this.prio) && (!this.origem || l.fonte === this.origem)
                        && (!this.busca || l.texto.includes(this.busca.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''))); } }"
-         class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div class="min-w-0 space-y-5">
+         class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div class="min-w-0 space-y-4">
             <div class="flex flex-wrap items-end gap-3">
                 <div class="min-w-0 flex-1">
-                    <h1 class="font-display text-[28px] font-semibold leading-tight text-ink">Acompanhamentos</h1>
-                    <p class="mt-1 text-[14px] text-ink-mute">Tudo o que precisa de atenção, em um só lugar.</p>
+                    <h1 class="font-display text-[22px] font-semibold leading-tight text-ink">Acompanhamentos</h1>
+                    <p class="mt-0.5 text-[13px] text-ink-mute">Tudo o que precisa de atenção, em um só lugar.</p>
                 </div>
-                <button type="button" @click="$refs.ponto.focus()" class="inline-flex h-[40px] items-center gap-2 rounded-control bg-brand px-4 text-[13.5px] font-semibold text-on-brand hover:bg-brand-bright">
+                <button type="button" @click="$refs.ponto.focus()" class="inline-flex h-[30px] items-center gap-2 rounded-control bg-brand px-4 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">
                     <span class="h-4 w-4"><x-nav-icon name="plus" peso="2" /></span> Novo ponto de gestão
                 </button>
             </div>
@@ -49,10 +49,10 @@
                     ['bell', 'bg-good-tint text-good', 'Alertas ativos', $numeros['alertas'], $silencio ? 'Avisos em silêncio agora' : 'Requerem atenção', '#tabela', 'text-ink-mute'],
                 ] as [$icone, $corIcone, $rotulo, $n, $sub, $link, $corSub])
                     <a href="{{ $link }}" class="flex items-center gap-3 rounded-panel border border-line bg-surface px-3.5 py-3.5 hover:border-brand">
-                        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-ctl {{ $corIcone }}"><span class="h-6 w-6"><x-nav-icon :name="$icone" peso="1.7" /></span></span>
+                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-ctl {{ $corIcone }}"><span class="h-6 w-6"><x-nav-icon :name="$icone" peso="1.7" /></span></span>
                         <span class="min-w-0">
                             <span class="block font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">{{ $rotulo }}</span>
-                            <span class="block font-display text-[26px] font-semibold leading-tight {{ $rotulo === 'Tarefas vencidas' && $n ? 'text-crit' : 'text-ink' }}">{{ $n }}</span>
+                            <span class="block font-display text-[21px] font-semibold leading-tight {{ $rotulo === 'Tarefas vencidas' && $n ? 'text-crit' : 'text-ink' }}">{{ $n }}</span>
                             <span class="block text-[12.5px] leading-snug {{ $corSub }}">{{ $sub }}</span>
                         </span>
                     </a>
@@ -65,7 +65,7 @@
                     <nav class="flex w-full min-w-0 gap-1 overflow-x-auto">
                         @foreach (['todos' => 'Todos'] + \App\Services\Secretario\CentralDeGestao::ABAS as $k => $rotulo)
                             @php $n = $k === 'todos' ? $linhas->count() : ($porAba[$k] ?? 0); @endphp
-                            <button type="button" @click="aba = '{{ $k }}'" class="flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 pb-2.5 pt-1.5 text-[13.5px]"
+                            <button type="button" @click="aba = '{{ $k }}'" class="flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 pb-2 pt-1 text-[13px]"
                                     :class="aba === '{{ $k }}' ? 'border-brand font-semibold text-ink' : 'border-transparent text-ink-mute hover:text-ink'">
                                 {{ $rotulo }}
                                 <span class="rounded-full px-1.5 text-[11px] font-semibold" :class="aba === '{{ $k }}' ? 'bg-brand text-on-brand' : 'bg-head text-ink-mute'">{{ $n }}</span>
@@ -77,7 +77,7 @@
                             <span class="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-ink-faint"><x-nav-icon name="search" /></span>
                             <input type="search" x-model="busca" placeholder="Buscar acompanhamentos…" class="w-full rounded-control border border-btn-line bg-canvas py-2 pl-8 pr-2 text-[13px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none">
                         </label>
-                        <button type="button" @click="filtros = !filtros" class="inline-flex h-[36px] items-center gap-1.5 rounded-control border px-3 text-[13px] font-semibold"
+                        <button type="button" @click="filtros = !filtros" class="inline-flex h-[30px] items-center gap-1.5 rounded-control border px-2.5 text-[12.5px] font-semibold"
                                 :class="(filtros || prio || origem) ? 'border-brand text-brand-text' : 'border-btn-line text-ink-dim hover:text-brand'">
                             <span class="h-4 w-4"><x-nav-icon name="funil" /></span> Filtros
                         </button>
@@ -163,11 +163,11 @@
             </section>
         </div>
 
-        <aside class="min-w-0 space-y-5">
+        <aside class="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-3 2xl:block 2xl:space-y-4">
             <section class="rounded-panel border border-line bg-surface p-4">
                 <div class="mb-3 flex items-center gap-2">
                     <span class="h-5 w-5 text-brand-text"><x-nav-icon name="clock" peso="1.7" /></span>
-                    <h2 class="font-display text-[16px] font-semibold text-ink">Lançar ponto de gestão</h2>
+                    <h2 class="font-display text-[15px] font-semibold text-ink">Lançar ponto de gestão</h2>
                 </div>
                 <form method="POST" action="{{ route('secretario.acompanhamentos.pontos') }}" class="space-y-2.5">
                     @csrf
@@ -186,7 +186,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <button class="h-[42px] w-full rounded-control bg-brand text-[14px] font-semibold text-on-brand hover:bg-brand-bright">Lançar</button>
+                    <button class="h-[30px] w-full rounded-control bg-brand text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Lançar</button>
                     <p class="text-[12px] text-ink-mute">Com prazo, o Secretário lembra às 08:00 do dia e avisa se vencer.</p>
                 </form>
             </section>
@@ -194,7 +194,7 @@
             <section class="rounded-panel border border-line bg-surface p-4">
                 <div class="mb-2 flex items-center gap-2">
                     <span class="h-5 w-5 text-brand-text"><x-nav-icon name="calendar" peso="1.7" /></span>
-                    <h2 class="font-display text-[16px] font-semibold text-ink">Resumo por status</h2>
+                    <h2 class="font-display text-[15px] font-semibold text-ink">Resumo por status</h2>
                 </div>
                 <ul class="space-y-2">
                     @forelse ($resumo as $status => $n)
@@ -211,7 +211,7 @@
             <section class="rounded-panel border border-line bg-surface">
                 <div class="flex items-center gap-2 px-4 pt-4">
                     <span class="h-5 w-5 text-brand-text"><x-nav-icon name="clock" peso="1.7" /></span>
-                    <h2 class="font-display text-[16px] font-semibold text-ink">Atividade recente</h2>
+                    <h2 class="font-display text-[15px] font-semibold text-ink">Atividade recente</h2>
                 </div>
                 <ul class="mt-2 divide-y divide-line">
                     @forelse ($atividade as $a)

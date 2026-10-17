@@ -5,7 +5,7 @@
     </x-slot>
     <x-slot name="acoes">
         <a href="{{ route('secretario.configuracoes') }}"
-           class="h-[34px] px-3 inline-flex items-center gap-1.5 rounded-control border border-btn-line text-ink-dim text-[12.5px] font-semibold hover:text-brand hover:border-brand transition whitespace-nowrap">
+           class="h-[30px] px-3 inline-flex items-center gap-1.5 rounded-control border border-btn-line text-ink-dim text-[12.5px] font-semibold hover:text-brand hover:border-brand transition whitespace-nowrap">
             <span class="h-4 w-4"><x-nav-icon name="settings" /></span> Configurações
         </a>
     </x-slot>
@@ -18,15 +18,15 @@
         $acao = 'flex min-w-0 flex-col gap-1 rounded-panel border border-line bg-surface px-3.5 py-3 text-left hover:border-brand transition';
         $chip = 'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[12px] font-semibold';
     @endphp
-    <div x-data="secretarioMeuDia()" x-init="carregar()" class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div class="min-w-0 space-y-5">
+    <div x-data="secretarioMeuDia()" x-init="carregar()" class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div class="min-w-0 space-y-4">
             {{-- Saudação e atalhos --}}
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start">
                 <div class="min-w-0 flex-1">
-                    <h1 class="font-display text-[28px] font-semibold leading-tight text-ink">
+                    <h1 class="font-display text-[22px] font-semibold leading-tight text-ink">
                         {{ now()->hour < 12 ? 'Bom dia' : (now()->hour < 18 ? 'Boa tarde' : 'Boa noite') }}, {{ \Illuminate\Support\Str::of(auth()->user()->name)->before(' ') }}.
                     </h1>
-                    <p class="mt-1 text-[14px] text-ink-mute">Seu secretário está pronto para ajudar.</p>
+                    <p class="mt-0.5 text-[13px] text-ink-mute">Seu secretário está pronto para ajudar.</p>
                 </div>
                 <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:w-[540px]">
                     <a href="{{ route('secretario.reunioes.index') }}#gravar" class="{{ $acao }}">
@@ -66,22 +66,22 @@
             <section class="rounded-panel border border-line bg-surface">
                 <div class="flex items-center gap-2 border-b border-line px-4 py-3">
                     <span class="h-5 w-5 text-brand-text"><x-nav-icon name="calendar" peso="1.7" /></span>
-                    <h2 class="font-display text-[17px] font-semibold text-ink">Registrar</h2>
+                    <h2 class="font-display text-[15px] font-semibold text-ink">Registrar</h2>
                     <span class="ml-auto text-[12px] text-ink-mute">lembrete, tarefa ou compromisso, do jeito que você fala</span>
                 </div>
                 <div class="p-4">
                     <form @submit.prevent="interpretar()" class="flex flex-col gap-2 sm:flex-row">
                         <input type="text" x-ref="registrar" x-model="texto" maxlength="2000" autocomplete="off"
                                placeholder="ex.: amanhã às 9h ligar para o Alexandre"
-                               class="min-w-0 flex-1 rounded-control border border-btn-line bg-canvas px-3.5 py-2.5 text-[14px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none">
+                               class="min-w-0 flex-1 rounded-control border border-btn-line bg-canvas px-3 py-1.5 text-[13px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none">
                         <button type="submit" :disabled="enviando || !texto.trim()"
-                                class="h-[44px] rounded-control bg-brand px-6 text-[14px] font-semibold text-on-brand hover:bg-brand-bright disabled:opacity-60">Registrar</button>
+                                class="h-[30px] rounded-control bg-brand px-4 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright disabled:opacity-60">Registrar</button>
                     </form>
                     <div x-show="proposta || pergunta || recado" x-cloak class="mt-3 rounded-ctl border border-line bg-subtle p-3 text-[13.5px] text-ink">
                         <p class="whitespace-pre-line" x-text="proposta ? proposta.resumo : (pergunta || recado)"></p>
                         <div x-show="proposta" class="mt-3 flex gap-2">
-                            <button type="button" @click="confirmar()" :disabled="enviando" class="h-[34px] rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright disabled:opacity-60">✓ Confirmar</button>
-                            <button type="button" @click="descartar()" class="h-[34px] rounded-control border border-btn-line px-3 text-[12.5px] font-semibold text-ink-dim hover:text-brand hover:border-brand">Corrigir</button>
+                            <button type="button" @click="confirmar()" :disabled="enviando" class="h-[30px] rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright disabled:opacity-60">✓ Confirmar</button>
+                            <button type="button" @click="descartar()" class="h-[30px] rounded-control border border-btn-line px-3 text-[12.5px] font-semibold text-ink-dim hover:text-brand hover:border-brand">Corrigir</button>
                         </div>
                     </div>
                 </div>
@@ -91,7 +91,7 @@
             <section class="rounded-panel border border-line bg-surface">
                 <div class="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
                     <span class="h-5 w-5 text-brand-text"><x-nav-icon name="calendar" peso="1.7" /></span>
-                    <h2 class="font-display text-[17px] font-semibold text-ink">Compromissos de hoje</h2>
+                    <h2 class="font-display text-[15px] font-semibold text-ink">Compromissos de hoje</h2>
                     <a href="{{ route('secretario.agenda') }}" class="ml-auto text-[12.5px] font-semibold text-brand-text hover:underline">Ver agenda completa →</a>
                     <div class="flex w-full flex-wrap gap-1.5 sm:w-auto">
                         <span class="{{ $chip }} bg-brand/10 text-brand-text"><i class="h-2 w-2 rounded-full bg-brand"></i>{{ $contagem['compromissos'] }} compromisso(s)</span>
@@ -127,7 +127,7 @@
             {{-- Tarefas e lembretes, com as ações de sempre (sem recarregar). --}}
             <template x-for="secao in secoes" :key="secao.chave">
                 <x-painel x-show="(dados[secao.chave] || []).length" x-cloak solto>
-                    <div class="h-[38px] flex items-center gap-3 px-4 bg-head border-b border-line">
+                    <div class="h-[30px] flex items-center gap-3 px-4 bg-head border-b border-line">
                         <h2 class="font-display text-[15px] font-semibold" :class="secao.chave === 'atrasados' ? 'text-crit' : 'text-ink'" x-text="secao.titulo"></h2>
                         <span class="ml-auto font-mono text-[11px] text-ink-faint" x-text="(dados[secao.chave] || []).length"></span>
                     </div>
@@ -162,7 +162,7 @@
             <template x-if="dados.briefing">
                 <section class="rounded-panel border border-line bg-subtle">
                     <button type="button" @click="briefingAberto = !briefingAberto; try { localStorage.setItem('secretario:briefing-aberto', briefingAberto ? 'sim' : 'nao') } catch (e) {}"
-                            class="flex h-[38px] w-full items-center gap-2 border-b border-line bg-head px-4 text-left">
+                            class="flex h-[30px] w-full items-center gap-2 border-b border-line bg-head px-4 text-left">
                         <span class="font-display text-[15px] font-semibold text-ink">Briefing de hoje</span>
                         <span class="font-mono text-[11px] text-ink-faint" x-text="'gerado às ' + dados.briefing.gerado_em"></span>
                         <span class="ml-auto text-[12px] text-ink-mute" x-text="briefingAberto ? 'recolher' : 'mostrar'"></span>
@@ -174,11 +174,11 @@
         </div>
 
         {{-- Coluna da direita --}}
-        <aside class="min-w-0 space-y-5">
+        <aside class="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-3 2xl:block 2xl:space-y-4">
             <section class="rounded-panel border border-line bg-surface p-4">
                 <div class="mb-3 flex items-center gap-2">
                     <span class="h-5 w-5 text-ink-dim"><x-nav-icon name="pencil" peso="1.7" /></span>
-                    <h2 class="font-display text-[16px] font-semibold text-ink">Anotações rápidas</h2>
+                    <h2 class="font-display text-[15px] font-semibold text-ink">Anotações rápidas</h2>
                 </div>
                 <form method="POST" action="{{ route('secretario.anotacoes') }}" class="rounded-ctl border border-btn-line bg-canvas p-2">
                     @csrf
@@ -203,7 +203,7 @@
             <section class="rounded-panel border border-line bg-surface">
                 <div class="flex items-center gap-2 px-4 pt-4">
                     <span class="h-5 w-5 text-good"><x-nav-icon name="check-circle" peso="1.7" /></span>
-                    <h2 class="font-display text-[16px] font-semibold text-ink">Acompanhamentos</h2>
+                    <h2 class="font-display text-[15px] font-semibold text-ink">Acompanhamentos</h2>
                     <a href="{{ route('secretario.acompanhamentos') }}" class="ml-auto text-[12.5px] font-semibold text-brand-text hover:underline">Ver todos →</a>
                 </div>
                 <ul class="mt-2 divide-y divide-line">
@@ -227,7 +227,7 @@
             <section class="rounded-panel border border-line bg-surface">
                 <div class="flex items-center gap-2 px-4 pt-4">
                     <span class="h-5 w-5 text-brand-text"><x-nav-icon name="envelope" peso="1.7" /></span>
-                    <h2 class="font-display text-[16px] font-semibold text-ink">Mensagens recentes</h2>
+                    <h2 class="font-display text-[15px] font-semibold text-ink">Mensagens recentes</h2>
                     <a href="{{ route('secretario.emails.index', ['ver' => 'todas']) }}" class="ml-auto text-[12.5px] font-semibold text-brand-text hover:underline">Ver todas →</a>
                 </div>
                 <ul class="mt-2 divide-y divide-line">

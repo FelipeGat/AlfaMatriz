@@ -24,37 +24,37 @@
             'vixcard' => ['VixCard', 'bg-bloqueio', 'border-bloqueio bg-bloqueio-tint'], 'outros' => ['Outros', 'bg-ink-faint', 'border-ink-faint bg-head'],
         ];
     @endphp
-    <div x-data="minhaAgenda(@js(collect($calendarios)->map(fn ($c) => $c[2])))" x-init="iniciar()" class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+    <div x-data="minhaAgenda(@js(collect($calendarios)->map(fn ($c) => $c[2])))" x-init="iniciar()" class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_300px]">
         <div class="min-w-0 space-y-3">
-            <div x-show="aviso" x-cloak class="flex items-center gap-3 rounded-panel border border-warn-line bg-warn-tint px-4 py-2.5">
+            <div x-show="aviso" x-cloak class="flex items-center gap-3 rounded-panel border border-warn-line bg-warn-tint px-3 py-1.5">
                 <p class="min-w-0 flex-1 text-[13px] text-warn" x-text="aviso"></p>
-                <a href="{{ route('secretario.configuracoes') }}#google" class="shrink-0 rounded-control bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Conectar agora</a>
+                <a href="{{ route('secretario.configuracoes') }}#google" class="shrink-0 rounded-control bg-brand px-2.5 py-1 text-[12px] font-semibold text-on-brand hover:bg-brand-bright">Conectar agora</a>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
                 <div class="flex items-center gap-1">
-                    <button type="button" @click="andar(-1)" class="h-[38px] px-3 rounded-control border border-btn-line text-[15px] text-ink-dim hover:border-brand hover:text-brand" aria-label="Anterior">‹</button>
-                    <button type="button" @click="hoje()" class="h-[38px] px-3.5 rounded-control border border-btn-line text-[13px] font-semibold text-ink-dim hover:border-brand hover:text-brand">Hoje</button>
-                    <button type="button" @click="andar(1)" class="h-[38px] px-3 rounded-control border border-btn-line text-[15px] text-ink-dim hover:border-brand hover:text-brand" aria-label="Próximo">›</button>
+                    <button type="button" @click="andar(-1)" class="h-[28px] px-2 rounded-control border border-btn-line text-[13px] text-ink-dim hover:border-brand hover:text-brand" aria-label="Anterior">‹</button>
+                    <button type="button" @click="hoje()" class="h-[28px] px-2.5 rounded-control border border-btn-line text-[12px] font-semibold text-ink-dim hover:border-brand hover:text-brand">Hoje</button>
+                    <button type="button" @click="andar(1)" class="h-[28px] px-2 rounded-control border border-btn-line text-[13px] text-ink-dim hover:border-brand hover:text-brand" aria-label="Próximo">›</button>
                 </div>
-                <h2 class="min-w-0 flex-1 font-display text-[19px] font-semibold text-ink" x-text="titulo()"></h2>
+                <h2 class="min-w-0 flex-1 truncate whitespace-nowrap font-display text-[14px] font-semibold text-ink" x-text="titulo()"></h2>
                 <div class="flex rounded-control border border-btn-line p-0.5">
                     <template x-for="v in [['dia','Dia'],['semana','Semana'],['mes','Mês'],['lista','Agenda']]" :key="v[0]">
-                        <button type="button" @click="trocar(v[0])" class="h-[32px] rounded-control px-3.5 text-[13px] font-semibold"
+                        <button type="button" @click="trocar(v[0])" class="h-[24px] rounded-control px-2.5 text-[12px] font-semibold"
                                 :class="visao === v[0] ? 'bg-brand text-on-brand' : 'text-ink-dim hover:text-brand'" x-text="v[1]"></button>
                     </template>
                 </div>
                 <button type="button" @click="novo.aberto = true; novo.data = iso(cursor); $nextTick(() => $refs.novoTitulo.focus())"
-                        class="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-brand px-4 text-[13px] font-semibold text-on-brand hover:bg-brand-bright">
-                    <span class="h-4 w-4"><x-nav-icon name="plus" peso="2" /></span> Novo evento
+                        class="inline-flex h-[28px] items-center gap-1 rounded-control bg-brand px-2.5 text-[12px] font-semibold text-on-brand hover:bg-brand-bright">
+                    <span class="h-3.5 w-3.5"><x-nav-icon name="plus" peso="2" /></span> Novo evento
                 </button>
             </div>
 
-            <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-panel border border-line bg-surface px-3 py-2">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-panel border border-line bg-surface px-2.5 py-1.5">
                 @foreach ($calendarios as $k => [$rotulo, $ponto])
-                    <label class="flex cursor-pointer items-center gap-1.5 text-[13px] text-ink-dim">
-                        <input type="checkbox" x-model="ativos.{{ $k }}" class="rounded border-btn-line text-brand focus:ring-brand">
-                        <i class="h-2.5 w-2.5 rounded-sm {{ $ponto }}"></i>{{ \Illuminate\Support\Str::before($rotulo, ' (') }}
+                    <label class="flex cursor-pointer items-center gap-1 text-[11.5px] text-ink-dim">
+                        <input type="checkbox" x-model="ativos.{{ $k }}" class="h-3 w-3 rounded border-btn-line text-brand focus:ring-0 focus:ring-offset-0">
+                        <i class="h-2 w-2 rounded-sm {{ $ponto }}"></i>{{ \Illuminate\Support\Str::before($rotulo, ' (') }}
                     </label>
                 @endforeach
                 <span x-show="carregando" class="ml-auto text-[12px] text-ink-faint">carregando…</span>
@@ -70,21 +70,21 @@
                     @foreach (\App\Services\Secretario\CentralDeGestao::EMPRESAS as $k => $nome)<option value="{{ $k }}">{{ $nome }}</option>@endforeach
                 </select>
                 <div class="flex gap-1.5">
-                    <button class="h-[38px] rounded-control bg-brand px-4 text-[13px] font-semibold text-on-brand hover:bg-brand-bright">Criar</button>
-                    <button type="button" @click="novo.aberto = false" class="h-[38px] rounded-control border border-btn-line px-3 text-[13px] text-ink-dim">Fechar</button>
+                    <button class="h-[34px] rounded-control bg-brand px-4 text-[13px] font-semibold text-on-brand hover:bg-brand-bright">Criar</button>
+                    <button type="button" @click="novo.aberto = false" class="h-[34px] rounded-control border border-btn-line px-3 text-[13px] text-ink-dim">Fechar</button>
                 </div>
                 <p x-show="novo.recado" x-text="novo.recado" class="text-[12.5px] sm:col-span-5" :class="novo.erro ? 'text-crit' : 'text-good'"></p>
             </form>
 
             {{-- Dia e Semana: grade hora × dia --}}
             <section x-show="visao === 'dia' || visao === 'semana'" class="overflow-x-auto rounded-panel border border-line bg-surface">
-                <div :style="`min-width: ${visao === 'semana' ? 820 : 320}px`">
+                <div :style="`min-width: ${visao === 'semana' ? 680 : 300}px`">
                     <div class="grid border-b border-line" :style="colunas()">
                         <div></div>
                         <template x-for="d in dias()" :key="d.chave">
                             <div class="border-l border-line px-2 py-2 text-center" :class="d.hoje ? 'bg-brand/10' : ''">
                                 <p class="font-mono text-[11px] uppercase tracking-caps" :class="d.hoje ? 'text-brand-text' : 'text-ink-faint'" x-text="d.semana"></p>
-                                <p class="text-[16px] font-semibold" :class="d.hoje ? 'text-brand-text' : 'text-ink'" x-text="d.numero + '/' + d.mes"></p>
+                                <p class="text-[14px] font-semibold" :class="d.hoje ? 'text-brand-text' : 'text-ink'" x-text="d.numero + '/' + d.mes"></p>
                             </div>
                         </template>
                     </div>
@@ -101,24 +101,32 @@
                     <div class="grid" :style="colunas()">
                         <div class="relative" :style="`height: ${altura()}px`">
                             <template x-for="h in horas()" :key="h">
-                                <span class="absolute right-1.5 font-mono text-[10.5px] text-ink-faint" :class="h * 60 === faixa().ini ? 'translate-y-0.5' : '-translate-y-1/2'" :style="`top: ${(h * 60 - faixa().ini) * 0.8}px`" x-text="String(h).padStart(2, '0') + ':00'"></span>
+                                <span class="absolute right-1.5 font-mono text-[10.5px] text-ink-faint" :class="h * 60 === faixa().ini ? 'translate-y-0.5' : '-translate-y-1/2'" :style="`top: ${(h * 60 - faixa().ini) * 0.6}px`" x-text="String(h).padStart(2, '0') + ':00'"></span>
                             </template>
                         </div>
                         <template x-for="d in dias()" :key="'g' + d.chave">
                             <div class="relative border-l border-line" :class="d.hoje ? 'bg-brand/10' : ''" :style="`height: ${altura()}px`">
                                 <template x-for="h in horas()" :key="h">
-                                    <div class="absolute inset-x-0 border-t border-line" :style="`top: ${(h * 60 - faixa().ini) * 0.8}px`"></div>
+                                    <div class="absolute inset-x-0 border-t border-line" :style="`top: ${(h * 60 - faixa().ini) * 0.6}px`"></div>
                                 </template>
                                 <template x-if="d.hoje && agoraNaFaixa()">
-                                    <div class="absolute inset-x-0 z-10 border-t-2 border-crit" :style="`top: ${(minutosAgora() - faixa().ini) * 0.8}px`"><i class="absolute -left-1 -top-[5px] h-2 w-2 rounded-full bg-crit"></i></div>
+                                    <div class="absolute inset-x-0 z-10 border-t-2 border-crit" :style="`top: ${(minutosAgora() - faixa().ini) * 0.6}px`"><i class="absolute -left-1 -top-[5px] h-2 w-2 rounded-full bg-crit"></i></div>
                                 </template>
                                 <template x-for="b in blocos(d)" :key="b.e.inicio + b.e.titulo">
                                     <a :href="b.e.link || null" target="_blank" rel="noopener noreferrer" :class="cor(b.e)"
                                        class="absolute overflow-hidden rounded-[6px] border-l-[3px] px-1.5 py-1 text-[11.5px] leading-tight text-ink"
                                        :style="`top:${b.top}px;height:${b.altura}px;left:calc(${b.esq}% + 3px);width:calc(${b.larg}% - 6px)`" :title="b.e.titulo + ' · ' + b.e.origem_rotulo">
-                                        <span class="block font-mono text-[10.5px] font-semibold text-ink-dim" x-text="hora(b.e.inicio) + (b.e.fim ? ' – ' + hora(b.e.fim) : '')"></span>
-                                        <span class="block font-semibold" x-text="b.e.titulo"></span>
-                                        <span class="block truncate text-[10.5px] text-ink-mute" x-text="b.e.origem_rotulo"></span>
+                                        {{-- Curto (até ~1 h): uma linha só, hora e título; longo: hora, título e origem. --}}
+                                        <template x-if="b.altura < 44">
+                                            <span class="block truncate"><span class="font-semibold" x-text="b.e.titulo"></span> <b class="font-mono text-[10px] font-normal text-ink-mute" x-text="hora(b.e.inicio)"></b></span>
+                                        </template>
+                                        <template x-if="b.altura >= 44">
+                                            <span class="block">
+                                                <span class="block font-mono text-[10.5px] font-semibold text-ink-dim" x-text="hora(b.e.inicio) + (b.e.fim ? ' – ' + hora(b.e.fim) : '')"></span>
+                                                <span class="block font-semibold" x-text="b.e.titulo"></span>
+                                                <span class="block truncate text-[10.5px] text-ink-mute" x-text="b.e.origem_rotulo"></span>
+                                            </span>
+                                        </template>
                                     </a>
                                 </template>
                             </div>
@@ -136,7 +144,7 @@
                 </div>
                 <div class="grid grid-cols-7">
                     <template x-for="d in diasDoMes()" :key="d.chave">
-                        <button type="button" @click="cursor = d.data; trocar('dia')" class="min-h-[100px] border-b border-l border-line p-1.5 text-left align-top hover:bg-head" :class="(d.foraDoMes ? 'opacity-40 ' : '') + (d.hoje ? 'bg-brand/10' : '')">
+                        <button type="button" @click="cursor = d.data; trocar('dia')" class="min-h-[84px] border-b border-l border-line p-1.5 text-left align-top hover:bg-head" :class="(d.foraDoMes ? 'opacity-40 ' : '') + (d.hoje ? 'bg-brand/10' : '')">
                             <p class="text-[12.5px] font-semibold" :class="d.hoje ? 'text-brand-text' : 'text-ink'" x-text="d.numero"></p>
                             <template x-for="e in doDia(d).slice(0, 3)" :key="e.inicio + e.titulo">
                                 <p :class="cor(e)" class="mt-0.5 truncate rounded-sm border-l-[3px] px-1 text-[11px] text-ink" x-text="(e.dia_inteiro ? '' : hora(e.inicio) + ' ') + e.titulo"></p>
@@ -170,7 +178,7 @@
         </div>
 
         {{-- Lateral --}}
-        <aside class="min-w-0 space-y-4">
+        <aside class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3 2xl:block 2xl:space-y-4">
             <section class="rounded-panel border border-line bg-surface p-3">
                 <div class="mb-2 flex items-center">
                     <button type="button" @click="mini(-1)" class="px-2 text-ink-mute hover:text-brand">‹</button>
@@ -287,7 +295,8 @@
                     const [de, ate] = this.intervalo(), c = s => s.slice(0, 3) + '.';
                     if (this.visao === 'mes') return meses[this.cursor.getMonth()].replace(/^./, x => x.toUpperCase()) + ' de ' + this.cursor.getFullYear();
                     if (this.visao === 'dia') return semana[de.getDay()] + ', ' + de.getDate() + ' de ' + meses[de.getMonth()] + ' de ' + de.getFullYear();
-                    return de.getDate() + ' de ' + c(meses[de.getMonth()]) + ' de ' + de.getFullYear() + ' – ' + ate.getDate() + ' de ' + c(meses[ate.getMonth()]) + ' de ' + ate.getFullYear();
+                    return de.getMonth() === ate.getMonth() ? de.getDate() + ' – ' + ate.getDate() + ' de ' + c(meses[de.getMonth()]) + ' de ' + de.getFullYear()
+                        : de.getDate() + ' de ' + c(meses[de.getMonth()]) + ' – ' + ate.getDate() + ' de ' + c(meses[ate.getMonth()]) + ' de ' + ate.getFullYear();
                 },
                 info(d) { return { data: d, chave: iso(d), semana: semana[d.getDay()], numero: d.getDate(), mes: String(d.getMonth() + 1).padStart(2, '0'), hoje: iso(d) === iso(this.agora) }; },
                 dias() { const [de] = this.intervalo(); return Array.from({ length: this.visao === 'dia' ? 1 : 7 }, (_, i) => this.info(mais(de, i))); },
@@ -322,7 +331,7 @@
                     return { ini: Math.min(ini, 7 * 60), fim: Math.max(fim, Math.min(ini, 7 * 60) + 8 * 60, 20 * 60) };
                 },
                 horas() { const f = this.faixa(); return Array.from({ length: (f.fim - f.ini) / 60 + 1 }, (_, i) => f.ini / 60 + i); },
-                altura() { const f = this.faixa(); return (f.fim - f.ini) * 0.8; },
+                altura() { const f = this.faixa(); return (f.fim - f.ini) * 0.6; },
                 agoraNaFaixa() { const f = this.faixa(), m = this.minutosAgora(); return m >= f.ini && m <= f.fim; },
                 /* Eventos que se sobrepõem dividem a largura, em raias. */
                 blocos(d) {
@@ -335,7 +344,7 @@
                     const raias = [];
                     lista.forEach(b => { let r = raias.findIndex(fim => fim <= b.ini); if (r < 0) { r = raias.length; raias.push(0); } raias[r] = b.fim; b.raia = r; });
                     const n = Math.max(1, raias.length);
-                    return lista.map(b => ({ e: b.e, top: (b.ini - f.ini) * 0.8, altura: Math.max((b.fim - b.ini) * 0.8, 22), esq: b.raia * 100 / n, larg: 100 / n }));
+                    return lista.map(b => ({ e: b.e, top: (b.ini - f.ini) * 0.6, altura: Math.max((b.fim - b.ini) * 0.6, 20), esq: b.raia * 100 / n, larg: 100 / n }));
                 },
                 cor(e) { return (cores[e.calendario] || cores.outros) + (e.conflito ? ' ring-1 ring-crit' : ''); },
             };

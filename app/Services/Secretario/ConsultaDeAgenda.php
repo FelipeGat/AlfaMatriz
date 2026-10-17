@@ -23,7 +23,7 @@ class ConsultaDeAgenda
 
     public function ativa(User $user): bool
     {
-        return SecretarioGoogleConta::where('user_id', $user->id)->where('situacao', SecretarioGoogleConta::CONECTADA)->exists();
+        return SecretarioGoogleConta::where('user_id', $user->id)->whereIn('situacao', [SecretarioGoogleConta::CONECTADA, SecretarioGoogleConta::MAQUINA])->exists();
     }
 
     /** O texto da resposta, ou null se a frase não é pergunta de agenda. */

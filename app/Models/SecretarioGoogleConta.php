@@ -14,6 +14,8 @@ class SecretarioGoogleConta extends Model
 {
     public const CONECTADA = 'conectada';
     public const RECONECTAR = 'reconectar';
+    /** Lida pela máquina da pessoa (a ponte pessoal do Google que ela já autorizou): sem token aqui. */
+    public const MAQUINA = 'maquina';
 
     protected $table = 'secretario_google_contas';
 
@@ -34,5 +36,10 @@ class SecretarioGoogleConta extends Model
     public function conectada(): bool
     {
         return $this->situacao === self::CONECTADA;
+    }
+
+    public function pelaMaquina(): bool
+    {
+        return $this->situacao === self::MAQUINA;
     }
 }

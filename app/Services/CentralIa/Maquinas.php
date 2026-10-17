@@ -46,6 +46,8 @@ class Maquinas
         'transcricao.mjs', 'transcrever_reuniao.py',
         // Etapa 5: o retrato do Gestor pela ponte (o .php vai para a pasta da ponte, na máquina da pessoa).
         'gestor.mjs', 'secretario_gestor.php',
+        // Agenda do Google pela máquina: o .py vai para a pasta da ponte pessoal do Google.
+        'agenda-google.mjs', 'secretario_agenda.py',
     ];
 
     public function podeConectar(User $user): bool
