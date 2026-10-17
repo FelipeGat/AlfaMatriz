@@ -8,6 +8,8 @@ use App\Models\Sistema;
 use App\Services\Monitor\ApiDoMonitor;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -46,6 +48,13 @@ class PainelDoMonitorController extends Controller
 
     public const EVENTOS_POR_PAGINA = 30;
 
+    /**
+     * Incidentes e clientes na tela, por página: os 50 das telas do monitor.
+     * A paginação é feita aqui, sobre a lista inteira que o `ApiDoMonitor`
+     * juntou, para a busca e a ordem valerem para todas as páginas.
+     */
+    public const ITENS_POR_PAGINA = 50;
+
     public function __construct(private readonly ApiDoMonitor $api) {}
 
     public function geral(Request $request): View
@@ -71,9 +80,10 @@ class PainelDoMonitorController extends Controller
         $resposta = $this->api->buscar('acesso', ['fonte' => $filtros['fonte']]);
         $fonte = collect($resposta->get('fontes', []))->firstWhere('fonte', $filtros['fonte']);
 
-        // Busca e filtro aqui, sobre a resposta inteira: são 42 aparelhos
-        // hoje (o monitor conferiu), e a API não pagina por isso mesmo. Cada
-        // cliente fica com os aparelhos que passam; cliente sem nenhum sai.
+        // Busca e filtro aqui, sobre a resposta inteira (o `ApiDoMonitor`
+        // junta as páginas da API): são 42 aparelhos hoje, e a tela mostra
+        // todos, agrupados por cliente. Cada cliente fica com os aparelhos
+        // que passam; cliente sem nenhum sai.
         $clientes = collect($fonte['clientes'] ?? [])
             ->map(function (array $cliente) use ($filtros) {
                 $nomeCasa = $filtros['busca'] === '' || $this->contem($cliente['nome'] ?? '', $filtros['busca']);
@@ -130,7 +140,7 @@ class PainelDoMonitorController extends Controller
 
         return $this->tela('clientes', [
             'resposta' => $resposta,
-            'clientes' => $clientes,
+            'clientes' => $this->paginar($clientes, $request),
             'busca' => $busca,
         ]);
     }
@@ -176,6 +186,9 @@ class PainelDoMonitorController extends Controller
             'resposta' => $resposta,
             'filtros' => $filtros,
             'incidentes' => $incidentes,
+            // "Por cliente" fica inteira: paginar cortaria um cliente ao meio
+            // e a contagem do grupo mentiria.
+            'pagina' => $this->paginar($incidentes, $request),
             'porCliente' => $incidentes
                 ->groupBy(fn (array $i) => $i['cliente']['nome'] ?? 'Sem cliente (disponibilidade)')
                 ->sortKeys(),
@@ -287,6 +300,22 @@ class PainelDoMonitorController extends Controller
                     ->where('ocorreu_em', '>=', now()->subDay()->format('Y-m-d H:i:s'))->count(),
             ],
         ];
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $itens
+     */
+    private function paginar(Collection $itens, Request $request): LengthAwarePaginator
+    {
+        $pagina = LengthAwarePaginator::resolveCurrentPage();
+
+        return (new LengthAwarePaginator(
+            $itens->forPage($pagina, self::ITENS_POR_PAGINA)->values(),
+            $itens->count(),
+            self::ITENS_POR_PAGINA,
+            $pagina,
+            ['path' => $request->url()],
+        ))->withQueryString();
     }
 
     private function veHostinger(Request $request): bool

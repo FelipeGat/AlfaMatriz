@@ -2,7 +2,7 @@
     Monitor › Clientes (#394): quem o monitor acompanha, com o que está
     ligado a cada um. A contagem de sondas fica de fora (regra de nada de
     sonda, decisão do dono).
-    Espera: $resposta (clientes), $clientes, $busca.
+    Espera: $resposta (clientes), $clientes (paginador, 50 por página), $busca.
 --}}
 @use('App\Services\Monitor\FormatoDoMonitor', 'F')
 @php
@@ -65,4 +65,6 @@
             @endforelse
         </tbody>
     </x-tabela>
+
+    {{ $clientes->links() }}
 </x-monitor.tela>

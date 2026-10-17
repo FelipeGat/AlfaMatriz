@@ -305,7 +305,7 @@ class TelasDoMonitorTest extends TestCase
             ->assertSee('CLIENTE 6')
             ->assertDontSee('CLIENTE 5');
 
-        Http::assertSent(fn (Request $r) => $r->url() === self::BASE.'/api/v1/acesso?fonte=AlfaGym');
+        Http::assertSent(fn (Request $r) => $r->url() === self::BASE.'/api/v1/acesso?fonte=AlfaGym&por_pagina=200');
     }
 
     public function test_clientes_e_a_pagina_do_cliente(): void
@@ -346,7 +346,141 @@ class TelasDoMonitorTest extends TestCase
             ->assertSee('Sem cliente (disponibilidade)')
             ->assertSee('14/10 15:05');
 
-        Http::assertSent(fn (Request $r) => $r->url() === self::BASE.'/api/v1/incidentes?dias=7&estado=historico');
+        Http::assertSent(fn (Request $r) => $r->url() === self::BASE.'/api/v1/incidentes?dias=7&estado=historico&por_pagina=200');
+    }
+
+    /**
+     * Um incidente de mentira, no formato do contrato.
+     *
+     * @return array<string, mixed>
+     */
+    private function incidente(int $n): array
+    {
+        return [
+            'aberto' => false, 'cliente' => null, 'duracao_s' => 60, 'event_id' => $n, 'incident_id' => $n,
+            'fim' => Carbon::parse('2026-10-17 00:00:00')->addMinutes($n + 1)->toIso8601String(),
+            'inicio' => Carbon::parse('2026-10-17 00:00:00')->addMinutes($n)->toIso8601String(),
+            'nome' => sprintf('Incidente %03d', $n), 'origem' => 'AlfaGym', 'recorrencia_7d' => 0,
+            'sev' => 'crit', 'tipo' => 'dispositivos', 'fora_do_horario' => false, 'silenciado' => false,
+        ];
+    }
+
+    /**
+     * A API pagina sempre desde 17/10/2026; o Matriz pede o máximo e junta as
+     * páginas, senão a tela mostraria só a primeira.
+     *
+     * @param  list<array<string, mixed>>  $itens
+     * @return array<string, mixed>
+     */
+    private function paginaDeIncidentes(array $itens, int $pagina, int $porPagina): array
+    {
+        return [
+            'v' => 1, 'estado' => 'historico', 'dias' => 30, 'gerado_em' => '2026-10-17T14:32:58-03:00',
+            'incidentes' => array_slice($itens, ($pagina - 1) * $porPagina, $porPagina),
+            'paginacao' => ['pagina' => $pagina, 'por_pagina' => $porPagina, 'total' => count($itens), 'paginas' => (int) ceil(count($itens) / $porPagina)],
+        ];
+    }
+
+    public function test_as_paginas_da_api_sao_juntadas_e_a_tela_pagina_em_50(): void
+    {
+        $itens = array_map(fn ($n) => $this->incidente($n), range(1, 60));
+
+        // O monitor de teste pagina de 25 em 25, para ser preciso juntar 3.
+        Http::fake([
+            self::BASE.'/api/v1/incidentes*' => fn (Request $r) => Http::response(
+                $this->paginaDeIncidentes($itens, (int) ($r->data()['pagina'] ?? 1), 25)
+            ),
+        ]);
+        $admin = $this->admin();
+
+        // Os mais recentes primeiro: a página 1 vai do 60 ao 11.
+        $this->actingAs($admin)->get(route('monitor.incidentes', ['estado' => 'historico', 'dias' => 30]))
+            ->assertOk()
+            ->assertSee('60 incidentes em 30 dias')
+            ->assertSee('Incidente 060')
+            ->assertSee('Incidente 011')
+            ->assertDontSee('Incidente 010')
+            ->assertSee('page=2', false);
+
+        $this->actingAs($admin)->get(route('monitor.incidentes', ['estado' => 'historico', 'dias' => 30, 'page' => 2]))
+            ->assertOk()
+            ->assertSee('Incidente 010')
+            ->assertSee('Incidente 001')
+            ->assertDontSee('Incidente 011');
+
+        // "Por cliente" fica inteira, senão o grupo contaria errado.
+        $this->actingAs($admin)->get(route('monitor.incidentes', ['estado' => 'historico', 'dias' => 30, 'visao' => 'cliente']))
+            ->assertOk()
+            ->assertSee('60 incidentes')
+            ->assertSee('Incidente 001')
+            ->assertSee('Incidente 060');
+
+        Http::assertSent(fn (Request $r) => (string) ($r->data()['por_pagina'] ?? '') === '200' && ! isset($r->data()['pagina']));
+        Http::assertSent(fn (Request $r) => (string) ($r->data()['pagina'] ?? '') === '3');
+        Http::assertNotSent(fn (Request $r) => (string) ($r->data()['pagina'] ?? '') === '4');
+    }
+
+    public function test_se_uma_pagina_falha_a_tela_nao_mostra_a_lista_pela_metade(): void
+    {
+        $itens = array_map(fn ($n) => $this->incidente($n), range(1, 30));
+
+        Http::fake([
+            self::BASE.'/api/v1/incidentes*' => fn (Request $r) => isset($r->data()['pagina'])
+                ? Http::response(['erro' => 'interno'], 500)
+                : Http::response($this->paginaDeIncidentes($itens, 1, 20)),
+        ]);
+
+        $this->actingAs($this->admin())->get(route('monitor.incidentes', ['estado' => 'historico', 'dias' => 30]))
+            ->assertOk()
+            ->assertSee('O AlfaMonitor não entregou a lista inteira.')
+            ->assertDontSee('Incidente 030');
+    }
+
+    public function test_a_busca_de_clientes_acha_quem_esta_em_outra_pagina_da_api(): void
+    {
+        $clientes = $this->exemplo('clientes');
+        $todos = $clientes['clientes'];
+        $total = count($todos);
+
+        Http::fake([
+            self::BASE.'/api/v1/clientes*' => function (Request $r) use ($clientes, $todos, $total) {
+                $pagina = (int) ($r->data()['pagina'] ?? 1);
+
+                return Http::response(['clientes' => array_slice($todos, ($pagina - 1) * 2, 2),
+                    'paginacao' => ['pagina' => $pagina, 'por_pagina' => 2, 'total' => $total, 'paginas' => (int) ceil($total / 2)]] + $clientes);
+            },
+        ]);
+
+        $ultimo = end($todos)['nome'];
+
+        $this->actingAs($this->admin())->get(route('monitor.clientes', ['busca' => $ultimo]))
+            ->assertOk()
+            ->assertSee($total.' clientes no monitor')
+            ->assertSee($ultimo);
+    }
+
+    public function test_o_acesso_junta_as_paginas_de_cada_fonte(): void
+    {
+        $acesso = $this->exemplo('acesso-AlfaGym');
+        $clientes = $acesso['fontes'][0]['clientes'];
+
+        Http::fake([
+            self::BASE.'/api/v1/acesso*' => function (Request $r) use ($acesso, $clientes) {
+                $pagina = (int) ($r->data()['pagina'] ?? 1);
+                $acesso['fontes'][0]['clientes'] = array_slice($clientes, $pagina - 1, 1);
+                $acesso['fontes'][0]['paginacao'] = ['pagina' => $pagina, 'por_pagina' => 1, 'total' => count($clientes), 'paginas' => count($clientes)];
+
+                return Http::response($acesso);
+            },
+        ]);
+
+        $resposta = $this->actingAs($this->admin())->get(route('monitor.acesso', ['fonte' => 'AlfaGym']))->assertOk();
+
+        foreach ($clientes as $cliente) {
+            $resposta->assertSee($cliente['nome']);
+        }
+
+        Http::assertSentCount(count($clientes));
     }
 
     public function test_o_relatorio_e_a_exportacao(): void
