@@ -648,12 +648,12 @@ function comando(job, cwd, branch, saida, acesso) {
         // sessão retomar. Retomada simples mantém o mesmo id.
         job.sessaoPrevista = sessao && !job.continuar?.fork ? sessao : randomUUID();
         if (!sessao || job.continuar?.fork) args.push('--session-id', job.sessaoPrevista);
-        args.push(...permissoes('claude', acesso, { projetos: cfg.projetos, deploy: pedeDeploy(job) }), ...modeloArgs('claude', job.modelo, job.esforco));
+        args.push(...permissoes('claude', acesso, { projetos: cfg.projetos, deploy: pedeDeploy(job), semFerramentas: job.acesso === 'nenhum' }), ...modeloArgs('claude', job.modelo, job.esforco));
         return [agentes.claude, args, null, prompt];
     }
 
     if (job.agente === 'codex') {
-        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso, { deploy: pedeDeploy(job), codexTotal: cfg.codexTotal }), ...modeloArgs('codex', job.modelo, job.esforco), '-c', 'forced_login_method="chatgpt"'];
+        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso, { deploy: pedeDeploy(job), codexTotal: cfg.codexTotal, semFerramentas: job.acesso === 'nenhum' }), ...modeloArgs('codex', job.modelo, job.esforco), '-c', 'forced_login_method="chatgpt"'];
         // `-`: o Codex lê o pedido do stdin (mesmo motivo do Claude, E2BIG).
         return [agentes.codex, sessao ? ['exec', 'resume', sessao, ...comum, '-'] : ['exec', ...comum, '-'], null, prompt];
     }
@@ -661,7 +661,7 @@ function comando(job, cwd, branch, saida, acesso) {
     // Copilot: no modo não interativo ele exige --allow-all-tools; o controle
     // fica no --deny-tool. A sessão leva um nome para ser retomada por ele.
     const nome = sessao || `central-ia-${job.id}`;
-    const args = ['-s', '--no-color', ...permissoes('copilot', acesso, { cwd, deploy: pedeDeploy(job) }), ...modeloArgs('copilot', job.modelo, job.esforco)];
+    const args = ['-s', '--no-color', ...permissoes('copilot', acesso, { cwd, deploy: pedeDeploy(job), semFerramentas: job.acesso === 'nenhum' }), ...modeloArgs('copilot', job.modelo, job.esforco)];
     // Pedido pelo stdin também no Copilot (E2BIG acima de 128 KB, que o
     // contexto de um chat de assunto passa fácil).
     args.push(...(sessao ? ['--resume', sessao] : ['-n', nome]));

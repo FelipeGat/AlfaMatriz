@@ -35,7 +35,7 @@ class Conversa
         if ($ja = CentralIaMensagem::de($user)->where('client_id', $clientId)->first()) {
             return $ja->conteudo === $texto && $this->foiDoSecretario($ja) ? $ja : null;
         }
-        $r = $this->interpretar($user, $texto, 'matriz');
+        $r = $this->interpretar($user, $texto, 'matriz', $projeto);
         if (! $r) {
             return null;
         }
@@ -66,7 +66,8 @@ class Conversa
         if (CentralIaMensagem::where('user_id', $user->id)->where('telegram_update_id', $updateId)->exists()) {
             return true;
         }
-        $r = $this->interpretar($user, $texto, 'telegram');
+        $r = $this->interpretar($user, $texto, 'telegram',
+            app(CanalAtivo::class)->pronto() ? app(CanalAtivo::class)->estado($user)?->projeto_canal : null);
         if (! $r) {
             return false;
         }
@@ -98,7 +99,7 @@ class Conversa
      * Pergunta de agenda primeiro (Etapa 2: respondida com dado real, sem IA);
      * depois resposta a uma proposta pendente; depois pedido novo.
      */
-    private function interpretar(User $user, string $texto, string $origem): ?array
+    private function interpretar(User $user, string $texto, string $origem, ?string $projeto = null): ?array
     {
         // "Resume meu dia": o briefing de agora (Etapa 3), sem IA.
         $briefings = app(Briefings::class);
@@ -110,7 +111,10 @@ class Conversa
         // Etapa 6: perguntas sobre o histórico, antes das demais (as frases dela são estritas).
         // Etapa 5: "o que estou devendo aos clientes?" e as perguntas de e-mail.
         // Etapa 7: "o que preciso acompanhar?".
-        foreach ([Memoria\ConsultaDeMemoria::class, Acompanhamento\ConsultaDeAcompanhamentos::class, ConsultaDePendencias::class, ConsultaDeEmails::class] as $consulta) {
+        // Só pergunta curta, fora de chat de projeto e sem cara de pedido de
+        // trabalho: "o que ficou decidido sobre o layout? analise o código"
+        // é da IA, e não da memória (revisão de QA antes da publicação).
+        foreach (self::consultaSimples($texto, $projeto) ? [Memoria\ConsultaDeMemoria::class, Acompanhamento\ConsultaDeAcompanhamentos::class, ConsultaDePendencias::class, ConsultaDeEmails::class] : [] as $consulta) {
             if (($resposta = app($consulta)->responder($user, $texto)) !== null) {
                 return ['proposta' => null, 'item' => null, 'mensagem' => $resposta];
             }
@@ -120,6 +124,21 @@ class Conversa
         }
 
         return $this->propostas->responder($user, $texto) ?? $this->propostas->criar($user, $texto, $origem);
+    }
+
+    private const PEDIDO_DE_TRABALHO = '/\b(codigo|code|migration|migracao|endpoint|api|bugs?|deploy|commits?|build|testes?|runner|telas?|layout|template|pdf|filtros?|modulos?|funcao|classe|sql|query|script|branch|repositorio|arquivos?|planilha|relatorios?|grafico|analise|analisa|analisar|explique|explica|corrija|corrigir|corrige|crie|cria|criar|implemente|implementa|implementar|ajuste|ajusta|ajustar|gere|gera|gerar|escreva|escrever|investigue|refatore|revise|revisar|compare|calcule|pesquise)\b/u';
+    private const JEITO_DE_PERGUNTA = '/^(matriz[,:]?\s+|secretario[,:]?\s+)?(o que|oque|que|quais|qual|quem|quando|tenho|tem|temos|como|me (mostra|mostre|diz|diga|fala|passa|lista)|mostra|mostre|lista|liste|resum[aeo]|resumir|faz um resumo|sintetiz\w*|meus|minhas|acompanhamentos)\b/u';
+
+    /** Pergunta ao Secretário, e não pedido de trabalho à IA (Etapas 5 a 7). */
+    public static function consultaSimples(string $texto, ?string $projeto = null): bool
+    {
+        $t = trim($texto);
+        if (filled($projeto) || mb_strlen($t) > 120 || str_contains($t, "\n")) {
+            return false;
+        }
+        $n = Memoria\BuscaNaMemoria::normalizar($t);
+
+        return ! preg_match(self::PEDIDO_DE_TRABALHO, $n) && (preg_match(self::JEITO_DE_PERGUNTA, $n) || str_ends_with($t, '?'));
     }
 
     private function foiDoSecretario(CentralIaMensagem $m): bool

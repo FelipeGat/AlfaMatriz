@@ -203,4 +203,14 @@ class EmailsGestorTest extends TestCase
         CentralIaRunner::create(['user_id' => $outro->id, 'maquina' => 'wsl', 'agentes' => ['codex'], 'projetos' => [], 'visto_em' => now()]);
         $this->assertStringContainsString('o Gestor ainda não foi lido', app(ConsultaDePendencias::class)->montar($outro));
     }
+
+    /** Revisão de QA (17/10): o servidor não serve de sonda para a rede, e a pasta não injeta comando. */
+    public function test_caixa_so_em_porta_de_imap_e_pasta_sem_quebra_de_linha(): void
+    {
+        $u = $this->dono(telegram: false);
+        $base = ['rotulo' => 'VixCard', 'host' => 'imap.vix.local', 'porta' => 993, 'seguranca' => 'ssl', 'usuario' => 'felipe@vix.local', 'senha' => 'segredo123', 'pasta_entrada' => 'INBOX'];
+        $this->actingAs($u)->postJson(route('secretario.emails.testar'), ['porta' => 22] + $base)->assertUnprocessable()->assertJsonValidationErrors('porta');
+        $this->postJson(route('secretario.emails.testar'), ['pasta_entrada' => "INBOX\r\nA1 STORE 1:* +FLAGS (\\Deleted)"] + $base)->assertUnprocessable()->assertJsonValidationErrors('pasta_entrada');
+        $this->assertSame(0, SecretarioEmailConta::count());
+    }
 }

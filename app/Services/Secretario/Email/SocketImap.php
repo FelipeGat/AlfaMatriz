@@ -21,7 +21,19 @@ class SocketImap implements TransporteImap
         $esquema = $seguranca === 'ssl' ? 'ssl' : 'tcp';
         $contexto = stream_context_create(['ssl' => ['verify_peer' => $this->verificarCertificado, 'verify_peer_name' => $this->verificarCertificado,
             'allow_self_signed' => ! $this->verificarCertificado, 'SNI_enabled' => true, 'peer_name' => $host]]);
-        $socket = @stream_socket_client("{$esquema}://{$host}:{$porta}", $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $contexto);
+        // Só endereço público, e a conexão vai ao IP já conferido (sem uma
+        // segunda resolução que o DNS poderia trocar). O teste local, com
+        // servidor na rede interna, é o modo sem verificação.
+        $destino = $host;
+        if ($this->verificarCertificado) {
+            $publicos = array_values(array_filter(@gethostbynamel($host) ?: [],
+                fn ($ip) => filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false));
+            if (! $publicos) {
+                throw new RuntimeException('conexao');
+            }
+            $destino = $publicos[0];
+        }
+        $socket = @stream_socket_client("{$esquema}://{$destino}:{$porta}", $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $contexto);
         if (! $socket) {
             throw new RuntimeException('conexao');
         }

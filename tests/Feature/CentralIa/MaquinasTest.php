@@ -147,6 +147,11 @@ class MaquinasTest extends TestCase
 
         $this->get(route('central-ia.runner.arquivo', 'politica.mjs'))->assertOk()->assertSee('PUBLICACAO_NO_SHELL', false);
         $this->get('/central-ia/runner/arquivos/instalar.sh')->assertNotFound();
+        // Todo arquivo da lista sai pelo endereço que o instalador usa (o .php com .txt no fim, por causa do nginx).
+        foreach (\App\Services\CentralIa\Maquinas::ARQUIVOS as $f) {
+            $this->get('/central-ia/runner/arquivos/'.(str_ends_with($f, '.php') ? $f.'.txt' : $f))->assertOk();
+        }
+        $this->get('/central-ia/runner/arquivos/secretario_gestor.txt')->assertNotFound();
         $this->get('/central-ia/runner/arquivos/..%2F..%2F.env')->assertNotFound();
         foreach (Maquinas::ARQUIVOS as $f) {
             $this->assertFileExists(base_path('deploy/central-ia/'.$f));

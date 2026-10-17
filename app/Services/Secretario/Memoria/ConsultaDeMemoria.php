@@ -314,7 +314,7 @@ class ConsultaDeMemoria
             ? CentralIaMensagem::ORIGEM_TELEGRAM : CentralIaMensagem::ORIGEM_WEB;
         try {
             app(AgentesService::class)->pedir($user, 'Resumir o histórico com “'.Str::limit($alvo, 60).'” (Secretário).',
-                ['projeto' => '', 'agente' => 'auto', 'modo' => 'analisar', 'instrucao' => $instrucao], $origem);
+                ['projeto' => '', 'agente' => 'auto', 'modo' => 'analisar', 'instrucao' => $instrucao, 'sem_ferramentas' => true], $origem);
         } catch (ValidationException $ex) {
             return '⚠ Não consegui pedir à sua IA: '.(collect($ex->errors())->flatten()->first() ?? 'pedido recusado').'.';
         }

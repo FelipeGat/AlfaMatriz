@@ -23,8 +23,13 @@ class SecretarioAcompanhar extends Command
         $agora = CarbonImmutable::now();
         $resumidos = 0;
         foreach ($motor->contas() as $user) {
-            $motor->rodar($user, $agora);
-            $resumidos += $envio->preparar($user, $agora) > 0 ? 1 : 0;
+            // Erro de uma conta não deixa as outras (nem a entrega) sem aviso.
+            try {
+                $motor->rodar($user, $agora);
+                $resumidos += $envio->preparar($user, $agora) > 0 ? 1 : 0;
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
         $entregues = $envio->entregarPendentes();
         if ($resumidos || $entregues) {

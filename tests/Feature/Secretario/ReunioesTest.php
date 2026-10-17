@@ -283,4 +283,22 @@ class ReunioesTest extends TestCase
         $this->transcrever($u, $b, [['inicio' => 0, 'fim' => 3, 'texto' => 'Fechamento do mês do financeiro.']]);
         $this->actingAs($u)->get(route('secretario.reunioes.index', ['q' => 'etiquetas']))->assertOk()->assertSee('reuniao-a')->assertDontSee('reuniao-b');
     }
+
+    /** Revisão de QA (17/10): áudio que nenhuma máquina pegou não fica no servidor para sempre. */
+    public function test_audio_sem_transcricao_expira_em_7_dias(): void
+    {
+        $u = $this->dono(telegram: false);
+        $this->actingAs($u);
+        $this->enviar($u)->assertCreated();
+        $r = SecretarioReuniao::sole();
+        $this->assertTrue(Storage::disk('central_ia')->exists($r->arquivo));
+
+        $this->artisan('secretario:reunioes')->assertSuccessful();
+        $this->assertSame(SecretarioReuniao::AGUARDANDO, $r->fresh()->status, 'Antes de 7 dias, espera');
+        $r->forceFill(['created_at' => now()->subDays(8)])->save();
+        $this->artisan('secretario:reunioes')->assertSuccessful();
+        $this->assertSame(SecretarioReuniao::FALHOU, $r->fresh()->status);
+        $this->assertNull($r->fresh()->arquivo);
+        $this->assertFalse(Storage::disk('central_ia')->exists($r->arquivo));
+    }
 }

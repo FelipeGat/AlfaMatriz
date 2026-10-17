@@ -27,6 +27,7 @@ class Reunioes
     public const DITADO_MAX_S = 60;
     public const PRESA_MIN = 60;
     public const MAX_TENTATIVAS = 3;
+    public const EXPIRA_DIAS = 7;
     public const DISCO = 'central_ia';
 
     /** Extensão => tipos reais aceitos (o finfo chama o mesmo áudio de nomes diferentes). */
@@ -190,6 +191,34 @@ class Reunioes
         foreach (SecretarioReuniao::where('status', SecretarioReuniao::ANALISANDO)->where('updated_at', '<', now()->subMinutes(self::PRESA_MIN * 2))->get() as $r) {
             $r->update(['status' => SecretarioReuniao::FALHOU, 'erro' => 'a análise não voltou; use Analisar de novo']);
             $n++;
+        }
+
+        return $n;
+    }
+
+    /**
+     * Áudio que nenhuma máquina pegou em EXPIRA_DIAS (máquina desligada, sem a
+     * imagem de transcrição): apagado, com aviso — áudio não fica no servidor
+     * para sempre (revisão de QA antes da publicação).
+     */
+    public function expirarParados(): int
+    {
+        $n = 0;
+        foreach (SecretarioReuniao::where('status', SecretarioReuniao::AGUARDANDO)->whereNotNull('arquivo')->where('created_at', '<', now()->subDays(self::EXPIRA_DIAS))->get() as $r) {
+            $expirou = DB::transaction(function () use ($r) {
+                $r = SecretarioReuniao::whereKey($r->id)->lockForUpdate()->first();
+                if (! $r || $r->status !== SecretarioReuniao::AGUARDANDO) {
+                    return null;
+                }
+                $r->update(['status' => SecretarioReuniao::FALHOU, 'erro' => 'nenhuma máquina transcreveu em '.self::EXPIRA_DIAS.' dias; áudio apagado']);
+                $this->apagarAudio($r);
+
+                return $r;
+            });
+            if ($expirou && ($dono = User::find($expirou->user_id))) {
+                $this->avisar($dono, $expirou, "⚠ O áudio de “{$expirou->titulo}” esperou ".self::EXPIRA_DIAS." dias sem uma máquina para transcrever e foi apagado.");
+                $n++;
+            }
         }
 
         return $n;

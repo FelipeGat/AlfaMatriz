@@ -419,6 +419,17 @@ class AgentesService
                 'ultima_atividade_em' => now(),
             ]);
 
+            // Pedido do Secretário leva conteúdo de terceiros (e-mail,
+            // transcrição): vai sem ferramenta nenhuma, valha o que valer o
+            // acesso geral da Central — o aviso no prompt não é controle.
+            if (! empty($pedido['sem_ferramentas'])) {
+                $rota['sem_ferramentas'] = true;
+            }
+            // E-mail lido na hora (Secretário, Etapa 5): o texto não fica guardado depois da resposta.
+            if (! empty($pedido['descartar_instrucao'])) {
+                $rota['descartar_instrucao'] = true;
+            }
+
             $execucao = CentralIaExecucao::create([
                 'user_id' => $user->id,
                 'pedido_id' => $mensagem->id,
@@ -702,7 +713,9 @@ class AgentesService
             'modelo' => $execucao->roteamento['modelo'] ?? null,
             'esforco' => $execucao->roteamento['esforco'] ?? null,
             'continuar' => $continuar,
-            'acesso' => config('central_ia.agentes.acesso'),
+            // `nenhum`: runner atual tira todas as ferramentas; runner antigo não
+            // conhece o valor e cai na leitura (acessoEfetivo), nunca no total.
+            'acesso' => ($execucao->roteamento['sem_ferramentas'] ?? false) ? 'nenhum' : config('central_ia.agentes.acesso'),
             // Assunto sem projeto implementa na raiz dos projetos: não há
             // repositório onde abrir worktree.
             'na_pasta' => (bool) config('central_ia.agentes.implementar_na_pasta') || ($tarefa?->ehAssunto() && $execucao->projeto === ''),
@@ -850,6 +863,18 @@ class AgentesService
                     'branch' => $dados['branch'] ?? null,
                     'commit_base' => $dados['commit_base'] ?? null,
                 ], fn ($v) => $v !== null));
+            }
+
+            // Só no sucesso: na falha, a troca de provedor ainda precisa da instrução.
+            if ($ok && ($execucao->roteamento['descartar_instrucao'] ?? false)) {
+                $descartado = '(texto dos e-mails descartado depois da resposta)';
+                $execucao->update(['instrucao' => $descartado]);
+                if ($tarefa) {
+                    $d = $tarefa->fresh()->dossie ?? [];
+                    $d['objetivo'] = $descartado;
+                    $d['pedidos'] = array_map(fn ($p) => ['texto' => $descartado] + (array) $p, (array) ($d['pedidos'] ?? []));
+                    $tarefa->update(['objetivo' => $descartado, 'dossie' => $d]);
+                }
             }
 
             if (! $ok) {

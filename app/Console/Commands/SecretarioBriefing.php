@@ -22,7 +22,12 @@ class SecretarioBriefing extends Command
         $agora = CarbonImmutable::now();
         $gerados = 0;
         foreach ($briefings->devidos($agora) as $user) {
-            $gerados += $briefings->gerar($user, $agora) ? 1 : 0;
+            // Erro de uma conta não deixa as outras (nem a entrega) sem briefing.
+            try {
+                $gerados += $briefings->gerar($user, $agora) ? 1 : 0;
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
         $entregues = $briefings->entregarPendentes();
         if ($gerados || $entregues) {

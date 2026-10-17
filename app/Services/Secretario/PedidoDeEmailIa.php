@@ -66,7 +66,7 @@ class PedidoDeEmailIa
         $origem = app(CanalAtivo::class)->pronto() && app(CanalAtivo::class)->ativo($user) === 'telegram'
             ? CentralIaMensagem::ORIGEM_TELEGRAM : CentralIaMensagem::ORIGEM_WEB;
         try {
-            app(AgentesService::class)->pedir($user, $visivel, ['projeto' => '', 'agente' => 'auto', 'modo' => 'analisar', 'instrucao' => $instrucao], $origem);
+            app(AgentesService::class)->pedir($user, $visivel, ['projeto' => '', 'agente' => 'auto', 'modo' => 'analisar', 'instrucao' => $instrucao, 'sem_ferramentas' => true, 'descartar_instrucao' => true], $origem);
         } catch (ValidationException $ex) {
             return '⚠ Não consegui pedir à sua IA: '.(collect($ex->errors())->flatten()->first() ?? 'pedido recusado').'.';
         }

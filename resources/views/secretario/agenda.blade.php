@@ -1,5 +1,5 @@
 <x-app-layout>
-    <x-slot name="titulo">Agenda consolidada</x-slot>
+    <x-slot name="titulo">Minha agenda</x-slot>
     <x-slot name="contexto">
         <span>Secretário · Google · Agenda do Matriz</span>
     </x-slot>

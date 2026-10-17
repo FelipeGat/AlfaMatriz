@@ -85,7 +85,9 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 for f in $ARQUIVOS; do
-  curl -fsS --max-time 60 "$URL/central-ia/runner/arquivos/$f" -o "$TMP/$f" || erro "Não consegui baixar $f do AlfaMatriz."
+  # `.php` vai com `.txt` no fim: endereço terminado em .php o nginx entrega ao PHP-FPM, não ao AlfaMatriz.
+  u="$f"; case "$f" in *.php) u="$f.txt" ;; esac
+  curl -fsS --max-time 60 "$URL/central-ia/runner/arquivos/$u" -o "$TMP/$f" || erro "Não consegui baixar $f do AlfaMatriz."
   case "$f" in *.mjs) "$NODE" --check "$TMP/$f" || erro "O arquivo $f chegou corrompido." ;; esac
 done
 # O runner fica fora de qualquer repositório: trocar de branch num checkout
@@ -246,7 +248,12 @@ if [ "$ANEXOS" = 1 ] && command -v docker >/dev/null && docker info >/dev/null 2
   # Reuniões do Secretário (docs/specs/secretario-reunioes): transcrição na
   # máquina, sem rede na hora de transcrever — o modelo vem dentro da imagem.
   # Mesmo conteúdo de deploy/central-ia/whisper/Dockerfile.
-  if ! docker image inspect "$IMAGEM_WHISPER" >/dev/null 2>&1 && [ -f "$DEST/transcrever_reuniao.py" ]; then
+  # Só em quem pede (CENTRAL_IA_TRANSCRICAO=sim no ambiente ou no .env do
+  # runner): são ~1,7 GB, e o Secretário é de uma pessoa, não de toda máquina.
+  TRANSCRICAO="${CENTRAL_IA_TRANSCRICAO:-$(ler_conf CENTRAL_IA_TRANSCRICAO)}"
+  if [ "$TRANSCRICAO" != sim ] && ! docker image inspect "$IMAGEM_WHISPER" >/dev/null 2>&1; then
+    echo "Transcrição de reuniões: desligada nesta máquina (para ligar, rode o instalador com CENTRAL_IA_TRANSCRICAO=sim)."
+  elif ! docker image inspect "$IMAGEM_WHISPER" >/dev/null 2>&1 && [ -f "$DEST/transcrever_reuniao.py" ]; then
     echo "Preparando a transcrição de reuniões (Docker; baixa ~1,7 GB na primeira vez)…"
     CTX="$(mktemp -d)"
     cp "$DEST/transcrever_reuniao.py" "$CTX/"

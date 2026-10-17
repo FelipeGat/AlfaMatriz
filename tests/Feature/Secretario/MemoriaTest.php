@@ -258,4 +258,31 @@ class MemoriaTest extends TestCase
         $this->actingAs($u)->post(route('secretario.memoria.sintese'), ['q' => 'RFID'])->assertRedirect(route('secretario.memoria', ['q' => 'RFID']));
         $this->assertSame(2, CentralIaExecucao::count());
     }
+
+    /** Revisão de QA (17/10): pedido de trabalho à IA não pode cair no Secretário. */
+    public function test_pedido_de_trabalho_vai_para_a_ia_e_pergunta_curta_fica_no_secretario(): void
+    {
+        $conversa = \App\Services\Secretario\Conversa::class;
+        foreach (['o que ficou decidido sobre o layout da tela X? analise o código', 'Crie uma migration que grave a decisão do aprovador',
+            'o que devo mudar no runner para corrigir o build?', 'liste as propostas pendentes no Gestor e corrija o filtro',
+            'ajuste o PDF da proposta e depois vamos seguir com o deploy', 'quais reuniões tive com o cliente e gere um relatório',
+            'o que sabemos sobre o bug do Telegram?', 'histórico de commits do runner, me explique', 'o que temos de testes no módulo financeiro?',
+            'o que ficou pendente com o deploy do AlfaControl?', 'quais compromissos assumidos no contrato a API precisa cumprir?',
+            'o endpoint ficou sem resposta, investigue', 'preciso responder o cliente, escreva um texto', 'crie um template de e-mail novo'] as $f) {
+            $this->assertFalse($conversa::consultaSimples($f), $f);
+        }
+        $this->assertFalse($conversa::consultaSimples('o que combinamos com o cliente RFID?', 'alfamatriz'), 'Chat de projeto é da IA');
+        foreach (['O que ficou decidido na reunião de ontem?', 'o que combinamos com o cliente RFID?', 'quais compromissos assumi?',
+            'quais propostas preciso acompanhar?', 'resuma o histórico com o cliente RFID', 'o que preciso acompanhar?', 'o que estou devendo aos clientes?',
+            'quais e-mails importantes chegaram hoje?', 'tenho algum cliente aguardando resposta?', 'resume os e-mails da VixCard', 'Matriz, o que ficou pendente com o Alexandre?'] as $f) {
+            $this->assertTrue($conversa::consultaSimples($f), $f);
+        }
+
+        // E de ponta a ponta: o pedido de trabalho vira execução da IA, não resposta do Secretário.
+        $u = $this->dono(telegram: false);
+        CentralIaRunner::create(['user_id' => $u->id, 'maquina' => 'wsl', 'agentes' => ['codex'], 'projetos' => [], 'visto_em' => now()]);
+        $this->reuniao($u, 'Demonstração RFID', '2026-10-16 15:00', [['categoria' => 'decisao', 'texto' => 'Layout novo da tela']]);
+        $this->actingAs($u)->postJson(route('central-ia.enviar'), ['client_id' => (string) Str::uuid(), 'conteudo' => 'o que ficou decidido sobre o layout da tela X? analise o código'])->assertCreated();
+        $this->assertSame(0, CentralIaMensagem::where('autor_nome', 'Secretário')->count());
+    }
 }

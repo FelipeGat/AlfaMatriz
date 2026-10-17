@@ -19,6 +19,20 @@
     $escopo = Auth::user()?->temEscopoDeRevenda() ?? false;
 
     $grupos = [
+        // Pessoal do dono, com recurso próprio (`secretario`) que o admin não
+        // recebe de fábrica: o dia de UMA conta (docs/specs/secretario-
+        // executivo). No topo porque é a primeira tela do dia, e na ordem do
+        // uso: o que pede ação primeiro, a configuração por último. "Minha
+        // agenda", e não "Agenda": a Agenda do time mora em Desenvolvimento.
+        'Secretário' => [
+            ['route' => 'secretario.meu-dia', 'recurso' => 'secretario', 'pattern' => 'secretario.meu-dia', 'label' => 'Meu Dia', 'icon' => 'sun', 'matriz' => true],
+            ['route' => 'secretario.acompanhamentos', 'recurso' => 'secretario', 'pattern' => ['secretario.acompanhamentos', 'secretario.acompanhamentos.*'], 'label' => 'Acompanhamentos', 'icon' => 'bell', 'matriz' => true],
+            ['route' => 'secretario.agenda', 'recurso' => 'secretario', 'pattern' => 'secretario.agenda', 'label' => 'Minha agenda', 'icon' => 'calendar', 'matriz' => true],
+            ['route' => 'secretario.reunioes.index', 'recurso' => 'secretario', 'pattern' => 'secretario.reunioes.*', 'label' => 'Reuniões', 'icon' => 'speaker-wave', 'matriz' => true],
+            ['route' => 'secretario.emails.index', 'recurso' => 'secretario', 'pattern' => 'secretario.emails.*', 'label' => 'Mensagens', 'icon' => 'balao', 'matriz' => true],
+            ['route' => 'secretario.memoria', 'recurso' => 'secretario', 'pattern' => ['secretario.memoria', 'secretario.memoria.*'], 'label' => 'Memória', 'icon' => 'search', 'matriz' => true],
+            ['route' => 'secretario.configuracoes', 'recurso' => 'secretario', 'pattern' => 'secretario.configuracoes', 'label' => 'Configurações', 'icon' => 'settings', 'matriz' => true],
+        ],
         'Painéis' => [
             ['route' => 'centro-controle', 'recurso' => 'dashboard', 'pattern' => 'centro-controle', 'label' => 'Centro de Controle', 'icon' => 'bolt', 'matriz' => true],
             ['route' => 'dashboard', 'recurso' => 'dashboard', 'pattern' => 'dashboard', 'label' => 'Financeiro', 'icon' => 'trending-up', 'matriz' => true],
@@ -30,17 +44,6 @@
             // gestão, mesma família das três telas acima. As quatro seções
             // moram dentro da tela (`?secao=`), não no menu.
             ['route' => 'relatorios.index', 'recurso' => 'relatorios', 'pattern' => 'relatorios.*', 'label' => 'Relatórios', 'icon' => 'chart-bar', 'matriz' => true],
-        ],
-        // Pessoal do dono, com recurso próprio (`secretario`) que o admin não
-        // recebe de fábrica: lembretes e tarefas de UMA conta (docs/specs/
-        // secretario-executivo). No topo porque é a primeira tela do dia.
-        'Secretário' => [
-            ['route' => 'secretario.meu-dia', 'recurso' => 'secretario', 'pattern' => ['secretario.meu-dia', 'secretario.configuracoes'], 'label' => 'Meu Dia', 'icon' => 'sun', 'matriz' => true],
-            ['route' => 'secretario.agenda', 'recurso' => 'secretario', 'pattern' => 'secretario.agenda', 'label' => 'Agenda consolidada', 'icon' => 'calendar', 'matriz' => true],
-            ['route' => 'secretario.reunioes.index', 'recurso' => 'secretario', 'pattern' => 'secretario.reunioes.*', 'label' => 'Reuniões', 'icon' => 'speaker-wave', 'matriz' => true],
-            ['route' => 'secretario.emails.index', 'recurso' => 'secretario', 'pattern' => 'secretario.emails.*', 'label' => 'Mensagens', 'icon' => 'balao', 'matriz' => true],
-            ['route' => 'secretario.memoria', 'recurso' => 'secretario', 'pattern' => ['secretario.memoria', 'secretario.memoria.*'], 'label' => 'Memória', 'icon' => 'search', 'matriz' => true],
-            ['route' => 'secretario.acompanhamentos', 'recurso' => 'secretario', 'pattern' => ['secretario.acompanhamentos', 'secretario.acompanhamentos.*'], 'label' => 'Acompanhamentos', 'icon' => 'bell', 'matriz' => true],
         ],
         'Comercial' => [
             ['route' => 'leads.index', 'recurso' => 'leads', 'pattern' => 'leads.*', 'label' => 'Funil de Vendas', 'icon' => 'view-grid'],

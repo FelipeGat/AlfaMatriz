@@ -48,12 +48,14 @@ class SecretarioEmailsController extends Controller
         return [
             'rotulo' => ['required', 'string', 'max:60'],
             'host' => ['required', 'string', 'max:120', 'regex:/^[A-Za-z0-9.-]+$/'],
-            'porta' => ['required', 'integer', 'between:1,65535'],
+            // Só as portas de IMAP: o servidor não serve de sonda para a rede (revisão de QA).
+            'porta' => ['required', 'integer', 'in:993,143'],
             'seguranca' => ['required', Rule::in(['ssl', 'tls'])],
             'usuario' => ['required', 'string', 'max:190'],
             'senha' => ['required', 'string', 'max:500'],
-            'pasta_entrada' => ['required', 'string', 'max:120'],
-            'pasta_enviados' => ['nullable', 'string', 'max:120'],
+            // Sem quebra de linha: ela viraria um segundo comando IMAP (STORE, EXPUNGE).
+            'pasta_entrada' => ['required', 'string', 'max:120', 'regex:/^[^\r\n\x00]+$/'],
+            'pasta_enviados' => ['nullable', 'string', 'max:120', 'regex:/^[^\r\n\x00]+$/'],
         ];
     }
 

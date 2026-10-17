@@ -95,7 +95,15 @@ export function exigeConfirmacao(job, regra, chatConfirmado = false) {
 }
 
 /** Argumentos de permissão de cada CLI para o acesso efetivo. */
-export function permissoes(agente, acesso, { projetos, cwd, deploy = false, codexTotal = false } = {}) {
+export function permissoes(agente, acesso, { projetos, cwd, deploy = false, codexTotal = false, semFerramentas = false } = {}) {
+    // Pedido do Secretário (`job.acesso === 'nenhum'`): leva e-mail e
+    // transcrição de terceiros, então nenhuma ferramenta — nem a leitura,
+    // nem o WebSearch, que serviria de canal para fora. O Codex já vai em
+    // read-only sem rede e o Copilot sem escrita e sem shell (abaixo).
+    if (semFerramentas) {
+        acesso = 'leitura';
+        if (agente === 'claude') return ['--permission-mode', 'default', '--disallowedTools', ...FERRAMENTAS_CLAUDE];
+    }
     // O Codex não nega comando por comando: sem pedido de deploy, ele não
     // recebe acesso total (fica no workspace-write, sem rede), e assim não
     // publica nada (T-368). Exceção da MÁQUINA (`CENTRAL_IA_CODEX_TOTAL=sim`,
@@ -129,6 +137,10 @@ export function permissoes(agente, acesso, { projetos, cwd, deploy = false, code
     else args.push('--deny-tool', 'write', '--deny-tool', 'shell');
     return args;
 }
+
+/** Todas as ferramentas do Claude Code, para o pedido que não pode usar nenhuma. */
+export const FERRAMENTAS_CLAUDE = ['Bash', 'Read', 'Grep', 'Glob', 'LS', 'Edit', 'MultiEdit', 'Write', 'NotebookEdit', 'NotebookRead',
+    'WebSearch', 'WebFetch', 'Task', 'Agent', 'TodoWrite', 'BashOutput', 'KillShell', 'SlashCommand', 'Skill'];
 
 const NOME_DE_MODELO = /^[A-Za-z0-9._-]{1,60}$/;
 const ESFORCOS = ['low', 'medium', 'high'];

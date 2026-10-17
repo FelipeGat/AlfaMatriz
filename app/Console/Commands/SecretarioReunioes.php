@@ -17,6 +17,9 @@ class SecretarioReunioes extends Command
         if ($n = $reunioes->liberarPresas()) {
             $this->info("{$n} reunião(ões) liberada(s) ou encerrada(s).");
         }
+        if ($n = $reunioes->expirarParados()) {
+            $this->info("{$n} áudio(s) sem transcrição apagado(s) depois de ".Reunioes::EXPIRA_DIAS.' dias.');
+        }
 
         return self::SUCCESS;
     }

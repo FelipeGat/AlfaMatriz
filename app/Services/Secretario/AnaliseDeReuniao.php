@@ -39,7 +39,7 @@ class AnaliseDeReuniao
             ? CentralIaMensagem::ORIGEM_TELEGRAM : CentralIaMensagem::ORIGEM_WEB;
         try {
             $e = app(AgentesService::class)->pedir($user, "Analisar a reunião #{$r->id} “{$r->titulo}” (Secretário).", [
-                'projeto' => '', 'agente' => 'auto', 'modo' => 'analisar', 'instrucao' => $instrucao,
+                'projeto' => '', 'agente' => 'auto', 'modo' => 'analisar', 'instrucao' => $instrucao, 'sem_ferramentas' => true,
             ], $origem);
         } catch (ValidationException $ex) {
             $motivo = collect($ex->errors())->flatten()->first() ?? 'pedido recusado';

@@ -241,7 +241,10 @@ class TelegramCanal
         // encaminhado é o uso normal e vira DADO (nada é criado sem revisão);
         // só não vira ditado, porque fala de outra pessoa não é comando.
         $audio = $m['voice'] ?? $m['audio'] ?? (str_starts_with((string) ($m['document']['mime_type'] ?? ''), 'audio/') ? $m['document'] : null);
-        if (is_array($audio) && app(\App\Services\Secretario\Conversa::class)->pode($user)) {
+        // Arquivo de áudio COM legenda é pedido ao agente ("transcreva e resuma"):
+        // segue o caminho de antes, como anexo, e a legenda não se perde.
+        $comLegenda = ! isset($m['voice']) && trim((string) ($m['caption'] ?? '')) !== '';
+        if (is_array($audio) && ! $comLegenda && app(\App\Services\Secretario\Conversa::class)->pode($user)) {
             $encaminhada = isset($m['forward_origin']) || isset($m['forward_from']) || isset($m['forward_from_chat']) || isset($m['forward_date']);
             $this->receberAudio($user, $chatId, $updateId, $audio, isset($m['voice']) && ! $encaminhada);
 

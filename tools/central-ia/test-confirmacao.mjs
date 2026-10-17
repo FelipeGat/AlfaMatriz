@@ -201,3 +201,16 @@ assert.equal(sandbox(permissoes('codex', 'restrito', { codexTotal: true })), 'sa
 
 console.log('T-368: chat confirmado preso a servidor + conta + chat');
 }
+
+// Secretário (job.acesso 'nenhum'): conteúdo de terceiros vai sem ferramenta
+// nenhuma, mesmo com a máquina e o servidor em acesso total.
+assert.equal(acessoEfetivo({ modo: 'analisar', acesso: 'nenhum' }, 'total', 'total'), 'leitura', 'nenhum nunca vira total');
+{
+    const c = permissoes('claude', 'total', { projetos: '/p', semFerramentas: true });
+    assert.ok(!c.includes('bypassPermissions') && !c.includes('--allowedTools'), 'sem bypass e sem lista de permitidas');
+    for (const f of ['Read', 'Bash', 'WebSearch', 'WebFetch', 'Grep', 'Glob']) assert.ok(c.includes(f), `nega ${f}`);
+    assert.ok(permissoes('codex', 'total', { semFerramentas: true, codexTotal: true }).includes('sandbox_mode="read-only"'));
+    const cp = permissoes('copilot', 'total', { cwd: '/p', semFerramentas: true });
+    assert.ok(!cp.includes('--allow-all') && cp.includes('shell') && cp.includes('write'));
+}
+console.log('PASSOU: pedido do Secretário sem ferramentas em qualquer acesso.');

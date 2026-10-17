@@ -41,6 +41,8 @@ Route::prefix('api/central-ia/runner')
 Route::get('central-ia/instalar.sh', [CentralIaMaquinasController::class, 'instalador'])
     ->middleware('throttle:30,1,central-ia-instalador')->name('central-ia.instalador');
 Route::get('central-ia/runner/arquivos/{arquivo}', [CentralIaMaquinasController::class, 'arquivo'])
-    ->where('arquivo', '[a-z-]+\.(mjs|sh)')->middleware('throttle:120,1,central-ia-instalador')->name('central-ia.runner.arquivo');
+    // `.php` só com `.txt` no fim: o nginx manda todo endereço terminado em
+    // `.php` ao PHP-FPM, e o pedido nem chegaria aqui (404 no instalador).
+    ->where('arquivo', '[a-z_-]+\.(mjs|sh|py|php\.txt)')->middleware('throttle:120,1,central-ia-instalador')->name('central-ia.runner.arquivo');
 Route::post('api/central-ia/instalacao', [CentralIaMaquinasController::class, 'trocarCodigo'])
     ->middleware('throttle:10,1,central-ia-instalacao')->name('central-ia.instalacao.trocar');

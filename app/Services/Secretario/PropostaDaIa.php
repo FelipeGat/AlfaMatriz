@@ -47,7 +47,7 @@ class PropostaDaIa
             .'Pedido: «'.Str::limit($p->texto, 500).'»';
         try {
             $e = app(AgentesService::class)->pedir($user, $instrucao, [
-                'projeto' => '', 'agente' => 'auto', 'modo' => 'analisar', 'instrucao' => $instrucao,
+                'projeto' => '', 'agente' => 'auto', 'modo' => 'analisar', 'instrucao' => $instrucao, 'sem_ferramentas' => true,
             ], $origem === 'telegram' ? CentralIaMensagem::ORIGEM_TELEGRAM : CentralIaMensagem::ORIGEM_WEB);
         } catch (ValidationException) {
             return false;
