@@ -65,11 +65,21 @@ class MontadorDeBriefing
             $partes[] = '📌 Pendências sem data ('.$semData->count().")\n".$this->limitar($semData->map(fn ($i) => '• '.$i->titulo)->all());
         }
 
+        // Etapa 7: pendência comercial além do prazo, destacada (Fase 8.1). O
+        // e-mail que entra aqui não se repete em "Mensagens importantes".
+        $comerciais = \App\Models\SecretarioAcompanhamento::de($user)->ativos()
+            ->whereIn('regra', ['cliente_sem_resposta', 'proposta_parada', 'revisao_de_reuniao'])->get();
+        $emailsAcompanhados = $comerciais->map(fn ($a) => preg_match('/:email:(\d+)$/', $a->chave, $m) ? (int) $m[1] : null)->filter()->all();
+        if ($comerciais->isNotEmpty()) {
+            $partes[] = '🔔 Acompanhar ('.$comerciais->count().")\n".$this->limitar($comerciais->map(fn ($a) => '• '.$a->texto)->all());
+        }
+
         // Etapa 5: e-mails importantes desde ontem e o retrato do Gestor.
         $temEmail = \App\Models\SecretarioEmailConta::de($user)->exists();
         if ($temEmail) {
             $emails = \App\Models\SecretarioEmail::de($user)->with('conta')->where('enviado', false)->where('recebido_em', '>=', $hoje->subDay())
                 ->where(fn ($q) => $q->where('urgencia', 'alta')->orWhere(fn ($w) => $w->where('pede_retorno', true)->where('respondido', false)))
+                ->whereNotIn('id', $emailsAcompanhados ?: [0])
                 ->orderBy('recebido_em')->get();
             if ($emails->isNotEmpty()) {
                 $partes[] = '📧 Mensagens importantes ('.$emails->count().")\n".$this->limitar($emails->map(fn ($e) => '• '.app(\App\Services\Secretario\ConsultaDeEmails::class)->linha($e, true))->all());

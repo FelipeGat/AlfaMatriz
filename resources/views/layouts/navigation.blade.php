@@ -40,6 +40,7 @@
             ['route' => 'secretario.reunioes.index', 'recurso' => 'secretario', 'pattern' => 'secretario.reunioes.*', 'label' => 'Reuniões', 'icon' => 'speaker-wave', 'matriz' => true],
             ['route' => 'secretario.emails.index', 'recurso' => 'secretario', 'pattern' => 'secretario.emails.*', 'label' => 'Mensagens', 'icon' => 'balao', 'matriz' => true],
             ['route' => 'secretario.memoria', 'recurso' => 'secretario', 'pattern' => ['secretario.memoria', 'secretario.memoria.*'], 'label' => 'Memória', 'icon' => 'search', 'matriz' => true],
+            ['route' => 'secretario.acompanhamentos', 'recurso' => 'secretario', 'pattern' => ['secretario.acompanhamentos', 'secretario.acompanhamentos.*'], 'label' => 'Acompanhamentos', 'icon' => 'bell', 'matriz' => true],
         ],
         'Comercial' => [
             ['route' => 'leads.index', 'recurso' => 'leads', 'pattern' => 'leads.*', 'label' => 'Funil de Vendas', 'icon' => 'view-grid'],

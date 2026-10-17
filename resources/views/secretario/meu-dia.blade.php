@@ -18,6 +18,15 @@
             {{ now()->hour < 12 ? 'Bom dia' : (now()->hour < 18 ? 'Boa tarde' : 'Boa noite') }}, {{ \Illuminate\Support\Str::of(auth()->user()->name)->before(' ') }}.
         </p>
 
+        @if ($acompanhamentos->isNotEmpty())
+            @php $altas = $acompanhamentos->where('prioridade', 'alta'); @endphp
+            <a href="{{ route('secretario.acompanhamentos') }}"
+               class="block rounded-panel border {{ $altas->isNotEmpty() ? 'border-warn-line bg-warn-tint' : 'border-line bg-subtle' }} px-4 py-2.5 text-[13px] text-ink hover:border-brand">
+                🔔 <span class="font-semibold">{{ $acompanhamentos->count() }} para acompanhar</span>@if ($altas->isNotEmpty()) — {{ \Illuminate\Support\Str::limit($altas->first()->texto, 110) }}@if ($altas->count() > 1) (e mais {{ $altas->count() - 1 }} de alta prioridade)@endif @endif
+                <span class="text-brand-text">· ver</span>
+            </a>
+        @endif
+
         @unless ($telegramPareado)
             {{-- Faixa fixa, e não o toast do x-aviso: é um estado da conta, não um aviso que passa, e o toast cobria o topo da tela. --}}
             <p class="rounded-panel border border-warn-line bg-warn-tint px-4 py-2.5 text-[13px] text-warn">O Telegram não está ligado à Central: os lembretes chegam só no sino. Ligue em Central de IA → Ajustes → Telegram.</p>

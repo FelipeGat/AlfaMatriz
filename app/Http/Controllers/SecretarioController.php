@@ -26,6 +26,8 @@ class SecretarioController extends Controller
     {
         return view('secretario.meu-dia', [
             'telegramPareado' => app(TelegramCanal::class)->vinculoDe($request->user()) !== null,
+            // Etapa 7: uma linha só, com o que é alta prioridade e o total (FR-010).
+            'acompanhamentos' => \App\Models\SecretarioAcompanhamento::de($request->user())->ativos()->get(),
         ]);
     }
 

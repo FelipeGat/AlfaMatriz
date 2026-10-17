@@ -170,6 +170,22 @@ class TelegramDoSecretario
             'link_preview_options' => ['is_disabled' => true], 'reply_markup' => $teclado,
         ])) : null;
 
+        // Etapa 7: "Adiar estes até amanhã" no resumo de acompanhamentos.
+        if ($acao === 'ac') {
+            $envio = \App\Models\SecretarioAcompanhamentoEnvio::de($user)->find((int) $alvo);
+            if (! $envio) {
+                $recusar('alvo');
+
+                return;
+            }
+            $ate = \Carbon\CarbonImmutable::now()->addDay();
+            $n = app(\App\Services\Secretario\Acompanhamento\Envio::class)->adiar($user, (array) $envio->acompanhamentos, $ate);
+            $responder($n ? 'Adiado.' : 'Nada a adiar.');
+            $editar('⏸ '.$n.' acompanhamento(s) adiado(s) até amanhã às '.$ate->format('H:i').".\nVer todos: ".route('secretario.acompanhamentos'));
+
+            return;
+        }
+
         if (in_array($acao, self::ACOES_PROPOSTA, true)) {
             $proposta = SecretarioProposta::de($user)->find((int) $alvo);
             if (! $proposta) {

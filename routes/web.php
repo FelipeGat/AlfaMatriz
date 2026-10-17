@@ -233,6 +233,12 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         // Etapa 6 (docs/specs/secretario-memoria): busca no histórico, só leitura.
         Route::get('memoria', [\App\Http\Controllers\SecretarioMemoriaController::class, 'index'])->name('memoria')->middleware('permissao:secretario,ler');
         Route::post('memoria/sintese', [\App\Http\Controllers\SecretarioMemoriaController::class, 'sintese'])->name('memoria.sintese')->middleware(['permissao:secretario,incluir', 'throttle:10,1']);
+        // Etapa 7 (docs/specs/secretario-acompanhamento): acompanhamentos e as regras deles.
+        $ac = \App\Http\Controllers\SecretarioAcompanhamentosController::class;
+        Route::get('acompanhamentos', [$ac, 'index'])->name('acompanhamentos')->middleware('permissao:secretario,ler');
+        Route::put('acompanhamentos/regras', [$ac, 'salvarRegras'])->name('acompanhamentos.regras')->middleware('permissao:secretario,editar');
+        Route::post('acompanhamentos/{acompanhamento}/resolver', [$ac, 'resolver'])->whereNumber('acompanhamento')->name('acompanhamentos.resolver')->middleware('permissao:secretario,editar');
+        Route::post('acompanhamentos/{acompanhamento}/adiar', [$ac, 'adiar'])->whereNumber('acompanhamento')->name('acompanhamentos.adiar')->middleware('permissao:secretario,editar');
     });
 
     // Central de IA. Sem id de conversa na rota: é sempre a da conta logada.

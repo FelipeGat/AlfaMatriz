@@ -79,6 +79,14 @@ Schedule::command('secretario:briefing')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Acompanhamento proativo (docs/specs/secretario-acompanhamento): as regras
+// de cada conta a cada 5 min e o resumo pela política dela (silêncio,
+// intervalo, teto). Por regra, sem IA.
+Schedule::command('secretario:acompanhar')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Reuniões do Secretário (docs/specs/secretario-reunioes): transcrição presa há
 // mais de 60 min volta para a fila; na 3ª tentativa falha e o áudio é apagado.
 Schedule::command('secretario:reunioes')

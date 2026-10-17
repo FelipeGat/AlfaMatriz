@@ -11,11 +11,11 @@ class SecretarioPreferencia extends Model
 
     protected $table = 'secretario_preferencias';
 
-    protected $fillable = ['user_id', 'auto_confirmar', 'antecedencia_padrao', 'telegram', 'briefing', 'briefing_hora', 'briefing_dias'];
+    protected $fillable = ['user_id', 'auto_confirmar', 'antecedencia_padrao', 'telegram', 'briefing', 'briefing_hora', 'briefing_dias', 'acompanhamento'];
 
     protected function casts(): array
     {
-        return ['auto_confirmar' => 'boolean', 'telegram' => 'boolean', 'briefing' => 'boolean', 'briefing_dias' => 'array'];
+        return ['auto_confirmar' => 'boolean', 'telegram' => 'boolean', 'briefing' => 'boolean', 'briefing_dias' => 'array', 'acompanhamento' => 'array'];
     }
 
     /** Sem linha valem os padrões: abrir a tela não grava nada. */
