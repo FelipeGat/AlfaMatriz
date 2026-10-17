@@ -56,7 +56,7 @@ Ele também traz os leads do funil parados há mais de 7 dias (`pre_clientes.est
 linha** `SECRETARIO_GESTOR:{json}`.
 
 Onde ele roda:
-- O runner o executa por `CENTRAL_IA_GESTOR="programa|ponte|script"`, no mesmo formato do `CENTRAL_IA_AGENDA`.
+- O runner o executa por `CENTRAL_IA_GESTOR="programa|ponte|script|pasta"`, no mesmo formato do `CENTRAL_IA_AGENDA`; a `pasta` (cwd da ponte) é opcional e fica na configuração da máquina, nunca no código (T-374).
 - No Felipe: `C:/Python314/python.exe|C:\tmp\run_prod.py|C:\tmp\secretario_gestor.php`, rodando a partir de
   `/mnt/c/tmp` (memória `gestor-alfa-ponte-producao`: caminho Windows e `cwd` em `/mnt/c/tmp`).
 - **Sem `--apply`.** Conferido no `run_prod.py` em 17/10/2026: a ponte **não** desfaz nada sozinha, só passa

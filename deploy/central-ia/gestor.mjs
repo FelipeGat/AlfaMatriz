@@ -1,13 +1,12 @@
 import { execFile } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { promisify } from 'node:util';
 
 /**
  * Pendências do Gestor para o Secretário (docs/specs/secretario-emails-gestor):
  * a máquina roda o script de LEITURA pela ponte de produção que o dono já usa
- * (`CENTRAL_IA_GESTOR="programa|ponte|script"`, ex.:
- * `/mnt/c/Python314/python.exe|C:\tmp\run_prod.py|C:\tmp\secretario_gestor.php`).
- * Nunca passa `--apply`. A ponte em si não desfaz nada: quem garante a
+ * (`CENTRAL_IA_GESTOR="programa|ponte|script|pasta"`, no `.env` do runner da
+ * pessoa — caminho de máquina nenhum mora neste código, T-374). A `pasta` é o
+ * diretório de trabalho da ponte, opcional. Nunca passa `--apply`. A ponte em si não desfaz nada: quem garante a
  * leitura é o script (recusa APPLY=1, sessão READ ONLY, transação desfeita).
  */
 const exec = promisify(execFile);
@@ -34,14 +33,14 @@ export function lerSaida(saida) {
 
 /** @returns {Promise<{ok: true, blocos: object} | {ok: false, erro: string}>} */
 export async function lerGestor(config, { executar = exec } = {}) {
-    const [programa, ponte, script] = String(config || '').split('|');
+    const [programa, ponte, script, pasta] = String(config || '').split('|');
     if (!programa || !ponte || !script) return { ok: false, erro: 'CENTRAL_IA_GESTOR incompleto' };
     try {
-        // A ponte roda pelo Python do Windows: o cwd tem de ser uma pasta do
-        // Windows, senão ele resolve o da WSL como UNC e falha (memória
-        // gestor-alfa-ponte-producao). Só dois argumentos — nunca --apply.
+        // Ponte que roda pelo Python do Windows precisa de cwd numa pasta do
+        // Windows, senão resolve o da WSL como UNC e falha: por isso a `pasta`.
+        // Só dois argumentos — nunca --apply.
         const { stdout } = await executar(programa, [ponte, script], {
-            cwd: existsSync('/mnt/c/tmp') ? '/mnt/c/tmp' : undefined, timeout: 180000, maxBuffer: 4 * 1024 * 1024 });
+            cwd: pasta || undefined, timeout: 180000, maxBuffer: 4 * 1024 * 1024 });
         const blocos = lerSaida(stdout);
         return blocos ? { ok: true, blocos } : { ok: false, erro: 'saída da ponte sem o retrato' };
     } catch (e) {

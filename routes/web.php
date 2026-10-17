@@ -230,6 +230,9 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         Route::post('emails/contas/{conta}/ler', [$em, 'ler'])->whereNumber('conta')->name('emails.ler')->middleware(['permissao:secretario,editar', 'throttle:10,1']);
         Route::post('emails/{email}/rascunho', [$em, 'rascunho'])->whereNumber('email')->name('emails.rascunho')->middleware('permissao:secretario,incluir');
         Route::post('emails/{email}/lembrar', [$em, 'lembrar'])->whereNumber('email')->name('emails.lembrar')->middleware('permissao:secretario,incluir');
+        // Etapa 6 (docs/specs/secretario-memoria): busca no histórico, só leitura.
+        Route::get('memoria', [\App\Http\Controllers\SecretarioMemoriaController::class, 'index'])->name('memoria')->middleware('permissao:secretario,ler');
+        Route::post('memoria/sintese', [\App\Http\Controllers\SecretarioMemoriaController::class, 'sintese'])->name('memoria.sintese')->middleware(['permissao:secretario,incluir', 'throttle:10,1']);
     });
 
     // Central de IA. Sem id de conversa na rota: é sempre a da conta logada.

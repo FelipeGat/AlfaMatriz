@@ -107,8 +107,9 @@ class Conversa
 
             return ['proposta' => null, 'item' => null, 'mensagem' => $b?->texto ?? 'Não consegui montar o resumo agora.'];
         }
+        // Etapa 6: perguntas sobre o histórico, antes das demais (as frases dela são estritas).
         // Etapa 5: "o que estou devendo aos clientes?" e as perguntas de e-mail.
-        foreach ([ConsultaDePendencias::class, ConsultaDeEmails::class] as $consulta) {
+        foreach ([Memoria\ConsultaDeMemoria::class, ConsultaDePendencias::class, ConsultaDeEmails::class] as $consulta) {
             if (($resposta = app($consulta)->responder($user, $texto)) !== null) {
                 return ['proposta' => null, 'item' => null, 'mensagem' => $resposta];
             }

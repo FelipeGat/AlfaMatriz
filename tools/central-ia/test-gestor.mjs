@@ -15,6 +15,9 @@ const r = await lerGestor('/mnt/c/Python314/python.exe|C:\\tmp\\run_prod.py|C:\\
 assert.equal(r.ok, true);
 assert.deepEqual(chamadas[0].args, ['C:\\tmp\\run_prod.py', 'C:\\tmp\\secretario_gestor.php']);
 assert.ok(!chamadas.some(c => c.args.includes('--apply')), 'Nunca --apply');
+assert.equal(chamadas[0].opts.cwd, undefined, 'Sem pasta configurada, sem cwd');
+await lerGestor('py|ponte.py|script.php|/pasta/da/ponte', { executar });
+assert.equal(chamadas[1].opts.cwd, '/pasta/da/ponte', 'A pasta vem da configuração da máquina');
 assert.deepEqual(await lerGestor('incompleto'), { ok: false, erro: 'CENTRAL_IA_GESTOR incompleto' });
 assert.equal((await lerGestor('a|b|c', { executar: async () => { throw Object.assign(new Error('x'), { killed: true }); } })).erro, 'a ponte passou do tempo');
 
@@ -22,4 +25,4 @@ assert.equal(hora(null), true);
 assert.equal(hora(new Date('2026-10-17T05:00:00'), new Date('2026-10-17T05:30:00')), false);
 assert.equal(hora(new Date('2026-10-17T05:00:00'), new Date('2026-10-17T06:05:00')), true);
 assert.equal(hora(new Date('2026-10-17T06:10:00'), new Date('2026-10-17T06:40:00')), true, 'janela antes do briefing');
-console.log('PASSOU: retrato lido pela marca, formato conferido, ponte sem --apply e ritmo de leitura.');
+console.log('PASSOU: retrato lido pela marca, formato conferido, ponte sem --apply, pasta da configuração e ritmo de leitura.');
