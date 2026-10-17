@@ -16,7 +16,9 @@ use RuntimeException;
  */
 class LeitorDeEmails
 {
-    public const DIAS_PRIMEIRA = 3;
+    // A primeira leitura cobre o prazo inteiro que o Matriz guarda (30 dias): com 3,
+    // a caixa nova aparecia quase vazia (Felipe, 17/10/2026).
+    public const DIAS_PRIMEIRA = 30;
     public const DIAS_NAO_LIDOS = 3;
     public const DIAS_GUARDA = 30;
     public const MAX_POR_VEZ = 300;

@@ -44,7 +44,9 @@ class SecretarioEmailsController extends Controller
         $busca = trim((string) ($f['q'] ?? ''));
         $emails = SecretarioEmail::de($request->user())->with('conta')->where('enviado', false)->where('recebido_em', '>=', now()->subDays($dias)->startOfDay())
             ->when($filtro === 'aguardando', fn ($q) => $q->aguardando())
-            ->when($filtro === 'importantes', fn ($q) => $q->where(fn ($w) => $w->where('urgencia', 'alta')->orWhere('favorito', true)->orWhere(fn ($x) => $x->where('pede_retorno', true)->where('respondido', false))))
+            // Importantes: urgente, com estrela, aguardando resposta ou ainda não lida.
+            ->when($filtro === 'importantes', fn ($q) => $q->where(fn ($w) => $w->where('urgencia', 'alta')->orWhere('favorito', true)->orWhere('lido', false)
+                ->orWhere(fn ($x) => $x->where('pede_retorno', true)->where('respondido', false))))
             ->when($f['conta'] ?? null, fn ($q, $c) => $q->where('conta_id', $c))
             ->when(($f['status'] ?? null) === 'nao_lidos', fn ($q) => $q->where('lido', false))
             ->when(($f['status'] ?? null) === 'aguardando', fn ($q) => $q->aguardando())
