@@ -113,6 +113,12 @@ class SincronizarSistemas extends Command
             $resumo['revendas']['criadas'],
             $resumo['revendas']['atualizadas']
         ));
+        if (($resumo['revendas']['cnpj_em_conflito'] ?? 0) > 0) {
+            $this->warn(sprintf(
+                '  Revendas: %d com CNPJ que já é de outra revenda da Matriz (CNPJ mantido; ver o log).',
+                $resumo['revendas']['cnpj_em_conflito']
+            ));
+        }
         $this->info(sprintf(
             '  Clientes: %d criados, %d atualizados.',
             $resumo['clientes']['criados'],
