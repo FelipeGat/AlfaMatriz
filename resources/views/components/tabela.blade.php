@@ -2,6 +2,10 @@
     'min' => '1000px',   // largura mínima da tabela; abaixo disso ela rola
     'titulo' => null,
     'sub' => null,
+    // Colunas pelas larguras declaradas, e não pelo conteúdo. Para quem
+    // empilha várias tabelas que precisam das MESMAS colunas (o Acesso do
+    // Monitor, #402): sem isso cada uma acharia as próprias larguras.
+    'fixa' => false,
 ])
 
 {{--
@@ -34,7 +38,7 @@
     @endif
 
     <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse" style="min-width: {{ $min }}">
+        <table class="w-full text-left border-collapse {{ $fixa ? 'table-fixed' : '' }}" style="min-width: {{ $min }}">
             {{ $slot }}
         </table>
     </div>
