@@ -124,6 +124,20 @@ Schedule::command('alfa:monitor-reconciliar')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Boleto da revenda por cliente (docs/specs/cobranca-revendas-boleto): o
+// fechamento do último dia gera a cobrança; às 08:00 sai o boleto (no dia 01,
+// ou no seguinte se falhar), e de hora em hora o Mercado Pago é consultado
+// para dar baixa no que foi pago.
+Schedule::command('cobrancas:emitir-boletos-revendas')
+    ->dailyAt('08:00')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command('cobrancas:conferir-boletos')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // O histórico dos alertas do AlfaMonitor (#394) guarda 90 dias
 // (`MonitorEvento::DIAS_DE_HISTORICO`); o estado de agora não depende dele.
 Schedule::command('model:prune', ['--model' => [\App\Models\MonitorEvento::class]])

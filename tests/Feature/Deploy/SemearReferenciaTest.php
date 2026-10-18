@@ -42,7 +42,8 @@ class SemearReferenciaTest extends TestCase
 
         $this->assertSame(
             // A Central exige perfil próprio; o Secretário vale para o admin desde 17/10/2026 (cada um vê o seu).
-            Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes'])->count(),
+            // A Cobrança de revendas (boleto real em nome da Alfa) também é de perfil próprio, desde 18/10/2026.
+            Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes', 'cobranca_revendas'])->count(),
             $admin->permissoes()->count(),
             'Recursos administrativos mantêm grants; IA exige autorização explícita.'
         );

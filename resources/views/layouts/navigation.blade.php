@@ -64,6 +64,9 @@
             ['route' => 'cobrancas.index', 'recurso' => 'cobrancas', 'pattern' => 'cobrancas.*', 'label' => 'Receitas', 'icon' => 'trending-up'],
             ['route' => 'contas-pagar.index', 'recurso' => 'contas_pagar', 'pattern' => ['contas-pagar.*', 'contas-fixas-pagar.*'], 'label' => 'Despesas', 'icon' => 'trending-down', 'matriz' => true],
             ['route' => 'contas-financeiras.index', 'recurso' => 'financeiro', 'pattern' => 'contas-financeiras.*', 'label' => 'Caixa', 'icon' => 'banknotes', 'matriz' => true],
+            // Boleto da revenda e baixa automática (cobranca-revendas-boleto): recurso próprio,
+            // fora do "tudo do administrador" — só quem recebeu o perfil vê.
+            ['route' => 'cobranca-revendas.index', 'recurso' => 'cobranca_revendas', 'pattern' => 'cobranca-revendas.*', 'label' => 'Cobrança de revendas', 'icon' => 'currency', 'matriz' => true],
         ],
         'Desenvolvimento' => [
             // Os produtos da VixCard de relance (acesso-vixcard, 18/10/2026). Antes

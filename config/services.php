@@ -60,6 +60,12 @@ return [
         'permite_local' => env('VIXORGANIZE_PERMITE_LOCAL') === 'sim',
     ],
 
+    // Boleto da revenda (cobranca-revendas-boleto): a mesma conta do Mercado Pago
+    // do Gestor (Felipe, 18/10/2026). Só no .env do servidor; sem ele, nada emite.
+    'mercadopago' => [
+        'access_token' => env('MERCADOPAGO_ACCESS_TOKEN'),
+    ],
+
     'telegram' => [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
         'chat_id_alertas' => env('TELEGRAM_CHAT_ID_ALERTAS'),

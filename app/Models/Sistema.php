@@ -180,7 +180,7 @@ class Sistema extends Model
     {
         return $this->belongsToMany(Cliente::class, 'cliente_sistema')
             ->using(ClienteSistema::class)
-            ->withPivot(['ativo', 'ativado_em', 'cancelado_em',
+            ->withPivot(['ativo', 'faturavel', 'ativado_em', 'cancelado_em',
                 'licenca_status', 'plano', 'licenca_valor', 'licenca_inicio_em',
                 'licenca_fim_em', 'bloqueia_acesso', 'licenca_id_externo',
                 'status_saas', 'uso_unidades', 'uso_metricas', 'uso_medido_em']);

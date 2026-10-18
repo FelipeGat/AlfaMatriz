@@ -18,12 +18,17 @@ class Revenda extends Model
     protected $fillable = [
         'nome', 'cnpj', 'contato_nome', 'contato_email', 'contato_telefone', 'ativo',
         'data_cadastro',
+        // Cobrança por cliente com boleto (cobranca-revendas-boleto).
+        'cobranca_por_cliente', 'dia_vencimento', 'email_financeiro', 'cep', 'logradouro', 'numero', 'bairro', 'cidade', 'uf',
+        'conta_financeira_id',
     ];
 
     protected function casts(): array
     {
         return [
             'ativo' => 'boolean',
+            'cobranca_por_cliente' => 'boolean',
+            'dia_vencimento' => 'integer',
             'data_cadastro' => 'date',
         ];
     }
@@ -57,6 +62,28 @@ class Revenda extends Model
     public function precosAtacado(): HasMany
     {
         return $this->hasMany(PrecoAtacado::class);
+    }
+
+    /** A conta do Caixa onde cai o pagamento do boleto (cobranca-revendas-boleto). */
+    public function contaFinanceira(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(ContaFinanceira::class, 'conta_financeira_id');
+    }
+
+    /** O que falta para emitir boleto: lista vazia = pronto. @return list<string> */
+    public function faltaParaBoleto(): array
+    {
+        $doc = preg_replace('/\D/', '', (string) $this->cnpj);
+
+        return array_values(array_filter([
+            strlen($doc) === 14 ? null : 'CNPJ',
+            filter_var($this->email_financeiro, FILTER_VALIDATE_EMAIL) ? null : 'e-mail financeiro',
+            strlen(preg_replace('/\D/', '', (string) $this->cep)) === 8 ? null : 'CEP',
+            filled($this->logradouro) ? null : 'logradouro',
+            filled($this->cidade) ? null : 'cidade',
+            preg_match('/^[A-Z]{2}$/', (string) $this->uf) ? null : 'UF',
+            $this->conta_financeira_id ? null : 'conta do Caixa',
+        ]));
     }
 
     public function cobrancas(): HasMany

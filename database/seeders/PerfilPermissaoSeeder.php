@@ -34,6 +34,8 @@ class PerfilPermissaoSeeder extends Seeder
             'revendas' => 'Revendas',
             'clientes' => 'Clientes',
             'sistemas' => 'Sistemas e preços de atacado',
+            // Boleto da revenda e baixa automática (cobranca-revendas-boleto): fora do admin, logo abaixo.
+            'cobranca_revendas' => 'Cobrança de revendas (boleto e baixa automática)',
             'cobrancas' => 'Receitas / contas a receber',
             'contas_pagar' => 'Despesas / contas a pagar',
             'financeiro' => 'Caixa / contas financeiras',
@@ -112,7 +114,8 @@ class PerfilPermissaoSeeder extends Seeder
         $operacao = Perfil::updateOrCreate(['slug' => 'operacao'], ['nome' => 'Operação']);
 
         // Central e Secretário fora do "tudo do admin": a Central por perfil próprio; o Secretário, logo abaixo.
-        $todasPermissoes = Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes', 'secretario'])->pluck('id', 'recurso');
+        // Cobrança de revendas também: emite boleto real em nome da Alfa — só quem recebe o perfil (Felipe, 18/10/2026).
+        $todasPermissoes = Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes', 'secretario', 'cobranca_revendas'])->pluck('id', 'recurso');
 
         foreach ($todasPermissoes as $permissaoId) {
             $admin->permissoes()->syncWithoutDetaching([
@@ -267,6 +270,12 @@ class PerfilPermissaoSeeder extends Seeder
                 ]);
             }
         }
+
+        // Cobrança de revendas (cobranca-revendas-boleto): perfil próprio, que ninguém recebe por padrão.
+        $cobrancaRevendas = Perfil::updateOrCreate(['slug' => 'cobranca_revendas'], ['nome' => 'Cobrança de revendas']);
+        $cobrancaRevendas->permissoes()->syncWithoutDetaching([
+            Permissao::where('recurso', 'cobranca_revendas')->value('id') => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
+        ]);
 
         // O Secretário é de cada pessoa (dado sempre da própria conta): os
         // perfis de pessoas o recebem desde 17/10/2026 — a migração

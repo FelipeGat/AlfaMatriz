@@ -612,6 +612,15 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::delete('precos/{preco}', [PrecoAtacadoController::class, 'destroy'])->name('precos.destroy')
         ->middleware('permissao:sistemas');
 
+    // Cobrança de revendas com boleto (docs/specs/cobranca-revendas-boleto): só com o recurso próprio.
+    $cr = \App\Http\Controllers\CobrancaRevendasController::class;
+    Route::get('financeiro/cobranca-revendas', [$cr, 'index'])->name('cobranca-revendas.index')->middleware('permissao:cobranca_revendas,ler');
+    Route::put('financeiro/cobranca-revendas/{revenda}', [$cr, 'salvarRevenda'])->whereNumber('revenda')->name('cobranca-revendas.revenda')->middleware('permissao:cobranca_revendas,editar');
+    Route::put('financeiro/cobranca-revendas/{revenda}/precos', [$cr, 'salvarPrecos'])->whereNumber('revenda')->name('cobranca-revendas.precos')->middleware('permissao:cobranca_revendas,editar');
+    Route::post('financeiro/cobranca-revendas/{revenda}/faturavel', [$cr, 'faturavel'])->whereNumber('revenda')->name('cobranca-revendas.faturavel')->middleware('permissao:cobranca_revendas,editar');
+    Route::post('financeiro/cobranca-revendas/cobrancas/{cobranca}/emitir', [$cr, 'emitir'])->whereNumber('cobranca')->name('cobranca-revendas.emitir')->middleware(['permissao:cobranca_revendas,incluir', 'throttle:10,1']);
+    Route::post('financeiro/cobranca-revendas/cobrancas/{cobranca}/conferir', [$cr, 'conferir'])->whereNumber('cobranca')->name('cobranca-revendas.conferir')->middleware(['permissao:cobranca_revendas,editar', 'throttle:20,1']);
+
     Route::get('faturamento', [FaturamentoController::class, 'index'])->name('faturamento.index')
         ->middleware('permissao:faturamento');
     Route::post('faturamento/gerar', [FaturamentoController::class, 'gerar'])->name('faturamento.gerar')
