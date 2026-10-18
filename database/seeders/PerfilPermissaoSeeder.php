@@ -256,6 +256,18 @@ class PerfilPermissaoSeeder extends Seeder
                 $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
             ]);
         }
+        // VixCard (acesso-vixcard, 18/10/2026): quadro e Agenda, recortados ao
+        // que é da VixCard pelo escopo `EscopoVixcard`. A migração
+        // `2026_10_18_140000` leva o mesmo a produção.
+        $vixcard = Perfil::updateOrCreate(['slug' => 'vixcard'], ['nome' => 'VixCard']);
+        foreach (['tarefas', 'agenda'] as $recurso) {
+            if (isset($todasPermissoes[$recurso])) {
+                $vixcard->permissoes()->syncWithoutDetaching([
+                    $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => false, 'excluir' => false],
+                ]);
+            }
+        }
+
         // O Secretário é de cada pessoa (dado sempre da própria conta): os
         // perfis de pessoas o recebem desde 17/10/2026 — a migração
         // `2026_10_17_230000` leva o mesmo a produção. Revenda e Exibição, não.

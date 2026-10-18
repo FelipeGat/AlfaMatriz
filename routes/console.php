@@ -108,6 +108,13 @@ Schedule::command('secretario:emails')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Projetos da VixCard (docs/specs/secretario-vixorganize): a fila do
+// VixOrganize das contas conectadas, a cada 10 min. Só GET.
+Schedule::command('secretario:vixorganize')
+    ->everyTenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // O histórico dos alertas do AlfaMonitor (#394) guarda 90 dias
 // (`MonitorEvento::DIAS_DE_HISTORICO`); o estado de agora não depende dele.
 Schedule::command('model:prune', ['--model' => [\App\Models\MonitorEvento::class]])

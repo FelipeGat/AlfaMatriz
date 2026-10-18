@@ -49,6 +49,12 @@ abstract class Ferramenta extends Tool
         // alguém reiniciar o agente.
         $usuario->esquecerPermissoes();
 
+        // Conta VixCard não usa o MCP (acesso-vixcard, FR-005): as ferramentas
+        // não passam pelo recorte da sessão web.
+        if ($usuario->temEscopoVixcard()) {
+            return Response::error('Contas da VixCard não usam o MCP.');
+        }
+
         [$recurso, $acao] = $this->permissao;
 
         if (! $usuario->canPermissao($recurso, $acao)) {

@@ -16,7 +16,7 @@ class ProdutoController extends Controller
         // internos exibe a contagem do catálogo comercial no próprio rótulo, e
         // o cabeçalho da tela também. Poupá-la exigiria um segundo caminho de
         // contagem — e dois caminhos discordam. O catálogo é de punhado.
-        $aba = $request->query('aba') === 'internos' ? 'internos' : 'produtos';
+        $aba = in_array($request->query('aba'), ['internos', 'vixcard'], true) ? $request->query('aba') : 'produtos';
 
         $produtos = Sistema::produtos()
             ->with(['modulos.contratacoes' => fn ($q) => $q->where('status', 'ativo')])
@@ -89,9 +89,17 @@ class ProdutoController extends Controller
             ->orderBy('nome')
             ->get();
 
+        // Os produtos da VixCard (Felipe, 17/10/2026) seguem a régua dos
+        // internos: sem receita da Alfa, só o trabalho aberto contra cada um.
+        $vixcard = Sistema::vixcard()
+            ->withCount(['tarefas' => fn ($q) => $q->whereNotIn('status', Tarefa::STATUS_TERMINAIS)->foraDoArquivo()])
+            ->orderBy('nome')
+            ->get();
+
         return view('produtos.index', [
             'aba' => $aba,
             'internos' => $internos,
+            'vixcard' => $vixcard,
             'produtos' => $this->paginarColecao($produtos->map(fn ($p) => $p + [
                 'largura' => $maiorMrr > 0 ? $p['mrr'] / $maiorMrr : 0,
             ])),
@@ -109,6 +117,7 @@ class ProdutoController extends Controller
                 'ativos' => $produtos->filter(fn ($p) => $p['sistema']->ativo)->count(),
                 'sem_tier' => $produtos->where('sem_tier', true)->count(),
                 'internos' => $internos->count(),
+                'vixcard' => $vixcard->count(),
             ],
         ]);
     }

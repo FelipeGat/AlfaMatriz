@@ -53,6 +53,13 @@ return [
         'api_token' => env('ALFAMONITOR_API_TOKEN'),
     ],
 
+    // VixOrganize (docs/specs/secretario-vixorganize): endereço e chave são da
+    // conta, em Secretário → Configurações. Isto só libera http e IP privado no
+    // teste local ponta a ponta — em produção, fica desligado.
+    'vixorganize' => [
+        'permite_local' => env('VIXORGANIZE_PERMITE_LOCAL') === 'sim',
+    ],
+
     'telegram' => [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
         'chat_id_alertas' => env('TELEGRAM_CHAT_ID_ALERTAS'),

@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\EscopoVixcard;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
+
 use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Não tem responsável nem etapa de propósito (ver a migração): ele é passo
  * dentro de uma tarefa, não trabalho com vida própria.
  */
+// Acesso VixCard: quem tem o perfil só vê o que é da VixCard (docs/specs/acesso-vixcard).
+#[ScopedBy([EscopoVixcard::class])]
 class TarefaItem extends Model
 {
     use Auditavel;

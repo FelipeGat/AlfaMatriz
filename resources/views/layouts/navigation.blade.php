@@ -36,6 +36,11 @@
             ['route' => 'secretario.agenda', 'recurso' => 'secretario', 'pattern' => 'secretario.agenda', 'label' => 'Minha agenda', 'icon' => 'calendar', 'matriz' => true],
             ['route' => 'secretario.reunioes.index', 'recurso' => 'secretario', 'pattern' => 'secretario.reunioes.*', 'label' => 'Reuniões', 'icon' => 'speaker-wave', 'matriz' => true],
             ['route' => 'secretario.emails.index', 'recurso' => 'secretario', 'pattern' => 'secretario.emails.*', 'label' => 'Mensagens', 'icon' => 'balao', 'matriz' => true],
+            // Projetos da VixCard pelo VixOrganize (docs/specs/secretario-vixorganize):
+            // só para quem ligou a conexão em Configurações — para os outros, seria
+            // uma porta que só redireciona.
+            ['route' => 'secretario.vixorganize', 'recurso' => 'secretario', 'pattern' => 'secretario.vixorganize*', 'label' => 'VixOrganize', 'icon' => 'view-grid', 'matriz' => true,
+                'so_se' => fn () => \App\Models\SecretarioVixOrganize::de(Auth::user())->exists()],
             ['route' => 'secretario.configuracoes', 'recurso' => 'secretario', 'pattern' => 'secretario.configuracoes', 'label' => 'Configurações', 'icon' => 'settings', 'matriz' => true],
         ],
         'Painéis' => [
@@ -62,6 +67,9 @@
             ['route' => 'contas-financeiras.index', 'recurso' => 'financeiro', 'pattern' => 'contas-financeiras.*', 'label' => 'Caixa', 'icon' => 'banknotes', 'matriz' => true],
         ],
         'Desenvolvimento' => [
+            // Os produtos da VixCard de relance (acesso-vixcard, 18/10/2026). Antes
+            // de Tarefas: para a conta VixCard é a casa; para o time, um atalho.
+            ['route' => 'vixcard.projetos', 'recurso' => 'tarefas', 'pattern' => 'vixcard.*', 'label' => 'Projetos VixCard', 'icon' => 'tag', 'matriz' => true],
             ['route' => 'tarefas.index', 'recurso' => 'tarefas', 'pattern' => 'tarefas.*', 'label' => 'Tarefas', 'icon' => 'view-grid', 'matriz' => true],
             // Logo abaixo de Tarefas, e não num grupo "Pessoal" próprio: o
             // desenho (§19) previa o grupo pessoal, com Agenda e Notas. Decisão
@@ -107,6 +115,7 @@
     $grupos = collect($grupos)
         ->map(fn ($links) => collect($links)
             ->filter(fn ($link) => ! $escopo || empty($link['matriz']))
+            ->filter(fn ($link) => empty($link['so_se']) || ($link['so_se'])())
             ->filter(fn ($link) => empty($link['recurso'])
                 || $usuario?->canPermissao($link['recurso'], 'ler'))
             ->values()->all())

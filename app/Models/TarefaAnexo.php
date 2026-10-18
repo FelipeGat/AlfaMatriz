@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\EscopoVixcard;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
+
 use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,6 +21,8 @@ use Illuminate\Support\Facades\Storage;
  * distingue os dois no gesto. O que ainda os separa é como aparecem
  * (`eh_imagem`): figura vira miniatura, o resto vira linha com nome e tamanho.
  */
+// Acesso VixCard: quem tem o perfil só vê o que é da VixCard (docs/specs/acesso-vixcard).
+#[ScopedBy([EscopoVixcard::class])]
 class TarefaAnexo extends Model
 {
     use Auditavel;

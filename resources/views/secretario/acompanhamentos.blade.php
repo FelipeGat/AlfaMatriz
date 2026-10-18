@@ -16,7 +16,7 @@
         $campo = 'w-full rounded-control border border-btn-line bg-canvas px-2.5 py-1.5 text-[13px] text-ink focus:border-brand focus:outline-none';
         $corStatus = fn ($s) => match ($s) {
             'Vencido' => 'bg-crit-tint text-crit', 'Vence hoje', 'A pagar' => 'bg-warn-tint text-warn', 'Adiado', 'Parado' => 'bg-head text-ink-mute',
-            'Aguardando aprovação', 'Próximo passo' => 'bg-warn-tint text-warn', 'Em elaboração' => 'bg-brand/10 text-brand-text', default => 'bg-head text-ink-dim',
+            'Aguardando aprovação', 'Próximo passo', 'Pausado' => 'bg-warn-tint text-warn', 'Em elaboração', 'Em andamento' => 'bg-brand/10 text-brand-text', default => 'bg-head text-ink-dim',
         };
         $corPrio = ['alta' => ['bg-crit-tint text-crit', 'bg-crit', 'Alta'], 'normal' => ['bg-warn-tint text-warn', 'bg-warn', 'Média'], 'baixa' => ['bg-brand/10 text-brand-text', 'bg-brand', 'Baixa']];
         $porAba = $linhas->countBy('aba');
@@ -87,7 +87,7 @@
                             <option value="">Toda prioridade</option><option value="alta">Alta</option><option value="normal">Média</option><option value="baixa">Baixa</option>
                         </select>
                         <select x-model="origem" class="rounded-control border border-btn-line bg-canvas px-2 py-1.5 text-[13px] text-ink">
-                            <option value="">Toda origem</option><option value="Ponto de gestão">Pontos lançados</option><option value="Alerta · regra">Alertas das regras</option><option value="Gestor">Gestor (Grupo Soluções)</option>
+                            <option value="">Toda origem</option><option value="Ponto de gestão">Pontos lançados</option><option value="Alerta · regra">Alertas das regras</option><option value="Gestor">Gestor (Grupo Soluções)</option><option value="VixOrganize">VixOrganize (VixCard)</option>
                         </select>
                         <button type="button" @click="prio = ''; origem = ''; busca = ''" class="text-[12.5px] text-ink-mute hover:text-brand">limpar</button>
                     </div>

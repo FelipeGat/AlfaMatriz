@@ -176,6 +176,11 @@ class AlfaMatrizServer extends Server
             throw new RuntimeException('A conta '.$usuario->email.' é de revenda; o quadro e a agenda são exclusivos da matriz.');
         }
 
+        // As ferramentas não passam pelo recorte da sessão web (acesso-vixcard, FR-005).
+        if ($usuario->temEscopoVixcard()) {
+            throw new RuntimeException('A conta '.$usuario->email.' é da VixCard; o MCP é exclusivo da matriz.');
+        }
+
         return $usuario;
     }
 }

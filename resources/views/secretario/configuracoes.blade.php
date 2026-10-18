@@ -24,6 +24,7 @@
             default => ['erro', 'Reconectar'],
         };
         $emailEstado = $caixas->isEmpty() ? ['neutro', 'Nenhuma caixa'] : ($caixas->contains('situacao', 'erro') ? ['erro', 'Com erro'] : ['ok', $caixas->count().' caixa(s)']);
+        $vixEstado = ! $vixorganize ? ['neutro', 'Desligado'] : ($vixorganize->erro ? ['erro', 'Com erro'] : ($vixorganize->velho() ? ['alerta', 'Desatualizado'] : ['ok', 'Lido às '.$vixorganize->lido_em->format('H:i')]));
         $gestorEstado = ! $gestor ? ['neutro', 'Sem leitura'] : ($gestor->velho() ? ['alerta', 'Desatualizado'] : ['ok', 'Lido às '.$gestor->lido_em->format('H:i')]);
     @endphp
     <div x-data="{
@@ -33,7 +34,7 @@
             briefing: @js((bool) $preferencia->briefing),
             briefing_hora: @js($preferencia->briefing_hora),
             briefing_dias: @js(array_map('intval', (array) $preferencia->briefing_dias)),
-            aberto: { comportamento: true, google: true, email: true, gestor: false },
+            aberto: { comportamento: true, google: true, email: true, gestor: false, vixorganize: {{ ($vixorganize || session('erro') || $errors->hasAny(['url', 'chave', 'autor_email'])) ? 'true' : 'false' }} || location.hash === '#vixorganize' },
             salvo: '', erro: '',
             async salvar() {
                 this.salvo = ''; this.erro = '';
@@ -50,6 +51,9 @@
             </div>
             @if (session('status'))
                 <x-aviso>{{ session('status') }}</x-aviso>
+            @endif
+            @if (session('erro'))
+                <x-aviso tom="critico" :segundos="0">{{ session('erro') }}</x-aviso>
             @endif
             @if ($errors->has('google'))
                 <x-aviso tom="critico" :segundos="0">{{ $errors->first('google') }}</x-aviso>
@@ -211,6 +215,39 @@
                 </div>
             </section>
 
+            {{-- Projetos da VixCard (docs/specs/secretario-vixorganize). A chave não volta para a tela. --}}
+            <section id="vixorganize" class="scroll-mt-20 rounded-panel border border-line bg-surface">
+                <button type="button" @click="aberto.vixorganize = !aberto.vixorganize" class="flex w-full items-center gap-2.5 border-b border-line px-4 py-3 text-left">
+                    <span class="h-5 w-5 text-ink-dim"><x-nav-icon name="view-grid" peso="1.7" /></span>
+                    <span class="flex-1 font-display text-[15px] font-semibold text-ink">VixOrganize (projetos da VixCard)</span>
+                    {!! $estado(...$vixEstado) !!}
+                    <span class="text-ink-faint" x-text="aberto.vixorganize ? '▴' : '▾'"></span>
+                </button>
+                <div x-show="aberto.vixorganize" x-cloak class="space-y-3 px-4 py-4 text-[13.5px] text-ink">
+                    <p class="text-[12.5px] text-ink-mute">O Matriz lê a fila do VixOrganize a cada 10 min e envia por lá o que você lançar em <b>Projetos VixCard</b>: projeto novo, demanda, check, registro e status. Use a <b>chave de escrita</b> (<code>VIX_API_WRITE_KEY</code>) do VixOrganize; ela fica cifrada e não volta para esta tela.</p>
+                    @if ($vixorganize)
+                        <div class="flex flex-col gap-1 rounded-ctl border border-line px-3 py-2 sm:flex-row sm:items-center sm:gap-3">
+                            <span class="min-w-0 flex-1 break-words"><b>{{ $vixorganize->url }}</b>{{ $vixorganize->autor_email ? ' · como '.$vixorganize->autor_email : '' }}</span>
+                            <span class="text-[12px] {{ $vixorganize->erro ? 'text-crit' : 'text-ink-mute' }}">{{ $vixorganize->erro ? 'erro: '.$vixorganize->erro : 'lido '.($vixorganize->lido_em?->format('d/m H:i') ?? '—') }}</span>
+                            <form method="POST" action="{{ route('secretario.vixorganize.desconectar') }}" onsubmit="return confirm('Desligar o VixOrganize? A chave e o retrato da fila serão apagados daqui (nada muda no VixOrganize).')">@csrf @method('DELETE')
+                                <button class="h-[28px] rounded-control border border-btn-line px-2 text-[12px] font-semibold text-ink-mute hover:border-crit hover:text-crit">Desligar</button></form>
+                        </div>
+                    @endif
+                    <form method="POST" action="{{ route('secretario.vixorganize.conectar') }}" class="space-y-2">
+                        @csrf
+                        <div class="grid gap-2 sm:grid-cols-2">
+                            <input name="url" value="{{ old('url', $vixorganize?->url) }}" required placeholder="Endereço (https://…)" class="rounded-control border border-btn-line bg-canvas px-2.5 py-2 text-[13.5px] text-ink sm:col-span-2">
+                            <input name="chave" type="password" autocomplete="new-password" {{ $vixorganize ? '' : 'required' }} placeholder="{{ $vixorganize ? 'Chave de escrita (vazio mantém a atual)' : 'Chave de escrita' }}" class="rounded-control border border-btn-line bg-canvas px-2.5 py-2 text-[13.5px] text-ink">
+                            <input name="autor_email" type="email" value="{{ old('autor_email', $vixorganize?->autor_email) }}" placeholder="Seu e-mail no VixOrganize (autor)" class="rounded-control border border-btn-line bg-canvas px-2.5 py-2 text-[13.5px] text-ink">
+                        </div>
+                        @foreach (['url', 'chave', 'autor_email'] as $campoErro)
+                            @error($campoErro)<p class="text-[12px] text-crit">{{ $message }}</p>@enderror
+                        @endforeach
+                        <button class="h-[30px] rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">{{ $vixorganize ? 'Salvar e testar' : 'Conectar' }}</button>
+                    </form>
+                </div>
+            </section>
+
             <section class="rounded-panel border border-line bg-surface">
                 <button type="button" @click="aberto.gestor = !aberto.gestor" class="flex w-full items-center gap-2.5 border-b border-line px-4 py-3 text-left">
                     <span class="h-5 w-5 text-ink-dim"><x-nav-icon name="building" peso="1.7" /></span>
@@ -246,6 +283,7 @@
                         ['chat', 'Telegram', $telegramPareado ? ['ok', 'Conectado'] : ['erro', 'Não ligado']],
                         ['microphone', 'Transcrição de áudio', $maquinaOnline ? ['ok', 'Disponível'] : ['alerta', 'Máquina desligada']],
                         ['building', 'Gestor', $gestorEstado],
+                        ['view-grid', 'VixOrganize', $vixEstado],
                     ] as [$icone, $rotulo, $st])
                         <li class="flex items-center gap-3 px-4 py-2.5">
                             <span class="h-5 w-5 text-ink-dim"><x-nav-icon :name="$icone" peso="1.7" /></span>

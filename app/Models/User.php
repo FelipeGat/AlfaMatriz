@@ -136,6 +136,19 @@ class User extends Authenticatable
     }
 
     /**
+     * Conta da VixCard (docs/specs/acesso-vixcard): só enxerga tarefas,
+     * sistemas e compromissos da VixCard — o escopo global
+     * `Scopes\EscopoVixcard` filtra a sessão inteira. Pelo PERFIL, e não por
+     * coluna: liga e desliga em Usuários e permissões, como qualquer acesso.
+     */
+    public function temEscopoVixcard(): bool
+    {
+        // Do mesmo cache das permissões (uma consulta por requisição): isto é
+        // perguntado dentro de TODA consulta escopada.
+        return isset($this->permissoesConcedidas()['perfil:'.\App\Models\Scopes\EscopoVixcard::PERFIL]);
+    }
+
+    /**
      * Vendedor sem visão gerencial: só os PRÓPRIOS leads no funil, e só o
      * PRÓPRIO desempenho no Dashboard Comercial — não o da empresa inteira.
      *
@@ -233,6 +246,7 @@ class User extends Authenticatable
             ->join('perfil_permissao', 'perfil_permissao.perfil_id', '=', 'perfis.id')
             ->join('permissoes', 'permissoes.id', '=', 'perfil_permissao.permissao_id')
             ->get([
+                'perfis.slug as perfil_slug',
                 'permissoes.recurso as recurso',
                 'perfil_permissao.ler as ler',
                 'perfil_permissao.incluir as incluir',
@@ -242,6 +256,8 @@ class User extends Authenticatable
             ]);
 
         foreach ($linhas as $linha) {
+            // O perfil também fica marcado: o escopo VixCard é pelo perfil.
+            $concedidas['perfil:'.$linha->perfil_slug] = true;
             foreach (self::ACOES as $acao) {
                 // Duas contas podem conceder o mesmo recurso por perfis
                 // diferentes: basta UMA linha permitir, que é o que o `exists`
@@ -284,6 +300,11 @@ class User extends Authenticatable
         // chamadores dão a mesma resposta.
         if ($this->temEscopoDeRevenda()) {
             return route('revendas.index', ['aba' => 'clientes'], absolute: false);
+        }
+
+        // A conta da VixCard abre no painel dos projetos dela (acesso-vixcard).
+        if ($this->temEscopoVixcard()) {
+            return route('vixcard.projetos', absolute: false);
         }
 
         $telas = [

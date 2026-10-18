@@ -365,6 +365,13 @@ class CentralIaController extends Controller
         // Tarefa de outra conta não passa por aqui: o fluxo normal recusa com a regra dele.
         $tarefaDoSecretario = filled($dados['tarefa_id'] ?? null)
             ? CentralIaTarefa::de($request->user())->where('projeto', $dados['projeto'] ?? '')->find($dados['tarefa_id']) : null;
+        // "sim"/"não" ao envio que a IA propôs ao VixOrganize neste chat
+        // (docs/specs/secretario-vixorganize): vale também no chat de assunto.
+        if (empty($dados['anexos']) && (blank($dados['tarefa_id'] ?? null) || $tarefaDoSecretario)
+            && ($vix = app(\App\Services\Secretario\VixOrganize\NaCentral::class)->responder($request->user(), $dados['conteudo'], $dados['client_id'],
+                $dados['projeto'] ?? null, $tarefaDoSecretario?->id))) {
+            return $this->semCache(['id' => $vix->id, 'status_direto' => true], $vix->wasRecentlyCreated ? 201 : 200);
+        }
         // Chat de assunto (Business) aciona a IA sempre: o Secretário não o intercepta.
         if (empty($dados['anexos']) && (blank($dados['tarefa_id'] ?? null) || ($tarefaDoSecretario && ! $tarefaDoSecretario->ehAssunto()))) {
             $secretario = app(\App\Services\Secretario\Conversa::class)->doWeb($request->user(), $dados['conteudo'], $dados['client_id'],

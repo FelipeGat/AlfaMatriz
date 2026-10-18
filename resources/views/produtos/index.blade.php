@@ -6,6 +6,8 @@
     <x-slot name="contexto">
         @if ($aba === 'internos')
             {{ $contagens['internos'] }} sistemas internos
+        @elseif ($aba === 'vixcard')
+            {{ $contagens['vixcard'] }} produtos da VixCard
         @else
             {{ $contagens['sistemas'] }} sistemas · {{ $contagens['ativos'] }} ativos
         @endif
@@ -16,9 +18,9 @@
          a um formulário com os campos errados já escolhidos. --}}
     @if (auth()->user()->canPermissao('sistemas', 'incluir'))
         <x-slot name="acoes">
-            <a href="{{ route('sistemas.create', $aba === 'internos' ? ['natureza' => 'interno'] : []) }}"
+            <a href="{{ route('sistemas.create', match ($aba) { 'internos' => ['natureza' => 'interno'], 'vixcard' => ['natureza' => 'vixcard'], default => [] }) }}"
                class="h-[34px] px-3 inline-flex items-center rounded-control bg-brand text-on-brand font-semibold text-[12.5px] hover:bg-brand-bright transition whitespace-nowrap">
-                {{ $aba === 'internos' ? '+ Novo sistema interno' : '+ Novo produto' }}
+                {{ match ($aba) { 'internos' => '+ Novo sistema interno', 'vixcard' => '+ Novo produto VixCard', default => '+ Novo produto' } }}
             </a>
         </x-slot>
     @endif
@@ -57,10 +59,16 @@
                      aba pedia que o leitor completasse a frase. --}}
                 Sistemas internos · {{ $contagens['internos'] }}
             </x-abas.item>
+            <x-abas.item :href="route('produtos.index', array_merge(request()->query(), ['aba' => 'vixcard']))"
+                         :ativo="$aba === 'vixcard'" icone="tag">
+                Produtos VixCard · {{ $contagens['vixcard'] }}
+            </x-abas.item>
         </x-abas>
 
         @if ($aba === 'internos')
             @include('produtos._internos', ['internos' => $internos])
+        @elseif ($aba === 'vixcard')
+            @include('produtos._internos', ['internos' => $vixcard, 'daVixcard' => true])
         @else
         {{-- A lista de produtos segue na indentação de antes, de propósito:
              recuá-la em um nível trocaria um diff de duas linhas por um de

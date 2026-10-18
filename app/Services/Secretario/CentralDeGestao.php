@@ -97,7 +97,7 @@ class CentralDeGestao
         'funil_parado' => ['clientes', 'Parado', 'baixa'],
     ];
 
-    public const ABAS = ['pontos' => 'Pontos de gestão', 'clientes' => 'Clientes', 'propostas' => 'Propostas', 'tarefas' => 'Tarefas',
+    public const ABAS = ['pontos' => 'Pontos de gestão', 'projetos' => 'Projetos', 'clientes' => 'Clientes', 'propostas' => 'Propostas', 'tarefas' => 'Tarefas',
         'reunioes' => 'Reuniões', 'emails' => 'E-mails', 'financeiro' => 'Financeiro'];
 
     /**
@@ -140,6 +140,21 @@ class CentralDeGestao
                     'origem' => $cliente ?: 'Grupo Soluções', 'chip' => 'Gestor', 'quando' => isset($it['data']) ? CarbonImmutable::parse($it['data']) : null,
                     'so_data' => true, 'status' => $status, 'prioridade' => $prioridade, 'link' => null, 'acoes' => []]);
             }
+        }
+        // Projetos abertos da VixCard, do retrato do VixOrganize
+        // (docs/specs/secretario-vixorganize): a posição na fila vira prioridade.
+        $vix = \App\Models\SecretarioVixOrganize::daConta($user);
+        foreach ($vix?->projetos() ?? [] as $p) {
+            if (($p['status'] ?? '') === 'concluido') {
+                continue;
+            }
+            $prazo = ! empty($p['due_date']) ? CarbonImmutable::parse($p['due_date']) : null;
+            $linhas->push(['aba' => 'projetos', 'icone' => 'view-grid', 'assunto' => $p['name'],
+                'sub' => '#'.$p['rank'].' na fila · '.($p['current_phase'] ?? 'sem fase').' · '.(int) $p['progress'].'%',
+                'origem' => 'VixCard', 'chip' => 'VixOrganize', 'quando' => $prazo, 'so_data' => true,
+                'status' => $prazo && $prazo->endOfDay()->lessThan($agora) ? 'Vencido' : ($p['status_label'] ?? 'Em aberto'),
+                'prioridade' => $p['rank'] <= 1 ? 'alta' : ($p['rank'] <= 3 ? 'normal' : 'baixa'),
+                'link' => route('secretario.vixorganize', ['projeto' => $p['slug']]), 'acoes' => []]);
         }
         $peso = ['alta' => 0, 'normal' => 1, 'baixa' => 2];
 

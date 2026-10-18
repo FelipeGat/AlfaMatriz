@@ -688,10 +688,10 @@ class AgentesService
                 'branch' => $tarefa->branch,
                 'commit_base' => $tarefa->commit_base,
             ] : null,
-            'contexto' => $assunto ? $assunto['texto'] : ($tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null)
+            'contexto' => $this->comVixOrganize($user, $tarefa, $execucao, $assunto ? $assunto['texto'] : ($tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null)
                 // Chat novo num projeto começa sabendo dos chats recentes dele
                 // (dono, 13/10/2026: "abrir um novo chat… ele saberia o contexto do projeto").
-                : ($tarefa && $execucao->projeto !== '' ? $this->contextoDoProjeto($user, $execucao->projeto, $tarefa->id) : null)),
+                : ($tarefa && $execucao->projeto !== '' ? $this->contextoDoProjeto($user, $execucao->projeto, $tarefa->id) : null))),
             'bloco' => (($execucao->roteamento['coordenador'] ?? false) ? "Você atua como coordenador deste pedido. Nesta etapa apenas responda, planeje e proponha quem deve fazer o trabalho; não implemente, não execute ferramentas ou comandos e não altere arquivos. Claude faz análise de código e desenvolvimento; Codex faz análise de dados; Copilot faz Git e QA. Identifique fontes disponíveis e impedimentos, não invente números. Delegação automática ainda não está habilitada: descreva a próxima etapa, sem afirmar que outro agente executou algo.\n" : '').Dossie::instrucaoDoBloco()."\nRegras de evidência: nunca invente dados, valores, fontes ou consultas. Relatórios de dados exigem período explícito e fonte autorizada identificada, data da consulta e critérios dos totais. Sem acesso à fonte, informe a limitação e solicite os dados; código, exemplos e testes não comprovam saldos reais. Para esta semana, confirme no texto as datas usadas. Para pedidos executivos com esta semana, use segunda-feira até hoje no fuso local e explicite as datas; para esta semana útil, segunda a sexta (até hoje se ainda estiver em curso). Pergunte somente se a ambiguidade alterar materialmente a decisão ou tornar a consulta insegura. Sem período informado, mantenha o pedido de esclarecimento. Claude só deve apoiar análise de dados quando houver impedimento técnico identificado; não troque de agente apenas para tentar obter números ausentes.",
             'fontes' => $this->comAgendaDoMatriz($user, $execucao->roteamento['fontes'] ?? []),
             // Opções da pessoa (T-374), desligadas por padrão: a regra do cstk
@@ -725,6 +725,27 @@ class AgentesService
                 && ! CentralIaExecucao::where('tarefa_id', $tarefa?->id)->where('agente', $execucao->agente)->where('id', '<', $execucao->id)->exists()
                 ? $sessaoDoVsCode : null,
         ];
+    }
+
+    /**
+     * A fila do VixOrganize (docs/specs/secretario-vixorganize): no chat de
+     * Business dele, ou quando o pedido cita o organize. A execução fica
+     * marcada para o bloco de envio ser lido na volta — e só nela.
+     */
+    private function comVixOrganize(User $user, ?CentralIaTarefa $tarefa, CentralIaExecucao $execucao, ?string $contexto): ?string
+    {
+        $r = $execucao->roteamento ?? [];
+        if (($r['sem_ferramentas'] ?? false) || isset($r['secretario_proposta']) || isset($r['secretario_reuniao'])) {
+            return $contexto;
+        }
+        $na = app(\App\Services\Secretario\VixOrganize\NaCentral::class);
+        $conta = $na->contaPara($user, $tarefa, (string) $execucao->instrucao);
+        if (! $conta) {
+            return $contexto;
+        }
+        $execucao->update(['roteamento' => array_merge($r, ['vixorganize' => true])]);
+
+        return trim(($contexto ?? '')."\n\n".$na->contexto($conta));
     }
 
     /**
@@ -790,6 +811,13 @@ class AgentesService
             if ($ok && isset($execucao->roteamento['secretario_proposta'])) {
                 [$texto, $blocoSecretario] = \App\Services\Secretario\PropostaDaIa::separar((string) $texto);
                 $texto = app(\App\Services\Secretario\PropostaDaIa::class)->concluir($user, $execucao, $blocoSecretario) ?? $texto;
+            }
+            // Envio ao VixOrganize: o bloco vira pedido a CONFIRMAR com "sim" (nunca envio direto).
+            if ($ok && ($execucao->roteamento['vixorganize'] ?? false)) {
+                [$texto, $blocoVix] = \App\Services\Secretario\VixOrganize\NaCentral::separar((string) $texto);
+                if ($blocoVix && ($proposta = app(\App\Services\Secretario\VixOrganize\NaCentral::class)->propor($user, $execucao, $tarefa, ProtecaoDeSegredos::dados($blocoVix)))) {
+                    $texto = trim($texto."\n\n".$proposta);
+                }
             }
             $resposta = $this->conversas->registrarDoAgente($user, $execucao->nomeDoAgente(), $texto ?: '(resposta vazia)', CentralIaMensagem::AUTOR_AGENTE, $execucao->projeto ?: null, $tarefa?->id);
             $checkpoint = is_array($dados['checkpoint'] ?? null) ? $dados['checkpoint'] : null;

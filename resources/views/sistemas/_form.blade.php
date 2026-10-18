@@ -44,7 +44,7 @@
             </select>
             <p class="mt-1 text-xs text-ink-mute">
                 Produto é o que a Alfa vende — entra no faturamento. Interno é o que a Alfa usa e existe
-                para as tarefas apontarem.
+                para as tarefas apontarem. Produto VixCard é o que a VixCard vende: fica fora do faturamento da Alfa.
             </p>
         @else
             {{-- Travado, e dizendo por quê no mesmo lugar. Um select

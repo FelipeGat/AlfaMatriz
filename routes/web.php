@@ -250,6 +250,17 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         Route::post('acompanhamentos/pontos', [$ac, 'lancarPonto'])->name('acompanhamentos.pontos')->middleware('permissao:secretario,incluir');
         Route::post('acompanhamentos/pontos/{item}/concluir', [$ac, 'concluirPonto'])->whereNumber('item')->name('acompanhamentos.pontos.concluir')->middleware('permissao:secretario,editar');
         Route::post('acompanhamentos/{acompanhamento}/adiar', [$ac, 'adiar'])->whereNumber('acompanhamento')->name('acompanhamentos.adiar')->middleware('permissao:secretario,editar');
+        // Projetos da VixCard pelo VixOrganize (docs/specs/secretario-vixorganize).
+        $vo = \App\Http\Controllers\SecretarioVixOrganizeController::class;
+        Route::get('vixorganize', [$vo, 'index'])->name('vixorganize')->middleware('permissao:secretario,ler');
+        Route::post('vixorganize/conexao', [$vo, 'conectar'])->name('vixorganize.conectar')->middleware(['permissao:secretario,editar', 'throttle:10,1']);
+        Route::delete('vixorganize/conexao', [$vo, 'desconectar'])->name('vixorganize.desconectar')->middleware('permissao:secretario,excluir');
+        Route::post('vixorganize/atualizar', [$vo, 'atualizar'])->name('vixorganize.atualizar')->middleware(['permissao:secretario,ler', 'throttle:10,1']);
+        Route::post('vixorganize/projetos', [$vo, 'criarProjeto'])->name('vixorganize.projetos')->middleware('permissao:secretario,incluir');
+        Route::post('vixorganize/projetos/{projeto}/status', [$vo, 'status'])->where('projeto', '[a-z0-9-]+')->name('vixorganize.status')->middleware('permissao:secretario,editar');
+        Route::post('vixorganize/projetos/{projeto}/passos', [$vo, 'novoPasso'])->where('projeto', '[a-z0-9-]+')->name('vixorganize.passos')->middleware('permissao:secretario,incluir');
+        Route::post('vixorganize/projetos/{projeto}/passos/{passo}/marcar', [$vo, 'marcar'])->where('projeto', '[a-z0-9-]+')->whereNumber('passo')->name('vixorganize.marcar')->middleware('permissao:secretario,editar');
+        Route::post('vixorganize/projetos/{projeto}/passos/{passo}/registro', [$vo, 'registrar'])->where('projeto', '[a-z0-9-]+')->whereNumber('passo')->name('vixorganize.registrar')->middleware('permissao:secretario,incluir');
     });
 
     // Central de IA. Sem id de conversa na rota: é sempre a da conta logada.
@@ -378,6 +389,9 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // a Nova tarefa do quadro (`tarefas.index?de_compromisso=`), e o vínculo é
     // gravado no `tarefas.store` — que pede a porta do quadro, como pedia aqui.
 
+    // Projetos VixCard (docs/specs/acesso-vixcard): o painel dos produtos da VixCard.
+    Route::get('vixcard/projetos', [\App\Http\Controllers\VixcardProjetosController::class, 'index'])->name('vixcard.projetos')
+        ->middleware('permissao:tarefas,ler');
     Route::get('tarefas', [TarefaController::class, 'index'])->name('tarefas.index')
         ->middleware('permissao:tarefas');
     Route::get('tarefas/historico', [TarefaController::class, 'historico'])->name('tarefas.historico')

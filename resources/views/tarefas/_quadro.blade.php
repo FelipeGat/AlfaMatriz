@@ -180,6 +180,15 @@
         Fica no cabeçalho DO QUADRO porque é o único cabeçalho que sobrevive ao
         modo: no da página ela desapareceria junto com o que esconde.
     --}}
+    {{-- Cards compactos: ao lado da tela cheia, porque as duas respondem à
+         mesma vontade — ver mais do quadro de uma vez. --}}
+    <button type="button" @click="alternarCompacto()"
+            :title="compacto ? 'Mostrar os cards completos' : 'Cards compactos: ver mais tarefas de uma vez'"
+            :aria-pressed="compacto.toString()" aria-label="Cards compactos"
+            class="shrink-0 ml-2 h-[26px] w-[26px] rounded-badge border flex items-center justify-center transition hover:text-brand hover:border-brand"
+            :class="compacto ? 'border-brand text-brand' : 'border-btn-line text-ink-mute'">
+        <span class="h-[13px] w-[13px]"><x-nav-icon name="view-list" :peso="1.8" /></span>
+    </button>
     <button type="button" @click="alternarTelaCheia()"
             :title="telaCheia ? 'Sair da tela cheia · Esc' : 'Expandir o quadro para a tela inteira'"
             :aria-label="telaCheia ? 'Sair da tela cheia' : 'Expandir o quadro para a tela inteira'"

@@ -151,6 +151,7 @@ class SecretarioController extends Controller
             'googleConfigurado' => app(\App\Services\Secretario\GoogleAgenda::class)->configurado(),
             'caixas' => \App\Models\SecretarioEmailConta::de($request->user())->orderBy('rotulo')->get(),
             'gestor' => \App\Models\SecretarioGestorRetrato::where('user_id', $request->user()->id)->first(),
+            'vixorganize' => \App\Models\SecretarioVixOrganize::daConta($request->user()),
             // Etapa 8: as regras dos avisos moram aqui.
             'config' => \App\Services\Secretario\Acompanhamento\Regras::de($request->user()),
             'telegramPareado' => app(TelegramCanal::class)->vinculoDe($request->user()) !== null,
