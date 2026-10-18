@@ -65,22 +65,7 @@ class MonitorController extends Controller
             return response()->json(['message' => 'ignorado', 'motivo' => 'kind'], 202);
         }
 
-        $validacao = Validator::make($evento, [
-            'event_id' => 'required|integer|min:1',
-            'incident_id' => 'nullable|integer|min:1',
-            'kind' => 'required|string',
-            'entity' => 'required|string|max:191',
-            'entity_name' => 'nullable|string|max:255',
-            'severity' => 'required|in:'.implode(',', array_keys(MonitorAlerta::SEVERIDADES)),
-            'cliente' => 'nullable|string|max:255',
-            'title' => 'required|string|max:255',
-            'body' => 'nullable|string|max:10000',
-            'resolved' => 'required|boolean',
-            'derived' => 'nullable|boolean',
-            'link' => 'nullable|string|max:500',
-            'at' => 'nullable|integer|min:0',
-            'occurred_at' => 'required|integer|min:0',
-        ]);
+        $validacao = Validator::make($evento, AlertasDoMonitor::regras());
 
         if ($validacao->fails()) {
             return response()->json(['message' => 'Evento inválido.', 'errors' => $validacao->errors()], 422);

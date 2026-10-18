@@ -8,6 +8,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -62,6 +63,9 @@ class ApiDoMonitor
      * tela pagina depois, sobre a lista inteira (`PainelDoMonitorController`).
      */
     public const POR_PAGINA = 200;
+
+    /** Quantas vezes a lista é buscada de novo se mudar no meio (#399). */
+    private const TENTATIVAS_DA_LISTA = 3;
 
     /** Trava contra lista que não acaba: 50 × 200 já são 10 mil itens. */
     private const PAGINAS_MAX = 50;
@@ -138,16 +142,15 @@ class ApiDoMonitor
         }
 
         if ($paginada) {
-            try {
-                $dados = $this->juntarPaginas($rota, $pedido, $timeoutS, $dados);
-            } catch (Throwable $e) {
-                $dados = null;
-                Log::warning('AlfaMonitor: falha ao buscar as páginas seguintes.', ['rota' => $rota, 'erro' => $e->getMessage()]);
-            }
-
             // Lista pela metade parece lista inteira: melhor o último retrato
             // completo, marcado velho, do que uma tela que esconde o resto.
-            if ($dados === null) {
+            try {
+                $dados = $this->listaInteira($rota, $pedido, $timeoutS, $dados);
+            } catch (ListaMudouDuranteABusca) {
+                return $this->ultimoBom($chaveDoBom, 'A lista do AlfaMonitor mudou durante a busca; tente de novo em instantes.');
+            } catch (Throwable $e) {
+                Log::warning('AlfaMonitor: falha ao buscar as páginas seguintes.', ['rota' => $rota, 'erro' => $e->getMessage()]);
+
                 return $this->ultimoBom($chaveDoBom, 'O AlfaMonitor não entregou a lista inteira.');
             }
         }
@@ -198,18 +201,58 @@ class ApiDoMonitor
     }
 
     /**
-     * Pede as páginas 2 em diante e acrescenta cada uma à primeira. Volta
-     * null se alguma falhar. Monitor que ainda não pagina não manda
-     * `paginacao`, e aí a primeira já é a lista inteira.
+     * A lista inteira, recomeçando do zero se ela MUDAR no meio da busca
+     * (#399). A paginação do monitor é por número de página sobre uma lista
+     * viva: um incidente novo entra no topo e empurra todo mundo uma posição,
+     * e a página 2 repete o último da 1 — ou, se um sai, pula um. O `total`
+     * de cada página denuncia isso; aí as páginas já juntadas não valem e a
+     * busca recomeça, até `TENTATIVAS_DA_LISTA` vezes.
+     *
+     * @param  array<string, scalar>  $pedido
+     * @param  array<string, mixed>  $primeira
+     * @return array<string, mixed>
+     *
+     * @throws ListaMudouDuranteABusca se mudou em todas as tentativas
+     */
+    private function listaInteira(string $rota, array $pedido, int $timeoutS, array $primeira): array
+    {
+        for ($tentativa = 1; ; $tentativa++) {
+            try {
+                return $this->juntarPaginas($rota, $pedido, $timeoutS, $primeira);
+            } catch (ListaMudouDuranteABusca $e) {
+                if ($tentativa >= self::TENTATIVAS_DA_LISTA) {
+                    Log::warning('AlfaMonitor: a lista mudou durante a busca em todas as tentativas.', ['rota' => $rota, 'tentativas' => $tentativa]);
+
+                    throw $e;
+                }
+
+                $primeira = $this->pagina($rota, $pedido, $timeoutS);
+            }
+        }
+    }
+
+    /**
+     * Pede as páginas 2 em diante e acrescenta cada uma à primeira. Monitor
+     * que ainda não pagina não manda `paginacao`, e aí a primeira já é a
+     * lista inteira.
      *
      * @param  array<string, scalar>  $pedido
      * @param  array<string, mixed>  $dados
-     * @return array<string, mixed>|null
+     * @return array<string, mixed>
+     *
+     * @throws ListaMudouDuranteABusca se o total de uma página não bate com o da primeira
+     * @throws RuntimeException se uma página falhar
      */
-    private function juntarPaginas(string $rota, array $pedido, int $timeoutS, array $dados): ?array
+    private function juntarPaginas(string $rota, array $pedido, int $timeoutS, array $dados): array
     {
         $lista = $this->listaPaginada($rota);
         $porFonte = $lista === 'fontes';
+        // Em `acesso` cada fonte pagina à parte, então o total é por fonte.
+        $totais = fn (array $d) => $porFonte
+            ? collect($d['fontes'] ?? [])->filter(fn ($f) => is_array($f))
+                ->mapWithKeys(fn ($f) => [(string) ($f['fonte'] ?? '') => $f['paginacao']['total'] ?? null])->sortKeys()->all()
+            : ($d['paginacao']['total'] ?? null);
+        $totalDaPrimeira = $totais($dados);
         $paginasDe = fn (array $bloco): int => max(1, (int) ($bloco['paginacao']['paginas'] ?? 1));
 
         $paginas = $porFonte
@@ -222,11 +265,16 @@ class ApiDoMonitor
         }
 
         for ($pagina = 2; $pagina <= $paginas; $pagina++) {
-            $http = $this->pedir($rota, $pedido + ['pagina' => $pagina], $timeoutS);
-            $proxima = $http->json();
+            $proxima = $this->pagina($rota, $pedido + ['pagina' => $pagina], $timeoutS);
 
-            if (! $http->successful() || ! is_array($proxima) || ($proxima['v'] ?? null) !== self::VERSAO_DO_CONTRATO) {
-                return null;
+            // Por fonte, só conta quem veio nas duas: a fonte com menos
+            // páginas pode faltar na página seguinte sem a lista ter mudado.
+            $mudou = $porFonte
+                ? array_intersect_key($totais($proxima), $totalDaPrimeira) !== array_intersect_key($totalDaPrimeira, $totais($proxima))
+                : $totais($proxima) !== $totalDaPrimeira;
+
+            if ($mudou) {
+                throw new ListaMudouDuranteABusca($rota);
             }
 
             if ($porFonte) {
@@ -256,6 +304,62 @@ class ApiDoMonitor
         }
 
         return $achatar($dados, count($dados[$lista] ?? []));
+    }
+
+    /**
+     * Uma página de lista, sem cache, já conferida.
+     *
+     * @param  array<string, scalar>  $pedido
+     * @return array<string, mixed>
+     *
+     * @throws RuntimeException se a resposta não serve
+     */
+    private function pagina(string $rota, array $pedido, int $timeoutS): array
+    {
+        $http = $this->pedir($rota, $pedido, $timeoutS);
+        $dados = $http->json();
+
+        if (! $http->successful() || ! is_array($dados) || ($dados['v'] ?? null) !== self::VERSAO_DO_CONTRATO) {
+            throw new RuntimeException("Página inválida de {$rota} (HTTP {$http->status()}).");
+        }
+
+        return $dados;
+    }
+
+    /**
+     * As notificações que o monitor mandou (ou tentou mandar) pelo webhook,
+     * depois do `event_id` dado, em ordem crescente (#399). É a fonte da
+     * reconciliação (`ReconciliacaoDoMonitor`), e por isso sem cache e sem
+     * "último bom": dado velho aqui faria a reconciliação andar o cursor
+     * sobre o que não viu.
+     */
+    public function notificacoes(int $depoisDe): RespostaDoMonitor
+    {
+        if (! $this->configurada()) {
+            return RespostaDoMonitor::falha('O Matriz ainda não tem o endereço e o token de leitura do AlfaMonitor.');
+        }
+
+        try {
+            $http = $this->pedir('notificacoes', ['depois_de' => $depoisDe, 'por_pagina' => self::POR_PAGINA], self::TIMEOUT_RELATORIO_S);
+        } catch (Throwable) {
+            return RespostaDoMonitor::falha('O AlfaMonitor não respondeu.');
+        }
+
+        if ($http->status() === 404) {
+            return RespostaDoMonitor::inexistente();
+        }
+
+        $dados = $http->json();
+
+        if (! $http->successful() || ! is_array($dados)) {
+            return RespostaDoMonitor::falha('O AlfaMonitor respondeu com erro ('.$http->status().').');
+        }
+
+        if (($dados['v'] ?? null) !== self::VERSAO_DO_CONTRATO) {
+            return RespostaDoMonitor::falha('O AlfaMonitor mudou o formato da resposta; o Matriz precisa ser atualizado.');
+        }
+
+        return $this->resposta($dados);
     }
 
     /** Chamado pelo webhook: o próximo pedido de cada tela vai ao monitor. */

@@ -436,6 +436,62 @@ class TelasDoMonitorTest extends TestCase
             ->assertDontSee('Incidente 030');
     }
 
+    /**
+     * Um incidente novo entre a página 1 e a 2 empurra a lista e repetiria o
+     * último da página 1 (#399): o total mudou, a busca recomeça e a lista
+     * sai certa, sem repetido.
+     */
+    public function test_se_a_lista_muda_entre_as_paginas_a_busca_recomeca(): void
+    {
+        $antes = array_map(fn ($n) => $this->incidente($n), range(30, 1));
+        $depois = array_map(fn ($n) => $this->incidente($n), range(31, 1));
+        $primeiras = 0;
+
+        Http::fake([
+            self::BASE.'/api/v1/incidentes*' => function (Request $r) use ($antes, $depois, &$primeiras) {
+                $pagina = (int) ($r->data()['pagina'] ?? 1);
+
+                if ($pagina === 1) {
+                    $primeiras++;
+                }
+
+                // A 1ª busca lê a página 1 antes do incidente 31 chegar.
+                $itens = $pagina === 1 && $primeiras === 1 ? $antes : $depois;
+
+                return Http::response($this->paginaDeIncidentes($itens, $pagina, 20));
+            },
+        ]);
+
+        $this->actingAs($this->admin())->get(route('monitor.incidentes', ['estado' => 'historico', 'dias' => 30, 'visao' => 'cliente']))
+            ->assertOk()
+            ->assertSee('31 incidentes')
+            ->assertSee('Incidente 031')
+            ->assertDontSee('mudou durante a busca');
+
+        $this->assertSame(2, $primeiras);
+    }
+
+    public function test_se_a_lista_nao_para_de_mudar_a_tela_avisa_em_vez_de_mostrar_lista_torta(): void
+    {
+        $chamadas = 0;
+
+        Http::fake([
+            self::BASE.'/api/v1/incidentes*' => function (Request $r) use (&$chamadas) {
+                $chamadas++;
+                $itens = array_map(fn ($n) => $this->incidente($n), range(20 + $chamadas, 1));
+
+                return Http::response($this->paginaDeIncidentes($itens, (int) ($r->data()['pagina'] ?? 1), 20));
+            },
+        ]);
+
+        $this->actingAs($this->admin())->get(route('monitor.incidentes', ['estado' => 'historico', 'dias' => 30]))
+            ->assertOk()
+            ->assertSee('A lista do AlfaMonitor mudou durante a busca');
+
+        // Três tentativas, duas páginas cada.
+        $this->assertSame(6, $chamadas);
+    }
+
     public function test_a_busca_de_clientes_acha_quem_esta_em_outra_pagina_da_api(): void
     {
         $clientes = $this->exemplo('clientes');
@@ -547,5 +603,51 @@ class TelasDoMonitorTest extends TestCase
 
         $this->actingAs($admin)->get(route('monitor.geral'))->assertSee('monitorTela({ automatico: true })', false);
         $this->actingAs($admin)->get(route('monitor.relatorio'))->assertSee('monitorTela({ automatico: false })', false);
+    }
+
+    /**
+     * #402: cliente com tudo offline e nenhum ping nas últimas 24 h chega
+     * recolhido numa linha (o dono incluiu quem está fechado agora); o de
+     * queda recente fica aberto. Com busca, o que se achou vem aberto.
+     */
+    public function test_o_acesso_recolhe_o_cliente_offline_ha_mais_de_um_dia(): void
+    {
+        $aparelho = fn (string $nome, string $estado, string $ping) => [
+            'id' => crc32($nome), 'nome' => $nome, 'modelo' => 'controlid_idface', 'ip' => '192.0.2.1',
+            'estado' => $estado, 'ultimo_ping' => $ping, 'ping_ms' => null, 'pct_no_ar_24h' => 0, 'sino' => true, 'barra' => null,
+        ];
+        $cliente = fn (int $id, string $nome, int $online, array $aparelhos, bool $fechado = false) => [
+            'cliente_id' => $id, 'nome' => $nome, 'online' => $online, 'total' => count($aparelhos),
+            'fechado_agora' => $fechado, 'horario' => null, 'acessos_hoje' => 3, 'negados_hoje' => 0, 'aparelhos' => $aparelhos,
+        ];
+
+        Http::fake([self::BASE.'/api/v1/acesso*' => Http::response([
+            'v' => 1, 'gerado_em' => '2026-10-17T14:32:00-03:00',
+            'fontes' => [[
+                'fonte' => 'AlfaControl', 'coleta' => 'ok', 'online' => 1, 'total' => 4,
+                'clientes' => [
+                    $cliente(1, 'PARADO HA DIAS', 0, [$aparelho('Catraca parada', 'offline', '2026-10-14T10:00:00-03:00')]),
+                    $cliente(2, 'FECHADO DESDE ONTEM', 0, [$aparelho('Leitor fechado', 'offline', '2026-10-16T13:00:00-03:00')], true),
+                    $cliente(3, 'CAIU AGORA', 0, [$aparelho('Leitor caido', 'offline', '2026-10-17T13:00:00-03:00')]),
+                    $cliente(4, 'NO AR', 1, [$aparelho('Leitor bom', 'online', '2026-10-17T14:32:00-03:00')]),
+                ],
+            ]],
+        ])]);
+
+        $admin = $this->admin();
+        $html = $this->actingAs($admin)->get(route('monitor.acesso', ['fonte' => 'AlfaControl']))
+            ->assertOk()
+            ->assertSee('Catraca parada')   // recolhido continua na página, só escondido
+            ->assertSee('último ping há 3 dias')
+            ->getContent();
+
+        $padrao = fn (string $chave) => preg_match('/chave: \'AlfaControl:'.$chave.'\', padrao: (true|false)/', $html, $m) ? $m[1] : null;
+        $this->assertSame('false', $padrao('1'));
+        $this->assertSame('false', $padrao('2'));
+        $this->assertSame('true', $padrao('3'));
+        $this->assertSame('true', $padrao('4'));
+
+        $busca = $this->actingAs($admin)->get(route('monitor.acesso', ['fonte' => 'AlfaControl', 'busca' => 'parado']))->getContent();
+        $this->assertStringContainsString("chave: 'AlfaControl:1', padrao: true", $busca);
     }
 }
