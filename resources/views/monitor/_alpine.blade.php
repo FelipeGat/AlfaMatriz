@@ -5,6 +5,11 @@
         Alpine.store('monitor', {
             hora: document.getElementById('monitor-conteudo')?.dataset.hora ?? '',
             carregando: false,
+            // Clientes do Acesso que a pessoa abriu ou recolheu (#402). Moram
+            // aqui, e não no x-data do cartão, porque a atualização de 30 s
+            // troca o miolo inteiro: no cartão, o que ela abriu fecharia
+            // sozinho meio minuto depois.
+            abertos: {},
         });
 
         /**

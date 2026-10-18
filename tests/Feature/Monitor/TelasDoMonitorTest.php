@@ -604,4 +604,50 @@ class TelasDoMonitorTest extends TestCase
         $this->actingAs($admin)->get(route('monitor.geral'))->assertSee('monitorTela({ automatico: true })', false);
         $this->actingAs($admin)->get(route('monitor.relatorio'))->assertSee('monitorTela({ automatico: false })', false);
     }
+
+    /**
+     * #402: cliente com tudo offline e nenhum ping nas últimas 24 h chega
+     * recolhido numa linha (o dono incluiu quem está fechado agora); o de
+     * queda recente fica aberto. Com busca, o que se achou vem aberto.
+     */
+    public function test_o_acesso_recolhe_o_cliente_offline_ha_mais_de_um_dia(): void
+    {
+        $aparelho = fn (string $nome, string $estado, string $ping) => [
+            'id' => crc32($nome), 'nome' => $nome, 'modelo' => 'controlid_idface', 'ip' => '192.0.2.1',
+            'estado' => $estado, 'ultimo_ping' => $ping, 'ping_ms' => null, 'pct_no_ar_24h' => 0, 'sino' => true, 'barra' => null,
+        ];
+        $cliente = fn (int $id, string $nome, int $online, array $aparelhos, bool $fechado = false) => [
+            'cliente_id' => $id, 'nome' => $nome, 'online' => $online, 'total' => count($aparelhos),
+            'fechado_agora' => $fechado, 'horario' => null, 'acessos_hoje' => 3, 'negados_hoje' => 0, 'aparelhos' => $aparelhos,
+        ];
+
+        Http::fake([self::BASE.'/api/v1/acesso*' => Http::response([
+            'v' => 1, 'gerado_em' => '2026-10-17T14:32:00-03:00',
+            'fontes' => [[
+                'fonte' => 'AlfaControl', 'coleta' => 'ok', 'online' => 1, 'total' => 4,
+                'clientes' => [
+                    $cliente(1, 'PARADO HA DIAS', 0, [$aparelho('Catraca parada', 'offline', '2026-10-14T10:00:00-03:00')]),
+                    $cliente(2, 'FECHADO DESDE ONTEM', 0, [$aparelho('Leitor fechado', 'offline', '2026-10-16T13:00:00-03:00')], true),
+                    $cliente(3, 'CAIU AGORA', 0, [$aparelho('Leitor caido', 'offline', '2026-10-17T13:00:00-03:00')]),
+                    $cliente(4, 'NO AR', 1, [$aparelho('Leitor bom', 'online', '2026-10-17T14:32:00-03:00')]),
+                ],
+            ]],
+        ])]);
+
+        $admin = $this->admin();
+        $html = $this->actingAs($admin)->get(route('monitor.acesso', ['fonte' => 'AlfaControl']))
+            ->assertOk()
+            ->assertSee('Catraca parada')   // recolhido continua na página, só escondido
+            ->assertSee('último ping há 3 dias')
+            ->getContent();
+
+        $padrao = fn (string $chave) => preg_match('/chave: \'AlfaControl:'.$chave.'\', padrao: (true|false)/', $html, $m) ? $m[1] : null;
+        $this->assertSame('false', $padrao('1'));
+        $this->assertSame('false', $padrao('2'));
+        $this->assertSame('true', $padrao('3'));
+        $this->assertSame('true', $padrao('4'));
+
+        $busca = $this->actingAs($admin)->get(route('monitor.acesso', ['fonte' => 'AlfaControl', 'busca' => 'parado']))->getContent();
+        $this->assertStringContainsString("chave: 'AlfaControl:1', padrao: true", $busca);
+    }
 }
