@@ -15,6 +15,13 @@ Schedule::command('app:fechar-competencia-mensal')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Despesas fixas do mês no dia 01 (18/10/2026): antes nasciam no fechamento
+// do último dia, já vencidas. O fechamento segue e não duplica.
+Schedule::command('despesas:gerar-fixas')
+    ->monthlyOn(1, '06:00')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Retrato dos sistemas integrados: leve por hora corrige o que mudou no dia.
 // Sem --sistema, percorre todos os que declaram `sincroniza` e estão
 // configurados — um sistema novo entra sozinho ao ser configurado, sem mexer

@@ -238,6 +238,7 @@
          Vence hoje —, todos sobre o recorte ativo de período/busca/revenda. --}}
     <div class="grid gap-3 mb-4" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
         <x-kpi-card rotulo="A receber no período" :valor="'R$ '.number_format($kpis['a_receber'], 2, ',', '.')"
+                    :delta="$kpis['projetado'] > 0 ? 'inclui R$ '.number_format($kpis['projetado'], 2, ',', '.').' projetado' : null"
                     acento="accent" icone="clipboard" />
         <x-kpi-card rotulo="Recebido no período" :valor="'R$ '.number_format($kpis['recebido'], 2, ',', '.')"
                     acento="good" icone="trending-up" />
@@ -304,6 +305,29 @@
             </x-confirmar>
             <button type="button" @click="selecionados = []" class="text-[12px] text-ink-mute hover:text-ink">Limpar</button>
         </div>
+
+
+        {{-- Projeção (Felipe, 18/10/2026): o que ainda não foi lançado, mas vai ser. Nada aqui
+             está gravado: some sozinho quando o lançamento real nasce. --}}
+        @if ($projecao->isNotEmpty())
+            <section class="mb-4 rounded-panel border border-dashed border-line bg-surface">
+                <div class="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+                    <h2 class="font-display text-[15px] font-semibold text-ink">Previstas para o período</h2>
+                    <span class="rounded-badge bg-brand/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-caps text-brand-text">Projeção</span>
+                    <span class="ml-auto text-[13px] text-ink">{{ 'R$ '.number_format($kpis['projetado'], 2, ',', '.') }}</span>
+                </div>
+                <ul class="divide-y divide-line">
+                    @foreach ($projecao as $p)
+                        <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 text-[13px]">
+                            <span class="w-[86px] shrink-0 font-mono text-[12px] text-ink-mute">{{ $p['vencimento']->format('d/m/Y') }}</span>
+                            <span class="min-w-0 flex-1 text-ink">{{ $p['descricao'] }} <span class="text-ink-mute">· {{ $p['revenda'] ?? '—' }}</span></span>
+                            <span class="shrink-0 font-semibold text-ink">{{ 'R$ '.number_format($p['valor'], 2, ',', '.') }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+                <p class="border-t border-line px-4 py-2 text-[11.5px] text-ink-faint">Ainda não lançado: vira título de verdade no lançamento do mês.</p>
+            </section>
+        @endif
 
         <x-tabela min="1180px" titulo="Títulos">
             <thead>
