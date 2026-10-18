@@ -389,6 +389,14 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // a Nova tarefa do quadro (`tarefas.index?de_compromisso=`), e o vínculo é
     // gravado no `tarefas.store` — que pede a porta do quadro, como pedia aqui.
 
+    // Documentos (docs/specs/documentos-espelhados): acesso pela PASTA, e não por
+    // perfil — o controller confere dono e compartilhamento em toda rota.
+    Route::get('comercial/documentos', [\App\Http\Controllers\DocumentosController::class, 'index'])->name('documentos.index');
+    Route::get('comercial/documentos/{pasta}', [\App\Http\Controllers\DocumentosController::class, 'pasta'])->whereNumber('pasta')->name('documentos.pasta');
+    Route::put('comercial/documentos/{pasta}/acessos', [\App\Http\Controllers\DocumentosController::class, 'acessos'])->whereNumber('pasta')->name('documentos.acessos');
+    Route::get('comercial/documentos/arquivo/{documento}/ver', [\App\Http\Controllers\DocumentosController::class, 'ver'])->whereNumber('documento')->name('documentos.ver');
+    Route::get('comercial/documentos/arquivo/{documento}/baixar', [\App\Http\Controllers\DocumentosController::class, 'baixar'])->whereNumber('documento')->name('documentos.baixar');
+
     // Projetos VixCard (docs/specs/acesso-vixcard): o painel dos produtos da VixCard.
     Route::get('vixcard/projetos', [\App\Http\Controllers\VixcardProjetosController::class, 'index'])->name('vixcard.projetos')
         ->middleware('permissao:tarefas,ler');

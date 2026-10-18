@@ -30,6 +30,9 @@ Route::prefix('api/central-ia/runner')
         // Etapa 5: o retrato das pendências do Gestor, lido pela máquina (só leitura).
         Route::post('gestor', [\App\Http\Controllers\SecretarioRunnerController::class, 'gestor'])->name('secretario.runner.gestor');
         Route::post('agenda-google', [\App\Http\Controllers\SecretarioRunnerController::class, 'agenda'])->name('secretario.runner.agenda');
+        // Pastas de documentos espelhadas do OneDrive (docs/specs/documentos-espelhados).
+        Route::post('documentos/inventario', [\App\Http\Controllers\DocumentosRunnerController::class, 'inventario'])->name('documentos.runner.inventario');
+        Route::post('documentos/{pasta}/partes', [\App\Http\Controllers\DocumentosRunnerController::class, 'parte'])->whereNumber('pasta')->name('documentos.runner.parte');
     });
 
 /*

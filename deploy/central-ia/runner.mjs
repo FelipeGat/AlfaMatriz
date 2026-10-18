@@ -27,6 +27,7 @@ import { girar, limparWorktrees } from './limpeza.mjs';
 import { transcrever, whisperInstalado } from './transcricao.mjs';
 import { hora as horaDoGestor, lerGestor } from './gestor.mjs';
 import { hora as horaDaAgenda, lerAgenda as lerAgendaGoogle } from './agenda-google.mjs';
+import { configuracao as pastasDeDocumentos, espelhar as espelharDocumentos } from './documentos.mjs';
 import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h; chave servidor + conta +
@@ -96,6 +97,8 @@ function lerConfig() {
         // - google: o exportador da agenda do Google (`programa|script|pasta`),
         //   só leitura, na pasta da ponte pessoal já autorizada (Secretário).
         google: v('CENTRAL_IA_GOOGLE') || '',
+        // Pastas espelhadas do OneDrive: "Nome|caminho;Outro|caminho" (documentos-espelhados).
+        documentos: v('CENTRAL_IA_DOCUMENTOS') || '',
         retrato: (v('CENTRAL_IA_RETRATO') || '').replace(/^~/, HOME),
         // O arquivo que o launchd enche com a saída deste processo (instalar.sh),
         // para girar quando passa do limite (T-378). No Linux e no WSL a saída
@@ -994,6 +997,9 @@ let transcricaoPausadaAte = 0;
 let lendoAgenda = false;
 let ultimaAgenda = null;
 let agendaPausadaAte = 0;
+// Documentos: a cada 15 min; com envio pendente (rodada limitada), no minuto seguinte.
+let espelhando = false;
+let proximoEspelho = 0;
 let whisperConferido = { em: 0, ok: false };
 async function whisperPronto() {
     if (Date.now() - whisperConferido.em > 600_000) whisperConferido = { em: Date.now(), ok: await whisperInstalado() };
@@ -1031,6 +1037,19 @@ while (!parar) {
                 if (envio.status === 403 || envio.status === 404) agendaPausadaAte = Date.now() + 3600_000 * 6;
                 if (envio.status !== 200) log('Agenda: envio →', envio.status);
             }).catch(e => log('Agenda: erro', e.message)).finally(() => { lendoAgenda = false; });
+        }
+        if (cfg.documentos && !espelhando && Date.now() >= proximoEspelho) {
+            espelhando = true;
+            (async () => {
+                let pendentes = 0;
+                for (const pasta of pastasDeDocumentos(cfg.documentos)) {
+                    const r = await espelharDocumentos(pasta, cfg.maquina, { api, apiArquivo });
+                    pendentes += r.pendentes;
+                    if (r.erro) log(`Documentos (${pasta.nome}):`, r.erro);
+                    else if (r.enviados || r.removidos) log(`Documentos (${pasta.nome}): ${r.enviados} enviado(s), ${r.removidos} removido(s), ${r.pendentes} na fila`);
+                }
+                proximoEspelho = Date.now() + (pendentes ? 60_000 : 15 * 60_000);
+            })().catch(e => { log('Documentos: erro', e.message); proximoEspelho = Date.now() + 15 * 60_000; }).finally(() => { espelhando = false; });
         }
         if (!transcrevendo && rodando.size < PARALELO && Date.now() >= transcricaoPausadaAte && await whisperPronto()) {
             const t = await api('transcricoes/proxima', { maquina: cfg.maquina });

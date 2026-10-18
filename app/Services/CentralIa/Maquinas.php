@@ -48,6 +48,8 @@ class Maquinas
         'gestor.mjs', 'secretario_gestor.php',
         // Agenda do Google pela máquina: o .py vai para a pasta da ponte pessoal do Google.
         'agenda-google.mjs', 'secretario_agenda.py',
+        // Pastas de documentos espelhadas do OneDrive (documentos-espelhados).
+        'documentos.mjs',
     ];
 
     public function podeConectar(User $user): bool

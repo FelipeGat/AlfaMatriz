@@ -36,11 +36,6 @@
             ['route' => 'secretario.agenda', 'recurso' => 'secretario', 'pattern' => 'secretario.agenda', 'label' => 'Minha agenda', 'icon' => 'calendar', 'matriz' => true],
             ['route' => 'secretario.reunioes.index', 'recurso' => 'secretario', 'pattern' => 'secretario.reunioes.*', 'label' => 'Reuniões', 'icon' => 'speaker-wave', 'matriz' => true],
             ['route' => 'secretario.emails.index', 'recurso' => 'secretario', 'pattern' => 'secretario.emails.*', 'label' => 'Mensagens', 'icon' => 'balao', 'matriz' => true],
-            // Projetos da VixCard pelo VixOrganize (docs/specs/secretario-vixorganize):
-            // só para quem ligou a conexão em Configurações — para os outros, seria
-            // uma porta que só redireciona.
-            ['route' => 'secretario.vixorganize', 'recurso' => 'secretario', 'pattern' => 'secretario.vixorganize*', 'label' => 'VixOrganize', 'icon' => 'view-grid', 'matriz' => true,
-                'so_se' => fn () => \App\Models\SecretarioVixOrganize::de(Auth::user())->exists()],
             ['route' => 'secretario.configuracoes', 'recurso' => 'secretario', 'pattern' => 'secretario.configuracoes', 'label' => 'Configurações', 'icon' => 'settings', 'matriz' => true],
         ],
         'Painéis' => [
@@ -60,6 +55,10 @@
             ['route' => 'revendas.index', 'recurso' => 'revendas', 'pattern' => ['revendas.*', 'clientes.*'], 'label' => 'Revendas e clientes', 'icon' => 'building', 'params' => $escopo ? ['aba' => 'clientes'] : []],
             ['route' => 'produtos.index', 'recurso' => 'sistemas', 'pattern' => ['produtos.*', 'sistemas.*', 'precos.*'], 'label' => 'Produtos', 'icon' => 'cube-outline', 'matriz' => true],
             ['route' => 'faturamento.index', 'recurso' => 'faturamento', 'pattern' => 'faturamento.*', 'label' => 'Faturamento', 'icon' => 'repeat'],
+            // Pastas espelhadas do OneDrive (documentos-espelhados): sem recurso de
+            // permissão — o acesso é pela pasta —, então só aparece para quem tem uma.
+            ['route' => 'documentos.index', 'pattern' => 'documentos.*', 'label' => 'Documentos', 'icon' => 'document', 'matriz' => true,
+                'so_se' => fn () => \App\Models\DocumentoPasta::alguma(Auth::user())],
         ],
         'Financeiro' => [
             ['route' => 'cobrancas.index', 'recurso' => 'cobrancas', 'pattern' => 'cobrancas.*', 'label' => 'Receitas', 'icon' => 'trending-up'],

@@ -198,10 +198,11 @@ class VixOrganizeTest extends TestCase
         $this->assertCount($antes, Http::recorded(), 'Nada saiu para o VixOrganize');
     }
 
-    public function test_menu_so_aparece_para_quem_conectou(): void
+    /** O VixOrganize saiu do uso (Felipe, 18/10/2026): o menu não o oferece mais, nem conectado. */
+    public function test_menu_nao_oferece_mais_o_vixorganize_e_desligar_apaga(): void
     {
         $u = $this->conectado();
-        $this->get(route('secretario.meu-dia'))->assertOk()->assertSee(route('secretario.vixorganize'));
+        $this->get(route('secretario.meu-dia'))->assertOk()->assertDontSee(route('secretario.vixorganize'));
 
         $this->delete(route('secretario.vixorganize.desconectar'))->assertSessionHas('status');
         $this->assertSame(0, SecretarioVixOrganize::count());
