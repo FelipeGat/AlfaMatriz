@@ -119,6 +119,34 @@ class ScriptProvisionarTest extends TestCase
     }
 
     /**
+     * @spec:AC-014 O agendador roda como www-data, o dono do php-fpm (T-411).
+     * No crontab do root, o primeiro registro do dia feito por ele criava o
+     * laravel-AAAA-MM-DD.log como root:root 644, e o php-fpm passava o resto
+     * do dia sem conseguir registrar erro — o vigia de logs não via nada.
+     */
+    public function test_o_agendador_roda_como_www_data_e_sai_do_crontab_do_root(): void
+    {
+        $processo = $this->rodar();
+        $this->assertSame(0, $processo->getExitCode(), $processo->getErrorOutput().$processo->getOutput());
+
+        $chamadas = implode("\n", $this->lerChamadas());
+
+        $posRemocaoDoRoot = strpos($chamadas, "crontab -l 2>/dev/null | grep -vF 'php artisan schedule:run'");
+        $posInclusao = strpos($chamadas, '| crontab -u www-data -;');
+
+        $this->assertNotFalse($posRemocaoDoRoot, 'O agendador precisa sair do crontab do root.');
+        $this->assertNotFalse($posInclusao, 'O agendador precisa entrar no crontab do www-data.');
+        $this->assertLessThan(
+            $posInclusao,
+            $posRemocaoDoRoot,
+            'Com as duas linhas ao mesmo tempo, cada comando agendado roda em dobro no mesmo minuto.'
+        );
+
+        // O cron do www-data não abriria o log do agendador se ele seguisse do root.
+        $this->assertStringContainsString('chown www-data:www-data /var/log/alfamatriz-schedule.log', $chamadas);
+    }
+
+    /**
      * @spec:AC-013 O provisionamento instala em /usr/local/bin os scripts que
      * o cron executa. Eram cópias manuais: uma etapa acrescentada ao vigia de
      * tags ficou publicada no repositório e ausente do arquivo que roda, sem
@@ -227,7 +255,9 @@ class ScriptProvisionarTest extends TestCase
 
         $chamadas = implode("\n", $this->lerChamadas());
 
-        $posRemocao = strpos($chamadas, "grep -v 'cd /var/www/alfamatriz && php artisan schedule:run'");
+        // Desde a T-411 a remoção leva do root QUALQUER linha do agendador — a
+        // antiga, da raiz, e a do `atual` —, e a nova entra no do www-data.
+        $posRemocao = strpos($chamadas, "grep -vF 'php artisan schedule:run'");
         $posInclusao = strpos($chamadas, 'cd /var/www/alfamatriz/atual && php artisan schedule:run');
 
         $this->assertNotFalse($posRemocao, 'A linha antiga precisa ser removida.');
