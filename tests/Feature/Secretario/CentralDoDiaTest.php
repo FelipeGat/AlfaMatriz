@@ -42,9 +42,9 @@ class CentralDoDiaTest extends TestCase
             'economia.awesomeapi.com.br/*' => Http::response(['USDBRL' => ['bid' => '5.0734', 'pctChange' => '-0.69', 'high' => '5.098', 'low' => '5.0613']]),
             'api.open-meteo.com/*' => Http::response(['current' => ['temperature_2m' => 26.4, 'weather_code' => 2],
                 'daily' => ['temperature_2m_max' => [29.6], 'temperature_2m_min' => [21.2], 'precipitation_probability_max' => [40]]]),
-            'ge.globo.com/*' => Http::response($this->rss([['Flamengo vence <b>clássico</b>', 'https://ge.globo.com/a'], ['Escalação', 'javascript:alert(1)']])),
-            'g1.globo.com/rss/g1/mundo/*' => Http::response($this->rss([['Notícia do mundo', 'https://g1.globo.com/m']])),
-            'g1.globo.com/rss/g1/*' => Http::response($this->rss([['<script>x</script>Notícia do Brasil', 'https://g1.globo.com/b']])),
+            'ge.globo.com/*' => Http::response($this->rss([['Palmeiras vence <b>clássico</b>', 'https://ge.globo.com/a'], ['Escalação', 'javascript:alert(1)']])),
+            'techcrunch.com/*' => Http::response($this->rss([['AI startup raises', 'https://techcrunch.com/m']])),
+            'g1.globo.com/rss/g1/tecnologia/*' => Http::response($this->rss([['<script>x</script>Celular novo', 'https://g1.globo.com/b']])),
         ]);
     }
 
@@ -54,14 +54,14 @@ class CentralDoDiaTest extends TestCase
         $this->artisan('secretario:la-fora')->assertSuccessful();
         $l = app(LaFora::class)->ler();
         $this->assertSame([5.0734, 26, 'parcialmente nublado', 30, 21, 40], [$l['dolar']['compra'], $l['clima']['agora'], $l['clima']['tempo'], $l['clima']['maxima'], $l['clima']['minima'], $l['clima']['chuva']]);
-        $this->assertSame('Flamengo vence clássico', $l['flamengo']['manchetes'][0]['titulo']);
-        $this->assertNull($l['flamengo']['manchetes'][1]['link'], 'Só https');
-        $this->assertSame('xNotícia do Brasil', $l['brasil']['manchetes'][0]['titulo'], 'Tag some, vira texto');
-        $this->assertSame('Notícia do mundo', $l['mundo']['manchetes'][0]['titulo']);
+        $this->assertSame('Palmeiras vence clássico', $l['futebol']['manchetes'][0]['titulo']);
+        $this->assertNull($l['futebol']['manchetes'][1]['link'], 'Só https');
+        $this->assertSame('xCelular novo', $l['tec_brasil']['manchetes'][0]['titulo'], 'Tag some, vira texto');
+        $this->assertSame('AI startup raises', $l['tec_mundo']['manchetes'][0]['titulo']);
 
         $u = $this->dono(telegram: false);
         $this->actingAs($u)->get(route('secretario.meu-dia'))->assertOk()
-            ->assertSee('Lá fora')->assertSee('R$ 5,07')->assertSee('Flamengo vence clássico')->assertSee('às 10:00')->assertDontSee('<script>x</script>', false);
+            ->assertSee('Lá fora')->assertSee('R$ 5,07')->assertSee('Palmeiras vence clássico')->assertSee('Futebol brasileiro')->assertSee('Tecnologia · Mundo')->assertSee('AI startup raises')->assertSee('10:00')->assertDontSee('<script>x</script>', false);
 
         // Fonte fora do ar: guarda o último bom; com mais de 6 h, "indisponível".
         Http::fake(['*' => Http::response('erro', 500)]);

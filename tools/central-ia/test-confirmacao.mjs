@@ -27,6 +27,13 @@ assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'corrija' }, 'depl
 assert.ok(exigeConfirmacao({ modo: 'implementar', instrucao: 'faça o deploy' }, 'nunca', false), 'deploy pede código mesmo com "nunca"');
 assert.ok(exigeConfirmacao({ modo: 'analisar', instrucao: 'faça o push da branch' }, 'nunca', true));
 assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'corrija o filtro' }, 'nunca', false));
+// Palavra da IA não é pedido de deploy (18/10/2026): a pergunta citada e a proposta aprovada.
+assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'Resposta à sua pergunta ("Posso fazer o commit local (branch felipe, sem push e sem deploy)?"): Commit e começar pelo Painel' }, 'inicio', true));
+assert.ok(exigeConfirmacao({ modo: 'implementar', instrucao: 'Resposta à sua pergunta ("Está pronto. Posso seguir?"): sim, faça o push' }, 'inicio', true), 'o push pedido pela pessoa continua pedindo código');
+assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'Implemente o que foi proposto na análise anterior desta tarefa e aprovado pela pessoa.\n\nProposta aprovada:\nDepois do teste, publicar em produção.' }, 'inicio', true));
+assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'A pessoa respondeu "Pode seguir." à sua última mensagem nesta tarefa: siga com o próximo passo (deploy).' }, 'inicio', true));
+assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'ajuste a tela do módulo de produção' }, 'inicio', true), '"produção" sozinha é o chão de fábrica');
+assert.ok(exigeConfirmacao({ modo: 'implementar', instrucao: 'pode mandar pra produção' }, 'inicio', true));
 // A pessoa só deixa mais rígido que o mínimo da máquina.
 const { regraEfetiva } = await import('../../deploy/central-ia/politica.mjs');
 assert.equal(regraEfetiva('inicio', 'nunca'), 'inicio');
@@ -180,7 +187,8 @@ console.log('T-368: acesso total sem publicar fora de deploy');
     assert.ok(!chatConfirmado(arq, chaveDoChat(producao, 7, 5), agora), 'mesmo número em outro servidor pede código');
     assert.ok(!chatConfirmado(arq, chaveDoChat(staging, 8, 5), agora), 'mesmo número em outra conta pede código');
     assert.ok(!chatConfirmado(arq, chaveDoChat(staging, 7, 6), agora), 'outro chat pede código');
-    assert.ok(!chatConfirmado(arq, chaveDoChat(staging, 7, 5), agora + VALIDADE_CHAT_MS + 1), 'vence em 12 h');
+    assert.ok(chatConfirmado(arq, chaveDoChat(staging, 7, 5), agora + 7 * 24 * 3600_000), 'vale a semana inteira no mesmo chat');
+    assert.ok(!chatConfirmado(arq, chaveDoChat(staging, 7, 5), agora + VALIDADE_CHAT_MS + 1), 'vence em 30 dias');
     // Servidor sem a conta no pedido: não há chave, nada fica liberado nem gravado.
     assert.equal(chaveDoChat(producao, undefined, 5), null);
     assert.ok(!chatConfirmado(arq, chaveDoChat(producao, undefined, 5), agora));

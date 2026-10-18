@@ -76,17 +76,37 @@ export const PUBLICACAO_NO_SHELL = ['git push', 'git -C', 'ssh', 'scp', 'sftp', 
 
 /** Pedido de deploy: sempre confirmado por código, e o único que publica. */
 export function pedeDeploy(job) {
-    return PEDE_DEPLOY.test(job?.instrucao || '');
+    return PEDE_DEPLOY.test(textoDaPessoa(job?.instrucao));
 }
 
-export const PEDE_DEPLOY = /\b(deploy|deplo[iy]|produ[çc][ãa]o|publi(car|que|ca[çc][ãa]o)|push|tag\s+v\d|release|subir\s+(pra|para)\s+o?\s*ar|merge\s+(na|para\s+a)\s+main)\b/i;
+/**
+ * Só as palavras da PESSOA (Felipe, 18/10/2026: "em todas as correções ele
+ * manda uma confirmação"). A resposta a uma pergunta da IA chega com a
+ * pergunta citada — "Posso fazer o commit (sem push e sem deploy)?" — e a
+ * implementação aprovada chega com a proposta da IA inteira: palavra da IA
+ * não é pedido de deploy. Sem pedido da pessoa também não há permissão de
+ * publicar (`permissoes(..., { deploy })`), então errar para menos é seguro.
+ */
+export function textoDaPessoa(instrucao = '') {
+    const t = String(instrucao ?? '');
+    let m = t.match(/^\s*Resposta à sua pergunta \("[\s\S]*"\):\s*([\s\S]*)$/);
+    if (m) return m[1];
+    m = t.match(/^\s*A pessoa respondeu "([\s\S]*)" à sua última mensagem nesta tarefa:/);
+    if (m) return m[1];
+    if (/^\s*Implemente o que foi proposto na análise anterior desta tarefa/.test(t)) return '';
+    return t;
+}
+
+// "Produção" sozinha não é deploy: é também o chão de fábrica da VixCard
+// ("o módulo de produção"). Conta com verbo de levar para lá.
+export const PEDE_DEPLOY = /\b(deploy|deplo[iy]\w*|publi(car|que|ca[çc][ãa]o)|push|tag\s+v\d|release|merge\s+(na|para\s+a)\s+main|(subir|suba|sobe|mandar|mande|manda|levar|leve|leva|colocar|coloque|coloca|jogar|jogue|joga)\s+(pra|para|em|na)\s+(a\s+)?produ[çc][ãa]o|subir\s+(pra|para)\s+o?\s*ar)\b/i;
 
 /** Precisa do código do dono antes de rodar? `chatConfirmado`: já confirmou neste chat. */
 export function exigeConfirmacao(job, regra, chatConfirmado = false) {
     // Deploy, produção, push e publicação pedem o código SEMPRE, em qualquer
     // regra (dono, 13/10/2026: "nem deploy sem autenticação de dois fatores,
     // que é a mensagem no Telegram"). Máquina sem Telegram não executa.
-    if (PEDE_DEPLOY.test(job.instrucao || '')) return true;
+    if (pedeDeploy(job)) return true;
     if (regra === 'nunca') return false;
     if (regra === 'sempre') return true;
     if (regra === 'deploy') return false;

@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 /**
  * "Lá fora" do Meu Dia (docs/specs/secretario-central-do-dia, FR-001/FR-002):
- * dólar, clima de Vitória, Flamengo e as notícias, de fontes públicas e sem
+ * dólar, clima de Vitória, futebol brasileiro e notícias de tecnologia, de fontes públicas e sem
  * chave, buscadas pelo cron a cada 30 min e lidas do cache — o Meu Dia nunca
  * espera uma fonte externa. Público: igual para todos, nada da conta sai.
  * Placar e próximo jogo ficaram de fora: a fonte gratuita testada devolveu
@@ -27,9 +27,11 @@ class LaFora
     public const FONTES = [
         'dolar' => 'https://economia.awesomeapi.com.br/json/last/USD-BRL',
         'clima' => 'https://api.open-meteo.com/v1/forecast',
-        'flamengo' => 'https://ge.globo.com/rss/ge/futebol/times/flamengo/',
-        'brasil' => 'https://g1.globo.com/rss/g1/',
-        'mundo' => 'https://g1.globo.com/rss/g1/mundo/',
+        // Felipe, 18/10/2026: esporte é o futebol brasileiro (não só o Flamengo), e
+        // notícia é só tecnologia — daqui (g1) e de fora (TechCrunch, em inglês).
+        'futebol' => 'https://ge.globo.com/rss/ge/futebol/',
+        'tec_brasil' => 'https://g1.globo.com/rss/g1/tecnologia/',
+        'tec_mundo' => 'https://techcrunch.com/feed/',
     ];
 
     private const TEMPO = [0 => 'céu limpo', 1 => 'quase limpo', 2 => 'parcialmente nublado', 3 => 'nublado', 45 => 'neblina', 48 => 'neblina',
@@ -91,19 +93,22 @@ class LaFora
         ];
     }
 
-    private function flamengo(): array
+    /** Quantas manchetes cada bloco guarda (o cartão mostra 3; "mais" abre o resto). */
+    public const MANCHETES = 6;
+
+    private function futebol(): array
     {
-        return ['manchetes' => $this->rss(self::FONTES['flamengo'], 3)];
+        return ['manchetes' => $this->rss(self::FONTES['futebol'], self::MANCHETES)];
     }
 
-    private function brasil(): array
+    private function tec_brasil(): array
     {
-        return ['manchetes' => $this->rss(self::FONTES['brasil'], 5)];
+        return ['manchetes' => $this->rss(self::FONTES['tec_brasil'], self::MANCHETES)];
     }
 
-    private function mundo(): array
+    private function tec_mundo(): array
     {
-        return ['manchetes' => $this->rss(self::FONTES['mundo'], 5)];
+        return ['manchetes' => $this->rss(self::FONTES['tec_mundo'], self::MANCHETES)];
     }
 
     /** @return list<array{titulo: string, link: ?string}> texto puro; link só https */

@@ -30,7 +30,7 @@ class SecretarioController extends Controller
             'telegramPareado' => app(TelegramCanal::class)->vinculoDe($request->user()) !== null,
             // Etapa 7: uma linha só, com o que é alta prioridade e o total (FR-010).
             'acompanhamentos' => \App\Models\SecretarioAcompanhamento::de($request->user())->ativos()->get(),
-            // Etapa 8: dólar, clima, Flamengo e notícias, do cache (público, igual para todos).
+            // Etapa 8: dólar, clima, futebol brasileiro e tecnologia, do cache (público, igual para todos).
             'laFora' => app(\App\Services\Secretario\LaFora::class)->ler(),
         ] + app(\App\Services\Secretario\PainelDoDia::class)->montar($request->user(), CarbonImmutable::now()));
     }
