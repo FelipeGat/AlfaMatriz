@@ -21,6 +21,14 @@ class PainelVixcard
 {
     public const EM_ANDAMENTO = ['em_desenvolvimento', 'em_revisao', 'em_staging', 'em_producao'];
 
+    /**
+     * Quanto cada etapa vale no andamento do produto (média das frentes). Só
+     * contar concluídas deixava em 0% o produto que está em teste — e o gestor
+     * quer ver quanto falta, não quantas caixinhas fecharam.
+     */
+    public const PESO_DA_ETAPA = ['aberta' => 0, 'backlog' => 0, 'em_desenvolvimento' => 25, 'em_revisao' => 50,
+        'em_staging' => 75, 'em_producao' => 90, 'concluida' => 100];
+
     /** Sem movimento há mais que isso, o projeto pede atenção. */
     public const PARADO_DIAS = 14;
 
@@ -70,7 +78,7 @@ class PainelVixcard
             'resumo' => $mae?->resumo ?: $mae?->titulo,
             'situacao' => $situacao,
             'motivo' => $motivo,
-            'progresso' => $tarefas->isEmpty() ? 0 : (int) round($concluidas * 100 / $tarefas->count()),
+            'progresso' => $tarefas->isEmpty() ? 0 : (int) round($tarefas->avg(fn (Tarefa $t) => self::PESO_DA_ETAPA[$t->status] ?? 0)),
             'total' => $tarefas->count(),
             'concluidas' => $concluidas,
             'abertas' => $abertas->count(),

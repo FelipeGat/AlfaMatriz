@@ -29,10 +29,13 @@ e como está. Simples e funcional. Em modo card e lista."
 3. **Projetos VixCard**, a tela inicial dele, com alternância entre card e lista. Para cada produto mostra:
    - resumo (a descrição da tarefa-mãe);
    - situação (em dia, atenção ou atrasado);
-   - andamento (% concluído das tarefas);
+   - andamento (% pelo peso da etapa de cada frente; ver abaixo);
    - o que está em andamento agora;
    - próximo prazo, última entrega e próximo compromisso.
    Um clique leva ao quadro filtrado pelo produto.
+
+**Andamento** (18/10/2026): é a média das frentes, pelo peso da etapa de cada uma: fila 0%, em andamento 25%,
+revisão 50%, staging 75%, produção 90% e concluída 100%. A tarefa-mãe parada na fila não entra na conta.
 
 ## Requirements
 
