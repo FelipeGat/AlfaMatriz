@@ -96,6 +96,25 @@
             @endforeach
         </div>
 
+        {{-- Reuniões que o dono compartilhou com esta conta (secretario-reuniao-produto). --}}
+        @if ($reunioes->isNotEmpty())
+            <section class="rounded-panel border border-line bg-surface">
+                <p class="flex items-center justify-between border-b border-line px-4 py-2.5 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                    Reuniões dos projetos <a href="{{ route('reunioes.compartilhadas') }}" class="normal-case tracking-normal text-brand-text hover:underline">ver todas</a>
+                </p>
+                <ul class="divide-y divide-line">
+                    @foreach ($reunioes as $r)
+                        <li><a href="{{ route('reunioes.compartilhada', $r->id) }}" class="flex items-center gap-3 px-4 py-2.5 hover:bg-head/50">
+                            <span class="w-[78px] shrink-0 text-[12px] text-ink-mute">{{ $r->created_at->format('d/m H:i') }}</span>
+                            <span class="min-w-0 flex-1"><span class="block truncate text-[13.5px] font-semibold text-ink">{{ $r->titulo }}</span>
+                                <span class="block truncate text-[12px] text-ink-mute">{{ $r->resumo ?: 'Ainda em análise.' }}</span></span>
+                            <span class="shrink-0 rounded-badge bg-head px-2 py-0.5 text-[11.5px] text-ink-dim">{{ $r->sistema?->nome }}</span>
+                        </a></li>
+                    @endforeach
+                </ul>
+            </section>
+        @endif
+
         {{-- Lista --}}
         <div x-show="modo === 'lista'" x-cloak>
             <x-tabela min="860px">

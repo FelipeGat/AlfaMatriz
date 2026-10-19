@@ -20,11 +20,11 @@ class DocumentoPasta extends Model
 
     protected $table = 'documento_pastas';
 
-    protected $fillable = ['user_id', 'nome', 'maquina', 'lido_em', 'arquivos', 'bytes'];
+    protected $fillable = ['user_id', 'nome', 'maquina', 'lido_em', 'arquivos', 'bytes', 'subpastas'];
 
     protected function casts(): array
     {
-        return ['lido_em' => 'datetime'];
+        return ['lido_em' => 'datetime', 'subpastas' => 'array'];
     }
 
     public function dono(): BelongsTo
@@ -40,6 +40,11 @@ class DocumentoPasta extends Model
     public function documentos(): HasMany
     {
         return $this->hasMany(Documento::class, 'pasta_id');
+    }
+
+    public function operacoes(): HasMany
+    {
+        return $this->hasMany(DocumentoOperacao::class, 'pasta_id');
     }
 
     /** As pastas que a pessoa pode ver: dela, ou compartilhadas com ela. */

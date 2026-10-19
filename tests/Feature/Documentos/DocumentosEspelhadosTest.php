@@ -173,11 +173,11 @@ class DocumentosEspelhadosTest extends TestCase
         $this->enviar($id, 'leia-me.txt', 'oi');
 
         $this->actingAs($this->felipe)->get(route('documentos.pasta', $id))->assertOk()
-            ->assertSeeInOrder(['Clientes', '2 pasta(s) · 2 arquivo(s)', '1 PDF', '1 Vídeo', 'Dentro:', 'Lorenzo, Radier'])
+            ->assertSeeInOrder(['Clientes', '2 pasta(s) · 2 arq.', '1 PDF', '1 Vídeo', 'Dentro:', 'Lorenzo, Radier'])
             ->assertSee('Demonstração')->assertSee('Arquivos nesta pasta')->assertSee('leia-me.txt')->assertDontSee('proposta.pdf');
 
         $this->get(route('documentos.pasta', [$id, 'caminho' => 'Clientes']))->assertOk()
-            ->assertSeeInOrder(['Orçamentos VixCard', '›', 'Clientes'])->assertSee('Lorenzo')->assertSee('Mais recentes:')->assertSee('proposta.pdf')->assertDontSee('leia-me.txt');
+            ->assertSeeInOrder(['Orçamentos VixCard', '›', 'Clientes'])->assertSee('Lorenzo')->assertSee('Recentes:')->assertSee('proposta.pdf')->assertDontSee('leia-me.txt');
         $this->get(route('documentos.pasta', [$id, 'caminho' => 'Clientes/Lorenzo']))->assertOk()
             ->assertSee('proposta.pdf')->assertSee(route('documentos.ver', Documento::where('nome', 'proposta.pdf')->value('id')), false);
         $this->get(route('documentos.pasta', [$id, 'caminho' => '../../etc']))->assertOk()->assertSee('leia-me.txt', 'Caminho inexistente volta para a raiz');

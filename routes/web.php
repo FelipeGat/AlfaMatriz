@@ -221,6 +221,8 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         // Etapa 4 (docs/specs/secretario-reunioes): reuniões por áudio.
         Route::get('reunioes', [\App\Http\Controllers\SecretarioReunioesController::class, 'index'])->name('reunioes.index')->middleware('permissao:secretario,ler');
         Route::post('reunioes', [\App\Http\Controllers\SecretarioReunioesController::class, 'enviar'])->name('reunioes.enviar')->middleware('permissao:secretario,incluir');
+        Route::patch('reunioes/{reuniao}/produto', [\App\Http\Controllers\SecretarioReunioesController::class, 'produto'])->whereNumber('reuniao')->name('reunioes.produto')->middleware('permissao:secretario,editar');
+        Route::put('reunioes/{reuniao}/participantes', [\App\Http\Controllers\SecretarioReunioesController::class, 'participantes'])->whereNumber('reuniao')->name('reunioes.participantes')->middleware('permissao:secretario,editar');
         Route::patch('reunioes/{reuniao}/empresa', [\App\Http\Controllers\SecretarioReunioesController::class, 'empresa'])->whereNumber('reuniao')->name('reunioes.empresa')->middleware('permissao:secretario,editar');
         Route::get('reunioes/{reuniao}', [\App\Http\Controllers\SecretarioReunioesController::class, 'mostrar'])->whereNumber('reuniao')->name('reunioes.mostrar')->middleware('permissao:secretario,ler');
         Route::get('reunioes/{reuniao}/ata', [\App\Http\Controllers\SecretarioReunioesController::class, 'ata'])->whereNumber('reuniao')->name('reunioes.ata')->middleware('permissao:secretario,ler');
@@ -394,7 +396,18 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::get('comercial/documentos', [\App\Http\Controllers\DocumentosController::class, 'index'])->name('documentos.index');
     Route::get('comercial/documentos/{pasta}', [\App\Http\Controllers\DocumentosController::class, 'pasta'])->whereNumber('pasta')->name('documentos.pasta');
     Route::put('comercial/documentos/{pasta}/acessos', [\App\Http\Controllers\DocumentosController::class, 'acessos'])->whereNumber('pasta')->name('documentos.acessos');
+    // Reunião compartilhada com quem participou (docs/specs/secretario-reuniao-produto):
+    // sem permissão de perfil — o controller confere a marcação do dono.
+    Route::get('reunioes-compartilhadas', [\App\Http\Controllers\ReunioesCompartilhadasController::class, 'index'])->name('reunioes.compartilhadas');
+    Route::get('reunioes-compartilhadas/{reuniao}', [\App\Http\Controllers\ReunioesCompartilhadasController::class, 'mostrar'])->whereNumber('reuniao')->name('reunioes.compartilhada');
+    // Mão dupla (docs/specs/documentos-mao-dupla): quem vê a pasta também altera; a máquina do dono aplica.
+    Route::post('comercial/documentos/{pasta}/pastas', [\App\Http\Controllers\DocumentosController::class, 'criarPasta'])->whereNumber('pasta')->name('documentos.criar-pasta');
+    Route::post('comercial/documentos/{pasta}/envios', [\App\Http\Controllers\DocumentosController::class, 'enviar'])->whereNumber('pasta')->name('documentos.enviar');
+    Route::post('comercial/documentos/{pasta}/apagar', [\App\Http\Controllers\DocumentosController::class, 'apagar'])->whereNumber('pasta')->name('documentos.apagar');
+    Route::post('comercial/documentos/{pasta}/mover', [\App\Http\Controllers\DocumentosController::class, 'mover'])->whereNumber('pasta')->name('documentos.mover');
+    Route::get('comercial/documentos/{pasta}/pendentes', [\App\Http\Controllers\DocumentosController::class, 'pendentes'])->whereNumber('pasta')->name('documentos.pendentes');
     Route::get('comercial/documentos/arquivo/{documento}/ver', [\App\Http\Controllers\DocumentosController::class, 'ver'])->whereNumber('documento')->name('documentos.ver');
+    Route::get('comercial/documentos/arquivo/{documento}/miniatura', [\App\Http\Controllers\DocumentosController::class, 'miniatura'])->whereNumber('documento')->name('documentos.miniatura');
     Route::get('comercial/documentos/arquivo/{documento}/baixar', [\App\Http\Controllers\DocumentosController::class, 'baixar'])->whereNumber('documento')->name('documentos.baixar');
 
     // Projetos VixCard (docs/specs/acesso-vixcard): o painel dos produtos da VixCard.

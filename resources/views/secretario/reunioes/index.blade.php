@@ -82,19 +82,24 @@
 
         {{-- Abas e tabela --}}
         <section class="rounded-panel border border-line bg-surface">
-            <nav class="flex gap-1 overflow-x-auto border-b border-line px-3 pt-2">
+            <nav class="flex items-end gap-1 overflow-x-auto border-b border-line px-3 pt-2">
                 @foreach (\App\Http\Controllers\SecretarioReunioesController::ABAS as $k => [$rotulo])
                     <a href="{{ $url(['aba' => $k, 'page' => null]) }}" class="flex shrink-0 items-center gap-1.5 border-b-2 px-3 pb-2 pt-1 text-[13px] {{ $filtros['aba'] === $k ? 'border-brand font-semibold text-ink' : 'border-transparent text-ink-mute hover:text-ink' }}">
                         {{ $rotulo }}
                         <span class="rounded-full px-1.5 text-[11px] font-semibold {{ $filtros['aba'] === $k ? 'bg-brand text-on-brand' : 'bg-head text-ink-mute' }}">{{ $contagem[$k] }}</span>
                     </a>
                 @endforeach
+                @if ($compartilhadas)
+                    <a href="{{ route('reunioes.compartilhadas') }}" class="ml-auto flex shrink-0 items-center gap-1.5 px-3 pb-2 pt-1 text-[13px] text-brand-text hover:underline">
+                        Compartilhadas comigo <span class="rounded-full bg-head px-1.5 text-[11px] font-semibold text-ink-mute">{{ $compartilhadas }}</span>
+                    </a>
+                @endif
             </nav>
-            <x-tabela min="860px" class="!rounded-none !border-0 !bg-transparent">
+            <x-tabela min="980px" class="!rounded-none !border-0 !bg-transparent">
                     <thead>
                         <tr class="border-b border-line font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
                             <th class="px-4 py-2.5 font-normal">Data / hora</th><th class="px-3 py-2.5 font-normal">Título</th><th class="px-3 py-2.5 font-normal">Participantes</th>
-                            <th class="px-3 py-2.5 font-normal">Empresa</th><th class="px-3 py-2.5 font-normal">Status</th><th class="px-3 py-2.5 font-normal">Ações</th>
+                            <th class="px-3 py-2.5 font-normal">Empresa</th><th class="px-3 py-2.5 font-normal">Produto</th><th class="px-3 py-2.5 font-normal">Status</th><th class="px-3 py-2.5 font-normal">Ações</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-line">
@@ -127,6 +132,15 @@
                                     </form>
                                 </td>
                                 <td class="px-3 py-3">
+                                    {{-- O produto (secretario-reuniao-produto): só o dono vincula, e esta lista só tem as dele. --}}
+                                    <form method="POST" action="{{ route('secretario.reunioes.produto', $r->id) }}">@csrf @method('PATCH')
+                                        <select name="sistema_id" onchange="this.form.submit()" class="max-w-[150px] rounded-control border border-transparent bg-transparent py-1 pl-1 pr-7 text-[13px] text-ink hover:border-btn-line focus:border-brand">
+                                            <option value="">—</option>
+                                            @foreach ($produtos as $s)<option value="{{ $s->id }}" @selected((int) $r->sistema_id === $s->id)>{{ $s->nome }}</option>@endforeach
+                                        </select>
+                                    </form>
+                                </td>
+                                <td class="px-3 py-3">
                                     <span class="inline-block whitespace-nowrap rounded-control px-2.5 py-1 text-[12px] font-semibold {{ $corStatus[$r->status] ?? 'bg-head text-ink-dim' }}">{{ $rotuloStatus[$r->status] ?? (\App\Models\SecretarioReuniao::ROTULOS_STATUS[$r->status] ?? $r->status) }}</span>
                                     @if (in_array($r->status, ['aguardando', 'transcrevendo', 'analisando'], true))
                                         {{-- Andamento ao vivo: a barra segue o aviso da máquina; mudou a etapa, recarrega (nunca no meio de uma gravação). --}}
@@ -152,7 +166,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="px-4 py-6 text-center text-[13.5px] text-ink-mute">{{ $busca !== '' ? 'Nenhuma reunião com “'.$busca.'”.' : 'Nenhuma reunião neste filtro.' }}</td></tr>
+                            <tr><td colspan="7" class="px-4 py-6 text-center text-[13.5px] text-ink-mute">{{ $busca !== '' ? 'Nenhuma reunião com “'.$busca.'”.' : 'Nenhuma reunião neste filtro.' }}</td></tr>
                         @endforelse
                     </tbody>
             </x-tabela>

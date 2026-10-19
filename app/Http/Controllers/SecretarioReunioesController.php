@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\CentralIaRunner;
 use App\Models\SecretarioReuniao;
+use App\Models\Notificacao;
 use App\Models\SecretarioReuniaoProposta;
+use App\Models\Sistema;
+use App\Models\User;
 use App\Services\Secretario\CentralDeGestao;
 use App\Services\Secretario\AnaliseDeReuniao;
 use App\Services\Secretario\Reunioes;
@@ -56,6 +59,8 @@ class SecretarioReunioesController extends Controller
         return view('secretario.reunioes.index', [
             'reunioes' => $reunioes, 'busca' => $busca, 'filtros' => $f + ['aba' => $aba], 'contagem' => $contagem,
             'maquinaOnline' => CentralIaRunner::where('user_id', $request->user()->id)->get()->contains(fn ($r) => $r->online()),
+            'produtos' => self::produtos()->get(['id', 'nome']),
+            'compartilhadas' => SecretarioReuniao::compartilhadasCom($request->user())->count(),
         ]);
     }
 
@@ -85,7 +90,9 @@ class SecretarioReunioesController extends Controller
                 'andamento' => $r->andamento()]);
         }
 
-        return view('secretario.reunioes.mostrar', ['r' => $r]);
+        return view('secretario.reunioes.mostrar', ['r' => $r, 'produtos' => self::produtos()->get(['id', 'nome']),
+            'pessoas' => User::where('ativo', true)->whereKeyNot($r->user_id)->orderBy('name')->get(['id', 'name']),
+            'marcados' => $r->compartilhadaCom()->pluck('users.id')->all(), 'sugeridos' => $r->sugestaoDeParticipantes()]);
     }
 
     public function ata(Request $request, int $reuniao): View
@@ -132,6 +139,44 @@ class SecretarioReunioesController extends Controller
         $r = SecretarioReuniao::de($request->user())->findOrFail($reuniao);
 
         return response()->json(['aprovadas' => $revisao->aprovarLote($request->user(), $r)]);
+    }
+
+    /** O produto da reunião (secretario-reuniao-produto): só o dono troca (FR-001). */
+    public function produto(Request $request, int $reuniao): RedirectResponse
+    {
+        $d = $request->validate(['sistema_id' => ['nullable', 'integer']]);
+        $r = SecretarioReuniao::de($request->user())->findOrFail($reuniao);
+        $id = $d['sistema_id'] ?? null;
+        abort_if($id && ! self::produtos()->whereKey($id)->exists(), 422);
+        $r->update(['sistema_id' => $id ?: null]);
+
+        return back();
+    }
+
+    /**
+     * Com quem participou e tem conta (FR-002, FR-003): marcar dá acesso e avisa
+     * no sino; desmarcar tira o acesso na hora. Cliente não tem conta, não entra.
+     */
+    public function participantes(Request $request, int $reuniao): RedirectResponse
+    {
+        $r = SecretarioReuniao::de($request->user())->findOrFail($reuniao);
+        $ids = $request->validate(['pessoas' => ['nullable', 'array'], 'pessoas.*' => ['integer']])['pessoas'] ?? [];
+        $validos = User::where('ativo', true)->whereKeyNot($r->user_id)->whereIn('id', $ids)->pluck('id');
+        $antes = $r->compartilhadaCom()->pluck('users.id');
+        $r->compartilhadaCom()->sync($validos);
+        foreach ($validos->diff($antes) as $novo) {
+            Notificacao::create(['destinatario_id' => $novo, 'tipo' => 'lembrete', 'nivel' => 'info', 'icone' => 'document',
+                'titulo' => Notificacao::caber($request->user()->name.' compartilhou a reunião "'.$r->titulo.'"'), 'meta' => 'Reuniões',
+                'rota' => route('reunioes.compartilhada', $r->id)]);
+        }
+
+        return back()->with('status', $validos->isEmpty() ? 'A reunião não está compartilhada com ninguém.' : 'Compartilhada com '.$validos->count().' pessoa(s).');
+    }
+
+    /** Os produtos que podem ser vinculados: o catálogo inteiro, VixCard inclusive. */
+    public static function produtos(): \Illuminate\Database\Eloquent\Builder
+    {
+        return Sistema::whereIn('natureza', ['produto', 'vixcard'])->where('ativo', true)->orderBy('nome');
     }
 
     /** A empresa da reunião, trocada na própria lista. */

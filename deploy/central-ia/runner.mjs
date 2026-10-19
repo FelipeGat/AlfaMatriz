@@ -27,7 +27,7 @@ import { girar, limparWorktrees } from './limpeza.mjs';
 import { transcrever, whisperInstalado } from './transcricao.mjs';
 import { hora as horaDoGestor, lerGestor } from './gestor.mjs';
 import { hora as horaDaAgenda, lerAgenda as lerAgendaGoogle } from './agenda-google.mjs';
-import { configuracao as pastasDeDocumentos, espelhar as espelharDocumentos } from './documentos.mjs';
+import { aplicarAlteracoes, configuracao as pastasDeDocumentos, espelhar as espelharDocumentos } from './documentos.mjs';
 import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h; chave servidor + conta +
@@ -1000,6 +1000,8 @@ let agendaPausadaAte = 0;
 // Documentos: a cada 15 min; com envio pendente (rodada limitada), no minuto seguinte.
 let espelhando = false;
 let proximoEspelho = 0;
+let alterando = false;
+let proximaAlteracao = 0;
 let whisperConferido = { em: 0, ok: false };
 async function whisperPronto() {
     if (Date.now() - whisperConferido.em > 600_000) whisperConferido = { em: Date.now(), ok: await whisperInstalado() };
@@ -1038,7 +1040,24 @@ while (!parar) {
                 if (envio.status !== 200) log('Agenda: envio →', envio.status);
             }).catch(e => log('Agenda: erro', e.message)).finally(() => { lendoAgenda = false; });
         }
-        if (cfg.documentos && !espelhando && Date.now() >= proximoEspelho) {
+        // Mão dupla (documentos-mao-dupla): a cada 30 s, aplica no OneDrive o que foi
+        // pedido pelo Matriz; aplicou algo, espelha de novo logo em seguida.
+        if (cfg.documentos && !espelhando && !alterando && Date.now() >= proximaAlteracao) {
+            alterando = true;
+            proximaAlteracao = Date.now() + 30_000;
+            const baixar = async id => {
+                const r = await fetch(`${cfg.url}/api/central-ia/runner/documentos/operacoes/${id}/arquivo?maquina=${encodeURIComponent(cfg.maquina)}`, {
+                    headers: { Authorization: `Bearer ${cfg.token}` }, redirect: 'error', signal: AbortSignal.timeout(600_000),
+                });
+                if (!r.ok) throw new Error(`não consegui baixar o arquivo (HTTP ${r.status})`);
+                return Buffer.from(await r.arrayBuffer());
+            };
+            aplicarAlteracoes(pastasDeDocumentos(cfg.documentos), cfg.maquina, { api, baixar, log })
+                .then(n => { if (n) proximoEspelho = 0; })
+                .catch(e => log('Documentos: alterações —', e.message))
+                .finally(() => { alterando = false; });
+        }
+        if (cfg.documentos && !espelhando && !alterando && Date.now() >= proximoEspelho) {
             espelhando = true;
             (async () => {
                 let pendentes = 0;
@@ -1046,7 +1065,7 @@ while (!parar) {
                     const r = await espelharDocumentos(pasta, cfg.maquina, { api, apiArquivo });
                     pendentes += r.pendentes;
                     if (r.erro) log(`Documentos (${pasta.nome}):`, r.erro);
-                    else if (r.enviados || r.removidos) log(`Documentos (${pasta.nome}): ${r.enviados} enviado(s), ${r.removidos} removido(s), ${r.pendentes} na fila`);
+                    else if (r.enviados || r.removidos || r.miniaturas) log(`Documentos (${pasta.nome}): ${r.enviados} enviado(s), ${r.removidos} removido(s), ${r.miniaturas || 0} miniatura(s), ${r.pendentes} na fila`);
                 }
                 proximoEspelho = Date.now() + (pendentes ? 60_000 : 15 * 60_000);
             })().catch(e => { log('Documentos: erro', e.message); proximoEspelho = Date.now() + 15 * 60_000; }).finally(() => { espelhando = false; });
