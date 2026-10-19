@@ -49,9 +49,19 @@ class AcessoVixcardTest extends TestCase
         $this->assertSame(route('vixcard.projetos', absolute: false), $this->victor->telaInicial());
         $this->actingAs($this->victor)->get(route('vixcard.projetos'))->assertOk()
             ->assertSee('Vix-ID')->assertSee('Inventário UHF para o gestor')->assertSee('Atrasado')->assertSee('Coletor C72 lendo etiquetas')
-            ->assertDontSee('AlfaGym')->assertDontSee('Wellhub');
+            ->assertDontSee('AlfaGym')->assertDontSee('Wellhub')->assertDontSee('Projetos Alfa Soluções');
+        // A pasta da Alfa não abre para ele nem pelo endereço.
+        $this->get(route('vixcard.projetos', ['pasta' => 'alfa']))->assertOk()->assertSee('Vix-ID')->assertDontSee('AlfaGym');
         // O menu: só o que ele pode, nada da casa.
-        $this->get(route('tarefas.index'))->assertOk()->assertSee('Projetos VixCard')->assertDontSee('Centro de Controle')->assertDontSee('Revendas e clientes');
+        $this->get(route('tarefas.index'))->assertOk()->assertSee(route('vixcard.projetos'), false)->assertDontSee('Centro de Controle')->assertDontSee('Revendas e clientes');
+    }
+
+    /** Comercial › Projetos (19/10/2026): o time tem as duas pastas, VixCard e Alfa Soluções. */
+    public function test_time_ve_as_duas_pastas_de_projetos(): void
+    {
+        $this->actingAs($this->admin)->get(route('vixcard.projetos'))->assertOk()
+            ->assertSee('Projetos VixCard')->assertSee('Projetos Alfa Soluções')->assertSee('Vix-ID')->assertDontSee('Wellhub segredo');
+        $this->get(route('vixcard.projetos', ['pasta' => 'alfa']))->assertOk()->assertSee('AlfaGym')->assertDontSee('Coletor C72 lendo etiquetas');
     }
 
     public function test_quadro_e_listas_nao_trazem_nada_de_fora(): void

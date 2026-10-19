@@ -77,6 +77,22 @@ class Alteracoes
         return $this->anotar($pasta, $quem, ['tipo' => 'enviar', 'caminho' => $caminho, 'arquivo' => $guardado, 'tamanho' => (int) $d['tamanho'], 'sha256' => $sha]);
     }
 
+    /**
+     * Um arquivo que nasceu no próprio Matriz (o PDF do orçamento enviado) e vai
+     * para a pasta do OneDrive pelo mesmo caminho do arrastar: o runner grava e,
+     * se o nome já existir lá, ganha " (2)" em vez de sobrescrever (FR-004).
+     */
+    public function enviarArquivo(DocumentoPasta $pasta, User $quem, string $caminho, string $local): DocumentoOperacao
+    {
+        $caminho = $this->caminho($caminho);
+        $sha = hash_file('sha256', $local);
+        $ext = Espelho::extensao($caminho);
+        $guardado = "documentos/_envios/{$pasta->id}/{$sha}".($ext !== '' ? ".{$ext}" : '');
+        Storage::disk(Documento::DISCO)->put($guardado, (string) file_get_contents($local));
+
+        return $this->anotar($pasta, $quem, ['tipo' => 'enviar', 'caminho' => $caminho, 'arquivo' => $guardado, 'tamanho' => filesize($local), 'sha256' => $sha]);
+    }
+
     public function apagar(DocumentoPasta $pasta, User $quem, string $caminho): DocumentoOperacao
     {
         $caminho = $this->caminho($caminho);

@@ -47,6 +47,12 @@ return [
     // monitor emite em Config → "API de leitura" — outro, e no sentido
     // contrário, do `alfa:monitor-token` do webhook. Sem eles, as telas
     // dizem que o monitor não está ligado em vez de quebrar.
+    // Orçamentos VixCard (docs/specs/orcamentos-vixcard): o PDF sai pelo Chromium do sistema.
+    'orcamentos' => [
+        // Caminho absoluto: o PHP-FPM roda sem PATH (clear_env).
+        'chromium' => env('ORCAMENTOS_CHROMIUM', '/usr/bin/chromium'),
+    ],
+
     'alfamonitor' => [
         'url' => env('ALFAMONITOR_URL'),
         'api_url' => env('ALFAMONITOR_API_URL', env('ALFAMONITOR_URL')),

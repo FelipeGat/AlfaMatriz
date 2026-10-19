@@ -33,11 +33,20 @@ class PainelVixcard
     public const PARADO_DIAS = 14;
 
     /** @return Collection<int, array> */
-    public function projetos(?CarbonImmutable $hoje = null): Collection
+    /**
+     * As pastas da tela Comercial › Projetos (Felipe, 19/10/2026): a da VixCard e
+     * a da Alfa Soluções, cada uma com as naturezas de sistema que a compõem.
+     */
+    public const PASTAS = [
+        'vixcard' => ['Projetos VixCard', ['vixcard']],
+        'alfa' => ['Projetos Alfa Soluções', ['produto', 'interno']],
+    ];
+
+    public function projetos(?CarbonImmutable $hoje = null, string $pasta = 'vixcard'): Collection
     {
         $hoje ??= CarbonImmutable::today();
 
-        return Sistema::vixcard()->where('ativo', true)->orderBy('nome')->get()
+        return Sistema::whereIn('natureza', self::PASTAS[$pasta][1] ?? ['vixcard'])->where('ativo', true)->orderBy('nome')->get()
             ->map(fn (Sistema $s) => $this->projeto($s, $hoje));
     }
 

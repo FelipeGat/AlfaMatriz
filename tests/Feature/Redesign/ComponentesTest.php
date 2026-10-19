@@ -95,6 +95,11 @@ class ComponentesTest extends TestCase
                 continue;
             }
 
+            // A proposta VixCard (orcamentos-vixcard): papel A4 impresso pelo Chromium, mesma razão.
+            if ($tela === 'orcamentos/pdf.blade.php') {
+                continue;
+            }
+
             if (str_contains($this->conteudo($tela), '<table')) {
                 $foraDoComponente[] = $tela;
             }

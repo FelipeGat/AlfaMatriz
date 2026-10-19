@@ -391,6 +391,21 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // a Nova tarefa do quadro (`tarefas.index?de_compromisso=`), e o vínculo é
     // gravado no `tarefas.store` — que pede a porta do quadro, como pedia aqui.
 
+    // Orçamentos VixCard (docs/specs/orcamentos-vixcard): recurso próprio, fora do admin.
+    $orc = \App\Http\Controllers\OrcamentoController::class;
+    Route::get('comercial/orcamentos', [$orc, 'index'])->name('orcamentos.index')->middleware('permissao:orcamentos,ler');
+    Route::get('comercial/orcamentos/novo', [$orc, 'create'])->name('orcamentos.create')->middleware('permissao:orcamentos,incluir');
+    Route::post('comercial/orcamentos', [$orc, 'store'])->name('orcamentos.store')->middleware('permissao:orcamentos,incluir');
+    Route::post('comercial/orcamentos/previa', [$orc, 'previa'])->name('orcamentos.previa')->middleware('permissao:orcamentos,ler');
+    Route::get('comercial/orcamentos/{orcamento}', [$orc, 'edit'])->whereNumber('orcamento')->name('orcamentos.edit')->middleware('permissao:orcamentos,ler');
+    Route::put('comercial/orcamentos/{orcamento}', [$orc, 'update'])->whereNumber('orcamento')->name('orcamentos.update')->middleware('permissao:orcamentos,editar');
+    Route::delete('comercial/orcamentos/{orcamento}', [$orc, 'destroy'])->whereNumber('orcamento')->name('orcamentos.destroy')->middleware('permissao:orcamentos,excluir');
+    Route::get('comercial/orcamentos/{orcamento}/pdf', [$orc, 'pdf'])->whereNumber('orcamento')->name('orcamentos.pdf')->middleware('permissao:orcamentos,imprimir');
+    Route::post('comercial/orcamentos/{orcamento}/enviado', [$orc, 'enviado'])->whereNumber('orcamento')->name('orcamentos.enviado')->middleware('permissao:orcamentos,editar');
+    Route::post('comercial/orcamentos/{orcamento}/resposta', [$orc, 'resposta'])->whereNumber('orcamento')->name('orcamentos.resposta')->middleware('permissao:orcamentos,editar');
+    Route::post('comercial/orcamentos/{orcamento}/revisar', [$orc, 'revisar'])->whereNumber('orcamento')->name('orcamentos.revisar')->middleware('permissao:orcamentos,editar');
+    Route::post('comercial/orcamentos/{orcamento}/duplicar', [$orc, 'duplicar'])->whereNumber('orcamento')->name('orcamentos.duplicar')->middleware('permissao:orcamentos,incluir');
+
     // Documentos (docs/specs/documentos-espelhados): acesso pela PASTA, e não por
     // perfil — o controller confere dono e compartilhamento em toda rota.
     Route::get('comercial/documentos', [\App\Http\Controllers\DocumentosController::class, 'index'])->name('documentos.index');
