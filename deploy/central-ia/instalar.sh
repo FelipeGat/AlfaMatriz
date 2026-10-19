@@ -261,6 +261,15 @@ if [ "$ANEXOS" = 1 ] && command -v docker >/dev/null && docker info >/dev/null 2
     docker build -q -t "$IMAGEM_WHISPER" "$CTX" >/dev/null && ok "Transcrição de reuniões pronta." \
       || aviso "Não consegui preparar a transcrição de reuniões; o resto do runner funciona."
     rm -rf "$CTX"
+  elif [ -f "$DEST/transcrever_reuniao.py" ] && [ "$(docker run --rm --pull=never --network=none --entrypoint sha256sum "$IMAGEM_WHISPER" /app/transcrever_reuniao.py 2>/dev/null | cut -d' ' -f1)" != "$(sha256sum "$DEST/transcrever_reuniao.py" | cut -d' ' -f1)" ]; then
+    # Script novo (ex.: o progresso de 19/10/2026): só troca o arquivo por cima
+    # da imagem que já existe — sem rede e sem baixar o modelo de novo.
+    CTX="$(mktemp -d)"
+    cp "$DEST/transcrever_reuniao.py" "$CTX/"
+    printf 'FROM %s\nCOPY transcrever_reuniao.py /app/transcrever_reuniao.py\n' "$IMAGEM_WHISPER" > "$CTX/Dockerfile"
+    docker build -q -t "$IMAGEM_WHISPER" "$CTX" >/dev/null && ok "Transcrição de reuniões atualizada." \
+      || aviso "Não consegui atualizar o transcritor; a versão anterior continua valendo."
+    rm -rf "$CTX"
   fi
 else
   [ "$ANEXOS" = 1 ] && aviso "Sem Docker: PDF, vídeo e documentos anexados não são convertidos (imagens e texto puro funcionam)."

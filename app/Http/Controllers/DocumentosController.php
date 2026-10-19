@@ -27,22 +27,71 @@ class DocumentosController extends Controller
         return view('documentos.index', ['pastas' => $pastas]);
     }
 
+    /**
+     * A pasta navegada por níveis (Felipe, 19/10/2026: "cards explicativos do
+     * que irão encontrar dentro"): cada subpasta do nível é um card com o que
+     * tem dentro — quantos arquivos de cada tipo, subpastas e a última
+     * mudança —, e os arquivos do próprio nível vão em lista. Com busca, o
+     * resultado é plano, de todas as subpastas.
+     */
     public function pasta(Request $request, int $pasta): View
     {
         $p = $this->visivel($request, $pasta);
         $busca = trim((string) $request->query('q', ''));
-        $docs = $p->documentos()
-            ->when($busca !== '', fn ($q) => $q->where('caminho', 'like', '%'.str_replace(['%', '_'], ['\%', '\_'], $busca).'%'))
-            ->orderBy('subpasta')->orderBy('nome')->get();
+        $todos = $p->documentos()->orderBy('subpasta')->orderBy('nome')->get();
+        // O nível pedido só vale se existir: caminho inventado volta para a raiz.
+        $nivel = trim(str_replace('\\', '/', (string) $request->query('caminho', '')), '/');
+        if ($nivel !== '' && ! $todos->contains(fn (Documento $d) => $d->subpasta === $nivel || str_starts_with($d->subpasta, $nivel.'/'))) {
+            $nivel = '';
+        }
 
-        return view('documentos.pasta', [
-            'pasta' => $p, 'busca' => $busca,
-            // Uma seção por subpasta de primeiro nível (o cliente); o resto do caminho vai ao lado do nome.
-            'grupos' => $docs->groupBy(fn (Documento $d) => explode('/', $d->subpasta)[0]),
-            'outras' => DocumentoPasta::visiveisPara($request->user())->whereKeyNot($p->id)->orderBy('nome')->get(['id', 'nome']),
-            'pessoas' => $p->ehDono($request->user()) ? User::where('ativo', true)->whereKeyNot($p->user_id)->orderBy('name')->get(['id', 'name']) : collect(),
+        if ($busca !== '') {
+            $achados = $todos->filter(fn (Documento $d) => mb_stripos($d->caminho, $busca) !== false)->values();
+
+            return view('documentos.pasta', $this->comuns($request, $p) + ['busca' => $busca, 'nivel' => '', 'trilha' => [], 'cards' => collect(), 'arquivos' => $achados]);
+        }
+
+        $abaixo = $todos->filter(fn (Documento $d) => $nivel === '' || $d->subpasta === $nivel || str_starts_with($d->subpasta, $nivel.'/'));
+        $resto = fn (Documento $d) => ltrim(substr($d->subpasta, strlen($nivel)), '/');
+        $cards = $abaixo->filter(fn ($d) => $resto($d) !== '')
+            ->groupBy(fn ($d) => explode('/', $resto($d))[0])
+            ->map(function ($docs, $nome) use ($nivel, $resto) {
+                $sub = $docs->map(fn ($d) => explode('/', $resto($d))[1] ?? null)->filter()->unique()->values();
+
+                return [
+                    'nome' => $nome,
+                    'caminho' => ltrim($nivel.'/'.$nome, '/'),
+                    'arquivos' => $docs->count(),
+                    'bytes' => (int) $docs->sum('tamanho'),
+                    'tipos' => $docs->countBy(fn (Documento $d) => $d->tipo())->sortDesc()->all(),
+                    'subpastas' => $sub,
+                    'exemplos' => $sub->isNotEmpty() ? $sub->take(4)->all() : $docs->sortByDesc('modificado_em')->take(3)->pluck('nome')->all(),
+                    'atualizado' => $docs->max('modificado_em'),
+                ];
+            })->sortKeys(SORT_NATURAL | SORT_FLAG_CASE)->values();
+        $trilha = [];
+        $acumulado = '';
+        foreach ($nivel === '' ? [] : explode('/', $nivel) as $parte) {
+            $acumulado = ltrim($acumulado.'/'.$parte, '/');
+            $trilha[] = ['nome' => $parte, 'caminho' => $acumulado];
+        }
+
+        return view('documentos.pasta', $this->comuns($request, $p) + [
+            'busca' => '', 'nivel' => $nivel, 'trilha' => $trilha, 'cards' => $cards,
+            'arquivos' => $abaixo->filter(fn ($d) => $d->subpasta === $nivel)->values(),
         ]);
     }
+
+    /** O que a tela precisa em qualquer modo. */
+    private function comuns(Request $request, DocumentoPasta $p): array
+    {
+        return [
+            'pasta' => $p,
+            'outras' => DocumentoPasta::visiveisPara($request->user())->whereKeyNot($p->id)->orderBy('nome')->get(['id', 'nome']),
+            'pessoas' => $p->ehDono($request->user()) ? User::where('ativo', true)->whereKeyNot($p->user_id)->orderBy('name')->get(['id', 'name']) : collect(),
+        ];
+    }
+
 
     public function ver(Request $request, int $documento): StreamedResponse
     {

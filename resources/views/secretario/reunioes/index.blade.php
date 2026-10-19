@@ -128,6 +128,18 @@
                                 </td>
                                 <td class="px-3 py-3">
                                     <span class="inline-block whitespace-nowrap rounded-control px-2.5 py-1 text-[12px] font-semibold {{ $corStatus[$r->status] ?? 'bg-head text-ink-dim' }}">{{ $rotuloStatus[$r->status] ?? (\App\Models\SecretarioReuniao::ROTULOS_STATUS[$r->status] ?? $r->status) }}</span>
+                                    @if (in_array($r->status, ['aguardando', 'transcrevendo', 'analisando'], true))
+                                        {{-- Andamento ao vivo: a barra segue o aviso da máquina; mudou a etapa, recarrega (nunca no meio de uma gravação). --}}
+                                        <div class="mt-1.5 w-[180px]" x-data="{ status: @js($r->status), a: @js($r->andamento()) }"
+                                             x-init="const t = setInterval(async () => { try { const j = await (await fetch(@js(route('secretario.reunioes.mostrar', ['reuniao' => $r->id, 'formato' => 'json'])), { headers: { Accept: 'application/json' } })).json(); if (j.status !== status) { if (!gravando && !enviando) { clearInterval(t); location.reload(); } return; } a = j.andamento; } catch (e) {} }, 10000)">
+                                            <template x-if="a">
+                                                <div>
+                                                    <div class="h-1.5 overflow-hidden rounded-full bg-head"><div class="h-full rounded-full bg-brand transition-all duration-700" :class="a.percentual === null ? 'w-1/4 animate-pulse' : ''" :style="a.percentual === null ? '' : 'width:' + a.percentual + '%'"></div></div>
+                                                    <p class="mt-1 text-[11.5px] text-ink-mute" x-text="a.texto"></p>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    @endif
                                     @if ($r->status === 'pronta' && $r->tarefas_pendentes)<p class="mt-1 text-[11.5px] text-warn">{{ $r->tarefas_pendentes }} a revisar</p>@endif
                                 </td>
                                 <td class="px-3 py-3">

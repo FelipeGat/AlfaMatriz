@@ -81,7 +81,8 @@ class SecretarioReunioesController extends Controller
     {
         $r = SecretarioReuniao::de($request->user())->with(['trechos', 'propostas'])->findOrFail($reuniao);
         if ($request->query('formato') === 'json') {
-            return response()->json(['status' => $r->status, 'rotulo' => SecretarioReuniao::ROTULOS_STATUS[$r->status] ?? $r->status, 'erro' => $r->erro]);
+            return response()->json(['status' => $r->status, 'rotulo' => SecretarioReuniao::ROTULOS_STATUS[$r->status] ?? $r->status, 'erro' => $r->erro,
+                'andamento' => $r->andamento()]);
         }
 
         return view('secretario.reunioes.mostrar', ['r' => $r]);

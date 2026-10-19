@@ -234,6 +234,42 @@ class ReunioesTest extends TestCase
         Storage::disk('central_ia')->assertMissing($arquivo);
     }
 
+    /** Felipe, 19/10/2026: reunião de 30 min transcrevendo sem dar notícia. */
+    public function test_progresso_da_transcricao_na_tela_e_como_sinal_de_vida(): void
+    {
+        $u = $this->dono();
+        $this->comRunner($u);
+        $r = SecretarioReuniao::findOrFail($this->enviar($u)->json('id'));
+        Sanctum::actingAs($u, ['central-ia-runner']);
+        $this->postJson(route('secretario.runner.proxima'), ['maquina' => 'wsl'])->assertOk();
+        $json = fn () => $this->actingAs($u)->getJson(route('secretario.reunioes.mostrar', ['reuniao' => $r->id, 'formato' => 'json']))->assertOk()->json('andamento');
+        $this->assertSame(['percentual' => null, 'texto' => 'Preparando a transcrição…'], $json());
+
+        Carbon::setTestNow(now()->addMinutes(5));
+        Sanctum::actingAs($u, ['central-ia-runner']);
+        $this->postJson(route('secretario.runner.progresso', $r->id), ['maquina' => 'wsl', 'percentual' => 25, 'duracao' => 1800])->assertOk();
+        $this->postJson(route('secretario.runner.progresso', $r->id), ['maquina' => 'mac', 'percentual' => 90])->assertNotFound();
+        $this->assertSame(['percentual' => 25, 'texto' => '25% transcrito · faltam ~15 min'], $json());
+        $this->assertSame(1800, $r->fresh()->duracao_s);
+        $this->actingAs($u)->get(route('secretario.reunioes.index'))->assertOk()->assertSee('25% transcrito');
+
+        // Nunca volta para trás.
+        Sanctum::actingAs($u, ['central-ia-runner']);
+        $this->postJson(route('secretario.runner.progresso', $r->id), ['maquina' => 'wsl', 'percentual' => 10])->assertOk();
+        $this->assertSame(25, $r->fresh()->progresso);
+
+        // Passou da hora desde a reserva, mas a máquina deu notícia há pouco: não está presa.
+        Carbon::setTestNow(now()->addMinutes(50));
+        $this->postJson(route('secretario.runner.progresso', $r->id), ['maquina' => 'wsl', 'percentual' => 80])->assertOk();
+        Carbon::setTestNow(now()->addMinutes(20));
+        $this->artisan('secretario:reunioes');
+        $this->assertSame('transcrevendo', $r->fresh()->status);
+        Carbon::setTestNow(now()->addMinutes(45));
+        $this->artisan('secretario:reunioes');
+        $this->assertSame('aguardando', $r->fresh()->status, 'Sem notícia por mais de 60 min: volta para a fila');
+        $this->assertNull($r->fresh()->andamento());
+    }
+
     public function test_voz_curta_no_telegram_vira_ditado_e_cai_no_secretario(): void
     {
         $u = $this->dono();

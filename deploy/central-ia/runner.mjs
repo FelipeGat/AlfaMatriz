@@ -1058,7 +1058,9 @@ while (!parar) {
                 transcrevendo = true;
                 ultimoTrabalho = Date.now();
                 log(`reunião #${t.json.id}: transcrevendo (${t.json.modo})`);
-                const p = transcrever(t.json, cfg, pastaTemporaria())
+                const aoProgredir = (percentual, duracao) => api(`transcricoes/${t.json.id}/progresso`, { maquina: cfg.maquina, percentual, duracao })
+                    .catch(e => log(`reunião #${t.json.id}: progresso não enviado —`, e.message));
+                const p = transcrever(t.json, cfg, pastaTemporaria(), { aoProgredir })
                     .then(async res => {
                         const envio = await api(`transcricoes/${t.json.id}`, { maquina: cfg.maquina, ...res });
                         log(`reunião #${t.json.id}: ${res.status === 'ok' ? res.trechos.length + ' trecho(s)' : 'falhou (' + res.erro + ')'} → ${envio.status}`);

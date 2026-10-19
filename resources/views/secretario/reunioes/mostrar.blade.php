@@ -16,12 +16,18 @@
         @endif
     </x-slot>
 
-    <div class="mx-auto w-full max-w-3xl space-y-4" x-data="{ status: @js($r->status) }"
-         @if (! $final) x-init="setInterval(async () => { const j = await (await fetch(@js(route('secretario.reunioes.mostrar', ['reuniao' => $r->id, 'formato' => 'json'])), { headers: { Accept: 'application/json' } })).json(); if (j.status !== status) location.reload(); }, 8000)" @endif>
+    <div class="mx-auto w-full max-w-3xl space-y-4" x-data="{ status: @js($r->status), a: @js($r->andamento()) }"
+         @if (! $final) x-init="setInterval(async () => { const j = await (await fetch(@js(route('secretario.reunioes.mostrar', ['reuniao' => $r->id, 'formato' => 'json'])), { headers: { Accept: 'application/json' } })).json(); if (j.status !== status) location.reload(); a = j.andamento; }, 8000)" @endif>
         <p class="rounded-panel border px-4 py-2.5 text-[13px] {{ $r->status === 'falhou' ? 'border-crit text-crit' : 'border-line text-ink-dim' }}">
             {{ SecretarioReuniao::ROTULOS_STATUS[$r->status] ?? $r->status }}{{ $r->erro ? ': '.$r->erro : '' }}
             @if (! $final) <span class="ml-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand"></span> @endif
             @if ($r->parcial) · análise parcial (transcrição longa cortada) @endif
+            <template x-if="a">
+                <span class="mt-2 flex items-center gap-3">
+                    <span class="h-1.5 flex-1 overflow-hidden rounded-full bg-head"><span class="block h-full rounded-full bg-brand transition-all duration-700" :class="a.percentual === null ? 'w-1/4 animate-pulse' : ''" :style="a.percentual === null ? '' : 'width:' + a.percentual + '%'"></span></span>
+                    <span class="whitespace-nowrap text-[12px] text-ink-mute" x-text="a.texto"></span>
+                </span>
+            </template>
         </p>
         @if ($r->status === 'falhou' && $r->transcrita_em && $r->modo === 'reuniao')
             <form method="POST" action="{{ route('secretario.reunioes.analisar', $r->id) }}">@csrf

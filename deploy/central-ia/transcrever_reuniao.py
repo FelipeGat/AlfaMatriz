@@ -8,6 +8,7 @@ temperatura 0, que já resolveram as alucinações em silêncio). O que muda par
 reunião: os trechos saem com início e fim, e o teto de tokens por janela fica
 no padrão — numa reunião as frases são longas.
 
+Progresso (stderr, uma linha por segmento): {"progresso": s, "duracao": s}
 Saída (stdout): {"duracao": s, "trechos": [{"inicio": s, "fim": s, "texto": "…"}]}
 ou {"erro": "…"} com código 1.
 """
@@ -54,8 +55,13 @@ def main() -> int:
             audio, language="pt", beam_size=2, vad_filter=True, hotwords=VOCABULARIO,
             temperature=0.0, condition_on_previous_text=False,
         )
-        trechos = [{"inicio": round(s.start, 2), "fim": round(s.end, 2), "texto": s.text.strip()}
-                   for s in segmentos if s.text.strip()]
+        # Os segmentos saem um a um enquanto o modelo trabalha: cada um avisa no
+        # stderr até onde o áudio já foi, e o runner transforma isso na barra.
+        trechos = []
+        for s in segmentos:
+            print(json.dumps({"progresso": round(s.end, 1), "duracao": round(float(info.duration), 1)}), file=sys.stderr, flush=True)
+            if s.text.strip():
+                trechos.append({"inicio": round(s.start, 2), "fim": round(s.end, 2), "texto": s.text.strip()})
         if not trechos:
             print(json.dumps({"erro": "não encontrei fala no áudio"}))
             return 1
