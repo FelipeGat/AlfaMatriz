@@ -3,6 +3,7 @@
 namespace App\Services\Orcamentos;
 
 use App\Models\Orcamento;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\Process\Process;
@@ -54,8 +55,8 @@ class Pdf
             }
             $disco->put($relativo, $pdf);
         } finally {
-            @array_map('unlink', glob("{$tmp}/*") ?: []);
-            @rmdir($tmp);
+            // Inteira, com o perfil que o Chromium cria dentro: senão sobra uma pasta em /tmp a cada PDF.
+            File::deleteDirectory($tmp);
         }
         // Sem mexer no updated_at: é ele que diz se o PDF ficou velho.
         $o->timestamps = false;
