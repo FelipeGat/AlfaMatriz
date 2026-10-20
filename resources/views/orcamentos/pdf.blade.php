@@ -3,10 +3,17 @@
     $brl = fn ($v) => 'R$ '.number_format((float) $v, 2, ',', '.');
     $unicos = $o->itens->where('cobranca', 'unico');
     $mensais = $o->itens->where('cobranca', 'mensal');
+    $opcoes = $o->itens->where('cobranca', 'opcao');
     $numero = $o->numero ? 'Nº '.$o->codigo(false).' · Rev. '.str_pad((string) $o->revisao, 2, '0', STR_PAD_LEFT) : 'Rascunho';
     $cliente = $o->cliente ?: 'Cliente';
     $produto = \App\Services\Orcamentos\Modelos::nome((string) $o->produto);
     $data = $o->data()->locale('pt_BR');
+    // Etapa 2 (padrao-e-historico.md): tipo da proposta, 3ª coluna livre da capa e as seções opcionais.
+    $tipo = $o->tipo ?: 'Proposta comercial';
+    $dadosCliente = collect(\App\Models\Orcamento::DADOS_CLIENTE)->map(fn ($rotulo, $k) => [$rotulo, trim((string) data_get($o->dados_cliente, $k))])->filter(fn ($p) => $p[1] !== '');
+    $paginaCliente = $o->temDadosDoCliente() || $o->temSecao('desafio') || $o->temSecao('solucao');
+    $paginaDetalhes = $o->temSecao('especificacao') || $o->temSecao('decisoes') || $o->temSecao('extras');
+    $cab = fn () => '<div class="cab"><b>'.e($tipo).'</b><span>'.e($cliente).' · <span class="marca">Vix<b>SoftHouse</b></span></span></div>';
 @endphp
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -68,6 +75,15 @@ ul { margin: 0; padding-left: 5mm } li { margin-bottom: 1.2mm }
 .aceite div { flex: 1; border-top: 1px solid #9aa6b6; padding-top: 2mm }
 .rodape { margin-top: 8mm; padding-top: 3mm; border-top: 1px solid #e3e8ef; display: flex; justify-content: space-between; gap: 6mm; font-size: 7pt; color: #9aa6b6 }
 .empurra { margin-top: auto }
+.dados td:first-child { width: 42mm; color: #6b7a8e; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .08em }
+.citacao { margin: 3mm 0 4mm; padding: 4mm 6mm; border-left: 1.2mm solid #3d7fd1; font-size: 12pt; font-style: italic; color: #0b2655 }
+.numeros { display: flex; gap: 3.5mm; margin: 3mm 0 }
+.numeros div { flex: 1; border: 1px solid #e3e8ef; border-radius: 2mm; padding: 3.5mm; background: #f8fafc }
+.numeros b { display: block; font-size: 16pt; color: #0b2655 } .numeros span { font-size: 8pt; color: #5d6b80 }
+.texto { white-space: pre-line; margin: 0 0 3mm }
+.qa b { display: block; color: #0b2655; margin-top: 3mm } .qa p { margin: 1mm 0 0; white-space: pre-line }
+.contracapa { background: radial-gradient(120% 80% at 80% 30%, #123a7a, #0b2655 70%); color: #fff; padding: 30mm 22mm; justify-content: center }
+.contracapa .frase { font-size: 26pt; font-weight: 300; line-height: 1.2 } .contracapa .mensagem { margin-top: 10mm; font-size: 11pt; color: #d6e4fa; white-space: pre-line; max-width: 150mm }
 </style>
 </head>
 <body>
@@ -75,22 +91,80 @@ ul { margin: 0; padding-left: 5mm } li { margin-bottom: 1.2mm }
     <section class="pagina capa">
         <div class="marca">Vix<b>SoftHouse</b></div>
         <div class="bloco">
-            <div class="sobre">Proposta comercial · {{ $numero }}</div>
+            <div class="sobre">{{ $tipo }} · {{ $numero }}</div>
             <p class="titulo">{{ $o->titulo ?: 'Proposta' }}@if ($o->destaque)<b>{{ $o->destaque }}</b>@endif</p>
             <div class="traco"></div>
             @if ($o->lead)<p class="lead">{{ $o->lead }}</p>@endif
         </div>
         <div class="rodape-capa">
             <div><span>Cliente</span>{{ $cliente }}@if ($o->contato)<br>{{ $o->contato }}@endif</div>
-            <div><span>Produto</span>{{ $produto }}</div>
+            <div><span>{{ $o->rotulo_3 ?: 'Produto' }}</span>{{ $o->rotulo_3 ? $o->valor_3 : $produto }}</div>
             <div><span>Data</span>{{ $data->translatedFormat('j \d\e F \d\e Y') }}</div>
             @if ($o->cidade)<div><span>Local</span>{{ $o->cidade }}</div>@endif
         </div>
     </section>
 
+    {{-- Cliente e objeto, o desafio e a solução (só com conteúdo). --}}
+    @if ($paginaCliente)
+    <section class="pagina">
+        {!! $cab() !!}
+        @if ($o->temDadosDoCliente())
+            <h1>Cliente e objeto</h1>
+            @if ($dadosCliente->isNotEmpty() || $o->contato)
+                <table class="dados"><tbody>
+                    <tr><td>Cliente</td><td>{{ $cliente }}</td></tr>
+                    @if ($o->contato)<tr><td>Contato</td><td>{{ $o->contato }}@if (data_get($o->dados_cliente, 'cargo')) · {{ data_get($o->dados_cliente, 'cargo') }}@endif</td></tr>@endif
+                    @foreach ($dadosCliente->except('cargo') as [$rotulo, $valor])<tr><td>{{ $rotulo }}</td><td>{{ $valor }}</td></tr>@endforeach
+                    @if ($o->cidade)<tr><td>Cidade</td><td>{{ $o->cidade }}</td></tr>@endif
+                    @if ($o->natureza)<tr><td>Natureza</td><td>{{ \App\Models\Orcamento::NATUREZAS[$o->natureza] ?? $o->natureza }}</td></tr>@endif
+                </tbody></table>
+            @endif
+            @if ($o->linhas('objeto'))
+                <h2>Objeto</h2>
+                <div class="passos">@foreach ($o->linhas('objeto') as $n => $l)<div class="passo"><i>{{ str_pad((string) ($n + 1), 2, '0', STR_PAD_LEFT) }}</i><span>{{ $l }}</span></div>@endforeach</div>
+            @endif
+        @endif
+        @if ($o->temSecao('desafio'))
+            <h1>{{ $o->secao('desafio', 'titulo') ?? 'O desafio' }}</h1>
+            @if ($o->secao('desafio', 'citacao'))<div class="citacao">“{{ $o->secao('desafio', 'citacao') }}”</div>@endif
+            @if ($o->paresDaSecao('desafio', 'numeros'))<div class="numeros">@foreach ($o->paresDaSecao('desafio', 'numeros') as [$v, $r])<div><b>{{ $v }}</b><span>{{ $r }}</span></div>@endforeach</div>@endif
+            @if ($o->secao('desafio', 'texto'))<p class="texto">{{ $o->secao('desafio', 'texto') }}</p>@endif
+            @if ($o->linhasDaSecao('desafio', 'itens'))<ul>@foreach ($o->linhasDaSecao('desafio', 'itens') as $l)<li>{{ $l }}</li>@endforeach</ul>@endif
+        @endif
+        @if ($o->temSecao('solucao'))
+            <h1>{{ $o->secao('solucao', 'titulo') ?? 'A solução' }}</h1>
+            @if ($o->secao('solucao', 'texto'))<p class="texto">{{ $o->secao('solucao', 'texto') }}</p>@endif
+            @if ($o->linhasDaSecao('solucao', 'passos'))<div class="passos">@foreach ($o->linhasDaSecao('solucao', 'passos') as $n => $l)<div class="passo"><i>{{ str_pad((string) ($n + 1), 2, '0', STR_PAD_LEFT) }}</i><span>{{ $l }}</span></div>@endforeach</div>@endif
+        @endif
+        <div class="rodape empurra"><span>{{ $tipo }} · {{ $numero }}</span><span>VixSoftHouse</span></div>
+    </section>
+    @endif
+
+    {{-- Especificação, decisões técnicas e seções livres (só com conteúdo). --}}
+    @if ($paginaDetalhes)
+    <section class="pagina">
+        {!! $cab() !!}
+        @if ($o->temSecao('especificacao'))
+            <h1>{{ $o->secao('especificacao', 'titulo') ?? 'Especificação' }}</h1>
+            <table class="dados"><tbody>@foreach ($o->paresDaSecao('especificacao', 'linhas') as [$a, $b])<tr><td>{{ $a }}</td><td>{{ $b }}</td></tr>@endforeach</tbody></table>
+        @endif
+        @if ($o->temSecao('decisoes'))
+            <h1>{{ $o->secao('decisoes', 'titulo') ?? 'Decisões técnicas' }}</h1>
+            <table><thead><tr><th>Ponto</th><th>Situação</th></tr></thead><tbody>@foreach ($o->paresDaSecao('decisoes', 'linhas') as [$a, $b])<tr><td>{{ $a }}</td><td>{{ $b }}</td></tr>@endforeach</tbody></table>
+        @endif
+        @if ($o->temSecao('extras'))
+            @foreach ($o->secoesLivres() as $bloco)
+                @if ($bloco['titulo'])<h1>{{ $bloco['titulo'] }}</h1>@endif
+                <p class="texto">{{ $bloco['texto'] }}</p>
+            @endforeach
+        @endif
+        <div class="rodape empurra"><span>{{ $tipo }} · {{ $numero }}</span><span>VixSoftHouse</span></div>
+    </section>
+    @endif
+
     {{-- 2. Investimento --}}
     <section class="pagina">
-        <div class="cab"><b>Proposta comercial</b><span>{{ $cliente }} · <span class="marca">Vix<b>SoftHouse</b></span></span></div>
+        {!! $cab() !!}
         <h1>Investimento</h1>
         @if ($unicos->isNotEmpty())
             <table>
@@ -115,6 +189,19 @@ ul { margin: 0; padding-left: 5mm } li { margin-bottom: 1.2mm }
                 </tbody>
             </table>
         @endif
+        @if ($opcoes->isNotEmpty())
+            {{-- Faixas, opcionais e "sob consulta": o cliente escolhe; nada daqui entra no total. --}}
+            <h2>Opções e faixas</h2>
+            <table>
+                <colgroup><col><col style="width: 24mm"><col style="width: 32mm"><col style="width: 36mm"></colgroup>
+                <tbody>
+                    @foreach ($opcoes as $i)
+                        <tr><td>{{ $i->descricao }}</td><td class="num">{{ $i->quantidadeLegivel() }} {{ $i->unidade }}</td>
+                            <td class="num">{{ $i->valor_unitario > 0 ? $brl($i->valor_unitario) : 'sob consulta' }}</td><td class="num">{{ $i->valor_unitario > 0 ? $brl($i->subtotal()) : '—' }}</td></tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
         <div class="cartoes">
             @if ($o->total_unico > 0 && $o->parcelas > 1)
                 <div class="cartao"><span>Parcelado</span><b>{{ $o->parcelas }}x de {{ $brl($o->valorParcela()) }}</b><p>{{ $o->entrada > 0 ? 'Entrada de '.$brl($o->entrada).' · ' : '' }}sem juros</p></div>
@@ -126,13 +213,21 @@ ul { margin: 0; padding-left: 5mm } li { margin-bottom: 1.2mm }
                 <div class="cartao"><span>Mensalidade</span><b>{{ $brl($o->total_mensal) }}</b><p>a partir da instalação</p></div>
             @endif
         </div>
-        @if ($o->condicoes())<p class="condicoes">{{ $o->condicoes() }}</p>@endif
-        <div class="rodape empurra"><span>Proposta válida até {{ $o->validoAte()->format('d/m/Y') }}</span><span>VixSoftHouse</span></div>
+        @if ($o->planosLista())
+            <h2>Planos</h2>
+            <table>
+                <thead><tr><th>Plano</th><th class="num">Valor</th><th>Período</th><th>Observação</th></tr></thead>
+                <tbody>@foreach ($o->planosLista() as $p)<tr><td>{{ $p['nome'] }}</td><td class="num">{{ is_numeric(str_replace(',', '.', $p['valor'])) ? $brl(str_replace(',', '.', $p['valor'])) : $p['valor'] }}</td><td>{{ $p['periodo'] }}</td><td>{{ $p['observacao'] }}</td></tr>@endforeach</tbody>
+            </table>
+        @endif
+        @if ($o->pagamento_texto)<p class="condicoes" style="white-space: pre-line">{{ $o->pagamento_texto }}</p>
+        @elseif ($o->condicoes())<p class="condicoes">{{ $o->condicoes() }}</p>@endif
+        <div class="rodape empurra"><span>{{ $o->validoAte() ? 'Proposta válida até '.$o->validoAte()->format('d/m/Y') : $tipo.' · '.$numero }}</span><span>VixSoftHouse</span></div>
     </section>
 
     {{-- 3. Escopo, próximos passos e aceite --}}
     <section class="pagina">
-        <div class="cab"><b>Proposta comercial</b><span>{{ $cliente }} · <span class="marca">Vix<b>SoftHouse</b></span></span></div>
+        {!! $cab() !!}
         <h1>Escopo e próximos passos</h1>
         @if ($o->linhas('inclui') || $o->linhas('nao_inclui'))
             <div class="colunas">
@@ -144,6 +239,15 @@ ul { margin: 0; padding-left: 5mm } li { margin-bottom: 1.2mm }
             <h2>Próximos passos</h2>
             <div class="passos">@foreach ($o->linhas('passos') as $n => $l)<div class="passo"><i>{{ $n + 1 }}</i><span>{{ $l }}</span></div>@endforeach</div>
         @endif
+        @if ($o->temSecao('execucao'))
+            <h2>{{ $o->secao('execucao', 'titulo') ?? 'Execução' }}</h2>
+            @if ($o->linhasDaSecao('execucao', 'etapas'))<div class="passos">@foreach ($o->linhasDaSecao('execucao', 'etapas') as $n => $l)<div class="passo"><i>{{ $n + 1 }}</i><span>{{ $l }}</span></div>@endforeach</div>@endif
+            @if ($o->secao('execucao', 'prazo'))<p class="condicoes"><b>Prazo:</b> {{ $o->secao('execucao', 'prazo') }}</p>@endif
+        @endif
+        @if ($o->temSecao('perguntas'))
+            <h2>Perguntas e respostas</h2>
+            <div class="qa">@foreach ($o->paresDaSecao('perguntas', 'linhas') as [$pergunta, $resposta])<b>{{ $pergunta }}</b><p>{{ $resposta }}</p>@endforeach</div>
+        @endif
         @if ($o->observacoes)<div class="obs">{{ $o->observacoes }}</div>@endif
         @if ($o->aceite)
             <div class="aceite">
@@ -153,5 +257,13 @@ ul { margin: 0; padding-left: 5mm } li { margin-bottom: 1.2mm }
         @endif
         <div class="rodape {{ $o->aceite ? '' : 'empurra' }}"><span>VixSoftHouse · Vitória/ES · (27) 3335-4950 · comercial@vixcard.com.br</span><span>VixSoftHouse</span></div>
     </section>
+
+    @if ($o->temSecao('contracapa'))
+    <section class="pagina contracapa">
+        <div class="marca">Vix<b>SoftHouse</b></div>
+        <p class="frase">{{ $o->secao('contracapa', 'frase') }}</p>
+        @if ($o->secao('contracapa', 'mensagem'))<p class="mensagem">{{ $o->secao('contracapa', 'mensagem') }}</p>@endif
+    </section>
+    @endif
 </body>
 </html>

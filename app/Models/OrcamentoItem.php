@@ -8,7 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /** Uma linha do investimento: valor único ou mensalidade; quantidade decimal (m, CNPJ, un). */
 class OrcamentoItem extends Model
 {
-    public const COBRANCAS = ['unico' => 'Valor único', 'mensal' => 'Mensal'];
+    /**
+     * "Opção" fica fora do total (20/10/2026): faixa de quantidade, item opcional
+     * ou "sob consulta" — o cliente escolhe, e somar tudo dava um total que ninguém pediu.
+     */
+    public const COBRANCAS = ['unico' => 'Valor único', 'mensal' => 'Mensal', 'opcao' => 'Opção (fora do total)'];
 
     protected $table = 'orcamento_itens';
 

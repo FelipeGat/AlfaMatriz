@@ -29,7 +29,8 @@
                 <x-badge :tom="$cor[$o->situacao]" ponto>{{ Orcamento::SITUACOES[$o->situacao] }}</x-badge>
                 <span class="text-[12.5px] text-ink-mute">
                     {{ $o->codigo() }} · criado por {{ $o->autor?->name ?? '—' }} em {{ $o->created_at->format('d/m/Y') }}
-                    @if ($o->enviado_em) · enviado em {{ $o->enviado_em->format('d/m/Y') }} · válido até {{ $o->validoAte()->format('d/m/Y') }}@endif
+                    @if ($o->enviado_em) · enviado em {{ $o->enviado_em->format('d/m/Y') }}@if ($o->validoAte()) · válido até {{ $o->validoAte()->format('d/m/Y') }}@endif @endif
+                    @if ($o->importado_em) · importado de <span class="font-mono text-[11.5px]">{{ $o->origem_arquivo }}</span>@endif
                 </span>
                 @if ($revisoes->count() > 1)
                     <span class="text-[12px] text-ink-faint">Revisões:
@@ -37,6 +38,7 @@
                     </span>
                 @endif
                 <div class="ml-auto flex flex-wrap gap-1.5">
+                    @if ($o->pdf_original)<a href="{{ route('orcamentos.original', $o) }}" target="_blank" rel="noopener" class="{{ $botao }}" title="O PDF que foi enviado ao cliente">PDF original</a>@endif
                     <a href="{{ route('orcamentos.pdf', $o) }}" target="_blank" rel="noopener" class="{{ $botao }}"><span class="h-4 w-4"><x-nav-icon name="document" /></span> PDF</a>
                     @if ($o->situacao === 'enviado')
                         <form method="POST" action="{{ route('orcamentos.resposta', $o) }}">@csrf<input type="hidden" name="resposta" value="aprovado"><button class="{{ $botao }}">Aprovado</button></form>
@@ -73,14 +75,36 @@
 
                     <section class="grid gap-2.5 rounded-panel border border-line bg-surface p-4">
                         <h2 class="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">Cliente <small class="text-[11.5px] font-normal text-ink-faint">{{ $o ? $o->codigo() : 'o número sai ao salvar' }}</small></h2>
+                        {{-- O pré-cliente do Funil de Vendas (padrao-e-historico.md, FR-H1): escolher preenche o que ele já tem. --}}
+                        <label class="{{ $rotulo }}" for="lead_id">Pré-cliente (Funil de Vendas)
+                            <select id="lead_id" name="lead_id" x-model="leadId" @change="usarPreCliente()" class="{{ $campo }}">
+                                <option value="">— sem vínculo —</option>
+                                @foreach ($preClientes as $pc)<option value="{{ $pc['id'] }}">{{ $pc['nome'] }}{{ $pc['projeto'] ? ' · '.$pc['projeto'] : '' }}</option>@endforeach
+                            </select>
+                        </label>
                         <div class="grid gap-2.5 sm:grid-cols-2">
-                            <label class="{{ $rotulo }}" for="cliente">Cliente / empresa<input id="cliente" name="cliente" required maxlength="160" value="{{ old('cliente', $dados['cliente']) }}" class="{{ $campo }}"></label>
+                            <label class="{{ $rotulo }}" for="cliente">Cliente / empresa<input id="cliente" name="cliente" required maxlength="160" x-model="f.cliente" class="{{ $campo }}"></label>
                             <label class="{{ $rotulo }}" for="contato">Contato<input id="contato" name="contato" maxlength="120" value="{{ old('contato', $dados['contato']) }}" class="{{ $campo }}"></label>
                             <label class="{{ $rotulo }}" for="cidade">Cidade / UF<input id="cidade" name="cidade" maxlength="120" value="{{ old('cidade', $dados['cidade']) }}" placeholder="Vitória · ES" class="{{ $campo }}"></label>
                             <label class="{{ $rotulo }}" for="validade_dias">Validade
-                                <select id="validade_dias" name="validade_dias" class="{{ $campo }}">@foreach (Orcamento::VALIDADES as $v)<option value="{{ $v }}" @selected((int) old('validade_dias', $dados['validade_dias']) === $v)>{{ $v }} dias</option>@endforeach</select>
+                                <select id="validade_dias" name="validade_dias" class="{{ $campo }}">
+                                    @if (! $dados['validade_dias'])<option value="" selected>— sem validade —</option>@endif
+                                    @foreach (Orcamento::VALIDADES as $v)<option value="{{ $v }}" @selected((int) old('validade_dias', $dados['validade_dias']) === $v)>{{ $v }} dias</option>@endforeach
+                                </select>
                             </label>
                         </div>
+                        <details class="rounded-control border border-line px-3 py-2" @if (array_filter((array) $dados['dados_cliente']) || $dados['objeto']) open @endif>
+                            <summary class="cursor-pointer text-[12.5px] font-semibold text-ink-dim">Cliente e objeto <small class="font-normal text-ink-faint">dados cadastrais e o que está sendo contratado — saem numa página própria</small></summary>
+                            <div class="mt-2 grid gap-2.5 sm:grid-cols-2">
+                                @foreach (Orcamento::DADOS_CLIENTE as $chave => $nome)
+                                    <label class="{{ $rotulo }}" for="dc-{{ $chave }}">{{ $nome }}<input id="dc-{{ $chave }}" name="dados_cliente[{{ $chave }}]" maxlength="255" x-model="dc.{{ $chave }}" class="{{ $campo }}"></label>
+                                @endforeach
+                                <label class="{{ $rotulo }}" for="natureza">Natureza
+                                    <select id="natureza" name="natureza" class="{{ $campo }}"><option value="">—</option>@foreach (Orcamento::NATUREZAS as $k => $n)<option value="{{ $k }}" @selected($dados['natureza'] === $k)>{{ $n }}</option>@endforeach</select>
+                                </label>
+                            </div>
+                            <label class="{{ $rotulo }} mt-2" for="objeto">Objeto (um item por linha)<textarea id="objeto" name="objeto" rows="3" maxlength="3000" class="{{ $campo }}">{{ $dados['objeto'] }}</textarea></label>
+                        </details>
                     </section>
 
                     <section class="grid gap-2.5 rounded-panel border border-line bg-surface p-4">
@@ -90,6 +114,14 @@
                             <label class="{{ $rotulo }}" for="destaque">Destaque (azul)<input id="destaque" name="destaque" maxlength="80" x-model="f.destaque" class="{{ $campo }}"></label>
                         </div>
                         <label class="{{ $rotulo }}" for="lead">Frase da capa<textarea id="lead" name="lead" rows="2" maxlength="600" x-model="f.lead" class="{{ $campo }}"></textarea></label>
+                        <div class="grid gap-2.5 sm:grid-cols-3">
+                            <label class="{{ $rotulo }}" for="tipo">Tipo
+                                <input id="tipo" name="tipo" list="tipos-orcamento" maxlength="40" value="{{ $dados['tipo'] }}" placeholder="Proposta comercial" class="{{ $campo }}">
+                                <datalist id="tipos-orcamento">@foreach (Orcamento::TIPOS as $t)<option value="{{ $t }}">@endforeach</datalist>
+                            </label>
+                            <label class="{{ $rotulo }}" for="rotulo_3">3ª coluna da capa (rótulo)<input id="rotulo_3" name="rotulo_3" maxlength="30" value="{{ $dados['rotulo_3'] }}" placeholder="Produto" class="{{ $campo }}"></label>
+                            <label class="{{ $rotulo }}" for="valor_3">3ª coluna (valor)<input id="valor_3" name="valor_3" maxlength="160" value="{{ $dados['valor_3'] }}" placeholder="o nome do produto" class="{{ $campo }}"></label>
+                        </div>
                     </section>
 
                     <section class="grid gap-2 rounded-panel border border-line bg-surface p-4">
@@ -103,13 +135,14 @@
                                 <input :name="`itens[${n}][quantidade]`" x-model="it.quantidade" type="number" step="0.001" min="0" aria-label="Quantidade" class="{{ $campo }}">
                                 <input :name="`itens[${n}][unidade]`" x-model="it.unidade" maxlength="20" aria-label="Unidade" class="{{ $campo }}">
                                 <input :name="`itens[${n}][valor_unitario]`" x-model="it.valor_unitario" type="number" step="0.01" min="0" aria-label="Valor unitário" class="{{ $campo }}">
-                                <select :name="`itens[${n}][cobranca]`" x-model="it.cobranca" aria-label="Cobrança" class="{{ $campo }}"><option value="unico">Valor único</option><option value="mensal">Mensal</option></select>
+                                <select :name="`itens[${n}][cobranca]`" x-model="it.cobranca" aria-label="Cobrança" class="{{ $campo }}"><option value="unico">Valor único</option><option value="mensal">Mensal</option><option value="opcao">Opção (fora do total)</option></select>
                                 <button type="button" @click="itens.splice(n, 1); previa()" aria-label="Remover item" class="text-[18px] leading-none text-ink-faint hover:text-crit">×</button>
                             </div>
                         </template>
                         <div class="flex flex-wrap gap-1.5">
                             <button type="button" @click="adicionar('unico')" class="{{ $botao }}">+ Item</button>
                             <button type="button" @click="adicionar('mensal')" class="{{ $botao }}">+ Mensalidade</button>
+                            <button type="button" @click="adicionar('opcao')" class="{{ $botao }}" title="Faixa de quantidade, opcional ou sob consulta: aparece com o preço, fora do total">+ Opção</button>
                         </div>
                         <div class="flex items-baseline justify-between border-t border-dashed border-line pt-2">
                             <span class="text-[12px] text-ink-mute">Total</span>
@@ -126,6 +159,8 @@
                             </label>
                             <label class="{{ $rotulo }}" for="desconto_avista">Desconto à vista (%)<input id="desconto_avista" name="desconto_avista" type="number" min="0" max="50" step="0.5" x-model="f.desconto_avista" class="{{ $campo }}"></label>
                         </div>
+                        <label class="{{ $rotulo }}" for="pagamento_texto">Condições em texto livre (substitui a frase gerada)<textarea id="pagamento_texto" name="pagamento_texto" rows="2" maxlength="3000" class="{{ $campo }}">{{ $dados['pagamento_texto'] }}</textarea></label>
+                        <label class="{{ $rotulo }}" for="planos">Planos alternativos (um por linha: nome | valor | período | observação)<textarea id="planos" name="planos" rows="2" maxlength="3000" placeholder="Anual | 350 | mês por CNPJ | cobrado por ano" class="{{ $campo }}">{{ $dados['planos'] }}</textarea></label>
                     </section>
 
                     <section class="grid gap-2.5 rounded-panel border border-line bg-surface p-4">
@@ -137,6 +172,45 @@
                         <label class="{{ $rotulo }}" for="passos">Próximos passos (um por linha)<textarea id="passos" name="passos" rows="4" x-model="f.passos" class="{{ $campo }}"></textarea></label>
                         <label class="{{ $rotulo }}" for="observacoes">Observações (opcional, sai no PDF)<textarea id="observacoes" name="observacoes" rows="2" maxlength="3000" class="{{ $campo }}">{{ old('observacoes', $dados['observacoes']) }}</textarea></label>
                         <label class="flex items-center gap-2 text-[12.5px] text-ink"><input type="hidden" name="aceite" value="0"><input type="checkbox" name="aceite" value="1" @checked(old('aceite', $dados['aceite'])) class="rounded border-btn-line"> Incluir bloco de aceite com assinaturas</label>
+                    </section>
+
+                    {{-- As seções opcionais do padrão (padrao-e-historico.md, FR-H3): cada uma liga e desliga. --}}
+                    <section class="grid gap-2 rounded-panel border border-line bg-surface p-4">
+                        <h2 class="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">Seções opcionais <small class="text-[11.5px] font-normal text-ink-faint">listas: uma linha por item · tabelas: "a | b" por linha</small></h2>
+                        @php
+                            $rotulosCampos = ['titulo' => 'Título da seção', 'texto' => 'Texto', 'citacao' => 'Citação do cliente', 'numeros' => 'Números (valor | rótulo, por linha)',
+                                'itens' => 'Dores (uma por linha)', 'passos' => 'Passos (um por linha)', 'linhas' => 'Linhas (a | b, por linha)', 'etapas' => 'Etapas (uma por linha)',
+                                'prazo' => 'Prazo', 'frase' => 'Frase de fechamento', 'mensagem' => 'Mensagem ao contato'];
+                        @endphp
+                        @foreach (Orcamento::SECOES as $chave => $secao)
+                            @php $valores = (array) data_get($dados['secoes'], $chave, []); @endphp
+                            <details class="rounded-control border border-line px-3 py-2" @if (! empty($valores['ativo'])) open @endif>
+                                <summary class="flex cursor-pointer items-center gap-2 text-[12.5px] font-semibold text-ink-dim">
+                                    <input type="hidden" name="secoes[{{ $chave }}][ativo]" value="0">
+                                    <input type="checkbox" name="secoes[{{ $chave }}][ativo]" value="1" @checked(! empty($valores['ativo'])) @click.stop class="rounded border-btn-line">
+                                    {{ $secao['nome'] }}
+                                    @if ($chave === 'extras')<small class="font-normal text-ink-faint">cada seção começa com uma linha "## Título"</small>@endif
+                                    @if ($chave === 'perguntas')<small class="font-normal text-ink-faint">pergunta | resposta, por linha</small>@endif
+                                </summary>
+                                <div class="mt-2 grid gap-2">
+                                    @foreach ($secao['campos'] as $c)
+                                        @php $longo = in_array($c, ['texto', 'numeros', 'itens', 'passos', 'linhas', 'etapas', 'mensagem'], true); @endphp
+                                        <label class="{{ $rotulo }}">{{ $chave === 'perguntas' && $c === 'linhas' ? 'Perguntas (pergunta | resposta, por linha)' : $rotulosCampos[$c] }}
+                                            @if ($longo)
+                                                <textarea name="secoes[{{ $chave }}][{{ $c }}]" rows="{{ $chave === 'extras' ? 8 : 3 }}" maxlength="12000" class="{{ $campo }}">{{ $valores[$c] ?? '' }}</textarea>
+                                            @else
+                                                <input name="secoes[{{ $chave }}][{{ $c }}]" maxlength="500" value="{{ $valores[$c] ?? '' }}" class="{{ $campo }}">
+                                            @endif
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </details>
+                        @endforeach
+                    </section>
+
+                    <section class="grid gap-2 rounded-panel border border-line bg-surface p-4">
+                        <h2 class="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">Notas internas <small class="text-[11.5px] font-normal text-ink-faint">nunca vão para o PDF</small></h2>
+                        <textarea name="notas_internas" rows="3" maxlength="6000" class="{{ $campo }}">{{ $dados['notas_internas'] }}</textarea>
                     </section>
                 </fieldset>
 
@@ -177,9 +251,12 @@
             const dados = @json($dados);
             let k = 0;
             const comChave = lista => (lista || []).map(i => ({ k: ++k, descricao: i.descricao ?? '', quantidade: i.quantidade ?? 1, unidade: i.unidade ?? 'un', valor_unitario: i.valor_unitario ?? 0, cobranca: i.cobranca ?? 'unico' }));
+            const preClientes = @json(collect($preClientes)->keyBy('id'));
             return {
                 modelos, produto: dados.produto, aviso: '', carregando: false, pedido: 0,
-                f: { titulo: dados.titulo ?? '', destaque: dados.destaque ?? '', lead: dados.lead ?? '', inclui: dados.inclui ?? '', nao_inclui: dados.nao_inclui ?? '',
+                leadId: dados.lead_id ? String(dados.lead_id) : '',
+                dc: Object.assign({ razao_social: '', cnpj: '', ie: '', endereco: '', cargo: '', telefone: '', email: '', atividade: '' }, dados.dados_cliente || {}),
+                f: { cliente: dados.cliente ?? '', titulo: dados.titulo ?? '', destaque: dados.destaque ?? '', lead: dados.lead ?? '', inclui: dados.inclui ?? '', nao_inclui: dados.nao_inclui ?? '',
                      passos: dados.passos ?? '', entrada: dados.entrada ?? 0, parcelas: String(dados.parcelas ?? 1), desconto_avista: dados.desconto_avista ?? 0 },
                 itens: comChave(dados.itens),
                 iniciar() {
@@ -198,6 +275,16 @@
                     Object.assign(this.f, { titulo: m.titulo, destaque: m.destaque, lead: m.lead, inclui: m.inclui, nao_inclui: m.nao_inclui, passos: m.passos });
                     this.itens = comChave(m.itens);
                     this.aviso = 'Capa, escopo, passos e itens trocados pelo modelo de ' + m.nome + '. Cliente e pagamento ficaram.';
+                    this.$nextTick(() => this.previa());
+                },
+                // Escolher o pré-cliente preenche o que ele tem, sem apagar o que já foi digitado.
+                usarPreCliente() {
+                    const p = preClientes[this.leadId];
+                    if (! p) return;
+                    this.f.cliente = p.nome;
+                    if (p.cnpj) this.dc.cnpj = p.cnpj;
+                    if (p.telefone) this.dc.telefone = p.telefone;
+                    if (p.email) this.dc.email = p.email;
                     this.$nextTick(() => this.previa());
                 },
                 adicionar(cobranca) { this.itens.push({ k: ++k, descricao: cobranca === 'mensal' ? 'Mensalidade' : '', quantidade: 1, unidade: cobranca === 'mensal' ? 'mês' : 'un', valor_unitario: 0, cobranca }); },

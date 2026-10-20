@@ -9,8 +9,8 @@
     <x-slot name="titulo">Orçamentos</x-slot>
     <x-slot name="contexto"><span>Comercial · VixCard · PDF no padrão das propostas</span></x-slot>
 
-    {{-- docs/specs/orcamentos-vixcard: a lista. Substituído só aparece filtrando — a
-         revisão nova já está na lista com o mesmo número. --}}
+    {{-- docs/specs/orcamentos-vixcard: a lista, agrupada por cliente desde 20/10/2026.
+         Substituído só aparece filtrando — a revisão nova já está na lista com o mesmo número. --}}
     <div class="mx-auto w-full max-w-7xl space-y-4">
         @if (session('status'))<x-aviso>{{ session('status') }}</x-aviso>@endif
 
@@ -42,47 +42,55 @@
                     <a href="{{ route('orcamentos.create') }}" class="inline-flex h-[30px] items-center gap-1.5 rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright"><span class="h-4 w-4"><x-nav-icon name="plus" /></span> Novo orçamento</a>
                 @endif
             </form>
-            <x-tabela min="860px" class="!rounded-none !border-0 !bg-transparent">
-                <thead>
-                    <tr class="border-b border-line font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
-                        <th class="px-4 py-2.5 font-normal">Número</th><th class="px-3 py-2.5 font-normal">Cliente</th><th class="px-3 py-2.5 font-normal">Produto</th>
-                        <th class="px-3 py-2.5 text-right font-normal">Total</th><th class="px-3 py-2.5 font-normal">Validade</th><th class="px-3 py-2.5 font-normal">Situação</th><th class="px-3 py-2.5 font-normal">Ações</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-line">
-                    @forelse ($lista as $o)
-                        @php $vence = $o->situacao === 'enviado' ? $o->validoAte() : null; @endphp
-                        <tr class="align-top hover:bg-head/50">
-                            <td class="whitespace-nowrap px-4 py-3"><a href="{{ route('orcamentos.edit', $o) }}" class="text-[13.5px] font-semibold text-ink hover:text-brand">{{ $o->codigo(false) }}</a>
-                                @if ($o->revisao > 1)<p class="text-[11.5px] text-ink-mute">Rev. {{ str_pad((string) $o->revisao, 2, '0', STR_PAD_LEFT) }}</p>@endif</td>
-                            <td class="px-3 py-3"><a href="{{ route('orcamentos.edit', $o) }}" class="text-[13.5px] font-medium text-ink hover:text-brand">{{ $o->cliente }}</a>
-                                <p class="text-[12px] text-ink-mute">{{ collect([$o->contato, $o->cidade])->filter()->implode(' · ') ?: $o->titulo }}</p></td>
-                            <td class="px-3 py-3 text-[13px] text-ink-dim">{{ Modelos::nome($o->produto) }}</td>
-                            <td class="whitespace-nowrap px-3 py-3 text-right tabular-nums text-[13px] text-ink">{{ $o->total_unico > 0 ? $brl($o->total_unico) : '—' }}
-                                @if ($o->total_mensal > 0)<p class="text-[11.5px] text-ink-mute">+ {{ $brl($o->total_mensal) }}/mês</p>@endif</td>
-                            <td class="whitespace-nowrap px-3 py-3 text-[12.5px]">
-                                @if ($vence)
-                                    {{ $vence->format('d/m') }}
-                                    <p class="text-[11.5px] {{ $vence->isPast() ? 'text-crit' : ($vence->lte(now()->addDays(3)) ? 'text-warn' : 'text-ink-mute') }}">{{ $vence->isPast() ? 'vencido' : 'em '.(int) ceil(now()->diffInDays($vence)).' dia(s)' }}</p>
-                                @else <span class="text-ink-faint">—</span> @endif
-                            </td>
-                            <td class="px-3 py-3"><x-badge :tom="$cor[$o->situacao]" ponto>{{ Orcamento::SITUACOES[$o->situacao] }}</x-badge></td>
-                            <td class="px-3 py-3">
-                                <div class="flex flex-wrap gap-1">
-                                    <a href="{{ route('orcamentos.pdf', $o) }}" target="_blank" rel="noopener" class="{{ $botao }}">PDF</a>
-                                    <a href="{{ route('orcamentos.edit', $o) }}" class="{{ $botao }}">{{ $o->editavel() ? 'Editar' : 'Abrir' }}</a>
-                                    <form method="POST" action="{{ route('orcamentos.duplicar', $o) }}">@csrf<button class="{{ $botao }}">Duplicar</button></form>
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="7" class="px-4 py-10 text-center text-[13.5px] text-ink-mute">
-                            {{ $busca !== '' || $situacao ? 'Nenhum orçamento neste filtro.' : 'Nenhum orçamento ainda. Comece pelo Novo orçamento: escolha o produto e ajuste o cliente e os valores.' }}
-                        </td></tr>
-                    @endforelse
-                </tbody>
-            </x-tabela>
-            <div class="px-4 py-2">{{ $lista->links() }}</div>
+            {{-- Por cliente (padrao-e-historico.md, FR-H2), o mais recente primeiro. --}}
+            @forelse ($grupos as $g)
+                <details class="border-b border-line last:border-b-0" open>
+                    <summary class="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 bg-head/40 px-4 py-2.5">
+                        <span class="font-display text-[14.5px] font-semibold text-ink">{{ $g['nome'] }}</span>
+                        <span class="rounded-badge bg-head px-1.5 py-0.5 text-[11px] text-ink-dim">{{ $g['projeto'] }}</span>
+                        <span class="text-[12px] text-ink-mute">{{ $g['orcamentos']->count() }} {{ $g['orcamentos']->count() === 1 ? 'orçamento' : 'orçamentos' }}</span>
+                        @if ($g['lead'])
+                            <a href="{{ route('leads.index', ['lead' => $g['lead']->id]) }}" class="text-[12px] text-brand-text hover:underline" @click.stop>Funil · {{ \App\Models\Lead::ESTAGIOS[$g['lead']->estagio] ?? $g['lead']->estagio }}</a>
+                            @if (auth()->user()->canPermissao('orcamentos', 'incluir'))<a href="{{ route('orcamentos.create', ['lead' => $g['lead']->id]) }}" class="ml-auto text-[12px] font-semibold text-brand-text hover:underline" @click.stop>+ Orçamento para este cliente</a>@endif
+                        @endif
+                    </summary>
+                    <x-tabela min="860px" class="!rounded-none !border-0 !bg-transparent">
+                        <tbody class="divide-y divide-line">
+                            @foreach ($g['orcamentos'] as $o)
+                                @php $vence = $o->situacao === 'enviado' ? $o->validoAte() : null; @endphp
+                                <tr class="align-top hover:bg-head/50">
+                                    <td class="w-[110px] whitespace-nowrap px-4 py-3"><a href="{{ route('orcamentos.edit', $o) }}" class="text-[13.5px] font-semibold text-ink hover:text-brand">{{ $o->codigo(false) }}</a>
+                                        @if ($o->revisao > 1)<p class="text-[11.5px] text-ink-mute">Rev. {{ str_pad((string) $o->revisao, 2, '0', STR_PAD_LEFT) }}</p>@endif</td>
+                                    <td class="px-3 py-3"><a href="{{ route('orcamentos.edit', $o) }}" class="text-[13.5px] font-medium text-ink hover:text-brand">{{ $o->titulo }}{{ $o->destaque ? ' '.$o->destaque : '' }}</a>
+                                        <p class="text-[12px] text-ink-mute">{{ collect([$o->tipo, $o->contato, ($o->enviado_em ?? $o->created_at)->format('d/m/Y')])->filter()->implode(' · ') }}@if ($o->importado_em) · <span title="Importado da pasta de propostas em {{ $o->importado_em->format('d/m/Y') }}">histórico</span>@endif</p></td>
+                                    <td class="whitespace-nowrap px-3 py-3 text-right tabular-nums text-[13px] text-ink">{{ $o->total_unico > 0 ? $brl($o->total_unico) : '—' }}
+                                        @if ($o->total_mensal > 0)<p class="text-[11.5px] text-ink-mute">+ {{ $brl($o->total_mensal) }}/mês</p>@endif</td>
+                                    <td class="whitespace-nowrap px-3 py-3 text-[12.5px]">
+                                        @if ($vence)
+                                            {{ $vence->format('d/m') }}
+                                            <p class="text-[11.5px] {{ $vence->isPast() ? 'text-crit' : ($vence->lte(now()->addDays(3)) ? 'text-warn' : 'text-ink-mute') }}">{{ $vence->isPast() ? 'vencido' : 'em '.(int) ceil(now()->diffInDays($vence)).' dia(s)' }}</p>
+                                        @else <span class="text-ink-faint">—</span> @endif
+                                    </td>
+                                    <td class="px-3 py-3"><x-badge :tom="$cor[$o->situacao]" ponto>{{ Orcamento::SITUACOES[$o->situacao] }}</x-badge></td>
+                                    <td class="px-3 py-3">
+                                        <div class="flex flex-wrap justify-end gap-1">
+                                            @if ($o->pdf_original)<a href="{{ route('orcamentos.original', $o) }}" target="_blank" rel="noopener" class="{{ $botao }}" title="O PDF que foi enviado ao cliente">Original</a>@endif
+                                            <a href="{{ route('orcamentos.pdf', $o) }}" target="_blank" rel="noopener" class="{{ $botao }}" title="No padrão novo">PDF</a>
+                                            <a href="{{ route('orcamentos.edit', $o) }}" class="{{ $botao }}">{{ $o->editavel() ? 'Editar' : 'Abrir' }}</a>
+                                            <form method="POST" action="{{ route('orcamentos.duplicar', $o) }}">@csrf<button class="{{ $botao }}">Duplicar</button></form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </x-tabela>
+                </details>
+            @empty
+                <p class="px-4 py-10 text-center text-[13.5px] text-ink-mute">
+                    {{ $busca !== '' || $situacao ? 'Nenhum orçamento neste filtro.' : 'Nenhum orçamento ainda. Comece pelo Novo orçamento: escolha o produto e ajuste o cliente e os valores.' }}
+                </p>
+            @endforelse
+
         </section>
     </div>
 </x-app-layout>

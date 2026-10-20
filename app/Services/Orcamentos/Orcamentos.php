@@ -4,6 +4,7 @@ namespace App\Services\Orcamentos;
 
 use App\Models\DocumentoPasta;
 use App\Models\Orcamento;
+use App\Models\OrcamentoItem;
 use App\Models\User;
 use App\Services\Documentos\Alteracoes;
 use Illuminate\Database\QueryException;
@@ -79,7 +80,8 @@ class Orcamentos
     public function duplicar(User $quem, Orcamento $o): Orcamento
     {
         $dados = $o->only(['produto', 'cliente', 'contato', 'cidade', 'titulo', 'destaque', 'lead', 'validade_dias', 'entrada', 'parcelas',
-            'desconto_avista', 'inclui', 'nao_inclui', 'passos', 'aceite', 'observacoes']);
+            'desconto_avista', 'inclui', 'nao_inclui', 'passos', 'aceite', 'observacoes',
+            'lead_id', 'tipo', 'rotulo_3', 'valor_3', 'natureza', 'dados_cliente', 'objeto', 'secoes', 'planos', 'pagamento_texto', 'notas_internas']);
         $dados['cliente'] = $o->cliente.' (cópia)';
         $dados['itens'] = $o->itens->map(fn ($i) => $i->only(['descricao', 'quantidade', 'unidade', 'valor_unitario', 'cobranca']))->all();
 
@@ -133,8 +135,10 @@ class Orcamentos
 
     private function copiar(Orcamento $o, array $extra): Orcamento
     {
+        // O original e a origem são do documento que foi enviado: a revisão nova não os herda.
         $nova = Orcamento::create(collect($o->getAttributes())->except(['id', 'situacao', 'substituido_por_id', 'pdf_arquivo', 'pdf_gerado_em',
-            'enviado_em', 'respondido_em', 'created_at', 'updated_at'])->merge(['situacao' => 'rascunho'])->merge($extra)->all());
+            'enviado_em', 'respondido_em', 'created_at', 'updated_at', 'origem_arquivo', 'pdf_original', 'importado_em'])
+            ->merge(['situacao' => 'rascunho', 'dados_cliente' => $o->dados_cliente, 'secoes' => $o->secoes])->merge($extra)->all());
         foreach ($o->itens as $i) {
             $nova->itens()->create($i->only(['ordem', 'descricao', 'quantidade', 'unidade', 'valor_unitario', 'cobranca']));
         }
@@ -145,7 +149,8 @@ class Orcamentos
     private function campos(array $d): array
     {
         $c = collect($d)->only(['produto', 'cliente', 'contato', 'cidade', 'titulo', 'destaque', 'lead', 'validade_dias', 'entrada', 'parcelas',
-            'desconto_avista', 'inclui', 'nao_inclui', 'passos', 'aceite', 'observacoes'])->all();
+            'desconto_avista', 'inclui', 'nao_inclui', 'passos', 'aceite', 'observacoes',
+            'lead_id', 'tipo', 'rotulo_3', 'valor_3', 'natureza', 'dados_cliente', 'objeto', 'secoes', 'planos', 'pagamento_texto', 'notas_internas'])->all();
         $c['aceite'] = (bool) ($d['aceite'] ?? false);
         foreach (['entrada', 'desconto_avista'] as $k) {
             $c[$k] = (float) ($c[$k] ?? 0);
@@ -164,8 +169,8 @@ class Orcamentos
             }
             $item = $o->itens()->create(['ordem' => $n, 'descricao' => trim($i['descricao']), 'quantidade' => (float) ($i['quantidade'] ?? 1),
                 'unidade' => trim((string) ($i['unidade'] ?? 'un')) ?: 'un', 'valor_unitario' => (float) ($i['valor_unitario'] ?? 0),
-                'cobranca' => ($i['cobranca'] ?? 'unico') === 'mensal' ? 'mensal' : 'unico']);
-            $item->cobranca === 'mensal' ? $mensal += $item->subtotal() : $unico += $item->subtotal();
+                'cobranca' => array_key_exists($i['cobranca'] ?? '', OrcamentoItem::COBRANCAS) ? $i['cobranca'] : 'unico']);
+            match ($item->cobranca) { 'mensal' => $mensal += $item->subtotal(), 'unico' => $unico += $item->subtotal(), default => null };
         }
         // A entrada nunca passa do total (senão a parcela fica negativa).
         $o->update(['total_unico' => round($unico, 2), 'total_mensal' => round($mensal, 2), 'entrada' => min((float) $o->entrada, round($unico, 2))]);
