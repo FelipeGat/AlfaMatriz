@@ -44,6 +44,7 @@ revisão 50%, staging 75%, produção 90% e concluída 100%. A tarefa-mãe parad
 - **FR-002**: Criar ou editar tarefa MUST aceitar só sistema VixCard, mãe VixCard e compromisso visível.
 - **FR-003**: Itens, anexos, comentários e entregas de tarefa fora do escopo MUST dar 404.
 - **FR-004**: As listas de filtro (sistemas, pessoas) e a equipe da Agenda MUST trazer só o que o escopo permite.
+  **Mudança de 20/10/2026 (Felipe):** "no acesso do Victor não está mostrando toda a equipe, preciso que mostre a equipe toda". As **pessoas** passam a ser a equipe toda da casa (contas ativas, sem as de revenda): a conta VixCard pode ver, atribuir tarefa e convidar qualquer uma delas. O **conteúdo** de fora (tarefas e compromissos da Alfa) continua fechado.
 - **FR-005**: O MCP MUST recusar conta com escopo VixCard.
 - **FR-006**: Sem o perfil, nada muda para ninguém: o escopo só existe na sessão de quem tem o perfil.
 - **FR-008** (T-427, 20/10/2026): O escopo MUST valer só para a conta em que nenhum OUTRO perfil dá `tarefas`

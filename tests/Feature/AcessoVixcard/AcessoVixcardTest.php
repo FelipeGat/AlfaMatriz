@@ -81,7 +81,7 @@ class AcessoVixcardTest extends TestCase
     {
         $this->actingAs($this->victor)->get(route('tarefas.index'))->assertOk()
             ->assertSee('Coletor C72 lendo etiquetas')->assertDontSee('Wellhub segredo da academia')
-            ->assertDontSee('AlfaGym')->assertDontSee('Rossini Alfa')->assertSee('Felipe Admin');
+            ->assertDontSee('AlfaGym')->assertSee('Rossini Alfa')->assertSee('Felipe Admin'); // a equipe toda (20/10/2026)
         $this->get(route('tarefas.historico'))->assertOk()->assertDontSee('Wellhub');
     }
 
@@ -103,8 +103,11 @@ class AcessoVixcardTest extends TestCase
         $this->post(route('tarefas.store'), ['titulo' => 'Tarefa no Gym', 'tipo' => 'desenvolvimento', 'sistema_id' => $this->gym->id])->assertSessionHasErrors('sistema_id');
         $this->post(route('tarefas.store'), ['titulo' => 'Sem produto', 'tipo' => 'desenvolvimento'])->assertSessionHasErrors('sistema_id');
         $this->post(route('tarefas.store'), ['titulo' => 'Mãe de fora', 'tipo' => 'desenvolvimento', 'sistema_id' => $this->vixId->id, 'tarefa_pai_id' => $this->daAlfa->id])->assertSessionHasErrors('tarefa_pai_id');
-        $this->post(route('tarefas.store'), ['titulo' => 'Para o Rossini', 'tipo' => 'desenvolvimento', 'sistema_id' => $this->vixId->id, 'responsavel_id' => $this->rossini->id])->assertSessionHasErrors('responsavel_id');
-        $this->assertSame(0, Tarefa::withoutGlobalScopes()->whereIn('titulo', ['Tarefa no Gym', 'Sem produto', 'Mãe de fora', 'Para o Rossini'])->count());
+        // A equipe toda pode receber tarefa VixCard (20/10/2026); quem é de revenda, não.
+        $parceiro = User::factory()->create(['name' => 'Parceiro de revenda', 'revenda_id' => \App\Models\Revenda::create(['nome' => 'Rev Parceira', 'cnpj' => '12.345.678/0001-99', 'contato_nome' => 'João', 'contato_email' => 'rev@teste.local', 'ativo' => true])->id]);
+        $this->post(route('tarefas.store'), ['titulo' => 'Para o parceiro', 'tipo' => 'desenvolvimento', 'sistema_id' => $this->vixId->id, 'responsavel_id' => $parceiro->id])->assertSessionHasErrors('responsavel_id');
+        $this->assertSame(0, Tarefa::withoutGlobalScopes()->whereIn('titulo', ['Tarefa no Gym', 'Sem produto', 'Mãe de fora', 'Para o parceiro'])->count());
+        $this->post(route('tarefas.store'), ['titulo' => 'Para o Rossini', 'tipo' => 'desenvolvimento', 'sistema_id' => $this->vixId->id, 'responsavel_id' => $this->rossini->id])->assertSessionHasNoErrors();
 
         $this->post(route('tarefas.store'), ['titulo' => 'Etiqueta Zebra ZT231R', 'tipo' => 'desenvolvimento', 'sistema_id' => $this->vixId->id])->assertSessionHasNoErrors();
         $nova = Tarefa::where('titulo', 'Etiqueta Zebra ZT231R')->sole();
@@ -117,9 +120,10 @@ class AcessoVixcardTest extends TestCase
         Compromisso::factory()->create(['titulo' => 'Reunião Vix-ID', 'tarefa_id' => $this->daVix->id, 'criado_por_id' => $this->admin->id, 'data' => now()->toDateString()]);
         Compromisso::factory()->create(['titulo' => 'Diretoria Alfa sigilosa', 'criado_por_id' => $this->rossini->id, 'data' => now()->toDateString()]);
         $this->actingAs($this->victor)->get(route('agenda.index', ['visao' => 'lista']))->assertOk()
-            ->assertSee('Reunião Vix-ID')->assertDontSee('Diretoria Alfa sigilosa')->assertDontSee('Wellhub')->assertDontSee('Rossini Alfa');
+            ->assertSee('Reunião Vix-ID')->assertDontSee('Diretoria Alfa sigilosa')->assertDontSee('Wellhub');
+        // Convidar qualquer um da equipe (20/10/2026): o compromisso dele continua escondido, a pessoa não.
         $this->post(route('compromissos.store'), ['titulo' => 'Com o Rossini', 'data' => now()->addDay()->toDateString(), 'hora' => '10:00',
-            'participantes' => [$this->rossini->id]])->assertSessionHasErrors('participantes');
+            'participantes' => [$this->rossini->id]])->assertSessionHasNoErrors();
     }
 
     public function test_sem_o_perfil_nada_muda(): void

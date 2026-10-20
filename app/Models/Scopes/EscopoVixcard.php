@@ -79,23 +79,20 @@ class EscopoVixcard implements Scope
     }
 
     /**
-     * As pessoas que a conta VixCard pode ver e escolher: quem responde, abriu
-     * ou conversa numa tarefa VixCard, quem participa de compromisso visível
-     * a ela, e quem tem o perfil. Nunca a lista inteira da casa (FR-004).
+     * As pessoas que a conta VixCard pode ver e escolher: a equipe toda da casa
+     * (contas ativas, sem as de revenda) e ela mesma.
+     *
+     * Era só quem já tinha passado por tarefa ou compromisso da VixCard (FR-004
+     * original); o dono mudou em 20/10/2026: "no acesso do Victor não está
+     * mostrando toda a equipe, preciso que mostre a equipe toda". O que continua
+     * fechado é o CONTEÚDO de fora — tarefas e compromissos da Alfa —, não as pessoas.
      *
      * @return list<int>
      */
     public static function pessoas(User $u): array
     {
-        $tarefas = Tarefa::withoutGlobalScopes()->whereIn('sistema_id', self::sistemas());
-        $ids = collect()
-            ->merge((clone $tarefas)->whereNotNull('responsavel_id')->pluck('responsavel_id'))
-            ->merge((clone $tarefas)->whereNotNull('criado_por_id')->pluck('criado_por_id'))
-            ->merge(Compromisso::query()->with('participantes:id')->get()->flatMap(fn ($c) => $c->participantes->pluck('id')->push($c->criado_por_id)))
-            ->merge(User::whereHas('perfis', fn ($q) => $q->where('slug', self::PERFIL))->pluck('id'))
-            ->push($u->id);
-
-        return $ids->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+        return User::whereNull('revenda_id')->where('ativo', true)->pluck('id')
+            ->push($u->id)->map(fn ($id) => (int) $id)->unique()->values()->all();
     }
 
     /**
