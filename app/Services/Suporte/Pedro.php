@@ -142,8 +142,8 @@ class Pedro
         $midias = app(Midias::class)->paraOPedido($p->conversa);
 
         return ['id' => $p->id, 'agente' => (string) config('services.suporte_pedro.agente'), 'modelo' => (string) config('services.suporte_pedro.modelo'),
-            'prompt' => $this->contexto->prompt($p->conversa->fresh(), array_column($midias['imagens'], 'id')),
-            'imagens' => $midias['imagens'], 'audios' => $midias['audios']];
+            'prompt' => $this->contexto->prompt($p->conversa->fresh(), array_column($midias['imagens'], 'id'), array_column($midias['videos'], 'id')),
+            'imagens' => $midias['imagens'], 'audios' => $midias['audios'], 'videos' => $midias['videos']];
     }
 
     /**
@@ -157,7 +157,7 @@ class Pedro
         $p = SuportePedido::with('conversa')->whereKey($pedidoId)->where('situacao', 'reservado')->first();
         abort_unless($p && mb_strtolower($conta->email) === mb_strtolower((string) config('services.suporte_pedro.conta')), 404);
         foreach ($transcricoes as $t) {
-            SuporteMensagem::where('conversa_id', $p->conversa_id)->whereKey((int) $t['id'])->where('tipo', 'audio')
+            SuporteMensagem::where('conversa_id', $p->conversa_id)->whereKey((int) $t['id'])->whereIn('tipo', ['audio', 'video'])
                 ->update(['transcricao' => mb_substr(trim((string) $t['texto']), 0, 4000)]);
         }
         $c = $p->conversa;

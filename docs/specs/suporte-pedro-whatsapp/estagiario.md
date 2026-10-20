@@ -128,5 +128,9 @@ Ver e analisar fotos, transcrever áudio e responder 24 h. Fotos e áudio estão
   liga, computador lento, mouse ou teclado, monitor sem imagem, catraca que não reconhece face ou digital, nobreak
   e aparelho que não conecta no Wi-Fi. Mesma regra de segurança dos outros; ficam para a equipe revisar.
 - **FR-13, foto ou vídeo:** quando o problema não está claro, o Pedro pede foto (ou vídeo curto, para barulho e
-  movimento) já na primeira resposta. Ele vê fotos; vídeo fica registrado para a equipe até a análise de vídeo
-  existir (viável: PyAV, que já está na imagem do Whisper, tira quadros, e o Whisper transcreve o som).
+  movimento) já na primeira resposta.
+- **FR-14, vídeo (20/10/2026):** o vídeo mais recente ainda não visto vai ao runner (até 16 MB, o teto do Gestor).
+  O script do Whisper (`transcrever_reuniao.py --video 3`) tira 3 quadros em JPEG (início, meio e fim, girados como
+  o celular gravou, maior lado 768 px) e transcreve a fala, num só container sem rede. Os quadros vão à IA como
+  fotos, e a fala entra no lugar do marcador `⟦VIDEO:id⟧`. O que foi visto volta ao Matriz na `transcricao` da
+  mensagem, e o vídeo não é mandado de novo. Divide os 70 s com os áudios.

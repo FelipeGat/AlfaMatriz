@@ -27,10 +27,20 @@ class Contexto
     /** O marcador que o runner troca pela transcrição do áudio (ou por "não transcrito"). */
     public const AUDIO = '⟦AUDIO:%d⟧';
 
-    /** @param  list<int>  $fotos  as fotos (ids de mensagem) que vão anexadas a este pedido */
-    public function prompt(SuporteConversa $c, array $fotos = []): string
+    /** O runner troca pelo que viu no vídeo (quadros anexados e fala). */
+    public const VIDEO = '⟦VIDEO:%d⟧';
+
+    /** @var list<int> */
+    private array $videos = [];
+
+    /**
+     * @param  list<int>  $fotos  as fotos (ids de mensagem) que vão anexadas a este pedido
+     * @param  list<int>  $videos  os vídeos que o runner vai abrir para este pedido
+     */
+    public function prompt(SuporteConversa $c, array $fotos = [], array $videos = []): string
     {
         $this->fotos = $fotos;
+        $this->videos = $videos;
         $c->loadMissing(['cliente.sistemas', 'cliente.contratos']);
         $cliente = $c->cliente;
         $sistemas = $cliente ? $cliente->sistemas->filter(fn ($s) => (bool) $s->pivot->ativo)->values() : collect();
@@ -49,7 +59,8 @@ class Contexto
             ."Se houver cheiro de queimado, faísca, fumaça, choque ou água em equipamento elétrico: oriente só desligar pela tomada ou pelo disjuntor SE for seguro e acessível, afastar as pessoas, e abra atendimento urgente.\n"
             // Padrão (Felipe, 20/10/2026: "sempre pedir em caso de não ser claro o problema uma foto ou vídeo").
             ."FOTO OU VÍDEO É O PADRÃO: se o problema não está claro (qual equipamento, o que acontece, o que aparece), já na PRIMEIRA resposta peça uma foto do problema (visor, luzes, mensagem de erro, o equipamento) ou um vídeo curto quando for barulho ou movimento, junto da pergunta principal. "
-            ."Seja direto: você tem poucas mensagens antes de a conversa passar a um especialista. Vídeo fica registrado para a equipe técnica; você ainda não o vê, então para você peça também uma foto.\n"
+            ."Seja direto: você tem poucas mensagens antes de a conversa passar a um especialista.\n"
+            ."VÍDEOS: de um vídeo você recebe alguns QUADROS (anexados como imagens, do início ao fim) e a fala, se houver. Use-os como as fotos e diga o que viu; o que não aparece nos quadros (um barulho, um movimento rápido), pergunte.\n"
             ."FOTOS: as fotos marcadas como ANEXADA vêm junto desta mensagem: OLHE-AS, diga em poucas palavras o que você vê e use isso no diagnóstico (luz acesa ou apagada, mensagem no visor, dano visível). "
             ."Não afirme o que a foto não mostra com clareza; se estiver escura ou longe, peça outra. Foto que não veio anexada fica registrada para a equipe técnica.\n"
             ."ÁUDIOS: as mensagens de áudio do cliente aparecem transcritas; se aparecer \"áudio não transcrito\", peça para ele escrever.\n"
@@ -321,6 +332,15 @@ class Contexto
         $texto = Str::limit((string) $m->texto, 1200, '…');
         if ($m->tipo === 'image' && in_array($m->id, $this->fotos, true)) {
             return '[FOTO nº '.$m->id.' — ANEXADA a esta mensagem: veja-a]'.(trim(str_replace('[imagem]', '', $texto)) !== '' ? ' legenda: '.trim(str_replace('[imagem]', '', $texto)) : '');
+        }
+        if ($m->tipo === 'video' && $m->direcao === 'entrada') {
+            $legenda = trim(str_replace('[vídeo]', '', $texto));
+            $legenda = $legenda !== '' ? ' legenda: '.$legenda : '';
+            if (filled($m->transcricao)) {
+                return '[vídeo nº '.$m->id.', já visto por você antes]'.$legenda.' '.Str::limit((string) $m->transcricao, 1500, '…');
+            }
+
+            return (in_array($m->id, $this->videos, true) ? sprintf(self::VIDEO, $m->id) : '[vídeo — fica registrado para a equipe técnica]').$legenda;
         }
         if ($m->tipo === 'audio' && $m->direcao === 'entrada') {
             return filled($m->transcricao) ? '[áudio, transcrito] '.Str::limit((string) $m->transcricao, 1500, '…') : sprintf(self::AUDIO, $m->id);

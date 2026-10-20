@@ -21,23 +21,27 @@ class Midias
 
     public const AUDIOS = 3;
 
-    /** Acima disso a mídia fica para a equipe (o Gestor recusa acima de 16 MB). */
-    public const MAXIMO = 10 * 1024 * 1024;
+    /** Vídeo é pesado (quadros e fala): só o mais recente ainda não visto. */
+    public const VIDEOS = 1;
+
+    /** Acima disso a mídia fica para a equipe; é o mesmo teto do Gestor. */
+    public const MAXIMO = 16 * 1024 * 1024;
 
     private const EXTENSOES = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp',
-        'audio/ogg' => 'ogg', 'audio/mpeg' => 'mp3', 'audio/mp4' => 'm4a', 'audio/aac' => 'm4a', 'audio/amr' => 'amr'];
+        'audio/ogg' => 'ogg', 'audio/mpeg' => 'mp3', 'audio/mp4' => 'm4a', 'audio/aac' => 'm4a', 'audio/amr' => 'amr',
+        'video/mp4' => 'mp4', 'video/3gpp' => '3gp', 'video/quicktime' => 'mov'];
 
     public function __construct(private CanalWhatsApp $canal) {}
 
     /**
-     * As fotos e os áudios recentes do cliente nesta conversa, prontos para o
-     * runner. Os áudios só se ainda não foram transcritos.
+     * As fotos, os áudios e o vídeo recentes do cliente nesta conversa, prontos
+     * para o runner. Áudio e vídeo só se ainda não foram transcritos ou vistos.
      *
-     * @return array{imagens: list<array{id: int, mime: string, base64: string}>, audios: list<array{id: int, extensao: string, base64: string}>}
+     * @return array{imagens: list<array{id: int, mime: string, base64: string}>, audios: list<array{id: int, extensao: string, base64: string}>, videos: list<array{id: int, extensao: string, base64: string}>}
      */
     public function paraOPedido(SuporteConversa $c): array
     {
-        $recentes = $c->mensagens()->reorder()->where('direcao', 'entrada')->whereIn('tipo', ['image', 'audio'])
+        $recentes = $c->mensagens()->reorder()->where('direcao', 'entrada')->whereIn('tipo', ['image', 'audio', 'video'])
             ->orderByDesc('id')->limit(15)->get();
         $imagens = [];
         foreach ($recentes->where('tipo', 'image')->take(self::FOTOS) as $m) {
@@ -52,7 +56,14 @@ class Midias
             }
         }
 
-        return ['imagens' => array_reverse($imagens), 'audios' => array_reverse($audios)];
+        $videos = [];
+        foreach ($recentes->where('tipo', 'video')->whereNull('transcricao')->take(self::VIDEOS) as $m) {
+            if ($bytes = $this->bytes($m)) {
+                $videos[] = ['id' => $m->id, 'extensao' => self::EXTENSOES[$m->midia_mime] ?? 'mp4', 'base64' => base64_encode($bytes)];
+            }
+        }
+
+        return ['imagens' => array_reverse($imagens), 'audios' => array_reverse($audios), 'videos' => $videos];
     }
 
     /** Os bytes da mídia: do disco, ou buscados no Gestor na primeira vez. Falha = null (o Pedro segue sem ela). */

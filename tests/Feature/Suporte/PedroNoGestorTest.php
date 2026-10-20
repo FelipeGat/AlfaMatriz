@@ -39,8 +39,11 @@ class PedroNoGestorTest extends TestCase
             if (preg_match('#/whatsapp/midia/([^/?]+)$#', $r->url(), $m)) {
                 $this->pedidosAoGestor[] = ['acao' => 'midia', 'dados' => [$m[1]], 'token' => $r->header('Authorization')[0] ?? null];
 
-                return str_contains($m[1], 'AUDIO') ? Http::response('OGGBYTES', 200, ['Content-Type' => 'audio/ogg'])
-                    : Http::response('JPEGBYTES', 200, ['Content-Type' => 'image/jpeg']);
+                return match (true) {
+                    str_contains($m[1], 'AUDIO') => Http::response('OGGBYTES', 200, ['Content-Type' => 'audio/ogg']),
+                    str_contains($m[1], 'VIDEO') => Http::response('MP4BYTES', 200, ['Content-Type' => 'video/mp4']),
+                    default => Http::response('JPEGBYTES', 200, ['Content-Type' => 'image/jpeg']),
+                };
             }
             if (preg_match('#/conversas/\d+/(\w+)$#', $r->url(), $m)) {
                 $this->pedidosAoGestor[] = ['acao' => $m[1], 'dados' => $r->data(), 'token' => $r->header('Authorization')[0] ?? null];
@@ -210,5 +213,33 @@ class PedroNoGestorTest extends TestCase
         $this->assertSame([], $job2['audios']);
         $this->assertStringContainsString('[áudio, transcrito] desde cedo está apagada', $job2['prompt']);
         $this->assertSame(0, collect(array_slice($this->pedidosAoGestor, $antes))->where('acao', 'midia')->count(), 'a foto não é buscada de novo');
+    }
+
+    /** Vídeo (20/10/2026): vai ao runner uma vez; o que ele viu fica registrado e não volta. */
+    public function test_video_do_cliente_vai_ao_pedro_uma_vez_e_fica_registrado(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $this->repasse('o portão faz barulho', 'wamid.1', $this->estado())->assertOk();
+        $this->repasseMidia('video', 'wamid.VIDEO');
+
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->felipe, ['central-ia-runner']);
+        $job = $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->json();
+
+        $video = \App\Models\SuporteMensagem::where('wamid', 'wamid.VIDEO')->sole();
+        $this->assertSame([['id' => $video->id, 'extensao' => 'mp4', 'base64' => base64_encode('MP4BYTES')]], $job['videos']);
+        $this->assertStringContainsString(sprintf(\App\Services\Suporte\Contexto::VIDEO, $video->id), $job['prompt']);
+        $this->assertStringContainsString('VÍDEOS: de um vídeo você recebe alguns QUADROS', $job['prompt']);
+
+        $this->postJson(route('suporte.runner.resposta', $job['id']), ['maquina' => 'wsl', 'texto' => "<<<PEDRO\n".json_encode(['resposta' => 'Vi o vídeo: o portão para no meio.', 'acao' => 'responder'])."\nPEDRO>>>",
+            'transcricoes' => [['id' => $video->id, 'texto' => '[vídeo visto] ele trava aqui']]])->assertOk();
+        $this->assertSame('[vídeo visto] ele trava aqui', $video->fresh()->transcricao);
+
+        $this->repasse('e agora?', 'wamid.2', $this->estado())->assertOk();
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->felipe, ['central-ia-runner']);
+        $job2 = $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->json();
+        $this->assertSame([], $job2['videos'], 'já visto: não vai de novo');
+        $this->assertStringContainsString("[vídeo nº {$video->id}, já visto por você antes] [vídeo visto] ele trava aqui", $job2['prompt']);
     }
 }

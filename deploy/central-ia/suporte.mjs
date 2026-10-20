@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { modeloArgs, permissoes } from './politica.mjs';
-import { transcreverAudioCurto, whisperInstalado } from './transcricao.mjs';
+import { analisarVideoCurto, transcreverAudioCurto, whisperInstalado } from './transcricao.mjs';
 
 /**
  * O Pedro, atendente do suporte no WhatsApp (docs/specs/suporte-pedro-whatsapp).
@@ -82,7 +82,7 @@ export async function responderComIa(job, agentes, { executar = rodar, tempoMs =
  * Uma rodada: pega o próximo pedido do suporte e devolve a resposta (ou o erro).
  * @returns {Promise<{status: number, id?: number, ms?: number, erro?: string}>}
  */
-export async function atenderSuporte(maquina, { api, agentes, responder = responderComIa, transcrever = transcreverAudioCurto, temWhisper = whisperInstalado }) {
+export async function atenderSuporte(maquina, { api, agentes, responder = responderComIa, transcrever = transcreverAudioCurto, analisarVideo = analisarVideoCurto, temWhisper = whisperInstalado }) {
     const r = await api('suporte/proxima', { maquina });
     if (r.status !== 200 || !r.json?.id) return { status: r.status };
     const inicio = Date.now();
@@ -90,9 +90,21 @@ export async function atenderSuporte(maquina, { api, agentes, responder = respon
     // lugar do marcador (⟦AUDIO:id⟧). Sem Whisper ou com falha: "não transcrito".
     const transcricoes = [];
     const audios = r.json.audios || [];
-    if (audios.length && await temWhisper()) {
+    // Vídeos (20/10/2026): quadros que viram fotos para a IA, e a fala transcrita.
+    const videos = r.json.videos || [];
+    const vistos = [];
+    if ((audios.length || videos.length) && await temWhisper()) {
         // Orçamento: o Gestor manda o menu se o Pedro passar de 2 min; a IA ainda precisa do tempo dela.
         const limite = Date.now() + ORCAMENTO_AUDIO_MS;
+        for (const v of videos) {
+            const resta = limite - Date.now();
+            if (resta < 15_000) break;
+            const visto = await analisarVideo(Buffer.from(String(v.base64 || ''), 'base64'), v.extensao, tmpdir(), { timeoutMs: resta });
+            if (!visto) continue;
+            vistos.push({ id: v.id, ...visto });
+            // Registrado como "transcrição" do vídeo: o Matriz não o manda de novo no próximo pedido.
+            transcricoes.push({ id: v.id, texto: visto.fala ? `[vídeo visto] ${visto.fala}` : '[vídeo visto, sem fala]' });
+        }
         for (const a of audios) {
             const resta = limite - Date.now();
             if (resta < 15_000) break;
@@ -100,10 +112,17 @@ export async function atenderSuporte(maquina, { api, agentes, responder = respon
             if (texto) transcricoes.push({ id: a.id, texto });
         }
     }
-    const job = { ...r.json, prompt: String(r.json.prompt || '').replace(/⟦AUDIO:(\d+)⟧/g, (_, id) => {
-        const t = transcricoes.find(x => String(x.id) === id);
-        return t ? `[áudio, transcrito] ${t.texto}` : '[áudio não transcrito]';
-    }) };
+    const job = { ...r.json,
+        imagens: [...(r.json.imagens || []), ...vistos.flatMap(v => v.quadros.map(base64 => ({ id: v.id, mime: 'image/jpeg', base64 })))],
+        prompt: String(r.json.prompt || '').replace(/⟦AUDIO:(\d+)⟧/g, (_, id) => {
+            const t = transcricoes.find(x => String(x.id) === id);
+            return t ? `[áudio, transcrito] ${t.texto}` : '[áudio não transcrito]';
+        }).replace(/⟦VIDEO:(\d+)⟧/g, (_, id) => {
+            const v = vistos.find(x => String(x.id) === id);
+            if (!v) return '[vídeo — não consegui abrir; fica registrado para a equipe técnica]';
+            return `[VÍDEO nº ${id} — ${v.quadros.length} quadro(s) dele ANEXADO(S) como imagens, do início ao fim; veja-os]`
+                + (v.fala ? ` fala no vídeo: ${v.fala}` : ' (sem fala)');
+        }) };
     let texto = null;
     let erro = null;
     try { texto = await responder(job, agentes); } catch (e) { erro = String(e.message || e).slice(0, 400); }

@@ -153,3 +153,38 @@ export async function transcreverAudioCurto(bytes, extensao, pastaBase, { docker
         rmSync(dir, { recursive: true, force: true });
     }
 }
+
+const EXTENSOES_VIDEO = new Set(['mp4', '3gp', 'mov']);
+
+/**
+ * Vídeo do WhatsApp para o Pedro (Felipe, 20/10/2026): o mesmo container sem
+ * rede tira `quadros` quadros (JPEG, base64) e transcreve a fala. Devolve
+ * {quadros, fala} — fala null quando o vídeo não tem voz —, ou null na falha.
+ */
+export async function analisarVideoCurto(bytes, extensao, pastaBase, { docker = 'docker', timeoutMs = 75_000, quadros = 3 } = {}) {
+    if (!EXTENSOES_VIDEO.has(extensao) || !bytes?.length || bytes.length > MAX) return null;
+    const dir = mkdtempSync(join(pastaBase, 'pedro-video-'));
+    try {
+        const arquivo = `video.${extensao}`;
+        writeFileSync(join(dir, arquivo), bytes, { mode: 0o644 });
+        let saida;
+        try {
+            ({ stdout: saida } = await rodar(docker, ['run', '--rm', '--pull=never', '--network=none', '--read-only', '--cap-drop=ALL',
+                '--security-opt=no-new-privileges', '--memory=3g', `--cpus=${Math.max(1, Math.min(16, Number(process.env.CENTRAL_IA_WHISPER_CPUS) || 2))}`, '--pids-limit=256',
+                '--user', `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`, '--tmpfs', '/tmp:rw,noexec,nosuid,size=256m',
+                '-e', 'HOME=/tmp', '--mount', `type=bind,src=${dir},dst=/media,readonly`,
+                IMAGEM_WHISPER, 'python', '/app/transcrever_reuniao.py', '--video', String(quadros), `/media/${arquivo}`],
+            { timeoutMs, maxBuffer: 16 * 1024 * 1024, aoLerLinha: () => {} }));
+        } catch {
+            return null;
+        }
+        const json = JSON.parse(String(saida).trim().split('\n').pop());
+        const imagens = (json.quadros || []).filter(q => typeof q === 'string' && q).slice(0, 6);
+        const fala = (json.trechos || []).map(t => String(t.texto || '').trim()).filter(Boolean).join(' ').slice(0, 4000);
+        return imagens.length || fala ? { quadros: imagens, fala: fala || null } : null;
+    } catch {
+        return null;
+    } finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+}

@@ -60,4 +60,25 @@ assert.equal((await atenderSuporte('wsl', { api: async () => ({ status: 204 }), 
     assert.equal(prompt, 'CLIENTE: [áudio, transcrito] a catraca apagou\nCLIENTE: [áudio não transcrito]');
     assert.deepEqual(enviados2[1][1].transcricoes, [{ id: 5, texto: 'a catraca apagou' }]);
 }
-console.log('PASSOU: suporte — IA sem ferramentas pelo stdin, numa pasta vazia; fotos para a IA (Claude e Codex); áudio transcrito no prompt; resposta e erro voltam ao Matriz.');
+// Vídeo (20/10/2026): quadros viram imagens para a IA, a fala entra no marcador e volta ao Matriz.
+{
+    const enviados3 = [];
+    const api3 = async (caminho, corpo) => { enviados3.push([caminho, corpo]);
+        return caminho === 'suporte/proxima' ? { status: 200, json: { id: 9, agente: 'claude', prompt: 'CLIENTE: ⟦VIDEO:7⟧', imagens: [{ id: 3, mime: 'image/png', base64: 'UE5H' }],
+            videos: [{ id: 7, extensao: 'mp4', base64: 'TVA0' }] } } : { status: 200, json: { ok: true } }; };
+    let recebido;
+    await atenderSuporte('wsl', { api: api3, agentes: { claude: '/bin/claude' }, temWhisper: async () => true,
+        analisarVideo: async (bytes, ext) => { assert.equal(ext, 'mp4'); assert.equal(bytes.toString(), 'MP4'); return { quadros: ['QTE=', 'QTI='], fala: 'ele trava aqui' }; },
+        responder: async job => { recebido = job; return 'R'; } });
+    assert.equal(recebido.prompt, 'CLIENTE: [VÍDEO nº 7 — 2 quadro(s) dele ANEXADO(S) como imagens, do início ao fim; veja-os] fala no vídeo: ele trava aqui');
+    assert.deepEqual(recebido.imagens.map(i => [i.id, i.mime, i.base64]), [[3, 'image/png', 'UE5H'], [7, 'image/jpeg', 'QTE='], [7, 'image/jpeg', 'QTI=']]);
+    assert.deepEqual(enviados3[1][1].transcricoes, [{ id: 7, texto: '[vídeo visto] ele trava aqui' }]);
+
+    // Sem conseguir abrir: o marcador diz que fica para a equipe, e nada é registrado como visto.
+    enviados3.length = 0;
+    await atenderSuporte('wsl', { api: api3, agentes: { claude: '/bin/claude' }, temWhisper: async () => true,
+        analisarVideo: async () => null, responder: async job => { recebido = job; return 'R'; } });
+    assert.match(recebido.prompt, /não consegui abrir; fica registrado para a equipe técnica/);
+    assert.equal(enviados3[1][1].transcricoes, undefined);
+}
+console.log('PASSOU: suporte — IA sem ferramentas pelo stdin, numa pasta vazia; fotos para a IA (Claude e Codex); áudio transcrito no prompt; vídeo em quadros e fala; resposta e erro voltam ao Matriz.');
