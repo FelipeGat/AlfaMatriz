@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -158,8 +159,9 @@ class SincronizadorSistemaService
             foreach ($contagens as $chave => $valor) {
                 // 'ignoradas' é estado, não movimento: a revenda excluída
                 // segue excluída a cada ciclo, e uma linha por hora sobre o
-                // mesmo fato enterraria o dia em que algo de fato mudou.
-                if ($chave === 'ignoradas') {
+                // mesmo fato enterraria o dia em que algo de fato mudou. O
+                // CNPJ em conflito é o mesmo caso: repete até alguém resolver.
+                if (in_array($chave, ['ignoradas', 'cnpj_em_conflito'], true)) {
                     continue;
                 }
 
@@ -184,7 +186,7 @@ class SincronizadorSistemaService
 
     private function sincronizarRevendas(): array
     {
-        $criadas = $atualizadas = $ignoradas = 0;
+        $criadas = $atualizadas = $ignoradas = $cnpjEmConflito = 0;
 
         foreach ($this->todasPaginas('/revendas') as $item) {
             $cnpj = $this->normalizarDocumento($item['cnpj'] ?? null);
@@ -234,6 +236,23 @@ class SincronizadorSistemaService
                 continue;
             }
 
+            // O CNPJ que chega já é de OUTRA revenda da Matriz: gravá-lo
+            // derrubava o ciclo inteiro no índice único (T-412, staging,
+            // 18/10/2026 — a revenda do AlfaGym passou a vir com o CNPJ da
+            // gêmea ancorada no AlfaControl). Fundir as duas aqui seria
+            // decidir sozinho que são a mesma empresa, e fusão não tem
+            // desfazer; então o CNPJ fica como está, o resto atualiza, e o
+            // conflito sai no resumo e no log para alguém resolver.
+            if ($this->cnpjEhDeOutraRevenda($dados['cnpj'], $revenda?->id)) {
+                Log::warning('Sincronização: CNPJ já pertence a outra revenda; mantido o da Matriz.', [
+                    'sistema' => $this->sistema->slug,
+                    'id_externo' => $item['id_externo'],
+                    'revenda_id' => $revenda?->id,
+                ]);
+                $dados['cnpj'] = $revenda?->cnpj;
+                $cnpjEmConflito++;
+            }
+
             if ($revenda) {
                 $revenda->update($dados);
                 // Reconciliada agora ou já ancorada: ancorar é idempotente.
@@ -246,7 +265,12 @@ class SincronizadorSistemaService
             }
         }
 
-        return ['criadas' => $criadas, 'atualizadas' => $atualizadas, 'ignoradas' => $ignoradas];
+        return [
+            'criadas' => $criadas,
+            'atualizadas' => $atualizadas,
+            'ignoradas' => $ignoradas,
+            'cnpj_em_conflito' => $cnpjEmConflito,
+        ];
     }
 
     private function sincronizarClientes(): array
@@ -670,6 +694,23 @@ class SincronizadorSistemaService
         }
 
         return $candidato->idExternoNoSistema($this->sistema) === null ? $candidato : null;
+    }
+
+    /**
+     * Outra revenda — excluída inclusive, porque o índice único também a
+     * enxerga — já ocupa este CNPJ? Compara normalizado, pelo mesmo motivo de
+     * `reconciliarPorDocumento`: o cadastro manual pode ter máscara.
+     */
+    private function cnpjEhDeOutraRevenda(?string $cnpj, ?int $exceto): bool
+    {
+        if ($cnpj === null) {
+            return false;
+        }
+
+        return Revenda::withTrashed()
+            ->when($exceto !== null, fn ($q) => $q->whereKeyNot($exceto))
+            ->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', ''), ' ', '') = ?", [$cnpj])
+            ->exists();
     }
 
     private function normalizarDocumento(?string $documento): ?string

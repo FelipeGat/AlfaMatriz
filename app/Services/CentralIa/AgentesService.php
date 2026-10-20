@@ -582,6 +582,12 @@ class AgentesService
 
         $execucao = DB::transaction(function () use ($user, $runner) {
             User::whereKey($user->id)->lockForUpdate()->first();
+            // Desconectada enquanto este pedido esperava a trava da conta: o
+            // `desconectar` já interrompeu o que ela tinha e apagou a máquina,
+            // e nada mais pode ser entregue a ela (revisão da T-374). O token
+            // conta junto: máquina cujo token já caiu não devolveria a resposta.
+            $atual = CentralIaRunner::whereKey($runner->id)->first(['id', 'token_id']);
+            if (! $atual || ($atual->token_id && ! \Laravel\Sanctum\PersonalAccessToken::whereKey($atual->token_id)->exists())) return null;
             if (app(Preferencias::class)->ler($user)['execucao_bloqueada']) return null;
 
             $rodando = CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::EXECUTANDO);
@@ -665,6 +671,9 @@ class AgentesService
                 'motivo' => trim(($execucao->roteamento['motivo'] ?? '').' · '.$comoFoi.', ~'.number_format($r['tokens_estimados'] / 1000, 1, ',', '').' mil tokens', ' ·')])]);
         }
 
+        // As opções da pessoa (T-374), lidas uma vez para as duas chaves.
+        $opcoes = app(Preferencias::class)->ler($user);
+
         return [
             'id' => $execucao->id,
             // A máquina guarda o chat confirmado com servidor + conta + chat
@@ -698,8 +707,8 @@ class AgentesService
             // para quem implementa e a memória do Claude da máquina dela. O
             // ARQUIVO da memória quem escolhe é a máquina; aqui só se diz sim
             // ou não.
-            'cstk' => (bool) (app(Preferencias::class)->ler($user)['cstk'] ?? false),
-            'memoria' => (bool) (app(Preferencias::class)->ler($user)['memoria'] ?? false),
+            'cstk' => (bool) ($opcoes['cstk'] ?? false),
+            'memoria' => (bool) ($opcoes['memoria'] ?? false),
             // Semente do chat de assunto: o runner lê estas conversas (pelo id,
             // entre as que ELE listou) e entrega o extrato da última semana.
             'semear' => $execucao->roteamento['semear'] ?? null,
@@ -931,6 +940,10 @@ class AgentesService
     public function confirmacao(User $user, CentralIaRunner $runner, int $id, array $dados): array
     {
         return DB::transaction(function () use ($user, $runner, $id, $dados) {
+            // A conta antes da execução, na ordem do `desconectar` e do
+            // `proxima`: o aviso grava na conversa, que trava a conta, e a
+            // ordem invertida dava deadlock com eles (revisão da T-374).
+            User::whereKey($user->id)->lockForUpdate()->first();
             $e = CentralIaExecucao::where('user_id', $user->id)->whereKey($id)->lockForUpdate()->firstOrFail();
             abort_unless($e->status === CentralIaExecucao::EXECUTANDO && $e->runner_id === $runner->id, 409, 'Execução não está com esta máquina.');
 
@@ -1325,6 +1338,7 @@ class AgentesService
             ->where('status', CentralIaExecucao::EXECUTANDO)->where('iniciada_em', '<', $desde)
             ->whereNotIn('id', array_map('intval', $emCurso))->get()
             ->each(fn (CentralIaExecucao $e) => DB::transaction(function () use ($user, $e) {
+                User::whereKey($user->id)->lockForUpdate()->first(); // a conta antes, como em `confirmacao`
                 $e = CentralIaExecucao::whereKey($e->id)->lockForUpdate()->first();
                 if (! $e || $e->status !== CentralIaExecucao::EXECUTANDO) return;
                 $aviso = $this->conversas->registrarDoAgente($user, 'Central', "A máquina reiniciou no meio do trabalho de {$e->nomeDoAgente()}".($e->projeto ? " em {$e->projeto}" : '')
@@ -1332,6 +1346,29 @@ class AgentesService
                 $e->update(['status' => CentralIaExecucao::FALHOU, 'resposta_id' => $aviso->id, 'concluida_em' => now(),
                     'erro' => 'interrompida porque a máquina reiniciou sem o runner avisar']);
                 Eventos::registrar($user, 'falhou', "{$e->nomeDoAgente()} interrompido: a máquina reiniciou no meio do pedido #{$e->id}", Eventos::da($e) + ['origem' => 'runner'], 'erro');
+                $e->tarefa?->update(['status' => CentralIaTarefa::FALHOU, 'ultima_atividade_em' => now()]);
+            }));
+    }
+
+    /**
+     * A máquina foi desconectada em Minhas máquinas com pedidos na mão: o
+     * runner dela já não consegue devolver a resposta (o token caiu), e o
+     * pedido ficava "executando" até o teto — ocupando o paralelo da pessoa e
+     * avisando a falha só lá no fim (revisão da T-374).
+     */
+    public function interromperDaMaquinaDesconectada(User $user, CentralIaRunner $runner): void
+    {
+        CentralIaExecucao::where('user_id', $user->id)->where('runner_id', $runner->id)
+            ->where('status', CentralIaExecucao::EXECUTANDO)->get()
+            ->each(fn (CentralIaExecucao $e) => DB::transaction(function () use ($user, $e, $runner) {
+                User::whereKey($user->id)->lockForUpdate()->first(); // a conta antes, como em `confirmacao`
+                $e = CentralIaExecucao::whereKey($e->id)->lockForUpdate()->first();
+                if (! $e || $e->status !== CentralIaExecucao::EXECUTANDO) return;
+                $aviso = $this->conversas->registrarDoAgente($user, 'Central', "A máquina {$runner->maquina} foi desconectada no meio do trabalho de {$e->nomeDoAgente()}".($e->projeto ? " em {$e->projeto}" : '')
+                    .'; o pedido foi interrompido. O que já tinha sido alterado ficou na pasta dela. Para retomar, conecte a máquina de novo e diga "pode seguir".', CentralIaMensagem::AUTOR_SISTEMA, $e->projeto ?: null, $e->tarefa_id);
+                $e->update(['status' => CentralIaExecucao::FALHOU, 'resposta_id' => $aviso->id, 'concluida_em' => now(),
+                    'erro' => 'interrompida porque a máquina foi desconectada']);
+                Eventos::registrar($user, 'falhou', "{$e->nomeDoAgente()} interrompido: a máquina {$runner->maquina} foi desconectada no meio do pedido #{$e->id}", Eventos::da($e) + ['origem' => 'web'], 'erro');
                 $e->tarefa?->update(['status' => CentralIaTarefa::FALHOU, 'ultima_atividade_em' => now()]);
             }));
     }
@@ -1347,6 +1384,7 @@ class AgentesService
                 && $e->created_at->lt(now()->subMinutes(30)) && ! $maquinas->contains(fn ($r) => in_array($e->agente, $r->agentes ?? [], true)
                     && ($e->projeto === '' || in_array($e->projeto, $r->projetos ?? [], true))))
             ->each(fn (CentralIaExecucao $e) => DB::transaction(function () use ($user, $e) {
+                User::whereKey($user->id)->lockForUpdate()->first(); // a conta antes, como em `confirmacao`
                 $e = CentralIaExecucao::whereKey($e->id)->lockForUpdate()->first();
                 if (! $e || $e->status !== CentralIaExecucao::PENDENTE) return;
                 $motivo = 'nenhuma máquina com '.$e->nomeDoAgente().($e->projeto ? " e o projeto {$e->projeto}" : '').' ficou disponível em 30 min';
@@ -1362,6 +1400,7 @@ class AgentesService
             ->each(fn (CentralIaExecucao $e) => DB::transaction(function () use ($user, $e) {
                 // De novo, travado: a conclusão do runner pode ter chegado
                 // entre a consulta e aqui — e ela vence.
+                User::whereKey($user->id)->lockForUpdate()->first(); // a conta antes, como em `confirmacao`
                 $e = CentralIaExecucao::whereKey($e->id)->lockForUpdate()->first();
                 if (! $e || $e->status !== CentralIaExecucao::EXECUTANDO) return;
                 $aviso = $this->conversas->registrarDoAgente($user, 'Central', "{$e->nomeDoAgente()} não respondeu a tempo em {$e->projeto}; o pedido foi encerrado.", CentralIaMensagem::AUTOR_SISTEMA, $e->projeto ?: null, $e->tarefa_id);

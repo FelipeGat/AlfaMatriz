@@ -85,16 +85,47 @@ class TelegramCanal
         if (! $webhook['ok'] || filled($webhook['resultado']['url'] ?? null)) {
             throw ValidationException::withMessages(['token' => 'Esse bot já está ligado a outro sistema (webhook). Crie um bot só para a Central.']);
         }
+        // O vínculo de quem pareou com o bot ANTIGO (o do .env, antes da
+        // T-374) só continua se o bot cadastrado agora já conversou com aquele
+        // chat. Bot que a pessoa nunca abriu não pode escrever primeiro: a tela
+        // dizia "vinculado" e o código de confirmação não chegava (revisão da
+        // T-374). Só o "chat não encontrado" (400) ou "bot bloqueado" (403) do
+        // Telegram desfaz; falha de rede não decide nada.
+        $chat = CentralIaTelegramVinculo::where('user_id', $user->id)->value('chat_id');
+        $conhece = $chat ? $api->chamar('getChat', ['chat_id' => $chat]) : null;
+        $chatDesconhecido = $conhece && in_array($conhece['status'] ?? null, [400, 403], true);
 
-        return DB::transaction(function () use ($user, $token, $botId, $usuario) {
+        $outraConta = fn () => ValidationException::withMessages(['token' => 'Esse bot já está cadastrado em outra conta. Cada pessoa usa o próprio bot.']);
+        try {
+            return $this->gravarBot($user, $token, $botId, $usuario, $chatDesconhecido, $outraConta);
+        } catch (UniqueConstraintViolationException $e) {
+            // Duas contas cadastrando o mesmo bot ao mesmo tempo: as duas passam
+            // pela conferência, e o único de `telegram_bot_id` barra a segunda.
+            // Era um 500; é a mesma recusa da conferência (revisão da T-374).
+            throw $outraConta();
+        }
+    }
+
+    private function gravarBot(User $user, string $token, int $botId, string $usuario, bool $chatDesconhecido, \Closure $outraConta): CentralIaTelegramBot
+    {
+        return DB::transaction(function () use ($user, $token, $botId, $usuario, $chatDesconhecido, $outraConta) {
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             if (CentralIaTelegramBot::where('telegram_bot_id', $botId)->where('user_id', '!=', $user->id)->exists()) {
-                throw ValidationException::withMessages(['token' => 'Esse bot já está cadastrado em outra conta. Cada pessoa usa o próprio bot.']);
+                throw $outraConta();
             }
             $anterior = CentralIaTelegramBot::where('user_id', $user->id)->lockForUpdate()->first();
             $mesmo = $anterior && $anterior->telegram_bot_id === $botId && $anterior->servidor === CentralIaTelegramBot::servidorAtual();
-            if ($anterior && ! $mesmo) {
+            if (($anterior && ! $mesmo) || $chatDesconhecido) {
                 $this->desfazerVinculo($user);
+            }
+            if ($anterior && ! $mesmo) {
+                // A repetição é conferida por (pessoa, número do update), e o
+                // número é de cada bot: o bot novo pode mandar um número que o
+                // antigo já usou, e a mensagem sumiria como "repetida" (revisão
+                // da T-374). Os números do bot antigo não servem para mais nada
+                // — o cursor dele recomeça e o Telegram não reentrega o que já
+                // foi confirmado —, então saem.
+                CentralIaMensagem::where('user_id', $user->id)->whereNotNull('telegram_update_id')->update(['telegram_update_id' => null]);
             }
             $bot = CentralIaTelegramBot::updateOrCreate(['user_id' => $user->id], [
                 'telegram_bot_id' => $botId, 'usuario' => $usuario, 'token' => $token,
