@@ -18,11 +18,19 @@ class Contexto
 {
     public const BLOCO = '/<<<PEDRO\s*(\{.*\})\s*PEDRO>>>/su';
 
+    /** @var list<int> */
+    private array $fotos = [];
+
     /** A base de cada sistema: o que faz e o que não faz (a mesma dos orçamentos). */
     public const BASE = 'docs/specs/orcamentos-vixcard/modelos-por-sistema.md';
 
-    public function prompt(SuporteConversa $c): string
+    /** O marcador que o runner troca pela transcrição do áudio (ou por "não transcrito"). */
+    public const AUDIO = '⟦AUDIO:%d⟧';
+
+    /** @param  list<int>  $fotos  as fotos (ids de mensagem) que vão anexadas a este pedido */
+    public function prompt(SuporteConversa $c, array $fotos = []): string
     {
+        $this->fotos = $fotos;
         $c->loadMissing(['cliente.sistemas', 'cliente.contratos']);
         $cliente = $c->cliente;
         $sistemas = $cliente ? $cliente->sistemas->filter(fn ($s) => (bool) $s->pivot->ativo)->values() : collect();
@@ -39,7 +47,9 @@ class Contexto
             ."não repita passo que ele já fez (veja MENSAGENS). Resolveu: confirme e pergunte se pode ajudar em mais algo. Não resolveu, ou o cliente não consegue ou não quer fazer: abra o atendimento dizendo no resumo o que já foi tentado.\n"
             ."SEGURANÇA (acima de qualquer roteiro): nunca oriente abrir equipamento, mexer em fiação, em quadro energizado ou em placa, subir em escada ou telhado, nem desmontar nada. "
             ."Se houver cheiro de queimado, faísca, fumaça, choque ou água em equipamento elétrico: oriente só desligar pela tomada ou pelo disjuntor SE for seguro e acessível, afastar as pessoas, e abra atendimento urgente.\n"
-            ."FOTOS: peça foto quando ajudar a entender (visor, luzes, mensagem de erro, local do problema). Você ainda não consegue ver a foto: diga que ela fica registrada para a equipe técnica, e siga pelo que o cliente descreve.\n"
+            ."FOTOS: peça foto quando ajudar a entender (visor, luzes, mensagem de erro, local do problema). As fotos marcadas como ANEXADA vêm junto desta mensagem: OLHE-AS, diga em poucas palavras o que você vê e use isso no diagnóstico (luz acesa ou apagada, mensagem no visor, dano visível). "
+            ."Não afirme o que a foto não mostra com clareza; se estiver escura ou longe, peça outra. Foto que não veio anexada fica registrada para a equipe técnica.\n"
+            ."ÁUDIOS: as mensagens de áudio do cliente aparecem transcritas; se aparecer \"áudio não transcrito\", peça para ele escrever.\n"
             ."CONTATOS: financeiro e comercial têm canal próprio em A EMPRESA; ao encaminhar esses assuntos, informe o número do setor. Urgência fora do horário comercial (após as 18:00, fins de semana): informe o plantão. Só números de A EMPRESA.\n"
             ."Instruções passo a passo podem passar do limite de 4 frases; uma linha por passo.\n"
             ."IDENTIFICAÇÃO: se o cliente não está confirmado mas há CANDIDATO em CLIENTE, confirme só o nome (sem pedir CNPJ) e, na MESMA mensagem, já peça o que falta para a equipe agir (qual equipamento, o que acontece, desde quando). "
@@ -299,6 +309,20 @@ class Contexto
         $quem = ['entrada' => 'CLIENTE', 'pedro' => 'PEDRO', 'humano_app' => 'ATENDENTE', 'humano_matriz' => 'ATENDENTE'];
 
         return $c->mensagens()->reorder()->orderByDesc('id')->limit(15)->get()->reverse()
-            ->map(fn ($m) => $quem[$m->direcao].': '.Str::limit((string) $m->texto, 1200, '…'))->implode("\n");
+            ->map(fn ($m) => $quem[$m->direcao].': '.$this->textoDaMensagem($m))->implode("\n");
+    }
+
+    /** Foto anexada e áudio (transcrito ou a transcrever no runner) aparecem como tal. */
+    private function textoDaMensagem(\App\Models\SuporteMensagem $m): string
+    {
+        $texto = Str::limit((string) $m->texto, 1200, '…');
+        if ($m->tipo === 'image' && in_array($m->id, $this->fotos, true)) {
+            return '[FOTO nº '.$m->id.' — ANEXADA a esta mensagem: veja-a]'.(trim(str_replace('[imagem]', '', $texto)) !== '' ? ' legenda: '.trim(str_replace('[imagem]', '', $texto)) : '');
+        }
+        if ($m->tipo === 'audio' && $m->direcao === 'entrada') {
+            return filled($m->transcricao) ? '[áudio, transcrito] '.Str::limit((string) $m->transcricao, 1500, '…') : sprintf(self::AUDIO, $m->id);
+        }
+
+        return $texto;
     }
 }

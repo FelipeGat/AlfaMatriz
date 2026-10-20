@@ -36,6 +36,12 @@ class PedroNoGestorTest extends TestCase
             'services.suporte_pedro.conta' => 'felipe@teste.local', 'services.suporte_pedro.responsaveis' => ['rossini@teste.local']]);
         // Um fake só, com o estado na própria classe: o primeiro stub do Http::fake vale para o teste inteiro.
         Http::fake(function (Pedido $r) {
+            if (preg_match('#/whatsapp/midia/([^/?]+)$#', $r->url(), $m)) {
+                $this->pedidosAoGestor[] = ['acao' => 'midia', 'dados' => [$m[1]], 'token' => $r->header('Authorization')[0] ?? null];
+
+                return str_contains($m[1], 'AUDIO') ? Http::response('OGGBYTES', 200, ['Content-Type' => 'audio/ogg'])
+                    : Http::response('JPEGBYTES', 200, ['Content-Type' => 'image/jpeg']);
+            }
             if (preg_match('#/conversas/\d+/(\w+)$#', $r->url(), $m)) {
                 $this->pedidosAoGestor[] = ['acao' => $m[1], 'dados' => $r->data(), 'token' => $r->header('Authorization')[0] ?? null];
                 if ($m[1] === 'entregar' && $this->statusEntregar !== 200) {
@@ -160,5 +166,49 @@ class PedroNoGestorTest extends TestCase
         $this->repasse('oi', 'wamid.1', ['5527000000000' => $this->estado()['5527988887777']])->assertOk();
         $this->assertSame(1, SuporteConversa::sole()->mensagens()->count());
         $this->assertSame(0, SuportePedido::count());
+    }
+
+    private function repasseMidia(string $tipo, string $id): void
+    {
+        $msg = ['from' => '5527988887777', 'id' => $id, 'timestamp' => (string) now()->timestamp, 'type' => $tipo, $tipo => ['id' => 'media.'.$id] + ($tipo === 'image' ? ['caption' => 'o visor'] : [])];
+        $valor = ['metadata' => ['phone_number_id' => '1179318548601637'], 'contacts' => [['wa_id' => '5527988887777', 'profile' => ['name' => 'Joaquim']]], 'messages' => [$msg]];
+        $corpo = json_encode(['entry' => [['changes' => [['field' => 'messages', 'value' => $valor]]]]]);
+        $this->call('POST', route('suporte.webhook.gestor'), [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => 'Bearer segredo-integracao',
+            'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $corpo, 'segredo-app'), 'HTTP_X_GESTOR_ESTADO' => json_encode($this->estado())], $corpo)->assertOk();
+    }
+
+    public function test_foto_e_audio_do_cliente_vao_ao_pedro_e_a_transcricao_fica_registrada(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $this->repasse('a catraca apagou', 'wamid.1', $this->estado())->assertOk();
+        $this->repasseMidia('image', 'wamid.FOTO');
+        $this->repasseMidia('audio', 'wamid.AUDIO');
+
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->felipe, ['central-ia-runner']);
+        $job = $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->json();
+
+        $foto = \App\Models\SuporteMensagem::where('wamid', 'wamid.FOTO')->sole();
+        $audio = \App\Models\SuporteMensagem::where('wamid', 'wamid.AUDIO')->sole();
+        $this->assertSame([['id' => $foto->id, 'mime' => 'image/jpeg', 'base64' => base64_encode('JPEGBYTES')]], $job['imagens']);
+        $this->assertSame([['id' => $audio->id, 'extensao' => 'ogg', 'base64' => base64_encode('OGGBYTES')]], $job['audios']);
+        $this->assertStringContainsString("[FOTO nº {$foto->id} — ANEXADA a esta mensagem: veja-a] legenda: o visor", $job['prompt']);
+        $this->assertStringContainsString(sprintf(\App\Services\Suporte\Contexto::AUDIO, $audio->id), $job['prompt']);
+        $this->assertSame('Bearer segredo-integracao', collect($this->pedidosAoGestor)->firstWhere('acao', 'midia')['token']);
+        \Illuminate\Support\Facades\Storage::disk('local')->assertExists($foto->fresh()->midia_path);
+
+        $this->postJson(route('suporte.runner.resposta', $job['id']), ['maquina' => 'wsl', 'texto' => "<<<PEDRO\n".json_encode(['resposta' => 'Vi a foto: o visor está apagado.', 'acao' => 'responder'])."\nPEDRO>>>",
+            'transcricoes' => [['id' => $audio->id, 'texto' => 'desde cedo está apagada']]])->assertOk();
+        $this->assertSame('desde cedo está apagada', $audio->fresh()->transcricao);
+
+        // Já transcrito: no próximo pedido, o áudio aparece como texto e não vai de novo; a foto vem do disco.
+        $antes = count($this->pedidosAoGestor);
+        $this->repasse('e agora?', 'wamid.2', $this->estado())->assertOk();
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->felipe, ['central-ia-runner']);
+        $job2 = $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->json();
+        $this->assertSame([], $job2['audios']);
+        $this->assertStringContainsString('[áudio, transcrito] desde cedo está apagada', $job2['prompt']);
+        $this->assertSame(0, collect(array_slice($this->pedidosAoGestor, $antes))->where('acao', 'midia')->count(), 'a foto não é buscada de novo');
     }
 }

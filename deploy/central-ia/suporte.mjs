@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { modeloArgs, permissoes } from './politica.mjs';
+import { transcreverAudioCurto, whisperInstalado } from './transcricao.mjs';
 
 /**
  * O Pedro, atendente do suporte no WhatsApp (docs/specs/suporte-pedro-whatsapp).
@@ -14,6 +15,9 @@ import { modeloArgs, permissoes } from './politica.mjs';
  * pasta de projeto: roda numa pasta temporária vazia.
  */
 export const TEMPO_MS = 90_000;
+
+/** Tempo total para transcrever os áudios de um pedido do Pedro. */
+export const ORCAMENTO_AUDIO_MS = 70_000;
 
 function rodar(bin, args, entrada, cwd, timeoutMs) {
     return new Promise((resolve, reject) => {
@@ -33,23 +37,40 @@ function rodar(bin, args, entrada, cwd, timeoutMs) {
 /** O texto que a IA devolveu para o pedido (o bloco <<<PEDRO … PEDRO>>> é conferido no Matriz). */
 export async function responderComIa(job, agentes, { executar = rodar, tempoMs = TEMPO_MS } = {}) {
     const dir = mkdtempSync(join(tmpdir(), 'pedro-'));
+    // As fotos que o cliente mandou (Fase 2): o Pedro as vê junto do prompt.
+    const imagens = (job.imagens || []).filter(i => /^image\/(jpeg|png|webp)$/.test(i.mime) && typeof i.base64 === 'string' && i.base64);
     try {
         if (job.agente === 'codex') {
             if (!agentes.codex) throw new Error('Codex não instalado nesta máquina');
             const saida = join(dir, 'resposta.txt');
+            const fotos = imagens.map((img, n) => {
+                const arq = join(dir, `foto-${n}.${img.mime.split('/')[1].replace('jpeg', 'jpg')}`);
+                writeFileSync(arq, Buffer.from(img.base64, 'base64'));
+                return arq;
+            });
             const args = ['exec', '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', 'leitura', { semFerramentas: true }),
-                ...modeloArgs('codex', job.modelo), '-c', 'forced_login_method="chatgpt"', '-'];
+                ...modeloArgs('codex', job.modelo), '-c', 'forced_login_method="chatgpt"', ...fotos.flatMap(f => ['-i', f]), '-'];
             const r = await executar(agentes.codex, args, job.prompt, dir, tempoMs);
             if (r.killed) throw new Error('a IA passou do tempo');
             return readFileSync(saida, 'utf8');
         }
         if (!agentes.claude) throw new Error('Claude não instalado nesta máquina');
-        const args = ['-p', '--output-format', 'json', '--no-session-persistence', ...permissoes('claude', 'leitura', { semFerramentas: true }),
-            ...modeloArgs('claude', job.modelo)];
-        const r = await executar(agentes.claude, args, job.prompt, dir, tempoMs);
+        // Com foto, o prompt vai como mensagem stream-json com os blocos de imagem
+        // (testado em 20/10/2026, sem nenhuma ferramenta liberada); sem foto, texto puro.
+        const comFotos = imagens.length > 0;
+        const args = ['-p', ...(comFotos ? ['--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose'] : ['--output-format', 'json']), '--no-session-persistence',
+            ...permissoes('claude', 'leitura', { semFerramentas: true }), ...modeloArgs('claude', job.modelo)];
+        const entrada = comFotos
+            ? JSON.stringify({ type: 'user', message: { role: 'user', content: [
+                ...imagens.map(i => ({ type: 'image', source: { type: 'base64', media_type: i.mime, data: i.base64 } })),
+                { type: 'text', text: job.prompt }] } }) + '\n'
+            : job.prompt;
+        const r = await executar(agentes.claude, args, entrada, dir, tempoMs);
         if (r.killed) throw new Error('a IA passou do tempo');
         let j;
-        try { j = JSON.parse(r.stdout.trim().split('\n').pop()); } catch { throw new Error('resposta ilegível do Claude'); }
+        // Com --verbose (stream-json), o resultado é a linha de tipo "result".
+        const linhas = r.stdout.trim().split('\n');
+        try { j = JSON.parse(linhas.reverse().find(l => l.includes('"type":"result"')) || linhas[0]); } catch { throw new Error('resposta ilegível do Claude'); }
         if (j.is_error || typeof j.result !== 'string') throw new Error(String(j.result || j.subtype || 'o Claude não respondeu').slice(0, 200));
         return j.result;
     } finally {
@@ -61,14 +82,32 @@ export async function responderComIa(job, agentes, { executar = rodar, tempoMs =
  * Uma rodada: pega o próximo pedido do suporte e devolve a resposta (ou o erro).
  * @returns {Promise<{status: number, id?: number, ms?: number, erro?: string}>}
  */
-export async function atenderSuporte(maquina, { api, agentes, responder = responderComIa }) {
+export async function atenderSuporte(maquina, { api, agentes, responder = responderComIa, transcrever = transcreverAudioCurto, temWhisper = whisperInstalado }) {
     const r = await api('suporte/proxima', { maquina });
     if (r.status !== 200 || !r.json?.id) return { status: r.status };
     const inicio = Date.now();
+    // Áudios do cliente: transcritos aqui, sem rede, e o texto entra no prompt no
+    // lugar do marcador (⟦AUDIO:id⟧). Sem Whisper ou com falha: "não transcrito".
+    const transcricoes = [];
+    const audios = r.json.audios || [];
+    if (audios.length && await temWhisper()) {
+        // Orçamento: o Gestor manda o menu se o Pedro passar de 2 min; a IA ainda precisa do tempo dela.
+        const limite = Date.now() + ORCAMENTO_AUDIO_MS;
+        for (const a of audios) {
+            const resta = limite - Date.now();
+            if (resta < 15_000) break;
+            const texto = await transcrever(Buffer.from(String(a.base64 || ''), 'base64'), a.extensao, tmpdir(), { timeoutMs: resta });
+            if (texto) transcricoes.push({ id: a.id, texto });
+        }
+    }
+    const job = { ...r.json, prompt: String(r.json.prompt || '').replace(/⟦AUDIO:(\d+)⟧/g, (_, id) => {
+        const t = transcricoes.find(x => String(x.id) === id);
+        return t ? `[áudio, transcrito] ${t.texto}` : '[áudio não transcrito]';
+    }) };
     let texto = null;
     let erro = null;
-    try { texto = await responder(r.json, agentes); } catch (e) { erro = String(e.message || e).slice(0, 400); }
-    await api(`suporte/${r.json.id}/resposta`, { maquina, texto, erro });
+    try { texto = await responder(job, agentes); } catch (e) { erro = String(e.message || e).slice(0, 400); }
+    await api(`suporte/${r.json.id}/resposta`, { maquina, texto, erro, ...(transcricoes.length ? { transcricoes } : {}) });
     return { status: 200, id: r.json.id, ms: Date.now() - inicio, erro: erro || undefined };
 }
 

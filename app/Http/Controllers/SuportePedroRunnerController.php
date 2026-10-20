@@ -30,8 +30,9 @@ class SuportePedroRunnerController extends Controller
     public function resposta(Request $request, int $pedido, Pedro $pedro): JsonResponse
     {
         $this->maquina($request);
-        $d = $request->validate(['texto' => ['nullable', 'string', 'max:40000'], 'erro' => ['nullable', 'string', 'max:500']]);
-        $pedro->concluir($request->user(), $pedido, $d['texto'] ?? null, $d['erro'] ?? null);
+        $d = $request->validate(['texto' => ['nullable', 'string', 'max:40000'], 'erro' => ['nullable', 'string', 'max:500'],
+            'transcricoes' => ['nullable', 'array', 'max:5'], 'transcricoes.*.id' => ['required', 'integer'], 'transcricoes.*.texto' => ['required', 'string', 'max:8000']]);
+        $pedro->concluir($request->user(), $pedido, $d['texto'] ?? null, $d['erro'] ?? null, $d['transcricoes'] ?? []);
 
         return response()->json(['ok' => true]);
     }

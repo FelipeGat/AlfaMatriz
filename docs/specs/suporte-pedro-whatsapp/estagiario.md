@@ -97,3 +97,22 @@ têm atendimento emergencial 24/7.
 ## Fora desta fase
 
 Ver e analisar fotos, transcrever áudio e responder 24 h. Fotos e áudio estão na Fase 2.
+
+## Fase 2: fotos e áudio (20/10/2026)
+
+- **FR-09, foto:** a mídia que o cliente manda vem do Gestor, pela porta `GET /api/integracao/matriz/whatsapp/midia/{wamid}`
+  (contrato do Gestor, seção 5), e fica privada no Matriz.
+  - As **3 fotos** mais recentes do cliente vão junto do pedido ao runner.
+  - O Claude as recebe como blocos de imagem (`--input-format stream-json`); o Codex, com `-i`. Nos dois casos, sem
+    nenhuma ferramenta liberada.
+  - O Pedro descreve o que vê e usa isso no diagnóstico, sem afirmar o que a foto não mostra.
+- **FR-10, áudio:** os **3 áudios** mais recentes ainda não transcritos vão ao runner.
+  - O runner transcreve no mesmo container do Whisper das reuniões, sem rede, e o texto entra no prompt no lugar do
+    marcador `⟦AUDIO:id⟧`.
+  - O orçamento é de 70 s no total, porque o Gestor manda o menu se o Pedro passar de 2 min. O que não couber vai como
+    "áudio não transcrito", e o Pedro pede para o cliente escrever.
+  - A transcrição volta ao Matriz e fica registrada na mensagem.
+- **Defeito encontrado (corrigido no instalador):** a imagem do Whisper refeita em 19/10 copiou o script com permissão
+  0600, e o container (usuário da máquina) não conseguia lê-lo. Isso parou também as transcrições de reunião.
+  - O instalador agora garante 0644.
+  - Ele também refaz a imagem quando o script não é legível, mesmo que o conteúdo seja o mesmo.

@@ -121,3 +121,35 @@ export async function transcrever(job, cfg, pastaBase, { docker = 'docker', time
         rmSync(dir, { recursive: true, force: true });
     }
 }
+
+/**
+ * Áudio curto do WhatsApp para o Pedro (docs/specs/suporte-pedro-whatsapp/estagiario.md,
+ * Fase 2): o mesmo container sem rede das reuniões, com prazo curto — o cliente
+ * está esperando. Devolve o texto, ou null (o Pedro pede para o cliente escrever).
+ */
+export async function transcreverAudioCurto(bytes, extensao, pastaBase, { docker = 'docker', timeoutMs = 75_000 } = {}) {
+    if (!EXTENSOES.has(extensao) || !bytes?.length || bytes.length > MAX) return null;
+    const dir = mkdtempSync(join(pastaBase, 'pedro-audio-'));
+    try {
+        const arquivo = `audio.${extensao}`;
+        writeFileSync(join(dir, arquivo), bytes, { mode: 0o644 });
+        let saida;
+        try {
+            ({ stdout: saida } = await rodar(docker, ['run', '--rm', '--pull=never', '--network=none', '--read-only', '--cap-drop=ALL',
+                '--security-opt=no-new-privileges', '--memory=3g', `--cpus=${Math.max(1, Math.min(16, Number(process.env.CENTRAL_IA_WHISPER_CPUS) || 2))}`, '--pids-limit=256',
+                '--user', `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`, '--tmpfs', '/tmp:rw,noexec,nosuid,size=256m',
+                '-e', 'HOME=/tmp', '--mount', `type=bind,src=${dir},dst=/media,readonly`,
+                IMAGEM_WHISPER, 'python', '/app/transcrever_reuniao.py', `/media/${arquivo}`],
+            { timeoutMs, maxBuffer: 4 * 1024 * 1024, aoLerLinha: () => {} }));
+        } catch {
+            return null;
+        }
+        const json = JSON.parse(String(saida).trim().split('\n').pop());
+        const texto = (json.trechos || []).map(t => String(t.texto || '').trim()).filter(Boolean).join(' ').slice(0, 4000);
+        return texto || null;
+    } catch {
+        return null;
+    } finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+}

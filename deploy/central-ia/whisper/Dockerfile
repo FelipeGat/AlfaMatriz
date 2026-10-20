@@ -8,3 +8,5 @@ RUN pip install --no-cache-dir "faster-whisper==1.1.1" requests \
  && chmod -R a+rX /modelos
 ENV HF_HUB_OFFLINE=1 WHISPER_MODELOS=/modelos
 COPY transcrever_reuniao.py /app/transcrever_reuniao.py
+# O runner baixa o script com 0600; o container roda com o usuário da máquina, que precisa lê-lo.
+RUN chmod 0644 /app/transcrever_reuniao.py

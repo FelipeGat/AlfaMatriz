@@ -75,15 +75,32 @@ class Pedro
             return $p;
         });
 
-        return $p ? ['id' => $p->id, 'agente' => (string) config('services.suporte_pedro.agente'), 'modelo' => (string) config('services.suporte_pedro.modelo'),
-            'prompt' => $this->contexto->prompt($p->conversa)] : null;
+        if (! $p) {
+            return null;
+        }
+        // As fotos e os áudios ANTES do prompt: a busca no Gestor grava a mídia, e o
+        // prompt marca o que foi anexado.
+        $midias = app(Midias::class)->paraOPedido($p->conversa);
+
+        return ['id' => $p->id, 'agente' => (string) config('services.suporte_pedro.agente'), 'modelo' => (string) config('services.suporte_pedro.modelo'),
+            'prompt' => $this->contexto->prompt($p->conversa->fresh(), array_column($midias['imagens'], 'id')),
+            'imagens' => $midias['imagens'], 'audios' => $midias['audios']];
     }
 
-    /** A resposta da IA (ou a falha). */
-    public function concluir(User $conta, int $pedidoId, ?string $texto, ?string $erro): void
+    /**
+     * A resposta da IA (ou a falha). As transcrições dos áudios, feitas no runner,
+     * ficam registradas mesmo se a IA falhou.
+     *
+     * @param  list<array{id: int, texto: string}>  $transcricoes
+     */
+    public function concluir(User $conta, int $pedidoId, ?string $texto, ?string $erro, array $transcricoes = []): void
     {
         $p = SuportePedido::with('conversa')->whereKey($pedidoId)->where('situacao', 'reservado')->first();
         abort_unless($p && mb_strtolower($conta->email) === mb_strtolower((string) config('services.suporte_pedro.conta')), 404);
+        foreach ($transcricoes as $t) {
+            SuporteMensagem::where('conversa_id', $p->conversa_id)->whereKey((int) $t['id'])->where('tipo', 'audio')
+                ->update(['transcricao' => mb_substr(trim((string) $t['texto']), 0, 4000)]);
+        }
         $c = $p->conversa;
         $bloco = $texto !== null ? Contexto::ler($texto) : null;
 

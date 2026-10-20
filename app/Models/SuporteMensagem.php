@@ -12,7 +12,7 @@ class SuporteMensagem extends Model
 
     protected $table = 'suporte_mensagens';
 
-    protected $fillable = ['conversa_id', 'wamid', 'direcao', 'tipo', 'texto', 'autor_id', 'status', 'erro', 'enviada_em'];
+    protected $fillable = ['conversa_id', 'wamid', 'direcao', 'tipo', 'texto', 'autor_id', 'status', 'erro', 'enviada_em', 'midia_path', 'midia_mime', 'transcricao'];
 
     protected function casts(): array
     {
