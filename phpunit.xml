@@ -33,6 +33,14 @@
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_URL" value=""/>
+        <!--
+            A suíte não escreve no log de verdade. O portão do staging roda os
+            testes na versão que vai subir, e o vigia de logs lê esse mesmo
+            arquivo: os erros que os testes provocam de propósito (T-412)
+            virariam Bug no quadro a cada publicação. Quem confere log usa
+            Log::spy, que não depende do canal.
+        -->
+        <env name="LOG_CHANNEL" value="null"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
