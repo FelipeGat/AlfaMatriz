@@ -6,6 +6,7 @@ use App\Models\Sistema;
 use App\Services\SincronizadorSistemaService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /** Sinaliza o fim do ensaio para desfazer a transação. Não é erro. */
 final class EnsaioConcluido extends \RuntimeException {}
@@ -82,6 +83,16 @@ class SincronizarSistemas extends Command
                 // Nomeia quem falhou: com vários sistemas, "respondeu 500" sem
                 // dono manda o suporte investigar o servidor errado.
                 $this->error("  {$resultado['motivo']}");
+
+                // A tela não basta: o agendador guarda só o código de saída, e
+                // a falha de 17/10 (T-397) deixou um "exit code 1" sem causa.
+                // O nome vai na mensagem, e não só no contexto, para o vigia de
+                // logs separar a queda de cada sistema em vez de juntar todas.
+                Log::error("Sincronização: {$sistema->nome} falhou.", [
+                    'sistema' => $sistema->slug,
+                    'motivo' => $resultado['motivo'],
+                    'ensaio' => (bool) $this->option('simular'),
+                ]);
                 $falhou = true;
 
                 continue;
