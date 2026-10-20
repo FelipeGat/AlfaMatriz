@@ -13,32 +13,68 @@ Desde 14/10/2026 (T-374) ninguém instala à mão nem roda nada no servidor:
 2. Na máquina: Tailscale ligado, Node 18+, `git`, e os agentes logados como a pessoa usa no dia a dia
    (`claude`, `codex`, `copilot`). O runner também acha o Claude e o Codex dentro das extensões do VS Code
    (`~/.vscode-server/extensions` na WSL, `~/.vscode/extensions` no Mac e no Linux de mesa).
-3. Central de IA → Ajustes → Telegram: criar o SEU bot no @BotFather, colar o token e tocar em Começar nele
-   (T-374: cada pessoa usa o próprio bot; ele conversa e leva o código de confirmação).
+3. Central de IA → Ajustes → Telegram: criar o SEU bot da conversa no @BotFather, colar o token e tocar em
+   Começar nele. Criar também um **segundo** bot, o do código de confirmação, e tocar em Começar nele: o token
+   desse vai só para a máquina, colado no terminal na instalação (T-374, com a regra da T-368 de que o token do
+   bot do código nunca passa pelo servidor).
 4. Ajustes → **Minhas máquinas → Gerar comando de instalação**, e colar no terminal (no Windows, no Ubuntu
    do WSL):
 
    ```bash
-   curl -fsSL https://<alfamatriz>/central-ia/instalar.sh | bash -s -- <código>
+   curl -fsSL https://<alfamatriz>/central-ia/instalar.sh | CENTRAL_IA_CODIGO=<código> bash
    ```
+
+   O código vai no ambiente, e não como argumento, para não aparecer no `ps` de outros usuários da máquina
+   (o `bash -s -- <código>` antigo continua aceito). O script inteiro fica numa função chamada só na última
+   linha: download cortado no meio não executa nada.
 
 O `instalar.sh` (servido pelo AlfaMatriz com o endereço dele dentro):
 
 - confere sistema, Node, git e se a máquina alcança o AlfaMatriz (sem a tailnet, diz para ligar o Tailscale);
 - baixa os módulos do runner para `~/.local/share/alfa/` (fora de qualquer repositório: trocar de branch num
   checkout não troca o programa que está rodando);
-- troca o código (uso único, 15 min) pelo token, pergunta a pasta dos projetos e grava
+- troca o código (uso único, 15 min) pelo token ANTES de perguntar qualquer coisa — máquina nova com o nome
+  de outra máquina da mesma pessoa ganha um sufixo (`MacBook-Pro-2`), em vez de desconectar a outra —,
+  pergunta a pasta dos projetos e grava
   `~/.config/alfa/central-ia-runner.env` (0600), mantendo o que já houver nele. O segredo da confirmação
-  nasce ali e nunca sai da máquina; o chat do Telegram e o token do SEU bot vêm do servidor nessa
-  hora, uma vez só (trocou de bot nos Ajustes? gere um comando novo e rode de novo);
-- liga o serviço: `systemd --user` no Linux e na WSL (com `linger`), `launchd` no Mac
+  nasce ali e nunca sai da máquina; o chat do Telegram vem do servidor nessa hora, uma vez só;
+- pede o token do bot do código sem eco no terminal (ou o lê de `CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO`),
+  confere no Telegram (`getMe`) e recusa o bot da conversa no lugar dele — com ou sem código, porque o @ do
+  bot da conversa fica gravado (`CENTRAL_IA_TELEGRAM_BOT_CONVERSA`) na conexão. Uma instalação antiga que
+  mandava o código pelo bot da conversa perde esse token e passa a recusar modificar arquivos até ganhar o
+  bot do código. A chave antiga `CENTRAL_IA_TELEGRAM_TOKEN` sai do arquivo; vira bot do código só se for
+  outro bot que não o da conversa. Tudo isso ANTES de ligar o serviço: o runner que sobe já acha o token
+  (e relê o arquivo antes de cada batida e de cada confirmação);
+- liga o serviço: `systemd --user` no Linux (com `linger`), `launchd` no Mac
   (`~/Library/LaunchAgents/br.com.alfa.central-ia-runner.plist`, log em `~/Library/Logs/central-ia-runner.log`).
-  WSL sem systemd: o instalador diz como ligar;
+  Com o node do nvm (ou fnm, volta, asdf), o serviço guarda o caminho da versão: trocou a versão, rode o
+  comando de atualizar;
+- **no Windows (WSL), sem systemd** (decisão do dono, 16/10/2026): o WSL desliga o Ubuntu com o último
+  terminal fechado (o `linger` não segura), e no WSLg o `systemctl --user` nem responde. Quem faz o papel do
+  serviço é o `~/.local/share/alfa/central-ia-wsl.sh`, que roda o runner e o religa 10 s depois de ele sair
+  (um só, pela trava `central-ia-wsl.trava`; o pid do runner fica em `central-ia-runner.pid`, e o ambiente
+  em `central-ia-wsl.env`, relido a cada subida). Quem o abre é o `central-ia-wsl.vbs`, na pasta
+  Inicialização do Windows da pessoa (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`, sem
+  administrador; autorizado pelo dono em 16/10/2026): um `wsl.exe` escondido, aberto pelo WMI, que mantém o
+  Ubuntu ligado. O instalador grava os dois e roda o `.vbs` na hora. Log em
+  `~/.local/share/alfa/central-ia-runner.log`. A instalação de antes, pelo systemd, sai sozinha (sem cortar
+  pedido em andamento). Para desligar: apagar o `.vbs` e `wsl --terminate <distro>`;
 - prepara a imagem Docker que converte PDF e vídeo, se houver Docker (`--sem-anexos` pula);
-- manda uma mensagem de teste pelo seu bot.
+- manda uma mensagem de teste pelo bot do código.
 
 **Atualizar:** o mesmo comando sem o código (`curl -fsSL https://<alfamatriz>/central-ia/instalar.sh | bash`).
-Ele baixa o runner de novo e reinicia o serviço só quando estiver ocioso (`atualizar-quando-ocioso.sh`).
+Ele baixa o runner de novo e reinicia o serviço só quando estiver ocioso (`atualizar-quando-ocioso.sh`): o
+script deixa o arquivo `central-ia-reiniciar`, e o próprio runner sai antes de pedir trabalho (o runner
+que sabe fazer isso grava o pid em `central-ia-conhece-reinicio` e nunca é morto de fora; o de versões
+anteriores é reiniciado quando fica livre). No Mac, se o plist mudou, o runner só PAUSA (para de pedir
+trabalho e avisa em `central-ia-pausado`) e o script descarrega e carrega o serviço — o `kickstart` não
+relê o plist. Se a recarga falhar, o log diz o comando para ligar à mão. A saída do script vai para o log do
+runner no Mac e para `~/.local/share/alfa/central-ia-atualizar.log` no Linux; dois comandos de atualizar
+rodados juntos esperam um pelo outro. Conectar de novo com código troca o token no arquivo; o runner em
+execução passa a usá-lo no primeiro 401, sem perder o pedido que estava rodando, e a máquina que estava
+desconectada (esperando até 10 min entre tentativas) volta em segundos.
+Testes: `node tools/central-ia/test-reinicio.mjs`, `node tools/central-ia/test-instalador.mjs` e
+`node tools/central-ia/test-releitura.mjs`.
 
 **Desconectar:** Ajustes → Minhas máquinas → Desconectar (o token deixa de valer na hora).
 
@@ -58,8 +94,9 @@ CENTRAL_IA_CODEX_TOTAL=sim             # opcional: o Codex também com acesso to
                                        # O deploy continua pedindo o código no Telegram.
 CENTRAL_IA_IGNORAR=videos,orcamentos   # subpastas que não são projeto (pasta vazia já é ignorada)
 CENTRAL_IA_SEGREDO_CONFIRMACAO=…       # 64 hex, gerado pelo instalador
-CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=… # o SEU bot (T-374); o nome é do tempo do bot só de código
+CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=… # o SEU bot do código; só esta máquina tem o token
 CENTRAL_IA_TELEGRAM_CHAT_ID=…
+CENTRAL_IA_TELEGRAM_BOT_CONVERSA=…      # só o @ do bot da conversa, para o instalador recusá-lo
 # Opcionais (T-374: nada disso tem mais padrão de uma máquina específica):
 CENTRAL_IA_MEMORIA=…                   # o MEMORY.md que vai aos agentes quando a pessoa liga "memória" nos
                                        # Ajustes; sem valor, o do Claude para a pasta de projetos; `nenhuma` desliga
@@ -161,8 +198,8 @@ Prazos aceitos pelo dono em 14/10/2026. Antes nada da Central era apagado.
 
 **Na máquina** — o runner, sozinho (`limpeza.mjs`; teste: `node tools/central-ia/test-limpeza.mjs`):
 
-- **Log do runner** (só no Mac, `~/Library/Logs/central-ia-runner.log`; no Linux e na WSL é o journal,
-  que tem limite próprio): passou de 10 MB, vira `.1` e o anterior vira `.2` — a cada 10 min. É copiado e
+- **Log do runner** (no Mac, `~/Library/Logs/central-ia-runner.log`; no WSL,
+  `~/.local/share/alfa/central-ia-runner.log`; no Linux é o journal, que tem limite próprio): passou de 10 MB, vira `.1` e o anterior vira `.2` — a cada 10 min. É copiado e
   esvaziado no lugar, porque o launchd o mantém aberto (em modo de acréscimo, conferido com `lsof`).
   Outro caminho: `CENTRAL_IA_LOG`.
 - **Auditoria** (`~/.local/share/alfa/central-ia-auditoria.log`): mesmo limite e as mesmas duas cópias, 0600.

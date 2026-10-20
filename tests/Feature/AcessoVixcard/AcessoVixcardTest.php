@@ -116,6 +116,49 @@ class AcessoVixcardTest extends TestCase
         $this->get(route('vixcard.projetos'))->assertOk()->assertSee('Vix-ID')->assertDontSee('AlfaGym');
     }
 
+    /**
+     * T-427 (20/10/2026): o Alexandre, Membro do time, ganhou também o perfil
+     * VixCard e perdeu do quadro as próprias tarefas do AlfaGym. Outro perfil
+     * que dá o quadro anula o recorte.
+     */
+    public function test_membro_com_o_perfil_vixcard_ve_o_quadro_inteiro(): void
+    {
+        $alexandre = User::factory()->semPerfil()->create(['name' => 'Alexandre Membro']);
+        $alexandre->perfis()->attach(Perfil::whereIn('slug', ['membro', 'vixcard'])->pluck('id'));
+        $this->daAlfa->update(['responsavel_id' => $alexandre->id]);
+
+        $this->assertFalse($alexandre->temEscopoVixcard());
+        $this->actingAs($alexandre)->get(route('tarefas.index'))->assertOk()
+            ->assertSee('Wellhub segredo da academia')->assertSee('Coletor C72 lendo etiquetas');
+        $this->get(route('tarefas.modal', $this->daAlfa))->assertOk()->assertSee('Wellhub segredo da academia');
+        $this->post(route('tarefas.comentarios.store', $this->daAlfa), ['corpo' => 'andando'])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('tarefa_comentarios', ['tarefa_id' => $this->daAlfa->id, 'corpo' => 'andando']);
+        $this->assertSame(2, Tarefa::count());
+        // As duas pastas de projetos, como o resto do time.
+        $this->get(route('vixcard.projetos', ['pasta' => 'alfa']))->assertOk()->assertSee('Projetos Alfa Soluções')->assertSee('AlfaGym');
+    }
+
+    public function test_admin_com_o_perfil_vixcard_nao_e_recortado(): void
+    {
+        $this->admin->perfis()->attach(Perfil::where('slug', 'vixcard')->value('id'));
+
+        $this->assertFalse($this->admin->fresh()->temEscopoVixcard());
+        $this->actingAs($this->admin->fresh())->get(route('tarefas.index'))->assertOk()->assertSee('Wellhub segredo da academia');
+    }
+
+    /** O perfil de Orçamentos não dá o quadro: o Victor continua só na VixCard. */
+    public function test_vixcard_com_orcamentos_continua_recortado(): void
+    {
+        $this->victor->perfis()->attach(Perfil::where('slug', 'orcamentos')->value('id'));
+        $victor = $this->victor->fresh();
+
+        $this->assertTrue($victor->temEscopoVixcard());
+        $this->actingAs($victor)->get(route('tarefas.index'))->assertOk()
+            ->assertSee('Coletor C72 lendo etiquetas')->assertDontSee('Wellhub segredo da academia');
+        $this->get(route('tarefas.modal', $this->daAlfa))->assertNotFound();
+        $this->assertSame(1, Tarefa::count());
+    }
+
     public function test_mcp_recusa_a_conta_vixcard(): void
     {
         $this->expectException(\RuntimeException::class);

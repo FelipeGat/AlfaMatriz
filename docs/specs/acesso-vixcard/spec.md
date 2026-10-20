@@ -46,6 +46,9 @@ revisão 50%, staging 75%, produção 90% e concluída 100%. A tarefa-mãe parad
 - **FR-004**: As listas de filtro (sistemas, pessoas) e a equipe da Agenda MUST trazer só o que o escopo permite.
 - **FR-005**: O MCP MUST recusar conta com escopo VixCard.
 - **FR-006**: Sem o perfil, nada muda para ninguém: o escopo só existe na sessão de quem tem o perfil.
+- **FR-008** (T-427, 20/10/2026): O escopo MUST valer só para a conta em que nenhum OUTRO perfil dá `tarefas`
+  (ler). Quem tem o perfil VixCard junto com Membro do time, Administrador ou qualquer perfil com o quadro vê
+  tudo como antes; o Victor (VixCard + Orçamentos VixCard, que não dá `tarefas`) continua recortado.
 - **FR-007**: A tela Projetos VixCard MUST abrir como tela inicial dele, em card ou lista, e a escolha MUST ficar
   lembrada no navegador.
 
@@ -57,6 +60,8 @@ revisão 50%, staging 75%, produção 90% e concluída 100%. A tarefa-mãe parad
 3. **Given** o formulário, **When** ele tenta criar tarefa no AlfaControl, **Then** recebe 422 (FR-002).
 4. **Given** um compromisso do time sem ligação com a VixCard, **Then** ele não aparece na Agenda (FR-001).
 5. **Given** o admin, **Then** tudo continua igual (FR-006).
+6. **Given** um Membro do time que também recebeu o perfil VixCard, **Then** ele vê e mexe nas próprias tarefas do
+   AlfaGym como antes; **Given** o Victor com VixCard + Orçamentos, **Then** continua só na VixCard (FR-008).
 
 ## Delta Requirements
 

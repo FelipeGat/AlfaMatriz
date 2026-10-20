@@ -1174,10 +1174,11 @@
                         <p class="font-semibold text-ink">Conectar uma máquina</p>
                         <ol class="list-decimal space-y-1 pl-5 text-ink-mute">
                             <li>Na máquina: Tailscale ligado, Node 18 ou mais novo, git, e as IAs que você usa já logadas. No Windows, tudo dentro do WSL (Ubuntu); no Mac, no Terminal.</li>
-                            <li x-show="!telegram.vinculado">Cadastre o seu bot e vincule o Telegram (quadro Telegram, abaixo): é pelo seu bot que a máquina pede o código antes de modificar arquivos.</li>
-                            <li>Gere o comando e cole no terminal da máquina. Ele baixa o runner, pergunta a pasta dos seus projetos, grava a configuração (só você lê) e liga o serviço.</li>
+                            <li x-show="!telegram.vinculado">Cadastre o seu bot e vincule o Telegram (quadro Telegram, abaixo): é por ele que você conversa com a Central.</li>
+                            <li>Crie um segundo bot no <a href="https://t.me/BotFather" target="_blank" rel="noopener" class="font-semibold text-brand-text">@BotFather</a>, só para o código de confirmação, e toque em Começar nele. O comando pede o token dele no terminal: ele fica só na máquina e nunca passa por aqui.</li>
+                            <li>Gere o comando e cole no terminal da máquina. Ele baixa o runner, pergunta a pasta dos seus projetos e o token do bot do código, grava a configuração (só você lê) e liga o serviço.</li>
                         </ol>
-                        <p x-show="maquinas.carregada && !maquinas.telegram_pronto" class="text-xs text-warn">Sem o seu bot vinculado, a máquina conecta, mas recusa pedidos que modificam arquivos: não teria por onde mandar o código.</p>
+                        <p x-show="maquinas.carregada && !maquinas.telegram_pronto" class="text-xs text-warn">Sem o Telegram vinculado, a máquina conecta, mas recusa pedidos que modificam arquivos: não saberia para onde mandar o código.</p>
                         <button type="button" @click="gerarComandoMaquina()" class="rounded-control bg-brand px-3 py-2 text-xs font-semibold text-on-brand" x-text="maquinas.comando && !codigoVencido() ? 'Gerar outro comando' : 'Gerar comando de instalação'"></button>
                         <template x-if="maquinas.comando && !codigoVencido()">
                             <div class="space-y-1">
@@ -1282,7 +1283,8 @@
                         @endif
                     </div>
                 </template>
-                {{-- Cada pessoa usa o PRÓPRIO bot (T-374): ela conversa e recebe o código de confirmação por ele. --}}
+                {{-- Cada pessoa tem DOIS bots próprios (T-374): este, da conversa, com o token aqui; e o do código de
+     confirmação, com o token só na máquina dela — o servidor nunca o vê (T-368). --}}
                 <template x-if="!telegram.vinculado">
                     <div class="mt-1 space-y-2 text-ink-mute">
                         <template x-if="!telegram.bot">
@@ -1325,7 +1327,7 @@
                         <button type="button" @click="removerBotTelegram()" class="font-semibold text-crit">Retirar o bot da Central</button>
                     </p>
                 @endif
-                <p x-show="telegram.bot" class="mt-2 text-xs text-ink-faint">Depois de cadastrar ou trocar o bot, gere um comando novo em Minhas máquinas e rode-o em cada máquina: é por esse bot que ela manda o código de confirmação.</p>
+                <p x-show="telegram.bot" class="mt-2 text-xs text-ink-faint">Depois de vincular o Telegram, gere um comando novo em Minhas máquinas e rode-o em cada máquina. O código de confirmação não sai por este bot: sai por um segundo bot seu, que o comando pede no terminal.</p>
                 <p class="mt-3 text-xs text-ink-faint">Comandos: <code class="font-mono">/projetos</code>, <code class="font-mono">/status</code>, <code class="font-mono">/usar gestor</code>, <code class="font-mono">/continuar gestor</code>, <code class="font-mono">/nova</code>, <code class="font-mono">/geral</code>, <code class="font-mono">/trocar codex</code>, <code class="font-mono">/salvar</code>, <code class="font-mono">/claude</code> · <code class="font-mono">/gpt</code> · <code class="font-mono">/copilot</code> · <code class="font-mono">/auto</code>. Também vale escrever "continuar gestor de onde paramos".</p>
             </div>
 
