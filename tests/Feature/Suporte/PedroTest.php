@@ -36,7 +36,8 @@ class PedroTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-10-20 10:00', 'America/Sao_Paulo')); // terça
         config(['services.whatsapp_suporte' => ['phone_number_id' => '111222', 'token' => 't', 'app_secret' => 'segredo', 'verify_token' => 'v', 'graph_version' => 'v20.0']]);
         config(['services.suporte_pedro.conta' => 'felipe@teste.local', 'services.suporte_pedro.responsaveis' => ['rossini@teste.local', 'alexandre@teste.local']]);
-        Http::fake(['graph.facebook.com/*' => Http::sequence()->whenEmpty(Http::response(['messages' => [['id' => 'wamid.out'.uniqid()]]]))]);
+        // Um id por envio: com um id só, a segunda mensagem do Pedro na mesma conversa colidiria.
+        Http::fake(['graph.facebook.com/*' => fn () => Http::response(['messages' => [['id' => 'wamid.out'.uniqid('', true)]]])]);
         (new PerfilPermissaoSeeder)->run();
         $this->felipe = User::factory()->create(['email' => 'felipe@teste.local']);
         $this->rossini = User::factory()->create(['name' => 'Rossini', 'email' => 'rossini@teste.local']);
@@ -145,6 +146,57 @@ class PedroTest extends TestCase
         $t = Tarefa::sole();
         Http::assertSent(fn ($r) => str_starts_with((string) ($r['text']['body'] ?? ''), 'Recebemos sua mensagem.') && str_contains($r['text']['body'], "T-{$t->id}"));
         $this->assertTrue(SuporteConversa::sole()->comHumano(), 'a conversa fica com a equipe');
+    }
+
+    /** Responde de verdade o pedido aberto, como o runner. */
+    private function responder(string $texto): void
+    {
+        $this->runner();
+        $job = $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->assertOk()->json();
+        $this->postJson(route('suporte.runner.resposta', $job['id']), ['maquina' => 'wsl', 'texto' => $this->bloco($texto, 'responder', 'Mouse sem fio parou')])->assertOk();
+    }
+
+    /** Felipe, 20/10/2026: tenta por um tempo; não resolveu, passa ao especialista sem gastar IA. */
+    public function test_depois_do_limite_de_respostas_passa_ao_especialista_sem_chamar_a_ia(): void
+    {
+        config(['services.suporte_pedro.limite_respostas' => 2]);
+        $this->chega('O mouse não funciona', 'wamid.1');
+        $this->responder('É o mouse ou o teclado?');
+        $this->chega('o mouse', 'wamid.2');
+        $this->responder('Troque as pilhas e me diga.');
+
+        $this->chega('troquei e nada', 'wamid.3');
+
+        $this->assertSame(0, SuportePedido::where('situacao', 'pendente')->count(), 'a terceira não vai para a IA');
+        $this->assertSame('especialista', SuportePedido::latest('id')->value('acao'));
+        $t = Tarefa::sole();
+        $this->assertStringContainsString('Mouse sem fio parou', $t->descricao ?? $t->titulo.' '.$t->descricao);
+        Http::assertSent(fn ($r) => str_starts_with((string) ($r['text']['body'] ?? ''), 'Para não te deixar esperando, vou encaminhar seu atendimento para um de nossos especialistas')
+            && str_contains($r['text']['body'], "T-{$t->id}"));
+        $this->assertTrue(SuporteConversa::sole()->comHumano(), 'a conversa fica com a equipe');
+
+        $this->chega('alô?', 'wamid.4');
+        $this->assertSame(1, Tarefa::count(), 'com o especialista, nada de novo pedido nem atendimento');
+        $this->assertSame(0, SuportePedido::where('situacao', 'pendente')->count());
+
+        // Devolvida ao Pedro, a contagem recomeça.
+        SuporteConversa::sole()->update(['humano_ate' => now()->subMinute()]);
+        $this->chega('voltou a falhar', 'wamid.5');
+        $this->assertSame(1, SuportePedido::where('situacao', 'pendente')->count());
+    }
+
+    public function test_depois_do_tempo_limite_passa_ao_especialista(): void
+    {
+        config(['services.suporte_pedro.limite_minutos' => 30]);
+        $this->chega('O teclado não digita', 'wamid.1');
+        $this->responder('Ele acende alguma luz?');
+        Carbon::setTestNow(now()->addMinutes(31));
+
+        $this->chega('não', 'wamid.2');
+
+        $this->assertSame(0, SuportePedido::where('situacao', 'pendente')->count());
+        $this->assertSame(1, Tarefa::count());
+        $this->assertTrue(SuporteConversa::sole()->comHumano());
     }
 
     public function test_resposta_fora_do_formato_vira_reserva_e_conta_errada_nao_pega(): void

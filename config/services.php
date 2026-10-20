@@ -85,6 +85,9 @@ return [
         'gestor_gravar' => (bool) env('SUPORTE_PEDRO_GESTOR_GRAVAR', false),
         // Sem resposta da IA nesse tempo, o Matriz responde sozinho e abre o atendimento.
         'reserva_segundos' => (int) env('SUPORTE_PEDRO_RESERVA_SEGUNDOS', 120),
+        // Quanto o Pedro tenta antes de passar ao especialista: o que vier primeiro.
+        'limite_respostas' => (int) env('SUPORTE_PEDRO_LIMITE_RESPOSTAS', 6),
+        'limite_minutos' => (int) env('SUPORTE_PEDRO_LIMITE_MINUTOS', 30),
         // Quem escreve o conhecimento do Pedro (roteiros e apresentação); quem tem `suporte` só vê.
         'editores' => array_filter(explode(',', (string) env('SUPORTE_PEDRO_EDITORES', 'felipehenriquegat@gmail.com'))),
     ],

@@ -116,3 +116,17 @@ Ver e analisar fotos, transcrever áudio e responder 24 h. Fotos e áudio estão
   0600, e o container (usuário da máquina) não conseguia lê-lo. Isso parou também as transcrições de reunião.
   - O instalador agora garante 0644.
   - Ele também refaz a imagem quando o script não é legível, mesmo que o conteúdo seja o mesmo.
+
+## Limite de tentativas, POP básico e foto como padrão (20/10/2026)
+
+- **FR-11, limite:** o Pedro tenta por até **6 respostas ou 30 minutos**, o que vier primeiro
+  (`SUPORTE_PEDRO_LIMITE_RESPOSTAS`, `SUPORTE_PEDRO_LIMITE_MINUTOS`). Passou disso, a mensagem seguinte do cliente
+  **não vai à IA**: o Matriz responde "vou encaminhar seu atendimento para um de nossos especialistas, que dará
+  continuidade por aqui", abre o atendimento com o resumo e deixa a conversa com a equipe. O pedido fica registrado
+  com a ação `especialista`, que zera a contagem quando a conversa volta ao Pedro. A equipe interna fica de fora.
+- **FR-12, POP de procedimentos básicos:** oito roteiros novos em Suporte › Pedro: impressora, computador que não
+  liga, computador lento, mouse ou teclado, monitor sem imagem, catraca que não reconhece face ou digital, nobreak
+  e aparelho que não conecta no Wi-Fi. Mesma regra de segurança dos outros; ficam para a equipe revisar.
+- **FR-13, foto ou vídeo:** quando o problema não está claro, o Pedro pede foto (ou vídeo curto, para barulho e
+  movimento) já na primeira resposta. Ele vê fotos; vídeo fica registrado para a equipe até a análise de vídeo
+  existir (viável: PyAV, que já está na imagem do Whisper, tira quadros, e o Whisper transcreve o som).

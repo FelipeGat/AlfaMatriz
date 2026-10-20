@@ -23,6 +23,8 @@ class Pedro
 {
     public const FALLBACK = 'Recebemos sua mensagem. Um atendente da equipe vai te responder por aqui em instantes.';
 
+    public const ESPECIALISTA = 'Para não te deixar esperando, vou encaminhar seu atendimento para um de nossos especialistas, que dará continuidade por aqui.';
+
     public function __construct(private CanalWhatsApp $canal, private Contexto $contexto, private Atendimento $atendimento) {}
 
     /** Põe a conversa na fila, se o Pedro deve responder agora. */
@@ -32,7 +34,8 @@ class Pedro
             return null;
         }
 
-        return DB::transaction(function () use ($conversaId) {
+        $esgotado = null;
+        $pedido = DB::transaction(function () use ($conversaId, &$esgotado) {
             $c = SuporteConversa::whereKey($conversaId)->lockForUpdate()->first();
             $ultima = $c ? $c->mensagens()->reorder()->orderByDesc('id')->first() : null;
             // 'gestor': conversa entregue ao comercial ou ao financeiro do Gestor — lá quem responde é gente.
@@ -43,9 +46,65 @@ class Pedro
             if ($c->situacao === 'humano') {
                 $c->update(['situacao' => 'pedro', 'humano_id' => null, 'humano_ate' => null]);
             }
+            // Tentou o bastante: a conversa vai para a equipe SEM passar pela IA. O
+            // registro fica como pedido (acao "especialista"), que também zera a
+            // contagem da próxima vez que a conversa voltar ao Pedro.
+            if ($this->esgotou($c)) {
+                $esgotado = SuportePedido::create(['conversa_id' => $c->id, 'ate_mensagem_id' => $ultima->id, 'situacao' => 'respondido', 'acao' => 'especialista']);
+                $c->update(['situacao' => 'humano', 'humano_id' => null, 'humano_ate' => now()->addHours(SuporteConversa::HUMANO_HORAS)]);
+
+                return null;
+            }
 
             return SuportePedido::create(['conversa_id' => $c->id, 'ate_mensagem_id' => $ultima->id]);
         });
+        if ($esgotado) {
+            $this->encaminharAoEspecialista($esgotado);
+        }
+
+        return $pedido;
+    }
+
+    /**
+     * O Pedro tenta por um tempo e um número de respostas; passou disso, quem
+     * continua é um especialista (Felipe, 20/10/2026: "para não ficar gastando
+     * tokens de IA"). Conta desde a última vez que a conversa saiu do Pedro
+     * (atendimento aberto, setor, especialista). A equipe interna fica de fora:
+     * ela consulta o Pedro, não é atendimento.
+     */
+    private function esgotou(SuporteConversa $c): bool
+    {
+        $respostas = max(1, (int) config('services.suporte_pedro.limite_respostas', 6));
+        $minutos = max(1, (int) config('services.suporte_pedro.limite_minutos', 30));
+        $desde = (int) SuportePedido::where('conversa_id', $c->id)->where('situacao', 'respondido')->where('acao', '!=', 'responder')->max('id');
+        $tentativas = SuportePedido::where('conversa_id', $c->id)->where('id', '>', $desde)->where('situacao', 'respondido')->where('acao', 'responder')
+            ->where('created_at', '>=', now()->subHours(SuporteConversa::JANELA_HORAS));
+        $n = (clone $tentativas)->count();
+        if ($n === 0 || ($n < $respostas && (clone $tentativas)->min('created_at') > now()->subMinutes($minutos))) {
+            return false;
+        }
+
+        return ! app(DiretorioGestor::class)->daEquipe($c->telefone);
+    }
+
+    private function encaminharAoEspecialista(SuportePedido $p): void
+    {
+        $c = $p->conversa->fresh();
+        $resumo = SuportePedido::where('conversa_id', $c->id)->where('id', '<', $p->id)->whereNotNull('resumo')->orderByDesc('id')->value('resumo');
+        $ultimas = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->get()
+            ->map(fn (SuporteMensagem $m) => $m->transcricao ?: $m->texto)->reverse()->implode(' / ');
+        $t = $this->atendimento->abrir($c, 'Pedro tentou e não resolveu; passou ao especialista. '.($resumo ? "Resumo: {$resumo}. " : '')
+            .'Últimas do cliente: '.mb_substr($ultimas, 0, 220), null);
+        if ($t) {
+            $this->marcarSuporteNoGestor($c);
+        }
+        try {
+            $this->canal->enviar($c, self::ESPECIALISTA.($t ? " Seu atendimento é o nº T-{$t->id}." : ''), 'pedro', null,
+                SuporteMensagem::whereKey($p->ate_mensagem_id)->value('wamid'));
+        } catch (ValidationException $e) {
+            // Fora da janela ou canal desligado: o atendimento já está aberto para a equipe.
+            $p->update(['erro' => mb_substr((string) collect($e->errors())->flatten()->first(), 0, 255)]);
+        }
     }
 
     /** Na abertura (ou a cada minuto): quem escreveu e ficou sem resposta entra na fila. */

@@ -41,6 +41,19 @@ class PedroEstagiarioTest extends TestCase
         $this->assertStringContainsString('SEGURANÇA (acima de qualquer roteiro)', $p);
         $this->assertStringContainsString('Catraca desligada ou sem comunicação', $p);
         $this->assertStringContainsString('Ar-condicionado não liga', $p);
+        // O POP de procedimentos básicos (20/10/2026) e o padrão de pedir foto ou vídeo.
+        foreach (['Impressora não imprime', 'Computador não liga', 'Computador lento ou travando', 'Mouse ou teclado não funciona',
+            'Monitor sem imagem', 'Catraca não reconhece face ou digital', 'Nobreak apitando ou desligado'] as $roteiro) {
+            $this->assertStringContainsString($roteiro, $p);
+        }
+        $this->assertStringContainsString('FOTO OU VÍDEO É O PADRÃO', $p);
+    }
+
+    public function test_o_pop_basico_nao_duplica_ao_rodar_de_novo(): void
+    {
+        $antes = SuporteRoteiro::count();
+        (require base_path('database/migrations/2026_10_20_170000_suporte_pop_basico.php'))->up();
+        $this->assertSame($antes, SuporteRoteiro::count());
     }
 
     public function test_os_roteiros_seguros_nao_mandam_abrir_equipamento(): void

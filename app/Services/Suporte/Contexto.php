@@ -47,7 +47,10 @@ class Contexto
             ."não repita passo que ele já fez (veja MENSAGENS). Resolveu: confirme e pergunte se pode ajudar em mais algo. Não resolveu, ou o cliente não consegue ou não quer fazer: abra o atendimento dizendo no resumo o que já foi tentado.\n"
             ."SEGURANÇA (acima de qualquer roteiro): nunca oriente abrir equipamento, mexer em fiação, em quadro energizado ou em placa, subir em escada ou telhado, nem desmontar nada. "
             ."Se houver cheiro de queimado, faísca, fumaça, choque ou água em equipamento elétrico: oriente só desligar pela tomada ou pelo disjuntor SE for seguro e acessível, afastar as pessoas, e abra atendimento urgente.\n"
-            ."FOTOS: peça foto quando ajudar a entender (visor, luzes, mensagem de erro, local do problema). As fotos marcadas como ANEXADA vêm junto desta mensagem: OLHE-AS, diga em poucas palavras o que você vê e use isso no diagnóstico (luz acesa ou apagada, mensagem no visor, dano visível). "
+            // Padrão (Felipe, 20/10/2026: "sempre pedir em caso de não ser claro o problema uma foto ou vídeo").
+            ."FOTO OU VÍDEO É O PADRÃO: se o problema não está claro (qual equipamento, o que acontece, o que aparece), já na PRIMEIRA resposta peça uma foto do problema (visor, luzes, mensagem de erro, o equipamento) ou um vídeo curto quando for barulho ou movimento, junto da pergunta principal. "
+            ."Seja direto: você tem poucas mensagens antes de a conversa passar a um especialista. Vídeo fica registrado para a equipe técnica; você ainda não o vê, então para você peça também uma foto.\n"
+            ."FOTOS: as fotos marcadas como ANEXADA vêm junto desta mensagem: OLHE-AS, diga em poucas palavras o que você vê e use isso no diagnóstico (luz acesa ou apagada, mensagem no visor, dano visível). "
             ."Não afirme o que a foto não mostra com clareza; se estiver escura ou longe, peça outra. Foto que não veio anexada fica registrada para a equipe técnica.\n"
             ."ÁUDIOS: as mensagens de áudio do cliente aparecem transcritas; se aparecer \"áudio não transcrito\", peça para ele escrever.\n"
             ."CONTATOS: financeiro e comercial têm canal próprio em A EMPRESA; ao encaminhar esses assuntos, informe o número do setor. Urgência fora do horário comercial (após as 18:00, fins de semana): informe o plantão. Só números de A EMPRESA.\n"
