@@ -47,7 +47,7 @@ class PadraoEHistoricoTest extends TestCase
             'secoes' => ['desafio' => ['titulo' => 'O desafio', 'texto' => 'Peças saem sem registro.', 'citacao' => 'Perdemos peças', 'numeros' => [['valor' => '30%', 'rotulo' => 'de perdas']], 'itens' => ['Sem controle']],
                 'perguntas' => [['pergunta' => 'Precisa de internet?', 'resposta' => 'Sim, para sincronizar.']],
                 'contracapa' => ['frase' => 'Obrigado.', 'mensagem' => 'Lourenço, seguimos à disposição.'],
-                'extras' => [['titulo' => 'Gestão Têxtil', 'texto' => 'Como foi enviado.']]],
+                'extras' => [['titulo' => 'Gestão Têxtil', 'texto' => 'Como foi enviado.'], ['titulo' => 'Resumo', 'texto' => "| DESCRIÇÃO | VALOR |\n|---|---|\n| Implantação | R$ 32.700,00 |"]]],
             'itens' => [['descricao' => 'Portal RFID', 'quantidade' => 1, 'unidade' => 'un', 'valor_unitario' => 29800, 'cobranca' => 'unico'],
                 ['descricao' => 'Mensalidade', 'quantidade' => 1, 'unidade' => 'mês', 'valor_unitario' => 1399, 'cobranca' => 'mensal']],
             'planos' => [['nome' => 'Anual', 'valor' => 350, 'periodo' => 'mês', 'observacao' => null]],
@@ -91,6 +91,9 @@ class PadraoEHistoricoTest extends TestCase
             $this->assertStringContainsString($esperado, $html);
         }
         $this->assertStringNotContainsString('v1 superada', $html, 'nota interna nunca vai ao PDF');
+        $this->assertStringContainsString('<th>DESCRIÇÃO</th>', $html, 'tabela de seção livre vira tabela');
+        $this->assertStringNotContainsString('|---|', $html);
+        $this->assertSame('Controle de saída', \App\Services\Orcamentos\Historico::semDestaque('Controle de saída Vix-ID', 'Vix-ID'));
         $this->assertStringNotContainsString('Proposta válida até', $html, 'sem validade, sem a frase');
     }
 

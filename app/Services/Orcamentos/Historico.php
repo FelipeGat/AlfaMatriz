@@ -88,7 +88,7 @@ class Historico
             'natureza' => in_array($p['natureza'] ?? null, array_keys(Orcamento::NATUREZAS), true) ? $p['natureza'] : null,
             'dados_cliente' => collect($cli)->only(array_keys(Orcamento::DADOS_CLIENTE))->map(fn ($v) => $corta($v, 255))->filter()->all() ?: null,
             'objeto' => $linhas($p['objeto'] ?? []),
-            'titulo' => $corta($capa['titulo'] ?? null, 120) ?? 'Proposta',
+            'titulo' => $corta(self::semDestaque((string) ($capa['titulo'] ?? ''), (string) ($capa['destaque'] ?? '')), 120) ?? 'Proposta',
             'destaque' => $corta($capa['destaque'] ?? null, 80),
             'lead' => $corta($capa['subtitulo'] ?? null, 600),
             'validade_dias' => in_array((int) ($p['validade_dias'] ?? 0), Orcamento::VALIDADES, true) ? (int) $p['validade_dias'] : null,
@@ -118,6 +118,21 @@ class Historico
             'pdf_original' => $this->guardarOriginal($pasta, (string) $p['arquivo'], $o)]);
 
         return $o;
+    }
+
+    /**
+     * O título sem o trecho em destaque no fim: o levantamento traz a capa como ela
+     * se lê ("Controle … portal de saída RFID"), e o PDF já põe o destaque embaixo.
+     */
+    public static function semDestaque(string $titulo, string $destaque): string
+    {
+        $t = trim($titulo);
+        $d = trim($destaque);
+        if ($d !== '' && mb_strlen($t) > mb_strlen($d) && mb_strtolower(mb_substr($t, -mb_strlen($d))) === mb_strtolower($d)) {
+            return rtrim(mb_substr($t, 0, -mb_strlen($d)), " \t—-:,");
+        }
+
+        return $t;
     }
 
     /** As seções do levantamento no formato do editor (texto: listas por linha, pares "a | b"). */

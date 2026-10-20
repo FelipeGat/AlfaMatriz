@@ -155,7 +155,18 @@ ul { margin: 0; padding-left: 5mm } li { margin-bottom: 1.2mm }
         @if ($o->temSecao('extras'))
             @foreach ($o->secoesLivres() as $bloco)
                 @if ($bloco['titulo'])<h1>{{ $bloco['titulo'] }}</h1>@endif
-                <p class="texto">{{ $bloco['texto'] }}</p>
+                {{-- Linhas "| a | b |" viram tabela (a primeira é o cabeçalho; "|---|" é só separador). --}}
+                @foreach (collect(preg_split('/\R/', $bloco['texto']))->chunkWhile(fn ($l, $k, $c) => str_starts_with(trim($l), '|') === str_starts_with(trim($c->last()), '|')) as $trecho)
+                    @if (str_starts_with(trim($trecho->first()), '|'))
+                        @php $linhas = $trecho->map(fn ($l) => array_map('trim', explode('|', trim(trim($l), '|'))))->reject(fn ($c) => collect($c)->every(fn ($x) => preg_match('/^:?-{2,}:?$/', $x) || $x === ''))->values(); @endphp
+                        <table>
+                            <thead><tr>@foreach ($linhas->first() as $c)<th>{{ $c }}</th>@endforeach</tr></thead>
+                            <tbody>@foreach ($linhas->slice(1) as $l)<tr>@foreach ($l as $c)<td>{{ $c }}</td>@endforeach</tr>@endforeach</tbody>
+                        </table>
+                    @elseif (trim($trecho->implode("\n")) !== '')
+                        <p class="texto">{{ trim($trecho->implode("\n")) }}</p>
+                    @endif
+                @endforeach
             @endforeach
         @endif
         <div class="rodape empurra"><span>{{ $tipo }} · {{ $numero }}</span><span>VixSoftHouse</span></div>
