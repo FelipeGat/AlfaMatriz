@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 class Conhecimento
 {
     /** Os textos da apresentação e o padrão de cada ajuste. */
-    public const AJUSTES = ['apresentacao' => '', 'site' => '', 'folders' => '', 'cobranca_minutos' => '60'];
+    public const AJUSTES = ['apresentacao' => '', 'site' => '', 'contatos' => '', 'portal' => '', 'folders' => '', 'cobranca_minutos' => '60'];
 
     public function ajuste(string $chave): string
     {
@@ -46,8 +46,16 @@ class Conhecimento
         if (($a = $this->ajuste('apresentacao')) !== '') {
             $linhas[] = $a;
         }
-        if (($s = $this->ajuste('site')) !== '') {
-            $linhas[] = 'Site: '.$s;
+        // Um site por linha (o do grupo e o de cada empresa).
+        $sites = array_values(array_filter(array_map('trim', preg_split('/\R/', $this->ajuste('site')))));
+        if ($sites) {
+            $linhas[] = "Sites:\n".implode("\n", array_map(fn ($s) => '- '.$s, $sites));
+        }
+        if (($c = $this->ajuste('contatos')) !== '') {
+            $linhas[] = "Contatos (informe o do setor certo; só estes números):\n".$c;
+        }
+        if (($p = $this->ajuste('portal')) !== '') {
+            $linhas[] = 'Portal do cliente: '.$p;
         }
         $folders = array_values(array_filter(array_map('trim', preg_split('/\R/', $this->ajuste('folders')))));
         if ($folders) {

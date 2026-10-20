@@ -28,8 +28,12 @@
                 <label class="md:col-span-2"><span class="{{ $rotulo }}">Apresentação (quem somos, ramos de atuação)</span>
                     <textarea name="apresentacao" rows="5" maxlength="4000" class="{{ $campo }}" @disabled(! $podeEditar)
                               placeholder="Ex.: Somos o Grupo… Atuamos em segurança eletrônica (portões, câmeras, interfones), sistemas de gestão…">{{ old('apresentacao', $ajustes['apresentacao']) }}</textarea></label>
-                <label><span class="{{ $rotulo }}">Site</span>
-                    <input name="site" type="url" maxlength="255" value="{{ old('site', $ajustes['site']) }}" placeholder="https://…" class="{{ $campo }}" @disabled(! $podeEditar)></label>
+                <label class="md:col-span-2"><span class="{{ $rotulo }}">Sites (um por linha)</span>
+                    <textarea name="site" rows="3" maxlength="1000" class="{{ $campo }}" @disabled(! $podeEditar) placeholder="https://…">{{ old('site', $ajustes['site']) }}</textarea></label>
+                <label class="md:col-span-2"><span class="{{ $rotulo }}">Contatos por setor (um por linha)</span>
+                    <textarea name="contatos" rows="4" maxlength="2000" class="{{ $campo }}" @disabled(! $podeEditar) placeholder="Financeiro — (27) …">{{ old('contatos', $ajustes['contatos']) }}</textarea></label>
+                <label><span class="{{ $rotulo }}">Portal do cliente</span>
+                    <input name="portal" maxlength="500" value="{{ old('portal', $ajustes['portal']) }}" placeholder="https://…" class="{{ $campo }}" @disabled(! $podeEditar)></label>
                 <label><span class="{{ $rotulo }}">Cobrar os críticos a cada (minutos)</span>
                     <input name="cobranca_minutos" type="number" min="15" max="1440" value="{{ old('cobranca_minutos', $ajustes['cobranca_minutos']) }}" class="{{ $campo }}" @disabled(! $podeEditar)></label>
                 <label class="md:col-span-2"><span class="{{ $rotulo }}">Folders (um por linha: nome e link)</span>

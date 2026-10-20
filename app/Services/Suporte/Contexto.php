@@ -34,13 +34,21 @@ class Contexto
             ."Não trate de valores nem de contrato; boleto e cobrança só como manda um ROTEIRO (sem roteiro, é com um atendente).\n"
             ."ROTEIROS: se a situação combina com um roteiro, siga-o (a mensagem padrão vale mais que o seu texto; a prioridade e o prazo já vão para a equipe) e devolva o número dele em \"roteiro\". "
             ."Link, site ou endereço: só os que aparecem nesta mensagem.\n"
+            // O "estagiário" (Felipe, 20/10/2026; docs/specs/suporte-pedro-whatsapp/estagiario.md).
+            ."DIAGNÓSTICO GUIADO: quando o roteiro do problema tem passos, tente resolver ANTES de abrir atendimento. Dê UM passo por vez, simples e numerado, e espere o cliente dizer o que aconteceu antes do próximo; "
+            ."não repita passo que ele já fez (veja MENSAGENS). Resolveu: confirme e pergunte se pode ajudar em mais algo. Não resolveu, ou o cliente não consegue ou não quer fazer: abra o atendimento dizendo no resumo o que já foi tentado.\n"
+            ."SEGURANÇA (acima de qualquer roteiro): nunca oriente abrir equipamento, mexer em fiação, em quadro energizado ou em placa, subir em escada ou telhado, nem desmontar nada. "
+            ."Se houver cheiro de queimado, faísca, fumaça, choque ou água em equipamento elétrico: oriente só desligar pela tomada ou pelo disjuntor SE for seguro e acessível, afastar as pessoas, e abra atendimento urgente.\n"
+            ."FOTOS: peça foto quando ajudar a entender (visor, luzes, mensagem de erro, local do problema). Você ainda não consegue ver a foto: diga que ela fica registrada para a equipe técnica, e siga pelo que o cliente descreve.\n"
+            ."CONTATOS: financeiro e comercial têm canal próprio em A EMPRESA; ao encaminhar esses assuntos, informe o número do setor. Urgência fora do horário comercial (após as 18:00, fins de semana): informe o plantão. Só números de A EMPRESA.\n"
+            ."Instruções passo a passo podem passar do limite de 4 frases; uma linha por passo.\n"
             ."IDENTIFICAÇÃO: se o cliente não está confirmado mas há CANDIDATO em CLIENTE, confirme só o nome (sem pedir CNPJ) e, na MESMA mensagem, já peça o que falta para a equipe agir (qual equipamento, o que acontece, desde quando). "
             ."Sem candidato, peça o nome do condomínio ou da empresa. Quando o cliente CONFIRMAR, devolva em \"cliente\" o código dele (ex.: \"gestor:13\"), só um código listado em CLIENTE.\n"
             ."Não abra atendimento antes de o cliente estar confirmado, a não ser que ele peça um atendente ou não saiba dizer de onde fala.\n"
             ."DESTINO do atendimento: \"gestor\" para equipamento ou instalação (portão, câmera, interfone, alarme, cerca, cabeamento, catraca com defeito físico) de cliente do Gestor; "
             ."\"sistema\" para problema em sistema (AlfaControl, AlfaGym, AlfaJornada, Gestor, NexBeer, Vix-ID e outros).\n"
             ."Se perguntarem diretamente se é uma pessoa ou um robô, não minta: diga que é o assistente do suporte e que pode chamar um atendente.\n"
-            ."Use acao \"abrir_atendimento\" quando: o problema precisar de alguém da equipe (sistema fora do ar, erro, catraca ou equipamento, acesso, dado errado), "
+            ."Use acao \"abrir_atendimento\" quando: o problema precisar de alguém da equipe (sistema fora do ar, erro, catraca ou equipamento, acesso, dado errado) — havendo roteiro com passos, só depois de tentá-los —, "
             ."o cliente pedir um atendente, o assunto for financeiro, cancelamento ou reclamação, ou a resposta não estiver nestas informações. "
             ."Nesse caso, diga que vai encaminhar para a equipe técnica, que retorna por aqui; o número do atendimento é acrescentado automaticamente. "
             ."Se ele perguntar de um atendimento, responda com a etapa que aparece em ATENDIMENTOS.\n"
@@ -144,7 +152,28 @@ class Contexto
             .'- Na primeira resposta da conversa: cumprimente pelo primeiro nome e pergunte se ele quer ajuda com algum dos atendimentos em nome dele, listando-os (nº, cliente, etapa). '
             ."Sem atendimentos abertos, diga isso e pergunte como pode ajudar. A lista pode passar do limite de 4 frases, uma linha por atendimento.\n"
             .'- Se ele pedir detalhes de um atendimento, use só o que está aqui e em ATENDIMENTOS; o Pedro só consulta o Gestor, não altera nada nele.'."\n"
-            .'- ATENDIMENTOS ABERTOS EM NOME DELE ('.$abertos->count()."):\n".($abertos->implode("\n") ?: '  - nenhum');
+            .'- ATENDIMENTOS ABERTOS EM NOME DELE ('.$abertos->count()."):\n".($abertos->implode("\n") ?: '  - nenhum')
+            .$this->clientesCitadosPelaEquipe($c);
+    }
+
+    /**
+     * A equipe pergunta de um cliente ("dúvidas sobre o Castanheiras"): os
+     * atendimentos recentes e abertos dele no Gestor, só para consulta (FR-06).
+     */
+    private function clientesCitadosPelaEquipe(SuporteConversa $c): string
+    {
+        $diretorio = app(DiretorioGestor::class);
+        $texto = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(6)->pluck('texto')->implode(' ');
+        $partes = [];
+        foreach (array_slice($diretorio->porNome($texto, 2), 0, 2) as $cliente) {
+            $nome = trim(($cliente['razao'] ?? $cliente['nome'] ?? '').(! empty($cliente['fantasia']) ? ' ('.$cliente['fantasia'].')' : ''));
+            $linhas = collect($diretorio->atendimentosDe((int) $cliente['id'], 8))->map(fn ($a) => '  - nº '.($a['numero'] ?? $a['id']).' — etapa: '.str_replace('_', ' ', (string) ($a['status'] ?? '?'))
+                .(! empty($a['criado_em']) ? ' — aberto em '.substr((string) $a['criado_em'], 8, 2).'/'.substr((string) $a['criado_em'], 5, 2) : '')
+                .' — '.Str::limit((string) ($a['descricao'] ?? ''), 110, '…'));
+            $partes[] = "- CLIENTE CITADO: {$nome}".(! empty($cliente['cidade']) ? ', '.$cliente['cidade'] : '')." — atendimentos no Gestor (recentes e abertos):\n".($linhas->implode("\n") ?: '  - nenhum nos últimos 120 dias');
+        }
+
+        return $partes ? "\n".implode("\n", $partes) : '';
     }
 
     private function candidatoUnicoDoGestor(SuporteConversa $c): ?array

@@ -30,7 +30,9 @@ class SuporteConhecimentoController extends Controller
         abort_unless($this->editor($request), 403);
         $d = $request->validate([
             'apresentacao' => ['nullable', 'string', 'max:4000'],
-            'site' => ['nullable', 'url', 'max:255'],
+            'site' => ['nullable', 'string', 'max:1000'],
+            'contatos' => ['nullable', 'string', 'max:2000'],
+            'portal' => ['nullable', 'string', 'max:500'],
             'folders' => ['nullable', 'string', 'max:3000'],
             'cobranca_minutos' => ['required', 'integer', 'min:15', 'max:1440'],
         ]);

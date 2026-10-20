@@ -106,7 +106,8 @@ class PedroConhecimentoTest extends TestCase
         SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
         $this->chega('preciso do boleto', 'wamid.1', '552733894253');
         $prompt = $this->prompt();
-        $this->assertStringContainsString("## A EMPRESA\nSomos o Grupo Soluções.\nSite: https://exemplo.com.br\nFolders", $prompt);
+        $this->assertStringContainsString("## A EMPRESA\nSomos o Grupo Soluções.\nSites:\n- https://exemplo.com.br\n", $prompt);
+        $this->assertStringContainsString('Folders', $prompt);
         $this->assertStringContainsString('Portão parado', $prompt);
         $this->assertStringContainsString('prioridade crítica, prazo de até 3 h para atender', $prompt);
         $this->assertStringContainsString('Login do portal (o número que escreve é do cadastro): sindico@castanheiras.com.br', $prompt);
@@ -194,9 +195,9 @@ class PedroConhecimentoTest extends TestCase
         $this->actingAs($this->rossini)->post(route('suporte.pedro.roteiro.novo'), ['titulo' => 'X', 'quando' => 'y'])->assertForbidden();
         $this->actingAs($this->rossini)->post(route('suporte.pedro.empresa'), ['cobranca_minutos' => 60])->assertForbidden();
 
-        $this->actingAs($this->felipe)->post(route('suporte.pedro.roteiro.novo'), ['titulo' => 'Câmera sem imagem', 'quando' => 'Câmera ou DVR sem imagem',
+        $this->actingAs($this->felipe)->post(route('suporte.pedro.roteiro.novo'), ['titulo' => 'Cerca elétrica desligada', 'quando' => 'Cerca elétrica sem tensão',
             'prioridade' => 'alta', 'prazo_horas' => 24, 'abre_atendimento' => '1', 'ativo' => '1'])->assertRedirect();
-        $r = SuporteRoteiro::where('titulo', 'Câmera sem imagem')->sole();
+        $r = SuporteRoteiro::where('titulo', 'Cerca elétrica desligada')->sole();
         $this->assertSame(['alta', 24, true, $this->felipe->id], [$r->prioridade, $r->prazo_horas, $r->abre_atendimento, $r->atualizado_por]);
 
         $boleto = SuporteRoteiro::where('titulo', 'Boleto / segunda via')->sole();
