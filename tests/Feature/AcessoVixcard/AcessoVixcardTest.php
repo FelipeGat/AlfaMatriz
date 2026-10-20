@@ -56,6 +56,19 @@ class AcessoVixcardTest extends TestCase
         $this->get(route('tarefas.index'))->assertOk()->assertSee(route('vixcard.projetos'), false)->assertDontSee('Centro de Controle')->assertDontSee('Revendas e clientes');
     }
 
+    /** Felipe, 20/10/2026: cada produto com o link de acesso dele, no card e na lista. */
+    public function test_produto_com_link_de_acesso_abre_pela_tela_de_projetos(): void
+    {
+        $this->vixId->update(['url_acesso' => 'https://vixid.tech']);
+        $tela = $this->actingAs($this->victor)->get(route('vixcard.projetos'))->assertOk();
+        $tela->assertSee('href="https://vixid.tech"', false)->assertSee('Abrir ↗')->assertSee('vixid.tech');
+        $this->assertSame(2, substr_count($tela->getContent(), 'href="https://vixid.tech"'), 'no card e na lista');
+
+        // O link é editado no cadastro do sistema; só http(s).
+        $this->actingAs($this->admin)->put(route('sistemas.update', $this->vixId), ['nome' => 'Vix-ID', 'natureza' => 'vixcard', 'url_acesso' => 'javascript:alert(1)'])
+            ->assertSessionHasErrors('url_acesso');
+    }
+
     /** Comercial › Projetos (19/10/2026): o time tem as duas pastas, VixCard e Alfa Soluções. */
     public function test_time_ve_as_duas_pastas_de_projetos(): void
     {

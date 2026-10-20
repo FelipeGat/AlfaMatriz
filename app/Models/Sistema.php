@@ -43,7 +43,7 @@ class Sistema extends Model
     ];
 
     protected $fillable = [
-        'nome', 'slug', 'natureza', 'categoria', 'unidade_cobranca', 'base_url', 'token', 'ativo',
+        'nome', 'slug', 'natureza', 'categoria', 'unidade_cobranca', 'base_url', 'url_acesso', 'token', 'ativo',
         'capacidades', 'versao', 'responsavel', 'data_cadastro',
     ];
 

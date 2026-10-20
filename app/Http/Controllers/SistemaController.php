@@ -164,6 +164,8 @@ class SistemaController extends Controller
             // faixas internas (AC-269, AC-270) — a chave de integração viaja
             // neste endereço a cada chamada.
             'base_url' => ['nullable', 'url', 'max:255', new EnderecoPublico],
+            // Só o link que a tela de Projetos abre: nenhum segredo viaja nele.
+            'url_acesso' => ['nullable', 'url:http,https', 'max:255'],
             'token' => 'nullable|string',
             'versao' => 'nullable|string|max:255',
             'responsavel' => 'nullable|string|max:255',

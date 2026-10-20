@@ -70,8 +70,10 @@
         <div x-show="modo === 'card'" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             @foreach ($projetos as $p)
                 @php [$tom, $rotulo, $barra] = $situacoes[$p['situacao']]; @endphp
+                {{-- O card leva às tarefas; o link do produto fica fora dele (link dentro de link não é HTML válido). --}}
+                <div class="flex flex-col rounded-panel border border-line bg-surface transition hover:border-brand">
                 <a href="{{ route('tarefas.index', ['sistema' => $p['sistema']->id]) }}"
-                   class="flex flex-col rounded-panel border border-line bg-surface p-4 transition hover:border-brand">
+                   class="flex flex-1 flex-col p-4">
                     <div class="flex items-start gap-2">
                         <h2 class="min-w-0 flex-1 truncate font-display text-[16px] font-semibold text-ink">{{ $p['sistema']->nome }}</h2>
                         <x-badge :tom="$tom" ponto>{{ $rotulo }}</x-badge>
@@ -104,6 +106,12 @@
                             <dd class="truncate text-ink" title="{{ $p['reuniao']?->titulo }}">{{ $quando($p['reuniao']) ?? '—' }}</dd></div>
                     </dl>
                 </a>
+                @if ($p['sistema']->url_acesso)
+                    <a href="{{ $p['sistema']->url_acesso }}" target="_blank" rel="noopener" class="flex items-center justify-between gap-2 border-t border-line px-4 py-2 text-[12.5px] font-semibold text-brand-text hover:bg-brand/10">
+                        <span class="truncate">{{ preg_replace('#^https?://|/$#', '', $p['sistema']->url_acesso) }}</span><span aria-hidden="true">Abrir ↗</span>
+                    </a>
+                @endif
+                </div>
             @endforeach
         </div>
 
@@ -146,6 +154,9 @@
                         <tr class="align-top hover:bg-head/50">
                             <td class="px-4 py-3">
                                 <a href="{{ route('tarefas.index', ['sistema' => $p['sistema']->id]) }}" class="font-display text-[14px] font-semibold text-ink hover:text-brand">{{ $p['sistema']->nome }}</a>
+                                @if ($p['sistema']->url_acesso)
+                                    <a href="{{ $p['sistema']->url_acesso }}" target="_blank" rel="noopener" class="ml-1.5 rounded-badge border border-brand-mute px-1.5 py-0.5 text-[11px] font-semibold text-brand-text hover:bg-brand/10" title="{{ $p['sistema']->url_acesso }}">Abrir ↗</a>
+                                @endif
                                 <p class="line-clamp-1 max-w-[260px] text-[12px] text-ink-mute" title="{{ $p['resumo'] }}">{{ $p['resumo'] ?: '—' }}</p>
                             </td>
                             <td class="px-3 py-3">

@@ -188,6 +188,14 @@
     </div>
 
     <div>
+        <x-input-label for="url_acesso" value="Link de acesso (o que a tela de Projetos abre)" />
+        <x-text-input id="url_acesso" name="url_acesso" type="url" class="mt-1 block w-full"
+                      value="{{ old('url_acesso', $sistema->url_acesso ?? '') }}"
+                      placeholder="https://produto.com.br" />
+        <x-input-error :messages="$errors->get('url_acesso')" class="mt-2" />
+    </div>
+
+    <div>
         <x-input-label for="token" value="Token de integração" />
         <x-text-input id="token" name="token" type="password" class="mt-1 block w-full"
                       placeholder="{{ ($sistema->token ?? null) ? '•••••••• (preencher para trocar)' : 'não configurado' }}" />
