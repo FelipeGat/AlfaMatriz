@@ -18,11 +18,12 @@ class DiretorioGestor
 
     private ?array $retrato = null;
 
-    public function gravar(string $maquina, string $lidoEm, array $clientes, array $atendimentos, array $assuntos = []): void
+    public function gravar(string $maquina, string $lidoEm, array $clientes, array $atendimentos, array $assuntos = [], array $equipe = []): void
     {
         DB::table('suporte_gestor_retrato')->delete();
         DB::table('suporte_gestor_retrato')->insert(['maquina' => $maquina, 'lido_em' => $lidoEm, 'clientes' => json_encode(array_values($clientes), JSON_UNESCAPED_UNICODE),
             'atendimentos' => json_encode(array_values($atendimentos), JSON_UNESCAPED_UNICODE), 'assuntos' => json_encode(array_values($assuntos), JSON_UNESCAPED_UNICODE),
+            'equipe' => json_encode(array_values($equipe), JSON_UNESCAPED_UNICODE),
             'created_at' => now(), 'updated_at' => now()]);
         $this->retrato = null;
     }
@@ -33,7 +34,8 @@ class DiretorioGestor
         if ($this->retrato === null) {
             $r = DB::table('suporte_gestor_retrato')->orderByDesc('id')->first();
             $this->retrato = ['lido_em' => $r?->lido_em, 'clientes' => $r ? (array) json_decode($r->clientes, true) : [], 'atendimentos' => $r ? (array) json_decode($r->atendimentos, true) : [],
-                'assuntos' => $r ? (array) json_decode((string) $r->assuntos, true) : []];
+                'assuntos' => $r ? (array) json_decode((string) $r->assuntos, true) : [],
+                'equipe' => $r ? (array) json_decode((string) ($r->equipe ?? '[]'), true) : []];
         }
 
         return $this->retrato;
@@ -117,6 +119,30 @@ class DiretorioGestor
     public function atendimentoPorNumero(string $numero): ?array
     {
         return collect($this->retrato()['atendimentos'])->first(fn ($a) => (string) ($a['numero'] ?? '') === trim($numero));
+    }
+
+    /**
+     * Quem da equipe (funcionário ativo do Gestor) escreve deste número.
+     *
+     * @return array{id: int, nome: string}|null
+     */
+    public function daEquipe(string $numero): ?array
+    {
+        $chave = CanalWhatsApp::chave($numero);
+        if (! $chave) {
+            return null;
+        }
+        $f = collect($this->retrato()['equipe'] ?? [])->first(fn ($p) => collect($p['telefones'] ?? [])->contains(fn ($t) => CanalWhatsApp::chave((string) $t) === $chave));
+
+        return $f ? ['id' => (int) $f['id'], 'nome' => (string) $f['nome']] : null;
+    }
+
+    /** @return list<array> os atendimentos ABERTOS em nome do funcionário (responsável ou técnico), mais antigos primeiro */
+    public function abertosDoFuncionario(int $funcionarioId): array
+    {
+        return collect($this->retrato()['atendimentos'])
+            ->filter(fn ($a) => in_array($funcionarioId, (array) ($a['funcionarios'] ?? []), true) && ! in_array($a['status'] ?? '', ['concluido', 'cancelado'], true))
+            ->sortBy(fn ($a) => (string) ($a['criado_em'] ?? ''))->values()->all();
     }
 
     /** @return list<array> os atendimentos do cliente, mais recentes primeiro */

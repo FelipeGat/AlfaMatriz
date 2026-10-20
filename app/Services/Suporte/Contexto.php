@@ -51,6 +51,7 @@ class Contexto
             ."<<<PEDRO\n{\"resposta\": \"o texto que vai para o cliente\", \"acao\": \"responder|abrir_atendimento|encaminhar_setor\", \"resumo\": \"o problema, para a equipe\", \"sistema\": \"o nome exato de um sistema do cliente, ou null\", \"cliente\": \"o código confirmado, ou null\", \"destino\": \"gestor|sistema|null\", \"assunto_id\": \"o número de um assunto da lista ASSUNTOS, ou null\", \"roteiro\": \"o número do roteiro seguido, ou null\", \"setor\": \"comercial|financeiro, só com encaminhar_setor\"}\nPEDRO>>>",
             "## A EMPRESA\n".app(Conhecimento::class)->empresa(),
             "## ROTEIROS\n".app(Conhecimento::class)->roteirosParaOPrompt(),
+            ...(($equipe = $this->equipe($c)) ? [$equipe] : []),
             "## CLIENTE\n".$this->identificacao($c, $sistemas),
             "## SITUAÇÃO DOS SISTEMAS\n".$this->situacao($c, $sistemas->pluck('id')->all()),
             "## ATENDIMENTOS\n".$this->atendimentos($c),
@@ -115,6 +116,35 @@ class Contexto
         }
 
         return $lista;
+    }
+
+    /**
+     * Quem escreve é da equipe (funcionário ativo do Gestor, pelo telefone do
+     * cadastro; Felipe, 20/10/2026): o Pedro oferece ajuda com os atendimentos em
+     * nome da pessoa, em vez de tratá-la como cliente.
+     */
+    private function equipe(SuporteConversa $c): ?string
+    {
+        $diretorio = app(DiretorioGestor::class);
+        $pessoa = $diretorio->daEquipe($c->telefone);
+        if (! $pessoa) {
+            return null;
+        }
+        $abertos = collect($diretorio->abertosDoFuncionario($pessoa['id']))->map(function ($a) use ($diretorio) {
+            $cliente = $diretorio->cliente((int) ($a['cliente_id'] ?? 0));
+            $nome = $cliente ? (($cliente['fantasia'] ?? '') ?: ($cliente['nome'] ?? '')) : 'cliente';
+
+            return '  - nº '.($a['numero'] ?? $a['id']).' — '.$nome.' — etapa: '.str_replace('_', ' ', (string) ($a['status'] ?? '?'))
+                .(! empty($a['criado_em']) ? ' — aberto em '.substr((string) $a['criado_em'], 8, 2).'/'.substr((string) $a['criado_em'], 5, 2) : '')
+                .' — '.Str::limit((string) ($a['descricao'] ?? ''), 90, '…');
+        });
+
+        return "## QUEM ESCREVE — EQUIPE INTERNA\n"
+            ."- {$pessoa['nome']}, da equipe (funcionário do Gestor). NÃO é cliente: não peça nome de condomínio ou empresa, não use os roteiros de cliente e não abra atendimento de suporte em nome dele, a não ser que ele peça.\n"
+            .'- Na primeira resposta da conversa: cumprimente pelo primeiro nome e pergunte se ele quer ajuda com algum dos atendimentos em nome dele, listando-os (nº, cliente, etapa). '
+            ."Sem atendimentos abertos, diga isso e pergunte como pode ajudar. A lista pode passar do limite de 4 frases, uma linha por atendimento.\n"
+            .'- Se ele pedir detalhes de um atendimento, use só o que está aqui e em ATENDIMENTOS; o Pedro só consulta o Gestor, não altera nada nele.'."\n"
+            .'- ATENDIMENTOS ABERTOS EM NOME DELE ('.$abertos->count()."):\n".($abertos->implode("\n") ?: '  - nenhum');
     }
 
     private function candidatoUnicoDoGestor(SuporteConversa $c): ?array

@@ -77,22 +77,40 @@ try {
         ];
     }
 
+    // A equipe (Felipe, 20/10/2026): funcionário ativo com telefone, para o Pedro
+    // reconhecer quem é da casa e oferecer ajuda com os atendimentos em nome dela.
+    $equipe = [];
+    foreach (DB::table('funcionarios')->where('ativo', 1)->whereNull('deleted_at')->whereNull('data_demissao')->get(['id', 'nome', 'celular', 'telefone']) as $f) {
+        $fones = array_values(array_filter([(string) $f->celular, (string) $f->telefone], fn ($t) => strlen(preg_replace('/\D/', '', $t)) >= 10));
+        if ($fones) {
+            $equipe[] = ['id' => (int) $f->id, 'nome' => (string) $f->nome, 'telefones' => $fones];
+        }
+    }
+    // Técnicos de cada atendimento (além do funcionário responsável).
+    $tecnicos = [];
+    if (Schema::hasTable('atendimento_tecnicos')) {
+        foreach (DB::table('atendimento_tecnicos')->get(['atendimento_id', 'funcionario_id']) as $t) {
+            $tecnicos[$t->atendimento_id][] = (int) $t->funcionario_id;
+        }
+    }
+
     // Abertos de qualquer data e os dos últimos 120 dias.
     $atendimentos = [];
     foreach (DB::table('atendimentos')->whereNull('deleted_at')->whereNotNull('cliente_id')
         ->where(fn ($q) => $q->whereNotIn('status_atual', ['concluido', 'cancelado'])->orWhere('created_at', '>=', now()->subDays(120)))
-        ->orderByDesc('id')->limit(5000)->get(['id', 'numero_atendimento', 'cliente_id', 'descricao', 'status_atual', 'empresa_id', 'assunto_id', 'created_at']) as $a) {
+        ->orderByDesc('id')->limit(5000)->get(['id', 'numero_atendimento', 'cliente_id', 'descricao', 'status_atual', 'empresa_id', 'assunto_id', 'created_at', 'funcionario_id']) as $a) {
         $atendimentos[] = ['id' => (int) $a->id, 'numero' => (string) $a->numero_atendimento, 'cliente_id' => (int) $a->cliente_id,
             'descricao' => mb_substr(trim((string) $a->descricao), 0, 300), 'status' => (string) $a->status_atual,
             'empresa_id' => $a->empresa_id ? (int) $a->empresa_id : null, 'assunto_id' => $a->assunto_id ? (int) $a->assunto_id : null,
-            'criado_em' => (string) $a->created_at];
+            'criado_em' => (string) $a->created_at,
+            'funcionarios' => array_values(array_unique(array_filter(array_merge([$a->funcionario_id ? (int) $a->funcionario_id : null], $tecnicos[$a->id] ?? []))))];
     }
 
     $assuntos = DB::table('assuntos')->where('ativo', 1)->orderBy('id')->get(['id', 'nome', 'tipo', 'categoria', 'empresa_id'])
         ->map(fn ($a) => ['id' => (int) $a->id, 'nome' => (string) $a->nome, 'tipo' => (string) $a->tipo, 'categoria' => (string) $a->categoria,
             'empresa_id' => $a->empresa_id ? (int) $a->empresa_id : null])->all();
 
-    echo 'SUPORTE_GESTOR:'.json_encode(['clientes' => $clientes, 'atendimentos' => $atendimentos, 'assuntos' => $assuntos], JSON_UNESCAPED_UNICODE)."\n";
+    echo 'SUPORTE_GESTOR:'.json_encode(['clientes' => $clientes, 'atendimentos' => $atendimentos, 'assuntos' => $assuntos, 'equipe' => $equipe], JSON_UNESCAPED_UNICODE)."\n";
 } finally {
     DB::rollBack();
 }

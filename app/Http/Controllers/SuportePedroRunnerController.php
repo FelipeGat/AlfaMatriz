@@ -53,10 +53,13 @@ class SuportePedroRunnerController extends Controller
             'atendimentos.*.id' => ['required', 'integer'], 'atendimentos.*.cliente_id' => ['nullable', 'integer'], 'atendimentos.*.numero' => ['nullable', 'string', 'max:30'],
             'atendimentos.*.descricao' => ['nullable', 'string', 'max:500'], 'atendimentos.*.status' => ['nullable', 'string', 'max:40'], 'atendimentos.*.criado_em' => ['nullable', 'string', 'max:30'],
             'atendimentos.*.empresa_id' => ['nullable', 'integer'], 'atendimentos.*.assunto_id' => ['nullable', 'integer'],
+            'atendimentos.*.funcionarios' => ['nullable', 'array', 'max:20'], 'atendimentos.*.funcionarios.*' => ['integer'],
+            'equipe' => ['nullable', 'array', 'max:500'], 'equipe.*.id' => ['required', 'integer'], 'equipe.*.nome' => ['required', 'string', 'max:255'],
+            'equipe.*.telefones' => ['nullable', 'array', 'max:5'], 'equipe.*.telefones.*' => ['string', 'max:40'],
             'assuntos' => ['nullable', 'array', 'max:2000'], 'assuntos.*.id' => ['required', 'integer'], 'assuntos.*.nome' => ['required', 'string', 'max:255'],
             'assuntos.*.tipo' => ['nullable', 'string', 'max:60'], 'assuntos.*.categoria' => ['nullable', 'string', 'max:120'], 'assuntos.*.empresa_id' => ['nullable', 'integer'],
         ]);
-        $diretorio->gravar($maquina, \Illuminate\Support\Carbon::parse($d['lido_em'])->setTimezone(config('app.timezone'))->toDateTimeString(), $d['clientes'], $d['atendimentos'], $d['assuntos'] ?? []);
+        $diretorio->gravar($maquina, \Illuminate\Support\Carbon::parse($d['lido_em'])->setTimezone(config('app.timezone'))->toDateTimeString(), $d['clientes'], $d['atendimentos'], $d['assuntos'] ?? [], $d['equipe'] ?? []);
 
         return response()->json(['ok' => true, 'clientes' => count($d['clientes'])]);
     }
