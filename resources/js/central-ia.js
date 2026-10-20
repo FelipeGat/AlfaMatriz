@@ -379,8 +379,8 @@ export function centralIa(config) {
             if (pendentes.length && !rodando) {
                 // A mesma regra do servidor (AgentesService::proxima): uma implementação por pasta, e o teto da pessoa.
                 const p = pendentes[0];
-                const pastaOcupada = p.modo === 'implementar' && this.atividade.some(a => a.status === 'executando' && a.modo === 'implementar' && a.projeto === p.projeto);
-                motivo = pastaOcupada ? `espera outro chat que implementa em ${p.projeto || 'Geral'}`
+                const pastaOcupada = p.modo === 'implementar' && p.projeto && this.atividade.some(a => a.status === 'executando' && a.modo === 'implementar' && a.projeto === p.projeto);
+                motivo = pastaOcupada ? `espera outro chat que implementa em ${p.projeto}`
                     : (this.emExecucao >= this.paralelo ? `espera uma vaga (${this.emExecucao} de ${this.paralelo} rodando)` : 'espera a máquina pegar');
             }
             return { rodando, naFila: pendentes.length, motivo };

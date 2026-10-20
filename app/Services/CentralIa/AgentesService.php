@@ -596,9 +596,13 @@ class AgentesService
             }
 
             // Implementando direto na pasta, dois agentes no mesmo projeto
-            // escreveriam um por cima do outro: um por projeto.
+            // escreveriam um por cima do outro: um por projeto. O "Geral" (sem
+            // projeto) não é um projeto: cada chat dali trabalha numa pasta
+            // própria, e tratá-lo como um só deixava todos os chats Geral numa
+            // fila única (Felipe, 20/10/2026: "a não ser que seja o mesmo
+            // projeto, aí realmente tem que aguardar").
             $projetosOcupados = config('central_ia.agentes.implementar_na_pasta')
-                ? (clone $rodando)->where('modo', 'implementar')->pluck('projeto')->all() : [];
+                ? array_values(array_filter((clone $rodando)->where('modo', 'implementar')->pluck('projeto')->all(), 'filled')) : [];
 
             $execucao = CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::PENDENTE)
                 ->whereIn('agente', $runner->agentes)

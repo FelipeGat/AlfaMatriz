@@ -176,6 +176,33 @@ class AssuntosTest extends TestCase
         $this->assertNull(app(AgentesService::class)->contextoDoProjeto($u, 'gestor', 0));
     }
 
+    /**
+     * Uma implementação por projeto, mas "Geral" (sem projeto) não é projeto:
+     * dois assuntos Geral implementam juntos (Felipe, 20/10/2026: "a não ser
+     * que seja o mesmo projeto, aí realmente tem que aguardar").
+     */
+    public function test_implementacao_espera_so_no_mesmo_projeto_e_geral_nao_trava(): void
+    {
+        config(['central_ia.agentes.paralelo' => 4]);
+        $u = $this->comCentral();
+        \Illuminate\Support\Facades\DB::table('central_ia_preferencias')->insert(['user_id' => $u->id,
+            'regras' => json_encode(['paralelo' => 4]), 'created_at' => now(), 'updated_at' => now()]);
+        $agentes = app(AgentesService::class);
+        $ids = [];
+        foreach (['Geral A', 'Geral B'] as $t) {
+            $ids[] = $agentes->pedir($u, 'x', ['projeto' => '', 'tarefa_id' => $this->criar($u, ['titulo' => $t]), 'agente' => 'claude', 'modo' => 'implementar', 'instrucao' => $t], 'web', $t)->id;
+        }
+        foreach (['Gestor A', 'Gestor B'] as $t) {
+            $ids[] = $agentes->pedir($u, 'x', ['projeto' => 'gestor', 'agente' => 'claude', 'modo' => 'implementar', 'instrucao' => $t], 'web', $t)->id;
+        }
+        $runner = CentralIaRunner::where('user_id', $u->id)->first();
+
+        $pegos = [];
+        while (count($pegos) < 5 && ($job = $agentes->proxima($u, $runner))) $pegos[] = $job['id'];
+
+        $this->assertSame(array_slice($ids, 0, 3), $pegos, 'os dois Geral rodam juntos; o 2º do gestor espera o 1º');
+    }
+
     public function test_assunto_sem_projeto_aciona_ia_sempre_e_implementa_na_raiz(): void
     {
         $u = $this->comCentral();

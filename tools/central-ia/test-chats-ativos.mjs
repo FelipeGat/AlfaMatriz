@@ -55,7 +55,10 @@ await u.enviar(); assert.equal(pedido.tarefa_id, 2); assert.equal(u.chatAtual, 2
     assert.equal(v.estadoNaLista(v.chats[0]), 'executando');
     assert.equal(v.filaDoChat(30).naFila, 1);
     assert.equal(v.estadoNaLista(v.assuntos[0]), 'na_fila');
-    assert.match(v.filaDoChat(11).motivo, /outro chat que implementa em Geral/);
+    assert.match(v.filaDoChat(11).motivo, /espera a máquina pegar/, 'Geral não é projeto: não espera o outro chat');
+    v.atividade[0].projeto = 'gestor'; v.atividade[2].projeto = 'gestor';
+    assert.match(v.filaDoChat(11).motivo, /outro chat que implementa em gestor/);
+    v.atividade[0].projeto = ''; v.atividade[2].projeto = '';
     v.filtroChatEstado = 'na_fila'; assert.deepEqual(v.chatsFiltrados.map(c => c.id), [11]);
 }
 console.log('PASSOU: filtros, rascunhos, retomada, isolamento no poll e destino de envio durante troca de chats.');
