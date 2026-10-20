@@ -391,6 +391,22 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // a Nova tarefa do quadro (`tarefas.index?de_compromisso=`), e o vínculo é
     // gravado no `tarefas.store` — que pede a porta do quadro, como pedia aqui.
 
+    // Suporte pelo WhatsApp (docs/specs/suporte-pedro-whatsapp).
+    $sup = \App\Http\Controllers\SuporteConversasController::class;
+    Route::get('suporte/whatsapp/marca', [$sup, 'marca'])->name('suporte.marca')->middleware('permissao:suporte,ler');
+    Route::get('suporte/whatsapp/{conversa?}', [$sup, 'index'])->whereNumber('conversa')->name('suporte.conversas')->middleware('permissao:suporte,ler');
+    Route::post('suporte/whatsapp/{conversa}/responder', [$sup, 'responder'])->whereNumber('conversa')->name('suporte.responder')->middleware('permissao:suporte,editar');
+    Route::post('suporte/whatsapp/{conversa}/assumir', [$sup, 'assumir'])->whereNumber('conversa')->name('suporte.assumir')->middleware('permissao:suporte,editar');
+    Route::post('suporte/whatsapp/{conversa}/devolver', [$sup, 'devolver'])->whereNumber('conversa')->name('suporte.devolver')->middleware('permissao:suporte,editar');
+    Route::post('suporte/whatsapp/{conversa}/vincular', [$sup, 'vincular'])->whereNumber('conversa')->name('suporte.vincular')->middleware('permissao:suporte,editar');
+    Route::post('suporte/whatsapp/{conversa}/gestor', [$sup, 'gestorNumero'])->whereNumber('conversa')->name('suporte.gestor-numero')->middleware('permissao:suporte,editar');
+    // O que o Pedro sabe do negócio (docs/specs/suporte-pedro-whatsapp/conhecimento.md): todos com `suporte` veem; só os editores alteram.
+    Route::get('suporte/pedro', [\App\Http\Controllers\SuporteConhecimentoController::class, 'index'])->name('suporte.pedro')->middleware('permissao:suporte,ler');
+    Route::post('suporte/pedro/empresa', [\App\Http\Controllers\SuporteConhecimentoController::class, 'empresa'])->name('suporte.pedro.empresa')->middleware('permissao:suporte,editar');
+    Route::post('suporte/pedro/roteiros', [\App\Http\Controllers\SuporteConhecimentoController::class, 'salvar'])->name('suporte.pedro.roteiro.novo')->middleware('permissao:suporte,editar');
+    Route::post('suporte/pedro/roteiros/{roteiro}', [\App\Http\Controllers\SuporteConhecimentoController::class, 'salvar'])->whereNumber('roteiro')->name('suporte.pedro.roteiro')->middleware('permissao:suporte,editar');
+    Route::post('suporte/pedro/roteiros/{roteiro}/apagar', [\App\Http\Controllers\SuporteConhecimentoController::class, 'apagar'])->whereNumber('roteiro')->name('suporte.pedro.roteiro.apagar')->middleware('permissao:suporte,editar');
+
     // Orçamentos VixCard (docs/specs/orcamentos-vixcard): recurso próprio, fora do admin.
     $orc = \App\Http\Controllers\OrcamentoController::class;
     Route::get('comercial/orcamentos', [$orc, 'index'])->name('orcamentos.index')->middleware('permissao:orcamentos,ler');

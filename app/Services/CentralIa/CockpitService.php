@@ -102,11 +102,15 @@ class CockpitService
     {
         return CentralIaTarefa::de($user)->assuntos()->where('status', '!=', CentralIaTarefa::ARQUIVADA)
             ->orderByDesc('ultima_atividade_em')->orderByDesc('id')
-            ->get(['id', 'titulo', 'grupo_id', 'projeto', 'status', 'agente_atual', 'ultima_atividade_em', 'created_at'])
+            ->get(['id', 'titulo', 'grupo_id', 'projeto', 'status', 'agente_atual', 'ultima_atividade_em', 'created_at', 'dossie'])
             ->map(fn (CentralIaTarefa $t) => [
                 'id' => $t->id, 'titulo' => $t->titulo, 'grupo_id' => $t->grupo_id, 'projeto' => $t->projeto, 'status' => $t->status,
                 'agente' => CentralIaExecucao::AGENTES[$t->agente_atual] ?? null,
                 'ultima_atividade' => ($t->ultima_atividade_em ?? $t->created_at)?->toIso8601String(),
+                // A pergunta pendente vai junto: assunto não passa pela lista de tarefas
+                // do projeto, e sem isto a tela dizia "Aguardando você" sem dizer o quê (Felipe, 20/10/2026).
+                'duvida' => $t->status === CentralIaTarefa::AGUARDANDO_VOCE ? ($t->dossie['duvida'] ?? null) : null,
+                'opcoes_duvida' => $t->status === CentralIaTarefa::AGUARDANDO_VOCE ? ($t->dossie['opcoes_duvida'] ?? []) : [],
             ])->all();
     }
 

@@ -53,6 +53,34 @@ return [
         'chromium' => env('ORCAMENTOS_CHROMIUM', '/usr/bin/chromium'),
     ],
 
+    // O número de suporte na WhatsApp Cloud API oficial (docs/specs/suporte-pedro-whatsapp).
+    // Credencial da Meta, não de IA: mora no .env do servidor. A versão segue a do Gestor.
+    'whatsapp_suporte' => [
+        'phone_number_id' => env('WHATSAPP_SUPORTE_PHONE_NUMBER_ID'),
+        'token' => env('WHATSAPP_SUPORTE_TOKEN'),
+        'app_secret' => env('WHATSAPP_SUPORTE_APP_SECRET'),
+        'verify_token' => env('WHATSAPP_SUPORTE_VERIFY_TOKEN'),
+        'graph_version' => env('WHATSAPP_SUPORTE_GRAPH_VERSION', 'v20.0'),
+    ],
+
+    // O Pedro (suporte-pedro-whatsapp, etapa 2): a IA é a do runner da conta abaixo, sem ferramentas.
+    'suporte_pedro' => [
+        'ligado' => env('SUPORTE_PEDRO_LIGADO', true),
+        'conta' => env('SUPORTE_PEDRO_CONTA', 'felipehenriquegat@gmail.com'),
+        'responsaveis' => array_filter(explode(',', (string) env('SUPORTE_PEDRO_RESPONSAVEIS', 'rossinidesouza06@gmail.com,alexandreblankl@outlook.com'))),
+        'agente' => env('SUPORTE_PEDRO_AGENTE', 'claude'),
+        'modelo' => env('SUPORTE_PEDRO_MODELO', 'sonnet'),
+        'inicio' => env('SUPORTE_PEDRO_INICIO', '07:00'),
+        'fim' => env('SUPORTE_PEDRO_FIM', '18:00'),
+        // Gravar o atendimento NO Gestor de produção automaticamente: desligado até a liberação
+        // explícita. Desligado, o atendimento de cliente do Gestor vira tarefa no Matriz para lançar à mão.
+        'gestor_gravar' => (bool) env('SUPORTE_PEDRO_GESTOR_GRAVAR', false),
+        // Sem resposta da IA nesse tempo, o Matriz responde sozinho e abre o atendimento.
+        'reserva_segundos' => (int) env('SUPORTE_PEDRO_RESERVA_SEGUNDOS', 120),
+        // Quem escreve o conhecimento do Pedro (roteiros e apresentação); quem tem `suporte` só vê.
+        'editores' => array_filter(explode(',', (string) env('SUPORTE_PEDRO_EDITORES', 'felipehenriquegat@gmail.com'))),
+    ],
+
     'alfamonitor' => [
         'url' => env('ALFAMONITOR_URL'),
         'api_url' => env('ALFAMONITOR_API_URL', env('ALFAMONITOR_URL')),

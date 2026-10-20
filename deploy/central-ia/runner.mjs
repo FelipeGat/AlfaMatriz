@@ -28,6 +28,7 @@ import { transcrever, whisperInstalado } from './transcricao.mjs';
 import { hora as horaDoGestor, lerGestor } from './gestor.mjs';
 import { hora as horaDaAgenda, lerAgenda as lerAgendaGoogle } from './agenda-google.mjs';
 import { aplicarAlteracoes, configuracao as pastasDeDocumentos, espelhar as espelharDocumentos } from './documentos.mjs';
+import { atenderSuporte, lerGestorParaPedro } from './suporte.mjs';
 import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h; chave servidor + conta +
@@ -1002,6 +1003,12 @@ let espelhando = false;
 let proximoEspelho = 0;
 let alterando = false;
 let proximaAlteracao = 0;
+// O Pedro (suporte no WhatsApp): uma vaga só dele, fora do PARALELO dos pedidos de código.
+let atendendoSuporte = false;
+let suportePausadoAte = 0;
+// O retrato do Gestor para o Pedro (só leitura), a cada 10 min.
+let lendoGestorPedro = false;
+let proximoRetratoPedro = 0;
 let whisperConferido = { em: 0, ok: false };
 async function whisperPronto() {
     if (Date.now() - whisperConferido.em > 600_000) whisperConferido = { em: Date.now(), ok: await whisperInstalado() };
@@ -1039,6 +1046,30 @@ while (!parar) {
                 if (envio.status === 403 || envio.status === 404) agendaPausadaAte = Date.now() + 3600_000 * 6;
                 if (envio.status !== 200) log('Agenda: envio →', envio.status);
             }).catch(e => log('Agenda: erro', e.message)).finally(() => { lendoAgenda = false; });
+        }
+        // O Pedro, do suporte no WhatsApp (suporte-pedro-whatsapp): vaga própria, sem
+        // ferramentas; 403/404 = esta conta não atende o suporte (tenta de novo em 1 h).
+        if (!atendendoSuporte && Date.now() >= suportePausadoAte) {
+            atendendoSuporte = true;
+            atenderSuporte(cfg.maquina, { api, agentes })
+                .then(r => {
+                    if (r.status === 403 || r.status === 404 || r.status === 405 || r.status === 422) suportePausadoAte = Date.now() + 3600_000;
+                    if (r.id) log(`suporte: pedido #${r.id} ${r.erro ? 'falhou (' + r.erro + ')' : 'respondido'} em ${Math.round(r.ms / 1000)} s`);
+                })
+                .catch(e => { log('suporte: erro', e.message); suportePausadoAte = Date.now() + 15_000; })
+                .finally(() => { atendendoSuporte = false; });
+        }
+        if (cfg.gestor && !lendoGestorPedro && Date.now() >= proximoRetratoPedro && Date.now() >= suportePausadoAte) {
+            lendoGestorPedro = true;
+            proximoRetratoPedro = Date.now() + 10 * 60_000;
+            lerGestorParaPedro(cfg.gestor)
+                .then(async r => {
+                    const envio = await api('suporte/gestor', { maquina: cfg.maquina, lido_em: new Date().toISOString(), ...r });
+                    if (envio.status === 403 || envio.status === 404) proximoRetratoPedro = Date.now() + 3600_000;
+                    else if (envio.status !== 200) log('suporte: retrato do Gestor →', envio.status);
+                })
+                .catch(e => log('suporte: retrato do Gestor não lido —', e.message))
+                .finally(() => { lendoGestorPedro = false; });
         }
         // Mão dupla (documentos-mao-dupla): a cada 30 s, aplica no OneDrive o que foi
         // pedido pelo Matriz; aplicou algo, espelha de novo logo em seguida.

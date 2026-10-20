@@ -38,6 +38,8 @@ class PerfilPermissaoSeeder extends Seeder
             'cobranca_revendas' => 'Cobrança de revendas (boleto e baixa automática)',
             // Orçamentos VixCard (orcamentos-vixcard): também fora do admin — Felipe e Victor.
             'orcamentos' => 'Orçamentos VixCard (propostas em PDF)',
+            // O WhatsApp do suporte (suporte-pedro-whatsapp): do admin, como o resto da operação.
+            'suporte' => 'Suporte pelo WhatsApp (conversas do número de suporte)',
             'cobrancas' => 'Receitas / contas a receber',
             'contas_pagar' => 'Despesas / contas a pagar',
             'financeiro' => 'Caixa / contas financeiras',

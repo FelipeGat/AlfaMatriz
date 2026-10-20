@@ -50,6 +50,8 @@ class Maquinas
         'agenda-google.mjs', 'secretario_agenda.py',
         // Pastas de documentos espelhadas do OneDrive (documentos-espelhados).
         'documentos.mjs',
+        // O Pedro, atendente do suporte no WhatsApp (suporte-pedro-whatsapp): vaga própria, sem ferramentas.
+        'suporte.mjs', 'suporte_gestor_ler.php',
     ];
 
     public function podeConectar(User $user): bool

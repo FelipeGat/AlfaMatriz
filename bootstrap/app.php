@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::group([], base_path('routes/vigia.php'));
             Route::group([], base_path('routes/atualizacoes.php'));
             Route::group([], base_path('routes/monitor.php'));
+            Route::group([], base_path('routes/suporte.php'));
             Route::group([], base_path('routes/central-ia.php'));
         },
     )

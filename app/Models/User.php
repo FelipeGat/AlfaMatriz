@@ -34,6 +34,9 @@ class User extends Authenticatable
      */
     public const EMAIL_DO_VIGIA = 'vigia-de-logs@alfamatriz.interno';
 
+    /** A conta que assina os atendimentos abertos pelo Pedro (suporte-pedro-whatsapp): desativada e sem perfil, como a do vigia. */
+    public const EMAIL_DO_PEDRO = 'pedro-suporte@alfamatriz.interno';
+
     /** A conta do vigia — mesmo se alguém a excluir pela tela (soft delete). */
     public static function vigiaDeLogs(): self
     {

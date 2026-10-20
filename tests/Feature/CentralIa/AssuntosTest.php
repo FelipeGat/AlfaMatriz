@@ -72,6 +72,18 @@ class AssuntosTest extends TestCase
         $this->assertSame('assunto', CentralIaTarefa::find($id)->tipo);
     }
 
+    public function test_pergunta_do_agente_no_assunto_vai_no_painel(): void
+    {
+        $u = $this->comCentral();
+        $id = $this->criar($u);
+        $p = $this->pedirNoAssunto($u, $id, 'crie o orçamento');
+        $this->responder($u, $p['_execucao'], 'Aguardo esclarecimento.', ['tarefa_concluida' => false, 'duvida' => 'Serão duas diárias?', 'opcoes_duvida' => ['Sim', 'Não']]);
+
+        $this->assertSame('aguardando_voce', CentralIaTarefa::find($id)->status);
+        $this->actingAs($u)->getJson(route('central-ia.painel'))->assertOk()
+            ->assertJsonPath('assuntos.0.duvida', 'Serão duas diárias?')->assertJsonPath('assuntos.0.opcoes_duvida', ['Sim', 'Não']);
+    }
+
     public function test_assunto_lembra_e_outro_agente_recebe_a_mesma_memoria(): void
     {
         $u = $this->comCentral();

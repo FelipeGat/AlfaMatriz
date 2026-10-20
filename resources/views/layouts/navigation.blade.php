@@ -77,6 +77,8 @@
         ],
         'Desenvolvimento' => [
             ['route' => 'tarefas.index', 'recurso' => 'tarefas', 'pattern' => 'tarefas.*', 'label' => 'Tarefas', 'icon' => 'view-grid', 'matriz' => true],
+            // O WhatsApp do suporte (suporte-pedro-whatsapp): logo abaixo de Tarefas, que é onde o atendimento vira trabalho.
+            ['route' => 'suporte.conversas', 'recurso' => 'suporte', 'pattern' => 'suporte.*', 'label' => 'Suporte WhatsApp', 'icon' => 'balao', 'matriz' => true],
             // Logo abaixo de Tarefas, e não num grupo "Pessoal" próprio: o
             // desenho (§19) previa o grupo pessoal, com Agenda e Notas. Decisão
             // do dono do produto em 18/09/2026 é que a Agenda mora aqui — o que
