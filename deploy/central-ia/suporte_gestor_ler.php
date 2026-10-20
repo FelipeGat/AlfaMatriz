@@ -110,7 +110,31 @@ try {
         ->map(fn ($a) => ['id' => (int) $a->id, 'nome' => (string) $a->nome, 'tipo' => (string) $a->tipo, 'categoria' => (string) $a->categoria,
             'empresa_id' => $a->empresa_id ? (int) $a->empresa_id : null])->all();
 
-    echo 'SUPORTE_GESTOR:'.json_encode(['clientes' => $clientes, 'atendimentos' => $atendimentos, 'assuntos' => $assuntos, 'equipe' => $equipe], JSON_UNESCAPED_UNICODE)."\n";
+    // A biblioteca do Showroom comercial (Felipe, 20/10/2026: "o Pedro tem que ter como ver as
+    // apresentações do comercial"): os textos de cada conteúdo ativo, para ele explicar o que fazemos.
+    // As apresentações montadas para um pré-cliente ficam de fora (são de uma reunião específica).
+    $showroom = [];
+    if (Schema::hasTable('showroom_conteudos') && Schema::hasTable('showroom_categorias')) {
+        $textos = function ($valor) use (&$textos): array {
+            if (is_array($valor)) {
+                return array_merge(...array_map($textos, array_values($valor)) ?: [[]]);
+            }
+            $t = trim(strip_tags((string) $valor));
+            // Imagem embutida, caminho de arquivo, cor e ícone não são texto para o Pedro.
+            return $t === '' || mb_strlen($t) > 600 || str_starts_with($t, 'data:') || preg_match('/^(#[0-9a-f]{3,8}|[\w\/.-]+\.(png|jpe?g|webp|svg|gif|mp4)|https?:\/\/\S+\.(png|jpe?g|webp|svg|gif))$/i', $t)
+                || preg_match('/^[a-z0-9_-]{1,24}$/', $t) ? [] : [$t];
+        };
+        $categorias = DB::table('showroom_categorias')->where('ativo', 1)->pluck('nome', 'id');
+        foreach (DB::table('showroom_conteudos')->where('ativo', 1)->whereIn('categoria_id', $categorias->keys())->orderBy('categoria_id')->orderBy('ordem')
+            ->get(['categoria_id', 'titulo', 'descricao', 'tipo', 'conteudo', 'dados', 'url', 'video_url']) as $c) {
+            $texto = implode(' · ', array_unique(array_merge($textos((string) $c->conteudo), $textos(json_decode((string) $c->dados, true) ?? []))));
+            $showroom[] = ['categoria' => (string) $categorias[$c->categoria_id], 'titulo' => (string) $c->titulo,
+                'descricao' => mb_substr(trim((string) $c->descricao), 0, 300), 'texto' => mb_substr(preg_replace('/\s+/u', ' ', $texto), 0, 1500),
+                'url' => (string) ($c->tipo === 'link' ? $c->url : ''), 'video' => (string) ($c->video_url ?? '')];
+        }
+    }
+
+    echo 'SUPORTE_GESTOR:'.json_encode(['clientes' => $clientes, 'atendimentos' => $atendimentos, 'assuntos' => $assuntos, 'equipe' => $equipe, 'showroom' => $showroom], JSON_UNESCAPED_UNICODE)."\n";
 } finally {
     DB::rollBack();
 }

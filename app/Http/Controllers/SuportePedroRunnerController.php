@@ -59,8 +59,11 @@ class SuportePedroRunnerController extends Controller
             'equipe.*.telefones' => ['nullable', 'array', 'max:5'], 'equipe.*.telefones.*' => ['string', 'max:40'],
             'assuntos' => ['nullable', 'array', 'max:2000'], 'assuntos.*.id' => ['required', 'integer'], 'assuntos.*.nome' => ['required', 'string', 'max:255'],
             'assuntos.*.tipo' => ['nullable', 'string', 'max:60'], 'assuntos.*.categoria' => ['nullable', 'string', 'max:120'], 'assuntos.*.empresa_id' => ['nullable', 'integer'],
+            'showroom' => ['nullable', 'array', 'max:500'], 'showroom.*.categoria' => ['nullable', 'string', 'max:120'], 'showroom.*.titulo' => ['required', 'string', 'max:255'],
+            'showroom.*.descricao' => ['nullable', 'string', 'max:500'], 'showroom.*.texto' => ['nullable', 'string', 'max:2000'],
+            'showroom.*.url' => ['nullable', 'string', 'max:500'], 'showroom.*.video' => ['nullable', 'string', 'max:500'],
         ]);
-        $diretorio->gravar($maquina, \Illuminate\Support\Carbon::parse($d['lido_em'])->setTimezone(config('app.timezone'))->toDateTimeString(), $d['clientes'], $d['atendimentos'], $d['assuntos'] ?? [], $d['equipe'] ?? []);
+        $diretorio->gravar($maquina, \Illuminate\Support\Carbon::parse($d['lido_em'])->setTimezone(config('app.timezone'))->toDateTimeString(), $d['clientes'], $d['atendimentos'], $d['assuntos'] ?? [], $d['equipe'] ?? [], $d['showroom'] ?? []);
 
         return response()->json(['ok' => true, 'clientes' => count($d['clientes'])]);
     }

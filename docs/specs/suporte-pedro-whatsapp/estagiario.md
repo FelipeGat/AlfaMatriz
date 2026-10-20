@@ -134,3 +134,10 @@ Ver e analisar fotos, transcrever áudio e responder 24 h. Fotos e áudio estão
   o celular gravou, maior lado 768 px) e transcreve a fala, num só container sem rede. Os quadros vão à IA como
   fotos, e a fala entra no lugar do marcador `⟦VIDEO:id⟧`. O que foi visto volta ao Matriz na `transcricao` da
   mensagem, e o vídeo não é mandado de novo. Divide os 70 s com os áudios.
+- **FR-15, tela de conversas (20/10/2026):** no molde do WhatsApp do Gestor. Tem indicadores do dia, filtros (busca,
+  situação, atendente, período, janela da Meta e não lidas), lista com prévia, selo ATRASADO (cliente esperando há
+  mais de 15 min) e mídia exibida na conversa, com a transcrição.
+- **FR-16, Showroom comercial (20/10/2026):** o retrato do Gestor passa a trazer a biblioteca do Showroom (categorias e
+  conteúdos ativos: título, descrição, texto e links). As apresentações de pré-cliente ficam de fora, porque são de
+  uma reunião. A cada pedido vão ao Pedro só os até 4 itens que mais combinam com as 3 últimas mensagens do cliente.
+  Ele usa o material para explicar, sem prometer preço, e passa ao comercial o que for proposta.

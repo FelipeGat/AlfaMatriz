@@ -90,4 +90,22 @@ class PedroEstagiarioTest extends TestCase
         $this->assertStringContainsString('CLIENTE CITADO: CONDOMINIO RESIDENCIAL PARQUE DAS CASTANHEIRAS (CASTANHEIRAS)', $p);
         $this->assertStringContainsString('nº 900 — etapa: em atendimento', $p);
     }
+
+    /** Felipe, 20/10/2026: o Pedro pesquisa no Showroom comercial do Gestor o que o cliente perguntou. */
+    public function test_o_pedro_pesquisa_no_showroom_so_o_que_o_cliente_perguntou(): void
+    {
+        app(DiretorioGestor::class)->gravar('wsl', now()->toDateTimeString(), [], [], [], [], [
+            ['categoria' => 'Produtos', 'titulo' => 'Controle de acesso e portaria', 'descricao' => 'Facial, biometria e portaria remota', 'texto' => 'Catracas e leitores faciais integrados ao AlfaControl.', 'url' => '', 'video' => ''],
+            ['categoria' => 'Produtos', 'titulo' => 'Climatização e ar-condicionado', 'descricao' => 'Split, VRF e câmaras frias', 'texto' => 'Projeto, instalação e PMOC.', 'url' => '', 'video' => ''],
+            ['categoria' => 'Demos & Links', 'titulo' => 'Site — Invest Digital', 'descricao' => 'Segurança eletrônica e TI', 'texto' => '', 'url' => 'https://invest.solucoesgrupo.com/', 'video' => ''],
+        ]);
+
+        $p = $this->prompt('5527911112222', 'Vocês fazem controle de acesso com facial para condomínio?');
+        $this->assertStringContainsString('## SHOWROOM COMERCIAL', $p);
+        $this->assertStringContainsString('Controle de acesso e portaria (Produtos): Facial, biometria e portaria remota', $p);
+        $this->assertStringContainsString('não prometa preço', $p);
+        $this->assertStringNotContainsString('Climatização e ar-condicionado', $p, 'só o que combina');
+
+        $this->assertStringNotContainsString('## SHOWROOM COMERCIAL', $this->prompt('5527933334444', 'oi, bom dia'), 'conversa sem assunto não leva o showroom');
+    }
 }

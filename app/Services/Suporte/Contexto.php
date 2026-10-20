@@ -91,6 +91,7 @@ class Contexto
             ...(($g = $this->gestorDaConversa($c) ?? $this->candidatoUnicoDoGestor($c)) ? ["## O QUE A EQUIPE DE CAMPO FAZ (Gestor)\n- Atendimento técnico de manutenção e segurança eletrônica: portões, câmeras, interfones, controle de acesso e cabeamento, com técnico agendado pela equipe.",
                 "## ASSUNTOS (para atendimento no Gestor, escolha o que melhor descreve o problema)\n".collect(app(DiretorioGestor::class)->assuntosPara($g))->map(fn ($a) => '- '.$a['id'].': '.$a['nome'].($a['categoria'] ? ' ('.$a['categoria'].')' : ''))->implode("\n")] : []),
             "## O QUE CADA SISTEMA FAZ\n".$this->base($sistemas->pluck('nome')->all()),
+            ...(($vitrine = $this->showroom($c)) ? [$vitrine] : []),
             "## MENSAGENS (as mais recentes por último)\n".$this->mensagens($c),
             'Agora: '.now()->setTimezone(config('app.timezone'))->format('d/m/Y H:i').'.',
         ];
@@ -155,6 +156,28 @@ class Contexto
      * cadastro; Felipe, 20/10/2026): o Pedro oferece ajuda com os atendimentos em
      * nome da pessoa, em vez de tratá-la como cliente.
      */
+    /**
+     * O que o Showroom comercial do Gestor tem sobre o que o cliente está
+     * perguntando (Felipe, 20/10/2026): só os itens que combinam com as últimas
+     * mensagens dele, para não pagar a biblioteca inteira a cada resposta.
+     */
+    private function showroom(SuporteConversa $c): ?string
+    {
+        $recentes = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->get()
+            ->map(fn ($m) => $m->transcricao ?: $m->texto)->implode(' ');
+        $itens = app(DiretorioGestor::class)->showroomPara($recentes);
+        if (! $itens) {
+            return null;
+        }
+
+        return "## SHOWROOM COMERCIAL (material do comercial no Gestor sobre o que o cliente perguntou)\n"
+            .'Use para explicar o que fazemos, com suas palavras e em poucas frases; não prometa preço, prazo nem condição. '
+            ."Se o cliente quiser proposta, visita ou orçamento, é com o comercial (encaminhe). Link: só os que aparecem aqui ou em A EMPRESA.\n"
+            .collect($itens)->map(fn ($i) => '- '.$i['titulo'].' ('.$i['categoria'].')'
+                .($i['descricao'] ? ': '.$i['descricao'] : '').($i['texto'] ? "\n  ".Str::limit($i['texto'], 900, '…') : '')
+                .($i['url'] ? "\n  Link: ".$i['url'] : '').($i['video'] ? "\n  Vídeo: ".$i['video'] : ''))->implode("\n");
+    }
+
     private function equipe(SuporteConversa $c): ?string
     {
         $diretorio = app(DiretorioGestor::class);

@@ -18,12 +18,13 @@ class DiretorioGestor
 
     private ?array $retrato = null;
 
-    public function gravar(string $maquina, string $lidoEm, array $clientes, array $atendimentos, array $assuntos = [], array $equipe = []): void
+    public function gravar(string $maquina, string $lidoEm, array $clientes, array $atendimentos, array $assuntos = [], array $equipe = [], array $showroom = []): void
     {
         DB::table('suporte_gestor_retrato')->delete();
         DB::table('suporte_gestor_retrato')->insert(['maquina' => $maquina, 'lido_em' => $lidoEm, 'clientes' => json_encode(array_values($clientes), JSON_UNESCAPED_UNICODE),
             'atendimentos' => json_encode(array_values($atendimentos), JSON_UNESCAPED_UNICODE), 'assuntos' => json_encode(array_values($assuntos), JSON_UNESCAPED_UNICODE),
             'equipe' => json_encode(array_values($equipe), JSON_UNESCAPED_UNICODE),
+            'showroom' => json_encode(array_values($showroom), JSON_UNESCAPED_UNICODE),
             'created_at' => now(), 'updated_at' => now()]);
         $this->retrato = null;
     }
@@ -35,10 +36,46 @@ class DiretorioGestor
             $r = DB::table('suporte_gestor_retrato')->orderByDesc('id')->first();
             $this->retrato = ['lido_em' => $r?->lido_em, 'clientes' => $r ? (array) json_decode($r->clientes, true) : [], 'atendimentos' => $r ? (array) json_decode($r->atendimentos, true) : [],
                 'assuntos' => $r ? (array) json_decode((string) $r->assuntos, true) : [],
-                'equipe' => $r ? (array) json_decode((string) ($r->equipe ?? '[]'), true) : []];
+                'equipe' => $r ? (array) json_decode((string) ($r->equipe ?? '[]'), true) : [],
+                'showroom' => $r ? (array) json_decode((string) ($r->showroom ?? '[]'), true) : []];
         }
 
         return $this->retrato;
+    }
+
+    /**
+     * Os itens do Showroom comercial que mais combinam com o que o cliente
+     * escreveu (palavras em comum no título, na descrição e no texto, título
+     * pesando mais). Mandar a biblioteca inteira custaria ~5 mil tokens por
+     * mensagem; assim vai só o que interessa.
+     *
+     * @return list<array{categoria: string, titulo: string, descricao: string, texto: string, url: string, video: string}>
+     */
+    public function showroomPara(string $texto, int $quantos = 4): array
+    {
+        $palavras = $this->termos($texto);
+        if (! $palavras) {
+            return [];
+        }
+
+        return collect($this->retrato()['showroom'] ?? [])
+            ->map(function ($item) use ($palavras) {
+                $titulo = $this->termos(($item['titulo'] ?? '').' '.($item['categoria'] ?? ''));
+                $corpo = $this->termos(($item['descricao'] ?? '').' '.($item['texto'] ?? ''));
+
+                return ['item' => $item, 'pontos' => 3 * count(array_intersect($palavras, $titulo)) + count(array_intersect($palavras, $corpo))];
+            })
+            ->filter(fn ($x) => $x['pontos'] >= 2)->sortByDesc('pontos')->take($quantos)->pluck('item')->values()->all();
+    }
+
+    /** @return list<string> as palavras que dizem algo (sem acento, 4+ letras, sem as genéricas), sem repetição */
+    private function termos(string $texto): array
+    {
+        $genericas = ['para', 'como', 'qual', 'quais', 'quero', 'gostaria', 'saber', 'mais', 'sobre', 'voces', 'vocês', 'tenho', 'preciso', 'esta', 'esse', 'essa',
+            'isso', 'aqui', 'onde', 'quando', 'tambem', 'ainda', 'muito', 'pode', 'podem', 'fazer', 'favor', 'obrigado', 'obrigada', 'tudo', 'bom', 'dia', 'tarde', 'noite', 'olá', 'ola'];
+
+        return array_values(array_unique(array_filter(preg_split('/[^a-z0-9]+/', Str::lower(Str::ascii($texto))),
+            fn ($p) => strlen($p) >= 4 && ! in_array($p, $genericas, true))));
     }
 
     public function cliente(int $id): ?array
