@@ -81,3 +81,17 @@ clientes da pasta OneDrive VixCard › Comercial › Orçamentos › Clientes.
   - Os dados vêm da tela **Ajustes dos orçamentos**: emissor, clientes e capa padrão. A lista nasce da
     apresentação Radier v2, já enviada. Os dados do emissor que nenhuma proposta trazia (CNPJ, razão social,
     endereço) começam vazios e não saem no PDF até serem preenchidos.
+- **FR-H11, painel (20/10/2026):** "nossa tela está sem vida, sem KPI", com o modelo de tela que o Felipe mandou.
+  - **Período:** 7, 30 ou 90 dias, este mês ou tudo. Vale para os indicadores e os gráficos, sempre sobre as
+    versões vigentes. A data de cada orçamento é a do envio; a do rascunho, a da criação.
+  - **Indicadores:** total no período (comparado ao período anterior), em aberto, aprovados, em negociação e
+    recusados, cada um com quantidade, valor, % do total e barra.
+  - **Gráficos:** evolução por dia (por semana acima de 31 dias), em barras empilhadas por situação; rosca por
+    situação; top clientes por valor.
+  - **Lista:** filtros de busca, situação, projeto e responsável. Colunas: número com a data e as revisões
+    anteriores, cliente com a proposta, projeto, valor (material + implantação e mensal), situação, validade com
+    os dias que faltam, responsável, atualizado e ações (abrir, PDF e menu com Revisar, Duplicar e Funil).
+  - **Nova situação, "Em negociação":** entre o envio e a resposta, o cliente respondeu e se negocia. Conta como
+    em aberto.
+- **Pasta no OneDrive:** desde 20/10/2026, o PDF enviado vai para `Novos_Projetos/Orçamentos/Clientes`, o lugar
+  novo da pasta.

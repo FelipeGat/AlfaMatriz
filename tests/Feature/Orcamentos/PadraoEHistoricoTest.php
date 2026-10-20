@@ -173,4 +173,23 @@ class PadraoEHistoricoTest extends TestCase
         $this->post(route('orcamentos.revisar', $o))->assertRedirect();
         $this->assertSame(['substituido', '001.Rev2'], [$o->fresh()->situacao, Orcamento::where('revisao', 2)->sole()->codigo()]);
     }
+
+    /** O painel (20/10/2026): indicadores do período sobre as vigentes, e a negociação entre o envio e a resposta. */
+    public function test_painel_com_indicadores_e_negociacao(): void
+    {
+        $pasta = sys_get_temp_dir();
+        app(Historico::class)->importar([$this->proposta(), $this->proposta(['arquivo' => 'Lorenzo/PROPOSTA_VIXID_LORENZO.pdf', 'ordem_no_grupo' => 2, 'situacao' => 'enviado', 'data' => '2026-10-13'])], $pasta, $this->felipe);
+        $rev = Orcamento::where('revisao', 2)->sole();
+        $this->actingAs($this->felipe)->post(route('orcamentos.resposta', $rev), ['resposta' => 'negociacao'])->assertRedirect();
+        $this->assertSame('negociacao', $rev->fresh()->situacao);
+
+        $tela = $this->get(route('orcamentos.index', ['periodo' => '30']))->assertOk()->assertSee('Total no período')->assertSee('Evolução dos orçamentos')->assertSee('Top clientes');
+        $p = $tela->viewData('painel');
+        $this->assertSame(1, $p['total']['qtd'], 'a revisão substituída não conta duas vezes');
+        $this->assertSame(1, $p['negociacao']['qtd']);
+        $this->assertSame(29800.0, $p['negociacao']['valor']);
+
+        $this->post(route('orcamentos.resposta', $rev), ['resposta' => 'aprovado'])->assertRedirect();
+        $this->assertSame(1, $this->get(route('orcamentos.index'))->viewData('painel')['aprovado']['qtd']);
+    }
 }

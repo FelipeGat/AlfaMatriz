@@ -22,7 +22,8 @@ class Orcamentos
     /** A pasta de Documentos onde o PDF enviado é guardado, e o caminho dos clientes dentro dela. */
     public const PASTA_DOCUMENTOS = 'VixCard';
 
-    public const CAMINHO_CLIENTES = 'Comercial/Orçamentos/Clientes';
+    // A pasta mudou no OneDrive em 20/10/2026 (Comercial/Orçamentos → Novos_Projetos/Orçamentos).
+    public const CAMINHO_CLIENTES = 'Novos_Projetos/Orçamentos/Clientes';
 
     public function __construct(private Pdf $pdf, private Alteracoes $alteracoes) {}
 
@@ -107,10 +108,11 @@ class Orcamentos
 
     public function responder(Orcamento $o, string $resposta): void
     {
-        if ($o->situacao !== 'enviado' || ! in_array($resposta, ['aprovado', 'recusado'], true)) {
-            throw ValidationException::withMessages(['situacao' => 'Só o orçamento enviado recebe aprovação ou recusa.']);
+        if (! in_array($o->situacao, ['enviado', 'negociacao'], true) || ! in_array($resposta, ['negociacao', 'aprovado', 'recusado'], true)
+            || ($resposta === 'negociacao' && $o->situacao !== 'enviado')) {
+            throw ValidationException::withMessages(['situacao' => 'Só o orçamento enviado (ou em negociação) recebe a resposta do cliente.']);
         }
-        $o->update(['situacao' => $resposta, 'respondido_em' => now()]);
+        $o->update(['situacao' => $resposta] + ($resposta === 'negociacao' ? [] : ['respondido_em' => now()]));
     }
 
     /** O caminho em Documentos onde o PDF foi anotado, ou null se a pasta VixCard não existe para quem enviou. */

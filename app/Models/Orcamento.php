@@ -15,7 +15,8 @@ use Illuminate\Support\Carbon;
 class Orcamento extends Model
 {
     public const SITUACOES = [
-        'rascunho' => 'Rascunho', 'enviado' => 'Enviado', 'aprovado' => 'Aprovado', 'recusado' => 'Recusado', 'substituido' => 'Substituído',
+        // "Em negociação" (20/10/2026): o cliente respondeu e se discute valor ou escopo; ainda está em aberto.
+        'rascunho' => 'Rascunho', 'enviado' => 'Enviado', 'negociacao' => 'Em negociação', 'aprovado' => 'Aprovado', 'recusado' => 'Recusado', 'substituido' => 'Substituído',
     ];
 
     public const VALIDADES = [7, 15, 30];

@@ -111,7 +111,9 @@ ul { margin: 0; padding-left: 5mm } li { margin-bottom: 1.2mm }
         $preparado = collect([
             ['A/C', trim($o->contato.(data_get($dc, 'cargo') ? ' · '.data_get($dc, 'cargo') : ''), ' ·')],
             ['CNPJ', data_get($dc, 'cnpj')], ['Cidade', $o->cidade], ['Telefone', data_get($dc, 'telefone')], ['E-mail', data_get($dc, 'email')],
-        ])->filter(fn ($l) => trim((string) $l[1]) !== '');
+            // A 3ª coluna livre da capa (Sistema, Escopo, Evento…); o A/C já está acima.
+            [$o->rotulo_3, ! in_array(mb_strtolower(trim((string) $o->rotulo_3)), ['a/c', 'ac', 'contato'], true) ? $o->valor_3 : null],
+        ])->filter(fn ($l) => trim((string) $l[0]) !== '' && trim((string) $l[1]) !== '');
         $clientesAtendidos = $ajustes->clientes();
     @endphp
     <section class="pagina capa {{ $capa ? 'com-foto' : '' }}">
@@ -121,7 +123,8 @@ ul { margin: 0; padding-left: 5mm } li { margin-bottom: 1.2mm }
             <div class="capa-num"><b>{{ $numero }}</b><br>{{ $data->translatedFormat('j \d\e F \d\e Y') }}@if ($o->validoAte())<br>válida até {{ $o->validoAte()->format('d/m/Y') }}@endif</div>
         </div>
         <div class="bloco">
-            <div class="sobre">{{ $tipo }}@if ($o->rotulo_3 && $o->valor_3) · {{ $o->valor_3 }}@elseif ($produto) · {{ $produto }}@endif</div>
+            @php $projetoCapa = $o->preCliente?->sistema?->nome ?? ($o->produto !== 'outro' ? $produto : null); @endphp
+            <div class="sobre">{{ $tipo }}@if ($projetoCapa) · {{ $projetoCapa }}@endif</div>
             <p class="titulo">{{ $o->titulo ?: 'Proposta' }}@if ($o->destaque)<b>{{ $o->destaque }}</b>@endif</p>
             <div class="traco"></div>
             @if ($o->lead)<p class="lead">{{ $o->lead }}</p>@endif

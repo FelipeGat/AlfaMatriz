@@ -113,7 +113,7 @@ class OrcamentosTest extends TestCase
         $this->assertSame('enviado', $o->situacao);
         $this->assertNotNull($o->enviado_em);
         $op = DocumentoOperacao::sole();
-        $this->assertSame(['enviar', 'Comercial/Orçamentos/Clientes/Marmoraria Lorenzo/PROPOSTA_001_MARMORARIA_LORENZO.pdf', $this->victor->id],
+        $this->assertSame(['enviar', 'Novos_Projetos/Orçamentos/Clientes/Marmoraria Lorenzo/PROPOSTA_001_MARMORARIA_LORENZO.pdf', $this->victor->id],
             [$op->tipo, $op->caminho, $op->user_id]);
         Storage::disk(Documento::DISCO)->assertExists($op->arquivo);
 

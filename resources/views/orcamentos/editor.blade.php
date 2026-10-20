@@ -7,7 +7,7 @@
     $rotulo = 'grid gap-1 text-[11.5px] text-ink-mute';
     $botao = 'inline-flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-control border border-btn-line px-3 text-[12.5px] font-semibold text-ink-dim hover:border-brand hover:text-brand';
     $primario = 'inline-flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright';
-    $cor = ['rascunho' => 'neutro', 'enviado' => 'marca', 'aprovado' => 'bom', 'recusado' => 'critico', 'substituido' => 'atencao'];
+    $cor = ['rascunho' => 'neutro', 'enviado' => 'marca', 'negociacao' => 'ambar', 'aprovado' => 'bom', 'recusado' => 'critico', 'substituido' => 'atencao'];
     $modelos = collect(Modelos::PRODUTOS)->map(fn ($m, $k) => Modelos::paraFormulario($k) + ['nome' => $m['nome']]);
 @endphp
 <x-app-layout>
@@ -40,6 +40,9 @@
                 <div class="ml-auto flex flex-wrap gap-1.5">
                     <a href="{{ route('orcamentos.pdf', $o) }}" target="_blank" rel="noopener" class="{{ $botao }}"><span class="h-4 w-4"><x-nav-icon name="document" /></span> PDF</a>
                     @if ($o->situacao === 'enviado')
+                        <form method="POST" action="{{ route('orcamentos.resposta', $o) }}">@csrf<input type="hidden" name="resposta" value="negociacao"><button class="{{ $botao }}">Em negociação</button></form>
+                    @endif
+                    @if (in_array($o->situacao, ['enviado', 'negociacao'], true))
                         <form method="POST" action="{{ route('orcamentos.resposta', $o) }}">@csrf<input type="hidden" name="resposta" value="aprovado"><button class="{{ $botao }}">Aprovado</button></form>
                         <form method="POST" action="{{ route('orcamentos.resposta', $o) }}">@csrf<input type="hidden" name="resposta" value="recusado"><button class="{{ $botao }}">Recusado</button></form>
                     @endif

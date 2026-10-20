@@ -24,9 +24,10 @@ class OrcamentoController extends Controller
 {
     public function __construct(private Orcamentos $orcamentos, private Pdf $pdf) {}
 
-    public function index(Request $request): View
+    public function index(Request $request, \App\Services\Orcamentos\Painel $painel): View
     {
-        $f = $request->validate(['q' => ['nullable', 'string', 'max:120'], 'situacao' => ['nullable', Rule::in(array_keys(Orcamento::SITUACOES))]]);
+        $f = $request->validate(['q' => ['nullable', 'string', 'max:120'], 'situacao' => ['nullable', Rule::in(array_keys(Orcamento::SITUACOES))],
+            'projeto' => ['nullable', 'integer'], 'responsavel' => ['nullable', 'integer'], 'periodo' => ['nullable', Rule::in(array_keys(\App\Services\Orcamentos\Painel::PERIODOS))]]);
         $busca = trim((string) ($f['q'] ?? ''));
         $lista = Orcamento::query()
             ->when($busca !== '', function ($q) use ($busca) {
@@ -37,27 +38,19 @@ class OrcamentoController extends Controller
                     ->when($num, fn ($x) => $x->orWhere(fn ($y) => $y->where('numero', (int) $num[1])->when($num[2] ?? null, fn ($z, $ano) => $z->where('ano', $ano)))));
             })
             ->when($f['situacao'] ?? null, fn ($q, $s) => $q->where('situacao', $s), fn ($q) => $q->where('situacao', '!=', 'substituido'))
-            ->with('preCliente.sistema:id,nome')
-            ->orderByDesc('ano')->orderByDesc('numero')->orderByDesc('revisao')->limit(500)->get();
-        // Por cliente (padrao-e-historico.md, FR-H2): o pré-cliente do Funil; sem vínculo, o nome digitado.
-        $grupos = $lista->groupBy(fn (Orcamento $o) => $o->lead_id ? 'lead:'.$o->lead_id : 'nome:'.mb_strtolower(trim($o->cliente)))
-            ->map(fn ($os) => ['lead' => $os->first()->preCliente, 'nome' => $os->first()->preCliente?->nome ?? $os->first()->cliente,
-                'projeto' => $os->first()->preCliente?->sistema?->nome ?? Modelos::nome($os->first()->produto), 'orcamentos' => $os,
-                'ultimo' => $os->max(fn ($o) => $o->enviado_em ?? $o->updated_at)])
-            ->sortByDesc('ultimo')->values();
+            ->when($f['projeto'] ?? null, fn ($q, $id) => $q->whereHas('preCliente', fn ($l) => $l->where('sistema_id', $id)))
+            ->when($f['responsavel'] ?? null, fn ($q, $id) => $q->where('user_id', $id))
+            ->with(['preCliente.sistema:id,nome', 'autor:id,name'])
+            ->orderByDesc('updated_at')->limit(300)->get();
         // As revisões de cada número, para a linha da vigente mostrar as anteriores.
         $revisoes = Orcamento::whereIn('numero', $lista->pluck('numero'))->orderBy('revisao')->get(['id', 'ano', 'numero', 'revisao'])
             ->groupBy(fn ($r) => $r->ano.'-'.$r->numero);
-        $mes = now()->startOfMonth();
 
         return view('orcamentos.index', [
-            'grupos' => $grupos, 'revisoes' => $revisoes, 'total' => $lista->count(), 'busca' => $busca, 'situacao' => $f['situacao'] ?? null,
-            'kpis' => [
-                'abertos' => Orcamento::whereIn('situacao', ['rascunho', 'enviado'])->count(),
-                'enviados' => (float) Orcamento::whereNotNull('enviado_em')->where('enviado_em', '>=', $mes)->sum('total_unico'),
-                'aprovados' => (float) Orcamento::where('situacao', 'aprovado')->where('respondido_em', '>=', $mes)->sum('total_unico'),
-                'vencendo' => Orcamento::where('situacao', 'enviado')->get()->filter(fn ($o) => $o->validoAte()?->between(now()->startOfDay(), now()->addDays(3)->endOfDay()))->count(),
-            ],
+            'lista' => $lista, 'revisoes' => $revisoes, 'busca' => $busca, 'filtros' => $f,
+            'painel' => $painel->montar($f['periodo'] ?? '30'),
+            'projetos' => \App\Models\Sistema::whereIn('id', \App\Models\Lead::whereIn('id', Orcamento::whereNotNull('lead_id')->pluck('lead_id'))->pluck('sistema_id'))->orderBy('nome')->get(['id', 'nome']),
+            'responsaveis' => \App\Models\User::whereIn('id', Orcamento::distinct()->pluck('user_id'))->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -203,7 +196,7 @@ class OrcamentoController extends Controller
 
     public function resposta(Request $request, Orcamento $orcamento): RedirectResponse
     {
-        $d = $request->validate(['resposta' => ['required', Rule::in(['aprovado', 'recusado'])]]);
+        $d = $request->validate(['resposta' => ['required', Rule::in(['negociacao', 'aprovado', 'recusado'])]]);
         $this->orcamentos->responder($orcamento, $d['resposta']);
 
         return back()->with('status', 'Orçamento '.Orcamento::SITUACOES[$d['resposta']].'.');
