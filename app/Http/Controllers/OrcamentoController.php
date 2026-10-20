@@ -31,7 +31,7 @@ class OrcamentoController extends Controller
         $lista = Orcamento::query()
             ->when($busca !== '', function ($q) use ($busca) {
                 $termo = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $busca).'%';
-                $num = preg_match('/^(\d{1,4})(?:\/(\d{4}))?$/', $busca, $m) ? $m : null;
+                $num = preg_match('/^(\d{1,4})(?:\/(\d{4})|\.rev\d+)?$/i', $busca, $m) ? $m : null;
                 $q->where(fn ($w) => $w->where('cliente', 'like', $termo)->orWhere('titulo', 'like', $termo)->orWhere('contato', 'like', $termo)
                     ->orWhereHas('preCliente', fn ($l) => $l->where('nome', 'like', $termo))
                     ->when($num, fn ($x) => $x->orWhere(fn ($y) => $y->where('numero', (int) $num[1])->when($num[2] ?? null, fn ($z, $ano) => $z->where('ano', $ano)))));
@@ -45,10 +45,13 @@ class OrcamentoController extends Controller
                 'projeto' => $os->first()->preCliente?->sistema?->nome ?? Modelos::nome($os->first()->produto), 'orcamentos' => $os,
                 'ultimo' => $os->max(fn ($o) => $o->enviado_em ?? $o->updated_at)])
             ->sortByDesc('ultimo')->values();
+        // As revisões de cada número, para a linha da vigente mostrar as anteriores.
+        $revisoes = Orcamento::whereIn('numero', $lista->pluck('numero'))->orderBy('revisao')->get(['id', 'ano', 'numero', 'revisao'])
+            ->groupBy(fn ($r) => $r->ano.'-'.$r->numero);
         $mes = now()->startOfMonth();
 
         return view('orcamentos.index', [
-            'grupos' => $grupos, 'total' => $lista->count(), 'busca' => $busca, 'situacao' => $f['situacao'] ?? null,
+            'grupos' => $grupos, 'revisoes' => $revisoes, 'total' => $lista->count(), 'busca' => $busca, 'situacao' => $f['situacao'] ?? null,
             'kpis' => [
                 'abertos' => Orcamento::whereIn('situacao', ['rascunho', 'enviado'])->count(),
                 'enviados' => (float) Orcamento::whereNotNull('enviado_em')->where('enviado_em', '>=', $mes)->sum('total_unico'),
@@ -73,6 +76,7 @@ class OrcamentoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $o = $this->orcamentos->criar($request->user(), $this->validar($request));
+        $this->guardarCapa($request, $o);
         if ($request->input('depois') === 'enviar') {
             return $this->enviado($request, $o);
         }
@@ -94,6 +98,7 @@ class OrcamentoController extends Controller
     public function update(Request $request, Orcamento $orcamento): RedirectResponse
     {
         $this->orcamentos->atualizar($orcamento, $this->validar($request));
+        $this->guardarCapa($request, $orcamento->fresh());
         if ($request->input('depois') === 'enviar') {
             return $this->enviado($request, $orcamento->fresh());
         }
@@ -118,7 +123,64 @@ class OrcamentoController extends Controller
         $o->forceFill(\App\Services\Orcamentos\Orcamentos::totais($itens));
         $o->entrada = min((float) $o->entrada, $o->total_unico);
 
-        return response($this->pdf->html($o, previa: true))->header('Content-Type', 'text/html; charset=utf-8')->header('Cache-Control', 'no-store');
+        // A foto escolhida e ainda não salva aparece na hora (como data URI); a já salva, pela rota.
+        $capa = null;
+        if ($request->hasFile('capa') && $request->file('capa')->isValid()) {
+            $capa = 'data:'.$request->file('capa')->getMimeType().';base64,'.base64_encode((string) file_get_contents($request->file('capa')->getRealPath()));
+        } elseif (! $request->boolean('remover_capa') && $request->filled('id') && ($salvo = Orcamento::find($request->integer('id')))?->capa_imagem) {
+            $capa = route('orcamentos.capa', $salvo->id);
+        } elseif ($request->boolean('remover_capa')) {
+            $o->capa_imagem = null;
+        }
+
+        return response($this->pdf->html($o, previa: true, capaDataUri: $capa))->header('Content-Type', 'text/html; charset=utf-8')->header('Cache-Control', 'no-store');
+    }
+
+    /** A foto de capa do orçamento (prévia do editor). */
+    public function capa(Orcamento $orcamento): StreamedResponse
+    {
+        abort_unless($orcamento->capa_imagem && Storage::disk(Pdf::DISCO)->exists($orcamento->capa_imagem), 404);
+
+        return Storage::disk(Pdf::DISCO)->response($orcamento->capa_imagem, null, ['Cache-Control' => 'private, max-age=300', 'X-Content-Type-Options' => 'nosniff']);
+    }
+
+    public function capaPadrao(\App\Services\Orcamentos\Ajustes $ajustes): StreamedResponse
+    {
+        $arquivo = $ajustes->get('capa_padrao');
+        abort_unless($arquivo && Storage::disk(Pdf::DISCO)->exists($arquivo), 404);
+
+        return Storage::disk(Pdf::DISCO)->response($arquivo, null, ['Cache-Control' => 'private, max-age=300', 'X-Content-Type-Options' => 'nosniff']);
+    }
+
+    /** Ajustes do módulo: emissor, clientes que atendemos e capa padrão (FR-H9). */
+    public function ajustes(\App\Services\Orcamentos\Ajustes $ajustes): View
+    {
+        return view('orcamentos.ajustes', ['ajustes' => $ajustes]);
+    }
+
+    public function salvarAjustes(Request $request, \App\Services\Orcamentos\Ajustes $ajustes): RedirectResponse
+    {
+        $d = $request->validate(collect(\App\Services\Orcamentos\Ajustes::CAMPOS)->map(fn () => ['nullable', 'string', 'max:255'])->all()
+            + ['clientes' => ['nullable', 'string', 'max:6000'], 'capa_padrao' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'], 'remover_capa_padrao' => ['nullable', 'boolean']]);
+        $valores = collect($d)->only([...array_keys(\App\Services\Orcamentos\Ajustes::CAMPOS), 'clientes'])->all();
+        if ($request->hasFile('capa_padrao')) {
+            $valores['capa_padrao'] = $request->file('capa_padrao')->store(Pdf::PASTA_CAPAS, Pdf::DISCO);
+        } elseif ($request->boolean('remover_capa_padrao')) {
+            $valores['capa_padrao'] = null;
+        }
+        $ajustes->gravar($valores);
+
+        return back()->with('status', 'Ajustes dos orçamentos salvos.');
+    }
+
+    /** A foto de capa enviada no formulário (ou o pedido de tirar a que havia). */
+    private function guardarCapa(Request $request, Orcamento $o): void
+    {
+        if ($request->hasFile('capa')) {
+            $o->forceFill(['capa_imagem' => $request->file('capa')->store(Pdf::PASTA_CAPAS, Pdf::DISCO)])->save();
+        } elseif ($request->boolean('remover_capa')) {
+            $o->forceFill(['capa_imagem' => null])->save();
+        }
     }
 
     public function pdf(Orcamento $orcamento): StreamedResponse
@@ -127,16 +189,6 @@ class OrcamentoController extends Controller
             ? $orcamento->pdf_arquivo : $this->pdf->gerar($orcamento->load('itens')));
 
         return Storage::disk(Pdf::DISCO)->response($arquivo, $orcamento->nomeDoPdf(), [
-            'Content-Type' => 'application/pdf', 'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store',
-        ], 'inline');
-    }
-
-    /** O PDF que foi de fato enviado ao cliente, no histórico importado (FR-H5). */
-    public function original(Orcamento $orcamento): StreamedResponse
-    {
-        abort_unless($orcamento->pdf_original && Storage::disk(Pdf::DISCO)->exists($orcamento->pdf_original), 404);
-
-        return Storage::disk(Pdf::DISCO)->response($orcamento->pdf_original, basename($orcamento->origem_arquivo ?: $orcamento->pdf_original), [
             'Content-Type' => 'application/pdf', 'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store',
         ], 'inline');
     }
@@ -232,6 +284,8 @@ class OrcamentoController extends Controller
             'planos' => ['nullable', 'string', 'max:3000'],
             'pagamento_texto' => ['nullable', 'string', 'max:3000'],
             'notas_internas' => ['nullable', 'string', 'max:6000'],
+            'capa' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            'remover_capa' => ['nullable', 'boolean'],
         ]);
     }
 }

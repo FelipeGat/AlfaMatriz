@@ -32,12 +32,15 @@
             <form method="GET" class="flex flex-wrap items-center gap-2 border-b border-line p-3">
                 <label class="relative min-w-[220px] flex-1">
                     <span class="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-ink-faint"><x-nav-icon name="search" /></span>
-                    <input type="search" name="q" value="{{ $busca }}" placeholder="Buscar cliente, contato, título ou número (15/2026)…" class="w-full rounded-control border border-btn-line bg-canvas py-1.5 pl-8 pr-2 text-[13px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none">
+                    <input type="search" name="q" value="{{ $busca }}" placeholder="Buscar cliente, contato, título ou número (001)…" class="w-full rounded-control border border-btn-line bg-canvas py-1.5 pl-8 pr-2 text-[13px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none">
                 </label>
                 <select name="situacao" onchange="this.form.submit()" class="rounded-control border border-btn-line bg-canvas py-1.5 pl-2 pr-7 text-[13px] text-ink">
                     <option value="">Todas (sem as substituídas)</option>
                     @foreach (Orcamento::SITUACOES as $k => $nome)<option value="{{ $k }}" @selected($situacao === $k)>{{ $nome }}</option>@endforeach
                 </select>
+                @if (auth()->user()->canPermissao('orcamentos', 'editar'))
+                    <a href="{{ route('orcamentos.ajustes') }}" class="inline-flex h-[30px] items-center rounded-control border border-btn-line px-3 text-[12.5px] font-semibold text-ink-dim hover:border-brand hover:text-brand" title="Emissor, clientes que atendemos e capa padrão">Ajustes</a>
+                @endif
                 @if (auth()->user()->canPermissao('orcamentos', 'incluir'))
                     <a href="{{ route('orcamentos.create') }}" class="inline-flex h-[30px] items-center gap-1.5 rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright"><span class="h-4 w-4"><x-nav-icon name="plus" /></span> Novo orçamento</a>
                 @endif
@@ -54,7 +57,7 @@
                     <thead>
                         <tr class="border-b border-line font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
                             <th class="px-4 py-2 text-left font-normal">Número</th><th class="px-3 py-2 text-left font-normal">Proposta</th>
-                            <th class="px-3 py-2 text-right font-normal">Valor</th><th class="px-3 py-2 text-left font-normal">Situação</th><th class="px-4 py-2 text-right font-normal">Arquivos</th>
+                            <th class="px-3 py-2 text-right font-normal">Valor</th><th class="px-3 py-2 text-left font-normal">Situação</th><th class="px-4 py-2 text-right font-normal">Ações</th>
                         </tr>
                     </thead>
                     @foreach ($grupos as $g)
@@ -83,7 +86,10 @@
                             @foreach ($g['orcamentos'] as $o)
                                 @php $vence = $o->situacao === 'enviado' ? $o->validoAte() : null; @endphp
                                 <tr x-show="aberto" class="cursor-pointer align-top hover:bg-head/40" onclick="if (! event.target.closest('a,button')) location.href = @js(route('orcamentos.edit', $o))">
-                                    <td class="whitespace-nowrap px-4 py-2.5 font-mono text-[12.5px] text-ink-dim">{{ $o->codigo(false) }}@if ($o->revisao > 1)<span class="block text-[11px] text-ink-faint">Rev. {{ str_pad((string) $o->revisao, 2, '0', STR_PAD_LEFT) }}</span>@endif</td>
+                                    <td class="whitespace-nowrap px-4 py-2.5 font-mono text-[12.5px] text-ink">{{ $o->codigo() }}
+                                        @php $anteriores = ($revisoes[$o->ano.'-'.$o->numero] ?? collect())->where('id', '!=', $o->id); @endphp
+                                        @if ($anteriores->isNotEmpty())<span class="block text-[10.5px] text-ink-faint">@foreach ($anteriores as $r)<a href="{{ route('orcamentos.edit', $r->id) }}" class="hover:text-brand hover:underline" title="Abrir esta revisão">{{ $r->revisao > 1 ? 'Rev'.$r->revisao : 'Rev1' }}</a>@if (! $loop->last) · @endif @endforeach</span>@endif
+                                    </td>
                                     <td class="min-w-0 px-3 py-2.5">
                                         <a href="{{ route('orcamentos.edit', $o) }}" class="block truncate text-[13.5px] font-medium text-ink hover:text-brand" title="{{ $o->titulo }}">{{ $o->titulo }}</a>
                                         <p class="truncate text-[11.5px] text-ink-mute">{{ $o->tipo ?: 'Proposta comercial' }} · {{ ($o->enviado_em ?? $o->created_at)->format('d/m/Y') }}</p>
@@ -99,8 +105,11 @@
                                         @if ($vence)<p class="mt-0.5 text-[11px] {{ $vence->isPast() ? 'text-crit' : ($vence->lte(now()->addDays(3)) ? 'text-warn' : 'text-ink-faint') }}">{{ $vence->isPast() ? 'venceu '.$vence->format('d/m') : 'vale até '.$vence->format('d/m') }}</p>@endif
                                     </td>
                                     <td class="whitespace-nowrap px-4 py-2.5 text-right text-[12px]">
-                                        <a href="{{ route('orcamentos.pdf', $o) }}" target="_blank" rel="noopener" class="font-semibold text-brand-text hover:underline" title="PDF no padrão novo">PDF</a>
-                                        @if ($o->pdf_original)<span class="text-ink-faint"> · </span><a href="{{ route('orcamentos.original', $o) }}" target="_blank" rel="noopener" class="text-ink-dim hover:text-brand hover:underline" title="O PDF que foi enviado ao cliente">Original</a>@endif
+                                        <a href="{{ route('orcamentos.pdf', $o) }}" target="_blank" rel="noopener" class="font-semibold text-brand-text hover:underline">PDF</a>
+                                        @if ($o->situacao !== 'substituido' && auth()->user()->canPermissao('orcamentos', 'editar'))
+                                            <span class="text-ink-faint"> · </span>
+                                            <form method="POST" action="{{ route('orcamentos.revisar', $o) }}" class="inline">@csrf<button class="text-ink-dim hover:text-brand hover:underline" title="Cria {{ str_pad((string) $o->numero, 3, '0', STR_PAD_LEFT) }}.Rev{{ $o->revisao + 1 }} e guarda esta versão">Revisar</button></form>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach

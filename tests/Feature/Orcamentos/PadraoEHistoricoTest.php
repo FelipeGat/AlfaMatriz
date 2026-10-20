@@ -77,7 +77,6 @@ class PadraoEHistoricoTest extends TestCase
         $this->assertNull($rev->validade_dias, 'o original não tinha validade');
         $this->assertSame('v1 superada pela Rev. 03.', $v1->notas_internas);
 
-        $this->actingAs($this->felipe)->get(route('orcamentos.original', $rev))->assertOk();
         $this->assertSame('%PDF-1.4 rev03', Storage::disk(Pdf::DISCO)->get($rev->pdf_original));
     }
 
@@ -86,7 +85,7 @@ class PadraoEHistoricoTest extends TestCase
         app(Historico::class)->importar([$this->proposta()], sys_get_temp_dir(), $this->felipe);
         $html = app(Pdf::class)->html(Orcamento::with('itens')->sole());
 
-        foreach (['Proposta comercial · Nº', 'Sistema', 'VIX-ID Patrimônio', 'Cliente e objeto', 'Fornecimento do portal', 'O desafio', '“Perdemos peças”',
+        foreach (['Orçamento 001', 'Preparado para', 'Clientes que atendemos', 'CEDTEC', 'VIX-ID Patrimônio', 'Cliente e objeto', 'Fornecimento do portal', 'O desafio', '“Perdemos peças”',
             '30%', 'Precisa de internet?', 'Gestão Têxtil', 'Como foi enviado.', 'Lourenço, seguimos à disposição.', '50% na aprovação e 50% na entrega.', 'Anual'] as $esperado) {
             $this->assertStringContainsString($esperado, $html);
         }
@@ -101,7 +100,7 @@ class PadraoEHistoricoTest extends TestCase
     {
         app(Historico::class)->importar([$this->proposta(['situacao' => 'enviado'])], sys_get_temp_dir(), $this->felipe);
         $this->actingAs($this->felipe)->get(route('orcamentos.index'))->assertOk()
-            ->assertSee('Direct Comércio Internacional Ltda. (Lourenço Roldi)')->assertSee('Vix-ID')->assertSee('Abrir no Funil de Vendas')->assertSee('Original');
+            ->assertSee('Direct Comércio Internacional Ltda. (Lourenço Roldi)')->assertSee('Vix-ID')->assertSee('Abrir no Funil de Vendas')->assertDontSee('orcamentos/1/original');
 
         // Novo orçamento a partir do pré-cliente: o editor já traz o que ele tem.
         $this->get(route('orcamentos.create', ['lead' => $this->direct->id]))->assertOk()->assertSee('27.458.553', false)->assertSee('Pré-cliente (Funil de Vendas)');
@@ -150,5 +149,28 @@ class PadraoEHistoricoTest extends TestCase
         $this->assertSame('implantacao', \App\Models\OrcamentoItem::categoriaProvavel('Implantação do sistema'));
         $this->assertSame('recorrente', \App\Models\OrcamentoItem::categoriaProvavel('Licença', 'mensal'));
         $this->assertSame('material', \App\Models\OrcamentoItem::categoriaProvavel('Leitor de mão Chainway C72'));
+    }
+
+    /** A capa elaborada: foto do orçamento (ou a padrão), clientes atendidos e emissor dos ajustes. */
+    public function test_capa_com_foto_ajustes_e_revisao_de_rascunho(): void
+    {
+        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'vix-id', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'validade_dias' => 15,
+            'capa' => \Illuminate\Http\UploadedFile::fake()->image('capa.jpg', 1200, 1700)])->assertRedirect();
+        $o = Orcamento::sole();
+        Storage::disk(Pdf::DISCO)->assertExists($o->capa_imagem);
+        $this->assertStringContainsString('file://', app(Pdf::class)->html($o), 'no PDF a foto vem do disco');
+        $this->get(route('orcamentos.capa', $o))->assertOk();
+
+        // Ajustes: o emissor e os clientes saem na proposta; vazio não sai.
+        $this->post(route('orcamentos.ajustes.salvar'), ['emissor_nome' => 'VixSoftHouse', 'emissor_cnpj' => '12.345.678/0001-90', 'clientes' => "## Saúde\nHospital Teste"])->assertRedirect();
+        $html = app(Pdf::class)->html($o->fresh());
+        $this->assertStringContainsString('CNPJ 12.345.678/0001-90', $html);
+        $this->assertStringContainsString('Hospital Teste', $html);
+        $this->assertStringNotContainsString('CEDTEC', $html);
+        $this->get(route('orcamentos.ajustes'))->assertOk()->assertSee('Clientes que atendemos');
+
+        // Rascunho também se revisa, sem perder a versão anterior: 001 → 001.Rev2.
+        $this->post(route('orcamentos.revisar', $o))->assertRedirect();
+        $this->assertSame(['substituido', '001.Rev2'], [$o->fresh()->situacao, Orcamento::where('revisao', 2)->sole()->codigo()]);
     }
 }

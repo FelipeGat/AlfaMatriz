@@ -79,7 +79,7 @@ class OrcamentosTest extends TestCase
         $this->assertSame([2026, 1, 1, 'rascunho'], [$o->ano, $o->numero, $o->revisao, $o->situacao]);
         $this->assertSame([29200.0, 1399.0, 3], [$o->total_unico, $o->total_mensal, $o->itens()->count()], 'linha sem descrição não entra');
         $this->assertSame('Entrada de R$ 10.000,00 e saldo em 10x de R$ 1.920,00 sem juros, ou à vista com 5% de desconto: R$ 27.740,00. Mensalidade de R$ 1.399,00 a partir da instalação.', $o->condicoes());
-        $this->assertSame('001/2026', $o->codigo());
+        $this->assertSame('001', $o->codigo());
 
         $this->post(route('orcamentos.store'), $this->dados(['cliente' => 'Jumper Four']));
         $this->assertSame(2, Orcamento::where('cliente', 'Jumper Four')->value('numero'));
@@ -88,10 +88,10 @@ class OrcamentosTest extends TestCase
         $conteudo = $pdf->streamedContent();
         $this->assertStringStartsWith('%PDF', $conteudo);
         $this->assertStringNotContainsString('VixCard ·', $conteudo, 'toda proposta sai como VixSoftHouse');
-        foreach (['SoftHouse</b>', 'Marmoraria Lorenzo', 'Nº 001/2026 · Rev. 01', 'R$ 29.200,00', 'Painel Vix-ID', 'Proposta válida até 03/11/2026', 'De acordo', '(27) 3335-4950'] as $trecho) {
+        foreach (['SoftHouse</b>', 'Marmoraria Lorenzo', 'Orçamento 001', 'R$ 29.200,00', 'Painel Vix-ID', 'Proposta válida até 03/11/2026', 'De acordo', '(27) 3335-4950'] as $trecho) {
             $this->assertStringContainsString($trecho, $conteudo);
         }
-        $this->assertSame('orcamentos/2026/PROPOSTA_001-2026_REV01_MARMORARIA_LORENZO.pdf', $o->fresh()->pdf_arquivo);
+        $this->assertSame('orcamentos/2026/PROPOSTA_001_MARMORARIA_LORENZO.pdf', $o->fresh()->pdf_arquivo);
     }
 
     public function test_previa_usa_o_mesmo_modelo_sem_gravar(): void
@@ -113,7 +113,7 @@ class OrcamentosTest extends TestCase
         $this->assertSame('enviado', $o->situacao);
         $this->assertNotNull($o->enviado_em);
         $op = DocumentoOperacao::sole();
-        $this->assertSame(['enviar', 'Comercial/Orçamentos/Clientes/Marmoraria Lorenzo/PROPOSTA_001-2026_REV01_MARMORARIA_LORENZO.pdf', $this->victor->id],
+        $this->assertSame(['enviar', 'Comercial/Orçamentos/Clientes/Marmoraria Lorenzo/PROPOSTA_001_MARMORARIA_LORENZO.pdf', $this->victor->id],
             [$op->tipo, $op->caminho, $op->user_id]);
         Storage::disk(Documento::DISCO)->assertExists($op->arquivo);
 
@@ -124,8 +124,9 @@ class OrcamentosTest extends TestCase
         $rev = Orcamento::where('revisao', 2)->sole();
         $this->assertSame([1, 'rascunho', $o->id, 3], [$rev->numero, $rev->situacao, $rev->revisao_de_id, $rev->itens()->count()]);
         $this->assertSame(['substituido', $rev->id], [$o->fresh()->situacao, $o->fresh()->substituido_por_id]);
-        $this->assertSame('001/2026 · Rev. 02', $rev->codigo());
-        $this->get(route('orcamentos.index'))->assertSee('Rev. 02')->assertSee(route('orcamentos.edit', $rev), false)->assertDontSee(route('orcamentos.edit', $o), false);
+        $this->assertSame('001.Rev2', $rev->codigo());
+        $this->get(route('orcamentos.index'))->assertSee('001.Rev2')->assertSee(route('orcamentos.edit', $rev), false)
+            ->assertSee(route('orcamentos.edit', $o), false); // a Rev1 continua acessível pela linha da vigente
         $this->get(route('orcamentos.index', ['situacao' => 'substituido']))->assertSee(route('orcamentos.edit', $o), false);
     }
 

@@ -67,3 +67,17 @@ clientes da pasta OneDrive VixCard › Comercial › Orçamentos › Clientes.
   categoria provável pela descrição (`OrcamentoItem::categoriaProvavel`).
 - **FR-H8, lista:** uma tabela só, com cabeçalho único e uma faixa por cliente que se recolhe. A linha inteira abre
   o orçamento; as ações são só PDF e Original.
+- **FR-H5 revisto (20/10/2026):** "não precisa ter o original, apenas o do sistema". A tela não oferece mais o PDF
+  enviado. Os arquivos importados continuam guardados, sem nada apagado, mas não aparecem.
+- **FR-H9, numeração e revisão (20/10/2026):** o número é **001, 002…**, e a revisão é **001.Rev2**. O ano fica
+  no banco, porque a numeração recomeça a cada ano, mas não aparece no código. **Revisar** vale para qualquer
+  situação, rascunho inclusive (como no Gestor): nasce a revisão seguinte e a anterior fica guardada como
+  substituída, acessível pela linha da vigente.
+- **FR-H10, capa elaborada (20/10/2026):** "com imagem de fundo e clientes que atendemos e informações do cliente".
+  - A capa tem **foto de fundo** com degradê. A foto é a do orçamento, enviada no editor; na falta dela, a capa
+    padrão dos ajustes; na falta das duas, o degradê azul.
+  - Tem um bloco **"Preparado para"** com cliente, razão social, A/C, CNPJ, cidade, telefone, e-mail e
+    consultor, e uma faixa **"Clientes que atendemos"** por setor.
+  - Os dados vêm da tela **Ajustes dos orçamentos**: emissor, clientes e capa padrão. A lista nasce da
+    apresentação Radier v2, já enviada. Os dados do emissor que nenhuma proposta trazia (CNPJ, razão social,
+    endereço) começam vazios e não saem no PDF até serem preenchidos.

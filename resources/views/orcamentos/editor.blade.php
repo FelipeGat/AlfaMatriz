@@ -30,7 +30,7 @@
                 <span class="text-[12.5px] text-ink-mute">
                     {{ $o->codigo() }} · criado por {{ $o->autor?->name ?? '—' }} em {{ $o->created_at->format('d/m/Y') }}
                     @if ($o->enviado_em) · enviado em {{ $o->enviado_em->format('d/m/Y') }}@if ($o->validoAte()) · válido até {{ $o->validoAte()->format('d/m/Y') }}@endif @endif
-                    @if ($o->importado_em) · importado de <span class="font-mono text-[11.5px]">{{ $o->origem_arquivo }}</span>@endif
+
                 </span>
                 @if ($revisoes->count() > 1)
                     <span class="text-[12px] text-ink-faint">Revisões:
@@ -38,14 +38,13 @@
                     </span>
                 @endif
                 <div class="ml-auto flex flex-wrap gap-1.5">
-                    @if ($o->pdf_original)<a href="{{ route('orcamentos.original', $o) }}" target="_blank" rel="noopener" class="{{ $botao }}" title="O PDF que foi enviado ao cliente">PDF original</a>@endif
                     <a href="{{ route('orcamentos.pdf', $o) }}" target="_blank" rel="noopener" class="{{ $botao }}"><span class="h-4 w-4"><x-nav-icon name="document" /></span> PDF</a>
                     @if ($o->situacao === 'enviado')
                         <form method="POST" action="{{ route('orcamentos.resposta', $o) }}">@csrf<input type="hidden" name="resposta" value="aprovado"><button class="{{ $botao }}">Aprovado</button></form>
                         <form method="POST" action="{{ route('orcamentos.resposta', $o) }}">@csrf<input type="hidden" name="resposta" value="recusado"><button class="{{ $botao }}">Recusado</button></form>
                     @endif
-                    @if (in_array($o->situacao, ['enviado', 'aprovado', 'recusado'], true))
-                        <form method="POST" action="{{ route('orcamentos.revisar', $o) }}">@csrf<button class="{{ $botao }}">Revisar</button></form>
+                    @if ($o->situacao !== 'substituido')
+                        <form method="POST" action="{{ route('orcamentos.revisar', $o) }}" title="Cria {{ str_pad((string) $o->numero, 3, '0', STR_PAD_LEFT) }}.Rev{{ $o->revisao + 1 }} e guarda esta versão">@csrf<button class="{{ $botao }}">Revisar</button></form>
                     @endif
                     <form method="POST" action="{{ route('orcamentos.duplicar', $o) }}">@csrf<button class="{{ $botao }}">Duplicar</button></form>
                 </div>
@@ -56,7 +55,7 @@
         @endif
 
         <div class="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-            <form id="form-orcamento" method="POST" action="{{ $o ? route('orcamentos.update', $o) : route('orcamentos.store') }}" class="grid gap-3" @input.debounce.600ms="previa()" @change="previa()">
+            <form id="form-orcamento" method="POST" enctype="multipart/form-data" action="{{ $o ? route('orcamentos.update', $o) : route('orcamentos.store') }}" class="grid gap-3" @input.debounce.600ms="previa()" @change="previa()">
                 @csrf @if ($o) @method('PUT') @endif
                 <input type="hidden" name="depois" x-ref="depois" value="">
                 <fieldset class="contents" @disabled(! $editavel)>
@@ -121,6 +120,15 @@
                             </label>
                             <label class="{{ $rotulo }}" for="rotulo_3">3ª coluna da capa (rótulo)<input id="rotulo_3" name="rotulo_3" maxlength="30" value="{{ $dados['rotulo_3'] }}" placeholder="Produto" class="{{ $campo }}"></label>
                             <label class="{{ $rotulo }}" for="valor_3">3ª coluna (valor)<input id="valor_3" name="valor_3" maxlength="160" value="{{ $dados['valor_3'] }}" placeholder="o nome do produto" class="{{ $campo }}"></label>
+                        </div>
+                        {{-- A foto de fundo da capa: sem ela, vale a capa padrão dos ajustes. --}}
+                        <div class="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                            <label class="{{ $rotulo }}" for="capa">Foto de fundo da capa (JPG, PNG ou WebP, até 8 MB)
+                                <input id="capa" name="capa" type="file" accept="image/jpeg,image/png,image/webp" class="{{ $campo }} file:mr-2 file:rounded file:border-0 file:bg-head file:px-2 file:py-1 file:text-[12px]">
+                            </label>
+                            @if ($o?->capa_imagem)
+                                <label class="flex items-center gap-1.5 pb-2 text-[12px] text-ink-dim"><input type="checkbox" name="remover_capa" value="1" class="rounded border-btn-line"> tirar a foto atual</label>
+                            @endif
                         </div>
                     </section>
 

@@ -418,7 +418,10 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::put('comercial/orcamentos/{orcamento}', [$orc, 'update'])->whereNumber('orcamento')->name('orcamentos.update')->middleware('permissao:orcamentos,editar');
     Route::delete('comercial/orcamentos/{orcamento}', [$orc, 'destroy'])->whereNumber('orcamento')->name('orcamentos.destroy')->middleware('permissao:orcamentos,excluir');
     Route::get('comercial/orcamentos/{orcamento}/pdf', [$orc, 'pdf'])->whereNumber('orcamento')->name('orcamentos.pdf')->middleware('permissao:orcamentos,imprimir');
-    Route::get('comercial/orcamentos/{orcamento}/original', [$orc, 'original'])->whereNumber('orcamento')->name('orcamentos.original')->middleware('permissao:orcamentos,imprimir');
+    Route::get('comercial/orcamentos/{orcamento}/capa', [$orc, 'capa'])->whereNumber('orcamento')->name('orcamentos.capa')->middleware('permissao:orcamentos,ler');
+    Route::get('comercial/orcamentos/capa-padrao', [$orc, 'capaPadrao'])->name('orcamentos.capa-padrao')->middleware('permissao:orcamentos,ler');
+    Route::get('comercial/orcamentos/ajustes', [$orc, 'ajustes'])->name('orcamentos.ajustes')->middleware('permissao:orcamentos,editar');
+    Route::post('comercial/orcamentos/ajustes', [$orc, 'salvarAjustes'])->name('orcamentos.ajustes.salvar')->middleware('permissao:orcamentos,editar');
     Route::post('comercial/orcamentos/{orcamento}/enviado', [$orc, 'enviado'])->whereNumber('orcamento')->name('orcamentos.enviado')->middleware('permissao:orcamentos,editar');
     Route::post('comercial/orcamentos/{orcamento}/resposta', [$orc, 'resposta'])->whereNumber('orcamento')->name('orcamentos.resposta')->middleware('permissao:orcamentos,editar');
     Route::post('comercial/orcamentos/{orcamento}/revisar', [$orc, 'revisar'])->whereNumber('orcamento')->name('orcamentos.revisar')->middleware('permissao:orcamentos,editar');

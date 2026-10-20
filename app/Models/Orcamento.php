@@ -144,12 +144,16 @@ class Orcamento extends Model
         return collect((array) $this->dados_cliente)->filter(fn ($v) => trim((string) $v) !== '')->isNotEmpty() || $this->linhas('objeto');
     }
 
-    /** "015/2026", e "015/2026 · Rev. 02" a partir da segunda. */
+    /**
+     * "001", e "001.Rev2" a partir da segunda revisão (Felipe, 20/10/2026: "as
+     * propostas sigam um padrão de orçamentos 001…002 […] Orçamento 001.Rev2").
+     * O ano continua no banco (a numeração recomeça a cada ano), mas não no código.
+     */
     public function codigo(bool $comRevisao = true): string
     {
-        $c = str_pad((string) $this->numero, 3, '0', STR_PAD_LEFT).'/'.$this->ano;
+        $c = str_pad((string) $this->numero, 3, '0', STR_PAD_LEFT);
 
-        return $comRevisao && $this->revisao > 1 ? $c.' · Rev. '.str_pad((string) $this->revisao, 2, '0', STR_PAD_LEFT) : $c;
+        return $comRevisao && $this->revisao > 1 ? $c.'.Rev'.$this->revisao : $c;
     }
 
     public function editavel(): bool
@@ -207,12 +211,12 @@ class Orcamento extends Model
         return array_values(array_filter(array_map('trim', preg_split('/\R/', (string) $this->{$campo}) ?: [])));
     }
 
-    /** Nome do arquivo do PDF: PROPOSTA_015-2026_REV01_MARMORARIA_LORENZO.pdf */
+    /** Nome do arquivo do PDF: PROPOSTA_001.Rev2_MARMORARIA_LORENZO.pdf */
     public function nomeDoPdf(): string
     {
         $cliente = strtoupper(trim(preg_replace('/[^A-Za-z0-9]+/', '_', (string) \Illuminate\Support\Str::ascii($this->cliente)), '_'));
 
-        return sprintf('PROPOSTA_%03d-%d_REV%02d_%s.pdf', $this->numero, $this->ano, $this->revisao, substr($cliente, 0, 60) ?: 'CLIENTE');
+        return sprintf('PROPOSTA_%s_%s.pdf', $this->codigo(), substr($cliente, 0, 60) ?: 'CLIENTE');
     }
 
     private static function pct(float $v): string

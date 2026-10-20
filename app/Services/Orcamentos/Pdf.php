@@ -20,13 +20,36 @@ class Pdf
     public const DISCO = 'central_ia';
 
     /** O HTML do orçamento. Na prévia as fontes vêm pela URL; no PDF, do disco. */
-    public function html(Orcamento $o, bool $previa = false): string
+    public function html(Orcamento $o, bool $previa = false, ?string $capaDataUri = null): string
     {
         return view('orcamentos.pdf', [
             'o' => $o,
             'previa' => $previa,
             'fontes' => $previa ? asset('fonts') : 'file://'.public_path('fonts'),
+            'capa' => $capaDataUri ?? $this->capa($o, $previa),
+            'ajustes' => app(Ajustes::class),
         ])->render();
+    }
+
+    /** A pasta, no disco do módulo, das fotos de capa. */
+    public const PASTA_CAPAS = 'orcamentos/capas';
+
+    /**
+     * A foto da capa: a do orçamento, senão a capa padrão dos ajustes, senão nenhuma
+     * (fica o degradê). Na prévia vai pela rota do Matriz; no PDF, do disco.
+     */
+    public function capa(Orcamento $o, bool $previa): ?string
+    {
+        $disco = Storage::disk(self::DISCO);
+        if ($o->capa_imagem && $disco->exists($o->capa_imagem)) {
+            return $previa && $o->id ? route('orcamentos.capa', $o->id) : 'file://'.$disco->path($o->capa_imagem);
+        }
+        $padrao = app(Ajustes::class)->get('capa_padrao');
+        if ($padrao && $disco->exists($padrao)) {
+            return $previa ? route('orcamentos.capa-padrao') : 'file://'.$disco->path($padrao);
+        }
+
+        return null;
     }
 
     /** O PDF atual: o guardado, se o orçamento não mudou depois dele; senão gera de novo. */

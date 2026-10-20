@@ -63,8 +63,9 @@ class Orcamentos
     /** Nova revisão (mesmo número, Rev. + 1) em rascunho; a anterior fica Substituída. */
     public function revisar(User $quem, Orcamento $o): Orcamento
     {
-        if (! in_array($o->situacao, ['enviado', 'recusado', 'aprovado'], true)) {
-            throw ValidationException::withMessages(['situacao' => 'Só se revisa orçamento enviado, aprovado ou recusado; o rascunho se edita direto.']);
+        // Rascunho também se revisa (Felipe, 20/10/2026, como no Gestor): a versão de antes fica guardada.
+        if ($o->situacao === 'substituido') {
+            throw ValidationException::withMessages(['situacao' => 'Esta revisão já foi substituída: revise a mais recente.']);
         }
 
         return DB::transaction(function () use ($quem, $o) {

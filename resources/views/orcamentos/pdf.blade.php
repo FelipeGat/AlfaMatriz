@@ -4,7 +4,7 @@
     $unicos = $o->itens->where('cobranca', 'unico');
     $mensais = $o->itens->where('cobranca', 'mensal');
     $opcoes = $o->itens->where('cobranca', 'opcao');
-    $numero = $o->numero ? 'Nº '.$o->codigo(false).' · Rev. '.str_pad((string) $o->revisao, 2, '0', STR_PAD_LEFT) : 'Rascunho';
+    $numero = $o->numero ? 'Orçamento '.$o->codigo() : 'Rascunho';
     $cliente = $o->cliente ?: 'Cliente';
     $produto = \App\Services\Orcamentos\Modelos::nome((string) $o->produto);
     $data = $o->data()->locale('pt_BR');
@@ -48,6 +48,22 @@ body { font-family: 'Open Sans', 'Segoe UI', 'DejaVu Sans', sans-serif; color: #
 .lead { font-size: 12pt; font-weight: 300; line-height: 1.6; color: #d6e4fa; max-width: 150mm; margin: 0 }
 .rodape-capa { margin-top: 26mm; border-top: 1px solid rgba(255,255,255,.25); padding-top: 6mm; display: flex; gap: 16mm; font-size: 10pt }
 .rodape-capa span { display: block; font-size: 6.5pt; letter-spacing: .25em; color: #8fc0f5; text-transform: uppercase; margin-bottom: 1.5mm }
+/* Capa elaborada: foto, véu, topo, bloco do cliente e faixa de clientes atendidos. */
+.capa { overflow: hidden; padding: 16mm 18mm 0 }
+.capa-foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0 }
+.capa-veu { position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, rgba(11,38,85,.86) 0%, rgba(11,38,85,.55) 38%, rgba(11,38,85,.82) 70%, rgba(8,26,58,.97) 100%) }
+.capa > *:not(.capa-foto):not(.capa-veu) { position: relative; z-index: 1 }
+.capa-topo { display: flex; justify-content: space-between; align-items: flex-start }
+.capa-num { text-align: right; font-size: 8.5pt; line-height: 1.55; color: #d6e4fa } .capa-num b { color: #fff; font-size: 10pt; letter-spacing: .04em }
+.capa .bloco { margin-top: 58mm }
+.capa-cliente { margin-top: auto; display: flex; gap: 8mm; padding: 6mm 0; border-top: 1px solid rgba(255,255,255,.28) }
+.cc-principal { flex: 0 0 72mm } .cc-principal span, .cc-dados span { display: block; font-size: 6.5pt; letter-spacing: .25em; color: #8fc0f5; text-transform: uppercase; margin-bottom: 1.2mm }
+.cc-principal b { display: block; font-size: 14pt; line-height: 1.25 } .cc-principal i { display: block; font-style: normal; font-size: 9pt; color: #d6e4fa; margin-top: 1mm }
+.cc-dados { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 6mm; font-size: 9pt }
+.capa-clientes { margin: 0 -18mm; padding: 5mm 18mm 7mm; background: #fff; color: #0e1d33 }
+.ccl-titulo { font-size: 7pt; font-weight: 700; letter-spacing: .28em; color: #3d7fd1; text-transform: uppercase; margin-bottom: 2.5mm }
+.ccl-grade { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; font-size: 7.6pt; line-height: 1.45; color: #33425a }
+.ccl-grade span { display: block; font-weight: 700; color: #0b2655; font-size: 7pt; letter-spacing: .08em; text-transform: uppercase; margin-bottom: .8mm }
 /* Páginas internas */
 .cab { display: flex; justify-content: space-between; font-size: 7.5pt; padding-bottom: 3mm; border-bottom: 1px solid #e3e8ef }
 .cab b { color: #3d7fd1; letter-spacing: .25em; text-transform: uppercase } .cab span { color: #9aa6b6 }
@@ -87,21 +103,50 @@ ul { margin: 0; padding-left: 5mm } li { margin-bottom: 1.2mm }
 </style>
 </head>
 <body>
-    {{-- 1. Capa --}}
-    <section class="pagina capa">
-        <div class="marca">Vix<b>SoftHouse</b></div>
+    {{-- 1. Capa (Felipe, 20/10/2026: "bem elaborada, com imagem de fundo, clientes que atendemos e
+         informações do cliente"). A foto ocupa a folha; o degradê garante a leitura; o cliente
+         fica num bloco próprio; a faixa de baixo mostra quem já atendemos (ajustes do módulo). --}}
+    @php
+        $dc = (array) $o->dados_cliente;
+        $preparado = collect([
+            ['A/C', trim($o->contato.(data_get($dc, 'cargo') ? ' · '.data_get($dc, 'cargo') : ''), ' ·')],
+            ['CNPJ', data_get($dc, 'cnpj')], ['Cidade', $o->cidade], ['Telefone', data_get($dc, 'telefone')], ['E-mail', data_get($dc, 'email')],
+        ])->filter(fn ($l) => trim((string) $l[1]) !== '');
+        $clientesAtendidos = $ajustes->clientes();
+    @endphp
+    <section class="pagina capa {{ $capa ? 'com-foto' : '' }}">
+        @if ($capa)<img class="capa-foto" src="{{ $capa }}" alt=""><div class="capa-veu"></div>@endif
+        <div class="capa-topo">
+            <div class="marca">Vix<b>SoftHouse</b></div>
+            <div class="capa-num"><b>{{ $numero }}</b><br>{{ $data->translatedFormat('j \d\e F \d\e Y') }}@if ($o->validoAte())<br>válida até {{ $o->validoAte()->format('d/m/Y') }}@endif</div>
+        </div>
         <div class="bloco">
-            <div class="sobre">{{ $tipo }} · {{ $numero }}</div>
+            <div class="sobre">{{ $tipo }}@if ($o->rotulo_3 && $o->valor_3) · {{ $o->valor_3 }}@elseif ($produto) · {{ $produto }}@endif</div>
             <p class="titulo">{{ $o->titulo ?: 'Proposta' }}@if ($o->destaque)<b>{{ $o->destaque }}</b>@endif</p>
             <div class="traco"></div>
             @if ($o->lead)<p class="lead">{{ $o->lead }}</p>@endif
         </div>
-        <div class="rodape-capa">
-            <div><span>Cliente</span>{{ $cliente }}@if ($o->contato)<br>{{ $o->contato }}@endif</div>
-            <div><span>{{ $o->rotulo_3 ?: 'Produto' }}</span>{{ $o->rotulo_3 ? $o->valor_3 : $produto }}</div>
-            <div><span>Data</span>{{ $data->translatedFormat('j \d\e F \d\e Y') }}</div>
-            @if ($o->cidade)<div><span>Local</span>{{ $o->cidade }}</div>@endif
+        <div class="capa-cliente">
+            <div class="cc-principal">
+                <span>Preparado para</span>
+                <b>{{ $cliente }}</b>
+                @if (data_get($dc, 'razao_social') && data_get($dc, 'razao_social') !== $cliente)<i>{{ data_get($dc, 'razao_social') }}</i>@endif
+            </div>
+            <div class="cc-dados">
+                @foreach ($preparado as [$rotulo, $valor])<div><span>{{ $rotulo }}</span>{{ $valor }}</div>@endforeach
+                <div><span>Consultor</span>{{ $o->autor?->name ?? 'VixSoftHouse' }}</div>
+            </div>
         </div>
+        @if ($clientesAtendidos)
+            <div class="capa-clientes">
+                <div class="ccl-titulo">Clientes que atendemos</div>
+                <div class="ccl-grade">
+                    @foreach ($clientesAtendidos as $g)
+                        <div>@if ($g['setor'])<span>{{ $g['setor'] }}</span>@endif{{ implode(' · ', $g['nomes']) }}</div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
     </section>
 
     {{-- Cliente e objeto, o desafio e a solução (só com conteúdo). --}}
@@ -266,7 +311,7 @@ ul { margin: 0; padding-left: 5mm } li { margin-bottom: 1.2mm }
                 <div>VixSoftHouse<br>{{ $o->autor?->name ?? 'Responsável comercial' }}</div>
             </div>
         @endif
-        <div class="rodape {{ $o->aceite ? '' : 'empurra' }}"><span>VixSoftHouse · Vitória/ES · (27) 3335-4950 · comercial@vixcard.com.br</span><span>VixSoftHouse</span></div>
+        <div class="rodape {{ $o->aceite ? '' : 'empurra' }}"><span>{{ $ajustes->get('emissor_nome', 'VixSoftHouse') }}{{ $ajustes->linhaDoEmissor() ? ' · '.$ajustes->linhaDoEmissor() : '' }}</span><span>VixSoftHouse</span></div>
     </section>
 
     @if ($o->temSecao('contracapa'))
