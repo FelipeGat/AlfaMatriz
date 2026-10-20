@@ -1,5 +1,15 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 20/10/2026 — Perfil VixCard não esconde mais o quadro do time (v2026.10.20.2, T-427)
+
+### Correções
+
+- **Quadro inteiro para quem é do time.** Quem tinha o perfil VixCard junto
+  com Membro do time ou Administrador passava a ver só as tarefas da VixCard
+  e perdia as dos outros sistemas. Agora o recorte vale só para quem não tem
+  nenhum outro perfil com acesso ao quadro. A conta da VixCard continua vendo
+  só os produtos dela.
+
 ## AlfaMatriz — 10/10/2026 — Avisos do dia sem falha em dia cheio (v2026.10.09.1, T-331)
 
 ### Correções
