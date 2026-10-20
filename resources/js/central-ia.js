@@ -276,9 +276,11 @@ export function centralIa(config) {
             const termo = this.buscaChats.trim().toLocaleLowerCase('pt-BR');
             // Assunto da Business que está rodando, esperando você ou falhou também é chat ativo
             // (Felipe, 20/10/2026: "na aba chat ativo, ele mostra zero"); o assunto parado fica só na Business.
-            const assuntosAtivos = this.assuntos.filter(a => ['executando', 'aguardando_voce', 'falhou'].includes(a.status));
+            // O que tem pedido na fila também (Felipe, 20/10/2026: "tem que mostrar em chats ativos, tanto
+            // os executando quanto os próximos aguardando"): o topo dizia "2 na fila" e a lista só tinha um.
+            const assuntosAtivos = this.assuntos.filter(a => ['executando', 'aguardando_voce', 'falhou'].includes(a.status) || this.filaDoChat(a.id).naFila);
             return [...this.chats, ...assuntosAtivos].filter(c => (!this.filtroChatProjeto || c.projeto === this.filtroChatProjeto)
-                && (this.filtroChatEstado === 'todos' || (this.filtroChatEstado === 'ativos' ? !['pausada', 'concluida'].includes(c.status) : c.status === this.filtroChatEstado))
+                && (this.filtroChatEstado === 'todos' || (this.filtroChatEstado === 'ativos' ? !['pausada', 'concluida'].includes(c.status) : this.estadoNaLista(c) === this.filtroChatEstado))
                 && (!termo || [c.titulo, c.projeto, c.agente, '#' + c.id].join(' ').toLocaleLowerCase('pt-BR').includes(termo)));
         },
         /**
@@ -368,6 +370,25 @@ export function centralIa(config) {
         },
 
         get sessoesDoProjeto() { return this.sessoes.filter(s => s.projeto === this.atual); },
+        /** Os pedidos do chat agora: se um roda, quantos esperam e por quê. */
+        filaDoChat(id) {
+            const doChat = this.atividade.filter(a => a.tarefa_id === id);
+            const rodando = doChat.some(a => a.status === 'executando');
+            const pendentes = doChat.filter(a => a.status === 'pendente');
+            let motivo = null;
+            if (pendentes.length && !rodando) {
+                // A mesma regra do servidor (AgentesService::proxima): uma implementação por pasta, e o teto da pessoa.
+                const p = pendentes[0];
+                const pastaOcupada = p.modo === 'implementar' && this.atividade.some(a => a.status === 'executando' && a.modo === 'implementar' && a.projeto === p.projeto);
+                motivo = pastaOcupada ? `espera outro chat que implementa em ${p.projeto || 'Geral'}`
+                    : (this.emExecucao >= this.paralelo ? `espera uma vaga (${this.emExecucao} de ${this.paralelo} rodando)` : 'espera a máquina pegar');
+            }
+            return { rodando, naFila: pendentes.length, motivo };
+        },
+        estadoNaLista(c) {
+            const f = this.filaDoChat(c.id);
+            return f.rodando ? 'executando' : (f.naFila ? 'na_fila' : c.status);
+        },
         get emExecucao() { return this.atividade.filter(a => a.status === 'executando').length; },
         get naFila() { return this.atividade.filter(a => a.status === 'pendente').length; },
 
@@ -978,11 +999,11 @@ export function centralIa(config) {
             return (partes.length > 1 ? partes[0][0] + partes[1][0] : nome.slice(0, 2)).toUpperCase();
         },
         estado(e) {
-            return { executando: 'Executando', aguardando_voce: 'Aguardando você', falhou: 'Falhou', aberta: 'Aberta',
+            return { executando: 'Executando', na_fila: 'Na fila', aguardando_voce: 'Aguardando você', falhou: 'Falhou', aberta: 'Aberta',
                 pausada: 'Pausado', arquivada: 'Arquivado', concluida: 'Concluída', ocioso: 'Sem tarefa' }[e] || e;
         },
         corDoEstado(e) {
-            return { executando: 'text-brand-text border-brand-mute', aguardando_voce: 'text-pergunta border-pergunta-line bg-pergunta-tint',
+            return { executando: 'text-brand-text border-brand-mute', na_fila: 'text-warn border-warn', aguardando_voce: 'text-pergunta border-pergunta-line bg-pergunta-tint',
                 falhou: 'text-crit border-crit bg-crit-tint', concluida: 'text-good border-good-line bg-good-tint',
                 aberta: 'text-ink-mute border-line', pausada: 'text-ink-faint border-line', ocioso: 'text-ink-faint border-line' }[e] || 'text-ink-mute border-line';
         },

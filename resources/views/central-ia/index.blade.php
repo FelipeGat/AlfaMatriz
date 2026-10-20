@@ -278,7 +278,7 @@
                 </select>
                 <label class="sr-only" for="central-filtro-chat-estado">Estado dos chats</label>
                 <select id="central-filtro-chat-estado" x-model="filtroChatEstado" class="rounded-control border-line bg-input py-1.5 text-xs text-ink">
-                    <option value="ativos">Em andamento</option><option value="concluida">Concluídas (últimas 24 h)</option><option value="executando">Executando</option>
+                    <option value="ativos">Em andamento</option><option value="concluida">Concluídas (últimas 24 h)</option><option value="executando">Executando</option><option value="na_fila">Na fila</option>
                     <option value="aguardando_voce">Aguardando você</option><option value="falhou">Com falha</option>
                     <option value="aberta">Abertos / na fila</option><option value="pausada">Pausados</option><option value="todos">Todos (pausados e concluídas)</option>
                 </select>
@@ -296,9 +296,11 @@
                             <span class="block text-[11px] text-ink-mute" x-text="(c.projeto || 'Geral') + ' · #' + c.id"></span>
                             <span class="mt-1 block break-words text-sm font-semibold text-ink" x-text="c.titulo"></span>
                             <span class="mt-1 flex flex-wrap gap-1 text-[11px]">
-                                <span class="rounded-badge border px-1" :class="corDoEstado(c.status)" x-text="estado(c.status)"></span>
+                                <span class="rounded-badge border px-1" :class="corDoEstado(estadoNaLista(c))" x-text="estado(estadoNaLista(c))"></span>
+                                <span x-show="filaDoChat(c.id).rodando && filaDoChat(c.id).naFila" class="rounded-badge border border-warn px-1 text-warn" x-text="'+' + filaDoChat(c.id).naFila + ' na fila'"></span>
                                 <span class="text-ink-mute" x-text="(c.agente || 'Sem agente') + ' · ' + haQuanto(c.ultima_atividade)"></span>
                             </span>
+                            <span x-show="filaDoChat(c.id).motivo" class="mt-1 block text-[11px] text-ink-mute" x-text="filaDoChat(c.id).motivo"></span>
                         </button>
                     </template>
                 </div>

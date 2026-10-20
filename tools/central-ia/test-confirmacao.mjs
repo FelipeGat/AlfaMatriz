@@ -148,6 +148,20 @@ assert.deepEqual(permissoes('codex', 'total').filter(a => a.startsWith('sandbox'
 assert.deepEqual(permissoes('codex', 'total', { deploy: true }).filter(a => a.startsWith('sandbox')), ['sandbox_mode="danger-full-access"']);
 console.log('T-368: acesso total sem publicar fora de deploy');
 
+// A proibição não é pedido (20/10/2026): a continuação escrita pela IA lista o que NÃO fazer.
+{
+    const analisar = instrucao => exigeConfirmacao({ modo: 'analisar', instrucao }, 'inicio', true);
+    assert.ok(!analisar('Continuar em /p/x. Corrigir achados. Não ler segredos nem fazer commit, push, merge, deploy ou alterações em produção.'));
+    assert.ok(!analisar('Siga sem push e sem deploy; só local.'));
+    assert.ok(!analisar('Nunca publique nada; rode os testes.'));
+    assert.ok(analisar('Não precisa testar de novo. Pode fazer o deploy.'), 'a negação para no fim da frase');
+    assert.ok(analisar('sem testes, pode publicar'), '", pode" reabre o pedido');
+    assert.ok(analisar('não mexa no banco, mas faça o deploy'), '"mas" reabre o pedido');
+    assert.ok(analisar('faça o push na branch'));
+    assert.ok(analisar('semana que vem não; hoje faça o deploy'), '"semana" não é "sem"');
+    console.log('negação: proibição listada pela IA não pede código');
+}
+
 // T-374: nada preso à máquina de uma pessoa.
 {
     const { arquivoDeMemoria, agendaSemIa } = await import('../../deploy/central-ia/politica.mjs');

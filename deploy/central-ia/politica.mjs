@@ -76,7 +76,21 @@ export const PUBLICACAO_NO_SHELL = ['git push', 'git -C', 'ssh', 'scp', 'sftp', 
 
 /** Pedido de deploy: sempre confirmado por código, e o único que publica. */
 export function pedeDeploy(job) {
-    return PEDE_DEPLOY.test(textoDaPessoa(job?.instrucao));
+    return PEDE_DEPLOY.test(semONegado(textoDaPessoa(job?.instrucao)));
+}
+
+/**
+ * Tira o que vem negado: "Não fazer commit, push, merge, deploy ou alterações
+ * em produção" é a proibição, não o pedido (Felipe, 20/10/2026: "toda hora tá
+ * pedindo"). Quem escreve isso é a própria IA, ao continuar a tarefa ou passar
+ * a outro agente, e a lista PEDE_DEPLOY casava "push" e "deploy" a cada passo.
+ * A negação vale até o fim da frase, ou até um "mas"/", pode" que reabre o
+ * pedido ("sem testes, pode publicar"). Errar para menos é seguro (pedeDeploy).
+ */
+const NEGADO = /(^|[^\p{L}])(n[ãa]o|sem|nem|nunca|jamais)(?![\p{L}])[^.;!?\n]*?(?=[.;!?\n]|\s+mas\s|,\s*(e\s+)?(pode|podem|pode\s+\w+|fa[çc]a|faz|suba|sobe|publique|siga)(?![\p{L}])|$)/giu;
+
+export function semONegado(texto = '') {
+    return String(texto ?? '').replace(NEGADO, '$1');
 }
 
 /**

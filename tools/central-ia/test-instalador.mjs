@@ -106,7 +106,7 @@ assert.equal(r.status, 0, r.saida);
 assert.deepEqual(trocas.at(-1), { codigo: 'C'.repeat(40), maquina: 'MacBook-Pro', nova: true });
 assert.match(conf(), /^CENTRAL_IA_MAQUINA=MacBook-Pro-2$/m, 'o nome com sufixo que o servidor deu');
 assert.match(conf(), /^ALFAMATRIZ_RUNNER_TOKEN=tok-1$/m);
-assert.equal(readFileSync(CONF).length > 0 && (spawnSync('stat', ['-f', '%Lp', CONF]).stdout.toString().trim() || spawnSync('stat', ['-c', '%a', CONF]).stdout.toString().trim()), '600');
+assert.equal(readFileSync(CONF).length > 0 && (spawnSync('stat', ['-c', '%a', CONF]).stdout.toString().trim() || spawnSync('stat', ['-f', '%Lp', CONF]).stdout.toString().trim()), '600');
 assert.ok(existsSync(PLIST));
 assert.equal(existsSync(join(home, 'atualizar.log')), false, 'serviço novo: só liga, não reinicia');
 
@@ -159,7 +159,7 @@ r = await rodar({ CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO: 'tok-codigo' }, ['--sem
 assert.equal(r.status, 0, r.saida);
 assert.deepEqual(conf().match(/^CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=.*$/gm), ['CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=tok-codigo']);
 assert.deepEqual(enviados, [{ token: 'tok-codigo', chat: '555' }]);
-assert.equal(spawnSync('stat', ['-f', '%Lp', CONF]).stdout.toString().trim() || spawnSync('stat', ['-c', '%a', CONF]).stdout.toString().trim(), '600');
+assert.equal(spawnSync('stat', ['-c', '%a', CONF]).stdout.toString().trim() || spawnSync('stat', ['-f', '%Lp', CONF]).stdout.toString().trim(), '600');
 
 // 10. Sem código, o bot da conversa continua recusado: o @ dele ficou gravado na conexão.
 assert.match(conf(), /^CENTRAL_IA_TELEGRAM_BOT_CONVERSA=conversa_bot$/m);

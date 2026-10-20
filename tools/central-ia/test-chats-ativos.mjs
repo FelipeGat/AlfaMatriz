@@ -41,4 +41,21 @@ assert.equal(pedido.tarefa_id, null);
 u.aba.tarefa = 'nova';
 u.pedir = async (_url, _metodo, dados) => { pedido = dados; return { tarefa_id: 2 }; };
 await u.enviar(); assert.equal(pedido.tarefa_id, 2); assert.equal(u.chatAtual, 2);
+// O caso de 20/10/2026: um rodando, dois na fila (um do mesmo chat, outro de um assunto parado).
+{
+    const v = centralIa({ podeEnviar: true, painel: '/painel', historico: '/historico', tarefas: '/tarefas/__P__' });
+    v.paralelo = 2;
+    v.chats = [{ id: 30, projeto: '', titulo: 'Sistema de Produção', status: 'executando', agente: 'Claude' }];
+    v.assuntos = [{ id: 11, projeto: '', titulo: 'Agenda do Alefe', status: 'aberta', agente: 'Claude' },
+        { id: 12, projeto: '', titulo: 'Parado', status: 'aberta', agente: null }];
+    v.atividade = [{ id: 186, tarefa_id: 30, projeto: '', modo: 'implementar', status: 'executando' },
+        { id: 189, tarefa_id: 30, projeto: '', modo: 'analisar', status: 'pendente' },
+        { id: 190, tarefa_id: 11, projeto: '', modo: 'implementar', status: 'pendente' }];
+    assert.deepEqual(v.chatsFiltrados.map(c => c.id), [30, 11], 'o assunto na fila aparece; o parado não');
+    assert.equal(v.estadoNaLista(v.chats[0]), 'executando');
+    assert.equal(v.filaDoChat(30).naFila, 1);
+    assert.equal(v.estadoNaLista(v.assuntos[0]), 'na_fila');
+    assert.match(v.filaDoChat(11).motivo, /outro chat que implementa em Geral/);
+    v.filtroChatEstado = 'na_fila'; assert.deepEqual(v.chatsFiltrados.map(c => c.id), [11]);
+}
 console.log('PASSOU: filtros, rascunhos, retomada, isolamento no poll e destino de envio durante troca de chats.');
