@@ -101,7 +101,7 @@ class PadraoEHistoricoTest extends TestCase
     {
         app(Historico::class)->importar([$this->proposta(['situacao' => 'enviado'])], sys_get_temp_dir(), $this->felipe);
         $this->actingAs($this->felipe)->get(route('orcamentos.index'))->assertOk()
-            ->assertSee('Direct Comércio Internacional Ltda. (Lourenço Roldi)')->assertSee('Vix-ID')->assertSee('Funil · Proposta')->assertSee('histórico');
+            ->assertSee('Direct Comércio Internacional Ltda. (Lourenço Roldi)')->assertSee('Vix-ID')->assertSee('Abrir no Funil de Vendas')->assertSee('Original');
 
         // Novo orçamento a partir do pré-cliente: o editor já traz o que ele tem.
         $this->get(route('orcamentos.create', ['lead' => $this->direct->id]))->assertOk()->assertSee('27.458.553', false)->assertSee('Pré-cliente (Funil de Vendas)');
@@ -126,8 +126,29 @@ class PadraoEHistoricoTest extends TestCase
         $o = Orcamento::with('itens')->sole();
         $this->assertSame([290.0, 0.0], [$o->total_unico, $o->total_mensal]);
         $html = app(Pdf::class)->html($o);
-        $this->assertStringContainsString('Opções e faixas', $html);
+        $this->assertStringContainsString('Opcionais e faixas (fora do total)', $html);
         $this->assertStringContainsString('sob consulta', $html);
         $this->assertStringContainsString('R$ 14.900,00', $html);
+    }
+
+    /** Material, implantação e recorrente separados, cada um com subtotal (20/10/2026). */
+    public function test_material_implantacao_e_recorrente_separados(): void
+    {
+        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'vix-id', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'validade_dias' => 15,
+            'itens' => [['descricao' => 'Coletor C72', 'quantidade' => 1, 'unidade' => 'un', 'valor_unitario' => 6500, 'categoria' => 'material'],
+                ['descricao' => 'Etiquetas', 'quantidade' => 1000, 'unidade' => 'un', 'valor_unitario' => 0.59, 'categoria' => 'material'],
+                ['descricao' => 'Implantação e treinamento', 'quantidade' => 1, 'unidade' => 'serv', 'valor_unitario' => 4900, 'categoria' => 'implantacao'],
+                ['descricao' => 'Mensalidade Vix-ID', 'quantidade' => 1, 'unidade' => 'mês', 'valor_unitario' => 790, 'categoria' => 'recorrente'],
+                ['descricao' => 'Portal RFID', 'quantidade' => 1, 'unidade' => 'un', 'valor_unitario' => 11500, 'categoria' => 'material', 'opcional' => 1]]])->assertRedirect();
+        $o = Orcamento::with('itens')->sole();
+        $this->assertSame([7090.0, 4900.0, 11990.0, 790.0], [$o->total_material, $o->total_implantacao, $o->total_unico, $o->total_mensal]);
+        $html = app(Pdf::class)->html($o);
+        foreach (['Material e equipamentos', 'Implantação e serviços', 'Recorrente', 'Subtotal material e equipamentos', 'R$ 7.090,00', 'R$ 4.900,00', 'R$ 790,00/mês', 'R$ 11.990,00'] as $esperado) {
+            $this->assertStringContainsString($esperado, $html);
+        }
+        // Formulário antigo (só a cobrança) ainda funciona, com a categoria provável.
+        $this->assertSame('implantacao', \App\Models\OrcamentoItem::categoriaProvavel('Implantação do sistema'));
+        $this->assertSame('recorrente', \App\Models\OrcamentoItem::categoriaProvavel('Licença', 'mensal'));
+        $this->assertSame('material', \App\Models\OrcamentoItem::categoriaProvavel('Leitor de mão Chainway C72'));
     }
 }

@@ -177,37 +177,39 @@ ul { margin: 0; padding-left: 5mm } li { margin-bottom: 1.2mm }
     <section class="pagina">
         {!! $cab() !!}
         <h1>Investimento</h1>
-        @if ($unicos->isNotEmpty())
-            <table>
-                <colgroup><col><col style="width: 24mm"><col style="width: 32mm"><col style="width: 36mm"></colgroup>
-                <thead><tr><th>Item</th><th class="num">Qtd</th><th class="num">Unitário</th><th class="num">Valor</th></tr></thead>
-                <tbody>
-                    @foreach ($unicos as $i)
-                        <tr><td>{{ $i->descricao }}</td><td class="num">{{ $i->quantidadeLegivel() }} {{ $i->unidade }}</td><td class="num">{{ $brl($i->valor_unitario) }}</td><td class="num">{{ $brl($i->subtotal()) }}</td></tr>
-                    @endforeach
-                </tbody>
-            </table>
-            <div class="total"><span>Total do projeto</span><b>{{ $brl($o->total_unico) }}</b></div>
-        @endif
-        @if ($mensais->isNotEmpty())
-            <h2>Mensalidade</h2>
-            <table>
-                <colgroup><col><col style="width: 24mm"><col style="width: 32mm"><col style="width: 36mm"></colgroup>
-                <tbody>
-                    @foreach ($mensais as $i)
-                        <tr><td>{{ $i->descricao }}</td><td class="num">{{ $i->quantidadeLegivel() }} {{ $i->unidade }}</td><td class="num">{{ $brl($i->valor_unitario) }}</td><td class="num">{{ $brl($i->subtotal()) }}/mês</td></tr>
-                    @endforeach
-                </tbody>
-            </table>
+        {{-- Material, implantação e recorrente, cada um com o seu subtotal (Felipe, 20/10/2026). --}}
+        @foreach (['material' => ['Material e equipamentos', $o->total_material, ''], 'implantacao' => ['Implantação e serviços', $o->total_implantacao, ''],
+            'recorrente' => ['Recorrente', $o->total_mensal, '/mês']] as $cat => [$nomeCat, $subtotal, $sufixo])
+            @php $daCategoria = $o->itens->filter(fn ($i) => $i->cobranca !== 'opcao' && $i->categoriaEfetiva() === $cat); @endphp
+            @if ($daCategoria->isNotEmpty())
+                <h2>{{ $nomeCat }}</h2>
+                <table>
+                    <colgroup><col><col style="width: 24mm"><col style="width: 32mm"><col style="width: 36mm"></colgroup>
+                    <tbody>
+                        @foreach ($daCategoria as $i)
+                            <tr><td>{{ $i->descricao }}</td><td class="num">{{ $i->quantidadeLegivel() }} {{ $i->unidade }}</td><td class="num">{{ $brl($i->valor_unitario) }}</td><td class="num">{{ $brl($i->subtotal()) }}{{ $sufixo }}</td></tr>
+                        @endforeach
+                        <tr><td colspan="3" class="num" style="font-weight: 700; color: #0b2655">Subtotal {{ mb_strtolower($nomeCat) }}</td><td class="num" style="font-weight: 700; color: #0b2655">{{ $brl($subtotal) }}{{ $sufixo }}</td></tr>
+                    </tbody>
+                </table>
+            @endif
+        @endforeach
+        @if ($o->total_unico > 0 || $o->total_mensal > 0)
+            <div class="cartoes">
+                @if ($o->total_material > 0)<div class="cartao"><span>Material</span><b>{{ $brl($o->total_material) }}</b><p>equipamentos e insumos</p></div>@endif
+                @if ($o->total_implantacao > 0)<div class="cartao"><span>Implantação</span><b>{{ $brl($o->total_implantacao) }}</b><p>serviços, uma vez</p></div>@endif
+                @if ($o->total_mensal > 0)<div class="cartao"><span>Recorrente</span><b>{{ $brl($o->total_mensal) }}/mês</b><p>a partir da instalação</p></div>@endif
+            </div>
+            @if ($o->total_unico > 0)<div class="total"><span>Total do projeto (material + implantação)</span><b>{{ $brl($o->total_unico) }}</b></div>@endif
         @endif
         @if ($opcoes->isNotEmpty())
             {{-- Faixas, opcionais e "sob consulta": o cliente escolhe; nada daqui entra no total. --}}
-            <h2>Opções e faixas</h2>
+            <h2>Opcionais e faixas (fora do total)</h2>
             <table>
                 <colgroup><col><col style="width: 24mm"><col style="width: 32mm"><col style="width: 36mm"></colgroup>
                 <tbody>
                     @foreach ($opcoes as $i)
-                        <tr><td>{{ $i->descricao }}</td><td class="num">{{ $i->quantidadeLegivel() }} {{ $i->unidade }}</td>
+                        <tr><td>{{ $i->descricao }}<small>{{ \App\Models\OrcamentoItem::CATEGORIAS[$i->categoriaEfetiva()] }}{{ $i->categoriaEfetiva() === 'recorrente' ? ' · mensal' : '' }}</small></td><td class="num">{{ $i->quantidadeLegivel() }} {{ $i->unidade }}</td>
                             <td class="num">{{ $i->valor_unitario > 0 ? $brl($i->valor_unitario) : 'sob consulta' }}</td><td class="num">{{ $i->valor_unitario > 0 ? $brl($i->subtotal()) : '—' }}</td></tr>
                     @endforeach
                 </tbody>
@@ -220,9 +222,7 @@ ul { margin: 0; padding-left: 5mm } li { margin-bottom: 1.2mm }
             @if ($o->total_unico > 0 && ($o->desconto_avista > 0 || $o->parcelas <= 1))
                 <div class="cartao"><span>À vista</span><b>{{ $brl($o->valorAVista()) }}</b><p>{{ $o->desconto_avista > 0 ? rtrim(rtrim(number_format($o->desconto_avista, 2, ',', ''), '0'), ',').'% de desconto' : 'pagamento único' }}</p></div>
             @endif
-            @if ($o->total_mensal > 0)
-                <div class="cartao"><span>Mensalidade</span><b>{{ $brl($o->total_mensal) }}</b><p>a partir da instalação</p></div>
-            @endif
+
         </div>
         @if ($o->planosLista())
             <h2>Planos</h2>

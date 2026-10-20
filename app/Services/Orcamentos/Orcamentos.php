@@ -83,7 +83,7 @@ class Orcamentos
             'desconto_avista', 'inclui', 'nao_inclui', 'passos', 'aceite', 'observacoes',
             'lead_id', 'tipo', 'rotulo_3', 'valor_3', 'natureza', 'dados_cliente', 'objeto', 'secoes', 'planos', 'pagamento_texto', 'notas_internas']);
         $dados['cliente'] = $o->cliente.' (cópia)';
-        $dados['itens'] = $o->itens->map(fn ($i) => $i->only(['descricao', 'quantidade', 'unidade', 'valor_unitario', 'cobranca']))->all();
+        $dados['itens'] = $o->itens->map(fn ($i) => $i->only(['descricao', 'quantidade', 'unidade', 'valor_unitario', 'cobranca', 'categoria']))->all();
 
         return $this->criar($quem, $dados);
     }
@@ -140,10 +140,30 @@ class Orcamentos
             'enviado_em', 'respondido_em', 'created_at', 'updated_at', 'origem_arquivo', 'pdf_original', 'importado_em'])
             ->merge(['situacao' => 'rascunho', 'dados_cliente' => $o->dados_cliente, 'secoes' => $o->secoes])->merge($extra)->all());
         foreach ($o->itens as $i) {
-            $nova->itens()->create($i->only(['ordem', 'descricao', 'quantidade', 'unidade', 'valor_unitario', 'cobranca']));
+            $nova->itens()->create($i->only(['ordem', 'descricao', 'quantidade', 'unidade', 'valor_unitario', 'cobranca', 'categoria']));
         }
 
         return $nova->fresh('itens');
+    }
+
+    /**
+     * Os totais por categoria: material e implantação somam o total do projeto;
+     * recorrente é a mensalidade; opcional (cobrança 'opcao') fica fora de tudo.
+     *
+     * @param  iterable<OrcamentoItem>  $itens
+     * @return array{total_material: float, total_implantacao: float, total_unico: float, total_mensal: float}
+     */
+    public static function totais(iterable $itens): array
+    {
+        $t = ['material' => 0.0, 'implantacao' => 0.0, 'recorrente' => 0.0];
+        foreach ($itens as $i) {
+            if ($i->cobranca !== 'opcao') {
+                $t[$i->categoriaEfetiva()] += $i->subtotal();
+            }
+        }
+
+        return ['total_material' => round($t['material'], 2), 'total_implantacao' => round($t['implantacao'], 2),
+            'total_unico' => round($t['material'] + $t['implantacao'], 2), 'total_mensal' => round($t['recorrente'], 2)];
     }
 
     private function campos(array $d): array
@@ -162,17 +182,15 @@ class Orcamentos
     private function gravarItens(Orcamento $o, array $itens): void
     {
         $o->itens()->delete();
-        $unico = $mensal = 0.0;
         foreach (array_values($itens) as $n => $i) {
             if (trim((string) ($i['descricao'] ?? '')) === '') {
                 continue;
             }
-            $item = $o->itens()->create(['ordem' => $n, 'descricao' => trim($i['descricao']), 'quantidade' => (float) ($i['quantidade'] ?? 1),
-                'unidade' => trim((string) ($i['unidade'] ?? 'un')) ?: 'un', 'valor_unitario' => (float) ($i['valor_unitario'] ?? 0),
-                'cobranca' => array_key_exists($i['cobranca'] ?? '', OrcamentoItem::COBRANCAS) ? $i['cobranca'] : 'unico']);
-            match ($item->cobranca) { 'mensal' => $mensal += $item->subtotal(), 'unico' => $unico += $item->subtotal(), default => null };
+            $o->itens()->create(['ordem' => $n, 'descricao' => trim($i['descricao']), 'quantidade' => (float) ($i['quantidade'] ?? 1),
+                'unidade' => trim((string) ($i['unidade'] ?? 'un')) ?: 'un', 'valor_unitario' => (float) ($i['valor_unitario'] ?? 0)] + OrcamentoItem::classificar($i));
         }
+        $t = self::totais($o->itens()->get());
         // A entrada nunca passa do total (senão a parcela fica negativa).
-        $o->update(['total_unico' => round($unico, 2), 'total_mensal' => round($mensal, 2), 'entrada' => min((float) $o->entrada, round($unico, 2))]);
+        $o->update($t + ['entrada' => min((float) $o->entrada, $t['total_unico'])]);
     }
 }

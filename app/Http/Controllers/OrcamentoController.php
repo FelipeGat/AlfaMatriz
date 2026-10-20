@@ -87,7 +87,7 @@ class OrcamentoController extends Controller
 
         return view('orcamentos.editor', ['o' => $orcamento, 'preClientes' => $this->preClientes(), 'dados' => $orcamento->only(['produto', 'cliente', 'contato', 'cidade', 'titulo', 'destaque',
             'lead', 'validade_dias', 'entrada', 'parcelas', 'desconto_avista', 'inclui', 'nao_inclui', 'passos', 'aceite', 'observacoes', ...self::CAMPOS_NOVOS])
-            + ['itens' => $orcamento->itens->map(fn ($i) => $i->only(['descricao', 'quantidade', 'unidade', 'valor_unitario', 'cobranca']))->all()],
+            + ['itens' => $orcamento->itens->map(fn ($i) => $i->only(['descricao', 'quantidade', 'unidade', 'valor_unitario', 'cobranca']) + ['categoria' => $i->categoriaEfetiva(), 'opcional' => $i->cobranca === 'opcao'])->all()],
             'revisoes' => Orcamento::where('ano', $orcamento->ano)->where('numero', $orcamento->numero)->orderBy('revisao')->get(['id', 'revisao', 'situacao'])]);
     }
 
@@ -113,10 +113,9 @@ class OrcamentoController extends Controller
         $o->fill(collect($d)->except('itens')->all());
         $itens = collect($d['itens'] ?? [])->filter(fn ($i) => trim((string) ($i['descricao'] ?? '')) !== '')->values()
             ->map(fn ($i, $n) => new OrcamentoItem(['ordem' => $n, 'descricao' => $i['descricao'], 'quantidade' => (float) ($i['quantidade'] ?? 1),
-                'unidade' => $i['unidade'] ?? 'un', 'valor_unitario' => (float) ($i['valor_unitario'] ?? 0), 'cobranca' => array_key_exists($i['cobranca'] ?? '', OrcamentoItem::COBRANCAS) ? $i['cobranca'] : 'unico']));
+                'unidade' => $i['unidade'] ?? 'un', 'valor_unitario' => (float) ($i['valor_unitario'] ?? 0)] + OrcamentoItem::classificar($i)));
         $o->setRelation('itens', $itens);
-        $o->total_unico = round($itens->where('cobranca', 'unico')->sum(fn ($i) => $i->subtotal()), 2);
-        $o->total_mensal = round($itens->where('cobranca', 'mensal')->sum(fn ($i) => $i->subtotal()), 2);
+        $o->forceFill(\App\Services\Orcamentos\Orcamentos::totais($itens));
         $o->entrada = min((float) $o->entrada, $o->total_unico);
 
         return response($this->pdf->html($o, previa: true))->header('Content-Type', 'text/html; charset=utf-8')->header('Cache-Control', 'no-store');
@@ -216,6 +215,8 @@ class OrcamentoController extends Controller
             'itens.*.unidade' => ['nullable', 'string', 'max:20'],
             'itens.*.valor_unitario' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
             'itens.*.cobranca' => ['nullable', Rule::in(array_keys(OrcamentoItem::COBRANCAS))],
+            'itens.*.categoria' => ['nullable', Rule::in(array_keys(OrcamentoItem::CATEGORIAS))],
+            'itens.*.opcional' => ['nullable', 'boolean'],
             // Etapa 2 (padrao-e-historico.md).
             'lead_id' => ['nullable', 'integer', 'exists:leads,id'],
             'tipo' => ['nullable', 'string', 'max:40'],

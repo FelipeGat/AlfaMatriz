@@ -104,18 +104,16 @@ class Historico
             'enviado_em' => $situacao === 'rascunho' ? null : $data,
             'origem_arquivo' => $p['arquivo'], 'importado_em' => now(),
         ]);
-        $unico = $mensal = 0.0;
         foreach (array_values((array) ($p['itens'] ?? [])) as $n => $i) {
             if (trim((string) ($i['descricao'] ?? '')) === '') {
                 continue;
             }
-            $item = $o->itens()->create(['ordem' => $n, 'descricao' => mb_substr(trim($i['descricao']), 0, 255), 'quantidade' => (float) ($i['quantidade'] ?? 1),
-                'unidade' => mb_substr(trim((string) ($i['unidade'] ?? 'un')) ?: 'un', 0, 20), 'valor_unitario' => (float) ($i['valor_unitario'] ?? 0),
-                'cobranca' => array_key_exists($i['cobranca'] ?? '', \App\Models\OrcamentoItem::COBRANCAS) ? $i['cobranca'] : 'unico']);
-            match ($item->cobranca) { 'mensal' => $mensal += $item->subtotal(), 'unico' => $unico += $item->subtotal(), default => null };
+            $o->itens()->create(['ordem' => $n, 'descricao' => mb_substr(trim($i['descricao']), 0, 255), 'quantidade' => (float) ($i['quantidade'] ?? 1),
+                'unidade' => mb_substr(trim((string) ($i['unidade'] ?? 'un')) ?: 'un', 0, 20), 'valor_unitario' => (float) ($i['valor_unitario'] ?? 0)]
+                + \App\Models\OrcamentoItem::classificar($i));
         }
-        $o->update(['total_unico' => round($unico, 2), 'total_mensal' => round($mensal, 2), 'entrada' => min((float) $o->entrada, round($unico, 2)),
-            'pdf_original' => $this->guardarOriginal($pasta, (string) $p['arquivo'], $o)]);
+        $t = Orcamentos::totais($o->itens()->get());
+        $o->update($t + ['entrada' => min((float) $o->entrada, $t['total_unico']), 'pdf_original' => $this->guardarOriginal($pasta, (string) $p['arquivo'], $o)]);
 
         return $o;
     }

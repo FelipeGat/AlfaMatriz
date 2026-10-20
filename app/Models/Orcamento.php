@@ -27,7 +27,7 @@ class Orcamento extends Model
     protected $fillable = [
         'ano', 'numero', 'revisao', 'revisao_de_id', 'substituido_por_id', 'situacao', 'produto', 'cliente', 'contato', 'cidade',
         'titulo', 'destaque', 'lead', 'validade_dias', 'entrada', 'parcelas', 'desconto_avista', 'inclui', 'nao_inclui', 'passos',
-        'aceite', 'observacoes', 'total_unico', 'total_mensal', 'user_id', 'pdf_arquivo', 'pdf_gerado_em', 'enviado_em', 'respondido_em',
+        'aceite', 'observacoes', 'total_unico', 'total_material', 'total_implantacao', 'total_mensal', 'user_id', 'pdf_arquivo', 'pdf_gerado_em', 'enviado_em', 'respondido_em',
         // Etapa 2 (docs/specs/orcamentos-vixcard/padrao-e-historico.md).
         'lead_id', 'tipo', 'rotulo_3', 'valor_3', 'natureza', 'dados_cliente', 'objeto', 'secoes', 'planos', 'pagamento_texto', 'notas_internas',
         'origem_arquivo', 'pdf_original', 'importado_em',
@@ -62,7 +62,7 @@ class Orcamento extends Model
     protected function casts(): array
     {
         return [
-            'entrada' => 'float', 'desconto_avista' => 'float', 'total_unico' => 'float', 'total_mensal' => 'float', 'aceite' => 'boolean',
+            'entrada' => 'float', 'desconto_avista' => 'float', 'total_unico' => 'float', 'total_material' => 'float', 'total_implantacao' => 'float', 'total_mensal' => 'float', 'aceite' => 'boolean',
             'parcelas' => 'integer', 'validade_dias' => 'integer', 'revisao' => 'integer', 'numero' => 'integer', 'ano' => 'integer',
             'pdf_gerado_em' => 'datetime', 'enviado_em' => 'datetime', 'respondido_em' => 'datetime',
             'dados_cliente' => 'array', 'secoes' => 'array', 'importado_em' => 'datetime',

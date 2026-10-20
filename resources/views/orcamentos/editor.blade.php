@@ -124,30 +124,39 @@
                         </div>
                     </section>
 
+                    {{-- Material, implantação e recorrente separados desde o começo (Felipe, 20/10/2026). --}}
                     <section class="grid gap-2 rounded-panel border border-line bg-surface p-4">
-                        <h2 class="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">Itens <small class="text-[11.5px] font-normal text-ink-faint">quantidade aceita decimal (m, un, CNPJ)</small></h2>
-                        <div class="hidden grid-cols-[minmax(0,1fr)_70px_64px_100px_104px_28px] gap-1.5 font-mono text-[10px] uppercase tracking-caps text-ink-faint sm:grid">
-                            <span>Descrição</span><span>Qtd</span><span>Unid.</span><span>Unitário</span><span>Cobrança</span><span></span>
+                        <h2 class="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">Itens <small class="text-[11.5px] font-normal text-ink-faint">cada item é material, implantação ou recorrente · opcional fica fora do total</small></h2>
+                        <div class="hidden grid-cols-[minmax(0,1fr)_64px_56px_92px_118px_44px_24px] gap-1.5 font-mono text-[10px] uppercase tracking-caps text-ink-faint sm:grid">
+                            <span>Descrição</span><span>Qtd</span><span>Unid.</span><span>Unitário</span><span>Categoria</span><span title="Fora do total">Opc.</span><span></span>
                         </div>
                         <template x-for="(it, n) in itens" :key="it.k">
-                            <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-[minmax(0,1fr)_70px_64px_100px_104px_28px]">
+                            <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-[minmax(0,1fr)_64px_56px_92px_118px_44px_24px]" :class="it.opcional ? 'opacity-70' : ''">
                                 <input :name="`itens[${n}][descricao]`" x-model="it.descricao" maxlength="255" aria-label="Descrição" class="{{ $campo }} col-span-2 sm:col-span-1">
                                 <input :name="`itens[${n}][quantidade]`" x-model="it.quantidade" type="number" step="0.001" min="0" aria-label="Quantidade" class="{{ $campo }}">
                                 <input :name="`itens[${n}][unidade]`" x-model="it.unidade" maxlength="20" aria-label="Unidade" class="{{ $campo }}">
                                 <input :name="`itens[${n}][valor_unitario]`" x-model="it.valor_unitario" type="number" step="0.01" min="0" aria-label="Valor unitário" class="{{ $campo }}">
-                                <select :name="`itens[${n}][cobranca]`" x-model="it.cobranca" aria-label="Cobrança" class="{{ $campo }}"><option value="unico">Valor único</option><option value="mensal">Mensal</option><option value="opcao">Opção (fora do total)</option></select>
+                                <select :name="`itens[${n}][categoria]`" x-model="it.categoria" aria-label="Categoria" class="{{ $campo }}">
+                                    @foreach (\App\Models\OrcamentoItem::CATEGORIAS as $k => $nome)<option value="{{ $k }}">{{ $nome }}</option>@endforeach
+                                </select>
+                                <label class="flex items-center justify-center" title="Opcional: aparece com o preço, fora do total">
+                                    <input type="hidden" :name="`itens[${n}][opcional]`" :value="it.opcional ? 1 : 0">
+                                    <input type="checkbox" x-model="it.opcional" @change="previa()" aria-label="Opcional (fora do total)" class="rounded border-btn-line">
+                                </label>
                                 <button type="button" @click="itens.splice(n, 1); previa()" aria-label="Remover item" class="text-[18px] leading-none text-ink-faint hover:text-crit">×</button>
                             </div>
                         </template>
                         <div class="flex flex-wrap gap-1.5">
-                            <button type="button" @click="adicionar('unico')" class="{{ $botao }}">+ Item</button>
-                            <button type="button" @click="adicionar('mensal')" class="{{ $botao }}">+ Mensalidade</button>
-                            <button type="button" @click="adicionar('opcao')" class="{{ $botao }}" title="Faixa de quantidade, opcional ou sob consulta: aparece com o preço, fora do total">+ Opção</button>
+                            <button type="button" @click="adicionar('material')" class="{{ $botao }}">+ Material</button>
+                            <button type="button" @click="adicionar('implantacao')" class="{{ $botao }}">+ Implantação</button>
+                            <button type="button" @click="adicionar('recorrente')" class="{{ $botao }}">+ Recorrente</button>
                         </div>
-                        <div class="flex items-baseline justify-between border-t border-dashed border-line pt-2">
-                            <span class="text-[12px] text-ink-mute">Total</span>
-                            <b class="font-display text-[17px] tabular-nums text-ink" x-text="brl(total('unico')) + (total('mensal') ? ' + ' + brl(total('mensal')) + '/mês' : '')"></b>
-                        </div>
+                        <dl class="grid grid-cols-2 gap-x-4 gap-y-1 border-t border-dashed border-line pt-2 text-[12.5px] sm:grid-cols-4">
+                            <div><dt class="text-ink-mute">Material</dt><dd class="font-semibold tabular-nums text-ink" x-text="brl(total('material'))"></dd></div>
+                            <div><dt class="text-ink-mute">Implantação</dt><dd class="font-semibold tabular-nums text-ink" x-text="brl(total('implantacao'))"></dd></div>
+                            <div><dt class="text-ink-mute">Total do projeto</dt><dd class="font-display text-[15px] font-semibold tabular-nums text-ink" x-text="brl(total('material') + total('implantacao'))"></dd></div>
+                            <div><dt class="text-ink-mute">Recorrente</dt><dd class="font-semibold tabular-nums text-ink" x-text="brl(total('recorrente')) + '/mês'"></dd></div>
+                        </dl>
                     </section>
 
                     <section class="grid gap-2.5 rounded-panel border border-line bg-surface p-4">
@@ -250,7 +259,8 @@
             const modelos = @json($modelos);
             const dados = @json($dados);
             let k = 0;
-            const comChave = lista => (lista || []).map(i => ({ k: ++k, descricao: i.descricao ?? '', quantidade: i.quantidade ?? 1, unidade: i.unidade ?? 'un', valor_unitario: i.valor_unitario ?? 0, cobranca: i.cobranca ?? 'unico' }));
+            const comChave = lista => (lista || []).map(i => ({ k: ++k, descricao: i.descricao ?? '', quantidade: i.quantidade ?? 1, unidade: i.unidade ?? 'un', valor_unitario: i.valor_unitario ?? 0,
+                categoria: i.categoria ?? (i.cobranca === 'mensal' ? 'recorrente' : 'material'), opcional: !! i.opcional || i.cobranca === 'opcao' }));
             const preClientes = @json(collect($preClientes)->keyBy('id'));
             return {
                 modelos, produto: dados.produto, aviso: '', carregando: false, pedido: 0,
@@ -287,8 +297,8 @@
                     if (p.email) this.dc.email = p.email;
                     this.$nextTick(() => this.previa());
                 },
-                adicionar(cobranca) { this.itens.push({ k: ++k, descricao: cobranca === 'mensal' ? 'Mensalidade' : '', quantidade: 1, unidade: cobranca === 'mensal' ? 'mês' : 'un', valor_unitario: 0, cobranca }); },
-                total(c) { return this.itens.filter(i => i.cobranca === c).reduce((s, i) => s + (parseFloat(i.quantidade) || 0) * (parseFloat(i.valor_unitario) || 0), 0); },
+                adicionar(categoria) { this.itens.push({ k: ++k, descricao: categoria === 'recorrente' ? 'Mensalidade' : '', quantidade: 1, unidade: categoria === 'recorrente' ? 'mês' : (categoria === 'implantacao' ? 'serv' : 'un'), valor_unitario: 0, categoria, opcional: false }); },
+                total(c) { return this.itens.filter(i => i.categoria === c && ! i.opcional).reduce((s, i) => s + (parseFloat(i.quantidade) || 0) * (parseFloat(i.valor_unitario) || 0), 0); },
                 brl(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); },
                 async previa() {
                     const meu = ++this.pedido;

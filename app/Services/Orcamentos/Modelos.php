@@ -152,7 +152,8 @@ class Modelos
         $m = self::PRODUTOS[$chave] ?? self::PRODUTOS['outro'];
 
         return ['produto' => $chave] + collect($m)->except(['nome', 'itens'])->all() + [
-            'itens' => array_map(fn ($i) => ['descricao' => $i[0], 'quantidade' => $i[1], 'unidade' => $i[2], 'valor_unitario' => $i[3], 'cobranca' => $i[4]], $m['itens']),
+            'itens' => array_map(fn ($i) => ['descricao' => $i[0], 'quantidade' => $i[1], 'unidade' => $i[2], 'valor_unitario' => $i[3], 'cobranca' => $i[4]]
+                + \App\Models\OrcamentoItem::classificar(['descricao' => $i[0], 'cobranca' => $i[4]]) + ['opcional' => false], $m['itens']),
         ];
     }
 }

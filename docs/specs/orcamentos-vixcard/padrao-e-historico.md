@@ -55,3 +55,15 @@ clientes da pasta OneDrive VixCard › Comercial › Orçamentos › Clientes.
   original" ao lado do PDF no padrão novo.
 - **FR-H6, importação:** um comando lê o levantamento estruturado (`propostas-import.json`) e cria os
   orçamentos. Ele não duplica se rodar de novo (chave: o arquivo de origem).
+- **FR-H7, material, implantação e recorrente (20/10/2026):** "é um calcanhar de Aquiles que preciso que comece
+  certo". Cada item tem uma **categoria**:
+  - **Material:** equipamentos, etiquetas, cartões;
+  - **Implantação:** instalação, configuração, treinamento, serviços;
+  - **Recorrente:** mensalidade, licença.
+
+  "Opcional" é uma marca à parte: o item aparece com o preço e fica fora do total, em qualquer categoria. O
+  orçamento guarda o total de material, o de implantação, o do projeto (a soma dos dois) e o recorrente. O PDF
+  mostra cada bloco com subtotal, e o editor e a lista mostram os três valores. Item antigo e de modelo recebe a
+  categoria provável pela descrição (`OrcamentoItem::categoriaProvavel`).
+- **FR-H8, lista:** uma tabela só, com cabeçalho único e uma faixa por cliente que se recolhe. A linha inteira abre
+  o orçamento; as ações são só PDF e Original.
