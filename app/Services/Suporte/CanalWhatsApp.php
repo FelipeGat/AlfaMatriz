@@ -23,7 +23,78 @@ class CanalWhatsApp
 {
     public function configurado(): bool
     {
-        return filled(config('services.whatsapp_suporte.phone_number_id')) && filled(config('services.whatsapp_suporte.token'));
+        return filled(config('services.whatsapp_suporte.phone_number_id'))
+            && (filled(config('services.whatsapp_suporte.token')) || $this->viaGestor());
+    }
+
+    /**
+     * O número é do Gestor (4042-4157; Gestor: docs/specs/whatsapp-pedro): ele
+     * repassa os eventos e envia por nós. O token da Meta fica só lá.
+     */
+    public function viaGestor(): bool
+    {
+        return filled(config('services.suporte_gestor.url')) && filled(config('services.suporte_gestor.token'));
+    }
+
+    /** O repasse veio mesmo do Gestor: o segredo da integração, em tempo constante. */
+    public function doGestor(?string $token): bool
+    {
+        $esperado = (string) config('services.suporte_gestor.token');
+
+        return $esperado !== '' && filled($token) && hash_equals($esperado, (string) $token);
+    }
+
+    /**
+     * Pede ao Gestor (entregar a um setor, marcar suporte). Devolve o JSON da
+     * resposta; falha vira ValidationException com o motivo do contrato.
+     */
+    public function pedirAoGestor(SuporteConversa $c, string $acao, array $dados = []): array
+    {
+        if (! $this->viaGestor() || ! $c->gestor_conversa_id) {
+            throw ValidationException::withMessages(['gestor' => 'Esta conversa não veio pelo Gestor.']);
+        }
+        $r = Http::withToken((string) config('services.suporte_gestor.token'))->acceptJson()->timeout(20)
+            ->post(rtrim((string) config('services.suporte_gestor.url'), '/')."/api/integracao/matriz/whatsapp/conversas/{$c->gestor_conversa_id}/{$acao}", $dados);
+        if (! $r->successful()) {
+            throw ValidationException::withMessages(['gestor' => self::motivoDoGestor((string) ($r->json('motivo') ?? 'HTTP '.$r->status()))]);
+        }
+
+        return (array) $r->json();
+    }
+
+    /** O motivo do contrato, em português para a tela. */
+    public static function motivoDoGestor(string $motivo): string
+    {
+        return [
+            'tempo_limite_passou' => 'O Pedro demorou e o Gestor já mandou o menu ao cliente.',
+            'conversa_com_setor' => 'A conversa já está com um setor no Gestor (comercial ou financeiro).',
+            'janela_fechada' => 'Passaram 24 h da última mensagem do cliente: o WhatsApp só deixa responder quando ele escrever de novo.',
+            'setor_desligado' => 'Esse setor está desligado na configuração do WhatsApp do Gestor.',
+            'conversa_inexistente' => 'O Gestor não achou a conversa (encerrada?).',
+            'credencial' => 'O Gestor recusou a credencial da integração.',
+            'meta_recusou' => 'O WhatsApp recusou a mensagem.',
+            'resposta_superada' => 'O cliente escreveu de novo antes de a resposta sair; o Pedro responde à mensagem nova.',
+            'em_andamento' => 'Essa mensagem já está sendo enviada.',
+        ][$motivo] ?? 'O Gestor recusou: '.$motivo;
+    }
+
+    /**
+     * O estado da conversa que o Gestor manda junto do repasse: a conversa de lá,
+     * o setor e se é o Matriz quem responde. Comercial e financeiro ficam com os
+     * atendentes do Gestor — o Pedro não fala nelas.
+     */
+    public function aplicarEstadoDoGestor(int $conversaId, array $estados): bool
+    {
+        $c = SuporteConversa::find($conversaId);
+        $estado = $c ? ($estados[$c->telefone] ?? null) : null;
+        if (! is_array($estado) || ! isset($estado['conversa_id'])) {
+            return false;
+        }
+        $comPedro = (bool) ($estado['com_pedro'] ?? false);
+        $c->update(['gestor_conversa_id' => (int) $estado['conversa_id'], 'gestor_setor' => mb_substr((string) ($estado['setor'] ?? ''), 0, 20) ?: null]
+            + ($comPedro ? ($c->situacao === 'gestor' ? ['situacao' => 'pedro'] : []) : ['situacao' => 'gestor']));
+
+        return $comPedro;
     }
 
     /** X-Hub-Signature-256: HMAC SHA256 do corpo cru com o app secret. Sem segredo, nada passa. */
@@ -73,13 +144,16 @@ class CanalWhatsApp
      * Envia texto ao cliente e grava na conversa. Fora da janela de 24 h a Meta
      * só aceita modelo aprovado — e o suporte nunca inicia conversa.
      */
-    public function enviar(SuporteConversa $c, string $texto, string $direcao, ?User $autor = null): SuporteMensagem
+    public function enviar(SuporteConversa $c, string $texto, string $direcao, ?User $autor = null, ?string $emRespostaA = null): SuporteMensagem
     {
         if (! $c->janelaAberta()) {
             throw ValidationException::withMessages(['texto' => 'Passaram 24 h da última mensagem do cliente: o WhatsApp só deixa responder quando ele escrever de novo.']);
         }
         if (! $this->configurado()) {
             throw ValidationException::withMessages(['texto' => 'O número de suporte ainda não está ligado à API do WhatsApp (falta a configuração no servidor).']);
+        }
+        if ($this->viaGestor()) {
+            return $this->enviarPeloGestor($c, $texto, $direcao, $autor, $emRespostaA);
         }
         $cfg = config('services.whatsapp_suporte');
         $r = Http::withToken((string) $cfg['token'])->acceptJson()->timeout(20)
@@ -93,6 +167,36 @@ class CanalWhatsApp
         $c->update(['ultima_mensagem_em' => now()]);
         if (! $r->successful() || ! $wamid) {
             throw ValidationException::withMessages(['texto' => 'O WhatsApp recusou a mensagem: '.$m->erro]);
+        }
+
+        return $m;
+    }
+
+    /** O Gestor envia e registra na conversa de lá; aqui fica a cópia com o wamid. */
+    private function enviarPeloGestor(SuporteConversa $c, string $texto, string $direcao, ?User $autor, ?string $emRespostaA): SuporteMensagem
+    {
+        $chave = 'mx-'.\Illuminate\Support\Str::uuid();
+        $nome = $direcao === 'pedro' ? 'Pedro (assistente)' : ($autor?->name ?: 'Suporte');
+        try {
+            // A resposta do Pedro diz a que mensagem responde: se o cliente já escreveu
+            // de novo, o Gestor recusa ("resposta_superada") e o Pedro responde à nova.
+            $r = $this->pedirAoGestor($c, 'enviar', array_filter(['texto' => $texto, 'autor' => mb_substr($nome, 0, 120), 'chave' => $chave, 'em_resposta_a' => $emRespostaA])
+                // Gente da equipe (e não o Pedro): só ela conta como "primeira resposta" no Gestor.
+                + ['humano' => $direcao !== 'pedro']);
+            $erro = null;
+        } catch (ValidationException $e) {
+            $r = [];
+            $erro = (string) collect($e->errors())->flatten()->first();
+            // O Gestor já mandou o menu (o Pedro demorou): a conversa deixa de ser do Pedro.
+            if ($erro === self::motivoDoGestor('tempo_limite_passou') || $erro === self::motivoDoGestor('conversa_com_setor')) {
+                $c->update(['situacao' => 'gestor']);
+            }
+        }
+        $m = $c->mensagens()->create(['wamid' => $r['wamid'] ?? null, 'direcao' => $direcao, 'tipo' => 'text', 'texto' => $texto, 'autor_id' => $autor?->id,
+            'status' => $erro ? 'falhou' : 'enviada', 'erro' => $erro ? mb_substr($erro, 0, 255) : null, 'enviada_em' => now()]);
+        $c->update(['ultima_mensagem_em' => now()]);
+        if ($erro) {
+            throw ValidationException::withMessages(['texto' => $erro]);
         }
 
         return $m;

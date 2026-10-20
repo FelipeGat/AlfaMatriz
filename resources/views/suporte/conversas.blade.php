@@ -33,7 +33,7 @@
                                 <span class="min-w-0 flex-1">
                                     <span class="block truncate text-[13.5px] font-semibold text-ink">{{ $nomeDe($c) }}</span>
                                     <span class="block truncate text-[11.5px] text-ink-mute">{{ $c->cliente ? $c->telefoneLegivel() : 'Sem cadastro · '.$c->telefoneLegivel() }}</span>
-                                    <span class="mt-0.5 block text-[11px] {{ $c->comHumano() ? 'text-warn' : 'text-ink-faint' }}">{{ $c->comHumano() ? 'Com humano' : 'Com o Pedro' }}{{ $c->ultima_mensagem_em ? ' · '.$c->ultima_mensagem_em->format('d/m H:i') : '' }}</span>
+                                    <span class="mt-0.5 block text-[11px] {{ $c->comHumano() || $c->situacao === 'gestor' ? 'text-warn' : 'text-ink-faint' }}">{{ $c->situacao === 'gestor' ? 'No Gestor ('.$c->gestor_setor.')' : ($c->comHumano() ? 'Com humano' : 'Com o Pedro') }}{{ $c->ultima_mensagem_em ? ' · '.$c->ultima_mensagem_em->format('d/m H:i') : '' }}</span>
                                 </span>
                                 @if ($c->nao_lidas > 0)<span class="mt-0.5 rounded-full bg-brand px-1.5 text-[11px] font-semibold text-on-brand">{{ $c->nao_lidas }}</span>@endif
                             </a>
@@ -131,7 +131,9 @@
 
                     <form method="POST" action="{{ route('suporte.responder', $atual->id) }}" class="border-t border-line px-4 py-3">
                         @csrf
-                        @if ($atual->janelaAberta())
+                        @if ($atual->situacao === 'gestor')
+                            <p class="text-[12.5px] text-ink-mute">Conversa entregue ao {{ $atual->gestor_setor }} no Gestor: a equipe desse setor responde por lá.</p>
+                        @elseif ($atual->janelaAberta())
                             <div class="flex items-end gap-2">
                                 <textarea id="texto-resposta" name="texto" rows="2" maxlength="4000" required placeholder="Responder como suporte (o Pedro sai da conversa)…" class="min-w-0 flex-1 rounded-control border border-btn-line bg-canvas px-2.5 py-1.5 text-[13px] text-ink focus:border-brand focus:outline-none"></textarea>
                                 <button class="h-[34px] rounded-control bg-brand px-4 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Enviar</button>

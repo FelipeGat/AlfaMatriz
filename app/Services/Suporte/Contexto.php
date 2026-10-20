@@ -44,8 +44,11 @@ class Contexto
             ."o cliente pedir um atendente, o assunto for financeiro, cancelamento ou reclamação, ou a resposta não estiver nestas informações. "
             ."Nesse caso, diga que vai encaminhar para a equipe técnica, que retorna por aqui; o número do atendimento é acrescentado automaticamente. "
             ."Se ele perguntar de um atendimento, responda com a etapa que aparece em ATENDIMENTOS.\n"
+            .(app(CanalWhatsApp::class)->viaGestor()
+                ? "SETORES: assunto COMERCIAL (quem quer conhecer, contratar ou pedir orçamento) ou FINANCEIRO (boleto, pagamento, nota, cobrança) é atendido pela equipe desse setor. Faça a sua parte conforme o roteiro (apresentar, orientar) e, quando o cliente precisar de uma pessoa, use acao \"encaminhar_setor\" com \"setor\": \"comercial\" ou \"financeiro\", dizendo que um atendente do setor continua por aqui. Suporte técnico continua com você.\n"
+                : '')
             ."Responda SOMENTE com este bloco, sem nenhum texto fora dele:\n"
-            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para o cliente\", \"acao\": \"responder|abrir_atendimento\", \"resumo\": \"o problema, para a equipe\", \"sistema\": \"o nome exato de um sistema do cliente, ou null\", \"cliente\": \"o código confirmado, ou null\", \"destino\": \"gestor|sistema|null\", \"assunto_id\": \"o número de um assunto da lista ASSUNTOS, ou null\", \"roteiro\": \"o número do roteiro seguido, ou null\"}\nPEDRO>>>",
+            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para o cliente\", \"acao\": \"responder|abrir_atendimento|encaminhar_setor\", \"resumo\": \"o problema, para a equipe\", \"sistema\": \"o nome exato de um sistema do cliente, ou null\", \"cliente\": \"o código confirmado, ou null\", \"destino\": \"gestor|sistema|null\", \"assunto_id\": \"o número de um assunto da lista ASSUNTOS, ou null\", \"roteiro\": \"o número do roteiro seguido, ou null\", \"setor\": \"comercial|financeiro, só com encaminhar_setor\"}\nPEDRO>>>",
             "## A EMPRESA\n".app(Conhecimento::class)->empresa(),
             "## ROTEIROS\n".app(Conhecimento::class)->roteirosParaOPrompt(),
             "## CLIENTE\n".$this->identificacao($c, $sistemas),
@@ -62,13 +65,18 @@ class Contexto
         return implode("\n\n", $partes);
     }
 
-    /** O bloco da resposta, validado; null se veio fora do formato. @return array{resposta: string, acao: string, resumo: string, sistema: ?string, cliente: ?string, destino: ?string, assunto_id: ?int, roteiro: ?int}|null */
+    /** O bloco da resposta, validado; null se veio fora do formato. @return array{resposta: string, acao: string, resumo: string, sistema: ?string, cliente: ?string, destino: ?string, assunto_id: ?int, roteiro: ?int, setor: ?string}|null */
     public static function ler(string $texto): ?array
     {
         $b = preg_match(self::BLOCO, $texto, $m) ? json_decode($m[1], true) : null;
         $resposta = is_array($b) ? trim((string) ($b['resposta'] ?? '')) : '';
-        if ($resposta === '' || ! in_array($b['acao'] ?? null, ['responder', 'abrir_atendimento'], true)) {
+        if ($resposta === '' || ! in_array($b['acao'] ?? null, ['responder', 'abrir_atendimento', 'encaminhar_setor'], true)) {
             return null;
+        }
+        $setor = in_array($b['setor'] ?? null, ['comercial', 'financeiro'], true) ? $b['setor'] : null;
+        // Encaminhar sem dizer para onde não tem destino: vira atendimento, que alguém da equipe olha.
+        if ($b['acao'] === 'encaminhar_setor' && ! $setor) {
+            $b['acao'] = 'abrir_atendimento';
         }
 
         $texto = fn ($v) => filled($v) && $v !== 'null' ? (string) $v : null;
@@ -77,7 +85,8 @@ class Contexto
             'sistema' => $texto($b['sistema'] ?? null), 'cliente' => $texto($b['cliente'] ?? null),
             'destino' => in_array($b['destino'] ?? null, ['gestor', 'sistema'], true) ? $b['destino'] : null,
             'assunto_id' => is_numeric($b['assunto_id'] ?? null) ? (int) $b['assunto_id'] : null,
-            'roteiro' => is_numeric($b['roteiro'] ?? null) ? (int) $b['roteiro'] : null];
+            'roteiro' => is_numeric($b['roteiro'] ?? null) ? (int) $b['roteiro'] : null,
+            'setor' => $b['acao'] === 'encaminhar_setor' ? $setor : null];
     }
 
     /**

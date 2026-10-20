@@ -21,7 +21,8 @@ class SuporteConversa extends Model
     protected $table = 'suporte_conversas';
 
     protected $fillable = ['telefone', 'nome_perfil', 'cliente_id', 'situacao', 'humano_id', 'humano_ate',
-        'ultima_entrada_em', 'ultima_mensagem_em', 'nao_lidas', 'tarefa_id', 'gestor_cliente_id', 'gestor_atendimento'];
+        'ultima_entrada_em', 'ultima_mensagem_em', 'nao_lidas', 'tarefa_id', 'gestor_cliente_id', 'gestor_atendimento',
+        'gestor_conversa_id', 'gestor_setor'];
 
     protected function casts(): array
     {

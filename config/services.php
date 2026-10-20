@@ -64,6 +64,14 @@ return [
     ],
 
     // O Pedro (suporte-pedro-whatsapp, etapa 2): a IA é a do runner da conta abaixo, sem ferramentas.
+    // O 4042-4157 é do Gestor: ele repassa os eventos e envia o que o Pedro e a
+    // equipe respondem (Gestor: docs/specs/whatsapp-pedro). Sem url e token, o
+    // canal fala direto com a Meta, como antes.
+    'suporte_gestor' => [
+        'url' => env('SUPORTE_GESTOR_URL'),
+        'token' => env('SUPORTE_GESTOR_TOKEN'),
+    ],
+
     'suporte_pedro' => [
         'ligado' => env('SUPORTE_PEDRO_LIGADO', true),
         'conta' => env('SUPORTE_PEDRO_CONTA', 'felipehenriquegat@gmail.com'),

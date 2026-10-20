@@ -35,7 +35,8 @@ class Pedro
         return DB::transaction(function () use ($conversaId) {
             $c = SuporteConversa::whereKey($conversaId)->lockForUpdate()->first();
             $ultima = $c ? $c->mensagens()->reorder()->orderByDesc('id')->first() : null;
-            if (! $c || $c->comHumano() || ! $c->janelaAberta() || ! $ultima || $ultima->direcao !== 'entrada'
+            // 'gestor': conversa entregue ao comercial ou ao financeiro do Gestor — lá quem responde é gente.
+            if (! $c || $c->situacao === 'gestor' || $c->comHumano() || ! $c->janelaAberta() || ! $ultima || $ultima->direcao !== 'entrada'
                 || SuportePedido::where('conversa_id', $c->id)->whereIn('situacao', ['pendente', 'reservado'])->exists()) {
                 return null;
             }
@@ -100,6 +101,10 @@ class Pedro
         }
         $this->confirmarCliente($c, $bloco['cliente']);
         $resposta = $bloco['resposta'];
+        // Sem o Gestor, não há setor para onde entregar: vira atendimento no quadro.
+        if ($bloco['acao'] === 'encaminhar_setor' && ! $this->canal->viaGestor()) {
+            $bloco['acao'] = 'abrir_atendimento';
+        }
         if ($bloco['acao'] === 'abrir_atendimento') {
             // Equipamento de cliente do Gestor: o atendimento nasce NO Gestor, pela máquina; o número chega em seguida.
             if ($bloco['destino'] === 'gestor' && $c->gestor_cliente_id && config('services.suporte_pedro.gestor_gravar')
@@ -108,17 +113,51 @@ class Pedro
             } elseif ($t = $this->atendimento->abrir($c, $this->comLancamentoNoGestor($c, $bloco), $bloco['sistema'],
                 $bloco['roteiro'] ? \App\Models\SuporteRoteiro::where('ativo', true)->find($bloco['roteiro']) : null, $bloco['destino'])) {
                 $resposta .= "\n\nSeu atendimento é o nº T-{$t->id}.";
+                $this->marcarSuporteNoGestor($c);
             }
         }
         try {
-            $this->canal->enviar($c, $resposta, 'pedro');
+            $this->canal->enviar($c, $resposta, 'pedro', null, SuporteMensagem::whereKey($p->ate_mensagem_id)->value('wamid'));
             $p->update(['situacao' => 'respondido', 'acao' => $bloco['acao'], 'resumo' => $bloco['resumo'], 'roteiro_id' => $bloco['roteiro']]);
+            // Depois da resposta, porque entregue ao setor a conversa deixa de ser do Pedro.
+            if ($bloco['acao'] === 'encaminhar_setor') {
+                $this->entregarAoSetor($c, (string) $bloco['setor'], $bloco['resumo']);
+            }
         } catch (ValidationException $e) {
             $p->update(['situacao' => 'falhou', 'acao' => $bloco['acao'], 'erro' => mb_substr((string) collect($e->errors())->flatten()->first(), 0, 255)]);
         }
         // O que o cliente escreveu enquanto o Pedro pensava.
         if (SuporteMensagem::where('conversa_id', $c->id)->where('direcao', 'entrada')->where('id', '>', $p->ate_mensagem_id)->exists()) {
             $this->enfileirar($c->id);
+        }
+    }
+
+    /**
+     * Comercial e financeiro vão para os atendentes do Gestor (Gestor:
+     * docs/specs/whatsapp-pedro). Se o Gestor recusar (setor desligado), o
+     * pedido vira atendimento no quadro: o cliente já ouviu que alguém continua.
+     */
+    private function entregarAoSetor(SuporteConversa $c, string $setor, string $resumo): void
+    {
+        try {
+            $this->canal->pedirAoGestor($c, 'entregar', ['setor' => $setor, 'resumo' => $resumo ?: 'Cliente pediu atendimento pelo WhatsApp.']);
+            $c->update(['situacao' => 'gestor', 'gestor_setor' => $setor]);
+        } catch (ValidationException $e) {
+            $this->atendimento->abrir($c, "[{$setor}] ".$resumo.' (o Gestor não aceitou a entrega: '.collect($e->errors())->flatten()->first().')', null);
+        }
+    }
+
+    /** Suporte com atendimento aberto aqui: no Gestor a conversa fica "atendida no Matriz". */
+    private function marcarSuporteNoGestor(SuporteConversa $c): void
+    {
+        if (! $this->canal->viaGestor() || ! $c->gestor_conversa_id || $c->gestor_setor === 'suporte') {
+            return;
+        }
+        try {
+            $this->canal->pedirAoGestor($c, 'suporte');
+            $c->update(['gestor_setor' => 'suporte']);
+        } catch (ValidationException) {
+            // A conversa segue com o Pedro no Gestor; o atendimento já existe aqui.
         }
     }
 
@@ -169,7 +208,16 @@ class Pedro
     private function reserva(SuportePedido $p): void
     {
         $c = $p->conversa->fresh();
+        // No número do Gestor, enquanto a conversa está no primeiro atendimento, a
+        // reserva é dele: sem resposta do Pedro, manda o menu de sempre. Responder
+        // daqui também daria duas mensagens ao cliente. Suporte já marcado é nosso.
         if ($c->comHumano()) {
+            return;
+        }
+        if ($this->canal->viaGestor() && $c->gestor_conversa_id && $c->gestor_setor === 'aguardando_menu') {
+            // Até o próximo repasse dizer que a conversa voltou a ser nossa (o cliente escolheu Suporte).
+            $c->update(['situacao' => 'gestor', 'gestor_setor' => 'menu']);
+
             return;
         }
         $ultimas = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->pluck('texto')->reverse()->implode(' / ');

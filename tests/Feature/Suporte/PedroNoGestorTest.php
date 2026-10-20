@@ -1,0 +1,164 @@
+<?php
+
+namespace Tests\Feature\Suporte;
+
+use App\Models\CentralIaRunner;
+use App\Models\SuporteConversa;
+use App\Models\SuportePedido;
+use App\Models\Tarefa;
+use App\Models\User;
+use Database\Seeders\PerfilPermissaoSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request as Pedido;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
+use Laravel\Sanctum\Sanctum;
+use Tests\TestCase;
+
+/** O Pedro no 4042-4157 pelo Gestor (Gestor: docs/specs/whatsapp-pedro), com a IA e o Gestor falsos. */
+class PedroNoGestorTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private User $felipe;
+
+    /** @var list<array{acao: string, dados: array}> */
+    private array $pedidosAoGestor = [];
+
+    private int $statusEntregar = 200;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Carbon::setTestNow(Carbon::parse('2026-10-20 10:00', 'America/Sao_Paulo'));
+        config(['services.whatsapp_suporte' => ['phone_number_id' => '1179318548601637', 'token' => null, 'app_secret' => 'segredo-app', 'verify_token' => 'v', 'graph_version' => 'v20.0'],
+            'services.suporte_gestor' => ['url' => 'https://gestor.teste', 'token' => 'segredo-integracao'],
+            'services.suporte_pedro.conta' => 'felipe@teste.local', 'services.suporte_pedro.responsaveis' => ['rossini@teste.local']]);
+        // Um fake só, com o estado na própria classe: o primeiro stub do Http::fake vale para o teste inteiro.
+        Http::fake(function (Pedido $r) {
+            if (preg_match('#/conversas/\d+/(\w+)$#', $r->url(), $m)) {
+                $this->pedidosAoGestor[] = ['acao' => $m[1], 'dados' => $r->data(), 'token' => $r->header('Authorization')[0] ?? null];
+                if ($m[1] === 'entregar' && $this->statusEntregar !== 200) {
+                    return Http::response(['motivo' => 'setor_desligado'], $this->statusEntregar);
+                }
+
+                return Http::response($m[1] === 'enviar' ? ['wamid' => 'wamid.G'.count($this->pedidosAoGestor), 'mensagem_id' => 1] : ['ok' => true]);
+            }
+
+            return Http::response([], 404);
+        });
+        (new PerfilPermissaoSeeder)->run();
+        $this->felipe = User::factory()->create(['email' => 'felipe@teste.local']);
+        User::factory()->create(['name' => 'Rossini', 'email' => 'rossini@teste.local']);
+        CentralIaRunner::create(['user_id' => $this->felipe->id, 'maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => [], 'visto_em' => now()]);
+    }
+
+    private function repasse(string $texto, string $id, array $estado, string $token = 'segredo-integracao', ?string $assinatura = null)
+    {
+        $valor = ['metadata' => ['phone_number_id' => '1179318548601637'], 'contacts' => [['wa_id' => '5527988887777', 'profile' => ['name' => 'Joaquim']]],
+            'messages' => [['from' => '5527988887777', 'id' => $id, 'timestamp' => (string) now()->timestamp, 'type' => 'text', 'text' => ['body' => $texto]]]];
+        $corpo = json_encode(['entry' => [['changes' => [['field' => 'messages', 'value' => $valor]]]]]);
+
+        return $this->call('POST', route('suporte.webhook.gestor'), [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => 'Bearer '.$token,
+            'HTTP_X_HUB_SIGNATURE_256' => $assinatura ?? 'sha256='.hash_hmac('sha256', $corpo, 'segredo-app'), 'HTTP_X_GESTOR_ESTADO' => json_encode($estado)], $corpo);
+    }
+
+    private function estado(string $setor = 'aguardando_menu', bool $comPedro = true): array
+    {
+        return ['5527988887777' => ['conversa_id' => 55, 'setor' => $setor, 'com_pedro' => $comPedro, 'suporte_no_matriz' => $setor === 'suporte']];
+    }
+
+    private function responde(array $bloco): void
+    {
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->felipe, ['central-ia-runner']);
+        $job = $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->json();
+        $this->postJson(route('suporte.runner.resposta', $job['id']), ['maquina' => 'wsl', 'texto' => "<<<PEDRO\n".json_encode($bloco, JSON_UNESCAPED_UNICODE)."\nPEDRO>>>"])->assertOk();
+    }
+
+    public function test_repasse_sem_segredo_ou_assinatura_e_recusado(): void
+    {
+        $this->repasse('oi', 'wamid.1', $this->estado(), 'errado')->assertStatus(401);
+        $this->repasse('oi', 'wamid.1', $this->estado(), 'segredo-integracao', 'sha256=falsa')->assertStatus(403);
+        $this->assertSame(0, SuporteConversa::count());
+    }
+
+    public function test_repasse_com_pedro_vira_pedido_e_a_resposta_sai_pelo_gestor(): void
+    {
+        $this->repasse('o portão não abre', 'wamid.1', $this->estado())->assertOk();
+        $c = SuporteConversa::sole();
+        $this->assertSame([55, 'aguardando_menu'], [$c->gestor_conversa_id, $c->gestor_setor]);
+        $this->assertSame(1, SuportePedido::where('situacao', 'pendente')->count());
+
+        $this->responde(['resposta' => 'Olá! Qual portão?', 'acao' => 'responder']);
+        $this->assertSame('enviar', $this->pedidosAoGestor[0]['acao']);
+        $this->assertSame(['texto' => 'Olá! Qual portão?', 'autor' => 'Pedro (assistente)', 'em_resposta_a' => 'wamid.1'],
+            array_intersect_key($this->pedidosAoGestor[0]['dados'], ['texto' => 1, 'autor' => 1, 'em_resposta_a' => 1]));
+        $this->assertSame('Bearer segredo-integracao', $this->pedidosAoGestor[0]['token']);
+        $this->assertSame('wamid.G1', $c->mensagens()->where('direcao', 'pedro')->value('wamid'));
+    }
+
+    public function test_conversa_que_ja_e_do_financeiro_no_gestor_nao_aciona_o_pedro(): void
+    {
+        $this->repasse('e o boleto?', 'wamid.1', $this->estado('financeiro', false))->assertOk();
+        $this->assertSame('gestor', SuporteConversa::sole()->situacao);
+        $this->assertSame(0, SuportePedido::count());
+    }
+
+    public function test_encaminhar_ao_financeiro_responde_e_entrega_ao_setor(): void
+    {
+        $this->repasse('preciso da segunda via do boleto', 'wamid.1', $this->estado())->assertOk();
+        $this->responde(['resposta' => 'Vou passar para o financeiro, que continua por aqui.', 'acao' => 'encaminhar_setor', 'setor' => 'financeiro', 'resumo' => '2ª via do boleto']);
+
+        $this->assertSame(['enviar', 'entregar'], array_column($this->pedidosAoGestor, 'acao'));
+        $this->assertSame(['setor' => 'financeiro', 'resumo' => '2ª via do boleto'], $this->pedidosAoGestor[1]['dados']);
+        $this->assertSame(['gestor', 'financeiro'], [SuporteConversa::sole()->situacao, SuporteConversa::sole()->gestor_setor]);
+        $this->assertSame(0, Tarefa::count());
+    }
+
+    public function test_setor_recusado_pelo_gestor_vira_atendimento_no_quadro(): void
+    {
+        $this->statusEntregar = 409;
+        $this->repasse('quero um orçamento', 'wamid.1', $this->estado())->assertOk();
+        $this->responde(['resposta' => 'Vou passar ao comercial.', 'acao' => 'encaminhar_setor', 'setor' => 'comercial', 'resumo' => 'orçamento de portão']);
+
+        $this->assertStringContainsString('[comercial] orçamento de portão', Tarefa::sole()->resumo);
+    }
+
+    public function test_atendimento_de_suporte_marca_a_conversa_no_gestor(): void
+    {
+        $this->repasse('o sistema não abre', 'wamid.1', $this->estado())->assertOk();
+        $this->responde(['resposta' => 'Vou encaminhar para a equipe técnica.', 'acao' => 'abrir_atendimento', 'resumo' => 'Sistema fora do ar']);
+
+        $this->assertSame(['suporte', 'enviar'], array_column($this->pedidosAoGestor, 'acao'));
+        $this->assertSame('suporte', SuporteConversa::sole()->gestor_setor);
+    }
+
+    public function test_sem_resposta_da_ia_a_reserva_e_do_gestor_no_primeiro_atendimento(): void
+    {
+        $this->repasse('oi', 'wamid.1', $this->estado())->assertOk();
+        Carbon::setTestNow(now()->addMinutes(3));
+        $this->artisan('suporte:pedro')->assertSuccessful();
+
+        $this->assertSame('expirado', SuportePedido::sole()->situacao);
+        $this->assertSame([], $this->pedidosAoGestor, 'o Gestor manda o menu; daqui não sai nada');
+        $this->assertSame('gestor', SuporteConversa::sole()->situacao);
+
+        // Um minuto depois, nada de novo pedido: a conversa está no menu do Gestor.
+        Carbon::setTestNow(now()->addMinute());
+        $this->artisan('suporte:pedro')->assertSuccessful();
+        $this->assertSame(1, SuportePedido::count());
+
+        // O cliente escolhe Suporte no menu: o repasse diz que voltou a ser nossa.
+        $this->repasse('3', 'wamid.2', $this->estado('suporte'))->assertOk();
+        $this->assertSame('pedro', SuporteConversa::sole()->situacao);
+        $this->assertSame(1, SuportePedido::where('situacao', 'pendente')->count());
+    }
+
+    public function test_repasse_sem_o_estado_do_contato_so_registra(): void
+    {
+        $this->repasse('oi', 'wamid.1', ['5527000000000' => $this->estado()['5527988887777']])->assertOk();
+        $this->assertSame(1, SuporteConversa::sole()->mensagens()->count());
+        $this->assertSame(0, SuportePedido::count());
+    }
+}

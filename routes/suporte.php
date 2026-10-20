@@ -10,3 +10,5 @@ use Illuminate\Support\Facades\Route;
  */
 Route::get('suporte/whatsapp/webhook', [SuporteWebhookController::class, 'verificar'])->middleware('throttle:60,1')->name('suporte.webhook.verificar');
 Route::post('suporte/whatsapp/webhook', [SuporteWebhookController::class, 'receber'])->middleware('throttle:600,1')->name('suporte.webhook');
+// O repasse do Gestor (4042-4157): segredo da integração + assinatura original da Meta.
+Route::post('suporte/whatsapp/gestor', [SuporteWebhookController::class, 'repasse'])->middleware('throttle:600,1')->name('suporte.webhook.gestor');
