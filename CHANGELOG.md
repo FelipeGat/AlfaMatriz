@@ -1,5 +1,22 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 20/10/2026 — Sincronização dos sistemas mais firme e mais fácil de investigar (v2026.10.20.5, T-412)
+
+### Novidades
+
+- **Um CNPJ repetido não derruba mais a sincronização inteira.** Quando um
+  sistema manda para uma revenda um CNPJ que já é de outra revenda do Matriz,
+  a sincronização parava ali, e os sistemas seguintes ficavam sem atualizar.
+  Agora ela mantém o CNPJ que já está no Matriz, atualiza o resto da revenda
+  e segue para os outros sistemas.
+- **As revendas não se juntam sozinhas.** O Matriz não decide por conta
+  própria que duas revendas são a mesma empresa. O conflito fica registrado
+  para alguém conferir e resolver no cadastro.
+- **Quando um sistema falha, o motivo fica registrado.** Se um sistema não
+  responde na sincronização, o registro do Matriz guarda qual foi e por quê
+  (por exemplo, "AlfaControl respondeu 522"). Antes ficava só a marca de que
+  a sincronização tinha falhado, e a causa se perdia.
+
 ## AlfaMatriz — 18/10/2026 — Nenhum alerta do AlfaMonitor fica para trás (v2026.10.18.2, T-399)
 
 ### Novidades
