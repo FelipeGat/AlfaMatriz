@@ -2,6 +2,12 @@
     use App\Models\SuporteMensagem;
     $botao = 'inline-flex h-[28px] items-center gap-1 whitespace-nowrap rounded-control border border-btn-line px-2.5 text-[12px] font-semibold text-ink-dim hover:border-brand hover:text-brand';
     $nomeDe = fn ($c) => $c->cliente ? ($c->cliente->nome_fantasia ?: $c->cliente->nome) : ($c->nome_perfil ?: $c->telefoneLegivel());
+    $campo = 'rounded-control border border-btn-line bg-canvas py-1 pl-2 pr-7 text-[12.5px] text-ink';
+    // Situação da conversa, no molde do Gestor: de quem ela é agora.
+    $situacaoDe = fn ($c) => $c->situacao === 'gestor' ? ['No Gestor'.($c->gestor_setor ? ' ('.$c->gestor_setor.')' : ''), 'bg-head text-ink-dim']
+        : ($c->comHumano() ? ['Com '.($c->humano?->name ? explode(' ', $c->humano->name)[0] : 'humano'), 'bg-warn-tint text-warn'] : ['Com o Pedro', 'bg-brand/10 text-brand-text']);
+    $minutos = fn (?int $s) => $s === null ? '—' : ($s < 60 ? $s.' s' : intdiv($s, 60).' min');
+    $prefixo = ['pedro' => 'Pedro: ', 'humano_app' => 'Equipe: ', 'humano_matriz' => 'Equipe: '];
 @endphp
 <x-app-layout>
     <x-slot name="titulo">Suporte WhatsApp</x-slot>
@@ -22,24 +28,89 @@
             <x-aviso tom="atencao" :segundos="0">O número de suporte ainda não está ligado à API oficial do WhatsApp: as conversas aparecem aqui quando a Meta aprovar e a configuração for feita no servidor.</x-aviso>
         @endif
 
-        <div class="grid min-h-[70vh] gap-3 lg:grid-cols-[320px_minmax(0,1fr)]">
+        {{-- Indicadores do dia, sobre as conversas e os pedidos do Pedro (não sobre o filtro). --}}
+        <div class="flex flex-wrap gap-2">
+            @foreach ([
+                ['Recebidas hoje', $indicadores['recebidas_hoje'], 'text-ink'],
+                ['Com o Pedro', $indicadores['com_pedro'], 'text-brand-text'],
+                ['Com humano', $indicadores['com_humano'], 'text-ink'],
+                ['No Gestor', $indicadores['no_gestor'], 'text-ink'],
+                ['Esperando resposta', $indicadores['esperando'], $indicadores['esperando'] > 0 ? 'text-crit' : 'text-ink'],
+                ['1ª resposta (méd.)', $minutos($indicadores['primeira_resposta']), 'text-ink'],
+                ['Ao especialista hoje', $indicadores['especialista_hoje'], 'text-ink'],
+                ['Atendimentos hoje', $indicadores['atendimentos_hoje'], 'text-ink'],
+            ] as [$rotulo, $valor, $cor])
+                <div class="min-w-[112px] rounded-panel border border-line bg-surface px-3 py-1.5">
+                    <div class="text-[18px] font-semibold leading-tight {{ $cor }}">{{ $valor }}</div>
+                    <div class="text-[10.5px] text-ink-mute">{{ $rotulo }}</div>
+                </div>
+            @endforeach
+        </div>
+
+        {{-- Filtros (os mesmos do Gestor, com a situação do suporte no lugar do setor). --}}
+        <form method="GET" action="{{ route('suporte.conversas') }}" class="flex flex-wrap items-center gap-2 rounded-panel border border-line bg-surface px-3 py-2">
+            <input type="search" name="busca" value="{{ $filtros['busca'] }}" placeholder="Buscar cliente ou número" class="w-52 rounded-control border border-btn-line bg-canvas px-2 py-1 text-[12.5px] text-ink">
+            <select name="situacao" class="{{ $campo }}">
+                <option value="">Situação: todas</option>
+                @foreach (\App\Http\Controllers\SuporteConversasController::SITUACOES as $chave => $rotulo)
+                    <option value="{{ $chave }}" @selected($filtros['situacao'] === $chave)>{{ $rotulo }}</option>
+                @endforeach
+            </select>
+            <select name="atendente" class="{{ $campo }}">
+                <option value="">Atendente: todos</option>
+                <option value="sem" @selected($filtros['atendente'] === 'sem')>Sem responsável</option>
+                @foreach ($atendentes as $a)
+                    <option value="{{ $a->id }}" @selected($filtros['atendente'] === (string) $a->id)>{{ $a->id === auth()->id() ? 'Eu' : $a->name }}</option>
+                @endforeach
+            </select>
+            <select name="periodo" class="{{ $campo }}">
+                <option value="">Período: tudo</option>
+                @foreach (['hoje' => 'Hoje', 'ontem' => 'Ontem', '7dias' => '7 dias', '30dias' => '30 dias'] as $chave => $rotulo)
+                    <option value="{{ $chave }}" @selected($filtros['periodo'] === $chave)>{{ $rotulo }}</option>
+                @endforeach
+            </select>
+            {{-- A janela da Meta é independente da situação: dá para estar com o Pedro com ela encerrada. --}}
+            <select name="janela" class="{{ $campo }}">
+                <option value="">Janela Meta: todas</option>
+                <option value="aberta" @selected($filtros['janela'] === 'aberta')>Aberta</option>
+                <option value="fechada" @selected($filtros['janela'] === 'fechada')>Encerrada</option>
+            </select>
+            <label class="flex items-center gap-1 text-[12.5px] text-ink-dim"><input type="checkbox" name="nao_lidas" value="1" @checked($filtros['nao_lidas']) class="rounded border-btn-line"> Não lidas</label>
+            <button class="{{ $botao }}">Filtrar</button>
+            @if (array_filter([$filtros['busca'], $filtros['situacao'], $filtros['atendente'], $filtros['periodo'], $filtros['janela']]) || $filtros['nao_lidas'])
+                <a href="{{ route('suporte.conversas') }}" class="text-[12px] text-ink-mute hover:underline">Limpar filtros</a>
+            @endif
+        </form>
+
+        <div class="grid min-h-[70vh] gap-3 lg:grid-cols-[340px_minmax(0,1fr)]">
             {{-- Conversas --}}
             <section class="rounded-panel border border-line bg-surface">
                 <p class="border-b border-line px-4 py-2.5 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">Conversas ({{ $lista->count() }})</p>
                 <ul class="max-h-[75vh] divide-y divide-line overflow-y-auto">
                     @forelse ($lista as $c)
+                        @php [$sit, $sitCor] = $situacaoDe($c); @endphp
                         <li>
-                            <a href="{{ route('suporte.conversas', $c->id) }}" class="flex items-start gap-2.5 px-4 py-2.5 hover:bg-head/50 {{ $atual?->id === $c->id ? 'bg-brand/10' : '' }}">
+                            <a href="{{ route('suporte.conversas', ['conversa' => $c->id] + array_filter($filtros)) }}" class="flex items-start gap-2.5 px-4 py-2.5 hover:bg-head/50 {{ $atual?->id === $c->id ? 'bg-brand/10' : '' }}">
                                 <span class="min-w-0 flex-1">
-                                    <span class="block truncate text-[13.5px] font-semibold text-ink">{{ $nomeDe($c) }}</span>
+                                    <span class="flex items-center justify-between gap-2">
+                                        <span class="truncate text-[13.5px] font-semibold text-ink">{{ $nomeDe($c) }}</span>
+                                        <span class="shrink-0 whitespace-nowrap text-[10.5px] text-ink-faint" title="{{ $c->ultima_mensagem_em?->format('d/m/Y H:i') }}">{{ $c->ultima_mensagem_em?->diffForHumans(null, true) }}</span>
+                                    </span>
                                     <span class="block truncate text-[11.5px] text-ink-mute">{{ $c->cliente ? $c->telefoneLegivel() : 'Sem cadastro · '.$c->telefoneLegivel() }}</span>
-                                    <span class="mt-0.5 block text-[11px] {{ $c->comHumano() || $c->situacao === 'gestor' ? 'text-warn' : 'text-ink-faint' }}">{{ $c->situacao === 'gestor' ? 'No Gestor ('.$c->gestor_setor.')' : ($c->comHumano() ? 'Com humano' : 'Com o Pedro') }}{{ $c->ultima_mensagem_em ? ' · '.$c->ultima_mensagem_em->format('d/m H:i') : '' }}</span>
+                                    <span class="block truncate text-[12px] text-ink-dim">{{ ($prefixo[$c->ultima_direcao] ?? '').($c->ultimo_texto ?? '—') }}</span>
+                                    <span class="mt-1 flex flex-wrap items-center gap-1">
+                                        <span class="rounded-badge px-1.5 py-0.5 text-[10.5px] font-semibold {{ $sitCor }}">{{ $sit }}</span>
+                                        @if (\App\Http\Controllers\SuporteConversasController::atrasada($c))
+                                            <span class="rounded-badge bg-crit-tint px-1.5 py-0.5 text-[10.5px] font-semibold text-crit" title="Cliente esperando desde {{ $c->ultima_entrada_em->format('H:i') }}">ATRASADO</span>
+                                        @endif
+                                        @unless ($c->janelaAberta())<span class="rounded-badge bg-head px-1.5 py-0.5 text-[10.5px] text-ink-faint" title="Passaram 24 h da última mensagem do cliente">Janela encerrada</span>@endunless
+                                        @if ($c->nao_lidas > 0)<span class="ml-auto rounded-full bg-brand px-1.5 text-[11px] font-semibold text-on-brand">{{ $c->nao_lidas }}</span>@endif
+                                    </span>
                                 </span>
-                                @if ($c->nao_lidas > 0)<span class="mt-0.5 rounded-full bg-brand px-1.5 text-[11px] font-semibold text-on-brand">{{ $c->nao_lidas }}</span>@endif
                             </a>
                         </li>
                     @empty
-                        <li class="px-4 py-8 text-center text-[13px] text-ink-mute">Nenhuma conversa ainda.</li>
+                        <li class="px-4 py-8 text-center text-[13px] text-ink-mute">{{ array_filter([$filtros['busca'], $filtros['situacao'], $filtros['atendente'], $filtros['periodo'], $filtros['janela']]) || $filtros['nao_lidas'] ? 'Nenhuma conversa com esses filtros.' : 'Nenhuma conversa ainda.' }}</li>
                     @endforelse
                 </ul>
             </section>
@@ -118,7 +189,21 @@
                         @foreach ($atual->mensagens as $m)
                             <div class="flex {{ $m->daEmpresa() ? 'justify-end' : 'justify-start' }}">
                                 <div class="max-w-[80%] rounded-panel px-3 py-2 text-[13px] {{ $m->daEmpresa() ? 'bg-brand/10 text-ink' : 'border border-line bg-canvas text-ink' }}">
-                                    <p class="whitespace-pre-line break-words">{{ $m->texto }}</p>
+                                    @if (in_array($m->tipo, ['image', 'audio', 'video'], true))
+                                        {{-- A mídia vem do disco do Matriz, ou é buscada no Gestor na primeira vez. --}}
+                                        @if ($m->tipo === 'image')
+                                            <a href="{{ route('suporte.midia', $m->id) }}" target="_blank"><img src="{{ route('suporte.midia', $m->id) }}" alt="Foto do cliente" loading="lazy" class="mb-1 max-h-72 max-w-full rounded-control"></a>
+                                        @elseif ($m->tipo === 'audio')
+                                            <audio controls preload="none" src="{{ route('suporte.midia', $m->id) }}" class="mb-1 w-64 max-w-full"></audio>
+                                        @else
+                                            <video controls preload="metadata" src="{{ route('suporte.midia', $m->id) }}" class="mb-1 max-h-72 max-w-full rounded-control"></video>
+                                        @endif
+                                        @php $legenda = trim(preg_replace('/^\[(imagem|áudio|vídeo)\]/u', '', (string) $m->texto)); @endphp
+                                        @if ($legenda !== '')<p class="whitespace-pre-line break-words">{{ $legenda }}</p>@endif
+                                        @if ($m->transcricao)<p class="mt-1 border-l-2 border-line pl-2 text-[12px] italic text-ink-dim">{{ $m->tipo === 'video' ? 'O que o Pedro viu e ouviu: ' : 'Transcrição: ' }}{{ $m->transcricao }}</p>@endif
+                                    @else
+                                        <p class="whitespace-pre-line break-words">{{ $m->texto }}</p>
+                                    @endif
                                     <p class="mt-1 text-[10.5px] text-ink-faint">
                                         {{ $m->direcao === 'humano_matriz' ? ($m->autor?->name ?? 'Humano') : SuporteMensagem::DIRECOES[$m->direcao] ?? $m->direcao }}
                                         · {{ ($m->enviada_em ?? $m->created_at)->format('d/m H:i') }}{{ $m->daEmpresa() && $m->status ? ' · '.$m->status : '' }}
@@ -134,8 +219,11 @@
                         @if ($atual->situacao === 'gestor')
                             <p class="text-[12.5px] text-ink-mute">Conversa entregue ao {{ $atual->gestor_setor }} no Gestor: a equipe desse setor responde por lá.</p>
                         @elseif ($atual->janelaAberta())
+                            @php $resta = (int) now()->diffInMinutes($atual->ultima_entrada_em->copy()->addHours(\App\Models\SuporteConversa::JANELA_HORAS)); @endphp
+                            <p class="mb-1.5 text-[11px] text-ink-faint">Janela de resposta aberta por mais {{ intdiv($resta, 60) ? intdiv($resta, 60).' h ' : '' }}{{ $resta % 60 }} min. Enter envia; Shift+Enter quebra a linha.</p>
                             <div class="flex items-end gap-2">
-                                <textarea id="texto-resposta" name="texto" rows="2" maxlength="4000" required placeholder="Responder como suporte (o Pedro sai da conversa)…" class="min-w-0 flex-1 rounded-control border border-btn-line bg-canvas px-2.5 py-1.5 text-[13px] text-ink focus:border-brand focus:outline-none"></textarea>
+                                <textarea id="texto-resposta" name="texto" rows="2" maxlength="4000" required placeholder="Responder como suporte (o Pedro sai da conversa)…" class="min-w-0 flex-1 rounded-control border border-btn-line bg-canvas px-2.5 py-1.5 text-[13px] text-ink focus:border-brand focus:outline-none"
+                                          @keydown.enter="if (! $event.shiftKey && $el.value.trim()) { $event.preventDefault(); $el.form.requestSubmit(); }"></textarea>
                                 <button class="h-[34px] rounded-control bg-brand px-4 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Enviar</button>
                             </div>
                         @else

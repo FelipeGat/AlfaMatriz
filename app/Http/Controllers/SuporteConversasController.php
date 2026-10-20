@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use App\Models\ClienteTelefone;
 use App\Models\SuporteConversa;
+use App\Models\SuporteMensagem;
+use App\Models\SuportePedido;
+use App\Models\User;
 use App\Services\Suporte\CanalWhatsApp;
 use App\Services\Suporte\DiretorioGestor;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +22,16 @@ use Illuminate\View\View;
  */
 class SuporteConversasController extends Controller
 {
+    /** Cliente esperando resposta há mais que isso: "atrasado" (o mesmo selo do Gestor). */
+    public const ESPERA_MINUTOS = 15;
+
+    public const SITUACOES = ['pedro' => 'Com o Pedro', 'humano' => 'Com humano', 'gestor' => 'No Gestor', 'esperando' => 'Esperando resposta'];
+
+    /**
+     * Filtros, indicadores e lista no molde da tela de WhatsApp do Gestor
+     * (Felipe, 20/10/2026: "replique os filtros e informações úteis de lá"),
+     * com a situação do suporte (Pedro, humano, Gestor) no lugar dos setores.
+     */
     public function index(Request $request, ?int $conversa = null): View
     {
         $atual = $conversa ? SuporteConversa::with(['mensagens.autor:id,name', 'cliente.sistemas', 'cliente.contratos', 'humano:id,name', 'tarefa:id,titulo,status', 'atendimento.roteiro:id,titulo', 'atendimento.registradoPor:id,name'])->findOrFail($conversa) : null;
@@ -26,12 +39,116 @@ class SuporteConversasController extends Controller
         if ($atual && $atual->nao_lidas > 0) {
             $atual->update(['nao_lidas' => 0]);
         }
-        $lista = SuporteConversa::with('cliente:id,nome,nome_fantasia')->orderByDesc('ultima_mensagem_em')->limit(100)->get();
+        $filtros = [
+            'busca' => trim((string) $request->query('busca', '')),
+            'situacao' => array_key_exists((string) $request->query('situacao'), self::SITUACOES) ? (string) $request->query('situacao') : '',
+            'atendente' => (string) $request->query('atendente', ''),
+            'periodo' => in_array($request->query('periodo'), ['hoje', 'ontem', '7dias', '30dias'], true) ? (string) $request->query('periodo') : '',
+            'janela' => in_array($request->query('janela'), ['aberta', 'fechada'], true) ? (string) $request->query('janela') : '',
+            'nao_lidas' => $request->boolean('nao_lidas'),
+        ];
+        $ultima = fn (string $coluna) => SuporteMensagem::select($coluna)->whereColumn('conversa_id', 'suporte_conversas.id')->orderByDesc('id')->limit(1);
+        $lista = $this->filtrar(SuporteConversa::query(), $filtros)
+            ->with(['cliente:id,nome,nome_fantasia', 'humano:id,name'])
+            ->addSelect(['suporte_conversas.*', 'ultimo_texto' => $ultima('texto'), 'ultima_direcao' => $ultima('direcao'), 'ultimo_tipo' => $ultima('tipo')])
+            ->orderByDesc('ultima_mensagem_em')->limit(100)->get();
 
         return view('suporte.conversas', [
             'lista' => $lista, 'atual' => $atual, 'configurado' => app(CanalWhatsApp::class)->configurado(),
             'clientes' => $atual && ! $atual->cliente_id ? Cliente::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'nome_fantasia']) : collect(),
+            'filtros' => $filtros, 'indicadores' => $this->indicadores(),
+            'atendentes' => User::whereIn('id', SuporteConversa::whereNotNull('humano_id')->distinct()->pluck('humano_id')->push($request->user()->id))->orderBy('name')->get(['id', 'name']),
         ]);
+    }
+
+    /** Cliente falou por último e ninguém respondeu há mais de ESPERA_MINUTOS. */
+    public static function atrasada(SuporteConversa $c): bool
+    {
+        return $c->situacao !== 'gestor' && $c->ultima_entrada_em && $c->ultima_mensagem_em
+            && $c->ultima_entrada_em->gte($c->ultima_mensagem_em) && $c->ultima_entrada_em->lt(now()->subMinutes(self::ESPERA_MINUTOS))
+            && $c->janelaAberta();
+    }
+
+    private function filtrar($q, array $f)
+    {
+        if ($f['busca'] !== '') {
+            $termo = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $f['busca']).'%';
+            $digitos = preg_replace('/\D/', '', $f['busca']);
+            $q->where(fn ($w) => $w->where('nome_perfil', 'like', $termo)
+                ->when(strlen($digitos) >= 4, fn ($w) => $w->orWhere('telefone', 'like', '%'.$digitos.'%'))
+                ->orWhereHas('cliente', fn ($c) => $c->where('nome', 'like', $termo)->orWhere('nome_fantasia', 'like', $termo)));
+        }
+        match ($f['situacao']) {
+            'pedro' => $q->where('situacao', 'pedro'),
+            'humano' => $q->where('situacao', 'humano')->where(fn ($w) => $w->whereNull('humano_ate')->orWhere('humano_ate', '>', now())),
+            'gestor' => $q->where('situacao', 'gestor'),
+            'esperando' => $q->where('situacao', '!=', 'gestor')->whereColumn('ultima_entrada_em', '>=', 'ultima_mensagem_em')
+                ->where('ultima_entrada_em', '<', now()->subMinutes(self::ESPERA_MINUTOS))
+                ->where('ultima_entrada_em', '>=', now()->subHours(SuporteConversa::JANELA_HORAS)),
+            default => null,
+        };
+        if ($f['atendente'] === 'sem') {
+            $q->whereNull('humano_id');
+        } elseif (ctype_digit($f['atendente'])) {
+            $q->where('humano_id', (int) $f['atendente']);
+        }
+        match ($f['periodo']) {
+            'hoje' => $q->where('ultima_mensagem_em', '>=', today()),
+            'ontem' => $q->whereBetween('ultima_mensagem_em', [today()->subDay(), today()]),
+            '7dias' => $q->where('ultima_mensagem_em', '>=', today()->subDays(6)),
+            '30dias' => $q->where('ultima_mensagem_em', '>=', today()->subDays(29)),
+            default => null,
+        };
+        $limite = now()->subHours(SuporteConversa::JANELA_HORAS);
+        match ($f['janela']) {
+            'aberta' => $q->where('ultima_entrada_em', '>', $limite),
+            'fechada' => $q->where(fn ($w) => $w->whereNull('ultima_entrada_em')->orWhere('ultima_entrada_em', '<=', $limite)),
+            default => null,
+        };
+        if ($f['nao_lidas']) {
+            $q->where('nao_lidas', '>', 0);
+        }
+
+        return $q;
+    }
+
+    /** Os números do dia, sobre as mensagens e os pedidos do Pedro (não sobre a lista filtrada). */
+    private function indicadores(): array
+    {
+        $ativas = SuporteConversa::where('ultima_entrada_em', '>', now()->subHours(SuporteConversa::JANELA_HORAS))->get();
+        $hoje = SuporteMensagem::where('direcao', 'entrada')->where('created_at', '>=', today());
+        // 1ª resposta: da primeira mensagem do cliente no dia até a primeira resposta depois dela.
+        $tempos = [];
+        foreach ((clone $hoje)->selectRaw('conversa_id, MIN(id) as primeira')->groupBy('conversa_id')->get() as $r) {
+            $entrada = SuporteMensagem::find($r->primeira);
+            $resposta = SuporteMensagem::where('conversa_id', $r->conversa_id)->where('id', '>', $r->primeira)->where('direcao', '!=', 'entrada')->orderBy('id')->first();
+            if ($entrada && $resposta) {
+                $tempos[] = $entrada->created_at->diffInSeconds($resposta->created_at);
+            }
+        }
+        $pedidos = fn (string $acao) => SuportePedido::where('acao', $acao)->where('created_at', '>=', today())->count();
+
+        return [
+            'recebidas_hoje' => (clone $hoje)->distinct()->count('conversa_id'),
+            'com_pedro' => $ativas->where('situacao', 'pedro')->count(),
+            'com_humano' => $ativas->filter->comHumano()->count(),
+            'no_gestor' => $ativas->where('situacao', 'gestor')->count(),
+            'esperando' => $ativas->filter(fn ($c) => self::atrasada($c))->count(),
+            'primeira_resposta' => $tempos ? (int) round(array_sum($tempos) / count($tempos)) : null,
+            'especialista_hoje' => $pedidos('especialista'),
+            'atendimentos_hoje' => $pedidos('abrir_atendimento'),
+        ];
+    }
+
+    /** A foto, o áudio ou o vídeo da mensagem, para a tela (do disco, ou buscado no Gestor). */
+    public function midia(int $mensagem, \App\Services\Suporte\Midias $midias): \Symfony\Component\HttpFoundation\Response
+    {
+        $m = SuporteMensagem::whereIn('tipo', ['image', 'audio', 'video'])->findOrFail($mensagem);
+        $bytes = $midias->bytes($m);
+        abort_unless($bytes !== null, 404);
+
+        return response($bytes, 200, ['Content-Type' => $m->fresh()->midia_mime ?: 'application/octet-stream', 'Cache-Control' => 'private, max-age=86400',
+            'X-Content-Type-Options' => 'nosniff', 'Content-Disposition' => 'inline']);
     }
 
     /** Para a tela recarregar sozinha só quando chegou coisa nova. */

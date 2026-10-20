@@ -395,6 +395,7 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     $sup = \App\Http\Controllers\SuporteConversasController::class;
     Route::get('suporte/whatsapp/marca', [$sup, 'marca'])->name('suporte.marca')->middleware('permissao:suporte,ler');
     Route::get('suporte/whatsapp/{conversa?}', [$sup, 'index'])->whereNumber('conversa')->name('suporte.conversas')->middleware('permissao:suporte,ler');
+    Route::get('suporte/whatsapp/midia/{mensagem}', [$sup, 'midia'])->whereNumber('mensagem')->name('suporte.midia')->middleware('permissao:suporte,ler');
     Route::post('suporte/whatsapp/{conversa}/responder', [$sup, 'responder'])->whereNumber('conversa')->name('suporte.responder')->middleware('permissao:suporte,editar');
     Route::post('suporte/whatsapp/{conversa}/assumir', [$sup, 'assumir'])->whereNumber('conversa')->name('suporte.assumir')->middleware('permissao:suporte,editar');
     Route::post('suporte/whatsapp/{conversa}/devolver', [$sup, 'devolver'])->whereNumber('conversa')->name('suporte.devolver')->middleware('permissao:suporte,editar');

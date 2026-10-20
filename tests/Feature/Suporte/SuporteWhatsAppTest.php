@@ -125,4 +125,41 @@ class SuporteWhatsAppTest extends TestCase
         $victor->perfis()->attach(Perfil::where('slug', 'vixcard')->value('id'));
         $this->actingAs($victor)->get(route('suporte.conversas'))->assertForbidden();
     }
+
+    /** Os filtros e indicadores da tela, no molde do WhatsApp do Gestor (20/10/2026). */
+    public function test_filtros_indicadores_e_midia_na_tela(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $this->webhook($this->mensagem('wamid.1', '5527977776666', 'A catraca parou', 'Joana'));
+        $this->webhook($this->mensagem('wamid.2', '5527988885555', 'Quero um orçamento', 'Bruno'));
+        [$joana, $bruno] = [SuporteConversa::where('nome_perfil', 'Joana')->sole(), SuporteConversa::where('nome_perfil', 'Bruno')->sole()];
+        $bruno->update(['situacao' => 'humano', 'humano_id' => $this->rossini->id, 'humano_ate' => now()->addHours(2)]);
+        Carbon::setTestNow(now()->addMinutes(20)); // ninguém respondeu: as duas estão atrasadas
+
+        $tela = $this->actingAs($this->rossini)->get(route('suporte.conversas'))->assertOk();
+        $tela->assertSee('Recebidas hoje')->assertSee('Esperando resposta')->assertSee('ATRASADO')->assertSee('Com o Pedro')->assertSee('Com Rossini');
+        $this->assertSame(2, $tela->viewData('indicadores')['recebidas_hoje']);
+        $this->assertSame(2, $tela->viewData('indicadores')['esperando']);
+        $this->assertSame(1, $tela->viewData('indicadores')['com_humano']);
+
+        $ids = fn (array $q) => $this->get(route('suporte.conversas', $q))->viewData('lista')->pluck('id')->all();
+        $this->assertSame([$joana->id], $ids(['busca' => 'joana']));
+        $this->assertSame([$bruno->id], $ids(['busca' => '88885']), 'pelo número');
+        $this->assertSame([$joana->id], $ids(['situacao' => 'pedro']));
+        $this->assertSame([$bruno->id], $ids(['situacao' => 'humano']));
+        $this->assertSame([$bruno->id], $ids(['atendente' => (string) $this->rossini->id]));
+        $this->assertSame([$joana->id], $ids(['atendente' => 'sem']));
+        $this->assertCount(2, $ids(['situacao' => 'esperando', 'periodo' => 'hoje', 'janela' => 'aberta']));
+        $this->assertSame([], $ids(['janela' => 'fechada']));
+        $this->get(route('suporte.conversas', ['busca' => 'ninguém']))->assertSee('Nenhuma conversa com esses filtros.');
+
+        // A foto do cliente aparece na conversa, servida pelo Matriz.
+        \Illuminate\Support\Facades\Storage::disk('local')->put('suporte/x/foto.jpg', 'JPEGBYTES');
+        $foto = SuporteMensagem::create(['conversa_id' => $joana->id, 'direcao' => 'entrada', 'tipo' => 'image', 'texto' => '[imagem] o visor',
+            'midia_path' => 'suporte/x/foto.jpg', 'midia_mime' => 'image/jpeg']);
+        $this->get(route('suporte.conversas', $joana->id))->assertSee(route('suporte.midia', $foto->id))->assertSee('o visor');
+        $r = $this->get(route('suporte.midia', $foto->id))->assertOk();
+        $this->assertSame('JPEGBYTES', $r->getContent());
+        $this->assertSame('image/jpeg', $r->headers->get('Content-Type'));
+    }
 }
