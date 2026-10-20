@@ -9,6 +9,15 @@
     $primario = 'inline-flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright';
     $cor = ['rascunho' => 'neutro', 'enviado' => 'marca', 'negociacao' => 'ambar', 'aprovado' => 'bom', 'recusado' => 'critico', 'substituido' => 'atencao'];
     $modelos = collect(Modelos::PRODUTOS)->map(fn ($m, $k) => Modelos::paraFormulario($k) + ['nome' => $m['nome']]);
+    // Em que aba cai cada erro de validação: abre a primeira com erro e marca as demais.
+    $abaDoCampo = fn (string $c) => match (true) {
+        str_starts_with($c, 'itens') => 'itens',
+        in_array(explode('.', $c)[0], ['entrada', 'parcelas', 'desconto_avista', 'pagamento_texto', 'planos', 'inclui', 'nao_inclui', 'passos', 'aceite', 'validade_dias'], true) => 'pagamento',
+        in_array(explode('.', $c)[0], ['secoes', 'observacoes', 'notas_internas'], true) => 'conteudo',
+        default => 'cliente',
+    };
+    $errosPorAba = collect($errors->keys())->countBy($abaDoCampo)->all();
+    $abaInicial = array_key_first($errosPorAba) ?? 'cliente';
 @endphp
 <x-app-layout>
     <x-slot name="titulo">{{ $o ? 'Orçamento '.$o->codigo() : 'Novo orçamento' }}</x-slot>
@@ -17,9 +26,9 @@
         <a href="{{ route('orcamentos.index') }}" class="{{ $botao }}">Orçamentos</a>
     </x-slot>
 
-    {{-- docs/specs/orcamentos-vixcard: o formulário à esquerda e, à direita, a prévia
-         VIVA do PDF — o mesmo Blade que o Chromium imprime. Enviado não se edita:
-         revisa-se (Rev. + 1, mesmo número). --}}
+    {{-- docs/specs/orcamentos-vixcard: o formulário em abas, como no Gestor (Felipe, 20/10/2026:
+         "a tela está muito comprida […] quero em abas igual é no Gestor"), com o resumo
+         financeiro fixo ao lado. Enviado não se edita: revisa-se (mesmo número, Rev. + 1). --}}
     <div class="mx-auto w-full max-w-[1500px] space-y-3" x-data="orcamentoEditor()" x-init="iniciar()">
         @if (session('status'))<x-aviso>{{ session('status') }}</x-aviso>@endif
         @if ($errors->any())<x-aviso tom="critico" :segundos="0">{{ $errors->first() }}</x-aviso>@endif
@@ -57,11 +66,26 @@
             @endif
         @endif
 
-        <div class="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-            <form id="form-orcamento" method="POST" enctype="multipart/form-data" action="{{ $o ? route('orcamentos.update', $o) : route('orcamentos.store') }}" class="grid gap-3" @input.debounce.600ms="previa()" @change="previa()">
+        <form id="form-orcamento" method="POST" enctype="multipart/form-data" action="{{ $o ? route('orcamentos.update', $o) : route('orcamentos.store') }}" class="grid gap-3">
                 @csrf @if ($o) @method('PUT') @endif
                 <input type="hidden" name="depois" x-ref="depois" value="">
+
+                {{-- As abas: o número do lado mostra quantos erros a aba tem. --}}
+                <nav class="sticky top-0 z-20 flex flex-wrap gap-1.5 rounded-panel border border-line bg-surface p-1.5 shadow-sm" role="tablist">
+                    @foreach (['cliente' => '1 · Cliente & capa', 'itens' => '2 · Itens & valores', 'pagamento' => '3 · Pagamento & escopo', 'conteudo' => '4 · Conteúdo & notas'] as $chave => $nome)
+                        <button type="button" role="tab" @click="aba = '{{ $chave }}'" :aria-selected="(aba === '{{ $chave }}').toString()"
+                                :class="aba === '{{ $chave }}' ? 'bg-brand text-on-brand shadow-sm' : 'text-ink-dim hover:bg-head'"
+                                class="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[13px] font-semibold">
+                            {{ $nome }}
+                            @if (($errosPorAba[$chave] ?? 0) > 0)<span class="rounded-full bg-crit px-1.5 text-[11px] font-bold text-white">{{ $errosPorAba[$chave] }}</span>@endif
+                        </button>
+                    @endforeach
+                </nav>
+
+                <div class="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
+                <div class="grid min-w-0 gap-3">
                 <fieldset class="contents" @disabled(! $editavel)>
+                    <div x-show="aba === 'cliente'" class="grid gap-3">
                     <section class="grid gap-2.5 rounded-panel border border-line bg-surface p-4">
                         <h2 class="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">Produto <small class="text-[11.5px] font-normal text-ink-faint">preenche capa, escopo, passos e itens — tudo editável</small></h2>
                         <input type="hidden" name="produto" :value="produto">
@@ -135,6 +159,8 @@
                         </div>
                     </section>
 
+                    </div>
+                    <div x-show="aba === 'itens'" x-cloak class="grid gap-3">
                     {{-- Material, implantação e recorrente separados desde o começo (Felipe, 20/10/2026). --}}
                     <section class="grid gap-2 rounded-panel border border-line bg-surface p-4">
                         <h2 class="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">Itens <small class="text-[11.5px] font-normal text-ink-faint">cada item é material, implantação ou recorrente · opcional fica fora do total</small></h2>
@@ -170,6 +196,8 @@
                         </dl>
                     </section>
 
+                    </div>
+                    <div x-show="aba === 'pagamento'" x-cloak class="grid gap-3">
                     <section class="grid gap-2.5 rounded-panel border border-line bg-surface p-4">
                         <h2 class="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">Pagamento <small class="text-[11.5px] font-normal text-ink-faint">a frase sai pronta no PDF</small></h2>
                         <div class="grid gap-2.5 sm:grid-cols-3">
@@ -194,6 +222,8 @@
                         <label class="flex items-center gap-2 text-[12.5px] text-ink"><input type="hidden" name="aceite" value="0"><input type="checkbox" name="aceite" value="1" @checked(old('aceite', $dados['aceite'])) class="rounded border-btn-line"> Incluir bloco de aceite com assinaturas</label>
                     </section>
 
+                    </div>
+                    <div x-show="aba === 'conteudo'" x-cloak class="grid gap-3">
                     {{-- As seções opcionais do padrão (padrao-e-historico.md, FR-H3): cada uma liga e desliga. --}}
                     <section class="grid gap-2 rounded-panel border border-line bg-surface p-4">
                         <h2 class="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">Seções opcionais <small class="text-[11.5px] font-normal text-ink-faint">listas: uma linha por item · tabelas: "a | b" por linha</small></h2>
@@ -232,37 +262,46 @@
                         <h2 class="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">Notas internas <small class="text-[11.5px] font-normal text-ink-faint">nunca vão para o PDF</small></h2>
                         <textarea name="notas_internas" rows="3" maxlength="6000" class="{{ $campo }}">{{ $dados['notas_internas'] }}</textarea>
                     </section>
-                </fieldset>
-
-                @if ($editavel)
-                    <div class="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 rounded-panel border border-line bg-surface px-4 py-2.5" x-data="{ apagar: false }">
-                        @if ($o)
-                            <button type="button" x-show="! apagar" @click="apagar = true" class="{{ $botao }} mr-auto hover:!border-crit hover:!text-crit">Apagar rascunho</button>
-                            <span x-show="apagar" x-cloak class="mr-auto flex items-center gap-1.5 text-[12.5px] text-crit">Apagar {{ $o->codigo() }}?
-                                <button type="submit" form="apagar-orcamento" class="{{ $botao }} !border-crit !text-crit">Apagar</button>
-                                <button type="button" @click="apagar = false" class="{{ $botao }}">Cancelar</button></span>
-                        @endif
-                        <button class="{{ $botao }}" @click="$refs.depois.value = ''">Salvar rascunho</button>
-                        <button class="{{ $botao }}" @click="$refs.depois.value = 'pdf'">Salvar e gerar PDF</button>
-                        {{-- Salva o que está na tela e então congela: o PDF desta revisão vai para Documentos. --}}
-                        <button class="{{ $primario }}" @click="$refs.depois.value = 'enviar'" title="Salva, congela o PDF desta revisão e guarda na pasta do cliente em Documentos">Salvar e marcar como enviado</button>
                     </div>
-                @endif
+                </fieldset>
+                </div>
+
+                {{-- O resumo financeiro, fixo ao lado como no Gestor, com as ações. --}}
+                <aside class="grid gap-3 lg:sticky lg:top-16">
+                    <section class="rounded-panel border border-line bg-surface p-4">
+                        <h2 class="mb-2.5 text-[13px] font-semibold text-ink">Resumo financeiro</h2>
+                        <dl class="grid gap-1.5 text-[13px]">
+                            <div class="flex justify-between"><dt class="text-ink-mute">Material</dt><dd class="tabular-nums text-ink" x-text="brl(total('material'))"></dd></div>
+                            <div class="flex justify-between"><dt class="text-ink-mute">Implantação</dt><dd class="tabular-nums text-ink" x-text="brl(total('implantacao'))"></dd></div>
+                            <div class="flex items-end justify-between border-t border-line pt-2"><dt class="text-[11px] font-semibold uppercase tracking-caps text-ink-mute">Total do projeto</dt>
+                                <dd class="font-display text-[22px] font-semibold tabular-nums text-brand-text" x-text="brl(total('material') + total('implantacao'))"></dd></div>
+                            <div class="flex justify-between"><dt class="text-ink-mute">Recorrente</dt><dd class="font-semibold tabular-nums text-ink" x-text="brl(total('recorrente')) + '/mês'"></dd></div>
+                            <div class="flex justify-between text-[12px]" x-show="itens.some(i => i.opcional)" x-cloak><dt class="text-ink-faint">Opcionais (fora do total)</dt><dd class="tabular-nums text-ink-faint" x-text="itens.filter(i => i.opcional).length"></dd></div>
+                        </dl>
+                    </section>
+                    <section class="grid gap-2 rounded-panel border border-line bg-surface p-4" x-data="{ apagar: false }">
+                        @if ($editavel)
+                            <button class="{{ $primario }} h-[34px] w-full justify-center" @click="$refs.depois.value = ''">Salvar</button>
+                            <button class="{{ $botao }} w-full justify-center" @click="$refs.depois.value = 'pdf'">Salvar e ver o PDF</button>
+                            {{-- Salva o que está na tela e então congela: o PDF desta revisão vai para Documentos. --}}
+                            <button class="{{ $botao }} w-full justify-center" @click="$refs.depois.value = 'enviar'" title="Salva, congela o PDF desta revisão e guarda na pasta do cliente em Documentos">Salvar e marcar como enviado</button>
+                        @elseif ($o)
+                            <a href="{{ route('orcamentos.pdf', $o) }}" target="_blank" rel="noopener" class="{{ $primario }} h-[34px] w-full justify-center">Ver o PDF</a>
+                        @endif
+                        <a href="{{ route('orcamentos.index') }}" class="{{ $botao }} w-full justify-center">Voltar aos orçamentos</a>
+                        @if ($o && $editavel)
+                            <button type="button" x-show="! apagar" @click="apagar = true" class="mt-1 text-[12px] text-ink-faint hover:text-crit">Apagar rascunho</button>
+                            <span x-show="apagar" x-cloak class="flex items-center justify-center gap-1.5 text-[12.5px] text-crit">Apagar {{ $o->codigo() }}?
+                                <button type="submit" form="apagar-orcamento" class="{{ $botao }} !border-crit !text-crit">Apagar</button>
+                                <button type="button" @click="apagar = false" class="{{ $botao }}">Não</button></span>
+                        @endif
+                    </section>
+                </aside>
+                </div>
             </form>
             @if ($o && $editavel)
                 <form id="apagar-orcamento" method="POST" action="{{ route('orcamentos.destroy', $o) }}" class="hidden">@csrf @method('DELETE')</form>
             @endif
-
-            {{-- A prévia: o mesmo HTML do PDF, num iframe isolado, reduzido para caber. --}}
-            <div class="sticky top-3 grid gap-2">
-                <div class="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
-                    <span>Prévia do PDF · A4</span><span x-text="carregando ? 'atualizando…' : 'atualizada'"></span>
-                </div>
-                <div x-ref="moldura" class="h-[calc(100vh-110px)] min-h-[480px] overflow-auto rounded-panel border border-line bg-head">
-                    <iframe x-ref="previa" title="Prévia do PDF" sandbox="allow-same-origin" class="block origin-top-left border-0" style="width: 820px; height: 3600px"></iframe>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -274,22 +313,17 @@
                 categoria: i.categoria ?? (i.cobranca === 'mensal' ? 'recorrente' : 'material'), opcional: !! i.opcional || i.cobranca === 'opcao' }));
             const preClientes = @json(collect($preClientes)->keyBy('id'));
             return {
-                modelos, produto: dados.produto, aviso: '', carregando: false, pedido: 0,
+                modelos, produto: dados.produto, aviso: '', aba: @js($abaInicial),
                 leadId: dados.lead_id ? String(dados.lead_id) : '',
                 dc: Object.assign({ razao_social: '', cnpj: '', ie: '', endereco: '', cargo: '', telefone: '', email: '', atividade: '' }, dados.dados_cliente || {}),
                 f: { cliente: dados.cliente ?? '', titulo: dados.titulo ?? '', destaque: dados.destaque ?? '', lead: dados.lead ?? '', inclui: dados.inclui ?? '', nao_inclui: dados.nao_inclui ?? '',
                      passos: dados.passos ?? '', entrada: dados.entrada ?? 0, parcelas: String(dados.parcelas ?? 1), desconto_avista: dados.desconto_avista ?? 0 },
                 itens: comChave(dados.itens),
                 iniciar() {
-                    new ResizeObserver(() => this.escalar()).observe(this.$refs.moldura);
-                    // Depois do x-model preencher os campos: antes disso o formulário sai vazio.
-                    this.$nextTick(() => this.previa());
                     @if (session('abrir_pdf') && $o) window.open(@json(route('orcamentos.pdf', $o)), '_blank', 'noopener'); @endif
                 },
-                escalar() {
-                    const largura = this.$refs.moldura.clientWidth - 2;
-                    this.$refs.previa.style.transform = `scale(${Math.min(1, largura / 820)})`;
-                },
+                // A prévia ao lado saiu (20/10/2026); o PDF abre pelo "Salvar e ver o PDF".
+                previa() {},
                 escolher(chave) {
                     const m = this.modelos[chave];
                     this.produto = chave;
@@ -311,22 +345,6 @@
                 adicionar(categoria) { this.itens.push({ k: ++k, descricao: categoria === 'recorrente' ? 'Mensalidade' : '', quantidade: 1, unidade: categoria === 'recorrente' ? 'mês' : (categoria === 'implantacao' ? 'serv' : 'un'), valor_unitario: 0, categoria, opcional: false }); },
                 total(c) { return this.itens.filter(i => i.categoria === c && ! i.opcional).reduce((s, i) => s + (parseFloat(i.quantidade) || 0) * (parseFloat(i.valor_unitario) || 0), 0); },
                 brl(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); },
-                async previa() {
-                    const meu = ++this.pedido;
-                    this.carregando = true;
-                    // Rascunho: a prévia do que está na tela. Enviado/aprovado: a do que está salvo (campos travados não vão no formulário).
-                    const corpo = @js($editavel) ? new FormData(document.getElementById('form-orcamento')) : new FormData();
-                    corpo.delete('_method');
-                    @if ($o) corpo.append('id', {{ $o->id }}); @endif
-                    @if (! $editavel) corpo.append('salvo', '1'); @endif
-                    try {
-                        const r = await fetch(@json(route('orcamentos.previa')), { method: 'POST', body: corpo,
-                            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, Accept: 'application/json' } });
-                        // Erro de validação volta 422 (JSON), nunca a página do sistema dentro da prévia.
-                        if (meu === this.pedido && r.ok) { this.$refs.previa.srcdoc = await r.text(); this.escalar(); }
-                    } catch (e) {}
-                    if (meu === this.pedido) this.carregando = false;
-                },
             };
         }
     </script>

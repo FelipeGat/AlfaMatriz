@@ -73,7 +73,7 @@ class OrcamentosTest extends TestCase
     public function test_cria_numera_totaliza_e_gera_o_pdf_padrao(): void
     {
         $this->actingAs($this->felipe)->get(route('orcamentos.create', ['produto' => 'cartoes-nfc']))->assertOk()
-            ->assertSee('NTAG213 personalizado')->assertSee('Salvar e gerar PDF');
+            ->assertSee('NTAG213 personalizado')->assertSee('Salvar e ver o PDF')->assertSee('2 · Itens &amp; valores', false);
         $this->post(route('orcamentos.store'), $this->dados())->assertRedirect();
         $o = Orcamento::sole();
         $this->assertSame([2026, 1, 1, 'rascunho'], [$o->ano, $o->numero, $o->revisao, $o->situacao]);
