@@ -38,6 +38,19 @@ class SecretarioRunnerController extends Controller
         ]);
     }
 
+    /** Quanto a máquina já transcreveu (a cada ~15 s), para a barra da tela. */
+    public function progresso(Request $request, int $reuniao, Reunioes $reunioes): JsonResponse
+    {
+        [$user, $maquina] = $this->conta($request);
+        $dados = $request->validate([
+            'percentual' => ['required', 'integer', 'min:0', 'max:100'],
+            'duracao' => ['nullable', 'numeric', 'min:0', 'max:86400'],
+        ]);
+        $reunioes->progresso($user, $maquina, $reuniao, (int) $dados['percentual'], isset($dados['duracao']) ? (float) $dados['duracao'] : null);
+
+        return response()->json(['ok' => true]);
+    }
+
     public function resultado(Request $request, int $reuniao, Reunioes $reunioes): JsonResponse
     {
         [$user, $maquina] = $this->conta($request);

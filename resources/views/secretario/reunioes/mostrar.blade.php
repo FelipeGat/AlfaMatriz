@@ -16,13 +16,59 @@
         @endif
     </x-slot>
 
-    <div class="mx-auto w-full max-w-3xl space-y-4" x-data="{ status: @js($r->status) }"
-         @if (! $final) x-init="setInterval(async () => { const j = await (await fetch(@js(route('secretario.reunioes.mostrar', ['reuniao' => $r->id, 'formato' => 'json'])), { headers: { Accept: 'application/json' } })).json(); if (j.status !== status) location.reload(); }, 8000)" @endif>
+    <div class="mx-auto w-full max-w-3xl space-y-4" x-data="{ status: @js($r->status), a: @js($r->andamento()) }"
+         @if (! $final) x-init="setInterval(async () => { const j = await (await fetch(@js(route('secretario.reunioes.mostrar', ['reuniao' => $r->id, 'formato' => 'json'])), { headers: { Accept: 'application/json' } })).json(); if (j.status !== status) location.reload(); a = j.andamento; }, 8000)" @endif>
         <p class="rounded-panel border px-4 py-2.5 text-[13px] {{ $r->status === 'falhou' ? 'border-crit text-crit' : 'border-line text-ink-dim' }}">
             {{ SecretarioReuniao::ROTULOS_STATUS[$r->status] ?? $r->status }}{{ $r->erro ? ': '.$r->erro : '' }}
             @if (! $final) <span class="ml-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand"></span> @endif
             @if ($r->parcial) · análise parcial (transcrição longa cortada) @endif
+            <template x-if="a">
+                <span class="mt-2 flex items-center gap-3">
+                    <span class="h-1.5 flex-1 overflow-hidden rounded-full bg-head"><span class="block h-full rounded-full bg-brand transition-all duration-700" :class="a.percentual === null ? 'w-1/4 animate-pulse' : ''" :style="a.percentual === null ? '' : 'width:' + a.percentual + '%'"></span></span>
+                    <span class="whitespace-nowrap text-[12px] text-ink-mute" x-text="a.texto"></span>
+                </span>
+            </template>
         </p>
+        @if (session('status'))
+            <x-aviso>{{ session('status') }}</x-aviso>
+        @endif
+        {{-- Produto e participantes (secretario-reuniao-produto): só o dono vê este painel. --}}
+        @if ($r->modo === 'reuniao')
+            <section class="rounded-panel border border-line bg-surface p-4" x-data="{ aberto: false }">
+                <div class="flex flex-wrap items-center gap-3">
+                    <form method="POST" action="{{ route('secretario.reunioes.produto', $r->id) }}" class="flex items-center gap-2">@csrf @method('PATCH')
+                        <label class="text-[12.5px] text-ink-mute" for="produto-reuniao">Projeto</label>
+                        <select id="produto-reuniao" name="sistema_id" onchange="this.form.submit()" class="rounded-control border border-btn-line bg-canvas py-1 pl-2 pr-7 text-[13px] text-ink focus:border-brand">
+                            <option value="">Sem projeto</option>
+                            @foreach ($produtos as $s)<option value="{{ $s->id }}" @selected((int) $r->sistema_id === $s->id)>{{ $s->nome }}</option>@endforeach
+                        </select>
+                    </form>
+                    <p class="min-w-0 flex-1 text-[12.5px] text-ink-mute">
+                        @if ($marcados)
+                            Compartilhada com {{ $pessoas->whereIn('id', $marcados)->pluck('name')->implode(', ') }}
+                        @else
+                            Só você vê esta reunião.
+                        @endif
+                    </p>
+                    <button type="button" @click="aberto = ! aberto" class="inline-flex h-[28px] items-center gap-1 rounded-control border border-btn-line px-2.5 text-[12px] font-semibold text-ink-dim hover:border-brand hover:text-brand">
+                        <span class="h-4 w-4"><x-nav-icon name="users" /></span> Participantes
+                    </button>
+                </div>
+                <form x-show="aberto" x-cloak method="POST" action="{{ route('secretario.reunioes.participantes', $r->id) }}" class="mt-3 border-t border-line pt-3">
+                    @csrf @method('PUT')
+                    <p class="mb-2 text-[12.5px] text-ink-mute">Quem participou e tem conta no Matriz (cliente não entra). Quem você marcar vê o resumo, as decisões, as tarefas aprovadas e os próximos passos — nunca a transcrição.</p>
+                    <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                        @foreach ($pessoas as $u)
+                            <label class="flex items-center gap-2 text-[13px] text-ink">
+                                <input type="checkbox" name="pessoas[]" value="{{ $u->id }}" @checked(in_array($u->id, $marcados, true) || (! $marcados && in_array($u->id, $sugeridos, true))) class="rounded border-btn-line">
+                                {{ $u->name }}@if (! $marcados && in_array($u->id, $sugeridos, true))<span class="text-[11px] text-brand-text">citado na reunião</span>@endif
+                            </label>
+                        @endforeach
+                    </div>
+                    <button class="mt-3 h-[30px] rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Salvar participantes</button>
+                </form>
+            </section>
+        @endif
         @if ($r->status === 'falhou' && $r->transcrita_em && $r->modo === 'reuniao')
             <form method="POST" action="{{ route('secretario.reunioes.analisar', $r->id) }}">@csrf
                 <button class="h-[34px] rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Analisar de novo</button>

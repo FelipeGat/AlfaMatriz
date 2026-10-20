@@ -274,7 +274,10 @@ export function centralIa(config) {
         get projetosDosChats() { return [...new Set(this.chats.map(c => c.projeto))].sort(); },
         get chatsFiltrados() {
             const termo = this.buscaChats.trim().toLocaleLowerCase('pt-BR');
-            return this.chats.filter(c => (!this.filtroChatProjeto || c.projeto === this.filtroChatProjeto)
+            // Assunto da Business que está rodando, esperando você ou falhou também é chat ativo
+            // (Felipe, 20/10/2026: "na aba chat ativo, ele mostra zero"); o assunto parado fica só na Business.
+            const assuntosAtivos = this.assuntos.filter(a => ['executando', 'aguardando_voce', 'falhou'].includes(a.status));
+            return [...this.chats, ...assuntosAtivos].filter(c => (!this.filtroChatProjeto || c.projeto === this.filtroChatProjeto)
                 && (this.filtroChatEstado === 'todos' || (this.filtroChatEstado === 'ativos' ? !['pausada', 'concluida'].includes(c.status) : c.status === this.filtroChatEstado))
                 && (!termo || [c.titulo, c.projeto, c.agente, '#' + c.id].join(' ').toLocaleLowerCase('pt-BR').includes(termo)));
         },
@@ -615,7 +618,8 @@ export function centralIa(config) {
         },
 
         get perguntaPendente() {
-            const t = this.tarefaVista || this.tarefas.find(t => t.id === Number(this.aba.tarefa));
+            const t = this.tarefaVista || this.tarefas.find(t => t.id === Number(this.aba.tarefa))
+                || this.assuntos.find(a => a.id === Number(this.aba.tarefa));
             return t?.duvida ? t : null;
         },
         abrirPergunta(texto, opcoes = []) {

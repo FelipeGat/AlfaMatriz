@@ -98,7 +98,8 @@ class Reunioes
             if (! $r) {
                 return null;
             }
-            $r->update(['status' => SecretarioReuniao::TRANSCREVENDO, 'maquina' => $maquina, 'reservada_em' => now(), 'tentativas' => $r->tentativas + 1, 'erro' => null]);
+            $r->update(['status' => SecretarioReuniao::TRANSCREVENDO, 'maquina' => $maquina, 'reservada_em' => now(), 'tentativas' => $r->tentativas + 1, 'erro' => null,
+                'progresso' => null, 'progresso_em' => null]);
 
             return $r;
         });
@@ -111,6 +112,14 @@ class Reunioes
         abort_unless($r && $r->status === SecretarioReuniao::TRANSCREVENDO && $r->maquina === $maquina, 404);
 
         return $r;
+    }
+
+    /** A máquina avisa quanto já transcreveu; nunca volta para trás. */
+    public function progresso(User $user, string $maquina, int $id, int $percentual, ?float $duracao): void
+    {
+        $r = $this->daMaquina($user, $maquina, $id);
+        $r->update(['progresso' => max((int) $r->progresso, min(100, $percentual)), 'progresso_em' => now(),
+            'duracao_s' => $r->duracao_s ?: ($duracao ? (int) round($duracao) : null)]);
     }
 
     /** O runner devolveu: grava os trechos, apaga o áudio e segue (ditado ou análise). */
@@ -168,11 +177,17 @@ class Reunioes
         ]], $bot);
     }
 
-    /** Presas há mais de 60 min voltam para a fila; na 3ª, falham e o áudio sai (FR-014). */
+    /**
+     * Presas há mais de 60 min voltam para a fila; na 3ª, falham e o áudio sai (FR-014).
+     * Conta do último aviso de progresso: reunião longa que ainda avança não está presa.
+     */
     public function liberarPresas(): int
     {
         $n = 0;
-        foreach (SecretarioReuniao::where('status', SecretarioReuniao::TRANSCREVENDO)->where('reservada_em', '<', now()->subMinutes(self::PRESA_MIN))->get() as $r) {
+        $limite = now()->subMinutes(self::PRESA_MIN);
+        $presas = SecretarioReuniao::where('status', SecretarioReuniao::TRANSCREVENDO)
+            ->where(fn ($q) => $q->where('progresso_em', '<', $limite)->orWhere(fn ($q) => $q->whereNull('progresso_em')->where('reservada_em', '<', $limite)));
+        foreach ($presas->get() as $r) {
             DB::transaction(function () use ($r, &$n) {
                 $r = SecretarioReuniao::whereKey($r->id)->lockForUpdate()->first();
                 if (! $r || $r->status !== SecretarioReuniao::TRANSCREVENDO) {

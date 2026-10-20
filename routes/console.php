@@ -151,3 +151,12 @@ Schedule::command('model:prune', ['--model' => [\App\Models\MonitorEvento::class
     ->dailyAt('03:40')
     ->withoutOverlapping()
     ->onOneServer();
+
+// O Pedro, do suporte no WhatsApp (docs/specs/suporte-pedro-whatsapp): na abertura
+// (07:00, dias úteis) põe na fila quem escreveu fora do horário, e a cada minuto
+// responde sozinho, sem IA, o pedido que a máquina não atendeu a tempo. Também
+// cobra o atendimento crítico e o nº do Gestor pendente, no intervalo da tela Suporte › Pedro.
+Schedule::command('suporte:pedro')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer();

@@ -50,8 +50,8 @@ class SeederEmailAdminTest extends TestCase
 
         $this->assertDatabaseHas('users', ['email' => 'financeiro@alfatecnologia.com.br']);
         $this->assertDatabaseMissing('users', ['email' => 'admin@alfatecnologia.com.br']);
-        // Fora a conta do vigia de logs (#219), que a migração cria e não é de gente.
-        $this->assertSame(1, User::where('email', '!=', User::EMAIL_DO_VIGIA)->count(), 'A carga não pode deixar duas contas de administrador.');
+        // Fora as contas do vigia de logs (#219) e do Pedro (suporte), que as migrações criam e não são de gente.
+        $this->assertSame(1, User::whereNotIn('email', [User::EMAIL_DO_VIGIA, User::EMAIL_DO_PEDRO])->count(), 'A carga não pode deixar duas contas de administrador.');
     }
 
     /**

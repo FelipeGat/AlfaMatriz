@@ -27,7 +27,8 @@ import { girar, limparWorktrees } from './limpeza.mjs';
 import { transcrever, whisperInstalado } from './transcricao.mjs';
 import { hora as horaDoGestor, lerGestor } from './gestor.mjs';
 import { hora as horaDaAgenda, lerAgenda as lerAgendaGoogle } from './agenda-google.mjs';
-import { configuracao as pastasDeDocumentos, espelhar as espelharDocumentos } from './documentos.mjs';
+import { aplicarAlteracoes, configuracao as pastasDeDocumentos, espelhar as espelharDocumentos } from './documentos.mjs';
+import { atenderSuporte, lerGestorParaPedro } from './suporte.mjs';
 import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h; chave servidor + conta +
@@ -74,13 +75,15 @@ function lerConfig() {
         // somem do catálogo, das sessões e do consumo (dono, 12/10/2026).
         ignorar: new Set((v('CENTRAL_IA_IGNORAR') || '').split(',').map(x => x.trim()).filter(Boolean)),
         segredo: v('CENTRAL_IA_SEGREDO_CONFIRMACAO'),
-        // O bot DA PESSOA (T-374, 14/10/2026): cada um cadastra o seu nos
-        // Ajustes da Central, conversa por ele e recebe aqui o código. O
-        // instalador grava o token e o chat UMA vez; o servidor não muda para
-        // onde o código vai. O nome da variável ficou o do tempo em que havia
-        // um bot só para o código (T-368), e o mais antigo, das máquinas
-        // instaladas à mão, continua aceito.
-        telegramToken: v('CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO') || v('CENTRAL_IA_TELEGRAM_TOKEN'),
+        // O bot do CÓDIGO da pessoa (T-368, T-374): só para o código de
+        // confirmação, diferente do bot da conversa, e o token dele nunca passa
+        // pelo servidor. O instalador o pede no terminal e grava o token e o
+        // chat; o servidor não muda para onde o código vai. O antigo
+        // `CENTRAL_IA_TELEGRAM_TOKEN` NÃO vale mais (revisão da T-374): nas
+        // máquinas instaladas à mão ele guardava o bot compartilhado da
+        // conversa, cujo token o servidor tem — o instalador o converte depois
+        // de conferir que é outro bot.
+        telegramToken: v('CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO'),
         telegramChat: v('CENTRAL_IA_TELEGRAM_CHAT_ID'),
         // Opcionais, todos desta máquina e nenhum vindo do servidor (T-374):
         // - memória: o MEMORY.md que vai aos agentes quando a pessoa liga a
@@ -182,13 +185,45 @@ function listarProjetos() {
 
 /* ---------- AlfaMatriz ---------- */
 
-async function api(caminho, corpo) {
+// A máquina conectada de novo (o comando rodado com código novo) troca o
+// token no arquivo, e o servidor apaga o antigo na hora; este processo ainda
+// tem o antigo na memória até reiniciar. No primeiro 401, relê o arquivo e, se
+// o token mudou, tenta de novo com ele: senão o resultado do pedido que estava
+// rodando voltava com 401 e se perdia (revisão da T-374).
+function tokenNovoNoArquivo() {
+    if (process.env.ALFAMATRIZ_RUNNER_TOKEN) return false;
+    let novo;
+    try { novo = lerConfig().token; } catch { return false; }
+    if (!novo || novo === cfg.token) return false;
+    cfg.token = novo;
+    log('token novo no arquivo de configuração: usando-o (a máquina foi conectada de novo)');
+    return true;
+}
+
+// O bot do código pode chegar DEPOIS de o processo subir: o instalador o grava
+// quando a pessoa cola o token, e rodar o comando de novo só para colá-lo não
+// precisa esperar reinício nenhum (revisão da T-374: a máquina recém-instalada
+// ficava sem o bot até reiniciar por outro motivo). Relê do arquivo antes de
+// cada batida e de cada confirmação; o ambiente do processo continua vencendo.
+function releTelegram() {
+    let novo;
+    try { novo = lerConfig(); } catch { return; }
+    for (const k of ['telegramToken', 'telegramChat', 'segredo']) {
+        if (novo[k] !== cfg[k]) {
+            cfg[k] = novo[k];
+            if (k === 'telegramToken') log(novo[k] ? 'bot do código lido do arquivo de configuração' : 'bot do código retirado do arquivo de configuração');
+        }
+    }
+}
+
+async function api(caminho, corpo, deNovo = true) {
     const r = await fetch(`${cfg.url}/api/central-ia/runner/${caminho}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify(corpo),
         signal: AbortSignal.timeout(20000),
     });
+    if (r.status === 401 && deNovo && tokenNovoNoArquivo()) return api(caminho, corpo, false);
     const texto = await r.text();
     let json = null;
     try { json = texto ? JSON.parse(texto) : null; } catch {}
@@ -196,13 +231,14 @@ async function api(caminho, corpo) {
 }
 
 /** Um arquivo para a Central (multipart): a prévia que o agente deixou. */
-async function apiArquivo(caminho, campos, conteudo, nome) {
+async function apiArquivo(caminho, campos, conteudo, nome, deNovo = true) {
     const form = new FormData();
     for (const [k, v] of Object.entries(campos)) form.append(k, v);
     form.append('arquivo', new Blob([conteudo]), nome);
     const r = await fetch(`${cfg.url}/api/central-ia/runner/${caminho}`, {
         method: 'POST', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/json' }, body: form, signal: AbortSignal.timeout(120000),
     });
+    if (r.status === 401 && deNovo && tokenNovoNoArquivo()) return apiArquivo(caminho, campos, conteudo, nome, false);
     return r.status;
 }
 
@@ -364,6 +400,7 @@ function limitesDoClaude() {
 async function batida() {
     // Recusada, a batida só repetiria a recusa: quem confere se o acesso voltou é o laço.
     if (acesso.situacao === 'recusado') return;
+    releTelegram();
     agentes = localizarAgentes();
     const projetos = listarProjetos();
     const u = uso();
@@ -383,8 +420,11 @@ async function batida() {
         em_curso: [...emCurso],
         ...(u ? { consumo: { ...consumo, limites_claude: limitesDoClaude() }, sessoes } : {}),
     });
-    if (r.status === 401 || r.status === 403) notarAcesso(r.status);
-    else if (r.status !== 200) log('batida recusada', r.status, r.json?.message || '');
+    // O 2xx também conta: depois de "fora de alcance", a batida que passa tira
+    // o laço da espera longa sem esperar a consulta seguinte.
+    if (r.status === 401 || r.status === 403 || (r.status >= 200 && r.status < 300)) notarAcesso(r.status);
+    if (r.status === 401 || r.status === 403) return;
+    if (r.status !== 200) log('batida recusada', r.status, r.json?.message || '');
     else if (Array.isArray(r.json?.encerradas)) encerradas = r.json.encerradas;
 }
 
@@ -842,6 +882,7 @@ async function executar(job) {
         if (exigeConfirmacao(job, regra, chatConfirmado(CONFIRMADOS, chaveChat))) {
             progresso.etapa('confirmacao');
             await informar();
+            releTelegram();
             const c = await confirmar({ job, cwd, acesso, cfg, api, parar: () => parar });
             if (!c.ok) throw new Error(`não executado: ${c.motivo}`);
             marcarChatConfirmado(CONFIRMADOS, chaveChat);
@@ -986,6 +1027,16 @@ let ultimoTrabalho = Date.now();
 // `OCUPADO`, e um pedido que chegava entre a checagem e o kill morria como
 // "expirada" (#17 no staging, 15/10/2026). O serviço (KeepAlive no launchd,
 // Restart=always no systemd) o religa já com a versão nova.
+//
+// Revisão da T-374, mais dois pedaços:
+// - `CONHECE` diz ao script que ESTE processo sabe sair sozinho. Sem isso o
+//   script supunha "runner antigo" depois de ~20 s sem saída, e um `proxima`
+//   lento (até 20 s) ainda podia trazer um pedido no instante do kill.
+// - "pausar" no arquivo: no Mac, quando o serviço em si mudou (o plist), o
+//   launchd só relê o plist descarregando o serviço, e religar sozinho volta
+//   com o plist velho. Então o runner para de pedir trabalho, avisa em
+//   `PAUSADO`, e o script descarrega e carrega o serviço sem pedido nenhum na
+//   mão. Ninguém veio em 2 min (o script morreu): volta a trabalhar.
 const REINICIAR = join(HOME, '.local/share/alfa/central-ia-reiniciar');
 // Transcrição de reuniões (Secretário, Etapa 4): uma por vez; a presença da
 // imagem é conferida a cada 10 min (o instalador pode tê-la criado depois).
@@ -1000,17 +1051,44 @@ let agendaPausadaAte = 0;
 // Documentos: a cada 15 min; com envio pendente (rodada limitada), no minuto seguinte.
 let espelhando = false;
 let proximoEspelho = 0;
+let alterando = false;
+let proximaAlteracao = 0;
+// O Pedro (suporte no WhatsApp): uma vaga só dele, fora do PARALELO dos pedidos de código.
+let atendendoSuporte = false;
+let suportePausadoAte = 0;
+// O retrato do Gestor para o Pedro (só leitura), a cada 10 min.
+let lendoGestorPedro = false;
+let proximoRetratoPedro = 0;
 let whisperConferido = { em: 0, ok: false };
 async function whisperPronto() {
     if (Date.now() - whisperConferido.em > 600_000) whisperConferido = { em: Date.now(), ok: await whisperInstalado() };
     return whisperConferido.ok;
 }
+const CONHECE = join(HOME, '.local/share/alfa/central-ia-conhece-reinicio');
+const PAUSADO = join(HOME, '.local/share/alfa/central-ia-pausado');
+const PAUSA_MAX_MS = 120_000;
+try { writeFileSync(CONHECE, String(process.pid)); } catch {}
+let pausadoDesde = 0;
 while (!parar) {
     if (!rodando.size && existsSync(REINICIAR)) {
+        let pedido = '';
+        try { pedido = readFileSync(REINICIAR, 'utf8').trim(); } catch {}
         try { unlinkSync(REINICIAR); } catch {}
-        log('reiniciando para carregar a versão nova (nada em andamento)');
-        parar = true;
-        break;
+        if (pedido === 'pausar') {
+            pausadoDesde = Date.now();
+            try { writeFileSync(PAUSADO, String(process.pid)); } catch {}
+            log('parado, sem pedir trabalho, para o serviço ser recarregado (nada em andamento)');
+        } else {
+            log('reiniciando para carregar a versão nova (nada em andamento)');
+            parar = true;
+            break;
+        }
+    }
+    if (pausadoDesde) {
+        if (Date.now() - pausadoDesde < PAUSA_MAX_MS) { await new Promise(r => setTimeout(r, 1000)); continue; }
+        pausadoDesde = 0;
+        try { unlinkSync(PAUSADO); } catch {}
+        log('ninguém recarregou o serviço em 2 min: voltando a pedir trabalho');
     }
     try {
         // Reuniões do Secretário: uma transcrição por vez, quando a imagem
@@ -1038,7 +1116,48 @@ while (!parar) {
                 if (envio.status !== 200) log('Agenda: envio →', envio.status);
             }).catch(e => log('Agenda: erro', e.message)).finally(() => { lendoAgenda = false; });
         }
-        if (cfg.documentos && !espelhando && Date.now() >= proximoEspelho) {
+        // O Pedro, do suporte no WhatsApp (suporte-pedro-whatsapp): vaga própria, sem
+        // ferramentas; 403/404 = esta conta não atende o suporte (tenta de novo em 1 h).
+        if (!atendendoSuporte && Date.now() >= suportePausadoAte) {
+            atendendoSuporte = true;
+            atenderSuporte(cfg.maquina, { api, agentes })
+                .then(r => {
+                    if (r.status === 403 || r.status === 404 || r.status === 405 || r.status === 422) suportePausadoAte = Date.now() + 3600_000;
+                    if (r.id) log(`suporte: pedido #${r.id} ${r.erro ? 'falhou (' + r.erro + ')' : 'respondido'} em ${Math.round(r.ms / 1000)} s`);
+                })
+                .catch(e => { log('suporte: erro', e.message); suportePausadoAte = Date.now() + 15_000; })
+                .finally(() => { atendendoSuporte = false; });
+        }
+        if (cfg.gestor && !lendoGestorPedro && Date.now() >= proximoRetratoPedro && Date.now() >= suportePausadoAte) {
+            lendoGestorPedro = true;
+            proximoRetratoPedro = Date.now() + 10 * 60_000;
+            lerGestorParaPedro(cfg.gestor)
+                .then(async r => {
+                    const envio = await api('suporte/gestor', { maquina: cfg.maquina, lido_em: new Date().toISOString(), ...r });
+                    if (envio.status === 403 || envio.status === 404) proximoRetratoPedro = Date.now() + 3600_000;
+                    else if (envio.status !== 200) log('suporte: retrato do Gestor →', envio.status);
+                })
+                .catch(e => log('suporte: retrato do Gestor não lido —', e.message))
+                .finally(() => { lendoGestorPedro = false; });
+        }
+        // Mão dupla (documentos-mao-dupla): a cada 30 s, aplica no OneDrive o que foi
+        // pedido pelo Matriz; aplicou algo, espelha de novo logo em seguida.
+        if (cfg.documentos && !espelhando && !alterando && Date.now() >= proximaAlteracao) {
+            alterando = true;
+            proximaAlteracao = Date.now() + 30_000;
+            const baixar = async id => {
+                const r = await fetch(`${cfg.url}/api/central-ia/runner/documentos/operacoes/${id}/arquivo?maquina=${encodeURIComponent(cfg.maquina)}`, {
+                    headers: { Authorization: `Bearer ${cfg.token}` }, redirect: 'error', signal: AbortSignal.timeout(600_000),
+                });
+                if (!r.ok) throw new Error(`não consegui baixar o arquivo (HTTP ${r.status})`);
+                return Buffer.from(await r.arrayBuffer());
+            };
+            aplicarAlteracoes(pastasDeDocumentos(cfg.documentos), cfg.maquina, { api, baixar, log })
+                .then(n => { if (n) proximoEspelho = 0; })
+                .catch(e => log('Documentos: alterações —', e.message))
+                .finally(() => { alterando = false; });
+        }
+        if (cfg.documentos && !espelhando && !alterando && Date.now() >= proximoEspelho) {
             espelhando = true;
             (async () => {
                 let pendentes = 0;
@@ -1046,19 +1165,21 @@ while (!parar) {
                     const r = await espelharDocumentos(pasta, cfg.maquina, { api, apiArquivo });
                     pendentes += r.pendentes;
                     if (r.erro) log(`Documentos (${pasta.nome}):`, r.erro);
-                    else if (r.enviados || r.removidos) log(`Documentos (${pasta.nome}): ${r.enviados} enviado(s), ${r.removidos} removido(s), ${r.pendentes} na fila`);
+                    else if (r.enviados || r.removidos || r.miniaturas) log(`Documentos (${pasta.nome}): ${r.enviados} enviado(s), ${r.removidos} removido(s), ${r.miniaturas || 0} miniatura(s), ${r.pendentes} na fila`);
                 }
                 proximoEspelho = Date.now() + (pendentes ? 60_000 : 15 * 60_000);
             })().catch(e => { log('Documentos: erro', e.message); proximoEspelho = Date.now() + 15 * 60_000; }).finally(() => { espelhando = false; });
         }
-        if (!transcrevendo && rodando.size < PARALELO && Date.now() >= transcricaoPausadaAte && await whisperPronto()) {
+        if (!transcrevendo && rodando.size < PARALELO && !existsSync(REINICIAR) && Date.now() >= transcricaoPausadaAte && await whisperPronto()) {
             const t = await api('transcricoes/proxima', { maquina: cfg.maquina });
             if (t.status === 403 || t.status === 404 || t.status === 405) transcricaoPausadaAte = Date.now() + 3600_000;
             if (t.status === 200 && t.json?.id) {
                 transcrevendo = true;
                 ultimoTrabalho = Date.now();
                 log(`reunião #${t.json.id}: transcrevendo (${t.json.modo})`);
-                const p = transcrever(t.json, cfg, pastaTemporaria())
+                const aoProgredir = (percentual, duracao) => api(`transcricoes/${t.json.id}/progresso`, { maquina: cfg.maquina, percentual, duracao })
+                    .catch(e => log(`reunião #${t.json.id}: progresso não enviado —`, e.message));
+                const p = transcrever(t.json, cfg, pastaTemporaria(), { aoProgredir })
                     .then(async res => {
                         const envio = await api(`transcricoes/${t.json.id}`, { maquina: cfg.maquina, ...res });
                         log(`reunião #${t.json.id}: ${res.status === 'ok' ? res.trechos.length + ' trecho(s)' : 'falhou (' + res.erro + ')'} → ${envio.status}`);
@@ -1069,7 +1190,11 @@ while (!parar) {
                 marcarOcupado();
             }
         }
-        if (rodando.size < PARALELO) {
+        // Reinício pedido com algo rodando: não pega trabalho novo, para a
+        // máquina esvaziar. Com PARALELO=2 os pedidos se sobrepunham, ela
+        // nunca ficava livre e a atualização esperava para sempre (3ª revisão
+        // da T-374). O pedido segue na fila do servidor, para esta ou outra.
+        if (rodando.size < PARALELO && !existsSync(REINICIAR)) {
             const r = await api('proxima', { maquina: cfg.maquina });
             notarAcesso(r.status);
             if (r.status === 200 && r.json?.id) {
@@ -1091,8 +1216,19 @@ while (!parar) {
     // Com algo rodando, a máquina não está ociosa: a resposta seguinte da conversa vem logo.
     if (rodando.size) ultimoTrabalho = Date.now();
     const espera = acesso.situacao === 'ok' ? ritmoDaConsulta(Date.now() - ultimoTrabalho) : acesso.espera;
-    // Em passos de 1 s: a espera chega a 10 min, e parar o serviço não espera por ela.
-    for (let t = 0; t < espera && !parar; t += 1000) await new Promise(r => setTimeout(r, Math.min(1000, espera - t)));
+    // Em passos de 1 s: a espera chega a 10 min, e parar o serviço não espera
+    // por ela. Nem a atualização (o pedido de reinício) nem a máquina conectada
+    // de novo (token novo no arquivo): sem isso, quem reconectava via a máquina
+    // online na tela e o pedido seguinte esperava até 10 min (revisão da T-374).
+    const situacaoAntes = acesso.situacao;
+    for (let t = 0; t < espera && !parar; t += 1000) {
+        await new Promise(r => setTimeout(r, Math.min(1000, espera - t)));
+        // Só com a máquina livre: com pedido rodando o laço não sai, e cortar
+        // a espera aqui virava uma consulta por segundo ao servidor.
+        if (espera > 10_000 && !rodando.size && existsSync(REINICIAR)) break;
+        if (acesso.situacao !== situacaoAntes) break;
+        if (situacaoAntes === 'recusado' && t % 5000 === 0 && tokenNovoNoArquivo()) break;
+    }
 }
 // Parada pedida: espera o que está rodando terminar e devolver a resposta.
 await Promise.allSettled([...rodando]);

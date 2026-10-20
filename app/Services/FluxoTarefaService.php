@@ -920,6 +920,13 @@ class FluxoTarefaService
             throw new \RuntimeException('O motivo do cancelamento é obrigatório.');
         }
 
+        // Suporte com destino Gestor (Felipe, 20/10/2026: "obrigar a quem atender
+        // registrar o atendimento"): o Pedro só consulta o Gestor, então concluir
+        // exige o nº do atendimento lançado lá. Cancelar continua livre, com motivo.
+        if ($novoStatus === 'concluida' && \App\Models\SuporteAtendimento::where('tarefa_id', $tarefa->id)->where('destino', 'gestor')->whereNull('gestor_numero')->exists()) {
+            throw new \RuntimeException('Atendimento do suporte: lance no Gestor e informe o número na conversa (Suporte WhatsApp) antes de concluir.');
+        }
+
         // A entrega (#210) é exigência de CHEGADA, e por isso mora aqui e vale
         // para todos — a tela, o agente e quem faz triagem no movimento livre.
         // Quem revisa e quem testa no staging abria o card sem saber o que

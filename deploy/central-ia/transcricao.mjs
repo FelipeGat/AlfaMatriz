@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -25,12 +25,43 @@ export async function whisperInstalado(docker = 'docker') {
     }
 }
 
+/** Quanto tempo entre dois avisos de progresso ao AlfaMatriz. */
+export const INTERVALO_PROGRESSO_MS = 15000;
+
+/**
+ * Roda o container lendo o stderr linha a linha (o progresso) enquanto junta o
+ * stdout (o resultado). Mesmo contrato do execFile: rejeita com stdout e killed.
+ */
+function rodar(cmd, args, { timeoutMs, maxBuffer, aoLerLinha }) {
+    return new Promise((resolve, reject) => {
+        const filho = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+        let stdout = '';
+        let resto = '';
+        let killed = false;
+        const relogio = setTimeout(() => { killed = true; filho.kill('SIGKILL'); }, timeoutMs);
+        filho.stdout.on('data', d => { if (stdout.length < maxBuffer) stdout += d; });
+        filho.stderr.on('data', d => {
+            const linhas = (resto + d).split('\n');
+            resto = linhas.pop();
+            linhas.forEach(l => aoLerLinha(l));
+        });
+        filho.on('error', e => { clearTimeout(relogio); reject(Object.assign(e, { stdout, killed })); });
+        filho.on('close', codigo => {
+            clearTimeout(relogio);
+            if (codigo === 0 && !killed) resolve({ stdout });
+            else reject(Object.assign(new Error(`saiu com ${codigo}`), { stdout, killed }));
+        });
+    });
+}
+
 /**
  * Baixa, confere, transcreve e devolve o corpo para `transcricoes/{id}`.
+ * `aoProgredir(percentual, duracao)` é chamado no máximo a cada
+ * INTERVALO_PROGRESSO_MS, com o quanto do áudio já foi transcrito.
  * Nunca lança: a falha volta como `{status: 'falhou', erro}` — o servidor
  * apaga o áudio nos dois casos.
  */
-export async function transcrever(job, cfg, pastaBase, { docker = 'docker', timeoutMs = 90 * 60 * 1000, buscar = fetch } = {}) {
+export async function transcrever(job, cfg, pastaBase, { docker = 'docker', timeoutMs = 90 * 60 * 1000, buscar = fetch, aoProgredir = () => {}, intervaloMs = INTERVALO_PROGRESSO_MS } = {}) {
     if (!/^\d+$/.test(String(job.id)) || !EXTENSOES.has(job.extensao) || !/^[a-f0-9]{64}$/.test(job.sha256 || '')) {
         return { status: 'falhou', erro: 'pedido de transcrição inválido' };
     }
@@ -48,14 +79,28 @@ export async function transcrever(job, cfg, pastaBase, { docker = 'docker', time
         writeFileSync(join(dir, arquivo), bytes, { mode: 0o644 });
 
         let saida;
+        let avisadoEm = 0;
+        let avisado = -1;
+        const aoLerLinha = linha => {
+            try {
+                const p = JSON.parse(linha);
+                const duracao = Number(p.duracao);
+                if (!(duracao > 0) || !Number.isFinite(Number(p.progresso))) return;
+                const percentual = Math.max(0, Math.min(99, Math.floor(Number(p.progresso) * 100 / duracao)));
+                if (percentual === avisado || Date.now() - avisadoEm < intervaloMs) return;
+                avisado = percentual;
+                avisadoEm = Date.now();
+                aoProgredir(percentual, duracao);
+            } catch {}
+        };
         try {
-            const { stdout } = await exec(docker, ['run', '--rm', '--pull=never', '--network=none', '--read-only', '--cap-drop=ALL',
+            const { stdout } = await rodar(docker, ['run', '--rm', '--pull=never', '--network=none', '--read-only', '--cap-drop=ALL',
                 // Núcleos configuráveis na máquina: mais núcleos, transcrição mais rápida.
                 '--security-opt=no-new-privileges', '--memory=3g', `--cpus=${Math.max(1, Math.min(16, Number(process.env.CENTRAL_IA_WHISPER_CPUS) || 2))}`, '--pids-limit=256',
                 '--user', `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`, '--tmpfs', '/tmp:rw,noexec,nosuid,size=256m',
                 '-e', 'HOME=/tmp', '--mount', `type=bind,src=${dir},dst=/media,readonly`,
                 IMAGEM_WHISPER, 'python', '/app/transcrever_reuniao.py', `/media/${arquivo}`],
-            { timeout: timeoutMs, maxBuffer: 32 * 1024 * 1024 });
+            { timeoutMs, maxBuffer: 32 * 1024 * 1024, aoLerLinha });
             saida = stdout;
         } catch (e) {
             // O script devolve {"erro": …} com código 1: aproveita o motivo.

@@ -158,6 +158,32 @@ class DocumentosEspelhadosTest extends TestCase
         $this->actingAs($this->victor)->get(route('documentos.pasta', $pasta->id))->assertNotFound();
     }
 
+    /** Navegação por níveis (19/10/2026): cada subpasta é um card que diz o que tem dentro; o arquivo aparece no nível dele. */
+    public function test_navega_por_niveis_com_cards_explicativos(): void
+    {
+        $id = $this->inventario([
+            ['caminho' => 'Clientes/Lorenzo/proposta.pdf', 'tamanho' => 7, 'modificado' => '2026-10-18T10:00:00Z'],
+            ['caminho' => 'Clientes/Radier/video.mp4', 'tamanho' => 4, 'modificado' => '2026-10-18T10:00:00Z'],
+            ['caminho' => 'Demonstração/Etiquetas/foto.png', 'tamanho' => 3, 'modificado' => '2026-10-18T10:00:00Z'],
+            ['caminho' => 'leia-me.txt', 'tamanho' => 2, 'modificado' => '2026-10-18T10:00:00Z'],
+        ])->json('pasta_id');
+        $this->enviar($id, 'Clientes/Lorenzo/proposta.pdf', '%PDF-1.');
+        $this->enviar($id, 'Clientes/Radier/video.mp4', 'mp4!');
+        $this->enviar($id, 'Demonstração/Etiquetas/foto.png', 'png');
+        $this->enviar($id, 'leia-me.txt', 'oi');
+
+        $this->actingAs($this->felipe)->get(route('documentos.pasta', $id))->assertOk()
+            ->assertSeeInOrder(['Clientes', '2 pasta(s) · 2 arq.', '1 PDF', '1 Vídeo', 'Dentro:', 'Lorenzo, Radier'])
+            ->assertSee('Demonstração')->assertSee('Arquivos nesta pasta')->assertSee('leia-me.txt')->assertDontSee('proposta.pdf');
+
+        $this->get(route('documentos.pasta', [$id, 'caminho' => 'Clientes']))->assertOk()
+            ->assertSeeInOrder(['Orçamentos VixCard', '›', 'Clientes'])->assertSee('Lorenzo')->assertSee('Recentes:')->assertSee('proposta.pdf')->assertDontSee('leia-me.txt');
+        $this->get(route('documentos.pasta', [$id, 'caminho' => 'Clientes/Lorenzo']))->assertOk()
+            ->assertSee('proposta.pdf')->assertSee(route('documentos.ver', Documento::where('nome', 'proposta.pdf')->value('id')), false);
+        $this->get(route('documentos.pasta', [$id, 'caminho' => '../../etc']))->assertOk()->assertSee('leia-me.txt', 'Caminho inexistente volta para a raiz');
+        $this->get(route('documentos.pasta', [$id, 'q' => 'foto']))->assertOk()->assertSee('foto.png')->assertSee('Demonstração › Etiquetas')->assertDontSee('leia-me.txt');
+    }
+
     public function test_busca_e_agrupamento_por_cliente(): void
     {
         $pasta = $this->espelhado();

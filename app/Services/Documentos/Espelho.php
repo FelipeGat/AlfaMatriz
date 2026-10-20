@@ -24,9 +24,10 @@ class Espelho
 
     /**
      * @param  list<array{caminho: string, tamanho: int, modificado: string}>  $arquivos
-     * @return array{pasta: DocumentoPasta, enviar: list<string>, removidos: int}
+     * @param  list<string>|null  $subpastas  todas as pastas, vazias inclusive (documentos-mao-dupla FR-006)
+     * @return array{pasta: DocumentoPasta, enviar: list<string>, removidos: int, miniaturas: list<string>}
      */
-    public function inventario(User $dono, string $maquina, string $nome, array $arquivos): array
+    public function inventario(User $dono, string $maquina, string $nome, array $arquivos, ?array $subpastas = null): array
     {
         $vistos = [];
         foreach ($arquivos as $a) {
@@ -37,7 +38,9 @@ class Espelho
             $vistos[sha1($caminho)] = ['caminho' => $caminho, 'tamanho' => (int) $a['tamanho'], 'modificado' => self::data($a['modificado'])];
         }
 
-        return DB::transaction(function () use ($dono, $maquina, $nome, $vistos) {
+        $pastas = $subpastas === null ? null : collect($subpastas)->map(fn ($c) => self::caminhoSeguro($c))->filter()->unique()->sort()->values()->all();
+
+        return DB::transaction(function () use ($dono, $maquina, $nome, $vistos, $pastas) {
             $pasta = DocumentoPasta::firstOrCreate(['user_id' => $dono->id, 'nome' => $nome]);
             $atuais = $pasta->documentos()->get()->keyBy('caminho_hash');
 
@@ -55,10 +58,13 @@ class Espelho
                     $enviar[] = $v['caminho'];
                 }
             }
-            $pasta->update(['maquina' => $maquina, 'lido_em' => now()]);
+            $pasta->update(['maquina' => $maquina, 'lido_em' => now()] + ($pastas === null ? [] : ['subpastas' => $pastas]));
             $this->recontar($pasta);
+            // PDF e vídeo sem miniatura: a máquina gera e manda (o que acabou de subir entra na próxima).
+            $miniaturas = $pasta->documentos()->whereNull('miniatura')->whereIn('extensao', Miniaturas::DA_MAQUINA)
+                ->whereNotIn('caminho', $enviar)->orderBy('id')->limit(40)->pluck('caminho')->all();
 
-            return ['pasta' => $pasta, 'enviar' => $enviar, 'removidos' => $removidos];
+            return ['pasta' => $pasta, 'enviar' => $enviar, 'removidos' => $removidos, 'miniaturas' => $miniaturas];
         });
     }
 
@@ -102,7 +108,9 @@ class Espelho
             $subpasta = str_contains($caminho, '/') ? substr($caminho, 0, strrpos($caminho, '/')) : '';
             $doc->fill(['caminho' => $caminho, 'subpasta' => $subpasta, 'nome' => basename($caminho), 'extensao' => $ext,
                 'mime' => MimeTypes::getDefault()->getMimeTypes($ext)[0] ?? 'application/octet-stream',
-                'tamanho' => (int) $d['tamanho'], 'sha256' => $sha, 'modificado_em' => self::data($d['modificado']), 'arquivo' => $final])->save();
+                'tamanho' => (int) $d['tamanho'], 'sha256' => $sha, 'modificado_em' => self::data($d['modificado']), 'arquivo' => $final,
+                // Conteúdo novo, miniatura nova.
+                'miniatura' => $doc->exists && $doc->sha256 === $sha ? $doc->miniatura : null])->save();
             if ($anterior && $anterior !== $final && ! Documento::where('arquivo', $anterior)->exists()) {
                 Storage::disk(Documento::DISCO)->delete($anterior);
             }
@@ -144,16 +152,20 @@ class Espelho
         }
     }
 
-    private function apagar(Documento $doc): void
+    public function apagar(Documento $doc): void
     {
         $arquivo = $doc->arquivo;
+        $miniatura = $doc->caminhoMiniatura();
         $doc->delete();
         if (! Documento::where('arquivo', $arquivo)->exists()) {
             Storage::disk(Documento::DISCO)->delete($arquivo);
         }
+        if (! Documento::where('pasta_id', $doc->pasta_id)->where('sha256', $doc->sha256)->exists()) {
+            Storage::disk(Documento::DISCO)->delete($miniatura);
+        }
     }
 
-    private function recontar(DocumentoPasta $pasta): void
+    public function recontar(DocumentoPasta $pasta): void
     {
         $pasta->update(['arquivos' => $pasta->documentos()->count(), 'bytes' => (int) $pasta->documentos()->sum('tamanho')]);
     }

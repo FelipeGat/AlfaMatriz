@@ -173,7 +173,19 @@ class CentralIaTelegram extends Command
                 // o cursor ficava parado e ele era relido a cada 5 s (com
                 // download e aviso repetidos). Na terceira falha, passa.
                 $n = $this->falhasPorUpdate[$chave] = ($this->falhasPorUpdate[$chave] ?? 0) + 1;
-                if ($n < 3) throw $e;
+                // Nas duas primeiras, só ESTE bot para neste ciclo, com o cursor
+                // parado. Relançar abortava a volta inteira, e o update ruim de
+                // uma pessoa atrasava os bots e as entregas de todas (revisão
+                // da T-374).
+                if ($n < 3) {
+                    $this->warn("Update {$update['update_id']} do bot @{$bot->usuario} falhou (".class_basename($e).'); tento de novo em 5 s.');
+                    // Com o bot de outra pessoa recebendo, a volta segue sem
+                    // pausa e as três tentativas saíam em segundos — um
+                    // tropeço passageiro (banco, rede) descartava a mensagem.
+                    $this->deLado[$bot->id] = time() + 5;
+
+                    return false;
+                }
                 $this->warn("Update {$update['update_id']} do bot @{$bot->usuario} falhou 3 vezes (".class_basename($e).'); seguindo adiante.');
                 \App\Services\CentralIa\Eventos::registrar($bot->user_id, 'telegram_update_descartado',
                     "Mensagem do Telegram {$update['update_id']} falhou 3 vezes (".class_basename($e).') e foi deixada para trás; reenvie se precisar.', ['origem' => 'telegram'], 'erro');
@@ -181,7 +193,9 @@ class CentralIaTelegram extends Command
             $lock->assertOwned();
             // O cursor anda update a update: uma queda no meio relê só o
             // que faltou, e o único do update_id segura a repetição.
-            $bot->forceFill(['proximo_update_id' => $update['update_id'] + 1])->save();
+            if (! $this->gravar($bot, ['proximo_update_id' => $update['update_id'] + 1])) {
+                return null;
+            }
         }
 
         return $updates->isNotEmpty() ? true : null;
@@ -205,6 +219,30 @@ class CentralIaTelegram extends Command
 
     private function marcar(CentralIaTelegramBot $bot, string $situacao): void
     {
-        $bot->forceFill(['situacao' => $situacao, 'situacao_em' => now()])->save();
+        $this->gravar($bot, ['situacao' => $situacao, 'situacao_em' => now()]);
+    }
+
+    /**
+     * Grava no bot SÓ se ele continua o mesmo que este ciclo leu. A pessoa pode
+     * trocar de bot ou renovar o token pela tela no meio do ciclo (o
+     * `updateOrCreate` reaproveita a linha): um `save()` do modelo carregado
+     * antes punha o cursor do bot antigo na linha do novo, e o Telegram dava
+     * por lido o /start dele; ou marcava "token inválido" o token que acabou de
+     * ser renovado (revisão da T-374). O `updated_at` é a versão: a tela o
+     * muda ao gravar. Mudou: não grava, e o próximo ciclo relê a linha.
+     */
+    private function gravar(CentralIaTelegramBot $bot, array $campos): bool
+    {
+        $agora = now();
+        $n = CentralIaTelegramBot::whereKey($bot->id)
+            ->where('telegram_bot_id', $bot->telegram_bot_id)
+            ->where('updated_at', $bot->updated_at)
+            ->update($campos + ['updated_at' => $agora]);
+        if ($n === 0) {
+            return false;
+        }
+        $bot->forceFill($campos + ['updated_at' => $agora])->syncOriginal();
+
+        return true;
     }
 }

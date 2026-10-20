@@ -21,9 +21,9 @@ const server = createServer((req, res) => {
 });
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const cfg = { url: `http://127.0.0.1:${server.address().port}`, token: 'token-sintetico', maquina: 'wsl' };
-const docker = (saida, codigo = 0) => {
+const docker = (saida, codigo = 0, stderr = '') => {
     const f = join(base, `docker-${Math.random().toString(36).slice(2)}.sh`);
-    writeFileSync(f, `#!/bin/sh\nprintf '%s\\n' '${saida}'\nexit ${codigo}\n`);
+    writeFileSync(f, `#!/bin/sh\n${stderr}printf '%s\\n' '${saida}'\nexit ${codigo}\n`);
     chmodSync(f, 0o755);
     return f;
 };
@@ -36,6 +36,15 @@ try {
     assert.equal(pedidos[0].auth, 'Bearer token-sintetico');
     assert.match(pedidos[0].url, /maquina=wsl/);
     assert.deepEqual(readdirSync(base).filter(n => n.startsWith('secretario-reuniao-')), [], 'Pasta temporária apagada');
+
+    // Progresso: o stderr do transcritor vira percentual, sem repetir e respeitando o intervalo.
+    const avisos = [];
+    const linhas = ['{"progresso": 3, "duracao": 12}', 'ruído do modelo', '{"progresso": 3.1, "duracao": 12}', '{"progresso": 6, "duracao": 12}', '{"progresso": 12, "duracao": 12}']
+        .map(l => `printf '%s\\n' '${l}' >&2\n`).join('');
+    const comProgresso = await transcrever({ id: 7, extensao: 'ogg', sha256: sha }, cfg, base,
+        { docker: docker('{"duracao": 12, "trechos": [{"inicio": 0, "fim": 12, "texto": "oi"}]}', 0, linhas), aoProgredir: (p, d) => avisos.push([p, d]), intervaloMs: 0 });
+    assert.equal(comProgresso.status, 'ok');
+    assert.deepEqual(avisos, [[25, 12], [50, 12], [99, 12]], 'Percentuais do stderr, sem repetir 25 e sem passar de 99');
 
     const semFala = await transcrever({ id: 7, extensao: 'ogg', sha256: sha }, cfg, base, { docker: docker('{"erro": "não encontrei fala no áudio"}', 1) });
     assert.deepEqual(semFala, { status: 'falhou', erro: 'não encontrei fala no áudio' });
