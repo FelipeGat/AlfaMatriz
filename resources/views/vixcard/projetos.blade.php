@@ -1,5 +1,5 @@
 <x-app-layout>
-    <x-slot name="titulo">Projetos VixCard</x-slot>
+    <x-slot name="titulo">Projetos</x-slot>
     <x-slot name="contexto"><span>{{ $totais['projetos'] }} produtos · {{ $totais['em_andamento'] }} tarefas em andamento</span></x-slot>
 
     {{-- docs/specs/acesso-vixcard: o gestor bate o olho e vê cada produto — o que
@@ -20,9 +20,20 @@
          class="mx-auto w-full max-w-7xl space-y-4">
         <div class="flex flex-wrap items-end gap-3">
             <div class="min-w-0 flex-1">
-                <h1 class="font-display text-[22px] font-semibold leading-tight text-ink">Projetos VixCard</h1>
+                <h1 class="font-display text-[22px] font-semibold leading-tight text-ink">{{ \App\Services\PainelVixcard::PASTAS[$pasta][0] }}</h1>
                 <p class="mt-0.5 text-[13px] text-ink-mute">Como está cada produto, de relance.</p>
             </div>
+            {{-- As duas pastas de Comercial › Projetos (19/10/2026). A conta VixCard só tem a dela. --}}
+            @if ($pastas)
+                <nav class="inline-flex rounded-control border border-btn-line p-0.5" aria-label="Pastas de projetos">
+                    @foreach ($pastas as $k => [$rotulo])
+                        <a href="{{ route('vixcard.projetos', $k === 'vixcard' ? [] : ['pasta' => $k]) }}" @if ($pasta === $k) aria-current="page" @endif
+                           class="inline-flex h-[26px] items-center gap-1.5 rounded-[6px] px-2.5 text-[12.5px] font-semibold {{ $pasta === $k ? 'bg-head text-ink' : 'text-ink-dim hover:text-brand' }}">
+                            <span class="h-4 w-4"><x-nav-icon name="arquivo" /></span>{{ $rotulo }}
+                        </a>
+                    @endforeach
+                </nav>
+            @endif
             <div class="inline-flex rounded-control border border-btn-line p-0.5" role="group" aria-label="Modo de exibição">
                 @foreach (['card' => ['view-grid', 'Cards'], 'lista' => ['view-list', 'Lista']] as $m => [$icone, $rotulo])
                     <button type="button" @click="trocar('{{ $m }}')" :aria-pressed="modo === '{{ $m }}'"
@@ -51,7 +62,7 @@
 
         @if ($projetos->isEmpty())
             <div class="rounded-panel border border-line bg-surface px-4 py-8 text-center text-[13.5px] text-ink-mute">
-                Nenhum produto da VixCard cadastrado ainda.
+                Nenhum produto cadastrado nesta pasta ainda.
             </div>
         @endif
 
@@ -95,6 +106,25 @@
                 </a>
             @endforeach
         </div>
+
+        {{-- Reuniões que o dono compartilhou com esta conta (secretario-reuniao-produto). --}}
+        @if ($reunioes->isNotEmpty())
+            <section class="rounded-panel border border-line bg-surface">
+                <p class="flex items-center justify-between border-b border-line px-4 py-2.5 font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
+                    Reuniões dos projetos <a href="{{ route('reunioes.compartilhadas') }}" class="normal-case tracking-normal text-brand-text hover:underline">ver todas</a>
+                </p>
+                <ul class="divide-y divide-line">
+                    @foreach ($reunioes as $r)
+                        <li><a href="{{ route('reunioes.compartilhada', $r->id) }}" class="flex items-center gap-3 px-4 py-2.5 hover:bg-head/50">
+                            <span class="w-[78px] shrink-0 text-[12px] text-ink-mute">{{ $r->created_at->format('d/m H:i') }}</span>
+                            <span class="min-w-0 flex-1"><span class="block truncate text-[13.5px] font-semibold text-ink">{{ $r->titulo }}</span>
+                                <span class="block truncate text-[12px] text-ink-mute">{{ $r->resumo ?: 'Ainda em análise.' }}</span></span>
+                            <span class="shrink-0 rounded-badge bg-head px-2 py-0.5 text-[11.5px] text-ink-dim">{{ $r->sistema?->nome }}</span>
+                        </a></li>
+                    @endforeach
+                </ul>
+            </section>
+        @endif
 
         {{-- Lista --}}
         <div x-show="modo === 'lista'" x-cloak>

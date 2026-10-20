@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -30,7 +32,7 @@ class SecretarioReuniao extends Model
     protected $fillable = [
         'user_id', 'titulo', 'origem', 'modo', 'status', 'erro', 'arquivo', 'mime', 'tamanho', 'sha256', 'duracao_s', 'maquina',
         'reservada_em', 'tentativas', 'tipo_reuniao', 'contexto', 'resumo', 'participantes', 'proximos_passos', 'roteiro', 'parcial',
-        'execucao_id', 'telegram_update_id', 'transcrita_em', 'analisada_em', 'empresa', 'progresso', 'progresso_em',
+        'execucao_id', 'telegram_update_id', 'transcrita_em', 'analisada_em', 'empresa', 'progresso', 'progresso_em', 'sistema_id',
     ];
 
     protected $attributes = ['status' => self::AGUARDANDO, 'modo' => 'reuniao', 'tentativas' => 0, 'parcial' => false];
@@ -72,6 +74,47 @@ class SecretarioReuniao extends Model
     public function scopeDe(Builder $query, User $user): Builder
     {
         return $query->where('user_id', $user->id);
+    }
+
+    public function dono(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /** O produto do catálogo a que a reunião pertence (secretario-reuniao-produto). */
+    public function sistema(): BelongsTo
+    {
+        return $this->belongsTo(Sistema::class, 'sistema_id');
+    }
+
+    /** Quem participou e tem conta no Matriz: só esses veem a reunião, além do dono (FR-002). */
+    public function compartilhadaCom(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'secretario_reuniao_participantes', 'reuniao_id', 'user_id')->withTimestamps();
+    }
+
+    /** As reuniões compartilhadas com a pessoa (não as dela). */
+    public function scopeCompartilhadasCom(Builder $query, User $user): Builder
+    {
+        return $query->where('user_id', '!=', $user->id)->whereHas('compartilhadaCom', fn ($q) => $q->where('users.id', $user->id));
+    }
+
+    /**
+     * Contas ativas cujo primeiro nome bate com um nome citado na análise: a
+     * sugestão do formulário. Nada é compartilhado sem o dono salvar.
+     *
+     * @return list<int>
+     */
+    public function sugestaoDeParticipantes(): array
+    {
+        $citados = collect((array) $this->participantes)->map(fn ($p) => is_array($p) ? ($p['nome'] ?? '') : (string) $p)
+            ->map(fn ($n) => mb_strtolower(trim(explode(' ', trim($n))[0] ?? '')))->filter()->unique();
+        if ($citados->isEmpty()) {
+            return [];
+        }
+
+        return User::where('ativo', true)->whereKeyNot($this->user_id)->get(['id', 'name'])
+            ->filter(fn ($u) => $citados->contains(mb_strtolower(explode(' ', trim($u->name))[0])))->pluck('id')->values()->all();
     }
 
     public function trechos(): HasMany

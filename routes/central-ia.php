@@ -33,6 +33,10 @@ Route::prefix('api/central-ia/runner')
         Route::post('agenda-google', [\App\Http\Controllers\SecretarioRunnerController::class, 'agenda'])->name('secretario.runner.agenda');
         // Pastas de documentos espelhadas do OneDrive (docs/specs/documentos-espelhados).
         Route::post('documentos/inventario', [\App\Http\Controllers\DocumentosRunnerController::class, 'inventario'])->name('documentos.runner.inventario');
+        Route::post('documentos/operacoes', [\App\Http\Controllers\DocumentosRunnerController::class, 'operacoes'])->name('documentos.runner.operacoes');
+        Route::get('documentos/operacoes/{operacao}/arquivo', [\App\Http\Controllers\DocumentosRunnerController::class, 'arquivoDaOperacao'])->whereNumber('operacao')->name('documentos.runner.operacao-arquivo');
+        Route::post('documentos/operacoes/{operacao}', [\App\Http\Controllers\DocumentosRunnerController::class, 'concluirOperacao'])->whereNumber('operacao')->name('documentos.runner.operacao-concluir');
+        Route::post('documentos/{pasta}/miniaturas', [\App\Http\Controllers\DocumentosRunnerController::class, 'miniatura'])->whereNumber('pasta')->name('documentos.runner.miniatura');
         Route::post('documentos/{pasta}/partes', [\App\Http\Controllers\DocumentosRunnerController::class, 'parte'])->whereNumber('pasta')->name('documentos.runner.parte');
     });
 

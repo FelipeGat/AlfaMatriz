@@ -19,7 +19,7 @@ class Documento extends Model
 
     protected $table = 'documentos';
 
-    protected $fillable = ['pasta_id', 'caminho', 'caminho_hash', 'subpasta', 'nome', 'extensao', 'mime', 'tamanho', 'sha256', 'modificado_em', 'arquivo'];
+    protected $fillable = ['pasta_id', 'caminho', 'caminho_hash', 'subpasta', 'nome', 'extensao', 'mime', 'tamanho', 'sha256', 'modificado_em', 'arquivo', 'miniatura'];
 
     protected function casts(): array
     {
@@ -29,6 +29,18 @@ class Documento extends Model
     public function pasta(): BelongsTo
     {
         return $this->belongsTo(DocumentoPasta::class, 'pasta_id');
+    }
+
+    /** Onde mora a miniatura (pelo conteúdo: arquivo igual, miniatura igual). */
+    public function caminhoMiniatura(): string
+    {
+        return "documentos/{$this->pasta_id}/miniaturas/{$this->sha256}.jpg";
+    }
+
+    /** Vale tentar mostrar a miniatura? Já existe, ou é imagem que o servidor gera na hora. */
+    public function temMiniatura(): bool
+    {
+        return $this->miniatura === 'ok' || ($this->miniatura === null && in_array($this->extensao, \App\Services\Documentos\Miniaturas::IMAGENS, true));
     }
 
     public function abreNoNavegador(): bool
