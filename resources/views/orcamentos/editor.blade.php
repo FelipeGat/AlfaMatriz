@@ -258,6 +258,35 @@
                         @endforeach
                     </section>
 
+                    {{-- As imagens do corpo (20/10/2026, no padrão da proposta da FRID): cada uma escolhe a página onde entra. --}}
+                    @php $lugares = $o ? $o->lugaresDeImagem() : Orcamento::LUGARES_DE_IMAGEM; @endphp
+                    <section class="grid gap-2 rounded-panel border border-line bg-surface p-4">
+                        <h2 class="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">Imagens da proposta <small class="text-[11.5px] font-normal text-ink-faint">fotos, telas e folhetos: cada uma na página que escolher</small></h2>
+                        @foreach ($o?->imagensDoCorpo() ?? [] as $n => $img)
+                            <div class="grid gap-2.5 rounded-control border border-line p-2 sm:grid-cols-[96px_minmax(0,1fr)]">
+                                <img src="{{ route('orcamentos.imagem', [$o->id, $n]) }}" alt="" class="h-[72px] w-[96px] rounded object-cover">
+                                <div class="grid gap-1.5">
+                                    <input type="hidden" name="imagens[{{ $n }}][arquivo]" value="{{ $img['arquivo'] }}">
+                                    <input name="imagens[{{ $n }}][legenda]" maxlength="300" value="{{ $img['legenda'] }}" placeholder="Legenda (opcional)" aria-label="Legenda" class="{{ $campo }}">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <select name="imagens[{{ $n }}][onde]" aria-label="Onde entra" class="{{ $campo }} max-w-[320px]">
+                                            @foreach ($lugares as $chave => $nome)<option value="{{ $chave }}" @selected($img['onde'] === $chave)>{{ $nome }}</option>@endforeach
+                                        </select>
+                                        <label class="flex items-center gap-1.5 text-[12px] text-ink-dim"><input type="checkbox" name="imagens[{{ $n }}][remover]" value="1" class="rounded border-btn-line"> tirar</label>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                        <div class="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,220px)] sm:items-end">
+                            <label class="{{ $rotulo }}" for="imagens_novas">Acrescentar imagens (JPG, PNG ou WebP, até 8 MB cada)
+                                <input id="imagens_novas" name="imagens_novas[]" type="file" multiple accept="image/jpeg,image/png,image/webp" class="{{ $campo }} file:mr-2 file:rounded file:border-0 file:bg-head file:px-2 file:py-1 file:text-[12px]">
+                            </label>
+                            <label class="{{ $rotulo }}" for="imagens_novas_onde">Entram em
+                                <select id="imagens_novas_onde" name="imagens_novas_onde" class="{{ $campo }}">@foreach ($lugares as $chave => $nome)<option value="{{ $chave }}">{{ $nome }}</option>@endforeach</select>
+                            </label>
+                        </div>
+                    </section>
+
                     <section class="grid gap-2 rounded-panel border border-line bg-surface p-4">
                         <h2 class="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">Notas internas <small class="text-[11.5px] font-normal text-ink-faint">nunca vão para o PDF</small></h2>
                         <textarea name="notas_internas" rows="3" maxlength="6000" class="{{ $campo }}">{{ $dados['notas_internas'] }}</textarea>

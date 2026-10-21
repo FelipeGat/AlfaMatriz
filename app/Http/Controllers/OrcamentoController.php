@@ -70,6 +70,7 @@ class OrcamentoController extends Controller
     {
         $o = $this->orcamentos->criar($request->user(), $this->validar($request));
         $this->guardarCapa($request, $o);
+        $this->guardarImagens($request, $o);
         if ($request->input('depois') === 'enviar') {
             return $this->enviado($request, $o);
         }
@@ -92,6 +93,7 @@ class OrcamentoController extends Controller
     {
         $this->orcamentos->atualizar($orcamento, $this->validar($request));
         $this->guardarCapa($request, $orcamento->fresh());
+        $this->guardarImagens($request, $orcamento->fresh());
         if ($request->input('depois') === 'enviar') {
             return $this->enviado($request, $orcamento->fresh());
         }
@@ -137,6 +139,15 @@ class OrcamentoController extends Controller
         return Storage::disk(Pdf::DISCO)->response($orcamento->capa_imagem, null, ['Cache-Control' => 'private, max-age=300', 'X-Content-Type-Options' => 'nosniff']);
     }
 
+    /** Uma imagem do corpo, pela posição na lista (miniatura do editor e prévia). */
+    public function imagem(Orcamento $orcamento, int $n): StreamedResponse
+    {
+        $arquivo = $orcamento->imagensDoCorpo()[$n]['arquivo'] ?? null;
+        abort_unless($arquivo && Storage::disk(Pdf::DISCO)->exists($arquivo), 404);
+
+        return Storage::disk(Pdf::DISCO)->response($arquivo, null, ['Cache-Control' => 'private, max-age=300', 'X-Content-Type-Options' => 'nosniff']);
+    }
+
     public function capaPadrao(\App\Services\Orcamentos\Ajustes $ajustes): StreamedResponse
     {
         $arquivo = $ajustes->get('capa_padrao');
@@ -176,9 +187,35 @@ class OrcamentoController extends Controller
         }
     }
 
+    /**
+     * As imagens do corpo: as que já estavam ficam na ordem, legenda e lugar da tela (ou saem,
+     * se marcadas); as novas entram no fim. O arquivo só se aceita se já era deste orçamento —
+     * o caminho vem do formulário e é ele que o Chromium vai abrir. Nada se apaga do disco: a
+     * revisão anterior e as cópias usam os mesmos arquivos.
+     */
+    private function guardarImagens(Request $request, Orcamento $o): void
+    {
+        if (! $request->has('imagens') && ! $request->hasFile('imagens_novas')) {
+            return;
+        }
+        $lugares = $o->lugaresDeImagem();
+        $lugar = fn ($onde) => array_key_exists((string) $onde, $lugares) ? (string) $onde : 'galeria';
+        $atuais = collect($o->imagensDoCorpo())->pluck('arquivo')->all();
+        $lista = collect((array) $request->input('imagens', []))
+            ->filter(fn ($i) => in_array($i['arquivo'] ?? null, $atuais, true) && ! filter_var($i['remover'] ?? false, FILTER_VALIDATE_BOOLEAN))
+            ->map(fn ($i) => ['arquivo' => $i['arquivo'], 'legenda' => trim((string) ($i['legenda'] ?? '')), 'onde' => $lugar($i['onde'] ?? null)])
+            ->values()->all();
+        foreach ((array) $request->file('imagens_novas', []) as $f) {
+            $lista[] = ['arquivo' => $f->store(Pdf::PASTA_IMAGENS, Pdf::DISCO), 'legenda' => '', 'onde' => $lugar($request->input('imagens_novas_onde'))];
+        }
+        $o->forceFill(['imagens' => $lista ?: null])->save();
+    }
+
     public function pdf(Orcamento $orcamento): StreamedResponse
     {
-        $arquivo = $orcamento->situacao === 'rascunho' ? $this->pdf->atual($orcamento->load('itens')) : ($orcamento->pdf_arquivo && Storage::disk(Pdf::DISCO)->exists($orcamento->pdf_arquivo)
+        // O enviado é o PDF congelado no envio. O importado não: o que foi ao cliente é o original
+        // guardado à parte, e o daqui acompanha o modelo (20/10/2026, o desenho da FRID).
+        $arquivo = $orcamento->situacao === 'rascunho' || $orcamento->importado_em ? $this->pdf->atual($orcamento->load('itens')) : ($orcamento->pdf_arquivo && Storage::disk(Pdf::DISCO)->exists($orcamento->pdf_arquivo)
             ? $orcamento->pdf_arquivo : $this->pdf->gerar($orcamento->load('itens')));
 
         return Storage::disk(Pdf::DISCO)->response($arquivo, $orcamento->nomeDoPdf(), [
@@ -279,6 +316,14 @@ class OrcamentoController extends Controller
             'notas_internas' => ['nullable', 'string', 'max:6000'],
             'capa' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
             'remover_capa' => ['nullable', 'boolean'],
+            'imagens' => ['nullable', 'array', 'max:40'],
+            'imagens.*.arquivo' => ['required', 'string', 'max:255'],
+            'imagens.*.legenda' => ['nullable', 'string', 'max:300'],
+            'imagens.*.onde' => ['nullable', 'string', 'max:120'],
+            'imagens.*.remover' => ['nullable', 'boolean'],
+            'imagens_novas' => ['nullable', 'array', 'max:10'],
+            'imagens_novas.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            'imagens_novas_onde' => ['nullable', 'string', 'max:120'],
         ]);
     }
 }

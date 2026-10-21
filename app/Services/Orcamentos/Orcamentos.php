@@ -86,8 +86,11 @@ class Orcamentos
             'lead_id', 'tipo', 'rotulo_3', 'valor_3', 'natureza', 'dados_cliente', 'objeto', 'secoes', 'planos', 'pagamento_texto', 'notas_internas']);
         $dados['cliente'] = $o->cliente.' (cópia)';
         $dados['itens'] = $o->itens->map(fn ($i) => $i->only(['descricao', 'quantidade', 'unidade', 'valor_unitario', 'cobranca', 'categoria']))->all();
+        $nova = $this->criar($quem, $dados);
+        // A foto da capa e as imagens do corpo vão junto: são os mesmos arquivos, sem cópia.
+        $nova->forceFill(['capa_imagem' => $o->capa_imagem, 'imagens' => $o->imagens])->save();
 
-        return $this->criar($quem, $dados);
+        return $nova;
     }
 
     /**
@@ -141,7 +144,7 @@ class Orcamentos
         // O original e a origem são do documento que foi enviado: a revisão nova não os herda.
         $nova = Orcamento::create(collect($o->getAttributes())->except(['id', 'situacao', 'substituido_por_id', 'pdf_arquivo', 'pdf_gerado_em',
             'enviado_em', 'respondido_em', 'created_at', 'updated_at', 'origem_arquivo', 'pdf_original', 'importado_em'])
-            ->merge(['situacao' => 'rascunho', 'dados_cliente' => $o->dados_cliente, 'secoes' => $o->secoes])->merge($extra)->all());
+            ->merge(['situacao' => 'rascunho', 'dados_cliente' => $o->dados_cliente, 'secoes' => $o->secoes, 'imagens' => $o->imagens])->merge($extra)->all());
         foreach ($o->itens as $i) {
             $nova->itens()->create($i->only(['ordem', 'descricao', 'quantidade', 'unidade', 'valor_unitario', 'cobranca', 'categoria']));
         }

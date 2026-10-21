@@ -85,7 +85,7 @@ class PadraoEHistoricoTest extends TestCase
         app(Historico::class)->importar([$this->proposta()], sys_get_temp_dir(), $this->felipe);
         $html = app(Pdf::class)->html(Orcamento::with('itens')->sole());
 
-        foreach (['Orçamento 001', 'Preparado para', 'Clientes que atendemos', 'CEDTEC', 'VIX-ID Patrimônio', 'Cliente e objeto', 'Fornecimento do portal', 'O desafio', '“Perdemos peças”',
+        foreach (['Orçamento 001', 'Proponente', 'Clientes que atendemos', 'CEDTEC', 'VIX-ID Patrimônio', 'Cliente e desafio', 'Fornecimento do portal', 'O desafio', '“Perdemos peças”',
             '30%', 'Precisa de internet?', 'Gestão Têxtil', 'Como foi enviado.', 'Lourenço, seguimos à disposição.', '50% na aprovação e 50% na entrega.', 'Anual'] as $esperado) {
             $this->assertStringContainsString($esperado, $html);
         }
@@ -125,7 +125,7 @@ class PadraoEHistoricoTest extends TestCase
         $o = Orcamento::with('itens')->sole();
         $this->assertSame([290.0, 0.0], [$o->total_unico, $o->total_mensal]);
         $html = app(Pdf::class)->html($o);
-        $this->assertStringContainsString('Opcionais e faixas (fora do total)', $html);
+        $this->assertStringContainsString('Opcionais e faixas · fora do total', $html);
         $this->assertStringContainsString('sob consulta', $html);
         $this->assertStringContainsString('R$ 14.900,00', $html);
     }
@@ -142,7 +142,7 @@ class PadraoEHistoricoTest extends TestCase
         $o = Orcamento::with('itens')->sole();
         $this->assertSame([7090.0, 4900.0, 11990.0, 790.0], [$o->total_material, $o->total_implantacao, $o->total_unico, $o->total_mensal]);
         $html = app(Pdf::class)->html($o);
-        foreach (['Material e equipamentos', 'Implantação e serviços', 'Recorrente', 'Subtotal material e equipamentos', 'R$ 7.090,00', 'R$ 4.900,00', 'R$ 790,00/mês', 'R$ 11.990,00'] as $esperado) {
+        foreach (['Material e equipamentos', 'Implantação e serviços', 'Recorrente', 'Total do projeto', 'R$ 7.090,00', 'R$ 4.900,00', 'R$ 790,00 / mês', 'R$ 11.990,00'] as $esperado) {
             $this->assertStringContainsString($esperado, $html);
         }
         // Formulário antigo (só a cobrança) ainda funciona, com a categoria provável.
@@ -172,6 +172,39 @@ class PadraoEHistoricoTest extends TestCase
         // Rascunho também se revisa, sem perder a versão anterior: 001 → 001.Rev2.
         $this->post(route('orcamentos.revisar', $o))->assertRedirect();
         $this->assertSame(['substituido', '001.Rev2'], [$o->fresh()->situacao, Orcamento::where('revisao', 2)->sole()->codigo()]);
+    }
+
+    /** Imagens do corpo (20/10/2026, desenho da FRID): entram na página escolhida, a revisão as leva e caminho de fora não entra. */
+    public function test_imagens_do_corpo_entram_na_pagina_escolhida(): void
+    {
+        $base = ['produto' => 'vix-id', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'validade_dias' => 15,
+            'secoes' => ['extras' => ['ativo' => '1', 'texto' => "## Leitor de mão ou portal\nOs dois leem as mesmas etiquetas."]]];
+        $this->actingAs($this->felipe)->post(route('orcamentos.store'), $base + [
+            'imagens_novas' => [\Illuminate\Http\UploadedFile::fake()->image('portal.jpg', 1536, 1024)], 'imagens_novas_onde' => 'livre:leitor-de-mao-ou-portal'])->assertRedirect();
+        $o = Orcamento::sole();
+        $img = $o->imagensDoCorpo()[0];
+        $this->assertSame('livre:leitor-de-mao-ou-portal', $img['onde']);
+        Storage::disk(Pdf::DISCO)->assertExists($img['arquivo']);
+        $this->get(route('orcamentos.imagem', [$o->id, 0]))->assertOk();
+
+        // Legenda e lugar mudam pela tela; um caminho que não era do orçamento é ignorado.
+        $this->put(route('orcamentos.update', $o), $base + ['imagens' => [
+            ['arquivo' => $img['arquivo'], 'legenda' => 'Portal instalado', 'onde' => 'galeria'],
+            ['arquivo' => '../../.env', 'legenda' => 'x', 'onde' => 'galeria'],
+        ]])->assertRedirect();
+        $o->refresh();
+        $this->assertSame([['arquivo' => $img['arquivo'], 'legenda' => 'Portal instalado', 'onde' => 'galeria']], $o->imagensDoCorpo());
+        $html = app(Pdf::class)->html($o);
+        $this->assertStringContainsString('Portal instalado', $html);
+        $this->assertStringContainsString('Vix-ID na prática', $html);
+
+        // A revisão leva as imagens; tirar uma não apaga o arquivo, que a anterior ainda usa.
+        $this->post(route('orcamentos.revisar', $o))->assertRedirect();
+        $rev = Orcamento::where('revisao', 2)->sole();
+        $this->assertSame($o->imagensDoCorpo(), $rev->imagensDoCorpo());
+        $this->put(route('orcamentos.update', $rev), $base + ['imagens' => [['arquivo' => $img['arquivo'], 'remover' => '1']]])->assertRedirect();
+        $this->assertSame([], $rev->fresh()->imagensDoCorpo());
+        Storage::disk(Pdf::DISCO)->assertExists($img['arquivo']);
     }
 
     /** O painel (20/10/2026): indicadores do período sobre as vigentes, e a negociação entre o envio e a resposta. */

@@ -31,7 +31,7 @@ class Orcamento extends Model
         'aceite', 'observacoes', 'total_unico', 'total_material', 'total_implantacao', 'total_mensal', 'user_id', 'pdf_arquivo', 'pdf_gerado_em', 'enviado_em', 'respondido_em',
         // Etapa 2 (docs/specs/orcamentos-vixcard/padrao-e-historico.md).
         'lead_id', 'tipo', 'rotulo_3', 'valor_3', 'natureza', 'dados_cliente', 'objeto', 'secoes', 'planos', 'pagamento_texto', 'notas_internas',
-        'origem_arquivo', 'pdf_original', 'importado_em',
+        'origem_arquivo', 'pdf_original', 'importado_em', 'imagens',
     ];
 
     public const TIPOS = ['Proposta comercial', 'Locação', 'Projeto piloto', 'Apresentação'];
@@ -66,7 +66,7 @@ class Orcamento extends Model
             'entrada' => 'float', 'desconto_avista' => 'float', 'total_unico' => 'float', 'total_material' => 'float', 'total_implantacao' => 'float', 'total_mensal' => 'float', 'aceite' => 'boolean',
             'parcelas' => 'integer', 'validade_dias' => 'integer', 'revisao' => 'integer', 'numero' => 'integer', 'ano' => 'integer',
             'pdf_gerado_em' => 'datetime', 'enviado_em' => 'datetime', 'respondido_em' => 'datetime',
-            'dados_cliente' => 'array', 'secoes' => 'array', 'importado_em' => 'datetime',
+            'dados_cliente' => 'array', 'secoes' => 'array', 'importado_em' => 'datetime', 'imagens' => 'array',
         ];
     }
 
@@ -127,6 +127,30 @@ class Orcamento extends Model
         }
 
         return array_map(fn ($b) => ['titulo' => $b['titulo'], 'texto' => trim($b['texto'])], $blocos);
+    }
+
+    /** Onde uma imagem pode entrar no PDF, além das seções livres (que entram pela chave "livre:<slug do título>"). */
+    public const LUGARES_DE_IMAGEM = ['galeria' => 'Página de imagens (na prática)', 'desafio' => 'Junto do desafio', 'solucao' => 'Junto da solução',
+        'especificacao' => 'Escopo do fornecimento'];
+
+    /**
+     * Os lugares de imagem deste orçamento: os fixos e uma entrada por seção livre.
+     *
+     * @return array<string, string>
+     */
+    public function lugaresDeImagem(): array
+    {
+        $livres = collect($this->secoesLivres())->filter(fn ($b) => $b['titulo'] !== '')
+            ->mapWithKeys(fn ($b) => ['livre:'.\Illuminate\Support\Str::slug($b['titulo']) => 'Seção: '.$b['titulo']])->all();
+
+        return self::LUGARES_DE_IMAGEM + $livres;
+    }
+
+    /** @return list<array{arquivo: string, legenda: string, onde: string}> */
+    public function imagensDoCorpo(): array
+    {
+        return array_values(array_filter(array_map(fn ($i) => ['arquivo' => (string) ($i['arquivo'] ?? ''), 'legenda' => trim((string) ($i['legenda'] ?? '')),
+            'onde' => (string) ($i['onde'] ?? 'galeria')], (array) $this->imagens), fn ($i) => $i['arquivo'] !== ''));
     }
 
     /** Planos alternativos: "Nome | valor | período | observação". @return list<array{nome: string, valor: string, periodo: string, observacao: string}> */

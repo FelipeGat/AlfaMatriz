@@ -27,6 +27,7 @@ class Pdf
             'previa' => $previa,
             'fontes' => $previa ? asset('fonts') : 'file://'.public_path('fonts'),
             'capa' => $capaDataUri ?? $this->capa($o, $previa),
+            'imagens' => $this->imagens($o, $previa),
             'ajustes' => app(Ajustes::class),
         ])->render();
     }
@@ -52,15 +53,50 @@ class Pdf
         return null;
     }
 
+    /** A pasta, no disco do módulo, das imagens do corpo da proposta. */
+    public const PASTA_IMAGENS = 'orcamentos/imagens';
+
+    /**
+     * As imagens do corpo agrupadas pelo lugar onde entram, cada uma com o endereço que
+     * o Chromium abre (do disco) ou o navegador (pela rota, na prévia). Arquivo que sumiu
+     * do disco não entra, em vez de deixar um quadro vazio na página.
+     *
+     * @return array<string, list<array{src: string, legenda: string, retrato: bool}>>
+     */
+    public function imagens(Orcamento $o, bool $previa): array
+    {
+        $disco = Storage::disk(self::DISCO);
+        $r = [];
+        foreach ($o->imagensDoCorpo() as $n => $i) {
+            if (! $disco->exists($i['arquivo'])) {
+                continue;
+            }
+            // Em pé (tela de celular, folheto) entra lado a lado; deitada ocupa a largura da folha.
+            [$largura, $altura] = @getimagesize($disco->path($i['arquivo'])) ?: [1, 0];
+            $r[$i['onde']][] = ['src' => $previa && $o->id ? route('orcamentos.imagem', [$o->id, $n]) : 'file://'.$disco->path($i['arquivo']),
+                'legenda' => $i['legenda'], 'retrato' => $altura > $largura * 1.15];
+        }
+
+        return $r;
+    }
+
     /** O PDF atual: o guardado, se o orçamento não mudou depois dele; senão gera de novo. */
     public function atual(Orcamento $o): string
     {
         $disco = Storage::disk(self::DISCO);
-        if ($o->pdf_arquivo && $o->pdf_gerado_em && $o->updated_at && $o->pdf_gerado_em->gte($o->updated_at) && $disco->exists($o->pdf_arquivo)) {
+        if ($o->pdf_arquivo && $o->pdf_gerado_em && $o->updated_at && $o->pdf_gerado_em->gte($o->updated_at)
+            && $o->pdf_gerado_em->timestamp >= self::versaoDoModelo() && $disco->exists($o->pdf_arquivo)) {
             return $o->pdf_arquivo;
         }
 
         return $this->gerar($o);
+    }
+
+    /** Quando o modelo mudou por último: PDF gerado antes disso saiu no desenho velho. */
+    public static function versaoDoModelo(): int
+    {
+        return (int) collect([resource_path('views/orcamentos/pdf.blade.php'), ...glob(resource_path('views/orcamentos/pdf/*.blade.php')) ?: []])
+            ->map(fn ($f) => @filemtime($f))->max();
     }
 
     public function gerar(Orcamento $o): string

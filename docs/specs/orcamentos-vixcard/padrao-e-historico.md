@@ -95,3 +95,24 @@ clientes da pasta OneDrive VixCard › Comercial › Orçamentos › Clientes.
     em aberto.
 - **Pasta no OneDrive:** desde 20/10/2026, o PDF enviado vai para `Novos_Projetos/Orçamentos/Clientes`, o lugar
   novo da pasta.
+- **FR-H12, páginas no desenho da FRID (20/10/2026):** "o PDF está cheio de texto, cansativo de ler [...] replique
+  [a proposta do Igor], com páginas bem definidas e com imagens que já existem nos PDFs importados".
+  - **Uma página por assunto**, com cabeçalho (tipo · projeto · VixSoftHouse) e rodapé fixos: capa; Cliente e
+    desafio (a solução divide a folha só se couber); uma página por seção livre com imagem ou texto longo (as
+    curtas se juntam na mesma folha, cada uma com o seu rótulo); Na prática (duas imagens por página); Escopo do
+    fornecimento (tabela, decisões e, embaixo, a imagem ao lado do que está e do que não está incluso);
+    Perguntas; Investimento e execução (execução e aceite abrem página própria quando não cabem).
+  - **Listas legíveis de relance:** o começo de cada linha, até o primeiro ponto, dois-pontos ou travessão, sai em
+    negrito; etapas numeradas 01, 02…; linha curta em maiúsculas vira subtítulo.
+  - **Capa:** azul da FRID (ou a foto com véu), tipo e revisão, título em duas linhas, e embaixo cliente,
+    proponente (com o CNPJ do emissor, quando houver) e data, mais a faixa "Clientes que atendemos".
+  - **Investimento:** material, implantação e recorrente em grupos na mesma tabela; opcionais à parte, fora do
+    total; a faixa do total traz a divisão material + implantação, e o recorrente vem numa faixa própria.
+  - **Imagens do corpo** (`orcamentos.imagens`, JSON: arquivo, legenda, onde): enviadas na aba Conteúdo, cada uma
+    com a página onde entra (galeria, desafio, solução, escopo ou uma seção livre). A revisão e a cópia levam a
+    lista, sem duplicar arquivo; tirar da lista não apaga o arquivo. O caminho só se aceita se já era do
+    orçamento. Em pé (celular, folheto) vão lado a lado; deitadas ocupam a largura.
+  - **Histórico:** as imagens foram tiradas dos PDFs originais e postas de volta pelo comando
+    `orcamentos:importar-imagens`. O PDF de um orçamento importado acompanha o modelo (o que foi ao cliente é o
+    original); o de um enviado pelo Matriz continua congelado. Rascunho e importado se regeram quando o modelo
+    muda (`Pdf::versaoDoModelo`).
