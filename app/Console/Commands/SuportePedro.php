@@ -18,6 +18,8 @@ class SuportePedro extends Command
         $vencidos = $pedro->vencidos();
         $enfileirados = $pedro->aguardando();
         $cobrados = $cobranca->rodar();
+        // A fila de atendentes parada é lembrada (Felipe, 21/10/2026).
+        $cobrados += app(\App\Services\Suporte\Transferencia::class)->lembrarFila();
         if ($vencidos || $enfileirados || $cobrados) {
             $this->info("Pedro: {$enfileirados} na fila, {$vencidos} respondido(s) sem IA, {$cobrados} atendimento(s) cobrado(s).");
         }

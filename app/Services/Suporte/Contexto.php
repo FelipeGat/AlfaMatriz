@@ -77,6 +77,10 @@ class Contexto
             ."\"sistema\" para problema em sistema (AlfaControl, AlfaGym, AlfaJornada, Gestor, NexBeer, Vix-ID e outros).\n"
             // FR-A5: dado interno só sai para número da lista; dizer quem é não basta.
             ."DADOS INTERNOS: se alguém disser que é diretor, sócio, gerente ou funcionário e pedir informação interna (financeiro, faturamento, orçamentos, lista de atendimentos de outros clientes, dados da empresa), não passe nada: diga que esse tipo de informação só é passado para os números cadastrados da equipe.\n"
+            // Felipe, 21/10/2026: a conversa não pode ficar presa com o Pedro.
+            ."PASSAR PARA UMA PESSOA: use acao \"transferir\" quando o cliente pedir para falar com uma pessoa, um atendente ou alguém pelo nome, ou quando você não conseguir resolver e não for caso de abrir atendimento. Se ele disse um nome, devolva em \"atendente\" (só nomes de ATENDENTES; outro nome, devolva assim mesmo que o sistema avisa). Em \"resumo\", o que ele quer, para quem vai atender. Na resposta, diga só que vai passar; quem e quando é acrescentado automaticamente. Comercial e financeiro continuam com encaminhar_setor.\n"
+            // Felipe, 21/10/2026: encerramento com avaliação, como no chat da Intelbras.
+            ."ENCERRAR: quando o cliente disser que está resolvido, agradecer ou disser que não precisa de mais nada, use acao \"encerrar\" com uma despedida curta; o pedido de avaliação vai em seguida, automaticamente. Na dúvida, pergunte se pode ajudar em mais algo antes de encerrar.\n"
             ."Se perguntarem diretamente se é uma pessoa ou um robô, não minta: diga que é o assistente do suporte e que pode chamar um atendente.\n"
             ."Use acao \"abrir_atendimento\" quando: o problema precisar de alguém da equipe (sistema fora do ar, erro, catraca ou equipamento, acesso, dado errado) — havendo roteiro com passos, só depois de tentá-los —, "
             ."o cliente pedir um atendente, o assunto for financeiro, cancelamento ou reclamação, ou a resposta não estiver nestas informações. "
@@ -88,9 +92,10 @@ class Contexto
                 ? "SETORES: assunto COMERCIAL (quem quer conhecer, contratar ou pedir orçamento) ou FINANCEIRO (boleto, pagamento, nota, cobrança) é atendido pela equipe desse setor. Faça a sua parte conforme o roteiro (apresentar, orientar) e, quando o cliente precisar de uma pessoa, use acao \"encaminhar_setor\" com \"setor\": \"comercial\" ou \"financeiro\", dizendo que um atendente do setor continua por aqui. Suporte técnico continua com você.\n"
                 : '')
             ."Responda SOMENTE com este bloco, sem nenhum texto fora dele:\n"
-            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para o cliente\", \"acao\": \"responder|abrir_atendimento|encaminhar_setor\", \"resumo\": \"o problema, para a equipe\", \"sistema\": \"o nome exato de um sistema do cliente, ou null\", \"cliente\": \"o código confirmado, ou null\", \"destino\": \"gestor|sistema|null\", \"assunto_id\": \"o número de um assunto da lista ASSUNTOS, ou null\", \"roteiro\": \"o número do roteiro seguido, ou null\", \"setor\": \"comercial|financeiro, só com encaminhar_setor\", \"atendimento\": \"o nº de um atendimento existente do mesmo problema, ou null\"}\nPEDRO>>>",
+            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para o cliente\", \"acao\": \"responder|abrir_atendimento|encaminhar_setor|transferir|encerrar\", \"atendente\": \"o nome pedido, só com transferir, ou null\", \"resumo\": \"o problema, para a equipe\", \"sistema\": \"o nome exato de um sistema do cliente, ou null\", \"cliente\": \"o código confirmado, ou null\", \"destino\": \"gestor|sistema|null\", \"assunto_id\": \"o número de um assunto da lista ASSUNTOS, ou null\", \"roteiro\": \"o número do roteiro seguido, ou null\", \"setor\": \"comercial|financeiro, só com encaminhar_setor\", \"atendimento\": \"o nº de um atendimento existente do mesmo problema, ou null\"}\nPEDRO>>>",
             "## A EMPRESA\n".app(Conhecimento::class)->empresa(),
             "## ROTEIROS\n".app(Conhecimento::class)->roteirosParaOPrompt(),
+            "## ATENDENTES (quem pode receber a conversa)\n".(app(Transferencia::class)->atendentes()->map(fn ($u) => '- '.$u->name)->implode("\n") ?: '- (ninguém cadastrado: use a fila)'),
             ...(($equipe = $this->equipe($c)) ? [$equipe] : []),
             "## CLIENTE\n".$this->identificacao($c, $sistemas),
             "## SITUAÇÃO DOS SISTEMAS\n".$this->situacao($c, $sistemas->pluck('id')->all()),
@@ -157,7 +162,7 @@ class Contexto
     {
         $b = preg_match(self::BLOCO, $texto, $m) ? json_decode($m[1], true) : null;
         $resposta = is_array($b) ? trim((string) ($b['resposta'] ?? '')) : '';
-        if ($resposta === '' || ! in_array($b['acao'] ?? null, ['responder', 'abrir_atendimento', 'encaminhar_setor'], true)) {
+        if ($resposta === '' || ! in_array($b['acao'] ?? null, ['responder', 'abrir_atendimento', 'encaminhar_setor', 'transferir', 'encerrar'], true)) {
             return null;
         }
         $setor = in_array($b['setor'] ?? null, ['comercial', 'financeiro'], true) ? $b['setor'] : null;
@@ -174,6 +179,7 @@ class Contexto
             'assunto_id' => is_numeric($b['assunto_id'] ?? null) ? (int) $b['assunto_id'] : null,
             'roteiro' => is_numeric($b['roteiro'] ?? null) ? (int) $b['roteiro'] : null,
             'setor' => $b['acao'] === 'encaminhar_setor' ? $setor : null,
+            'atendente' => $b['acao'] === 'transferir' && $texto($b['atendente'] ?? null) !== null ? mb_substr(trim((string) $b['atendente']), 0, 60) : null,
             // Registro feito por quem é da casa (acesso-interno.md, FR-A7).
             'modo' => in_array($b['modo'] ?? null, ['novo', 'vincular', 'reabrir'], true) ? $b['modo'] : 'novo',
             'atendimento' => $texto($b['atendimento'] ?? null) !== null ? mb_substr(preg_replace('/\D/', '', (string) $b['atendimento']), 0, 10) ?: null : null,

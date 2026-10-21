@@ -34,11 +34,13 @@
                 ['Recebidas hoje', $indicadores['recebidas_hoje'], 'text-ink'],
                 ['Com o Pedro', $indicadores['com_pedro'], 'text-brand-text'],
                 ['Com humano', $indicadores['com_humano'], 'text-ink'],
+                ['Na fila', $indicadores['na_fila'], $indicadores['na_fila'] > 0 ? 'text-crit' : 'text-ink'],
                 ['No Gestor', $indicadores['no_gestor'], 'text-ink'],
                 ['Esperando resposta', $indicadores['esperando'], $indicadores['esperando'] > 0 ? 'text-crit' : 'text-ink'],
                 ['1ª resposta (méd.)', $minutos($indicadores['primeira_resposta']), 'text-ink'],
                 ['Ao especialista hoje', $indicadores['especialista_hoje'], 'text-ink'],
                 ['Atendimentos hoje', $indicadores['atendimentos_hoje'], 'text-ink'],
+                ['Avaliação (30 dias)', $indicadores['avaliacao']?->n ? number_format((float) $indicadores['avaliacao']->media, 1, ',', '').' · '.$indicadores['avaliacao']->n.' nota(s)' : '—', 'text-ink'],
             ] as [$rotulo, $valor, $cor])
                 <div class="min-w-[112px] rounded-panel border border-line bg-surface px-3 py-1.5">
                     <div class="text-[18px] font-semibold leading-tight {{ $cor }}">{{ $valor }}</div>
@@ -142,10 +144,26 @@
                         </div>
                         <div class="flex flex-wrap gap-1.5">
                             @if ($atual->comHumano())
-                                <span class="self-center text-[12px] text-warn">Com {{ $atual->humano?->name ?? 'humano (celular)' }}{{ $atual->humano_ate ? ' até '.$atual->humano_ate->format('d/m H:i') : '' }}</span>
+                                @if (! $atual->humano_id && $atual->fila_desde)
+                                    {{-- A fila (21/10/2026): o Pedro passou a conversa e ninguém assumiu ainda. --}}
+                                    <span class="self-center text-[12px] text-crit" title="{{ $atual->fila_motivo }}">Na fila desde {{ $atual->fila_desde->format('d/m H:i') }}</span>
+                                    <form method="POST" action="{{ route('suporte.assumir', $atual->id) }}">@csrf<button class="{{ $botao }}">Assumir</button></form>
+                                @else
+                                    <span class="self-center text-[12px] text-warn">Com {{ $atual->humano?->name ?? 'humano (celular)' }}{{ $atual->humano_ate ? ' até '.$atual->humano_ate->format('d/m H:i') : '' }}</span>
+                                @endif
                                 <form method="POST" action="{{ route('suporte.devolver', $atual->id) }}">@csrf<button class="{{ $botao }}">Devolver ao Pedro</button></form>
+                            @elseif ($atual->situacao === 'avaliacao')
+                                <span class="self-center text-[12px] text-ink-mute">Encerrado: aguardando a avaliação do cliente</span>
                             @else
                                 <form method="POST" action="{{ route('suporte.assumir', $atual->id) }}">@csrf<button class="{{ $botao }}">Assumir</button></form>
+                            @endif
+                            @if ($atual->situacao !== 'avaliacao')
+                                {{-- Encerramento com avaliação (como no chat da Intelbras, 21/10/2026). --}}
+                                <form method="POST" action="{{ route('suporte.encerrar', $atual->id) }}" onsubmit="return confirm('Encerrar o atendimento e pedir a avaliação ao cliente?')">@csrf<button class="{{ $botao }}">Encerrar e pedir avaliação</button></form>
+                            @endif
+                            @php $nota = \App\Models\SuporteAvaliacao::where('conversa_id', $atual->id)->whereNotNull('nota')->latest('id')->first(); @endphp
+                            @if ($nota)
+                                <span class="self-center text-[12px] {{ $nota->nota <= 2 ? 'text-crit' : 'text-ink-mute' }}" title="{{ $nota->comentario }}">Última avaliação: {{ $nota->nota }} ({{ \App\Models\SuporteAvaliacao::NOTAS[$nota->nota] }}){{ $nota->comentario ? ' — “'.\Illuminate\Support\Str::limit($nota->comentario, 60).'”' : '' }}</span>
                             @endif
                         </div>
                     </div>

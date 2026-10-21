@@ -22,11 +22,11 @@ class SuporteConversa extends Model
 
     protected $fillable = ['telefone', 'nome_perfil', 'cliente_id', 'situacao', 'humano_id', 'humano_ate',
         'ultima_entrada_em', 'ultima_mensagem_em', 'nao_lidas', 'tarefa_id', 'gestor_cliente_id', 'gestor_atendimento',
-        'gestor_conversa_id', 'gestor_setor'];
+        'gestor_conversa_id', 'gestor_setor', 'fila_desde', 'fila_motivo', 'fila_lembrada_em'];
 
     protected function casts(): array
     {
-        return ['humano_ate' => 'datetime', 'ultima_entrada_em' => 'datetime', 'ultima_mensagem_em' => 'datetime', 'nao_lidas' => 'integer'];
+        return ['fila_desde' => 'datetime', 'fila_lembrada_em' => 'datetime', 'humano_ate' => 'datetime', 'ultima_entrada_em' => 'datetime', 'ultima_mensagem_em' => 'datetime', 'nao_lidas' => 'integer'];
     }
 
     public function mensagens(): HasMany

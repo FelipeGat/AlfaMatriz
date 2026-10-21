@@ -25,7 +25,7 @@ class SuporteConversasController extends Controller
     /** Cliente esperando resposta há mais que isso: "atrasado" (o mesmo selo do Gestor). */
     public const ESPERA_MINUTOS = 15;
 
-    public const SITUACOES = ['pedro' => 'Com o Pedro', 'humano' => 'Com humano', 'gestor' => 'No Gestor', 'esperando' => 'Esperando resposta'];
+    public const SITUACOES = ['pedro' => 'Com o Pedro', 'humano' => 'Com humano', 'fila' => 'Na fila', 'gestor' => 'No Gestor', 'esperando' => 'Esperando resposta', 'avaliacao' => 'Aguardando avaliação'];
 
     /**
      * Filtros, indicadores e lista no molde da tela de WhatsApp do Gestor
@@ -82,6 +82,9 @@ class SuporteConversasController extends Controller
             'pedro' => $q->where('situacao', 'pedro'),
             'humano' => $q->where('situacao', 'humano')->where(fn ($w) => $w->whereNull('humano_ate')->orWhere('humano_ate', '>', now())),
             'gestor' => $q->where('situacao', 'gestor'),
+            // Esperando uma pessoa: passou pelo Pedro e ninguém assumiu.
+            'fila' => $q->where('situacao', 'humano')->whereNull('humano_id')->whereNotNull('fila_desde')->where('humano_ate', '>', now()),
+            'avaliacao' => $q->where('situacao', 'avaliacao'),
             'esperando' => $q->where('situacao', '!=', 'gestor')->whereColumn('ultima_entrada_em', '>=', 'ultima_mensagem_em')
                 ->where('ultima_entrada_em', '<', now()->subMinutes(self::ESPERA_MINUTOS))
                 ->where('ultima_entrada_em', '>=', now()->subHours(SuporteConversa::JANELA_HORAS)),
@@ -137,6 +140,9 @@ class SuporteConversasController extends Controller
             'primeira_resposta' => $tempos ? (int) round(array_sum($tempos) / count($tempos)) : null,
             'especialista_hoje' => $pedidos('especialista'),
             'atendimentos_hoje' => $pedidos('abrir_atendimento'),
+            'na_fila' => $ativas->filter(fn ($c) => $c->situacao === 'humano' && ! $c->humano_id && $c->fila_desde && $c->comHumano())->count(),
+            // A nota média dos últimos 30 dias e quantas responderam (encerramento.md).
+            'avaliacao' => \App\Models\SuporteAvaliacao::whereNotNull('nota')->where('respondida_em', '>=', now()->subDays(30))->selectRaw('AVG(nota) as media, COUNT(*) as n')->first(),
         ];
     }
 
@@ -174,13 +180,21 @@ class SuporteConversasController extends Controller
         return back()->with('status', 'Você assumiu a conversa: o Pedro não responde nela por '.SuporteConversa::HUMANO_HORAS.' h ou até você devolver.');
     }
 
+    /** Encerra o atendimento e pede a avaliação ao cliente (encerramento.md). */
+    public function encerrar(Request $request, int $conversa, \App\Services\Suporte\Encerramento $encerramento): RedirectResponse
+    {
+        $encerramento->encerrar(SuporteConversa::findOrFail($conversa), $request->user());
+
+        return back()->with('status', 'Atendimento encerrado; a avaliação foi pedida ao cliente.');
+    }
+
     public function devolver(int $conversa): RedirectResponse
     {
         $c = SuporteConversa::with('atendimento', 'tarefa')->findOrFail($conversa);
         if ($c->atendimento?->faltaNumeroDoGestor() && $c->tarefa && ! in_array($c->tarefa->status, \App\Models\Tarefa::STATUS_TERMINAIS, true)) {
             return back()->withErrors(['gestor_numero' => 'Antes de devolver ao Pedro, lance o atendimento no Gestor e informe o número aqui.']);
         }
-        $c->update(['situacao' => 'pedro', 'humano_id' => null, 'humano_ate' => null]);
+        $c->update(['situacao' => 'pedro', 'humano_id' => null, 'humano_ate' => null, 'fila_desde' => null, 'fila_lembrada_em' => null]);
 
         return back()->with('status', 'Conversa devolvida ao Pedro.');
     }

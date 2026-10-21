@@ -23,7 +23,7 @@ class Pedro
 {
     public const FALLBACK = 'Recebemos sua mensagem. Um atendente da equipe vai te responder por aqui em instantes.';
 
-    public const ESPECIALISTA = 'Para não te deixar esperando, vou encaminhar seu atendimento para um de nossos especialistas, que dará continuidade por aqui.';
+    public const ESPECIALISTA = 'Para não te deixar esperando, vou passar você para um de nossos especialistas.';
 
     public function __construct(private CanalWhatsApp $canal, private Contexto $contexto, private Atendimento $atendimento) {}
 
@@ -31,6 +31,10 @@ class Pedro
     public function enfileirar(int $conversaId): ?SuportePedido
     {
         if (! config('services.suporte_pedro.ligado')) {
+            return null;
+        }
+        // Conversa encerrada esperando a nota: a nota é agradecida aqui; outra coisa é conversa nova.
+        if (($em = SuporteConversa::find($conversaId)) && app(Encerramento::class)->receber($em)) {
             return null;
         }
         // Quem consulta por dentro é atendido a qualquer hora; cliente, só no horário (acesso-interno.md).
@@ -95,18 +99,12 @@ class Pedro
     {
         $c = $p->conversa->fresh();
         $resumo = SuportePedido::where('conversa_id', $c->id)->where('id', '<', $p->id)->whereNotNull('resumo')->orderByDesc('id')->value('resumo');
-        $ultimas = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->get()
-            ->map(fn (SuporteMensagem $m) => $m->transcricao ?: $m->texto)->reverse()->implode(' / ');
-        $t = $this->atendimento->abrir($c, 'Pedro tentou e não resolveu; passou ao especialista. '.($resumo ? "Resumo: {$resumo}. " : '')
-            .'Últimas do cliente: '.mb_substr($ultimas, 0, 220), null);
-        if ($t) {
-            $this->marcarSuporteNoGestor($c);
-        }
+        // Não resolveu: vai para a fila dos atendentes, e não para o quadro do Matriz (Felipe, 21/10/2026).
+        $t = app(Transferencia::class)->transferir($c, null, 'Pedro tentou e não resolveu'.($resumo ? ': '.$resumo : ''));
         try {
-            $this->canal->enviar($c, self::ESPECIALISTA.($t ? " Seu atendimento é o nº T-{$t->id}." : ''), 'pedro', null,
-                SuporteMensagem::whereKey($p->ate_mensagem_id)->value('wamid'));
+            $this->canal->enviar($c, self::ESPECIALISTA.' '.$t['texto'], 'pedro', null, SuporteMensagem::whereKey($p->ate_mensagem_id)->value('wamid'));
         } catch (ValidationException $e) {
-            // Fora da janela ou canal desligado: o atendimento já está aberto para a equipe.
+            // Fora da janela ou canal desligado: a conversa já está na fila da equipe.
             $p->update(['erro' => mb_substr((string) collect($e->errors())->flatten()->first(), 0, 255)]);
         }
     }
@@ -216,9 +214,20 @@ class Pedro
                 $this->marcarSuporteNoGestor($c);
             }
         }
+        $encerrar = $bloco['acao'] === 'encerrar';
+        // Para uma pessoa: a conversa vai à fila (ou a quem foi nomeado) e o cliente ouve isso na mesma mensagem.
+        $transferencia = null;
+        if ($bloco['acao'] === 'transferir') {
+            $transferencia = app(Transferencia::class)->transferir($c, $bloco['atendente'], $bloco['resumo'] ?: 'cliente pediu um atendente');
+            $resposta .= "\n\n".$transferencia['texto'];
+        }
         try {
             $this->canal->enviar($c, $resposta, 'pedro', null, SuporteMensagem::whereKey($p->ate_mensagem_id)->value('wamid'));
             $p->update(['situacao' => 'respondido', 'acao' => $bloco['acao'], 'resumo' => $bloco['resumo'], 'roteiro_id' => $bloco['roteiro']]);
+            // Resolvido, segundo o cliente: encerra e pede a avaliação, na mensagem seguinte.
+            if ($encerrar) {
+                app(Encerramento::class)->encerrar($c->fresh(), null);
+            }
             // Depois da resposta, porque entregue ao setor a conversa deixa de ser do Pedro.
             if ($bloco['acao'] === 'encaminhar_setor') {
                 $this->entregarAoSetor($c, (string) $bloco['setor'], $bloco['resumo']);

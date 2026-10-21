@@ -169,14 +169,14 @@ class PedroTest extends TestCase
 
         $this->assertSame(0, SuportePedido::where('situacao', 'pendente')->count(), 'a terceira não vai para a IA');
         $this->assertSame('especialista', SuportePedido::latest('id')->value('acao'));
-        $t = Tarefa::sole();
-        $this->assertStringContainsString('Mouse sem fio parou', $t->descricao ?? $t->titulo.' '.$t->descricao);
-        Http::assertSent(fn ($r) => str_starts_with((string) ($r['text']['body'] ?? ''), 'Para não te deixar esperando, vou encaminhar seu atendimento para um de nossos especialistas')
-            && str_contains($r['text']['body'], "T-{$t->id}"));
+        // Desde 21/10/2026 vai para a fila dos atendentes, e não para o quadro do Matriz.
+        $this->assertSame(0, Tarefa::count());
+        $this->assertStringContainsString('Mouse sem fio parou', (string) SuporteConversa::sole()->fila_motivo);
+        Http::assertSent(fn ($r) => str_starts_with((string) ($r['text']['body'] ?? ''), 'Para não te deixar esperando, vou passar você para um de nossos especialistas. Você está na fila'));
         $this->assertTrue(SuporteConversa::sole()->comHumano(), 'a conversa fica com a equipe');
 
         $this->chega('alô?', 'wamid.4');
-        $this->assertSame(1, Tarefa::count(), 'com o especialista, nada de novo pedido nem atendimento');
+        $this->assertSame(0, Tarefa::count(), 'com o especialista, nada de novo pedido nem atendimento');
         $this->assertSame(0, SuportePedido::where('situacao', 'pendente')->count());
 
         // Devolvida ao Pedro, a contagem recomeça.
@@ -195,7 +195,7 @@ class PedroTest extends TestCase
         $this->chega('não', 'wamid.2');
 
         $this->assertSame(0, SuportePedido::where('situacao', 'pendente')->count());
-        $this->assertSame(1, Tarefa::count());
+        $this->assertSame(0, Tarefa::count(), 'vai para a fila, não para o quadro');
         $this->assertTrue(SuporteConversa::sole()->comHumano());
     }
 

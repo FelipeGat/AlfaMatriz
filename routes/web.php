@@ -398,6 +398,7 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::get('suporte/whatsapp/midia/{mensagem}', [$sup, 'midia'])->whereNumber('mensagem')->name('suporte.midia')->middleware('permissao:suporte,ler');
     Route::post('suporte/whatsapp/{conversa}/responder', [$sup, 'responder'])->whereNumber('conversa')->name('suporte.responder')->middleware('permissao:suporte,editar');
     Route::post('suporte/whatsapp/{conversa}/assumir', [$sup, 'assumir'])->whereNumber('conversa')->name('suporte.assumir')->middleware('permissao:suporte,editar');
+    Route::post('suporte/whatsapp/{conversa}/encerrar', [$sup, 'encerrar'])->whereNumber('conversa')->name('suporte.encerrar')->middleware('permissao:suporte,editar');
     Route::post('suporte/whatsapp/{conversa}/devolver', [$sup, 'devolver'])->whereNumber('conversa')->name('suporte.devolver')->middleware('permissao:suporte,editar');
     Route::post('suporte/whatsapp/{conversa}/vincular', [$sup, 'vincular'])->whereNumber('conversa')->name('suporte.vincular')->middleware('permissao:suporte,editar');
     Route::post('suporte/whatsapp/{conversa}/gestor', [$sup, 'gestorNumero'])->whereNumber('conversa')->name('suporte.gestor-numero')->middleware('permissao:suporte,editar');
