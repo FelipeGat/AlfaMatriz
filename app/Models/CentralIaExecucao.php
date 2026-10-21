@@ -52,6 +52,22 @@ class CentralIaExecucao extends Model
             && in_array($this->confirmacao['estado'] ?? null, ['aguardando', 'codigo_errado'], true);
     }
 
+    /**
+     * O token do quadro (T-472) vive enquanto a execução está "executando".
+     * São quatro caminhos que a encerram — a conclusão da máquina, a órfã do
+     * runner reiniciado, a máquina desconectada e a que passou do teto —, e o
+     * gancho no modelo pega todos, inclusive um quinto que apareça depois.
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (self $e) {
+            if ($e->wasChanged('status') && $e->getOriginal('status') === self::EXECUTANDO) {
+                app(\App\Services\CentralIa\TokenDoQuadro::class)->revogar($e);
+            }
+        });
+        static::deleted(fn (self $e) => app(\App\Services\CentralIa\TokenDoQuadro::class)->revogar($e));
+    }
+
     protected $fillable = [
         'user_id', 'pedido_id', 'resposta_id', 'runner_id', 'tarefa_id', 'agente', 'projeto', 'modo', 'roteamento', 'checkpoint', 'instrucao',
         'progresso', 'progresso_em', 'status_avisado_em', 'confirmacao', 'auditoria', 'status', 'sessao_agente', 'branch', 'erro', 'iniciada_em', 'concluida_em',

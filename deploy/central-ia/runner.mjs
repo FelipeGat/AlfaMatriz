@@ -29,7 +29,7 @@ import { hora as horaDoGestor, lerGestor } from './gestor.mjs';
 import { hora as horaDaAgenda, lerAgenda as lerAgendaGoogle } from './agenda-google.mjs';
 import { aplicarAlteracoes, configuracao as pastasDeDocumentos, espelhar as espelharDocumentos } from './documentos.mjs';
 import { atenderSuporte, lerGestorParaPedro } from './suporte.mjs';
-import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
+import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, configDoQuadro, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, instrucaoDoQuadro, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva, VARIAVEL_DO_QUADRO } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h; chave servidor + conta +
 // chat, em confirmacao.mjs). Fica aqui, e não no servidor.
@@ -568,6 +568,8 @@ function instrucoes(job, branch) {
         job.projeto
             ? `Projeto: ${job.projeto}. Siga as instruções do próprio projeto (CLAUDE.md, AGENTS.md, README).`
             : 'Pedido da conversa Geral, fora de projeto: responda com os dados oficiais abaixo (se houver) e o que a pergunta pede.',
+        // O quadro do AlfaMatriz em nome de quem pediu (T-472), ou o porquê de não ter.
+        ...(instrucaoDoQuadro(job.quadro) ? [instrucaoDoQuadro(job.quadro)] : []),
         // Regra global do dono, que vale mesmo com acesso total.
         'Commit, push, merge, deploy e qualquer alteração em produção: SÓ se o pedido disser isso explicitamente. Na dúvida, pergunte (campo "duvida").',
     ];
@@ -695,12 +697,12 @@ function comando(job, cwd, branch, saida, acesso) {
         // sessão retomar. Retomada simples mantém o mesmo id.
         job.sessaoPrevista = sessao && !job.continuar?.fork ? sessao : randomUUID();
         if (!sessao || job.continuar?.fork) args.push('--session-id', job.sessaoPrevista);
-        args.push(...permissoes('claude', acesso, { projetos: cfg.projetos, deploy: pedeDeploy(job), semFerramentas: job.acesso === 'nenhum' }), ...modeloArgs('claude', job.modelo, job.esforco));
+        args.push(...permissoes('claude', acesso, { projetos: cfg.projetos, deploy: pedeDeploy(job), semFerramentas: job.acesso === 'nenhum', quadro: Boolean(job.quadroArgs?.length) }), ...(job.quadroArgs || []), ...modeloArgs('claude', job.modelo, job.esforco));
         return [agentes.claude, args, null, prompt];
     }
 
     if (job.agente === 'codex') {
-        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso, { deploy: pedeDeploy(job), codexTotal: cfg.codexTotal, semFerramentas: job.acesso === 'nenhum' }), ...modeloArgs('codex', job.modelo, job.esforco), '-c', 'forced_login_method="chatgpt"'];
+        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso, { deploy: pedeDeploy(job), codexTotal: cfg.codexTotal, semFerramentas: job.acesso === 'nenhum' }), ...(job.quadroArgs || []), ...modeloArgs('codex', job.modelo, job.esforco), '-c', 'forced_login_method="chatgpt"'];
         // `-`: o Codex lê o pedido do stdin (mesmo motivo do Claude, E2BIG).
         return [agentes.codex, sessao ? ['exec', 'resume', sessao, ...comum, '-'] : ['exec', ...comum, '-'], null, prompt];
     }
@@ -708,7 +710,7 @@ function comando(job, cwd, branch, saida, acesso) {
     // Copilot: no modo não interativo ele exige --allow-all-tools; o controle
     // fica no --deny-tool. A sessão leva um nome para ser retomada por ele.
     const nome = sessao || `central-ia-${job.id}`;
-    const args = ['-s', '--no-color', ...permissoes('copilot', acesso, { cwd, deploy: pedeDeploy(job), semFerramentas: job.acesso === 'nenhum' }), ...modeloArgs('copilot', job.modelo, job.esforco)];
+    const args = ['-s', '--no-color', ...permissoes('copilot', acesso, { cwd, deploy: pedeDeploy(job), semFerramentas: job.acesso === 'nenhum' }), ...(job.quadroArgs || []), ...modeloArgs('copilot', job.modelo, job.esforco)];
     // Pedido pelo stdin também no Copilot (E2BIG acima de 128 KB, que o
     // contexto de um chat de assunto passa fácil).
     args.push(...(sessao ? ['--resume', sessao] : ['-n', nome]));
@@ -719,10 +721,14 @@ function comando(job, cwd, branch, saida, acesso) {
 const filhos = new Set();
 let parar = false;
 
-function rodar(bin, args, cwd, minutos, progresso, auditor = null, entrada = null) {
+function rodar(bin, args, cwd, minutos, progresso, auditor = null, entrada = null, extra = {}) {
     return new Promise(resolvePromise => {
         const env = { ...process.env };
         delete env.ALFAMATRIZ_RUNNER_TOKEN;
+        // Token do quadro, só o DESTE pedido (T-472): um que a máquina tenha
+        // no ambiente seria de outra pessoa ou de outro servidor.
+        for (const chave of [VARIAVEL_DO_QUADRO, `${VARIAVEL_DO_QUADRO}_STAGING`]) delete env[chave];
+        Object.assign(env, extra);
         // A troca de CLI não habilita cobrança por chave de API herdada.
         for (const chave of ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN']) delete env[chave];
         const filho = spawn(bin, args, { cwd, env, stdio: [entrada === null ? 'ignore' : 'pipe', 'pipe', 'pipe'], detached: true });
@@ -913,13 +919,19 @@ async function executar(job) {
             job.sementeLida = s.lidas;
             auditar({ execucao: job.id, decisao: 'semente', conversas: s.lidas.map(l => ({ id: l.id, turnos: l.incluidos, caracteres: l.caracteres })) });
         }
+        // O quadro (T-472): o arquivo com o token fica na pasta temporária do
+        // pedido (0700, apagada no fim) e nunca em argumento.
+        const quadro = job.acesso === 'nenhum' ? configDoQuadro(null) : configDoQuadro(job.agente, cfg.url, job.quadro?.token, join(tmp, 'central-ia-quadro.json'));
+        if (quadro.json) writeFileSync(join(tmp, 'central-ia-quadro.json'), quadro.json, { mode: 0o600 });
+        job.quadroArgs = quadro.args;
+        if (job.quadro?.token && !quadro.args.length) job.quadro = { motivo: `o endereço do AlfaMatriz desta máquina (${cfg.url}) não serve para o quadro` };
         const [bin, args, nomeCopilot, entrada] = comando(job, cwd, branch, saida, acesso);
         // Parada pedida enquanto preparava: não cria um processo que ninguém
         // vai esperar.
         if (parar) throw new Error('interrompida porque o runner foi parado ou reiniciado antes de começar');
         progresso.etapa('agente');
         antesGit = retratoGit(git, cwd);
-        const r = await rodar(bin, args, cwd, job.timeout_minutos, progresso, auditor, entrada ?? null);
+        const r = await rodar(bin, args, cwd, job.timeout_minutos, progresso, auditor, entrada ?? null, quadro.env);
         if (r.estourou) throw new Error(`passou de ${job.timeout_minutos} minutos e foi encerrado`);
         if (parar) throw new Error('interrompida porque o runner foi parado ou reiniciado; o estado do git ficou registrado e a tarefa pode ser retomada');
 

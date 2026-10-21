@@ -215,6 +215,8 @@ class CentralIaController extends Controller
             // Liberar a execução é decisão de quem administra a Central; deploy e
             // OneDrive continuam fora do alcance da tela.
             'execucao_bloqueada' => ['sometimes', 'boolean'], 'deploy' => ['prohibited'], 'onedrive' => ['prohibited'],
+            // Os agentes abrirem e moverem tarefas no quadro em nome da pessoa (T-472).
+            'quadro' => ['sometimes', 'boolean'],
         ]);
         foreach (array_keys(CentralIaExecucao::AGENTES) as $a) abort_unless(isset($dados['habilitados'][$a]) && array_key_exists($a, $dados['pedidos_dia']), 422);
         // Total 0 com uma IA liberada é a conta sem pedido nenhum (T-368): a
@@ -227,13 +229,13 @@ class CentralIaController extends Controller
             $politica = $g->politica($alvo) ?? $g->padrao();
             abort_unless($politica['revisao'] === $dados['revisao'], 409, 'Política alterada em outra janela. Recarregue.');
             $dados['revisao']++;
-            $dados += ['execucao_bloqueada' => true];
+            $dados += ['execucao_bloqueada' => true, 'quadro' => false];
             $dados += ['deploy' => false, 'onedrive' => false];
             $registro = \App\Models\CentralIaPreferencia::where('user_id', $alvo->id)->first();
             $regras = $registro?->regras ?? app(\App\Services\CentralIa\Preferencias::class)->ler($alvo);
             $regras['governanca'] = $dados; $regras['revisao_config']++;
             \App\Models\CentralIaPreferencia::updateOrCreate(['user_id' => $alvo->id], ['regras' => $regras]);
-            \App\Services\CentralIa\Eventos::registrar($request->user(), 'politica_usuario', 'Política administrativa atualizada para conta #'.$alvo->id.($dados['execucao_bloqueada'] ? '; execução bloqueada.' : '; execução liberada pela administração.'));
+            \App\Services\CentralIa\Eventos::registrar($request->user(), 'politica_usuario', 'Política administrativa atualizada para conta #'.$alvo->id.($dados['execucao_bloqueada'] ? '; execução bloqueada' : '; execução liberada pela administração').($dados['quadro'] ? '; quadro liberado aos agentes.' : '; quadro fechado aos agentes.'));
         });
         return $this->semCache($g->resumo($request->user(), $alvo));
     }

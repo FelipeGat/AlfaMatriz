@@ -869,10 +869,10 @@ export function centralIa(config) {
         async salvarPolitica() {
             if (!this.politicaUsuario || this.salvandoPolitica || !this.administracao.permitida) return;
             const id = String(this.usuarioAtividade);
-            const { revisao, habilitados, pedidos_dia, limite_total, paralelo, execucao_bloqueada } = this.politicaUsuario;
+            const { revisao, habilitados, pedidos_dia, limite_total, paralelo, execucao_bloqueada, quadro } = this.politicaUsuario;
             this.salvandoPolitica = true;
             try {
-                const r = await this.pedir(config.politicaUsuario.replace('__U__', id), 'PUT', { revisao, habilitados, pedidos_dia, limite_total, paralelo, execucao_bloqueada: execucao_bloqueada !== false });
+                const r = await this.pedir(config.politicaUsuario.replace('__U__', id), 'PUT', { revisao, habilitados, pedidos_dia, limite_total, paralelo, execucao_bloqueada: execucao_bloqueada !== false, quadro: quadro === true });
                 if (id !== String(this.usuarioAtividade) || !this.administracao.permitida) return;
                 this.resumoUsuario = r; this.politicaUsuario = r.politica; this.politicaAlterada = false;
                 this.aviso = r.politica?.execucao_bloqueada ? 'Política salva. A execução desta conta continua bloqueada.' : 'Política salva. Execução liberada: a máquina da pessoa ainda pede o código dela antes de modificar algo.';

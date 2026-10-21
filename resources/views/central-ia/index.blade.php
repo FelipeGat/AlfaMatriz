@@ -1362,6 +1362,8 @@
                     <fieldset :disabled="salvandoPolitica" @input="politicaAlterada = true" @change="politicaAlterada = true" class="mt-3 space-y-3">
                         <label class="flex items-center gap-2"><input type="checkbox" :checked="!politicaUsuario.execucao_bloqueada" @change="politicaUsuario.execucao_bloqueada = !$event.target.checked" class="rounded border-line text-brand">Liberar a execução de agentes para esta conta</label>
                         <p class="text-xs text-ink-faint">A pessoa executa na máquina DELA, com as IAs dela; o runner dela impõe os próprios limites e pede o código dela antes de modificar algo. Deploy e OneDrive continuam fora do alcance da tela.</p>
+                        <label class="flex items-center gap-2"><input type="checkbox" x-model="politicaUsuario.quadro" class="rounded border-line text-brand">Os agentes podem usar o quadro de tarefas e a agenda</label>
+                        <p class="text-xs text-ink-faint">Em nome desta pessoa e com as permissões dela: o que o agente abrir ou mover sai com o nome dela. Cada pedido recebe um acesso próprio, que acaba com o pedido.</p>
                         <div class="grid gap-3 sm:grid-cols-3">
                             <template x-for="(nome, a) in {claude:'Claude', codex:'Codex', copilot:'Copilot'}" :key="a">
                                 <div class="rounded-control border border-line p-3 space-y-2"><label class="flex gap-2"><input type="checkbox" x-model="politicaUsuario.habilitados[a]" class="rounded border-line text-brand"><span x-text="nome"></span></label>

@@ -19,7 +19,7 @@ export const LEITURA_NO_SHELL = ['git log', 'git status', 'git diff', 'git show'
     'docker ps', 'docker logs', 'docker inspect', 'date', 'pwd'];
 
 // Nem na leitura: credenciais da máquina.
-export const SENSIVEIS = ['~/.ssh/**', '~/.config/alfa/**', '~/.aws/**', '~/.codex/auth.json', '~/.claude/.credentials.json', '~/.copilot/**', '**/.env', '**/.env.*'];
+export const SENSIVEIS = ['~/.ssh/**', '~/.config/alfa/**', '~/.aws/**', '~/.codex/auth.json', '~/.claude/.credentials.json', '~/.copilot/**', '**/.env', '**/.env.*', '**/central-ia-quadro.json'];
 
 // O Codex só leitura não tem negação de leitura por caminho: um pedido de
 // análise que cita credenciais não vai a ele.
@@ -129,7 +129,7 @@ export function exigeConfirmacao(job, regra, chatConfirmado = false) {
 }
 
 /** Argumentos de permissão de cada CLI para o acesso efetivo. */
-export function permissoes(agente, acesso, { projetos, cwd, deploy = false, codexTotal = false, semFerramentas = false } = {}) {
+export function permissoes(agente, acesso, { projetos, cwd, deploy = false, codexTotal = false, semFerramentas = false, quadro = false } = {}) {
     // Pedido do Secretário (`job.acesso === 'nenhum'`): leva e-mail e
     // transcrição de terceiros, então nenhuma ferramenta — nem a leitura,
     // nem o WebSearch, que serviria de canal para fora. O Codex já vai em
@@ -147,14 +147,18 @@ export function permissoes(agente, acesso, { projetos, cwd, deploy = false, code
     if (agente === 'codex' && acesso === 'total' && !deploy && !codexTotal) acesso = 'restrito';
     const total = acesso === 'total', escreve = acesso !== 'leitura';
     const semPublicar = total && !deploy;
+    // O quadro do AlfaMatriz (T-472): no `-p` não há quem aprove, e ferramenta
+    // fora da lista é recusada em silêncio — o pedido de 21/10/2026 que abria
+    // tarefa rodou em leitura e não passaria nem com o token certo.
+    const doQuadro = quadro && !semFerramentas ? [`mcp__${SERVIDOR_DO_QUADRO}`] : [];
     if (agente === 'claude') {
         // A negação vale mesmo no bypassPermissions.
         if (total) return ['--permission-mode', 'bypassPermissions', '--add-dir', projetos,
             ...(semPublicar ? ['--disallowedTools', ...PUBLICACAO_NO_SHELL.map(c => `Bash(${c}:*)`)] : [])];
-        if (escreve) return ['--permission-mode', 'acceptEdits', '--allowedTools', 'Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash',
+        if (escreve) return ['--permission-mode', 'acceptEdits', '--allowedTools', 'Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash', ...doQuadro,
             '--disallowedTools', ...NEGADOS_NO_SHELL.map(c => `Bash(${c}:*)`), ...SENSIVEIS.map(p => `Read(${p})`)];
         // Sem WebFetch na leitura: era o canal para mandar um arquivo lido para fora.
-        return ['--permission-mode', 'default', '--allowedTools', 'Read', 'Grep', 'Glob', 'WebSearch',
+        return ['--permission-mode', 'default', '--allowedTools', 'Read', 'Grep', 'Glob', 'WebSearch', ...doQuadro,
             ...LEITURA_NO_SHELL.map(c => `Bash(${c}:*)`),
             '--disallowedTools', 'Edit', 'Write', 'NotebookEdit', ...SENSIVEIS.map(p => `Read(${p})`)];
     }
@@ -170,6 +174,46 @@ export function permissoes(agente, acesso, { projetos, cwd, deploy = false, code
     if (escreve) for (const c of NEGADOS_NO_SHELL) args.push('--deny-tool', `shell(${c})`);
     else args.push('--deny-tool', 'write', '--deny-tool', 'shell');
     return args;
+}
+
+/**
+ * O quadro do AlfaMatriz para o agente (T-472). O servidor manda, por pedido,
+ * um token do `/mcp` em nome de quem pediu; a máquina diz ONDE (o AlfaMatriz
+ * que ela alcança). O nome é próprio, `quadro`, e não `alfamatriz`: a pasta
+ * do AlfaMatriz já tem um servidor com esse nome no `.mcp.json` (o local, por
+ * stdio), e outra máquina pode ter o seu `alfamatriz-producao` com token
+ * nenhum — foi esse que deu o 401.
+ *
+ * O token não vai em argumento (o `ps` mostra a qualquer usuário da máquina):
+ * Claude e Copilot o leem de um arquivo 600 na pasta temporária do pedido,
+ * apagada ao fim; o Codex, da variável de ambiente que só o processo dele vê.
+ * Devolve os argumentos e as variáveis; o arquivo quem grava é o runner.
+ */
+export const SERVIDOR_DO_QUADRO = 'quadro';
+export const VARIAVEL_DO_QUADRO = 'ALFAMATRIZ_MCP_TOKEN';
+
+export function configDoQuadro(agente, url, token, arquivo) {
+    if (!token || !/^https?:\/\//.test(String(url || ''))) return { args: [], env: {}, json: null };
+    const endereco = `${String(url).replace(/\/$/, '')}/mcp`;
+    if (agente === 'codex') {
+        return { args: ['-c', `mcp_servers.${SERVIDOR_DO_QUADRO}.url="${endereco}"`, '-c', `mcp_servers.${SERVIDOR_DO_QUADRO}.bearer_token_env_var="${VARIAVEL_DO_QUADRO}"`],
+            env: { [VARIAVEL_DO_QUADRO]: token }, json: null };
+    }
+    const servidor = { type: 'http', url: endereco, headers: { Authorization: `Bearer ${token}` }, ...(agente === 'copilot' ? { tools: ['*'] } : {}) };
+    return { args: agente === 'claude' ? ['--mcp-config', arquivo] : ['--additional-mcp-config', `@${arquivo}`], env: {},
+        json: JSON.stringify({ mcpServers: { [SERVIDOR_DO_QUADRO]: servidor } }) };
+}
+
+/** A linha do prompt sobre o quadro: com acesso, como usar; sem, o porquê. */
+export function instrucaoDoQuadro(quadro) {
+    if (!quadro) return null;
+    const limpo = t => String(t || '').replace(/\s+/g, ' ').trim().slice(0, 240);
+    if (quadro.token) {
+        return `Quadro de tarefas e agenda do AlfaMatriz: use as ferramentas do servidor MCP "${SERVIDOR_DO_QUADRO}" (criar_tarefa, ver_tarefa, listar_tarefas, mover_tarefa, comentar_tarefa, marcar_compromisso…). `
+            + `Você age em nome de ${limpo(quadro.conta) || 'quem fez o pedido'}: o que criar, mover ou comentar sai com o nome dessa pessoa e segue as permissões dela. `
+            + 'Não use outro servidor do AlfaMatriz que esteja configurado nesta máquina.';
+    }
+    return quadro.motivo ? `Quadro de tarefas do AlfaMatriz: sem acesso neste pedido — ${limpo(quadro.motivo)}. Se pedirem para abrir, mover ou comentar tarefa, diga isso; não tente outro caminho.` : null;
 }
 
 /** Todas as ferramentas do Claude Code, para o pedido que não pode usar nenhuma. */

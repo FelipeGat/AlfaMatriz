@@ -48,7 +48,10 @@ class Governanca
             'pedidos_dia' => ['claude' => 0, 'codex' => 0, 'copilot' => 0], 'limite_total' => null, 'paralelo' => 1,
             // Não há executor com ACL comprovada nesta versão. Não existe opção
             // de "liberar" pelo navegador que finja que o isolamento foi feito.
-            'execucao_bloqueada' => true, 'deploy' => false, 'onedrive' => false];
+            'execucao_bloqueada' => true, 'deploy' => false, 'onedrive' => false,
+            // O quadro do AlfaMatriz pelos agentes (T-472): desligado até um
+            // administrador ligar, como a execução.
+            'quadro' => false];
     }
 
     public function execucaoBloqueada(User $user, ?array $politica = null): bool
