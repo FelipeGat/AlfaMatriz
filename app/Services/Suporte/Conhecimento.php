@@ -14,7 +14,9 @@ use Illuminate\Support\Str;
 class Conhecimento
 {
     /** Os textos da apresentação e o padrão de cada ajuste. */
-    public const AJUSTES = ['apresentacao' => '', 'site' => '', 'contatos' => '', 'portal' => '', 'folders' => '', 'cobranca_minutos' => '60'];
+    public const AJUSTES = ['apresentacao' => '', 'site' => '', 'contatos' => '', 'portal' => '', 'folders' => '', 'cobranca_minutos' => '60',
+        // A pasta espelhada que é a base "Contexto do Suporte" (T-476); vazia, o Pedro não lê base nenhuma.
+        ContextoDoSuporte::AJUSTE => ''];
 
     public function ajuste(string $chave): string
     {

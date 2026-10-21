@@ -59,6 +59,33 @@
             </form>
         </section>
 
+        {{-- A base "Contexto do Suporte" (T-476; contexto-do-suporte.md): notas em Markdown no OneDrive,
+             lidas da cópia espelhada em Documentos. Só um recorte vai a cada pedido. --}}
+        <section class="rounded-panel border border-line bg-surface">
+            <h2 class="border-b border-line px-4 py-2.5 font-display text-[15px] font-semibold text-ink">Base de conhecimento</h2>
+            <div class="grid gap-3 px-4 py-3">
+                <p class="text-[12.5px] text-ink-mute">A pasta "Contexto do Suporte" do OneDrive, espelhada em Documentos. A cada mensagem, o Pedro consulta o mapa, a pasta do cliente confirmado na conversa e os procedimentos ligados — nunca a pasta de outro cliente. Procedimento só vale como instrução quando validado pelo Felipe ou por um administrador.</p>
+                @if ($base)
+                    <p class="text-[13px] text-ink">Ligada: <b>{{ $base['pasta']->nome }}</b> · {{ $base['notas'] }} {{ $base['notas'] === 1 ? 'nota' : 'notas' }} · {{ $base['clientes'] }} {{ $base['clientes'] === 1 ? 'cliente' : 'clientes' }}
+                        · lida {{ $base['pasta']->lido_em ? 'em '.$base['pasta']->lido_em->format('d/m H:i') : 'ainda não' }}
+                        @if ($base['pasta']->velha())<span class="text-warn"> · desatualizada (a máquina não espelha há mais de {{ \App\Models\DocumentoPasta::VELHO_HORAS }} h)</span>@endif</p>
+                @else
+                    <p class="text-[13px] text-ink-dim">Desligada: o Pedro usa só a apresentação e os roteiros.</p>
+                @endif
+                @if ($podeEditar)
+                    <form method="POST" action="{{ route('suporte.pedro.base') }}" class="flex flex-wrap items-end gap-2">
+                        @csrf
+                        <label class="min-w-0 flex-1"><span class="{{ $rotulo }}">Pasta espelhada</span>
+                            <select name="base_pasta" class="{{ $campo }}">
+                                <option value="">— desligada —</option>
+                                @foreach ($pastasDaBase as $p)<option value="{{ $p->id }}" @selected($base && $base['pasta']->id === $p->id)>{{ $p->nome }}</option>@endforeach
+                            </select></label>
+                        <button class="{{ $botao }}">Salvar base</button>
+                    </form>
+                @endif
+            </div>
+        </section>
+
         {{-- Roteiros --}}
         <section class="space-y-3">
             <div class="flex items-center gap-2">

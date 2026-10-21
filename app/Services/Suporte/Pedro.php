@@ -202,7 +202,11 @@ class Pedro
             }
         }
         try {
-            $this->canal->enviar($c, $resposta, 'pedro', null, SuporteMensagem::whereKey($p->ate_mensagem_id)->value('wamid'));
+            $enviada = $this->canal->enviar($c, $resposta, 'pedro', null, SuporteMensagem::whereKey($p->ate_mensagem_id)->value('wamid'));
+            // De onde veio a resposta (T-476, FR-C5): só os arquivos que existem na base.
+            if ($fontes = app(ContextoDoSuporte::class)->fontesValidas($bloco['fontes'] ?? [])) {
+                $enviada->update(['fontes' => $fontes]);
+            }
             $p->update(['situacao' => 'respondido', 'acao' => $bloco['acao'], 'resumo' => $bloco['resumo'], 'roteiro_id' => $bloco['roteiro']]);
             // Depois da resposta, porque entregue ao setor a conversa deixa de ser do Pedro.
             if ($bloco['acao'] === 'encaminhar_setor') {

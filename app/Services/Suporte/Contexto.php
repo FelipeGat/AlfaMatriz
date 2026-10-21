@@ -34,6 +34,15 @@ class Contexto
     private array $videos = [];
 
     /**
+     * Como usar a base "Contexto do Suporte" (T-476; contexto-do-suporte.md). Só
+     * vai quando há base: sem ela, o pedido é o mesmo de antes.
+     */
+    public const REGRAS_DA_BASE = "CONTEXTO DO SUPORTE: são notas da equipe (cada uma com o arquivo de onde veio). Use as do cliente desta conversa para lembrar o que já aconteceu com ele, o que ficou combinado e o que está em aberto. "
+        ."Procedimento marcado VALIDADO vale como um roteiro; nota marcada RASCUNHO só pode ser citada como possibilidade a confirmar, nunca como instrução. Se um procedimento e um ROTEIRO divergirem, siga o ROTEIRO e diga isso no resumo. "
+        ."Nos atendimentos anteriores, o que está em \"Relato do cliente\" e em \"Hipóteses\" NÃO é fato; só \"Verificado\" é. Nunca diga que algo foi resolvido ou feito se a nota não traz a confirmação. "
+        ."Não comente com o cliente anotações internas (quem decide, preferências, combinados com a equipe) além do necessário para ajudar. Em \"fontes\", devolva o arquivo de cada nota que você usou ([] se nenhuma).\n";
+
+    /**
      * @param  list<int>  $fotos  as fotos (ids de mensagem) que vão anexadas a este pedido
      * @param  list<int>  $videos  os vídeos que o runner vai abrir para este pedido
      */
@@ -48,6 +57,9 @@ class Contexto
         $c->loadMissing(['cliente.sistemas', 'cliente.contratos']);
         $cliente = $c->cliente;
         $sistemas = $cliente ? $cliente->sistemas->filter(fn ($s) => (bool) $s->pivot->ativo)->values() : collect();
+        // A base "Contexto do Suporte" (T-476): sem pasta escolhida na tela, o pedido sai como antes.
+        $base = app(ContextoDoSuporte::class)->paraOPrompt($c, $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->get()
+            ->map(fn ($m) => $m->transcricao ?: $m->texto)->implode(' '));
 
         $partes = [
             "Você é o Pedro, do suporte. Atende clientes pelo WhatsApp, em português do Brasil: cordial, direto, no máximo 4 frases, sem markdown nem listas longas.\n"
@@ -85,8 +97,10 @@ class Contexto
             .(app(CanalWhatsApp::class)->viaGestor()
                 ? "SETORES: assunto COMERCIAL (quem quer conhecer, contratar ou pedir orçamento) ou FINANCEIRO (boleto, pagamento, nota, cobrança) é atendido pela equipe desse setor. Faça a sua parte conforme o roteiro (apresentar, orientar) e, quando o cliente precisar de uma pessoa, use acao \"encaminhar_setor\" com \"setor\": \"comercial\" ou \"financeiro\", dizendo que um atendente do setor continua por aqui. Suporte técnico continua com você.\n"
                 : '')
+            .($base ? self::REGRAS_DA_BASE : '')
             ."Responda SOMENTE com este bloco, sem nenhum texto fora dele:\n"
-            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para o cliente\", \"acao\": \"responder|abrir_atendimento|encaminhar_setor\", \"resumo\": \"o problema, para a equipe\", \"sistema\": \"o nome exato de um sistema do cliente, ou null\", \"cliente\": \"o código confirmado, ou null\", \"destino\": \"gestor|sistema|null\", \"assunto_id\": \"o número de um assunto da lista ASSUNTOS, ou null\", \"roteiro\": \"o número do roteiro seguido, ou null\", \"setor\": \"comercial|financeiro, só com encaminhar_setor\"}\nPEDRO>>>",
+            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para o cliente\", \"acao\": \"responder|abrir_atendimento|encaminhar_setor\", \"resumo\": \"o problema, para a equipe\", \"sistema\": \"o nome exato de um sistema do cliente, ou null\", \"cliente\": \"o código confirmado, ou null\", \"destino\": \"gestor|sistema|null\", \"assunto_id\": \"o número de um assunto da lista ASSUNTOS, ou null\", \"roteiro\": \"o número do roteiro seguido, ou null\", \"setor\": \"comercial|financeiro, só com encaminhar_setor\""
+            .($base ? ', "fontes": ["o arquivo de cada nota do CONTEXTO DO SUPORTE que você usou nesta resposta"]' : '')."}\nPEDRO>>>",
             "## A EMPRESA\n".app(Conhecimento::class)->empresa(),
             "## ROTEIROS\n".app(Conhecimento::class)->roteirosParaOPrompt(),
             ...(($equipe = $this->equipe($c)) ? [$equipe] : []),
@@ -98,6 +112,7 @@ class Contexto
                 "## ASSUNTOS (para atendimento no Gestor, escolha o que melhor descreve o problema)\n".collect(app(DiretorioGestor::class)->assuntosPara($g))->map(fn ($a) => '- '.$a['id'].': '.$a['nome'].($a['categoria'] ? ' ('.$a['categoria'].')' : ''))->implode("\n")] : []),
             "## O QUE CADA SISTEMA FAZ\n".$this->base($sistemas->pluck('nome')->all()),
             ...(($vitrine = $this->showroom($c)) ? [$vitrine] : []),
+            ...($base ? [$base] : []),
             "## MENSAGENS (as mais recentes por último)\n".$this->mensagens($c),
             'Agora: '.now()->setTimezone(config('app.timezone'))->format('d/m/Y H:i').'.',
         ];
@@ -131,7 +146,7 @@ class Contexto
         ]);
     }
 
-    /** O bloco da resposta, validado; null se veio fora do formato. @return array{resposta: string, acao: string, resumo: string, sistema: ?string, cliente: ?string, destino: ?string, assunto_id: ?int, roteiro: ?int, setor: ?string}|null */
+    /** O bloco da resposta, validado; null se veio fora do formato. @return array{resposta: string, acao: string, resumo: string, sistema: ?string, cliente: ?string, destino: ?string, assunto_id: ?int, roteiro: ?int, setor: ?string, fontes: list<string>}|null */
     public static function ler(string $texto, int $limite = 1500): ?array
     {
         $b = preg_match(self::BLOCO, $texto, $m) ? json_decode($m[1], true) : null;
@@ -152,7 +167,9 @@ class Contexto
             'destino' => in_array($b['destino'] ?? null, ['gestor', 'sistema'], true) ? $b['destino'] : null,
             'assunto_id' => is_numeric($b['assunto_id'] ?? null) ? (int) $b['assunto_id'] : null,
             'roteiro' => is_numeric($b['roteiro'] ?? null) ? (int) $b['roteiro'] : null,
-            'setor' => $b['acao'] === 'encaminhar_setor' ? $setor : null];
+            'setor' => $b['acao'] === 'encaminhar_setor' ? $setor : null,
+            // Os arquivos da base que ele diz ter usado; o Pedro::concluir confere que existem (T-476).
+            'fontes' => array_values(array_slice(array_filter(array_map(fn ($f) => is_string($f) ? mb_substr(trim($f), 0, 600) : '', (array) ($b['fontes'] ?? [])), fn ($f) => $f !== ''), 0, 10))];
     }
 
     /**

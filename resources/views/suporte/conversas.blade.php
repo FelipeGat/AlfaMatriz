@@ -204,6 +204,8 @@
                                     @else
                                         <p class="whitespace-pre-line break-words">{{ $m->texto }}</p>
                                     @endif
+                                    {{-- De onde veio a resposta do Pedro: notas da base "Contexto do Suporte" (T-476). --}}
+                                    @if ($m->fontes)<p class="mt-1 border-l-2 border-line pl-2 text-[11px] text-ink-dim">Fontes: {{ implode(' · ', $m->fontes) }}</p>@endif
                                     <p class="mt-1 text-[10.5px] text-ink-faint">
                                         {{ $m->direcao === 'humano_matriz' ? ($m->autor?->name ?? 'Humano') : SuporteMensagem::DIRECOES[$m->direcao] ?? $m->direcao }}
                                         · {{ ($m->enviada_em ?? $m->created_at)->format('d/m H:i') }}{{ $m->daEmpresa() && $m->status ? ' · '.$m->status : '' }}
