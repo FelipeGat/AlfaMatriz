@@ -76,6 +76,14 @@ class ContaPagarController extends Controller
             'vence_hoje' => (float) (clone $base)->where('status', '!=', 'pago')->whereDate('data_vencimento', $hoje)->sum('valor'),
         ];
 
+        // Projeção (Felipe, 18/10/2026): despesa fixa vigente cuja conta da
+        // competência ainda não nasceu. Sem busca e fora de pago/cancelado/avulsa.
+        $projecao = ($busca === '' && ! $centroCustoId && ! in_array($filtroStatus, ['pago', 'cancelado'], true) && $filtroTipo !== 'avulsa')
+            ? app(\App\Services\ProjecaoFinanceira::class)->despesas($periodoDe, $periodoAte)
+            : collect();
+        $kpis['projetado'] = (float) $projecao->sum('valor');
+        $kpis['a_pagar'] += $kpis['projetado'];
+
         // Aging continua GLOBAL, sem período/busca — exposição total, não a
         // fatia do mês navegado (mesma escolha das Receitas).
         $emAbertoGlobal = ContaPagar::where('status', 'em_aberto')->get(['id', 'valor', 'data_vencimento']);
@@ -84,7 +92,7 @@ class ContaPagarController extends Controller
 
         return view('contas-pagar.index', array_merge(
             $this->formData(),
-            compact('contasPagar', 'kpis', 'faixas', 'hoje', 'totalEmAbertoGlobal', 'contagens', 'contagensTipo'),
+            compact('contasPagar', 'kpis', 'faixas', 'hoje', 'totalEmAbertoGlobal', 'contagens', 'contagensTipo', 'projecao'),
             [
                 'filtroPeriodo' => $this->filtroPeriodoSelecionado($request),
                 'periodoDe' => $periodoDe?->format('Y-m-d'),

@@ -88,6 +88,16 @@ class CobrancaController extends Controller
             'vence_hoje' => (float) (clone $base)->where('status', '!=', 'pago')->whereDate('data_vencimento', $hoje)->sum('valor'),
         ];
 
+        // Projeção (Felipe, 18/10/2026): o que ainda não nasceu mas vai — a
+        // cobrança da revenda "por cliente" antes do fechamento. Só para a casa,
+        // sem busca e fora dos recortes de pago/cancelado.
+        $projecao = (! $usuario->temEscopoDeRevenda() && $busca === '' && ! in_array($this->filtroStatusSelecionado($request), ['pago', 'cancelado'], true))
+            ? app(\App\Services\ProjecaoFinanceira::class)->receitas($periodoDe, $periodoAte)
+                ->when($revendaId, fn ($c) => $c->filter(fn ($p) => \App\Models\Revenda::whereKey($revendaId)->value('nome') === $p['revenda'])->values())
+            : collect();
+        $kpis['projetado'] = (float) $projecao->sum('valor');
+        $kpis['a_receber'] += $kpis['projetado'];
+
         // O aging continua GLOBAL (ver docblock do método) — só o escopo de
         // revenda do usuário entra aqui, não período/busca.
         $escopoRevenda = $usuario->temEscopoDeRevenda() ? ['revenda_id' => $usuario->revenda_id] : [];
@@ -96,7 +106,7 @@ class CobrancaController extends Controller
         $emAbertoGlobal = (float) $pendentesGlobais->sum('valor');
 
         return view('cobrancas.index', array_merge(
-            compact('cobrancas', 'kpis', 'faixas', 'hoje', 'emAbertoGlobal', 'contagens', 'contagensTipo'),
+            compact('cobrancas', 'kpis', 'faixas', 'hoje', 'emAbertoGlobal', 'contagens', 'contagensTipo', 'projecao'),
             [
                 'filtroPeriodo' => $this->filtroPeriodoSelecionado($request),
                 'periodoDe' => $periodoDe?->format('Y-m-d'),

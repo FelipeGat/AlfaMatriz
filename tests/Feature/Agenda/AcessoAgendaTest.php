@@ -81,7 +81,8 @@ class AcessoAgendaTest extends TestCase
         $menu = $resposta->getContent();
         $this->assertGreaterThan(
             strpos($menu, 'Desenvolvimento'),
-            strpos($menu, 'agenda'),
+            // O link da Agenda do time, e não "/secretario/agenda" (Minha agenda, no topo).
+            strpos($menu, 'href="'.route('agenda.index').'"'),
         );
     }
 }

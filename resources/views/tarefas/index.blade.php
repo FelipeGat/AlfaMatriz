@@ -134,6 +134,17 @@
                     document.documentElement.setAttribute('data-tela-cheia', '');
                 }
             } catch (erro) {}
+            // Cards compactos (18/10/2026, pedido para a conta VixCard): o
+            // padrão é da conta — ligado para quem quer ver o quadro inteiro de
+            // relance —, e a escolha da pessoa no navegador vence.
+            (() => {
+                let compacto = @js(auth()->user()?->temEscopoVixcard() ?? false);
+                try {
+                    const salvo = localStorage.getItem('alfamatriz:quadro-compacto');
+                    if (salvo !== null) compacto = salvo === '1';
+                } catch (erro) {}
+                if (compacto) document.documentElement.setAttribute('data-cards-compactos', '');
+            })();
         </script>
 
         {{-- Clicar no quadro fecha a barra flutuante da tela cheia: ela cobre a
@@ -685,6 +696,9 @@
                  */
                 recolhidas: [],
 
+                /** Colunas VAZIAS que a pessoa abriu à mão (ver `recolhida`). */
+                expandidas: [],
+
                 /**
                  * A tela cheia do quadro, guardada entre visitas.
                  *
@@ -700,6 +714,9 @@
                  * carregamento.
                  */
                 telaCheia: false,
+
+                /** Cards compactos: só número, título, selo e responsável. */
+                compacto: false,
 
                 /**
                  * O painel de filtros da tela cheia. Mora AQUI, e não num
@@ -735,6 +752,7 @@
 
                 init() {
                     try {
+                        this.expandidas = JSON.parse(localStorage.getItem('alfamatriz:colunas-vazias-abertas') || '[]');
                         this.recolhidas = JSON.parse(
                             localStorage.getItem('alfamatriz:colunas-recolhidas') || '[]'
                         );
@@ -743,6 +761,7 @@
                     }
 
                     this.telaCheia = document.documentElement.hasAttribute('data-tela-cheia');
+                    this.compacto = document.documentElement.hasAttribute('data-cards-compactos');
 
                     // A rolagem durante o arrasto: um ouvinte só, no documento
                     // e na captura. O porquê dos dois está em
@@ -766,6 +785,14 @@
                  * pintura, sem o quadro pular de tamanho depois que o Alpine
                  * acorda.
                  */
+                alternarCompacto() {
+                    this.compacto = ! this.compacto;
+                    document.documentElement.toggleAttribute('data-cards-compactos', this.compacto);
+                    try {
+                        localStorage.setItem('alfamatriz:quadro-compacto', this.compacto ? '1' : '0');
+                    } catch (erro) {}
+                },
+
                 alternarTelaCheia() {
                     this.telaCheia = ! this.telaCheia;
 
@@ -795,7 +822,27 @@
                         ?.toggleAttribute('data-aberta', this.filtrosAbertos);
                 },
 
-                alternarColuna(chave) {
+                /**
+                 * Coluna VAZIA nasce recolhida (dono, 18/10/2026: "quando
+                 * estiver vazia, fique fina dando mais espaço para os outros");
+                 * a que tem card segue a escolha guardada em `recolhidas`.
+                 * Abrir uma vazia à mão fica lembrado em `expandidas`.
+                 */
+                recolhida(chave, vazia = false) {
+                    return this.recolhidas.includes(chave) || (vazia && ! this.expandidas.includes(chave));
+                },
+
+                alternarColuna(chave, vazia = false) {
+                    if (vazia) {
+                        this.expandidas = this.expandidas.includes(chave)
+                            ? this.expandidas.filter((x) => x !== chave)
+                            : [...this.expandidas, chave];
+                        try {
+                            localStorage.setItem('alfamatriz:colunas-vazias-abertas', JSON.stringify(this.expandidas));
+                        } catch (erro) {}
+
+                        return;
+                    }
                     this.recolhidas = this.recolhidas.includes(chave)
                         ? this.recolhidas.filter((x) => x !== chave)
                         : [...this.recolhidas, chave];

@@ -63,6 +63,7 @@ class CentralIaMaquinasController extends Controller
 
     public function arquivo(string $arquivo): Response
     {
+        $arquivo = preg_replace('/\.php\.txt$/', '.php', $arquivo);
         abort_unless(in_array($arquivo, Maquinas::ARQUIVOS, true), 404);
 
         return response(file_get_contents(base_path('deploy/central-ia/'.$arquivo)), 200, [

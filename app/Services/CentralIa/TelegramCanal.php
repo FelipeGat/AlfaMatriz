@@ -200,6 +200,13 @@ class TelegramCanal
      */
     public function receber(array $update, CentralIaTelegramBot $bot): void
     {
+        // Toque num botão do Secretário (lembrete, proposta): regras próprias,
+        // mesmas proteções de chat privado e dono (contracts/telegram.md).
+        if (isset($update['callback_query']) && is_array($update['callback_query'])) {
+            app(\App\Services\Secretario\TelegramDoSecretario::class)->toque($update['callback_query'], $bot);
+
+            return;
+        }
         $this->atual = $this->api->doBot($bot);
         try {
             $this->receberNoBot($update, $bot);
@@ -260,6 +267,21 @@ class TelegramCanal
 
         if (CentralIaMensagem::where('user_id', $user->id)->where('telegram_update_id', $updateId)->exists()) return;
 
+        // Voz e áudio (Secretário, Etapa 4): reunião ou ditado, transcritos na
+        // máquina do dono. Antes da recusa de encaminhada: áudio de reunião
+        // encaminhado é o uso normal e vira DADO (nada é criado sem revisão);
+        // só não vira ditado, porque fala de outra pessoa não é comando.
+        $audio = $m['voice'] ?? $m['audio'] ?? (str_starts_with((string) ($m['document']['mime_type'] ?? ''), 'audio/') ? $m['document'] : null);
+        // Arquivo de áudio COM legenda é pedido ao agente ("transcreva e resuma"):
+        // segue o caminho de antes, como anexo, e a legenda não se perde.
+        $comLegenda = ! isset($m['voice']) && trim((string) ($m['caption'] ?? '')) !== '';
+        if (is_array($audio) && ! $comLegenda && app(\App\Services\Secretario\Conversa::class)->pode($user)) {
+            $encaminhada = isset($m['forward_origin']) || isset($m['forward_from']) || isset($m['forward_from_chat']) || isset($m['forward_date']);
+            $this->receberAudio($user, $chatId, $updateId, $audio, isset($m['voice']) && ! $encaminhada);
+
+            return;
+        }
+
         // Mensagem encaminhada é texto de OUTRA pessoa: não vira pedido a um
         // agente com acesso total na máquina do dono.
         if (isset($m['forward_origin']) || isset($m['forward_from']) || isset($m['forward_from_chat']) || isset($m['forward_date'])) {
@@ -270,6 +292,17 @@ class TelegramCanal
 
         // O código que a SUA máquina mandou: vale com o canal na tela ou aqui.
         if ($this->codigoDeConfirmacao($user, $chatId, trim($texto))) {
+            return;
+        }
+
+        // O Secretário ("me lembra amanhã às 9h…") antes do canal ativo:
+        // registrar um lembrete é comando, e funciona com a conversa na tela
+        // (docs/specs/secretario-executivo, research D10). Só para quem tem o
+        // perfil; para os demais, nada muda.
+        $comando = trim($texto);
+        if (! $midia && $comando !== '' && mb_strlen($comando) <= config('central_ia.max_texto')
+            && (! str_starts_with($comando, '/') || str_starts_with($comando, '/lembrete'))
+            && app(\App\Services\Secretario\Conversa::class)->doTelegram($user, $comando, $updateId)) {
             return;
         }
 
@@ -365,13 +398,13 @@ class TelegramCanal
     private function receberMidia(User $user, CentralIaTelegramVinculo $vinculo, int $chatId, string $texto, int $updateId, array $midia): void
     {
         if (($midia['file_size'] ?? 0) > AnexosService::MAX_BYTES || ! is_string($midia['file_id'] ?? null)) {
-            throw ValidationException::withMessages(['arquivo' => 'O arquivo deve ter até 20 MB.']);
+            throw ValidationException::withMessages(['arquivo' => 'O arquivo deve ter até 12 MB.']);
         }
         $this->responder($chatId, 'Arquivo recebido. Estou baixando para analisar…');
         $tmp = tempnam(sys_get_temp_dir(), 'central-ia-');
         try {
             if (! $this->atual->baixar($midia['file_id'], $tmp)) {
-                throw ValidationException::withMessages(['arquivo' => 'Não consegui baixar o arquivo. Reenvie um arquivo de até 20 MB.']);
+                throw ValidationException::withMessages(['arquivo' => 'Não consegui baixar o arquivo. Reenvie um arquivo de até 12 MB.']);
             }
             $this->atual->verificarConsumidor();
             $anexo = app(AnexosService::class)->guardar($user,
@@ -405,6 +438,43 @@ class TelegramCanal
                 unlink($tmp);
             }
         }
+    }
+
+    /** Baixa o áudio do Telegram e entrega ao Secretário (docs/specs/secretario-reunioes). */
+    private function receberAudio(User $user, int $chatId, int $updateId, array $audio, bool $voz): void
+    {
+        if (($audio['file_size'] ?? 0) > \App\Services\Secretario\Reunioes::MAX_BYTES || ! is_string($audio['file_id'] ?? null)) {
+            $this->responder($chatId, 'Áudio acima de 12 MB. Grave em OGG/Opus (cabe ~1 h) ou divida o arquivo.');
+
+            return;
+        }
+        if (\App\Models\SecretarioReuniao::where('telegram_update_id', $updateId)->exists()) {
+            return;
+        }
+        $duracao = is_int($audio['duration'] ?? null) ? $audio['duration'] : null;
+        $ditado = $voz && $duracao !== null && $duracao <= \App\Services\Secretario\Reunioes::DITADO_MAX_S;
+        $tmp = tempnam(sys_get_temp_dir(), 'secretario-');
+        try {
+            if (! $this->atual->baixar($audio['file_id'], $tmp)) {
+                $this->responder($chatId, 'Não consegui baixar o áudio. Mande de novo.');
+
+                return;
+            }
+            $this->atual->verificarConsumidor();
+            $nome = is_string($audio['file_name'] ?? null) ? $audio['file_name'] : ($voz ? 'voz' : 'audio');
+            app(\App\Services\Secretario\Reunioes::class)->receber($user, $tmp, $nome, 'telegram', $ditado ? 'ditado' : 'reuniao', $updateId, $duracao);
+        } catch (ValidationException $e) {
+            $this->responder($chatId, collect($e->errors())->flatten()->first());
+
+            return;
+        } finally {
+            @unlink($tmp);
+        }
+        $online = \App\Models\CentralIaRunner::where('user_id', $user->id)->get()->contains(fn ($r) => $r->online());
+        $this->responder($chatId, ($ditado
+            ? '🎙 Recebi. Transcrevo na sua máquina e já te digo o que entendi.'
+            : '🎧 Recebi o áudio. Vou transcrever na sua máquina e te aviso quando a reunião estiver pronta para revisão.')
+            .($online ? '' : "\nSua máquina está desligada agora: começo assim que ela voltar."));
     }
 
     public function sinalizarAtividade(): void
@@ -847,8 +917,9 @@ class TelegramCanal
      * Leva ao Telegram as entregas pendentes, mais antigas primeiro.
      */
     /**
-     * Imagens e PDFs de prévia vão ao Telegram (dono, 13/10/2026: "imagem ou
-     * pdf, pode mandar para o telegram"), seja qual for o canal ativo.
+     * Imagens, PDFs e vídeos de prévia vão ao Telegram (dono, 13/10/2026:
+     * "imagem ou pdf, pode mandar para o telegram"; 17/10/2026: "quero o
+     * vídeo"), seja qual for o canal ativo.
      */
     public function entregarPrevias(int $limite = 5): void
     {
@@ -860,10 +931,14 @@ class TelegramCanal
             $p->update(['telegram' => 'enviando']);
             $arquivo = "central-ia/previas/{$p->user_id}/{$p->execucao_id}/{$p->caminho}";
             $foto = $p->tipo() === 'imagem' && $p->tamanho <= 10 * 1024 * 1024;
+            // Vídeo vai por sendVideo, que toca no próprio Telegram.
+            $video = $p->tipo() === 'video';
+            [$metodo, $campo] = $foto ? ['sendPhoto', 'photo'] : ($video ? ['sendVideo', 'video'] : ['sendDocument', 'document']);
             $r = \Illuminate\Support\Facades\Storage::disk('central_ia')->exists($arquivo)
-                ? $api->enviarArquivo($foto ? 'sendPhoto' : 'sendDocument', $foto ? 'photo' : 'document',
+                ? $api->enviarArquivo($metodo, $campo,
                     \Illuminate\Support\Facades\Storage::disk('central_ia')->get($arquivo), basename($p->caminho),
-                    ['chat_id' => $vinculo->chat_id, 'caption' => 'Prévia da execução #'.$p->execucao_id.' — '.$p->caminho])
+                    ['chat_id' => $vinculo->chat_id, 'caption' => 'Prévia da execução #'.$p->execucao_id.' — '.$p->caminho]
+                        + ($video ? ['supports_streaming' => 'true'] : []), $video ? 180 : 60)
                 : ['ok' => false, 'erro' => 'recusada'];
             $p->update(['telegram' => $r['ok'] ? 'enviado' : ($r['erro'] === 'limite' ? 'pendente' : 'falhou')]);
             if (! $r['ok'] && $r['erro'] === 'limite') return;

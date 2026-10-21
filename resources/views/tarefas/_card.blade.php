@@ -173,7 +173,7 @@
             notícia nenhuma sobre a tarefa. O título continua acima dele, em
             `ink` cheio a 13,5px, porque quem procura pelo assunto é a maioria.
         --}}
-        <p class="min-w-0 flex-1 text-[13.5px] font-medium leading-[1.35] text-ink">
+        <p data-card-titulo class="min-w-0 flex-1 text-[13.5px] font-medium leading-[1.35] text-ink">
             <span class="font-mono text-[11.5px] font-semibold text-ink-dim">{{ $tarefa->codigo() }}</span>
 
             {{--
@@ -229,7 +229,7 @@
     {{-- Resumo: uma linha só. O texto inteiro é assunto do detalhe (AC-129), e
          o `title` entrega o resto sem custar altura. --}}
     @if (filled($tarefa->resumo))
-        <p class="mt-[5px] text-[12px] leading-[1.4] text-ink-mute truncate"
+        <p data-card-detalhe class="mt-[5px] text-[12px] leading-[1.4] text-ink-mute truncate"
            title="{{ $tarefa->resumo }}">{{ $tarefa->resumo }}</p>
     @endif
 
@@ -249,7 +249,7 @@
          metade de timestamp que a armadilha 19 manda não mostrar.
          `items-baseline` porque texto ao lado de texto alinha pela linha de
          base. --}}
-    <p class="mt-[5px] flex items-baseline gap-2 text-[11.5px] leading-[1.4] text-ink-faint"
+    <p data-card-detalhe class="mt-[5px] flex items-baseline gap-2 text-[11.5px] leading-[1.4] text-ink-faint"
        title="Criada {{ $tarefa->criadoPor ? 'por '.$tarefa->criadoPor->name.' ' : '' }}em {{ $tarefa->created_at->format('d/m/Y H:i') }}">
         @if ($tarefa->criadoPor)
             <span class="min-w-0 flex-1 truncate">Criada por {{ $criadorCurto }}</span>
@@ -677,7 +677,7 @@
         até "Joa…" para caber os selos, e o card perde justamente o dado que
         diz com quem a tarefa está.
     --}}
-    <div class="mt-[9px] pt-[9px] border-t border-rule flex items-center gap-[7px]">
+    <div data-card-rodape class="mt-[9px] pt-[9px] border-t border-rule flex items-center gap-[7px]">
         {{-- Sem sistema, o círculo é tracejado e vazio: a lacuna se vê, em vez
              de virar uma marca emprestada de outro produto. O ícone em si vem
              do `x-marca-sistema` — o mapa de qual arquivo serve a qual slug

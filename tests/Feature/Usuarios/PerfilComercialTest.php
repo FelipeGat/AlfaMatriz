@@ -133,10 +133,11 @@ class PerfilComercialTest extends TestCase
 
         (new PerfilPermissaoSeeder)->run();
 
-        // Quatro: funil, clientes, revendas e o painel próprio — este último
-        // levado por `2026_08_15_130000_permissao_dashboard_comercial.php`.
+        // Cinco: funil, clientes, revendas, o painel próprio — levado por
+        // `2026_08_15_130000_permissao_dashboard_comercial.php` — e o
+        // Secretário (perfis de pessoas, desde 17/10/2026).
         $this->assertSame(1, Perfil::where('slug', 'comercial')->count());
-        $this->assertSame(4, Perfil::where('slug', 'comercial')->firstOrFail()->permissoes()->count());
+        $this->assertSame(5, Perfil::where('slug', 'comercial')->firstOrFail()->permissoes()->count());
     }
 
     public function test_a_tela_de_usuarios_oferece_o_perfil_novo(): void

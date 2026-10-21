@@ -29,6 +29,9 @@ function novoId() {
 }
 
 const GERAL = '';
+// Espelho de AnexosService::MIMES + DOCUMENTOS (e do accept do Blade).
+const EXTENSOES_DE_ANEXO = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'mp4', 'webm', 'mov', 'txt', 'md', 'csv', 'tsv', 'json', 'log', 'rtf',
+    'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp'];
 const diaLocal = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
 function guardar(chave, valor) { try { localStorage.setItem(chave, valor); } catch {} }
@@ -49,7 +52,7 @@ export function centralIa(config) {
         chats: [], buscaChats: '', filtroChatProjeto: '', filtroChatEstado: 'ativos', chatAtual: null,
         // Chats Business: um chat contínuo por assunto (docs/specs/chats-business).
         assuntos: [], novoAssunto: null, buscaAssuntos: '',
-        imagemAberta: null, trazendo: null, memoria: null,
+        imagemAberta: null, memoria: null,
         preferencias: null, ajustes: null, ajustesAlterados: false, salvandoAjustes: false, arquivando: false,
         administracao: { permitida: false, usuarios: [] }, usuarioAtividade: '', resumoUsuario: null,
         politicaUsuario: null, politicaAlterada: false, salvandoPolitica: false, carregandoUsuario: false,
@@ -68,6 +71,15 @@ export function centralIa(config) {
         projetosRecolhidos: ler('central-ia:projetos-recolhidos') === 'sim',
         // Recolhidos por padrão: o estado cabe num selo só ao lado das abas.
         indicadoresRecolhidos: ler('central-ia:indicadores-recolhidos') !== 'nao',
+        // Caixa de mensagem recolhida (Felipe, 17/10/2026: escrevendo muito, a
+        // caixa crescia e escondia a conversa de onde vinha o contexto). Só a
+        // preferência de tela vai para o navegador, nunca o texto.
+        caixaRecolhida: ler('central-ia:caixa-recolhida') === 'sim',
+        alternarCaixa() {
+            this.caixaRecolhida = !this.caixaRecolhida;
+            guardar('central-ia:caixa-recolhida', this.caixaRecolhida ? 'sim' : 'nao');
+            this.$nextTick(() => this.crescer(document.getElementById('central-rascunho')));
+        },
         alternarProjetos() {
             this.projetosRecolhidos = !this.projetosRecolhidos;
             guardar('central-ia:projetos-recolhidos', this.projetosRecolhidos ? 'sim' : 'nao');
@@ -136,12 +148,29 @@ export function centralIa(config) {
                 : etapas[a.progresso?.etapa] || 'Aguardando informação do runner';
             return a.agente + ' · ' + estado + ' · ' + tempo;
         },
+        // O que o agente está fazendo agora (o runner manda a última ação e a
+        // última fala): sem isso, 11 min de "Aguardando resposta" parecem travamento.
+        detalheDoAndamento(a) {
+            const p = a.progresso || {};
+            if (a.status !== 'executando' || (!p.acao && !p.fala)) return '';
+            const ha = quando => {
+                const s = Math.max(0, Math.floor((this.agora - new Date(quando).getTime()) / 1000));
+                return s < 60 ? s + ' s' : Math.floor(s / 60) + ' min';
+            };
+            const partes = [];
+            if (p.acao) partes.push('Agora: ' + p.acao + (p.acao_em ? ' (há ' + ha(p.acao_em) + ')' : '') + (p.acoes ? ' · ' + p.acoes + ' ações' : ''));
+            if (p.fala) partes.push('“' + p.fala + '”');
+            return partes.join(' — ');
+        },
         escolherArquivos(lista) {
             if (this.aba.pendente) return;
             for (const file of lista) {
                 if (this.aba.arquivos.length >= 5) { this.aviso = 'Envie até cinco arquivos por mensagem.'; break; }
-                if (file.size > 12 * 1024 * 1024 || !['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) {
-                    this.aviso = 'Use JPG, PNG, WebP, PDF, MP4, WebM ou MOV de até 12 MB.'; continue;
+                // Pela extensão: o navegador dá csv como "application/vnd.ms-excel" no
+                // Windows e .md sem tipo nenhum. O servidor confere o conteúdo de verdade.
+                const ext = (file.name.split('.').pop() || '').toLowerCase();
+                if (file.size > 12 * 1024 * 1024 || !EXTENSOES_DE_ANEXO.includes(ext)) {
+                    this.aviso = 'Use imagem, PDF, vídeo, texto (TXT, MD, CSV, JSON), Word, Excel ou PowerPoint de até 12 MB. Arquivos com macro (docm, xlsm, pptm) não entram.'; continue;
                 }
                 // Miniatura local (nada sai do navegador até o envio).
                 const miniatura = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
@@ -156,7 +185,9 @@ export function centralIa(config) {
         crescer(el) {
             if (!el) return;
             el.style.height = 'auto';
-            el.style.height = Math.min(el.scrollHeight + 2, Math.round(window.innerHeight * 0.4)) + 'px';
+            // Recolhida: duas linhas, o texto rola por dentro e a conversa fica à vista.
+            const teto = this.caixaRecolhida ? 52 : Math.round(window.innerHeight * 0.4);
+            el.style.height = Math.min(el.scrollHeight + 2, teto) + 'px';
         },
         colar(event) {
             const arquivos = [...(event.clipboardData?.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
@@ -243,8 +274,13 @@ export function centralIa(config) {
         get projetosDosChats() { return [...new Set(this.chats.map(c => c.projeto))].sort(); },
         get chatsFiltrados() {
             const termo = this.buscaChats.trim().toLocaleLowerCase('pt-BR');
-            return this.chats.filter(c => (!this.filtroChatProjeto || c.projeto === this.filtroChatProjeto)
-                && (this.filtroChatEstado === 'todos' || (this.filtroChatEstado === 'ativos' ? !['pausada', 'concluida'].includes(c.status) : c.status === this.filtroChatEstado))
+            // Assunto da Business que está rodando, esperando você ou falhou também é chat ativo
+            // (Felipe, 20/10/2026: "na aba chat ativo, ele mostra zero"); o assunto parado fica só na Business.
+            // O que tem pedido na fila também (Felipe, 20/10/2026: "tem que mostrar em chats ativos, tanto
+            // os executando quanto os próximos aguardando"): o topo dizia "2 na fila" e a lista só tinha um.
+            const assuntosAtivos = this.assuntos.filter(a => ['executando', 'aguardando_voce', 'falhou'].includes(a.status) || this.filaDoChat(a.id).naFila);
+            return [...this.chats, ...assuntosAtivos].filter(c => (!this.filtroChatProjeto || c.projeto === this.filtroChatProjeto)
+                && (this.filtroChatEstado === 'todos' || (this.filtroChatEstado === 'ativos' ? !['pausada', 'concluida'].includes(c.status) : this.estadoNaLista(c) === this.filtroChatEstado))
                 && (!termo || [c.titulo, c.projeto, c.agente, '#' + c.id].join(' ').toLocaleLowerCase('pt-BR').includes(termo)));
         },
         /**
@@ -320,67 +356,6 @@ export function centralIa(config) {
                 this.$nextTick(() => document.getElementById('central-rascunho')?.focus());
             } catch (erro) { this.falhou(erro); n.salvando = false; }
         },
-        /** Conversas do VS Code que podem semear um chat (Claude e Codex), com nome primeiro. */
-        get conversasDoVsCode() {
-            return this.sessoes.filter(s => ['claude', 'codex'].includes(s.agente))
-                .sort((a, b) => (!!b.titulo - !!a.titulo) || b.ultima_atividade.localeCompare(a.ultima_atividade));
-        },
-        abrirTrazer() { this.trazendo = { ids: [], titulo: '', grupo_id: '', projeto: '', salvando: false, nomeTocado: false }; },
-        /** Marca/desmarca; o nome e o grupo do chat seguem a primeira conversa marcada (Vix* → VixCard). */
-        marcarConversa(s) {
-            const t = this.trazendo;
-            t.ids = t.ids.includes(s.id) ? t.ids.filter(x => x !== s.id) : [...t.ids, s.id];
-            const primeira = this.sessoes.find(x => x.id === t.ids[0]);
-            if (!t.nomeTocado) t.titulo = primeira?.titulo || '';
-            if (primeira && !t.grupo_id) {
-                const alvo = /vix/i.test(primeira.titulo || '') ? /vix/i : /alfa/i;
-                t.grupo_id = this.grupos.find(g => alvo.test(g.nome))?.id || '';
-            }
-        },
-        async trazerDoVsCode() {
-            const t = this.trazendo;
-            if (!t?.ids.length || !t.titulo.trim() || t.salvando) return;
-            t.salvando = true;
-            try {
-                const sessoes = t.ids.map(id => ({ agente: this.sessoes.find(s => s.id === id).agente, id }));
-                const r = await this.pedir(config.semear, 'POST', { titulo: t.titulo.trim(), grupo_id: t.grupo_id ? Number(t.grupo_id) : null, projeto: t.projeto || '', sessoes });
-                this.assuntos = [{ id: r.id, titulo: t.titulo.trim(), grupo_id: t.grupo_id ? Number(t.grupo_id) : null, projeto: t.projeto || '', status: 'executando', agente: null, ultima_atividade: new Date().toISOString() }, ...this.assuntos];
-                this.trazendo = null;
-                this.abrirAssunto(this.assuntos[0]);
-            } catch (erro) { this.falhou(erro); t.salvando = false; }
-        },
-        async carregarMemoria() {
-            const a = this.assuntoAtual;
-            if (!a) return;
-            if (this.memoria?.id !== a.id) this.memoria = null;
-            try { this.memoria = await this.pedir(config.memoria.replace('__A__', a.id)); } catch (erro) { this.falhou(erro); }
-        },
-        /** Editar ou apagar um item; manda o texto que a pessoa via, para não corrigir o item errado. */
-        async corrigirMemoria(lista, i, acao) {
-            const item = this.memoria?.listas[lista]?.[i];
-            if (!item) return;
-            const corpo = { lista, indice: i, acao, antes: item.texto };
-            if (acao === 'apagar') {
-                if (!confirm(`Apagar da memória?
-
-${item.texto}
-
-Uma IA não poderá devolvê-lo depois.`)) return;
-            } else {
-                const texto = prompt('Texto:', item.texto);
-                if (texto === null || !texto.trim()) return;
-                corpo.texto = texto.trim();
-                if (lista === 'mapa') {
-                    const caminho = prompt('Caminho (pasta, arquivo ou link; vazio se não houver):', item.caminho || '');
-                    if (caminho === null) return;
-                    const etapa = prompt('Em que etapa está agora? (vazio se não se aplica)', item.etapa || '');
-                    if (etapa === null) return;
-                    corpo.caminho = caminho.trim() || null; corpo.etapa = etapa.trim() || null;
-                }
-            }
-            try { this.memoria = await this.pedir(config.memoria.replace('__A__', this.memoria.id), 'PUT', corpo); }
-            catch (erro) { this.falhou(erro); this.carregarMemoria(); }
-        },
         async salvarAssunto(a, dados) {
             try { await this.pedir(config.assunto.replace('__A__', a.id), 'PUT', dados); this.reconectar(); } catch (erro) { this.falhou(erro); }
         },
@@ -395,6 +370,25 @@ Uma IA não poderá devolvê-lo depois.`)) return;
         },
 
         get sessoesDoProjeto() { return this.sessoes.filter(s => s.projeto === this.atual); },
+        /** Os pedidos do chat agora: se um roda, quantos esperam e por quê. */
+        filaDoChat(id) {
+            const doChat = this.atividade.filter(a => a.tarefa_id === id);
+            const rodando = doChat.some(a => a.status === 'executando');
+            const pendentes = doChat.filter(a => a.status === 'pendente');
+            let motivo = null;
+            if (pendentes.length && !rodando) {
+                // A mesma regra do servidor (AgentesService::proxima): uma implementação por pasta, e o teto da pessoa.
+                const p = pendentes[0];
+                const pastaOcupada = p.modo === 'implementar' && p.projeto && this.atividade.some(a => a.status === 'executando' && a.modo === 'implementar' && a.projeto === p.projeto);
+                motivo = pastaOcupada ? `espera outro chat que implementa em ${p.projeto}`
+                    : (this.emExecucao >= this.paralelo ? `espera uma vaga (${this.emExecucao} de ${this.paralelo} rodando)` : 'espera a máquina pegar');
+            }
+            return { rodando, naFila: pendentes.length, motivo };
+        },
+        estadoNaLista(c) {
+            const f = this.filaDoChat(c.id);
+            return f.rodando ? 'executando' : (f.naFila ? 'na_fila' : c.status);
+        },
         get emExecucao() { return this.atividade.filter(a => a.status === 'executando').length; },
         get naFila() { return this.atividade.filter(a => a.status === 'pendente').length; },
 
@@ -471,7 +465,7 @@ Uma IA não poderá devolvê-lo depois.`)) return;
                 this.bloqueado = true; this.conexao = 'bloqueado'; this.abas = {}; this.garantirAba();
                 this.aviso = 'Sua sessão ou permissão mudou. Entre novamente no AlfaMatriz para continuar.';
             } else if ([422, 403, 413].includes(erro.status)) {
-                this.aviso = erro.status === 413 ? 'Arquivo maior que o limite do servidor (20 MB).' : erro.detalhe || 'Confira a mensagem: ela não pôde ser registrada.';
+                this.aviso = erro.status === 413 ? 'Arquivo maior que o limite do servidor (12 MB).' : erro.detalhe || 'Confira a mensagem: ela não pôde ser registrada.';
             } else {
                 this.conexao = 'offline';
                 this.aviso = erro.status === 429 ? 'Muitas requisições em pouco tempo. Aguarde um instante.'
@@ -645,7 +639,8 @@ Uma IA não poderá devolvê-lo depois.`)) return;
         },
 
         get perguntaPendente() {
-            const t = this.tarefaVista || this.tarefas.find(t => t.id === Number(this.aba.tarefa));
+            const t = this.tarefaVista || this.tarefas.find(t => t.id === Number(this.aba.tarefa))
+                || this.assuntos.find(a => a.id === Number(this.aba.tarefa));
             return t?.duvida ? t : null;
         },
         abrirPergunta(texto, opcoes = []) {
@@ -1004,11 +999,11 @@ Uma IA não poderá devolvê-lo depois.`)) return;
             return (partes.length > 1 ? partes[0][0] + partes[1][0] : nome.slice(0, 2)).toUpperCase();
         },
         estado(e) {
-            return { executando: 'Executando', aguardando_voce: 'Aguardando você', falhou: 'Falhou', aberta: 'Aberta',
+            return { executando: 'Executando', na_fila: 'Na fila', aguardando_voce: 'Aguardando você', falhou: 'Falhou', aberta: 'Aberta',
                 pausada: 'Pausado', arquivada: 'Arquivado', concluida: 'Concluída', ocioso: 'Sem tarefa' }[e] || e;
         },
         corDoEstado(e) {
-            return { executando: 'text-brand-text border-brand-mute', aguardando_voce: 'text-pergunta border-pergunta-line bg-pergunta-tint',
+            return { executando: 'text-brand-text border-brand-mute', na_fila: 'text-warn border-warn', aguardando_voce: 'text-pergunta border-pergunta-line bg-pergunta-tint',
                 falhou: 'text-crit border-crit bg-crit-tint', concluida: 'text-good border-good-line bg-good-tint',
                 aberta: 'text-ink-mute border-line', pausada: 'text-ink-faint border-line', ocioso: 'text-ink-faint border-line' }[e] || 'text-ink-mute border-line';
         },

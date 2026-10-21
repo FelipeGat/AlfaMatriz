@@ -71,11 +71,16 @@ class FaturamentoService
                 // cobrado individualmente por `gerarCobrancasDeClientesParaCompetencia()`
                 // — contá-lo aqui de novo cobraria a revenda duas vezes pelo
                 // mesmo cliente: uma vez no agregado, outra na cobrança dele.
+                // Revenda "por cliente" (cobranca-revendas-boleto) é o oposto:
+                // paga por TODO cliente faturável — ninguém cobra o cliente final
+                // dela daqui —, e o que não é faturável (cortesia, teste) fica fora.
                 $clientesAtivos = $sistema->clientes()
                     ->where('revenda_id', $revenda->id)
                     ->where('clientes.ativo', true)
                     ->where('cliente_sistema.ativo', true)
-                    ->whereDoesntHave('contratos', fn ($q) => $q->where('sistema_id', $sistema->id)->where('status', 'ativo'))
+                    ->when($revenda->cobranca_por_cliente,
+                        fn ($q) => $q->where('cliente_sistema.faturavel', true),
+                        fn ($q) => $q->whereDoesntHave('contratos', fn ($c) => $c->where('sistema_id', $sistema->id)->where('status', 'ativo')))
                     ->get(['clientes.id', 'clientes.nome']);
 
                 $qtd = $clientesAtivos->count();
@@ -88,7 +93,11 @@ class FaturamentoService
                     continue;
                 }
 
-                $tier = $sistema->tierParaVolume($qtd, $revenda->id);
+                // Por cliente: só o preço da PRÓPRIA revenda — as faixas padrão
+                // seriam escolhidas por serem mais baratas no volume.
+                $tier = $revenda->cobranca_por_cliente
+                    ? $sistema->tiersVigentes($revenda->id)->first(fn ($t) => $t->revenda_id === $revenda->id)
+                    : $sistema->tierParaVolume($qtd, $revenda->id);
 
                 if (! $tier) {
                     $breakdown[] = [
@@ -106,7 +115,10 @@ class FaturamentoService
                 // tela no AlfaControl, então é preço de atacado (Alfa→revenda)
                 // e entra na fatura. Se um dia a revenda passar a registrar o
                 // preço de varejo dela, este é o ponto a rever.
-                $modulos = $this->modulosDaCompetencia($sistema, $clientesAtivos->pluck('id'), $competencia);
+                // Preço por cliente já é o valor cheio: módulos não somam.
+                $modulos = $revenda->cobranca_por_cliente
+                    ? ['total' => 0, 'detalhe' => []]
+                    : $this->modulosDaCompetencia($sistema, $clientesAtivos->pluck('id'), $competencia);
                 $valor = $licenciamento + $modulos['total'];
 
                 $snapshot = FaturamentoSnapshot::create([
@@ -158,7 +170,8 @@ class FaturamentoService
                 'revenda_id' => $revenda->id,
                 'descricao' => "Licenciamento de sistemas Alfa — competência {$mes->translatedFormat('m/Y')}",
                 'valor' => $totalRevenda,
-                'data_vencimento' => $vencimento->toDateString(),
+                'data_vencimento' => self::vencimentoDaRevenda($revenda, $mes, $vencimento)->toDateString(),
+                'conta_financeira_id' => $revenda->conta_financeira_id,
                 'status' => 'pendente',
                 'tipo' => 'locacao_sistema',
                 'competencia' => $competencia,
@@ -199,6 +212,21 @@ class FaturamentoService
      * o vencimento de toda cobrança dela — a primeira e as seguintes — é
      * sempre o fim do próprio mês.
      */
+    /**
+     * Revenda com dia de vencimento (cobranca-revendas-boleto): esse dia do mês
+     * SEGUINTE à competência — o boleto sai no dia 01 e vence no dia 11. Sem ele,
+     * a regra de sempre (fim do mês + 5 dias).
+     */
+    public static function vencimentoDaRevenda(Revenda $revenda, Carbon $mes, Carbon $padrao): Carbon
+    {
+        if (! $revenda->dia_vencimento) {
+            return $padrao;
+        }
+        $seguinte = $mes->copy()->addMonthNoOverflow()->startOfMonth();
+
+        return $seguinte->day(min((int) $revenda->dia_vencimento, $seguinte->daysInMonth));
+    }
+
     public function gerarCobrancasDeClientesParaCompetencia(string $competencia): array
     {
         $mes = Carbon::createFromFormat('Y-m', $competencia)->startOfMonth();
@@ -213,6 +241,14 @@ class FaturamentoService
 
             foreach ($contratos as $contrato) {
                 $cliente = $contrato->cliente;
+
+                // Cliente de revenda "por cliente": quem paga é a revenda, no
+                // agregado dela — a Alfa não cobra o cliente final (cobranca-revendas-boleto).
+                if ($cliente->revenda?->cobranca_por_cliente) {
+                    $resultado[] = ['status' => 'revenda_por_cliente', 'cliente' => $cliente->nome, 'sistema' => $sistema->nome];
+
+                    continue;
+                }
 
                 $cobrancaExistente = Cobranca::where('cliente_id', $contrato->cliente_id)
                     ->where('sistema_id', $sistema->id)

@@ -659,6 +659,9 @@ class TarefaController extends Controller
             ...$this->regrasDeAnexo(obrigatorio: false),
         ], $this->recadosDeAnexo());
 
+        // Conta VixCard: só produto, mãe e compromisso dela (acesso-vixcard, FR-002).
+        \App\Models\Scopes\EscopoVixcard::conferir($data, exigeSistema: true);
+
         // Fora do `$data` antes de qualquer outra coisa: ele vira `where()` na
         // busca por reenvio e `create()` logo em seguida, e nenhum dos dois sabe
         // o que fazer com um arquivo — o primeiro compararia `UploadedFile` com
@@ -913,6 +916,9 @@ class TarefaController extends Controller
         // para quem edita, é uma passada só na tarefa. Campo em branco não
         // publica nada — é o caso comum de quem abriu o modal só para trocar o
         // responsável.
+        // Conta VixCard: não leva a tarefa para fora dos produtos dela (FR-002).
+        \App\Models\Scopes\EscopoVixcard::conferir($data);
+
         $comentario = trim($data['comentario'] ?? '');
         unset($data['comentario']);
 
@@ -2429,7 +2435,9 @@ class TarefaController extends Controller
                 ->orderByRaw("CASE WHEN natureza = 'produto' THEN 0 ELSE 1 END")
                 ->orderBy('nome')
                 ->get(),
+            // Conta VixCard: só quem trabalha nos projetos dela (FR-004).
             'usuarios' => User::whereNull('revenda_id')
+                ->when(\App\Models\Scopes\EscopoVixcard::usuario(), fn ($q, $u) => $q->whereIn('id', \App\Models\Scopes\EscopoVixcard::pessoas($u)))
                 ->where(fn ($query) => $query
                     ->where('ativo', true)
                     ->orWhereHas('tarefas')

@@ -36,8 +36,8 @@
     etapa só recupera a largura das outras cinco sem perder de vista que elas
     existem, e o contador continua dizendo quanto há lá dentro.
 --}}
-<button type="button" x-show="recolhidas.includes('{{ $etapa['chave'] }}')" x-cloak
-        @click="alternarColuna('{{ $etapa['chave'] }}')"
+<button type="button" x-show="recolhida('{{ $etapa['chave'] }}', {{ ($etapa['quantidade'] ?? 0) === 0 ? 'true' : 'false' }})" x-cloak
+        @click="alternarColuna('{{ $etapa['chave'] }}', {{ ($etapa['quantidade'] ?? 0) === 0 ? 'true' : 'false' }})"
         title="Expandir {{ $etapa['label'] }}" aria-label="Expandir {{ $etapa['label'] }}"
         class="w-full py-2.5 flex flex-col items-center gap-2.5">
     <span class="h-[19px] min-w-[19px] px-[5px] rounded-full flex items-center justify-center
@@ -50,7 +50,7 @@
 </button>
 
 <header class="shrink-0 pt-[9px] pb-[9px] pl-3 pr-2"
-        x-show="! recolhidas.includes('{{ $etapa['chave'] }}')">
+        x-show="! recolhida('{{ $etapa['chave'] }}', {{ ($etapa['quantidade'] ?? 0) === 0 ? 'true' : 'false' }})">
     <div class="flex items-center gap-2">
         <span class="h-[7px] w-[7px] shrink-0 rounded-full"
               style="background: rgb(var(--{{ $etapa['cor'] }}))"></span>
@@ -81,7 +81,7 @@
             @endif
         </span>
 
-        <button type="button" @click="alternarColuna('{{ $etapa['chave'] }}')"
+        <button type="button" @click="alternarColuna('{{ $etapa['chave'] }}', {{ ($etapa['quantidade'] ?? 0) === 0 ? 'true' : 'false' }})"
                 title="Recolher coluna" aria-label="Recolher coluna"
                 class="shrink-0 h-[19px] w-[19px] rounded-badge flex items-center justify-center
                        text-ink-faint transition hover:text-brand">

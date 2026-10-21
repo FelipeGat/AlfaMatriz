@@ -106,8 +106,10 @@ class ConversaService
      * da pessoa. Não passa por `AgentesService::pedir()` — resposta de agente
      * nunca dispara outro agente.
      */
-    public function registrarDoAgente(User $user, string $autor, string $conteudo, string $tipo = CentralIaMensagem::AUTOR_AGENTE, ?string $projeto = null, ?int $tarefaId = null): CentralIaMensagem
+    public function registrarDoAgente(User $user, string $autor, string $conteudo, string $tipo = CentralIaMensagem::AUTOR_AGENTE, ?string $projeto = null, ?int $tarefaId = null, bool $entregar = true): CentralIaMensagem
     {
+        // `entregar: false`: quem grava já respondeu no Telegram (o Secretário,
+        // com botões) e a outbox mandaria a mesma resposta de novo.
         return $this->gravar($user, [
             'projeto' => $projeto,
             'tarefa_id' => $tarefaId,
@@ -116,7 +118,7 @@ class ConversaService
             'origem' => CentralIaMensagem::ORIGEM_AGENTE,
             // MEDIUMTEXT guarda 16 MB; isto é folga para o que uma tela lê.
             'conteudo' => mb_strcut(ProtecaoDeSegredos::texto($conteudo), 0, 1_000_000) ?: '(resposta vazia)',
-        ]);
+        ], $entregar);
     }
 
     /**
@@ -126,9 +128,9 @@ class ConversaService
      *
      * O que veio do próprio Telegram não volta para ele.
      */
-    private function gravar(User $user, array $dados): CentralIaMensagem
+    private function gravar(User $user, array $dados, bool $entregar = true): CentralIaMensagem
     {
-        return DB::transaction(function () use ($user, $dados) {
+        return DB::transaction(function () use ($user, $dados, $entregar) {
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             if (($dados['autor_tipo'] ?? null) === CentralIaMensagem::AUTOR_USUARIO) {
                 app(CanalAtivo::class)->exigir($user, $dados['origem']);
@@ -140,7 +142,7 @@ class ConversaService
 
             $vinculo = CentralIaTelegramVinculo::where('user_id', $user->id)->first();
 
-            if ($vinculo && $mensagem->origem !== CentralIaMensagem::ORIGEM_TELEGRAM
+            if ($entregar && $vinculo && $mensagem->origem !== CentralIaMensagem::ORIGEM_TELEGRAM
                 && app(CanalAtivo::class)->entregaPermitida($user, $mensagem)) {
                 CentralIaEntrega::create([
                     'mensagem_id' => $mensagem->id,

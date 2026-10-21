@@ -360,6 +360,27 @@ class CentralIaController extends Controller
             }
         }
 
+        // O Secretário ("me lembra amanhã às 9h…", "sim" à proposta dele):
+        // resposta na hora, sem fila de IA. Só para quem tem o perfil.
+        // Tarefa de outra conta não passa por aqui: o fluxo normal recusa com a regra dele.
+        $tarefaDoSecretario = filled($dados['tarefa_id'] ?? null)
+            ? CentralIaTarefa::de($request->user())->where('projeto', $dados['projeto'] ?? '')->find($dados['tarefa_id']) : null;
+        // "sim"/"não" ao envio que a IA propôs ao VixOrganize neste chat
+        // (docs/specs/secretario-vixorganize): vale também no chat de assunto.
+        if (empty($dados['anexos']) && (blank($dados['tarefa_id'] ?? null) || $tarefaDoSecretario)
+            && ($vix = app(\App\Services\Secretario\VixOrganize\NaCentral::class)->responder($request->user(), $dados['conteudo'], $dados['client_id'],
+                $dados['projeto'] ?? null, $tarefaDoSecretario?->id))) {
+            return $this->semCache(['id' => $vix->id, 'status_direto' => true], $vix->wasRecentlyCreated ? 201 : 200);
+        }
+        // Chat de assunto (Business) aciona a IA sempre: o Secretário não o intercepta.
+        if (empty($dados['anexos']) && (blank($dados['tarefa_id'] ?? null) || ($tarefaDoSecretario && ! $tarefaDoSecretario->ehAssunto()))) {
+            $secretario = app(\App\Services\Secretario\Conversa::class)->doWeb($request->user(), $dados['conteudo'], $dados['client_id'],
+                $dados['projeto'] ?? null, $tarefaDoSecretario?->id);
+            if ($secretario) {
+                return $this->semCache(['id' => $secretario->id, 'status_direto' => true], $secretario->wasRecentlyCreated ? 201 : 200);
+            }
+        }
+
         // Consulta operacional não espera na fila da IA, mesmo durante execução.
         if (empty($dados['anexos']) && app(\App\Services\CentralIa\ProgressoService::class)->consulta($dados['conteudo'])) {
             $mensagem = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $dados) {

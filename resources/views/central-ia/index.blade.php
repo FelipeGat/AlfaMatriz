@@ -278,7 +278,7 @@
                 </select>
                 <label class="sr-only" for="central-filtro-chat-estado">Estado dos chats</label>
                 <select id="central-filtro-chat-estado" x-model="filtroChatEstado" class="rounded-control border-line bg-input py-1.5 text-xs text-ink">
-                    <option value="ativos">Em andamento</option><option value="concluida">Concluídas (últimas 24 h)</option><option value="executando">Executando</option>
+                    <option value="ativos">Em andamento</option><option value="concluida">Concluídas (últimas 24 h)</option><option value="executando">Executando</option><option value="na_fila">Na fila</option>
                     <option value="aguardando_voce">Aguardando você</option><option value="falhou">Com falha</option>
                     <option value="aberta">Abertos / na fila</option><option value="pausada">Pausados</option><option value="todos">Todos (pausados e concluídas)</option>
                 </select>
@@ -296,9 +296,11 @@
                             <span class="block text-[11px] text-ink-mute" x-text="(c.projeto || 'Geral') + ' · #' + c.id"></span>
                             <span class="mt-1 block break-words text-sm font-semibold text-ink" x-text="c.titulo"></span>
                             <span class="mt-1 flex flex-wrap gap-1 text-[11px]">
-                                <span class="rounded-badge border px-1" :class="corDoEstado(c.status)" x-text="estado(c.status)"></span>
+                                <span class="rounded-badge border px-1" :class="corDoEstado(estadoNaLista(c))" x-text="estado(estadoNaLista(c))"></span>
+                                <span x-show="filaDoChat(c.id).rodando && filaDoChat(c.id).naFila" class="rounded-badge border border-warn px-1 text-warn" x-text="'+' + filaDoChat(c.id).naFila + ' na fila'"></span>
                                 <span class="text-ink-mute" x-text="(c.agente || 'Sem agente') + ' · ' + haQuanto(c.ultima_atividade)"></span>
                             </span>
+                            <span x-show="filaDoChat(c.id).motivo" class="mt-1 block text-[11px] text-ink-mute" x-text="filaDoChat(c.id).motivo"></span>
                         </button>
                     </template>
                 </div>
@@ -315,7 +317,6 @@
                 <p class="px-1 text-[11px] text-ink-faint">Um chat por assunto. Qualquer IA que atender já sabe o histórico e a memória dele.</p>
                 <button type="button" x-show="!novoAssunto" @click="novoAssunto = { titulo: '', grupo_id: '', projeto: '', salvando: false }; $nextTick(() => document.getElementById('central-novo-assunto')?.focus())"
                         class="rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand">+ Novo assunto</button>
-                <button type="button" x-show="!novoAssunto" @click="abrirTrazer()" class="rounded-control border border-btn-line px-3 py-1.5 text-xs font-semibold text-ink">Trazer do VS Code</button>
                 <form x-show="novoAssunto" x-cloak @submit.prevent="criarAssunto()" class="space-y-1.5 rounded-control border border-line p-2">
                     <label class="sr-only" for="central-novo-assunto">Nome do assunto</label>
                     <input id="central-novo-assunto" type="text" maxlength="120" x-bind:value="novoAssunto?.titulo ?? ''" @input="novoAssunto.titulo = $event.target.value" placeholder="Ex.: Comercial VixCard"
@@ -391,56 +392,6 @@
                         </span>
                     </div>
                     <img :src="imagemAberta?.url" :alt="imagemAberta?.caminho" class="max-h-[85vh] max-w-full rounded-control border border-line bg-panel object-contain" @click.stop>
-                </div>
-                {{-- Trazer do VS Code (Chats Business): a última semana das conversas marcadas vira a memória do chat novo. --}}
-                <div x-show="trazendo" x-cloak @keydown.escape.window="trazendo = null" @click.self="trazendo = null"
-                     class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="central-trazer-titulo">
-                    <form @submit.prevent="trazerDoVsCode()" class="flex max-h-[90vh] w-full max-w-2xl flex-col gap-3 rounded-panel border border-line bg-panel p-4">
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <h3 id="central-trazer-titulo" class="font-display text-base font-semibold text-ink">Trazer do VS Code</h3>
-                                <p class="text-xs text-ink-mute">Marque uma ou mais conversas do mesmo assunto. Uma IA no nível econômico lê a última semana delas e monta a memória do chat: onde fica cada coisa, em que etapa está, decisões e pendências. Nada é alterado no VS Code.</p>
-                            </div>
-                            <button type="button" @click="trazendo = null" class="flex-none rounded-control border border-line px-2 py-1 text-xs text-ink-mute">✕ Fechar</button>
-                        </div>
-                        <div class="min-h-0 flex-1 space-y-1 overflow-y-auto rounded-control border border-line p-1">
-                            <p x-show="!conversasDoVsCode.length" class="p-2 text-xs text-ink-mute">Nenhuma conversa do Claude ou do Codex informada pela sua máquina.</p>
-                            <template x-for="s in conversasDoVsCode" :key="s.agente + s.id">
-                                <label class="flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 hover:bg-chip" :class="trazendo?.ids.includes(s.id) ? 'bg-nav-active' : ''">
-                                    <input type="checkbox" :checked="trazendo?.ids.includes(s.id)" @change="marcarConversa(s)" class="rounded border-line text-brand">
-                                    <span class="min-w-0 flex-1">
-                                        <span class="block truncate text-sm font-semibold text-ink" x-text="s.titulo || '(sem nome) ' + s.id.slice(0, 8)"></span>
-                                        <span class="block text-[11px] text-ink-faint" x-text="s.nome + ' · ' + (s.projeto || 'raiz dos projetos') + ' · ' + haQuanto(s.ultima_atividade) + (s.origem === 'mac_copia' ? ' · cópia do Mac' : '')"></span>
-                                    </span>
-                                    <span x-show="s.semeada_em" class="flex-none rounded-badge border border-line px-1 text-[11px] text-ink-mute" x-text="'já no chat #' + s.semeada_em"></span>
-                                </label>
-                            </template>
-                        </div>
-                        <div class="grid gap-2 sm:grid-cols-3">
-                            <label class="text-xs text-ink-mute sm:col-span-3">Nome do chat
-                                <input type="text" maxlength="120" :value="trazendo?.titulo ?? ''" @input="trazendo.titulo = $event.target.value; trazendo.nomeTocado = true"
-                                       class="mt-1 w-full rounded-control border-line bg-input py-1.5 text-sm text-ink focus:border-brand focus:ring-brand" placeholder="Ex.: Comercial VixCard">
-                            </label>
-                            <label class="text-xs text-ink-mute">Grupo
-                                <select @change="trazendo.grupo_id = $event.target.value" class="mt-1 w-full rounded-control border-line bg-input py-1.5 text-xs text-ink">
-                                    <option value="" :selected="!trazendo?.grupo_id">Sem grupo</option>
-                                    <template x-for="g in grupos" :key="g.id"><option :value="g.id" :selected="String(trazendo?.grupo_id) === String(g.id)" x-text="g.nome"></option></template>
-                                </select>
-                            </label>
-                            <label class="text-xs text-ink-mute sm:col-span-2">Projeto (opcional)
-                                <select @change="trazendo.projeto = $event.target.value" class="mt-1 w-full rounded-control border-line bg-input py-1.5 text-xs text-ink">
-                                    <option value="">Sem projeto (pastas de ~/projetos)</option>
-                                    <template x-for="p in maquina.projetos" :key="p"><option :value="p" x-text="p"></option></template>
-                                </select>
-                            </label>
-                        </div>
-                        <div class="flex justify-end gap-2">
-                            <button type="button" @click="trazendo = null" class="rounded-control border border-line px-3 py-1.5 text-xs text-ink-mute">Cancelar</button>
-                            <button type="submit" :disabled="!trazendo?.ids.length || !trazendo?.titulo.trim() || trazendo?.salvando"
-                                    class="rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand disabled:opacity-50"
-                                    x-text="trazendo?.salvando ? 'Criando…' : 'Criar chat e trazer a última semana'"></button>
-                        </div>
-                    </form>
                 </div>
                 {{-- Business sem assunto escolhido: nada de mostrar a conversa Geral por baixo. --}}
                 <div x-show="tela === 'business' && !assuntoAtual" x-cloak class="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-2 bg-panel p-6 text-center">
@@ -614,7 +565,7 @@
                                             </span>
                                         </div>
                                     @endif
-                                    {{-- Prévia visual do agente (FR-034): imagem em miniatura, PDF e página
+                                    {{-- Prévia visual do agente (FR-034): imagem em miniatura, PDF, vídeo e página
                                          para abrir no navegador — no Mac ou no Windows. --}}
                                     <div x-show="(m.previas || []).length" class="mt-2 flex flex-wrap items-end gap-2">
                                         <template x-for="p in m.previas || []" :key="p.url">
@@ -624,6 +575,7 @@
                                                @click="if (p.tipo === 'imagem') { $event.preventDefault(); imagemAberta = p; }">
                                                 <img x-show="p.tipo === 'imagem'" :src="p.url" :alt="p.caminho" loading="lazy" class="h-24 max-w-[10rem] rounded-control border border-line object-cover">
                                                 <span x-show="p.tipo === 'pdf'" class="rounded-badge border border-line px-2 py-1" x-text="'📄 ' + p.caminho.split('/').pop()"></span>
+                                                <span x-show="p.tipo === 'video'" class="rounded-badge border border-line px-2 py-1" x-text="'🎬 ' + p.caminho.split('/').pop()"></span>
                                                 <span x-show="p.tipo === 'pagina'" class="rounded-control bg-brand px-3 py-1.5 text-on-brand" x-text="'🔗 Abrir prévia' + (p.caminho.endsWith('index.html') ? '' : ' · ' + p.caminho.split('/').pop())"></span>
                                             </a>
                                         </template>
@@ -658,7 +610,10 @@
                     <div class="flex-none space-y-1 border-t border-line px-4 py-2 text-xs" role="status" aria-live="polite" x-show="pedidosAtivos.length || aba.recibo">
                         <p x-show="aba.recibo && !pedidosAtivos.length" x-text="aba.recibo" class="text-ink-mute"></p>
                         <template x-for="a in pedidosAtivos" :key="a.id">
-                            <p class="flex items-center gap-2 text-brand-text"><span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand"></span><span x-text="andamento(a)"></span></p>
+                            <div>
+                                <p class="flex items-center gap-2 text-brand-text"><span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand"></span><span x-text="andamento(a)"></span></p>
+                                <p x-show="detalheDoAndamento(a)" x-text="detalheDoAndamento(a)" class="ml-3.5 line-clamp-2 break-words text-ink-mute"></p>
+                            </div>
                         </template>
                     </div>
                     <div x-show="atendimento.disponivel && atendimento.ativo === 'telegram'" x-cloak class="flex-none border-t border-line px-4 py-3 text-sm text-ink-mute">
@@ -709,10 +664,15 @@
                             </div>
                         @endif
                         <div class="flex flex-wrap items-center gap-2 text-xs">
-                            <label class="cursor-pointer font-semibold text-brand-text" title="Até 12 MB por arquivo · cole ou arraste uma captura">📎 Anexar
-                                <input type="file" class="sr-only" multiple accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/webm,video/quicktime"
+                            <label class="cursor-pointer font-semibold text-brand-text" title="Imagem, PDF, vídeo, texto, Word, Excel ou PowerPoint · até 12 MB por arquivo · cole ou arraste uma captura">📎 Anexar
+                                <input type="file" class="sr-only" multiple accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/webm,video/quicktime,.txt,.md,.csv,.tsv,.json,.log,.rtf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp"
                                        :disabled="!!aba.pendente || bloqueado || !podeEnviar" @change="escolherArquivos($event.target.files); $event.target.value = ''">
                             </label>
+                            {{-- Recolher a caixa: com texto longo, a conversa acima continua legível. --}}
+                            <button type="button" @click="alternarCaixa()" :aria-pressed="caixaRecolhida.toString()"
+                                    class="font-semibold text-ink-mute hover:text-ink"
+                                    :title="caixaRecolhida ? 'Mostrar a caixa inteira' : 'Recolher a caixa para ler a conversa acima'"
+                                    x-text="caixaRecolhida ? '⤢ Expandir caixa' : '⤡ Recolher caixa'"></button>
                             {{-- Para onde vai a mensagem: chat da tela ou novo (o #19 nasceu sem ninguém ver). --}}
                             <span class="min-w-0 truncate text-ink-faint" :class="destinoDaMensagem ? '' : 'font-semibold text-warn'" x-text="rotuloDoDestino" :title="rotuloDoDestino"></span>
 
@@ -731,7 +691,7 @@
                         </div>
                         <div class="flex items-end gap-2">
                             <label for="central-rascunho" class="sr-only">Sua mensagem</label>
-                            {{-- Cresce com o texto até 40% da tela; depois rola por dentro. --}}
+                            {{-- Cresce com o texto até 40% da tela (ou 2 linhas, recolhida); depois rola por dentro. --}}
                             <textarea @paste="colar($event)" id="central-rascunho" x-model="aba.rascunho" maxlength="{{ config('central_ia.max_texto') }}" rows="2"
                                       @input="crescer($el)" x-effect="aba.rascunho; $nextTick(() => crescer($el))"
                                       :readonly="!!aba.pendente" :disabled="bloqueado || !podeEnviar"

@@ -42,6 +42,16 @@ class Maquinas
     public const ARQUIVOS = [
         'runner.mjs', 'politica.mjs', 'confirmacao.mjs', 'auditoria.mjs', 'uso-local.mjs',
         'extrato.mjs', 'anexos.mjs', 'progresso.mjs', 'limpeza.mjs', 'atualizar-quando-ocioso.sh',
+        // Secretário, Etapa 4: transcrição de reuniões na máquina.
+        'transcricao.mjs', 'transcrever_reuniao.py',
+        // Etapa 5: o retrato do Gestor pela ponte (o .php vai para a pasta da ponte, na máquina da pessoa).
+        'gestor.mjs', 'secretario_gestor.php',
+        // Agenda do Google pela máquina: o .py vai para a pasta da ponte pessoal do Google.
+        'agenda-google.mjs', 'secretario_agenda.py',
+        // Pastas de documentos espelhadas do OneDrive (documentos-espelhados).
+        'documentos.mjs',
+        // O Pedro, atendente do suporte no WhatsApp (suporte-pedro-whatsapp): vaga própria, sem ferramentas.
+        'suporte.mjs', 'suporte_gestor_ler.php',
     ];
 
     public function podeConectar(User $user): bool

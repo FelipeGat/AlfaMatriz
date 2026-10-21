@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="caminho">
-        <x-migalhas :caminho="[['rotulo' => 'Produtos', 'rota' => route('produtos.index', $sistema->ehInterno() ? ['aba' => 'internos'] : [])]]"
+        <x-migalhas :caminho="[['rotulo' => 'Produtos', 'rota' => route('produtos.index', $sistema->abaNoCatalogo())]]"
                     :atual="$sistema->nome" />
     </x-slot>
 
@@ -28,7 +28,7 @@
                     @include('sistemas._form', ['sistema' => $sistema])
 
                     <div class="flex items-center justify-end gap-3 mt-6">
-                        <a href="{{ route('produtos.index', $sistema->ehInterno() ? ['aba' => 'internos'] : []) }}"
+                        <a href="{{ route('produtos.index', $sistema->abaNoCatalogo()) }}"
                            class="text-sm text-ink-dim hover:text-ink">Voltar</a>
                         <x-primary-button>Salvar</x-primary-button>
                     </div>
@@ -39,7 +39,7 @@
                  é cobrado de ninguém: o painel inteiro sai, em vez de aparecer
                  vazio — uma tabela de preços zerada convida a preencher o que
                  nunca vai ser faturado. --}}
-            @unless ($sistema->ehInterno())
+            @if ($sistema->natureza === 'produto')
             <div class="bg-panel overflow-hidden shadow-sm sm:rounded-lg p-6">
                 <div class="flex items-center justify-between mb-1">
                     <h3 class="font-semibold text-ink">Tiers de atacado (Alfa → Revenda)</h3>
@@ -126,7 +126,7 @@
                     </div>
                 </form>
             </div>
-            @endunless
+            @endif
 
             {{-- Fora do `@unless` acima: o histórico vale para os dois — o
                  sistema interno também muda de nome, de capacidade e de

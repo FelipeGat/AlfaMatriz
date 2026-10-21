@@ -34,6 +34,9 @@ class User extends Authenticatable
      */
     public const EMAIL_DO_VIGIA = 'vigia-de-logs@alfamatriz.interno';
 
+    /** A conta que assina os atendimentos abertos pelo Pedro (suporte-pedro-whatsapp): desativada e sem perfil, como a do vigia. */
+    public const EMAIL_DO_PEDRO = 'pedro-suporte@alfamatriz.interno';
+
     /** A conta do vigia — mesmo se alguém a excluir pela tela (soft delete). */
     public static function vigiaDeLogs(): self
     {
@@ -136,6 +139,31 @@ class User extends Authenticatable
     }
 
     /**
+     * Conta da VixCard (docs/specs/acesso-vixcard): só enxerga tarefas,
+     * sistemas e compromissos da VixCard — o escopo global
+     * `Scopes\EscopoVixcard` filtra a sessão inteira. Pelo PERFIL, e não por
+     * coluna: liga e desliga em Usuários e permissões, como qualquer acesso.
+     *
+     * O perfil RECORTA o quadro; não pode recortar o quadro de quem já o tem
+     * inteiro por outro perfil. A conta do Alexandre (Membro do time + VixCard,
+     * T-427, 20/10/2026) perdeu do quadro as próprias tarefas do AlfaGym por
+     * isso. A pergunta, então, é a mesma do `temEscopoComercial`: não "tem o
+     * perfil?", e sim "tem o perfil e NENHUM outro lhe dá `tarefas`?". Sem
+     * lista de perfis "amplos": Administrador, Membro, Exibição e qualquer
+     * perfil que nascer com o quadro anulam o recorte sozinhos. O Victor
+     * (VixCard + Orçamentos VixCard, que não dá `tarefas`) continua recortado.
+     */
+    public function temEscopoVixcard(): bool
+    {
+        // Do mesmo cache das permissões (uma consulta por requisição): isto é
+        // perguntado dentro de TODA consulta escopada.
+        $concedidas = $this->permissoesConcedidas();
+
+        return isset($concedidas['perfil:'.\App\Models\Scopes\EscopoVixcard::PERFIL])
+            && ! isset($concedidas[self::QUADRO_FORA_DA_VIXCARD]);
+    }
+
+    /**
      * Vendedor sem visão gerencial: só os PRÓPRIOS leads no funil, e só o
      * PRÓPRIO desempenho no Dashboard Comercial — não o da empresa inteira.
      *
@@ -174,6 +202,13 @@ class User extends Authenticatable
      * derrubava a consulta em vez de simplesmente responder "não pode".
      */
     private const ACOES = ['ler', 'incluir', 'editar', 'imprimir', 'excluir'];
+
+    /**
+     * Marca, no cache das permissões, de que algum perfil que NÃO é o VixCard
+     * dá `tarefas`. Sem `:` de propósito: não colide com `recurso:acao` nem
+     * com `perfil:slug`.
+     */
+    private const QUADRO_FORA_DA_VIXCARD = 'quadro-fora-da-vixcard';
 
     /**
      * O que esta conta pode, achatado em `recurso:acao` — resolvido UMA vez.
@@ -233,6 +268,7 @@ class User extends Authenticatable
             ->join('perfil_permissao', 'perfil_permissao.perfil_id', '=', 'perfis.id')
             ->join('permissoes', 'permissoes.id', '=', 'perfil_permissao.permissao_id')
             ->get([
+                'perfis.slug as perfil_slug',
                 'permissoes.recurso as recurso',
                 'perfil_permissao.ler as ler',
                 'perfil_permissao.incluir as incluir',
@@ -242,6 +278,12 @@ class User extends Authenticatable
             ]);
 
         foreach ($linhas as $linha) {
+            // O perfil também fica marcado: o escopo VixCard é pelo perfil.
+            $concedidas['perfil:'.$linha->perfil_slug] = true;
+            // O quadro dado por OUTRO perfil anula o recorte VixCard (T-427).
+            if ($linha->recurso === 'tarefas' && $linha->ler && $linha->perfil_slug !== \App\Models\Scopes\EscopoVixcard::PERFIL) {
+                $concedidas[self::QUADRO_FORA_DA_VIXCARD] = true;
+            }
             foreach (self::ACOES as $acao) {
                 // Duas contas podem conceder o mesmo recurso por perfis
                 // diferentes: basta UMA linha permitir, que é o que o `exists`
@@ -284,6 +326,11 @@ class User extends Authenticatable
         // chamadores dão a mesma resposta.
         if ($this->temEscopoDeRevenda()) {
             return route('revendas.index', ['aba' => 'clientes'], absolute: false);
+        }
+
+        // A conta da VixCard abre no painel dos projetos dela (acesso-vixcard).
+        if ($this->temEscopoVixcard()) {
+            return route('vixcard.projetos', absolute: false);
         }
 
         $telas = [

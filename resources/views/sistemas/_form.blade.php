@@ -44,7 +44,7 @@
             </select>
             <p class="mt-1 text-xs text-ink-mute">
                 Produto é o que a Alfa vende — entra no faturamento. Interno é o que a Alfa usa e existe
-                para as tarefas apontarem.
+                para as tarefas apontarem. Produto VixCard é o que a VixCard vende: fica fora do faturamento da Alfa.
             </p>
         @else
             {{-- Travado, e dizendo por quê no mesmo lugar. Um select
@@ -185,6 +185,14 @@
                       value="{{ old('base_url', $sistema->base_url ?? '') }}"
                       placeholder="https://api.produto.com.br" />
         <x-input-error :messages="$errors->get('base_url')" class="mt-2" />
+    </div>
+
+    <div>
+        <x-input-label for="url_acesso" value="Link de acesso (o que a tela de Projetos abre)" />
+        <x-text-input id="url_acesso" name="url_acesso" type="url" class="mt-1 block w-full"
+                      value="{{ old('url_acesso', $sistema->url_acesso ?? '') }}"
+                      placeholder="https://produto.com.br" />
+        <x-input-error :messages="$errors->get('url_acesso')" class="mt-2" />
     </div>
 
     <div>

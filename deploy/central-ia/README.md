@@ -89,6 +89,9 @@ CENTRAL_IA_MAQUINA=notebook-ana        # nome na tela (padrão: o hostname)
 CENTRAL_IA_ACESSO_MAXIMO=restrito      # ou total
 CENTRAL_IA_CONFIRMAR=inicio            # mínimo: nunca, deploy, inicio, implementar, sempre
 CENTRAL_IA_ANALISE=leitura             # ou total: a IA decide o que consultar; o rastro fica na auditoria
+CENTRAL_IA_CODEX_TOTAL=sim             # opcional: o Codex também com acesso total fora de deploy (rede, pontes
+                                       # de produção). Sem isso ele fica no workspace-write, sem rede (T-368).
+                                       # O deploy continua pedindo o código no Telegram.
 CENTRAL_IA_IGNORAR=videos,orcamentos   # subpastas que não são projeto (pasta vazia já é ignorada)
 CENTRAL_IA_SEGREDO_CONFIRMACAO=…       # 64 hex, gerado pelo instalador
 CENTRAL_IA_TELEGRAM_TOKEN_CONFIRMACAO=… # o SEU bot do código; só esta máquina tem o token
@@ -215,6 +218,14 @@ O instalador baixa o `anexos.mjs` e constrói a imagem local quando há Docker (
 Ela contém Poppler e FFmpeg para PDFs e vídeos; o runner usa containers
 transitórios sem rede e com limites de recursos. Teste independente:
 `node tools/central-ia/test-anexos.mjs`.
+
+Desde 17/10/2026 entram também texto (TXT, MD, CSV, TSV, JSON, LOG), que o runner lê direto, e
+documentos (DOC/DOCX, XLS/XLSX, PPT/PPTX, ODT/ODS/ODP, RTF), que viram PDF numa segunda imagem,
+`alfamatriz-central-office:local` (LibreOffice; à mão:
+`docker build -t alfamatriz-central-office:local deploy/central-ia/office`). É separada para não refazer a
+de PDF e vídeo de quem já a tem; o instalador constrói a que faltar. Sem ela, o pedido segue e o agente
+recebe o caminho do original. Formatos com macro (docm, xlsm, pptm) o servidor recusa. Teste:
+`node tools/central-ia/test-anexos-documentos.mjs`.
 
 O download é autenticado pela conta do runner e confere SHA-256. PDFs têm
 texto limitado e até oito páginas renderizadas; vídeos, até doze quadros,

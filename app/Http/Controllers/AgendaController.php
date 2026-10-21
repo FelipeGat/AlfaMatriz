@@ -267,6 +267,8 @@ class AgendaController extends Controller
     {
         return User::query()
             ->where('ativo', true)
+            // Conta VixCard: só quem trabalha nos projetos dela (acesso-vixcard, FR-004).
+            ->when(\App\Models\Scopes\EscopoVixcard::usuario(), fn ($q, $u) => $q->whereIn('id', \App\Models\Scopes\EscopoVixcard::pessoas($u)))
             ->orderBy('name')
             ->get(['id', 'name'])
             ->filter(fn (User $u) => $u->canPermissao('agenda', 'ler'))

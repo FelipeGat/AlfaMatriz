@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\EscopoVixcard;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
+
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +26,8 @@ use Illuminate\Support\Facades\DB;
  * de notas: ele envolve outras pessoas, e salvar sozinho a cada tecla mandaria
  * meia reunião para a agenda de quem participa.
  */
+// Acesso VixCard: quem tem o perfil só vê o que é da VixCard (docs/specs/acesso-vixcard).
+#[ScopedBy([EscopoVixcard::class])]
 class Compromisso extends Model
 {
     use HasFactory;

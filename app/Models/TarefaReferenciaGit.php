@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\EscopoVixcard;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -12,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * no repositório, e não algo que alguém digita no quadro — por isso nenhuma
  * tela o edita.
  */
+// Acesso VixCard: quem tem o perfil só vê o que é da VixCard (docs/specs/acesso-vixcard).
+#[ScopedBy([EscopoVixcard::class])]
 class TarefaReferenciaGit extends Model
 {
     protected $table = 'tarefa_referencias_git';

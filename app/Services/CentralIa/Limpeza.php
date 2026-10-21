@@ -74,6 +74,13 @@ class Limpeza
             ->whereIn('mensagem_id', $mensagens->clone()->select('id')), $ensaio);
         $r['mensagens'] = $this->linhas($mensagens->toBase(), $ensaio);
 
+        // Secretário: o toque deduplicado só importa por minutos (o Telegram
+        // reentrega logo) e a proposta encerrada não serve a ninguém depois
+        // de 30 dias. Itens e avisos NÃO saem: são o registro da pessoa.
+        $r['secretario'] = $this->linhas(DB::table('secretario_toques')->where('created_at', '<', $agora->copy()->subDays(7)), $ensaio)
+            + $this->linhas(DB::table('secretario_propostas')->where('updated_at', '<', $agora->copy()->subDays(30))
+                ->where(fn ($q) => $q->where('status', '!=', 'pendente')->orWhere('expira_em', '<', $agora)), $ensaio);
+
         return $r;
     }
 

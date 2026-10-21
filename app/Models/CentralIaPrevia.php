@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-/** Um arquivo de prévia visual que o agente mostrou (imagem, PDF, página). */
+/** Um arquivo de prévia visual que o agente mostrou (imagem, PDF, vídeo, página). */
 class CentralIaPrevia extends Model
 {
     protected $table = 'central_ia_previas';
@@ -16,6 +16,7 @@ class CentralIaPrevia extends Model
         return match (true) {
             str_starts_with($this->mime, 'image/') => 'imagem',
             $this->mime === 'application/pdf' => 'pdf',
+            $this->mime === 'video/mp4' => 'video',
             $this->mime === 'text/html' => 'pagina',
             default => 'outro',
         };

@@ -24,6 +24,11 @@ import { acompanharProgresso } from './progresso.mjs';
 import { auditar, chatConfirmado, chaveDoChat, confirmar, marcarChatConfirmado } from './confirmacao.mjs';
 import { caminhoDoStatus, compararGit, criarAuditor, retratoGit } from './auditoria.mjs';
 import { girar, limparWorktrees } from './limpeza.mjs';
+import { transcrever, whisperInstalado } from './transcricao.mjs';
+import { hora as horaDoGestor, lerGestor } from './gestor.mjs';
+import { hora as horaDaAgenda, lerAgenda as lerAgendaGoogle } from './agenda-google.mjs';
+import { aplicarAlteracoes, configuracao as pastasDeDocumentos, espelhar as espelharDocumentos } from './documentos.mjs';
+import { atenderSuporte, lerGestorParaPedro } from './suporte.mjs';
 import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h; chave servidor + conta +
@@ -64,6 +69,8 @@ function lerConfig() {
         // Analisar: `leitura` (padrão) ou `total` — com total, a IA decide o
         // que consultar, e o que ela viu e alterou fica na auditoria.
         analise: v('CENTRAL_IA_ANALISE') === 'total' ? 'total' : 'leitura',
+        // Codex com acesso total fora de deploy (padrão: não). Ver politica.mjs.
+        codexTotal: v('CENTRAL_IA_CODEX_TOTAL') === 'sim',
         // Pastas da pasta de projetos que NÃO são projeto (vídeos, orçamentos):
         // somem do catálogo, das sessões e do consumo (dono, 12/10/2026).
         ignorar: new Set((v('CENTRAL_IA_IGNORAR') || '').split(',').map(x => x.trim()).filter(Boolean)),
@@ -87,6 +94,14 @@ function lerConfig() {
         // - retrato: um retrato.json de painel de andamento, se a pessoa usa.
         memoria: (v('CENTRAL_IA_MEMORIA') || '').replace(/^~/, HOME),
         agenda: v('CENTRAL_IA_AGENDA') || '',
+        // - gestor: a ponte de produção do Gestor (`programa|ponte|script`),
+        //   rodada SÓ PARA LEITURA (sem --apply) para o Secretário (Etapa 5).
+        gestor: v('CENTRAL_IA_GESTOR') || '',
+        // - google: o exportador da agenda do Google (`programa|script|pasta`),
+        //   só leitura, na pasta da ponte pessoal já autorizada (Secretário).
+        google: v('CENTRAL_IA_GOOGLE') || '',
+        // Pastas espelhadas do OneDrive: "Nome|caminho;Outro|caminho" (documentos-espelhados).
+        documentos: v('CENTRAL_IA_DOCUMENTOS') || '',
         retrato: (v('CENTRAL_IA_RETRATO') || '').replace(/^~/, HOME),
         // O arquivo que o launchd enche com a saída deste processo (instalar.sh),
         // para girar quando passa do limite (T-378). No Linux e no WSL a saída
@@ -549,7 +564,7 @@ function instrucoes(job, branch) {
         'Você está atendendo um pedido feito pela Central de IA do AlfaMatriz. Responda em português do Brasil.',
         // Prévia visual (dono, 13/10/2026): o que ficava numa pasta solta da
         // máquina, quem estava em outra não via.
-        ...(job.previaDir ? [`Para MOSTRAR algo visual à pessoa (conceito, tela, gráfico, PDF), salve na pasta de prévia ${job.previaDir}: imagens (png/jpg/webp) e PDF aparecem na conversa e vão ao Telegram dela; uma página web vai em ${job.previaDir}/pagina/index.html (CSS, JS e imagens ao lado, com caminhos RELATIVOS) e vira um link para abrir no navegador, no Mac ou no Windows. Não use outra pasta (temporária ou de projeto) para isso, e não precisa dizer o caminho na resposta.`] : []),
+        ...(job.previaDir ? [`Para MOSTRAR algo visual à pessoa (conceito, tela, gráfico, PDF), salve na pasta de prévia ${job.previaDir}: imagens (png/jpg/webp), PDF e vídeo MP4 (até 12 MB cada; vídeo maior, reduza antes) aparecem na conversa e vão ao Telegram dela; uma página web vai em ${job.previaDir}/pagina/index.html (CSS, JS e imagens ao lado, com caminhos RELATIVOS) e vira um link para abrir no navegador, no Mac ou no Windows. Não use outra pasta (temporária ou de projeto) para isso, e não precisa dizer o caminho na resposta.`] : []),
         job.projeto
             ? `Projeto: ${job.projeto}. Siga as instruções do próprio projeto (CLAUDE.md, AGENTS.md, README).`
             : 'Pedido da conversa Geral, fora de projeto: responda com os dados oficiais abaixo (se houver) e o que a pergunta pede.',
@@ -680,12 +695,12 @@ function comando(job, cwd, branch, saida, acesso) {
         // sessão retomar. Retomada simples mantém o mesmo id.
         job.sessaoPrevista = sessao && !job.continuar?.fork ? sessao : randomUUID();
         if (!sessao || job.continuar?.fork) args.push('--session-id', job.sessaoPrevista);
-        args.push(...permissoes('claude', acesso, { projetos: cfg.projetos, deploy: pedeDeploy(job) }), ...modeloArgs('claude', job.modelo, job.esforco));
+        args.push(...permissoes('claude', acesso, { projetos: cfg.projetos, deploy: pedeDeploy(job), semFerramentas: job.acesso === 'nenhum' }), ...modeloArgs('claude', job.modelo, job.esforco));
         return [agentes.claude, args, null, prompt];
     }
 
     if (job.agente === 'codex') {
-        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso, { deploy: pedeDeploy(job) }), ...modeloArgs('codex', job.modelo, job.esforco), '-c', 'forced_login_method="chatgpt"'];
+        const comum = [...(job.imagens || []).flatMap(p => ['--image', p]), '--json', '-o', saida, '--skip-git-repo-check', ...permissoes('codex', acesso, { deploy: pedeDeploy(job), codexTotal: cfg.codexTotal, semFerramentas: job.acesso === 'nenhum' }), ...modeloArgs('codex', job.modelo, job.esforco), '-c', 'forced_login_method="chatgpt"'];
         // `-`: o Codex lê o pedido do stdin (mesmo motivo do Claude, E2BIG).
         return [agentes.codex, sessao ? ['exec', 'resume', sessao, ...comum, '-'] : ['exec', ...comum, '-'], null, prompt];
     }
@@ -693,7 +708,7 @@ function comando(job, cwd, branch, saida, acesso) {
     // Copilot: no modo não interativo ele exige --allow-all-tools; o controle
     // fica no --deny-tool. A sessão leva um nome para ser retomada por ele.
     const nome = sessao || `central-ia-${job.id}`;
-    const args = ['-s', '--no-color', ...permissoes('copilot', acesso, { cwd, deploy: pedeDeploy(job) }), ...modeloArgs('copilot', job.modelo, job.esforco)];
+    const args = ['-s', '--no-color', ...permissoes('copilot', acesso, { cwd, deploy: pedeDeploy(job), semFerramentas: job.acesso === 'nenhum' }), ...modeloArgs('copilot', job.modelo, job.esforco)];
     // Pedido pelo stdin também no Copilot (E2BIG acima de 128 KB, que o
     // contexto de um chat de assunto passa fácil).
     args.push(...(sessao ? ['--resume', sessao] : ['-n', nome]));
@@ -1023,6 +1038,32 @@ let ultimoTrabalho = Date.now();
 //   `PAUSADO`, e o script descarrega e carrega o serviço sem pedido nenhum na
 //   mão. Ninguém veio em 2 min (o script morreu): volta a trabalhar.
 const REINICIAR = join(HOME, '.local/share/alfa/central-ia-reiniciar');
+// Transcrição de reuniões (Secretário, Etapa 4): uma por vez; a presença da
+// imagem é conferida a cada 10 min (o instalador pode tê-la criado depois).
+let transcrevendo = false;
+let lendoGestor = false;
+let ultimoGestor = null;
+let gestorPausadoAte = 0;
+let transcricaoPausadaAte = 0;
+let lendoAgenda = false;
+let ultimaAgenda = null;
+let agendaPausadaAte = 0;
+// Documentos: a cada 15 min; com envio pendente (rodada limitada), no minuto seguinte.
+let espelhando = false;
+let proximoEspelho = 0;
+let alterando = false;
+let proximaAlteracao = 0;
+// O Pedro (suporte no WhatsApp): uma vaga só dele, fora do PARALELO dos pedidos de código.
+let atendendoSuporte = false;
+let suportePausadoAte = 0;
+// O retrato do Gestor para o Pedro (só leitura), a cada 10 min.
+let lendoGestorPedro = false;
+let proximoRetratoPedro = 0;
+let whisperConferido = { em: 0, ok: false };
+async function whisperPronto() {
+    if (Date.now() - whisperConferido.em > 600_000) whisperConferido = { em: Date.now(), ok: await whisperInstalado() };
+    return whisperConferido.ok;
+}
 const CONHECE = join(HOME, '.local/share/alfa/central-ia-conhece-reinicio');
 const PAUSADO = join(HOME, '.local/share/alfa/central-ia-pausado');
 const PAUSA_MAX_MS = 120_000;
@@ -1050,6 +1091,105 @@ while (!parar) {
         log('ninguém recarregou o serviço em 2 min: voltando a pedir trabalho');
     }
     try {
+        // Reuniões do Secretário: uma transcrição por vez, quando a imagem
+        // existe e a conta usa o Secretário (403 = não usa; tenta de novo em 1 h).
+        // Pendências do Gestor (Secretário, Etapa 5): retrato de hora em hora,
+        // em paralelo ao resto; uma leitura por vez.
+        if (cfg.gestor && !lendoGestor && Date.now() >= gestorPausadoAte && horaDoGestor(ultimoGestor)) {
+            lendoGestor = true;
+            ultimoGestor = new Date();
+            lerGestor(cfg.gestor).then(async r => {
+                if (!r.ok) return log('Gestor: retrato não lido —', r.erro);
+                const envio = await api('gestor', { maquina: cfg.maquina, lido_em: new Date().toISOString(), blocos: r.blocos });
+                if (envio.status === 403 || envio.status === 404) gestorPausadoAte = Date.now() + 3600_000 * 6;
+                log('Gestor: retrato enviado →', envio.status);
+            }).catch(e => log('Gestor: erro', e.message)).finally(() => { lendoGestor = false; });
+        }
+        // Agenda do Google (pela máquina): a cada 10 min, uma leitura por vez.
+        if (cfg.google && !lendoAgenda && Date.now() >= agendaPausadaAte && horaDaAgenda(ultimaAgenda)) {
+            lendoAgenda = true;
+            ultimaAgenda = new Date();
+            lerAgendaGoogle(cfg.google).then(async r => {
+                if (!r.ok) return log('Agenda: não lida —', r.erro);
+                const envio = await api('agenda-google', { maquina: cfg.maquina, lido_em: new Date().toISOString(), agendas: r.agendas, eventos: r.eventos });
+                if (envio.status === 403 || envio.status === 404) agendaPausadaAte = Date.now() + 3600_000 * 6;
+                if (envio.status !== 200) log('Agenda: envio →', envio.status);
+            }).catch(e => log('Agenda: erro', e.message)).finally(() => { lendoAgenda = false; });
+        }
+        // O Pedro, do suporte no WhatsApp (suporte-pedro-whatsapp): vaga própria, sem
+        // ferramentas; 403/404 = esta conta não atende o suporte (tenta de novo em 1 h).
+        if (!atendendoSuporte && Date.now() >= suportePausadoAte) {
+            atendendoSuporte = true;
+            atenderSuporte(cfg.maquina, { api, agentes })
+                .then(r => {
+                    if (r.status === 403 || r.status === 404 || r.status === 405 || r.status === 422) suportePausadoAte = Date.now() + 3600_000;
+                    if (r.id) log(`suporte: pedido #${r.id} ${r.erro ? 'falhou (' + r.erro + ')' : 'respondido'} em ${Math.round(r.ms / 1000)} s`);
+                })
+                .catch(e => { log('suporte: erro', e.message); suportePausadoAte = Date.now() + 15_000; })
+                .finally(() => { atendendoSuporte = false; });
+        }
+        if (cfg.gestor && !lendoGestorPedro && Date.now() >= proximoRetratoPedro && Date.now() >= suportePausadoAte) {
+            lendoGestorPedro = true;
+            proximoRetratoPedro = Date.now() + 10 * 60_000;
+            lerGestorParaPedro(cfg.gestor)
+                .then(async r => {
+                    const envio = await api('suporte/gestor', { maquina: cfg.maquina, lido_em: new Date().toISOString(), ...r });
+                    if (envio.status === 403 || envio.status === 404) proximoRetratoPedro = Date.now() + 3600_000;
+                    else if (envio.status !== 200) log('suporte: retrato do Gestor →', envio.status);
+                })
+                .catch(e => log('suporte: retrato do Gestor não lido —', e.message))
+                .finally(() => { lendoGestorPedro = false; });
+        }
+        // Mão dupla (documentos-mao-dupla): a cada 30 s, aplica no OneDrive o que foi
+        // pedido pelo Matriz; aplicou algo, espelha de novo logo em seguida.
+        if (cfg.documentos && !espelhando && !alterando && Date.now() >= proximaAlteracao) {
+            alterando = true;
+            proximaAlteracao = Date.now() + 30_000;
+            const baixar = async id => {
+                const r = await fetch(`${cfg.url}/api/central-ia/runner/documentos/operacoes/${id}/arquivo?maquina=${encodeURIComponent(cfg.maquina)}`, {
+                    headers: { Authorization: `Bearer ${cfg.token}` }, redirect: 'error', signal: AbortSignal.timeout(600_000),
+                });
+                if (!r.ok) throw new Error(`não consegui baixar o arquivo (HTTP ${r.status})`);
+                return Buffer.from(await r.arrayBuffer());
+            };
+            aplicarAlteracoes(pastasDeDocumentos(cfg.documentos), cfg.maquina, { api, baixar, log })
+                .then(n => { if (n) proximoEspelho = 0; })
+                .catch(e => log('Documentos: alterações —', e.message))
+                .finally(() => { alterando = false; });
+        }
+        if (cfg.documentos && !espelhando && !alterando && Date.now() >= proximoEspelho) {
+            espelhando = true;
+            (async () => {
+                let pendentes = 0;
+                for (const pasta of pastasDeDocumentos(cfg.documentos)) {
+                    const r = await espelharDocumentos(pasta, cfg.maquina, { api, apiArquivo });
+                    pendentes += r.pendentes;
+                    if (r.erro) log(`Documentos (${pasta.nome}):`, r.erro);
+                    else if (r.enviados || r.removidos || r.miniaturas) log(`Documentos (${pasta.nome}): ${r.enviados} enviado(s), ${r.removidos} removido(s), ${r.miniaturas || 0} miniatura(s), ${r.pendentes} na fila`);
+                }
+                proximoEspelho = Date.now() + (pendentes ? 60_000 : 15 * 60_000);
+            })().catch(e => { log('Documentos: erro', e.message); proximoEspelho = Date.now() + 15 * 60_000; }).finally(() => { espelhando = false; });
+        }
+        if (!transcrevendo && rodando.size < PARALELO && !existsSync(REINICIAR) && Date.now() >= transcricaoPausadaAte && await whisperPronto()) {
+            const t = await api('transcricoes/proxima', { maquina: cfg.maquina });
+            if (t.status === 403 || t.status === 404 || t.status === 405) transcricaoPausadaAte = Date.now() + 3600_000;
+            if (t.status === 200 && t.json?.id) {
+                transcrevendo = true;
+                ultimoTrabalho = Date.now();
+                log(`reunião #${t.json.id}: transcrevendo (${t.json.modo})`);
+                const aoProgredir = (percentual, duracao) => api(`transcricoes/${t.json.id}/progresso`, { maquina: cfg.maquina, percentual, duracao })
+                    .catch(e => log(`reunião #${t.json.id}: progresso não enviado —`, e.message));
+                const p = transcrever(t.json, cfg, pastaTemporaria(), { aoProgredir })
+                    .then(async res => {
+                        const envio = await api(`transcricoes/${t.json.id}`, { maquina: cfg.maquina, ...res });
+                        log(`reunião #${t.json.id}: ${res.status === 'ok' ? res.trechos.length + ' trecho(s)' : 'falhou (' + res.erro + ')'} → ${envio.status}`);
+                    })
+                    .catch(e => log(`reunião #${t.json.id} erro no runner:`, e.message))
+                    .finally(() => { rodando.delete(p); transcrevendo = false; marcarOcupado(); ultimoTrabalho = Date.now(); });
+                rodando.add(p);
+                marcarOcupado();
+            }
+        }
         // Reinício pedido com algo rodando: não pega trabalho novo, para a
         // máquina esvaziar. Com PARALELO=2 os pedidos se sobrepunham, ela
         // nunca ficava livre e a atualização esperava para sempre (3ª revisão

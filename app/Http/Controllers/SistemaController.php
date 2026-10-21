@@ -23,7 +23,7 @@ class SistemaController extends Controller
     {
         $this->bloquearVisaoDaMatriz();
 
-        $natureza = $request->query('natureza') === 'interno' ? 'interno' : 'produto';
+        $natureza = in_array($request->query('natureza'), ['interno', 'vixcard'], true) ? $request->query('natureza') : 'produto';
 
         return view('sistemas.create', compact('natureza'));
     }
@@ -70,7 +70,7 @@ class SistemaController extends Controller
         $this->salvarMarca($request, $sistema);
 
         return redirect()
-            ->route('produtos.index', $sistema->ehInterno() ? ['aba' => 'internos'] : [])
+            ->route('produtos.index', $sistema->abaNoCatalogo())
             ->with('status', "{$sistema->nome} cadastrado.");
     }
 
@@ -134,7 +134,7 @@ class SistemaController extends Controller
         $this->salvarMarca($request, $sistema);
 
         return redirect()
-            ->route('produtos.index', $sistema->ehInterno() ? ['aba' => 'internos'] : [])
+            ->route('produtos.index', $sistema->abaNoCatalogo())
             ->with('status', 'Sistema atualizado com sucesso.');
     }
 
@@ -154,7 +154,8 @@ class SistemaController extends Controller
      */
     private function regras(Request $request): array
     {
-        $interno = $request->input('natureza') === 'interno';
+        // Interno e produto VixCard não são cobrados pela Alfa: sem bloco comercial.
+        $interno = in_array($request->input('natureza'), ['interno', 'vixcard'], true);
 
         return [
             'categoria' => $interno ? 'nullable|in:saas,crm' : 'required|in:saas,crm',
@@ -163,6 +164,8 @@ class SistemaController extends Controller
             // faixas internas (AC-269, AC-270) — a chave de integração viaja
             // neste endereço a cada chamada.
             'base_url' => ['nullable', 'url', 'max:255', new EnderecoPublico],
+            // Só o link que a tela de Projetos abre: nenhum segredo viaja nele.
+            'url_acesso' => ['nullable', 'url:http,https', 'max:255'],
             'token' => 'nullable|string',
             'versao' => 'nullable|string|max:255',
             'responsavel' => 'nullable|string|max:255',
@@ -243,7 +246,7 @@ class SistemaController extends Controller
      */
     private function limparComercial(array $data, string $natureza): array
     {
-        if ($natureza === 'interno') {
+        if ($natureza !== 'produto') {
             $data['categoria'] = null;
             $data['unidade_cobranca'] = null;
         }

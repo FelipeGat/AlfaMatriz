@@ -419,6 +419,17 @@ class AgentesService
                 'ultima_atividade_em' => now(),
             ]);
 
+            // Pedido do Secretário leva conteúdo de terceiros (e-mail,
+            // transcrição): vai sem ferramenta nenhuma, valha o que valer o
+            // acesso geral da Central — o aviso no prompt não é controle.
+            if (! empty($pedido['sem_ferramentas'])) {
+                $rota['sem_ferramentas'] = true;
+            }
+            // E-mail lido na hora (Secretário, Etapa 5): o texto não fica guardado depois da resposta.
+            if (! empty($pedido['descartar_instrucao'])) {
+                $rota['descartar_instrucao'] = true;
+            }
+
             $execucao = CentralIaExecucao::create([
                 'user_id' => $user->id,
                 'pedido_id' => $mensagem->id,
@@ -585,9 +596,13 @@ class AgentesService
             }
 
             // Implementando direto na pasta, dois agentes no mesmo projeto
-            // escreveriam um por cima do outro: um por projeto.
+            // escreveriam um por cima do outro: um por projeto. O "Geral" (sem
+            // projeto) não é um projeto: cada chat dali trabalha numa pasta
+            // própria, e tratá-lo como um só deixava todos os chats Geral numa
+            // fila única (Felipe, 20/10/2026: "a não ser que seja o mesmo
+            // projeto, aí realmente tem que aguardar").
             $projetosOcupados = config('central_ia.agentes.implementar_na_pasta')
-                ? (clone $rodando)->where('modo', 'implementar')->pluck('projeto')->all() : [];
+                ? array_values(array_filter((clone $rodando)->where('modo', 'implementar')->pluck('projeto')->all(), 'filled')) : [];
 
             $execucao = CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::PENDENTE)
                 ->whereIn('agente', $runner->agentes)
@@ -686,10 +701,10 @@ class AgentesService
                 'branch' => $tarefa->branch,
                 'commit_base' => $tarefa->commit_base,
             ] : null,
-            'contexto' => $assunto ? $assunto['texto'] : ($tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null)
+            'contexto' => $this->comVixOrganize($user, $tarefa, $execucao, $assunto ? $assunto['texto'] : ($tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null)
                 // Chat novo num projeto começa sabendo dos chats recentes dele
                 // (dono, 13/10/2026: "abrir um novo chat… ele saberia o contexto do projeto").
-                : ($tarefa && $execucao->projeto !== '' ? $this->contextoDoProjeto($user, $execucao->projeto, $tarefa->id) : null)),
+                : ($tarefa && $execucao->projeto !== '' ? $this->contextoDoProjeto($user, $execucao->projeto, $tarefa->id) : null))),
             'bloco' => (($execucao->roteamento['coordenador'] ?? false) ? "Você atua como coordenador deste pedido. Nesta etapa apenas responda, planeje e proponha quem deve fazer o trabalho; não implemente, não execute ferramentas ou comandos e não altere arquivos. Claude faz análise de código e desenvolvimento; Codex faz análise de dados; Copilot faz Git e QA. Identifique fontes disponíveis e impedimentos, não invente números. Delegação automática ainda não está habilitada: descreva a próxima etapa, sem afirmar que outro agente executou algo.\n" : '').Dossie::instrucaoDoBloco()."\nRegras de evidência: nunca invente dados, valores, fontes ou consultas. Relatórios de dados exigem período explícito e fonte autorizada identificada, data da consulta e critérios dos totais. Sem acesso à fonte, informe a limitação e solicite os dados; código, exemplos e testes não comprovam saldos reais. Para esta semana, confirme no texto as datas usadas. Para pedidos executivos com esta semana, use segunda-feira até hoje no fuso local e explicite as datas; para esta semana útil, segunda a sexta (até hoje se ainda estiver em curso). Pergunte somente se a ambiguidade alterar materialmente a decisão ou tornar a consulta insegura. Sem período informado, mantenha o pedido de esclarecimento. Claude só deve apoiar análise de dados quando houver impedimento técnico identificado; não troque de agente apenas para tentar obter números ausentes.",
             'fontes' => $this->comAgendaDoMatriz($user, $execucao->roteamento['fontes'] ?? []),
             // Opções da pessoa (T-374), desligadas por padrão: a regra do cstk
@@ -711,7 +726,9 @@ class AgentesService
             'modelo' => $execucao->roteamento['modelo'] ?? null,
             'esforco' => $execucao->roteamento['esforco'] ?? null,
             'continuar' => $continuar,
-            'acesso' => config('central_ia.agentes.acesso'),
+            // `nenhum`: runner atual tira todas as ferramentas; runner antigo não
+            // conhece o valor e cai na leitura (acessoEfetivo), nunca no total.
+            'acesso' => ($execucao->roteamento['sem_ferramentas'] ?? false) ? 'nenhum' : config('central_ia.agentes.acesso'),
             // Assunto sem projeto implementa na raiz dos projetos: não há
             // repositório onde abrir worktree.
             'na_pasta' => (bool) config('central_ia.agentes.implementar_na_pasta') || ($tarefa?->ehAssunto() && $execucao->projeto === ''),
@@ -721,6 +738,27 @@ class AgentesService
                 && ! CentralIaExecucao::where('tarefa_id', $tarefa?->id)->where('agente', $execucao->agente)->where('id', '<', $execucao->id)->exists()
                 ? $sessaoDoVsCode : null,
         ];
+    }
+
+    /**
+     * A fila do VixOrganize (docs/specs/secretario-vixorganize): no chat de
+     * Business dele, ou quando o pedido cita o organize. A execução fica
+     * marcada para o bloco de envio ser lido na volta — e só nela.
+     */
+    private function comVixOrganize(User $user, ?CentralIaTarefa $tarefa, CentralIaExecucao $execucao, ?string $contexto): ?string
+    {
+        $r = $execucao->roteamento ?? [];
+        if (($r['sem_ferramentas'] ?? false) || isset($r['secretario_proposta']) || isset($r['secretario_reuniao'])) {
+            return $contexto;
+        }
+        $na = app(\App\Services\Secretario\VixOrganize\NaCentral::class);
+        $conta = $na->contaPara($user, $tarefa, (string) $execucao->instrucao);
+        if (! $conta) {
+            return $contexto;
+        }
+        $execucao->update(['roteamento' => array_merge($r, ['vixorganize' => true])]);
+
+        return trim(($contexto ?? '')."\n\n".$na->contexto($conta));
     }
 
     /**
@@ -775,6 +813,25 @@ class AgentesService
             // tarefa — sem isto, o dossiê lido aqui gravava por cima dela.
             $tarefa = $execucao->tarefa_id ? CentralIaTarefa::whereKey($execucao->tarefa_id)->lockForUpdate()->first() : null;
 
+            // Pedido do Secretário (frase que as regras não entenderam): o bloco
+            // vira proposta a CONFIRMAR, validada aqui — nunca item direto.
+            // Análise de reunião do Secretário (Etapa 4): o bloco é validado e
+            // vira proposta a REVISAR; na conversa fica só o resumo e o caminho.
+            if (isset($execucao->roteamento['secretario_reuniao'])) {
+                [, $blocoReuniao] = \App\Services\Secretario\AnaliseDeReuniao::separar((string) ($dados['resposta'] ?? ''));
+                $texto = app(\App\Services\Secretario\AnaliseDeReuniao::class)->concluir($user, $execucao, $ok, $blocoReuniao);
+            }
+            if ($ok && isset($execucao->roteamento['secretario_proposta'])) {
+                [$texto, $blocoSecretario] = \App\Services\Secretario\PropostaDaIa::separar((string) $texto);
+                $texto = app(\App\Services\Secretario\PropostaDaIa::class)->concluir($user, $execucao, $blocoSecretario) ?? $texto;
+            }
+            // Envio ao VixOrganize: o bloco vira pedido a CONFIRMAR com "sim" (nunca envio direto).
+            if ($ok && ($execucao->roteamento['vixorganize'] ?? false)) {
+                [$texto, $blocoVix] = \App\Services\Secretario\VixOrganize\NaCentral::separar((string) $texto);
+                if ($blocoVix && ($proposta = app(\App\Services\Secretario\VixOrganize\NaCentral::class)->propor($user, $execucao, $tarefa, ProtecaoDeSegredos::dados($blocoVix)))) {
+                    $texto = trim($texto."\n\n".$proposta);
+                }
+            }
             $resposta = $this->conversas->registrarDoAgente($user, $execucao->nomeDoAgente(), $texto ?: '(resposta vazia)', CentralIaMensagem::AUTOR_AGENTE, $execucao->projeto ?: null, $tarefa?->id);
             $checkpoint = is_array($dados['checkpoint'] ?? null) ? $dados['checkpoint'] : null;
 
@@ -847,6 +904,18 @@ class AgentesService
                     'branch' => $dados['branch'] ?? null,
                     'commit_base' => $dados['commit_base'] ?? null,
                 ], fn ($v) => $v !== null));
+            }
+
+            // Só no sucesso: na falha, a troca de provedor ainda precisa da instrução.
+            if ($ok && ($execucao->roteamento['descartar_instrucao'] ?? false)) {
+                $descartado = '(texto dos e-mails descartado depois da resposta)';
+                $execucao->update(['instrucao' => $descartado]);
+                if ($tarefa) {
+                    $d = $tarefa->fresh()->dossie ?? [];
+                    $d['objetivo'] = $descartado;
+                    $d['pedidos'] = array_map(fn ($p) => ['texto' => $descartado] + (array) $p, (array) ($d['pedidos'] ?? []));
+                    $tarefa->update(['objetivo' => $descartado, 'dossie' => $d]);
+                }
             }
 
             if (! $ok) {

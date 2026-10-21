@@ -55,7 +55,7 @@
 
                 <td class="px-4 py-3">
                     <div class="flex items-center justify-end gap-1">
-                        <x-acao-tabela icone="pencil" titulo="Editar sistema interno"
+                        <x-acao-tabela icone="pencil" :titulo="($daVixcard ?? false) ? 'Editar produto VixCard' : 'Editar sistema interno'"
                                        :href="route('sistemas.edit', $interno)" />
                         <x-acao-tabela icone="view-grid" titulo="Ver tarefas deste sistema"
                                        :href="route('tarefas.index', ['sistema' => $interno->id])" />
@@ -68,11 +68,16 @@
                  carregamento de uma lista que deveria ter os produtos. --}}
             <tr>
                 <td colspan="6" class="px-4 py-8 text-center">
-                    <p class="text-[13px] text-ink-mute">Nenhum sistema interno cadastrado.</p>
-                    <p class="mt-1 text-[12px] text-ink-faint">
-                        São os sistemas que a casa usa e não vende — a própria Matriz, a infra, o site.
-                        Cadastrá-los dá às tarefas deles onde apontar.
-                    </p>
+                    @if ($daVixcard ?? false)
+                        <p class="text-[13px] text-ink-mute">Nenhum produto da VixCard cadastrado.</p>
+                        <p class="mt-1 text-[12px] text-ink-faint">São os que a VixCard vende (Vix-ID, VixLink, Vix-Beer…): ficam fora do faturamento da Alfa, e as tarefas apontam para eles.</p>
+                    @else
+                        <p class="text-[13px] text-ink-mute">Nenhum sistema interno cadastrado.</p>
+                        <p class="mt-1 text-[12px] text-ink-faint">
+                            São os sistemas que a casa usa e não vende — a própria Matriz, a infra, o site.
+                            Cadastrá-los dá às tarefas deles onde apontar.
+                        </p>
+                    @endif
                 </td>
             </tr>
         @endforelse

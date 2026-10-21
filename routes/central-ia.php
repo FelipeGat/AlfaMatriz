@@ -23,6 +23,27 @@ Route::prefix('api/central-ia/runner')
         Route::post('execucoes/{execucao}/confirmacao', [CentralIaRunnerController::class, 'confirmacao'])->whereNumber('execucao')->name('central-ia.runner.confirmacao');
         Route::post('execucoes/{execucao}/conclusao', [CentralIaRunnerController::class, 'concluir'])
             ->whereNumber('execucao')->name('central-ia.runner.concluir');
+        // Secretário, Etapa 4: a máquina da pessoa transcreve as reuniões dela.
+        Route::post('transcricoes/proxima', [\App\Http\Controllers\SecretarioRunnerController::class, 'proxima'])->name('secretario.runner.proxima');
+        Route::get('transcricoes/{reuniao}/audio', [\App\Http\Controllers\SecretarioRunnerController::class, 'audio'])->whereNumber('reuniao')->name('secretario.runner.audio');
+        Route::post('transcricoes/{reuniao}/progresso', [\App\Http\Controllers\SecretarioRunnerController::class, 'progresso'])->whereNumber('reuniao')->name('secretario.runner.progresso');
+        Route::post('transcricoes/{reuniao}', [\App\Http\Controllers\SecretarioRunnerController::class, 'resultado'])->whereNumber('reuniao')->name('secretario.runner.resultado');
+        // Etapa 5: o retrato das pendências do Gestor, lido pela máquina (só leitura).
+        Route::post('gestor', [\App\Http\Controllers\SecretarioRunnerController::class, 'gestor'])->name('secretario.runner.gestor');
+        Route::post('agenda-google', [\App\Http\Controllers\SecretarioRunnerController::class, 'agenda'])->name('secretario.runner.agenda');
+        // Pastas de documentos espelhadas do OneDrive (docs/specs/documentos-espelhados).
+        Route::post('documentos/inventario', [\App\Http\Controllers\DocumentosRunnerController::class, 'inventario'])->name('documentos.runner.inventario');
+        // O Pedro, do suporte no WhatsApp (suporte-pedro-whatsapp): só a conta configurada atende.
+        Route::post('suporte/proxima', [\App\Http\Controllers\SuportePedroRunnerController::class, 'proxima'])->name('suporte.runner.proxima');
+        Route::post('suporte/gestor', [\App\Http\Controllers\SuportePedroRunnerController::class, 'gestor'])->name('suporte.runner.gestor');
+        Route::post('suporte/gestor/aberturas', [\App\Http\Controllers\SuportePedroRunnerController::class, 'aberturas'])->name('suporte.runner.aberturas');
+        Route::post('suporte/gestor/aberturas/{abertura}', [\App\Http\Controllers\SuportePedroRunnerController::class, 'aberturaFeita'])->whereNumber('abertura')->name('suporte.runner.abertura-feita');
+        Route::post('suporte/{pedido}/resposta', [\App\Http\Controllers\SuportePedroRunnerController::class, 'resposta'])->whereNumber('pedido')->name('suporte.runner.resposta');
+        Route::post('documentos/operacoes', [\App\Http\Controllers\DocumentosRunnerController::class, 'operacoes'])->name('documentos.runner.operacoes');
+        Route::get('documentos/operacoes/{operacao}/arquivo', [\App\Http\Controllers\DocumentosRunnerController::class, 'arquivoDaOperacao'])->whereNumber('operacao')->name('documentos.runner.operacao-arquivo');
+        Route::post('documentos/operacoes/{operacao}', [\App\Http\Controllers\DocumentosRunnerController::class, 'concluirOperacao'])->whereNumber('operacao')->name('documentos.runner.operacao-concluir');
+        Route::post('documentos/{pasta}/miniaturas', [\App\Http\Controllers\DocumentosRunnerController::class, 'miniatura'])->whereNumber('pasta')->name('documentos.runner.miniatura');
+        Route::post('documentos/{pasta}/partes', [\App\Http\Controllers\DocumentosRunnerController::class, 'parte'])->whereNumber('pasta')->name('documentos.runner.parte');
     });
 
 /*
@@ -35,6 +56,8 @@ Route::prefix('api/central-ia/runner')
 Route::get('central-ia/instalar.sh', [CentralIaMaquinasController::class, 'instalador'])
     ->middleware('throttle:30,1,central-ia-instalador')->name('central-ia.instalador');
 Route::get('central-ia/runner/arquivos/{arquivo}', [CentralIaMaquinasController::class, 'arquivo'])
-    ->where('arquivo', '[a-z-]+\.(mjs|sh)')->middleware('throttle:120,1,central-ia-instalador')->name('central-ia.runner.arquivo');
+    // `.php` só com `.txt` no fim: o nginx manda todo endereço terminado em
+    // `.php` ao PHP-FPM, e o pedido nem chegaria aqui (404 no instalador).
+    ->where('arquivo', '[a-z_-]+\.(mjs|sh|py|php\.txt)')->middleware('throttle:120,1,central-ia-instalador')->name('central-ia.runner.arquivo');
 Route::post('api/central-ia/instalacao', [CentralIaMaquinasController::class, 'trocarCodigo'])
     ->middleware('throttle:10,1,central-ia-instalacao')->name('central-ia.instalacao.trocar');

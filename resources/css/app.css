@@ -623,3 +623,26 @@
 .central-resposta th,.central-resposta td { padding: .4rem .6rem; border-bottom:1px solid rgba(127,127,127,.25); text-align:left; }
 .central-resposta a { text-decoration: underline; }
 .central-resposta blockquote { border-left:3px solid #009eaf; padding-left:.75rem; }
+
+/*
+ * Cards compactos do quadro (18/10/2026). O atributo vai no <html> antes da
+ * primeira pintura, como a tela cheia. Some só o que é contexto (resumo e
+ * "Criada por"); o que pede ação — pergunta, retorno, bloqueio — continua.
+ */
+[data-cards-compactos] article[data-tarefa] {
+    padding: 7px 9px;
+}
+[data-cards-compactos] [data-card-detalhe] {
+    display: none;
+}
+/* Uma linha por card: número, título e selo. Quem responde e há quanto tempo
+   ficam no detalhe — o compacto existe para ver a coluna inteira de uma vez. */
+[data-cards-compactos] [data-card-rodape] {
+    display: none;
+}
+[data-cards-compactos] [data-card-titulo] {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    overflow: hidden;
+}

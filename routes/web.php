@@ -195,6 +195,76 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::get('agenda', [AgendaController::class, 'index'])->name('agenda.index')
         ->middleware('permissao:agenda');
 
+    // Secretário (docs/specs/secretario-executivo): itens PESSOAIS, sem id de
+    // usuário na rota — é sempre a conta logada; o de outra conta dá 404.
+    Route::prefix('secretario')->name('secretario.')->middleware('throttle:120,1,secretario')->group(function () {
+        Route::get('/', [\App\Http\Controllers\SecretarioController::class, 'meuDia'])->name('meu-dia')->middleware('permissao:secretario,ler');
+        Route::get('itens', [\App\Http\Controllers\SecretarioController::class, 'itens'])->name('itens')->middleware('permissao:secretario,ler');
+        Route::post('interpretar', [\App\Http\Controllers\SecretarioController::class, 'interpretar'])->name('interpretar')->middleware('permissao:secretario,incluir');
+        Route::post('propostas/{proposta}/confirmar', [\App\Http\Controllers\SecretarioController::class, 'confirmar'])->whereNumber('proposta')->name('propostas.confirmar')->middleware('permissao:secretario,incluir');
+        Route::post('propostas/{proposta}/descartar', [\App\Http\Controllers\SecretarioController::class, 'descartar'])->whereNumber('proposta')->name('propostas.descartar')->middleware('permissao:secretario,incluir');
+        Route::post('itens/{item}/acao', [\App\Http\Controllers\SecretarioController::class, 'acao'])->whereNumber('item')->name('itens.acao')->middleware('permissao:secretario,editar');
+        Route::post('itens/{item}/reagendar', [\App\Http\Controllers\SecretarioController::class, 'reagendar'])->whereNumber('item')->name('itens.reagendar')->middleware('permissao:secretario,editar');
+        Route::post('anotacoes', [\App\Http\Controllers\SecretarioController::class, 'anotar'])->name('anotacoes')->middleware('permissao:secretario,incluir');
+        Route::post('anotacoes/{item}/arquivar', [\App\Http\Controllers\SecretarioController::class, 'arquivarAnotacao'])->whereNumber('item')->name('anotacoes.arquivar')->middleware('permissao:secretario,editar');
+        Route::get('configuracoes', [\App\Http\Controllers\SecretarioController::class, 'configuracoes'])->name('configuracoes')->middleware('permissao:secretario,ler');
+        Route::put('configuracoes', [\App\Http\Controllers\SecretarioController::class, 'salvarConfiguracoes'])->name('configuracoes.salvar')->middleware('permissao:secretario,editar');
+        // Etapa 2 (docs/specs/secretario-agenda): agenda consolidada e a conta Google da própria pessoa.
+        Route::get('agenda', [\App\Http\Controllers\SecretarioGoogleController::class, 'visao'])->name('agenda')->middleware('permissao:secretario,ler');
+        Route::get('agenda/eventos', [\App\Http\Controllers\SecretarioGoogleController::class, 'eventos'])->name('agenda.eventos')->middleware('permissao:secretario,ler');
+        Route::post('agenda/eventos', [\App\Http\Controllers\SecretarioGoogleController::class, 'novoEvento'])->name('agenda.novo')->middleware('permissao:secretario,incluir');
+        Route::get('google/conectar', [\App\Http\Controllers\SecretarioGoogleController::class, 'conectar'])->name('google.conectar')->middleware('permissao:secretario,editar');
+        Route::get('google/retorno', [\App\Http\Controllers\SecretarioGoogleController::class, 'retorno'])->name('google.retorno')->middleware('permissao:secretario,editar');
+        Route::post('google/desconectar', [\App\Http\Controllers\SecretarioGoogleController::class, 'desconectar'])->name('google.desconectar')->middleware('permissao:secretario,editar');
+        Route::post('google/sincronizar', [\App\Http\Controllers\SecretarioGoogleController::class, 'sincronizar'])->name('google.sincronizar')->middleware('permissao:secretario,editar');
+        Route::put('google/agendas/{agenda}', [\App\Http\Controllers\SecretarioGoogleController::class, 'agenda'])->whereNumber('agenda')->name('google.agendas')->middleware('permissao:secretario,editar');
+        // Etapa 4 (docs/specs/secretario-reunioes): reuniões por áudio.
+        Route::get('reunioes', [\App\Http\Controllers\SecretarioReunioesController::class, 'index'])->name('reunioes.index')->middleware('permissao:secretario,ler');
+        Route::post('reunioes', [\App\Http\Controllers\SecretarioReunioesController::class, 'enviar'])->name('reunioes.enviar')->middleware('permissao:secretario,incluir');
+        Route::patch('reunioes/{reuniao}/produto', [\App\Http\Controllers\SecretarioReunioesController::class, 'produto'])->whereNumber('reuniao')->name('reunioes.produto')->middleware('permissao:secretario,editar');
+        Route::put('reunioes/{reuniao}/participantes', [\App\Http\Controllers\SecretarioReunioesController::class, 'participantes'])->whereNumber('reuniao')->name('reunioes.participantes')->middleware('permissao:secretario,editar');
+        Route::patch('reunioes/{reuniao}/empresa', [\App\Http\Controllers\SecretarioReunioesController::class, 'empresa'])->whereNumber('reuniao')->name('reunioes.empresa')->middleware('permissao:secretario,editar');
+        Route::get('reunioes/{reuniao}', [\App\Http\Controllers\SecretarioReunioesController::class, 'mostrar'])->whereNumber('reuniao')->name('reunioes.mostrar')->middleware('permissao:secretario,ler');
+        Route::get('reunioes/{reuniao}/ata', [\App\Http\Controllers\SecretarioReunioesController::class, 'ata'])->whereNumber('reuniao')->name('reunioes.ata')->middleware('permissao:secretario,ler');
+        Route::post('reunioes/{reuniao}/analisar', [\App\Http\Controllers\SecretarioReunioesController::class, 'analisarDeNovo'])->whereNumber('reuniao')->name('reunioes.analisar')->middleware('permissao:secretario,editar');
+        Route::post('reunioes/{reuniao}/aprovar-lote', [\App\Http\Controllers\SecretarioReunioesController::class, 'aprovarLote'])->whereNumber('reuniao')->name('reunioes.aprovar-lote')->middleware('permissao:secretario,editar');
+        Route::post('reunioes/propostas/{proposta}', [\App\Http\Controllers\SecretarioReunioesController::class, 'proposta'])->whereNumber('proposta')->name('reunioes.proposta')->middleware('permissao:secretario,editar');
+        // Etapa 5 (docs/specs/secretario-emails-gestor): caixas IMAP só de leitura e mensagens.
+        $em = \App\Http\Controllers\SecretarioEmailsController::class;
+        Route::get('emails', [$em, 'index'])->name('emails.index')->middleware('permissao:secretario,ler');
+        Route::post('emails/contas/testar', [$em, 'testar'])->name('emails.testar')->middleware(['permissao:secretario,editar', 'throttle:10,1']);
+        Route::post('emails/contas', [$em, 'cadastrar'])->name('emails.cadastrar')->middleware(['permissao:secretario,editar', 'throttle:10,1']);
+        Route::delete('emails/contas/{conta}', [$em, 'remover'])->whereNumber('conta')->name('emails.remover')->middleware('permissao:secretario,excluir');
+        Route::post('emails/contas/{conta}/ler', [$em, 'ler'])->whereNumber('conta')->name('emails.ler')->middleware(['permissao:secretario,editar', 'throttle:10,1']);
+        Route::post('emails/{email}/rascunho', [$em, 'rascunho'])->whereNumber('email')->name('emails.rascunho')->middleware('permissao:secretario,incluir');
+        Route::get('emails/{email}/texto', [$em, 'texto'])->whereNumber('email')->name('emails.texto')->middleware(['permissao:secretario,ler', 'throttle:60,1,secretario-email-texto']);
+        Route::post('emails/previas', [$em, 'previas'])->name('emails.previas')->middleware(['permissao:secretario,ler', 'throttle:20,1,secretario-email-previas']);
+        Route::post('emails/{email}/favorito', [$em, 'favoritar'])->whereNumber('email')->name('emails.favorito')->middleware('permissao:secretario,editar');
+        Route::post('emails/{email}/lembrar', [$em, 'lembrar'])->whereNumber('email')->name('emails.lembrar')->middleware('permissao:secretario,incluir');
+        // Etapa 6 (docs/specs/secretario-memoria): busca no histórico, só leitura.
+        Route::get('memoria', [\App\Http\Controllers\SecretarioMemoriaController::class, 'index'])->name('memoria')->middleware('permissao:secretario,ler');
+        Route::post('memoria/sintese', [\App\Http\Controllers\SecretarioMemoriaController::class, 'sintese'])->name('memoria.sintese')->middleware(['permissao:secretario,incluir', 'throttle:10,1']);
+        // Etapa 7 (docs/specs/secretario-acompanhamento): acompanhamentos e as regras deles.
+        $ac = \App\Http\Controllers\SecretarioAcompanhamentosController::class;
+        Route::get('acompanhamentos', [$ac, 'index'])->name('acompanhamentos')->middleware('permissao:secretario,ler');
+        Route::put('acompanhamentos/regras', [$ac, 'salvarRegras'])->name('acompanhamentos.regras')->middleware('permissao:secretario,editar');
+        Route::post('acompanhamentos/{acompanhamento}/resolver', [$ac, 'resolver'])->whereNumber('acompanhamento')->name('acompanhamentos.resolver')->middleware('permissao:secretario,editar');
+        Route::post('acompanhamentos/pontos', [$ac, 'lancarPonto'])->name('acompanhamentos.pontos')->middleware('permissao:secretario,incluir');
+        Route::post('acompanhamentos/pontos/{item}/concluir', [$ac, 'concluirPonto'])->whereNumber('item')->name('acompanhamentos.pontos.concluir')->middleware('permissao:secretario,editar');
+        Route::post('acompanhamentos/{acompanhamento}/adiar', [$ac, 'adiar'])->whereNumber('acompanhamento')->name('acompanhamentos.adiar')->middleware('permissao:secretario,editar');
+        // Projetos da VixCard pelo VixOrganize (docs/specs/secretario-vixorganize).
+        $vo = \App\Http\Controllers\SecretarioVixOrganizeController::class;
+        Route::get('vixorganize', [$vo, 'index'])->name('vixorganize')->middleware('permissao:secretario,ler');
+        Route::post('vixorganize/conexao', [$vo, 'conectar'])->name('vixorganize.conectar')->middleware(['permissao:secretario,editar', 'throttle:10,1']);
+        Route::delete('vixorganize/conexao', [$vo, 'desconectar'])->name('vixorganize.desconectar')->middleware('permissao:secretario,excluir');
+        Route::post('vixorganize/atualizar', [$vo, 'atualizar'])->name('vixorganize.atualizar')->middleware(['permissao:secretario,ler', 'throttle:10,1']);
+        Route::post('vixorganize/projetos', [$vo, 'criarProjeto'])->name('vixorganize.projetos')->middleware('permissao:secretario,incluir');
+        Route::post('vixorganize/projetos/{projeto}/status', [$vo, 'status'])->where('projeto', '[a-z0-9-]+')->name('vixorganize.status')->middleware('permissao:secretario,editar');
+        Route::post('vixorganize/projetos/{projeto}/passos', [$vo, 'novoPasso'])->where('projeto', '[a-z0-9-]+')->name('vixorganize.passos')->middleware('permissao:secretario,incluir');
+        Route::post('vixorganize/projetos/{projeto}/passos/{passo}/marcar', [$vo, 'marcar'])->where('projeto', '[a-z0-9-]+')->whereNumber('passo')->name('vixorganize.marcar')->middleware('permissao:secretario,editar');
+        Route::post('vixorganize/projetos/{projeto}/passos/{passo}/registro', [$vo, 'registrar'])->where('projeto', '[a-z0-9-]+')->whereNumber('passo')->name('vixorganize.registrar')->middleware('permissao:secretario,incluir');
+    });
+
     // Central de IA. Sem id de conversa na rota: é sempre a da conta logada.
     // O poll da tela bate a cada 5 s, daí o teto de leitura folgado.
     Route::get('central-ia', [CentralIaController::class, 'index'])->name('central-ia.index')
@@ -321,6 +391,66 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // a Nova tarefa do quadro (`tarefas.index?de_compromisso=`), e o vínculo é
     // gravado no `tarefas.store` — que pede a porta do quadro, como pedia aqui.
 
+    // Suporte pelo WhatsApp (docs/specs/suporte-pedro-whatsapp).
+    $sup = \App\Http\Controllers\SuporteConversasController::class;
+    Route::get('suporte/whatsapp/marca', [$sup, 'marca'])->name('suporte.marca')->middleware('permissao:suporte,ler');
+    Route::get('suporte/whatsapp/{conversa?}', [$sup, 'index'])->whereNumber('conversa')->name('suporte.conversas')->middleware('permissao:suporte,ler');
+    Route::get('suporte/whatsapp/midia/{mensagem}', [$sup, 'midia'])->whereNumber('mensagem')->name('suporte.midia')->middleware('permissao:suporte,ler');
+    Route::post('suporte/whatsapp/{conversa}/responder', [$sup, 'responder'])->whereNumber('conversa')->name('suporte.responder')->middleware('permissao:suporte,editar');
+    Route::post('suporte/whatsapp/{conversa}/assumir', [$sup, 'assumir'])->whereNumber('conversa')->name('suporte.assumir')->middleware('permissao:suporte,editar');
+    Route::post('suporte/whatsapp/{conversa}/devolver', [$sup, 'devolver'])->whereNumber('conversa')->name('suporte.devolver')->middleware('permissao:suporte,editar');
+    Route::post('suporte/whatsapp/{conversa}/vincular', [$sup, 'vincular'])->whereNumber('conversa')->name('suporte.vincular')->middleware('permissao:suporte,editar');
+    Route::post('suporte/whatsapp/{conversa}/gestor', [$sup, 'gestorNumero'])->whereNumber('conversa')->name('suporte.gestor-numero')->middleware('permissao:suporte,editar');
+    // O que o Pedro sabe do negócio (docs/specs/suporte-pedro-whatsapp/conhecimento.md): todos com `suporte` veem; só os editores alteram.
+    Route::get('suporte/pedro', [\App\Http\Controllers\SuporteConhecimentoController::class, 'index'])->name('suporte.pedro')->middleware('permissao:suporte,ler');
+    Route::post('suporte/pedro/acessos', [\App\Http\Controllers\SuporteConhecimentoController::class, 'acessos'])->name('suporte.pedro.acessos')->middleware('permissao:suporte,editar');
+    Route::post('suporte/pedro/empresa', [\App\Http\Controllers\SuporteConhecimentoController::class, 'empresa'])->name('suporte.pedro.empresa')->middleware('permissao:suporte,editar');
+    Route::post('suporte/pedro/roteiros', [\App\Http\Controllers\SuporteConhecimentoController::class, 'salvar'])->name('suporte.pedro.roteiro.novo')->middleware('permissao:suporte,editar');
+    Route::post('suporte/pedro/roteiros/{roteiro}', [\App\Http\Controllers\SuporteConhecimentoController::class, 'salvar'])->whereNumber('roteiro')->name('suporte.pedro.roteiro')->middleware('permissao:suporte,editar');
+    Route::post('suporte/pedro/roteiros/{roteiro}/apagar', [\App\Http\Controllers\SuporteConhecimentoController::class, 'apagar'])->whereNumber('roteiro')->name('suporte.pedro.roteiro.apagar')->middleware('permissao:suporte,editar');
+
+    // Orçamentos VixCard (docs/specs/orcamentos-vixcard): recurso próprio, fora do admin.
+    $orc = \App\Http\Controllers\OrcamentoController::class;
+    Route::get('comercial/orcamentos', [$orc, 'index'])->name('orcamentos.index')->middleware('permissao:orcamentos,ler');
+    Route::get('comercial/orcamentos/novo', [$orc, 'create'])->name('orcamentos.create')->middleware('permissao:orcamentos,incluir');
+    Route::post('comercial/orcamentos', [$orc, 'store'])->name('orcamentos.store')->middleware('permissao:orcamentos,incluir');
+    Route::post('comercial/orcamentos/previa', [$orc, 'previa'])->name('orcamentos.previa')->middleware('permissao:orcamentos,ler');
+    Route::get('comercial/orcamentos/{orcamento}', [$orc, 'edit'])->whereNumber('orcamento')->name('orcamentos.edit')->middleware('permissao:orcamentos,ler');
+    Route::put('comercial/orcamentos/{orcamento}', [$orc, 'update'])->whereNumber('orcamento')->name('orcamentos.update')->middleware('permissao:orcamentos,editar');
+    Route::delete('comercial/orcamentos/{orcamento}', [$orc, 'destroy'])->whereNumber('orcamento')->name('orcamentos.destroy')->middleware('permissao:orcamentos,excluir');
+    Route::get('comercial/orcamentos/{orcamento}/pdf', [$orc, 'pdf'])->whereNumber('orcamento')->name('orcamentos.pdf')->middleware('permissao:orcamentos,imprimir');
+    Route::get('comercial/orcamentos/{orcamento}/capa', [$orc, 'capa'])->whereNumber('orcamento')->name('orcamentos.capa')->middleware('permissao:orcamentos,ler');
+    Route::get('comercial/orcamentos/{orcamento}/imagem/{n}', [$orc, 'imagem'])->whereNumber(['orcamento', 'n'])->name('orcamentos.imagem')->middleware('permissao:orcamentos,ler');
+    Route::get('comercial/orcamentos/capa-padrao', [$orc, 'capaPadrao'])->name('orcamentos.capa-padrao')->middleware('permissao:orcamentos,ler');
+    Route::get('comercial/orcamentos/ajustes', [$orc, 'ajustes'])->name('orcamentos.ajustes')->middleware('permissao:orcamentos,editar');
+    Route::post('comercial/orcamentos/ajustes', [$orc, 'salvarAjustes'])->name('orcamentos.ajustes.salvar')->middleware('permissao:orcamentos,editar');
+    Route::post('comercial/orcamentos/{orcamento}/enviado', [$orc, 'enviado'])->whereNumber('orcamento')->name('orcamentos.enviado')->middleware('permissao:orcamentos,editar');
+    Route::post('comercial/orcamentos/{orcamento}/resposta', [$orc, 'resposta'])->whereNumber('orcamento')->name('orcamentos.resposta')->middleware('permissao:orcamentos,editar');
+    Route::post('comercial/orcamentos/{orcamento}/revisar', [$orc, 'revisar'])->whereNumber('orcamento')->name('orcamentos.revisar')->middleware('permissao:orcamentos,editar');
+    Route::post('comercial/orcamentos/{orcamento}/duplicar', [$orc, 'duplicar'])->whereNumber('orcamento')->name('orcamentos.duplicar')->middleware('permissao:orcamentos,incluir');
+
+    // Documentos (docs/specs/documentos-espelhados): acesso pela PASTA, e não por
+    // perfil — o controller confere dono e compartilhamento em toda rota.
+    Route::get('comercial/documentos', [\App\Http\Controllers\DocumentosController::class, 'index'])->name('documentos.index');
+    Route::get('comercial/documentos/{pasta}', [\App\Http\Controllers\DocumentosController::class, 'pasta'])->whereNumber('pasta')->name('documentos.pasta');
+    Route::put('comercial/documentos/{pasta}/acessos', [\App\Http\Controllers\DocumentosController::class, 'acessos'])->whereNumber('pasta')->name('documentos.acessos');
+    // Reunião compartilhada com quem participou (docs/specs/secretario-reuniao-produto):
+    // sem permissão de perfil — o controller confere a marcação do dono.
+    Route::get('reunioes-compartilhadas', [\App\Http\Controllers\ReunioesCompartilhadasController::class, 'index'])->name('reunioes.compartilhadas');
+    Route::get('reunioes-compartilhadas/{reuniao}', [\App\Http\Controllers\ReunioesCompartilhadasController::class, 'mostrar'])->whereNumber('reuniao')->name('reunioes.compartilhada');
+    // Mão dupla (docs/specs/documentos-mao-dupla): quem vê a pasta também altera; a máquina do dono aplica.
+    Route::post('comercial/documentos/{pasta}/pastas', [\App\Http\Controllers\DocumentosController::class, 'criarPasta'])->whereNumber('pasta')->name('documentos.criar-pasta');
+    Route::post('comercial/documentos/{pasta}/envios', [\App\Http\Controllers\DocumentosController::class, 'enviar'])->whereNumber('pasta')->name('documentos.enviar');
+    Route::post('comercial/documentos/{pasta}/apagar', [\App\Http\Controllers\DocumentosController::class, 'apagar'])->whereNumber('pasta')->name('documentos.apagar');
+    Route::post('comercial/documentos/{pasta}/mover', [\App\Http\Controllers\DocumentosController::class, 'mover'])->whereNumber('pasta')->name('documentos.mover');
+    Route::get('comercial/documentos/{pasta}/pendentes', [\App\Http\Controllers\DocumentosController::class, 'pendentes'])->whereNumber('pasta')->name('documentos.pendentes');
+    Route::get('comercial/documentos/arquivo/{documento}/ver', [\App\Http\Controllers\DocumentosController::class, 'ver'])->whereNumber('documento')->name('documentos.ver');
+    Route::get('comercial/documentos/arquivo/{documento}/miniatura', [\App\Http\Controllers\DocumentosController::class, 'miniatura'])->whereNumber('documento')->name('documentos.miniatura');
+    Route::get('comercial/documentos/arquivo/{documento}/baixar', [\App\Http\Controllers\DocumentosController::class, 'baixar'])->whereNumber('documento')->name('documentos.baixar');
+
+    // Projetos VixCard (docs/specs/acesso-vixcard): o painel dos produtos da VixCard.
+    Route::get('vixcard/projetos', [\App\Http\Controllers\VixcardProjetosController::class, 'index'])->name('vixcard.projetos')
+        ->middleware('permissao:tarefas,ler');
     Route::get('tarefas', [TarefaController::class, 'index'])->name('tarefas.index')
         ->middleware('permissao:tarefas');
     Route::get('tarefas/historico', [TarefaController::class, 'historico'])->name('tarefas.historico')
@@ -532,6 +662,15 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware('permissao:sistemas');
     Route::delete('precos/{preco}', [PrecoAtacadoController::class, 'destroy'])->name('precos.destroy')
         ->middleware('permissao:sistemas');
+
+    // Cobrança de revendas com boleto (docs/specs/cobranca-revendas-boleto): só com o recurso próprio.
+    $cr = \App\Http\Controllers\CobrancaRevendasController::class;
+    Route::get('financeiro/cobranca-revendas', [$cr, 'index'])->name('cobranca-revendas.index')->middleware('permissao:cobranca_revendas,ler');
+    Route::put('financeiro/cobranca-revendas/{revenda}', [$cr, 'salvarRevenda'])->whereNumber('revenda')->name('cobranca-revendas.revenda')->middleware('permissao:cobranca_revendas,editar');
+    Route::put('financeiro/cobranca-revendas/{revenda}/precos', [$cr, 'salvarPrecos'])->whereNumber('revenda')->name('cobranca-revendas.precos')->middleware('permissao:cobranca_revendas,editar');
+    Route::post('financeiro/cobranca-revendas/{revenda}/faturavel', [$cr, 'faturavel'])->whereNumber('revenda')->name('cobranca-revendas.faturavel')->middleware('permissao:cobranca_revendas,editar');
+    Route::post('financeiro/cobranca-revendas/cobrancas/{cobranca}/emitir', [$cr, 'emitir'])->whereNumber('cobranca')->name('cobranca-revendas.emitir')->middleware(['permissao:cobranca_revendas,incluir', 'throttle:10,1']);
+    Route::post('financeiro/cobranca-revendas/cobrancas/{cobranca}/conferir', [$cr, 'conferir'])->whereNumber('cobranca')->name('cobranca-revendas.conferir')->middleware(['permissao:cobranca_revendas,editar', 'throttle:20,1']);
 
     Route::get('faturamento', [FaturamentoController::class, 'index'])->name('faturamento.index')
         ->middleware('permissao:faturamento');

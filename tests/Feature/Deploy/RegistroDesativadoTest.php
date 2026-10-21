@@ -28,8 +28,8 @@ class RegistroDesativadoTest extends TestCase
         ])->assertNotFound();
 
         $this->assertDatabaseMissing('users', ['email' => 'invasor@exemplo.com']);
-        // Fora a conta do vigia de logs (#219), que a migração cria e não é de gente.
-        $this->assertSame(0, User::where('email', '!=', User::EMAIL_DO_VIGIA)->count());
+        // Fora as contas do vigia de logs (#219) e do Pedro (suporte), que as migrações criam e não são de gente.
+        $this->assertSame(0, User::whereNotIn('email', [User::EMAIL_DO_VIGIA, User::EMAIL_DO_PEDRO])->count());
 
         $this->assertFalse(
             Route::has('register'),

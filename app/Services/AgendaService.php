@@ -592,6 +592,8 @@ class AgendaService
      */
     public function marcar(array $dados, User $autor): Compromisso
     {
+        // Conta VixCard: tarefa, sistema e participantes só dos projetos dela (acesso-vixcard).
+        \App\Models\Scopes\EscopoVixcard::conferir($dados);
         $campos = $this->camposDoIntervalo($dados);
         $this->assertIntervaloValido($campos);
 
@@ -642,6 +644,7 @@ class AgendaService
      */
     public function remarcar(Compromisso $compromisso, array $dados, User $autor): Compromisso
     {
+        \App\Models\Scopes\EscopoVixcard::conferir($dados);
         if (! $compromisso->podeSerEditadoPor($autor)) {
             throw new \RuntimeException(self::RECUSA_AO_ALTERAR);
         }

@@ -34,7 +34,7 @@
          {{-- A faixa de cor só onde o cabeçalho está: em raias ela se repetiria
               uma vez por faixa, competindo com o cabeçalho fixo do topo, que é
               quem nomeia a etapa. Cor repetida sem rótulo vira listra. --}}
-         :style="recolhidas.includes('{{ $etapa['chave'] }}')
+         :style="recolhida('{{ $etapa['chave'] }}', {{ ($etapa['quantidade'] ?? 0) === 0 ? 'true' : 'false' }})
              ? 'flex: 0 0 42px; min-width: 42px; border-top: {{ $comCabecalho ? '3px solid rgb(var(--'.$etapa['cor'].'))' : '1px solid var(--line)' }}'
              : 'flex: 1 1 272px; min-width: 272px; border-top: {{ $comCabecalho ? '3px solid rgb(var(--'.$etapa['cor'].'))' : '1px solid var(--line)' }}'"
          data-status="{{ $etapa['chave'] }}"
@@ -99,7 +99,7 @@
          cards estouraria a altura da faixa em vez de rolar por dentro.
     --}}
     <div data-cards="{{ $alvo }}" data-rolagem="cards:{{ $alvo }}"
-         x-show="! recolhidas.includes('{{ $etapa['chave'] }}')"
+         x-show="! recolhida('{{ $etapa['chave'] }}', {{ ($etapa['quantidade'] ?? 0) === 0 ? 'true' : 'false' }})"
          class="flex-1 min-h-0 overflow-y-auto p-[10px] space-y-[10px] {{ $comCabecalho ? 'overscroll-y-contain' : '' }}">
         @forelse ($cards as $tarefa)
             @php
@@ -226,7 +226,7 @@
     @if (in_array($etapa['chave'], ['aberta', 'backlog'], true) && $faixa === 'todas'
         && auth()->user()?->canPermissao('tarefas', 'incluir'))
         <form data-criacao-rapida-form
-              x-show="! recolhidas.includes('{{ $etapa['chave'] }}')"
+              x-show="! recolhida('{{ $etapa['chave'] }}', {{ ($etapa['quantidade'] ?? 0) === 0 ? 'true' : 'false' }})"
               @submit.prevent="
                   const titulo = $el.elements['titulo'].value.trim();
                   if (titulo === '') return;

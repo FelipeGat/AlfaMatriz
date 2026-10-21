@@ -56,7 +56,9 @@ class MigracaoEditarTest extends TestCase
         $this->seed(PerfilPermissaoSeeder::class);
 
         $admin = Perfil::where('slug', 'admin')->firstOrFail();
-        $recursos = Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes'])->count();
+        // Fora do admin: a Central (perfil próprio), a Cobrança de revendas (só quem recebe o perfil, 18/10/2026)
+        // e os Orçamentos VixCard (Felipe e Victor, 19/10/2026).
+        $recursos = Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes', 'cobranca_revendas', 'orcamentos'])->count();
 
         $comEditar = $admin->permissoes()->wherePivot('editar', true)->count();
 
@@ -65,7 +67,7 @@ class MigracaoEditarTest extends TestCase
             $comEditar,
             "O Administrador precisa de editar nos {$recursos} recursos, e tem em {$comEditar}."
         );
-        $this->assertSame(0, $admin->permissoes()->whereIn('recurso', ['central_ia', 'central_ia_agentes'])->count());
+        $this->assertSame(0, $admin->permissoes()->whereIn('recurso', ['central_ia', 'central_ia_agentes', 'cobranca_revendas', 'orcamentos'])->count());
     }
 
     /**

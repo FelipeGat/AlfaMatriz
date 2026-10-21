@@ -65,7 +65,7 @@ export function segredoValido(segredo) {
 }
 
 /**
- * Chats já confirmados nesta máquina (vale 12 h): a regra "inicio" não pede o
+ * Chats já confirmados nesta máquina (vale 30 dias): a regra "inicio" não pede o
  * código de novo no mesmo chat.
  *
  * A chave é servidor + conta + chat (T-368). Era só o número do chat, e o
@@ -75,7 +75,9 @@ export function segredoValido(segredo) {
  * nada fica liberado. As entradas do formato antigo (só o número) nunca casam
  * com uma chave nova: quem confirmou antes desta versão confirma de novo.
  */
-export const VALIDADE_CHAT_MS = 12 * 3600_000;
+// 30 dias (Felipe, 18/10/2026: "uma única vez em um chat até concluir ele").
+// Era 12 h, e o mesmo chat voltava a pedir código no dia seguinte.
+export const VALIDADE_CHAT_MS = 30 * 24 * 3600_000;
 
 export function chaveDoChat(servidor, conta, chat) {
     if (!servidor || conta == null || conta === '' || chat == null || chat === '') return null;

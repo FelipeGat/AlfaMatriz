@@ -19,7 +19,31 @@
     $escopo = Auth::user()?->temEscopoDeRevenda() ?? false;
 
     $grupos = [
+        // O dia de cada pessoa (docs/specs/secretario-executivo): recurso
+        // próprio (`secretario`), dado sempre da própria conta — desde
+        // 17/10/2026 em todos os perfis de pessoas. No topo porque é a primeira
+        // tela do dia, e na ordem do uso. "Minha agenda", e não "Agenda": a
+        // Agenda do time mora em Desenvolvimento. A Memória saiu do menu (Felipe,
+        // 17/10/2026: a tela confundia); as perguntas pelo chat continuam.
+        //
+        // A Central de IA mora aqui também (Felipe, 17/10/2026): é por ela que
+        // se fala com o Secretário e com os agentes. O recurso continua o dela
+        // (`central_ia`): só quem tem o perfil Central de IA a vê.
+        'Secretário' => [
+            ['route' => 'central-ia.index', 'recurso' => 'central_ia', 'pattern' => 'central-ia.*', 'label' => 'Central de IA', 'icon' => 'chat', 'matriz' => true],
+            ['route' => 'secretario.acompanhamentos', 'recurso' => 'secretario', 'pattern' => ['secretario.acompanhamentos', 'secretario.acompanhamentos.*'], 'label' => 'Acompanhamentos', 'icon' => 'bell', 'matriz' => true],
+            ['route' => 'secretario.agenda', 'recurso' => 'secretario', 'pattern' => 'secretario.agenda', 'label' => 'Minha agenda', 'icon' => 'calendar', 'matriz' => true],
+            ['route' => 'secretario.reunioes.index', 'recurso' => 'secretario', 'pattern' => 'secretario.reunioes.*', 'label' => 'Reuniões', 'icon' => 'speaker-wave', 'matriz' => true],
+            ['route' => 'secretario.emails.index', 'recurso' => 'secretario', 'pattern' => 'secretario.emails.*', 'label' => 'Mensagens', 'icon' => 'balao', 'matriz' => true],
+            // Menu reorganizado pelo Felipe em 19/10/2026: Documentos veio do Comercial para cá;
+            // Meu Dia foi para Painéis e Configurações, para Sistema.
+            // Pastas espelhadas do OneDrive (documentos-espelhados): sem recurso de
+            // permissão — o acesso é pela pasta —, então só aparece para quem tem uma.
+            ['route' => 'documentos.index', 'pattern' => 'documentos.*', 'label' => 'Documentos', 'icon' => 'document', 'matriz' => true,
+                'so_se' => fn () => \App\Models\DocumentoPasta::alguma(Auth::user())],
+        ],
         'Painéis' => [
+            ['route' => 'secretario.meu-dia', 'recurso' => 'secretario', 'pattern' => 'secretario.meu-dia', 'label' => 'Meu Dia', 'icon' => 'sun', 'matriz' => true],
             ['route' => 'centro-controle', 'recurso' => 'dashboard', 'pattern' => 'centro-controle', 'label' => 'Centro de Controle', 'icon' => 'bolt', 'matriz' => true],
             ['route' => 'dashboard', 'recurso' => 'dashboard', 'pattern' => 'dashboard', 'label' => 'Financeiro', 'icon' => 'trending-up', 'matriz' => true],
             // `dashboard_comercial`, como a rota: gateado por `dashboard`, o
@@ -36,17 +60,25 @@
             ['route' => 'revendas.index', 'recurso' => 'revendas', 'pattern' => ['revendas.*', 'clientes.*'], 'label' => 'Revendas e clientes', 'icon' => 'building', 'params' => $escopo ? ['aba' => 'clientes'] : []],
             ['route' => 'produtos.index', 'recurso' => 'sistemas', 'pattern' => ['produtos.*', 'sistemas.*', 'precos.*'], 'label' => 'Produtos', 'icon' => 'cube-outline', 'matriz' => true],
             ['route' => 'faturamento.index', 'recurso' => 'faturamento', 'pattern' => 'faturamento.*', 'label' => 'Faturamento', 'icon' => 'repeat'],
+            // Projetos (19/10/2026): veio de Desenvolvimento, com duas pastas dentro —
+            // Projetos VixCard e Projetos Alfa Soluções. A rota segue `vixcard.projetos`
+            // porque é a tela inicial da conta VixCard.
+            ['route' => 'vixcard.projetos', 'recurso' => 'tarefas', 'pattern' => 'vixcard.*', 'label' => 'Projetos', 'icon' => 'tag', 'matriz' => true],
+            // Orçamentos VixCard (orcamentos-vixcard): recurso fora do admin — Felipe e Victor.
+            ['route' => 'orcamentos.index', 'recurso' => 'orcamentos', 'pattern' => 'orcamentos.*', 'label' => 'Orçamentos', 'icon' => 'document', 'matriz' => true],
         ],
         'Financeiro' => [
             ['route' => 'cobrancas.index', 'recurso' => 'cobrancas', 'pattern' => 'cobrancas.*', 'label' => 'Receitas', 'icon' => 'trending-up'],
             ['route' => 'contas-pagar.index', 'recurso' => 'contas_pagar', 'pattern' => ['contas-pagar.*', 'contas-fixas-pagar.*'], 'label' => 'Despesas', 'icon' => 'trending-down', 'matriz' => true],
             ['route' => 'contas-financeiras.index', 'recurso' => 'financeiro', 'pattern' => 'contas-financeiras.*', 'label' => 'Caixa', 'icon' => 'banknotes', 'matriz' => true],
+            // Boleto da revenda e baixa automática (cobranca-revendas-boleto): recurso próprio,
+            // fora do "tudo do administrador" — só quem recebeu o perfil vê.
+            ['route' => 'cobranca-revendas.index', 'recurso' => 'cobranca_revendas', 'pattern' => 'cobranca-revendas.*', 'label' => 'Cobrança de revendas', 'icon' => 'currency', 'matriz' => true],
         ],
         'Desenvolvimento' => [
-            // Só por permissão: quem tem o perfil "Central de IA" vê; o
-            // Administrador não o recebe de fábrica.
-            ['route' => 'central-ia.index', 'recurso' => 'central_ia', 'pattern' => 'central-ia.*', 'label' => 'Central de IA', 'icon' => 'chat', 'matriz' => true],
             ['route' => 'tarefas.index', 'recurso' => 'tarefas', 'pattern' => 'tarefas.*', 'label' => 'Tarefas', 'icon' => 'view-grid', 'matriz' => true],
+            // O WhatsApp do suporte (suporte-pedro-whatsapp): logo abaixo de Tarefas, que é onde o atendimento vira trabalho.
+            ['route' => 'suporte.conversas', 'recurso' => 'suporte', 'pattern' => 'suporte.*', 'label' => 'Suporte WhatsApp', 'icon' => 'balao', 'matriz' => true],
             // Logo abaixo de Tarefas, e não num grupo "Pessoal" próprio: o
             // desenho (§19) previa o grupo pessoal, com Agenda e Notas. Decisão
             // do dono do produto em 18/09/2026 é que a Agenda mora aqui — o que
@@ -75,6 +107,8 @@
             ['route' => 'cadastros-auxiliares.index', 'recurso' => 'financeiro', 'pattern' => ['cadastros-auxiliares.*', 'centros-custo.*', 'fornecedores.*', 'categorias.*', 'subcategorias.*', 'contas.*'], 'label' => 'Cadastros', 'icon' => 'tag', 'matriz' => true],
             ['route' => 'usuarios.index', 'recurso' => 'usuarios', 'pattern' => ['usuarios.*', 'perfis.*'], 'label' => 'Usuários e permissões', 'icon' => 'users', 'matriz' => true],
             ['route' => 'auditoria.index', 'recurso' => 'auditoria', 'pattern' => 'auditoria.*', 'label' => 'Auditoria', 'icon' => 'eye', 'matriz' => true],
+            // As configurações do Secretário (19/10/2026: saíram do grupo Secretário).
+            ['route' => 'secretario.configuracoes', 'recurso' => 'secretario', 'pattern' => 'secretario.configuracoes', 'label' => 'Configurações', 'icon' => 'settings', 'matriz' => true],
         ],
     ];
 
@@ -91,6 +125,7 @@
     $grupos = collect($grupos)
         ->map(fn ($links) => collect($links)
             ->filter(fn ($link) => ! $escopo || empty($link['matriz']))
+            ->filter(fn ($link) => empty($link['so_se']) || ($link['so_se'])())
             ->filter(fn ($link) => empty($link['recurso'])
                 || $usuario?->canPermissao($link['recurso'], 'ler'))
             ->values()->all())

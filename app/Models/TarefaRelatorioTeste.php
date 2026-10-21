@@ -2,9 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\EscopoVixcard;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Acesso VixCard: quem tem o perfil só vê o que é da VixCard (docs/specs/acesso-vixcard).
+#[ScopedBy([EscopoVixcard::class])]
 class TarefaRelatorioTeste extends Model
 {
     protected $table = 'tarefa_relatorios_teste';

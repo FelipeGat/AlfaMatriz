@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\EscopoVixcard;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
+
 use App\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
+// Acesso VixCard: quem tem o perfil só vê o que é da VixCard (docs/specs/acesso-vixcard).
+#[ScopedBy([EscopoVixcard::class])]
 class Sistema extends Model
 {
     use Auditavel, HasFactory;
@@ -31,10 +36,14 @@ class Sistema extends Model
     public const NATUREZAS = [
         'produto' => 'Produto',
         'interno' => 'Sistema interno',
+        // Produto da VixCard (Felipe, 17/10/2026): a Alfa desenvolve, a VixCard
+        // vende. Fica fora de `produtos()` — a receita dele não é da Alfa e não
+        // entra em MRR, tier nem fechamento —, mas a tarefa aponta para ele.
+        'vixcard' => 'Produto VixCard',
     ];
 
     protected $fillable = [
-        'nome', 'slug', 'natureza', 'categoria', 'unidade_cobranca', 'base_url', 'token', 'ativo',
+        'nome', 'slug', 'natureza', 'categoria', 'unidade_cobranca', 'base_url', 'url_acesso', 'token', 'ativo',
         'capacidades', 'versao', 'responsavel', 'data_cadastro',
     ];
 
@@ -133,6 +142,22 @@ class Sistema extends Model
         return $query->where('natureza', 'interno');
     }
 
+    /** @param  \Illuminate\Database\Eloquent\Builder<Sistema>  $query */
+    public function scopeVixcard($query)
+    {
+        return $query->where('natureza', 'vixcard');
+    }
+
+    /** A aba de Produtos onde a linha mora (para voltar a ela). @return array<string, string> */
+    public function abaNoCatalogo(): array
+    {
+        return match ($this->natureza) {
+            'interno' => ['aba' => 'internos'],
+            'vixcard' => ['aba' => 'vixcard'],
+            default => [],
+        };
+    }
+
     public function ehInterno(): bool
     {
         return $this->natureza === 'interno';
@@ -155,7 +180,7 @@ class Sistema extends Model
     {
         return $this->belongsToMany(Cliente::class, 'cliente_sistema')
             ->using(ClienteSistema::class)
-            ->withPivot(['ativo', 'ativado_em', 'cancelado_em',
+            ->withPivot(['ativo', 'faturavel', 'ativado_em', 'cancelado_em',
                 'licenca_status', 'plano', 'licenca_valor', 'licenca_inicio_em',
                 'licenca_fim_em', 'bloqueia_acesso', 'licenca_id_externo',
                 'status_saas', 'uso_unidades', 'uso_metricas', 'uso_medido_em']);

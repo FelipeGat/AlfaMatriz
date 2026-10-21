@@ -27,6 +27,7 @@ class LimparCentralIa extends Command
         'entregas' => 'Entregas ao Telegram',
         'execucoes' => 'Pedidos a agentes',
         'mensagens' => 'Mensagens',
+        'secretario' => 'Secretário (toques e propostas encerradas)',
     ];
 
     public function handle(Limpeza $limpeza): int

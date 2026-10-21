@@ -83,7 +83,22 @@ class Roteador
      * grava depois de a pessoa confirmar na conversa.
      */
     private const OPERACAO = ['agende', 'agendar', 'marque', 'marcar', 'remarque', 'remarcar', 'desmarque', 'desmarcar', 'cancele', 'cancelar',
-        'cadastre', 'cadastrar', 'lance', 'lançar', 'lancar', 'registre', 'registrar', 'dê baixa', 'de baixa', 'baixe', 'emita', 'emitir', 'reagende', 'reagendar'];
+        'cadastre', 'cadastrar', 'lance', 'lançar', 'lancar', 'registre', 'registrar', 'dê baixa', 'de baixa', 'dar baixa', 'baixe', 'emita', 'emitir', 'reagende', 'reagendar',
+        // Mudar o estado de um registro é operação no sistema, não código.
+        'mude o status', 'mudar o status', 'altere o status', 'alterar o status', 'troque o status', 'trocar o status'];
+
+    /**
+     * O pedido fala de CÓDIGO: só com algum destes um verbo de alteração ao
+     * lado de uma operação vira implementação (Felipe, 16/10/2026: "mude o
+     * status para Financeiro, depois dê baixa" é operação no Gestor, do Codex;
+     * o Claude fica só com desenvolvimento).
+     */
+    private const FALA_DE_CODIGO = ['código', 'codigo', 'arquivo', 'arquivos', 'tela', 'telas', 'layout', 'componente', 'função', 'funcao',
+        'classe', 'controller', 'migration', 'migração', 'migracao', 'endpoint', 'rota', 'backend', 'frontend', 'css', 'html', 'javascript',
+        'php', 'refatoração', 'refatoracao', 'branch', 'teste', 'testes', 'bug'];
+
+    /** Publicar é sempre execução, com o código no Telegram. */
+    private const PUBLICA = ['commit', 'commite', 'push', 'deploy', 'publique', 'publicar'];
 
     /** Ler, resumir, relatar: o nível leve resolve. */
     private const LEVE = ['resumo', 'resuma', 'resumir', 'relatório', 'relatorio', 'agenda', 'compromisso', 'compromissos', 'reunião', 'reuniao',
@@ -142,17 +157,21 @@ class Roteador
         // proposta; a implementação vem com o "Sim, implementar" (dono,
         // 13/10/2026 — caía direto em implementação e pedia o código).
         if ($p = $tem(['para meu ok', 'para o meu ok', 'para minha aprovação', 'para minha aprovacao', 'para eu aprovar', 'modelo conceito',
-            'conceito', 'protótipo', 'prototipo', 'mockup', 'antes de implementar', 'me traga uma proposta', 'me traga um modelo'])) {
+            'conceito', 'protótipo', 'prototipo', 'mockup', 'antes de implementar', 'me traga uma proposta', 'me traga um modelo',
+            // "Analise e me traga um cenário" é proposta, mesmo citando "implantar" (16/10/2026).
+            'me traga um cenário', 'me traga um cenario', 'traga um cenário', 'traga um cenario', 'monte um cenário', 'monte um cenario'])) {
             return $this->escolher('planejamento', $p, $disponiveis, $tarefa);
         }
 
-        if (($op = $tem(self::OPERACAO)) && ! $tem(self::IMPLEMENTA_DE_VERDADE)) {
+        if (($op = $tem(self::OPERACAO)) && (! $tem(self::IMPLEMENTA_DE_VERDADE) || (! $tem(self::FALA_DE_CODIGO) && ! $tem(self::PUBLICA)))) {
             return $this->escolher('operacao', $op, $disponiveis, $tarefa);
         }
 
         $analitico = $tem(self::ANALITICO);
         if ($analitico && $tem(['código', 'codigo', 'backend', 'frontend', 'controller', 'migration', 'refatoração', 'refatoracao']) && ! $tem(self::IMPLEMENTA_DE_VERDADE)) {
-            $rota = $this->escolher('implementacao', 'análise de código', $disponiveis, $tarefa);
+            // Consulta de código é análise: segue a preferência de código
+            // (padrão Codex), e não a de implementação (16/10/2026).
+            $rota = $this->escolher('codigo', 'análise de código', $disponiveis, $tarefa);
             $rota['modo'] = 'analisar';
             $rota['categoria'] = 'codigo';
             return $rota;
@@ -214,7 +233,7 @@ class Roteador
     {
         $rotulos = [
             'implementacao' => 'implementação', 'revisao' => 'revisão', 'planejamento' => 'planejamento',
-            'investigacao' => 'investigação', 'apoio' => 'apoio técnico', 'relatorio' => 'relatório', 'operacao' => 'operação no sistema',
+            'investigacao' => 'investigação', 'apoio' => 'apoio técnico', 'relatorio' => 'relatório', 'operacao' => 'operação no sistema', 'codigo' => 'análise de código',
         ];
         $motivo = 'Automático: '.$rotulos[$categoria].($palavra ? " (\"{$palavra}\")" : ' (padrão)');
 

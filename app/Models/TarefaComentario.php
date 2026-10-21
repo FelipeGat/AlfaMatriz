@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\EscopoVixcard;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
+
 use App\Concerns\Auditavel;
 use App\Services\ArquivoDeTarefas;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +19,8 @@ use Illuminate\Support\Str;
  * preservadas pelo CSS: nada que se digite aqui vira HTML, e por isso não há
  * conversão para auditar nem sanitizador para manter.
  */
+// Acesso VixCard: quem tem o perfil só vê o que é da VixCard (docs/specs/acesso-vixcard).
+#[ScopedBy([EscopoVixcard::class])]
 class TarefaComentario extends Model
 {
     use Auditavel;

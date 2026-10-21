@@ -29,7 +29,8 @@ class RegrasAnaliseTest extends TestCase
         app(FontesDeDados::class)->exigirPeriodo('Resultado financeiro desta semana');
         app(FontesDeDados::class)->exigirPeriodo('Analise o código do faturamento');
         $r = app(Roteador::class)->decidir('Analise o código', ['claude','codex']);
-        $this->assertSame('claude', $r['agente']);
+        // Consulta de código é análise, do Codex; o Claude fica com desenvolvimento (Felipe, 16/10/2026).
+        $this->assertSame('codex', $r['agente']);
         $this->assertSame('analisar', $r['modo']);
         $r = app(Roteador::class)->decidir('Analise os dados financeiros desta semana e o que tenho a pagar', ['claude','codex']);
         $this->assertSame('codex', $r['agente']);

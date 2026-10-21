@@ -76,17 +76,51 @@ export const PUBLICACAO_NO_SHELL = ['git push', 'git -C', 'ssh', 'scp', 'sftp', 
 
 /** Pedido de deploy: sempre confirmado por código, e o único que publica. */
 export function pedeDeploy(job) {
-    return PEDE_DEPLOY.test(job?.instrucao || '');
+    return PEDE_DEPLOY.test(semONegado(textoDaPessoa(job?.instrucao)));
 }
 
-export const PEDE_DEPLOY = /\b(deploy|deplo[iy]|produ[çc][ãa]o|publi(car|que|ca[çc][ãa]o)|push|tag\s+v\d|release|subir\s+(pra|para)\s+o?\s*ar|merge\s+(na|para\s+a)\s+main)\b/i;
+/**
+ * Tira o que vem negado: "Não fazer commit, push, merge, deploy ou alterações
+ * em produção" é a proibição, não o pedido (Felipe, 20/10/2026: "toda hora tá
+ * pedindo"). Quem escreve isso é a própria IA, ao continuar a tarefa ou passar
+ * a outro agente, e a lista PEDE_DEPLOY casava "push" e "deploy" a cada passo.
+ * A negação vale até o fim da frase, ou até um "mas"/", pode" que reabre o
+ * pedido ("sem testes, pode publicar"). Errar para menos é seguro (pedeDeploy).
+ */
+const NEGADO = /(^|[^\p{L}])(n[ãa]o|sem|nem|nunca|jamais)(?![\p{L}])[^.;!?\n]*?(?=[.;!?\n]|\s+mas\s|,\s*(e\s+)?(pode|podem|pode\s+\w+|fa[çc]a|faz|suba|sobe|publique|siga)(?![\p{L}])|$)/giu;
+
+export function semONegado(texto = '') {
+    return String(texto ?? '').replace(NEGADO, '$1');
+}
+
+/**
+ * Só as palavras da PESSOA (Felipe, 18/10/2026: "em todas as correções ele
+ * manda uma confirmação"). A resposta a uma pergunta da IA chega com a
+ * pergunta citada — "Posso fazer o commit (sem push e sem deploy)?" — e a
+ * implementação aprovada chega com a proposta da IA inteira: palavra da IA
+ * não é pedido de deploy. Sem pedido da pessoa também não há permissão de
+ * publicar (`permissoes(..., { deploy })`), então errar para menos é seguro.
+ */
+export function textoDaPessoa(instrucao = '') {
+    const t = String(instrucao ?? '');
+    let m = t.match(/^\s*Resposta à sua pergunta \("[\s\S]*"\):\s*([\s\S]*)$/);
+    if (m) return m[1];
+    m = t.match(/^\s*A pessoa respondeu "([\s\S]*)" à sua última mensagem nesta tarefa:/);
+    if (m) return m[1];
+    if (/^\s*Implemente o que foi proposto na análise anterior desta tarefa/.test(t)) return '';
+    return t;
+}
+
+// "Produção" sozinha não é deploy: é também o chão de fábrica da VixCard
+// ("o módulo de produção"). Conta com verbo de levar para lá.
+export const PEDE_DEPLOY = /\b(deploy|deplo[iy]\w*|publi(car|que|ca[çc][ãa]o)|push|tag\s+v\d|release|merge\s+(na|para\s+a)\s+main|(subir|suba|sobe|mandar|mande|manda|levar|leve|leva|colocar|coloque|coloca|jogar|jogue|joga)\s+(pra|para|em|na)\s+(a\s+)?produ[çc][ãa]o|subir\s+(pra|para)\s+o?\s*ar)\b/i;
 
 /** Precisa do código do dono antes de rodar? `chatConfirmado`: já confirmou neste chat. */
 export function exigeConfirmacao(job, regra, chatConfirmado = false) {
     // Deploy, produção, push e publicação pedem o código SEMPRE, em qualquer
     // regra (dono, 13/10/2026: "nem deploy sem autenticação de dois fatores,
     // que é a mensagem no Telegram"). Máquina sem Telegram não executa.
-    if (PEDE_DEPLOY.test(job.instrucao || '')) return true;
+    if (pedeDeploy(job)) return true;
     if (regra === 'nunca') return false;
     if (regra === 'sempre') return true;
     if (regra === 'deploy') return false;
@@ -95,11 +129,22 @@ export function exigeConfirmacao(job, regra, chatConfirmado = false) {
 }
 
 /** Argumentos de permissão de cada CLI para o acesso efetivo. */
-export function permissoes(agente, acesso, { projetos, cwd, deploy = false } = {}) {
+export function permissoes(agente, acesso, { projetos, cwd, deploy = false, codexTotal = false, semFerramentas = false } = {}) {
+    // Pedido do Secretário (`job.acesso === 'nenhum'`): leva e-mail e
+    // transcrição de terceiros, então nenhuma ferramenta — nem a leitura,
+    // nem o WebSearch, que serviria de canal para fora. O Codex já vai em
+    // read-only sem rede e o Copilot sem escrita e sem shell (abaixo).
+    if (semFerramentas) {
+        acesso = 'leitura';
+        if (agente === 'claude') return ['--permission-mode', 'default', '--disallowedTools', ...FERRAMENTAS_CLAUDE];
+    }
     // O Codex não nega comando por comando: sem pedido de deploy, ele não
     // recebe acesso total (fica no workspace-write, sem rede), e assim não
-    // publica nada (T-368).
-    if (agente === 'codex' && acesso === 'total' && !deploy) acesso = 'restrito';
+    // publica nada (T-368). Exceção da MÁQUINA (`CENTRAL_IA_CODEX_TOTAL=sim`,
+    // Felipe, 16/10/2026): quem quer o Codex operando como no VS Code (rede,
+    // pontes de produção, pastas fora do projeto) liga na própria máquina. O
+    // deploy continua pedindo o código no Telegram (exigeConfirmacao).
+    if (agente === 'codex' && acesso === 'total' && !deploy && !codexTotal) acesso = 'restrito';
     const total = acesso === 'total', escreve = acesso !== 'leitura';
     const semPublicar = total && !deploy;
     if (agente === 'claude') {
@@ -126,6 +171,10 @@ export function permissoes(agente, acesso, { projetos, cwd, deploy = false } = {
     else args.push('--deny-tool', 'write', '--deny-tool', 'shell');
     return args;
 }
+
+/** Todas as ferramentas do Claude Code, para o pedido que não pode usar nenhuma. */
+export const FERRAMENTAS_CLAUDE = ['Bash', 'Read', 'Grep', 'Glob', 'LS', 'Edit', 'MultiEdit', 'Write', 'NotebookEdit', 'NotebookRead',
+    'WebSearch', 'WebFetch', 'Task', 'Agent', 'TodoWrite', 'BashOutput', 'KillShell', 'SlashCommand', 'Skill'];
 
 const NOME_DE_MODELO = /^[A-Za-z0-9._-]{1,60}$/;
 const ESFORCOS = ['low', 'medium', 'high'];

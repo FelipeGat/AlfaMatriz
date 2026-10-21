@@ -34,6 +34,12 @@ class PerfilPermissaoSeeder extends Seeder
             'revendas' => 'Revendas',
             'clientes' => 'Clientes',
             'sistemas' => 'Sistemas e preços de atacado',
+            // Boleto da revenda e baixa automática (cobranca-revendas-boleto): fora do admin, logo abaixo.
+            'cobranca_revendas' => 'Cobrança de revendas (boleto e baixa automática)',
+            // Orçamentos VixCard (orcamentos-vixcard): também fora do admin — Felipe e Victor.
+            'orcamentos' => 'Orçamentos VixCard (propostas em PDF)',
+            // O WhatsApp do suporte (suporte-pedro-whatsapp): do admin, como o resto da operação.
+            'suporte' => 'Suporte pelo WhatsApp (conversas do número de suporte)',
             'cobrancas' => 'Receitas / contas a receber',
             'contas_pagar' => 'Despesas / contas a pagar',
             'financeiro' => 'Caixa / contas financeiras',
@@ -111,7 +117,10 @@ class PerfilPermissaoSeeder extends Seeder
         $financeiro = Perfil::updateOrCreate(['slug' => 'financeiro'], ['nome' => 'Financeiro']);
         $operacao = Perfil::updateOrCreate(['slug' => 'operacao'], ['nome' => 'Operação']);
 
-        $todasPermissoes = Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes'])->pluck('id', 'recurso');
+        // Central e Secretário fora do "tudo do admin": a Central por perfil próprio; o Secretário, logo abaixo.
+        // Cobrança de revendas também: emite boleto real em nome da Alfa — só quem recebe o perfil (Felipe, 18/10/2026).
+        // Orçamentos VixCard idem: só Felipe e Victor (19/10/2026).
+        $todasPermissoes = Permissao::whereNotIn('recurso', ['central_ia', 'central_ia_agentes', 'secretario', 'cobranca_revendas', 'orcamentos'])->pluck('id', 'recurso');
 
         foreach ($todasPermissoes as $permissaoId) {
             $admin->permissoes()->syncWithoutDetaching([
@@ -254,6 +263,40 @@ class PerfilPermissaoSeeder extends Seeder
             $revenda->permissoes()->syncWithoutDetaching([
                 $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
             ]);
+        }
+        // VixCard (acesso-vixcard, 18/10/2026): quadro e Agenda, recortados ao
+        // que é da VixCard pelo escopo `EscopoVixcard`. A migração
+        // `2026_10_18_140000` leva o mesmo a produção.
+        $vixcard = Perfil::updateOrCreate(['slug' => 'vixcard'], ['nome' => 'VixCard']);
+        foreach (['tarefas', 'agenda'] as $recurso) {
+            if (isset($todasPermissoes[$recurso])) {
+                $vixcard->permissoes()->syncWithoutDetaching([
+                    $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => false, 'excluir' => false],
+                ]);
+            }
+        }
+
+        // Cobrança de revendas (cobranca-revendas-boleto): perfil próprio, que ninguém recebe por padrão.
+        $cobrancaRevendas = Perfil::updateOrCreate(['slug' => 'cobranca_revendas'], ['nome' => 'Cobrança de revendas']);
+        $cobrancaRevendas->permissoes()->syncWithoutDetaching([
+            Permissao::where('recurso', 'cobranca_revendas')->value('id') => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
+        ]);
+
+        // Orçamentos VixCard (orcamentos-vixcard): perfil próprio; a migração o dá ao Felipe e ao Victor.
+        $orcamentos = Perfil::updateOrCreate(['slug' => 'orcamentos'], ['nome' => 'Orçamentos VixCard']);
+        $orcamentos->permissoes()->syncWithoutDetaching([
+            Permissao::where('recurso', 'orcamentos')->value('id') => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => true],
+        ]);
+
+        // O Secretário é de cada pessoa (dado sempre da própria conta): os
+        // perfis de pessoas o recebem desde 17/10/2026 — a migração
+        // `2026_10_17_230000` leva o mesmo a produção. Revenda e Exibição, não.
+        if ($secretario = Permissao::where('recurso', 'secretario')->value('id')) {
+            foreach (Perfil::whereIn('slug', ['admin', 'financeiro', 'operacao', 'membro', 'comercial'])->get() as $perfil) {
+                $perfil->permissoes()->syncWithoutDetaching([
+                    $secretario => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => false, 'excluir' => true],
+                ]);
+            }
         }
     }
 }

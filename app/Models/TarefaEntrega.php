@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\EscopoVixcard;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * leva a tarefa de Em andamento para Em revisão — é ele que cobra os campos,
  * e por isso a tela e o agente chegam aqui pela mesma porta.
  */
+// Acesso VixCard: quem tem o perfil só vê o que é da VixCard (docs/specs/acesso-vixcard).
+#[ScopedBy([EscopoVixcard::class])]
 class TarefaEntrega extends Model
 {
     protected $table = 'tarefa_entregas';

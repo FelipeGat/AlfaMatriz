@@ -27,6 +27,13 @@ assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'corrija' }, 'depl
 assert.ok(exigeConfirmacao({ modo: 'implementar', instrucao: 'faça o deploy' }, 'nunca', false), 'deploy pede código mesmo com "nunca"');
 assert.ok(exigeConfirmacao({ modo: 'analisar', instrucao: 'faça o push da branch' }, 'nunca', true));
 assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'corrija o filtro' }, 'nunca', false));
+// Palavra da IA não é pedido de deploy (18/10/2026): a pergunta citada e a proposta aprovada.
+assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'Resposta à sua pergunta ("Posso fazer o commit local (branch felipe, sem push e sem deploy)?"): Commit e começar pelo Painel' }, 'inicio', true));
+assert.ok(exigeConfirmacao({ modo: 'implementar', instrucao: 'Resposta à sua pergunta ("Está pronto. Posso seguir?"): sim, faça o push' }, 'inicio', true), 'o push pedido pela pessoa continua pedindo código');
+assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'Implemente o que foi proposto na análise anterior desta tarefa e aprovado pela pessoa.\n\nProposta aprovada:\nDepois do teste, publicar em produção.' }, 'inicio', true));
+assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'A pessoa respondeu "Pode seguir." à sua última mensagem nesta tarefa: siga com o próximo passo (deploy).' }, 'inicio', true));
+assert.ok(!exigeConfirmacao({ modo: 'implementar', instrucao: 'ajuste a tela do módulo de produção' }, 'inicio', true), '"produção" sozinha é o chão de fábrica');
+assert.ok(exigeConfirmacao({ modo: 'implementar', instrucao: 'pode mandar pra produção' }, 'inicio', true));
 // A pessoa só deixa mais rígido que o mínimo da máquina.
 const { regraEfetiva } = await import('../../deploy/central-ia/politica.mjs');
 assert.equal(regraEfetiva('inicio', 'nunca'), 'inicio');
@@ -141,6 +148,20 @@ assert.deepEqual(permissoes('codex', 'total').filter(a => a.startsWith('sandbox'
 assert.deepEqual(permissoes('codex', 'total', { deploy: true }).filter(a => a.startsWith('sandbox')), ['sandbox_mode="danger-full-access"']);
 console.log('T-368: acesso total sem publicar fora de deploy');
 
+// A proibição não é pedido (20/10/2026): a continuação escrita pela IA lista o que NÃO fazer.
+{
+    const analisar = instrucao => exigeConfirmacao({ modo: 'analisar', instrucao }, 'inicio', true);
+    assert.ok(!analisar('Continuar em /p/x. Corrigir achados. Não ler segredos nem fazer commit, push, merge, deploy ou alterações em produção.'));
+    assert.ok(!analisar('Siga sem push e sem deploy; só local.'));
+    assert.ok(!analisar('Nunca publique nada; rode os testes.'));
+    assert.ok(analisar('Não precisa testar de novo. Pode fazer o deploy.'), 'a negação para no fim da frase');
+    assert.ok(analisar('sem testes, pode publicar'), '", pode" reabre o pedido');
+    assert.ok(analisar('não mexa no banco, mas faça o deploy'), '"mas" reabre o pedido');
+    assert.ok(analisar('faça o push na branch'));
+    assert.ok(analisar('semana que vem não; hoje faça o deploy'), '"semana" não é "sem"');
+    console.log('negação: proibição listada pela IA não pede código');
+}
+
 // T-374: nada preso à máquina de uma pessoa.
 {
     const { arquivoDeMemoria, agendaSemIa } = await import('../../deploy/central-ia/politica.mjs');
@@ -180,7 +201,8 @@ console.log('T-368: acesso total sem publicar fora de deploy');
     assert.ok(!chatConfirmado(arq, chaveDoChat(producao, 7, 5), agora), 'mesmo número em outro servidor pede código');
     assert.ok(!chatConfirmado(arq, chaveDoChat(staging, 8, 5), agora), 'mesmo número em outra conta pede código');
     assert.ok(!chatConfirmado(arq, chaveDoChat(staging, 7, 6), agora), 'outro chat pede código');
-    assert.ok(!chatConfirmado(arq, chaveDoChat(staging, 7, 5), agora + VALIDADE_CHAT_MS + 1), 'vence em 12 h');
+    assert.ok(chatConfirmado(arq, chaveDoChat(staging, 7, 5), agora + 7 * 24 * 3600_000), 'vale a semana inteira no mesmo chat');
+    assert.ok(!chatConfirmado(arq, chaveDoChat(staging, 7, 5), agora + VALIDADE_CHAT_MS + 1), 'vence em 30 dias');
     // Servidor sem a conta no pedido: não há chave, nada fica liberado nem gravado.
     assert.equal(chaveDoChat(producao, undefined, 5), null);
     assert.ok(!chatConfirmado(arq, chaveDoChat(producao, undefined, 5), agora));
@@ -192,5 +214,25 @@ console.log('T-368: acesso total sem publicar fora de deploy');
     assert.ok(!chatConfirmado(antigo, chaveDoChat(producao, 7, 5), agora), 'entrada antiga, sem servidor e conta, não vale');
     marcarChatConfirmado(antigo, chaveDoChat(producao, 7, 9), agora);
     assert.deepEqual(Object.keys(JSON.parse(readFileSync(antigo, 'utf8'))), [chaveDoChat(producao, 7, 9)], 'a entrada antiga some na próxima gravação');
-    console.log('T-368: chat confirmado preso a servidor + conta + chat');
+    // Codex com acesso total fora de deploy só com a opção da máquina (16/10/2026).
+const sandbox = a => a.find(x => x.startsWith('sandbox_mode='));
+assert.equal(sandbox(permissoes('codex', 'total')), 'sandbox_mode="workspace-write"', 'padrão: sem rede fora de deploy');
+assert.equal(sandbox(permissoes('codex', 'total', { deploy: true })), 'sandbox_mode="danger-full-access"');
+assert.equal(sandbox(permissoes('codex', 'total', { codexTotal: true })), 'sandbox_mode="danger-full-access"', 'opção da máquina');
+assert.equal(sandbox(permissoes('codex', 'restrito', { codexTotal: true })), 'sandbox_mode="workspace-write"', 'a opção não passa do teto');
+
+console.log('T-368: chat confirmado preso a servidor + conta + chat');
 }
+
+// Secretário (job.acesso 'nenhum'): conteúdo de terceiros vai sem ferramenta
+// nenhuma, mesmo com a máquina e o servidor em acesso total.
+assert.equal(acessoEfetivo({ modo: 'analisar', acesso: 'nenhum' }, 'total', 'total'), 'leitura', 'nenhum nunca vira total');
+{
+    const c = permissoes('claude', 'total', { projetos: '/p', semFerramentas: true });
+    assert.ok(!c.includes('bypassPermissions') && !c.includes('--allowedTools'), 'sem bypass e sem lista de permitidas');
+    for (const f of ['Read', 'Bash', 'WebSearch', 'WebFetch', 'Grep', 'Glob']) assert.ok(c.includes(f), `nega ${f}`);
+    assert.ok(permissoes('codex', 'total', { semFerramentas: true, codexTotal: true }).includes('sandbox_mode="read-only"'));
+    const cp = permissoes('copilot', 'total', { cwd: '/p', semFerramentas: true });
+    assert.ok(!cp.includes('--allow-all') && cp.includes('shell') && cp.includes('write'));
+}
+console.log('PASSOU: pedido do Secretário sem ferramentas em qualquer acesso.');
