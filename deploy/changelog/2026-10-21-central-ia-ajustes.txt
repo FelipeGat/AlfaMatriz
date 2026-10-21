@@ -1,0 +1,8 @@
+<b>📋 AlfaMatriz — Changelog 21/10/2026</b>
+<i>Central de IA: tela de Ajustes inteira ao rolar</i>
+
+<b>🛠️ Correção</b>
+• <b>A aba Ajustes da Central de IA não corta mais a tela.</b> No Chrome, ao rolar a página nessa aba, o menu lateral e o conteúdo apareciam cortados no meio da janela, e o resto ficava só com a cor de fundo. Agora a tela ocupa a janela toda: só a lista de ajustes rola, e o menu continua inteiro até o rodapé.
+
+<i>Versão v2026.10.21.2</i>
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
