@@ -140,4 +140,13 @@ class RespostasConsistentesTest extends TestCase
         $this->assertStringContainsString('Recebido em Geral: GPT (Codex)', $recibo);
         $this->assertStringContainsString('Agenda (hoje)', $recibo);
     }
+
+    /** 21/10/2026: "crie uma agenda para amanhã" é pedido de criar, não consulta sem IA. */
+    public function test_pedido_de_criar_compromisso_nao_vira_consulta_da_agenda(): void
+    {
+        $f = app(\App\Services\CentralIa\FontesDeDados::class);
+        $this->assertSame([], $f->detectar('Crie uma agenda para amanhã no sistema: agenda da VixCard às 10:00 para o Alexandre ir na Medsenior'));
+        $this->assertSame([], $f->detectar('marque na agenda de sexta uma reunião com o Victor'));
+        $this->assertNotEmpty($f->detectar('qual a minha agenda de amanhã?'));
+    }
 }

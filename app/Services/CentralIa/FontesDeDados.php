@@ -51,6 +51,12 @@ class FontesDeDados
     {
         $t = Str::lower(Str::squish($texto));
         $fontes = [];
+        // Pedido de CRIAR ou mudar compromisso não é consulta: vai para a IA, que marca pelo quadro.
+        // Em 21/10/2026 "crie uma agenda para amanhã às 10:00 para o Alexandre" voltou como a
+        // lista da agenda pessoal, "sem IA", e nada foi marcado.
+        if (preg_match('/(^|[^\pL])(crie|criar|cria|marque|marcar|marca|agende|agendar|cadastre|cadastrar|registre|registrar|lance|lancar|lançar|coloque|colocar|inclua|incluir|adicione|adicionar|remarque|remarcar|desmarque|desmarcar|cancele|cancelar|mude|mudar|altere|alterar)($|[^\pL])/u', $t)) {
+            return [];
+        }
 
         if (collect(self::AGENDA)->contains(fn ($p) => preg_match('/(^|[^\pL])'.preg_quote($p, '/').'($|[^\pL])/u', $t))) {
             $fontes[] = ['tipo' => 'agenda'] + $this->periodo($t);
