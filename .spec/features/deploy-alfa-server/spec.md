@@ -134,6 +134,9 @@ lembrar a sequência certa.
 - **Então** o `schedule:run` fica agendado a cada minuto, sem duplicar a linha
   se o provisionamento rodar de novo — sem ele o `Schedule::` de
   `routes/console.php` nunca dispara e nada acusa
+- **E** ele roda no crontab do `www-data`, o dono do php-fpm, e não no do root
+  (T-411): como root, o primeiro registro do dia criava o log diário do
+  Laravel como root:root 644 e o php-fpm deixava de registrar erros
 
 #### AC-010 — A conferência pós-deploy é automática
 

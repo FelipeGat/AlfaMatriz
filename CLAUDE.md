@@ -269,6 +269,11 @@ comando pelo Telegram, tag de produção só depois de ele autorizar — ainda n
   voltou depois de encerrada abre tarefa nova, pico (10× a média de 24h, mínimo 20) avisa no
   máximo a cada 6h. `alfa:vigia-ignorar` cuida da lista do que só conta. O Telegram sai do
   `.env` (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID_ALERTAS`); sem eles, só registra no log.
+- **Tinker em produção: com HOME gravável (T-396, 20/10/2026).** Rode
+  `sudo -u www-data env HOME=/tmp php artisan tinker`. O HOME do www-data é `/var/www`, onde ele
+  não escreve; o psysh tenta criar `~/.config/psysh` para o histórico, falha, e o
+  `ErrorException` cai no `laravel.log` — o vigia leu como defeito do app e abriu a T-396. O
+  padrão está na lista do `alfa:vigia-ignorar`, mas o certo é não gerar o erro.
 - **Tela de Manutenção (#224, #225, 03/10/2026).** Deixou de ser "Em breve" e tem recurso de
   permissão próprio, `manutencao` (régua da Agenda: quem edita tarefas; o perfil de exibição não).
   Três abas: **Erros** (o que o vigia agrupou, por sistema; o Ignorar da tela e o

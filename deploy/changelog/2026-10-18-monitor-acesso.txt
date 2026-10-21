@@ -1,0 +1,16 @@
+<b>📋 AlfaMatriz — Changelog 18/10/2026</b>
+<i>Monitor › Acesso mais compacto e fácil de ler</i>
+
+<b>📡 Monitor</b>
+
+• <b>Cabeçalho uma vez só.</b> As colunas (Aparelho, Modelo, IP, Agora, Histórico, No ar 24h, Sino) aparecem só no topo, e não repetidas em cada cliente.
+
+• <b>Cada cliente bem separado.</b> Cada cliente virou um cartão com uma borda colorida à esquerda: verde se está tudo online, âmbar se parte está offline, vermelha se está tudo offline e cinza se está fechado agora.
+
+• <b>Uma linha por aparelho.</b> O "ping há X" fica ao lado do selo Online/Offline. Com 11 clientes, a tela caiu de quase 4 páginas para pouco mais de uma.
+
+• <b>Cliente parado recolhido.</b> Quem está com tudo offline há mais de 24 horas aparece numa linha só, com o último ping e o botão "Mostrar" para abrir. Buscando pelo nome, ele já vem aberto, e o que você abrir continua aberto na atualização automática.
+
+<i>Versão v2026.10.18.3</i>
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

@@ -1,0 +1,16 @@
+<b>📋 AlfaMatriz — Changelog 16/10/2026</b>
+<i>Central de IA: três consertos do teste em produção</i>
+
+<b>🔒 Segurança</b>
+
+• <b>O código de confirmação vale só para a conversa em que foi digitado.</b> Até agora, a máquina guardava a conversa liberada só pelo número, e uma conversa liberada em um servidor podia liberar outra, de outra conta, com o mesmo número, sem pedir o código. Agora a liberação vale para o mesmo servidor, a mesma conta e a mesma conversa. Quem já tinha uma conversa liberada digita o código de novo uma vez.
+
+<b>🤖 Central de IA</b>
+
+• <b>Limite total diário não trava mais a conta sem avisar.</b> A conta nova começa com o total "Sem teto interno", e quem limita são os tetos de cada IA. Se você puser o total em 0 com alguma IA liberada, a tela recusa e explica que a conta ficaria sem nenhum pedido.
+
+• <b>Responder à pergunta do agente com um pedido de alteração agora funciona.</b> Antes, a resposta sempre seguia o modo do pedido original: depois de uma análise, um "pode fazer o push" rodava só como leitura e era negado. Agora, se a resposta pede uma alteração, ela roda como implementação e pede o código como sempre. A resposta que só traz uma informação continua no modo do pedido.
+
+<i>Versão v2026.10.16</i>
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

@@ -1,0 +1,16 @@
+<b>📋 AlfaMatriz — Changelog 18/10/2026</b>
+<i>Nenhum alerta do AlfaMonitor fica para trás</i>
+
+<b>🖥️ Monitor</b>
+
+• <b>Os alertas que não chegaram agora são recuperados.</b> O monitor tenta entregar cada alerta ao Matriz por cerca de 9 horas e depois desiste. Agora, a cada hora, o Matriz pergunta ao monitor o que foi enviado desde o último alerta conferido e grava o que faltar. Isso cobre o Matriz fora do ar por muito tempo e também o envio do monitor parado com o Matriz no ar. Na primeira rodada em produção, 252 alertas que não tinham chegado foram recuperados.
+
+• <b>Sem alerta em dobro.</b> O que já tinha chegado é reconhecido e fica de fora. A volta continua ligada à queda dela, com o tempo que ficou fora.
+
+• <b>Até 7 dias para trás.</b> O monitor guarda os alertas por 7 dias. O que passou desse prazo não se recupera.
+
+• <b>Listas do Monitor mais confiáveis.</b> Se a lista muda enquanto a tela busca as páginas, a busca recomeça do início. Se continuar mudando, a tela avisa, em vez de mostrar um item repetido ou deixar um de fora.
+
+<i>Versão v2026.10.18.2</i>
+
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

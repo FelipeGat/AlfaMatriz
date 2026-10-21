@@ -441,21 +441,42 @@ no_container "test -f /usr/local/bin/alfamatriz-backup.sh && \
 # parado de rodar.
 info "agendando o executor de tarefas do Laravel (schedule:run)"
 
-# A linha antiga apontava para a raiz da instalação, que com azul/verde não
-# tem mais a aplicação.
-no_container "crontab -l 2>/dev/null | grep -q 'cd $APP_DIR && php artisan schedule:run' && \
-    (crontab -l 2>/dev/null | grep -v 'cd $APP_DIR && php artisan schedule:run' | crontab -) && \
-    echo '    linha antiga do agendador (apontava para a raiz) removida' || true"
+# O agendador roda como www-data, o mesmo dono do php-fpm — e não no crontab do
+# root, como foi até a T-411 (18/10/2026). Como root, o primeiro registro do dia
+# feito pelo agendador criava o laravel-AAAA-MM-DD.log como root:root 644, e a
+# partir daí o php-fpm não conseguia mais escrever nele: o erro de tela daquele
+# dia não ficava registrado em lugar nenhum, e o vigia de logs não o via.
+# Aconteceu no staging em 18/10/2026, quando um comando horário falhou à
+# meia-noite. Dar `permission` 0664 ao canal daily não resolveria: o arquivo
+# nasceria root:root, e www-data não é do grupo root.
+AGENDADOR="* * * * * cd $APP_DIR/atual && php artisan schedule:run >> /var/log/alfamatriz-schedule.log 2>&1"
 
-# A busca é pelo caminho NOVO, não por "alfamatriz.*schedule:run": um padrão
-# que casa com as duas formas não distingue "já está certo" de "está errado".
-no_container "(crontab -l 2>/dev/null | grep -qF 'cd $APP_DIR/atual && php artisan schedule:run' || \
-    (crontab -l 2>/dev/null; echo '* * * * * cd $APP_DIR/atual && php artisan schedule:run >> /var/log/alfamatriz-schedule.log 2>&1') | crontab -)"
+# O log do agendador também passa ao www-data, ou o cron dele falharia ao abrir
+# o arquivo antes mesmo de rodar o artisan.
+no_container "touch /var/log/alfamatriz-schedule.log && chown www-data:www-data /var/log/alfamatriz-schedule.log"
+
+# Tira do root QUALQUER linha do agendador — a da raiz (antes do azul/verde) e
+# a do `atual` — antes de pôr a do www-data: com as duas ao mesmo tempo, cada
+# comando agendado rodaria em dobro no mesmo minuto. O `|| true` cobre o
+# crontab que ficaria vazio, onde o grep sai com 1.
+no_container "crontab -l 2>/dev/null | grep -qF 'php artisan schedule:run' && \
+    { { crontab -l 2>/dev/null | grep -vF 'php artisan schedule:run' || true; } | crontab -; } && \
+    echo '    agendador removido do crontab do root (agora roda como www-data)' || true"
+
+# A busca é pela linha exata: um padrão que casasse com qualquer forma não
+# distinguiria "já está certo" de "está errado".
+no_container "crontab -u www-data -l 2>/dev/null | grep -qxF '$AGENDADOR' || \
+    { { crontab -u www-data -l 2>/dev/null | grep -vF 'php artisan schedule:run' || true; echo '$AGENDADOR'; } | crontab -u www-data -; }"
+
+# Logs diários que o agendador já criou como root voltam ao www-data.
+no_container "find $APP_DIR/versoes/*/storage/logs -name 'laravel-*.log' -user root -exec chown www-data:www-data {} + 2>/dev/null || true"
 
 # Conferência, e não confiança: um agendador ausente não dá erro visível — ele
 # só deixa de rodar, num log que ninguém abre.
-no_container "crontab -l 2>/dev/null | grep -qF 'schedule:run' && echo '    agendador no cron: ok' || \
-    echo '    AVISO: o agendador NÃO ficou no cron — o fechamento de competência não vai rodar.'"
+no_container "crontab -u www-data -l 2>/dev/null | grep -qF 'schedule:run' && echo '    agendador no cron do www-data: ok' || \
+    echo '    AVISO: o agendador NÃO ficou no cron do www-data — o fechamento de competência não vai rodar.'"
+no_container "crontab -l 2>/dev/null | grep -qF 'schedule:run' && \
+    echo '    AVISO: o crontab do root ainda tem o agendador — vai rodar em dobro e criar log como root.' || true"
 
 info "provisionamento de $AMBIENTE concluído (LXC $VMID em $IP)"
 echo

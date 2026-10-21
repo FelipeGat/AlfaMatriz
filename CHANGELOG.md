@@ -1,5 +1,63 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 20/10/2026 — Sincronização dos sistemas mais firme e mais fácil de investigar (v2026.10.20.5, T-412)
+
+### Novidades
+
+- **Um CNPJ repetido não derruba mais a sincronização inteira.** Quando um
+  sistema manda para uma revenda um CNPJ que já é de outra revenda do Matriz,
+  a sincronização parava ali, e os sistemas seguintes ficavam sem atualizar.
+  Agora ela mantém o CNPJ que já está no Matriz, atualiza o resto da revenda
+  e segue para os outros sistemas.
+- **As revendas não se juntam sozinhas.** O Matriz não decide por conta
+  própria que duas revendas são a mesma empresa. O conflito fica registrado
+  para alguém conferir e resolver no cadastro.
+- **Quando um sistema falha, o motivo fica registrado.** Se um sistema não
+  responde na sincronização, o registro do Matriz guarda qual foi e por quê
+  (por exemplo, "AlfaControl respondeu 522"). Antes ficava só a marca de que
+  a sincronização tinha falhado, e a causa se perdia.
+
+## AlfaMatriz — 18/10/2026 — Nenhum alerta do AlfaMonitor fica para trás (v2026.10.18.2, T-399)
+
+### Novidades
+
+- **Os alertas que não chegaram agora são recuperados.** O monitor tenta
+  entregar cada alerta ao Matriz por cerca de 9 horas e depois desiste.
+  Agora, a cada hora, o Matriz pergunta ao monitor o que foi enviado desde o
+  último alerta conferido e grava o que faltar. Isso cobre o Matriz fora do
+  ar por muito tempo e também o envio do monitor parado com o Matriz no ar.
+  Na primeira rodada em produção, 252 alertas que não tinham chegado foram
+  recuperados.
+- **Sem alerta em dobro.** O que já tinha chegado é reconhecido e fica de
+  fora. A volta continua ligada à queda dela, com o tempo que ficou fora.
+- **Até 7 dias para trás.** O monitor guarda os alertas por 7 dias. O que
+  passou desse prazo não se recupera.
+- **Listas do Monitor mais confiáveis.** Se a lista muda enquanto a tela
+  busca as páginas, a busca recomeça do início. Se continuar mudando, a tela
+  avisa, em vez de mostrar um item repetido ou deixar um de fora.
+
+## AlfaMatriz — 17/10/2026 — O AlfaMonitor agora dentro do Matriz (v2026.10.17.12, T-394)
+
+### Novidades
+
+- **Novo item "Monitor" no menu.** Sete telas mostram o que o AlfaMonitor
+  está vendo, sem sair do Matriz: Geral, Acesso (catracas e leitores do
+  AlfaControl e do AlfaGym), Servidor, Clientes, Página do cliente,
+  Incidentes e Relatórios. Elas servem só para consulta. Reiniciar VPS,
+  cadastros e avisos continuam no próprio monitor, e rede, sondas e câmeras
+  ficam de fora.
+- **Alertas recebidos.** Em Incidentes, a visão "Alertas recebidos" mostra
+  cada queda e cada volta que o monitor avisou: o que está fora agora, há
+  quanto tempo, e o histórico com filtros. Alerta repetido não aparece duas
+  vezes, e alerta que chega fora de ordem não bagunça a situação atual.
+- **Os avisos continuam saindo só do monitor.** O Matriz não manda Telegram,
+  não toca o sino e não abre tarefa por causa desses alertas.
+- **Assinaturas da Hostinger com permissão própria.** A tabela de
+  vencimentos da Hostinger aparece só para o Administrador.
+- **Listas grandes em páginas.** Incidentes e Clientes mostram 50 por
+  página. A visão "Por cliente" mostra a lista inteira. Se o monitor não
+  responder, a tela mostra o último dado completo, com um aviso.
+
 ## AlfaMatriz — 10/10/2026 — Avisos do dia sem falha em dia cheio (v2026.10.09.1, T-331)
 
 ### Correções
