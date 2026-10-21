@@ -71,6 +71,16 @@ Telegram". O Pedro "não pode se confundir: tem que ter certeza de que sou eu, p
     aberto" ou "Reabri o atendimento nº X".
   - **Na máquina:** uma chamada da ponte por vez (`naPonte`), porque o script vai a um nome fixo no servidor.
   - **Se a gravação falhar:** fica a tarefa no quadro com o aviso, para ninguém ficar sem atendimento.
-  - **Técnico e data** ("para o Vitor amanhã") vão só no texto. Agendar de verdade no Gestor avisa o técnico e
-    lança no Google Agenda, e fica para outra decisão.
+- **FR-A9, perguntas certas e prévia** (Felipe, 21/10/2026, depois do teste do Wallas):
+  - **Nome parecido:** o Pedro oferece o cadastro parecido para a pessoa escolher ("Não encontrei Emanuelly, mas tem
+    Emanuelle Ceolin Pianna, seria esse?"). Uma letra diferente basta (duas em nome de 8 ou mais letras).
+  - **Empresa:** são três empresas no Gestor. Vale a do cliente, e o Pedro pergunta quando há dúvida. O assunto tem de
+    ser da empresa escolhida.
+  - **Técnico e agenda:** o técnico vem da equipe do retrato, pelo nº. O Pedro pergunta se o atendimento já vai ser
+    agendado. Se sim, data e período (manhã, tarde, dia todo, noite); se não, a prévia diz "sem agendamento".
+  - **Prévia antes de abrir**, sempre neste formato: Empresa, Cliente, Assunto, Serviço, Técnico, Agendamento e
+    Atendimento (novo, vincular ou reabrir). Abre só depois do "sim".
+  - **No Gestor:** a visita entra pelo `AgendaTecnicaService::adicionarVisitas`, com conflito de agenda e Google
+    Agenda, no início do período e pela duração dele. Agenda recusada (técnico ocupado) não desfaz o atendimento: a
+    pessoa recebe o número e o motivo. Sem agendar, o técnico fica como responsável do atendimento novo.
 - **Fora do escopo** (Felipe, 21/10/2026: "pode deixar de fora o AlfaHome"): o pessoal do AlfaHome.

@@ -128,13 +128,16 @@ class Contexto
             // Felipe, 21/10/2026: "caso o Pedro não saiba como executar algo, peça um áudio explicando".
             ."NÃO ENTENDEU OU NÃO SABE FAZER: se não entender o pedido, ou não souber como fazer o que ele pede, diga isso em uma frase e peça que ele mande um ÁUDIO explicando o que precisa.\n"
             // Registrar atendimento (Felipe, 21/10/2026): achar o cliente, mostrar o que ele já tem e perguntar.
-            ."REGISTRAR ATENDIMENTO (quando ele pedir para abrir, registrar ou lançar um atendimento/chamado):\n"
-            ."1. Ache o cliente em CLIENTES DO GESTOR CITADOS. Sem nenhum, ou com mais de um possível, pergunte qual é (liste os nomes). Nunca registre para cliente fora da lista.\n"
-            ."2. Mostre os atendimentos desse cliente com o número e a etapa de cada um (ex.: nº 801 em atendimento, nº 760 concluído) e pergunte se ele quer CRIAR um novo, VINCULAR a um em aberto ou REABRIR um concluído. Sem atendimentos, siga para criar.\n"
-            ."3. Confirme numa mensagem curta: cliente, o que fazer, responsável (um nome da Equipe, se ele disse) e data (converta \"amanhã\", \"sexta\" em data dd/mm), e pergunte se pode registrar.\n"
-            ."4. Só depois do \"sim\" dele, use acao \"abrir_atendimento\" com cliente, modo (novo, vincular ou reabrir), atendimento (o nº, se vincular ou reabrir), assunto_id (um da lista do cliente), responsavel, data (AAAA-MM-DD) e resumo (a descrição completa para o técnico). Na resposta, diga que está enviando ao Gestor; o número do atendimento chega em seguida, em outra mensagem.\n"
+            ."REGISTRAR ATENDIMENTO (quando ele pedir para abrir, registrar ou lançar um atendimento/chamado). Pergunte só o que falta, poucas perguntas por mensagem:\n"
+            ."1. CLIENTE: ache em CLIENTES DO GESTOR CITADOS. Se o nome não bate exatamente com o que ele escreveu, NÃO diga que não achou: ofereça o parecido para ele escolher (ex.: \"Não encontrei Emanuelly, mas tem este cadastro: Emanuelle Ceolin Pianna. Seria esse?\"; com vários, liste até 3). Sem nenhum parecido, peça o nome como está no Gestor. Nunca registre para cliente fora da lista.\n"
+            ."2. ATENDIMENTOS DO CLIENTE: mostre os dele com nº e etapa e pergunte se é para CRIAR um novo, VINCULAR a um aberto ou REABRIR um concluído (garantia). Sem atendimentos, siga para criar.\n"
+            ."3. EMPRESA: são várias empresas no Gestor (veja EMPRESAS). Use a do cliente, mas se o serviço for de outra ou houver dúvida, pergunte. O ASSUNTO tem de ser um da lista dessa empresa.\n"
+            ."4. TÉCNICO E AGENDA: pergunte o técnico (um nome da EQUIPE; pode ficar sem técnico) e se o atendimento já vai ser AGENDADO. Se sim, data (converta \"amanhã\", \"sexta\") e período (manhã, tarde, dia todo ou noite). Nem todo atendimento é agendado: isso tem de ficar claro antes de abrir.\n"
+            ."5. PRÉVIA: antes de registrar, mande a prévia EXATAMENTE neste formato e pergunte se pode abrir:\n"
+            ."\"{primeiro nome}, confirmando, o atendimento ficaria assim:\nEmpresa: …\nCliente: …\nAssunto: …\nServiço: …\nTécnico: … (ou: sem técnico)\nAgendamento: dd/mm/aaaa, período (ou: sem agendamento)\nAtendimento: novo (ou: vincular ao nº X / reabrir o nº X)\n\nPosso abrir?\"\n"
+            ."6. Só depois do \"sim\" use acao \"abrir_atendimento\" com cliente, modo, atendimento, empresa_id, assunto_id, tecnico_id, agendar (true/false), data (AAAA-MM-DD), periodo (manha|tarde|dia_todo|noite) e resumo (a descrição para o técnico). Na resposta, diga que está enviando ao Gestor; o número do atendimento chega em seguida, em outra mensagem. Se ele mudar algo depois da prévia, mande a prévia de novo.\n"
             ."Responda SOMENTE com este bloco, sem nenhum texto fora dele:\n"
-            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para ele\", \"acao\": \"responder|abrir_atendimento\", \"resumo\": \"o que ele pediu; no registro, a descrição para o técnico\", \"cliente\": \"gestor:ID ou null\", \"modo\": \"novo|vincular|reabrir ou null\", \"atendimento\": \"nº ou null\", \"assunto_id\": \"nº ou null\", \"responsavel\": \"nome ou null\", \"data\": \"AAAA-MM-DD ou null\"}\nPEDRO>>>",
+            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para ele\", \"acao\": \"responder|abrir_atendimento\", \"resumo\": \"o que ele pediu; no registro, a descrição para o técnico\", \"cliente\": \"gestor:ID ou null\", \"modo\": \"novo|vincular|reabrir ou null\", \"atendimento\": \"nº ou null\", \"assunto_id\": \"nº ou null\", \"empresa_id\": \"nº ou null\", \"tecnico_id\": \"nº ou null\", \"responsavel\": \"nome do técnico ou null\", \"agendar\": \"true|false\", \"data\": \"AAAA-MM-DD ou null\", \"periodo\": \"manha|tarde|dia_todo|noite ou null\"}\nPEDRO>>>",
             "## DADOS\n".implode("\n\n", app(AcessoInterno::class)->dados($acesso, $recentes)),
             app(AcessoInterno::class)->blocoParaRegistrar($this->textoParaRegistrar($c)),
             "## MENSAGENS (as mais recentes por último)\n".$this->mensagens($c),
@@ -175,7 +178,11 @@ class Contexto
             'modo' => in_array($b['modo'] ?? null, ['novo', 'vincular', 'reabrir'], true) ? $b['modo'] : 'novo',
             'atendimento' => $texto($b['atendimento'] ?? null) !== null ? mb_substr(preg_replace('/\D/', '', (string) $b['atendimento']), 0, 10) ?: null : null,
             'responsavel' => $texto($b['responsavel'] ?? null) !== null ? mb_substr(trim((string) $b['responsavel']), 0, 80) : null,
-            'data' => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($b['data'] ?? '')) ? $b['data'] : null];
+            'data' => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($b['data'] ?? '')) ? $b['data'] : null,
+            'empresa_id' => is_numeric($b['empresa_id'] ?? null) ? (int) $b['empresa_id'] : null,
+            'tecnico_id' => is_numeric($b['tecnico_id'] ?? null) ? (int) $b['tecnico_id'] : null,
+            'agendar' => filter_var($b['agendar'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'periodo' => in_array($b['periodo'] ?? null, ['manha', 'tarde', 'dia_todo', 'noite'], true) ? $b['periodo'] : null];
     }
 
     /**

@@ -85,18 +85,24 @@ class SuportePedroRunnerController extends Controller
 
         return response()->json(['aberturas' => $lista->map(fn ($a) => ['id' => $a->id, 'cliente_id' => $a->gestor_cliente_id, 'assunto_id' => $a->assunto_id, 'empresa_id' => $a->empresa_id, 'descricao' => $a->descricao,
             'solicitante' => $a->solicitante, 'telefone' => $a->telefone, 'prioridade' => $a->prioridade,
-            'modo' => $a->modo ?: 'novo', 'atendimento' => $a->atendimento_numero, 'autor_email' => config('services.suporte_pedro.conta')])->values()]);
+            'modo' => $a->modo ?: 'novo', 'atendimento' => $a->atendimento_numero, 'autor_email' => config('services.suporte_pedro.conta'),
+            'funcionario_id' => $a->funcionario_id, 'agendar_data' => $a->agendar_data?->toDateString(), 'periodo' => $a->agendar_periodo])->values()]);
     }
 
     public function aberturaFeita(Request $request, int $abertura, Atendimento $atendimento, CanalWhatsApp $canal): JsonResponse
     {
         $this->maquina($request);
         $this->exigirConta($request);
-        $d = $request->validate(['numero' => ['nullable', 'string', 'max:30'], 'erro' => ['nullable', 'string', 'max:300'], 'modo' => ['nullable', 'in:novo,vincular,reabrir']]);
+        $d = $request->validate(['numero' => ['nullable', 'string', 'max:30'], 'erro' => ['nullable', 'string', 'max:300'], 'modo' => ['nullable', 'in:novo,vincular,reabrir'],
+            'agendado' => ['nullable', 'boolean'], 'agendamento_erro' => ['nullable', 'string', 'max:300']]);
         $a = SuporteGestorAbertura::with('conversa')->whereKey($abertura)->where('situacao', 'reservado')->firstOrFail();
         // O Gestor pode ter trocado o modo (o vinculado já tinha sido concluído: reabriu).
         if (! empty($d['modo'])) {
             $a->modo = $d['modo'];
+        }
+        // O que a agenda do Gestor respondeu: vai na mensagem a quem pediu.
+        if ($a->agendar_data) {
+            $a->agendamento = ! empty($d['agendado']) ? 'agendado' : 'não agendado: '.mb_substr((string) ($d['agendamento_erro'] ?? 'sem resposta da agenda'), 0, 200);
         }
         $atendimento->concluirNoGestor($a, $d['numero'] ?? null, $d['erro'] ?? null, $canal);
 

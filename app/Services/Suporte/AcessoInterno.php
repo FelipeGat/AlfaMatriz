@@ -122,7 +122,15 @@ class AcessoInterno
                     ."\n  Atendimentos dela/dele (mais recentes primeiro):\n".($atendimentos->isNotEmpty() ? $atendimentos->implode("\n") : '    • nenhum')
                     ."\n  Assuntos: ".collect($d->assuntosPara($c))->take(15)->map(fn ($a) => $a['id'].' '.$a['nome'])->implode('; ');
             })->implode("\n")
-            ."\n- Equipe (para o responsável): ".$equipe->pluck('nome')->implode(', ');
+            ."\n## EMPRESAS\n".collect($this->empresas())->map(fn ($nome, $id) => "- {$id}: {$nome}\n  Assuntos: ".collect($d->assuntosPara(['id' => 0, 'empresa_id' => $id]))->take(25)->map(fn ($a) => $a['id'].' '.$a['nome'])->implode('; '))->implode("\n")
+            ."\n## EQUIPE (técnicos: use o nº em tecnico_id)\n".$equipe->map(fn ($f) => '- '.$f['id'].': '.$f['nome'])->implode("\n");
+    }
+
+    /** As empresas do Gestor, como aparecem no retrato (a de cada cliente). @return array<int, string> */
+    public function empresas(): array
+    {
+        return collect(app(DiretorioGestor::class)->retrato()['clientes'] ?? [])->filter(fn ($c) => ! empty($c['empresa_id']) && ! empty($c['empresa']))
+            ->mapWithKeys(fn ($c) => [(int) $c['empresa_id'] => (string) $c['empresa']])->sortKeys()->all();
     }
 
     /** Todos os abertos do Gestor, e os citados pelo número (qualquer etapa). */

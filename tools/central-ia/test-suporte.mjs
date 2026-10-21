@@ -112,7 +112,7 @@ console.log('PASSOU: suporte — IA sem ferramentas pelo stdin, numa pasta vazia
     const enviados = [];
     const api = async (rota, corpo) => { enviados.push([rota, corpo]); return rota === 'suporte/gestor/aberturas' ? { status: 200, json: { aberturas: [pedido] } } : { status: 200 }; };
     await gravarAberturas('cfg', 'wsl', { api, gravar: async () => ({ ok: true, modo: 'reabrir', numero: '700' }) });
-    assert.deepEqual(enviados[1], ['suporte/gestor/aberturas/1', { maquina: 'wsl', numero: '700', modo: 'reabrir' }]);
+    assert.deepEqual(enviados[1], ['suporte/gestor/aberturas/1', { maquina: 'wsl', numero: '700', modo: 'reabrir', agendado: false }]);
 
     const ordem = [];
     await Promise.all([

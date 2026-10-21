@@ -112,7 +112,7 @@ class Atendimento
                 'reabrir' => "Reabri o atendimento nº {$a->numero}, do mesmo assunto.",
                 default => "Seu atendimento é o nº {$a->numero}.",
             };
-            $texto = $a->pedido_por ? str_replace('Seu atendimento é', 'O atendimento é', $texto)." Cliente: {$nome}, no Gestor." : $texto.' A equipe técnica retorna por aqui.';
+            $texto = $a->pedido_por ? str_replace('Seu atendimento é', 'O atendimento é', $texto)." Cliente: {$nome}, no Gestor.".$this->linhaDaAgenda($a) : $texto.' A equipe técnica retorna por aqui.';
             try {
                 $canal->enviar($c, $texto, 'pedro');
             } catch (\Illuminate\Validation\ValidationException) {
@@ -175,11 +175,17 @@ class Atendimento
     {
         $d = app(DiretorioGestor::class);
         $nomeCliente = trim(($cliente['fantasia'] ?? '') ?: ($cliente['nome'] ?? 'cliente'));
-        $assunto = collect($d->assuntosPara($cliente))->firstWhere('id', $bloco['assunto_id']);
         $atendimento = $bloco['atendimento'] ? $d->atendimentoPorNumero($bloco['atendimento']) : null;
         // Vincular ou reabrir só um atendimento DESTE cliente; fora disso, é um novo.
         $modo = in_array($bloco['modo'], ['vincular', 'reabrir'], true) && $atendimento && (int) $atendimento['cliente_id'] === (int) $cliente['id'] ? $bloco['modo'] : 'novo';
         $data = $bloco['data'] ? \Carbon\CarbonImmutable::parse($bloco['data']) : null;
+        // Técnico só da equipe do retrato; agenda só com técnico, período conhecido e data de hoje em diante.
+        $tecnico = $bloco['tecnico_id'] ? collect($d->retrato()['equipe'] ?? [])->firstWhere('id', $bloco['tecnico_id']) : null;
+        $agendar = $bloco['agendar'] && $tecnico && $data && ! $data->isBefore(today()) && isset(self::PERIODOS[(string) $bloco['periodo']]);
+        $empresas = app(AcessoInterno::class)->empresas();
+        $empresaId = isset($empresas[$bloco['empresa_id']]) ? (int) $bloco['empresa_id'] : ($cliente['empresa_id'] ?? null);
+        // O assunto tem de ser da empresa escolhida (cada uma tem os seus no Gestor).
+        $assunto = collect($d->assuntosPara(['id' => (int) $cliente['id'], 'empresa_id' => $empresaId]))->firstWhere('id', $bloco['assunto_id']);
         $detalhes = array_filter([
             $bloco['responsavel'] ? 'Responsável: '.$bloco['responsavel'].'.' : null,
             $data ? 'Para: '.$data->format('d/m/Y').'.' : null,
@@ -189,11 +195,12 @@ class Atendimento
 
         if (config('services.suporte_pedro.gestor_gravar')) {
             // Novo sem assunto válido fica com o que o cliente mais usa (como no pedido do cliente).
-            $assunto ??= $d->assuntosPara($cliente)[0] ?? null;
+            $assunto ??= $d->assuntosPara(['id' => (int) $cliente['id'], 'empresa_id' => $empresaId])[0] ?? null;
             if ($modo === 'novo' && ! $assunto) {
                 return null;
             }
-            SuporteGestorAbertura::create(['conversa_id' => $c->id, 'gestor_cliente_id' => (int) $cliente['id'], 'assunto_id' => $assunto['id'] ?? (int) ($atendimento['assunto_id'] ?? 0), 'empresa_id' => $cliente['empresa_id'] ?? null,
+            SuporteGestorAbertura::create(['conversa_id' => $c->id, 'gestor_cliente_id' => (int) $cliente['id'], 'assunto_id' => $assunto['id'] ?? (int) ($atendimento['assunto_id'] ?? 0), 'empresa_id' => $empresaId,
+                'funcionario_id' => $tecnico['id'] ?? null, 'agendar_data' => $agendar ? $data->toDateString() : null, 'agendar_periodo' => $agendar ? $bloco['periodo'] : null,
                 'modo' => $modo, 'atendimento_numero' => $modo === 'novo' ? null : (string) $atendimento['numero'], 'pedido_por' => Str::limit($acesso['nome'], 120, ''),
                 'descricao' => Str::limit($resumo.($detalhes ? ' '.implode(' ', $detalhes) : ''), 1500)."\n\n(Registrado pelo Pedro a pedido de {$quem}.)",
                 'solicitante' => Str::limit($acesso['nome'], 120, ''), 'telefone' => $c->telefone]);
@@ -234,6 +241,23 @@ class Atendimento
 
         return "Registrado no quadro como T-{$t->id} ({$acao}). A equipe lança no Gestor.";
     }
+
+    /** A agenda do atendimento, para quem é da casa: agendado, recusado pela agenda ou sem agendamento. */
+    private function linhaDaAgenda(SuporteGestorAbertura $a): string
+    {
+        $tecnico = $a->funcionario_id ? (string) (collect(app(DiretorioGestor::class)->retrato()['equipe'] ?? [])->firstWhere('id', $a->funcionario_id)['nome'] ?? '') : '';
+        if (! $a->agendar_data) {
+            return ($tecnico !== '' ? "\nTécnico responsável: {$tecnico}." : '').' Sem agendamento.';
+        }
+        $quando = $a->agendar_data->format('d/m/Y').', '.(self::PERIODOS[$a->agendar_periodo] ?? $a->agendar_periodo);
+
+        return $a->agendamento === 'agendado'
+            ? "\nAgendado: {$tecnico}, {$quando}."
+            : "\nNão consegui agendar ({$tecnico}, {$quando}): ".Str::after((string) $a->agendamento, 'não agendado: ').'. O atendimento ficou aberto sem agenda.';
+    }
+
+    /** Os períodos da agenda técnica do Gestor (AgendaTecnicaService::PERIODOS), como a pessoa diz. */
+    public const PERIODOS = ['manha' => 'manhã (08h às 12h)', 'tarde' => 'tarde (13h às 18h)', 'dia_todo' => 'dia todo (08h às 18h)', 'noite' => 'noite (18h às 22h)'];
 
     /** @return \Illuminate\Support\Collection<int, User> */
     private function responsaveis()

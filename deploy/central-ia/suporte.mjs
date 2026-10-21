@@ -213,7 +213,8 @@ export async function gravarAberturas(config, maquina, { api, gravar = gravarNoG
     let feitos = 0;
     for (const a of r.json?.aberturas || []) {
         const g = await naPonte(() => gravar(config, a));
-        const envio = await api(`suporte/gestor/aberturas/${a.id}`, { maquina, ...(g.ok ? { numero: String(g.numero), modo: g.modo } : { erro: String(g.erro || 'falhou').slice(0, 300) }) });
+        const envio = await api(`suporte/gestor/aberturas/${a.id}`, { maquina, ...(g.ok ? { numero: String(g.numero), modo: g.modo, agendado: !!g.agendado, ...(g.agendamento_erro ? { agendamento_erro: String(g.agendamento_erro).slice(0, 300) } : {}) }
+            : { erro: String(g.erro || 'falhou').slice(0, 300) }) });
         log(`suporte: Gestor ${g.ok ? `${g.modo} nº ${g.numero}` : `não gravou (${g.erro})`} → ${envio.status}`);
         feitos++;
     }
