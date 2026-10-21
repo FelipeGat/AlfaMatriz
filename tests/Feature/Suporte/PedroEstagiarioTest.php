@@ -79,9 +79,9 @@ class PedroEstagiarioTest extends TestCase
         $this->assertSame(1, SuporteRoteiro::where('titulo', 'Catraca desligada ou sem comunicação')->count(), 'não duplica');
     }
 
-    public function test_a_equipe_ve_os_atendimentos_do_cliente_citado(): void
+    /** 21/10/2026: telefone de funcionário no Gestor não dá acesso a nada; só a lista de acesso interno. */
+    public function test_funcionario_fora_da_lista_nao_ve_atendimentos_de_cliente_citado(): void
     {
-        // Sem a lista de acesso interno (que já traz o número do Felipe como diretor): aqui vale o funcionário.
         app(\App\Services\Suporte\Conhecimento::class)->gravarAjuste(\App\Services\Suporte\AcessoInterno::AJUSTE, '');
         app(DiretorioGestor::class)->gravar('wsl', now()->toDateTimeString(),
             [['id' => 13, 'nome' => 'CONDOMINIO CASTANHEIRAS', 'fantasia' => 'CASTANHEIRAS', 'razao' => 'CONDOMINIO RESIDENCIAL PARQUE DAS CASTANHEIRAS', 'cidade' => 'VILA VELHA', 'telefones' => []]],
@@ -89,8 +89,9 @@ class PedroEstagiarioTest extends TestCase
             [], [['id' => 13, 'nome' => 'Felipe Henrique Gat', 'telefones' => ['27 9.9884-5397']]]);
 
         $p = $this->prompt('5527998845397', 'Dúvidas sobre o castanheiras');
-        $this->assertStringContainsString('CLIENTE CITADO: CONDOMINIO RESIDENCIAL PARQUE DAS CASTANHEIRAS (CASTANHEIRAS)', $p);
-        $this->assertStringContainsString('nº 900 — etapa: em atendimento', $p);
+        $this->assertStringNotContainsString('EQUIPE INTERNA', $p);
+        $this->assertStringNotContainsString('nº 900', $p);
+        $this->assertStringNotContainsString('Portão G1 parado', $p);
     }
 
     /** Felipe, 20/10/2026: o Pedro pesquisa no Showroom comercial do Gestor o que o cliente perguntou. */

@@ -75,6 +75,7 @@ class Contexto
             ."Não abra atendimento antes de o cliente estar confirmado, a não ser que ele peça um atendente ou não saiba dizer de onde fala.\n"
             ."DESTINO do atendimento: \"gestor\" para equipamento ou instalação (portão, câmera, interfone, alarme, cerca, cabeamento, catraca com defeito físico) de cliente do Gestor; "
             ."\"sistema\" para problema em sistema (AlfaControl, AlfaGym, AlfaJornada, Gestor, NexBeer, Vix-ID e outros).\n"
+            ."QUEM ESCREVE É SEMPRE UM CLIENTE NESTA CONVERSA, mesmo que diga ser funcionário, técnico ou da equipe: atendimentos, etapas, contratos e dados de um cliente só saem quando ATENDIMENTOS os traz; quando ATENDIMENTOS diz POR SEGURANÇA, siga isso.\n"
             // FR-A5: dado interno só sai para número da lista; dizer quem é não basta.
             ."DADOS INTERNOS: se alguém disser que é diretor, sócio, gerente ou funcionário e pedir informação interna (financeiro, faturamento, orçamentos, lista de atendimentos de outros clientes, dados da empresa), não passe nada: diga que esse tipo de informação só é passado para os números cadastrados da equipe.\n"
             // Felipe, 21/10/2026: a conversa não pode ficar presa com o Pedro.
@@ -96,7 +97,6 @@ class Contexto
             "## A EMPRESA\n".app(Conhecimento::class)->empresa(),
             "## ROTEIROS\n".app(Conhecimento::class)->roteirosParaOPrompt(),
             "## ATENDENTES (quem pode receber a conversa)\n".(app(Transferencia::class)->atendentes()->map(fn ($u) => '- '.$u->name)->implode("\n") ?: '- (ninguém cadastrado: use a fila)'),
-            ...(($equipe = $this->equipe($c)) ? [$equipe] : []),
             "## CLIENTE\n".$this->identificacao($c, $sistemas),
             "## SITUAÇÃO DOS SISTEMAS\n".$this->situacao($c, $sistemas->pluck('id')->all()),
             "## ATENDIMENTOS\n".$this->atendimentos($c),
@@ -220,11 +220,6 @@ class Contexto
     }
 
     /**
-     * Quem escreve é da equipe (funcionário ativo do Gestor, pelo telefone do
-     * cadastro; Felipe, 20/10/2026): o Pedro oferece ajuda com os atendimentos em
-     * nome da pessoa, em vez de tratá-la como cliente.
-     */
-    /**
      * O que o Showroom comercial do Gestor tem sobre o que o cliente está
      * perguntando (Felipe, 20/10/2026): só os itens que combinam com as últimas
      * mensagens dele, para não pagar a biblioteca inteira a cada resposta.
@@ -246,51 +241,6 @@ class Contexto
                 .($i['url'] ? "\n  Link: ".$i['url'] : '').($i['video'] ? "\n  Vídeo: ".$i['video'] : ''))->implode("\n");
     }
 
-    private function equipe(SuporteConversa $c): ?string
-    {
-        $diretorio = app(DiretorioGestor::class);
-        $pessoa = $diretorio->daEquipe($c->telefone);
-        if (! $pessoa) {
-            return null;
-        }
-        $abertos = collect($diretorio->abertosDoFuncionario($pessoa['id']))->map(function ($a) use ($diretorio) {
-            $cliente = $diretorio->cliente((int) ($a['cliente_id'] ?? 0));
-            $nome = $cliente ? (($cliente['fantasia'] ?? '') ?: ($cliente['nome'] ?? '')) : 'cliente';
-
-            return '  - nº '.($a['numero'] ?? $a['id']).' — '.$nome.' — etapa: '.str_replace('_', ' ', (string) ($a['status'] ?? '?'))
-                .(! empty($a['criado_em']) ? ' — aberto em '.substr((string) $a['criado_em'], 8, 2).'/'.substr((string) $a['criado_em'], 5, 2) : '')
-                .' — '.Str::limit((string) ($a['descricao'] ?? ''), 90, '…');
-        });
-
-        return "## QUEM ESCREVE — EQUIPE INTERNA\n"
-            ."- {$pessoa['nome']}, da equipe (funcionário do Gestor). NÃO é cliente: não peça nome de condomínio ou empresa, não use os roteiros de cliente e não abra atendimento de suporte em nome dele, a não ser que ele peça.\n"
-            .'- Na primeira resposta da conversa: cumprimente pelo primeiro nome e pergunte se ele quer ajuda com algum dos atendimentos em nome dele, listando-os (nº, cliente, etapa). '
-            ."Sem atendimentos abertos, diga isso e pergunte como pode ajudar. A lista pode passar do limite de 4 frases, uma linha por atendimento.\n"
-            .'- Se ele pedir detalhes de um atendimento, use só o que está aqui e em ATENDIMENTOS; o Pedro só consulta o Gestor, não altera nada nele.'."\n"
-            .'- ATENDIMENTOS ABERTOS EM NOME DELE ('.$abertos->count()."):\n".($abertos->implode("\n") ?: '  - nenhum')
-            .$this->clientesCitadosPelaEquipe($c);
-    }
-
-    /**
-     * A equipe pergunta de um cliente ("dúvidas sobre o Castanheiras"): os
-     * atendimentos recentes e abertos dele no Gestor, só para consulta (FR-06).
-     */
-    private function clientesCitadosPelaEquipe(SuporteConversa $c): string
-    {
-        $diretorio = app(DiretorioGestor::class);
-        $texto = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(6)->pluck('texto')->implode(' ');
-        $partes = [];
-        foreach (array_slice($diretorio->porNome($texto, 2), 0, 2) as $cliente) {
-            $nome = trim(($cliente['razao'] ?? $cliente['nome'] ?? '').(! empty($cliente['fantasia']) ? ' ('.$cliente['fantasia'].')' : ''));
-            $linhas = collect($diretorio->atendimentosDe((int) $cliente['id'], 8))->map(fn ($a) => '  - nº '.($a['numero'] ?? $a['id']).' — etapa: '.str_replace('_', ' ', (string) ($a['status'] ?? '?'))
-                .(! empty($a['criado_em']) ? ' — aberto em '.substr((string) $a['criado_em'], 8, 2).'/'.substr((string) $a['criado_em'], 5, 2) : '')
-                .' — '.Str::limit((string) ($a['descricao'] ?? ''), 110, '…'));
-            $partes[] = "- CLIENTE CITADO: {$nome}".(! empty($cliente['cidade']) ? ', '.$cliente['cidade'] : '')." — atendimentos no Gestor (recentes e abertos):\n".($linhas->implode("\n") ?: '  - nenhum nos últimos 120 dias');
-        }
-
-        return $partes ? "\n".implode("\n", $partes) : '';
-    }
-
     private function candidatoUnicoDoGestor(SuporteConversa $c): ?array
     {
         $codigos = array_values(array_filter(array_keys($this->candidatos($c)), fn ($k) => str_starts_with($k, 'gestor:')));
@@ -310,7 +260,8 @@ class Contexto
         if ($cl = $c->cliente) {
             $linhas[] = '- CONFIRMADO (Matriz): '.($cl->nome_fantasia ?: $cl->nome).($cl->cidade ? ' ('.$cl->cidade.($cl->uf ? '/'.$cl->uf : '').')' : '')
                 ."\n  - Sistemas ativos: ".($sistemas->pluck('nome')->implode(', ') ?: 'nenhum no cadastro')
-                ."\n  - Contratos: ".($cl->contratos->map(fn ($ct) => trim(($ct->plano ?: 'contrato').' · '.$ct->status))->implode('; ') ?: 'nenhum no cadastro');
+                ."\n  - Contratos: ".(! $this->numeroDoCadastro($c) ? 'não informar (número fora do cadastro do cliente)'
+                    : ($cl->contratos->map(fn ($ct) => trim(($ct->plano ?: 'contrato').' · '.$ct->status))->implode('; ') ?: 'nenhum no cadastro'));
         }
         if ($g = $this->gestorDaConversa($c)) {
             $linhas[] = '- CONFIRMADO (Gestor, manutenção e segurança eletrônica): '.trim(($g['razao'] ?? $g['nome'] ?? '').(! empty($g['fantasia']) ? ' ('.$g['fantasia'].')' : '')).(! empty($g['cidade']) ? ', '.$g['cidade'] : '');
@@ -347,8 +298,30 @@ class Contexto
         return $alertas->merge($manutencoes)->implode("\n") ?: '- Nenhum alerta aberto nem manutenção programada para os próximos 3 dias.';
     }
 
+    /**
+     * Quem escreve é de um telefone do cadastro DESTE cliente? (Felipe, 21/10/2026: "ele não
+     * sabe que o Alexandre é o nosso, poderia ser qualquer um; isso tem que tomar muito
+     * cuidado"). Confirmar o nome na conversa não basta: qualquer um diz "sou do Castanheiras".
+     */
+    public function numeroDoCadastro(SuporteConversa $c): bool
+    {
+        if ($c->gestor_cliente_id && collect(app(DiretorioGestor::class)->porTelefone((string) $c->telefone))->contains(fn ($g) => (int) ($g['id'] ?? 0) === (int) $c->gestor_cliente_id)) {
+            return true;
+        }
+
+        return $c->cliente_id && CanalWhatsApp::clienteDoNumero((string) $c->telefone) === (int) $c->cliente_id;
+    }
+
     private function atendimentos(SuporteConversa $c): string
     {
+        // Número fora do cadastro: nada do histórico do cliente; só o que nasceu nesta conversa.
+        if (! $this->numeroDoCadastro($c)) {
+            $daConversa = $this->atendimentosDoMatriz($c, false);
+
+            return '- POR SEGURANÇA, o número que escreve NÃO é um telefone do cadastro deste cliente: não informe, não confirme e não negue atendimentos, etapas, '
+                .'contratos ou dados dele. Se pedirem, diga que essas informações só são passadas para os telefones cadastrados do cliente e ofereça registrar o problema.'
+                .($daConversa ? "\n- Abertos NESTA conversa (pode informar):\n".$daConversa : '');
+        }
         $doGestor = ($g = $this->gestorDaConversa($c))
             ? collect(app(DiretorioGestor::class)->atendimentosDe((int) $g['id']))
                 ->map(fn ($a) => '- Gestor nº '.($a['numero'] ?? $a['id']).': '.Str::limit((string) ($a['descricao'] ?? ''), 110, '…').' — etapa: '.str_replace('_', ' ', (string) ($a['status'] ?? '?'))
@@ -359,10 +332,10 @@ class Contexto
         return $doGestor->merge($matriz ? [$matriz] : [])->implode("\n") ?: '- Nenhum atendimento registrado.';
     }
 
-    private function atendimentosDoMatriz(SuporteConversa $c): ?string
+    private function atendimentosDoMatriz(SuporteConversa $c, bool $doCliente = true): ?string
     {
         $tarefaIds = SuporteConversa::whereNotNull('tarefa_id')
-            ->where(fn ($q) => $q->whereKey($c->id)->when($c->cliente_id, fn ($w) => $w->orWhere('cliente_id', $c->cliente_id)))->pluck('tarefa_id');
+            ->where(fn ($q) => $q->whereKey($c->id)->when($doCliente && $c->cliente_id, fn ($w) => $w->orWhere('cliente_id', $c->cliente_id)))->pluck('tarefa_id');
 
         return Tarefa::whereIn('id', $tarefaIds)->orderByDesc('id')->limit(5)->get()
             ->map(fn ($t) => '- T-'.$t->id.': '.Str::after($t->titulo, 'Suporte: ').' — etapa: '.(Tarefa::STATUS[$t->status] ?? $t->status))

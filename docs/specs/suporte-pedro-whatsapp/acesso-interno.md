@@ -83,4 +83,14 @@ Telegram". O Pedro "não pode se confundir: tem que ter certeza de que sou eu, p
   - **No Gestor:** a visita entra pelo `AgendaTecnicaService::adicionarVisitas`, com conflito de agenda e Google
     Agenda, no início do período e pela duração dele. Agenda recusada (técnico ocupado) não desfaz o atendimento: a
     pessoa recebe o número e o motivo. Sem agendar, o técnico fica como responsável do atendimento novo.
+- **FR-A10, ninguém é da casa sem estar na lista** (Felipe, 21/10/2026, depois do teste do Alexandre de um celular
+  pessoal: "ele não sabe que o Alexandre é o nosso, poderia ser qualquer um; isso tem que tomar muito cuidado").
+  - **Vazamento encontrado:** o telefone do cadastro de funcionários do Gestor ligava o "modo equipe" de 20/10, que
+    listava os atendimentos da pessoa e os de qualquer cliente que ela citasse.
+  - **Agora:** o modo equipe saiu. Telefone de funcionário fora da lista é cliente como qualquer outro. Dado da casa,
+    só pela lista de acesso interno.
+  - **Cliente confirmado só pelo nome** ("sou do Castanheiras"), de um número que não está no cadastro dele, não vê
+    atendimentos, etapas nem contratos (`Contexto::numeroDoCadastro`). O Pedro diz que essas informações só vão para
+    os telefones cadastrados do cliente e oferece registrar o problema. O que nasceu na própria conversa pode ser
+    informado. O login do portal já seguia essa regra.
 - **Fora do escopo** (Felipe, 21/10/2026: "pode deixar de fora o AlfaHome"): o pessoal do AlfaHome.

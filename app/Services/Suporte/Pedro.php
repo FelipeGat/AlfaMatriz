@@ -92,7 +92,8 @@ class Pedro
             return false;
         }
 
-        return ! app(DiretorioGestor::class)->daEquipe($c->telefone) && ! app(AcessoInterno::class)->deQuem((string) $c->telefone);
+        // Só a lista de acesso interno fica de fora; telefone de funcionário no Gestor não basta (21/10/2026).
+        return ! app(AcessoInterno::class)->deQuem((string) $c->telefone);
     }
 
     private function encaminharAoEspecialista(SuportePedido $p): void

@@ -96,7 +96,9 @@ class PedroGestorTest extends TestCase
         $this->runner();
         $prompt = $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->json('prompt');
         $this->assertStringContainsString('CONFIRMADO (Gestor', $prompt);
-        $this->assertStringContainsString('Gestor nº 782: Portão de saída G1 não fecha — etapa: concluido', $prompt);
+        // Confirmado só pelo nome, de um número fora do cadastro: nada do histórico (21/10/2026).
+        $this->assertStringContainsString('POR SEGURANÇA, o número que escreve NÃO é um telefone do cadastro', $prompt);
+        $this->assertStringNotContainsString('Gestor nº 782', $prompt);
         $this->assertStringContainsString("- 3: PORTÃO / ACESSO", $prompt);
         $this->assertStringNotContainsString('MANUTENÇÃO CORRETIVA', $prompt, 'assunto de outra empresa não entra');
     }
@@ -173,5 +175,16 @@ class PedroGestorTest extends TestCase
         $this->assertSame(['modo' => 'novo', 'numero' => null], $at->modoNoGestor(13, 3), 'fora da garantia');
         $this->assertSame(['modo' => 'reabrir', 'numero' => '782'], $at->modoNoGestor(13, 27, '782'), 'o nº citado vale, se é do cliente');
         $this->assertSame(['modo' => 'novo', 'numero' => null], $at->modoNoGestor(20, 27, '782'), 'nº de outro cliente não vale');
+    }
+
+    /** Do telefone do cadastro do cliente, o histórico de atendimentos aparece. */
+    public function test_numero_do_cadastro_ve_os_atendimentos_do_cliente(): void
+    {
+        SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        $this->chega('e o portão?', 'wamid.1', '552733894253');
+        $this->runner();
+        $prompt = $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->json('prompt');
+        $this->assertStringContainsString('Gestor nº 782: Portão de saída G1 não fecha — etapa: concluido', $prompt);
+        $this->assertStringNotContainsString('POR SEGURANÇA, o número', $prompt);
     }
 }

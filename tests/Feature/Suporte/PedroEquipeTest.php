@@ -49,29 +49,27 @@ class PedroEquipeTest extends TestCase
         return app(\App\Services\Suporte\Contexto::class)->prompt($c->fresh());
     }
 
-    public function test_tecnico_da_equipe_ve_os_atendimentos_abertos_em_nome_dele(): void
+    /**
+     * 21/10/2026 (Felipe): "ele não sabe que o Alexandre é o nosso, poderia ser qualquer um".
+     * O telefone do cadastro de funcionários do Gestor NÃO dá acesso: é tratado como cliente.
+     * Só a lista de acesso interno (Suporte › Pedro) libera dado da casa.
+     */
+    public function test_telefone_de_funcionario_fora_da_lista_e_tratado_como_cliente(): void
     {
-        $p = $this->prompt('5527999991234');
-        $this->assertStringContainsString('## QUEM ESCREVE — EQUIPE INTERNA', $p);
-        $this->assertStringContainsString('Jonas Técnico, da equipe', $p);
-        $this->assertStringContainsString('ATENDIMENTOS ABERTOS EM NOME DELE (2)', $p);
-        $this->assertStringContainsString('nº 900 — CASTANHEIRAS — etapa: em atendimento', $p);
-        $this->assertStringContainsString('nº 901', $p);
-        $this->assertStringNotContainsString('nº 850', $p, 'concluído não entra');
-        $this->assertStringNotContainsString('nº 902', $p, 'de outro técnico não entra');
-    }
-
-    public function test_felipe_sem_atendimentos_e_reconhecido_mesmo_com_o_nono_digito_diferente(): void
-    {
-        // Sem a lista de acesso interno (que já traz o número do Felipe como diretor): aqui vale o funcionário.
         app(\App\Services\Suporte\Conhecimento::class)->gravarAjuste(\App\Services\Suporte\AcessoInterno::AJUSTE, '');
-        $p = $this->prompt('552798845397');
-        $this->assertStringContainsString('Felipe Henrique Gat, da equipe', $p);
-        $this->assertStringContainsString('ATENDIMENTOS ABERTOS EM NOME DELE (0)', $p);
+        $p = $this->prompt('5527999991234');
+        $this->assertStringNotContainsString('EQUIPE INTERNA', $p);
+        $this->assertStringNotContainsString('Jonas Técnico', $p);
+        $this->assertStringNotContainsString('nº 900', $p);
+        $this->assertStringNotContainsString('nº 902', $p);
+        $this->assertStringContainsString('QUEM ESCREVE É SEMPRE UM CLIENTE', $p);
     }
 
-    public function test_cliente_comum_nao_ganha_a_secao_da_equipe(): void
+    public function test_da_lista_de_acesso_interno_e_da_casa(): void
     {
-        $this->assertStringNotContainsString('EQUIPE INTERNA', $this->prompt('5527988887777'));
+        app(\App\Services\Suporte\Conhecimento::class)->gravarAjuste(\App\Services\Suporte\AcessoInterno::AJUSTE, '+55 27 99999-1234 | Jonas | suporte');
+        $p = $this->prompt('5527999991234');
+        $this->assertStringContainsString('QUEM ESCREVE: Jonas', $p);
+        $this->assertStringContainsString('nº 900', $p);
     }
 }
