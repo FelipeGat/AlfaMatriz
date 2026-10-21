@@ -405,8 +405,18 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::get('suporte/pedro', [\App\Http\Controllers\SuporteConhecimentoController::class, 'index'])->name('suporte.pedro')->middleware('permissao:suporte,ler');
     Route::post('suporte/pedro/acessos', [\App\Http\Controllers\SuporteConhecimentoController::class, 'acessos'])->name('suporte.pedro.acessos')->middleware('permissao:suporte,editar');
     Route::post('suporte/pedro/empresa', [\App\Http\Controllers\SuporteConhecimentoController::class, 'empresa'])->name('suporte.pedro.empresa')->middleware('permissao:suporte,editar');
-    // A base "Contexto do Suporte" que o Pedro consulta (T-476; contexto-do-suporte.md).
-    Route::post('suporte/pedro/base', [\App\Http\Controllers\SuporteConhecimentoController::class, 'base'])->name('suporte.pedro.base')->middleware('permissao:suporte,editar');
+    // A base do suporte que o Pedro consulta e os atendimentos alimentam (T-476; base-do-suporte.md).
+    $base = \App\Http\Controllers\SuporteBaseController::class;
+    Route::get('suporte/base', [$base, 'index'])->name('suporte.base')->middleware('permissao:suporte,ler');
+    Route::get('suporte/base/nova', [$base, 'nova'])->name('suporte.base.nova')->middleware('permissao:suporte,editar');
+    Route::post('suporte/base', [$base, 'criar'])->name('suporte.base.criar')->middleware('permissao:suporte,editar');
+    Route::get('suporte/base/{nota}', [$base, 'ver'])->whereNumber('nota')->name('suporte.base.ver')->middleware('permissao:suporte,ler');
+    Route::post('suporte/base/{nota}', [$base, 'salvar'])->whereNumber('nota')->name('suporte.base.salvar')->middleware('permissao:suporte,editar');
+    Route::post('suporte/base/{nota}/confirmar', [$base, 'confirmar'])->whereNumber('nota')->name('suporte.base.confirmar')->middleware('permissao:suporte,editar');
+    Route::post('suporte/base/{nota}/descartar', [$base, 'descartar'])->whereNumber('nota')->name('suporte.base.descartar')->middleware('permissao:suporte,editar');
+    Route::post('suporte/base/{nota}/validar', [$base, 'validar'])->whereNumber('nota')->name('suporte.base.validar')->middleware('permissao:suporte,editar');
+    Route::post('suporte/base/{nota}/conhecimento', [$base, 'conhecimento'])->whereNumber('nota')->name('suporte.base.conhecimento')->middleware('permissao:suporte,editar');
+    Route::post('suporte/base/{nota}/apagar', [$base, 'apagar'])->whereNumber('nota')->name('suporte.base.apagar')->middleware('permissao:suporte,editar');
     Route::post('suporte/pedro/roteiros', [\App\Http\Controllers\SuporteConhecimentoController::class, 'salvar'])->name('suporte.pedro.roteiro.novo')->middleware('permissao:suporte,editar');
     Route::post('suporte/pedro/roteiros/{roteiro}', [\App\Http\Controllers\SuporteConhecimentoController::class, 'salvar'])->whereNumber('roteiro')->name('suporte.pedro.roteiro')->middleware('permissao:suporte,editar');
     Route::post('suporte/pedro/roteiros/{roteiro}/apagar', [\App\Http\Controllers\SuporteConhecimentoController::class, 'apagar'])->whereNumber('roteiro')->name('suporte.pedro.roteiro.apagar')->middleware('permissao:suporte,editar');
