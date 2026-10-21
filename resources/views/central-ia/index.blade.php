@@ -1104,7 +1104,15 @@
         </div>
 
         {{-- ================= AJUSTES ================= --}}
-        <div x-show="tela === 'ajustes'" x-cloak class="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto lg:grid-cols-2">
+        {{--
+            `relative` não é enfeite (T-471): o rótulo `sr-only` do token do
+            Telegram é `position:absolute`. Sem ancestral posicionado, ele se
+            ancora na página, e não nesta grade que rola, e fica lá embaixo,
+            onde estaria no fluxo — o documento cresce além da janela e a
+            rolagem da PÁGINA mostra só o fundo, com sidebar e cockpit
+            cortados. Com o `relative`, ele fica preso aqui dentro.
+        --}}
+        <div x-show="tela === 'ajustes'" x-cloak class="relative grid min-h-0 flex-1 content-start gap-3 overflow-y-auto lg:grid-cols-2">
             <div class="rounded-panel border border-line bg-panel p-4 text-sm lg:col-span-2">
                 <h3 class="font-semibold text-ink">Minhas IAs e regras de uso</h3>
                 <p class="mt-1 text-ink-mute">Escolha manual vence o padrão. Automático usa regras locais e informa o motivo, sem gastar uma chamada ao GPT para decidir.</p>
