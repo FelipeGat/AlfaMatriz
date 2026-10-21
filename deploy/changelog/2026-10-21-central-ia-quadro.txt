@@ -1,0 +1,15 @@
+<b>📋 AlfaMatriz — Changelog 21/10/2026</b>
+<i>Central de IA: os agentes abrem e movem tarefas no quadro</i>
+
+<b>🛠️ Correção</b>
+• <b>Os agentes da Central de IA voltaram a usar o quadro de tarefas e a agenda.</b> Quem pedia a um agente para abrir uma tarefa recebia um erro de acesso. Agora o agente abre, consulta, move e comenta tarefas e marca compromissos <b>em nome de quem fez o pedido</b>: o que ele fizer sai com o nome dessa pessoa e segue as permissões dela. Funciona também no modo de análise.
+
+<b>🔒 Segurança</b>
+• Cada pedido recebe um acesso próprio ao quadro, que acaba quando o pedido termina (e vence sozinho se a máquina cair). Ninguém precisa configurar nada na própria máquina.
+• Quem administra a Central tem o acesso. Para as demais pessoas, um administrador liga a nova opção <i>"Os agentes podem usar o quadro de tarefas e a agenda"</i>, em Central de IA › administração (vem desligada). Os pedidos do Secretário, que trazem e-mails e transcrições de terceiros, nunca recebem esse acesso.
+
+<b>⚙️ Para usar</b>
+• Atualize o runner da sua máquina, no terminal: <i>curl -fsSL https://matriz.alfasolucoes.cloud/central-ia/instalar.sh | bash</i> (ele reinicia sozinho quando não estiver trabalhando).
+
+<i>Versão v2026.10.21.7</i>
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
