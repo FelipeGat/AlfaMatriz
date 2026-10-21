@@ -149,6 +149,11 @@ class PedroAcessoInternoTest extends TestCase
         $this->assertStringContainsString('5 Manutenção de ar-condicionado', $p);
         $this->assertStringContainsString('Vitor Silva', $p);
         $this->assertStringContainsString('ÁUDIO', $p);
+
+        // A grafia do nome nem sempre bate com o cadastro ("Emanuelly" x "Emanuelle", teste do Wallas).
+        app(\App\Services\Suporte\DiretorioGestor::class)->gravar('wsl', now()->toDateTimeString(),
+            [['id' => 103, 'nome' => 'Emanuelle ceolin pianna', 'razao' => 'Emanuelle ceolin pianna', 'telefones' => []]], []);
+        $this->assertSame([103], array_column(app(\App\Services\Suporte\DiretorioGestor::class)->buscarClientes('apartamento da Emanuelly, limpeza de condensadoras'), 'id'));
     }
 
     /** Felipe, 21/10/2026: "não registrar no Matriz; sempre ir para o Gestor" e informar o número a quem pediu. */

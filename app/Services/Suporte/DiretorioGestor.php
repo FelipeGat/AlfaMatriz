@@ -128,11 +128,22 @@ class DiretorioGestor
             return [];
         }
 
-        return collect($this->retrato()['clientes'])
-            ->map(function ($c) use ($doTexto) {
-                $nome = self::palavras(implode(' ', array_filter([$c['fantasia'] ?? null, $c['nome'] ?? null, $c['razao'] ?? null])));
+        // Grafia aproximada também vale: "Emanuelly" acha "Emanuelle" (21/10/2026, teste do Wallas).
+        $parecida = function (string $a, string $b): bool {
+            if ($a === $b) {
+                return true;
+            }
+            $menor = min(strlen($a), strlen($b));
 
-                return [$c, count(array_intersect_key(array_flip($nome), $doTexto))];
+            return $menor >= 5 && levenshtein($a, $b) <= ($menor >= 8 ? 2 : 1);
+        };
+
+        return collect($this->retrato()['clientes'])
+            ->map(function ($c) use ($doTexto, $parecida) {
+                $nome = array_unique(self::palavras(implode(' ', array_filter([$c['fantasia'] ?? null, $c['nome'] ?? null, $c['razao'] ?? null]))));
+                $acertos = collect($nome)->filter(fn ($p) => mb_strlen($p) >= 4 && collect(array_keys($doTexto))->contains(fn ($t) => $parecida($p, (string) $t)))->count();
+
+                return [$c, $acertos];
             })
             ->filter(fn ($par) => $par[1] > 0)->sortByDesc(fn ($par) => $par[1])->take($limite)->map(fn ($par) => $par[0])->values()->all();
     }
