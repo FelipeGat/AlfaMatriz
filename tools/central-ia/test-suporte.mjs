@@ -1,7 +1,10 @@
 // O Pedro no runner (docs/specs/suporte-pedro-whatsapp): a IA roda SEM ferramentas,
 // numa pasta vazia, com o pedido pelo stdin; e o que volta (ou o erro) vai ao Matriz.
 import assert from 'node:assert/strict';
-import { atenderSuporte, responderComIa } from '../../deploy/central-ia/suporte.mjs';
+import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { atenderSuporte, gravarAberturas, gravarNoGestor, naPonte, responderComIa } from '../../deploy/central-ia/suporte.mjs';
 
 const chamadas = [];
 const executar = async (bin, args, entrada, cwd) => {
@@ -82,3 +85,40 @@ assert.equal((await atenderSuporte('wsl', { api: async () => ({ status: 204 }), 
     assert.equal(enviados3[1][1].transcricoes, undefined);
 }
 console.log('PASSOU: suporte — IA sem ferramentas pelo stdin, numa pasta vazia; fotos para a IA (Claude e Codex); áudio transcrito no prompt; vídeo em quadros e fala; resposta e erro voltam ao Matriz.');
+
+// Gravação no Gestor (acesso-interno.md, FR-A8): o pedido vai no script, com --apply,
+// sem nova tentativa; o resultado volta ao Matriz; e a ponte atende uma chamada por vez.
+{
+    const pasta = mkdtempSync(join(tmpdir(), 'ponte-'));
+    let script = '';
+    let argumentos = [];
+    const executar = async (programa, args) => {
+        argumentos = args;
+        script = readFileSync(join(pasta, 'pedro_gestor_gravar.php'), 'utf8');
+        return { stdout: 'lixo\nSUPORTE_GESTOR_GRAVADO:{"ok":true,"modo":"reabrir","numero":"700","id":9}\n' };
+    };
+    const pedido = { id: 1, modo: 'reabrir', atendimento: '700', cliente_id: 30, descricao: 'x', autor_email: 'f@x' };
+    const r = await gravarNoGestor(`py|C:\\tmp\\run_prod.py|C:\\tmp\\secretario_gestor.php|${pasta}`, pedido, { executar });
+    assert.deepEqual(r, { ok: true, modo: 'reabrir', numero: '700', id: 9 });
+    assert.equal(argumentos.at(-1), '--apply');
+    assert.ok(script.includes(`base64_decode('${Buffer.from(JSON.stringify(pedido)).toString('base64')}')`), 'o pedido entra no lugar do marcador do código');
+    assert.ok(!existsSync(join(pasta, 'pedro_gestor_gravar.php')), 'o script não fica na pasta da ponte');
+
+    let vezes = 0;
+    const semResposta = await gravarNoGestor(`py|s|C:\\tmp\\a.php|${pasta}`, pedido, { executar: async () => { vezes++; return { stdout: '' }; } });
+    assert.equal(semResposta.ok, false);
+    assert.equal(vezes, 1, 'sem nova tentativa: a ponte pode ter gravado');
+
+    const enviados = [];
+    const api = async (rota, corpo) => { enviados.push([rota, corpo]); return rota === 'suporte/gestor/aberturas' ? { status: 200, json: { aberturas: [pedido] } } : { status: 200 }; };
+    await gravarAberturas('cfg', 'wsl', { api, gravar: async () => ({ ok: true, modo: 'reabrir', numero: '700' }) });
+    assert.deepEqual(enviados[1], ['suporte/gestor/aberturas/1', { maquina: 'wsl', numero: '700', modo: 'reabrir' }]);
+
+    const ordem = [];
+    await Promise.all([
+        naPonte(async () => { ordem.push('a1'); await new Promise(r => setTimeout(r, 30)); ordem.push('a2'); }),
+        naPonte(async () => { ordem.push('b1'); ordem.push('b2'); }),
+    ]);
+    assert.deepEqual(ordem, ['a1', 'a2', 'b1', 'b2'], 'uma chamada da ponte por vez');
+}
+console.log('PASSOU: suporte — gravação no Gestor com --apply e sem repetir; o número volta ao Matriz; a ponte atende um por vez.');

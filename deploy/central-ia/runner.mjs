@@ -28,7 +28,7 @@ import { transcrever, whisperInstalado } from './transcricao.mjs';
 import { hora as horaDoGestor, lerGestor } from './gestor.mjs';
 import { hora as horaDaAgenda, lerAgenda as lerAgendaGoogle } from './agenda-google.mjs';
 import { aplicarAlteracoes, configuracao as pastasDeDocumentos, espelhar as espelharDocumentos } from './documentos.mjs';
-import { atenderSuporte, lerGestorParaPedro } from './suporte.mjs';
+import { atenderSuporte, gravarAberturas, lerGestorParaPedro, naPonte } from './suporte.mjs';
 import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h; chave servidor + conta +
@@ -1059,6 +1059,9 @@ let suportePausadoAte = 0;
 // O retrato do Gestor para o Pedro (só leitura), a cada 10 min.
 let lendoGestorPedro = false;
 let proximoRetratoPedro = 0;
+// O que o Pedro pediu para gravar no Gestor (FR-A8): a cada 20 s, um lote por vez.
+let gravandoGestor = false;
+let proximaGravacao = 0;
 let whisperConferido = { em: 0, ok: false };
 async function whisperPronto() {
     if (Date.now() - whisperConferido.em > 600_000) whisperConferido = { em: Date.now(), ok: await whisperInstalado() };
@@ -1098,7 +1101,7 @@ while (!parar) {
         if (cfg.gestor && !lendoGestor && Date.now() >= gestorPausadoAte && horaDoGestor(ultimoGestor)) {
             lendoGestor = true;
             ultimoGestor = new Date();
-            lerGestor(cfg.gestor).then(async r => {
+            naPonte(() => lerGestor(cfg.gestor)).then(async r => {
                 if (!r.ok) return log('Gestor: retrato não lido —', r.erro);
                 const envio = await api('gestor', { maquina: cfg.maquina, lido_em: new Date().toISOString(), blocos: r.blocos });
                 if (envio.status === 403 || envio.status === 404) gestorPausadoAte = Date.now() + 3600_000 * 6;
@@ -1131,7 +1134,7 @@ while (!parar) {
         if (cfg.gestor && !lendoGestorPedro && Date.now() >= proximoRetratoPedro && Date.now() >= suportePausadoAte) {
             lendoGestorPedro = true;
             proximoRetratoPedro = Date.now() + 10 * 60_000;
-            lerGestorParaPedro(cfg.gestor)
+            naPonte(() => lerGestorParaPedro(cfg.gestor))
                 .then(async r => {
                     const envio = await api('suporte/gestor', { maquina: cfg.maquina, lido_em: new Date().toISOString(), ...r });
                     if (envio.status === 403 || envio.status === 404) proximoRetratoPedro = Date.now() + 3600_000;
@@ -1139,6 +1142,14 @@ while (!parar) {
                 })
                 .catch(e => log('suporte: retrato do Gestor não lido —', e.message))
                 .finally(() => { lendoGestorPedro = false; });
+        }
+        if (cfg.gestor && !gravandoGestor && Date.now() >= proximaGravacao && Date.now() >= suportePausadoAte) {
+            gravandoGestor = true;
+            proximaGravacao = Date.now() + 20_000;
+            gravarAberturas(cfg.gestor, cfg.maquina, { api, log })
+                .then(r => { if (r.status === 403 || r.status === 404) proximaGravacao = Date.now() + 3600_000; })
+                .catch(e => log('suporte: gravação no Gestor —', e.message))
+                .finally(() => { gravandoGestor = false; });
         }
         // Mão dupla (documentos-mao-dupla): a cada 30 s, aplica no OneDrive o que foi
         // pedido pelo Matriz; aplicou algo, espelha de novo logo em seguida.

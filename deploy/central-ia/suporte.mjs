@@ -167,3 +167,55 @@ export async function lerGestorParaPedro(config, { executar = execP, tentativas 
         try { unlinkSync(local); } catch {}
     }
 }
+
+/**
+ * Uma chamada da ponte do Gestor por vez nesta máquina: ela grava o script num
+ * nome fixo no servidor (_run.php), e duas ao mesmo tempo trocariam um script pelo
+ * outro — a leitura do Secretário rodaria a gravação do Pedro, ou o contrário.
+ */
+let filaDaPonte = Promise.resolve();
+export function naPonte(fn) {
+    const vez = filaDaPonte.then(fn, fn);
+    filaDaPonte = vez.catch(() => {});
+    return vez;
+}
+
+/**
+ * Grava UM atendimento no Gestor (novo, vincular ou reabrir) pela ponte, com
+ * --apply (acesso-interno.md, FR-A8; Felipe, 21/10/2026: "sempre ir para o Gestor").
+ * Sem nova tentativa: a ponte pode cair DEPOIS de gravar, e repetir abriria dois.
+ * Sem a linha de resposta, devolve erro e a equipe confere no Gestor.
+ */
+export async function gravarNoGestor(config, pedido, { executar = execP } = {}) {
+    const [programa, script, arquivoWin, pasta] = String(config || '').split('|');
+    if (!programa || !script || !arquivoWin || !pasta) throw new Error('CENTRAL_IA_GESTOR incompleto');
+    const nome = 'pedro_gestor_gravar.php';
+    const local = join(pasta, nome);
+    const dados = Buffer.from(JSON.stringify(pedido), 'utf8').toString('base64');
+    writeFileSync(local, readFileSync(join(AQUI, 'suporte_gestor_gravar.php'), 'utf8').replace("'__DADOS__'", `'${dados}'`));
+    try {
+        const { stdout } = await executar(programa, [script, `${arquivoWin.replace(/[\\/][^\\/]*$/, '')}\\${nome}`, '--apply'],
+            { cwd: pasta, timeout: 180000, maxBuffer: 4 * 1024 * 1024 });
+        const l = String(stdout).split(/\r?\n/).find(x => x.startsWith('SUPORTE_GESTOR_GRAVADO:'));
+        if (!l) return { ok: false, erro: 'a ponte não devolveu resposta — conferir no Gestor antes de repetir' };
+        return JSON.parse(l.slice('SUPORTE_GESTOR_GRAVADO:'.length));
+    } catch (e) {
+        return { ok: false, erro: `a ponte falhou (${String(e.message).slice(0, 120)}) — conferir no Gestor antes de repetir` };
+    } finally {
+        try { unlinkSync(local); } catch {}
+    }
+}
+
+/** Os pedidos de gravação no Gestor que o Matriz deixou para esta máquina. @returns {Promise<number>} quantos foram tratados */
+export async function gravarAberturas(config, maquina, { api, gravar = gravarNoGestor, log = () => {} }) {
+    const r = await api('suporte/gestor/aberturas', { maquina });
+    if (r.status !== 200) return { status: r.status, feitos: 0 };
+    let feitos = 0;
+    for (const a of r.json?.aberturas || []) {
+        const g = await naPonte(() => gravar(config, a));
+        const envio = await api(`suporte/gestor/aberturas/${a.id}`, { maquina, ...(g.ok ? { numero: String(g.numero), modo: g.modo } : { erro: String(g.erro || 'falhou').slice(0, 300) }) });
+        log(`suporte: Gestor ${g.ok ? `${g.modo} nº ${g.numero}` : `não gravou (${g.erro})`} → ${envio.status}`);
+        feitos++;
+    }
+    return { status: 200, feitos };
+}

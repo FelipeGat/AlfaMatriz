@@ -50,4 +50,27 @@ Telegram". O Pedro "não pode se confundir: tem que ter certeza de que sou eu, p
     tarefa no quadro, com "LANÇAR NO GESTOR" (o que fazer, cliente, assunto), responsável, data no prazo e quem
     pediu. A tarefa fica com o primeiro responsável do suporte.
   - A conversa de quem é da casa não fica presa a um atendimento: a pessoa registra quantos precisar.
+- **FR-A8, tudo vai ao Gestor** (Felipe, 21/10/2026: "não registrar no Matriz; quando o pedido vier de cliente,
+  Wallas ou Alexandre, sempre ir para o Gestor; conferir se não tem chamado em aberto ou anterior com o mesmo
+  assunto para, em vez de abrir um novo, reabrir — garantia; e informar a quem abriu o número").
+  - **Gravação:** ligada por padrão (`SUPORTE_PEDRO_GESTOR_GRAVAR`). Cliente do Gestor (equipamento ou sistema) e
+    pedido de quem é da casa viram pedido de gravação. A máquina grava pela ponte com
+    `deploy/central-ia/suporte_gestor_gravar.php`, com `--apply` e sem nova tentativa: a ponte pode cair depois de
+    gravar.
+  - **Antes de abrir** (`Atendimento::modoNoGestor`):
+    - se a conversa citou o nº de um atendimento do cliente: aberto vira vincular, concluído vira reabrir;
+    - se há um aberto do mesmo assunto: vincular;
+    - se há um do mesmo assunto concluído dentro da garantia (`SUPORTE_PEDRO_GARANTIA_DIAS`, padrão 90 dias, contados
+      da abertura): reabrir;
+    - senão, novo.
+    - O Gestor confere de novo ao gravar: o atendimento tem de ser daquele cliente e não pode estar cancelado.
+  - **No Gestor:** vincular acrescenta um andamento. Reabrir passa o atendimento para `em_atendimento`, com andamento
+    e histórico, como o botão Reabrir. O autor no Gestor é a conta do Felipe (o andamento exige usuário em produção);
+    quem pediu vai no texto.
+  - **O número volta a quem pediu:** "Seu atendimento é o nº X", "Registrei no atendimento nº X, que já estava
+    aberto" ou "Reabri o atendimento nº X".
+  - **Na máquina:** uma chamada da ponte por vez (`naPonte`), porque o script vai a um nome fixo no servidor.
+  - **Se a gravação falhar:** fica a tarefa no quadro com o aviso, para ninguém ficar sem atendimento.
+  - **Técnico e data** ("para o Vitor amanhã") vão só no texto. Agendar de verdade no Gestor avisa o técnico e
+    lança no Google Agenda, e fica para outra decisão.
 - **Fora do escopo** (Felipe, 21/10/2026: "pode deixar de fora o AlfaHome"): o pessoal do AlfaHome.

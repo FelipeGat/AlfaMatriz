@@ -125,15 +125,18 @@ class PedroGestorTest extends TestCase
         $this->assertSame([13, 3, 3, 'pendente'], [$a->gestor_cliente_id, $a->assunto_id, $a->empresa_id, $a->situacao], 'assunto fora da lista dá lugar ao mais usado');
         $this->assertSame(0, Tarefa::count());
 
+        // O mesmo portão G1 foi concluído em 06/10 (nº 782): dentro da garantia, reabre em vez de abrir outro (21/10/2026).
+        $this->assertSame(['reabrir', '782'], [$a->modo, $a->atendimento_numero]);
+
         $this->runner();
         $lista = $this->postJson(route('suporte.runner.aberturas'), ['maquina' => 'wsl'])->assertOk()->json('aberturas');
-        $this->assertSame([$a->id, 13, 3], [$lista[0]['id'], $lista[0]['cliente_id'], $lista[0]['assunto_id']]);
+        $this->assertSame([$a->id, 13, 3, 'reabrir', '782'], [$lista[0]['id'], $lista[0]['cliente_id'], $lista[0]['assunto_id'], $lista[0]['modo'], $lista[0]['atendimento']]);
         $this->postJson(route('suporte.runner.aberturas'), ['maquina' => 'wsl'])->assertJsonCount(0, 'aberturas');
-        $this->postJson(route('suporte.runner.abertura-feita', $a->id), ['maquina' => 'wsl', 'numero' => '814'])->assertOk();
+        $this->postJson(route('suporte.runner.abertura-feita', $a->id), ['maquina' => 'wsl', 'numero' => '782', 'modo' => 'reabrir'])->assertOk();
 
-        $this->assertSame('814', SuporteConversa::sole()->gestor_atendimento);
-        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Seu atendimento é o nº 814. A equipe técnica retorna por aqui.');
-        $this->assertSame(1, Notificacao::where('destinatario_id', $this->rossini->id)->where('titulo', 'like', 'Gestor nº 814%')->count());
+        $this->assertSame('782', SuporteConversa::sole()->gestor_atendimento);
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Reabri o atendimento nº 782, do mesmo assunto. A equipe técnica retorna por aqui.');
+        $this->assertSame(1, Notificacao::where('destinatario_id', $this->rossini->id)->where('titulo', 'like', 'Gestor nº 782%')->count());
     }
 
     public function test_abertura_sem_maquina_cai_para_o_quadro(): void
@@ -158,5 +161,17 @@ class PedroGestorTest extends TestCase
         Sanctum::actingAs($outro, ['central-ia-runner']);
         $this->postJson(route('suporte.runner.gestor'), ['maquina' => 'mac', 'lido_em' => now()->toIso8601String(), 'clientes' => [], 'atendimentos' => []])->assertForbidden();
         $this->postJson(route('suporte.runner.aberturas'), ['maquina' => 'mac'])->assertForbidden();
+    }
+
+    /** Antes de abrir, conferir (Felipe, 21/10/2026): aberto do mesmo assunto vincula; concluído na garantia reabre; fora dela, novo. */
+    public function test_modo_no_gestor_confere_aberto_garantia_e_numero_citado(): void
+    {
+        $at = app(\App\Services\Suporte\Atendimento::class);
+        $this->assertSame(['modo' => 'reabrir', 'numero' => '782'], $at->modoNoGestor(13, 3), 'concluído há 15 dias, mesmo assunto');
+        $this->assertSame(['modo' => 'novo', 'numero' => null], $at->modoNoGestor(13, 27), 'outro assunto');
+        config(['services.suporte_pedro.garantia_dias' => 10]);
+        $this->assertSame(['modo' => 'novo', 'numero' => null], $at->modoNoGestor(13, 3), 'fora da garantia');
+        $this->assertSame(['modo' => 'reabrir', 'numero' => '782'], $at->modoNoGestor(13, 27, '782'), 'o nº citado vale, se é do cliente');
+        $this->assertSame(['modo' => 'novo', 'numero' => null], $at->modoNoGestor(20, 27, '782'), 'nº de outro cliente não vale');
     }
 }

@@ -204,8 +204,11 @@ class Pedro
         }
         if ($bloco['acao'] === 'abrir_atendimento') {
             // Equipamento de cliente do Gestor: o atendimento nasce NO Gestor, pela máquina; o número chega em seguida.
-            if ($bloco['destino'] === 'gestor' && $c->gestor_cliente_id && config('services.suporte_pedro.gestor_gravar')
-                && $this->atendimento->pedirNoGestor($c, $bloco['resumo'], $bloco['assunto_id'])) {
+            // Cliente do Gestor: tudo vai ao Gestor, equipamento ou sistema (Felipe, 21/10/2026).
+            $roteiro = $bloco['roteiro'] ? \App\Models\SuporteRoteiro::where('ativo', true)->find($bloco['roteiro']) : null;
+            if ($c->gestor_cliente_id && config('services.suporte_pedro.gestor_gravar')
+                && $this->atendimento->pedirNoGestor($c, $bloco['resumo'], $bloco['assunto_id'], $bloco['atendimento'],
+                    in_array($roteiro?->prioridade, ['critica', 'alta'], true) ? 'alta' : null)) {
                 // O número do Gestor vai em outra mensagem, quando a máquina gravar.
             } elseif ($t = $this->atendimento->abrir($c, $this->comLancamentoNoGestor($c, $bloco), $bloco['sistema'],
                 $bloco['roteiro'] ? \App\Models\SuporteRoteiro::where('ativo', true)->find($bloco['roteiro']) : null, $bloco['destino'])) {

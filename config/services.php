@@ -80,9 +80,12 @@ return [
         'modelo' => env('SUPORTE_PEDRO_MODELO', 'sonnet'),
         'inicio' => env('SUPORTE_PEDRO_INICIO', '07:00'),
         'fim' => env('SUPORTE_PEDRO_FIM', '18:00'),
-        // Gravar o atendimento NO Gestor de produção automaticamente: desligado até a liberação
-        // explícita. Desligado, o atendimento de cliente do Gestor vira tarefa no Matriz para lançar à mão.
-        'gestor_gravar' => (bool) env('SUPORTE_PEDRO_GESTOR_GRAVAR', false),
+        // Gravar o atendimento NO Gestor de produção pela máquina: liberado pelo Felipe em 21/10/2026
+        // ("não registrar no Matriz; quando o pedido vier de cliente, Wallas ou Alexandre, sempre ir
+        // para o Gestor"). Com false no .env, volta a ser tarefa no Matriz para lançar à mão.
+        'gestor_gravar' => (bool) env('SUPORTE_PEDRO_GESTOR_GRAVAR', true),
+        // A garantia: o mesmo assunto concluído há até tantos dias é reaberto, e não aberto de novo.
+        'garantia_dias' => (int) env('SUPORTE_PEDRO_GARANTIA_DIAS', 90),
         // Sem resposta da IA nesse tempo, o Matriz responde sozinho e abre o atendimento.
         'reserva_segundos' => (int) env('SUPORTE_PEDRO_RESERVA_SEGUNDOS', 120),
         // Quanto o Pedro tenta antes de passar ao especialista: o que vier primeiro.

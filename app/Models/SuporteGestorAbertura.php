@@ -10,7 +10,7 @@ class SuporteGestorAbertura extends Model
 {
     protected $table = 'suporte_gestor_aberturas';
 
-    protected $fillable = ['conversa_id', 'gestor_cliente_id', 'assunto_id', 'empresa_id', 'descricao', 'solicitante', 'telefone', 'prioridade', 'situacao', 'numero', 'erro', 'reservado_em'];
+    protected $fillable = ['conversa_id', 'gestor_cliente_id', 'assunto_id', 'modo', 'atendimento_numero', 'pedido_por', 'empresa_id', 'descricao', 'solicitante', 'telefone', 'prioridade', 'situacao', 'numero', 'erro', 'reservado_em'];
 
     protected function casts(): array
     {

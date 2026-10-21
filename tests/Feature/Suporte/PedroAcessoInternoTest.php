@@ -151,8 +151,33 @@ class PedroAcessoInternoTest extends TestCase
         $this->assertStringContainsString('ÁUDIO', $p);
     }
 
+    /** Felipe, 21/10/2026: "não registrar no Matriz; sempre ir para o Gestor" e informar o número a quem pediu. */
+    public function test_registro_vai_ao_gestor_e_o_numero_volta_para_quem_pediu(): void
+    {
+        Http::fake(fn () => Http::response(['messages' => [['id' => 'wamid.'.uniqid()]]]));
+        $c = $this->conversa('5527997458265', 'Abre um atendimento para a Emanuelly, limpeza das condensadoras, com o Vitor amanhã. Pode reabrir o 700.');
+        $pedido = app(Pedro::class)->enfileirar($c->id);
+        $pedido->update(['situacao' => 'reservado']);
+        app(Pedro::class)->concluir($this->felipe, $pedido->id, '<<<PEDRO {"resposta": "Certo, Wallas.", "acao": "abrir_atendimento", "resumo": "Limpeza das condensadoras do apartamento",'
+            .' "cliente": "gestor:30", "modo": "reabrir", "atendimento": "700", "assunto_id": 5, "responsavel": "Vitor Silva", "data": "2026-10-22"} PEDRO>>>', null);
+
+        $this->assertSame(0, \App\Models\Tarefa::count(), 'nada no quadro do Matriz');
+        $a = \App\Models\SuporteGestorAbertura::sole();
+        $this->assertSame([30, 'reabrir', '700', 'Wallas'], [$a->gestor_cliente_id, $a->modo, $a->atendimento_numero, $a->pedido_por]);
+        $this->assertStringContainsString('Responsável: Vitor Silva. Para: 22/10/2026.', $a->descricao);
+        $this->assertStringContainsString('Enviei para o Gestor', (string) $c->mensagens()->reorder()->where('direcao', 'pedro')->value('texto'));
+
+        Sanctum::actingAs($this->felipe, ['central-ia-runner']);
+        $this->postJson(route('suporte.runner.aberturas'), ['maquina' => 'wsl'])->assertOk()->assertJsonPath('aberturas.0.autor_email', 'felipe@teste.local');
+        $this->postJson(route('suporte.runner.abertura-feita', $a->id), ['maquina' => 'wsl', 'numero' => '700', 'modo' => 'reabrir'])->assertOk();
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Reabri o atendimento nº 700, do mesmo assunto. Cliente: EMANUELLY SOUZA, no Gestor.');
+        $this->assertNull($c->fresh()->gestor_atendimento, 'a conversa de quem é da casa não fica presa a um atendimento');
+    }
+
     public function test_registro_reaberto_vira_tarefa_com_o_que_lancar_no_gestor(): void
     {
+        // Com a gravação no Gestor desligada (SUPORTE_PEDRO_GESTOR_GRAVAR=false), volta a ser tarefa.
+        config(['services.suporte_pedro.gestor_gravar' => false]);
         Http::fake(fn () => Http::response(['messages' => [['id' => 'wamid.'.uniqid()]]]));
         config(['services.suporte_pedro.responsaveis' => ['rossini@teste.local']]);
         User::factory()->create(['email' => 'rossini@teste.local']);

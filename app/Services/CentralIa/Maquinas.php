@@ -51,7 +51,7 @@ class Maquinas
         // Pastas de documentos espelhadas do OneDrive (documentos-espelhados).
         'documentos.mjs',
         // O Pedro, atendente do suporte no WhatsApp (suporte-pedro-whatsapp): vaga própria, sem ferramentas.
-        'suporte.mjs', 'suporte_gestor_ler.php',
+        'suporte.mjs', 'suporte_gestor_ler.php', 'suporte_gestor_gravar.php',
     ];
 
     public function podeConectar(User $user): bool

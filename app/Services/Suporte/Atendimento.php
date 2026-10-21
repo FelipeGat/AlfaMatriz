@@ -27,11 +27,46 @@ class Atendimento
     public function __construct(private TarefaService $tarefas, private AvisoNoTelegram $telegram) {}
 
     /**
-     * Cliente do Gestor com problema de equipamento (Felipe, 20/10/2026): o
-     * atendimento é aberto NO Gestor, onde estão os técnicos. Quem grava é a
-     * máquina, pela ponte; aqui só se anota o pedido (um por conversa em aberto).
+     * Antes de abrir, conferir (Felipe, 21/10/2026: "sempre conferir se não tem chamado em
+     * aberto, se não tem chamado anterior com o mesmo assunto para, em vez de abrir um novo,
+     * reabrir — garantia"):
+     *   - o nº que a conversa citou, se é deste cliente: aberto → vincular; concluído → reabrir;
+     *   - aberto do mesmo assunto → vincular;
+     *   - mesmo assunto concluído dentro da garantia → reabrir (o mais recente);
+     *   - senão, novo.
+     * O Gestor confere de novo na hora de gravar (o retrato pode ter 10 min).
+     *
+     * @return array{modo: string, numero: ?string}
      */
-    public function pedirNoGestor(SuporteConversa $c, string $resumo, ?int $assuntoId = null): ?SuporteGestorAbertura
+    public function modoNoGestor(int $clienteId, ?int $assuntoId, ?string $numeroCitado = null): array
+    {
+        $doCliente = collect(app(DiretorioGestor::class)->retrato()['atendimentos'] ?? [])->filter(fn ($a) => (int) ($a['cliente_id'] ?? 0) === $clienteId)
+            ->reject(fn ($a) => ($a['status'] ?? '') === 'cancelado')->sortByDesc(fn ($a) => (string) ($a['criado_em'] ?? ''));
+        $aberto = fn ($a) => ($a['status'] ?? '') !== 'concluido';
+        if ($numeroCitado && ($a = $doCliente->first(fn ($x) => (string) ($x['numero'] ?? '') === $numeroCitado))) {
+            return ['modo' => $aberto($a) ? 'vincular' : 'reabrir', 'numero' => $numeroCitado];
+        }
+        if (! $assuntoId) {
+            return ['modo' => 'novo', 'numero' => null];
+        }
+        $mesmo = $doCliente->filter(fn ($a) => (int) ($a['assunto_id'] ?? 0) === $assuntoId);
+        if ($a = $mesmo->first($aberto)) {
+            return ['modo' => 'vincular', 'numero' => (string) $a['numero']];
+        }
+        $limite = now()->subDays(max(0, (int) config('services.suporte_pedro.garantia_dias', 90)))->toDateTimeString();
+        if ($a = $mesmo->first(fn ($x) => ! $aberto($x) && (string) ($x['criado_em'] ?? '') >= $limite)) {
+            return ['modo' => 'reabrir', 'numero' => (string) $a['numero']];
+        }
+
+        return ['modo' => 'novo', 'numero' => null];
+    }
+
+    /**
+     * Cliente do Gestor (Felipe, 21/10/2026: "sempre ir para o Gestor"): o atendimento é
+     * gravado NO Gestor pela máquina, pela ponte — novo, vinculado ou reaberto, conforme
+     * modoNoGestor. Aqui só se anota o pedido (um por conversa em aberto).
+     */
+    public function pedirNoGestor(SuporteConversa $c, string $resumo, ?int $assuntoId = null, ?string $numeroCitado = null, ?string $prioridade = null): ?SuporteGestorAbertura
     {
         $aberta = SuporteGestorAbertura::where('conversa_id', $c->id)->whereIn('situacao', ['pendente', 'reservado'])->first();
         if ($aberta) {
@@ -45,8 +80,10 @@ class Atendimento
             return null;
         }
         $solicitante = $c->nome_perfil ?: 'Contato pelo WhatsApp';
+        $modo = $this->modoNoGestor((int) $c->gestor_cliente_id, (int) $assunto['id'], $numeroCitado);
 
         return SuporteGestorAbertura::create(['conversa_id' => $c->id, 'gestor_cliente_id' => $c->gestor_cliente_id, 'assunto_id' => $assunto['id'], 'empresa_id' => $g['empresa_id'] ?? null,
+            'modo' => $modo['modo'], 'atendimento_numero' => $modo['numero'], 'prioridade' => $prioridade ?? 'media',
             'descricao' => Str::limit(trim($resumo) ?: 'Cliente pediu atendimento pelo WhatsApp.', 1500)."\n\n(Aberto pelo Pedro, suporte no WhatsApp — {$solicitante}, {$c->telefoneLegivel()}.)",
             'solicitante' => Str::limit($solicitante, 120, ''), 'telefone' => $c->telefone]);
     }
@@ -57,7 +94,9 @@ class Atendimento
         $c = $a->conversa;
         if ($numero) {
             $a->update(['situacao' => 'feito', 'numero' => mb_substr($numero, 0, 30)]);
-            $c->update(['gestor_atendimento' => $a->numero]);
+            if (! $a->pedido_por) {
+                $c->update(['gestor_atendimento' => $a->numero]);
+            }
             $g = app(DiretorioGestor::class)->cliente((int) $a->gestor_cliente_id);
             $nome = $g['fantasia'] ?? $g['nome'] ?? 'cliente do Gestor';
             foreach ($this->responsaveis() as $u) {
@@ -67,8 +106,15 @@ class Atendimento
             if ($this->telegram->configurado()) {
                 $this->telegram->enviar('📞 <b>Gestor nº '.e($a->numero).'</b>: '.e($nome)."\n".e(Str::before($a->descricao, "\n\n"))."\n".e(route('suporte.conversas', $c->id)));
             }
+            // O número sempre volta para quem pediu (Felipe, 21/10/2026), dizendo o que foi feito.
+            $texto = match ($a->modo) {
+                'vincular' => "Registrei no atendimento nº {$a->numero}, que já estava aberto para isso.",
+                'reabrir' => "Reabri o atendimento nº {$a->numero}, do mesmo assunto.",
+                default => "Seu atendimento é o nº {$a->numero}.",
+            };
+            $texto = $a->pedido_por ? str_replace('Seu atendimento é', 'O atendimento é', $texto)." Cliente: {$nome}, no Gestor." : $texto.' A equipe técnica retorna por aqui.';
             try {
-                $canal->enviar($c, "Seu atendimento é o nº {$a->numero}. A equipe técnica retorna por aqui.", 'pedro');
+                $canal->enviar($c, $texto, 'pedro');
             } catch (\Illuminate\Validation\ValidationException) {
                 // Fora da janela: a equipe já foi avisada.
             }
@@ -141,12 +187,18 @@ class Atendimento
         $quem = "{$acesso['nome']} ({$c->telefoneLegivel()})";
         $resumo = trim((string) $bloco['resumo']) ?: 'Atendimento pedido pelo WhatsApp.';
 
-        if ($modo === 'novo' && config('services.suporte_pedro.gestor_gravar') && $assunto) {
-            $a = SuporteGestorAbertura::create(['conversa_id' => $c->id, 'gestor_cliente_id' => (int) $cliente['id'], 'assunto_id' => $assunto['id'], 'empresa_id' => $cliente['empresa_id'] ?? null,
+        if (config('services.suporte_pedro.gestor_gravar')) {
+            // Novo sem assunto válido fica com o que o cliente mais usa (como no pedido do cliente).
+            $assunto ??= $d->assuntosPara($cliente)[0] ?? null;
+            if ($modo === 'novo' && ! $assunto) {
+                return null;
+            }
+            SuporteGestorAbertura::create(['conversa_id' => $c->id, 'gestor_cliente_id' => (int) $cliente['id'], 'assunto_id' => $assunto['id'] ?? (int) ($atendimento['assunto_id'] ?? 0), 'empresa_id' => $cliente['empresa_id'] ?? null,
+                'modo' => $modo, 'atendimento_numero' => $modo === 'novo' ? null : (string) $atendimento['numero'], 'pedido_por' => Str::limit($acesso['nome'], 120, ''),
                 'descricao' => Str::limit($resumo.($detalhes ? ' '.implode(' ', $detalhes) : ''), 1500)."\n\n(Registrado pelo Pedro a pedido de {$quem}.)",
                 'solicitante' => Str::limit($acesso['nome'], 120, ''), 'telefone' => $c->telefone]);
 
-            return $a ? 'Pedido de registro enviado ao Gestor: o número do atendimento chega em seguida.' : null;
+            return 'Enviei para o Gestor; o número do atendimento chega em seguida.';
         }
 
         $pedro = User::where('email', self::CONTA)->first();
