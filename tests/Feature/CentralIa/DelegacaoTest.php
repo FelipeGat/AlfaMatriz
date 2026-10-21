@@ -56,4 +56,52 @@ class DelegacaoTest extends TestCase
         $this->assertStringContainsString('Implementei; falta o QA e o commit.', $seg->instrucao);
         $this->assertStringStartsWith('Continua com Claude', $seg->roteamento['motivo']);
     }
+
+    /**
+     * Tarefa #30 (21/10/2026): pedido de correção, o Claude passa a revisão ao Codex, e o Codex
+     * devolve "corrigir" SEM dizer o modo. Antes virava análise e girava sem alterar nada.
+     */
+    public function test_passagem_sem_modo_segue_o_que_o_pedido_da_pessoa_autorizou(): void
+    {
+        [$u, $r, $s] = $this->cenario();
+        $raiz = 'passe um olho clínico no sistema e corrija os erros';
+        $e = $s->pedir($u, $raiz, ['projeto' => 'gestor', 'agente' => 'claude', 'modo' => 'implementar', 'instrucao' => $raiz], 'web', 'r1');
+        $job = $s->proxima($u, $r);
+        $s->concluir($u, $job['id'], ['status' => 'concluida', 'resposta' => "Corrigi.\n<<<CENTRAL-IA\n".json_encode(['resumo' => 'ok',
+            'delegar' => ['agente' => 'codex', 'pedido' => 'Revisão independente do controle de acesso; liste os achados']])."\nCENTRAL-IA>>>"]);
+        $revisao = CentralIaExecucao::where('status', 'pendente')->sole();
+        $this->assertSame(['codex', 'analisar'], [$revisao->agente, $revisao->modo], 'revisão continua sendo análise');
+
+        $job = $s->proxima($u, $r);
+        $s->concluir($u, $job['id'], ['status' => 'concluida', 'resposta' => "Achei 2 falhas.\n<<<CENTRAL-IA\n".json_encode(['resumo' => 'achados',
+            'delegar' => ['agente' => 'claude', 'pedido' => 'Corrigir somente no ambiente local os dois achados: GET /orders sem permissão e perfis fora da transação']])."\nCENTRAL-IA>>>"]);
+        $correcao = CentralIaExecucao::where('status', 'pendente')->sole();
+        $this->assertSame(['claude', 'implementar'], [$correcao->agente, $correcao->modo]);
+        $this->assertStringContainsString('implementar: o passo pede alteração, e o seu pedido autorizou implementar', $correcao->roteamento['motivo']);
+        $this->assertSame($raiz, $correcao->roteamento['delegacao']['raiz_pedido'], 'o pedido da pessoa vai junto');
+
+        // Na tela, a rodada passada mostra o pedido da pessoa.
+        $msgs = collect($this->actingAs($u)->getJson(route('central-ia.mensagens', ['projeto' => 'gestor']))->assertOk()->json('mensagens'));
+        $this->assertTrue($msgs->contains(fn ($m) => ($m['pedido']['pedido_da_pessoa'] ?? null) === $raiz));
+    }
+
+    public function test_passagem_que_pede_alteracao_num_pedido_de_analise_fica_em_analise_e_explica(): void
+    {
+        [$u, $r, $s] = $this->cenario();
+        $s->pedir($u, 'analise o módulo', ['projeto' => 'gestor', 'agente' => 'codex', 'modo' => 'analisar', 'instrucao' => 'analise o módulo'], 'web', 'a1');
+        $job = $s->proxima($u, $r);
+        $s->concluir($u, $job['id'], ['status' => 'concluida', 'resposta' => "Achados.\n<<<CENTRAL-IA\n".json_encode(['resumo' => 'x',
+            'delegar' => ['agente' => 'claude', 'pedido' => 'Corrigir os achados']])."\nCENTRAL-IA>>>"]);
+        $p = CentralIaExecucao::where('status', 'pendente')->sole();
+        $this->assertSame('analisar', $p->modo);
+        $this->assertStringContainsString('use "Sim, implementar" para liberar', $p->roteamento['motivo']);
+    }
+
+    /** "use o claude e execute, corrigindo tudo" depois de uma revisão passada entre agentes. */
+    public function test_execute_corrigindo_e_implementacao(): void
+    {
+        $r = app(\App\Services\CentralIa\Roteador::class);
+        $this->assertSame('implementar', $r->decidir('otimo, use o claude e execute, corrigindo tudo que for necessario.', [])['modo']);
+        $this->assertSame('implementar', $r->decidir('arrume a tela de login', [])['modo']);
+    }
 }

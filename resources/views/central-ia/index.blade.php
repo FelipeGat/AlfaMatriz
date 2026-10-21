@@ -512,6 +512,9 @@
                                         <span class="text-ink-faint" x-show="m.pedido?.handoff_de" x-text="' · assumiu de ' + m.pedido?.handoff_de"></span>
                                         <span class="text-ink-faint" x-text="m.pedido?.motivo ? ' · ' + m.pedido.motivo : ''"></span>
                                     </p>
+                                    <p class="mb-1 text-xs text-ink-mute" x-show="m.pedido?.pedido_da_pessoa">
+                                        <span class="font-semibold">Seu pedido:</span> <span x-text="'“' + (m.pedido?.pedido_da_pessoa || '') + '”'"></span>
+                                    </p>
                                     <template x-if="m.visual?.relatorio">
                                         <section class="mb-3" aria-label="Resumo financeiro">
                                             <h3 class="font-semibold text-ink" x-text="m.visual.relatorio.titulo"></h3>

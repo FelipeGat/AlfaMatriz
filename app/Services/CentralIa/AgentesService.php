@@ -326,14 +326,21 @@ class AgentesService
             $ultimaDoChat = $tarefa->execucoes()->where('status', CentralIaExecucao::CONCLUIDA)->latest('id')->get()
                 ->first(fn (CentralIaExecucao $e) => ! in_array($e->roteamento['finalidade'] ?? 'pedido', ['semear', 'condensar'], true)
                     && ($e->roteamento['nivel'] ?? null) !== 'sem_ia');
+            // O modo segue o último pedido DA PESSOA, e não a última rodada: depois de uma revisão
+            // passada entre agentes (sempre em análise), "pode seguir" e "execute, corrigindo
+            // tudo" ficavam em análise e o chat girava sem alterar nada (tarefa #30, 21/10/2026).
+            $ultimoDaPessoa = $tarefa->execucoes()->where('status', CentralIaExecucao::CONCLUIDA)->latest('id')->get()
+                ->first(fn (CentralIaExecucao $e) => empty($e->roteamento['handoff_de']) && ! in_array($e->roteamento['finalidade'] ?? 'pedido', ['semear', 'condensar'], true)
+                    && ($e->roteamento['nivel'] ?? null) !== 'sem_ia');
             if ($ultimaDoChat && in_array($ultimaDoChat->agente, $disponivel['agentes'], true) && ! isset($disponivel['esgotados'][$ultimaDoChat->agente])) {
                 $rota['agente'] = $ultimaDoChat->agente;
                 $rota['manual'] = false;
-                if ($modo === 'auto' && $ultimaDoChat->modo === 'implementar' && ! str_contains($pedido['instrucao'], '?')) {
+                $rota['motivo'] = 'Assunto: continua com '.$ultimaDoChat->nomeDoAgente().', que trabalhou por último neste chat';
+                if ($modo === 'auto' && $ultimoDaPessoa?->modo === 'implementar' && ! str_contains($pedido['instrucao'], '?')) {
                     $modo = 'implementar';
                     $rota['categoria'] = 'implementacao';
+                    $rota['motivo'] .= ' — implementar, como o seu pedido anterior neste chat';
                 }
-                $rota['motivo'] = 'Assunto: continua com '.$ultimaDoChat->nomeDoAgente().', que trabalhou por último neste chat';
             }
         }
         if ($modo === 'auto') {
@@ -1140,13 +1147,25 @@ class AgentesService
             $this->conversas->registrarDoAgente($user, 'Central', "{$de->nomeDoAgente()} pediu para passar a ".CentralIaExecucao::AGENTES[$agente].', que não está disponível na sua máquina agora. A tarefa espera por você.', CentralIaMensagem::AUTOR_SISTEMA, $de->projeto ?: null, $tarefa->id);
             return;
         }
-        $modo = ($d['modo'] ?? 'analisar') === 'implementar' && $de->projeto !== '' ? 'implementar' : 'analisar';
+        // O modo da passagem: o que o agente pediu, ou — se ele não disse — o que o PEDIDO DA PESSOA
+        // autorizou. Antes, passagem sem "modo" virava análise: o revisor mandava "corrigir" e quem
+        // recebia não podia alterar nada, e devolvia, em loop (tarefa #30, 21/10/2026).
+        $raizModo = $de->roteamento['delegacao']['raiz_modo'] ?? $de->modo;
+        $raizPedido = $de->roteamento['delegacao']['raiz_pedido'] ?? Str::limit(trim((string) $de->instrucao), 300);
+        $pedeAlteracao = $this->roteador->decidir($pedido, [])['modo'] === 'implementar';
+        [$modo, $porque] = match (true) {
+            $de->projeto === '' => ['analisar', 'sem projeto, só análise'],
+            ($d['modo'] ?? null) === 'implementar' => ['implementar', 'o agente pediu implementação'],
+            $raizModo === 'implementar' && $pedeAlteracao => ['implementar', 'o passo pede alteração, e o seu pedido autorizou implementar'],
+            $pedeAlteracao => ['analisar', 'o passo pede alteração, mas o seu pedido foi só de análise: use "Sim, implementar" para liberar'],
+            default => ['analisar', 'o passo é de revisão ou consulta'],
+        };
         $nome = CentralIaExecucao::AGENTES[$agente];
         $aviso = $this->conversas->registrarDoAgente($user, 'Central', "↪ {$de->nomeDoAgente()} passou para {$nome}: ".Str::limit($pedido, 300), CentralIaMensagem::AUTOR_SISTEMA, $de->projeto ?: null, $tarefa->id);
         $nivel = $modo === 'implementar' ? 'forte' : 'medio';
         $rota = ['agente' => $agente, 'modo' => $modo, 'categoria' => $modo === 'implementar' ? 'implementacao' : 'revisao', 'manual' => false,
-            'nivel' => $nivel, 'handoff_de' => $de->agente, 'delegacao' => ['passos' => $passos, 'de' => $de->id],
-            'motivo' => "Passado por {$de->nomeDoAgente()}"] + app(Preferencias::class)->modelo($user, $nivel, $agente);
+            'nivel' => $nivel, 'handoff_de' => $de->agente, 'delegacao' => ['passos' => $passos, 'de' => $de->id, 'raiz_modo' => $raizModo, 'raiz_pedido' => $raizPedido],
+            'motivo' => "Passado por {$de->nomeDoAgente()} — {$modo}: {$porque}"] + app(Preferencias::class)->modelo($user, $nivel, $agente);
         $nova = CentralIaExecucao::create(['user_id' => $user->id, 'pedido_id' => $aviso->id, 'tarefa_id' => $tarefa->id, 'agente' => $agente,
             'projeto' => $de->projeto, 'modo' => $modo, 'instrucao' => $pedido, 'roteamento' => $rota]);
         $tarefa->update(['status' => CentralIaTarefa::ABERTA, 'ultima_atividade_em' => now()]);

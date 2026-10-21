@@ -798,6 +798,8 @@ class CentralIaController extends Controller
             'agente' => $e->nomeDoAgente(), 'projeto' => $e->projeto, 'modo' => $e->modo, 'status' => $e->status,
             'motivo' => $e->roteamento['motivo'] ?? null,
             'handoff_de' => isset($e->roteamento['handoff_de']) ? (CentralIaExecucao::AGENTES[$e->roteamento['handoff_de']] ?? null) : null,
+            // Na passagem entre agentes, o pedido que a pessoa fez lá atrás (21/10/2026: "não consigo saber o que eu pedi").
+            'pedido_da_pessoa' => $e->roteamento['delegacao']['raiz_pedido'] ?? null,
         ] : null;
     }
 

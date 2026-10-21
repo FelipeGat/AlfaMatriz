@@ -29,7 +29,10 @@ class Roteador
     private const CATEGORIAS = [
         'implementacao' => ['implemente', 'implementar', 'inplementar', 'inplemente', 'implante', 'implantar', 'corrija', 'corrigir', 'conserte', 'crie', 'criar', 'adicione', 'adicionar',
             'altere', 'alterar', 'ajuste', 'ajustar', 'refatore', 'refatorar', 'remova', 'mude', 'mudar', 'troque', 'escreva', 'faça', 'faca',
-            'aplique', 'migre', 'atualize', 'inclua', 'resolva', 'gere', 'monte', 'commit', 'commite', 'push', 'deploy', 'publique'],
+            'aplique', 'migre', 'atualize', 'inclua', 'resolva', 'gere', 'monte', 'commit', 'commite', 'push', 'deploy', 'publique',
+            // 21/10/2026: "use o claude e execute, corrigindo tudo" caía em análise (gerúndio e "execute" não casavam).
+            'corrigindo', 'corrige', 'conserta', 'consertar', 'consertando', 'arrume', 'arrumar', 'arrumando', 'execute', 'executar', 'executando',
+            'implementando', 'resolvendo', 'ajustando', 'aplicando'],
         'revisao' => ['revise', 'revisar', 'revisão', 'revisao', 'review', 'audite', 'auditar', 'confira', 'valide', 'validar', 'avalie o código'],
         'planejamento' => ['planeje', 'planejar', 'plano', 'arquitetura', 'arquitete', 'desenhe', 'proponha', 'estratégia', 'estrategia', 'roadmap'],
         'investigacao' => ['investigue', 'investigar', 'descubra', 'por que', 'porque', 'entenda', 'diagnostique', 'mapeie'],
@@ -54,6 +57,7 @@ class Roteador
      */
     private const IMPLEMENTA_DE_VERDADE = ['implemente', 'implementar', 'inplementar', 'inplemente', 'implante', 'implantar', 'corrija', 'corrigir', 'conserte', 'refatore', 'refatorar', 'migre',
         'adicione', 'altere', 'remova', 'ajuste', 'inclua', 'troque', 'mude', 'atualize', 'aplique', 'resolva',
+        'corrigindo', 'corrige', 'conserta', 'consertar', 'arrume', 'arrumar', 'execute', 'executar', 'implementando', 'resolvendo', 'ajustando',
         // Commit e deploy são execução (13/10/2026: "pode fazer commit e deploy"
         // caía em análise). Deploy pede o código da máquina sempre.
         // Push também (T-368): "pode fazer o push", resposta a uma pergunta
