@@ -48,6 +48,19 @@ class ConversaTest extends TestCase
     }
 
     /**
+     * T-471: a aba Ajustes rola por dentro e tem rótulo `sr-only` (absoluto).
+     * Sem ancestral posicionado nela, o rótulo estica a PÁGINA e, ao rolar,
+     * sidebar e cockpit aparecem cortados no meio da janela, só com o fundo
+     * embaixo.
+     */
+    public function test_aba_ajustes_prende_os_absolutos_dentro_da_rolagem(): void
+    {
+        $this->actingAs($this->comCentral())->get(route('central-ia.index'))
+            ->assertOk()
+            ->assertSee('class="relative grid min-h-0 flex-1 content-start gap-3 overflow-y-auto lg:grid-cols-2"', false);
+    }
+
+    /**
      * O `conta-ativa` do grupo encerra a sessão e manda ao login — a mesma
      * régua de toda tela, sem porta própria da Central.
      */
