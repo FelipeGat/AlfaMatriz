@@ -1,5 +1,26 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 21/10/2026 — Central de IA para o time todo (v2026.10.20.1, T-374)
+
+### Novidades
+
+- **Cada pessoa conecta a própria máquina.** Em Ajustes da Central › Minhas
+  máquinas, você gera um comando, cola no terminal e pronto: funciona no
+  Windows (WSL), no Linux e no Mac. A mesma tela mostra as máquinas
+  conectadas, avisa quando uma sai do ar e desconecta na hora.
+- **No Windows, a Central fica no ar sozinha.** Fechar o Ubuntu não desliga
+  mais a máquina, e ao entrar no Windows ela volta em até um minuto, sem
+  abrir janela.
+- **Bots do Telegram de cada pessoa.** O bot da conversa é cadastrado em
+  Ajustes › Telegram, com o passo a passo do @BotFather. O bot do código de
+  confirmação fica só na sua máquina e nunca passa pelo servidor.
+- **Nada preso a um computador.** Memória, agenda pessoal, painel de
+  andamento e regras de método viraram opções de cada pessoa nos Ajustes. A
+  agenda da Central passa a ser a Agenda do AlfaMatriz.
+- **Administração pela tela.** Quem tem os perfis Administrador e Central de
+  IA libera as contas e define os limites de uso. Conta nova começa
+  bloqueada até ser liberada.
+
 ## AlfaMatriz — 20/10/2026 — Sincronização dos sistemas mais firme e mais fácil de investigar (v2026.10.20.5, T-412)
 
 ### Novidades
