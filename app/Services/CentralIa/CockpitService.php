@@ -19,6 +19,9 @@ use Illuminate\Support\Carbon;
  */
 class CockpitService
 {
+    /** O dono do repositório no GitHub → o nome do grupo da tela (em minúsculas). */
+    public const GRUPO_DO_DONO = ['vixhouse' => 'vixcard', 'felipegat' => 'grupo soluções'];
+
     public function __construct(private readonly AgentesService $agentes) {}
 
     public function montar(User $user): array
@@ -33,7 +36,13 @@ class CockpitService
         // '' é a conversa Geral: tem tarefas, mas não é projeto da barra.
         $nomes = array_values(array_filter(array_unique(array_merge($fixados, $tarefas->keys()->all(), $recentes, $maquina['projetos'])), fn ($n) => $n !== ''));
 
-        $projetos = array_map(function (string $nome) use ($user, $fixados, $tarefas, $maquina, $grupoDe) {
+        // A empresa vem do GitHub do projeto (Felipe, 21/10/2026: "separar por empresa pelo git"): o
+        // repositório da VixHouse cai no grupo VixCard e o da conta da Alfa no Grupo Soluções, se a
+        // pessoa tiver esses grupos. Projeto sem GitHub conhecido fica no grupo que ela escolheu.
+        $gruposPorNome = \App\Models\CentralIaGrupo::where('user_id', $user->id)->get(['id', 'nome'])->mapWithKeys(fn ($g) => [mb_strtolower(trim($g->nome)) => $g->id]);
+        $grupoDoGit = fn (?string $remoto) => $remoto ? ($gruposPorNome[self::GRUPO_DO_DONO[mb_strtolower(strtok($remoto, '/'))] ?? ''] ?? null) : null;
+
+        $projetos = array_map(function (string $nome) use ($user, $fixados, $tarefas, $maquina, $grupoDe, $grupoDoGit) {
             $emCurso = $tarefas->get($nome, collect());
             $ultimaMensagem = CentralIaMensagem::de($user)->where('projeto', $nome)->max('created_at');
             $ultimaAtividade = collect([$emCurso->max('ultima_atividade_em'), $ultimaMensagem ? Carbon::parse($ultimaMensagem) : null])->filter()->max();
@@ -51,7 +60,7 @@ class CockpitService
             return [
                 'nome' => $nome,
                 'fixado' => in_array($nome, $fixados, true),
-                'grupo_id' => $grupoDe[$nome] ?? null,
+                'grupo_id' => $grupoDoGit($maquina['estado'][$nome]['remoto'] ?? null) ?? $grupoDe[$nome] ?? null,
                 'na_maquina' => in_array($nome, $maquina['projetos'], true),
                 'estado' => $estado,
                 'atencao' => in_array($estado, ['aguardando_voce', 'falhou'], true),
@@ -61,6 +70,8 @@ class CockpitService
                 'git' => $maquina['estado'][$nome] ?? null,
             ];
         }, $nomes);
+        // Pasta que saiu da máquina (arquivada em 21/10/2026) e não tem conversa em curso não aparece mais.
+        $projetos = array_values(array_filter($projetos, fn ($p) => $p['na_maquina'] || $p['tarefas_em_curso'] > 0 || ! $maquina['online']));
 
         return [
             'projetos' => $projetos,

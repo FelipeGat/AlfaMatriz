@@ -352,6 +352,8 @@ function estadoDosProjetos(projetos) {
             e.branch = git(dir, 'branch', '--show-current') || null;
             e.git = true;
             e.pendentes = git(dir, 'status', '--porcelain').split('\n').filter(Boolean).length;
+            // Dono/repositório no GitHub: a tela agrupa por empresa a partir dele (Alfa ou VixHouse).
+            try { e.remoto = (git(dir, 'remote', 'get-url', 'origin').match(/github\.com[:/]([^/\s]+\/[^/\s]+?)(?:\.git)?$/) || [])[1] || null; } catch { e.remoto = null; }
             const [quando, msg] = git(dir, 'log', '-1', '--format=%cI%x09%s').split('\t');
             e.ultimo_commit = quando || null;
             e.ultimo_commit_msg = msg || null;

@@ -250,6 +250,8 @@ class CentralIaRunnerController extends Controller
                 'sessoes' => is_array($e['sessoes'] ?? null) ? array_values(array_intersect($e['sessoes'], ['claude', 'codex', 'copilot'])) : [],
                 'fase' => is_string($e['fase'] ?? null) ? mb_substr($e['fase'], 0, 40) : null,
                 'atividade' => is_string($e['atividade'] ?? null) ? mb_substr($e['atividade'], 0, 40) : null,
+                // "dono/repositório" no GitHub; outro formato é descartado.
+                'remoto' => is_string($e['remoto'] ?? null) && preg_match('/^[A-Za-z0-9_.-]{1,64}\/[A-Za-z0-9_.-]{1,100}$/', $e['remoto']) ? $e['remoto'] : null,
             ];
         }
 

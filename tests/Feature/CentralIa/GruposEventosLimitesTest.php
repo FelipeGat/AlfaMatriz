@@ -40,6 +40,24 @@ class GruposEventosLimitesTest extends TestCase
         ]);
     }
 
+    /** Felipe, 21/10/2026: a empresa vem do GitHub; pasta arquivada some da tela. */
+    public function test_grupo_pelo_github_e_pasta_fora_da_maquina_some(): void
+    {
+        $user = $this->comCentral();
+        $vix = $this->actingAs($user)->postJson(route('central-ia.grupos.criar'), ['nome' => 'VixCard'])->json('id');
+        $alfa = $this->actingAs($user)->postJson(route('central-ia.grupos.criar'), ['nome' => 'Grupo Soluções'])->json('id');
+        // Escolha manual errada: o GitHub manda.
+        $this->actingAs($user)->postJson(route('central-ia.projetos.grupo', 'gestor'), ['grupo_id' => $vix])->assertOk();
+        $this->actingAs($user)->postJson(route('central-ia.projetos.grupo', 'piaui-brag'), ['grupo_id' => $vix]);
+        CentralIaRunner::where('user_id', $user->id)->update(['projetos' => ['gestor', 'alfahome', 'vix-beer'], 'estado' => [
+            'gestor' => ['git' => true, 'remoto' => 'FelipeGat/Gestor.Alfa'], 'vix-beer' => ['git' => true, 'remoto' => 'VixHouse/Vix-Beer'], 'alfahome' => ['git' => true, 'remoto' => null],
+        ]]);
+
+        $p = collect($this->actingAs($user)->getJson(route('central-ia.painel'))->json('projetos'))->keyBy('nome');
+        $this->assertSame([$alfa, $vix, null], [$p['gestor']['grupo_id'], $p['vix-beer']['grupo_id'], $p['alfahome']['grupo_id']]);
+        $this->assertFalse($p->has('piaui-brag'), 'pasta arquivada, sem conversa em curso, não aparece');
+    }
+
     public function test_grupos_da_conta_e_projeto_no_grupo(): void
     {
         $user = $this->comCentral();
