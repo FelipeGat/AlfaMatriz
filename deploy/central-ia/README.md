@@ -180,6 +180,22 @@ Dono: "o runner faz tudo o que o servidor manda — isso não pode ocorrer". Ago
 
 Limpar uma worktree já revisada: `git -C <pasta de projetos>/<projeto> worktree remove <caminho>`.
 
+### O quadro do AlfaMatriz (T-472)
+
+O agente abre, lê, move e comenta tarefas (e mexe na agenda) **em nome de quem fez o pedido**, pelo
+servidor MCP `quadro`, sem nada configurado na máquina:
+
+- A cada pedido, o AlfaMatriz emite um token do `/mcp` (habilidade `mcp`) para a conta de quem pediu, que
+  vence no teto da execução + 25 min e é apagado quando ela termina, de qualquer jeito. A Atividade
+  registra qual pedido o emitiu; o token não aparece em log, auditoria nem resposta.
+- Só recebe quem administra a Central ou quem um administrador liberou ("Os agentes podem usar o quadro
+  de tarefas e a agenda", desligado por padrão). Pedido sem ferramentas (Secretário) nunca recebe.
+- O endereço é o `ALFAMATRIZ_URL` da máquina + `/mcp`. Claude e Copilot leem o token de
+  `central-ia-quadro.json` (600) na pasta temporária do pedido; o Codex, de `ALFAMATRIZ_MCP_TOKEN`, só no
+  ambiente do processo dele. Nos modos leitura e restrito, o Claude ganha só `mcp__quadro`.
+- O `ALFAMATRIZ_MCP_TOKEN` que a máquina tenha no ambiente NÃO passa ao agente: seria de outra pessoa ou
+  de outro servidor. Sem liberação, o agente é avisado no prompt e diz isso, em vez de dar 401.
+
 ## O que é apagado sozinho (T-378)
 
 Prazos aceitos pelo dono em 14/10/2026. Antes nada da Central era apagado.

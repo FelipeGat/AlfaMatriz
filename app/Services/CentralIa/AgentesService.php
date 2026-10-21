@@ -630,7 +630,11 @@ class AgentesService
             return null;
         }
 
-        Eventos::registrar($user, 'inicio', "{$execucao->nomeDoAgente()} começou ({$execucao->modo}) na máquina {$runner->maquina}", Eventos::da($execucao) + ['origem' => 'runner']);
+        // O quadro do AlfaMatriz em nome de quem pediu (T-472). O "começou"
+        // registra que este pedido levou o acesso, e até quando.
+        $quadro = app(TokenDoQuadro::class)->paraExecucao($user, $execucao, $this->teto($execucao));
+        $comQuadro = $quadro['token'] ? ", com acesso ao quadro (vence em {$quadro['minutos']} min ou ao fim do pedido)" : '';
+        Eventos::registrar($user, 'inicio', "{$execucao->nomeDoAgente()} começou ({$execucao->modo}) na máquina {$runner->maquina}{$comQuadro}", Eventos::da($execucao) + ['origem' => 'runner']);
         $tarefa = $execucao->tarefa;
         // A sessão interna do agente só continua com o MESMO agente na mesma
         // tarefa; entre agentes diferentes, quem leva o contexto é o dossiê.
@@ -734,6 +738,10 @@ class AgentesService
             'na_pasta' => (bool) config('central_ia.agentes.implementar_na_pasta') || ($tarefa?->ehAssunto() && $execucao->projeto === ''),
             // Outro agente assumindo uma conversa do VS Code: o runner lê o
             // histórico dela e põe no prompt (só texto, sem ferramentas).
+            // Token do `/mcp` deste pedido, ou o motivo de não haver um. O
+            // endereço quem escolhe é a máquina (o AlfaMatriz que ela alcança).
+            'quadro' => $quadro['token'] || $quadro['motivo']
+                ? ['token' => $quadro['token'], 'conta' => $user->name, 'motivo' => $quadro['motivo']] : null,
             'importar' => ! $continuar && ! $corte && $sessaoDoVsCode && $sessaoDoVsCode['agente'] !== $execucao->agente
                 && ! CentralIaExecucao::where('tarefa_id', $tarefa?->id)->where('agente', $execucao->agente)->where('id', '<', $execucao->id)->exists()
                 ? $sessaoDoVsCode : null,

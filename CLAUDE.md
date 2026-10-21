@@ -217,6 +217,15 @@ comando pelo Telegram, tag de produção só depois de ele autorizar — ainda n
   `arquivar_tarefa` e `desarquivar_tarefa` (#208), passam pelo `ArquivoDeTarefas`, como a tela. O servidor lista todas numa
   página só (`defaultPaginationLength = 50`): o padrão do pacote é 15, e cliente que não segue o
   cursor não veria as últimas. Sem porta, de propósito: anexar arquivo e reordenar o checklist.
+- **A Central de IA usa o quadro por token POR PEDIDO (T-472, 21/10/2026).** O agente da Central
+  dava 401 no `/mcp`: o token vinha de uma variável que o runner não tem, e só a máquina do dono
+  tinha o servidor configurado. Agora `TokenDoQuadro` emite, na entrega do pedido, um token `mcp`
+  em nome de QUEM PEDIU (nunca um token único: tudo sairia assinado por uma pessoa só), que vence
+  no teto + 25 min e é apagado quando a execução sai de "executando" (`CentralIaExecucao::booted`).
+  Só para quem administra a Central ou foi liberado (`quadro` na política, desligado por padrão);
+  pedido sem ferramentas nunca. O runner monta o servidor `quadro` (ver `deploy/central-ia/README.md`).
+  Achado no caminho: `matriz.alfasolucoes.cloud/mcp` responde pela internet (401 sem token) — o "só
+  pela tailnet" acima já não descreve a produção.
 - **O tipo "Bug" (#204) nasceu "Defeito"** e foi renomeado no mesmo dia — chave `bug`, convertida
   pela migração `2026_10_02_090000`. As colunas do relato continuam `defeito_*` de propósito (nome de
   coluna ninguém vê, e renomear quebra a cor antiga na troca azul/verde). **Pendente:** remover

@@ -160,3 +160,10 @@ Schedule::command('suporte:pedro')
     ->everyMinute()
     ->withoutOverlapping()
     ->onOneServer();
+
+// Os tokens do quadro que a Central de IA emite por pedido (T-472) vencem
+// sozinhos, mas a linha fica: um pedido por vez, todo dia, enche a tabela.
+Schedule::command('sanctum:prune-expired', ['--hours' => 24])
+    ->dailyAt('03:50')
+    ->withoutOverlapping()
+    ->onOneServer();
