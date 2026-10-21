@@ -110,6 +110,33 @@ class DiretorioGestor
             ->take($limite)->values()->all();
     }
 
+    /**
+     * Busca larga, para quem é da casa (acesso-interno.md): "apartamento da Emanuelly"
+     * acha a cliente Emanuelly Souza, mesmo sem o nome inteiro. Vale palavra do nome
+     * com 4+ letras citada no texto; mais palavras em comum vêm primeiro. Quem
+     * confirma o cliente, antes de registrar, é a pessoa.
+     *
+     * @return list<array>
+     */
+    public function buscarClientes(string $texto, int $limite = 6): array
+    {
+        // As palavras do próprio pedido não são nome de cliente.
+        $doPedido = ['abrir', 'abra', 'chamado', 'atendimento', 'registrar', 'registra', 'manutencao', 'limpeza', 'apartamento', 'pedro', 'para', 'favor',
+            'cliente', 'servico', 'condensadora', 'condensadoras', 'condicionado', 'urgente', 'visita', 'tecnica', 'tecnico', 'problema', 'preciso', 'pode'];
+        $doTexto = array_flip(array_filter(self::palavras($texto), fn ($p) => mb_strlen($p) >= 4 && ! in_array($p, self::VAZIAS, true) && ! in_array($p, $doPedido, true)));
+        if (! $doTexto) {
+            return [];
+        }
+
+        return collect($this->retrato()['clientes'])
+            ->map(function ($c) use ($doTexto) {
+                $nome = self::palavras(implode(' ', array_filter([$c['fantasia'] ?? null, $c['nome'] ?? null, $c['razao'] ?? null])));
+
+                return [$c, count(array_intersect_key(array_flip($nome), $doTexto))];
+            })
+            ->filter(fn ($par) => $par[1] > 0)->sortByDesc(fn ($par) => $par[1])->take($limite)->map(fn ($par) => $par[0])->values()->all();
+    }
+
     /** O nome aparece no texto? Todas as palavras que identificam o nome precisam estar nele. @param array<string, int> $palavrasDoTexto */
     public static function citado(string $nome, array $palavrasDoTexto): bool
     {

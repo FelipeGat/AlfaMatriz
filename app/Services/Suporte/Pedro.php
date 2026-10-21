@@ -167,8 +167,20 @@ class Pedro
         $c = $p->conversa;
         $interno = app(AcessoInterno::class)->deQuem((string) $c->telefone);
         $bloco = $texto !== null ? Contexto::ler($texto, $interno ? 3500 : 1500) : null;
-        // Consulta interna só responde: não abre atendimento, não vai a setor, não confirma cliente (FR-A4).
+        // Quem é da casa não vai a setor nem confirma cliente (FR-A4); registra atendimento
+        // só para um cliente que estava entre os citados (FR-A7). Fora disso, é resposta.
         if ($bloco && $interno) {
+            $registro = null;
+            if ($bloco['acao'] === 'abrir_atendimento' && ! $c->comHumano()) {
+                $cliente = app(AcessoInterno::class)->clientesCitados($this->contexto->textoParaRegistrar($c))[(string) $bloco['cliente']] ?? null;
+                $registro = $cliente ? $this->atendimento->registrarPorDentro($c, $interno, $cliente, $bloco) : null;
+                if (! $cliente) {
+                    $bloco['resposta'] .= "\n\n(Não registrei: não consegui confirmar o cliente no Gestor. Me diga o nome como está cadastrado.)";
+                }
+            }
+            if ($registro) {
+                $bloco['resposta'] .= "\n\n".$registro;
+            }
             $bloco = ['acao' => 'responder', 'cliente' => null, 'sistema' => null, 'destino' => null, 'assunto_id' => null, 'roteiro' => null, 'setor' => null] + $bloco;
         }
 

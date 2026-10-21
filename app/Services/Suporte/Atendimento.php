@@ -114,6 +114,75 @@ class Atendimento
         return $r;
     }
 
+    /**
+     * Atendimento pedido por quem é da casa (acesso-interno.md, FR-A7): para um cliente
+     * do Gestor, em modo novo, vincular ou reabrir, com responsável e data. Novo, com a
+     * gravação no Gestor ligada, vai pela máquina como o do cliente; o resto vira tarefa
+     * no quadro com o que lançar no Gestor. A conversa da pessoa não fica presa a ela:
+     * quem é da casa registra quantos precisar.
+     *
+     * @param  array{nome: string, perfil: string}  $acesso
+     * @param  array  $cliente  o cliente do retrato do Gestor
+     * @return string|null o que vai na resposta, ou null se nada foi registrado
+     */
+    public function registrarPorDentro(SuporteConversa $c, array $acesso, array $cliente, array $bloco): ?string
+    {
+        $d = app(DiretorioGestor::class);
+        $nomeCliente = trim(($cliente['fantasia'] ?? '') ?: ($cliente['nome'] ?? 'cliente'));
+        $assunto = collect($d->assuntosPara($cliente))->firstWhere('id', $bloco['assunto_id']);
+        $atendimento = $bloco['atendimento'] ? $d->atendimentoPorNumero($bloco['atendimento']) : null;
+        // Vincular ou reabrir só um atendimento DESTE cliente; fora disso, é um novo.
+        $modo = in_array($bloco['modo'], ['vincular', 'reabrir'], true) && $atendimento && (int) $atendimento['cliente_id'] === (int) $cliente['id'] ? $bloco['modo'] : 'novo';
+        $data = $bloco['data'] ? \Carbon\CarbonImmutable::parse($bloco['data']) : null;
+        $detalhes = array_filter([
+            $bloco['responsavel'] ? 'Responsável: '.$bloco['responsavel'].'.' : null,
+            $data ? 'Para: '.$data->format('d/m/Y').'.' : null,
+        ]);
+        $quem = "{$acesso['nome']} ({$c->telefoneLegivel()})";
+        $resumo = trim((string) $bloco['resumo']) ?: 'Atendimento pedido pelo WhatsApp.';
+
+        if ($modo === 'novo' && config('services.suporte_pedro.gestor_gravar') && $assunto) {
+            $a = SuporteGestorAbertura::create(['conversa_id' => $c->id, 'gestor_cliente_id' => (int) $cliente['id'], 'assunto_id' => $assunto['id'], 'empresa_id' => $cliente['empresa_id'] ?? null,
+                'descricao' => Str::limit($resumo.($detalhes ? ' '.implode(' ', $detalhes) : ''), 1500)."\n\n(Registrado pelo Pedro a pedido de {$quem}.)",
+                'solicitante' => Str::limit($acesso['nome'], 120, ''), 'telefone' => $c->telefone]);
+
+            return $a ? 'Pedido de registro enviado ao Gestor: o número do atendimento chega em seguida.' : null;
+        }
+
+        $pedro = User::where('email', self::CONTA)->first();
+        if (! $pedro) {
+            return null;
+        }
+        $acao = match ($modo) {
+            'vincular' => 'VINCULAR ao atendimento nº '.$atendimento['numero'].' (em aberto)',
+            'reabrir' => 'REABRIR o atendimento nº '.$atendimento['numero'],
+            default => 'ABRIR atendimento novo',
+        };
+        $lancar = "LANÇAR NO GESTOR: {$acao} — cliente nº {$cliente['id']} ({$nomeCliente})".($assunto ? ", assunto {$assunto['id']} {$assunto['nome']}" : '').'.';
+        $t = $this->tarefas->criar([
+            'titulo' => Str::limit('Suporte: '.$nomeCliente.' — '.$resumo, 150),
+            'resumo' => Str::limit($resumo.' '.implode(' ', $detalhes).' '.$lancar.' Pedido por '.$quem.' pelo WhatsApp. Conversa: '.route('suporte.conversas', $c->id), 500),
+            'tipo' => 'operacional',
+        ], $pedro);
+        if (! $t) {
+            return null;
+        }
+        $responsaveis = $this->responsaveis()->sortBy(fn ($u) => array_search($u->email, (array) config('services.suporte_pedro.responsaveis'), true))->values();
+        $t->forceFill(array_filter(['responsavel_id' => $responsaveis->first()?->id, 'prazo' => $data?->toDateString()]))->save();
+        Notificacao::where('tarefa_id', $t->id)->where('tipo', 'triagem')->delete();
+        SuporteAtendimento::create(['tarefa_id' => $t->id, 'conversa_id' => $c->id, 'destino' => 'gestor', 'gestor_cliente_id' => (int) $cliente['id'],
+            'gestor_numero' => $modo === 'vincular' ? (string) $atendimento['numero'] : null]); // reabrir: o nº volta a valer só quando a equipe confirmar
+        foreach ($responsaveis as $u) {
+            Notificacao::create(['destinatario_id' => $u->id, 'tipo' => 'direcionamento', 'nivel' => 'atencao', 'icone' => 'balao', 'tarefa_id' => $t->id,
+                'titulo' => Notificacao::caber("Suporte T-{$t->id} ({$acesso['nome']}): {$nomeCliente} — {$resumo}"), 'meta' => 'Suporte WhatsApp', 'rota' => route('suporte.conversas', $c->id)]);
+        }
+        if ($this->telegram->configurado()) {
+            $this->telegram->enviar('📞 <b>Suporte T-'.$t->id.'</b> (pedido de '.e($acesso['nome']).'): '.e($nomeCliente)."\n".e($resumo)."\n".e($lancar));
+        }
+
+        return "Registrado no quadro como T-{$t->id} ({$acao}). A equipe lança no Gestor.";
+    }
+
     /** @return \Illuminate\Support\Collection<int, User> */
     private function responsaveis()
     {

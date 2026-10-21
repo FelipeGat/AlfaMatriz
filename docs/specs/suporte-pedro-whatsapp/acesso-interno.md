@@ -31,10 +31,23 @@ Telegram". O Pedro "não pode se confundir: tem que ter certeza de que sou eu, p
   você".
 - **FR-A4, conversa interna não é atendimento.** Prompt próprio, sem roteiros de cliente, sem identificação de
   cliente e sem limite de 4 frases. A resposta sai com formatação de WhatsApp e pode chegar a 3.500 caracteres. Não
-  abre atendimento nem encaminha a setor, e não conta para o limite de tentativas que passa ao especialista.
+  encaminha a setor e não conta para o limite de tentativas que passa ao especialista. Abrir atendimento, só pelo
+  FR-A7. Se o Pedro não entender o pedido ou não souber fazer, pede um áudio explicando (Felipe, 21/10/2026).
 - **FR-A5, quem não está na lista é cliente.** Se alguém de outro número disser que é diretor, sócio ou funcionário e
   pedir dado interno, o Pedro não passa nada e explica que esse tipo de informação só sai para os números
   cadastrados.
 - **FR-A6, dado velho é dito.** Cada bloco leva a hora em que foi lido; retrato do Gestor com mais de 3 h é avisado
   como desatualizado.
+- **FR-A7, registrar atendimento a pedido de quem é da casa** (Felipe, 21/10/2026, depois do teste do Wallas: "abrir
+  um atendimento para a Emanuelle para o Vitor amanhã"):
+  1. O Pedro busca o cliente no Gestor. A busca é larga: basta uma palavra do nome. Sem cliente, ou com mais de um
+     possível, ele pergunta qual é.
+  2. Mostra os atendimentos daquele cliente, abertos e concluídos, com nº e etapa, e pergunta se deve criar um novo,
+     vincular a um aberto ou reabrir um concluído.
+  3. Confirma cliente, serviço, responsável e data, e só registra depois do "sim".
+  - Só vale cliente que estava entre os citados. Vincular e reabrir só valem para atendimento daquele cliente.
+  - **Como registra:** novo, com `SUPORTE_PEDRO_GESTOR_GRAVAR` ligado, vai ao Gestor pela máquina. Todo o resto vira
+    tarefa no quadro, com "LANÇAR NO GESTOR" (o que fazer, cliente, assunto), responsável, data no prazo e quem
+    pediu. A tarefa fica com o primeiro responsável do suporte.
+  - A conversa de quem é da casa não fica presa a um atendimento: a pessoa registra quantos precisar.
 - **Fora do escopo** (Felipe, 21/10/2026: "pode deixar de fora o AlfaHome"): o pessoal do AlfaHome.

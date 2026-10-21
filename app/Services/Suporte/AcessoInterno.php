@@ -84,6 +84,47 @@ class AcessoInterno
         return $blocos;
     }
 
+    /**
+     * Os clientes do Gestor que combinam com o que a pessoa escreveu, para registrar
+     * atendimento: o código que a IA devolve só vale se estiver aqui.
+     *
+     * @return array<string, array> código "gestor:ID" => cliente do retrato
+     */
+    public function clientesCitados(string $texto): array
+    {
+        return collect(app(DiretorioGestor::class)->buscarClientes($texto, 5))->mapWithKeys(fn ($c) => ['gestor:'.$c['id'] => $c])->all();
+    }
+
+    /**
+     * O bloco do pedido para registrar: os clientes citados, com os atendimentos de
+     * cada um (para a pessoa escolher entre criar, vincular ou reabrir — Felipe,
+     * 21/10/2026), os assuntos e a equipe que pode ficar responsável.
+     */
+    public function blocoParaRegistrar(string $texto): string
+    {
+        $d = app(DiretorioGestor::class);
+        $clientes = $this->clientesCitados($texto);
+        if (! $clientes) {
+            return "## CLIENTES DO GESTOR CITADOS\n- Nenhum cliente do Gestor combina com o que foi escrito: para registrar, peça o nome do cliente como está no Gestor (condomínio, empresa ou pessoa).";
+        }
+        $equipe = collect($d->retrato()['equipe'] ?? []);
+        $nomeDe = fn (array $ids) => collect($ids)->map(fn ($id) => (string) ($equipe->firstWhere('id', $id)['nome'] ?? ''))->filter()->implode(', ');
+
+        return "## CLIENTES DO GESTOR CITADOS (para registrar atendimento; use só estes códigos)\n"
+            .collect($clientes)->map(function ($c, $codigo) use ($d, $nomeDe) {
+                $atendimentos = collect($d->atendimentosDe((int) $c['id'], 8))->map(fn ($a) => '    • nº '.($a['numero'] ?? $a['id']).' — '.str_replace('_', ' ', (string) ($a['status'] ?? '?'))
+                    .(! empty($a['criado_em']) ? ' — de '.substr((string) $a['criado_em'], 8, 2).'/'.substr((string) $a['criado_em'], 5, 2).'/'.substr((string) $a['criado_em'], 0, 4) : '')
+                    .(($quem = $nomeDe((array) ($a['funcionarios'] ?? []))) !== '' ? ' — com '.$quem : '')
+                    .' — '.Str::limit(trim((string) ($a['descricao'] ?? '')), 100, '…'));
+
+                return '- '.$codigo.': '.trim(($c['fantasia'] ?? '') ?: ($c['nome'] ?? '')).(! empty($c['razao']) ? ' — '.$c['razao'] : '')
+                    .(! empty($c['cidade']) ? ', '.$c['cidade'] : '').(! empty($c['empresa']) ? ' (empresa '.$c['empresa'].')' : '')
+                    ."\n  Atendimentos dela/dele (mais recentes primeiro):\n".($atendimentos->isNotEmpty() ? $atendimentos->implode("\n") : '    • nenhum')
+                    ."\n  Assuntos: ".collect($d->assuntosPara($c))->take(15)->map(fn ($a) => $a['id'].' '.$a['nome'])->implode('; ');
+            })->implode("\n")
+            ."\n- Equipe (para o responsável): ".$equipe->pluck('nome')->implode(', ');
+    }
+
     /** Todos os abertos do Gestor, e os citados pelo número (qualquer etapa). */
     private function atendimentos(string $ultimasMensagens): string
     {

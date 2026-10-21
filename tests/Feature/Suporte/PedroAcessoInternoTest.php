@@ -38,13 +38,16 @@ class PedroAcessoInternoTest extends TestCase
         Sanctum::actingAs($this->felipe, ['central-ia-runner']);
         $this->postJson(route('suporte.runner.gestor'), ['maquina' => 'wsl', 'lido_em' => now()->toIso8601String(),
             'clientes' => [['id' => 13, 'nome' => 'CONDOMINIO CASTANHEIRAS', 'fantasia' => 'CASTANHEIRAS', 'telefones' => [], 'empresa' => 'GW'],
-                ['id' => 20, 'nome' => 'EDIFICIO SOLAR', 'fantasia' => 'SOLAR', 'telefones' => []]],
+                ['id' => 20, 'nome' => 'EDIFICIO SOLAR', 'fantasia' => 'SOLAR', 'telefones' => []],
+                ['id' => 30, 'nome' => 'EMANUELLY SOUZA', 'fantasia' => '', 'telefones' => [], 'empresa_id' => 2, 'empresa' => 'GW']],
             'atendimentos' => [
                 ['id' => 1, 'numero' => '776', 'cliente_id' => 13, 'descricao' => 'Interfone da churrasqueira', 'status' => 'em_atendimento', 'criado_em' => '2026-10-01 09:00:00', 'funcionarios' => [19]],
                 ['id' => 2, 'numero' => '810', 'cliente_id' => 20, 'descricao' => 'Câmera da garagem', 'status' => 'aberto', 'criado_em' => '2026-10-15 09:00:00', 'funcionarios' => []],
                 ['id' => 3, 'numero' => '719', 'cliente_id' => 13, 'descricao' => 'Portão', 'status' => 'concluido', 'criado_em' => '2026-09-01 09:00:00', 'funcionarios' => [19]],
+                ['id' => 4, 'numero' => '700', 'cliente_id' => 30, 'descricao' => 'Limpeza do ar-condicionado da sala', 'status' => 'concluido', 'criado_em' => '2026-08-10 09:00:00', 'funcionarios' => [21], 'assunto_id' => 5],
             ],
-            'assuntos' => [], 'equipe' => [['id' => 19, 'nome' => 'Jonas Técnico', 'telefones' => ['(27) 99999-1234']]],
+            'assuntos' => [['id' => 5, 'nome' => 'Manutenção de ar-condicionado', 'tipo' => 'SERVICO', 'categoria' => 'Climatização', 'empresa_id' => 2]],
+            'equipe' => [['id' => 19, 'nome' => 'Jonas Técnico', 'telefones' => ['(27) 99999-1234']], ['id' => 21, 'nome' => 'Vitor Silva', 'telefones' => []]],
         ])->assertOk();
         SecretarioGestorRetrato::create(['user_id' => $this->felipe->id, 'maquina' => 'wsl', 'lido_em' => now()->subMinutes(20), 'dados' => ['blocos' => [
             'cobrancas_vencidas' => ['quantidade' => 25, 'valor' => 28286.31, 'itens' => [['texto' => 'LEROY MERLIN — mensalidade', 'data' => '2026-10-10', 'valor' => 900]]],
@@ -134,5 +137,44 @@ class PedroAcessoInternoTest extends TestCase
         $outro = User::factory()->create(['email' => 'outro@teste.local']);
         $this->actingAs($outro)->get(route('suporte.pedro'))->assertOk()->assertDontSee('99745-8265');
         $this->post(route('suporte.pedro.acessos'), ['acessos_internos' => '+55 27 98888-7777 | Intruso | diretor'])->assertForbidden();
+    }
+
+    /** FR-A7 (Felipe, 21/10/2026): achar a cliente, mostrar o que ela tem e perguntar antes de registrar. */
+    public function test_pedido_de_registro_traz_a_cliente_com_os_atendimentos_dela(): void
+    {
+        $p = app(Contexto::class)->prompt($this->conversa('5527997458265', 'Pedro, abre um atendimento para a Emanuelly, limpeza das condensadoras, com o Vitor amanhã'));
+        $this->assertStringContainsString('REGISTRAR ATENDIMENTO', $p);
+        $this->assertStringContainsString('gestor:30: EMANUELLY SOUZA', $p);
+        $this->assertStringContainsString('nº 700 — concluido — de 10/08/2026 — com Vitor Silva', $p);
+        $this->assertStringContainsString('5 Manutenção de ar-condicionado', $p);
+        $this->assertStringContainsString('Vitor Silva', $p);
+        $this->assertStringContainsString('ÁUDIO', $p);
+    }
+
+    public function test_registro_reaberto_vira_tarefa_com_o_que_lancar_no_gestor(): void
+    {
+        Http::fake(fn () => Http::response(['messages' => [['id' => 'wamid.'.uniqid()]]]));
+        config(['services.suporte_pedro.responsaveis' => ['rossini@teste.local']]);
+        User::factory()->create(['email' => 'rossini@teste.local']);
+        $c = $this->conversa('5527997458265', 'Abre um atendimento para a Emanuelly, limpeza das condensadoras, com o Vitor amanhã. Pode reabrir o 700.');
+        $pedido = app(Pedro::class)->enfileirar($c->id);
+        $pedido->update(['situacao' => 'reservado']);
+        app(Pedro::class)->concluir($this->felipe, $pedido->id, '<<<PEDRO {"resposta": "Registrado, Wallas.", "acao": "abrir_atendimento", "resumo": "Limpeza das condensadoras do apartamento",'
+            .' "cliente": "gestor:30", "modo": "reabrir", "atendimento": "700", "assunto_id": 5, "responsavel": "Vitor Silva", "data": "2026-10-22"} PEDRO>>>', null);
+
+        $t = \App\Models\Tarefa::sole();
+        $this->assertStringContainsString('Suporte: EMANUELLY SOUZA', $t->titulo);
+        $this->assertStringContainsString('LANÇAR NO GESTOR: REABRIR o atendimento nº 700 — cliente nº 30 (EMANUELLY SOUZA), assunto 5', $t->resumo);
+        $this->assertStringContainsString('Responsável: Vitor Silva. Para: 22/10/2026.', $t->resumo);
+        $this->assertSame('2026-10-22', $t->prazo?->toDateString());
+        $this->assertStringContainsString("Registrado no quadro como T-{$t->id}", (string) $c->mensagens()->reorder()->where('direcao', 'pedro')->value('texto'));
+        $this->assertNull($c->fresh()->tarefa_id, 'quem é da casa registra quantos precisar');
+
+        // Cliente que não foi citado não recebe registro, mesmo que a IA diga o código.
+        $c->mensagens()->create(['wamid' => 'wamid.'.uniqid(), 'direcao' => 'entrada', 'tipo' => 'text', 'texto' => 'sim', 'enviada_em' => now()]);
+        $p2 = app(Pedro::class)->enfileirar($c->id);
+        $p2->update(['situacao' => 'reservado']);
+        app(Pedro::class)->concluir($this->felipe, $p2->id, '<<<PEDRO {"resposta": "Feito.", "acao": "abrir_atendimento", "resumo": "x", "cliente": "gestor:20", "modo": "novo"} PEDRO>>>', null);
+        $this->assertSame(1, \App\Models\Tarefa::count());
     }
 }
