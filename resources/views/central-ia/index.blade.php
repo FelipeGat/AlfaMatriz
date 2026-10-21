@@ -691,9 +691,11 @@
                         </div>
                         <div class="flex items-end gap-2">
                             <label for="central-rascunho" class="sr-only">Sua mensagem</label>
-                            {{-- Cresce com o texto até 40% da tela (ou 2 linhas, recolhida); depois rola por dentro. --}}
+                            {{-- Cresce com o texto até 40% da tela (ou 2 linhas, recolhida); depois rola por dentro.
+                                 O x-effect lê também tela, sub-aba, chat e canal: é o que mostra ou esconde a
+                                 caixa, e ela precisa ser remedida quando volta a aparecer (T-475). --}}
                             <textarea @paste="colar($event)" id="central-rascunho" x-model="aba.rascunho" maxlength="{{ config('central_ia.max_texto') }}" rows="2"
-                                      @input="crescer($el)" x-effect="aba.rascunho; $nextTick(() => crescer($el))"
+                                      @input="crescer($el)" x-effect="aba.rascunho; tela; sub; chaveAba; atendimento.ativo; $nextTick(() => crescer($el))"
                                       :readonly="!!aba.pendente" :disabled="bloqueado || !podeEnviar"
                                       @keydown.enter="if (!$event.shiftKey && !$event.isComposing && !window.matchMedia('(pointer: coarse)').matches) { $event.preventDefault(); enviar(); }"
                                       :placeholder="perguntaPendente ? 'Responda a ' + (perguntaPendente.agente || 'quem perguntou') + '… (Enter envia)' : (assuntoAtual ? 'Fale sobre ' + assuntoAtual.titulo + '… (Enter envia, Shift+Enter quebra linha)' : (atual ? 'Peça algo para ' + atual + '… (Enter envia, Shift+Enter quebra linha)' : 'Pergunte ou anote… (Enter envia)'))"

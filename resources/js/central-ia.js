@@ -183,11 +183,21 @@ export function centralIa(config) {
         },
         /** A caixa cresce com o texto, até 40% da altura da janela. */
         crescer(el) {
-            if (!el) return;
+            // Oculta (outra tela, outra sub-aba, x-cloak) a caixa não tem medida:
+            // o scrollHeight vem 0 e ela ficava com ~15 px e o placeholder
+            // cortado até o primeiro clique (T-475). Não mede — a altura que já
+            // tinha fica, e o x-effect da caixa remede quando ela volta à tela.
+            if (!el || !el.getClientRects().length || !el.scrollHeight) return;
             el.style.height = 'auto';
             // Recolhida: duas linhas, o texto rola por dentro e a conversa fica à vista.
             const teto = this.caixaRecolhida ? 52 : Math.round(window.innerHeight * 0.4);
-            el.style.height = Math.min(el.scrollHeight + 2, teto) + 'px';
+            // Piso de duas linhas (o rows="2" da caixa), para nenhuma medida
+            // estranha encolhê-la abaixo do placeholder; nunca acima do teto.
+            const css = getComputedStyle(el);
+            const linha = parseFloat(css.lineHeight) || parseFloat(css.fontSize) * 1.25;
+            const piso = Math.min(Math.ceil(linha * 2 + parseFloat(css.paddingTop) + parseFloat(css.paddingBottom)
+                + parseFloat(css.borderTopWidth) + parseFloat(css.borderBottomWidth)), teto);
+            el.style.height = Math.max(piso, Math.min(el.scrollHeight + 2, teto)) + 'px';
         },
         colar(event) {
             const arquivos = [...(event.clipboardData?.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
