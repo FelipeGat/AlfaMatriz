@@ -81,6 +81,8 @@ class PedroEstagiarioTest extends TestCase
 
     public function test_a_equipe_ve_os_atendimentos_do_cliente_citado(): void
     {
+        // Sem a lista de acesso interno (que já traz o número do Felipe como diretor): aqui vale o funcionário.
+        app(\App\Services\Suporte\Conhecimento::class)->gravarAjuste(\App\Services\Suporte\AcessoInterno::AJUSTE, '');
         app(DiretorioGestor::class)->gravar('wsl', now()->toDateTimeString(),
             [['id' => 13, 'nome' => 'CONDOMINIO CASTANHEIRAS', 'fantasia' => 'CASTANHEIRAS', 'razao' => 'CONDOMINIO RESIDENCIAL PARQUE DAS CASTANHEIRAS', 'cidade' => 'VILA VELHA', 'telefones' => []]],
             [['id' => 1, 'numero' => '900', 'cliente_id' => 13, 'descricao' => 'Portão G1 parado', 'status' => 'em_atendimento', 'criado_em' => '2026-10-18 09:00:00', 'funcionarios' => [19]]],

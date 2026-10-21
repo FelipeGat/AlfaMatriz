@@ -63,6 +63,8 @@ class PedroEquipeTest extends TestCase
 
     public function test_felipe_sem_atendimentos_e_reconhecido_mesmo_com_o_nono_digito_diferente(): void
     {
+        // Sem a lista de acesso interno (que já traz o número do Felipe como diretor): aqui vale o funcionário.
+        app(\App\Services\Suporte\Conhecimento::class)->gravarAjuste(\App\Services\Suporte\AcessoInterno::AJUSTE, '');
         $p = $this->prompt('552798845397');
         $this->assertStringContainsString('Felipe Henrique Gat, da equipe', $p);
         $this->assertStringContainsString('ATENDIMENTOS ABERTOS EM NOME DELE (0)', $p);
