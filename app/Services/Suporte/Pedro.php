@@ -30,7 +30,11 @@ class Pedro
     /** Põe a conversa na fila, se o Pedro deve responder agora. */
     public function enfileirar(int $conversaId): ?SuportePedido
     {
-        if (! config('services.suporte_pedro.ligado') || ! Horario::aberto()) {
+        if (! config('services.suporte_pedro.ligado')) {
+            return null;
+        }
+        // Quem consulta por dentro é atendido a qualquer hora; cliente, só no horário (acesso-interno.md).
+        if (! Horario::aberto() && ! app(AcessoInterno::class)->deQuem((string) SuporteConversa::whereKey($conversaId)->value('telefone'))) {
             return null;
         }
 
@@ -84,7 +88,7 @@ class Pedro
             return false;
         }
 
-        return ! app(DiretorioGestor::class)->daEquipe($c->telefone);
+        return ! app(DiretorioGestor::class)->daEquipe($c->telefone) && ! app(AcessoInterno::class)->deQuem((string) $c->telefone);
     }
 
     private function encaminharAoEspecialista(SuportePedido $p): void
@@ -161,7 +165,12 @@ class Pedro
                 ->update(['transcricao' => mb_substr(trim((string) $t['texto']), 0, 4000)]);
         }
         $c = $p->conversa;
-        $bloco = $texto !== null ? Contexto::ler($texto) : null;
+        $interno = app(AcessoInterno::class)->deQuem((string) $c->telefone);
+        $bloco = $texto !== null ? Contexto::ler($texto, $interno ? 3500 : 1500) : null;
+        // Consulta interna só responde: não abre atendimento, não vai a setor, não confirma cliente (FR-A4).
+        if ($bloco && $interno) {
+            $bloco = ['acao' => 'responder', 'cliente' => null, 'sistema' => null, 'destino' => null, 'assunto_id' => null, 'roteiro' => null, 'setor' => null] + $bloco;
+        }
 
         // Um humano entrou enquanto o Pedro pensava: a resposta dele não vai.
         if ($c->comHumano()) {

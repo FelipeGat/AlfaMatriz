@@ -22,7 +22,27 @@ class SuporteConhecimentoController extends Controller
             'roteiros' => SuporteRoteiro::with('atualizadoPor:id,name')->orderBy('ordem')->orderBy('id')->get(),
             'ajustes' => collect(array_keys(Conhecimento::AJUSTES))->mapWithKeys(fn ($k) => [$k => $conhecimento->ajuste($k)]),
             'podeEditar' => $this->editor($request),
+            'podeAcessos' => $this->dono($request),
+            'acessos' => $this->dono($request) ? $conhecimento->ajuste(\App\Services\Suporte\AcessoInterno::AJUSTE) : '',
         ]);
+    }
+
+    /** A lista de acesso interno do Pedro: só a conta dona dele (acesso-interno.md, FR-A1). */
+    public function acessos(Request $request, Conhecimento $conhecimento): RedirectResponse
+    {
+        abort_unless($this->dono($request), 403);
+        $texto = (string) $request->validate(['acessos_internos' => ['nullable', 'string', 'max:3000']])['acessos_internos'];
+        if ($ruins = \App\Services\Suporte\AcessoInterno::linhasInvalidas($texto)) {
+            return back()->withInput()->withErrors(['acessos_internos' => 'Linha não entendida (use telefone | nome | diretor, gestor ou suporte): '.$ruins[0]]);
+        }
+        $conhecimento->gravarAjuste(\App\Services\Suporte\AcessoInterno::AJUSTE, $texto);
+
+        return back()->with('status', 'Acessos internos salvos: valem a partir da próxima mensagem.');
+    }
+
+    private function dono(Request $request): bool
+    {
+        return mb_strtolower((string) $request->user()?->email) === mb_strtolower((string) config('services.suporte_pedro.conta'));
     }
 
     public function empresa(Request $request, Conhecimento $conhecimento): RedirectResponse

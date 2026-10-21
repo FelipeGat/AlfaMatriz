@@ -403,6 +403,7 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::post('suporte/whatsapp/{conversa}/gestor', [$sup, 'gestorNumero'])->whereNumber('conversa')->name('suporte.gestor-numero')->middleware('permissao:suporte,editar');
     // O que o Pedro sabe do negócio (docs/specs/suporte-pedro-whatsapp/conhecimento.md): todos com `suporte` veem; só os editores alteram.
     Route::get('suporte/pedro', [\App\Http\Controllers\SuporteConhecimentoController::class, 'index'])->name('suporte.pedro')->middleware('permissao:suporte,ler');
+    Route::post('suporte/pedro/acessos', [\App\Http\Controllers\SuporteConhecimentoController::class, 'acessos'])->name('suporte.pedro.acessos')->middleware('permissao:suporte,editar');
     Route::post('suporte/pedro/empresa', [\App\Http\Controllers\SuporteConhecimentoController::class, 'empresa'])->name('suporte.pedro.empresa')->middleware('permissao:suporte,editar');
     Route::post('suporte/pedro/roteiros', [\App\Http\Controllers\SuporteConhecimentoController::class, 'salvar'])->name('suporte.pedro.roteiro.novo')->middleware('permissao:suporte,editar');
     Route::post('suporte/pedro/roteiros/{roteiro}', [\App\Http\Controllers\SuporteConhecimentoController::class, 'salvar'])->whereNumber('roteiro')->name('suporte.pedro.roteiro')->middleware('permissao:suporte,editar');

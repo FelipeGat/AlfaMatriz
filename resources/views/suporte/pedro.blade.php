@@ -20,6 +20,22 @@
             <p class="text-[12.5px] text-ink-mute">Você vê o que o Pedro sabe; só o Felipe altera.</p>
         @endunless
 
+        {{-- Acesso interno (acesso-interno.md): só a conta dona do Pedro vê e muda os números. --}}
+        @if ($podeAcessos)
+            <section class="rounded-panel border border-line bg-surface">
+                <h2 class="border-b border-line px-4 py-2.5 font-display text-[15px] font-semibold text-ink">Acesso interno pelo WhatsApp</h2>
+                <form method="POST" action="{{ route('suporte.pedro.acessos') }}" class="grid gap-3 px-4 py-3">
+                    @csrf
+                    <p class="text-[12.5px] text-ink-mute">Quem escreve de um destes números é atendido como da casa, a qualquer hora, e vê só o que o perfil permite. Vale o número, não o nome que a pessoa diz.
+                        Perfis: <b>diretor</b> (Gestor completo, VixCard no Matriz e o resumo do dia), <b>gestor</b> (Gestor completo: suporte, financeiro e comercial), <b>suporte</b> (só os atendimentos do Gestor).</p>
+                    <label><span class="{{ $rotulo }}">Uma pessoa por linha: telefone | nome | perfil</span>
+                        <textarea name="acessos_internos" rows="4" maxlength="3000" class="{{ $campo }} font-mono"
+                                  placeholder="+55 27 99999-9999 | Felipe | diretor">{{ old('acessos_internos', $acessos) }}</textarea></label>
+                    <div><button class="{{ $botao }}">Salvar acessos</button></div>
+                </form>
+            </section>
+        @endif
+
         {{-- A empresa --}}
         <section class="rounded-panel border border-line bg-surface">
             <h2 class="border-b border-line px-4 py-2.5 font-display text-[15px] font-semibold text-ink">A empresa</h2>
