@@ -58,6 +58,9 @@ class SuporteConversasController extends Controller
             'clientes' => $atual && ! $atual->cliente_id ? Cliente::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'nome_fantasia']) : collect(),
             'filtros' => $filtros, 'indicadores' => $this->indicadores(),
             'atendentes' => User::whereIn('id', SuporteConversa::whereNotNull('humano_id')->distinct()->pluck('humano_id')->push($request->user()->id))->orderBy('name')->get(['id', 'name']),
+            // A base do suporte (T-476): o título das notas que o Pedro usou e o registro que ele propôs nesta conversa.
+            'fontes' => $atual ? \App\Models\SuporteNota::whereIn('id', $atual->mensagens->pluck('fontes')->flatten()->filter(fn ($f) => is_int($f))->unique()->all())->pluck('titulo', 'id')->all() : [],
+            'registroProposto' => $atual ? \App\Models\SuporteNota::propostas()->where('conversa_id', $atual->id)->latest('id')->first() : null,
         ]);
     }
 

@@ -191,6 +191,15 @@
                         </div>
                     @endif
 
+                    @if ($registroProposto)
+                        {{-- O registro que o Pedro propôs para a base (T-476): só vale depois que alguém confirmar. --}}
+                        <div class="flex flex-wrap items-center gap-2 border-b border-line bg-warn-tint/40 px-4 py-2.5 text-[12.5px]">
+                            <span class="text-ink-dim">O Pedro propôs o registro deste atendimento para a base: <b class="text-ink">{{ $registroProposto->titulo }}</b>
+                                ({{ \App\Models\SuporteNota::SITUACOES[$registroProposto->situacao] ?? $registroProposto->situacao }}).</span>
+                            <a href="{{ route('suporte.base.ver', $registroProposto->id) }}" class="{{ $botao }} ml-auto">Conferir e confirmar</a>
+                        </div>
+                    @endif
+
                     @if (! $atual->cliente_id)
                         <form method="POST" action="{{ route('suporte.vincular', $atual->id) }}" class="flex flex-wrap items-center gap-2 border-b border-line bg-warn-tint/40 px-4 py-2.5 text-[12.5px]">
                             @csrf
@@ -221,6 +230,14 @@
                                         @if ($m->transcricao)<p class="mt-1 border-l-2 border-line pl-2 text-[12px] italic text-ink-dim">{{ $m->tipo === 'video' ? 'O que o Pedro viu e ouviu: ' : 'Transcrição: ' }}{{ $m->transcricao }}</p>@endif
                                     @else
                                         <p class="whitespace-pre-line break-words">{{ $m->texto }}</p>
+                                    @endif
+                                    {{-- De onde veio a resposta do Pedro: as notas da base do suporte que ele usou (T-476). --}}
+                                    @if ($m->fontes)
+                                        <p class="mt-1 border-l-2 border-line pl-2 text-[11px] text-ink-dim">Fontes:
+                                            @foreach ($m->fontes as $f)
+                                                @if (isset($fontes[$f]))<a href="{{ route('suporte.base.ver', $f) }}" class="text-brand-text hover:underline">{{ $fontes[$f] }}</a>@else<span>nota {{ $f }} (apagada)</span>@endif{{ $loop->last ? '' : ' · ' }}
+                                            @endforeach
+                                        </p>
                                     @endif
                                     <p class="mt-1 text-[10.5px] text-ink-faint">
                                         {{ $m->direcao === 'humano_matriz' ? ($m->autor?->name ?? 'Humano') : SuporteMensagem::DIRECOES[$m->direcao] ?? $m->direcao }}

@@ -102,6 +102,10 @@ class Pedro
         $resumo = SuportePedido::where('conversa_id', $c->id)->where('id', '<', $p->id)->whereNotNull('resumo')->orderByDesc('id')->value('resumo');
         // Não resolveu: vai para a fila dos atendentes, e não para o quadro do Matriz (Felipe, 21/10/2026).
         $t = app(Transferencia::class)->transferir($c, null, 'Pedro tentou e não resolveu'.($resumo ? ': '.$resumo : ''));
+        $ultimas = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->get()
+            ->map(fn (SuporteMensagem $m) => $m->transcricao ?: $m->texto)->reverse()->implode(' / ');
+        // Sem IA nesta volta: a proposta de registro sai do resumo que o Pedro já tinha anotado (T-476).
+        app(BaseDoSuporte::class)->proporRegistro($c, ['titulo' => $resumo ?: 'Atendimento pelo WhatsApp', 'relato' => $ultimas]);
         try {
             $this->canal->enviar($c, self::ESPECIALISTA.' '.$t['texto'], 'pedro', null, SuporteMensagem::whereKey($p->ate_mensagem_id)->value('wamid'));
         } catch (ValidationException $e) {
@@ -180,7 +184,7 @@ class Pedro
             if ($registro) {
                 $bloco['resposta'] .= "\n\n".$registro;
             }
-            $bloco = ['acao' => 'responder', 'cliente' => null, 'sistema' => null, 'destino' => null, 'assunto_id' => null, 'roteiro' => null, 'setor' => null] + $bloco;
+            $bloco = ['acao' => 'responder', 'cliente' => null, 'sistema' => null, 'destino' => null, 'assunto_id' => null, 'roteiro' => null, 'setor' => null, 'registro' => null] + $bloco;
         }
 
         // Um humano entrou enquanto o Pedro pensava: a resposta dele não vai.
@@ -222,8 +226,17 @@ class Pedro
             $transferencia = app(Transferencia::class)->transferir($c, $bloco['atendente'], $bloco['resumo'] ?: 'cliente pediu um atendente');
             $resposta .= "\n\n".$transferencia['texto'];
         }
+        // O registro que o Pedro propõe para a base (T-476): fica à espera de quem confirme.
+        // Depois de abrir o atendimento, para a proposta já nascer ligada à tarefa.
+        if ($bloco['registro'] ?? null) {
+            app(BaseDoSuporte::class)->proporRegistro($c, $bloco['registro']);
+        }
         try {
-            $this->canal->enviar($c, $resposta, 'pedro', null, SuporteMensagem::whereKey($p->ate_mensagem_id)->value('wamid'));
+            $enviada = $this->canal->enviar($c, $resposta, 'pedro', null, SuporteMensagem::whereKey($p->ate_mensagem_id)->value('wamid'));
+            // De onde veio a resposta (T-476): só as notas que existem na base.
+            if ($fontes = app(BaseDoSuporte::class)->fontesValidas($bloco['fontes'] ?? [])) {
+                $enviada->update(['fontes' => $fontes]);
+            }
             $p->update(['situacao' => 'respondido', 'acao' => $bloco['acao'], 'resumo' => $bloco['resumo'], 'roteiro_id' => $bloco['roteiro']]);
             // Resolvido, segundo o cliente: encerra e pede a avaliação, na mensagem seguinte.
             if ($encerrar) {
@@ -332,6 +345,9 @@ class Pedro
         }
         $ultimas = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->pluck('texto')->reverse()->implode(' / ');
         $t = $this->atendimento->abrir($c, 'Pedro sem resposta da IA; o cliente escreveu: '.mb_substr($ultimas, 0, 220), null);
+        if ($t) {
+            app(BaseDoSuporte::class)->proporRegistro($c, ['titulo' => 'Atendimento pelo WhatsApp', 'relato' => $ultimas]);
+        }
         try {
             $this->canal->enviar($c, self::FALLBACK.($t ? " Seu atendimento é o nº T-{$t->id}." : ''), 'pedro');
         } catch (ValidationException) {

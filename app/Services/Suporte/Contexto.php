@@ -34,6 +34,23 @@ class Contexto
     private array $videos = [];
 
     /**
+     * Como usar a base do suporte (T-476; base-do-suporte.md). Só vai quando o
+     * recorte traz alguma nota: com a base vazia, o pedido é o mesmo de antes.
+     */
+    public const REGRAS_DA_BASE = "BASE DO SUPORTE: são notas da equipe, cada uma com o número dela. Use as do cliente desta conversa para lembrar o que já aconteceu com ele, o que ficou combinado e o que está em aberto. "
+        ."Procedimento marcado VALIDADO vale como um roteiro; nota marcada RASCUNHO só pode ser citada como possibilidade a confirmar, nunca como instrução. Se um procedimento e um ROTEIRO divergirem, siga o ROTEIRO e diga isso no resumo. "
+        ."Nos atendimentos anteriores, o \"Relato do cliente\" NÃO é fato; só \"Verificado\" é. Nunca diga que algo foi resolvido ou feito se a nota não traz a confirmação. "
+        ."Não comente com o cliente anotações internas (quem decide, preferências, combinados com a equipe) além do necessário para ajudar. Em \"fontes\", devolva o número de cada nota que você usou ([] se nenhuma).\n";
+
+    /**
+     * O registro do atendimento que o Pedro propõe (T-476): vai sempre, porque é
+     * assim que a base cresce. É proposta: alguém da equipe confere antes de valer.
+     */
+    public const REGRAS_DO_REGISTRO = "REGISTRO: quando você abrir atendimento, encaminhar ao setor, ou quando o cliente disser que o problema foi resolvido, preencha \"registro\" para a base do suporte: "
+        ."\"titulo\" (o assunto, curto), \"relato\" (o que o cliente contou), \"verificado\" (só o que alguém viu ou testou de fato; vazio se nada), \"solucao\" (o que resolveu, só se o cliente confirmou) e \"situacao\" "
+        ."(\"resolvido\" só se o cliente confirmou que resolveu; senão \"em_curso\"). Nas outras respostas, \"registro\": null. Uma pessoa da equipe confere o registro antes de ele entrar na base.\n";
+
+    /**
      * @param  list<int>  $fotos  as fotos (ids de mensagem) que vão anexadas a este pedido
      * @param  list<int>  $videos  os vídeos que o runner vai abrir para este pedido
      */
@@ -48,6 +65,9 @@ class Contexto
         $c->loadMissing(['cliente.sistemas', 'cliente.contratos']);
         $cliente = $c->cliente;
         $sistemas = $cliente ? $cliente->sistemas->filter(fn ($s) => (bool) $s->pivot->ativo)->values() : collect();
+        // A base do suporte (T-476): sem nota que sirva a esta conversa, o pedido sai como antes.
+        $base = app(BaseDoSuporte::class)->paraOPrompt($c, $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->get()
+            ->map(fn ($m) => $m->transcricao ?: $m->texto)->implode(' '));
 
         $partes = [
             "Você é o Pedro, do suporte. Atende clientes pelo WhatsApp, em português do Brasil: cordial, direto, no máximo 4 frases, sem markdown nem listas longas.\n"
@@ -92,8 +112,12 @@ class Contexto
             .(app(CanalWhatsApp::class)->viaGestor()
                 ? "SETORES: assunto COMERCIAL (quem quer conhecer, contratar ou pedir orçamento) ou FINANCEIRO (boleto, pagamento, nota, cobrança) é atendido pela equipe desse setor. Faça a sua parte conforme o roteiro (apresentar, orientar) e, quando o cliente precisar de uma pessoa, use acao \"encaminhar_setor\" com \"setor\": \"comercial\" ou \"financeiro\", dizendo que um atendente do setor continua por aqui. Suporte técnico continua com você.\n"
                 : '')
+            .($base ? self::REGRAS_DA_BASE : '')
+            .self::REGRAS_DO_REGISTRO
             ."Responda SOMENTE com este bloco, sem nenhum texto fora dele:\n"
-            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para o cliente\", \"acao\": \"responder|abrir_atendimento|encaminhar_setor|transferir|encerrar\", \"atendente\": \"o nome pedido, só com transferir, ou null\", \"resumo\": \"o problema, para a equipe\", \"sistema\": \"o nome exato de um sistema do cliente, ou null\", \"cliente\": \"o código confirmado, ou null\", \"destino\": \"gestor|sistema|null\", \"assunto_id\": \"o número de um assunto da lista ASSUNTOS, ou null\", \"roteiro\": \"o número do roteiro seguido, ou null\", \"setor\": \"comercial|financeiro, só com encaminhar_setor\", \"atendimento\": \"o nº de um atendimento existente do mesmo problema, ou null\"}\nPEDRO>>>",
+            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para o cliente\", \"acao\": \"responder|abrir_atendimento|encaminhar_setor|transferir|encerrar\", \"atendente\": \"o nome pedido, só com transferir, ou null\", \"resumo\": \"o problema, para a equipe\", \"sistema\": \"o nome exato de um sistema do cliente, ou null\", \"cliente\": \"o código confirmado, ou null\", \"destino\": \"gestor|sistema|null\", \"assunto_id\": \"o número de um assunto da lista ASSUNTOS, ou null\", \"roteiro\": \"o número do roteiro seguido, ou null\", \"setor\": \"comercial|financeiro, só com encaminhar_setor\", \"atendimento\": \"o nº de um atendimento existente do mesmo problema, ou null\""
+            .', "registro": {"titulo": "…", "relato": "…", "verificado": "…", "solucao": "…", "situacao": "em_curso|resolvido"} ou null'
+            .($base ? ', "fontes": [o número de cada nota da BASE DO SUPORTE que você usou nesta resposta]' : '')."}\nPEDRO>>>",
             "## A EMPRESA\n".app(Conhecimento::class)->empresa(),
             "## ROTEIROS\n".app(Conhecimento::class)->roteirosParaOPrompt(),
             "## ATENDENTES (quem pode receber a conversa)\n".(app(Transferencia::class)->atendentes()->map(fn ($u) => '- '.$u->name)->implode("\n") ?: '- (ninguém cadastrado: use a fila)'),
@@ -105,6 +129,7 @@ class Contexto
                 "## ASSUNTOS (para atendimento no Gestor, escolha o que melhor descreve o problema)\n".collect(app(DiretorioGestor::class)->assuntosPara($g))->map(fn ($a) => '- '.$a['id'].': '.$a['nome'].($a['categoria'] ? ' ('.$a['categoria'].')' : ''))->implode("\n")] : []),
             "## O QUE CADA SISTEMA FAZ\n".$this->base($sistemas->pluck('nome')->all()),
             ...(($vitrine = $this->showroom($c)) ? [$vitrine] : []),
+            ...($base ? [$base] : []),
             "## MENSAGENS (as mais recentes por último)\n".$this->mensagens($c),
             'Agora: '.now()->setTimezone(config('app.timezone'))->format('d/m/Y H:i').'.',
         ];
@@ -157,7 +182,7 @@ class Contexto
             ->map(fn ($m) => $m->transcricao ?: $m->texto)->implode(' ');
     }
 
-    /** O bloco da resposta, validado; null se veio fora do formato. @return array{resposta: string, acao: string, resumo: string, sistema: ?string, cliente: ?string, destino: ?string, assunto_id: ?int, roteiro: ?int, setor: ?string}|null */
+    /** O bloco da resposta, validado; null se veio fora do formato. @return array{resposta: string, acao: string, resumo: string, sistema: ?string, cliente: ?string, destino: ?string, assunto_id: ?int, roteiro: ?int, setor: ?string, fontes: list<int>, registro: ?array}|null */
     public static function ler(string $texto, int $limite = 1500): ?array
     {
         $b = preg_match(self::BLOCO, $texto, $m) ? json_decode($m[1], true) : null;
@@ -188,7 +213,13 @@ class Contexto
             'empresa_id' => is_numeric($b['empresa_id'] ?? null) ? (int) $b['empresa_id'] : null,
             'tecnico_id' => is_numeric($b['tecnico_id'] ?? null) ? (int) $b['tecnico_id'] : null,
             'agendar' => filter_var($b['agendar'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            'periodo' => in_array($b['periodo'] ?? null, ['manha', 'tarde', 'dia_todo', 'noite'], true) ? $b['periodo'] : null];
+            'periodo' => in_array($b['periodo'] ?? null, ['manha', 'tarde', 'dia_todo', 'noite'], true) ? $b['periodo'] : null,
+            // As notas da base que ele diz ter usado ("12" e "nota 12" também valem); o Pedro::concluir confere que existem (T-476).
+            'fontes' => array_values(array_unique(array_slice(array_filter(array_map(fn ($f) => is_int($f) ? $f : (is_string($f) && preg_match('/^\D{0,8}(\d{1,9})$/u', trim($f), $n) ? (int) $n[1] : 0),
+                (array) ($b['fontes'] ?? []))), 0, 10))),
+            // A proposta de registro do atendimento (T-476); o Pedro::concluir a grava como proposta.
+            'registro' => is_array($b['registro'] ?? null) && filled($b['registro']['titulo'] ?? $b['registro']['relato'] ?? null)
+                ? array_map(fn ($v) => is_scalar($v) ? (string) $v : null, array_intersect_key($b['registro'], array_flip(['titulo', 'relato', 'verificado', 'solucao', 'situacao']))) : null];
     }
 
     /**

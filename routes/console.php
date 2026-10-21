@@ -161,6 +161,13 @@ Schedule::command('suporte:pedro')
     ->withoutOverlapping()
     ->onOneServer();
 
+// A base do suporte (T-476): a conversa que o Pedro atendeu sozinho e o cliente
+// largou além da janela de 24 h vira registro "encerrado sem confirmação".
+Schedule::command('suporte:registros')
+    ->hourlyAt(17)
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Os tokens do quadro que a Central de IA emite por pedido (T-472) vencem
 // sozinhos, mas a linha fica: um pedido por vez, todo dia, enche a tabela.
 Schedule::command('sanctum:prune-expired', ['--hours' => 24])
