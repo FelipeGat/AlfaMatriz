@@ -193,13 +193,31 @@ class PedroTest extends TestCase
         config(['services.suporte_pedro.limite_minutos' => 30]);
         $this->chega('O teclado não digita', 'wamid.1');
         $this->responder('Ele acende alguma luz?');
-        Carbon::setTestNow(now()->addMinutes(31));
+        Carbon::setTestNow(now()->addMinutes(20));
+        $this->chega('não acende', 'wamid.2');
+        $this->responder('Troque a porta USB e me diga.');
+        Carbon::setTestNow(now()->addMinutes(11));
 
-        $this->chega('não', 'wamid.2');
+        // 31 min de conversa sem pausa longa: passou do limite.
+        $this->chega('troquei e nada', 'wamid.3');
 
         $this->assertSame(0, SuportePedido::where('situacao', 'pendente')->count());
         $this->assertSame(0, Tarefa::count(), 'vai para a fila, não para o quadro');
         $this->assertTrue(SuporteConversa::sole()->comHumano());
+    }
+
+    /** Dono em 22/10/2026 (T-478): quem sumiu por mais que o limite e voltou recomeça a contagem. */
+    public function test_pausa_maior_que_o_limite_recomeca_a_contagem(): void
+    {
+        config(['services.suporte_pedro.limite_minutos' => 30]);
+        $this->chega('O teclado não digita', 'wamid.1');
+        $this->responder('Ele acende alguma luz?');
+        Carbon::setTestNow(now()->addMinutes(40));
+
+        $this->chega('oi', 'wamid.2');
+
+        $this->assertSame(1, SuportePedido::where('situacao', 'pendente')->count(), 'volta à IA');
+        $this->assertFalse(SuporteConversa::sole()->comHumano());
     }
 
     public function test_resposta_fora_do_formato_vira_reserva_e_conta_errada_nao_pega(): void
