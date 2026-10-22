@@ -79,7 +79,8 @@ class Atendimento
         if (! $g || ! $assunto) {
             return null;
         }
-        $solicitante = $c->nome_perfil ?: 'Contato pelo WhatsApp';
+        // Quem pediu é a pessoa que se identificou (T-478), e não o nome do perfil do WhatsApp.
+        $solicitante = $c->solicitante();
         $modo = $this->modoNoGestor((int) $c->gestor_cliente_id, (int) $assunto['id'], $numeroCitado);
 
         return SuporteGestorAbertura::create(['conversa_id' => $c->id, 'gestor_cliente_id' => $c->gestor_cliente_id, 'assunto_id' => $assunto['id'], 'empresa_id' => $g['empresa_id'] ?? null,
@@ -108,11 +109,16 @@ class Atendimento
             }
             // O número sempre volta para quem pediu (Felipe, 21/10/2026), dizendo o que foi feito.
             $texto = match ($a->modo) {
+                'vincular' => "Vi que já tinha um chamado aberto sobre isso, o nº {$a->numero}, e acrescentei lá o que você me contou.",
+                'reabrir' => "Esse problema já tinha um chamado, o nº {$a->numero}, e eu reabri para a equipe olhar de novo.",
+                default => "Pronto, abri o seu chamado: é o nº {$a->numero}.",
+            };
+            // Quem é da casa recebe o texto de registro, seco de propósito; o cliente, o de uma pessoa da equipe (T-478).
+            $texto = $a->pedido_por ? match ($a->modo) {
                 'vincular' => "Registrei no atendimento nº {$a->numero}, que já estava aberto para isso.",
                 'reabrir' => "Reabri o atendimento nº {$a->numero}, do mesmo assunto.",
-                default => "Seu atendimento é o nº {$a->numero}.",
-            };
-            $texto = $a->pedido_por ? str_replace('Seu atendimento é', 'O atendimento é', $texto)." Cliente: {$nome}, no Gestor.".$this->linhaDaAgenda($a) : $texto.' A equipe técnica retorna por aqui.';
+                default => "O atendimento é o nº {$a->numero}.",
+            }." Cliente: {$nome}, no Gestor.".$this->linhaDaAgenda($a) : $texto.' A equipe técnica te retorna por aqui.';
             try {
                 $canal->enviar($c, $texto, 'pedro');
             } catch (\Illuminate\Validation\ValidationException) {
@@ -124,7 +130,7 @@ class Atendimento
         $a->update(['situacao' => 'falhou', 'erro' => mb_substr($erro ?: 'a ponte não devolveu o número', 0, 255)]);
         if ($t = $this->abrir($c, Str::before($a->descricao, "\n\n").' (não foi possível abrir no Gestor: '.$a->erro.')', null)) {
             try {
-                $canal->enviar($c, "Seu atendimento é o nº T-{$t->id}. A equipe técnica retorna por aqui.", 'pedro');
+                $canal->enviar($c, "Pronto, abri o seu chamado: é o nº T-{$t->id}. A equipe técnica te retorna por aqui.", 'pedro');
             } catch (\Illuminate\Validation\ValidationException) {
             }
         }
@@ -285,10 +291,11 @@ class Atendimento
         $sistemaId = $c->cliente && $sistema
             ? $c->cliente->sistemas->first(fn ($s) => mb_strtolower($s->nome) === mb_strtolower(trim($sistema)))?->id : null;
         $resumo = trim($resumo) ?: 'Cliente pediu atendimento pelo WhatsApp.';
+        $quem = filled($c->solicitante_nome) ? ' Solicitante: '.$c->solicitante().'.' : '';
 
         $t = $this->tarefas->criar([
             'titulo' => Str::limit('Suporte: '.$nomeCliente.' — '.$resumo, 150),
-            'resumo' => Str::limit($resumo.' WhatsApp '.$c->telefoneLegivel().'. Conversa: '.route('suporte.conversas', $c->id), 500),
+            'resumo' => Str::limit($resumo.$quem.' WhatsApp '.$c->telefoneLegivel().'. Conversa: '.route('suporte.conversas', $c->id), 500),
             'tipo' => 'operacional',
             'sistema_id' => $sistemaId,
         ], $pedro);

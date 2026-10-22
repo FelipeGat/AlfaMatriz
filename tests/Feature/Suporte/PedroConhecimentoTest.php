@@ -89,7 +89,7 @@ class PedroConhecimentoTest extends TestCase
 
     private function portaoParado(): Tarefa
     {
-        SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('o portão G1 parou', 'wamid.1', '5527988887777');
         $this->responde(['resposta' => 'Portão parado é prioridade: até 3 horas.', 'acao' => 'abrir_atendimento', 'resumo' => 'Portão G1 parado', 'destino' => 'gestor',
             'assunto_id' => 3, 'roteiro' => SuporteRoteiro::where('titulo', 'Portão parado')->value('id')]);
@@ -103,7 +103,7 @@ class PedroConhecimentoTest extends TestCase
             'folders' => "Segurança — https://exemplo.com.br/seg.pdf\n", 'cobranca_minutos' => 30])->assertRedirect();
 
         // Do telefone cadastrado do Castanheiras: o e-mail do portal vai.
-        SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('preciso do boleto', 'wamid.1', '552733894253');
         $prompt = $this->prompt();
         $this->assertStringContainsString("## A EMPRESA\nSomos o Grupo Soluções.\nSites:\n- https://exemplo.com.br\n", $prompt);
@@ -113,7 +113,7 @@ class PedroConhecimentoTest extends TestCase
         $this->assertStringContainsString('Login do portal (o número que escreve é do cadastro): sindico@castanheiras.com.br', $prompt);
 
         // Quem só disse o nome não recebe o e-mail.
-        SuporteConversa::create(['telefone' => '5527911112222', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        SuporteConversa::create(['telefone' => '5527911112222', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('preciso do boleto do castanheiras', 'wamid.2', '5527911112222');
         $prompt = $this->prompt();
         $this->assertStringContainsString('Login do portal: não informar', $prompt);

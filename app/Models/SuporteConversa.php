@@ -22,11 +22,12 @@ class SuporteConversa extends Model
 
     protected $fillable = ['telefone', 'nome_perfil', 'cliente_id', 'situacao', 'humano_id', 'humano_ate',
         'ultima_entrada_em', 'ultima_mensagem_em', 'nao_lidas', 'tarefa_id', 'gestor_cliente_id', 'gestor_atendimento',
-        'gestor_conversa_id', 'gestor_setor', 'fila_desde', 'fila_motivo', 'fila_lembrada_em'];
+        'gestor_conversa_id', 'gestor_setor', 'fila_desde', 'fila_motivo', 'fila_lembrada_em',
+        'solicitante_nome', 'solicitante_funcao', 'identificada_em'];
 
     protected function casts(): array
     {
-        return ['fila_desde' => 'datetime', 'fila_lembrada_em' => 'datetime', 'humano_ate' => 'datetime', 'ultima_entrada_em' => 'datetime', 'ultima_mensagem_em' => 'datetime', 'nao_lidas' => 'integer'];
+        return ['identificada_em' => 'datetime', 'fila_desde' => 'datetime', 'fila_lembrada_em' => 'datetime', 'humano_ate' => 'datetime', 'ultima_entrada_em' => 'datetime', 'ultima_mensagem_em' => 'datetime', 'nao_lidas' => 'integer'];
     }
 
     public function mensagens(): HasMany
@@ -53,6 +54,24 @@ class SuporteConversa extends Model
     public function atendimento(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(SuporteAtendimento::class, 'tarefa_id', 'tarefa_id');
+    }
+
+    /**
+     * A pessoa já disse quem é e de onde fala (T-478, decisão do dono em 21/10/2026)?
+     * As duas coisas: o cliente confirmado (Matriz ou Gestor) E o nome de quem escreve.
+     * Até lá o Pedro só pede a identificação — chamado, roteiro e histórico esperam.
+     */
+    public function identificada(): bool
+    {
+        return ($this->cliente_id || $this->gestor_cliente_id) && filled($this->solicitante_nome);
+    }
+
+    /** Como o solicitante vai no atendimento: "Maria (porteira)", ou o nome do WhatsApp se ainda não disse. */
+    public function solicitante(): string
+    {
+        $nome = $this->solicitante_nome ?: $this->nome_perfil ?: 'Contato pelo WhatsApp';
+
+        return $this->solicitante_nome && $this->solicitante_funcao ? "{$nome} ({$this->solicitante_funcao})" : $nome;
     }
 
     /** Ainda dá para responder com texto livre? */

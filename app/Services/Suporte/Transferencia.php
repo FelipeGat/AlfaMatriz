@@ -24,6 +24,9 @@ class Transferencia
     /** Sem resposta de uma pessoa nesse tempo, a equipe é lembrada de novo. */
     public const LEMBRAR_MINUTOS = 15;
 
+    /** O que se acrescenta fora do horário, onde quer que a conversa passe a uma pessoa. */
+    public const FORA_DO_HORARIO = ' Como já passou do nosso horário (das 7h às 18h, de segunda a sexta), o retorno é no próximo horário de atendimento.';
+
     public function __construct(private AvisoNoTelegram $telegram) {}
 
     /** Quem atende o suporte: contas ativas com a permissão de responder conversas. @return Collection<int, User> */
@@ -61,12 +64,13 @@ class Transferencia
             'fila_desde' => now(), 'fila_motivo' => Str::limit(trim($motivo) ?: 'cliente pediu um atendente', 250, '…'), 'fila_lembrada_em' => now()]);
         $this->avisar($c, $alvo, false);
         $primeiro = $alvo ? Str::before($alvo->name, ' ') : null;
+        // Como uma pessoa da equipe chamaria um colega (T-478): sem "fila" nem "transferência".
         $texto = $alvo
-            ? "Já chamei o {$primeiro}, que continua seu atendimento por aqui."
-            : ($nome ? "Não encontrei {$nome} na equipe de atendimento; passei você para a fila, e o primeiro atendente disponível continua por aqui."
-                : 'Você está na fila de atendimento: o primeiro atendente disponível continua por aqui.');
+            ? "Já chamei o {$primeiro}, ele continua com você por aqui."
+            : ($nome ? "Já avisei a equipe que você quer falar com {$nome}; alguém continua com você por aqui."
+                : 'Já chamei um colega da equipe, ele continua com você por aqui.');
 
-        return ['atendente' => $alvo, 'texto' => $texto.(Horario::aberto() ? '' : ' Nosso horário é das 07:00 às 18:00, de segunda a sexta; fora dele, o retorno é na abertura seguinte.')];
+        return ['atendente' => $alvo, 'texto' => $texto.(Horario::aberto() ? '' : self::FORA_DO_HORARIO)];
     }
 
     /**

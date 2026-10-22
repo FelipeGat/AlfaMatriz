@@ -21,9 +21,10 @@ use Illuminate\Validation\ValidationException;
  */
 class Pedro
 {
-    public const FALLBACK = 'Recebemos sua mensagem. Um atendente da equipe vai te responder por aqui em instantes.';
+    // Frases fixas no tom de uma pessoa da equipe (T-478, dono em 21/10/2026: "o mais natural possível").
+    public const FALLBACK = 'Oi! Já vi sua mensagem, um colega da equipe te responde por aqui em instantes.';
 
-    public const ESPECIALISTA = 'Para não te deixar esperando, vou passar você para um de nossos especialistas.';
+    public const ESPECIALISTA = 'Para não te deixar esperando, já chamei um colega da equipe que cuida disso; ele continua com você por aqui.';
 
     public function __construct(private CanalWhatsApp $canal, private Contexto $contexto, private Atendimento $atendimento) {}
 
@@ -101,13 +102,17 @@ class Pedro
         $c = $p->conversa->fresh();
         $resumo = SuportePedido::where('conversa_id', $c->id)->where('id', '<', $p->id)->whereNotNull('resumo')->orderByDesc('id')->value('resumo');
         // Não resolveu: vai para a fila dos atendentes, e não para o quadro do Matriz (Felipe, 21/10/2026).
-        $t = app(Transferencia::class)->transferir($c, null, 'Pedro tentou e não resolveu'.($resumo ? ': '.$resumo : ''));
+        app(Transferencia::class)->transferir($c, null, 'Pedro tentou e não resolveu'.($resumo ? ': '.$resumo : ''));
         $ultimas = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->get()
             ->map(fn (SuporteMensagem $m) => $m->transcricao ?: $m->texto)->reverse()->implode(' / ');
         // Sem IA nesta volta: a proposta de registro sai do resumo que o Pedro já tinha anotado (T-476).
-        app(BaseDoSuporte::class)->proporRegistro($c, ['titulo' => $resumo ?: 'Atendimento pelo WhatsApp', 'relato' => $ultimas]);
+        // Sem identificação não há cliente a quem o registro pertença (T-478).
+        if ($c->identificada()) {
+            app(BaseDoSuporte::class)->proporRegistro($c, ['titulo' => $resumo ?: 'Atendimento pelo WhatsApp', 'relato' => $ultimas]);
+        }
         try {
-            $this->canal->enviar($c, self::ESPECIALISTA.' '.$t['texto'], 'pedro', null, SuporteMensagem::whereKey($p->ate_mensagem_id)->value('wamid'));
+            // Uma frase só: "vou chamar alguém" seguido de "já chamei alguém" denunciaria a montagem (T-478).
+            $this->canal->enviar($c, self::ESPECIALISTA.(Horario::aberto() ? '' : Transferencia::FORA_DO_HORARIO), 'pedro', null, SuporteMensagem::whereKey($p->ate_mensagem_id)->value('wamid'));
         } catch (ValidationException $e) {
             // Fora da janela ou canal desligado: a conversa já está na fila da equipe.
             $p->update(['erro' => mb_substr((string) collect($e->errors())->flatten()->first(), 0, 255)]);
@@ -199,11 +204,36 @@ class Pedro
 
             return;
         }
+        $identificadaAntes = $c->identificada();
+        if (! $interno && ($bloco['solicitante'] ?? null)) {
+            $c->update(['solicitante_nome' => $bloco['solicitante']['nome'], 'solicitante_funcao' => $bloco['solicitante']['funcao'] ?? $c->solicitante_funcao]);
+        }
         $this->confirmarCliente($c, $bloco['cliente']);
+        // Acabou de se identificar (T-478): a resposta do pedido de identificação não vai.
+        // A conversa volta na hora para o Pedro com o contexto inteiro, e ele responde UMA
+        // vez, já cuidando do problema que a pessoa contou — como uma pessoa faria.
+        if (! $interno && ! $identificadaAntes && $c->identificada() && $bloco['acao'] === 'responder') {
+            $c->update(['identificada_em' => now()]);
+            $p->update(['situacao' => 'respondido', 'acao' => 'identificou', 'resumo' => $bloco['resumo']]);
+            $this->enfileirar($c->id);
+
+            return;
+        }
         $resposta = $bloco['resposta'];
         // Sem o Gestor, não há setor para onde entregar: vira atendimento no quadro.
         if ($bloco['acao'] === 'encaminhar_setor' && ! $this->canal->viaGestor()) {
             $bloco['acao'] = 'abrir_atendimento';
+        }
+        // A trava da identificação (T-478) mora AQUI, e não só no pedido à IA: sem a
+        // pessoa identificada, nada se abre, nenhum setor além do comercial recebe e nada
+        // vai para a base. O que a IA quis abrir vai para um colega da equipe.
+        if (! $interno && ! $c->identificada()) {
+            if ($bloco['acao'] === 'abrir_atendimento' || ($bloco['acao'] === 'encaminhar_setor' && $bloco['setor'] !== 'comercial')) {
+                $bloco['acao'] = 'transferir';
+                $bloco['atendente'] = null;
+                $bloco['resumo'] = 'sem identificação: '.($bloco['resumo'] ?: 'pediu atendimento');
+            }
+            $bloco['registro'] = null;
         }
         if ($bloco['acao'] === 'abrir_atendimento') {
             // Equipamento de cliente do Gestor: o atendimento nasce NO Gestor, pela máquina; o número chega em seguida.
@@ -215,7 +245,7 @@ class Pedro
                 // O número do Gestor vai em outra mensagem, quando a máquina gravar.
             } elseif ($t = $this->atendimento->abrir($c, $this->comLancamentoNoGestor($c, $bloco), $bloco['sistema'],
                 $bloco['roteiro'] ? \App\Models\SuporteRoteiro::where('ativo', true)->find($bloco['roteiro']) : null, $bloco['destino'])) {
-                $resposta .= "\n\nSeu atendimento é o nº T-{$t->id}.";
+                $resposta .= "\n\nO número do seu chamado é T-{$t->id}.";
                 $this->marcarSuporteNoGestor($c);
             }
         }
@@ -344,12 +374,23 @@ class Pedro
             return;
         }
         $ultimas = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->pluck('texto')->reverse()->implode(' / ');
+        // Sem identificação, nada de chamado (T-478): a conversa vai para um colega da equipe.
+        if (! app(AcessoInterno::class)->deQuem((string) $c->telefone) && ! $c->identificada()) {
+            app(Transferencia::class)->transferir($c, null, 'Pedro sem resposta da IA, pessoa ainda sem identificação: '.mb_substr($ultimas, 0, 200));
+            try {
+                $this->canal->enviar($c, self::FALLBACK, 'pedro');
+            } catch (ValidationException) {
+                // Fora da janela ou canal desligado: a conversa já está com a equipe.
+            }
+
+            return;
+        }
         $t = $this->atendimento->abrir($c, 'Pedro sem resposta da IA; o cliente escreveu: '.mb_substr($ultimas, 0, 220), null);
         if ($t) {
             app(BaseDoSuporte::class)->proporRegistro($c, ['titulo' => 'Atendimento pelo WhatsApp', 'relato' => $ultimas]);
         }
         try {
-            $this->canal->enviar($c, self::FALLBACK.($t ? " Seu atendimento é o nº T-{$t->id}." : ''), 'pedro');
+            $this->canal->enviar($c, self::FALLBACK.($t ? " O número do seu chamado é T-{$t->id}." : ''), 'pedro');
         } catch (ValidationException) {
             // Fora da janela ou canal desligado: o atendimento já está aberto para a equipe.
         }

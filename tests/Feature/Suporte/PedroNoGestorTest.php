@@ -62,6 +62,12 @@ class PedroNoGestorTest extends TestCase
         CentralIaRunner::create(['user_id' => $this->felipe->id, 'maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => [], 'visto_em' => now()]);
     }
 
+    /** Quem escreve já se identificou (T-478); a identificação tem os testes dela. */
+    private function identificada(): void
+    {
+        SuporteConversa::create(['telefone' => '5527988887777', 'cliente_id' => \App\Models\Cliente::create(['nome' => 'Condomínio Joaquim', 'ativo' => true])->id, 'solicitante_nome' => 'Joaquim']);
+    }
+
     private function repasse(string $texto, string $id, array $estado, string $token = 'segredo-integracao', ?string $assinatura = null)
     {
         $valor = ['metadata' => ['phone_number_id' => '1179318548601637'], 'contacts' => [['wa_id' => '5527988887777', 'profile' => ['name' => 'Joaquim']]],
@@ -116,6 +122,7 @@ class PedroNoGestorTest extends TestCase
 
     public function test_encaminhar_ao_financeiro_responde_e_entrega_ao_setor(): void
     {
+        $this->identificada();
         $this->repasse('preciso da segunda via do boleto', 'wamid.1', $this->estado())->assertOk();
         $this->responde(['resposta' => 'Vou passar para o financeiro, que continua por aqui.', 'acao' => 'encaminhar_setor', 'setor' => 'financeiro', 'resumo' => '2ª via do boleto']);
 
@@ -136,6 +143,7 @@ class PedroNoGestorTest extends TestCase
 
     public function test_atendimento_de_suporte_marca_a_conversa_no_gestor(): void
     {
+        $this->identificada();
         $this->repasse('o sistema não abre', 'wamid.1', $this->estado())->assertOk();
         $this->responde(['resposta' => 'Vou encaminhar para a equipe técnica.', 'acao' => 'abrir_atendimento', 'resumo' => 'Sistema fora do ar']);
 
@@ -218,6 +226,7 @@ class PedroNoGestorTest extends TestCase
     /** Vídeo (20/10/2026): vai ao runner uma vez; o que ele viu fica registrado e não volta. */
     public function test_video_do_cliente_vai_ao_pedro_uma_vez_e_fica_registrado(): void
     {
+        $this->identificada();
         \Illuminate\Support\Facades\Storage::fake('local');
         $this->repasse('o portão faz barulho', 'wamid.1', $this->estado())->assertOk();
         $this->repasseMidia('video', 'wamid.VIDEO');

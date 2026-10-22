@@ -123,7 +123,7 @@ class PedroBaseDoSuporteTest extends TestCase
 
     public function test_base_vazia_o_pedido_sai_sem_base_mas_pede_o_registro(): void
     {
-        SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('o portão não fecha', 'wamid.1', '552733894253');
         $prompt = $this->prompt();
 
@@ -136,7 +136,7 @@ class PedroBaseDoSuporteTest extends TestCase
     public function test_leva_a_empresa_e_so_o_cliente_confirmado(): void
     {
         $this->semear();
-        SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('o portão voltou a dar problema, não fecha', 'wamid.1', '552733894253');
         $prompt = $this->prompt();
 
@@ -158,19 +158,22 @@ class PedroBaseDoSuporteTest extends TestCase
         $this->assertStringNotContainsString('PROCEDIMENTO-IMPRESSORA', $prompt);
     }
 
-    public function test_sem_cliente_confirmado_vai_so_o_geral_que_combina(): void
+    /**
+     * Antes da T-478, quem não tinha cliente confirmado recebia só as notas gerais. Agora,
+     * sem identificação, o Pedro só pede a identificação: nenhuma nota vai, nem "fontes".
+     */
+    public function test_sem_identificacao_o_pedido_sai_sem_a_base(): void
     {
         $this->semear();
         SuporteConversa::create(['telefone' => '5527911112222', 'ultima_entrada_em' => now()]);
         $this->chega('minha impressora não imprime nada', 'wamid.1', '5527911112222');
         $prompt = $this->prompt();
 
-        $this->assertStringContainsString('Cliente não confirmado: nenhuma nota de cliente foi incluída.', $prompt);
+        $this->assertStringContainsString('IDENTIFICAÇÃO PRIMEIRO', $prompt);
+        $this->assertStringNotContainsString('BASE DO SUPORTE', $prompt);
+        $this->assertStringNotContainsString('"fontes"', $prompt);
+        $this->assertStringNotContainsString('PROCEDIMENTO-IMPRESSORA', $prompt);
         $this->assertStringNotContainsString('CONTEXTO-DO-CASTANHEIRAS', $prompt);
-        $this->assertStringNotContainsString('ATENDIMENTO-ABERTO-DO-CASTANHEIRAS', $prompt);
-        $this->assertStringContainsString('PROCEDIMENTO-IMPRESSORA', $prompt);
-        $this->assertStringContainsString('Impressora não imprime (Procedimento · RASCUNHO', $prompt);
-        $this->assertStringNotContainsString('PROCEDIMENTO-PORTAO', $prompt);
     }
 
     public function test_nota_grande_e_cortada_e_o_recorte_respeita_o_teto(): void
@@ -178,7 +181,7 @@ class PedroBaseDoSuporteTest extends TestCase
         $this->semear();
         $this->nota(['tipo' => 'procedimento', 'titulo' => 'Portão parado', 'quando_usar' => 'portão parado travado', 'corpo' => str_repeat('passo do portão ', 2000)]);
         $this->nota(['tipo' => 'cliente', 'titulo' => 'Castanheiras (Matriz)', 'cliente_id' => null, 'gestor_cliente_id' => 13, 'corpo' => str_repeat('memória longa ', 2000)]);
-        SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('o portão travou parado', 'wamid.1', '552733894253');
         $prompt = $this->prompt();
 
@@ -191,7 +194,7 @@ class PedroBaseDoSuporteTest extends TestCase
         $this->semear();
         $proc = SuporteNota::where('corpo', 'PROCEDIMENTO-PORTAO')->sole();
         $proposta = SuporteNota::propostas()->sole();
-        $c = SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        $c = SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('o portão não fecha', 'wamid.1', '552733894253');
         $this->responde(['resposta' => 'Vamos conferir o sensor.', 'acao' => 'responder', 'fontes' => ["nota {$proc->id}", 999, $proposta->id, 'qualquer']]);
 
@@ -202,7 +205,7 @@ class PedroBaseDoSuporteTest extends TestCase
 
     public function test_o_pedro_propoe_o_registro_ao_abrir_o_atendimento_e_completa_a_mesma_proposta(): void
     {
-        $c = SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        $c = SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('o portão não fecha', 'wamid.1', '552733894253');
         $this->responde(['resposta' => 'Vou abrir o atendimento.', 'acao' => 'abrir_atendimento',
             'registro' => ['titulo' => 'Portão da garagem não fecha', 'relato' => 'Cliente diz que o portão volta.', 'verificado' => '', 'solucao' => '', 'situacao' => 'resolvido']]);
@@ -225,7 +228,7 @@ class PedroBaseDoSuporteTest extends TestCase
     {
         $ana = $this->atendente('Ana Suporte');
         $bia = $this->atendente('Bia Suporte');
-        $c = SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        $c = SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('o portão não fecha', 'wamid.1', '552733894253');
         $this->actingAs($ana)->post(route('suporte.responder', $c->id), ['texto' => 'Oi, aqui é a Ana.'])->assertSessionHasNoErrors();
         $n = app(BaseDoSuporte::class)->proporRegistro($c->fresh(), ['titulo' => 'Portão', 'relato' => 'volta sozinho']);
@@ -257,7 +260,12 @@ class PedroBaseDoSuporteTest extends TestCase
 
     public function test_cliente_que_sumiu_vira_encerrado_sem_confirmacao_uma_vez_so(): void
     {
-        $sumiu = SuporteConversa::create(['telefone' => '5527900000001', 'ultima_entrada_em' => now()->subHours(30)]);
+        $sumiu = SuporteConversa::create(['telefone' => '5527900000001', 'ultima_entrada_em' => now()->subHours(30), 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria']);
+        // Quem nunca se identificou não teve atendimento: não vira registro (T-478).
+        $anonima = SuporteConversa::create(['telefone' => '5527900000003', 'ultima_entrada_em' => now()->subHours(30)]);
+        $e3 = SuporteMensagem::create(['conversa_id' => $anonima->id, 'direcao' => 'entrada', 'tipo' => 'text', 'texto' => 'o portão não abre']);
+        SuporteMensagem::create(['conversa_id' => $anonima->id, 'direcao' => 'pedro', 'tipo' => 'text', 'texto' => 'Me diga seu nome e o do condomínio.']);
+        SuportePedido::forceCreate(['conversa_id' => $anonima->id, 'ate_mensagem_id' => $e3->id, 'situacao' => 'respondido', 'acao' => 'responder', 'resumo' => 'Portão não abre']);
         $entrada = SuporteMensagem::create(['conversa_id' => $sumiu->id, 'direcao' => 'entrada', 'tipo' => 'text', 'texto' => 'como troco a senha do portal?']);
         SuporteMensagem::create(['conversa_id' => $sumiu->id, 'direcao' => 'pedro', 'tipo' => 'text', 'texto' => 'Use o Esqueci minha senha.']);
         SuportePedido::forceCreate(['conversa_id' => $sumiu->id, 'ate_mensagem_id' => $entrada->id, 'situacao' => 'respondido', 'acao' => 'responder', 'resumo' => 'Troca de senha do portal']);

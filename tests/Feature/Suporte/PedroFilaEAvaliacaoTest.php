@@ -10,6 +10,7 @@ use App\Models\SuportePedido;
 use App\Models\Tarefa;
 use App\Models\User;
 use App\Services\Suporte\Encerramento;
+use App\Services\Suporte\Pedro;
 use App\Services\Suporte\Transferencia;
 use Database\Seeders\PerfilPermissaoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -72,7 +73,7 @@ class PedroFilaEAvaliacaoTest extends TestCase
 
         $c = SuporteConversa::sole();
         $this->assertSame(['humano', $this->alexandre->id], [$c->situacao, $c->humano_id]);
-        $this->assertStringContainsString('Já chamei o Alexandre, que continua seu atendimento por aqui.', $this->ultimaDoPedro());
+        $this->assertStringContainsString('Já chamei o Alexandre, ele continua com você por aqui.', $this->ultimaDoPedro());
         $this->assertSame(1, Notificacao::where('destinatario_id', $this->alexandre->id)->where('titulo', 'like', 'Chamaram você no WhatsApp%')->count());
         $this->assertSame(0, Notificacao::where('destinatario_id', $this->felipe->id)->count(), 'só quem foi chamado');
 
@@ -88,7 +89,7 @@ class PedroFilaEAvaliacaoTest extends TestCase
         $c = SuporteConversa::sole();
         $this->assertNull($c->humano_id);
         $this->assertNotNull($c->fila_desde);
-        $this->assertStringContainsString('Não encontrei Marta na equipe de atendimento; passei você para a fila', $this->ultimaDoPedro());
+        $this->assertStringContainsString('Já avisei a equipe que você quer falar com Marta', $this->ultimaDoPedro());
         $this->assertSame(2, Notificacao::where('titulo', 'like', 'Na fila do WhatsApp%')->count(), 'toda a equipe de atendimento');
 
         $this->assertSame(0, app(Transferencia::class)->lembrarFila(), 'antes de 15 min, não');
@@ -112,7 +113,7 @@ class PedroFilaEAvaliacaoTest extends TestCase
         $c = SuporteConversa::sole();
         $this->assertSame(['humano', null], [$c->situacao, $c->humano_id]);
         $this->assertSame(0, Tarefa::count(), 'nada no quadro do Matriz');
-        $this->assertStringContainsString('vou passar você para um de nossos especialistas. Você está na fila de atendimento', $this->ultimaDoPedro());
+        $this->assertStringContainsString(Pedro::ESPECIALISTA, $this->ultimaDoPedro());
     }
 
     public function test_pedro_encerra_e_a_nota_e_registrada(): void

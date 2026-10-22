@@ -172,7 +172,8 @@ class BaseDoSuporte
             if (! $ultima || $ultima->direcao !== 'pedro' || ! $pedido || $pedido->acao !== 'responder' || blank($pedido->resumo)) {
                 continue;
             }
-            if (app(AcessoInterno::class)->deQuem((string) $c->telefone)) {
+            // Sem identificação não houve atendimento nem cliente a quem o registro pertença (T-478).
+            if (app(AcessoInterno::class)->deQuem((string) $c->telefone) || ! $c->identificada()) {
                 continue;
             }
             $relato = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->get()

@@ -22,10 +22,11 @@ class Encerramento
     /** Avaliação pedida há mais tempo que isso já não vale como resposta. */
     public const VALIDADE_HORAS = 24;
 
-    public const PEDIDO = "Seu atendimento foi encerrado. ✅\n\nComo você avalia o atendimento que recebeu? Responda com um número:\n"
+    // No tom de uma pessoa da equipe (T-478, dono em 21/10/2026).
+    public const PEDIDO = "Fico feliz em ter ajudado! ✅\n\nAntes de você ir: como foi o seu atendimento? Me responde com um número:\n"
         ."5 - Excelente\n4 - Bom\n3 - Regular\n2 - Ruim\n1 - Péssimo\n\nSe quiser, escreva um comentário junto.";
 
-    public const OBRIGADO = 'Obrigado pela avaliação! Se precisar de algo, é só chamar por aqui.';
+    public const OBRIGADO = 'Obrigado pela avaliação! Qualquer coisa, é só me chamar por aqui.';
 
     public function __construct(private CanalWhatsApp $canal, private AvisoNoTelegram $telegram) {}
 

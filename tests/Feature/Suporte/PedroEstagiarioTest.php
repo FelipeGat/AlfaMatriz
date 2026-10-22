@@ -22,9 +22,11 @@ class PedroEstagiarioTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-10-20 10:00', 'America/Sao_Paulo'));
     }
 
-    private function prompt(string $telefone = '5527988887777', string $texto = 'oi'): string
+    private function prompt(string $telefone = '5527988887777', string $texto = 'oi', bool $identificada = false): string
     {
-        $c = SuporteConversa::create(['telefone' => $telefone, 'ultima_entrada_em' => now()]);
+        // Identificada (T-478): o roteiro e o diagnóstico só vão para quem já disse quem é.
+        $c = SuporteConversa::create(['telefone' => $telefone, 'ultima_entrada_em' => now()]
+            + ($identificada ? ['solicitante_nome' => 'Maria', 'cliente_id' => \App\Models\Cliente::create(['nome' => 'Cliente de teste', 'ativo' => true])->id] : []));
         $c->mensagens()->create(['wamid' => 'wamid.'.uniqid(), 'direcao' => 'entrada', 'tipo' => 'text', 'texto' => $texto, 'enviada_em' => now()]);
 
         return app(Contexto::class)->prompt($c->fresh());
@@ -32,7 +34,7 @@ class PedroEstagiarioTest extends TestCase
 
     public function test_o_conhecimento_do_grupo_vai_ao_pedro(): void
     {
-        $p = $this->prompt();
+        $p = $this->prompt(identificada: true);
         foreach (['GW Soluções', 'Delta Soluções', 'Invest Soluções', 'https://solucoesgrupo.com/', 'https://invest.solucoesgrupo.com/',
             'Financeiro — (27) 99652-6457', 'Comercial — (27) 99527-3269', 'Plantão — (27) 99244-6889', 'https://gestor.alfa.solucoesgrupo.com/login'] as $esperado) {
             $this->assertStringContainsString($esperado, $p);

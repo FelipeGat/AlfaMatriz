@@ -89,12 +89,22 @@ class PedroGestorTest extends TestCase
         $this->responde(['resposta' => 'É do Castanheiras?', 'acao' => 'responder', 'cliente' => 'gestor:999']);
         $this->assertNull(SuporteConversa::sole()->gestor_cliente_id);
         $this->chega('isso, o G1 de novo não fecha', 'wamid.2');
-        $this->responde(['resposta' => 'Vou encaminhar.', 'acao' => 'responder', 'cliente' => 'gestor:13']);
+        $this->responde(['resposta' => 'Certo! E com quem eu falo?', 'acao' => 'responder', 'cliente' => 'gestor:13']);
         $this->assertSame(13, SuporteConversa::sole()->gestor_cliente_id);
+        $this->assertFalse(SuporteConversa::sole()->identificada(), 'falta o nome da pessoa (T-478)');
 
-        $this->chega('e aí?', 'wamid.3');
+        // Com o nome, a resposta do pedido de identificação não vai: o Pedro volta na hora com o contexto inteiro.
+        $this->chega('sou o João, porteiro', 'wamid.3');
+        $this->responde(['resposta' => 'Obrigado, João!', 'acao' => 'responder', 'solicitante' => ['nome' => 'João', 'funcao' => 'porteiro']]);
+        $c = SuporteConversa::sole();
+        $this->assertSame(['João', 'porteiro'], [$c->solicitante_nome, $c->solicitante_funcao]);
+        $this->assertNotNull($c->identificada_em);
+        Http::assertNotSent(fn ($r) => ($r['text']['body'] ?? '') === 'Obrigado, João!');
+        $this->assertSame(1, SuportePedido::where('situacao', 'pendente')->count());
+
         $this->runner();
         $prompt = $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->json('prompt');
+        $this->assertStringContainsString('QUEM ESCREVE: João (porteiro)', $prompt);
         $this->assertStringContainsString('CONFIRMADO (Gestor', $prompt);
         // Confirmado só pelo nome, de um número fora do cadastro: nada do histórico (21/10/2026).
         $this->assertStringContainsString('POR SEGURANÇA, o número que escreve NÃO é um telefone do cadastro', $prompt);
@@ -106,7 +116,7 @@ class PedroGestorTest extends TestCase
     public function test_gravacao_desligada_vira_tarefa_para_lancar_no_gestor(): void
     {
         config(['services.suporte_pedro.gestor_gravar' => false]);
-        SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('o portão G1 não fecha', 'wamid.1');
         $this->responde(['resposta' => 'Vou encaminhar para a equipe técnica.', 'acao' => 'abrir_atendimento', 'resumo' => 'Portão G1 não fecha', 'destino' => 'gestor', 'assunto_id' => 3]);
 
@@ -119,7 +129,7 @@ class PedroGestorTest extends TestCase
     public function test_gravacao_ligada_a_maquina_grava_e_o_cliente_recebe_o_numero(): void
     {
         config(['services.suporte_pedro.gestor_gravar' => true]);
-        SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('o portão G1 não fecha', 'wamid.1');
         $this->responde(['resposta' => 'Vou encaminhar.', 'acao' => 'abrir_atendimento', 'resumo' => 'Portão G1 não fecha', 'destino' => 'gestor', 'assunto_id' => 999]);
 
@@ -137,14 +147,14 @@ class PedroGestorTest extends TestCase
         $this->postJson(route('suporte.runner.abertura-feita', $a->id), ['maquina' => 'wsl', 'numero' => '782', 'modo' => 'reabrir'])->assertOk();
 
         $this->assertSame('782', SuporteConversa::sole()->gestor_atendimento);
-        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Reabri o atendimento nº 782, do mesmo assunto. A equipe técnica retorna por aqui.');
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Esse problema já tinha um chamado, o nº 782, e eu reabri para a equipe olhar de novo. A equipe técnica te retorna por aqui.');
         $this->assertSame(1, Notificacao::where('destinatario_id', $this->rossini->id)->where('titulo', 'like', 'Gestor nº 782%')->count());
     }
 
     public function test_abertura_sem_maquina_cai_para_o_quadro(): void
     {
         config(['services.suporte_pedro.gestor_gravar' => true]);
-        SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('o portão G1 não fecha', 'wamid.1');
         $this->responde(['resposta' => 'Vou encaminhar.', 'acao' => 'abrir_atendimento', 'resumo' => 'Portão G1 não fecha', 'destino' => 'gestor', 'assunto_id' => 3]);
         Carbon::setTestNow(now()->addMinutes(3));
@@ -152,7 +162,7 @@ class PedroGestorTest extends TestCase
         $this->assertSame('falhou', SuporteGestorAbertura::sole()->situacao);
         $t = Tarefa::sole();
         $this->assertStringContainsString('não foi possível abrir no Gestor', $t->resumo);
-        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Seu atendimento é o nº T-{$t->id}. A equipe técnica retorna por aqui.");
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Pronto, abri o seu chamado: é o nº T-{$t->id}. A equipe técnica te retorna por aqui.");
     }
 
     public function test_so_a_conta_do_pedro_manda_o_retrato(): void
@@ -180,7 +190,7 @@ class PedroGestorTest extends TestCase
     /** Do telefone do cadastro do cliente, o histórico de atendimentos aparece. */
     public function test_numero_do_cadastro_ve_os_atendimentos_do_cliente(): void
     {
-        SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'ultima_entrada_em' => now()]);
+        SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('e o portão?', 'wamid.1', '552733894253');
         $this->runner();
         $prompt = $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->json('prompt');
