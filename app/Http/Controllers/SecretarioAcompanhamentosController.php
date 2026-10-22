@@ -39,11 +39,21 @@ class SecretarioAcompanhamentosController extends Controller
             'config' => $config,
             'silencio' => $politica->emSilencio($config, CarbonImmutable::now()),
             // Os itens do aviso do sino que trouxe a pessoa até aqui, para resolver ali mesmo.
-            'doAviso' => $request->filled('avisos')
-                ? SecretarioAcompanhamento::de($user)->whereIn('id', array_slice(array_filter(array_map('intval', explode(',', (string) $request->query('avisos')))), 0, 50))
-                    ->orderByRaw("prioridade = 'alta' desc")->orderBy('referencia_em')->get()
+            'doAviso' => ($ids = $this->idsDoAviso($request))
+                ? SecretarioAcompanhamento::de($user)->whereIn('id', $ids)->orderByRaw("prioridade = 'alta' desc")->orderBy('referencia_em')->get()
                 : collect(),
         ]);
+    }
+
+    /** Os itens do aviso: pelo envio do sino (`?aviso=`), só da própria pessoa. @return list<int> */
+    private function idsDoAviso(Request $request): array
+    {
+        if (! $request->filled('aviso')) {
+            return [];
+        }
+        $envio = \App\Models\SecretarioAcompanhamentoEnvio::where('user_id', $request->user()->id)->find((int) $request->query('aviso'));
+
+        return array_slice(array_map('intval', (array) ($envio?->acompanhamentos ?? [])), 0, 100);
     }
 
     public function resolver(Request $request, int $acompanhamento): RedirectResponse

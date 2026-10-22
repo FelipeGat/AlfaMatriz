@@ -188,7 +188,7 @@ class AcompanhamentoTest extends TestCase
         $this->assertSame(1, Notificacao::where('destinatario_id', $u->id)->where('tipo', 'acompanhamento')->count());
         $aviso = Notificacao::where('tipo', 'acompanhamento')->sole();
         $ids = SecretarioAcompanhamento::de($u)->where('regra', 'conflito')->pluck('id');
-        $this->assertStringContainsString('avisos=', $aviso->rota);
+        $this->assertStringContainsString('aviso=', $aviso->rota);
         $this->actingAs($u)->get($aviso->rota)->assertOk()->assertSee('Do aviso: o que precisa de você')
             ->assertSee('Conflito', false)->assertSee(route('secretario.acompanhamentos.resolver', $ids->first()), false)
             // Filtrado: sem os números do dia nem a lista inteira, só os itens do aviso.
