@@ -38,6 +38,11 @@ class SecretarioAcompanhamentosController extends Controller
             'dispensados' => SecretarioAcompanhamento::de($user)->where('situacao', SecretarioAcompanhamento::DISPENSADO)->count(),
             'config' => $config,
             'silencio' => $politica->emSilencio($config, CarbonImmutable::now()),
+            // Os itens do aviso do sino que trouxe a pessoa até aqui, para resolver ali mesmo.
+            'doAviso' => $request->filled('avisos')
+                ? SecretarioAcompanhamento::de($user)->whereIn('id', array_slice(array_filter(array_map('intval', explode(',', (string) $request->query('avisos')))), 0, 50))
+                    ->orderByRaw("prioridade = 'alta' desc")->orderBy('referencia_em')->get()
+                : collect(),
         ]);
     }
 

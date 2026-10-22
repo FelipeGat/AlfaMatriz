@@ -184,6 +184,13 @@ class AcompanhamentoTest extends TestCase
         $this->item($u, ['tipo' => 'compromisso', 'titulo' => 'Call', 'quando' => '2026-10-22 10:30:00']);
         $this->assertSame(2, $rodada());
         $this->assertTrue(Notificacao::where('tipo', 'acompanhamento')->latest('id')->value('sonora'), 'Alta toca');
+        // 22/10/2026: um aviso por vez (o novo substitui o não lido), e ele abre os itens dele, com a ação de cada um.
+        $this->assertSame(1, Notificacao::where('destinatario_id', $u->id)->where('tipo', 'acompanhamento')->count());
+        $aviso = Notificacao::where('tipo', 'acompanhamento')->sole();
+        $ids = SecretarioAcompanhamento::de($u)->where('regra', 'conflito')->pluck('id');
+        $this->assertStringContainsString('avisos=', $aviso->rota);
+        $this->actingAs($u)->get($aviso->rota)->assertOk()->assertSee('Do aviso: o que precisa de você')
+            ->assertSee('Conflito', false)->assertSee(route('secretario.acompanhamentos.resolver', $ids->first()), false);
 
         // Silêncio (20:00–07:00) e fim de semana: nada sai.
         SecretarioItem::create(['user_id' => $u->id, 'tipo' => 'compromisso', 'titulo' => 'Outra', 'quando' => '2026-10-22 15:00:00', 'origem' => 'matriz']);
