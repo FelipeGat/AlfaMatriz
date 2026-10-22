@@ -72,9 +72,20 @@ class AgendaConsolidada
             }
         }
 
+        // O mesmo compromisso lançado no Matriz E no Google (mesmo título e mesmo início) é um só, e não
+        // conflito consigo mesmo — 22/10/2026, "Testes da esteira Serrapark" acusado como conflito.
+        // Fica o do Matriz, que é o que a Agenda mostra.
+        $doMatriz = $itens->where('origem', 'matriz')->map(fn ($i) => $this->mesmo($i))->flip();
+        $itens = $itens->reject(fn ($i) => $i['origem'] === 'google' && $doMatriz->has($this->mesmo($i)));
+
         $itens = $itens->sortBy(fn ($i) => ($i['dia_inteiro'] ? '0' : '1').$i['inicio']->format('Y-m-d H:i'))->values();
 
         return $this->marcarConflitos($itens);
+    }
+
+    private function mesmo(array $i): string
+    {
+        return \App\Services\Secretario\Memoria\BuscaNaMemoria::normalizar($i['titulo']).'|'.$i['inicio']->setTimezone(config('app.timezone'))->format('YmdHi');
     }
 
     /** Sobreposição [início, fim) entre itens que ocupam horário; encostar não é conflito. */

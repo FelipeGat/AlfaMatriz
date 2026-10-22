@@ -59,7 +59,8 @@ foreach (['orcamentos_aprovacao' => 'aguardando_aprovacao', 'orcamentos_elaborac
 }
 
 // Cobranca::preCliente() devolve null no Gestor: só `cliente` é carregado.
-$aReceber = fn () => Cobranca::where('status', '!=', 'pago')->whereNull('prejuizo_em');
+// Cancelada não é dívida (22/10/2026: apareciam como vencidas).
+$aReceber = fn () => Cobranca::whereNotIn('status', ['pago', 'cancelado'])->whereNull('prejuizo_em');
 $blocos['cobrancas_vencidas'] = [
     'quantidade' => $aReceber()->whereDate('data_vencimento', '<', today())->count(),
     'valor' => (float) $aReceber()->whereDate('data_vencimento', '<', today())->sum('valor'),
