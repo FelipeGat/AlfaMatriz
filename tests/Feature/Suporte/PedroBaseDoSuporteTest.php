@@ -258,6 +258,29 @@ class PedroBaseDoSuporteTest extends TestCase
         $this->assertNull(app(BaseDoSuporte::class)->paraOPrompt($c, 'boleto segunda via'));
     }
 
+    /**
+     * T-481: o resumo do Pedro passou de 160 caracteres e o corte com "…" deu 161,
+     * que o MySQL recusou (SQLSTATE 22001). O SQLite dos testes não confere o
+     * tamanho do varchar, por isso o teste mede o que foi gravado.
+     */
+    public function test_titulo_longo_do_pedro_e_cortado_dentro_da_coluna(): void
+    {
+        $c = SuporteConversa::create(['telefone' => '552733894254', 'ultima_entrada_em' => now()]);
+        $longo = 'Catraca da academia não libera a entrada. Cliente ainda não confirmado (candidato: Academia R1, Cariacica). '
+            .'Aguardando confirmação do nome, estado do visor e luzes da catraca antes de chamar o técnico.';
+        $this->assertGreaterThan(160, mb_strlen($longo));
+
+        $n = app(BaseDoSuporte::class)->proporRegistro($c, ['titulo' => $longo, 'relato' => 'catraca travada']);
+        $titulo = $n->fresh()->titulo;
+
+        $this->assertSame(160, mb_strlen($titulo));
+        $this->assertStringEndsWith('…', $titulo);
+        $this->assertStringStartsWith('Catraca da academia não libera a entrada.', $titulo);
+
+        $exato = str_repeat('é', 160);
+        $this->assertSame($exato, app(BaseDoSuporte::class)->proporRegistro($c, ['titulo' => $exato])->fresh()->titulo);
+    }
+
     public function test_cliente_que_sumiu_vira_encerrado_sem_confirmacao_uma_vez_so(): void
     {
         $sumiu = SuporteConversa::create(['telefone' => '5527900000001', 'ultima_entrada_em' => now()->subHours(30), 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria']);
