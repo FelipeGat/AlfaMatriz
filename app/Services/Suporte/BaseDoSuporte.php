@@ -121,7 +121,17 @@ class BaseDoSuporte
      */
     public function proporRegistro(SuporteConversa $c, array $r): SuporteNota
     {
-        $limpo = fn ($v, int $max) => filled($v) ? Str::limit(trim((string) $v), $max, '…') : null;
+        // O "…" cabe DENTRO do teto (T-481): o Str::limit corta em $max e põe o final
+        // depois, e o título de 160 + "…" estourava o varchar(160) no MySQL. A medida é
+        // em caracteres, como a coluna conta; o Str::limit mede largura de tela.
+        $limpo = function ($v, int $max): ?string {
+            if (blank($v)) {
+                return null;
+            }
+            $t = trim((string) $v);
+
+            return mb_strlen($t) <= $max ? $t : rtrim(mb_substr($t, 0, $max - 1)).'…';
+        };
         $dados = array_filter([
             'titulo' => $limpo($r['titulo'] ?? null, 160),
             'relato' => $limpo($r['relato'] ?? null, 4000),
