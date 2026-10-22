@@ -1,0 +1,8 @@
+<b>📋 AlfaMatriz — Changelog 21/10/2026</b>
+<i>Central de IA: caixa de mensagem com a altura certa ao abrir um chat</i>
+
+<b>🛠️ Correção</b>
+• <b>A caixa de mensagem da Central de IA já abre do tamanho certo.</b> Ao abrir um chat, ela aparecia muito baixa, com o texto de ajuda cortado, e só voltava ao normal depois de um clique. Agora ela abre com pelo menos duas linhas, e mantém a altura ao trocar de tela, de aba, de chat ou de projeto.
+
+<i>Versão v2026.10.21.9</i>
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
