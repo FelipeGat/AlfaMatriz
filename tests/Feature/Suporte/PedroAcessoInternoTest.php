@@ -144,15 +144,15 @@ class PedroAcessoInternoTest extends TestCase
     {
         $p = app(Contexto::class)->prompt($this->conversa('5527997458265', 'Pedro, abre um atendimento para a Emanuelly, limpeza das condensadoras, com o Vitor amanhã'));
         $this->assertStringContainsString('REGISTRAR ATENDIMENTO', $p);
-        $this->assertStringContainsString('gestor:30: EMANUELLY SOUZA', $p);
+        $this->assertStringContainsString('gestor:30: [CLIENTE] EMANUELLY SOUZA', $p);
         $this->assertStringContainsString('nº 700 — concluido — de 10/08/2026 — com Vitor Silva', $p);
         $this->assertStringContainsString('5 Manutenção de ar-condicionado', $p);
         $this->assertStringContainsString('Vitor Silva', $p);
         $this->assertStringContainsString('ÁUDIO', $p);
-        $this->assertStringContainsString('Seria esse?', $p, 'nome parecido: oferecer para ele escolher');
+        $this->assertStringContainsString('ofereça o parecido para ele escolher', $p, 'nome parecido: oferecer para ele escolher');
         $this->assertStringContainsString("- 2: GW\n  Assuntos: 5 Manutenção de ar-condicionado", $p);
         $this->assertStringContainsString('- 21: Vitor Silva', $p);
-        $this->assertStringContainsString('Agendamento: dd/mm/aaaa, período (ou: sem agendamento)', $p);
+        $this->assertStringContainsString('Agendamento: dd/mm/aaaa, das HH:MM às HH:MM (ou: sem agendamento)', $p);
 
         // A grafia do nome nem sempre bate com o cadastro ("Emanuelly" x "Emanuelle", teste do Wallas).
         app(\App\Services\Suporte\DiretorioGestor::class)->gravar('wsl', now()->toDateTimeString(),
@@ -169,21 +169,21 @@ class PedroAcessoInternoTest extends TestCase
         $pedido->update(['situacao' => 'reservado']);
         app(Pedro::class)->concluir($this->felipe, $pedido->id, '<<<PEDRO {"resposta": "Certo, Wallas.", "acao": "abrir_atendimento", "resumo": "Limpeza das condensadoras do apartamento",'
             .' "cliente": "gestor:30", "modo": "reabrir", "atendimento": "700", "empresa_id": 2, "assunto_id": 5, "tecnico_id": 21, "responsavel": "Vitor Silva",'
-            .' "agendar": true, "data": "2026-10-22", "periodo": "manha"} PEDRO>>>', null);
+            .' "agendar": true, "data": "2026-10-22", "hora_inicio": "08:00", "hora_fim": "12:00"} PEDRO>>>', null);
 
         $this->assertSame(0, \App\Models\Tarefa::count(), 'nada no quadro do Matriz');
-        $this->assertSame([2, 21, '2026-10-22', 'manha'], [$a0 = \App\Models\SuporteGestorAbertura::sole()->empresa_id, \App\Models\SuporteGestorAbertura::sole()->funcionario_id,
-            \App\Models\SuporteGestorAbertura::sole()->agendar_data?->toDateString(), \App\Models\SuporteGestorAbertura::sole()->agendar_periodo]);
+        $ab = \App\Models\SuporteGestorAbertura::sole();
+        $this->assertSame([2, 21, '2026-10-22', '08:00', '12:00'], [$ab->empresa_id, $ab->funcionario_id, $ab->agendar_data?->toDateString(), $ab->hora_inicio, $ab->hora_fim]);
         $a = \App\Models\SuporteGestorAbertura::sole();
         $this->assertSame([30, 'reabrir', '700', 'Wallas'], [$a->gestor_cliente_id, $a->modo, $a->atendimento_numero, $a->pedido_por]);
-        $this->assertStringContainsString('Responsável: Vitor Silva. Para: 22/10/2026.', $a->descricao);
+        $this->assertStringContainsString('Técnico: Vitor Silva. Agendado para 22/10/2026 das 08:00 às 12:00.', $a->descricao);
         $this->assertStringContainsString('Enviei para o Gestor', (string) $c->mensagens()->reorder()->where('direcao', 'pedro')->value('texto'));
 
         Sanctum::actingAs($this->felipe, ['central-ia-runner']);
         $this->postJson(route('suporte.runner.aberturas'), ['maquina' => 'wsl'])->assertOk()->assertJsonPath('aberturas.0.autor_email', 'felipe@teste.local')
-            ->assertJsonPath('aberturas.0.funcionario_id', 21)->assertJsonPath('aberturas.0.agendar_data', '2026-10-22')->assertJsonPath('aberturas.0.periodo', 'manha');
+            ->assertJsonPath('aberturas.0.funcionario_id', 21)->assertJsonPath('aberturas.0.agendar_data', '2026-10-22')->assertJsonPath('aberturas.0.hora_inicio', '08:00')->assertJsonPath('aberturas.0.hora_fim', '12:00');
         $this->postJson(route('suporte.runner.abertura-feita', $a->id), ['maquina' => 'wsl', 'numero' => '700', 'modo' => 'reabrir', 'agendado' => true])->assertOk();
-        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Reabri o atendimento nº 700, do mesmo assunto. Cliente: EMANUELLY SOUZA, no Gestor.\nAgendado: Vitor Silva, 22/10/2026, manhã (08h às 12h).");
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Reabri o atendimento nº 700, do mesmo assunto. Cliente: EMANUELLY SOUZA, no Gestor.\nAgendado: Vitor Silva, 22/10/2026, das 08:00 às 12:00.");
         $this->assertNull($c->fresh()->gestor_atendimento, 'a conversa de quem é da casa não fica presa a um atendimento');
     }
 
