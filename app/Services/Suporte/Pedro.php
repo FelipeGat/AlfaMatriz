@@ -218,12 +218,13 @@ class Pedro
         if (! $interno && ! $identificadaAntes && $c->identificada() && $bloco['acao'] === 'responder') {
             $c->update(['identificada_em' => now()]);
             $p->update(['situacao' => 'respondido', 'acao' => 'identificou', 'resumo' => $bloco['resumo']]);
-            // Só segura a resposta se a volta de fato entrou na fila. Fora do horário (pedido
-            // feito às 17:59), janela fechada ou Pedro desligado, ela não entra: aí vai a
-            // resposta da identificação mesmo, senão a pessoa fica sem nada (revisão da T-478).
-            if ($this->enfileirar($c->id)) {
-                return;
-            }
+            // Se a volta não entrar agora (identificou às 17:59, IA respondeu às 18:01), a
+            // resposta continua segurada de propósito: a última mensagem segue sendo da pessoa,
+            // e o Pedro::aguardando a retoma na abertura, já cuidando do problema. Mandar o
+            // "obrigado" aqui calaria essa retomada (revisão da T-478).
+            $this->enfileirar($c->id);
+
+            return;
         }
         $resposta = $bloco['resposta'];
         // Sem o Gestor, não há setor para onde entregar: vira atendimento no quadro.

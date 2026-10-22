@@ -133,17 +133,23 @@ class PedroIdentificacaoTest extends TestCase
         Http::assertSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), "O número do seu chamado é T-{$t->id}."));
     }
 
-    /** Revisão da T-478: identificada às 17:59 e a IA responde às 18:01 — a volta não entra, a resposta vai. */
-    public function test_identificou_quando_a_volta_nao_entra_a_resposta_vai(): void
+    /** Revisão da T-478: identificada às 17:59 e a IA responde às 18:01 — a resposta espera, e o Pedro retoma na abertura. */
+    public function test_identificou_fora_do_horario_o_pedro_retoma_na_abertura(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-10-20 17:59', 'America/Sao_Paulo'));
         $this->chega('Sou a Maria, síndica, a catraca parou', 'wamid.1', '5527999998888');
         Carbon::setTestNow(Carbon::parse('2026-10-20 18:01', 'America/Sao_Paulo'));
-        $this->responde(['resposta' => 'Obrigado, Maria! Amanhã cedo a equipe olha a catraca.', 'acao' => 'responder', 'solicitante' => ['nome' => 'Maria', 'funcao' => 'síndica']]);
+        $this->responde(['resposta' => 'Obrigado, Maria!', 'acao' => 'responder', 'solicitante' => ['nome' => 'Maria', 'funcao' => 'síndica']]);
 
-        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Obrigado, Maria! Amanhã cedo a equipe olha a catraca.');
+        Http::assertNotSent(fn ($r) => ($r['text']['body'] ?? '') === 'Obrigado, Maria!');
         $this->assertTrue(SuporteConversa::sole()->identificada());
-        $this->assertSame(1, SuportePedido::count(), 'nenhuma volta ficou pendurada');
+        $this->assertSame(1, SuportePedido::count(), 'fora do horário a volta espera');
+
+        Carbon::setTestNow(Carbon::parse('2026-10-21 07:00', 'America/Sao_Paulo'));
+        $this->assertSame(1, app(Pedro::class)->aguardando(), 'na abertura a conversa volta ao Pedro');
+        $prompt = $this->responde(['resposta' => 'Bom dia, Maria! Vou ver a catraca com você.', 'acao' => 'responder']);
+        $this->assertStringContainsString('QUEM ESCREVE: Maria (síndica)', $prompt);
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Bom dia, Maria! Vou ver a catraca com você.');
     }
 
     /** Revisão da T-478: telefone de portaria passa de mão em mão; quem diz outro nome passa a ser o solicitante. */
