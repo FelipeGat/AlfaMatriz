@@ -41,7 +41,7 @@ class Midias
      */
     public function paraOPedido(SuporteConversa $c): array
     {
-        $recentes = $c->mensagens()->reorder()->where('direcao', 'entrada')->whereIn('tipo', ['image', 'audio', 'video'])
+        $recentes = $c->mensagensDoAtendimento()->reorder()->where('direcao', 'entrada')->whereIn('tipo', ['image', 'audio', 'video'])
             ->orderByDesc('id')->limit(15)->get();
         $imagens = [];
         foreach ($recentes->where('tipo', 'image')->take(self::FOTOS) as $m) {

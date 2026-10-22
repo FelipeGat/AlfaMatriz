@@ -52,13 +52,16 @@ class PedroFilaEAvaliacaoTest extends TestCase
             'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $corpo, 'segredo')], $corpo)->assertOk();
     }
 
-    private function responde(array $bloco): void
+    /** @return string o prompt que a IA recebeu */
+    private function responde(array $bloco): string
     {
         $this->app['auth']->forgetGuards();
         Sanctum::actingAs($this->felipe, ['central-ia-runner']);
         $job = $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->assertOk()->json();
         $this->postJson(route('suporte.runner.resposta', $job['id']), ['maquina' => 'wsl',
             'texto' => "<<<PEDRO\n".json_encode($bloco, JSON_UNESCAPED_UNICODE)."\nPEDRO>>>"])->assertOk();
+
+        return (string) $job['prompt'];
     }
 
     private function ultimaDoPedro(): string
@@ -163,5 +166,30 @@ class PedroFilaEAvaliacaoTest extends TestCase
         $this->assertSame('pedro', $c->fresh()->situacao);
         $this->assertSame($antes + 1, SuportePedido::count());
         $this->assertNull(SuporteAvaliacao::latest('id')->first()->nota);
+    }
+
+    public function test_depois_do_encerramento_o_pedro_lembra_mas_nao_retoma_o_assunto(): void
+    {
+        // T-478, no ar em 22/10/2026: encerrado às 09:07, um "oi" às 13:05 voltou com
+        // "sobre as câmeras sem imagem…". O dono: lembrar do histórico, sim; deduzir que
+        // um "oi" continua o atendimento encerrado, não.
+        $this->chega('todas as câmeras estão sem imagem', 'wamid.1');
+        $c = SuporteConversa::sole();
+        $this->actingAs($this->alexandre)->post(route('suporte.assumir', $c->id))->assertRedirect();
+        $this->actingAs($this->alexandre)->post(route('suporte.encerrar', $c->id))->assertRedirect();
+        SuportePedido::query()->update(['situacao' => 'descartado']);
+
+        Carbon::setTestNow(now()->addHours(4));
+        $this->chega('oi', 'wamid.2');
+        $prompt = $this->responde(['resposta' => 'Olá! Em que posso ajudar?', 'acao' => 'responder']);
+
+        $anterior = strpos($prompt, '### Atendimento anterior, já ENCERRADO');
+        $agora = strpos($prompt, '### Atendimento de agora');
+        $this->assertNotFalse($anterior);
+        $this->assertNotFalse($agora);
+        $this->assertStringContainsString('CLIENTE: todas as câmeras estão sem imagem', substr($prompt, $anterior, $agora - $anterior), 'o histórico fica');
+        $this->assertStringContainsString('CLIENTE: oi', substr($prompt, $agora));
+        $this->assertStringNotContainsString('câmeras', substr($prompt, $agora), 'o assunto antigo não é o de agora');
+        $this->assertStringContainsString('ATENDIMENTO ANTERIOR:', $prompt);
     }
 }

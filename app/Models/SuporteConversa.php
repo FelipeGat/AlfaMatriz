@@ -35,6 +35,31 @@ class SuporteConversa extends Model
         return $this->hasMany(SuporteMensagem::class, 'conversa_id')->orderBy('id');
     }
 
+    /**
+     * A última mensagem do atendimento já encerrado (null: nenhum encerramento ainda).
+     * A conversa é uma só por telefone; o encerramento é o que separa um atendimento do
+     * outro. Corte pelo id, e não pela hora: no mesmo segundo do encerramento, comparar
+     * horário deixaria a mensagem antiga do lado de cá.
+     */
+    public function fimDoAtendimentoAnterior(): ?int
+    {
+        $encerrou = SuporteAvaliacao::where('conversa_id', $this->id)->max('created_at');
+
+        return $encerrou ? $this->mensagens()->reorder()->where('created_at', '<=', $encerrou)->max('id') : null;
+    }
+
+    /**
+     * As mensagens do atendimento em curso: as que vieram desde o último encerramento.
+     * Servem ao que é do ASSUNTO de agora (fotos, base do suporte, registro). O histórico
+     * que o Pedro lê continua inteiro, com o atendimento encerrado marcado (Contexto::mensagens).
+     */
+    public function mensagensDoAtendimento(): HasMany
+    {
+        $fim = $this->fimDoAtendimentoAnterior();
+
+        return $fim ? $this->mensagens()->where('id', '>', $fim) : $this->mensagens();
+    }
+
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
