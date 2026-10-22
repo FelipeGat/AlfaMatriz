@@ -22,9 +22,10 @@ use Illuminate\Validation\ValidationException;
 class Pedro
 {
     // Frases fixas no tom de uma pessoa da equipe (T-478, dono em 21/10/2026: "o mais natural possível").
-    public const FALLBACK = 'Oi! Já vi sua mensagem, um colega da equipe te responde por aqui em instantes.';
+    public const FALLBACK = 'Olá! Recebi a sua mensagem, e um colega da equipe responderá por aqui em instantes.';
 
-    public const ESPECIALISTA = 'Para não te deixar esperando, já chamei um colega da equipe que cuida disso; ele continua com você por aqui.';
+    // Sem "esse assunto": a frase também sai quando a pessoa só cumprimentou (T-478, 22/10/2026).
+    public const ESPECIALISTA = 'Para que você não fique esperando, já chamei um colega da equipe, que continua com você por aqui.';
 
     public function __construct(private CanalWhatsApp $canal, private Contexto $contexto, private Atendimento $atendimento) {}
 
@@ -87,9 +88,21 @@ class Pedro
         $minutos = max(1, (int) config('services.suporte_pedro.limite_minutos', 30));
         $desde = (int) SuportePedido::where('conversa_id', $c->id)->where('situacao', 'respondido')->where('acao', '!=', 'responder')->max('id');
         $tentativas = SuportePedido::where('conversa_id', $c->id)->where('id', '>', $desde)->where('situacao', 'respondido')->where('acao', 'responder')
-            ->where('created_at', '>=', now()->subHours(SuporteConversa::JANELA_HORAS));
-        $n = (clone $tentativas)->count();
-        if ($n === 0 || ($n < $respostas && (clone $tentativas)->min('created_at') > now()->subMinutes($minutos))) {
+            ->where('created_at', '>=', now()->subHours(SuporteConversa::JANELA_HORAS))->orderByDesc('id')->get(['created_at']);
+        // Só conta a conversa que está acontecendo: a pessoa que sumiu por mais que o limite
+        // e voltou recomeça a contagem (dono em 22/10/2026, T-478: um "oi" 40 min depois foi
+        // direto à equipe, sem passar pela IA, como se o Pedro tivesse tentado esse tempo todo).
+        $serie = [];
+        $depois = now();
+        foreach ($tentativas as $t) {
+            if ($t->created_at->lt($depois->copy()->subMinutes($minutos))) {
+                break;
+            }
+            $serie[] = $t->created_at;
+            $depois = $t->created_at;
+        }
+        $n = count($serie);
+        if ($n === 0 || ($n < $respostas && end($serie)->gt(now()->subMinutes($minutos)))) {
             return false;
         }
 

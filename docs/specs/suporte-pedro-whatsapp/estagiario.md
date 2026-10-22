@@ -124,6 +124,8 @@ Ver e analisar fotos, transcrever áudio e responder 24 h. Fotos e áudio estão
   **não vai à IA**: o Matriz responde "vou encaminhar seu atendimento para um de nossos especialistas, que dará
   continuidade por aqui", abre o atendimento com o resumo e deixa a conversa com a equipe. O pedido fica registrado
   com a ação `especialista`, que zera a contagem quando a conversa volta ao Pedro. A equipe interna fica de fora.
+  **Pausa recomeça (dono, 22/10/2026, T-478):** só conta a conversa que está acontecendo. Se a pessoa ficou mais que
+  o limite de minutos sem escrever e voltou, a contagem recomeça; antes, um "oi" 40 min depois ia direto à equipe.
 - **FR-12, POP de procedimentos básicos:** oito roteiros novos em Suporte › Pedro: impressora, computador que não
   liga, computador lento, mouse ou teclado, monitor sem imagem, catraca que não reconhece face ou digital, nobreak
   e aparelho que não conecta no Wi-Fi. Mesma regra de segurança dos outros; ficam para a equipe revisar.
