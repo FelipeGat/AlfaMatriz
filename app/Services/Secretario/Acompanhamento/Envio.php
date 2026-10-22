@@ -39,14 +39,20 @@ class Envio
         $telegram = SecretarioPreferencia::de($user)->telegram && $this->telegram->destino($user);
 
         DB::transaction(function () use ($user, $lista, $ids, $telegram, $agora) {
-            SecretarioAcompanhamentoEnvio::create(['user_id' => $user->id, 'canal' => 'sino', 'status' => SecretarioAcompanhamentoEnvio::ENTREGUE,
+            $sino = SecretarioAcompanhamentoEnvio::create(['user_id' => $user->id, 'canal' => 'sino', 'status' => SecretarioAcompanhamentoEnvio::ENTREGUE,
                 'acompanhamentos' => $ids, 'quantos' => count($ids), 'tentativas' => 1, 'entregue_em' => $agora]);
             $alta = $lista->contains('prioridade', 'alta');
+            // Um aviso de acompanhamento por vez: o novo substitui os não lidos anteriores (22/10/2026:
+            // três "Para acompanhar" empilhados no sino, todos do mesmo conflito).
+            Notificacao::where('destinatario_id', $user->id)->where('tipo', 'acompanhamento')->whereNull('lida_em')->delete();
             Notificacao::create([
                 'destinatario_id' => $user->id, 'tipo' => 'acompanhamento', 'nivel' => $alta ? 'atencao' : 'neutro', 'sonora' => $alta, 'icone' => 'bell',
                 'titulo' => Notificacao::caber('Para acompanhar ('.count($ids).')'),
                 'meta' => Notificacao::caber($lista->first()->texto.(count($ids) > 1 ? ' · e mais '.(count($ids) - 1) : '')),
-                'rota' => route('secretario.acompanhamentos'),
+                // Abre a tela já com OS itens deste aviso no topo (Felipe, 22/10/2026: "cliquei e não mostra o
+                // que tenho que resolver em cima desse alerta").
+                // Pelo envio, e não pela lista de ids: com muitos itens o endereço não caberia na coluna.
+                'rota' => route('secretario.acompanhamentos', ['aviso' => $sino->id]).'#do-aviso',
             ]);
             if ($telegram) {
                 SecretarioAcompanhamentoEnvio::create(['user_id' => $user->id, 'canal' => 'telegram', 'acompanhamentos' => $ids, 'quantos' => count($ids)]);

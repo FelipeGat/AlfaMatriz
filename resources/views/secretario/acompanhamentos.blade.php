@@ -40,6 +40,9 @@
                 <x-aviso>{{ session('status') }}</x-aviso>
             @endif
 
+            {{-- Aberta pelo aviso do sino, a tela mostra SÓ os itens dele (Felipe, 22/10/2026: "abrir já
+                 filtrado; listou todas e não sei qual é aquele alerta"). Os números e a lista voltam em "Ver todos". --}}
+            @if ($doAviso->isEmpty())
             {{-- Números do dia --}}
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 @foreach ([
@@ -59,6 +62,40 @@
                 @endforeach
             </div>
 
+            @endif
+
+            {{-- O que o aviso do sino trouxe (22/10/2026): os itens dele, com a ação de cada um. --}}
+            @if ($doAviso->isNotEmpty())
+                <section id="do-aviso" class="scroll-mt-20 rounded-panel border border-line bg-warn-tint">
+                    <div class="flex items-baseline justify-between gap-2 border-b border-line px-4 py-2.5">
+                        <h2 class="text-[14px] font-semibold text-ink">Do aviso: o que precisa de você ({{ $doAviso->count() }})</h2>
+                        <a href="{{ route('secretario.acompanhamentos') }}" class="text-[12.5px] font-semibold text-brand-text hover:underline">Ver todos os acompanhamentos</a>
+                    </div>
+                    <ul class="divide-y divide-line">
+                        @foreach ($doAviso as $a)
+                            @php $ativo = $a->situacao === \App\Models\SecretarioAcompanhamento::ATIVO && ! ($a->adiado_ate && $a->adiado_ate->isFuture()); @endphp
+                            <li class="flex flex-wrap items-center gap-3 px-4 py-2.5">
+                                <span class="min-w-0 flex-1 text-[13px] {{ $ativo ? 'text-ink' : 'text-ink-faint line-through' }}">
+                                    @if ($a->prioridade === 'alta')<span class="mr-1 font-semibold text-crit">●</span>@endif{{ $a->texto }}
+                                </span>
+                                @if ($ativo)
+                                    @if ($a->link)
+                                        <a href="{{ $a->link }}" class="inline-flex h-[28px] items-center rounded-control bg-brand px-3 text-[12px] font-semibold text-on-brand hover:bg-brand-bright">Abrir</a>
+                                    @endif
+                                    <form method="POST" action="{{ route('secretario.acompanhamentos.resolver', $a->id) }}">@csrf
+                                        <button class="inline-flex h-[28px] items-center rounded-control border border-btn-line px-3 text-[12px] font-semibold text-ink-dim hover:text-ink">Resolvido</button></form>
+                                    <form method="POST" action="{{ route('secretario.acompanhamentos.adiar', $a->id) }}">@csrf
+                                        <button class="inline-flex h-[28px] items-center rounded-control border border-btn-line px-3 text-[12px] font-semibold text-ink-dim hover:text-ink">Adiar até amanhã</button></form>
+                                @else
+                                    <span class="text-[12px] text-ink-faint">{{ $a->situacao === \App\Models\SecretarioAcompanhamento::ATIVO ? 'adiado até '.$a->adiado_ate->format('d/m H:i') : 'resolvido' }}</span>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                </section>
+            @endif
+
+            @if ($doAviso->isEmpty())
             {{-- A tabela --}}
             <section id="tabela" class="scroll-mt-20 rounded-panel border border-line bg-surface">
                 <div class="flex flex-wrap items-center gap-2 border-b border-line px-3 pt-2">
@@ -161,6 +198,7 @@
                     @if ($dispensados) · {{ $dispensados }} alerta(s) marcado(s) como resolvido(s). @endif
                 </p>
             </section>
+            @endif
         </div>
 
         <aside class="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-3 2xl:block 2xl:space-y-4">
