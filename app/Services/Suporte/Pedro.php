@@ -47,7 +47,9 @@ class Pedro
         $esgotado = null;
         $pedido = DB::transaction(function () use ($conversaId, &$esgotado) {
             $c = SuporteConversa::whereKey($conversaId)->lockForUpdate()->first();
-            $ultima = $c ? $c->mensagens()->reorder()->orderByDesc('id')->first() : null;
+            // A resposta que não saiu (recusada pelo Gestor ou pela Meta) não respondeu ninguém: o cliente
+            // continua esperando. Contada como "última", ela travava a fila e o Gestor mandava o menu.
+            $ultima = $c ? $c->mensagens()->reorder()->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 'falhou'))->orderByDesc('id')->first() : null;
             // 'gestor': conversa entregue ao comercial ou ao financeiro do Gestor — lá quem responde é gente.
             if (! $c || $c->situacao === 'gestor' || $c->comHumano() || ! $c->janelaAberta() || ! $ultima || $ultima->direcao !== 'entrada'
                 || SuportePedido::where('conversa_id', $c->id)->whereIn('situacao', ['pendente', 'reservado'])->exists()) {
@@ -154,7 +156,11 @@ class Pedro
         }
         $p = DB::transaction(function () use ($maquina) {
             $p = SuportePedido::where('situacao', 'pendente')->orderBy('id')->lockForUpdate()->first();
-            $p?->update(['situacao' => 'reservado', 'maquina' => $maquina, 'reservado_em' => now()]);
+            // O prompt sai agora, com tudo o que o cliente já escreveu: a resposta é a ESSAS mensagens.
+            // Com o número da hora em que o pedido nasceu, "Academia Mente Ativa" + "Me chamo Jucilene"
+            // (4 s depois) fizeram o Gestor recusar a resposta que já falava das duas (22/10/2026).
+            $ultima = $p ? (int) SuporteMensagem::where('conversa_id', $p->conversa_id)->where('direcao', 'entrada')->max('id') : 0;
+            $p?->update(['situacao' => 'reservado', 'maquina' => $maquina, 'reservado_em' => now(), 'ate_mensagem_id' => max($ultima, (int) $p->ate_mensagem_id)]);
 
             return $p;
         });

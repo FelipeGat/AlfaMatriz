@@ -27,6 +27,8 @@ class PedroNoGestorTest extends TestCase
 
     private int $statusEntregar = 200;
 
+    private int $recusarEnvios = 0;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -47,6 +49,11 @@ class PedroNoGestorTest extends TestCase
             }
             if (preg_match('#/conversas/\d+/(\w+)$#', $r->url(), $m)) {
                 $this->pedidosAoGestor[] = ['acao' => $m[1], 'dados' => $r->data(), 'token' => $r->header('Authorization')[0] ?? null];
+                if ($m[1] === 'enviar' && $this->recusarEnvios > 0) {
+                    $this->recusarEnvios--;
+
+                    return Http::response(['motivo' => 'resposta_superada'], 409);
+                }
                 if ($m[1] === 'entregar' && $this->statusEntregar !== 200) {
                     return Http::response(['motivo' => 'setor_desligado'], $this->statusEntregar);
                 }
@@ -111,6 +118,31 @@ class PedroNoGestorTest extends TestCase
             array_intersect_key($this->pedidosAoGestor[0]['dados'], ['texto' => 1, 'autor' => 1, 'em_resposta_a' => 1]));
         $this->assertSame('Bearer segredo-integracao', $this->pedidosAoGestor[0]['token']);
         $this->assertSame('wamid.G1', $c->mensagens()->where('direcao', 'pedro')->value('wamid'));
+    }
+
+    /**
+     * 22/10/2026, a Jucilene: "Academia mente ativa" e, 4 s depois, "Me chamo Jucilene". A resposta
+     * já falava das duas e o Gestor a recusou como superada; sem pedido novo, ela ficou sem resposta
+     * e o Gestor mandou o menu.
+     */
+    public function test_duas_mensagens_seguidas_tem_resposta_mesmo_se_o_gestor_recusar(): void
+    {
+        $this->repasse('Academia mente ativa', 'wamid.1', $this->estado())->assertOk();
+        $this->repasse('Me chamo Jucilene', 'wamid.2', $this->estado())->assertOk();
+        $this->responde(['resposta' => 'Muito prazer, Jucilene!', 'acao' => 'responder']);
+        $this->assertSame('wamid.2', $this->pedidosAoGestor[0]['dados']['em_resposta_a'], 'responde à última que o Pedro leu');
+
+        // O Gestor recusa (o cliente escreveu enquanto o Pedro pensava): o Pedro tenta de novo.
+        $this->repasse('Quanto custa?', 'wamid.3', $this->estado())->assertOk();
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->felipe, ['central-ia-runner']);
+        $job = $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->json();
+        $this->repasse('Tem foto?', 'wamid.4', $this->estado())->assertOk();
+        $this->recusarEnvios = 1;
+        Sanctum::actingAs($this->felipe, ['central-ia-runner']);
+        $this->postJson(route('suporte.runner.resposta', $job['id']), ['maquina' => 'wsl', 'texto' => "<<<PEDRO\n".json_encode(['resposta' => 'Vou te mostrar.', 'acao' => 'responder'])."\nPEDRO>>>"])->assertOk();
+        $this->assertSame(1, SuportePedido::where('situacao', 'falhou')->count());
+        $this->assertSame(1, SuportePedido::where('situacao', 'pendente')->count(), 'a resposta que não saiu não trava a fila');
     }
 
     public function test_conversa_que_ja_e_do_financeiro_no_gestor_nao_aciona_o_pedro(): void
