@@ -1,0 +1,14 @@
+<b>📋 AlfaMatriz — Changelog 21/10/2026</b>
+<i>Suporte: a base do Pedro mora no Matriz e aprende com os atendimentos</i>
+
+<b>✨ Novidade</b>
+• <b>Nova aba Suporte › Base do suporte.</b> A equipe escreve notas de <b>procedimento</b>, <b>conhecimento</b>, <b>empresa</b> e de <b>cliente</b>, e acha qualquer uma pela busca (vale o começo da palavra: "fech" acha "portão não fecha").
+• <b>O Pedro consulta a base</b> antes de responder, buscando só o que interessa à conversa: as notas do cliente e as de problemas parecidos. Cada resposta mostra as notas que ele usou.
+• <b>Os atendimentos alimentam a base.</b> Ao fim de cada atendimento, o Pedro propõe um registro (número <i>AT-AAAAMMDD-N</i>) com o relato do cliente, o que foi verificado e a solução. Ele fica em <i>"Registros a confirmar"</i> e só entra na base quando alguém confirma.
+
+<b>🔒 Quem decide</b>
+• Confirma o registro quem atendeu a conversa, o Felipe ou um administrador. Se o Pedro resolveu sozinho, qualquer pessoa do suporte confirma.
+• Procedimento, conhecimento e empresa nascem como <b>rascunho</b>: o Pedro só cita como possibilidade. Passam a valer como instrução depois que o Felipe ou um administrador clica em <i>"Validar"</i>. Se outra pessoa mudar uma nota validada, ela volta a rascunho.
+
+<i>Versão v2026.10.21.11</i>
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>

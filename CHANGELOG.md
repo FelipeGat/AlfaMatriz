@@ -9,6 +9,30 @@
   gravado e não aparecia em Suporte › Base para confirmar. Agora o título é
   cortado com "…" e o registro entra normalmente.
 
+## AlfaMatriz — 21/10/2026 — Suporte: a base do Pedro mora no Matriz e aprende com os atendimentos (v2026.10.21.11, T-476)
+
+### Novidades
+
+- **Nova aba Suporte › Base do suporte.** A equipe escreve notas de
+  procedimento, conhecimento, empresa e de cliente, e acha qualquer uma pela
+  busca (vale o começo da palavra: "fech" acha "portão não fecha").
+- **O Pedro consulta a base** antes de responder, buscando só o que interessa
+  à conversa: as notas do cliente e as de problemas parecidos. Cada resposta
+  mostra as notas que ele usou.
+- **Os atendimentos alimentam a base.** Ao fim de cada atendimento, o Pedro
+  propõe um registro (número AT-AAAAMMDD-N) com o relato do cliente, o que foi
+  verificado e a solução. Ele fica em "Registros a confirmar" e só entra na
+  base quando alguém confirma.
+
+### Quem decide
+
+- Confirma o registro quem atendeu a conversa, o Felipe ou um administrador.
+  Se o Pedro resolveu sozinho, qualquer pessoa do suporte confirma.
+- Procedimento, conhecimento e empresa nascem como rascunho: o Pedro só cita
+  como possibilidade. Passam a valer como instrução depois que o Felipe ou um
+  administrador clica em "Validar". Se outra pessoa mudar uma nota validada,
+  ela volta a rascunho.
+
 ## AlfaMatriz — 21/10/2026 — Central de IA para o time todo (v2026.10.20.1, T-374)
 
 ### Novidades
