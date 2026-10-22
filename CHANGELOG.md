@@ -1,5 +1,14 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 22/10/2026 — Suporte: registro de atendimento com resumo longo (v2026.10.22.3, T-481)
+
+### Correção
+
+- **O Pedro voltou a registrar atendimentos com resumo longo.** Quando o
+  resumo do atendimento passava do tamanho do título, o registro não era
+  gravado e não aparecia em Suporte › Base para confirmar. Agora o título é
+  cortado com "…" e o registro entra normalmente.
+
 ## AlfaMatriz — 21/10/2026 — Central de IA para o time todo (v2026.10.20.1, T-374)
 
 ### Novidades
