@@ -26,7 +26,7 @@ class Encerramento
     public const PEDIDO = "Fico feliz em ter ajudado! ✅\n\nAntes de você ir: como foi o seu atendimento? Me responde com um número:\n"
         ."5 - Excelente\n4 - Bom\n3 - Regular\n2 - Ruim\n1 - Péssimo\n\nSe quiser, escreva um comentário junto.";
 
-    public const OBRIGADO = 'Obrigado pela avaliação! Qualquer coisa, é só me chamar por aqui.';
+    public const OBRIGADO = 'Obrigado pela avaliação! Se precisar de algo mais, estou à disposição por aqui.';
 
     public function __construct(private CanalWhatsApp $canal, private AvisoNoTelegram $telegram) {}
 
