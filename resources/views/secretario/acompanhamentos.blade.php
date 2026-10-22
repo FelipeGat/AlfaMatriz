@@ -130,60 +130,84 @@
                     </div>
                 </div>
 
-                <x-tabela min="820px" class="!rounded-none !border-0 !bg-transparent">
+                {{-- Em grupos, um por categoria, com os 5 primeiros e "ver todos" (Felipe, 22/10/2026: "a tela está
+                     infinita"). Busca e filtro mostram tudo o que casa. Status e prioridade dividem a coluna, e os
+                     botões empilham: com seis colunas a tabela rolava e cortava os botões. --}}
+                <x-tabela min="640px" class="!rounded-none !border-0 !bg-transparent">
                         <thead>
                             <tr class="border-b border-line font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">
-                                <th class="w-[42%] px-4 py-2.5 font-normal">Assunto</th><th class="px-3 py-2.5 font-normal">Cliente / origem</th>
-                                <th class="px-3 py-2.5 font-normal">Prazo</th><th class="px-3 py-2.5 font-normal">Status</th>
-                                <th class="px-3 py-2.5 font-normal">Prioridade</th><th class="px-2 py-2.5"></th>
+                                <th class="w-1/2 px-4 py-2.5 font-normal">Assunto</th><th class="px-3 py-2.5 font-normal">Cliente / origem</th>
+                                <th class="px-3 py-2.5 font-normal">Prazo</th><th class="px-3 py-2.5 font-normal">Situação</th><th class="w-[92px] px-2 py-2.5"></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-line">
-                            @foreach ($linhas as $l)
-                                @php
-                                    $chave = ['aba' => $l['aba'], 'prio' => $l['prioridade'], 'fonte' => $l['chip'],
-                                        'texto' => \App\Services\Secretario\Memoria\BuscaNaMemoria::normalizar($l['assunto'].' '.$l['sub'].' '.$l['origem'])];
-                                    [$prioCor, $prioPonto, $prioRotulo] = $corPrio[$l['prioridade']] ?? $corPrio['normal'];
-                                @endphp
-                                <tr x-show="mostra(@js($chave))" class="align-top hover:bg-head/50">
-                                    <td class="px-4 py-3">
-                                        <div class="flex gap-3">
-                                            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-ctl bg-head text-ink-dim"><span class="h-[18px] w-[18px]"><x-nav-icon :name="$l['icone']" peso="1.7" /></span></span>
-                                            <div class="min-w-0">
-                                                <p class="line-clamp-2 text-[13.5px] font-semibold text-ink" title="{{ $l['assunto'] }}">
-                                                    @if ($l['link'])<a href="{{ $l['link'] }}" @if (! str_starts_with($l['link'], url('/'))) target="_blank" rel="noopener noreferrer" @endif class="hover:text-brand">{{ $l['assunto'] }}</a>@else{{ $l['assunto'] }}@endif
-                                                </p>
-                                                <p class="text-[12px] text-ink-mute">{{ $l['sub'] }}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-3 py-3">
-                                        <p class="line-clamp-2 max-w-[220px] text-[13px] text-ink" title="{{ $l['origem'] }}">{{ $l['origem'] }}</p>
-                                        <span class="mt-1 inline-block rounded-badge bg-brand/10 px-1.5 py-0.5 text-[11px] text-brand-text">{{ $l['chip'] }}</span>
-                                    </td>
-                                    <td class="whitespace-nowrap px-3 py-3">
-                                        @if ($l['quando'])
-                                            <p class="text-[13px] font-semibold {{ in_array($l['prazo'], ['Hoje', 'Vencido'], true) ? 'text-crit' : ($l['prazo'] === 'Amanhã' ? 'text-warn' : 'text-brand-text') }}">{{ $l['prazo'] }}</p>
-                                            <p class="text-[12px] text-ink-mute">{{ $l['quando']->format('d/m') }}{{ $l['so_data'] ? '' : ' '.$l['quando']->format('H:i') }}</p>
-                                        @else
-                                            <p class="text-[13px] text-ink-mute">Sem prazo</p>
-                                        @endif
-                                    </td>
-                                    <td class="px-3 py-3"><span class="inline-block whitespace-nowrap rounded-control px-2.5 py-1 text-[12px] font-semibold {{ $corStatus($l['status']) }}">{{ $l['status'] }}</span></td>
-                                    <td class="px-3 py-3"><span class="inline-flex items-center gap-1.5 rounded-control px-2.5 py-1 text-[12px] font-semibold {{ $prioCor }}"><i class="h-2 w-2 rounded-full {{ $prioPonto }}"></i>{{ $prioRotulo }}</span></td>
-                                    <td class="px-2 py-3">
-                                        {{-- Botões na linha, e não menu suspenso: a tabela rola por dentro e cortaria o menu. --}}
-                                        <div class="flex justify-end gap-1">
-                                            @foreach ($l['acoes'] as [$rotulo, $url])
-                                                <form method="POST" action="{{ $url }}">@csrf
-                                                    <button title="{{ $rotulo }}" class="h-[28px] whitespace-nowrap rounded-control border border-btn-line px-2 text-[11.5px] font-semibold text-ink-dim hover:border-brand hover:text-brand">{{ $rotulo === 'Adiar 1 dia' ? 'Adiar' : $rotulo }}</button>
-                                                </form>
-                                            @endforeach
-                                        </div>
+                        @foreach (\App\Services\Secretario\CentralDeGestao::ABAS as $grupo => $rotuloGrupo)
+                            @php $doGrupo = $linhas->where('aba', $grupo)->values(); @endphp
+                            @continue($doGrupo->isEmpty())
+                            <tbody x-show="aba === 'todos' || aba === '{{ $grupo }}'" x-data="{ todos: false }" class="divide-y divide-line border-b border-line">
+                                <tr class="bg-head/60">
+                                    <td colspan="5" class="px-4 py-2">
+                                        <span class="text-[12.5px] font-semibold text-ink">{{ $rotuloGrupo }}</span>
+                                        <span class="ml-1.5 rounded-full bg-surface px-1.5 text-[11px] font-semibold text-ink-mute">{{ $doGrupo->count() }}</span>
                                     </td>
                                 </tr>
-                            @endforeach
-                        </tbody>
+                                @foreach ($doGrupo as $i => $l)
+                                    @php
+                                        $chave = ['aba' => $l['aba'], 'prio' => $l['prioridade'], 'fonte' => $l['chip'],
+                                            'texto' => \App\Services\Secretario\Memoria\BuscaNaMemoria::normalizar($l['assunto'].' '.$l['sub'].' '.$l['origem'])];
+                                        [$prioCor, $prioPonto, $prioRotulo] = $corPrio[$l['prioridade']] ?? $corPrio['normal'];
+                                    @endphp
+                                    <tr x-show="mostra(@js($chave)) && (todos || {{ $i }} < 5 || busca || prio || origem)" class="align-top hover:bg-head/50">
+                                        <td class="px-4 py-3">
+                                            <div class="flex gap-3">
+                                                <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-ctl bg-head text-ink-dim"><span class="h-[18px] w-[18px]"><x-nav-icon :name="$l['icone']" peso="1.7" /></span></span>
+                                                <div class="min-w-0">
+                                                    <p class="line-clamp-2 text-[13.5px] font-semibold text-ink" title="{{ $l['assunto'] }}">
+                                                        @if ($l['link'])<a href="{{ $l['link'] }}" @if (! str_starts_with($l['link'], url('/'))) target="_blank" rel="noopener noreferrer" @endif class="hover:text-brand">{{ $l['assunto'] }}</a>@else{{ $l['assunto'] }}@endif
+                                                    </p>
+                                                    <p class="text-[12px] text-ink-mute">{{ $l['sub'] }}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-3 py-3">
+                                            <p class="line-clamp-2 max-w-[200px] text-[13px] text-ink" title="{{ $l['origem'] }}">{{ $l['origem'] }}</p>
+                                            <span class="mt-1 inline-block rounded-badge bg-brand/10 px-1.5 py-0.5 text-[11px] text-brand-text">{{ $l['chip'] }}</span>
+                                        </td>
+                                        <td class="whitespace-nowrap px-3 py-3">
+                                            @if ($l['quando'])
+                                                <p class="text-[13px] font-semibold {{ in_array($l['prazo'], ['Hoje', 'Vencido'], true) ? 'text-crit' : ($l['prazo'] === 'Amanhã' ? 'text-warn' : 'text-brand-text') }}">{{ $l['prazo'] }}</p>
+                                                <p class="text-[12px] text-ink-mute">{{ $l['quando']->format('d/m') }}{{ $l['so_data'] ? '' : ' '.$l['quando']->format('H:i') }}</p>
+                                            @else
+                                                <p class="text-[13px] text-ink-mute">Sem prazo</p>
+                                            @endif
+                                        </td>
+                                        <td class="px-3 py-3">
+                                            <div class="flex flex-col items-start gap-1">
+                                                <span class="inline-block whitespace-nowrap rounded-control px-2 py-0.5 text-[12px] font-semibold {{ $corStatus($l['status']) }}">{{ $l['status'] }}</span>
+                                                <span class="inline-flex items-center gap-1.5 rounded-control px-2 py-0.5 text-[12px] font-semibold {{ $prioCor }}"><i class="h-2 w-2 rounded-full {{ $prioPonto }}"></i>{{ $prioRotulo }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-2 py-3">
+                                            {{-- Botões na linha, e não menu suspenso: a tabela rola por dentro e cortaria o menu. --}}
+                                            <div class="flex flex-col items-stretch gap-1">
+                                                @foreach ($l['acoes'] as [$rotulo, $url])
+                                                    <form method="POST" action="{{ $url }}">@csrf
+                                                        <button title="{{ $rotulo }}" class="h-[28px] w-full whitespace-nowrap rounded-control border border-btn-line px-2 text-[11.5px] font-semibold text-ink-dim hover:border-brand hover:text-brand">{{ $rotulo === 'Adiar 1 dia' ? 'Adiar' : $rotulo }}</button>
+                                                    </form>
+                                                @endforeach
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                @if ($doGrupo->count() > 5)
+                                    <tr x-show="!busca && !prio && !origem">
+                                        <td colspan="5" class="px-4 py-2 text-center">
+                                            <button type="button" @click="todos = !todos" class="text-[12.5px] font-semibold text-brand-text hover:text-brand"
+                                                    x-text="todos ? 'Mostrar só os 5 primeiros' : 'Ver todos os {{ $doGrupo->count() }}'"></button>
+                                        </td>
+                                    </tr>
+                                @endif
+                            </tbody>
+                        @endforeach
                 </x-tabela>
                 @if ($linhas->isEmpty())
                     <p class="px-4 py-6 text-center text-[13.5px] text-ink-mute">Nada pedindo acompanhamento agora.</p>

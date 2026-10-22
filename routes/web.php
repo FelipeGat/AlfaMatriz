@@ -229,6 +229,7 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         Route::post('reunioes', [\App\Http\Controllers\SecretarioReunioesController::class, 'enviar'])->name('reunioes.enviar')->middleware('permissao:secretario,incluir');
         Route::patch('reunioes/{reuniao}/produto', [\App\Http\Controllers\SecretarioReunioesController::class, 'produto'])->whereNumber('reuniao')->name('reunioes.produto')->middleware('permissao:secretario,editar');
         Route::put('reunioes/{reuniao}/participantes', [\App\Http\Controllers\SecretarioReunioesController::class, 'participantes'])->whereNumber('reuniao')->name('reunioes.participantes')->middleware('permissao:secretario,editar');
+        Route::post('reunioes/{reuniao}/agendar', [\App\Http\Controllers\SecretarioReunioesController::class, 'agendar'])->whereNumber('reuniao')->name('reunioes.agendar')->middleware('permissao:secretario,editar');
         Route::patch('reunioes/{reuniao}/empresa', [\App\Http\Controllers\SecretarioReunioesController::class, 'empresa'])->whereNumber('reuniao')->name('reunioes.empresa')->middleware('permissao:secretario,editar');
         Route::get('reunioes/{reuniao}', [\App\Http\Controllers\SecretarioReunioesController::class, 'mostrar'])->whereNumber('reuniao')->name('reunioes.mostrar')->middleware('permissao:secretario,ler');
         Route::get('reunioes/{reuniao}/ata', [\App\Http\Controllers\SecretarioReunioesController::class, 'ata'])->whereNumber('reuniao')->name('reunioes.ata')->middleware('permissao:secretario,ler');

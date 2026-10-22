@@ -30,20 +30,22 @@
         // se fala com o Secretário e com os agentes. O recurso continua o dela
         // (`central_ia`): só quem tem o perfil Central de IA a vê.
         'Secretário' => [
+            // Meu Dia e Suporte WhatsApp moram no Secretário (Felipe, 22/10/2026).
+            ['route' => 'secretario.meu-dia', 'recurso' => 'secretario', 'pattern' => 'secretario.meu-dia', 'label' => 'Meu Dia', 'icon' => 'sun', 'matriz' => true],
             ['route' => 'central-ia.index', 'recurso' => 'central_ia', 'pattern' => 'central-ia.*', 'label' => 'Central de IA', 'icon' => 'chat', 'matriz' => true],
             ['route' => 'secretario.acompanhamentos', 'recurso' => 'secretario', 'pattern' => ['secretario.acompanhamentos', 'secretario.acompanhamentos.*'], 'label' => 'Acompanhamentos', 'icon' => 'bell', 'matriz' => true],
             ['route' => 'secretario.agenda', 'recurso' => 'secretario', 'pattern' => 'secretario.agenda', 'label' => 'Minha agenda', 'icon' => 'calendar', 'matriz' => true],
             ['route' => 'secretario.reunioes.index', 'recurso' => 'secretario', 'pattern' => 'secretario.reunioes.*', 'label' => 'Reuniões', 'icon' => 'speaker-wave', 'matriz' => true],
             ['route' => 'secretario.emails.index', 'recurso' => 'secretario', 'pattern' => 'secretario.emails.*', 'label' => 'Mensagens', 'icon' => 'balao', 'matriz' => true],
+            ['route' => 'suporte.conversas', 'recurso' => 'suporte', 'pattern' => 'suporte.*', 'label' => 'Suporte WhatsApp', 'icon' => 'balao', 'matriz' => true],
             // Menu reorganizado pelo Felipe em 19/10/2026: Documentos veio do Comercial para cá;
-            // Meu Dia foi para Painéis e Configurações, para Sistema.
+            // Configurações foi para Sistema.
             // Pastas espelhadas do OneDrive (documentos-espelhados): sem recurso de
             // permissão — o acesso é pela pasta —, então só aparece para quem tem uma.
             ['route' => 'documentos.index', 'pattern' => 'documentos.*', 'label' => 'Documentos', 'icon' => 'document', 'matriz' => true,
                 'so_se' => fn () => \App\Models\DocumentoPasta::alguma(Auth::user())],
         ],
         'Painéis' => [
-            ['route' => 'secretario.meu-dia', 'recurso' => 'secretario', 'pattern' => 'secretario.meu-dia', 'label' => 'Meu Dia', 'icon' => 'sun', 'matriz' => true],
             ['route' => 'centro-controle', 'recurso' => 'dashboard', 'pattern' => 'centro-controle', 'label' => 'Centro de Controle', 'icon' => 'bolt', 'matriz' => true],
             ['route' => 'dashboard', 'recurso' => 'dashboard', 'pattern' => 'dashboard', 'label' => 'Financeiro', 'icon' => 'trending-up', 'matriz' => true],
             // `dashboard_comercial`, como a rota: gateado por `dashboard`, o
@@ -77,8 +79,6 @@
         ],
         'Desenvolvimento' => [
             ['route' => 'tarefas.index', 'recurso' => 'tarefas', 'pattern' => 'tarefas.*', 'label' => 'Tarefas', 'icon' => 'view-grid', 'matriz' => true],
-            // O WhatsApp do suporte (suporte-pedro-whatsapp): logo abaixo de Tarefas, que é onde o atendimento vira trabalho.
-            ['route' => 'suporte.conversas', 'recurso' => 'suporte', 'pattern' => 'suporte.*', 'label' => 'Suporte WhatsApp', 'icon' => 'balao', 'matriz' => true],
             // Logo abaixo de Tarefas, e não num grupo "Pessoal" próprio: o
             // desenho (§19) previa o grupo pessoal, com Agenda e Notas. Decisão
             // do dono do produto em 18/09/2026 é que a Agenda mora aqui — o que

@@ -202,6 +202,26 @@ class ReunioesTest extends TestCase
         $this->assertSame('analisando', $r->fresh()->status);
     }
 
+    /** A reunião que aconteceu sem estar na Agenda vira compromisso (22/10/2026, a da Medsenior). */
+    public function test_marcar_na_agenda_a_reuniao_gravada(): void
+    {
+        $u = $this->dono();
+        $victor = User::factory()->create(['name' => 'Victor (VixCard)']);
+        $r = SecretarioReuniao::findOrFail($this->enviar($u)->json('id'));
+        $this->actingAs($u)->get(route('secretario.reunioes.mostrar', $r->id))->assertOk()->assertSee('Esta reunião não está na agenda.');
+
+        $this->post(route('secretario.reunioes.agendar', $r->id), ['data' => '2026-10-22', 'hora' => '16:00', 'hora_fim' => '13:00'])->assertSessionHasErrors('hora_fim');
+        $this->post(route('secretario.reunioes.agendar', $r->id), ['data' => '2026-10-22', 'hora' => '13:00', 'hora_fim' => '16:00', 'pessoas' => [$victor->id]])->assertRedirect();
+
+        $c = \App\Models\Compromisso::sole();
+        $this->assertSame([$c->id, '13:00', '16:00'], [$r->fresh()->compromisso_id, substr($c->hora, 0, 5), substr($c->hora_fim, 0, 5)]);
+        $this->assertEqualsCanonicalizing([$u->id, $victor->id], $c->participantes()->pluck('users.id')->all());
+        $this->get(route('secretario.reunioes.mostrar', $r->id))->assertSee('Na agenda: 22/10/2026, das 13:00 às 16:00');
+        $this->post(route('secretario.reunioes.agendar', $r->id), ['data' => '2026-10-22', 'hora' => '13:00', 'hora_fim' => '16:00'])->assertStatus(409);
+        $outro = $this->actingAs($victor)->post(route('secretario.reunioes.agendar', $r->id), ['data' => '2026-10-22', 'hora' => '13:00', 'hora_fim' => '16:00'])->status();
+        $this->assertContains($outro, [403, 404], 'só o dono marca a reunião dele');
+    }
+
     public function test_tipos_tamanho_e_isolamento(): void
     {
         $u = $this->dono();

@@ -32,7 +32,7 @@ class SecretarioReuniao extends Model
     protected $fillable = [
         'user_id', 'titulo', 'origem', 'modo', 'status', 'erro', 'arquivo', 'mime', 'tamanho', 'sha256', 'duracao_s', 'maquina',
         'reservada_em', 'tentativas', 'tipo_reuniao', 'contexto', 'resumo', 'participantes', 'proximos_passos', 'roteiro', 'parcial',
-        'execucao_id', 'telegram_update_id', 'transcrita_em', 'analisada_em', 'empresa', 'progresso', 'progresso_em', 'sistema_id',
+        'execucao_id', 'telegram_update_id', 'transcrita_em', 'analisada_em', 'empresa', 'progresso', 'progresso_em', 'sistema_id', 'compromisso_id',
     ];
 
     protected $attributes = ['status' => self::AGUARDANDO, 'modo' => 'reuniao', 'tentativas' => 0, 'parcial' => false];
@@ -88,6 +88,12 @@ class SecretarioReuniao extends Model
     }
 
     /** Quem participou e tem conta no Matriz: só esses veem a reunião, além do dono (FR-002). */
+    /** O compromisso da Agenda desta reunião, quando foi marcado. */
+    public function compromisso(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Compromisso::class);
+    }
+
     public function compartilhadaCom(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'secretario_reuniao_participantes', 'reuniao_id', 'user_id')->withTimestamps();

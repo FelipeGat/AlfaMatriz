@@ -173,6 +173,25 @@ class SecretarioReunioesController extends Controller
         return back()->with('status', $validos->isEmpty() ? 'A reunião não está compartilhada com ninguém.' : 'Compartilhada com '.$validos->count().' pessoa(s).');
     }
 
+    /**
+     * A reunião que aconteceu sem estar na Agenda vira compromisso dela (Felipe, 22/10/2026: a da
+     * Medsenior). Passa pelas regras da Agenda (`AgendaService::marcar`), com quem participou.
+     */
+    public function agendar(Request $request, int $reuniao, \App\Services\AgendaService $agenda): RedirectResponse
+    {
+        $r = SecretarioReuniao::de($request->user())->findOrFail($reuniao);
+        abort_if($r->compromisso_id && $r->compromisso, 409, 'Esta reunião já está na agenda.');
+        $d = $request->validate(['data' => ['required', 'date'], 'hora' => ['required', 'date_format:H:i'], 'hora_fim' => ['required', 'date_format:H:i', 'after:hora'],
+            'pessoas' => ['nullable', 'array'], 'pessoas.*' => ['integer']]);
+        $pessoas = User::where('ativo', true)->whereIn('id', $d['pessoas'] ?? [])->pluck('id')->push($request->user()->id)->unique()->values()->all();
+        $c = $agenda->marcar(['titulo' => mb_substr((string) $r->titulo, 0, 150) ?: 'Reunião', 'categoria' => 'cliente',
+            'descricao' => 'Reunião gravada em Secretário → Reuniões (#'.$r->id.').', 'data' => $d['data'], 'hora' => $d['hora'],
+            'duracao_modo' => false, 'data_fim' => $d['data'], 'hora_fim' => $d['hora_fim'], 'participantes' => $pessoas], $request->user());
+        $r->update(['compromisso_id' => $c->id]);
+
+        return back()->with('status', 'Reunião marcada na agenda: '.$c->data->format('d/m').', das '.$d['hora'].' às '.$d['hora_fim'].'.');
+    }
+
     /** Os produtos que podem ser vinculados: o catálogo inteiro, VixCard inclusive. */
     public static function produtos(): \Illuminate\Database\Eloquent\Builder
     {
