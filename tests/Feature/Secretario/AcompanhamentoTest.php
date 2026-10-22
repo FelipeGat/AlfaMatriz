@@ -190,7 +190,10 @@ class AcompanhamentoTest extends TestCase
         $ids = SecretarioAcompanhamento::de($u)->where('regra', 'conflito')->pluck('id');
         $this->assertStringContainsString('avisos=', $aviso->rota);
         $this->actingAs($u)->get($aviso->rota)->assertOk()->assertSee('Do aviso: o que precisa de você')
-            ->assertSee('Conflito', false)->assertSee(route('secretario.acompanhamentos.resolver', $ids->first()), false);
+            ->assertSee('Conflito', false)->assertSee(route('secretario.acompanhamentos.resolver', $ids->first()), false)
+            // Filtrado: sem os números do dia nem a lista inteira, só os itens do aviso.
+            ->assertDontSee('Alertas ativos')->assertSee('Ver todos os acompanhamentos');
+        $this->actingAs($u)->get(route('secretario.acompanhamentos'))->assertOk()->assertSee('Alertas ativos')->assertDontSee('Do aviso: o que precisa de você');
 
         // Silêncio (20:00–07:00) e fim de semana: nada sai.
         SecretarioItem::create(['user_id' => $u->id, 'tipo' => 'compromisso', 'titulo' => 'Outra', 'quando' => '2026-10-22 15:00:00', 'origem' => 'matriz']);
