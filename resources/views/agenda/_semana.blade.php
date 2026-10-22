@@ -7,14 +7,17 @@
     (`sticky left-0`) quando a semana não cabe e rola na horizontal. Assim, o
     dia e a hora que a pessoa olha nunca somem da tela.
 
-    As alturas são pixel fixo — 48px por hora, 1152px o dia inteiro — e os blocos
-    se posicionam por porcentagem desses 1152px, como o `AgendaService` calcula.
+    A altura da hora é medida na tela (`--hora`): o expediente, 07:00 às 19:00, cabe
+    inteiro na janela, como no Outlook (Felipe, 22/10/2026). Os blocos se posicionam
+    por porcentagem do dia, como o `AgendaService` calcula, então acompanham sozinhos.
     O `$env:` de cada bloco (top, altura, coluna) vem pronto do serviço.
 --}}
 @php
-    $alturaHora = 48;            // px por hora — o padrão de agenda
-    $alturaGrade = $alturaHora * 24;
-    $larguraRegua = 52;         // px da coluna de horas
+    $alturaHora = 48;            // px por hora até o Alpine medir a janela (ver ajustar())
+    $larguraRegua = 56;          // px da coluna de horas
+    $inicioExpediente = 7;       // a janela que cabe na tela: 07:00 às 19:00
+    $fimExpediente = 19;
+    $horasVisiveis = $fimExpediente - $inicioExpediente;
 @endphp
 
 {{--
@@ -32,15 +35,23 @@
     da meia-noite, some — o "hoje" desta página já não é hoje.
 --}}
 <div class="min-h-0 flex-1 overflow-auto rounded-panel border border-line bg-board"
+     :style="'--hora: ' + alturaHora + 'px'"
      x-data="{
-         alturaGrade: {{ $alturaGrade }},
+         alturaHora: {{ $alturaHora }},
          agoraPct: {{ $grade['agoraPct'] ?? 'null' }},
+         // Como no Outlook (Felipe, 22/10/2026): o expediente, 07:00 às 19:00, cabe inteiro na
+         // janela, e a hora tem a altura que couber; madrugada e noite ficam a uma rolagem.
+         ajustar() {
+             const cabecalho = this.$refs.cabecalho?.offsetHeight ?? 0;
+             // 12px de folga: o rótulo das 07:00 fica meio texto acima da linha e não pode sumir sob o cabeçalho.
+             this.alturaHora = Math.max(28, Math.floor((this.$el.clientHeight - cabecalho - 14) / {{ $horasVisiveis }}));
+             this.$nextTick(() => { this.$el.scrollTop = Math.max(0, {{ $inicioExpediente }} * this.alturaHora - 12); });
+         },
          init() {
+             this.ajustar();
+             window.addEventListener('resize', () => this.ajustar());
              const base = this.agoraPct;
              const abriu = Date.now();
-             this.$el.scrollTop = base === null
-                 ? {{ $alturaHora * 7 }}
-                 : Math.max(0, base / 100 * this.alturaGrade - this.$el.clientHeight / 3);
              if (base === null) return;
              setInterval(() => {
                  const pct = base + (Date.now() - abriu) / 60000 / 1440 * 100;
@@ -54,10 +65,10 @@
     <div class="min-w-[860px]">
 
         {{-- Cabeçalho + dia inteiro, grudados no topo ao rolar as horas. --}}
-        <div class="sticky top-0 z-20 bg-board">
+        <div class="sticky top-0 z-20" x-ref="cabecalho" style="background: linear-gradient(var(--board), var(--board)), rgb(var(--canvas))">
             {{-- Linha dos dias --}}
             <div class="flex border-b border-line">
-                <div class="sticky left-0 z-10 shrink-0 bg-board" style="width: {{ $larguraRegua }}px"></div>
+                <div class="sticky left-0 z-10 shrink-0" style="width: {{ $larguraRegua }}px; background: linear-gradient(var(--board), var(--board)), rgb(var(--canvas))"></div>
 
                 @foreach ($grade['dias'] as $d)
                     <button type="button" @click="abrirDia('{{ $d['data'] }}')"
@@ -76,8 +87,8 @@
                  não tem hora e não cabe na grade. O rótulo diz o que é: sem ele,
                  a faixa parecia sobra e ninguém sabia para que servia. --}}
             <div class="flex border-b border-line">
-                <div class="sticky left-0 z-10 flex shrink-0 items-center justify-end bg-board pr-1.5"
-                     style="width: {{ $larguraRegua }}px">
+                <div class="sticky left-0 z-10 flex shrink-0 items-center justify-end pr-1.5"
+                     style="width: {{ $larguraRegua }}px; background: linear-gradient(var(--board), var(--board)), rgb(var(--canvas))">
                     <span class="font-mono text-[9px] uppercase leading-tight tracking-[0.04em] text-ink-faint">Prazos</span>
                 </div>
 
@@ -104,14 +115,14 @@
         <div class="flex">
             {{-- Régua de horas, grudada à esquerda. As etiquetas ficam na LINHA
                  de cada hora, puxadas meio texto para cima para centrar no traço. --}}
-            <div class="sticky left-0 z-10 shrink-0 bg-board" style="width: {{ $larguraRegua }}px">
+            <div class="sticky left-0 z-10 shrink-0" style="width: {{ $larguraRegua }}px; background: linear-gradient(var(--board), var(--board)), rgb(var(--canvas))">
                 {{-- `relative` interno para conter as etiquetas absolutas: um
                      ancestral `sticky` não é garantia de bloco de contenção em
                      todo navegador, então a âncora explícita é aqui. --}}
-                <div class="relative" style="height: {{ $alturaGrade }}px">
+                <div class="relative" style="height: calc(var(--hora) * 24)">
                     @for ($h = 1; $h < 24; $h++)
-                        <span class="absolute right-1.5 -translate-y-1/2 font-mono text-[9.5px] text-ink-faint"
-                              style="top: {{ $h * $alturaHora }}px">{{ sprintf('%02dh', $h) }}</span>
+                        <span class="absolute right-1.5 -translate-y-1/2 font-mono text-[10px] {{ $h >= $inicioExpediente && $h <= $fimExpediente ? 'text-ink-mute' : 'text-ink-faint' }}"
+                              style="top: calc(var(--hora) * {{ $h }})">{{ sprintf('%02d:00', $h) }}</span>
                     @endfor
                 </div>
             </div>
@@ -120,13 +131,19 @@
             @foreach ($grade['dias'] as $d)
                 <div class="relative flex-1 basis-0 min-w-[104px] border-l border-line
                             {{ $d['ehHoje'] ? 'bg-brand/[0.04]' : '' }}"
-                     style="height: {{ $alturaGrade }}px"
+                     style="height: calc(var(--hora) * 24)"
                      @click="novoNoHorario('{{ $d['data'] }}', $event)">
 
-                    {{-- Linhas de hora: o gabarito de fundo. --}}
+                    {{-- Fora do expediente fica mais escuro, como no Outlook. --}}
+                    <div class="pointer-events-none absolute inset-x-0 top-0 bg-ink/[0.035]" style="height: calc(var(--hora) * {{ $inicioExpediente }})"></div>
+                    <div class="pointer-events-none absolute inset-x-0 bottom-0 bg-ink/[0.035]" style="height: calc(var(--hora) * {{ 24 - $fimExpediente }})"></div>
+
+                    {{-- Linhas de hora (cheias) e de meia hora (pontilhadas): o gabarito de fundo. --}}
                     @for ($h = 1; $h < 24; $h++)
                         <div class="pointer-events-none absolute inset-x-0 border-t border-rule"
-                             style="top: {{ $h * $alturaHora }}px"></div>
+                             style="top: calc(var(--hora) * {{ $h }})"></div>
+                        <div class="pointer-events-none absolute inset-x-0 border-t border-dashed border-rule opacity-60"
+                             style="top: calc(var(--hora) * {{ $h - 0.5 }})"></div>
                     @endfor
 
                     {{-- A linha do "agora", só na coluna de hoje. A posição
@@ -154,8 +171,8 @@
                                        background: linear-gradient(rgb(var(--{{ $b['token'] }}) / var(--agenda-bloco-alpha)), rgb(var(--{{ $b['token'] }}) / var(--agenda-bloco-alpha))), rgb(var(--panel));
                                        border: 1px solid rgb(var(--{{ $b['token'] }}) / 0.5);
                                        border-left: 3px solid rgb(var(--{{ $b['token'] }}))">
-                            <span class="block truncate text-[10.5px] font-semibold leading-tight text-ink">{{ $b['titulo'] }}</span>
-                            <span class="block truncate text-[9.5px] leading-tight text-ink-dim">{{ $b['meta'] }}</span>
+                            <span class="block truncate text-[11px] font-semibold leading-tight text-ink">{{ $b['titulo'] }}</span>
+                            <span class="block truncate text-[10px] leading-tight text-ink-dim">{{ $b['meta'] }}</span>
                         </button>
                     @endforeach
                 </div>

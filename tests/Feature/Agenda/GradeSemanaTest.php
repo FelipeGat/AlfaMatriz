@@ -182,7 +182,9 @@ class GradeSemanaTest extends TestCase
             ->assertOk()->getContent();
 
         $this->assertStringContainsString('agoraPct: 79.167', $html); // 19:00 = 1140 min
-        $this->assertStringContainsString('base / 100 * this.alturaGrade - this.$el.clientHeight / 3', $html);
+        // Desde 22/10/2026 (Felipe: "como o Outlook"), a grade abre no expediente, 07:00 às 19:00 inteiro na tela.
+        $this->assertStringContainsString('this.$el.scrollTop = Math.max(0, 7 * this.alturaHora - 12)', $html);
+        $this->assertStringContainsString('- 14) / 12));', $html);
         $this->assertStringContainsString(":style=\"'top: ' + agoraPct + '%'\"", $html);
 
         $semHoje = $this->actingAs($u)->get(route('agenda.index', ['visao' => 'semana', 'em' => '2026-10-20']))
