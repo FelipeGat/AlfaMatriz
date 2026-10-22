@@ -59,7 +59,12 @@ class Contexto
      */
     public const HUMANO = "JEITO DE ESCREVER: escreva como uma pessoa da equipe de atendimento: simpática e cordial, mas em linguagem FORMAL e português correto, frases curtas. Trate por \"você\"; nada de gíria, abreviação nem expressão informal (como \"pra\", \"tá\", \"poxa\", \"beleza\", \"rapidinho\", \"te\"), e sem jargão de sistema. Formal não é burocrático: frases simples e diretas, como um bom atendente escreveria, sem expressões de formulário (como \"dar continuidade ao problema\" ou \"de onde você fala\"). "
         ."Não use \"protocolo\", \"solicitação registrada\", \"aguarde\" nem frases prontas; varie as palavras, use o primeiro nome da pessoa quando souber. "
-        ."Não diga que é assistente, robô ou atendimento automático, a não ser que perguntem diretamente. Ao passar para um colega, fale como quem chama alguém da equipe (\"vou chamar um colega que cuida disso\"), sem falar em fila ou transferência.\n";
+        ."Não diga que é assistente, robô ou atendimento automático, a não ser que perguntem diretamente. Ao passar para um colega, fale como quem chama alguém da equipe (\"vou chamar um colega que cuida disso\"), sem falar em fila ou transferência.\n"
+        // T-478, dono em 22/10/2026: "ele precisa lembrar do histórico, mas não pode deduzir
+        // que quero continuar o último atendimento somente com base em um oi".
+        ."ATENDIMENTO ANTERIOR: se as MENSAGENS trazem um atendimento anterior já ENCERRADO, ele serve para você lembrar do que aconteceu, não é o assunto de agora. "
+        ."Não retome esse assunto nem suponha que a pessoa quer continuá-lo: um cumprimento é só um cumprimento; cumprimente e pergunte em que pode ajudar. "
+        ."Use o que ficou registrado quando a própria pessoa voltar ao assunto ou quando ele ajudar a entender o pedido novo.\n";
 
     /**
      * A conversa de quem ainda não disse quem é (T-478): só se pede a identificação.
@@ -80,7 +85,7 @@ class Contexto
             ."IDENTIFICAÇÃO PRIMEIRO: antes de qualquer ajuda, você precisa saber o NOME da pessoa e o NOME DA EMPRESA ou do CONDOMÍNIO dela. "
             // Sem frase de exemplo, de propósito (T-478): na simulação a IA copiou o exemplo palavra por
             // palavra, e o Pedro soaria igual em toda conversa — o contrário de parecer humano.
-            ."Se ela já contou o problema, retome em poucas palavras o que ela disse, com o assunto DELA, e explique, com simpatia, que para abrir o chamado e dar continuidade precisa do nome dela e do nome da empresa ou do condomínio. "
+            ."Se ela já contou o problema no atendimento de agora, retome em poucas palavras o que ela disse, com o assunto DELA, e explique, com simpatia, que precisa do nome dela e do nome da empresa ou do condomínio para abrir o chamado. "
             ."Escreva com as suas palavras, sem frase pronta. "
             ."Não dê passos para resolver, não fale de atendimentos, contratos nem dados de cliente antes disso.\n"
             .($conhecido ? "O cliente deste número já é conhecido (veja CLIENTE): pergunte só o nome da pessoa e, se ela disser, a função (síndico, zelador, porteiro…).\n"
@@ -130,7 +135,7 @@ class Contexto
         $cliente = $c->cliente;
         $sistemas = $cliente ? $cliente->sistemas->filter(fn ($s) => (bool) $s->pivot->ativo)->values() : collect();
         // A base do suporte (T-476): sem nota que sirva a esta conversa, o pedido sai como antes.
-        $base = app(BaseDoSuporte::class)->paraOPrompt($c, $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->get()
+        $base = app(BaseDoSuporte::class)->paraOPrompt($c, $c->mensagensDoAtendimento()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->get()
             ->map(fn ($m) => $m->transcricao ?: $m->texto)->implode(' '));
 
         $partes = [
@@ -244,7 +249,7 @@ class Contexto
     /** As últimas mensagens de quem é da casa, onde o cliente a registrar é citado. */
     public function textoParaRegistrar(SuporteConversa $c): string
     {
-        return $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(6)->get()
+        return $c->mensagensDoAtendimento()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(6)->get()
             ->map(fn ($m) => $m->transcricao ?: $m->texto)->implode(' ');
     }
 
@@ -326,7 +331,7 @@ class Contexto
      */
     private function showroom(SuporteConversa $c): ?string
     {
-        $recentes = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->get()
+        $recentes = $c->mensagensDoAtendimento()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(3)->get()
             ->map(fn ($m) => $m->transcricao ?: $m->texto)->implode(' ');
         $itens = app(DiretorioGestor::class)->showroomPara($recentes);
         if (! $itens) {
@@ -488,9 +493,19 @@ class Contexto
     private function mensagens(SuporteConversa $c): string
     {
         $quem = ['entrada' => 'CLIENTE', 'pedro' => 'PEDRO', 'humano_app' => 'ATENDENTE', 'humano_matriz' => 'ATENDENTE'];
+        $linha = fn ($m) => $quem[$m->direcao].': '.$this->textoDaMensagem($m);
+        $ultimas = $c->mensagens()->reorder()->orderByDesc('id')->limit(15)->get()->reverse();
+        // O histórico fica inteiro, para o Pedro lembrar; o atendimento encerrado vem
+        // separado, para ele não tomá-lo como o assunto de agora (T-478, 22/10/2026: um
+        // "oi" depois do encerramento voltou com "sobre as câmeras sem imagem…").
+        $fim = $c->fimDoAtendimentoAnterior();
+        [$antes, $agora] = $ultimas->partition(fn ($m) => $fim && $m->id <= $fim);
+        if ($antes->isEmpty()) {
+            return $agora->map($linha)->implode("\n");
+        }
 
-        return $c->mensagens()->reorder()->orderByDesc('id')->limit(15)->get()->reverse()
-            ->map(fn ($m) => $quem[$m->direcao].': '.$this->textoDaMensagem($m))->implode("\n");
+        return "### Atendimento anterior, já ENCERRADO\n".$antes->map($linha)->implode("\n")
+            ."\n\n### Atendimento de agora\n".($agora->map($linha)->implode("\n") ?: '(ainda sem mensagem)');
     }
 
     /** Foto anexada e áudio (transcrito ou a transcrever no runner) aparecem como tal. */
