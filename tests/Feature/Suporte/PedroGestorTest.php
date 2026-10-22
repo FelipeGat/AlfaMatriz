@@ -147,7 +147,7 @@ class PedroGestorTest extends TestCase
         $this->postJson(route('suporte.runner.abertura-feita', $a->id), ['maquina' => 'wsl', 'numero' => '782', 'modo' => 'reabrir'])->assertOk();
 
         $this->assertSame('782', SuporteConversa::sole()->gestor_atendimento);
-        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Esse problema já tinha um chamado, o nº 782, e eu reabri para a equipe olhar de novo. A equipe técnica te retorna por aqui.');
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Esse problema já tinha um chamado, o nº 782, e eu o reabri para que a equipe analise novamente. A equipe técnica retornará o contato por aqui.');
         $this->assertSame(1, Notificacao::where('destinatario_id', $this->rossini->id)->where('titulo', 'like', 'Gestor nº 782%')->count());
     }
 
@@ -162,7 +162,7 @@ class PedroGestorTest extends TestCase
         $this->assertSame('falhou', SuporteGestorAbertura::sole()->situacao);
         $t = Tarefa::sole();
         $this->assertStringContainsString('não foi possível abrir no Gestor', $t->resumo);
-        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Pronto, abri o seu chamado: é o nº T-{$t->id}. A equipe técnica te retorna por aqui.");
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Abri o seu chamado, de nº T-{$t->id}. A equipe técnica retornará o contato por aqui.");
     }
 
     public function test_so_a_conta_do_pedro_manda_o_retrato(): void

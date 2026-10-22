@@ -22,9 +22,9 @@ use Illuminate\Validation\ValidationException;
 class Pedro
 {
     // Frases fixas no tom de uma pessoa da equipe (T-478, dono em 21/10/2026: "o mais natural possível").
-    public const FALLBACK = 'Oi! Já vi sua mensagem, um colega da equipe te responde por aqui em instantes.';
+    public const FALLBACK = 'Olá! Recebi a sua mensagem, e um colega da equipe responderá por aqui em instantes.';
 
-    public const ESPECIALISTA = 'Para não te deixar esperando, já chamei um colega da equipe que cuida disso; ele continua com você por aqui.';
+    public const ESPECIALISTA = 'Para que você não fique esperando, já chamei um colega da equipe que cuida desse assunto; ele dará continuidade ao atendimento por aqui.';
 
     public function __construct(private CanalWhatsApp $canal, private Contexto $contexto, private Atendimento $atendimento) {}
 

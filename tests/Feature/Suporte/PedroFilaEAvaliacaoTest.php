@@ -89,7 +89,7 @@ class PedroFilaEAvaliacaoTest extends TestCase
         $c = SuporteConversa::sole();
         $this->assertNull($c->humano_id);
         $this->assertNotNull($c->fila_desde);
-        $this->assertStringContainsString('Já avisei a equipe que você quer falar com Marta', $this->ultimaDoPedro());
+        $this->assertStringContainsString('Já avisei a equipe que você deseja falar com Marta', $this->ultimaDoPedro());
         $this->assertSame(2, Notificacao::where('titulo', 'like', 'Na fila do WhatsApp%')->count(), 'toda a equipe de atendimento');
 
         $this->assertSame(0, app(Transferencia::class)->lembrarFila(), 'antes de 15 min, não');
