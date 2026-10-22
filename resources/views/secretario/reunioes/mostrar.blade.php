@@ -82,6 +82,17 @@
                     <p class="mt-2 text-[12px] text-ink-mute">Nomes citados na fala (inferência): {{ implode(', ', $r->participantes) }}</p>
                 @endif
             </x-painel>
+            @if (! empty($r->contexto['desfecho']) || ! empty($r->contexto['tratou']))
+                <x-painel titulo="Andamento">
+                    @if (! empty($r->contexto['tratou']))
+                        <p class="text-[13px] text-ink-mute">Tratou de:</p>
+                        <ul class="mb-2 list-disc space-y-0.5 pl-5 text-[13.5px] text-ink">@foreach ($r->contexto['tratou'] as $t)<li>{{ $t }}</li>@endforeach</ul>
+                    @endif
+                    @if (! empty($r->contexto['desfecho']))
+                        <p class="text-[13.5px] text-ink"><span class="text-ink-mute">Terminou com:</span> {{ $r->contexto['desfecho'] }}</p>
+                    @endif
+                </x-painel>
+            @endif
             <x-painel titulo="Contexto">
                 <dl class="grid grid-cols-1 gap-x-4 gap-y-1 text-[13px] sm:grid-cols-2">
                     @foreach (['empresa' => 'Empresa', 'cliente' => 'Cliente', 'projeto' => 'Projeto', 'objetivo' => 'Objetivo', 'problema' => 'Problema', 'necessidade' => 'Necessidade'] as $k => $rot)

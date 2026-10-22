@@ -160,14 +160,34 @@ class ReunioesTest extends TestCase
         $this->postJson(route('secretario.reunioes.proposta', $decisao->id), ['acao' => 'aprovar'])->assertStatus(422);
     }
 
-    public function test_analise_invalida_e_descartada_inteira(): void
+    /**
+     * Um deslize num item não derruba mais a análise (Medsenior, 22/10/2026: um trecho inexistente
+     * citado numa tarefa jogou fora a reunião inteira). O item é corrigido e o resto fica.
+     */
+    public function test_deslize_num_item_nao_descarta_a_analise(): void
+    {
+        $u = $this->dono();
+        $this->comRunner($u);
+        $r = SecretarioReuniao::findOrFail($this->enviar($u)->json('id'));
+        $this->transcrever($u, $r, self::TRECHOS);
+        $this->concluirAnalise($u, $this->analise(['tipo' => 'festa', 'tratou' => ['Demonstração', 'Leitor de mão'], 'desfecho' => 'Demonstração marcada para quinta.',
+            'tarefas' => [['texto' => 'Mandar a proposta', 'evidencias' => [99, 4], 'classificacao' => 'inventada'], ['texto' => '', 'evidencias' => [4]]]]));
+
+        $r->refresh();
+        $this->assertSame(['pronta', 'outro'], [$r->status, $r->tipo_reuniao]);
+        $this->assertSame('Demonstração marcada para quinta.', $r->contexto['desfecho']);
+        $this->assertSame(['Demonstração', 'Leitor de mão'], $r->contexto['tratou']);
+        $p = SecretarioReuniaoProposta::where('texto', 'Mandar a proposta')->sole();
+        $this->assertSame([[4], 'sugestao'], [$p->evidencias, $p->classificacao]);
+        $this->assertSame(0, SecretarioReuniaoProposta::where('texto', '')->count(), 'item sem texto sai');
+    }
+
+    public function test_analise_sem_resumo_e_descartada_inteira(): void
     {
         $u = $this->dono();
         $this->comRunner($u);
         foreach ([
-            $this->analise(['tarefas' => [['texto' => 'X', 'evidencias' => [99], 'classificacao' => 'compromisso']]]), // trecho inexistente
-            $this->analise(['tipo' => 'festa']),
-            $this->analise(['tarefas' => [['texto' => 'X', 'evidencias' => [], 'classificacao' => 'compromisso']]]),  // sem evidência
+            $this->analise(['resumo' => '']),
             'isto não é json',
         ] as $bloco) {
             SecretarioReuniao::query()->delete();
