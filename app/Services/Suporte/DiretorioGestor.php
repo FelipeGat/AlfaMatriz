@@ -133,9 +133,12 @@ class DiretorioGestor
             if ($a === $b) {
                 return true;
             }
+            // Pela pronúncia (22/10/2026: "revissa" é a "Revizza"): ss/zz/z viram s, y vira i, letra dobrada vira uma.
+            $som = fn (string $p) => preg_replace('/(.)\1+/', '$1', strtr(str_replace(['ph', 'qu', 'ch'], ['f', 'c', 'x'], $p), ['z' => 's', 'y' => 'i', 'k' => 'c', 'w' => 'v']));
+            [$a, $b] = [$som($a), $som($b)];
             $menor = min(strlen($a), strlen($b));
 
-            return $menor >= 5 && levenshtein($a, $b) <= ($menor >= 8 ? 2 : 1);
+            return $a === $b || ($menor >= 5 && levenshtein($a, $b) <= ($menor >= 8 ? 2 : 1));
         };
 
         return collect($this->retrato()['clientes'])

@@ -181,8 +181,10 @@ class Pedro
             $registro = null;
             if ($bloco['acao'] === 'abrir_atendimento' && ! $c->comHumano()) {
                 $cliente = app(AcessoInterno::class)->clientesCitados($this->contexto->textoParaRegistrar($c))[(string) $bloco['cliente']] ?? null;
-                $registro = $cliente ? $this->atendimento->registrarPorDentro($c, $interno, $cliente, $bloco) : null;
-                if (! $cliente) {
+                // Pré-cliente novo, pedido e confirmado na prévia (22/10/2026): nasce no Gestor junto do atendimento.
+                $novoPre = ! $cliente && $bloco['cliente'] === 'novo_pre' && ($bloco['novo_pre'] ?? null);
+                $registro = $cliente || $novoPre ? $this->atendimento->registrarPorDentro($c, $interno, $cliente, $bloco) : null;
+                if (! $cliente && ! $novoPre) {
                     $bloco['resposta'] .= "\n\n(Não registrei: não consegui confirmar o cliente no Gestor. Me diga o nome como está cadastrado.)";
                 }
             }
