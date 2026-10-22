@@ -34,6 +34,12 @@ No código, e não só no texto para a IA:
 Quando a pessoa termina de se identificar, a resposta daquele pedido **não é enviada**: a conversa volta na hora
 ao Pedro com o contexto inteiro (pedido com `acao = identificou`), e ele responde uma vez só, já cuidando do
 problema. Custa uma chamada a mais da IA, uma vez por conversa, e evita a troca "obrigado" + "e o problema?".
+Se a volta não entra na fila (fora do horário, janela fechada, Pedro desligado), a resposta da identificação vai
+mesmo — senão a pessoa fica sem nada.
+
+**Telefone compartilhado** (portaria): a identificação fica no número, mas quem disser OUTRO nome passa a ser o
+solicitante, e não herda a função de quem escreveu antes. O pedido de quem já se identificou também devolve
+`solicitante` para isso.
 
 ## O jeito humano
 

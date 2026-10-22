@@ -206,7 +206,10 @@ class Pedro
         }
         $identificadaAntes = $c->identificada();
         if (! $interno && ($bloco['solicitante'] ?? null)) {
-            $c->update(['solicitante_nome' => $bloco['solicitante']['nome'], 'solicitante_funcao' => $bloco['solicitante']['funcao'] ?? $c->solicitante_funcao]);
+            // Outra pessoa no mesmo telefone não herda a função de quem escreveu antes.
+            $mesma = mb_strtolower(trim((string) $c->solicitante_nome)) === mb_strtolower($bloco['solicitante']['nome']);
+            $c->update(['solicitante_nome' => $bloco['solicitante']['nome'],
+                'solicitante_funcao' => $bloco['solicitante']['funcao'] ?? ($mesma ? $c->solicitante_funcao : null)]);
         }
         $this->confirmarCliente($c, $bloco['cliente']);
         // Acabou de se identificar (T-478): a resposta do pedido de identificação não vai.
@@ -215,9 +218,12 @@ class Pedro
         if (! $interno && ! $identificadaAntes && $c->identificada() && $bloco['acao'] === 'responder') {
             $c->update(['identificada_em' => now()]);
             $p->update(['situacao' => 'respondido', 'acao' => 'identificou', 'resumo' => $bloco['resumo']]);
-            $this->enfileirar($c->id);
-
-            return;
+            // Só segura a resposta se a volta de fato entrou na fila. Fora do horário (pedido
+            // feito às 17:59), janela fechada ou Pedro desligado, ela não entra: aí vai a
+            // resposta da identificação mesmo, senão a pessoa fica sem nada (revisão da T-478).
+            if ($this->enfileirar($c->id)) {
+                return;
+            }
         }
         $resposta = $bloco['resposta'];
         // Sem o Gestor, não há setor para onde entregar: vira atendimento no quadro.

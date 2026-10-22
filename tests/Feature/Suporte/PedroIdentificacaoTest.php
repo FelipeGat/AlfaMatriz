@@ -133,6 +133,35 @@ class PedroIdentificacaoTest extends TestCase
         Http::assertSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), "O número do seu chamado é T-{$t->id}."));
     }
 
+    /** Revisão da T-478: identificada às 17:59 e a IA responde às 18:01 — a volta não entra, a resposta vai. */
+    public function test_identificou_quando_a_volta_nao_entra_a_resposta_vai(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-20 17:59', 'America/Sao_Paulo'));
+        $this->chega('Sou a Maria, síndica, a catraca parou', 'wamid.1', '5527999998888');
+        Carbon::setTestNow(Carbon::parse('2026-10-20 18:01', 'America/Sao_Paulo'));
+        $this->responde(['resposta' => 'Obrigado, Maria! Amanhã cedo a equipe olha a catraca.', 'acao' => 'responder', 'solicitante' => ['nome' => 'Maria', 'funcao' => 'síndica']]);
+
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Obrigado, Maria! Amanhã cedo a equipe olha a catraca.');
+        $this->assertTrue(SuporteConversa::sole()->identificada());
+        $this->assertSame(1, SuportePedido::count(), 'nenhuma volta ficou pendurada');
+    }
+
+    /** Revisão da T-478: telefone de portaria passa de mão em mão; quem diz outro nome passa a ser o solicitante. */
+    public function test_outra_pessoa_no_mesmo_telefone_troca_o_solicitante(): void
+    {
+        $c = SuporteConversa::create(['telefone' => '5527999998888', 'cliente_id' => $this->academia->id, 'situacao' => 'pedro',
+            'solicitante_nome' => 'Maria', 'solicitante_funcao' => 'síndica', 'identificada_em' => now()->subWeek()]);
+        $this->chega('Aqui é o João, da portaria. O portão travou', 'wamid.1', '5527999998888');
+        $prompt = $this->responde(['resposta' => 'Oi, João! Vou abrir o chamado do portão.', 'acao' => 'abrir_atendimento', 'resumo' => 'Portão travado',
+            'solicitante' => ['nome' => 'João', 'funcao' => null]]);
+
+        $this->assertStringContainsString('Se a pessoa disser que é OUTRA pessoa', $prompt);
+        $c->refresh();
+        $this->assertSame('João', $c->solicitante_nome);
+        $this->assertNull($c->solicitante_funcao, 'o João não herda a função da Maria');
+        $this->assertStringContainsString('Solicitante: João.', Tarefa::sole()->resumo);
+    }
+
     public function test_sem_resposta_da_ia_sem_identificacao_nao_abre_chamado(): void
     {
         $this->chega('o portão não abre', 'wamid.1');
