@@ -30,7 +30,7 @@ class PreviasTest extends TestCase
         CentralIaTelegramVinculo::create(['user_id' => $u->id, 'chat_id' => 99, 'vinculado_em' => now()]);
         $r = CentralIaRunner::create(['user_id' => $u->id, 'maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => ['alfahome'], 'visto_em' => now()]);
         $s = app(AgentesService::class);
-        $s->pedir($u, 'me traga um modelo conceito da landing para meu ok', ['projeto' => 'alfahome', 'agente' => 'claude', 'modo' => 'auto', 'instrucao' => 'me traga um modelo conceito da landing para meu ok'], 'web', 'v1');
+        $s->pedir($u, 'me traga um modelo conceito da landing para meu ok e mande no Telegram', ['projeto' => 'alfahome', 'agente' => 'claude', 'modo' => 'auto', 'instrucao' => 'me traga um modelo conceito da landing para meu ok e mande no Telegram'], 'web', 'v1');
         $job = $s->proxima($u, $r);
 
         Sanctum::actingAs($u, ['central-ia-runner']);
@@ -65,7 +65,7 @@ class PreviasTest extends TestCase
         CentralIaTelegramVinculo::create(['user_id' => $u->id, 'chat_id' => 99, 'vinculado_em' => now()]);
         $r = CentralIaRunner::create(['user_id' => $u->id, 'maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => ['alfahome'], 'visto_em' => now()]);
         $s = app(AgentesService::class);
-        $s->pedir($u, 'faça um vídeo narrado', ['projeto' => 'alfahome', 'agente' => 'claude', 'modo' => 'auto', 'instrucao' => 'faça um vídeo narrado'], 'web', 'v1');
+        $s->pedir($u, 'faça um vídeo narrado e me manda pelo telegram', ['projeto' => 'alfahome', 'agente' => 'claude', 'modo' => 'auto', 'instrucao' => 'faça um vídeo narrado e me manda pelo telegram'], 'web', 'v1');
         $job = $s->proxima($u, $r);
 
         Sanctum::actingAs($u, ['central-ia-runner']);
@@ -83,5 +83,23 @@ class PreviasTest extends TestCase
         app(TelegramCanal::class)->entregarPrevias();
         Http::assertSent(fn ($req) => str_contains($req->url(), 'sendVideo'));
         $this->assertSame('enviado', CentralIaPrevia::where('caminho', 'demo.mp4')->value('telegram'));
+    }
+
+    /** Dono, 22/10/2026: "todo documento entregue acaba indo para o Telegram; não precisa, só os solicitados". */
+    public function test_pdf_pedido_na_tela_sem_falar_em_telegram_nao_vai_ao_telegram(): void
+    {
+        Storage::fake('central_ia');
+        config(['central_ia.canal_exclusivo' => false]);
+        $u = User::factory()->create();
+        $u->perfis()->attach(Perfil::where('slug', 'central_ia')->value('id'));
+        CentralIaTelegramVinculo::create(['user_id' => $u->id, 'chat_id' => 99, 'vinculado_em' => now()]);
+        $r = CentralIaRunner::create(['user_id' => $u->id, 'maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => ['alfahome'], 'visto_em' => now()]);
+        $s = app(AgentesService::class);
+        $s->pedir($u, 'gere o contrato de comodato em PDF', ['projeto' => 'alfahome', 'agente' => 'claude', 'modo' => 'auto', 'instrucao' => 'gere o contrato de comodato em PDF'], 'web', 'v1');
+        $job = $s->proxima($u, $r);
+        Sanctum::actingAs($u, ['central-ia-runner']);
+        $this->post(route('central-ia.runner.previa', $job['id']), ['maquina' => 'wsl', 'caminho' => 'contrato.pdf',
+            'arquivo' => UploadedFile::fake()->createWithContent('contrato.pdf', "%PDF-1.4\n%%EOF")], ['Accept' => 'application/json'])->assertOk();
+        $this->assertNull(CentralIaPrevia::where('caminho', 'contrato.pdf')->value('telegram'));
     }
 }

@@ -71,9 +71,30 @@ class Previas
         return CentralIaPrevia::updateOrCreate(['execucao_id' => $e->id, 'caminho' => $c], [
             'user_id' => $user->id, 'chave' => $chave, 'mime' => $mime, 'tamanho' => $arquivo->getSize(),
             'sha256' => hash_file('sha256', $arquivo->getRealPath()),
-            // Imagem, PDF e vídeo vão ao Telegram (dono, 13 e 17/10/2026), quando há vínculo.
-            'telegram' => $visual && CentralIaTelegramVinculo::where('user_id', $user->id)->exists() ? 'pendente' : null,
+            // Imagem, PDF e vídeo vão ao Telegram só quando a pessoa pediu por lá ou pediu o envio
+            // (dono, 22/10/2026: "todo documento entregue acaba indo para o Telegram; só os solicitados").
+            'telegram' => $visual && CentralIaTelegramVinculo::where('user_id', $user->id)->exists() && self::pediuNoTelegram($e) ? 'pendente' : null,
         ]);
+    }
+
+    /**
+     * O pedido da pessoa veio pelo Telegram, ou pede o envio por lá ("me manda no Telegram").
+     * Na passagem entre agentes, vale o pedido que começou a cadeia.
+     */
+    public static function pediuNoTelegram(CentralIaExecucao $e): bool
+    {
+        $atual = $e;
+        for ($i = 0; $i < 6 && $atual; $i++) {
+            $pedido = \App\Models\CentralIaMensagem::find($atual->pedido_id);
+            $texto = Str::lower(Str::ascii((string) ($pedido?->conteudo).' '.($atual->roteamento['delegacao']['raiz_pedido'] ?? '').' '.$atual->instrucao));
+            if ($pedido?->origem === \App\Models\CentralIaMensagem::ORIGEM_TELEGRAM || preg_match('/\btelegram\b/', $texto)) {
+                return true;
+            }
+            $de = $atual->roteamento['delegacao']['de'] ?? null;
+            $atual = $de ? CentralIaExecucao::find($de) : null;
+        }
+
+        return false;
     }
 
     /** O que a resposta mostra: imagens, PDFs, vídeos e as páginas (os .html). */
