@@ -67,8 +67,8 @@ class Transferencia
         // Como uma pessoa da equipe chamaria um colega (T-478): sem "fila" nem "transferência".
         $texto = $alvo
             ? "Já chamei o {$primeiro}, ele continua com você por aqui."
-            : ($nome ? "Já avisei a equipe que você deseja falar com {$nome}; em breve alguém dará continuidade ao atendimento por aqui."
-                : 'Já chamei um colega da equipe, que dará continuidade ao atendimento por aqui.');
+            : ($nome ? "Já avisei a equipe que você deseja falar com {$nome}; em breve alguém continua com você por aqui."
+                : 'Já chamei um colega da equipe, que continua com você por aqui.');
 
         return ['atendente' => $alvo, 'texto' => $texto.(Horario::aberto() ? '' : self::FORA_DO_HORARIO)];
     }
