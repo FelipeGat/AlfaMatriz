@@ -96,6 +96,16 @@ class PedroFilaEAvaliacaoTest extends TestCase
         Carbon::setTestNow(now()->addMinutes(16));
         $this->assertSame(1, app(Transferencia::class)->lembrarFila());
         $this->assertSame(2, Notificacao::where('titulo', 'like', 'Ainda sem resposta%')->count());
+        $this->assertSame(0, Notificacao::where('titulo', 'like', 'Na fila do WhatsApp%')->count(), 'o lembrete substitui o aviso anterior, sem empilhar');
+        Carbon::setTestNow(now()->addMinutes(16));
+        $this->assertSame(1, app(Transferencia::class)->lembrarFila());
+        $this->assertSame(2, Notificacao::where('titulo', 'like', 'Ainda sem resposta%')->count(), 'um aviso por pessoa, mesmo depois de vários lembretes');
+        Carbon::setTestNow(now()->addMinutes(16)); // 48 min na fila
+        $this->assertSame(1, app(Transferencia::class)->lembrarFila());
+        Carbon::setTestNow(now()->addMinutes(16)); // 64 min: passada a primeira hora, de hora em hora
+        $this->assertSame(0, app(Transferencia::class)->lembrarFila());
+        Carbon::setTestNow(now()->addMinutes(45)); // 1 h depois do último
+        $this->assertSame(1, app(Transferencia::class)->lembrarFila());
 
         // Alguém respondeu: para de lembrar.
         $this->actingAs($this->alexandre)->post(route('suporte.responder', $c->id), ['texto' => 'Oi! Sou o Alexandre.'])->assertRedirect();

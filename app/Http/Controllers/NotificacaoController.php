@@ -15,12 +15,33 @@ use Illuminate\Http\Request;
 class NotificacaoController extends Controller
 {
     /**
-     * Marca lidas.
-     *
-     * Sem id: "Marcar lidas" é o botão do cabeçalho, e ele fala do painel
-     * inteiro. Marcar uma a uma seria a ação de outro desenho — aqui o item
-     * clicado leva para a tela onde a coisa se resolve, e é resolvê-la que
-     * importa, não catalogar o que já se leu.
+     * Abre o aviso: dá por lido e leva para a tela onde a coisa se resolve (Felipe,
+     * 22/10/2026: "preciso clicar nelas para resolver"). Só o aviso da própria pessoa.
+     */
+    public function abrir(Request $request, int $notificacao)
+    {
+        $n = Notificacao::where('destinatario_id', $request->user()->id)->findOrFail($notificacao);
+        if ($n->naoLida()) {
+            $n->forceFill(['lida_em' => now()])->save();
+        }
+
+        return redirect($n->rota ?: url('/'));
+    }
+
+    /** Marca UM aviso como lido, sem sair da tela (o botão de cada linha do sino). */
+    public function marcarLida(Request $request, int $notificacao)
+    {
+        $n = Notificacao::where('destinatario_id', $request->user()->id)->findOrFail($notificacao);
+        if ($n->naoLida()) {
+            $n->forceFill(['lida_em' => now()])->save();
+        }
+
+        return response()->json(['nao_lidas' => Notificacao::naoLidasDe($request->user()->id)->count()]);
+    }
+
+    /**
+     * Marca lidas: o botão do cabeçalho, para o painel inteiro. Uma a uma é pelo botão
+     * da linha ou abrindo o aviso.
      */
     /**
      * O contador do sino e o id da notificação mais recente — em JSON, leve.

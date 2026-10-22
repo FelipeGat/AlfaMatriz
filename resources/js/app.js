@@ -235,6 +235,30 @@ Alpine.data('shell', () => ({
     },
 
     /**
+     * Marca UM aviso como lido, sem sair da tela (22/10/2026): a linha perde a barra e o
+     * fundo de não lida, o botão some e o contador vem do servidor.
+     */
+    async marcarLida(id, botao) {
+        try {
+            const resposta = await fetch(`/notificacoes/${id}/lida`, {
+                method: 'POST',
+                headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' },
+            });
+            if (! resposta.ok) {
+                return;
+            }
+            this.naoLidas = (await resposta.json()).nao_lidas;
+            const linha = botao.closest('a');
+            linha?.classList.remove('bg-chip');
+            linha?.classList.add('border-l-transparent');
+            if (linha) linha.style.borderLeftColor = '';
+            botao.remove();
+        } catch (erro) {
+            // Sem rede: fica como estava; a pessoa tenta de novo.
+        }
+    },
+
+    /**
      * Toca o aviso — uma vez por notificação, por mais abas que estejam
      * abertas: quem tem o quadro e a agenda abertos ouviria o mesmo aviso
      * duas vezes. A primeira aba que vê o id o reivindica no localStorage; as

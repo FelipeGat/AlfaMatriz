@@ -152,6 +152,26 @@ class SinoDeNotificacoesTest extends TestCase
         $this->assertSame(1, Notificacao::where('destinatario_id', $dev->id)->count());
     }
 
+    /** Felipe, 22/10/2026: marcar uma a uma, e clicar no aviso para resolver. */
+    public function test_aviso_abre_dando_por_lido_e_marca_um_so(): void
+    {
+        [$tarefa, $dev, $revisor] = $this->emRevisao();
+        $this->fluxo->perguntar($tarefa, $revisor, 'Uma dúvida.');
+        $this->fluxo->perguntar($tarefa, $revisor, 'Outra dúvida.');
+        [$primeira, $segunda] = Notificacao::where('destinatario_id', $dev->id)->orderBy('id')->get()->all();
+
+        $this->actingAs($dev)->postJson(route('notificacoes.lida', $primeira->id))->assertOk()->assertJson(['nao_lidas' => 1]);
+        $this->assertNotNull($primeira->fresh()->lida_em);
+        $this->assertNull($segunda->fresh()->lida_em, 'só a marcada');
+
+        $this->actingAs($dev)->get(route('notificacoes.abrir', $segunda->id))->assertRedirect($segunda->rota ?: url('/'));
+        $this->assertNotNull($segunda->fresh()->lida_em);
+
+        // O aviso de outra pessoa não se abre nem se marca.
+        $this->actingAs($revisor)->get(route('notificacoes.abrir', $primeira->id))->assertNotFound();
+        $this->actingAs($revisor)->postJson(route('notificacoes.lida', $primeira->id))->assertNotFound();
+    }
+
     /**
      * @spec:AC-202 Marcar lidas é só das SUAS: um POST não pode dar por lido o sino
      * de outra pessoa.

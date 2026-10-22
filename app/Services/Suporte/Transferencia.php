@@ -86,6 +86,11 @@ class Transferencia
         $limite = now()->subMinutes(self::LEMBRAR_MINUTOS);
         foreach (SuporteConversa::where('situacao', 'humano')->whereNotNull('fila_desde')->where('humano_ate', '>', now())
             ->where(fn ($q) => $q->whereNull('fila_lembrada_em')->orWhere('fila_lembrada_em', '<', $limite))->get() as $c) {
+            // Espaçado (22/10/2026: os lembretes empilhavam no sino): a cada 15 min na primeira hora,
+            // depois de hora em hora.
+            if ($c->fila_desde->lt(now()->subHour()) && $c->fila_lembrada_em && $c->fila_lembrada_em->gt(now()->subHour())) {
+                continue;
+            }
             $ultimaPessoa = $c->mensagens()->reorder()->whereIn('direcao', ['humano_app', 'humano_matriz'])->max('created_at');
             $ultimaDoCliente = $c->mensagens()->reorder()->where('direcao', 'entrada')->max('created_at');
             // Alguém já respondeu depois da última mensagem do cliente: não está esperando.
@@ -107,9 +112,14 @@ class Transferencia
         $quem = $c->nome_perfil ?: $c->telefoneLegivel();
         $espera = $c->fila_desde ? ' (esperando há '.$c->fila_desde->diffForHumans(null, true).')' : '';
         $titulo = ($lembrete ? 'Ainda sem resposta: ' : ($alvo ? 'Chamaram você no WhatsApp: ' : 'Na fila do WhatsApp: ')).$quem.' — '.$c->fila_motivo.($lembrete ? $espera : '');
+        $rota = route('suporte.conversas', $c->id);
         foreach ($alvo ? collect([$alvo]) : $this->atendentes() as $u) {
+            // Um aviso por conversa: o novo substitui o anterior da mesma fila, em vez de empilhar.
+            Notificacao::where('destinatario_id', $u->id)->where('rota', $rota)->where('meta', 'Suporte WhatsApp')
+                ->where(fn ($q) => $q->where('titulo', 'like', 'Ainda sem resposta:%')->orWhere('titulo', 'like', 'Na fila do WhatsApp:%')->orWhere('titulo', 'like', 'Chamaram você no WhatsApp:%'))
+                ->delete();
             Notificacao::create(['destinatario_id' => $u->id, 'tipo' => 'direcionamento', 'nivel' => $lembrete ? 'critico' : 'atencao', 'icone' => 'balao',
-                'titulo' => Notificacao::caber($titulo), 'meta' => 'Suporte WhatsApp', 'rota' => route('suporte.conversas', $c->id)]);
+                'titulo' => Notificacao::caber($titulo), 'meta' => 'Suporte WhatsApp', 'rota' => $rota]);
         }
         if ($this->telegram->configurado()) {
             $this->telegram->enviar(($lembrete ? '⏰ ' : '🙋 ').'<b>'.e($alvo ? 'Para '.$alvo->name : 'Fila do WhatsApp').'</b>: '.e($quem)."\n".e((string) $c->fila_motivo).e($espera)."\n".e(route('suporte.conversas', $c->id)));

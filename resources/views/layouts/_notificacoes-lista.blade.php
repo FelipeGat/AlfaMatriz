@@ -19,7 +19,7 @@
         fundo não bastaria: num painel de doze linhas, um cinza levemente mais
         claro sem a barra se lê como zebra de tabela, e não como "isto é novo".
     --}}
-    <a href="{{ $aviso->rota ?? url('/') }}"
+    <a href="{{ route('notificacoes.abrir', $aviso->id) }}"
        @class([
            'flex items-start gap-2.5 px-4 py-2.5 border-b border-rule last:border-b-0 border-l-2 transition hover:bg-chip',
            'bg-chip' => $aviso->naoLida(),
@@ -41,6 +41,15 @@
                 {{ $aviso->meta ? $aviso->meta.' · ' : '' }}{{ $aviso->created_at->diffForHumans(short: true) }}
             </span>
         </span>
+
+        {{-- Marcar só este como lido, sem abrir (22/10/2026). --}}
+        @if ($aviso->naoLida())
+            <button type="button" title="Marcar como lida" aria-label="Marcar como lida"
+                    @click.prevent.stop="marcarLida({{ $aviso->id }}, $el)"
+                    class="shrink-0 mt-px flex h-6 w-6 items-center justify-center rounded-tile text-ink-faint transition hover:bg-panel hover:text-ink">
+                <span class="h-[13px] w-[13px]"><x-nav-icon name="check" :peso="1.8" /></span>
+            </button>
+        @endif
     </a>
 @empty
     <p class="px-4 py-6 text-center text-[12.5px] text-ink-faint">Nada de novo por aqui.</p>

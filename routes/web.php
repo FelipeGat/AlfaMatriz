@@ -107,6 +107,12 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('notificacoes.lista');
     Route::post('notificacoes/lidas', [NotificacaoController::class, 'marcarLidas'])
         ->name('notificacoes.lidas');
+    // Uma a uma (Felipe, 22/10/2026): abrir o aviso dá por lido e leva aonde ele se resolve;
+    // o "lida" marca sem sair da tela.
+    Route::get('notificacoes/{notificacao}/abrir', [NotificacaoController::class, 'abrir'])->whereNumber('notificacao')
+        ->name('notificacoes.abrir');
+    Route::post('notificacoes/{notificacao}/lida', [NotificacaoController::class, 'marcarLida'])->whereNumber('notificacao')
+        ->name('notificacoes.lida');
     Route::post('notificacoes/som', [NotificacaoController::class, 'som'])
         ->name('notificacoes.som');
 
