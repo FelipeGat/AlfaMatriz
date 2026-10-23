@@ -1075,6 +1075,7 @@ let lendoGestorPedro = false;
 let proximoRetratoPedro = 0;
 // O que o Pedro pediu para gravar no Gestor (FR-A8): a cada 20 s, um lote por vez.
 let gravandoGestor = false;
+let gravandoDesde = 0;
 let proximaGravacao = 0;
 let whisperConferido = { em: 0, ok: false };
 async function whisperPronto() {
@@ -1157,8 +1158,15 @@ while (!parar) {
                 .catch(e => log('suporte: retrato do Gestor não lido —', e.message))
                 .finally(() => { lendoGestorPedro = false; });
         }
+        // Gravação presa (23/10/2026: das 08:59 em diante a volta nunca terminou, e o atendimento
+        // confirmado pelo Wallas venceu sem ninguém buscar): passados 5 min, libera a próxima.
+        if (gravandoGestor && Date.now() - gravandoDesde > 5 * 60_000) {
+            log('suporte: gravação no Gestor presa há mais de 5 min — liberando');
+            gravandoGestor = false;
+        }
         if (cfg.gestor && !gravandoGestor && Date.now() >= proximaGravacao && Date.now() >= suportePausadoAte) {
             gravandoGestor = true;
+            gravandoDesde = Date.now();
             proximaGravacao = Date.now() + 20_000;
             gravarAberturas(cfg.gestor, cfg.maquina, { api, log })
                 .then(r => { if (r.status === 403 || r.status === 404) proximaGravacao = Date.now() + 3600_000; })

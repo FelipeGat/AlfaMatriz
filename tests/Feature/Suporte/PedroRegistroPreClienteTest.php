@@ -79,6 +79,20 @@ class PedroRegistroPreClienteTest extends TestCase
         $this->assertStringContainsString('- 21: Vitor Silva', $p);
     }
 
+    /** 23/10/2026: "vila velha" em sete nomes tomava as vagas; o pré-cliente Revizza de Vila Velha tem de vir primeiro. */
+    public function test_palavra_rara_decide_e_a_cidade_citada_desempata(): void
+    {
+        $clientes = [['id' => 40, 'nome' => 'REVIZZA — Vitória', 'fantasia' => '', 'razao' => '', 'cidade' => 'Vitória', 'empresa_id' => 2, 'empresa' => 'GW', 'telefones' => []],
+            ['id' => -6176, 'nome' => 'Revizza', 'fantasia' => 'Revizza', 'razao' => 'TOP CAR VEICULOS E SERVICOS AUTOMOTIVOS LTDA REVIZZA', 'cidade' => 'Vila Velha', 'telefones' => [], 'pre' => true]];
+        foreach (['JEEP', 'PROSED', 'BYD', 'FIAT', 'HONDA', 'TOYOTA', 'VOLVO'] as $i => $marca) {
+            $clientes[] = ['id' => 100 + $i, 'nome' => "{$marca} (VILA VELHA)", 'fantasia' => '', 'razao' => '', 'cidade' => 'Vila Velha', 'empresa_id' => 2, 'empresa' => 'GW', 'telefones' => []];
+        }
+        app(DiretorioGestor::class)->gravar('wsl', now()->toDateTimeString(), $clientes, []);
+
+        $achados = array_column(app(DiretorioGestor::class)->buscarClientes(self::PEDIDO), 'id');
+        $this->assertSame([-6176, 40], array_slice($achados, 0, 2));
+    }
+
     public function test_agenda_sem_tecnico_ou_sem_fim_nao_registra_e_pergunta(): void
     {
         $c = $this->conversa(self::PEDIDO);

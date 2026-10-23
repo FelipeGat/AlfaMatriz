@@ -157,14 +157,23 @@ class DiretorioGestor
             return $a === $b || ($menor >= 5 && levenshtein($a, $b) <= ($menor >= 8 ? 2 : 1));
         };
 
-        return $this->atendidos()
-            ->map(function ($c) use ($doTexto, $parecida) {
-                $nome = array_unique(self::palavras(implode(' ', array_filter([$c['fantasia'] ?? null, $c['nome'] ?? null, $c['razao'] ?? null]))));
-                $acertos = collect($nome)->filter(fn ($p) => mb_strlen($p) >= 4 && collect(array_keys($doTexto))->contains(fn ($t) => $parecida($p, (string) $t)))->count();
+        // Cada palavra pesa pela raridade (23/10/2026: em "revissa em vila velha", os clientes com
+        // "(VILA VELHA)" no nome tomaram as 6 vagas e a Revizza de Vila Velha ficou de fora): a palavra
+        // que só dois cadastros têm decide; a que dezenas têm quase não conta. A cidade citada desempata.
+        $casados = $this->atendidos()->map(function ($c) use ($doTexto, $parecida) {
+            $nome = array_unique(self::palavras(implode(' ', array_filter([$c['fantasia'] ?? null, $c['nome'] ?? null, $c['razao'] ?? null]))));
+            $termos = array_values(array_filter(array_map('strval', array_keys($doTexto)),
+                fn ($t) => collect($nome)->contains(fn ($p) => mb_strlen($p) >= 4 && $parecida($p, $t))));
 
-                return [$c, $acertos];
-            })
-            ->filter(fn ($par) => $par[1] > 0)->sortByDesc(fn ($par) => $par[1])->take($limite)->map(fn ($par) => $par[0])->values()->all();
+            return [$c, $termos];
+        })->filter(fn ($par) => $par[1] !== []);
+        $quantos = $casados->flatMap(fn ($par) => $par[1])->countBy();
+        // Com todas as palavras do pedido: "vila" é palavra vazia para o nome, mas é metade de "Vila Velha".
+        $todas = self::palavras($texto);
+        $cidadeCitada = fn ($c) => ($cidade = self::palavras((string) ($c['cidade'] ?? ''))) && ! array_diff($cidade, $todas) ? 0.25 : 0;
+
+        return $casados->map(fn ($par) => [$par[0], collect($par[1])->sum(fn ($t) => 1 / $quantos[$t]) + $cidadeCitada($par[0])])
+            ->sortByDesc(fn ($par) => $par[1])->take($limite)->map(fn ($par) => $par[0])->values()->all();
     }
 
     /** O nome aparece no texto? Todas as palavras que identificam o nome precisam estar nele. @param array<string, int> $palavrasDoTexto */
