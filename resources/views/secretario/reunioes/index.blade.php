@@ -112,7 +112,19 @@
                                 </td>
                                 <td class="px-3 py-3">
                                     <a href="{{ route('secretario.reunioes.mostrar', $r->id) }}" class="text-[13.5px] font-semibold text-ink hover:text-brand">{{ $r->titulo }}</a>
-                                    <p class="line-clamp-1 max-w-[420px] text-[12px] text-ink-mute">{{ $r->resumo ?: ($r->tipo_reuniao ? ucfirst($r->tipo_reuniao) : 'Sem resumo ainda') }}</p>
+                                    {{-- O andamento de relance (22/10/2026): tratou do quê, terminou com o quê, qual o próximo passo. --}}
+                                    @if (! empty($r->contexto['tratou']))
+                                        <p class="line-clamp-1 max-w-[460px] text-[12px] text-ink-mute"><span class="font-semibold text-ink-dim">Tratou:</span> {{ implode('; ', $r->contexto['tratou']) }}</p>
+                                    @endif
+                                    @if (! empty($r->contexto['desfecho']))
+                                        <p class="line-clamp-2 max-w-[460px] text-[12px] text-ink-mute"><span class="font-semibold text-ink-dim">Terminou com:</span> {{ $r->contexto['desfecho'] }}</p>
+                                    @endif
+                                    @if (! empty($r->proximos_passos))
+                                        <p class="line-clamp-1 max-w-[460px] text-[12px] text-ink-mute"><span class="font-semibold text-ink-dim">Próximo passo:</span> {{ $r->proximos_passos[0] }}</p>
+                                    @endif
+                                    @if (empty($r->contexto['desfecho']) && empty($r->proximos_passos))
+                                        <p class="line-clamp-1 max-w-[420px] text-[12px] text-ink-mute">{{ $r->resumo ?: ($r->erro ? 'Falhou: '.$r->erro : ($r->tipo_reuniao ? ucfirst($r->tipo_reuniao) : 'Sem resumo ainda')) }}</p>
+                                    @endif
                                 </td>
                                 <td class="px-3 py-3">
                                     <div class="flex -space-x-1.5">

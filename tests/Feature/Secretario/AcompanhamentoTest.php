@@ -135,6 +135,30 @@ class AcompanhamentoTest extends TestCase
         $this->assertSame(1, SecretarioAcompanhamento::where('regra', 'tarefa_vencida')->where('situacao', 'ativo')->count());
     }
 
+    /** 22/10/2026: 53 linhas de "sem resposta" (nove da mesma conversa) e um conflito do compromisso consigo mesmo. */
+    public function test_uma_linha_por_conversa_e_o_mesmo_compromisso_no_google_nao_e_conflito(): void
+    {
+        $u = $this->dono(telegram: false);
+        $this->email($u, 'Cancelamento de Contrato', '2026-10-17 10:00:00', 1);
+        $this->email($u, 'RE: Cancelamento de Contrato', '2026-10-18 10:00:00', 2);
+        $this->email($u, '[SPAM] Cancelamento de Contrato', '2026-10-19 10:00:00', 3);
+        $this->email($u, 'Dúvida sobre a instalação', '2026-10-19 10:00:00', 4);
+
+        $u->perfis()->syncWithoutDetaching([Perfil::where('slug', 'admin')->value('id')]);
+        $c = \App\Models\Compromisso::create(['titulo' => 'VixCard — Testes da esteira', 'categoria' => 'cliente', 'data' => '2026-10-22', 'hora' => '19:00',
+            'data_fim' => '2026-10-22', 'hora_fim' => '20:00', 'criado_por_id' => $u->id]);
+        $c->participantes()->sync([$u->id => ['data' => '2026-10-22']]);
+        $agenda = SecretarioGoogleAgenda::create(['user_id' => $u->id, 'google_id' => 'vix', 'nome' => 'VixCard', 'primaria' => true, 'incluida' => true]);
+        SecretarioGoogleEvento::create(['user_id' => $u->id, 'agenda_id' => $agenda->id, 'google_id' => 'e1', 'titulo' => 'VixCard — Testes da esteira',
+            'inicio' => CarbonImmutable::parse('2026-10-22 19:00', 'America/Sao_Paulo')->utc(), 'fim' => CarbonImmutable::parse('2026-10-22 20:00', 'America/Sao_Paulo')->utc()]);
+        $this->assertTrue(app(\App\Services\Secretario\AgendaConsolidada::class)->periodo($u, CarbonImmutable::now(), CarbonImmutable::now()->addDays(2))
+            ->contains('origem', 'matriz'), 'o compromisso do Matriz entra na agenda');
+
+        app(Motor::class)->rodar($u, CarbonImmutable::now());
+        $this->assertSame(['cliente_sem_resposta', 'cliente_sem_resposta'], $this->chaves($u));
+        $this->assertStringContainsString('Cancelamento de Contrato (3 e-mails)', SecretarioAcompanhamento::de($u)->pluck('texto')->implode("\n"));
+    }
+
     public function test_reuniao_do_google_so_quando_ligada_e_sem_duplicar_o_item(): void
     {
         $u = $this->dono(telegram: false);

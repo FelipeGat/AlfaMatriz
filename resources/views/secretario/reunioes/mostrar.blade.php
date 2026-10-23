@@ -68,6 +68,40 @@
                     <button class="mt-3 h-[30px] rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Salvar participantes</button>
                 </form>
             </section>
+            {{-- Reunião que aconteceu sem estar na Agenda (22/10/2026, a da Medsenior): marca daqui. --}}
+            <section class="rounded-panel border border-line bg-surface p-4" x-data="{ agendar: false }">
+                @if ($r->compromisso)
+                    <p class="flex items-center gap-2 text-[13px] text-ink">
+                        <span class="h-4 w-4 text-brand-text"><x-nav-icon name="calendar" /></span>
+                        Na agenda: {{ $r->compromisso->data->format('d/m/Y') }}, das {{ substr($r->compromisso->hora, 0, 5) }} às {{ substr((string) $r->compromisso->hora_fim, 0, 5) }}
+                        <a href="{{ route('secretario.agenda') }}" class="text-brand-text hover:text-brand">ver na agenda</a>
+                    </p>
+                @else
+                    <div class="flex flex-wrap items-center gap-3">
+                        <p class="min-w-0 flex-1 text-[12.5px] text-ink-mute">Esta reunião não está na agenda.</p>
+                        <button type="button" @click="agendar = ! agendar" class="inline-flex h-[28px] items-center gap-1 rounded-control border border-btn-line px-2.5 text-[12px] font-semibold text-ink-dim hover:border-brand hover:text-brand">
+                            <span class="h-4 w-4"><x-nav-icon name="calendar" /></span> Marcar na agenda
+                        </button>
+                    </div>
+                    <form x-show="agendar" x-cloak method="POST" action="{{ route('secretario.reunioes.agendar', $r->id) }}" class="mt-3 border-t border-line pt-3">@csrf
+                        <div class="flex flex-wrap items-end gap-3">
+                            <label class="text-[12.5px] text-ink-mute">Dia<input type="date" name="data" required value="{{ old('data', $r->created_at->format('Y-m-d')) }}" class="mt-1 block rounded-control border border-btn-line bg-canvas px-2 py-1 text-[13px] text-ink"></label>
+                            <label class="text-[12.5px] text-ink-mute">Início<input type="time" name="hora" required value="{{ old('hora') }}" class="mt-1 block rounded-control border border-btn-line bg-canvas px-2 py-1 text-[13px] text-ink"></label>
+                            <label class="text-[12.5px] text-ink-mute">Fim<input type="time" name="hora_fim" required value="{{ old('hora_fim') }}" class="mt-1 block rounded-control border border-btn-line bg-canvas px-2 py-1 text-[13px] text-ink"></label>
+                        </div>
+                        <p class="mb-1.5 mt-3 text-[12.5px] text-ink-mute">Quem esteve junto (entra como participante do compromisso):</p>
+                        <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                            @foreach ($pessoas as $u)
+                                <label class="flex items-center gap-2 text-[13px] text-ink">
+                                    <input type="checkbox" name="pessoas[]" value="{{ $u->id }}" @checked(in_array($u->id, $marcados, true)) class="rounded border-btn-line"> {{ $u->name }}
+                                </label>
+                            @endforeach
+                        </div>
+                        @if ($errors->any())<p class="mt-2 text-[12.5px] text-crit">{{ $errors->first() }}</p>@endif
+                        <button class="mt-3 h-[30px] rounded-control bg-brand px-3 text-[12.5px] font-semibold text-on-brand hover:bg-brand-bright">Marcar na agenda</button>
+                    </form>
+                @endif
+            </section>
         @endif
         @if ($r->status === 'falhou' && $r->transcrita_em && $r->modo === 'reuniao')
             <form method="POST" action="{{ route('secretario.reunioes.analisar', $r->id) }}">@csrf
@@ -82,6 +116,17 @@
                     <p class="mt-2 text-[12px] text-ink-mute">Nomes citados na fala (inferência): {{ implode(', ', $r->participantes) }}</p>
                 @endif
             </x-painel>
+            @if (! empty($r->contexto['desfecho']) || ! empty($r->contexto['tratou']))
+                <x-painel titulo="Andamento">
+                    @if (! empty($r->contexto['tratou']))
+                        <p class="text-[13px] text-ink-mute">Tratou de:</p>
+                        <ul class="mb-2 list-disc space-y-0.5 pl-5 text-[13.5px] text-ink">@foreach ($r->contexto['tratou'] as $t)<li>{{ $t }}</li>@endforeach</ul>
+                    @endif
+                    @if (! empty($r->contexto['desfecho']))
+                        <p class="text-[13.5px] text-ink"><span class="text-ink-mute">Terminou com:</span> {{ $r->contexto['desfecho'] }}</p>
+                    @endif
+                </x-painel>
+            @endif
             <x-painel titulo="Contexto">
                 <dl class="grid grid-cols-1 gap-x-4 gap-y-1 text-[13px] sm:grid-cols-2">
                     @foreach (['empresa' => 'Empresa', 'cliente' => 'Cliente', 'projeto' => 'Projeto', 'objetivo' => 'Objetivo', 'problema' => 'Problema', 'necessidade' => 'Necessidade'] as $k => $rot)

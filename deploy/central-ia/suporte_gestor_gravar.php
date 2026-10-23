@@ -47,13 +47,18 @@ $origem = 'Pedro, suporte do AlfaMatriz pelo WhatsApp';
 
 try {
     $modo = in_array($d['modo'] ?? 'novo', ['novo', 'vincular', 'reabrir'], true) ? ($d['modo'] ?? 'novo') : 'novo';
-    if (! is_array($d) || empty($d['cliente_id']) || trim((string) ($d['descricao'] ?? '')) === '') {
+    // Cliente, pré-cliente do funil ou pré-cliente NOVO (nome e cidade), criado aqui mesmo (22/10/2026).
+    $novoPre = is_array($d['novo_pre'] ?? null) && trim((string) ($d['novo_pre']['nome'] ?? '')) !== '' ? $d['novo_pre'] : null;
+    if (! is_array($d) || (empty($d['cliente_id']) && empty($d['pre_cliente_id']) && ! $novoPre) || trim((string) ($d['descricao'] ?? '')) === '') {
         throw new RuntimeException('pedido incompleto');
     }
-    $cliente = DB::table('clientes')->where('id', (int) $d['cliente_id'])->where('ativo', 1)->first();
-    if (! $cliente) {
-        throw new RuntimeException('cliente inexistente ou inativo no Gestor');
+    $cliente = ! empty($d['cliente_id']) ? DB::table('clientes')->where('id', (int) $d['cliente_id'])->where('ativo', 1)->first() : null;
+    $pre = ! $cliente && ! empty($d['pre_cliente_id']) ? DB::table('pre_clientes')->where('id', (int) $d['pre_cliente_id'])->first() : null;
+    if (! $cliente && ! $pre && ! $novoPre) {
+        throw new RuntimeException('cliente ou pré-cliente inexistente ou inativo no Gestor');
     }
+    // Para buscar o atendimento existente e gravar o novo: pela coluna de cliente OU de pré-cliente.
+    $dono = fn () => $cliente ? ['cliente_id' => (int) $cliente->id] : ['pre_cliente_id' => (int) $pre->id];
     $descricao = trim((string) $d['descricao']);
     $autor = DB::table('users')->where('email', (string) ($d['autor_email'] ?? ''))->value('id');
     if (! $autor) {
@@ -65,14 +70,27 @@ try {
     if (! empty($d['funcionario_id']) && ! $tecnico) {
         throw new RuntimeException('técnico inexistente ou inativo no Gestor');
     }
-    $periodo = (string) ($d['periodo'] ?? '');
+    // Horário de início e fim (22/10/2026: "toda agenda precisa de técnico e período"); o período antigo continua aceito.
+    $inicio = preg_match('/^\d{2}:\d{2}$/', (string) ($d['hora_inicio'] ?? '')) ? $d['hora_inicio'] : null;
+    $fim = preg_match('/^\d{2}:\d{2}$/', (string) ($d['hora_fim'] ?? '')) ? $d['hora_fim'] : null;
+    $periodo = $inicio && $fim && $fim > $inicio ? 'personalizado' : (string) ($d['periodo'] ?? '');
     $agendar = ! empty($d['agendar_data']) && $tecnico && isset(AgendaTecnicaService::PERIODOS[$periodo]) && $periodo !== 'noturno';
     $solicitante = mb_substr((string) ($d['solicitante'] ?? 'Contato pelo WhatsApp'), 0, 255);
 
     DB::beginTransaction();
+    if ($novoPre) {
+        $preId = DB::table('pre_clientes')->insertGetId([
+            'tipo_pessoa' => 'PJ', 'razao_social' => mb_substr(trim((string) $novoPre['nome']), 0, 255), 'nome_fantasia' => mb_substr(trim((string) $novoPre['nome']), 0, 255),
+            'cidade' => mb_substr(trim((string) ($novoPre['cidade'] ?? '')), 0, 255) ?: null, 'origem' => 'manual', 'origem_lead' => 'Whatsapp',
+            'telefone' => null, 'created_by' => $autor, 'empresa_id' => ! empty($d['empresa_id']) ? (int) $d['empresa_id'] : null,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $pre = DB::table('pre_clientes')->where('id', $preId)->first();
+        $modo = 'novo';
+    }
     $existente = null;
     if ($modo !== 'novo') {
-        $existente = Atendimento::where('numero_atendimento', (string) ($d['atendimento'] ?? ''))->where('cliente_id', (int) $cliente->id)->lockForUpdate()->first();
+        $existente = Atendimento::where('numero_atendimento', (string) ($d['atendimento'] ?? ''))->where($dono())->lockForUpdate()->first();
         if (! $existente) {
             throw new RuntimeException('atendimento nº '.($d['atendimento'] ?? '?').' não é deste cliente');
         }
@@ -91,7 +109,8 @@ try {
         $ultimo = (int) DB::table('atendimentos')->lockForUpdate()->max('numero_atendimento');
         $at = Atendimento::create([
             'numero_atendimento' => $ultimo + 1,
-            'cliente_id' => (int) $cliente->id,
+            'cliente_id' => $cliente ? (int) $cliente->id : null,
+            'pre_cliente_id' => $cliente ? null : (int) $pre->id,
             'nome_solicitante' => $solicitante,
             'telefone_solicitante' => mb_substr((string) ($d['telefone'] ?? ''), 0, 30),
             'assunto_id' => (int) $assunto->id,
@@ -116,10 +135,11 @@ try {
             'descricao' => ($modo === 'reabrir' ? 'Atendimento reaberto' : 'Novo pedido no mesmo atendimento')." pelo WhatsApp — {$solicitante}:\n".$descricao]);
     }
 
-    $r = ['ok' => true, 'modo' => $modo, 'numero' => (string) $at->numero_atendimento, 'id' => (int) $at->id];
+    $r = ['ok' => true, 'modo' => $modo, 'numero' => (string) $at->numero_atendimento, 'id' => (int) $at->id] + ($novoPre ? ['pre_cliente_criado' => (int) $pre->id] : []);
     if ($agendar) {
-        $faixa = AgendaTecnicaService::PERIODOS[$periodo];
-        $horas = max(1, (int) floor((strtotime('2000-01-01 '.$faixa['fim']) - strtotime('2000-01-01 '.$faixa['inicio'])) / 3600));
+        $faixa = $periodo === 'personalizado' ? ['inicio' => $inicio, 'fim' => $fim] : AgendaTecnicaService::PERIODOS[$periodo];
+        // A agenda do Gestor conta em horas inteiras: 08:00–10:30 vira 3 h (até 11:00).
+        $horas = max(1, (int) ceil((strtotime('2000-01-01 '.$faixa['fim']) - strtotime('2000-01-01 '.$faixa['inicio'])) / 3600));
         try {
             app(AgendaTecnicaService::class)->adicionarVisitas($at, [[
                 'funcionario_id' => (int) $tecnico, 'data' => (string) $d['agendar_data'], 'periodo' => $periodo,

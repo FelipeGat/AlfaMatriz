@@ -76,14 +76,17 @@ class AnaliseDeReuniao
             ."Responda SOMENTE com este bloco, sem nenhum texto fora dele:\n<<<REUNIAO\n"
             .'{"titulo": "assunto curto", "tipo": "'.$tipos.'", "participantes": ["nomes citados na fala"], '
             .'"contexto": {"empresa": "", "cliente": "", "projeto": "", "objetivo": "", "problema": "", "necessidade": ""}, '
-            .'"resumo": "objetivo, em até 8 frases", '
+            // Felipe, 22/10/2026: "a transcrição não precisa ser item a item; um resumo bem detalhado do que a IA entendeu",
+            // e na lista "a reunião finalizou com o quê, tratou do quê, qual o próximo passo".
+            .'"resumo": "resumo DETALHADO do que você entendeu, em parágrafos (pode passar de 20 frases): o contexto, cada assunto tratado com o que cada lado disse (necessidades, objeções, valores, prazos citados), o que ficou combinado e como a reunião terminou", '
+            .'"tratou": ["cada assunto tratado, em poucas palavras"], "desfecho": "como a reunião terminou, em 1 ou 2 frases", '
             .'"decisoes": [{"texto": "", "evidencias": [n]}], '
             .'"tarefas": [{"texto": "ação", "responsavel": "nome ou null", "prazo": "AAAA-MM-DD ou AAAA-MM-DD HH:MM ou null", "prioridade": "baixa|normal|alta", "classificacao": "compromisso|decisao|sugestao|hipotese", "evidencias": [n]}], '
             .'"pendencias": [{"texto": "", "evidencias": [n]}], "proximos_passos": [""], "roteiro": ["passo operacional"]}'
             ."\nREUNIAO>>>\n"
             ."Regras: use \"não identificado\" quando a informação não aparecer; não invente participantes, valores, prazos nem decisões. "
             ."Decisão é só o que foi efetivamente decidido; tarefa é ação a fazer — classifique como \"sugestao\" ou \"hipotese\" o que não foi assumido. "
-            ."Toda decisão, tarefa e pendência cita os números dos trechos que a sustentam. "
+            ."Toda decisão, tarefa e pendência cita os números dos trechos que a sustentam (só números que existem na transcrição). "
             ."Foco por tipo: comercial = necessidades, objeções, proposta e próximos passos; técnica = problemas, equipamentos, especificações, materiais e ações; diretoria = decisões e responsáveis. "
             .'Hoje é '.Datas::porExtenso($hoje, true, $hoje)." ({$hoje->format('Y-m-d')}); converta prazos relativos a partir de hoje.\n"
             .($parcial ? "ATENÇÃO: a transcrição foi cortada por tamanho; analise só o que está aqui e diga no resumo que é parcial.\n" : '')
@@ -140,44 +143,37 @@ class AnaliseDeReuniao
         return "📝 Reunião #{$r->id} “{$r->titulo}” analisada: {$resumo}. Revise em Secretário → Reuniões.";
     }
 
-    /** O bloco inteiro ou null (research D4). */
+    /**
+     * O bloco conferido, ou null se não houver resumo. Antes era tudo ou nada (research D4): um
+     * trecho inexistente citado numa única tarefa descartava a análise inteira — foi o que derrubou
+     * a reunião da Medsenior em 22/10/2026. Agora o item com problema é corrigido ou sai sozinho,
+     * e o resto fica: tipo desconhecido vira "outro", evidência inexistente sai da lista, e item
+     * sem texto é descartado.
+     */
     public function validar(array $b, int $ultimoTrecho): ?array
     {
         $texto = fn ($v, int $max) => is_string($v) ? Str::limit(trim($v), $max, '…') : null;
-        $evid = function ($v) use ($ultimoTrecho) {
-            if (! is_array($v) || count($v) < 1 || count($v) > 10) {
-                return null;
-            }
-            $n = array_values(array_unique(array_map('intval', $v)));
-            foreach ($n as $i) {
-                if ($i < 1 || $i > $ultimoTrecho) {
-                    return null;
-                }
-            }
-            sort($n);
-
-            return $n;
-        };
-        if (! in_array($b['tipo'] ?? null, SecretarioReuniao::TIPOS, true) || ! is_string($b['resumo'] ?? null) || trim($b['resumo']) === '') {
+        $evid = fn ($v) => is_array($v) ? array_values(array_slice(array_unique(array_filter(array_map('intval', $v), fn ($i) => $i >= 1 && $i <= $ultimoTrecho)), 0, 10)) : [];
+        if (! is_string($b['resumo'] ?? null) || trim($b['resumo']) === '') {
             return null;
         }
+        $tipo = in_array($b['tipo'] ?? null, SecretarioReuniao::TIPOS, true) ? $b['tipo'] : 'outro';
         $contexto = [];
         foreach (['empresa', 'cliente', 'projeto', 'objetivo', 'problema', 'necessidade'] as $c) {
             $contexto[$c] = $texto($b['contexto'][$c] ?? null, 300) ?: 'não identificado';
         }
+        // Como terminou e o que tratou: vão no contexto, que já é JSON, para a lista mostrar.
+        $contexto['desfecho'] = $texto($b['desfecho'] ?? null, 400) ?: null;
+        $contexto['tratou'] = is_array($b['tratou'] ?? null) ? array_values(array_filter(array_map(fn ($x) => $texto($x, 160), array_slice($b['tratou'], 0, 15)))) : [];
         $listas = ['decisoes' => [], 'tarefas' => [], 'pendencias' => []];
         foreach (array_keys($listas) as $chave) {
-            $v = $b[$chave] ?? [];
-            if (! is_array($v) || count($v) > self::MAX_ITENS) {
-                return null;
-            }
+            $v = is_array($b[$chave] ?? null) ? array_slice($b[$chave], 0, self::MAX_ITENS) : [];
             foreach ($v as $item) {
-                $t = $texto($item['texto'] ?? null, 500);
-                $e = $evid($item['evidencias'] ?? null);
-                if (! $t || ! $e) {
-                    return null;
+                $t = is_array($item) ? $texto($item['texto'] ?? null, 500) : null;
+                if (! $t) {
+                    continue;
                 }
-                $p = ['texto' => $t, 'evidencias' => $e, 'responsavel' => null, 'prazo' => null, 'prioridade' => 'normal',
+                $p = ['texto' => $t, 'evidencias' => $evid($item['evidencias'] ?? null), 'responsavel' => null, 'prazo' => null, 'prioridade' => 'normal',
                     'classificacao' => $chave === 'decisoes' ? 'decisao' : ($chave === 'pendencias' ? 'pendencia' : 'compromisso')];
                 if ($chave === 'tarefas') {
                     $resp = $texto($item['responsavel'] ?? null, 120);
@@ -189,10 +185,7 @@ class AnaliseDeReuniao
                     $p['prazo'] = $prazo;
                     $p['prioridade'] = in_array($item['prioridade'] ?? null, ['baixa', 'normal', 'alta'], true) ? $item['prioridade'] : 'normal';
                     $cl = $item['classificacao'] ?? 'compromisso';
-                    if (! in_array($cl, ['compromisso', 'decisao', 'sugestao', 'hipotese'], true)) {
-                        return null;
-                    }
-                    $p['classificacao'] = $cl;
+                    $p['classificacao'] = in_array($cl, ['compromisso', 'decisao', 'sugestao', 'hipotese'], true) ? $cl : 'sugestao';
                 }
                 $listas[$chave][] = $p;
             }
@@ -200,8 +193,8 @@ class AnaliseDeReuniao
         $lista = fn ($v, int $max) => is_array($v) ? array_values(array_filter(array_map(fn ($x) => $texto($x, 300), array_slice($v, 0, $max)))) : [];
 
         return $listas + [
-            'titulo' => $texto($b['titulo'] ?? null, 150), 'tipo' => $b['tipo'], 'contexto' => $contexto,
-            'resumo' => $texto($b['resumo'], 4000), 'participantes' => $lista($b['participantes'] ?? [], 30),
+            'titulo' => $texto($b['titulo'] ?? null, 150), 'tipo' => $tipo, 'contexto' => $contexto,
+            'resumo' => $texto($b['resumo'], 12000), 'participantes' => $lista($b['participantes'] ?? [], 30),
             'proximos_passos' => $lista($b['proximos_passos'] ?? [], 20), 'roteiro' => $lista($b['roteiro'] ?? [], 30),
         ];
     }

@@ -205,14 +205,17 @@ class PedroBaseDoSuporteTest extends TestCase
 
     public function test_o_pedro_propoe_o_registro_ao_abrir_o_atendimento_e_completa_a_mesma_proposta(): void
     {
+        // O atendimento vai ao Gestor e a conversa segue com o Pedro (T-488: sem Gestor, iria a um atendente).
+        config(['services.suporte_pedro.gestor_gravar' => true]);
         $c = SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('o portão não fecha', 'wamid.1', '552733894253');
         $this->responde(['resposta' => 'Vou abrir o atendimento.', 'acao' => 'abrir_atendimento',
             'registro' => ['titulo' => 'Portão da garagem não fecha', 'relato' => 'Cliente diz que o portão volta.', 'verificado' => '', 'solucao' => '', 'situacao' => 'resolvido']]);
 
+        // Sem tarefa no quadro (T-488): a proposta fica ligada ao cliente do Gestor.
         $n = SuporteNota::sole();
-        $t = Tarefa::sole();
-        $this->assertSame(['atendimento', 'proposta', 'em_curso', "AT-20261021-{$c->id}", $t->id, 13, null],
+        $this->assertSame(0, Tarefa::count());
+        $this->assertSame(['atendimento', 'proposta', 'em_curso', "AT-20261021-{$c->id}", null, 13, null],
             [$n->tipo, $n->estado, $n->situacao, $n->codigo, $n->tarefa_id, $n->gestor_cliente_id, $n->autor_id]);
 
         // A resposta seguinte completa a mesma proposta em vez de abrir outra.

@@ -128,9 +128,10 @@ class PedroIdentificacaoTest extends TestCase
         $this->assertStringContainsString('QUEM ESCREVE: Maria (síndica)', $prompt);
         $this->assertStringContainsString('## ROTEIROS', $prompt);
         $this->assertStringContainsString('## ATENDIMENTOS', $prompt);
-        $t = Tarefa::sole();
-        $this->assertStringContainsString('Solicitante: Maria (síndica).', $t->resumo);
-        Http::assertSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), "O número do seu chamado é T-{$t->id}."));
+        // Sem cliente no Gestor, um atendente lança lá (T-488): nada no quadro, nenhum T-N ao cliente.
+        $this->assertSame(0, Tarefa::count());
+        $this->assertStringContainsString('Solicitante: Maria (síndica).', SuporteConversa::sole()->fila_motivo);
+        Http::assertNotSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), 'T-'));
     }
 
     /** Revisão da T-478: identificada às 17:59 e a IA responde às 18:01 — a resposta espera, e o Pedro retoma na abertura. */
@@ -165,7 +166,7 @@ class PedroIdentificacaoTest extends TestCase
         $c->refresh();
         $this->assertSame('João', $c->solicitante_nome);
         $this->assertNull($c->solicitante_funcao, 'o João não herda a função da Maria');
-        $this->assertStringContainsString('Solicitante: João.', Tarefa::sole()->resumo);
+        $this->assertStringContainsString('Solicitante: João.', $c->fila_motivo);
     }
 
     public function test_sem_resposta_da_ia_sem_identificacao_nao_abre_chamado(): void

@@ -78,6 +78,22 @@ class DiretorioGestor
             fn ($p) => strlen($p) >= 4 && ! in_array($p, $genericas, true))));
     }
 
+    /**
+     * Os clientes que o Pedro atende (T-488, dono em 22/10/2026): os das empresas Invest, GW e
+     * DELTA do Gestor. Cliente de outra empresa (a ALFA, cujos sistemas a Alfa atende como
+     * N2/N3, e não pelo suporte da Invest) não é reconhecido pelo telefone nem pelo nome.
+     * Cliente sem empresa no retrato continua: a lista diz quem fica de fora, não quem entra.
+     *
+     * @return \Illuminate\Support\Collection<int, array>
+     */
+    private function atendidos(): \Illuminate\Support\Collection
+    {
+        $empresas = array_map(fn ($e) => mb_strtoupper(trim((string) $e)), (array) config('services.suporte_pedro.empresas'));
+
+        return collect($this->retrato()['clientes'])->filter(fn ($c) => ! $empresas || trim((string) ($c['empresa'] ?? '')) === ''
+            || in_array(mb_strtoupper(trim((string) $c['empresa'])), $empresas, true))->values();
+    }
+
     public function cliente(int $id): ?array
     {
         return collect($this->retrato()['clientes'])->first(fn ($c) => (int) ($c['id'] ?? 0) === $id);
@@ -88,7 +104,7 @@ class DiretorioGestor
     {
         $chave = CanalWhatsApp::chave($numero);
 
-        return $chave ? collect($this->retrato()['clientes'])->filter(fn ($c) => collect($c['telefones'] ?? [])->contains(fn ($t) => CanalWhatsApp::chave((string) $t) === $chave))->values()->all() : [];
+        return $chave ? $this->atendidos()->filter(fn ($c) => collect($c['telefones'] ?? [])->contains(fn ($t) => CanalWhatsApp::chave((string) $t) === $chave))->values()->all() : [];
     }
 
     /**
@@ -105,7 +121,7 @@ class DiretorioGestor
             return [];
         }
 
-        return collect($this->retrato()['clientes'])
+        return $this->atendidos()
             ->filter(fn ($c) => collect([$c['fantasia'] ?? null, $c['nome'] ?? null, $c['razao'] ?? null])->contains(fn ($n) => self::citado((string) $n, $palavrasDoTexto)))
             ->take($limite)->values()->all();
     }
@@ -133,12 +149,15 @@ class DiretorioGestor
             if ($a === $b) {
                 return true;
             }
+            // Pela pronúncia (22/10/2026: "revissa" é a "Revizza"): ss/zz/z viram s, y vira i, letra dobrada vira uma.
+            $som = fn (string $p) => preg_replace('/(.)\1+/', '$1', strtr(str_replace(['ph', 'qu', 'ch'], ['f', 'c', 'x'], $p), ['z' => 's', 'y' => 'i', 'k' => 'c', 'w' => 'v']));
+            [$a, $b] = [$som($a), $som($b)];
             $menor = min(strlen($a), strlen($b));
 
-            return $menor >= 5 && levenshtein($a, $b) <= ($menor >= 8 ? 2 : 1);
+            return $a === $b || ($menor >= 5 && levenshtein($a, $b) <= ($menor >= 8 ? 2 : 1));
         };
 
-        return collect($this->retrato()['clientes'])
+        return $this->atendidos()
             ->map(function ($c) use ($doTexto, $parecida) {
                 $nome = array_unique(self::palavras(implode(' ', array_filter([$c['fantasia'] ?? null, $c['nome'] ?? null, $c['razao'] ?? null]))));
                 $acertos = collect($nome)->filter(fn ($p) => mb_strlen($p) >= 4 && collect(array_keys($doTexto))->contains(fn ($t) => $parecida($p, (string) $t)))->count();

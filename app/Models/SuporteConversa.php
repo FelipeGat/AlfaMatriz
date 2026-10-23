@@ -30,6 +30,21 @@ class SuporteConversa extends Model
         return ['identificada_em' => 'datetime', 'fila_desde' => 'datetime', 'fila_lembrada_em' => 'datetime', 'humano_ate' => 'datetime', 'ultima_entrada_em' => 'datetime', 'ultima_mensagem_em' => 'datetime', 'nao_lidas' => 'integer'];
     }
 
+    /**
+     * Cliente do Matriz traz o cliente dele no Gestor (T-488): todo chamado nasce no Gestor,
+     * e a conversa ligada só pelo cadastro do Matriz ficava sem ter onde abrir — virava
+     * tarefa no quadro. Aqui, e não em quem liga, porque são três caminhos (o telefone ao
+     * criar a conversa, a confirmação do Pedro e o vínculo pela tela).
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $c) {
+            if ($c->cliente_id && ! $c->gestor_cliente_id) {
+                $c->gestor_cliente_id = Cliente::whereKey($c->cliente_id)->value('gestor_cliente_id');
+            }
+        });
+    }
+
     public function mensagens(): HasMany
     {
         return $this->hasMany(SuporteMensagem::class, 'conversa_id')->orderBy('id');

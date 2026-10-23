@@ -160,14 +160,34 @@ class ReunioesTest extends TestCase
         $this->postJson(route('secretario.reunioes.proposta', $decisao->id), ['acao' => 'aprovar'])->assertStatus(422);
     }
 
-    public function test_analise_invalida_e_descartada_inteira(): void
+    /**
+     * Um deslize num item não derruba mais a análise (Medsenior, 22/10/2026: um trecho inexistente
+     * citado numa tarefa jogou fora a reunião inteira). O item é corrigido e o resto fica.
+     */
+    public function test_deslize_num_item_nao_descarta_a_analise(): void
+    {
+        $u = $this->dono();
+        $this->comRunner($u);
+        $r = SecretarioReuniao::findOrFail($this->enviar($u)->json('id'));
+        $this->transcrever($u, $r, self::TRECHOS);
+        $this->concluirAnalise($u, $this->analise(['tipo' => 'festa', 'tratou' => ['Demonstração', 'Leitor de mão'], 'desfecho' => 'Demonstração marcada para quinta.',
+            'tarefas' => [['texto' => 'Mandar a proposta', 'evidencias' => [99, 4], 'classificacao' => 'inventada'], ['texto' => '', 'evidencias' => [4]]]]));
+
+        $r->refresh();
+        $this->assertSame(['pronta', 'outro'], [$r->status, $r->tipo_reuniao]);
+        $this->assertSame('Demonstração marcada para quinta.', $r->contexto['desfecho']);
+        $this->assertSame(['Demonstração', 'Leitor de mão'], $r->contexto['tratou']);
+        $p = SecretarioReuniaoProposta::where('texto', 'Mandar a proposta')->sole();
+        $this->assertSame([[4], 'sugestao'], [$p->evidencias, $p->classificacao]);
+        $this->assertSame(0, SecretarioReuniaoProposta::where('texto', '')->count(), 'item sem texto sai');
+    }
+
+    public function test_analise_sem_resumo_e_descartada_inteira(): void
     {
         $u = $this->dono();
         $this->comRunner($u);
         foreach ([
-            $this->analise(['tarefas' => [['texto' => 'X', 'evidencias' => [99], 'classificacao' => 'compromisso']]]), // trecho inexistente
-            $this->analise(['tipo' => 'festa']),
-            $this->analise(['tarefas' => [['texto' => 'X', 'evidencias' => [], 'classificacao' => 'compromisso']]]),  // sem evidência
+            $this->analise(['resumo' => '']),
             'isto não é json',
         ] as $bloco) {
             SecretarioReuniao::query()->delete();
@@ -180,6 +200,26 @@ class ReunioesTest extends TestCase
         // "Analisar de novo" pede outra análise com a transcrição guardada.
         $this->actingAs($u)->post(route('secretario.reunioes.analisar', $r->id))->assertRedirect();
         $this->assertSame('analisando', $r->fresh()->status);
+    }
+
+    /** A reunião que aconteceu sem estar na Agenda vira compromisso (22/10/2026, a da Medsenior). */
+    public function test_marcar_na_agenda_a_reuniao_gravada(): void
+    {
+        $u = $this->dono();
+        $victor = User::factory()->create(['name' => 'Victor (VixCard)']);
+        $r = SecretarioReuniao::findOrFail($this->enviar($u)->json('id'));
+        $this->actingAs($u)->get(route('secretario.reunioes.mostrar', $r->id))->assertOk()->assertSee('Esta reunião não está na agenda.');
+
+        $this->post(route('secretario.reunioes.agendar', $r->id), ['data' => '2026-10-22', 'hora' => '16:00', 'hora_fim' => '13:00'])->assertSessionHasErrors('hora_fim');
+        $this->post(route('secretario.reunioes.agendar', $r->id), ['data' => '2026-10-22', 'hora' => '13:00', 'hora_fim' => '16:00', 'pessoas' => [$victor->id]])->assertRedirect();
+
+        $c = \App\Models\Compromisso::sole();
+        $this->assertSame([$c->id, '13:00', '16:00'], [$r->fresh()->compromisso_id, substr($c->hora, 0, 5), substr($c->hora_fim, 0, 5)]);
+        $this->assertEqualsCanonicalizing([$u->id, $victor->id], $c->participantes()->pluck('users.id')->all());
+        $this->get(route('secretario.reunioes.mostrar', $r->id))->assertSee('Na agenda: 22/10/2026, das 13:00 às 16:00');
+        $this->post(route('secretario.reunioes.agendar', $r->id), ['data' => '2026-10-22', 'hora' => '13:00', 'hora_fim' => '16:00'])->assertStatus(409);
+        $outro = $this->actingAs($victor)->post(route('secretario.reunioes.agendar', $r->id), ['data' => '2026-10-22', 'hora' => '13:00', 'hora_fim' => '16:00'])->status();
+        $this->assertContains($outro, [403, 404], 'só o dono marca a reunião dele');
     }
 
     public function test_tipos_tamanho_e_isolamento(): void

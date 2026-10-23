@@ -104,24 +104,25 @@ class AcessoInterno
     {
         $d = app(DiretorioGestor::class);
         $clientes = $this->clientesCitados($texto);
-        if (! $clientes) {
-            return "## CLIENTES DO GESTOR CITADOS\n- Nenhum cliente do Gestor combina com o que foi escrito: para registrar, peça o nome do cliente como está no Gestor (condomínio, empresa ou pessoa).";
-        }
         $equipe = collect($d->retrato()['equipe'] ?? []);
         $nomeDe = fn (array $ids) => collect($ids)->map(fn ($id) => (string) ($equipe->firstWhere('id', $id)['nome'] ?? ''))->filter()->implode(', ');
 
-        return "## CLIENTES DO GESTOR CITADOS (para registrar atendimento; use só estes códigos)\n"
-            .collect($clientes)->map(function ($c, $codigo) use ($d, $nomeDe) {
-                $atendimentos = collect($d->atendimentosDe((int) $c['id'], 8))->map(fn ($a) => '    • nº '.($a['numero'] ?? $a['id']).' — '.str_replace('_', ' ', (string) ($a['status'] ?? '?'))
-                    .(! empty($a['criado_em']) ? ' — de '.substr((string) $a['criado_em'], 8, 2).'/'.substr((string) $a['criado_em'], 5, 2).'/'.substr((string) $a['criado_em'], 0, 4) : '')
-                    .(($quem = $nomeDe((array) ($a['funcionarios'] ?? []))) !== '' ? ' — com '.$quem : '')
-                    .' — '.Str::limit(trim((string) ($a['descricao'] ?? '')), 100, '…'));
+        $lista = $clientes
+            ? "## CLIENTES E PRÉ-CLIENTES DO GESTOR PARECIDOS COM O QUE FOI ESCRITO (use só estes códigos)\n"
+                .collect($clientes)->map(function ($c, $codigo) use ($d, $nomeDe) {
+                    $atendimentos = collect($d->atendimentosDe((int) $c['id'], 8))->map(fn ($a) => '    • nº '.($a['numero'] ?? $a['id']).' — '.str_replace('_', ' ', (string) ($a['status'] ?? '?'))
+                        .(! empty($a['criado_em']) ? ' — de '.substr((string) $a['criado_em'], 8, 2).'/'.substr((string) $a['criado_em'], 5, 2).'/'.substr((string) $a['criado_em'], 0, 4) : '')
+                        .(($quem = $nomeDe((array) ($a['funcionarios'] ?? []))) !== '' ? ' — com '.$quem : '')
+                        .' — '.Str::limit(trim((string) ($a['descricao'] ?? '')), 100, '…'));
 
-                return '- '.$codigo.': '.trim(($c['fantasia'] ?? '') ?: ($c['nome'] ?? '')).(! empty($c['razao']) ? ' — '.$c['razao'] : '')
-                    .(! empty($c['cidade']) ? ', '.$c['cidade'] : '').(! empty($c['empresa']) ? ' (empresa '.$c['empresa'].')' : '')
-                    ."\n  Atendimentos dela/dele (mais recentes primeiro):\n".($atendimentos->isNotEmpty() ? $atendimentos->implode("\n") : '    • nenhum')
-                    ."\n  Assuntos: ".collect($d->assuntosPara($c))->take(15)->map(fn ($a) => $a['id'].' '.$a['nome'])->implode('; ');
-            })->implode("\n")
+                    return '- '.$codigo.': '.(! empty($c['pre']) ? '[PRÉ-CLIENTE] ' : '[CLIENTE] ').trim(($c['fantasia'] ?? '') ?: ($c['nome'] ?? '')).(! empty($c['razao']) ? ' — '.$c['razao'] : '')
+                        .' — cidade: '.(! empty($c['cidade']) ? $c['cidade'] : 'não informada').(! empty($c['empresa']) ? ' (empresa '.$c['empresa'].')' : '')
+                        ."\n  Atendimentos (mais recentes primeiro):\n".($atendimentos->isNotEmpty() ? $atendimentos->implode("\n") : '    • nenhum')
+                        ."\n  Assuntos: ".collect($d->assuntosPara($c))->take(15)->map(fn ($a) => $a['id'].' '.$a['nome'])->implode('; ');
+                })->implode("\n")
+            : "## CLIENTES E PRÉ-CLIENTES DO GESTOR PARECIDOS COM O QUE FOI ESCRITO\n- Nenhum combina: pergunte o nome como está no Gestor ou ofereça criar um PRÉ-CLIENTE novo (cliente \"novo_pre\").";
+
+        return $lista
             ."\n## EMPRESAS\n".collect($this->empresas())->map(fn ($nome, $id) => "- {$id}: {$nome}\n  Assuntos: ".collect($d->assuntosPara(['id' => 0, 'empresa_id' => $id]))->take(25)->map(fn ($a) => $a['id'].' '.$a['nome'])->implode('; '))->implode("\n")
             ."\n## EQUIPE (técnicos: use o nº em tecnico_id)\n".$equipe->map(fn ($f) => '- '.$f['id'].': '.$f['nome'])->implode("\n");
     }

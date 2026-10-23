@@ -106,14 +106,24 @@ class Achados
 
     private function clienteSemResposta(User $user, int $horas, CarbonImmutable $agora): array
     {
-        $achados = [];
+        // Um alerta por CONVERSA (remetente + assunto sem "Re:", "Fwd:", "[SPAM]"), e não por e-mail:
+        // em 22/10/2026 eram 53 linhas, nove delas a mesma conversa da Inspell. A chave fica no e-mail
+        // mais antigo, que não muda enquanto a conversa espera resposta.
+        $conversas = [];
         foreach ($this->aguardando($user)->where('recebido_em', '<=', $agora->subHours($horas))->get() as $e) {
             if (preg_match(self::PROPOSTA, $this->normalizar($e->assunto))) {
                 continue; // é da regra de proposta
             }
+            $assunto = preg_replace('/^(\s*(re|res|fw|fwd|enc|\[spam\])\s*:?\s*)+/i', '', (string) $e->assunto);
+            $conversas[mb_strtolower((string) $e->de_email).'|'.$this->normalizar($assunto)][] = $e;
+        }
+        $achados = [];
+        foreach ($conversas as $emails) {
+            $e = $emails[0];
+            $mais = count($emails) > 1 ? ' ('.count($emails).' e-mails)' : '';
             $achados[] = $this->achado('cliente_sem_resposta:email:'.$e->id,
-                'Sem resposta há '.$this->ha($e->recebido_em, $agora).': '.($e->de_nome ?: $e->de_email).' — '.$e->assunto,
-                $e->link() ?? route('secretario.emails.index', ['ver' => 'aguardando']), CarbonImmutable::instance($e->recebido_em));
+                'Sem resposta há '.$this->ha($e->recebido_em, $agora).': '.($e->de_nome ?: $e->de_email).' — '.$e->assunto.$mais,
+                end($emails)->link() ?? route('secretario.emails.index', ['ver' => 'aguardando']), CarbonImmutable::instance($e->recebido_em));
         }
 
         return ['achados' => $achados, 'intocaveis' => $this->caixasComErro($user, 'cliente_sem_resposta:email:')];

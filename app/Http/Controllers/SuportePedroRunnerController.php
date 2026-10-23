@@ -50,6 +50,8 @@ class SuportePedroRunnerController extends Controller
             'clientes.*.documento' => ['nullable', 'string', 'max:30'], 'clientes.*.cidade' => ['nullable', 'string', 'max:120'], 'clientes.*.empresa' => ['nullable', 'string', 'max:120'],
             'clientes.*.telefones' => ['nullable', 'array', 'max:20'], 'clientes.*.telefones.*' => ['string', 'max:40'], 'clientes.*.empresa_id' => ['nullable', 'integer'],
             'clientes.*.portal' => ['nullable', 'array', 'max:5'], 'clientes.*.portal.*' => ['string', 'email', 'max:255'],
+            // Pré-cliente do funil (id negativo), desde 22/10/2026.
+            'clientes.*.pre' => ['nullable', 'boolean'],
             'atendimentos' => ['present', 'array', 'max:20000'],
             'atendimentos.*.id' => ['required', 'integer'], 'atendimentos.*.cliente_id' => ['nullable', 'integer'], 'atendimentos.*.numero' => ['nullable', 'string', 'max:30'],
             'atendimentos.*.descricao' => ['nullable', 'string', 'max:500'], 'atendimentos.*.status' => ['nullable', 'string', 'max:40'], 'atendimentos.*.criado_em' => ['nullable', 'string', 'max:30'],
@@ -83,10 +85,13 @@ class SuportePedroRunnerController extends Controller
             return $p;
         });
 
-        return response()->json(['aberturas' => $lista->map(fn ($a) => ['id' => $a->id, 'cliente_id' => $a->gestor_cliente_id, 'assunto_id' => $a->assunto_id, 'empresa_id' => $a->empresa_id, 'descricao' => $a->descricao,
+        return response()->json(['aberturas' => $lista->map(fn ($a) => ['id' => $a->id, 'cliente_id' => $a->gestor_cliente_id > 0 ? $a->gestor_cliente_id : null, 'assunto_id' => $a->assunto_id, 'empresa_id' => $a->empresa_id, 'descricao' => $a->descricao,
             'solicitante' => $a->solicitante, 'telefone' => $a->telefone, 'prioridade' => $a->prioridade,
             'modo' => $a->modo ?: 'novo', 'atendimento' => $a->atendimento_numero, 'autor_email' => config('services.suporte_pedro.conta'),
-            'funcionario_id' => $a->funcionario_id, 'agendar_data' => $a->agendar_data?->toDateString(), 'periodo' => $a->agendar_periodo])->values()]);
+            'funcionario_id' => $a->funcionario_id, 'agendar_data' => $a->agendar_data?->toDateString(), 'periodo' => $a->agendar_periodo,
+            // Pré-cliente (id negativo no retrato) e pré-cliente novo; horário de início e fim da agenda (22/10/2026).
+            'pre_cliente_id' => $a->gestor_cliente_id < 0 ? -$a->gestor_cliente_id : null, 'novo_pre' => $a->novo_pre,
+            'hora_inicio' => $a->hora_inicio, 'hora_fim' => $a->hora_fim])->values()]);
     }
 
     public function aberturaFeita(Request $request, int $abertura, Atendimento $atendimento, CanalWhatsApp $canal): JsonResponse

@@ -77,6 +77,28 @@ try {
         ];
     }
 
+    // Os pré-clientes do funil (Felipe, 22/10/2026: "não existe no cadastro de clientes nem como
+    // pré-cliente, ele tem que ir correlacionando até o cliente certo"). Vão junto dos clientes, marcados
+    // com "pre" e com o id NEGATIVO, para não colidir com o do cliente; convertido em cliente fica de fora.
+    if (Schema::hasTable('pre_clientes')) {
+        foreach (DB::table('pre_clientes')->when($temCol('pre_clientes', 'convertido_em_cliente'), fn ($q) => $q->where(fn ($w) => $w->whereNull('convertido_em_cliente')->orWhere('convertido_em_cliente', 0)))
+            ->when($temCol('pre_clientes', 'deleted_at'), fn ($q) => $q->whereNull('deleted_at'))->get() as $p) {
+            $clientes[] = [
+                'id' => -(int) $p->id,
+                'nome' => (string) (($p->nome_fantasia ?? '') ?: ($p->razao_social ?? '')),
+                'fantasia' => (string) ($p->nome_fantasia ?? ''),
+                'razao' => (string) ($p->razao_social ?? ''),
+                'documento' => (string) ($p->cpf_cnpj ?? ''),
+                'cidade' => (string) ($p->cidade ?? ''),
+                'empresa_id' => isset($p->empresa_id) && $p->empresa_id ? (int) $p->empresa_id : null,
+                'empresa' => isset($p->empresa_id) && $p->empresa_id ? (string) ($empresas[$p->empresa_id] ?? '') : '',
+                'telefones' => array_values(array_filter([(string) ($p->telefone ?? '')], fn ($t) => strlen(preg_replace('/\D/', '', $t)) >= 10)),
+                'portal' => [],
+                'pre' => true,
+            ];
+        }
+    }
+
     // A equipe (Felipe, 20/10/2026): funcionário ativo com telefone, para o Pedro
     // reconhecer quem é da casa e oferecer ajuda com os atendimentos em nome dela.
     $equipe = [];
@@ -96,10 +118,12 @@ try {
 
     // Abertos de qualquer data e os dos últimos 120 dias.
     $atendimentos = [];
-    foreach (DB::table('atendimentos')->whereNull('deleted_at')->whereNotNull('cliente_id')
+    // De cliente ou de pré-cliente (este com o id negativo, como na lista de clientes).
+    $comPre = $temCol('atendimentos', 'pre_cliente_id');
+    foreach (DB::table('atendimentos')->whereNull('deleted_at')->where(fn ($q) => $comPre ? $q->whereNotNull('cliente_id')->orWhereNotNull('pre_cliente_id') : $q->whereNotNull('cliente_id'))
         ->where(fn ($q) => $q->whereNotIn('status_atual', ['concluido', 'cancelado'])->orWhere('created_at', '>=', now()->subDays(120)))
-        ->orderByDesc('id')->limit(5000)->get(['id', 'numero_atendimento', 'cliente_id', 'descricao', 'status_atual', 'empresa_id', 'assunto_id', 'created_at', 'funcionario_id']) as $a) {
-        $atendimentos[] = ['id' => (int) $a->id, 'numero' => (string) $a->numero_atendimento, 'cliente_id' => (int) $a->cliente_id,
+        ->orderByDesc('id')->limit(5000)->get(array_merge(['id', 'numero_atendimento', 'cliente_id', 'descricao', 'status_atual', 'empresa_id', 'assunto_id', 'created_at', 'funcionario_id'], $comPre ? ['pre_cliente_id'] : [])) as $a) {
+        $atendimentos[] = ['id' => (int) $a->id, 'numero' => (string) $a->numero_atendimento, 'cliente_id' => $a->cliente_id ? (int) $a->cliente_id : -(int) ($a->pre_cliente_id ?? 0),
             'descricao' => mb_substr(trim((string) $a->descricao), 0, 300), 'status' => (string) $a->status_atual,
             'empresa_id' => $a->empresa_id ? (int) $a->empresa_id : null, 'assunto_id' => $a->assunto_id ? (int) $a->assunto_id : null,
             'criado_em' => (string) $a->created_at,

@@ -11,7 +11,7 @@
 @endphp
 <x-app-layout>
     <x-slot name="titulo">Suporte WhatsApp</x-slot>
-    <x-slot name="contexto"><span>(27) 3109-3265 · API oficial · o Pedro atende das 07:00 às 18:00</span></x-slot>
+    <x-slot name="contexto"><span>(27) 4042-4157 · API oficial · o Pedro atende das 07:00 às 18:00</span></x-slot>
 
     {{-- docs/specs/suporte-pedro-whatsapp: as conversas do número de suporte. Quem
          responde por aqui (ou pelo app do celular) assume a conversa, e o Pedro fica
