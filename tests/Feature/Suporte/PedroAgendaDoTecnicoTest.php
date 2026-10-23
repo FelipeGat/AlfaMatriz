@@ -32,10 +32,12 @@ class PedroAgendaDoTecnicoTest extends TestCase
         ], [
             ['id' => 925, 'numero' => '824', 'cliente_id' => -6176, 'descricao' => 'Visita técnica para orçar elevadores', 'status' => 'aberto', 'criado_em' => '2026-10-23 11:53:00'],
             ['id' => 839, 'numero' => '756', 'cliente_id' => 167, 'descricao' => 'Recuperação estrutural da garagem', 'status' => 'em_atendimento', 'criado_em' => '2026-09-30 10:00:00'],
+            ['id' => 810, 'numero' => '729', 'cliente_id' => null, 'solicitante' => 'Emanuele', 'descricao' => 'Ar-condicionado não refrigera', 'status' => 'em_atendimento', 'criado_em' => '2026-09-15 17:03:56'],
         ], [], [['id' => 9, 'nome' => 'Vitor Emanuel Oliveira de Paula', 'telefones' => []], ['id' => 21, 'nome' => 'Cleison Souza', 'telefones' => []],
             ['id' => 5, 'nome' => 'Cristiano Lopes Lucas', 'telefones' => []]], [], [
             ['id' => 1185, 'atendimento_id' => 925, 'tecnico_id' => 9, 'inicio' => '2026-10-23 08:00', 'fim' => '2026-10-23 10:00', 'situacao' => 'agendado', 'observacoes' => '', 'adicionais' => []],
             ['id' => 1181, 'atendimento_id' => 839, 'tecnico_id' => 21, 'inicio' => '2026-10-22 08:00', 'fim' => '2026-10-22 10:00', 'situacao' => 'finalizado', 'observacoes' => '', 'adicionais' => [5]],
+            ['id' => 1180, 'atendimento_id' => 810, 'tecnico_id' => 9, 'inicio' => '2026-10-22 08:00', 'fim' => '2026-10-22 18:00', 'situacao' => 'finalizado', 'observacoes' => '', 'adicionais' => []],
             ['id' => 1162, 'atendimento_id' => 839, 'tecnico_id' => 21, 'inicio' => '2026-11-02 08:00', 'fim' => '2026-11-02 18:00', 'situacao' => 'agendado', 'observacoes' => '', 'adicionais' => []],
         ]);
     }
@@ -56,6 +58,7 @@ class PedroAgendaDoTecnicoTest extends TestCase
         $this->assertStringContainsString('Quinta-feira, 22/10/2026', $p);
         $this->assertStringContainsString('- Cleison: 08:00 às 10:00 — nº 756 — Corais de Parati — finalizado — junto: Cristiano', $p);
         $this->assertStringContainsString('- Vitor: 08:00 às 10:00 — nº 824 — Revizza (pré-cliente) — agendado', $p, 'pré-cliente pelo nome, nunca "sem cliente"');
+        $this->assertStringContainsString('- Vitor: 08:00 às 18:00 — nº 729 — Emanuele (sem cadastro) — finalizado', $p, 'atendimento sem cadastro, pelo nome de quem pediu');
         $this->assertStringContainsString('Lançar ou corrigir visitas da agenda ainda NÃO é possível', $p);
         $this->assertStringNotContainsString('02/11', $p, 'só os dias pedidos e os vizinhos');
     }

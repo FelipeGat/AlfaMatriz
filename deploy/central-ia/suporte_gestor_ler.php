@@ -155,6 +155,20 @@ try {
             'funcionarios' => array_values(array_unique(array_filter(array_merge([$a->funcionario_id ? (int) $a->funcionario_id : null], $tecnicos[$a->id] ?? []))))];
     }
 
+    // Os atendimentos das visitas que ficaram de fora (antigos, ou sem cliente nem pré-cliente, só
+    // com quem solicitou): sem eles a agenda mostrava "cliente não identificado" (23/10/2026, nº 729).
+    $jaTem = array_flip(array_column($atendimentos, 'id'));
+    $faltam = array_values(array_diff(array_unique(array_column($visitas, 'atendimento_id')), array_keys($jaTem)));
+    foreach ($faltam ? DB::table('atendimentos')->whereIn('id', $faltam)->get(array_merge(['id', 'numero_atendimento', 'cliente_id', 'nome_solicitante', 'descricao', 'status_atual', 'empresa_id', 'assunto_id', 'created_at', 'funcionario_id'], $comPre ? ['pre_cliente_id'] : [])) : [] as $a) {
+        $atendimentos[] = ['id' => (int) $a->id, 'numero' => (string) $a->numero_atendimento,
+            'cliente_id' => $a->cliente_id ? (int) $a->cliente_id : (($a->pre_cliente_id ?? null) ? -(int) $a->pre_cliente_id : null),
+            'solicitante' => mb_substr(trim((string) $a->nome_solicitante), 0, 120),
+            'descricao' => mb_substr(trim((string) $a->descricao), 0, 300), 'status' => (string) $a->status_atual,
+            'empresa_id' => $a->empresa_id ? (int) $a->empresa_id : null, 'assunto_id' => $a->assunto_id ? (int) $a->assunto_id : null,
+            'criado_em' => (string) $a->created_at,
+            'funcionarios' => array_values(array_unique(array_filter(array_merge([$a->funcionario_id ? (int) $a->funcionario_id : null], $tecnicos[$a->id] ?? []))))];
+    }
+
     $assuntos = DB::table('assuntos')->where('ativo', 1)->orderBy('id')->get(['id', 'nome', 'tipo', 'categoria', 'empresa_id'])
         ->map(fn ($a) => ['id' => (int) $a->id, 'nome' => (string) $a->nome, 'tipo' => (string) $a->tipo, 'categoria' => (string) $a->categoria,
             'empresa_id' => $a->empresa_id ? (int) $a->empresa_id : null])->all();

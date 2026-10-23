@@ -224,7 +224,8 @@ class AcessoInterno
             foreach ($doDia as $v) {
                 $a = $atendimentos[$v['atendimento_id']] ?? null;
                 $cl = $a ? $d->cliente((int) ($a['cliente_id'] ?? 0)) : null;
-                $cliente = $cl ? (($cl['fantasia'] ?? '') ?: ($cl['nome'] ?? '')).(! empty($cl['pre']) ? ' (pré-cliente)' : '') : 'cliente não identificado no retrato';
+                $cliente = $cl ? (($cl['fantasia'] ?? '') ?: ($cl['nome'] ?? '')).(! empty($cl['pre']) ? ' (pré-cliente)' : '')
+                    : (! empty($a['solicitante']) ? $a['solicitante'].' (sem cadastro)' : 'cliente não identificado no retrato');
                 $adicionais = collect((array) ($v['adicionais'] ?? []))->map(fn ($id) => Str::before($nome($id), ' '))->implode(', ');
                 $texto .= "\n- ".Str::before($nome($v['tecnico_id'] ?? 0), ' ').': '.substr((string) $v['inicio'], 11, 5).' às '.substr((string) ($v['fim'] ?? ''), 11, 5)
                     .' — '.($a ? 'nº '.$a['numero'] : 'atendimento '.$v['atendimento_id']).' — '.$cliente

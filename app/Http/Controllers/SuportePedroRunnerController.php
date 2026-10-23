@@ -79,7 +79,7 @@ class SuportePedroRunnerController extends Controller
             'pre' => ['nullable', 'boolean'],
         ]);
         $d['atendimentos'] = $this->itens('atendimentos', $d['atendimentos'], [
-            'id' => ['required', 'integer'], 'cliente_id' => ['nullable', 'integer'], 'numero' => ['nullable', 'string', 'max:30'],
+            'id' => ['required', 'integer'], 'cliente_id' => ['nullable', 'integer'], 'numero' => ['nullable', 'string', 'max:30'], 'solicitante' => ['nullable', 'string', 'max:120'],
             'descricao' => ['nullable', 'string', 'max:500'], 'status' => ['nullable', 'string', 'max:40'], 'criado_em' => ['nullable', 'string', 'max:30'],
             'empresa_id' => ['nullable', 'integer'], 'assunto_id' => ['nullable', 'integer'],
             'funcionarios' => ['nullable', 'array', 'max:20'], 'funcionarios.*' => ['integer'],
