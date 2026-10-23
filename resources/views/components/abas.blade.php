@@ -11,8 +11,11 @@
             </x-slot>
         </x-abas>
 --}}
+{{-- No celular o grupo não passa da tela: rola de lado dentro da própria
+     moldura, e cada aba mantém o tamanho (sem `shrink-0` elas se espremiam
+     até o rótulo quebrar em duas linhas). --}}
 @props([])
 
-<div {{ $attributes->merge(['class' => 'inline-flex items-center gap-1 rounded-control border border-line bg-surface p-1']) }}>
+<div {{ $attributes->merge(['class' => 'inline-flex items-center gap-1 rounded-control border border-line bg-surface p-1 max-md:max-w-full max-md:overflow-x-auto max-md:[&>*]:shrink-0']) }}>
     {{ $slot }}
 </div>

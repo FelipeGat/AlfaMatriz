@@ -74,7 +74,7 @@
             @endforelse
         </div>
 
-        <div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+        <div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr))">
             {{-- Movimentação do mês ------------------------------------------ --}}
             <x-painel titulo="Movimentação de {{ $mes['rotulo'] }}">
                 @php $maior = max(abs($mes['entradas']), abs($mes['saidas']), abs($mes['resultado']), 1); @endphp

@@ -31,7 +31,7 @@
         </div>
 
         {{-- O destaque da tela: os dois rankings, em três camadas. --}}
-        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(420px, 1fr))">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr))">
             {{-- "Licenças ativas", e não "Clientes ativos": este total soma o
                  nº de clientes de CADA produto, então um cliente com dois
                  sistemas entra duas vezes. Chamá-lo de clientes ativos punha
@@ -49,7 +49,7 @@
         </div>
 
         {{-- Mesma gramática, sem o bloco de topo: são recortes de apoio. --}}
-        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr))">
             <x-ranking :ranking="$rankingRevendas"
                        titulo="Clientes por revenda"
                        nota="inclui venda direta"
@@ -64,7 +64,7 @@
         {{-- O FUNIL, e não mais o portfólio: pedido em 15/08/2026 para o
              Dashboard Comercial também falar de pipeline, não só de base
              instalada. As três seções abaixo são desta competência. --}}
-        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr))">
             <x-ranking :ranking="$rankingFunil"
                        titulo="Avanço do funil"
                        :nota="'competência '.\Illuminate\Support\Carbon::createFromFormat('Y-m', $competencia)->format('m/Y')"

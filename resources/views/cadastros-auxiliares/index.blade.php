@@ -15,7 +15,7 @@
             item mostra quantos lançamentos dependem dele ao lado do botão de
             remover (AC-058) — é o dado que decide se remover é seguro.
         --}}
-        <div class="grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+        <div class="grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr))">
             <x-painel titulo="Centros de custo" :sub="$centrosCusto->count().' cadastrado(s)'" solto>
                 <div class="max-h-[232px] overflow-y-auto">
                     @forelse ($centrosCusto as $centro)

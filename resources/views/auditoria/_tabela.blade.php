@@ -34,13 +34,13 @@
 
     {{-- As duas datas ficam num bloco só, com o "até" grudado no "de": elas são
          UM filtro, e separadas pelo mesmo gap dos selects se leriam como dois. --}}
-    <span class="flex items-center gap-1.5 h-[34px] px-2.5 rounded-control bg-input border border-line">
+    <span class="flex items-center gap-1.5 h-[34px] px-2.5 rounded-control bg-input border border-line max-md:w-full">
         <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint shrink-0">de</span>
         <input type="date" name="de" value="{{ $filtros['de'] }}"
-               class="bg-transparent border-0 p-0 text-[12.5px] text-ink-dim focus:ring-0">
+               class="bg-transparent border-0 p-0 text-[12.5px] text-ink-dim focus:ring-0 max-md:min-w-0 max-md:flex-1">
         <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint shrink-0">até</span>
         <input type="date" name="ate" value="{{ $filtros['ate'] }}"
-               class="bg-transparent border-0 p-0 text-[12.5px] text-ink-dim focus:ring-0">
+               class="bg-transparent border-0 p-0 text-[12.5px] text-ink-dim focus:ring-0 max-md:min-w-0 max-md:flex-1">
     </span>
 
     <button type="submit"

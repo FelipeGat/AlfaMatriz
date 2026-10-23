@@ -165,7 +165,7 @@
         </tbody>
     </x-tabela>
 
-    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))">
+    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr))">
         @foreach ($acesso as $fonte)
             @php $ultima = F::hora($fonte['ultima_coleta'] ?? null); @endphp
             <x-painel :titulo="'Acesso · '.($fonte['fonte'] ?? '')">

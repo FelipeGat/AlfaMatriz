@@ -99,14 +99,21 @@
     {{-- A Lista: rótulo à esquerda em largura FIXA, título elástico no meio,
          meta à direita. O rótulo leva `w-[74px]` e não `flex-1` porque é ele
          que alinha a coluna inteira — com largura de conteúdo, "Tarefa" e
-         "Tarefa · Bloqueada" empurrariam cada linha para um lugar diferente. --}}
+         "Tarefa · Bloqueada" empurrariam cada linha para um lugar diferente.
+
+         No celular as três EMPILHAM, como o cartão da coluna da Semana: em
+         linha, a 390px o rótulo e a meta comiam a largura e o título sumia
+         ("D."), com a meta passando da borda. O título pode quebrar em duas
+         linhas — numa lista de uma coluna é ele que se lê. --}}
     <button type="button" @click="{{ $aoClicar }}"
-            class="flex w-full items-center gap-[9px] rounded-control px-3 py-2 text-left transition hover:brightness-110"
+            class="flex w-full items-center gap-[9px] rounded-control px-3 py-2 text-left transition hover:brightness-110
+                   max-md:flex-col max-md:items-stretch max-md:gap-0.5"
             style="background: {{ $tinte }}; border-left: 2px solid {{ $barra }}">
-        <span class="w-[74px] shrink-0 font-mono text-[9px] font-bold uppercase tracking-[0.06em]"
+        <span class="w-[74px] shrink-0 font-mono text-[9px] font-bold uppercase tracking-[0.06em] max-md:w-auto"
               style="color: {{ $cor }}">{{ $item['rotulo'] }}</span>
-        <span class="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink">{{ $item['titulo'] }}</span>
-        <span class="shrink-0 whitespace-nowrap text-[11.5px] text-ink-mute">{{ $item['meta'] }}</span>
+        <span class="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink
+                     max-md:whitespace-normal max-md:line-clamp-2">{{ $item['titulo'] }}</span>
+        <span class="shrink-0 whitespace-nowrap text-[11.5px] text-ink-mute max-md:min-w-0 max-md:truncate">{{ $item['meta'] }}</span>
     </button>
 
 @else

@@ -137,10 +137,15 @@
     Abaixo de 1024px a sidebar sai do fluxo e vira gaveta — por isso todo o
     comportamento de rail é `lg:`. A gaveta é sempre larga: recolher só faz
     sentido quando há conteúdo ao lado disputando espaço.
+
+    Abaixo de 768px a gaveta é a aba "Mais" da barra do celular
+    (layouts/abas-celular): ocupa a tela inteira e os grupos viram as listas
+    agrupadas do iPhone — cartão arredondado, linha de 44px, seta à direita.
+    É o mesmo menu, com as mesmas portas filtradas, só vestido de outro jeito.
 --}}
 <aside
     class="fixed inset-y-0 left-0 z-40 shrink-0 flex flex-col bg-panel border-r border-line
-           w-sidebar rail:lg:w-rail
+           w-sidebar rail:lg:w-rail max-md:w-full max-md:bg-canvas max-md:border-r-0
            transform -translate-x-full transition-transform duration-200 ease-in-out
            lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:transition-[width] lg:duration-rail lg:ease-out
            overflow-hidden"
@@ -149,7 +154,8 @@
 >
     {{-- Header: ícone sempre; wordmark só com o menu aberto --}}
     <div class="h-topbar shrink-0 flex items-center gap-2.5 border-b border-line px-4
-                rail:lg:px-0 rail:lg:justify-center">
+                rail:lg:px-0 rail:lg:justify-center
+                max-md:h-auto max-md:border-b-0 max-md:pt-[calc(14px+env(safe-area-inset-top))] max-md:pb-1">
         {{-- A marca leva para CASA, e casa não é a mesma para todo mundo: o
              destino era o Centro de Controle para quem não fosse revenda, e
              quem não tem `dashboard` — o perfil comercial — clicava no logo
@@ -161,13 +167,14 @@
         </a>
 
         <button type="button" @click="gavetaAberta = false"
-                class="ml-auto lg:hidden h-7 w-7 text-ink-mute hover:text-ink transition"
+                class="ml-auto lg:hidden max-md:hidden h-7 w-7 text-ink-mute hover:text-ink transition"
                 aria-label="Fechar menu">
             <span class="block h-4 w-4"><x-nav-icon name="x-mark" /></span>
         </button>
     </div>
 
-    <nav id="menu-principal" class="flex-1 overflow-y-auto py-2">
+    <nav id="menu-principal" class="flex-1 overflow-y-auto py-2 max-md:pb-4">
+        <h2 class="md:hidden px-4 pt-1 pb-2 font-display text-[28px] font-semibold leading-tight text-ink">Mais</h2>
         @foreach ($grupos as $nomeGrupo => $links)
             {{--
                 Recolhido, o rótulo do grupo some e uma régua toma o lugar
@@ -184,11 +191,13 @@
             <button type="button" @click="alternarGrupoMenu(@js($nomeGrupo))"
                     :aria-expanded="((!railAberto && !gavetaAberta) || !gruposMenuFechados.includes(@js($nomeGrupo))).toString()"
                     aria-controls="menu-grupo-{{ $loop->index }}"
-                    class="flex w-full items-center justify-between px-[14px] pt-3 pb-1 font-mono text-[9.5px] font-semibold uppercase tracking-caps-max text-ink-faint hover:text-ink rail:lg:hidden">
+                    class="flex w-full items-center justify-between px-[14px] pt-3 pb-1 font-mono text-[9.5px] font-semibold uppercase tracking-caps-max text-ink-faint hover:text-ink rail:lg:hidden
+                           max-md:px-8 max-md:pt-5 max-md:pb-1.5 max-md:text-[11px]">
                 <span>{{ $nomeGrupo }}</span>
                 <span class="h-3 w-3 transition-transform" :class="gruposMenuFechados.includes(@js($nomeGrupo)) && '-rotate-90'"><x-nav-icon name="chevron-down" /></span>
             </button>
             <div id="menu-grupo-{{ $loop->index }}"
+                 class="max-md:mx-4 max-md:overflow-hidden max-md:rounded-xl max-md:border max-md:border-line max-md:bg-panel"
                  :class="gruposMenuFechados.includes(@js($nomeGrupo)) && 'hidden rail:lg:block'">
 
             @foreach ($links as $link)
@@ -210,6 +219,9 @@
                        // para compensar a barra de marca da esquerda, senão o
                        // ícone fica fora do eixo do rail.
                        'rail:lg:justify-center rail:lg:pl-0 rail:lg:pr-[3px]',
+                       // A linha da lista do iPhone: 44px, texto de 16px, régua
+                       // entre as linhas e nenhuma depois da última.
+                       'max-md:my-0 max-md:h-11 max-md:border-l-0 max-md:px-4 max-md:text-[16px] max-md:font-normal max-md:border-b max-md:border-b-rule max-md:last:border-b-0',
                        'bg-nav-active text-brand-text border-brand' => $ativo,
                        'text-ink-dim border-transparent hover:bg-chip hover:text-ink' => ! $ativo,
                    ])
@@ -223,6 +235,7 @@
                         'text-ink-mute group-hover:text-ink-dim' => ! $ativo,
                     ])><x-nav-icon :name="$link['icon']" :peso="1.7" /></span>
                     <span class="truncate rail:lg:hidden">{{ $link['label'] }}</span>
+                    <span class="md:hidden ml-auto h-4 w-4 shrink-0 text-ink-faint"><x-nav-icon name="chevron-right" :peso="2" /></span>
                 </a>
             @endforeach
             </div>
@@ -230,7 +243,8 @@
     </nav>
 
     <div class="shrink-0 flex items-center gap-2.5 border-t border-line px-[14px] py-3
-                rail:lg:flex-col rail:lg:px-2 rail:lg:gap-2">
+                rail:lg:flex-col rail:lg:px-2 rail:lg:gap-2
+                max-md:px-5 max-md:pb-[calc(96px+env(safe-area-inset-bottom))]">
         {{--
             O avatar abre um menu em vez de ir direto ao perfil: dali saem
             ações de conta que não merecem lugar fixo no rodapé, e é onde a
@@ -261,7 +275,7 @@
                      x-transition:enter="transition ease-out duration-150"
                      x-transition:enter-start="opacity-0 translate-y-1"
                      x-transition:enter-end="opacity-100 translate-y-0"
-                     class="fixed z-50 w-[228px] rounded-panel border border-line bg-panel overflow-hidden"
+                     class="fixed z-50 w-[228px] rounded-panel border border-line bg-panel overflow-hidden max-md:!bottom-[calc(150px+env(safe-area-inset-bottom))]"
                      style="left: 12px; bottom: 62px"
                      role="menu">
                     {{-- Quem está logado: no rail recolhido o nome some do

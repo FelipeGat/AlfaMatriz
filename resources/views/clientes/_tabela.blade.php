@@ -2,7 +2,7 @@
     clientes da tela de revendas. Espera: $clientes, $pagamentos, $revendas,
     $sistemas, $filtros, $totais. --}}
 
-<form method="GET" class="flex flex-wrap items-center gap-2">
+<form method="GET" data-folha-filtros class="flex flex-wrap items-center gap-2">
     {{-- Sem isto, filtrar dentro da aba de clientes submete para /revendas sem
          `aba` e devolve o usuário para a aba de revendas — a busca o expulsava
          da tela onde ele estava. Só a aba injeta `$aba`; a tela de Clientes
@@ -17,6 +17,8 @@
                placeholder="Buscar nome, CNPJ ou cidade…"
                class="flex-1 min-w-0 bg-transparent border-0 p-0 text-[13px] text-ink placeholder-ink-faint focus:ring-0">
     </label>
+
+    <x-folha-filtros />
 
     <select name="revenda" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
         <option value="">Todas as revendas</option>

@@ -34,7 +34,7 @@
 {{-- O gráfico numa coluna de grade, como no dashboard: o desenho dele é de
      720px (ver o teto no próprio componente), e a receita por tipo ocupa o
      resto da linha em vez de deixar o vão. --}}
-<div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+<div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr))">
     <x-painel titulo="Entradas x saídas" :sub="'ano de '.substr($competencia, 0, 4)">
         <x-bar-chart :data="$historico" />
 
@@ -57,7 +57,7 @@
 {{-- O em-aberto é ACUMULADO, não da competência: título pendente de março
      continua pendente em agosto, e um recorte por mês esconderia justamente o
      que envelheceu. --}}
-<div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+<div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr))">
     <x-painel titulo="A receber em aberto" sub="acumulado">
         <dl class="divide-y divide-rule">
             <div class="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">

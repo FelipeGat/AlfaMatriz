@@ -15,7 +15,7 @@
     $futuras = $itens->where('atrasada', false)->groupBy('data');
 @endphp
 
-<div class="min-h-0 flex-1 overflow-y-auto rounded-panel border border-line bg-board p-3.5">
+<div class="min-h-0 flex-1 overflow-y-auto rounded-panel border border-line bg-board p-3.5 max-md:flex-none max-md:overflow-visible">
     @if ($atrasadas->isNotEmpty())
         <div class="mb-4">
             <p class="mb-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-crit">

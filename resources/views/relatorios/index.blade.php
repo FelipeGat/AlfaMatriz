@@ -21,19 +21,19 @@
             {{-- A mesma navegação de competência do Painel Financeiro — os
                  links preservam a seção aberta, como lá preservam o filtro do
                  gráfico. --}}
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 max-md:min-w-0 max-md:max-w-full">
                 <a href="{{ route('relatorios.index', array_merge(request()->except('competencia'), ['competencia' => $competenciaAnterior])) }}"
                    class="flex h-8 w-8 items-center justify-center rounded-control border border-line text-ink-mute hover:border-brand hover:text-brand transition"
                    aria-label="Competência anterior">
                     <span class="h-3.5 w-3.5"><x-nav-icon name="chevron-left" :peso="1.8" /></span>
                 </a>
 
-                <form method="GET" class="flex items-center">
+                <form method="GET" class="flex items-center max-md:min-w-0 max-md:shrink">
                     @foreach (request()->except(['competencia']) as $chave => $valor)
                         <input type="hidden" name="{{ $chave }}" value="{{ $valor }}">
                     @endforeach
                     <input type="month" name="competencia" value="{{ $competencia }}" onchange="this.form.submit()"
-                           class="h-8 py-0 text-[13px] rounded-control bg-input border-line text-ink">
+                           class="h-8 py-0 text-[13px] rounded-control bg-input border-line text-ink max-md:min-w-0 max-md:w-full">
                 </form>
 
                 <a href="{{ route('relatorios.index', array_merge(request()->except('competencia'), ['competencia' => $competenciaProxima])) }}"

@@ -22,7 +22,7 @@
                 acento="amber" icone="clock" />
 </div>
 
-<div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+<div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr))">
     {{-- Na ordem do quadro, e não por volume: este painel espelha as colunas
          de `/tarefas`, e reordenar por contagem quebraria o espelho. --}}
     <x-painel titulo="O quadro agora" sub="tarefas por etapa">

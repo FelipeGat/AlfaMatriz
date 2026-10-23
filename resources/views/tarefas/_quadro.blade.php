@@ -25,7 +25,7 @@
      class="pointer-events-none absolute right-0 top-0 bottom-0 w-10 z-10"
      style="background: linear-gradient(270deg, rgb(var(--canvas) / 0.55), transparent)"></div>
 
-<div class="shrink-0 flex items-center gap-3 px-4 h-[52px] border-b border-line">
+<div data-cabeca-do-quadro class="shrink-0 flex items-center gap-3 px-4 h-[52px] border-b border-line">
     <span class="h-7 w-7 shrink-0 rounded-tile flex items-center justify-center bg-brand/15 text-brand-text">
         <span class="h-[15px] w-[15px]"><x-nav-icon name="view-grid" /></span>
     </span>
@@ -120,7 +120,7 @@
          mais que morasse dentro dele — as pílulas, o "ver como quadro" —
          sumiria no primeiro clique num checklist. O pedaço é o embrulho
          estreito lá embaixo, com exatamente o que a partial devolve. --}}
-    <div class="ml-auto min-w-0 flex items-center gap-2 overflow-x-auto">
+    <div data-chips-do-quadro class="ml-auto min-w-0 flex items-center gap-2 overflow-x-auto">
         {{-- O recorte ativo, nomeado (AC-355): o select guarda o valor mas
              não o anuncia — com pessoa+sistema ligados a tela só contava
              "X de Y tarefas". Uma pílula por filtro, e cada ✕ tira só o seu:
@@ -193,7 +193,8 @@
             :title="telaCheia ? 'Sair da tela cheia · Esc' : 'Expandir o quadro para a tela inteira'"
             :aria-label="telaCheia ? 'Sair da tela cheia' : 'Expandir o quadro para a tela inteira'"
             :aria-pressed="telaCheia.toString()"
-            class="shrink-0 ml-2 h-[26px] w-[26px] rounded-badge border border-btn-line flex items-center justify-center
+            {{-- Fora do celular: lá o quadro já é a tela, e a página rola. --}}
+            class="max-md:hidden shrink-0 ml-2 h-[26px] w-[26px] rounded-badge border border-btn-line flex items-center justify-center
                    text-ink-mute transition hover:text-brand hover:border-brand">
         <span class="h-[13px] w-[13px]" x-show="! telaCheia"><x-nav-icon name="expandir" :peso="1.8" /></span>
         <span class="h-[13px] w-[13px]" x-show="telaCheia" x-cloak><x-nav-icon name="encolher" :peso="1.8" /></span>
