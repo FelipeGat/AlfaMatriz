@@ -8,6 +8,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -341,8 +342,11 @@ class ApiDoMonitor
 
         try {
             $http = $this->pedir('notificacoes', ['depois_de' => $depoisDe, 'por_pagina' => self::POR_PAGINA], self::TIMEOUT_RELATORIO_S);
-        } catch (Throwable) {
-            return RespostaDoMonitor::falha('O AlfaMonitor não respondeu.');
+        } catch (Throwable $e) {
+            // A causa vai junto (T-482): "não respondeu" sozinho não separa a
+            // rede caída do certificado vencido nem do DNS, e o log de 22/10
+            // ficou sem dizer qual foi.
+            return RespostaDoMonitor::falha('O AlfaMonitor não respondeu ('.Str::limit($e->getMessage(), 300).').');
         }
 
         if ($http->status() === 404) {

@@ -8,10 +8,12 @@ use App\Models\Sistema;
 use App\Services\Monitor\ReconciliacaoDoMonitor;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 /**
@@ -251,9 +253,68 @@ class ReconciliacaoDoMonitorTest extends TestCase
         $this->artisan('alfa:monitor-reconciliar')
             ->expectsOutputToContain('Recuperados: 1')
             ->expectsOutputToContain('respondeu com erro (500)')
-            ->assertFailed();
+            ->assertSuccessful();
 
         $this->assertSame(1, app(ReconciliacaoDoMonitor::class)->cursor());
+    }
+
+    /**
+     * 22/10/2026 12:20 (T-482): a rede oscilou, o monitor "não respondeu" uma
+     * vez e o exit 1 virou Bug no vigia, sem a causa. Falha isolada é WARNING
+     * com o motivo, e o comando sai com 0.
+     */
+    public function test_falha_isolada_fica_em_aviso_com_a_causa(): void
+    {
+        Log::spy();
+        Http::fake([self::BASE.'/api/v1/notificacoes*' => fn () => throw new ConnectionException('cURL error 28: Connection timed out')]);
+
+        $this->artisan('alfa:monitor-reconciliar')
+            ->expectsOutputToContain('cURL error 28')
+            ->expectsOutputToContain('Falha 1 de 3')
+            ->assertSuccessful();
+
+        Log::shouldHaveReceived('warning')->with('AlfaMonitor: a reconciliação parou.', \Mockery::on(
+            fn ($c) => str_contains($c['erro'], 'não respondeu (cURL error 28') && $c['falhas_seguidas'] === 1
+        ))->once();
+        Log::shouldNotHaveReceived('error');
+    }
+
+    public function test_tres_rodadas_seguidas_de_falha_viram_erro_com_o_motivo(): void
+    {
+        Log::spy();
+        Http::fake([self::BASE.'/api/v1/notificacoes*' => fn () => throw new ConnectionException('Could not resolve host')]);
+
+        $this->artisan('alfa:monitor-reconciliar')->assertSuccessful();
+        $this->artisan('alfa:monitor-reconciliar')->assertSuccessful();
+        Log::shouldNotHaveReceived('error');
+
+        $this->artisan('alfa:monitor-reconciliar')
+            ->expectsOutputToContain('Falhou 3 rodadas seguidas')
+            ->assertSuccessful();
+
+        Log::shouldHaveReceived('error')->with(
+            'AlfaMonitor: a reconciliação falha há 3 rodadas seguidas ou mais.',
+            \Mockery::on(fn ($c) => str_contains($c['erro'], 'Could not resolve host') && $c['falhas_seguidas'] === 3),
+        )->once();
+    }
+
+    public function test_rodada_boa_zera_a_conta_de_falhas(): void
+    {
+        Cache::forever(ReconciliacaoDoMonitor::FALHAS_SEGUIDAS, 2);
+        Http::fake([self::BASE.'/api/v1/notificacoes*' => Http::sequence()
+            ->push(['v' => 1, 'notificacoes' => [$this->notificacao(1)], 'proximo' => 1, 'tem_mais' => false])
+            ->push(['erro' => 'interno'], 500)]);
+
+        $this->artisan('alfa:monitor-reconciliar')->assertSuccessful();
+
+        $this->assertNull(Cache::get(ReconciliacaoDoMonitor::FALHAS_SEGUIDAS));
+
+        // E a falha seguinte volta a ser a primeira, não a terceira.
+        Log::spy();
+
+        $this->artisan('alfa:monitor-reconciliar')->expectsOutputToContain('Falha 1 de 3')->assertSuccessful();
+
+        Log::shouldNotHaveReceived('error');
     }
 
     public function test_monitor_sem_a_rota_nao_e_erro(): void
@@ -271,7 +332,9 @@ class ReconciliacaoDoMonitorTest extends TestCase
     {
         Http::fake([self::BASE.'/api/v1/notificacoes*' => Http::response(['v' => 2, 'notificacoes' => [$this->notificacao(1)], 'proximo' => 1])]);
 
-        $this->artisan('alfa:monitor-reconciliar')->assertFailed();
+        $this->artisan('alfa:monitor-reconciliar')
+            ->expectsOutputToContain('mudou o formato')
+            ->assertSuccessful();
 
         $this->assertSame(0, MonitorEvento::count());
         $this->assertSame(0, app(ReconciliacaoDoMonitor::class)->cursor());

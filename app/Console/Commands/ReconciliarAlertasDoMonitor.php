@@ -32,10 +32,14 @@ class ReconciliarAlertasDoMonitor extends Command
 
         $this->info("Recuperados: {$r['gravados']} · já recebidos: {$r['repetidos']} · ignorados: {$r['ignorados']} · cursor: {$r['cursor']}");
 
+        // Falha da rodada sai com 0 de propósito (T-482): o serviço já a
+        // gravou no log com o motivo — WARNING se isolada, ERROR se repetida —
+        // e o exit 1 só acrescentaria o ERROR genérico do agendador.
         if ($r['erro']) {
             $this->error($r['erro']);
-
-            return self::FAILURE;
+            $this->line($r['persistente']
+                ? "Falhou {$r['falhas_seguidas']} rodadas seguidas: registrado como erro."
+                : "Falha {$r['falhas_seguidas']} de ".ReconciliacaoDoMonitor::FALHAS_PARA_ERRO.' antes de virar erro; a próxima rodada tenta de novo.');
         }
 
         return self::SUCCESS;

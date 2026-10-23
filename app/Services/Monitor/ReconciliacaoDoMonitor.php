@@ -40,6 +40,11 @@ class ReconciliacaoDoMonitor
 {
     public const CURSOR = 'alfamonitor-reconciliacao:cursor';
 
+    /** Quantas rodadas seguidas falham antes de a falha virar ERROR no log (T-482). */
+    public const FALHAS_PARA_ERRO = 3;
+
+    public const FALHAS_SEGUIDAS = 'alfamonitor-reconciliacao:falhas-seguidas';
+
     /** Trava por rodada: 50 × 200 = 10 mil notificações; o resto fica para a próxima hora. */
     public const PAGINAS_POR_RODADA = 50;
 
@@ -59,11 +64,11 @@ class ReconciliacaoDoMonitor
     }
 
     /**
-     * @return array{gravados: int, repetidos: int, ignorados: int, cursor: int, paginas: int, erro: ?string, sem_rota: bool}
+     * @return array{gravados: int, repetidos: int, ignorados: int, cursor: int, paginas: int, erro: ?string, sem_rota: bool, falhas_seguidas: int, persistente: bool}
      */
     public function reconciliar(): array
     {
-        $r = ['gravados' => 0, 'repetidos' => 0, 'ignorados' => 0, 'cursor' => $this->cursor(), 'paginas' => 0, 'erro' => null, 'sem_rota' => false];
+        $r = ['gravados' => 0, 'repetidos' => 0, 'ignorados' => 0, 'cursor' => $this->cursor(), 'paginas' => 0, 'erro' => null, 'sem_rota' => false, 'falhas_seguidas' => 0, 'persistente' => false];
 
         // Sem o monitor ligado (ambiente local, staging sem token) não há
         // o que conferir — e não é erro, para não sujar o log toda hora.
@@ -124,8 +129,44 @@ class ReconciliacaoDoMonitor
             ]);
         }
 
-        if ($r['erro']) {
-            Log::warning('AlfaMonitor: a reconciliação parou.', ['erro' => $r['erro'], 'cursor' => $r['cursor']]);
+        return $this->contarFalha($r);
+    }
+
+    /**
+     * Falha passageira não é defeito (T-482). Em 22/10/2026 12:20 a rede de
+     * saída do alfa-server oscilou antes de o host cair: o monitor "não
+     * respondeu" UMA vez, o comando saiu com 1 e o vigia abriu um Bug com a
+     * frase genérica do agendador. Nada se perdeu — o cursor só anda sobre o
+     * que foi conferido, e a rodada seguinte busca o resto.
+     *
+     * Por isso a falha isolada fica em WARNING, e só a que se repete
+     * `FALHAS_PARA_ERRO` rodadas seguidas (3 h) vira ERROR, com o motivo na
+     * própria linha — é ela que o vigia transforma em tarefa, já dizendo a
+     * causa. Uma rodada boa zera a conta. O comando sai com 0 nos dois casos:
+     * a falha já está no log com o motivo, e o exit 1 faria o agendador
+     * gravar por cima o ERROR genérico, que vira uma segunda tarefa sem causa.
+     *
+     * @param  array<string, mixed>  $r
+     * @return array<string, mixed>
+     */
+    private function contarFalha(array $r): array
+    {
+        if (! $r['erro']) {
+            Cache::forget(self::FALHAS_SEGUIDAS);
+
+            return $r;
+        }
+
+        $r['falhas_seguidas'] = (int) Cache::get(self::FALHAS_SEGUIDAS, 0) + 1;
+        Cache::forever(self::FALHAS_SEGUIDAS, $r['falhas_seguidas']);
+        $r['persistente'] = $r['falhas_seguidas'] >= self::FALHAS_PARA_ERRO;
+
+        $contexto = ['erro' => $r['erro'], 'cursor' => $r['cursor'], 'falhas_seguidas' => $r['falhas_seguidas']];
+
+        if ($r['persistente']) {
+            Log::error('AlfaMonitor: a reconciliação falha há '.self::FALHAS_PARA_ERRO.' rodadas seguidas ou mais.', $contexto);
+        } else {
+            Log::warning('AlfaMonitor: a reconciliação parou.', $contexto);
         }
 
         return $r;
