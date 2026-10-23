@@ -18,8 +18,9 @@
                 delta="contados, sem tarefa nem aviso" acento="accent" icone="eye-slash" />
 </div>
 
-<form method="GET" class="flex flex-wrap items-center gap-2">
+<form method="GET" data-folha-filtros class="flex flex-wrap items-center gap-2">
     <input type="hidden" name="aba" value="erros">
+    <x-folha-filtros />
 
     <select name="sistema" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
         <option value="">Todos os sistemas</option>

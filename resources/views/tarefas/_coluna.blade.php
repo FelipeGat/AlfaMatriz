@@ -237,6 +237,9 @@
               class="shrink-0 px-[10px] py-2 border-t border-rule">
             <input type="text" name="titulo" maxlength="255" required data-criacao-rapida
                    placeholder="+ nova tarefa · Enter abre o formulário"
+                   {{-- No celular não há Enter à vista: o teclado do iPhone
+                        diz "Ir", e a dica ensinava uma tecla que não existe. --}}
+                   x-bind:placeholder="matchMedia('(max-width: 767px)').matches ? '+ nova tarefa' : $el.getAttribute('placeholder')"
                    class="w-full min-h-[34px] px-2 py-1 text-[12.5px] text-ink placeholder-ink-faint
                           !bg-transparent !rounded-control !border !border-transparent
                           hover:!border-line focus:!border-brand transition">

@@ -50,6 +50,7 @@
      x-transition:leave-end="opacity-0"
      class="fixed bottom-3 z-50 w-[352px] max-w-[calc(100vw-24px)]
             left-3 lg:left-[calc(theme(spacing.sidebar)+12px)] rail:lg:left-[calc(theme(spacing.rail)+12px)]
+            max-md:bottom-[calc(84px+env(safe-area-inset-bottom))]
             rounded-panel border border-line bg-panel overflow-hidden flex flex-col">
 
     <header class="h-[38px] shrink-0 flex items-center gap-2 px-4 border-b border-line bg-head">

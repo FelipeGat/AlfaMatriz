@@ -65,7 +65,7 @@
         quadro cresce dentro dela, senão a coluna mais cheia estica a página
         inteira e as outras ficam desalinhadas.
     --}}
-    <div class="flex flex-col gap-4" style="height: calc(100vh - 120px); min-height: 520px">
+    <div class="flex flex-col gap-4" data-altura-da-janela style="height: calc(100vh - 120px); min-height: 520px">
         {{-- O chip "N p/ você" NÃO vive aqui: ele é o primeiro dos chips do
              cabeçalho do quadro, junto das outras duas contagens. Solto acima
              das abas, ele seria a única contagem fora do quadro que conta. --}}

@@ -25,7 +25,7 @@
                 acento="brand" icone="trending-up" />
 </div>
 
-<div class="grid gap-3 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+<div class="grid gap-3 items-start" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr))">
     {{-- A régua é a de `Lead::temperatura()`: quente < 7 dias parado no
          estágio, esfriando de 7 a 15, frio dali em diante. É o painel de
          "quem precisa de ligação hoje". --}}
@@ -62,7 +62,7 @@
                compacto />
 </div>
 
-<div class="grid gap-3 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+<div class="grid gap-3 items-start" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr))">
     <x-ranking :ranking="$rankingVendedores"
                titulo="Vendas por vendedor"
                nota="fechado na competência"

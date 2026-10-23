@@ -27,7 +27,7 @@
     proporcional ao total — as duas perguntas convivem sem se confundir.
 --}}
 <section {{ $attributes->merge(['class' => 'rounded-panel border border-line bg-subtle overflow-hidden']) }}>
-    <div class="h-[38px] flex items-center gap-3 px-4 bg-head border-b border-line">
+    <div data-cabeca-do-painel class="h-[38px] flex items-center gap-3 px-4 bg-head border-b border-line">
         <h2 class="font-display text-[15px] font-semibold text-ink truncate">{{ $titulo }}</h2>
         @if ($nota)
             <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint truncate">{{ $nota }}</span>

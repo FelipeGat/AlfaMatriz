@@ -62,7 +62,7 @@
             Projeção anual = receita recorrente × 12 (projeção simples: não considera sazonalidade nem contratos anuais reais).
         </p>
 
-        <div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+        <div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr))">
             <x-painel titulo="Entradas x saídas" style="grid-column: span 1">
                 {{-- Linha própria para o filtro, fora da faixa de 38px do
                      cabeçalho: com dois inputs de mês e o rótulo do período
@@ -126,7 +126,7 @@
         </div>
 
         {{-- O que está em aberto dos dois lados --}}
-        <div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+        <div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr))">
             <x-painel titulo="Receitas pendentes" solto>
                 <x-slot name="acoes">
                     <a href="{{ route('cobrancas.index', ['status' => 'pendente']) }}"

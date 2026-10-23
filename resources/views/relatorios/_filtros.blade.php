@@ -10,7 +10,9 @@
     Espera: $secao, $competencia, $filtros, $listas, $recortes.
 --}}
 <div class="flex flex-wrap items-center gap-2">
-    <form method="GET" class="flex flex-wrap items-center gap-2">
+    <form method="GET" data-folha-filtros class="flex flex-wrap items-center gap-2">
+        <x-folha-filtros />
+
         {{-- A seção e a competência viajam junto do filtro: sem elas o envio
              voltaria para a seção comercial do mês corrente. --}}
         <input type="hidden" name="secao" value="{{ $secao }}">

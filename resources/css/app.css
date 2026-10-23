@@ -646,3 +646,425 @@
     -webkit-line-clamp: 1;
     overflow: hidden;
 }
+
+/*
+ * O Matriz no iPhone com cara de app (pedido do dono, 23/10/2026: "da mesma
+ * forma que o painel" das centrais). Tudo aqui vale só abaixo de 768px; o
+ * computador não muda.
+ *
+ * A barra de abas é a pílula flutuante do painel: vidro sobre o conteúdo,
+ * presa acima da barra de gestos do iPhone (`safe-area-inset-bottom`).
+ */
+.abas-celular {
+    position: fixed;
+    z-index: 45; /* acima da gaveta (40), que é a aba "Mais"; abaixo do sino (50) */
+    left: 50%;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    display: flex;
+    gap: 2px;
+    padding: 4px;
+    width: max-content;
+    max-width: calc(100vw - 20px);
+    border-radius: 32px;
+    border: .5px solid var(--line);
+    background: color-mix(in srgb, rgb(var(--panel)) 86%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    backdrop-filter: blur(20px) saturate(1.6);
+    box-shadow: 0 8px 28px rgb(0 0 0 / .28);
+    view-transition-name: abas-celular;
+}
+.aba-celular {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 64px;
+    min-height: 54px;
+    padding: 4px 8px;
+    border-radius: 28px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: rgb(var(--ink-mute));
+    -webkit-tap-highlight-color: transparent;
+}
+.aba-celular__icone {
+    width: 26px;
+    height: 26px;
+}
+.aba-celular[data-ativa]:not(.aba-celular--apagada) {
+    color: rgb(var(--brand-text));
+    background: var(--chip);
+}
+
+@media (max-width: 767px) {
+    /* Campo com fonte menor que 16px faz o Safari do iPhone dar zoom na página
+       ao tocar nele — e não desfaz sozinho. O !important vence o tamanho que
+       cada tela deu ao campo, pensado para o computador. */
+    input:not([type=checkbox]):not([type=radio]):not([type=range]),
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+
+    /* Puxar além do fim da página não arrasta a moldura inteira. */
+    html, body {
+        overscroll-behavior-y: none;
+    }
+
+    /* Toque sem o clarão cinza do Safari: os botões já têm o próprio estado. */
+    a, button {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* A troca de tela desliza como a pilha do iPhone, e a barra de abas fica
+       parada entre uma tela e outra (o nome dela, acima, a separa da raiz).
+       Navegador sem suporte troca a página como sempre. */
+    @view-transition {
+        navigation: auto;
+    }
+    ::view-transition-old(root) {
+        animation: 220ms ease both sair-para-esquerda;
+    }
+    ::view-transition-new(root) {
+        animation: 220ms ease both entrar-da-direita;
+    }
+}
+
+@keyframes sair-para-esquerda {
+    to { opacity: 0; transform: translateX(-24%); }
+}
+@keyframes entrar-da-direita {
+    from { opacity: 0; transform: translateX(24%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+    }
+}
+
+@media (max-width: 767px) {
+    /* Indicadores de dois em dois, como os widgets do iPhone: um por linha,
+       quatro deles enchiam a primeira tela inteira antes de qualquer lista. As
+       grades das telas pedem 210px por card (`auto-fit`), o que no celular dá
+       uma coluna só; aqui o piso cede. O valor encolhe com o card
+       (`cqi` = largura do próprio card) para caber inteiro sem quebrar. */
+    .grid:has(> [data-kpi]) {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 10px;
+    }
+    [data-kpi] {
+        container-type: inline-size;
+        padding: 13px 12px 12px;
+    }
+    [data-kpi-valor] {
+        font-size: min(27px, 12.5cqi);
+    }
+
+    /* Na metade da largura, o rótulo e o ícone não cabem na mesma linha:
+       "Administradores" empurrava o ícone para fora do card, e os outros o
+       deixavam colado na borda (visto no iPhone do dono, 23/10/2026). O
+       rótulo fica com a linha toda, e o ícone desce para o lado do número,
+       que é curto e sempre deixa espaço. */
+    [data-kpi] {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        column-gap: 8px;
+        align-items: center;
+        align-content: start;
+    }
+    [data-kpi-topo] {
+        display: contents;
+    }
+    [data-kpi-topo] > p {
+        grid-column: 1 / -1;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+    [data-kpi-icone] {
+        grid-column: 2;
+        grid-row: 2;
+        margin-top: 8px;
+    }
+    [data-kpi-valor] {
+        grid-column: 1;
+        grid-row: 2;
+    }
+    [data-kpi] > :not([data-kpi-topo]):not([data-kpi-valor]):not(.absolute) {
+        grid-column: 1 / -1;
+    }
+}
+
+/*
+ * No celular, o quadro de tarefas cresce com o conteúdo e a PÁGINA rola.
+ *
+ * No computador a tela ocupa a altura da janela e cada coluna rola por dentro
+ * (`data-altura-da-janela`, no `tarefas.index`). No celular os filtros
+ * empilham e comem quase toda essa altura: sobravam a tira de etapas e uma
+ * fresta, e os cards ficavam escondidos numa rolagem de poucos pixels — o
+ * dono abriu no iPhone e não viu tarefa nenhuma (23/10/2026). Como no celular
+ * aparece uma etapa por vez, não há colunas para alinhar, e o motivo da
+ * altura fixa deixa de existir.
+ */
+@media (max-width: 767px) {
+    [data-altura-da-janela] {
+        height: auto !important;
+        min-height: 0 !important;
+    }
+
+    [data-altura-da-janela] [data-corpo-do-quadro],
+    [data-altura-da-janela] [data-quadro] {
+        flex: none;
+    }
+
+    [data-altura-da-janela] [data-quadro] section[data-status] > div {
+        overflow-y: visible;
+    }
+
+    /* O cabeçalho do quadro tem 52px e uma linha só: no computador o título,
+       a ajuda e os chips cabem lado a lado. A 390px os chips ficavam sem
+       espaço nenhum e a ajuda saía cortada na borda — aqui eles descem para
+       uma segunda linha, inteira, que rola de lado. */
+    [data-cabeca-do-quadro] {
+        height: auto !important;
+        flex-wrap: wrap;
+        row-gap: 8px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+    [data-chips-do-quadro] {
+        flex-basis: 100%;
+        margin-left: 0;
+        order: 1;
+    }
+    /* A linha de baixo do título ("6 etapas · concluída = em produção") tem
+       ~270px sem quebra: com ela, a ajuda e os botões caíam cada um numa
+       linha. O que ela diz está na própria tira de etapas logo abaixo. */
+    [data-cabeca-do-quadro] [data-fora-da-tela-cheia] > p {
+        display: none;
+    }
+}
+
+/*
+ * A folha de filtros do celular (`x-folha-filtros`, no formulário com
+ * `data-folha-filtros`).
+ *
+ * Fechada, a barra mostra só a busca e o botão "Filtros". Aberta, o próprio
+ * formulário sobe de baixo, por cima da barra de abas (45) e abaixo dos
+ * modais (50): os campos empilham na largura toda, como numa folha do iPhone,
+ * e o botão vira o "Fechar" no alto.
+ */
+@media (max-width: 767px) {
+    form[data-folha-filtros]:not([data-folha-aberta]) > :not(label:has(input[type=search])):not([data-folha-botao]) {
+        display: none !important;
+    }
+    form[data-folha-filtros]:not([data-folha-aberta]) {
+        flex-wrap: nowrap;
+    }
+    form[data-folha-filtros]:not([data-folha-aberta]) > label:has(input[type=search]) {
+        min-width: 0;
+        max-width: none;
+    }
+
+    form[data-folha-filtros][data-folha-aberta] {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 47;
+        display: flex;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        gap: 10px;
+        max-height: 85dvh;
+        overflow-y: auto;
+        padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+        border-radius: 18px 18px 0 0;
+        border-top: 1px solid rgb(var(--line));
+        background: rgb(var(--panel-raised));
+        box-shadow: 0 -12px 40px rgb(0 0 0 / 0.25);
+    }
+    form[data-folha-filtros][data-folha-aberta] > * {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        margin-left: 0;
+        flex: none;
+    }
+    form[data-folha-filtros][data-folha-aberta] > [data-folha-botao] {
+        order: -1;
+        width: auto;
+        align-self: flex-end;
+    }
+    form[data-folha-filtros][data-folha-aberta] select,
+    form[data-folha-filtros][data-folha-aberta] > button[type=submit],
+    form[data-folha-filtros][data-folha-aberta] > a,
+    form[data-folha-filtros][data-folha-aberta] > label {
+        height: 44px;
+    }
+    /* Filtro que é um menu próprio (as prioridades das Tarefas): o botão
+       dele é o "campo", e acompanha a largura e a altura dos selects. */
+    form[data-folha-filtros][data-folha-aberta] > div > button[aria-expanded] {
+        width: 100%;
+        height: 44px;
+        font-size: 16px;
+    }
+    /* O menu dele abre DENTRO da folha, empurrando o resto: solto por cima,
+       cobria o "Filtrar" e passava da borda de baixo da tela. */
+    form[data-folha-filtros][data-folha-aberta] > div > button[aria-expanded] + div {
+        position: static;
+        width: 100%;
+    }
+    form[data-folha-filtros][data-folha-aberta] > button[type=submit] {
+        background: rgb(var(--brand));
+        color: rgb(var(--on-brand));
+        border-color: transparent;
+    }
+    form[data-folha-filtros][data-folha-aberta] > a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 767px) {
+    /* Cabeçalho de painel (`x-painel`): título e ações na primeira linha,
+       subtítulo inteiro na segunda. */
+    [data-cabeca-do-painel] {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        column-gap: 12px;
+        row-gap: 2px;
+        height: auto;
+        min-height: 38px;
+        padding-top: 9px;
+        padding-bottom: 9px;
+    }
+    [data-cabeca-do-painel] > h2 {
+        grid-column: 1;
+        grid-row: 1;
+    }
+    [data-cabeca-do-painel] > div {
+        grid-column: 2;
+        grid-row: 1;
+    }
+    [data-cabeca-do-painel] > span {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        white-space: normal;
+    }
+    [data-cabeca-do-painel] > div:empty {
+        display: none;
+    }
+}
+
+/*
+ * Tabelas viram cartões no celular (`x-tabela`, com `data-cartoes`).
+ *
+ * A tabela do computador pede de 460 a 1180px; a 390px ela rolava de lado, e
+ * a coluna de ações — onde moram editar e remover — ficava fora da tela, onde
+ * ninguém a procura. No cartão cada linha é um bloco: a primeira coluna (o
+ * nome do que a linha é) no alto, as outras como pares "rótulo · valor", e os
+ * botões no pé, alinhados à direita como no fim da linha do computador.
+ *
+ * O rótulo vem do cabeçalho (`rotularTabelas`, no `app.js`). Linha de uma
+ * célula só (grupo, "nenhum registro") ocupa o cartão inteiro, sem rótulo.
+ */
+@media (max-width: 767px) {
+    table[data-cartoes] {
+        display: block;
+        min-width: 0 !important;
+    }
+    table[data-cartoes] thead {
+        display: none;
+    }
+    table[data-cartoes] tbody,
+    table[data-cartoes] tfoot {
+        display: block;
+    }
+    table[data-cartoes] tr {
+        display: block;
+        padding: 12px 16px;
+    }
+    /* Grade, e não flex: a célula costuma ter duas linhas empilhadas (valor e
+       detalhe, em dois `block`), e o flex as poria lado a lado. Na grade o
+       rótulo fica na primeira linha da primeira coluna, e cada pedaço do
+       valor desce na segunda, alinhado à direita. */
+    table[data-cartoes] td {
+        display: grid;
+        grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+        column-gap: 12px;
+        align-items: baseline;
+        padding: 3px 0 !important;
+        text-align: right !important;
+    }
+    table[data-cartoes] td > * {
+        grid-column: 2;
+        justify-self: end;
+        min-width: 0;
+        max-width: 100%;
+    }
+    table[data-cartoes] td::before {
+        content: attr(data-rotulo);
+        grid-column: 1;
+        grid-row: 1;
+        max-width: 42vw;
+        text-align: left;
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 10.5px;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        color: rgb(var(--ink-faint));
+    }
+
+    /* Sem rótulo (botões, célula única): nada ao lado, o conteúdo ocupa a
+       largura — à direita, como os botões ficam no fim da linha. */
+    table[data-cartoes] td[data-rotulo='']::before,
+    table[data-cartoes] td:not([data-rotulo])::before {
+        content: none;
+    }
+    table[data-cartoes] td[data-rotulo=''],
+    table[data-cartoes] td:not([data-rotulo]) {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+    }
+    table[data-cartoes] td[data-rotulo='']:not(:first-child) {
+        margin-top: 6px;
+    }
+
+    /* A primeira coluna é o título do cartão: à esquerda, sem rótulo, com
+       um respiro antes dos pares. Célula única também vai à esquerda. */
+    table[data-cartoes] td:first-child,
+    table[data-cartoes] td[colspan] {
+        display: block;
+        text-align: left !important;
+        padding-bottom: 6px !important;
+    }
+    table[data-cartoes] td:first-child::before,
+    table[data-cartoes] td[colspan]::before {
+        content: none;
+    }
+    table[data-cartoes] td:first-child > *,
+    table[data-cartoes] td[colspan] > * {
+        justify-self: auto;
+    }
+    table[data-cartoes] td:only-child {
+        padding-bottom: 3px !important;
+    }
+}
+
+@media (max-width: 767px) {
+    /* Campo de filtro não passa da tela: as barras de filtro do computador
+       põem os selects lado a lado com a largura do texto mais longo, e no
+       celular um nome de pessoa comprido empurrava o select para fora. */
+    main select,
+    main input {
+        max-width: 100%;
+    }
+}

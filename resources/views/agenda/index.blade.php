@@ -15,6 +15,11 @@
         página rolar, faria a barra de visão e o botão de novo compromisso
         subirem para fora da tela justamente quando há muita coisa marcada, que
         é quando eles mais servem.
+
+        A Lista no celular é a exceção: lá a barra de abas fica sempre à mão, e
+        uma caixa com rolagem própria dentro da página que também rola era
+        duas rolagens no mesmo dedo. Semana e Mês continuam na altura da
+        janela — a grade delas precisa dela.
     --}}
     <div x-data="agendaTela({
             visao: @js($visao),
@@ -27,7 +32,7 @@
             usuarioId: @js($usuarioId),
             tarefas: @js($tarefasVinculaveis),
          })"
-         class="flex flex-col gap-3.5"
+         @class(['flex flex-col gap-3.5', 'max-md:!h-auto' => $visao === 'lista'])
          style="height: calc(100vh - 120px)">
 
         @include('agenda._barra')
