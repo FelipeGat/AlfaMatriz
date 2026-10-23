@@ -148,6 +148,39 @@ class SuportePedroRunnerController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /** Até 5 mudanças de agenda pendentes, reservadas para esta máquina (pedro-dia-do-tecnico, contrato §2). */
+    public function agenda(Request $request): JsonResponse
+    {
+        $this->maquina($request);
+        $this->exigirConta($request);
+        $lista = DB::transaction(function () {
+            $m = \App\Models\SuporteGestorAgenda::where('situacao', 'pendente')->orderBy('id')->lockForUpdate()->limit(5)->get();
+            foreach ($m as $x) {
+                $x->update(['situacao' => 'reservado', 'reservado_em' => now()]);
+            }
+
+            return $m;
+        });
+
+        return response()->json(['mudancas' => $lista->map(fn ($m) => ['id' => $m->id, 'chave' => $m->chave, 'tipo' => $m->tipo, 'visita_id' => $m->visita_id,
+            'atendimento' => $m->atendimento, 'tecnico_id' => $m->tecnico_id, 'inicio' => $m->inicio, 'fim' => $m->fim, 'esperado' => $m->esperado,
+            'motivo' => $m->motivo, 'observacao' => $m->observacao, 'pedido_por' => $m->pedido_por, 'autor_email' => config('services.suporte_pedro.conta')])->values()]);
+    }
+
+    public function agendaFeita(Request $request, int $mudanca, \App\Services\Suporte\AgendaDoTecnico $agenda, CanalWhatsApp $canal): JsonResponse
+    {
+        $this->maquina($request);
+        $this->exigirConta($request);
+        $d = $request->validate(['ok' => ['required', 'boolean'], 'erro' => ['nullable', 'string', 'max:300'], 'visita_id' => ['nullable', 'integer'],
+            'numero' => ['nullable', 'string', 'max:30'], 'ja_estava' => ['nullable', 'boolean']]);
+        $m = \App\Models\SuporteGestorAgenda::whereKey($mudanca)->where('situacao', 'reservado')->firstOrFail();
+        $m->update($d['ok'] ? ['situacao' => 'feito', 'erro' => null, 'resultado' => array_filter(['visita_id' => $d['visita_id'] ?? null, 'numero' => $d['numero'] ?? null, 'ja_estava' => $d['ja_estava'] ?? null], fn ($v) => $v !== null)]
+            : ['situacao' => 'falhou', 'erro' => mb_substr((string) ($d['erro'] ?? 'o Gestor não gravou'), 0, 300)]);
+        $agenda->concluirLote($m->lote, $canal);
+
+        return response()->json(['ok' => true]);
+    }
+
     private function exigirConta(Request $request): void
     {
         abort_unless(mb_strtolower($request->user()->email) === mb_strtolower((string) config('services.suporte_pedro.conta')), 403);

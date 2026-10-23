@@ -221,6 +221,10 @@ class Pedro
             if ($bloco['acao'] === 'previa_agenda' && ! $c->comHumano()) {
                 $bloco['resposta'] .= app(AgendaDoTecnico::class)->previa($c, $interno, (array) ($bloco['agenda'] ?? []));
             }
+            // O "sim" da prévia (FASE 4): a resposta é a do sistema, que sabe o que entrou na fila.
+            if ($bloco['acao'] === 'confirmar_agenda' && ! $c->comHumano()) {
+                $bloco['resposta'] = app(AgendaDoTecnico::class)->confirmar($c, $interno);
+            }
             $bloco = ['acao' => 'responder', 'cliente' => null, 'sistema' => null, 'destino' => null, 'assunto_id' => null, 'roteiro' => null, 'setor' => null, 'registro' => null] + $bloco;
         }
 
@@ -377,6 +381,12 @@ class Pedro
         // Abertura no Gestor que ninguém pegou (máquina desligada): vai a um atendente, com o cliente avisado.
         foreach (\App\Models\SuporteGestorAbertura::with('conversa')->where('situacao', 'pendente')->where('created_at', '<', $limite)->get() as $a) {
             $this->atendimento->concluirNoGestor($a, null, 'nenhuma máquina gravou no Gestor', $this->canal);
+            $n++;
+        }
+        // Mudança de agenda que nenhuma máquina pegou (pedro-dia-do-tecnico): falha, e quem pediu recebe o resumo.
+        foreach (\App\Models\SuporteGestorAgenda::where('situacao', 'pendente')->where('created_at', '<', $limite)->get() as $m) {
+            $m->update(['situacao' => 'falhou', 'erro' => 'nenhuma máquina gravou no Gestor']);
+            app(AgendaDoTecnico::class)->concluirLote($m->lote, $this->canal);
             $n++;
         }
         foreach (SuportePedido::with('conversa')->whereIn('situacao', ['pendente', 'reservado'])->where('created_at', '<', $limite)->get() as $p) {

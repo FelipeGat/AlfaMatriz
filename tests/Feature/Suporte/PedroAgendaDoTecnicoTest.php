@@ -5,6 +5,8 @@ namespace Tests\Feature\Suporte;
 use App\Models\CentralIaRunner;
 use App\Models\SuporteConversa;
 use App\Models\SuporteGestorAbertura;
+use App\Models\SuporteGestorAgenda;
+use Laravel\Sanctum\Sanctum;
 use App\Models\User;
 use App\Services\Suporte\AcessoInterno;
 use App\Services\Suporte\Conhecimento;
@@ -70,7 +72,7 @@ class PedroAgendaDoTecnicoTest extends TestCase
         $this->assertStringContainsString('- Cleison: 08:00 às 10:00 — nº 756 — Corais de Parati — finalizado — junto: Cristiano', $p);
         $this->assertStringContainsString('- Vitor: 08:00 às 10:00 — nº 824 — Revizza (pré-cliente) — agendado', $p, 'pré-cliente pelo nome, nunca "sem cliente"');
         $this->assertStringContainsString('- Vitor: 08:00 às 18:00 — nº 729 — Emanuele (sem cadastro) — finalizado', $p, 'atendimento sem cadastro, pelo nome de quem pediu');
-        $this->assertStringContainsString('A GRAVAÇÃO no Gestor ainda NÃO está disponível', $p);
+        $this->assertStringContainsString('Ao "sim", use acao "confirmar_agenda"', $p);
         $this->assertStringNotContainsString('02/11', $p, 'só os dias pedidos e os vizinhos');
     }
 
@@ -152,5 +154,62 @@ class PedroAgendaDoTecnicoTest extends TestCase
 
         $this->assertStringContainsString('Lançar ou corrigir a agenda é só para diretor e gestor.', $msg);
         $this->assertNull($c->fresh()->previa_agenda);
+    }
+
+    private function confirmar(SuporteConversa $c): string
+    {
+        $c->mensagens()->create(['wamid' => 'wamid.'.uniqid(), 'direcao' => 'entrada', 'tipo' => 'text', 'texto' => 'Sim', 'enviada_em' => now()]);
+        $p = app(Pedro::class)->enfileirar($c->id);
+        $p->update(['situacao' => 'reservado']);
+        app(Pedro::class)->concluir($this->felipe, $p->id, '<<<PEDRO '.json_encode(['resposta' => 'Lançando!', 'acao' => 'confirmar_agenda']).' PEDRO>>>', null);
+
+        return (string) $c->mensagens()->reorder()->where('direcao', 'pedro')->orderByDesc('id')->value('texto');
+    }
+
+    /** FASE 4: o "sim" põe as visitas na fila; a máquina grava; quem pediu recebe um resumo só. */
+    public function test_sim_grava_pela_fila_sem_duplicar_e_resume_o_lote(): void
+    {
+        $c = $this->conversa('5527998845397', 'a visita do Vitor na Revizza hoje foi das 10:00 às 11:00, e ele foi ao Corais das 13:00 às 14:00');
+        $this->concluir($c, [
+            ['tipo' => 'reagendar_visita', 'visita_id' => 1185, 'tecnico_id' => 9, 'data' => '2026-10-23', 'hora_inicio' => '10:00', 'hora_fim' => '11:00'],
+            ['tipo' => 'criar_visita', 'atendimento' => '756', 'tecnico_id' => 9, 'data' => '2026-10-23', 'hora_inicio' => '13:00', 'hora_fim' => '14:00', 'observacao' => 'troca de estrutura metálica'],
+            ['tipo' => 'abrir_atendimento', 'cliente' => 'novo_pre', 'tecnico_id' => 9, 'data' => '2026-10-23', 'hora_inicio' => '15:00', 'hora_fim' => '16:00'],
+        ]);
+        $this->assertSame([], $c->fresh()->previa_agenda['problemas']);
+
+        $msg = $this->confirmar($c);
+        $this->assertSame("Enviei 2 mudanças da agenda para o Gestor; o resultado chega em seguida.\nOs 1 atendimento(s) novo(s) seguem pelo registro de atendimento: vamos a eles.", $msg);
+        $this->assertSame(2, SuporteGestorAgenda::count());
+        $this->assertSame(['inicio' => '2026-10-23 08:00', 'fim' => '2026-10-23 10:00', 'situacao' => 'agendado'], SuporteGestorAgenda::where('tipo', 'reagendar_visita')->value('esperado'));
+        // O "sim" repetido não põe nada de novo na fila.
+        $this->assertStringContainsString('Não achei uma prévia da agenda para confirmar', $this->confirmar($c->fresh()));
+        $this->assertSame(2, SuporteGestorAgenda::count());
+
+        Sanctum::actingAs($this->felipe, ['central-ia-runner']);
+        $mudancas = $this->postJson(route('suporte.runner.agenda'), ['maquina' => 'wsl'])->assertOk()->json('mudancas');
+        $this->assertSame(['reagendar_visita', 'criar_visita'], array_column($mudancas, 'tipo'));
+        $this->assertSame(['2026-10-23 13:00', '2026-10-23 14:00', '756', 'Felipe'], [$mudancas[1]['inicio'], $mudancas[1]['fim'], $mudancas[1]['atendimento'], $mudancas[1]['pedido_por']]);
+        $this->assertSame([], $this->postJson(route('suporte.runner.agenda'), ['maquina' => 'wsl'])->json('mudancas'), 'reservadas não saem de novo');
+
+        $this->postJson(route('suporte.runner.agenda-feita', $mudancas[0]['id']), ['maquina' => 'wsl', 'ok' => true, 'visita_id' => 1185, 'numero' => '824'])->assertOk();
+        Http::assertNotSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), 'Agenda no Gestor'));
+        $this->postJson(route('suporte.runner.agenda-feita', $mudancas[1]['id']), ['maquina' => 'wsl', 'ok' => false, 'erro' => 'Técnico já tem agenda no dia 23/10/2026 entre 13:00 e 14:00.'])->assertOk();
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Agenda no Gestor:\n• ✅ horário corrigido no nº 824, 23/10 10:00 às 11:00\n• ❌ visita criada no nº 756: não gravou (Técnico já tem agenda no dia 23/10/2026 entre 13:00 e 14:00.)");
+    }
+
+    public function test_sim_com_previa_pendente_nao_grava_e_mudanca_sem_maquina_vence(): void
+    {
+        $c = $this->conversa('5527998845397', self::RELATO);
+        $this->concluir($c, [['tipo' => 'criar_visita', 'atendimento' => '756', 'tecnico_id' => 9, 'data' => '2026-10-23', 'hora_inicio' => '08:00', 'hora_fim' => '09:30']]);
+        $this->assertStringStartsWith('Ainda não lancei, porque conferi no Gestor e falta acertar:', $this->confirmar($c));
+        $this->assertSame(0, SuporteGestorAgenda::count());
+
+        $c2 = $this->conversa('5527998845397', 'corrige a visita da Revizza para 10:00 às 11:00');
+        $this->concluir($c2, [['tipo' => 'reagendar_visita', 'visita_id' => 1185, 'tecnico_id' => 9, 'data' => '2026-10-23', 'hora_inicio' => '10:00', 'hora_fim' => '11:00']]);
+        $this->confirmar($c2->fresh());
+        Carbon::setTestNow(now()->addMinutes(5));
+        $this->artisan('suporte:pedro')->assertSuccessful();
+        $this->assertSame(['falhou', 'nenhuma máquina gravou no Gestor'], [SuporteGestorAgenda::sole()->situacao, SuporteGestorAgenda::sole()->erro]);
+        Http::assertSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), '❌ horário corrigido no nº 824: não gravou (nenhuma máquina gravou no Gestor)'));
     }
 }

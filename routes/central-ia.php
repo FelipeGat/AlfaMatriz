@@ -37,6 +37,9 @@ Route::prefix('api/central-ia/runner')
         Route::post('suporte/proxima', [\App\Http\Controllers\SuportePedroRunnerController::class, 'proxima'])->name('suporte.runner.proxima');
         Route::post('suporte/gestor', [\App\Http\Controllers\SuportePedroRunnerController::class, 'gestor'])->name('suporte.runner.gestor');
         Route::post('suporte/gestor/aberturas', [\App\Http\Controllers\SuportePedroRunnerController::class, 'aberturas'])->name('suporte.runner.aberturas');
+        // pedro-dia-do-tecnico: as mudanças da agenda dos técnicos que a máquina grava no Gestor.
+        Route::post('suporte/gestor/agenda', [\App\Http\Controllers\SuportePedroRunnerController::class, 'agenda'])->name('suporte.runner.agenda');
+        Route::post('suporte/gestor/agenda/{mudanca}', [\App\Http\Controllers\SuportePedroRunnerController::class, 'agendaFeita'])->whereNumber('mudanca')->name('suporte.runner.agenda-feita');
         Route::post('suporte/gestor/aberturas/{abertura}', [\App\Http\Controllers\SuportePedroRunnerController::class, 'aberturaFeita'])->whereNumber('abertura')->name('suporte.runner.abertura-feita');
         Route::post('suporte/{pedido}/resposta', [\App\Http\Controllers\SuportePedroRunnerController::class, 'resposta'])->whereNumber('pedido')->name('suporte.runner.resposta');
         Route::post('documentos/operacoes', [\App\Http\Controllers\DocumentosRunnerController::class, 'operacoes'])->name('documentos.runner.operacoes');

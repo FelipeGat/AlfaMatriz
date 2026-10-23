@@ -80,11 +80,11 @@ Ref: spec.md FR-005 (sub-FASE que emergiu na execução da 2.2: o retrato não t
 
 Ref: research.md Decision 3; Gestor CLAUDE.md regra 5
 
-- [ ] 3.1.1 Ler `Api/V1/Admin/AtendimentoVisitaController` e mapear as regras de reagendar e cancelar
-- [ ] 3.1.2 `AtendimentoVisitaService` (reagendar, cancelar) com as mesmas regras e mensagens
-- [ ] 3.1.3 Controller da API passa a chamar o serviço, sem mudar o contrato do app
-- [ ] 3.1.4 Testes de integração do serviço (reagendar, conflito, cancelar finalizada sem motivo)
-- [ ] 3.1.5 Seção `App:` no commit; QA; publicar (com autorização)
+- [x] 3.1.1 Ler `Api/V1/Admin/AtendimentoVisitaController` e mapear as regras de reagendar e cancelar
+- [x] 3.1.2 `AtendimentoVisitaService` (reagendar, cancelar) com as mesmas regras e mensagens
+- [x] 3.1.3 Controller da API passa a chamar o serviço, sem mudar o contrato do app
+- [x] 3.1.4 Testes de integração do serviço (reagendar, conflito, cancelar finalizada sem motivo)
+- [x] 3.1.5 Seção `App:` no commit; QA; publicar (com autorização) <!-- QA do Copilot sem cota em 23/10; dono liberou seguir sem ele. Gestor publicado em 23/10. -->
 
 ---
 
@@ -94,30 +94,38 @@ Ref: research.md Decision 3; Gestor CLAUDE.md regra 5
 
 Ref: spec.md FR-010..FR-015; data-model.md "Mudança de agenda"; contracts/runner-agenda.md §2
 
-- [ ] 4.1.1 Migração da tabela `suporte_gestor_agenda` e modelo
-- [ ] 4.1.2 "Sim" converte a prévia em mudanças (e aberturas, para atendimento novo), com chave única
-- [ ] 4.1.3 Rotas do runner: reservar e devolver resultado; mudança com abertura só depois dela feita
-- [ ] 4.1.4 Resposta final a quem pediu, com números, falhas e o aviso de finalização às 23:55
-- [ ] 4.1.5 Mudança que ninguém pegou vence como as aberturas
-- [ ] 4.1.6 Testes: "sim" repetido não duplica; falha parcial; sem "sim" nada entra (cenários 4 e 5)
+- [x] 4.1.1 Migração da tabela `suporte_gestor_agenda` e modelo
+- [x] 4.1.2 "Sim" converte a prévia em mudanças (e aberturas, para atendimento novo), com chave única <!-- atendimento novo segue pelo registro de atendimento (prévia própria: empresa, assunto, título); o "sim" da agenda grava só as visitas -->
+- [x] 4.1.3 Rotas do runner: reservar e devolver resultado; mudança com abertura só depois dela feita
+- [x] 4.1.4 Resposta final a quem pediu, com números, falhas e o aviso de finalização às 23:55
+- [x] 4.1.5 Mudança que ninguém pegou vence como as aberturas
+- [x] 4.1.6 Testes: "sim" repetido não duplica; falha parcial; sem "sim" nada entra (cenários 4 e 5)
+
+### 4.1-bis Visita com horário exato no Gestor `[A]`
+
+Ref: research.md Decision 3 (sub-FASE que emergiu na 4.2: o `adicionarVisitas` só aceita horas inteiras)
+
+- [x] 4.1-bis.1 `AtendimentoVisitaService::criar` com início e fim exatos e as mesmas guardas
+- [x] 4.1-bis.2 Teste: 08:00–09:30 não vira 10:00; conflito e limite do período
+- [x] 4.1-bis.3 Publicar o Gestor
 
 ### 4.2 Aplicação no Gestor `[C]`
 
 Ref: research.md Decisions 3 e 4; contracts/runner-agenda.md §3
 
-- [ ] 4.2.1 `suporte_gestor_agenda.php`: criar visita (idempotente), reagendar e cancelar pelo serviço, conferindo o `esperado`
-- [ ] 4.2.2 Ensaio sem `--apply` na base local do Gestor para cada tipo
-- [ ] 4.2.3 Runner: volta da fila de agenda (com o vigia de gravação presa)
-- [ ] 4.2.4 Teste de ponta a ponta na base local (cenário 7)
+- [x] 4.2.1 `suporte_gestor_agenda.php`: criar visita (idempotente), reagendar e cancelar pelo serviço, conferindo o `esperado`
+- [x] 4.2.2 Ensaio sem `--apply` na base local do Gestor para cada tipo
+- [x] 4.2.3 Runner: volta da fila de agenda (com o vigia de gravação presa)
+- [x] 4.2.4 Teste de ponta a ponta na base local (cenário 7) <!-- ensaio do script na base local do Gestor: criar, reagendar, recusa por "mudou desde a prévia", cancelar com e sem motivo, atendimento inexistente -->
 - [ ] 4.2.5 Publicar (com autorização), instalar no runner, reiniciar e observar uma gravação real
 
 ### 4.3 Correção pontual de visita (story 4) `[M]`
 
 Ref: spec.md FR-013
 
-- [ ] 4.3.1 Pedido "passa a visita X para …" vira prévia de uma mudança só, com antes e depois
-- [ ] 4.3.2 Cancelamento pede o motivo
-- [ ] 4.3.3 Testes da correção e do cancelamento
+- [x] 4.3.1 Pedido "passa a visita X para …" vira prévia de uma mudança só, com antes e depois
+- [x] 4.3.2 Cancelamento pede o motivo
+- [x] 4.3.3 Testes da correção e do cancelamento
 
 ---
 
@@ -153,6 +161,10 @@ flowchart TD
 - Idempotência e reconferência do estado no Gestor.
 
 ## Escopo Excluido
+
+- Próxima melhoria pedida pelo dono (23/10/2026): quando a resposta for longa, o Pedro perguntar
+  "quer que eu digite tudo ou mande um áudio?" e responder em áudio (voz gerada). Recurso novo,
+  com spec própria. Nesta frente, só o limite de tamanho das mensagens (v2026.10.23.7).
 
 - Jornada do técnico (almoço, hora extra): é do ponto do RH.
 - Finalizar visita com horário real (decisão do dono: entra agendada; FR-015).
