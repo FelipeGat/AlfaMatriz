@@ -67,7 +67,7 @@ class SuportePedroRunnerController extends Controller
         $d = $request->validate([
             'lido_em' => ['required', 'date'],
             'clientes' => ['present', 'array', 'max:20000'], 'atendimentos' => ['present', 'array', 'max:20000'],
-            'equipe' => ['nullable', 'array', 'max:500'], 'assuntos' => ['nullable', 'array', 'max:2000'], 'showroom' => ['nullable', 'array', 'max:500'],
+            'equipe' => ['nullable', 'array', 'max:500'], 'assuntos' => ['nullable', 'array', 'max:2000'], 'showroom' => ['nullable', 'array', 'max:500'], 'visitas' => ['nullable', 'array', 'max:5000'],
         ]);
         $d['clientes'] = $this->itens('clientes', $d['clientes'], [
             'id' => ['required', 'integer'],
@@ -91,7 +91,12 @@ class SuportePedroRunnerController extends Controller
         $d['showroom'] = $this->itens('showroom', $d['showroom'] ?? [], ['categoria' => ['nullable', 'string', 'max:120'], 'titulo' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string', 'max:500'], 'texto' => ['nullable', 'string', 'max:2000'],
             'url' => ['nullable', 'string', 'max:500'], 'video' => ['nullable', 'string', 'max:500']]);
-        $diretorio->gravar($maquina, \Illuminate\Support\Carbon::parse($d['lido_em'])->setTimezone(config('app.timezone'))->toDateTimeString(), $d['clientes'], $d['atendimentos'], $d['assuntos'] ?? [], $d['equipe'] ?? [], $d['showroom'] ?? []);
+        // A agenda dos técnicos (pedro-dia-do-tecnico): situação como as constantes do AtendimentoVisita do Gestor.
+        $d['visitas'] = $this->itens('visitas', $d['visitas'] ?? [], ['id' => ['required', 'integer'], 'atendimento_id' => ['required', 'integer'],
+            'tecnico_id' => ['nullable', 'integer'], 'inicio' => ['required', 'date_format:Y-m-d H:i'], 'fim' => ['nullable', 'date_format:Y-m-d H:i'],
+            'situacao' => ['required', 'string', 'max:30'], 'observacoes' => ['nullable', 'string', 'max:300'],
+            'adicionais' => ['nullable', 'array', 'max:20'], 'adicionais.*' => ['integer']]);
+        $diretorio->gravar($maquina, \Illuminate\Support\Carbon::parse($d['lido_em'])->setTimezone(config('app.timezone'))->toDateTimeString(), $d['clientes'], $d['atendimentos'], $d['assuntos'] ?? [], $d['equipe'] ?? [], $d['showroom'] ?? [], $d['visitas']);
 
         return response()->json(['ok' => true, 'clientes' => count($d['clientes'])]);
     }

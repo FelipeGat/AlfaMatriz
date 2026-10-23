@@ -18,13 +18,14 @@ class DiretorioGestor
 
     private ?array $retrato = null;
 
-    public function gravar(string $maquina, string $lidoEm, array $clientes, array $atendimentos, array $assuntos = [], array $equipe = [], array $showroom = []): void
+    public function gravar(string $maquina, string $lidoEm, array $clientes, array $atendimentos, array $assuntos = [], array $equipe = [], array $showroom = [], array $visitas = []): void
     {
         DB::table('suporte_gestor_retrato')->delete();
         DB::table('suporte_gestor_retrato')->insert(['maquina' => $maquina, 'lido_em' => $lidoEm, 'clientes' => json_encode(array_values($clientes), JSON_UNESCAPED_UNICODE),
             'atendimentos' => json_encode(array_values($atendimentos), JSON_UNESCAPED_UNICODE), 'assuntos' => json_encode(array_values($assuntos), JSON_UNESCAPED_UNICODE),
             'equipe' => json_encode(array_values($equipe), JSON_UNESCAPED_UNICODE),
             'showroom' => json_encode(array_values($showroom), JSON_UNESCAPED_UNICODE),
+            'visitas' => json_encode(array_values($visitas), JSON_UNESCAPED_UNICODE),
             'created_at' => now(), 'updated_at' => now()]);
         $this->retrato = null;
     }
@@ -37,7 +38,8 @@ class DiretorioGestor
             $this->retrato = ['lido_em' => $r?->lido_em, 'clientes' => $r ? (array) json_decode($r->clientes, true) : [], 'atendimentos' => $r ? (array) json_decode($r->atendimentos, true) : [],
                 'assuntos' => $r ? (array) json_decode((string) $r->assuntos, true) : [],
                 'equipe' => $r ? (array) json_decode((string) ($r->equipe ?? '[]'), true) : [],
-                'showroom' => $r ? (array) json_decode((string) ($r->showroom ?? '[]'), true) : []];
+                'showroom' => $r ? (array) json_decode((string) ($r->showroom ?? '[]'), true) : [],
+                'visitas' => $r ? (array) json_decode((string) ($r->visitas ?? '[]'), true) : []];
         }
 
         return $this->retrato;

@@ -108,6 +108,31 @@ try {
             $equipe[] = ['id' => (int) $f->id, 'nome' => (string) $f->nome, 'telefones' => $fones];
         }
     }
+    // A agenda dos técnicos (pedro-dia-do-tecnico, 23/10/2026): as visitas de 7 dias para trás a 14
+    // para frente, para o Pedro mostrar o dia de um técnico e, depois, lançar e corrigir.
+    $visitas = [];
+    if (Schema::hasTable('atendimento_visitas')) {
+        $adicionais = [];
+        if (Schema::hasTable('atendimento_visita_tecnicos')) {
+            foreach (DB::table('atendimento_visita_tecnicos')->get(['atendimento_visita_id', 'funcionario_id']) as $t) {
+                $adicionais[$t->atendimento_visita_id][] = (int) $t->funcionario_id;
+            }
+        }
+        foreach (DB::table('atendimento_visitas')->whereNull('deleted_at')
+            ->whereBetween('data_inicio', [now()->subDays(7)->startOfDay(), now()->addDays(14)->endOfDay()])
+            ->orderBy('data_inicio')->limit(5000)->get(['id', 'atendimento_id', 'funcionario_id', 'data_inicio', 'data_fim', 'status', 'observacoes']) as $v) {
+            $visitas[] = ['id' => (int) $v->id, 'atendimento_id' => (int) $v->atendimento_id, 'tecnico_id' => $v->funcionario_id ? (int) $v->funcionario_id : null,
+                'inicio' => substr((string) $v->data_inicio, 0, 16), 'fim' => $v->data_fim ? substr((string) $v->data_fim, 0, 16) : null,
+                'situacao' => (string) $v->status, 'observacoes' => mb_substr(trim((string) $v->observacoes), 0, 300),
+                'adicionais' => $adicionais[$v->id] ?? []];
+        }
+        // Quem aparece como técnico de visita entra na equipe mesmo sem telefone: o Pedro precisa do nome.
+        $naEquipe = array_column($equipe, 'id');
+        $daAgenda = array_diff(array_unique(array_filter(array_merge(array_column($visitas, 'tecnico_id'), ...array_column($visitas, 'adicionais')))), $naEquipe);
+        foreach ($daAgenda ? DB::table('funcionarios')->whereIn('id', $daAgenda)->get(['id', 'nome']) : [] as $f) {
+            $equipe[] = ['id' => (int) $f->id, 'nome' => (string) $f->nome, 'telefones' => []];
+        }
+    }
     // Técnicos de cada atendimento (além do funcionário responsável).
     $tecnicos = [];
     if (Schema::hasTable('atendimento_tecnicos')) {
@@ -158,7 +183,7 @@ try {
         }
     }
 
-    echo 'SUPORTE_GESTOR:'.json_encode(['clientes' => $clientes, 'atendimentos' => $atendimentos, 'assuntos' => $assuntos, 'equipe' => $equipe, 'showroom' => $showroom], JSON_UNESCAPED_UNICODE)."\n";
+    echo 'SUPORTE_GESTOR:'.json_encode(['clientes' => $clientes, 'atendimentos' => $atendimentos, 'assuntos' => $assuntos, 'equipe' => $equipe, 'showroom' => $showroom, 'visitas' => $visitas], JSON_UNESCAPED_UNICODE)."\n";
 } finally {
     DB::rollBack();
 }

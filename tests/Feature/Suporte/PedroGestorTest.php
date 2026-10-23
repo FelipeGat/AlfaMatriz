@@ -178,6 +178,24 @@ class PedroGestorTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('clientes.7.nome');
     }
 
+    /** pedro-dia-do-tecnico, tarefa 1.1: as visitas dos técnicos chegam no retrato e ficam para o Pedro. */
+    public function test_retrato_leva_as_visitas_dos_tecnicos(): void
+    {
+        $this->runner();
+        $visita = ['id' => 1185, 'atendimento_id' => 925, 'tecnico_id' => 9, 'inicio' => '2026-10-23 08:00', 'fim' => '2026-10-23 10:00',
+            'situacao' => 'agendado', 'observacoes' => 'levar escada', 'adicionais' => [21]];
+        $corpo = ['maquina' => 'wsl', 'lido_em' => now()->toIso8601String(), 'clientes' => [], 'atendimentos' => [], 'visitas' => [$visita]];
+        $this->postJson(route('suporte.runner.gestor'), $corpo)->assertOk();
+        $this->assertEquals([$visita], app(\App\Services\Suporte\DiretorioGestor::class)->retrato()['visitas']);
+
+        $corpo['visitas'][0]['inicio'] = '23/10/2026 08:00';
+        $this->postJson(route('suporte.runner.gestor'), $corpo)->assertUnprocessable()->assertJsonValidationErrors('visitas.0.inicio');
+        // Retrato de máquina antiga, sem a lista: continua valendo, sem visitas.
+        unset($corpo['visitas']);
+        $this->postJson(route('suporte.runner.gestor'), $corpo)->assertOk();
+        $this->assertSame([], app(\App\Services\Suporte\DiretorioGestor::class)->retrato()['visitas']);
+    }
+
     public function test_gravacao_ligada_a_maquina_grava_e_o_cliente_recebe_o_numero(): void
     {
         config(['services.suporte_pedro.gestor_gravar' => true]);

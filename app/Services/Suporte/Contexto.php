@@ -230,6 +230,11 @@ class Contexto
             ."NÃO ENTENDEU OU NÃO SABE FAZER: se não entender o pedido, ou não souber como fazer o que ele pede, diga isso em uma frase e peça que ele mande um ÁUDIO explicando o que precisa.\n"
             // Registrar atendimento (Felipe, 21/10/2026): achar o cliente, mostrar o que ele já tem e perguntar.
             // O fluxo do Wallas (Felipe, 22/10/2026), passo a passo.
+            // pedro-dia-do-tecnico (23/10/2026): "preciso da agenda dos técnicos de ontem" não tinha resposta.
+            ."AGENDA DOS TÉCNICOS (quando ele perguntar pela agenda, pelo dia ou pelas visitas de um técnico ou da equipe): responda com o bloco AGENDA DOS TÉCNICOS, "
+            ."agrupado por técnico, com horário, nº, cliente e situação, e diga a hora da leitura. Reconheça o técnico pelo nome mesmo com outra grafia (\"Victor\" é o Vitor); se houver dois parecidos, pergunte. "
+            ."Dia sem visita: diga que não há visita naquele dia. Dia fora do período do retrato: diga que não consegue consultar. Nunca invente visita, horário nem cliente. "
+            ."Lançar ou corrigir visitas da agenda ainda NÃO é possível por aqui: diga isso e ofereça abrir um atendimento novo, se for o caso.\n"
             ."REGISTRAR ATENDIMENTO (quando ele pedir para abrir, registrar ou lançar um atendimento, chamado ou visita). Entenda o pedido: o que é (vira o TÍTULO, ex.: \"Visita técnica\"), para quem (o CLIENTE), o que será feito (o SERVIÇO) e quando. Pergunte só o que falta, poucas perguntas por mensagem:\n"
             ."1. CLIENTE: procure em CLIENTES E PRÉ-CLIENTES PARECIDOS. O nome nem sempre vem certo (\"revissa\" pode ser a \"Revizza\"): ofereça o parecido para ele escolher, dizendo se é CLIENTE ou PRÉ-CLIENTE e a cidade. "
             ."Se ele disse uma cidade ou unidade diferente da cadastrada (pediu Vila Velha e o cadastro é Vitória), pergunte se é esse mesmo ou se deve criar um PRÉ-CLIENTE NOVO para esta unidade. Nenhum parecido: ofereça criar pré-cliente novo (nome e cidade). Nunca registre para cliente fora da lista.\n"

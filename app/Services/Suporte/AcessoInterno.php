@@ -72,7 +72,7 @@ class AcessoInterno
     /** Os blocos de dados que este perfil vê, já em texto para o pedido à IA. @return list<string> */
     public function dados(array $acesso, string $ultimasMensagens): array
     {
-        $blocos = [$this->atendimentos($ultimasMensagens)];
+        $blocos = [$this->atendimentos($ultimasMensagens), $this->agenda($ultimasMensagens)];
         if (self::ve($acesso, 'gestor')) {
             $blocos[] = $this->gestor();
         }
@@ -170,6 +170,73 @@ class AcessoInterno
         }
 
         return $texto;
+    }
+
+    /**
+     * A agenda dos técnicos (pedro-dia-do-tecnico, FR-001..FR-003): as visitas dos dias citados na
+     * conversa ("ontem", "23/10") e de ontem, hoje e amanhã, do retrato do Gestor. Toda a lista de
+     * acesso interno consulta; só o que está na janela do retrato (7 dias para trás, 14 para frente).
+     */
+    private function agenda(string $ultimasMensagens): string
+    {
+        $d = app(DiretorioGestor::class);
+        $r = $d->retrato();
+        if (! ($r['lido_em'] ?? null)) {
+            return "## AGENDA DOS TÉCNICOS\n- O retrato do Gestor ainda não foi lido: diga que não consegue consultar a agenda agora.";
+        }
+        $hoje = CarbonImmutable::now(config('app.timezone'))->startOfDay();
+        $dias = collect([$hoje->subDay(), $hoje, $hoje->addDay()]);
+        $t = mb_strtolower($ultimasMensagens);
+        foreach (['anteontem' => -2, 'ontem' => -1, 'hoje' => 0, 'amanhã' => 1, 'amanha' => 1, 'depois de amanhã' => 2] as $palavra => $n) {
+            if (str_contains($t, $palavra)) {
+                $dias->push($hoje->addDays($n));
+            }
+        }
+        preg_match_all('/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/', $t, $m, PREG_SET_ORDER);
+        foreach ($m as $g) {
+            [$dia, $mes, $ano] = [$g[1], $g[2], $g[3] ?? ''];
+            $ano = $ano === '' ? $hoje->year : ((int) $ano < 100 ? 2000 + (int) $ano : (int) $ano);
+            if (checkdate((int) $mes, (int) $dia, $ano)) {
+                $dias->push(CarbonImmutable::create($ano, (int) $mes, (int) $dia, 0, 0, 0, config('app.timezone')));
+            }
+        }
+        $dias = $dias->unique(fn ($x) => $x->toDateString())->sortBy(fn ($x) => $x->toDateString())->take(-5)->values();
+
+        $equipe = collect($r['equipe'] ?? [])->keyBy('id');
+        $atendimentos = collect($r['atendimentos'] ?? [])->keyBy('id');
+        $nome = fn ($id) => (string) ($equipe[$id]['nome'] ?? 'técnico '.$id);
+        $texto = "## AGENDA DOS TÉCNICOS (visitas no Gestor, lido às ".$this->hora($r['lido_em']).'; o retrato cobre de '
+            .$hoje->subDays(7)->format('d/m').' a '.$hoje->addDays(14)->format('d/m').')';
+        foreach ($dias as $dia) {
+            $doDia = collect($r['visitas'] ?? [])->filter(fn ($v) => str_starts_with((string) ($v['inicio'] ?? ''), $dia->toDateString()))
+                ->sortBy(fn ($v) => $nome($v['tecnico_id'] ?? 0).$v['inicio'])->values();
+            $texto .= "\n### ".Str::ucfirst($dia->locale('pt_BR')->isoFormat('dddd, DD/MM/YYYY'));
+            if ($dia->lt($hoje->subDays(7)) || $dia->gt($hoje->addDays(14))) {
+                $texto .= "\n- Fora do período do retrato: diga que não consegue consultar este dia.";
+
+                continue;
+            }
+            if ($doDia->isEmpty()) {
+                $texto .= "\n- Nenhuma visita de técnico.";
+
+                continue;
+            }
+            foreach ($doDia as $v) {
+                $a = $atendimentos[$v['atendimento_id']] ?? null;
+                $cl = $a ? $d->cliente((int) ($a['cliente_id'] ?? 0)) : null;
+                $cliente = $cl ? (($cl['fantasia'] ?? '') ?: ($cl['nome'] ?? '')).(! empty($cl['pre']) ? ' (pré-cliente)' : '') : 'cliente não identificado no retrato';
+                $adicionais = collect((array) ($v['adicionais'] ?? []))->map(fn ($id) => Str::before($nome($id), ' '))->implode(', ');
+                $texto .= "\n- ".Str::before($nome($v['tecnico_id'] ?? 0), ' ').': '.substr((string) $v['inicio'], 11, 5).' às '.substr((string) ($v['fim'] ?? ''), 11, 5)
+                    .' — '.($a ? 'nº '.$a['numero'] : 'atendimento '.$v['atendimento_id']).' — '.$cliente
+                    .' — '.str_replace('_', ' ', (string) $v['situacao'])
+                    .($adicionais !== '' ? ' — junto: '.$adicionais : '')
+                    .($a ? ' — '.Str::limit(trim(preg_replace('/\s+/', ' ', (string) ($a['descricao'] ?? ''))), 90, '…') : '')
+                    .(! empty($v['observacoes']) ? ' — obs.: '.Str::limit((string) $v['observacoes'], 80, '…') : '');
+            }
+        }
+        $tecnicos = collect($r['visitas'] ?? [])->pluck('tecnico_id')->filter()->unique()->map($nome)->sort()->implode(', ');
+
+        return $texto.($tecnicos !== '' ? "\n- Técnicos com visita no período do retrato: {$tecnicos}." : '');
     }
 
     /** O retrato do Secretário: financeiro e comercial do Gestor, lido da máquina do dono. */
