@@ -251,11 +251,36 @@ class Contexto
             ."6. Só depois do \"sim\" use acao \"abrir_atendimento\" com cliente (o código, ou \"novo_pre\" com novo_pre {nome, cidade}), modo, atendimento, empresa_id, assunto_id, titulo, resumo (o serviço, para o técnico), tecnico_id, agendar (true/false), data (AAAA-MM-DD), hora_inicio e hora_fim (HH:MM). Na resposta, diga que está enviando ao Gestor; o número chega em seguida. Se ele mudar algo depois da prévia, mande a prévia de novo.\n"
             ."Responda SOMENTE com este bloco, sem nenhum texto fora dele:\n"
             ."<<<PEDRO\n{\"resposta\": \"o texto que vai para ele\", \"acao\": \"responder|abrir_atendimento|previa_agenda|confirmar_agenda\", \"resumo\": \"o que ele pediu; no registro, a descrição para o técnico\", \"cliente\": \"gestor:ID ou null\", \"modo\": \"novo|vincular|reabrir ou null\", \"atendimento\": \"nº ou null\", \"assunto_id\": \"nº ou null\", \"empresa_id\": \"nº ou null\", \"tecnico_id\": \"nº ou null\", \"responsavel\": \"nome do técnico ou null\", \"agendar\": \"true|false\", \"data\": \"AAAA-MM-DD ou null\", \"hora_inicio\": \"HH:MM ou null\", \"hora_fim\": \"HH:MM ou null\", \"titulo\": \"o título do atendimento ou null\", \"novo_pre\": {\"nome\": \"…\", \"cidade\": \"…\"} ou null, \"agenda\": [lista de paradas, só na previa_agenda] ou null}\nPEDRO>>>",
+            $this->gravadoNaConversa($c),
             "## DADOS\n".implode("\n\n", app(AcessoInterno::class)->dados($acesso, $recentes)),
             app(AcessoInterno::class)->blocoParaRegistrar($this->textoParaRegistrar($c)),
             "## MENSAGENS (as mais recentes por último)\n".$this->mensagens($c),
             'Agora: '.now()->setTimezone(config('app.timezone'))->format('d/m/Y H:i').'.',
         ]);
+    }
+
+    /**
+     * O que de fato foi pedido ao Gestor nesta conversa nos últimos 3 dias: aberturas e mudanças
+     * de agenda, com a situação. É a fonte da verdade sobre "já enviei" (23/10/2026: o Pedro leu as
+     * próprias mensagens "estou enviando" de registros que tinham sido recusados e disse ao Wallas
+     * que o Corais já estava no Gestor — não estava).
+     */
+    private function gravadoNaConversa(SuporteConversa $c): string
+    {
+        $desde = now()->subDays(3);
+        $situacao = ['pendente' => 'na fila, a máquina ainda não gravou', 'reservado' => 'gravando agora', 'feito' => 'GRAVADO', 'falhou' => 'NÃO gravou'];
+        $linhas = \App\Models\SuporteGestorAbertura::where('conversa_id', $c->id)->where('created_at', '>=', $desde)->orderBy('id')->get()
+            ->map(fn ($a) => '- Atendimento '.($a->modo === 'novo' ? 'novo' : $a->modo.' ao nº '.$a->atendimento_numero).($a->titulo ? ' "'.$a->titulo.'"' : '')
+                .($a->agendar_data ? ', agenda '.$a->agendar_data->format('d/m').' '.$a->hora_inicio.'–'.$a->hora_fim : '')
+                .': '.($situacao[$a->situacao] ?? $a->situacao).($a->numero ? ' (nº '.$a->numero.')' : '').($a->erro ? ' — '.$a->erro : ''))
+            ->merge(\App\Models\SuporteGestorAgenda::where('conversa_id', $c->id)->where('created_at', '>=', $desde)->orderBy('id')->get()
+                ->map(fn ($m) => '- Agenda: '.str_replace('_', ' ', $m->tipo).($m->atendimento ? ' no nº '.$m->atendimento : '').($m->inicio ? ', '.substr($m->inicio, 8, 2).'/'.substr($m->inicio, 5, 2).' '.substr($m->inicio, 11).'–'.substr((string) $m->fim, 11) : '')
+                    .': '.($situacao[$m->situacao] ?? $m->situacao).($m->erro ? ' — '.$m->erro : '')));
+
+        return "## O QUE FOI ENVIADO AO GESTOR NESTA CONVERSA (últimos 3 dias — a fonte da verdade)\n"
+            .($linhas->isNotEmpty() ? $linhas->implode("\n") : '- Nada.')
+            ."\nSó diga que algo foi enviado, lançado ou gravado se estiver aqui. Mensagem sua anterior dizendo \"estou enviando\" NÃO prova nada: o que não está nesta lista NÃO foi enviado — "
+            ."se ele pedir de novo, monte a prévia de novo; se você tinha dito que enviou e não está aqui, diga claramente que não foi gravado e por quê.";
     }
 
     /** As últimas mensagens de quem é da casa, onde o cliente a registrar é citado. */

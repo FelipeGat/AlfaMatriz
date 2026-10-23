@@ -212,4 +212,20 @@ class PedroAgendaDoTecnicoTest extends TestCase
         $this->assertSame(['falhou', 'nenhuma máquina gravou no Gestor'], [SuporteGestorAgenda::sole()->situacao, SuporteGestorAgenda::sole()->erro]);
         Http::assertSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), '❌ horário corrigido no nº 824: não gravou (nenhuma máquina gravou no Gestor)'));
     }
+
+    /** 23/10/2026: o Pedro disse ao Wallas que o Corais "já foi enviado" — era só a mensagem dele dizendo "estou enviando". */
+    public function test_o_pedido_traz_o_que_de_fato_foi_enviado_ao_gestor(): void
+    {
+        $this->assertStringContainsString("## O QUE FOI ENVIADO AO GESTOR NESTA CONVERSA (últimos 3 dias — a fonte da verdade)\n- Nada.", $this->prompt('5527998845397', 'lança o Corais'));
+
+        $c = SuporteConversa::where('telefone', '5527998845397')->sole();
+        SuporteGestorAbertura::create(['conversa_id' => $c->id, 'modo' => 'vincular', 'atendimento_numero' => '756', 'titulo' => 'Troca de estrutura metálica', 'agendar_data' => '2026-10-22',
+            'hora_inicio' => '08:00', 'hora_fim' => '09:30', 'descricao' => 'x', 'telefone' => $c->telefone, 'assunto_id' => 5, 'empresa_id' => 1, 'solicitante' => 'Wallas', 'prioridade' => 'media', 'situacao' => 'falhou', 'erro' => 'Técnico já tem agenda no dia 22/10/2026 entre 08:00 e 09:30.']);
+        SuporteGestorAgenda::create(['conversa_id' => $c->id, 'chave' => 'k1', 'lote' => 'l1', 'tipo' => 'cancelar_visita', 'visita_id' => 1180, 'atendimento' => '729', 'tecnico_id' => 9,
+            'pedido_por' => 'Wallas', 'situacao' => 'feito', 'motivo' => 'não aconteceu']);
+        $p = $this->prompt('5527998845397', 'e o Corais?');
+        $this->assertStringContainsString('- Atendimento vincular ao nº 756 "Troca de estrutura metálica", agenda 22/10 08:00–09:30: NÃO gravou — Técnico já tem agenda', $p);
+        $this->assertStringContainsString('- Agenda: cancelar visita no nº 729: GRAVADO', $p);
+        $this->assertStringContainsString('Mensagem sua anterior dizendo "estou enviando" NÃO prova nada', $p);
+    }
 }
