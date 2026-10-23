@@ -25,7 +25,7 @@
         ->contains(fn ($valor) => $valor !== '' && $valor !== []);
 @endphp
 
-<form method="GET" class="shrink-0 flex flex-wrap items-center gap-2">
+<form method="GET" data-folha-filtros class="shrink-0 flex flex-wrap items-center gap-2">
     <label class="flex items-center gap-2 h-[34px] flex-1 min-w-[220px] max-w-[380px] px-3
                   rounded-control bg-input border border-line text-ink-faint focus-within:border-brand transition">
         <span class="h-4 w-4 shrink-0"><x-nav-icon name="search" /></span>
@@ -36,6 +36,8 @@
                placeholder="Buscar por qualquer texto ou número da tarefa…"
                class="flex-1 min-w-0 bg-transparent border-0 p-0 text-[13px] text-ink placeholder-ink-faint focus:ring-0">
     </label>
+
+    <x-folha-filtros />
 
     <select name="sistema" class="h-[34px] py-0 text-[13px] rounded-control bg-input border-line text-ink-dim">
         <option value="">Todos os sistemas</option>

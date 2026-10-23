@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ config('app.name', 'AlfaMatriz') }}</title>
@@ -10,6 +10,7 @@
         <link rel="icon" href="/icon-matriz-solid.svg" type="image/svg+xml">
         <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        @include('layouts._cabeca-celular')
 
 
         {{-- Mesmo tema da porta de dentro: quem usa o claro não pode levar um
@@ -17,7 +18,10 @@
         <script>
             (function () {
                 try {
-                    if (localStorage.getItem('alfamatriz:tema') === 'claro') {
+                    var tema = localStorage.getItem('alfamatriz:tema');
+                    if (tema === 'claro' || (tema === null
+                        && matchMedia('(max-width: 767px)').matches
+                        && matchMedia('(prefers-color-scheme: light)').matches)) {
                         document.documentElement.classList.add('theme-light');
                     }
                 } catch (erro) {

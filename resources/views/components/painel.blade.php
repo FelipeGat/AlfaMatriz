@@ -11,13 +11,16 @@
     sombra por decisão.
 
     A faixa de cabeçalho tem 38px fixos para que painéis lado a lado alinhem o
-    título mesmo quando um deles tem subtítulo e o outro não.
+    título mesmo quando um deles tem subtítulo e o outro não. No celular os
+    painéis vêm um embaixo do outro, e o subtítulo desce para a segunda linha
+    (`[data-cabeca-do-painel]`, no `app.css`): na mesma linha, os dois
+    cortavam — "Produtos por clien…", e um total em reais virava "R$ …".
 --}}
 <section {{ $attributes->merge([
     'class' => 'rounded-panel border border-line overflow-hidden '.($recuado ? 'bg-board' : 'bg-subtle'),
 ]) }}>
     @if ($titulo || isset($acoes))
-        <div class="h-[38px] flex items-center gap-3 px-4 bg-head border-b border-line">
+        <div data-cabeca-do-painel class="h-[38px] flex items-center gap-3 px-4 bg-head border-b border-line">
             @if ($titulo)
                 <h2 class="font-display text-[15px] font-semibold text-ink truncate">{{ $titulo }}</h2>
             @endif

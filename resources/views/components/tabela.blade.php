@@ -6,6 +6,10 @@
     // empilha várias tabelas que precisam das MESMAS colunas (o Acesso do
     // Monitor, #402): sem isso cada uma acharia as próprias larguras.
     'fixa' => false,
+    // No celular cada linha vira um cartão, com o nome da coluna ao lado de
+    // cada valor (ver `app.css` e `rotularTabelas`, no `app.js`). Desligue
+    // só onde a tabela não tem cabeçalho próprio para dar nome aos valores.
+    'cartoes' => true,
 ])
 
 {{--
@@ -24,9 +28,9 @@
     Quem quiser cabeçalho e rodapé próprios usa os slots `cabecalho` e
     `rodape` — eles ficam FORA do wrapper que rola, senão rolariam junto.
 --}}
-<section {{ $attributes->merge(['class' => 'rounded-panel border border-line bg-subtle overflow-hidden']) }}>
+<section {{ $attributes->merge(['class' => 'rounded-panel border border-line bg-subtle overflow-hidden max-md:min-w-0']) }}>
     @if ($titulo || isset($cabecalho))
-        <div class="h-[38px] flex items-center gap-3 px-4 bg-head border-b border-line">
+        <div data-cabeca-do-painel class="h-[38px] flex items-center gap-3 px-4 bg-head border-b border-line">
             @if ($titulo)
                 <h2 class="font-display text-[15px] font-semibold text-ink truncate">{{ $titulo }}</h2>
             @endif
@@ -38,7 +42,7 @@
     @endif
 
     <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse {{ $fixa ? 'table-fixed' : '' }}" style="min-width: {{ $min }}">
+        <table class="w-full text-left border-collapse {{ $fixa ? 'table-fixed' : '' }}" style="min-width: {{ $min }}" @if ($cartoes) data-cartoes @endif>
             {{ $slot }}
         </table>
     </div>

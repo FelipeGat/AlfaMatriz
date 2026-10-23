@@ -13,8 +13,13 @@
         A tela ocupa a altura da janela e o quadro cresce dentro dela. Sem
         isso o quadro é dimensionado pelo conteúdo: a coluna mais cheia estica
         a página inteira e as outras ficam curtas, sem alinhamento nenhum.
+
+        No celular, não (`data-altura-da-janela`, no `app.css`): lá aparece uma
+        coluna por vez, então não há vizinha para alinhar, e os indicadores e o
+        período comiam a altura — a coluna rolava numa fresta de ~250px. Ela
+        cresce com os cards e a PÁGINA rola, como no quadro de Tarefas.
     --}}
-    <div class="flex flex-col gap-4" style="height: calc(100vh - 120px); min-height: 520px">
+    <div class="flex flex-col gap-4" data-altura-da-janela style="height: calc(100vh - 120px); min-height: 520px">
         @if (session('status'))
             <x-aviso>{{ session('status') }}</x-aviso>
         @endif
@@ -141,7 +146,7 @@
                         :title="telaCheia ? 'Sair da tela cheia · Esc' : 'Expandir o funil para a tela inteira'"
                         :aria-label="telaCheia ? 'Sair da tela cheia' : 'Expandir o funil para a tela inteira'"
                         :aria-pressed="telaCheia.toString()"
-                        class="shrink-0 h-[26px] w-[26px] rounded-badge border border-btn-line flex items-center justify-center
+                        class="max-md:hidden shrink-0 h-[26px] w-[26px] rounded-badge border border-btn-line flex items-center justify-center
                                text-ink-mute transition hover:text-brand hover:border-brand">
                     <span class="h-[13px] w-[13px]" x-show="! telaCheia"><x-nav-icon name="expandir" :peso="1.8" /></span>
                     <span class="h-[13px] w-[13px]" x-show="telaCheia" x-cloak><x-nav-icon name="encolher" :peso="1.8" /></span>
@@ -158,7 +163,7 @@
                  dedo — mouse com roda ignora scroll-snap normalmente, então
                  não muda nada no desktop. --}}
             <div x-ref="quadro" @scroll="medirBordas()" @resize.window="medirBordas()" x-init="medirBordas()"
-                 class="relative flex-1 min-h-0 flex gap-3 items-stretch overflow-x-auto p-3.5 snap-x snap-mandatory sm:snap-none">
+                 class="relative flex-1 min-h-0 flex gap-3 items-stretch overflow-x-auto p-3.5 snap-x snap-mandatory sm:snap-none max-md:flex-none max-md:items-start">
                 @foreach ($estagios as $estagio)
                     @php $cards = $colunas[$estagio['chave']]; @endphp
 
@@ -197,7 +202,7 @@
                              jeito padrão de rolar na horizontal. Aqui só o eixo vertical é
                              contido — a rolagem da coluna não empurra a página, e o gesto
                              horizontal continua passando para o quadro. --}}
-                        <div data-coluna-lista class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 space-y-2">
+                        <div data-coluna-lista class="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 space-y-2 max-md:flex-none max-md:overflow-y-visible">
                             @forelse ($cards as $lead)
                                 @php
                                     $temperatura = $lead->temperatura();

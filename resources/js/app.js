@@ -14,6 +14,83 @@ Alpine.data('centralIa', centralIa);
  * no <html>. Aqui só continuamos a partir do que ele decidiu: a aparência é
  * sempre do CSS, nunca de um `:class` que chega tarde.
  */
+/**
+ * A cor da barra de status do iPhone (e da barra do Safari) é o fundo do tema
+ * em uso. Lida do `--canvas`, e não escrita em hexadecimal: assim ela segue o
+ * tema sem uma segunda tabela de cores. Roda ao carregar — o CSS já está
+ * aplicado, porque o módulo é adiado — e a cada troca de tema.
+ */
+function pintarBarraDeStatus() {
+    const canvas = getComputedStyle(document.documentElement).getPropertyValue('--canvas').trim();
+    if (! canvas) return;
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (! meta) {
+        meta = document.createElement('meta');
+        meta.name = 'theme-color';
+        document.head.appendChild(meta);
+    }
+    meta.content = `rgb(${canvas})`;
+}
+pintarBarraDeStatus();
+
+/**
+ * A folha de filtros do celular (`x-folha-filtros`). Abrir é só marcar o
+ * formulário com `data-folha-aberta`: quem o transforma em folha é o CSS,
+ * abaixo de 768px.
+ *
+ * `ativos` conta o que está ligado SEM a busca, que fica à vista ao lado do
+ * botão. Conta pelo formulário, e não por uma lista de campos passada por
+ * cada tela: assim filtro novo entra na conta sem ninguém lembrar dele.
+ */
+Alpine.data('folhaDeFiltros', () => ({
+    aberta: false,
+    ativos: 0,
+
+    init() {
+        this.formulario = this.$el.closest('form');
+        if (! this.formulario) return;
+        // No tique seguinte: os campos escondidos das prioridades nascem de um
+        // `x-for` que o Alpine só desenha depois deste botão.
+        this.$nextTick(() => this.contar());
+    },
+
+    contar() {
+        // Por NOME, e não por campo: as prioridades das Tarefas são várias
+        // marcadas que viajam em campos escondidos (`prioridade[]`), e contam
+        // como um filtro só. Escondido sem `[]` é contexto da tela (seção,
+        // competência, raias), e não filtro.
+        const ligados = new Set();
+        [...this.formulario.elements].forEach((campo) => {
+            if (! campo.name || campo.disabled) return;
+            if (['search', 'submit', 'button'].includes(campo.type)) return;
+            if (campo.type === 'hidden' && ! campo.name.endsWith('[]')) return;
+            if ((campo.type === 'checkbox' || campo.type === 'radio') && ! campo.checked) return;
+            // Select conta quando sai da PRIMEIRA opção, que é o padrão da
+            // tela — e nem sempre vazia: "Maior MRR" nas Revendas, "Vigiados"
+            // na Manutenção. Contá-los acenderia o número sem filtro nenhum.
+            if (campo.tagName === 'SELECT' && campo.value === (campo.options[0]?.value ?? '')) return;
+            if (campo.value === '') return;
+            ligados.add(campo.name);
+        });
+        this.ativos = ligados.size;
+    },
+
+    alternar() {
+        this.aberta ? this.fechar() : this.abrir();
+    },
+
+    abrir() {
+        this.aberta = true;
+        this.formulario?.setAttribute('data-folha-aberta', '');
+    },
+
+    fechar() {
+        if (! this.aberta) return;
+        this.aberta = false;
+        this.formulario?.removeAttribute('data-folha-aberta');
+    },
+}));
+
 Alpine.data('shell', () => ({
     // Lidos do <html>: repetir a leitura do localStorage aqui só criaria a
     // chance de os dois discordarem.
@@ -105,10 +182,31 @@ Alpine.data('shell', () => ({
     alternarTema() {
         this.tema = this.tema === 'claro' ? 'escuro' : 'claro';
         document.documentElement.classList.toggle('theme-light', this.tema === 'claro');
+        pintarBarraDeStatus();
         this.lembrar('alfamatriz:tema', this.tema);
     },
 
+    /*
+     * O voltar do celular (layouts/app.blade.php). Tela que é item do menu
+     * volta ao "Mais" — a gaveta —, porque é de lá que se chega a ela, como
+     * nas abas do iPhone. Tela de dentro volta à anterior; aberta direto
+     * (link, notificação), sem anterior do próprio Matriz, cai no "Mais"
+     * também, e não fora do app.
+     */
+    telaDoMenu: false,
+
+    voltar() {
+        const veioDaqui = document.referrer.startsWith(location.origin);
+        if (! this.telaDoMenu && veioDaqui && history.length > 1) {
+            history.back();
+            return;
+        }
+        this.gavetaAberta = true;
+    },
+
     init() {
+        this.telaDoMenu = [...document.querySelectorAll('#menu-principal a')]
+            .some(a => a.pathname === location.pathname);
         this.sinoBaseline = this.lerSinoVisto();
         this.vigiarSino();
     },
@@ -428,3 +526,62 @@ Alpine.data('shell', () => ({
 window.Alpine = Alpine;
 
 Alpine.start();
+
+/*
+ * O nome da coluna em cada célula, para a tabela virar cartão no celular.
+ *
+ * O cartão mostra "Status  Em dia" em vez de uma coluna sob o título
+ * "Status"; o CSS escreve o rótulo com `attr(data-rotulo)`, e é aqui que ele
+ * nasce, copiado do cabeçalho. Copiar em vez de escrever à mão em cada `<td>`
+ * das 40 tabelas: o rótulo escrito à mão é o que fica para trás quando alguém
+ * renomeia a coluna.
+ *
+ * A coluna sem título ou de "Ações" leva rótulo vazio: botão não precisa de
+ * nome ao lado. Tabela sem cabeçalho próprio herda o da anterior — é o caso
+ * do Acesso do Monitor, que desenha um cabeçalho só para várias tabelas
+ * empilhadas. Um observador repete o serviço quando a tela troca linhas sem
+ * recarregar (filtros, paginação, Alpine).
+ */
+function rotularTabelas() {
+    let anteriores = [];
+    document.querySelectorAll('table[data-cartoes]').forEach((tabela) => {
+        const linha = tabela.querySelector('thead tr:last-child');
+        let rotulos = anteriores;
+        if (linha) {
+            rotulos = [];
+            for (const th of linha.children) {
+                const texto = th.textContent.replace(/\s+/g, ' ').trim();
+                const nome = /^a[çc][õo]es$/i.test(texto) ? '' : texto;
+                for (let i = 0; i < (th.colSpan || 1); i++) rotulos.push(nome);
+            }
+            anteriores = rotulos;
+        }
+        tabela.querySelectorAll('tbody tr, tfoot tr').forEach((tr) => {
+            let coluna = 0;
+            for (const td of tr.children) {
+                const rotulo = td.colSpan > 1 ? '' : (rotulos[coluna] ?? '');
+                if (td.dataset.rotulo !== rotulo) td.dataset.rotulo = rotulo;
+                coluna += td.colSpan || 1;
+            }
+        });
+    });
+}
+
+let rotulagemPendente = false;
+function pedirRotulagem() {
+    if (rotulagemPendente) return;
+    rotulagemPendente = true;
+    requestAnimationFrame(() => {
+        rotulagemPendente = false;
+        rotularTabelas();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    rotularTabelas();
+    new MutationObserver((mudancas) => {
+        if (mudancas.some((m) => [...m.addedNodes].some((n) => n.nodeType === 1 && (n.matches('tr, table, tbody') || n.querySelector?.('table[data-cartoes]'))))) {
+            pedirRotulagem();
+        }
+    }).observe(document.body, { childList: true, subtree: true });
+});

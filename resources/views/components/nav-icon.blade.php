@@ -154,6 +154,9 @@
         // "está no ar?". `bolt` já é o Centro de Controle. O ponto do meio é
         // um círculo de verdade, mesmo conserto da 'duvida'.
         'signal' => 'M9.348 14.652a3.75 3.75 0 010-5.304m5.304 0a3.75 3.75 0 010 5.304m-7.425 2.121a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788 M11.4 12a.6.6 0 101.2 0 .6.6 0 10-1.2 0z',
+        // A aba "Mais" da barra do celular: os três pontos deitados do
+        // Heroicons, o mesmo sinal que o iPhone usa para "o resto está aqui".
+        'ellipsis-horizontal' => 'M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM18.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0z',
     ];
 @endphp
 

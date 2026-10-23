@@ -14,7 +14,7 @@
         {{-- Barra do ciclo --------------------------------------------------- --}}
         <section class="rounded-panel border border-line bg-card-grad">
             <div class="flex flex-wrap items-center gap-4 p-4">
-                <form method="GET" class="flex items-center gap-2.5 shrink-0">
+                <form method="GET" class="flex items-center gap-2.5 shrink-0 max-md:shrink max-md:flex-wrap">
                     <input type="month" name="competencia" value="{{ $competencia }}"
                            onchange="this.form.submit()"
                            class="h-9 py-0 text-[13px] rounded-control bg-input border-line text-ink">

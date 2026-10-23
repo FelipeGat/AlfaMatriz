@@ -15,7 +15,7 @@
                 acento="chart-out" icone="eye" />
 </div>
 
-<div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+<div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr))">
     {{-- "Licenças ativas", e não "clientes": um cliente com dois sistemas
          entra duas vezes — mesma ressalva do Painel Comercial. --}}
     <x-ranking :ranking="$rankingBaseInstalada"
@@ -37,7 +37,7 @@
                compacto />
 </div>
 
-<div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+<div class="grid gap-4 items-start" style="grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr))">
     <x-ranking :ranking="$rankingAuditoria"
                titulo="Auditoria por recurso"
                nota="onde mexeram, na competência"
