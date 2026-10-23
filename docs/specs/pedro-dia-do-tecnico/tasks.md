@@ -49,20 +49,28 @@ Ref: spec.md FR-001, FR-002, FR-003; research.md Decisions 5 e 8
 
 Ref: spec.md FR-004..FR-009, FR-016; research.md Decision 7
 
-- [ ] 2.1.1 Regras do fluxo de relato no pedido interno (paradas, o que existe, conflitos, lacunas, insistir)
-- [ ] 2.1.2 `Contexto::ler`: ação `agenda` com a lista de paradas (tipo, ids citados, técnico, início, fim, observação)
-- [ ] 2.1.3 Teste: o bloco devolvido é lido e campos desconhecidos são descartados
+- [x] 2.1.1 Regras do fluxo de relato no pedido interno (paradas, o que existe, conflitos, lacunas, insistir)
+- [x] 2.1.2 `Contexto::ler`: ação `agenda` com a lista de paradas (tipo, ids citados, técnico, início, fim, observação)
+- [x] 2.1.3 Teste: o bloco devolvido é lido e campos desconhecidos são descartados
 
 ### 2.2 Conferência e prévia `[A]`
 
 Ref: spec.md FR-005..FR-008, FR-017; research.md Decisions 4, 5 e 7
 
-- [ ] 2.2.1 `AgendaDoTecnico::conferir`: id inexistente, técnico fora da equipe, sem fim, fim antes do início, conflito com visita do dia
-- [ ] 2.2.2 Prévia guardada na conversa (substitui a anterior), com bloqueios marcados
-- [ ] 2.2.3 Papel: quem não é diretor/gestor recebe a consulta e a recusa da mudança
-- [ ] 2.2.4 Teste: relato do Vitor de 23/10 gera a prévia com o conflito da Revizza e as lacunas (cenário 3)
-- [ ] 2.2.5 Teste: suporte pedindo mudança não gera prévia gravável (cenário 6)
+- [x] 2.2.1 `AgendaDoTecnico::conferir`: id inexistente, técnico fora da equipe, sem fim, fim antes do início, conflito com visita do dia
+- [x] 2.2.2 Prévia guardada na conversa (substitui a anterior), com bloqueios marcados
+- [x] 2.2.3 Papel: quem não é diretor/gestor recebe a consulta e a recusa da mudança
+- [x] 2.2.4 Teste: relato do Vitor de 23/10 gera a prévia com o conflito da Revizza e as lacunas (cenário 3)
+- [x] 2.2.5 Teste: suporte pedindo mudança não gera prévia gravável (cenário 6)
 - [ ] 2.2.6 Publicar (com autorização) e conferir com um relato real do Wallas
+
+### 2.3 Orçamentos em aberto no retrato `[A]`
+
+Ref: spec.md FR-005 (sub-FASE que emergiu na execução da 2.2: o retrato não trazia orçamentos)
+
+- [x] 2.3.1 Leitor: orçamentos fora de concluído, cancelado, recusado e substituído, com o atendimento ligado
+- [x] 2.3.2 Retrato guarda e valida item a item; bloco dos clientes citados mostra os orçamentos
+- [x] 2.3.3 Teste: o orçamento do cliente citado aparece no relato
 
 ---
 
@@ -132,10 +140,10 @@ flowchart TD
 | Fase | Tarefas | Subtarefas | Criticidade |
 |------|---------|------------|-------------|
 | 1 - Consulta da agenda | 2 | 12 | A |
-| 2 - Prévia do relato | 2 | 9 | A |
+| 2 - Prévia do relato | 3 | 12 | A |
 | 3 - Serviço de visitas no Gestor | 1 | 5 | A |
 | 4 - Gravação e correção | 3 | 14 | C/M |
-| **Total** | **8** | **40** | - |
+| **Total** | **9** | **43** | - |
 
 ## Escopo Coberto
 

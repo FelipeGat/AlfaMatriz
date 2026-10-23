@@ -199,10 +199,12 @@ class Atendimento
         $inicio = $bloco['hora_inicio'] ?? null;
         $fim = $bloco['hora_fim'] ?? null;
         if ($bloco['agendar']) {
-            $falta = array_filter([! $tecnico ? 'o técnico' : null, ! $data || $data->isBefore(today()) ? 'a data' : null,
-                ! $inicio ? 'o horário de início' : null, ! $fim || ($inicio && $fim <= $inicio) ? 'o horário de término' : null]);
+            // Dia que já passou também vale, até 30 dias (23/10/2026: "lance na agenda de ontem" era recusado
+            // como se faltasse a data); a visita entra agendada e o Gestor a finaliza às 23:55.
+            $falta = array_filter([! $tecnico ? 'do técnico' : null, ! $data || $data->isBefore(today()->subDays(30)) ? 'da data (até 30 dias para trás)' : null,
+                ! $inicio ? 'do horário de início' : null, ! $fim || ($inicio && $fim <= $inicio) ? 'do horário de término' : null]);
             if ($falta) {
-                return 'Ainda não registrei: para agendar preciso de '.implode(', ', $falta).'. Me diga e eu mando o resumo de novo.';
+                return 'Ainda não registrei: para agendar preciso '.implode(', ', $falta).'. Me diga e eu mando o resumo de novo.';
             }
         }
         $agendar = (bool) $bloco['agendar'];

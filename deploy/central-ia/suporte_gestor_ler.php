@@ -169,6 +169,19 @@ try {
             'funcionarios' => array_values(array_unique(array_filter(array_merge([$a->funcionario_id ? (int) $a->funcionario_id : null], $tecnicos[$a->id] ?? []))))];
     }
 
+    // Os orçamentos em aberto (pedro-dia-do-tecnico, FR-005): a parada do relato pode ser de um
+    // orçamento, ligado ou não a um atendimento.
+    $orcamentos = [];
+    if (Schema::hasTable('orcamentos')) {
+        foreach (DB::table('orcamentos')->whereNull('deleted_at')->whereNotIn('status', ['concluido', 'cancelado', 'recusado', 'substituido'])
+            ->orderByDesc('id')->limit(2000)->get(['id', 'numero_orcamento', 'cliente_id', 'pre_cliente_id', 'atendimento_id', 'status', 'descricao', 'data_agendamento']) as $o) {
+            $orcamentos[] = ['id' => (int) $o->id, 'numero' => (string) $o->numero_orcamento,
+                'cliente_id' => $o->cliente_id ? (int) $o->cliente_id : ($o->pre_cliente_id ? -(int) $o->pre_cliente_id : null),
+                'atendimento_id' => $o->atendimento_id ? (int) $o->atendimento_id : null, 'status' => (string) $o->status,
+                'descricao' => mb_substr(trim((string) $o->descricao), 0, 200), 'agendado_para' => $o->data_agendamento ? substr((string) $o->data_agendamento, 0, 10) : null];
+        }
+    }
+
     $assuntos = DB::table('assuntos')->where('ativo', 1)->orderBy('id')->get(['id', 'nome', 'tipo', 'categoria', 'empresa_id'])
         ->map(fn ($a) => ['id' => (int) $a->id, 'nome' => (string) $a->nome, 'tipo' => (string) $a->tipo, 'categoria' => (string) $a->categoria,
             'empresa_id' => $a->empresa_id ? (int) $a->empresa_id : null])->all();
@@ -197,7 +210,7 @@ try {
         }
     }
 
-    echo 'SUPORTE_GESTOR:'.json_encode(['clientes' => $clientes, 'atendimentos' => $atendimentos, 'assuntos' => $assuntos, 'equipe' => $equipe, 'showroom' => $showroom, 'visitas' => $visitas], JSON_UNESCAPED_UNICODE)."\n";
+    echo 'SUPORTE_GESTOR:'.json_encode(['clientes' => $clientes, 'atendimentos' => $atendimentos, 'assuntos' => $assuntos, 'equipe' => $equipe, 'showroom' => $showroom, 'visitas' => $visitas, 'orcamentos' => $orcamentos], JSON_UNESCAPED_UNICODE)."\n";
 } finally {
     DB::rollBack();
 }

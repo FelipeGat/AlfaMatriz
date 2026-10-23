@@ -99,7 +99,22 @@ class PedroRegistroPreClienteTest extends TestCase
         $msg = $this->concluir($c, ['cliente' => 'gestor:40', 'modo' => 'novo', 'empresa_id' => 2, 'assunto_id' => 5, 'titulo' => 'Visita técnica',
             'agendar' => true, 'data' => '2026-10-23', 'hora_inicio' => '08:00']);
         $this->assertSame(0, SuporteGestorAbertura::count());
-        $this->assertStringContainsString('Ainda não registrei: para agendar preciso de o técnico, o horário de término', $msg);
+        $this->assertStringStartsWith('Ainda não registrei: para agendar preciso do técnico, do horário de término', $msg, 'só o aviso, sem o texto da IA');
+    }
+
+    /** 23/10/2026: "lance na agenda de ontem" era recusado como se faltasse a data. */
+    public function test_visita_de_ontem_registra_e_a_de_mais_de_30_dias_nao(): void
+    {
+        $c = $this->conversa(self::PEDIDO);
+        $msg = $this->concluir($c, ['cliente' => 'gestor:40', 'modo' => 'novo', 'empresa_id' => 2, 'assunto_id' => 5, 'titulo' => 'Visita técnica',
+            'tecnico_id' => 21, 'agendar' => true, 'data' => '2026-09-01', 'hora_inicio' => '08:00', 'hora_fim' => '09:30']);
+        $this->assertSame('Ainda não registrei: para agendar preciso da data (até 30 dias para trás). Me diga e eu mando o resumo de novo.', $msg);
+
+        $c->mensagens()->create(['wamid' => 'wamid.'.uniqid(), 'direcao' => 'entrada', 'tipo' => 'text', 'texto' => 'Data de ontem', 'enviada_em' => now()]);
+        $msg = $this->concluir($c->fresh(), ['cliente' => 'gestor:40', 'modo' => 'novo', 'empresa_id' => 2, 'assunto_id' => 5, 'titulo' => 'Visita técnica',
+            'tecnico_id' => 21, 'agendar' => true, 'data' => '2026-10-21', 'hora_inicio' => '08:00', 'hora_fim' => '09:30']);
+        $this->assertStringContainsString('Enviei para o Gestor', $msg);
+        $this->assertSame('2026-10-21', SuporteGestorAbertura::sole()->agendar_data->toDateString());
     }
 
     public function test_pre_cliente_novo_com_titulo_e_horario_vai_ao_gestor(): void

@@ -18,7 +18,7 @@ class DiretorioGestor
 
     private ?array $retrato = null;
 
-    public function gravar(string $maquina, string $lidoEm, array $clientes, array $atendimentos, array $assuntos = [], array $equipe = [], array $showroom = [], array $visitas = []): void
+    public function gravar(string $maquina, string $lidoEm, array $clientes, array $atendimentos, array $assuntos = [], array $equipe = [], array $showroom = [], array $visitas = [], array $orcamentos = []): void
     {
         DB::table('suporte_gestor_retrato')->delete();
         DB::table('suporte_gestor_retrato')->insert(['maquina' => $maquina, 'lido_em' => $lidoEm, 'clientes' => json_encode(array_values($clientes), JSON_UNESCAPED_UNICODE),
@@ -26,6 +26,7 @@ class DiretorioGestor
             'equipe' => json_encode(array_values($equipe), JSON_UNESCAPED_UNICODE),
             'showroom' => json_encode(array_values($showroom), JSON_UNESCAPED_UNICODE),
             'visitas' => json_encode(array_values($visitas), JSON_UNESCAPED_UNICODE),
+            'orcamentos' => json_encode(array_values($orcamentos), JSON_UNESCAPED_UNICODE),
             'created_at' => now(), 'updated_at' => now()]);
         $this->retrato = null;
     }
@@ -39,7 +40,8 @@ class DiretorioGestor
                 'assuntos' => $r ? (array) json_decode((string) $r->assuntos, true) : [],
                 'equipe' => $r ? (array) json_decode((string) ($r->equipe ?? '[]'), true) : [],
                 'showroom' => $r ? (array) json_decode((string) ($r->showroom ?? '[]'), true) : [],
-                'visitas' => $r ? (array) json_decode((string) ($r->visitas ?? '[]'), true) : []];
+                'visitas' => $r ? (array) json_decode((string) ($r->visitas ?? '[]'), true) : [],
+                'orcamentos' => $r ? (array) json_decode((string) ($r->orcamentos ?? '[]'), true) : []];
         }
 
         return $this->retrato;
@@ -99,6 +101,24 @@ class DiretorioGestor
     public function cliente(int $id): ?array
     {
         return collect($this->retrato()['clientes'])->first(fn ($c) => (int) ($c['id'] ?? 0) === $id);
+    }
+
+    /** Os orçamentos em aberto do cliente (id negativo = pré-cliente). @return list<array> */
+    public function orcamentosDe(int $clienteId): array
+    {
+        return collect($this->retrato()['orcamentos'] ?? [])->filter(fn ($o) => (int) ($o['cliente_id'] ?? 0) === $clienteId)->values()->all();
+    }
+
+    /** O atendimento do retrato pelo id do Gestor. */
+    public function atendimentoPorId(int $id): ?array
+    {
+        return collect($this->retrato()['atendimentos'] ?? [])->first(fn ($a) => (int) ($a['id'] ?? 0) === $id);
+    }
+
+    /** A visita do retrato pelo id. */
+    public function visita(int $id): ?array
+    {
+        return collect($this->retrato()['visitas'] ?? [])->first(fn ($v) => (int) ($v['id'] ?? 0) === $id);
     }
 
     /** @return list<array> */

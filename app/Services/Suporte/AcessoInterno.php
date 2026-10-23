@@ -64,6 +64,12 @@ class AcessoInterno
         return $chave ? collect($this->lista())->first(fn ($p) => CanalWhatsApp::chave($p['telefone']) === $chave) : null;
     }
 
+    /** Lançar, corrigir e cancelar visitas da agenda: só diretor e gestor (pedro-dia-do-tecnico, FR-017). */
+    public static function alteraAgenda(array $acesso): bool
+    {
+        return in_array($acesso['perfil'] ?? '', ['diretor', 'gestor'], true);
+    }
+
     public static function ve(array $acesso, string $o): bool
     {
         return in_array($o, self::VE[$acesso['perfil']] ?? [], true);
@@ -92,7 +98,8 @@ class AcessoInterno
      */
     public function clientesCitados(string $texto): array
     {
-        return collect(app(DiretorioGestor::class)->buscarClientes($texto, 5))->mapWithKeys(fn ($c) => ['gestor:'.$c['id'] => $c])->all();
+        // Até 10: o relato do dia cita vários clientes, e cada um pode ter mais de um parecido.
+        return collect(app(DiretorioGestor::class)->buscarClientes($texto, 10))->mapWithKeys(fn ($c) => ['gestor:'.$c['id'] => $c])->all();
     }
 
     /**
@@ -118,6 +125,11 @@ class AcessoInterno
                     return '- '.$codigo.': '.(! empty($c['pre']) ? '[PRÉ-CLIENTE] ' : '[CLIENTE] ').trim(($c['fantasia'] ?? '') ?: ($c['nome'] ?? '')).(! empty($c['razao']) ? ' — '.$c['razao'] : '')
                         .' — cidade: '.(! empty($c['cidade']) ? $c['cidade'] : 'não informada').(! empty($c['empresa']) ? ' (empresa '.$c['empresa'].')' : '')
                         ."\n  Atendimentos (mais recentes primeiro):\n".($atendimentos->isNotEmpty() ? $atendimentos->implode("\n") : '    • nenhum')
+                        .(($orc = collect($d->orcamentosDe((int) $c['id']))->take(6))->isNotEmpty()
+                            ? "\n  Orçamentos em aberto:\n".$orc->map(fn ($o) => '    • orç. '.$o['numero'].' — '.str_replace('_', ' ', (string) $o['status'])
+                                .(! empty($o['atendimento_id']) && ($at = $d->atendimentoPorId((int) $o['atendimento_id'])) ? ' — do atendimento nº '.$at['numero'] : '')
+                                .(! empty($o['agendado_para']) ? ' — agendado para '.substr($o['agendado_para'], 8, 2).'/'.substr($o['agendado_para'], 5, 2) : '')
+                                .' — '.Str::limit((string) $o['descricao'], 90, '…'))->implode("\n") : '')
                         ."\n  Assuntos: ".collect($d->assuntosPara($c))->take(15)->map(fn ($a) => $a['id'].' '.$a['nome'])->implode('; ');
                 })->implode("\n")
             : "## CLIENTES E PRÉ-CLIENTES DO GESTOR PARECIDOS COM O QUE FOI ESCRITO\n- Nenhum combina: pergunte o nome como está no Gestor ou ofereça criar um PRÉ-CLIENTE novo (cliente \"novo_pre\").";

@@ -210,8 +210,16 @@ class Pedro
                     $bloco['resposta'] .= "\n\n(Não registrei: não consegui confirmar o cliente no Gestor. Me diga o nome como está cadastrado.)";
                 }
             }
-            if ($registro) {
+            // Recusado pela conferência: só o aviso, sem o "estou enviando ao Gestor" que a IA escreveu
+            // (23/10/2026: o Wallas leu "enviando" e, embaixo, "ainda não registrei").
+            if ($registro && str_starts_with($registro, 'Ainda não registrei')) {
+                $bloco['resposta'] = $registro;
+            } elseif ($registro) {
                 $bloco['resposta'] .= "\n\n".$registro;
+            }
+            // O dia do técnico (pedro-dia-do-tecnico, FASE 2): a prévia é conferida e guardada; nada vai ao Gestor ainda.
+            if ($bloco['acao'] === 'previa_agenda' && ! $c->comHumano()) {
+                $bloco['resposta'] .= app(AgendaDoTecnico::class)->previa($c, $interno, (array) ($bloco['agenda'] ?? []));
             }
             $bloco = ['acao' => 'responder', 'cliente' => null, 'sistema' => null, 'destino' => null, 'assunto_id' => null, 'roteiro' => null, 'setor' => null, 'registro' => null] + $bloco;
         }

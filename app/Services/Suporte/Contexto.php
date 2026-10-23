@@ -234,7 +234,8 @@ class Contexto
             ."AGENDA DOS TÉCNICOS (quando ele perguntar pela agenda, pelo dia ou pelas visitas de um técnico ou da equipe): responda com o bloco AGENDA DOS TÉCNICOS, "
             ."agrupado por técnico, com horário, nº, cliente e situação, e diga a hora da leitura. Reconheça o técnico pelo nome mesmo com outra grafia (\"Victor\" é o Vitor); se houver dois parecidos, pergunte. "
             ."Dia sem visita: diga que não há visita naquele dia. Dia fora do período do retrato: diga que não consegue consultar. Nunca invente visita, horário nem cliente. "
-            ."Lançar ou corrigir visitas da agenda ainda NÃO é possível por aqui: diga isso e ofereça abrir um atendimento novo, se for o caso.\n"
+            .(AcessoInterno::alteraAgenda($acesso) ? self::RELATO_DO_DIA
+                : "Lançar, corrigir ou cancelar visitas da agenda é só para diretor e gestor: se ele pedir, diga isso; a consulta continua valendo.\n")
             ."REGISTRAR ATENDIMENTO (quando ele pedir para abrir, registrar ou lançar um atendimento, chamado ou visita). Entenda o pedido: o que é (vira o TÍTULO, ex.: \"Visita técnica\"), para quem (o CLIENTE), o que será feito (o SERVIÇO) e quando. Pergunte só o que falta, poucas perguntas por mensagem:\n"
             ."1. CLIENTE: procure em CLIENTES E PRÉ-CLIENTES PARECIDOS. O nome nem sempre vem certo (\"revissa\" pode ser a \"Revizza\"): ofereça o parecido para ele escolher, dizendo se é CLIENTE ou PRÉ-CLIENTE e a cidade. "
             ."Se ele disse uma cidade ou unidade diferente da cadastrada (pediu Vila Velha e o cadastro é Vitória), pergunte se é esse mesmo ou se deve criar um PRÉ-CLIENTE NOVO para esta unidade. Nenhum parecido: ofereça criar pré-cliente novo (nome e cidade). Nunca registre para cliente fora da lista.\n"
@@ -245,7 +246,7 @@ class Contexto
             ."\"{primeiro nome}, confirmando, o atendimento ficaria assim:\nTítulo: …\nCliente: … (cliente ou pré-cliente, cidade; ou: pré-cliente NOVO)\nEmpresa: …\nAssunto: …\nServiço: …\nTécnico: … (ou: sem técnico)\nAgendamento: dd/mm/aaaa, das HH:MM às HH:MM (ou: sem agendamento)\nAtendimento: novo (ou: vincular ao nº X / reabrir o nº X)\n\nPosso abrir?\"\n"
             ."6. Só depois do \"sim\" use acao \"abrir_atendimento\" com cliente (o código, ou \"novo_pre\" com novo_pre {nome, cidade}), modo, atendimento, empresa_id, assunto_id, titulo, resumo (o serviço, para o técnico), tecnico_id, agendar (true/false), data (AAAA-MM-DD), hora_inicio e hora_fim (HH:MM). Na resposta, diga que está enviando ao Gestor; o número chega em seguida. Se ele mudar algo depois da prévia, mande a prévia de novo.\n"
             ."Responda SOMENTE com este bloco, sem nenhum texto fora dele:\n"
-            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para ele\", \"acao\": \"responder|abrir_atendimento\", \"resumo\": \"o que ele pediu; no registro, a descrição para o técnico\", \"cliente\": \"gestor:ID ou null\", \"modo\": \"novo|vincular|reabrir ou null\", \"atendimento\": \"nº ou null\", \"assunto_id\": \"nº ou null\", \"empresa_id\": \"nº ou null\", \"tecnico_id\": \"nº ou null\", \"responsavel\": \"nome do técnico ou null\", \"agendar\": \"true|false\", \"data\": \"AAAA-MM-DD ou null\", \"hora_inicio\": \"HH:MM ou null\", \"hora_fim\": \"HH:MM ou null\", \"titulo\": \"o título do atendimento ou null\", \"novo_pre\": {\"nome\": \"…\", \"cidade\": \"…\"} ou null}\nPEDRO>>>",
+            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para ele\", \"acao\": \"responder|abrir_atendimento|previa_agenda\", \"resumo\": \"o que ele pediu; no registro, a descrição para o técnico\", \"cliente\": \"gestor:ID ou null\", \"modo\": \"novo|vincular|reabrir ou null\", \"atendimento\": \"nº ou null\", \"assunto_id\": \"nº ou null\", \"empresa_id\": \"nº ou null\", \"tecnico_id\": \"nº ou null\", \"responsavel\": \"nome do técnico ou null\", \"agendar\": \"true|false\", \"data\": \"AAAA-MM-DD ou null\", \"hora_inicio\": \"HH:MM ou null\", \"hora_fim\": \"HH:MM ou null\", \"titulo\": \"o título do atendimento ou null\", \"novo_pre\": {\"nome\": \"…\", \"cidade\": \"…\"} ou null, \"agenda\": [lista de paradas, só na previa_agenda] ou null}\nPEDRO>>>",
             "## DADOS\n".implode("\n\n", app(AcessoInterno::class)->dados($acesso, $recentes)),
             app(AcessoInterno::class)->blocoParaRegistrar($this->textoParaRegistrar($c)),
             "## MENSAGENS (as mais recentes por último)\n".$this->mensagens($c),
@@ -260,12 +261,47 @@ class Contexto
             ->map(fn ($m) => $m->transcricao ?: $m->texto)->implode(' ');
     }
 
+    /**
+     * O relato do dia de um técnico (pedro-dia-do-tecnico, FASE 2; decisões do dono em 23/10/2026: o
+     * que lançar é de quem pede, a visita entra agendada). A IA propõe as paradas; a AgendaDoTecnico
+     * confere cada uma contra o retrato e diz o que não fecha.
+     */
+    private const RELATO_DO_DIA = "RELATO DO DIA DE UM TÉCNICO (quando ele contar o que um técnico fez num dia, ou pedir para lançar, corrigir ou cancelar visitas): "
+        ."1. Quebre o relato em PARADAS: técnico, cliente ou local, início, fim, o que foi feito e o resultado (\"placa condenada\"). "
+        ."2. Para cada parada, procure o que já existe: as visitas do técnico na AGENDA DOS TÉCNICOS e, em CLIENTES PARECIDOS, os atendimentos e os orçamentos em aberto do cliente. Mostre o que achou. "
+        ."3. Proponha por parada um tipo: \"reagendar_visita\" (acertar o horário de uma visita que já existe: visita_id), \"criar_visita\" (visita nova num atendimento que já existe: atendimento = nº), "
+        ."\"cancelar_visita\" (visita que não aconteceu: visita_id e motivo) ou \"abrir_atendimento\" (cliente sem atendimento para isso: cliente = código, ou \"novo_pre\"). "
+        ."4. Aponte CONFLITOS (o mesmo técnico em dois lugares no mesmo horário; visita agendada no dia que o relato não menciona) e LACUNAS (fim que falta — havendo parada seguinte, proponha o início dela como fim e peça confirmação —, cliente não encontrado, atendimento que não ficou claro). "
+        ."NÃO decida conflito nem lacuna sozinho: pergunte, uma ou duas perguntas por mensagem, até fechar. Não proponha nada sobre almoço ou jornada: isso é do ponto do RH. "
+        ."5. Sempre que mandar a prévia, use acao \"previa_agenda\" com a lista \"agenda\": "
+        ."[{\"tipo\": \"…\", \"visita_id\": nº ou null, \"atendimento\": \"nº ou null\", \"cliente\": \"gestor:ID, novo_pre ou null\", \"tecnico_id\": nº, \"data\": \"AAAA-MM-DD\", \"hora_inicio\": \"HH:MM ou null\", \"hora_fim\": \"HH:MM ou null\", \"observacao\": \"o que foi feito e o resultado\", \"motivo\": \"só para cancelar\"}]. "
+        ."Prévia no texto: \"{nome}, o dia do {técnico} em dd/mm ficaria assim:\" e uma linha por parada (• HH:MM às HH:MM — cliente — nº — o que muda), depois \"Conflitos:\" e \"Falta:\" se houver. As visitas entram como AGENDADAS: o técnico finaliza pelo app. "
+        ."A GRAVAÇÃO no Gestor ainda NÃO está disponível: ao fim da prévia, diga que por enquanto ela serve para conferir e lançar no Gestor à mão.\n";
+
+    /** As paradas da prévia do dia, só com os campos conhecidos e no formato certo; até 15. @return list<array> */
+    private static function paradas(mixed $lista): array
+    {
+        $hora = fn ($v) => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) $v) ? (string) $v : null;
+        $texto = fn ($v, int $max) => filled($v) && $v !== 'null' ? mb_substr(trim((string) $v), 0, $max) : null;
+
+        return collect(is_array($lista) ? array_slice($lista, 0, 15) : [])->filter(fn ($p) => is_array($p))->map(fn ($p) => [
+            'tipo' => in_array($p['tipo'] ?? null, ['criar_visita', 'reagendar_visita', 'cancelar_visita', 'abrir_atendimento'], true) ? $p['tipo'] : null,
+            'visita_id' => is_numeric($p['visita_id'] ?? null) ? (int) $p['visita_id'] : null,
+            'atendimento' => $texto($p['atendimento'] ?? null, 10) !== null ? (preg_replace('/\D/', '', (string) $p['atendimento']) ?: null) : null,
+            'cliente' => $texto($p['cliente'] ?? null, 30),
+            'tecnico_id' => is_numeric($p['tecnico_id'] ?? null) ? (int) $p['tecnico_id'] : null,
+            'data' => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($p['data'] ?? '')) ? $p['data'] : null,
+            'hora_inicio' => $hora($p['hora_inicio'] ?? null), 'hora_fim' => $hora($p['hora_fim'] ?? null),
+            'observacao' => $texto($p['observacao'] ?? null, 300), 'motivo' => $texto($p['motivo'] ?? null, 300),
+        ])->values()->all();
+    }
+
     /** O bloco da resposta, validado; null se veio fora do formato. @return array{resposta: string, acao: string, resumo: string, sistema: ?string, cliente: ?string, destino: ?string, assunto_id: ?int, roteiro: ?int, setor: ?string, fontes: list<int>, registro: ?array}|null */
     public static function ler(string $texto, int $limite = 1500): ?array
     {
         $b = preg_match(self::BLOCO, $texto, $m) ? json_decode($m[1], true) : null;
         $resposta = is_array($b) ? trim((string) ($b['resposta'] ?? '')) : '';
-        if ($resposta === '' || ! in_array($b['acao'] ?? null, ['responder', 'abrir_atendimento', 'encaminhar_setor', 'transferir', 'encerrar'], true)) {
+        if ($resposta === '' || ! in_array($b['acao'] ?? null, ['responder', 'abrir_atendimento', 'encaminhar_setor', 'transferir', 'encerrar', 'previa_agenda'], true)) {
             return null;
         }
         $setor = in_array($b['setor'] ?? null, ['comercial', 'financeiro'], true) ? $b['setor'] : null;
@@ -295,6 +331,7 @@ class Contexto
             'hora_inicio' => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) ($b['hora_inicio'] ?? '')) ? $b['hora_inicio'] : null,
             'hora_fim' => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) ($b['hora_fim'] ?? '')) ? $b['hora_fim'] : null,
             'titulo' => $texto($b['titulo'] ?? null) !== null ? mb_substr(trim((string) $b['titulo']), 0, 120) : null,
+            'agenda' => $b['acao'] === 'previa_agenda' ? self::paradas($b['agenda'] ?? null) : null,
             'novo_pre' => is_array($b['novo_pre'] ?? null) && filled($b['novo_pre']['nome'] ?? null)
                 ? ['nome' => mb_substr(trim((string) $b['novo_pre']['nome']), 0, 150), 'cidade' => mb_substr(trim((string) ($b['novo_pre']['cidade'] ?? '')), 0, 100)] : null,
             // As notas da base que ele diz ter usado ("12" e "nota 12" também valem); o Pedro::concluir confere que existem (T-476).

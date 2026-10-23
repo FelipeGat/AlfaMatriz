@@ -23,11 +23,11 @@ class SuporteConversa extends Model
     protected $fillable = ['telefone', 'nome_perfil', 'cliente_id', 'situacao', 'humano_id', 'humano_ate',
         'ultima_entrada_em', 'ultima_mensagem_em', 'nao_lidas', 'tarefa_id', 'gestor_cliente_id', 'gestor_atendimento',
         'gestor_conversa_id', 'gestor_setor', 'fila_desde', 'fila_motivo', 'fila_lembrada_em',
-        'solicitante_nome', 'solicitante_funcao', 'identificada_em'];
+        'solicitante_nome', 'solicitante_funcao', 'identificada_em', 'previa_agenda'];
 
     protected function casts(): array
     {
-        return ['identificada_em' => 'datetime', 'fila_desde' => 'datetime', 'fila_lembrada_em' => 'datetime', 'humano_ate' => 'datetime', 'ultima_entrada_em' => 'datetime', 'ultima_mensagem_em' => 'datetime', 'nao_lidas' => 'integer'];
+        return ['identificada_em' => 'datetime', 'fila_desde' => 'datetime', 'fila_lembrada_em' => 'datetime', 'humano_ate' => 'datetime', 'ultima_entrada_em' => 'datetime', 'ultima_mensagem_em' => 'datetime', 'nao_lidas' => 'integer', 'previa_agenda' => 'array'];
     }
 
     /**
