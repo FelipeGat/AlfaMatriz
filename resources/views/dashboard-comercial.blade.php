@@ -3,7 +3,7 @@
     <x-slot name="contexto">portfólio e base instalada</x-slot>
 
     <div class="space-y-4">
-        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr))">
             {{-- Cada curva vem vazia quando não tem o que dizer, e o card
                  simplesmente não desenha a linha. Ver
                  `IndicadoresService::serieDeEntrada()` para quando isso vale. --}}

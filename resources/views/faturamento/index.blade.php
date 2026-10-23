@@ -44,7 +44,7 @@
                     @endforeach
                 </dl>
 
-                <div class="flex items-center gap-2 shrink-0">
+                <div class="flex items-center gap-2 shrink-0 max-md:flex-wrap max-md:shrink">
                     <a href="{{ route('faturamento.index', ['competencia' => $competencia, 'exportar' => 'csv']) }}"
                        class="h-9 px-3 inline-flex items-center rounded-control border border-btn-line
                               text-[12.5px] font-semibold text-ink-dim hover:text-brand hover:border-brand transition">

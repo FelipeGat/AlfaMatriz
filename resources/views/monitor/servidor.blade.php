@@ -17,7 +17,7 @@
                 :migalhas="[['rotulo' => 'Monitor', 'rota' => route('monitor.geral')]]"
                 :atual="$s['nome'] ?? 'Servidor'"
                 :contexto="$resposta->temDados() ? (($s['online'] ?? false) ? 'online' : 'offline').($vps ? ' · '.($vps['hostname'] ?? '') : '') : null">
-    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr))">
         <x-kpi-card rotulo="CPU agora" :valor="F::pct($s['cpu_pct'] ?? null)" acento="accent" icone="bolt"
                     :delta="'média 24h '.F::pct($s['cpu_stat']['media_24h_pct'] ?? null)" />
         <x-kpi-card rotulo="Carga (1 · 5 · 15 min)" :valor="$load->implode(' · ') ?: '—'" acento="accent" icone="trending-up" />

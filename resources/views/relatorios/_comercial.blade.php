@@ -2,7 +2,7 @@
      "taxa de conversão" são o funil de HOJE (aberto não tem data — ou está lá,
      ou não está); fechados, perdidos e novos clientes são o que a competência
      navegada moveu. --}}
-<div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+<div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr))">
     <x-kpi-card rotulo="Leads em aberto" :valor="number_format($kpis['abertos'], 0, ',', '.')"
                 :delta="'R$ '.number_format($kpis['pipeline_valor'], 2, ',', '.').' em pipeline'"
                 acento="accent" icone="view-grid" />

@@ -21,7 +21,7 @@
                 </p>
             </div>
 
-            <form action="{{ route('contas-fixas-pagar.gerar') }}" method="POST" class="flex items-end gap-2 shrink-0">
+            <form action="{{ route('contas-fixas-pagar.gerar') }}" method="POST" class="flex items-end gap-2 shrink-0 max-md:flex-wrap max-md:shrink">
                 @csrf
                 <label class="block">
                     <span class="block font-mono text-[10px] uppercase tracking-caps text-ink-faint mb-1">Gerar a competência</span>

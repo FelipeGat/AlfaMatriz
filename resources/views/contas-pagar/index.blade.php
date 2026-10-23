@@ -229,7 +229,7 @@
 
         {{-- Os quatro cards — mesma régua das Receitas, sempre sobre o
              recorte de período/busca/centro de custo ativo. --}}
-        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr))">
             <x-kpi-card rotulo="A pagar no período" :valor="'R$ '.number_format($kpis['a_pagar'], 2, ',', '.')"
                         :delta="$kpis['projetado'] > 0 ? 'inclui R$ '.number_format($kpis['projetado'], 2, ',', '.').' projetado' : null"
                         acento="warn" icone="trending-down" />

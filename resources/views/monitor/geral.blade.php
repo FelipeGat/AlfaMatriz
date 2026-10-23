@@ -16,7 +16,7 @@
 @endphp
 
 <x-monitor.tela tela="geral" :resposta="$resposta" :contexto="$contexto">
-    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr))">
         <x-kpi-card rotulo="Servidores online"
                     :valor="($topo['servidores_online'] ?? 0).' / '.($topo['servidores_total'] ?? 0)"
                     :acento="($topo['servidores_online'] ?? 0) < ($topo['servidores_total'] ?? 0) ? 'crit' : 'good'" icone="cube" />
@@ -89,7 +89,7 @@
 
     {{-- 260px: os quatro servidores de hoje cabem numa linha a partir de
          ~1280px de tela, e encolhem para duas antes de o medidor espremer. --}}
-    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))">
+    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr))">
         @foreach ($servidores as $servidor)
             @php $vps = $servidor['vps'] ?? null; @endphp
             <x-painel :titulo="$servidor['nome'] ?? '—'">

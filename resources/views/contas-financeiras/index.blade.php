@@ -28,7 +28,7 @@
         </section>
 
         {{-- Uma conta por card ------------------------------------------------ --}}
-        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr))">
             @forelse ($cartoes as $cartao)
                 @php $conta = $cartao['conta']; @endphp
 

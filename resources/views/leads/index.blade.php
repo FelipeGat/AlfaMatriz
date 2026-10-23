@@ -24,7 +24,7 @@
             <x-aviso>{{ session('status') }}</x-aviso>
         @endif
 
-        <div class="shrink-0 grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+        <div class="shrink-0 grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr))">
             <x-kpi-card rotulo="Taxa de conversão" :valor="number_format($kpis['taxa_conversao'], 1, ',', '.').'%'"
                         acento="accent" icone="trending-up"
                         :delta="$kpis['fechados'].' de '.$kpis['total'].' leads'" />

@@ -698,6 +698,32 @@
     background: var(--chip);
 }
 
+/*
+ * Tela estreita: iPhone SE, ou o iPhone com o zoom da página ou o "Texto
+ * Maior" ligados — com 150%, os 393px do iPhone viram 262px de CSS. Foi assim
+ * que o dono viu o Matriz no ar (23/10/2026): a quinta aba ("Mais") saía da
+ * tela e "Central IA" quebrava em duas linhas. Abaixo de 360px as abas
+ * repartem a largura da pílula em vez de exigir 64px cada, e o rótulo corta
+ * com reticências em vez de quebrar.
+ */
+@media (max-width: 359px) {
+    .abas-celular {
+        width: calc(100vw - 20px);
+    }
+    .aba-celular {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 4px 2px;
+        font-size: 10.5px;
+    }
+    .aba-celular > span:last-child {
+        max-width: 100%;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+}
+
 @media (max-width: 767px) {
     /* Campo com fonte menor que 16px faz o Safari do iPhone dar zoom na página
        ao tocar nele — e não desfaz sozinho. O !important vence o tamanho que
@@ -711,6 +737,16 @@
     /* Puxar além do fim da página não arrasta a moldura inteira. */
     html, body {
         overscroll-behavior-y: none;
+    }
+
+    /* Campo nunca mais largo que a coluna: o tamanho natural de um input
+       (~20 caracteres) passa de 230px, e em tela estreita empurrava grade e
+       linha para fora da tela (Configurações do Secretário a 262px). Em
+       `:where()`, com peso zero: largura que a tela deu ao campo
+       (`min-w-*`, `w-*`) continua valendo. */
+    :where(main) :where(input:not([type=checkbox]):not([type=radio]), select, textarea) {
+        max-width: 100%;
+        min-width: 0;
     }
 
     /* Toque sem o clarão cinza do Safari: os botões já têm o próprio estado. */
@@ -795,6 +831,15 @@
     }
     [data-kpi] > :not([data-kpi-topo]):not([data-kpi-valor]):not(.absolute) {
         grid-column: 1 / -1;
+    }
+}
+
+/* Em tela estreita (ver as abas, acima), dois indicadores por linha deixam
+   cada card com ~120px: o rótulo quebra letra a letra e a nota de rodapé vira
+   "p..". Um por linha, com o valor no tamanho cheio. */
+@media (max-width: 359px) {
+    .grid:has(> [data-kpi]) {
+        grid-template-columns: minmax(0, 1fr) !important;
     }
 }
 

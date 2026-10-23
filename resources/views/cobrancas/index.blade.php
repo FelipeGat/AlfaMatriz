@@ -236,7 +236,7 @@
 
     {{-- Os quatro cards do Gestor.Alfa — A receber / Recebido / Vencido /
          Vence hoje —, todos sobre o recorte ativo de período/busca/revenda. --}}
-    <div class="grid gap-3 mb-4" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+    <div class="grid gap-3 mb-4" style="grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr))">
         <x-kpi-card rotulo="A receber no período" :valor="'R$ '.number_format($kpis['a_receber'], 2, ',', '.')"
                     :delta="$kpis['projetado'] > 0 ? 'inclui R$ '.number_format($kpis['projetado'], 2, ',', '.').' projetado' : null"
                     acento="accent" icone="clipboard" />

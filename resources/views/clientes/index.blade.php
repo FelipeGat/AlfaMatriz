@@ -17,7 +17,7 @@
             <x-aviso>{{ session('status') }}</x-aviso>
         @endif
 
-        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr))">
             <x-kpi-card rotulo="Clientes cadastrados" :valor="number_format($kpis['cadastrados']['valor'], 0, ',', '.')"
                         :delta="$kpis['cadastrados']['nota']" acento="accent" icone="users" />
             <x-kpi-card rotulo="Em contrato" :valor="number_format($kpis['contrato']['valor'], 0, ',', '.')"

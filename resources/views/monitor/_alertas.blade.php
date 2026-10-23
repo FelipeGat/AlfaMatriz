@@ -11,7 +11,7 @@
     $kinds = MonitorAlerta::KINDS;
 @endphp
 
-<div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+<div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr))">
     <x-kpi-card rotulo="Fora agora" :valor="$kpis['fora']" acento="crit" icone="alert-triangle" />
     <x-kpi-card rotulo="Críticos agora" :valor="$kpis['criticos']" acento="warn" icone="bolt" />
     <x-kpi-card rotulo="Quedas em 7 dias" :valor="$kpis['quedas7d']"

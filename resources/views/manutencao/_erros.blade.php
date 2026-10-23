@@ -8,7 +8,7 @@
     $ambientes = \App\Services\Vigia\VigiaDeLogs::AMBIENTES;
 @endphp
 
-<div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+<div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr))">
     <x-kpi-card rotulo="Erros vigiados" :valor="$kpis['vigiados']" acento="crit" icone="alert-triangle" />
     <x-kpi-card rotulo="Ocorrências em 24h" :valor="number_format($kpis['ocorrencias24h'], 0, ',', '.')"
                 delta="ignorados entram na conta" acento="amber" icone="clock" />
