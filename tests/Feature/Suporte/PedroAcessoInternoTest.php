@@ -187,9 +187,9 @@ class PedroAcessoInternoTest extends TestCase
         $this->assertNull($c->fresh()->gestor_atendimento, 'a conversa de quem é da casa não fica presa a um atendimento');
     }
 
-    public function test_registro_reaberto_vira_tarefa_com_o_que_lancar_no_gestor(): void
+    /** T-488: com a gravação desligada, a resposta diz o que lançar no Gestor; antes virava tarefa no quadro. */
+    public function test_registro_com_gravacao_desligada_diz_o_que_lancar_no_gestor(): void
     {
-        // Com a gravação no Gestor desligada (SUPORTE_PEDRO_GESTOR_GRAVAR=false), volta a ser tarefa.
         config(['services.suporte_pedro.gestor_gravar' => false]);
         Http::fake(fn () => Http::response(['messages' => [['id' => 'wamid.'.uniqid()]]]));
         config(['services.suporte_pedro.responsaveis' => ['rossini@teste.local']]);
@@ -197,22 +197,20 @@ class PedroAcessoInternoTest extends TestCase
         $c = $this->conversa('5527997458265', 'Abre um atendimento para a Emanuelly, limpeza das condensadoras, com o Vitor amanhã. Pode reabrir o 700.');
         $pedido = app(Pedro::class)->enfileirar($c->id);
         $pedido->update(['situacao' => 'reservado']);
-        app(Pedro::class)->concluir($this->felipe, $pedido->id, '<<<PEDRO {"resposta": "Registrado, Wallas.", "acao": "abrir_atendimento", "resumo": "Limpeza das condensadoras do apartamento",'
+        app(Pedro::class)->concluir($this->felipe, $pedido->id, '<<<PEDRO {"resposta": "Certo, Wallas.", "acao": "abrir_atendimento", "resumo": "Limpeza das condensadoras do apartamento",'
             .' "cliente": "gestor:30", "modo": "reabrir", "atendimento": "700", "assunto_id": 5, "responsavel": "Vitor Silva", "data": "2026-10-22"} PEDRO>>>', null);
 
-        $t = \App\Models\Tarefa::sole();
-        $this->assertStringContainsString('Suporte: EMANUELLY SOUZA', $t->titulo);
-        $this->assertStringContainsString('LANÇAR NO GESTOR: REABRIR o atendimento nº 700 — cliente nº 30 (EMANUELLY SOUZA), assunto 5', $t->resumo);
-        $this->assertStringContainsString('Responsável: Vitor Silva. Para: 22/10/2026.', $t->resumo);
-        $this->assertSame('2026-10-22', $t->prazo?->toDateString());
-        $this->assertStringContainsString("Registrado no quadro como T-{$t->id}", (string) $c->mensagens()->reorder()->where('direcao', 'pedro')->value('texto'));
-        $this->assertNull($c->fresh()->tarefa_id, 'quem é da casa registra quantos precisar');
+        $this->assertSame(0, \App\Models\Tarefa::count(), 'nada no quadro do Matriz');
+        $texto = (string) $c->mensagens()->reorder()->where('direcao', 'pedro')->value('texto');
+        $this->assertStringContainsString('Não registrei: a gravação no Gestor está desligada. Lance lá, por favor: reabrir o atendimento nº 700 — cliente nº 30 (EMANUELLY SOUZA), assunto 5', $texto);
+        $this->assertStringContainsString('Limpeza das condensadoras do apartamento Responsável: Vitor Silva. Para: 22/10/2026.', $texto);
+        $this->assertFalse($c->fresh()->comHumano(), 'quem é da casa não vai para a fila');
 
         // Cliente que não foi citado não recebe registro, mesmo que a IA diga o código.
         $c->mensagens()->create(['wamid' => 'wamid.'.uniqid(), 'direcao' => 'entrada', 'tipo' => 'text', 'texto' => 'sim', 'enviada_em' => now()]);
         $p2 = app(Pedro::class)->enfileirar($c->id);
         $p2->update(['situacao' => 'reservado']);
         app(Pedro::class)->concluir($this->felipe, $p2->id, '<<<PEDRO {"resposta": "Feito.", "acao": "abrir_atendimento", "resumo": "x", "cliente": "gestor:20", "modo": "novo"} PEDRO>>>', null);
-        $this->assertSame(1, \App\Models\Tarefa::count());
+        $this->assertSame(0, \App\Models\Tarefa::count());
     }
 }

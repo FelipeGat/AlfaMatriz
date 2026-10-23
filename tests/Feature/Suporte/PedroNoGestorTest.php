@@ -164,13 +164,17 @@ class PedroNoGestorTest extends TestCase
         $this->assertSame(0, Tarefa::count());
     }
 
-    public function test_setor_recusado_pelo_gestor_vira_atendimento_no_quadro(): void
+    /** T-488: o Gestor recusou a entrega ao setor; antes virava tarefa no quadro. */
+    public function test_setor_recusado_pelo_gestor_vai_a_um_atendente(): void
     {
         $this->statusEntregar = 409;
         $this->repasse('quero um orçamento', 'wamid.1', $this->estado())->assertOk();
         $this->responde(['resposta' => 'Vou passar ao comercial.', 'acao' => 'encaminhar_setor', 'setor' => 'comercial', 'resumo' => 'orçamento de portão']);
 
-        $this->assertStringContainsString('[comercial] orçamento de portão', Tarefa::sole()->resumo);
+        $this->assertSame(0, Tarefa::count(), 'nada no quadro do Matriz');
+        $c = SuporteConversa::sole();
+        $this->assertTrue($c->comHumano());
+        $this->assertStringContainsString('[comercial] orçamento de portão (o Gestor não aceitou a entrega ao comercial', $c->fila_motivo);
     }
 
     public function test_atendimento_de_suporte_marca_a_conversa_no_gestor(): void

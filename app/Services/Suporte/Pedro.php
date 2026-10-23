@@ -16,8 +16,8 @@ use Illuminate\Validation\ValidationException;
  *
  * Um pedido aberto por conversa: o que o cliente escrever enquanto o Pedro pensa
  * vira o pedido seguinte. Sem resposta da IA a tempo (máquina desligada,
- * travada), o Matriz responde sozinho e abre o atendimento — o cliente nunca
- * fica sem resposta.
+ * travada), o Matriz responde sozinho e passa a conversa a um atendente — o
+ * cliente nunca fica sem resposta.
  */
 class Pedro
 {
@@ -248,7 +248,7 @@ class Pedro
             return;
         }
         $resposta = $bloco['resposta'];
-        // Sem o Gestor, não há setor para onde entregar: vira atendimento no quadro.
+        // Sem o Gestor, não há setor para onde entregar: vira pedido de atendimento.
         if ($bloco['acao'] === 'encaminhar_setor' && ! $this->canal->viaGestor()) {
             $bloco['acao'] = 'abrir_atendimento';
         }
@@ -267,13 +267,18 @@ class Pedro
             // Equipamento de cliente do Gestor: o atendimento nasce NO Gestor, pela máquina; o número chega em seguida.
             // Cliente do Gestor: tudo vai ao Gestor, equipamento ou sistema (Felipe, 21/10/2026).
             $roteiro = $bloco['roteiro'] ? \App\Models\SuporteRoteiro::where('ativo', true)->find($bloco['roteiro']) : null;
-            if ($c->gestor_cliente_id && config('services.suporte_pedro.gestor_gravar')
-                && $this->atendimento->pedirNoGestor($c, $bloco['resumo'], $bloco['assunto_id'], $bloco['atendimento'],
-                    in_array($roteiro?->prioridade, ['critica', 'alta'], true) ? 'alta' : null)) {
-                // O número do Gestor vai em outra mensagem, quando a máquina gravar.
-            } elseif ($t = $this->atendimento->abrir($c, $this->comLancamentoNoGestor($c, $bloco), $bloco['sistema'],
-                $bloco['roteiro'] ? \App\Models\SuporteRoteiro::where('ativo', true)->find($bloco['roteiro']) : null, $bloco['destino'])) {
-                $resposta .= "\n\nO número do seu chamado é T-{$t->id}.";
+            $semGestor = match (true) {
+                ! $c->gestor_cliente_id => 'cliente sem cadastro no Gestor',
+                ! config('services.suporte_pedro.gestor_gravar') => 'gravação no Gestor desligada',
+                default => null,
+            };
+            // O número do Gestor vai em outra mensagem, quando a máquina gravar.
+            $semGestor ??= $this->atendimento->pedirNoGestor($c, $bloco['resumo'], $bloco['assunto_id'], $bloco['atendimento'],
+                in_array($roteiro?->prioridade, ['critica', 'alta'], true) ? 'alta' : null) ? null : 'nenhum assunto do Gestor para o cliente';
+            // Sem o Gestor, nada de tarefa no quadro (T-488): um atendente da Invest lança lá.
+            if ($semGestor) {
+                $urgente = $roteiro?->prioridade === 'critica' ? 'CRÍTICO ('.$roteiro->titulo.'); ' : '';
+                $resposta .= "\n\n".$this->atendimento->paraAtendente($c, $urgente.$semGestor, $bloco['resumo'], $bloco['assunto_id'])['texto'];
                 $this->marcarSuporteNoGestor($c);
             }
         }
@@ -315,8 +320,8 @@ class Pedro
 
     /**
      * Comercial e financeiro vão para os atendentes do Gestor (Gestor:
-     * docs/specs/whatsapp-pedro). Se o Gestor recusar (setor desligado), o
-     * pedido vira atendimento no quadro: o cliente já ouviu que alguém continua.
+     * docs/specs/whatsapp-pedro). Se o Gestor recusar (setor desligado), a
+     * conversa vai a um atendente (T-488): o cliente já ouviu que alguém continua.
      */
     private function entregarAoSetor(SuporteConversa $c, string $setor, string $resumo): void
     {
@@ -324,11 +329,11 @@ class Pedro
             $this->canal->pedirAoGestor($c, 'entregar', ['setor' => $setor, 'resumo' => $resumo ?: 'Cliente pediu atendimento pelo WhatsApp.']);
             $c->update(['situacao' => 'gestor', 'gestor_setor' => $setor]);
         } catch (ValidationException $e) {
-            $this->atendimento->abrir($c, "[{$setor}] ".$resumo.' (o Gestor não aceitou a entrega: '.collect($e->errors())->flatten()->first().')', null);
+            $this->atendimento->paraAtendente($c, "o Gestor não aceitou a entrega ao {$setor}: ".collect($e->errors())->flatten()->first(), "[{$setor}] ".$resumo);
         }
     }
 
-    /** Suporte com atendimento aberto aqui: no Gestor a conversa fica "atendida no Matriz". */
+    /** Suporte que ficou com um atendente daqui: no Gestor a conversa fica "atendida no Matriz". */
     private function marcarSuporteNoGestor(SuporteConversa $c): void
     {
         if (! $this->canal->viaGestor() || ! $c->gestor_conversa_id || $c->gestor_setor === 'suporte') {
@@ -338,21 +343,8 @@ class Pedro
             $this->canal->pedirAoGestor($c, 'suporte');
             $c->update(['gestor_setor' => 'suporte']);
         } catch (ValidationException) {
-            // A conversa segue com o Pedro no Gestor; o atendimento já existe aqui.
+            // A conversa segue no Gestor; o atendente daqui já foi chamado.
         }
-    }
-
-    /** Gravação no Gestor desligada: a tarefa diz o que lançar lá (cliente e assunto sugerido). */
-    private function comLancamentoNoGestor(SuporteConversa $c, array $bloco): string
-    {
-        if ($bloco['destino'] !== 'gestor' || ! $c->gestor_cliente_id) {
-            return $bloco['resumo'];
-        }
-        $g = app(DiretorioGestor::class)->cliente((int) $c->gestor_cliente_id);
-        $assunto = collect($g ? app(DiretorioGestor::class)->assuntosPara($g) : [])->firstWhere('id', $bloco['assunto_id']);
-
-        return $bloco['resumo'].' — LANÇAR NO GESTOR: cliente nº '.$c->gestor_cliente_id.($g ? ' ('.($g['fantasia'] ?: $g['nome']).')' : '')
-            .($assunto ? ', assunto '.$assunto['id'].' '.$assunto['nome'] : '').'.';
     }
 
     /** O código que a IA diz que o cliente confirmou só vale se estava entre os candidatos oferecidos. */
@@ -366,12 +358,12 @@ class Pedro
         $c->refresh();
     }
 
-    /** Pedido que a IA não respondeu a tempo: resposta automática e atendimento aberto. */
+    /** Pedido que a IA não respondeu a tempo: resposta automática e a conversa com um atendente. */
     public function vencidos(): int
     {
         $limite = now()->subSeconds((int) config('services.suporte_pedro.reserva_segundos', 120));
         $n = 0;
-        // Abertura no Gestor que ninguém pegou (máquina desligada): vira tarefa no Matriz, com o cliente avisado.
+        // Abertura no Gestor que ninguém pegou (máquina desligada): vai a um atendente, com o cliente avisado.
         foreach (\App\Models\SuporteGestorAbertura::with('conversa')->where('situacao', 'pendente')->where('created_at', '<', $limite)->get() as $a) {
             $this->atendimento->concluirNoGestor($a, null, 'nenhuma máquina gravou no Gestor', $this->canal);
             $n++;
@@ -385,7 +377,7 @@ class Pedro
         return $n;
     }
 
-    /** A resposta sem IA: avisa o cliente, abre o atendimento e deixa a conversa com os humanos. */
+    /** A resposta sem IA: avisa o cliente e deixa a conversa com um atendente, com o que lançar no Gestor. */
     private function reserva(SuportePedido $p): void
     {
         $c = $p->conversa->fresh();
@@ -413,15 +405,15 @@ class Pedro
 
             return;
         }
-        $t = $this->atendimento->abrir($c, 'Pedro sem resposta da IA; o cliente escreveu: '.mb_substr($ultimas, 0, 220), null);
-        if ($t) {
+        // Nada de tarefa no quadro nem de número T-N (T-487, O GATOSO: foi o que este caminho fez).
+        $this->atendimento->paraAtendente($c, 'Pedro sem resposta da IA', 'O cliente escreveu: '.mb_substr($ultimas, 0, 220));
+        if ($c->identificada()) {
             app(BaseDoSuporte::class)->proporRegistro($c, ['titulo' => 'Atendimento pelo WhatsApp', 'relato' => $ultimas]);
         }
         try {
-            $this->canal->enviar($c, self::FALLBACK.($t ? " O número do seu chamado é T-{$t->id}." : ''), 'pedro');
+            $this->canal->enviar($c, self::FALLBACK, 'pedro');
         } catch (ValidationException) {
-            // Fora da janela ou canal desligado: o atendimento já está aberto para a equipe.
+            // Fora da janela ou canal desligado: a conversa já está com a equipe.
         }
-        $c->update(['situacao' => 'humano', 'humano_id' => null, 'humano_ate' => now()->addHours(SuporteConversa::HUMANO_HORAS)]);
     }
 }

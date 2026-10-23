@@ -87,14 +87,39 @@ class PedroConhecimentoTest extends TestCase
         $this->postJson(route('suporte.runner.resposta', $job['id']), ['maquina' => 'wsl', 'texto' => "<<<PEDRO\n".json_encode($bloco, JSON_UNESCAPED_UNICODE)."\nPEDRO>>>"])->assertOk();
     }
 
+    /**
+     * Uma tarefa de suporte de ANTES da T-488, como o quadro ainda guarda (a T-487): o Pedro
+     * já não abre tarefa, mas a cobrança e o nº do Gestor continuam valendo para essas.
+     */
     private function portaoParado(): Tarefa
     {
-        SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
-        $this->chega('o portão G1 parou', 'wamid.1', '5527988887777');
-        $this->responde(['resposta' => 'Portão parado é prioridade: até 3 horas.', 'acao' => 'abrir_atendimento', 'resumo' => 'Portão G1 parado', 'destino' => 'gestor',
-            'assunto_id' => 3, 'roteiro' => SuporteRoteiro::where('titulo', 'Portão parado')->value('id')]);
+        $c = SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'nome_perfil' => 'Joaquim', 'ultima_entrada_em' => now()]);
+        $t = Tarefa::factory()->create(['titulo' => 'Suporte: CASTANHEIRAS — Portão G1 parado', 'tipo' => 'operacional', 'status' => 'aberta',
+            'prioridade' => 'critica', 'responsavel_id' => $this->rossini->id]);
+        $c->update(['tarefa_id' => $t->id]);
+        SuporteAtendimento::create(['tarefa_id' => $t->id, 'conversa_id' => $c->id, 'roteiro_id' => SuporteRoteiro::where('titulo', 'Portão parado')->value('id'),
+            'prioridade' => 'critica', 'prazo_em' => now()->addHours(3), 'destino' => 'gestor', 'gestor_cliente_id' => 13]);
 
-        return Tarefa::sole();
+        return $t;
+    }
+
+    /** T-488: o roteiro crítico não vira tarefa; vai ao Gestor como prioridade alta, ou ao atendente marcado CRÍTICO. */
+    public function test_portao_parado_vai_ao_gestor_com_prioridade_alta_e_a_fila_sabe_que_e_critico(): void
+    {
+        config(['services.suporte_pedro.gestor_gravar' => true]);
+        $roteiro = SuporteRoteiro::where('titulo', 'Portão parado')->value('id');
+        $c = SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
+        $this->chega('o portão G1 parou', 'wamid.1', '5527988887777');
+        $this->responde(['resposta' => 'Portão parado é prioridade: até 3 horas.', 'acao' => 'abrir_atendimento', 'resumo' => 'Portão G1 parado', 'assunto_id' => 3, 'roteiro' => $roteiro]);
+        $this->assertSame('alta', \App\Models\SuporteGestorAbertura::sole()->prioridade);
+        $this->assertSame(0, Tarefa::count());
+
+        config(['services.suporte_pedro.gestor_gravar' => false]);
+        \App\Models\SuporteGestorAbertura::query()->delete();
+        $this->chega('ainda parado', 'wamid.2', '5527988887777');
+        $this->responde(['resposta' => 'Já vou chamar alguém.', 'acao' => 'abrir_atendimento', 'resumo' => 'Portão G1 parado', 'assunto_id' => 3, 'roteiro' => $roteiro]);
+        $this->assertSame(0, Tarefa::count());
+        $this->assertStringContainsString('(CRÍTICO (Portão parado); gravação no Gestor desligada)', $c->fresh()->fila_motivo);
     }
 
     public function test_o_prompt_leva_empresa_roteiros_e_o_login_so_para_o_telefone_do_cadastro(): void
@@ -120,13 +145,10 @@ class PedroConhecimentoTest extends TestCase
         $this->assertStringNotContainsString('sindico@castanheiras.com.br', $prompt);
     }
 
-    public function test_portao_parado_nasce_critico_com_prazo_e_exige_o_numero_do_gestor(): void
+    public function test_tarefa_antiga_de_portao_parado_exige_o_numero_do_gestor(): void
     {
         $t = $this->portaoParado();
-        $this->assertSame('critica', $t->prioridade);
         $a = SuporteAtendimento::sole();
-        $this->assertSame(['critica', 'gestor', 13], [$a->prioridade, $a->destino, $a->gestor_cliente_id]);
-        $this->assertTrue($a->prazo_em->eq(now()->addHours(3)));
 
         $c = SuporteConversa::sole();
         $this->actingAs($this->rossini)->post(route('suporte.assumir', $c->id));

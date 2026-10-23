@@ -97,7 +97,8 @@ class PedroTest extends TestCase
         $this->assertSame('pedro', SuporteMensagem::latest('id')->value('direcao'));
     }
 
-    public function test_abre_atendimento_para_o_rossini_e_avisa_os_dois(): void
+    /** T-488: o quadro não recebe pedido de cliente; sem cliente no Gestor, um atendente lança lá. */
+    public function test_cliente_so_do_matriz_vai_a_um_atendente_e_nada_vai_ao_quadro(): void
     {
         $this->chega('A catraca parou de liberar', 'wamid.1');
         $this->runner();
@@ -105,17 +106,15 @@ class PedroTest extends TestCase
         $this->postJson(route('suporte.runner.resposta', $job['id']), ['maquina' => 'wsl',
             'texto' => $this->bloco('Vou encaminhar para a equipe técnica.', 'abrir_atendimento', 'Catraca não libera os alunos', 'AlfaGym')])->assertOk();
 
-        $t = Tarefa::sole();
-        $this->assertSame(['operacional', $this->rossini->id, 'Suporte: Academia Boa Forma — Catraca não libera os alunos'], [$t->tipo, $t->responsavel_id, $t->titulo]);
-        $this->assertSame(Sistema::where('slug', 'alfagym')->value('id'), $t->sistema_id);
-        $this->assertSame($t->id, SuporteConversa::sole()->tarefa_id);
-        $this->assertEqualsCanonicalizing([$this->rossini->id, $this->alexandre->id], Notificacao::where('tarefa_id', $t->id)->pluck('destinatario_id')->all());
-        Http::assertSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), "O número do seu chamado é T-{$t->id}."));
-
-        // Status do atendimento entra no contexto da próxima pergunta.
-        $this->chega('E o meu chamado?', 'wamid.2');
-        $this->runner();
-        $this->assertStringContainsString("T-{$t->id}: Academia Boa Forma — Catraca não libera os alunos — etapa:", $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->json('prompt'));
+        $this->assertSame(0, Tarefa::count(), 'nada no quadro do Matriz');
+        $c = SuporteConversa::sole();
+        $this->assertTrue($c->comHumano());
+        $this->assertNull($c->tarefa_id);
+        $this->assertStringStartsWith('LANÇAR NO GESTOR: Academia Boa Forma (cadastro do Matriz sem ligação no Gestor: procure pelo nome). Solicitante: Maria. Catraca não libera os alunos', $c->fila_motivo);
+        $this->assertStringContainsString('cliente sem cadastro no Gestor', $c->fila_motivo);
+        $this->assertSame(1, Notificacao::where('destinatario_id', $this->rossini->id)->where('titulo', 'like', 'Na fila do WhatsApp:%')->count(), 'os atendentes, no sino');
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Vou encaminhar para a equipe técnica.\n\nJá chamei um colega da equipe, que continua com você por aqui.");
+        Http::assertNotSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), 'T-'));
     }
 
     public function test_fora_do_horario_espera_a_abertura_e_humano_cala_o_pedro(): void
@@ -140,15 +139,18 @@ class PedroTest extends TestCase
         $this->assertSame(0, SuportePedido::count());
     }
 
-    public function test_sem_resposta_da_ia_o_matriz_responde_sozinho_e_abre_atendimento(): void
+    /** T-487 (O GATOSO): sem resposta da IA, o Matriz abria tarefa e dizia "seu chamado é T-N". */
+    public function test_sem_resposta_da_ia_o_matriz_responde_sozinho_e_passa_a_um_atendente(): void
     {
         $this->chega('Não consigo entrar no sistema', 'wamid.1');
         Carbon::setTestNow(now()->addMinutes(3));
         $this->artisan('suporte:pedro')->assertSuccessful();
         $this->assertSame('expirado', SuportePedido::sole()->situacao);
-        $t = Tarefa::sole();
-        Http::assertSent(fn ($r) => str_starts_with((string) ($r['text']['body'] ?? ''), Pedro::FALLBACK) && str_contains($r['text']['body'], "T-{$t->id}"));
-        $this->assertTrue(SuporteConversa::sole()->comHumano(), 'a conversa fica com a equipe');
+        $this->assertSame(0, Tarefa::count(), 'nada no quadro do Matriz');
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === Pedro::FALLBACK);
+        $c = SuporteConversa::sole();
+        $this->assertTrue($c->comHumano(), 'a conversa fica com a equipe');
+        $this->assertStringContainsString('Solicitante: Maria. O cliente escreveu: Não consigo entrar no sistema (Pedro sem resposta da IA)', $c->fila_motivo);
     }
 
     /** Responde de verdade o pedido aberto, como o runner. */

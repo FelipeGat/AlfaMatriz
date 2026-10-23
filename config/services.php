@@ -84,6 +84,8 @@ return [
         // ("não registrar no Matriz; quando o pedido vier de cliente, Wallas ou Alexandre, sempre ir
         // para o Gestor"). Com false no .env, volta a ser tarefa no Matriz para lançar à mão.
         'gestor_gravar' => (bool) env('SUPORTE_PEDRO_GESTOR_GRAVAR', true),
+        // As empresas do Gestor cujos clientes o Pedro atende (T-488, dono em 22/10/2026), pelo nome no retrato.
+        'empresas' => array_filter(explode(',', (string) env('SUPORTE_PEDRO_EMPRESAS', 'INVEST,GW,DELTA'))),
         // A garantia: o mesmo assunto concluído há até tantos dias é reaberto, e não aberto de novo.
         'garantia_dias' => (int) env('SUPORTE_PEDRO_GARANTIA_DIAS', 90),
         // Sem resposta da IA nesse tempo, o Matriz responde sozinho e abre o atendimento.

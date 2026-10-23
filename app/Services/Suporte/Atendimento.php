@@ -3,28 +3,56 @@
 namespace App\Services\Suporte;
 
 use App\Models\Notificacao;
-use App\Models\SuporteAtendimento;
 use App\Models\SuporteConversa;
 use App\Models\SuporteGestorAbertura;
-use App\Models\SuporteRoteiro;
-use App\Models\Tarefa;
 use App\Models\User;
 use App\Services\AvisoNoTelegram;
-use App\Services\TarefaService;
 use Illuminate\Support\Str;
 
 /**
- * O atendimento que o Pedro abre (docs/specs/suporte-pedro-whatsapp): uma tarefa
- * Operacional "Suporte: …" no quadro, no sistema do cliente, assinada pela conta
- * do Pedro, com o Rossini de responsável; o Rossini e o Alexandre avisados no
- * sino e o grupo de alertas no Telegram. Conversa com atendimento em curso não
- * abre outro.
+ * O atendimento que o Pedro abre (docs/specs/suporte-pedro-whatsapp): sempre NO Gestor,
+ * gravado pela máquina, pela ponte. O quadro do Matriz não recebe pedido de cliente
+ * (T-488, dono em 22/10/2026): o suporte é da Invest (N1), que fala com o cliente final e
+ * abre chamado só no Gestor; a Alfa é N2/N3 dos sistemas dela, e o quadro é do ciclo de
+ * desenvolvimento. Quando o Gestor não dá (cliente sem ligação lá, gravação desligada,
+ * recusa, máquina parada), a conversa vai a um atendente com a nota do que lançar lá —
+ * nunca uma tarefa, e o cliente nunca ouve um número T-N.
  */
 class Atendimento
 {
     public const CONTA = User::EMAIL_DO_PEDRO;
 
-    public function __construct(private TarefaService $tarefas, private AvisoNoTelegram $telegram) {}
+    public function __construct(private AvisoNoTelegram $telegram) {}
+
+    /**
+     * Sem chamado no Gestor (T-488): a conversa vai a um atendente, com o motivo e a nota do
+     * que lançar lá. A nota vem primeiro porque o motivo da fila cabe em 250 caracteres.
+     *
+     * @return array{atendente: ?User, texto: string} o que o cliente ouve
+     */
+    public function paraAtendente(SuporteConversa $c, string $porque, string $resumo, ?int $assuntoId = null): array
+    {
+        return app(Transferencia::class)->transferir($c, null, $this->notaDoGestor($c, $resumo, $assuntoId).' ('.$porque.')');
+    }
+
+    /** O que lançar no Gestor: o cliente de lá (ou o do Matriz, para procurar), o assunto sugerido e o pedido. */
+    public function notaDoGestor(SuporteConversa $c, string $resumo, ?int $assuntoId = null, ?int $gestorId = null): string
+    {
+        $d = app(DiretorioGestor::class);
+        $gestorId ??= $c->gestor_cliente_id ? (int) $c->gestor_cliente_id : null;
+        $g = $gestorId ? $d->cliente($gestorId) : null;
+        $assunto = $g && $assuntoId ? collect($d->assuntosPara($g))->firstWhere('id', $assuntoId) : null;
+        $cliente = match (true) {
+            $g !== null => 'cliente nº '.$g['id'].' ('.(trim((string) ($g['fantasia'] ?? '')) ?: $g['nome']).')',
+            $gestorId !== null => 'cliente nº '.$gestorId,
+            $c->cliente !== null => ($c->cliente->nome_fantasia ?: $c->cliente->nome).' (cadastro do Matriz sem ligação no Gestor: procure pelo nome)',
+            default => 'cliente sem cadastro, '.$c->telefoneLegivel(),
+        };
+        // Quem pediu é a pessoa que se identificou (T-478), e não o nome do perfil do WhatsApp.
+        $quem = filled($c->solicitante_nome) ? 'Solicitante: '.$c->solicitante().'. ' : '';
+
+        return 'LANÇAR NO GESTOR: '.$cliente.($assunto ? ', assunto '.$assunto['id'].' '.$assunto['nome'] : '').'. '.$quem.(trim($resumo) ?: 'Cliente pediu atendimento pelo WhatsApp.');
+    }
 
     /**
      * Antes de abrir, conferir (Felipe, 21/10/2026: "sempre conferir se não tem chamado em
@@ -89,7 +117,7 @@ class Atendimento
             'solicitante' => Str::limit($solicitante, 120, ''), 'telefone' => $c->telefone]);
     }
 
-    /** A máquina gravou (ou não) no Gestor: avisa o cliente e a equipe; se falhou, abre no quadro do Matriz. */
+    /** A máquina gravou (ou não) no Gestor: avisa o cliente e a equipe; se falhou, a conversa vai a um atendente (T-488). */
     public function concluirNoGestor(SuporteGestorAbertura $a, ?string $numero, ?string $erro, CanalWhatsApp $canal): void
     {
         $c = $a->conversa;
@@ -128,49 +156,24 @@ class Atendimento
             return;
         }
         $a->update(['situacao' => 'falhou', 'erro' => mb_substr($erro ?: 'a ponte não devolveu o número', 0, 255)]);
-        if ($t = $this->abrir($c, Str::before($a->descricao, "\n\n").' (não foi possível abrir no Gestor: '.$a->erro.')', null)) {
-            try {
-                $canal->enviar($c, "Abri o seu chamado, de nº T-{$t->id}. A equipe técnica retornará o contato por aqui.", 'pedro');
-            } catch (\Illuminate\Validation\ValidationException) {
-            }
+        $pedido = Str::before($a->descricao, "\n\n");
+        $nota = $this->notaDoGestor($c, $pedido, $a->assunto_id, $a->gestor_cliente_id ? (int) $a->gestor_cliente_id : null);
+        // Quem é da casa pediu: a resposta é para ele mesmo lançar, e a conversa dele não vai à fila.
+        $texto = $a->pedido_por
+            ? "Não consegui gravar no Gestor ({$a->erro}). Lance à mão, por favor: ".Str::after($nota, 'LANÇAR NO GESTOR: ')
+            : $this->paraAtendente($c, 'o Gestor não gravou: '.$a->erro, $pedido, $a->assunto_id)['texto'];
+        try {
+            $canal->enviar($c, $texto, 'pedro');
+        } catch (\Illuminate\Validation\ValidationException) {
+            // Fora da janela: a conversa já está na fila da equipe.
         }
-    }
-
-    /**
-     * O registro do atendimento. Na tarefa já aberta, o roteiro mais urgente
-     * prevalece (portão parado depois de uma dúvida vira crítico) e o destino
-     * Gestor não se perde.
-     */
-    private function registrar(SuporteConversa $c, Tarefa $t, ?SuporteRoteiro $roteiro, ?string $destino): SuporteAtendimento
-    {
-        $r = SuporteAtendimento::firstOrNew(['tarefa_id' => $t->id], ['conversa_id' => $c->id]);
-        $peso = array_flip(array_keys(SuporteRoteiro::PRIORIDADES));
-        if ($roteiro && ($r->prioridade === null || ($roteiro->prioridade && ($peso[$roteiro->prioridade] ?? -1) > ($peso[$r->prioridade] ?? -1)))) {
-            $r->roteiro_id = $roteiro->id;
-            $r->prioridade = $roteiro->prioridade ?? $r->prioridade;
-            $prazo = $roteiro->prazo_horas ? now()->addHours($roteiro->prazo_horas) : null;
-            if ($prazo && (! $r->prazo_em || $prazo->lt($r->prazo_em))) {
-                $r->prazo_em = $prazo;
-            }
-        }
-        if ($destino === 'gestor' || $r->destino === 'gestor') {
-            $r->destino = 'gestor';
-            $r->gestor_cliente_id ??= $c->gestor_cliente_id;
-        } else {
-            $r->destino ??= $destino;
-        }
-        $r->save();
-        // A tarefa mostra no quadro a prioridade e o dia do prazo; a hora fica no registro.
-        $t->forceFill(array_filter(['prioridade' => $r->prioridade, 'prazo' => $r->prazo_em?->setTimezone(config('app.timezone'))->toDateString()]))->save();
-
-        return $r;
     }
 
     /**
      * Atendimento pedido por quem é da casa (acesso-interno.md, FR-A7): para um cliente
-     * do Gestor, em modo novo, vincular ou reabrir, com responsável e data. Novo, com a
-     * gravação no Gestor ligada, vai pela máquina como o do cliente; o resto vira tarefa
-     * no quadro com o que lançar no Gestor. A conversa da pessoa não fica presa a ela:
+     * do Gestor, em modo novo, vincular ou reabrir, com responsável e data. Vai pela máquina
+     * como o do cliente; com a gravação desligada, a resposta diz o que lançar no Gestor —
+     * e nada vai ao quadro (T-488). A conversa da pessoa não fica presa a ela:
      * quem é da casa registra quantos precisar.
      *
      * @param  array{nome: string, perfil: string}  $acesso
@@ -235,39 +238,14 @@ class Atendimento
         if (! $cliente) {
             return null;
         }
-
-        $pedro = User::where('email', self::CONTA)->first();
-        if (! $pedro) {
-            return null;
-        }
         $acao = match ($modo) {
-            'vincular' => 'VINCULAR ao atendimento nº '.$atendimento['numero'].' (em aberto)',
-            'reabrir' => 'REABRIR o atendimento nº '.$atendimento['numero'],
-            default => 'ABRIR atendimento novo',
+            'vincular' => 'vincular ao atendimento nº '.$atendimento['numero'].' (em aberto)',
+            'reabrir' => 'reabrir o atendimento nº '.$atendimento['numero'],
+            default => 'abrir atendimento novo',
         };
-        $lancar = "LANÇAR NO GESTOR: {$acao} — cliente nº {$cliente['id']} ({$nomeCliente})".($assunto ? ", assunto {$assunto['id']} {$assunto['nome']}" : '').'.';
-        $t = $this->tarefas->criar([
-            'titulo' => Str::limit('Suporte: '.$nomeCliente.' — '.$resumo, 150),
-            'resumo' => Str::limit($resumo.' '.implode(' ', $detalhes).' '.$lancar.' Pedido por '.$quem.' pelo WhatsApp. Conversa: '.route('suporte.conversas', $c->id), 500),
-            'tipo' => 'operacional',
-        ], $pedro);
-        if (! $t) {
-            return null;
-        }
-        $responsaveis = $this->responsaveis()->sortBy(fn ($u) => array_search($u->email, (array) config('services.suporte_pedro.responsaveis'), true))->values();
-        $t->forceFill(array_filter(['responsavel_id' => $responsaveis->first()?->id, 'prazo' => $data?->toDateString()]))->save();
-        Notificacao::where('tarefa_id', $t->id)->where('tipo', 'triagem')->delete();
-        SuporteAtendimento::create(['tarefa_id' => $t->id, 'conversa_id' => $c->id, 'destino' => 'gestor', 'gestor_cliente_id' => (int) $cliente['id'],
-            'gestor_numero' => $modo === 'vincular' ? (string) $atendimento['numero'] : null]); // reabrir: o nº volta a valer só quando a equipe confirmar
-        foreach ($responsaveis as $u) {
-            Notificacao::create(['destinatario_id' => $u->id, 'tipo' => 'direcionamento', 'nivel' => 'atencao', 'icone' => 'balao', 'tarefa_id' => $t->id,
-                'titulo' => Notificacao::caber("Suporte T-{$t->id} ({$acesso['nome']}): {$nomeCliente} — {$resumo}"), 'meta' => 'Suporte WhatsApp', 'rota' => route('suporte.conversas', $c->id)]);
-        }
-        if ($this->telegram->configurado()) {
-            $this->telegram->enviar('📞 <b>Suporte T-'.$t->id.'</b> (pedido de '.e($acesso['nome']).'): '.e($nomeCliente)."\n".e($resumo)."\n".e($lancar));
-        }
 
-        return "Registrado no quadro como T-{$t->id} ({$acao}). A equipe lança no Gestor.";
+        return "Não registrei: a gravação no Gestor está desligada. Lance lá, por favor: {$acao} — cliente nº {$cliente['id']} ({$nomeCliente})"
+            .($assunto ? ", assunto {$assunto['id']} {$assunto['nome']}" : '').'. '.$resumo.($detalhes ? ' '.implode(' ', $detalhes) : '');
     }
 
     /** A agenda do atendimento, para quem é da casa: agendado, recusado pela agenda ou sem agendamento. */
@@ -291,58 +269,5 @@ class Atendimento
     private function responsaveis()
     {
         return User::whereIn('email', (array) config('services.suporte_pedro.responsaveis'))->where('ativo', true)->get();
-    }
-
-    /**
-     * @param  SuporteRoteiro|null  $roteiro  o roteiro que o Pedro seguiu: dá prioridade e prazo
-     * @param  string|null  $destino  "gestor": quem atende lança no Gestor e informa o número aqui
-     */
-    public function abrir(SuporteConversa $c, string $resumo, ?string $sistema, ?SuporteRoteiro $roteiro = null, ?string $destino = null): ?Tarefa
-    {
-        $c->loadMissing(['cliente.sistemas', 'tarefa']);
-        if ($c->tarefa && ! in_array($c->tarefa->status, Tarefa::STATUS_TERMINAIS, true)) {
-            $this->registrar($c, $c->tarefa, $roteiro, $destino);
-
-            return $c->tarefa;
-        }
-        $pedro = User::where('email', self::CONTA)->first();
-        if (! $pedro) {
-            return null;
-        }
-        $nomeCliente = $c->cliente ? ($c->cliente->nome_fantasia ?: $c->cliente->nome) : ($c->nome_perfil ?: $c->telefoneLegivel()).' (sem cadastro)';
-        $sistemaId = $c->cliente && $sistema
-            ? $c->cliente->sistemas->first(fn ($s) => mb_strtolower($s->nome) === mb_strtolower(trim($sistema)))?->id : null;
-        $resumo = trim($resumo) ?: 'Cliente pediu atendimento pelo WhatsApp.';
-        $quem = filled($c->solicitante_nome) ? ' Solicitante: '.$c->solicitante().'.' : '';
-
-        $t = $this->tarefas->criar([
-            'titulo' => Str::limit('Suporte: '.$nomeCliente.' — '.$resumo, 150),
-            'resumo' => Str::limit($resumo.$quem.' WhatsApp '.$c->telefoneLegivel().'. Conversa: '.route('suporte.conversas', $c->id), 500),
-            'tipo' => 'operacional',
-            'sistema_id' => $sistemaId,
-        ], $pedro);
-        if (! $t) {
-            return null;
-        }
-        $responsaveis = User::whereIn('email', (array) config('services.suporte_pedro.responsaveis'))->where('ativo', true)->get()
-            ->sortBy(fn ($u) => array_search($u->email, (array) config('services.suporte_pedro.responsaveis'), true))->values();
-        if ($responsaveis->isNotEmpty()) {
-            $t->forceFill(['responsavel_id' => $responsaveis->first()->id])->save();
-            // A conta do Pedro não triaga, então o quadro avisou a triagem; mas o atendimento
-            // já nasce com dono, e o aviso iria para quem não cuida do suporte.
-            Notificacao::where('tarefa_id', $t->id)->where('tipo', 'triagem')->delete();
-        }
-        $c->update(['tarefa_id' => $t->id]);
-        $this->registrar($c, $t, $roteiro, $destino);
-
-        foreach ($responsaveis as $u) {
-            Notificacao::create(['destinatario_id' => $u->id, 'tipo' => 'direcionamento', 'nivel' => 'atencao', 'icone' => 'balao', 'tarefa_id' => $t->id,
-                'titulo' => Notificacao::caber("Suporte T-{$t->id}: {$nomeCliente} — {$resumo}"), 'meta' => 'Suporte WhatsApp', 'rota' => route('suporte.conversas', $c->id)]);
-        }
-        if ($this->telegram->configurado()) {
-            $this->telegram->enviar('📞 <b>Suporte T-'.$t->id.'</b>: '.e($nomeCliente)."\n".e($resumo)."\n".e(route('suporte.conversas', $c->id)));
-        }
-
-        return $t;
     }
 }

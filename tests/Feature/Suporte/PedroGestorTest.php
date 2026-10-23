@@ -113,7 +113,8 @@ class PedroGestorTest extends TestCase
         $this->assertStringNotContainsString('MANUTENÇÃO CORRETIVA', $prompt, 'assunto de outra empresa não entra');
     }
 
-    public function test_gravacao_desligada_vira_tarefa_para_lancar_no_gestor(): void
+    /** T-488: com a gravação desligada, nada vai ao quadro; um atendente lança no Gestor. */
+    public function test_gravacao_desligada_vai_a_um_atendente_com_o_que_lancar_no_gestor(): void
     {
         config(['services.suporte_pedro.gestor_gravar' => false]);
         SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
@@ -121,9 +122,45 @@ class PedroGestorTest extends TestCase
         $this->responde(['resposta' => 'Vou encaminhar para a equipe técnica.', 'acao' => 'abrir_atendimento', 'resumo' => 'Portão G1 não fecha', 'destino' => 'gestor', 'assunto_id' => 3]);
 
         $this->assertSame(0, SuporteGestorAbertura::count());
-        $t = Tarefa::sole();
-        $this->assertStringContainsString('LANÇAR NO GESTOR: cliente nº 13 (CONDOMINIO CASTANHEIRAS), assunto 3 PORTÃO / ACESSO', $t->resumo);
-        Http::assertSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), "T-{$t->id}"));
+        $this->assertSame(0, Tarefa::count(), 'nada no quadro do Matriz');
+        $c = SuporteConversa::sole();
+        $this->assertTrue($c->comHumano());
+        $this->assertSame('LANÇAR NO GESTOR: cliente nº 13 (CONDOMINIO CASTANHEIRAS), assunto 3 PORTÃO / ACESSO. Solicitante: Maria. Portão G1 não fecha (gravação no Gestor desligada)', $c->fila_motivo);
+        Http::assertNotSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), 'T-'));
+    }
+
+    /** T-488: o cliente confirmado pelo cadastro do Matriz usa o cliente dele no Gestor, e o chamado vai para lá. */
+    public function test_cliente_do_matriz_ligado_ao_gestor_abre_no_gestor(): void
+    {
+        config(['services.suporte_pedro.gestor_gravar' => true]);
+        $matriz = Cliente::sole();
+        $matriz->forceFill(['gestor_cliente_id' => 13])->save();
+        SuporteConversa::create(['telefone' => '5527988887777', 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
+        $this->chega('sou do parque das castanheiras, o portão G1 não fecha', 'wamid.1');
+        $this->responde(['resposta' => 'Certo, Maria.', 'acao' => 'abrir_atendimento', 'resumo' => 'Portão G1 não fecha', 'cliente' => 'matriz:'.$matriz->id, 'assunto_id' => 3]);
+
+        $c = SuporteConversa::sole();
+        $this->assertSame([$matriz->id, 13], [$c->cliente_id, $c->gestor_cliente_id]);
+        $this->assertSame([13, 3, 'pendente'], [SuporteGestorAbertura::sole()->gestor_cliente_id, SuporteGestorAbertura::sole()->assunto_id, SuporteGestorAbertura::sole()->situacao]);
+        $this->assertSame(0, Tarefa::count());
+        $this->assertFalse($c->comHumano(), 'o número do Gestor chega em seguida, pelo Pedro');
+    }
+
+    /** T-488: o Pedro atende clientes da Invest, da GW e da DELTA; os de outra empresa do Gestor não são reconhecidos. */
+    public function test_cliente_de_outra_empresa_do_gestor_nao_e_reconhecido(): void
+    {
+        $this->runner();
+        $this->postJson(route('suporte.runner.gestor'), ['maquina' => 'wsl', 'lido_em' => now()->toIso8601String(),
+            'clientes' => [
+                ['id' => 13, 'nome' => 'CONDOMINIO CASTANHEIRAS', 'fantasia' => '', 'razao' => '', 'cidade' => 'VILA VELHA', 'empresa_id' => 3, 'empresa' => 'INVEST', 'telefones' => ['(27) 98888-7777']],
+                ['id' => 22, 'nome' => 'LEROY MERLIN', 'fantasia' => '', 'razao' => '', 'cidade' => 'SERRA', 'empresa_id' => 1, 'empresa' => 'DELTA', 'telefones' => ['(27) 98888-7777']],
+                ['id' => -65, 'nome' => 'ELABORE HUB', 'fantasia' => '', 'razao' => '', 'cidade' => 'VITÓRIA', 'empresa_id' => 4, 'empresa' => 'ALFA', 'telefones' => ['(27) 98888-7777']],
+                ['id' => 37, 'nome' => 'JEEP GUARAPARI', 'fantasia' => '', 'razao' => '', 'cidade' => 'GUARAPARI', 'telefones' => ['(27) 98888-7777']],
+            ], 'atendimentos' => []])->assertOk();
+        $d = app(\App\Services\Suporte\DiretorioGestor::class);
+        $this->assertSame([13, 22, 37], array_column($d->porTelefone('5527988887777'), 'id'), 'sem empresa no retrato continua');
+        $this->assertSame([], $d->porNome('aqui é da elabore hub'));
+        $this->assertSame([], $d->buscarClientes('abrir chamado para a Elabore Hub'));
     }
 
     public function test_gravacao_ligada_a_maquina_grava_e_o_cliente_recebe_o_numero(): void
@@ -151,7 +188,8 @@ class PedroGestorTest extends TestCase
         $this->assertSame(1, Notificacao::where('destinatario_id', $this->rossini->id)->where('titulo', 'like', 'Gestor nº 782%')->count());
     }
 
-    public function test_abertura_sem_maquina_cai_para_o_quadro(): void
+    /** T-488: a máquina não gravou no Gestor; antes virava tarefa e o cliente ouvia "seu chamado é T-N". */
+    public function test_abertura_sem_maquina_vai_a_um_atendente(): void
     {
         config(['services.suporte_pedro.gestor_gravar' => true]);
         SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
@@ -160,9 +198,12 @@ class PedroGestorTest extends TestCase
         Carbon::setTestNow(now()->addMinutes(3));
         $this->artisan('suporte:pedro')->assertSuccessful();
         $this->assertSame('falhou', SuporteGestorAbertura::sole()->situacao);
-        $t = Tarefa::sole();
-        $this->assertStringContainsString('não foi possível abrir no Gestor', $t->resumo);
-        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Abri o seu chamado, de nº T-{$t->id}. A equipe técnica retornará o contato por aqui.");
+        $this->assertSame(0, Tarefa::count(), 'nada no quadro do Matriz');
+        $c = SuporteConversa::sole();
+        $this->assertTrue($c->comHumano());
+        $this->assertSame('LANÇAR NO GESTOR: cliente nº 13 (CONDOMINIO CASTANHEIRAS), assunto 3 PORTÃO / ACESSO. Solicitante: Maria. Portão G1 não fecha (o Gestor não gravou: nenhuma máquina gravou no Gestor)', $c->fila_motivo);
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Já chamei um colega da equipe, que continua com você por aqui.');
+        Http::assertNotSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), 'T-'));
     }
 
     public function test_so_a_conta_do_pedro_manda_o_retrato(): void
