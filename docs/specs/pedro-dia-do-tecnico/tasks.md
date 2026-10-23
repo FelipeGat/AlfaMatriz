@@ -39,7 +39,7 @@ Ref: spec.md FR-001, FR-002, FR-003; research.md Decisions 5 e 8
 - [x] 1.2.3 `Contexto::promptInterno`: regra de consulta (responder só com o bloco; sem visita = "nada agendado")
 - [x] 1.2.4 Teste: diretor pergunta o dia do Vitor e recebe a visita com o nome do pré-cliente (cenário 1)
 - [x] 1.2.5 Teste: número fora da lista não recebe agenda (cenário 2); "Victor" acha "Vitor"
-- [ ] 1.2.6 Publicar (com autorização), instalar o leitor no runner e conferir uma consulta real
+- [x] 1.2.6 Publicar (com autorização), instalar o leitor no runner e conferir uma consulta real
 
 ---
 
