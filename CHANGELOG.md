@@ -1,5 +1,17 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 23/10/2026 — Monitor: falha passageira da busca de alertas não vira mais Bug (v2026.10.23.2, T-482)
+
+### Correção
+
+- **Uma falha isolada da busca de alertas do AlfaMonitor deixou de abrir Bug
+  no quadro.** De hora em hora o Matriz busca no AlfaMonitor os alertas que
+  não chegaram. Em 22/10, com a rede do servidor instável, essa busca falhou
+  uma vez e o vigia abriu uma tarefa sem dizer a causa. Agora a falha
+  passageira fica só como aviso no log, já com o motivo. Se falhar 3 horas
+  seguidas, o vigia abre a tarefa dizendo o porquê. Nenhum alerta se perde:
+  a rodada seguinte busca o que faltou.
+
 ## AlfaMatriz — 22/10/2026 — Suporte: registro de atendimento com resumo longo (v2026.10.22.3, T-481)
 
 ### Correção
