@@ -18,7 +18,7 @@
                 :migalhas="[['rotulo' => 'Monitor', 'rota' => route('monitor.geral')], ['rotulo' => 'Clientes', 'rota' => route('monitor.clientes')]]"
                 :atual="$c['nome'] ?? 'Cliente'"
                 :contexto="$resposta->temDados() ? ($c['dispositivos_online'] ?? 0).' de '.($c['dispositivos_total'] ?? 0).' aparelhos online' : null">
-    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(190px, 1fr))">
+    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr))">
         @foreach (['hoje' => 'Hoje', 'd7' => '7 dias', 'd30' => '30 dias'] as $chave => $rotulo)
             <x-kpi-card :rotulo="'Liberados · '.$rotulo" :valor="F::inteiro($acessos[$chave]['liberados'] ?? null)"
                         :delta="F::inteiro($acessos[$chave]['negados'] ?? null).' negados'" acento="good" icone="check-circle" />

@@ -1,6 +1,6 @@
 {{-- A seção fala da ADMINISTRAÇÃO — quem usa, o que está instalado, o que se
      mexeu. Só a auditoria tem competência; o resto é a foto de hoje. --}}
-<div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+<div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr))">
     <x-kpi-card rotulo="Sistemas ativos" :valor="number_format($sistemasAtivos, 0, ',', '.')"
                 acento="accent" icone="cube-outline" />
     <x-kpi-card rotulo="Clientes ativos" :valor="number_format($clientesAtivos, 0, ',', '.')"

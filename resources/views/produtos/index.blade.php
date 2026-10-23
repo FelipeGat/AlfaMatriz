@@ -262,7 +262,7 @@
 
         {{-- Cartões -------------------------------------------------------- --}}
         <div x-show="modo === 'cartoes'" x-cloak
-             class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))">
+             class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr))">
             @foreach ($produtos as $produto)
                 @php $sistema = $produto['sistema']; @endphp
                 <article class="rounded-panel border border-line bg-card-grad p-4 {{ $sistema->ativo ? '' : 'opacity-[0.72]' }}">

@@ -51,7 +51,7 @@
         </div>
     </div>
 
-    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(190px, 1fr))">
+    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr))">
         <x-kpi-card rotulo="Saúde geral" :valor="is_numeric($resumo['saude_geral'] ?? null) ? $resumo['saude_geral'].' / 100' : '—'"
                     :acento="match ($tomDaSaude($resumo['saude_geral'] ?? null)) { 'bom' => 'good', 'atencao' => 'warn', 'critico' => 'crit', default => 'accent' }" icone="check-circle" />
         <x-kpi-card rotulo="Disponibilidade média" :valor="F::noAr($resumo['disponibilidade_media_pct'] ?? null)"

@@ -44,7 +44,7 @@
         @endif
     </div>
 
-    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr))">
         @foreach ($janelas as $chave => $rotulo)
             <x-kpi-card :rotulo="'Liberados · '.$rotulo" :valor="F::inteiro($totais[$chave]['liberados'] ?? null)"
                         :delta="F::inteiro($totais[$chave]['negados'] ?? null).' negados'" acento="good" icone="check-circle" />

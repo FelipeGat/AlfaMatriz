@@ -196,7 +196,7 @@
                             <button class="h-[28px] rounded-control border border-btn-line px-2 text-[12px] font-semibold text-ink-mute hover:border-crit hover:text-crit">Remover</button></form>
                     </div>
                 @endforeach
-                <div class="grid gap-2 sm:grid-cols-2">
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <input x-model="f.rotulo" placeholder="Rótulo (ex.: VixCard comercial)" class="rounded-control border border-btn-line bg-canvas px-2.5 py-2 text-[13.5px] text-ink">
                     <input x-model="f.host" placeholder="Servidor IMAP (ex.: imap.gmail.com)" class="rounded-control border border-btn-line bg-canvas px-2.5 py-2 text-[13.5px] text-ink">
                     <div class="flex gap-2"><input x-model="f.porta" type="number" class="w-24 rounded-control border border-btn-line bg-canvas px-2.5 py-2 text-[13.5px] text-ink">
@@ -235,7 +235,7 @@
                     @endif
                     <form method="POST" action="{{ route('secretario.vixorganize.conectar') }}" class="space-y-2">
                         @csrf
-                        <div class="grid gap-2 sm:grid-cols-2">
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             <input name="url" value="{{ old('url', $vixorganize?->url) }}" required placeholder="Endereço (https://…)" class="rounded-control border border-btn-line bg-canvas px-2.5 py-2 text-[13.5px] text-ink sm:col-span-2">
                             <input name="chave" type="password" autocomplete="new-password" {{ $vixorganize ? '' : 'required' }} placeholder="{{ $vixorganize ? 'Chave de escrita (vazio mantém a atual)' : 'Chave de escrita' }}" class="rounded-control border border-btn-line bg-canvas px-2.5 py-2 text-[13.5px] text-ink">
                             <input name="autor_email" type="email" value="{{ old('autor_email', $vixorganize?->autor_email) }}" placeholder="Seu e-mail no VixOrganize (autor)" class="rounded-control border border-btn-line bg-canvas px-2.5 py-2 text-[13.5px] text-ink">

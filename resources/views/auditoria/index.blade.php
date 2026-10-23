@@ -6,7 +6,7 @@
     </x-slot>
 
     <div class="space-y-4">
-        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr))">
             <x-kpi-card rotulo="Eventos hoje" :valor="$kpis['hoje']" acento="brand" icone="clock" />
             <x-kpi-card rotulo="Entradas hoje" :valor="$kpis['entradas']" acento="accent" icone="users" />
 

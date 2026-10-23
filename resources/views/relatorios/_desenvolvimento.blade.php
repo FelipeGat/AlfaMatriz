@@ -1,7 +1,7 @@
 {{-- Concluído se mede pelo EVENTO de chegada em `concluida` — é ele que sabe a
      data. Os cards de WIP e fila são a foto de agora, sem competência: ou a
      tarefa está lá, ou não está. --}}
-<div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+<div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr))">
     <x-kpi-card rotulo="Concluídas na competência" :valor="number_format($concluidasQtd, 0, ',', '.')"
                 :delta="$cicloMedioDias !== null ? 'ciclo médio de '.number_format($cicloMedioDias, 0, ',', '.').' dia(s)' : null"
                 :sinal="$concluidasQtd > 0 ? 'bom' : 'neutro'"

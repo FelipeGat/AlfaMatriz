@@ -58,7 +58,7 @@
         </x-abas>
 
         @if (($aba ?? 'revendas') === 'clientes')
-            <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+            <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr))">
                 <x-kpi-card rotulo="Clientes cadastrados" :valor="number_format($clientesView['kpis']['cadastrados']['valor'], 0, ',', '.')"
                             :delta="$clientesView['kpis']['cadastrados']['nota']" acento="accent" icone="users" />
                 <x-kpi-card rotulo="Em contrato" :valor="number_format($clientesView['kpis']['contrato']['valor'], 0, ',', '.')"
@@ -76,7 +76,7 @@
                 'sistemas' => $clientesView['sistemas'],
             ])
         @else
-        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr))">
             <x-kpi-card rotulo="Revendas ativas" :valor="$kpis['ativas']['valor']" :delta="$kpis['ativas']['nota']"
                         acento="accent" icone="building" />
             <x-kpi-card rotulo="Clientes via revenda" :valor="number_format($kpis['clientes']['valor'], 0, ',', '.')"

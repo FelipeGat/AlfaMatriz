@@ -15,12 +15,12 @@
                 <span class="h-3.5 w-3.5"><x-nav-icon name="chevron-left" :peso="1.8" /></span>
             </a>
 
-            <form method="GET" class="flex items-center">
+            <form method="GET" class="flex items-center max-md:min-w-0 max-md:flex-1">
                 @foreach (request()->except(['competencia']) as $chave => $valor)
                     <input type="hidden" name="{{ $chave }}" value="{{ $valor }}">
                 @endforeach
                 <input type="month" name="competencia" value="{{ $competencia }}" onchange="this.form.submit()"
-                       class="h-8 py-0 text-[13px] rounded-control bg-input border-line text-ink">
+                       class="h-8 py-0 text-[13px] rounded-control bg-input border-line text-ink max-md:w-full max-md:min-w-0">
             </form>
 
             <a href="{{ route('dashboard', array_merge(request()->except('competencia'), ['competencia' => $competenciaProxima])) }}"
@@ -36,7 +36,7 @@
         </div>
 
         {{-- Os cinco números do mês --}}
-        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr))">
             {{-- O mesmo número, a mesma marca e a mesma curva do Centro de
                  Controle: as duas telas perguntam ao serviço, e é isso que as
                  impede de mostrar valores diferentes sob este rótulo. --}}

@@ -2,7 +2,7 @@
      (`IndicadoresService`) — aqui eles ganham o RESULTADO do mês, que lá não
      existe como card. As curvas são a tendência recente (últimos 6 meses até
      hoje), não a competência navegada — a mesma nota do dashboard. --}}
-<div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+<div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr))">
     <x-kpi-card rotulo="Receita recorrente" :valor="'R$ '.number_format($mrr, 2, ',', '.')"
                 :delta="$mrrContratado ? 'contratado · competência ainda não fechada' : null"
                 :serie="$serieMrr"

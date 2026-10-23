@@ -8,7 +8,7 @@
         própria mesa, nunca o dinheiro da casa nem a carteira de outro vendedor.
     --}}
     <div class="space-y-4">
-        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+        <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr))">
             <x-kpi-card rotulo="Taxa de conversão" :valor="number_format($kpis['taxa_conversao'], 1, ',', '.').'%'"
                         acento="accent" icone="trending-up"
                         :delta="$kpis['fechados'].' de '.$kpis['total'].' leads'" />
