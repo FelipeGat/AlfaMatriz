@@ -38,33 +38,59 @@ class SuportePedroRunnerController extends Controller
     }
 
     /** O retrato do Gestor (só leitura, a cada 10 min): clientes ativos com telefones e atendimentos recentes. */
+    /**
+     * Cada item da lista pelas regras dele; o erro sai com o caminho completo ("clientes.12.nome"),
+     * como a regra curinga daria. Só o que as regras conhecem fica.
+     */
+    private function itens(string $lista, array $itens, array $regras): array
+    {
+        $ok = [];
+        foreach (array_values($itens) as $i => $item) {
+            $v = \Illuminate\Support\Facades\Validator::make(is_array($item) ? $item : [], $regras);
+            if ($v->fails()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(collect($v->errors()->messages())
+                    ->mapWithKeys(fn ($m, $campo) => ["{$lista}.{$i}.{$campo}" => $m])->all());
+            }
+            $ok[] = $v->validated();
+        }
+
+        return $ok;
+    }
+
     public function gestor(Request $request, DiretorioGestor $diretorio): JsonResponse
     {
         $maquina = $this->maquina($request);
         $this->exigirConta($request);
+        // Item a item, e não com "clientes.*.campo": a regra curinga do Laravel cresce ao quadrado —
+        // com os pré-clientes (22/10/2026) o retrato passou de 3 mil linhas, levava ~100 s para validar
+        // e o runner desistia aos 20 s; o Pedro ficou com o retrato velho. As regras são as mesmas.
         $d = $request->validate([
             'lido_em' => ['required', 'date'],
-            'clientes' => ['present', 'array', 'max:20000'],
-            'clientes.*.id' => ['required', 'integer'],
-            'clientes.*.nome' => ['nullable', 'string', 'max:255'], 'clientes.*.fantasia' => ['nullable', 'string', 'max:255'], 'clientes.*.razao' => ['nullable', 'string', 'max:255'],
-            'clientes.*.documento' => ['nullable', 'string', 'max:30'], 'clientes.*.cidade' => ['nullable', 'string', 'max:120'], 'clientes.*.empresa' => ['nullable', 'string', 'max:120'],
-            'clientes.*.telefones' => ['nullable', 'array', 'max:20'], 'clientes.*.telefones.*' => ['string', 'max:40'], 'clientes.*.empresa_id' => ['nullable', 'integer'],
-            'clientes.*.portal' => ['nullable', 'array', 'max:5'], 'clientes.*.portal.*' => ['string', 'email', 'max:255'],
-            // Pré-cliente do funil (id negativo), desde 22/10/2026.
-            'clientes.*.pre' => ['nullable', 'boolean'],
-            'atendimentos' => ['present', 'array', 'max:20000'],
-            'atendimentos.*.id' => ['required', 'integer'], 'atendimentos.*.cliente_id' => ['nullable', 'integer'], 'atendimentos.*.numero' => ['nullable', 'string', 'max:30'],
-            'atendimentos.*.descricao' => ['nullable', 'string', 'max:500'], 'atendimentos.*.status' => ['nullable', 'string', 'max:40'], 'atendimentos.*.criado_em' => ['nullable', 'string', 'max:30'],
-            'atendimentos.*.empresa_id' => ['nullable', 'integer'], 'atendimentos.*.assunto_id' => ['nullable', 'integer'],
-            'atendimentos.*.funcionarios' => ['nullable', 'array', 'max:20'], 'atendimentos.*.funcionarios.*' => ['integer'],
-            'equipe' => ['nullable', 'array', 'max:500'], 'equipe.*.id' => ['required', 'integer'], 'equipe.*.nome' => ['required', 'string', 'max:255'],
-            'equipe.*.telefones' => ['nullable', 'array', 'max:5'], 'equipe.*.telefones.*' => ['string', 'max:40'],
-            'assuntos' => ['nullable', 'array', 'max:2000'], 'assuntos.*.id' => ['required', 'integer'], 'assuntos.*.nome' => ['required', 'string', 'max:255'],
-            'assuntos.*.tipo' => ['nullable', 'string', 'max:60'], 'assuntos.*.categoria' => ['nullable', 'string', 'max:120'], 'assuntos.*.empresa_id' => ['nullable', 'integer'],
-            'showroom' => ['nullable', 'array', 'max:500'], 'showroom.*.categoria' => ['nullable', 'string', 'max:120'], 'showroom.*.titulo' => ['required', 'string', 'max:255'],
-            'showroom.*.descricao' => ['nullable', 'string', 'max:500'], 'showroom.*.texto' => ['nullable', 'string', 'max:2000'],
-            'showroom.*.url' => ['nullable', 'string', 'max:500'], 'showroom.*.video' => ['nullable', 'string', 'max:500'],
+            'clientes' => ['present', 'array', 'max:20000'], 'atendimentos' => ['present', 'array', 'max:20000'],
+            'equipe' => ['nullable', 'array', 'max:500'], 'assuntos' => ['nullable', 'array', 'max:2000'], 'showroom' => ['nullable', 'array', 'max:500'],
         ]);
+        $d['clientes'] = $this->itens('clientes', $d['clientes'], [
+            'id' => ['required', 'integer'],
+            'nome' => ['nullable', 'string', 'max:255'], 'fantasia' => ['nullable', 'string', 'max:255'], 'razao' => ['nullable', 'string', 'max:255'],
+            'documento' => ['nullable', 'string', 'max:30'], 'cidade' => ['nullable', 'string', 'max:120'], 'empresa' => ['nullable', 'string', 'max:120'],
+            'telefones' => ['nullable', 'array', 'max:20'], 'telefones.*' => ['string', 'max:40'], 'empresa_id' => ['nullable', 'integer'],
+            'portal' => ['nullable', 'array', 'max:5'], 'portal.*' => ['string', 'email', 'max:255'],
+            // Pré-cliente do funil (id negativo), desde 22/10/2026.
+            'pre' => ['nullable', 'boolean'],
+        ]);
+        $d['atendimentos'] = $this->itens('atendimentos', $d['atendimentos'], [
+            'id' => ['required', 'integer'], 'cliente_id' => ['nullable', 'integer'], 'numero' => ['nullable', 'string', 'max:30'],
+            'descricao' => ['nullable', 'string', 'max:500'], 'status' => ['nullable', 'string', 'max:40'], 'criado_em' => ['nullable', 'string', 'max:30'],
+            'empresa_id' => ['nullable', 'integer'], 'assunto_id' => ['nullable', 'integer'],
+            'funcionarios' => ['nullable', 'array', 'max:20'], 'funcionarios.*' => ['integer'],
+        ]);
+        $d['equipe'] = $this->itens('equipe', $d['equipe'] ?? [], ['id' => ['required', 'integer'], 'nome' => ['required', 'string', 'max:255'],
+            'telefones' => ['nullable', 'array', 'max:5'], 'telefones.*' => ['string', 'max:40']]);
+        $d['assuntos'] = $this->itens('assuntos', $d['assuntos'] ?? [], ['id' => ['required', 'integer'], 'nome' => ['required', 'string', 'max:255'],
+            'tipo' => ['nullable', 'string', 'max:60'], 'categoria' => ['nullable', 'string', 'max:120'], 'empresa_id' => ['nullable', 'integer']]);
+        $d['showroom'] = $this->itens('showroom', $d['showroom'] ?? [], ['categoria' => ['nullable', 'string', 'max:120'], 'titulo' => ['required', 'string', 'max:255'],
+            'descricao' => ['nullable', 'string', 'max:500'], 'texto' => ['nullable', 'string', 'max:2000'],
+            'url' => ['nullable', 'string', 'max:500'], 'video' => ['nullable', 'string', 'max:500']]);
         $diretorio->gravar($maquina, \Illuminate\Support\Carbon::parse($d['lido_em'])->setTimezone(config('app.timezone'))->toDateTimeString(), $d['clientes'], $d['atendimentos'], $d['assuntos'] ?? [], $d['equipe'] ?? [], $d['showroom'] ?? []);
 
         return response()->json(['ok' => true, 'clientes' => count($d['clientes'])]);

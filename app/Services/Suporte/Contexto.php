@@ -501,18 +501,22 @@ class Contexto
     {
         $quem = ['entrada' => 'CLIENTE', 'pedro' => 'PEDRO', 'humano_app' => 'ATENDENTE', 'humano_matriz' => 'ATENDENTE'];
         $linha = fn ($m) => $quem[$m->direcao].': '.$this->textoDaMensagem($m);
-        $ultimas = $c->mensagens()->reorder()->orderByDesc('id')->limit(15)->get()->reverse();
+        // A resposta que não saiu (recusada pelo Gestor ou pela Meta) não foi dita ao cliente.
+        $ultimas = $c->mensagens()->reorder()->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 'falhou'))->orderByDesc('id')->limit(15)->get()->reverse();
         // O histórico fica inteiro, para o Pedro lembrar; o atendimento encerrado vem
         // separado, para ele não tomá-lo como o assunto de agora (T-478, 22/10/2026: um
         // "oi" depois do encerramento voltou com "sobre as câmeras sem imagem…").
         $fim = $c->fimDoAtendimentoAnterior();
         [$antes, $agora] = $ultimas->partition(fn ($m) => $fim && $m->id <= $fim);
+        // De volta depois do aviso automático de fora do ar (23/10/2026): a conversa é retomada.
+        $retomada = str_starts_with((string) $agora->where('direcao', 'pedro')->last()?->texto, Pedro::FORA_DO_AR)
+            ? "\n(O PEDRO esteve fora do ar e o cliente recebeu o aviso automático acima. Retome agora: peça desculpas pela demora em poucas palavras e dê andamento ao que ele pediu, sem repetir o aviso.)" : '';
         if ($antes->isEmpty()) {
-            return $agora->map($linha)->implode("\n");
+            return $agora->map($linha)->implode("\n").$retomada;
         }
 
         return "### Atendimento anterior, já ENCERRADO\n".$antes->map($linha)->implode("\n")
-            ."\n\n### Atendimento de agora\n".($agora->map($linha)->implode("\n") ?: '(ainda sem mensagem)');
+            ."\n\n### Atendimento de agora\n".($agora->map($linha)->implode("\n") ?: '(ainda sem mensagem)').$retomada;
     }
 
     /** Foto anexada e áudio (transcrito ou a transcrever no runner) aparecem como tal. */

@@ -172,6 +172,8 @@ class PedroIdentificacaoTest extends TestCase
     public function test_sem_resposta_da_ia_sem_identificacao_nao_abre_chamado(): void
     {
         $this->chega('o portão não abre', 'wamid.1');
+        // A máquina pegou o pedido; a IA é que não respondeu (sem máquina, o aviso é outro).
+        SuportePedido::query()->update(['situacao' => 'reservado', 'reservado_em' => now()]);
         Carbon::setTestNow(now()->addMinutes(3));
         $this->artisan('suporte:pedro')->assertSuccessful();
 

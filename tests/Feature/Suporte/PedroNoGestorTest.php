@@ -190,6 +190,9 @@ class PedroNoGestorTest extends TestCase
     public function test_sem_resposta_da_ia_a_reserva_e_do_gestor_no_primeiro_atendimento(): void
     {
         $this->repasse('oi', 'wamid.1', $this->estado())->assertOk();
+        // A máquina pegou o pedido, mas a IA não respondeu a tempo.
+        Sanctum::actingAs($this->felipe, ['central-ia-runner']);
+        $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->assertOk();
         Carbon::setTestNow(now()->addMinutes(3));
         $this->artisan('suporte:pedro')->assertSuccessful();
 
@@ -206,6 +209,42 @@ class PedroNoGestorTest extends TestCase
         $this->repasse('3', 'wamid.2', $this->estado('suporte'))->assertOk();
         $this->assertSame('pedro', SuporteConversa::sole()->situacao);
         $this->assertSame(1, SuportePedido::where('situacao', 'pendente')->count());
+    }
+
+    /**
+     * 23/10/2026: o PC do Pedro desligado. Nenhuma máquina pega o pedido: o aviso é de fora do
+     * horário com o plantão (dos contatos da empresa), e não "um colega responderá"; uma vez só.
+     */
+    public function test_sem_maquina_avisa_fora_do_horario_com_o_plantao_uma_vez(): void
+    {
+        app(\App\Services\Suporte\Conhecimento::class)->gravarAjuste('contatos', "Comercial — (27) 99527-3269\nPlantão — (27) 99244-6889 (fins de semana e das 18:00 às 08:00)");
+        $this->repasse('Bom dia Pedro', 'wamid.1', $this->estado())->assertOk();
+        Carbon::setTestNow(now()->addMinutes(3));
+        $this->artisan('suporte:pedro')->assertSuccessful();
+
+        $aviso = 'Olá! No momento estamos fora do horário de atendimento. Sua mensagem ficou registrada e retornaremos no próximo horário. Em caso de urgência ou emergência, ligue para o nosso plantão: (27) 99244-6889.';
+        $this->assertSame([['enviar', $aviso]], array_map(fn ($p) => [$p['acao'], $p['dados']['texto'] ?? null], $this->pedidosAoGestor), 'sai pelo Gestor e segura o menu de lá');
+        $this->assertSame('pedro', SuporteConversa::sole()->situacao);
+
+        $this->repasse('alguém aí?', 'wamid.2', $this->estado())->assertOk();
+        Carbon::setTestNow(now()->addMinutes(3));
+        $this->artisan('suporte:pedro')->assertSuccessful();
+        $this->assertCount(1, $this->pedidosAoGestor, 'não repete o aviso a cada mensagem');
+        $this->assertSame('pedro', SuporteConversa::sole()->situacao, 'sem máquina, a conversa fica com o Pedro');
+
+        // A máquina volta: o Pedro retoma a conversa sem resposta, pedindo desculpas pela demora.
+        CentralIaRunner::query()->update(['visto_em' => now()]);
+        $this->artisan('suporte:pedro')->assertSuccessful();
+        $this->assertSame(1, SuportePedido::where('situacao', 'pendente')->count());
+        Sanctum::actingAs($this->felipe, ['central-ia-runner']);
+        $this->assertStringContainsString('O PEDRO esteve fora do ar', $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->json('prompt'));
+        $this->postJson(route('suporte.runner.resposta', SuportePedido::where('situacao', 'reservado')->value('id')), ['maquina' => 'wsl',
+            'texto' => "<<<PEDRO\n".json_encode(['resposta' => 'Desculpe a demora! Como posso ajudar?', 'acao' => 'responder'])."\nPEDRO>>>"])->assertOk();
+        $this->assertSame('Desculpe a demora! Como posso ajudar?', end($this->pedidosAoGestor)['dados']['texto']);
+
+        // Respondida, não é retomada de novo.
+        $this->artisan('suporte:pedro')->assertSuccessful();
+        $this->assertSame(0, SuportePedido::whereIn('situacao', ['pendente', 'reservado'])->count());
     }
 
     public function test_repasse_sem_o_estado_do_contato_so_registra(): void

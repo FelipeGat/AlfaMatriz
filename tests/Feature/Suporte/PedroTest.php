@@ -143,6 +143,8 @@ class PedroTest extends TestCase
     public function test_sem_resposta_da_ia_o_matriz_responde_sozinho_e_passa_a_um_atendente(): void
     {
         $this->chega('Não consigo entrar no sistema', 'wamid.1');
+        // A máquina pegou o pedido; a IA é que não respondeu (sem máquina, o aviso é outro).
+        SuportePedido::query()->update(['situacao' => 'reservado', 'reservado_em' => now()]);
         Carbon::setTestNow(now()->addMinutes(3));
         $this->artisan('suporte:pedro')->assertSuccessful();
         $this->assertSame('expirado', SuportePedido::sole()->situacao);

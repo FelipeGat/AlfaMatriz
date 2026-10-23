@@ -163,6 +163,21 @@ class PedroGestorTest extends TestCase
         $this->assertSame([], $d->buscarClientes('abrir chamado para a Elabore Hub'));
     }
 
+    /** 23/10/2026: com os pré-clientes, a validação curinga levava ~100 s e o runner desistia; agora é item a item. */
+    public function test_retrato_grande_valida_item_a_item_com_o_caminho_do_erro(): void
+    {
+        $this->runner();
+        $clientes = array_map(fn ($i) => ['id' => $i % 2 ? $i : -$i, 'nome' => "Cliente {$i}", 'cidade' => 'Vitória', 'empresa' => 'GW', 'telefones' => [], 'pre' => $i % 2 === 0], range(1, 4000));
+        $t = microtime(true);
+        $this->postJson(route('suporte.runner.gestor'), ['maquina' => 'wsl', 'lido_em' => now()->toIso8601String(), 'clientes' => $clientes, 'atendimentos' => []])
+            ->assertOk()->assertJsonPath('clientes', 4000);
+        $this->assertLessThan(15, microtime(true) - $t, 'o runner espera 20 s');
+
+        $clientes[7]['nome'] = ['não é texto'];
+        $this->postJson(route('suporte.runner.gestor'), ['maquina' => 'wsl', 'lido_em' => now()->toIso8601String(), 'clientes' => $clientes, 'atendimentos' => []])
+            ->assertUnprocessable()->assertJsonValidationErrors('clientes.7.nome');
+    }
+
     public function test_gravacao_ligada_a_maquina_grava_e_o_cliente_recebe_o_numero(): void
     {
         config(['services.suporte_pedro.gestor_gravar' => true]);

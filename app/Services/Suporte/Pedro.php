@@ -24,6 +24,9 @@ class Pedro
     // Frases fixas no tom de uma pessoa da equipe (T-478, dono em 21/10/2026: "o mais natural possível").
     public const FALLBACK = 'Olá! Recebi a sua mensagem, e um colega da equipe responderá por aqui em instantes.';
 
+    /** Nenhuma máquina no ar (Felipe, 23/10/2026: o PC desligado não pode prometer "um colega responderá"). */
+    public const FORA_DO_AR = 'Olá! No momento estamos fora do horário de atendimento. Sua mensagem ficou registrada e retornaremos no próximo horário.';
+
     // Sem "esse assunto": a frase também sai quando a pessoa só cumprimentou (T-478, 22/10/2026).
     public const ESPECIALISTA = 'Para que você não fique esperando, já chamei um colega da equipe, que continua com você por aqui.';
 
@@ -369,8 +372,9 @@ class Pedro
             $n++;
         }
         foreach (SuportePedido::with('conversa')->whereIn('situacao', ['pendente', 'reservado'])->where('created_at', '<', $limite)->get() as $p) {
-            $p->update(['situacao' => 'expirado', 'erro' => $p->situacao === 'pendente' ? 'nenhuma máquina pegou o pedido' : 'a IA não respondeu a tempo']);
-            $this->reserva($p);
+            $semMaquina = $p->situacao === 'pendente';
+            $p->update(['situacao' => 'expirado', 'erro' => $semMaquina ? 'nenhuma máquina pegou o pedido' : 'a IA não respondeu a tempo']);
+            $this->reserva($p, $semMaquina);
             $n++;
         }
 
@@ -378,7 +382,7 @@ class Pedro
     }
 
     /** A resposta sem IA: avisa o cliente e deixa a conversa com um atendente, com o que lançar no Gestor. */
-    private function reserva(SuportePedido $p): void
+    private function reserva(SuportePedido $p, bool $semMaquina = false): void
     {
         $c = $p->conversa->fresh();
         // No número do Gestor, enquanto a conversa está no primeiro atendimento, a
@@ -387,6 +391,22 @@ class Pedro
         if ($c->comHumano()) {
             return;
         }
+        // Sem máquina nenhuma (Felipe, 23/10/2026: o PC desligado): o aviso é de fora do horário,
+        // com o plantão, e a conversa FICA com o Pedro, que a retoma quando voltar (retomar()). Também
+        // no primeiro atendimento do Gestor: a resposta confirmada segura o menu de lá. Uma vez a cada 3 h.
+        if ($semMaquina) {
+            $aviso = $this->foraDoAr();
+            if (! $c->mensagens()->reorder()->where('direcao', 'pedro')->where('texto', $aviso)->where('enviada_em', '>=', now()->subHours(3))->exists()) {
+                try {
+                    $this->canal->enviar($c, $aviso, 'pedro');
+                } catch (ValidationException) {
+                    // Fora da janela, canal desligado, ou o Gestor já mandou o menu.
+                }
+            }
+
+            return;
+        }
+        $aviso = self::FALLBACK;
         if ($this->canal->viaGestor() && $c->gestor_conversa_id && $c->gestor_setor === 'aguardando_menu') {
             // Até o próximo repasse dizer que a conversa voltou a ser nossa (o cliente escolheu Suporte).
             $c->update(['situacao' => 'gestor', 'gestor_setor' => 'menu']);
@@ -398,7 +418,7 @@ class Pedro
         if (! app(AcessoInterno::class)->deQuem((string) $c->telefone) && ! $c->identificada()) {
             app(Transferencia::class)->transferir($c, null, 'Pedro sem resposta da IA, pessoa ainda sem identificação: '.mb_substr($ultimas, 0, 200));
             try {
-                $this->canal->enviar($c, self::FALLBACK, 'pedro');
+                $this->canal->enviar($c, $aviso, 'pedro');
             } catch (ValidationException) {
                 // Fora da janela ou canal desligado: a conversa já está com a equipe.
             }
@@ -411,9 +431,51 @@ class Pedro
             app(BaseDoSuporte::class)->proporRegistro($c, ['titulo' => 'Atendimento pelo WhatsApp', 'relato' => $ultimas]);
         }
         try {
-            $this->canal->enviar($c, self::FALLBACK, 'pedro');
+            $this->canal->enviar($c, $aviso, 'pedro');
         } catch (ValidationException) {
             // Fora da janela ou canal desligado: a conversa já está com a equipe.
         }
+    }
+
+    /**
+     * O Pedro de volta ao ar dá andamento ao que ficou sem resposta (Felipe, 23/10/2026: "sempre que
+     * o Pedro ficar on, ele tem que avaliar as conversas e dar andamento"). Conversa do Pedro em que a
+     * última mensagem do cliente não teve resposta — o aviso de fora do ar não conta —, na janela de
+     * 24 h e no horário (a equipe interna, a qualquer hora). Uma retomada por conversa a cada 30 min:
+     * máquina que aparece e não pega pedido não vira enxurrada.
+     */
+    public function retomar(): int
+    {
+        $conta = User::where('email', (string) config('services.suporte_pedro.conta'))->first();
+        if (! config('services.suporte_pedro.ligado') || ! $conta
+            || ! \App\Models\CentralIaRunner::where('user_id', $conta->id)->where('visto_em', '>=', now()->subMinutes(2))->exists()) {
+            return 0;
+        }
+        $n = 0;
+        foreach (SuporteConversa::where('situacao', 'pedro')->where('ultima_entrada_em', '>=', now()->subHours(SuporteConversa::JANELA_HORAS))->get() as $c) {
+            if ($c->comHumano() || ! $c->janelaAberta() || (! Horario::aberto() && ! app(AcessoInterno::class)->deQuem((string) $c->telefone))) {
+                continue;
+            }
+            $entrada = (int) $c->mensagens()->reorder()->where('direcao', 'entrada')->max('id');
+            $respondida = $c->mensagens()->reorder()->whereIn('direcao', ['pedro', 'humano_app', 'humano_matriz'])->where('id', '>', $entrada)
+                ->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 'falhou'))->where('texto', 'not like', self::FORA_DO_AR.'%')->exists();
+            if (! $entrada || $respondida || SuportePedido::where('conversa_id', $c->id)->where(fn ($q) => $q->whereIn('situacao', ['pendente', 'reservado'])
+                ->orWhere(fn ($w) => $w->where('ate_mensagem_id', $entrada)->where('created_at', '>=', now()->subMinutes(30))))->exists()) {
+                continue;
+            }
+            SuportePedido::create(['conversa_id' => $c->id, 'ate_mensagem_id' => $entrada]);
+            $n++;
+        }
+
+        return $n;
+    }
+
+    /** O aviso de fora do ar, com o plantão dos contatos da empresa (Suporte › Pedro); sem plantão cadastrado, sem o número. */
+    public function foraDoAr(): string
+    {
+        $linha = collect(preg_split('/\R/', app(Conhecimento::class)->ajuste('contatos')))->first(fn ($l) => str_contains(mb_strtolower($l), 'plant'));
+        $telefone = $linha && preg_match('/\(?\d{2}\)?\s*\d{4,5}-?\d{4}/', $linha, $m) ? $m[0] : null;
+
+        return self::FORA_DO_AR.($telefone ? " Em caso de urgência ou emergência, ligue para o nosso plantão: {$telefone}." : '');
     }
 }
