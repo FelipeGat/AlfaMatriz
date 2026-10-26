@@ -1,0 +1,8 @@
+<b>📋 AlfaMatriz — Changelog 26/10/2026</b>
+<i>VixOrganize: proteção do endereço do conector reforçada</i>
+
+<b>🔒 Segurança</b>
+• <b>O conector do VixOrganize nunca aceita endereço interno em produção.</b> Ao ligar o conector em Secretário › Configurações, o Matriz só aceita endereço https de servidor público. Ele recusa http, endereço da rede interna, o próprio servidor e endereço com usuário embutido. Essa proteção já valia no ar. Agora ela também não pode ser desligada em produção nem por um ajuste de teste esquecido, e os testes automáticos passaram a conferir isso sempre.
+
+<i>Versão v2026.10.26.2</i>
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
