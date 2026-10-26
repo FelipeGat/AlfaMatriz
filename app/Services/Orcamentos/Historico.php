@@ -80,6 +80,8 @@ class Historico
             'produto' => self::PRODUTO_DO_SISTEMA[$p['sistema'] ?? ''] ?? 'outro',
             'lead_id' => Lead::where('nome', $p['lead'] ?? '')->value('id'),
             'tipo' => $corta($capa['tipo'] ?? null, 40),
+            // O histórico foi enviado no desenho clássico; o levantamento pode pedir o VixHouse (modelo-vixhouse.md).
+            'modelo' => array_key_exists((string) ($p['modelo'] ?? ''), Orcamento::MODELOS) ? $p['modelo'] : 'classico',
             'cliente' => $corta($cli['nome'] ?? null, 160) ?? (string) ($p['lead'] ?? 'Cliente'),
             'contato' => $corta($cli['contato'] ?? null, 120),
             'cidade' => $corta($cli['cidade_uf'] ?? null, 120),

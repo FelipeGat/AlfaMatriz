@@ -87,8 +87,11 @@ class OrcamentosTest extends TestCase
         $pdf = $this->get(route('orcamentos.pdf', $o))->assertOk()->assertHeader('Content-Type', 'application/pdf');
         $conteudo = $pdf->streamedContent();
         $this->assertStringStartsWith('%PDF', $conteudo);
-        $this->assertStringNotContainsString('VixCard ·', $conteudo, 'toda proposta sai como VixSoftHouse');
-        foreach (['SoftHouse</b>', 'Marmoraria Lorenzo', 'Orçamento 001', 'R$ 29.200,00', 'Painel Vix-ID', 'Proposta válida até 03/11/2026', 'De acordo', '(27) 3335-4950'] as $trecho) {
+        // Sistema nasce no modelo VixHouse (modelo-vixhouse.md, 25/10/2026): a marca, o parecer e a assinatura só como Diretor Comercial.
+        $this->assertSame('vixhouse', $o->fresh()->modelo);
+        $this->assertStringNotContainsString('SoftHouse', $conteudo);
+        $this->assertStringNotContainsString('Felipe', $conteudo, 'a proposta não leva o nome de quem a fez');
+        foreach (['vixhouse-wordmark', 'Marmoraria Lorenzo', 'Orçamento 001', 'R$ 29.200,00', 'Painel Vix-ID', 'Proposta válida até 03/11/2026', 'Parecer do cliente', 'Diretor Comercial', '(27) 3335-4950'] as $trecho) {
             $this->assertStringContainsString($trecho, $conteudo);
         }
         $this->assertSame('orcamentos/2026/PROPOSTA_001_MARMORARIA_LORENZO.pdf', $o->fresh()->pdf_arquivo);

@@ -32,9 +32,18 @@ class Orcamento extends Model
         // Etapa 2 (docs/specs/orcamentos-vixcard/padrao-e-historico.md).
         'lead_id', 'tipo', 'rotulo_3', 'valor_3', 'natureza', 'dados_cliente', 'objeto', 'secoes', 'planos', 'pagamento_texto', 'notas_internas',
         'origem_arquivo', 'pdf_original', 'importado_em', 'imagens',
+        // Modelo do PDF (docs/specs/orcamentos-vixcard/modelo-vixhouse.md).
+        'modelo',
     ];
 
     public const TIPOS = ['Proposta comercial', 'Locação', 'Projeto piloto', 'Apresentação'];
+
+    /**
+     * O desenho do PDF. VixHouse é o de toda proposta de sistema (Felipe, 25/10/2026, a partir da
+     * proposta conceito do Gustavo); o clássico é o azul VixCard de até 24/10, e segue para o que
+     * já existia e para o que não é sistema (cartões).
+     */
+    public const MODELOS = ['vixhouse' => 'VixHouse · sistemas', 'classico' => 'Clássico VixCard'];
 
     public const NATUREZAS = ['venda' => 'Venda', 'locacao' => 'Locação', 'comodato' => 'Comodato', 'assinatura' => 'Assinatura', 'apresentacao' => 'Apresentação'];
 
@@ -57,7 +66,7 @@ class Orcamento extends Model
         'contracapa' => ['nome' => 'Contracapa', 'campos' => ['frase', 'mensagem']],
     ];
 
-    protected $attributes = ['situacao' => 'rascunho', 'revisao' => 1, 'validade_dias' => 15, 'parcelas' => 1, 'aceite' => true,
+    protected $attributes = ['situacao' => 'rascunho', 'modelo' => 'vixhouse', 'revisao' => 1, 'validade_dias' => 15, 'parcelas' => 1, 'aceite' => true,
         'entrada' => 0, 'desconto_avista' => 0, 'total_unico' => 0, 'total_mensal' => 0];
 
     protected function casts(): array
@@ -130,8 +139,8 @@ class Orcamento extends Model
     }
 
     /** Onde uma imagem pode entrar no PDF, além das seções livres (que entram pela chave "livre:<slug do título>"). */
-    public const LUGARES_DE_IMAGEM = ['galeria' => 'Página de imagens (na prática)', 'desafio' => 'Junto do desafio', 'solucao' => 'Junto da solução',
-        'especificacao' => 'Escopo do fornecimento'];
+    public const LUGARES_DE_IMAGEM = ['galeria' => 'Página de imagens (na prática)', 'telas' => 'Telas do sistema (selo de tela ilustrativa)',
+        'desafio' => 'Junto do desafio', 'solucao' => 'Junto da solução', 'especificacao' => 'Escopo do fornecimento'];
 
     /**
      * Os lugares de imagem deste orçamento: os fixos e uma entrada por seção livre.

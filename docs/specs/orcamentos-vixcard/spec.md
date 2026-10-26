@@ -61,3 +61,8 @@ novo orçamento sempre será impressa um PDF padrão VixCard mudando somente os 
 - **Documentos:** o PDF da revisão enviada é guardado em Documentos › VixCard › Comercial › Orçamentos › Clientes.
 - **Marca:** toda proposta sai como **VixSoftHouse**.
 - **Valores:** tratados caso a caso; os modelos nascem com R$ 0. Modelos por sistema em `modelos-por-sistema.md`.
+
+## Decisões (25/10/2026)
+
+- **Modelo VixHouse** para toda proposta de sistema, o desenho da proposta conceito da Inove: `modelo-vixhouse.md`.
+  O desenho de até aqui segue como "clássico" (cartões NFC e tudo o que já existia).

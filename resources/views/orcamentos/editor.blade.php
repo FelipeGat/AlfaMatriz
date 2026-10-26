@@ -148,7 +148,14 @@
                             <label class="{{ $rotulo }}" for="rotulo_3">3ª coluna da capa (rótulo)<input id="rotulo_3" name="rotulo_3" maxlength="30" value="{{ $dados['rotulo_3'] }}" placeholder="Produto" class="{{ $campo }}"></label>
                             <label class="{{ $rotulo }}" for="valor_3">3ª coluna (valor)<input id="valor_3" name="valor_3" maxlength="160" value="{{ $dados['valor_3'] }}" placeholder="o nome do produto" class="{{ $campo }}"></label>
                         </div>
-                        {{-- A foto de fundo da capa: sem ela, vale a capa padrão dos ajustes. --}}
+                        {{-- O desenho do PDF (modelo-vixhouse.md): VixHouse para sistema, clássico para cartões e o que já existia. --}}
+                        <label class="{{ $rotulo }}" for="modelo">Modelo do PDF
+                            <select id="modelo" name="modelo" x-model="modelo" class="{{ $campo }}">
+                                @foreach (Orcamento::MODELOS as $k => $n)<option value="{{ $k }}">{{ $n }}</option>@endforeach
+                            </select>
+                            <small class="text-[11px] text-ink-faint" x-show="modelo === 'vixhouse'">Capa marinho com a marca VixHouse, uma página por assunto, telas com selo de tela ilustrativa e parecer do cliente no fim.</small>
+                        </label>
+                        {{-- A foto de fundo da capa: sem ela, vale a capa padrão dos ajustes. No modelo VixHouse ela aparece emoldurada no meio da capa. --}}
                         <div class="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                             <label class="{{ $rotulo }}" for="capa">Foto de fundo da capa (JPG, PNG ou WebP, até 8 MB)
                                 <input id="capa" name="capa" type="file" accept="image/jpeg,image/png,image/webp" class="{{ $campo }} file:mr-2 file:rounded file:border-0 file:bg-head file:px-2 file:py-1 file:text-[12px]">
@@ -229,7 +236,7 @@
                         <h2 class="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">Seções opcionais <small class="text-[11.5px] font-normal text-ink-faint">listas: uma linha por item · tabelas: "a | b" por linha</small></h2>
                         @php
                             $rotulosCampos = ['titulo' => 'Título da seção', 'texto' => 'Texto', 'citacao' => 'Citação do cliente', 'numeros' => 'Números (valor | rótulo, por linha)',
-                                'itens' => 'Dores (uma por linha)', 'passos' => 'Passos (um por linha)', 'linhas' => 'Linhas (a | b, por linha)', 'etapas' => 'Etapas (uma por linha)',
+                                'itens' => 'Dores (uma por linha; no modelo VixHouse, "ponto | o que vimos | o que causa | como resolve" vira a tabela do diagnóstico)', 'passos' => 'Passos (um por linha; "Título: descrição")', 'linhas' => 'Linhas (a | b, por linha)', 'etapas' => 'Etapas (uma por linha)',
                                 'prazo' => 'Prazo', 'frase' => 'Frase de fechamento', 'mensagem' => 'Mensagem ao contato'];
                         @endphp
                         @foreach (Orcamento::SECOES as $chave => $secao)
@@ -342,7 +349,7 @@
                 categoria: i.categoria ?? (i.cobranca === 'mensal' ? 'recorrente' : 'material'), opcional: !! i.opcional || i.cobranca === 'opcao' }));
             const preClientes = @json(collect($preClientes)->keyBy('id'));
             return {
-                modelos, produto: dados.produto, aviso: '', aba: @js($abaInicial),
+                modelos, produto: dados.produto, modelo: dados.modelo ?? 'vixhouse', aviso: '', aba: @js($abaInicial),
                 leadId: dados.lead_id ? String(dados.lead_id) : '',
                 dc: Object.assign({ razao_social: '', cnpj: '', ie: '', endereco: '', cargo: '', telefone: '', email: '', atividade: '' }, dados.dados_cliente || {}),
                 f: { cliente: dados.cliente ?? '', titulo: dados.titulo ?? '', destaque: dados.destaque ?? '', lead: dados.lead ?? '', inclui: dados.inclui ?? '', nao_inclui: dados.nao_inclui ?? '',
@@ -356,6 +363,7 @@
                 escolher(chave) {
                     const m = this.modelos[chave];
                     this.produto = chave;
+                    this.modelo = m.modelo;
                     Object.assign(this.f, { titulo: m.titulo, destaque: m.destaque, lead: m.lead, inclui: m.inclui, nao_inclui: m.nao_inclui, passos: m.passos });
                     this.itens = comChave(m.itens);
                     this.aviso = 'Capa, escopo, passos e itens trocados pelo modelo de ' + m.nome + '. Cliente e pagamento ficaram.';

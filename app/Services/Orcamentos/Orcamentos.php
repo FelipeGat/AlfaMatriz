@@ -35,8 +35,10 @@ class Orcamentos
                 return DB::transaction(function () use ($quem, $dados) {
                     $ano = (int) now()->year;
                     $numero = (int) Orcamento::where('ano', $ano)->lockForUpdate()->max('numero') + 1;
-                    $o = Orcamento::create(['ano' => $ano, 'numero' => $numero, 'revisao' => 1, 'user_id' => $quem->id, 'situacao' => 'rascunho']
-                        + $this->campos($dados));
+                    $campos = $this->campos($dados);
+                    // Sem a escolha no formulário, o modelo é o do produto: VixHouse para sistema, clássico para cartão.
+                    $campos['modelo'] ??= Modelos::modeloDoPdf((string) ($campos['produto'] ?? ''));
+                    $o = Orcamento::create(['ano' => $ano, 'numero' => $numero, 'revisao' => 1, 'user_id' => $quem->id, 'situacao' => 'rascunho'] + $campos);
                     $this->gravarItens($o, $dados['itens'] ?? []);
 
                     return $o;
@@ -83,7 +85,7 @@ class Orcamentos
     {
         $dados = $o->only(['produto', 'cliente', 'contato', 'cidade', 'titulo', 'destaque', 'lead', 'validade_dias', 'entrada', 'parcelas',
             'desconto_avista', 'inclui', 'nao_inclui', 'passos', 'aceite', 'observacoes',
-            'lead_id', 'tipo', 'rotulo_3', 'valor_3', 'natureza', 'dados_cliente', 'objeto', 'secoes', 'planos', 'pagamento_texto', 'notas_internas']);
+            'lead_id', 'tipo', 'modelo', 'rotulo_3', 'valor_3', 'natureza', 'dados_cliente', 'objeto', 'secoes', 'planos', 'pagamento_texto', 'notas_internas']);
         $dados['cliente'] = $o->cliente.' (cópia)';
         $dados['itens'] = $o->itens->map(fn ($i) => $i->only(['descricao', 'quantidade', 'unidade', 'valor_unitario', 'cobranca', 'categoria']))->all();
         $nova = $this->criar($quem, $dados);
@@ -176,8 +178,12 @@ class Orcamentos
     {
         $c = collect($d)->only(['produto', 'cliente', 'contato', 'cidade', 'titulo', 'destaque', 'lead', 'validade_dias', 'entrada', 'parcelas',
             'desconto_avista', 'inclui', 'nao_inclui', 'passos', 'aceite', 'observacoes',
-            'lead_id', 'tipo', 'rotulo_3', 'valor_3', 'natureza', 'dados_cliente', 'objeto', 'secoes', 'planos', 'pagamento_texto', 'notas_internas'])->all();
+            'lead_id', 'tipo', 'modelo', 'rotulo_3', 'valor_3', 'natureza', 'dados_cliente', 'objeto', 'secoes', 'planos', 'pagamento_texto', 'notas_internas'])->all();
         $c['aceite'] = (bool) ($d['aceite'] ?? false);
+        // Formulário sem a escolha (ou de antes dela) não apaga o modelo: vale o que já estava, ou o padrão.
+        if (blank($c['modelo'] ?? null)) {
+            unset($c['modelo']);
+        }
         foreach (['entrada', 'desconto_avista'] as $k) {
             $c[$k] = (float) ($c[$k] ?? 0);
         }

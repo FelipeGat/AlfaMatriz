@@ -95,8 +95,9 @@ class ComponentesTest extends TestCase
                 continue;
             }
 
-            // A proposta VixCard (orcamentos-vixcard): papel A4 impresso pelo Chromium, mesma razão.
-            if ($tela === 'orcamentos/pdf.blade.php') {
+            // A proposta VixCard (orcamentos-vixcard): papel A4 impresso pelo Chromium, mesma razão —
+            // o modelo clássico e o VixHouse (orcamentos/pdf/vixhouse.blade.php, modelo-vixhouse.md).
+            if ($tela === 'orcamentos/pdf.blade.php' || str_starts_with($tela, 'orcamentos/pdf/')) {
                 continue;
             }
 
