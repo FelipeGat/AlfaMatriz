@@ -26,7 +26,7 @@ class Cliente
     {
         $url = rtrim(trim($url), '/');
         $partes = parse_url($url);
-        $local = (bool) config('services.vixorganize.permite_local');
+        $local = self::permiteLocal();
         if (! $partes || empty($partes['host']) || ! in_array($partes['scheme'] ?? '', $local ? ['https', 'http'] : ['https'], true)
             || isset($partes['user']) || isset($partes['query']) || isset($partes['fragment'])) {
             return [null, 'Use o endereço https do VixOrganize, como https://organize.vixcard.com.br.'];
@@ -120,7 +120,7 @@ class Cliente
     {
         $partes = parse_url($this->conta->url);
         $opcoes = ['allow_redirects' => false];
-        if (! config('services.vixorganize.permite_local')) {
+        if (! self::permiteLocal()) {
             // A conexão vai ao IP conferido agora, não a uma segunda resolução.
             $ip = self::ipPublico($partes['host'] ?? '');
             if (! $ip) {
@@ -132,6 +132,16 @@ class Cliente
 
         return Http::baseUrl($this->conta->url)->acceptJson()->asJson()->timeout(12)->connectTimeout(5)->withOptions($opcoes)
             ->withHeaders(array_filter(['X-Api-Key' => $this->conta->chave, 'X-Vix-Autor' => $this->conta->autor_email, 'X-Vix-Origem' => 'AlfaMatriz']));
+    }
+
+    /**
+     * O http e o IP privado do teste local ponta a ponta. Nunca em produção, nem
+     * com a variável ligada: um .env copiado de outro ambiente abriria o SSRF
+     * sem ninguém ver (T-507).
+     */
+    private static function permiteLocal(): bool
+    {
+        return (bool) config('services.vixorganize.permite_local') && ! app()->isProduction();
     }
 
     private static function ipPublico(string $host): ?string

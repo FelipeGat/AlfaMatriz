@@ -54,5 +54,9 @@
         <env name="ALFAMONITOR_URL" value=""/>
         <env name="ALFAMONITOR_API_URL" value=""/>
         <env name="ALFAMONITOR_API_TOKEN" value=""/>
+        <!-- Mesmo vazamento, no VixOrganize (T-507): com VIXORGANIZE_PERMITE_LOCAL=sim
+             no .env (o teste local ponta a ponta), a suíte via o http e o IP interno
+             liberados e o teste do SSRF caía, com o código certo. -->
+        <env name="VIXORGANIZE_PERMITE_LOCAL" value="nao"/>
     </php>
 </phpunit>

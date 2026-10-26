@@ -14,6 +14,7 @@ use App\Models\CentralIaRunner;
 use App\Models\CentralIaTarefa;
 use App\Models\SecretarioVixOrganizePedido;
 use App\Services\CentralIa\AgentesService;
+use App\Services\Secretario\VixOrganize\Cliente;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -122,6 +123,17 @@ class VixOrganizeTest extends TestCase
             ->assertSessionHas('erro', fn ($m) => str_contains($m, 'redireciona'));
         Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'outro.example'));
         $this->assertSame(0, SecretarioVixOrganize::count());
+    }
+
+    public function test_liberacao_local_nao_vale_em_producao(): void
+    {
+        config(['services.vixorganize.permite_local' => true]);
+        $this->assertSame('http://10.0.0.5', Cliente::normalizarUrl('http://10.0.0.5')[0], 'Fora da produção, a liberação vale');
+
+        $this->app->detectEnvironment(fn () => 'production');
+        foreach (['http://1.1.1.1', 'https://10.0.0.5', 'https://127.0.0.1'] as $url) {
+            $this->assertNull(Cliente::normalizarUrl($url)[0], $url);
+        }
     }
 
     public function test_tela_mostra_a_fila_e_o_kanban_e_envia_as_demandas(): void
