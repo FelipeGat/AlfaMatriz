@@ -28,7 +28,7 @@ import { transcrever, whisperInstalado } from './transcricao.mjs';
 import { hora as horaDoGestor, lerGestor } from './gestor.mjs';
 import { hora as horaDaAgenda, lerAgenda as lerAgendaGoogle } from './agenda-google.mjs';
 import { aplicarAlteracoes, configuracao as pastasDeDocumentos, espelhar as espelharDocumentos } from './documentos.mjs';
-import { atenderSuporte, gravarAberturas, gravarAgenda, lerGestorParaPedro, naPonte } from './suporte.mjs';
+import { atenderSuporte, gravarAberturas, gravarAgenda, gravarContatos, lerGestorParaPedro, naPonte } from './suporte.mjs';
 import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, configDoQuadro, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, instrucaoDoQuadro, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva, VARIAVEL_DO_QUADRO } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h; chave servidor + conta +
@@ -1173,6 +1173,8 @@ while (!parar) {
                 .then(async r => {
                     if (r.status === 403 || r.status === 404) { proximaGravacao = Date.now() + 3600_000; return; }
                     await gravarAgenda(cfg.gestor, cfg.maquina, { api, log });
+                    // Os contatos identificados pelo Pedro (T-478/T-479).
+                    await gravarContatos(cfg.gestor, cfg.maquina, { api, log });
                 })
                 .catch(e => log('suporte: gravação no Gestor —', e.message))
                 .finally(() => { gravandoGestor = false; });

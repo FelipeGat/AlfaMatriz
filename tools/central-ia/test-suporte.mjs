@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { atenderSuporte, gravarAberturas, gravarNoGestor, naPonte, responderComIa } from '../../deploy/central-ia/suporte.mjs';
+import { atenderSuporte, gravarAberturas, gravarContatoNoGestor, gravarContatos, gravarNoGestor, naPonte, responderComIa } from '../../deploy/central-ia/suporte.mjs';
 
 const chamadas = [];
 const executar = async (bin, args, entrada, cwd) => {
@@ -122,3 +122,32 @@ console.log('PASSOU: suporte — IA sem ferramentas pelo stdin, numa pasta vazia
     assert.deepEqual(ordem, ['a1', 'a2', 'b1', 'b2'], 'uma chamada da ponte por vez');
 }
 console.log('PASSOU: suporte — gravação no Gestor com --apply e sem repetir; o número volta ao Matriz; a ponte atende um por vez.');
+
+// Contatos identificados pelo Pedro (T-478, com a T-479 do Gestor): o contato vai no script,
+// com --apply; o resultado volta ao Matriz, e a falha também.
+{
+    const pasta = mkdtempSync(join(tmpdir(), 'ponte-'));
+    let script = '';
+    let argumentos = [];
+    const contato = { id: 4, cliente_id: 13, nome: 'João', papel: 'porteiro', telefone: '5527988887777', telefone_chave: '2788887777' };
+    const r = await gravarContatoNoGestor(`py|C:\\tmp\\run_prod.py|C:\\tmp\\secretario_gestor.php|${pasta}`, contato, { executar: async (programa, args) => {
+        argumentos = args;
+        script = readFileSync(join(pasta, 'pedro_gestor_contato.php'), 'utf8');
+        return { stdout: 'SUPORTE_GESTOR_CONTATO:{"ok":true,"id":77,"nome":"João Carlos","papel":"porteiro"}\n' };
+    } });
+    assert.deepEqual(r, { ok: true, id: 77, nome: 'João Carlos', papel: 'porteiro' });
+    assert.equal(argumentos.at(-1), '--apply');
+    assert.ok(script.includes(`base64_decode('${Buffer.from(JSON.stringify(contato)).toString('base64')}')`));
+    assert.ok(script.includes('ON DUPLICATE KEY UPDATE telefone = VALUES(telefone), visto_em = VALUES(visto_em), updated_at = VALUES(updated_at), deleted_at = NULL'), 'o upsert combinado com o Gestor: nome e papel não mudam');
+    assert.ok(!existsSync(join(pasta, 'pedro_gestor_contato.php')), 'o script não fica na pasta da ponte');
+
+    const enviados = [];
+    const api = async (rota, corpo) => { enviados.push([rota, corpo]); return rota === 'suporte/gestor/contatos' ? { status: 200, json: { contatos: [contato, { ...contato, id: 5 }] } } : { status: 200 }; };
+    let vez = 0;
+    await gravarContatos('cfg', 'wsl', { api, gravar: async () => (++vez === 1 ? { ok: true, id: 77 } : { ok: false, erro: 'cliente inexistente ou excluído no Gestor' }) });
+    assert.deepEqual(enviados.slice(1), [
+        ['suporte/gestor/contatos/4', { maquina: 'wsl', ok: true }],
+        ['suporte/gestor/contatos/5', { maquina: 'wsl', ok: false, erro: 'cliente inexistente ou excluído no Gestor' }],
+    ]);
+}
+console.log('PASSOU: suporte — contato identificado gravado no Gestor com --apply e o upsert combinado; resultado e falha voltam ao Matriz.');

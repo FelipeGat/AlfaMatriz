@@ -174,6 +174,11 @@ class Pedro
         // As fotos e os áudios ANTES do prompt: a busca no Gestor grava a mídia, e o
         // prompt marca o que foi anexado.
         $midias = app(Midias::class)->paraOPedido($p->conversa);
+        // Quem já se identificou em outra conversa (contato do Gestor, T-478/T-479) não precisa
+        // se apresentar de novo: a conversa entra identificada antes de o prompt sair.
+        if (! app(AcessoInterno::class)->deQuem((string) $p->conversa->telefone)) {
+            app(ContatosDoGestor::class)->reconhecer($p->conversa);
+        }
 
         return ['id' => $p->id, 'agente' => (string) config('services.suporte_pedro.agente'), 'modelo' => (string) config('services.suporte_pedro.modelo'),
             'prompt' => $this->contexto->prompt($p->conversa->fresh(), array_column($midias['imagens'], 'id'), array_column($midias['videos'], 'id')),
@@ -248,6 +253,10 @@ class Pedro
                 'solicitante_funcao' => $bloco['solicitante']['funcao'] ?? ($mesma ? $c->solicitante_funcao : null)]);
         }
         $this->confirmarCliente($c, $bloco['cliente']);
+        // A pessoa identificada vira contato do cliente no Gestor (T-479), pela máquina.
+        if (! $interno) {
+            app(ContatosDoGestor::class)->registrar($c);
+        }
         // Acabou de se identificar (T-478): a resposta do pedido de identificação não vai.
         // A conversa volta na hora para o Pedro com o contexto inteiro, e ele responde UMA
         // vez, já cuidando do problema que a pessoa contou — como uma pessoa faria.

@@ -51,6 +51,21 @@ do CDC).
 
 ## Depende do Gestor (T-479)
 
-O Gestor vai guardar a pessoa identificada como contato do cliente (nome, função, telefone), gravada pela máquina,
-e mandá-la no retrato. Com isso, o Pedro reconhece pelo número quem já se identificou em outra conversa. Até lá,
-vale a identificação guardada na própria conversa (`solicitante_nome`, `solicitante_funcao`, `identificada_em`).
+O Gestor guarda a pessoa identificada como contato do cliente (`cliente_contatos_identificados`, T-479 do Gestor),
+gravada pela máquina, e a manda no retrato. Feito em 26/10/2026 (`ContatosDoGestor`):
+
+- **Gravar.** Toda resposta da IA em que a conversa fica identificada com um cliente do Gestor (id positivo:
+  pré-cliente não tem contato lá) põe a pessoa na fila `suporte_gestor_contatos`, uma vez por (cliente, telefone,
+  nome, função). A máquina pega em `suporte/gestor/contatos` e grava com `suporte_gestor_contato.php`, junto das
+  aberturas e da agenda. Quem é da casa não vira contato.
+- **O upsert é o da central do Gestor** e não muda sem ela: chave única (cliente, `telefone_chave`); linha que já
+  existe só ganha telefone, `visto_em` e `updated_at`, **nunca nome nem papel** (decisão do dono, 26/10/2026: a
+  correção feita à mão na tela do Gestor vale); o apagado volta, com o nome que tinha.
+- **A chave do telefone** (`ContatosDoGestor::chave`) é a do Gestor, e não a do WhatsApp: DDD + 8 últimos dígitos,
+  só para 55 + 10 ou 11 dígitos. Sem o 55 não grava (o Gestor recusaria ou cortaria a chave de 10 caracteres).
+- **Esperar a tabela.** O retrato só traz `contatos` nos clientes quando a tabela existe no Gestor; até lá a fila
+  não sai para a máquina, e o que se identificar nesse meio-tempo é gravado quando ela chegar.
+- **Ler.** Os contatos vêm em cada cliente do retrato, SEPARADOS de `telefones`: contato identifica, mas **não
+  libera pedido sensível** (`porTelefone` não os vê). Conversa ainda não identificada cujo número é contato de UM
+  cliente só entra identificada antes do prompt, com o nome e a função do Gestor. De dois clientes (o porteiro de
+  dois condomínios), segue perguntando. Outra pessoa no mesmo telefone se apresenta, como antes.

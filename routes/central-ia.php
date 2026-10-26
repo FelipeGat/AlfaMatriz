@@ -41,6 +41,9 @@ Route::prefix('api/central-ia/runner')
         Route::post('suporte/gestor/agenda', [\App\Http\Controllers\SuportePedroRunnerController::class, 'agenda'])->name('suporte.runner.agenda');
         Route::post('suporte/gestor/agenda/{mudanca}', [\App\Http\Controllers\SuportePedroRunnerController::class, 'agendaFeita'])->whereNumber('mudanca')->name('suporte.runner.agenda-feita');
         Route::post('suporte/gestor/aberturas/{abertura}', [\App\Http\Controllers\SuportePedroRunnerController::class, 'aberturaFeita'])->whereNumber('abertura')->name('suporte.runner.abertura-feita');
+        // Os contatos identificados que a máquina grava no Gestor (T-478/T-479).
+        Route::post('suporte/gestor/contatos', [\App\Http\Controllers\SuportePedroRunnerController::class, 'contatos'])->name('suporte.runner.contatos');
+        Route::post('suporte/gestor/contatos/{contato}', [\App\Http\Controllers\SuportePedroRunnerController::class, 'contatoFeito'])->whereNumber('contato')->name('suporte.runner.contato-feito');
         Route::post('suporte/{pedido}/resposta', [\App\Http\Controllers\SuportePedroRunnerController::class, 'resposta'])->whereNumber('pedido')->name('suporte.runner.resposta');
         Route::post('documentos/operacoes', [\App\Http\Controllers\DocumentosRunnerController::class, 'operacoes'])->name('documentos.runner.operacoes');
         Route::get('documentos/operacoes/{operacao}/arquivo', [\App\Http\Controllers\DocumentosRunnerController::class, 'arquivoDaOperacao'])->whereNumber('operacao')->name('documentos.runner.operacao-arquivo');

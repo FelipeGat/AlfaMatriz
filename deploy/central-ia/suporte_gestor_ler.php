@@ -61,6 +61,18 @@ try {
     $empresaDe = DB::table('atendimentos')->whereNotNull('empresa_id')->whereNotNull('cliente_id')->whereNull('deleted_at')
         ->orderBy('id')->pluck('empresa_id', 'cliente_id');
 
+    // As pessoas que se identificaram ao Pedro (T-479 do Gestor, para a T-478): separadas de
+    // "telefones" de propósito, porque contato identificado não libera pedido sensível. Só vem
+    // a chave "contatos" quando a tabela existe: é assim que o Matriz sabe que pode gravar.
+    // O cliente excluído (exclusão lógica) já fica fora do laço abaixo, e os contatos dele junto.
+    $contatos = null;
+    if (Schema::hasTable('cliente_contatos_identificados')) {
+        $contatos = [];
+        foreach (DB::table('cliente_contatos_identificados')->whereNull('deleted_at')->orderBy('id')->get(['cliente_id', 'nome', 'papel', 'telefone', 'telefone_chave']) as $t) {
+            $contatos[$t->cliente_id][] = ['nome' => (string) $t->nome, 'papel' => (string) ($t->papel ?? ''), 'telefone' => (string) $t->telefone, 'chave' => (string) $t->telefone_chave];
+        }
+    }
+
     $clientes = [];
     foreach (DB::table('clientes')->where('ativo', 1)->whereNull($temCol('clientes', 'deleted_at') ? 'deleted_at' : DB::raw('NULL'))->get() as $c) {
         $clientes[] = [
@@ -74,7 +86,7 @@ try {
             'empresa' => isset($empresaDe[$c->id]) ? (string) ($empresas[$empresaDe[$c->id]] ?? '') : '',
             'telefones' => array_values(array_unique(array_slice($telefones[$c->id] ?? [], 0, 20))),
             'portal' => array_values(array_unique(array_slice($portal[$c->id] ?? [], 0, 5))),
-        ];
+        ] + ($contatos === null ? [] : ['contatos' => array_slice($contatos[$c->id] ?? [], 0, 50)]);
     }
 
     // Os pré-clientes do funil (Felipe, 22/10/2026: "não existe no cadastro de clientes nem como

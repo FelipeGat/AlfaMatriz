@@ -77,6 +77,9 @@ class SuportePedroRunnerController extends Controller
             'portal' => ['nullable', 'array', 'max:5'], 'portal.*' => ['string', 'email', 'max:255'],
             // Pré-cliente do funil (id negativo), desde 22/10/2026.
             'pre' => ['nullable', 'boolean'],
+            // Quem se identificou ao Pedro (T-479 do Gestor). Ausente = o Gestor ainda não tem a tabela.
+            'contatos' => ['sometimes', 'array', 'max:50'], 'contatos.*.nome' => ['required', 'string', 'max:255'], 'contatos.*.papel' => ['nullable', 'string', 'max:255'],
+            'contatos.*.telefone' => ['nullable', 'string', 'max:40'], 'contatos.*.chave' => ['nullable', 'string', 'size:10'],
         ]);
         $d['atendimentos'] = $this->itens('atendimentos', $d['atendimentos'], [
             'id' => ['required', 'integer'], 'cliente_id' => ['nullable', 'integer'], 'numero' => ['nullable', 'string', 'max:30'], 'solicitante' => ['nullable', 'string', 'max:120'],
@@ -177,6 +180,42 @@ class SuportePedroRunnerController extends Controller
         $m->update($d['ok'] ? ['situacao' => 'feito', 'erro' => null, 'resultado' => array_filter(['visita_id' => $d['visita_id'] ?? null, 'numero' => $d['numero'] ?? null, 'ja_estava' => $d['ja_estava'] ?? null], fn ($v) => $v !== null)]
             : ['situacao' => 'falhou', 'erro' => mb_substr((string) ($d['erro'] ?? 'o Gestor não gravou'), 0, 300)]);
         $agenda->concluirLote($m->lote, $canal);
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Até 10 contatos identificados para a máquina gravar no Gestor (T-478/T-479). Enquanto o
+     * retrato não traz "contatos" (a tabela ainda não chegou ao Gestor da produção), nada sai:
+     * a fila espera em vez de falhar linha por linha.
+     */
+    public function contatos(Request $request, \App\Services\Suporte\ContatosDoGestor $contatos): JsonResponse
+    {
+        $this->maquina($request);
+        $this->exigirConta($request);
+        if (! $contatos->disponivel()) {
+            return response()->json(['contatos' => []]);
+        }
+        $lista = DB::transaction(function () {
+            $p = \App\Models\SuporteGestorContato::where('situacao', 'pendente')->orderBy('id')->lockForUpdate()->limit(10)->get();
+            foreach ($p as $x) {
+                $x->update(['situacao' => 'reservado', 'reservado_em' => now()]);
+            }
+
+            return $p;
+        });
+
+        return response()->json(['contatos' => $lista->map(fn ($x) => ['id' => $x->id, 'cliente_id' => $x->gestor_cliente_id, 'nome' => $x->nome, 'papel' => $x->papel,
+            'telefone' => $x->telefone, 'telefone_chave' => $x->telefone_chave])->values()]);
+    }
+
+    public function contatoFeito(Request $request, int $contato): JsonResponse
+    {
+        $this->maquina($request);
+        $this->exigirConta($request);
+        $d = $request->validate(['ok' => ['required', 'boolean'], 'erro' => ['nullable', 'string', 'max:300']]);
+        $x = \App\Models\SuporteGestorContato::whereKey($contato)->where('situacao', 'reservado')->firstOrFail();
+        $x->update($d['ok'] ? ['situacao' => 'feito', 'erro' => null] : ['situacao' => 'falhou', 'erro' => mb_substr((string) ($d['erro'] ?? 'o Gestor não gravou'), 0, 300)]);
 
         return response()->json(['ok' => true]);
     }

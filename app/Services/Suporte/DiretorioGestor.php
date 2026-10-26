@@ -121,6 +121,27 @@ class DiretorioGestor
         return collect($this->retrato()['visitas'] ?? [])->first(fn ($v) => (int) ($v['id'] ?? 0) === $id);
     }
 
+    /**
+     * As pessoas que se identificaram ao Pedro com este número (contatos do Gestor, T-479),
+     * dos clientes que o Pedro atende. Separado de porTelefone de propósito: contato não
+     * libera pedido sensível, só identifica.
+     *
+     * @return list<array{cliente_id: int, nome: string, papel: ?string}>
+     */
+    public function contatoPorChave(string $chave): array
+    {
+        $achados = [];
+        foreach ($this->atendidos() as $cl) {
+            foreach ((array) ($cl['contatos'] ?? []) as $p) {
+                if (trim((string) ($p['nome'] ?? '')) !== '' && (($p['chave'] ?? null) ?: ContatosDoGestor::chave((string) ($p['telefone'] ?? ''))) === $chave) {
+                    $achados[] = ['cliente_id' => (int) $cl['id'], 'nome' => trim((string) $p['nome']), 'papel' => trim((string) ($p['papel'] ?? '')) ?: null];
+                }
+            }
+        }
+
+        return $achados;
+    }
+
     /** @return list<array> */
     public function porTelefone(string $numero): array
     {

@@ -230,6 +230,45 @@ export async function gravarAgendaNoGestor(config, mudanca, { executar = execP }
     }
 }
 
+/**
+ * UM contato identificado pelo Pedro no Gestor (T-478, com a T-479 do Gestor), com --apply.
+ * Sem nova tentativa aqui: o upsert do Gestor é idempotente, e o que falhar fica registrado
+ * no Matriz para a equipe ver.
+ */
+export async function gravarContatoNoGestor(config, contato, { executar = execP } = {}) {
+    const [programa, script, arquivoWin, pasta] = String(config || '').split('|');
+    if (!programa || !script || !arquivoWin || !pasta) throw new Error('CENTRAL_IA_GESTOR incompleto');
+    const nome = 'pedro_gestor_contato.php';
+    const local = join(pasta, nome);
+    const dados = Buffer.from(JSON.stringify(contato), 'utf8').toString('base64');
+    writeFileSync(local, readFileSync(join(AQUI, 'suporte_gestor_contato.php'), 'utf8').replace("'__DADOS__'", `'${dados}'`));
+    try {
+        const { stdout } = await executar(programa, [script, `${arquivoWin.replace(/[\\/][^\\/]*$/, '')}\\${nome}`, '--apply'],
+            { cwd: pasta, timeout: 180000, maxBuffer: 4 * 1024 * 1024 });
+        const l = String(stdout).split(/\r?\n/).find(x => x.startsWith('SUPORTE_GESTOR_CONTATO:'));
+        if (!l) return { ok: false, erro: 'a ponte não devolveu resposta' };
+        return JSON.parse(l.slice('SUPORTE_GESTOR_CONTATO:'.length));
+    } catch (e) {
+        return { ok: false, erro: `a ponte falhou (${String(e.message).slice(0, 120)})` };
+    } finally {
+        try { unlinkSync(local); } catch {}
+    }
+}
+
+/** Os contatos identificados que o Matriz deixou para esta máquina gravar no Gestor. */
+export async function gravarContatos(config, maquina, { api, gravar = gravarContatoNoGestor, log = () => {} }) {
+    const r = await api('suporte/gestor/contatos', { maquina });
+    if (r.status !== 200) return { status: r.status, feitos: 0 };
+    let feitos = 0;
+    for (const c of r.json?.contatos || []) {
+        const g = await naPonte(() => gravar(config, c));
+        const envio = await api(`suporte/gestor/contatos/${c.id}`, { maquina, ok: !!g.ok, ...(g.ok ? {} : { erro: String(g.erro || 'falhou').slice(0, 300) }) });
+        log(`suporte: contato ${g.ok ? `gravado no Gestor (${g.id})` : `não gravou (${g.erro})`} → ${envio.status}`);
+        feitos++;
+    }
+    return { status: 200, feitos };
+}
+
 /** As mudanças da agenda que o Matriz deixou para esta máquina. */
 export async function gravarAgenda(config, maquina, { api, gravar = gravarAgendaNoGestor, log = () => {} }) {
     const r = await api('suporte/gestor/agenda', { maquina });
