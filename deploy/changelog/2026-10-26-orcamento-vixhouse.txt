@@ -1,0 +1,10 @@
+<b>📋 AlfaMatriz — Changelog 26/10/2026</b>
+<i>Orçamentos: novo modelo VixHouse do PDF para propostas de sistema</i>
+
+<b>✨ Novidade</b>
+• <b>As propostas de sistema saem no novo modelo VixHouse.</b> O PDF do orçamento ganhou o desenho da proposta conceito da Inove: capa marinho com a marca VixHouse, uma página por assunto, telas do sistema com selo de tela ilustrativa e, no fim, o parecer do cliente com a assinatura só como Diretor Comercial. Todo orçamento novo de sistema já nasce nesse modelo. Cartões NFC continuam no modelo clássico.
+• <b>O modelo pode ser trocado no editor.</b> O campo "Modelo do PDF" fica em Comercial › Orçamentos, no editor do orçamento, e alterna entre VixHouse e Clássico VixCard.
+• <b>Nenhum orçamento antigo mudou.</b> Os orçamentos que já existiam continuam no modelo clássico, para nenhum PDF já enviado mudar de cara sem alguém pedir.
+
+<i>Versão v2026.10.26.3</i>
+<i>AlfaMatriz • Alfa Solucoes Tecnologicas</i>
