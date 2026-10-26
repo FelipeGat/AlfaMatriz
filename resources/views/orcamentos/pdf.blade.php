@@ -381,8 +381,9 @@ ul.pontos li::before { content: ''; position: absolute; left: .6mm; top: 1.9mm; 
         </section>
     @endforeach
 
-    {{-- 4. Na prática: as imagens soltas, duas por página, cada uma com a sua legenda. --}}
-    @foreach (array_chunk($imgs('galeria'), 2) as $par)
+    {{-- 4. Na prática: as imagens soltas, duas por página, cada uma com a sua legenda. As "telas do
+         sistema" (lugar do modelo VixHouse) entram aqui também, para nada sumir ao trocar de modelo. --}}
+    @foreach (array_chunk([...$imgs('galeria'), ...$imgs('telas')], 2) as $par)
         <section class="pagina">
             {{ $cabecalho() }}
             <div class="conteudo">

@@ -314,8 +314,10 @@ class TokensTest extends TestCase
                 && str_ends_with($arquivo->getFilename(), '.blade.php')
                 && $arquivo->getFilename() !== 'welcome.blade.php'
                 && ! str_ends_with($arquivo->getPathname(), 'relatorios/documento.blade.php')
-                // A proposta VixCard (orcamentos-vixcard) também é papel: as cores são as da marca VixCard, não do tema.
-                && ! str_ends_with($arquivo->getPathname(), 'orcamentos/pdf.blade.php')) {
+                // A proposta VixCard (orcamentos-vixcard) também é papel: as cores são as da marca (VixCard no
+                // clássico, VixHouse no modelo de sistemas, orcamentos/pdf/), não do tema.
+                && ! str_ends_with($arquivo->getPathname(), 'orcamentos/pdf.blade.php')
+                && ! str_contains($arquivo->getPathname(), 'orcamentos/pdf/')) {
                 $views[] = $arquivo->getPathname();
             }
         }

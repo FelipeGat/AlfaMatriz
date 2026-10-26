@@ -262,7 +262,7 @@ class OrcamentoController extends Controller
     }
 
     /** Os campos da etapa 2 que vão e voltam do editor. */
-    private const CAMPOS_NOVOS = ['lead_id', 'tipo', 'rotulo_3', 'valor_3', 'natureza', 'dados_cliente', 'objeto', 'secoes', 'planos', 'pagamento_texto', 'notas_internas'];
+    private const CAMPOS_NOVOS = ['lead_id', 'tipo', 'modelo', 'rotulo_3', 'valor_3', 'natureza', 'dados_cliente', 'objeto', 'secoes', 'planos', 'pagamento_texto', 'notas_internas'];
 
     /** Os pré-clientes para o seletor do editor, com o que preenche o orçamento. */
     private function preClientes(): array
@@ -302,6 +302,7 @@ class OrcamentoController extends Controller
             // Etapa 2 (padrao-e-historico.md).
             'lead_id' => ['nullable', 'integer', 'exists:leads,id'],
             'tipo' => ['nullable', 'string', 'max:40'],
+            'modelo' => ['nullable', Rule::in(array_keys(Orcamento::MODELOS))],
             'rotulo_3' => ['nullable', 'string', 'max:30'],
             'valor_3' => ['nullable', 'string', 'max:160'],
             'natureza' => ['nullable', Rule::in(array_keys(Orcamento::NATUREZAS))],

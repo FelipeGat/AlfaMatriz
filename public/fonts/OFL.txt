@@ -9,6 +9,15 @@ desta pasta são os subsets `latin` e `latin-ext` publicados pelo Google Fonts.
   Space Grotesk  Copyright 2020 The Space Grotesk Project Authors
                  https://github.com/floriankarsten/space-grotesk
 
+Nos PDFs dos orçamentos (resources/views/orcamentos), também OFL 1.1:
+
+  Open Sans      Copyright 2020 The Open Sans Project Authors
+                 https://github.com/googlefonts/opensans
+  Inter          Copyright 2020 The Inter Project Authors
+                 https://github.com/rsms/inter
+  Plus Jakarta Sans  Copyright 2020 The Plus Jakarta Sans Project Authors
+                 https://github.com/tokotype/PlusJakartaSans
+
 O texto integral da licença segue abaixo.
 
 --------------------------------------------------------------------------------

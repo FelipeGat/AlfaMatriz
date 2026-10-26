@@ -141,6 +141,18 @@ class Modelos
         ],
     ];
 
+    /**
+     * O que não é sistema e por isso fica no PDF clássico (Felipe, 25/10/2026: o modelo VixHouse vale
+     * "para TODOS os clientes que for sistema"). Cartão NFC é peça impressa, com a arte do cliente.
+     */
+    public const FORA_DO_MODELO_VIXHOUSE = ['cartoes-nfc'];
+
+    /** O modelo de PDF com que um orçamento deste produto nasce — editável no orçamento. */
+    public static function modeloDoPdf(string $chave): string
+    {
+        return in_array($chave, self::FORA_DO_MODELO_VIXHOUSE, true) ? 'classico' : 'vixhouse';
+    }
+
     public static function nome(string $chave): string
     {
         return self::PRODUTOS[$chave]['nome'] ?? $chave;
@@ -151,7 +163,7 @@ class Modelos
     {
         $m = self::PRODUTOS[$chave] ?? self::PRODUTOS['outro'];
 
-        return ['produto' => $chave] + collect($m)->except(['nome', 'itens'])->all() + [
+        return ['produto' => $chave, 'modelo' => self::modeloDoPdf($chave)] + collect($m)->except(['nome', 'itens'])->all() + [
             'itens' => array_map(fn ($i) => ['descricao' => $i[0], 'quantidade' => $i[1], 'unidade' => $i[2], 'valor_unitario' => $i[3], 'cobranca' => $i[4]]
                 + \App\Models\OrcamentoItem::classificar(['descricao' => $i[0], 'cobranca' => $i[4]]) + ['opcional' => false], $m['itens']),
         ];

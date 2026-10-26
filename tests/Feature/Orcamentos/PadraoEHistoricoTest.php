@@ -118,7 +118,7 @@ class PadraoEHistoricoTest extends TestCase
     /** Faixas, opcionais e "sob consulta" saem com o preço, fora do total (20/10/2026). */
     public function test_opcao_fica_fora_do_total(): void
     {
-        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'vixlink', 'cliente' => 'Clube', 'titulo' => 'Cartão', 'parcelas' => 1, 'validade_dias' => 15,
+        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'vixlink', 'modelo' => 'classico', 'cliente' => 'Clube', 'titulo' => 'Cartão', 'parcelas' => 1, 'validade_dias' => 15,
             'itens' => [['descricao' => 'Implantação', 'quantidade' => 1, 'unidade' => 'un', 'valor_unitario' => 290, 'cobranca' => 'unico'],
                 ['descricao' => 'Cartões — 1.000 unidades', 'quantidade' => 1000, 'unidade' => 'un', 'valor_unitario' => 14.9, 'cobranca' => 'opcao'],
                 ['descricao' => 'Leitor USB', 'quantidade' => 2, 'unidade' => 'un', 'valor_unitario' => 0, 'cobranca' => 'opcao']]])->assertRedirect();
@@ -133,7 +133,7 @@ class PadraoEHistoricoTest extends TestCase
     /** Material, implantação e recorrente separados, cada um com subtotal (20/10/2026). */
     public function test_material_implantacao_e_recorrente_separados(): void
     {
-        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'vix-id', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'validade_dias' => 15,
+        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'vix-id', 'modelo' => 'classico', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'validade_dias' => 15,
             'itens' => [['descricao' => 'Coletor C72', 'quantidade' => 1, 'unidade' => 'un', 'valor_unitario' => 6500, 'categoria' => 'material'],
                 ['descricao' => 'Etiquetas', 'quantidade' => 1000, 'unidade' => 'un', 'valor_unitario' => 0.59, 'categoria' => 'material'],
                 ['descricao' => 'Implantação e treinamento', 'quantidade' => 1, 'unidade' => 'serv', 'valor_unitario' => 4900, 'categoria' => 'implantacao'],
@@ -154,7 +154,7 @@ class PadraoEHistoricoTest extends TestCase
     /** A capa elaborada: foto do orçamento (ou a padrão), clientes atendidos e emissor dos ajustes. */
     public function test_capa_com_foto_ajustes_e_revisao_de_rascunho(): void
     {
-        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'vix-id', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'validade_dias' => 15,
+        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'vix-id', 'modelo' => 'classico', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'validade_dias' => 15,
             'capa' => \Illuminate\Http\UploadedFile::fake()->image('capa.jpg', 1200, 1700)])->assertRedirect();
         $o = Orcamento::sole();
         Storage::disk(Pdf::DISCO)->assertExists($o->capa_imagem);

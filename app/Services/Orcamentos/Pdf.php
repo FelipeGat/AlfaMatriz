@@ -9,8 +9,9 @@ use RuntimeException;
 use Symfony\Component\Process\Process;
 
 /**
- * O PDF padrão das propostas, sempre como VixSoftHouse (docs/specs/orcamentos-vixcard): um modelo só
- * (`orcamentos.pdf`), impresso pelo Chromium sem interface — o mesmo motor das
+ * O PDF das propostas (docs/specs/orcamentos-vixcard): o modelo VixHouse (`orcamentos.pdf.vixhouse`,
+ * toda proposta de sistema desde 25/10/2026) ou o clássico VixCard (`orcamentos.pdf`), impresso
+ * pelo Chromium sem interface — o mesmo motor das
  * propostas feitas à mão até aqui, com flexbox e gradiente, sem as gambiarras
  * de tabela do dompdf do Gestor. A prévia da tela é o MESMO Blade, então o
  * que se vê editando é o que sai impresso.
@@ -19,13 +20,19 @@ class Pdf
 {
     public const DISCO = 'central_ia';
 
-    /** O HTML do orçamento. Na prévia as fontes vêm pela URL; no PDF, do disco. */
+    /**
+     * O HTML do orçamento. Na prévia as fontes vêm pela URL; no PDF, do disco.
+     * Dois desenhos (modelo-vixhouse.md): o VixHouse, de toda proposta de sistema, e o clássico.
+     */
     public function html(Orcamento $o, bool $previa = false, ?string $capaDataUri = null): string
     {
-        return view('orcamentos.pdf', [
+        $publico = fn (string $caminho) => $previa ? asset($caminho) : 'file://'.public_path($caminho);
+
+        return view($o->modelo === 'classico' ? 'orcamentos.pdf' : 'orcamentos.pdf.vixhouse', [
             'o' => $o,
             'previa' => $previa,
-            'fontes' => $previa ? asset('fonts') : 'file://'.public_path('fonts'),
+            'fontes' => $publico('fonts'),
+            'marca' => ['clara' => $publico('marcas/vixhouse-wordmark-claro.png'), 'escura' => $publico('marcas/vixhouse-wordmark.png')],
             'capa' => $capaDataUri ?? $this->capa($o, $previa),
             'imagens' => $this->imagens($o, $previa),
             'ajustes' => app(Ajustes::class),
