@@ -77,6 +77,9 @@ class SincronizarSistemas extends Command
         foreach ($sistemas as $sistema) {
             $this->line("<options=bold>{$sistema->nome}</>");
 
+            // Lido ANTES do ciclo: o próprio ciclo que falha grava a marca.
+            $jaEstavaFora = $sistema->sincronizacao_caiu_em !== null;
+
             $resultado = (new SincronizadorSistemaService($sistema))->sincronizar();
 
             if (! $resultado['ok']) {
@@ -88,7 +91,14 @@ class SincronizarSistemas extends Command
                 // a falha de 17/10 (T-397) deixou um "exit code 1" sem causa.
                 // O nome vai na mensagem, e não só no contexto, para o vigia de
                 // logs separar a queda de cada sistema em vez de juntar todas.
-                Log::error("Sincronização: {$sistema->nome} falhou.", [
+                //
+                // A primeira hora fora é WARNING, que o vigia não vira tarefa:
+                // um 522 do Cloudflare que passa sozinho (T-497) abria um Bug
+                // sem conserto. O sino "parou de sincronizar" avisa já nela; o
+                // ERROR — e a tarefa — vêm quando a queda dura um ciclo inteiro.
+                $nivel = $jaEstavaFora ? 'error' : 'warning';
+
+                Log::{$nivel}("Sincronização: {$sistema->nome} falhou.", [
                     'sistema' => $sistema->slug,
                     'motivo' => $resultado['motivo'],
                     'ensaio' => (bool) $this->option('simular'),
