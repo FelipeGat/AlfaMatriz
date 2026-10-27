@@ -3,6 +3,13 @@
 # Atualiza o STAGING do AlfaMatriz a partir da main.
 #
 # Uso (no host Proxmox, chamado pelo deploy-staging ou pelo painel):
+#
+# Quem agenda é o deploy-staging.timer do host (repositório alfa-deploy): a
+# cada 15 min, das 06:07 às 23:52, no FIM do `deploy-staging all`, fora da
+# trava geral, para os ~7,5 min da suíte não prenderem o clique de outro
+# sistema. Até 10/2026 era um cron próprio do root, de 5 em 5 min, que
+# rodava ao lado do timer; os dois agendadores viraram um só (T-295).
+#
 #   deploy-staging-alfamatriz.sh [--lxc 116] [--dir /var/www/alfamatriz]
 #   deploy-staging-alfamatriz.sh --local          # já estou dentro do container
 #
@@ -19,9 +26,10 @@
 set -uo pipefail
 
 # O cron do root roda com PATH=/usr/bin:/bin, onde `pct` (em /usr/sbin) não
-# existe. Sem esta linha o script funciona quando chamado à mão e falha
-# silenciosamente a cada 5 minutos pelo agendador — foi exatamente o que
-# aconteceu, e só apareceu ao ler o log.
+# existe. Sem esta linha o script funcionava quando chamado à mão e falhava
+# em silêncio a cada rodada do cron que o agendava — foi exatamente o que
+# aconteceu, e só apareceu ao ler o log. Hoje quem chama é o systemd, que já
+# traz o /usr/sbin; a linha fica para não depender de quem agenda.
 # Acrescentado ao FIM, não ao início: garante os diretórios do sistema sem
 # tirar a prioridade de quem chamou. Prefixar quebraria qualquer ambiente que
 # aponte para binários próprios — inclusive o teste deste script.
@@ -52,14 +60,14 @@ log(){ echo "$(date '+%F %T') alfamatriz: $*" | tee -a "$LOG" 2>/dev/null || ech
 # ------------------------------------------------------------------ trava
 #
 # Uma execução por vez. São DOIS gatilhos apontando para o mesmo diretório: o
-# cron de 5 em 5 minutos e o botão do painel (que chega aqui pelo
-# `deploy-staging alfamatriz` do host). Juntos, fariam `git merge` e
+# timer de 15 em 15 minutos (pelo `deploy-staging all`) e o botão do painel
+# (que chega aqui pelo `deploy-staging alfamatriz` do host). Juntos, fariam `git merge` e
 # `composer install` um em cima do outro — e o segundo esbarraria no
 # index.lock do git com uma mensagem que ninguém relaciona à causa.
 #
 # A trava fica AQUI e não em quem chama: é o único ponto por onde os dois
 # caminhos passam. Enquanto ela viveu só do lado do painel, protegia clique
-# contra clique e deixava passar o encontro com o cron, que é o provável.
+# contra clique e deixava passar o encontro com o agendador, que é o provável.
 #
 # `mkdir` e não `flock`, mesma escolha do vigia de tags e pelo mesmo motivo:
 # criar diretório é atômico nos dois sistemas, e `flock` é do util-linux — não
@@ -71,9 +79,9 @@ log(){ echo "$(date '+%F %T') alfamatriz: $*" | tee -a "$LOG" 2>/dev/null || ech
 # caminho do LXC. Um mkdir daqui criaria a trava no /var/www do host, que não
 # é o mesmo diretório que ele protege.
 #
-# Quem chega depois desiste em silêncio e sai 0: para o cron, encontrar o
+# Quem chega depois desiste em silêncio e sai 0: para o agendador, encontrar o
 # vizinho rodando é o dia normal, não incidente — sair 1 pintaria a unit de
-# vermelho a cada cinco minutos.
+# vermelho a cada rodada.
 TRAVA=${TRAVA:-/run/deploy-staging-alfamatriz.lock.d}
 
 # Trava esquecida por queda no meio do caminho bloquearia todo deploy seguinte
