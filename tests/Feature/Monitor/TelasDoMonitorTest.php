@@ -650,4 +650,43 @@ class TelasDoMonitorTest extends TestCase
         $busca = $this->actingAs($admin)->get(route('monitor.acesso', ['fonte' => 'AlfaControl', 'busca' => 'parado']))->getContent();
         $this->assertStringContainsString("chave: 'AlfaControl:1', padrao: true", $busca);
     }
+
+    /**
+     * T-561: o AlfaJornada é a terceira aba do Acesso. A resposta imita a de
+     * produção em 30/10/2026: a NONA LU, cliente 2 do Jornada, com um leitor
+     * facial desligado.
+     */
+    public function test_o_acesso_tem_a_aba_do_alfajornada(): void
+    {
+        Http::fake([self::BASE.'/api/v1/acesso*' => Http::response([
+            'v' => 1, 'gerado_em' => '2026-10-30T13:21:00-03:00',
+            'fontes' => [[
+                'fonte' => 'AlfaJornada', 'coleta' => 'ok', 'online' => 0, 'total' => 1,
+                'clientes' => [[
+                    'cliente_id' => 2, 'nome' => 'NONA LU Restaurante', 'online' => 0, 'total' => 1,
+                    'fechado_agora' => false, 'horario' => null, 'acessos_hoje' => 0, 'negados_hoje' => 0,
+                    'aparelhos' => [[
+                        'id' => 1, 'nome' => 'Leitor Facial', 'modelo' => 'controlid_idface', 'ip' => '192.0.2.40',
+                        'estado' => 'offline', 'ultimo_ping' => '2026-10-30T13:00:00-03:00', 'ping_ms' => null,
+                        'pct_no_ar_24h' => 0, 'sino' => true, 'barra' => null,
+                    ]],
+                ]],
+            ]],
+        ])]);
+
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->get(route('monitor.acesso'))
+            ->assertOk()
+            ->assertSee(route('monitor.acesso', ['fonte' => 'AlfaJornada', 'situacao' => 'todos']));
+
+        $this->actingAs($admin)->get(route('monitor.acesso', ['fonte' => 'AlfaJornada']))
+            ->assertOk()
+            ->assertSee('0 de 1 aparelhos online no AlfaJornada')
+            ->assertSee('NONA LU Restaurante')
+            ->assertSee('Leitor Facial')
+            ->assertSee(route('monitor.cliente', 'AlfaJornada:2'), false);
+
+        Http::assertSent(fn (Request $r) => $r->url() === self::BASE.'/api/v1/acesso?fonte=AlfaJornada&por_pagina=200');
+    }
 }

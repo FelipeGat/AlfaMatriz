@@ -35,7 +35,14 @@ use Illuminate\View\View;
  */
 class PainelDoMonitorController extends Controller
 {
-    public const FONTES = ['AlfaControl', 'AlfaGym'];
+    /**
+     * As abas de Monitor › Acesso, uma por fonte do `/api/v1/acesso` do
+     * monitor. O AlfaJornada entrou em 30/10/2026 (T-561), quando o monitor
+     * passou a coletar os leitores dele. O cliente continua ligado ao do
+     * Matriz pelo nome; a ligação por fonte + cliente_id ficou para depois,
+     * por decisão do dono.
+     */
+    public const FONTES = ['AlfaControl', 'AlfaGym', 'AlfaJornada'];
 
     public const SITUACOES_DE_APARELHO = ['todos', 'online', 'offline'];
 
