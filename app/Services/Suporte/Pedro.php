@@ -30,6 +30,9 @@ class Pedro
     // Sem "esse assunto": a frase também sai quando a pessoa só cumprimentou (T-478, 22/10/2026).
     public const ESPECIALISTA = 'Para que você não fique esperando, já chamei um colega da equipe, que continua com você por aqui.';
 
+    /** O começo do erro de quem a máquina reservou e não respondeu: a marca do aviso já dado (T-494). */
+    public const SEM_RETORNO = 'sem confirmação do Gestor';
+
     public function __construct(private CanalWhatsApp $canal, private Contexto $contexto, private Atendimento $atendimento) {}
 
     /** Põe a conversa na fila, se o Pedro deve responder agora. */
@@ -388,16 +391,25 @@ class Pedro
         $limite = now()->subSeconds((int) config('services.suporte_pedro.reserva_segundos', 120));
         $n = 0;
         // Abertura no Gestor que ninguém pegou (máquina desligada): vai a um atendente, com o cliente avisado.
+        // A falha só vale se ela AINDA está pendente na hora de gravar (T-494, 23/10/2026: o Pedro disse ao
+        // Wallas "lance à mão" e a máquina gravou o nº 824 depois). A máquina reserva com trava; sem a
+        // condição, esta volta sobrescrevia a reserva e o aviso saía para o que ainda ia ser gravado.
         foreach (\App\Models\SuporteGestorAbertura::with('conversa')->where('situacao', 'pendente')->where('created_at', '<', $limite)->get() as $a) {
-            $this->atendimento->concluirNoGestor($a, null, 'nenhuma máquina gravou no Gestor', $this->canal);
+            if (! $this->desistir($a, 'nenhuma máquina gravou no Gestor')) {
+                continue;
+            }
+            $this->atendimento->concluirNoGestor($a, null, $a->erro, $this->canal);
             $n++;
         }
         // Mudança de agenda que nenhuma máquina pegou (pedro-dia-do-tecnico): falha, e quem pediu recebe o resumo.
         foreach (\App\Models\SuporteGestorAgenda::where('situacao', 'pendente')->where('created_at', '<', $limite)->get() as $m) {
-            $m->update(['situacao' => 'falhou', 'erro' => 'nenhuma máquina gravou no Gestor']);
+            if (! $this->desistir($m, 'nenhuma máquina gravou no Gestor')) {
+                continue;
+            }
             app(AgendaDoTecnico::class)->concluirLote($m->lote, $this->canal);
             $n++;
         }
+        $n += $this->semRetornoDoGestor();
         foreach (SuportePedido::with('conversa')->whereIn('situacao', ['pendente', 'reservado'])->where('created_at', '<', $limite)->get() as $p) {
             $semMaquina = $p->situacao === 'pendente';
             $p->update(['situacao' => 'expirado', 'erro' => $semMaquina ? 'nenhuma máquina pegou o pedido' : 'a IA não respondeu a tempo']);
@@ -406,6 +418,67 @@ class Pedro
         }
 
         return $n;
+    }
+
+    /**
+     * Pendente → falhou só se ninguém reservou no meio (T-494): a atualização é condicional, e quem
+     * perde a corrida para a máquina não avisa nada — o resultado dela é que vale.
+     */
+    private function desistir(\Illuminate\Database\Eloquent\Model $pedido, string $erro): bool
+    {
+        if (! $pedido->newQuery()->whereKey($pedido->getKey())->where('situacao', 'pendente')->update(['situacao' => 'falhou', 'erro' => $erro, 'updated_at' => now()])) {
+            return false;
+        }
+        $pedido->refresh();
+
+        return true;
+    }
+
+    /**
+     * Reservado pela máquina e sem resposta (T-494): a ponte travou no meio, e o pedido PODE ter sido
+     * gravado — ou pode ser gravado ainda, quando ela destravar. Por isso não vira falha nem "lance à
+     * mão": quem pediu ouve, uma vez, que o Gestor não confirmou e que é preciso conferir lá antes de
+     * lançar. Continua reservado, e o resultado que chegar depois ainda vale (com aviso de duplicidade).
+     */
+    private function semRetornoDoGestor(): int
+    {
+        $limite = now()->subMinutes(max(1, (int) config('services.suporte_pedro.gravacao_sem_retorno_minutos', 10)));
+        $n = 0;
+        foreach (\App\Models\SuporteGestorAbertura::with('conversa')->where('situacao', 'reservado')->whereNull('erro')->where('reservado_em', '<', $limite)->get() as $a) {
+            if ($this->marcarSemRetorno($a)) {
+                $this->atendimento->semRetornoDoGestor($a, $this->canal);
+                $n++;
+            }
+        }
+        foreach (\App\Models\SuporteGestorAgenda::with('conversa')->where('situacao', 'reservado')->whereNull('erro')->where('reservado_em', '<', $limite)->get()->groupBy('lote') as $mudancas) {
+            $marcadas = $mudancas->filter(fn ($m) => $this->marcarSemRetorno($m));
+            if ($marcadas->isEmpty()) {
+                continue;
+            }
+            $desde = $marcadas->min('reservado_em')->setTimezone(config('app.timezone'))->format('H:i');
+            try {
+                $this->canal->enviar($marcadas->first()->conversa, "A agenda do Gestor ainda não confirmou {$marcadas->count()} mudança(s) que comecei a gravar às {$desde}. "
+                    .'Elas podem já estar lá: confira a agenda no Gestor antes de lançar à mão. Quando a confirmação chegar, eu aviso aqui.', 'pedro');
+            } catch (ValidationException) {
+                // Fora da janela: a situação fica registrada na conversa (O QUE FOI ENVIADO AO GESTOR).
+            }
+            $n++;
+        }
+
+        return $n;
+    }
+
+    /** Marca o pedido reservado como "sem retorno", uma vez só (o erro preenchido é a marca; a situação fica). */
+    private function marcarSemRetorno(\Illuminate\Database\Eloquent\Model $pedido): bool
+    {
+        $desde = $pedido->reservado_em->setTimezone(config('app.timezone'))->format('H:i');
+        if (! $pedido->newQuery()->whereKey($pedido->getKey())->where('situacao', 'reservado')->whereNull('erro')
+            ->update(['erro' => self::SEM_RETORNO." desde {$desde}", 'updated_at' => now()])) {
+            return false;
+        }
+        $pedido->refresh();
+
+        return true;
     }
 
     /** A resposta sem IA: avisa o cliente e deixa a conversa com um atendente, com o que lançar no Gestor. */

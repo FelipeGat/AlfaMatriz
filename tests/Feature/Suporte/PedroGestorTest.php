@@ -239,6 +239,95 @@ class PedroGestorTest extends TestCase
         Http::assertNotSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), 'T-'));
     }
 
+    /** Abertura de quem é da casa, como o registrarPorDentro grava (T-494: o caso do Wallas). */
+    private function aberturaDoWallas(string $situacao = 'pendente', array $mais = []): SuporteGestorAbertura
+    {
+        $c = SuporteConversa::create(['telefone' => '5527998845397', 'ultima_entrada_em' => now()]);
+
+        return SuporteGestorAbertura::create(['conversa_id' => $c->id, 'gestor_cliente_id' => 13, 'assunto_id' => 3, 'empresa_id' => 3, 'modo' => 'novo',
+            'pedido_por' => 'Wallas', 'descricao' => "Portão G1 não fecha\n\n(Registrado pelo Pedro a pedido de Wallas.)", 'solicitante' => 'Wallas',
+            'telefone' => '5527998845397', 'situacao' => $situacao] + $mais);
+    }
+
+    /** T-494: a máquina reservou entre a leitura e a gravação do vencimento; o aviso de falha não pode sair. */
+    public function test_abertura_reservada_no_meio_do_vencimento_nao_vira_falha(): void
+    {
+        $a = $this->aberturaDoWallas();
+        Carbon::setTestNow(now()->addMinutes(3));
+        // A máquina ganha a corrida: reserva logo depois de o vencimento ler a abertura como pendente.
+        SuporteGestorAbertura::retrieved(function (SuporteGestorAbertura $lida) {
+            SuporteGestorAbertura::query()->whereKey($lida->id)->where('situacao', 'pendente')->update(['situacao' => 'reservado', 'reservado_em' => now()]);
+        });
+        $this->artisan('suporte:pedro')->assertSuccessful();
+
+        $this->assertSame(['reservado', null], [$a->fresh()->situacao, $a->fresh()->erro]);
+        Http::assertNotSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), 'Não consegui gravar'));
+
+        // E o resultado da máquina ainda é aceito.
+        $this->runner();
+        $this->postJson(route('suporte.runner.abertura-feita', $a->id), ['maquina' => 'wsl', 'numero' => '824', 'modo' => 'novo'])->assertOk();
+        $this->assertSame(['feito', '824'], [$a->fresh()->situacao, $a->fresh()->numero]);
+    }
+
+    /** T-494: sem máquina nenhuma, a falha é definitiva — a abertura não volta a ser oferecida. */
+    public function test_abertura_que_falhou_por_falta_de_maquina_nao_sai_mais_para_a_maquina(): void
+    {
+        $a = $this->aberturaDoWallas();
+        Carbon::setTestNow(now()->addMinutes(3));
+        $this->artisan('suporte:pedro')->assertSuccessful();
+        $this->assertSame(['falhou', 'nenhuma máquina gravou no Gestor'], [$a->fresh()->situacao, $a->fresh()->erro]);
+        Http::assertSent(fn ($r) => str_starts_with((string) ($r['text']['body'] ?? ''), 'Não consegui gravar no Gestor (nenhuma máquina gravou no Gestor). Lance à mão'));
+
+        $this->runner();
+        $this->postJson(route('suporte.runner.aberturas'), ['maquina' => 'wsl'])->assertJsonCount(0, 'aberturas');
+        $this->postJson(route('suporte.runner.abertura-feita', $a->id), ['maquina' => 'wsl', 'numero' => '824'])->assertNotFound();
+    }
+
+    /** T-494: reservada e sem resposta, PODE ter sido gravada: nada de "lance à mão", e sim conferir antes. */
+    public function test_abertura_reservada_sem_retorno_avisa_para_conferir_e_aceita_o_numero_atrasado(): void
+    {
+        $a = $this->aberturaDoWallas('reservado', ['reservado_em' => now()]);
+        Carbon::setTestNow(now()->addMinutes(9));
+        $this->artisan('suporte:pedro')->assertSuccessful();
+        $this->assertNull($a->fresh()->erro, 'antes de 10 min, espera');
+
+        Carbon::setTestNow(now()->addMinutes(2));
+        $this->artisan('suporte:pedro')->assertSuccessful();
+        $this->artisan('suporte:pedro')->assertSuccessful();
+        $this->assertSame(['reservado', 'sem confirmação do Gestor desde 10:00'], [$a->fresh()->situacao, $a->fresh()->erro]);
+        $aviso = 'O Gestor ainda não confirmou o atendimento que comecei a gravar às 10:00. Ele pode já estar lá: procure no Gestor antes de lançar à mão '
+            .'(cliente nº 13 (CONDOMINIO CASTANHEIRAS), assunto 3 PORTÃO / ACESSO. Portão G1 não fecha). Quando o número chegar, eu aviso aqui.';
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === $aviso);
+        Http::assertNotSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), 'Lance à mão'));
+        $this->assertFalse(SuporteConversa::sole()->comHumano(), 'quem é da casa não vai à fila');
+
+        $this->runner();
+        $this->postJson(route('suporte.runner.abertura-feita', $a->id), ['maquina' => 'wsl', 'numero' => '824', 'modo' => 'novo'])->assertOk();
+        $this->assertSame(['feito', '824', null], [$a->fresh()->situacao, $a->fresh()->numero, $a->fresh()->erro]);
+        Http::assertSent(fn ($r) => str_ends_with((string) ($r['text']['body'] ?? ''), "\nA confirmação chegou depois do aviso de demora: se você já lançou à mão, cancele um dos dois no Gestor."));
+        $this->assertSame(1, Notificacao::where('titulo', 'like', 'Gestor nº 824 (gravado depois do aviso de demora%')->count());
+    }
+
+    /** T-494, do cliente: vai a um atendente, com a ressalva no começo do motivo da fila (que corta em 250). */
+    public function test_abertura_de_cliente_sem_retorno_vai_ao_atendente_para_conferir_antes(): void
+    {
+        config(['services.suporte_pedro.gestor_gravar' => true]);
+        SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
+        $this->chega('o portão G1 não fecha', 'wamid.1');
+        $this->responde(['resposta' => 'Vou encaminhar.', 'acao' => 'abrir_atendimento', 'resumo' => 'Portão G1 não fecha', 'destino' => 'gestor', 'assunto_id' => 3]);
+        $this->runner();
+        $this->postJson(route('suporte.runner.aberturas'), ['maquina' => 'wsl'])->assertJsonCount(1, 'aberturas');
+
+        Carbon::setTestNow(now()->addMinutes(11));
+        $this->artisan('suporte:pedro')->assertSuccessful();
+        $c = SuporteConversa::sole();
+        $this->assertTrue($c->comHumano());
+        $this->assertStringStartsWith('CONFERIR NO GESTOR ANTES DE LANÇAR (gravação sem confirmação desde 10:00; pode já existir): cliente nº 13 (CONDOMINIO CASTANHEIRAS), assunto 3 PORTÃO / ACESSO.', $c->fila_motivo);
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Já chamei um colega da equipe, que continua com você por aqui.');
+        $this->assertSame('reservado', SuporteGestorAbertura::sole()->situacao);
+    }
+
     public function test_so_a_conta_do_pedro_manda_o_retrato(): void
     {
         $outro = User::factory()->create();

@@ -90,6 +90,8 @@ return [
         'garantia_dias' => (int) env('SUPORTE_PEDRO_GARANTIA_DIAS', 90),
         // Sem resposta da IA nesse tempo, o Matriz responde sozinho e abre o atendimento.
         'reserva_segundos' => (int) env('SUPORTE_PEDRO_RESERVA_SEGUNDOS', 120),
+        // A máquina reservou a gravação no Gestor e não respondeu nesse tempo: quem pediu ouve para conferir lá (T-494).
+        'gravacao_sem_retorno_minutos' => (int) env('SUPORTE_PEDRO_GRAVACAO_SEM_RETORNO_MINUTOS', 10),
         // Quanto o Pedro tenta antes de passar ao especialista: o que vier primeiro.
         'limite_respostas' => (int) env('SUPORTE_PEDRO_LIMITE_RESPOSTAS', 6),
         'limite_minutos' => (int) env('SUPORTE_PEDRO_LIMITE_MINUTOS', 30),

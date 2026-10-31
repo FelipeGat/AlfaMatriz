@@ -122,18 +122,21 @@ class Atendimento
     {
         $c = $a->conversa;
         if ($numero) {
-            $a->update(['situacao' => 'feito', 'numero' => mb_substr($numero, 0, 30)]);
+            // Já tinha saído o aviso de "sem confirmação" (T-494): alguém pode ter lançado à mão nesse meio-tempo.
+            $atrasado = str_starts_with((string) $a->erro, Pedro::SEM_RETORNO);
+            $a->update(['situacao' => 'feito', 'numero' => mb_substr($numero, 0, 30), 'erro' => null]);
             if (! $a->pedido_por) {
                 $c->update(['gestor_atendimento' => $a->numero]);
             }
             $g = app(DiretorioGestor::class)->cliente((int) $a->gestor_cliente_id);
             $nome = $g['fantasia'] ?? $g['nome'] ?? (($a->novo_pre['nome'] ?? null) ? $a->novo_pre['nome'].' (pré-cliente criado agora)' : 'cliente do Gestor');
+            $dobro = $atrasado ? ' (gravado depois do aviso de demora: confira se não foi lançado em dobro)' : '';
             foreach ($this->responsaveis() as $u) {
                 Notificacao::create(['destinatario_id' => $u->id, 'tipo' => 'direcionamento', 'nivel' => 'atencao', 'icone' => 'balao',
-                    'titulo' => Notificacao::caber("Gestor nº {$a->numero}: {$nome} — ".Str::before($a->descricao, "\n\n")), 'meta' => 'Suporte WhatsApp', 'rota' => route('suporte.conversas', $c->id)]);
+                    'titulo' => Notificacao::caber("Gestor nº {$a->numero}{$dobro}: {$nome} — ".Str::before($a->descricao, "\n\n")), 'meta' => 'Suporte WhatsApp', 'rota' => route('suporte.conversas', $c->id)]);
             }
             if ($this->telegram->configurado()) {
-                $this->telegram->enviar('📞 <b>Gestor nº '.e($a->numero).'</b>: '.e($nome)."\n".e(Str::before($a->descricao, "\n\n"))."\n".e(route('suporte.conversas', $c->id)));
+                $this->telegram->enviar('📞 <b>Gestor nº '.e($a->numero).'</b>'.e($dobro).': '.e($nome)."\n".e(Str::before($a->descricao, "\n\n"))."\n".e(route('suporte.conversas', $c->id)));
             }
             // O número sempre volta para quem pediu (Felipe, 21/10/2026), dizendo o que foi feito.
             $texto = match ($a->modo) {
@@ -147,6 +150,9 @@ class Atendimento
                 'reabrir' => "Reabri o atendimento nº {$a->numero}, do mesmo assunto.",
                 default => "O atendimento é o nº {$a->numero}.",
             }." Cliente: {$nome}, no Gestor.".$this->linhaDaAgenda($a) : $texto.' A equipe técnica retornará o contato por aqui.';
+            if ($atrasado && $a->pedido_por) {
+                $texto .= "\nA confirmação chegou depois do aviso de demora: se você já lançou à mão, cancele um dos dois no Gestor.";
+            }
             try {
                 $canal->enviar($c, $texto, 'pedro');
             } catch (\Illuminate\Validation\ValidationException) {
@@ -166,6 +172,27 @@ class Atendimento
             $canal->enviar($c, $texto, 'pedro');
         } catch (\Illuminate\Validation\ValidationException) {
             // Fora da janela: a conversa já está na fila da equipe.
+        }
+    }
+
+    /**
+     * A máquina reservou e o Gestor não confirmou (T-494): pode ter gravado, então nada de "lance à mão".
+     * Quem é da casa ouve para conferir antes; o cliente vai a um atendente com a mesma ressalva na nota.
+     */
+    public function semRetornoDoGestor(SuporteGestorAbertura $a, CanalWhatsApp $canal): void
+    {
+        $c = $a->conversa;
+        $desde = $a->reservado_em->setTimezone(config('app.timezone'))->format('H:i');
+        $pedido = Str::before($a->descricao, "\n\n");
+        $nota = Str::after($this->notaDoGestor($c, $pedido, $a->assunto_id, $a->gestor_cliente_id ? (int) $a->gestor_cliente_id : null), 'LANÇAR NO GESTOR: ');
+        // A ressalva vem antes da nota: o motivo da fila corta em 250 caracteres.
+        $texto = $a->pedido_por
+            ? "O Gestor ainda não confirmou o atendimento que comecei a gravar às {$desde}. Ele pode já estar lá: procure no Gestor antes de lançar à mão ({$nota}). Quando o número chegar, eu aviso aqui."
+            : app(Transferencia::class)->transferir($c, null, "CONFERIR NO GESTOR ANTES DE LANÇAR (gravação sem confirmação desde {$desde}; pode já existir): {$nota}")['texto'];
+        try {
+            $canal->enviar($c, $texto, 'pedro');
+        } catch (\Illuminate\Validation\ValidationException) {
+            // Fora da janela: a conversa já está na fila da equipe, com a ressalva.
         }
     }
 

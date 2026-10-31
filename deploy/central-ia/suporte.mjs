@@ -174,10 +174,27 @@ export async function lerGestorParaPedro(config, { executar = execP, tentativas 
  * outro — a leitura do Secretário rodaria a gravação do Pedro, ou o contrário.
  */
 let filaDaPonte = Promise.resolve();
+// Desde quando a chamada da vez está rodando (0 = ponte livre).
+let ponteRodandoDesde = 0;
 export function naPonte(fn) {
-    const vez = filaDaPonte.then(fn, fn);
+    const rodar = async () => {
+        ponteRodandoDesde = Date.now();
+        try { return await fn(); } finally { ponteRodandoDesde = 0; }
+    };
+    const vez = filaDaPonte.then(rodar, rodar);
     filaDaPonte = vez.catch(() => {});
     return vez;
+}
+
+/**
+ * A chamada da vez roda há mais que isso: a ponte está presa (23/10/2026: das 08:59 em diante
+ * nada andou). Reservar agora deixaria o pedido na fila atrás dela, e ele seria gravado quando
+ * ela destravasse — depois de o Matriz ter dito "lance à mão" (T-494). Sem reservar, ele vence
+ * pendente no Matriz e nunca mais é oferecido: o aviso de falha passa a ser verdade.
+ */
+export const PONTE_PRESA_MS = 60_000;
+export function pontePresa(agora = Date.now()) {
+    return ponteRodandoDesde > 0 && agora - ponteRodandoDesde > PONTE_PRESA_MS;
 }
 
 /**
@@ -270,7 +287,8 @@ export async function gravarContatos(config, maquina, { api, gravar = gravarCont
 }
 
 /** As mudanças da agenda que o Matriz deixou para esta máquina. */
-export async function gravarAgenda(config, maquina, { api, gravar = gravarAgendaNoGestor, log = () => {} }) {
+export async function gravarAgenda(config, maquina, { api, gravar = gravarAgendaNoGestor, log = () => {}, presa = pontePresa }) {
+    if (presa()) { log('suporte: ponte presa — a agenda fica no Matriz, sem reservar'); return { status: 200, feitos: 0, adiado: true }; }
     const r = await api('suporte/gestor/agenda', { maquina });
     if (r.status !== 200) return { status: r.status, feitos: 0 };
     let feitos = 0;
@@ -285,7 +303,9 @@ export async function gravarAgenda(config, maquina, { api, gravar = gravarAgenda
 }
 
 /** Os pedidos de gravação no Gestor que o Matriz deixou para esta máquina. @returns {Promise<number>} quantos foram tratados */
-export async function gravarAberturas(config, maquina, { api, gravar = gravarNoGestor, log = () => {} }) {
+export async function gravarAberturas(config, maquina, { api, gravar = gravarNoGestor, log = () => {}, presa = pontePresa }) {
+    // Ponte presa (T-494): não reserva; o Matriz dá a abertura como falha, e ela não volta a sair.
+    if (presa()) { log('suporte: ponte presa — as aberturas ficam no Matriz, sem reservar'); return { status: 200, feitos: 0, adiado: true }; }
     const r = await api('suporte/gestor/aberturas', { maquina });
     if (r.status !== 200) return { status: r.status, feitos: 0 };
     let feitos = 0;

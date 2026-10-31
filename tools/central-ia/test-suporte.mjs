@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { atenderSuporte, gravarAberturas, gravarContatoNoGestor, gravarContatos, gravarNoGestor, naPonte, responderComIa } from '../../deploy/central-ia/suporte.mjs';
+import { atenderSuporte, gravarAberturas, gravarAgenda, gravarContatoNoGestor, gravarContatos, gravarNoGestor, naPonte, PONTE_PRESA_MS, pontePresa, responderComIa } from '../../deploy/central-ia/suporte.mjs';
 
 const chamadas = [];
 const executar = async (bin, args, entrada, cwd) => {
@@ -120,8 +120,24 @@ console.log('PASSOU: suporte — IA sem ferramentas pelo stdin, numa pasta vazia
         naPonte(async () => { ordem.push('b1'); ordem.push('b2'); }),
     ]);
     assert.deepEqual(ordem, ['a1', 'a2', 'b1', 'b2'], 'uma chamada da ponte por vez');
+
+    // T-494: ponte presa, nada é reservado — o Matriz dá a abertura como falha, e ela não volta a sair.
+    assert.equal(pontePresa(), false, 'ponte livre não está presa');
+    let segura;
+    const travada = naPonte(() => new Promise(r => { segura = r; }));
+    await new Promise(r => setImmediate(r));
+    assert.equal(pontePresa(), false, 'rodando há pouco não é presa');
+    assert.equal(pontePresa(Date.now() + PONTE_PRESA_MS + 1), true, 'rodando há mais de 60 s é presa');
+    segura();
+    await travada;
+    assert.equal(pontePresa(Date.now() + PONTE_PRESA_MS + 1), false, 'terminou, livre de novo');
+    const pedidos = [];
+    const apiPresa = async rota => { pedidos.push(rota); return { status: 200, json: { aberturas: [pedido], mudancas: [] } }; };
+    assert.deepEqual(await gravarAberturas('cfg', 'wsl', { api: apiPresa, presa: () => true }), { status: 200, feitos: 0, adiado: true });
+    assert.deepEqual(await gravarAgenda('cfg', 'wsl', { api: apiPresa, presa: () => true }), { status: 200, feitos: 0, adiado: true });
+    assert.deepEqual(pedidos, [], 'com a ponte presa, nem pede a lista (pedir é reservar)');
 }
-console.log('PASSOU: suporte — gravação no Gestor com --apply e sem repetir; o número volta ao Matriz; a ponte atende um por vez.');
+console.log('PASSOU: suporte — gravação no Gestor com --apply e sem repetir; o número volta ao Matriz; a ponte atende um por vez e, presa, não reserva.');
 
 // Contatos identificados pelo Pedro (T-478, com a T-479 do Gestor): o contato vai no script,
 // com --apply; o resultado volta ao Matriz, e a falha também.

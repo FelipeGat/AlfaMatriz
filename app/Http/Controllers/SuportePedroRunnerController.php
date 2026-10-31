@@ -113,7 +113,8 @@ class SuportePedroRunnerController extends Controller
         $maquina = $this->maquina($request);
         $this->exigirConta($request);
         $lista = DB::transaction(function () use ($maquina) {
-            // Reservado há mais de 10 min (máquina caiu no meio): volta a ser oferecido? Não — pode ter gravado; fica para a equipe conferir.
+            // Reservado há mais de 10 min (máquina caiu no meio): volta a ser oferecido? Não — pode ter gravado; fica para a equipe
+            // conferir, e quem pediu é avisado disso (Pedro::vencidos, T-494). O resultado que chegar depois ainda vale.
             $p = SuporteGestorAbertura::where('situacao', 'pendente')->orderBy('id')->lockForUpdate()->limit(5)->get();
             foreach ($p as $a) {
                 $a->update(['situacao' => 'reservado', 'reservado_em' => now()]);

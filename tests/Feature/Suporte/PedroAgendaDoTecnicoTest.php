@@ -197,6 +197,30 @@ class PedroAgendaDoTecnicoTest extends TestCase
         Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Agenda no Gestor:\n• ✅ horário corrigido no nº 824, 23/10 10:00 às 11:00\n• ❌ visita criada no nº 756: não gravou (Técnico já tem agenda no dia 23/10/2026 entre 13:00 e 14:00.)");
     }
 
+    /** T-494: a máquina reservou e a ponte travou — pode ter gravado; o aviso é para conferir, uma vez por lote. */
+    public function test_mudanca_reservada_sem_retorno_avisa_para_conferir_e_o_resultado_ainda_vale(): void
+    {
+        $c = SuporteConversa::create(['telefone' => '5527998845397', 'ultima_entrada_em' => now()]);
+        foreach (['reagendar_visita', 'criar_visita'] as $i => $tipo) {
+            SuporteGestorAgenda::create(['conversa_id' => $c->id, 'chave' => 'k'.$i, 'lote' => 'lote-1', 'tipo' => $tipo, 'visita_id' => $i ? null : 1185, 'atendimento' => '824',
+                'tecnico_id' => 9, 'inicio' => '2026-10-23 10:00', 'fim' => '2026-10-23 11:00', 'pedido_por' => 'Felipe', 'situacao' => 'reservado', 'reservado_em' => now()]);
+        }
+        Carbon::setTestNow(now()->addMinutes(11));
+        $this->artisan('suporte:pedro')->assertSuccessful();
+        $this->artisan('suporte:pedro')->assertSuccessful();
+
+        $this->assertSame(['reservado'], SuporteGestorAgenda::pluck('situacao')->unique()->values()->all());
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'A agenda do Gestor ainda não confirmou 2 mudança(s) que comecei a gravar às 15:00. '
+            .'Elas podem já estar lá: confira a agenda no Gestor antes de lançar à mão. Quando a confirmação chegar, eu aviso aqui.');
+
+        Sanctum::actingAs($this->felipe, ['central-ia-runner']);
+        foreach (SuporteGestorAgenda::orderBy('id')->pluck('id') as $id) {
+            $this->postJson(route('suporte.runner.agenda-feita', $id), ['maquina' => 'wsl', 'ok' => true, 'visita_id' => 1185, 'numero' => '824'])->assertOk();
+        }
+        Http::assertSent(fn ($r) => str_starts_with((string) ($r['text']['body'] ?? ''), "Agenda no Gestor:\n• ✅ horário corrigido no nº 824"));
+    }
+
     public function test_sim_com_previa_pendente_nao_grava_e_mudanca_sem_maquina_vence(): void
     {
         $c = $this->conversa('5527998845397', self::RELATO);
