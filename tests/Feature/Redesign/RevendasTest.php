@@ -44,6 +44,8 @@ class RevendasTest extends TestCase
         Cliente::create(['nome' => 'Cliente Orbe', 'revenda_id' => $pequena->id, 'ativo' => true]);
 
         // MRR do mês e do mês anterior, para a variação existir.
+        // `startOfMonth()` antes do `subMonth()`: no dia 31 o Carbon transborda
+        // (31/09 vira 01/10) e o mês passado caía no corrente, somando em dobro.
         Cobranca::create([
             'descricao' => 'Atacado Invest', 'valor' => 8940.00, 'revenda_id' => $grande->id,
             'data_vencimento' => now()->toDateString(), 'status' => 'pendente',
@@ -51,8 +53,8 @@ class RevendasTest extends TestCase
         ]);
         Cobranca::create([
             'descricao' => 'Atacado Invest (mês passado)', 'valor' => 8000.00, 'revenda_id' => $grande->id,
-            'data_vencimento' => now()->subMonth()->toDateString(), 'status' => 'pago',
-            'tipo' => 'locacao_sistema', 'competencia' => now()->subMonth()->format('Y-m'),
+            'data_vencimento' => now()->startOfMonth()->subMonth()->toDateString(), 'status' => 'pago',
+            'tipo' => 'locacao_sistema', 'competencia' => now()->startOfMonth()->subMonth()->format('Y-m'),
         ]);
 
         // Uma cobrança vencida e não paga: é o que marca a linha em âmbar.

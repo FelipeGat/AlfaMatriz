@@ -92,10 +92,12 @@ class CentroControleTest extends TestCase
     public function test_os_quatro_cards_trazem_valor_variacao_e_tendencia_do_banco(): void
     {
         // Dois meses de receita recorrente: o card precisa comparar um com o outro.
+        // `startOfMonth()` antes do `subMonth()`: no dia 31 o Carbon transborda
+        // (31/09 vira 01/10) e o mês passado caía no corrente, somando em dobro.
         Cobranca::create([
             'descricao' => 'Recorrente mês passado', 'valor' => 1000.00,
-            'data_vencimento' => now()->subMonth()->toDateString(), 'status' => 'pago',
-            'tipo' => 'locacao_sistema', 'competencia' => now()->subMonth()->format('Y-m'),
+            'data_vencimento' => now()->startOfMonth()->subMonth()->toDateString(), 'status' => 'pago',
+            'tipo' => 'locacao_sistema', 'competencia' => now()->startOfMonth()->subMonth()->format('Y-m'),
         ]);
         Cobranca::create([
             'descricao' => 'Recorrente deste mês', 'valor' => 1500.00,

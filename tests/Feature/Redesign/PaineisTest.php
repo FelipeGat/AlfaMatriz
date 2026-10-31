@@ -41,10 +41,11 @@ class PaineisTest extends TestCase
         // saem do livro-caixa, e um ajuste de abertura lançado hoje entraria
         // em "Entradas do mês" — ele é dinheiro que entrou na conta, mas não é
         // receita do mês. Datado no mês anterior, ele compõe o saldo sem
-        // poluir o número do mês corrente.
+        // poluir o número do mês corrente. `startOfMonth()` antes do `subMonth()`:
+        // no dia 31 o Carbon transborda (31/09 vira 01/10) e caía no mês corrente.
         $conta->movimentacoes()->create([
             'tipo' => 'ajuste', 'descricao' => 'Saldo inicial', 'valor' => 92418.40,
-            'saldo_resultante' => 0, 'data' => now()->subMonth()->startOfMonth()->toDateString(),
+            'saldo_resultante' => 0, 'data' => now()->startOfMonth()->subMonth()->toDateString(),
         ]);
 
         Cobranca::create([

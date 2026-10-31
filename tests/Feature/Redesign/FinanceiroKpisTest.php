@@ -33,10 +33,12 @@ class FinanceiroKpisTest extends TestCase
         $conta = ContaFinanceira::create(['nome' => 'Bradesco PJ', 'tipo' => 'corrente', 'saldo' => 0, 'ativo' => true]);
 
         if ($abertura !== 0.0) {
+            // `startOfMonth()` antes do `subMonth()`: no dia 31 o Carbon transborda
+            // (31/09 vira 01/10) e o "mês passado" caía no mês corrente.
             $conta->movimentacoes()->create([
                 'tipo' => 'ajuste', 'descricao' => 'Saldo inicial', 'valor' => $abertura,
                 'saldo_resultante' => 0,
-                'data' => ($quando === 'agora' ? now() : now()->subMonth())->toDateString(),
+                'data' => ($quando === 'agora' ? now() : now()->startOfMonth()->subMonth())->toDateString(),
             ]);
             $conta->reprocessarSaldo();
         }
