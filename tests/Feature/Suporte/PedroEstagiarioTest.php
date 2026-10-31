@@ -113,4 +113,18 @@ class PedroEstagiarioTest extends TestCase
 
         $this->assertStringNotContainsString('## SHOWROOM COMERCIAL', $this->prompt('5527933334444', 'oi, bom dia'), 'conversa sem assunto não leva o showroom');
     }
+
+    /** 31/10/2026: os casos do showroom trazem preço de proposta, e preço não é assunto do suporte. */
+    public function test_o_showroom_chega_ao_pedro_sem_os_valores(): void
+    {
+        app(DiretorioGestor::class)->gravar('wsl', now()->toDateTimeString(), [], [], [], [], [
+            ['categoria' => 'Casos', 'titulo' => 'Academia com catraca facial', 'descricao' => 'Sistema + App por R$ 249,80/mês',
+                'texto' => 'Catraca facial — TopData Revolution (R$ 6.688,70) ou Tecnibra Economy (R$ 7.969,88). Contrato R$2.900/mês com NF; obra de R$ 69.500. Retenção de 94,8%.', 'url' => '', 'video' => ''],
+        ]);
+
+        $p = $this->prompt('5527911112222', 'Vocês instalam catraca facial em academia?');
+        $this->assertStringContainsString('Academia com catraca facial (Casos): Sistema + App por (valor com o comercial)', $p);
+        $this->assertStringContainsString('TopData Revolution ((valor com o comercial)) ou Tecnibra Economy ((valor com o comercial)). Contrato (valor com o comercial) com NF; obra de (valor com o comercial). Retenção de 94,8%.', $p);
+        $this->assertDoesNotMatchRegularExpression('/R\$\s*\d/u', $p);
+    }
 }

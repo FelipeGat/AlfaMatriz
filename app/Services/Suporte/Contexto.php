@@ -421,8 +421,17 @@ class Contexto
             .'Use para explicar o que fazemos, com suas palavras e em poucas frases; não prometa preço, prazo nem condição. '
             ."Se o cliente quiser proposta, visita ou orçamento, é com o comercial (encaminhe). Link: só os que aparecem aqui ou em A EMPRESA.\n"
             .collect($itens)->map(fn ($i) => '- '.$i['titulo'].' ('.$i['categoria'].')'
-                .($i['descricao'] ? ': '.$i['descricao'] : '').($i['texto'] ? "\n  ".Str::limit($i['texto'], 900, '…') : '')
+                .($i['descricao'] ? ': '.self::semValores($i['descricao']) : '').($i['texto'] ? "\n  ".Str::limit(self::semValores($i['texto']), 900, '…') : '')
                 .($i['url'] ? "\n  Link: ".$i['url'] : '').($i['video'] ? "\n  Vídeo: ".$i['video'] : ''))->implode("\n");
+    }
+
+    /**
+     * Os casos do showroom trazem preço de proposta ("R$ 2.900/mês", "R$ 69.500"), e preço não é
+     * assunto do suporte (como na base dos sistemas): o valor sai, e o resto do caso fica.
+     */
+    public static function semValores(string $texto): string
+    {
+        return (string) preg_replace('/R\$\s*\d(?:[\d.,]*\d)?(?:\s*(?:mil|milh(?:ão|ões)))?(?:\s*\/\s*(?:mês|mes|ano|aluno|dia))?/iu', '(valor com o comercial)', $texto);
     }
 
     private function candidatoUnicoDoGestor(SuporteConversa $c): ?array
